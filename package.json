@@ -1,0 +1,61 @@
+{
+  "name": "vscode-gotchi",
+  "displayName": "vscode_gotchi",
+  "description": "Raise a virtual pet while you code",
+  "version": "0.0.1",
+  "publisher": "vscode-gotchi",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gotchi-sidebar",
+          "title": "vscode_gotchi",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "gotchi-sidebar": [
+        {
+          "type": "webview",
+          "id": "gotchiView",
+          "name": "Your Pet"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "gotchi.openPanel",
+        "title": "Gotchi: Open Pet Panel"
+      },
+      {
+        "command": "gotchi.newGame",
+        "title": "Gotchi: Start New Game"
+      }
+    ],
+    "configuration": {
+      "title": "vscode_gotchi",
+      "properties": {
+        "gotchi.pythonPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Python executable. Leave empty to auto-detect (python3 on macOS/Linux, python on Windows)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
