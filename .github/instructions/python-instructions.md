@@ -32,7 +32,7 @@ applyTo: "**/*.py"
 - Ensure lines do not exceed 79 characters.
 - Place function and class docstrings immediately after the `def` or `class` keyword.
 - Use blank lines to separate functions, classes, and code blocks where appropriate.
-- Use descriptive variable names e.g. `average_rating_stars` rather than `avg`: do not abbreviate.
+- Use descriptive variable names e.g. `hunger_decay_per_tick` rather than `h_decay`: do not abbreviate.
 - When naming variables that hold physical or domain quantities, include the unit or dimension in the name where it aids clarity e.g. `radius_metres` rather than `radius`.
 
 ## Edge Cases and Testing
