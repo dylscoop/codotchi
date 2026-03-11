@@ -63,6 +63,52 @@ python3.14 -m venv .venv
 npm run compile
 ```
 
+## Packaging and permanent installation
+
+The extension can be packaged into a `.vsix` file and installed permanently
+into any VS Code instance — no F5 or development host needed.
+
+### 1. Install the packaging tool
+
+```bash
+npm install
+```
+
+(`@vscode/vsce` is already listed as a dev dependency.)
+
+### 2. Build the `.vsix`
+
+```bash
+npx vsce package --no-dependencies
+```
+
+This compiles the TypeScript (via the `vscode:prepublish` hook), bundles all
+required files, and writes `vscode-gotchi-0.0.1.vsix` to the repository root.
+
+### 3. Install the `.vsix`
+
+**From the terminal:**
+
+```bash
+code --install-extension vscode-gotchi-0.0.1.vsix
+```
+
+**From the VS Code UI:**
+
+1. Open the Extensions view (`Ctrl+Shift+X` / `Cmd+Shift+X`).
+2. Click the **`···`** menu (top-right of the Extensions panel).
+3. Choose **Install from VSIX…**
+4. Select `vscode-gotchi-0.0.1.vsix`.
+
+Restart VS Code when prompted. The extension activates automatically on
+startup and the pet icon appears in the activity bar.
+
+> **Python required on the target machine.**  
+> The bundled game engine (`python/game_engine.py`) is a pure-stdlib Python
+> script. Python 3.9 or newer must be available on the machine where the
+> `.vsix` is installed. If VS Code cannot find it, set `gotchi.pythonPath`
+> in settings to the full path of the interpreter.
+
 ## Launching the extension
 
 ### Development (F5)

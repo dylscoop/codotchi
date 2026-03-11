@@ -1,6 +1,18 @@
-# Python source and tests (not needed in .vsix)
-python/
+# Tests (not needed in .vsix)
 tests/
+
+# Root test conftest (only needed by pytest)
+conftest.py
+
+# TypeScript source (only compiled output in out/ is needed)
+src/
+tsconfig.json
+
+# Python cache directories
+.mypy_cache/
+.ruff_cache/
+**/__pycache__/
+*.pyc
 
 # Python virtual environment
 .venv/
