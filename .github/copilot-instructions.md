@@ -6,12 +6,20 @@ Intended audience: AI agents and developers. Provides context to allow agents to
 
 ## Project Overview
 
-Restaurant Reviewer is a FastAPI web application that:
+vscode_gotchi is a VS Code extension that lets developers raise a virtual pet
+while they write code, inspired by the original Tamagotchi. It consists of:
 
-- Scrapes Google Maps reviews via a headless Playwright browser
-- Stores restaurants and reviews in SQLite
-- Re-rates restaurants using a configurable recency-decay and keyword/location weighting algorithm
-- Exposes results via a REST API
+- A **TypeScript extension host** — registers a sidebar webview, status bar
+  item, commands, and event hooks via the VS Code extension API
+- A **Python 3.14 game engine** (`python/`) — a subprocess that owns all pet
+  state logic (stat decay, evolution, sickness, death) and communicates with
+  the TypeScript layer via newline-delimited JSON over stdin/stdout
+- A **webview UI** (`media/`) — plain HTML/CSS/JS rendered in a VS Code
+  sidebar panel; no front-end framework
+
+The Python game engine has **no runtime dependencies** — it uses the standard
+library only. Dev tooling (ruff, mypy, pytest) is installed into a local
+`.venv` using Python 3.14.
 
 ## Validation Workflow
 
@@ -23,16 +31,22 @@ For tooling, validation workflow, and definition of done, see [Copilot Agent Ins
 
 Location: `tests/unit_tests`
 
-Unit tests cover individual functions and classes in isolation:
+Unit tests cover individual Python functions and classes in isolation with no
+VS Code API, no subprocess, and no filesystem I/O:
 
-- `test_scoring.py` — 23 tests for the recency decay and keyword/location weighting algorithm
-- `test_database.py` — 11 tests for `RestaurantRepository` and `ReviewRepository` using in-memory SQLite
+- `test_pet.py` — Pet class: tick decay, evolution transitions, death conditions, serialisation
+- `test_actions.py` — Pure action functions: feed, play, sleep, clean, medicine, scold, praise
+- `test_evolution.py` — Senior transition probability and old-age death logic
+- `test_minigames.py` — Mini-game result processing (win/lose → stat deltas)
 
 ### Integration Tests
 
 Location: `tests/integration_tests`
 
-Integration tests exercise the FastAPI app end-to-end via `TestClient`. They override the database dependencies with an in-memory SQLite connection and mock the `PlaywrightScraper` where scraping behaviour needs to be tested without network access.
+Integration tests exercise the full `game_engine.py` loop end-to-end by
+writing JSON commands to stdin and reading state snapshots from stdout via
+a subprocess. They cover complete game flows: new game → care actions →
+tick-driven stat decay → evolution → sickness → death → new game.
 
 ## Design Patterns: Encourage and Discourage
 

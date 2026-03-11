@@ -23,7 +23,7 @@ applyTo: "**/*.py"
 - Use consistent naming conventions and follow language-specific best practices.
 - Write concise, efficient, and idiomatic code that is also easily understandable.
 - Prefer pure functions where possible.
-- Test folder structure should match source code e.g. unit tests for `algorithm/scoring.py` should be in `tests/unit_tests/test_scoring.py`.
+- Test folder structure should match source code e.g. unit tests for `python/pet.py` should be in `tests/unit_tests/test_pet.py`.
 
 ## Code Style and Formatting
 

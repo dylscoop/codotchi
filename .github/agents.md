@@ -35,22 +35,22 @@ When making code changes, the agent must perform the following steps in order:
 
 1. Check formatting:
    ```
-   .venv/Scripts/ruff format --check src/ tests/
+   .venv/Scripts/ruff format --check python/ tests/
    ```
 
    If formatting fails, fix with:
    ```
-   .venv/Scripts/ruff format src/ tests/
+   .venv/Scripts/ruff format python/ tests/
    ```
 
 2. Run linting:
    ```
-   .venv/Scripts/ruff check src/ tests/
+   .venv/Scripts/ruff check python/ tests/
    ```
 
 3. Run type checking:
    ```
-   .venv/Scripts/mypy src/ tests/
+   .venv/Scripts/mypy python/ tests/
    ```
 
 4. Run default test suites:
