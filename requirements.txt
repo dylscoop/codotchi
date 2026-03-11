@@ -1,9 +1,0 @@
-# Python 3.14 dev tooling
-# Install with: .venv\Scripts\pip install -r requirements.txt
-#
-# Runtime dependencies: none (game engine uses stdlib only)
-# Dev / tooling dependencies:
-
-ruff==0.15.5
-mypy==1.19.1
-pytest==9.0.2
