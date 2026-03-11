@@ -554,6 +554,11 @@ export function tick(state: PetState): PetState {
     health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
   }
 
+  // BUGFIX-004: passive health regen when not sick and not at maximum
+  if (!sick && health < STAT_MAX) {
+    health = clampStat(health + 1);
+  }
+
   // Death check
   if (health <= HEALTH_DEATH_THRESHOLD) {
     alive = false;
