@@ -301,7 +301,7 @@
    */
   function setBar(bar, value) {
     const clamped = Math.max(0, Math.min(100, value));
-    bar.style.transform = "scaleX(" + (clamped / 100) + ")";
+    bar.style.width = clamped + "%";
   }
 
   /**
