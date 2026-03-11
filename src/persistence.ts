@@ -2,22 +2,24 @@
  * persistence.ts
  *
  * Saves and restores the full PetState via VS Code's globalState API.
- * Also records the timestamp of the last save so the Python engine can
+ * Also records the timestamp of the last save so the game engine can
  * calculate how many seconds elapsed while the extension was closed.
  */
 
 import * as vscode from "vscode";
-import { PetState } from "./pythonBridge";
+import { PetState, deserialiseState, serialiseState } from "./gameEngine";
 
 const STATE_KEY = "gotchi.petState";
 const TIMESTAMP_KEY = "gotchi.lastSaveTimestamp";
 
-/** Persist the pet state and record the current wall-clock timestamp (ms). */
-export function saveState(
-  context: vscode.ExtensionContext,
-  state: PetState
-): void {
-  void context.globalState.update(STATE_KEY, state);
+/**
+ * Persist the pet state and record the current wall-clock timestamp (ms).
+ *
+ * @param context - The VS Code extension context.
+ * @param state - The pet state to persist.
+ */
+export function saveState(context: vscode.ExtensionContext, state: PetState): void {
+  void context.globalState.update(STATE_KEY, serialiseState(state));
   void context.globalState.update(TIMESTAMP_KEY, Date.now());
 }
 
@@ -25,12 +27,16 @@ export function saveState(
  * Load the most recently saved pet state.
  *
  * Returns `null` if no state has been saved yet (first launch).
+ *
+ * @param context - The VS Code extension context.
+ * @returns The deserialised PetState, or null on first launch.
  */
-export function loadState(
-  context: vscode.ExtensionContext
-): PetState | null {
-  const state = context.globalState.get<PetState>(STATE_KEY);
-  return state ?? null;
+export function loadState(context: vscode.ExtensionContext): PetState | null {
+  const raw = context.globalState.get<Record<string, unknown>>(STATE_KEY);
+  if (raw === undefined || raw === null) {
+    return null;
+  }
+  return deserialiseState(raw);
 }
 
 /**
