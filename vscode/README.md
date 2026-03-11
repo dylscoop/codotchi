@@ -40,6 +40,7 @@ to survive and evolve into its final form.
 2. **Install the `.vsix`:**
 
    **From the terminal:**
+
    ```bash
    code --install-extension vscode-gotchi-0.0.1.vsix
    ```
@@ -106,7 +107,7 @@ Once installed and VS Code has reloaded:
 ## Actions
 
 | Action | What it does |
-|--------|-------------|
+| ------ | ----------- |
 | **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Limited to 4 meals per wake cycle — overfeeding past that has no effect. |
 | **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. More than 3 snacks in a row will make your pet sick. |
 | **Play** | Starts a mini-game. Winning boosts happiness significantly; even losing gives a small consolation boost. Costs energy — your pet can't play if it's exhausted. |
@@ -154,7 +155,7 @@ decision to remove the original Python subprocess.
 ## Pet Types
 
 | Type        | Tendency                                   |
-|-------------|--------------------------------------------|
+| ----------- | ------------------------------------------ |
 | Codeling    | Balanced across all stats                  |
 | Bytebug     | High energy, hunger decays faster          |
 | Pixelpup    | High happiness, but happiness decays faster|

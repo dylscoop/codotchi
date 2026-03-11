@@ -31,6 +31,7 @@
   const infoLine       = document.getElementById("info-line");
   const eventLog       = document.getElementById("event-log");
   const deadStats      = document.getElementById("dead-stats");
+  const mealsLeftEl    = document.getElementById("meals-left");
 
   const barHunger    = document.getElementById("bar-hunger");
   const barHappiness = document.getElementById("bar-happiness");
@@ -243,7 +244,7 @@
    * Update every UI element from a PetState snapshot.
    * @param {object} state
    */
-  function renderState(state) {
+  function renderState(state, mealsGiven) {
     if (!state.alive) {
       renderDeadScreen(state);
       showScreen("dead");

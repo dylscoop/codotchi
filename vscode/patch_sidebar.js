@@ -1,0 +1,1 @@
+process.stdout.write('test script runs\n');

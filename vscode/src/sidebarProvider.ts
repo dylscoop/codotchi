@@ -247,7 +247,7 @@ export class SidebarProvider
    */
   postState(state: PetState): void {
     if (this.webviewView) {
-      void this.webviewView.webview.postMessage({ type: "stateUpdate", state });
+      void this.webviewView.webview.postMessage({ type: "stateUpdate", state, mealsGivenThisCycle: this.mealsGivenThisCycle });
     }
   }
 
