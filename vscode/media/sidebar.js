@@ -292,6 +292,9 @@
     lastState = state;
 
     appendEvents(state.events || []);
+
+    // Spawn poo animation when the pet poops
+    if ((state.events || []).indexOf("pooped") !== -1) { spawnPooAnim(); }
   }
 
   /**
@@ -339,6 +342,53 @@
     while (eventLog.children.length > 20) {
       eventLog.removeChild(eventLog.lastChild);
     }
+  }
+
+  /**
+   * Spawn a pixel-art poo sprite that floats up from near the pet and fades out.
+   * Called whenever a "pooped" event arrives in the state update.
+   */
+  function spawnPooAnim() {
+    var container = document.getElementById("sprite-container");
+    if (!container) { return; }
+
+    // 6×7 pixel art poo grid: 1 = dark brown (#6B3A2A), 2 = light brown (#A0522D)
+    var PIXELS = [
+      [0,0,1,1,0,0],
+      [0,1,1,1,1,0],
+      [1,1,2,1,1,1],
+      [1,2,1,1,1,1],
+      [0,1,1,1,1,0],
+      [0,1,1,1,1,0],
+      [1,1,1,1,1,1],
+    ];
+    var SCALE = 3;
+    var W = PIXELS[0].length * SCALE;
+    var H = PIXELS.length    * SCALE;
+
+    var c = document.createElement("canvas");
+    c.width  = W;
+    c.height = H;
+    var ctx = c.getContext("2d");
+    PIXELS.forEach(function (row, ry) {
+      row.forEach(function (px, rx) {
+        if (!px) { return; }
+        ctx.fillStyle = px === 2 ? "#A0522D" : "#6B3A2A";
+        ctx.fillRect(rx * SCALE, ry * SCALE, SCALE, SCALE);
+      });
+    });
+
+    // Spawn near the pet's current horizontal position
+    var x = Math.max(0, Math.min(container.offsetWidth - W, petX));
+    var div = document.createElement("div");
+    div.className   = "poo-anim";
+    div.style.left  = x + "px";
+    div.appendChild(c);
+    container.appendChild(div);
+
+    div.addEventListener("animationend", function () {
+      if (div.parentNode) { div.parentNode.removeChild(div); }
+    });
   }
 
   /** Show the dead screen with final stats. */

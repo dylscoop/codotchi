@@ -9,12 +9,16 @@
   <extensions defaultExtensionNs="com.intellij">
     <!-- Persistence -->
     <applicationService serviceImplementation="com.gotchi.GotchiPersistence" />
+    <!-- Display settings -->
+    <applicationService serviceImplementation="com.gotchi.GotchiSettings" />
     <!-- Main application service (tick scheduler, state manager) -->
     <applicationService serviceImplementation="com.gotchi.GotchiPlugin" />
     <!-- Tool window -->
     <toolWindow id="Gotchi" anchor="right" factoryClass="com.gotchi.GotchiToolWindow" icon="/META-INF/gotchi_icon.svg" />
     <!-- Status bar widget -->
     <statusBarWidgetFactory id="GotchiStatusWidget" implementation="com.gotchi.GotchiStatusWidgetFactory" order="last" />
+    <!-- Settings page: Settings > Tools > Gotchi -->
+    <applicationConfigurable parentId="tools" instance="com.gotchi.GotchiConfigurable" id="com.gotchi.GotchiConfigurable" displayName="Gotchi" />
   </extensions>
   <applicationListeners>
     <listener class="com.gotchi.GotchiAppLifecycleListener" topic="com.intellij.ide.AppLifecycleListener" />

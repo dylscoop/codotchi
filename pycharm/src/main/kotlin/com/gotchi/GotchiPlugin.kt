@@ -188,6 +188,18 @@ class GotchiPlugin : Disposable {
         broadcastState()
     }
 
+    /**
+     * Reload the JCEF webview with freshly built HTML (picks up new settings),
+     * then re-push the current state so the UI is up to date immediately.
+     * Called by [GotchiConfigurable] after the user clicks Apply.
+     */
+    fun reloadWebview() {
+        ApplicationManager.getApplication().invokeLater {
+            browserPanel?.reload()
+            broadcastState()
+        }
+    }
+
     // ── Broadcast ──────────────────────────────────────────────────────────
 
     fun broadcastState() {

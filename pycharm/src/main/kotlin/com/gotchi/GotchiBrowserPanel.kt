@@ -3,6 +3,8 @@ package com.gotchi
 import com.google.gson.Gson
 import com.gotchi.engine.PetState
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.ui.jcef.JBCefJSQuery
 import org.cef.browser.CefBrowser
@@ -81,20 +83,35 @@ class GotchiBrowserPanel(
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
     }
 
+    /**
+     * Reload the webview with freshly built HTML (picks up latest settings).
+     * Safe to call from any thread — defers to the EDT internally via JCEF.
+     */
+    fun reload() {
+        browser.loadHTML(buildHtml())
+    }
+
     // ── HTML builder ───────────────────────────────────────────────────────
 
     private fun buildHtml(): String {
+        val settings      = ApplicationManager.getApplication().getService(GotchiSettings::class.java)
+        val fontSizeClass = "font-${settings?.fontSize ?: "normal"}"
+        val textColor     = settings?.textColor ?: "#cccccc"
+
         val cssText  = loadResource("/webview/sidebar.css")
         val jsText   = loadResource("/webview/sidebar.js")
         var html     = loadResource("/webview/sidebar.html")
 
-        // Substitute font-size class (default "font-normal" until a setting is wired up)
-        html = html.replace("{{fontSizeClass}}", "font-normal")
+        // Substitute font-size class from settings
+        html = html.replace("{{fontSizeClass}}", fontSizeClass)
 
         // Inline CSS — replace <link rel="stylesheet" href="sidebar.css" />
+        // Append a colour override so user preference takes precedence over
+        // the CSS default without touching the shared webview CSS file.
+        val colorOverride = "body { color: $textColor !important; }"
         html = html.replace(
             """<link rel="stylesheet" href="sidebar.css" />""",
-            "<style>\n$cssText\n</style>"
+            "<style>\n$cssText\n$colorOverride\n</style>"
         )
 
         // Build the acquireVsCodeApi shim + sidebar.js as a single inline script block.

@@ -16,6 +16,10 @@
         <applicationService
             serviceImplementation="com.gotchi.GotchiPersistence"/>
 
+        <!-- Display settings -->
+        <applicationService
+            serviceImplementation="com.gotchi.GotchiSettings"/>
+
         <!-- Main application service (tick scheduler, state manager) -->
         <applicationService
             serviceImplementation="com.gotchi.GotchiPlugin"/>
@@ -32,6 +36,13 @@
             id="GotchiStatusWidget"
             implementation="com.gotchi.GotchiStatusWidgetFactory"
             order="last"/>
+
+        <!-- Settings page: Settings > Tools > Gotchi -->
+        <applicationConfigurable
+            parentId="tools"
+            instance="com.gotchi.GotchiConfigurable"
+            id="com.gotchi.GotchiConfigurable"
+            displayName="Gotchi"/>
 
     </extensions>
 
