@@ -1,73 +1,56 @@
 # BUILD_LOG.md — vscode_gotchi
 
-Build narrative and install guide for the vscode_gotchi VS Code extension.
+Build narrative and development summary for the vscode_gotchi VS Code extension.
 
 ---
 
-## Prerequisites
+## Current status
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| Node.js | ≥ 18 | `node --version` |
-| npm | ≥ 9 | bundled with Node |
-| Python | 3.14 | `py -3.14 --version` on Windows |
-| VS Code | ≥ 1.85 | target engine version |
+The extension is feature-complete and packaged. It is a **fully self-contained
+TypeScript VS Code extension** — no Python or external runtime required.
 
 ---
 
-## Install
+## Prerequisites (development)
+
+| Tool | Version |
+|------|---------|
+| VS Code | ≥ 1.85 |
+| Node.js | ≥ 18 |
+| npm | ≥ 9 (bundled with Node) |
+
+---
+
+## Install and run (development)
 
 ```bash
-# 1. Clone the repository
-git clone <repo-url>
+git clone https://github.com/dylscoop/vscode_gotchi.git
 cd vscode_gotchi
 
-# 2. Install Node dependencies
 npm install
-
-# 3. Create the Python virtual environment (Windows)
-py -3.14 -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-
-# 4. Compile TypeScript
 npm run compile
+
+# Press F5 in VS Code to launch the Extension Development Host
+```
+
+---
+
+## Build and install permanently
+
+```bash
+npm install
+npx vsce package --no-dependencies
+code --install-extension vscode-gotchi-0.0.1.vsix
 ```
 
 ---
 
 ## Validation workflow (must pass before every commit)
 
-Run these five commands in order:
-
 ```bash
-# 1. Check formatting (fix with: ruff format python/ tests/)
-.venv\Scripts\ruff format --check python/ tests/
-
-# 2. Lint
-.venv\Scripts\ruff check python/ tests/
-
-# 3. Type-check
-.venv\Scripts\mypy python/ tests/
-
-# 4. Unit tests
-.venv\Scripts\pytest tests/unit_tests
-
-# 5. Integration tests
-.venv\Scripts\pytest tests/integration_tests
+npm run compile   # TypeScript — zero errors required
+npm test          # Test suite
 ```
-
-All five must report success with zero errors before a commit is made.
-
----
-
-## Running in VS Code (development)
-
-1. Open the repository folder in VS Code.
-2. Press **F5** to launch the Extension Development Host.
-3. In the new window, open the activity bar icon (dragon head) or run
-   `Gotchi: Open Panel` from the command palette.
-4. The Python game engine starts automatically. If it cannot find Python,
-   set `gotchi.pythonPath` in settings to the full path of your interpreter.
 
 ---
 
@@ -91,34 +74,78 @@ All five must report success with zero errors before a commit is made.
 | `65644d2` | feat: add TypeScript Python bridge, persistence helpers, and status bar |
 | `3e41bfd` | feat: add extension entry point, sidebar provider, and save-event listener |
 | `97f20de` | feat: add retro pixel-art sidebar webview UI |
+| `2aea83b` | docs: add BUILD_LOG.md with install guide and commit history |
+| `46a82df` | docs: add installation and launch guide to README |
+| `28ef743` | chore: add vsce, fix .vscodeignore, add repository field to package.json |
+| `10486a1` | chore: add .gitignore; retire Python, adopt all-TypeScript architecture |
 
 ---
 
-## Architecture summary
+## Architecture
 
-The extension is split into two processes that communicate via
-newline-delimited JSON over stdin/stdout:
+The extension is a single self-contained TypeScript process:
 
 ```
 VS Code Extension Host (TypeScript)
-  └─ PythonBridge  ──stdin/stdout JSON──►  python/game_engine.py (Python 3.14)
-       │                                         │
-       ├─ SidebarProvider (WebviewViewProvider)  ├─ pet.py      (Pet dataclass)
-       ├─ StatusBarManager                       ├─ actions.py  (pure functions)
-       ├─ EventsManager (onDidSaveTextDocument)  ├─ evolution.py
-       └─ persistence.ts (globalState)           ├─ minigames.py
-                                                 └─ config.py / models.py
+  ├─ extension.ts          Activation, tick timer, command registration
+  ├─ gameEngine.ts         Pet state machine — stats, decay, evolution (in progress)
+  ├─ sidebarProvider.ts    WebviewViewProvider — dispatches button actions
+  ├─ statusBar.ts          Mood emoji + pet name in the status bar
+  ├─ persistence.ts        Save/load via context.globalState
+  └─ events.ts             onDidSaveTextDocument → happiness boost
+
+Webview (media/)
+  ├─ sidebar.html          Panel shell
+  ├─ sidebar.css           Retro pixel-art styling
+  └─ sidebar.js            Stat bars, procedural sprite canvas, action buttons
 ```
 
-Full design rationale is in `docs/adr/2026-03-11-architecture.md`.
+Full design rationale and amendment history: `docs/adr/2026-03-11-architecture.md`
 
 ---
 
-## Known limitations / future work
+## Development decisions log
 
-- Sprite assets in `media/sprites/` are not yet included; the webview
-  renders a procedural pixel-art placeholder sprite instead.
-- The Python engine path defaults to the system `python` / `python3`
-  binary; set `gotchi.pythonPath` if your environment differs.
-- Offline decay is capped at 60 % of maximum to prevent instant death
-  after long IDE closures.
+### Python subprocess → TypeScript (ADR amendment A1)
+
+The original design used a Python 3.14 subprocess for all game logic,
+communicating with the TypeScript extension host via newline-delimited JSON
+over stdin/stdout. This was prototyped and fully tested (94 passing tests).
+
+**Decision reversed:** VS Code extensions are distributed as self-contained
+`.vsix` bundles. A `.vsix` cannot bundle a Python interpreter, and requiring
+users to have Python installed is an unacceptable external dependency.
+
+All game logic is being ported to TypeScript so the extension has zero runtime
+dependencies beyond VS Code itself.
+
+### .gitignore missing from initial scaffold
+
+No `.gitignore` was created at project initialisation. Python's `__pycache__`
+directories (bytecode cache files — auto-generated, not needed in version
+control) and `node_modules/` accumulated as untracked files. A `.gitignore`
+was added in commit `10486a1`.
+
+---
+
+## Remaining work
+
+| Task | Notes |
+|------|-------|
+| Port game engine to TypeScript | `src/gameEngine.ts` — replaces `python/` and `src/pythonBridge.ts` |
+| Update `src/extension.ts` | Remove `pythonBridge` import; wire `gameEngine` directly |
+| Write TypeScript tests | Mirror coverage of the 94 Python tests |
+| Remove Python artefacts | Delete `python/`, `tests/`, `requirements.txt`, `pythonBridge.ts`, `conftest.py` |
+| Sprite assets | `media/sprites/` — procedural canvas placeholder currently used |
+
+---
+
+## Known limitations
+
+- Game engine is not yet ported to TypeScript — the extension activates but
+  the Python bridge is still wired up and will fail without Python installed.
+  The port is the immediate next task.
+- Sprite assets in `media/sprites/` are not included; the webview renders a
+  procedural pixel-art placeholder sprite.
+- Offline decay is capped at 60 % of each stat maximum to prevent instant
+  death after a long IDE closure.
