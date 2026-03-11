@@ -61,7 +61,7 @@ You need Node.js ≥ 18 and npm.
 
 ```bash
 git clone https://github.com/dylscoop/vscode_gotchi.git
-cd vscode_gotchi
+cd vscode_gotchi/vscode
 
 # Install Node dependencies (includes vsce)
 npm install
@@ -125,7 +125,7 @@ Once installed and VS Code has reloaded:
 
 ```bash
 git clone https://github.com/dylscoop/vscode_gotchi.git
-cd vscode_gotchi
+cd vscode_gotchi/vscode
 npm install
 npm run compile
 
@@ -135,6 +135,7 @@ npm run compile
 Validation commands (must all pass before committing):
 
 ```bash
+# Run from vscode_gotchi/vscode/
 npm run compile
 npm test
 ```
@@ -167,12 +168,14 @@ depending on care quality.
 ## Project Structure
 
 ```
-vscode_gotchi/
-├── src/             # TypeScript extension host and game engine
-├── media/           # Webview HTML, CSS, JS, and sprite assets
-├── tests/           # Unit tests for the game engine
-├── docs/adr/        # Architecture Decision Records
-└── README.md        # This file
+vscode_gotchi/          ← repo root
+├── vscode/             ← VS Code extension (this package)
+│   ├── src/            # TypeScript extension host and game engine
+│   ├── media/          # Webview HTML, CSS, JS, and sprite assets
+│   ├── tests/          # Unit tests for the game engine
+│   ├── docs/adr/       # Architecture Decision Records
+│   └── README.md       # This file
+└── pycharm/            ← JetBrains plugin (Kotlin + Gradle)
 ```
 
 ## Development Roadmap
