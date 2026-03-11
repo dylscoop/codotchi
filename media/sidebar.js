@@ -40,6 +40,15 @@
   const spriteCanvas = document.getElementById("sprite-canvas");
   const spriteCtx    = spriteCanvas.getContext("2d");
 
+  // ── Animation state ──────────────────────────────────────────────────────
+
+  let lastState     = null;   // most recent PetState snapshot
+  let petX          = 4;      // horizontal position (canvas pixels, left edge of body)
+  let petVelX       = 1;      // direction: +1 = right, -1 = left
+  let petFacingLeft = false;
+  let idlePauseTicks = 0;     // frames remaining in current idle pause
+  let animTick      = 0;      // raw frame counter (drives leg/bob animation)
+
   // ── Setup form state ────────────────────────────────────────────────────
 
   let selectedPetType = "codeling";
@@ -89,8 +98,11 @@
     vscode.postMessage({ command: "play", game: "guess", result: result });
   });
 
-  document.getElementById("btn-sleep").addEventListener("click", function () {
-    vscode.postMessage({ command: "sleep" });
+  document.getElementById("btn-sleep-wake").addEventListener("click", function () {
+    // Read current sleeping state from the button's own data attribute,
+    // set by renderState() after each state update.
+    const isSleeping = document.getElementById("btn-sleep-wake").dataset["sleeping"] === "true";
+    vscode.postMessage({ command: isSleeping ? "wake" : "sleep" });
   });
 
   document.getElementById("btn-clean").addEventListener("click", function () {
@@ -127,7 +139,103 @@
     setupScreen.classList.toggle("hidden", name !== "setup");
     gameScreen.classList.toggle("hidden",  name !== "game");
     deadScreen.classList.toggle("hidden",  name !== "dead");
+    if (name === "game") { resizeCanvas(); }
   }
+
+  // ── Canvas sizing ─────────────────────────────────────────────────────────
+
+  /**
+   * Sync the canvas pixel buffer width to the container's CSS width.
+   * Called on first render and whenever the sidebar is resized.
+   */
+  function resizeCanvas() {
+    const container = spriteCanvas.parentElement;
+    if (!container) { return; }
+    const newWidth = Math.max(container.clientWidth, 64);
+    if (spriteCanvas.width === newWidth) { return; }
+    spriteCanvas.width = newWidth;
+    // Clamp petX so the pet doesn't walk off the right edge after a resize
+    if (lastState) {
+      const scale   = STAGE_SCALES[lastState.stage] || 0.5;
+      const bSize   = Math.round(24 * scale);
+      const maxX    = spriteCanvas.width - bSize - 4;
+      if (petX > maxX) { petX = Math.max(4, maxX); }
+    }
+  }
+
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(resizeCanvas);
+    ro.observe(spriteCanvas.parentElement);
+  }
+  resizeCanvas();
+
+  // ── Movement helpers ──────────────────────────────────────────────────────
+
+  /** Canvas pixels per animation frame (approx. 60 fps). */
+  const MOOD_SPEED = { happy: 1.5, neutral: 0.8, sad: 0.4 };
+
+  function getPetSpeed(state) {
+    if (!state || state.sleeping) { return 0; }
+    if (state.sick)               { return 0.3; }
+    return MOOD_SPEED[state.mood] || 0.8;
+  }
+
+  // ── Animation loop ────────────────────────────────────────────────────────
+
+  function animationLoop() {
+    if (lastState && lastState.alive) {
+      const speed      = getPetSpeed(lastState);
+      const stageScale = STAGE_SCALES[lastState.stage] || 0.5;
+      const bodySize   = Math.round(24 * stageScale);
+      const minX       = 4;
+      const maxX       = spriteCanvas.width - bodySize - 4;
+
+      animTick++;
+
+      if (speed > 0 && idlePauseTicks <= 0) {
+        petX += petVelX * speed;
+
+        if (petX >= maxX) {
+          petX          = maxX;
+          petVelX       = -1;
+          petFacingLeft = true;
+          // Pause briefly after bouncing off the right wall
+          if (Math.random() < 0.4) {
+            idlePauseTicks = 20 + Math.floor(Math.random() * 60);
+          }
+        } else if (petX <= minX) {
+          petX          = minX;
+          petVelX       = 1;
+          petFacingLeft = false;
+          if (Math.random() < 0.4) {
+            idlePauseTicks = 20 + Math.floor(Math.random() * 60);
+          }
+        }
+
+        // Occasional mid-walk pause (and 50 % chance to turn around)
+        if (Math.random() < 0.0015) {
+          idlePauseTicks = 30 + Math.floor(Math.random() * 90);
+          if (Math.random() < 0.5) {
+            petVelX       = -petVelX;
+            petFacingLeft = !petFacingLeft;
+          }
+        }
+      } else if (idlePauseTicks > 0) {
+        idlePauseTicks--;
+      }
+
+      // Leg alternation and body bob only while walking
+      const walking  = speed > 0 && idlePauseTicks <= 0;
+      const legFrame = walking ? Math.floor(animTick / 10) % 2 : 0;
+      const bobOffset = walking ? legFrame : 0;   // 0 or 1 pixel up
+
+      drawSprite(lastState, Math.round(petX), bobOffset, petFacingLeft, legFrame);
+    }
+
+    requestAnimationFrame(animationLoop);
+  }
+
+  requestAnimationFrame(animationLoop);
 
   // ── State rendering ──────────────────────────────────────────────────────
 
@@ -158,8 +266,23 @@
       state.stage + "  |  " +
       poopStr;
 
+    // Update sleep/wake button label to match current state
+    const sleepWakeBtn = document.getElementById("btn-sleep-wake");
+    sleepWakeBtn.textContent = state.sleeping ? "Wake" : "Sleep";
+    sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
+
+    // Reset position when a brand-new or just-loaded pet first appears
+    if (!lastState || !lastState.alive) {
+      petX          = Math.max(4, Math.floor(spriteCanvas.width / 2 - 12));
+      petVelX       = 1;
+      petFacingLeft = false;
+      animTick      = 0;
+    }
+
+    // Hand off to animation loop — it owns all drawing
+    lastState = state;
+
     appendEvents(state.events || []);
-    drawSprite(state);
   }
 
   /**
@@ -208,81 +331,105 @@
   // ── Sprite drawing ───────────────────────────────────────────────────────
 
   /**
-   * Draw a simple procedural pixel-art sprite on the canvas.
+   * Draw the pet sprite at a given horizontal position on the stage canvas.
    *
-   * No sprite files are bundled yet; this renders a coloured block
-   * creature whose appearance varies by pet_type, stage, and mood.
-   * When real sprite sheets are added, swap this function for an
-   * Image-based draw.
+   * The canvas is cleared and redrawn every call (driven by animationLoop).
+   * A horizontal flip is applied when the pet faces left.
    *
-   * @param {object} state
+   * @param {object}  state      - Current PetState snapshot.
+   * @param {number}  x          - Left edge of the body in canvas pixels.
+   * @param {number}  bobOffset  - Pixels to raise the body (walking bob, 0–1).
+   * @param {boolean} facingLeft - Whether the sprite should face left.
+   * @param {number}  legFrame   - Leg animation frame (0 or 1).
    */
-  function drawSprite(state) {
-    const palette = COLOR_PALETTES[state.color] || COLOR_PALETTES["neon"];
+  function drawSprite(state, x, bobOffset, facingLeft, legFrame) {
+    const palette    = COLOR_PALETTES[state.color] || COLOR_PALETTES["neon"];
     const primary    = palette.primary;
     const secondary  = palette.secondary;
     const background = palette.background;
 
-    spriteCtx.clearRect(0, 0, 64, 64);
+    const W = spriteCanvas.width;
+    const H = spriteCanvas.height;
+
+    spriteCtx.clearRect(0, 0, W, H);
 
     // Background
     spriteCtx.fillStyle = background;
-    spriteCtx.fillRect(0, 0, 64, 64);
+    spriteCtx.fillRect(0, 0, W, H);
 
-    // Body — size grows with stage
+    // Ground line
+    spriteCtx.fillStyle = "rgba(255,255,255,0.08)";
+    spriteCtx.fillRect(0, H - 5, W, 1);
+
+    // Body size scales with stage
     const stageScale = STAGE_SCALES[state.stage] || 0.5;
     const bodySize   = Math.round(24 * stageScale);
-    const bodyX      = Math.round((64 - bodySize) / 2);
-    const bodyY      = Math.round(32 - bodySize / 2);
+    const legH       = Math.max(2, Math.round(bodySize * 0.22));  // leg height in pixels
+    const bodyY      = H - bodySize - legH - 4 - bobOffset;       // sits above legs, above ground
 
+    // Apply horizontal flip for direction
+    spriteCtx.save();
+    if (facingLeft) {
+      spriteCtx.translate(x + bodySize, 0);
+      spriteCtx.scale(-1, 1);
+      spriteCtx.translate(-x, 0);
+    }
+
+    // Legs (alternating height = walking animation)
+    const legW  = Math.max(2, Math.round(bodySize * 0.15));
+    const legX1 = x + Math.round(bodySize * 0.2);
+    const legX2 = x + Math.round(bodySize * 0.6);
+    const legY  = bodyY + bodySize;
     spriteCtx.fillStyle = primary;
-    spriteCtx.fillRect(bodyX, bodyY, bodySize, bodySize);
+    spriteCtx.fillRect(legX1, legY, legW, legFrame === 0 ? legH     : legH - 1);
+    spriteCtx.fillRect(legX2, legY, legW, legFrame === 0 ? legH - 1 : legH    );
+
+    // Body
+    spriteCtx.fillStyle = primary;
+    spriteCtx.fillRect(x, bodyY, bodySize, bodySize);
 
     // Eyes
-    const eyeSize = Math.max(2, Math.round(bodySize * 0.18));
-    const eyeY    = bodyY + Math.round(bodySize * 0.25);
-    const leftEyeX  = bodyX + Math.round(bodySize * 0.2);
-    const rightEyeX = bodyX + Math.round(bodySize * 0.62);
+    const eyeSize   = Math.max(2, Math.round(bodySize * 0.18));
+    const eyeY      = bodyY + Math.round(bodySize * 0.25);
+    const leftEyeX  = x + Math.round(bodySize * 0.20);
+    const rightEyeX = x + Math.round(bodySize * 0.62);
 
-    const eyeColor = state.sick ? "#ff0000" :
-                     state.sleeping ? "#888888" : secondary;
-    spriteCtx.fillStyle = eyeColor;
+    spriteCtx.fillStyle = state.sick     ? "#ff0000"  :
+                          state.sleeping ? "#888888"  : secondary;
     spriteCtx.fillRect(leftEyeX,  eyeY, eyeSize, eyeSize);
     spriteCtx.fillRect(rightEyeX, eyeY, eyeSize, eyeSize);
 
-    // Mouth — changes with mood
+    // Mouth
     const mouthY = bodyY + Math.round(bodySize * 0.65);
-    const mouthX = bodyX + Math.round(bodySize * 0.3);
+    const mouthX = x + Math.round(bodySize * 0.3);
     const mouthW = Math.round(bodySize * 0.4);
 
     spriteCtx.fillStyle = secondary;
     if (state.mood === "happy") {
-      // Smile: draw two pixels at ends + one pixel higher in the middle
       spriteCtx.fillRect(mouthX,              mouthY,     2, 2);
       spriteCtx.fillRect(mouthX + mouthW - 2, mouthY,     2, 2);
       spriteCtx.fillRect(mouthX + 2,          mouthY + 2, mouthW - 4, 2);
     } else if (state.mood === "sad" || state.sick) {
-      // Frown
       spriteCtx.fillRect(mouthX,              mouthY + 2, 2, 2);
       spriteCtx.fillRect(mouthX + mouthW - 2, mouthY + 2, 2, 2);
       spriteCtx.fillRect(mouthX + 2,          mouthY,     mouthW - 4, 2);
     } else {
-      // Flat line
       spriteCtx.fillRect(mouthX, mouthY + 1, mouthW, 2);
     }
 
-    // Sleeping Zzz indicator
+    spriteCtx.restore();  // end flip transform
+
+    // Status indicators — drawn outside the flip so text stays readable
+    const indicatorX = x + Math.round(bodySize / 2) - 4;
+    const indicatorY = bodyY - 3;
     if (state.sleeping) {
       spriteCtx.fillStyle = secondary;
       spriteCtx.font = "bold 10px monospace";
-      spriteCtx.fillText("z", bodyX + bodySize + 2, bodyY - 2);
-    }
-
-    // Sick cross indicator
-    if (state.sick && !state.sleeping) {
+      spriteCtx.fillText("z", indicatorX, indicatorY);
+    } else if (state.sick) {
       spriteCtx.fillStyle = "#ff4444";
       spriteCtx.font = "bold 10px monospace";
-      spriteCtx.fillText("+", bodyX + bodySize + 2, bodyY - 2);
+      spriteCtx.fillText("+", indicatorX, indicatorY);
     }
   }
 

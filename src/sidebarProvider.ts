@@ -24,7 +24,7 @@ import {
   scold,
   praise,
 } from "./gameEngine";
-import { saveState } from "./persistence";
+
 import { StatusBarManager } from "./statusBar";
 
 /** Callback invoked whenever the pet state changes. */
@@ -228,10 +228,7 @@ export class SidebarProvider
     }
 
     if (nextState !== null) {
-      saveState(this.context, nextState);
       this.onStateUpdate(nextState);
-      this.postState(nextState);
-      this.statusBar.update(nextState);
     }
   }
 
