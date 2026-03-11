@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="sidebar.css" />
+  <title>vscode_gotchi</title>
+</head>
+<body class="{{fontSizeClass}}">
+  <!-- ── New-game setup screen ── -->
+  <section id="setup-screen" class="screen" aria-label="New game setup">
+    <h1 class="screen-title">New Gotchi</h1>
+
+    <label class="field-label" for="pet-name">Name</label>
+    <input
+      id="pet-name"
+      class="text-input"
+      type="text"
+      maxlength="16"
+      placeholder="Enter a name…"
+      value="Gotchi"
+    />
+
+    <label class="field-label">Type</label>
+    <div class="option-row" role="group" aria-label="Pet type">
+      <button class="opt-btn selected" data-value="codeling">Codeling</button>
+      <button class="opt-btn" data-value="bytebug">Bytebug</button>
+      <button class="opt-btn" data-value="pixelpup">Pixelpup</button>
+      <button class="opt-btn" data-value="shellscript">Shellscript</button>
+    </div>
+
+    <label class="field-label">Colour</label>
+    <div class="option-row" role="group" aria-label="Colour palette">
+      <button class="opt-btn selected" data-value="neon">Neon</button>
+      <button class="opt-btn" data-value="pastel">Pastel</button>
+      <button class="opt-btn" data-value="mono">Mono</button>
+      <button class="opt-btn" data-value="ocean">Ocean</button>
+    </div>
+
+    <button id="start-btn" class="action-btn primary">Hatch!</button>
+  </section>
+
+  <!-- ── Main game screen ── -->
+  <section id="game-screen" class="screen hidden" aria-label="Pet status">
+    <!-- Pet display -->
+    <div class="pet-stage">
+      <div id="sprite-container" class="sprite-container" aria-label="Pet sprite">
+        <canvas id="sprite-canvas" width="200" height="96"></canvas>
+      </div>
+      <div id="pet-name-display" class="pet-name"></div>
+      <div id="mood-label" class="mood-label">…</div>
+    </div>
+
+    <!-- Stat bars -->
+    <div class="stats" aria-label="Stats">
+      <div class="stat-row">
+        <span class="stat-name">Hunger</span>
+        <div class="bar-track" role="progressbar" aria-label="Hunger">
+          <div id="bar-hunger" class="bar-fill hunger"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <span class="stat-name">Happy</span>
+        <div class="bar-track" role="progressbar" aria-label="Happiness">
+          <div id="bar-happiness" class="bar-fill happiness"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <span class="stat-name">Energy</span>
+        <div class="bar-track" role="progressbar" aria-label="Energy">
+          <div id="bar-energy" class="bar-fill energy"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <span class="stat-name">Health</span>
+        <div class="bar-track" role="progressbar" aria-label="Health">
+          <div id="bar-health" class="bar-fill health"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info line -->
+    <div id="info-line" class="info-line">Age: 0d  |  egg  |  wt:5  |  0 poops</div>
+
+    <!-- Action buttons -->
+    <div class="btn-grid" aria-label="Actions">
+      <button class="action-btn" id="btn-feed-meal">Feed <span id="meals-left" class="meals-left"></span></button>
+      <button class="action-btn" id="btn-feed-snack">Snack</button>
+      <button class="action-btn" id="btn-play">Play</button>
+      <button class="action-btn" id="btn-sleep-wake">Sleep</button>
+      <button class="action-btn" id="btn-clean">Clean</button>
+      <button class="action-btn" id="btn-medicine">Medicine</button>
+      <button class="action-btn" id="btn-praise">Praise</button>
+      <button class="action-btn" id="btn-scold">Scold</button>
+    </div>
+
+    <!-- Event log -->
+    <ul id="event-log" class="event-log" aria-label="Event log" aria-live="polite"></ul>
+
+    <!-- New-game link -->
+    <button id="btn-new-game" class="link-btn">Start new game…</button>
+  </section>
+
+  <!-- ── Dead screen ── -->
+  <section id="dead-screen" class="screen hidden" aria-label="Pet died">
+    <p class="dead-title">Your Gotchi passed away.</p>
+    <p id="dead-stats" class="dead-stats"></p>
+    <button id="btn-restart" class="action-btn primary">New Game</button>
+  </section>
+
+  <script src="sidebar.js"></script>
+</body>
+</html>

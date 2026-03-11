@@ -1,0 +1,25 @@
+<idea-plugin>
+  <id>com.gotchi.pycharm-gotchi</id>
+  <name>Gotchi</name>
+  <version>0.0.1</version>
+  <vendor>gotchi</vendor>
+  <description>Raise a virtual pixel-art pet while you code in JetBrains IDEs.</description>
+  <idea-version since-build="241" />
+  <depends>com.intellij.modules.platform</depends>
+  <extensions defaultExtensionNs="com.intellij">
+    <!-- Persistence -->
+    <applicationService serviceImplementation="com.gotchi.GotchiPersistence" />
+    <!-- Main application service (tick scheduler, state manager) -->
+    <applicationService serviceImplementation="com.gotchi.GotchiPlugin" />
+    <!-- Tool window -->
+    <toolWindow id="Gotchi" anchor="right" factoryClass="com.gotchi.GotchiToolWindow" icon="/META-INF/gotchi_icon.svg" />
+    <!-- Status bar widget -->
+    <statusBarWidgetFactory id="GotchiStatusWidget" implementation="com.gotchi.GotchiStatusWidgetFactory" order="last" />
+  </extensions>
+  <applicationListeners>
+    <listener class="com.gotchi.GotchiAppLifecycleListener" topic="com.intellij.ide.AppLifecycleListener" />
+  </applicationListeners>
+  <projectListeners>
+    <listener class="com.gotchi.GotchiEventsManager" topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener" />
+  </projectListeners>
+</idea-plugin>
