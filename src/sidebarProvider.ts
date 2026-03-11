@@ -111,7 +111,7 @@ export class SidebarProvider
     html = html.replace("{{cssUri}}", cssUri.toString());
     html = html.replace("{{jsUri}}", jsUri.toString());
     html = html.replace("{{spritesUri}}", spritesUri.toString());
-    html = html.replace("{{cspSource}}", webview.cspSource);
+    html = html.replace(/\{\{cspSource\}\}/g, webview.cspSource);
 
     return html;
   }
