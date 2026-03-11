@@ -1,24 +1,27 @@
 # Tests (not needed in .vsix)
 tests/
 
-# Root test conftest (only needed by pytest)
-conftest.py
-
 # TypeScript source (only compiled output in out/ is needed)
 src/
 tsconfig.json
+tsconfig.test.json
 
-# Python cache directories
-.mypy_cache/
-.ruff_cache/
+# Compiled test output
+out-test/
+
+# Python source (retired — still on disk but not tracked by git)
+python/
+__pycache__/
 **/__pycache__/
 *.pyc
 
-# Python virtual environment
+# Python virtual environment and tool caches
 .venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
 
 # Development tooling config
-requirements.txt
 .ruff.toml
 .mypy.ini
 pyrightconfig.json
@@ -31,18 +34,6 @@ BUILD_LOG.md
 # GitHub workflow files
 .github/
 
-# TypeScript source maps and declarations (built output only)
-src/**/*.map
-**/*.d.ts
-
-# Test and coverage output
-.pytest_cache/
-__pycache__/
-**/__pycache__/
-*.pyc
-.coverage
-htmlcov/
-
 # Editor files
 .vscode/settings.json
 .vscode/launch.json
@@ -51,3 +42,6 @@ Thumbs.db
 
 # Node dev dependencies (vsce bundles only production deps)
 node_modules/
+
+# Git
+.gitignore
