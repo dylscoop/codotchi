@@ -1,26 +1,33 @@
 /**
  * events.ts
  *
- * Listens for VS Code workspace events (file saves) and forwards
- * code-activity rewards to the Python engine via the bridge.
+ * Listens for VS Code workspace events (file saves) and applies code-activity
+ * rewards directly via the game engine.
  *
- * Throttling is handled by the Python engine itself; this module
- * fires a `code_activity` command on every save event.
+ * Throttling (CODE_ACTIVITY_THROTTLE_SECONDS) is enforced here so the pet
+ * does not receive a happiness/discipline boost on every single keystroke-save.
  */
 
 import * as vscode from "vscode";
-import { PythonBridge, PetState } from "./pythonBridge";
+import {
+  PetState,
+  applyCodeActivity,
+  CODE_ACTIVITY_THROTTLE_SECONDS,
+} from "./gameEngine";
 import { saveState } from "./persistence";
 
+/** Callback invoked with the updated pet state after a code-activity reward. */
 export type StateUpdateCallback = (state: PetState) => void;
 
 export class EventsManager implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
+  /** Timestamp (ms) of the last time a code-activity reward was applied. */
+  private lastCodeActivityTimestamp: number = 0;
 
   constructor(
-    private readonly bridge: PythonBridge,
     private readonly context: vscode.ExtensionContext,
-    private readonly onStateUpdate: StateUpdateCallback
+    private readonly onStateUpdate: StateUpdateCallback,
+    private readonly getState: () => PetState | null
   ) {}
 
   /** Register all workspace event listeners. */
@@ -31,17 +38,28 @@ export class EventsManager implements vscode.Disposable {
     this.disposables.push(saveListener);
   }
 
-  /** Fire a code_activity command when any file is saved. */
+  /**
+   * Apply a throttled code-activity reward when any file is saved.
+   *
+   * Skipped silently if no pet exists yet or the throttle window has not
+   * elapsed since the last reward.
+   */
   private handleFileSave(): void {
-    this.bridge.send({ action: "code_activity" }).then((response) => {
-      if ("hunger" in response) {
-        const state = response as PetState;
-        saveState(this.context, state);
-        this.onStateUpdate(state);
-      }
-    }).catch(() => {
-      // Silently ignore if the bridge is not ready yet.
-    });
+    const state = this.getState();
+    if (state === null || !state.alive) {
+      return;
+    }
+
+    const nowMs = Date.now();
+    const elapsedSeconds = (nowMs - this.lastCodeActivityTimestamp) / 1_000;
+    if (elapsedSeconds < CODE_ACTIVITY_THROTTLE_SECONDS) {
+      return;
+    }
+
+    this.lastCodeActivityTimestamp = nowMs;
+    const nextState = applyCodeActivity(state);
+    saveState(this.context, nextState);
+    this.onStateUpdate(nextState);
   }
 
   dispose(): void {

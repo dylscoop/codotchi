@@ -3,17 +3,31 @@
  *
  * WebviewViewProvider for the "Your Pet" sidebar panel.
  *
- * Translates webview button messages into Python bridge calls,
- * and pushes full state snapshots back to the webview after each action.
+ * Translates webview button messages into game engine calls and pushes full
+ * state snapshots back to the webview after each action.
  */
 
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { PythonBridge, PetState, EngineResponse } from "./pythonBridge";
+import {
+  PetState,
+  createPet,
+  feedMeal,
+  feedSnack,
+  play,
+  applyMinigameResult,
+  sleep,
+  wake,
+  clean,
+  giveMedicine,
+  scold,
+  praise,
+} from "./gameEngine";
 import { saveState } from "./persistence";
 import { StatusBarManager } from "./statusBar";
 
+/** Callback invoked whenever the pet state changes. */
 export type StateUpdateCallback = (state: PetState) => void;
 
 /** Messages the webview JS can post to the extension host. */
@@ -35,11 +49,17 @@ export class SidebarProvider
   private webviewView: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
+  /**
+   * Tracks meals given in the current wake cycle (resets on sleep).
+   * This must be held here because PetState is immutable.
+   */
+  private mealsGivenThisCycle: number = 0;
+
   constructor(
-    private readonly bridge: PythonBridge,
     private readonly context: vscode.ExtensionContext,
     private readonly statusBar: StatusBarManager,
-    private readonly onStateUpdate: StateUpdateCallback
+    private readonly onStateUpdate: StateUpdateCallback,
+    private readonly getState: () => PetState | null
   ) {}
 
   /** Called by VS Code when the webview becomes visible. */
@@ -78,7 +98,6 @@ export class SidebarProvider
 
     let html = fs.readFileSync(htmlPath, "utf8");
 
-    // Replace resource URIs so the webview can load CSS / JS / sprites.
     const cssUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "sidebar.css"))
     );
@@ -97,76 +116,132 @@ export class SidebarProvider
     return html;
   }
 
-  /** Dispatch webview button presses to the appropriate bridge command. */
+  /**
+   * Dispatch a webview button press to the appropriate game engine function.
+   *
+   * @param message - The message posted by the webview JS.
+   */
   private handleWebviewMessage(message: WebviewMessage): void {
-    let commandPromise: Promise<EngineResponse>;
+    // Extension host does not hold the current state directly; the canonical
+    // copy lives in extension.ts via currentState.  We retrieve it via the
+    // onStateUpdate callback pattern: if we need to read state we must ask
+    // extension.ts to give it to us.  For simplicity, the sidebar re-requests
+    // the state through the extension's exported getter (injected via context).
+    const state = this.getCurrentState();
+    if (state === null && message.command !== "new_game") {
+      // No pet yet — nothing to do until a new game is started.
+      return;
+    }
+
+    let nextState: PetState | null = null;
 
     switch (message.command) {
       case "feed":
-        commandPromise = this.bridge.send({
-          action: "feed",
-          feed_type: message.feedType ?? "meal",
-        });
+        if (state === null) {
+          return;
+        }
+        if (message.feedType === "snack") {
+          nextState = feedSnack(state);
+        } else {
+          nextState = feedMeal(state, this.mealsGivenThisCycle);
+          if (nextState.events.includes("fed_meal")) {
+            this.mealsGivenThisCycle += 1;
+          }
+        }
         break;
+
       case "play":
-        commandPromise = this.bridge.send({
-          action: "play",
-          game: message.game ?? "guess",
-          result: message.result ?? "win",
-        });
+        if (state === null) {
+          return;
+        }
+        nextState = play(state);
+        if (message.game !== undefined && message.result !== undefined) {
+          nextState = applyMinigameResult(nextState, message.game, message.result);
+        }
         break;
+
       case "sleep":
-        commandPromise = this.bridge.send({ action: "sleep" });
+        if (state === null) {
+          return;
+        }
+        nextState = sleep(state);
+        if (nextState.events.includes("fell_asleep")) {
+          this.mealsGivenThisCycle = 0;
+        }
         break;
+
       case "wake":
-        commandPromise = this.bridge.send({ action: "wake" });
+        if (state === null) {
+          return;
+        }
+        nextState = wake(state);
         break;
+
       case "clean":
-        commandPromise = this.bridge.send({ action: "clean" });
+        if (state === null) {
+          return;
+        }
+        nextState = clean(state);
         break;
+
       case "medicine":
-        commandPromise = this.bridge.send({ action: "medicine" });
+        if (state === null) {
+          return;
+        }
+        nextState = giveMedicine(state);
         break;
+
       case "scold":
-        commandPromise = this.bridge.send({ action: "scold" });
+        if (state === null) {
+          return;
+        }
+        nextState = scold(state);
         break;
+
       case "praise":
-        commandPromise = this.bridge.send({ action: "praise" });
+        if (state === null) {
+          return;
+        }
+        nextState = praise(state);
         break;
-      case "new_game":
-        commandPromise = this.bridge.send({
-          action: "new_game",
-          name: message.name ?? "Gotchi",
-          pet_type: message.petType ?? "codeling",
-          color: message.color ?? "neon",
-        });
+
+      case "new_game": {
+        const petName = message.name ?? "Gotchi";
+        const petType = message.petType ?? "codeling";
+        const color = message.color ?? "neon";
+        nextState = createPet(petName, petType, color);
+        this.mealsGivenThisCycle = 0;
         break;
+      }
+
       default:
         return;
     }
 
-    commandPromise
-      .then((response) => {
-        if ("hunger" in response) {
-          const state = response as PetState;
-          saveState(this.context, state);
-          this.onStateUpdate(state);
-          this.postState(state);
-          this.statusBar.update(state);
-        }
-      })
-      .catch((err: Error) => {
-        vscode.window.showErrorMessage(`Gotchi error: ${err.message}`);
-      });
+    if (nextState !== null) {
+      saveState(this.context, nextState);
+      this.onStateUpdate(nextState);
+      this.postState(nextState);
+      this.statusBar.update(nextState);
+    }
   }
 
-  /** Send a state snapshot to the webview JS. */
+  /**
+   * Retrieve the current pet state from the extension host via the injected
+   * getter function.
+   */
+  private getCurrentState(): PetState | null {
+    return this.getState();
+  }
+
+  /**
+   * Send a state snapshot to the webview JS.
+   *
+   * @param state - The pet state to push to the webview.
+   */
   postState(state: PetState): void {
     if (this.webviewView) {
-      void this.webviewView.webview.postMessage({
-        type: "stateUpdate",
-        state,
-      });
+      void this.webviewView.webview.postMessage({ type: "stateUpdate", state });
     }
   }
 

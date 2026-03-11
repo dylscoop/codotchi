@@ -6,7 +6,7 @@
  */
 
 import * as vscode from "vscode";
-import { PetState } from "./pythonBridge";
+import { PetState } from "./gameEngine";
 
 /** Emoji map from mood → Unicode character. */
 const MOOD_EMOJI: Record<string, string> = {
