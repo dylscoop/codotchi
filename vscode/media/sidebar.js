@@ -259,7 +259,7 @@
     setBar(barHunger,    state.hunger);
     setBar(barHappiness, state.happiness);
     setBar(barEnergy,    state.energy);
-    setBar(barHealth,    state.health);
+    setHealthBar(barHealth, state.health);
 
     const poopStr = state.poops === 1 ? "1 poop" : state.poops + " poops";
     infoLine.textContent =
@@ -302,6 +302,17 @@
   function setBar(bar, value) {
     const clamped = Math.max(0, Math.min(100, value));
     bar.style.transform = "scaleX(" + (clamped / 100) + ")";
+  }
+
+  /**
+   * Set the health bar width AND colour-shift it: green > 60, yellow 30–60, red < 30.
+   * @param {HTMLElement} bar
+   * @param {number} value
+   */
+  function setHealthBar(bar, value) {
+    setBar(bar, value);
+    bar.classList.toggle("health-low", value < 30);
+    bar.classList.toggle("health-mid", value >= 30 && value < 60);
   }
 
   /**

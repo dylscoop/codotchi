@@ -206,10 +206,14 @@ body.font-large  { font-size: 16px; }
   transition: transform 0.3s ease;
 }
 
-.bar-fill.hunger   { background: #ff6b6b; }
+.bar-fill.hunger    { background: #ff6b6b; }
 .bar-fill.happiness { background: #ffd166; }
-.bar-fill.energy   { background: #06d6a0; }
-.bar-fill.health   { background: #118ab2; }
+.bar-fill.energy    { background: #06d6a0; }
+
+/* Health bar shifts colour with the value: green → yellow → red */
+.bar-fill.health              { background: #4caf50; }  /* > 60 — healthy   */
+.bar-fill.health.health-mid   { background: #ffd166; }  /* 30–60 — caution  */
+.bar-fill.health.health-low   { background: #ff6b6b; }  /* < 30  — critical */
 
 /* ── Info line ── */
 .info-line {
