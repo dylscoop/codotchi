@@ -11,42 +11,34 @@ while they write code, inspired by the original Tamagotchi. It consists of:
 
 - A **TypeScript extension host** — registers a sidebar webview, status bar
   item, commands, and event hooks via the VS Code extension API
-- A **Python 3.14 game engine** (`python/`) — a subprocess that owns all pet
-  state logic (stat decay, evolution, sickness, death) and communicates with
-  the TypeScript layer via newline-delimited JSON over stdin/stdout
+- A **TypeScript game engine** (`src/gameEngine.ts`) — owns all pet state
+  logic (stat decay, evolution, sickness, death) and is called directly by the
+  extension host with no subprocess or IPC
 - A **webview UI** (`media/`) — plain HTML/CSS/JS rendered in a VS Code
   sidebar panel; no front-end framework
 
-The Python game engine has **no runtime dependencies** — it uses the standard
-library only. Dev tooling (ruff, mypy, pytest) is installed into a local
-`.venv` using Python 3.14.
+The extension is **entirely self-contained** — it has no runtime dependencies
+outside of VS Code itself and ships as a standard `.vsix` bundle.
+
+## Architecture Decision
+
+The authoritative design document is
+[`docs/adr/2026-03-11-architecture.md`](../docs/adr/2026-03-11-architecture.md).
+See amendment A1 for the decision to remove the Python subprocess and move to
+an all-TypeScript architecture.
 
 ## Validation Workflow
 
-For tooling, validation workflow, and definition of done, see [Copilot Agent Instructions](./agents.md).
+For tooling, validation workflow, and definition of done, see [agents.md](./agents.md).
 
 ## Testing
 
-### Unit Tests
+Tests are written in TypeScript and co-located under `tests/`. The framework
+is TBD pending the game engine port; `npm test` is the single entry point.
 
-Location: `tests/unit_tests`
-
-Unit tests cover individual Python functions and classes in isolation with no
-VS Code API, no subprocess, and no filesystem I/O:
-
-- `test_pet.py` — Pet class: tick decay, evolution transitions, death conditions, serialisation
-- `test_actions.py` — Pure action functions: feed, play, sleep, clean, medicine, scold, praise
-- `test_evolution.py` — Senior transition probability and old-age death logic
-- `test_minigames.py` — Mini-game result processing (win/lose → stat deltas)
-
-### Integration Tests
-
-Location: `tests/integration_tests`
-
-Integration tests exercise the full `game_engine.py` loop end-to-end by
-writing JSON commands to stdin and reading state snapshots from stdout via
-a subprocess. They cover complete game flows: new game → care actions →
-tick-driven stat decay → evolution → sickness → death → new game.
+Unit tests cover individual functions in `src/gameEngine.ts` in isolation with
+no VS Code API and no filesystem I/O. Integration tests exercise the full
+activation and action-dispatch flow.
 
 ## Design Patterns: Encourage and Discourage
 

@@ -1,7 +1,7 @@
 # ADR 2026-03-11 — vscode_gotchi Architecture
 
 **Date:** 2026-03-11
-**Status:** Accepted
+**Status:** Amended (see amendment 2026-03-11-A1 below)
 **Supersedes:** DESIGN.md (initial planning document, now retired)
 
 ---
@@ -293,12 +293,12 @@ A commit is only made after the following all pass:
 
 ## Alternatives considered
 
-| Alternative | Why rejected |
+| Alternative | Outcome |
 |---|---|
-| All TypeScript (no Python) | Game logic harder to unit-test without VS Code mock; loses clean separation |
-| Python HTTP server (Flask/FastAPI) | Port management complexity, startup latency, firewall issues on corporate networks |
-| SQLite state storage | Overkill for a single pet; `context.globalState` is sufficient and zero-dependency |
-| React/Vue webview | Bundle overhead not justified; plain JS is adequate for this UI surface |
+| All TypeScript (no Python) | **Adopted** — see amendment A1. Required once the .vsix packaging constraint was understood. |
+| Python HTTP server (Flask/FastAPI) | Rejected — port management complexity, startup latency, firewall issues on corporate networks |
+| SQLite state storage | Rejected — overkill for a single pet; `context.globalState` is sufficient and zero-dependency |
+| React/Vue webview | Rejected — bundle overhead not justified; plain JS is adequate for this UI surface |
 
 ---
 
@@ -307,13 +307,113 @@ A commit is only made after the following all pass:
 | Commit | Files | Purpose |
 |---|---|---|
 | 1 | `package.json`, `tsconfig.json` | ✅ Extension scaffold |
-| 2 | `requirements.txt` | ✅ Python dev tooling |
-| 3 | `.vscodeignore`, `media/icon.svg` | Packaging config + activity bar icon |
-| 4 | `python/config.py`, `python/models.py`, `python/pet.py` | Core game data and Pet class |
-| 5 | `python/actions.py`, `python/evolution.py`, `python/game_engine.py` | Action handlers and main loop |
-| 6 | `python/minigames.py`, `tests/unit_tests/test_pet.py`, `tests/unit_tests/test_actions.py` | Mini-game logic + first unit tests |
-| 7 | `tests/unit_tests/test_evolution.py`, `tests/unit_tests/test_minigames.py`, `tests/integration_tests/test_game_engine.py` | Full test suite |
-| 8 | `src/pythonBridge.ts`, `src/persistence.ts`, `src/statusBar.ts` | TypeScript bridge and VS Code integration |
-| 9 | `src/events.ts`, `src/extension.ts`, `src/sidebarProvider.ts` | Extension wiring |
-| 10 | `media/sidebar.html`, `media/sidebar.css`, `media/sidebar.js` | Webview UI |
-| 11 | `BUILD_LOG.md` | Install guide and build narrative |
+| 2 | `requirements.txt` | ✅ Python dev tooling (retired — see amendment A1) |
+| 3 | `.vscodeignore`, `media/icon.svg` | ✅ Packaging config + activity bar icon |
+| 4 | `python/config.py`, `python/models.py`, `python/pet.py` | ✅ Core game data and Pet class (to be ported) |
+| 5 | `python/actions.py`, `python/evolution.py`, `python/game_engine.py` | ✅ Action handlers and main loop (to be ported) |
+| 6 | `python/minigames.py`, `tests/unit_tests/test_pet.py`, `tests/unit_tests/test_actions.py` | ✅ Mini-game logic + first unit tests (to be ported) |
+| 7 | `tests/unit_tests/test_evolution.py`, `tests/unit_tests/test_minigames.py`, `tests/integration_tests/test_game_engine.py` | ✅ Full test suite (to be ported) |
+| 8 | `src/pythonBridge.ts`, `src/persistence.ts`, `src/statusBar.ts` | ✅ TypeScript bridge and VS Code integration |
+| 9 | `src/events.ts`, `src/extension.ts`, `src/sidebarProvider.ts` | ✅ Extension wiring |
+| 10 | `media/sidebar.html`, `media/sidebar.css`, `media/sidebar.js` | ✅ Webview UI |
+| 11 | `BUILD_LOG.md` | ✅ Install guide and build narrative |
+
+---
+
+## Amendment A1 — 2026-03-11: Remove Python subprocess; all-TypeScript architecture
+
+### Status
+
+**Supersedes Decision 1 and Decision 4.**
+
+### Context
+
+VS Code extensions are distributed as self-contained `.vsix` bundles. A `.vsix`
+cannot bundle a Python interpreter, and requiring users to have a specific Python
+version installed on their machine is an unacceptable external dependency for a
+packaged extension. The original Python-subprocess design only works reliably in
+a developer environment where Python 3.14 is already present.
+
+### Decision
+
+The Python game engine subprocess is removed. All game logic is ported to
+TypeScript and runs entirely within the VS Code extension host process.
+
+| Layer | Language | Responsibility |
+|---|---|---|
+| Extension host + game engine | TypeScript | Everything — VS Code API, pet state machine, stat decay, evolution, mini-game logic, persistence, event hooks |
+| Webview UI | HTML / CSS / JS | Sidebar rendering, buttons, sprite canvas |
+
+`pythonBridge.ts` is removed and replaced by `src/gameEngine.ts`, a direct
+TypeScript module that owns all pet state and exposes the same action interface
+that the bridge previously proxied to Python.
+
+### Rationale
+
+- A `.vsix` must be self-contained; bundling a Python interpreter is not possible
+  with `vsce`.
+- Requiring Python as an external runtime dependency breaks installation for any
+  user who does not happen to have the exact version available.
+- All game logic (stat decay, evolution, pure action functions) is simple
+  arithmetic with no libraries — the Python stdlib advantage is irrelevant.
+- Moving to TypeScript eliminates the serialisation round-trip, removes process
+  management complexity, and simplifies testing.
+
+### Consequences
+
+- `python/` directory and all `tests/` Python tests are retired.
+- `src/pythonBridge.ts` is removed; replaced by `src/gameEngine.ts`.
+- `requirements.txt`, `.venv/`, and Python dev tooling (ruff, mypy, pytest)
+  are no longer part of the project.
+- The `gotchi.pythonPath` configuration setting is removed from `package.json`.
+- Tests are rewritten in TypeScript (Mocha via `@vscode/test-electron` or a
+  plain Node test runner).
+- The extension has **zero runtime dependencies** outside of VS Code itself.
+
+### Updated project structure
+
+```
+vscode_gotchi/
+├── .github/
+│   ├── agents.md
+│   ├── copilot-instructions.md
+│   └── instructions/
+│       └── typescript-instructions.md
+├── docs/adr/
+│   └── 2026-03-11-architecture.md   # This file
+├── src/
+│   ├── extension.ts         # Activation entry point
+│   ├── gameEngine.ts        # Pet state machine (replaces python/ + pythonBridge.ts)
+│   ├── sidebarProvider.ts   # WebviewViewProvider
+│   ├── statusBar.ts         # Status bar item
+│   ├── persistence.ts       # globalState save/load
+│   └── events.ts            # onDidSave → code_activity reward
+├── media/
+│   ├── icon.svg
+│   ├── sidebar.html
+│   ├── sidebar.css
+│   ├── sidebar.js
+│   └── sprites/
+├── tests/
+│   └── (TypeScript tests — framework TBD)
+├── .vscodeignore
+├── package.json
+└── tsconfig.json
+```
+
+### Updated validation workflow
+
+A commit is only made after the following pass:
+
+1. `npm run compile` — TypeScript compiler (zero errors)
+2. `npm test` — TypeScript test suite (once ported)
+
+### Updated build order (remaining work)
+
+| Commit | Files | Purpose |
+|---|---|---|
+| next | `src/gameEngine.ts` | Port pet state machine, config, and models to TypeScript |
+| +1 | `src/gameEngine.ts` (continued) | Port actions, evolution, mini-game logic |
+| +2 | `src/extension.ts` | Remove `pythonBridge` import; wire `gameEngine` directly |
+| +3 | `tests/` | Port unit and integration tests to TypeScript |
+| +4 | Remove `python/`, `tests/*.py`, `requirements.txt`, `pythonBridge.ts` | Retire Python artefacts |

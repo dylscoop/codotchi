@@ -32,136 +32,107 @@ to survive and evolve into its final form.
 
 ## Installation
 
-### Prerequisites
+### Quick install (pre-built `.vsix`)
 
-| Tool | Minimum version |
-|------|----------------|
-| [VS Code](https://code.visualstudio.com/) | 1.85 |
-| [Node.js](https://nodejs.org/) | 18 |
-| [Python](https://www.python.org/) | 3.14 |
+1. **Download `vscode-gotchi-0.0.1.vsix`** from the
+   [Releases page](https://github.com/dylscoop/vscode_gotchi/releases).
 
-### Steps
+2. **Install the `.vsix`:**
+
+   **From the terminal:**
+   ```bash
+   code --install-extension vscode-gotchi-0.0.1.vsix
+   ```
+
+   **From the VS Code UI:**
+   - Open the Extensions view (`Ctrl+Shift+X` / `Cmd+Shift+X`)
+   - Click the **`···`** menu → **Install from VSIX…**
+   - Select the downloaded file
+
+3. **Reload VS Code.** The dragon-head icon appears in the activity bar.
+
+The extension is fully self-contained — no Python or any other external
+runtime is required.
+
+### Build from source
+
+You need Node.js ≥ 18 and npm.
 
 ```bash
-# 1. Clone the repository
-git clone <repo-url>
+git clone https://github.com/dylscoop/vscode_gotchi.git
 cd vscode_gotchi
 
-# 2. Install Node dependencies
+# Install Node dependencies (includes vsce)
 npm install
 
-# 3. Create the Python virtual environment
-# Windows
-py -3.14 -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-
-# macOS / Linux
-python3.14 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-
-# 4. Compile the TypeScript extension
+# Compile TypeScript
 npm run compile
-```
 
-## Packaging and permanent installation
-
-The extension can be packaged into a `.vsix` file and installed permanently
-into any VS Code instance — no F5 or development host needed.
-
-### 1. Install the packaging tool
-
-```bash
-npm install
-```
-
-(`@vscode/vsce` is already listed as a dev dependency.)
-
-### 2. Build the `.vsix`
-
-```bash
+# Package → produces vscode-gotchi-0.0.1.vsix
 npx vsce package --no-dependencies
-```
 
-This compiles the TypeScript (via the `vscode:prepublish` hook), bundles all
-required files, and writes `vscode-gotchi-0.0.1.vsix` to the repository root.
-
-### 3. Install the `.vsix`
-
-**From the terminal:**
-
-```bash
+# Install it
 code --install-extension vscode-gotchi-0.0.1.vsix
 ```
 
-**From the VS Code UI:**
+## Using the extension
 
-1. Open the Extensions view (`Ctrl+Shift+X` / `Cmd+Shift+X`).
-2. Click the **`···`** menu (top-right of the Extensions panel).
-3. Choose **Install from VSIX…**
-4. Select `vscode-gotchi-0.0.1.vsix`.
+Once installed and VS Code has reloaded:
 
-Restart VS Code when prompted. The extension activates automatically on
-startup and the pet icon appears in the activity bar.
+1. Click the **dragon-head icon** in the activity bar (left sidebar) to open
+   the **Your Pet** panel. Alternatively, run **Gotchi: Open Pet Panel** from
+   the command palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
 
-> **Python required on the target machine.**  
-> The bundled game engine (`python/game_engine.py`) is a pure-stdlib Python
-> script. Python 3.9 or newer must be available on the machine where the
-> `.vsix` is installed. If VS Code cannot find it, set `gotchi.pythonPath`
-> in settings to the full path of the interpreter.
+2. On first launch the **New Gotchi** setup screen appears:
+   - Enter a name (up to 16 characters).
+   - Choose a **pet type** — each has different stat decay rates.
+   - Choose a **colour palette** — affects the sprite's colour scheme.
+   - Click **Hatch!**
 
-## Launching the extension
+3. Your pet now lives in the sidebar. Care for it using the action buttons:
+   **Feed**, **Snack**, **Play**, **Sleep**, **Clean**, **Medicine**,
+   **Praise**, and **Scold**.
 
-### Development (F5)
+4. Every file you save gives your pet a happiness boost — keep coding to
+   keep it happy.
 
-1. Open the repository folder in VS Code.
-2. Press **F5** (or **Run → Start Debugging**) to launch the
-   **Extension Development Host** — a second VS Code window opens with
-   the extension loaded.
-3. In the new window, open the sidebar by clicking the dragon-head icon
-   in the activity bar, or run **Gotchi: Open Panel** from the command
-   palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
-4. The Python game engine starts automatically in the background.
-   Use **Gotchi: Output** in the Output panel to see engine logs.
+5. Your pet's state is saved automatically and restored the next time VS Code
+   opens. Stat decay while VS Code is closed is capped at 60 % of each
+   maximum so a long break won't instantly kill your pet.
 
-### Custom Python path
+6. Your pet's name and current mood are always visible in the **status bar**
+   at the bottom of VS Code.
 
-If VS Code cannot find your Python 3.14 interpreter, set the path
-explicitly in your settings:
+## Development setup (contributors)
 
-```jsonc
-// .vscode/settings.json  (or User Settings)
-{
-  "gotchi.pythonPath": "/path/to/python3.14"
-  // Windows example: "C:\\Python314\\python.exe"
-}
+```bash
+git clone https://github.com/dylscoop/vscode_gotchi.git
+cd vscode_gotchi
+npm install
+npm run compile
+
+# Press F5 in VS Code to launch the Extension Development Host
 ```
 
-### First launch
+Validation commands (must all pass before committing):
 
-On first launch the sidebar shows the **New Gotchi** setup screen:
-
-1. Enter a name (up to 16 characters).
-2. Choose a **pet type** — each has different stat decay rates.
-3. Choose a **colour palette** — affects the sprite's colour scheme.
-4. Click **Hatch!** to start the game.
-
-Your pet's state is saved automatically whenever it changes and restored
-the next time you open VS Code. Stat decay while VS Code is closed is
-applied on restart, capped at 60 % of each maximum to prevent instant
-death after a long break.
+```bash
+npm run compile
+npm test
+```
 
 ## Architecture
 
-The extension is split into two layers:
+The extension is a single self-contained TypeScript process:
 
 | Layer | Technology | Responsibility |
 |-------|-----------|----------------|
-| Extension host | TypeScript | VS Code API, webview bridge, persistence, event hooks |
-| Game engine | Python (subprocess) | Pet state machine, stat decay, evolution, mini-game logic |
+| Extension host + game engine | TypeScript | VS Code API, pet state machine, stat decay, evolution, persistence, event hooks |
+| Webview UI | HTML / CSS / JS | Sidebar rendering, action buttons, sprite canvas |
 
-The TypeScript layer and Python backend communicate via **JSON over stdin/stdout**.
 See [docs/adr/2026-03-11-architecture.md](docs/adr/2026-03-11-architecture.md)
-for the full protocol and schema.
+for the full design rationale, including amendment A1 which records the
+decision to remove the original Python subprocess.
 
 ## Pet Types
 

@@ -8,60 +8,34 @@
 - When editing, do not do more than 500 lines at a time. If you need to do more, ask for permission first
 - Break up the building by commits. Once the file has been committed, continue building further
 
-## Python Environment
+## Language and Runtime
 
-This repository uses its own venv.
+This is a **pure TypeScript** VS Code extension. There is no Python runtime
+dependency. All game logic lives in `src/` and runs inside the VS Code
+extension host process.
 
-All Python-related commands MUST be executed via the local py314 venv:
-
-```
-# Windows
-.venv\Scripts\<command>
-
-# macOS/Linux
-.venv/bin/<command>
-```
+Do **not** introduce Python files, a `.venv`, or any Python tooling.
 
 ## Tooling Overview
 
-- Formatting: ruff format
-- Linting: ruff check
-- Type checking: mypy
-- Tests: pytest
+| Tool | Purpose | Command |
+|---|---|---|
+| `tsc` | TypeScript compiler | `npm run compile` |
+| `npm test` | Test suite | `npm test` |
 
 ## Validation Workflow
 
 When making code changes, the agent must perform the following steps in order:
 
-1. Check formatting:
+1. Compile TypeScript — must produce zero errors:
    ```
-   .venv/Scripts/ruff format --check python/ tests/
-   ```
-
-   If formatting fails, fix with:
-   ```
-   .venv/Scripts/ruff format python/ tests/
+   npm run compile
    ```
 
-2. Run linting:
+2. Run tests:
    ```
-   .venv/Scripts/ruff check python/ tests/
+   npm test
    ```
-
-3. Run type checking:
-   ```
-   .venv/Scripts/mypy python/ tests/
-   ```
-
-4. Run default test suites:
-   - Unit tests:
-     ```
-     .venv/Scripts/pytest tests/unit_tests
-     ```
-   - Integration tests:
-     ```
-     .venv/Scripts/pytest tests/integration_tests
-     ```
 
 Fix issues in this order.
 
@@ -69,8 +43,5 @@ Fix issues in this order.
 
 A change is complete only if:
 
-- Formatting passes
-- Linting passes
-- Type checking passes
-- Unit tests pass
-- Integration tests pass
+- `npm run compile` exits with zero errors
+- `npm test` passes

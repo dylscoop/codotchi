@@ -1,0 +1,30 @@
+# Python bytecode cache — auto-generated, never commit
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Python virtual environment
+.venv/
+
+# Python tool caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+
+# Node / npm
+node_modules/
+
+# Compiled TypeScript output
+out/
+
+# VS Code extension package
+*.vsix
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/settings.json
+.vscode/launch.json
