@@ -272,6 +272,14 @@
     sleepWakeBtn.textContent = state.sleeping ? "Wake" : "Sleep";
     sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
 
+    // BUGFIX-002: disable care buttons while pet is sleeping
+    const isSleeping = state.sleeping;
+    ["btn-feed-meal", "btn-feed-snack", "btn-play",
+     "btn-clean", "btn-medicine", "btn-praise", "btn-scold"].forEach(function (id) {
+      const btn = document.getElementById(id);
+      if (btn) { btn.disabled = isSleeping; }
+    });
+
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
       petX          = Math.max(4, Math.floor(spriteCanvas.width / 2 - 12));
@@ -467,7 +475,7 @@
     }
 
     if (state) {
-      renderState(state);
+      renderState(state, message.mealsGivenThisCycle || 0);
     }
   });
 

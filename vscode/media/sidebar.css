@@ -112,6 +112,12 @@ body.font-large  { font-size: 16px; }
   background: var(--vscode-button-secondaryHoverBackground, #505050);
 }
 
+/* BUGFIX-002: visually dim buttons that are disabled while the pet sleeps */
+.action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .action-btn.primary {
   background: var(--vscode-button-background, #0e639c);
   color: var(--vscode-button-foreground, #fff);

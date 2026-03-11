@@ -150,6 +150,12 @@ export class SidebarProvider
       return;
     }
 
+    // BUGFIX-002: block care actions while the pet is sleeping
+    const SLEEP_BLOCKED: readonly string[] = ["feed", "play", "clean", "medicine", "scold", "praise"];
+    if (state !== null && state.sleeping && SLEEP_BLOCKED.includes(message.command)) {
+      return;
+    }
+
     let nextState: PetState | null = null;
 
     switch (message.command) {
