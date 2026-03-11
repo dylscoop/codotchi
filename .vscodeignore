@@ -1,0 +1,41 @@
+# Python source and tests (not needed in .vsix)
+python/
+tests/
+
+# Python virtual environment
+.venv/
+
+# Development tooling config
+requirements.txt
+.ruff.toml
+.mypy.ini
+pyrightconfig.json
+
+# Documentation and planning
+docs/
+DESIGN.md
+BUILD_LOG.md
+
+# GitHub workflow files
+.github/
+
+# TypeScript source maps and declarations (built output only)
+src/**/*.map
+**/*.d.ts
+
+# Test and coverage output
+.pytest_cache/
+__pycache__/
+**/__pycache__/
+*.pyc
+.coverage
+htmlcov/
+
+# Editor files
+.vscode/settings.json
+.vscode/launch.json
+**/.DS_Store
+Thumbs.db
+
+# Node dev dependencies (vsce bundles only production deps)
+node_modules/
