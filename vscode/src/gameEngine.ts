@@ -105,32 +105,71 @@ interface PetTypeModifiers {
   readonly happinessDecayMultiplier: number;
   readonly baseHealth: number;
   readonly energyRegenMultiplier: number;
+  /**
+   * Average poop interval as a fraction of POOP_TICKS_INTERVAL (20 min).
+   * 1.0 = every 20 min on average; 0.5 = every 10 min on average.
+   * Must be in the range (0, 1].
+   */
+  readonly poopIntervalMultiplier: number;
+  /**
+   * Fractional jitter applied to the poop interval each time the pet poops.
+   * The next interval is sampled as:
+   *   base ± jitter × base   (uniform distribution, clamped to [1, base × 2])
+   * 0.0 = perfectly regular; 0.9 = highly unpredictable.
+   */
+  readonly poopIntervalVolatility: number;
 }
 
 const PET_TYPE_MODIFIERS: Record<string, PetTypeModifiers> = {
+  /**
+   * Codeling — balanced default.
+   * Poops every ~15 min on average (0.75× baseline), moderate volatility.
+   */
   codeling: {
     hungerDecayMultiplier: 1.0,
     happinessDecayMultiplier: 1.0,
     baseHealth: 100,
     energyRegenMultiplier: 1.0,
+    poopIntervalMultiplier: 0.75,
+    poopIntervalVolatility: 0.5,
   },
+  /**
+   * Bytebug — eats fast, digests fast.
+   * Poops every ~8 min on average (0.4× baseline), very high volatility —
+   * could pop one in 2 min or not for 16 min.
+   */
   bytebug: {
     hungerDecayMultiplier: 1.5,
     happinessDecayMultiplier: 1.0,
     baseHealth: 100,
     energyRegenMultiplier: 1.2,
+    poopIntervalMultiplier: 0.4,
+    poopIntervalVolatility: 0.8,
   },
+  /**
+   * Pixelpup — active and social, irregular bathroom habits.
+   * Poops every ~12 min on average (0.6× baseline), high volatility.
+   */
   pixelpup: {
     hungerDecayMultiplier: 1.0,
     happinessDecayMultiplier: 1.5,
     baseHealth: 100,
     energyRegenMultiplier: 1.0,
+    poopIntervalMultiplier: 0.6,
+    poopIntervalVolatility: 0.7,
   },
+  /**
+   * Shellscript — slow metabolism, very regular.
+   * Poops every ~20 min on average (1.0× baseline), low volatility — almost
+   * clockwork.
+   */
   shellscript: {
     hungerDecayMultiplier: 0.8,
     happinessDecayMultiplier: 1.0,
     baseHealth: 120,
     energyRegenMultiplier: 1.0,
+    poopIntervalMultiplier: 1.0,
+    poopIntervalVolatility: 0.2,
   },
 };
 
@@ -226,6 +265,15 @@ export interface PetState {
   readonly ticksAlive: number;
   readonly poops: number;
   readonly ticksSinceLastPoop: number;
+  /**
+   * How many ticks must elapse after the last dropping before the next one.
+   *
+   * Sampled fresh each time the pet poops using the type's
+   * `poopIntervalMultiplier` and `poopIntervalVolatility`.  Stored so the
+   * value is stable between ticks (no re-roll every tick) and survives
+   * serialisation.
+   */
+  readonly nextPoopIntervalTicks: number;
   readonly consecutiveSnacks: number;
   readonly hungerZeroTicks: number;
   readonly medicineDosesGiven: number;
@@ -274,6 +322,32 @@ function clampStat(value: number): number {
  */
 function clampWeight(value: number): number {
   return clamp(value, WEIGHT_MIN, WEIGHT_MAX);
+}
+
+/**
+ * Sample the next poop interval (in ticks) for a given pet type.
+ *
+ * The interval is drawn from a uniform distribution centred on the type's
+ * average interval, with a ± spread determined by `poopIntervalVolatility`:
+ *
+ *   base = POOP_TICKS_INTERVAL × poopIntervalMultiplier
+ *   jitter = base × poopIntervalVolatility
+ *   result = uniform(base − jitter, base + jitter), clamped to [1, POOP_TICKS_INTERVAL]
+ *
+ * A volatility of 0 gives perfectly regular intervals; a volatility of 0.9
+ * means the next dropping could arrive almost immediately or be delayed by
+ * nearly twice the average.
+ *
+ * @param petType - The pet type identifier.
+ * @returns An integer number of ticks until the next dropping.
+ */
+export function sampleNextPoopInterval(petType: string): number {
+  const mods = PET_TYPE_MODIFIERS[petType] ?? PET_TYPE_MODIFIERS.codeling;
+  const base = POOP_TICKS_INTERVAL * mods.poopIntervalMultiplier;
+  const jitter = base * mods.poopIntervalVolatility;
+  // uniform in [base - jitter, base + jitter]
+  const raw = base - jitter + Math.random() * 2 * jitter;
+  return Math.max(1, Math.min(POOP_TICKS_INTERVAL, Math.round(raw)));
 }
 
 // ---------------------------------------------------------------------------
@@ -419,6 +493,7 @@ export function createPet(name: string, petType: string, color: string): PetStat
     ticksAlive: 0,
     poops: 0,
     ticksSinceLastPoop: 0,
+    nextPoopIntervalTicks: sampleNextPoopInterval(petType),
     consecutiveSnacks: 0,
     hungerZeroTicks: 0,
     medicineDosesGiven: 0,
@@ -485,6 +560,7 @@ export function tick(state: PetState): PetState {
   let health: number = state.health;
   let poops: number = state.poops;
   let ticksSinceLastPoop: number = state.ticksSinceLastPoop;
+  let nextPoopIntervalTicks: number = state.nextPoopIntervalTicks;
   let hungerZeroTicks: number = state.hungerZeroTicks;
   let sick: boolean = state.sick;
   let alive: boolean = state.alive;
@@ -514,12 +590,14 @@ export function tick(state: PetState): PetState {
     }
   }
 
-  // Poop accumulation
+  // Poop accumulation — interval is per-type and resampled with high volatility
   if (!sleeping) {
     ticksSinceLastPoop += 1;
-    if (ticksSinceLastPoop >= POOP_TICKS_INTERVAL) {
+    if (ticksSinceLastPoop >= nextPoopIntervalTicks) {
       poops += 1;
       ticksSinceLastPoop = 0;
+      // Resample the next interval so timing is unpredictable
+      nextPoopIntervalTicks = sampleNextPoopInterval(state.petType);
       events.push("pooped");
     }
   }
@@ -566,6 +644,7 @@ export function tick(state: PetState): PetState {
     return withDerivedFields({
       ...state,
       hunger, happiness, energy, health, poops, ticksSinceLastPoop,
+      nextPoopIntervalTicks,
       hungerZeroTicks, sick, alive: alive as boolean, ticksAlive, events,
       sleeping, ageDays,
     });
@@ -580,6 +659,7 @@ export function tick(state: PetState): PetState {
   const afterDecay: Omit<PetState, "mood" | "sprite" | "careScore"> = {
     ...state,
     hunger, happiness, energy, health, poops, ticksSinceLastPoop,
+    nextPoopIntervalTicks,
     hungerZeroTicks, sick, alive, ticksAlive, sleeping, ageDays,
     careScoreHungerSum, careScoreHappinessSum, careScoreHealthSum, careScoreTicks,
     events,
@@ -1045,6 +1125,7 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     ticksAlive: state.ticksAlive,
     poops: state.poops,
     ticksSinceLastPoop: state.ticksSinceLastPoop,
+    nextPoopIntervalTicks: state.nextPoopIntervalTicks,
     consecutiveSnacks: state.consecutiveSnacks,
     hungerZeroTicks: state.hungerZeroTicks,
     medicineDosesGiven: state.medicineDosesGiven,
@@ -1096,6 +1177,11 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     ticksAlive: getNumber("ticksAlive", 0),
     poops: getNumber("poops", 0),
     ticksSinceLastPoop: getNumber("ticksSinceLastPoop", 0),
+    // Back-compat: old saves won't have this field; resample a fresh interval.
+    nextPoopIntervalTicks: getNumber(
+      "nextPoopIntervalTicks",
+      sampleNextPoopInterval(getString("petType", "codeling"))
+    ),
     consecutiveSnacks: getNumber("consecutiveSnacks", 0),
     hungerZeroTicks: getNumber("hungerZeroTicks", 0),
     medicineDosesGiven: getNumber("medicineDosesGiven", 0),

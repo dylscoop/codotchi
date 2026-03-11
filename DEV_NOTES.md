@@ -84,6 +84,45 @@ score reflects care quality *within* the current stage, not lifetime averages.
 
 ---
 
+## Poop Rate System
+
+Each pet type has its own average poop interval and volatility, both encoded
+in `PetTypeModifiers` inside `gameEngine.ts` (TypeScript) and `Constants.kt`
+(Kotlin).
+
+### How it works
+
+```
+base = POOP_TICKS_INTERVAL × poopIntervalMultiplier   // average ticks
+jitter = base × poopIntervalVolatility                 // half-width of spread
+next = uniform(base − jitter, base + jitter)           // sampled fresh each time
+next = clamp(next, 1, POOP_TICKS_INTERVAL)             // hard cap at 20 min
+```
+
+`POOP_TICKS_INTERVAL` is the absolute ceiling (20 min at the default 5s tick
+rate). `nextPoopIntervalTicks` is stored in `PetState` so it is:
+
+- Stable between ticks (not re-rolled every 5 s)
+- Persisted across restarts (serialised with the rest of `PetState`)
+- Resampled fresh each time the pet actually poops
+
+Old save files that lack `nextPoopIntervalTicks` fall back to a fresh sample
+at load time (see `deserialiseState`).
+
+### Per-type summary
+
+| Type        | Avg interval | Volatility | Min possible | Max possible |
+|-------------|-------------|------------|-------------|-------------|
+| codeling    | ~15 min     | ±50%       | ~7.5 min    | 20 min (cap) |
+| bytebug     | ~8 min      | ±80%       | ~1.5 min    | ~14.5 min   |
+| pixelpup    | ~12 min     | ±70%       | ~3.5 min    | 20 min (cap) |
+| shellscript | ~20 min     | ±20%       | ~16 min     | 20 min (cap) |
+
+Bytebug is deliberately unpredictable (highest hunger rate + highest poop
+volatility). Shellscript is the opposite: slow, regular, easy to manage.
+
+---
+
 ## Pet Types
 
 ### Codeling
@@ -96,6 +135,9 @@ Shell-like in appearance, changes colour and shape as it evolves. The `_a`
 lineage should look more refined and purposeful; the `_c` lineage more chaotic
 and glitchy.
 
+Poop rate: **~15 min average**, ±50% volatility (uniform).  
+Effective range per cycle: roughly 7.5 – 22.5 min (capped at 20 min).
+
 ### Bytebug
 
 Hunger decays 1.5× faster, energy regens 1.2× faster. Base health 100.
@@ -104,6 +146,10 @@ Requires more frequent feeding but recovers from sleep faster.
 Design intent: an insect-like creature. Small and quick. The `_a` lineage
 becomes sleek and iridescent; the `_c` lineage stays grub-like and dull.
 
+Poop rate: **~8 min average**, ±80% volatility — the most unpredictable type.  
+Effective range per cycle: roughly 1.5 – 14.5 min. Can surprise you almost
+immediately after cleaning.
+
 ### Pixelpup
 
 Happiness decays 1.5× faster. Base health 100.
@@ -111,6 +157,9 @@ Needs more play/praise to stay content but is otherwise average.
 
 Design intent: a quadruped pixel dog. Very expressive face. The `_a` lineage
 grows tall and proud; the `_c` lineage stays scruffy and small.
+
+Poop rate: **~12 min average**, ±70% volatility.  
+Effective range per cycle: roughly 3.5 – 20 min.
 
 ### Shellscript
 
@@ -122,6 +171,9 @@ Design intent: a tortoise/snail hybrid. Deliberately slow movement speed in
 the canvas animation (speed multiplier in `getPetSpeed` is effectively lower
 because the body is bigger and more majestic). The `_a` lineage has an
 elaborate shell; the `_c` lineage has a cracked one.
+
+Poop rate: **~20 min average**, ±20% volatility — nearly clockwork.  
+Effective range per cycle: 16 – 20 min (capped).
 
 ---
 
