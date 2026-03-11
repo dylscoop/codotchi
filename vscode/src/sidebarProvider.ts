@@ -85,6 +85,14 @@ export class SidebarProvider
       }
     );
     this.disposables.push(messageListener);
+
+    // BUGFIX-001: hot-reload the webview HTML when the font-size setting changes
+    const configListener = vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("gotchi.fontSize")) {
+        webviewView.webview.html = this.buildHtml(webviewView.webview);
+      }
+    });
+    this.disposables.push(configListener);
   }
 
   /** Build the HTML content for the webview. */
