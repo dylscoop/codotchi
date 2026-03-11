@@ -49,7 +49,14 @@
     ],
     "configuration": {
       "title": "vscode_gotchi",
-      "properties": {}
+      "properties": {
+        "gotchi.fontSize": {
+          "type": "string",
+          "enum": ["small", "normal", "large"],
+          "default": "normal",
+          "description": "Font size used in the vscode_gotchi sidebar panel."
+        }
+      }
     }
   },
   "scripts": {

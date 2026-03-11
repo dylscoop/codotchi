@@ -113,6 +113,15 @@ export class SidebarProvider
     html = html.replace("{{spritesUri}}", spritesUri.toString());
     html = html.replace(/\{\{cspSource\}\}/g, webview.cspSource);
 
+    const fontSizeSetting = vscode.workspace
+      .getConfiguration("gotchi")
+      .get<string>("fontSize", "normal");
+    const fontSizeClass =
+      fontSizeSetting === "large" ? "font-large" :
+      fontSizeSetting === "small" ? "font-small" :
+      "font-normal";
+    html = html.replace("{{fontSizeClass}}", fontSizeClass);
+
     return html;
   }
 

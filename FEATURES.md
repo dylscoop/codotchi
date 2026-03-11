@@ -202,11 +202,152 @@ Status: `[ ]`
 
 ---
 
-## 5. Interaction Improvements
+## 5. Pet Movement & Animation
+
+All movement is **purely visual and client-side**. No position or animation
+state is ever sent to the extension host or persisted. The last received
+`PetState` snapshot is kept in a `sidebar.js` variable so the animation loop
+can read mood, stage, sick, sleeping, and the events array.
+
+### 5.1 Stage Area Resize
+
+The current canvas is 64×64 — too small to wander in. The stage needs a larger
+footprint to make movement readable.
+
+| Change | Detail | Status |
+|--------|--------|--------|
+| Expand canvas to full sidebar width | Read `canvas.parentElement.clientWidth` on load and on window resize; set `canvas.width` dynamically | `[ ]` |
+| Fixed stage height | Default 96 px; configurable via `gotchi.petStageHeight` | `[ ]` |
+| Sprite size unchanged | The drawn body size is still driven by stage scale; the extra space is used for movement | `[ ]` |
+
+### 5.2 Animation Loop
+
+Replace the current one-shot `drawSprite(state)` call (triggered only on
+`stateUpdate` messages) with a continuous `requestAnimationFrame` loop.
+
+- Loop runs at the display frame rate (~60 fps) and manages its own delta-time.
+- On each frame: update position → update reaction queue → clear canvas → draw sprite at (x, y).
+- `stateUpdate` messages from the extension host update the stored state snapshot
+  and push new reaction animations onto the queue; they do not themselves draw.
+- When `gotchi.reducedMotion` is `true` (or the OS `prefers-reduced-motion`
+  media query is set), the rAF loop is not started and `drawSprite` is called
+  once per `stateUpdate` at a fixed centre position, preserving the current
+  behaviour exactly.
+
+Status: `[ ]`
+
+### 5.3 Idle Wandering
+
+The pet drifts around the stage when no reaction animation is playing.
+
+| Property | Behaviour |
+|----------|-----------|
+| Velocity | Small random (vx, vy) vector; magnitude scales with mood speed (see 5.4) |
+| Boundary bounce | When the sprite edge hits the canvas edge, the relevant velocity component is negated |
+| Random pause | Every 3–8 seconds (random) the pet stops, holds for 0.5–2 s, then picks a new direction |
+| Sprite flip | Sprite is drawn mirrored when `vx < 0` using `ctx.scale(-1, 1)` before drawing |
+
+Status: `[ ]`
+
+### 5.4 Mood & State Locomotion
+
+| State | Movement behaviour |
+|-------|--------------------|
+| Happy | 1.5× base speed; small upward hop every ~4 s (brief vy impulse upward then gravity pull back) |
+| Neutral | 1× base speed; steady, calm wandering |
+| Sad | 0.4× base speed; gravitates toward the bottom of the stage; pauses more often |
+| Sleeping | Fully stationary; subtle slow vertical breathing bob (±2 px, ~1 cycle per 3 s) |
+| Sick | Slow tremor: rapid small random offset on each frame (±1–2 px); rarely translates |
+| Hungry (hunger < 20) | Slightly erratic — direction changes more frequently |
+
+Status: `[ ]`
+
+### 5.5 Stage-Based Speed
+
+| Stage | Base speed (px/s) | Notes |
+|-------|-------------------|-------|
+| Egg | 0 | Rocks left–right in place (rotation ±5°); no translation |
+| Baby | 12 | Very small, slow wobble |
+| Child | 20 | First real wandering |
+| Teen | 30 | Confident movement |
+| Adult | 28 | Slightly more settled than teen |
+| Senior | 15 | Slower; pauses longer |
+
+Status: `[ ]`
+
+### 5.6 Reaction Animations
+
+Short-lived one-shot animations triggered when specific event strings arrive in
+`PetState.events`. Each animation overrides wandering for its duration, then
+hands control back.
+
+| Event string | Animation | Duration |
+|--------------|-----------|----------|
+| `fed_meal` / `fed_snack` | Quick hop: vy impulse upward, lands with a small squash | 500 ms |
+| `played` | Jump with 360° spin (canvas rotate transform) | 700 ms |
+| `fell_asleep` | Slow drift downward to bottom-centre, then stop | 600 ms |
+| `woke_up` | Stretch scale from 0.8→1.0 upward | 400 ms |
+| `scolded` | Recoil: dart left or right ~10 px, then return | 500 ms |
+| `praised` | Jump + brief yellow flash behind sprite | 600 ms |
+| `evolved` | Scale up from 1.0→1.3→1.0 with colour flash | 900 ms |
+| `poop_appeared` | Pet briefly faces the poop position, then looks away | 700 ms |
+| `became_sick` | Fast shake: ±4 px random horizontal jitter | 600 ms |
+| `healed` | Brief green colour overlay fading out | 500 ms |
+| `died` | Slow float upward off the top of the canvas | 1200 ms |
+
+Reactions are stored in a simple queue; if a new one arrives while one is
+playing, it is appended and plays immediately after.
+
+Status: `[ ]`
+
+### 5.7 Direction Flip (Sprite Mirroring)
+
+The procedural `drawSprite` function currently always draws the pet facing
+right. Update it to accept a `facingLeft` boolean and apply a horizontal
+canvas mirror when true:
+
+```js
+// Before drawing the sprite body:
+if (facingLeft) {
+  ctx.save();
+  ctx.translate(x + bodySize / 2, 0);
+  ctx.scale(-1, 1);
+  ctx.translate(-(x + bodySize / 2), 0);
+}
+// ... draw body, eyes, mouth ...
+if (facingLeft) { ctx.restore(); }
+```
+
+Status: `[ ]`
+
+### 5.8 Reduced Motion
+
+- `[S]` `gotchi.reducedMotion` (boolean, default `false`) — when true, skips the
+  rAF loop entirely; sprite is drawn statically at canvas centre once per
+  `stateUpdate`. Reaction animations are also skipped.
+- On load, `sidebar.js` checks `window.matchMedia("(prefers-reduced-motion: reduce)")`;
+  if matched, behaviour is the same as `gotchi.reducedMotion: true` regardless
+  of the setting value.
+
+Status: `[ ]`
+
+### 5.9 Implementation Notes
+
+- Movement state held in `sidebar.js`: `petX`, `petY`, `petVx`, `petVy`,
+  `facingLeft`, `reactionQueue`, `idleTimer`, `breathPhase`.
+- `drawSprite(state, x, y, facingLeft)` — extend the existing signature.
+- The rAF loop must be cancelled (`cancelAnimationFrame`) when the webview
+  switches to the setup or dead screen to avoid drawing on the wrong canvas.
+- Delta-time capped at 100 ms per frame to prevent large position jumps after
+  tab-switch or focus loss.
+
+---
+
+## 6. Interaction Improvements
 
 Features that deepen the existing care actions.
 
-### 5.1 Weight Display and Management
+### 6.1 Weight Display and Management
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -214,7 +355,7 @@ Features that deepen the existing care actions.
 | Weight-related mood modifier (overweight → sad) | `[ ]` | |
 | Play button disabled when energy < 10 (show tooltip) | `[ ]` | Logic exists; no UI feedback |
 
-### 5.2 Sleep / Wake Cycle
+### 6.2 Sleep / Wake Cycle
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -224,7 +365,7 @@ Features that deepen the existing care actions.
 | Sleep schedule: pet refuses to sleep if recently slept | `[ ]` | |
 | Visual night-mode on canvas when sleeping | `[ ]` | Darken canvas background |
 
-### 5.3 Overfeeding Feedback
+### 6.3 Overfeeding Feedback
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -232,17 +373,17 @@ Features that deepen the existing care actions.
 | Disable Feed Meal button when at max meals | `[ ]` | |
 | Show snack warning after 2 consecutive snacks | `[ ]` | |
 
-### 5.4 Sickness UX
+### 6.4 Sickness UX
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Medicine doses remaining shown on button | `[ ]` | |
 | Disable Feed/Play while sick | `[ ]` | Engine enforces; no UI feedback |
-| Sick animation (canvas shake or flicker) | `[ ]` | |
+| Sick animation (canvas shake or flicker) | `[ ]` | Superseded by section 5.6 `became_sick` reaction |
 
 ---
 
-## 6. Coding Activity Rewards
+## 7. Coding Activity Rewards
 
 | Feature | Effect | Status | Notes |
 |---------|--------|--------|-------|
@@ -256,7 +397,7 @@ Features that deepen the existing care actions.
 
 ---
 
-## 7. Sickness & Death
+## 8. Sickness & Death
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -267,12 +408,12 @@ Features that deepen the existing care actions.
 | Hunger stays 0 for 3+ ticks → health damage | `[x]` | |
 | Death screen with age/stage stats | `[x]` | |
 | Senior natural death (random chance after day 20) | `[x]` | |
-| Peaceful death animation | `[ ]` | Ghost/angel sprite |
+| Peaceful death animation | `[ ]` | Covered by `died` reaction in section 5.6 |
 | `[S]` `gotchi.offlineDecayMaxFraction` (default 0.60) | Cap offline stat loss | `[ ]` | Value hardcoded; expose as setting |
 
 ---
 
-## 8. Status Bar
+## 9. Status Bar
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -283,7 +424,7 @@ Features that deepen the existing care actions.
 
 ---
 
-## 9. Persistence
+## 10. Persistence
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -295,12 +436,15 @@ Features that deepen the existing care actions.
 
 ---
 
-## 10. Settings Reference
+## 11. Settings Reference
 
 All settings live under the `gotchi.*` namespace in VS Code settings.
 
 | Setting | Type | Default | Description | Status |
 |---------|------|---------|-------------|--------|
+| `gotchi.fontSize` | enum | `normal` | Sidebar font size: `small` / `normal` / `large` | `[x]` |
+| `gotchi.reducedMotion` | boolean | `false` | Disable all pet movement and reaction animations | `[ ]` |
+| `gotchi.petStageHeight` | number | `96` | Height in px of the pet stage canvas (range 60–200) | `[ ]` |
 | `gotchi.codingRewards` | boolean | `true` | Enable coding-activity stat rewards | `[ ]` |
 | `gotchi.codingRewardThrottleSeconds` | number | `30` | Minimum seconds between coding rewards | `[ ]` |
 | `gotchi.autoWake` | boolean | `true` | Auto-wake pet when energy reaches 100 | `[ ]` |
@@ -317,7 +461,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 
 ---
 
-## 11. Future / Stretch Features
+## 12. Future / Stretch Features
 
 These are lower-priority ideas that require significant design work.
 
@@ -326,9 +470,9 @@ These are lower-priority ideas that require significant design work.
 | Gotchi Points currency | Earned from minigame wins; spent in an in-game shop for cosmetics |
 | In-game shop | Buy accessories, backgrounds, or extra colour palettes |
 | Pixel-art sprite assets | Replace procedural canvas drawing with actual PNG sprite sheets |
-| Sprite animation frames | Idle, happy, sad, sleeping, eating, playing — 2-frame flip-book |
-| Egg-hatch animation | Wiggle → crack → burst sequence on canvas |
-| Sound effects | Short 8-bit clips (optional; respect system/VS Code mute) |
+| Sprite animation frames | Idle walk cycle, happy, sad, sleeping, eating — 2–4 frame flip-book per mood |
+| Egg-hatch animation | Wiggle → crack → burst sequence (fits naturally into reaction queue) |
+| Sound effects | Short 8-bit clips (optional; respect system/VS Code mute and `gotchi.reducedMotion`) |
 | Day/night cycle | Canvas background shifts with system clock; affects stat decay rates |
 | Multiple simultaneous pets | Tabbed or scrollable sidebar; pets can interact |
 | Marriage mechanic | Two users' pets meet via a shared code (e.g. VS Code Live Share) |
@@ -338,19 +482,22 @@ These are lower-priority ideas that require significant design work.
 
 ---
 
-## 12. Suggested Implementation Order
+## 13. Suggested Implementation Order
 
-Priority order for the features the user wants first (interactions + minigames):
-
-1. **Weight in UI** — low effort; value already in state (`weight` field)
-2. **Overfeeding feedback** — disable Feed Meal at max; snack warning text
-3. **Minigame overlay architecture** — build the generic overlay + game-select screen first
-4. **Left / Right minigame** — simplest interactive game; validates the overlay pattern
-5. **Higher or Lower minigame** — pure JS, no canvas required
-6. **Pattern Memory (Simon)** — needs button flash timing; most polished feel
-7. **Catch the Bug** — canvas animation; most visually engaging
-8. **Type Sprint** — keyboard-focused; unique to a code editor context
-9. **Attention calls** — poll state each tick; surface in status bar + event log
-10. **Sleep/wake UX polish** — Lights Off button, auto-wake, visual night mode
-11. **Settings wiring** — expose `gotchi.*` settings in `package.json`; read them at runtime
-12. **Coding activity streaks** — build on existing file-save listener
+1. **Stage area resize** — widen canvas to sidebar width; sets up room for movement (section 5.1)
+2. **Animation loop** — replace one-shot draw with rAF loop; reduced-motion fallback (section 5.2)
+3. **Idle wandering** — random drift + boundary bounce + direction flip (sections 5.3, 5.5, 5.7)
+4. **Mood locomotion** — speed and pattern vary by mood/state (section 5.4)
+5. **Reaction animations** — event-driven one-shots; queue architecture (section 5.6)
+6. **Weight in UI** — low effort; value already in state (`weight` field)
+7. **Overfeeding feedback** — disable Feed Meal at max; snack warning text
+8. **Minigame overlay architecture** — generic overlay + game-select screen
+9. **Left / Right minigame** — simplest interactive game; validates overlay pattern
+10. **Higher or Lower minigame** — pure JS, no canvas required
+11. **Pattern Memory (Simon)** — button flash timing; most polished feel
+12. **Catch the Bug** — canvas animation; most visually engaging
+13. **Type Sprint** — keyboard-focused; unique to a code editor context
+14. **Attention calls** — poll state each tick; surface in status bar + event log
+15. **Sleep/wake UX polish** — Lights Off button, auto-wake, visual night mode
+16. **Settings wiring** — expose remaining `gotchi.*` settings in `package.json`
+17. **Coding activity streaks** — build on existing file-save listener

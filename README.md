@@ -103,6 +103,23 @@ Once installed and VS Code has reloaded:
 6. Your pet's name and current mood are always visible in the **status bar**
    at the bottom of VS Code.
 
+## Actions
+
+| Action | What it does |
+|--------|-------------|
+| **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Limited to 4 meals per wake cycle — overfeeding past that has no effect. |
+| **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. More than 3 snacks in a row will make your pet sick. |
+| **Play** | Starts a mini-game. Winning boosts happiness significantly; even losing gives a small consolation boost. Costs energy — your pet can't play if it's exhausted. |
+| **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. |
+| **Clean** | Clears all droppings from the screen. Pets produce droppings roughly every 20 minutes. Leaving 3 or more uncleaned will make your pet sick. |
+| **Medicine** | Treats sickness. Requires 3 doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss. |
+| **Praise** | Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution. |
+| **Scold** | Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline. |
+
+> **Tip:** keep all four stat bars (Hunger, Happy, Energy, Health) out of the
+> red to maximise your care score, which determines which character your pet
+> evolves into at each life stage.
+
 ## Development setup (contributors)
 
 ```bash
@@ -150,10 +167,9 @@ depending on care quality.
 
 ```
 vscode_gotchi/
-├── src/             # TypeScript extension host
+├── src/             # TypeScript extension host and game engine
 ├── media/           # Webview HTML, CSS, JS, and sprite assets
-├── python/          # Python game engine
-├── tests/           # pytest unit and integration tests
+├── tests/           # Unit tests for the game engine
 ├── docs/adr/        # Architecture Decision Records
 └── README.md        # This file
 ```

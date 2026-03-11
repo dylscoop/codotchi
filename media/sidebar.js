@@ -154,7 +154,7 @@
 
     const poopStr = state.poops === 1 ? "1 poop" : state.poops + " poops";
     infoLine.textContent =
-      "Age: " + state.age_days + "d  |  " +
+      "Age: " + state.ageDays + "d  |  " +
       state.stage + "  |  " +
       poopStr;
 
@@ -201,7 +201,7 @@
   /** Show the dead screen with final stats. */
   function renderDeadScreen(state) {
     deadStats.textContent =
-      state.name + " lived " + state.age_days + " day(s).\n" +
+      state.name + " lived " + state.ageDays + " day(s).\n" +
       "Stage reached: " + state.stage + ".";
   }
 
