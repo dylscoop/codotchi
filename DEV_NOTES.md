@@ -1,0 +1,271 @@
+# Developer Notes
+
+Internal notes covering design philosophy, the evolution system, character
+identities, and sprite descriptions. Not intended as user-facing documentation.
+
+---
+
+## Interaction Philosophy
+
+The core tension in vscode_gotchi is **low friction vs meaningful consequence**.
+A developer is in the middle of work — the pet must never demand attention in a
+way that interrupts flow, but neglect should have real consequences.
+
+### Principles
+
+1. **Passive first.** The most important interaction is the one the player does
+   not have to perform: the pet reacts positively to code being saved. The
+   player gets care credit just by working. The pet degrades slowly enough that
+   a focused hour of coding more than covers the decay.
+
+2. **No modal interruptions.** No popups, no blocking dialogs. All feedback is
+   in the sidebar and the status bar. The player can ignore both indefinitely
+   without VS Code breaking.
+
+3. **Punishment is delayed, not instant.** Hunger hits zero → three-tick grace
+   period before health starts draining. Droppings accumulate → three before
+   sickness. This means a five-minute meeting won't kill a pet.
+
+4. **Recovery is always possible.** Death is rare and requires sustained
+   neglect across multiple vectors. Any single bad stat can be rescued.
+   BUGFIX-004 makes this explicit: health passively regenerates when the pet
+   is not sick, so a pet that was starving but has been fed will eventually
+   return to full health without further player action.
+
+5. **Sleep is the reset.** The sleep/wake cycle is the primary rhythm. Putting
+   the pet to sleep clears the meal counter, lets energy recover, and (via
+   BUGFIX-003) auto-wakes the pet when ready. The player does not need to
+   babysit the wake-up.
+
+6. **Discipline is a long-term lever.** Scold and Praise both raise discipline.
+   Discipline feeds directly into the care score (20% weight) and therefore
+   into which character the pet evolves into. A player who never disciplines
+   will consistently get the "low" tier character regardless of how well they
+   feed and play.
+
+---
+
+## Evolution System
+
+Evolution is **data-driven**. The logic in `gameEngine.ts` does not know what
+any character looks like — it only knows petType × stage × tier → characterName.
+Adding a new pet type is purely additive: extend `EVOLUTION_CHARACTERS` and
+`PET_TYPE_MODIFIERS`, no logic changes.
+
+### Timeline (real-world time at default tick rate of 5s)
+
+| Stage  | Duration         | Trigger            |
+|--------|------------------|--------------------|
+| Egg    | ~2 minutes       | Auto (ticksAlive)  |
+| Baby   | ~10 minutes      | Auto (ticksAlive)  |
+| Child  | ~1 hour          | Auto (ticksAlive)  |
+| Teen   | ~3 hours         | Auto (ticksAlive)  |
+| Adult  | Indefinite       | Manual: promoteToSenior() |
+| Senior | Until old age    | Natural death at ageDays ≥ 20 |
+
+`ticksAlive` resets to 0 on each evolution, so durations are relative to the
+start of the current stage, not birth.
+
+### Care Score Tiers
+
+The care score is a rolling weighted average of hunger, happiness, discipline,
+cleanliness, and health. It is computed fresh from accumulators on each
+`withDerivedFields()` call.
+
+| Tier | Threshold | Character suffix |
+|------|-----------|-----------------|
+| best | ≥ 0.80    | `_a`            |
+| mid  | ≥ 0.55    | `_b`            |
+| low  | < 0.55    | `_c`            |
+
+Accumulators (`careScoreHungerSum`, `careScoreHappinessSum`,
+`careScoreHealthSum`, `careScoreTicks`) reset at each stage transition so the
+score reflects care quality *within* the current stage, not lifetime averages.
+
+---
+
+## Pet Types
+
+### Codeling
+
+The default, balanced type. No stat multiplier skews. Base health 100.
+Intended as the reference type for balancing other types against.
+
+Design intent: a generic blob-shaped creature that embodies a compiled program.
+Shell-like in appearance, changes colour and shape as it evolves. The `_a`
+lineage should look more refined and purposeful; the `_c` lineage more chaotic
+and glitchy.
+
+### Bytebug
+
+Hunger decays 1.5× faster, energy regens 1.2× faster. Base health 100.
+Requires more frequent feeding but recovers from sleep faster.
+
+Design intent: an insect-like creature. Small and quick. The `_a` lineage
+becomes sleek and iridescent; the `_c` lineage stays grub-like and dull.
+
+### Pixelpup
+
+Happiness decays 1.5× faster. Base health 100.
+Needs more play/praise to stay content but is otherwise average.
+
+Design intent: a quadruped pixel dog. Very expressive face. The `_a` lineage
+grows tall and proud; the `_c` lineage stays scruffy and small.
+
+### Shellscript
+
+Hunger decays 0.8× (slower). Base health 120.
+A tanky slow-paced type. Hardest to kill, but the high base health means
+Medicine heals a smaller fraction per dose.
+
+Design intent: a tortoise/snail hybrid. Deliberately slow movement speed in
+the canvas animation (speed multiplier in `getPetSpeed` is effectively lower
+because the body is bigger and more majestic). The `_a` lineage has an
+elaborate shell; the `_c` lineage has a cracked one.
+
+---
+
+## Character Designs
+
+Characters are identified by `petType_stage_tier` (e.g. `codeling_child_a`).
+No sprite image files exist yet — the canvas renderer draws a generic
+pixel-art body shape scaled by stage. These descriptions are targets for future
+sprite artwork.
+
+### Egg stage (all types share one visual)
+
+A plain oval. Slight wobble animation. No mouth. Eyes are two dots.
+Hatches by cracking at the top before `evolved_to_baby` fires.
+
+### Baby stage
+
+All types: small, pudgy, large head relative to body. No legs visible, just a
+waddling blob. Very large eyes. Expressive but simple.
+
+| Type        | Baby distinctive feature                     |
+|-------------|----------------------------------------------|
+| codeling    | Smooth rounded body, two antenna bumps       |
+| bytebug     | Tiny wing nubs, segmented abdomen hint       |
+| pixelpup    | Floppy ear pixel on each side                |
+| shellscript | Small dome on back (proto-shell)             |
+
+### Child stage
+
+Legs appear. Body elongates slightly. More defined eyes with pupils.
+
+### Teen stage
+
+Noticeably taller. Limbs are proportional. `_a` teens show early signs of
+their final form. `_c` teens look underfed or over-caffeinated.
+
+### Adult stage
+
+Full size (stageScale 0.85). Most visual variety between tiers.
+
+### Senior stage
+
+Slightly larger than adult (stageScale 0.90). `_a` seniors look wise and
+serene. `_b` seniors look tired but content. `_c` seniors look worn out.
+
+---
+
+## Sprite Rendering Notes (canvas-based)
+
+The current renderer in `sidebar.js` draws everything programmatically on a
+`<canvas>` element. No image files are loaded.
+
+### Key constants
+
+| Variable     | Value source                         | Purpose                          |
+|--------------|--------------------------------------|----------------------------------|
+| STAGE_SCALES | static map in sidebar.js             | Body size relative to 24px base  |
+| COLOR_PALETTES | static map in sidebar.js           | primary / secondary / background |
+| getPetSpeed  | mood-based lookup                    | px/frame horizontal movement     |
+| bobOffset    | 0 or 1 px alternating per 10 frames  | Walking animation                |
+| legFrame     | 0 or 1                               | Leg height alternation           |
+
+### Sprite anatomy (pixel positions relative to body rect at x, bodyY)
+
+```
+[legs]      legX1 = x + 20% bodySize, legX2 = x + 60% bodySize
+[body]      full bodySize × bodySize square
+[eyes]      leftEyeX = x + 20%, rightEyeX = x + 62%, eyeY = bodyY + 25%
+[mouth]     mouthY = bodyY + 65%, mouthX = x + 30%, mouthW = 40%
+[indicator] z (sleeping) or + (sick) above body centre
+```
+
+Eye colour:
+- Sick → `#ff0000`
+- Sleeping → `#888888`
+- Awake → `palette.secondary`
+
+Mouth shape:
+- `happy` → smile (two corner dots, then arc downward)
+- `sad` / `sick` → frown (two corner dots, then arc upward)
+- Otherwise → flat line
+
+### Horizontal flip
+
+The sprite is drawn facing right by default. When `petFacingLeft === true`,
+the canvas context is translated and `scale(-1, 1)` is applied around the
+body's horizontal centre. Status indicators (Zzz, +) are drawn *after*
+`spriteCtx.restore()` so they always read left-to-right.
+
+---
+
+## Message Protocol (host ↔ webview)
+
+| Direction   | Shape                                                              |
+|-------------|--------------------------------------------------------------------|
+| Host → JS   | `{ type: "stateUpdate", state: PetState, mealsGivenThisCycle: number }` |
+| JS → Host   | `{ command: "feed", feedType?: "meal" \| "snack" }`                |
+| JS → Host   | `{ command: "play", game?: string, result?: string }`              |
+| JS → Host   | `{ command: "sleep" \| "wake" \| "clean" \| "medicine" \| "scold" \| "praise" }` |
+| JS → Host   | `{ command: "new_game", name: string, petType: string, color: string }` |
+
+`mealsGivenThisCycle` is held in `SidebarProvider` (not in `PetState`) because
+`PetState` is immutable and the counter must survive across tick boundaries
+without being serialised into the save state.
+
+---
+
+## PyCharm Plugin Architecture
+
+The PyCharm port uses the same webview files with a JCEF bridge shim.
+
+| VS Code concept           | PyCharm equivalent                          |
+|---------------------------|---------------------------------------------|
+| Extension host TypeScript | Kotlin `ApplicationService` (GotchiPlugin)  |
+| `context.globalState`     | `PersistentStateComponent` (GotchiPersistence) |
+| `WebviewView`             | JCEF `JBCefBrowser` (GotchiBrowserPanel)    |
+| `setInterval` tick        | `AppExecutorUtil.scheduleWithFixedDelay`     |
+| `onDidSaveTextDocument`   | `FileDocumentManagerListener`               |
+| Status bar item           | `StatusBarWidgetFactory` + `StatusBarWidget` |
+| `vsce package`            | `./gradlew buildPlugin` → `.zip`            |
+
+### JCEF bridge pattern
+
+JS → Kotlin: `JBCefJSQuery.create(browser)` injected as `window.__vscodeSendMessage`  
+Kotlin → JS: `browser.cefBrowser.executeJavaScript("window.__gotchiMsg($json)")`
+
+The `sidebar.js` shim replaces `acquireVsCodeApi()` with a JCEF-compatible
+object so the webview code itself is unchanged beyond the shim injection.
+
+HTML is built as an inline string in `GotchiBrowserPanel.buildHtml()` — CSS
+and JS are embedded, no `file://` URL is needed and the CSP meta tag is
+removed for JCEF compatibility.
+
+---
+
+## Known Intentional Simplifications
+
+- **Mini-games are client-side only.** The win/lose result is computed by
+  `sidebar.js` using `Math.random()`. The host never validates it. A determined
+  cheater could always win, but this is a single-player toy.
+
+- **ageDays is manual.** `ageDays` only increments when the pet wakes (via
+  `wake()`, `auto_woke_up`, or BUGFIX-003 auto-wake). It does not track
+  real-world calendar days. A pet that never sleeps never ages.
+
+- **No network.** All state is local. No telemetry, no sync, no leaderboard
+  (the leaderboard idea in DESIGN.md is a future aspiration).
