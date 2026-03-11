@@ -17,6 +17,7 @@ node_modules/
 
 # Compiled TypeScript output
 out/
+out-test/
 
 # VS Code extension package
 *.vsix

@@ -9,6 +9,11 @@ Build narrative and development summary for the vscode_gotchi VS Code extension.
 The extension is feature-complete and packaged. It is a **fully self-contained
 TypeScript VS Code extension** — no Python or external runtime required.
 
+- All game logic lives in `src/gameEngine.ts` (pure TypeScript, zero external deps)
+- 143 unit + integration tests passing (`npm test`)
+- Python artefacts fully removed from the repository
+- `npm run compile` compiles with zero TypeScript errors
+
 ---
 
 ## Prerequisites (development)
@@ -78,6 +83,13 @@ npm test          # Test suite
 | `46a82df` | docs: add installation and launch guide to README |
 | `28ef743` | chore: add vsce, fix .vscodeignore, add repository field to package.json |
 | `10486a1` | chore: add .gitignore; retire Python, adopt all-TypeScript architecture |
+| `c3771c5` | docs: rewrite BUILD_LOG to reflect all-TypeScript architecture |
+| `a4b270e` | feat: add TypeScript game engine; wire extension and persistence to gameEngine |
+| `a62b3a4` | feat: wire sidebarProvider, events, and statusBar to gameEngine |
+| `6fbc09d` | test: add 143-test suite for gameEngine; add tsconfig.test.json and npm test script |
+| `d9e5992` | chore: remove retired Python source tree and root-level Python config files |
+| `ff083c8` | chore: remove retired Python test directories and test fixtures |
+| `a7679cc` | chore: remove pythonBridge.ts and gotchi.pythonPath config |
 
 ---
 
@@ -132,19 +144,12 @@ was added in commit `10486a1`.
 
 | Task | Notes |
 |------|-------|
-| Port game engine to TypeScript | `src/gameEngine.ts` — replaces `python/` and `src/pythonBridge.ts` |
-| Update `src/extension.ts` | Remove `pythonBridge` import; wire `gameEngine` directly |
-| Write TypeScript tests | Mirror coverage of the 94 Python tests |
-| Remove Python artefacts | Delete `python/`, `tests/`, `requirements.txt`, `pythonBridge.ts`, `conftest.py` |
 | Sprite assets | `media/sprites/` — procedural canvas placeholder currently used |
 
 ---
 
 ## Known limitations
 
-- Game engine is not yet ported to TypeScript — the extension activates but
-  the Python bridge is still wired up and will fail without Python installed.
-  The port is the immediate next task.
 - Sprite assets in `media/sprites/` are not included; the webview renders a
   procedural pixel-art placeholder sprite.
 - Offline decay is capped at 60 % of each stat maximum to prevent instant
