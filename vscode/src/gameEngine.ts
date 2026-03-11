@@ -488,10 +488,12 @@ export function tick(state: PetState): PetState {
   let hungerZeroTicks: number = state.hungerZeroTicks;
   let sick: boolean = state.sick;
   let alive: boolean = state.alive;
+  let sleeping: boolean = state.sleeping;
+  let ageDays: number = state.ageDays;
   const ticksAlive = state.ticksAlive + 1;
 
   // Stat decay
-  if (!state.sleeping) {
+  if (!sleeping) {
     const hungerDecay = Math.ceil(HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier);
     const happinessDecay = Math.ceil(
       HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier
@@ -503,10 +505,17 @@ export function tick(state: PetState): PetState {
       ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier
     );
     energy = clampStat(energy + energyRegen);
+
+    // BUGFIX-003: auto-wake when energy is fully restored
+    if (energy >= STAT_MAX) {
+      sleeping = false;
+      ageDays += 1;
+      events.push("auto_woke_up");
+    }
   }
 
   // Poop accumulation
-  if (!state.sleeping) {
+  if (!sleeping) {
     ticksSinceLastPoop += 1;
     if (ticksSinceLastPoop >= POOP_TICKS_INTERVAL) {
       poops += 1;
@@ -535,7 +544,7 @@ export function tick(state: PetState): PetState {
   }
 
   // Happiness-critical health drain
-  if (happiness === STAT_MIN && !state.sleeping) {
+  if (happiness === STAT_MIN && !sleeping) {
     health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
     events.push("unhappiness_damage");
   }
@@ -553,6 +562,7 @@ export function tick(state: PetState): PetState {
       ...state,
       hunger, happiness, energy, health, poops, ticksSinceLastPoop,
       hungerZeroTicks, sick, alive: alive as boolean, ticksAlive, events,
+      sleeping, ageDays,
     });
   }
 
@@ -565,7 +575,7 @@ export function tick(state: PetState): PetState {
   const afterDecay: Omit<PetState, "mood" | "sprite" | "careScore"> = {
     ...state,
     hunger, happiness, energy, health, poops, ticksSinceLastPoop,
-    hungerZeroTicks, sick, alive, ticksAlive,
+    hungerZeroTicks, sick, alive, ticksAlive, sleeping, ageDays,
     careScoreHungerSum, careScoreHappinessSum, careScoreHealthSum, careScoreTicks,
     events,
   };
