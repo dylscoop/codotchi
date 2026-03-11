@@ -1085,10 +1085,33 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
   const maxHungerLoss = Math.floor(state.hunger * OFFLINE_DECAY_MAX_FRACTION);
   const maxHappinessLoss = Math.floor(state.happiness * OFFLINE_DECAY_MAX_FRACTION);
 
+  // Advance poop accumulation for offline ticks (mirrors live tick logic,
+  // but without a sleeping guard — hunger/happiness decay above also ignores
+  // sleeping for simplicity).
+  let poops = state.poops;
+  let ticksSinceLastPoop = state.ticksSinceLastPoop;
+  let nextPoopIntervalTicks = state.nextPoopIntervalTicks;
+  let remainingTicks = Math.floor(elapsedTicks);
+  while (remainingTicks > 0) {
+    const ticksUntilNextPoop = nextPoopIntervalTicks - ticksSinceLastPoop;
+    if (remainingTicks >= ticksUntilNextPoop) {
+      remainingTicks -= ticksUntilNextPoop;
+      poops += 1;
+      ticksSinceLastPoop = 0;
+      nextPoopIntervalTicks = sampleNextPoopInterval(state.petType);
+    } else {
+      ticksSinceLastPoop += remainingTicks;
+      remainingTicks = 0;
+    }
+  }
+
   return withDerivedFields({
     ...state,
     hunger: clampStat(state.hunger - Math.min(hungerDecayTotal, maxHungerLoss)),
     happiness: clampStat(state.happiness - Math.min(happinessDecayTotal, maxHappinessLoss)),
+    poops,
+    ticksSinceLastPoop,
+    nextPoopIntervalTicks,
     events: [],
   });
 }
