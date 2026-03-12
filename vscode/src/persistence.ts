@@ -11,7 +11,7 @@ import { PetState, HighScore, deserialiseState, serialiseState } from "./gameEng
 
 const STATE_KEY = "gotchi.petState";
 const TIMESTAMP_KEY = "gotchi.lastSaveTimestamp";
-const HIGH_SCORE_KEY = "gotchi.highScore";
+const HIGH_SCORE_KEY = "gotchi.highScore.v2"; // v2: ageDays now driven by dayTimer (agingMultiplier)
 
 /**
  * Persist the pet state and record the current wall-clock timestamp (ms).

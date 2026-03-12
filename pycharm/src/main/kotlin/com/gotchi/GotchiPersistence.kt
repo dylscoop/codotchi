@@ -42,7 +42,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         petStateJson?.let { el.setAttribute("petStateJson", it) }
         el.setAttribute("lastSaveTimestamp", lastSaveTimestamp.toString())
         el.setAttribute("mealsGivenThisCycle", mealsGivenThisCycle.toString())
-        highScoreJson?.let { el.setAttribute("highScoreJson", it) }
+        highScoreJson?.let { el.setAttribute("highScoreJsonV2", it) } // v2: ageDays now driven by dayTimer
         return el
     }
 
@@ -50,7 +50,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         petStateJson        = state.getAttributeValue("petStateJson")
         lastSaveTimestamp   = state.getAttributeValue("lastSaveTimestamp")?.toLongOrNull()  ?: 0L
         mealsGivenThisCycle = state.getAttributeValue("mealsGivenThisCycle")?.toIntOrNull() ?: 0
-        highScoreJson       = state.getAttributeValue("highScoreJson")
+        highScoreJson       = state.getAttributeValue("highScoreJsonV2") // v2: ageDays now driven by dayTimer
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
