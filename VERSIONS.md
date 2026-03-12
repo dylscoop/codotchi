@@ -6,17 +6,37 @@
 
 | File | What changed |
 |------|-------------|
-| `vscode/src/gameEngine.ts` | Added `SNACK_MAX_PER_CYCLE = 2` and `RECENT_EVENT_LOG_MAX = 20` constants; added `recentEventLog`, `spawnedAt`, `snacksGivenThisCycle` to `PetState`; `withDerivedFields()` appends current events to `recentEventLog` (rolling last 20); `createPet()` initialises all three new fields; `feedSnack()` enforces snack cap per wake cycle (returns `"snack_refused"` when exceeded); `wake()` resets `snacksGivenThisCycle`; serialise/deserialise updated with back-compat fallbacks |
-| `vscode/media/sidebar.html` | Snack button now has a `<span id="snacks-left" class="meals-left">` badge; dead screen gains `<p id="dead-time">` and `<ul id="dead-event-log">` elements |
-| `vscode/media/sidebar.js` | `renderState()` populates `mealsLeftEl` and `snacksLeftEl` badges and disables Snack button when `snacksLeft <= 0`; `renderDeadScreen()` now shows real-life elapsed time (computed from `spawnedAt`) and the last 20 events most-recent-first |
-| `vscode/media/sidebar.css` | Added `.meals-left` badge style (shared by both Feed and Snack counters); added `.dead-time` and `.dead-event-log` / `.dead-event-log li` styles for the overhauled death screen |
+| `vscode/src/gameEngine.ts` | Added `HighScore` interface (exported); fixed `play()` guard from `energy <= 0` to `energy < PLAY_ENERGY_COST` (BUGFIX-010); added `SNACK_MAX_PER_CYCLE = 2` and `RECENT_EVENT_LOG_MAX = 20` constants; added `recentEventLog`, `spawnedAt`, `snacksGivenThisCycle` to `PetState`; `withDerivedFields()` appends current events to `recentEventLog` (rolling last 20); `createPet()` initialises all new fields; `feedSnack()` enforces snack cap per wake cycle; `wake()` resets `snacksGivenThisCycle`; serialise/deserialise updated with back-compat fallbacks |
+| `vscode/src/persistence.ts` | Added `HIGH_SCORE_KEY`, `loadHighScore()`, `saveHighScore()` |
+| `vscode/src/extension.ts` | Added `currentHighScore`; loads high score on activation; updates high score in `handleStateUpdate` when pet dies; passes `currentHighScore` to `sidebar?.postState` |
+| `vscode/src/sidebarProvider.ts` | Updated `postState(state, highScore)` signature; includes `highScore` in webview message payload |
+| `vscode/media/sidebar.html` | Snack button badge; dead screen gains `<p id="dead-time">`, `<ul id="dead-event-log">`, and `<div id="high-score-section">` with `<p id="high-score-stats">` |
+| `vscode/media/sidebar.js` | `renderState()` populates `mealsLeftEl` and `snacksLeftEl` badges; disables Snack button when at cap; disables Play button when `energy < 25` (BUGFIX-010); added `highScoreSection`/`highScoreStats` element refs; `renderDeadScreen(state, highScore)` shows high score panel when a record exists; message handler passes `message.highScore` |
+| `vscode/media/sidebar.css` | Added `.meals-left` badge style; `.dead-time` and `.dead-event-log` styles; `.high-score-section`, `.high-score-title`, `.high-score-stats` styles |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Fixed `play()` guard to `energy < PLAY_ENERGY_COST` (BUGFIX-010); mirrored all v0.0.5 logic |
 | `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt` | Added `recentEventLog: List<String>`, `spawnedAt: Long`, `snacksGivenThisCycle: Int` |
 | `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Added `SNACK_MAX_PER_CYCLE = 2`, `RECENT_EVENT_LOG_MAX = 20` |
-| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Mirrored all v0.0.5 logic: `withDerivedFields` rolling log, `createPet` init, `feedSnack` cap, `wake` reset |
-| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | `RawPetState`, `sanitise()`, `toRaw()` updated with all three new fields and back-compat fallbacks |
-| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored VS Code changes: Snack badge + dead screen elements |
-| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored VS Code JS changes |
-| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored VS Code CSS changes |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | Added `highScoreJson` field; `loadHighScore()` and `saveHighScore()` helpers; `HighScore` data class; `RawPetState`/`sanitise()`/`toRaw()` updated for all new fields |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | Added `currentHighScore`; loads high score in `initialize()`; updates high score in `broadcastState()` when pet dies; passes `highScore` to `browserPanel?.postState` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt` | Updated `postState(state, mealsGivenThisCycle, highScore: HighScore?)` signature; serialises `highScore` into JSON payload |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored VS Code changes: Snack badge, dead screen elements, high score section |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored VS Code JS changes: Play disable (BUGFIX-010), `renderDeadScreen` high score panel, message handler `highScore` pass-through |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored VS Code CSS changes including high score styles |
+
+### New types (v0.0.5)
+
+```ts
+// VS Code (gameEngine.ts) / PyCharm (GotchiPersistence.kt)
+HighScore {
+  ageDays:   number   // game-days the record holder lived
+  name:      string   // pet name
+  stage:     string   // life stage at death
+  petType:   string
+  color:     string
+  spawnedAt: number   // Unix ms
+  diedAt:    number   // Unix ms
+}
+```
 
 ### New PetState fields (v0.0.5)
 

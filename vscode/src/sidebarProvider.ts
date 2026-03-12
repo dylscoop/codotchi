@@ -12,6 +12,7 @@ import * as path from "path";
 import * as fs from "fs";
 import {
   PetState,
+  HighScore,
   createPet,
   feedMeal,
   feedSnack,
@@ -259,9 +260,14 @@ export class SidebarProvider
    *
    * @param state - The pet state to push to the webview.
    */
-  postState(state: PetState): void {
+  postState(state: PetState, highScore: HighScore | null): void {
     if (this.webviewView) {
-      void this.webviewView.webview.postMessage({ type: "stateUpdate", state, mealsGivenThisCycle: this.mealsGivenThisCycle });
+      void this.webviewView.webview.postMessage({
+        type: "stateUpdate",
+        state,
+        mealsGivenThisCycle: this.mealsGivenThisCycle,
+        highScore,
+      });
     }
   }
 

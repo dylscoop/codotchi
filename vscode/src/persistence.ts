@@ -7,10 +7,11 @@
  */
 
 import * as vscode from "vscode";
-import { PetState, deserialiseState, serialiseState } from "./gameEngine";
+import { PetState, HighScore, deserialiseState, serialiseState } from "./gameEngine";
 
 const STATE_KEY = "gotchi.petState";
 const TIMESTAMP_KEY = "gotchi.lastSaveTimestamp";
+const HIGH_SCORE_KEY = "gotchi.highScore";
 
 /**
  * Persist the pet state and record the current wall-clock timestamp (ms).
@@ -58,4 +59,21 @@ export function elapsedSecondsSinceLastSave(
 export function clearState(context: vscode.ExtensionContext): void {
   void context.globalState.update(STATE_KEY, undefined);
   void context.globalState.update(TIMESTAMP_KEY, undefined);
+}
+
+/**
+ * Load the persisted high score record.
+ *
+ * Returns `null` if no high score has been set yet.
+ */
+export function loadHighScore(context: vscode.ExtensionContext): HighScore | null {
+  const raw = context.globalState.get<HighScore>(HIGH_SCORE_KEY);
+  return raw ?? null;
+}
+
+/**
+ * Persist a new high score record.
+ */
+export function saveHighScore(context: vscode.ExtensionContext, score: HighScore): void {
+  void context.globalState.update(HIGH_SCORE_KEY, score);
 }

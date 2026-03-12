@@ -16,6 +16,7 @@
 import * as vscode from "vscode";
 import {
   PetState,
+  HighScore,
   applyOfflineDecay,
   tick,
   TICK_INTERVAL_SECONDS,
@@ -28,11 +29,14 @@ import {
   loadState,
   elapsedSecondsSinceLastSave,
   clearState,
+  loadHighScore,
+  saveHighScore,
 } from "./persistence";
 
 const TICK_INTERVAL_MS: number = TICK_INTERVAL_SECONDS * 1_000;
 
 let currentState: PetState | null = null;
+let currentHighScore: HighScore | null = null;
 let sidebar: SidebarProvider | undefined;
 let statusBar: StatusBarManager | undefined;
 let eventsManager: EventsManager | undefined;
@@ -53,7 +57,33 @@ export function activate(context: vscode.ExtensionContext): void {
    */
   function handleStateUpdate(state: PetState): void {
     currentState = state;
-    sidebar?.postState(state);
+
+    // Update high score when pet dies
+    if (!state.alive) {
+      const elapsed = state.spawnedAt > 0 ? Date.now() - state.spawnedAt : 0;
+      const prevElapsed = currentHighScore
+        ? currentHighScore.diedAt - currentHighScore.spawnedAt
+        : -1;
+      const isNewRecord =
+        currentHighScore === null ||
+        state.ageDays > currentHighScore.ageDays ||
+        (state.ageDays === currentHighScore.ageDays && elapsed > prevElapsed);
+
+      if (isNewRecord) {
+        currentHighScore = {
+          ageDays:   state.ageDays,
+          name:      state.name,
+          stage:     state.stage,
+          petType:   state.petType,
+          color:     state.color,
+          spawnedAt: state.spawnedAt,
+          diedAt:    Date.now(),
+        };
+        saveHighScore(context, currentHighScore);
+      }
+    }
+
+    sidebar?.postState(state, currentHighScore);
     statusBar?.update(state);
     saveState(context, state);
   }
@@ -67,6 +97,9 @@ export function activate(context: vscode.ExtensionContext): void {
   // Events manager (file saves → code activity reward)
   eventsManager = new EventsManager(context, handleStateUpdate, () => currentState);
   eventsManager.register();
+
+  // Load persisted high score
+  currentHighScore = loadHighScore(context);
 
   // Load persisted state and apply offline decay
   const savedData = loadState(context);

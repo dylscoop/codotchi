@@ -136,6 +136,30 @@ existing meal-cycle pattern.
 
 ---
 
+## BUGFIX-010 — Play allowed when energy is insufficient
+
+**Status:** Fixed (branch `bugfix/small_fixes`)
+**Files:** `vscode/src/gameEngine.ts`, `vscode/media/sidebar.js`,
+`pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`,
+`pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** The `play()` guard checked `energy <= 0`, so a pet with 1–24
+energy could still start a play session. With `PLAY_ENERGY_COST = 25` this
+would clamp energy to 0 rather than being refused, and the Play button was
+never visually disabled in the sidebar.
+
+**Fix (engine):** Changed the guard condition from `energy <= 0` to
+`energy < PLAY_ENERGY_COST` in both VS Code (`gameEngine.ts`) and PyCharm
+(`GameEngine.kt`), so `play()` returns `"too_tired"` whenever energy would
+be insufficient to cover the full cost.
+
+**Fix (webview):** `renderState()` now disables the Play button when
+`state.energy < PLAY_ENERGY_COST` (hardcoded `25`, matching the engine
+constant), applied after the sleeping-disable block so both checks stack
+correctly. Mirrored in both VS Code and PyCharm webviews.
+
+---
+
 ## BUGFIX-009 — Death screen shows no useful post-mortem information
 
 **Status:** Fixed (branch `bugfix/small_fixes`)

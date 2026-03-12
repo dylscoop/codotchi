@@ -341,7 +341,7 @@ fun feedSnack(state: PetState): PetState {
 }
 
 fun play(state: PetState): PetState {
-    if (state.energy <= 0)
+    if (state.energy < PLAY_ENERGY_COST)
         return withDerivedFields(state.copy(events = listOf("play_refused_no_energy")))
     return withDerivedFields(
         state.copy(

@@ -310,6 +310,27 @@ export interface PetState {
 }
 
 // ---------------------------------------------------------------------------
+// HighScore — persisted record of the best run
+// ---------------------------------------------------------------------------
+
+/**
+ * Summary of the best run ever recorded for this installation.
+ * Compared by ageDays; ties broken by real-world elapsed time (longer wins).
+ */
+export interface HighScore {
+  /** In-game days lived (primary sort key). */
+  readonly ageDays: number;
+  readonly name: string;
+  readonly stage: string;
+  readonly petType: string;
+  readonly color: string;
+  /** Unix ms when the pet was created. */
+  readonly spawnedAt: number;
+  /** Unix ms when the pet died (used to compute real elapsed time). */
+  readonly diedAt: number;
+}
+
+// ---------------------------------------------------------------------------
 // Helper — pure stat math
 // ---------------------------------------------------------------------------
 
@@ -855,7 +876,7 @@ export function feedSnack(state: PetState): PetState {
  * @returns A new PetState after the action.
  */
 export function play(state: PetState): PetState {
-  if (state.energy <= 0) {
+  if (state.energy < PLAY_ENERGY_COST) {
     return withDerivedFields({ ...state, events: ["play_refused_no_energy"] });
   }
   return withDerivedFields({

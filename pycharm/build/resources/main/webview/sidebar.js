@@ -33,6 +33,8 @@
   const deadStats      = document.getElementById("dead-stats");
   const deadTime       = document.getElementById("dead-time");
   const deadEventLog   = document.getElementById("dead-event-log");
+  const highScoreSection = document.getElementById("high-score-section");
+  const highScoreStats   = document.getElementById("high-score-stats");
   const mealsLeftEl    = document.getElementById("meals-left");
   const snacksLeftEl   = document.getElementById("snacks-left");
 
@@ -246,10 +248,12 @@
   /**
    * Update every UI element from a PetState snapshot.
    * @param {object} state
+   * @param {number} mealsGiven
+   * @param {object|null} highScore
    */
-  function renderState(state, mealsGiven) {
+  function renderState(state, mealsGiven, highScore) {
     if (!state.alive) {
-      renderDeadScreen(state);
+      renderDeadScreen(state, highScore);
       showScreen("dead");
       return;
     }
@@ -299,6 +303,13 @@
     var snackBtn = document.getElementById("btn-feed-snack");
     if (snackBtn && !isSleeping) {
       snackBtn.disabled = snacksLeft <= 0;
+    }
+
+    // Play button disabled when energy is too low to play (BUGFIX-010)
+    var PLAY_ENERGY_COST = 25;
+    var playBtn = document.getElementById("btn-play");
+    if (playBtn && !isSleeping) {
+      playBtn.disabled = state.energy < PLAY_ENERGY_COST;
     }
 
     // Reset position when a brand-new or just-loaded pet first appears
@@ -413,7 +424,7 @@
   }
 
   /** Show the dead screen with final stats. */
-  function renderDeadScreen(state) {
+  function renderDeadScreen(state, highScore) {
     deadStats.textContent =
       state.name + " lived " + state.ageDays + " day(s).\n" +
       "Stage reached: " + state.stage + ".";
@@ -445,6 +456,28 @@
         li.textContent = text;
         deadEventLog.appendChild(li);
       });
+    }
+
+    // High score panel
+    if (highScoreSection && highScoreStats) {
+      if (highScore) {
+        highScoreSection.classList.remove("hidden");
+        var hsElapsed = highScore.diedAt - (highScore.spawnedAt || 0);
+        var hsTotalSec = Math.floor(hsElapsed / 1000);
+        var hsDays    = Math.floor(hsTotalSec / 86400);
+        var hsHours   = Math.floor((hsTotalSec % 86400) / 3600);
+        var hsMinutes = Math.floor((hsTotalSec % 3600)  / 60);
+        var hsParts = [];
+        if (hsDays    > 0) { hsParts.push(hsDays    + "d"); }
+        if (hsHours   > 0) { hsParts.push(hsHours   + "h"); }
+        if (hsMinutes > 0) { hsParts.push(hsMinutes + "m"); }
+        if (hsParts.length === 0) { hsParts.push("< 1m"); }
+        highScoreStats.textContent =
+          highScore.name + "  |  " + highScore.ageDays + " day(s)  |  " + highScore.stage + "\n" +
+          hsParts.join(" ") + " real time";
+      } else {
+        highScoreSection.classList.add("hidden");
+      }
     }
   }
 
@@ -618,7 +651,7 @@
     }
 
     if (state) {
-      renderState(state, message.mealsGivenThisCycle || 0);
+      renderState(state, message.mealsGivenThisCycle || 0, message.highScore || null);
     }
   });
 
