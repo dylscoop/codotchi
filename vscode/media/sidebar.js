@@ -25,6 +25,7 @@
   const startBtn     = document.getElementById("start-btn");
   const btnNewGame   = document.getElementById("btn-new-game");
   const btnRestart   = document.getElementById("btn-restart");
+  const btnContinue  = document.getElementById("btn-continue");
 
   const petNameDisplay = document.getElementById("pet-name-display");
   const moodLabel      = document.getElementById("mood-label");
@@ -57,6 +58,8 @@
   let idlePauseTicks = 0;     // frames remaining in current idle pause
   let animTick      = 0;      // raw frame counter (drives leg/bob animation)
   let latestHighScore = null; // cached high score from last stateUpdate
+  let currentScreen = "game"; // tracks which screen is visible
+  let hasActiveGame = false;  // true once a real (non-needs_new_game) state is received
 
   // ── Setup form state ────────────────────────────────────────────────────
 
@@ -138,6 +141,12 @@
     showScreen("setup");
   });
 
+  if (btnContinue) {
+    btnContinue.addEventListener("click", function () {
+      showScreen("game");
+    });
+  }
+
   // ── Screen management ────────────────────────────────────────────────────
 
   /**
@@ -145,11 +154,17 @@
    * @param {"setup"|"game"|"dead"} name
    */
   function showScreen(name) {
+    currentScreen = name;
     setupScreen.classList.toggle("hidden", name !== "setup");
     gameScreen.classList.toggle("hidden",  name !== "game");
     deadScreen.classList.toggle("hidden",  name !== "dead");
-    if (name === "game") { resizeCanvas(); }
-    if (name === "setup") { renderSetupHighScore(latestHighScore); }
+    if (name === "game")  { resizeCanvas(); }
+    if (name === "setup") {
+      renderSetupHighScore(latestHighScore);
+      if (btnContinue) {
+        btnContinue.classList.toggle("hidden", !hasActiveGame);
+      }
+    }
   }
 
   // ── Canvas sizing ─────────────────────────────────────────────────────────
@@ -721,12 +736,24 @@
     }
 
     if (state) {
+      // Mark that a real game exists so the Continue button can appear
+      if (state.alive) { hasActiveGame = true; }
+
+      // UI-refresh fix: don't bounce the user off the setup screen on every tick.
+      // If the user is on setup and the pet is still alive, just update the
+      // Continue button visibility without switching screens.
+      if (currentScreen === "setup" && state.alive) {
+        if (btnContinue) { btnContinue.classList.toggle("hidden", !hasActiveGame); }
+        return;
+      }
+
       renderState(state, message.mealsGivenThisCycle || 0, latestHighScore);
     }
   });
 
   // ── Initial view ─────────────────────────────────────────────────────────
-  // Show setup by default; extension host will post state if one exists.
-  showScreen("setup");
+  // Show game screen by default; the extension host will post state on open,
+  // routing to setup (needs_new_game) or rendering the live pet immediately.
+  showScreen("game");
 
 }());

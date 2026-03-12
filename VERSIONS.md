@@ -1,6 +1,26 @@
 # Version History
 
-## v0.1.1 — current
+## v0.1.2 — current
+
+### Changes from v0.1.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/sidebarProvider.ts` | Play bug fix: guard `applyMinigameResult` — only called when `play_refused_no_energy` is NOT in events, preventing happiness gain when play is refused |
+| `pycharm/.../GotchiPlugin.kt` | Mirrored play bug fix: same `play_refused_no_energy` guard in `"play"` branch |
+| `vscode/media/sidebar.js` | UI refresh fix: added `currentScreen` and `hasActiveGame` tracking; `showScreen()` sets `currentScreen`; message handler suppresses `renderState` while on setup screen with a live pet; initial screen changed from `"setup"` → `"game"`; Continue button wired to return to game screen |
+| `vscode/media/sidebar.html` | Navigation redesign: added `<button id="btn-continue">` to setup screen (hidden until active game exists); `btn-new-game` label changed from "Start new game…" to "Menu" |
+| `pycharm/.../sidebar.js` | Mirrored all sidebar.js changes |
+| `pycharm/.../sidebar.html` | Mirrored all sidebar.html changes |
+| `vscode/FEATURES.md` | Updated to reflect v0.1.0 and v0.1.1 actuals: meal cap (3), snack cap (3, resets on auto-wake), play energy feedback via event log; added sections 7.1 (Screen Navigation) and 7.2 (Humanised Event Log); fixed section 8/9 health drain rows; renumbered sections 7–14 |
+| `vscode/package.json` | Version `0.1.1` → `0.1.2` |
+| `pycharm/build.gradle.kts` | Version `0.1.1` → `0.1.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version `0.1.1` → `0.1.2` |
+| `README.md` | Version reference `v0.1.1` → `v0.1.2` |
+
+---
+
+## v0.1.1
 
 ### Changes from v0.1.0
 

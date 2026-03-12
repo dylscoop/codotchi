@@ -198,7 +198,10 @@ export class SidebarProvider
         }
         nextState = play(state);
         if (message.game !== undefined && message.result !== undefined) {
-          nextState = applyMinigameResult(nextState, message.game, message.result);
+          // Only apply minigame happiness delta if play wasn't refused
+          if (!nextState.events.includes("play_refused_no_energy")) {
+            nextState = applyMinigameResult(nextState, message.game, message.result);
+          }
         }
         break;
 
