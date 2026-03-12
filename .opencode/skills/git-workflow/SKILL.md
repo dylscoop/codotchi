@@ -28,6 +28,17 @@ compatibility: opencode
 - One commit per logical unit of work (per todo item).
 - Message format: `<type>: <short description>` — types are `feat`, `fix`, `chore`, `refactor`, `docs`, `test`.
 
+## Build artifacts — required before every feature/fix commit
+
+Before committing any feature or bug fix, **always rebuild both distribution artifacts** and include them in the same commit:
+
+| IDE | Command (run from the given directory) | Output artifact to commit |
+|-----|----------------------------------------|--------------------------|
+| VS Code | `npx @vscode/vsce package` (run from `vscode/`) | `vscode/*.vsix` |
+| PyCharm | `powershell -Command "$env:JAVA_HOME='C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'; & '.\gradlew.bat' buildPlugin"` (run from `pycharm/`) | `pycharm/build/distributions/pycharm-gotchi-*.zip` |
+
+Never commit source changes without regenerating both artifacts.
+
 ## Release / merge to main
 
 Only perform a release (version bump, merge to `main`, tag, push) when the user **explicitly** asks for it. Do not do this automatically at the end of a feature.

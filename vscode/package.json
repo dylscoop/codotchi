@@ -2,7 +2,7 @@
   "name": "vscode-gotchi",
   "displayName": "vscode_gotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "0.0.4",
+  "version": "1.0.0",
   "publisher": "vscode-gotchi",
   "repository": {
     "type": "git",

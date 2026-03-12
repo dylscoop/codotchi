@@ -1,6 +1,6 @@
 # Version History
 
-## v0.0.5 — current (branch `bugfix/small_fixes`)
+## v1.0.0 — current (branch `bugfix/small_fixes`)
 
 ### Changes from v0.0.4
 

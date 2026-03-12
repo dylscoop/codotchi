@@ -19,8 +19,8 @@ node_modules/
 out/
 out-test/
 
-# VS Code extension package
-*.vsix
+# VS Code extension package — intentionally tracked for distribution
+# *.vsix
 
 # OS artefacts
 .DS_Store
