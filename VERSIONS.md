@@ -41,7 +41,16 @@ const EVOLUTION_DAY_THRESHOLDS: Record<string, number> = {
 ```ts
 SNACK_MAX_PER_CYCLE:         number = 3   // raised from 2; max snacks per wake cycle
 FEED_SNACK_HAPPINESS_BOOST:  number = 5   // halved from 10; happiness gained per snack
+FEED_MEAL_MAX_PER_CYCLE:     number = 3   // lowered from 4; max meals per wake cycle
 ```
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | `FEED_MEAL_MAX_PER_CYCLE` lowered `4 → 3` |
+| `vscode/media/sidebar.js` | `var MEAL_MAX` lowered `4 → 3` (UI badge + button-disable) |
+| `vscode/tests/unit/gameEngine.test.ts` | Updated meal cap tests to reflect cap of 3 |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | `FEED_MEAL_MAX_PER_CYCLE` lowered `4 → 3` |
+| `pycharm/src/main/resources/webview/sidebar.js` | `var MEAL_MAX` lowered `4 → 3` (UI badge + button-disable) |
 
 ---
 

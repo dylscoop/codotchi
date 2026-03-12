@@ -108,7 +108,7 @@ Once installed and VS Code has reloaded:
 
 | Action | What it does |
 | ------ | ----------- |
-| **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Limited to 4 meals per wake cycle — overfeeding past that has no effect. |
+| **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Limited to 3 meals per wake cycle — overfeeding past that has no effect. |
 | **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. More than 3 snacks in a row will make your pet sick. |
 | **Play** | Starts a mini-game. Winning boosts happiness significantly; even losing gives a small consolation boost. Costs energy — your pet can't play if it's exhausted. |
 | **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. |

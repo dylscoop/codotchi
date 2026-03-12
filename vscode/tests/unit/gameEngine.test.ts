@@ -576,16 +576,16 @@ describe("feedMeal", () => {
     assert.equal(next.hunger, 100);
   });
 
-  it("refuses when cycle cap (4) is reached", () => {
+  it("refuses when cycle cap (3) is reached", () => {
     const pet = makePet({ hunger: 30 });
-    const next = feedMeal(pet, 4);
+    const next = feedMeal(pet, 3);
     assert.equal(next.hunger, 30);
     assert.ok(next.events.includes("meal_refused"));
   });
 
-  it("allows exactly 4 meals per cycle (indices 0–3)", () => {
+  it("allows exactly 3 meals per cycle (indices 0–2)", () => {
     let pet = makePet({ hunger: 0 });
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 3; i++) {
       pet = feedMeal(pet, i);
       assert.ok(pet.events.includes("fed_meal"));
     }

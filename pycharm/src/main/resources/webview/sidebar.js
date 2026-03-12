@@ -291,7 +291,7 @@
     });
 
     // Meals-left badge on Feed button
-    var MEAL_MAX = 4;
+    var MEAL_MAX = 3;
     var mealsLeft = Math.max(0, MEAL_MAX - mealsGiven);
     if (mealsLeftEl) {
       mealsLeftEl.textContent = mealsLeft > 0 ? mealsLeft + "" : "";

@@ -63,7 +63,7 @@ const POOP_TICKS_INTERVAL: number = 20 * TICKS_PER_MINUTE;
 
 const FEED_MEAL_HUNGER_BOOST: number = 20;
 const FEED_MEAL_WEIGHT_GAIN: number = 1;
-const FEED_MEAL_MAX_PER_CYCLE: number = 4;
+const FEED_MEAL_MAX_PER_CYCLE: number = 3;
 
 const FEED_SNACK_HAPPINESS_BOOST: number = 5;
 const FEED_SNACK_HUNGER_BOOST: number = 5;
