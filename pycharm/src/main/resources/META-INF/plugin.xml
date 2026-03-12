@@ -1,10 +1,48 @@
 <idea-plugin>
     <id>com.gotchi.pycharm-gotchi</id>
     <name>Gotchi</name>
-    <version>0.0.1</version>
+    <version>0.1.0</version>
     <vendor>gotchi</vendor>
 
-    <description>Raise a virtual pixel-art pet while you code in JetBrains IDEs.</description>
+    <description><![CDATA[
+<p>Raise a virtual pixel-art pet that lives inside your JetBrains IDE. Feed it, play with it, and keep it happy while you code — neglect it and it will get sick and eventually die.</p>
+
+<h3>Features</h3>
+<ul>
+  <li>Persistent pet that survives IDE restarts with offline stat decay</li>
+  <li>6 life stages: Egg → Baby → Child → Teen → Adult → Senior</li>
+  <li>3 evolution tiers per stage (Best / Mid / Low) based on how well you care for your pet</li>
+  <li>Care quality score tracks hunger, happiness, discipline, cleanliness, and health over time</li>
+  <li>Coding activity rewards: your pet gets happier and more disciplined when you type</li>
+  <li>High score tracking: records your best run (age, stage, pet type) across all pets</li>
+  <li>Status bar widget showing your pet's current mood at a glance</li>
+  <li>Settings page (Settings → Tools → Gotchi) for font size and text colour customisation</li>
+</ul>
+
+<h3>Care Actions</h3>
+<ul>
+  <li><b>Feed Meal</b> — restores hunger (up to 4 meals per wake cycle)</li>
+  <li><b>Feed Snack</b> — boosts happiness and hunger (up to 2 snacks per wake cycle; too many snacks cause sickness)</li>
+  <li><b>Play</b> — raises happiness and burns energy (requires at least 25 energy)</li>
+  <li><b>Sleep / Wake</b> — sleeping restores energy and heals HP faster; the pet auto-wakes when fully rested</li>
+  <li><b>Clean</b> — removes droppings (too many droppings cause sickness)</li>
+  <li><b>Medicine</b> — cures sickness after 3 doses</li>
+  <li><b>Scold / Praise</b> — both raise discipline</li>
+</ul>
+
+<h3>Pet Types</h3>
+<ul>
+  <li><b>Codeling</b> — balanced all-rounder with moderate stats and a predictable poop schedule</li>
+  <li><b>Bytebug</b> — fast hunger decay and very unpredictable bathroom habits; energetic energy regen</li>
+  <li><b>Pixelpup</b> — happiness decays faster, needs frequent play; irregular poop timing</li>
+  <li><b>Shellscript</b> — slow metabolism, high base health, near-clockwork poop schedule</li>
+</ul>
+
+<h3>Getting Started</h3>
+<p>Open the <b>Gotchi</b> tool window (right-hand panel) and click <b>New Pet</b> to hatch your first egg.
+Choose a pet type, pick a name, and start coding! Keep an eye on the status bar widget for a quick
+mood summary. Access Settings → Tools → Gotchi to adjust the display size and colours.</p>
+    ]]></description>
 
     <idea-version since-build="241"/>
 

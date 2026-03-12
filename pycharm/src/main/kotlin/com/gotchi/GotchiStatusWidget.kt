@@ -5,6 +5,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
 import com.intellij.openapi.wm.StatusBarWidget.TextPresentation
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.Consumer
 import java.awt.event.MouseEvent
 
@@ -56,7 +57,9 @@ class GotchiStatusWidget(private val project: Project) : StatusBarWidget, TextPr
 
     override fun getAlignment(): Float = 0f
 
-    override fun getClickConsumer(): Consumer<MouseEvent>? = null
+    override fun getClickConsumer(): Consumer<MouseEvent> = Consumer { _ ->
+        ToolWindowManager.getInstance(project).getToolWindow("Gotchi")?.activate(null)
+    }
 
     // ── State update ───────────────────────────────────────────────────────
 

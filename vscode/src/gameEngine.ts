@@ -52,22 +52,34 @@ const CRITICAL_HEALTH_DAMAGE_PER_TICK: number = 5;
 
 const MAX_CONSECUTIVE_SNACKS_BEFORE_SICK: number = 3;
 const MAX_UNCLEANED_POOPS_BEFORE_SICK: number = 3;
+
+/** Maximum snacks allowed per wake cycle before further snacks are refused. */
+export const SNACK_MAX_PER_CYCLE: number = 3;
+
+/** Maximum number of events kept in recentEventLog. */
+const RECENT_EVENT_LOG_MAX: number = 20;
 /** Ticks between droppings (≈ 20 real minutes). */
 const POOP_TICKS_INTERVAL: number = 20 * TICKS_PER_MINUTE;
 
 const FEED_MEAL_HUNGER_BOOST: number = 20;
 const FEED_MEAL_WEIGHT_GAIN: number = 1;
-const FEED_MEAL_MAX_PER_CYCLE: number = 4;
+const FEED_MEAL_MAX_PER_CYCLE: number = 3;
 
-const FEED_SNACK_HAPPINESS_BOOST: number = 10;
+const FEED_SNACK_HAPPINESS_BOOST: number = 5;
+const FEED_SNACK_HUNGER_BOOST: number = 5;
 const FEED_SNACK_WEIGHT_GAIN: number = 2;
 
 const PLAY_HAPPINESS_BOOST: number = 15;
-const PLAY_ENERGY_COST: number = 10;
+const PLAY_ENERGY_COST: number = 25;
 const PLAY_WEIGHT_LOSS: number = 1;
 
-const MEDICINE_HEALTH_BOOST: number = 20;
+/** Passive energy drain per tick while awake. */
+const ENERGY_DECAY_PER_TICK: number = 1;
+
 const MEDICINE_DOSES_TO_CURE: number = 3;
+
+/** Ticks between passive health regen pulses while awake (1 hp per interval). */
+const HEALTH_REGEN_AWAKE_TICK_INTERVAL: number = 5;
 
 const DISCIPLINE_BOOST_PER_ACTION: number = 10;
 
@@ -95,6 +107,18 @@ const OFFLINE_DECAY_MAX_FRACTION: number = 0.60;
 /** Age in real-world days at which a senior pet may die of old age. */
 export const SENIOR_NATURAL_DEATH_AGE_DAYS: number = 20;
 
+/**
+ * Ticks elapsed while awake before the day timer advances by 1.0 (1 game day = 1 real hour awake).
+ * 60 min × 60 s ÷ 5 s/tick = 720 ticks.
+ */
+export const TICKS_PER_GAME_DAY_AWAKE: number = TICKS_PER_HOUR;
+
+/**
+ * Ticks elapsed while sleeping before the day timer advances by 1.0 (≈ 48 min asleep = 1 day,
+ * ~25% faster than awake).
+ */
+export const TICKS_PER_GAME_DAY_SLEEPING: number = Math.round(TICKS_PER_HOUR * 0.8);
+
 // ---------------------------------------------------------------------------
 // Types (ported from python/models.py)
 // ---------------------------------------------------------------------------
@@ -118,6 +142,12 @@ interface PetTypeModifiers {
    * 0.0 = perfectly regular; 0.9 = highly unpredictable.
    */
   readonly poopIntervalVolatility: number;
+  /**
+   * Multiplier applied to the dayTimer increment each tick (and in offline
+   * decay).  Values > 1.0 make the pet age faster in real time; values < 1.0
+   * make it age slower.  1.0 is the Codeling baseline.
+   */
+  readonly agingMultiplier: number;
 }
 
 const PET_TYPE_MODIFIERS: Record<string, PetTypeModifiers> = {
@@ -132,6 +162,7 @@ const PET_TYPE_MODIFIERS: Record<string, PetTypeModifiers> = {
     energyRegenMultiplier: 1.0,
     poopIntervalMultiplier: 0.75,
     poopIntervalVolatility: 0.5,
+    agingMultiplier: 1.0,
   },
   /**
    * Bytebug — eats fast, digests fast.
@@ -145,6 +176,7 @@ const PET_TYPE_MODIFIERS: Record<string, PetTypeModifiers> = {
     energyRegenMultiplier: 1.2,
     poopIntervalMultiplier: 0.4,
     poopIntervalVolatility: 0.8,
+    agingMultiplier: 1.5,
   },
   /**
    * Pixelpup — active and social, irregular bathroom habits.
@@ -157,6 +189,7 @@ const PET_TYPE_MODIFIERS: Record<string, PetTypeModifiers> = {
     energyRegenMultiplier: 1.0,
     poopIntervalMultiplier: 0.6,
     poopIntervalVolatility: 0.7,
+    agingMultiplier: 1.25,
   },
   /**
    * Shellscript — slow metabolism, very regular.
@@ -170,6 +203,7 @@ const PET_TYPE_MODIFIERS: Record<string, PetTypeModifiers> = {
     energyRegenMultiplier: 1.0,
     poopIntervalMultiplier: 1.0,
     poopIntervalVolatility: 0.2,
+    agingMultiplier: 0.75,
   },
 };
 
@@ -278,6 +312,14 @@ export interface PetState {
   readonly hungerZeroTicks: number;
   readonly medicineDosesGiven: number;
 
+  /**
+   * Monotonically-increasing fractional day counter.
+   * `ageDays` is derived as `Math.floor(dayTimer)` each tick.
+   * Advances by `1 / TICKS_PER_GAME_DAY_SLEEPING` per tick while sleeping,
+   * or `1 / TICKS_PER_GAME_DAY_AWAKE` per tick while awake.
+   */
+  readonly dayTimer: number;
+
   // Care-quality accumulators
   readonly careScoreHungerSum: number;
   readonly careScoreHappinessSum: number;
@@ -286,6 +328,36 @@ export interface PetState {
 
   // Events emitted during the last action (cleared on each new action)
   readonly events: readonly string[];
+
+  // Persistent rolling log of the last 20 events (survives across actions)
+  readonly recentEventLog: readonly string[];
+
+  /** Unix ms timestamp when this pet was first created (spawnedAt). */
+  readonly spawnedAt: number;
+
+  /** Snacks given in the current wake cycle (resets on wake/createPet). */
+  readonly snacksGivenThisCycle: number;
+}
+
+// ---------------------------------------------------------------------------
+// HighScore — persisted record of the best run
+// ---------------------------------------------------------------------------
+
+/**
+ * Summary of the best run ever recorded for this installation.
+ * Compared by ageDays; ties broken by real-world elapsed time (longer wins).
+ */
+export interface HighScore {
+  /** In-game days lived (primary sort key). */
+  readonly ageDays: number;
+  readonly name: string;
+  readonly stage: string;
+  readonly petType: string;
+  readonly color: string;
+  /** Unix ms when the pet was created. */
+  readonly spawnedAt: number;
+  /** Unix ms when the pet died (used to compute real elapsed time). */
+  readonly diedAt: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -502,6 +574,10 @@ export function createPet(name: string, petType: string, color: string): PetStat
     careScoreHealthSum: 0,
     careScoreTicks: 0,
     events: [],
+    recentEventLog: [],
+    spawnedAt: Date.now(),
+    snacksGivenThisCycle: 0,
+    dayTimer: 0,
   };
 
   return withDerivedFields(partial);
@@ -523,7 +599,11 @@ function withDerivedFields(
   const careScore = computeCareScore(partial as PetState);
   const mood = moodFromStats(partial.hunger, partial.happiness, partial.health, partial.sleeping);
   const sprite = `${partial.stage}_${mood}`;
-  return { ...partial, careScore: Math.round(careScore * 10000) / 10000, mood, sprite };
+  // Append current events to the rolling log (capped at RECENT_EVENT_LOG_MAX)
+  const newLog = (partial.events as string[]).length > 0
+    ? [...(partial.recentEventLog as string[]), ...(partial.events as string[])].slice(-RECENT_EVENT_LOG_MAX)
+    : partial.recentEventLog;
+  return { ...partial, careScore: Math.round(careScore * 10000) / 10000, mood, sprite, recentEventLog: newLog };
 }
 
 // ---------------------------------------------------------------------------
@@ -568,6 +648,9 @@ export function tick(state: PetState): PetState {
   let ageDays: number = state.ageDays;
   const ticksAlive = state.ticksAlive + 1;
 
+  // Capture sleeping state at tick entry so day-timer uses it even if auto-wake fires mid-tick
+  const sleepingAtTickStart = sleeping;
+
   // Stat decay
   if (!sleeping) {
     const hungerDecay = Math.ceil(HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier);
@@ -576,6 +659,7 @@ export function tick(state: PetState): PetState {
     );
     hunger = clampStat(hunger - hungerDecay);
     happiness = clampStat(happiness - happinessDecay);
+    energy = clampStat(energy - ENERGY_DECAY_PER_TICK);
   } else {
     const energyRegen = Math.ceil(
       ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier
@@ -585,10 +669,16 @@ export function tick(state: PetState): PetState {
     // BUGFIX-003: auto-wake when energy is fully restored
     if (energy >= STAT_MAX) {
       sleeping = false;
-      ageDays += 1;
       events.push("auto_woke_up");
     }
   }
+
+  // Advance day timer — use sleepingAtTickStart to avoid mid-tick flip affecting the rate
+  const dayTimer =
+    state.dayTimer +
+    (sleepingAtTickStart ? 1 / TICKS_PER_GAME_DAY_SLEEPING : 1 / TICKS_PER_GAME_DAY_AWAKE)
+    * modifiers.agingMultiplier;
+  ageDays = Math.floor(dayTimer);
 
   // Poop accumulation — interval is per-type and resampled with high volatility
   if (!sleeping) {
@@ -615,10 +705,14 @@ export function tick(state: PetState): PetState {
     hungerZeroTicks = 0;
   }
 
-  // Starvation damage
+  // Starvation damage — also triggers sickness so medicine can cure it
   if (hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK) {
     health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
     events.push("starvation_damage");
+    if (!sick) {
+      sick = true;
+      events.push("became_sick");
+    }
   }
 
   // Happiness-critical health drain
@@ -632,9 +726,13 @@ export function tick(state: PetState): PetState {
     health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
   }
 
-  // BUGFIX-004: passive health regen when not sick and not at maximum
+  // BUGFIX-004: passive health regen — full rate while sleeping, much slower awake
   if (!sick && health < STAT_MAX) {
-    health = clampStat(health + 1);
+    if (sleeping) {
+      health = clampStat(health + 1);
+    } else if (ticksAlive % HEALTH_REGEN_AWAKE_TICK_INTERVAL === 0) {
+      health = clampStat(health + 1);
+    }
   }
 
   // Death check
@@ -646,7 +744,7 @@ export function tick(state: PetState): PetState {
       hunger, happiness, energy, health, poops, ticksSinceLastPoop,
       nextPoopIntervalTicks,
       hungerZeroTicks, sick, alive: alive as boolean, ticksAlive, events,
-      sleeping, ageDays,
+      sleeping, ageDays, dayTimer,
     });
   }
 
@@ -660,7 +758,7 @@ export function tick(state: PetState): PetState {
     ...state,
     hunger, happiness, energy, health, poops, ticksSinceLastPoop,
     nextPoopIntervalTicks,
-    hungerZeroTicks, sick, alive, ticksAlive, sleeping, ageDays,
+    hungerZeroTicks, sick, alive, ticksAlive, sleeping, ageDays, dayTimer,
     careScoreHungerSum, careScoreHappinessSum, careScoreHealthSum, careScoreTicks,
     events,
   };
@@ -673,12 +771,12 @@ export function tick(state: PetState): PetState {
 // Stage progression (internal)
 // ---------------------------------------------------------------------------
 
-/** Map from stage name to its tick duration. */
-const STAGE_DURATION_MAP: Record<string, number> = {
-  egg: EGG_DURATION_TICKS,
-  baby: BABY_DURATION_TICKS,
-  child: CHILD_DURATION_TICKS,
-  teen: TEEN_DURATION_TICKS,
+/** Map from stage name to the cumulative dayTimer threshold to evolve out of it. */
+const EVOLUTION_DAY_THRESHOLDS: Record<string, number> = {
+  egg:   0.033,  // ≈ tick 24 for codeling 1× (~2 min awake)
+  baby:  0.199,  // ≈ tick 144 cumulative for codeling 1× (~12 min)
+  child: 1.199,  // ≈ tick 864 cumulative for codeling 1× (~72 min)
+  teen:  4.199,  // ≈ tick 3024 cumulative for codeling 1× (~252 min)
 };
 
 /** Map from stage name to the next stage. */
@@ -690,23 +788,27 @@ const NEXT_STAGE_MAP: Record<string, string> = {
 };
 
 /**
- * Promote the pet to the next life stage if its duration has elapsed.
+ * Promote the pet to the next life stage if its cumulative dayTimer has
+ * reached the threshold for the current stage.
  *
  * @param partial - State without derived fields.
- * @returns Complete PetState, evolved if duration threshold was reached.
+ * @returns Complete PetState, evolved if the dayTimer threshold was reached.
  */
 function checkStageProgression(
   partial: Omit<PetState, "mood" | "sprite" | "careScore">
 ): PetState {
-  const duration = STAGE_DURATION_MAP[partial.stage];
-  if (duration === undefined) {
+  const dayThreshold = EVOLUTION_DAY_THRESHOLDS[partial.stage];
+  if (dayThreshold === undefined) {
     return withDerivedFields(partial);
   }
-  if (partial.ticksAlive < duration) {
+  if (partial.dayTimer < dayThreshold) {
     return withDerivedFields(partial);
   }
 
   const nextStage = NEXT_STAGE_MAP[partial.stage];
+  if (nextStage === undefined) {
+    return withDerivedFields(partial);
+  }
   return evolveTo(partial, nextStage);
 }
 
@@ -773,13 +875,20 @@ export function feedMeal(state: PetState, mealsGivenThisCycle: number): PetState
 /**
  * Give the pet a snack.
  *
- * Three consecutive snacks trigger sickness.
+ * If the cycle cap (SNACK_MAX_PER_CYCLE) is exceeded the action is a no-op
+ * and a "snack_refused" event is emitted.  Three consecutive snacks trigger
+ * sickness.
  *
  * @param state - The current pet state.
  * @returns A new PetState after the action.
  */
 export function feedSnack(state: PetState): PetState {
+  if (state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE) {
+    return withDerivedFields({ ...state, events: ["snack_refused"] });
+  }
+
   const consecutiveSnacks = state.consecutiveSnacks + 1;
+  const snacksGivenThisCycle = state.snacksGivenThisCycle + 1;
   const events: string[] = [];
   let sick = state.sick;
 
@@ -791,9 +900,11 @@ export function feedSnack(state: PetState): PetState {
 
   return withDerivedFields({
     ...state,
+    hunger: clampStat(state.hunger + FEED_SNACK_HUNGER_BOOST),
     happiness: clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
     weight: clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN),
     consecutiveSnacks,
+    snacksGivenThisCycle,
     sick,
     events,
   });
@@ -809,7 +920,7 @@ export function feedSnack(state: PetState): PetState {
  * @returns A new PetState after the action.
  */
 export function play(state: PetState): PetState {
-  if (state.energy <= 0) {
+  if (state.energy < PLAY_ENERGY_COST) {
     return withDerivedFields({ ...state, events: ["play_refused_no_energy"] });
   }
   return withDerivedFields({
@@ -890,7 +1001,7 @@ export function wake(state: PetState): PetState {
   return withDerivedFields({
     ...state,
     sleeping: false,
-    ageDays: state.ageDays + 1,
+    snacksGivenThisCycle: 0,
     events: ["woke_up"],
   });
 }
@@ -930,7 +1041,6 @@ export function giveMedicine(state: PetState): PetState {
   }
 
   const medicineDosesGiven = state.medicineDosesGiven + 1;
-  const health = clampStat(state.health + MEDICINE_HEALTH_BOOST);
   const events: string[] = ["medicine_given"];
   let sick: boolean = state.sick;
 
@@ -939,14 +1049,13 @@ export function giveMedicine(state: PetState): PetState {
     events.push("cured");
     return withDerivedFields({
       ...state,
-      health,
       sick: sick as boolean,
       medicineDosesGiven: 0,
       events,
     });
   }
 
-  return withDerivedFields({ ...state, health, medicineDosesGiven, events });
+  return withDerivedFields({ ...state, medicineDosesGiven, events });
 }
 
 /**
@@ -1112,6 +1221,9 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
     poops,
     ticksSinceLastPoop,
     nextPoopIntervalTicks,
+    // Treat offline time as awake (conservative — doesn't accelerate aging)
+    dayTimer: state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier,
+    ageDays: Math.floor(state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier),
     events: [],
   });
 }
@@ -1161,6 +1273,10 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     sprite: state.sprite,
     careScore: state.careScore,
     events: state.events,
+    recentEventLog: state.recentEventLog,
+    spawnedAt: state.spawnedAt,
+    snacksGivenThisCycle: state.snacksGivenThisCycle,
+    dayTimer: state.dayTimer,
   };
 }
 
@@ -1180,6 +1296,8 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     typeof data[key] === "number" ? (data[key] as number) : fallback;
   const getBool = (key: string, fallback: boolean): boolean =>
     typeof data[key] === "boolean" ? (data[key] as boolean) : fallback;
+  const getStringArray = (key: string): readonly string[] =>
+    Array.isArray(data[key]) ? (data[key] as string[]) : [];
 
   const partial: Omit<PetState, "mood" | "sprite" | "careScore"> = {
     name: getString("name", "Gotchi"),
@@ -1213,6 +1331,12 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     careScoreHealthSum: getNumber("careScoreHealthSum", 0),
     careScoreTicks: getNumber("careScoreTicks", 0),
     events: [],
+    // Back-compat: old saves won't have these fields.
+    recentEventLog: getStringArray("recentEventLog"),
+    spawnedAt: getNumber("spawnedAt", Date.now()),
+    snacksGivenThisCycle: getNumber("snacksGivenThisCycle", 0),
+    // Back-compat: old saves use ageDays as an integer; seed dayTimer from it.
+    dayTimer: getNumber("dayTimer", getNumber("ageDays", 0)),
   };
 
   return withDerivedFields(partial);

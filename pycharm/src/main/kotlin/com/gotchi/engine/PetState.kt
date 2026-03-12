@@ -44,6 +44,14 @@ data class PetState(
     val hungerZeroTicks: Int,
     val medicineDosesGiven: Int,
 
+    /**
+     * Monotonically-increasing fractional day counter.
+     * `ageDays` is derived as `dayTimer.toInt()` each tick.
+     * Advances by `1.0 / TICKS_PER_GAME_DAY_SLEEPING` per tick while sleeping,
+     * or `1.0 / TICKS_PER_GAME_DAY_AWAKE` per tick while awake.
+     */
+    val dayTimer: Double,
+
     // Care-quality accumulators
     val careScoreHungerSum: Long,
     val careScoreHappinessSum: Long,
@@ -52,4 +60,13 @@ data class PetState(
 
     // Events emitted during the last action (cleared on each new action)
     val events: List<String>,
+
+    // Persistent rolling log of the last 20 events (survives across actions)
+    val recentEventLog: List<String>,
+
+    /** Unix ms timestamp when this pet was first created. */
+    val spawnedAt: Long,
+
+    /** Snacks given in the current wake cycle (resets on wake/createPet). */
+    val snacksGivenThisCycle: Int,
 )

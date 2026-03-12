@@ -31,7 +31,14 @@
   const infoLine       = document.getElementById("info-line");
   const eventLog       = document.getElementById("event-log");
   const deadStats      = document.getElementById("dead-stats");
+  const deadTime       = document.getElementById("dead-time");
+  const deadEventLog   = document.getElementById("dead-event-log");
+  const highScoreSection = document.getElementById("high-score-section");
+  const highScoreStats   = document.getElementById("high-score-stats");
+  const setupHighScore   = document.getElementById("setup-high-score");
+  const setupHsStats     = document.getElementById("setup-hs-stats");
   const mealsLeftEl    = document.getElementById("meals-left");
+  const snacksLeftEl   = document.getElementById("snacks-left");
 
   const barHunger    = document.getElementById("bar-hunger");
   const barHappiness = document.getElementById("bar-happiness");
@@ -49,6 +56,7 @@
   let petFacingLeft = false;
   let idlePauseTicks = 0;     // frames remaining in current idle pause
   let animTick      = 0;      // raw frame counter (drives leg/bob animation)
+  let latestHighScore = null; // cached high score from last stateUpdate
 
   // ── Setup form state ────────────────────────────────────────────────────
 
@@ -141,6 +149,7 @@
     gameScreen.classList.toggle("hidden",  name !== "game");
     deadScreen.classList.toggle("hidden",  name !== "dead");
     if (name === "game") { resizeCanvas(); }
+    if (name === "setup") { renderSetupHighScore(latestHighScore); }
   }
 
   // ── Canvas sizing ─────────────────────────────────────────────────────────
@@ -243,10 +252,12 @@
   /**
    * Update every UI element from a PetState snapshot.
    * @param {object} state
+   * @param {number} mealsGiven
+   * @param {object|null} highScore
    */
-  function renderState(state, mealsGiven) {
+  function renderState(state, mealsGiven, highScore) {
     if (!state.alive) {
-      renderDeadScreen(state);
+      renderDeadScreen(state, highScore);
       showScreen("dead");
       return;
     }
@@ -262,9 +273,12 @@
     setHealthBar(barHealth, state.health);
 
     const poopStr = state.poops === 1 ? "1 poop" : state.poops + " poops";
+    const typeLabel = (state.petType || "codeling");
+    const typeLabelCap = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
     infoLine.textContent =
       "Age: " + state.ageDays + "d  |  " +
-      state.stage + "  |  " +
+      state.stage            + "  |  " +
+      typeLabelCap           + "  |  " +
       poopStr;
 
     // Update sleep/wake button label to match current state
@@ -279,6 +293,31 @@
       const btn = document.getElementById(id);
       if (btn) { btn.disabled = isSleeping; }
     });
+
+    // Meals-left badge on Feed button
+    var MEAL_MAX = 3;
+    var mealsLeft = Math.max(0, MEAL_MAX - mealsGiven);
+    if (mealsLeftEl) {
+      mealsLeftEl.textContent = mealsLeft > 0 ? mealsLeft + "" : "";
+    }
+
+    // Snacks-left badge on Snack button + disable when at limit
+    var SNACK_MAX = 3;
+    var snacksLeft = Math.max(0, SNACK_MAX - (state.snacksGivenThisCycle || 0));
+    if (snacksLeftEl) {
+      snacksLeftEl.textContent = snacksLeft > 0 ? snacksLeft + "" : "";
+    }
+    var snackBtn = document.getElementById("btn-feed-snack");
+    if (snackBtn && !isSleeping) {
+      snackBtn.disabled = snacksLeft <= 0;
+    }
+
+    // Play button disabled when energy is too low to play (BUGFIX-010)
+    var PLAY_ENERGY_COST = 25;
+    var playBtn = document.getElementById("btn-play");
+    if (playBtn && !isSleeping) {
+      playBtn.disabled = state.energy < PLAY_ENERGY_COST;
+    }
 
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
@@ -391,11 +430,85 @@
     });
   }
 
+  /** Show (or hide) the high score block on the setup screen. */
+  function renderSetupHighScore(hs) {
+    if (!setupHighScore || !setupHsStats) { return; }
+    if (hs) {
+      setupHighScore.classList.remove("hidden");
+      var hsElapsed  = hs.diedAt - (hs.spawnedAt || 0);
+      var hsTotalSec = Math.floor(hsElapsed / 1000);
+      var hsDays     = Math.floor(hsTotalSec / 86400);
+      var hsHours    = Math.floor((hsTotalSec % 86400) / 3600);
+      var hsMinutes  = Math.floor((hsTotalSec % 3600)  / 60);
+      var hsParts = [];
+      if (hsDays    > 0) { hsParts.push(hsDays    + "d"); }
+      if (hsHours   > 0) { hsParts.push(hsHours   + "h"); }
+      if (hsMinutes > 0) { hsParts.push(hsMinutes + "m"); }
+      if (hsParts.length === 0) { hsParts.push("< 1m"); }
+      setupHsStats.textContent =
+        hs.name + "  |  " + hs.ageDays + " day(s)  |  " + hs.stage + "\n" +
+        hsParts.join(" ") + " real time";
+    } else {
+      setupHighScore.classList.add("hidden");
+    }
+  }
+
   /** Show the dead screen with final stats. */
-  function renderDeadScreen(state) {
+  function renderDeadScreen(state, highScore) {
     deadStats.textContent =
       state.name + " lived " + state.ageDays + " day(s).\n" +
       "Stage reached: " + state.stage + ".";
+
+    // Real-life elapsed time since spawnedAt
+    if (deadTime) {
+      var spawnedAt = state.spawnedAt || 0;
+      var elapsedMs = Date.now() - spawnedAt;
+      var totalSec  = Math.floor(elapsedMs / 1000);
+      var days      = Math.floor(totalSec / 86400);
+      var hours     = Math.floor((totalSec % 86400) / 3600);
+      var minutes   = Math.floor((totalSec % 3600)  / 60);
+      var parts = [];
+      if (days    > 0) { parts.push(days    + "d"); }
+      if (hours   > 0) { parts.push(hours   + "h"); }
+      if (minutes > 0) { parts.push(minutes + "m"); }
+      if (parts.length === 0) { parts.push("< 1m"); }
+      deadTime.textContent = "Lived for " + parts.join(" ") + " in real time";
+    }
+
+    // Recent event log (last 20 events)
+    if (deadEventLog) {
+      deadEventLog.innerHTML = "";
+      var log = state.recentEventLog || [];
+      // Show most-recent first
+      var reversed = log.slice().reverse();
+      reversed.forEach(function (text) {
+        var li = document.createElement("li");
+        li.textContent = text;
+        deadEventLog.appendChild(li);
+      });
+    }
+
+    // High score panel
+    if (highScoreSection && highScoreStats) {
+      if (highScore) {
+        highScoreSection.classList.remove("hidden");
+        var hsElapsed = highScore.diedAt - (highScore.spawnedAt || 0);
+        var hsTotalSec = Math.floor(hsElapsed / 1000);
+        var hsDays    = Math.floor(hsTotalSec / 86400);
+        var hsHours   = Math.floor((hsTotalSec % 86400) / 3600);
+        var hsMinutes = Math.floor((hsTotalSec % 3600)  / 60);
+        var hsParts = [];
+        if (hsDays    > 0) { hsParts.push(hsDays    + "d"); }
+        if (hsHours   > 0) { hsParts.push(hsHours   + "h"); }
+        if (hsMinutes > 0) { hsParts.push(hsMinutes + "m"); }
+        if (hsParts.length === 0) { hsParts.push("< 1m"); }
+        highScoreStats.textContent =
+          highScore.name + "  |  " + highScore.ageDays + " day(s)  |  " + highScore.stage + "\n" +
+          hsParts.join(" ") + " real time";
+      } else {
+        highScoreSection.classList.add("hidden");
+      }
+    }
   }
 
   // ── Sprite drawing ───────────────────────────────────────────────────────
@@ -430,6 +543,38 @@
     // Ground line
     spriteCtx.fillStyle = "rgba(255,255,255,0.08)";
     spriteCtx.fillRect(0, H - 5, W, 1);
+
+    // Persistent poo sprites — drawn before the pet so they sit on the floor
+    // 6×7 pixel art: 1 = dark brown, 2 = light brown highlight
+    var POO_PIXELS = [
+      [0,0,1,1,0,0],
+      [0,1,1,1,1,0],
+      [1,1,2,1,1,1],
+      [1,2,1,1,1,1],
+      [0,1,1,1,1,0],
+      [0,1,1,1,1,0],
+      [1,1,1,1,1,1],
+    ];
+    var PS = 2;                            // 2px per pixel → 12×14 total
+    var pW = POO_PIXELS[0].length * PS;
+    var pH = POO_PIXELS.length    * PS;
+    var pooGroundY = H - 4 - pH;           // sit just above the ground line
+    var pooXPositions = [
+      Math.round(W * 0.12),
+      Math.round(W * 0.52),
+      Math.round(W * 0.78),
+    ];
+    var numPoos = Math.min(state.poops || 0, 3);
+    for (var pi = 0; pi < numPoos; pi++) {
+      var pooX = pooXPositions[pi];
+      POO_PIXELS.forEach(function (row, ry) {
+        row.forEach(function (cell, rx) {
+          if (!cell) { return; }
+          spriteCtx.fillStyle = cell === 2 ? "#A0522D" : "#6B3A2A";
+          spriteCtx.fillRect(pooX + rx * PS, pooGroundY + ry * PS, PS, PS);
+        });
+      });
+    }
 
     // Body size scales with stage
     const stageScale = STAGE_SCALES[state.stage] || 0.5;
@@ -529,6 +674,9 @@
 
     const state = message.state;
 
+    // Cache the latest high score whenever the host sends one
+    if (message.highScore) { latestHighScore = message.highScore; }
+
     // needs_new_game response: stay on / return to setup
     if (state && state.needs_new_game) {
       showScreen("setup");
@@ -536,7 +684,7 @@
     }
 
     if (state) {
-      renderState(state, message.mealsGivenThisCycle || 0);
+      renderState(state, message.mealsGivenThisCycle || 0, latestHighScore);
     }
   });
 

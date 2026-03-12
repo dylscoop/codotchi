@@ -74,10 +74,16 @@ private fun withDerivedFields(s: PetState): PetState {
     val careScore = computeCareScore(s)
     val mood      = moodFromStats(s.hunger, s.happiness, s.health, s.sleeping)
     val sprite    = "${s.stage}_${mood}"
+    // Append current events to the rolling log (capped at RECENT_EVENT_LOG_MAX)
+    val newLog = if (s.events.isNotEmpty())
+        (s.recentEventLog + s.events).takeLast(RECENT_EVENT_LOG_MAX)
+    else
+        s.recentEventLog
     return s.copy(
-        careScore = (careScore * 10000).roundToLong() / 10000.0,
-        mood      = mood,
-        sprite    = sprite,
+        careScore      = (careScore * 10000).roundToLong() / 10000.0,
+        mood           = mood,
+        sprite         = sprite,
+        recentEventLog = newLog,
     )
 }
 
@@ -114,11 +120,15 @@ fun createPet(name: String, petType: String, color: String): PetState {
             consecutiveSnacks  = 0,
             hungerZeroTicks    = 0,
             medicineDosesGiven = 0,
+            dayTimer           = 0.0,
             careScoreHungerSum    = 0L,
             careScoreHappinessSum = 0L,
             careScoreHealthSum    = 0L,
             careScoreTicks        = 0L,
             events             = emptyList(),
+            recentEventLog     = emptyList(),
+            spawnedAt          = System.currentTimeMillis(),
+            snacksGivenThisCycle = 0,
         )
     )
 }
@@ -147,12 +157,16 @@ fun tick(state: PetState): PetState {
     var ageDays            = state.ageDays
     val ticksAlive         = state.ticksAlive + 1
 
+    // Capture sleeping state at tick entry so day-timer uses it even if auto-wake fires mid-tick
+    val sleepingAtTickStart = sleeping
+
     // Stat decay
     if (!sleeping) {
         val hungerDecay    = ceil(HUNGER_DECAY_PER_TICK    * modifiers.hungerDecayMultiplier).toInt()
         val happinessDecay = ceil(HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier).toInt()
         hunger    = clampStat(hunger    - hungerDecay)
         happiness = clampStat(happiness - happinessDecay)
+        energy    = clampStat(energy    - ENERGY_DECAY_PER_TICK)
     } else {
         val energyRegen = ceil(ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier).toInt()
         energy = clampStat(energy + energyRegen)
@@ -160,10 +174,15 @@ fun tick(state: PetState): PetState {
         // Auto-wake when energy is fully restored (BUGFIX-003 equivalent)
         if (energy >= STAT_MAX) {
             sleeping = false
-            ageDays += 1
             events.add("auto_woke_up")
         }
     }
+
+    // Advance day timer — use sleepingAtTickStart to avoid mid-tick flip affecting the rate
+    val dayTimer = state.dayTimer +
+        (if (sleepingAtTickStart) 1.0 / TICKS_PER_GAME_DAY_SLEEPING
+         else 1.0 / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier
+    ageDays = dayTimer.toInt()
 
     // Poop accumulation — interval is per-type and resampled with high volatility
     if (!sleeping) {
@@ -185,10 +204,14 @@ fun tick(state: PetState): PetState {
     // Starvation counter
     if (hunger == STAT_MIN) hungerZeroTicks += 1 else hungerZeroTicks = 0
 
-    // Starvation damage
+    // Starvation damage — also triggers sickness so medicine can cure it (BUGFIX-007)
     if (hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK) {
         health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
         events.add("starvation_damage")
+        if (!sick) {
+            sick = true
+            events.add("became_sick")
+        }
     }
 
     // Happiness-critical health drain
@@ -202,9 +225,13 @@ fun tick(state: PetState): PetState {
         health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
     }
 
-    // Passive health regen (BUGFIX-004 equivalent)
+    // Passive health regen — full rate while sleeping, much slower awake
     if (!sick && health < STAT_MAX) {
-        health = clampStat(health + 1)
+        if (sleeping) {
+            health = clampStat(health + 1)
+        } else if (ticksAlive % HEALTH_REGEN_AWAKE_TICK_INTERVAL == 0) {
+            health = clampStat(health + 1)
+        }
     }
 
     // Death check
@@ -219,7 +246,7 @@ fun tick(state: PetState): PetState {
                 nextPoopIntervalTicks = nextPoopIntervalTicks,
                 hungerZeroTicks = hungerZeroTicks, sick = sick,
                 alive = alive, ticksAlive = ticksAlive,
-                sleeping = sleeping, ageDays = ageDays,
+                sleeping = sleeping, ageDays = ageDays, dayTimer = dayTimer,
                 events = events,
             )
         )
@@ -238,7 +265,7 @@ fun tick(state: PetState): PetState {
         nextPoopIntervalTicks = nextPoopIntervalTicks,
         hungerZeroTicks = hungerZeroTicks, sick = sick,
         alive = alive, ticksAlive = ticksAlive,
-        sleeping = sleeping, ageDays = ageDays,
+        sleeping = sleeping, ageDays = ageDays, dayTimer = dayTimer,
         careScoreHungerSum = careScoreHungerSum,
         careScoreHappinessSum = careScoreHappinessSum,
         careScoreHealthSum = careScoreHealthSum,
@@ -254,8 +281,8 @@ fun tick(state: PetState): PetState {
 // ---------------------------------------------------------------------------
 
 private fun checkStageProgression(state: PetState): PetState {
-    val duration = STAGE_DURATION_MAP[state.stage] ?: return withDerivedFields(state)
-    if (state.ticksAlive < duration) return withDerivedFields(state)
+    val dayThreshold = EVOLUTION_DAY_THRESHOLDS[state.stage] ?: return withDerivedFields(state)
+    if (state.dayTimer < dayThreshold) return withDerivedFields(state)
     val nextStage = NEXT_STAGE_MAP[state.stage] ?: return withDerivedFields(state)
     return evolveTo(state, nextStage)
 }
@@ -297,7 +324,11 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int): PetState {
 }
 
 fun feedSnack(state: PetState): PetState {
-    val consecutiveSnacks = state.consecutiveSnacks + 1
+    if (state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE)
+        return withDerivedFields(state.copy(events = listOf("snack_refused")))
+
+    val consecutiveSnacks    = state.consecutiveSnacks + 1
+    val snacksGivenThisCycle = state.snacksGivenThisCycle + 1
     val events = mutableListOf<String>()
     var sick = state.sick
     if (consecutiveSnacks >= MAX_CONSECUTIVE_SNACKS_BEFORE_SICK && !sick) {
@@ -307,17 +338,19 @@ fun feedSnack(state: PetState): PetState {
     events.add("fed_snack")
     return withDerivedFields(
         state.copy(
-            happiness         = clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
-            weight            = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN),
-            consecutiveSnacks = consecutiveSnacks,
-            sick              = sick,
-            events            = events,
+            happiness            = clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
+            hunger               = clampStat(state.hunger    + FEED_SNACK_HUNGER_BOOST),
+            weight               = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN),
+            consecutiveSnacks    = consecutiveSnacks,
+            snacksGivenThisCycle = snacksGivenThisCycle,
+            sick                 = sick,
+            events               = events,
         )
     )
 }
 
 fun play(state: PetState): PetState {
-    if (state.energy <= 0)
+    if (state.energy < PLAY_ENERGY_COST)
         return withDerivedFields(state.copy(events = listOf("play_refused_no_energy")))
     return withDerivedFields(
         state.copy(
@@ -354,7 +387,11 @@ fun sleep(state: PetState): PetState {
 fun wake(state: PetState): PetState {
     if (!state.sleeping) return withDerivedFields(state.copy(events = listOf("already_awake")))
     return withDerivedFields(
-        state.copy(sleeping = false, ageDays = state.ageDays + 1, events = listOf("woke_up"))
+        state.copy(
+            sleeping             = false,
+            snacksGivenThisCycle = 0,
+            events               = listOf("woke_up"),
+        )
     )
 }
 
@@ -368,15 +405,14 @@ fun clean(state: PetState): PetState {
 fun giveMedicine(state: PetState): PetState {
     if (!state.sick) return withDerivedFields(state.copy(events = listOf("medicine_not_needed")))
     val doses  = state.medicineDosesGiven + 1
-    val health = clampStat(state.health + MEDICINE_HEALTH_BOOST)
     val events = mutableListOf("medicine_given")
     return if (doses >= MEDICINE_DOSES_TO_CURE) {
         events.add("cured")
         withDerivedFields(
-            state.copy(health = health, sick = false, medicineDosesGiven = 0, events = events)
+            state.copy(sick = false, medicineDosesGiven = 0, events = events)
         )
     } else {
-        withDerivedFields(state.copy(health = health, medicineDosesGiven = doses, events = events))
+        withDerivedFields(state.copy(medicineDosesGiven = doses, events = events))
     }
 }
 
@@ -447,6 +483,9 @@ fun applyOfflineDecay(state: PetState, elapsedSeconds: Int): PetState {
         state.copy(
             hunger    = clampStat(state.hunger    - min(hungerDecayTotal,    maxHungerLoss)),
             happiness = clampStat(state.happiness - min(happinessDecayTotal, maxHappinessLoss)),
+            // Treat offline time as awake (conservative — doesn't accelerate aging)
+            dayTimer  = state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier,
+            ageDays   = (state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier).toInt(),
             events    = emptyList(),
         )
     )

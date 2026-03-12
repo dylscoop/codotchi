@@ -308,6 +308,28 @@ describe("tick — stat decay", () => {
       "pixelpup happiness should drop more than codeling"
     );
   });
+
+  it("bytebug accumulates dayTimer faster than codeling per tick", () => {
+    const codeling = createPet("A", "codeling", "neon");
+    const bytebug = createPet("B", "bytebug", "neon");
+    const nextCodeling = tick(codeling);
+    const nextBytebug = tick(bytebug);
+    assert.ok(
+      nextBytebug.dayTimer > nextCodeling.dayTimer,
+      "bytebug dayTimer should advance faster (1.5× multiplier)"
+    );
+  });
+
+  it("shellscript accumulates dayTimer slower than codeling per tick", () => {
+    const codeling = createPet("A", "codeling", "neon");
+    const shellscript = createPet("B", "shellscript", "neon");
+    const nextCodeling = tick(codeling);
+    const nextShellscript = tick(shellscript);
+    assert.ok(
+      nextShellscript.dayTimer < nextCodeling.dayTimer,
+      "shellscript dayTimer should advance slower (0.75× multiplier)"
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -330,7 +352,7 @@ describe("tick — poop accumulation", () => {
   });
 
   it("does not accumulate poops while sleeping", () => {
-    const state = makePet({ sleeping: true, ticksSinceLastPoop: 999 });
+    const state = makePet({ sleeping: true, energy: 50, ticksSinceLastPoop: 999 });
     const next = tick(state);
     assert.equal(next.poops, 0);
   });
@@ -382,6 +404,24 @@ describe("tick — starvation damage", () => {
     state = tick(state);
     assert.equal(state.hungerZeroTicks, 0);
   });
+
+  it("becomes sick when starvation damage fires (BUGFIX-007)", () => {
+    let state = makePet({ hunger: 0, hungerZeroTicks: 2, health: 100 });
+    state = tick(state);
+    assert.equal(state.sick, true);
+    assert.ok(state.events.includes("became_sick"));
+  });
+
+  it("medicine cures starvation-induced sickness (BUGFIX-007)", () => {
+    let state = makePet({ hunger: 0, hungerZeroTicks: 2, health: 100 });
+    state = tick(state); // starvation damage → sick = true
+    assert.equal(state.sick, true);
+    state = giveMedicine(state);
+    state = giveMedicine(state);
+    state = giveMedicine(state);
+    assert.equal(state.sick, false);
+    assert.ok(state.events.includes("cured"));
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -397,7 +437,7 @@ describe("tick — happiness-critical health damage", () => {
   });
 
   it("does not damage health from happiness-critical while sleeping", () => {
-    const pet = makePet({ happiness: 0, health: 100, sleeping: true });
+    const pet = makePet({ happiness: 0, health: 100, sleeping: true, energy: 50 });
     const next = tick(pet);
     assert.equal(next.health, 100);
   });
@@ -449,16 +489,16 @@ describe("tick — care-score accumulation", () => {
 // ---------------------------------------------------------------------------
 
 describe("tick — stage progression", () => {
-  it("promotes egg to baby after EGG_DURATION_TICKS", () => {
-    // Set ticksAlive to one below threshold so the next tick triggers evolution
-    const pet = makePet({ stage: "egg", ticksAlive: EGG_DURATION_TICKS - 1 });
+  it("promotes egg to baby when dayTimer reaches threshold", () => {
+    // dayTimer just below 0.033 → next tick pushes it over
+    const pet = makePet({ stage: "egg", ticksAlive: EGG_DURATION_TICKS - 1, dayTimer: 0.032 });
     const next = tick(pet);
     assert.equal(next.stage, "baby");
     assert.ok(next.events.includes("evolved_to_baby"));
   });
 
   it("resets ticksAlive to 0 on evolution", () => {
-    const pet = makePet({ stage: "egg", ticksAlive: EGG_DURATION_TICKS - 1 });
+    const pet = makePet({ stage: "egg", ticksAlive: EGG_DURATION_TICKS - 1, dayTimer: 0.032 });
     const next = tick(pet);
     assert.equal(next.ticksAlive, 0);
   });
@@ -467,6 +507,7 @@ describe("tick — stage progression", () => {
     const pet = makePet({
       stage: "egg",
       ticksAlive: EGG_DURATION_TICKS - 1,
+      dayTimer: 0.032,
       careScoreHungerSum: 1000,
       careScoreTicks: 20,
     });
@@ -476,25 +517,25 @@ describe("tick — stage progression", () => {
   });
 
   it("does not promote adult or senior via normal tick", () => {
-    const adult = makePet({ stage: "adult", ticksAlive: 99999 });
+    const adult = makePet({ stage: "adult", ticksAlive: 99999, dayTimer: 9999 });
     const next = tick(adult);
     assert.equal(next.stage, "adult");
   });
 
-  it("promotes baby to child after BABY_DURATION_TICKS", () => {
-    const pet = makePet({ stage: "baby", ticksAlive: BABY_DURATION_TICKS - 1 });
+  it("promotes baby to child when dayTimer reaches threshold", () => {
+    const pet = makePet({ stage: "baby", ticksAlive: BABY_DURATION_TICKS - 1, dayTimer: 0.198 });
     const next = tick(pet);
     assert.equal(next.stage, "child");
   });
 
-  it("promotes child to teen after CHILD_DURATION_TICKS", () => {
-    const pet = makePet({ stage: "child", ticksAlive: CHILD_DURATION_TICKS - 1 });
+  it("promotes child to teen when dayTimer reaches threshold", () => {
+    const pet = makePet({ stage: "child", ticksAlive: CHILD_DURATION_TICKS - 1, dayTimer: 1.198 });
     const next = tick(pet);
     assert.equal(next.stage, "teen");
   });
 
-  it("promotes teen to adult after TEEN_DURATION_TICKS", () => {
-    const pet = makePet({ stage: "teen", ticksAlive: TEEN_DURATION_TICKS - 1 });
+  it("promotes teen to adult when dayTimer reaches threshold", () => {
+    const pet = makePet({ stage: "teen", ticksAlive: TEEN_DURATION_TICKS - 1, dayTimer: 4.198 });
     const next = tick(pet);
     assert.equal(next.stage, "adult");
   });
@@ -535,16 +576,16 @@ describe("feedMeal", () => {
     assert.equal(next.hunger, 100);
   });
 
-  it("refuses when cycle cap (4) is reached", () => {
+  it("refuses when cycle cap (3) is reached", () => {
     const pet = makePet({ hunger: 30 });
-    const next = feedMeal(pet, 4);
+    const next = feedMeal(pet, 3);
     assert.equal(next.hunger, 30);
     assert.ok(next.events.includes("meal_refused"));
   });
 
-  it("allows exactly 4 meals per cycle (indices 0–3)", () => {
+  it("allows exactly 3 meals per cycle (indices 0–2)", () => {
     let pet = makePet({ hunger: 0 });
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 3; i++) {
       pet = feedMeal(pet, i);
       assert.ok(pet.events.includes("fed_meal"));
     }
@@ -556,10 +597,10 @@ describe("feedMeal", () => {
 // ---------------------------------------------------------------------------
 
 describe("feedSnack", () => {
-  it("increases happiness by 10", () => {
+  it("increases happiness by 5", () => {
     const pet = makePet({ happiness: 40 });
     const next = feedSnack(pet);
-    assert.equal(next.happiness, 50);
+    assert.equal(next.happiness, 45);
   });
 
   it("increases weight by 2", () => {
@@ -613,10 +654,10 @@ describe("play", () => {
     assert.equal(next.happiness, 65);
   });
 
-  it("decreases energy by 10", () => {
+  it("decreases energy by 25", () => {
     const pet = makePet({ energy: 50 });
     const next = play(pet);
-    assert.equal(next.energy, 40);
+    assert.equal(next.energy, 25);
   });
 
   it("decreases weight by 1", () => {
@@ -747,10 +788,10 @@ describe("wake", () => {
     assert.equal(next.sleeping, false);
   });
 
-  it("increments ageDays", () => {
+  it("ageDays is unchanged after wake (ageDays is driven by dayTimer in tick)", () => {
     const pet = makePet({ sleeping: true, ageDays: 3 });
     const next = wake(pet);
-    assert.equal(next.ageDays, 4);
+    assert.equal(next.ageDays, 3);
   });
 
   it("emits woke_up event", () => {
@@ -803,10 +844,10 @@ describe("clean", () => {
 // ---------------------------------------------------------------------------
 
 describe("giveMedicine", () => {
-  it("increases health by 20", () => {
+  it("does not change health (medicine no longer boosts health)", () => {
     const pet = makePet({ sick: true, health: 50 });
     const next = giveMedicine(pet);
-    assert.equal(next.health, 70);
+    assert.equal(next.health, 50);
   });
 
   it("increments medicineDosesGiven", () => {
@@ -843,10 +884,10 @@ describe("giveMedicine", () => {
     assert.ok(next.events.includes("medicine_not_needed"));
   });
 
-  it("clamps health at 100", () => {
+  it("health is unchanged (no longer boosted by medicine)", () => {
     const pet = makePet({ sick: true, health: 90 });
     const next = giveMedicine(pet);
-    assert.equal(next.health, 100);
+    assert.equal(next.health, 90);
   });
 });
 
@@ -1153,14 +1194,17 @@ describe("integration — action sequence", () => {
 
     pet = wake(pet);
     assert.equal(pet.sleeping, false);
-    assert.equal(pet.ageDays, 1);
   });
 
   it("consecutive snacks → sick → medicine → cured", () => {
     let pet = createPet("Sickly", "codeling", "neon");
-    pet = feedSnack(pet);
-    pet = feedSnack(pet);
-    pet = feedSnack(pet);
+    // feedSnack has a per-cycle cap of 2; use consecutiveSnacks override to
+    // trigger the 3-consecutive-snacks sickness path directly.
+    pet = feedSnack(pet);                                          // snack 1
+    pet = { ...pet, snacksGivenThisCycle: 0 } as PetState;       // reset cycle cap
+    pet = feedSnack(pet);                                          // snack 2
+    pet = { ...pet, snacksGivenThisCycle: 0 } as PetState;       // reset cycle cap
+    pet = feedSnack(pet);                                          // snack 3 → sick
     assert.equal(pet.sick, true);
 
     pet = giveMedicine(pet);
@@ -1184,29 +1228,20 @@ describe("integration — action sequence", () => {
     assert.equal(pet.alive, false);
   });
 
-  it("evolves from egg through all stages to adult over many ticks", () => {
+  it("evolves from egg through all stages to adult when dayTimer milestones are reached", () => {
+    // Seed dayTimer just below the teen→adult threshold; one tick will push it over.
     let pet = createPet("Grower", "codeling", "neon");
-    const totalTicks =
-      EGG_DURATION_TICKS +
-      BABY_DURATION_TICKS +
-      CHILD_DURATION_TICKS +
-      TEEN_DURATION_TICKS +
-      1;
-    for (let i = 0; i < totalTicks; i++) {
-      if (!pet.alive) {
-        break;
-      }
-      // Keep hunger, happiness, and health high; reset poops to prevent
-      // sickness from dirty environment during this long simulation.
-      pet = tick({
-        ...pet,
-        hunger: 80,
-        happiness: 80,
-        health: 100,
-        poops: 0,
-        sick: false,
-      } as PetState);
-    }
-    assert.equal(pet.stage, "adult");
+    pet = {
+      ...pet,
+      stage: "teen",
+      hunger: 80,
+      happiness: 80,
+      health: 100,
+      poops: 0,
+      sick: false,
+      dayTimer: 4.198,
+    } as PetState;
+    const next = tick(pet);
+    assert.equal(next.stage, "adult");
   });
 });

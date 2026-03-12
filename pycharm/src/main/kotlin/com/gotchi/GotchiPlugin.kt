@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit
 class GotchiPlugin : Disposable {
 
     @Volatile private var currentState: PetState? = null
+    @Volatile private var currentHighScore: HighScore? = null
     @Volatile private var mealsGivenThisCycle: Int = 0
     @Volatile private var lastCodeActivityTime: Long = 0L
 
@@ -39,6 +40,9 @@ class GotchiPlugin : Disposable {
 
     fun initialize() {
         val persistence = service<GotchiPersistence>()
+
+        // Restore saved high score
+        currentHighScore = persistence.loadHighScore()
 
         // Restore saved state
         val savedState = persistence.loadPetState()
@@ -211,12 +215,37 @@ class GotchiPlugin : Disposable {
         if (state != null) {
             persistence.savePetState(state)
             persistence.mealsGivenThisCycle = meals
+
+            // Update high score when pet dies
+            if (!state.alive) {
+                val diedAt    = System.currentTimeMillis()
+                val elapsed   = if (state.spawnedAt > 0L) diedAt - state.spawnedAt else 0L
+                val prevScore = currentHighScore
+                val prevElapsed = if (prevScore != null) prevScore.diedAt - prevScore.spawnedAt else -1L
+                val isNewRecord = prevScore == null ||
+                    state.ageDays > prevScore.ageDays ||
+                    (state.ageDays == prevScore.ageDays && elapsed > prevElapsed)
+                if (isNewRecord) {
+                    val newScore = HighScore(
+                        ageDays   = state.ageDays,
+                        name      = state.name,
+                        stage     = state.stage,
+                        petType   = state.petType,
+                        color     = state.color,
+                        spawnedAt = state.spawnedAt,
+                        diedAt    = diedAt,
+                    )
+                    currentHighScore = newScore
+                    persistence.saveHighScore(newScore)
+                }
+            }
         }
         persistence.lastSaveTimestamp = System.currentTimeMillis()
 
+        val highScore = currentHighScore
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanel?.postState(state, meals)
+                browserPanel?.postState(state, meals, highScore)
                 statusWidget?.update(state)
             }
         }

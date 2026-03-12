@@ -52,19 +52,111 @@ any character looks like — it only knows petType × stage × tier → characte
 Adding a new pet type is purely additive: extend `EVOLUTION_CHARACTERS` and
 `PET_TYPE_MODIFIERS`, no logic changes.
 
-### Timeline (real-world time at default tick rate of 5s)
+### How dayTimer drives aging
 
-| Stage  | Duration         | Trigger            |
-|--------|------------------|--------------------|
-| Egg    | ~2 minutes       | Auto (ticksAlive)  |
-| Baby   | ~10 minutes      | Auto (ticksAlive)  |
-| Child  | ~1 hour          | Auto (ticksAlive)  |
-| Teen   | ~3 hours         | Auto (ticksAlive)  |
-| Adult  | Indefinite       | Manual: promoteToSenior() |
-| Senior | Until old age    | Natural death at ageDays ≥ 20 |
+`dayTimer` is a floating-point accumulator stored in `PetState`. It advances
+every tick by:
 
-`ticksAlive` resets to 0 on each evolution, so durations are relative to the
-start of the current stage, not birth.
+```
+dayTimer += agingMultiplier / TICKS_PER_GAME_DAY_AWAKE    (awake)
+dayTimer += agingMultiplier / TICKS_PER_GAME_DAY_SLEEPING  (sleeping)
+```
+
+Key constants:
+
+| Constant | Value | Notes |
+|----------|-------|-------|
+| `TICK_INTERVAL_SECONDS` | 5 s | Wall-clock time per tick |
+| `TICKS_PER_MINUTE` | 12 | |
+| `TICKS_PER_GAME_DAY_AWAKE` | 720 ticks | 1 real hour awake = 1 game day (codeling 1×) |
+| `TICKS_PER_GAME_DAY_SLEEPING` | 576 ticks | ~48 min asleep = 1 game day (~25% faster) |
+
+`ageDays` is derived as `Math.floor(dayTimer)` on every tick — it is **not**
+manual and does not require sleep/wake events to advance.
+
+Evolution is triggered in `checkStageProgression()` whenever
+`dayTimer >= EVOLUTION_DAY_THRESHOLDS[stage]`. The threshold is **cumulative**
+from birth, not relative to the start of the current stage.
+
+---
+
+### EVOLUTION_DAY_THRESHOLDS (cumulative from birth)
+
+```ts
+egg:   0.033   // hatch
+baby:  0.199   // grow to child
+child: 1.199   // grow to teen
+teen:  4.199   // grow to adult
+```
+
+Adult → Senior is not automatic: `promoteToSenior()` must be called explicitly
+(the extension calls it once at the start of each 24-hour IRL check — not yet
+wired as a scheduled call). Senior dies naturally once `ageDays >= 20` and
+health reaches 0.
+
+---
+
+### Per-stage durations (awake time only)
+
+Each stage lasts for the *difference* between consecutive thresholds, divided
+by the type's `agingMultiplier`.  Sleeping is ~25% faster so actual wall-clock
+can be shorter if the pet sleeps a lot.
+
+**Formula:**  `real_minutes = (threshold_end − threshold_start) × 60 / agingMultiplier`
+
+#### Codeling (agingMultiplier = 1.0×)
+
+| Stage | dayTimer span | Awake time |
+|-------|--------------|-----------|
+| Egg   | 0 → 0.033   | ~2 min    |
+| Baby  | 0.033 → 0.199 | ~10 min |
+| Child | 0.199 → 1.199 | ~60 min (1 hr) |
+| Teen  | 1.199 → 4.199 | ~180 min (3 hr) |
+| Adult | 4.199 → ∞   | Indefinite (manual → senior) |
+| Senior | ageDays ≥ 4 | Natural death at ageDays ≥ 20 |
+
+#### Bytebug (agingMultiplier = 1.5×, fastest)
+
+| Stage | Awake time |
+|-------|-----------|
+| Egg   | ~1.3 min  |
+| Baby  | ~6.7 min  |
+| Child | ~40 min   |
+| Teen  | ~120 min (2 hr) |
+
+#### Pixelpup (agingMultiplier = 1.25×)
+
+| Stage | Awake time |
+|-------|-----------|
+| Egg   | ~1.6 min  |
+| Baby  | ~8 min    |
+| Child | ~48 min   |
+| Teen  | ~144 min (2.4 hr) |
+
+#### Shellscript (agingMultiplier = 0.75×, slowest)
+
+| Stage | Awake time |
+|-------|-----------|
+| Egg   | ~2.7 min  |
+| Baby  | ~13 min   |
+| Child | ~80 min (1.3 hr) |
+| Teen  | ~240 min (4 hr) |
+
+---
+
+### agingMultiplier summary
+
+| Type | Multiplier | Effect on all stage durations |
+|------|-----------|------------------------------|
+| codeling | 1.0 | Baseline |
+| bytebug | 1.5 | Reaches adult in ~2/3 the time of codeling |
+| pixelpup | 1.25 | Reaches adult in ~80% the time of codeling |
+| shellscript | 0.75 | Reaches adult in ~133% the time of codeling |
+
+The multiplier applies equally to offline decay (`applyOfflineDecay`) so a
+bytebug that was closed for an hour ages as much offline as it would have awake.
+
+---
 
 ### Care Score Tiers
 

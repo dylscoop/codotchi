@@ -11,6 +11,11 @@
   <section id="setup-screen" class="screen" aria-label="New game setup">
     <h1 class="screen-title">New Gotchi</h1>
 
+    <div id="setup-high-score" class="setup-high-score hidden">
+      <p class="high-score-title">Best Run</p>
+      <p id="setup-hs-stats" class="high-score-stats"></p>
+    </div>
+
     <label class="field-label" for="pet-name">Name</label>
     <input
       id="pet-name"
@@ -85,7 +90,7 @@
     <!-- Action buttons -->
     <div class="btn-grid" aria-label="Actions">
       <button class="action-btn" id="btn-feed-meal">Feed <span id="meals-left" class="meals-left"></span></button>
-      <button class="action-btn" id="btn-feed-snack">Snack</button>
+      <button class="action-btn" id="btn-feed-snack">Snack <span id="snacks-left" class="meals-left"></span></button>
       <button class="action-btn" id="btn-play">Play</button>
       <button class="action-btn" id="btn-sleep-wake">Sleep</button>
       <button class="action-btn" id="btn-clean">Clean</button>
@@ -105,6 +110,12 @@
   <section id="dead-screen" class="screen hidden" aria-label="Pet died">
     <p class="dead-title">Your Gotchi passed away.</p>
     <p id="dead-stats" class="dead-stats"></p>
+    <p id="dead-time" class="dead-time"></p>
+    <ul id="dead-event-log" class="dead-event-log" aria-label="Final event log"></ul>
+    <div id="high-score-section" class="high-score-section hidden">
+      <p class="high-score-title">High Score</p>
+      <p id="high-score-stats" class="high-score-stats"></p>
+    </div>
     <button id="btn-restart" class="action-btn primary">New Game</button>
   </section>
 

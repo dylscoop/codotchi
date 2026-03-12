@@ -12,6 +12,7 @@ import * as path from "path";
 import * as fs from "fs";
 import {
   PetState,
+  HighScore,
   createPet,
   feedMeal,
   feedSnack,
@@ -59,7 +60,8 @@ export class SidebarProvider
     private readonly context: vscode.ExtensionContext,
     private readonly statusBar: StatusBarManager,
     private readonly onStateUpdate: StateUpdateCallback,
-    private readonly getState: () => PetState | null
+    private readonly getState: () => PetState | null,
+    private readonly getHighScore: () => HighScore | null
   ) {}
 
   /** Called by VS Code when the webview becomes visible. */
@@ -78,6 +80,23 @@ export class SidebarProvider
     };
 
     webviewView.webview.html = this.buildHtml(webviewView.webview);
+
+    // Re-send current state to the freshly-loaded webview so it has the
+    // high score even before the next tick fires.
+    const bootstrapState = this.getCurrentState();
+    const bootstrapHs    = this.getHighScore();
+    if (bootstrapState !== null) {
+      this.postState(bootstrapState, bootstrapHs);
+    } else if (bootstrapHs !== null) {
+      // No active pet but we have a high score — push it so the setup screen
+      // can display it.
+      void webviewView.webview.postMessage({
+        type: "stateUpdate",
+        state: { needs_new_game: true },
+        mealsGivenThisCycle: 0,
+        highScore: bootstrapHs,
+      });
+    }
 
     const messageListener = webviewView.webview.onDidReceiveMessage(
       (message: WebviewMessage) => {
@@ -259,9 +278,14 @@ export class SidebarProvider
    *
    * @param state - The pet state to push to the webview.
    */
-  postState(state: PetState): void {
+  postState(state: PetState, highScore: HighScore | null): void {
     if (this.webviewView) {
-      void this.webviewView.webview.postMessage({ type: "stateUpdate", state, mealsGivenThisCycle: this.mealsGivenThisCycle });
+      void this.webviewView.webview.postMessage({
+        type: "stateUpdate",
+        state,
+        mealsGivenThisCycle: this.mealsGivenThisCycle,
+        highScore,
+      });
     }
   }
 

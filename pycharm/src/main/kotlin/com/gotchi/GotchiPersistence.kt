@@ -32,6 +32,9 @@ class GotchiPersistence : PersistentStateComponent<Element> {
     /** Meals given in the current wake cycle (persisted across restarts). */
     var mealsGivenThisCycle: Int = 0
 
+    /** Raw JSON string of the all-time high score, or null if none. */
+    var highScoreJson: String? = null
+
     // ── PersistentStateComponent ───────────────────────────────────────────
 
     override fun getState(): Element {
@@ -39,6 +42,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         petStateJson?.let { el.setAttribute("petStateJson", it) }
         el.setAttribute("lastSaveTimestamp", lastSaveTimestamp.toString())
         el.setAttribute("mealsGivenThisCycle", mealsGivenThisCycle.toString())
+        highScoreJson?.let { el.setAttribute("highScoreJsonV2", it) } // v2: ageDays now driven by dayTimer
         return el
     }
 
@@ -46,6 +50,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         petStateJson        = state.getAttributeValue("petStateJson")
         lastSaveTimestamp   = state.getAttributeValue("lastSaveTimestamp")?.toLongOrNull()  ?: 0L
         mealsGivenThisCycle = state.getAttributeValue("mealsGivenThisCycle")?.toIntOrNull() ?: 0
+        highScoreJson       = state.getAttributeValue("highScoreJsonV2") // v2: ageDays now driven by dayTimer
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
@@ -69,6 +74,25 @@ class GotchiPersistence : PersistentStateComponent<Element> {
     /** Serialise [state] into [petStateJson]. */
     fun savePetState(state: PetState) {
         petStateJson = gson.toJson(toRaw(state))
+    }
+
+    // ── High score helpers ─────────────────────────────────────────────────
+
+    /**
+     * Deserialise [highScoreJson] into a [HighScore], or null if none saved.
+     */
+    fun loadHighScore(): HighScore? {
+        val json = highScoreJson ?: return null
+        return try {
+            gson.fromJson(json, HighScore::class.java)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Serialise [score] into [highScoreJson]. */
+    fun saveHighScore(score: HighScore) {
+        highScoreJson = gson.toJson(score)
     }
 
     // ── Internal raw DTO (maps 1:1 to JSON fields) ─────────────────────────
@@ -100,11 +124,15 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         val consecutiveSnacks: Int?,
         val hungerZeroTicks: Int?,
         val medicineDosesGiven: Int?,
+        val dayTimer: Double?,             // absent in saves before v1.1.0
         val careScoreHungerSum: Long?,
         val careScoreHappinessSum: Long?,
         val careScoreHealthSum: Long?,
         val careScoreTicks: Long?,
         val events: List<String>?,
+        val recentEventLog: List<String>?,  // absent in saves before v0.0.5
+        val spawnedAt: Long?,               // absent in saves before v0.0.5
+        val snacksGivenThisCycle: Int?,     // absent in saves before v0.0.5
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -138,11 +166,16 @@ class GotchiPersistence : PersistentStateComponent<Element> {
             consecutiveSnacks     = r.consecutiveSnacks     ?: 0,
             hungerZeroTicks       = r.hungerZeroTicks       ?: 0,
             medicineDosesGiven    = r.medicineDosesGiven    ?: 0,
+            // Back-compat: old saves lack dayTimer; seed from ageDays integer
+            dayTimer              = r.dayTimer              ?: (r.ageDays ?: 0).toDouble(),
             careScoreHungerSum    = r.careScoreHungerSum    ?: 0L,
             careScoreHappinessSum = r.careScoreHappinessSum ?: 0L,
             careScoreHealthSum    = r.careScoreHealthSum    ?: 0L,
             careScoreTicks        = r.careScoreTicks        ?: 0L,
             events                = emptyList(),
+            recentEventLog        = r.recentEventLog        ?: emptyList(),
+            spawnedAt             = r.spawnedAt             ?: System.currentTimeMillis(),
+            snacksGivenThisCycle  = r.snacksGivenThisCycle ?: 0,
         )
         return partial
     }
@@ -173,10 +206,32 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         consecutiveSnacks     = s.consecutiveSnacks,
         hungerZeroTicks       = s.hungerZeroTicks,
         medicineDosesGiven    = s.medicineDosesGiven,
+        dayTimer              = s.dayTimer,
         careScoreHungerSum    = s.careScoreHungerSum,
         careScoreHappinessSum = s.careScoreHappinessSum,
         careScoreHealthSum    = s.careScoreHealthSum,
         careScoreTicks        = s.careScoreTicks,
         events                = s.events,
+        recentEventLog        = s.recentEventLog,
+        spawnedAt             = s.spawnedAt,
+        snacksGivenThisCycle  = s.snacksGivenThisCycle,
     )
 }
+
+// ---------------------------------------------------------------------------
+// HighScore — persisted record of the best run
+// ---------------------------------------------------------------------------
+
+/**
+ * Summary of the best run ever recorded.
+ * Compared by ageDays; ties broken by real-world elapsed time (longer wins).
+ */
+data class HighScore(
+    val ageDays:   Int,
+    val name:      String,
+    val stage:     String,
+    val petType:   String,
+    val color:     String,
+    val spawnedAt: Long,
+    val diedAt:    Long,
+)

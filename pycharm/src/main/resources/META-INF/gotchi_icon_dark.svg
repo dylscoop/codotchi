@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <!-- Egg body (light, for dark theme) -->
+  <ellipse cx="8" cy="9" rx="5" ry="6" fill="#DDDDDD"/>
+  <!-- Eyes (pixel-art circles, dark cutout) -->
+  <circle cx="6" cy="8" r="1" fill="#2B2B2B"/>
+  <circle cx="10" cy="8" r="1" fill="#2B2B2B"/>
+  <!-- Mouth (dark cutout) -->
+  <rect x="7" y="11" width="2" height="1" fill="#2B2B2B"/>
+</svg>
