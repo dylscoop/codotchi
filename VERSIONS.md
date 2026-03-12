@@ -22,6 +22,9 @@
 | `pycharm/src/main/resources/webview/sidebar.html` | Mirrored VS Code changes: Snack badge, dead screen elements, high score section |
 | `pycharm/src/main/resources/webview/sidebar.js` | Mirrored VS Code JS changes: Play disable (BUGFIX-010), `renderDeadScreen` high score panel, message handler `highScore` pass-through |
 | `pycharm/src/main/resources/webview/sidebar.css` | Mirrored VS Code CSS changes including high score styles |
+| `pycharm/src/main/resources/META-INF/gotchi_icon.svg` | New: pixel-art gotchi face icon for light theme (tool window tab + plugin manager) |
+| `pycharm/src/main/resources/META-INF/gotchi_icon_dark.svg` | New: same icon inverted for dark theme (auto-loaded by IntelliJ when dark theme is active) |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiStatusWidget.kt` | Implemented `getClickConsumer()` — clicking the status bar widget now activates the Gotchi tool window via `ToolWindowManager` |
 
 ### New types (v0.0.5)
 
