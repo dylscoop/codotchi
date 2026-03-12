@@ -1,6 +1,41 @@
 # Version History
 
-## v0.0.4 — current (branch `bugfix/small_fixes`)
+## v0.0.5 — current (branch `bugfix/small_fixes`)
+
+### Changes from v0.0.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | Added `SNACK_MAX_PER_CYCLE = 2` and `RECENT_EVENT_LOG_MAX = 20` constants; added `recentEventLog`, `spawnedAt`, `snacksGivenThisCycle` to `PetState`; `withDerivedFields()` appends current events to `recentEventLog` (rolling last 20); `createPet()` initialises all three new fields; `feedSnack()` enforces snack cap per wake cycle (returns `"snack_refused"` when exceeded); `wake()` resets `snacksGivenThisCycle`; serialise/deserialise updated with back-compat fallbacks |
+| `vscode/media/sidebar.html` | Snack button now has a `<span id="snacks-left" class="meals-left">` badge; dead screen gains `<p id="dead-time">` and `<ul id="dead-event-log">` elements |
+| `vscode/media/sidebar.js` | `renderState()` populates `mealsLeftEl` and `snacksLeftEl` badges and disables Snack button when `snacksLeft <= 0`; `renderDeadScreen()` now shows real-life elapsed time (computed from `spawnedAt`) and the last 20 events most-recent-first |
+| `vscode/media/sidebar.css` | Added `.meals-left` badge style (shared by both Feed and Snack counters); added `.dead-time` and `.dead-event-log` / `.dead-event-log li` styles for the overhauled death screen |
+| `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt` | Added `recentEventLog: List<String>`, `spawnedAt: Long`, `snacksGivenThisCycle: Int` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Added `SNACK_MAX_PER_CYCLE = 2`, `RECENT_EVENT_LOG_MAX = 20` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Mirrored all v0.0.5 logic: `withDerivedFields` rolling log, `createPet` init, `feedSnack` cap, `wake` reset |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | `RawPetState`, `sanitise()`, `toRaw()` updated with all three new fields and back-compat fallbacks |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored VS Code changes: Snack badge + dead screen elements |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored VS Code JS changes |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored VS Code CSS changes |
+
+### New PetState fields (v0.0.5)
+
+```ts
+recentEventLog:       readonly string[]  // rolling last-20 event log (persistent across ticks)
+spawnedAt:            number             // Unix ms timestamp of pet creation
+snacksGivenThisCycle: number             // snacks given since last wake; resets on wake()
+```
+
+### New constants (v0.0.5)
+
+```ts
+SNACK_MAX_PER_CYCLE:    number = 2   // max snacks allowed per wake cycle
+RECENT_EVENT_LOG_MAX:   number = 20  // max entries kept in recentEventLog
+```
+
+---
+
+## v0.0.4 — (branch `bugfix/small_fixes`)
 
 ### Changes from v0.0.3
 
@@ -13,6 +48,9 @@
 | `vscode/tests/unit/gameEngine.test.ts` | Updated 5 tests to match new engine behaviour: play energy cost (10 → 25), medicine no longer boosts health, sleeping-while-full-energy auto-wake interaction |
 | `vscode/src/gameEngine.ts` | Starvation damage now also sets `sick = true` so medicine can cure it (BUGFIX-007) |
 | `vscode/package.json` | Version bumped `0.0.3` → `0.0.4` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Ported all v0.0.4 constant changes: `FEED_SNACK_HUNGER_BOOST = 5` added; `PLAY_ENERGY_COST` updated `10` → `25`; `MEDICINE_HEALTH_BOOST` removed; `ENERGY_DECAY_PER_TICK = 1` added; `HEALTH_REGEN_AWAKE_TICK_INTERVAL = 5` added |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Ported all v0.0.4 logic changes: energy decay while awake; starvation sets `sick = true` (BUGFIX-007); health regen uses `HEALTH_REGEN_AWAKE_TICK_INTERVAL` interval while awake; `giveMedicine()` no longer adds `MEDICINE_HEALTH_BOOST`; `feedSnack()` now also adds `FEED_SNACK_HUNGER_BOOST` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Persistent pixel-art poo sprites ported into `drawSprite()` — mirrors VS Code v0.0.4 change |
 
 ### New constants (v0.0.4)
 

@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.gotchi.pycharm-gotchi</id>
     <name>Gotchi</name>
-    <version>0.0.1</version>
+    <version>0.0.4</version>
     <vendor>gotchi</vendor>
 
     <description>Raise a virtual pixel-art pet while you code in JetBrains IDEs.</description>

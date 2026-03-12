@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.gotchi"
-version = "0.0.3"
+version = "0.0.4"
 
 repositories {
     mavenCentral()
@@ -18,7 +18,7 @@ intellij {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(17)
 }
 
 tasks {

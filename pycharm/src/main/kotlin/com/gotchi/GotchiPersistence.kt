@@ -105,6 +105,9 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         val careScoreHealthSum: Long?,
         val careScoreTicks: Long?,
         val events: List<String>?,
+        val recentEventLog: List<String>?,  // absent in saves before v0.0.5
+        val spawnedAt: Long?,               // absent in saves before v0.0.5
+        val snacksGivenThisCycle: Int?,     // absent in saves before v0.0.5
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -143,6 +146,9 @@ class GotchiPersistence : PersistentStateComponent<Element> {
             careScoreHealthSum    = r.careScoreHealthSum    ?: 0L,
             careScoreTicks        = r.careScoreTicks        ?: 0L,
             events                = emptyList(),
+            recentEventLog        = r.recentEventLog        ?: emptyList(),
+            spawnedAt             = r.spawnedAt             ?: System.currentTimeMillis(),
+            snacksGivenThisCycle  = r.snacksGivenThisCycle ?: 0,
         )
         return partial
     }
@@ -178,5 +184,8 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         careScoreHealthSum    = s.careScoreHealthSum,
         careScoreTicks        = s.careScoreTicks,
         events                = s.events,
+        recentEventLog        = s.recentEventLog,
+        spawnedAt             = s.spawnedAt,
+        snacksGivenThisCycle  = s.snacksGivenThisCycle,
     )
 }

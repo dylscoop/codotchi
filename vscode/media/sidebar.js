@@ -31,7 +31,10 @@
   const infoLine       = document.getElementById("info-line");
   const eventLog       = document.getElementById("event-log");
   const deadStats      = document.getElementById("dead-stats");
+  const deadTime       = document.getElementById("dead-time");
+  const deadEventLog   = document.getElementById("dead-event-log");
   const mealsLeftEl    = document.getElementById("meals-left");
+  const snacksLeftEl   = document.getElementById("snacks-left");
 
   const barHunger    = document.getElementById("bar-hunger");
   const barHappiness = document.getElementById("bar-happiness");
@@ -280,6 +283,24 @@
       if (btn) { btn.disabled = isSleeping; }
     });
 
+    // Meals-left badge on Feed button
+    var MEAL_MAX = 4;
+    var mealsLeft = Math.max(0, MEAL_MAX - mealsGiven);
+    if (mealsLeftEl) {
+      mealsLeftEl.textContent = mealsLeft > 0 ? mealsLeft + "" : "";
+    }
+
+    // Snacks-left badge on Snack button + disable when at limit
+    var SNACK_MAX = 2;
+    var snacksLeft = Math.max(0, SNACK_MAX - (state.snacksGivenThisCycle || 0));
+    if (snacksLeftEl) {
+      snacksLeftEl.textContent = snacksLeft > 0 ? snacksLeft + "" : "";
+    }
+    var snackBtn = document.getElementById("btn-feed-snack");
+    if (snackBtn && !isSleeping) {
+      snackBtn.disabled = snacksLeft <= 0;
+    }
+
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
       petX          = Math.max(4, Math.floor(spriteCanvas.width / 2 - 12));
@@ -396,6 +417,35 @@
     deadStats.textContent =
       state.name + " lived " + state.ageDays + " day(s).\n" +
       "Stage reached: " + state.stage + ".";
+
+    // Real-life elapsed time since spawnedAt
+    if (deadTime) {
+      var spawnedAt = state.spawnedAt || 0;
+      var elapsedMs = Date.now() - spawnedAt;
+      var totalSec  = Math.floor(elapsedMs / 1000);
+      var days      = Math.floor(totalSec / 86400);
+      var hours     = Math.floor((totalSec % 86400) / 3600);
+      var minutes   = Math.floor((totalSec % 3600)  / 60);
+      var parts = [];
+      if (days    > 0) { parts.push(days    + "d"); }
+      if (hours   > 0) { parts.push(hours   + "h"); }
+      if (minutes > 0) { parts.push(minutes + "m"); }
+      if (parts.length === 0) { parts.push("< 1m"); }
+      deadTime.textContent = "Lived for " + parts.join(" ") + " in real time";
+    }
+
+    // Recent event log (last 20 events)
+    if (deadEventLog) {
+      deadEventLog.innerHTML = "";
+      var log = state.recentEventLog || [];
+      // Show most-recent first
+      var reversed = log.slice().reverse();
+      reversed.forEach(function (text) {
+        var li = document.createElement("li");
+        li.textContent = text;
+        deadEventLog.appendChild(li);
+      });
+    }
   }
 
   // ── Sprite drawing ───────────────────────────────────────────────────────

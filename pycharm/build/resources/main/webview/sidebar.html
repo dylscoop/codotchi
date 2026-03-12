@@ -85,7 +85,7 @@
     <!-- Action buttons -->
     <div class="btn-grid" aria-label="Actions">
       <button class="action-btn" id="btn-feed-meal">Feed <span id="meals-left" class="meals-left"></span></button>
-      <button class="action-btn" id="btn-feed-snack">Snack</button>
+      <button class="action-btn" id="btn-feed-snack">Snack <span id="snacks-left" class="meals-left"></span></button>
       <button class="action-btn" id="btn-play">Play</button>
       <button class="action-btn" id="btn-sleep-wake">Sleep</button>
       <button class="action-btn" id="btn-clean">Clean</button>
@@ -105,6 +105,8 @@
   <section id="dead-screen" class="screen hidden" aria-label="Pet died">
     <p class="dead-title">Your Gotchi passed away.</p>
     <p id="dead-stats" class="dead-stats"></p>
+    <p id="dead-time" class="dead-time"></p>
+    <ul id="dead-event-log" class="dead-event-log" aria-label="Final event log"></ul>
     <button id="btn-restart" class="action-btn primary">New Game</button>
   </section>
 

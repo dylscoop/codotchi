@@ -31,7 +31,10 @@
   const infoLine       = document.getElementById("info-line");
   const eventLog       = document.getElementById("event-log");
   const deadStats      = document.getElementById("dead-stats");
+  const deadTime       = document.getElementById("dead-time");
+  const deadEventLog   = document.getElementById("dead-event-log");
   const mealsLeftEl    = document.getElementById("meals-left");
+  const snacksLeftEl   = document.getElementById("snacks-left");
 
   const barHunger    = document.getElementById("bar-hunger");
   const barHappiness = document.getElementById("bar-happiness");
@@ -280,6 +283,24 @@
       if (btn) { btn.disabled = isSleeping; }
     });
 
+    // Meals-left badge on Feed button
+    var MEAL_MAX = 4;
+    var mealsLeft = Math.max(0, MEAL_MAX - mealsGiven);
+    if (mealsLeftEl) {
+      mealsLeftEl.textContent = mealsLeft > 0 ? mealsLeft + "" : "";
+    }
+
+    // Snacks-left badge on Snack button + disable when at limit
+    var SNACK_MAX = 2;
+    var snacksLeft = Math.max(0, SNACK_MAX - (state.snacksGivenThisCycle || 0));
+    if (snacksLeftEl) {
+      snacksLeftEl.textContent = snacksLeft > 0 ? snacksLeft + "" : "";
+    }
+    var snackBtn = document.getElementById("btn-feed-snack");
+    if (snackBtn && !isSleeping) {
+      snackBtn.disabled = snacksLeft <= 0;
+    }
+
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
       petX          = Math.max(4, Math.floor(spriteCanvas.width / 2 - 12));
@@ -396,6 +417,35 @@
     deadStats.textContent =
       state.name + " lived " + state.ageDays + " day(s).\n" +
       "Stage reached: " + state.stage + ".";
+
+    // Real-life elapsed time since spawnedAt
+    if (deadTime) {
+      var spawnedAt = state.spawnedAt || 0;
+      var elapsedMs = Date.now() - spawnedAt;
+      var totalSec  = Math.floor(elapsedMs / 1000);
+      var days      = Math.floor(totalSec / 86400);
+      var hours     = Math.floor((totalSec % 86400) / 3600);
+      var minutes   = Math.floor((totalSec % 3600)  / 60);
+      var parts = [];
+      if (days    > 0) { parts.push(days    + "d"); }
+      if (hours   > 0) { parts.push(hours   + "h"); }
+      if (minutes > 0) { parts.push(minutes + "m"); }
+      if (parts.length === 0) { parts.push("< 1m"); }
+      deadTime.textContent = "Lived for " + parts.join(" ") + " in real time";
+    }
+
+    // Recent event log (last 20 events)
+    if (deadEventLog) {
+      deadEventLog.innerHTML = "";
+      var log = state.recentEventLog || [];
+      // Show most-recent first
+      var reversed = log.slice().reverse();
+      reversed.forEach(function (text) {
+        var li = document.createElement("li");
+        li.textContent = text;
+        deadEventLog.appendChild(li);
+      });
+    }
   }
 
   // ── Sprite drawing ───────────────────────────────────────────────────────
@@ -430,6 +480,38 @@
     // Ground line
     spriteCtx.fillStyle = "rgba(255,255,255,0.08)";
     spriteCtx.fillRect(0, H - 5, W, 1);
+
+    // Persistent poo sprites — drawn before the pet so they sit on the floor
+    // 6×7 pixel art: 1 = dark brown, 2 = light brown highlight
+    var POO_PIXELS = [
+      [0,0,1,1,0,0],
+      [0,1,1,1,1,0],
+      [1,1,2,1,1,1],
+      [1,2,1,1,1,1],
+      [0,1,1,1,1,0],
+      [0,1,1,1,1,0],
+      [1,1,1,1,1,1],
+    ];
+    var PS = 2;                            // 2px per pixel → 12×14 total
+    var pW = POO_PIXELS[0].length * PS;
+    var pH = POO_PIXELS.length    * PS;
+    var pooGroundY = H - 4 - pH;           // sit just above the ground line
+    var pooXPositions = [
+      Math.round(W * 0.12),
+      Math.round(W * 0.52),
+      Math.round(W * 0.78),
+    ];
+    var numPoos = Math.min(state.poops || 0, 3);
+    for (var pi = 0; pi < numPoos; pi++) {
+      var pooX = pooXPositions[pi];
+      POO_PIXELS.forEach(function (row, ry) {
+        row.forEach(function (cell, rx) {
+          if (!cell) { return; }
+          spriteCtx.fillStyle = cell === 2 ? "#A0522D" : "#6B3A2A";
+          spriteCtx.fillRect(pooX + rx * PS, pooGroundY + ry * PS, PS, PS);
+        });
+      });
+    }
 
     // Body size scales with stage
     const stageScale = STAGE_SCALES[state.stage] || 0.5;

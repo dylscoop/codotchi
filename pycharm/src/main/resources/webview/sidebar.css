@@ -229,6 +229,14 @@ body.font-large  { font-size: 16px; }
 .bar-fill.health.health-mid   { background: #ff9800; }  /* 30–60 — caution  */
 .bar-fill.health.health-low   { background: #e53935; }  /* < 30  — critical */
 
+/* ── Meals/snacks remaining badge on action buttons ── */
+.meals-left {
+  display: inline-block;
+  font-size: 0.75em;
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
 /* ── Info line ── */
 .info-line {
   font-size: 0.83em;
@@ -291,5 +299,28 @@ body.font-large  { font-size: 16px; }
   opacity: 0.7;
   text-align: center;
   line-height: 1.6;
+  margin-bottom: 4px;
+}
+
+.dead-time {
+  font-size: 0.83em;
+  opacity: 0.6;
+  text-align: center;
   margin-bottom: 8px;
+}
+
+.dead-event-log {
+  list-style: none;
+  max-height: 100px;
+  overflow-y: auto;
+  font-size: 0.80em;
+  opacity: 0.65;
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 4px 6px;
+  margin-bottom: 8px;
+}
+
+.dead-event-log li {
+  padding: 1px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
 }

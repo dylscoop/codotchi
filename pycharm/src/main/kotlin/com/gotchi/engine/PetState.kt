@@ -52,4 +52,13 @@ data class PetState(
 
     // Events emitted during the last action (cleared on each new action)
     val events: List<String>,
+
+    // Persistent rolling log of the last 20 events (survives across actions)
+    val recentEventLog: List<String>,
+
+    /** Unix ms timestamp when this pet was first created. */
+    val spawnedAt: Long,
+
+    /** Snacks given in the current wake cycle (resets on wake/createPet). */
+    val snacksGivenThisCycle: Int,
 )

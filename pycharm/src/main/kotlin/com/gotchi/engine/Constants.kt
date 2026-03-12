@@ -31,6 +31,10 @@ const val CRITICAL_HEALTH_DAMAGE_PER_TICK: Int = 5
 
 const val MAX_CONSECUTIVE_SNACKS_BEFORE_SICK: Int = 3
 const val MAX_UNCLEANED_POOPS_BEFORE_SICK: Int = 3
+/** Maximum snacks allowed per wake cycle before further snacks are refused. */
+const val SNACK_MAX_PER_CYCLE: Int = 2
+/** Maximum number of events kept in recentEventLog. */
+const val RECENT_EVENT_LOG_MAX: Int = 20
 const val POOP_TICKS_INTERVAL: Int = 20 * TICKS_PER_MINUTE
 
 const val FEED_MEAL_HUNGER_BOOST: Int = 20
@@ -38,14 +42,20 @@ const val FEED_MEAL_WEIGHT_GAIN: Int = 1
 const val FEED_MEAL_MAX_PER_CYCLE: Int = 4
 
 const val FEED_SNACK_HAPPINESS_BOOST: Int = 10
+const val FEED_SNACK_HUNGER_BOOST: Int = 5
 const val FEED_SNACK_WEIGHT_GAIN: Int = 2
 
 const val PLAY_HAPPINESS_BOOST: Int = 15
-const val PLAY_ENERGY_COST: Int = 10
+const val PLAY_ENERGY_COST: Int = 25
 const val PLAY_WEIGHT_LOSS: Int = 1
 
-const val MEDICINE_HEALTH_BOOST: Int = 20
+/** Passive energy drain per tick while awake. */
+const val ENERGY_DECAY_PER_TICK: Int = 1
+
 const val MEDICINE_DOSES_TO_CURE: Int = 3
+
+/** Ticks between passive health regen pulses while awake (1 hp per interval). */
+const val HEALTH_REGEN_AWAKE_TICK_INTERVAL: Int = 5
 
 const val DISCIPLINE_BOOST_PER_ACTION: Int = 10
 

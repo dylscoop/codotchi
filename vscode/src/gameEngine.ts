@@ -52,6 +52,12 @@ const CRITICAL_HEALTH_DAMAGE_PER_TICK: number = 5;
 
 const MAX_CONSECUTIVE_SNACKS_BEFORE_SICK: number = 3;
 const MAX_UNCLEANED_POOPS_BEFORE_SICK: number = 3;
+
+/** Maximum snacks allowed per wake cycle before further snacks are refused. */
+export const SNACK_MAX_PER_CYCLE: number = 2;
+
+/** Maximum number of events kept in recentEventLog. */
+const RECENT_EVENT_LOG_MAX: number = 20;
 /** Ticks between droppings (≈ 20 real minutes). */
 const POOP_TICKS_INTERVAL: number = 20 * TICKS_PER_MINUTE;
 
@@ -292,6 +298,15 @@ export interface PetState {
 
   // Events emitted during the last action (cleared on each new action)
   readonly events: readonly string[];
+
+  // Persistent rolling log of the last 20 events (survives across actions)
+  readonly recentEventLog: readonly string[];
+
+  /** Unix ms timestamp when this pet was first created (spawnedAt). */
+  readonly spawnedAt: number;
+
+  /** Snacks given in the current wake cycle (resets on wake/createPet). */
+  readonly snacksGivenThisCycle: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -508,6 +523,9 @@ export function createPet(name: string, petType: string, color: string): PetStat
     careScoreHealthSum: 0,
     careScoreTicks: 0,
     events: [],
+    recentEventLog: [],
+    spawnedAt: Date.now(),
+    snacksGivenThisCycle: 0,
   };
 
   return withDerivedFields(partial);
@@ -529,7 +547,11 @@ function withDerivedFields(
   const careScore = computeCareScore(partial as PetState);
   const mood = moodFromStats(partial.hunger, partial.happiness, partial.health, partial.sleeping);
   const sprite = `${partial.stage}_${mood}`;
-  return { ...partial, careScore: Math.round(careScore * 10000) / 10000, mood, sprite };
+  // Append current events to the rolling log (capped at RECENT_EVENT_LOG_MAX)
+  const newLog = (partial.events as string[]).length > 0
+    ? [...(partial.recentEventLog as string[]), ...(partial.events as string[])].slice(-RECENT_EVENT_LOG_MAX)
+    : partial.recentEventLog;
+  return { ...partial, careScore: Math.round(careScore * 10000) / 10000, mood, sprite, recentEventLog: newLog };
 }
 
 // ---------------------------------------------------------------------------
@@ -788,13 +810,20 @@ export function feedMeal(state: PetState, mealsGivenThisCycle: number): PetState
 /**
  * Give the pet a snack.
  *
- * Three consecutive snacks trigger sickness.
+ * If the cycle cap (SNACK_MAX_PER_CYCLE) is exceeded the action is a no-op
+ * and a "snack_refused" event is emitted.  Three consecutive snacks trigger
+ * sickness.
  *
  * @param state - The current pet state.
  * @returns A new PetState after the action.
  */
 export function feedSnack(state: PetState): PetState {
+  if (state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE) {
+    return withDerivedFields({ ...state, events: ["snack_refused"] });
+  }
+
   const consecutiveSnacks = state.consecutiveSnacks + 1;
+  const snacksGivenThisCycle = state.snacksGivenThisCycle + 1;
   const events: string[] = [];
   let sick = state.sick;
 
@@ -810,6 +839,7 @@ export function feedSnack(state: PetState): PetState {
     happiness: clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
     weight: clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN),
     consecutiveSnacks,
+    snacksGivenThisCycle,
     sick,
     events,
   });
@@ -907,6 +937,7 @@ export function wake(state: PetState): PetState {
     ...state,
     sleeping: false,
     ageDays: state.ageDays + 1,
+    snacksGivenThisCycle: 0,
     events: ["woke_up"],
   });
 }
@@ -1175,6 +1206,9 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     sprite: state.sprite,
     careScore: state.careScore,
     events: state.events,
+    recentEventLog: state.recentEventLog,
+    spawnedAt: state.spawnedAt,
+    snacksGivenThisCycle: state.snacksGivenThisCycle,
   };
 }
 
@@ -1194,6 +1228,8 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     typeof data[key] === "number" ? (data[key] as number) : fallback;
   const getBool = (key: string, fallback: boolean): boolean =>
     typeof data[key] === "boolean" ? (data[key] as boolean) : fallback;
+  const getStringArray = (key: string): readonly string[] =>
+    Array.isArray(data[key]) ? (data[key] as string[]) : [];
 
   const partial: Omit<PetState, "mood" | "sprite" | "careScore"> = {
     name: getString("name", "Gotchi"),
@@ -1227,6 +1263,10 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     careScoreHealthSum: getNumber("careScoreHealthSum", 0),
     careScoreTicks: getNumber("careScoreTicks", 0),
     events: [],
+    // Back-compat: old saves won't have these fields.
+    recentEventLog: getStringArray("recentEventLog"),
+    spawnedAt: getNumber("spawnedAt", Date.now()),
+    snacksGivenThisCycle: getNumber("snacksGivenThisCycle", 0),
   };
 
   return withDerivedFields(partial);

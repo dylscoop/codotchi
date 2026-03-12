@@ -29,3 +29,6 @@ Thumbs.db
 # Editor directories
 .vscode/settings.json
 .vscode/launch.json
+
+# Gradle local cache (machine-specific, auto-regenerated)
+pycharm/.gradle/

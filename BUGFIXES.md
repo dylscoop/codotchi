@@ -116,3 +116,45 @@ no way to stop the health drain short of feeding the pet back above 0.
 `sick = true` and push `"became_sick"`. This unifies starvation-induced illness
 under the same `sick` flag used by all other sickness sources, so medicine works
 identically.
+
+---
+
+## BUGFIX-008 — Snacks have no per-cycle limit
+
+**Status:** Fixed (branch `bugfix/small_fixes`)
+**Files:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`,
+`pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt`
+
+**Problem:** Meals were capped at `MEALS_MAX_PER_CYCLE = 3` per wake cycle, but
+snacks had no equivalent cap. A player could feed unlimited snacks per cycle,
+bypassing the intended pacing of the hunger/happiness economy.
+
+**Fix:** Added `SNACK_MAX_PER_CYCLE = 2` constant and `snacksGivenThisCycle`
+counter to `PetState`. `feedSnack()` returns `"snack_refused"` when the cap is
+reached. The counter resets to `0` in `wake()` and `createPet()`, mirroring the
+existing meal-cycle pattern.
+
+---
+
+## BUGFIX-009 — Death screen shows no useful post-mortem information
+
+**Status:** Fixed (branch `bugfix/small_fixes`)
+**Files:** `vscode/media/sidebar.html`, `vscode/media/sidebar.js`, `vscode/media/sidebar.css`,
+`vscode/src/gameEngine.ts`, `pycharm/src/main/resources/webview/sidebar.html`,
+`pycharm/src/main/resources/webview/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.css`,
+`pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt`,
+`pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`,
+`pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt`
+
+**Problem:** The death screen only displayed the pet's name, stage, and age in
+days. There was no indication of how long the pet lived in real-world time, and
+no record of what events led up to its death.
+
+**Fix:**
+- Added `spawnedAt` (Unix ms) to `PetState`, set on `createPet()`, persisted and
+  back-compat-fallback in deserialise/sanitise.
+- Added `recentEventLog` (rolling last-20 events) to `PetState`, appended in
+  `withDerivedFields()` from every state-producing function.
+- The death screen now renders: real-life elapsed time since spawn (days / hours /
+  minutes, computed from `Date.now() - state.spawnedAt`) and the last 20 events
+  in most-recent-first order.
