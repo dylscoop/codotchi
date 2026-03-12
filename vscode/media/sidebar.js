@@ -312,12 +312,7 @@
       snackBtn.disabled = snacksLeft <= 0;
     }
 
-    // Play button disabled when energy is too low to play (BUGFIX-010)
-    var PLAY_ENERGY_COST = 25;
-    var playBtn = document.getElementById("btn-play");
-    if (playBtn && !isSleeping) {
-      playBtn.disabled = state.energy < PLAY_ENERGY_COST;
-    }
+
 
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
@@ -330,7 +325,7 @@
     // Hand off to animation loop — it owns all drawing
     lastState = state;
 
-    appendEvents(state.events || []);
+    appendEvents(state.events || [], state.name);
 
     // Spawn poo animation when the pet poops
     if ((state.events || []).indexOf("pooped") !== -1) { spawnPooAnim(); }
@@ -370,11 +365,53 @@
   }
 
   /** Append new event strings to the scrollable event log. */
-  function appendEvents(events) {
+  function humaniseEvent(code, name) {
+    var n = name || "Gotchi";
+    var labels = {
+      "auto_woke_up":           n + " woke up automatically.",
+      "pooped":                  n + " pooped!",
+      "became_sick":             n + " got sick!",
+      "sickness_damage":         n + " is losing health from being sick!",
+      "starvation_damage":       n + " is starving and losing health!",
+      "unhappiness_damage":      n + " is miserable and losing health!",
+      "died":                    n + " passed away...",
+      "fed_snack":               n + " had a snack.",
+      "cured":                   n + " recovered!",
+      "meal_refused":            n + " refused the meal.",
+      "fed_meal":                n + " ate a meal.",
+      "snack_refused":           n + " refused the snack.",
+      "play_refused_no_energy":  n + " doesn't have enough energy to play!",
+      "played":                  n + " played!",
+      "already_sleeping":        n + " is already asleep.",
+      "fell_asleep":             n + " fell asleep.",
+      "already_awake":           n + " is already awake.",
+      "woke_up":                 n + " woke up.",
+      "already_clean":           "Already clean!",
+      "cleaned":                 "Cleaned up " + n + "'s mess.",
+      "medicine_not_needed":     n + " isn't sick.",
+      "medicine_given":          "Gave " + n + " medicine.",
+      "scolded":                 n + " was scolded.",
+      "praised":                 n + " was praised!",
+      "code_activity_rewarded":  n + " felt stimulated!",
+      "evolved_to_senior":       n + " reached their senior years!",
+      "died_of_old_age":         n + " passed away of old age...",
+    };
+    if (labels[code]) { return labels[code]; }
+    if (code.indexOf("evolved_to_") === 0) {
+      var stage = code.slice("evolved_to_".length);
+      return n + " evolved into " + stage + "!";
+    }
+    if (code.indexOf("minigame_") === 0) {
+      return n + " played a mini-game.";
+    }
+    return code;
+  }
+
+  function appendEvents(events, petName) {
     if (!events.length) { return; }
     events.forEach(function (text) {
       const li = document.createElement("li");
-      li.textContent = text;
+      li.textContent = humaniseEvent(text, petName);
       eventLog.insertBefore(li, eventLog.firstChild);
     });
     // Trim log to last 20 entries

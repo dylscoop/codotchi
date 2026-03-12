@@ -223,6 +223,7 @@ fun tick(state: PetState): PetState {
     // Sickness health drain
     if (sick) {
         health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
+        events.add("sickness_damage")
     }
 
     // Passive health regen — full rate while sleeping, much slower awake
@@ -271,6 +272,8 @@ fun tick(state: PetState): PetState {
         careScoreHealthSum = careScoreHealthSum,
         careScoreTicks = careScoreTicks,
         events = events,
+        // Reset snack counter on auto-wake (mirrors the reset in wake())
+        snacksGivenThisCycle = if (events.contains("auto_woke_up")) 0 else state.snacksGivenThisCycle,
     )
 
     return checkStageProgression(afterDecay)

@@ -724,6 +724,7 @@ export function tick(state: PetState): PetState {
   // Sickness health drain
   if (sick) {
     health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
+    events.push("sickness_damage");
   }
 
   // BUGFIX-004: passive health regen — full rate while sleeping, much slower awake
@@ -761,6 +762,8 @@ export function tick(state: PetState): PetState {
     hungerZeroTicks, sick, alive, ticksAlive, sleeping, ageDays, dayTimer,
     careScoreHungerSum, careScoreHappinessSum, careScoreHealthSum, careScoreTicks,
     events,
+    // Reset snack counter on auto-wake (mirrors the reset in wake())
+    snacksGivenThisCycle: events.includes("auto_woke_up") ? 0 : state.snacksGivenThisCycle,
   };
 
   // Stage progression

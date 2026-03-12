@@ -1,6 +1,19 @@
 # Version History
 
-## v0.1.0 — current (branch `bugfix/small_fixes`)
+## v0.1.1 — current
+
+### Changes from v0.1.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | `sickness_damage` event pushed each tick the sick health drain fires; snacks reset to 0 on `auto_woke_up` in `tick()` |
+| `vscode/media/sidebar.js` | Added `humaniseEvent()` — all event log entries now show human-readable text using the pet's name; removed client-side play-button energy disable (engine `play_refused_no_energy` event handles it instead, showing e.g. "Buddy doesn't have enough energy to play!") |
+| `pycharm/.../GameEngine.kt` | Mirrored `sickness_damage` event and snack reset on auto-wake |
+| `pycharm/.../sidebar.js` | Mirrored all sidebar.js changes |
+
+---
+
+## v0.1.0
 
 ### Changes from v0.1.0
 
