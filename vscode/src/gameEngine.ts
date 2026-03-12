@@ -622,10 +622,14 @@ export function tick(state: PetState): PetState {
     hungerZeroTicks = 0;
   }
 
-  // Starvation damage
+  // Starvation damage — also triggers sickness so medicine can cure it
   if (hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK) {
     health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
     events.push("starvation_damage");
+    if (!sick) {
+      sick = true;
+      events.push("became_sick");
+    }
   }
 
   // Happiness-critical health drain

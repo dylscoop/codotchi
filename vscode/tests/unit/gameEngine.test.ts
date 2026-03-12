@@ -382,6 +382,24 @@ describe("tick — starvation damage", () => {
     state = tick(state);
     assert.equal(state.hungerZeroTicks, 0);
   });
+
+  it("becomes sick when starvation damage fires (BUGFIX-007)", () => {
+    let state = makePet({ hunger: 0, hungerZeroTicks: 2, health: 100 });
+    state = tick(state);
+    assert.equal(state.sick, true);
+    assert.ok(state.events.includes("became_sick"));
+  });
+
+  it("medicine cures starvation-induced sickness (BUGFIX-007)", () => {
+    let state = makePet({ hunger: 0, hungerZeroTicks: 2, health: 100 });
+    state = tick(state); // starvation damage → sick = true
+    assert.equal(state.sick, true);
+    state = giveMedicine(state);
+    state = giveMedicine(state);
+    state = giveMedicine(state);
+    assert.equal(state.sick, false);
+    assert.ok(state.events.includes("cured"));
+  });
 });
 
 // ---------------------------------------------------------------------------

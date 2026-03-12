@@ -99,3 +99,20 @@ compile errors in `vscode/src/`.
 
 **Fix:** Added `"typeRoots": ["./node_modules/@types"]` to `vscode/tsconfig.json`
 to pin type resolution to `vscode/node_modules` only.
+
+---
+
+## BUGFIX-007 — Starvation sickness cannot be cured with medicine
+
+**Status:** Fixed (branch `bugfix/small_fixes`)
+**File:** `vscode/src/gameEngine.ts`
+
+**Problem:** When `hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK`, the
+`tick()` function dealt direct health damage but never set `sick = true`. As a
+result `giveMedicine()` returned `medicine_not_needed` for a starving pet, leaving
+no way to stop the health drain short of feeding the pet back above 0.
+
+**Fix:** In the starvation damage block, if the pet is not already sick, set
+`sick = true` and push `"became_sick"`. This unifies starvation-induced illness
+under the same `sick` flag used by all other sickness sources, so medicine works
+identically.
