@@ -17,6 +17,10 @@
 | `pycharm/build.gradle.kts` | Version `0.1.1` → `0.1.2` |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | Version `0.1.1` → `0.1.2` |
 | `README.md` | Version reference `v0.1.1` → `v0.1.2` |
+| `vscode/media/sidebar.js` | BUGFIX-011: added `pendingNewGame` flag — Hatch! now always transitions to game screen; BUGFIX-012: `hasActiveGame` cleared to `false` on death so Continue is hidden after pet dies |
+| `vscode/media/sidebar.html` | Continue button moved above "New Gotchi" heading |
+| `pycharm/.../sidebar.js` | Mirrored BUGFIX-011 and BUGFIX-012 sidebar.js changes |
+| `pycharm/.../sidebar.html` | Continue button moved above "New Gotchi" heading |
 
 ---
 
