@@ -54,7 +54,7 @@ const MAX_CONSECUTIVE_SNACKS_BEFORE_SICK: number = 3;
 const MAX_UNCLEANED_POOPS_BEFORE_SICK: number = 3;
 
 /** Maximum snacks allowed per wake cycle before further snacks are refused. */
-export const SNACK_MAX_PER_CYCLE: number = 2;
+export const SNACK_MAX_PER_CYCLE: number = 3;
 
 /** Maximum number of events kept in recentEventLog. */
 const RECENT_EVENT_LOG_MAX: number = 20;
@@ -65,7 +65,7 @@ const FEED_MEAL_HUNGER_BOOST: number = 20;
 const FEED_MEAL_WEIGHT_GAIN: number = 1;
 const FEED_MEAL_MAX_PER_CYCLE: number = 4;
 
-const FEED_SNACK_HAPPINESS_BOOST: number = 10;
+const FEED_SNACK_HAPPINESS_BOOST: number = 5;
 const FEED_SNACK_HUNGER_BOOST: number = 5;
 const FEED_SNACK_WEIGHT_GAIN: number = 2;
 
@@ -142,6 +142,12 @@ interface PetTypeModifiers {
    * 0.0 = perfectly regular; 0.9 = highly unpredictable.
    */
   readonly poopIntervalVolatility: number;
+  /**
+   * Multiplier applied to the dayTimer increment each tick (and in offline
+   * decay).  Values > 1.0 make the pet age faster in real time; values < 1.0
+   * make it age slower.  1.0 is the Codeling baseline.
+   */
+  readonly agingMultiplier: number;
 }
 
 const PET_TYPE_MODIFIERS: Record<string, PetTypeModifiers> = {
@@ -156,6 +162,7 @@ const PET_TYPE_MODIFIERS: Record<string, PetTypeModifiers> = {
     energyRegenMultiplier: 1.0,
     poopIntervalMultiplier: 0.75,
     poopIntervalVolatility: 0.5,
+    agingMultiplier: 1.0,
   },
   /**
    * Bytebug — eats fast, digests fast.
@@ -169,6 +176,7 @@ const PET_TYPE_MODIFIERS: Record<string, PetTypeModifiers> = {
     energyRegenMultiplier: 1.2,
     poopIntervalMultiplier: 0.4,
     poopIntervalVolatility: 0.8,
+    agingMultiplier: 1.5,
   },
   /**
    * Pixelpup — active and social, irregular bathroom habits.
@@ -181,6 +189,7 @@ const PET_TYPE_MODIFIERS: Record<string, PetTypeModifiers> = {
     energyRegenMultiplier: 1.0,
     poopIntervalMultiplier: 0.6,
     poopIntervalVolatility: 0.7,
+    agingMultiplier: 1.25,
   },
   /**
    * Shellscript — slow metabolism, very regular.
@@ -194,6 +203,7 @@ const PET_TYPE_MODIFIERS: Record<string, PetTypeModifiers> = {
     energyRegenMultiplier: 1.0,
     poopIntervalMultiplier: 1.0,
     poopIntervalVolatility: 0.2,
+    agingMultiplier: 0.75,
   },
 };
 
@@ -666,7 +676,8 @@ export function tick(state: PetState): PetState {
   // Advance day timer — use sleepingAtTickStart to avoid mid-tick flip affecting the rate
   const dayTimer =
     state.dayTimer +
-    (sleepingAtTickStart ? 1 / TICKS_PER_GAME_DAY_SLEEPING : 1 / TICKS_PER_GAME_DAY_AWAKE);
+    (sleepingAtTickStart ? 1 / TICKS_PER_GAME_DAY_SLEEPING : 1 / TICKS_PER_GAME_DAY_AWAKE)
+    * modifiers.agingMultiplier;
   ageDays = Math.floor(dayTimer);
 
   // Poop accumulation — interval is per-type and resampled with high volatility
@@ -760,12 +771,12 @@ export function tick(state: PetState): PetState {
 // Stage progression (internal)
 // ---------------------------------------------------------------------------
 
-/** Map from stage name to its tick duration. */
-const STAGE_DURATION_MAP: Record<string, number> = {
-  egg: EGG_DURATION_TICKS,
-  baby: BABY_DURATION_TICKS,
-  child: CHILD_DURATION_TICKS,
-  teen: TEEN_DURATION_TICKS,
+/** Map from stage name to the cumulative dayTimer threshold to evolve out of it. */
+const EVOLUTION_DAY_THRESHOLDS: Record<string, number> = {
+  egg:   0.033,  // ≈ tick 24 for codeling 1× (~2 min awake)
+  baby:  0.199,  // ≈ tick 144 cumulative for codeling 1× (~12 min)
+  child: 1.199,  // ≈ tick 864 cumulative for codeling 1× (~72 min)
+  teen:  4.199,  // ≈ tick 3024 cumulative for codeling 1× (~252 min)
 };
 
 /** Map from stage name to the next stage. */
@@ -777,23 +788,27 @@ const NEXT_STAGE_MAP: Record<string, string> = {
 };
 
 /**
- * Promote the pet to the next life stage if its duration has elapsed.
+ * Promote the pet to the next life stage if its cumulative dayTimer has
+ * reached the threshold for the current stage.
  *
  * @param partial - State without derived fields.
- * @returns Complete PetState, evolved if duration threshold was reached.
+ * @returns Complete PetState, evolved if the dayTimer threshold was reached.
  */
 function checkStageProgression(
   partial: Omit<PetState, "mood" | "sprite" | "careScore">
 ): PetState {
-  const duration = STAGE_DURATION_MAP[partial.stage];
-  if (duration === undefined) {
+  const dayThreshold = EVOLUTION_DAY_THRESHOLDS[partial.stage];
+  if (dayThreshold === undefined) {
     return withDerivedFields(partial);
   }
-  if (partial.ticksAlive < duration) {
+  if (partial.dayTimer < dayThreshold) {
     return withDerivedFields(partial);
   }
 
   const nextStage = NEXT_STAGE_MAP[partial.stage];
+  if (nextStage === undefined) {
+    return withDerivedFields(partial);
+  }
   return evolveTo(partial, nextStage);
 }
 
@@ -1207,8 +1222,8 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
     ticksSinceLastPoop,
     nextPoopIntervalTicks,
     // Treat offline time as awake (conservative — doesn't accelerate aging)
-    dayTimer: state.dayTimer + elapsedTicks / TICKS_PER_GAME_DAY_AWAKE,
-    ageDays: Math.floor(state.dayTimer + elapsedTicks / TICKS_PER_GAME_DAY_AWAKE),
+    dayTimer: state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier,
+    ageDays: Math.floor(state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier),
     events: [],
   });
 }

@@ -1,36 +1,51 @@
 # Version History
 
-## v1.1.0 — current (branch `bugfix/small_fixes`)
+## v0.1.0 — current (branch `bugfix/small_fixes`)
 
 ### Changes from v1.0.0
 
 | File | What changed |
 |------|-------------|
-| `vscode/src/gameEngine.ts` | Added `TICKS_PER_GAME_DAY_AWAKE = 720` and `TICKS_PER_GAME_DAY_SLEEPING = 576` constants; added `dayTimer: number` field to `PetState`; `tick()` now captures `sleepingAtTickStart` and advances `dayTimer` each tick (÷720 awake, ÷576 sleeping), then derives `ageDays = Math.floor(dayTimer)`; removed manual `ageDays += 1` from auto-wake block; `wake()` no longer increments `ageDays`; `applyOfflineDecay()` advances `dayTimer` by `elapsedTicks / TICKS_PER_GAME_DAY_AWAKE`; `createPet()` initialises `dayTimer: 0`; `serialiseState()` / `deserialiseState()` updated with back-compat fallback `dayTimer = getNumber("dayTimer", getNumber("ageDays", 0))` |
-| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Added `TICKS_PER_GAME_DAY_AWAKE` and `TICKS_PER_GAME_DAY_SLEEPING` |
-| `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt` | Added `dayTimer: Double` field |
-| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Mirrored all day timer changes from TS: `sleepingAtTickStart`, `dayTimer` advancement, `ageDays = dayTimer.toInt()`; removed `ageDays += 1` from auto-wake; `wake()` no longer increments `ageDays`; `applyOfflineDecay()` advances `dayTimer`; `createPet()` initialises `dayTimer = 0.0` |
-| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | Added `dayTimer: Double?` to `RawPetState`; `sanitise()` back-compat fallback `dayTimer = r.dayTimer ?: r.ageDays.toDouble()`; `toRaw()` serialises `dayTimer` |
-| `pycharm/src/main/resources/META-INF/plugin.xml` | Replaced single-line `<description>` with full `<![CDATA[...]]>` HTML block covering overview, Features, Care Actions, Pet Types, and Getting Started |
+| `vscode/src/gameEngine.ts` | Added `agingMultiplier` to `PetTypeModifiers`; replaced `STAGE_DURATION_MAP` with `EVOLUTION_DAY_THRESHOLDS`; `checkStageProgression()` now gates on `dayTimer` instead of `ticksAlive`; `tick()` increments `dayTimer` by `agingMultiplier / TICKS_PER_DAY`; `applyOfflineDecay()` uses `agingMultiplier` for `dayTimer` advance; `SNACK_MAX_PER_CYCLE` raised `2 → 3`; `FEED_SNACK_HAPPINESS_BOOST` halved `10 → 5` |
+| `vscode/media/sidebar.js` | Info-line now shows pet type: `Age: Xd \| stage \| Type \| N poops` |
+| `vscode/tests/unit/gameEngine.test.ts` | Updated stage-progression tests to seed `dayTimer`; added 2 new dayTimer multiplier tests (bytebug faster, shellscript slower); updated `feedSnack` happiness assertion `50 → 45` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Mirrored all engine constant changes: `agingMultiplier` per type, `EVOLUTION_DAY_THRESHOLDS`, `SNACK_MAX_PER_CYCLE = 3`, `FEED_SNACK_HAPPINESS_BOOST = 5` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Mirrored `checkStageProgression()`, `tick()` dayTimer line, `applyOfflineDecay()` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Info-line mirrored from VS Code: shows pet type |
+| `vscode/package.json` | Version `1.0.0` → `0.1.0` |
+| `pycharm/build.gradle.kts` | Version `1.0.0` → `0.1.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version `1.0.0` → `0.1.0` |
 
-### New PetState fields (v1.1.0)
+### `agingMultiplier` values (v0.1.0)
+
+| Type | Multiplier | Effect |
+|------|-----------|--------|
+| codeling | 1.0 | baseline |
+| bytebug | 1.5 | ages 1.5× faster |
+| pixelpup | 1.25 | ages 1.25× faster |
+| shellscript | 0.75 | ages 0.75× slower |
+
+### `EVOLUTION_DAY_THRESHOLDS` (v0.1.0, replaces `STAGE_DURATION_MAP`)
 
 ```ts
-dayTimer: number   // monotonically-increasing fractional day counter; ageDays = Math.floor(dayTimer)
+const EVOLUTION_DAY_THRESHOLDS: Record<string, number> = {
+  egg:   0.033,  // ≈ tick 24 for codeling 1× (~2 min awake)
+  baby:  0.199,  // ≈ tick 144 cumulative for codeling 1× (~12 min)
+  child: 1.199,  // ≈ tick 864 cumulative for codeling 1× (~72 min)
+  teen:  4.199,  // ≈ tick 3024 cumulative for codeling 1× (~252 min)
+};
 ```
 
-### New constants (v1.1.0)
+### Updated constants (v0.1.0)
 
 ```ts
-TICKS_PER_GAME_DAY_AWAKE:    number = 720   // 1 hr awake = 1 game day  (60 min × 12 ticks/min)
-TICKS_PER_GAME_DAY_SLEEPING: number = 576   // ~48 min asleep = 1 game day  (~25% faster)
+SNACK_MAX_PER_CYCLE:         number = 3   // raised from 2; max snacks per wake cycle
+FEED_SNACK_HAPPINESS_BOOST:  number = 5   // halved from 10; happiness gained per snack
 ```
 
 ---
 
-## v1.0.0 — (branch `bugfix/small_fixes`)
 
-### Changes from v0.0.4
 
 | File | What changed |
 |------|-------------|
@@ -54,7 +69,7 @@ TICKS_PER_GAME_DAY_SLEEPING: number = 576   // ~48 min asleep = 1 game day  (~25
 | `pycharm/src/main/resources/META-INF/gotchi_icon_dark.svg` | New: same icon inverted for dark theme (auto-loaded by IntelliJ when dark theme is active) |
 | `pycharm/src/main/kotlin/com/gotchi/GotchiStatusWidget.kt` | Implemented `getClickConsumer()` — clicking the status bar widget now activates the Gotchi tool window via `ToolWindowManager` |
 
-### New types (v0.0.5)
+### New types (v0.1.0)
 
 ```ts
 // VS Code (gameEngine.ts) / PyCharm (GotchiPersistence.kt)
@@ -69,7 +84,7 @@ HighScore {
 }
 ```
 
-### New PetState fields (v0.0.5)
+### New PetState fields (v0.1.0)
 
 ```ts
 recentEventLog:       readonly string[]  // rolling last-20 event log (persistent across ticks)
@@ -77,7 +92,7 @@ spawnedAt:            number             // Unix ms timestamp of pet creation
 snacksGivenThisCycle: number             // snacks given since last wake; resets on wake()
 ```
 
-### New constants (v0.0.5)
+### New constants (v0.1.0)
 
 ```ts
 SNACK_MAX_PER_CYCLE:    number = 2   // max snacks allowed per wake cycle

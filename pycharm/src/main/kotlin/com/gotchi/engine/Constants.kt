@@ -32,7 +32,7 @@ const val CRITICAL_HEALTH_DAMAGE_PER_TICK: Int = 5
 const val MAX_CONSECUTIVE_SNACKS_BEFORE_SICK: Int = 3
 const val MAX_UNCLEANED_POOPS_BEFORE_SICK: Int = 3
 /** Maximum snacks allowed per wake cycle before further snacks are refused. */
-const val SNACK_MAX_PER_CYCLE: Int = 2
+const val SNACK_MAX_PER_CYCLE: Int = 3
 /** Maximum number of events kept in recentEventLog. */
 const val RECENT_EVENT_LOG_MAX: Int = 20
 const val POOP_TICKS_INTERVAL: Int = 20 * TICKS_PER_MINUTE
@@ -41,7 +41,7 @@ const val FEED_MEAL_HUNGER_BOOST: Int = 20
 const val FEED_MEAL_WEIGHT_GAIN: Int = 1
 const val FEED_MEAL_MAX_PER_CYCLE: Int = 4
 
-const val FEED_SNACK_HAPPINESS_BOOST: Int = 10
+const val FEED_SNACK_HAPPINESS_BOOST: Int = 5
 const val FEED_SNACK_HUNGER_BOOST: Int = 5
 const val FEED_SNACK_WEIGHT_GAIN: Int = 2
 
@@ -108,17 +108,23 @@ data class PetTypeModifiers(
      * 0.0 = perfectly regular; 0.9 = highly unpredictable.
      */
     val poopIntervalVolatility: Double,
+    /**
+     * Multiplier applied to the dayTimer increment each tick (and in offline
+     * decay).  Values > 1.0 make the pet age faster in real time; values < 1.0
+     * make it age slower.  1.0 is the Codeling baseline.
+     */
+    val agingMultiplier: Double,
 )
 
 val PET_TYPE_MODIFIERS: Map<String, PetTypeModifiers> = mapOf(
-    // Codeling — balanced default, ~15 min avg, ±50% volatility
-    "codeling"    to PetTypeModifiers(1.0, 1.0, 100, 1.0, 0.75, 0.5),
-    // Bytebug — fast hunger + very unpredictable poop, ~8 min avg, ±80%
-    "bytebug"     to PetTypeModifiers(1.5, 1.0, 100, 1.2, 0.4, 0.8),
-    // Pixelpup — active social type, ~12 min avg, ±70%
-    "pixelpup"    to PetTypeModifiers(1.0, 1.5, 100, 1.0, 0.6, 0.7),
-    // Shellscript — slow and regular, ~20 min avg, ±20% (near-clockwork)
-    "shellscript" to PetTypeModifiers(0.8, 1.0, 120, 1.0, 1.0, 0.2),
+    // Codeling — balanced default, ~15 min avg, ±50% volatility, 1.0× aging
+    "codeling"    to PetTypeModifiers(1.0, 1.0, 100, 1.0, 0.75, 0.5,  1.0),
+    // Bytebug — fast hunger + very unpredictable poop, ~8 min avg, ±80%, 1.5× aging
+    "bytebug"     to PetTypeModifiers(1.5, 1.0, 100, 1.2, 0.4,  0.8,  1.5),
+    // Pixelpup — active social type, ~12 min avg, ±70%, 1.25× aging
+    "pixelpup"    to PetTypeModifiers(1.0, 1.5, 100, 1.0, 0.6,  0.7,  1.25),
+    // Shellscript — slow and regular, ~20 min avg, ±20% (near-clockwork), 0.75× aging
+    "shellscript" to PetTypeModifiers(0.8, 1.0, 120, 1.0, 1.0,  0.2,  0.75),
 )
 
 val VALID_PET_TYPES: List<String> = PET_TYPE_MODIFIERS.keys.toList()
@@ -157,11 +163,12 @@ val EVOLUTION_CHARACTERS: Map<String, Map<String, Map<String, String>>> = mapOf(
     ),
 )
 
-val STAGE_DURATION_MAP: Map<String, Int> = mapOf(
-    "egg"   to EGG_DURATION_TICKS,
-    "baby"  to BABY_DURATION_TICKS,
-    "child" to CHILD_DURATION_TICKS,
-    "teen"  to TEEN_DURATION_TICKS,
+/** Cumulative dayTimer thresholds to evolve out of each stage. */
+val EVOLUTION_DAY_THRESHOLDS: Map<String, Double> = mapOf(
+    "egg"   to 0.033,  // ≈ tick 24 for codeling 1× (~2 min awake)
+    "baby"  to 0.199,  // ≈ tick 144 cumulative for codeling 1× (~12 min)
+    "child" to 1.199,  // ≈ tick 864 cumulative for codeling 1× (~72 min)
+    "teen"  to 4.199,  // ≈ tick 3024 cumulative for codeling 1× (~252 min)
 )
 
 val NEXT_STAGE_MAP: Map<String, String> = mapOf(

@@ -269,9 +269,12 @@
     setHealthBar(barHealth, state.health);
 
     const poopStr = state.poops === 1 ? "1 poop" : state.poops + " poops";
+    const typeLabel = (state.petType || "codeling");
+    const typeLabelCap = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
     infoLine.textContent =
       "Age: " + state.ageDays + "d  |  " +
-      state.stage + "  |  " +
+      state.stage            + "  |  " +
+      typeLabelCap           + "  |  " +
       poopStr;
 
     // Update sleep/wake button label to match current state

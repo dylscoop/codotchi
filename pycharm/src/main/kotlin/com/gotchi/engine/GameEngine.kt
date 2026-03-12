@@ -180,8 +180,8 @@ fun tick(state: PetState): PetState {
 
     // Advance day timer — use sleepingAtTickStart to avoid mid-tick flip affecting the rate
     val dayTimer = state.dayTimer +
-        if (sleepingAtTickStart) 1.0 / TICKS_PER_GAME_DAY_SLEEPING
-        else 1.0 / TICKS_PER_GAME_DAY_AWAKE
+        (if (sleepingAtTickStart) 1.0 / TICKS_PER_GAME_DAY_SLEEPING
+         else 1.0 / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier
     ageDays = dayTimer.toInt()
 
     // Poop accumulation — interval is per-type and resampled with high volatility
@@ -281,8 +281,8 @@ fun tick(state: PetState): PetState {
 // ---------------------------------------------------------------------------
 
 private fun checkStageProgression(state: PetState): PetState {
-    val duration = STAGE_DURATION_MAP[state.stage] ?: return withDerivedFields(state)
-    if (state.ticksAlive < duration) return withDerivedFields(state)
+    val dayThreshold = EVOLUTION_DAY_THRESHOLDS[state.stage] ?: return withDerivedFields(state)
+    if (state.dayTimer < dayThreshold) return withDerivedFields(state)
     val nextStage = NEXT_STAGE_MAP[state.stage] ?: return withDerivedFields(state)
     return evolveTo(state, nextStage)
 }
@@ -484,8 +484,8 @@ fun applyOfflineDecay(state: PetState, elapsedSeconds: Int): PetState {
             hunger    = clampStat(state.hunger    - min(hungerDecayTotal,    maxHungerLoss)),
             happiness = clampStat(state.happiness - min(happinessDecayTotal, maxHappinessLoss)),
             // Treat offline time as awake (conservative — doesn't accelerate aging)
-            dayTimer  = state.dayTimer + elapsedTicks / TICKS_PER_GAME_DAY_AWAKE,
-            ageDays   = (state.dayTimer + elapsedTicks / TICKS_PER_GAME_DAY_AWAKE).toInt(),
+            dayTimer  = state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier,
+            ageDays   = (state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier).toInt(),
             events    = emptyList(),
         )
     )
