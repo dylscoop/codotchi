@@ -53,17 +53,17 @@ The top section is always the current (unreleased) version. Add a row to its
 changes table for every file touched:
 
 ```markdown
-## v0.0.X — current (branch `<branch-name>`)
+## vX.Y.Z — current
 
-### Changes from v0.0.X-1
+### Changes from vX.Y.Z-1
 
 | File | What changed |
 |------|-------------|
 | `path/to/file` | One-line description of what changed and why |
 ```
 
-When a version ships (merges to `main`), rename `— current` to `— (commit <sha>)`
-and add a new `## vX.X.X — current` section above it.
+When a version ships (merges to `main`), rename `— current` to the released
+state and add a new `## vX.Y.Z — current` section above it.
 
 ---
 
