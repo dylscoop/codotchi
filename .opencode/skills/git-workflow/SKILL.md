@@ -16,7 +16,7 @@ compatibility: opencode
 
 1. Before starting any code change, confirm the target branch with the user.
 2. Check out or create that branch.
-3. Commit work there (using `--no-verify` to bypass the broken pre-commit hook).
+3. Commit work there.
 4. When work is done, tell the user and ask if they want to:
    - Open a pull request into `main`, or
    - Just push the branch and let them decide later.
@@ -27,7 +27,6 @@ compatibility: opencode
 
 - One commit per logical unit of work (per todo item).
 - Message format: `<type>: <short description>` — types are `feat`, `fix`, `chore`, `refactor`, `docs`, `test`.
-- Always use `git commit --no-verify` (pre-commit hook is broken in this repo).
 
 ## Release / merge to main
 
