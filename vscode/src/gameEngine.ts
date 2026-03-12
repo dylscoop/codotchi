@@ -1004,7 +1004,6 @@ export function wake(state: PetState): PetState {
   return withDerivedFields({
     ...state,
     sleeping: false,
-    snacksGivenThisCycle: 0,
     events: ["woke_up"],
   });
 }

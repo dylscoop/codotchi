@@ -392,7 +392,6 @@ fun wake(state: PetState): PetState {
     return withDerivedFields(
         state.copy(
             sleeping             = false,
-            snacksGivenThisCycle = 0,
             events               = listOf("woke_up"),
         )
     )
