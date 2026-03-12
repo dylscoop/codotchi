@@ -60,7 +60,7 @@ via **newline-delimited JSON over stdin/stdout**.
 
 ## Decision 2 — Project structure
 
-```
+```text
 vscode_gotchi/
 ├── .github/
 │   ├── agents.md                   # Agent build rules (this ADR's source)
@@ -127,14 +127,14 @@ All stats are integers in the range 0–100 unless noted.
 
 ### Pet life cycle
 
-```
+```text
 Egg (2 min) → Baby (10 min) → Child (1 h) → Teen (3 h) → Adult → Senior
 ```
 
 Each stage transition evaluates a **care quality score** (0.0–1.0) to
 determine which character the pet evolves into:
 
-```
+```text
 care_score = (
     0.30 × avg_hunger   +
     0.25 × avg_happiness +
@@ -175,7 +175,7 @@ care_score = (
 
 Every message is a single-line JSON object terminated by `\n`.
 
-**TypeScript → Python (commands)**
+#### TypeScript → Python (commands)
 
 ```jsonc
 { "action": "new_game", "name": "Pixel", "pet_type": "codeling", "color": "neon" }
@@ -193,7 +193,7 @@ Every message is a single-line JSON object terminated by `\n`.
 { "action": "get_state" }
 ```
 
-**Python → TypeScript (full state snapshot on every response)**
+#### Python → TypeScript (full state snapshot on every response)
 
 ```jsonc
 {
@@ -372,7 +372,7 @@ that the bridge previously proxied to Python.
 
 ### Updated project structure
 
-```
+```text
 vscode_gotchi/
 ├── .github/
 │   ├── agents.md

@@ -1,6 +1,7 @@
 # vscode_gotchi — Feature Specification
 
 Status legend:
+
 - `[x]` Implemented
 - `[~]` Partially implemented
 - `[ ]` Not yet implemented
@@ -193,9 +194,11 @@ Status: `[ ]`
 
 - All game logic (timers, scoring, animations) runs entirely in `sidebar.js`.
 - Game results are sent to the extension host as:
+
   ```js
   vscode.postMessage({ command: "play", game: "<id>", result: "win"|"partial"|"lose" })
   ```
+
 - `gameEngine.ts` `applyMinigameResult()` maps game id + result → stat deltas.
 - Add new games by: (1) adding an overlay render function in `sidebar.js`,
   (2) wiring up its result message, (3) adding a case in `applyMinigameResult`.
@@ -409,7 +412,7 @@ Features that deepen the existing care actions.
 | Death screen with age/stage stats | `[x]` | |
 | Senior natural death (random chance after day 20) | `[x]` | |
 | Peaceful death animation | `[ ]` | Covered by `died` reaction in section 5.6 |
-| `[S]` `gotchi.offlineDecayMaxFraction` (default 0.60) | Cap offline stat loss | `[ ]` | Value hardcoded; expose as setting |
+| `[S]` `gotchi.offlineDecayMaxFraction` (default 0.60) | `[ ]` | Cap offline stat loss; value hardcoded, expose as setting |
 
 ---
 

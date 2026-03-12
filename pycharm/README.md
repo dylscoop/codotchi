@@ -74,7 +74,7 @@ gradlew.bat buildPlugin
 
 The plugin zip is produced at:
 
-```
+```text
 pycharm/build/distributions/pycharm-gotchi-0.0.1.zip
 ```
 
@@ -83,8 +83,9 @@ described above.
 
 > **Note for Windows users:** if your system JDK is not Java 17+, point Gradle
 > at the JBR bundled with your IDE:
-> ```
-> set "JAVA_HOME=C:\Users\<you>\AppData\Local\Programs\<IDE>\jbr"
+>
+> ```bat
+>    set "JAVA_HOME=C:\Users\<you>\AppData\Local\Programs\<IDE>\jbr"
 > gradlew.bat buildPlugin
 > ```
 
@@ -157,7 +158,7 @@ JS-query bridge.
 
 ## Project Structure
 
-```
+```text
 vscode_gotchi/
 ├── vscode/                      ← VS Code extension (TypeScript)
 └── pycharm/                     ← JetBrains plugin (this package)

@@ -92,7 +92,7 @@ in `PetTypeModifiers` inside `gameEngine.ts` (TypeScript) and `Constants.kt`
 
 ### How it works
 
-```
+```text
 base = POOP_TICKS_INTERVAL × poopIntervalMultiplier   // average ticks
 jitter = base × poopIntervalVolatility                 // half-width of spread
 next = uniform(base − jitter, base + jitter)           // sampled fresh each time
@@ -238,7 +238,7 @@ The current renderer in `sidebar.js` draws everything programmatically on a
 
 ### Sprite anatomy (pixel positions relative to body rect at x, bodyY)
 
-```
+```text
 [legs]      legX1 = x + 20% bodySize, legX2 = x + 60% bodySize
 [body]      full bodySize × bodySize square
 [eyes]      leftEyeX = x + 20%, rightEyeX = x + 62%, eyeY = bodyY + 25%
@@ -247,11 +247,13 @@ The current renderer in `sidebar.js` draws everything programmatically on a
 ```
 
 Eye colour:
+
 - Sick → `#ff0000`
 - Sleeping → `#888888`
 - Awake → `palette.secondary`
 
 Mouth shape:
+
 - `happy` → smile (two corner dots, then arc downward)
 - `sad` / `sick` → frown (two corner dots, then arc upward)
 - Otherwise → flat line

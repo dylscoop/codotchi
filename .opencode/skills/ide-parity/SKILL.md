@@ -35,26 +35,32 @@ When in doubt, always do both.
 ## Architecture differences to account for when porting
 
 ### JS → host messaging
+
 - **VS Code**: `vscode.postMessage({ command, ... })` in `sidebar.js`
 - **PyCharm**: `window.__vscodeSendMessage(JSON.stringify({ command, ... }))` — same shape, different call
 
 ### Host → JS messaging
+
 - **VS Code**: `webview.postMessage(payload)` in `sidebarProvider.ts`
 - **PyCharm**: `browser.cefBrowser.executeJavaScript("window.dispatchEvent(new MessageEvent('message',{data:$json}))", ...)` in `GotchiPlugin.kt`
 
 ### Settings / configuration
+
 - **VS Code**: `vscode.workspace.getConfiguration('gotchi')` + `contributes.configuration` in `package.json`
 - **PyCharm**: `GotchiSettings.kt` (app service) + `GotchiConfigurable.kt` (Settings UI), registered in `plugin.xml`
 
 ### Threading
+
 - **VS Code**: single-threaded extension host — no special threading needed
 - **PyCharm**: all UI updates must be wrapped in `ApplicationManager.getApplication().invokeLater { ... }`
 
 ### CSS variables
+
 - **VS Code**: can use `var(--vscode-*)` tokens freely
 - **PyCharm**: VS Code tokens are not available — always provide a fallback value, e.g. `color: var(--vscode-foreground, #cccccc)`
 
 ### Health bar rendering
+
 - Both use `width %` (not `scaleX`) on `.bar-fill` elements — keep in sync.
 
 ---

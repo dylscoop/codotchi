@@ -97,7 +97,7 @@ npm test          # Test suite
 
 The extension is a single self-contained TypeScript process:
 
-```
+```text
 VS Code Extension Host (TypeScript)
   ├─ extension.ts          Activation, tick timer, command registration
   ├─ gameEngine.ts         Pet state machine — stats, decay, evolution (in progress)

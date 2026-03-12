@@ -52,7 +52,7 @@ extension wired up via `extension.ts`, `sidebarProvider.ts`, `statusBar.ts`,
 
 Archive of the four files that changed in v0.0.2 is preserved at:
 
-```
+```text
 archive/v0.0.1/vscode/src/gameEngine.ts
 archive/v0.0.1/vscode/src/sidebarProvider.ts
 archive/v0.0.1/vscode/media/sidebar.js

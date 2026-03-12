@@ -1,0 +1,8 @@
+{
+  // All rules enabled by default; the following are disabled as they're
+  // commonly noisy in documentation projects:
+  "MD013": false, // line-length — too strict for prose/tables
+  "MD033": false, // no-inline-html — needed for badges and custom elements
+  "MD041": false, // first-line-heading — not always appropriate
+  "MD024": false  // no-duplicate-heading — common in changelogs (e.g. "### Fixed")
+}

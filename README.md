@@ -34,6 +34,7 @@ Both extensions share the same game engine logic and the same webview UI
 3. Select the file and reload.
 
 Or from the terminal:
+
 ```bash
 code --install-extension vscode-gotchi-0.0.1.vsix
 ```
@@ -52,7 +53,7 @@ For full usage instructions see the individual READMEs:
 
 ## Repository layout
 
-```
+```text
 gotchi/
 ├── vscode/                  VS Code extension (TypeScript)
 │   ├── src/                 Extension host + game engine

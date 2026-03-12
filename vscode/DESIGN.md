@@ -10,7 +10,7 @@ coding activity, and requires care to survive and evolve.
 
 ## Architecture
 
-```
+```text
 ┌──────────────────────────────────────────┐
 │  VS Code Extension (TypeScript)          │
 │  ┌────────────────┐  ┌────────────────┐  │
@@ -50,7 +50,7 @@ coding activity, and requires care to survive and evolve.
 
 ## Project Structure
 
-```
+```text
 vscode_gotchi/
 ├── package.json                 # Extension manifest, commands, views, activation
 ├── tsconfig.json                # TypeScript compiler config
@@ -147,7 +147,7 @@ Faithful to the original Tamagotchi, with `energy` added to model sleep/wake cyc
 
 Calculated continuously by the Python backend as a weighted average:
 
-```
+```text
 care_score = (
     0.30 * hunger_avg +
     0.25 * happiness_avg +
@@ -209,18 +209,21 @@ Shown on first launch (or new game):
 ## Sickness & Death
 
 ### Sickness Triggers
+
 - Overfeeding snacks: >3 snacks in a 5-minute window
 - Leaving droppings uncleaned for >5 minutes
 - Hunger reaching 0 while happiness is also below 20
 - Happiness reaching 0 while hunger is also below 20
 
 ### Sick State
+
 - Skull icon displayed next to pet
 - Pet refuses to play or eat meals
 - Health decreases by 5 per tick while sick and untreated
 - Cure with Medicine action (2-3 doses)
 
 ### Death
+
 - Health reaches 0, OR
 - Hunger stays at 0 for 3+ consecutive ticks
 - Shows dead sprite + age at death
@@ -248,6 +251,7 @@ Listening via `workspace.onDidSaveTextDocument`:
 Format: `[sprite_emoji] [petName] [mood_label]`
 
 Examples:
+
 - `🥚 Pixel  Hatching...`
 - `🐣 Pixel  Happy`
 - `😰 Pixel  Hungry!`
@@ -343,11 +347,13 @@ Every command returns a full state snapshot:
 Both games run entirely in the webview JS and report only `win`/`lose` to Python.
 
 ### 1. Left/Right Guess
+
 - Pet hides behind one of two doors.
 - Player clicks Left or Right.
 - 50% win chance. Win: happiness +15. Lose: happiness +5 (consolation).
 
 ### 2. Pattern Memory (Simon)
+
 - A sequence of 3-5 buttons lights up.
 - Player repeats the sequence.
 - Win: happiness +20, energy -15. Lose: happiness +5.

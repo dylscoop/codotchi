@@ -1,0 +1,11 @@
+{
+  "name": "vscode-gotchi-workspace",
+  "private": true,
+  "scripts": {
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#vscode/node_modules\" \"#.venv\"",
+    "format:md": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#vscode/node_modules\" \"#.venv\""
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "^0.17.0"
+  }
+}

@@ -167,7 +167,7 @@ depending on care quality.
 
 ## Project Structure
 
-```
+```text
 vscode_gotchi/          ← repo root
 ├── vscode/             ← VS Code extension (this package)
 │   ├── src/            # TypeScript extension host and game engine
