@@ -114,7 +114,7 @@ class GotchiPlugin : Disposable {
                 var ns = play(state)
                 val game   = message["game"]   as? String
                 val result = message["result"] as? String
-                if (game != null && result != null) {
+                if (game != null && result != null && "play_refused_no_energy" !in ns.events) {
                     ns = applyMinigameResult(ns, game, result)
                 }
                 nextState = ns

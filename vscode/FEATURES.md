@@ -63,9 +63,9 @@ Status legend:
 
 | Action      | Effect                                           | Constraint                               | Status |
 |-------------|--------------------------------------------------|------------------------------------------|--------|
-| Feed Meal   | Hunger +20, Weight +1                            | Max 4 meals per wake cycle               | `[x]`  |
-| Feed Snack  | Happiness +10, Hunger +5, Weight +2              | 3 consecutive snacks triggers sickness   | `[x]`  |
-| Play        | Happiness +15, Energy −25, Weight −1             | Requires Energy > 0; launches minigame   | `[~]`  |
+| Feed Meal   | Hunger +20, Weight +1                            | Max 3 meals per wake cycle               | `[x]`  |
+| Feed Snack  | Happiness +10, Hunger +5, Weight +2              | Max 3 snacks per cycle; resets on auto-wake | `[x]`  |
+| Play        | Happiness +15, Energy −25, Weight −1             | Requires Energy ≥ 25; refused via event log | `[x]`  |
 | Sleep       | Energy regenerates; cannot act while sleeping    | —                                        | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
@@ -356,14 +356,14 @@ Features that deepen the existing care actions.
 |---------|--------|-------|
 | Show weight in info line (next to age/stage) | `[ ]` | Value exists in state; not rendered |
 | Weight-related mood modifier (overweight → sad) | `[ ]` | |
-| Play button disabled when energy < 10 (show tooltip) | `[ ]` | Logic exists; no UI feedback |
+| Play button disabled when energy < 25 (show tooltip) | `[x]` | Refused via `play_refused_no_energy` event in log |
 
 ### 6.2 Sleep / Wake Cycle
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Manual "Lights Off" button to put pet to sleep early | `[ ]` | |
-| Auto-wake after energy reaches 100 | `[x]` | Implemented in BUGFIX-003 |
+| Auto-wake after energy reaches 100 | `[x]` | Implemented in BUGFIX-003; snack count resets on auto-wake |
 | `[S]` `gotchi.autoWake` (default true) — auto-wake when energy full | `[ ]` | |
 | Sleep schedule: pet refuses to sleep if recently slept | `[ ]` | |
 | Visual night-mode on canvas when sleeping | `[ ]` | Darken canvas background |
@@ -372,9 +372,9 @@ Features that deepen the existing care actions.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Show remaining meals allowed this cycle in the UI | `[ ]` | mealsGivenThisCycle tracked; not shown |
-| Disable Feed Meal button when at max meals | `[ ]` | |
-| Show snack warning after 2 consecutive snacks | `[ ]` | |
+| Show remaining meals allowed this cycle in the UI | `[x]` | Badge on Feed button; counts down from 3 |
+| Disable Feed Meal button when at max meals | `[x]` | Badge disappears and button becomes unavailable |
+| Show snack count remaining in the UI | `[x]` | Badge on Snack button; counts down from 3; button disabled at 0 |
 
 ### 6.4 Sickness UX
 
@@ -386,7 +386,33 @@ Features that deepen the existing care actions.
 
 ---
 
-## 7. Coding Activity Rewards
+## 7. UI Navigation & Event Log
+
+### 7.1 Screen Navigation
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Default view shows game screen (not setup) | `[x]` | Extension host sends state on open; routes immediately |
+| Menu button on game screen → setup/home | `[x]` | `btn-new-game` label changed to "Menu" |
+| Continue button on setup/home screen | `[x]` | Visible only when `hasActiveGame === true`; returns to game screen |
+| UI refresh fix: setup screen not bounced by tick | `[x]` | `currentScreen` tracking suppresses `renderState` while on setup with live pet |
+
+### 7.2 Humanised Event Log
+
+All events are displayed using the pet's name and human-readable sentences instead of raw event codes.
+
+| Event | Log message | Status |
+|-------|-------------|--------|
+| `play_refused_no_energy` | `<Name> doesn't have enough energy to play!` | `[x]` |
+| `sickness_damage` | `<Name> is losing health from being sick!` | `[x]` |
+| `starvation_damage` | `<Name> is starving and losing health!` | `[x]` |
+| `unhappiness_damage` | `<Name> is miserable and losing health!` | `[x]` |
+| `evolved_to_<stage>` | `<Name> evolved into <stage>!` | `[x]` |
+| All other events | Named equivalents (e.g. fed, slept, woke, cleaned) | `[x]` |
+
+---
+
+## 8. Coding Activity Rewards
 
 | Feature | Effect | Status | Notes |
 |---------|--------|--------|-------|
@@ -400,7 +426,7 @@ Features that deepen the existing care actions.
 
 ---
 
-## 8. Sickness & Death
+## 9. Sickness & Death
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -408,7 +434,9 @@ Features that deepen the existing care actions.
 | Sickness from uncleaned poops (>3) | `[x]` | |
 | Sickness from hunger + happiness both critical | `[x]` | |
 | Health reaches 0 → death | `[x]` | |
-| Hunger stays 0 for 3+ ticks → health damage | `[x]` | |
+| Hunger stays 0 for 3+ ticks → health damage | `[x]` | `starvation_damage` event; humanised in event log |
+| Unhappiness health drain | `[x]` | `unhappiness_damage` event; humanised in event log |
+| Sickness health drain message | `[x]` | `sickness_damage` event; humanised in event log |
 | Death screen with age/stage stats | `[x]` | |
 | Senior natural death (random chance after day 20) | `[x]` | |
 | Peaceful death animation | `[ ]` | Covered by `died` reaction in section 5.6 |
@@ -416,7 +444,7 @@ Features that deepen the existing care actions.
 
 ---
 
-## 9. Status Bar
+## 10. Status Bar
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -427,7 +455,7 @@ Features that deepen the existing care actions.
 
 ---
 
-## 10. Persistence
+## 11. Persistence
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -439,7 +467,7 @@ Features that deepen the existing care actions.
 
 ---
 
-## 10.1 High Score
+## 11.1 High Score
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -449,7 +477,7 @@ Features that deepen the existing care actions.
 
 ---
 
-## 11. Settings Reference
+## 12. Settings Reference
 
 All settings live under the `gotchi.*` namespace in VS Code settings.
 
@@ -474,7 +502,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 
 ---
 
-## 12. Future / Stretch Features
+## 13. Future / Stretch Features
 
 These are lower-priority ideas that require significant design work.
 
@@ -495,7 +523,7 @@ These are lower-priority ideas that require significant design work.
 
 ---
 
-## 13. Suggested Implementation Order
+## 14. Suggested Implementation Order
 
 1. **Stage area resize** — widen canvas to sidebar width; sets up room for movement (section 5.1)
 2. **Animation loop** — replace one-shot draw with rAF loop; reduced-motion fallback (section 5.2)

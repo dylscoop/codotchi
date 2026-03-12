@@ -101,7 +101,7 @@ gradlew.bat buildPlugin
 
 See [VERSIONS.md](VERSIONS.md) for the full changelog.
 
-Current release: **v0.1.1**
+Current release: **v0.1.2**
 
 ---
 
