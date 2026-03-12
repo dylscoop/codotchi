@@ -124,6 +124,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         val consecutiveSnacks: Int?,
         val hungerZeroTicks: Int?,
         val medicineDosesGiven: Int?,
+        val dayTimer: Double?,             // absent in saves before v1.1.0
         val careScoreHungerSum: Long?,
         val careScoreHappinessSum: Long?,
         val careScoreHealthSum: Long?,
@@ -165,6 +166,8 @@ class GotchiPersistence : PersistentStateComponent<Element> {
             consecutiveSnacks     = r.consecutiveSnacks     ?: 0,
             hungerZeroTicks       = r.hungerZeroTicks       ?: 0,
             medicineDosesGiven    = r.medicineDosesGiven    ?: 0,
+            // Back-compat: old saves lack dayTimer; seed from ageDays integer
+            dayTimer              = r.dayTimer              ?: (r.ageDays ?: 0).toDouble(),
             careScoreHungerSum    = r.careScoreHungerSum    ?: 0L,
             careScoreHappinessSum = r.careScoreHappinessSum ?: 0L,
             careScoreHealthSum    = r.careScoreHealthSum    ?: 0L,
@@ -203,6 +206,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         consecutiveSnacks     = s.consecutiveSnacks,
         hungerZeroTicks       = s.hungerZeroTicks,
         medicineDosesGiven    = s.medicineDosesGiven,
+        dayTimer              = s.dayTimer,
         careScoreHungerSum    = s.careScoreHungerSum,
         careScoreHappinessSum = s.careScoreHappinessSum,
         careScoreHealthSum    = s.careScoreHealthSum,

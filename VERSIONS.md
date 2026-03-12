@@ -1,6 +1,34 @@
 # Version History
 
-## v1.0.0 — current (branch `bugfix/small_fixes`)
+## v1.1.0 — current (branch `bugfix/small_fixes`)
+
+### Changes from v1.0.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | Added `TICKS_PER_GAME_DAY_AWAKE = 720` and `TICKS_PER_GAME_DAY_SLEEPING = 576` constants; added `dayTimer: number` field to `PetState`; `tick()` now captures `sleepingAtTickStart` and advances `dayTimer` each tick (÷720 awake, ÷576 sleeping), then derives `ageDays = Math.floor(dayTimer)`; removed manual `ageDays += 1` from auto-wake block; `wake()` no longer increments `ageDays`; `applyOfflineDecay()` advances `dayTimer` by `elapsedTicks / TICKS_PER_GAME_DAY_AWAKE`; `createPet()` initialises `dayTimer: 0`; `serialiseState()` / `deserialiseState()` updated with back-compat fallback `dayTimer = getNumber("dayTimer", getNumber("ageDays", 0))` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Added `TICKS_PER_GAME_DAY_AWAKE` and `TICKS_PER_GAME_DAY_SLEEPING` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt` | Added `dayTimer: Double` field |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Mirrored all day timer changes from TS: `sleepingAtTickStart`, `dayTimer` advancement, `ageDays = dayTimer.toInt()`; removed `ageDays += 1` from auto-wake; `wake()` no longer increments `ageDays`; `applyOfflineDecay()` advances `dayTimer`; `createPet()` initialises `dayTimer = 0.0` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | Added `dayTimer: Double?` to `RawPetState`; `sanitise()` back-compat fallback `dayTimer = r.dayTimer ?: r.ageDays.toDouble()`; `toRaw()` serialises `dayTimer` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Replaced single-line `<description>` with full `<![CDATA[...]]>` HTML block covering overview, Features, Care Actions, Pet Types, and Getting Started |
+
+### New PetState fields (v1.1.0)
+
+```ts
+dayTimer: number   // monotonically-increasing fractional day counter; ageDays = Math.floor(dayTimer)
+```
+
+### New constants (v1.1.0)
+
+```ts
+TICKS_PER_GAME_DAY_AWAKE:    number = 720   // 1 hr awake = 1 game day  (60 min × 12 ticks/min)
+TICKS_PER_GAME_DAY_SLEEPING: number = 576   // ~48 min asleep = 1 game day  (~25% faster)
+```
+
+---
+
+## v1.0.0 — (branch `bugfix/small_fixes`)
 
 ### Changes from v0.0.4
 

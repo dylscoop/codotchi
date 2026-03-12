@@ -120,6 +120,7 @@ fun createPet(name: String, petType: String, color: String): PetState {
             consecutiveSnacks  = 0,
             hungerZeroTicks    = 0,
             medicineDosesGiven = 0,
+            dayTimer           = 0.0,
             careScoreHungerSum    = 0L,
             careScoreHappinessSum = 0L,
             careScoreHealthSum    = 0L,
@@ -156,6 +157,9 @@ fun tick(state: PetState): PetState {
     var ageDays            = state.ageDays
     val ticksAlive         = state.ticksAlive + 1
 
+    // Capture sleeping state at tick entry so day-timer uses it even if auto-wake fires mid-tick
+    val sleepingAtTickStart = sleeping
+
     // Stat decay
     if (!sleeping) {
         val hungerDecay    = ceil(HUNGER_DECAY_PER_TICK    * modifiers.hungerDecayMultiplier).toInt()
@@ -170,10 +174,15 @@ fun tick(state: PetState): PetState {
         // Auto-wake when energy is fully restored (BUGFIX-003 equivalent)
         if (energy >= STAT_MAX) {
             sleeping = false
-            ageDays += 1
             events.add("auto_woke_up")
         }
     }
+
+    // Advance day timer — use sleepingAtTickStart to avoid mid-tick flip affecting the rate
+    val dayTimer = state.dayTimer +
+        if (sleepingAtTickStart) 1.0 / TICKS_PER_GAME_DAY_SLEEPING
+        else 1.0 / TICKS_PER_GAME_DAY_AWAKE
+    ageDays = dayTimer.toInt()
 
     // Poop accumulation — interval is per-type and resampled with high volatility
     if (!sleeping) {
@@ -237,7 +246,7 @@ fun tick(state: PetState): PetState {
                 nextPoopIntervalTicks = nextPoopIntervalTicks,
                 hungerZeroTicks = hungerZeroTicks, sick = sick,
                 alive = alive, ticksAlive = ticksAlive,
-                sleeping = sleeping, ageDays = ageDays,
+                sleeping = sleeping, ageDays = ageDays, dayTimer = dayTimer,
                 events = events,
             )
         )
@@ -256,7 +265,7 @@ fun tick(state: PetState): PetState {
         nextPoopIntervalTicks = nextPoopIntervalTicks,
         hungerZeroTicks = hungerZeroTicks, sick = sick,
         alive = alive, ticksAlive = ticksAlive,
-        sleeping = sleeping, ageDays = ageDays,
+        sleeping = sleeping, ageDays = ageDays, dayTimer = dayTimer,
         careScoreHungerSum = careScoreHungerSum,
         careScoreHappinessSum = careScoreHappinessSum,
         careScoreHealthSum = careScoreHealthSum,
@@ -380,7 +389,6 @@ fun wake(state: PetState): PetState {
     return withDerivedFields(
         state.copy(
             sleeping             = false,
-            ageDays              = state.ageDays + 1,
             snacksGivenThisCycle = 0,
             events               = listOf("woke_up"),
         )
@@ -475,6 +483,9 @@ fun applyOfflineDecay(state: PetState, elapsedSeconds: Int): PetState {
         state.copy(
             hunger    = clampStat(state.hunger    - min(hungerDecayTotal,    maxHungerLoss)),
             happiness = clampStat(state.happiness - min(happinessDecayTotal, maxHappinessLoss)),
+            // Treat offline time as awake (conservative — doesn't accelerate aging)
+            dayTimer  = state.dayTimer + elapsedTicks / TICKS_PER_GAME_DAY_AWAKE,
+            ageDays   = (state.dayTimer + elapsedTicks / TICKS_PER_GAME_DAY_AWAKE).toInt(),
             events    = emptyList(),
         )
     )

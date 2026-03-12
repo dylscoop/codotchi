@@ -80,6 +80,15 @@ const val OFFLINE_DECAY_MAX_FRACTION: Double = 0.60
 
 const val SENIOR_NATURAL_DEATH_AGE_DAYS: Int = 20
 
+/** Ticks elapsed while awake before the day timer advances by 1.0 (1 game day = 1 real hour awake). */
+const val TICKS_PER_GAME_DAY_AWAKE: Int = TICKS_PER_HOUR
+
+/**
+ * Ticks elapsed while sleeping before the day timer advances by 1.0
+ * (~48 min asleep = 1 day, ~25% faster than awake).
+ */
+val TICKS_PER_GAME_DAY_SLEEPING: Int = Math.round(TICKS_PER_HOUR * 0.8f)
+
 // ---------------------------------------------------------------------------
 // Per-type modifiers
 // ---------------------------------------------------------------------------

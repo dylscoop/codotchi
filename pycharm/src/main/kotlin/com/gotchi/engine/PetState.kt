@@ -44,6 +44,14 @@ data class PetState(
     val hungerZeroTicks: Int,
     val medicineDosesGiven: Int,
 
+    /**
+     * Monotonically-increasing fractional day counter.
+     * `ageDays` is derived as `dayTimer.toInt()` each tick.
+     * Advances by `1.0 / TICKS_PER_GAME_DAY_SLEEPING` per tick while sleeping,
+     * or `1.0 / TICKS_PER_GAME_DAY_AWAKE` per tick while awake.
+     */
+    val dayTimer: Double,
+
     // Care-quality accumulators
     val careScoreHungerSum: Long,
     val careScoreHappinessSum: Long,
