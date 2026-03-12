@@ -35,6 +35,8 @@
   const deadEventLog   = document.getElementById("dead-event-log");
   const highScoreSection = document.getElementById("high-score-section");
   const highScoreStats   = document.getElementById("high-score-stats");
+  const setupHighScore   = document.getElementById("setup-high-score");
+  const setupHsStats     = document.getElementById("setup-hs-stats");
   const mealsLeftEl    = document.getElementById("meals-left");
   const snacksLeftEl   = document.getElementById("snacks-left");
 
@@ -54,6 +56,7 @@
   let petFacingLeft = false;
   let idlePauseTicks = 0;     // frames remaining in current idle pause
   let animTick      = 0;      // raw frame counter (drives leg/bob animation)
+  let latestHighScore = null; // cached high score from last stateUpdate
 
   // ── Setup form state ────────────────────────────────────────────────────
 
@@ -146,6 +149,7 @@
     gameScreen.classList.toggle("hidden",  name !== "game");
     deadScreen.classList.toggle("hidden",  name !== "dead");
     if (name === "game") { resizeCanvas(); }
+    if (name === "setup") { renderSetupHighScore(latestHighScore); }
   }
 
   // ── Canvas sizing ─────────────────────────────────────────────────────────
@@ -426,6 +430,29 @@
     });
   }
 
+  /** Show (or hide) the high score block on the setup screen. */
+  function renderSetupHighScore(hs) {
+    if (!setupHighScore || !setupHsStats) { return; }
+    if (hs) {
+      setupHighScore.classList.remove("hidden");
+      var hsElapsed  = hs.diedAt - (hs.spawnedAt || 0);
+      var hsTotalSec = Math.floor(hsElapsed / 1000);
+      var hsDays     = Math.floor(hsTotalSec / 86400);
+      var hsHours    = Math.floor((hsTotalSec % 86400) / 3600);
+      var hsMinutes  = Math.floor((hsTotalSec % 3600)  / 60);
+      var hsParts = [];
+      if (hsDays    > 0) { hsParts.push(hsDays    + "d"); }
+      if (hsHours   > 0) { hsParts.push(hsHours   + "h"); }
+      if (hsMinutes > 0) { hsParts.push(hsMinutes + "m"); }
+      if (hsParts.length === 0) { hsParts.push("< 1m"); }
+      setupHsStats.textContent =
+        hs.name + "  |  " + hs.ageDays + " day(s)  |  " + hs.stage + "\n" +
+        hsParts.join(" ") + " real time";
+    } else {
+      setupHighScore.classList.add("hidden");
+    }
+  }
+
   /** Show the dead screen with final stats. */
   function renderDeadScreen(state, highScore) {
     deadStats.textContent =
@@ -647,6 +674,9 @@
 
     const state = message.state;
 
+    // Cache the latest high score whenever the host sends one
+    if (message.highScore) { latestHighScore = message.highScore; }
+
     // needs_new_game response: stay on / return to setup
     if (state && state.needs_new_game) {
       showScreen("setup");
@@ -654,7 +684,7 @@
     }
 
     if (state) {
-      renderState(state, message.mealsGivenThisCycle || 0, message.highScore || null);
+      renderState(state, message.mealsGivenThisCycle || 0, latestHighScore);
     }
   });
 

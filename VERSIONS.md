@@ -52,6 +52,17 @@ FEED_MEAL_MAX_PER_CYCLE:     number = 3   // lowered from 4; max meals per wake 
 | `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | `FEED_MEAL_MAX_PER_CYCLE` lowered `4 → 3` |
 | `pycharm/src/main/resources/webview/sidebar.js` | `var MEAL_MAX` lowered `4 → 3` (UI badge + button-disable) |
 
+### High score on setup screen (v0.1.0)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.html` | Added `<div id="setup-high-score">` + `<p id="setup-hs-stats">` inside `#setup-screen` |
+| `vscode/media/sidebar.css` | Added `.setup-high-score` border/padding style |
+| `vscode/media/sidebar.js` | Added `setupHighScore`/`setupHsStats` element refs; `latestHighScore` module-level variable; `renderSetupHighScore(hs)` function; `showScreen()` calls it when switching to setup; message handler caches `latestHighScore` and passes it to `renderState` |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored VS Code HTML changes |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored VS Code CSS changes |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored all VS Code JS changes |
+
 ---
 
 

@@ -347,3 +347,9 @@ body.font-large  { font-size: 16px; }
   line-height: 1.6;
   opacity: 0.85;
 }
+
+/* ── Best-run panel on setup screen ── */
+.setup-high-score {
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 6px 8px;
+}

@@ -439,6 +439,16 @@ Features that deepen the existing care actions.
 
 ---
 
+## 10.1 High Score
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Record best-ever pet (by age) on death | `[x]` | Stored via `saveHighScore()` in `persistence.ts` |
+| Display high score on dead screen | `[x]` | Shows name, age, stage, and real-time duration |
+| Display high score on new-game (setup) screen | `[x]` | `renderSetupHighScore()` called from `showScreen("setup")`; hidden when no record exists |
+
+---
+
 ## 11. Settings Reference
 
 All settings live under the `gotchi.*` namespace in VS Code settings.
