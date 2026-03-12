@@ -2,7 +2,7 @@
 
 ## v0.1.0 — current (branch `bugfix/small_fixes`)
 
-### Changes from v1.0.0
+### Changes from v0.1.0
 
 | File | What changed |
 |------|-------------|
@@ -88,7 +88,7 @@ On reopening the panel, no follow-up message was ever sent (tick skips when
 | `vscode/media/sidebar.html` | Snack button badge; dead screen gains `<p id="dead-time">`, `<ul id="dead-event-log">`, and `<div id="high-score-section">` with `<p id="high-score-stats">` |
 | `vscode/media/sidebar.js` | `renderState()` populates `mealsLeftEl` and `snacksLeftEl` badges; disables Snack button when at cap; disables Play button when `energy < 25` (BUGFIX-010); added `highScoreSection`/`highScoreStats` element refs; `renderDeadScreen(state, highScore)` shows high score panel when a record exists; message handler passes `message.highScore` |
 | `vscode/media/sidebar.css` | Added `.meals-left` badge style; `.dead-time` and `.dead-event-log` styles; `.high-score-section`, `.high-score-title`, `.high-score-stats` styles |
-| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Fixed `play()` guard to `energy < PLAY_ENERGY_COST` (BUGFIX-010); mirrored all v0.0.5 logic |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Fixed `play()` guard to `energy < PLAY_ENERGY_COST` (BUGFIX-010); mirrored all v0.1.0 logic |
 | `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt` | Added `recentEventLog: List<String>`, `spawnedAt: Long`, `snacksGivenThisCycle: Int` |
 | `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Added `SNACK_MAX_PER_CYCLE = 2`, `RECENT_EVENT_LOG_MAX = 20` |
 | `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | Added `highScoreJson` field; `loadHighScore()` and `saveHighScore()` helpers; `HighScore` data class; `RawPetState`/`sanitise()`/`toRaw()` updated for all new fields |
@@ -133,9 +133,9 @@ RECENT_EVENT_LOG_MAX:   number = 20  // max entries kept in recentEventLog
 
 ---
 
-## v0.0.4 — (branch `bugfix/small_fixes`)
+## v0.1.0 — (branch `bugfix/small_fixes`)
 
-### Changes from v0.0.3
+### Changes from v0.1.0
 
 | File | What changed |
 |------|-------------|
@@ -146,11 +146,11 @@ RECENT_EVENT_LOG_MAX:   number = 20  // max entries kept in recentEventLog
 | `vscode/tests/unit/gameEngine.test.ts` | Updated 5 tests to match new engine behaviour: play energy cost (10 → 25), medicine no longer boosts health, sleeping-while-full-energy auto-wake interaction |
 | `vscode/src/gameEngine.ts` | Starvation damage now also sets `sick = true` so medicine can cure it (BUGFIX-007) |
 | `vscode/package.json` | Version bumped `0.0.3` → `0.0.4` |
-| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Ported all v0.0.4 constant changes: `FEED_SNACK_HUNGER_BOOST = 5` added; `PLAY_ENERGY_COST` updated `10` → `25`; `MEDICINE_HEALTH_BOOST` removed; `ENERGY_DECAY_PER_TICK = 1` added; `HEALTH_REGEN_AWAKE_TICK_INTERVAL = 5` added |
-| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Ported all v0.0.4 logic changes: energy decay while awake; starvation sets `sick = true` (BUGFIX-007); health regen uses `HEALTH_REGEN_AWAKE_TICK_INTERVAL` interval while awake; `giveMedicine()` no longer adds `MEDICINE_HEALTH_BOOST`; `feedSnack()` now also adds `FEED_SNACK_HUNGER_BOOST` |
-| `pycharm/src/main/resources/webview/sidebar.js` | Persistent pixel-art poo sprites ported into `drawSprite()` — mirrors VS Code v0.0.4 change |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Ported all v0.1.0 constant changes: `FEED_SNACK_HUNGER_BOOST = 5` added; `PLAY_ENERGY_COST` updated `10` → `25`; `MEDICINE_HEALTH_BOOST` removed; `ENERGY_DECAY_PER_TICK = 1` added; `HEALTH_REGEN_AWAKE_TICK_INTERVAL = 5` added |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Ported all v0.1.0 logic changes: energy decay while awake; starvation sets `sick = true` (BUGFIX-007); health regen uses `HEALTH_REGEN_AWAKE_TICK_INTERVAL` interval while awake; `giveMedicine()` no longer adds `MEDICINE_HEALTH_BOOST`; `feedSnack()` now also adds `FEED_SNACK_HUNGER_BOOST` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Persistent pixel-art poo sprites ported into `drawSprite()` — mirrors VS Code v0.1.0 change |
 
-### New constants (v0.0.4)
+### New constants (v0.1.0)
 
 ```ts
 FEED_SNACK_HUNGER_BOOST: number = 5       // hunger gained per snack
@@ -159,7 +159,7 @@ ENERGY_DECAY_PER_TICK: number   = 1        // passive energy drain while awake
 HEALTH_REGEN_AWAKE_TICK_INTERVAL: number = 5  // ticks between awake regen pulses
 ```
 
-### Removed constants (v0.0.4)
+### Removed constants (v0.1.0)
 
 ```ts
 MEDICINE_HEALTH_BOOST  // medicine no longer changes health directly
@@ -167,9 +167,9 @@ MEDICINE_HEALTH_BOOST  // medicine no longer changes health directly
 
 ---
 
-## v0.0.3
+## v0.1.0
 
-### Changes from v0.0.2
+### Changes from v0.1.0
 
 | File | What changed |
 |------|-------------|
@@ -184,9 +184,9 @@ MEDICINE_HEALTH_BOOST  // medicine no longer changes health directly
 
 ---
 
-## v0.0.2 — (commit `7ee39a6`)
+## v0.1.0 — (commit `7ee39a6`)
 
-### Changes from v0.0.1
+### Changes from v0.1.0
 
 | File | What changed |
 |------|-------------|
@@ -195,13 +195,13 @@ MEDICINE_HEALTH_BOOST  // medicine no longer changes health directly
 | `vscode/media/sidebar.js` | BUGFIX-002 (disable care buttons while pet is sleeping); `setHealthBar()` helper for colour-coded health bar |
 | `vscode/media/sidebar.css` | BUGFIX-002 (`.action-btn:disabled` style); health bar colour classes (`.health-mid`, `.health-low`) |
 
-### New `PetState` fields (v0.0.2 only)
+### New `PetState` fields (v0.1.0 only)
 
 ```ts
 nextPoopIntervalTicks: number   // ticks until next dropping (stochastically sampled)
 ```
 
-### New `PetTypeModifiers` fields (v0.0.2 only)
+### New `PetTypeModifiers` fields (v0.1.0 only)
 
 ```ts
 poopIntervalMultiplier: number  // scales base poop interval per pet type
@@ -210,18 +210,18 @@ poopIntervalVolatility: number  // ± fraction of variance around the mean inter
 
 ---
 
-## v0.0.1 — baseline (commit `e25ac0e`)
+## v0.1.0 — baseline (commit `e25ac0e`)
 
 Initial TypeScript rewrite. All game logic ported from the retired Python
 subprocess architecture into `gameEngine.ts` as pure functions. VS Code
 extension wired up via `extension.ts`, `sidebarProvider.ts`, `statusBar.ts`,
 `persistence.ts`, and `events.ts`.
 
-Archive of the four files that changed in v0.0.2 is preserved at:
+Archive of the four files that changed in v0.1.0 is preserved at:
 
 ```text
-archive/v0.0.1/vscode/src/gameEngine.ts
-archive/v0.0.1/vscode/src/sidebarProvider.ts
-archive/v0.0.1/vscode/media/sidebar.js
-archive/v0.0.1/vscode/media/sidebar.css
+archive/v0.1.0/vscode/src/gameEngine.ts
+archive/v0.1.0/vscode/src/sidebarProvider.ts
+archive/v0.1.0/vscode/media/sidebar.js
+archive/v0.1.0/vscode/media/sidebar.css
 ```
