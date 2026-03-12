@@ -20,6 +20,7 @@ import {
   applyOfflineDecay,
   tick,
   TICK_INTERVAL_SECONDS,
+  IDLE_THRESHOLD_SECONDS,
 } from "./gameEngine";
 import { SidebarProvider } from "./sidebarProvider";
 import { StatusBarManager } from "./statusBar";
@@ -34,6 +35,7 @@ import {
 } from "./persistence";
 
 const TICK_INTERVAL_MS: number = TICK_INTERVAL_SECONDS * 1_000;
+const IDLE_THRESHOLD_MS: number = IDLE_THRESHOLD_SECONDS * 1_000;
 
 let currentState: PetState | null = null;
 let currentHighScore: HighScore | null = null;
@@ -41,6 +43,9 @@ let sidebar: SidebarProvider | undefined;
 let statusBar: StatusBarManager | undefined;
 let eventsManager: EventsManager | undefined;
 let tickTimer: ReturnType<typeof setInterval> | undefined;
+
+/** Timestamp of the last detected IDE activity (keystroke, cursor, focus). */
+let lastActivityMs: number = Date.now();
 
 /**
  * Activate the extension.
@@ -109,12 +114,23 @@ export function activate(context: vscode.ExtensionContext): void {
     handleStateUpdate(decayed);
   }
 
+  // Activity listeners — update lastActivityMs on any keyboard/cursor/focus event
+  // so the idle detector knows the user is present.
+  const markActivity = (): void => { lastActivityMs = Date.now(); };
+  context.subscriptions.push(
+    vscode.window.onDidChangeTextEditorSelection(() => markActivity()),
+    vscode.workspace.onDidChangeTextDocument(() => markActivity()),
+    vscode.window.onDidChangeWindowState((e) => { if (e.focused) { markActivity(); } }),
+    vscode.window.onDidChangeActiveTextEditor(() => markActivity()),
+  );
+
   // Periodic tick
   tickTimer = setInterval(() => {
     if (currentState === null) {
       return;
     }
-    const next = tick(currentState);
+    const idle = Date.now() - lastActivityMs > IDLE_THRESHOLD_MS;
+    const next = tick(currentState, idle);
     handleStateUpdate(next);
   }, TICK_INTERVAL_MS);
 

@@ -243,7 +243,7 @@ pages asynchronously; the `invokeLater` callback often fires **before**
 `onLoadEnd` — before the JS bridge (`window.__vscodeSendMessage`) is injected
 and before the page's `message` event listeners are active. The initial state
 push is silently dropped by CEF. The page sits at `showScreen("game")` (the
-last line of `sidebar.js`) with no state until the next 5-second tick fires.
+last line of `sidebar.js`) with no state until the next 6-second tick fires.
 
 Additionally, if IntelliJ triggers a spontaneous JCEF page reload (e.g. on
 theme change or tool-window resize), the same race re-occurs: the page resets

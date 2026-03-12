@@ -28,15 +28,20 @@ Status legend:
 
 ### 2.1 Stages
 
-| Stage  | Duration        | Status | Notes |
-|--------|-----------------|--------|-------|
-| Egg    | ~2 min          | `[x]`  | Auto-hatches after timer |
-| Baby   | ~10 min         | `[x]`  | Requires minimal care |
-| Child  | ~1 hr           | `[x]`  | First stage of active care |
-| Teen   | ~3 hr           | `[x]`  | 2 possible evolution variants per type |
-| Adult  | Indefinite      | `[x]`  | Up to 3 variants per type based on care score |
-| Senior | After ~24 h adult| `[x]` | Random daily death chance; peaceful death |
-| Dead   | Terminal        | `[x]`  | Shows age at death; prompts new game |
+| Stage  | Duration (codeling 1×) | Status | Notes |
+|--------|------------------------|--------|-------|
+| Egg    | ~2 min                 | `[x]`  | Auto-hatches after timer |
+| Baby   | ~10 min                | `[x]`  | Requires minimal care |
+| Child  | ~1 hr                  | `[x]`  | First stage of active care |
+| Teen   | ~3 hr                  | `[x]`  | 2 possible evolution variants per type |
+| Adult  | Indefinite             | `[x]`  | Up to 3 variants per type based on care score |
+| Senior | After ~24 h adult      | `[x]`  | Random daily death chance; peaceful death |
+| Dead   | Terminal               | `[x]`  | Shows age at death; prompts new game |
+
+Stage durations scale with `agingMultiplier` per pet type: bytebug 1.5× faster,
+pixelpup 1.25× faster, shellscript 0.75× (slower). For example, a bytebug
+spends only ~1.3 min as an egg and reaches adult in ~2 hr vs ~4.2 hr for codeling.
+See `DEV_NOTES.md` for the full per-type breakdown.
 
 ### 2.2 Evolution
 
@@ -424,6 +429,24 @@ All events are displayed using the pet's name and human-readable sentences inste
 | `[S]` `gotchi.codingRewards` (default true) | Enable/disable all coding rewards | `[ ]` | |
 | `[S]` `gotchi.codingRewardThrottleSeconds` (default 30) | Reward cooldown | `[ ]` | |
 
+### 8.1 Idle Detection
+
+When the IDE has had no activity for ≥ **5 minutes**, the pet is considered
+idle. Hunger and happiness decay is reduced to **10% of the normal rate**
+(one in every 10 ticks fires decay; the rest are skipped). Energy drain is
+unaffected — the pet can still fall asleep while idle.
+
+| Threshold | Constant | Value |
+|-----------|----------|-------|
+| Idle after | `IDLE_THRESHOLD_SECONDS` | 300 s (5 min) |
+| Decay divisor | `IDLE_DECAY_TICK_DIVISOR` | 10 (1 pt/min vs 10 pt/min active) |
+
+Activity is tracked via `onDidChangeTextEditorSelection`, `onDidChangeTextDocument`,
+`onDidChangeWindowState`, and `onDidChangeActiveTextEditor`. Any of these events
+resets the idle timer.
+
+Status: `[x]`
+
 ---
 
 ## 9. Sickness & Death
@@ -498,7 +521,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.typeSprintTimeoutMs` | number | `5000` | Milliseconds to type word in Type Sprint | `[ ]` |
 | `gotchi.offlineDecayMaxFraction` | number | `0.60` | Maximum fraction of stats lost while extension is off | `[ ]` |
 | `gotchi.statusBarEnabled` | boolean | `true` | Show pet in VS Code status bar | `[ ]` |
-| `gotchi.tickIntervalSeconds` | number | `5` | Game tick rate (lower = faster game time; min 1) | `[ ]` |
+| `gotchi.tickIntervalSeconds` | number | `6` | Game tick rate (lower = faster game time; min 1) | `[ ]` |
 
 ---
 

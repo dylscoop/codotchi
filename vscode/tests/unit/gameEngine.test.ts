@@ -61,8 +61,8 @@ function makePet(overrides: Partial<PetState> = {}): PetState {
 // ---------------------------------------------------------------------------
 
 describe("constants", () => {
-  it("TICK_INTERVAL_SECONDS is 5", () => {
-    assert.equal(TICK_INTERVAL_SECONDS, 5);
+  it("TICK_INTERVAL_SECONDS is 6", () => {
+    assert.equal(TICK_INTERVAL_SECONDS, 6);
   });
 
   it("CODE_ACTIVITY_THROTTLE_SECONDS is 30", () => {
@@ -338,15 +338,15 @@ describe("tick — stat decay", () => {
 
 describe("tick — poop accumulation", () => {
   it("accumulates a poop after POOP_TICKS_INTERVAL ticks", () => {
-    // POOP_TICKS_INTERVAL = 20 minutes * (60/5) ticks/min = 240 ticks
-    let state = makePet({ ticksSinceLastPoop: 239 });
+    // POOP_TICKS_INTERVAL = 20 minutes * (60/6) ticks/min = 200 ticks
+    let state = makePet({ ticksSinceLastPoop: 199 });
     state = tick(state);
     assert.equal(state.poops, 1);
     assert.ok(state.events.includes("pooped"));
   });
 
   it("resets ticksSinceLastPoop to 0 after a poop", () => {
-    let state = makePet({ ticksSinceLastPoop: 239 });
+    let state = makePet({ ticksSinceLastPoop: 199 });
     state = tick(state);
     assert.equal(state.ticksSinceLastPoop, 0);
   });
@@ -365,7 +365,7 @@ describe("tick — poop accumulation", () => {
 describe("tick — sickness from dirty environment", () => {
   it("becomes sick when poops reach MAX_UNCLEANED_POOPS_BEFORE_SICK (3)", () => {
     // Already have 2 poops, one more poop during this tick triggers sickness
-    let state = makePet({ poops: 2, ticksSinceLastPoop: 239 });
+    let state = makePet({ poops: 2, ticksSinceLastPoop: 199 });
     state = tick(state);
     assert.equal(state.sick, true);
     assert.ok(state.events.includes("became_sick"));
@@ -1043,7 +1043,7 @@ describe("checkOldAgeDeath", () => {
 describe("applyOfflineDecay", () => {
   it("decreases hunger and happiness for elapsed time", () => {
     const pet = makePet({ hunger: 80, happiness: 80 });
-    // 100 seconds offline ≈ 20 ticks of decay
+    // 100 seconds offline ≈ 16 ticks of decay
     const next = applyOfflineDecay(pet, 100);
     assert.ok(next.hunger < 80, "hunger should decrease");
     assert.ok(next.happiness < 80, "happiness should decrease");

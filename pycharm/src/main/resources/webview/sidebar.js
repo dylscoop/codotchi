@@ -145,7 +145,9 @@
 
   if (btnContinue) {
     btnContinue.addEventListener("click", function () {
-      showScreen("game");
+      // After death, Continue returns to the dead-screen summary; otherwise
+      // it returns to the live game screen.
+      showScreen(lastState && !lastState.alive ? "dead" : "game");
     });
   }
 
@@ -733,25 +735,29 @@
 
     // needs_new_game response: stay on / return to setup
     if (state && state.needs_new_game) {
+      hasActiveGame = false;   // no pet exists — hide Continue button
       showScreen("setup");
       return;
     }
 
     if (state) {
-      // Mark that a real game exists so the Continue button can appear.
-      // Clear hasActiveGame when the pet dies so Continue is hidden after death.
-      if (state.alive) {
-        hasActiveGame = true;
-      } else {
-        hasActiveGame = false;
-      }
+      // Mark that a real game exists (alive or dead) so the Continue button
+      // can appear on the setup screen.  Only cleared by needs_new_game above.
+      hasActiveGame = true;
 
       // UI-refresh fix: don't bounce the user off the setup screen on every tick.
-      // If the user is on setup and the pet is still alive, just update the
-      // Continue button visibility without switching screens.
+      // If the user is on setup (alive or dead pet), just update the Continue
+      // button visibility without switching screens.
       // Exception: pendingNewGame bypasses this so Hatch! always transitions.
-      if (currentScreen === "setup" && state.alive && !pendingNewGame) {
+      if (currentScreen === "setup" && !pendingNewGame) {
         if (btnContinue) { btnContinue.classList.toggle("hidden", !hasActiveGame); }
+        return;
+      }
+
+      // If already showing the dead screen and state is still dead, avoid a
+      // full re-render every tick (prevents visual flicker).
+      if (currentScreen === "dead" && !state.alive) {
+        lastState = state;
         return;
       }
 

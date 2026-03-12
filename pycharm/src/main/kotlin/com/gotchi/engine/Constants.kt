@@ -4,7 +4,7 @@ package com.gotchi.engine
 // Constants — ported 1:1 from vscode/src/gameEngine.ts
 // ---------------------------------------------------------------------------
 
-const val TICK_INTERVAL_SECONDS: Int = 5
+const val TICK_INTERVAL_SECONDS: Int = 6
 
 private const val TICKS_PER_MINUTE: Int = 60 / TICK_INTERVAL_SECONDS
 private const val TICKS_PER_HOUR: Int = 60 * TICKS_PER_MINUTE
@@ -62,6 +62,19 @@ const val DISCIPLINE_BOOST_PER_ACTION: Int = 10
 const val CODE_ACTIVITY_HAPPINESS_BOOST: Int = 5
 const val CODE_ACTIVITY_DISCIPLINE_BOOST: Int = 2
 const val CODE_ACTIVITY_THROTTLE_SECONDS: Int = 30
+
+/**
+ * Milliseconds of no IDE activity (no keystrokes or mouse events) before the
+ * pet is considered "idle" and hunger/happiness decay drops to
+ * 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
+ */
+const val IDLE_THRESHOLD_MS: Long = 5 * 60 * 1000L // 5 minutes
+
+/**
+ * When the user is idle, hunger/happiness decay fires only once every this
+ * many ticks (≈ 10% of normal rate).
+ */
+const val IDLE_DECAY_TICK_DIVISOR: Int = 10
 
 const val MINIGAME_WIN_HAPPINESS_BOOST: Int = 15
 const val MINIGAME_LOSE_HAPPINESS_BOOST: Int = 5
@@ -165,10 +178,10 @@ val EVOLUTION_CHARACTERS: Map<String, Map<String, Map<String, String>>> = mapOf(
 
 /** Cumulative dayTimer thresholds to evolve out of each stage. */
 val EVOLUTION_DAY_THRESHOLDS: Map<String, Double> = mapOf(
-    "egg"   to 0.033,  // ≈ tick 24 for codeling 1× (~2 min awake)
-    "baby"  to 0.199,  // ≈ tick 144 cumulative for codeling 1× (~12 min)
-    "child" to 1.199,  // ≈ tick 864 cumulative for codeling 1× (~72 min)
-    "teen"  to 4.199,  // ≈ tick 3024 cumulative for codeling 1× (~252 min)
+    "egg"   to 0.033,  // ≈ tick 20 for codeling 1× (~2 min awake)
+    "baby"  to 0.199,  // ≈ tick 120 cumulative for codeling 1× (~12 min)
+    "child" to 1.199,  // ≈ tick 720 cumulative for codeling 1× (~72 min)
+    "teen"  to 4.199,  // ≈ tick 2520 cumulative for codeling 1× (~252 min)
 )
 
 val NEXT_STAGE_MAP: Map<String, String> = mapOf(

@@ -137,7 +137,7 @@ fun createPet(name: String, petType: String, color: String): PetState {
 // Tick
 // ---------------------------------------------------------------------------
 
-fun tick(state: PetState): PetState {
+fun tick(state: PetState, isIdle: Boolean = false): PetState {
     if (!state.alive) return state
 
     val modifiers = PET_TYPE_MODIFIERS[state.petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
@@ -162,10 +162,15 @@ fun tick(state: PetState): PetState {
 
     // Stat decay
     if (!sleeping) {
-        val hungerDecay    = ceil(HUNGER_DECAY_PER_TICK    * modifiers.hungerDecayMultiplier).toInt()
-        val happinessDecay = ceil(HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier).toInt()
-        hunger    = clampStat(hunger    - hungerDecay)
-        happiness = clampStat(happiness - happinessDecay)
+        // When idle (no keyboard/mouse activity), hunger and happiness decay at
+        // only 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
+        val decayThisTick = !isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR == 0)
+        if (decayThisTick) {
+            val hungerDecay    = ceil(HUNGER_DECAY_PER_TICK    * modifiers.hungerDecayMultiplier).toInt()
+            val happinessDecay = ceil(HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier).toInt()
+            hunger    = clampStat(hunger    - hungerDecay)
+            happiness = clampStat(happiness - happinessDecay)
+        }
         energy    = clampStat(energy    - ENERGY_DECAY_PER_TICK)
     } else {
         val energyRegen = ceil(ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier).toInt()

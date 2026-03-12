@@ -1,6 +1,32 @@
 # Version History
 
-## v0.1.2 — current
+## v0.1.3 — current
+
+### Changes from v0.1.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | `TICK_INTERVAL_SECONDS` 5 → 6; added `IDLE_THRESHOLD_SECONDS = 300`, `IDLE_DECAY_TICK_DIVISOR = 10`; `tick()` gains `isIdle` param — skips hunger/happiness decay on 9 out of 10 ticks when idle; JSDoc comment corrected (÷ 6 s/tick = 600 ticks/day); `EVOLUTION_DAY_THRESHOLDS` tick-count comments updated for 6s ticks (24→20, 144→120, 864→720, 3024→2520) |
+| `vscode/src/extension.ts` | Added `lastActivityMs`, `markActivity()`, four IDE activity listeners (`onDidChangeTextEditorSelection`, `onDidChangeTextDocument`, `onDidChangeWindowState`, `onDidChangeActiveTextEditor`); `tick()` call passes `isIdle` flag |
+| `vscode/media/sidebar.js` | Fixed new-game screen refresh bug: dead-state tick guard prevents screen switching; `hasActiveGame` now true for dead state, false only on `needs_new_game`; Continue button routes to `"dead"` screen when pet is dead |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | `TICK_INTERVAL_SECONDS` 5 → 6; added `IDLE_THRESHOLD_MS = 300_000L`, `IDLE_DECAY_TICK_DIVISOR = 10`; `EVOLUTION_DAY_THRESHOLDS` tick-count comments updated (same corrections as TypeScript) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | `tick()` gains `isIdle` param — same idle decay logic as TypeScript |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | Added AWT event listener for idle tracking (`lastActivityTime`, `awtActivityListener`); `isIdle()` helper; `onTick()` passes idle flag; listener removed in `dispose()` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored all sidebar.js fixes |
+| `vscode/tests/unit/gameEngine.test.ts` | `TICK_INTERVAL_SECONDS` assertion 5→6; poop boundary `239→199`, interval comment `240→200`; offline decay comment `≈ 20 ticks → ≈ 16 ticks` |
+| `vscode/tests/unit/gameEngine.test.js` | Mirrored all test.ts changes |
+| `DEV_NOTES.md` | Constants table updated (6s, 10 ticks/min, 600/480 ticks/day); poop prose updated; new **Stat Decay Rates** section added; evolution tick-count comments corrected; "ageDays is manual" simplification bullet replaced with accurate description |
+| `BUGFIXES.md` | "5-second tick" → "6-second tick" |
+| `vscode/FEATURES.md` | `tickIntervalSeconds` default 5→6; section 2.1 stage durations table updated with per-type `agingMultiplier` note; new section 8.1 **Idle Detection** added |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bump; meal cap corrected 4→3; snack cap corrected 2→3 |
+| `vscode/package.json` | Version `0.1.2` → `0.1.3` |
+| `pycharm/build.gradle.kts` | Version `0.1.2` → `0.1.3` |
+| `pycharm/gradle.properties` | `pluginVersion` corrected and bumped to `0.1.3` |
+| `README.md` | Version reference updated to `v0.1.3`; install filenames updated to `0.1.3` |
+
+---
+
+## v0.1.2
 
 ### Changes from v0.1.1
 

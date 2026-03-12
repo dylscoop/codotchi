@@ -66,10 +66,10 @@ Key constants:
 
 | Constant | Value | Notes |
 |----------|-------|-------|
-| `TICK_INTERVAL_SECONDS` | 5 s | Wall-clock time per tick |
-| `TICKS_PER_MINUTE` | 12 | |
-| `TICKS_PER_GAME_DAY_AWAKE` | 720 ticks | 1 real hour awake = 1 game day (codeling 1×) |
-| `TICKS_PER_GAME_DAY_SLEEPING` | 576 ticks | ~48 min asleep = 1 game day (~25% faster) |
+| `TICK_INTERVAL_SECONDS` | 6 s | Wall-clock time per tick |
+| `TICKS_PER_MINUTE` | 10 | |
+| `TICKS_PER_GAME_DAY_AWAKE` | 600 ticks | 1 real hour awake = 1 game day (codeling 1×) |
+| `TICKS_PER_GAME_DAY_SLEEPING` | 480 ticks | ~48 min asleep = 1 game day (~25% faster) |
 
 `ageDays` is derived as `Math.floor(dayTimer)` on every tick — it is **not**
 manual and does not require sleep/wake events to advance.
@@ -176,6 +176,43 @@ score reflects care quality *within* the current stage, not lifetime averages.
 
 ---
 
+## Stat Decay Rates
+
+All decay occurs in `tick()`. Rates below assume the pet is **awake**.
+
+### Active decay (normal coding activity within the last 5 minutes)
+
+| Stat      | Per-tick loss | Per-minute | Full bar (100 pts) lasts |
+|-----------|--------------|------------|--------------------------|
+| Hunger    | 1 pt / tick  | 10 pts/min | ~10 min                  |
+| Happiness | 1 pt / tick  | 10 pts/min | ~10 min                  |
+| Energy    | 1 pt / tick  | 10 pts/min | ~10 min (then sleeps)    |
+
+Per-type hunger multipliers: bytebug **1.5×** (6.7 min), shellscript **0.8×** (~12.5 min).  
+Per-type happiness multipliers: pixelpup **1.5×** (6.7 min).
+
+### Idle decay (no IDE activity for ≥ 5 minutes)
+
+Hunger and happiness decay is skipped on 9 out of every 10 ticks
+(`ticksAlive % IDLE_DECAY_TICK_DIVISOR != 0`). Energy drain is unaffected.
+
+| Stat      | Effective rate | Full bar lasts |
+|-----------|---------------|----------------|
+| Hunger    | 1 pt/min      | ~100 min       |
+| Happiness | 1 pt/min      | ~100 min       |
+
+After hunger hits 0, the starvation penalty fires every tick (-5 health/tick).
+With 100 base health, the pet survives ~2 min of starvation, giving a total idle
+survival of approximately **1 hour 42 minutes** for a codeling with full stats.
+
+### Offline decay (IDE fully closed)
+
+Applied as a single lump sum on the next launch via `applyOfflineDecay()`.
+Capped at **`OFFLINE_DECAY_MAX_FRACTION = 0.60`** of the current value —
+regardless of how long the IDE was closed, no stat can lose more than 60%.
+
+---
+
 ## Poop Rate System
 
 Each pet type has its own average poop interval and volatility, both encoded
@@ -191,10 +228,10 @@ next = uniform(base − jitter, base + jitter)           // sampled fresh each t
 next = clamp(next, 1, POOP_TICKS_INTERVAL)             // hard cap at 20 min
 ```
 
-`POOP_TICKS_INTERVAL` is the absolute ceiling (20 min at the default 5s tick
+`POOP_TICKS_INTERVAL` is the absolute ceiling (20 min at the default 6s tick
 rate). `nextPoopIntervalTicks` is stored in `PetState` so it is:
 
-- Stable between ticks (not re-rolled every 5 s)
+- Stable between ticks (not re-rolled every 6 s)
 - Persisted across restarts (serialised with the rest of `PetState`)
 - Resampled fresh each time the pet actually poops
 
@@ -409,9 +446,10 @@ removed for JCEF compatibility.
   `sidebar.js` using `Math.random()`. The host never validates it. A determined
   cheater could always win, but this is a single-player toy.
 
-- **ageDays is manual.** `ageDays` only increments when the pet wakes (via
-  `wake()`, `auto_woke_up`, or BUGFIX-003 auto-wake). It does not track
-  real-world calendar days. A pet that never sleeps never ages.
+- **ageDays is derived from dayTimer.** `ageDays` is computed as
+  `Math.floor(dayTimer)` on every tick in `withDerivedFields()`. It advances
+  continuously as `dayTimer` accumulates — it does not require the pet to
+  sleep or wake to increment.
 
 - **No network.** All state is local. No telemetry, no sync, no leaderboard
   (the leaderboard idea in DESIGN.md is a future aspiration).

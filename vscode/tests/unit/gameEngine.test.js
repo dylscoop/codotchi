@@ -23,8 +23,8 @@ function makePet(overrides = {}) {
 // Constants
 // ---------------------------------------------------------------------------
 (0, node_test_1.describe)("constants", () => {
-    (0, node_test_1.it)("TICK_INTERVAL_SECONDS is 5", () => {
-        strict_1.default.equal(gameEngine_1.TICK_INTERVAL_SECONDS, 5);
+    (0, node_test_1.it)("TICK_INTERVAL_SECONDS is 6", () => {
+        strict_1.default.equal(gameEngine_1.TICK_INTERVAL_SECONDS, 6);
     });
     (0, node_test_1.it)("CODE_ACTIVITY_THROTTLE_SECONDS is 30", () => {
         strict_1.default.equal(gameEngine_1.CODE_ACTIVITY_THROTTLE_SECONDS, 30);
@@ -227,14 +227,14 @@ function makePet(overrides = {}) {
 // ---------------------------------------------------------------------------
 (0, node_test_1.describe)("tick — poop accumulation", () => {
     (0, node_test_1.it)("accumulates a poop after POOP_TICKS_INTERVAL ticks", () => {
-        // POOP_TICKS_INTERVAL = 20 minutes * (60/5) ticks/min = 240 ticks
-        let state = makePet({ ticksSinceLastPoop: 239 });
+        // POOP_TICKS_INTERVAL = 20 minutes * (60/6) ticks/min = 200 ticks
+        let state = makePet({ ticksSinceLastPoop: 199 });
         state = (0, gameEngine_1.tick)(state);
         strict_1.default.equal(state.poops, 1);
         strict_1.default.ok(state.events.includes("pooped"));
     });
     (0, node_test_1.it)("resets ticksSinceLastPoop to 0 after a poop", () => {
-        let state = makePet({ ticksSinceLastPoop: 239 });
+        let state = makePet({ ticksSinceLastPoop: 199 });
         state = (0, gameEngine_1.tick)(state);
         strict_1.default.equal(state.ticksSinceLastPoop, 0);
     });
@@ -250,7 +250,7 @@ function makePet(overrides = {}) {
 (0, node_test_1.describe)("tick — sickness from dirty environment", () => {
     (0, node_test_1.it)("becomes sick when poops reach MAX_UNCLEANED_POOPS_BEFORE_SICK (3)", () => {
         // Already have 2 poops, one more poop during this tick triggers sickness
-        let state = makePet({ poops: 2, ticksSinceLastPoop: 239 });
+        let state = makePet({ poops: 2, ticksSinceLastPoop: 199 });
         state = (0, gameEngine_1.tick)(state);
         strict_1.default.equal(state.sick, true);
         strict_1.default.ok(state.events.includes("became_sick"));
@@ -805,7 +805,7 @@ function makePet(overrides = {}) {
 (0, node_test_1.describe)("applyOfflineDecay", () => {
     (0, node_test_1.it)("decreases hunger and happiness for elapsed time", () => {
         const pet = makePet({ hunger: 80, happiness: 80 });
-        // 100 seconds offline ≈ 20 ticks of decay
+        // 100 seconds offline ≈ 16 ticks of decay
         const next = (0, gameEngine_1.applyOfflineDecay)(pet, 100);
         strict_1.default.ok(next.hunger < 80, "hunger should decrease");
         strict_1.default.ok(next.happiness < 80, "happiness should decrease");

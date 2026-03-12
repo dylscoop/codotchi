@@ -19,7 +19,7 @@
 // ---------------------------------------------------------------------------
 
 /** How many real-world seconds elapse between each game tick. */
-export const TICK_INTERVAL_SECONDS: number = 5;
+export const TICK_INTERVAL_SECONDS: number = 6;
 
 const TICKS_PER_MINUTE: number = 60 / TICK_INTERVAL_SECONDS;
 const TICKS_PER_HOUR: number = 60 * TICKS_PER_MINUTE;
@@ -88,6 +88,19 @@ const CODE_ACTIVITY_DISCIPLINE_BOOST: number = 2;
 /** Minimum seconds between code-activity happiness boosts. */
 export const CODE_ACTIVITY_THROTTLE_SECONDS: number = 30;
 
+/**
+ * Seconds of no IDE activity (no keystrokes, cursor movement, or window focus)
+ * before the pet is considered "idle" and decay is reduced to IDLE_DECAY_FRACTION.
+ */
+export const IDLE_THRESHOLD_SECONDS: number = 300; // 5 minutes
+
+/**
+ * When the user is idle, hunger and happiness decay at this fraction of the
+ * normal rate (applied by skipping decay on most ticks — 1 in every
+ * IDLE_DECAY_TICK_DIVISOR ticks actually decays).
+ */
+const IDLE_DECAY_TICK_DIVISOR: number = 10; // 10% of normal rate
+
 const MINIGAME_WIN_HAPPINESS_BOOST: number = 15;
 const MINIGAME_LOSE_HAPPINESS_BOOST: number = 5;
 const MINIGAME_MEMORY_WIN_HAPPINESS_BOOST: number = 20;
@@ -109,7 +122,7 @@ export const SENIOR_NATURAL_DEATH_AGE_DAYS: number = 20;
 
 /**
  * Ticks elapsed while awake before the day timer advances by 1.0 (1 game day = 1 real hour awake).
- * 60 min × 60 s ÷ 5 s/tick = 720 ticks.
+ * 60 min × 60 s ÷ 6 s/tick = 600 ticks.
  */
 export const TICKS_PER_GAME_DAY_AWAKE: number = TICKS_PER_HOUR;
 
@@ -627,7 +640,7 @@ function withDerivedFields(
  * @param state - The current pet state.
  * @returns A new PetState after one tick.
  */
-export function tick(state: PetState): PetState {
+export function tick(state: PetState, isIdle: boolean = false): PetState {
   if (!state.alive) {
     return state;
   }
@@ -653,12 +666,17 @@ export function tick(state: PetState): PetState {
 
   // Stat decay
   if (!sleeping) {
-    const hungerDecay = Math.ceil(HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier);
-    const happinessDecay = Math.ceil(
-      HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier
-    );
-    hunger = clampStat(hunger - hungerDecay);
-    happiness = clampStat(happiness - happinessDecay);
+    // When idle (no keyboard/mouse activity), hunger and happiness decay at
+    // only 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
+    const decayThisTick = !isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR === 0);
+    if (decayThisTick) {
+      const hungerDecay = Math.ceil(HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier);
+      const happinessDecay = Math.ceil(
+        HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier
+      );
+      hunger = clampStat(hunger - hungerDecay);
+      happiness = clampStat(happiness - happinessDecay);
+    }
     energy = clampStat(energy - ENERGY_DECAY_PER_TICK);
   } else {
     const energyRegen = Math.ceil(
@@ -776,10 +794,10 @@ export function tick(state: PetState): PetState {
 
 /** Map from stage name to the cumulative dayTimer threshold to evolve out of it. */
 const EVOLUTION_DAY_THRESHOLDS: Record<string, number> = {
-  egg:   0.033,  // ≈ tick 24 for codeling 1× (~2 min awake)
-  baby:  0.199,  // ≈ tick 144 cumulative for codeling 1× (~12 min)
-  child: 1.199,  // ≈ tick 864 cumulative for codeling 1× (~72 min)
-  teen:  4.199,  // ≈ tick 3024 cumulative for codeling 1× (~252 min)
+  egg:   0.033,  // ≈ tick 20 for codeling 1× (~2 min awake)
+  baby:  0.199,  // ≈ tick 120 cumulative for codeling 1× (~12 min)
+  child: 1.199,  // ≈ tick 720 cumulative for codeling 1× (~72 min)
+  teen:  4.199,  // ≈ tick 2520 cumulative for codeling 1× (~252 min)
 };
 
 /** Map from stage name to the next stage. */

@@ -5,6 +5,9 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.util.concurrency.AppExecutorUtil
+import java.awt.AWTEvent
+import java.awt.Toolkit
+import java.awt.event.AWTEventListener
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
@@ -31,6 +34,17 @@ class GotchiPlugin : Disposable {
     @Volatile private var mealsGivenThisCycle: Int = 0
     @Volatile private var lastCodeActivityTime: Long = 0L
 
+    /** Timestamp of the last detected keyboard or mouse activity in the IDE. */
+    @Volatile private var lastActivityTime: Long = System.currentTimeMillis()
+
+    /** AWT listener that updates [lastActivityTime] on any key press or mouse event. */
+    private val awtActivityListener = AWTEventListener {
+        lastActivityTime = System.currentTimeMillis()
+    }
+
+    private fun isIdle(): Boolean =
+        System.currentTimeMillis() - lastActivityTime > IDLE_THRESHOLD_MS
+
     private var browserPanel:  GotchiBrowserPanel?  = null
     private var statusWidget:  GotchiStatusWidget?  = null
 
@@ -39,6 +53,12 @@ class GotchiPlugin : Disposable {
     // ── Initialisation ─────────────────────────────────────────────────────
 
     fun initialize() {
+        // Register AWT event listener to track keyboard/mouse activity for idle detection
+        val activityMask = AWTEvent.KEY_EVENT_MASK or
+            AWTEvent.MOUSE_EVENT_MASK or
+            AWTEvent.MOUSE_MOTION_EVENT_MASK
+        Toolkit.getDefaultToolkit().addAWTEventListener(awtActivityListener, activityMask)
+
         val persistence = service<GotchiPersistence>()
 
         // Restore saved high score
@@ -77,7 +97,7 @@ class GotchiPlugin : Disposable {
 
     private fun onTick() {
         val state = currentState ?: return
-        currentState = tick(state)
+        currentState = tick(state, isIdle())
         broadcastState()
     }
 
@@ -255,5 +275,6 @@ class GotchiPlugin : Disposable {
 
     override fun dispose() {
         tickFuture?.cancel(false)
+        Toolkit.getDefaultToolkit().removeAWTEventListener(awtActivityListener)
     }
 }
