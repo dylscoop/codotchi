@@ -89,7 +89,7 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   // Sidebar provider
-  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState);
+  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(SidebarProvider.VIEW_ID, sidebar)
   );

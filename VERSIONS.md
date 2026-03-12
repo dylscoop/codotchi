@@ -63,6 +63,18 @@ FEED_MEAL_MAX_PER_CYCLE:     number = 3   // lowered from 4; max meals per wake 
 | `pycharm/src/main/resources/webview/sidebar.css` | Mirrored VS Code CSS changes |
 | `pycharm/src/main/resources/webview/sidebar.js` | Mirrored all VS Code JS changes |
 
+### BUGFIX: high score not shown on setup screen after VS Code restart (v0.1.0)
+
+Root cause: `postState` was called during activation before the webview panel was
+visible — `webviewView` was `undefined` so the message was silently dropped.
+On reopening the panel, no follow-up message was ever sent (tick skips when
+`currentState === null`), so `latestHighScore` in the webview stayed `null`.
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/sidebarProvider.ts` | Added `getHighScore: () => HighScore \| null` to constructor; `resolveWebviewView` now bootstraps the freshly-loaded webview: if a state exists it calls `postState(state, hs)`; if no state but a high score exists it posts a synthetic `{ needs_new_game: true }` message with `highScore` so `latestHighScore` is cached before the setup screen is shown |
+| `vscode/src/extension.ts` | Passes `() => currentHighScore` as 5th argument to `new SidebarProvider(...)` |
+
 ---
 
 
