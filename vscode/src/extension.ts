@@ -88,7 +88,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // Commands
   context.subscriptions.push(
     vscode.commands.registerCommand("gotchi.openPanel", () => {
-      void vscode.commands.executeCommand("workbench.view.extension.gotchi-sidebar");
+      void vscode.commands.executeCommand("gotchiView.focus");
     })
   );
 
@@ -98,7 +98,7 @@ export function activate(context: vscode.ExtensionContext): void {
       currentState = null;
       // The webview new-game form handles the actual createPet call via the
       // "new_game" message routed through SidebarProvider.
-      void vscode.commands.executeCommand("workbench.view.extension.gotchi-sidebar");
+      void vscode.commands.executeCommand("gotchiView.focus");
     })
   );
 

@@ -70,3 +70,32 @@ way to recover.
 pet is not sick and health is below the maximum. This is applied after all
 damage sources but before the death check, so damage still wins when multiple
 conditions fire in the same tick.
+
+---
+
+## BUGFIX-005 — Status bar click does not focus the sidebar panel
+
+**Status:** Fixed (branch `bugfix/small_fixes`)
+**File:** `vscode/src/extension.ts`
+
+**Problem:** The status bar item was wired to
+`workbench.view.extension.gotchi-sidebar`, which opens the side-bar
+container but does not focus the gotchi webview panel inside it.
+
+**Fix:** Changed the command to `gotchiView.focus`, which directly focuses
+the registered `WebviewView`.
+
+---
+
+## BUGFIX-006 — TypeScript picks up `@types/katex` from root `node_modules`
+
+**Status:** Fixed (branch `bugfix/small_fixes`)
+**File:** `vscode/tsconfig.json`
+
+**Problem:** After adding a root-level `package.json` (for markdownlint-cli2),
+TypeScript's type resolution walked up to the repo root `node_modules` and
+found `@types/katex` (a transitive dependency of markdownlint-cli2), causing
+compile errors in `vscode/src/`.
+
+**Fix:** Added `"typeRoots": ["./node_modules/@types"]` to `vscode/tsconfig.json`
+to pin type resolution to `vscode/node_modules` only.

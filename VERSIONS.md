@@ -1,6 +1,35 @@
 # Version History
 
-## v0.0.3 — current
+## v0.0.4 — current (branch `bugfix/small_fixes`)
+
+### Changes from v0.0.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | `FEED_SNACK_HUNGER_BOOST = 5` added — snacks now also raise hunger by 5; `MEDICINE_HEALTH_BOOST` removed — `giveMedicine()` no longer modifies health (still cures after 3 doses); `PLAY_ENERGY_COST` raised from `10` → `25`; `ENERGY_DECAY_PER_TICK = 1` added — energy drains 1/tick while awake; `HEALTH_REGEN_AWAKE_TICK_INTERVAL = 5` added — health regens 1 HP/tick while sleeping but only 1 HP every 5 ticks while awake |
+| `vscode/src/extension.ts` | Status bar click command changed from `workbench.view.extension.gotchi-sidebar` to `gotchiView.focus` so clicking it reliably focuses the panel (BUGFIX-005) |
+| `vscode/media/sidebar.js` | Persistent pixel-art poo sprites drawn on canvas floor in `drawSprite()` — up to 3 brown 12×14 px poos spread across the canvas base; disappear when `state.poops` returns to 0 |
+| `vscode/tsconfig.json` | Added `"typeRoots": ["./node_modules/@types"]` to prevent root `node_modules/@types/katex` bleed (BUGFIX-006) |
+| `vscode/tests/unit/gameEngine.test.ts` | Updated 5 tests to match new engine behaviour: play energy cost (10 → 25), medicine no longer boosts health, sleeping-while-full-energy auto-wake interaction |
+
+### New constants (v0.0.4)
+
+```ts
+FEED_SNACK_HUNGER_BOOST: number = 5       // hunger gained per snack
+PLAY_ENERGY_COST: number        = 25       // was 10
+ENERGY_DECAY_PER_TICK: number   = 1        // passive energy drain while awake
+HEALTH_REGEN_AWAKE_TICK_INTERVAL: number = 5  // ticks between awake regen pulses
+```
+
+### Removed constants (v0.0.4)
+
+```ts
+MEDICINE_HEALTH_BOOST  // medicine no longer changes health directly
+```
+
+---
+
+## v0.0.3
 
 ### Changes from v0.0.2
 

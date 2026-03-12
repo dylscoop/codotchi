@@ -330,7 +330,7 @@ describe("tick — poop accumulation", () => {
   });
 
   it("does not accumulate poops while sleeping", () => {
-    const state = makePet({ sleeping: true, ticksSinceLastPoop: 999 });
+    const state = makePet({ sleeping: true, energy: 50, ticksSinceLastPoop: 999 });
     const next = tick(state);
     assert.equal(next.poops, 0);
   });
@@ -397,7 +397,7 @@ describe("tick — happiness-critical health damage", () => {
   });
 
   it("does not damage health from happiness-critical while sleeping", () => {
-    const pet = makePet({ happiness: 0, health: 100, sleeping: true });
+    const pet = makePet({ happiness: 0, health: 100, sleeping: true, energy: 50 });
     const next = tick(pet);
     assert.equal(next.health, 100);
   });
@@ -613,10 +613,10 @@ describe("play", () => {
     assert.equal(next.happiness, 65);
   });
 
-  it("decreases energy by 10", () => {
+  it("decreases energy by 25", () => {
     const pet = makePet({ energy: 50 });
     const next = play(pet);
-    assert.equal(next.energy, 40);
+    assert.equal(next.energy, 25);
   });
 
   it("decreases weight by 1", () => {
@@ -803,10 +803,10 @@ describe("clean", () => {
 // ---------------------------------------------------------------------------
 
 describe("giveMedicine", () => {
-  it("increases health by 20", () => {
+  it("does not change health (medicine no longer boosts health)", () => {
     const pet = makePet({ sick: true, health: 50 });
     const next = giveMedicine(pet);
-    assert.equal(next.health, 70);
+    assert.equal(next.health, 50);
   });
 
   it("increments medicineDosesGiven", () => {
@@ -843,10 +843,10 @@ describe("giveMedicine", () => {
     assert.ok(next.events.includes("medicine_not_needed"));
   });
 
-  it("clamps health at 100", () => {
+  it("health is unchanged (no longer boosted by medicine)", () => {
     const pet = makePet({ sick: true, health: 90 });
     const next = giveMedicine(pet);
-    assert.equal(next.health, 100);
+    assert.equal(next.health, 90);
   });
 });
 

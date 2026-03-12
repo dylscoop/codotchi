@@ -60,14 +60,20 @@ const FEED_MEAL_WEIGHT_GAIN: number = 1;
 const FEED_MEAL_MAX_PER_CYCLE: number = 4;
 
 const FEED_SNACK_HAPPINESS_BOOST: number = 10;
+const FEED_SNACK_HUNGER_BOOST: number = 5;
 const FEED_SNACK_WEIGHT_GAIN: number = 2;
 
 const PLAY_HAPPINESS_BOOST: number = 15;
-const PLAY_ENERGY_COST: number = 10;
+const PLAY_ENERGY_COST: number = 25;
 const PLAY_WEIGHT_LOSS: number = 1;
 
-const MEDICINE_HEALTH_BOOST: number = 20;
+/** Passive energy drain per tick while awake. */
+const ENERGY_DECAY_PER_TICK: number = 1;
+
 const MEDICINE_DOSES_TO_CURE: number = 3;
+
+/** Ticks between passive health regen pulses while awake (1 hp per interval). */
+const HEALTH_REGEN_AWAKE_TICK_INTERVAL: number = 5;
 
 const DISCIPLINE_BOOST_PER_ACTION: number = 10;
 
@@ -576,6 +582,7 @@ export function tick(state: PetState): PetState {
     );
     hunger = clampStat(hunger - hungerDecay);
     happiness = clampStat(happiness - happinessDecay);
+    energy = clampStat(energy - ENERGY_DECAY_PER_TICK);
   } else {
     const energyRegen = Math.ceil(
       ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier
@@ -632,9 +639,13 @@ export function tick(state: PetState): PetState {
     health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
   }
 
-  // BUGFIX-004: passive health regen when not sick and not at maximum
+  // BUGFIX-004: passive health regen — full rate while sleeping, much slower awake
   if (!sick && health < STAT_MAX) {
-    health = clampStat(health + 1);
+    if (sleeping) {
+      health = clampStat(health + 1);
+    } else if (ticksAlive % HEALTH_REGEN_AWAKE_TICK_INTERVAL === 0) {
+      health = clampStat(health + 1);
+    }
   }
 
   // Death check
@@ -791,6 +802,7 @@ export function feedSnack(state: PetState): PetState {
 
   return withDerivedFields({
     ...state,
+    hunger: clampStat(state.hunger + FEED_SNACK_HUNGER_BOOST),
     happiness: clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
     weight: clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN),
     consecutiveSnacks,
@@ -930,7 +942,6 @@ export function giveMedicine(state: PetState): PetState {
   }
 
   const medicineDosesGiven = state.medicineDosesGiven + 1;
-  const health = clampStat(state.health + MEDICINE_HEALTH_BOOST);
   const events: string[] = ["medicine_given"];
   let sick: boolean = state.sick;
 
@@ -939,14 +950,13 @@ export function giveMedicine(state: PetState): PetState {
     events.push("cured");
     return withDerivedFields({
       ...state,
-      health,
       sick: sick as boolean,
       medicineDosesGiven: 0,
       events,
     });
   }
 
-  return withDerivedFields({ ...state, health, medicineDosesGiven, events });
+  return withDerivedFields({ ...state, medicineDosesGiven, events });
 }
 
 /**

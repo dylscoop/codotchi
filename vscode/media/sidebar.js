@@ -431,6 +431,38 @@
     spriteCtx.fillStyle = "rgba(255,255,255,0.08)";
     spriteCtx.fillRect(0, H - 5, W, 1);
 
+    // Persistent poo sprites — drawn before the pet so they sit on the floor
+    // 6×7 pixel art: 1 = dark brown, 2 = light brown highlight
+    var POO_PIXELS = [
+      [0,0,1,1,0,0],
+      [0,1,1,1,1,0],
+      [1,1,2,1,1,1],
+      [1,2,1,1,1,1],
+      [0,1,1,1,1,0],
+      [0,1,1,1,1,0],
+      [1,1,1,1,1,1],
+    ];
+    var PS = 2;                            // 2px per pixel → 12×14 total
+    var pW = POO_PIXELS[0].length * PS;
+    var pH = POO_PIXELS.length    * PS;
+    var pooGroundY = H - 4 - pH;           // sit just above the ground line
+    var pooXPositions = [
+      Math.round(W * 0.12),
+      Math.round(W * 0.52),
+      Math.round(W * 0.78),
+    ];
+    var numPoos = Math.min(state.poops || 0, 3);
+    for (var pi = 0; pi < numPoos; pi++) {
+      var pooX = pooXPositions[pi];
+      POO_PIXELS.forEach(function (row, ry) {
+        row.forEach(function (cell, rx) {
+          if (!cell) { return; }
+          spriteCtx.fillStyle = cell === 2 ? "#A0522D" : "#6B3A2A";
+          spriteCtx.fillRect(pooX + rx * PS, pooGroundY + ry * PS, PS, PS);
+        });
+      });
+    }
+
     // Body size scales with stage
     const stageScale = STAGE_SCALES[state.stage] || 0.5;
     const bodySize   = Math.round(24 * stageScale);

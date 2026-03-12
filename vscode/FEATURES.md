@@ -15,7 +15,7 @@ Status legend:
 |--------------|--------|--------|-------|
 | Hunger       | 0–100  | `[x]`  | Decays over time; 0 triggers health loss |
 | Happiness    | 0–100  | `[x]`  | Decays over time; 0 triggers health loss |
-| Energy       | 0–100  | `[x]`  | Depleted by play; restored during sleep |
+| Energy       | 0–100  | `[x]`  | Decays 1/tick while awake; depleted by play; restored during sleep |
 | Health       | 0–100  | `[x]`  | Drops from starvation, unhappiness, sickness |
 | Discipline   | 0–100  | `[x]`  | Affected by praise/scold; feeds into care score |
 | Weight       | 1–99   | `[~]`  | Tracked internally; not yet shown in the UI |
@@ -64,12 +64,12 @@ Status legend:
 | Action      | Effect                                           | Constraint                               | Status |
 |-------------|--------------------------------------------------|------------------------------------------|--------|
 | Feed Meal   | Hunger +20, Weight +1                            | Max 4 meals per wake cycle               | `[x]`  |
-| Feed Snack  | Happiness +10, Weight +2                         | 3 consecutive snacks triggers sickness   | `[x]`  |
-| Play        | Happiness +15, Energy −10, Weight −1             | Requires Energy > 10; launches minigame  | `[~]`  |
+| Feed Snack  | Happiness +10, Hunger +5, Weight +2              | 3 consecutive snacks triggers sickness   | `[x]`  |
+| Play        | Happiness +15, Energy −25, Weight −1             | Requires Energy > 0; launches minigame   | `[~]`  |
 | Sleep       | Energy regenerates; cannot act while sleeping    | —                                        | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
-| Medicine    | Health +20; cures sickness after 3 doses         | —                                        | `[x]`  |
+| Medicine    | Cures sickness after 3 doses (no health boost)   | —                                        | `[x]`  |
 | Praise      | Discipline +10                                   | —                                        | `[x]`  |
 | Scold       | Discipline +10                                   | —                                        | `[x]`  |
 | Light off   | Force sleep early (manual bedtime)               | —                                        | `[ ]`  |
@@ -363,7 +363,7 @@ Features that deepen the existing care actions.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Manual "Lights Off" button to put pet to sleep early | `[ ]` | |
-| Auto-wake after energy reaches 100 | `[ ]` | |
+| Auto-wake after energy reaches 100 | `[x]` | Implemented in BUGFIX-003 |
 | `[S]` `gotchi.autoWake` (default true) — auto-wake when energy full | `[ ]` | |
 | Sleep schedule: pet refuses to sleep if recently slept | `[ ]` | |
 | Visual night-mode on canvas when sleeping | `[ ]` | Darken canvas background |
@@ -421,7 +421,7 @@ Features that deepen the existing care actions.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Mood emoji + name displayed | `[x]` | |
-| Click to focus sidebar | `[ ]` | |
+| Click to focus sidebar | `[x]` | Uses `gotchiView.focus` command |
 | Attention-needed indicator (⚠) | `[ ]` | |
 | `[S]` `gotchi.statusBarEnabled` (default true) | `[ ]` | |
 
