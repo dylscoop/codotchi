@@ -153,10 +153,55 @@ never visually disabled in the sidebar.
 (`GameEngine.kt`), so `play()` returns `"too_tired"` whenever energy would
 be insufficient to cover the full cost.
 
-**Fix (webview):** `renderState()` now disables the Play button when
-`state.energy < PLAY_ENERGY_COST` (hardcoded `25`, matching the engine
-constant), applied after the sleeping-disable block so both checks stack
-correctly. Mirrored in both VS Code and PyCharm webviews.
+  **Fix (webview):** `renderState()` now disables the Play button when
+  `state.energy < PLAY_ENERGY_COST` (hardcoded `25`, matching the engine
+  constant), applied after the sleeping-disable block so both checks stack
+  correctly. Mirrored in both VS Code and PyCharm webviews.
+
+---
+
+## BUGFIX-011 — Hatching from the menu does nothing when a live pet exists
+
+**Status:** Fixed (branch `bugfix/hatch-and-continue`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** When the user clicks "Hatch!" while already on the setup screen
+and a live pet exists, the extension responds with a fresh `state` (alive = true).
+The UI-refresh suppression guard introduced in v0.1.2 fires:
+
+```js
+if (currentScreen === "setup" && state.alive) { ...; return; }
+```
+
+Because `currentScreen === "setup"` and the new pet is `alive`, the handler
+returns early — `renderState` is never called, the screen never switches to
+"game", and the hatch appears to do nothing.
+
+**Fix:** Added a `pendingNewGame` flag (`let pendingNewGame = false`). Set to
+`true` in `startBtn`'s click handler before posting the message. The suppression
+guard now checks `!pendingNewGame`, allowing `renderState` through when Hatch!
+was clicked. The flag is cleared immediately after `renderState` is called.
+
+---
+
+## BUGFIX-012 — Continue button appears and bounces user back to dead screen after pet dies
+
+**Status:** Fixed (branch `bugfix/hatch-and-continue`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** After a pet dies:
+1. `renderState` calls `showScreen("dead")`.
+2. User clicks "New Game" → `showScreen("setup")`.
+3. `hasActiveGame` is still `true` (set when the pet was alive) → Continue
+   button is visible on the setup screen.
+4. User clicks Continue → `showScreen("game")`.
+5. Next tick arrives with `state.alive === false` → suppression doesn't apply →
+   `renderState` is called → `showScreen("dead")` → user is bounced back to the
+   dead screen.
+
+**Fix:** In the message handler, when `state.alive === false` set
+`hasActiveGame = false`. This hides the Continue button on the setup screen
+after death so it only appears when a live game exists to return to.
 
 ---
 
@@ -182,3 +227,33 @@ no record of what events led up to its death.
 - The death screen now renders: real-life elapsed time since spawn (days / hours /
   minutes, computed from `Date.now() - state.spawnedAt`) and the last 20 events
   in most-recent-first order.
+
+---
+
+## BUGFIX-013 — PyCharm webview bounces back to game screen when user navigates to setup
+
+**Status:** Fixed (branch `bugfix/hatch-and-continue`)
+**Files:** `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt`,
+`pycharm/src/main/kotlin/com/gotchi/GotchiToolWindow.kt`
+
+**Problem:** PyCharm uses JCEF (Java Chromium Embedded Framework) to host the
+webview. `GotchiPlugin.setBrowserPanel()` calls `broadcastState()` via
+`invokeLater`, which schedules state delivery on the EDT. However, JCEF loads
+pages asynchronously; the `invokeLater` callback often fires **before**
+`onLoadEnd` — before the JS bridge (`window.__vscodeSendMessage`) is injected
+and before the page's `message` event listeners are active. The initial state
+push is silently dropped by CEF. The page sits at `showScreen("game")` (the
+last line of `sidebar.js`) with no state until the next 5-second tick fires.
+
+Additionally, if IntelliJ triggers a spontaneous JCEF page reload (e.g. on
+theme change or tool-window resize), the same race re-occurs: the page resets
+to `showScreen("game")` and the next tick bounces the user back to the game
+screen — even if they had manually navigated to setup.
+
+**Fix:** Added an `onReady: () -> Unit = {}` callback parameter to
+`GotchiBrowserPanel`. The callback is invoked from `onLoadEnd` **after** the
+JS bridge script is injected into the page, guaranteeing that the page is
+ready to receive messages. `GotchiToolWindow` passes
+`onReady = { plugin.broadcastState() }` so that a full state snapshot is
+pushed to the webview after every page load (initial load and any spontaneous
+reloads), eliminating the race condition.

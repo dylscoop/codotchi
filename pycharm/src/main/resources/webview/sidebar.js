@@ -60,6 +60,7 @@
   let latestHighScore = null; // cached high score from last stateUpdate
   let currentScreen = "game"; // tracks which screen is visible
   let hasActiveGame = false;  // true once a real (non-needs_new_game) state is received
+  let pendingNewGame = false; // set when Hatch! is clicked; bypasses setup-screen suppression
 
   // ── Setup form state ────────────────────────────────────────────────────
 
@@ -86,6 +87,7 @@
 
   startBtn.addEventListener("click", function () {
     const name = petNameInput.value.trim() || "Gotchi";
+    pendingNewGame = true;
     vscode.postMessage({
       command: "new_game",
       name: name,
@@ -736,17 +738,24 @@
     }
 
     if (state) {
-      // Mark that a real game exists so the Continue button can appear
-      if (state.alive) { hasActiveGame = true; }
+      // Mark that a real game exists so the Continue button can appear.
+      // Clear hasActiveGame when the pet dies so Continue is hidden after death.
+      if (state.alive) {
+        hasActiveGame = true;
+      } else {
+        hasActiveGame = false;
+      }
 
       // UI-refresh fix: don't bounce the user off the setup screen on every tick.
       // If the user is on setup and the pet is still alive, just update the
       // Continue button visibility without switching screens.
-      if (currentScreen === "setup" && state.alive) {
+      // Exception: pendingNewGame bypasses this so Hatch! always transitions.
+      if (currentScreen === "setup" && state.alive && !pendingNewGame) {
         if (btnContinue) { btnContinue.classList.toggle("hidden", !hasActiveGame); }
         return;
       }
 
+      pendingNewGame = false;
       renderState(state, message.mealsGivenThisCycle || 0, latestHighScore);
     }
   });
