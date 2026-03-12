@@ -298,7 +298,7 @@
     }
 
     // Snacks-left badge on Snack button + disable when at limit
-    var SNACK_MAX = 2;
+    var SNACK_MAX = 3;
     var snacksLeft = Math.max(0, SNACK_MAX - (state.snacksGivenThisCycle || 0));
     if (snacksLeftEl) {
       snacksLeftEl.textContent = snacksLeft > 0 ? snacksLeft + "" : "";
