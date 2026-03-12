@@ -21,6 +21,8 @@
 | `vscode/media/sidebar.html` | Continue button moved above "New Gotchi" heading |
 | `pycharm/.../sidebar.js` | Mirrored BUGFIX-011 and BUGFIX-012 sidebar.js changes |
 | `pycharm/.../sidebar.html` | Continue button moved above "New Gotchi" heading |
+| `pycharm/.../GotchiBrowserPanel.kt` | BUGFIX-013: added `onReady: () -> Unit = {}` constructor parameter; `onReady()` called from `onLoadEnd` after JS bridge injection so callers can push state once the page is guaranteed ready |
+| `pycharm/.../GotchiToolWindow.kt` | BUGFIX-013: passes `onReady = { plugin.broadcastState() }` to `GotchiBrowserPanel` to eliminate JCEF page-load race condition |
 
 ---
 

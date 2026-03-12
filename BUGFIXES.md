@@ -227,3 +227,33 @@ no record of what events led up to its death.
 - The death screen now renders: real-life elapsed time since spawn (days / hours /
   minutes, computed from `Date.now() - state.spawnedAt`) and the last 20 events
   in most-recent-first order.
+
+---
+
+## BUGFIX-013 — PyCharm webview bounces back to game screen when user navigates to setup
+
+**Status:** Fixed (branch `bugfix/hatch-and-continue`)
+**Files:** `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt`,
+`pycharm/src/main/kotlin/com/gotchi/GotchiToolWindow.kt`
+
+**Problem:** PyCharm uses JCEF (Java Chromium Embedded Framework) to host the
+webview. `GotchiPlugin.setBrowserPanel()` calls `broadcastState()` via
+`invokeLater`, which schedules state delivery on the EDT. However, JCEF loads
+pages asynchronously; the `invokeLater` callback often fires **before**
+`onLoadEnd` — before the JS bridge (`window.__vscodeSendMessage`) is injected
+and before the page's `message` event listeners are active. The initial state
+push is silently dropped by CEF. The page sits at `showScreen("game")` (the
+last line of `sidebar.js`) with no state until the next 5-second tick fires.
+
+Additionally, if IntelliJ triggers a spontaneous JCEF page reload (e.g. on
+theme change or tool-window resize), the same race re-occurs: the page resets
+to `showScreen("game")` and the next tick bounces the user back to the game
+screen — even if they had manually navigated to setup.
+
+**Fix:** Added an `onReady: () -> Unit = {}` callback parameter to
+`GotchiBrowserPanel`. The callback is invoked from `onLoadEnd` **after** the
+JS bridge script is injected into the page, guaranteeing that the page is
+ready to receive messages. `GotchiToolWindow` passes
+`onReady = { plugin.broadcastState() }` so that a full state snapshot is
+pushed to the webview after every page load (initial load and any spontaneous
+reloads), eliminating the race condition.

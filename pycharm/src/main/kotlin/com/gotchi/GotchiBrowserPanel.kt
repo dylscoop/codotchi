@@ -28,10 +28,15 @@ import javax.swing.JPanel
  *     `window.dispatchEvent(new MessageEvent('message', {data: <json>}))`.
  *
  * Callers must pass a [messageHandler] to receive commands from the JS.
+ * The optional [onReady] callback is invoked after every page load (initial
+ * load and any subsequent reloads) once the JS bridge is injected and the
+ * page is guaranteed ready to receive messages.  Use it to push an initial
+ * state snapshot so the webview never sits in a state-less limbo.
  */
 class GotchiBrowserPanel(
     private val messageHandler: (Map<*, *>) -> Unit,
     parentDisposable: Disposable,
+    private val onReady: () -> Unit = {},
 ) : Disposable {
 
     private val gson    = Gson()
@@ -64,6 +69,9 @@ class GotchiBrowserPanel(
                     })();
                 """.trimIndent()
                 b.executeJavaScript(injectScript, b.url, 0)
+                // Notify the caller that the page is ready and the bridge is
+                // injected — safe to push state now.
+                onReady()
             }
         }, browser.cefBrowser)
 

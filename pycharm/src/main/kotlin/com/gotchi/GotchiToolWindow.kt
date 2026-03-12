@@ -22,6 +22,7 @@ class GotchiToolWindow : ToolWindowFactory {
         val panel = GotchiBrowserPanel(
             messageHandler    = { message -> plugin.handleCommand(message) },
             parentDisposable  = toolWindow.disposable,
+            onReady           = { plugin.broadcastState() },
         )
 
         plugin.setBrowserPanel(panel)
