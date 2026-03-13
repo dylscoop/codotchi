@@ -73,8 +73,14 @@ const PLAY_HAPPINESS_BOOST: number = 15;
 const PLAY_ENERGY_COST: number = 25;
 const PLAY_WEIGHT_LOSS: number = 1;
 
-/** Passive energy drain per tick while awake. */
+/** Passive energy drain per tick while awake — throttled by idle just like hunger/happiness. */
 const ENERGY_DECAY_PER_TICK: number = 1;
+
+/** Health lost per tick when the pet's energy is fully depleted while awake. Slower than other critical conditions. */
+const EXHAUSTION_HEALTH_DAMAGE_PER_TICK: number = 2;
+
+/** While sleeping, hunger and happiness decay once every this many ticks (very slow drain). */
+const SLEEP_DECAY_TICK_INTERVAL: number = 5;
 
 const MEDICINE_DOSES_TO_CURE: number = 3;
 
@@ -702,13 +708,14 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       );
       hunger = clampStat(hunger - hungerDecay);
       happiness = clampStat(happiness - happinessDecay);
+      // Energy is throttled by idle just like hunger/happiness (BUGFIX-014)
+      energy = clampStat(energy - ENERGY_DECAY_PER_TICK);
     }
     // Deep idle: floor stats at IDLE_STAT_FLOOR so they never drop below 20%
     if (isDeepIdle) {
       hunger = Math.max(hunger, IDLE_STAT_FLOOR);
       happiness = Math.max(happiness, IDLE_STAT_FLOOR);
     }
-    energy = clampStat(energy - ENERGY_DECAY_PER_TICK);
   } else {
     const energyRegen = Math.ceil(
       ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier
@@ -719,6 +726,11 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     if (energy >= STAT_MAX) {
       sleeping = false;
       events.push("auto_woke_up");
+    }
+    // Very slow hunger/happiness drain while asleep (1 pt every SLEEP_DECAY_TICK_INTERVAL ticks)
+    if (sleeping && ticksAlive % SLEEP_DECAY_TICK_INTERVAL === 0) {
+      hunger = clampStat(hunger - 1);
+      happiness = clampStat(happiness - 1);
     }
   }
 
@@ -771,6 +783,12 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   if (happiness === STAT_MIN && !sleeping) {
     health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
     events.push("unhappiness_damage");
+  }
+
+  // Energy-exhaustion health drain (slower than hunger/happiness critical)
+  if (energy === STAT_MIN && !sleeping) {
+    health = clampStat(health - EXHAUSTION_HEALTH_DAMAGE_PER_TICK);
+    events.push("exhaustion_damage");
   }
 
   // Sickness health drain

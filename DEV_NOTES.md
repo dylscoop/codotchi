@@ -193,8 +193,8 @@ Per-type happiness multipliers: pixelpup **1.5×** (6.7 min).
 
 ### Idle decay (no IDE activity for ≥ 1 minute)
 
-Hunger, happiness, and **aging** are all skipped on 9 out of every 10 ticks
-(`ticksAlive % IDLE_DECAY_TICK_DIVISOR != 0`). Energy drain is unaffected.
+Hunger, happiness, and **energy** are all skipped on 9 out of every 10 ticks
+(`ticksAlive % IDLE_DECAY_TICK_DIVISOR != 0`). Aging is also slowed.
 A `"went_idle"` event is pushed once on the tick when the IDE transitions from
 active to idle, showing "IDE idle — decay and aging slowed." in the event log.
 
@@ -202,6 +202,7 @@ active to idle, showing "IDE idle — decay and aging slowed." in the event log.
 |-----------|---------------|----------------|
 | Hunger    | 1 pt/min      | ~100 min       |
 | Happiness | 1 pt/min      | ~100 min       |
+| Energy    | 1 pt/min      | ~100 min       |
 | Aging     | 1/10 normal   | 10× longer     |
 
 ### Deep idle (no IDE activity for ≥ 10 minutes)
@@ -226,6 +227,27 @@ regardless of how long the IDE was closed, no stat can lose more than 60%.
 **Aging does not advance while the IDE is closed.** `applyOfflineDecay()`
 preserves `dayTimer` and `ageDays` exactly as saved. Only hunger, happiness,
 energy, and health are subject to offline decay.
+
+### Sleep decay
+
+While sleeping, hunger and happiness each lose **1 point every 5th sleeping
+tick** (`ticksAlive % SLEEP_DECAY_TICK_INTERVAL === 0`). This prevents the pet
+from entering sleep with low stats and exiting with perfectly preserved hunger
+and happiness. The decay is intentionally slow (≈ 2 pts/min) so a brief nap
+costs very little but an indefinitely sleeping pet will eventually reach
+critical stats.
+
+The check is guarded by `sleeping` being `true` at the time it fires — if the
+pet auto-wakes on this same tick the check is skipped, preventing a spurious
+decay on the wake tick.
+
+### Exhaustion damage
+
+When `energy === 0` and the pet is **not** sleeping, health loses
+`EXHAUSTION_HEALTH_DAMAGE_PER_TICK = 2` HP per tick and the
+`"exhaustion_damage"` event fires. This is slower than starvation or
+unhappiness critical damage (both 5 HP/tick) to give the player a wider
+recovery window: putting the pet to sleep stops the drain immediately.
 
 ---
 

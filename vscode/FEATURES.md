@@ -412,6 +412,7 @@ All events are displayed using the pet's name and human-readable sentences inste
 | `sickness_damage` | `<Name> is losing health from being sick!` | `[x]` |
 | `starvation_damage` | `<Name> is starving and losing health!` | `[x]` |
 | `unhappiness_damage` | `<Name> is miserable and losing health!` | `[x]` |
+| `exhaustion_damage` | `<Name> is exhausted and losing health!` | `[x]` |
 | `evolved_to_<stage>` | `<Name> evolved into <stage>!` | `[x]` |
 | All other events | Named equivalents (e.g. fed, slept, woke, cleaned) | `[x]` |
 
@@ -432,9 +433,9 @@ All events are displayed using the pet's name and human-readable sentences inste
 ### 8.1 Idle Detection
 
 When the IDE has had no activity for ≥ **1 minute**, the pet is considered
-idle. Hunger and happiness decay is reduced to **10% of the normal rate**
-(one in every 10 ticks fires decay; the rest are skipped). Aging is also
-slowed to 10% during idle. Energy drain is unaffected.
+idle. Hunger, happiness, and **energy** decay are all reduced to **10% of the
+normal rate** (one in every 10 ticks fires decay; the rest are skipped). Aging
+is also slowed to 10% during idle.
 
 When the IDE has been idle for ≥ **10 minutes**, the pet enters **deep idle**.
 Hunger and happiness are floored at `IDLE_STAT_FLOOR = 20` (cannot decay
@@ -469,6 +470,8 @@ Status: `[x]`
 | Health reaches 0 → death | `[x]` | |
 | Hunger stays 0 for 3+ ticks → health damage | `[x]` | `starvation_damage` event; humanised in event log |
 | Unhappiness health drain | `[x]` | `unhappiness_damage` event; humanised in event log |
+| Energy stays 0 while awake → health damage (2/tick) | `[x]` | `exhaustion_damage` event; slower than starvation/unhappiness (2 vs 5/tick) |
+| Sleep decay: hunger/happiness lose 1 every 5th sleeping tick | `[x]` | Prevents infinite stat preservation during extended sleep |
 | Sickness health drain message | `[x]` | `sickness_damage` event; humanised in event log |
 | Death screen with age/stage stats | `[x]` | |
 | Senior natural death (random chance after day 20) | `[x]` | |

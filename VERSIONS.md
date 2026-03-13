@@ -1,6 +1,36 @@
 # Version History
 
-## v0.2.0 — current
+## v0.2.1 — current
+
+### Changes from v0.2.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | BUGFIX-014: moved `energy` decay inside `decayThisTick` guard so energy is throttled during idle like hunger/happiness; added `EXHAUSTION_HEALTH_DAMAGE_PER_TICK = 2`; added `SLEEP_DECAY_TICK_INTERVAL = 5`; exhaustion damage block: when `energy === 0 && !sleeping` health loses 2/tick and `"exhaustion_damage"` event fires; sleep decay block: on every 5th sleeping tick hunger and happiness each lose 1 |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Mirrored all three changes from `gameEngine.ts` above |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Added `EXHAUSTION_HEALTH_DAMAGE_PER_TICK = 2` and `SLEEP_DECAY_TICK_INTERVAL = 5` |
+| `vscode/media/sidebar.js` | Added `"exhaustion_damage"` label to `humaniseEvent()` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Added `"exhaustion_damage"` label to `humaniseEvent()` |
+| `vscode/tests/unit/gameEngine.test.ts` | Renamed sleeping decay test to "not a 5th-tick" variant; added "every 5th sleeping tick" test; added "tick — energy exhaustion health damage" suite (3 tests); added 2 idle energy throttle tests |
+| `vscode/package.json` | Version `0.2.0` → `0.2.1` |
+| `pycharm/build.gradle.kts` | Version `0.2.0` → `0.2.1` |
+| `pycharm/gradle.properties` | `pluginVersion` `0.2.0` → `0.2.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version `0.2.0` → `0.2.1` |
+| `vscode/FEATURES.md` | Section 8.1 updated: energy throttle noted; section 9 updated: exhaustion damage and sleep decay rows added |
+| `DEV_NOTES.md` | Stat Decay Rates: idle decay note updated for energy; sleep decay and exhaustion damage subsections added |
+| `BUGFIXES.md` | Added BUGFIX-014: energy decay not throttled during idle |
+| `README.md` | Version reference and install filenames updated to `0.2.1` |
+
+### New constants (v0.2.1)
+
+```
+EXHAUSTION_HEALTH_DAMAGE_PER_TICK: number/Int = 2   // health lost per tick when energy is 0 and awake
+SLEEP_DECAY_TICK_INTERVAL: number/Int = 5            // every Nth sleeping tick hunger/happiness decay by 1
+```
+
+---
+
+## v0.2.0
 
 ### Changes from v0.1.4
 

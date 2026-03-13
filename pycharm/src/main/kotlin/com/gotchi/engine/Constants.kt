@@ -49,8 +49,14 @@ const val PLAY_HAPPINESS_BOOST: Int = 15
 const val PLAY_ENERGY_COST: Int = 25
 const val PLAY_WEIGHT_LOSS: Int = 1
 
-/** Passive energy drain per tick while awake. */
+/** Passive energy drain per tick while awake — throttled by idle just like hunger/happiness. */
 const val ENERGY_DECAY_PER_TICK: Int = 1
+
+/** Health lost per tick when the pet's energy is fully depleted while awake. */
+const val EXHAUSTION_HEALTH_DAMAGE_PER_TICK: Int = 2
+
+/** While sleeping, hunger and happiness decay once every this many ticks (very slow drain). */
+const val SLEEP_DECAY_TICK_INTERVAL: Int = 5
 
 const val MEDICINE_DOSES_TO_CURE: Int = 3
 

@@ -230,6 +230,22 @@ no record of what events led up to its death.
 
 ---
 
+## BUGFIX-014 — Energy decay not throttled during idle
+
+**Status:** Fixed (branch `fix/idle-energy-and-exhaustion`)
+**Files:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`
+
+**Problem:** When the pet was idle, hunger and happiness decay were correctly
+throttled to 1-in-10 ticks via `decayThisTick`. However, `energy` was
+decremented outside the `decayThisTick` guard, so energy drained at the full
+rate of 1/tick even when the IDE had been idle for hours.
+
+**Fix:** Moved `energy = clampStat(energy - ENERGY_DECAY_PER_TICK)` inside the
+`if (decayThisTick)` block in both engines. Energy now decays at exactly the
+same throttled rate as hunger and happiness during idle.
+
+---
+
 ## BUGFIX-013 — PyCharm webview bounces back to game screen when user navigates to setup
 
 **Status:** Fixed (branch `bugfix/hatch-and-continue`)

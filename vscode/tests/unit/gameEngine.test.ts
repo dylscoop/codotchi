@@ -256,11 +256,20 @@ describe("tick — stat decay", () => {
     assert.equal(next.happiness, 49);
   });
 
-  it("does not decay hunger or happiness while sleeping", () => {
+  it("does not decay hunger or happiness on most sleeping ticks (not a 5th-tick)", () => {
+    // ticksAlive starts at 0 → becomes 1 after tick → 1 % 5 ≠ 0 → no sleep decay
     const pet = makePet({ hunger: 50, happiness: 50, sleeping: true });
     const next = tick(pet);
     assert.equal(next.hunger, 50);
     assert.equal(next.happiness, 50);
+  });
+
+  it("decays hunger and happiness by 1 on every 5th sleeping tick", () => {
+    // ticksAlive starts at 4 → becomes 5 → 5 % 5 === 0 → sleep decay fires
+    const pet = makePet({ hunger: 50, happiness: 50, sleeping: true, ticksAlive: 4, energy: 50 });
+    const next = tick(pet);
+    assert.equal(next.hunger, 49);
+    assert.equal(next.happiness, 49);
   });
 
   it("regenerates energy while sleeping", () => {
@@ -329,6 +338,20 @@ describe("tick — stat decay", () => {
       nextShellscript.dayTimer < nextCodeling.dayTimer,
       "shellscript dayTimer should advance slower (0.75× multiplier)"
     );
+  });
+
+  it("does not decay energy while idle (throttled like hunger/happiness)", () => {
+    // ticksAlive goes from 0 → 1; 1 % 10 ≠ 0, so decayThisTick is false when idle
+    const pet = makePet({ energy: 50 });
+    const next = tick(pet, true);  // isIdle = true
+    assert.equal(next.energy, 50, "energy should not decay on a throttled idle tick");
+  });
+
+  it("decays energy on the 10th idle tick (same divisor as hunger/happiness)", () => {
+    // ticksAlive starts at 9 → becomes 10 → 10 % 10 === 0 → decayThisTick fires
+    const pet = makePet({ energy: 50, ticksAlive: 9 });
+    const next = tick(pet, true);
+    assert.equal(next.energy, 49, "energy should decay by 1 on the 10th idle tick");
   });
 });
 
@@ -440,6 +463,34 @@ describe("tick — happiness-critical health damage", () => {
     const pet = makePet({ happiness: 0, health: 100, sleeping: true, energy: 50 });
     const next = tick(pet);
     assert.equal(next.health, 100);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// tick — energy exhaustion health damage
+// ---------------------------------------------------------------------------
+
+describe("tick — energy exhaustion health damage", () => {
+  it("damages health when energy is 0 while awake", () => {
+    const pet = makePet({ energy: 0, health: 100 });
+    const next = tick(pet);
+    assert.ok(next.health < 100);
+    assert.ok(next.events.includes("exhaustion_damage"));
+  });
+
+  it("exhaustion damage is slower than hunger/happiness critical (2 vs 5 per tick)", () => {
+    const exhausted = makePet({ energy: 0, health: 100 });
+    const starving   = makePet({ hunger: 0, hungerZeroTicks: 3, health: 100 });
+    const nextExhausted = tick(exhausted);
+    const nextStarving  = tick(starving);
+    assert.ok(nextExhausted.health > nextStarving.health,
+      "exhaustion damage (2/tick) should be less than starvation damage (5/tick)");
+  });
+
+  it("does not damage health from exhaustion while sleeping", () => {
+    const pet = makePet({ energy: 0, health: 100, sleeping: true });
+    const next = tick(pet);
+    assert.ok(!next.events.includes("exhaustion_damage"));
   });
 });
 

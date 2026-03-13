@@ -178,13 +178,14 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false):
             val happinessDecay = ceil(HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier).toInt()
             hunger    = clampStat(hunger    - hungerDecay)
             happiness = clampStat(happiness - happinessDecay)
+            // Energy is throttled by idle just like hunger/happiness (BUGFIX-014)
+            energy    = clampStat(energy    - ENERGY_DECAY_PER_TICK)
         }
         // Deep idle: floor stats at IDLE_STAT_FLOOR so they never drop below 20%
         if (isDeepIdle) {
             hunger    = maxOf(hunger,    IDLE_STAT_FLOOR)
             happiness = maxOf(happiness, IDLE_STAT_FLOOR)
         }
-        energy    = clampStat(energy    - ENERGY_DECAY_PER_TICK)
     } else {
         val energyRegen = ceil(ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier).toInt()
         energy = clampStat(energy + energyRegen)
@@ -193,6 +194,11 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false):
         if (energy >= STAT_MAX) {
             sleeping = false
             events.add("auto_woke_up")
+        }
+        // Very slow hunger/happiness drain while asleep (1 pt every SLEEP_DECAY_TICK_INTERVAL ticks)
+        if (sleeping && ticksAlive % SLEEP_DECAY_TICK_INTERVAL == 0) {
+            hunger    = clampStat(hunger    - 1)
+            happiness = clampStat(happiness - 1)
         }
     }
 
@@ -240,6 +246,12 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false):
     if (happiness == STAT_MIN && !sleeping) {
         health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
         events.add("unhappiness_damage")
+    }
+
+    // Energy-exhaustion health drain (slower than hunger/happiness critical)
+    if (energy == STAT_MIN && !sleeping) {
+        health = clampStat(health - EXHAUSTION_HEALTH_DAMAGE_PER_TICK)
+        events.add("exhaustion_damage")
     }
 
     // Sickness health drain

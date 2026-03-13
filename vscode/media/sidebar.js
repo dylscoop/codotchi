@@ -393,6 +393,7 @@
       "sickness_damage":         n + " is losing health from being sick!",
       "starvation_damage":       n + " is starving and losing health!",
       "unhappiness_damage":      n + " is miserable and losing health!",
+      "exhaustion_damage":       n + " is exhausted and losing health!",
       "died":                    n + " passed away...",
       "fed_snack":               n + " had a snack.",
       "cured":                   n + " recovered!",
