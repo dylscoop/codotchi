@@ -16,7 +16,7 @@
 | `pycharm/gradle.properties` | `pluginVersion` `0.2.1` → `0.2.2` |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | Version `0.2.1` → `0.2.2` |
 | `vscode/FEATURES.md` | Section 8.1 updated: sidebar interactions now listed as idle-reset sources |
-| `DEV_NOTES.md` | Message Protocol table: added `user_activity` command row |
+| `DEV_NOTES.md` | Message Protocol table: added `user_activity` command row; added "Idle State Transitions" section documenting what resets the idle clock in each IDE and what triggers wake from sleep |
 | `BUGFIXES.md` | Added BUGFIX-015 |
 | `README.md` | Version reference and install filenames updated to `0.2.2` |
 | `vscode/README.md` | Install filenames updated to `0.2.2` |

@@ -251,6 +251,70 @@ recovery window: putting the pet to sleep stops the drain immediately.
 
 ---
 
+## Idle State Transitions
+
+There are two distinct "wake" concepts: exiting **IDE idle** (returning to
+active decay) and waking from **sleep** (ending the sleep/energy-regen cycle).
+
+---
+
+### Exiting IDE idle (returning to active)
+
+The idle clock is a wall-clock timestamp (`lastActivityMs` in VS Code,
+`lastActivityTime` in PyCharm). Any event that resets that timestamp will
+cause the next tick to see `idleMs < IDLE_THRESHOLD_MS` and resume full-rate
+decay. There is no named event emitted on exit — the transition is silent.
+
+#### VS Code — what resets the idle clock
+
+All four hooks are registered in `extension.ts:125-130` and call `markActivity()`:
+
+| Trigger | VS Code API hook |
+|---------|-----------------|
+| Keystroke / cursor movement | `onDidChangeTextEditorSelection` |
+| Typing / editing text | `onDidChangeTextDocument` |
+| IDE window regains focus | `onDidChangeWindowState` (only when `e.focused === true`) |
+| Switching to a different editor tab | `onDidChangeActiveTextEditor` |
+| Any sidebar button click or interaction | `SidebarProvider.handleWebviewMessage` (`sidebarProvider.ts:164`) — `markActivity()` is called on every incoming message before dispatch, including the no-op `"user_activity"` command sent by the throttled mouse-move listener in the webview |
+
+> **Note:** The VS Code API exposes no mouse-movement hook outside the editor
+> area, so mouse movement inside the webview panel is handled by the webview
+> itself posting a `"user_activity"` message (see `vscode/media/sidebar.js`,
+> throttled to once per 30 s).
+
+#### PyCharm — what resets the idle clock
+
+A single AWT event listener (`awtActivityListener`, `GotchiPlugin.kt:41-43`)
+is registered in `initialize()` at `GotchiPlugin.kt:60-63` and sets
+`lastActivityTime = System.currentTimeMillis()` on every matching event:
+
+| Trigger | AWT mask |
+|---------|----------|
+| Any key press/release | `AWTEvent.KEY_EVENT_MASK` |
+| Any mouse click | `AWTEvent.MOUSE_EVENT_MASK` |
+| Any mouse movement | `AWTEvent.MOUSE_MOTION_EVENT_MASK` |
+| Any sidebar command | `handleCommand()` `GotchiPlugin.kt:114` — `lastActivityTime` reset unconditionally on every incoming webview message |
+
+> **Key difference from VS Code:** PyCharm's AWT listener fires on native
+> mouse-movement events at the OS level, so mouse movement anywhere in the IDE
+> window resets the idle clock without the webview needing to post a message.
+> The webview `"user_activity"` message is still sent (for consistency) but is
+> redundant in PyCharm.
+
+---
+
+### Waking from sleep
+
+| Mechanism | Trigger | Event name | Where |
+|-----------|---------|-----------|-------|
+| Auto-wake | `energy >= STAT_MAX (100)` on any tick | `"auto_woke_up"` | `gameEngine.ts:726-729` / `GameEngine.kt:194-197` |
+| Manual wake | User clicks "Wake" button → `"wake"` command | `"woke_up"` | `sidebarProvider.ts:223-228` / `GotchiPlugin.kt:158-161` |
+
+On auto-wake, `snacksGivenThisCycle` is reset to 0. On manual wake it is not.
+`mealsGivenThisCycle` is reset when the pet *falls* asleep, not on wake.
+
+---
+
 ## Poop Rate System
 
 Each pet type has its own average poop interval and volatility, both encoded
