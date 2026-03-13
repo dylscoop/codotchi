@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.gotchi.pycharm-gotchi</id>
     <name>Gotchi</name>
-    <version>0.3.1</version>
+    <version>0.3.2</version>
     <vendor>gotchi</vendor>
 
     <description><![CDATA[

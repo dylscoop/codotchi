@@ -1,6 +1,29 @@
 # Version History
 
-## v0.3.1 — current
+## v0.3.2 — current
+
+### Changes from v0.3.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.html` | Removed Weight `stat-row` from stats panel |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored: removed Weight `stat-row` |
+| `vscode/media/sidebar.css` | Removed `.bar-fill.weight` rule |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored: removed weight bar colour rule |
+| `vscode/media/sidebar.js` | Removed `barWeight` ref and `setBar(barWeight, ...)` call |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored: removed `barWeight` ref and `setBar` call |
+| `vscode/src/statusBar.ts` | Added `Weight: N` to status bar tooltip (visible on hover) |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiStatusWidget.kt` | Mirrored: added `weight: N` to tooltip string |
+| `vscode/package.json` | Version `0.3.1` → `0.3.2` |
+| `pycharm/build.gradle.kts` | Version `0.3.1` → `0.3.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version `0.3.1` → `0.3.2` |
+| `README.md` | Install filenames updated to `0.3.2` |
+| `vscode/README.md` | Install filenames updated to `0.3.2` |
+| `pycharm/README.md` | Install filenames updated to `0.3.2` |
+
+---
+
+## v0.3.1
 
 ### Changes from v0.3.0
 

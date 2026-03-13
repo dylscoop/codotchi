@@ -45,7 +45,6 @@
   const barHappiness = document.getElementById("bar-happiness");
   const barEnergy    = document.getElementById("bar-energy");
   const barHealth    = document.getElementById("bar-health");
-  const barWeight    = document.getElementById("bar-weight");
 
   const spriteCanvas = document.getElementById("sprite-canvas");
   const spriteCtx    = spriteCanvas.getContext("2d");
@@ -295,7 +294,6 @@
     setBar(barHappiness, state.happiness);
     setBar(barEnergy,    state.energy);
     setHealthBar(barHealth, state.health);
-    setBar(barWeight,    (state.weight / 99) * 100);
 
     const poopStr = state.poops === 1 ? "1 poop" : state.poops + " poops";
     const typeLabel = (state.petType || "codeling");

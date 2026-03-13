@@ -68,8 +68,8 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 
 | Action      | Effect                                           | Constraint                               | Status |
 |-------------|--------------------------------------------------|------------------------------------------|--------|
-| Feed Meal   | Hunger +20, Weight +1                            | Max 3 meals per wake cycle               | `[x]`  |
-| Feed Snack  | Happiness +10, Hunger +5, Weight +2              | Max 3 snacks per cycle; resets on auto-wake | `[x]`  |
+| Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle               | `[x]`  |
+| Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle; resets on auto-wake | `[x]`  |
 | Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; refused via event log | `[x]`  |
 | Sleep       | Energy regenerates; cannot act while sleeping    | —                                        | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
@@ -359,7 +359,7 @@ Features that deepen the existing care actions.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Show weight in info line (next to age/stage) | `[x]` | Displayed as `Wt: N` |
+| Show weight in info line (next to age/stage) | `[x]` | Weight removed from info line; now shown in status bar tooltip on hover |
 | Weight-related mood modifier (overweight/skinny → happiness debuff) | `[x]` | >66 or <17 weight → happiness decays 1.5× faster; threshold events fire |
 | Weight-based sprite width tiers | `[x]` | >80 → 1.5× wider; >50 → 1.25× wider |
 | Passive weight decay (-1/min) | `[x]` | -1 weight every `WEIGHT_DECAY_TICK_INTERVAL` (10) ticks |

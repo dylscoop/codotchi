@@ -49,6 +49,7 @@ export class StatusBarManager implements vscode.Disposable {
       `Happiness: ${state.happiness}`,
       `Health: ${state.health}`,
       `Energy: ${state.energy}`,
+      `Weight: ${state.weight}`,
       `Stage: ${stageLabel}`,
       state.sick ? "⚠ Sick!" : "",
     ]

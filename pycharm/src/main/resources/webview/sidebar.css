@@ -223,7 +223,6 @@ body.font-large  { font-size: 16px; }
 .bar-fill.hunger    { background: #ff6b6b; }
 .bar-fill.happiness { background: #ffd166; }
 .bar-fill.energy    { background: #06d6a0; }
-.bar-fill.weight    { background: #a78bfa; }
 
 /* Health bar shifts colour with the value: green → yellow → red */
 .bar-fill.health              { background: #4caf50; }  /* > 60 — healthy   */
