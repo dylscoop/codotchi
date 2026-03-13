@@ -1,6 +1,25 @@
 # Version History
 
-## v0.4.1 — current
+## v0.4.2 — current (in progress)
+
+### Changes from v0.4.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | BUGFIX-019: `weightWidthMultiplier` returns `0.75` for weight < 17 (skinny); gift box floor sprite appears while `gift` attention call is active and clears on dismissal; snack food items (candy/bone) spawn on the floor on `fed_snack` event, pet walks toward and eats them |
+| `pycharm/src/main/resources/webview/sidebar.js` | Same three changes mirrored from VS Code |
+| `vscode/package.json` | Version bumped `0.4.1` → `0.4.2` |
+| `pycharm/build.gradle.kts` | Version bumped `0.4.1` → `0.4.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.4.1` → `0.4.2` |
+| `vscode/FEATURES.md` | Weight sprite width row updated (skinny tier added); section 5.10 Floor Item Sprites added |
+| `BUGFIXES.md` | Added BUGFIX-019 |
+| `README.md` | Install filenames updated to `0.4.2` |
+| `vscode/README.md` | Install filenames updated to `0.4.2` |
+| `pycharm/README.md` | Install filenames updated to `0.4.2` |
+
+---
+
+## v0.4.1 — previous
 
 ### Changes from v0.4.0
 

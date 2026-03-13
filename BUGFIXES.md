@@ -351,3 +351,19 @@ that triggered the call) and carried no additional consequence to other stats.
 
 **Fix:** Added `happiness −10` alongside the existing `health −10` penalty on
 expiry, so ignoring the call degrades both health and happiness.
+
+## BUGFIX-019 — Skinny pet has no visual width change
+
+**Status:** Fixed (branch `main`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `weightWidthMultiplier()` returned `1.0` for all weights ≤ 80,
+including the "too skinny" state (weight < 17). A skinny pet was visually
+indistinguishable from a normal-weight pet despite the weight system tracking
+the condition and firing `weight_became_too_skinny` events.
+
+**Fix:** Added a `weight < 17` branch that returns `0.75`, making skinny pets
+rendered at 75% of their normal body width. The threshold mirrors
+`WEIGHT_HAPPINESS_LOW_THRESHOLD = 17` from the game engine — the same value
+that triggers the skinny event — applied symmetrically to the fat side's
+existing threshold structure.

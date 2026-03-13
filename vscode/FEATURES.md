@@ -354,6 +354,21 @@ Status: `[ ]`
 - Delta-time capped at 100 ms per frame to prevent large position jumps after
   tab-switch or focus loss.
 
+### 5.10 Floor Item Sprites
+
+Objects placed on the floor layer of the canvas (drawn before the pet so the
+pet walks in front of them).
+
+| Item | Trigger | Pixel art | Cleared when | Status |
+|------|---------|-----------|-------------|--------|
+| Gift box | `activeAttentionCall === "gift"` transitions in | 8×7 px at 2×, red body + gold ribbon/bow | Call dismissed (answered or expired) | `[x]` |
+| Snack food (candy/bone, random) | `fed_snack` event | candy: 4×4 at 2×; bone: 6×5 at 2× | Pet walks to it and eats it | `[x]` |
+
+Both item types use the same `H - 4 - itemHeight` ground Y as poo sprites.
+When snack items are present the pet's normal idle-wandering movement is
+overridden to walk toward the nearest item; a brief pause fires on contact
+before normal movement resumes.
+
 ---
 
 ## 6. Interaction Improvements
@@ -366,7 +381,7 @@ Features that deepen the existing care actions.
 |---------|--------|-------|
 | Show weight in info line (next to age/stage) | `[x]` | Weight removed from info line; now shown in status bar tooltip on hover |
 | Weight-related mood modifier (overweight/skinny → happiness debuff) | `[x]` | >66 or <17 weight → happiness decays 1.5× faster; threshold events fire |
-| Weight-based sprite width tiers | `[x]` | >80 → 1.5× wider; >50 → 1.25× wider |
+| Weight-based sprite width tiers | `[x]` | >80 → 1.5× wider; >50 → 1.25× wider; <17 (skinny) → 0.75× narrower |
 | Passive weight decay (-1/min) | `[x]` | -1 weight every `WEIGHT_DECAY_TICK_INTERVAL` (10) ticks |
 | Play button disabled when energy < 25 (show tooltip) | `[x]` | Refused via `play_refused_no_energy` event in log |
 

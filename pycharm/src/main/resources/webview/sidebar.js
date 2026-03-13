@@ -61,6 +61,8 @@
   let currentScreen = "game"; // tracks which screen is visible
   let hasActiveGame = false;  // true once a real (non-needs_new_game) state is received
   let pendingNewGame = false; // set when Hatch! is clicked; bypasses setup-screen suppression
+  let giftBoxX   = null;    // floor X of gift box while a "gift" attention call is active (null = hidden)
+  let snackItems = [];      // floor items: [{ x, type: "candy"|"bone" }]
 
   // ── Setup form state ────────────────────────────────────────────────────
 
@@ -225,7 +227,26 @@
 
       animTick++;
 
-      if (speed > 0 && idlePauseTicks <= 0) {
+      // Snack targeting — when items are on the floor, override normal movement
+      // to walk the pet toward the nearest one and eat it on contact.
+      var snackOverride = snackItems.length > 0 && speed > 0;
+      if (snackOverride) {
+        var closestSnack = snackItems[0];
+        var closestDist  = Math.abs(petX - snackItems[0].x);
+        for (var si = 1; si < snackItems.length; si++) {
+          var sd = Math.abs(petX - snackItems[si].x);
+          if (sd < closestDist) { closestDist = sd; closestSnack = snackItems[si]; }
+        }
+        if (closestDist < bWidth / 2 + 4) {
+          snackItems.splice(snackItems.indexOf(closestSnack), 1);
+          idlePauseTicks = 12;   // brief chomp pause
+        } else {
+          idlePauseTicks = 0;
+          petVelX        = closestSnack.x > petX ? 1 : -1;
+          petFacingLeft  = petVelX < 0;
+          petX           = Math.max(minX, Math.min(maxX, petX + petVelX * speed));
+        }
+      } else if (speed > 0 && idlePauseTicks <= 0) {
         petX += petVelX * speed;
 
         if (petX >= maxX) {
@@ -343,6 +364,24 @@
       petVelX       = 1;
       petFacingLeft = false;
       animTick      = 0;
+      giftBoxX      = null;
+      snackItems    = [];
+    }
+
+    // Gift box — detect activeAttentionCall transition to/from "gift"
+    var prevGift = lastState && lastState.activeAttentionCall === "gift";
+    var currGift = state.activeAttentionCall === "gift";
+    if (!prevGift && currGift) {
+      // Call just appeared — place box at a random floor position away from the pet
+      var gW2 = spriteCanvas.width;
+      var gx  = 4 + Math.floor(Math.random() * Math.max(1, gW2 - 28));
+      if (Math.abs(gx - petX) < 24 && gW2 > 60) {
+        gx = gW2 - 28 - gx;
+        if (gx < 4) { gx = 4; }
+      }
+      giftBoxX = gx;
+    } else if (prevGift && !currGift) {
+      giftBoxX = null;   // call dismissed (answered or expired)
     }
 
     // Hand off to animation loop — it owns all drawing
@@ -352,6 +391,16 @@
 
     // Spawn poo animation when the pet poops
     if ((state.events || []).indexOf("pooped") !== -1) { spawnPooAnim(); }
+
+    // Snack items — spawn a floor item each time the pet is fed a snack
+    if ((state.events || []).indexOf("fed_snack") !== -1 && snackItems.length < 3) {
+      var siW = spriteCanvas.width;
+      snackItems.push({
+        x:    4 + Math.floor(Math.random() * Math.max(1, siW - 20)),
+        type: Math.random() < 0.5 ? "candy" : "bone",
+      });
+      idlePauseTicks = 0;   // pet starts walking toward it immediately
+    }
   }
 
   /**
@@ -672,6 +721,64 @@
       });
     }
 
+    // Gift box — 8×7 pixel art at 2px/pixel (16×14 total)
+    // 0=transparent, 1=red (#E53935), 2=gold (#FFD600), 3=dark red (#B71C1C)
+    if (giftBoxX !== null) {
+      var GIFT_PIXELS = [
+        [0,0,2,0,0,2,0,0],   // bow loops
+        [0,2,2,2,2,2,2,0],   // bow base
+        [2,2,2,2,2,2,2,2],   // ribbon across top
+        [1,1,1,2,2,1,1,1],   // box upper
+        [1,1,1,2,2,1,1,1],   // box middle
+        [3,3,3,2,2,3,3,3],   // box lower
+        [3,3,3,3,3,3,3,3],   // box base
+      ];
+      var GS = 2;
+      var gbH = GIFT_PIXELS.length * GS;        // 14
+      var gbY = H - 4 - gbH;
+      var gbX = Math.round(giftBoxX);
+      GIFT_PIXELS.forEach(function (row, ry) {
+        row.forEach(function (cell, rx) {
+          if (!cell) { return; }
+          spriteCtx.fillStyle = cell === 2 ? "#FFD600" : cell === 3 ? "#B71C1C" : "#E53935";
+          spriteCtx.fillRect(gbX + rx * GS, gbY + ry * GS, GS, GS);
+        });
+      });
+    }
+
+    // Snack items — candy (4×4) or bone (6×5) pixel art at 2px/pixel
+    if (snackItems.length > 0) {
+      var CANDY_PIXELS = [
+        [0,1,1,0],
+        [1,2,1,1],
+        [1,1,2,1],
+        [0,1,1,0],
+      ];
+      var BONE_PIXELS = [
+        [1,1,0,0,1,1],
+        [1,2,1,1,2,1],
+        [0,1,1,1,1,0],
+        [1,2,1,1,2,1],
+        [1,1,0,0,1,1],
+      ];
+      var SS = 2;
+      snackItems.forEach(function (item) {
+        var spx = item.type === "candy" ? CANDY_PIXELS : BONE_PIXELS;
+        var spH = spx.length * SS;
+        var sY  = H - 4 - spH;
+        var sX  = Math.round(item.x);
+        spx.forEach(function (row, ry) {
+          row.forEach(function (cell, rx) {
+            if (!cell) { return; }
+            spriteCtx.fillStyle = item.type === "candy"
+              ? (cell === 2 ? "#FFE0E0" : "#FF6B9D")
+              : (cell === 2 ? "#F5DEB3" : "#DEB887");
+            spriteCtx.fillRect(sX + rx * SS, sY + ry * SS, SS, SS);
+          });
+        });
+      });
+    }
+
     // Body dimensions — scale with stage and weight
     const stageScale     = STAGE_SCALES[state.stage] || 0.5;
     const bodySize       = Math.round(24 * stageScale);
@@ -916,6 +1023,7 @@
   function weightWidthMultiplier(weight) {
     if (weight > 80)  { return 1.5; }
     if (weight > 50)  { return 1.25; }
+    if (weight < 17)  { return 0.75; }   // too skinny
     return 1.0;
   }
 
