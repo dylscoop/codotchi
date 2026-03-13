@@ -29,19 +29,19 @@ Both extensions share the same game engine logic and the same webview UI
 
 ### VS Code
 
-1. Download `vscode-gotchi-0.1.3.vsix` from the Releases page.
+1. Download `vscode-gotchi-0.2.0.vsix` from the Releases page.
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
 Or from the terminal:
 
 ```bash
-code --install-extension vscode-gotchi-0.1.3.vsix
+code --install-extension vscode-gotchi-0.2.0.vsix
 ```
 
 ### JetBrains
 
-1. Download `pycharm-gotchi-0.1.3.zip` from the Releases page.
+1. Download `pycharm-gotchi-0.2.0.zip` from the Releases page.
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -78,7 +78,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces vscode-gotchi-0.1.3.vsix
+# produces vscode-gotchi-0.2.0.vsix
 ```
 
 ### JetBrains plugin
@@ -94,14 +94,14 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-gotchi-0.1.3.zip
+# produces pycharm/build/distributions/pycharm-gotchi-0.2.0.zip
 ```
 
 ## Version history
 
 See [VERSIONS.md](VERSIONS.md) for the full changelog.
 
-Current release: **v0.1.3**
+Current release: **v0.2.0**
 
 ---
 

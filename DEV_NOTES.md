@@ -191,25 +191,41 @@ All decay occurs in `tick()`. Rates below assume the pet is **awake**.
 Per-type hunger multipliers: bytebug **1.5×** (6.7 min), shellscript **0.8×** (~12.5 min).  
 Per-type happiness multipliers: pixelpup **1.5×** (6.7 min).
 
-### Idle decay (no IDE activity for ≥ 5 minutes)
+### Idle decay (no IDE activity for ≥ 1 minute)
 
-Hunger and happiness decay is skipped on 9 out of every 10 ticks
+Hunger, happiness, and **aging** are all skipped on 9 out of every 10 ticks
 (`ticksAlive % IDLE_DECAY_TICK_DIVISOR != 0`). Energy drain is unaffected.
+A `"went_idle"` event is pushed once on the tick when the IDE transitions from
+active to idle, showing "IDE idle — decay and aging slowed." in the event log.
 
 | Stat      | Effective rate | Full bar lasts |
 |-----------|---------------|----------------|
 | Hunger    | 1 pt/min      | ~100 min       |
 | Happiness | 1 pt/min      | ~100 min       |
+| Aging     | 1/10 normal   | 10× longer     |
 
-After hunger hits 0, the starvation penalty fires every tick (-5 health/tick).
-With 100 base health, the pet survives ~2 min of starvation, giving a total idle
-survival of approximately **1 hour 42 minutes** for a codeling with full stats.
+### Deep idle (no IDE activity for ≥ 10 minutes)
+
+When the IDE has been idle for ≥ **10 minutes** (`IDLE_DEEP_THRESHOLD_SECONDS = 600`),
+the engine enters deep-idle mode. A `"went_deep_idle"` event fires once on
+transition, showing "IDE idle 10 min — stats protected, aging stopped." in the
+event log.
+
+In deep-idle mode:
+- Hunger and happiness are **floored at `IDLE_STAT_FLOOR = 20`** — they cannot
+  decay below 20, so the pet is protected from starvation/misery while you step
+  away for an extended period.
+- `ageIncrement` is set to **0** — aging stops completely.
 
 ### Offline decay (IDE fully closed)
 
 Applied as a single lump sum on the next launch via `applyOfflineDecay()`.
 Capped at **`OFFLINE_DECAY_MAX_FRACTION = 0.60`** of the current value —
 regardless of how long the IDE was closed, no stat can lose more than 60%.
+
+**Aging does not advance while the IDE is closed.** `applyOfflineDecay()`
+preserves `dayTimer` and `ageDays` exactly as saved. Only hunger, happiness,
+energy, and health are subject to offline decay.
 
 ---
 

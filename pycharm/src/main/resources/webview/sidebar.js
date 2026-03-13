@@ -413,6 +413,8 @@
       "code_activity_rewarded":  n + " felt stimulated!",
       "evolved_to_senior":       n + " reached their senior years!",
       "died_of_old_age":         n + " passed away of old age...",
+      "went_idle":               "IDE idle — decay and aging slowed.",
+      "went_deep_idle":          "IDE idle 10 min — stats protected, aging stopped.",
     };
     if (labels[code]) { return labels[code]; }
     if (code.indexOf("evolved_to_") === 0) {

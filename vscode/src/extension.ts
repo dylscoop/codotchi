@@ -21,6 +21,7 @@ import {
   tick,
   TICK_INTERVAL_SECONDS,
   IDLE_THRESHOLD_SECONDS,
+  IDLE_DEEP_THRESHOLD_SECONDS,
 } from "./gameEngine";
 import { SidebarProvider } from "./sidebarProvider";
 import { StatusBarManager } from "./statusBar";
@@ -36,6 +37,7 @@ import {
 
 const TICK_INTERVAL_MS: number = TICK_INTERVAL_SECONDS * 1_000;
 const IDLE_THRESHOLD_MS: number = IDLE_THRESHOLD_SECONDS * 1_000;
+const IDLE_DEEP_THRESHOLD_MS: number = IDLE_DEEP_THRESHOLD_SECONDS * 1_000;
 
 let currentState: PetState | null = null;
 let currentHighScore: HighScore | null = null;
@@ -129,8 +131,10 @@ export function activate(context: vscode.ExtensionContext): void {
     if (currentState === null) {
       return;
     }
-    const idle = Date.now() - lastActivityMs > IDLE_THRESHOLD_MS;
-    const next = tick(currentState, idle);
+    const idleMs = Date.now() - lastActivityMs;
+    const idle = idleMs > IDLE_THRESHOLD_MS;
+    const deepIdle = idleMs > IDLE_DEEP_THRESHOLD_MS;
+    const next = tick(currentState, idle, deepIdle);
     handleStateUpdate(next);
   }, TICK_INTERVAL_MS);
 

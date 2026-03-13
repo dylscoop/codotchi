@@ -92,7 +92,19 @@ export const CODE_ACTIVITY_THROTTLE_SECONDS: number = 30;
  * Seconds of no IDE activity (no keystrokes, cursor movement, or window focus)
  * before the pet is considered "idle" and decay is reduced to IDLE_DECAY_FRACTION.
  */
-export const IDLE_THRESHOLD_SECONDS: number = 300; // 5 minutes
+export const IDLE_THRESHOLD_SECONDS: number = 60; // 1 minute
+
+/**
+ * Seconds of sustained idle before entering "deep idle": stats are floored at
+ * IDLE_STAT_FLOOR and aging stops completely.
+ */
+export const IDLE_DEEP_THRESHOLD_SECONDS: number = 600; // 10 minutes
+
+/**
+ * Minimum stat value (hunger, happiness) enforced while in deep idle.
+ * Expressed as a 0-100 value (20 = 20%).
+ */
+export const IDLE_STAT_FLOOR: number = 20;
 
 /**
  * When the user is idle, hunger and happiness decay at this fraction of the
@@ -345,6 +357,12 @@ export interface PetState {
   // Persistent rolling log of the last 20 events (survives across actions)
   readonly recentEventLog: readonly string[];
 
+  /** Whether the IDE was idle on the previous tick (used to detect idle transition). */
+  readonly wasIdle: boolean;
+
+  /** Whether the IDE was in deep idle (≥10 min) on the previous tick. */
+  readonly wasDeepIdle: boolean;
+
   /** Unix ms timestamp when this pet was first created (spawnedAt). */
   readonly spawnedAt: number;
 
@@ -588,6 +606,8 @@ export function createPet(name: string, petType: string, color: string): PetStat
     careScoreTicks: 0,
     events: [],
     recentEventLog: [],
+    wasIdle: false,
+    wasDeepIdle: false,
     spawnedAt: Date.now(),
     snacksGivenThisCycle: 0,
     dayTimer: 0,
@@ -640,7 +660,7 @@ function withDerivedFields(
  * @param state - The current pet state.
  * @returns A new PetState after one tick.
  */
-export function tick(state: PetState, isIdle: boolean = false): PetState {
+export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boolean = false): PetState {
   if (!state.alive) {
     return state;
   }
@@ -665,10 +685,16 @@ export function tick(state: PetState, isIdle: boolean = false): PetState {
   const sleepingAtTickStart = sleeping;
 
   // Stat decay
+  // When idle, hunger/happiness/aging advance at only 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
+  const decayThisTick = !isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR === 0);
+  if (!state.wasIdle && isIdle) {
+    events.push("went_idle");
+  }
+  if (!state.wasDeepIdle && isDeepIdle) {
+    events.push("went_deep_idle");
+  }
+
   if (!sleeping) {
-    // When idle (no keyboard/mouse activity), hunger and happiness decay at
-    // only 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
-    const decayThisTick = !isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR === 0);
     if (decayThisTick) {
       const hungerDecay = Math.ceil(HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier);
       const happinessDecay = Math.ceil(
@@ -676,6 +702,11 @@ export function tick(state: PetState, isIdle: boolean = false): PetState {
       );
       hunger = clampStat(hunger - hungerDecay);
       happiness = clampStat(happiness - happinessDecay);
+    }
+    // Deep idle: floor stats at IDLE_STAT_FLOOR so they never drop below 20%
+    if (isDeepIdle) {
+      hunger = Math.max(hunger, IDLE_STAT_FLOOR);
+      happiness = Math.max(happiness, IDLE_STAT_FLOOR);
     }
     energy = clampStat(energy - ENERGY_DECAY_PER_TICK);
   } else {
@@ -691,11 +722,14 @@ export function tick(state: PetState, isIdle: boolean = false): PetState {
     }
   }
 
-  // Advance day timer — use sleepingAtTickStart to avoid mid-tick flip affecting the rate
-  const dayTimer =
-    state.dayTimer +
-    (sleepingAtTickStart ? 1 / TICKS_PER_GAME_DAY_SLEEPING : 1 / TICKS_PER_GAME_DAY_AWAKE)
-    * modifiers.agingMultiplier;
+  // Advance day timer — use sleepingAtTickStart to avoid mid-tick flip affecting the rate.
+  // When idle, aging is slowed (same divisor as hunger/happiness decay).
+  // When deep idle, aging stops entirely.
+  const ageIncrement = (!isDeepIdle && decayThisTick)
+    ? (sleepingAtTickStart ? 1 / TICKS_PER_GAME_DAY_SLEEPING : 1 / TICKS_PER_GAME_DAY_AWAKE)
+      * modifiers.agingMultiplier
+    : 0;
+  const dayTimer = state.dayTimer + ageIncrement;
   ageDays = Math.floor(dayTimer);
 
   // Poop accumulation — interval is per-type and resampled with high volatility
@@ -782,6 +816,8 @@ export function tick(state: PetState, isIdle: boolean = false): PetState {
     events,
     // Reset snack counter on auto-wake (mirrors the reset in wake())
     snacksGivenThisCycle: events.includes("auto_woke_up") ? 0 : state.snacksGivenThisCycle,
+    wasIdle: isIdle,
+    wasDeepIdle: isDeepIdle,
   };
 
   // Stage progression
@@ -1241,9 +1277,9 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
     poops,
     ticksSinceLastPoop,
     nextPoopIntervalTicks,
-    // Treat offline time as awake (conservative — doesn't accelerate aging)
-    dayTimer: state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier,
-    ageDays: Math.floor(state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier),
+    // Treat offline time as awake for stat decay; aging does NOT advance while the IDE is closed.
+    dayTimer: state.dayTimer,
+    ageDays: state.ageDays,
     events: [],
   });
 }
@@ -1294,6 +1330,8 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     careScore: state.careScore,
     events: state.events,
     recentEventLog: state.recentEventLog,
+    wasIdle: state.wasIdle,
+    wasDeepIdle: state.wasDeepIdle,
     spawnedAt: state.spawnedAt,
     snacksGivenThisCycle: state.snacksGivenThisCycle,
     dayTimer: state.dayTimer,
@@ -1353,6 +1391,8 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     events: [],
     // Back-compat: old saves won't have these fields.
     recentEventLog: getStringArray("recentEventLog"),
+    wasIdle: false, // back-compat: old saves default to not idle
+    wasDeepIdle: false, // back-compat: old saves default to not deep idle
     spawnedAt: getNumber("spawnedAt", Date.now()),
     snacksGivenThisCycle: getNumber("snacksGivenThisCycle", 0),
     // Back-compat: old saves use ageDays as an integer; seed dayTimer from it.
