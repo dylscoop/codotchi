@@ -462,17 +462,55 @@ The current renderer in `sidebar.js` draws everything programmatically on a
 | Variable     | Value source                         | Purpose                          |
 |--------------|--------------------------------------|----------------------------------|
 | STAGE_SCALES | static map in sidebar.js             | Body size relative to 24px base  |
+| STAGE_BODY_HEIGHT_MULTS | static map in sidebar.js  | Height multiplier per stage (e.g. adult=1.5×) |
 | COLOR_PALETTES | static map in sidebar.js           | primary / secondary / background |
+| weightWidthMultiplier | function in sidebar.js      | >80→1.5×, >50→1.25×, else 1.0× width |
 | getPetSpeed  | mood-based lookup                    | px/frame horizontal movement     |
 | bobOffset    | 0 or 1 px alternating per 10 frames  | Walking animation                |
 | legFrame     | 0 or 1                               | Leg height alternation           |
 
+### Per-stage sprite shapes
+
+Each stage has a distinct visual shape drawn procedurally in `drawSprite()`:
+
+| Stage | Shape | Distinctive features |
+|-------|-------|---------------------|
+| Egg | Ellipse (`ctx.ellipse`) | Oval body, dot eyes (10% bodySize), no legs, no mouth |
+| Baby | Square body | Oversized eyes (30% bodySize), tiny legs (12% bodySize), expressive mouth |
+| Child | Square body | Normal eyes (18% bodySize), normal legs (22% bodySize) |
+| Teen | Head + narrower torso (82% width) | Normal eyes in head region, longer legs (30% bodySize) |
+| Adult | Head + full-width torso | Shoulder bumps (2px×4px on each side of torso top), longer legs (30%) |
+| Senior | Head + wide torso (90% width) | Slightly shorter legs than adult (25%), larger head fraction (42%) |
+
+### Weight-based sprite width
+
+`weightWidthMultiplier(weight)` returns a multiplier applied to `bodyWidth`:
+
+- weight > 80 → 1.5× (overweight tier)
+- weight > 50 → 1.25× (slightly fat tier)
+- else → 1.0× (normal)
+
+`bodyHeight` is always `bodySize * STAGE_BODY_HEIGHT_MULTS[stage]` — weight
+only affects width, not height. The `maxX` clamp in `animationLoop()` and
+`resizeCanvas()` use `bWidth = Math.round(bodySize * wwm)` so the pet never
+walks off the right edge when wide.
+
+### Weight event strings
+
+| Event code | Human-readable message |
+|-----------|------------------------|
+| `weight_became_too_skinny` | `<Name> is getting too skinny!` |
+| `weight_became_slightly_fat` | `<Name> is looking a little chubby.` |
+| `weight_became_overweight` | `<Name> is overweight!` |
+| `weight_no_longer_overweight` | `<Name> has slimmed down.` |
+| `weight_no_longer_too_skinny` | `<Name> is looking healthier now.` |
+
 ### Sprite anatomy (pixel positions relative to body rect at x, bodyY)
 
 ```text
-[legs]      legX1 = x + 20% bodySize, legX2 = x + 60% bodySize
-[body]      full bodySize × bodySize square
-[eyes]      leftEyeX = x + 20%, rightEyeX = x + 62%, eyeY = bodyY + 25%
+[legs]      legX1 = x + 20% bodyWidth, legX2 = x + 60% bodyWidth
+[body]      bodyWidth × bodyHeight rect (or ellipse for egg)
+[eyes]      leftEyeX = x + 20%, rightEyeX = x + 62%, eyeY = bodyY + 25% (child/teen/adult/senior)
 [mouth]     mouthY = bodyY + 65%, mouthX = x + 30%, mouthW = 40%
 [indicator] z (sleeping) or + (sick) above body centre
 ```
@@ -493,7 +531,8 @@ Mouth shape:
 
 The sprite is drawn facing right by default. When `petFacingLeft === true`,
 the canvas context is translated and `scale(-1, 1)` is applied around the
-body's horizontal centre. Status indicators (Zzz, +) are drawn *after*
+body's horizontal centre (using `bodyWidth` not `bodySize` for correct centering
+when weight-scaled). Status indicators (Zzz, +) are drawn *after*
 `spriteCtx.restore()` so they always read left-to-right.
 
 ---

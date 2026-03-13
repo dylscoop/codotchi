@@ -1,6 +1,40 @@
 # Version History
 
-## v0.2.2 — current
+## v0.3.0 — current
+
+### Changes from v0.2.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | Added weight system: `PLAY_WEIGHT_LOSS=3`, `WEIGHT_DECAY_TICK_INTERVAL`, `WEIGHT_HAPPINESS_HIGH_THRESHOLD=66`, `WEIGHT_HAPPINESS_LOW_THRESHOLD=17`, `WEIGHT_HAPPINESS_DEBUFF_MULTIPLIER=1.5`, `WEIGHT_SLIGHTLY_FAT_THRESHOLD=50`, `WEIGHT_OVERWEIGHT_THRESHOLD=80`; `weightTierOf()` and `checkWeightTierEvents()` helpers; `tick()` applies weight-based happiness multiplier and passive weight decay; `feedMeal()`, `feedSnack()`, `play()` call `checkWeightTierEvents`; play now loses 3 weight (was 1) |
+| `vscode/media/sidebar.js` | Info line now shows `Wt: N`; added `STAGE_BODY_HEIGHT_MULTS` lookup table; added `weightWidthMultiplier()` helper; `animationLoop()` and `resizeCanvas()` use weight-scaled `bWidth` for `maxX`; `drawSprite()` rewritten with per-stage shapes (egg=ellipse, baby=oversized eyes, child=normal, teen/adult/senior=head+torso+shoulder bumps); added 5 weight event strings to `humaniseEvent()` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Mirrored all weight system constants from `gameEngine.ts` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Mirrored all weight system logic from `gameEngine.ts` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored all `sidebar.js` changes: info line weight, `STAGE_BODY_HEIGHT_MULTS`, `weightWidthMultiplier()`, `animationLoop`/`resizeCanvas` `maxX` fix, `drawSprite()` rewrite, 5 weight event strings in `humaniseEvent()` |
+| `vscode/package.json` | Version `0.2.2` → `0.3.0` |
+| `pycharm/build.gradle.kts` | Version `0.2.2` → `0.3.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version `0.2.2` → `0.3.0` |
+| `vscode/FEATURES.md` | Section 6.1 weight rows updated to `[x]`; play weight-loss note updated to −3 |
+| `DEV_NOTES.md` | Sprite Rendering Notes updated for weight system and per-stage shapes; weight event strings documented |
+| `README.md` | Version reference and install filenames updated to `0.3.0` |
+| `vscode/README.md` | Install filenames updated to `0.3.0` |
+| `pycharm/README.md` | Install filenames updated to `0.3.0` |
+
+### New constants (v0.3.0)
+
+```
+PLAY_WEIGHT_LOSS:                    number/Int = 3      // weight lost per play (was 1)
+WEIGHT_DECAY_TICK_INTERVAL:          number/Int = 10     // passive -1 weight every 10 ticks (1/min)
+WEIGHT_HAPPINESS_HIGH_THRESHOLD:     number/Int = 66     // >66 weight → happiness decays 1.5× faster
+WEIGHT_HAPPINESS_LOW_THRESHOLD:      number/Int = 17     // <17 weight → happiness decays 1.5× faster
+WEIGHT_HAPPINESS_DEBUFF_MULTIPLIER:  number/float = 1.5  // multiplier applied to happiness decay rate
+WEIGHT_SLIGHTLY_FAT_THRESHOLD:       number/Int = 50     // >50 → sprite 1.25× wider
+WEIGHT_OVERWEIGHT_THRESHOLD:         number/Int = 80     // >80 → sprite 1.5× wider; event fires
+```
+
+---
+
+## v0.2.2
 
 ### Changes from v0.2.1
 

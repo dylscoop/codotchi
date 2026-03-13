@@ -187,7 +187,9 @@
     if (lastState) {
       const scale   = STAGE_SCALES[lastState.stage] || 0.5;
       const bSize   = Math.round(24 * scale);
-      const maxX    = spriteCanvas.width - bSize - 4;
+      const wwm     = weightWidthMultiplier(lastState.weight || 50);
+      const bWidth  = Math.round(bSize * wwm);
+      const maxX    = spriteCanvas.width - bWidth - 4;
       if (petX > maxX) { petX = Math.max(4, maxX); }
     }
   }
@@ -216,8 +218,10 @@
       const speed      = getPetSpeed(lastState);
       const stageScale = STAGE_SCALES[lastState.stage] || 0.5;
       const bodySize   = Math.round(24 * stageScale);
+      const wwm        = weightWidthMultiplier(lastState.weight || 50);
+      const bWidth     = Math.round(bodySize * wwm);
       const minX       = 4;
-      const maxX       = spriteCanvas.width - bodySize - 4;
+      const maxX       = spriteCanvas.width - bWidth - 4;
 
       animTick++;
 
@@ -298,6 +302,7 @@
       "Age: " + state.ageDays + "d  |  " +
       state.stage            + "  |  " +
       typeLabelCap           + "  |  " +
+      "Wt: " + (state.weight || 0) + "  |  " +
       poopStr;
 
     // Update sleep/wake button label to match current state
@@ -416,6 +421,11 @@
       "died_of_old_age":         n + " passed away of old age...",
       "went_idle":               "IDE idle — decay and aging slowed.",
       "went_deep_idle":          "IDE idle 10 min — stats protected, aging stopped.",
+      "weight_became_too_skinny":    n + " is getting too skinny!",
+      "weight_became_slightly_fat":  n + " is looking a little chubby.",
+      "weight_became_overweight":    n + " is overweight!",
+      "weight_no_longer_overweight": n + " has slimmed down.",
+      "weight_no_longer_too_skinny": n + " is looking healthier now.",
     };
     if (labels[code]) { return labels[code]; }
     if (code.indexOf("evolved_to_") === 0) {
@@ -635,66 +645,201 @@
       });
     }
 
-    // Body size scales with stage
-    const stageScale = STAGE_SCALES[state.stage] || 0.5;
-    const bodySize   = Math.round(24 * stageScale);
-    const legH       = Math.max(2, Math.round(bodySize * 0.22));  // leg height in pixels
-    const bodyY      = H - bodySize - legH - 4 - bobOffset;       // sits above legs, above ground
+    // Body dimensions — scale with stage and weight
+    const stageScale     = STAGE_SCALES[state.stage] || 0.5;
+    const bodySize       = Math.round(24 * stageScale);
+    const wt             = state.weight || 50;
+    const weightWidthMult = weightWidthMultiplier(wt);
+    const bodyWidth      = Math.round(bodySize * weightWidthMult);
+    const heightMult     = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
+    const bodyHeight     = Math.round(bodySize * heightMult);
+    const legH           = Math.max(2, Math.round(bodySize * 0.22));
+    const bodyY          = H - bodyHeight - legH - 4 - bobOffset;
 
-    // Apply horizontal flip for direction
+    // Apply horizontal flip for direction (use bodyWidth for correct centering)
     spriteCtx.save();
     if (facingLeft) {
-      spriteCtx.translate(x + bodySize, 0);
+      spriteCtx.translate(x + bodyWidth, 0);
       spriteCtx.scale(-1, 1);
       spriteCtx.translate(-x, 0);
     }
 
-    // Legs (alternating height = walking animation)
-    const legW  = Math.max(2, Math.round(bodySize * 0.15));
-    const legX1 = x + Math.round(bodySize * 0.2);
-    const legX2 = x + Math.round(bodySize * 0.6);
-    const legY  = bodyY + bodySize;
-    spriteCtx.fillStyle = primary;
-    spriteCtx.fillRect(legX1, legY, legW, legFrame === 0 ? legH     : legH - 1);
-    spriteCtx.fillRect(legX2, legY, legW, legFrame === 0 ? legH - 1 : legH    );
+    const stage = state.stage;
 
-    // Body
-    spriteCtx.fillStyle = primary;
-    spriteCtx.fillRect(x, bodyY, bodySize, bodySize);
+    if (stage === "egg") {
+      // ── Egg: oval, dot eyes, no mouth, no legs
+      spriteCtx.fillStyle = primary;
+      spriteCtx.beginPath();
+      spriteCtx.ellipse(
+        x + bodyWidth / 2,
+        bodyY + bodyHeight / 2,
+        bodyWidth / 2,
+        bodyHeight / 2,
+        0, 0, Math.PI * 2
+      );
+      spriteCtx.fill();
 
-    // Eyes
-    const eyeSize   = Math.max(2, Math.round(bodySize * 0.18));
-    const eyeY      = bodyY + Math.round(bodySize * 0.25);
-    const leftEyeX  = x + Math.round(bodySize * 0.20);
-    const rightEyeX = x + Math.round(bodySize * 0.62);
+      // Dot eyes (small, centred vertically in the top half)
+      const dotSize   = Math.max(1, Math.round(bodySize * 0.10));
+      const dotY      = bodyY + Math.round(bodyHeight * 0.38);
+      const dotLeftX  = x + Math.round(bodyWidth * 0.28);
+      const dotRightX = x + Math.round(bodyWidth * 0.62);
+      spriteCtx.fillStyle = secondary;
+      spriteCtx.fillRect(dotLeftX,  dotY, dotSize, dotSize);
+      spriteCtx.fillRect(dotRightX, dotY, dotSize, dotSize);
 
-    spriteCtx.fillStyle = state.sick     ? "#ff0000"  :
-                          state.sleeping ? "#888888"  : secondary;
-    spriteCtx.fillRect(leftEyeX,  eyeY, eyeSize, eyeSize);
-    spriteCtx.fillRect(rightEyeX, eyeY, eyeSize, eyeSize);
+    } else if (stage === "baby") {
+      // ── Baby: square body, oversized eyes, tiny legs
+      const babyLegH = Math.max(1, Math.round(bodySize * 0.12));
+      const legW  = Math.max(2, Math.round(bodyWidth * 0.15));
+      const legX1 = x + Math.round(bodyWidth * 0.2);
+      const legX2 = x + Math.round(bodyWidth * 0.6);
+      const legY  = bodyY + bodyHeight;
+      spriteCtx.fillStyle = primary;
+      spriteCtx.fillRect(legX1, legY, legW, legFrame === 0 ? babyLegH     : babyLegH - 1);
+      spriteCtx.fillRect(legX2, legY, legW, legFrame === 0 ? babyLegH - 1 : babyLegH    );
 
-    // Mouth
-    const mouthY = bodyY + Math.round(bodySize * 0.65);
-    const mouthX = x + Math.round(bodySize * 0.3);
-    const mouthW = Math.round(bodySize * 0.4);
+      spriteCtx.fillStyle = primary;
+      spriteCtx.fillRect(x, bodyY, bodyWidth, bodyHeight);
 
-    spriteCtx.fillStyle = secondary;
-    if (state.mood === "happy") {
-      spriteCtx.fillRect(mouthX,              mouthY,     2, 2);
-      spriteCtx.fillRect(mouthX + mouthW - 2, mouthY,     2, 2);
-      spriteCtx.fillRect(mouthX + 2,          mouthY + 2, mouthW - 4, 2);
-    } else if (state.mood === "sad" || state.sick) {
-      spriteCtx.fillRect(mouthX,              mouthY + 2, 2, 2);
-      spriteCtx.fillRect(mouthX + mouthW - 2, mouthY + 2, 2, 2);
-      spriteCtx.fillRect(mouthX + 2,          mouthY,     mouthW - 4, 2);
+      // Big eyes (30% of bodySize)
+      const eyeSize   = Math.max(2, Math.round(bodySize * 0.30));
+      const eyeY      = bodyY + Math.round(bodyHeight * 0.20);
+      const leftEyeX  = x + Math.round(bodyWidth * 0.10);
+      const rightEyeX = x + Math.round(bodyWidth * 0.55);
+      spriteCtx.fillStyle = state.sick     ? "#ff0000"  :
+                            state.sleeping ? "#888888"  : secondary;
+      spriteCtx.fillRect(leftEyeX,  eyeY, eyeSize, eyeSize);
+      spriteCtx.fillRect(rightEyeX, eyeY, eyeSize, eyeSize);
+
+      // Mouth
+      const mouthY = bodyY + Math.round(bodyHeight * 0.72);
+      const mouthX = x + Math.round(bodyWidth * 0.3);
+      const mouthW = Math.round(bodyWidth * 0.4);
+      spriteCtx.fillStyle = secondary;
+      if (state.mood === "happy") {
+        spriteCtx.fillRect(mouthX,              mouthY,     2, 2);
+        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY,     2, 2);
+        spriteCtx.fillRect(mouthX + 2,          mouthY + 2, mouthW - 4, 2);
+      } else if (state.mood === "sad" || state.sick) {
+        spriteCtx.fillRect(mouthX,              mouthY + 2, 2, 2);
+        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY + 2, 2, 2);
+        spriteCtx.fillRect(mouthX + 2,          mouthY,     mouthW - 4, 2);
+      } else {
+        spriteCtx.fillRect(mouthX, mouthY + 1, mouthW, 2);
+      }
+
+    } else if (stage === "child") {
+      // ── Child: square body, normal eyes, normal legs
+      const legW  = Math.max(2, Math.round(bodyWidth * 0.15));
+      const legX1 = x + Math.round(bodyWidth * 0.2);
+      const legX2 = x + Math.round(bodyWidth * 0.6);
+      const legY  = bodyY + bodyHeight;
+      spriteCtx.fillStyle = primary;
+      spriteCtx.fillRect(legX1, legY, legW, legFrame === 0 ? legH     : legH - 1);
+      spriteCtx.fillRect(legX2, legY, legW, legFrame === 0 ? legH - 1 : legH    );
+
+      spriteCtx.fillStyle = primary;
+      spriteCtx.fillRect(x, bodyY, bodyWidth, bodyHeight);
+
+      const eyeSize   = Math.max(2, Math.round(bodySize * 0.18));
+      const eyeY      = bodyY + Math.round(bodyHeight * 0.25);
+      const leftEyeX  = x + Math.round(bodyWidth * 0.20);
+      const rightEyeX = x + Math.round(bodyWidth * 0.62);
+      spriteCtx.fillStyle = state.sick     ? "#ff0000"  :
+                            state.sleeping ? "#888888"  : secondary;
+      spriteCtx.fillRect(leftEyeX,  eyeY, eyeSize, eyeSize);
+      spriteCtx.fillRect(rightEyeX, eyeY, eyeSize, eyeSize);
+
+      const mouthY = bodyY + Math.round(bodyHeight * 0.65);
+      const mouthX = x + Math.round(bodyWidth * 0.3);
+      const mouthW = Math.round(bodyWidth * 0.4);
+      spriteCtx.fillStyle = secondary;
+      if (state.mood === "happy") {
+        spriteCtx.fillRect(mouthX,              mouthY,     2, 2);
+        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY,     2, 2);
+        spriteCtx.fillRect(mouthX + 2,          mouthY + 2, mouthW - 4, 2);
+      } else if (state.mood === "sad" || state.sick) {
+        spriteCtx.fillRect(mouthX,              mouthY + 2, 2, 2);
+        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY + 2, 2, 2);
+        spriteCtx.fillRect(mouthX + 2,          mouthY,     mouthW - 4, 2);
+      } else {
+        spriteCtx.fillRect(mouthX, mouthY + 1, mouthW, 2);
+      }
+
     } else {
-      spriteCtx.fillRect(mouthX, mouthY + 1, mouthW, 2);
+      // ── Teen / Adult / Senior: head + torso with shoulder bumps, longer legs
+
+      // Leg length (slightly longer than child)
+      const bigLegH = Math.max(2, Math.round(bodySize * 0.30));
+      const seniorLegH = Math.max(2, Math.round(bodySize * 0.25));
+      const actualLegH = stage === "senior" ? seniorLegH : bigLegH;
+
+      const legW  = Math.max(2, Math.round(bodyWidth * 0.15));
+      const legX1 = x + Math.round(bodyWidth * 0.2);
+      const legX2 = x + Math.round(bodyWidth * 0.6);
+      const legY  = bodyY + bodyHeight;
+      spriteCtx.fillStyle = primary;
+      spriteCtx.fillRect(legX1, legY, legW, legFrame === 0 ? actualLegH     : actualLegH - 1);
+      spriteCtx.fillRect(legX2, legY, legW, legFrame === 0 ? actualLegH - 1 : actualLegH    );
+
+      // Head / torso split fractions per stage
+      const headFrac   = stage === "teen" ? 0.40 : (stage === "senior" ? 0.42 : 0.38);
+      const headH      = Math.round(bodyHeight * headFrac);
+      const torsoH     = bodyHeight - headH;
+      const torsoYBase = bodyY + headH;
+
+      // Torso width per stage
+      const torsoWidthFrac = stage === "teen" ? 0.82 : (stage === "senior" ? 0.90 : 1.0);
+      const torsoWidth     = Math.round(bodyWidth * torsoWidthFrac);
+      const torsoX         = x + Math.round((bodyWidth - torsoWidth) / 2);
+
+      // Draw torso first
+      spriteCtx.fillStyle = primary;
+      spriteCtx.fillRect(torsoX, torsoYBase, torsoWidth, torsoH);
+
+      // Shoulder bumps (adult only — 2px wide × 4px tall on each side of torso top)
+      if (stage === "adult") {
+        spriteCtx.fillRect(torsoX - 2, torsoYBase, 2, 4);
+        spriteCtx.fillRect(torsoX + torsoWidth, torsoYBase, 2, 4);
+      }
+
+      // Head rect (full width)
+      spriteCtx.fillStyle = primary;
+      spriteCtx.fillRect(x, bodyY, bodyWidth, headH);
+
+      // Eyes (in head area)
+      const eyeSize   = Math.max(2, Math.round(bodySize * 0.18));
+      const eyeY      = bodyY + Math.round(headH * 0.35);
+      const leftEyeX  = x + Math.round(bodyWidth * 0.20);
+      const rightEyeX = x + Math.round(bodyWidth * 0.62);
+      spriteCtx.fillStyle = state.sick     ? "#ff0000"  :
+                            state.sleeping ? "#888888"  : secondary;
+      spriteCtx.fillRect(leftEyeX,  eyeY, eyeSize, eyeSize);
+      spriteCtx.fillRect(rightEyeX, eyeY, eyeSize, eyeSize);
+
+      // Mouth (lower part of head)
+      const mouthY = bodyY + Math.round(headH * 0.72);
+      const mouthX = x + Math.round(bodyWidth * 0.3);
+      const mouthW = Math.round(bodyWidth * 0.4);
+      spriteCtx.fillStyle = secondary;
+      if (state.mood === "happy") {
+        spriteCtx.fillRect(mouthX,              mouthY,     2, 2);
+        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY,     2, 2);
+        spriteCtx.fillRect(mouthX + 2,          mouthY + 2, mouthW - 4, 2);
+      } else if (state.mood === "sad" || state.sick) {
+        spriteCtx.fillRect(mouthX,              mouthY + 2, 2, 2);
+        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY + 2, 2, 2);
+        spriteCtx.fillRect(mouthX + 2,          mouthY,     mouthW - 4, 2);
+      } else {
+        spriteCtx.fillRect(mouthX, mouthY + 1, mouthW, 2);
+      }
     }
 
     spriteCtx.restore();  // end flip transform
 
     // Status indicators — drawn outside the flip so text stays readable
-    const indicatorX = x + Math.round(bodySize / 2) - 4;
+    const indicatorX = x + Math.round(bodyWidth / 2) - 4;
     const indicatorY = bodyY - 3;
     if (state.sleeping) {
       spriteCtx.fillStyle = secondary;
@@ -724,6 +869,28 @@
     adult:  0.85,
     senior: 0.90,
   };
+
+  /** Height multipliers per stage (relative to bodySize). */
+  const STAGE_BODY_HEIGHT_MULTS = {
+    egg:    1.3,
+    baby:   1.0,
+    child:  1.0,
+    teen:   1.35,
+    adult:  1.5,
+    senior: 1.4,
+  };
+
+  /**
+   * Return the width multiplier for the sprite based on weight.
+   * >80 → 1.5×, >50 → 1.25×, else 1×.
+   * @param {number} weight
+   * @returns {number}
+   */
+  function weightWidthMultiplier(weight) {
+    if (weight > 80)  { return 1.5; }
+    if (weight > 50)  { return 1.25; }
+    return 1.0;
+  }
 
   // ── Message handler ──────────────────────────────────────────────────────
 

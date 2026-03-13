@@ -251,7 +251,8 @@ describe("tick — stat decay", () => {
   });
 
   it("decrements happiness by 1 per tick while awake", () => {
-    const pet = makePet({ happiness: 50 });
+    // weight=40 keeps the pet in the neutral weight range (17–66) so no happiness debuff fires
+    const pet = makePet({ happiness: 50, weight: 40 });
     const next = tick(pet);
     assert.equal(next.happiness, 49);
   });
@@ -711,10 +712,10 @@ describe("play", () => {
     assert.equal(next.energy, 25);
   });
 
-  it("decreases weight by 1", () => {
+  it("decreases weight by 3 (PLAY_WEIGHT_LOSS)", () => {
     const pet = makePet({ weight: 10, energy: 50 });
     const next = play(pet);
-    assert.equal(next.weight, 9);
+    assert.equal(next.weight, 7);
   });
 
   it("resets consecutiveSnacks to 0", () => {

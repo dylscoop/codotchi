@@ -71,7 +71,22 @@ const FEED_SNACK_WEIGHT_GAIN: number = 2;
 
 const PLAY_HAPPINESS_BOOST: number = 15;
 const PLAY_ENERGY_COST: number = 25;
-const PLAY_WEIGHT_LOSS: number = 1;
+const PLAY_WEIGHT_LOSS: number = 3;
+
+/** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
+const WEIGHT_DECAY_TICK_INTERVAL: number = TICKS_PER_MINUTE; // 10 ticks = 1 min
+
+/** Weight above which happiness decays 1.5× faster. */
+const WEIGHT_HAPPINESS_HIGH_THRESHOLD: number = 66;
+/** Weight below which happiness decays 1.5× faster. */
+const WEIGHT_HAPPINESS_LOW_THRESHOLD: number = 17;
+/** Happiness decay multiplier when weight is at an extreme. */
+const WEIGHT_HAPPINESS_DEBUFF_MULTIPLIER: number = 1.5;
+
+/** Weight above which the sprite is drawn 1.25× wider. */
+export const WEIGHT_SLIGHTLY_FAT_THRESHOLD: number = 50;
+/** Weight above which the sprite is drawn 1.5× wider. */
+export const WEIGHT_OVERWEIGHT_THRESHOLD: number = 80;
 
 /** Passive energy drain per tick while awake — throttled by idle just like hunger/happiness. */
 const ENERGY_DECAY_PER_TICK: number = 1;
@@ -646,6 +661,36 @@ function withDerivedFields(
 }
 
 // ---------------------------------------------------------------------------
+// Weight tier helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Return the weight tier for a given weight value.
+ *  0 = too skinny (<17), 1 = normal (17–50), 2 = slightly fat (51–80), 3 = overweight (>80)
+ */
+function weightTierOf(w: number): number {
+  if (w > WEIGHT_OVERWEIGHT_THRESHOLD)   { return 3; }
+  if (w > WEIGHT_SLIGHTLY_FAT_THRESHOLD) { return 2; }
+  if (w < WEIGHT_HAPPINESS_LOW_THRESHOLD) { return 0; }
+  return 1;
+}
+
+/**
+ * Compare the weight tiers before and after a change and push crossing events
+ * onto the provided events array.
+ */
+function checkWeightTierEvents(prev: number, next: number, events: string[]): void {
+  const pt = weightTierOf(prev);
+  const nt = weightTierOf(next);
+  if (pt === nt) { return; }
+  if (nt === 3)              { events.push("weight_became_overweight"); }
+  else if (nt === 2 && pt < 2) { events.push("weight_became_slightly_fat"); }
+  else if (nt === 0)         { events.push("weight_became_too_skinny"); }
+  else if (pt === 3)         { events.push("weight_no_longer_overweight"); }
+  else if (pt === 0)         { events.push("weight_no_longer_too_skinny"); }
+}
+
+// ---------------------------------------------------------------------------
 // Tick — advance game state by one step
 // ---------------------------------------------------------------------------
 
@@ -677,6 +722,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   let happiness: number = state.happiness;
   let energy: number = state.energy;
   let health: number = state.health;
+  let weight: number = state.weight;
   let poops: number = state.poops;
   let ticksSinceLastPoop: number = state.ticksSinceLastPoop;
   let nextPoopIntervalTicks: number = state.nextPoopIntervalTicks;
@@ -703,8 +749,10 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   if (!sleeping) {
     if (decayThisTick) {
       const hungerDecay = Math.ceil(HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier);
+      const weightHappinessMult = (state.weight > WEIGHT_HAPPINESS_HIGH_THRESHOLD || state.weight < WEIGHT_HAPPINESS_LOW_THRESHOLD)
+        ? WEIGHT_HAPPINESS_DEBUFF_MULTIPLIER : 1.0;
       const happinessDecay = Math.ceil(
-        HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier
+        HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier * weightHappinessMult
       );
       hunger = clampStat(hunger - hungerDecay);
       happiness = clampStat(happiness - happinessDecay);
@@ -754,6 +802,13 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       nextPoopIntervalTicks = sampleNextPoopInterval(state.petType);
       events.push("pooped");
     }
+  }
+
+  // Passive weight decay — 1 weight per minute (every WEIGHT_DECAY_TICK_INTERVAL ticks)
+  if (ticksAlive % WEIGHT_DECAY_TICK_INTERVAL === 0) {
+    const prevWeight = weight;
+    weight = clampWeight(weight - 1);
+    checkWeightTierEvents(prevWeight, weight, events);
   }
 
   // Sickness from dirty environment
@@ -815,7 +870,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       hunger, happiness, energy, health, poops, ticksSinceLastPoop,
       nextPoopIntervalTicks,
       hungerZeroTicks, sick, alive: alive as boolean, ticksAlive, events,
-      sleeping, ageDays, dayTimer,
+      sleeping, ageDays, dayTimer, weight,
     });
   }
 
@@ -827,7 +882,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
 
   const afterDecay: Omit<PetState, "mood" | "sprite" | "careScore"> = {
     ...state,
-    hunger, happiness, energy, health, poops, ticksSinceLastPoop,
+    hunger, happiness, energy, health, weight, poops, ticksSinceLastPoop,
     nextPoopIntervalTicks,
     hungerZeroTicks, sick, alive, ticksAlive, sleeping, ageDays, dayTimer,
     careScoreHungerSum, careScoreHappinessSum, careScoreHealthSum, careScoreTicks,
@@ -938,12 +993,15 @@ export function feedMeal(state: PetState, mealsGivenThisCycle: number): PetState
   if (mealsGivenThisCycle >= FEED_MEAL_MAX_PER_CYCLE) {
     return withDerivedFields({ ...state, events: ["meal_refused"] });
   }
+  const newWeight = clampWeight(state.weight + FEED_MEAL_WEIGHT_GAIN);
+  const events: string[] = ["fed_meal"];
+  checkWeightTierEvents(state.weight, newWeight, events);
   return withDerivedFields({
     ...state,
     hunger: clampStat(state.hunger + FEED_MEAL_HUNGER_BOOST),
-    weight: clampWeight(state.weight + FEED_MEAL_WEIGHT_GAIN),
+    weight: newWeight,
     consecutiveSnacks: 0,
-    events: ["fed_meal"],
+    events,
   });
 }
 
@@ -973,11 +1031,14 @@ export function feedSnack(state: PetState): PetState {
   }
   events.push("fed_snack");
 
+  const newWeight = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN);
+  checkWeightTierEvents(state.weight, newWeight, events);
+
   return withDerivedFields({
     ...state,
     hunger: clampStat(state.hunger + FEED_SNACK_HUNGER_BOOST),
     happiness: clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
-    weight: clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN),
+    weight: newWeight,
     consecutiveSnacks,
     snacksGivenThisCycle,
     sick,
@@ -998,13 +1059,16 @@ export function play(state: PetState): PetState {
   if (state.energy < PLAY_ENERGY_COST) {
     return withDerivedFields({ ...state, events: ["play_refused_no_energy"] });
   }
+  const newWeight = clampWeight(state.weight - PLAY_WEIGHT_LOSS);
+  const events: string[] = ["played"];
+  checkWeightTierEvents(state.weight, newWeight, events);
   return withDerivedFields({
     ...state,
     happiness: clampStat(state.happiness + PLAY_HAPPINESS_BOOST),
     energy: clampStat(state.energy - PLAY_ENERGY_COST),
-    weight: clampWeight(state.weight - PLAY_WEIGHT_LOSS),
+    weight: newWeight,
     consecutiveSnacks: 0,
-    events: ["played"],
+    events,
   });
 }
 
