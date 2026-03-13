@@ -151,6 +151,43 @@ const CARE_SCORE_MID_TIER_THRESHOLD: number = 0.55;
 /** Maximum fraction of any stat that can be lost while the extension is off. */
 const OFFLINE_DECAY_MAX_FRACTION: number = 0.60;
 
+// ---------------------------------------------------------------------------
+// Attention Call constants
+// ---------------------------------------------------------------------------
+
+/** Active (non-idle) ticks the player has to respond before a call expires (20 × 6 s = 2 min). */
+export const ATTENTION_CALL_RESPONSE_TICKS: number = 20;
+
+/** Hunger stat at or below which a hunger attention call fires. */
+export const ATTENTION_HUNGER_THRESHOLD: number = 25;
+/** Happiness stat at or below which an unhappiness attention call fires. */
+export const ATTENTION_UNHAPPINESS_THRESHOLD: number = 40;
+/** Energy stat at or below which a low_energy attention call fires. */
+export const ATTENTION_ENERGY_THRESHOLD: number = 20;
+/** Health stat at or below which a critical_health attention call fires. */
+export const ATTENTION_HEALTH_THRESHOLD: number = 50;
+
+/** Cooldown ticks (50 = 5 min) applied to a call type after it is answered. */
+export const ATTENTION_ANSWER_COOLDOWN_TICKS: number = 50;
+/** Cooldown ticks (20 = 2 min) applied to a call type after it expires unanswered. */
+export const ATTENTION_EXPIRY_COOLDOWN_TICKS: number = 20;
+/** Stat penalty applied to the relevant stat when an attention call expires. */
+export const ATTENTION_EXPIRY_STAT_PENALTY: number = 10;
+
+/** Happiness boost applied when a gift attention call is answered via praise(). */
+export const GIFT_PRAISE_HAPPINESS_BOOST: number = 15;
+
+/** neglectCount decrements by 1 every this many ticks (300 × 6 s = 30 min). */
+export const NEGLECT_DECAY_TICK_INTERVAL: number = 300;
+
+// Logarithmic random-chance tuning constants for probabilistic calls.
+export const POOP_CALL_BASE_CHANCE: number = 0.03;
+export const POOP_CALL_MAX_CHANCE: number = 0.12;
+export const MISBEHAVIOUR_BASE_CHANCE: number = 0.005;
+export const MISBEHAVIOUR_MAX_CHANCE: number = 0.08;
+export const GIFT_BASE_CHANCE: number = 0.002;
+export const GIFT_MAX_CHANCE: number = 0.05;
+
 /** Age in real-world days at which a senior pet may die of old age. */
 export const SENIOR_NATURAL_DEATH_AGE_DAYS: number = 20;
 
@@ -308,6 +345,20 @@ const EVOLUTION_CHARACTERS: Record<string, Record<string, Record<string, string>
 // ---------------------------------------------------------------------------
 
 /**
+ * All valid attention call type identifiers.
+ * A call of each type can be active at most once at any given time.
+ */
+export type AttentionCallType =
+  | "hunger"
+  | "unhappiness"
+  | "poop"
+  | "sick"
+  | "low_energy"
+  | "misbehaviour"
+  | "gift"
+  | "critical_health";
+
+/**
  * Full serialisable snapshot of the pet's state.
  *
  * All integer stats are in the range [0, 100] unless documented otherwise.
@@ -390,6 +441,29 @@ export interface PetState {
 
   /** Snacks given in the current wake cycle (resets on wake/createPet). */
   readonly snacksGivenThisCycle: number;
+
+  // ── Attention Call fields ────────────────────────────────────────────────
+
+  /** The currently active attention call type, or null if none is active. */
+  readonly activeAttentionCall: AttentionCallType | null;
+
+  /** Number of active (non-idle) ticks elapsed since the current attention call fired. */
+  readonly attentionCallActiveTicks: number;
+
+  /** Per-type cooldown counters (ticks remaining). Decremented each tick. */
+  readonly attentionCallCooldowns: Partial<Record<AttentionCallType, number>>;
+
+  /** Cumulative count of attention calls that expired unanswered (decays slowly over time). */
+  readonly neglectCount: number;
+
+  /** Ticks the current poop(s) have remained uncleaned; resets to 0 when poops === 0. */
+  readonly ticksWithUncleanedPoop: number;
+
+  /** Ticks since the last misbehaviour attention call fired; used for log-chance formula. */
+  readonly ticksSinceLastMisbehaviour: number;
+
+  /** Ticks since the last gift attention call fired; used for log-chance formula. */
+  readonly ticksSinceLastGift: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -447,6 +521,21 @@ function clampStat(value: number): number {
  */
 function clampWeight(value: number): number {
   return clamp(value, WEIGHT_MIN, WEIGHT_MAX);
+}
+
+/**
+ * Logarithmic probability helper for probabilistic attention calls.
+ *
+ * Returns min(max, base × ln(ticksSinceLast + e)).
+ * The probability grows slowly as more ticks pass without the call firing.
+ *
+ * @param ticksSinceLast - Ticks since the last instance of this event.
+ * @param base - Scaling factor (slope of the log curve).
+ * @param max - Maximum probability (hard cap).
+ * @returns Probability in the range [0, max].
+ */
+function logChance(ticksSinceLast: number, base: number, max: number): number {
+  return Math.min(max, base * Math.log(ticksSinceLast + Math.E));
 }
 
 /**
@@ -633,6 +722,13 @@ export function createPet(name: string, petType: string, color: string): PetStat
     spawnedAt: Date.now(),
     snacksGivenThisCycle: 0,
     dayTimer: 0,
+    activeAttentionCall: null,
+    attentionCallActiveTicks: 0,
+    attentionCallCooldowns: {},
+    neglectCount: 0,
+    ticksWithUncleanedPoop: 0,
+    ticksSinceLastMisbehaviour: 0,
+    ticksSinceLastGift: 0,
   };
 
   return withDerivedFields(partial);
@@ -712,7 +808,7 @@ function checkWeightTierEvents(prev: number, next: number, events: string[]): vo
  * @param state - The current pet state.
  * @returns A new PetState after one tick.
  */
-export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boolean = false): PetState {
+export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boolean = false, attentionCallsEnabled: boolean = true): PetState {
   if (!state.alive) {
     return state;
   }
@@ -734,6 +830,15 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   let ageDays: number = state.ageDays;
   const ticksAlive = state.ticksAlive + 1;
 
+  // Attention call mutable state
+  let activeAttentionCall: AttentionCallType | null = state.activeAttentionCall;
+  let attentionCallActiveTicks: number = state.attentionCallActiveTicks;
+  let attentionCallCooldowns: Partial<Record<AttentionCallType, number>> = { ...state.attentionCallCooldowns };
+  let neglectCount: number = state.neglectCount;
+  let ticksWithUncleanedPoop: number = state.ticksWithUncleanedPoop;
+  let ticksSinceLastMisbehaviour: number = state.ticksSinceLastMisbehaviour;
+  let ticksSinceLastGift: number = state.ticksSinceLastGift;
+
   // Capture sleeping state at tick entry so day-timer uses it even if auto-wake fires mid-tick
   const sleepingAtTickStart = sleeping;
 
@@ -746,6 +851,21 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   if (!state.wasDeepIdle && isDeepIdle) {
     events.push("went_deep_idle");
   }
+
+  if (attentionCallsEnabled) {
+  // ── Step 0: Maintain log counters (every tick, even idle) ────────────────
+  if (poops > 0) {
+    ticksWithUncleanedPoop += 1;
+  } else {
+    ticksWithUncleanedPoop = 0;
+  }
+  ticksSinceLastMisbehaviour += 1;
+  ticksSinceLastGift += 1;
+  // Neglect decay: recover 1 neglect point every 300 ticks
+  if (ticksAlive % NEGLECT_DECAY_TICK_INTERVAL === 0 && neglectCount > 0) {
+    neglectCount = Math.max(0, neglectCount - 1);
+  }
+  } // end Step 0
 
   if (!sleeping) {
     if (decayThisTick) {
@@ -866,6 +986,92 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     }
   }
 
+  // ── Step 1: Advance active call timer (non-idle ticks only) ────────────────
+  if (attentionCallsEnabled) {
+  if (activeAttentionCall !== null && !isIdle) {
+    attentionCallActiveTicks += 1;
+    if (attentionCallActiveTicks >= ATTENTION_CALL_RESPONSE_TICKS) {
+      // Call expired — apply stat penalty
+      const expiredType = activeAttentionCall;
+      events.push(`attention_call_expired_${expiredType}`);
+      switch (expiredType) {
+        case "critical_health": health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY); break;
+        case "sick":            health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); break;
+        case "poop":            if (!sick) { sick = true; events.push("became_sick"); } break;
+        case "hunger":          hunger = clampStat(hunger - ATTENTION_EXPIRY_STAT_PENALTY); break;
+        case "unhappiness":     happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY); break;
+        case "misbehaviour":    health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); neglectCount += 1; break;
+        case "low_energy":      happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY); break;
+        case "gift":            happiness = clampStat(happiness - 5); neglectCount += 1; break;
+      }
+      // General neglect increment (except misbehaviour and gift which have their own above)
+      if (expiredType !== "misbehaviour" && expiredType !== "gift") {
+        neglectCount += 1;
+      }
+      attentionCallCooldowns[expiredType] = ATTENTION_EXPIRY_COOLDOWN_TICKS;
+      activeAttentionCall = null;
+      attentionCallActiveTicks = 0;
+    }
+  }
+
+  // ── Step 2: Decrement all cooldowns ────────────────────────────────────────
+  for (const type of Object.keys(attentionCallCooldowns) as AttentionCallType[]) {
+    const remaining = (attentionCallCooldowns[type] ?? 0) - 1;
+    attentionCallCooldowns[type] = Math.max(0, remaining);
+  }
+
+  // ── Step 3: Fire new call if none active ────────────────────────────────────
+  // Compute mood for gift condition (uses post-decay stats)
+  const currentMood = moodFromStats(hunger, happiness, health, sleeping);
+
+  if (activeAttentionCall === null) {
+    const cooldownClear = (t: AttentionCallType): boolean => !(attentionCallCooldowns[t] ?? 0);
+    // Poop call fires even while sleeping (poops accumulate regardless).
+    // All other calls are suppressed while the pet is asleep.
+    if (poops >= 1 && cooldownClear("poop") &&
+               Math.random() < logChance(ticksWithUncleanedPoop, POOP_CALL_BASE_CHANCE, POOP_CALL_MAX_CHANCE)) {
+      activeAttentionCall = "poop";
+      attentionCallActiveTicks = 0;
+      events.push("attention_call_poop");
+    } else if (!sleeping && health <= ATTENTION_HEALTH_THRESHOLD && cooldownClear("critical_health")) {
+      activeAttentionCall = "critical_health";
+      attentionCallActiveTicks = 0;
+      events.push("attention_call_critical_health");
+    } else if (!sleeping && sick && cooldownClear("sick")) {
+      activeAttentionCall = "sick";
+      attentionCallActiveTicks = 0;
+      events.push("attention_call_sick");
+    } else if (!sleeping && hunger <= ATTENTION_HUNGER_THRESHOLD && cooldownClear("hunger")) {
+      activeAttentionCall = "hunger";
+      attentionCallActiveTicks = 0;
+      events.push("attention_call_hunger");
+    } else if (!sleeping && happiness <= ATTENTION_UNHAPPINESS_THRESHOLD && cooldownClear("unhappiness")) {
+      activeAttentionCall = "unhappiness";
+      attentionCallActiveTicks = 0;
+      events.push("attention_call_unhappiness");
+    } else if (!sleeping && cooldownClear("misbehaviour") &&
+               Math.random() < logChance(ticksSinceLastMisbehaviour, MISBEHAVIOUR_BASE_CHANCE, MISBEHAVIOUR_MAX_CHANCE)) {
+      activeAttentionCall = "misbehaviour";
+      attentionCallActiveTicks = 0;
+      ticksSinceLastMisbehaviour = 0;
+      events.push("attention_call_misbehaviour");
+    } else if (!sleeping && energy <= ATTENTION_ENERGY_THRESHOLD && cooldownClear("low_energy")) {
+      activeAttentionCall = "low_energy";
+      attentionCallActiveTicks = 0;
+      events.push("attention_call_low_energy");
+    } else if (!sleeping && cooldownClear("gift") &&
+               health > ATTENTION_HEALTH_THRESHOLD &&
+               !sick &&
+               (currentMood === "happy" || currentMood === "neutral") &&
+               Math.random() < logChance(ticksSinceLastGift, GIFT_BASE_CHANCE, GIFT_MAX_CHANCE)) {
+      activeAttentionCall = "gift";
+      attentionCallActiveTicks = 0;
+      ticksSinceLastGift = 0;
+      events.push("attention_call_gift");
+    }
+  }
+  } // end if (attentionCallsEnabled)
+
   // Death check
   if (health <= HEALTH_DEATH_THRESHOLD) {
     alive = false;
@@ -876,6 +1082,8 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       nextPoopIntervalTicks,
       hungerZeroTicks, sick, alive: alive as boolean, ticksAlive, events,
       sleeping, ageDays, dayTimer, weight,
+      activeAttentionCall, attentionCallActiveTicks, attentionCallCooldowns,
+      neglectCount, ticksWithUncleanedPoop, ticksSinceLastMisbehaviour, ticksSinceLastGift,
     });
   }
 
@@ -896,6 +1104,13 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     snacksGivenThisCycle: events.includes("auto_woke_up") ? 0 : state.snacksGivenThisCycle,
     wasIdle: isIdle,
     wasDeepIdle: isDeepIdle,
+    activeAttentionCall,
+    attentionCallActiveTicks,
+    attentionCallCooldowns,
+    neglectCount,
+    ticksWithUncleanedPoop,
+    ticksSinceLastMisbehaviour,
+    ticksSinceLastGift,
   };
 
   // Stage progression
@@ -985,6 +1200,26 @@ function evolveTo(
 // ---------------------------------------------------------------------------
 
 /**
+ * Internal helper: if the given attention call type is currently active, answer
+ * it (clear it, push answered event, set answer cooldown) and return the
+ * updated partial fields.  Returns null if that call is not active.
+ */
+function answerAttentionCall(
+  state: PetState,
+  callType: AttentionCallType
+): Pick<PetState, "activeAttentionCall" | "attentionCallActiveTicks" | "attentionCallCooldowns"> | null {
+  if (state.activeAttentionCall !== callType) { return null; }
+  return {
+    activeAttentionCall: null,
+    attentionCallActiveTicks: 0,
+    attentionCallCooldowns: {
+      ...state.attentionCallCooldowns,
+      [callType]: ATTENTION_ANSWER_COOLDOWN_TICKS,
+    },
+  };
+}
+
+/**
  * Give the pet a meal.
  *
  * If the cycle cap (FEED_MEAL_MAX_PER_CYCLE) is exceeded the action is a
@@ -1001,8 +1236,14 @@ export function feedMeal(state: PetState, mealsGivenThisCycle: number): PetState
   const newWeight = clampWeight(state.weight + FEED_MEAL_WEIGHT_GAIN);
   const events: string[] = ["fed_meal"];
   checkWeightTierEvents(state.weight, newWeight, events);
+  const answered = answerAttentionCall(state, "hunger");
+  if (answered) { events.push("attention_call_answered_hunger"); }
+  // Also answer critical_health if that's the active call
+  const answeredCritical = !answered ? answerAttentionCall(state, "critical_health") : null;
+  if (answeredCritical) { events.push("attention_call_answered_critical_health"); }
   return withDerivedFields({
     ...state,
+    ...(answered ?? answeredCritical ?? {}),
     hunger: clampStat(state.hunger + FEED_MEAL_HUNGER_BOOST),
     weight: newWeight,
     consecutiveSnacks: 0,
@@ -1039,8 +1280,15 @@ export function feedSnack(state: PetState): PetState {
   const newWeight = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN);
   checkWeightTierEvents(state.weight, newWeight, events);
 
+  const answered = answerAttentionCall(state, "hunger") ?? answerAttentionCall(state, "critical_health");
+  if (answered) {
+    const label = state.activeAttentionCall === "hunger" ? "hunger" : "critical_health";
+    events.push(`attention_call_answered_${label}`);
+  }
+
   return withDerivedFields({
     ...state,
+    ...(answered ?? {}),
     hunger: clampStat(state.hunger + FEED_SNACK_HUNGER_BOOST),
     happiness: clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
     weight: newWeight,
@@ -1067,8 +1315,11 @@ export function play(state: PetState): PetState {
   const newWeight = clampWeight(state.weight - PLAY_WEIGHT_LOSS);
   const events: string[] = ["played"];
   checkWeightTierEvents(state.weight, newWeight, events);
+  const answered = answerAttentionCall(state, "unhappiness");
+  if (answered) { events.push("attention_call_answered_unhappiness"); }
   return withDerivedFields({
     ...state,
+    ...(answered ?? {}),
     happiness: clampStat(state.happiness + PLAY_HAPPINESS_BOOST),
     energy: clampStat(state.energy - PLAY_ENERGY_COST),
     weight: newWeight,
@@ -1127,7 +1378,10 @@ export function sleep(state: PetState): PetState {
   if (state.sleeping) {
     return withDerivedFields({ ...state, events: ["already_sleeping"] });
   }
-  return withDerivedFields({ ...state, sleeping: true, events: ["fell_asleep"] });
+  const answered = answerAttentionCall(state, "low_energy");
+  const events: string[] = ["fell_asleep"];
+  if (answered) { events.push("attention_call_answered_low_energy"); }
+  return withDerivedFields({ ...state, ...(answered ?? {}), sleeping: true, events });
 }
 
 /**
@@ -1161,11 +1415,16 @@ export function clean(state: PetState): PetState {
   if (state.poops === 0) {
     return withDerivedFields({ ...state, events: ["already_clean"] });
   }
+  const answered = answerAttentionCall(state, "poop");
+  const events: string[] = ["cleaned"];
+  if (answered) { events.push("attention_call_answered_poop"); }
   return withDerivedFields({
     ...state,
+    ...(answered ?? {}),
     poops: 0,
     ticksSinceLastPoop: 0,
-    events: ["cleaned"],
+    ticksWithUncleanedPoop: 0,
+    events,
   });
 }
 
@@ -1186,19 +1445,22 @@ export function giveMedicine(state: PetState): PetState {
   const medicineDosesGiven = state.medicineDosesGiven + 1;
   const events: string[] = ["medicine_given"];
   let sick: boolean = state.sick;
+  const answered = answerAttentionCall(state, "sick");
+  if (answered) { events.push("attention_call_answered_sick"); }
 
   if (medicineDosesGiven >= MEDICINE_DOSES_TO_CURE) {
     sick = false;
     events.push("cured");
     return withDerivedFields({
       ...state,
+      ...(answered ?? {}),
       sick: sick as boolean,
       medicineDosesGiven: 0,
       events,
     });
   }
 
-  return withDerivedFields({ ...state, medicineDosesGiven, events });
+  return withDerivedFields({ ...state, ...(answered ?? {}), medicineDosesGiven, events });
 }
 
 /**
@@ -1208,24 +1470,40 @@ export function giveMedicine(state: PetState): PetState {
  * @returns A new PetState after the action.
  */
 export function scold(state: PetState): PetState {
+  const answered = answerAttentionCall(state, "misbehaviour");
+  const events: string[] = ["scolded"];
+  if (answered) { events.push("attention_call_answered_misbehaviour"); }
   return withDerivedFields({
     ...state,
+    ...(answered ?? {}),
     discipline: clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
-    events: ["scolded"],
+    events,
   });
 }
 
 /**
  * Praise the pet to raise discipline.
+ * If a "gift" attention call is active, it is answered and a happiness bonus
+ * (GIFT_PRAISE_HAPPINESS_BOOST) is applied on top of the discipline boost.
+ * If an "unhappiness" attention call is active, it is answered instead.
  *
  * @param state - The current pet state.
  * @returns A new PetState after the action.
  */
 export function praise(state: PetState): PetState {
+  const answeredGift        = answerAttentionCall(state, "gift");
+  const answeredUnhappiness = !answeredGift ? answerAttentionCall(state, "unhappiness") : null;
+  const answered = answeredGift ?? answeredUnhappiness;
+  const events: string[] = ["praised"];
+  if (answeredGift)        { events.push("attention_call_answered_gift"); }
+  if (answeredUnhappiness) { events.push("attention_call_answered_unhappiness"); }
+  const happinessBonus = answeredGift ? GIFT_PRAISE_HAPPINESS_BOOST : 0;
   return withDerivedFields({
     ...state,
+    ...(answered ?? {}),
     discipline: clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
-    events: ["praised"],
+    happiness:  clampStat(state.happiness + happinessBonus),
+    events,
   });
 }
 
@@ -1422,6 +1700,14 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     spawnedAt: state.spawnedAt,
     snacksGivenThisCycle: state.snacksGivenThisCycle,
     dayTimer: state.dayTimer,
+    // Attention call fields
+    activeAttentionCall: state.activeAttentionCall,
+    attentionCallActiveTicks: state.attentionCallActiveTicks,
+    attentionCallCooldowns: state.attentionCallCooldowns,
+    neglectCount: state.neglectCount,
+    ticksWithUncleanedPoop: state.ticksWithUncleanedPoop,
+    ticksSinceLastMisbehaviour: state.ticksSinceLastMisbehaviour,
+    ticksSinceLastGift: state.ticksSinceLastGift,
   };
 }
 
@@ -1443,6 +1729,15 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     typeof data[key] === "boolean" ? (data[key] as boolean) : fallback;
   const getStringArray = (key: string): readonly string[] =>
     Array.isArray(data[key]) ? (data[key] as string[]) : [];
+
+  // Back-compat helper for attentionCallCooldowns (stored as plain object)
+  const getCooldowns = (): Partial<Record<AttentionCallType, number>> => {
+    const raw = data["attentionCallCooldowns"];
+    if (raw !== null && typeof raw === "object" && !Array.isArray(raw)) {
+      return raw as Partial<Record<AttentionCallType, number>>;
+    }
+    return {};
+  };
 
   const partial: Omit<PetState, "mood" | "sprite" | "careScore"> = {
     name: getString("name", "Gotchi"),
@@ -1484,6 +1779,14 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     snacksGivenThisCycle: getNumber("snacksGivenThisCycle", 0),
     // Back-compat: old saves use ageDays as an integer; seed dayTimer from it.
     dayTimer: getNumber("dayTimer", getNumber("ageDays", 0)),
+    // Attention call fields — back-compat: all default to inactive/zero.
+    activeAttentionCall: (data["activeAttentionCall"] as AttentionCallType | null) ?? null,
+    attentionCallActiveTicks: getNumber("attentionCallActiveTicks", 0),
+    attentionCallCooldowns: getCooldowns(),
+    neglectCount: getNumber("neglectCount", 0),
+    ticksWithUncleanedPoop: getNumber("ticksWithUncleanedPoop", 0),
+    ticksSinceLastMisbehaviour: getNumber("ticksSinceLastMisbehaviour", 0),
+    ticksSinceLastGift: getNumber("ticksSinceLastGift", 0),
   };
 
   return withDerivedFields(partial);

@@ -79,24 +79,29 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Scold       | Discipline +10                                   | —                                        | `[x]`  |
 | Light off   | Force sleep early (manual bedtime)               | —                                        | `[ ]`  |
 
-### 3.1 Attention Calls (Misbehaviour)
+### 3.1 Attention Calls
 
-The original Tamagotchi would call for attention unprompted. Implement an
-"attention needed" flag that appears in the sidebar and status bar, requiring
-the player to respond within a time window.
+The pet fires IDE notifications demanding care, with a **2-minute active
+(non-idle) response window**. Idle time does NOT count toward the timer.
 
-| Trigger                        | Attention Type  | Correct Response | Penalty if ignored       | Status |
-|--------------------------------|-----------------|------------------|--------------------------|--------|
-| Hunger < 20                    | Hungry call     | Feed             | Hunger continues dropping| `[ ]`  |
-| Happiness < 20                 | Sad call        | Play or praise   | Happiness drops faster   | `[ ]`  |
-| Poop present                   | Dirty call      | Clean            | Sickness risk after 5 min| `[ ]`  |
-| Sick                           | Sick call       | Medicine         | Health drops faster      | `[ ]`  |
-| Pet misbehaves (random, child+)| Misbehaviour    | Scold            | Discipline −5 if ignored | `[ ]`  |
-| Pet does good deed (random)    | Good deed       | Praise           | Missed happiness boost   | `[ ]`  |
+| Trigger                                            | Attention Type    | Correct Response        | Expiry penalty                         | Status |
+|----------------------------------------------------|-------------------|-------------------------|----------------------------------------|--------|
+| Hunger < 25                                        | `hunger`          | Feed meal or snack      | Hunger −10                             | `[x]`  |
+| Happiness < 40                                     | `unhappiness`     | Play or praise          | Happiness −10                          | `[x]`  |
+| Poop present (log-chance, rises with uncleaned ticks)| `poop`          | Clean                   | Becomes sick                           | `[x]`  |
+| Sick                                               | `sick`            | Medicine                | Health −10                             | `[x]`  |
+| Energy < 20                                        | `low_energy`      | Sleep                   | Happiness −10                          | `[x]`  |
+| Health < 50                                        | `critical_health` | Feed meal or snack      | Health −10, Happiness −10              | `[x]`  |
+| Random misbehaviour (log-chance, child+)           | `misbehaviour`    | Scold                   | Health −10 + neglectCount +1           | `[x]`  |
+| Random gift (log-chance)                           | `gift`            | Praise (+happiness +15) | Happiness −5 + neglectCount +1         | `[x]`  |
 
-Status bar and event log should surface active attention calls. `[S]` Add a
-setting `gotchi.enableAttentionNotifications` to show a VS Code notification
-badge when attention is needed.
+Notes:
+- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (2 min)
+- Post-answer cooldown: `ATTENTION_ANSWER_COOLDOWN_TICKS = 50` ticks (5 min)
+- Post-expiry cooldown: `ATTENTION_EXPIRY_COOLDOWN_TICKS = 20` ticks (2 min)
+- Only one call active at a time; `poop` call can fire while sleeping
+- IDE notifications fire via `showWarningMessage` (VS Code) / `Notifications.Bus` (PyCharm)
+- "Open Gotchi" button on notification focuses the sidebar/tool window
 
 ---
 
@@ -531,7 +536,9 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.codingRewards` | boolean | `true` | Enable coding-activity stat rewards | `[ ]` |
 | `gotchi.codingRewardThrottleSeconds` | number | `30` | Minimum seconds between coding rewards | `[ ]` |
 | `gotchi.autoWake` | boolean | `true` | Auto-wake pet when energy reaches 100 | `[ ]` |
-| `gotchi.enableAttentionNotifications` | boolean | `false` | Show VS Code notification badge when attention needed | `[ ]` |
+| `gotchi.enableAttentionCalls` | boolean | `true` | Enable/disable the entire attention-call mechanic | `[x]` |
+| `gotchi.idleThresholdSeconds` | integer | `60` | Seconds of no activity before idle mode (min 10) | `[x]` |
+| `gotchi.idleDeepThresholdSeconds` | integer | `600` | Seconds of no activity before deep-idle mode (min 30) | `[x]` |
 | `gotchi.alwaysShowGamePicker` | boolean | `false` | Always show game select screen before playing | `[ ]` |
 | `gotchi.leftRightTimeoutMs` | number | `3000` | Milliseconds to respond in Left/Right game | `[ ]` |
 | `gotchi.simonFlashDurationMs` | number | `600` | Flash duration in Pattern Memory game | `[ ]` |

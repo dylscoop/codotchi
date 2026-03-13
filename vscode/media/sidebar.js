@@ -392,7 +392,7 @@
   function humaniseEvent(code, name) {
     var n = name || "Gotchi";
     var labels = {
-      "auto_woke_up":           n + " woke up automatically.",
+      "auto_woke_up":           n + " woke up after a full nap.",
       "pooped":                  n + " pooped!",
       "became_sick":             n + " got sick!",
       "sickness_damage":         n + " is losing health from being sick!",
@@ -427,6 +427,33 @@
       "weight_became_overweight":    n + " is overweight!",
       "weight_no_longer_overweight": n + " has slimmed down.",
       "weight_no_longer_too_skinny": n + " is looking healthier now.",
+      // Attention calls — fired
+      "attention_call_hunger":          n + " is calling for food!",
+      "attention_call_unhappiness":     n + " is calling for attention!",
+      "attention_call_poop":            n + " made a mess and is calling for clean-up!",
+      "attention_call_sick":            n + " is calling — they feel sick!",
+      "attention_call_low_energy":      n + " is calling — they're exhausted!",
+      "attention_call_misbehaviour":    n + " is misbehaving and needs discipline!",
+      "attention_call_gift":            n + " brought you a gift!",
+      "attention_call_critical_health": n + " is calling — health is critical!",
+      // Attention calls — answered
+      "attention_call_answered_hunger":          "You answered " + n + "'s hunger call.",
+      "attention_call_answered_unhappiness":     "You answered " + n + "'s sadness call.",
+      "attention_call_answered_poop":            "You cleaned up after " + n + ".",
+      "attention_call_answered_sick":            "You answered " + n + "'s sickness call.",
+      "attention_call_answered_low_energy":      "You answered " + n + "'s exhaustion call.",
+      "attention_call_answered_misbehaviour":    "You scolded " + n + " and answered their call.",
+      "attention_call_answered_gift":            "You accepted " + n + "'s gift!",
+      "attention_call_answered_critical_health": "You answered " + n + "'s critical health call.",
+      // Attention calls — expired
+      "attention_call_expired_hunger":          n + "'s hunger call went unanswered!",
+      "attention_call_expired_unhappiness":     n + "'s sadness call went unanswered!",
+      "attention_call_expired_poop":            n + "'s clean-up call went unanswered!",
+      "attention_call_expired_sick":            n + "'s sickness call went unanswered!",
+      "attention_call_expired_low_energy":      n + "'s exhaustion call went unanswered!",
+      "attention_call_expired_misbehaviour":    n + "'s misbehaviour call went unanswered!",
+      "attention_call_expired_gift":            n + "'s gift was ignored.",
+      "attention_call_expired_critical_health": n + "'s critical health call went unanswered!",
     };
     if (labels[code]) { return labels[code]; }
     if (code.indexOf("evolved_to_") === 0) {
@@ -856,7 +883,7 @@
 
   const COLOR_PALETTES = {
     neon:   { primary: "#39ff14", secondary: "#ff00ff", background: "#0d0d0d" },
-    pastel: { primary: "#ffb3c1", secondary: "#b5ead7", background: "#fdf6ec" },
+    pastel: { primary: "#ffb3c1", secondary: "#b5ead7", background: "#57070c" },
     mono:   { primary: "#e0e0e0", secondary: "#888888", background: "#1a1a1a" },
     ocean:  { primary: "#00cfff", secondary: "#004e7c", background: "#001f3f" },
   };

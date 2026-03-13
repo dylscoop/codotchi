@@ -75,4 +75,27 @@ data class PetState(
 
     /** Snacks given in the current wake cycle (resets on wake/createPet). */
     val snacksGivenThisCycle: Int,
+
+    // ── Attention Call fields ────────────────────────────────────────────────
+
+    /** The currently active attention call type, or null if none is active. */
+    val activeAttentionCall: String?,
+
+    /** Number of active (non-idle) ticks elapsed since the current attention call fired. */
+    val attentionCallActiveTicks: Int,
+
+    /** Per-type cooldown counters (ticks remaining). Decremented each tick. */
+    val attentionCallCooldowns: Map<String, Int>,
+
+    /** Cumulative count of attention calls that expired unanswered (decays slowly over time). */
+    val neglectCount: Int,
+
+    /** Ticks the current poop(s) have remained uncleaned; resets to 0 when poops === 0. */
+    val ticksWithUncleanedPoop: Int,
+
+    /** Ticks since the last misbehaviour attention call fired; used for log-chance formula. */
+    val ticksSinceLastMisbehaviour: Int,
+
+    /** Ticks since the last gift attention call fired; used for log-chance formula. */
+    val ticksSinceLastGift: Int,
 )
