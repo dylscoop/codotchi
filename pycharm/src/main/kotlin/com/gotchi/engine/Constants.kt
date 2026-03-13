@@ -38,16 +38,32 @@ const val RECENT_EVENT_LOG_MAX: Int = 20
 const val POOP_TICKS_INTERVAL: Int = 20 * TICKS_PER_MINUTE
 
 const val FEED_MEAL_HUNGER_BOOST: Int = 20
-const val FEED_MEAL_WEIGHT_GAIN: Int = 1
+const val FEED_MEAL_WEIGHT_GAIN: Int = 2
 const val FEED_MEAL_MAX_PER_CYCLE: Int = 3
 
 const val FEED_SNACK_HAPPINESS_BOOST: Int = 5
 const val FEED_SNACK_HUNGER_BOOST: Int = 5
-const val FEED_SNACK_WEIGHT_GAIN: Int = 2
+const val FEED_SNACK_WEIGHT_GAIN: Int = 5
 
 const val PLAY_HAPPINESS_BOOST: Int = 15
 const val PLAY_ENERGY_COST: Int = 25
-const val PLAY_WEIGHT_LOSS: Int = 1
+const val PLAY_WEIGHT_LOSS: Int = 3
+const val POOP_WEIGHT_LOSS: Int = 5
+
+/** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
+const val WEIGHT_DECAY_TICK_INTERVAL: Int = TICKS_PER_MINUTE // 10 ticks = 1 min
+
+/** Weight above which happiness decays 1.5× faster. */
+const val WEIGHT_HAPPINESS_HIGH_THRESHOLD: Int = 66
+/** Weight below which happiness decays 1.5× faster. */
+const val WEIGHT_HAPPINESS_LOW_THRESHOLD: Int = 17
+/** Happiness decay multiplier when weight is at an extreme. */
+const val WEIGHT_HAPPINESS_DEBUFF_MULTIPLIER: Double = 1.5
+
+/** Weight above which the sprite is drawn 1.25× wider. */
+const val WEIGHT_SLIGHTLY_FAT_THRESHOLD: Int = 50
+/** Weight above which the sprite is drawn 1.5× wider. */
+const val WEIGHT_OVERWEIGHT_THRESHOLD: Int = 80
 
 /** Passive energy drain per tick while awake — throttled by idle just like hunger/happiness. */
 const val ENERGY_DECAY_PER_TICK: Int = 1

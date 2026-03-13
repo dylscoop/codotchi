@@ -15,10 +15,10 @@ Status legend:
 |--------------|--------|--------|-------|
 | Hunger       | 0–100  | `[x]`  | Decays over time; 0 triggers health loss |
 | Happiness    | 0–100  | `[x]`  | Decays over time; 0 triggers health loss |
-| Energy       | 0–100  | `[x]`  | Decays 1/tick while awake; depleted by play; restored during sleep |
+| Energy       | 0–100  | `[x]`  | Decays 1/tick while awake; depleted by play; restored during sleep | 0 triggers health loss
 | Health       | 0–100  | `[x]`  | Drops from starvation, unhappiness, sickness |
 | Discipline   | 0–100  | `[x]`  | Affected by praise/scold; feeds into care score |
-| Weight       | 1–99   | `[~]`  | Tracked internally; not yet shown in the UI |
+| Weight       | 1–99   | `[x]`  | Shown in info line; passive -1/min decay; overweight/skinny thresholds affect happiness rate and sprite width |
 | Age (days)   | int    | `[x]`  | Displayed in info line |
 | Care Score   | 0.0–1.0| `[~]`  | Computed continuously; drives evolution tier |
 
@@ -68,9 +68,9 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 
 | Action      | Effect                                           | Constraint                               | Status |
 |-------------|--------------------------------------------------|------------------------------------------|--------|
-| Feed Meal   | Hunger +20, Weight +1                            | Max 3 meals per wake cycle               | `[x]`  |
-| Feed Snack  | Happiness +10, Hunger +5, Weight +2              | Max 3 snacks per cycle; resets on auto-wake | `[x]`  |
-| Play        | Happiness +15, Energy −25, Weight −1             | Requires Energy ≥ 25; refused via event log | `[x]`  |
+| Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle               | `[x]`  |
+| Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle; resets on auto-wake | `[x]`  |
+| Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; refused via event log | `[x]`  |
 | Sleep       | Energy regenerates; cannot act while sleeping    | —                                        | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
@@ -359,8 +359,10 @@ Features that deepen the existing care actions.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Show weight in info line (next to age/stage) | `[ ]` | Value exists in state; not rendered |
-| Weight-related mood modifier (overweight → sad) | `[ ]` | |
+| Show weight in info line (next to age/stage) | `[x]` | Weight removed from info line; now shown in status bar tooltip on hover |
+| Weight-related mood modifier (overweight/skinny → happiness debuff) | `[x]` | >66 or <17 weight → happiness decays 1.5× faster; threshold events fire |
+| Weight-based sprite width tiers | `[x]` | >80 → 1.5× wider; >50 → 1.25× wider |
+| Passive weight decay (-1/min) | `[x]` | -1 weight every `WEIGHT_DECAY_TICK_INTERVAL` (10) ticks |
 | Play button disabled when energy < 25 (show tooltip) | `[x]` | Refused via `play_refused_no_energy` event in log |
 
 ### 6.2 Sleep / Wake Cycle

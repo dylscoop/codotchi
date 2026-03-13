@@ -33,6 +33,37 @@ fun sampleNextPoopInterval(petType: String): Int {
 }
 
 // ---------------------------------------------------------------------------
+// Weight tier helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Return the weight tier for a given weight value.
+ *  0 = too skinny (<17), 1 = normal (17–50), 2 = slightly fat (51–80), 3 = overweight (>80)
+ */
+private fun weightTierOf(w: Int): Int = when {
+    w > WEIGHT_OVERWEIGHT_THRESHOLD   -> 3
+    w > WEIGHT_SLIGHTLY_FAT_THRESHOLD -> 2
+    w < WEIGHT_HAPPINESS_LOW_THRESHOLD -> 0
+    else                               -> 1
+}
+
+/**
+ * Compare weight tiers before and after a change and append crossing events.
+ */
+private fun checkWeightTierEvents(prev: Int, next: Int, events: MutableList<String>) {
+    val pt = weightTierOf(prev)
+    val nt = weightTierOf(next)
+    if (pt == nt) return
+    when {
+        nt == 3       -> events.add("weight_became_overweight")
+        nt == 2 && pt < 2 -> events.add("weight_became_slightly_fat")
+        nt == 0       -> events.add("weight_became_too_skinny")
+        pt == 3       -> events.add("weight_no_longer_overweight")
+        pt == 0       -> events.add("weight_no_longer_too_skinny")
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Derived-field helpers
 // ---------------------------------------------------------------------------
 
@@ -103,7 +134,7 @@ fun createPet(name: String, petType: String, color: String): PetState {
             discipline         = 50,
             energy             = 100,
             health             = modifiers.baseHealth,
-            weight             = 5,
+            weight             = 40,
             ageDays            = 0,
             stage              = "egg",
             character          = "",
@@ -149,6 +180,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false):
     var happiness          = state.happiness
     var energy             = state.energy
     var health             = state.health
+    var weight             = state.weight
     var poops              = state.poops
     var ticksSinceLastPoop = state.ticksSinceLastPoop
     var nextPoopIntervalTicks = state.nextPoopIntervalTicks
@@ -175,7 +207,9 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false):
     if (!sleeping) {
         if (decayThisTick) {
             val hungerDecay    = ceil(HUNGER_DECAY_PER_TICK    * modifiers.hungerDecayMultiplier).toInt()
-            val happinessDecay = ceil(HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier).toInt()
+            val weightHappinessMult = if (state.weight > WEIGHT_HAPPINESS_HIGH_THRESHOLD || state.weight < WEIGHT_HAPPINESS_LOW_THRESHOLD)
+                WEIGHT_HAPPINESS_DEBUFF_MULTIPLIER else 1.0
+            val happinessDecay = ceil(HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier * weightHappinessMult).toInt()
             hunger    = clampStat(hunger    - hungerDecay)
             happiness = clampStat(happiness - happinessDecay)
             // Energy is throttled by idle just like hunger/happiness (BUGFIX-014)
@@ -220,7 +254,18 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false):
             ticksSinceLastPoop = 0
             nextPoopIntervalTicks = sampleNextPoopInterval(state.petType)
             events.add("pooped")
+            // Pooping burns weight
+            val prevWeightPoop = weight
+            weight = clampWeight(weight - POOP_WEIGHT_LOSS)
+            checkWeightTierEvents(prevWeightPoop, weight, events)
         }
+    }
+
+    // Passive weight decay — 1 weight per minute (every WEIGHT_DECAY_TICK_INTERVAL ticks)
+    if (ticksAlive % WEIGHT_DECAY_TICK_INTERVAL == 0) {
+        val prevWeight = weight
+        weight = clampWeight(weight - 1)
+        checkWeightTierEvents(prevWeight, weight, events)
     }
 
     // Sickness from dirty environment
@@ -276,7 +321,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false):
         return withDerivedFields(
             state.copy(
                 hunger = hunger, happiness = happiness, energy = energy,
-                health = health, poops = poops,
+                health = health, weight = weight, poops = poops,
                 ticksSinceLastPoop = ticksSinceLastPoop,
                 nextPoopIntervalTicks = nextPoopIntervalTicks,
                 hungerZeroTicks = hungerZeroTicks, sick = sick,
@@ -295,7 +340,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false):
 
     val afterDecay = state.copy(
         hunger = hunger, happiness = happiness, energy = energy,
-        health = health, poops = poops,
+        health = health, weight = weight, poops = poops,
         ticksSinceLastPoop = ticksSinceLastPoop,
         nextPoopIntervalTicks = nextPoopIntervalTicks,
         hungerZeroTicks = hungerZeroTicks, sick = sick,
@@ -352,12 +397,15 @@ private fun evolveTo(state: PetState, nextStage: String): PetState {
 fun feedMeal(state: PetState, mealsGivenThisCycle: Int): PetState {
     if (mealsGivenThisCycle >= FEED_MEAL_MAX_PER_CYCLE)
         return withDerivedFields(state.copy(events = listOf("meal_refused")))
+    val newWeight = clampWeight(state.weight + FEED_MEAL_WEIGHT_GAIN)
+    val events = mutableListOf("fed_meal")
+    checkWeightTierEvents(state.weight, newWeight, events)
     return withDerivedFields(
         state.copy(
             hunger            = clampStat(state.hunger + FEED_MEAL_HUNGER_BOOST),
-            weight            = clampWeight(state.weight + FEED_MEAL_WEIGHT_GAIN),
+            weight            = newWeight,
             consecutiveSnacks = 0,
-            events            = listOf("fed_meal"),
+            events            = events,
         )
     )
 }
@@ -375,11 +423,13 @@ fun feedSnack(state: PetState): PetState {
         events.add("became_sick")
     }
     events.add("fed_snack")
+    val newWeight = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN)
+    checkWeightTierEvents(state.weight, newWeight, events)
     return withDerivedFields(
         state.copy(
             happiness            = clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
             hunger               = clampStat(state.hunger    + FEED_SNACK_HUNGER_BOOST),
-            weight               = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN),
+            weight               = newWeight,
             consecutiveSnacks    = consecutiveSnacks,
             snacksGivenThisCycle = snacksGivenThisCycle,
             sick                 = sick,
@@ -391,13 +441,16 @@ fun feedSnack(state: PetState): PetState {
 fun play(state: PetState): PetState {
     if (state.energy < PLAY_ENERGY_COST)
         return withDerivedFields(state.copy(events = listOf("play_refused_no_energy")))
+    val newWeight = clampWeight(state.weight - PLAY_WEIGHT_LOSS)
+    val events = mutableListOf("played")
+    checkWeightTierEvents(state.weight, newWeight, events)
     return withDerivedFields(
         state.copy(
             happiness         = clampStat(state.happiness + PLAY_HAPPINESS_BOOST),
             energy            = clampStat(state.energy    - PLAY_ENERGY_COST),
-            weight            = clampWeight(state.weight  - PLAY_WEIGHT_LOSS),
+            weight            = newWeight,
             consecutiveSnacks = 0,
-            events            = listOf("played"),
+            events            = events,
         )
     )
 }

@@ -66,7 +66,7 @@ class GotchiStatusWidget(private val project: Project) : StatusBarWidget, TextPr
     fun update(state: PetState) {
         val emoji = STAGE_EMOJI[state.stage] ?: "🥚"
         text    = "$emoji ${state.name}"
-        tooltip = "${state.name} | ${state.stage} | mood: ${state.mood} | health: ${state.health}"
+        tooltip = "${state.name} | ${state.stage} | mood: ${state.mood} | health: ${state.health} | weight: ${state.weight}"
         statusBar?.updateWidget(ID())
     }
 }

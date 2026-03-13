@@ -312,3 +312,16 @@ decay to slow incorrectly.
 - **PyCharm** `GotchiPlugin.kt`: a new `"user_activity"` case in
   `handleCommand` returns immediately — `lastActivityTime` was already updated
   at the top of the function.
+
+## BUGFIX-016 — Sick + sleeping shows only "Zzz…", hides sickness
+
+**Status:** Fixed (branch `feat/weight-system-v0.3.0`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `moodText()` checked `sleeping` first and returned early, so a pet
+that was both asleep and sick displayed only "Zzz…" — the sickness status was
+silently hidden from the player.
+
+**Fix:** Added a combined check before the two individual checks. When both
+`state.sleeping` and `state.sick` are true, `moodText()` now returns
+`"Zzz… (feeling sick)"` so the player can see both states simultaneously.
