@@ -1,9 +1,14 @@
 package com.gotchi
 
 import com.gotchi.engine.*
+import com.intellij.ide.DataManager
+import com.intellij.notification.NotificationGroupManager
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.awt.AWTEvent
 import java.awt.Toolkit
@@ -43,10 +48,10 @@ class GotchiPlugin : Disposable {
     }
 
     private fun isIdle(): Boolean =
-        System.currentTimeMillis() - lastActivityTime > IDLE_THRESHOLD_MS
+        System.currentTimeMillis() - lastActivityTime > service<GotchiSettings>().idleThresholdSeconds * 1000L
 
     private fun isDeepIdle(): Boolean =
-        System.currentTimeMillis() - lastActivityTime > IDLE_DEEP_THRESHOLD_MS
+        System.currentTimeMillis() - lastActivityTime > service<GotchiSettings>().idleDeepThresholdSeconds * 1000L
 
     private var browserPanel:  GotchiBrowserPanel?  = null
     private var statusWidget:  GotchiStatusWidget?  = null
@@ -100,7 +105,8 @@ class GotchiPlugin : Disposable {
 
     private fun onTick() {
         val state = currentState ?: return
-        currentState = tick(state, isIdle(), isDeepIdle())
+        val attentionCallsEnabled = service<GotchiSettings>().enableAttentionCalls
+        currentState = tick(state, isIdle(), isDeepIdle(), attentionCallsEnabled)
         broadcastState()
     }
 
@@ -274,11 +280,55 @@ class GotchiPlugin : Disposable {
         persistence.lastSaveTimestamp = System.currentTimeMillis()
 
         val highScore = currentHighScore
+
+        // Fire IDE notifications for attention_call_* events (only when mechanic is enabled)
+        if (state != null && service<GotchiSettings>().enableAttentionCalls) {
+            for (event in state.events) {
+                val msg = attentionCallMessage(state.name, event) ?: continue
+                fireAttentionNotification(msg)
+            }
+        }
+
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
                 browserPanel?.postState(state, meals, highScore)
                 statusWidget?.update(state)
             }
+        }
+    }
+
+    // ── Attention-call notifications ───────────────────────────────────────
+
+    private fun attentionCallMessage(petName: String, event: String): String? = when (event) {
+        "attention_call_hunger"          -> "$petName is hungry!"
+        "attention_call_unhappiness"     -> "$petName is feeling sad!"
+        "attention_call_poop"            -> "$petName made a mess and wants you to clean it up!"
+        "attention_call_sick"            -> "$petName is sick!"
+        "attention_call_low_energy"      -> "$petName is exhausted!"
+        "attention_call_misbehaviour"    -> "$petName is misbehaving!"
+        "attention_call_gift"            -> "$petName brought you a gift!"
+        "attention_call_critical_health" -> "$petName's health is critical!"
+        else                             -> null
+    }
+
+    private fun fireAttentionNotification(message: String) {
+        ApplicationManager.getApplication().invokeLater {
+            val group = NotificationGroupManager.getInstance()
+                .getNotificationGroup("Gotchi Attention Calls")
+                ?: return@invokeLater
+            val notification = group.createNotification(message, NotificationType.WARNING)
+            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
+                override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+                    val project = e.project ?: run {
+                        // Fallback: grab the project from DataManager
+                        val ctx = DataManager.getInstance().dataContextFromFocusAsync.blockingGet(500)
+                        ctx?.getData(CommonDataKeys.PROJECT)
+                    } ?: return
+                    ToolWindowManager.getInstance(project).getToolWindow("Gotchi")?.show()
+                    notification.expire()
+                }
+            })
+            notification.notify(null)  // null = app-level notification visible in all projects
         }
     }
 

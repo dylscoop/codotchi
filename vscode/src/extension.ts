@@ -20,8 +20,6 @@ import {
   applyOfflineDecay,
   tick,
   TICK_INTERVAL_SECONDS,
-  IDLE_THRESHOLD_SECONDS,
-  IDLE_DEEP_THRESHOLD_SECONDS,
 } from "./gameEngine";
 import { SidebarProvider } from "./sidebarProvider";
 import { StatusBarManager } from "./statusBar";
@@ -36,8 +34,6 @@ import {
 } from "./persistence";
 
 const TICK_INTERVAL_MS: number = TICK_INTERVAL_SECONDS * 1_000;
-const IDLE_THRESHOLD_MS: number = IDLE_THRESHOLD_SECONDS * 1_000;
-const IDLE_DEEP_THRESHOLD_MS: number = IDLE_DEEP_THRESHOLD_SECONDS * 1_000;
 
 let currentState: PetState | null = null;
 let currentHighScore: HighScore | null = null;
@@ -64,6 +60,33 @@ export function activate(context: vscode.ExtensionContext): void {
    */
   function handleStateUpdate(state: PetState): void {
     currentState = state;
+
+    // Fire IDE notifications for attention call events (only when mechanic is enabled)
+    const attentionCallsEnabled = vscode.workspace
+      .getConfiguration("gotchi")
+      .get<boolean>("enableAttentionCalls", true);
+    if (attentionCallsEnabled) {
+      const notificationMessages: Record<string, string> = {
+        "attention_call_hunger":         `${state.name} is hungry!`,
+        "attention_call_unhappiness":    `${state.name} is feeling sad!`,
+        "attention_call_poop":           `${state.name} made a mess and wants you to clean it up!`,
+        "attention_call_sick":           `${state.name} is sick!`,
+        "attention_call_low_energy":     `${state.name} is exhausted!`,
+        "attention_call_misbehaviour":   `${state.name} is misbehaving!`,
+        "attention_call_gift":           `${state.name} brought you a gift!`,
+        "attention_call_critical_health":`${state.name}'s health is critical!`,
+      };
+      for (const event of state.events) {
+        const msg = notificationMessages[event];
+        if (msg) {
+          void vscode.window.showWarningMessage(msg, "Open Gotchi").then((selection) => {
+            if (selection === "Open Gotchi") {
+              void vscode.commands.executeCommand("gotchiView.focus");
+            }
+          });
+        }
+      }
+    }
 
     // Update high score when pet dies
     if (!state.alive) {
@@ -134,10 +157,14 @@ export function activate(context: vscode.ExtensionContext): void {
     if (currentState === null) {
       return;
     }
+    const cfg = vscode.workspace.getConfiguration("gotchi");
+    const idleThresholdMs = cfg.get<number>("idleThresholdSeconds", 60) * 1_000;
+    const idleDeepThresholdMs = cfg.get<number>("idleDeepThresholdSeconds", 600) * 1_000;
     const idleMs = Date.now() - lastActivityMs;
-    const idle = idleMs > IDLE_THRESHOLD_MS;
-    const deepIdle = idleMs > IDLE_DEEP_THRESHOLD_MS;
-    const next = tick(currentState, idle, deepIdle);
+    const idle = idleMs > idleThresholdMs;
+    const deepIdle = idleMs > idleDeepThresholdMs;
+    const attentionEnabled = cfg.get<boolean>("enableAttentionCalls", true);
+    const next = tick(currentState, idle, deepIdle, attentionEnabled);
     handleStateUpdate(next);
   }, TICK_INTERVAL_MS);
 

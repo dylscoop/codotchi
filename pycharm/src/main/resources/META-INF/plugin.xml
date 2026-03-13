@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.gotchi.pycharm-gotchi</id>
     <name>Gotchi</name>
-    <version>0.3.2</version>
+    <version>0.4.1</version>
     <vendor>gotchi</vendor>
 
     <description><![CDATA[
@@ -81,6 +81,12 @@ mood summary. Access Settings → Tools → Gotchi to adjust the display size an
             instance="com.gotchi.GotchiConfigurable"
             id="com.gotchi.GotchiConfigurable"
             displayName="Gotchi"/>
+
+        <!-- Notification group for attention calls -->
+        <notificationGroup
+            id="Gotchi Attention Calls"
+            displayType="BALLOON"
+            isLogByDefault="true"/>
 
     </extensions>
 

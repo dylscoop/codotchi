@@ -325,3 +325,29 @@ silently hidden from the player.
 **Fix:** Added a combined check before the two individual checks. When both
 `state.sleeping` and `state.sick` are true, `moodText()` now returns
 `"Zzz… (feeling sick)"` so the player can see both states simultaneously.
+
+## BUGFIX-017 — `low_energy` expiry penalty was a no-op
+
+**Status:** Fixed (branch `feat/attention-calls`)
+**Files:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`
+
+**Problem:** When a `low_energy` attention call expired unanswered, the penalty
+applied `energy −10`. But `low_energy` only fires when `energy < 20`, meaning
+energy was already near zero and the penalty had no practical effect — it
+silently clamped to 0 or went unnoticed.
+
+**Fix:** Changed the `low_energy` expiry penalty to `happiness −10` instead,
+so ignoring the call has a visible and meaningful consequence for the player.
+
+## BUGFIX-018 — `critical_health` expiry only penalised health
+
+**Status:** Fixed (branch `feat/attention-calls`)
+**Files:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`
+
+**Problem:** When a `critical_health` attention call expired unanswered, only
+`health −10` was applied. Since `critical_health` fires when health is already
+below 50, the penalty was partially self-defeating (penalising the very stat
+that triggered the call) and carried no additional consequence to other stats.
+
+**Fix:** Added `happiness −10` alongside the existing `health −10` penalty on
+expiry, so ignoring the call degrades both health and happiness.

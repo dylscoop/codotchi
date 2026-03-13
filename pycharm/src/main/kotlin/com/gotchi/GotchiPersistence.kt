@@ -135,6 +135,14 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         val snacksGivenThisCycle: Int?,     // absent in saves before v0.0.5
         val wasIdle: Boolean?,              // absent in saves before v0.1.4
         val wasDeepIdle: Boolean?,          // absent in saves before v0.2.0
+        // absent in saves before v0.4.0
+        val activeAttentionCall: String?,
+        val attentionCallActiveTicks: Int?,
+        val attentionCallCooldowns: Map<String, Double>?, // Gson deserialises numbers as Double
+        val neglectCount: Int?,
+        val ticksWithUncleanedPoop: Int?,
+        val ticksSinceLastMisbehaviour: Int?,
+        val ticksSinceLastGift: Int?,
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -180,6 +188,16 @@ class GotchiPersistence : PersistentStateComponent<Element> {
             wasDeepIdle           = r.wasDeepIdle           ?: false,
             spawnedAt             = r.spawnedAt             ?: System.currentTimeMillis(),
             snacksGivenThisCycle  = r.snacksGivenThisCycle ?: 0,
+            // v0.4.0 attention-call fields — default to clean slate on old saves
+            activeAttentionCall        = r.activeAttentionCall,
+            attentionCallActiveTicks   = r.attentionCallActiveTicks   ?: 0,
+            attentionCallCooldowns     = r.attentionCallCooldowns
+                                            ?.mapValues { it.value.toInt() }
+                                            ?: emptyMap(),
+            neglectCount               = r.neglectCount               ?: 0,
+            ticksWithUncleanedPoop     = r.ticksWithUncleanedPoop     ?: 0,
+            ticksSinceLastMisbehaviour = r.ticksSinceLastMisbehaviour ?: 0,
+            ticksSinceLastGift         = r.ticksSinceLastGift         ?: 0,
         )
         return partial
     }
@@ -221,6 +239,14 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         wasDeepIdle           = s.wasDeepIdle,
         spawnedAt             = s.spawnedAt,
         snacksGivenThisCycle  = s.snacksGivenThisCycle,
+        // v0.4.0 attention-call fields
+        activeAttentionCall        = s.activeAttentionCall,
+        attentionCallActiveTicks   = s.attentionCallActiveTicks,
+        attentionCallCooldowns     = s.attentionCallCooldowns.mapValues { it.value.toDouble() },
+        neglectCount               = s.neglectCount,
+        ticksWithUncleanedPoop     = s.ticksWithUncleanedPoop,
+        ticksSinceLastMisbehaviour = s.ticksSinceLastMisbehaviour,
+        ticksSinceLastGift         = s.ticksSinceLastGift,
     )
 }
 

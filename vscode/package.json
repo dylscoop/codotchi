@@ -2,7 +2,7 @@
   "name": "vscode-gotchi",
   "displayName": "vscode_gotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "0.3.2",
+  "version": "0.4.1",
   "publisher": "vscode-gotchi",
   "repository": {
     "type": "git",
@@ -55,6 +55,23 @@
           "enum": ["small", "normal", "large"],
           "default": "normal",
           "description": "Font size used in the vscode_gotchi sidebar panel."
+        },
+        "gotchi.enableAttentionCalls": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enables attention calls (the pet notifying you when it needs care). When disabled, the entire attention-call mechanic is skipped — no events fire, no cooldowns run, no state counters update."
+        },
+        "gotchi.idleThresholdSeconds": {
+          "type": "integer",
+          "default": 60,
+          "minimum": 10,
+          "description": "Seconds of no IDE activity before the pet is considered idle (decay rate drops to 10% of normal). Default: 60 seconds."
+        },
+        "gotchi.idleDeepThresholdSeconds": {
+          "type": "integer",
+          "default": 600,
+          "minimum": 30,
+          "description": "Seconds of sustained idle before entering deep idle (stats floored at 20, aging stops). Default: 600 seconds (10 minutes)."
         }
       }
     }

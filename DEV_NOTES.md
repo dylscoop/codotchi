@@ -582,6 +582,57 @@ removed for JCEF compatibility.
 
 ---
 
+## Attention-Call Probability Formula
+
+Probabilistic attention calls (poop, misbehaviour, gift) use a **logarithmic
+probability function** — not a flat random chance — so that the longer the
+event has not fired, the higher the chance it fires on the next tick.
+
+### Formula
+
+```
+logChance(ticksSinceLast, base, max) = min(max, base × ln(ticksSinceLast + e))
+```
+
+- `ticksSinceLast` — ticks since the event last fired (or since the counter was
+  last reset).  For poop calls this is `ticksWithUncleanedPoop`; for misbehaviour
+  it is `ticksSinceLastMisbehaviour`; for gifts it is `ticksSinceLastGift`.
+- `base` — scaling factor (slope of the log curve).
+- `max` — hard cap on the probability.
+- Returns a probability in `[0, max]`.  Each tick a `Math.random()` / `Random.nextDouble()`
+  roll is compared against this value.
+
+### Tuning constants
+
+| Call type     | base constant              | value  | max constant              | value  |
+|---------------|----------------------------|--------|---------------------------|--------|
+| Poop          | `POOP_CALL_BASE_CHANCE`    | 0.03   | `POOP_CALL_MAX_CHANCE`    | 0.12   |
+| Misbehaviour  | `MISBEHAVIOUR_BASE_CHANCE` | 0.005  | `MISBEHAVIOUR_MAX_CHANCE` | 0.08   |
+| Gift          | `GIFT_BASE_CHANCE`         | 0.002  | `GIFT_MAX_CHANCE`         | 0.05   |
+
+Constants are defined in:
+- TypeScript: `vscode/src/gameEngine.ts` lines 183–189
+- Kotlin: `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` lines 256–262
+
+### How the curve behaves (poop example, base=0.03, max=0.12)
+
+At tick 0 the probability is `min(0.12, 0.03 × ln(1 + e)) ≈ 0.055` (5.5%).  
+At tick 10 it reaches `min(0.12, 0.03 × ln(11 + e)) ≈ 0.085` (8.5%).  
+It saturates at the max of **12%** once `ticksSinceLast` is large enough.  
+Misbehaviour and gift start much lower (0.5% / 0.2% respectively) so they are
+rare events that gradually become more likely the longer nothing has happened.
+
+### Where it fires
+
+- `gameEngine.ts:1029` / `GameEngine.kt:418` — poop call gate
+- `gameEngine.ts:1050` / `GameEngine.kt:439` — misbehaviour call gate
+- `gameEngine.ts:1063` / `GameEngine.kt:452` — gift call gate
+
+All three call sites are inside **Steps 1–3** of the attention-call section
+of `tick()`, wrapped (from v0.4.0 onwards) by the `attentionCallsEnabled` guard.
+
+---
+
 ## Known Intentional Simplifications
 
 - **Mini-games are client-side only.** The win/lose result is computed by

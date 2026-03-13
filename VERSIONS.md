@@ -1,6 +1,92 @@
 # Version History
 
-## v0.3.2 — current
+## v0.4.1 — current
+
+### Changes from v0.4.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | BUGFIX-017: `low_energy` expiry penalty changed from `energy −10` to `happiness −10`; BUGFIX-018: `critical_health` expiry now also penalises `happiness −10`; `ATTENTION_CALL_RESPONSE_TICKS` reduced 50 → 20 (5 min → 2 min); `tick()` 4th param `attentionCallsEnabled` added; two-guard structure: Step 0 counters and Steps 1–3 each wrapped in `if (attentionCallsEnabled)`, stat decay outside both guards |
+| `vscode/src/extension.ts` | Removed static `IDLE_THRESHOLD_MS`/`IDLE_DEEP_THRESHOLD_MS` module-level constants and `IDLE_THRESHOLD_SECONDS`/`IDLE_DEEP_THRESHOLD_SECONDS` imports; idle thresholds now read dynamically from `gotchi.idleThresholdSeconds` / `gotchi.idleDeepThresholdSeconds` settings on every tick; `enableAttentionCalls` read from settings and passed to `tick()` |
+| `vscode/package.json` | Added `gotchi.enableAttentionCalls` (boolean, default `true`), `gotchi.idleThresholdSeconds` (integer, default 60, min 10), `gotchi.idleDeepThresholdSeconds` (integer, default 600, min 30) settings |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | BUGFIX-017 and BUGFIX-018 penalties mirrored; `ATTENTION_CALL_RESPONSE_TICKS` 50 → 20; `tick()` `attentionCallsEnabled` param added; same two-guard structure as TypeScript |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | `ATTENTION_CALL_RESPONSE_TICKS` reduced 50 → 20; comment updated to "20 × 6 s = 2 min" |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiSettings.kt` | Renamed `enableAttentionNotifications` → `enableAttentionCalls`; added `idleThresholdSeconds: Int = 60` and `idleDeepThresholdSeconds: Int = 600` to `State` and as top-level delegated properties |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | `isIdle()` and `isDeepIdle()` now read from `GotchiSettings` instead of hardcoded constants; `onTick()` reads `enableAttentionCalls` and passes to `tick()`; `broadcastState()` attention notification block guarded with `enableAttentionCalls` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiConfigurable.kt` | Added `JCheckBox` for `enableAttentionCalls`; `JSpinner` (min 10, step 10, max 3600) for `idleThresholdSeconds`; `JSpinner` (min 30, step 30, max 7200) for `idleDeepThresholdSeconds`; wired into `isModified()`, `apply()`, `reset()` |
+| `vscode/FEATURES.md` | `low_energy` expiry penalty updated; `critical_health` expiry updated; `ATTENTION_CALL_RESPONSE_TICKS` note updated 50 → 20; response window prose updated 5-min → 2-min; settings table updated: `enableAttentionNotifications` replaced by `enableAttentionCalls`; `idleThresholdSeconds` and `idleDeepThresholdSeconds` rows added |
+| `BUGFIXES.md` | Added BUGFIX-017 and BUGFIX-018 |
+| `README.md` | Install filenames updated to `0.4.1` |
+| `vscode/README.md` | Install filenames updated to `0.4.1` |
+| `pycharm/README.md` | Install filenames updated to `0.4.1` |
+
+### Updated constants (v0.4.1)
+
+```
+ATTENTION_CALL_RESPONSE_TICKS: Int = 20   // was 50 (5 min), now 2 min (20 × 6 s)
+```
+
+---
+
+## v0.4.0
+
+### Changes from v0.3.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | Added `AttentionCallType`, 16 new constants, 7 new `PetState` fields; full attention-call tick logic (Steps 0–3), `logChance()` helper; all 8 actions updated with response detection |
+| `vscode/src/extension.ts` | Fires `showWarningMessage` for each `attention_call_*` event; "Open Gotchi" button focuses the sidebar |
+| `vscode/media/sidebar.js` | 24 new `humaniseEvent()` entries (8× fired, 8× answered, 8× expired) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | 16 new attention-call constants added |
+| `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt` | 7 new attention-call fields added after `snacksGivenThisCycle` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Full attention-call logic mirrored from TypeScript; `logChance()` helper, `AnsweredCall` data class, `answerAttentionCall()` helper, all 8 actions updated |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | Fires `Notifications.Bus` balloon for each `attention_call_*` event; "Open Gotchi" action focuses Gotchi tool window |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | `RawPetState` extended with 7 new nullable fields; `sanitise()` defaults added; `toRaw()` updated |
+| `pycharm/src/main/resources/webview/sidebar.js` | 24 new `humaniseEvent()` entries (mirrored from VS Code) |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | `notificationGroup` registered for "Gotchi Attention Calls"; version `0.3.2` → `0.4.0` |
+| `vscode/package.json` | Version `0.3.2` → `0.4.0` |
+| `pycharm/build.gradle.kts` | Version `0.3.2` → `0.4.0` |
+| `vscode/FEATURES.md` | Section 3.1 attention-call rows updated to `[x]`; thresholds and response table added |
+| `README.md` | Install filenames updated to `0.4.0` |
+| `vscode/README.md` | Install filenames updated to `0.4.0` |
+| `pycharm/README.md` | Install filenames updated to `0.4.0` |
+
+### New constants (v0.4.0)
+
+```
+ATTENTION_CALL_RESPONSE_TICKS:      number/Int = 50     // 5 active min (50 × 6 s)
+ATTENTION_HUNGER_THRESHOLD:         number/Int = 25
+ATTENTION_UNHAPPINESS_THRESHOLD:    number/Int = 40
+ATTENTION_ENERGY_THRESHOLD:         number/Int = 20
+ATTENTION_HEALTH_THRESHOLD:         number/Int = 50
+ATTENTION_ANSWER_COOLDOWN_TICKS:    number/Int = 50     // 5 min cooldown after answered
+ATTENTION_EXPIRY_COOLDOWN_TICKS:    number/Int = 20     // 2 min cooldown after expired
+ATTENTION_EXPIRY_STAT_PENALTY:      number/Int = 10
+GIFT_PRAISE_HAPPINESS_BOOST:        number/Int = 15
+NEGLECT_DECAY_TICK_INTERVAL:        number/Int = 300    // neglectCount -1 every 30 min
+POOP_CALL_BASE_CHANCE:              number/float = 0.03
+POOP_CALL_MAX_CHANCE:               number/float = 0.12
+MISBEHAVIOUR_BASE_CHANCE:           number/float = 0.005
+MISBEHAVIOUR_MAX_CHANCE:            number/float = 0.08
+GIFT_BASE_CHANCE:                   number/float = 0.002
+GIFT_MAX_CHANCE:                    number/float = 0.05
+```
+
+### New PetState fields (v0.4.0)
+
+```
+activeAttentionCall:        string | null       // currently firing call type, or null
+attentionCallActiveTicks:   number/Int          // active (non-idle) ticks since call fired
+attentionCallCooldowns:     Map<string, Int>    // per-type ticks remaining on cooldown
+neglectCount:               number/Int          // cumulative unanswered calls
+ticksWithUncleanedPoop:     number/Int          // ticks poop has sat uncleaned
+ticksSinceLastMisbehaviour: number/Int          // ticks since last misbehaviour call
+ticksSinceLastGift:         number/Int          // ticks since last gift call
+```
+
+---
+
+## v0.3.2
 
 ### Changes from v0.3.1
 

@@ -223,3 +223,40 @@ val NEXT_STAGE_MAP: Map<String, String> = mapOf(
     "child" to "teen",
     "teen"  to "adult",
 )
+
+// ---------------------------------------------------------------------------
+// Attention Call constants
+// ---------------------------------------------------------------------------
+
+/** Active (non-idle) ticks the player has to respond before a call expires (20 × 6 s = 2 min). */
+const val ATTENTION_CALL_RESPONSE_TICKS: Int = 20
+
+/** Hunger stat at or below which a hunger attention call fires. */
+const val ATTENTION_HUNGER_THRESHOLD: Int = 25
+/** Happiness stat at or below which an unhappiness attention call fires. */
+const val ATTENTION_UNHAPPINESS_THRESHOLD: Int = 40
+/** Energy stat at or below which a low_energy attention call fires. */
+const val ATTENTION_ENERGY_THRESHOLD: Int = 20
+/** Health stat at or below which a critical_health attention call fires. */
+const val ATTENTION_HEALTH_THRESHOLD: Int = 50
+
+/** Cooldown ticks (50 = 5 min) applied to a call type after it is answered. */
+const val ATTENTION_ANSWER_COOLDOWN_TICKS: Int = 50
+/** Cooldown ticks (20 = 2 min) applied to a call type after it expires unanswered. */
+const val ATTENTION_EXPIRY_COOLDOWN_TICKS: Int = 20
+/** Stat penalty applied to the relevant stat when an attention call expires. */
+const val ATTENTION_EXPIRY_STAT_PENALTY: Int = 10
+
+/** Happiness boost applied when a gift attention call is answered via praise(). */
+const val GIFT_PRAISE_HAPPINESS_BOOST: Int = 15
+
+/** neglectCount decrements by 1 every this many ticks (300 × 6 s = 30 min). */
+const val NEGLECT_DECAY_TICK_INTERVAL: Int = 300
+
+// Logarithmic random-chance tuning constants for probabilistic calls.
+const val POOP_CALL_BASE_CHANCE: Double = 0.03
+const val POOP_CALL_MAX_CHANCE: Double = 0.12
+const val MISBEHAVIOUR_BASE_CHANCE: Double = 0.005
+const val MISBEHAVIOUR_MAX_CHANCE: Double = 0.08
+const val GIFT_BASE_CHANCE: Double = 0.002
+const val GIFT_MAX_CHANCE: Double = 0.05
