@@ -1,6 +1,30 @@
 # Version History
 
-## v0.2.1 — current
+## v0.2.2 — current
+
+### Changes from v0.2.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/extension.ts` | BUGFIX-015: moved `markActivity` definition above `SidebarProvider` construction; passed as 6th constructor argument |
+| `vscode/src/sidebarProvider.ts` | BUGFIX-015: added `markActivity: () => void` constructor param; called at top of `handleWebviewMessage`; added `"user_activity"` case that resets idle and returns without state change |
+| `vscode/media/sidebar.js` | BUGFIX-015: added throttled `mousemove` listener (at most once per 30 s) posting `{ command: "user_activity" }` to host |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | BUGFIX-015: `lastActivityTime` reset at top of `handleCommand`; added `"user_activity"` case that returns without state change |
+| `pycharm/src/main/resources/webview/sidebar.js` | BUGFIX-015: same throttled `mousemove` listener as VS Code, using `window.__vscodeSendMessage` |
+| `vscode/package.json` | Version `0.2.1` → `0.2.2` |
+| `pycharm/build.gradle.kts` | Version `0.2.1` → `0.2.2` |
+| `pycharm/gradle.properties` | `pluginVersion` `0.2.1` → `0.2.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version `0.2.1` → `0.2.2` |
+| `vscode/FEATURES.md` | Section 8.1 updated: sidebar interactions now listed as idle-reset sources |
+| `DEV_NOTES.md` | Message Protocol table: added `user_activity` command row; added "Idle State Transitions" section documenting what resets the idle clock in each IDE and what triggers wake from sleep |
+| `BUGFIXES.md` | Added BUGFIX-015 |
+| `README.md` | Version reference and install filenames updated to `0.2.2` |
+| `vscode/README.md` | Install filenames updated to `0.2.2` |
+| `pycharm/README.md` | Install filenames updated to `0.2.2` |
+
+---
+
+## v0.2.1
 
 ### Changes from v0.2.0
 

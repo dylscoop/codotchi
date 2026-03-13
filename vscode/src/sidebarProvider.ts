@@ -61,7 +61,8 @@ export class SidebarProvider
     private readonly statusBar: StatusBarManager,
     private readonly onStateUpdate: StateUpdateCallback,
     private readonly getState: () => PetState | null,
-    private readonly getHighScore: () => HighScore | null
+    private readonly getHighScore: () => HighScore | null,
+    private readonly markActivity: () => void
   ) {}
 
   /** Called by VS Code when the webview becomes visible. */
@@ -158,6 +159,10 @@ export class SidebarProvider
    * @param message - The message posted by the webview JS.
    */
   private handleWebviewMessage(message: WebviewMessage): void {
+    // Any incoming message means the user is actively using the sidebar —
+    // reset the idle timer immediately (BUGFIX-015).
+    this.markActivity();
+
     // Extension host does not hold the current state directly; the canonical
     // copy lives in extension.ts via currentState.  We retrieve it via the
     // onStateUpdate callback pattern: if we need to read state we must ask
@@ -258,6 +263,10 @@ export class SidebarProvider
         this.mealsGivenThisCycle = 0;
         break;
       }
+
+      case "user_activity":
+        // Idle timer already reset above; no state change needed.
+        return;
 
       default:
         return;

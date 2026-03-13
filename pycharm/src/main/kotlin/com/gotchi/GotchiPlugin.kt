@@ -108,6 +108,11 @@ class GotchiPlugin : Disposable {
 
     fun handleCommand(message: Map<*, *>) {
         val command = message["command"] as? String ?: return
+
+        // Any incoming command means the user is actively using the sidebar —
+        // reset the idle timer immediately (BUGFIX-015).
+        lastActivityTime = System.currentTimeMillis()
+
         val state   = currentState
 
         if (state == null && command != "new_game") return
@@ -182,6 +187,9 @@ class GotchiPlugin : Disposable {
                 nextState = createPet(name, petType, color)
                 mealsGivenThisCycle = 0
             }
+
+            // Idle timer already reset above; no state change needed (BUGFIX-015).
+            "user_activity" -> return
 
             else -> return
         }

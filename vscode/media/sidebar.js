@@ -769,6 +769,17 @@
     }
   });
 
+  // ── Idle-activity detection ───────────────────────────────────────────────
+  // Mouse movement inside the sidebar resets the host idle timer (BUGFIX-015).
+  // Throttled to at most once per 30 s to avoid flooding the extension host.
+  var lastActivityPost = 0;
+  document.addEventListener("mousemove", function () {
+    var now = Date.now();
+    if (now - lastActivityPost < 30000) { return; }
+    lastActivityPost = now;
+    vscode.postMessage({ command: "user_activity" });
+  });
+
   // ── Initial view ─────────────────────────────────────────────────────────
   // Show game screen by default; the extension host will post state on open,
   // routing to setup (needs_new_game) or rendering the live pet immediately.

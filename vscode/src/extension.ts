@@ -95,8 +95,12 @@ export function activate(context: vscode.ExtensionContext): void {
     saveState(context, state);
   }
 
+  // Activity callback — shared with SidebarProvider so sidebar button clicks
+  // also reset the idle timer (BUGFIX-015).
+  const markActivity = (): void => { lastActivityMs = Date.now(); };
+
   // Sidebar provider
-  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore);
+  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore, markActivity);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(SidebarProvider.VIEW_ID, sidebar)
   );
@@ -118,7 +122,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Activity listeners — update lastActivityMs on any keyboard/cursor/focus event
   // so the idle detector knows the user is present.
-  const markActivity = (): void => { lastActivityMs = Date.now(); };
   context.subscriptions.push(
     vscode.window.onDidChangeTextEditorSelection(() => markActivity()),
     vscode.workspace.onDidChangeTextDocument(() => markActivity()),

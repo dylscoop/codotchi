@@ -454,7 +454,11 @@ preserves `dayTimer`/`ageDays` exactly).
 
 Activity is tracked via `onDidChangeTextEditorSelection`, `onDidChangeTextDocument`,
 `onDidChangeWindowState`, and `onDidChangeActiveTextEditor`. Any of these events
-resets the idle timer.
+resets the idle timer. Additionally, any sidebar button click resets the timer
+(BUGFIX-015: `markActivity` called at the top of `handleWebviewMessage`), and
+mouse movement inside the sidebar panel resets it via a throttled `mousemove`
+listener (at most once per 30 s) that posts `{ command: "user_activity" }` to
+the host.
 
 Status: `[x]`
 
