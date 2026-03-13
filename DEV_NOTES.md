@@ -443,6 +443,7 @@ body's horizontal centre. Status indicators (Zzz, +) are drawn *after*
 | JS → Host   | `{ command: "play", game?: string, result?: string }`              |
 | JS → Host   | `{ command: "sleep" \| "wake" \| "clean" \| "medicine" \| "scold" \| "praise" }` |
 | JS → Host   | `{ command: "new_game", name: string, petType: string, color: string }` |
+| JS → Host   | `{ command: "user_activity" }` — no-op on host; resets idle timer only (BUGFIX-015) |
 
 `mealsGivenThisCycle` is held in `SidebarProvider` (not in `PetState`) because
 `PetState` is immutable and the counter must survive across tick boundaries

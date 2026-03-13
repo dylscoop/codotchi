@@ -273,3 +273,42 @@ ready to receive messages. `GotchiToolWindow` passes
 `onReady = { plugin.broadcastState() }` so that a full state snapshot is
 pushed to the webview after every page load (initial load and any spontaneous
 reloads), eliminating the race condition.
+
+---
+
+## BUGFIX-015 — Sidebar interaction does not reset the idle timer
+
+**Status:** Fixed (branch `fix/idle-activity-detection`)
+**Files:** `vscode/src/extension.ts`, `vscode/src/sidebarProvider.ts`,
+`vscode/media/sidebar.js`, `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt`,
+`pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** Clicking action buttons (Feed, Play, Sleep, etc.) in the sidebar
+or moving the mouse over the sidebar panel did not reset the idle timer. The
+idle detection only listened to editor-level VS Code events
+(`onDidChangeTextEditorSelection`, `onDidChangeTextDocument`,
+`onDidChangeWindowState`, `onDidChangeActiveTextEditor`) and, in PyCharm, to
+AWT events on the main IDE window — neither of which fires when the user
+interacts exclusively with the webview panel. A developer who spent time caring
+for the pet without touching the editor would be counted as idle, causing stat
+decay to slow incorrectly.
+
+**Fix — button clicks (both IDEs):**
+- **VS Code**: `markActivity` is now defined before `SidebarProvider` is
+  instantiated and passed in as a new constructor parameter. At the top of
+  `handleWebviewMessage`, `this.markActivity()` is called for every incoming
+  message so any button click immediately resets the idle timer.
+- **PyCharm**: `lastActivityTime = System.currentTimeMillis()` is now called at
+  the very start of `handleCommand`, before the command is dispatched, so any
+  button click resets the idle timer.
+
+**Fix — mouse movement (both IDEs):**
+- Both `sidebar.js` files now add a throttled `mousemove` listener on
+  `document`. The listener fires at most once per 30 seconds and posts
+  `{ command: "user_activity" }` to the host.
+- **VS Code** `sidebarProvider.ts`: a new `"user_activity"` case in
+  `handleWebviewMessage` returns immediately after `markActivity()` is called —
+  no state change is made.
+- **PyCharm** `GotchiPlugin.kt`: a new `"user_activity"` case in
+  `handleCommand` returns immediately — `lastActivityTime` was already updated
+  at the top of the function.
