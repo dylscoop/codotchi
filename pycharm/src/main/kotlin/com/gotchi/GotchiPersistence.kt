@@ -133,6 +133,8 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         val recentEventLog: List<String>?,  // absent in saves before v0.0.5
         val spawnedAt: Long?,               // absent in saves before v0.0.5
         val snacksGivenThisCycle: Int?,     // absent in saves before v0.0.5
+        val wasIdle: Boolean?,              // absent in saves before v0.1.4
+        val wasDeepIdle: Boolean?,          // absent in saves before v0.2.0
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -174,6 +176,8 @@ class GotchiPersistence : PersistentStateComponent<Element> {
             careScoreTicks        = r.careScoreTicks        ?: 0L,
             events                = emptyList(),
             recentEventLog        = r.recentEventLog        ?: emptyList(),
+            wasIdle               = r.wasIdle               ?: false,
+            wasDeepIdle           = r.wasDeepIdle           ?: false,
             spawnedAt             = r.spawnedAt             ?: System.currentTimeMillis(),
             snacksGivenThisCycle  = r.snacksGivenThisCycle ?: 0,
         )
@@ -213,6 +217,8 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         careScoreTicks        = s.careScoreTicks,
         events                = s.events,
         recentEventLog        = s.recentEventLog,
+        wasIdle               = s.wasIdle,
+        wasDeepIdle           = s.wasDeepIdle,
         spawnedAt             = s.spawnedAt,
         snacksGivenThisCycle  = s.snacksGivenThisCycle,
     )

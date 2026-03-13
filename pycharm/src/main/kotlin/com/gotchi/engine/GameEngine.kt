@@ -127,6 +127,8 @@ fun createPet(name: String, petType: String, color: String): PetState {
             careScoreTicks        = 0L,
             events             = emptyList(),
             recentEventLog     = emptyList(),
+            wasIdle            = false,
+            wasDeepIdle        = false,
             spawnedAt          = System.currentTimeMillis(),
             snacksGivenThisCycle = 0,
         )
@@ -137,7 +139,7 @@ fun createPet(name: String, petType: String, color: String): PetState {
 // Tick
 // ---------------------------------------------------------------------------
 
-fun tick(state: PetState, isIdle: Boolean = false): PetState {
+fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false): PetState {
     if (!state.alive) return state
 
     val modifiers = PET_TYPE_MODIFIERS[state.petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
@@ -161,15 +163,26 @@ fun tick(state: PetState, isIdle: Boolean = false): PetState {
     val sleepingAtTickStart = sleeping
 
     // Stat decay
+    // When idle, hunger/happiness/aging advance at only 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
+    val decayThisTick = !isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR == 0)
+    if (!state.wasIdle && isIdle) {
+        events.add("went_idle")
+    }
+    if (!state.wasDeepIdle && isDeepIdle) {
+        events.add("went_deep_idle")
+    }
+
     if (!sleeping) {
-        // When idle (no keyboard/mouse activity), hunger and happiness decay at
-        // only 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
-        val decayThisTick = !isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR == 0)
         if (decayThisTick) {
             val hungerDecay    = ceil(HUNGER_DECAY_PER_TICK    * modifiers.hungerDecayMultiplier).toInt()
             val happinessDecay = ceil(HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier).toInt()
             hunger    = clampStat(hunger    - hungerDecay)
             happiness = clampStat(happiness - happinessDecay)
+        }
+        // Deep idle: floor stats at IDLE_STAT_FLOOR so they never drop below 20%
+        if (isDeepIdle) {
+            hunger    = maxOf(hunger,    IDLE_STAT_FLOOR)
+            happiness = maxOf(happiness, IDLE_STAT_FLOOR)
         }
         energy    = clampStat(energy    - ENERGY_DECAY_PER_TICK)
     } else {
@@ -183,10 +196,14 @@ fun tick(state: PetState, isIdle: Boolean = false): PetState {
         }
     }
 
-    // Advance day timer — use sleepingAtTickStart to avoid mid-tick flip affecting the rate
-    val dayTimer = state.dayTimer +
+    // Advance day timer — use sleepingAtTickStart to avoid mid-tick flip affecting the rate.
+    // When idle, aging is slowed (same divisor as hunger/happiness decay).
+    // When deep idle, aging stops entirely.
+    val ageIncrement = if (!isDeepIdle && decayThisTick)
         (if (sleepingAtTickStart) 1.0 / TICKS_PER_GAME_DAY_SLEEPING
          else 1.0 / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier
+    else 0.0
+    val dayTimer = state.dayTimer + ageIncrement
     ageDays = dayTimer.toInt()
 
     // Poop accumulation — interval is per-type and resampled with high volatility
@@ -279,6 +296,8 @@ fun tick(state: PetState, isIdle: Boolean = false): PetState {
         events = events,
         // Reset snack counter on auto-wake (mirrors the reset in wake())
         snacksGivenThisCycle = if (events.contains("auto_woke_up")) 0 else state.snacksGivenThisCycle,
+        wasIdle = isIdle,
+        wasDeepIdle = isDeepIdle,
     )
 
     return checkStageProgression(afterDecay)
@@ -490,9 +509,9 @@ fun applyOfflineDecay(state: PetState, elapsedSeconds: Int): PetState {
         state.copy(
             hunger    = clampStat(state.hunger    - min(hungerDecayTotal,    maxHungerLoss)),
             happiness = clampStat(state.happiness - min(happinessDecayTotal, maxHappinessLoss)),
-            // Treat offline time as awake (conservative — doesn't accelerate aging)
-            dayTimer  = state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier,
-            ageDays   = (state.dayTimer + (elapsedTicks / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier).toInt(),
+            // Aging does NOT advance while the IDE is closed.
+            dayTimer  = state.dayTimer,
+            ageDays   = state.ageDays,
             events    = emptyList(),
         )
     )

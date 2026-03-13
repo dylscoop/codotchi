@@ -1,6 +1,68 @@
 # Version History
 
-## v0.1.3 — current
+## v0.2.0 — current
+
+### Changes from v0.1.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | Added `IDLE_DEEP_THRESHOLD_SECONDS = 600` and `IDLE_STAT_FLOOR = 20`; added `wasDeepIdle` to `PetState`; `tick()` gains `isDeepIdle` param; deep-idle stat floor (hunger/happiness capped at 20); aging stops entirely when deep idle; `went_deep_idle` event fires once on transition; `applyOfflineDecay` no longer advances `dayTimer`/`ageDays` (aging stops when IDE closed) |
+| `vscode/src/extension.ts` | Imports `IDLE_DEEP_THRESHOLD_SECONDS`; derives `IDLE_DEEP_THRESHOLD_MS`; computes `deepIdle` flag and passes to `tick()` |
+| `vscode/media/sidebar.js` | Added `"went_deep_idle"` label to `humaniseEvent()` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Added `IDLE_DEEP_THRESHOLD_MS = 600_000L` and `IDLE_STAT_FLOOR = 20` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt` | Added `val wasDeepIdle: Boolean` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | `tick()` gains `isDeepIdle` param; deep-idle stat floor; aging stops when deep idle; `went_deep_idle` event; `applyOfflineDecay` preserves `dayTimer`/`ageDays` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | `RawPetState.wasDeepIdle: Boolean?`; `sanitise()` default `false`; `toRaw()` includes field |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | Added `isDeepIdle()` helper; `onTick()` passes `isDeepIdle()` to `tick()` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Added `"went_deep_idle"` label to `humaniseEvent()` |
+| `vscode/package.json` | Version `0.1.4` → `0.2.0` |
+| `pycharm/build.gradle.kts` | Version `0.1.4` → `0.2.0` |
+| `pycharm/gradle.properties` | `pluginVersion` `0.1.4` → `0.2.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version `0.1.4` → `0.2.0` |
+| `vscode/FEATURES.md` | Section 8.1 updated with deep-idle constants and behaviour |
+| `DEV_NOTES.md` | Idle decay section updated: deep idle threshold, stat floor, aging stop, IDE-closed aging stop |
+| `README.md` | Version reference and install filenames updated to `0.2.0` |
+
+### New constants (v0.2.0)
+
+```
+IDLE_DEEP_THRESHOLD_SECONDS: number = 600   // 10 min (VS Code)
+IDLE_DEEP_THRESHOLD_MS: Long = 600_000      // 10 min (PyCharm)
+IDLE_STAT_FLOOR: number/Int = 20            // hunger/happiness floor during deep idle
+```
+
+### New PetState fields (v0.2.0)
+
+```
+wasDeepIdle: boolean   // tracks deep-idle transition; prevents repeated events
+```
+
+---
+
+## v0.1.4
+
+### Changes from v0.1.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | `IDLE_THRESHOLD_SECONDS` 300 → 60 (5 min → 1 min) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | `IDLE_THRESHOLD_MS` 300_000 → 60_000 (5 min → 1 min) |
+| `vscode/FEATURES.md` | Idle threshold note updated to 60 s (1 min) |
+| `vscode/package.json` | Version `0.1.3` → `0.1.4` |
+| `pycharm/build.gradle.kts` | Version `0.1.3` → `0.1.4` |
+| `pycharm/gradle.properties` | `pluginVersion` `0.1.3` → `0.1.4` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version `0.1.3` → `0.1.4` |
+
+### Updated constants
+
+```
+IDLE_THRESHOLD_SECONDS: number = 60   // was 300 (5 min → 1 min)
+IDLE_THRESHOLD_MS: Long = 60_000      // was 300_000
+```
+
+---
+
+## v0.1.3
 
 ### Changes from v0.1.2
 

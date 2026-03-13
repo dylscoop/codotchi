@@ -68,7 +68,18 @@ const val CODE_ACTIVITY_THROTTLE_SECONDS: Int = 30
  * pet is considered "idle" and hunger/happiness decay drops to
  * 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
  */
-const val IDLE_THRESHOLD_MS: Long = 5 * 60 * 1000L // 5 minutes
+const val IDLE_THRESHOLD_MS: Long = 60 * 1000L // 1 minute
+
+/**
+ * Milliseconds of sustained idle before entering "deep idle": stats are floored
+ * at IDLE_STAT_FLOOR and aging stops completely.
+ */
+const val IDLE_DEEP_THRESHOLD_MS: Long = 10 * 60 * 1000L // 10 minutes
+
+/**
+ * Minimum stat value (hunger, happiness) enforced while in deep idle (20 = 20%).
+ */
+const val IDLE_STAT_FLOOR: Int = 20
 
 /**
  * When the user is idle, hunger/happiness decay fires only once every this

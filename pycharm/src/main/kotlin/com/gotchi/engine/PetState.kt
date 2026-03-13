@@ -64,6 +64,12 @@ data class PetState(
     // Persistent rolling log of the last 20 events (survives across actions)
     val recentEventLog: List<String>,
 
+    /** Whether the IDE was idle on the previous tick (used to detect idle transition). */
+    val wasIdle: Boolean,
+
+    /** Whether the IDE was in deep idle (≥10 min) on the previous tick. */
+    val wasDeepIdle: Boolean,
+
     /** Unix ms timestamp when this pet was first created. */
     val spawnedAt: Long,
 

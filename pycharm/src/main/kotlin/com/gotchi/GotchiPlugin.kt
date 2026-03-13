@@ -45,6 +45,9 @@ class GotchiPlugin : Disposable {
     private fun isIdle(): Boolean =
         System.currentTimeMillis() - lastActivityTime > IDLE_THRESHOLD_MS
 
+    private fun isDeepIdle(): Boolean =
+        System.currentTimeMillis() - lastActivityTime > IDLE_DEEP_THRESHOLD_MS
+
     private var browserPanel:  GotchiBrowserPanel?  = null
     private var statusWidget:  GotchiStatusWidget?  = null
 
@@ -97,7 +100,7 @@ class GotchiPlugin : Disposable {
 
     private fun onTick() {
         val state = currentState ?: return
-        currentState = tick(state, isIdle())
+        currentState = tick(state, isIdle(), isDeepIdle())
         broadcastState()
     }
 

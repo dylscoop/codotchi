@@ -431,15 +431,25 @@ All events are displayed using the pet's name and human-readable sentences inste
 
 ### 8.1 Idle Detection
 
-When the IDE has had no activity for ≥ **5 minutes**, the pet is considered
+When the IDE has had no activity for ≥ **1 minute**, the pet is considered
 idle. Hunger and happiness decay is reduced to **10% of the normal rate**
-(one in every 10 ticks fires decay; the rest are skipped). Energy drain is
-unaffected — the pet can still fall asleep while idle.
+(one in every 10 ticks fires decay; the rest are skipped). Aging is also
+slowed to 10% during idle. Energy drain is unaffected.
+
+When the IDE has been idle for ≥ **10 minutes**, the pet enters **deep idle**.
+Hunger and happiness are floored at `IDLE_STAT_FLOOR = 20` (cannot decay
+below this value) and aging stops entirely (`ageIncrement = 0`). This protects
+the pet during extended breaks.
+
+Aging does **not** advance while the IDE is closed (`applyOfflineDecay`
+preserves `dayTimer`/`ageDays` exactly).
 
 | Threshold | Constant | Value |
 |-----------|----------|-------|
-| Idle after | `IDLE_THRESHOLD_SECONDS` | 300 s (5 min) |
+| Idle after | `IDLE_THRESHOLD_SECONDS` | 60 s (1 min) |
+| Deep idle after | `IDLE_DEEP_THRESHOLD_SECONDS` | 600 s (10 min) |
 | Decay divisor | `IDLE_DECAY_TICK_DIVISOR` | 10 (1 pt/min vs 10 pt/min active) |
+| Stat floor (deep idle) | `IDLE_STAT_FLOOR` | 20 |
 
 Activity is tracked via `onDidChangeTextEditorSelection`, `onDidChangeTextDocument`,
 `onDidChangeWindowState`, and `onDidChangeActiveTextEditor`. Any of these events
