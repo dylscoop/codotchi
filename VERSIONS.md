@@ -1,6 +1,30 @@
 # Version History
 
-## v0.3.0 — current
+## v0.3.1 — current
+
+### Changes from v0.3.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | Removed `Wt: N` from info line — weight is now a hidden mechanic; `moodText()` now shows `Zzz… (feeling sick)` when both sleeping and sick simultaneously; added Weight stat bar (purple) to stats panel; `barWeight` ref wired up |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored: removed `Wt: N`; combined sleeping+sick mood label; added Weight stat bar |
+| `vscode/media/sidebar.html` | Added Weight `stat-row` after Health |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored: added Weight `stat-row` |
+| `vscode/media/sidebar.css` | Added `.bar-fill.weight { background: #a78bfa }` |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored: added weight bar colour |
+| `vscode/src/gameEngine.ts` | Initial weight `5` → `40`; `FEED_MEAL_WEIGHT_GAIN` `1` → `2`; `FEED_SNACK_WEIGHT_GAIN` `2` → `5`; added `POOP_WEIGHT_LOSS=5`; poop event now calls `clampWeight(weight - POOP_WEIGHT_LOSS)` and `checkWeightTierEvents` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Mirrored: initial weight `5` → `40`; poop weight loss logic |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | `FEED_MEAL_WEIGHT_GAIN` `1` → `2`; `FEED_SNACK_WEIGHT_GAIN` `2` → `5`; added `POOP_WEIGHT_LOSS=5` |
+| `vscode/package.json` | Version `0.3.0` → `0.3.1` |
+| `pycharm/build.gradle.kts` | Version `0.3.0` → `0.3.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version `0.3.0` → `0.3.1` |
+| `README.md` | Install filenames updated to `0.3.1` |
+| `vscode/README.md` | Install filenames updated to `0.3.1` |
+| `pycharm/README.md` | Install filenames updated to `0.3.1` |
+
+---
+
+## v0.3.0
 
 ### Changes from v0.2.2
 

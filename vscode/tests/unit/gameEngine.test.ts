@@ -604,10 +604,10 @@ describe("feedMeal", () => {
     assert.equal(next.hunger, 50);
   });
 
-  it("increases weight by 1", () => {
+  it("increases weight by 2 (FEED_MEAL_WEIGHT_GAIN)", () => {
     const pet = makePet({ weight: 10 });
     const next = feedMeal(pet, 0);
-    assert.equal(next.weight, 11);
+    assert.equal(next.weight, 12);
   });
 
   it("resets consecutiveSnacks to 0", () => {
@@ -655,10 +655,10 @@ describe("feedSnack", () => {
     assert.equal(next.happiness, 45);
   });
 
-  it("increases weight by 2", () => {
+  it("increases weight by 5 (FEED_SNACK_WEIGHT_GAIN)", () => {
     const pet = makePet({ weight: 10 });
     const next = feedSnack(pet);
-    assert.equal(next.weight, 12);
+    assert.equal(next.weight, 15);
   });
 
   it("increments consecutiveSnacks", () => {

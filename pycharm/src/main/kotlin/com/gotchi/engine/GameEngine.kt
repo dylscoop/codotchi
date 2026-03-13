@@ -134,7 +134,7 @@ fun createPet(name: String, petType: String, color: String): PetState {
             discipline         = 50,
             energy             = 100,
             health             = modifiers.baseHealth,
-            weight             = 5,
+            weight             = 40,
             ageDays            = 0,
             stage              = "egg",
             character          = "",
@@ -254,6 +254,10 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false):
             ticksSinceLastPoop = 0
             nextPoopIntervalTicks = sampleNextPoopInterval(state.petType)
             events.add("pooped")
+            // Pooping burns weight
+            val prevWeightPoop = weight
+            weight = clampWeight(weight - POOP_WEIGHT_LOSS)
+            checkWeightTierEvents(prevWeightPoop, weight, events)
         }
     }
 

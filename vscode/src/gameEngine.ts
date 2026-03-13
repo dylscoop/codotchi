@@ -62,16 +62,17 @@ const RECENT_EVENT_LOG_MAX: number = 20;
 const POOP_TICKS_INTERVAL: number = 20 * TICKS_PER_MINUTE;
 
 const FEED_MEAL_HUNGER_BOOST: number = 20;
-const FEED_MEAL_WEIGHT_GAIN: number = 1;
+const FEED_MEAL_WEIGHT_GAIN: number = 2;
 const FEED_MEAL_MAX_PER_CYCLE: number = 3;
 
 const FEED_SNACK_HAPPINESS_BOOST: number = 5;
 const FEED_SNACK_HUNGER_BOOST: number = 5;
-const FEED_SNACK_WEIGHT_GAIN: number = 2;
+const FEED_SNACK_WEIGHT_GAIN: number = 5;
 
 const PLAY_HAPPINESS_BOOST: number = 15;
 const PLAY_ENERGY_COST: number = 25;
 const PLAY_WEIGHT_LOSS: number = 3;
+const POOP_WEIGHT_LOSS: number = 5;
 
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
 const WEIGHT_DECAY_TICK_INTERVAL: number = TICKS_PER_MINUTE; // 10 ticks = 1 min
@@ -607,7 +608,7 @@ export function createPet(name: string, petType: string, color: string): PetStat
     discipline: 50,
     energy: 100,
     health: baseHealth,
-    weight: 5,
+    weight: 40,
     ageDays: 0,
     stage: "egg",
     character: "",
@@ -801,6 +802,10 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       // Resample the next interval so timing is unpredictable
       nextPoopIntervalTicks = sampleNextPoopInterval(state.petType);
       events.push("pooped");
+      // Pooping burns weight
+      const prevWeightPoop = weight;
+      weight = clampWeight(weight - POOP_WEIGHT_LOSS);
+      checkWeightTierEvents(prevWeightPoop, weight, events);
     }
   }
 

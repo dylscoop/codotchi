@@ -45,6 +45,7 @@
   const barHappiness = document.getElementById("bar-happiness");
   const barEnergy    = document.getElementById("bar-energy");
   const barHealth    = document.getElementById("bar-health");
+  const barWeight    = document.getElementById("bar-weight");
 
   const spriteCanvas = document.getElementById("sprite-canvas");
   const spriteCtx    = spriteCanvas.getContext("2d");
@@ -294,6 +295,7 @@
     setBar(barHappiness, state.happiness);
     setBar(barEnergy,    state.energy);
     setHealthBar(barHealth, state.health);
+    setBar(barWeight,    (state.weight / 99) * 100);
 
     const poopStr = state.poops === 1 ? "1 poop" : state.poops + " poops";
     const typeLabel = (state.petType || "codeling");
@@ -302,7 +304,6 @@
       "Age: " + state.ageDays + "d  |  " +
       state.stage            + "  |  " +
       typeLabelCap           + "  |  " +
-      "Wt: " + (state.weight || 0) + "  |  " +
       poopStr;
 
     // Update sleep/wake button label to match current state
@@ -382,6 +383,7 @@
    * @returns {string}
    */
   function moodText(state) {
+    if (state.sleeping && state.sick) { return "Zzz… (feeling sick)"; }
     if (state.sleeping) { return "Zzz…"; }
     if (state.sick)     { return "Feeling sick"; }
     const mood = state.mood || "neutral";

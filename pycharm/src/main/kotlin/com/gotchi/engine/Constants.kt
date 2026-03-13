@@ -38,16 +38,17 @@ const val RECENT_EVENT_LOG_MAX: Int = 20
 const val POOP_TICKS_INTERVAL: Int = 20 * TICKS_PER_MINUTE
 
 const val FEED_MEAL_HUNGER_BOOST: Int = 20
-const val FEED_MEAL_WEIGHT_GAIN: Int = 1
+const val FEED_MEAL_WEIGHT_GAIN: Int = 2
 const val FEED_MEAL_MAX_PER_CYCLE: Int = 3
 
 const val FEED_SNACK_HAPPINESS_BOOST: Int = 5
 const val FEED_SNACK_HUNGER_BOOST: Int = 5
-const val FEED_SNACK_WEIGHT_GAIN: Int = 2
+const val FEED_SNACK_WEIGHT_GAIN: Int = 5
 
 const val PLAY_HAPPINESS_BOOST: Int = 15
 const val PLAY_ENERGY_COST: Int = 25
 const val PLAY_WEIGHT_LOSS: Int = 3
+const val POOP_WEIGHT_LOSS: Int = 5
 
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
 const val WEIGHT_DECAY_TICK_INTERVAL: Int = TICKS_PER_MINUTE // 10 ticks = 1 min
