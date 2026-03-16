@@ -15,6 +15,28 @@
 
   const vscode = acquireVsCodeApi();
 
+  // ── Constants ────────────────────────────────────────────────────────────
+
+  /** Number of in-game days that equal one displayed year. */
+  const GAME_DAYS_PER_YEAR = 365;
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  /**
+   * Format an age in game-days as a human-readable string.
+   * Returns e.g. "1y 15d" when age >= 1 year, or just "15d" otherwise.
+   * @param {number} ageDays
+   * @returns {string}
+   */
+  function formatAge(ageDays) {
+    var years = Math.floor(ageDays / GAME_DAYS_PER_YEAR);
+    var days  = ageDays % GAME_DAYS_PER_YEAR;
+    if (years > 0) {
+      return years + "y " + days + "d";
+    }
+    return days + "d";
+  }
+
   // ── Element references ──────────────────────────────────────────────────
 
   const setupScreen = document.getElementById("setup-screen");
@@ -321,7 +343,7 @@
     const typeLabel = (state.petType || "codeling");
     const typeLabelCap = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
     infoLine.textContent =
-      "Age: " + state.ageDays + "d  |  " +
+      "Age: " + formatAge(state.ageDays) + "  |  " +
       state.stage            + "  |  " +
       typeLabelCap           + "  |  " +
       poopStr;
@@ -595,7 +617,7 @@
       if (hsMinutes > 0) { hsParts.push(hsMinutes + "m"); }
       if (hsParts.length === 0) { hsParts.push("< 1m"); }
       setupHsStats.textContent =
-        hs.name + "  |  " + hs.ageDays + " day(s)  |  " + hs.stage + "\n" +
+        hs.name + "  |  " + formatAge(hs.ageDays) + "  |  " + hs.stage + "\n" +
         hsParts.join(" ") + " real time";
     } else {
       setupHighScore.classList.add("hidden");
@@ -605,7 +627,7 @@
   /** Show the dead screen with final stats. */
   function renderDeadScreen(state, highScore) {
     deadStats.textContent =
-      state.name + " lived " + state.ageDays + " day(s).\n" +
+      state.name + " lived " + formatAge(state.ageDays) + ".\n" +
       "Stage reached: " + state.stage + ".";
 
     // Real-life elapsed time since spawnedAt
@@ -652,7 +674,7 @@
         if (hsMinutes > 0) { hsParts.push(hsMinutes + "m"); }
         if (hsParts.length === 0) { hsParts.push("< 1m"); }
         highScoreStats.textContent =
-          highScore.name + "  |  " + highScore.ageDays + " day(s)  |  " + highScore.stage + "\n" +
+          highScore.name + "  |  " + formatAge(highScore.ageDays) + "  |  " + highScore.stage + "\n" +
           hsParts.join(" ") + " real time";
       } else {
         highScoreSection.classList.add("hidden");

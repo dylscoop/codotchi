@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.gotchi.pycharm-gotchi</id>
     <name>Gotchi</name>
-    <version>0.4.3</version>
+    <version>0.5.1</version>
     <vendor>gotchi</vendor>
 
     <description><![CDATA[
@@ -16,7 +16,7 @@
   <li>Coding activity rewards: your pet gets happier and more disciplined when you type</li>
   <li>High score tracking: records your best run (age, stage, pet type) across all pets</li>
   <li>Status bar widget showing your pet's current mood at a glance</li>
-  <li>Settings page (Settings → Tools → Gotchi) for font size and text colour customisation</li>
+  <li>Settings page — click the ⚙ gear icon in the Gotchi tool window, or go to Settings → Tools → Gotchi — to adjust font size, text colour, attention-call behaviour, and idle thresholds</li>
 </ul>
 
 <h3>Care Actions</h3>
@@ -41,7 +41,8 @@
 <h3>Getting Started</h3>
 <p>Open the <b>Gotchi</b> tool window (right-hand panel) and click <b>New Pet</b> to hatch your first egg.
 Choose a pet type, pick a name, and start coding! Keep an eye on the status bar widget for a quick
-mood summary. Access Settings → Tools → Gotchi to adjust the display size and colours.</p>
+mood summary. Click the <b>⚙ gear icon</b> in the Gotchi tool window title bar (or go to Settings → Tools → Gotchi)
+to adjust display size, colours, attention-call timing, and idle thresholds.</p>
     ]]></description>
 
     <idea-version since-build="241"/>

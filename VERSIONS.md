@@ -1,6 +1,45 @@
 # Version History
 
-## v0.4.3 — current (in progress)
+## v0.5.1 — current (in progress)
+
+### Changes from v0.5.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | `BABY_DURATION_TICKS` 10 min → 28 min; `CHILD_DURATION_TICKS` 1 hr → 90 min; `TEEN_DURATION_TICKS` 3 hr → 6 hr; added `ADULT_DURATION_TICKS = 16 hr`; `SENIOR_NATURAL_DEATH_AGE_DAYS` 240 → 365; `EVOLUTION_DAY_THRESHOLDS` updated (baby 2.388→5.988, child 14.388→23.988, teen 50.388→95.988) and `adult: 287.988` added; `NEXT_STAGE_MAP` entry `adult: "senior"` added (auto adult→senior promotion) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Same threshold, duration, and death-age changes mirrored from TypeScript |
+| `vscode/media/sidebar.js` | `GAME_DAYS_PER_YEAR = 365` constant added; `formatAge()` helper added; 4 age display calls updated to use `formatAge()` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Same `GAME_DAYS_PER_YEAR`, `formatAge()`, and 4 age display changes mirrored |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiToolWindow.kt` | Gear (⚙) button added to tool-window title bar via `setTitleActions`; opens Settings → Tools → Gotchi |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Description updated to mention gear button and settings panel |
+| `vscode/tests/unit/gameEngine.test.ts` | Updated `dayTimer` seed values for baby/child/teen/adult progression tests; added adult→senior auto-promotion test; updated `checkOldAgeDeath` age assertions (240→365, 239→364); `SENIOR_NATURAL_DEATH_AGE_DAYS is 365` assertion updated |
+| `vscode/package.json` | Version bumped `0.5.0` → `0.5.1` |
+| `pycharm/build.gradle.kts` | Version bumped `0.5.0` → `0.5.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.5.0` → `0.5.1` |
+| `vscode/FEATURES.md` | Section 2.1 stage table updated: Duration column changed from real-time to game days; Senior row updated; footnote prose updated |
+| `DEV_NOTES.md` | Constants table: `TICKS_PER_GAME_DAY_AWAKE` 600→50, `TICKS_PER_GAME_DAY_SLEEPING` 480→40; `EVOLUTION_DAY_THRESHOLDS` block updated with new values and adult entry; per-stage tables rewritten with game-day milestone column; senior death note updated ≥20→≥365 |
+| `README.md` | Install filenames updated to `0.5.1` |
+| `vscode/README.md` | Install filenames updated to `0.5.1` |
+| `pycharm/README.md` | Install filenames updated to `0.5.1` |
+
+### Updated constants (v0.5.1)
+
+```
+BABY_DURATION_TICKS:            28 * TICKS_PER_MINUTE   // was 10 min
+CHILD_DURATION_TICKS:           90 * TICKS_PER_MINUTE   // was 1 hr
+TEEN_DURATION_TICKS:            6 * TICKS_PER_HOUR       // was 3 hr
+ADULT_DURATION_TICKS:           16 * TICKS_PER_HOUR      // new
+SENIOR_NATURAL_DEATH_AGE_DAYS:  365                      // was 240
+EVOLUTION_DAY_THRESHOLDS.baby:  5.988                    // was 2.388
+EVOLUTION_DAY_THRESHOLDS.child: 23.988                   // was 14.388
+EVOLUTION_DAY_THRESHOLDS.teen:  95.988                   // was 50.388
+EVOLUTION_DAY_THRESHOLDS.adult: 287.988                  // new
+GAME_DAYS_PER_YEAR (sidebar.js display): 365             // new
+```
+
+---
+
+## v0.4.3 — previous
 
 ### Changes from v0.4.2
 

@@ -120,8 +120,22 @@ class GotchiPlugin : Disposable {
     private fun onTick() {
         val ticked = stateLock.withLock {
             val state = currentState ?: return@withLock false
-            val attentionCallsEnabled = service<GotchiSettings>().enableAttentionCalls
-            currentState = tick(state, isIdle(), isDeepIdle(), attentionCallsEnabled)
+            val settings = service<GotchiSettings>()
+
+            // Map attentionCallExpiry setting to tick count.
+            val expiryMap = mapOf("needy" to 20, "standard" to 50, "chilled" to 100)
+            val attentionCallExpiryTicks = expiryMap[settings.attentionCallExpiry] ?: 50
+
+            // Map attentionCallRate setting to rate divisor.
+            val rateMap = mapOf("fast" to 1.0, "medium" to 1.5, "slow" to 2.0)
+            val attentionCallRateDivisor = rateMap[settings.attentionCallRate] ?: 1.0
+
+            val gameConfig = com.gotchi.engine.GameConfig(
+                attentionCallsEnabled    = settings.enableAttentionCalls,
+                attentionCallExpiryTicks = attentionCallExpiryTicks,
+                attentionCallRateDivisor = attentionCallRateDivisor,
+            )
+            currentState = tick(state, isIdle(), isDeepIdle(), gameConfig)
             true
         }
         if (ticked) broadcastState()

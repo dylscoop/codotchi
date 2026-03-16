@@ -217,7 +217,7 @@ fun createPet(name: String, petType: String, color: String): PetState {
 // Tick
 // ---------------------------------------------------------------------------
 
-fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, attentionCallsEnabled: Boolean = true): PetState {
+fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG): PetState {
     if (!state.alive) return state
 
     val modifiers = PET_TYPE_MODIFIERS[state.petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
@@ -260,7 +260,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     }
 
     // ── Step 0–3: Attention-call mechanic (skipped when disabled) ────────────
-    if (attentionCallsEnabled) {
+    if (config.attentionCallsEnabled) {
 
     // ── Step 0: Maintain log counters (every tick, even idle) ────────────────
     if (poops > 0) {
@@ -382,10 +382,18 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     }
 
     // ── Step 1: Advance active call timer (non-idle ticks only) ────────────────
-    if (attentionCallsEnabled) {
+    if (config.attentionCallsEnabled) {
     if (activeAttentionCall != null && !isIdle) {
         attentionCallActiveTicks += 1
-        if (attentionCallActiveTicks >= ATTENTION_CALL_RESPONSE_TICKS) {
+        // poop / misbehaviour / gift use the configurable expiry window;
+        // all other call types use the fixed 2-minute (20-tick) window.
+        val expiryTicks = if (activeAttentionCall == "poop" ||
+                              activeAttentionCall == "misbehaviour" ||
+                              activeAttentionCall == "gift")
+            config.attentionCallExpiryTicks
+        else
+            ATTENTION_CALL_RESPONSE_TICKS
+        if (attentionCallActiveTicks >= expiryTicks) {
             val expiredType = activeAttentionCall!!
             events.add("attention_call_expired_$expiredType")
             when (expiredType) {
@@ -419,10 +427,11 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
 
     if (activeAttentionCall == null) {
         fun cooldownClear(t: String) = (attentionCallCooldowns[t] ?: 0) == 0
+        val rd = config.attentionCallRateDivisor
 
         // Poop call fires even while sleeping
         if (poops >= 1 && cooldownClear("poop") &&
-            Random.nextDouble() < logChance(ticksWithUncleanedPoop, POOP_CALL_BASE_CHANCE, POOP_CALL_MAX_CHANCE)) {
+            Random.nextDouble() < logChance(ticksWithUncleanedPoop, POOP_CALL_BASE_CHANCE / rd, POOP_CALL_MAX_CHANCE / rd)) {
             activeAttentionCall = "poop"
             attentionCallActiveTicks = 0
             events.add("attention_call_poop")
@@ -443,7 +452,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
             attentionCallActiveTicks = 0
             events.add("attention_call_unhappiness")
         } else if (!sleeping && cooldownClear("misbehaviour") &&
-            Random.nextDouble() < logChance(ticksSinceLastMisbehaviour, MISBEHAVIOUR_BASE_CHANCE, MISBEHAVIOUR_MAX_CHANCE)) {
+            Random.nextDouble() < logChance(ticksSinceLastMisbehaviour, MISBEHAVIOUR_BASE_CHANCE / rd, MISBEHAVIOUR_MAX_CHANCE / rd)) {
             activeAttentionCall = "misbehaviour"
             attentionCallActiveTicks = 0
             ticksSinceLastMisbehaviour = 0
@@ -456,7 +465,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
             health > ATTENTION_HEALTH_THRESHOLD &&
             !sick &&
             (currentMood == "happy" || currentMood == "neutral") &&
-            Random.nextDouble() < logChance(ticksSinceLastGift, GIFT_BASE_CHANCE, GIFT_MAX_CHANCE)) {
+            Random.nextDouble() < logChance(ticksSinceLastGift, GIFT_BASE_CHANCE / rd, GIFT_MAX_CHANCE / rd)) {
             activeAttentionCall = "gift"
             attentionCallActiveTicks = 0
             ticksSinceLastGift = 0
@@ -464,7 +473,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         }
     }
 
-    } // end if (attentionCallsEnabled)
+    } // end if (config.attentionCallsEnabled)
 
     // Death check
     if (health <= HEALTH_DEATH_THRESHOLD) {

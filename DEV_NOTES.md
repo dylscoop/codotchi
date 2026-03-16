@@ -68,8 +68,8 @@ Key constants:
 |----------|-------|-------|
 | `TICK_INTERVAL_SECONDS` | 6 s | Wall-clock time per tick |
 | `TICKS_PER_MINUTE` | 10 | |
-| `TICKS_PER_GAME_DAY_AWAKE` | 600 ticks | 1 real hour awake = 1 game day (codeling 1×) |
-| `TICKS_PER_GAME_DAY_SLEEPING` | 480 ticks | ~48 min asleep = 1 game day (~25% faster) |
+| `TICKS_PER_GAME_DAY_AWAKE` | 50 ticks | 5 min awake = 1 game day (codeling 1×) |
+| `TICKS_PER_GAME_DAY_SLEEPING` | 40 ticks | ~4 min asleep = 1 game day (~25% faster) |
 
 `ageDays` is derived as `Math.floor(dayTimer)` on every tick — it is **not**
 manual and does not require sleep/wake events to advance.
@@ -83,64 +83,80 @@ from birth, not relative to the start of the current stage.
 ### EVOLUTION_DAY_THRESHOLDS (cumulative from birth)
 
 ```ts
-egg:   0.033   // hatch
-baby:  0.199   // grow to child
-child: 1.199   // grow to teen
-teen:  4.199   // grow to adult
+egg:   0.396    // hatch         (~2 min awake for codeling 1×)
+baby:  5.988    // grow to child (~30 min awake)
+child: 23.988   // grow to teen  (~2 hr awake)
+teen:  95.988   // grow to adult (~8 hr awake)
+adult: 287.988  // grow to senior (~24 hr awake)
 ```
 
-Adult → Senior is not automatic: `promoteToSenior()` must be called explicitly
-(the extension calls it once at the start of each 24-hour IRL check — not yet
-wired as a scheduled call). Senior dies naturally once `ageDays >= 20` and
-health reaches 0.
+Adult → Senior promotion is **automatic**: once `dayTimer >= 287.988` the
+`checkStageProgression()` function transitions adult to senior via
+`NEXT_STAGE_MAP` (same path as all other stage transitions). The legacy
+`promoteToSenior()` function still exists as a fallback but is no longer the
+primary trigger. Senior dies naturally once `ageDays >= 365` (1 in-game year)
+and health reaches 0.
 
 ---
 
 ### Per-stage durations (awake time only)
 
-Each stage lasts for the *difference* between consecutive thresholds, divided
-by the type's `agingMultiplier`.  Sleeping is ~25% faster so actual wall-clock
-can be shorter if the pet sleeps a lot.
+Each stage lasts for the *difference* between consecutive thresholds, measured
+in game days. The real-world clock time depends on `agingMultiplier`:
 
-**Formula:**  `real_minutes = (threshold_end − threshold_start) × 60 / agingMultiplier`
+**Formula:** `real_minutes = (threshold_end − threshold_start) × 5 / agingMultiplier`
+(since 1 game day = 5 min awake for codeling 1×)
+
+#### All types — game-day milestones (identical for every pet type)
+
+| Stage  | dayTimer span          | Duration (game days) | Evolves at age |
+|--------|------------------------|----------------------|----------------|
+| Egg    | 0 → 0.396              | ~0d                  | ~0d            |
+| Baby   | 0.396 → 5.988          | ~6d                  | ~6d            |
+| Child  | 5.988 → 23.988         | ~18d                 | ~24d           |
+| Teen   | 23.988 → 95.988        | ~72d                 | ~96d           |
+| Adult  | 95.988 → 287.988       | ~192d                | ~288d          |
+| Senior | 287.988 → ∞            | Indefinite           | Natural death ≥ 365d |
 
 #### Codeling (agingMultiplier = 1.0×)
 
-| Stage | dayTimer span | Awake time |
-|-------|--------------|-----------|
-| Egg   | 0 → 0.033   | ~2 min    |
-| Baby  | 0.033 → 0.199 | ~10 min |
-| Child | 0.199 → 1.199 | ~60 min (1 hr) |
-| Teen  | 1.199 → 4.199 | ~180 min (3 hr) |
-| Adult | 4.199 → ∞   | Indefinite (manual → senior) |
-| Senior | ageDays ≥ 4 | Natural death at ageDays ≥ 20 |
+| Stage  | Awake time (real) |
+|--------|------------------|
+| Egg    | ~2 min           |
+| Baby   | ~28 min          |
+| Child  | ~90 min (~1.5 hr) |
+| Teen   | ~360 min (6 hr)  |
+| Adult  | ~960 min (16 hr) |
 
 #### Bytebug (agingMultiplier = 1.5×, fastest)
 
-| Stage | Awake time |
-|-------|-----------|
-| Egg   | ~1.3 min  |
-| Baby  | ~6.7 min  |
-| Child | ~40 min   |
-| Teen  | ~120 min (2 hr) |
+| Stage  | Awake time (real) |
+|--------|------------------|
+| Egg    | ~1.3 min         |
+| Baby   | ~18.7 min        |
+| Child  | ~60 min (1 hr)   |
+| Teen   | ~240 min (4 hr)  |
+| Adult  | ~640 min (~10.7 hr) |
 
 #### Pixelpup (agingMultiplier = 1.25×)
 
-| Stage | Awake time |
-|-------|-----------|
-| Egg   | ~1.6 min  |
-| Baby  | ~8 min    |
-| Child | ~48 min   |
-| Teen  | ~144 min (2.4 hr) |
+| Stage  | Awake time (real) |
+|--------|------------------|
+| Egg    | ~1.6 min         |
+| Baby   | ~22.4 min        |
+| Child  | ~72 min (1.2 hr) |
+| Teen   | ~288 min (4.8 hr) |
+| Adult  | ~768 min (~12.8 hr) |
 
 #### Shellscript (agingMultiplier = 0.75×, slowest)
 
-| Stage | Awake time |
-|-------|-----------|
-| Egg   | ~2.7 min  |
-| Baby  | ~13 min   |
-| Child | ~80 min (1.3 hr) |
-| Teen  | ~240 min (4 hr) |
+| Stage  | Awake time (real) |
+|--------|------------------|
+| Egg    | ~2.7 min         |
+| Baby   | ~37.3 min        |
+| Child  | ~120 min (2 hr)  |
+| Teen   | ~480 min (8 hr)  |
+| Adult  | ~1280 min (~21.3 hr) |
 
 ---
 
@@ -646,3 +662,9 @@ of `tick()`, wrapped (from v0.4.0 onwards) by the `attentionCallsEnabled` guard.
 
 - **No network.** All state is local. No telemetry, no sync, no leaderboard
   (the leaderboard idea in DESIGN.md is a future aspiration).
+
+---
+
+## Release Notes
+
+v0.5.1 was built and packaged by [dylscoop](https://github.com/dylscoop).

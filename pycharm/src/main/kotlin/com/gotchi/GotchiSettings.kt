@@ -12,6 +12,8 @@ import com.intellij.openapi.components.*
  *  - [enableAttentionCalls]   : whether to show balloon notifications for attention calls
  *  - [idleThresholdSeconds]   : seconds of no IDE activity before idle mode (default 60)
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
+ *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift
+ *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls
  */
 @State(
     name = "GotchiSettings",
@@ -27,6 +29,8 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
         var enableAttentionCalls: Boolean = true
         var idleThresholdSeconds: Int = 60
         var idleDeepThresholdSeconds: Int = 600
+        var attentionCallExpiry: String = "standard"  // "needy" | "standard" | "chilled"
+        var attentionCallRate:   String = "fast"      // "fast" | "medium" | "slow"
     }
 
     private var _state = State()
@@ -56,4 +60,12 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
     var idleDeepThresholdSeconds: Int
         get() = _state.idleDeepThresholdSeconds
         set(v) { _state.idleDeepThresholdSeconds = v }
+
+    var attentionCallExpiry: String
+        get() = _state.attentionCallExpiry
+        set(v) { _state.attentionCallExpiry = v }
+
+    var attentionCallRate: String
+        get() = _state.attentionCallRate
+        set(v) { _state.attentionCallRate = v }
 }

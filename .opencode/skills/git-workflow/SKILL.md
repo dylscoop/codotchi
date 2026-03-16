@@ -67,3 +67,101 @@ Typical release flow (each line needs separate approval):
 5. `git push origin vX.Y.Z` — push the tag
 6. Copy artifacts to `releases/`, commit, and push — publish artifacts
 7. Create GitHub release — publish release notes
+
+## GitHub release body — what to include
+
+When creating a GitHub release for `vX.Y.Z`, the release body must cover **everything new since the previous release tag**, not just the most recent commit. Follow these steps:
+
+1. Find the previous release tag:
+   ```
+   git tag --sort=-version:refname | head -5
+   ```
+2. Collect all commits between the previous tag and the new one:
+   ```
+   git log <prev-tag>..vX.Y.Z --oneline
+   ```
+3. For each commit, summarise the user-visible changes. Group them into sections:
+   - **Features** — new capabilities (`feat:` commits)
+   - **Bug fixes** — defects corrected (`fix:` commits; cross-reference BUGFIX-NNN if applicable)
+   - **Chores / internal** — version bumps, artifact rebuilds, doc updates (`chore:`, `docs:` commits) — keep this section brief or omit if empty
+
+4. Include the artifact filenames so users know exactly what to download:
+   ```
+   ## Artifacts
+   - `vscode-gotchi-X.Y.Z.vsix` — VS Code extension
+   - `pycharm-gotchi-X.Y.Z.zip` — PyCharm plugin
+   ```
+
+5. **`gh` CLI is not available on this machine.** Use the GitHub REST API via a PowerShell script instead (see below).
+
+## Creating a GitHub release without `gh` CLI
+
+`gh` is not installed. Use this PowerShell approach every time.
+
+### Step 1 — retrieve the stored PAT
+
+The PAT is stored in Windows Credential Manager under `git:https://dylscoop@github.com`.
+Retrieve it with:
+
+```powershell
+$creds = (echo 'protocol=https'; echo 'host=github.com'; echo 'username=dylscoop'; echo '') |
+    & 'C:\Program Files\Git\mingw64\libexec\git-core\git-credential-wincred.exe' get
+$token = ($creds | Where-Object { $_ -match '^password=' }) -replace '^password=', ''
+```
+
+### Step 2 — write a temporary PS1 script and run it
+
+Inline PowerShell with complex quoting is unreliable in the Bash tool. Always write the
+script to a temp file and execute it with `-ExecutionPolicy Bypass -File`:
+
+```powershell
+# create_release.ps1  (delete after use)
+$token = 'PASTE_TOKEN_HERE'
+$releaseBody = @"
+## Features
+- ...
+
+## Bug fixes
+- ...
+
+## Artifacts
+- ``vscode-gotchi-X.Y.Z.vsix`` - VS Code extension
+- ``pycharm-gotchi-X.Y.Z.zip`` - PyCharm plugin
+"@
+
+$payload = @{
+    tag_name         = 'vX.Y.Z'
+    target_commitish = 'main'
+    name             = 'vX.Y.Z - Short release headline'
+    body             = $releaseBody
+    draft            = $false
+    prerelease       = $false
+} | ConvertTo-Json -Depth 3
+
+$headers = @{
+    Authorization          = "token $token"
+    Accept                 = 'application/vnd.github+json'
+    'X-GitHub-Api-Version' = '2022-11-28'
+}
+
+try {
+    $r = Invoke-RestMethod -Uri 'https://api.github.com/repos/dylscoop/codotchi/releases' `
+         -Method Post -Headers $headers -Body $payload -ContentType 'application/json'
+    Write-Host "SUCCESS: $($r.html_url)"
+} catch {
+    Write-Host "ERROR: $($_.Exception.Message)"
+    Write-Host $_.ErrorDetails.Message
+}
+```
+
+Run it:
+```
+powershell -ExecutionPolicy Bypass -File create_release.ps1
+```
+
+Then delete the script immediately (it contains the PAT).
+
+### Notes
+- Use backtick-escaped backticks (` `` `) inside `@"..."@` here-strings to produce literal backticks in the Markdown body.
+- The repo is `dylscoop/codotchi`; update the URI if the repo ever changes.
+- After a successful release, verify at `https://github.com/dylscoop/codotchi/releases`.

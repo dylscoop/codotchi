@@ -29,6 +29,8 @@ class GotchiConfigurable : Configurable {
     private var enableAttentionCallsCheck: JCheckBox?          = null
     private var idleThresholdSpinner:      JSpinner?           = null
     private var idleDeepThresholdSpinner:  JSpinner?           = null
+    private var attentionCallExpiryCombo:  JComboBox<String>?  = null
+    private var attentionCallRateCombo:    JComboBox<String>?  = null
 
     override fun getDisplayName(): String = "Gotchi"
 
@@ -38,12 +40,16 @@ class GotchiConfigurable : Configurable {
         val attentionCheck  = JCheckBox("Enable attention calls")
         val idleSpinner     = JSpinner(SpinnerNumberModel(60, 10, 3600, 10))
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
+        val expiryCombo     = JComboBox(arrayOf("Needy (2 min)", "Standard (5 min)", "Chilled (10 min)"))
+        val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
 
         fontSizeCombo            = combo
         colorPanel               = cp
         enableAttentionCallsCheck = attentionCheck
         idleThresholdSpinner     = idleSpinner
         idleDeepThresholdSpinner = deepIdleSpinner
+        attentionCallExpiryCombo = expiryCombo
+        attentionCallRateCombo   = rateCombo
 
         val panel = JPanel(GridBagLayout())
         val gbc   = GridBagConstraints()
@@ -92,8 +98,26 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(deepIdleSpinner, gbc)
 
+        // Row 5 — Attention call expiry
+        gbc.gridx = 0; gbc.gridy = 5
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Attention call expiry:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(expiryCombo, gbc)
+
+        // Row 6 — Attention call rate
+        gbc.gridx = 0; gbc.gridy = 6
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Attention call rate:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(rateCombo, gbc)
+
         // Push content to the top
-        gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2
+        gbc.gridx = 0; gbc.gridy = 7; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -108,11 +132,15 @@ class GotchiConfigurable : Configurable {
         val uiAttention = enableAttentionCallsCheck?.isSelected ?: true
         val uiIdle      = (idleThresholdSpinner?.value as? Int) ?: 60
         val uiDeepIdle  = (idleDeepThresholdSpinner?.value as? Int) ?: 600
+        val uiExpiry    = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
+        val uiRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         return uiFont != settings.fontSize
             || uiColor != settings.textColor
             || uiAttention != settings.enableAttentionCalls
             || uiIdle != settings.idleThresholdSeconds
             || uiDeepIdle != settings.idleDeepThresholdSeconds
+            || uiExpiry != settings.attentionCallExpiry
+            || uiRate != settings.attentionCallRate
     }
 
     override fun apply() {
@@ -122,6 +150,8 @@ class GotchiConfigurable : Configurable {
         settings.enableAttentionCalls   = enableAttentionCallsCheck?.isSelected ?: true
         settings.idleThresholdSeconds   = (idleThresholdSpinner?.value as? Int) ?: 60
         settings.idleDeepThresholdSeconds = (idleDeepThresholdSpinner?.value as? Int) ?: 600
+        settings.attentionCallExpiry    = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
+        settings.attentionCallRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         // Reload the webview immediately so the change is visible without a restart
         ApplicationManager.getApplication().service<GotchiPlugin>().reloadWebview()
     }
@@ -133,7 +163,16 @@ class GotchiConfigurable : Configurable {
         enableAttentionCallsCheck?.isSelected = settings.enableAttentionCalls
         idleThresholdSpinner?.value        = settings.idleThresholdSeconds
         idleDeepThresholdSpinner?.value    = settings.idleDeepThresholdSeconds
+        attentionCallExpiryCombo?.selectedIndex = expiryKeyToIndex(settings.attentionCallExpiry)
+        attentionCallRateCombo?.selectedIndex   = rateKeyToIndex(settings.attentionCallRate)
     }
+
+    // ── Enum helpers ───────────────────────────────────────────────────────
+
+    private fun expiryIndexToKey(index: Int) = when (index) { 0 -> "needy"; 2 -> "chilled"; else -> "standard" }
+    private fun expiryKeyToIndex(key: String) = when (key) { "needy" -> 0; "chilled" -> 2; else -> 1 }
+    private fun rateIndexToKey(index: Int)  = when (index) { 1 -> "medium"; 2 -> "slow"; else -> "fast" }
+    private fun rateKeyToIndex(key: String) = when (key) { "medium" -> 1; "slow" -> 2; else -> 0 }
 
     // ── Colour helpers ─────────────────────────────────────────────────────
 
