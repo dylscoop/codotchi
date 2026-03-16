@@ -343,9 +343,8 @@
       var elapsed = nowMs - rxn.startMs;
       if (elapsed >= rxn.durationMs) {
         reactionQueue.splice(ri, 1);
-        // On fell_asleep end, lock pet to floor-centre
+        // On fell_asleep end, stop movement in current position
         if (rxn.type === "fell_asleep") {
-          petX  = Math.max(minX, Math.min(maxX, Math.floor(spriteCanvas.width / 2 - bWidth / 2)));
           petY  = floorY;
           petVx = 0;
           petVy = 0;
@@ -360,11 +359,7 @@
 
     // ── Movement ──────────────────────────────────────────────────────────
     if (activeReaction && activeReaction.type === "fell_asleep") {
-      // Drift toward floor-centre during the fell_asleep animation
-      var targetX = Math.max(minX, Math.min(maxX, Math.floor(spriteCanvas.width / 2 - bWidth / 2)));
-      var dx = targetX - petX;
-      var step = Math.min(Math.abs(dx), 40 * dt);
-      petX += (dx >= 0 ? 1 : -1) * step;
+      // Lock to floor in current position during the fell_asleep animation
       petY  = floorY;
       petVx = 0;
       petVy = 0;
