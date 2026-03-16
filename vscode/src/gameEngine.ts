@@ -27,11 +27,13 @@ const TICKS_PER_HOUR: number = 60 * TICKS_PER_MINUTE;
 /** Duration of the egg stage in ticks. */
 export const EGG_DURATION_TICKS: number = 2 * TICKS_PER_MINUTE;
 /** Duration of the baby stage in ticks. */
-export const BABY_DURATION_TICKS: number = 10 * TICKS_PER_MINUTE;
+export const BABY_DURATION_TICKS: number = 28 * TICKS_PER_MINUTE;
 /** Duration of the child stage in ticks. */
-export const CHILD_DURATION_TICKS: number = 1 * TICKS_PER_HOUR;
+export const CHILD_DURATION_TICKS: number = 90 * TICKS_PER_MINUTE;
 /** Duration of the teen stage in ticks. */
-export const TEEN_DURATION_TICKS: number = 3 * TICKS_PER_HOUR;
+export const TEEN_DURATION_TICKS: number = 6 * TICKS_PER_HOUR;
+/** Duration of the adult stage in ticks (used as a seed for tests). */
+export const ADULT_DURATION_TICKS: number = 16 * TICKS_PER_HOUR;
 
 const STAT_MIN: number = 0;
 const STAT_MAX: number = 100;
@@ -188,24 +190,51 @@ export const MISBEHAVIOUR_MAX_CHANCE: number = 0.08;
 export const GIFT_BASE_CHANCE: number = 0.002;
 export const GIFT_MAX_CHANCE: number = 0.05;
 
-/** Age in real-world days at which a senior pet may die of old age. */
-export const SENIOR_NATURAL_DEATH_AGE_DAYS: number = 20;
+/** Age in game days at which a senior pet may die of old age (365 game days = 1 in-game year). */
+export const SENIOR_NATURAL_DEATH_AGE_DAYS: number = 365;
 
 /**
- * Ticks elapsed while awake before the day timer advances by 1.0 (1 game day = 1 real hour awake).
- * 60 min × 60 s ÷ 6 s/tick = 600 ticks.
+ * Ticks elapsed while awake before the day timer advances by 1.0 (1 game day = 5 real minutes awake).
+ * 5 min × 60 s ÷ 6 s/tick = 50 ticks.
  */
-export const TICKS_PER_GAME_DAY_AWAKE: number = TICKS_PER_HOUR;
+export const TICKS_PER_GAME_DAY_AWAKE: number = 5 * TICKS_PER_MINUTE;
 
 /**
- * Ticks elapsed while sleeping before the day timer advances by 1.0 (≈ 48 min asleep = 1 day,
+ * Ticks elapsed while sleeping before the day timer advances by 1.0 (≈ 4 min asleep = 1 day,
  * ~25% faster than awake).
  */
-export const TICKS_PER_GAME_DAY_SLEEPING: number = Math.round(TICKS_PER_HOUR * 0.8);
+export const TICKS_PER_GAME_DAY_SLEEPING: number = Math.round(5 * TICKS_PER_MINUTE * 0.8);
 
 // ---------------------------------------------------------------------------
 // Types (ported from python/models.py)
 // ---------------------------------------------------------------------------
+
+/**
+ * Runtime configuration passed into tick() on every game step.
+ * Populated from VS Code settings so players can tune timing behaviour.
+ */
+export interface GameConfig {
+  /** Whether the attention-call mechanic is active at all. */
+  attentionCallsEnabled: boolean;
+  /**
+   * Response-window in ticks for poop, misbehaviour, and gift calls.
+   * needy=20 (2 min), standard=50 (5 min), chilled=100 (10 min).
+   */
+  attentionCallExpiryTicks: number;
+  /**
+   * Divisor applied to the base and max logChance probabilities for all
+   * probabilistic call spawns (poop, misbehaviour, gift).
+   * fast=1.0, medium=1.5, slow=2.0.
+   */
+  attentionCallRateDivisor: number;
+}
+
+/** Sensible defaults used when no explicit config is provided. */
+export const DEFAULT_GAME_CONFIG: GameConfig = {
+  attentionCallsEnabled:    true,
+  attentionCallExpiryTicks: 50,   // "standard" = 5 min
+  attentionCallRateDivisor: 1.0,  // "fast"
+};
 
 /** Per-type stat multipliers applied on top of base config constants. */
 interface PetTypeModifiers {
@@ -808,7 +837,7 @@ function checkWeightTierEvents(prev: number, next: number, events: string[]): vo
  * @param state - The current pet state.
  * @returns A new PetState after one tick.
  */
-export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boolean = false, attentionCallsEnabled: boolean = true): PetState {
+export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG): PetState {
   if (!state.alive) {
     return state;
   }
@@ -852,7 +881,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     events.push("went_deep_idle");
   }
 
-  if (attentionCallsEnabled) {
+  if (config.attentionCallsEnabled) {
   // ── Step 0: Maintain log counters (every tick, even idle) ────────────────
   if (poops > 0) {
     ticksWithUncleanedPoop += 1;
@@ -990,10 +1019,17 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   }
 
   // ── Step 1: Advance active call timer (non-idle ticks only) ────────────────
-  if (attentionCallsEnabled) {
+  if (config.attentionCallsEnabled) {
   if (activeAttentionCall !== null && !isIdle) {
     attentionCallActiveTicks += 1;
-    if (attentionCallActiveTicks >= ATTENTION_CALL_RESPONSE_TICKS) {
+    // poop / misbehaviour / gift use the configurable expiry window;
+    // all other call types use the fixed 2-minute (20-tick) window.
+    const expiryTicks = (activeAttentionCall === "poop" ||
+                         activeAttentionCall === "misbehaviour" ||
+                         activeAttentionCall === "gift")
+      ? config.attentionCallExpiryTicks
+      : ATTENTION_CALL_RESPONSE_TICKS;
+    if (attentionCallActiveTicks >= expiryTicks) {
       // Call expired — apply stat penalty
       const expiredType = activeAttentionCall;
       events.push(`attention_call_expired_${expiredType}`);
@@ -1029,10 +1065,11 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
 
   if (activeAttentionCall === null) {
     const cooldownClear = (t: AttentionCallType): boolean => !(attentionCallCooldowns[t] ?? 0);
+    const rd = config.attentionCallRateDivisor;
     // Poop call fires even while sleeping (poops accumulate regardless).
     // All other calls are suppressed while the pet is asleep.
     if (poops >= 1 && cooldownClear("poop") &&
-               Math.random() < logChance(ticksWithUncleanedPoop, POOP_CALL_BASE_CHANCE, POOP_CALL_MAX_CHANCE)) {
+               Math.random() < logChance(ticksWithUncleanedPoop, POOP_CALL_BASE_CHANCE / rd, POOP_CALL_MAX_CHANCE / rd)) {
       activeAttentionCall = "poop";
       attentionCallActiveTicks = 0;
       events.push("attention_call_poop");
@@ -1053,7 +1090,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       attentionCallActiveTicks = 0;
       events.push("attention_call_unhappiness");
     } else if (!sleeping && cooldownClear("misbehaviour") &&
-               Math.random() < logChance(ticksSinceLastMisbehaviour, MISBEHAVIOUR_BASE_CHANCE, MISBEHAVIOUR_MAX_CHANCE)) {
+               Math.random() < logChance(ticksSinceLastMisbehaviour, MISBEHAVIOUR_BASE_CHANCE / rd, MISBEHAVIOUR_MAX_CHANCE / rd)) {
       activeAttentionCall = "misbehaviour";
       attentionCallActiveTicks = 0;
       ticksSinceLastMisbehaviour = 0;
@@ -1066,14 +1103,14 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
                health > ATTENTION_HEALTH_THRESHOLD &&
                !sick &&
                (currentMood === "happy" || currentMood === "neutral") &&
-               Math.random() < logChance(ticksSinceLastGift, GIFT_BASE_CHANCE, GIFT_MAX_CHANCE)) {
+               Math.random() < logChance(ticksSinceLastGift, GIFT_BASE_CHANCE / rd, GIFT_MAX_CHANCE / rd)) {
       activeAttentionCall = "gift";
       attentionCallActiveTicks = 0;
       ticksSinceLastGift = 0;
       events.push("attention_call_gift");
     }
   }
-  } // end if (attentionCallsEnabled)
+  } // end if (config.attentionCallsEnabled)
 
   // Death check
   if (health <= HEALTH_DEATH_THRESHOLD) {
@@ -1124,20 +1161,24 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
 // Stage progression (internal)
 // ---------------------------------------------------------------------------
 
-/** Map from stage name to the cumulative dayTimer threshold to evolve out of it. */
+/** Map from stage name to the cumulative dayTimer threshold to evolve out of it.
+ * Scaled so that real-world evolution timing (in active ticks) is preserved:
+ * 1 game day = 50 ticks (5 min awake). */
 const EVOLUTION_DAY_THRESHOLDS: Record<string, number> = {
-  egg:   0.033,  // ≈ tick 20 for codeling 1× (~2 min awake)
-  baby:  0.199,  // ≈ tick 120 cumulative for codeling 1× (~12 min)
-  child: 1.199,  // ≈ tick 720 cumulative for codeling 1× (~72 min)
-  teen:  4.199,  // ≈ tick 2520 cumulative for codeling 1× (~252 min)
+  egg:   0.396,    // ≈ tick 20 for codeling 1× (~2 min awake)
+  baby:  5.988,    // ≈ tick 300 cumulative for codeling 1× (~30 min)
+  child: 23.988,   // ≈ tick 1200 cumulative for codeling 1× (~2 hr)
+  teen:  95.988,   // ≈ tick 4800 cumulative for codeling 1× (~8 hr)
+  adult: 287.988,  // ≈ tick 14400 cumulative for codeling 1× (~24 hr)
 };
 
 /** Map from stage name to the next stage. */
 const NEXT_STAGE_MAP: Record<string, string> = {
-  egg: "baby",
-  baby: "child",
+  egg:   "baby",
+  baby:  "child",
   child: "teen",
-  teen: "adult",
+  teen:  "adult",
+  adult: "senior",
 };
 
 /**

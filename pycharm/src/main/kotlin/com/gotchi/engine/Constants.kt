@@ -10,9 +10,10 @@ private const val TICKS_PER_MINUTE: Int = 60 / TICK_INTERVAL_SECONDS
 private const val TICKS_PER_HOUR: Int = 60 * TICKS_PER_MINUTE
 
 const val EGG_DURATION_TICKS: Int = 2 * TICKS_PER_MINUTE
-const val BABY_DURATION_TICKS: Int = 10 * TICKS_PER_MINUTE
-const val CHILD_DURATION_TICKS: Int = 1 * TICKS_PER_HOUR
-const val TEEN_DURATION_TICKS: Int = 3 * TICKS_PER_HOUR
+const val BABY_DURATION_TICKS: Int = 28 * TICKS_PER_MINUTE
+const val CHILD_DURATION_TICKS: Int = 90 * TICKS_PER_MINUTE
+const val TEEN_DURATION_TICKS: Int = 6 * TICKS_PER_HOUR
+const val ADULT_DURATION_TICKS: Int = 16 * TICKS_PER_HOUR
 
 const val STAT_MIN: Int = 0
 const val STAT_MAX: Int = 100
@@ -124,16 +125,17 @@ const val CARE_SCORE_MID_TIER_THRESHOLD: Double = 0.55
 
 const val OFFLINE_DECAY_MAX_FRACTION: Double = 0.60
 
-const val SENIOR_NATURAL_DEATH_AGE_DAYS: Int = 20
+/** Age in game days at which a senior pet may die of old age (365 game days = 1 in-game year). */
+const val SENIOR_NATURAL_DEATH_AGE_DAYS: Int = 365
 
-/** Ticks elapsed while awake before the day timer advances by 1.0 (1 game day = 1 real hour awake). */
-const val TICKS_PER_GAME_DAY_AWAKE: Int = TICKS_PER_HOUR
+/** Ticks elapsed while awake before the day timer advances by 1.0 (1 game day = 5 real minutes awake). */
+const val TICKS_PER_GAME_DAY_AWAKE: Int = 5 * TICKS_PER_MINUTE
 
 /**
  * Ticks elapsed while sleeping before the day timer advances by 1.0
- * (~48 min asleep = 1 day, ~25% faster than awake).
+ * (~4 min asleep = 1 day, ~25% faster than awake).
  */
-val TICKS_PER_GAME_DAY_SLEEPING: Int = Math.round(TICKS_PER_HOUR * 0.8f)
+val TICKS_PER_GAME_DAY_SLEEPING: Int = Math.round(5 * TICKS_PER_MINUTE * 0.8f)
 
 // ---------------------------------------------------------------------------
 // Per-type modifiers
@@ -209,12 +211,15 @@ val EVOLUTION_CHARACTERS: Map<String, Map<String, Map<String, String>>> = mapOf(
     ),
 )
 
-/** Cumulative dayTimer thresholds to evolve out of each stage. */
+/** Cumulative dayTimer thresholds to evolve out of each stage.
+ * Scaled so that real-world evolution timing (in active ticks) is preserved:
+ * 1 game day = 50 ticks (5 min awake). */
 val EVOLUTION_DAY_THRESHOLDS: Map<String, Double> = mapOf(
-    "egg"   to 0.033,  // ≈ tick 20 for codeling 1× (~2 min awake)
-    "baby"  to 0.199,  // ≈ tick 120 cumulative for codeling 1× (~12 min)
-    "child" to 1.199,  // ≈ tick 720 cumulative for codeling 1× (~72 min)
-    "teen"  to 4.199,  // ≈ tick 2520 cumulative for codeling 1× (~252 min)
+    "egg"   to 0.396,    // ≈ tick 20 for codeling 1× (~2 min awake)
+    "baby"  to 5.988,    // ≈ tick 300 cumulative for codeling 1× (~30 min)
+    "child" to 23.988,   // ≈ tick 1200 cumulative for codeling 1× (~2 hr)
+    "teen"  to 95.988,   // ≈ tick 4800 cumulative for codeling 1× (~8 hr)
+    "adult" to 287.988,  // ≈ tick 14400 cumulative for codeling 1× (~24 hr)
 )
 
 val NEXT_STAGE_MAP: Map<String, String> = mapOf(
@@ -222,11 +227,35 @@ val NEXT_STAGE_MAP: Map<String, String> = mapOf(
     "baby"  to "child",
     "child" to "teen",
     "teen"  to "adult",
+    "adult" to "senior",
 )
 
 // ---------------------------------------------------------------------------
 // Attention Call constants
 // ---------------------------------------------------------------------------
+
+/**
+ * Runtime configuration passed into tick() on every game step.
+ * Populated from IDE settings so players can tune timing behaviour.
+ */
+data class GameConfig(
+    /** Whether the attention-call mechanic is active at all. */
+    val attentionCallsEnabled: Boolean = true,
+    /**
+     * Response-window in ticks for poop, misbehaviour, and gift calls.
+     * needy=20 (2 min), standard=50 (5 min), chilled=100 (10 min).
+     */
+    val attentionCallExpiryTicks: Int = 50,
+    /**
+     * Divisor applied to the base and max logChance probabilities for all
+     * probabilistic call spawns (poop, misbehaviour, gift).
+     * fast=1.0, medium=1.5, slow=2.0.
+     */
+    val attentionCallRateDivisor: Double = 1.0,
+)
+
+/** Sensible defaults used when no explicit config is provided. */
+val DEFAULT_GAME_CONFIG = GameConfig()
 
 /** Active (non-idle) ticks the player has to respond before a call expires (20 × 6 s = 2 min). */
 const val ATTENTION_CALL_RESPONSE_TICKS: Int = 20

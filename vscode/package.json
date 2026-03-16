@@ -2,7 +2,7 @@
   "name": "vscode-gotchi",
   "displayName": "vscode_gotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "0.4.3",
+  "version": "0.5.1",
   "publisher": "vscode-gotchi",
   "repository": {
     "type": "git",
@@ -72,6 +72,28 @@
           "default": 600,
           "minimum": 30,
           "description": "Seconds of sustained idle before entering deep idle (stats floored at 20, aging stops). Default: 600 seconds (10 minutes)."
+        },
+        "gotchi.attentionCallExpiry": {
+          "type": "string",
+          "enum": ["needy", "standard", "chilled"],
+          "enumDescriptions": [
+            "Needy (2 minutes) — the pet demands a quick response.",
+            "Standard (5 minutes) — a comfortable response window.",
+            "Chilled (10 minutes) — plenty of time before the call expires."
+          ],
+          "default": "standard",
+          "description": "Response window for cleaning, misbehaviour, and gift attention calls before they expire and apply a stat penalty. Other call types (hunger, sick, etc.) always use a fixed 2-minute window."
+        },
+        "gotchi.attentionCallRate": {
+          "type": "string",
+          "enum": ["fast", "medium", "slow"],
+          "enumDescriptions": [
+            "Fast — current default spawn rate.",
+            "Medium — 1.5× slower spawn rate.",
+            "Slow — 2× slower spawn rate."
+          ],
+          "default": "fast",
+          "description": "How quickly cleaning, misbehaviour, and gift attention calls can spawn. Uses a logarithmic probability curve; this setting scales the curve down to make calls less frequent."
         }
       }
     }

@@ -28,19 +28,21 @@ Status legend:
 
 ### 2.1 Stages
 
-| Stage  | Duration (codeling 1×) | Status | Notes |
-|--------|------------------------|--------|-------|
-| Egg    | ~2 min                 | `[x]`  | Auto-hatches after timer |
-| Baby   | ~10 min                | `[x]`  | Requires minimal care |
-| Child  | ~1 hr                  | `[x]`  | First stage of active care |
-| Teen   | ~3 hr                  | `[x]`  | 2 possible evolution variants per type |
-| Adult  | Indefinite             | `[x]`  | Up to 3 variants per type based on care score |
-| Senior | After ~24 h adult      | `[x]`  | Random daily death chance; peaceful death |
-| Dead   | Terminal               | `[x]`  | Shows age at death; prompts new game |
+| Stage  | Duration (game days) | Status | Notes |
+|--------|----------------------|--------|-------|
+| Egg    | ~1d                  | `[x]`  | Auto-hatches after timer |
+| Baby   | ~6d                  | `[x]`  | Requires minimal care |
+| Child  | ~18d                 | `[x]`  | First stage of active care |
+| Teen   | ~72d                 | `[x]`  | 2 possible evolution variants per type |
+| Adult  | ~192d                | `[x]`  | Up to 3 variants per type based on care score; auto-evolves to Senior at ~288d |
+| Senior | Indefinite           | `[x]`  | Natural death eligible at ≥ 365d (1 in-game year); peaceful death |
+| Dead   | Terminal             | `[x]`  | Shows age at death; prompts new game |
 
 Stage durations scale with `agingMultiplier` per pet type: bytebug 1.5× faster,
-pixelpup 1.25× faster, shellscript 0.75× (slower). For example, a bytebug
-spends only ~1.3 min as an egg and reaches adult in ~2 hr vs ~4.2 hr for codeling.
+pixelpup 1.25× faster, shellscript 0.75× (slower). Game-day milestones are the
+same for all types; only the real-world clock time differs. For example, a
+bytebug reaches adult in ~2.8 hr real time vs ~4.2 hr for codeling and ~5.6 hr
+for shellscript.
 See `DEV_NOTES.md` for the full per-type breakdown.
 
 ### 2.2 Evolution
@@ -500,7 +502,7 @@ Status: `[x]`
 | Sleep decay: hunger/happiness lose 1 every 5th sleeping tick | `[x]` | Prevents infinite stat preservation during extended sleep |
 | Sickness health drain message | `[x]` | `sickness_damage` event; humanised in event log |
 | Death screen with age/stage stats | `[x]` | |
-| Senior natural death (random chance after day 20) | `[x]` | |
+| Senior natural death (random chance after age ≥ 365d) | `[x]` | |
 | Peaceful death animation | `[ ]` | Covered by `died` reaction in section 5.6 |
 | `[S]` `gotchi.offlineDecayMaxFraction` (default 0.60) | `[ ]` | Cap offline stat loss; value hardcoded, expose as setting |
 

@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 import {
   PetState,
   HighScore,
+  GameConfig,
   applyOfflineDecay,
   tick,
   TICK_INTERVAL_SECONDS,
@@ -163,8 +164,23 @@ export function activate(context: vscode.ExtensionContext): void {
     const idleMs = Date.now() - lastActivityMs;
     const idle = idleMs > idleThresholdMs;
     const deepIdle = idleMs > idleDeepThresholdMs;
-    const attentionEnabled = cfg.get<boolean>("enableAttentionCalls", true);
-    const next = tick(currentState, idle, deepIdle, attentionEnabled);
+
+    // Map the attentionCallExpiry setting to a tick count.
+    const expiryMap: Record<string, number> = { needy: 20, standard: 50, chilled: 100 };
+    const expiryKey = cfg.get<string>("attentionCallExpiry", "standard");
+    const attentionCallExpiryTicks = expiryMap[expiryKey] ?? 50;
+
+    // Map the attentionCallRate setting to a rate divisor.
+    const rateMap: Record<string, number> = { fast: 1.0, medium: 1.5, slow: 2.0 };
+    const rateKey = cfg.get<string>("attentionCallRate", "fast");
+    const attentionCallRateDivisor = rateMap[rateKey] ?? 1.0;
+
+    const gameConfig: GameConfig = {
+      attentionCallsEnabled:    cfg.get<boolean>("enableAttentionCalls", true),
+      attentionCallExpiryTicks,
+      attentionCallRateDivisor,
+    };
+    const next = tick(currentState, idle, deepIdle, gameConfig);
     handleStateUpdate(next);
   }, TICK_INTERVAL_MS);
 

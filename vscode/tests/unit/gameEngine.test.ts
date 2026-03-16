@@ -42,6 +42,7 @@ import {
   BABY_DURATION_TICKS,
   CHILD_DURATION_TICKS,
   TEEN_DURATION_TICKS,
+  ADULT_DURATION_TICKS,
   SENIOR_NATURAL_DEATH_AGE_DAYS,
   VALID_PET_TYPES,
   STAGE_ORDER,
@@ -543,15 +544,15 @@ describe("tick — care-score accumulation", () => {
 
 describe("tick — stage progression", () => {
   it("promotes egg to baby when dayTimer reaches threshold", () => {
-    // dayTimer just below 0.033 → next tick pushes it over
-    const pet = makePet({ stage: "egg", ticksAlive: EGG_DURATION_TICKS - 1, dayTimer: 0.032 });
+    // dayTimer just below 0.396 → next tick pushes it over
+    const pet = makePet({ stage: "egg", ticksAlive: EGG_DURATION_TICKS - 1, dayTimer: 0.395 });
     const next = tick(pet);
     assert.equal(next.stage, "baby");
     assert.ok(next.events.includes("evolved_to_baby"));
   });
 
   it("resets ticksAlive to 0 on evolution", () => {
-    const pet = makePet({ stage: "egg", ticksAlive: EGG_DURATION_TICKS - 1, dayTimer: 0.032 });
+    const pet = makePet({ stage: "egg", ticksAlive: EGG_DURATION_TICKS - 1, dayTimer: 0.395 });
     const next = tick(pet);
     assert.equal(next.ticksAlive, 0);
   });
@@ -560,7 +561,7 @@ describe("tick — stage progression", () => {
     const pet = makePet({
       stage: "egg",
       ticksAlive: EGG_DURATION_TICKS - 1,
-      dayTimer: 0.032,
+      dayTimer: 0.395,
       careScoreHungerSum: 1000,
       careScoreTicks: 20,
     });
@@ -569,26 +570,33 @@ describe("tick — stage progression", () => {
     assert.equal(next.careScoreTicks, 0);
   });
 
-  it("does not promote adult or senior via normal tick", () => {
-    const adult = makePet({ stage: "adult", ticksAlive: 99999, dayTimer: 9999 });
-    const next = tick(adult);
-    assert.equal(next.stage, "adult");
+  it("promotes adult to senior when dayTimer reaches threshold", () => {
+    const pet = makePet({ stage: "adult", ticksAlive: ADULT_DURATION_TICKS - 1, dayTimer: 287.987 });
+    const next = tick(pet);
+    assert.equal(next.stage, "senior");
+    assert.ok(next.events.includes("evolved_to_senior"));
+  });
+
+  it("does not promote senior via normal tick", () => {
+    const senior = makePet({ stage: "senior", ticksAlive: 99999, dayTimer: 9999 });
+    const next = tick(senior);
+    assert.equal(next.stage, "senior");
   });
 
   it("promotes baby to child when dayTimer reaches threshold", () => {
-    const pet = makePet({ stage: "baby", ticksAlive: BABY_DURATION_TICKS - 1, dayTimer: 0.198 });
+    const pet = makePet({ stage: "baby", ticksAlive: BABY_DURATION_TICKS - 1, dayTimer: 5.987 });
     const next = tick(pet);
     assert.equal(next.stage, "child");
   });
 
   it("promotes child to teen when dayTimer reaches threshold", () => {
-    const pet = makePet({ stage: "child", ticksAlive: CHILD_DURATION_TICKS - 1, dayTimer: 1.198 });
+    const pet = makePet({ stage: "child", ticksAlive: CHILD_DURATION_TICKS - 1, dayTimer: 23.987 });
     const next = tick(pet);
     assert.equal(next.stage, "teen");
   });
 
   it("promotes teen to adult when dayTimer reaches threshold", () => {
-    const pet = makePet({ stage: "teen", ticksAlive: TEEN_DURATION_TICKS - 1, dayTimer: 4.198 });
+    const pet = makePet({ stage: "teen", ticksAlive: TEEN_DURATION_TICKS - 1, dayTimer: 95.987 });
     const next = tick(pet);
     assert.equal(next.stage, "adult");
   });
@@ -1083,15 +1091,15 @@ describe("promoteToSenior", () => {
 // ---------------------------------------------------------------------------
 
 describe("checkOldAgeDeath", () => {
-  it("kills a senior with health <= 0 and age >= 20", () => {
-    const pet = makePet({ stage: "senior", health: 0, ageDays: 20 });
+  it("kills a senior with health <= 0 and age >= 365", () => {
+    const pet = makePet({ stage: "senior", health: 0, ageDays: 365 });
     const next = checkOldAgeDeath(pet);
     assert.equal(next.alive, false);
     assert.ok(next.events.includes("died_of_old_age"));
   });
 
   it("does not kill a senior below the death age", () => {
-    const pet = makePet({ stage: "senior", health: 0, ageDays: 19 });
+    const pet = makePet({ stage: "senior", health: 0, ageDays: 364 });
     const next = checkOldAgeDeath(pet);
     assert.equal(next.alive, true);
   });
@@ -1108,8 +1116,8 @@ describe("checkOldAgeDeath", () => {
     assert.equal(next, pet);
   });
 
-  it("SENIOR_NATURAL_DEATH_AGE_DAYS is 20", () => {
-    assert.equal(SENIOR_NATURAL_DEATH_AGE_DAYS, 20);
+  it("SENIOR_NATURAL_DEATH_AGE_DAYS is 365", () => {
+    assert.equal(SENIOR_NATURAL_DEATH_AGE_DAYS, 365);
   });
 });
 
@@ -1316,7 +1324,7 @@ describe("integration — action sequence", () => {
       health: 100,
       poops: 0,
       sick: false,
-      dayTimer: 4.198,
+      dayTimer: 95.987,
     } as PetState;
     const next = tick(pet);
     assert.equal(next.stage, "adult");
