@@ -9,8 +9,10 @@ compatibility: opencode
 
 - **Never push directly to `main`.**
 - **Never commit directly to `main`.**
-- For every new feature or bug fix, ask the user what branch name to use before starting work. Suggest a name based on the feature (e.g. `feat/poo-animation`, `fix/health-bar-colour`).
+- **Never write, edit, or build any code until a feature branch is checked out.**
+- For every new feature or bug fix, ask the user what branch name to use before doing anything else. Suggest a name based on the feature (e.g. `feat/poo-animation`, `fix/health-bar-colour`).
 - Only skip asking if the user has already named the branch themselves in their message.
+- Create and check out the branch immediately after the name is confirmed — before reading files, writing code, or running builds.
 
 ## Push / merge / tag rules — explicit permission required for every step
 
@@ -29,10 +31,11 @@ The following actions each require **explicit user instruction** before performi
 
 ## Workflow
 
-1. Before starting any code change, confirm the target branch with the user.
-2. Check out or create that branch.
-3. Commit work there.
-4. When work is done, stop and tell the user:
+1. **Before touching any file:** confirm the target branch name with the user.
+2. **Immediately check out or create that branch** — do not read, edit, or build anything until this step is done.
+3. Do the work (code changes, builds, doc updates).
+4. Commit work on that branch.
+5. When work is done, stop and tell the user:
    - What was changed
    - What commits are on the branch
    - Which of the release steps still need to happen
@@ -40,7 +43,9 @@ The following actions each require **explicit user instruction** before performi
 
 ## Commit style
 
-- One commit per logical unit of work (per todo item).
+- **One commit per feature or bug fix.** Never batch multiple features or fixes into a single commit.
+- Each commit must be self-contained: include the source change, its doc updates, and rebuilt artifacts together — but only for that one feature or fix.
+- If a task has multiple independent features or fixes, commit each one separately before starting the next.
 - Message format: `<type>: <short description>` — types are `feat`, `fix`, `chore`, `refactor`, `docs`, `test`.
 
 ## Build artifacts — required before every feature/fix commit
