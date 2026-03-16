@@ -15,6 +15,8 @@ import java.awt.Toolkit
 import java.awt.event.AWTEventListener
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 /**
  * GotchiPlugin — application-level service that owns the pet state and
@@ -34,9 +36,21 @@ import java.util.concurrent.TimeUnit
  */
 class GotchiPlugin : Disposable {
 
-    @Volatile private var currentState: PetState? = null
-    @Volatile private var currentHighScore: HighScore? = null
-    @Volatile private var mealsGivenThisCycle: Int = 0
+    /**
+     * Guards all reads and writes of [currentState], [currentHighScore], and
+     * [mealsGivenThisCycle] so that [onTick] (AppExecutorUtil thread) and
+     * [handleCommand] / [triggerCodeActivity] (JCEF JS-query handler thread)
+     * cannot interleave.  Without this lock the two threads can both read the
+     * current state, compute independent next-states, and then the slower writer
+     * silently discards the faster writer's changes — causing, for example, the
+     * gift attention-call to be already expired by the time [praise] runs
+     * (BUGFIX-022).
+     */
+    private val stateLock = ReentrantLock()
+
+    private var currentState: PetState? = null
+    private var currentHighScore: HighScore? = null
+    private var mealsGivenThisCycle: Int = 0
     @Volatile private var lastCodeActivityTime: Long = 0L
 
     /** Timestamp of the last detected keyboard or mouse activity in the IDE. */
@@ -104,10 +118,13 @@ class GotchiPlugin : Disposable {
     // ── Tick ───────────────────────────────────────────────────────────────
 
     private fun onTick() {
-        val state = currentState ?: return
-        val attentionCallsEnabled = service<GotchiSettings>().enableAttentionCalls
-        currentState = tick(state, isIdle(), isDeepIdle(), attentionCallsEnabled)
-        broadcastState()
+        val ticked = stateLock.withLock {
+            val state = currentState ?: return@withLock false
+            val attentionCallsEnabled = service<GotchiSettings>().enableAttentionCalls
+            currentState = tick(state, isIdle(), isDeepIdle(), attentionCallsEnabled)
+            true
+        }
+        if (ticked) broadcastState()
     }
 
     // ── Commands (mirrors sidebarProvider.ts handleWebviewMessage exactly) ─
@@ -119,91 +136,104 @@ class GotchiPlugin : Disposable {
         // reset the idle timer immediately (BUGFIX-015).
         lastActivityTime = System.currentTimeMillis()
 
-        val state   = currentState
+        // BUGFIX-022: hold stateLock while reading and updating currentState so
+        // this handler and onTick cannot interleave (one would otherwise silently
+        // overwrite the other's changes with a stale-snapshot result).
+        var shouldBroadcast = false
+        stateLock.withLock {
+            val state   = currentState
 
-        if (state == null && command != "new_game") return
+            if (state == null && command != "new_game") return@withLock
 
-        // BUGFIX-002: block care actions server-side while pet is sleeping
-        val isSleeping = state?.sleeping ?: false
-        val sleepBlocked = setOf("feed", "play", "clean", "medicine", "praise", "scold")
-        if (isSleeping && command in sleepBlocked) return
+            // BUGFIX-002: block care actions server-side while pet is sleeping
+            val isSleeping = state?.sleeping ?: false
+            val sleepBlocked = setOf("feed", "play", "clean", "medicine", "praise", "scold")
+            if (isSleeping && command in sleepBlocked) return@withLock
 
-        var nextState: PetState? = null
+            var nextState: PetState? = null
 
-        when (command) {
-            "feed" -> {
-                state ?: return
-                val feedType = message["feedType"] as? String
-                nextState = if (feedType == "snack") {
-                    feedSnack(state)
-                } else {
-                    val ns = feedMeal(state, mealsGivenThisCycle)
-                    if ("fed_meal" in ns.events) mealsGivenThisCycle++
-                    ns
+            when (command) {
+                "feed" -> {
+                    state ?: return@withLock
+                    val feedType = message["feedType"] as? String
+                    nextState = if (feedType == "snack") {
+                        startSnack(state)
+                    } else {
+                        val ns = feedMeal(state, mealsGivenThisCycle)
+                        if ("fed_meal" in ns.events) mealsGivenThisCycle++
+                        ns
+                    }
                 }
-            }
 
-            "play" -> {
-                state ?: return
-                var ns = play(state)
-                val game   = message["game"]   as? String
-                val result = message["result"] as? String
-                if (game != null && result != null && "play_refused_no_energy" !in ns.events) {
-                    ns = applyMinigameResult(ns, game, result)
+                "snack_consumed" -> {
+                    state ?: return@withLock
+                    nextState = consumeSnack(state)
                 }
-                nextState = ns
+
+                "play" -> {
+                    state ?: return@withLock
+                    var ns = play(state)
+                    val game   = message["game"]   as? String
+                    val result = message["result"] as? String
+                    if (game != null && result != null && "play_refused_no_energy" !in ns.events) {
+                        ns = applyMinigameResult(ns, game, result)
+                    }
+                    nextState = ns
+                }
+
+                "sleep" -> {
+                    state ?: return@withLock
+                    val ns = sleep(state)
+                    if ("fell_asleep" in ns.events) mealsGivenThisCycle = 0
+                    nextState = ns
+                }
+
+                "wake" -> {
+                    state ?: return@withLock
+                    nextState = wake(state)
+                }
+
+                "clean" -> {
+                    state ?: return@withLock
+                    nextState = clean(state)
+                }
+
+                "medicine" -> {
+                    state ?: return@withLock
+                    nextState = giveMedicine(state)
+                }
+
+                "scold" -> {
+                    state ?: return@withLock
+                    nextState = scold(state)
+                }
+
+                "praise" -> {
+                    state ?: return@withLock
+                    nextState = praise(state)
+                }
+
+                "new_game" -> {
+                    val name    = (message["name"]    as? String) ?: "Gotchi"
+                    val petType = (message["petType"] as? String) ?: "codeling"
+                    val color   = (message["color"]   as? String) ?: "neon"
+                    nextState = createPet(name, petType, color)
+                    mealsGivenThisCycle = 0
+                }
+
+                // Idle timer already reset above; no state change needed (BUGFIX-015).
+                "user_activity" -> return@withLock
+
+                else -> return@withLock
             }
 
-            "sleep" -> {
-                state ?: return
-                val ns = sleep(state)
-                if ("fell_asleep" in ns.events) mealsGivenThisCycle = 0
-                nextState = ns
+            if (nextState != null) {
+                currentState = nextState
+                shouldBroadcast = true
             }
-
-            "wake" -> {
-                state ?: return
-                nextState = wake(state)
-            }
-
-            "clean" -> {
-                state ?: return
-                nextState = clean(state)
-            }
-
-            "medicine" -> {
-                state ?: return
-                nextState = giveMedicine(state)
-            }
-
-            "scold" -> {
-                state ?: return
-                nextState = scold(state)
-            }
-
-            "praise" -> {
-                state ?: return
-                nextState = praise(state)
-            }
-
-            "new_game" -> {
-                val name    = (message["name"]    as? String) ?: "Gotchi"
-                val petType = (message["petType"] as? String) ?: "codeling"
-                val color   = (message["color"]   as? String) ?: "neon"
-                nextState = createPet(name, petType, color)
-                mealsGivenThisCycle = 0
-            }
-
-            // Idle timer already reset above; no state change needed (BUGFIX-015).
-            "user_activity" -> return
-
-            else -> return
         }
 
-        if (nextState != null) {
-            currentState = nextState
-            broadcastState()
-        }
+        if (shouldBroadcast) broadcastState()
     }
 
     // ── Code-activity trigger (called by GotchiEventsManager) ─────────────
@@ -212,9 +242,12 @@ class GotchiPlugin : Disposable {
         val now = System.currentTimeMillis()
         if (now - lastCodeActivityTime < CODE_ACTIVITY_THROTTLE_SECONDS * 1000L) return
         lastCodeActivityTime = now
-        val state = currentState ?: return
-        currentState = applyCodeActivity(state)
-        broadcastState()
+        val ticked = stateLock.withLock {
+            val state = currentState ?: return@withLock false
+            currentState = applyCodeActivity(state)
+            true
+        }
+        if (ticked) broadcastState()
     }
 
     // ── Panel / widget registration ────────────────────────────────────────
@@ -244,11 +277,16 @@ class GotchiPlugin : Disposable {
     // ── Broadcast ──────────────────────────────────────────────────────────
 
     fun broadcastState() {
-        val state = currentState
-        val meals = mealsGivenThisCycle
+        // Take a consistent snapshot under the lock so we never observe a
+        // half-written state that was modified concurrently by onTick or
+        // handleCommand (BUGFIX-022).
+        val (state, meals, prevHighScore) = stateLock.withLock {
+            Triple(currentState, mealsGivenThisCycle, currentHighScore)
+        }
 
         // Persist on every broadcast so crashes don't lose state
         val persistence = service<GotchiPersistence>()
+        var highScore = prevHighScore
         if (state != null) {
             persistence.savePetState(state)
             persistence.mealsGivenThisCycle = meals
@@ -257,11 +295,10 @@ class GotchiPlugin : Disposable {
             if (!state.alive) {
                 val diedAt    = System.currentTimeMillis()
                 val elapsed   = if (state.spawnedAt > 0L) diedAt - state.spawnedAt else 0L
-                val prevScore = currentHighScore
-                val prevElapsed = if (prevScore != null) prevScore.diedAt - prevScore.spawnedAt else -1L
-                val isNewRecord = prevScore == null ||
-                    state.ageDays > prevScore.ageDays ||
-                    (state.ageDays == prevScore.ageDays && elapsed > prevElapsed)
+                val prevElapsed = if (prevHighScore != null) prevHighScore.diedAt - prevHighScore.spawnedAt else -1L
+                val isNewRecord = prevHighScore == null ||
+                    state.ageDays > prevHighScore.ageDays ||
+                    (state.ageDays == prevHighScore.ageDays && elapsed > prevElapsed)
                 if (isNewRecord) {
                     val newScore = HighScore(
                         ageDays   = state.ageDays,
@@ -272,14 +309,13 @@ class GotchiPlugin : Disposable {
                         spawnedAt = state.spawnedAt,
                         diedAt    = diedAt,
                     )
-                    currentHighScore = newScore
+                    stateLock.withLock { currentHighScore = newScore }
+                    highScore = newScore
                     persistence.saveHighScore(newScore)
                 }
             }
         }
         persistence.lastSaveTimestamp = System.currentTimeMillis()
-
-        val highScore = currentHighScore
 
         // Fire IDE notifications for attention_call_* events (only when mechanic is enabled)
         if (state != null && service<GotchiSettings>().enableAttentionCalls) {

@@ -313,8 +313,9 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     val dayTimer = state.dayTimer + ageIncrement
     ageDays = dayTimer.toInt()
 
-    // Poop accumulation
-    if (!sleeping) {
+    // Poop accumulation — suppressed during any idle state so the pet never
+    // poops when the user is away from the IDE.
+    if (!sleeping && !isIdle) {
         ticksSinceLastPoop += 1
         if (ticksSinceLastPoop >= nextPoopIntervalTicks) {
             poops += 1
@@ -334,8 +335,8 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         checkWeightTierEvents(prevWeight, weight, events)
     }
 
-    // Sickness from dirty environment
-    if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK && !sick) {
+    // Sickness from dirty environment — only fires when the IDE is active.
+    if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK && !sick && !isIdle) {
         sick = true
         events.add("became_sick")
     }
@@ -577,28 +578,31 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int): PetState {
             weight            = newWeight,
             consecutiveSnacks = 0,
             events            = events,
-            activeAttentionCall      = pick?.activeAttentionCall      ?: state.activeAttentionCall,
+            activeAttentionCall      = if (pick != null) pick.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = pick?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = pick?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
     )
 }
 
-fun feedSnack(state: PetState): PetState {
+/**
+ * Register a snack being given to the pet (button-press phase).
+ *
+ * Validates the per-cycle cap, increments snack counters, and answers any
+ * active hunger/critical_health attention call.  Does NOT yet apply stat
+ * effects — those are deferred until the pet physically reaches the snack on
+ * the stage (see [consumeSnack]).
+ *
+ * Emits `snack_placed` (triggers the floor-item animation in the webview) or
+ * `snack_refused` if the cap has been reached.
+ */
+fun startSnack(state: PetState): PetState {
     if (state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE)
         return withDerivedFields(state.copy(events = listOf("snack_refused")))
 
     val consecutiveSnacks    = state.consecutiveSnacks + 1
     val snacksGivenThisCycle = state.snacksGivenThisCycle + 1
-    val events = mutableListOf<String>()
-    var sick = state.sick
-    if (consecutiveSnacks >= MAX_CONSECUTIVE_SNACKS_BEFORE_SICK && !sick) {
-        sick = true
-        events.add("became_sick")
-    }
-    events.add("fed_snack")
-    val newWeight = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN)
-    checkWeightTierEvents(state.weight, newWeight, events)
+    val events = mutableListOf("snack_placed")
 
     val answered = answerAttentionCall(state, "hunger") ?: answerAttentionCall(state, "critical_health")
     if (answered != null) {
@@ -608,16 +612,42 @@ fun feedSnack(state: PetState): PetState {
 
     return withDerivedFields(
         state.copy(
-            happiness            = clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
-            hunger               = clampStat(state.hunger    + FEED_SNACK_HUNGER_BOOST),
-            weight               = newWeight,
             consecutiveSnacks    = consecutiveSnacks,
             snacksGivenThisCycle = snacksGivenThisCycle,
-            sick                 = sick,
             events               = events,
-            activeAttentionCall      = answered?.activeAttentionCall      ?: state.activeAttentionCall,
+            activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
+        )
+    )
+}
+
+/**
+ * Apply the stat effects of a snack once the pet reaches it on the stage.
+ *
+ * Called when the webview detects the pet touching the snack floor item.
+ * Applies hunger/happiness/weight boosts and — if [PetState.consecutiveSnacks]
+ * is already at the maximum (incremented by the earlier [startSnack] call) —
+ * triggers sickness.
+ */
+fun consumeSnack(state: PetState): PetState {
+    val events = mutableListOf<String>()
+    var sick = state.sick
+    if (state.consecutiveSnacks >= MAX_CONSECUTIVE_SNACKS_BEFORE_SICK && !sick) {
+        sick = true
+        events.add("became_sick")
+    }
+    events.add("fed_snack")
+    val newWeight = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN)
+    checkWeightTierEvents(state.weight, newWeight, events)
+
+    return withDerivedFields(
+        state.copy(
+            happiness = clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
+            hunger    = clampStat(state.hunger    + FEED_SNACK_HUNGER_BOOST),
+            weight    = newWeight,
+            sick      = sick,
+            events    = events,
         )
     )
 }
@@ -639,7 +669,7 @@ fun play(state: PetState): PetState {
             weight            = newWeight,
             consecutiveSnacks = 0,
             events            = events,
-            activeAttentionCall      = answered?.activeAttentionCall      ?: state.activeAttentionCall,
+            activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
@@ -671,7 +701,7 @@ fun sleep(state: PetState): PetState {
         state.copy(
             sleeping = true,
             events   = events,
-            activeAttentionCall      = answered?.activeAttentionCall      ?: state.activeAttentionCall,
+            activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
@@ -699,7 +729,7 @@ fun clean(state: PetState): PetState {
             ticksSinceLastPoop   = 0,
             ticksWithUncleanedPoop = 0,
             events               = events,
-            activeAttentionCall      = answered?.activeAttentionCall      ?: state.activeAttentionCall,
+            activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
@@ -718,7 +748,7 @@ fun giveMedicine(state: PetState): PetState {
         withDerivedFields(
             state.copy(
                 sick = false, medicineDosesGiven = 0, events = events,
-                activeAttentionCall      = answered?.activeAttentionCall      ?: state.activeAttentionCall,
+                activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
                 attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
                 attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
             )
@@ -727,7 +757,7 @@ fun giveMedicine(state: PetState): PetState {
         withDerivedFields(
             state.copy(
                 medicineDosesGiven = doses, events = events,
-                activeAttentionCall      = answered?.activeAttentionCall      ?: state.activeAttentionCall,
+                activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
                 attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
                 attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
             )
@@ -743,7 +773,7 @@ fun scold(state: PetState): PetState {
         state.copy(
             discipline = clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
             events     = events,
-            activeAttentionCall      = answered?.activeAttentionCall      ?: state.activeAttentionCall,
+            activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
@@ -763,7 +793,7 @@ fun praise(state: PetState): PetState {
             discipline  = clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
             happiness   = clampStat(state.happiness  + happinessBonus),
             events      = events,
-            activeAttentionCall      = answered?.activeAttentionCall      ?: state.activeAttentionCall,
+            activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )

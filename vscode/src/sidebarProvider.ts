@@ -15,7 +15,8 @@ import {
   HighScore,
   createPet,
   feedMeal,
-  feedSnack,
+  startSnack,
+  consumeSnack,
   play,
   applyMinigameResult,
   sleep,
@@ -188,13 +189,20 @@ export class SidebarProvider
           return;
         }
         if (message.feedType === "snack") {
-          nextState = feedSnack(state);
+          nextState = startSnack(state);
         } else {
           nextState = feedMeal(state, this.mealsGivenThisCycle);
           if (nextState.events.includes("fed_meal")) {
             this.mealsGivenThisCycle += 1;
           }
         }
+        break;
+
+      case "snack_consumed":
+        if (state === null) {
+          return;
+        }
+        nextState = consumeSnack(state);
         break;
 
       case "play":

@@ -367,3 +367,69 @@ rendered at 75% of their normal body width. The threshold mirrors
 `WEIGHT_HAPPINESS_LOW_THRESHOLD = 17` from the game engine — the same value
 that triggers the skinny event — applied symmetrically to the fat side's
 existing threshold structure.
+
+## BUGFIX-020 — Poop accumulates while the pet is idle or the IDE is closed
+
+**Status:** Fixed (branch `main`)
+**Files:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`
+
+**Problem:** Poop accumulation in `tick()` was guarded only by `!sleeping`, so
+the poop counter kept incrementing during regular idle and deep idle, and the
+sick-from-poop trigger could fire during those states. Additionally,
+`applyOfflineDecay()` in the VS Code engine contained a while-loop that
+accumulated poops proportional to elapsed closed time, so reopening the IDE
+after a long absence could immediately load the pet with poops and sickness.
+
+**Fix:** Added `&& !isIdle` to both the poop-accumulation guard and the
+sick-from-poop trigger in `tick()`. Removed the poop while-loop entirely from
+`applyOfflineDecay()` (the PyCharm version had no such loop and required no
+change).
+
+## BUGFIX-021 — Snack stat effects applied immediately on button click instead of when the pet eats
+
+**Status:** Fixed (branch `main`)
+**Files:** `vscode/src/gameEngine.ts`, `vscode/src/sidebarProvider.ts`, `vscode/media/sidebar.js`,
+`pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`, `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt`,
+`pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `feedSnack()` applied all stat effects (hunger, happiness, weight
+boosts and consecutive-snack sickness) as soon as the player clicked the Snack
+button, even though the snack floor item hadn't been eaten yet. This made the
+animation purely cosmetic rather than mechanically meaningful.
+
+**Fix:** Split `feedSnack` into two functions: `startSnack` (called on button
+click — validates the cap, increments counters, emits `snack_placed` to spawn
+the floor item) and `consumeSnack` (called when the webview detects the pet
+physically reaching the snack — applies hunger/happiness/weight boosts, checks
+for consecutive-snack sickness, emits `fed_snack`). The webview sends a new
+`snack_consumed` command to the host on collision, which routes to `consumeSnack`.
+`snack_placed` is treated as a silent event and suppressed from the event log.
+
+---
+
+## BUGFIX-022 — Gift box clears but praise doesn't trigger gift acceptance in PyCharm
+
+**Status:** Fixed (branch `main`)
+**Files:** `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`,
+`pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt`
+
+**Problem:** Two separate bugs prevented the gift attention call from being properly accepted via the Praise button in PyCharm.
+
+**Root cause #1 — Kotlin Elvis operator clears nothing:**
+Every action function that called `answerAttentionCall` used the pattern:
+```kotlin
+activeAttentionCall = answered?.activeAttentionCall ?: state.activeAttentionCall
+```
+When `answered` is non-null but `answered.activeAttentionCall` is `null` (the clear-call intent), the Elvis `?:` falls through to `state.activeAttentionCall` (still `"gift"`), so the field is never cleared. Affected all 9 call sites across `tick`, `startSnack`, `play`, `sleep`, `clean`, `giveMedicine` (×2), `scold`, and `praise`.
+
+**Root cause #2 — Race condition between tick thread and command handler:**
+`GotchiPlugin` uses an `AppExecutorUtil` scheduled thread for `onTick` and a separate JCEF JS-query handler thread for `handleCommand`. Both read `currentState`, compute a new state, and write back without synchronization. If `onTick` fires between `handleCommand`'s read and write — expiring the gift call mid-flight — `praise(state)` receives a snapshot still showing `activeAttentionCall = "gift"`, but then overwrites `currentState` with a result derived from that stale snapshot, losing the tick's changes and making the acceptance appear to work, but only if the race doesn't go the other way (tick fires first, expires the call, `praise` then sees `null` and produces no `attention_call_answered_gift` event or happiness boost).
+
+**Fix #1:** Replaced all 9 Elvis-operator occurrences with explicit null-checks:
+```kotlin
+activeAttentionCall = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall
+```
+
+**Fix #2:** Added a `ReentrantLock` (`stateLock`) to `GotchiPlugin`. The lock guards all reads and writes of `currentState`, `currentHighScore`, and `mealsGivenThisCycle`. `onTick`, `handleCommand`, and `triggerCodeActivity` each acquire the lock while reading and updating state; `broadcastState` takes a consistent snapshot under the lock at entry before performing persistence and UI work outside it.
+
+**VS Code is not affected** — the Node.js event loop is single-threaded so `setInterval` and the webview message handler never interleave. The TypeScript spread pattern (`...(answered ?? {})`) also handles the null-clear correctly.
