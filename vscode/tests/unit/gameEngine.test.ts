@@ -14,7 +14,8 @@ import {
   createPet,
   tick,
   feedMeal,
-  feedSnack,
+  startSnack,
+  consumeSnack,
   play,
   applyMinigameResult,
   sleep,
@@ -648,49 +649,73 @@ describe("feedMeal", () => {
 // feedSnack
 // ---------------------------------------------------------------------------
 
-describe("feedSnack", () => {
+// ---------------------------------------------------------------------------
+// startSnack / consumeSnack
+// ---------------------------------------------------------------------------
+
+describe("startSnack", () => {
+  it("increments consecutiveSnacks", () => {
+    const pet = makePet({ consecutiveSnacks: 0 });
+    const next = startSnack(pet);
+    assert.equal(next.consecutiveSnacks, 1);
+  });
+
+  it("increments snacksGivenThisCycle", () => {
+    const pet = makePet({ snacksGivenThisCycle: 0 });
+    const next = startSnack(pet);
+    assert.equal(next.snacksGivenThisCycle, 1);
+  });
+
+  it("emits snack_placed event", () => {
+    const pet = makePet();
+    const next = startSnack(pet);
+    assert.ok(next.events.includes("snack_placed"));
+  });
+
+  it("emits snack_refused when cap reached", () => {
+    const pet = makePet({ snacksGivenThisCycle: 3 });
+    const next = startSnack(pet);
+    assert.ok(next.events.includes("snack_refused"));
+  });
+});
+
+describe("consumeSnack", () => {
   it("increases happiness by 5", () => {
     const pet = makePet({ happiness: 40 });
-    const next = feedSnack(pet);
+    const next = consumeSnack(pet);
     assert.equal(next.happiness, 45);
   });
 
   it("increases weight by 5 (FEED_SNACK_WEIGHT_GAIN)", () => {
     const pet = makePet({ weight: 10 });
-    const next = feedSnack(pet);
+    const next = consumeSnack(pet);
     assert.equal(next.weight, 15);
   });
 
-  it("increments consecutiveSnacks", () => {
-    const pet = makePet({ consecutiveSnacks: 0 });
-    const next = feedSnack(pet);
-    assert.equal(next.consecutiveSnacks, 1);
-  });
-
-  it("triggers sickness on 3rd consecutive snack", () => {
-    const pet = makePet({ consecutiveSnacks: 2 });
-    const next = feedSnack(pet);
+  it("triggers sickness when consecutiveSnacks >= 3", () => {
+    const pet = makePet({ consecutiveSnacks: 3 });
+    const next = consumeSnack(pet);
     assert.equal(next.sick, true);
     assert.ok(next.events.includes("became_sick"));
   });
 
   it("does not trigger sickness again if already sick", () => {
-    const pet = makePet({ consecutiveSnacks: 2, sick: true });
-    const next = feedSnack(pet);
+    const pet = makePet({ consecutiveSnacks: 3, sick: true });
+    const next = consumeSnack(pet);
     assert.equal(next.sick, true);
-    const becameSickCount = next.events.filter((e) => e === "became_sick").length;
+    const becameSickCount = next.events.filter((e: string) => e === "became_sick").length;
     assert.equal(becameSickCount, 0);
   });
 
   it("emits fed_snack event", () => {
     const pet = makePet();
-    const next = feedSnack(pet);
+    const next = consumeSnack(pet);
     assert.ok(next.events.includes("fed_snack"));
   });
 
   it("clamps happiness at 100", () => {
     const pet = makePet({ happiness: 95 });
-    const next = feedSnack(pet);
+    const next = consumeSnack(pet);
     assert.equal(next.happiness, 100);
   });
 });
@@ -1250,13 +1275,13 @@ describe("integration — action sequence", () => {
 
   it("consecutive snacks → sick → medicine → cured", () => {
     let pet = createPet("Sickly", "codeling", "neon");
-    // feedSnack has a per-cycle cap of 2; use consecutiveSnacks override to
-    // trigger the 3-consecutive-snacks sickness path directly.
-    pet = feedSnack(pet);                                          // snack 1
-    pet = { ...pet, snacksGivenThisCycle: 0 } as PetState;       // reset cycle cap
-    pet = feedSnack(pet);                                          // snack 2
-    pet = { ...pet, snacksGivenThisCycle: 0 } as PetState;       // reset cycle cap
-    pet = feedSnack(pet);                                          // snack 3 → sick
+    // Use the two-step snack model: startSnack (button press) + consumeSnack (pet eats).
+    // startSnack has a per-cycle cap of 2; reset snacksGivenThisCycle to bypass it.
+    pet = consumeSnack(startSnack(pet));                              // snack 1
+    pet = { ...pet, snacksGivenThisCycle: 0 } as PetState;          // reset cycle cap
+    pet = consumeSnack(startSnack(pet));                              // snack 2
+    pet = { ...pet, snacksGivenThisCycle: 0 } as PetState;          // reset cycle cap
+    pet = consumeSnack(startSnack(pet));                              // snack 3 → sick
     assert.equal(pet.sick, true);
 
     pet = giveMedicine(pet);

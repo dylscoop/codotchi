@@ -913,8 +913,10 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   const dayTimer = state.dayTimer + ageIncrement;
   ageDays = Math.floor(dayTimer);
 
-  // Poop accumulation — interval is per-type and resampled with high volatility
-  if (!sleeping) {
+  // Poop accumulation — interval is per-type and resampled with high volatility.
+  // Suppressed during any idle state (regular idle, deep idle) so the pet never
+  // poops when the user is away from the IDE.
+  if (!sleeping && !isIdle) {
     ticksSinceLastPoop += 1;
     if (ticksSinceLastPoop >= nextPoopIntervalTicks) {
       poops += 1;
@@ -936,8 +938,9 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     checkWeightTierEvents(prevWeight, weight, events);
   }
 
-  // Sickness from dirty environment
-  if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK && !sick) {
+  // Sickness from dirty environment — only fires when the IDE is active so the
+  // pet cannot be made sick by accumulated poop during idle or while closed.
+  if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK && !sick && !isIdle) {
     sick = true;
     events.push("became_sick");
   }
@@ -1252,33 +1255,27 @@ export function feedMeal(state: PetState, mealsGivenThisCycle: number): PetState
 }
 
 /**
- * Give the pet a snack.
+ * Register a snack being given to the pet (button-press phase).
  *
- * If the cycle cap (SNACK_MAX_PER_CYCLE) is exceeded the action is a no-op
- * and a "snack_refused" event is emitted.  Three consecutive snacks trigger
- * sickness.
+ * Validates the per-cycle cap, increments the snack counters, and answers any
+ * active hunger/critical_health attention call.  Does NOT yet apply stat
+ * effects — those are deferred until the pet physically reaches the snack on
+ * the stage (see {@link consumeSnack}).
+ *
+ * Emits `snack_placed` (triggers the floor-item animation in the webview) or
+ * `snack_refused` if the cap has been reached.
  *
  * @param state - The current pet state.
  * @returns A new PetState after the action.
  */
-export function feedSnack(state: PetState): PetState {
+export function startSnack(state: PetState): PetState {
   if (state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE) {
     return withDerivedFields({ ...state, events: ["snack_refused"] });
   }
 
   const consecutiveSnacks = state.consecutiveSnacks + 1;
   const snacksGivenThisCycle = state.snacksGivenThisCycle + 1;
-  const events: string[] = [];
-  let sick = state.sick;
-
-  if (consecutiveSnacks >= MAX_CONSECUTIVE_SNACKS_BEFORE_SICK && !sick) {
-    sick = true;
-    events.push("became_sick");
-  }
-  events.push("fed_snack");
-
-  const newWeight = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN);
-  checkWeightTierEvents(state.weight, newWeight, events);
+  const events: string[] = ["snack_placed"];
 
   const answered = answerAttentionCall(state, "hunger") ?? answerAttentionCall(state, "critical_health");
   if (answered) {
@@ -1289,11 +1286,41 @@ export function feedSnack(state: PetState): PetState {
   return withDerivedFields({
     ...state,
     ...(answered ?? {}),
+    consecutiveSnacks,
+    snacksGivenThisCycle,
+    events,
+  });
+}
+
+/**
+ * Apply the stat effects of a snack once the pet reaches it on the stage.
+ *
+ * Called when the webview detects the pet touching the snack floor item.
+ * Applies hunger/happiness/weight boosts and — if `consecutiveSnacks` is
+ * already at the maximum (incremented by the earlier {@link startSnack} call)
+ * — triggers sickness.
+ *
+ * @param state - The current pet state.
+ * @returns A new PetState after the action.
+ */
+export function consumeSnack(state: PetState): PetState {
+  const events: string[] = [];
+  let sick = state.sick;
+
+  if (state.consecutiveSnacks >= MAX_CONSECUTIVE_SNACKS_BEFORE_SICK && !sick) {
+    sick = true;
+    events.push("became_sick");
+  }
+  events.push("fed_snack");
+
+  const newWeight = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN);
+  checkWeightTierEvents(state.weight, newWeight, events);
+
+  return withDerivedFields({
+    ...state,
     hunger: clampStat(state.hunger + FEED_SNACK_HUNGER_BOOST),
     happiness: clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
     weight: newWeight,
-    consecutiveSnacks,
-    snacksGivenThisCycle,
     sick,
     events,
   });
@@ -1615,33 +1642,13 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
   const maxHungerLoss = Math.floor(state.hunger * OFFLINE_DECAY_MAX_FRACTION);
   const maxHappinessLoss = Math.floor(state.happiness * OFFLINE_DECAY_MAX_FRACTION);
 
-  // Advance poop accumulation for offline ticks (mirrors live tick logic,
-  // but without a sleeping guard — hunger/happiness decay above also ignores
-  // sleeping for simplicity).
-  let poops = state.poops;
-  let ticksSinceLastPoop = state.ticksSinceLastPoop;
-  let nextPoopIntervalTicks = state.nextPoopIntervalTicks;
-  let remainingTicks = Math.floor(elapsedTicks);
-  while (remainingTicks > 0) {
-    const ticksUntilNextPoop = nextPoopIntervalTicks - ticksSinceLastPoop;
-    if (remainingTicks >= ticksUntilNextPoop) {
-      remainingTicks -= ticksUntilNextPoop;
-      poops += 1;
-      ticksSinceLastPoop = 0;
-      nextPoopIntervalTicks = sampleNextPoopInterval(state.petType);
-    } else {
-      ticksSinceLastPoop += remainingTicks;
-      remainingTicks = 0;
-    }
-  }
+  // Poop does NOT accumulate while the IDE is closed — the same rule that
+  // suppresses pooping during idle/deep idle applies to offline time too.
 
   return withDerivedFields({
     ...state,
     hunger: clampStat(state.hunger - Math.min(hungerDecayTotal, maxHungerLoss)),
     happiness: clampStat(state.happiness - Math.min(happinessDecayTotal, maxHappinessLoss)),
-    poops,
-    ticksSinceLastPoop,
-    nextPoopIntervalTicks,
     // Treat offline time as awake for stat decay; aging does NOT advance while the IDE is closed.
     dayTimer: state.dayTimer,
     ageDays: state.ageDays,

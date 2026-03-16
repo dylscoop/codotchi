@@ -1,25 +1,32 @@
 # Version History
 
-## v0.4.2 — current (in progress)
+## v0.4.3 — current (in progress)
 
-### Changes from v0.4.1
+### Changes from v0.4.2
 
 | File | What changed |
 |------|-------------|
-| `vscode/media/sidebar.js` | BUGFIX-019: `weightWidthMultiplier` returns `0.75` for weight < 17 (skinny); gift box floor sprite appears while `gift` attention call is active and clears on dismissal; snack food items (candy/bone) spawn on the floor on `fed_snack` event, pet walks toward and eats them |
-| `pycharm/src/main/resources/webview/sidebar.js` | Same three changes mirrored from VS Code |
-| `vscode/package.json` | Version bumped `0.4.1` → `0.4.2` |
-| `pycharm/build.gradle.kts` | Version bumped `0.4.1` → `0.4.2` |
-| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.4.1` → `0.4.2` |
-| `vscode/FEATURES.md` | Weight sprite width row updated (skinny tier added); section 5.10 Floor Item Sprites added |
-| `BUGFIXES.md` | Added BUGFIX-019 |
-| `README.md` | Install filenames updated to `0.4.2` |
-| `vscode/README.md` | Install filenames updated to `0.4.2` |
-| `pycharm/README.md` | Install filenames updated to `0.4.2` |
+| `vscode/src/gameEngine.ts` | BUGFIX-020: poop accumulation and sick-from-poop guards both now require `!isIdle`; removed poop while-loop from `applyOfflineDecay` (no poops when IDE is closed); BUGFIX-021: `feedSnack` split into `startSnack` (button-press phase — increments counters, emits `snack_placed`) and `consumeSnack` (eat phase — applies stat effects, emits `fed_snack`) |
+| `vscode/src/sidebarProvider.ts` | Import updated from `feedSnack` → `startSnack, consumeSnack`; `"feed"` snack branch calls `startSnack`; new `"snack_consumed"` command case calls `consumeSnack` |
+| `vscode/media/sidebar.js` | Snack floor item spawns on `snack_placed` (was `fed_snack`); pet-reaches-snack collision now also sends `snack_consumed` to host; `"snack_placed": ""` label added to `humaniseEvent`; `appendEvents` skips entries with empty labels |
+| `vscode/tests/unit/gameEngine.test.ts` | `feedSnack` import replaced with `startSnack` + `consumeSnack`; `describe("feedSnack")` replaced with `describe("startSnack")` + `describe("consumeSnack")`; integration test updated to two-step snack model |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | BUGFIX-020: same two poop/idle guards as TypeScript; BUGFIX-021: `feedSnack` split into `startSnack` + `consumeSnack` (mirroring TS exactly) |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | `"feed"` snack branch calls `startSnack`; new `"snack_consumed"` case calls `consumeSnack` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Same four changes as VS Code sidebar.js |
+| `vscode/package.json` | Version bumped `0.4.2` → `0.4.3` |
+| `pycharm/build.gradle.kts` | Version bumped `0.4.2` → `0.4.3` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.4.2` → `0.4.3` |
+| `BUGFIXES.md` | Added BUGFIX-020 and BUGFIX-021 |
+| `README.md` | Install filenames updated to `0.4.3` |
+| `vscode/README.md` | Install filenames updated to `0.4.3` |
+| `pycharm/README.md` | Install filenames updated to `0.4.3` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | BUGFIX-022 (part 1): replaced 9 Elvis-operator occurrences for `activeAttentionCall` with explicit null-checks so `null` (the clear-call intent) is no longer swallowed by `?:` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | BUGFIX-022 (part 2): added `ReentrantLock` (`stateLock`) guarding all reads/writes of `currentState`/`currentHighScore`/`mealsGivenThisCycle`; `onTick`, `handleCommand`, `triggerCodeActivity` hold the lock while updating state; `broadcastState` snapshots under the lock to eliminate tick/command race |
+| `BUGFIXES.md` | Added BUGFIX-022 |
 
 ---
 
-## v0.4.1 — previous
+## v0.4.2 — previous
 
 ### Changes from v0.4.0
 

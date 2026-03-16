@@ -240,6 +240,9 @@
         if (closestDist < bWidth / 2 + 4) {
           snackItems.splice(snackItems.indexOf(closestSnack), 1);
           idlePauseTicks = 12;   // brief chomp pause
+          // Notify the host that the pet physically reached and ate the snack
+          // so stat effects (hunger, happiness, weight, sickness) are applied now.
+          vscode.postMessage({ command: "snack_consumed" });
         } else {
           idlePauseTicks = 0;
           petVelX        = closestSnack.x > petX ? 1 : -1;
@@ -392,8 +395,9 @@
     // Spawn poo animation when the pet poops
     if ((state.events || []).indexOf("pooped") !== -1) { spawnPooAnim(); }
 
-    // Snack items — spawn a floor item each time the pet is fed a snack
-    if ((state.events || []).indexOf("fed_snack") !== -1 && snackItems.length < 3) {
+    // Snack items — spawn a floor item when a snack is placed on the stage
+    // (snack_placed fires on button click; stat effects come later via snack_consumed).
+    if ((state.events || []).indexOf("snack_placed") !== -1 && snackItems.length < 3) {
       var siW = spriteCanvas.width;
       snackItems.push({
         x:    4 + Math.floor(Math.random() * Math.max(1, siW - 20)),
@@ -450,6 +454,7 @@
       "exhaustion_damage":       n + " is exhausted and losing health!",
       "died":                    n + " passed away...",
       "fed_snack":               n + " had a snack.",
+      "snack_placed":            "",   // silent — only triggers the floor-item animation
       "cured":                   n + " recovered!",
       "meal_refused":            n + " refused the meal.",
       "fed_meal":                n + " ate a meal.",
@@ -518,8 +523,10 @@
   function appendEvents(events, petName) {
     if (!events.length) { return; }
     events.forEach(function (text) {
+      const label = humaniseEvent(text, petName);
+      if (!label) { return; }   // suppress silent events (e.g. snack_placed)
       const li = document.createElement("li");
-      li.textContent = humaniseEvent(text, petName);
+      li.textContent = label;
       eventLog.insertBefore(li, eventLog.firstChild);
     });
     // Trim log to last 20 entries
