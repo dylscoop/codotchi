@@ -372,9 +372,11 @@
       petVy = 0;
 
     } else if (lastState.sleeping) {
-      // Sleeping: breath bob via breathPhase, no XY movement
+      // Sleeping: breath bob only — all movement frozen
       breathPhase += 1.8 * dt;
-      // Position already locked by fell_asleep handler or previous sleep
+      petVx = 0;
+      petVy = 0;
+      petY  = floorY;
 
     } else {
       // ── Normal movement (gravity + mood + wander/snack) ──────────────────
@@ -396,8 +398,9 @@
         onFloor = true;
       }
 
-      // Happy hop
-      if (lastState.mood === "happy" && onFloor && speed > 0) {
+      // Occasional hop — only when pet is resting on the floor (petVy >= 0 prevents
+      // firing during a bounce while onFloor is briefly true but velocity is still upward)
+      if (onFloor && petVy >= 0 && speed > 0) {
         hopTimer -= dt;
         if (hopTimer <= 0) {
           petVy    = HOP_IMPULSE;
@@ -559,7 +562,15 @@
       var bSize2   = Math.round(24 * scale2);
       var wwm2     = weightWidthMultiplier(state.weight || 50);
       var bWidth2  = Math.round(bSize2 * wwm2);
-      petX          = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth2 / 2));
+      var centreX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth2 / 2));
+      if (state.sleeping) {
+        // Restore the position where the pet fell asleep (saved to localStorage).
+        // Falls back to centre only if no stored value exists.
+        var storedSleepX = parseFloat(localStorage.getItem("gotchi_sleepX") || "");
+        petX = isNaN(storedSleepX) ? centreX : storedSleepX;
+      } else {
+        petX = centreX;
+      }
       petY          = null;   // will be initialised to floorY on first rAF frame
       petVx         = 0;
       petVy         = 0;
@@ -581,7 +592,11 @@
     if (events.indexOf("fed_meal")      !== -1) { pushReaction("fed_meal",      nowMs); }
     if (events.indexOf("fed_snack")     !== -1) { pushReaction("fed_snack",     nowMs); }
     if (events.indexOf("played")        !== -1) { pushReaction("played",        nowMs); }
-    if (events.indexOf("fell_asleep")   !== -1) { pushReaction("fell_asleep",   nowMs); }
+    if (events.indexOf("fell_asleep")   !== -1) {
+      pushReaction("fell_asleep",   nowMs);
+      // Persist the X position so it survives a webview reload while sleeping
+      try { localStorage.setItem("gotchi_sleepX", String(Math.round(petX))); } catch (e) {}
+    }
     if (events.indexOf("woke_up")       !== -1 ||
         events.indexOf("auto_woke_up")  !== -1) { pushReaction("woke_up",       nowMs); }
     if (events.indexOf("scolded")       !== -1) { pushReaction("scolded",       nowMs); }

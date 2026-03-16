@@ -269,7 +269,7 @@ Status: `[x]`
 
 | State | Movement behaviour |
 |-------|--------------------|
-| Happy | 1.5× base speed; small upward hop every ~4 s (brief vy impulse upward then gravity pull back) |
+| Happy | 1.5× base speed; small upward hop every ~4 s (brief vy impulse upward then gravity pull back); hops fire on all moods during idle wandering |
 | Neutral | 1× base speed; steady, calm wandering |
 | Sad | 0.4× base speed; gravitates toward the bottom of the stage; pauses more often |
 | Sleeping | Fully stationary; subtle slow vertical breathing bob (±2 px, ~1 cycle per 3 s) |
@@ -283,8 +283,8 @@ Status: `[x]`
 | Stage | Base speed (px/s) | Notes |
 |-------|-------------------|-------|
 | Egg | 0 | Rocks left–right in place (rotation ±5°); no translation |
-| Baby | 12 | Very small, slow wobble |
-| Child | 20 | First real wandering |
+| Baby | 22 | Very small, slow wobble |
+| Child | 35 | First real wandering |
 | Teen | 30 | Confident movement |
 | Adult | 28 | Slightly more settled than teen |
 | Senior | 15 | Slower; pauses longer |

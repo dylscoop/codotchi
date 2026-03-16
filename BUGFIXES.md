@@ -444,3 +444,25 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** `consecutiveSnacks` was incremented inside `startSnack` (button-press phase). If the user clicked the snack button 3 times quickly before the pet walked to and ate any of them, `consecutiveSnacks` reached 3 at click time. When `consumeSnack` was called for the very first snack eaten, the sickness check (`consecutiveSnacks >= 3`) fired immediately — sickness triggered on the 1st snack consumed, not the 3rd.
 
 **Fix:** Moved the `consecutiveSnacks` increment from `startSnack` into `consumeSnack`. The counter now advances only when the pet physically eats a snack, so sickness correctly fires after the 3rd snack is consumed regardless of how quickly the button is clicked.
+
+---
+
+## BUGFIX-024 — Rapid hop stacking on floor bounce
+
+**Status:** Fixed (branch `feat/pet-movement`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** When the pet bounced off the floor, `onFloor` was set to `true` for one or more frames while `petVy` was still negative (the pet was still moving upward from a previous bounce). The hop-trigger guard `if (onFloor && speed > 0)` fired on those upward-bounce frames, overwriting the small residual upward velocity with the full `HOP_IMPULSE = -60 px/s`. Successive hops accumulated before the pet came to rest, causing rapid visual "hop stacking" — the pet appeared to launch upward multiple times in quick succession.
+
+**Fix:** Added a `petVy >= 0` condition to the hop guard so hops only fire when the pet is genuinely at rest (`petVy = 0`) or falling (`petVy > 0`). Also removed the `lastState.mood === "happy"` restriction that previously limited hops to the happy mood — all moods can now hop, consistent with idle wandering behaviour.
+
+---
+
+## BUGFIX-025 — Sleeping pet drifts to canvas centre on sidebar hide/show
+
+**Status:** Fixed (branch `feat/pet-movement`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** VS Code destroys and recreates the `WebviewView` each time the sidebar panel is hidden and reshown (`resolveWebviewView` in `sidebarProvider.ts` reassigns `webviewView.webview.html`, resetting all JavaScript state). On the first load after recreation, `lastState === null`, so the first-load reset block in `sidebar.js` always placed the pet at `petX = centreX`. A sleeping pet would always reappear at the horizontal centre of the canvas after toggling the sidebar, regardless of where it had fallen asleep.
+
+**Fix:** The `fell_asleep` event handler now saves `petX` to `localStorage` under the key `gotchi_sleep_x`. The first-load reset block checks whether the restored state has `sleeping === true`; if so, it reads `gotchi_sleep_x` from `localStorage` and uses that value for `petX` instead of `centreX`. The sleeping movement block also now explicitly sets `petVx = 0`, `petVy = 0`, and `petY = floorY` on every frame so the pet cannot drift after being placed.

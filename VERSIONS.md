@@ -1,6 +1,31 @@
 # Version History
 
-## v0.6.0 — current (in progress)
+## v0.6.2 — current (in progress)
+
+### Changes from v0.6.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.6.0` → `0.6.2` |
+| `pycharm/build.gradle.kts` | Version bumped `0.6.0` → `0.6.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.6.0` → `0.6.2` |
+| `vscode/media/sidebar.js` | BUGFIX-024: hop guard tightened to `petVy >= 0` (no hops on upward bounce frames); mood guard `lastState.mood === "happy"` removed so all moods can hop; BUGFIX-025: `fell_asleep` event saves `petX` to `localStorage`; first-load block restores `petX` from `localStorage` when state is sleeping; sleeping movement block explicitly zeros `petVx`, `petVy`, sets `petY = floorY`; `STAGE_BASE_SPEED_PPS` baby raised `12→22`, child raised `20→35`; wander wall-pause block removed; `petVx===0` guard added before wander direction assignment |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` (identical file) |
+| `BUGFIXES.md` | Added BUGFIX-024 (hop stacking) and BUGFIX-025 (sleep drift to centre) |
+| `README.md` | Install filenames updated to `0.6.2` |
+| `vscode/README.md` | Install filenames updated to `0.6.2` |
+| `pycharm/README.md` | Install filenames updated to `0.6.2` |
+
+### Updated constants (v0.6.2, sidebar.js)
+
+```
+STAGE_BASE_SPEED_PPS.baby:  22   // was 12
+STAGE_BASE_SPEED_PPS.child: 35   // was 20
+```
+
+---
+
+## v0.6.0 — previous
 
 ### Changes from v0.5.2
 
