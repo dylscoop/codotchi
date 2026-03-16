@@ -95,15 +95,22 @@ After every write to `releases/`, keep only the **latest 3 versions** of each
 artifact type in the `releases/` root. Move older versions to
 `releases/old_releases/`.
 
+### Absolute rule — the latest release is always retained
+
+**The highest-versioned artifact of each type must always remain in the
+`releases/` root, no matter what.** Never move the latest version to
+`old_releases/`. Apply the 3-version count only to the versions below it.
+
 ### How to determine "latest 3"
 
 Sort the filenames by semantic version (not alphabetically). The three highest
-version numbers stay; everything else moves.
+version numbers stay; everything else moves. The highest version is always
+first in that list and is never a candidate for removal.
 
 Example — if `releases/` contains vsix files for
 `0.2.2`, `0.3.2`, `0.4.2`, `0.5.2`:
 
-- Keep: `0.5.2`, `0.4.2`, `0.3.2`
+- Keep: `0.5.2` (latest — always retained), `0.4.2`, `0.3.2`
 - Move to `releases/old_releases/`: `0.2.2`
 
 Apply the same rule independently to `.vsix` files and `.zip` files.
@@ -124,4 +131,4 @@ git mv releases/pycharm-gotchi-OLD.zip releases/old_releases/
 
 - [ ] Version bumped? → Archive old VS Code vsix and old PyCharm zip before rebuilding
 - [ ] Merging to main? → Copy current vsix and zip to `releases/`, apply 3-version rule, commit as `chore: publish vX.Y.Z artifacts to releases/`
-- [ ] After writing to `releases/`? → Confirm only 3 vsix and 3 zip remain in root; move excess to `releases/old_releases/`
+- [ ] After writing to `releases/`? → Confirm latest version is in root; confirm only 3 vsix and 3 zip remain in root (latest always kept, 2 next most recent); move excess to `releases/old_releases/`
