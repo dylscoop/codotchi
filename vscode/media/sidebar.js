@@ -23,8 +23,8 @@
   /** Base movement speed in px/s per life stage (horizontal). */
   const STAGE_BASE_SPEED_PPS = {
     egg:    0,
-    baby:   12,
-    child:  20,
+    baby:   22,
+    child:  35,
     teen:   30,
     adult:  28,
     senior: 15,
@@ -427,28 +427,27 @@
           petX         += petVx * dt;
         }
       } else if (speed > 0 && idleTimer <= 0) {
-        // Wander
+        // Wander — pet always moves horizontally; never pauses
+        if (petVx === 0) {
+          petVx         = Math.random() < 0.5 ? speed : -speed;
+          petFacingLeft = petVx < 0;
+        }
         petX += petVx * dt;
 
         if (petX >= maxX) {
           petX          = maxX;
           petVx         = -speed;
           petFacingLeft = true;
-          if (Math.random() < 0.4) { idleTimer = 0.33 + Math.random() * 1.0; }
         } else if (petX <= minX) {
           petX          = minX;
           petVx         = speed;
           petFacingLeft = false;
-          if (Math.random() < 0.4) { idleTimer = 0.33 + Math.random() * 1.0; }
         }
 
-        // Occasional mid-walk pause / direction change
+        // Occasional mid-walk direction flip (no pause)
         if (Math.random() < 0.0015) {
-          idleTimer = 0.5 + Math.random() * 1.5;
-          if (Math.random() < 0.5) {
-            petVx         = -petVx;
-            petFacingLeft = !petFacingLeft;
-          }
+          petVx         = -petVx;
+          petFacingLeft = !petFacingLeft;
         }
       } else if (idleTimer > 0) {
         idleTimer -= dt;
