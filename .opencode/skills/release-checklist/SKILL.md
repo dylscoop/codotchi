@@ -32,6 +32,14 @@ If any of the three differs, fix them to agree before doing anything else.
 After any source change, **always** rebuild both distribution artifacts and
 include them in the commit. Use the exact commands below.
 
+### Step 2a — Archive old artifacts first (version bump only)
+
+If the version number changed since the last build, **move the old artifacts
+to their archive locations before rebuilding**. See the `release-management`
+skill for the exact `git mv` commands and archive paths.
+
+Skip this sub-step if the version number is unchanged.
+
 ### VS Code `.vsix`
 
 Run from `vscode/`:
@@ -42,9 +50,6 @@ npx @vscode/vsce package
 
 Output: `vscode/vscode-gotchi-X.Y.Z.vsix`
 
-If the version number changed, delete the old `.vsix` before packaging so only
-one version file is tracked in git.
-
 ### PyCharm `.zip`
 
 Run from `pycharm/`:
@@ -54,9 +59,6 @@ powershell -Command "$env:JAVA_HOME='C:\Users\DylanSiow-Lee\.gradle\caches\modul
 ```
 
 Output: `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip`
-
-If the version number changed, the old `.zip` is automatically overwritten by
-Gradle; no manual cleanup needed.
 
 ---
 
@@ -158,6 +160,7 @@ Number entries sequentially (BUGFIX-001, BUGFIX-002, …).
 
 Work through this list in order. Do not commit until all items are checked.
 
+0. [ ] Old artifacts archived (version bump only) — old `.vsix` moved to `vscode/archive/vsix/`, old `.zip` moved to `pycharm/archive/zip/` (see `release-management` skill)
 1. [ ] Version is identical in `package.json`, `build.gradle.kts`, and `plugin.xml`
 2. [ ] `npm test` passes (run from `vscode/`) — 0 failures
 3. [ ] VS Code artifact rebuilt: `vscode/vscode-gotchi-X.Y.Z.vsix` exists and is up to date

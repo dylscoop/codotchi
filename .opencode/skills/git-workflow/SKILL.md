@@ -70,7 +70,7 @@ Typical release flow (each line needs separate approval):
 3. `git push origin main` — push main
 4. `git tag vX.Y.Z` — create the version tag
 5. `git push origin vX.Y.Z` — push the tag
-6. Copy artifacts to `releases/`, commit, and push — publish artifacts
+   6. Copy artifacts to `releases/`, apply the 3-version rule, move older releases to `releases/old_releases/` — see `release-management` skill — commit and push
 7. Create GitHub release — publish release notes
 
 ## GitHub release body — what to include
