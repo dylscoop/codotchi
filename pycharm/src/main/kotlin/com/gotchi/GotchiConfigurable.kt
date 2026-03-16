@@ -34,6 +34,8 @@ class GotchiConfigurable : Configurable {
     private var idleDeepThresholdSpinner:  JSpinner?           = null
     private var attentionCallExpiryCombo:  JComboBox<String>?  = null
     private var attentionCallRateCombo:    JComboBox<String>?  = null
+    private var petStageHeightSpinner:     JSpinner?           = null
+    private var reducedMotionCheck:        JCheckBox?          = null
 
     override fun getDisplayName(): String = "Gotchi"
 
@@ -48,6 +50,8 @@ class GotchiConfigurable : Configurable {
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
         val expiryCombo     = JComboBox(arrayOf("Needy (2 min)", "Standard (5 min)", "Chilled (10 min)"))
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
+        val stageHeightSpinner = JSpinner(SpinnerNumberModel(96, 48, 300, 8))
+        val reducedMotionCheckbox = JCheckBox("Reduced motion (disable animation)")
 
         fontSizeCombo            = combo
         colorPanel               = cp
@@ -59,6 +63,8 @@ class GotchiConfigurable : Configurable {
         idleDeepThresholdSpinner = deepIdleSpinner
         attentionCallExpiryCombo = expiryCombo
         attentionCallRateCombo   = rateCombo
+        petStageHeightSpinner    = stageHeightSpinner
+        reducedMotionCheck       = reducedMotionCheckbox
 
         val panel = JPanel(GridBagLayout())
         val gbc   = GridBagConstraints()
@@ -152,8 +158,23 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(rateCombo, gbc)
 
+        // Row 10 — Pet stage height
+        gbc.gridx = 0; gbc.gridy = 10
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Pet stage height (px):"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(stageHeightSpinner, gbc)
+
+        // Row 11 — Reduced motion
+        gbc.gridx = 0; gbc.gridy = 11; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(reducedMotionCheckbox, gbc)
+        gbc.gridwidth = 1
+
         // Push content to the top
-        gbc.gridx = 0; gbc.gridy = 10; gbc.gridwidth = 2
+        gbc.gridx = 0; gbc.gridy = 12; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -173,6 +194,8 @@ class GotchiConfigurable : Configurable {
         val uiDeepIdle   = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         val uiExpiry     = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         val uiRate       = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
+        val uiStageHeight = (petStageHeightSpinner?.value as? Int) ?: 96
+        val uiReducedMotion = reducedMotionCheck?.isSelected ?: false
         return uiFont != settings.fontSize
             || uiColor != settings.textColor
             || uiPrimary != settings.customPrimaryColor
@@ -183,6 +206,8 @@ class GotchiConfigurable : Configurable {
             || uiDeepIdle != settings.idleDeepThresholdSeconds
             || uiExpiry != settings.attentionCallExpiry
             || uiRate != settings.attentionCallRate
+            || uiStageHeight != settings.petStageHeight
+            || uiReducedMotion != settings.reducedMotion
     }
 
     override fun apply() {
@@ -197,6 +222,8 @@ class GotchiConfigurable : Configurable {
         settings.idleDeepThresholdSeconds = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         settings.attentionCallExpiry    = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         settings.attentionCallRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
+        settings.petStageHeight         = (petStageHeightSpinner?.value as? Int) ?: 96
+        settings.reducedMotion          = reducedMotionCheck?.isSelected ?: false
         // Reload the webview immediately so the change is visible without a restart
         ApplicationManager.getApplication().service<GotchiPlugin>().reloadWebview()
     }
@@ -213,6 +240,8 @@ class GotchiConfigurable : Configurable {
         idleDeepThresholdSpinner?.value    = settings.idleDeepThresholdSeconds
         attentionCallExpiryCombo?.selectedIndex = expiryKeyToIndex(settings.attentionCallExpiry)
         attentionCallRateCombo?.selectedIndex   = rateKeyToIndex(settings.attentionCallRate)
+        petStageHeightSpinner?.value            = settings.petStageHeight
+        reducedMotionCheck?.isSelected          = settings.reducedMotion
     }
 
     // ── Enum helpers ───────────────────────────────────────────────────────
