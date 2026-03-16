@@ -609,7 +609,6 @@ fun startSnack(state: PetState): PetState {
     if (state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE)
         return withDerivedFields(state.copy(events = listOf("snack_refused")))
 
-    val consecutiveSnacks    = state.consecutiveSnacks + 1
     val snacksGivenThisCycle = state.snacksGivenThisCycle + 1
     val events = mutableListOf("snack_placed")
 
@@ -621,7 +620,6 @@ fun startSnack(state: PetState): PetState {
 
     return withDerivedFields(
         state.copy(
-            consecutiveSnacks    = consecutiveSnacks,
             snacksGivenThisCycle = snacksGivenThisCycle,
             events               = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
@@ -635,14 +633,14 @@ fun startSnack(state: PetState): PetState {
  * Apply the stat effects of a snack once the pet reaches it on the stage.
  *
  * Called when the webview detects the pet touching the snack floor item.
- * Applies hunger/happiness/weight boosts and — if [PetState.consecutiveSnacks]
- * is already at the maximum (incremented by the earlier [startSnack] call) —
- * triggers sickness.
+ * Increments [PetState.consecutiveSnacks] and — if the new count reaches
+ * the maximum — triggers sickness.
  */
 fun consumeSnack(state: PetState): PetState {
     val events = mutableListOf<String>()
     var sick = state.sick
-    if (state.consecutiveSnacks >= MAX_CONSECUTIVE_SNACKS_BEFORE_SICK && !sick) {
+    val consecutiveSnacks = state.consecutiveSnacks + 1
+    if (consecutiveSnacks >= MAX_CONSECUTIVE_SNACKS_BEFORE_SICK && !sick) {
         sick = true
         events.add("became_sick")
     }
@@ -652,11 +650,12 @@ fun consumeSnack(state: PetState): PetState {
 
     return withDerivedFields(
         state.copy(
-            happiness = clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
-            hunger    = clampStat(state.hunger    + FEED_SNACK_HUNGER_BOOST),
-            weight    = newWeight,
-            sick      = sick,
-            events    = events,
+            happiness         = clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
+            hunger            = clampStat(state.hunger    + FEED_SNACK_HUNGER_BOOST),
+            weight            = newWeight,
+            consecutiveSnacks = consecutiveSnacks,
+            sick              = sick,
+            events            = events,
         )
     )
 }

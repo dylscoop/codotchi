@@ -1314,7 +1314,6 @@ export function startSnack(state: PetState): PetState {
     return withDerivedFields({ ...state, events: ["snack_refused"] });
   }
 
-  const consecutiveSnacks = state.consecutiveSnacks + 1;
   const snacksGivenThisCycle = state.snacksGivenThisCycle + 1;
   const events: string[] = ["snack_placed"];
 
@@ -1327,7 +1326,6 @@ export function startSnack(state: PetState): PetState {
   return withDerivedFields({
     ...state,
     ...(answered ?? {}),
-    consecutiveSnacks,
     snacksGivenThisCycle,
     events,
   });
@@ -1337,8 +1335,7 @@ export function startSnack(state: PetState): PetState {
  * Apply the stat effects of a snack once the pet reaches it on the stage.
  *
  * Called when the webview detects the pet touching the snack floor item.
- * Applies hunger/happiness/weight boosts and — if `consecutiveSnacks` is
- * already at the maximum (incremented by the earlier {@link startSnack} call)
+ * Increments `consecutiveSnacks` and — if the new count reaches the maximum
  * — triggers sickness.
  *
  * @param state - The current pet state.
@@ -1348,7 +1345,8 @@ export function consumeSnack(state: PetState): PetState {
   const events: string[] = [];
   let sick = state.sick;
 
-  if (state.consecutiveSnacks >= MAX_CONSECUTIVE_SNACKS_BEFORE_SICK && !sick) {
+  const consecutiveSnacks = state.consecutiveSnacks + 1;
+  if (consecutiveSnacks >= MAX_CONSECUTIVE_SNACKS_BEFORE_SICK && !sick) {
     sick = true;
     events.push("became_sick");
   }
@@ -1362,6 +1360,7 @@ export function consumeSnack(state: PetState): PetState {
     hunger: clampStat(state.hunger + FEED_SNACK_HUNGER_BOOST),
     happiness: clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
     weight: newWeight,
+    consecutiveSnacks,
     sick,
     events,
   });

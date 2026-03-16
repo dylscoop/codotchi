@@ -21,6 +21,10 @@
 | `README.md` | Install filenames updated to `0.5.1` |
 | `vscode/README.md` | Install filenames updated to `0.5.1` |
 | `pycharm/README.md` | Install filenames updated to `0.5.1` |
+| `vscode/src/gameEngine.ts` | BUGFIX-023: moved `consecutiveSnacks` increment from `startSnack` into `consumeSnack`; sickness now fires when the 3rd snack is physically eaten, not when the 3rd snack button is pressed |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | BUGFIX-023: same `consecutiveSnacks` increment move mirrored from TypeScript |
+| `vscode/tests/unit/gameEngine.test.ts` | BUGFIX-023: renamed `startSnack` "increments consecutiveSnacks" test; updated `consumeSnack` sickness seeds from 3→2; removed stale `snacksGivenThisCycle: 0` resets from integration test |
+| `BUGFIXES.md` | Added BUGFIX-023 |
 
 ### Updated constants (v0.5.1)
 

@@ -433,3 +433,14 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Fix #2:** Added a `ReentrantLock` (`stateLock`) to `GotchiPlugin`. The lock guards all reads and writes of `currentState`, `currentHighScore`, and `mealsGivenThisCycle`. `onTick`, `handleCommand`, and `triggerCodeActivity` each acquire the lock while reading and updating state; `broadcastState` takes a consistent snapshot under the lock at entry before performing persistence and UI work outside it.
 
 **VS Code is not affected** — the Node.js event loop is single-threaded so `setInterval` and the webview message handler never interleave. The TypeScript spread pattern (`...(answered ?? {})`) also handles the null-clear correctly.
+
+---
+
+## BUGFIX-023 — Sickness triggered on first snack eaten after rapid 3-click
+
+**Status:** Fixed (branch `fix/snack-sick-on-consume`)
+**File:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`
+
+**Problem:** `consecutiveSnacks` was incremented inside `startSnack` (button-press phase). If the user clicked the snack button 3 times quickly before the pet walked to and ate any of them, `consecutiveSnacks` reached 3 at click time. When `consumeSnack` was called for the very first snack eaten, the sickness check (`consecutiveSnacks >= 3`) fired immediately — sickness triggered on the 1st snack consumed, not the 3rd.
+
+**Fix:** Moved the `consecutiveSnacks` increment from `startSnack` into `consumeSnack`. The counter now advances only when the pet physically eats a snack, so sickness correctly fires after the 3rd snack is consumed regardless of how quickly the button is clicked.
