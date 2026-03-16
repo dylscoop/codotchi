@@ -700,7 +700,7 @@
    * @param {number}  legFrame   - Leg animation frame (0 or 1).
    */
   function drawSprite(state, x, bobOffset, facingLeft, legFrame) {
-    const palette    = COLOR_PALETTES[state.color] || COLOR_PALETTES["neon"];
+    const palette    = getPalette(state.color);
     const primary    = palette.primary;
     const secondary  = palette.secondary;
     const background = palette.background;
@@ -1023,6 +1023,24 @@
     mono:   { primary: "#e0e0e0", secondary: "#888888", background: "#1a1a1a" },
     ocean:  { primary: "#00cfff", secondary: "#004e7c", background: "#001f3f" },
   };
+
+  /**
+   * Return the colour palette for a given key.
+   * The "custom" key reads colours from CSS custom properties injected by the
+   * host (sidebarProvider.ts) at HTML-build time via the
+   * --gotchi-custom-* variables, falling back to safe defaults if not set.
+   */
+  function getPalette(colorKey) {
+    if (colorKey === "custom") {
+      var s = getComputedStyle(document.documentElement);
+      return {
+        primary:    s.getPropertyValue("--gotchi-custom-primary").trim()    || "#ff8c00",
+        secondary:  s.getPropertyValue("--gotchi-custom-secondary").trim()  || "#ffffff",
+        background: s.getPropertyValue("--gotchi-custom-background").trim() || "#1a1a2e",
+      };
+    }
+    return COLOR_PALETTES[colorKey] || COLOR_PALETTES["neon"];
+  }
 
   const STAGE_SCALES = {
     egg:    0.35,

@@ -26,6 +26,9 @@ class GotchiConfigurable : Configurable {
 
     private var fontSizeCombo:             JComboBox<String>? = null
     private var colorPanel:                ColorPanel?         = null
+    private var customPrimaryPanel:        ColorPanel?         = null
+    private var customSecondaryPanel:      ColorPanel?         = null
+    private var customBackgroundPanel:     ColorPanel?         = null
     private var enableAttentionCallsCheck: JCheckBox?          = null
     private var idleThresholdSpinner:      JSpinner?           = null
     private var idleDeepThresholdSpinner:  JSpinner?           = null
@@ -37,6 +40,9 @@ class GotchiConfigurable : Configurable {
     override fun createComponent(): JComponent {
         val combo   = JComboBox(arrayOf("Small", "Normal", "Large"))
         val cp      = ColorPanel()
+        val cpPrimary    = ColorPanel()
+        val cpSecondary  = ColorPanel()
+        val cpBackground = ColorPanel()
         val attentionCheck  = JCheckBox("Enable attention calls")
         val idleSpinner     = JSpinner(SpinnerNumberModel(60, 10, 3600, 10))
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
@@ -45,6 +51,9 @@ class GotchiConfigurable : Configurable {
 
         fontSizeCombo            = combo
         colorPanel               = cp
+        customPrimaryPanel       = cpPrimary
+        customSecondaryPanel     = cpSecondary
+        customBackgroundPanel    = cpBackground
         enableAttentionCallsCheck = attentionCheck
         idleThresholdSpinner     = idleSpinner
         idleDeepThresholdSpinner = deepIdleSpinner
@@ -74,14 +83,41 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(cp, gbc)
 
-        // Row 2 — Enable attention calls
-        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2
+        // Row 2 — Custom palette: primary (pet body)
+        gbc.gridx = 0; gbc.gridy = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Custom palette — body:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(cpPrimary, gbc)
+
+        // Row 3 — Custom palette: secondary (eyes / details)
+        gbc.gridx = 0; gbc.gridy = 3
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Custom palette — details:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(cpSecondary, gbc)
+
+        // Row 4 — Custom palette: background (canvas stage)
+        gbc.gridx = 0; gbc.gridy = 4
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Custom palette — background:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(cpBackground, gbc)
+
+        // Row 5 — Enable attention calls
+        gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(attentionCheck, gbc)
         gbc.gridwidth = 1
 
-        // Row 3 — Idle threshold
-        gbc.gridx = 0; gbc.gridy = 3
+        // Row 6 — Idle threshold
+        gbc.gridx = 0; gbc.gridy = 6
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Idle threshold (seconds):"), gbc)
 
@@ -89,8 +125,8 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(idleSpinner, gbc)
 
-        // Row 4 — Deep-idle threshold
-        gbc.gridx = 0; gbc.gridy = 4
+        // Row 7 — Deep-idle threshold
+        gbc.gridx = 0; gbc.gridy = 7
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Deep-idle threshold (seconds):"), gbc)
 
@@ -98,8 +134,8 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(deepIdleSpinner, gbc)
 
-        // Row 5 — Attention call expiry
-        gbc.gridx = 0; gbc.gridy = 5
+        // Row 8 — Attention call expiry
+        gbc.gridx = 0; gbc.gridy = 8
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Attention call expiry:"), gbc)
 
@@ -107,8 +143,8 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(expiryCombo, gbc)
 
-        // Row 6 — Attention call rate
-        gbc.gridx = 0; gbc.gridy = 6
+        // Row 9 — Attention call rate
+        gbc.gridx = 0; gbc.gridy = 9
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Attention call rate:"), gbc)
 
@@ -117,7 +153,7 @@ class GotchiConfigurable : Configurable {
         panel.add(rateCombo, gbc)
 
         // Push content to the top
-        gbc.gridx = 0; gbc.gridy = 7; gbc.gridwidth = 2
+        gbc.gridx = 0; gbc.gridy = 10; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -127,15 +163,21 @@ class GotchiConfigurable : Configurable {
 
     override fun isModified(): Boolean {
         val settings = service<GotchiSettings>()
-        val uiFont      = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
-        val uiColor     = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
-        val uiAttention = enableAttentionCallsCheck?.isSelected ?: true
-        val uiIdle      = (idleThresholdSpinner?.value as? Int) ?: 60
-        val uiDeepIdle  = (idleDeepThresholdSpinner?.value as? Int) ?: 600
-        val uiExpiry    = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
-        val uiRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
+        val uiFont       = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
+        val uiColor      = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
+        val uiPrimary    = customPrimaryPanel?.selectedColor?.let { colorToHex(it) } ?: "#ff8c00"
+        val uiSecondary  = customSecondaryPanel?.selectedColor?.let { colorToHex(it) } ?: "#ffffff"
+        val uiBackground = customBackgroundPanel?.selectedColor?.let { colorToHex(it) } ?: "#1a1a2e"
+        val uiAttention  = enableAttentionCallsCheck?.isSelected ?: true
+        val uiIdle       = (idleThresholdSpinner?.value as? Int) ?: 60
+        val uiDeepIdle   = (idleDeepThresholdSpinner?.value as? Int) ?: 600
+        val uiExpiry     = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
+        val uiRate       = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         return uiFont != settings.fontSize
             || uiColor != settings.textColor
+            || uiPrimary != settings.customPrimaryColor
+            || uiSecondary != settings.customSecondaryColor
+            || uiBackground != settings.customBackgroundColor
             || uiAttention != settings.enableAttentionCalls
             || uiIdle != settings.idleThresholdSeconds
             || uiDeepIdle != settings.idleDeepThresholdSeconds
@@ -147,6 +189,9 @@ class GotchiConfigurable : Configurable {
         val settings = service<GotchiSettings>()
         settings.fontSize               = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
         settings.textColor              = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
+        settings.customPrimaryColor     = customPrimaryPanel?.selectedColor?.let { colorToHex(it) } ?: "#ff8c00"
+        settings.customSecondaryColor   = customSecondaryPanel?.selectedColor?.let { colorToHex(it) } ?: "#ffffff"
+        settings.customBackgroundColor  = customBackgroundPanel?.selectedColor?.let { colorToHex(it) } ?: "#1a1a2e"
         settings.enableAttentionCalls   = enableAttentionCallsCheck?.isSelected ?: true
         settings.idleThresholdSeconds   = (idleThresholdSpinner?.value as? Int) ?: 60
         settings.idleDeepThresholdSeconds = (idleDeepThresholdSpinner?.value as? Int) ?: 600
@@ -160,6 +205,9 @@ class GotchiConfigurable : Configurable {
         val settings = service<GotchiSettings>()
         fontSizeCombo?.selectedItem        = settings.fontSize.replaceFirstChar { it.uppercaseChar() }
         colorPanel?.selectedColor          = hexToColor(settings.textColor)
+        customPrimaryPanel?.selectedColor    = hexToColor(settings.customPrimaryColor)
+        customSecondaryPanel?.selectedColor  = hexToColor(settings.customSecondaryColor)
+        customBackgroundPanel?.selectedColor = hexToColor(settings.customBackgroundColor)
         enableAttentionCallsCheck?.isSelected = settings.enableAttentionCalls
         idleThresholdSpinner?.value        = settings.idleThresholdSeconds
         idleDeepThresholdSpinner?.value    = settings.idleDeepThresholdSeconds

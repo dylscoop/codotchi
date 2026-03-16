@@ -106,6 +106,9 @@ class GotchiBrowserPanel(
         val settings      = ApplicationManager.getApplication().getService(GotchiSettings::class.java)
         val fontSizeClass = "font-${settings?.fontSize ?: "normal"}"
         val textColor     = settings?.textColor ?: "#cccccc"
+        val customPrimary    = settings?.customPrimaryColor    ?: "#ff8c00"
+        val customSecondary  = settings?.customSecondaryColor  ?: "#ffffff"
+        val customBackground = settings?.customBackgroundColor ?: "#1a1a2e"
 
         val cssText  = loadResource("/webview/sidebar.css")
         val jsText   = loadResource("/webview/sidebar.js")
@@ -117,7 +120,14 @@ class GotchiBrowserPanel(
         // Inline CSS — replace <link rel="stylesheet" href="sidebar.css" />
         // Append a colour override so user preference takes precedence over
         // the CSS default without touching the shared webview CSS file.
-        val colorOverride = "body { color: $textColor !important; }"
+        val colorOverride = """
+            body { color: $textColor !important; }
+            :root {
+                --gotchi-custom-primary: $customPrimary;
+                --gotchi-custom-secondary: $customSecondary;
+                --gotchi-custom-background: $customBackground;
+            }
+        """.trimIndent()
         html = html.replace(
             """<link rel="stylesheet" href="sidebar.css" />""",
             "<style>\n$cssText\n$colorOverride\n</style>"

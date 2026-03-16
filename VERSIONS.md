@@ -1,6 +1,38 @@
 # Version History
 
-## v0.5.1 — current (in progress)
+## v0.5.2 — current (in progress)
+
+### Changes from v0.5.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.5.1` → `0.5.2`; added `gotchi.customPrimaryColor`, `gotchi.customSecondaryColor`, `gotchi.customBackgroundColor` settings |
+| `pycharm/build.gradle.kts` | Version bumped `0.5.1` → `0.5.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.5.1` → `0.5.2` |
+| `vscode/src/sidebarProvider.ts` | `buildHtml()` reads 3 custom colour settings and injects them as CSS vars via `{{customColorsStyle}}` placeholder; config listener expanded to watch the 3 new settings |
+| `vscode/media/sidebar.html` | `{{customColorsStyle}}` placeholder added after `<link>` tag; "Custom" button added to colour picker row |
+| `vscode/media/sidebar.js` | `getPalette(colorKey)` helper added after `COLOR_PALETTES`; `drawSprite` updated to call `getPalette(state.color)` instead of `COLOR_PALETTES[state.color]` |
+| `pycharm/src/main/resources/webview/sidebar.html` | "Custom" button added to colour picker row |
+| `pycharm/src/main/resources/webview/sidebar.js` | `getPalette(colorKey)` helper added; `drawSprite` updated to call `getPalette(state.color)` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiSettings.kt` | Added `customPrimaryColor`, `customSecondaryColor`, `customBackgroundColor` fields with defaults `#ff8c00`, `#ffffff`, `#1a1a2e` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiConfigurable.kt` | Added 3 `ColorPanel` fields; new rows 2–4 in settings UI for custom body/details/background colours; `isModified()`, `apply()`, `reset()` updated |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt` | `buildHtml()` reads 3 custom colour settings and appends CSS vars to the inline style block |
+| `vscode/FEATURES.md` | Added custom colour scheme rows to Section 12 settings table |
+| `README.md` | Install filenames updated to `0.5.2` |
+| `vscode/README.md` | Install filenames updated to `0.5.2` |
+| `pycharm/README.md` | Install filenames updated to `0.5.2` |
+
+### New settings (v0.5.2)
+
+```
+gotchi.customPrimaryColor:    string = "#ff8c00"  // pet body colour for "custom" palette
+gotchi.customSecondaryColor:  string = "#ffffff"  // pet eyes/details colour for "custom" palette
+gotchi.customBackgroundColor: string = "#1a1a2e"  // canvas background colour for "custom" palette
+```
+
+---
+
+## v0.5.1 — previous
 
 ### Changes from v0.5.0
 

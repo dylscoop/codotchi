@@ -107,9 +107,16 @@ export class SidebarProvider
     );
     this.disposables.push(messageListener);
 
-    // BUGFIX-001: hot-reload the webview HTML when the font-size setting changes
+    // BUGFIX-001: hot-reload the webview HTML when the font-size setting changes.
+    // Also reload when any custom-colour setting changes so the Custom palette
+    // updates immediately for any pet already using it.
     const configListener = vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("gotchi.fontSize")) {
+      if (
+        e.affectsConfiguration("gotchi.fontSize") ||
+        e.affectsConfiguration("gotchi.customPrimaryColor") ||
+        e.affectsConfiguration("gotchi.customSecondaryColor") ||
+        e.affectsConfiguration("gotchi.customBackgroundColor")
+      ) {
         webviewView.webview.html = this.buildHtml(webviewView.webview);
       }
     });
@@ -150,6 +157,18 @@ export class SidebarProvider
       fontSizeSetting === "small" ? "font-small" :
       "font-normal";
     html = html.replace("{{fontSizeClass}}", fontSizeClass);
+
+    const cfg = vscode.workspace.getConfiguration("gotchi");
+    const customPrimary    = cfg.get<string>("customPrimaryColor",    "#ff8c00");
+    const customSecondary  = cfg.get<string>("customSecondaryColor",  "#ffffff");
+    const customBackground = cfg.get<string>("customBackgroundColor", "#1a1a2e");
+    const customColorsStyle =
+      `<style>:root{` +
+      `--gotchi-custom-primary:${customPrimary};` +
+      `--gotchi-custom-secondary:${customSecondary};` +
+      `--gotchi-custom-background:${customBackground};` +
+      `}</style>`;
+    html = html.replace("{{customColorsStyle}}", customColorsStyle);
 
     return html;
   }

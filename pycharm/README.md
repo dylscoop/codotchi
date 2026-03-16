@@ -43,7 +43,7 @@ It shares the same game engine and webview UI as the
 
 ### Quick install (pre-built `.zip`)
 
-1. **Download `pycharm-gotchi-0.5.1.zip`** from the
+1. **Download `pycharm-gotchi-0.5.2.zip`** from the
    [Releases page](https://github.com/dylscoop/vscode_gotchi/releases).
    Do **not** unzip it — JetBrains expects the archive as-is.
 
@@ -75,7 +75,7 @@ gradlew.bat buildPlugin
 The plugin zip is produced at:
 
 ```text
-pycharm/build/distributions/pycharm-gotchi-0.5.1.zip
+pycharm/build/distributions/pycharm-gotchi-0.5.2.zip
 ```
 
 Install it via **Settings → Plugins → ⚙ → Install Plugin from Disk…** as
@@ -178,5 +178,5 @@ vscode_gotchi/
     │       ├── META-INF/plugin.xml
     │       └── webview/         # sidebar.html / .css / .js (shared with VS Code)
     └── build/distributions/
-        └── pycharm-gotchi-0.5.1.zip     ← installable plugin archive
+        └── pycharm-gotchi-0.5.2.zip     ← installable plugin archive
 ```

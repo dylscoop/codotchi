@@ -9,6 +9,9 @@ import com.intellij.openapi.components.*
  * Fields:
  *  - [fontSize]               : "small" | "normal" | "large"  — maps to CSS body class
  *  - [textColor]              : CSS hex colour string           — injected as body colour override
+ *  - [customPrimaryColor]     : CSS hex colour string           — custom palette pet body colour
+ *  - [customSecondaryColor]   : CSS hex colour string           — custom palette pet eyes/details colour
+ *  - [customBackgroundColor]  : CSS hex colour string           — custom palette canvas background colour
  *  - [enableAttentionCalls]   : whether to show balloon notifications for attention calls
  *  - [idleThresholdSeconds]   : seconds of no IDE activity before idle mode (default 60)
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
@@ -26,6 +29,9 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
     class State {
         var fontSize:  String  = "normal"    // "small" | "normal" | "large"
         var textColor: String  = "#cccccc"   // any CSS hex colour
+        var customPrimaryColor:    String = "#ff8c00"  // custom palette — pet body
+        var customSecondaryColor:  String = "#ffffff"  // custom palette — pet eyes / details
+        var customBackgroundColor: String = "#1a1a2e"  // custom palette — canvas background
         var enableAttentionCalls: Boolean = true
         var idleThresholdSeconds: Int = 60
         var idleDeepThresholdSeconds: Int = 600
@@ -48,6 +54,18 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
     var textColor: String
         get() = _state.textColor
         set(v) { _state.textColor = v }
+
+    var customPrimaryColor: String
+        get() = _state.customPrimaryColor
+        set(v) { _state.customPrimaryColor = v }
+
+    var customSecondaryColor: String
+        get() = _state.customSecondaryColor
+        set(v) { _state.customSecondaryColor = v }
+
+    var customBackgroundColor: String
+        get() = _state.customBackgroundColor
+        set(v) { _state.customBackgroundColor = v }
 
     var enableAttentionCalls: Boolean
         get() = _state.enableAttentionCalls

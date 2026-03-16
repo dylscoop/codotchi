@@ -2,7 +2,7 @@
   "name": "vscode-gotchi",
   "displayName": "vscode_gotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "publisher": "vscode-gotchi",
   "repository": {
     "type": "git",
@@ -94,6 +94,21 @@
           ],
           "default": "fast",
           "description": "How quickly cleaning, misbehaviour, and gift attention calls can spawn. Uses a logarithmic probability curve; this setting scales the curve down to make calls less frequent."
+        },
+        "gotchi.customPrimaryColor": {
+          "type": "string",
+          "default": "#ff8c00",
+          "description": "Primary colour for the Custom palette (pet body). Applies when 'Custom' is chosen as the colour scheme at new-game setup."
+        },
+        "gotchi.customSecondaryColor": {
+          "type": "string",
+          "default": "#ffffff",
+          "description": "Secondary colour for the Custom palette (pet eyes and details). Applies when 'Custom' is chosen as the colour scheme at new-game setup."
+        },
+        "gotchi.customBackgroundColor": {
+          "type": "string",
+          "default": "#1a1a2e",
+          "description": "Background colour for the Custom palette (canvas stage). Applies when 'Custom' is chosen as the colour scheme at new-game setup."
         }
       }
     }

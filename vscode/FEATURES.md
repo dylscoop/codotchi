@@ -556,6 +556,9 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.enableAttentionCalls` | boolean | `true` | Enable/disable the entire attention-call mechanic | `[x]` |
 | `gotchi.idleThresholdSeconds` | integer | `60` | Seconds of no activity before idle mode (min 10) | `[x]` |
 | `gotchi.idleDeepThresholdSeconds` | integer | `600` | Seconds of no activity before deep-idle mode (min 30) | `[x]` |
+| `gotchi.customPrimaryColor` | string | `#ff8c00` | Pet body colour for the "Custom" palette | `[x]` |
+| `gotchi.customSecondaryColor` | string | `#ffffff` | Pet eyes/details colour for the "Custom" palette | `[x]` |
+| `gotchi.customBackgroundColor` | string | `#1a1a2e` | Canvas background colour for the "Custom" palette | `[x]` |
 | `gotchi.alwaysShowGamePicker` | boolean | `false` | Always show game select screen before playing | `[ ]` |
 | `gotchi.leftRightTimeoutMs` | number | `3000` | Milliseconds to respond in Left/Right game | `[ ]` |
 | `gotchi.simonFlashDurationMs` | number | `600` | Flash duration in Pattern Memory game | `[ ]` |
