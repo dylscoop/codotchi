@@ -73,6 +73,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle               | `[x]`  |
 | Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle; resets on auto-wake | `[x]`  |
 | Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; refused via event log | `[x]`  |
+| Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; no minigame — direct boost | `[x]`  |
 | Sleep       | Energy regenerates; cannot act while sleeping    | —                                        | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
@@ -109,8 +110,8 @@ Notes:
 
 ## 4. Minigames
 
-Two interactive minigames are implemented: **Left / Right** and **Higher or
-Lower**. Both are launched via a game-select overlay that appears when the
+Three interactive minigames are implemented: **Left / Right**, **Higher or
+Lower**, and **Coin Flip**. All are launched via a game-select overlay that appears when the
 player presses the Play button.
 
 Each game runs in a temporary **game overlay** rendered inside the
@@ -199,6 +200,18 @@ Status: `[x]`
 
 Status: `[ ]`
 
+### 4.6 Coin Flip
+
+*A pure luck game — no skill, just a 50/50 chance.*
+
+- Player picks **Heads** or **Tails**.
+- Result is determined by a 50/50 coin flip (`Math.random() < 0.5`).
+- **Win**: Happiness +5 (`MINIGAME_COIN_FLIP_WIN = 5`).
+- **Lose**: Happiness +0 (no consolation — pure gamble).
+- Single round per play session.
+
+Status: `[x]`
+
 ### Minigame Architecture Notes
 
 - All game logic (timers, scoring, animations) runs entirely in `sidebar.js`.
@@ -211,6 +224,17 @@ Status: `[ ]`
 - `gameEngine.ts` `applyMinigameResult()` maps game id + result → stat deltas.
 - Add new games by: (1) adding an overlay render function in `sidebar.js`,
   (2) wiring up its result message, (3) adding a case in `applyMinigameResult`.
+
+### Minigame Reward Reference
+
+| Game | Result | Happiness delta | Constant(s) |
+|------|--------|-----------------|-------------|
+| Left / Right | Win | +15–25 (random) | `MINIGAME_LR_WIN_MIN = 15`, `MINIGAME_LR_WIN_MAX = 25` |
+| Left / Right | Lose | +10 (consolation) | `MINIGAME_LR_LOSE_CONSOLATION = 10` |
+| Higher or Lower | Win | +10–20 (random) | `MINIGAME_HL_WIN_MIN = 10`, `MINIGAME_HL_WIN_MAX = 20` |
+| Higher or Lower | Lose | +10 (consolation) | `MINIGAME_HL_LOSE_CONSOLATION = 10` |
+| Coin Flip | Win | +5 (flat) | `MINIGAME_COIN_FLIP_WIN = 5` |
+| Coin Flip | Lose | +0 (no consolation) | — |
 
 ---
 

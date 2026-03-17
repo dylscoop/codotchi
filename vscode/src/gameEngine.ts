@@ -74,6 +74,9 @@ const FEED_SNACK_WEIGHT_GAIN: number = 5;
 const PLAY_HAPPINESS_BOOST: number = 15;
 const PLAY_ENERGY_COST: number = 25;
 const PLAY_WEIGHT_LOSS: number = 3;
+
+const PAT_HAPPINESS_BOOST: number = 10;
+const PAT_ENERGY_COST: number = 20;
 const POOP_WEIGHT_LOSS: number = 5;
 
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
@@ -1401,6 +1404,29 @@ export function play(state: PetState): PetState {
     energy: clampStat(state.energy - PLAY_ENERGY_COST),
     weight: newWeight,
     consecutiveSnacks: 0,
+    events,
+  });
+}
+
+/**
+ * Pat the pet — a gentle interaction that gives a modest happiness boost at a
+ * lower energy cost than play. No minigame; just a direct stat change.
+ *
+ * @param state - The current pet state.
+ * @returns A new PetState after the action.
+ */
+export function pat(state: PetState): PetState {
+  if (state.energy < PAT_ENERGY_COST) {
+    return withDerivedFields({ ...state, events: ["pat_refused_no_energy"] });
+  }
+  const answered = answerAttentionCall(state, "unhappiness");
+  const events: string[] = ["patted"];
+  if (answered) { events.push("attention_call_answered_unhappiness"); }
+  return withDerivedFields({
+    ...state,
+    ...(answered ?? {}),
+    happiness: clampStat(state.happiness + PAT_HAPPINESS_BOOST),
+    energy:    clampStat(state.energy    - PAT_ENERGY_COST),
     events,
   });
 }

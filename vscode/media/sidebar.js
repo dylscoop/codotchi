@@ -205,6 +205,10 @@
     vscode.postMessage({ command: "scold" });
   });
 
+  document.getElementById("btn-pat").addEventListener("click", function () {
+    vscode.postMessage({ command: "pat" });
+  });
+
   btnNewGame.addEventListener("click", function () {
     showScreen("setup");
   });
@@ -273,6 +277,9 @@
   });
   document.getElementById("btn-mg-hl").addEventListener("click", function () {
     startHigherLowerGame();
+  });
+  document.getElementById("btn-mg-cf").addEventListener("click", function () {
+    startCoinFlipGame();
   });
   document.getElementById("btn-mg-cancel").addEventListener("click", function () {
     hideMgOverlay();
@@ -534,6 +541,50 @@
         ? "You won Higher or Lower! (" + hlCorrect + "/5 correct)"
         : "You lost Higher or Lower. (" + hlCorrect + "/5 correct)";
     sendPlayResult("higher_lower", result);
+  }
+
+  // ── Coin Flip game ─────────────────────────────────────────────────────────
+
+  document.getElementById("btn-cf-heads").addEventListener("click", function () { handleCFChoice("heads"); });
+  document.getElementById("btn-cf-tails").addEventListener("click", function () { handleCFChoice("tails"); });
+
+  function startCoinFlipGame() {
+    document.getElementById("cf-feedback").textContent = "";
+    document.getElementById("btn-cf-heads").disabled = false;
+    document.getElementById("btn-cf-tails").disabled = false;
+    showMgPanel("mg-coin-flip");
+  }
+
+  function handleCFChoice(choice) {
+    document.getElementById("btn-cf-heads").disabled = true;
+    document.getElementById("btn-cf-tails").disabled = true;
+
+    var outcome = Math.random() < 0.5 ? "heads" : "tails";
+    var won = outcome === choice;
+    document.getElementById("cf-feedback").textContent = won
+      ? "\u2713 It's " + outcome + "! You win!"
+      : "\u2717 It's " + outcome + ". Better luck next time.";
+
+    if (won) {
+      spriteCanvas.classList.add("anim-jump");
+      spriteCanvas.addEventListener("animationend", function onAnimEnd() {
+        spriteCanvas.classList.remove("anim-jump");
+        spriteCanvas.removeEventListener("animationend", onAnimEnd);
+      });
+    }
+
+    setTimeout(function () {
+      endCoinFlipGame(won ? "win" : "lose");
+    }, 900);
+  }
+
+  function endCoinFlipGame(result) {
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win"
+        ? "You won Coin Flip! (+5 happiness)"
+        : "You lost Coin Flip. (no consolation)";
+    sendPlayResult("coin_flip", result);
   }
 
   // ── Canvas sizing ─────────────────────────────────────────────────────────
@@ -834,7 +885,7 @@
 
     // BUGFIX-002: disable care buttons while pet is sleeping
     const isSleeping = state.sleeping;
-    ["btn-feed-meal", "btn-feed-snack", "btn-play",
+    ["btn-feed-meal", "btn-feed-snack", "btn-play", "btn-pat",
      "btn-clean", "btn-medicine", "btn-praise", "btn-scold"].forEach(function (id) {
       const btn = document.getElementById(id);
       if (btn) { btn.disabled = isSleeping; }
@@ -1016,6 +1067,8 @@
       "snack_refused":           n + " refused the snack.",
       "play_refused_no_energy":  n + " doesn't have enough energy to play!",
       "played":                  n + " played!",
+      "pat_refused_no_energy":   n + " doesn't have enough energy to be patted!",
+      "patted":                  n + " was patted!",
       "already_sleeping":        n + " is already asleep.",
       "fell_asleep":             n + " fell asleep.",
       "already_awake":           n + " is already awake.",
@@ -1068,6 +1121,8 @@
       "minigame_left_right_lose":   n + " lost Left / Right.",
       "minigame_higher_lower_win":  n + " won Higher or Lower!",
       "minigame_higher_lower_lose": n + " lost Higher or Lower.",
+      "minigame_coin_flip_win":     n + " won Coin Flip!",
+      "minigame_coin_flip_lose":    n + " lost Coin Flip.",
     };
     if (labels[code]) { return labels[code]; }
     if (code.indexOf("evolved_to_") === 0) {

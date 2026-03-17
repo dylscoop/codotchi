@@ -1,6 +1,38 @@
 # Version History
 
-## v0.7.3 — current
+## v0.7.4 — current
+
+### Changes from v0.7.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | Added `PAT_HAPPINESS_BOOST = 10`, `PAT_ENERGY_COST = 20` constants and `pat()` function — gives +10 happiness, −20 energy, no minigame |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Mirrored `PAT_HAPPINESS_BOOST` and `PAT_ENERGY_COST` constants |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Mirrored `pat()` function |
+| `vscode/src/sidebarProvider.ts` | Added `pat` import, `"pat"` case in message switch, added `"pat"` to `SLEEP_BLOCKED` list |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | Added `"pat"` case in `handleCommand()`, added `"pat"` to `sleepBlocked` set |
+| `vscode/media/sidebar.html` | Added `btn-pat` button to `.btn-grid`; added `btn-mg-cf` to `#mg-select`; added `#mg-coin-flip` panel (Panel 3); renumbered Result to Panel 4 |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored from `vscode/media/sidebar.html` |
+| `vscode/media/sidebar.js` | Added `btn-pat` click listener; added coin flip game functions (`startCoinFlipGame`, `handleCFChoice`, `endCoinFlipGame`); wired `btn-mg-cf`; added `patted`, `pat_refused_no_energy`, `minigame_coin_flip_win/lose` to `humaniseEvent`; added `btn-pat` to sleep-disable list |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` |
+| `vscode/package.json` | Version bumped `0.7.3` → `0.7.4` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.3` → `0.7.4` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.3` → `0.7.4` |
+| `vscode/FEATURES.md` | Added Pat row to Section 3 care actions table; updated minigame intro to "Three"; added Section 4.6 Coin Flip `[x]`; added Minigame Reward Reference table |
+| `README.md` | Install filenames and current release updated to `0.7.4` |
+| `vscode/README.md` | Install filenames updated to `0.7.4` |
+| `pycharm/README.md` | Install filenames updated to `0.7.4` |
+
+### New constants
+
+```
+PAT_HAPPINESS_BOOST: Int = 10   // happiness boost from pat action
+PAT_ENERGY_COST:     Int = 20   // energy cost of pat action
+```
+
+---
+
+## v0.7.3 — previous
 
 ### Changes from v0.7.2
 

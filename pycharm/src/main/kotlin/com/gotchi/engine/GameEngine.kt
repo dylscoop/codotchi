@@ -685,6 +685,30 @@ fun play(state: PetState): PetState {
 }
 
 /**
+ * Pat the pet — a gentle interaction that gives a modest happiness boost at a
+ * lower energy cost than play. No minigame; just a direct stat change.
+ */
+fun pat(state: PetState): PetState {
+    if (state.energy < PAT_ENERGY_COST)
+        return withDerivedFields(state.copy(events = listOf("pat_refused_no_energy")))
+
+    val answered = answerAttentionCall(state, "unhappiness")
+    val events = mutableListOf("patted")
+    if (answered != null) events.add("attention_call_answered_unhappiness")
+
+    return withDerivedFields(
+        state.copy(
+            happiness                = clampStat(state.happiness + PAT_HAPPINESS_BOOST),
+            energy                   = clampStat(state.energy    - PAT_ENERGY_COST),
+            events                   = events,
+            activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
+            attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
+            attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
+        )
+    )
+}
+
+/**
  * Return the happiness delta for a mini-game outcome.
  *
  * @param game   "left_right", "higher_lower", "coin_flip", "guess", or "memory"

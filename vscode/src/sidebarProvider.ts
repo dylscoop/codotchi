@@ -19,6 +19,7 @@ import {
   consumeSnack,
   play,
   applyMinigameResult,
+  pat,
   sleep,
   wake,
   clean,
@@ -203,8 +204,8 @@ export class SidebarProvider
       return;
     }
 
-    // BUGFIX-002: block care actions while the pet is sleeping
-    const SLEEP_BLOCKED: readonly string[] = ["feed", "play", "clean", "medicine", "scold", "praise"];
+  // BUGFIX-002: block care actions while the pet is sleeping
+  const SLEEP_BLOCKED: readonly string[] = ["feed", "play", "pat", "clean", "medicine", "scold", "praise"];
     if (state !== null && state.sleeping && SLEEP_BLOCKED.includes(message.command)) {
       return;
     }
@@ -289,6 +290,13 @@ export class SidebarProvider
           return;
         }
         nextState = praise(state);
+        break;
+
+      case "pat":
+        if (state === null) {
+          return;
+        }
+        nextState = pat(state);
         break;
 
       case "new_game": {
