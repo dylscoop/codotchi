@@ -34,7 +34,7 @@ to survive and evolve into its final form.
 
 ### Quick install (pre-built `.vsix`)
 
-1. **Download `vscode-gotchi-0.7.4.vsix`** from the
+1. **Download `vscode-gotchi-0.7.5.vsix`** from the
    [Releases page](https://github.com/dylscoop/vscode_gotchi/releases).
 
 2. **Install the `.vsix`:**
@@ -42,7 +42,7 @@ to survive and evolve into its final form.
    **From the terminal:**
 
    ```bash
-   code --install-extension vscode-gotchi-0.7.4.vsix
+   code --install-extension vscode-gotchi-0.7.5.vsix
 ```
 
    **From the VS Code UI:**
@@ -69,11 +69,11 @@ npm install
 # Compile TypeScript
 npm run compile
 
-# Package → produces vscode-gotchi-0.7.4.vsix
+# Package → produces vscode-gotchi-0.7.5.vsix
 npx vsce package --no-dependencies
 
 # Install it
-code --install-extension vscode-gotchi-0.7.4.vsix
+code --install-extension vscode-gotchi-0.7.5.vsix
 ```
 
 ## Using the extension
@@ -111,7 +111,7 @@ Once installed and VS Code has reloaded:
 | **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Limited to 3 meals per wake cycle — overfeeding past that has no effect. |
 | **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. More than 3 snacks in a row will make your pet sick. |
 | **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning gives +15–25 happiness; losing applies a −5 penalty. Costs 25 energy — your pet can't play if exhausted. |
-| **Pat** | Gives your pet a gentle pat. Boosts happiness by +10. Costs 20 energy. Cannot be used while your pet is sleeping or exhausted. |
+| **Pat** | Gives your pet a gentle pat. Boosts happiness by +10. Costs 20 energy. Accessed via the Play menu (same overlay as the mini-games). Cannot be used while your pet is sleeping or exhausted. |
 | **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. |
 | **Clean** | Clears all droppings from the screen. Pets produce droppings roughly every 20 minutes. Leaving 3 or more uncleaned will make your pet sick. |
 | **Medicine** | Treats sickness. Requires 3 doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss. |

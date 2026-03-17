@@ -1,6 +1,32 @@
 # Version History
 
-## v0.7.4 — current
+## v0.7.5 — current
+
+### Changes from v0.7.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.7.4` → `0.7.5` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.4` → `0.7.5` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.4` → `0.7.5` |
+| `vscode/media/sidebar.html` | Removed standalone `btn-pat` from `.btn-grid`; added `btn-mg-pat` to `#mg-select`; changed `#mg-select` title from "Play a game!" to "Play or Pat" |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored from `vscode/media/sidebar.html` |
+| `vscode/media/sidebar.js` | Added `PAT_ENERGY_COST = 20` constant; changed Play button gate from `PLAY_ENERGY_COST` to `PAT_ENERGY_COST`; removed standalone `btn-pat` click listener; added `btn-mg-pat` click listener (calls `hideMgOverlay()` then `pat` command); removed `"btn-pat"` from sleep-disable array |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` |
+| `vscode/FEATURES.md` | Updated Pat row Notes: accessed via Play menu; updated Section 4 intro to mention Pat is also in the menu |
+| `README.md` | Install filenames and current release updated to `0.7.5` |
+| `vscode/README.md` | Install filenames updated to `0.7.5`; updated Pat row in Actions table |
+| `pycharm/README.md` | Install filenames updated to `0.7.5` |
+
+### New constants
+
+```
+PAT_ENERGY_COST: Int = 20   // (already existed in engine) now also declared in sidebar.js UI layer
+```
+
+---
+
+## v0.7.4 — previous
 
 ### Changes from v0.7.3
 

@@ -23,6 +23,9 @@
   /** Energy cost of the play action — must match PLAY_ENERGY_COST in gameEngine.ts. */
   var PLAY_ENERGY_COST = 25;
 
+  /** Energy cost of the pat action — must match PAT_ENERGY_COST in gameEngine.ts. */
+  var PAT_ENERGY_COST = 20;
+
   /** Base movement speed in px/s per life stage (horizontal). */
   const STAGE_BASE_SPEED_PPS = {
     egg:    0,
@@ -173,7 +176,7 @@
   });
 
   document.getElementById("btn-play").addEventListener("click", function () {
-    if (!lastState || lastState.energy < PLAY_ENERGY_COST) {
+    if (!lastState || lastState.energy < PAT_ENERGY_COST) {
       // Let the server handle the refusal gracefully
       vscode.postMessage({ command: "play" });
       return;
@@ -203,10 +206,6 @@
 
   document.getElementById("btn-scold").addEventListener("click", function () {
     vscode.postMessage({ command: "scold" });
-  });
-
-  document.getElementById("btn-pat").addEventListener("click", function () {
-    vscode.postMessage({ command: "pat" });
   });
 
   btnNewGame.addEventListener("click", function () {
@@ -280,6 +279,10 @@
   });
   document.getElementById("btn-mg-cf").addEventListener("click", function () {
     startCoinFlipGame();
+  });
+  document.getElementById("btn-mg-pat").addEventListener("click", function () {
+    hideMgOverlay();
+    vscode.postMessage({ command: "pat" });
   });
   document.getElementById("btn-mg-cancel").addEventListener("click", function () {
     hideMgOverlay();
@@ -878,7 +881,7 @@
 
     // BUGFIX-002: disable care buttons while pet is sleeping
     const isSleeping = state.sleeping;
-    ["btn-feed-meal", "btn-feed-snack", "btn-play", "btn-pat",
+    ["btn-feed-meal", "btn-feed-snack", "btn-play",
      "btn-clean", "btn-medicine", "btn-praise", "btn-scold"].forEach(function (id) {
       const btn = document.getElementById(id);
       if (btn) { btn.disabled = isSleeping; }

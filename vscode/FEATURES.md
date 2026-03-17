@@ -73,7 +73,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle               | `[x]`  |
 | Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle; resets on auto-wake | `[x]`  |
 | Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; refused via event log | `[x]`  |
-| Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; no minigame — direct boost | `[x]`  |
+| Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; accessed via Play menu — direct boost (no minigame) | `[x]`  |
 | Sleep       | Energy regenerates; cannot act while sleeping    | —                                        | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
@@ -112,7 +112,8 @@ Notes:
 
 Three interactive minigames are implemented: **Left / Right**, **Higher or
 Lower**, and **Coin Flip**. All are launched via a game-select overlay that appears when the
-player presses the Play button.
+player presses the Play button. The **Pat** action is also accessible from this
+same overlay.
 
 Each game runs in a temporary **game overlay** rendered inside the
 sidebar (a `<div>` that covers the game screen for the duration of the game,
