@@ -19,6 +19,8 @@ import com.intellij.openapi.components.*
  *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls
  *  - [petStageHeight]         : canvas height in pixels (default 96)
  *  - [reducedMotion]          : disable rAF animation loop (default false)
+ *  - [developerPasscode]      : set to "1234" to enable developer mode (default "")
+ *  - [devModeAgingMultiplier] : aging speed multiplier in dev mode (default 10)
  */
 @State(
     name = "GotchiSettings",
@@ -41,6 +43,8 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
         var attentionCallRate:   String = "fast"      // "fast" | "medium" | "slow"
         var petStageHeight: Int = 96
         var reducedMotion: Boolean = false
+        var developerPasscode: String = ""
+        var devModeAgingMultiplier: Int = 10
     }
 
     private var _state = State()
@@ -98,4 +102,12 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
     var reducedMotion: Boolean
         get() = _state.reducedMotion
         set(v) { _state.reducedMotion = v }
+
+    var developerPasscode: String
+        get() = _state.developerPasscode
+        set(v) { _state.developerPasscode = v }
+
+    var devModeAgingMultiplier: Int
+        get() = _state.devModeAgingMultiplier
+        set(v) { _state.devModeAgingMultiplier = v }
 }

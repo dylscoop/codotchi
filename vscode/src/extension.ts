@@ -89,8 +89,10 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }
 
-    // Update high score when pet dies
-    if (!state.alive) {
+    // Update high score when pet dies (suppressed in dev mode — scores don't count)
+    const devPasscode = vscode.workspace.getConfiguration("gotchi").get<string>("developerPasscode", "");
+    const devModeActive = devPasscode === "1234";
+    if (!state.alive && !devModeActive) {
       const elapsed = state.spawnedAt > 0 ? Date.now() - state.spawnedAt : 0;
       const prevElapsed = currentHighScore
         ? currentHighScore.diedAt - currentHighScore.spawnedAt
@@ -179,6 +181,8 @@ export function activate(context: vscode.ExtensionContext): void {
       attentionCallsEnabled:    cfg.get<boolean>("enableAttentionCalls", true),
       attentionCallExpiryTicks,
       attentionCallRateDivisor,
+      devMode:                  cfg.get<string>("developerPasscode", "") === "1234",
+      devModeAgingMultiplier:   Math.max(1, cfg.get<number>("devModeAgingMultiplier", 10)),
     };
     const next = tick(currentState, idle, deepIdle, gameConfig);
     handleStateUpdate(next);

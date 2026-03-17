@@ -2,7 +2,7 @@
   "name": "vscode-gotchi",
   "displayName": "vscode_gotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "0.7.7",
+  "version": "0.8.0",
   "publisher": "vscode-gotchi",
   "repository": {
     "type": "git",
@@ -121,6 +121,17 @@
           "type": "boolean",
           "default": false,
           "description": "Disable all pet animations (walking, jumping, reaction effects). The pet is drawn statically at the centre of the stage. Also respects the OS-level prefers-reduced-motion setting."
+        },
+        "gotchi.developerPasscode": {
+          "type": "string",
+          "default": "",
+          "description": "Set to '1234' to enable developer mode. In developer mode the pet cannot die (health is floored at 1), it ages faster (controlled by devModeAgingMultiplier), and high scores are not recorded."
+        },
+        "gotchi.devModeAgingMultiplier": {
+          "type": "integer",
+          "default": 10,
+          "minimum": 1,
+          "description": "Aging speed multiplier applied when developer mode is active (gotchi.developerPasscode = '1234'). Default: 10 (10× faster than normal)."
         }
       }
     }

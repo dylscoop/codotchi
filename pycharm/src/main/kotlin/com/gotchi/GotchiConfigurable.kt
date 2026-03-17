@@ -14,6 +14,7 @@ import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSpinner
+import javax.swing.JTextField
 import javax.swing.SpinnerNumberModel
 
 /**
@@ -36,6 +37,8 @@ class GotchiConfigurable : Configurable {
     private var attentionCallRateCombo:    JComboBox<String>?  = null
     private var petStageHeightSpinner:     JSpinner?           = null
     private var reducedMotionCheck:        JCheckBox?          = null
+    private var developerPasscodeField:    JTextField?         = null
+    private var devModeAgingSpinner:       JSpinner?           = null
 
     override fun getDisplayName(): String = "Gotchi"
 
@@ -52,6 +55,8 @@ class GotchiConfigurable : Configurable {
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
         val stageHeightSpinner = JSpinner(SpinnerNumberModel(96, 48, 300, 8))
         val reducedMotionCheckbox = JCheckBox("Reduced motion (disable animation)")
+        val devPasscodeField = JTextField(10)
+        val devAgingSpinner = JSpinner(SpinnerNumberModel(10, 1, 1000, 1))
 
         fontSizeCombo            = combo
         colorPanel               = cp
@@ -65,6 +70,8 @@ class GotchiConfigurable : Configurable {
         attentionCallRateCombo   = rateCombo
         petStageHeightSpinner    = stageHeightSpinner
         reducedMotionCheck       = reducedMotionCheckbox
+        developerPasscodeField   = devPasscodeField
+        devModeAgingSpinner      = devAgingSpinner
 
         val panel = JPanel(GridBagLayout())
         val gbc   = GridBagConstraints()
@@ -173,8 +180,26 @@ class GotchiConfigurable : Configurable {
         panel.add(reducedMotionCheckbox, gbc)
         gbc.gridwidth = 1
 
+        // Row 12 — Developer passcode
+        gbc.gridx = 0; gbc.gridy = 12
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Developer passcode:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(devPasscodeField, gbc)
+
+        // Row 13 — Dev mode aging multiplier
+        gbc.gridx = 0; gbc.gridy = 13
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Dev mode aging multiplier:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(devAgingSpinner, gbc)
+
         // Push content to the top
-        gbc.gridx = 0; gbc.gridy = 12; gbc.gridwidth = 2
+        gbc.gridx = 0; gbc.gridy = 14; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -196,6 +221,8 @@ class GotchiConfigurable : Configurable {
         val uiRate       = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         val uiStageHeight = (petStageHeightSpinner?.value as? Int) ?: 96
         val uiReducedMotion = reducedMotionCheck?.isSelected ?: false
+        val uiDevPasscode = developerPasscodeField?.text ?: ""
+        val uiDevAging = (devModeAgingSpinner?.value as? Int) ?: 10
         return uiFont != settings.fontSize
             || uiColor != settings.textColor
             || uiPrimary != settings.customPrimaryColor
@@ -208,6 +235,8 @@ class GotchiConfigurable : Configurable {
             || uiRate != settings.attentionCallRate
             || uiStageHeight != settings.petStageHeight
             || uiReducedMotion != settings.reducedMotion
+            || uiDevPasscode != settings.developerPasscode
+            || uiDevAging != settings.devModeAgingMultiplier
     }
 
     override fun apply() {
@@ -224,6 +253,8 @@ class GotchiConfigurable : Configurable {
         settings.attentionCallRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         settings.petStageHeight         = (petStageHeightSpinner?.value as? Int) ?: 96
         settings.reducedMotion          = reducedMotionCheck?.isSelected ?: false
+        settings.developerPasscode      = developerPasscodeField?.text ?: ""
+        settings.devModeAgingMultiplier = (devModeAgingSpinner?.value as? Int) ?: 10
         // Reload the webview immediately so the change is visible without a restart
         ApplicationManager.getApplication().service<GotchiPlugin>().reloadWebview()
     }
@@ -242,6 +273,8 @@ class GotchiConfigurable : Configurable {
         attentionCallRateCombo?.selectedIndex   = rateKeyToIndex(settings.attentionCallRate)
         petStageHeightSpinner?.value            = settings.petStageHeight
         reducedMotionCheck?.isSelected          = settings.reducedMotion
+        developerPasscodeField?.text            = settings.developerPasscode
+        devModeAgingSpinner?.value              = settings.devModeAgingMultiplier
     }
 
     // ── Enum helpers ───────────────────────────────────────────────────────
