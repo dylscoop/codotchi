@@ -841,7 +841,7 @@ describe("applyMinigameResult", () => {
   });
 
   it("left_right win clamps happiness at 100", () => {
-    const pet = makePet({ happiness: 90 });
+    const pet = makePet({ happiness: 96 });
     const next = applyMinigameResult(pet, "left_right", "win");
     assert.equal(next.happiness, 100);
   });

@@ -75,7 +75,7 @@ const PLAY_HAPPINESS_BOOST: number = 15;
 const PLAY_ENERGY_COST: number = 25;
 const PLAY_WEIGHT_LOSS: number = 3;
 
-const PAT_HAPPINESS_BOOST: number = 15;
+const PAT_HAPPINESS_BOOST: number = 10;
 const PAT_ENERGY_COST: number = 20;
 const POOP_WEIGHT_LOSS: number = 5;
 

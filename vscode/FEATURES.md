@@ -73,7 +73,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle               | `[x]`  |
 | Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle; resets on auto-wake | `[x]`  |
 | Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; refused via event log | `[x]`  |
-| Pat         | Happiness +15, Energy −20                        | Requires Energy ≥ 20; accessed via Play menu — direct boost (no minigame) | `[x]`  |
+| Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; accessed via Play menu — direct boost (no minigame) | `[x]`  |
 | Sleep       | Energy regenerates; cannot act while sleeping    | —                                        | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
@@ -239,7 +239,7 @@ that fires when Play is pressed. Net totals reflect delta + baseline.
 | Higher or Lower | Lose | −5 | +10 | `MINIGAME_HL_LOSE_DELTA = -5` |
 | Coin Flip | Win | 0 | +15 | `MINIGAME_COIN_FLIP_WIN = 0` |
 | Coin Flip | Lose | −10 | +5 | `MINIGAME_COIN_FLIP_LOSE = -10` |
-| Pat | — | +15 (flat total) | +15 | `PAT_HAPPINESS_BOOST = 15` (no play baseline) |
+| Pat | — | +10 (flat total) | +10 | `PAT_HAPPINESS_BOOST = 10` (no play baseline) |
 
 ---
 

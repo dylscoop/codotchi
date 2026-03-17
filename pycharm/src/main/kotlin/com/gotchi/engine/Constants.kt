@@ -50,7 +50,7 @@ const val PLAY_HAPPINESS_BOOST: Int = 15
 const val PLAY_ENERGY_COST: Int = 25
 const val PLAY_WEIGHT_LOSS: Int = 3
 
-const val PAT_HAPPINESS_BOOST: Int = 15
+const val PAT_HAPPINESS_BOOST: Int = 10
 const val PAT_ENERGY_COST: Int = 20
 const val POOP_WEIGHT_LOSS: Int = 5
 

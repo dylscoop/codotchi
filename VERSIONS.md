@@ -1,6 +1,27 @@
 # Version History
 
-## v0.7.6 — current
+## v0.7.7 — current
+
+### Changes from v0.7.6
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.7.6` → `0.7.7` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.6` → `0.7.7` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.6` → `0.7.7` |
+| `vscode/src/gameEngine.ts` | `PAT_HAPPINESS_BOOST` reduced from 15 to 10 |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Mirrored `PAT_HAPPINESS_BOOST` reduction (15 → 10) |
+| `vscode/FEATURES.md` | Updated Pat rows to reflect new happiness boost of +10 |
+
+### Updated constants
+
+```
+PAT_HAPPINESS_BOOST: Int = 10   // was 15 (net pat happiness total now 10)
+```
+
+---
+
+## v0.7.6 — previous
 
 ### Changes from v0.7.5
 
