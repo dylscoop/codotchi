@@ -1,8 +1,23 @@
 ---
 name: git-workflow
-description: Enforces branch and commit discipline — never push directly to main, always work on a named feature branch, and always ask the user before pushing, merging, or tagging.
+description: Enforces branch and commit discipline — never push directly to main, always work on a named feature branch, always ask the user for a branch name before touching any file, and commit after every completed todo item.
 license: MIT
 compatibility: opencode
+---
+
+## MANDATORY — do these two things before anything else
+
+> **STOP. Before reading a single file or running a single command:**
+>
+> 1. Ask the user for a branch name (suggest one based on the task).
+> 2. Create and check out that branch.
+>
+> Only after the branch is checked out may you read files, write code, or run builds.
+
+If you are mid-session and have already done work without a branch, create the
+branch immediately (all unstaged changes carry over automatically), then commit
+what is done before continuing.
+
 ---
 
 ## Branch rules
@@ -10,9 +25,11 @@ compatibility: opencode
 - **Never push directly to `main`.**
 - **Never commit directly to `main`.**
 - **Never write, edit, or build any code until a feature branch is checked out.**
-- For every new feature or bug fix, ask the user what branch name to use before doing anything else. Suggest a name based on the feature (e.g. `feat/poo-animation`, `fix/health-bar-colour`).
+- For every new feature or bug fix, ask the user what branch name to use. Suggest a name based on the feature (e.g. `feat/poo-animation`, `fix/health-bar-colour`).
 - Only skip asking if the user has already named the branch themselves in their message.
 - Create and check out the branch immediately after the name is confirmed — before reading files, writing code, or running builds.
+
+---
 
 ## Push / merge / tag rules — explicit permission required for every step
 
@@ -29,36 +46,47 @@ The following actions each require **explicit user instruction** before performi
 
 **Never chain these steps together automatically.** After completing work, stop and report what is done. Ask the user how they want to proceed with each step.
 
+---
+
 ## Workflow
 
-1. **Before touching any file:** confirm the target branch name with the user.
+1. **Before touching any file:** ask for and confirm the target branch name.
 2. **Immediately check out or create that branch** — do not read, edit, or build anything until this step is done.
 3. Do the work (code changes, builds, doc updates).
-4. Commit work on that branch.
-5. When work is done, stop and tell the user:
+4. **Commit after every todo item is completed** (see Commit style below).
+5. When all work is done, stop and tell the user:
    - What was changed
    - What commits are on the branch
    - Which of the release steps still need to happen
-5. Wait for the user to explicitly ask for each next step.
+6. Wait for the user to explicitly ask for each next step.
+
+---
 
 ## Commit style
 
-- **One commit per feature or bug fix.** Never batch multiple features or fixes into a single commit.
-- Each commit must be self-contained: include the source change, its doc updates, and rebuilt artifacts together — but only for that one feature or fix.
-- If a task has multiple independent features or fixes, commit each one separately before starting the next.
-- **Commit after every todo item is completed.** When working through a todo list, create a commit immediately after each item is marked done — do not accumulate multiple completed todos before committing.
+- **One commit per completed todo item.** Never batch multiple todos into a single commit.
+- Each commit must be self-contained: source change + its doc updates + rebuilt artifacts (if source changed) — but only for that one item.
+- **Commit immediately** when a todo item is marked done — do not continue to the next todo until the commit is made.
 - Message format: `<type>: <short description>` — types are `feat`, `fix`, `chore`, `refactor`, `docs`, `test`.
 
-## Build artifacts — required before every feature/fix commit
+---
 
-Before committing any feature or bug fix, **always rebuild both distribution artifacts** and include them in the same commit:
+## Build artifacts — required before merging to main
+
+Do **not** rebuild on every individual commit. Rebuild once, as a dedicated
+`chore:` commit, immediately before the branch is ready to merge to `main`:
 
 | IDE | Command (run from the given directory) | Output artifact to commit |
 |-----|----------------------------------------|--------------------------|
 | VS Code | `npx @vscode/vsce package` (run from `vscode/`) | `vscode/vscode-gotchi-X.Y.Z.vsix` |
 | PyCharm | `powershell -Command "$env:JAVA_HOME='C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'; & '.\gradlew.bat' buildPlugin"` (run from `pycharm/`) | `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip` |
 
-Never commit source changes without regenerating both artifacts.
+The build commit must come **after** all feature, fix, test, and doc commits on
+the branch — never rebuild mid-branch and then continue adding changes on top.
+
+Never merge to `main` without both artifacts present and up to date.
+
+---
 
 ## Release / merge to main
 
@@ -66,13 +94,14 @@ The release flow has multiple discrete steps. **Each step requires its own expli
 
 Typical release flow (each line needs separate approval):
 
-1. `git push origin <branch>` — push the feature branch
-2. `git checkout main && git merge <branch>` — merge to main
-3. `git push origin main` — push main
-4. `git tag vX.Y.Z` — create the version tag
-5. `git push origin vX.Y.Z` — push the tag
-   6. Copy artifacts to `releases/`, apply the 3-version rule, move older releases to `releases/old_releases/` — see `release-management` skill — commit and push
-7. Create GitHub release — publish release notes
+1. Rebuild both artifacts and commit as `chore: rebuild artifacts for vX.Y.Z` — **this must be the last commit on the branch before merging**
+2. `git push origin <branch>` — push the feature branch
+3. `git checkout main && git merge <branch>` — merge to main
+4. `git push origin main` — push main
+5. `git tag vX.Y.Z` — create the version tag
+6. `git push origin vX.Y.Z` — push the tag
+7. Copy artifacts to `releases/`, apply the 3-version rule, move older releases to `releases/old_releases/` — see `release-management` skill — commit and push
+8. Create GitHub release — publish release notes
 
 ## GitHub release body — what to include
 
@@ -171,3 +200,4 @@ Then delete the script immediately (it contains the PAT).
 - Use backtick-escaped backticks (` `` `) inside `@"..."@` here-strings to produce literal backticks in the Markdown body.
 - The repo is `dylscoop/codotchi`; update the URI if the repo ever changes.
 - After a successful release, verify at `https://github.com/dylscoop/codotchi/releases`.
+
