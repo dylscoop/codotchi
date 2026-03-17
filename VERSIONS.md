@@ -1,6 +1,31 @@
 # Version History
 
-## v0.6.2 — current (in progress)
+## v0.6.3 — current (in progress)
+
+### Changes from v0.6.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | BUGFIX-026: `GRAVITY` raised `60 → 500` px/s²; `HOP_IMPULSE` scaled `−60 → −175` px/s so hop height (~30 px) is preserved with the new gravity |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` (identical file) |
+| `vscode/package.json` | Version bumped `0.6.2` → `0.6.3` |
+| `pycharm/build.gradle.kts` | Version bumped `0.6.2` → `0.6.3` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.6.2` → `0.6.3` |
+| `BUGFIXES.md` | Added BUGFIX-026 (gravity too slow) |
+| `README.md` | Install filenames updated to `0.6.3` |
+| `vscode/README.md` | Install filenames updated to `0.6.3` |
+| `pycharm/README.md` | Install filenames updated to `0.6.3` |
+
+### Updated constants (v0.6.3, sidebar.js)
+
+```
+GRAVITY:      500   // px/s² — was 60; falls full 96 px canvas in ~0.62 s (was 1.79 s)
+HOP_IMPULSE: -175   // px/s upward — was -60; preserves ~30 px hop height with new gravity
+```
+
+---
+
+## v0.6.2 — previous
 
 ### Changes from v0.6.0
 

@@ -34,10 +34,10 @@
   const MOOD_MULTIPLIER = { happy: 1.5, neutral: 1.0, sad: 0.4 };
 
   /** Gravity in px/s² (downward). */
-  const GRAVITY = 60;
+  const GRAVITY = 500;
 
   /** Happy hop vertical impulse in px/s (upward, so negative in canvas coords). */
-  const HOP_IMPULSE = -60;
+  const HOP_IMPULSE = -175;
 
   /** Seconds between happy hops when the pet is on the floor. */
   const HOP_INTERVAL = 4.0;

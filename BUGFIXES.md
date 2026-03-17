@@ -466,3 +466,14 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** VS Code destroys and recreates the `WebviewView` each time the sidebar panel is hidden and reshown (`resolveWebviewView` in `sidebarProvider.ts` reassigns `webviewView.webview.html`, resetting all JavaScript state). On the first load after recreation, `lastState === null`, so the first-load reset block in `sidebar.js` always placed the pet at `petX = centreX`. A sleeping pet would always reappear at the horizontal centre of the canvas after toggling the sidebar, regardless of where it had fallen asleep.
 
 **Fix:** The `fell_asleep` event handler now saves `petX` to `localStorage` under the key `gotchi_sleep_x`. The first-load reset block checks whether the restored state has `sleeping === true`; if so, it reads `gotchi_sleep_x` from `localStorage` and uses that value for `petX` instead of `centreX`. The sleeping movement block also now explicitly sets `petVx = 0`, `petVy = 0`, and `petY = floorY` on every frame so the pet cannot drift after being placed.
+
+---
+
+## BUGFIX-026 — Vertical falling speed is unrealistically slow (gravity too light)
+
+**Status:** Fixed (branch `fix/gravity-fall-speed`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `GRAVITY` was set to `60 px/s²`, which causes the pet to take approximately 1.79 seconds to fall the full 96 px canvas height. This is far lighter than real-world gravity feels at this canvas scale, making the pet appear to float when it hops or bounces.
+
+**Fix:** Raised `GRAVITY` from `60` to `500 px/s²`. This makes the pet fall the full canvas height in ~0.62 seconds, matching a natural, snappy gravity feel. `HOP_IMPULSE` was scaled proportionally from `−60` to `−175 px/s` so the hop still reaches the same ~30 px peak height (`v₀² / 2g ≈ 30 px`) — the hop is visually unchanged but completes in 0.35 s instead of 1.0 s.
