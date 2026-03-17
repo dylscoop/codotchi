@@ -2,7 +2,7 @@
   "name": "vscode-gotchi",
   "displayName": "vscode_gotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "0.5.2",
+  "version": "0.6.3",
   "publisher": "vscode-gotchi",
   "repository": {
     "type": "git",
@@ -109,6 +109,18 @@
           "type": "string",
           "default": "#1a1a2e",
           "description": "Background colour for the Custom palette (canvas stage). Applies when 'Custom' is chosen as the colour scheme at new-game setup."
+        },
+        "gotchi.petStageHeight": {
+          "type": "integer",
+          "default": 96,
+          "minimum": 60,
+          "maximum": 200,
+          "description": "Height in pixels of the pet stage canvas. Increase for a taller stage; the pet will have more vertical room to move. Default: 96."
+        },
+        "gotchi.reducedMotion": {
+          "type": "boolean",
+          "default": false,
+          "description": "Disable all pet animations (walking, jumping, reaction effects). The pet is drawn statically at the centre of the stage. Also respects the OS-level prefers-reduced-motion setting."
         }
       }
     }

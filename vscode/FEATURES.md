@@ -231,9 +231,9 @@ footprint to make movement readable.
 
 | Change | Detail | Status |
 |--------|--------|--------|
-| Expand canvas to full sidebar width | Read `canvas.parentElement.clientWidth` on load and on window resize; set `canvas.width` dynamically | `[ ]` |
-| Fixed stage height | Default 96 px; configurable via `gotchi.petStageHeight` | `[ ]` |
-| Sprite size unchanged | The drawn body size is still driven by stage scale; the extra space is used for movement | `[ ]` |
+| Expand canvas to full sidebar width | Read `canvas.parentElement.clientWidth` on load and on window resize; set `canvas.width` dynamically | `[x]` |
+| Fixed stage height | Default 96 px; configurable via `gotchi.petStageHeight` | `[x]` |
+| Sprite size unchanged | The drawn body size is still driven by stage scale; the extra space is used for movement | `[x]` |
 
 ### 5.2 Animation Loop
 
@@ -249,7 +249,7 @@ Replace the current one-shot `drawSprite(state)` call (triggered only on
   once per `stateUpdate` at a fixed centre position, preserving the current
   behaviour exactly.
 
-Status: `[ ]`
+Status: `[x]`
 
 ### 5.3 Idle Wandering
 
@@ -258,37 +258,38 @@ The pet drifts around the stage when no reaction animation is playing.
 | Property | Behaviour |
 |----------|-----------|
 | Velocity | Small random (vx, vy) vector; magnitude scales with mood speed (see 5.4) |
+|----------|-----------|
 | Boundary bounce | When the sprite edge hits the canvas edge, the relevant velocity component is negated |
 | Random pause | Every 3–8 seconds (random) the pet stops, holds for 0.5–2 s, then picks a new direction |
 | Sprite flip | Sprite is drawn mirrored when `vx < 0` using `ctx.scale(-1, 1)` before drawing |
 
-Status: `[ ]`
+Status: `[x]`
 
 ### 5.4 Mood & State Locomotion
 
 | State | Movement behaviour |
 |-------|--------------------|
-| Happy | 1.5× base speed; small upward hop every ~4 s (brief vy impulse upward then gravity pull back) |
+| Happy | 1.5× base speed; small upward hop every ~4 s (brief vy impulse upward then gravity pull back); hops fire on all moods during idle wandering |
 | Neutral | 1× base speed; steady, calm wandering |
 | Sad | 0.4× base speed; gravitates toward the bottom of the stage; pauses more often |
 | Sleeping | Fully stationary; subtle slow vertical breathing bob (±2 px, ~1 cycle per 3 s) |
 | Sick | Slow tremor: rapid small random offset on each frame (±1–2 px); rarely translates |
 | Hungry (hunger < 20) | Slightly erratic — direction changes more frequently |
 
-Status: `[ ]`
+Status: `[x]`
 
 ### 5.5 Stage-Based Speed
 
 | Stage | Base speed (px/s) | Notes |
 |-------|-------------------|-------|
 | Egg | 0 | Rocks left–right in place (rotation ±5°); no translation |
-| Baby | 12 | Very small, slow wobble |
-| Child | 20 | First real wandering |
+| Baby | 22 | Very small, slow wobble |
+| Child | 35 | First real wandering |
 | Teen | 30 | Confident movement |
 | Adult | 28 | Slightly more settled than teen |
 | Senior | 15 | Slower; pauses longer |
 
-Status: `[ ]`
+Status: `[x]`
 
 ### 5.6 Reaction Animations
 
@@ -313,7 +314,7 @@ hands control back.
 Reactions are stored in a simple queue; if a new one arrives while one is
 playing, it is appended and plays immediately after.
 
-Status: `[ ]`
+Status: `[x]`
 
 ### 5.7 Direction Flip (Sprite Mirroring)
 
@@ -333,7 +334,7 @@ if (facingLeft) {
 if (facingLeft) { ctx.restore(); }
 ```
 
-Status: `[ ]`
+Status: `[x]`
 
 ### 5.8 Reduced Motion
 
@@ -344,7 +345,7 @@ Status: `[ ]`
   if matched, behaviour is the same as `gotchi.reducedMotion: true` regardless
   of the setting value.
 
-Status: `[ ]`
+Status: `[x]`
 
 ### 5.9 Implementation Notes
 
@@ -548,8 +549,8 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | Setting | Type | Default | Description | Status |
 |---------|------|---------|-------------|--------|
 | `gotchi.fontSize` | enum | `normal` | Sidebar font size: `small` / `normal` / `large` | `[x]` |
-| `gotchi.reducedMotion` | boolean | `false` | Disable all pet movement and reaction animations | `[ ]` |
-| `gotchi.petStageHeight` | number | `96` | Height in px of the pet stage canvas (range 60–200) | `[ ]` |
+| `gotchi.reducedMotion` | boolean | `false` | Disable all pet movement and reaction animations | `[x]` |
+| `gotchi.petStageHeight` | number | `96` | Height in px of the pet stage canvas (range 60–200) | `[x]` |
 | `gotchi.codingRewards` | boolean | `true` | Enable coding-activity stat rewards | `[ ]` |
 | `gotchi.codingRewardThrottleSeconds` | number | `30` | Minimum seconds between coding rewards | `[ ]` |
 | `gotchi.autoWake` | boolean | `true` | Auto-wake pet when energy reaches 100 | `[ ]` |

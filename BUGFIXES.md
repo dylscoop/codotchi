@@ -444,3 +444,36 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** `consecutiveSnacks` was incremented inside `startSnack` (button-press phase). If the user clicked the snack button 3 times quickly before the pet walked to and ate any of them, `consecutiveSnacks` reached 3 at click time. When `consumeSnack` was called for the very first snack eaten, the sickness check (`consecutiveSnacks >= 3`) fired immediately — sickness triggered on the 1st snack consumed, not the 3rd.
 
 **Fix:** Moved the `consecutiveSnacks` increment from `startSnack` into `consumeSnack`. The counter now advances only when the pet physically eats a snack, so sickness correctly fires after the 3rd snack is consumed regardless of how quickly the button is clicked.
+
+---
+
+## BUGFIX-024 — Rapid hop stacking on floor bounce
+
+**Status:** Fixed (branch `feat/pet-movement`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** When the pet bounced off the floor, `onFloor` was set to `true` for one or more frames while `petVy` was still negative (the pet was still moving upward from a previous bounce). The hop-trigger guard `if (onFloor && speed > 0)` fired on those upward-bounce frames, overwriting the small residual upward velocity with the full `HOP_IMPULSE = -60 px/s`. Successive hops accumulated before the pet came to rest, causing rapid visual "hop stacking" — the pet appeared to launch upward multiple times in quick succession.
+
+**Fix:** Added a `petVy >= 0` condition to the hop guard so hops only fire when the pet is genuinely at rest (`petVy = 0`) or falling (`petVy > 0`). Also removed the `lastState.mood === "happy"` restriction that previously limited hops to the happy mood — all moods can now hop, consistent with idle wandering behaviour.
+
+---
+
+## BUGFIX-025 — Sleeping pet drifts to canvas centre on sidebar hide/show
+
+**Status:** Fixed (branch `feat/pet-movement`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** VS Code destroys and recreates the `WebviewView` each time the sidebar panel is hidden and reshown (`resolveWebviewView` in `sidebarProvider.ts` reassigns `webviewView.webview.html`, resetting all JavaScript state). On the first load after recreation, `lastState === null`, so the first-load reset block in `sidebar.js` always placed the pet at `petX = centreX`. A sleeping pet would always reappear at the horizontal centre of the canvas after toggling the sidebar, regardless of where it had fallen asleep.
+
+**Fix:** The `fell_asleep` event handler now saves `petX` to `localStorage` under the key `gotchi_sleep_x`. The first-load reset block checks whether the restored state has `sleeping === true`; if so, it reads `gotchi_sleep_x` from `localStorage` and uses that value for `petX` instead of `centreX`. The sleeping movement block also now explicitly sets `petVx = 0`, `petVy = 0`, and `petY = floorY` on every frame so the pet cannot drift after being placed.
+
+---
+
+## BUGFIX-026 — Vertical falling speed is unrealistically slow (gravity too light)
+
+**Status:** Fixed (branch `fix/gravity-fall-speed`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `GRAVITY` was set to `60 px/s²`, which causes the pet to take approximately 1.79 seconds to fall the full 96 px canvas height. This is far lighter than real-world gravity feels at this canvas scale, making the pet appear to float when it hops or bounces.
+
+**Fix:** Raised `GRAVITY` from `60` to `500 px/s²`. This makes the pet fall the full canvas height in ~0.62 seconds, matching a natural, snappy gravity feel. `HOP_IMPULSE` was scaled proportionally from `−60` to `−175 px/s` so the hop still reaches the same ~30 px peak height (`v₀² / 2g ≈ 30 px`) — the hop is visually unchanged but completes in 0.35 s instead of 1.0 s.

@@ -17,6 +17,8 @@ import com.intellij.openapi.components.*
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
  *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift
  *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls
+ *  - [petStageHeight]         : canvas height in pixels (default 96)
+ *  - [reducedMotion]          : disable rAF animation loop (default false)
  */
 @State(
     name = "GotchiSettings",
@@ -37,6 +39,8 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
         var idleDeepThresholdSeconds: Int = 600
         var attentionCallExpiry: String = "standard"  // "needy" | "standard" | "chilled"
         var attentionCallRate:   String = "fast"      // "fast" | "medium" | "slow"
+        var petStageHeight: Int = 96
+        var reducedMotion: Boolean = false
     }
 
     private var _state = State()
@@ -86,4 +90,12 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
     var attentionCallRate: String
         get() = _state.attentionCallRate
         set(v) { _state.attentionCallRate = v }
+
+    var petStageHeight: Int
+        get() = _state.petStageHeight
+        set(v) { _state.petStageHeight = v }
+
+    var reducedMotion: Boolean
+        get() = _state.reducedMotion
+        set(v) { _state.reducedMotion = v }
 }

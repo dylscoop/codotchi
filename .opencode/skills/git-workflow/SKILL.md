@@ -46,6 +46,7 @@ The following actions each require **explicit user instruction** before performi
 - **One commit per feature or bug fix.** Never batch multiple features or fixes into a single commit.
 - Each commit must be self-contained: include the source change, its doc updates, and rebuilt artifacts together — but only for that one feature or fix.
 - If a task has multiple independent features or fixes, commit each one separately before starting the next.
+- **Commit after every todo item is completed.** When working through a todo list, create a commit immediately after each item is marked done — do not accumulate multiple completed todos before committing.
 - Message format: `<type>: <short description>` — types are `feat`, `fix`, `chore`, `refactor`, `docs`, `test`.
 
 ## Build artifacts — required before every feature/fix commit

@@ -1,6 +1,100 @@
 # Version History
 
-## v0.5.2 — current (in progress)
+## v0.6.3 — current (in progress)
+
+### Changes from v0.6.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | BUGFIX-026: `GRAVITY` raised `60 → 500` px/s²; `HOP_IMPULSE` scaled `−60 → −175` px/s so hop height (~30 px) is preserved with the new gravity |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` (identical file) |
+| `vscode/package.json` | Version bumped `0.6.2` → `0.6.3` |
+| `pycharm/build.gradle.kts` | Version bumped `0.6.2` → `0.6.3` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.6.2` → `0.6.3` |
+| `BUGFIXES.md` | Added BUGFIX-026 (gravity too slow) |
+| `README.md` | Install filenames updated to `0.6.3` |
+| `vscode/README.md` | Install filenames updated to `0.6.3` |
+| `pycharm/README.md` | Install filenames updated to `0.6.3` |
+
+### Updated constants (v0.6.3, sidebar.js)
+
+```
+GRAVITY:      500   // px/s² — was 60; falls full 96 px canvas in ~0.62 s (was 1.79 s)
+HOP_IMPULSE: -175   // px/s upward — was -60; preserves ~30 px hop height with new gravity
+```
+
+---
+
+## v0.6.2 — previous
+
+### Changes from v0.6.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.6.0` → `0.6.2` |
+| `pycharm/build.gradle.kts` | Version bumped `0.6.0` → `0.6.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.6.0` → `0.6.2` |
+| `vscode/media/sidebar.js` | BUGFIX-024: hop guard tightened to `petVy >= 0` (no hops on upward bounce frames); mood guard `lastState.mood === "happy"` removed so all moods can hop; BUGFIX-025: `fell_asleep` event saves `petX` to `localStorage`; first-load block restores `petX` from `localStorage` when state is sleeping; sleeping movement block explicitly zeros `petVx`, `petVy`, sets `petY = floorY`; `STAGE_BASE_SPEED_PPS` baby raised `12→22`, child raised `20→35`; wander wall-pause block removed; `petVx===0` guard added before wander direction assignment |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` (identical file) |
+| `BUGFIXES.md` | Added BUGFIX-024 (hop stacking) and BUGFIX-025 (sleep drift to centre) |
+| `README.md` | Install filenames updated to `0.6.2` |
+| `vscode/README.md` | Install filenames updated to `0.6.2` |
+| `pycharm/README.md` | Install filenames updated to `0.6.2` |
+
+### Updated constants (v0.6.2, sidebar.js)
+
+```
+STAGE_BASE_SPEED_PPS.baby:  22   // was 12
+STAGE_BASE_SPEED_PPS.child: 35   // was 20
+```
+
+---
+
+## v0.6.0 — previous
+
+### Changes from v0.5.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.5.2` → `0.6.0`; added `gotchi.petStageHeight` (default 96) and `gotchi.reducedMotion` (default false) settings |
+| `pycharm/build.gradle.kts` | Version bumped `0.5.2` → `0.6.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.5.2` → `0.6.0` |
+| `vscode/media/sidebar.html` | Canvas `height` attribute changed to `{{stageHeight}}` placeholder; `data-reduced-motion="{{reducedMotion}}"` added to `<body>` |
+| `vscode/media/sidebar.js` | Full rewrite: delta-time physics (`petVx`/`petVy` in px/s), 2D gravity and floor bounce, continuous rAF loop, mood-based locomotion, stage-based speed constants, idle wandering with random pauses, happy hops every 4 s, egg rocking (rotation), sleeping breath bob, snack-item targeting, reaction queue (`fed_meal`, `fed_snack`, `played`, `fell_asleep`, `woke_up`, `scolded`, `praised`, `evolved`, `poop_appeared`, `became_sick`, `healed`), reduced-motion static fallback |
+| `vscode/src/sidebarProvider.ts` | `buildHtml()` injects `{{stageHeight}}` and `{{reducedMotion}}` from settings; config change listener updated to watch both new settings |
+| `pycharm/src/main/resources/webview/sidebar.html` | Same `{{stageHeight}}` and `data-reduced-motion="{{reducedMotion}}"` placeholder changes mirrored |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` (identical file) |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiSettings.kt` | Added `petStageHeight: Int = 96` and `reducedMotion: Boolean = false` fields + property accessors |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiConfigurable.kt` | Added "Pet stage height (px)" spinner (row 10) and "Reduced motion" checkbox (row 11); filler `JPanel` moved to row 12; `isModified()`, `apply()`, `reset()` updated |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt` | `buildHtml()` reads `petStageHeight` and `reducedMotion` from settings; injects `{{stageHeight}}` and `{{reducedMotion}}` |
+| `vscode/FEATURES.md` | Features 5.1–5.8 marked `[x]`; `gotchi.reducedMotion` and `gotchi.petStageHeight` rows in Settings Reference updated to `[x]` |
+| `.opencode/skills/git-workflow/SKILL.md` | Added "commit after every todo item" rule to Commit style section |
+| `README.md` | Install filenames updated to `0.6.0` |
+| `vscode/README.md` | Install filenames updated to `0.6.0` |
+| `pycharm/README.md` | Install filenames updated to `0.6.0` |
+
+### New settings (v0.6.0)
+
+```
+gotchi.petStageHeight:  number  = 96     // canvas stage height in px (range 60–200)
+gotchi.reducedMotion:   boolean = false  // disable rAF animation loop; static draw only
+```
+
+### New constants (v0.6.0, sidebar.js)
+
+```
+STAGE_BASE_SPEED_PPS = { egg:0, baby:12, child:20, teen:30, adult:28, senior:15 }
+MOOD_MULTIPLIER       = { happy:1.5, neutral:1.0, sad:0.4 }
+GRAVITY               = 60   // px/s²
+HOP_IMPULSE           = -60  // px/s upward
+HOP_INTERVAL          = 4.0  // seconds between happy hops
+BOUNCE_COEFF          = 0.25 // floor bounce damping
+BOUNCE_MIN            = 2    // px/s — zero out vy below this
+```
+
+---
+
+## v0.5.2 — previous
 
 ### Changes from v0.5.1
 

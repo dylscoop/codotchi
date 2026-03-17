@@ -110,12 +110,15 @@ export class SidebarProvider
     // BUGFIX-001: hot-reload the webview HTML when the font-size setting changes.
     // Also reload when any custom-colour setting changes so the Custom palette
     // updates immediately for any pet already using it.
+    // Also reload on petStageHeight or reducedMotion changes.
     const configListener = vscode.workspace.onDidChangeConfiguration((e) => {
       if (
         e.affectsConfiguration("gotchi.fontSize") ||
         e.affectsConfiguration("gotchi.customPrimaryColor") ||
         e.affectsConfiguration("gotchi.customSecondaryColor") ||
-        e.affectsConfiguration("gotchi.customBackgroundColor")
+        e.affectsConfiguration("gotchi.customBackgroundColor") ||
+        e.affectsConfiguration("gotchi.petStageHeight") ||
+        e.affectsConfiguration("gotchi.reducedMotion")
       ) {
         webviewView.webview.html = this.buildHtml(webviewView.webview);
       }
@@ -169,6 +172,12 @@ export class SidebarProvider
       `--gotchi-custom-background:${customBackground};` +
       `}</style>`;
     html = html.replace("{{customColorsStyle}}", customColorsStyle);
+
+    const petStageHeight = cfg.get<number>("petStageHeight", 96);
+    html = html.replace("{{stageHeight}}", String(petStageHeight));
+
+    const reducedMotion = cfg.get<boolean>("reducedMotion", false);
+    html = html.replace("{{reducedMotion}}", reducedMotion ? "true" : "false");
 
     return html;
   }

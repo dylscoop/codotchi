@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="sidebar.css" />
   <title>vscode_gotchi</title>
 </head>
-<body class="{{fontSizeClass}}">
+<body class="{{fontSizeClass}}" data-reduced-motion="{{reducedMotion}}">
   <!-- ── New-game setup screen ── -->
   <section id="setup-screen" class="screen" aria-label="New game setup">
     <button id="btn-continue" class="action-btn primary hidden">Continue</button>
@@ -53,7 +53,7 @@
     <!-- Pet display -->
     <div class="pet-stage">
       <div id="sprite-container" class="sprite-container" aria-label="Pet sprite">
-        <canvas id="sprite-canvas" width="200" height="96"></canvas>
+        <canvas id="sprite-canvas" width="200" height="{{stageHeight}}"></canvas>
       </div>
       <div id="pet-name-display" class="pet-name"></div>
       <div id="mood-label" class="mood-label">…</div>
