@@ -114,14 +114,16 @@ const val MINIGAME_WIN_HAPPINESS_BOOST: Int = 15
 const val MINIGAME_LOSE_HAPPINESS_BOOST: Int = 5
 const val MINIGAME_MEMORY_WIN_HAPPINESS_BOOST: Int = 20
 
-/** Base happiness added when the player wins an interactive minigame (left_right / higher_lower). */
-const val MINIGAME_INTERACTIVE_WIN_BASE: Int = 10
-/** Minimum random bonus happiness added on top of the base for an interactive win. */
-const val MINIGAME_INTERACTIVE_WIN_BONUS_MIN: Int = 5
-/** Maximum random bonus happiness added on top of the base for an interactive win. */
-const val MINIGAME_INTERACTIVE_WIN_BONUS_MAX: Int = 15
-/** Consolation deduction: lose gives WIN_BASE - LOSE_PENALTY = 10 - 5 = +5. */
-const val MINIGAME_INTERACTIVE_LOSE_PENALTY: Int = 5
+/** Left/Right: win gives 15–25, lose gives 10 consolation. */
+const val MINIGAME_LR_WIN_MIN: Int = 15
+const val MINIGAME_LR_WIN_MAX: Int = 25
+const val MINIGAME_LR_LOSE_CONSOLATION: Int = 10
+/** Higher/Lower: win gives 10–20, lose gives 10 consolation. */
+const val MINIGAME_HL_WIN_MIN: Int = 10
+const val MINIGAME_HL_WIN_MAX: Int = 20
+const val MINIGAME_HL_LOSE_CONSOLATION: Int = 10
+/** Coin Flip: win gives flat +5, lose gives 0 (no consolation). */
+const val MINIGAME_COIN_FLIP_WIN: Int = 5
 
 const val CARE_SCORE_HUNGER_WEIGHT: Double = 0.30
 const val CARE_SCORE_HAPPINESS_WEIGHT: Double = 0.25

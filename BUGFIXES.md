@@ -477,3 +477,36 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** `GRAVITY` was set to `60 px/s²`, which causes the pet to take approximately 1.79 seconds to fall the full 96 px canvas height. This is far lighter than real-world gravity feels at this canvas scale, making the pet appear to float when it hops or bounces.
 
 **Fix:** Raised `GRAVITY` from `60` to `500 px/s²`. This makes the pet fall the full canvas height in ~0.62 seconds, matching a natural, snappy gravity feel. `HOP_IMPULSE` was scaled proportionally from `−60` to `−175 px/s` so the hop still reaches the same ~30 px peak height (`v₀² / 2g ≈ 30 px`) — the hop is visually unchanged but completes in 0.35 s instead of 1.0 s.
+
+---
+
+## BUGFIX-027 — Minigame overlay covers the pet name, mood label, and stat bars
+
+**Status:** Fixed (branch `fix/minigame-ui-v0.7.1`)
+**Files:** `vscode/media/sidebar.html`, `vscode/media/sidebar.css`, `pycharm/src/main/resources/webview/sidebar.html`, `pycharm/src/main/resources/webview/sidebar.css`
+
+**Problem:** `#mg-overlay` was positioned relative to `#game-screen` (via `position: relative` on that element), so it stretched to cover the entire game screen — hiding the pet sprite, pet name, and mood label during minigames.
+
+**Fix:** Wrapped the `.stats` block in a new `#stats-game-area` container and moved `position: relative` from `#game-screen` to `#stats-game-area`. `#mg-overlay` (which is now a child of `#stats-game-area`) is scoped to the stats area only, leaving the pet sprite, name, and mood label always visible.
+
+---
+
+## BUGFIX-028 — Pet sprite invisible during Left/Right minigame
+
+**Status:** Fixed (branch `fix/minigame-ui-v0.7.1`)
+**Files:** `vscode/media/sidebar.html`, `vscode/media/sidebar.css`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.html`, `pycharm/src/main/resources/webview/sidebar.css`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `#lr-canvas` was placed in `#mg-left-right` (inside the overlay), which meant the doors were drawn over an opaque panel that completely obscured the live pet sprite in `#sprite-container`. The pet was invisible for the entire duration of the Left/Right game.
+
+**Fix:** Moved `#lr-canvas` inside `#sprite-container` and made it `position: absolute; inset: 0; z-index: 5; pointer-events: none`. The doors are now drawn as a transparent canvas layer on top of the pet sprite, making the pet visible through the door area while still showing the door overlay correctly. JS was updated to show the canvas at game start and hide it at game end.
+
+---
+
+## BUGFIX-029 — Minigame result screen dismisses itself immediately
+
+**Status:** Fixed (branch `fix/minigame-ui-v0.7.1`)
+**Files:** `vscode/media/sidebar.html`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.html`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `sendPlayResult()` called `hideMgOverlay()` immediately after sending the result to the host. The result screen was shown for a fraction of a second before the overlay disappeared — the player had no time to read the outcome.
+
+**Fix:** Removed the `hideMgOverlay()` call from `sendPlayResult()`. An **OK** button (`#btn-mg-ok`) was added to the `#mg-result` panel. The overlay now stays open until the player explicitly taps OK, at which point the `btn-mg-ok` click handler calls `hideMgOverlay()`.

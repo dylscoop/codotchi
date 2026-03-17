@@ -355,7 +355,7 @@ body.font-large  { font-size: 16px; }
 }
 
 /* ── Mini-game overlay ── */
-#game-screen {
+#stats-game-area {
   position: relative;
 }
 
@@ -401,11 +401,17 @@ body.font-large  { font-size: 16px; }
   margin-top: 2px;
 }
 
+/* #lr-canvas lives inside #sprite-container as an absolute overlay.
+   Doors are drawn on top of the pet; z-index matches .poo-anim usage. */
 #lr-canvas {
-  display: block;
-  margin: 0 auto;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  pointer-events: none;
 }
 
 .mg-countdown {
@@ -450,5 +456,33 @@ body.font-large  { font-size: 16px; }
   font-weight: bold;
   text-align: center;
   letter-spacing: 1px;
-  margin-top: 24px;
+  margin-top: 8px;
+}
+
+.mg-ok-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* ── Higher/Lower pet slide animation ── */
+@keyframes slide-left {
+  0%   { transform: translateX(0); }
+  40%  { transform: translateX(-30%); }
+  70%  { transform: translateX(-30%); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes slide-right {
+  0%   { transform: translateX(0); }
+  40%  { transform: translateX(30%); }
+  70%  { transform: translateX(30%); }
+  100% { transform: translateX(0); }
+}
+
+#sprite-container.anim-slide-left {
+  animation: slide-left 0.7s ease-in-out forwards;
+}
+
+#sprite-container.anim-slide-right {
+  animation: slide-right 0.7s ease-in-out forwards;
 }

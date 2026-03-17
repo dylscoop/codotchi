@@ -687,21 +687,20 @@ fun play(state: PetState): PetState {
 /**
  * Return the happiness delta for a mini-game outcome.
  *
- * Interactive games (left_right, higher_lower): win gives a random bonus on top of a base;
- * lose is a penalty. Legacy games (guess, memory) use the original fixed boosts.
- *
- * @param game   "left_right", "higher_lower", "guess", or "memory"
+ * @param game   "left_right", "higher_lower", "coin_flip", "guess", or "memory"
  * @param result "win" or "lose"
- * @return An integer to add to the pet's happiness stat (may be negative).
+ * @return An integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
 fun happinessDeltaForMinigame(game: String, result: String): Int {
-    if (game == "left_right" || game == "higher_lower") {
-        if (result == "win") {
-            val bonus = Random.nextInt(MINIGAME_INTERACTIVE_WIN_BONUS_MIN, MINIGAME_INTERACTIVE_WIN_BONUS_MAX + 1)
-            return MINIGAME_INTERACTIVE_WIN_BASE + bonus // 15–25
-        }
-        return MINIGAME_INTERACTIVE_WIN_BASE - MINIGAME_INTERACTIVE_LOSE_PENALTY // 10 - 5 = +5 consolation
+    if (game == "left_right") {
+        if (result == "win") return Random.nextInt(MINIGAME_LR_WIN_MIN, MINIGAME_LR_WIN_MAX + 1) // 15–25
+        return MINIGAME_LR_LOSE_CONSOLATION // +10 consolation
     }
+    if (game == "higher_lower") {
+        if (result == "win") return Random.nextInt(MINIGAME_HL_WIN_MIN, MINIGAME_HL_WIN_MAX + 1) // 10–20
+        return MINIGAME_HL_LOSE_CONSOLATION // +10 consolation
+    }
+    if (game == "coin_flip") return if (result == "win") MINIGAME_COIN_FLIP_WIN else 0 // +5 win, 0 lose
     if (game == "memory" && result == "win") return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST
     if (result == "win") return MINIGAME_WIN_HAPPINESS_BOOST
     return MINIGAME_LOSE_HAPPINESS_BOOST

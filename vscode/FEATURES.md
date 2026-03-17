@@ -130,8 +130,8 @@ which minigame to play (or cancel).
 - A 3-second countdown is shown.
 - Player clicks **Left** or **Right** before time runs out.
 - The door opens to reveal the pet (correct door) or nothing (wrong door).
-- **Win**: Happiness +15, Energy −10.
-- **Lose / timeout**: Happiness +5 (consolation).
+ - **Win**: Happiness +15–25 (random), Energy −10.
+ - **Lose / timeout**: Happiness +10 (consolation).
 - Rounds: 3 per session; best-of-3 determines overall win/lose sent to engine.
 - `[S]` Setting `gotchi.leftRightTimeoutMs` (default 3000 ms) — adjustable for
   accessibility.
@@ -177,8 +177,8 @@ Status: `[ ]`
 - Player clicks **Higher** or **Lower** to predict whether the next number is
   greater or smaller.
 - 5 rounds per session.
-- **Win** (≥ 4 correct): Happiness +15, Energy −10.
-- **Lose** (≤ 3 correct): Happiness +5.
+ - **Win** (≥ 4 correct): Happiness +10–20 (random).
+ - **Lose** (≤ 3 correct): Happiness +10.
 
 Status: `[x]`
 

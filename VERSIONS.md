@@ -1,6 +1,54 @@
 # Version History
 
-## v0.7.0 — current (in progress)
+## v0.7.1 — current
+
+### Changes from v0.7.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.html` | `#game-screen` section rewritten: `#lr-canvas hidden` added inside `#sprite-container`; `.stats` wrapped in `#stats-game-area`; `#mg-overlay` moved inside `#stats-game-area`; `#lr-canvas` removed from `#mg-left-right`; OK button added to `#mg-result`; `style="position:relative"` removed from `#game-screen` |
+| `vscode/media/sidebar.css` | `#game-screen { position: relative }` replaced with `#stats-game-area { position: relative }`; `#lr-canvas` changed from `display:block; margin:0 auto` to `position:absolute; inset:0; z-index:5; pointer-events:none`; added `slide-left`/`slide-right` keyframes and `#sprite-container.anim-slide-left/right` rules; added `.mg-ok-btn`; `margin-top` on `.mg-result-text` reduced from 24px to 8px |
+| `vscode/media/sidebar.js` | `sendPlayResult()` no longer auto-hides the overlay; `hideMgOverlay()` now also hides `#lr-canvas`; `btn-mg-ok` click handler added; `startLeftRightGame()` shows `#lr-canvas`; `endLeftRightGame()` clears and hides `#lr-canvas`; `drawLRDoors()` rewritten with relative geometry; `handleHLChoice()` adds slide animation on `#sprite-container` |
+| `vscode/src/gameEngine.ts` | Replaced shared `MINIGAME_INTERACTIVE_*` constants with per-game constants; updated `happinessDeltaForMinigame()` with separate `left_right`, `higher_lower`, `coin_flip` branches |
+| `vscode/tests/unit/gameEngine.test.ts` | Updated L/R lose consolation (5→10), H/L win range (15–25→10–20), H/L lose consolation (5→10); updated integration test expected values; added `coin_flip` unit tests and integration describe block |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored from `vscode/media/sidebar.html` |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored from `vscode/media/sidebar.css` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js`: `sendPlayResult()` fix, OK handler, LR canvas show/hide, `drawLRDoors()` rewrite, `handleHLChoice()` slide animation |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Old `MINIGAME_INTERACTIVE_*` constants removed; per-game constants added |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | `happinessDeltaForMinigame()` updated with per-game logic and `coin_flip` case |
+| `vscode/package.json` | Version bumped `0.7.0` → `0.7.1` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.0` → `0.7.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.0` → `0.7.1` |
+| `vscode/FEATURES.md` | Section 4 rewards updated to reflect per-game constants; 4.4 H/L win/lose rewards updated |
+| `BUGFIXES.md` | Added BUGFIX-027 (overlay scope), BUGFIX-028 (pet hidden by canvas), BUGFIX-029 (result screen auto-dismissed) |
+| `README.md` | Install filenames and current release updated to `0.7.1` |
+| `vscode/README.md` | Install filenames updated to `0.7.1` |
+| `pycharm/README.md` | Install filenames updated to `0.7.1` |
+
+### Updated constants (v0.7.1, gameEngine.ts / Constants.kt)
+
+```
+MINIGAME_LR_WIN_MIN:          Int = 15    // was part of shared INTERACTIVE_WIN_BASE+BONUS range 15–25 (unchanged)
+MINIGAME_LR_WIN_MAX:          Int = 25    // was part of shared INTERACTIVE_WIN range (unchanged)
+MINIGAME_LR_LOSE_CONSOLATION: Int = 10    // was 5 (shared INTERACTIVE_WIN_BASE − INTERACTIVE_LOSE_PENALTY)
+MINIGAME_HL_WIN_MIN:          Int = 10    // was 15 (shared INTERACTIVE_WIN_BASE + BONUS_MIN)
+MINIGAME_HL_WIN_MAX:          Int = 20    // was 25 (shared INTERACTIVE_WIN_BASE + BONUS_MAX)
+MINIGAME_HL_LOSE_CONSOLATION: Int = 10    // was 5
+MINIGAME_COIN_FLIP_WIN:       Int = 5     // new
+```
+
+### Removed constants (v0.7.1)
+
+```
+MINIGAME_INTERACTIVE_WIN_BASE      // replaced by per-game constants
+MINIGAME_INTERACTIVE_WIN_BONUS_MIN // replaced by per-game constants
+MINIGAME_INTERACTIVE_WIN_BONUS_MAX // replaced by per-game constants
+MINIGAME_INTERACTIVE_LOSE_PENALTY  // replaced by per-game constants
+```
+
+---
+
+## v0.7.0 — previous
 
 ### Changes from v0.6.3
 

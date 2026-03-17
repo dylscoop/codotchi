@@ -246,7 +246,10 @@
   var mgOverlay   = document.getElementById("mg-overlay");
 
   function showMgOverlay() { mgOverlay.classList.remove("hidden"); }
-  function hideMgOverlay() { mgOverlay.classList.add("hidden"); }
+  function hideMgOverlay() {
+    mgOverlay.classList.add("hidden");
+    if (lrCanvas) { lrCanvas.classList.add("hidden"); }
+  }
 
   function showMgPanel(id) {
     var panels = mgOverlay.querySelectorAll(".mg-panel");
@@ -256,7 +259,7 @@
 
   function sendPlayResult(game, result) {
     vscode.postMessage({ command: "play", game: game, result: result });
-    hideMgOverlay();
+    // Do NOT call hideMgOverlay() here — the result panel stays open until the player taps OK.
   }
 
   // Wire up game-select buttons
@@ -267,6 +270,9 @@
     startHigherLowerGame();
   });
   document.getElementById("btn-mg-cancel").addEventListener("click", function () {
+    hideMgOverlay();
+  });
+  document.getElementById("btn-mg-ok").addEventListener("click", function () {
     hideMgOverlay();
   });
 
@@ -283,6 +289,7 @@
     lrRound    = 0;
     lrScore    = 0;
     lrAnswered = false;
+    if (lrCanvas) { lrCanvas.classList.remove("hidden"); }
     showMgPanel("mg-left-right");
     startLRRound();
   }
@@ -305,22 +312,21 @@
     }, 1000);
   }
 
-  /**
-   * Draw the two pixel-art doors on the LR canvas.
-   * revealState: null = closed, "correct" = player picked right side, "wrong" = player picked wrong side
-   * On reveal the chosen door opens; the unchosen door stays closed (or dim on wrong).
-   * @param {string|null} revealState
-   * @param {string|null} playerChoice  "left" or "right" (only used when revealState != null)
-   */
   function drawLRDoors(revealState, playerChoice) {
     if (!lrCtx) { return; }
-    var W = lrCanvas.width;   // 180
-    var H = lrCanvas.height;  // 80
+    var W = lrCanvas.width;
+    var H = lrCanvas.height;
     lrCtx.clearRect(0, 0, W, H);
 
-    // Door geometry
-    var leftDoor  = { x: 10,  y: 14, w: 70, h: 58 };
-    var rightDoor = { x: 100, y: 14, w: 70, h: 58 };
+    // Door geometry — two doors side by side, each ~30% wide, centred vertically in lower 3/4 of canvas
+    var dw = Math.floor(W * 0.30);
+    var dh = Math.floor(H * 0.68);
+    var dy = Math.floor(H * 0.20);
+    var gap = Math.floor(W * 0.05);
+    var totalDoorsW = dw * 2 + gap;
+    var startX = Math.floor((W - totalDoorsW) / 2);
+    var leftDoor  = { x: startX,           y: dy, w: dw, h: dh };
+    var rightDoor = { x: startX + dw + gap, y: dy, w: dw, h: dh };
 
     [leftDoor, rightDoor].forEach(function (door, idx) {
       var side = idx === 0 ? "left" : "right";
@@ -332,10 +338,8 @@
 
       if (revealState !== null) {
         if (side === lrPetSide) {
-          // This is the correct door — always open on reveal
           open = true;
         } else {
-          // Incorrect door — dim if player was wrong (chosen null = timeout)
           dim = true;
         }
       }
@@ -358,7 +362,7 @@
         lrCtx.fillRect(knobX, door.y + Math.floor(door.h / 2) - 3, 4, 6);
         // "?" question mark
         lrCtx.fillStyle = dim ? "rgba(150,150,150,0.4)" : fg;
-        lrCtx.font = "bold 20px monospace";
+        lrCtx.font = "bold " + Math.floor(door.h * 0.35) + "px monospace";
         lrCtx.textAlign = "center";
         lrCtx.textBaseline = "middle";
         lrCtx.fillText("?", door.x + door.w / 2, door.y + door.h / 2);
@@ -366,7 +370,7 @@
         // Open door — draw simple pet face
         var cx = door.x + door.w / 2;
         var cy = door.y + door.h / 2 - 4;
-        var r  = 14;
+        var r  = Math.floor(door.w * 0.22);
         // Head
         lrCtx.beginPath();
         lrCtx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -374,11 +378,13 @@
         lrCtx.fill();
         // Eyes
         lrCtx.fillStyle = bg;
-        lrCtx.fillRect(cx - 7, cy - 5, 4, 5);
-        lrCtx.fillRect(cx + 3, cy - 5, 4, 5);
+        var ew = Math.max(2, Math.floor(r * 0.3));
+        var eh = Math.max(3, Math.floor(r * 0.4));
+        lrCtx.fillRect(cx - r * 0.5 - ew / 2, cy - r * 0.35, ew, eh);
+        lrCtx.fillRect(cx + r * 0.5 - ew / 2, cy - r * 0.35, ew, eh);
         // Smile
         lrCtx.beginPath();
-        lrCtx.arc(cx, cy + 2, 6, 0, Math.PI);
+        lrCtx.arc(cx, cy + r * 0.15, r * 0.45, 0, Math.PI);
         lrCtx.strokeStyle = bg;
         lrCtx.lineWidth = 2;
         lrCtx.stroke();
@@ -432,6 +438,9 @@
 
   function endLeftRightGame() {
     var result = lrScore >= 2 ? "win" : "lose";
+    // Hide the door canvas once the game ends (result panel shows no doors)
+    if (lrCtx) { lrCtx.clearRect(0, 0, lrCanvas.width, lrCanvas.height); }
+    if (lrCanvas) { lrCanvas.classList.add("hidden"); }
     showMgPanel("mg-result");
     document.getElementById("mg-result-text").textContent =
       result === "win"
@@ -484,6 +493,15 @@
 
     document.getElementById("hl-feedback").textContent = correct ? "✓ Correct!" : "✗ Wrong";
     document.getElementById("hl-current").textContent  = nextNum;
+
+    // Animate the pet: slide right for Higher, slide left for Lower
+    var spriteContainer = document.getElementById("sprite-container");
+    var slideClass = choice === "higher" ? "anim-slide-right" : "anim-slide-left";
+    spriteContainer.classList.add(slideClass);
+    spriteContainer.addEventListener("animationend", function onAnimEnd() {
+      spriteContainer.classList.remove(slideClass);
+      spriteContainer.removeEventListener("animationend", onAnimEnd);
+    });
 
     setTimeout(function () {
       hlRound++;
