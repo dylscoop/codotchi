@@ -47,6 +47,7 @@ import {
   VALID_PET_TYPES,
   STAGE_ORDER,
   PetState,
+  GameConfig,
 } from "../../src/gameEngine";
 
 // ---------------------------------------------------------------------------
@@ -1557,5 +1558,115 @@ describe("integration — play + coin_flip minigame", () => {
     // Net from initial: +15 play + (−10) lose = +5 total.
     assert.ok(afterGame.happiness > pet.happiness,
       "coin_flip lose net delta must still be positive");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Developer mode
+// ---------------------------------------------------------------------------
+
+describe("developer mode — health floor", () => {
+  const devConfig: GameConfig = {
+    attentionCallsEnabled: false,
+    attentionCallExpiryTicks: 50,
+    attentionCallRateDivisor: 1.0,
+    devMode: true,
+    devModeAgingMultiplier: 1,
+  };
+
+  it("pet with health=1 and zero hunger does not die when devMode is true", () => {
+    // With health at 1 and starvation damage each tick, the health floor prevents death.
+    let pet = makePet({ health: 1, hunger: 0, hungerZeroTicks: 99 });
+    for (let i = 0; i < 10; i++) {
+      pet = tick(pet, false, false, devConfig);
+    }
+    assert.equal(pet.alive, true, "pet should stay alive in dev mode even with 0 hunger");
+    assert.ok(pet.health >= 1, "health should be floored at 1 in dev mode");
+  });
+
+  it("health stays >= 1 even with starvation + unhappiness + sickness simultaneously", () => {
+    let pet = makePet({ health: 1, hunger: 0, happiness: 0, sick: true, hungerZeroTicks: 99 });
+    for (let i = 0; i < 20; i++) {
+      pet = tick(pet, false, false, devConfig);
+    }
+    assert.equal(pet.alive, true, "pet must survive multi-damage in dev mode");
+    assert.ok(pet.health >= 1, "health floor must hold against combined damage");
+  });
+
+  it("pet still dies normally when devMode is false", () => {
+    const normalConfig: GameConfig = {
+      attentionCallsEnabled: false,
+      attentionCallExpiryTicks: 50,
+      attentionCallRateDivisor: 1.0,
+      devMode: false,
+      devModeAgingMultiplier: 1,
+    };
+    let pet = makePet({ health: 1, hunger: 0, hungerZeroTicks: 99 });
+    let died = false;
+    for (let i = 0; i < 50; i++) {
+      pet = tick({ ...pet, hunger: 0 } as PetState, false, false, normalConfig);
+      if (!pet.alive) { died = true; break; }
+    }
+    assert.equal(died, true, "pet should die without dev mode when health would reach 0");
+  });
+});
+
+describe("developer mode — aging multiplier", () => {
+  it("devModeAgingMultiplier=10 advances dayTimer 10x faster than normal", () => {
+    const normal: GameConfig = {
+      attentionCallsEnabled: false,
+      attentionCallExpiryTicks: 50,
+      attentionCallRateDivisor: 1.0,
+      devMode: false,
+      devModeAgingMultiplier: 1,
+    };
+    const fast: GameConfig = {
+      attentionCallsEnabled: false,
+      attentionCallExpiryTicks: 50,
+      attentionCallRateDivisor: 1.0,
+      devMode: true,
+      devModeAgingMultiplier: 10,
+    };
+
+    // Use a healthy awake pet so decay fires (not deep idle)
+    const base = makePet({ health: 100, hunger: 80, happiness: 80, energy: 80 });
+    const afterNormal = tick(base, false, false, normal);
+    const afterFast   = tick(base, false, false, fast);
+
+    const normalDelta = afterNormal.dayTimer - base.dayTimer;
+    const fastDelta   = afterFast.dayTimer   - base.dayTimer;
+
+    assert.ok(fastDelta > 0, "dayTimer should advance with devMode on");
+    assert.ok(normalDelta > 0, "dayTimer should advance normally too");
+    // Allow a small floating-point tolerance: fast should be ~10× normal
+    const ratio = fastDelta / normalDelta;
+    assert.ok(ratio > 9.9 && ratio < 10.1,
+      `aging ratio should be ~10, got ${ratio.toFixed(4)}`);
+  });
+
+  it("devModeAgingMultiplier=1 produces the same dayTimer delta as devMode=false", () => {
+    const nodev: GameConfig = {
+      attentionCallsEnabled: false,
+      attentionCallExpiryTicks: 50,
+      attentionCallRateDivisor: 1.0,
+      devMode: false,
+      devModeAgingMultiplier: 1,
+    };
+    const dev1: GameConfig = {
+      attentionCallsEnabled: false,
+      attentionCallExpiryTicks: 50,
+      attentionCallRateDivisor: 1.0,
+      devMode: true,
+      devModeAgingMultiplier: 1,
+    };
+
+    const base = makePet({ health: 100, hunger: 80, happiness: 80, energy: 80 });
+    const afterNodev = tick(base, false, false, nodev);
+    const afterDev1  = tick(base, false, false, dev1);
+
+    assert.ok(
+      Math.abs(afterNodev.dayTimer - afterDev1.dayTimer) < 1e-10,
+      "multiplier of 1 should produce identical dayTimer to devMode=false"
+    );
   });
 });

@@ -306,9 +306,11 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     }
 
     // Advance day timer
+    // When devMode is active, aging is additionally multiplied by devModeAgingMultiplier.
+    val devAgingMult = if (config.devMode) config.devModeAgingMultiplier else 1.0
     val ageIncrement = if (!isDeepIdle && decayThisTick)
         (if (sleepingAtTickStart) 1.0 / TICKS_PER_GAME_DAY_SLEEPING
-         else 1.0 / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier
+         else 1.0 / TICKS_PER_GAME_DAY_AWAKE) * modifiers.agingMultiplier * devAgingMult
     else 0.0
     val dayTimer = state.dayTimer + ageIncrement
     ageDays = dayTimer.toInt()
@@ -476,6 +478,11 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     }
 
     } // end if (config.attentionCallsEnabled)
+
+    // Dev mode: health floor at 1 — the pet cannot die from stat damage or old age.
+    if (config.devMode && health <= 0) {
+        health = 1
+    }
 
     // Death check
     if (health <= HEALTH_DEATH_THRESHOLD) {

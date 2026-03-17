@@ -595,10 +595,24 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.offlineDecayMaxFraction` | number | `0.60` | Maximum fraction of stats lost while extension is off | `[ ]` |
 | `gotchi.statusBarEnabled` | boolean | `true` | Show pet in VS Code status bar | `[ ]` |
 | `gotchi.tickIntervalSeconds` | number | `6` | Game tick rate (lower = faster game time; min 1) | `[ ]` |
+| `gotchi.developerPasscode` | string | `""` | Set to `"1234"` to enable developer mode (pet can't die, aging multiplied, no high score) | `[x]` |
+| `gotchi.devModeAgingMultiplier` | integer | `10` | Aging speed multiplier when developer mode is active | `[x]` |
 
 ---
 
-## 13. Future / Stretch Features
+## 13. Developer Mode
+
+Activated by setting `gotchi.developerPasscode` to `"1234"`.
+
+| Behaviour | Status | Notes |
+|-----------|--------|-------|
+| Pet cannot die (health floored at 1 before death check) | `[x]` | Applies to all damage sources: starvation, unhappiness, sickness, exhaustion |
+| Aging accelerated by `gotchi.devModeAgingMultiplier` (default 10×) | `[x]` | Multiplied on top of per-type `agingMultiplier` |
+| High score not recorded on death in dev mode | `[x]` | Prevents polluting the leaderboard with dev-mode runs |
+
+---
+
+## 14. Future / Stretch Features
 
 These are lower-priority ideas that require significant design work.
 
@@ -620,7 +634,7 @@ These are lower-priority ideas that require significant design work.
 
 ---
 
-## 14. Suggested Implementation Order
+## 15. Suggested Implementation Order
 
 1. **Stage area resize** — widen canvas to sidebar width; sets up room for movement (section 5.1)
 2. **Animation loop** — replace one-shot draw with rAF loop; reduced-motion fallback (section 5.2)

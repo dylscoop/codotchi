@@ -241,6 +241,19 @@ export interface GameConfig {
    * fast=1.0, medium=1.5, slow=2.0.
    */
   attentionCallRateDivisor: number;
+  /**
+   * When true, developer mode is active:
+   *   - Health is floored at 1 (the pet cannot die from stat decay or old age).
+   *   - Aging is multiplied by devModeAgingMultiplier.
+   *   - Deaths never update the high score.
+   * Activated by setting gotchi.developerPasscode to "1234".
+   */
+  devMode: boolean;
+  /**
+   * Aging speed multiplier applied on top of the per-type agingMultiplier
+   * when devMode is true. Default is 10 (10× faster than normal).
+   */
+  devModeAgingMultiplier: number;
 }
 
 /** Sensible defaults used when no explicit config is provided. */
@@ -248,6 +261,8 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   attentionCallsEnabled:    true,
   attentionCallExpiryTicks: 50,   // "standard" = 5 min
   attentionCallRateDivisor: 1.0,  // "fast"
+  devMode:                  false,
+  devModeAgingMultiplier:   10,
 };
 
 /** Per-type stat multipliers applied on top of base config constants. */
@@ -949,9 +964,11 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   // Advance day timer — use sleepingAtTickStart to avoid mid-tick flip affecting the rate.
   // When idle, aging is slowed (same divisor as hunger/happiness decay).
   // When deep idle, aging stops entirely.
+  // When devMode is active, aging is additionally multiplied by devModeAgingMultiplier.
+  const devAgingMult = config.devMode ? config.devModeAgingMultiplier : 1.0;
   const ageIncrement = (!isDeepIdle && decayThisTick)
     ? (sleepingAtTickStart ? 1 / TICKS_PER_GAME_DAY_SLEEPING : 1 / TICKS_PER_GAME_DAY_AWAKE)
-      * modifiers.agingMultiplier
+      * modifiers.agingMultiplier * devAgingMult
     : 0;
   const dayTimer = state.dayTimer + ageIncrement;
   ageDays = Math.floor(dayTimer);
@@ -1128,6 +1145,11 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     }
   }
   } // end if (config.attentionCallsEnabled)
+
+  // Dev mode: health floor at 1 — the pet cannot die from stat damage or old age.
+  if (config.devMode && health <= 0) {
+    health = 1;
+  }
 
   // Death check
   if (health <= HEALTH_DEATH_THRESHOLD) {

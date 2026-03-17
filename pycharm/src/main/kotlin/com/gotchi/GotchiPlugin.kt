@@ -52,6 +52,8 @@ class GotchiPlugin : Disposable {
     private var currentHighScore: HighScore? = null
     private var mealsGivenThisCycle: Int = 0
     @Volatile private var lastCodeActivityTime: Long = 0L
+    /** True when the last tick ran with dev mode active; used to suppress high score updates. */
+    @Volatile private var lastDevMode: Boolean = false
 
     /** Timestamp of the last detected keyboard or mouse activity in the IDE. */
     @Volatile private var lastActivityTime: Long = System.currentTimeMillis()
@@ -134,7 +136,10 @@ class GotchiPlugin : Disposable {
                 attentionCallsEnabled    = settings.enableAttentionCalls,
                 attentionCallExpiryTicks = attentionCallExpiryTicks,
                 attentionCallRateDivisor = attentionCallRateDivisor,
+                devMode                  = settings.developerPasscode == "1234",
+                devModeAgingMultiplier   = maxOf(1, settings.devModeAgingMultiplier).toDouble(),
             )
+            lastDevMode = gameConfig.devMode
             currentState = tick(state, isIdle(), isDeepIdle(), gameConfig)
             true
         }
@@ -310,8 +315,8 @@ class GotchiPlugin : Disposable {
             persistence.savePetState(state)
             persistence.mealsGivenThisCycle = meals
 
-            // Update high score when pet dies
-            if (!state.alive) {
+            // Update high score when pet dies (suppressed in dev mode — scores don't count)
+            if (!state.alive && !lastDevMode) {
                 val diedAt    = System.currentTimeMillis()
                 val elapsed   = if (state.spawnedAt > 0L) diedAt - state.spawnedAt else 0L
                 val prevElapsed = if (prevHighScore != null) prevHighScore.diedAt - prevHighScore.spawnedAt else -1L

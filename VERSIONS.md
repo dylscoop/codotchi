@@ -1,6 +1,44 @@
 # Version History
 
-## v0.7.7 — current
+## v0.8.0 — current
+
+### Changes from v0.7.7
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.7.7` → `0.8.0`; added `gotchi.developerPasscode` and `gotchi.devModeAgingMultiplier` settings |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.7` → `0.8.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.7` → `0.8.0` |
+| `vscode/src/gameEngine.ts` | `GameConfig` extended with `devMode` and `devModeAgingMultiplier`; `tick()` applies aging multiplier and health floor when dev mode is active |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | `GameConfig` extended with `devMode: Boolean` and `devModeAgingMultiplier: Double` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | `tick()` applies `devModeAgingMultiplier` to aging and floors health at 1 when `devMode` is true |
+| `vscode/src/extension.ts` | Reads `developerPasscode` and `devModeAgingMultiplier` settings, passes them into `GameConfig`; high score update guarded with `!devModeActive` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiSettings.kt` | Added `developerPasscode: String` and `devModeAgingMultiplier: Int` fields |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | Wires dev mode settings into `GameConfig`; adds `lastDevMode` field; high score update guarded with `!lastDevMode` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiConfigurable.kt` | Added "Developer passcode" text field (row 12) and "Dev mode aging multiplier" spinner (row 13) |
+| `vscode/tests/unit/gameEngine.test.ts` | Added `GameConfig` import; added 5 dev mode unit tests (health floor, aging multiplier) |
+| `vscode/FEATURES.md` | Added developer mode feature rows |
+| `README.md` | Install filenames updated to `0.8.0` |
+| `vscode/README.md` | Install filenames updated to `0.8.0` |
+| `pycharm/README.md` | Install filenames updated to `0.8.0` |
+
+### New settings
+
+```
+gotchi.developerPasscode:      string  = ""   // set to "1234" to enable dev mode
+gotchi.devModeAgingMultiplier: integer = 10   // aging speed multiplier in dev mode
+```
+
+### New constants / config fields
+
+```
+GameConfig.devMode:                  Boolean/boolean = false
+GameConfig.devModeAgingMultiplier:   Double/number   = 10.0
+```
+
+---
+
+## v0.7.7 — previous
 
 ### Changes from v0.7.6
 
