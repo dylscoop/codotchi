@@ -684,10 +684,27 @@ fun play(state: PetState): PetState {
     )
 }
 
-fun happinessDeltaForMinigame(game: String, result: String): Int = when {
-    game == "memory" && result == "win" -> MINIGAME_MEMORY_WIN_HAPPINESS_BOOST
-    result == "win"                     -> MINIGAME_WIN_HAPPINESS_BOOST
-    else                                -> MINIGAME_LOSE_HAPPINESS_BOOST
+/**
+ * Return the happiness delta for a mini-game outcome.
+ *
+ * Interactive games (left_right, higher_lower): win gives a random bonus on top of a base;
+ * lose is a penalty. Legacy games (guess, memory) use the original fixed boosts.
+ *
+ * @param game   "left_right", "higher_lower", "guess", or "memory"
+ * @param result "win" or "lose"
+ * @return An integer to add to the pet's happiness stat (may be negative).
+ */
+fun happinessDeltaForMinigame(game: String, result: String): Int {
+    if (game == "left_right" || game == "higher_lower") {
+        if (result == "win") {
+            val bonus = Random.nextInt(MINIGAME_INTERACTIVE_WIN_BONUS_MIN, MINIGAME_INTERACTIVE_WIN_BONUS_MAX + 1)
+            return MINIGAME_INTERACTIVE_WIN_BASE + bonus // 15–25
+        }
+        return MINIGAME_INTERACTIVE_WIN_BASE - MINIGAME_INTERACTIVE_LOSE_PENALTY // 10 - 5 = +5 consolation
+    }
+    if (game == "memory" && result == "win") return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST
+    if (result == "win") return MINIGAME_WIN_HAPPINESS_BOOST
+    return MINIGAME_LOSE_HAPPINESS_BOOST
 }
 
 fun applyMinigameResult(state: PetState, game: String, result: String): PetState {
