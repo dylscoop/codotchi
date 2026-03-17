@@ -973,8 +973,11 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     }
   }
 
-  // Passive weight decay — 1 weight per minute (every WEIGHT_DECAY_TICK_INTERVAL ticks)
-  if (ticksAlive % WEIGHT_DECAY_TICK_INTERVAL === 0) {
+  // Passive weight decay — throttled during idle just like hunger/happiness (BUGFIX-033)
+  const weightDecayInterval = isIdle
+    ? WEIGHT_DECAY_TICK_INTERVAL * IDLE_DECAY_TICK_DIVISOR
+    : WEIGHT_DECAY_TICK_INTERVAL;
+  if (ticksAlive % weightDecayInterval === 0) {
     const prevWeight = weight;
     weight = clampWeight(weight - 1);
     checkWeightTierEvents(prevWeight, weight, events);

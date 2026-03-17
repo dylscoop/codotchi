@@ -328,8 +328,10 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         }
     }
 
-    // Passive weight decay
-    if (ticksAlive % WEIGHT_DECAY_TICK_INTERVAL == 0) {
+    // Passive weight decay — throttled during idle just like hunger/happiness (BUGFIX-033)
+    val weightDecayInterval = if (isIdle) WEIGHT_DECAY_TICK_INTERVAL * IDLE_DECAY_TICK_DIVISOR
+                              else WEIGHT_DECAY_TICK_INTERVAL
+    if (ticksAlive % weightDecayInterval == 0) {
         val prevWeight = weight
         weight = clampWeight(weight - 1)
         checkWeightTierEvents(prevWeight, weight, events)

@@ -543,3 +543,14 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** The `anim-jump` CSS class was applied to `#sprite-container`, the parent div that holds both `#sprite-canvas` (the pet) and `#lr-canvas` (the Left/Right door overlay). This caused the entire container — including the door canvas — to animate, rather than just the pet sprite.
 
 **Fix:** Changed the CSS selector from `#sprite-container.anim-jump` to `#sprite-canvas.anim-jump` so the `jump` keyframe animation targets only the pet sprite canvas. In `handleHLChoice()`, replaced the local `document.getElementById("sprite-container")` re-query with the already-declared top-level `spriteCanvas` const, and updated all four references (`classList.add`, `addEventListener`, `classList.remove`, `removeEventListener`) to use `spriteCanvas` directly.
+
+---
+
+## BUGFIX-033 — Passive weight decay fires at full rate during idle states
+
+**Status:** Fixed (branch `feat/pat-in-play-menu-v0.7.5`)
+**Files:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`
+
+**Problem:** Weight decayed by 1 every `WEIGHT_DECAY_TICK_INTERVAL` (10) ticks regardless of whether the IDE was idle. Hunger and happiness already use `IDLE_DECAY_TICK_DIVISOR` (10×) to slow decay during idle, but weight decay skipped this throttle, making it decay 10× too fast while idle.
+
+**Fix:** Introduced a local `weightDecayInterval` variable that equals `WEIGHT_DECAY_TICK_INTERVAL * IDLE_DECAY_TICK_DIVISOR` (100 ticks) when `isIdle` is true, and `WEIGHT_DECAY_TICK_INTERVAL` (10 ticks) otherwise. The modulo condition now uses this variable instead of the constant directly, bringing weight decay in line with the throttle already applied to hunger and happiness.

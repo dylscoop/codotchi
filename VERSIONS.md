@@ -17,6 +17,9 @@
 | `README.md` | Install filenames and current release updated to `0.7.5` |
 | `vscode/README.md` | Install filenames updated to `0.7.5`; updated Pat row in Actions table |
 | `pycharm/README.md` | Install filenames updated to `0.7.5` |
+| `vscode/src/gameEngine.ts` | BUGFIX-033: passive weight decay now throttled during idle (10× slower, matching hunger/happiness) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | BUGFIX-033: mirrored weight decay throttle fix |
+| `BUGFIXES.md` | Added BUGFIX-033 entry |
 
 ### New constants
 
