@@ -356,19 +356,20 @@ body.font-large  { font-size: 16px; }
 
 /* ── Mini-game overlay ── */
 #stats-game-area {
-  position: relative;
+  /* no longer needs position:relative — overlay is gone */
 }
 
-.mg-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 10;
-  background: var(--vscode-sideBar-background, #1e1e1e);
+/* ── Action area (btn-grid ↔ game-panels swap) ── */
+#action-area {
+  min-height: 140px; /* keeps layout stable when game panels are taller than btn-grid */
   display: flex;
   flex-direction: column;
-  padding: 8px;
+}
+
+#game-panels {
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  overflow-y: auto;
 }
 
 .mg-panel {
@@ -464,25 +465,15 @@ body.font-large  { font-size: 16px; }
   margin-top: 4px;
 }
 
-/* ── Higher/Lower pet slide animation ── */
-@keyframes slide-left {
-  0%   { transform: translateX(0); }
-  40%  { transform: translateX(-30%); }
-  70%  { transform: translateX(-30%); }
-  100% { transform: translateX(0); }
+/* ── Higher/Lower pet jump animation (on correct round) ── */
+@keyframes jump {
+  0%   { transform: translateY(0); }
+  30%  { transform: translateY(-18px); }
+  55%  { transform: translateY(0); }
+  72%  { transform: translateY(-8px); }
+  100% { transform: translateY(0); }
 }
 
-@keyframes slide-right {
-  0%   { transform: translateX(0); }
-  40%  { transform: translateX(30%); }
-  70%  { transform: translateX(30%); }
-  100% { transform: translateX(0); }
-}
-
-#sprite-container.anim-slide-left {
-  animation: slide-left 0.7s ease-in-out forwards;
-}
-
-#sprite-container.anim-slide-right {
-  animation: slide-right 0.7s ease-in-out forwards;
+#sprite-container.anim-jump {
+  animation: jump 0.55s ease-in-out forwards;
 }

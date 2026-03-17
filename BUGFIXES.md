@@ -510,3 +510,25 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** `sendPlayResult()` called `hideMgOverlay()` immediately after sending the result to the host. The result screen was shown for a fraction of a second before the overlay disappeared — the player had no time to read the outcome.
 
 **Fix:** Removed the `hideMgOverlay()` call from `sendPlayResult()`. An **OK** button (`#btn-mg-ok`) was added to the `#mg-result` panel. The overlay now stays open until the player explicitly taps OK, at which point the `btn-mg-ok` click handler calls `hideMgOverlay()`.
+
+---
+
+## BUGFIX-030 — Minigame panels appear over stat bars instead of action button area
+
+**Status:** Fixed (branch `fix/game-buttons-layout-v0.7.2`)
+**Files:** `vscode/media/sidebar.html`, `vscode/media/sidebar.css`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.html`, `pycharm/src/main/resources/webview/sidebar.css`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** The minigame selection and gameplay panels were rendered inside `#mg-overlay`, an absolutely-positioned element that covered the stat bars. The pet sprite, name, and mood label remained visible (BUGFIX-027), but the health bars were still hidden during minigame play, and the game UI appeared in an unexpected location relative to the action buttons.
+
+**Fix:** Removed `#mg-overlay` entirely. The `.stats` block and `#stats-game-area` are now always fully visible. The four game panels (`#mg-select`, `#mg-left-right`, `#mg-hl`, `#mg-result`) are placed inside a new `#game-panels` div that lives inside a new `#action-area` wrapper alongside `.btn-grid`. `showMgOverlay()` now hides `.btn-grid` and shows `#game-panels`; `hideMgOverlay()` reverses this. A `min-height: 140px` on `#action-area` prevents layout shift when the tallest game panel is displayed.
+
+---
+
+## BUGFIX-031 — Higher/Lower pet slides in the direction of the player's guess (confusing)
+
+**Status:** Fixed (branch `fix/game-buttons-layout-v0.7.2`)
+**Files:** `vscode/media/sidebar.css`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.css`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** When the player guessed Higher or Lower, the pet sprite slid right or left respectively. This animation was semantically confusing — the direction of slide had no clear connection to the guess outcome, and the motion was distracting whether the guess was correct or wrong.
+
+**Fix:** Removed the `slide-left`/`slide-right` keyframes and `anim-slide-*` CSS classes. Added a `jump` keyframe (`translateY` bounce with a small secondary hop). `handleHLChoice()` now only triggers the `anim-jump` animation when the guess is **correct**, giving positive visual feedback without spurious motion on wrong answers.

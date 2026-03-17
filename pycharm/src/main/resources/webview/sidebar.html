@@ -60,7 +60,7 @@
       <div id="mood-label" class="mood-label">…</div>
     </div>
 
-    <!-- Stat bars + mini-game overlay (overlay scoped to this area only) -->
+    <!-- Stat bars -->
     <div id="stats-game-area">
       <div class="stats" aria-label="Stats">
         <div class="stat-row">
@@ -88,9 +88,28 @@
           </div>
         </div>
       </div><!-- /.stats -->
+    </div><!-- /#stats-game-area -->
 
-      <!-- ── Mini-game overlay (scoped to #stats-game-area) ── -->
-      <div id="mg-overlay" class="mg-overlay hidden" aria-label="Mini-game">
+    <!-- Info line -->
+    <div id="info-line" class="info-line">Age: 0d  |  egg  |  wt:5  |  0 poops</div>
+
+    <!-- Action area: shows btn-grid normally; swaps to game-panels while playing -->
+    <div id="action-area">
+
+      <!-- Normal action buttons -->
+      <div class="btn-grid" aria-label="Actions">
+        <button class="action-btn" id="btn-feed-meal">Feed <span id="meals-left" class="meals-left"></span></button>
+        <button class="action-btn" id="btn-feed-snack">Snack <span id="snacks-left" class="meals-left"></span></button>
+        <button class="action-btn" id="btn-play">Play</button>
+        <button class="action-btn" id="btn-sleep-wake">Sleep</button>
+        <button class="action-btn" id="btn-clean">Clean</button>
+        <button class="action-btn" id="btn-medicine">Medicine</button>
+        <button class="action-btn" id="btn-praise">Praise</button>
+        <button class="action-btn" id="btn-scold">Scold</button>
+      </div>
+
+      <!-- Game panels (replaces btn-grid while a mini-game is active) -->
+      <div id="game-panels" class="hidden" aria-label="Mini-game">
 
         <!-- Panel 0: game select -->
         <div id="mg-select" class="mg-panel">
@@ -131,23 +150,8 @@
           <button class="action-btn mg-ok-btn" id="btn-mg-ok">OK</button>
         </div>
 
-      </div><!-- /#mg-overlay -->
-    </div><!-- /#stats-game-area -->
-
-    <!-- Info line -->
-    <div id="info-line" class="info-line">Age: 0d  |  egg  |  wt:5  |  0 poops</div>
-
-    <!-- Action buttons -->
-    <div class="btn-grid" aria-label="Actions">
-      <button class="action-btn" id="btn-feed-meal">Feed <span id="meals-left" class="meals-left"></span></button>
-      <button class="action-btn" id="btn-feed-snack">Snack <span id="snacks-left" class="meals-left"></span></button>
-      <button class="action-btn" id="btn-play">Play</button>
-      <button class="action-btn" id="btn-sleep-wake">Sleep</button>
-      <button class="action-btn" id="btn-clean">Clean</button>
-      <button class="action-btn" id="btn-medicine">Medicine</button>
-      <button class="action-btn" id="btn-praise">Praise</button>
-      <button class="action-btn" id="btn-scold">Scold</button>
-    </div>
+      </div><!-- /#game-panels -->
+    </div><!-- /#action-area -->
 
     <!-- Event log -->
     <ul id="event-log" class="event-log" aria-label="Event log" aria-live="polite"></ul>

@@ -241,18 +241,23 @@
     }
   }
 
-  // ── Mini-game overlay helpers ─────────────────────────────────────────────
+  // ── Mini-game panel helpers ───────────────────────────────────────────────
 
-  var mgOverlay   = document.getElementById("mg-overlay");
+  var mgPanels = document.getElementById("game-panels");
+  var btnGrid  = document.querySelector(".btn-grid");
 
-  function showMgOverlay() { mgOverlay.classList.remove("hidden"); }
+  function showMgOverlay() {
+    btnGrid.classList.add("hidden");
+    mgPanels.classList.remove("hidden");
+  }
   function hideMgOverlay() {
-    mgOverlay.classList.add("hidden");
+    mgPanels.classList.add("hidden");
+    btnGrid.classList.remove("hidden");
     if (lrCanvas) { lrCanvas.classList.add("hidden"); }
   }
 
   function showMgPanel(id) {
-    var panels = mgOverlay.querySelectorAll(".mg-panel");
+    var panels = mgPanels.querySelectorAll(".mg-panel");
     panels.forEach(function (p) { p.classList.add("hidden"); });
     document.getElementById(id).classList.remove("hidden");
   }
@@ -494,14 +499,15 @@
     document.getElementById("hl-feedback").textContent = correct ? "✓ Correct!" : "✗ Wrong";
     document.getElementById("hl-current").textContent  = nextNum;
 
-    // Animate the pet: slide right for Higher, slide left for Lower
-    var spriteContainer = document.getElementById("sprite-container");
-    var slideClass = choice === "higher" ? "anim-slide-right" : "anim-slide-left";
-    spriteContainer.classList.add(slideClass);
-    spriteContainer.addEventListener("animationend", function onAnimEnd() {
-      spriteContainer.classList.remove(slideClass);
-      spriteContainer.removeEventListener("animationend", onAnimEnd);
-    });
+    // Animate the pet: jump with joy on a correct answer
+    if (correct) {
+      var spriteContainer = document.getElementById("sprite-container");
+      spriteContainer.classList.add("anim-jump");
+      spriteContainer.addEventListener("animationend", function onAnimEnd() {
+        spriteContainer.classList.remove("anim-jump");
+        spriteContainer.removeEventListener("animationend", onAnimEnd);
+      });
+    }
 
     setTimeout(function () {
       hlRound++;

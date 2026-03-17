@@ -1,6 +1,28 @@
 # Version History
 
-## v0.7.1 — current
+## v0.7.2 — current
+
+### Changes from v0.7.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.html` | Removed `#mg-overlay`; wrapped action buttons and game panels in `#action-area`; game panels moved to `#game-panels` div alongside `.btn-grid` |
+| `vscode/media/sidebar.css` | Removed `.mg-overlay` absolute positioning and `#stats-game-area { position: relative }`; added `#action-area { min-height: 140px }` and `#game-panels` styles; replaced `slide-left`/`slide-right` keyframes with `jump` keyframe; replaced `.anim-slide-*` with `.anim-jump` |
+| `vscode/media/sidebar.js` | `showMgOverlay()` now hides `.btn-grid` and shows `#game-panels`; `hideMgOverlay()` reverses this; `showMgPanel()` queries panels from `#game-panels`; `handleHLChoice()` triggers `anim-jump` only on correct guess instead of slide animation on every guess |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored from `vscode/media/sidebar.html` |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored from `vscode/media/sidebar.css` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` |
+| `vscode/package.json` | Version bumped `0.7.1` → `0.7.2` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.1` → `0.7.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.1` → `0.7.2` |
+| `BUGFIXES.md` | Added BUGFIX-030 (game panels in overlay instead of action area), BUGFIX-031 (HL slide animation confusing) |
+| `README.md` | Install filenames and current release updated to `0.7.2` |
+| `vscode/README.md` | Install filenames updated to `0.7.2` |
+| `pycharm/README.md` | Install filenames updated to `0.7.2` |
+
+---
+
+## v0.7.1 — previous
 
 ### Changes from v0.7.0
 
