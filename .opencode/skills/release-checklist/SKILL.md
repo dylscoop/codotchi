@@ -160,7 +160,7 @@ Number entries sequentially (BUGFIX-001, BUGFIX-002, …).
 
 Work through this list in order. Do not commit until all items are checked.
 
-0. [ ] Old artifacts archived (version bump only) — old `.vsix` moved to `vscode/archive/vsix/`, old `.zip` moved to `pycharm/archive/zip/` (see `release-management` skill)
+0. [ ] Old artifacts archived (version bump only) — old `.vsix` moved to `vscode/archive/vsix/`, old `.zip` moved to `pycharm/archive/` (see `release-management` skill)
 1. [ ] Version is identical in `package.json`, `build.gradle.kts`, and `plugin.xml`
 2. [ ] `npm test` passes (run from `vscode/`) — 0 failures
 3. [ ] VS Code artifact rebuilt: `vscode/vscode-gotchi-X.Y.Z.vsix` exists and is up to date

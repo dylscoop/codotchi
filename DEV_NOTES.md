@@ -1,5 +1,13 @@
 # Developer Notes
 
+## Dev Mode Passcode
+
+`1234`
+
+Enter this in the **Developer Passcode** field (Settings → Gotchi) with **Developer Mode Enabled** checked to activate dev mode.
+
+---
+
 Internal notes covering design philosophy, the evolution system, character
 identities, and sprite descriptions. Not intended as user-facing documentation.
 

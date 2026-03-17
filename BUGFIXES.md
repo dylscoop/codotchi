@@ -554,3 +554,25 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** Weight decayed by 1 every `WEIGHT_DECAY_TICK_INTERVAL` (10) ticks regardless of whether the IDE was idle. Hunger and happiness already use `IDLE_DECAY_TICK_DIVISOR` (10×) to slow decay during idle, but weight decay skipped this throttle, making it decay 10× too fast while idle.
 
 **Fix:** Introduced a local `weightDecayInterval` variable that equals `WEIGHT_DECAY_TICK_INTERVAL * IDLE_DECAY_TICK_DIVISOR` (100 ticks) when `isIdle` is true, and `WEIGHT_DECAY_TICK_INTERVAL` (10 ticks) otherwise. The modulo condition now uses this variable instead of the constant directly, bringing weight decay in line with the throttle already applied to hunger and happiness.
+
+---
+
+## BUGFIX-034 — Pat action and coin flip play do not lose weight; left_right / higher_lower lose too little
+
+**Status:** Fixed (branch `feat/dev-mode-checkbox-v0.8.1`)
+**Files:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`, `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt`
+
+**Problem:** The `pat()` action applied no weight loss at all. For minigames, `play()` already deducted 3 weight (`PLAY_WEIGHT_LOSS`), but the design called for `left_right` and `higher_lower` to deduct a further 3 weight after the minigame result, while `coin_flip` should not. This extra deduction was missing, so those two minigames had the same net weight cost as coin flip.
+
+**Fix:** Added `PAT_WEIGHT_LOSS = 3` and `PLAY_WEIGHT_LOSS_BONUS = 3` constants. `pat()` now deducts `PAT_WEIGHT_LOSS` weight (with weight-tier event checks and clamped to `WEIGHT_MIN`). `applyMinigameResult()` deducts `PLAY_WEIGHT_LOSS_BONUS` weight (with weight-tier events and clamping) for `left_right` and `higher_lower` only; `coin_flip` is unchanged.
+
+---
+
+## BUGFIX-035 — Coin flip result panel shows dev-mode notes instead of clean win/lose text
+
+**Status:** Fixed (branch `feat/dev-mode-checkbox-v0.8.1`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** The `endCoinFlipGame()` function set the result text to `"You won Coin Flip! (+5 happiness)"` or `"You lost Coin Flip. (no consolation)"` — the parenthetical notes were developer annotations that had leaked into the user-facing UI.
+
+**Fix:** Simplified the result strings to `"You won Coin Flip!"` and `"You lost Coin Flip."` with no parenthetical notes.

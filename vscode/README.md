@@ -34,7 +34,7 @@ to survive and evolve into its final form.
 
 ### Quick install (pre-built `.vsix`)
 
-1. **Download `vscode-gotchi-0.8.0.vsix`** from the
+1. **Download `vscode-gotchi-0.8.2.vsix`** from the
    [Releases page](https://github.com/dylscoop/vscode_gotchi/releases).
 
 2. **Install the `.vsix`:**
@@ -69,11 +69,11 @@ npm install
 # Compile TypeScript
 npm run compile
 
-# Package → produces vscode-gotchi-0.8.0.vsix
+# Package → produces vscode-gotchi-0.8.2.vsix
 npx vsce package --no-dependencies
 
 # Install it
-code --install-extension vscode-gotchi-0.8.0.vsix
+code --install-extension vscode-gotchi-0.8.2.vsix
 ```
 
 ## Using the extension

@@ -32,6 +32,7 @@ import {
   clearState,
   loadHighScore,
   saveHighScore,
+  clearHighScore,
 } from "./persistence";
 
 const TICK_INTERVAL_MS: number = TICK_INTERVAL_SECONDS * 1_000;
@@ -90,8 +91,10 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     // Update high score when pet dies (suppressed in dev mode — scores don't count)
-    const devPasscode = vscode.workspace.getConfiguration("gotchi").get<string>("developerPasscode", "");
-    const devModeActive = devPasscode === "1234";
+    const cfg2 = vscode.workspace.getConfiguration("gotchi");
+    const devModeActive =
+      cfg2.get<boolean>("devModeEnabled", false) &&
+      cfg2.get<string>("developerPasscode", "") === "1234";
     if (!state.alive && !devModeActive) {
       const elapsed = state.spawnedAt > 0 ? Date.now() - state.spawnedAt : 0;
       const prevElapsed = currentHighScore
@@ -116,7 +119,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }
 
-    sidebar?.postState(state, currentHighScore);
+    sidebar?.postState(state, currentHighScore, devModeActive);
     statusBar?.update(state);
     saveState(context, state);
   }
@@ -125,8 +128,24 @@ export function activate(context: vscode.ExtensionContext): void {
   // also reset the idle timer (BUGFIX-015).
   const markActivity = (): void => { lastActivityMs = Date.now(); };
 
+  // Reset high score callback — called when the player confirms the reset
+  const onResetHighScore = (): void => {
+    currentHighScore = null;
+    clearHighScore(context);
+    // Push a state update so the webview clears the high score display immediately
+    const cfg3 = vscode.workspace.getConfiguration("gotchi");
+    const devModeNow =
+      cfg3.get<boolean>("devModeEnabled", false) &&
+      cfg3.get<string>("developerPasscode", "") === "1234";
+    if (currentState !== null) {
+      sidebar?.postState(currentState, null, devModeNow);
+    } else {
+      sidebar?.postNoGame(null);
+    }
+  };
+
   // Sidebar provider
-  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore, markActivity);
+  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore, markActivity, onResetHighScore);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(SidebarProvider.VIEW_ID, sidebar)
   );
@@ -181,8 +200,9 @@ export function activate(context: vscode.ExtensionContext): void {
       attentionCallsEnabled:    cfg.get<boolean>("enableAttentionCalls", true),
       attentionCallExpiryTicks,
       attentionCallRateDivisor,
-      devMode:                  cfg.get<string>("developerPasscode", "") === "1234",
+      devMode:                  cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234",
       devModeAgingMultiplier:   Math.max(1, cfg.get<number>("devModeAgingMultiplier", 10)),
+      devModeHealthFloor:       Math.max(0, Math.min(100, cfg.get<number>("devModeHealthFloor", 1))),
     };
     const next = tick(currentState, idle, deepIdle, gameConfig);
     handleStateUpdate(next);

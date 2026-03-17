@@ -93,6 +93,12 @@
   const setupHighScore   = document.getElementById("setup-high-score");
   const setupHsStats     = document.getElementById("setup-hs-stats");
   const mealsLeftEl    = document.getElementById("meals-left");
+
+  const devModeBanner    = document.getElementById("dev-mode-banner");
+  const btnResetHs       = document.getElementById("btn-reset-hs");
+  const resetHsConfirm   = document.getElementById("reset-hs-confirm");
+  const btnResetHsYes    = document.getElementById("btn-reset-hs-yes");
+  const btnResetHsCancel = document.getElementById("btn-reset-hs-cancel");
   const snacksLeftEl   = document.getElementById("snacks-left");
 
   const barHunger    = document.getElementById("bar-hunger");
@@ -221,6 +227,28 @@
       // After death, Continue returns to the dead-screen summary; otherwise
       // it returns to the live game screen.
       showScreen(lastState && !lastState.alive ? "dead" : "game");
+    });
+  }
+
+  if (btnResetHs) {
+    btnResetHs.addEventListener("click", function () {
+      if (btnResetHs)     { btnResetHs.classList.add("hidden"); }
+      if (resetHsConfirm) { resetHsConfirm.classList.remove("hidden"); }
+    });
+  }
+
+  if (btnResetHsCancel) {
+    btnResetHsCancel.addEventListener("click", function () {
+      if (resetHsConfirm) { resetHsConfirm.classList.add("hidden"); }
+      if (btnResetHs)     { btnResetHs.classList.remove("hidden"); }
+    });
+  }
+
+  if (btnResetHsYes) {
+    btnResetHsYes.addEventListener("click", function () {
+      vscode.postMessage({ command: "reset_high_score" });
+      if (resetHsConfirm) { resetHsConfirm.classList.add("hidden"); }
+      if (setupHighScore) { setupHighScore.classList.add("hidden"); }
     });
   }
 
@@ -578,8 +606,8 @@
     showMgPanel("mg-result");
     document.getElementById("mg-result-text").textContent =
       result === "win"
-        ? "You won Coin Flip! (+5 happiness)"
-        : "You lost Coin Flip. (no consolation)";
+        ? "You won Coin Flip!"
+        : "You lost Coin Flip.";
     sendPlayResult("coin_flip", result);
   }
 
@@ -1207,8 +1235,14 @@
       setupHsStats.textContent =
         hs.name + "  |  " + formatAge(hs.ageDays) + "  |  " + hs.stage + "\n" +
         hsParts.join(" ") + " real time";
+      // Show reset button, hide confirm
+      if (btnResetHs)     { btnResetHs.classList.remove("hidden"); }
+      if (resetHsConfirm) { resetHsConfirm.classList.add("hidden"); }
     } else {
       setupHighScore.classList.add("hidden");
+      // Hide reset controls when there is no high score
+      if (btnResetHs)     { btnResetHs.classList.add("hidden"); }
+      if (resetHsConfirm) { resetHsConfirm.classList.add("hidden"); }
     }
   }
 
@@ -1850,6 +1884,12 @@
     const state = message.state;
 
     if (message.highScore) { latestHighScore = message.highScore; }
+    if (message.highScore === null) { latestHighScore = null; }
+
+    // Show/hide dev mode banner
+    if (devModeBanner) {
+      devModeBanner.classList.toggle("hidden", !message.devMode);
+    }
 
     if (state && state.needs_new_game) {
       hasActiveGame = false;

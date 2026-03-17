@@ -37,8 +37,10 @@ class GotchiConfigurable : Configurable {
     private var attentionCallRateCombo:    JComboBox<String>?  = null
     private var petStageHeightSpinner:     JSpinner?           = null
     private var reducedMotionCheck:        JCheckBox?          = null
+    private var devModeEnabledCheck:        JCheckBox?          = null
     private var developerPasscodeField:    JTextField?         = null
     private var devModeAgingSpinner:       JSpinner?           = null
+    private var devModeHealthFloorSpinner: JSpinner?           = null
 
     override fun getDisplayName(): String = "Gotchi"
 
@@ -55,8 +57,10 @@ class GotchiConfigurable : Configurable {
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
         val stageHeightSpinner = JSpinner(SpinnerNumberModel(96, 48, 300, 8))
         val reducedMotionCheckbox = JCheckBox("Reduced motion (disable animation)")
+        val devModeEnabledCheckbox = JCheckBox("Enable developer mode")
         val devPasscodeField = JTextField(10)
         val devAgingSpinner = JSpinner(SpinnerNumberModel(10, 1, 1000, 1))
+        val devHealthFloorSpinner = JSpinner(SpinnerNumberModel(1, 0, 100, 1))
 
         fontSizeCombo            = combo
         colorPanel               = cp
@@ -70,8 +74,10 @@ class GotchiConfigurable : Configurable {
         attentionCallRateCombo   = rateCombo
         petStageHeightSpinner    = stageHeightSpinner
         reducedMotionCheck       = reducedMotionCheckbox
+        devModeEnabledCheck      = devModeEnabledCheckbox
         developerPasscodeField   = devPasscodeField
         devModeAgingSpinner      = devAgingSpinner
+        devModeHealthFloorSpinner = devHealthFloorSpinner
 
         val panel = JPanel(GridBagLayout())
         val gbc   = GridBagConstraints()
@@ -180,8 +186,14 @@ class GotchiConfigurable : Configurable {
         panel.add(reducedMotionCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 12 — Developer passcode
-        gbc.gridx = 0; gbc.gridy = 12
+        // Row 12 — Dev mode enabled
+        gbc.gridx = 0; gbc.gridy = 12; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(devModeEnabledCheckbox, gbc)
+        gbc.gridwidth = 1
+
+        // Row 13 — Developer passcode
+        gbc.gridx = 0; gbc.gridy = 13
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Developer passcode:"), gbc)
 
@@ -189,8 +201,8 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devPasscodeField, gbc)
 
-        // Row 13 — Dev mode aging multiplier
-        gbc.gridx = 0; gbc.gridy = 13
+        // Row 14 — Dev mode aging multiplier
+        gbc.gridx = 0; gbc.gridy = 14
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Dev mode aging multiplier:"), gbc)
 
@@ -198,8 +210,17 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devAgingSpinner, gbc)
 
+        // Row 15 — Dev mode health floor
+        gbc.gridx = 0; gbc.gridy = 15
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Dev mode health floor:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(devHealthFloorSpinner, gbc)
+
         // Push content to the top
-        gbc.gridx = 0; gbc.gridy = 14; gbc.gridwidth = 2
+        gbc.gridx = 0; gbc.gridy = 16; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -221,8 +242,10 @@ class GotchiConfigurable : Configurable {
         val uiRate       = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         val uiStageHeight = (petStageHeightSpinner?.value as? Int) ?: 96
         val uiReducedMotion = reducedMotionCheck?.isSelected ?: false
+        val uiDevModeEnabled = devModeEnabledCheck?.isSelected ?: false
         val uiDevPasscode = developerPasscodeField?.text ?: ""
         val uiDevAging = (devModeAgingSpinner?.value as? Int) ?: 10
+        val uiDevHealthFloor = (devModeHealthFloorSpinner?.value as? Int) ?: 1
         return uiFont != settings.fontSize
             || uiColor != settings.textColor
             || uiPrimary != settings.customPrimaryColor
@@ -235,8 +258,10 @@ class GotchiConfigurable : Configurable {
             || uiRate != settings.attentionCallRate
             || uiStageHeight != settings.petStageHeight
             || uiReducedMotion != settings.reducedMotion
+            || uiDevModeEnabled != settings.devModeEnabled
             || uiDevPasscode != settings.developerPasscode
             || uiDevAging != settings.devModeAgingMultiplier
+            || uiDevHealthFloor != settings.devModeHealthFloor
     }
 
     override fun apply() {
@@ -253,8 +278,10 @@ class GotchiConfigurable : Configurable {
         settings.attentionCallRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         settings.petStageHeight         = (petStageHeightSpinner?.value as? Int) ?: 96
         settings.reducedMotion          = reducedMotionCheck?.isSelected ?: false
+        settings.devModeEnabled         = devModeEnabledCheck?.isSelected ?: false
         settings.developerPasscode      = developerPasscodeField?.text ?: ""
         settings.devModeAgingMultiplier = (devModeAgingSpinner?.value as? Int) ?: 10
+        settings.devModeHealthFloor     = (devModeHealthFloorSpinner?.value as? Int) ?: 1
         // Reload the webview immediately so the change is visible without a restart
         ApplicationManager.getApplication().service<GotchiPlugin>().reloadWebview()
     }
@@ -273,8 +300,10 @@ class GotchiConfigurable : Configurable {
         attentionCallRateCombo?.selectedIndex   = rateKeyToIndex(settings.attentionCallRate)
         petStageHeightSpinner?.value            = settings.petStageHeight
         reducedMotionCheck?.isSelected          = settings.reducedMotion
+        devModeEnabledCheck?.isSelected         = settings.devModeEnabled
         developerPasscodeField?.text            = settings.developerPasscode
         devModeAgingSpinner?.value              = settings.devModeAgingMultiplier
+        devModeHealthFloorSpinner?.value        = settings.devModeHealthFloor
     }
 
     // ── Enum helpers ───────────────────────────────────────────────────────

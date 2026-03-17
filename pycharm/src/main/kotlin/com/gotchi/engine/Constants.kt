@@ -52,7 +52,13 @@ const val PLAY_WEIGHT_LOSS: Int = 3
 
 const val PAT_HAPPINESS_BOOST: Int = 10
 const val PAT_ENERGY_COST: Int = 20
+/** Weight lost when pat() is called (BUGFIX-034). */
+const val PAT_WEIGHT_LOSS: Int = 3
 const val POOP_WEIGHT_LOSS: Int = 5
+
+/** Extra weight lost in applyMinigameResult() for left_right and higher_lower (BUGFIX-034).
+ *  coin_flip only loses the PLAY_WEIGHT_LOSS (3) from play(); no bonus here. */
+const val PLAY_WEIGHT_LOSS_BONUS: Int = 3
 
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
 const val WEIGHT_DECAY_TICK_INTERVAL: Int = TICKS_PER_MINUTE // 10 ticks = 1 min
@@ -269,10 +275,10 @@ data class GameConfig(
     val attentionCallRateDivisor: Double = 1.0,
     /**
      * When true, developer mode is active:
-     *   - Health is floored at 1 (the pet cannot die from stat decay or old age).
+     *   - Health is floored at devModeHealthFloor (default 1; set to 0 to allow death).
      *   - Aging is multiplied by devModeAgingMultiplier.
      *   - Deaths never update the high score.
-     * Activated by setting the developer passcode to "1234".
+     * Activated by setting the developer passcode and enabling devModeEnabled.
      */
     val devMode: Boolean = false,
     /**
@@ -280,6 +286,12 @@ data class GameConfig(
      * when devMode is true. Default is 10 (10x faster than normal).
      */
     val devModeAgingMultiplier: Double = 10.0,
+    /**
+     * Minimum health enforced when devMode is true.
+     * Default 1 means the pet cannot die from stat decay or old age.
+     * Set to 0 to allow the pet to die normally even in dev mode.
+     */
+    val devModeHealthFloor: Int = 1,
 )
 
 /** Sensible defaults used when no explicit config is provided. */
