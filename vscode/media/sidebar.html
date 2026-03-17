@@ -24,6 +24,12 @@
     <div id="setup-high-score" class="setup-high-score hidden">
       <p class="high-score-title">Best Run</p>
       <p id="setup-hs-stats" class="high-score-stats"></p>
+      <button id="btn-reset-hs" class="link-btn reset-hs-btn">Reset best run</button>
+      <div id="reset-hs-confirm" class="reset-hs-confirm hidden">
+        <span class="reset-hs-question">Are you sure?</span>
+        <button id="btn-reset-hs-yes" class="action-btn danger-btn">Yes, reset</button>
+        <button id="btn-reset-hs-cancel" class="link-btn">Cancel</button>
+      </div>
     </div>
 
     <label class="field-label" for="pet-name">Name</label>
@@ -58,6 +64,9 @@
 
   <!-- ── Main game screen ── -->
   <section id="game-screen" class="screen hidden" aria-label="Pet status">
+    <!-- Developer mode active banner -->
+    <div id="dev-mode-banner" class="dev-mode-banner hidden" aria-label="Developer mode active">DEV MODE</div>
+
     <!-- Pet display (always visible — sits above the mini-game overlay) -->
     <div class="pet-stage">
       <div id="sprite-container" class="sprite-container" aria-label="Pet sprite">

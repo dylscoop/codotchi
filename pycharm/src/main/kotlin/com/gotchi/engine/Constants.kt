@@ -52,7 +52,13 @@ const val PLAY_WEIGHT_LOSS: Int = 3
 
 const val PAT_HAPPINESS_BOOST: Int = 10
 const val PAT_ENERGY_COST: Int = 20
+/** Weight lost when pat() is called (BUGFIX-034). */
+const val PAT_WEIGHT_LOSS: Int = 3
 const val POOP_WEIGHT_LOSS: Int = 5
+
+/** Extra weight lost in applyMinigameResult() for left_right and higher_lower (BUGFIX-034).
+ *  coin_flip only loses the PLAY_WEIGHT_LOSS (3) from play(); no bonus here. */
+const val PLAY_WEIGHT_LOSS_BONUS: Int = 3
 
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
 const val WEIGHT_DECAY_TICK_INTERVAL: Int = TICKS_PER_MINUTE // 10 ticks = 1 min
@@ -272,7 +278,7 @@ data class GameConfig(
      *   - Health is floored at 1 (the pet cannot die from stat decay or old age).
      *   - Aging is multiplied by devModeAgingMultiplier.
      *   - Deaths never update the high score.
-     * Activated by setting the developer passcode to "1234".
+     * Activated by setting the developer passcode and enabling devModeEnabled.
      */
     val devMode: Boolean = false,
     /**

@@ -81,13 +81,13 @@ class GotchiBrowserPanel(
     // ── State push ─────────────────────────────────────────────────────────
 
     /**
-     * Push a full state snapshot + mealsGivenThisCycle + highScore to the webview.
+     * Push a full state snapshot + mealsGivenThisCycle + highScore + devMode to the webview.
      * Must be called on the EDT (JBCefBrowser.executeJavaScript is EDT-safe).
      */
-    fun postState(state: PetState, mealsGivenThisCycle: Int, highScore: HighScore?) {
+    fun postState(state: PetState, mealsGivenThisCycle: Int, highScore: HighScore?, devMode: Boolean) {
         val stateJson     = gson.toJson(state)
         val highScoreJson = if (highScore != null) gson.toJson(highScore) else "null"
-        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson}"""
+        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode}"""
         val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
     }

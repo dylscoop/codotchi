@@ -64,7 +64,8 @@ export class SidebarProvider
     private readonly onStateUpdate: StateUpdateCallback,
     private readonly getState: () => PetState | null,
     private readonly getHighScore: () => HighScore | null,
-    private readonly markActivity: () => void
+    private readonly markActivity: () => void,
+    private readonly onResetHighScore: () => void
   ) {}
 
   /** Called by VS Code when the webview becomes visible. */
@@ -88,8 +89,12 @@ export class SidebarProvider
     // high score even before the next tick fires.
     const bootstrapState = this.getCurrentState();
     const bootstrapHs    = this.getHighScore();
+    const bootstrapCfg   = vscode.workspace.getConfiguration("gotchi");
+    const bootstrapDevMode =
+      bootstrapCfg.get<boolean>("devModeEnabled", false) &&
+      bootstrapCfg.get<string>("developerPasscode", "") === "1234";
     if (bootstrapState !== null) {
-      this.postState(bootstrapState, bootstrapHs);
+      this.postState(bootstrapState, bootstrapHs, bootstrapDevMode);
     } else if (bootstrapHs !== null) {
       // No active pet but we have a high score — push it so the setup screen
       // can display it.
@@ -98,6 +103,7 @@ export class SidebarProvider
         state: { needs_new_game: true },
         mealsGivenThisCycle: 0,
         highScore: bootstrapHs,
+        devMode: false,
       });
     }
 
@@ -199,6 +205,13 @@ export class SidebarProvider
     // extension.ts to give it to us.  For simplicity, the sidebar re-requests
     // the state through the extension's exported getter (injected via context).
     const state = this.getCurrentState();
+
+    // reset_high_score is handled independently of pet state
+    if (message.command === "reset_high_score") {
+      this.onResetHighScore();
+      return;
+    }
+
     if (state === null && message.command !== "new_game") {
       // No pet yet — nothing to do until a new game is started.
       return;
@@ -333,14 +346,35 @@ export class SidebarProvider
    * Send a state snapshot to the webview JS.
    *
    * @param state - The pet state to push to the webview.
+   * @param highScore - The current best-run record (null if none).
+   * @param devMode - Whether developer mode is currently active.
    */
-  postState(state: PetState, highScore: HighScore | null): void {
+  postState(state: PetState, highScore: HighScore | null, devMode: boolean): void {
     if (this.webviewView) {
       void this.webviewView.webview.postMessage({
         type: "stateUpdate",
         state,
         mealsGivenThisCycle: this.mealsGivenThisCycle,
         highScore,
+        devMode,
+      });
+    }
+  }
+
+  /**
+   * Push a no-active-game stateUpdate to the webview (used to clear the
+   * high score display when no pet is alive after a high score reset).
+   *
+   * @param highScore - The high score value to show (null to clear it).
+   */
+  postNoGame(highScore: HighScore | null): void {
+    if (this.webviewView) {
+      void this.webviewView.webview.postMessage({
+        type: "stateUpdate",
+        state: { needs_new_game: true },
+        mealsGivenThisCycle: 0,
+        highScore,
+        devMode: false,
       });
     }
   }

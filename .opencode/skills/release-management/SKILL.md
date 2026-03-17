@@ -24,7 +24,7 @@ This skill is referenced by `release-checklist` (Step 2a) and `git-workflow` (St
 | IDE | Current artifact lives in | Archive destination |
 |-----|--------------------------|---------------------|
 | VS Code | `vscode/vscode-gotchi-X.Y.Z.vsix` | `vscode/archive/vsix/` |
-| PyCharm | `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip` | `pycharm/archive/zip/` |
+| PyCharm | `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip` | `pycharm/archive/` |
 
 Both archive directories are tracked in git. Create them with `mkdir` if they do not exist yet.
 
@@ -54,7 +54,7 @@ Gradle does **not** automatically overwrite a zip with a different version
 number in the filename, so move the old zip first:
 
 ```
-git mv "pycharm/build/distributions/pycharm-gotchi-OLD.zip" pycharm/archive/zip/
+git mv "pycharm/build/distributions/pycharm-gotchi-OLD.zip" pycharm/archive/
 ```
 
 Then rebuild:
@@ -75,7 +75,20 @@ This step is part of the release flow in `git-workflow` Step 6. Perform it
 
 ```
 copy vscode\vscode-gotchi-X.Y.Z.vsix releases\
+```
+
+For PyCharm, the zip may be in `build/distributions/` (if not yet archived) or
+already in `pycharm/archive/` (if the version bump already triggered Step 1).
+Copy from whichever location holds the file:
+
+```
 copy "pycharm\build\distributions\pycharm-gotchi-X.Y.Z.zip" releases\
+```
+
+— OR, if it was already archived —
+
+```
+copy "pycharm\archive\pycharm-gotchi-X.Y.Z.zip" releases\
 ```
 
 After copying, immediately apply the 3-version rule (Step 3 below), then

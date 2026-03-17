@@ -17,6 +17,7 @@ import {
   startSnack,
   consumeSnack,
   play,
+  pat,
   applyMinigameResult,
   sleep,
   wake,
@@ -785,6 +786,49 @@ describe("play", () => {
 });
 
 // ---------------------------------------------------------------------------
+// pat — BUGFIX-034
+// ---------------------------------------------------------------------------
+
+describe("pat", () => {
+  it("increases happiness by 10", () => {
+    const pet = makePet({ happiness: 50, energy: 50 });
+    const next = pat(pet);
+    assert.equal(next.happiness, 60);
+  });
+
+  it("decreases energy by 20", () => {
+    const pet = makePet({ energy: 50 });
+    const next = pat(pet);
+    assert.equal(next.energy, 30);
+  });
+
+  it("decreases weight by 3 (BUGFIX-034: PAT_WEIGHT_LOSS)", () => {
+    const pet = makePet({ weight: 30, energy: 50 });
+    const next = pat(pet);
+    assert.equal(next.weight, 27);
+  });
+
+  it("emits patted event", () => {
+    const pet = makePet({ energy: 50 });
+    const next = pat(pet);
+    assert.ok(next.events.includes("patted"));
+  });
+
+  it("refuses when energy < PAT_ENERGY_COST (20)", () => {
+    const pet = makePet({ energy: 15, happiness: 50 });
+    const next = pat(pet);
+    assert.equal(next.happiness, 50);
+    assert.ok(next.events.includes("pat_refused_no_energy"));
+  });
+
+  it("clamps weight at WEIGHT_MIN (1) (BUGFIX-034)", () => {
+    const pet = makePet({ weight: 1, energy: 50 });
+    const next = pat(pet);
+    assert.equal(next.weight, 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // applyMinigameResult
 // ---------------------------------------------------------------------------
 
@@ -873,6 +917,50 @@ describe("applyMinigameResult", () => {
     const pet = makePet({ happiness: 90 });
     const next = applyMinigameResult(pet, "higher_lower", "win");
     assert.equal(next.happiness, 100);
+  });
+
+  // ── BUGFIX-034: vigorous mini-games apply extra weight loss ───────────────
+
+  it("left_right win reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const next = applyMinigameResult(pet, "left_right", "win");
+    assert.equal(next.weight, 37);
+  });
+
+  it("left_right lose reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const next = applyMinigameResult(pet, "left_right", "lose");
+    assert.equal(next.weight, 37);
+  });
+
+  it("higher_lower win reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const next = applyMinigameResult(pet, "higher_lower", "win");
+    assert.equal(next.weight, 37);
+  });
+
+  it("higher_lower lose reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const next = applyMinigameResult(pet, "higher_lower", "lose");
+    assert.equal(next.weight, 37);
+  });
+
+  it("coin_flip does NOT change weight (BUGFIX-034)", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const next = applyMinigameResult(pet, "coin_flip", "win");
+    assert.equal(next.weight, 40);
+  });
+
+  it("coin_flip lose does NOT change weight (BUGFIX-034)", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const next = applyMinigameResult(pet, "coin_flip", "lose");
+    assert.equal(next.weight, 40);
+  });
+
+  it("left_right clamps weight at WEIGHT_MIN (1) (BUGFIX-034)", () => {
+    const pet = makePet({ happiness: 50, weight: 1 });
+    const next = applyMinigameResult(pet, "left_right", "win");
+    assert.equal(next.weight, 1);
   });
 });
 

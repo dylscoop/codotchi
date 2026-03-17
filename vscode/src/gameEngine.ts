@@ -77,6 +77,11 @@ const PLAY_WEIGHT_LOSS: number = 3;
 
 const PAT_HAPPINESS_BOOST: number = 10;
 const PAT_ENERGY_COST: number = 20;
+/** Weight lost when the pet is patted (BUGFIX-034). */
+const PAT_WEIGHT_LOSS: number = 3;
+/** Additional weight lost for left_right and higher_lower mini-games (BUGFIX-034).
+ *  These games are more vigorous than coin_flip; total loss = PLAY_WEIGHT_LOSS + PLAY_WEIGHT_LOSS_BONUS = 6. */
+const PLAY_WEIGHT_LOSS_BONUS: number = 3;
 const POOP_WEIGHT_LOSS: number = 5;
 
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
@@ -1445,14 +1450,17 @@ export function pat(state: PetState): PetState {
   if (state.energy < PAT_ENERGY_COST) {
     return withDerivedFields({ ...state, events: ["pat_refused_no_energy"] });
   }
+  const newWeight = clampWeight(state.weight - PAT_WEIGHT_LOSS);
   const answered = answerAttentionCall(state, "unhappiness");
   const events: string[] = ["patted"];
+  checkWeightTierEvents(state.weight, newWeight, events);
   if (answered) { events.push("attention_call_answered_unhappiness"); }
   return withDerivedFields({
     ...state,
     ...(answered ?? {}),
     happiness: clampStat(state.happiness + PAT_HAPPINESS_BOOST),
     energy:    clampStat(state.energy    - PAT_ENERGY_COST),
+    weight:    newWeight,
     events,
   });
 }
@@ -1494,6 +1502,10 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
 /**
  * Apply a mini-game result happiness delta to the pet state.
  *
+ * Also applies an additional weight loss for vigorous mini-games (BUGFIX-034):
+ *   - left_right and higher_lower: −3 extra weight (total −6 with play() baseline)
+ *   - coin_flip: no extra weight loss (total −3 from play() only)
+ *
  * @param state - The current pet state.
  * @param game - "left_right", "higher_lower", "guess", or "memory".
  * @param result - "win" or "lose".
@@ -1505,10 +1517,19 @@ export function applyMinigameResult(
   result: string
 ): PetState {
   const delta = happinessDeltaForMinigame(game, result);
+  const isVigorousGame = game === "left_right" || game === "higher_lower";
+  const newWeight = isVigorousGame
+    ? clampWeight(state.weight - PLAY_WEIGHT_LOSS_BONUS)
+    : state.weight;
+  const events: string[] = [`minigame_${game}_${result}`];
+  if (isVigorousGame) {
+    checkWeightTierEvents(state.weight, newWeight, events);
+  }
   return withDerivedFields({
     ...state,
     happiness: clampStat(state.happiness + delta),
-    events: [`minigame_${game}_${result}`],
+    weight: newWeight,
+    events,
   });
 }
 

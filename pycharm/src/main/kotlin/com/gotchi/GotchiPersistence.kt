@@ -95,6 +95,11 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         highScoreJson = gson.toJson(score)
     }
 
+    /** Clear the saved high score. */
+    fun clearHighScore() {
+        highScoreJson = null
+    }
+
     // ── Internal raw DTO (maps 1:1 to JSON fields) ─────────────────────────
 
     /** Nullable mirror of PetState — all fields nullable so Gson never throws. */

@@ -477,3 +477,48 @@ body.font-large  { font-size: 16px; }
 #sprite-canvas.anim-jump {
   animation: jump 0.55s ease-in-out forwards;
 }
+
+/* ── Dev mode banner ── */
+.dev-mode-banner {
+  background: #b8620a;
+  color: #fff;
+  font-size: 0.75em;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 3px 0;
+  width: 100%;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+/* ── Danger (destructive) action button ── */
+.action-btn.danger-btn {
+  background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+  color: var(--vscode-inputValidation-errorForeground, #f48771);
+  border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+}
+
+.action-btn.danger-btn:hover {
+  background: #7a2020;
+}
+
+/* ── Reset best run confirm row ── */
+.reset-hs-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.reset-hs-question {
+  font-size: 0.83em;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.reset-hs-btn {
+  display: block;
+  margin-top: 4px;
+}

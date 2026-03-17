@@ -136,7 +136,7 @@ class GotchiPlugin : Disposable {
                 attentionCallsEnabled    = settings.enableAttentionCalls,
                 attentionCallExpiryTicks = attentionCallExpiryTicks,
                 attentionCallRateDivisor = attentionCallRateDivisor,
-                devMode                  = settings.developerPasscode == "1234",
+                devMode                  = settings.devModeEnabled && settings.developerPasscode == "1234",
                 devModeAgingMultiplier   = maxOf(1, settings.devModeAgingMultiplier).toDouble(),
             )
             lastDevMode = gameConfig.devMode
@@ -248,6 +248,13 @@ class GotchiPlugin : Disposable {
                 // Idle timer already reset above; no state change needed (BUGFIX-015).
                 "user_activity" -> return@withLock
 
+                "reset_high_score" -> {
+                    currentHighScore = null
+                    service<GotchiPersistence>().clearHighScore()
+                    shouldBroadcast = true
+                    return@withLock
+                }
+
                 else -> return@withLock
             }
 
@@ -307,6 +314,7 @@ class GotchiPlugin : Disposable {
         val (state, meals, prevHighScore) = stateLock.withLock {
             Triple(currentState, mealsGivenThisCycle, currentHighScore)
         }
+        val devMode = lastDevMode
 
         // Persist on every broadcast so crashes don't lose state
         val persistence = service<GotchiPersistence>()
@@ -351,7 +359,7 @@ class GotchiPlugin : Disposable {
 
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanel?.postState(state, meals, highScore)
+                browserPanel?.postState(state, meals, highScore, devMode)
                 statusWidget?.update(state)
             }
         }

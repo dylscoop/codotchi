@@ -701,14 +701,17 @@ fun pat(state: PetState): PetState {
     if (state.energy < PAT_ENERGY_COST)
         return withDerivedFields(state.copy(events = listOf("pat_refused_no_energy")))
 
+    val newWeight = clampWeight(state.weight - PAT_WEIGHT_LOSS)
     val answered = answerAttentionCall(state, "unhappiness")
     val events = mutableListOf("patted")
+    checkWeightTierEvents(state.weight, newWeight, events)
     if (answered != null) events.add("attention_call_answered_unhappiness")
 
     return withDerivedFields(
         state.copy(
             happiness                = clampStat(state.happiness + PAT_HAPPINESS_BOOST),
             energy                   = clampStat(state.energy    - PAT_ENERGY_COST),
+            weight                   = newWeight,
             events                   = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
@@ -741,10 +744,17 @@ fun happinessDeltaForMinigame(game: String, result: String): Int {
 
 fun applyMinigameResult(state: PetState, game: String, result: String): PetState {
     val delta = happinessDeltaForMinigame(game, result)
+    // BUGFIX-034: left_right and higher_lower lose an extra 3 weight on top of the
+    // 3 already lost in play(). coin_flip keeps total weight loss at 3 (no bonus here).
+    val weightBonus = if (game == "left_right" || game == "higher_lower") PLAY_WEIGHT_LOSS_BONUS else 0
+    val newWeight = clampWeight(state.weight - weightBonus)
+    val events = mutableListOf("minigame_${game}_${result}")
+    if (weightBonus > 0) checkWeightTierEvents(state.weight, newWeight, events)
     return withDerivedFields(
         state.copy(
             happiness = clampStat(state.happiness + delta),
-            events    = listOf("minigame_${game}_${result}"),
+            weight    = newWeight,
+            events    = events,
         )
     )
 }

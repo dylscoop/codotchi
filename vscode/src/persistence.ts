@@ -77,3 +77,10 @@ export function loadHighScore(context: vscode.ExtensionContext): HighScore | nul
 export function saveHighScore(context: vscode.ExtensionContext, score: HighScore): void {
   void context.globalState.update(HIGH_SCORE_KEY, score);
 }
+
+/**
+ * Erase the persisted high score (used when the player resets their best run).
+ */
+export function clearHighScore(context: vscode.ExtensionContext): void {
+  void context.globalState.update(HIGH_SCORE_KEY, undefined);
+}

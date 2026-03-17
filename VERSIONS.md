@@ -1,6 +1,54 @@
 # Version History
 
-## v0.8.0 — current
+## v0.8.1 — current
+
+### Changes from v0.8.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.8.0` → `0.8.1` |
+| `pycharm/build.gradle.kts` | Version bumped `0.8.0` → `0.8.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.8.0` → `0.8.1` |
+| `vscode/src/extension.ts` | Dev mode now requires BOTH `gotchi.devModeEnabled = true` AND the correct passcode |
+| `vscode/package.json` | Added `gotchi.devModeEnabled` boolean setting |
+| `vscode/media/sidebar.html` | Added `#dev-mode-banner` div in game screen; added reset best run button + confirm UI in setup screen |
+| `vscode/media/sidebar.css` | Added `.dev-mode-banner`, `.action-btn.danger-btn`, `.reset-hs-confirm`, `.reset-hs-question`, `.reset-hs-btn` rules |
+| `vscode/media/sidebar.js` | Added element refs for banner/reset; added reset button event listeners; updated `renderSetupHighScore()` to show/hide reset controls; updated message handler for `highScore === null` and `devMode` banner toggle |
+| `vscode/src/sidebarProvider.ts` | Passes `devMode` flag in `stateUpdate` message payload; handles `reset_high_score` command |
+| `vscode/src/gameEngine.ts` | `pat()` loses 3 weight (`PAT_WEIGHT_LOSS`); `applyMinigameResult()` loses 3 bonus weight for `left_right` and `higher_lower` only (BUGFIX-034); `endCoinFlipGame()` result text is clean win/lose only (BUGFIX-035) |
+| `vscode/tests/unit/gameEngine.test.ts` | Added tests for `pat` weight loss and `applyMinigameResult` weight loss per minigame type (BUGFIX-034) |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiSettings.kt` | Added `devModeEnabled: Boolean = false` field |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiConfigurable.kt` | Added dev mode enabled checkbox (row 12); renumbered passcode → 13, aging → 14 |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | Dev mode requires BOTH `devModeEnabled` AND the correct passcode; handles `reset_high_score` command; passes `devMode` to `postState()` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt` | `postState()` now accepts `devMode: Boolean` and includes it in JSON payload |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | Added `clearHighScore()` method |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Added `PAT_WEIGHT_LOSS = 3` and `PLAY_WEIGHT_LOSS_BONUS = 3` (BUGFIX-034) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | `pat()` loses 3 weight; `applyMinigameResult()` loses 3 bonus weight for `left_right` / `higher_lower` only (BUGFIX-034) |
+| `pycharm/src/main/resources/webview/sidebar.html` | Added `#dev-mode-banner` in game screen; reset best run button + confirm UI in setup screen |
+| `pycharm/src/main/resources/webview/sidebar.css` | Added dev-mode banner and reset button CSS rules |
+| `pycharm/src/main/resources/webview/sidebar.js` | Element refs; reset button listeners; `renderSetupHighScore()` shows/hides reset controls; message handler handles `highScore === null` and `devMode` banner; `endCoinFlipGame()` clean text (BUGFIX-035) |
+| `vscode/FEATURES.md` | Added dev mode enabled checkbox row and reset best run row |
+| `BUGFIXES.md` | Added BUGFIX-034 and BUGFIX-035 entries |
+| `README.md` | Install filenames updated to `0.8.1` |
+| `vscode/README.md` | Install filenames updated to `0.8.1` |
+| `pycharm/README.md` | Install filenames updated to `0.8.1` |
+
+### New settings
+
+```
+gotchi.devModeEnabled: boolean = false   // must be true AND passcode must match to activate dev mode
+```
+
+### New constants
+
+```
+PAT_WEIGHT_LOSS:        Int = 3   // weight lost on each pat action (BUGFIX-034)
+PLAY_WEIGHT_LOSS_BONUS: Int = 3   // extra weight lost after left_right or higher_lower minigame (BUGFIX-034)
+```
+
+---
+
+## v0.8.0 — previous
 
 ### Changes from v0.7.7
 
