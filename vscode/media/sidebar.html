@@ -57,7 +57,7 @@
   </section>
 
   <!-- ── Main game screen ── -->
-  <section id="game-screen" class="screen hidden" aria-label="Pet status">
+  <section id="game-screen" class="screen hidden" aria-label="Pet status" style="position:relative">
     <!-- Pet display -->
     <div class="pet-stage">
       <div id="sprite-container" class="sprite-container" aria-label="Pet sprite">
@@ -115,6 +115,50 @@
 
     <!-- New-game link -->
     <button id="btn-new-game" class="link-btn">Menu</button>
+
+    <!-- ── Mini-game overlay (sits above the rest of #game-screen) ── -->
+    <div id="mg-overlay" class="mg-overlay hidden" aria-label="Mini-game">
+
+      <!-- Panel 0: game select -->
+      <div id="mg-select" class="mg-panel">
+        <p class="mg-title">Play a game!</p>
+        <button class="action-btn mg-game-btn" id="btn-mg-lr">Left / Right</button>
+        <button class="action-btn mg-game-btn" id="btn-mg-hl">Higher or Lower</button>
+        <button class="link-btn mg-cancel-btn" id="btn-mg-cancel">Cancel</button>
+      </div>
+
+      <!-- Panel 1: Left / Right game -->
+      <div id="mg-left-right" class="mg-panel hidden">
+        <p class="mg-title">Left / Right</p>
+        <p class="mg-subtitle">Which door is the Gotchi behind?</p>
+        <canvas id="lr-canvas" width="180" height="80"></canvas>
+        <p id="lr-countdown" class="mg-countdown">3</p>
+        <div class="mg-btn-row">
+          <button class="action-btn mg-dir-btn" id="btn-lr-left">Left</button>
+          <button class="action-btn mg-dir-btn" id="btn-lr-right">Right</button>
+        </div>
+        <p id="lr-score" class="mg-score"></p>
+      </div>
+
+      <!-- Panel 2: Higher or Lower game -->
+      <div id="mg-hl" class="mg-panel hidden">
+        <p class="mg-title">Higher or Lower?</p>
+        <p class="mg-subtitle">Will the next number be higher or lower?</p>
+        <p id="hl-current" class="mg-big-num">—</p>
+        <div class="mg-btn-row">
+          <button class="action-btn mg-dir-btn" id="btn-hl-higher">Higher</button>
+          <button class="action-btn mg-dir-btn" id="btn-hl-lower">Lower</button>
+        </div>
+        <p id="hl-feedback" class="mg-feedback"></p>
+        <p id="hl-score" class="mg-score"></p>
+      </div>
+
+      <!-- Panel 3: Result -->
+      <div id="mg-result" class="mg-panel hidden">
+        <p id="mg-result-text" class="mg-result-text"></p>
+      </div>
+
+    </div>
   </section>
 
   <!-- ── Dead screen ── -->

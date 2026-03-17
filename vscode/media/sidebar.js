@@ -20,6 +20,9 @@
   /** Number of in-game days that equal one displayed year. */
   const GAME_DAYS_PER_YEAR = 365;
 
+  /** Energy cost of the play action — must match PLAY_ENERGY_COST in gameEngine.ts. */
+  var PLAY_ENERGY_COST = 25;
+
   /** Base movement speed in px/s per life stage (horizontal). */
   const STAGE_BASE_SPEED_PPS = {
     egg:    0,
@@ -170,9 +173,13 @@
   });
 
   document.getElementById("btn-play").addEventListener("click", function () {
-    // Simple win/loss determined randomly client-side for variety
-    const result = Math.random() > 0.35 ? "win" : "lose";
-    vscode.postMessage({ command: "play", game: "guess", result: result });
+    if (!lastState || lastState.energy < PLAY_ENERGY_COST) {
+      // Let the server handle the refusal gracefully
+      vscode.postMessage({ command: "play" });
+      return;
+    }
+    showMgOverlay();
+    showMgPanel("mg-select");
   });
 
   document.getElementById("btn-sleep-wake").addEventListener("click", function () {
@@ -232,6 +239,271 @@
         btnContinue.classList.toggle("hidden", !hasActiveGame);
       }
     }
+  }
+
+  // ── Mini-game overlay helpers ─────────────────────────────────────────────
+
+  var mgOverlay   = document.getElementById("mg-overlay");
+
+  function showMgOverlay() { mgOverlay.classList.remove("hidden"); }
+  function hideMgOverlay() { mgOverlay.classList.add("hidden"); }
+
+  function showMgPanel(id) {
+    var panels = mgOverlay.querySelectorAll(".mg-panel");
+    panels.forEach(function (p) { p.classList.add("hidden"); });
+    document.getElementById(id).classList.remove("hidden");
+  }
+
+  function sendPlayResult(game, result) {
+    vscode.postMessage({ command: "play", game: game, result: result });
+    hideMgOverlay();
+  }
+
+  // Wire up game-select buttons
+  document.getElementById("btn-mg-lr").addEventListener("click", function () {
+    startLeftRightGame();
+  });
+  document.getElementById("btn-mg-hl").addEventListener("click", function () {
+    startHigherLowerGame();
+  });
+  document.getElementById("btn-mg-cancel").addEventListener("click", function () {
+    hideMgOverlay();
+  });
+
+  // ── Left / Right game ─────────────────────────────────────────────────────
+
+  var lrRound, lrScore, lrPetSide, lrAnswered, lrTimerId, lrCountdown;
+  var lrCanvas  = document.getElementById("lr-canvas");
+  var lrCtx     = lrCanvas ? lrCanvas.getContext("2d") : null;
+
+  document.getElementById("btn-lr-left").addEventListener("click",  function () { handleLRChoice("left"); });
+  document.getElementById("btn-lr-right").addEventListener("click", function () { handleLRChoice("right"); });
+
+  function startLeftRightGame() {
+    lrRound    = 0;
+    lrScore    = 0;
+    lrAnswered = false;
+    showMgPanel("mg-left-right");
+    startLRRound();
+  }
+
+  function startLRRound() {
+    lrAnswered  = false;
+    lrPetSide   = Math.random() < 0.5 ? "left" : "right";
+    lrCountdown = 3;
+    drawLRDoors(null);
+    updateLRScore();
+    document.getElementById("lr-countdown").textContent = lrCountdown;
+    if (lrTimerId) { clearInterval(lrTimerId); }
+    lrTimerId = setInterval(function () {
+      lrCountdown -= 1;
+      document.getElementById("lr-countdown").textContent = lrCountdown;
+      if (lrCountdown <= 0) {
+        clearInterval(lrTimerId);
+        resolveLRRound(null); // timeout — treat as wrong
+      }
+    }, 1000);
+  }
+
+  /**
+   * Draw the two pixel-art doors on the LR canvas.
+   * revealState: null = closed, "correct" = player picked right side, "wrong" = player picked wrong side
+   * On reveal the chosen door opens; the unchosen door stays closed (or dim on wrong).
+   * @param {string|null} revealState
+   * @param {string|null} playerChoice  "left" or "right" (only used when revealState != null)
+   */
+  function drawLRDoors(revealState, playerChoice) {
+    if (!lrCtx) { return; }
+    var W = lrCanvas.width;   // 180
+    var H = lrCanvas.height;  // 80
+    lrCtx.clearRect(0, 0, W, H);
+
+    // Door geometry
+    var leftDoor  = { x: 10,  y: 14, w: 70, h: 58 };
+    var rightDoor = { x: 100, y: 14, w: 70, h: 58 };
+
+    [leftDoor, rightDoor].forEach(function (door, idx) {
+      var side = idx === 0 ? "left" : "right";
+      var fg  = "var(--vscode-foreground, #cccccc)";
+      var bg  = "var(--vscode-sideBar-background, #1e1e1e)";
+
+      var open = false;
+      var dim  = false;
+
+      if (revealState !== null) {
+        if (side === lrPetSide) {
+          // This is the correct door — always open on reveal
+          open = true;
+        } else {
+          // Incorrect door — dim if player was wrong (chosen null = timeout)
+          dim = true;
+        }
+      }
+
+      // Door frame
+      lrCtx.strokeStyle = dim ? "rgba(150,150,150,0.35)" : fg;
+      lrCtx.lineWidth = 2;
+      lrCtx.strokeRect(door.x, door.y, door.w, door.h);
+
+      // Door fill
+      lrCtx.fillStyle = dim
+        ? "rgba(60,60,60,0.4)"
+        : "var(--vscode-editor-background, #252526)";
+      lrCtx.fillRect(door.x + 2, door.y + 2, door.w - 4, door.h - 4);
+
+      if (!open) {
+        // Door knob
+        lrCtx.fillStyle = dim ? "rgba(150,150,150,0.4)" : fg;
+        var knobX = (side === "left") ? door.x + door.w - 10 : door.x + 8;
+        lrCtx.fillRect(knobX, door.y + Math.floor(door.h / 2) - 3, 4, 6);
+        // "?" question mark
+        lrCtx.fillStyle = dim ? "rgba(150,150,150,0.4)" : fg;
+        lrCtx.font = "bold 20px monospace";
+        lrCtx.textAlign = "center";
+        lrCtx.textBaseline = "middle";
+        lrCtx.fillText("?", door.x + door.w / 2, door.y + door.h / 2);
+      } else {
+        // Open door — draw simple pet face
+        var cx = door.x + door.w / 2;
+        var cy = door.y + door.h / 2 - 4;
+        var r  = 14;
+        // Head
+        lrCtx.beginPath();
+        lrCtx.arc(cx, cy, r, 0, Math.PI * 2);
+        lrCtx.fillStyle = "var(--vscode-foreground, #cccccc)";
+        lrCtx.fill();
+        // Eyes
+        lrCtx.fillStyle = bg;
+        lrCtx.fillRect(cx - 7, cy - 5, 4, 5);
+        lrCtx.fillRect(cx + 3, cy - 5, 4, 5);
+        // Smile
+        lrCtx.beginPath();
+        lrCtx.arc(cx, cy + 2, 6, 0, Math.PI);
+        lrCtx.strokeStyle = bg;
+        lrCtx.lineWidth = 2;
+        lrCtx.stroke();
+      }
+    });
+
+    // Label "LEFT" / "RIGHT" below doors
+    lrCtx.fillStyle = "var(--vscode-foreground, #aaaaaa)";
+    lrCtx.font = "9px monospace";
+    lrCtx.textAlign = "center";
+    lrCtx.textBaseline = "top";
+    lrCtx.globalAlpha = 0.55;
+    lrCtx.fillText("LEFT",  leftDoor.x  + leftDoor.w  / 2, leftDoor.y  + leftDoor.h  + 3);
+    lrCtx.fillText("RIGHT", rightDoor.x + rightDoor.w / 2, rightDoor.y + rightDoor.h + 3);
+    lrCtx.globalAlpha = 1.0;
+  }
+
+  function updateLRScore() {
+    var circles = "";
+    for (var i = 0; i < 3; i++) {
+      if (i < lrScore) {
+        circles += "●";
+      } else {
+        circles += "○";
+      }
+    }
+    document.getElementById("lr-score").textContent = "Round " + (lrRound + 1) + " / 3   " + circles;
+  }
+
+  function handleLRChoice(side) {
+    if (lrAnswered) { return; }
+    clearInterval(lrTimerId);
+    resolveLRRound(side);
+  }
+
+  function resolveLRRound(side) {
+    lrAnswered = true;
+    var won = side !== null && side === lrPetSide;
+    if (won) { lrScore++; }
+    drawLRDoors(won ? "correct" : "wrong", side);
+    document.getElementById("lr-countdown").textContent = won ? "✓" : "✗";
+    setTimeout(function () {
+      lrRound++;
+      if (lrRound < 3) {
+        startLRRound();
+      } else {
+        endLeftRightGame();
+      }
+    }, 1200);
+  }
+
+  function endLeftRightGame() {
+    var result = lrScore >= 2 ? "win" : "lose";
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win"
+        ? "You won Left / Right! (" + lrScore + "/3 correct)"
+        : "You lost Left / Right. (" + lrScore + "/3 correct)";
+    sendPlayResult("left_right", result);
+  }
+
+  // ── Higher or Lower game ──────────────────────────────────────────────────
+
+  var hlRound, hlCorrect, hlCurrentNum;
+
+  document.getElementById("btn-hl-higher").addEventListener("click", function () { handleHLChoice("higher"); });
+  document.getElementById("btn-hl-lower").addEventListener("click",  function () { handleHLChoice("lower"); });
+
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function startHigherLowerGame() {
+    hlRound      = 0;
+    hlCorrect    = 0;
+    hlCurrentNum = randInt(1, 100);
+    showMgPanel("mg-hl");
+    showHLRound();
+  }
+
+  function showHLRound() {
+    document.getElementById("hl-current").textContent = hlCurrentNum;
+    document.getElementById("hl-score").textContent   =
+      "Round " + (hlRound + 1) + " / 5   Correct: " + hlCorrect;
+    document.getElementById("hl-feedback").textContent = "";
+    document.getElementById("btn-hl-higher").disabled = false;
+    document.getElementById("btn-hl-lower").disabled  = false;
+  }
+
+  function handleHLChoice(choice) {
+    document.getElementById("btn-hl-higher").disabled = true;
+    document.getElementById("btn-hl-lower").disabled  = true;
+
+    var nextNum = hlCurrentNum;
+    // Re-roll until different to avoid a tie
+    while (nextNum === hlCurrentNum) {
+      nextNum = randInt(1, 100);
+    }
+
+    var correct = (choice === "higher" && nextNum > hlCurrentNum) ||
+                  (choice === "lower"  && nextNum < hlCurrentNum);
+    if (correct) { hlCorrect++; }
+
+    document.getElementById("hl-feedback").textContent = correct ? "✓ Correct!" : "✗ Wrong";
+    document.getElementById("hl-current").textContent  = nextNum;
+
+    setTimeout(function () {
+      hlRound++;
+      hlCurrentNum = nextNum;
+      if (hlRound < 5) {
+        showHLRound();
+      } else {
+        endHigherLowerGame();
+      }
+    }, 900);
+  }
+
+  function endHigherLowerGame() {
+    var result = hlCorrect >= 4 ? "win" : "lose";
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win"
+        ? "You won Higher or Lower! (" + hlCorrect + "/5 correct)"
+        : "You lost Higher or Lower. (" + hlCorrect + "/5 correct)";
+    sendPlayResult("higher_lower", result);
   }
 
   // ── Canvas sizing ─────────────────────────────────────────────────────────
@@ -761,6 +1033,11 @@
       "attention_call_expired_misbehaviour":    n + "'s misbehaviour call went unanswered!",
       "attention_call_expired_gift":            n + "'s gift was ignored.",
       "attention_call_expired_critical_health": n + "'s critical health call went unanswered!",
+      // Mini-game results
+      "minigame_left_right_win":    n + " won Left / Right!",
+      "minigame_left_right_lose":   n + " lost Left / Right.",
+      "minigame_higher_lower_win":  n + " won Higher or Lower!",
+      "minigame_higher_lower_lose": n + " lost Higher or Lower.",
     };
     if (labels[code]) { return labels[code]; }
     if (code.indexOf("evolved_to_") === 0) {

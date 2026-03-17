@@ -353,3 +353,102 @@ body.font-large  { font-size: 16px; }
   border: 1px solid rgba(255,255,255,0.12);
   padding: 6px 8px;
 }
+
+/* ── Mini-game overlay ── */
+#game-screen {
+  position: relative;
+}
+
+.mg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: var(--vscode-sideBar-background, #1e1e1e);
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.mg-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.mg-title {
+  font-size: 1.08em;
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.mg-subtitle {
+  font-size: 0.83em;
+  opacity: 0.7;
+  text-align: center;
+}
+
+.mg-game-btn {
+  width: 100%;
+}
+
+.mg-cancel-btn {
+  text-align: center;
+  margin-top: 2px;
+}
+
+#lr-canvas {
+  display: block;
+  margin: 0 auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.mg-countdown {
+  font-size: 1.5em;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.mg-btn-row {
+  display: flex;
+  gap: 6px;
+}
+
+.mg-dir-btn {
+  flex: 1;
+}
+
+.mg-score {
+  font-size: 0.83em;
+  opacity: 0.75;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.mg-big-num {
+  font-size: 2.5em;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.mg-feedback {
+  font-size: 0.92em;
+  text-align: center;
+  min-height: 1.2em;
+  font-weight: bold;
+}
+
+.mg-result-text {
+  font-size: 1.17em;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 1px;
+  margin-top: 24px;
+}
