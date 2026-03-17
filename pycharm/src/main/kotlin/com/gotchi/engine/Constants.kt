@@ -50,7 +50,7 @@ const val PLAY_HAPPINESS_BOOST: Int = 15
 const val PLAY_ENERGY_COST: Int = 25
 const val PLAY_WEIGHT_LOSS: Int = 3
 
-const val PAT_HAPPINESS_BOOST: Int = 10
+const val PAT_HAPPINESS_BOOST: Int = 15
 const val PAT_ENERGY_COST: Int = 20
 const val POOP_WEIGHT_LOSS: Int = 5
 
@@ -117,16 +117,17 @@ const val MINIGAME_WIN_HAPPINESS_BOOST: Int = 15
 const val MINIGAME_LOSE_HAPPINESS_BOOST: Int = 5
 const val MINIGAME_MEMORY_WIN_HAPPINESS_BOOST: Int = 20
 
-/** Left/Right: win gives 15–25, lose gives 10 consolation. */
-const val MINIGAME_LR_WIN_MIN: Int = 15
-const val MINIGAME_LR_WIN_MAX: Int = 25
+/** Left/Right: win gives 20–30, lose gives 10 consolation. */
+const val MINIGAME_LR_WIN_MIN: Int = 20
+const val MINIGAME_LR_WIN_MAX: Int = 30
 const val MINIGAME_LR_LOSE_CONSOLATION: Int = 10
-/** Higher/Lower: win gives 10–20, lose gives 10 consolation. */
-const val MINIGAME_HL_WIN_MIN: Int = 10
-const val MINIGAME_HL_WIN_MAX: Int = 20
+/** Higher/Lower: win gives 25–35, lose gives 10 consolation. */
+const val MINIGAME_HL_WIN_MIN: Int = 25
+const val MINIGAME_HL_WIN_MAX: Int = 35
 const val MINIGAME_HL_LOSE_CONSOLATION: Int = 10
-/** Coin Flip: win gives flat +5, lose gives 0 (no consolation). */
-const val MINIGAME_COIN_FLIP_WIN: Int = 5
+/** Coin Flip: win gives flat +15, lose gives +5 consolation. */
+const val MINIGAME_COIN_FLIP_WIN: Int = 15
+const val MINIGAME_COIN_FLIP_LOSE: Int = 5
 
 const val CARE_SCORE_HUNGER_WEIGHT: Double = 0.30
 const val CARE_SCORE_HAPPINESS_WEIGHT: Double = 0.25

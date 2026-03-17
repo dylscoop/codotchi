@@ -73,7 +73,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle               | `[x]`  |
 | Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle; resets on auto-wake | `[x]`  |
 | Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; refused via event log | `[x]`  |
-| Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; accessed via Play menu — direct boost (no minigame) | `[x]`  |
+| Pat         | Happiness +15, Energy −20                        | Requires Energy ≥ 20; accessed via Play menu — direct boost (no minigame) | `[x]`  |
 | Sleep       | Energy regenerates; cannot act while sleeping    | —                                        | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
@@ -230,12 +230,12 @@ Status: `[x]`
 
 | Game | Result | Happiness delta | Constant(s) |
 |------|--------|-----------------|-------------|
-| Left / Right | Win | +15–25 (random) | `MINIGAME_LR_WIN_MIN = 15`, `MINIGAME_LR_WIN_MAX = 25` |
+| Left / Right | Win | +20–30 (random) | `MINIGAME_LR_WIN_MIN = 20`, `MINIGAME_LR_WIN_MAX = 30` |
 | Left / Right | Lose | +10 (consolation) | `MINIGAME_LR_LOSE_CONSOLATION = 10` |
-| Higher or Lower | Win | +10–20 (random) | `MINIGAME_HL_WIN_MIN = 10`, `MINIGAME_HL_WIN_MAX = 20` |
+| Higher or Lower | Win | +25–35 (random) | `MINIGAME_HL_WIN_MIN = 25`, `MINIGAME_HL_WIN_MAX = 35` |
 | Higher or Lower | Lose | +10 (consolation) | `MINIGAME_HL_LOSE_CONSOLATION = 10` |
-| Coin Flip | Win | +5 (flat) | `MINIGAME_COIN_FLIP_WIN = 5` |
-| Coin Flip | Lose | +0 (no consolation) | — |
+| Coin Flip | Win | +15 (flat) | `MINIGAME_COIN_FLIP_WIN = 15` |
+| Coin Flip | Lose | +5 (consolation) | `MINIGAME_COIN_FLIP_LOSE = 5` |
 
 ---
 

@@ -719,14 +719,14 @@ fun pat(state: PetState): PetState {
  */
 fun happinessDeltaForMinigame(game: String, result: String): Int {
     if (game == "left_right") {
-        if (result == "win") return Random.nextInt(MINIGAME_LR_WIN_MIN, MINIGAME_LR_WIN_MAX + 1) // 15–25
+        if (result == "win") return Random.nextInt(MINIGAME_LR_WIN_MIN, MINIGAME_LR_WIN_MAX + 1) // 20–30
         return MINIGAME_LR_LOSE_CONSOLATION // +10 consolation
     }
     if (game == "higher_lower") {
-        if (result == "win") return Random.nextInt(MINIGAME_HL_WIN_MIN, MINIGAME_HL_WIN_MAX + 1) // 10–20
+        if (result == "win") return Random.nextInt(MINIGAME_HL_WIN_MIN, MINIGAME_HL_WIN_MAX + 1) // 25–35
         return MINIGAME_HL_LOSE_CONSOLATION // +10 consolation
     }
-    if (game == "coin_flip") return if (result == "win") MINIGAME_COIN_FLIP_WIN else 0 // +5 win, 0 lose
+    if (game == "coin_flip") return if (result == "win") MINIGAME_COIN_FLIP_WIN else MINIGAME_COIN_FLIP_LOSE // +15 win, +5 lose
     if (game == "memory" && result == "win") return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST
     if (result == "win") return MINIGAME_WIN_HAPPINESS_BOOST
     return MINIGAME_LOSE_HAPPINESS_BOOST

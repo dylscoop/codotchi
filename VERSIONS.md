@@ -20,11 +20,28 @@
 | `vscode/src/gameEngine.ts` | BUGFIX-033: passive weight decay now throttled during idle (10× slower, matching hunger/happiness) |
 | `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | BUGFIX-033: mirrored weight decay throttle fix |
 | `BUGFIXES.md` | Added BUGFIX-033 entry |
+| `vscode/src/gameEngine.ts` | Rebalanced minigame and pat reward constants (LR 20–30, HL 25–35, coin +15/+5, pat +15) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Mirrored reward constant rebalance |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Coin flip lose now uses `MINIGAME_COIN_FLIP_LOSE` constant instead of hardcoded `0` |
+| `vscode/tests/unit/gameEngine.test.ts` | Updated reward assertions to match new constant values |
+| `vscode/FEATURES.md` | Updated Pat action row and minigame rewards table to reflect new values |
 
 ### New constants
 
 ```
-PAT_ENERGY_COST: Int = 20   // (already existed in engine) now also declared in sidebar.js UI layer
+PAT_ENERGY_COST: Int = 20         // (already existed in engine) now also declared in sidebar.js UI layer
+MINIGAME_COIN_FLIP_LOSE: Int = 5  // coin flip lose consolation (new — was hardcoded 0)
+```
+
+### Updated constants
+
+```
+PAT_HAPPINESS_BOOST: Int = 15     // was 10
+MINIGAME_LR_WIN_MIN: Int = 20     // was 15
+MINIGAME_LR_WIN_MAX: Int = 30     // was 25
+MINIGAME_HL_WIN_MIN: Int = 25     // was 10
+MINIGAME_HL_WIN_MAX: Int = 35     // was 20
+MINIGAME_COIN_FLIP_WIN: Int = 15  // was 5
 ```
 
 ---
