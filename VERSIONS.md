@@ -1,6 +1,36 @@
 # Version History
 
-## v0.7.5 — current
+## v0.7.6 — current
+
+### Changes from v0.7.5
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.7.5` → `0.7.6` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.5` → `0.7.6` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.5` → `0.7.6` |
+| `vscode/src/gameEngine.ts` | Rebalanced minigame reward constants as deltas applied on top of the play baseline (+15); renamed `LOSE_CONSOLATION` → `LOSE_DELTA` for LR and HL; updated inline comments in `happinessDeltaForMinigame()` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Mirrored reward constant rebalance and renames from `gameEngine.ts` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Updated `happinessDeltaForMinigame()` inline comments and constant references to match new delta semantics |
+| `vscode/tests/unit/gameEngine.test.ts` | Updated all reward assertions to match new constant values and delta semantics |
+| `vscode/FEATURES.md` | Updated minigame reward reference table and game descriptions to reflect new delta values |
+
+### Updated constants
+
+```
+MINIGAME_LR_WIN_MIN:   Int = 5    // was 20 (now delta on top of +15 play baseline; net win 20–30)
+MINIGAME_LR_WIN_MAX:   Int = 15   // was 30
+MINIGAME_LR_LOSE_DELTA (renamed from MINIGAME_LR_LOSE_CONSOLATION): Int = -5   // was +10
+MINIGAME_HL_WIN_MIN:   Int = 10   // was 25 (net win 25–35)
+MINIGAME_HL_WIN_MAX:   Int = 20   // was 35
+MINIGAME_HL_LOSE_DELTA (renamed from MINIGAME_HL_LOSE_CONSOLATION): Int = -5   // was +10
+MINIGAME_COIN_FLIP_WIN: Int = 0   // was 15 (net win 15 = 0 + play baseline)
+MINIGAME_COIN_FLIP_LOSE: Int = -10  // was +5 (net lose 5 = −10 + play baseline)
+```
+
+---
+
+## v0.7.5 — previous
 
 ### Changes from v0.7.4
 

@@ -143,17 +143,17 @@ const IDLE_DECAY_TICK_DIVISOR: number = 10; // 10% of normal rate
 const MINIGAME_WIN_HAPPINESS_BOOST: number = 15;   // legacy "guess" fallback
 const MINIGAME_LOSE_HAPPINESS_BOOST: number = 5;   // legacy "guess" fallback
 const MINIGAME_MEMORY_WIN_HAPPINESS_BOOST: number = 20;
-// Left/Right: win gives 20–30, lose gives 10 consolation
-const MINIGAME_LR_WIN_MIN: number = 20;
-const MINIGAME_LR_WIN_MAX: number = 30;
-const MINIGAME_LR_LOSE_CONSOLATION: number = 10;
-// Higher/Lower: win gives 25–35, lose gives 10 consolation
-const MINIGAME_HL_WIN_MIN: number = 25;
-const MINIGAME_HL_WIN_MAX: number = 35;
-const MINIGAME_HL_LOSE_CONSOLATION: number = 10;
-// Coin Flip: win gives flat +15, lose gives +5 consolation
-const MINIGAME_COIN_FLIP_WIN: number = 15;
-const MINIGAME_COIN_FLIP_LOSE: number = 5;
+// Left/Right: play baseline +15; delta win +5–+15, lose −5 → totals: win 20–30, lose 10
+const MINIGAME_LR_WIN_MIN: number = 5;
+const MINIGAME_LR_WIN_MAX: number = 15;
+const MINIGAME_LR_LOSE_DELTA: number = -5;
+// Higher/Lower: play baseline +15; delta win +10–+20, lose −5 → totals: win 25–35, lose 10
+const MINIGAME_HL_WIN_MIN: number = 10;
+const MINIGAME_HL_WIN_MAX: number = 20;
+const MINIGAME_HL_LOSE_DELTA: number = -5;
+// Coin Flip: play baseline +15; delta win 0, lose −10 → totals: win 15, lose 5
+const MINIGAME_COIN_FLIP_WIN: number = 0;
+const MINIGAME_COIN_FLIP_LOSE: number = -10;
 
 const CARE_SCORE_HUNGER_WEIGHT: number = 0.30;
 const CARE_SCORE_HAPPINESS_WEIGHT: number = 0.25;
@@ -1447,18 +1447,18 @@ export function pat(state: PetState): PetState {
 export function happinessDeltaForMinigame(game: string, result: string): number {
   if (game === "left_right") {
     if (result === "win") {
-      return Math.floor(Math.random() * (MINIGAME_LR_WIN_MAX - MINIGAME_LR_WIN_MIN + 1)) + MINIGAME_LR_WIN_MIN; // 20–30
+      return Math.floor(Math.random() * (MINIGAME_LR_WIN_MAX - MINIGAME_LR_WIN_MIN + 1)) + MINIGAME_LR_WIN_MIN; // +5–+15
     }
-    return MINIGAME_LR_LOSE_CONSOLATION; // +10 consolation
+    return MINIGAME_LR_LOSE_DELTA; // −5
   }
   if (game === "higher_lower") {
     if (result === "win") {
-      return Math.floor(Math.random() * (MINIGAME_HL_WIN_MAX - MINIGAME_HL_WIN_MIN + 1)) + MINIGAME_HL_WIN_MIN; // 25–35
+      return Math.floor(Math.random() * (MINIGAME_HL_WIN_MAX - MINIGAME_HL_WIN_MIN + 1)) + MINIGAME_HL_WIN_MIN; // +10–+20
     }
-    return MINIGAME_HL_LOSE_CONSOLATION; // +10 consolation
+    return MINIGAME_HL_LOSE_DELTA; // −5
   }
   if (game === "coin_flip") {
-    return result === "win" ? MINIGAME_COIN_FLIP_WIN : MINIGAME_COIN_FLIP_LOSE; // +15 win, +5 lose
+    return result === "win" ? MINIGAME_COIN_FLIP_WIN : MINIGAME_COIN_FLIP_LOSE; // 0 win, −10 lose
   }
   if (game === "memory" && result === "win") {
     return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST;

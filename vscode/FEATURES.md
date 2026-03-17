@@ -132,8 +132,8 @@ which minigame to play (or cancel).
 - A 3-second countdown is shown.
 - Player clicks **Left** or **Right** before time runs out.
 - The door opens to reveal the pet (correct door) or nothing (wrong door).
- - **Win**: Happiness +15–25 (random), Energy −10.
- - **Lose / timeout**: Happiness +10 (consolation).
+ - **Win**: Happiness +5–15 (delta; net +20–30 including play baseline).
+ - **Lose / timeout**: Happiness −5 (delta; net +10 including play baseline).
 - Rounds: 3 per session; best-of-3 determines overall win/lose sent to engine.
 - `[S]` Setting `gotchi.leftRightTimeoutMs` (default 3000 ms) — adjustable for
   accessibility.
@@ -179,8 +179,8 @@ Status: `[ ]`
 - Player clicks **Higher** or **Lower** to predict whether the next number is
   greater or smaller.
 - 5 rounds per session.
- - **Win** (≥ 4 correct): Happiness +10–20 (random).
- - **Lose** (≤ 3 correct): Happiness +10.
+ - **Win** (≥ 4 correct): Happiness +10–20 (delta; net +25–35 including play baseline).
+ - **Lose** (≤ 3 correct): Happiness −5 (delta; net +10 including play baseline).
 
 Status: `[x]`
 
@@ -207,8 +207,8 @@ Status: `[ ]`
 
 - Player picks **Heads** or **Tails**.
 - Result is determined by a 50/50 coin flip (`Math.random() < 0.5`).
-- **Win**: Happiness +5 (`MINIGAME_COIN_FLIP_WIN = 5`).
-- **Lose**: Happiness +0 (no consolation — pure gamble).
+- **Win**: Happiness +0 (`MINIGAME_COIN_FLIP_WIN = 0`; net +15 including play baseline).
+- **Lose**: Happiness −10 (`MINIGAME_COIN_FLIP_LOSE = −10`; net +5 including play baseline).
 - Single round per play session.
 
 Status: `[x]`
@@ -228,14 +228,18 @@ Status: `[x]`
 
 ### Minigame Reward Reference
 
-| Game | Result | Happiness delta | Constant(s) |
-|------|--------|-----------------|-------------|
-| Left / Right | Win | +20–30 (random) | `MINIGAME_LR_WIN_MIN = 20`, `MINIGAME_LR_WIN_MAX = 30` |
-| Left / Right | Lose | +10 (consolation) | `MINIGAME_LR_LOSE_CONSOLATION = 10` |
-| Higher or Lower | Win | +25–35 (random) | `MINIGAME_HL_WIN_MIN = 25`, `MINIGAME_HL_WIN_MAX = 35` |
-| Higher or Lower | Lose | +10 (consolation) | `MINIGAME_HL_LOSE_CONSOLATION = 10` |
-| Coin Flip | Win | +15 (flat) | `MINIGAME_COIN_FLIP_WIN = 15` |
-| Coin Flip | Lose | +5 (consolation) | `MINIGAME_COIN_FLIP_LOSE = 5` |
+All minigame deltas are applied **on top of the play baseline (+15 happiness)**
+that fires when Play is pressed. Net totals reflect delta + baseline.
+
+| Game | Result | Delta | Net total | Constant(s) |
+|------|--------|-------|-----------|-------------|
+| Left / Right | Win | +5–+15 (random) | +20–+30 | `MINIGAME_LR_WIN_MIN = 5`, `MINIGAME_LR_WIN_MAX = 15` |
+| Left / Right | Lose | −5 | +10 | `MINIGAME_LR_LOSE_DELTA = -5` |
+| Higher or Lower | Win | +10–+20 (random) | +25–+35 | `MINIGAME_HL_WIN_MIN = 10`, `MINIGAME_HL_WIN_MAX = 20` |
+| Higher or Lower | Lose | −5 | +10 | `MINIGAME_HL_LOSE_DELTA = -5` |
+| Coin Flip | Win | 0 | +15 | `MINIGAME_COIN_FLIP_WIN = 0` |
+| Coin Flip | Lose | −10 | +5 | `MINIGAME_COIN_FLIP_LOSE = -10` |
+| Pat | — | +15 (flat total) | +15 | `PAT_HAPPINESS_BOOST = 15` (no play baseline) |
 
 ---
 

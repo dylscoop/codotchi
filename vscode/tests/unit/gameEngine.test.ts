@@ -820,24 +820,24 @@ describe("applyMinigameResult", () => {
 
   // ── left_right ─────────────────────────────────────────────────────────────
 
-  it("left_right win raises happiness by 20–30", () => {
+  it("left_right win raises happiness by 5–15", () => {
     const pet = makePet({ happiness: 50 });
     const next = applyMinigameResult(pet, "left_right", "win");
-    assert.ok(next.happiness >= 70 && next.happiness <= 80,
-      `happiness after left_right win should be 70–80, got ${next.happiness}`);
+    assert.ok(next.happiness >= 55 && next.happiness <= 65,
+      `happiness after left_right win should be 55–65, got ${next.happiness}`);
   });
 
-  it("left_right lose raises happiness by exactly 10 (consolation)", () => {
+  it("left_right lose applies delta of exactly −5", () => {
     const pet = makePet({ happiness: 50 });
     const next = applyMinigameResult(pet, "left_right", "lose");
-    assert.equal(next.happiness, 60);
+    assert.equal(next.happiness, 45);
   });
 
-  it("left_right lose never reduces happiness", () => {
-    const pet = makePet({ happiness: 10 });
+  it("left_right lose clamps at 0 (never negative)", () => {
+    const pet = makePet({ happiness: 3 });
     const next = applyMinigameResult(pet, "left_right", "lose");
-    assert.ok(next.happiness > 10,
-      `happiness should increase on consolation, got ${next.happiness}`);
+    assert.ok(next.happiness >= 0,
+      `happiness should be clamped at 0, got ${next.happiness}`);
   });
 
   it("left_right win clamps happiness at 100", () => {
@@ -848,24 +848,24 @@ describe("applyMinigameResult", () => {
 
   // ── higher_lower ───────────────────────────────────────────────────────────
 
-  it("higher_lower win raises happiness by 25–35", () => {
+  it("higher_lower win raises happiness by 10–20", () => {
     const pet = makePet({ happiness: 50 });
     const next = applyMinigameResult(pet, "higher_lower", "win");
-    assert.ok(next.happiness >= 75 && next.happiness <= 85,
-      `happiness after higher_lower win should be 75–85, got ${next.happiness}`);
+    assert.ok(next.happiness >= 60 && next.happiness <= 70,
+      `happiness after higher_lower win should be 60–70, got ${next.happiness}`);
   });
 
-  it("higher_lower lose raises happiness by exactly 10 (consolation)", () => {
+  it("higher_lower lose applies delta of exactly −5", () => {
     const pet = makePet({ happiness: 50 });
     const next = applyMinigameResult(pet, "higher_lower", "lose");
-    assert.equal(next.happiness, 60);
+    assert.equal(next.happiness, 45);
   });
 
-  it("higher_lower lose never reduces happiness", () => {
-    const pet = makePet({ happiness: 10 });
+  it("higher_lower lose clamps at 0 (never negative)", () => {
+    const pet = makePet({ happiness: 3 });
     const next = applyMinigameResult(pet, "higher_lower", "lose");
-    assert.ok(next.happiness > 10,
-      `happiness should increase on consolation, got ${next.happiness}`);
+    assert.ok(next.happiness >= 0,
+      `happiness should be clamped at 0, got ${next.happiness}`);
   });
 
   it("higher_lower win clamps happiness at 100", () => {
@@ -898,10 +898,10 @@ describe("happinessDeltaForMinigame", () => {
 
   // ── left_right ─────────────────────────────────────────────────────────────
 
-  it("left_right win → between 20 and 30 inclusive", () => {
+  it("left_right win → between 5 and 15 inclusive", () => {
     const delta = happinessDeltaForMinigame("left_right", "win");
-    assert.ok(delta >= 20 && delta <= 30,
-      `left_right win delta should be 20–30, got ${delta}`);
+    assert.ok(delta >= 5 && delta <= 15,
+      `left_right win delta should be 5–15, got ${delta}`);
   });
 
   it("left_right win result is always a positive integer", () => {
@@ -912,16 +912,16 @@ describe("happinessDeltaForMinigame", () => {
     }
   });
 
-  it("left_right lose → exactly 10 (consolation, not negative)", () => {
-    assert.equal(happinessDeltaForMinigame("left_right", "lose"), 10);
+  it("left_right lose → exactly −5", () => {
+    assert.equal(happinessDeltaForMinigame("left_right", "lose"), -5);
   });
 
   // ── higher_lower ───────────────────────────────────────────────────────────
 
-  it("higher_lower win → between 25 and 35 inclusive", () => {
+  it("higher_lower win → between 10 and 20 inclusive", () => {
     const delta = happinessDeltaForMinigame("higher_lower", "win");
-    assert.ok(delta >= 25 && delta <= 35,
-      `higher_lower win delta should be 25–35, got ${delta}`);
+    assert.ok(delta >= 10 && delta <= 20,
+      `higher_lower win delta should be 10–20, got ${delta}`);
   });
 
   it("higher_lower win result is always a positive integer", () => {
@@ -932,18 +932,18 @@ describe("happinessDeltaForMinigame", () => {
     }
   });
 
-  it("higher_lower lose → exactly 10 (consolation, not negative)", () => {
-    assert.equal(happinessDeltaForMinigame("higher_lower", "lose"), 10);
+  it("higher_lower lose → exactly −5", () => {
+    assert.equal(happinessDeltaForMinigame("higher_lower", "lose"), -5);
   });
 
   // ── coin_flip ──────────────────────────────────────────────────────────────
 
-  it("coin_flip win → exactly 15", () => {
-    assert.equal(happinessDeltaForMinigame("coin_flip", "win"), 15);
+  it("coin_flip win → exactly 0", () => {
+    assert.equal(happinessDeltaForMinigame("coin_flip", "win"), 0);
   });
 
-  it("coin_flip lose → exactly 5", () => {
-    assert.equal(happinessDeltaForMinigame("coin_flip", "lose"), 5);
+  it("coin_flip lose → exactly −10", () => {
+    assert.equal(happinessDeltaForMinigame("coin_flip", "lose"), -10);
   });
 });
 
@@ -1440,7 +1440,7 @@ describe("integration — action sequence", () => {
 // ---------------------------------------------------------------------------
 
 describe("integration — play + left_right minigame", () => {
-  it("play then left_right win: energy drops by 25, happiness rises by >= 35 total", () => {
+  it("play then left_right win: energy drops by 25, happiness rises by >= 20 total", () => {
     const pet = makePet({ happiness: 50, energy: 80 });
     // Step 1: player presses Play — always costs 25 energy and adds 15 happiness.
     const afterPlay = play(pet);
@@ -1449,28 +1449,29 @@ describe("integration — play + left_right minigame", () => {
 
     // Step 2: minigame result sent after the game finishes.
     const afterGame = applyMinigameResult(afterPlay, "left_right", "win");
-    // Win adds 20–30 on top of the happiness already at 65 → final 85–95.
-    assert.ok(afterGame.happiness >= 85 && afterGame.happiness <= 95,
-      `happiness after play+win should be 85–95, got ${afterGame.happiness}`);
+    // Win delta is +5–+15 on top of happiness already at 65 → final 70–80.
+    assert.ok(afterGame.happiness >= 70 && afterGame.happiness <= 80,
+      `happiness after play+win should be 70–80, got ${afterGame.happiness}`);
     assert.equal(afterGame.energy, 55, "energy should not change from minigame result");
   });
 
-  it("play then left_right lose: energy drops by 25, happiness rises by exactly 25 total", () => {
+  it("play then left_right lose: total happiness delta is exactly +10", () => {
     const pet = makePet({ happiness: 50, energy: 80 });
     const afterPlay = play(pet);
-    // Lose consolation = +10.  Total happiness delta = +15 (play) + +10 (consolation) = +25.
+    // Lose delta = −5.  Total happiness delta = +15 (play) + (−5) (lose) = +10.
     const afterGame = applyMinigameResult(afterPlay, "left_right", "lose");
-    assert.equal(afterGame.happiness, 75,
-      `happiness after play+lose should be 75 (50+15+10), got ${afterGame.happiness}`);
+    assert.equal(afterGame.happiness, 60,
+      `happiness after play+lose should be 60 (50+15−5), got ${afterGame.happiness}`);
     assert.equal(afterGame.energy, 55);
   });
 
-  it("play then left_right lose never reduces happiness below post-play level", () => {
+  it("play then left_right lose: net delta is always positive (play baseline absorbs lose penalty)", () => {
     const pet = makePet({ happiness: 20, energy: 50 });
     const afterPlay = play(pet);
     const afterGame = applyMinigameResult(afterPlay, "left_right", "lose");
-    assert.ok(afterGame.happiness >= afterPlay.happiness,
-      "consolation must never reduce happiness below post-play level");
+    // Net from initial: +15 play + (−5) lose = +10 total, so afterGame > initial.
+    assert.ok(afterGame.happiness > pet.happiness,
+      "net play+lose delta must still be positive");
   });
 
   it("play refused when energy too low — minigame not reachable", () => {
@@ -1483,21 +1484,22 @@ describe("integration — play + left_right minigame", () => {
 });
 
 describe("integration — play + higher_lower minigame", () => {
-  it("play then higher_lower win: energy drops by 25, happiness rises by >= 40 total", () => {
+  it("play then higher_lower win: energy drops by 25, happiness rises by >= 25 total", () => {
     const pet = makePet({ happiness: 50, energy: 80 });
     const afterPlay = play(pet);
     const afterGame = applyMinigameResult(afterPlay, "higher_lower", "win");
-    assert.ok(afterGame.happiness >= 90 && afterGame.happiness <= 100,
-      `happiness after play+win should be 90–100, got ${afterGame.happiness}`);
+    // Win delta is +10–+20 on top of happiness at 65 → final 75–85.
+    assert.ok(afterGame.happiness >= 75 && afterGame.happiness <= 85,
+      `happiness after play+win should be 75–85, got ${afterGame.happiness}`);
     assert.equal(afterGame.energy, 55);
   });
 
-  it("play then higher_lower lose: total happiness delta is exactly +25", () => {
+  it("play then higher_lower lose: total happiness delta is exactly +10", () => {
     const pet = makePet({ happiness: 50, energy: 80 });
     const afterPlay = play(pet);
     const afterGame = applyMinigameResult(afterPlay, "higher_lower", "lose");
-    assert.equal(afterGame.happiness, 75,
-      `happiness after play+lose should be 75 (50+15+10), got ${afterGame.happiness}`);
+    assert.equal(afterGame.happiness, 60,
+      `happiness after play+lose should be 60 (50+15−5), got ${afterGame.happiness}`);
   });
 
   it("happiness never exceeds 100 even on a perfect win streak", () => {
@@ -1519,9 +1521,9 @@ describe("integration — play + higher_lower minigame", () => {
       pet = play(pet);
       pet = applyMinigameResult(pet, "higher_lower", "lose");
     }
-    // Each round adds +15 (play) + +10 (consolation) = +25 per round.
+    // Each round adds +15 (play) + (−5) (lose delta) = +10 per round.
     assert.ok(pet.happiness > startHappiness,
-      "happiness should always increase with play+consolation cycles");
+      "happiness should always increase with play+lose cycles (net +10 each round)");
   });
 });
 
@@ -1530,29 +1532,30 @@ describe("integration — play + higher_lower minigame", () => {
 // ---------------------------------------------------------------------------
 
 describe("integration — play + coin_flip minigame", () => {
-  it("play then coin_flip win: happiness rises by exactly +30 total (15 play + 15 win)", () => {
+  it("play then coin_flip win: happiness rises by exactly +15 total (15 play + 0 win)", () => {
     const pet = makePet({ happiness: 50, energy: 80 });
     const afterPlay = play(pet);
     const afterGame = applyMinigameResult(afterPlay, "coin_flip", "win");
-    assert.equal(afterGame.happiness, 80,
-      `happiness after play+coin_flip win should be 80 (50+15+15), got ${afterGame.happiness}`);
+    assert.equal(afterGame.happiness, 65,
+      `happiness after play+coin_flip win should be 65 (50+15+0), got ${afterGame.happiness}`);
     assert.equal(afterGame.energy, 55);
   });
 
-  it("play then coin_flip lose: happiness rises by exactly +20 total (15 play + 5 consolation)", () => {
+  it("play then coin_flip lose: happiness rises by exactly +5 total (15 play − 10 lose)", () => {
     const pet = makePet({ happiness: 50, energy: 80 });
     const afterPlay = play(pet);
     const afterGame = applyMinigameResult(afterPlay, "coin_flip", "lose");
-    assert.equal(afterGame.happiness, 70,
-      `happiness after play+coin_flip lose should be 70 (50+15+5), got ${afterGame.happiness}`);
+    assert.equal(afterGame.happiness, 55,
+      `happiness after play+coin_flip lose should be 55 (50+15−10), got ${afterGame.happiness}`);
     assert.equal(afterGame.energy, 55);
   });
 
-  it("coin_flip lose never reduces happiness below post-play level", () => {
+  it("coin_flip lose: net delta from initial is still positive (play baseline absorbs penalty)", () => {
     const pet = makePet({ happiness: 20, energy: 50 });
     const afterPlay = play(pet);
     const afterGame = applyMinigameResult(afterPlay, "coin_flip", "lose");
-    assert.ok(afterGame.happiness >= afterPlay.happiness,
-      "coin_flip lose must never reduce happiness below post-play level");
+    // Net from initial: +15 play + (−10) lose = +5 total.
+    assert.ok(afterGame.happiness > pet.happiness,
+      "coin_flip lose net delta must still be positive");
   });
 });

@@ -715,18 +715,18 @@ fun pat(state: PetState): PetState {
  *
  * @param game   "left_right", "higher_lower", "coin_flip", "guess", or "memory"
  * @param result "win" or "lose"
- * @return An integer to add to the pet's happiness stat (0 for coin_flip loss).
+ * @return An integer delta applied on top of the play baseline (+15); net totals: LR win 20–30, LR lose 10, HL win 25–35, HL lose 10, coin_flip win 15, coin_flip lose 5.
  */
 fun happinessDeltaForMinigame(game: String, result: String): Int {
     if (game == "left_right") {
-        if (result == "win") return Random.nextInt(MINIGAME_LR_WIN_MIN, MINIGAME_LR_WIN_MAX + 1) // 20–30
-        return MINIGAME_LR_LOSE_CONSOLATION // +10 consolation
+        if (result == "win") return Random.nextInt(MINIGAME_LR_WIN_MIN, MINIGAME_LR_WIN_MAX + 1) // +5–+15
+        return MINIGAME_LR_LOSE_DELTA // −5
     }
     if (game == "higher_lower") {
-        if (result == "win") return Random.nextInt(MINIGAME_HL_WIN_MIN, MINIGAME_HL_WIN_MAX + 1) // 25–35
-        return MINIGAME_HL_LOSE_CONSOLATION // +10 consolation
+        if (result == "win") return Random.nextInt(MINIGAME_HL_WIN_MIN, MINIGAME_HL_WIN_MAX + 1) // +10–+20
+        return MINIGAME_HL_LOSE_DELTA // −5
     }
-    if (game == "coin_flip") return if (result == "win") MINIGAME_COIN_FLIP_WIN else MINIGAME_COIN_FLIP_LOSE // +15 win, +5 lose
+    if (game == "coin_flip") return if (result == "win") MINIGAME_COIN_FLIP_WIN else MINIGAME_COIN_FLIP_LOSE // 0 win, −10 lose
     if (game == "memory" && result == "win") return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST
     if (result == "win") return MINIGAME_WIN_HAPPINESS_BOOST
     return MINIGAME_LOSE_HAPPINESS_BOOST
