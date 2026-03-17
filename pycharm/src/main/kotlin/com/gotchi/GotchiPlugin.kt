@@ -161,7 +161,7 @@ class GotchiPlugin : Disposable {
 
             // BUGFIX-002: block care actions server-side while pet is sleeping
             val isSleeping = state?.sleeping ?: false
-            val sleepBlocked = setOf("feed", "play", "clean", "medicine", "praise", "scold")
+            val sleepBlocked = setOf("feed", "play", "pat", "clean", "medicine", "praise", "scold")
             if (isSleeping && command in sleepBlocked) return@withLock
 
             var nextState: PetState? = null
@@ -225,6 +225,11 @@ class GotchiPlugin : Disposable {
                 "praise" -> {
                     state ?: return@withLock
                     nextState = praise(state)
+                }
+
+                "pat" -> {
+                    state ?: return@withLock
+                    nextState = pat(state)
                 }
 
                 "new_game" -> {

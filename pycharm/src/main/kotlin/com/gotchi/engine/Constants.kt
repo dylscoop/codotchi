@@ -49,6 +49,9 @@ const val FEED_SNACK_WEIGHT_GAIN: Int = 5
 const val PLAY_HAPPINESS_BOOST: Int = 15
 const val PLAY_ENERGY_COST: Int = 25
 const val PLAY_WEIGHT_LOSS: Int = 3
+
+const val PAT_HAPPINESS_BOOST: Int = 10
+const val PAT_ENERGY_COST: Int = 20
 const val POOP_WEIGHT_LOSS: Int = 5
 
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
@@ -114,14 +117,17 @@ const val MINIGAME_WIN_HAPPINESS_BOOST: Int = 15
 const val MINIGAME_LOSE_HAPPINESS_BOOST: Int = 5
 const val MINIGAME_MEMORY_WIN_HAPPINESS_BOOST: Int = 20
 
-/** Base happiness added when the player wins an interactive minigame (left_right / higher_lower). */
-const val MINIGAME_INTERACTIVE_WIN_BASE: Int = 10
-/** Minimum random bonus happiness added on top of the base for an interactive win. */
-const val MINIGAME_INTERACTIVE_WIN_BONUS_MIN: Int = 5
-/** Maximum random bonus happiness added on top of the base for an interactive win. */
-const val MINIGAME_INTERACTIVE_WIN_BONUS_MAX: Int = 15
-/** Consolation deduction: lose gives WIN_BASE - LOSE_PENALTY = 10 - 5 = +5. */
-const val MINIGAME_INTERACTIVE_LOSE_PENALTY: Int = 5
+/** Left/Right: play baseline +15; delta win +5–+15, lose −5 → totals: win 20–30, lose 10. */
+const val MINIGAME_LR_WIN_MIN: Int = 5
+const val MINIGAME_LR_WIN_MAX: Int = 15
+const val MINIGAME_LR_LOSE_DELTA: Int = -5
+/** Higher/Lower: play baseline +15; delta win +10–+20, lose −5 → totals: win 25–35, lose 10. */
+const val MINIGAME_HL_WIN_MIN: Int = 10
+const val MINIGAME_HL_WIN_MAX: Int = 20
+const val MINIGAME_HL_LOSE_DELTA: Int = -5
+/** Coin Flip: play baseline +15; delta win 0, lose −10 → totals: win 15, lose 5. */
+const val MINIGAME_COIN_FLIP_WIN: Int = 0
+const val MINIGAME_COIN_FLIP_LOSE: Int = -10
 
 const val CARE_SCORE_HUNGER_WEIGHT: Double = 0.30
 const val CARE_SCORE_HAPPINESS_WEIGHT: Double = 0.25

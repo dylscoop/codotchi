@@ -477,3 +477,80 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** `GRAVITY` was set to `60 px/s²`, which causes the pet to take approximately 1.79 seconds to fall the full 96 px canvas height. This is far lighter than real-world gravity feels at this canvas scale, making the pet appear to float when it hops or bounces.
 
 **Fix:** Raised `GRAVITY` from `60` to `500 px/s²`. This makes the pet fall the full canvas height in ~0.62 seconds, matching a natural, snappy gravity feel. `HOP_IMPULSE` was scaled proportionally from `−60` to `−175 px/s` so the hop still reaches the same ~30 px peak height (`v₀² / 2g ≈ 30 px`) — the hop is visually unchanged but completes in 0.35 s instead of 1.0 s.
+
+---
+
+## BUGFIX-027 — Minigame overlay covers the pet name, mood label, and stat bars
+
+**Status:** Fixed (branch `fix/minigame-ui-v0.7.1`)
+**Files:** `vscode/media/sidebar.html`, `vscode/media/sidebar.css`, `pycharm/src/main/resources/webview/sidebar.html`, `pycharm/src/main/resources/webview/sidebar.css`
+
+**Problem:** `#mg-overlay` was positioned relative to `#game-screen` (via `position: relative` on that element), so it stretched to cover the entire game screen — hiding the pet sprite, pet name, and mood label during minigames.
+
+**Fix:** Wrapped the `.stats` block in a new `#stats-game-area` container and moved `position: relative` from `#game-screen` to `#stats-game-area`. `#mg-overlay` (which is now a child of `#stats-game-area`) is scoped to the stats area only, leaving the pet sprite, name, and mood label always visible.
+
+---
+
+## BUGFIX-028 — Pet sprite invisible during Left/Right minigame
+
+**Status:** Fixed (branch `fix/minigame-ui-v0.7.1`)
+**Files:** `vscode/media/sidebar.html`, `vscode/media/sidebar.css`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.html`, `pycharm/src/main/resources/webview/sidebar.css`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `#lr-canvas` was placed in `#mg-left-right` (inside the overlay), which meant the doors were drawn over an opaque panel that completely obscured the live pet sprite in `#sprite-container`. The pet was invisible for the entire duration of the Left/Right game.
+
+**Fix:** Moved `#lr-canvas` inside `#sprite-container` and made it `position: absolute; inset: 0; z-index: 5; pointer-events: none`. The doors are now drawn as a transparent canvas layer on top of the pet sprite, making the pet visible through the door area while still showing the door overlay correctly. JS was updated to show the canvas at game start and hide it at game end.
+
+---
+
+## BUGFIX-029 — Minigame result screen dismisses itself immediately
+
+**Status:** Fixed (branch `fix/minigame-ui-v0.7.1`)
+**Files:** `vscode/media/sidebar.html`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.html`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `sendPlayResult()` called `hideMgOverlay()` immediately after sending the result to the host. The result screen was shown for a fraction of a second before the overlay disappeared — the player had no time to read the outcome.
+
+**Fix:** Removed the `hideMgOverlay()` call from `sendPlayResult()`. An **OK** button (`#btn-mg-ok`) was added to the `#mg-result` panel. The overlay now stays open until the player explicitly taps OK, at which point the `btn-mg-ok` click handler calls `hideMgOverlay()`.
+
+---
+
+## BUGFIX-030 — Minigame panels appear over stat bars instead of action button area
+
+**Status:** Fixed (branch `fix/game-buttons-layout-v0.7.2`)
+**Files:** `vscode/media/sidebar.html`, `vscode/media/sidebar.css`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.html`, `pycharm/src/main/resources/webview/sidebar.css`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** The minigame selection and gameplay panels were rendered inside `#mg-overlay`, an absolutely-positioned element that covered the stat bars. The pet sprite, name, and mood label remained visible (BUGFIX-027), but the health bars were still hidden during minigame play, and the game UI appeared in an unexpected location relative to the action buttons.
+
+**Fix:** Removed `#mg-overlay` entirely. The `.stats` block and `#stats-game-area` are now always fully visible. The four game panels (`#mg-select`, `#mg-left-right`, `#mg-hl`, `#mg-result`) are placed inside a new `#game-panels` div that lives inside a new `#action-area` wrapper alongside `.btn-grid`. `showMgOverlay()` now hides `.btn-grid` and shows `#game-panels`; `hideMgOverlay()` reverses this. A `min-height: 140px` on `#action-area` prevents layout shift when the tallest game panel is displayed.
+
+---
+
+## BUGFIX-031 — Higher/Lower pet slides in the direction of the player's guess (confusing)
+
+**Status:** Fixed (branch `fix/game-buttons-layout-v0.7.2`)
+**Files:** `vscode/media/sidebar.css`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.css`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** When the player guessed Higher or Lower, the pet sprite slid right or left respectively. This animation was semantically confusing — the direction of slide had no clear connection to the guess outcome, and the motion was distracting whether the guess was correct or wrong.
+
+**Fix:** Removed the `slide-left`/`slide-right` keyframes and `anim-slide-*` CSS classes. Added a `jump` keyframe (`translateY` bounce with a small secondary hop). `handleHLChoice()` now only triggers the `anim-jump` animation when the guess is **correct**, giving positive visual feedback without spurious motion on wrong answers.
+
+---
+
+## BUGFIX-032 — Jump animation moves the entire sprite container (including door overlay) instead of just the pet
+
+**Status:** Fixed (branch `fix/pet-jump-animation-v0.7.3`)
+**Files:** `vscode/media/sidebar.css`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.css`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** The `anim-jump` CSS class was applied to `#sprite-container`, the parent div that holds both `#sprite-canvas` (the pet) and `#lr-canvas` (the Left/Right door overlay). This caused the entire container — including the door canvas — to animate, rather than just the pet sprite.
+
+**Fix:** Changed the CSS selector from `#sprite-container.anim-jump` to `#sprite-canvas.anim-jump` so the `jump` keyframe animation targets only the pet sprite canvas. In `handleHLChoice()`, replaced the local `document.getElementById("sprite-container")` re-query with the already-declared top-level `spriteCanvas` const, and updated all four references (`classList.add`, `addEventListener`, `classList.remove`, `removeEventListener`) to use `spriteCanvas` directly.
+
+---
+
+## BUGFIX-033 — Passive weight decay fires at full rate during idle states
+
+**Status:** Fixed (branch `feat/pat-in-play-menu-v0.7.5`)
+**Files:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`
+
+**Problem:** Weight decayed by 1 every `WEIGHT_DECAY_TICK_INTERVAL` (10) ticks regardless of whether the IDE was idle. Hunger and happiness already use `IDLE_DECAY_TICK_DIVISOR` (10×) to slow decay during idle, but weight decay skipped this throttle, making it decay 10× too fast while idle.
+
+**Fix:** Introduced a local `weightDecayInterval` variable that equals `WEIGHT_DECAY_TICK_INTERVAL * IDLE_DECAY_TICK_DIVISOR` (100 ticks) when `isIdle` is true, and `WEIGHT_DECAY_TICK_INTERVAL` (10 ticks) otherwise. The modulo condition now uses this variable instead of the constant directly, bringing weight decay in line with the throttle already applied to hunger and happiness.

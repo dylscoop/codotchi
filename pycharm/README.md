@@ -43,7 +43,7 @@ It shares the same game engine and webview UI as the
 
 ### Quick install (pre-built `.zip`)
 
-1. **Download `pycharm-gotchi-0.7.0.zip`** from the
+1. **Download `pycharm-gotchi-0.7.7.zip`** from the
    [Releases page](https://github.com/dylscoop/vscode_gotchi/releases).
    Do **not** unzip it — JetBrains expects the archive as-is.
 
@@ -75,7 +75,7 @@ gradlew.bat buildPlugin
 The plugin zip is produced at:
 
 ```text
-pycharm/build/distributions/pycharm-gotchi-0.7.0.zip
+pycharm/build/distributions/pycharm-gotchi-0.7.7.zip
 ```
 
 Install it via **Settings → Plugins → ⚙ → Install Plugin from Disk…** as
@@ -103,7 +103,7 @@ Once installed and the IDE has restarted:
    - Click **Hatch!**
 
 3. Your pet now lives in the tool window. Care for it using the action buttons:
-   **Feed**, **Snack**, **Play**, **Sleep**, **Clean**, **Medicine**,
+   **Feed**, **Snack**, **Play**, **Pat**, **Sleep**, **Clean**, **Medicine**,
    **Praise**, and **Scold**.
 
 4. Every file you save gives your pet a happiness boost — keep coding to keep
@@ -122,7 +122,8 @@ Once installed and the IDE has restarted:
 | ------ | ------------ |
 | **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Limited to 4 meals per wake cycle — overfeeding past that has no effect. |
 | **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. More than 3 snacks in a row will make your pet sick. |
-| **Play** | Starts a mini-game. Winning boosts happiness significantly; even losing gives a small consolation boost. Costs energy — your pet can't play if exhausted. |
+| **Play** | Starts a mini-game. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness significantly; losing applies a small penalty. Costs energy — your pet can't play if exhausted. |
+| **Pat** | Gives your pet a gentle pat. Boosts happiness by +10. Costs 20 energy. Cannot be used while sleeping or exhausted. |
 | **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps; no other actions are possible until it wakes. Wake it manually or wait for full energy. |
 | **Clean** | Clears all droppings. Pets produce droppings over time. Leaving 3 or more uncleaned will make your pet sick. |
 | **Medicine** | Treats sickness. Requires 3 doses to fully cure. Restores a small amount of health per dose. |
@@ -178,5 +179,5 @@ vscode_gotchi/
     │       ├── META-INF/plugin.xml
     │       └── webview/         # sidebar.html / .css / .js (shared with VS Code)
     └── build/distributions/
-        └── pycharm-gotchi-0.7.0.zip     ← installable plugin archive
+        └── pycharm-gotchi-0.7.7.zip     ← installable plugin archive
 ```

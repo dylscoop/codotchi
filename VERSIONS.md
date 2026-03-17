@@ -1,6 +1,226 @@
 # Version History
 
-## v0.7.0 — current (in progress)
+## v0.7.7 — current
+
+### Changes from v0.7.6
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.7.6` → `0.7.7` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.6` → `0.7.7` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.6` → `0.7.7` |
+| `vscode/src/gameEngine.ts` | `PAT_HAPPINESS_BOOST` reduced from 15 to 10 |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Mirrored `PAT_HAPPINESS_BOOST` reduction (15 → 10) |
+| `vscode/FEATURES.md` | Updated Pat rows to reflect new happiness boost of +10 |
+
+### Updated constants
+
+```
+PAT_HAPPINESS_BOOST: Int = 10   // was 15 (net pat happiness total now 10)
+```
+
+---
+
+## v0.7.6 — previous
+
+### Changes from v0.7.5
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.7.5` → `0.7.6` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.5` → `0.7.6` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.5` → `0.7.6` |
+| `vscode/src/gameEngine.ts` | Rebalanced minigame reward constants as deltas applied on top of the play baseline (+15); renamed `LOSE_CONSOLATION` → `LOSE_DELTA` for LR and HL; updated inline comments in `happinessDeltaForMinigame()` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Mirrored reward constant rebalance and renames from `gameEngine.ts` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Updated `happinessDeltaForMinigame()` inline comments and constant references to match new delta semantics |
+| `vscode/tests/unit/gameEngine.test.ts` | Updated all reward assertions to match new constant values and delta semantics |
+| `vscode/FEATURES.md` | Updated minigame reward reference table and game descriptions to reflect new delta values |
+
+### Updated constants
+
+```
+MINIGAME_LR_WIN_MIN:   Int = 5    // was 20 (now delta on top of +15 play baseline; net win 20–30)
+MINIGAME_LR_WIN_MAX:   Int = 15   // was 30
+MINIGAME_LR_LOSE_DELTA (renamed from MINIGAME_LR_LOSE_CONSOLATION): Int = -5   // was +10
+MINIGAME_HL_WIN_MIN:   Int = 10   // was 25 (net win 25–35)
+MINIGAME_HL_WIN_MAX:   Int = 20   // was 35
+MINIGAME_HL_LOSE_DELTA (renamed from MINIGAME_HL_LOSE_CONSOLATION): Int = -5   // was +10
+MINIGAME_COIN_FLIP_WIN: Int = 0   // was 15 (net win 15 = 0 + play baseline)
+MINIGAME_COIN_FLIP_LOSE: Int = -10  // was +5 (net lose 5 = −10 + play baseline)
+```
+
+---
+
+## v0.7.5 — previous
+
+### Changes from v0.7.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.7.4` → `0.7.5` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.4` → `0.7.5` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.4` → `0.7.5` |
+| `vscode/media/sidebar.html` | Removed standalone `btn-pat` from `.btn-grid`; added `btn-mg-pat` to `#mg-select`; changed `#mg-select` title from "Play a game!" to "Play or Pat" |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored from `vscode/media/sidebar.html` |
+| `vscode/media/sidebar.js` | Added `PAT_ENERGY_COST = 20` constant; changed Play button gate from `PLAY_ENERGY_COST` to `PAT_ENERGY_COST`; removed standalone `btn-pat` click listener; added `btn-mg-pat` click listener (calls `hideMgOverlay()` then `pat` command); removed `"btn-pat"` from sleep-disable array |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` |
+| `vscode/FEATURES.md` | Updated Pat row Notes: accessed via Play menu; updated Section 4 intro to mention Pat is also in the menu |
+| `README.md` | Install filenames and current release updated to `0.7.5` |
+| `vscode/README.md` | Install filenames updated to `0.7.5`; updated Pat row in Actions table |
+| `pycharm/README.md` | Install filenames updated to `0.7.5` |
+| `vscode/src/gameEngine.ts` | BUGFIX-033: passive weight decay now throttled during idle (10× slower, matching hunger/happiness) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | BUGFIX-033: mirrored weight decay throttle fix |
+| `BUGFIXES.md` | Added BUGFIX-033 entry |
+| `vscode/src/gameEngine.ts` | Rebalanced minigame and pat reward constants (LR 20–30, HL 25–35, coin +15/+5, pat +15) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Mirrored reward constant rebalance |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Coin flip lose now uses `MINIGAME_COIN_FLIP_LOSE` constant instead of hardcoded `0` |
+| `vscode/tests/unit/gameEngine.test.ts` | Updated reward assertions to match new constant values |
+| `vscode/FEATURES.md` | Updated Pat action row and minigame rewards table to reflect new values |
+
+### New constants
+
+```
+PAT_ENERGY_COST: Int = 20         // (already existed in engine) now also declared in sidebar.js UI layer
+MINIGAME_COIN_FLIP_LOSE: Int = 5  // coin flip lose consolation (new — was hardcoded 0)
+```
+
+### Updated constants
+
+```
+PAT_HAPPINESS_BOOST: Int = 15     // was 10
+MINIGAME_LR_WIN_MIN: Int = 20     // was 15
+MINIGAME_LR_WIN_MAX: Int = 30     // was 25
+MINIGAME_HL_WIN_MIN: Int = 25     // was 10
+MINIGAME_HL_WIN_MAX: Int = 35     // was 20
+MINIGAME_COIN_FLIP_WIN: Int = 15  // was 5
+```
+
+---
+
+## v0.7.4 — previous
+
+### Changes from v0.7.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | Added `PAT_HAPPINESS_BOOST = 10`, `PAT_ENERGY_COST = 20` constants and `pat()` function — gives +10 happiness, −20 energy, no minigame |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Mirrored `PAT_HAPPINESS_BOOST` and `PAT_ENERGY_COST` constants |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Mirrored `pat()` function |
+| `vscode/src/sidebarProvider.ts` | Added `pat` import, `"pat"` case in message switch, added `"pat"` to `SLEEP_BLOCKED` list |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | Added `"pat"` case in `handleCommand()`, added `"pat"` to `sleepBlocked` set |
+| `vscode/media/sidebar.html` | Added `btn-pat` button to `.btn-grid`; added `btn-mg-cf` to `#mg-select`; added `#mg-coin-flip` panel (Panel 3); renumbered Result to Panel 4 |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored from `vscode/media/sidebar.html` |
+| `vscode/media/sidebar.js` | Added `btn-pat` click listener; added coin flip game functions (`startCoinFlipGame`, `handleCFChoice`, `endCoinFlipGame`); wired `btn-mg-cf`; added `patted`, `pat_refused_no_energy`, `minigame_coin_flip_win/lose` to `humaniseEvent`; added `btn-pat` to sleep-disable list |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` |
+| `vscode/package.json` | Version bumped `0.7.3` → `0.7.4` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.3` → `0.7.4` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.3` → `0.7.4` |
+| `vscode/FEATURES.md` | Added Pat row to Section 3 care actions table; updated minigame intro to "Three"; added Section 4.6 Coin Flip `[x]`; added Minigame Reward Reference table |
+| `README.md` | Install filenames and current release updated to `0.7.4` |
+| `vscode/README.md` | Install filenames updated to `0.7.4` |
+| `pycharm/README.md` | Install filenames updated to `0.7.4` |
+
+### New constants
+
+```
+PAT_HAPPINESS_BOOST: Int = 10   // happiness boost from pat action
+PAT_ENERGY_COST:     Int = 20   // energy cost of pat action
+```
+
+---
+
+## v0.7.3 — previous
+
+### Changes from v0.7.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.css` | Changed `#sprite-container.anim-jump` selector to `#sprite-canvas.anim-jump` so the jump animation targets only the pet sprite canvas, not the whole container |
+| `vscode/media/sidebar.js` | `handleHLChoice()`: replaced `document.getElementById("sprite-container")` local re-query with the existing top-level `spriteCanvas` const; all four animation references updated accordingly |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored from `vscode/media/sidebar.css` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` |
+| `vscode/package.json` | Version bumped `0.7.2` → `0.7.3` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.2` → `0.7.3` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.2` → `0.7.3` |
+| `vscode/FEATURES.md` | Section 13: added "Redesign game art" row to stretch features table |
+| `BUGFIXES.md` | Added BUGFIX-032 (jump animates whole stage instead of pet only) |
+| `README.md` | Install filenames and current release updated to `0.7.3` |
+| `vscode/README.md` | Install filenames updated to `0.7.3` |
+| `pycharm/README.md` | Install filenames updated to `0.7.3` |
+
+---
+
+## v0.7.2 — previous
+
+### Changes from v0.7.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.html` | Removed `#mg-overlay`; wrapped action buttons and game panels in `#action-area`; game panels moved to `#game-panels` div alongside `.btn-grid` |
+| `vscode/media/sidebar.css` | Removed `.mg-overlay` absolute positioning and `#stats-game-area { position: relative }`; added `#action-area { min-height: 140px }` and `#game-panels` styles; replaced `slide-left`/`slide-right` keyframes with `jump` keyframe; replaced `.anim-slide-*` with `.anim-jump` |
+| `vscode/media/sidebar.js` | `showMgOverlay()` now hides `.btn-grid` and shows `#game-panels`; `hideMgOverlay()` reverses this; `showMgPanel()` queries panels from `#game-panels`; `handleHLChoice()` triggers `anim-jump` only on correct guess instead of slide animation on every guess |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored from `vscode/media/sidebar.html` |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored from `vscode/media/sidebar.css` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` |
+| `vscode/package.json` | Version bumped `0.7.1` → `0.7.2` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.1` → `0.7.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.1` → `0.7.2` |
+| `BUGFIXES.md` | Added BUGFIX-030 (game panels in overlay instead of action area), BUGFIX-031 (HL slide animation confusing) |
+| `README.md` | Install filenames and current release updated to `0.7.2` |
+| `vscode/README.md` | Install filenames updated to `0.7.2` |
+| `pycharm/README.md` | Install filenames updated to `0.7.2` |
+
+---
+
+## v0.7.1 — previous
+
+### Changes from v0.7.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.html` | `#game-screen` section rewritten: `#lr-canvas hidden` added inside `#sprite-container`; `.stats` wrapped in `#stats-game-area`; `#mg-overlay` moved inside `#stats-game-area`; `#lr-canvas` removed from `#mg-left-right`; OK button added to `#mg-result`; `style="position:relative"` removed from `#game-screen` |
+| `vscode/media/sidebar.css` | `#game-screen { position: relative }` replaced with `#stats-game-area { position: relative }`; `#lr-canvas` changed from `display:block; margin:0 auto` to `position:absolute; inset:0; z-index:5; pointer-events:none`; added `slide-left`/`slide-right` keyframes and `#sprite-container.anim-slide-left/right` rules; added `.mg-ok-btn`; `margin-top` on `.mg-result-text` reduced from 24px to 8px |
+| `vscode/media/sidebar.js` | `sendPlayResult()` no longer auto-hides the overlay; `hideMgOverlay()` now also hides `#lr-canvas`; `btn-mg-ok` click handler added; `startLeftRightGame()` shows `#lr-canvas`; `endLeftRightGame()` clears and hides `#lr-canvas`; `drawLRDoors()` rewritten with relative geometry; `handleHLChoice()` adds slide animation on `#sprite-container` |
+| `vscode/src/gameEngine.ts` | Replaced shared `MINIGAME_INTERACTIVE_*` constants with per-game constants; updated `happinessDeltaForMinigame()` with separate `left_right`, `higher_lower`, `coin_flip` branches |
+| `vscode/tests/unit/gameEngine.test.ts` | Updated L/R lose consolation (5→10), H/L win range (15–25→10–20), H/L lose consolation (5→10); updated integration test expected values; added `coin_flip` unit tests and integration describe block |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored from `vscode/media/sidebar.html` |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored from `vscode/media/sidebar.css` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js`: `sendPlayResult()` fix, OK handler, LR canvas show/hide, `drawLRDoors()` rewrite, `handleHLChoice()` slide animation |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Old `MINIGAME_INTERACTIVE_*` constants removed; per-game constants added |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | `happinessDeltaForMinigame()` updated with per-game logic and `coin_flip` case |
+| `vscode/package.json` | Version bumped `0.7.0` → `0.7.1` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.0` → `0.7.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.0` → `0.7.1` |
+| `vscode/FEATURES.md` | Section 4 rewards updated to reflect per-game constants; 4.4 H/L win/lose rewards updated |
+| `BUGFIXES.md` | Added BUGFIX-027 (overlay scope), BUGFIX-028 (pet hidden by canvas), BUGFIX-029 (result screen auto-dismissed) |
+| `README.md` | Install filenames and current release updated to `0.7.1` |
+| `vscode/README.md` | Install filenames updated to `0.7.1` |
+| `pycharm/README.md` | Install filenames updated to `0.7.1` |
+
+### Updated constants (v0.7.1, gameEngine.ts / Constants.kt)
+
+```
+MINIGAME_LR_WIN_MIN:          Int = 15    // was part of shared INTERACTIVE_WIN_BASE+BONUS range 15–25 (unchanged)
+MINIGAME_LR_WIN_MAX:          Int = 25    // was part of shared INTERACTIVE_WIN range (unchanged)
+MINIGAME_LR_LOSE_CONSOLATION: Int = 10    // was 5 (shared INTERACTIVE_WIN_BASE − INTERACTIVE_LOSE_PENALTY)
+MINIGAME_HL_WIN_MIN:          Int = 10    // was 15 (shared INTERACTIVE_WIN_BASE + BONUS_MIN)
+MINIGAME_HL_WIN_MAX:          Int = 20    // was 25 (shared INTERACTIVE_WIN_BASE + BONUS_MAX)
+MINIGAME_HL_LOSE_CONSOLATION: Int = 10    // was 5
+MINIGAME_COIN_FLIP_WIN:       Int = 5     // new
+```
+
+### Removed constants (v0.7.1)
+
+```
+MINIGAME_INTERACTIVE_WIN_BASE      // replaced by per-game constants
+MINIGAME_INTERACTIVE_WIN_BONUS_MIN // replaced by per-game constants
+MINIGAME_INTERACTIVE_WIN_BONUS_MAX // replaced by per-game constants
+MINIGAME_INTERACTIVE_LOSE_PENALTY  // replaced by per-game constants
+```
+
+---
+
+## v0.7.0 — previous
 
 ### Changes from v0.6.3
 

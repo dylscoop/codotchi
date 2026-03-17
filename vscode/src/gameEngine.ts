@@ -74,6 +74,9 @@ const FEED_SNACK_WEIGHT_GAIN: number = 5;
 const PLAY_HAPPINESS_BOOST: number = 15;
 const PLAY_ENERGY_COST: number = 25;
 const PLAY_WEIGHT_LOSS: number = 3;
+
+const PAT_HAPPINESS_BOOST: number = 10;
+const PAT_ENERGY_COST: number = 20;
 const POOP_WEIGHT_LOSS: number = 5;
 
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
@@ -140,12 +143,17 @@ const IDLE_DECAY_TICK_DIVISOR: number = 10; // 10% of normal rate
 const MINIGAME_WIN_HAPPINESS_BOOST: number = 15;   // legacy "guess" fallback
 const MINIGAME_LOSE_HAPPINESS_BOOST: number = 5;   // legacy "guess" fallback
 const MINIGAME_MEMORY_WIN_HAPPINESS_BOOST: number = 20;
-// Left/Right + Higher/Lower win: base + random bonus
-const MINIGAME_INTERACTIVE_WIN_BASE: number = 10;
-const MINIGAME_INTERACTIVE_WIN_BONUS_MIN: number = 5;
-const MINIGAME_INTERACTIVE_WIN_BONUS_MAX: number = 15;
-// Losing an interactive game: consolation = WIN_BASE - LOSE_PENALTY = 10 - 5 = +5
-const MINIGAME_INTERACTIVE_LOSE_PENALTY: number = 5;
+// Left/Right: play baseline +15; delta win +5–+15, lose −5 → totals: win 20–30, lose 10
+const MINIGAME_LR_WIN_MIN: number = 5;
+const MINIGAME_LR_WIN_MAX: number = 15;
+const MINIGAME_LR_LOSE_DELTA: number = -5;
+// Higher/Lower: play baseline +15; delta win +10–+20, lose −5 → totals: win 25–35, lose 10
+const MINIGAME_HL_WIN_MIN: number = 10;
+const MINIGAME_HL_WIN_MAX: number = 20;
+const MINIGAME_HL_LOSE_DELTA: number = -5;
+// Coin Flip: play baseline +15; delta win 0, lose −10 → totals: win 15, lose 5
+const MINIGAME_COIN_FLIP_WIN: number = 0;
+const MINIGAME_COIN_FLIP_LOSE: number = -10;
 
 const CARE_SCORE_HUNGER_WEIGHT: number = 0.30;
 const CARE_SCORE_HAPPINESS_WEIGHT: number = 0.25;
@@ -966,8 +974,11 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     }
   }
 
-  // Passive weight decay — 1 weight per minute (every WEIGHT_DECAY_TICK_INTERVAL ticks)
-  if (ticksAlive % WEIGHT_DECAY_TICK_INTERVAL === 0) {
+  // Passive weight decay — throttled during idle just like hunger/happiness (BUGFIX-033)
+  const weightDecayInterval = isIdle
+    ? WEIGHT_DECAY_TICK_INTERVAL * IDLE_DECAY_TICK_DIVISOR
+    : WEIGHT_DECAY_TICK_INTERVAL;
+  if (ticksAlive % weightDecayInterval === 0) {
     const prevWeight = weight;
     weight = clampWeight(weight - 1);
     checkWeightTierEvents(prevWeight, weight, events);
@@ -1402,23 +1413,52 @@ export function play(state: PetState): PetState {
 }
 
 /**
+ * Pat the pet — a gentle interaction that gives a modest happiness boost at a
+ * lower energy cost than play. No minigame; just a direct stat change.
+ *
+ * @param state - The current pet state.
+ * @returns A new PetState after the action.
+ */
+export function pat(state: PetState): PetState {
+  if (state.energy < PAT_ENERGY_COST) {
+    return withDerivedFields({ ...state, events: ["pat_refused_no_energy"] });
+  }
+  const answered = answerAttentionCall(state, "unhappiness");
+  const events: string[] = ["patted"];
+  if (answered) { events.push("attention_call_answered_unhappiness"); }
+  return withDerivedFields({
+    ...state,
+    ...(answered ?? {}),
+    happiness: clampStat(state.happiness + PAT_HAPPINESS_BOOST),
+    energy:    clampStat(state.energy    - PAT_ENERGY_COST),
+    events,
+  });
+}
+
+/**
  * Return the happiness delta for a mini-game outcome.
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
- *               "left_right" (Left / Right), or "higher_lower" (Higher or Lower).
+ *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
+ *               or "coin_flip" (Coin Flip).
  * @param result - "win" or "lose".
- * @returns A positive integer to add to the pet's happiness stat.
+ * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
 export function happinessDeltaForMinigame(game: string, result: string): number {
-  // Interactive games: win gives a random bonus on top of a base; lose gives a consolation (+5).
-  if (game === "left_right" || game === "higher_lower") {
+  if (game === "left_right") {
     if (result === "win") {
-      const bonus = Math.floor(
-        Math.random() * (MINIGAME_INTERACTIVE_WIN_BONUS_MAX - MINIGAME_INTERACTIVE_WIN_BONUS_MIN + 1)
-      ) + MINIGAME_INTERACTIVE_WIN_BONUS_MIN;
-      return MINIGAME_INTERACTIVE_WIN_BASE + bonus; // 15–25
+      return Math.floor(Math.random() * (MINIGAME_LR_WIN_MAX - MINIGAME_LR_WIN_MIN + 1)) + MINIGAME_LR_WIN_MIN; // +5–+15
     }
-    return MINIGAME_INTERACTIVE_WIN_BASE - MINIGAME_INTERACTIVE_LOSE_PENALTY; // 10 - 5 = +5 consolation
+    return MINIGAME_LR_LOSE_DELTA; // −5
+  }
+  if (game === "higher_lower") {
+    if (result === "win") {
+      return Math.floor(Math.random() * (MINIGAME_HL_WIN_MAX - MINIGAME_HL_WIN_MIN + 1)) + MINIGAME_HL_WIN_MIN; // +10–+20
+    }
+    return MINIGAME_HL_LOSE_DELTA; // −5
+  }
+  if (game === "coin_flip") {
+    return result === "win" ? MINIGAME_COIN_FLIP_WIN : MINIGAME_COIN_FLIP_LOSE; // 0 win, −10 lose
   }
   if (game === "memory" && result === "win") {
     return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST;

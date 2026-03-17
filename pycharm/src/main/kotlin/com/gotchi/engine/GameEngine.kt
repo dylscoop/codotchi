@@ -328,8 +328,10 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         }
     }
 
-    // Passive weight decay
-    if (ticksAlive % WEIGHT_DECAY_TICK_INTERVAL == 0) {
+    // Passive weight decay — throttled during idle just like hunger/happiness (BUGFIX-033)
+    val weightDecayInterval = if (isIdle) WEIGHT_DECAY_TICK_INTERVAL * IDLE_DECAY_TICK_DIVISOR
+                              else WEIGHT_DECAY_TICK_INTERVAL
+    if (ticksAlive % weightDecayInterval == 0) {
         val prevWeight = weight
         weight = clampWeight(weight - 1)
         checkWeightTierEvents(prevWeight, weight, events)
@@ -685,23 +687,46 @@ fun play(state: PetState): PetState {
 }
 
 /**
+ * Pat the pet — a gentle interaction that gives a modest happiness boost at a
+ * lower energy cost than play. No minigame; just a direct stat change.
+ */
+fun pat(state: PetState): PetState {
+    if (state.energy < PAT_ENERGY_COST)
+        return withDerivedFields(state.copy(events = listOf("pat_refused_no_energy")))
+
+    val answered = answerAttentionCall(state, "unhappiness")
+    val events = mutableListOf("patted")
+    if (answered != null) events.add("attention_call_answered_unhappiness")
+
+    return withDerivedFields(
+        state.copy(
+            happiness                = clampStat(state.happiness + PAT_HAPPINESS_BOOST),
+            energy                   = clampStat(state.energy    - PAT_ENERGY_COST),
+            events                   = events,
+            activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
+            attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
+            attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
+        )
+    )
+}
+
+/**
  * Return the happiness delta for a mini-game outcome.
  *
- * Interactive games (left_right, higher_lower): win gives a random bonus on top of a base;
- * lose is a penalty. Legacy games (guess, memory) use the original fixed boosts.
- *
- * @param game   "left_right", "higher_lower", "guess", or "memory"
+ * @param game   "left_right", "higher_lower", "coin_flip", "guess", or "memory"
  * @param result "win" or "lose"
- * @return An integer to add to the pet's happiness stat (may be negative).
+ * @return An integer delta applied on top of the play baseline (+15); net totals: LR win 20–30, LR lose 10, HL win 25–35, HL lose 10, coin_flip win 15, coin_flip lose 5.
  */
 fun happinessDeltaForMinigame(game: String, result: String): Int {
-    if (game == "left_right" || game == "higher_lower") {
-        if (result == "win") {
-            val bonus = Random.nextInt(MINIGAME_INTERACTIVE_WIN_BONUS_MIN, MINIGAME_INTERACTIVE_WIN_BONUS_MAX + 1)
-            return MINIGAME_INTERACTIVE_WIN_BASE + bonus // 15–25
-        }
-        return MINIGAME_INTERACTIVE_WIN_BASE - MINIGAME_INTERACTIVE_LOSE_PENALTY // 10 - 5 = +5 consolation
+    if (game == "left_right") {
+        if (result == "win") return Random.nextInt(MINIGAME_LR_WIN_MIN, MINIGAME_LR_WIN_MAX + 1) // +5–+15
+        return MINIGAME_LR_LOSE_DELTA // −5
     }
+    if (game == "higher_lower") {
+        if (result == "win") return Random.nextInt(MINIGAME_HL_WIN_MIN, MINIGAME_HL_WIN_MAX + 1) // +10–+20
+        return MINIGAME_HL_LOSE_DELTA // −5
+    }
+    if (game == "coin_flip") return if (result == "win") MINIGAME_COIN_FLIP_WIN else MINIGAME_COIN_FLIP_LOSE // 0 win, −10 lose
     if (game == "memory" && result == "win") return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST
     if (result == "win") return MINIGAME_WIN_HAPPINESS_BOOST
     return MINIGAME_LOSE_HAPPINESS_BOOST

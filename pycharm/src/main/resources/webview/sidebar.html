@@ -49,58 +49,122 @@
   </section>
 
   <!-- ── Main game screen ── -->
-  <section id="game-screen" class="screen hidden" aria-label="Pet status" style="position:relative">
-    <!-- Pet display -->
+  <section id="game-screen" class="screen hidden" aria-label="Pet status">
+    <!-- Pet display (always visible — sits above the mini-game overlay) -->
     <div class="pet-stage">
       <div id="sprite-container" class="sprite-container" aria-label="Pet sprite">
         <canvas id="sprite-canvas" width="200" height="{{stageHeight}}"></canvas>
+        <canvas id="lr-canvas" width="200" height="{{stageHeight}}" class="hidden"></canvas>
       </div>
       <div id="pet-name-display" class="pet-name"></div>
       <div id="mood-label" class="mood-label">…</div>
     </div>
 
     <!-- Stat bars -->
-    <div class="stats" aria-label="Stats">
-      <div class="stat-row">
-        <span class="stat-name">Hunger</span>
-        <div class="bar-track" role="progressbar" aria-label="Hunger">
-          <div id="bar-hunger" class="bar-fill hunger"></div>
+    <div id="stats-game-area">
+      <div class="stats" aria-label="Stats">
+        <div class="stat-row">
+          <span class="stat-name">Hunger</span>
+          <div class="bar-track" role="progressbar" aria-label="Hunger">
+            <div id="bar-hunger" class="bar-fill hunger"></div>
+          </div>
         </div>
-      </div>
-      <div class="stat-row">
-        <span class="stat-name">Happy</span>
-        <div class="bar-track" role="progressbar" aria-label="Happiness">
-          <div id="bar-happiness" class="bar-fill happiness"></div>
+        <div class="stat-row">
+          <span class="stat-name">Happy</span>
+          <div class="bar-track" role="progressbar" aria-label="Happiness">
+            <div id="bar-happiness" class="bar-fill happiness"></div>
+          </div>
         </div>
-      </div>
-      <div class="stat-row">
-        <span class="stat-name">Energy</span>
-        <div class="bar-track" role="progressbar" aria-label="Energy">
-          <div id="bar-energy" class="bar-fill energy"></div>
+        <div class="stat-row">
+          <span class="stat-name">Energy</span>
+          <div class="bar-track" role="progressbar" aria-label="Energy">
+            <div id="bar-energy" class="bar-fill energy"></div>
+          </div>
         </div>
-      </div>
-      <div class="stat-row">
-        <span class="stat-name">Health</span>
-        <div class="bar-track" role="progressbar" aria-label="Health">
-          <div id="bar-health" class="bar-fill health"></div>
+        <div class="stat-row">
+          <span class="stat-name">Health</span>
+          <div class="bar-track" role="progressbar" aria-label="Health">
+            <div id="bar-health" class="bar-fill health"></div>
+          </div>
         </div>
-      </div>
-    </div>
+      </div><!-- /.stats -->
+    </div><!-- /#stats-game-area -->
 
     <!-- Info line -->
     <div id="info-line" class="info-line">Age: 0d  |  egg  |  wt:5  |  0 poops</div>
 
-    <!-- Action buttons -->
-    <div class="btn-grid" aria-label="Actions">
-      <button class="action-btn" id="btn-feed-meal">Feed <span id="meals-left" class="meals-left"></span></button>
-      <button class="action-btn" id="btn-feed-snack">Snack <span id="snacks-left" class="meals-left"></span></button>
-      <button class="action-btn" id="btn-play">Play</button>
-      <button class="action-btn" id="btn-sleep-wake">Sleep</button>
-      <button class="action-btn" id="btn-clean">Clean</button>
-      <button class="action-btn" id="btn-medicine">Medicine</button>
-      <button class="action-btn" id="btn-praise">Praise</button>
-      <button class="action-btn" id="btn-scold">Scold</button>
-    </div>
+    <!-- Action area: shows btn-grid normally; swaps to game-panels while playing -->
+    <div id="action-area">
+
+      <!-- Normal action buttons -->
+      <div class="btn-grid" aria-label="Actions">
+        <button class="action-btn" id="btn-feed-meal">Feed <span id="meals-left" class="meals-left"></span></button>
+        <button class="action-btn" id="btn-feed-snack">Snack <span id="snacks-left" class="meals-left"></span></button>
+        <button class="action-btn" id="btn-play">Play</button>
+        <button class="action-btn" id="btn-sleep-wake">Sleep</button>
+        <button class="action-btn" id="btn-clean">Clean</button>
+        <button class="action-btn" id="btn-medicine">Medicine</button>
+        <button class="action-btn" id="btn-praise">Praise</button>
+        <button class="action-btn" id="btn-scold">Scold</button>
+      </div>
+
+      <!-- Game panels (replaces btn-grid while a mini-game is active) -->
+      <div id="game-panels" class="hidden" aria-label="Mini-game">
+
+        <!-- Panel 0: game select -->
+        <div id="mg-select" class="mg-panel">
+          <p class="mg-title">Play or Pat</p>
+          <button class="action-btn mg-game-btn" id="btn-mg-lr">Left / Right</button>
+          <button class="action-btn mg-game-btn" id="btn-mg-hl">Higher or Lower</button>
+          <button class="action-btn mg-game-btn" id="btn-mg-cf">Coin Flip</button>
+          <button class="action-btn mg-game-btn" id="btn-mg-pat">Pat</button>
+          <button class="link-btn mg-cancel-btn" id="btn-mg-cancel">Cancel</button>
+        </div>
+
+        <!-- Panel 1: Left / Right game (doors drawn on #lr-canvas in #sprite-container) -->
+        <div id="mg-left-right" class="mg-panel hidden">
+          <p class="mg-title">Left / Right</p>
+          <p class="mg-subtitle">Which door is the Gotchi behind?</p>
+          <p id="lr-countdown" class="mg-countdown">3</p>
+          <div class="mg-btn-row">
+            <button class="action-btn mg-dir-btn" id="btn-lr-left">Left</button>
+            <button class="action-btn mg-dir-btn" id="btn-lr-right">Right</button>
+          </div>
+          <p id="lr-score" class="mg-score"></p>
+        </div>
+
+        <!-- Panel 2: Higher or Lower game -->
+        <div id="mg-hl" class="mg-panel hidden">
+          <p class="mg-title">Higher or Lower?</p>
+          <p class="mg-subtitle">Will the next number be higher or lower?</p>
+          <p id="hl-current" class="mg-big-num">—</p>
+          <div class="mg-btn-row">
+            <button class="action-btn mg-dir-btn" id="btn-hl-higher">Higher</button>
+            <button class="action-btn mg-dir-btn" id="btn-hl-lower">Lower</button>
+          </div>
+          <p id="hl-feedback" class="mg-feedback"></p>
+          <p id="hl-score" class="mg-score"></p>
+        </div>
+
+        <!-- Panel 3: Coin Flip game -->
+        <div id="mg-coin-flip" class="mg-panel hidden">
+          <p class="mg-title">Coin Flip</p>
+          <p class="mg-subtitle">Heads or Tails?</p>
+          <div class="mg-btn-row">
+            <button class="action-btn mg-dir-btn" id="btn-cf-heads">Heads</button>
+            <button class="action-btn mg-dir-btn" id="btn-cf-tails">Tails</button>
+          </div>
+          <p id="cf-feedback" class="mg-feedback"></p>
+        </div>
+
+        <!-- Panel 4: Result (stays open until player taps OK) -->
+        <div id="mg-result" class="mg-panel hidden">
+          <p id="mg-result-text" class="mg-result-text"></p>
+          <button class="action-btn mg-ok-btn" id="btn-mg-ok">OK</button>
+        </div>
+
+      </div><!-- /#game-panels -->
+    </div><!-- /#action-area -->
 
     <!-- Event log -->
     <ul id="event-log" class="event-log" aria-label="Event log" aria-live="polite"></ul>
@@ -108,49 +172,6 @@
     <!-- New-game link -->
     <button id="btn-new-game" class="link-btn">Menu</button>
 
-    <!-- ── Mini-game overlay (sits above the rest of #game-screen) ── -->
-    <div id="mg-overlay" class="mg-overlay hidden" aria-label="Mini-game">
-
-      <!-- Panel 0: game select -->
-      <div id="mg-select" class="mg-panel">
-        <p class="mg-title">Play a game!</p>
-        <button class="action-btn mg-game-btn" id="btn-mg-lr">Left / Right</button>
-        <button class="action-btn mg-game-btn" id="btn-mg-hl">Higher or Lower</button>
-        <button class="link-btn mg-cancel-btn" id="btn-mg-cancel">Cancel</button>
-      </div>
-
-      <!-- Panel 1: Left / Right game -->
-      <div id="mg-left-right" class="mg-panel hidden">
-        <p class="mg-title">Left / Right</p>
-        <p class="mg-subtitle">Which door is the Gotchi behind?</p>
-        <canvas id="lr-canvas" width="180" height="80"></canvas>
-        <p id="lr-countdown" class="mg-countdown">3</p>
-        <div class="mg-btn-row">
-          <button class="action-btn mg-dir-btn" id="btn-lr-left">Left</button>
-          <button class="action-btn mg-dir-btn" id="btn-lr-right">Right</button>
-        </div>
-        <p id="lr-score" class="mg-score"></p>
-      </div>
-
-      <!-- Panel 2: Higher or Lower game -->
-      <div id="mg-hl" class="mg-panel hidden">
-        <p class="mg-title">Higher or Lower?</p>
-        <p class="mg-subtitle">Will the next number be higher or lower?</p>
-        <p id="hl-current" class="mg-big-num">—</p>
-        <div class="mg-btn-row">
-          <button class="action-btn mg-dir-btn" id="btn-hl-higher">Higher</button>
-          <button class="action-btn mg-dir-btn" id="btn-hl-lower">Lower</button>
-        </div>
-        <p id="hl-feedback" class="mg-feedback"></p>
-        <p id="hl-score" class="mg-score"></p>
-      </div>
-
-      <!-- Panel 3: Result -->
-      <div id="mg-result" class="mg-panel hidden">
-        <p id="mg-result-text" class="mg-result-text"></p>
-      </div>
-
-    </div>
   </section>
 
   <!-- ── Dead screen ── -->

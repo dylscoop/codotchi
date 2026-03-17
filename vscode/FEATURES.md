@@ -73,6 +73,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle               | `[x]`  |
 | Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle; resets on auto-wake | `[x]`  |
 | Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; refused via event log | `[x]`  |
+| Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; accessed via Play menu — direct boost (no minigame) | `[x]`  |
 | Sleep       | Energy regenerates; cannot act while sleeping    | —                                        | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
@@ -109,9 +110,10 @@ Notes:
 
 ## 4. Minigames
 
-Two interactive minigames are implemented: **Left / Right** and **Higher or
-Lower**. Both are launched via a game-select overlay that appears when the
-player presses the Play button.
+Three interactive minigames are implemented: **Left / Right**, **Higher or
+Lower**, and **Coin Flip**. All are launched via a game-select overlay that appears when the
+player presses the Play button. The **Pat** action is also accessible from this
+same overlay.
 
 Each game runs in a temporary **game overlay** rendered inside the
 sidebar (a `<div>` that covers the game screen for the duration of the game,
@@ -130,8 +132,8 @@ which minigame to play (or cancel).
 - A 3-second countdown is shown.
 - Player clicks **Left** or **Right** before time runs out.
 - The door opens to reveal the pet (correct door) or nothing (wrong door).
-- **Win**: Happiness +15, Energy −10.
-- **Lose / timeout**: Happiness +5 (consolation).
+ - **Win**: Happiness +5–15 (delta; net +20–30 including play baseline).
+ - **Lose / timeout**: Happiness −5 (delta; net +10 including play baseline).
 - Rounds: 3 per session; best-of-3 determines overall win/lose sent to engine.
 - `[S]` Setting `gotchi.leftRightTimeoutMs` (default 3000 ms) — adjustable for
   accessibility.
@@ -177,8 +179,8 @@ Status: `[ ]`
 - Player clicks **Higher** or **Lower** to predict whether the next number is
   greater or smaller.
 - 5 rounds per session.
-- **Win** (≥ 4 correct): Happiness +15, Energy −10.
-- **Lose** (≤ 3 correct): Happiness +5.
+ - **Win** (≥ 4 correct): Happiness +10–20 (delta; net +25–35 including play baseline).
+ - **Lose** (≤ 3 correct): Happiness −5 (delta; net +10 including play baseline).
 
 Status: `[x]`
 
@@ -199,6 +201,18 @@ Status: `[x]`
 
 Status: `[ ]`
 
+### 4.6 Coin Flip
+
+*A pure luck game — no skill, just a 50/50 chance.*
+
+- Player picks **Heads** or **Tails**.
+- Result is determined by a 50/50 coin flip (`Math.random() < 0.5`).
+- **Win**: Happiness +0 (`MINIGAME_COIN_FLIP_WIN = 0`; net +15 including play baseline).
+- **Lose**: Happiness −10 (`MINIGAME_COIN_FLIP_LOSE = −10`; net +5 including play baseline).
+- Single round per play session.
+
+Status: `[x]`
+
 ### Minigame Architecture Notes
 
 - All game logic (timers, scoring, animations) runs entirely in `sidebar.js`.
@@ -211,6 +225,21 @@ Status: `[ ]`
 - `gameEngine.ts` `applyMinigameResult()` maps game id + result → stat deltas.
 - Add new games by: (1) adding an overlay render function in `sidebar.js`,
   (2) wiring up its result message, (3) adding a case in `applyMinigameResult`.
+
+### Minigame Reward Reference
+
+All minigame deltas are applied **on top of the play baseline (+15 happiness)**
+that fires when Play is pressed. Net totals reflect delta + baseline.
+
+| Game | Result | Delta | Net total | Constant(s) |
+|------|--------|-------|-----------|-------------|
+| Left / Right | Win | +5–+15 (random) | +20–+30 | `MINIGAME_LR_WIN_MIN = 5`, `MINIGAME_LR_WIN_MAX = 15` |
+| Left / Right | Lose | −5 | +10 | `MINIGAME_LR_LOSE_DELTA = -5` |
+| Higher or Lower | Win | +10–+20 (random) | +25–+35 | `MINIGAME_HL_WIN_MIN = 10`, `MINIGAME_HL_WIN_MAX = 20` |
+| Higher or Lower | Lose | −5 | +10 | `MINIGAME_HL_LOSE_DELTA = -5` |
+| Coin Flip | Win | 0 | +15 | `MINIGAME_COIN_FLIP_WIN = 0` |
+| Coin Flip | Lose | −10 | +5 | `MINIGAME_COIN_FLIP_LOSE = -10` |
+| Pat | — | +10 (flat total) | +10 | `PAT_HAPPINESS_BOOST = 10` (no play baseline) |
 
 ---
 
@@ -579,6 +608,7 @@ These are lower-priority ideas that require significant design work.
 | In-game shop | Buy accessories, backgrounds, or extra colour palettes |
 | Pixel-art sprite assets | Replace procedural canvas drawing with actual PNG sprite sheets |
 | Sprite animation frames | Idle walk cycle, happy, sad, sleeping, eating — 2–4 frame flip-book per mood |
+| Redesign game art | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style |
 | Egg-hatch animation | Wiggle → crack → burst sequence (fits naturally into reaction queue) |
 | Sound effects | Short 8-bit clips (optional; respect system/VS Code mute and `gotchi.reducedMotion`) |
 | Day/night cycle | Canvas background shifts with system clock; affects stat decay rates |
