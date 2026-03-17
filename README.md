@@ -29,19 +29,19 @@ Both extensions share the same game engine logic and the same webview UI
 
 ### VS Code
 
-1. Download `vscode-gotchi-0.6.3.vsix` from the Releases page.
+1. Download `vscode-gotchi-0.7.0.vsix` from the Releases page.
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
 Or from the terminal:
 
 ```bash
-code --install-extension vscode-gotchi-0.6.3.vsix
+code --install-extension vscode-gotchi-0.7.0.vsix
 ```
 
 ### JetBrains
 
-1. Download `pycharm-gotchi-0.6.3.zip` from the Releases page.
+1. Download `pycharm-gotchi-0.7.0.zip` from the Releases page.
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -101,7 +101,7 @@ gradlew.bat buildPlugin
 
 See [VERSIONS.md](VERSIONS.md) for the full changelog.
 
-Current release: **v0.6.3** — built by [dylscoop](https://github.com/dylscoop)
+Current release: **v0.7.0** — built by [dylscoop](https://github.com/dylscoop)
 
 ---
 

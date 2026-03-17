@@ -109,18 +109,17 @@ Notes:
 
 ## 4. Minigames
 
-Currently `Play` resolves immediately with a 65/35 random win/lose in the
-client JS — no player interaction. All games below replace that with a real
-interactive UI rendered in the sidebar webview.
+Two interactive minigames are implemented: **Left / Right** and **Higher or
+Lower**. Both are launched via a game-select overlay that appears when the
+player presses the Play button.
 
-Each game is launched in a temporary **game overlay** rendered inside the
+Each game runs in a temporary **game overlay** rendered inside the
 sidebar (a `<div>` that covers the game screen for the duration of the game,
-then disappears). Results are still sent to the engine as `win` / `lose` with
+then disappears). Results are sent to the engine as `win` / `lose` with
 the `game` identifier.
 
-The `Play` button should open a **game select screen** once more than one
-minigame is implemented (or always show the screen if `gotchi.alwaysShowGamePicker`
-is enabled).
+The `Play` button opens a **game select screen** so the player can choose
+which minigame to play (or cancel).
 
 ### 4.1 Left / Right (Classic Tamagotchi)
 
@@ -137,9 +136,7 @@ is enabled).
 - `[S]` Setting `gotchi.leftRightTimeoutMs` (default 3000 ms) — adjustable for
   accessibility.
 
-Status: `[ ]`
-
-### 4.2 Pattern Memory (Simon Says)
+Status: `[x]`
 
 *Tests attention and short-term memory.*
 
@@ -183,7 +180,7 @@ Status: `[ ]`
 - **Win** (≥ 4 correct): Happiness +15, Energy −10.
 - **Lose** (≤ 3 correct): Happiness +5.
 
-Status: `[ ]`
+Status: `[x]`
 
 ### 4.5 Type Sprint
 

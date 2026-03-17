@@ -1,6 +1,42 @@
 # Version History
 
-## v0.6.3 — current (in progress)
+## v0.7.0 — current (in progress)
+
+### Changes from v0.6.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | Added `MINIGAME_INTERACTIVE_WIN_BASE`, `MINIGAME_INTERACTIVE_WIN_BONUS_MIN`, `MINIGAME_INTERACTIVE_WIN_BONUS_MAX`, `MINIGAME_INTERACTIVE_LOSE_PENALTY` constants; added `happinessDeltaForMinigame()` and `applyMinigameResult()` support for `left_right` and `higher_lower`; fixed lose path to return `WIN_BASE − LOSE_PENALTY = +5` (consolation) instead of a negative value |
+| `vscode/media/sidebar.html` | Added `#mg-overlay` div with game-select, Left/Right, Higher or Lower, and result sub-panels; `#game-screen` given `style="position:relative"` |
+| `vscode/media/sidebar.css` | Added overlay/game styles: `.mg-overlay`, `.mg-panel`, `.mg-title`, `.mg-btn-row`, `.mg-dir-btn`, `.mg-score`, `.mg-big-num`, `.mg-feedback`, `.mg-result-text`, `#lr-canvas`, `.mg-countdown`; `#game-screen { position: relative }` |
+| `vscode/media/sidebar.js` | Full Left/Right and Higher or Lower minigame implementations: `showMgOverlay`, `hideMgOverlay`, `showMgPanel`, `sendPlayResult`, `startLeftRightGame`, `startLRRound`, `handleLRChoice`, `resolveLRRound`, `drawLRDoors`, `updateLRScore`, `startHigherLowerGame`, `startHLRound`, `handleHLChoice`, `finishHL`; event log entries for win/lose of both games |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Added same four `MINIGAME_INTERACTIVE_*` constants; fixed `MINIGAME_INTERACTIVE_LOSE_PENALTY` to `5` (positive) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Updated `happinessDeltaForMinigame()` to handle `left_right` and `higher_lower`; fixed lose path to `WIN_BASE - LOSE_PENALTY` |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored from `vscode/media/sidebar.html` |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored from `vscode/media/sidebar.css` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` |
+| `vscode/tests/unit/gameEngine.test.ts` | Added unit tests for `left_right` and `higher_lower` win/lose deltas and clamping; added integration test suites `integration — play + left_right minigame` and `integration — play + higher_lower minigame` |
+| `vscode/package.json` | Version bumped `0.6.3` → `0.7.0` |
+| `pycharm/build.gradle.kts` | Version bumped `0.6.3` → `0.7.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.6.3` → `0.7.0` |
+| `vscode/FEATURES.md` | Section 4 intro updated; Left/Right (4.1) and Higher or Lower (4.4) status set to `[x]` |
+| `README.md` | Install filenames and current release updated to `0.7.0` |
+| `vscode/README.md` | Install filenames updated to `0.7.0` |
+| `pycharm/README.md` | Install filenames updated to `0.7.0` |
+| `.opencode/skills/integration-testing/SKILL.md` | New skill: always write integration tests when adding new features |
+
+### Updated constants (v0.7.0, gameEngine.ts / Constants.kt)
+
+```
+MINIGAME_INTERACTIVE_WIN_BASE:      Int = 10   // base happiness added on interactive minigame win
+MINIGAME_INTERACTIVE_WIN_BONUS_MIN: Int = 5    // minimum random bonus on top of base (win total: 15–25)
+MINIGAME_INTERACTIVE_WIN_BONUS_MAX: Int = 15   // maximum random bonus on top of base
+MINIGAME_INTERACTIVE_LOSE_PENALTY:  Int = 5    // consolation = WIN_BASE − LOSE_PENALTY = 10 − 5 = +5
+```
+
+---
+
+## v0.6.3 — previous
 
 ### Changes from v0.6.2
 

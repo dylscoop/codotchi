@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.gotchi"
-version = "0.6.3"
+version = "0.7.0"
 
 repositories {
     mavenCentral()

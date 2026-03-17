@@ -34,7 +34,7 @@ to survive and evolve into its final form.
 
 ### Quick install (pre-built `.vsix`)
 
-1. **Download `vscode-gotchi-0.6.3.vsix`** from the
+1. **Download `vscode-gotchi-0.7.0.vsix`** from the
    [Releases page](https://github.com/dylscoop/vscode_gotchi/releases).
 
 2. **Install the `.vsix`:**
@@ -42,7 +42,7 @@ to survive and evolve into its final form.
    **From the terminal:**
 
    ```bash
-   code --install-extension vscode-gotchi-0.6.3.vsix
+   code --install-extension vscode-gotchi-0.7.0.vsix
 ```
 
    **From the VS Code UI:**
@@ -69,11 +69,11 @@ npm install
 # Compile TypeScript
 npm run compile
 
-# Package → produces vscode-gotchi-0.6.3.vsix
+# Package → produces vscode-gotchi-0.7.0.vsix
 npx vsce package --no-dependencies
 
 # Install it
-code --install-extension vscode-gotchi-0.6.3.vsix
+code --install-extension vscode-gotchi-0.7.0.vsix
 ```
 
 ## Using the extension
@@ -110,7 +110,7 @@ Once installed and VS Code has reloaded:
 | ------ | ----------- |
 | **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Limited to 3 meals per wake cycle — overfeeding past that has no effect. |
 | **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. More than 3 snacks in a row will make your pet sick. |
-| **Play** | Starts a mini-game. Winning boosts happiness significantly; even losing gives a small consolation boost. Costs energy — your pet can't play if it's exhausted. |
+| **Play** | Opens the mini-game picker. Choose Left / Right or Higher or Lower. Winning gives +15–25 happiness; losing applies a −5 penalty. Costs 25 energy — your pet can't play if exhausted. |
 | **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. |
 | **Clean** | Clears all droppings from the screen. Pets produce droppings roughly every 20 minutes. Leaving 3 or more uncleaned will make your pet sick. |
 | **Medicine** | Treats sickness. Requires 3 doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss. |
@@ -120,6 +120,20 @@ Once installed and VS Code has reloaded:
 > **Tip:** keep all four stat bars (Hunger, Happy, Energy, Health) out of the
 > red to maximise your care score, which determines which character your pet
 > evolves into at each life stage.
+
+## Mini-games
+
+Clicking **Play** opens the game picker (requires 25 energy). Two games are
+available:
+
+| Game | How to win |
+|------|-----------|
+| **Left / Right** | 3 rounds. The Gotchi hides behind one of two doors. You have 3 seconds per round to pick the correct door. Win 2 out of 3 rounds to win. |
+| **Higher or Lower** | 5 rounds. A number is shown (1–100). Guess whether the next number will be higher or lower. Get 4 out of 5 correct to win. |
+
+Win reward: **+15–25 happiness** (random bonus on top of a base of +10, added
+to the standard `play()` boost of +15).
+Loss penalty: **−5 happiness** (instead of a consolation boost).
 
 ## Development setup (contributors)
 
