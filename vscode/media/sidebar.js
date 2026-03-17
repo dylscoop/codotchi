@@ -508,11 +508,10 @@
 
     // Animate the pet: jump with joy on a correct answer
     if (correct) {
-      var spriteContainer = document.getElementById("sprite-container");
-      spriteContainer.classList.add("anim-jump");
-      spriteContainer.addEventListener("animationend", function onAnimEnd() {
-        spriteContainer.classList.remove("anim-jump");
-        spriteContainer.removeEventListener("animationend", onAnimEnd);
+      spriteCanvas.classList.add("anim-jump");
+      spriteCanvas.addEventListener("animationend", function onAnimEnd() {
+        spriteCanvas.classList.remove("anim-jump");
+        spriteCanvas.removeEventListener("animationend", onAnimEnd);
       });
     }
 

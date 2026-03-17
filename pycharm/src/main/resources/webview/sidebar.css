@@ -474,6 +474,6 @@ body.font-large  { font-size: 16px; }
   100% { transform: translateY(0); }
 }
 
-#sprite-container.anim-jump {
+#sprite-canvas.anim-jump {
   animation: jump 0.55s ease-in-out forwards;
 }

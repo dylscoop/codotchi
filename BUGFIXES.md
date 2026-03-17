@@ -532,3 +532,14 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** When the player guessed Higher or Lower, the pet sprite slid right or left respectively. This animation was semantically confusing — the direction of slide had no clear connection to the guess outcome, and the motion was distracting whether the guess was correct or wrong.
 
 **Fix:** Removed the `slide-left`/`slide-right` keyframes and `anim-slide-*` CSS classes. Added a `jump` keyframe (`translateY` bounce with a small secondary hop). `handleHLChoice()` now only triggers the `anim-jump` animation when the guess is **correct**, giving positive visual feedback without spurious motion on wrong answers.
+
+---
+
+## BUGFIX-032 — Jump animation moves the entire sprite container (including door overlay) instead of just the pet
+
+**Status:** Fixed (branch `fix/pet-jump-animation-v0.7.3`)
+**Files:** `vscode/media/sidebar.css`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.css`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** The `anim-jump` CSS class was applied to `#sprite-container`, the parent div that holds both `#sprite-canvas` (the pet) and `#lr-canvas` (the Left/Right door overlay). This caused the entire container — including the door canvas — to animate, rather than just the pet sprite.
+
+**Fix:** Changed the CSS selector from `#sprite-container.anim-jump` to `#sprite-canvas.anim-jump` so the `jump` keyframe animation targets only the pet sprite canvas. In `handleHLChoice()`, replaced the local `document.getElementById("sprite-container")` re-query with the already-declared top-level `spriteCanvas` const, and updated all four references (`classList.add`, `addEventListener`, `classList.remove`, `removeEventListener`) to use `spriteCanvas` directly.

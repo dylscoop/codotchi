@@ -579,6 +579,7 @@ These are lower-priority ideas that require significant design work.
 | In-game shop | Buy accessories, backgrounds, or extra colour palettes |
 | Pixel-art sprite assets | Replace procedural canvas drawing with actual PNG sprite sheets |
 | Sprite animation frames | Idle walk cycle, happy, sad, sleeping, eating — 2–4 frame flip-book per mood |
+| Redesign game art | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style |
 | Egg-hatch animation | Wiggle → crack → burst sequence (fits naturally into reaction queue) |
 | Sound effects | Short 8-bit clips (optional; respect system/VS Code mute and `gotchi.reducedMotion`) |
 | Day/night cycle | Canvas background shifts with system clock; affects stat decay rates |

@@ -1,6 +1,27 @@
 # Version History
 
-## v0.7.2 — current
+## v0.7.3 — current
+
+### Changes from v0.7.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.css` | Changed `#sprite-container.anim-jump` selector to `#sprite-canvas.anim-jump` so the jump animation targets only the pet sprite canvas, not the whole container |
+| `vscode/media/sidebar.js` | `handleHLChoice()`: replaced `document.getElementById("sprite-container")` local re-query with the existing top-level `spriteCanvas` const; all four animation references updated accordingly |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored from `vscode/media/sidebar.css` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` |
+| `vscode/package.json` | Version bumped `0.7.2` → `0.7.3` |
+| `pycharm/build.gradle.kts` | Version bumped `0.7.2` → `0.7.3` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.7.2` → `0.7.3` |
+| `vscode/FEATURES.md` | Section 13: added "Redesign game art" row to stretch features table |
+| `BUGFIXES.md` | Added BUGFIX-032 (jump animates whole stage instead of pet only) |
+| `README.md` | Install filenames and current release updated to `0.7.3` |
+| `vscode/README.md` | Install filenames updated to `0.7.3` |
+| `pycharm/README.md` | Install filenames updated to `0.7.3` |
+
+---
+
+## v0.7.2 — previous
 
 ### Changes from v0.7.1
 
