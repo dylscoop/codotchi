@@ -138,6 +138,7 @@ class GotchiPlugin : Disposable {
                 attentionCallRateDivisor = attentionCallRateDivisor,
                 devMode                  = settings.devModeEnabled && settings.developerPasscode == "1234",
                 devModeAgingMultiplier   = maxOf(1, settings.devModeAgingMultiplier).toDouble(),
+                devModeHealthFloor       = maxOf(0, minOf(100, settings.devModeHealthFloor)),
             )
             lastDevMode = gameConfig.devMode
             currentState = tick(state, isIdle(), isDeepIdle(), gameConfig)

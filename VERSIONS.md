@@ -1,6 +1,43 @@
 # Version History
 
-## v0.8.1 — current
+## v0.8.2 — current
+
+### Changes from v0.8.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.8.1` → `0.8.2`; added `gotchi.devModeHealthFloor` integer setting (default 1, min 0, max 100) |
+| `pycharm/build.gradle.kts` | Version bumped `0.8.1` → `0.8.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.8.1` → `0.8.2` |
+| `vscode/src/gameEngine.ts` | `GameConfig` extended with `devModeHealthFloor: number`; `DEFAULT_GAME_CONFIG` updated; `tick()` health floor uses `config.devModeHealthFloor` instead of hardcoded `1` |
+| `vscode/src/extension.ts` | Reads `gotchi.devModeHealthFloor` setting and passes it (clamped 0–100) into `GameConfig` |
+| `vscode/tests/unit/gameEngine.test.ts` | All existing `GameConfig` objects updated with `devModeHealthFloor: 1`; added 2 new dev mode health floor tests |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiSettings.kt` | Added `devModeHealthFloor: Int = 1` field and accessor property |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | `GameConfig` extended with `devModeHealthFloor: Int = 1` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | `tick()` health floor uses `config.devModeHealthFloor` instead of hardcoded `1` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | Passes `devModeHealthFloor` (clamped 0–100) into `GameConfig` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiConfigurable.kt` | Added `devModeHealthFloorSpinner` (row 15, 0–100, step 1); filler moved to row 16; `isModified()`, `apply()`, `reset()` updated |
+| `vscode/FEATURES.md` | Added `gotchi.devModeHealthFloor` row to settings table; updated dev mode behaviour row to reflect configurable floor |
+| `VERSIONS.md` | Added v0.8.2 section |
+| `README.md` | Install filenames updated to `0.8.2` |
+| `vscode/README.md` | Install filenames updated to `0.8.2` |
+| `pycharm/README.md` | Install filenames updated to `0.8.2` |
+
+### New settings
+
+```
+gotchi.devModeHealthFloor: integer = 1   // minimum health in dev mode (0–100); set to 0 to allow pet death
+```
+
+### New config fields
+
+```
+devModeHealthFloor: Int = 1   // mirrors gotchi.devModeHealthFloor; clamped to 0–100
+```
+
+---
+
+## v0.8.1 — previous
 
 ### Changes from v0.8.0
 

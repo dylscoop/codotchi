@@ -598,6 +598,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.developerPasscode` | string | `""` | Developer passcode — also requires `gotchi.devModeEnabled = true` to activate dev mode | `[x]` |
 | `gotchi.devModeAgingMultiplier` | integer | `10` | Aging speed multiplier when developer mode is active | `[x]` |
 | `gotchi.devModeEnabled` | boolean | `false` | Must be `true` AND passcode must match to activate dev mode | `[x]` |
+| `gotchi.devModeHealthFloor` | integer | `1` | Minimum health in dev mode (0–100); set to 0 to allow pet death in dev mode | `[x]` |
 
 ---
 
@@ -607,7 +608,7 @@ Activated when both `gotchi.devModeEnabled = true` AND `gotchi.developerPasscode
 
 | Behaviour | Status | Notes |
 |-----------|--------|-------|
-| Pet cannot die (health floored at 1 before death check) | `[x]` | Applies to all damage sources: starvation, unhappiness, sickness, exhaustion |
+| Health floored at `gotchi.devModeHealthFloor` (default 1) before death check | `[x]` | Set to 0 to allow pet death in dev mode; applies to all damage sources |
 | Aging accelerated by `gotchi.devModeAgingMultiplier` (default 10×) | `[x]` | Multiplied on top of per-type `agingMultiplier` |
 | High score not recorded on death in dev mode | `[x]` | Prevents polluting the leaderboard with dev-mode runs |
 | "DEV MODE" banner shown on game screen while dev mode is active | `[x]` | Red banner at the top of the game screen |

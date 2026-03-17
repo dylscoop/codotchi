@@ -2,7 +2,7 @@
   "name": "vscode-gotchi",
   "displayName": "vscode_gotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "publisher": "vscode-gotchi",
   "repository": {
     "type": "git",
@@ -137,6 +137,13 @@
           "default": 10,
           "minimum": 1,
           "description": "Aging speed multiplier applied when developer mode is active. Default: 10 (10× faster than normal)."
+        },
+        "gotchi.devModeHealthFloor": {
+          "type": "integer",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Minimum health value enforced when developer mode is active. Default: 1 (pet cannot die). Set to 0 to allow the pet to die normally even in dev mode — useful for testing the death flow."
         }
       }
     }

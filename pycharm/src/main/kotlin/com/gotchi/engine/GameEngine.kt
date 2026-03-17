@@ -479,9 +479,10 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
 
     } // end if (config.attentionCallsEnabled)
 
-    // Dev mode: health floor at 1 — the pet cannot die from stat damage or old age.
-    if (config.devMode && health <= 0) {
-        health = 1
+    // Dev mode: configurable health floor — prevents death from stat decay or old age
+    // when devModeHealthFloor > 0 (default 1). Set floor to 0 to allow death in dev mode.
+    if (config.devMode && health <= config.devModeHealthFloor) {
+        health = config.devModeHealthFloor
     }
 
     // Death check

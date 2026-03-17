@@ -202,6 +202,7 @@ export function activate(context: vscode.ExtensionContext): void {
       attentionCallRateDivisor,
       devMode:                  cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234",
       devModeAgingMultiplier:   Math.max(1, cfg.get<number>("devModeAgingMultiplier", 10)),
+      devModeHealthFloor:       Math.max(0, Math.min(100, cfg.get<number>("devModeHealthFloor", 1))),
     };
     const next = tick(currentState, idle, deepIdle, gameConfig);
     handleStateUpdate(next);

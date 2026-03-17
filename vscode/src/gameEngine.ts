@@ -259,6 +259,12 @@ export interface GameConfig {
    * when devMode is true. Default is 10 (10× faster than normal).
    */
   devModeAgingMultiplier: number;
+  /**
+   * Minimum health enforced when devMode is true.
+   * Default 1 means the pet cannot die from stat decay or old age.
+   * Set to 0 to allow the pet to die normally even in dev mode.
+   */
+  devModeHealthFloor: number;
 }
 
 /** Sensible defaults used when no explicit config is provided. */
@@ -268,6 +274,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   attentionCallRateDivisor: 1.0,  // "fast"
   devMode:                  false,
   devModeAgingMultiplier:   10,
+  devModeHealthFloor:       1,
 };
 
 /** Per-type stat multipliers applied on top of base config constants. */
@@ -1151,9 +1158,10 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   }
   } // end if (config.attentionCallsEnabled)
 
-  // Dev mode: health floor at 1 — the pet cannot die from stat damage or old age.
-  if (config.devMode && health <= 0) {
-    health = 1;
+  // Dev mode: configurable health floor — prevents death from stat decay or old age
+  // when devModeHealthFloor > 0 (default 1). Set floor to 0 to allow death in dev mode.
+  if (config.devMode && health <= config.devModeHealthFloor) {
+    health = config.devModeHealthFloor;
   }
 
   // Death check

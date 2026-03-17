@@ -1660,6 +1660,7 @@ describe("developer mode — health floor", () => {
     attentionCallRateDivisor: 1.0,
     devMode: true,
     devModeAgingMultiplier: 1,
+    devModeHealthFloor: 1,
   };
 
   it("pet with health=1 and zero hunger does not die when devMode is true", () => {
@@ -1688,6 +1689,7 @@ describe("developer mode — health floor", () => {
       attentionCallRateDivisor: 1.0,
       devMode: false,
       devModeAgingMultiplier: 1,
+      devModeHealthFloor: 1,
     };
     let pet = makePet({ health: 1, hunger: 0, hungerZeroTicks: 99 });
     let died = false;
@@ -1696,6 +1698,41 @@ describe("developer mode — health floor", () => {
       if (!pet.alive) { died = true; break; }
     }
     assert.equal(died, true, "pet should die without dev mode when health would reach 0");
+  });
+
+  it("devModeHealthFloor=0 allows pet to die in dev mode", () => {
+    const floorZeroConfig: GameConfig = {
+      attentionCallsEnabled: false,
+      attentionCallExpiryTicks: 50,
+      attentionCallRateDivisor: 1.0,
+      devMode: true,
+      devModeAgingMultiplier: 1,
+      devModeHealthFloor: 0,
+    };
+    let pet = makePet({ health: 1, hunger: 0, hungerZeroTicks: 99 });
+    let died = false;
+    for (let i = 0; i < 50; i++) {
+      pet = tick({ ...pet, hunger: 0 } as PetState, false, false, floorZeroConfig);
+      if (!pet.alive) { died = true; break; }
+    }
+    assert.equal(died, true, "pet should be able to die in dev mode when devModeHealthFloor=0");
+  });
+
+  it("devModeHealthFloor=25 keeps health at 25 when damage would push it below", () => {
+    const floor25Config: GameConfig = {
+      attentionCallsEnabled: false,
+      attentionCallExpiryTicks: 50,
+      attentionCallRateDivisor: 1.0,
+      devMode: true,
+      devModeAgingMultiplier: 1,
+      devModeHealthFloor: 25,
+    };
+    let pet = makePet({ health: 25, hunger: 0, happiness: 0, sick: true, hungerZeroTicks: 99 });
+    for (let i = 0; i < 30; i++) {
+      pet = tick(pet, false, false, floor25Config);
+    }
+    assert.equal(pet.alive, true, "pet should stay alive with floor=25");
+    assert.ok(pet.health >= 25, `health should not drop below floor (got ${pet.health})`);
   });
 });
 
@@ -1707,6 +1744,7 @@ describe("developer mode — aging multiplier", () => {
       attentionCallRateDivisor: 1.0,
       devMode: false,
       devModeAgingMultiplier: 1,
+      devModeHealthFloor: 1,
     };
     const fast: GameConfig = {
       attentionCallsEnabled: false,
@@ -1714,6 +1752,7 @@ describe("developer mode — aging multiplier", () => {
       attentionCallRateDivisor: 1.0,
       devMode: true,
       devModeAgingMultiplier: 10,
+      devModeHealthFloor: 1,
     };
 
     // Use a healthy awake pet so decay fires (not deep idle)
@@ -1739,6 +1778,7 @@ describe("developer mode — aging multiplier", () => {
       attentionCallRateDivisor: 1.0,
       devMode: false,
       devModeAgingMultiplier: 1,
+      devModeHealthFloor: 1,
     };
     const dev1: GameConfig = {
       attentionCallsEnabled: false,
@@ -1746,6 +1786,7 @@ describe("developer mode — aging multiplier", () => {
       attentionCallRateDivisor: 1.0,
       devMode: true,
       devModeAgingMultiplier: 1,
+      devModeHealthFloor: 1,
     };
 
     const base = makePet({ health: 100, hunger: 80, happiness: 80, energy: 80 });

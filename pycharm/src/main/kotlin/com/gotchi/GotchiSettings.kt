@@ -22,6 +22,7 @@ import com.intellij.openapi.components.*
  *  - [devModeEnabled]         : must be true (along with the correct passcode) to activate dev mode (default false)
  *  - [developerPasscode]      : developer passcode (combined with devModeEnabled) to activate developer mode (default "")
  *  - [devModeAgingMultiplier] : aging speed multiplier in dev mode (default 10)
+ *  - [devModeHealthFloor]     : minimum health enforced in dev mode; default 1 (pet cannot die); set to 0 to allow death
  */
 @State(
     name = "GotchiSettings",
@@ -47,6 +48,7 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
         var devModeEnabled: Boolean = false
         var developerPasscode: String = ""
         var devModeAgingMultiplier: Int = 10
+        var devModeHealthFloor: Int = 1
     }
 
     private var _state = State()
@@ -116,4 +118,8 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
     var devModeAgingMultiplier: Int
         get() = _state.devModeAgingMultiplier
         set(v) { _state.devModeAgingMultiplier = v }
+
+    var devModeHealthFloor: Int
+        get() = _state.devModeHealthFloor
+        set(v) { _state.devModeHealthFloor = v }
 }

@@ -275,7 +275,7 @@ data class GameConfig(
     val attentionCallRateDivisor: Double = 1.0,
     /**
      * When true, developer mode is active:
-     *   - Health is floored at 1 (the pet cannot die from stat decay or old age).
+     *   - Health is floored at devModeHealthFloor (default 1; set to 0 to allow death).
      *   - Aging is multiplied by devModeAgingMultiplier.
      *   - Deaths never update the high score.
      * Activated by setting the developer passcode and enabling devModeEnabled.
@@ -286,6 +286,12 @@ data class GameConfig(
      * when devMode is true. Default is 10 (10x faster than normal).
      */
     val devModeAgingMultiplier: Double = 10.0,
+    /**
+     * Minimum health enforced when devMode is true.
+     * Default 1 means the pet cannot die from stat decay or old age.
+     * Set to 0 to allow the pet to die normally even in dev mode.
+     */
+    val devModeHealthFloor: Int = 1,
 )
 
 /** Sensible defaults used when no explicit config is provided. */
