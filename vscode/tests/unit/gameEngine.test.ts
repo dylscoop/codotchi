@@ -518,6 +518,28 @@ describe("tick — sickness health drain and death", () => {
     assert.equal(next.alive, false);
     assert.ok(next.events.includes("died"));
   });
+
+  // BUGFIX-040: sickness damage suppressed during deep idle (lock screen / sleep)
+  it("sick pet takes no sickness damage during deep idle (BUGFIX-040)", () => {
+    const pet = makePet({ sick: true, health: 50 });
+    const next = tick(pet, false, true); // isIdle=false, isDeepIdle=true
+    assert.equal(next.health, 50);
+    assert.ok(!next.events.includes("sickness_damage"));
+  });
+
+  it("sick pet still takes sickness damage during regular idle (BUGFIX-040)", () => {
+    const pet = makePet({ sick: true, health: 50 });
+    const next = tick(pet, true, false); // isIdle=true, isDeepIdle=false
+    assert.ok(next.health < 50);
+    assert.ok(next.events.includes("sickness_damage"));
+  });
+
+  it("sick pet at 5 hp does not die when deep idle (BUGFIX-040)", () => {
+    const pet = makePet({ sick: true, health: 5 });
+    const next = tick(pet, false, true); // isIdle=false, isDeepIdle=true
+    assert.equal(next.alive, true);
+    assert.equal(next.health, 5);
+  });
 });
 
 // ---------------------------------------------------------------------------

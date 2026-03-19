@@ -1,6 +1,22 @@
 # Version History
 
-## v0.8.3 — current
+## v0.8.4 — current
+
+### Changes from v0.8.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.8.3` → `0.8.4` |
+| `pycharm/build.gradle.kts` | Version bumped `0.8.3` → `0.8.4` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.8.3` → `0.8.4` |
+| `vscode/src/gameEngine.ts` | Sickness damage block now guarded by `!isDeepIdle`; pet cannot die from pre-existing sickness during lock screen or OS sleep (BUGFIX-040) |
+| `vscode/tests/unit/gameEngine.test.ts` | Added 3 tests for BUGFIX-040: no damage during deep idle, damage still fires during regular idle, pet at 5 hp survives deep idle |
+| `BUGFIXES.md` | Added BUGFIX-040 |
+| `VERSIONS.md` | Added v0.8.4 section |
+
+---
+
+## v0.8.3 — previous
 
 ### Changes from v0.8.2
 

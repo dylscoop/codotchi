@@ -620,3 +620,14 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** State was saved once per tick (every 6 seconds). If the user locked their screen or closed VS Code between ticks, `elapsedSecondsSinceLastSave` over-counted by up to ~6 seconds on the next activation. This made offline decay slightly more aggressive than intended and also meant the last few seconds of pre-lock state could be lost.
 
 **Fix:** Added a `saveState(context, currentState)` call in the `!e.focused` branch of the `onDidChangeWindowState` handler, so state is saved immediately whenever VS Code loses focus.
+
+---
+
+## BUGFIX-040 — Sick pet loses health during deep idle (lock screen / OS sleep), can die while user is away
+
+**Status:** Fixed (branch `fix/deep-idle-reentry-damage`)
+**File:** `vscode/src/gameEngine.ts`
+
+**Problem:** The sickness health drain block in `tick()` (`if (sick) { health -= 5; }`) had no idle guard of any kind. If the pet was already sick when the user locked their screen or the computer went to sleep, the extension kept applying 5 HP of damage every 6 seconds for the entire deep-idle period. A sick pet could die overnight with no way for the user to intervene. This was inconsistent with `applyOfflineDecay` (the "VS Code closed" path), which deliberately skips health changes entirely.
+
+**Fix:** Changed the condition to `if (sick && !isDeepIdle)`. Sickness damage is suppressed whenever the IDE is in deep idle (≥ 10 minutes of inactivity, which covers lock screen and OS sleep). A sick pet retains its current health while the user is away and still requires medicine when they return. Damage continues to fire during regular idle (< 10 min) so brief absences still carry consequences.

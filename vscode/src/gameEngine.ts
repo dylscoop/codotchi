@@ -1049,8 +1049,13 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     events.push("exhaustion_damage");
   }
 
-  // Sickness health drain
-  if (sick) {
+  // Sickness health drain — BUGFIX-040: suppressed during deep idle so a pet
+  // that is already sick when the user locks their screen or the computer
+  // sleeps cannot die while they are away. Matches applyOfflineDecay / closed
+  // behaviour which skips sickness damage entirely during offline periods.
+  // Damage still fires during regular idle (< 10 min inactivity) so brief
+  // absences with a sick pet still carry consequences.
+  if (sick && !isDeepIdle) {
     health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
     events.push("sickness_damage");
   }
