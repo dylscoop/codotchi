@@ -22,6 +22,9 @@
 | `README.md` | Install filenames updated to `0.8.2` |
 | `vscode/README.md` | Install filenames updated to `0.8.2` |
 | `pycharm/README.md` | Install filenames updated to `0.8.2` |
+| `vscode/src/extension.ts` | Added `lastDeepIdleTickMs` and `DEEP_IDLE_REENTRY_GRACE_MS` (60 s); `deepIdle` flag now includes a 60-second grace period after returning from deep idle (BUGFIX-036); state saved immediately on window focus loss (BUGFIX-039) |
+| `vscode/src/gameEngine.ts` | `applyOfflineDecay` resets `hungerZeroTicks` to 0 (BUGFIX-037); `applyOfflineDecay` floors decayed hunger and happiness at `IDLE_STAT_FLOOR` (20) (BUGFIX-038) |
+| `BUGFIXES.md` | Added BUGFIX-036 through BUGFIX-039 |
 
 ### New settings
 
@@ -33,6 +36,12 @@ gotchi.devModeHealthFloor: integer = 1   // minimum health in dev mode (0–100)
 
 ```
 devModeHealthFloor: Int = 1   // mirrors gotchi.devModeHealthFloor; clamped to 0–100
+```
+
+### New constants
+
+```
+DEEP_IDLE_REENTRY_GRACE_MS: number = 60_000   // ms of deep-idle protection retained after user returns from lock/sleep
 ```
 
 ---

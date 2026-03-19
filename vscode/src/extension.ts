@@ -48,6 +48,17 @@ let tickTimer: ReturnType<typeof setInterval> | undefined;
 let lastActivityMs: number = Date.now();
 
 /**
+ * Timestamp of the last tick in which the pet was in deep idle.
+ * Used to enforce a re-entry grace period: after the user returns from
+ * deep idle (e.g. after locking the screen), the pet stays protected for
+ * DEEP_IDLE_REENTRY_GRACE_MS before full active decay resumes.
+ */
+let lastDeepIdleTickMs: number = 0;
+
+/** Grace period (ms) after exiting deep idle before full active decay resumes. */
+const DEEP_IDLE_REENTRY_GRACE_MS = 60_000;
+
+/**
  * Activate the extension.
  *
  * @param context - The VS Code extension context.
@@ -170,7 +181,15 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.window.onDidChangeTextEditorSelection(() => markActivity()),
     vscode.workspace.onDidChangeTextDocument(() => markActivity()),
-    vscode.window.onDidChangeWindowState((e) => { if (e.focused) { markActivity(); } }),
+    vscode.window.onDidChangeWindowState((e) => {
+      if (e.focused) {
+        markActivity();
+      } else if (currentState !== null) {
+        // Save immediately on focus loss so that offline decay calculations
+        // use an accurate timestamp when VS Code is reopened.
+        saveState(context, currentState);
+      }
+    }),
     vscode.window.onDidChangeActiveTextEditor(() => markActivity()),
   );
 
@@ -184,7 +203,20 @@ export function activate(context: vscode.ExtensionContext): void {
     const idleDeepThresholdMs = cfg.get<number>("idleDeepThresholdSeconds", 600) * 1_000;
     const idleMs = Date.now() - lastActivityMs;
     const idle = idleMs > idleThresholdMs;
-    const deepIdle = idleMs > idleDeepThresholdMs;
+    const rawDeepIdle = idleMs > idleDeepThresholdMs;
+
+    // Refresh the deep-idle timestamp on every tick where the pet is deep idle.
+    // When the user returns, the grace period counts from the last such tick,
+    // keeping the pet protected for DEEP_IDLE_REENTRY_GRACE_MS (60 s) before
+    // full active decay resumes.  This prevents the gotchi from dying moments
+    // after the user unlocks their screen.
+    if (rawDeepIdle) {
+      lastDeepIdleTickMs = Date.now();
+    }
+    const inGracePeriod =
+      lastDeepIdleTickMs > 0 &&
+      Date.now() - lastDeepIdleTickMs < DEEP_IDLE_REENTRY_GRACE_MS;
+    const deepIdle = rawDeepIdle || inGracePeriod;
 
     // Map the attentionCallExpiry setting to a tick count.
     const expiryMap: Record<string, number> = { needy: 20, standard: 50, chilled: 100 };

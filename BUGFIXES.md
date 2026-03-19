@@ -576,3 +576,47 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** The `endCoinFlipGame()` function set the result text to `"You won Coin Flip! (+5 happiness)"` or `"You lost Coin Flip. (no consolation)"` — the parenthetical notes were developer annotations that had leaked into the user-facing UI.
 
 **Fix:** Simplified the result strings to `"You won Coin Flip!"` and `"You lost Coin Flip."` with no parenthetical notes.
+
+---
+
+## BUGFIX-036 — Gotchi dies from sickness/hunger immediately after user returns from lock screen or sleep
+
+**Status:** Fixed (branch `fix/deep-idle-reentry-damage`)
+**File:** `vscode/src/extension.ts`
+
+**Problem:** When the OS suspended the VS Code extension host (lock screen, sleep, lid close), the `setInterval` tick timer froze. On wake, the first tick correctly detected deep idle (idle time = hours) and kept stats protected. However, as soon as the user pressed a key or clicked, `markActivity()` reset `lastActivityMs` to now. The very next tick (6 seconds later) saw idle time as ~6 seconds, immediately dropping out of deep idle with no transition buffer. If stats were sitting at the deep-idle floor of 20, the gotchi could starve and then die from combined starvation + sickness damage within roughly 3 minutes of the user returning.
+
+**Fix:** Added a `lastDeepIdleTickMs` timestamp that is refreshed on every tick where deep idle is active. The `deepIdle` flag is now computed as `rawDeepIdle || (Date.now() - lastDeepIdleTickMs < 60_000)`, giving a 60-second grace period after the user returns before full active decay resumes.
+
+---
+
+## BUGFIX-037 — `hungerZeroTicks` persisted across restarts causes immediate starvation damage on reopening VS Code
+
+**Status:** Fixed (branch `fix/deep-idle-reentry-damage`)
+**File:** `vscode/src/gameEngine.ts`
+
+**Problem:** `hungerZeroTicks` — the counter of consecutive zero-hunger ticks that triggers starvation damage after 3 — was included in the serialised state. If the pet was saved with `hungerZeroTicks = 2` (one tick away from starvation), the first tick after reopening VS Code dealt starvation damage and forced `sick = true`, even if offline decay left hunger above zero. The continuity of the streak is meaningless across a session boundary.
+
+**Fix:** `applyOfflineDecay` now resets `hungerZeroTicks` to `0` in its return value, breaking the streak on every reload.
+
+---
+
+## BUGFIX-038 — `applyOfflineDecay` does not respect `IDLE_STAT_FLOOR`, allowing offline decay to push stats below 20
+
+**Status:** Fixed (branch `fix/deep-idle-reentry-damage`)
+**File:** `vscode/src/gameEngine.ts`
+
+**Problem:** While the extension is running, the deep-idle state floors hunger and happiness at `IDLE_STAT_FLOOR` (20), preventing them from dropping below 20 during long idle periods. However, `applyOfflineDecay` (applied once on activation for the time VS Code was fully closed) had no such floor. A pet with hunger = 25 left closed long enough could wake up with hunger = 10, well below the floor the live engine would have enforced, setting it up for rapid starvation.
+
+**Fix:** After computing the decayed hunger and happiness values in `applyOfflineDecay`, both are now clamped with `Math.max(value, IDLE_STAT_FLOOR)`, matching the protection the live deep-idle logic provides.
+
+---
+
+## BUGFIX-039 — State not saved on window focus loss causes offline decay to be calculated as slightly longer than actual
+
+**Status:** Fixed (branch `fix/deep-idle-reentry-damage`)
+**File:** `vscode/src/extension.ts`
+
+**Problem:** State was saved once per tick (every 6 seconds). If the user locked their screen or closed VS Code between ticks, `elapsedSecondsSinceLastSave` over-counted by up to ~6 seconds on the next activation. This made offline decay slightly more aggressive than intended and also meant the last few seconds of pre-lock state could be lost.
+
+**Fix:** Added a `saveState(context, currentState)` call in the `!e.focused` branch of the `onDidChangeWindowState` handler, so state is saved immediately whenever VS Code loses focus.

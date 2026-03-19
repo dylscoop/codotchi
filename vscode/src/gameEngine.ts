@@ -1793,10 +1793,19 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
   // Poop does NOT accumulate while the IDE is closed — the same rule that
   // suppresses pooping during idle/deep idle applies to offline time too.
 
+  const decayedHunger    = clampStat(state.hunger    - Math.min(hungerDecayTotal,    maxHungerLoss));
+  const decayedHappiness = clampStat(state.happiness - Math.min(happinessDecayTotal, maxHappinessLoss));
+
   return withDerivedFields({
     ...state,
-    hunger: clampStat(state.hunger - Math.min(hungerDecayTotal, maxHungerLoss)),
-    happiness: clampStat(state.happiness - Math.min(happinessDecayTotal, maxHappinessLoss)),
+    // Being offline is equivalent to deep idle: apply the same IDLE_STAT_FLOOR
+    // so offline decay can never push stats below the deep-idle floor of 20.
+    hunger:    Math.max(decayedHunger,    IDLE_STAT_FLOOR),
+    happiness: Math.max(decayedHappiness, IDLE_STAT_FLOOR),
+    // Reset the starvation streak counter: offline time breaks the continuity
+    // of consecutive zero-hunger ticks.  Without this reset the pet could die
+    // on the very first tick after VS Code reopens.
+    hungerZeroTicks: 0,
     // Treat offline time as awake for stat decay; aging does NOT advance while the IDE is closed.
     dayTimer: state.dayTimer,
     ageDays: state.ageDays,
