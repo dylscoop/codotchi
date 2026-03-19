@@ -1,6 +1,22 @@
 # Version History
 
-## v0.8.2 — current
+## v0.8.3 — current
+
+### Changes from v0.8.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.8.2` → `0.8.3` |
+| `pycharm/build.gradle.kts` | Version bumped `0.8.2` → `0.8.3` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.8.2` → `0.8.3` |
+| `README.md` | Install filenames updated to `0.8.3` |
+| `vscode/README.md` | Install filenames updated to `0.8.3` |
+| `pycharm/README.md` | Install filenames updated to `0.8.3` |
+| `VERSIONS.md` | Added v0.8.3 section |
+
+---
+
+## v0.8.2 — previous
 
 ### Changes from v0.8.1
 
