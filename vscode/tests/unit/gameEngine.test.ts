@@ -27,7 +27,7 @@ import {
   praise,
   applyCodeActivity,
   promoteToSenior,
-  checkOldAgeDeath,
+  rollOldAgeDeath,
   applyOfflineDecay,
   moodFromStats,
   tierFromCareScore,
@@ -45,6 +45,8 @@ import {
   TEEN_DURATION_TICKS,
   ADULT_DURATION_TICKS,
   SENIOR_NATURAL_DEATH_AGE_DAYS,
+  OLD_AGE_DEATH_BASE_CHANCE_PER_DAY,
+  OLD_AGE_DEATH_RISK_MULTIPLIER,
   VALID_PET_TYPES,
   STAGE_ORDER,
   PetState,
@@ -1304,33 +1306,111 @@ describe("promoteToSenior", () => {
 });
 
 // ---------------------------------------------------------------------------
-// checkOldAgeDeath
+// rollOldAgeDeath
 // ---------------------------------------------------------------------------
 
-describe("checkOldAgeDeath", () => {
-  it("kills a senior with health <= 0 and age >= 365", () => {
-    const pet = makePet({ stage: "senior", health: 0, ageDays: 365 });
-    const next = checkOldAgeDeath(pet);
+describe("rollOldAgeDeath", () => {
+  it("returns unchanged state for non-senior pets", () => {
+    const pet = makePet({ stage: "adult", ageDays: 400 });
+    const next = rollOldAgeDeath(pet, 0);          // random=0 guarantees a hit if guards pass
+    assert.equal(next, pet);                        // same reference = no-op
+  });
+
+  it("returns unchanged state when ageDays < 365", () => {
+    const pet = makePet({ stage: "senior", ageDays: 364 });
+    const next = rollOldAgeDeath(pet, 0);
+    assert.equal(next, pet);
+  });
+
+  it("kills the pet when random < chance", () => {
+    const pet = makePet({ stage: "senior", ageDays: 365 });
+    // Pass random=0, which is always < any positive chance
+    const next = rollOldAgeDeath(pet, 0);
     assert.equal(next.alive, false);
     assert.ok(next.events.includes("died_of_old_age"));
   });
 
-  it("does not kill a senior below the death age", () => {
-    const pet = makePet({ stage: "senior", health: 0, ageDays: 364 });
-    const next = checkOldAgeDeath(pet);
+  it("spares the pet when random >= chance", () => {
+    const pet = makePet({ stage: "senior", ageDays: 365 });
+    // Pass random=0.9999, which is always >= any chance <= 0.01
+    const next = rollOldAgeDeath(pet, 0.9999);
     assert.equal(next.alive, true);
+    assert.equal(next, pet);                        // same reference = no-op
   });
 
-  it("does not kill a senior with health above 0", () => {
-    const pet = makePet({ stage: "senior", health: 10, ageDays: 25 });
-    const next = checkOldAgeDeath(pet);
-    assert.equal(next.alive, true);
+  it("higher average happiness produces lower death chance than lower average happiness", () => {
+    const happyPet = makePet({ stage: "senior", ageDays: 365,
+      careScoreHappinessSum: 9000, careScoreTicks: 100,   // avg = 90
+      discipline: 50, weight: 40 });
+    const sadPet   = makePet({ stage: "senior", ageDays: 365,
+      careScoreHappinessSum: 1000, careScoreTicks: 100,   // avg = 10
+      discipline: 50, weight: 40 });
+    // happinessFactor(90) = 0.10, happinessFactor(10) = 0.90
+    // disciplineFactor(50) = 0.50, weightFactor(40) = 0
+    const happyChance = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY *
+      (1 + OLD_AGE_DEATH_RISK_MULTIPLIER * ((100 - 90) / 100 + 0 + 0.5) / 3);
+    const sadChance   = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY *
+      (1 + OLD_AGE_DEATH_RISK_MULTIPLIER * ((100 - 10) / 100 + 0 + 0.5) / 3);
+    assert.ok(sadChance > happyChance);
+    const midRandom = (happyChance + sadChance) / 2;
+    assert.equal(rollOldAgeDeath(happyPet, midRandom), happyPet);
+    assert.equal(rollOldAgeDeath(sadPet,   midRandom).alive, false);
   });
 
-  it("returns unchanged state for non-senior pets", () => {
-    const pet = makePet({ stage: "adult", health: 0, ageDays: 99 });
-    const next = checkOldAgeDeath(pet);
-    assert.equal(next, pet);
+  it("weight outside healthy zone increases death chance vs inside zone", () => {
+    const healthyPet = makePet({ stage: "senior", ageDays: 365,
+      weight: 40, discipline: 50,
+      careScoreHappinessSum: 5000, careScoreTicks: 100 });  // avg = 50
+    const thinPet    = makePet({ stage: "senior", ageDays: 365,
+      weight: 1,  discipline: 50,
+      careScoreHappinessSum: 5000, careScoreTicks: 100 });
+    const fatPet     = makePet({ stage: "senior", ageDays: 365,
+      weight: 99, discipline: 50,
+      careScoreHappinessSum: 5000, careScoreTicks: 100 });
+    // weightFactor inside zone = 0; outside = 1 at extremes → higher chance
+    // healthy chance: BASE*(1+9*(0.5+0+0.5)/3) = 0.001*4 = 0.004
+    // thin/fat chance: BASE*(1+9*(0.5+1+0.5)/3) = 0.001*7 = 0.007
+    // use r=0.005 — above healthy threshold (0.004) but below thin/fat threshold (0.007)
+    assert.equal(rollOldAgeDeath(healthyPet, 0.005), healthyPet);
+    assert.equal(rollOldAgeDeath(thinPet,    0.005).alive, false);
+    assert.equal(rollOldAgeDeath(fatPet,     0.005).alive, false);
+  });
+
+  it("higher discipline produces lower death chance than lower discipline", () => {
+    const disciplined = makePet({ stage: "senior", ageDays: 365,
+      discipline: 100, weight: 40,
+      careScoreHappinessSum: 5000, careScoreTicks: 100 });  // avg = 50
+    const unruly      = makePet({ stage: "senior", ageDays: 365,
+      discipline: 0,   weight: 40,
+      careScoreHappinessSum: 5000, careScoreTicks: 100 });
+    // disciplineFactor(100)=0, disciplineFactor(0)=1; happinessFactor=0.5, weightFactor=0
+    const disciplinedChance = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY *
+      (1 + OLD_AGE_DEATH_RISK_MULTIPLIER * (0.5 + 0 + 0) / 3);
+    const unrulyChance      = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY *
+      (1 + OLD_AGE_DEATH_RISK_MULTIPLIER * (0.5 + 0 + 1) / 3);
+    assert.ok(unrulyChance > disciplinedChance);
+    const midRandom = (disciplinedChance + unrulyChance) / 2;
+    assert.equal(rollOldAgeDeath(disciplined, midRandom), disciplined);
+    assert.equal(rollOldAgeDeath(unruly,      midRandom).alive, false);
+  });
+
+  it("chance is exactly BASE when all factors are 0 (perfect stats)", () => {
+    const perfect = makePet({ stage: "senior", ageDays: 365,
+      discipline: 100, weight: 40,
+      careScoreHappinessSum: 10000, careScoreTicks: 100 });  // avg = 100
+    // riskScore = 0, chance = BASE × 1 = 0.001
+    assert.equal(rollOldAgeDeath(perfect, 0.0009).alive, false);   // 0.0009 < 0.001 → dies
+    assert.equal(rollOldAgeDeath(perfect, 0.001),  perfect);       // 0.001 >= 0.001 → spares
+  });
+
+  it("chance is BASE × (1 + MULTIPLIER) when all factors are 1 (worst stats)", () => {
+    const worst = makePet({ stage: "senior", ageDays: 365,
+      discipline: 0, weight: 1,
+      careScoreHappinessSum: 0, careScoreTicks: 1 });         // avg = 0
+    // happinessFactor=1, weightFactor=1, disciplineFactor=1 → riskScore=1
+    const maxChance = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY * (1 + OLD_AGE_DEATH_RISK_MULTIPLIER);
+    assert.equal(rollOldAgeDeath(worst, maxChance - 0.0001).alive, false);
+    assert.equal(rollOldAgeDeath(worst, maxChance), worst);
   });
 
   it("SENIOR_NATURAL_DEATH_AGE_DAYS is 365", () => {
