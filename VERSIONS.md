@@ -1,6 +1,29 @@
 # Version History
 
-## v0.9.0 — current
+## v0.9.1 — current
+
+### Changes from v0.9.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.9.0` → `0.9.1` |
+| `pycharm/build.gradle.kts` | Version bumped `0.9.0` → `0.9.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.9.0` → `0.9.1` |
+| `vscode/src/gameEngine.ts` | Replaced dead `checkOldAgeDeath` stub with `rollOldAgeDeath(state, random)` — probabilistic old-age death roll for seniors; added `computeOldAgeDeathChance(state)` private helper; added `OLD_AGE_DEATH_BASE_CHANCE_PER_DAY` and `OLD_AGE_DEATH_RISK_MULTIPLIER` exported constants; wired `rollOldAgeDeath` into end of `tick()` at day boundaries |
+| `vscode/tests/unit/gameEngine.test.ts` | Replaced `checkOldAgeDeath` describe block with `rollOldAgeDeath` (10 tests): non-senior no-op, ageDays < 365 no-op, kill when random < chance, spare when random ≥ chance, happiness factor, weight factor, discipline factor, perfect-stats boundary, worst-stats boundary, `SENIOR_NATURAL_DEATH_AGE_DAYS` constant value |
+| `vscode/FEATURES.md` | Updated Section 9 senior natural death row with formula detail |
+| `VERSIONS.md` | Added v0.9.1 section |
+
+### New constants
+
+```
+OLD_AGE_DEATH_BASE_CHANCE_PER_DAY: number = 0.001   // minimum death chance per day for a perfectly-cared-for senior
+OLD_AGE_DEATH_RISK_MULTIPLIER:     number = 9        // multiplier; worst-care chance = BASE × (1 + 9) = 1.0%/day
+```
+
+---
+
+## v0.9.0 — previous
 
 ### Changes from v0.8.4
 

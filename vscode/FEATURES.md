@@ -529,7 +529,7 @@ Status: `[x]`
 | Sleep decay: hunger/happiness lose 1 every 5th sleeping tick | `[x]` | Prevents infinite stat preservation during extended sleep |
 | Sickness health drain message | `[x]` | `sickness_damage` event; humanised in event log |
 | Death screen with age/stage stats | `[x]` | |
-| Senior natural death (random chance after age ≥ 365d) | `[x]` | |
+| Senior natural death (random chance after age ≥ 365d) | `[x]` | Roll fires once per day boundary; chance = `0.001 × (1 + 9 × riskScore)` → 0.1%/day (perfect care) to 1.0%/day (worst care); riskScore = avg of happiness, weight, and discipline factors |
 | Peaceful death animation | `[ ]` | Covered by `died` reaction in section 5.6 |
 | `[S]` `gotchi.offlineDecayMaxFraction` (default 0.60) | `[ ]` | Cap offline stat loss; value hardcoded, expose as setting |
 

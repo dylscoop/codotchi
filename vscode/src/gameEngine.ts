@@ -211,6 +211,15 @@ export const GIFT_MAX_CHANCE: number = 0.05;
 
 /** Age in game days at which a senior pet may die of old age (365 game days = 1 in-game year). */
 export const SENIOR_NATURAL_DEATH_AGE_DAYS: number = 365;
+/** Base per-day probability of a senior dying of old age when all stats are optimal. */
+export const OLD_AGE_DEATH_BASE_CHANCE_PER_DAY: number = 0.001;
+/**
+ * Risk multiplier applied to the base chance when all three longevity factors
+ * (happiness, weight, discipline) are at their worst.
+ * Final chance = BASE × (1 + MULTIPLIER × riskScore), where riskScore ∈ [0, 1].
+ * Range: 0.1 % / day (perfect) → 1.0 % / day (neglected).
+ */
+export const OLD_AGE_DEATH_RISK_MULTIPLIER: number = 9;
 
 /**
  * Ticks elapsed while awake before the day timer advances by 1.0 (1 game day = 5 real minutes awake).
@@ -1210,8 +1219,12 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     ticksSinceLastGift,
   };
 
-  // Stage progression
-  return checkStageProgression(afterDecay);
+  // Stage progression + old-age death roll (once per day boundary for seniors)
+  const afterStage = checkStageProgression(afterDecay);
+  // ageDays is Math.floor(new dayTimer), computed above; state.ageDays is pre-tick value.
+  return ageDays > state.ageDays
+    ? rollOldAgeDeath(afterStage, Math.random())
+    : afterStage;
 }
 
 // ---------------------------------------------------------------------------
@@ -1740,27 +1753,68 @@ export function promoteToSenior(state: PetState): PetState {
 }
 
 /**
- * Apply natural end-of-life if a senior pet has reached old age and health
- * has dropped to the death threshold.
+ * Compute the per-day probability of old-age death for a senior pet.
  *
- * @param state - The current pet state.
- * @returns A new PetState, potentially with alive === false.
+ * Three longevity factors, each in [0, 1] where 0 = safest, 1 = riskiest:
+ *   - happinessFactor : based on per-stage average happiness (careScore accumulator)
+ *   - weightFactor    : 0 inside the healthy zone [17, 66]; scales to 1 at extremes (1 or 99)
+ *   - disciplineFactor: based on current discipline stat
+ *
+ * riskScore  = average of the three factors  ∈ [0, 1]
+ * chance/day = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY × (1 + OLD_AGE_DEATH_RISK_MULTIPLIER × riskScore)
+ *            = 0.001 × (1 + 9 × riskScore)  →  range [0.001, 0.010]
  */
-export function checkOldAgeDeath(state: PetState): PetState {
-  if (state.stage !== "senior") {
-    return state;
+function computeOldAgeDeathChance(state: PetState): number {
+  const avgHappiness = state.careScoreTicks > 0
+    ? state.careScoreHappinessSum / state.careScoreTicks
+    : state.happiness;
+  const happinessFactor = (100 - avgHappiness) / 100;
+
+  let weightFactor: number;
+  if (state.weight < WEIGHT_HAPPINESS_LOW_THRESHOLD) {
+    weightFactor = (WEIGHT_HAPPINESS_LOW_THRESHOLD - state.weight) /
+                   (WEIGHT_HAPPINESS_LOW_THRESHOLD - WEIGHT_MIN);  // 0 at 17, 1 at 1
+  } else if (state.weight > WEIGHT_HAPPINESS_HIGH_THRESHOLD) {
+    weightFactor = (state.weight - WEIGHT_HAPPINESS_HIGH_THRESHOLD) /
+                   (WEIGHT_MAX - WEIGHT_HAPPINESS_HIGH_THRESHOLD);  // 0 at 66, 1 at 99
+  } else {
+    weightFactor = 0;
   }
-  if (state.ageDays < SENIOR_NATURAL_DEATH_AGE_DAYS) {
-    return state;
-  }
-  if (state.health <= HEALTH_DEATH_THRESHOLD) {
-    return withDerivedFields({
-      ...state,
-      alive: false,
-      events: ["died_of_old_age"],
-    });
-  }
-  return state;
+
+  const disciplineFactor = (100 - state.discipline) / 100;
+
+  const riskScore = (happinessFactor + weightFactor + disciplineFactor) / 3;
+  return OLD_AGE_DEATH_BASE_CHANCE_PER_DAY * (1 + OLD_AGE_DEATH_RISK_MULTIPLIER * riskScore);
+}
+
+/**
+ * Roll for natural old-age death once per game-day boundary for a senior pet.
+ *
+ * Guards (all must pass before the roll fires):
+ *   1. Pet is a senior.
+ *   2. ageDays >= SENIOR_NATURAL_DEATH_AGE_DAYS (365).
+ *   3. random < computeOldAgeDeathChance(state).
+ *
+ * The `random` parameter is injected so the function is deterministically testable.
+ * Call sites should pass Math.random().
+ *
+ * @param state  - The current pet state.
+ * @param random - A uniform random number in [0, 1).
+ * @returns A new PetState with alive === false and event "died_of_old_age" if the
+ *          roll hits; otherwise the original state reference unchanged.
+ */
+export function rollOldAgeDeath(state: PetState, random: number): PetState {
+  if (state.stage !== "senior") { return state; }
+  if (state.ageDays < SENIOR_NATURAL_DEATH_AGE_DAYS) { return state; }
+
+  const chance = computeOldAgeDeathChance(state);
+  if (random >= chance) { return state; }
+
+  return withDerivedFields({
+    ...state,
+    alive: false,
+    events: ["died_of_old_age"],
+  });
 }
 
 // ---------------------------------------------------------------------------
