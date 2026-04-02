@@ -293,15 +293,15 @@ export function activate(context: vscode.ExtensionContext): void {
     const elapsed = elapsedSecondsSinceLastSave(context);
     const decayed = applyOfflineDecay(fresh, elapsed);
     // Clear stale events — they were already displayed in the other window.
-    decayed.events = [];
-    currentState = decayed;
+    const state: PetState = { ...decayed, events: [] };
+    currentState = state;
     const cfg = vscode.workspace.getConfiguration("gotchi");
     const devModeActive =
       cfg.get<boolean>("devModeEnabled", false) &&
       cfg.get<string>("developerPasscode", "") === "1234";
-    sidebar?.postState(decayed, currentHighScore, devModeActive);
-    statusBar?.update(decayed);
-    saveState(context, decayed);
+    sidebar?.postState(state, currentHighScore, devModeActive);
+    statusBar?.update(state);
+    saveState(context, state);
   }
 
   // Periodic tick — only the focused window ticks.
