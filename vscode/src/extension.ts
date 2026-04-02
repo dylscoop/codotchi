@@ -178,19 +178,39 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Activity listeners — update lastActivityMs on any keyboard/cursor/focus event
   // so the idle detector knows the user is present.
+  // Each trigger is individually configurable; aiMode suppresses the three events
+  // that AI coding agents also fire (document changes, cursor movement, tab switches).
   context.subscriptions.push(
-    vscode.window.onDidChangeTextEditorSelection(() => markActivity()),
-    vscode.workspace.onDidChangeTextDocument(() => markActivity()),
+    vscode.window.onDidChangeTextEditorSelection(() => {
+      const c = vscode.workspace.getConfiguration("gotchi");
+      if (!c.get<boolean>("aiMode", false) && c.get<boolean>("idleResetOnCursorMovement", true)) {
+        markActivity();
+      }
+    }),
+    vscode.workspace.onDidChangeTextDocument(() => {
+      const c = vscode.workspace.getConfiguration("gotchi");
+      if (!c.get<boolean>("aiMode", false) && c.get<boolean>("idleResetOnDocumentChange", true)) {
+        markActivity();
+      }
+    }),
     vscode.window.onDidChangeWindowState((e) => {
       if (e.focused) {
-        markActivity();
+        const c = vscode.workspace.getConfiguration("gotchi");
+        if (c.get<boolean>("idleResetOnWindowFocus", true)) {
+          markActivity();
+        }
       } else if (currentState !== null) {
         // Save immediately on focus loss so that offline decay calculations
         // use an accurate timestamp when VS Code is reopened.
         saveState(context, currentState);
       }
     }),
-    vscode.window.onDidChangeActiveTextEditor(() => markActivity()),
+    vscode.window.onDidChangeActiveTextEditor(() => {
+      const c = vscode.workspace.getConfiguration("gotchi");
+      if (!c.get<boolean>("aiMode", false) && c.get<boolean>("idleResetOnTabSwitch", true)) {
+        markActivity();
+      }
+    }),
   );
 
   // Periodic tick

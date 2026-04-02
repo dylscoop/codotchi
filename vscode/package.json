@@ -2,7 +2,7 @@
   "name": "vscode-gotchi",
   "displayName": "vscode_gotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "0.8.4",
+  "version": "0.9.0",
   "publisher": "vscode-gotchi",
   "repository": {
     "type": "git",
@@ -144,6 +144,36 @@
           "minimum": 0,
           "maximum": 100,
           "description": "Minimum health value enforced when developer mode is active. Default: 1 (pet cannot die). Set to 0 to allow the pet to die normally even in dev mode — useful for testing the death flow."
+        },
+        "gotchi.aiMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "AI mode: suppress idle-timer resets from document changes, cursor movement, and tab switches — the three events an AI coding agent fires. Window focus and mouse movement still reset the timer normally. Enable this when you are using an AI agent to avoid the agent's edits keeping your pet perpetually active."
+        },
+        "gotchi.idleResetOnDocumentChange": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reset the idle timer when any document is changed (keystrokes, AI agent edits, etc.). Suppressed automatically when gotchi.aiMode is enabled."
+        },
+        "gotchi.idleResetOnCursorMovement": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reset the idle timer when the text editor cursor moves or the selection changes. Suppressed automatically when gotchi.aiMode is enabled."
+        },
+        "gotchi.idleResetOnTabSwitch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reset the idle timer when the active editor tab changes. Suppressed automatically when gotchi.aiMode is enabled."
+        },
+        "gotchi.idleResetOnWindowFocus": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reset the idle timer when the VS Code window gains focus (e.g. you switch back to VS Code from another app). Never suppressed by aiMode."
+        },
+        "gotchi.idleResetOnMouseMovement": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reset the idle timer when the mouse moves inside the Gotchi sidebar panel (throttled to once per 30 seconds). Never suppressed by aiMode."
         }
       }
     }

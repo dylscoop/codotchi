@@ -6,10 +6,13 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.application.ApplicationActivationListener
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
+import com.intellij.openapi.wm.IdeFrame
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.util.messages.MessageBusConnection
 import java.awt.AWTEvent
 import java.awt.Toolkit
 import java.awt.event.AWTEventListener
@@ -59,8 +62,24 @@ class GotchiPlugin : Disposable {
     @Volatile private var lastActivityTime: Long = System.currentTimeMillis()
 
     /** AWT listener that updates [lastActivityTime] on any key press or mouse event. */
-    private val awtActivityListener = AWTEventListener {
-        lastActivityTime = System.currentTimeMillis()
+    private val awtActivityListener = AWTEventListener { event ->
+        val id = event?.id ?: return@AWTEventListener
+        val settings = service<GotchiSettings>()
+        val ai = settings.aiMode
+        val allowed = when {
+            // Key press/release/type → treat as "document change" trigger
+            id in java.awt.event.KeyEvent.KEY_FIRST..java.awt.event.KeyEvent.KEY_LAST ->
+                !ai && settings.idleResetOnDocumentChange
+            // Mouse move / drag → mouse-movement trigger (never suppressed by aiMode)
+            id == java.awt.event.MouseEvent.MOUSE_MOVED ||
+            id == java.awt.event.MouseEvent.MOUSE_DRAGGED ->
+                settings.idleResetOnMouseMovement
+            // Mouse click/press/release → cursor-movement trigger (suppressed by aiMode)
+            id in java.awt.event.MouseEvent.MOUSE_FIRST..java.awt.event.MouseEvent.MOUSE_LAST ->
+                !ai && settings.idleResetOnCursorMovement
+            else -> false
+        }
+        if (allowed) lastActivityTime = System.currentTimeMillis()
     }
 
     private fun isIdle(): Boolean =
@@ -73,6 +92,7 @@ class GotchiPlugin : Disposable {
     private var statusWidget:  GotchiStatusWidget?  = null
 
     private var tickFuture: ScheduledFuture<*>? = null
+    private var messageBusConnection: MessageBusConnection? = null
 
     // ── Initialisation ─────────────────────────────────────────────────────
 
@@ -82,6 +102,22 @@ class GotchiPlugin : Disposable {
             AWTEvent.MOUSE_EVENT_MASK or
             AWTEvent.MOUSE_MOTION_EVENT_MASK
         Toolkit.getDefaultToolkit().addAWTEventListener(awtActivityListener, activityMask)
+
+        // Subscribe to application-level window focus changes for idleResetOnWindowFocus.
+        // Using the application message bus so we don't need a project reference here.
+        val conn = ApplicationManager.getApplication().messageBus.connect(this)
+        conn.subscribe(
+            ApplicationActivationListener.TOPIC,
+            object : ApplicationActivationListener {
+                override fun applicationActivated(ideFrame: IdeFrame) {
+                    val s = service<GotchiSettings>()
+                    if (s.idleResetOnWindowFocus) {
+                        lastActivityTime = System.currentTimeMillis()
+                    }
+                }
+            }
+        )
+        messageBusConnection = conn
 
         val persistence = service<GotchiPersistence>()
 
@@ -282,6 +318,16 @@ class GotchiPlugin : Disposable {
         if (ticked) broadcastState()
     }
 
+    // ── External activity signal ───────────────────────────────────────────
+
+    /**
+     * Mark that user activity has just occurred. Called by [GotchiTabSwitchListener]
+     * (and any other project-level listener that needs to reset the idle timer).
+     */
+    fun markActivity() {
+        lastActivityTime = System.currentTimeMillis()
+    }
+
     // ── Panel / widget registration ────────────────────────────────────────
 
     fun setBrowserPanel(panel: GotchiBrowserPanel) {
@@ -406,5 +452,6 @@ class GotchiPlugin : Disposable {
     override fun dispose() {
         tickFuture?.cancel(false)
         Toolkit.getDefaultToolkit().removeAWTEventListener(awtActivityListener)
+        messageBusConnection?.disconnect()
     }
 }

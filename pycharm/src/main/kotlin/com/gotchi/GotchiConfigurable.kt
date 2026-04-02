@@ -41,6 +41,12 @@ class GotchiConfigurable : Configurable {
     private var developerPasscodeField:    JTextField?         = null
     private var devModeAgingSpinner:       JSpinner?           = null
     private var devModeHealthFloorSpinner: JSpinner?           = null
+    private var aiModeCheck:                    JCheckBox?          = null
+    private var idleResetOnDocumentChangeCheck: JCheckBox?          = null
+    private var idleResetOnCursorMovementCheck: JCheckBox?          = null
+    private var idleResetOnTabSwitchCheck:      JCheckBox?          = null
+    private var idleResetOnWindowFocusCheck:    JCheckBox?          = null
+    private var idleResetOnMouseMovementCheck:  JCheckBox?          = null
 
     override fun getDisplayName(): String = "Gotchi"
 
@@ -61,6 +67,12 @@ class GotchiConfigurable : Configurable {
         val devPasscodeField = JTextField(10)
         val devAgingSpinner = JSpinner(SpinnerNumberModel(10, 1, 1000, 1))
         val devHealthFloorSpinner = JSpinner(SpinnerNumberModel(1, 0, 100, 1))
+        val aiModeCheckbox = JCheckBox("AI mode (suppress doc-change / cursor / tab-switch idle resets)")
+        val idleResetDocChangeCheckbox = JCheckBox("Reset idle timer on document changes")
+        val idleResetCursorCheckbox = JCheckBox("Reset idle timer on cursor movement")
+        val idleResetTabCheckbox = JCheckBox("Reset idle timer on tab switch")
+        val idleResetFocusCheckbox = JCheckBox("Reset idle timer on window focus")
+        val idleResetMouseCheckbox = JCheckBox("Reset idle timer on mouse movement (sidebar)")
 
         fontSizeCombo            = combo
         colorPanel               = cp
@@ -78,6 +90,12 @@ class GotchiConfigurable : Configurable {
         developerPasscodeField   = devPasscodeField
         devModeAgingSpinner      = devAgingSpinner
         devModeHealthFloorSpinner = devHealthFloorSpinner
+        aiModeCheck                    = aiModeCheckbox
+        idleResetOnDocumentChangeCheck = idleResetDocChangeCheckbox
+        idleResetOnCursorMovementCheck = idleResetCursorCheckbox
+        idleResetOnTabSwitchCheck      = idleResetTabCheckbox
+        idleResetOnWindowFocusCheck    = idleResetFocusCheckbox
+        idleResetOnMouseMovementCheck  = idleResetMouseCheckbox
 
         val panel = JPanel(GridBagLayout())
         val gbc   = GridBagConstraints()
@@ -219,8 +237,44 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devHealthFloorSpinner, gbc)
 
-        // Push content to the top
+        // Row 16 — AI mode
         gbc.gridx = 0; gbc.gridy = 16; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(aiModeCheckbox, gbc)
+        gbc.gridwidth = 1
+
+        // Row 17 — Idle reset: document changes
+        gbc.gridx = 0; gbc.gridy = 17; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(idleResetDocChangeCheckbox, gbc)
+        gbc.gridwidth = 1
+
+        // Row 18 — Idle reset: cursor movement
+        gbc.gridx = 0; gbc.gridy = 18; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(idleResetCursorCheckbox, gbc)
+        gbc.gridwidth = 1
+
+        // Row 19 — Idle reset: tab switch
+        gbc.gridx = 0; gbc.gridy = 19; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(idleResetTabCheckbox, gbc)
+        gbc.gridwidth = 1
+
+        // Row 20 — Idle reset: window focus
+        gbc.gridx = 0; gbc.gridy = 20; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(idleResetFocusCheckbox, gbc)
+        gbc.gridwidth = 1
+
+        // Row 21 — Idle reset: mouse movement
+        gbc.gridx = 0; gbc.gridy = 21; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(idleResetMouseCheckbox, gbc)
+        gbc.gridwidth = 1
+
+        // Push content to the top
+        gbc.gridx = 0; gbc.gridy = 22; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -246,6 +300,12 @@ class GotchiConfigurable : Configurable {
         val uiDevPasscode = developerPasscodeField?.text ?: ""
         val uiDevAging = (devModeAgingSpinner?.value as? Int) ?: 10
         val uiDevHealthFloor = (devModeHealthFloorSpinner?.value as? Int) ?: 1
+        val uiAiMode = aiModeCheck?.isSelected ?: false
+        val uiIdleResetDocChange = idleResetOnDocumentChangeCheck?.isSelected ?: true
+        val uiIdleResetCursor = idleResetOnCursorMovementCheck?.isSelected ?: true
+        val uiIdleResetTab = idleResetOnTabSwitchCheck?.isSelected ?: true
+        val uiIdleResetFocus = idleResetOnWindowFocusCheck?.isSelected ?: true
+        val uiIdleResetMouse = idleResetOnMouseMovementCheck?.isSelected ?: true
         return uiFont != settings.fontSize
             || uiColor != settings.textColor
             || uiPrimary != settings.customPrimaryColor
@@ -262,6 +322,12 @@ class GotchiConfigurable : Configurable {
             || uiDevPasscode != settings.developerPasscode
             || uiDevAging != settings.devModeAgingMultiplier
             || uiDevHealthFloor != settings.devModeHealthFloor
+            || uiAiMode != settings.aiMode
+            || uiIdleResetDocChange != settings.idleResetOnDocumentChange
+            || uiIdleResetCursor != settings.idleResetOnCursorMovement
+            || uiIdleResetTab != settings.idleResetOnTabSwitch
+            || uiIdleResetFocus != settings.idleResetOnWindowFocus
+            || uiIdleResetMouse != settings.idleResetOnMouseMovement
     }
 
     override fun apply() {
@@ -282,6 +348,12 @@ class GotchiConfigurable : Configurable {
         settings.developerPasscode      = developerPasscodeField?.text ?: ""
         settings.devModeAgingMultiplier = (devModeAgingSpinner?.value as? Int) ?: 10
         settings.devModeHealthFloor     = (devModeHealthFloorSpinner?.value as? Int) ?: 1
+        settings.aiMode                    = aiModeCheck?.isSelected ?: false
+        settings.idleResetOnDocumentChange = idleResetOnDocumentChangeCheck?.isSelected ?: true
+        settings.idleResetOnCursorMovement = idleResetOnCursorMovementCheck?.isSelected ?: true
+        settings.idleResetOnTabSwitch      = idleResetOnTabSwitchCheck?.isSelected ?: true
+        settings.idleResetOnWindowFocus    = idleResetOnWindowFocusCheck?.isSelected ?: true
+        settings.idleResetOnMouseMovement  = idleResetOnMouseMovementCheck?.isSelected ?: true
         // Reload the webview immediately so the change is visible without a restart
         ApplicationManager.getApplication().service<GotchiPlugin>().reloadWebview()
     }
@@ -304,6 +376,12 @@ class GotchiConfigurable : Configurable {
         developerPasscodeField?.text            = settings.developerPasscode
         devModeAgingSpinner?.value              = settings.devModeAgingMultiplier
         devModeHealthFloorSpinner?.value        = settings.devModeHealthFloor
+        aiModeCheck?.isSelected                    = settings.aiMode
+        idleResetOnDocumentChangeCheck?.isSelected = settings.idleResetOnDocumentChange
+        idleResetOnCursorMovementCheck?.isSelected = settings.idleResetOnCursorMovement
+        idleResetOnTabSwitchCheck?.isSelected      = settings.idleResetOnTabSwitch
+        idleResetOnWindowFocusCheck?.isSelected    = settings.idleResetOnWindowFocus
+        idleResetOnMouseMovementCheck?.isSelected  = settings.idleResetOnMouseMovement
     }
 
     // ── Enum helpers ───────────────────────────────────────────────────────

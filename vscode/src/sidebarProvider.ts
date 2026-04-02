@@ -125,7 +125,8 @@ export class SidebarProvider
         e.affectsConfiguration("gotchi.customSecondaryColor") ||
         e.affectsConfiguration("gotchi.customBackgroundColor") ||
         e.affectsConfiguration("gotchi.petStageHeight") ||
-        e.affectsConfiguration("gotchi.reducedMotion")
+        e.affectsConfiguration("gotchi.reducedMotion") ||
+        e.affectsConfiguration("gotchi.idleResetOnMouseMovement")
       ) {
         webviewView.webview.html = this.buildHtml(webviewView.webview);
       }
@@ -185,6 +186,9 @@ export class SidebarProvider
 
     const reducedMotion = cfg.get<boolean>("reducedMotion", false);
     html = html.replace("{{reducedMotion}}", reducedMotion ? "true" : "false");
+
+    const idleResetOnMouseMovement = cfg.get<boolean>("idleResetOnMouseMovement", true);
+    html = html.replace("{{idleResetOnMouseMovement}}", idleResetOnMouseMovement ? "true" : "false");
 
     return html;
   }
