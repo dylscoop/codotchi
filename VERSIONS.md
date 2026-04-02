@@ -1,6 +1,27 @@
 # Version History
 
-## v0.9.1 — current
+## v0.9.2 — current
+
+### Changes from v0.9.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/extension.ts` | Extracted tick body into `runOneTick()`; added `startTicker()` (idempotent), `stopTicker()`, and `reloadAndRefreshUI()` helpers; initial ticker now conditional on `vscode.window.state.focused`; `onDidChangeWindowState` stops ticker on focus-loss and reloads globalState + restarts ticker on focus-gain |
+| `vscode/FEATURES.md` | Added single-window ticker row to Section 11 (Persistence) |
+| `VERSIONS.md` | Added v0.9.2 section |
+
+### Bug fixed
+
+**Multi-window ticker divergence** — when multiple VS Code windows were open,
+each ran its own independent `setInterval` and wrote to the shared `globalState`,
+causing pet state to diverge across windows. Now only the focused window ticks.
+On focus-gain a window reloads the latest state from `globalState` (applying any
+offline decay), clears stale events (already displayed in the prior window), and
+restarts the interval. On focus-loss it saves state and clears the interval.
+
+---
+
+## v0.9.1 — previous
 
 ### Changes from v0.9.0
 

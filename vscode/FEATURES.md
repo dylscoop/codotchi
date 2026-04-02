@@ -553,6 +553,7 @@ Status: `[x]`
 | Full state saved to globalState on every action | `[x]` | |
 | State loaded and restored on extension activation | `[x]` | |
 | Offline decay applied on load (capped at 60%) | `[x]` | |
+| Single-window ticker (multi-window isolation) | `[x]` | Only the focused window ticks; on focus-gain the window reloads globalState and resumes ticking; on focus-loss it saves and stops |
 | State migration when PetState schema changes | `[ ]` | Add a `schemaVersion` field |
 | Export / import pet via JSON file | `[ ]` | For sharing or backup |
 
