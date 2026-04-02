@@ -199,10 +199,17 @@ export function activate(context: vscode.ExtensionContext): void {
         if (c.get<boolean>("idleResetOnWindowFocus", true)) {
           markActivity();
         }
-      } else if (currentState !== null) {
-        // Save immediately on focus loss so that offline decay calculations
-        // use an accurate timestamp when VS Code is reopened.
-        saveState(context, currentState);
+        // Pick up state written by the previously-focused window, then resume ticking.
+        reloadAndRefreshUI();
+        startTicker();
+      } else {
+        if (currentState !== null) {
+          // Save immediately on focus loss so that offline decay calculations
+          // use an accurate timestamp when VS Code is reopened.
+          saveState(context, currentState);
+        }
+        // Stop ticking — only the focused window should tick.
+        stopTicker();
       }
     }),
     vscode.window.onDidChangeActiveTextEditor(() => {
@@ -213,11 +220,11 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  // Periodic tick
-  tickTimer = setInterval(() => {
-    if (currentState === null) {
-      return;
-    }
+  // --- Multi-window ticker helpers ---
+
+  /** Run one game tick. Extracted so startTicker can reference it by name. */
+  function runOneTick(): void {
+    if (currentState === null) { return; }
     const cfg = vscode.workspace.getConfiguration("gotchi");
     const idleThresholdMs = cfg.get<number>("idleThresholdSeconds", 60) * 1_000;
     const idleDeepThresholdMs = cfg.get<number>("idleDeepThresholdSeconds", 600) * 1_000;
@@ -258,7 +265,51 @@ export function activate(context: vscode.ExtensionContext): void {
     };
     const next = tick(currentState, idle, deepIdle, gameConfig);
     handleStateUpdate(next);
-  }, TICK_INTERVAL_MS);
+  }
+
+  /** Start the periodic tick timer. No-op if already running. */
+  function startTicker(): void {
+    if (tickTimer !== undefined) { return; }
+    tickTimer = setInterval(runOneTick, TICK_INTERVAL_MS);
+  }
+
+  /** Stop the periodic tick timer. */
+  function stopTicker(): void {
+    if (tickTimer !== undefined) {
+      clearInterval(tickTimer);
+      tickTimer = undefined;
+    }
+  }
+
+  /**
+   * Reload pet state from globalState, apply offline decay, and refresh the UI.
+   * Called when this window gains focus so it picks up any state written by the
+   * previously-focused (ticking) window.  Does NOT fire attention-call
+   * notifications — those were already shown in the other window.
+   */
+  function reloadAndRefreshUI(): void {
+    const fresh = loadState(context);
+    if (fresh === null) { return; }
+    const elapsed = elapsedSecondsSinceLastSave(context);
+    const decayed = applyOfflineDecay(fresh, elapsed);
+    // Clear stale events — they were already displayed in the other window.
+    decayed.events = [];
+    currentState = decayed;
+    const cfg = vscode.workspace.getConfiguration("gotchi");
+    const devModeActive =
+      cfg.get<boolean>("devModeEnabled", false) &&
+      cfg.get<string>("developerPasscode", "") === "1234";
+    sidebar?.postState(decayed, currentHighScore, devModeActive);
+    statusBar?.update(decayed);
+    saveState(context, decayed);
+  }
+
+  // Periodic tick — only the focused window ticks.
+  // On focus gain, reloadAndRefreshUI() picks up state from the prior ticker
+  // and startTicker() resumes the interval.  On focus loss, stopTicker() halts it.
+  if (vscode.window.state.focused) {
+    startTicker();
+  }
 
   // Commands
   context.subscriptions.push(
