@@ -1,6 +1,28 @@
 # Version History
 
-## v0.8.4 — current
+## v0.9.0 — current
+
+### Changes from v0.8.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.8.4` → `0.9.0`; added `gotchi.aiMode` boolean setting (default false); added `gotchi.idleResetOnDocumentChange`, `gotchi.idleResetOnCursorMovement`, `gotchi.idleResetOnTabSwitch`, `gotchi.idleResetOnWindowFocus`, `gotchi.idleResetOnMouseMovement` boolean settings (all default true) |
+| `pycharm/build.gradle.kts` | Version bumped `0.8.4` → `0.9.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.8.4` → `0.9.0`; registered `GotchiTabSwitchListener` as a project listener for `FileEditorManagerListener` |
+| `vscode/src/extension.ts` | Activity listeners now respect `gotchi.aiMode` and individual `gotchi.idleResetOn*` settings; `idleResetOnWindowFocus` gate added to the focus listener |
+| `vscode/src/sidebarProvider.ts` | Injects `idleResetOnMouseMovement` as `data-idle-reset-mouse` into the webview HTML; added `gotchi.idleResetOnMouseMovement` to the `onDidChangeConfiguration` reload list |
+| `vscode/media/sidebar.html` | Added `data-idle-reset-mouse="{{idleResetOnMouseMovement}}"` attribute to `<body>` |
+| `vscode/media/sidebar.js` | `mousemove` idle-reset listener now skipped entirely when `data-idle-reset-mouse` is `"false"` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiSettings.kt` | Added `aiMode`, `idleResetOnDocumentChange`, `idleResetOnCursorMovement`, `idleResetOnTabSwitch`, `idleResetOnWindowFocus`, `idleResetOnMouseMovement` fields to `State` class and as accessor properties |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiConfigurable.kt` | Added 6 new `JCheckBox` rows (rows 16–21): AI mode, and five idle-reset trigger toggles; filler moved to row 22; `isModified()`, `apply()`, `reset()` updated |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | AWT callback now checks per-event-type settings and `aiMode`; added `ApplicationActivationListener` subscription via app message bus for window-focus idle reset; added `markActivity()` public method; `dispose()` disconnects message bus |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiTabSwitchListener.kt` | New file — project-level `FileEditorManagerListener` that calls `GotchiPlugin.markActivity()` when `aiMode` is off and `idleResetOnTabSwitch` is on |
+| `vscode/FEATURES.md` | Added 6 new rows to Settings Reference (section 12) for `aiMode` and five `idleResetOn*` settings |
+| `VERSIONS.md` | Added v0.9.0 section |
+
+---
+
+## v0.8.4 — previous
 
 ### Changes from v0.8.3
 

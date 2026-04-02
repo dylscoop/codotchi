@@ -23,6 +23,12 @@ import com.intellij.openapi.components.*
  *  - [developerPasscode]      : developer passcode (combined with devModeEnabled) to activate developer mode (default "")
  *  - [devModeAgingMultiplier] : aging speed multiplier in dev mode (default 10)
  *  - [devModeHealthFloor]     : minimum health enforced in dev mode; default 1 (pet cannot die); set to 0 to allow death
+ *  - [aiMode]                 : suppress document-change, cursor-movement, and tab-switch idle resets (default false)
+ *  - [idleResetOnDocumentChange]  : reset idle timer on document changes (default true)
+ *  - [idleResetOnCursorMovement]  : reset idle timer on cursor/selection changes (default true)
+ *  - [idleResetOnTabSwitch]       : reset idle timer on active editor tab change (default true)
+ *  - [idleResetOnWindowFocus]     : reset idle timer when IDE window gains focus (default true)
+ *  - [idleResetOnMouseMovement]   : reset idle timer on mouse movement in the sidebar (default true)
  */
 @State(
     name = "GotchiSettings",
@@ -49,6 +55,12 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
         var developerPasscode: String = ""
         var devModeAgingMultiplier: Int = 10
         var devModeHealthFloor: Int = 1
+        var aiMode: Boolean = false
+        var idleResetOnDocumentChange: Boolean = true
+        var idleResetOnCursorMovement: Boolean = true
+        var idleResetOnTabSwitch: Boolean = true
+        var idleResetOnWindowFocus: Boolean = true
+        var idleResetOnMouseMovement: Boolean = true
     }
 
     private var _state = State()
@@ -122,4 +134,28 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
     var devModeHealthFloor: Int
         get() = _state.devModeHealthFloor
         set(v) { _state.devModeHealthFloor = v }
+
+    var aiMode: Boolean
+        get() = _state.aiMode
+        set(v) { _state.aiMode = v }
+
+    var idleResetOnDocumentChange: Boolean
+        get() = _state.idleResetOnDocumentChange
+        set(v) { _state.idleResetOnDocumentChange = v }
+
+    var idleResetOnCursorMovement: Boolean
+        get() = _state.idleResetOnCursorMovement
+        set(v) { _state.idleResetOnCursorMovement = v }
+
+    var idleResetOnTabSwitch: Boolean
+        get() = _state.idleResetOnTabSwitch
+        set(v) { _state.idleResetOnTabSwitch = v }
+
+    var idleResetOnWindowFocus: Boolean
+        get() = _state.idleResetOnWindowFocus
+        set(v) { _state.idleResetOnWindowFocus = v }
+
+    var idleResetOnMouseMovement: Boolean
+        get() = _state.idleResetOnMouseMovement
+        set(v) { _state.idleResetOnMouseMovement = v }
 }
