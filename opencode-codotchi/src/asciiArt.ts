@@ -350,7 +350,7 @@ export function getArt(stage: string, mood: string): string[] {
  * @param message  - The message text. Long messages are word-wrapped.
  * @param maxWidth - Max characters per bubble line (default 36).
  */
-export function buildBubble(message: string, maxWidth = 36): string[] {
+export function buildBubble(message: string, maxWidth = 40): string[] {
   // Word-wrap the message
   const words = message.split(" ");
   const wrapped: string[] = [];
@@ -423,7 +423,7 @@ export function buildSpeechBubble(
 
   // Build name header
   const header = `${BOLD}${stageColour}${name}${RESET} ${FG_GRAY}[${stage}]${RESET}`;
-  const lines: string[] = ["", header];
+  const lines: string[] = [RESET, "", header];
 
   // Build combined lines
   const GAP = "  ";
@@ -490,7 +490,7 @@ export function buildStatusBlock(state: {
   const artPad = [...art, ...Array(maxH - art.length).fill(" ".repeat((art[0] ?? "").length))];
   const hdrPad = [...headerLines, ...Array(maxH - headerLines.length).fill("")];
 
-  const lines: string[] = [""];
+  const lines: string[] = [RESET, ""];
   for (let i = 0; i < maxH; i++) {
     lines.push(colour(artPad[i] ?? "", stageColour) + "  " + (hdrPad[i] ?? ""));
   }
@@ -556,7 +556,7 @@ export function buildContextualSpeech(
   } else if (pet.poops > 2) {
     moodPhrase = "It's getting really messy in here...";
   } else if (pet.happiness < 20) {
-    moodPhrase = "I'm feeling really lonely. Play with me?";
+    moodPhrase = "Gotchi wants to play";
   } else if (pet.health < 30) {
     moodPhrase = "My health is low — please take care of me.";
   } else if (pet.sleeping) {
