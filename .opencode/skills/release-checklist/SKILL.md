@@ -186,6 +186,37 @@ gitignored — do not commit it.
 Also update `opencode-codotchi/package.json` `"version"` to match the repo
 version whenever the version is bumped.
 
+## Step 3f — OpenCode zip artifact (ask before every release)
+
+**Before finalising any release**, always ask the user:
+
+> "Do you want to update the `opencode-codotchi` zip for this release?"
+
+If **yes**:
+
+1. Rebuild the zip from the current source:
+   ```bash
+   # from opencode-codotchi/
+   node scripts/package.js
+   ```
+   Output: `opencode-codotchi/opencode-codotchi-X.Y.Z.zip`
+
+2. If the version number changed since the last zip, delete the old zip before
+   running the script (the script also removes it automatically).
+
+3. Commit the new zip alongside any other release changes.
+
+4. Add a row to `VERSIONS.md`:
+   ```
+   | `opencode-codotchi/opencode-codotchi-X.Y.Z.zip` | Rebuilt distributable zip for vX.Y.Z |
+   ```
+
+5. Update all README references to the zip filename (both
+   `opencode-codotchi/README.md` and the root `README.md`).
+
+If **no**, skip this step entirely — do not rebuild the zip unless the user
+confirms they want it updated.
+
 ---
 
 ## Step 4 — Final checklist before committing
@@ -205,4 +236,5 @@ Work through this list in order. Do not commit until all items are checked.
 10. [ ] `BUGFIXES.md` updated (bug fixes only)
 11. [ ] `opencode-codotchi/` files updated to mirror any `.opencode/plugins/` or `.opencode/commands/` changes
 12. [ ] `opencode-codotchi/package.json` version matches repo version
-13. [ ] Both artifacts are staged alongside all source changes in the same commit
+13. [ ] `opencode-codotchi/opencode-codotchi-X.Y.Z.zip` rebuilt if user confirmed in Step 3f
+14. [ ] Both artifacts are staged alongside all source changes in the same commit
