@@ -21,7 +21,7 @@ happier.
 | --- | ------- | ------- |
 | VS Code | `vscode/` | `.vsix` from [Releases](https://github.com/dylscoop/vscode_gotchi/releases) |
 | JetBrains (PyCharm, IntelliJ, etc.) | `pycharm/` | `.zip` from [Releases](https://github.com/dylscoop/vscode_gotchi/releases) |
-| OpenCode | `.opencode/` | Plugin loaded automatically from `.opencode/plugins/gotchi.ts` |
+| OpenCode | `.opencode/` + `opencode-codotchi/` | In-repo plugin (auto-loaded) or npm package (global install) |
 
 Both extensions share the same game engine logic and the same webview UI
 (`sidebar.html` / `sidebar.css` / `sidebar.js`). The OpenCode plugin uses a
@@ -32,39 +32,57 @@ PyCharm via a cross-platform JSON file.
 
 ### VS Code
 
-1. Download `vscode-gotchi-0.10.0.vsix` from the Releases page.
+1. Download `vscode-gotchi-0.10.1.vsix` from the Releases page.
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
 Or from the terminal:
 
 ```bash
-code --install-extension vscode-gotchi-0.10.0.vsix
+code --install-extension vscode-gotchi-0.10.1.vsix
 ```
 
 ### JetBrains
 
-1. Download `pycharm-gotchi-0.10.0.zip` from the Releases page.
+1. Download `pycharm-gotchi-0.10.1.zip` from the Releases page.
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
 
 ### OpenCode
 
+**Option A — In-repo (this repository only)**
+
 The plugin lives in `.opencode/plugins/gotchi.ts` and is loaded automatically
-by OpenCode when you open the repository.
+by OpenCode when you open this repository.
 
 1. Make sure `@opencode-ai/plugin` is installed:
    ```bash
    cd .opencode && npm install
    ```
 2. Open the repo in OpenCode — the pet plugin loads on startup.
-3. Use the `/gotchi` slash command to interact with your pet:
-   - `/gotchi` — show status
-   - `/gotchi feed` / `snack` / `play` / `pat` — care actions
-   - `/gotchi sleep` / `wake` — sleep cycle
-   - `/gotchi clean` / `medicine` — hygiene and health
-   - `/gotchi new_game name=<name> petType=<type>` — start a fresh pet
+
+**Option B — Global install via npm (`opencode-codotchi`)**
+
+Install the `opencode-codotchi` package to make your pet available in **every
+project** you open in OpenCode:
+
+1. Add to `~/.config/opencode/opencode.json`:
+   ```json
+   { "plugin": ["opencode-codotchi"] }
+   ```
+2. Run once to install the slash command globally:
+   ```bash
+   npx opencode-codotchi --install
+   ```
+3. Open any project in OpenCode — the pet loads automatically.
+
+Either way, use `/codotchi` to interact with your pet:
+- `/codotchi` — show status
+- `/codotchi feed` / `snack` / `play` / `pat` — care actions
+- `/codotchi sleep` / `wake` — sleep cycle
+- `/codotchi clean` / `medicine` — hygiene and health
+- `/codotchi new_game name=<name> petType=<type>` — start a fresh pet
 
 For full usage instructions see the individual READMEs:
 
@@ -83,9 +101,13 @@ gotchi/
 │   ├── src/main/kotlin/     Plugin source
 │   ├── src/main/resources/  plugin.xml + shared webview files
 │   └── README.md
-├── .opencode/               OpenCode terminal plugin
+├── .opencode/               OpenCode terminal plugin (in-repo)
 │   ├── plugins/             gotchi.ts, gameEngine.ts, asciiArt.ts
-│   └── commands/            /gotchi slash command definition
+│   └── commands/            /codotchi slash command definition
+├── opencode-codotchi/       OpenCode npm package (global install)
+│   ├── src/                 index.ts, gameEngine.ts, asciiArt.ts
+│   ├── commands/            /codotchi slash command definition
+│   └── bin/                 install.js CLI script
 ├── archive/                 Snapshots of previous versions
 ├── VERSIONS.md              Changelog
 └── BUGFIXES.md              Bug fix log
@@ -101,7 +123,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces vscode-gotchi-0.10.0.vsix
+# produces vscode-gotchi-0.10.1.vsix
 ```
 
 ### JetBrains plugin
@@ -117,14 +139,14 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-gotchi-0.10.0.zip
+# produces pycharm/build/distributions/pycharm-gotchi-0.10.1.zip
 ```
 
 ## Version history
 
 See [VERSIONS.md](VERSIONS.md) for the full changelog.
 
-Current release: **v0.10.0** — built by [dylscoop](https://github.com/dylscoop)
+Current release: **v0.10.1** — built by [dylscoop](https://github.com/dylscoop)
 
 ---
 

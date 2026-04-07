@@ -1,6 +1,54 @@
 # Version History
 
-## v0.10.0 — current
+## v0.10.1 — current
+
+### Changes from v0.10.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.10.0` → `0.10.1` |
+| `pycharm/build.gradle.kts` | Version bumped `0.10.0` → `0.10.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.10.0` → `0.10.1` |
+| `.opencode/commands/gotchi.md` | Renamed to `codotchi.md`; all `/gotchi` slash command references updated to `/codotchi` |
+| `.opencode/plugins/gotchi.ts` | Updated comment block and all runtime strings: `/gotchi` → `/codotchi` |
+| `.opencode/plugins/asciiArt.ts` | Updated comment reference `/gotchi status` → `/codotchi status` |
+| `opencode-codotchi/` | New directory — npm-distributable OpenCode plugin package (`opencode-codotchi`) |
+| `opencode-codotchi/src/index.ts` | Plugin entry point (adapted from `gotchi.ts`) |
+| `opencode-codotchi/src/gameEngine.ts` | Copy of `.opencode/plugins/gameEngine.ts` |
+| `opencode-codotchi/src/asciiArt.ts` | Copy of `.opencode/plugins/asciiArt.ts` |
+| `opencode-codotchi/commands/codotchi.md` | Copy of `.opencode/commands/codotchi.md` |
+| `opencode-codotchi/bin/install.js` | CLI script: copies slash command to `~/.config/opencode/commands/` |
+| `opencode-codotchi/package.json` | npm package manifest (`name: "opencode-codotchi"`, `version: "0.10.1"`) |
+| `opencode-codotchi/tsconfig.json` | TypeScript compiler config for the npm package |
+| `opencode-codotchi/README.md` | npm package README with global install instructions |
+| `.opencode/skills/release-checklist/SKILL.md` | Added Step 3e: OpenCode npm package sync rule and two new checklist items |
+| `README.md` | Install filenames updated to `0.10.1`; OpenCode section updated with npm install instructions; updated platform table |
+| `vscode/README.md` | Install filenames updated to `0.10.1` |
+| `pycharm/README.md` | Install filenames updated to `0.10.1` |
+| `vscode/FEATURES.md` | OpenCode integration row updated to reflect `/codotchi` and npm package |
+| `VERSIONS.md` | Added v0.10.1 section |
+
+### Features added
+
+**Renamed `/gotchi` slash command → `/codotchi`** — the OpenCode slash command
+is now `/codotchi` to avoid name collisions and align with the package name.
+All runtime strings (greetings, toasts, speech bubbles) updated accordingly.
+
+**`opencode-codotchi` npm package** — globally-installable OpenCode plugin
+distribution format (the `.vsix` equivalent for OpenCode):
+- Add `"plugin": ["opencode-codotchi"]` to `~/.config/opencode/opencode.json`
+  to have OpenCode automatically download and install the plugin via Bun
+- Run `npx opencode-codotchi --install` once to copy the `/codotchi` slash
+  command definition to `~/.config/opencode/commands/`
+- Package contains: `src/index.ts` (plugin), `src/gameEngine.ts`,
+  `src/asciiArt.ts`, `commands/codotchi.md`, `bin/install.js`
+- Three separate copies of `gameEngine.ts` and `asciiArt.ts` are intentional
+  (`.opencode/plugins/`, `opencode-codotchi/src/`, and `vscode/src/`) —
+  the release-checklist skill now enforces keeping them in sync
+
+---
+
+## v0.10.0 — previous
 
 ### Changes from v0.9.4
 
