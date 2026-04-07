@@ -18,6 +18,14 @@
 | `vscode/README.md` | Install filenames updated to `0.10.3` |
 | `pycharm/README.md` | Install filenames updated to `0.10.3` |
 | `VERSIONS.md` | Added v0.10.3 section |
+| `.opencode/plugins/gotchi.ts` | Removed `experimental.text.complete` hook (BUGFIX-041); removed `artHeader()` from `status` case (BUGFIX-042); added `Weight` to plain-text stats line (BUGFIX-043); replaced "Play with me?" phrases with third-person variants (BUGFIX-044) |
+| `opencode-codotchi/src/index.ts` | Mirrored from `.opencode/plugins/gotchi.ts` (same changes) |
+| `.opencode/plugins/asciiArt.ts` | Added `RESET` guard to `buildSpeechBubble` and `buildStatusBlock` output (BUGFIX-045); widened `buildBubble` default `maxWidth` 36 → 40; replaced "lonely" phrase (BUGFIX-044) |
+| `opencode-codotchi/src/asciiArt.ts` | Mirrored from `.opencode/plugins/asciiArt.ts` (same changes) |
+| `.opencode/commands/codotchi.md` | Removed `## Usage` section (was injected on every invocation); added `help` action; fixed `status` output format instructions |
+| `opencode-codotchi/commands/codotchi.md` | Mirrored from `.opencode/commands/codotchi.md` (same changes) |
+| `BUGFIXES.md` | Added BUGFIX-041 through BUGFIX-045 |
+| `.opencode/skills/release-checklist/SKILL.md` | Made local reinstall (`node bin/install.js --install`) mandatory rather than optional |
 
 ### Features added
 
@@ -28,6 +36,14 @@ combines pet mood with session coding activity (files edited + session time) for
 a dynamic message on every action. The `terminalEnabled` flag now persists
 across OpenCode restarts. Sprites were redesigned with distinct silhouettes for
 each of the 6 life stages.
+
+### Bug fixes
+
+- **BUGFIX-041** — Removed `experimental.text.complete` hook that caused double sprite and raw ANSI codes in markdown chat
+- **BUGFIX-042** — Removed duplicate `artHeader()` call in `status` case that drew the sprite twice
+- **BUGFIX-043** — Added missing `Weight` field to plain-text stats line in `/codotchi status`
+- **BUGFIX-044** — Replaced first-person "Play with me?" phrases with third-person "Gotchi wants to play"
+- **BUGFIX-045** — Added leading `RESET` to `buildSpeechBubble` and `buildStatusBlock` to prevent ANSI colour bleed
 
 ---
 

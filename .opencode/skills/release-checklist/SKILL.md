@@ -211,13 +211,11 @@ ask the user whether to reinstall the plugin locally.
 4. Update all README references to the zip filename (both
    `opencode-codotchi/README.md` and the root `README.md`).
 
-### 3f-ii. Reinstall locally (ask the user)
+### 3f-ii. Reinstall locally (mandatory)
 
-After rebuilding the zip, always ask:
-
-> "Do you want to reinstall the opencode-codotchi plugin locally now?"
-
-If **yes**:
+After rebuilding the zip, **always** reinstall the plugin locally. This is not
+optional — the running OpenCode session uses the installed copy, and skipping
+this step means the old plugin stays active until manually replaced.
 
 ```bash
 # from opencode-codotchi/
@@ -228,7 +226,8 @@ This copies the updated plugin source files into `~/.config/opencode/plugins/`
 and the slash command into `~/.config/opencode/commands/` so the live OpenCode
 session picks up the new code on next restart.
 
-If **no**, skip the install — the user will reinstall manually later.
+If the install fails, fix the errors before committing — do not commit a zip
+that cannot be installed.
 
 ---
 
@@ -250,5 +249,5 @@ Work through this list in order. Do not commit until all items are checked.
 11. [ ] `opencode-codotchi/` files updated to mirror any `.opencode/plugins/` or `.opencode/commands/` changes
 12. [ ] `opencode-codotchi/package.json` version matches repo version
 13. [ ] `opencode-codotchi/opencode-codotchi-X.Y.Z.zip` rebuilt (Step 3f-i)
-14. [ ] User asked about local reinstall (Step 3f-ii)
+14. [ ] Local reinstall done: `node bin/install.js --install` run from `opencode-codotchi/` (Step 3f-ii)
 15. [ ] Both artifacts are staged alongside all source changes in the same commit
