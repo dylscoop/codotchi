@@ -94,6 +94,21 @@ class GotchiPlugin : Disposable {
     private var tickFuture: ScheduledFuture<*>? = null
     private var messageBusConnection: MessageBusConnection? = null
 
+    private fun startTicker() {
+        if (tickFuture != null) return
+        tickFuture = AppExecutorUtil.getAppScheduledExecutorService().scheduleWithFixedDelay(
+            ::onTick,
+            TICK_INTERVAL_SECONDS.toLong(),
+            TICK_INTERVAL_SECONDS.toLong(),
+            TimeUnit.SECONDS,
+        )
+    }
+
+    private fun stopTicker() {
+        tickFuture?.cancel(false)
+        tickFuture = null
+    }
+
     // ── Initialisation ─────────────────────────────────────────────────────
 
     fun initialize() {
@@ -113,6 +128,21 @@ class GotchiPlugin : Disposable {
                     val s = service<GotchiSettings>()
                     if (s.idleResetOnWindowFocus) {
                         lastActivityTime = System.currentTimeMillis()
+                    }
+                    startTicker()
+                }
+                override fun applicationDeactivated(ideFrame: IdeFrame) {
+                    // Save immediately on focus loss so no progress is lost
+                    stateLock.withLock { currentState }?.let { state ->
+                        service<GotchiPersistence>().savePetState(state)
+                        service<GotchiPersistence>().lastSaveTimestamp = System.currentTimeMillis()
+                    }
+                    // In AI mode, keep ticking while unfocused so the pet advances
+                    // while an AI agent codes in the background. The focus-gate exists
+                    // only to prevent multi-window state divergence, which aiMode avoids
+                    // by design (the AI doesn't open extra windows).
+                    if (!service<GotchiSettings>().aiMode) {
+                        stopTicker()
                     }
                 }
             }
@@ -142,12 +172,7 @@ class GotchiPlugin : Disposable {
         }
 
         // Start tick scheduler
-        tickFuture = AppExecutorUtil.getAppScheduledExecutorService().scheduleWithFixedDelay(
-            ::onTick,
-            TICK_INTERVAL_SECONDS.toLong(),
-            TICK_INTERVAL_SECONDS.toLong(),
-            TimeUnit.SECONDS,
-        )
+        startTicker()
 
         // Initial broadcast so UI reflects restored state immediately
         broadcastState()
@@ -450,7 +475,7 @@ class GotchiPlugin : Disposable {
     // ── Disposable ─────────────────────────────────────────────────────────
 
     override fun dispose() {
-        tickFuture?.cancel(false)
+        stopTicker()
         Toolkit.getDefaultToolkit().removeAWTEventListener(awtActivityListener)
         messageBusConnection?.disconnect()
     }

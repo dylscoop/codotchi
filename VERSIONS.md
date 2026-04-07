@@ -1,6 +1,41 @@
 # Version History
 
-## v0.9.2 — current
+## v0.9.3 — current
+
+### Changes from v0.9.2
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | Added `startTicker()` (idempotent) and `stopTicker()` private helpers; `initialize()` now calls `startTicker()` instead of inlining `scheduleWithFixedDelay`; `applicationActivated` callback calls `startTicker()` on focus-gain; new `applicationDeactivated` callback saves state immediately and calls `stopTicker()` on focus-loss (unless AI mode is on); `dispose()` calls `stopTicker()` instead of `tickFuture?.cancel(false)` |
+| `vscode/src/extension.ts` | `onDidChangeWindowState` focus-loss now skips `stopTicker()` when `aiMode` is on; focus-gain now skips `reloadAndRefreshUI()` when `aiMode` is on (in-memory state is already current); initial ticker start is unconditional when `aiMode` is on |
+| `vscode/FEATURES.md` | Added PyCharm focus-gated ticker row and AI-mode exemption note to Section 11 (Persistence) |
+| `VERSIONS.md` | Added v0.9.3 section |
+
+### Bugs fixed
+
+**PyCharm ticker runs while IntelliJ is unfocused** — `GotchiPlugin` is an
+application-level singleton, so there was only one `tickFuture` across all
+project windows (no multi-window divergence). However, the ticker continued
+running while IntelliJ was in the background, causing pet stats to advance
+even when the developer was not at their desk. Now the ticker stops when
+IntelliJ loses focus (`applicationDeactivated`) and restarts when it regains
+focus (`applicationActivated`). The idle clock still advances on wall time, so
+the first tick after regaining focus will correctly observe any accumulated idle
+period. State is also saved immediately on focus-loss to prevent progress loss.
+
+**Focus-gated ticker paused game in AI mode** — when `aiMode` was enabled and
+the IDE window lost focus (e.g. the developer switched to a browser while an AI
+agent coded), the ticker stopped and the game froze. The focus-gate exists only
+to prevent multi-window state divergence; AI mode avoids that problem by design
+(the AI doesn't open extra windows). Fixed in both VS Code (`extension.ts`) and
+PyCharm (`GotchiPlugin.kt`): `stopTicker()` is now skipped when `aiMode` is on,
+so the game continues advancing in the background. The initial ticker start at
+activation is also unconditional in AI mode (VS Code only — PyCharm already
+starts unconditionally).
+
+---
+
+## v0.9.2 — previous
 
 ### Changes from v0.9.1
 
