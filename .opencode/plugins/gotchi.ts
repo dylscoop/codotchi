@@ -176,6 +176,23 @@ function drainNotification(): string {
   return msg + "\n\n";
 }
 
+/**
+ * Returns the contextual art header (speech bubble) when:
+ *   - terminalEnabled is true, AND
+ *   - a living pet exists in petState at the time of calling.
+ * Always call this AFTER any state-mutating operation so the art
+ * reflects the pet's updated stats.
+ */
+function artHeader(): string {
+  if (!terminalEnabled || petState === null || !petState.alive) { return ""; }
+  const speech = buildContextualSpeech(
+    petState,
+    sessionFilesEdited,
+    Date.now() - sessionStartMs
+  );
+  return buildSpeechBubble(petState.stage, petState.mood, speech, petState.name) + "\n";
+}
+
 /** Load state from shared file; if none exists, stay null (no pet yet). */
 function loadState(): void {
   const shared = loadFromSharedFile();
@@ -340,23 +357,6 @@ export const plugin: Plugin = async (_ctx) => {
         ? `${petState.name} [${petState.stage}]`
         : "codotchi";
       context.metadata({ title: panelTitle });
-
-      /**
-       * Returns the contextual art header (speech bubble) when:
-       *   - terminalEnabled is true, AND
-       *   - a living pet exists in petState at the time of calling.
-       * Always call this AFTER any state-mutating operation so the art
-       * reflects the pet's updated stats.
-       */
-      const artHeader = (): string => {
-        if (!terminalEnabled || petState === null || !petState.alive) { return ""; }
-        const speech = buildContextualSpeech(
-          petState,
-          sessionFilesEdited,
-          Date.now() - sessionStartMs
-        );
-        return buildSpeechBubble(petState.stage, petState.mood, speech, petState.name) + "\n";
-      };
 
       // ---------------------------------------------------------------------------
       // on / off — toggle ASCII art display
