@@ -468,6 +468,75 @@ export function buildStatusBlock(state: {
 }
 
 /**
+ * Build a contextual speech line combining pet mood and coding session activity.
+ *
+ * @param pet          - Key pet fields needed to pick a mood-relevant phrase.
+ * @param filesEdited  - Number of files edited this session.
+ * @param sessionMs    - Milliseconds elapsed since the session started.
+ */
+export function buildContextualSpeech(
+  pet: {
+    name: string;
+    stage: string;
+    mood: string;
+    hunger: number;
+    happiness: number;
+    energy: number;
+    health: number;
+    sick: boolean;
+    sleeping: boolean;
+    poops: number;
+  },
+  filesEdited: number,
+  sessionMs: number
+): string {
+  // --- Session activity phrase ---
+  const sessionMins = Math.floor(sessionMs / 60_000);
+  const sessionHours = Math.floor(sessionMins / 60);
+  const sessionLabel = sessionHours >= 1
+    ? `${sessionHours}h ${sessionMins % 60}m`
+    : sessionMins >= 1
+    ? `${sessionMins}m`
+    : "just started";
+  const activityPhrase =
+    filesEdited === 0  ? "No edits yet this session."
+    : filesEdited < 5  ? `${filesEdited} file${filesEdited > 1 ? "s" : ""} edited — just warming up!`
+    : filesEdited < 15 ? `${filesEdited} files edited in ${sessionLabel} — nice flow!`
+    : filesEdited < 30 ? `${filesEdited} files edited in ${sessionLabel} — on a roll!`
+    :                    `${filesEdited} files edited in ${sessionLabel} — incredible focus!`;
+
+  // --- Pet mood phrase (most critical stat wins) ---
+  let moodPhrase: string;
+  if (!pet.sleeping && pet.energy < 15) {
+    moodPhrase = "I'm absolutely exhausted, please let me sleep...";
+  } else if (pet.sick) {
+    moodPhrase = "I don't feel well at all. I need medicine!";
+  } else if (pet.hunger < 15) {
+    moodPhrase = "I'm starving! Please feed me soon.";
+  } else if (pet.poops > 2) {
+    moodPhrase = "It's getting really messy in here...";
+  } else if (pet.happiness < 20) {
+    moodPhrase = "I'm feeling really lonely. Play with me?";
+  } else if (pet.health < 30) {
+    moodPhrase = "My health is low — please take care of me.";
+  } else if (pet.sleeping) {
+    moodPhrase = "Zzz... I'm recharging. Talk to you soon!";
+  } else if (pet.hunger < 40) {
+    moodPhrase = "Getting a bit hungry — a snack would be nice.";
+  } else if (pet.energy < 40) {
+    moodPhrase = "A bit tired but still with you!";
+  } else if (pet.happiness > 70 && pet.health > 70) {
+    moodPhrase = "I'm thriving! Keep up the great work.";
+  } else if (pet.mood === "happy") {
+    moodPhrase = "I'm feeling great today!";
+  } else {
+    moodPhrase = "I'm doing okay. Let's keep coding!";
+  }
+
+  return `${moodPhrase} ${activityPhrase}`;
+}
+
+/**
  * Build a simple one-line toast notification string (for minor events).
  */
 export function buildToast(stage: string, message: string): string {
