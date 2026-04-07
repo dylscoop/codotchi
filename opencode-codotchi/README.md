@@ -20,29 +20,39 @@ Raises your gotchi in the terminal alongside your coding session.
 > `npm login` (or set `NPM_TOKEN=<token>`) then `npm publish` from this
 > directory. See [Building from source](#building-from-source) below.
 
-### 1. Add the plugin to your OpenCode config
+### 1. Run the installer
 
-Edit `~/.config/opencode/opencode.json` (create it if it doesn't exist):
-
-```json
-{
-  "plugin": ["opencode-codotchi"]
-}
-```
-
-OpenCode will automatically download and install the package via Bun on next startup.
-
-### 2. Install the slash command
-
-Run once to copy the `/codotchi` command definition to your global OpenCode commands directory:
+Run once per machine to set up the slash command and OpenCode config:
 
 ```bash
 npx opencode-codotchi --install
 ```
 
-This copies `commands/codotchi.md` to `~/.config/opencode/commands/codotchi.md`.
+This does two things:
 
-### 3. Open OpenCode
+1. **Copies the slash command** — `commands/codotchi.md` →
+   `~/.config/opencode/commands/codotchi.md`
+   (Windows: `%APPDATA%\opencode\commands\codotchi.md`)
+
+2. **Copies the OpenCode config** — `config/opencode.json` →
+   `~/.config/opencode/opencode.json`
+   (Windows: `%APPDATA%\opencode\opencode.json`)
+   **Only if the file does not already exist** — your existing config is never
+   overwritten. If the file already exists, the installer prints a skip message
+   and reminds you to add `"opencode-codotchi"` to your `"plugin"` array manually.
+
+The installed `opencode.json` contains:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-codotchi"]
+}
+```
+
+OpenCode reads this on startup and automatically downloads the plugin via Bun.
+
+### 2. Open OpenCode
 
 The pet plugin loads automatically on startup. Your pet will greet you in a speech bubble.
 

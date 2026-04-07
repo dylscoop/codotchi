@@ -72,15 +72,15 @@ by OpenCode when you open this repository.
 Install the `opencode-codotchi` package to make your pet available in **every
 project** you open in OpenCode:
 
-1. Add to `~/.config/opencode/opencode.json`:
-   ```json
-   { "plugin": ["opencode-codotchi"] }
-   ```
-2. Run once to install the slash command globally:
+1. Run once to install the slash command and set up your OpenCode config:
    ```bash
    npx opencode-codotchi --install
    ```
-3. Open any project in OpenCode — the pet loads automatically.
+   This copies `commands/codotchi.md` to `~/.config/opencode/commands/` and
+   copies `config/opencode.json` to `~/.config/opencode/opencode.json` (only
+   if that file does not already exist — existing configs are never overwritten;
+   if it already exists, add `"opencode-codotchi"` to your `"plugin"` array).
+2. Open any project in OpenCode — the pet loads automatically.
 
 Either way, use `/codotchi` to interact with your pet:
 - `/codotchi` — show status

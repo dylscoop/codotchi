@@ -27,6 +27,7 @@
   "files": [
     "dist/",
     "commands/",
-    "bin/"
+    "bin/",
+    "config/"
   ]
 }

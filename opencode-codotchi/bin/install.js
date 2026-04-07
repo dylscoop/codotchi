@@ -2,17 +2,21 @@
 /**
  * bin/install.js
  *
- * CLI installer for the opencode-codotchi slash command.
+ * CLI installer for opencode-codotchi.
  *
  * Usage:
  *   npx opencode-codotchi --install
  *
  * What it does:
- *   Copies commands/codotchi.md → ~/.config/opencode/commands/codotchi.md
- *   (Windows: %APPDATA%\opencode\commands\codotchi.md)
+ *   1. Copies commands/codotchi.md → ~/.config/opencode/commands/codotchi.md
+ *      (Windows: %APPDATA%\opencode\commands\codotchi.md)
  *
- * This step is required once per machine so the /codotchi slash command is
- * available in all OpenCode projects, not just this repo.
+ *   2. Copies config/opencode.json → ~/.config/opencode/opencode.json
+ *      (Windows: %APPDATA%\opencode\opencode.json)
+ *      ONLY if the destination does not already exist — never overwrites.
+ *
+ * Both steps are required once per machine so the /codotchi slash command and
+ * the plugin registration are available in all OpenCode projects.
  */
 
 const fs   = require("fs");
@@ -25,10 +29,7 @@ if (!args.includes("--install")) {
   console.log("opencode-codotchi");
   console.log("");
   console.log("Usage:");
-  console.log("  npx opencode-codotchi --install   Install /codotchi slash command globally");
-  console.log("");
-  console.log("After installing, add the plugin to ~/.config/opencode/opencode.json:");
-  console.log('  { "plugin": ["opencode-codotchi"] }');
+  console.log("  npx opencode-codotchi --install   Install /codotchi slash command and OpenCode config globally");
   process.exit(0);
 }
 
@@ -38,26 +39,57 @@ const configBase =
     ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")
     : path.join(os.homedir(), ".config");
 
-const commandsDir = path.join(configBase, "opencode", "commands");
-const dest        = path.join(commandsDir, "codotchi.md");
-const src         = path.join(__dirname, "..", "commands", "codotchi.md");
+const opencodeDir  = path.join(configBase, "opencode");
+const commandsDir  = path.join(opencodeDir, "commands");
+const commandDest  = path.join(commandsDir, "codotchi.md");
+const commandSrc   = path.join(__dirname, "..", "commands", "codotchi.md");
+const configDest   = path.join(opencodeDir, "opencode.json");
+const configSrc    = path.join(__dirname, "..", "config", "opencode.json");
 
-// Ensure the commands directory exists
+let anyError = false;
+
+// ── Step 1: Install /codotchi slash command ──────────────────────────────────
+
 if (!fs.existsSync(commandsDir)) {
   fs.mkdirSync(commandsDir, { recursive: true });
   console.log(`Created directory: ${commandsDir}`);
 }
 
-// Copy the command file
 try {
-  fs.copyFileSync(src, dest);
-  console.log(`Installed: ${dest}`);
-  console.log("");
-  console.log("Done! The /codotchi slash command is now available globally in OpenCode.");
-  console.log("");
-  console.log("Next step — add the plugin to ~/.config/opencode/opencode.json:");
-  console.log('  { "plugin": ["opencode-codotchi"] }');
+  fs.copyFileSync(commandSrc, commandDest);
+  console.log(`Installed slash command: ${commandDest}`);
 } catch (err) {
-  console.error(`Failed to install: ${err.message}`);
+  console.error(`Failed to install slash command: ${err.message}`);
+  anyError = true;
+}
+
+// ── Step 2: Install opencode.json (skip if already exists) ──────────────────
+
+if (fs.existsSync(configDest)) {
+  console.log(`Skipped opencode.json — already exists: ${configDest}`);
+  console.log(`  (Add "opencode-codotchi" to the "plugin" array manually if needed.)`);
+} else {
+  // Ensure the opencode directory exists (commandsDir mkdir above covers this,
+  // but guard in case the commands step errored and we still want to try.)
+  if (!fs.existsSync(opencodeDir)) {
+    fs.mkdirSync(opencodeDir, { recursive: true });
+  }
+  try {
+    fs.copyFileSync(configSrc, configDest);
+    console.log(`Installed OpenCode config: ${configDest}`);
+  } catch (err) {
+    console.error(`Failed to install opencode.json: ${err.message}`);
+    anyError = true;
+  }
+}
+
+// ── Done ─────────────────────────────────────────────────────────────────────
+
+console.log("");
+if (anyError) {
+  console.error("Installation completed with errors. See above for details.");
   process.exit(1);
+} else {
+  console.log("Done! The /codotchi slash command is now available globally in OpenCode.");
+  console.log("The plugin will be downloaded automatically by OpenCode on next startup.");
 }

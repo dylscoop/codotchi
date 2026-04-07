@@ -21,6 +21,11 @@
 | `opencode-codotchi/package.json` | npm package manifest (`name: "opencode-codotchi"`, `version: "0.10.1"`) |
 | `opencode-codotchi/tsconfig.json` | TypeScript compiler config for the npm package |
 | `opencode-codotchi/README.md` | npm package README with global install instructions |
+| `opencode-codotchi/config/opencode.json` | New file — minimal example OpenCode config; copied to `~/.config/opencode/opencode.json` by `--install` if not already present |
+| `opencode-codotchi/bin/install.js` | Extended `--install`: now also copies `config/opencode.json` → `~/.config/opencode/opencode.json` (skip if exists); updated usage message |
+| `opencode-codotchi/package.json` | Added `"config/"` to `"files"` array so `config/opencode.json` is included in npm publish |
+| `opencode-codotchi/README.md` | Updated Global install section: `--install` now handles both slash command and config file in one step |
+| `README.md` | Updated Option B install steps: simplified to one `npx opencode-codotchi --install` command |
 | `.opencode/skills/release-checklist/SKILL.md` | Added Step 3e: OpenCode npm package sync rule and two new checklist items |
 | `README.md` | Install filenames updated to `0.10.1`; OpenCode section updated with npm install instructions; updated platform table |
 | `README.md` | Added note that `opencode-codotchi` is not yet published to npm and requires `npm login` / `NPM_TOKEN` before global install works |
