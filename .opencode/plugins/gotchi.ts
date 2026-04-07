@@ -128,6 +128,10 @@ let terminalEnabled = false;
 
 let pendingNotification: string | null = null;
 
+// Stores the last execute() return value so tool.execute.after can mirror it
+// to the details panel via output.output.
+let lastToolOutput = "";
+
 function queueNotification(msg: string): void {
   // If a notification is already pending, append (newline-separated)
   pendingNotification = pendingNotification ? pendingNotification + "\n" + msg : msg;
@@ -296,6 +300,8 @@ export const plugin: Plugin = async (_ctx) => {
     async execute({ action, name, petType }, context) {
       // Drain any queued tick notifications to prepend to this result
       const notification = drainNotification();
+      // Capture every return value so tool.execute.after can write it to output.output
+      const ret = (s: string): string => { lastToolOutput = s; return s; };
 
       // Set the tool panel title
       const panelTitle = petState
@@ -311,7 +317,7 @@ export const plugin: Plugin = async (_ctx) => {
         const msg = petState
           ? `ASCII art enabled. Use /codotchi status to see ${petState.name}.`
           : "ASCII art enabled. No pet found yet — start a game in VS Code or PyCharm.";
-        return notification + msg;
+        return ret(notification + msg);
       }
 
       if (action === "off") {
@@ -319,7 +325,7 @@ export const plugin: Plugin = async (_ctx) => {
         const msg = petState
           ? `ASCII art disabled. Stats will be shown as plain text.`
           : "ASCII art disabled.";
-        return notification + msg;
+        return ret(notification + msg);
       }
 
       // ---------------------------------------------------------------------------
@@ -335,14 +341,14 @@ export const plugin: Plugin = async (_ctx) => {
         const art = terminalEnabled
           ? buildSpeechBubble(petState.stage, petState.mood, `Hi! I'm ${petName}. Nice to meet you!`, petName)
           : "";
-        return notification + (art ? art + "\n" : "") + `New game started! Your ${petKind} named "${petName}" has hatched.`;
+        return ret(notification + (art ? art + "\n" : "") + `New game started! Your ${petKind} named "${petName}" has hatched.`);
       }
 
       // ---------------------------------------------------------------------------
       // All other actions require an existing pet
       // ---------------------------------------------------------------------------
       if (petState === null) {
-        return (
+        return ret(
           notification +
           "No pet found. Start a new game first:\n" +
           "  - In VS Code: open the Gotchi sidebar and choose New Game\n" +
@@ -351,7 +357,7 @@ export const plugin: Plugin = async (_ctx) => {
       }
 
       if (!petState.alive) {
-        return notification + `${petState.name} has passed away. Start a new game to continue.`;
+        return ret(notification + `${petState.name} has passed away. Start a new game to continue.`);
       }
 
       // Update panel title with current stage
@@ -378,11 +384,11 @@ export const plugin: Plugin = async (_ctx) => {
               })
             : "";
           const textStats = `${petState.name} | Stage: ${petState.stage} | Hunger: ${petState.hunger} | Happiness: ${petState.happiness} | Energy: ${petState.energy} | Health: ${petState.health}`;
-          return notification + (art ? art + "\n" : "") + textStats;
+          return ret(notification + (art ? art + "\n" : "") + textStats);
         }
 
         case "feed": {
-          if (petState.sleeping) { return notification + `${petState.name} is sleeping and can't eat right now.`; }
+          if (petState.sleeping) { return ret(notification + `${petState.name} is sleeping and can't eat right now.`); }
           petState = feedMeal(petState, mealsThisCycle);
           const refused = petState.events.includes("meal_refused");
           if (!refused) { mealsThisCycle += 1; }
@@ -393,11 +399,11 @@ export const plugin: Plugin = async (_ctx) => {
           const result = refused
             ? `Meal refused — ${petState.name} has already had ${mealsThisCycle} meals this wake cycle.`
             : `Fed ${petState.name}. Hunger: ${petState.hunger}/100, Weight: ${petState.weight}.`;
-          return notification + toast + "\n" + result;
+          return ret(notification + toast + "\n" + result);
         }
 
         case "pat": {
-          if (petState.sleeping) { return notification + `${petState.name} is sleeping.`; }
+          if (petState.sleeping) { return ret(notification + `${petState.name} is sleeping.`); }
           petState = pat(petState);
           const refused = petState.events.includes("pat_refused_no_energy");
           saveState();
@@ -407,16 +413,16 @@ export const plugin: Plugin = async (_ctx) => {
           const result = refused
             ? `Pat refused — ${petState.name} is too exhausted.`
             : `Patted ${petState.name}. Happiness: ${petState.happiness}.`;
-          return notification + toast + "\n" + result;
+          return ret(notification + toast + "\n" + result);
         }
 
         case "sleep": {
           petState = sleep(petState);
           const already = petState.events.includes("already_sleeping");
           saveState();
-          return notification + (already
+          return ret(notification + (already
             ? `${petState.name} is already sleeping.`
-            : `${petState.name} is now sleeping. Energy will recharge.`);
+            : `${petState.name} is now sleeping. Energy will recharge.`));
         }
 
         case "clean": {
@@ -429,12 +435,12 @@ export const plugin: Plugin = async (_ctx) => {
           const result = already
             ? `Nothing to clean — ${petState.name}'s area is already spotless.`
             : `Cleaned up ${petState.name}'s mess. Poops remaining: 0.`;
-          return notification + toast + "\n" + result;
+          return ret(notification + toast + "\n" + result);
         }
 
         case "medicine": {
           if (!petState.sick) {
-            return notification + `${petState.name} is not sick — medicine not needed.`;
+            return ret(notification + `${petState.name} is not sick — medicine not needed.`);
           }
           petState = giveMedicine(petState);
           const cured = petState.events.includes("cured");
@@ -445,11 +451,11 @@ export const plugin: Plugin = async (_ctx) => {
           const result = cured
             ? `${petState.name} has been cured!`
             : `Gave medicine to ${petState.name}. Doses given: ${petState.medicineDosesGiven}/3.`;
-          return notification + toast + "\n" + result;
+          return ret(notification + toast + "\n" + result);
         }
 
         default:
-          return notification + "Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off.";
+          return ret(notification + "Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off.");
       }
     },
   });
@@ -460,6 +466,15 @@ export const plugin: Plugin = async (_ctx) => {
   return {
     tool: {
       gotchi: gotchiTool,
+    },
+
+    // Mirror the tool result to the details panel (output.output is what OpenCode
+    // renders in the tool execution details window; execute()'s return value goes
+    // only to the LLM, not to the panel).
+    async "tool.execute.after"({ tool: toolName }, output) {
+      if (toolName === "gotchi") {
+        output.output = lastToolOutput;
+      }
     },
 
     async event({ event }) {
