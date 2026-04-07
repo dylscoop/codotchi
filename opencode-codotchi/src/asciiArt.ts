@@ -35,6 +35,17 @@ export function colour(text: string, ansiCode: string): string {
   return `${ansiCode}${text}${RESET}`;
 }
 
+/**
+ * Strip all ANSI escape sequences from a string, returning plain text.
+ * Used to produce markdown-safe output from art functions (e.g. for the
+ * experimental.text.complete hook, which renders in a markdown context where
+ * ANSI codes appear as raw escape sequences rather than colours).
+ */
+// eslint-disable-next-line no-control-regex
+export function stripAnsi(str: string): string {
+  return str.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
 // ---------------------------------------------------------------------------
 // Sprite art — one entry per life stage, per mood
 // Each art block is an array of strings (lines). All lines are the same width.

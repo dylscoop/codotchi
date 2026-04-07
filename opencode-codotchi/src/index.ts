@@ -61,6 +61,7 @@ import {
   buildStatusBlock,
   buildToast,
   buildContextualSpeech,
+  stripAnsi,
 } from "./asciiArt.js";
 
 // ---------------------------------------------------------------------------
@@ -158,6 +159,15 @@ let terminalEnabled = false;
 
 let sessionFilesEdited = 0;
 let sessionStartMs = Date.now();
+
+// ---------------------------------------------------------------------------
+// Suppress text.complete art for one cycle after a gotchi tool call.
+// When the user explicitly calls /codotchi <action>, the tool already shows
+// a coloured sprite in the tool output. We skip the plain-text sprite for
+// the immediately following LLM text response to avoid showing it twice.
+// ---------------------------------------------------------------------------
+
+let suppressNextTextArt = false;
 
 // ---------------------------------------------------------------------------
 // Pending notification queue
@@ -359,6 +369,9 @@ export const plugin: Plugin = async (_ctx) => {
       const notification = drainNotification();
       // Capture every return value so tool.execute.after can write it to output.output
       const ret = (s: string): string => { lastToolOutput = s; return s; };
+      // Suppress the text.complete sprite for the LLM response that immediately
+      // follows this tool call — the tool output already shows a coloured sprite.
+      suppressNextTextArt = true;
 
       // Set the tool panel title
       const panelTitle = petState
@@ -546,6 +559,34 @@ export const plugin: Plugin = async (_ctx) => {
       if (toolName === "gotchi") {
         output.output = lastToolOutput;
       }
+    },
+
+    // Append a plain-ASCII speech bubble to every LLM text response when
+    // terminal art is enabled. Plain ASCII (no ANSI codes) is used because
+    // output.text is rendered as markdown — ANSI codes would appear as raw
+    // escape sequences. The suppressNextTextArt flag prevents a double-sprite
+    // when the user explicitly called /codotchi (tool output already has art).
+    async "experimental.text.complete"(_input, output) {
+      if (suppressNextTextArt) {
+        suppressNextTextArt = false;
+        return;
+      }
+      if (!terminalEnabled || !petState || !petState.alive) return;
+
+      const msg = buildContextualSpeech({
+        hunger:    petState.hunger,
+        happiness: petState.happiness,
+        energy:    petState.energy,
+        health:    petState.health,
+        poops:     petState.poops,
+        sleeping:  petState.sleeping,
+        sick:      petState.sick,
+      });
+      const bubbleLines = buildSpeechBubble(
+        petState.stage, petState.mood, msg, petState.name
+      );
+      const plain = stripAnsi(bubbleLines.join("\n"));
+      output.text = output.text + "\n\n```\n" + plain + "\n```";
     },
 
     async event({ event }) {
