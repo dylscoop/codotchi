@@ -65,22 +65,6 @@ class GotchiPersistence : PersistentStateComponent<Element> {
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    /**
-     * Deserialise [petStateJson] into a PetState, applying sanitisation for
-     * fields that may be missing in saves from older plugin versions.
-     *
-     * Returns null if there is no saved state or the JSON is corrupt.
-     */
-    fun loadPetState(): PetState? {
-        val json = petStateJson ?: return null
-        return try {
-            val raw = gson.fromJson(json, RawPetState::class.java) ?: return null
-            sanitise(raw)
-        } catch (_: JsonSyntaxException) {
-            null
-        }
-    }
-
     /** Serialise [state] into [petStateJson] and write to the cross-IDE shared file. */
     fun savePetState(state: PetState) {
         petStateJson = gson.toJson(toRaw(state))
