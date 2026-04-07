@@ -77,15 +77,20 @@ function getSharedStatePath(): string {
 interface SharedStateFile {
   state: Record<string, unknown>;
   savedAt: number;
+  terminalEnabled?: boolean;
 }
 
-function loadFromSharedFile(): { state: PetState; savedAt: number } | null {
+function loadFromSharedFile(): { state: PetState; savedAt: number; terminalEnabled: boolean } | null {
   try {
     const filePath = getSharedStatePath();
     if (!fs.existsSync(filePath)) { return null; }
     const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as SharedStateFile;
     if (!raw.state || typeof raw.savedAt !== "number") { return null; }
-    return { state: deserialiseState(raw.state), savedAt: raw.savedAt };
+    return {
+      state: deserialiseState(raw.state),
+      savedAt: raw.savedAt,
+      terminalEnabled: raw.terminalEnabled ?? false,
+    };
   } catch {
     return null;
   }
@@ -99,10 +104,28 @@ function saveToSharedFile(state: PetState): void {
     const payload: SharedStateFile = {
       state: serialiseState(state) as Record<string, unknown>,
       savedAt: Date.now(),
+      terminalEnabled,
     };
     fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
   } catch {
     // Best-effort — never crash the plugin if the shared file is unavailable.
+  }
+}
+
+/** Persist only the terminalEnabled flag, leaving the rest of the file intact. */
+function saveTerminalEnabled(): void {
+  try {
+    const filePath = getSharedStatePath();
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
+    let existing: SharedStateFile = { state: {}, savedAt: Date.now(), terminalEnabled };
+    if (fs.existsSync(filePath)) {
+      try { existing = JSON.parse(fs.readFileSync(filePath, "utf8")) as SharedStateFile; } catch { /* ignore */ }
+    }
+    existing.terminalEnabled = terminalEnabled;
+    fs.writeFileSync(filePath, JSON.stringify(existing), "utf8");
+  } catch {
+    // Best-effort.
   }
 }
 
@@ -160,6 +183,7 @@ function loadState(): void {
     const elapsedSeconds = (Date.now() - shared.savedAt) / 1_000;
     petState = applyOfflineDecay(shared.state, elapsedSeconds);
     lastSavedAt = shared.savedAt;
+    terminalEnabled = shared.terminalEnabled;
     // Reset meal counter when loading (we don't persist it cross-IDE)
     mealsThisCycle = 0;
   }
@@ -322,6 +346,7 @@ export const plugin: Plugin = async (_ctx) => {
       // ---------------------------------------------------------------------------
       if (action === "on") {
         terminalEnabled = true;
+        saveTerminalEnabled();
         const msg = petState
           ? `ASCII art enabled. Use /codotchi status to see ${petState.name}.`
           : "ASCII art enabled. No pet found yet — start a game in VS Code or PyCharm.";
@@ -330,6 +355,7 @@ export const plugin: Plugin = async (_ctx) => {
 
       if (action === "off") {
         terminalEnabled = false;
+        saveTerminalEnabled();
         const msg = petState
           ? `ASCII art disabled. Stats will be shown as plain text.`
           : "ASCII art disabled.";
