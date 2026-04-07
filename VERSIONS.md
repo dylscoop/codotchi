@@ -32,6 +32,13 @@
 | `opencode-codotchi/README.md` | Added same unpublished-package note at top of Global install section |
 | `opencode-codotchi/README.md` | Global install section rewritten: split into Option A (from source — `node bin/install.js --install`) and Option B (from npm — `npx opencode-codotchi --install`); local path works without npm publish |
 | `README.md` | Option B rewritten: split into from-source (`node bin/install.js --install`) and from-npm (`npx opencode-codotchi --install`) paths with clear gating on the npm path |
+| `opencode-codotchi/bin/install.js` | Rewritten: now copies TS plugin source files to `~/.config/opencode/plugins/` and creates/updates `~/.config/opencode/package.json` with `@opencode-ai/plugin` dep; removed `config/opencode.json` copy (local plugin path does not need a `"plugin"` config entry) |
+| `opencode-codotchi/src/index.ts` | Updated header comment to document new zip-based install method |
+| `opencode-codotchi/scripts/package.js` | New file — Node.js script that creates the distributable zip; run via `node scripts/package.js` from `opencode-codotchi/` |
+| `opencode-codotchi/opencode-codotchi-0.10.1.zip` | New distributable zip for v0.10.1; contains `bin/`, `commands/`, `src/`, `package.json`, `README.md`; no clone required |
+| `opencode-codotchi/README.md` | Global install rewritten: zip download (Option A) is now the primary path; from source is Option B; from npm (once published) is Option C; updated Building from source section |
+| `README.md` | Option B rewritten: zip download is primary with macOS/Linux and Windows commands; from source and from npm kept as secondary paths |
+| `.opencode/skills/release-checklist/SKILL.md` | Added Step 3f: always ask before rebuilding the opencode zip at release time; added checklist item 13 for zip artifact |
 | `vscode/README.md` | Install filenames updated to `0.10.1` |
 | `pycharm/README.md` | Install filenames updated to `0.10.1` |
 | `vscode/FEATURES.md` | OpenCode integration row updated to reflect `/codotchi` and npm package |
