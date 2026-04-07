@@ -156,6 +156,38 @@ Number entries sequentially (BUGFIX-001, BUGFIX-002, …).
 
 ---
 
+## Step 3e — OpenCode npm package (when OpenCode plugin files change)
+
+Whenever any of these files are modified, the `opencode-codotchi` npm package
+must be kept in sync **before committing**:
+
+| Source of truth | Mirror in npm package |
+|---|---|
+| `.opencode/plugins/gotchi.ts` | `opencode-codotchi/src/index.ts` |
+| `.opencode/plugins/gameEngine.ts` | `opencode-codotchi/src/gameEngine.ts` |
+| `.opencode/plugins/asciiArt.ts` | `opencode-codotchi/src/asciiArt.ts` |
+| `.opencode/commands/codotchi.md` | `opencode-codotchi/commands/codotchi.md` |
+
+**Three separate copies** are intentional (VS Code-style duplication). When
+updating, copy the changed file(s) manually and include both copies in the same
+commit.
+
+After copying, verify the npm package compiles:
+
+```bash
+# from opencode-codotchi/
+npm install   # first time only
+npm run build
+```
+
+If the build fails, fix the errors before committing. The `dist/` directory is
+gitignored — do not commit it.
+
+Also update `opencode-codotchi/package.json` `"version"` to match the repo
+version whenever the version is bumped.
+
+---
+
 ## Step 4 — Final checklist before committing
 
 Work through this list in order. Do not commit until all items are checked.
@@ -171,4 +203,6 @@ Work through this list in order. Do not commit until all items are checked.
 8. [ ] README prose updated — no hardcoded numbers refer to old constant values
 9. [ ] README filenames updated — all `.vsix` / `.zip` references match the current version
 10. [ ] `BUGFIXES.md` updated (bug fixes only)
-11. [ ] Both artifacts are staged alongside all source changes in the same commit
+11. [ ] `opencode-codotchi/` files updated to mirror any `.opencode/plugins/` or `.opencode/commands/` changes
+12. [ ] `opencode-codotchi/package.json` version matches repo version
+13. [ ] Both artifacts are staged alongside all source changes in the same commit
