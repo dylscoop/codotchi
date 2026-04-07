@@ -30,6 +30,8 @@
 | `README.md` | Install filenames updated to `0.10.1`; OpenCode section updated with npm install instructions; updated platform table |
 | `README.md` | Added note that `opencode-codotchi` is not yet published to npm and requires `npm login` / `NPM_TOKEN` before global install works |
 | `opencode-codotchi/README.md` | Added same unpublished-package note at top of Global install section |
+| `opencode-codotchi/README.md` | Global install section rewritten: split into Option A (from source — `node bin/install.js --install`) and Option B (from npm — `npx opencode-codotchi --install`); local path works without npm publish |
+| `README.md` | Option B rewritten: split into from-source (`node bin/install.js --install`) and from-npm (`npx opencode-codotchi --install`) paths with clear gating on the npm path |
 | `vscode/README.md` | Install filenames updated to `0.10.1` |
 | `pycharm/README.md` | Install filenames updated to `0.10.1` |
 | `vscode/FEATURES.md` | OpenCode integration row updated to reflect `/codotchi` and npm package |
