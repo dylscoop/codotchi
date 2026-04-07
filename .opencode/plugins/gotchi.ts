@@ -52,6 +52,7 @@ import {
   buildSpeechBubble,
   buildStatusBlock,
   buildToast,
+  buildContextualSpeech,
 } from "./asciiArt.js";
 
 // ---------------------------------------------------------------------------
@@ -340,16 +341,35 @@ export const plugin: Plugin = async (_ctx) => {
         : "codotchi";
       context.metadata({ title: panelTitle });
 
+      /**
+       * Returns the contextual art header (speech bubble) when:
+       *   - terminalEnabled is true, AND
+       *   - a living pet exists in petState at the time of calling.
+       * Always call this AFTER any state-mutating operation so the art
+       * reflects the pet's updated stats.
+       */
+      const artHeader = (): string => {
+        if (!terminalEnabled || petState === null || !petState.alive) { return ""; }
+        const speech = buildContextualSpeech(
+          petState,
+          sessionFilesEdited,
+          Date.now() - sessionStartMs
+        );
+        return buildSpeechBubble(petState.stage, petState.mood, speech, petState.name) + "\n";
+      };
+
       // ---------------------------------------------------------------------------
       // on / off — toggle ASCII art display
       // ---------------------------------------------------------------------------
       if (action === "on") {
         terminalEnabled = true;
         saveTerminalEnabled();
+        // artHeader() now returns art immediately since terminalEnabled is true
+        const art = artHeader();
         const msg = petState
-          ? `ASCII art enabled. Use /codotchi status to see ${petState.name}.`
+          ? `ASCII art enabled.`
           : "ASCII art enabled. No pet found yet — start a game in VS Code or PyCharm.";
-        return ret(notification + msg);
+        return ret(notification + art + msg);
       }
 
       if (action === "off") {
@@ -371,10 +391,8 @@ export const plugin: Plugin = async (_ctx) => {
         mealsThisCycle = 0;
         saveState();
         context.metadata({ title: `${petName} [egg]` });
-        const art = terminalEnabled
-          ? buildSpeechBubble(petState.stage, petState.mood, `Hi! I'm ${petName}. Nice to meet you!`, petName)
-          : "";
-        return ret(notification + (art ? art + "\n" : "") + `New game started! Your ${petKind} named "${petName}" has hatched.`);
+        const art = artHeader();
+        return ret(notification + art + `New game started! Your ${petKind} named "${petName}" has hatched.`);
       }
 
       // ---------------------------------------------------------------------------
@@ -398,7 +416,9 @@ export const plugin: Plugin = async (_ctx) => {
 
       switch (action) {
         case "status": {
-          const art = terminalEnabled
+          // For status: show speech bubble art + full stat block + plain text summary
+          const art = artHeader();
+          const statusBlock = terminalEnabled
             ? buildStatusBlock({
                 name:       petState.name,
                 stage:      petState.stage,
@@ -417,78 +437,87 @@ export const plugin: Plugin = async (_ctx) => {
               })
             : "";
           const textStats = `${petState.name} | Stage: ${petState.stage} | Hunger: ${petState.hunger} | Happiness: ${petState.happiness} | Energy: ${petState.energy} | Health: ${petState.health}`;
-          return ret(notification + (art ? art + "\n" : "") + textStats);
+          return ret(notification + art + (statusBlock ? statusBlock + "\n" : "") + textStats);
         }
 
         case "feed": {
-          if (petState.sleeping) { return ret(notification + `${petState.name} is sleeping and can't eat right now.`); }
+          if (petState.sleeping) {
+            return ret(notification + artHeader() + `${petState.name} is sleeping and can't eat right now.`);
+          }
           petState = feedMeal(petState, mealsThisCycle);
           const refused = petState.events.includes("meal_refused");
           if (!refused) { mealsThisCycle += 1; }
           saveState();
-          const toast = buildToast(petState.stage, refused
+          const feedArt = artHeader();
+          const feedToast = buildToast(petState.stage, refused
             ? `${petState.name} is too full for another meal.`
             : `${petState.name} enjoyed the meal! (hunger: ${petState.hunger})`);
-          const result = refused
+          const feedResult = refused
             ? `Meal refused — ${petState.name} has already had ${mealsThisCycle} meals this wake cycle.`
             : `Fed ${petState.name}. Hunger: ${petState.hunger}/100, Weight: ${petState.weight}.`;
-          return ret(notification + toast + "\n" + result);
+          return ret(notification + feedArt + feedToast + "\n" + feedResult);
         }
 
         case "pat": {
-          if (petState.sleeping) { return ret(notification + `${petState.name} is sleeping.`); }
+          if (petState.sleeping) {
+            return ret(notification + artHeader() + `${petState.name} is sleeping.`);
+          }
           petState = pat(petState);
-          const refused = petState.events.includes("pat_refused_no_energy");
+          const patRefused = petState.events.includes("pat_refused_no_energy");
           saveState();
-          const toast = buildToast(petState.stage, refused
+          const patArt = artHeader();
+          const patToast = buildToast(petState.stage, patRefused
             ? `${petState.name} is too tired even for a pat.`
             : `${petState.name} enjoyed the pat!`);
-          const result = refused
+          const patResult = patRefused
             ? `Pat refused — ${petState.name} is too exhausted.`
             : `Patted ${petState.name}. Happiness: ${petState.happiness}.`;
-          return ret(notification + toast + "\n" + result);
+          return ret(notification + patArt + patToast + "\n" + patResult);
         }
 
         case "sleep": {
           petState = sleep(petState);
-          const already = petState.events.includes("already_sleeping");
+          const alreadySleeping = petState.events.includes("already_sleeping");
           saveState();
-          return ret(notification + (already
+          const sleepArt = artHeader();
+          return ret(notification + sleepArt + (alreadySleeping
             ? `${petState.name} is already sleeping.`
             : `${petState.name} is now sleeping. Energy will recharge.`));
         }
 
         case "clean": {
           petState = clean(petState);
-          const already = petState.events.includes("already_clean");
+          const alreadyClean = petState.events.includes("already_clean");
           saveState();
-          const toast = buildToast(petState.stage, already
+          const cleanArt = artHeader();
+          const cleanToast = buildToast(petState.stage, alreadyClean
             ? `${petState.name}'s area is already clean.`
             : `Cleaned up after ${petState.name}.`);
-          const result = already
+          const cleanResult = alreadyClean
             ? `Nothing to clean — ${petState.name}'s area is already spotless.`
             : `Cleaned up ${petState.name}'s mess. Poops remaining: 0.`;
-          return ret(notification + toast + "\n" + result);
+          return ret(notification + cleanArt + cleanToast + "\n" + cleanResult);
         }
 
         case "medicine": {
           if (!petState.sick) {
-            return ret(notification + `${petState.name} is not sick — medicine not needed.`);
+            return ret(notification + artHeader() + `${petState.name} is not sick — medicine not needed.`);
           }
           petState = giveMedicine(petState);
           const cured = petState.events.includes("cured");
           saveState();
-          const toast = buildToast(petState.stage, cured
+          const medArt = artHeader();
+          const medToast = buildToast(petState.stage, cured
             ? `${petState.name} is cured!`
             : `Gave ${petState.name} medicine (${petState.medicineDosesGiven}/3 doses).`);
-          const result = cured
+          const medResult = cured
             ? `${petState.name} has been cured!`
             : `Gave medicine to ${petState.name}. Doses given: ${petState.medicineDosesGiven}/3.`;
-          return ret(notification + toast + "\n" + result);
+          return ret(notification + medArt + medToast + "\n" + medResult);
         }
 
         default:
-          return ret(notification + "Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off.");
+          return ret(notification + artHeader() + "Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off.");
       }
     },
   });
