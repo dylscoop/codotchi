@@ -15,20 +15,33 @@ Raises your gotchi in the terminal alongside your coding session.
 
 ## Global install
 
+Run the installer once per machine to set up the slash command and OpenCode
+config globally. Choose the path that matches how you have the package:
+
+### Option A — From source (local clone)
+
+Use this if you have cloned the repository and have not published to npm yet.
+
+```bash
+cd opencode-codotchi
+npm install
+node bin/install.js --install
+```
+
+### Option B — From npm (once published)
+
 > **Note:** `opencode-codotchi` has not yet been published to the npm registry.
-> The steps below will not work until the package is published. To publish, run
-> `npm login` (or set `NPM_TOKEN=<token>`) then `npm publish` from this
-> directory. See [Building from source](#building-from-source) below.
-
-### 1. Run the installer
-
-Run once per machine to set up the slash command and OpenCode config:
+> This path will not work until `npm publish` has been run from `opencode-codotchi/`.
 
 ```bash
 npx opencode-codotchi --install
 ```
 
-This does two things:
+---
+
+### What the installer does
+
+Both paths run the same script and do two things:
 
 1. **Copies the slash command** — `commands/codotchi.md` →
    `~/.config/opencode/commands/codotchi.md`
@@ -38,8 +51,8 @@ This does two things:
    `~/.config/opencode/opencode.json`
    (Windows: `%APPDATA%\opencode\opencode.json`)
    **Only if the file does not already exist** — your existing config is never
-   overwritten. If the file already exists, the installer prints a skip message
-   and reminds you to add `"opencode-codotchi"` to your `"plugin"` array manually.
+   overwritten. If it already exists, the installer prints a skip message and
+   reminds you to add `"opencode-codotchi"` to your `"plugin"` array manually.
 
 The installed `opencode.json` contains:
 
@@ -52,9 +65,10 @@ The installed `opencode.json` contains:
 
 OpenCode reads this on startup and automatically downloads the plugin via Bun.
 
-### 2. Open OpenCode
+### Open OpenCode
 
-The pet plugin loads automatically on startup. Your pet will greet you in a speech bubble.
+After running the installer, open any project in OpenCode — the pet plugin
+loads automatically and your pet will greet you in a speech bubble.
 
 ## Usage
 
