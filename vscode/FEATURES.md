@@ -563,6 +563,7 @@ Status: `[x]`
 | OpenCode npm package (`opencode-codotchi`) | `[x]` | Globally-installable distribution of the OpenCode plugin; add to `~/.config/opencode/opencode.json` and run `npx opencode-codotchi --install` |
 | OpenCode ASCII art in every tool response | `[x]` | When enabled via `/codotchi on`, the pet's ASCII sprite + contextual speech bubble (mood + session coding stats) appears in every tool response; `terminalEnabled` flag persists across restarts |
 | OpenCode ASCII sprite redesign | `[x]` | All 6 life stage sprites redesigned with distinct silhouettes (v0.10.3) |
+| OpenCode sprite after every LLM text response | `[x]` | Plain-ASCII speech bubble appended (in fenced code block) to every AI text response when art is enabled; `suppressNextTextArt` flag prevents double-sprite after explicit `/codotchi` calls (v0.10.4) |
 
 ---
 

@@ -1,6 +1,36 @@
 # Version History
 
-## v0.10.3 — current
+## v0.10.4 — current
+
+### Changes from v0.10.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.10.3` → `0.10.4` |
+| `pycharm/build.gradle.kts` | Version bumped `0.10.3` → `0.10.4` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.10.3` → `0.10.4` |
+| `opencode-codotchi/package.json` | Version bumped `0.10.3` → `0.10.4` |
+| `.opencode/plugins/asciiArt.ts` | Added `stripAnsi()` — strips ANSI escape codes from a string for markdown-safe output |
+| `opencode-codotchi/src/asciiArt.ts` | Mirrored from `.opencode/plugins/asciiArt.ts` (same changes) |
+| `.opencode/plugins/gotchi.ts` | Added `suppressNextTextArt` flag; re-added `experimental.text.complete` hook (plain-ASCII, appended, suppressed after tool calls); added `stripAnsi` to imports |
+| `opencode-codotchi/src/index.ts` | Mirrored from `.opencode/plugins/gotchi.ts` (same changes) |
+| `opencode-codotchi/opencode-codotchi-0.10.4.zip` | Rebuilt distributable zip for v0.10.4 |
+| `VERSIONS.md` | Added v0.10.4 section |
+
+### Features added
+
+**Sprite after every LLM text response** — when terminal display is enabled
+(`/codotchi on`), a plain-ASCII speech bubble and sprite are appended (in a
+fenced code block) to every AI text response. Plain ASCII is used because
+`output.text` is rendered as markdown — ANSI colour codes would appear as raw
+escape sequences. The `suppressNextTextArt` flag prevents a double-sprite when
+the user explicitly calls a `/codotchi` action: the tool output already shows
+the full coloured sprite, so the text response immediately following is
+suppressed.
+
+---
+
+## v0.10.3 — previous
 
 ### Changes from v0.10.2
 
