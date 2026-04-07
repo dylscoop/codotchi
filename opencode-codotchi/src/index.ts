@@ -10,19 +10,18 @@
  *   - Runs a tick timer every TICK_INTERVAL_SECONDS to advance the game.
  *   - Hooks into file.edited events to reward coding activity.
  *   - Hooks into session.idle to flag idle state.
- *   - Hooks into server.connected to print a greeting speech bubble.
+ *   - Hooks into server.connected to queue a greeting notification.
  *   - Registers the `gotchi` custom tool for slash-command interactions.
  *
  * Slash commands (invoked via /codotchi in the OpenCode TUI):
- *   /codotchi              → print status
+ *   /codotchi              → show status (text + art if on)
  *   /codotchi feed         → give a meal
- *   /codotchi snack        → give a snack
- *   /codotchi play         → play (happiness boost)
  *   /codotchi pat          → pat (gentle happiness boost)
  *   /codotchi sleep        → put to sleep
- *   /codotchi wake         → wake up
  *   /codotchi clean        → clean up droppings
  *   /codotchi medicine     → give medicine (cure sickness)
+ *   /codotchi on           → enable ASCII art in tool details panel
+ *   /codotchi off          → disable ASCII art (plain text stats only)
  *
  * Global install (from zip):
  *   1. Download opencode-codotchi-X.Y.Z.zip from Releases and extract it.
@@ -45,15 +44,11 @@ import {
   applyOfflineDecay,
   applyCodeActivity,
   feedMeal,
-  startSnack,
-  consumeSnack,
-  play,
   pat,
   sleep,
   wake,
   clean,
   giveMedicine,
-  scold,
   serialiseState,
   deserialiseState,
   DEFAULT_GAME_CONFIG,
@@ -62,9 +57,9 @@ import {
 } from "./gameEngine.js";
 
 import {
-  renderSpeechBubble,
-  renderStatus,
-  renderToast,
+  buildSpeechBubble,
+  buildStatusBlock,
+  buildToast,
 } from "./asciiArt.js";
 
 // ---------------------------------------------------------------------------
@@ -127,6 +122,33 @@ let tickTimer: ReturnType<typeof setInterval> | undefined;
 let isIdle = false;
 let lastCodeActivityMs = 0;
 
+// ---------------------------------------------------------------------------
+// Display toggle (default off — art shown in tool details panel when on)
+// ---------------------------------------------------------------------------
+
+let terminalEnabled = false;
+
+// ---------------------------------------------------------------------------
+// Pending notification queue
+// Tick events fire outside any tool context, so we queue their messages
+// and prepend them to the next tool result.
+// ---------------------------------------------------------------------------
+
+let pendingNotification: string | null = null;
+
+function queueNotification(msg: string): void {
+  // If a notification is already pending, append (newline-separated)
+  pendingNotification = pendingNotification ? pendingNotification + "\n" + msg : msg;
+}
+
+/** Drain and return any pending notification, then clear it. */
+function drainNotification(): string {
+  if (pendingNotification === null) { return ""; }
+  const msg = pendingNotification;
+  pendingNotification = null;
+  return msg + "\n\n";
+}
+
 /** Load state from shared file; if none exists, stay null (no pet yet). */
 function loadState(): void {
   const shared = loadFromSharedFile();
@@ -152,18 +174,24 @@ function applyTick(): void {
   petState = tick(petState, isIdle, deepIdle, DEFAULT_GAME_CONFIG);
   saveState();
 
-  // Surface key events as speech bubbles
+  // Surface key events as queued notifications (no active tool context here)
   for (const event of petState.events) {
     switch (event) {
       case "auto_woke_up":
         mealsThisCycle = 0;
-        renderSpeechBubble(petState.stage, petState.mood, "I feel rested! Time to code!", petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, petState.mood, "I feel rested! Time to code!", petState.name)
+          : `[${petState.name}] I feel rested! Time to code!`);
         break;
       case "died":
-        renderSpeechBubble(petState.stage, "sad", "Goodbye... take care of the next one.", petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, "sad", "Goodbye... take care of the next one.", petState.name)
+          : `[${petState.name}] Goodbye... take care of the next one.`);
         break;
       case "died_of_old_age":
-        renderSpeechBubble(petState.stage, "sleeping", "I lived a full life. Thank you for everything.", petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, "sleeping", "I lived a full life. Thank you for everything.", petState.name)
+          : `[${petState.name}] I lived a full life. Thank you for everything.`);
         break;
       case "evolved_to_baby":
       case "evolved_to_child":
@@ -171,38 +199,56 @@ function applyTick(): void {
       case "evolved_to_adult":
       case "evolved_to_senior": {
         const stageName = event.replace("evolved_to_", "");
-        renderSpeechBubble(petState.stage, petState.mood, `I evolved into a ${stageName}!`, petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, petState.mood, `I evolved into a ${stageName}!`, petState.name)
+          : `[${petState.name}] I evolved into a ${stageName}!`);
         break;
       }
       case "attention_call_hunger":
-        renderSpeechBubble(petState.stage, "sad", "I'm so hungry... please feed me!", petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, "sad", "I'm so hungry... please feed me!", petState.name)
+          : `[${petState.name}] I'm so hungry... please feed me!`);
         break;
       case "attention_call_unhappiness":
-        renderSpeechBubble(petState.stage, "sad", "I'm feeling really sad. Play with me?", petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, "sad", "I'm feeling really sad. Play with me?", petState.name)
+          : `[${petState.name}] I'm feeling really sad. Play with me?`);
         break;
       case "attention_call_sick":
-        renderSpeechBubble(petState.stage, "sick", "I don't feel well. I need medicine!", petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, "sick", "I don't feel well. I need medicine!", petState.name)
+          : `[${petState.name}] I don't feel well. I need medicine!`);
         break;
       case "attention_call_critical_health":
-        renderSpeechBubble(petState.stage, "sick", "My health is critical! Please help me!", petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, "sick", "My health is critical! Please help me!", petState.name)
+          : `[${petState.name}] My health is critical! Please help me!`);
         break;
       case "attention_call_low_energy":
-        renderSpeechBubble(petState.stage, "sad", "I'm exhausted... let me sleep!", petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, "sad", "I'm exhausted... let me sleep!", petState.name)
+          : `[${petState.name}] I'm exhausted... let me sleep!`);
         break;
       case "became_sick":
-        renderToast(petState.stage, `${petState.name} has fallen sick.`);
+        queueNotification(buildToast(petState.stage, `${petState.name} has fallen sick.`));
         break;
       case "pooped":
-        renderToast(petState.stage, `${petState.name} made a mess! (use /codotchi clean)`);
+        queueNotification(buildToast(petState.stage, `${petState.name} made a mess! (use /codotchi clean)`));
         break;
       case "attention_call_poop":
-        renderSpeechBubble(petState.stage, "sad", "There is a mess here! Can you clean it up?", petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, "sad", "There is a mess here! Can you clean it up?", petState.name)
+          : `[${petState.name}] There is a mess here! Can you clean it up?`);
         break;
       case "attention_call_gift":
-        renderSpeechBubble(petState.stage, "happy", "I brought you a gift! Use /codotchi pat to accept it.", petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, "happy", "I brought you a gift! Use /codotchi pat to accept it.", petState.name)
+          : `[${petState.name}] I brought you a gift! Use /codotchi pat to accept it.`);
         break;
       case "attention_call_misbehaviour":
-        renderSpeechBubble(petState.stage, "neutral", "I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", petState.name);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(petState.stage, "neutral", "I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", petState.name)
+          : `[${petState.name}] I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.`);
         break;
     }
   }
@@ -213,23 +259,21 @@ function applyTick(): void {
 // ---------------------------------------------------------------------------
 
 export const plugin: Plugin = async (_ctx) => {
-  // Load state on startup
+  // Load state on startup — queue greeting as a pending notification
   loadState();
 
   if (petState !== null) {
-    renderSpeechBubble(
-      petState.stage,
-      petState.mood,
-      petState.alive
-        ? `I'm here! ${
-            petState.hunger < 30 ? "I'm hungry... " :
-            petState.sick        ? "I'm not feeling well. " :
-            petState.energy < 20 ? "I'm sleepy. " :
-            "I'm doing well!"
-          }`
-        : "My codotchi passed away. Start a new game in VS Code or PyCharm.",
-      petState.name
-    );
+    const greetMsg = petState.alive
+      ? `I'm here! ${
+          petState.hunger < 30 ? "I'm hungry... " :
+          petState.sick        ? "I'm not feeling well. " :
+          petState.energy < 20 ? "I'm sleepy. " :
+          "I'm doing well!"
+        }`
+      : "My codotchi passed away. Start a new game in VS Code or PyCharm.";
+    queueNotification(terminalEnabled
+      ? buildSpeechBubble(petState.stage, petState.mood, greetMsg, petState.name)
+      : `[${petState.name}] ${greetMsg}`);
   }
 
   // Tick timer
@@ -243,10 +287,10 @@ export const plugin: Plugin = async (_ctx) => {
   const gotchiTool = tool({
     description:
       "Interact with your codotchi virtual pet. Use action='status' to see current stats, " +
-      "or one of: feed, snack, play, pat, sleep, wake, clean, medicine, new_game.",
+      "or one of: feed, pat, sleep, clean, medicine, on, off.",
     args: {
       action: tool.schema
-        .enum(["status", "feed", "snack", "play", "pat", "sleep", "wake", "clean", "medicine", "new_game"])
+        .enum(["status", "feed", "pat", "sleep", "clean", "medicine", "on", "off", "new_game"])
         .describe("The action to perform"),
       name: tool.schema
         .string()
@@ -257,158 +301,163 @@ export const plugin: Plugin = async (_ctx) => {
         .optional()
         .describe("Pet type — only used when action=new_game"),
     },
-    async execute({ action, name, petType }) {
-      // Handle new_game first — does not require an existing pet
+    async execute({ action, name, petType }, context) {
+      // Drain any queued tick notifications to prepend to this result
+      const notification = drainNotification();
+
+      // Set the tool panel title
+      const panelTitle = petState
+        ? `${petState.name} [${petState.stage}]`
+        : "codotchi";
+      context.metadata({ title: panelTitle });
+
+      // ---------------------------------------------------------------------------
+      // on / off — toggle ASCII art display
+      // ---------------------------------------------------------------------------
+      if (action === "on") {
+        terminalEnabled = true;
+        const msg = petState
+          ? `ASCII art enabled. Use /codotchi status to see ${petState.name}.`
+          : "ASCII art enabled. No pet found yet — start a game in VS Code or PyCharm.";
+        return notification + msg;
+      }
+
+      if (action === "off") {
+        terminalEnabled = false;
+        const msg = petState
+          ? `ASCII art disabled. Stats will be shown as plain text.`
+          : "ASCII art disabled.";
+        return notification + msg;
+      }
+
+      // ---------------------------------------------------------------------------
+      // new_game — does not require an existing pet
+      // ---------------------------------------------------------------------------
       if (action === "new_game") {
         const petName  = name    ?? "Codotchi";
         const petKind  = petType ?? "codeling";
         petState = createPet(petName, petKind, "neon");
         mealsThisCycle = 0;
         saveState();
-        renderSpeechBubble(petState.stage, petState.mood, `Hi! I'm ${petName}. Nice to meet you!`, petName);
-        return `New game started! Your ${petKind} named "${petName}" has hatched.`;
+        context.metadata({ title: `${petName} [egg]` });
+        const art = terminalEnabled
+          ? buildSpeechBubble(petState.stage, petState.mood, `Hi! I'm ${petName}. Nice to meet you!`, petName)
+          : "";
+        return notification + (art ? art + "\n" : "") + `New game started! Your ${petKind} named "${petName}" has hatched.`;
       }
 
+      // ---------------------------------------------------------------------------
       // All other actions require an existing pet
+      // ---------------------------------------------------------------------------
       if (petState === null) {
         return (
+          notification +
           "No pet found. Start a new game first:\n" +
           "  - In VS Code: open the Gotchi sidebar and choose New Game\n" +
-          "  - In PyCharm: open the Gotchi panel and choose New Game\n" +
-          "  - In OpenCode: use /codotchi new_game name=<name>"
+          "  - In PyCharm: open the Gotchi panel and choose New Game"
         );
       }
 
       if (!petState.alive) {
-        return `${petState.name} has passed away. Start a new game to continue.`;
+        return notification + `${petState.name} has passed away. Start a new game to continue.`;
       }
+
+      // Update panel title with current stage
+      context.metadata({ title: `${petState.name} [${petState.stage}]` });
 
       switch (action) {
         case "status": {
-          renderStatus({
-            name:       petState.name,
-            stage:      petState.stage,
-            mood:       petState.mood,
-            hunger:     petState.hunger,
-            happiness:  petState.happiness,
-            energy:     petState.energy,
-            health:     petState.health,
-            discipline: petState.discipline,
-            weight:     petState.weight,
-            ageDays:    petState.ageDays,
-            alive:      petState.alive,
-            sick:       petState.sick,
-            sleeping:   petState.sleeping,
-            poops:      petState.poops,
-          });
-          return `${petState.name} | Stage: ${petState.stage} | Hunger: ${petState.hunger} | Happiness: ${petState.happiness} | Energy: ${petState.energy} | Health: ${petState.health}`;
+          const art = terminalEnabled
+            ? buildStatusBlock({
+                name:       petState.name,
+                stage:      petState.stage,
+                mood:       petState.mood,
+                hunger:     petState.hunger,
+                happiness:  petState.happiness,
+                energy:     petState.energy,
+                health:     petState.health,
+                discipline: petState.discipline,
+                weight:     petState.weight,
+                ageDays:    petState.ageDays,
+                alive:      petState.alive,
+                sick:       petState.sick,
+                sleeping:   petState.sleeping,
+                poops:      petState.poops,
+              })
+            : "";
+          const textStats = `${petState.name} | Stage: ${petState.stage} | Hunger: ${petState.hunger} | Happiness: ${petState.happiness} | Energy: ${petState.energy} | Health: ${petState.health}`;
+          return notification + (art ? art + "\n" : "") + textStats;
         }
 
         case "feed": {
-          if (petState.sleeping) { return `${petState.name} is sleeping and can't eat right now.`; }
+          if (petState.sleeping) { return notification + `${petState.name} is sleeping and can't eat right now.`; }
           petState = feedMeal(petState, mealsThisCycle);
           const refused = petState.events.includes("meal_refused");
           if (!refused) { mealsThisCycle += 1; }
           saveState();
-          renderToast(petState.stage, refused
+          const toast = buildToast(petState.stage, refused
             ? `${petState.name} is too full for another meal.`
             : `${petState.name} enjoyed the meal! (hunger: ${petState.hunger})`);
-          return refused
+          const result = refused
             ? `Meal refused — ${petState.name} has already had ${mealsThisCycle} meals this wake cycle.`
             : `Fed ${petState.name}. Hunger: ${petState.hunger}/100, Weight: ${petState.weight}.`;
-        }
-
-        case "snack": {
-          if (petState.sleeping) { return `${petState.name} is sleeping.`; }
-          petState = startSnack(petState);
-          const refused = petState.events.includes("snack_refused");
-          if (!refused) {
-            // Apply snack consumption immediately (no floor animation in terminal)
-            petState = consumeSnack(petState);
-          }
-          saveState();
-          renderToast(petState.stage, refused
-            ? `${petState.name} has had enough snacks.`
-            : `${petState.name} gobbled up the snack!`);
-          return refused
-            ? `Snack refused — ${petState.name} has had too many snacks this cycle.`
-            : `Gave ${petState.name} a snack. Hunger: ${petState.hunger}, Happiness: ${petState.happiness}.`;
-        }
-
-        case "play": {
-          if (petState.sleeping) { return `${petState.name} is sleeping.`; }
-          petState = play(petState);
-          const refused = petState.events.includes("play_refused_no_energy");
-          saveState();
-          renderToast(petState.stage, refused
-            ? `${petState.name} is too tired to play.`
-            : `${petState.name} had fun playing!`);
-          return refused
-            ? `Play refused — ${petState.name} doesn't have enough energy. Let them sleep first.`
-            : `Played with ${petState.name}. Happiness: ${petState.happiness}, Energy: ${petState.energy}.`;
+          return notification + toast + "\n" + result;
         }
 
         case "pat": {
-          if (petState.sleeping) { return `${petState.name} is sleeping.`; }
+          if (petState.sleeping) { return notification + `${petState.name} is sleeping.`; }
           petState = pat(petState);
           const refused = petState.events.includes("pat_refused_no_energy");
           saveState();
-          renderToast(petState.stage, refused
+          const toast = buildToast(petState.stage, refused
             ? `${petState.name} is too tired even for a pat.`
             : `${petState.name} enjoyed the pat!`);
-          return refused
+          const result = refused
             ? `Pat refused — ${petState.name} is too exhausted.`
             : `Patted ${petState.name}. Happiness: ${petState.happiness}.`;
+          return notification + toast + "\n" + result;
         }
 
         case "sleep": {
           petState = sleep(petState);
           const already = petState.events.includes("already_sleeping");
           saveState();
-          return already
+          return notification + (already
             ? `${petState.name} is already sleeping.`
-            : `${petState.name} is now sleeping. Energy will recharge.`;
-        }
-
-        case "wake": {
-          petState = wake(petState);
-          const already = petState.events.includes("already_awake");
-          if (!already) { mealsThisCycle = 0; }
-          saveState();
-          return already
-            ? `${petState.name} is already awake.`
-            : `${petState.name} is now awake! Meal counter reset.`;
+            : `${petState.name} is now sleeping. Energy will recharge.`);
         }
 
         case "clean": {
           petState = clean(petState);
           const already = petState.events.includes("already_clean");
           saveState();
-          renderToast(petState.stage, already
+          const toast = buildToast(petState.stage, already
             ? `${petState.name}'s area is already clean.`
             : `Cleaned up after ${petState.name}.`);
-          return already
+          const result = already
             ? `Nothing to clean — ${petState.name}'s area is already spotless.`
             : `Cleaned up ${petState.name}'s mess. Poops remaining: 0.`;
+          return notification + toast + "\n" + result;
         }
 
         case "medicine": {
           if (!petState.sick) {
-            return `${petState.name} is not sick — medicine not needed.`;
+            return notification + `${petState.name} is not sick — medicine not needed.`;
           }
           petState = giveMedicine(petState);
           const cured = petState.events.includes("cured");
           saveState();
-          renderToast(petState.stage, cured
+          const toast = buildToast(petState.stage, cured
             ? `${petState.name} is cured!`
             : `Gave ${petState.name} medicine (${petState.medicineDosesGiven}/3 doses).`);
-          return cured
+          const result = cured
             ? `${petState.name} has been cured!`
             : `Gave medicine to ${petState.name}. Doses given: ${petState.medicineDosesGiven}/3.`;
+          return notification + toast + "\n" + result;
         }
 
         default:
-          return "Unknown action. Use one of: status, feed, snack, play, pat, sleep, wake, clean, medicine, new_game.";
+          return notification + "Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off.";
       }
     },
   });
@@ -444,7 +493,7 @@ export const plugin: Plugin = async (_ctx) => {
         return;
       }
 
-      // server.connected → greeting (fires once on startup/reconnect)
+      // server.connected → queue greeting notification
       if (event.type === "server.connected") {
         if (petState !== null && petState.alive) {
           const greet = petState.hunger < 30
@@ -454,9 +503,11 @@ export const plugin: Plugin = async (_ctx) => {
             : petState.energy < 20
             ? `I'm exhausted. Let me sleep (/codotchi sleep)`
             : petState.happiness < 30
-            ? `I've been so lonely. Play with me? (/codotchi play)`
+            ? `I've been so lonely. Play with me? (/codotchi pat)`
             : `Hello! I'm ${petState.name}. Ready to code!`;
-          renderSpeechBubble(petState.stage, petState.mood, greet, petState.name);
+          queueNotification(terminalEnabled
+            ? buildSpeechBubble(petState.stage, petState.mood, greet, petState.name)
+            : `[${petState.name}] ${greet}`);
         }
         return;
       }
