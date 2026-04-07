@@ -256,8 +256,8 @@ function applyTick(): void {
         break;
       case "attention_call_unhappiness":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sad", "I'm feeling really sad. Play with me?", petState.name)
-          : `[${petState.name}] I'm feeling really sad. Play with me?`);
+          ? buildSpeechBubble(petState.stage, "sad", "Gotchi wants to play", petState.name)
+          : `[${petState.name}] Gotchi wants to play`);
         break;
       case "attention_call_sick":
         queueNotification(terminalEnabled
@@ -416,8 +416,9 @@ export const plugin: Plugin = async (_ctx) => {
 
       switch (action) {
         case "status": {
-          // For status: show speech bubble art + full stat block + plain text summary
-          const art = artHeader();
+          // For status: show stat block (includes sprite) + plain text summary.
+          // artHeader() is intentionally omitted here — buildStatusBlock already
+          // renders the sprite, so calling artHeader() would draw it twice.
           const statusBlock = terminalEnabled
             ? buildStatusBlock({
                 name:       petState.name,
@@ -436,8 +437,8 @@ export const plugin: Plugin = async (_ctx) => {
                 poops:      petState.poops,
               })
             : "";
-          const textStats = `${petState.name} | Stage: ${petState.stage} | Hunger: ${petState.hunger} | Happiness: ${petState.happiness} | Energy: ${petState.energy} | Health: ${petState.health}`;
-          return ret(notification + art + (statusBlock ? statusBlock + "\n" : "") + textStats);
+          const textStats = `${petState.name} | Stage: ${petState.stage} | Hunger: ${petState.hunger} | Happiness: ${petState.happiness} | Energy: ${petState.energy} | Health: ${petState.health} | Weight: ${petState.weight}`;
+          return ret(notification + (statusBlock ? statusBlock + "\n" : "") + textStats);
         }
 
         case "feed": {
@@ -539,15 +540,6 @@ export const plugin: Plugin = async (_ctx) => {
       }
     },
 
-    // Prepend the codotchi art to every LLM text response when terminal art is
-    // enabled. artHeader() is already gated by terminalEnabled, petState, and alive.
-    async "experimental.text.complete"(_input, output) {
-      const header = artHeader();
-      if (header) {
-        output.text = header + output.text;
-      }
-    },
-
     async event({ event }) {
       // file.edited → code activity reward (throttled)
       if (event.type === "file.edited") {
@@ -582,7 +574,7 @@ export const plugin: Plugin = async (_ctx) => {
             : petState.energy < 20
             ? `I'm exhausted. Let me sleep (/codotchi sleep)`
             : petState.happiness < 30
-            ? `I've been so lonely. Play with me? (/codotchi pat)`
+            ? `Gotchi wants to play (/codotchi pat)`
             : `Hello! I'm ${petState.name}. Ready to code!`;
           queueNotification(terminalEnabled
             ? buildSpeechBubble(petState.stage, petState.mood, greet, petState.name)
