@@ -1,6 +1,29 @@
 # Version History
 
-## v0.10.1 — current
+## v0.10.2 — current
+
+### Changes from v0.10.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.10.1` → `0.10.2` |
+| `pycharm/build.gradle.kts` | Version bumped `0.10.1` → `0.10.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.10.1` → `0.10.2` |
+| `opencode-codotchi/package.json` | Version bumped `0.10.1` → `0.10.2` |
+| `opencode-codotchi/bin/install.js` | Fixed Windows config path bug: removed `win32 → %APPDATA%` branch; now always uses `XDG_CONFIG_HOME ?? ~/.config` (same logic OpenCode itself uses on all platforms) |
+| `opencode-codotchi/README.md` | Corrected installer "What it does" section: replaced `%APPDATA%` Windows note with XDG note; updated zip filename to `0.10.2` |
+
+### Bug fixes
+
+**BUGFIX: installer wrote files to `%APPDATA%\opencode` on Windows instead of `~\.config\opencode`**
+— On Windows, OpenCode stores its config in `~\.config\opencode` (XDG convention),
+not `%APPDATA%\opencode`. The installer had a platform branch that resolved to the
+wrong directory, so `/codotchi` was never available after install. Fixed by using
+`XDG_CONFIG_HOME ?? os.homedir()/.config` unconditionally on all platforms.
+
+---
+
+## v0.10.1
 
 ### Changes from v0.10.0
 

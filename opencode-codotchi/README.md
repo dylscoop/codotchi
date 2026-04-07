@@ -20,21 +20,21 @@ project. Choose the path that matches how you have the package:
 
 ### Option A — From zip (recommended)
 
-Download `opencode-codotchi-0.10.1.zip` from the
+Download `opencode-codotchi-0.10.2.zip` from the
 [Releases page](https://github.com/dylscoop/codotchi/releases), extract it,
 then run the installer:
 
 ```bash
 # macOS / Linux
-unzip opencode-codotchi-0.10.1.zip
-cd opencode-codotchi-0.10.1
+unzip opencode-codotchi-0.10.2.zip
+cd opencode-codotchi-0.10.2
 node bin/install.js --install
 ```
 
 ```powershell
 # Windows (PowerShell)
-Expand-Archive opencode-codotchi-0.10.1.zip
-cd opencode-codotchi-0.10.1
+Expand-Archive opencode-codotchi-0.10.2.zip
+cd opencode-codotchi-0.10.2
 node bin/install.js --install
 ```
 
@@ -66,7 +66,8 @@ All three paths run the same script. It does three things:
 
 1. **Copies the slash command** — `commands/codotchi.md` →
    `~/.config/opencode/commands/codotchi.md`
-   (Windows: `%APPDATA%\opencode\commands\codotchi.md`)
+   (`XDG_CONFIG_HOME/opencode/commands/codotchi.md` if `XDG_CONFIG_HOME` is set;
+   on Windows this is `C:\Users\<you>\.config\opencode\commands\codotchi.md`)
 
 2. **Copies the plugin source files** into the global plugin directory:
    - `src/index.ts` → `~/.config/opencode/plugins/codotchi.ts`
