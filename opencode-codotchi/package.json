@@ -1,0 +1,32 @@
+{
+  "name": "opencode-codotchi",
+  "version": "0.10.1",
+  "description": "A virtual Tamagotchi-style pet that lives inside OpenCode — globally installable via npm",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "opencode-codotchi": "bin/install.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["opencode", "plugin", "tamagotchi", "virtual-pet", "gotchi"],
+  "author": "dylscoop",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dylscoop/codotchi.git"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "1.2.27"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist/",
+    "commands/",
+    "bin/"
+  ]
+}
