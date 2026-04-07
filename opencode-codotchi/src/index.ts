@@ -24,10 +24,12 @@
  *   /codotchi clean        → clean up droppings
  *   /codotchi medicine     → give medicine (cure sickness)
  *
- * Global install — add to ~/.config/opencode/opencode.json:
- *   { "plugin": ["opencode-codotchi"] }
- * Then run: npx opencode-codotchi --install
- * (copies the /codotchi slash command definition to ~/.config/opencode/commands/)
+ * Global install (from zip):
+ *   1. Download opencode-codotchi-X.Y.Z.zip from Releases and extract it.
+ *   2. cd opencode-codotchi-X.Y.Z && node bin/install.js --install
+ *      Copies the /codotchi slash command, plugin source files, and adds
+ *      the @opencode-ai/plugin dependency to ~/.config/opencode/package.json.
+ *      OpenCode loads plugins from ~/.config/opencode/plugins/ automatically.
  */
 
 import * as fs   from "fs";
