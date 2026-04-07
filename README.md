@@ -62,37 +62,51 @@ by OpenCode when you open this repository.
    ```
 2. Open the repo in OpenCode — the pet plugin loads on startup.
 
-**Option B — Global install via npm (`opencode-codotchi`)**
+**Option B — Global install (`opencode-codotchi`)**
 
-Install the `opencode-codotchi` package to make your pet available in **every
-project** you open in OpenCode. Run the installer once per machine using
-whichever path applies:
+Make your pet available in **every project** you open in OpenCode by installing
+it once per machine. The easiest path is downloading the zip from the Releases
+page — no repository clone required:
 
-**From source (local clone — works today):**
+**From zip (recommended):**
+
+1. Download `opencode-codotchi-0.10.1.zip` from the
+   [Releases page](https://github.com/dylscoop/codotchi/releases).
+2. Extract it and run the installer:
+   ```bash
+   # macOS / Linux
+   unzip opencode-codotchi-0.10.1.zip && cd opencode-codotchi-0.10.1
+   node bin/install.js --install
+   ```
+   ```powershell
+   # Windows (PowerShell)
+   Expand-Archive opencode-codotchi-0.10.1.zip; cd opencode-codotchi-0.10.1
+   node bin/install.js --install
+   ```
+
+**From source (local clone):**
 
 ```bash
 cd opencode-codotchi
-npm install
 node bin/install.js --install
 ```
 
 **From npm (once published):**
 
 > **Note:** `opencode-codotchi` has not yet been published to the npm registry.
-> This path will not work until `npm publish` has been run from
-> `opencode-codotchi/`.
 
 ```bash
 npx opencode-codotchi --install
 ```
 
-Both paths copy `commands/codotchi.md` to `~/.config/opencode/commands/` and
-copy `config/opencode.json` to `~/.config/opencode/opencode.json` (only if
-that file does not already exist — existing configs are never overwritten; if
-it already exists, add `"opencode-codotchi"` to your `"plugin"` array).
+The installer copies the `/codotchi` slash command and the plugin TypeScript
+source files into `~/.config/opencode/commands/` and
+`~/.config/opencode/plugins/` respectively, and adds the `@opencode-ai/plugin`
+dependency to `~/.config/opencode/package.json`. OpenCode loads all files in
+the plugins directory automatically on startup.
 
-After running the installer, open any project in OpenCode — the pet loads
-automatically.
+After running the installer, open any project in OpenCode — on first startup
+the plugin dependency is installed via bun and the pet loads automatically.
 
 Either way, use `/codotchi` to interact with your pet:
 - `/codotchi` — show status
