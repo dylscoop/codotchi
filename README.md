@@ -64,23 +64,35 @@ by OpenCode when you open this repository.
 
 **Option B — Global install via npm (`opencode-codotchi`)**
 
-> **Note:** `opencode-codotchi` has not yet been published to the npm registry.
-> The steps below will not work until the package is published. To publish,
-> run `npm login` (or set `NPM_TOKEN=<token>`) then `npm publish` from
-> `opencode-codotchi/`. See `opencode-codotchi/README.md` for details.
-
 Install the `opencode-codotchi` package to make your pet available in **every
-project** you open in OpenCode:
+project** you open in OpenCode. Run the installer once per machine using
+whichever path applies:
 
-1. Run once to install the slash command and set up your OpenCode config:
-   ```bash
-   npx opencode-codotchi --install
-   ```
-   This copies `commands/codotchi.md` to `~/.config/opencode/commands/` and
-   copies `config/opencode.json` to `~/.config/opencode/opencode.json` (only
-   if that file does not already exist — existing configs are never overwritten;
-   if it already exists, add `"opencode-codotchi"` to your `"plugin"` array).
-2. Open any project in OpenCode — the pet loads automatically.
+**From source (local clone — works today):**
+
+```bash
+cd opencode-codotchi
+npm install
+node bin/install.js --install
+```
+
+**From npm (once published):**
+
+> **Note:** `opencode-codotchi` has not yet been published to the npm registry.
+> This path will not work until `npm publish` has been run from
+> `opencode-codotchi/`.
+
+```bash
+npx opencode-codotchi --install
+```
+
+Both paths copy `commands/codotchi.md` to `~/.config/opencode/commands/` and
+copy `config/opencode.json` to `~/.config/opencode/opencode.json` (only if
+that file does not already exist — existing configs are never overwritten; if
+it already exists, add `"opencode-codotchi"` to your `"plugin"` array).
+
+After running the installer, open any project in OpenCode — the pet loads
+automatically.
 
 Either way, use `/codotchi` to interact with your pet:
 - `/codotchi` — show status
