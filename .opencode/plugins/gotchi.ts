@@ -12,16 +12,16 @@
  *   - Hooks into server.connected to print a greeting speech bubble.
  *   - Registers the `gotchi` custom tool for slash-command interactions.
  *
- * Slash commands (invoked via /gotchi in the OpenCode TUI):
- *   /gotchi              → print status
- *   /gotchi feed         → give a meal
- *   /gotchi snack        → give a snack
- *   /gotchi play         → play (happiness boost)
- *   /gotchi pat          → pat (gentle happiness boost)
- *   /gotchi sleep        → put to sleep
- *   /gotchi wake         → wake up
- *   /gotchi clean        → clean up droppings
- *   /gotchi medicine     → give medicine (cure sickness)
+ * Slash commands (invoked via /codotchi in the OpenCode TUI):
+ *   /codotchi              → print status
+ *   /codotchi feed         → give a meal
+ *   /codotchi snack        → give a snack
+ *   /codotchi play         → play (happiness boost)
+ *   /codotchi pat          → pat (gentle happiness boost)
+ *   /codotchi sleep        → put to sleep
+ *   /codotchi wake         → wake up
+ *   /codotchi clean        → clean up droppings
+ *   /codotchi medicine     → give medicine (cure sickness)
  */
 
 import * as fs   from "fs";
@@ -185,16 +185,16 @@ function applyTick(): void {
         renderToast(petState.stage, `${petState.name} has fallen sick.`);
         break;
       case "pooped":
-        renderToast(petState.stage, `${petState.name} made a mess! (use /gotchi clean)`);
+        renderToast(petState.stage, `${petState.name} made a mess! (use /codotchi clean)`);
         break;
       case "attention_call_poop":
         renderSpeechBubble(petState.stage, "sad", "There is a mess here! Can you clean it up?", petState.name);
         break;
       case "attention_call_gift":
-        renderSpeechBubble(petState.stage, "happy", "I brought you a gift! Use /gotchi pat to accept it.", petState.name);
+        renderSpeechBubble(petState.stage, "happy", "I brought you a gift! Use /codotchi pat to accept it.", petState.name);
         break;
       case "attention_call_misbehaviour":
-        renderSpeechBubble(petState.stage, "neutral", "I'm acting up! Use /gotchi pat or /gotchi feed to discipline me.", petState.name);
+        renderSpeechBubble(petState.stage, "neutral", "I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", petState.name);
         break;
     }
   }
@@ -267,7 +267,7 @@ export const plugin: Plugin = async (_ctx) => {
           "No pet found. Start a new game first:\n" +
           "  - In VS Code: open the Gotchi sidebar and choose New Game\n" +
           "  - In PyCharm: open the Gotchi panel and choose New Game\n" +
-          "  - In OpenCode: use /gotchi new_game name=<name>"
+          "  - In OpenCode: use /codotchi new_game name=<name>"
         );
       }
 
@@ -440,13 +440,13 @@ export const plugin: Plugin = async (_ctx) => {
       if (event.type === "server.connected") {
         if (petState !== null && petState.alive) {
           const greet = petState.hunger < 30
-            ? `I'm starving! Please run /gotchi feed`
+            ? `I'm starving! Please run /codotchi feed`
             : petState.sick
-            ? `I feel terrible... I need medicine (/gotchi medicine)`
+            ? `I feel terrible... I need medicine (/codotchi medicine)`
             : petState.energy < 20
-            ? `I'm exhausted. Let me sleep (/gotchi sleep)`
+            ? `I'm exhausted. Let me sleep (/codotchi sleep)`
             : petState.happiness < 30
-            ? `I've been so lonely. Play with me? (/gotchi play)`
+            ? `I've been so lonely. Play with me? (/codotchi play)`
             : `Hello! I'm ${petState.name}. Ready to code!`;
           renderSpeechBubble(petState.stage, petState.mood, greet, petState.name);
         }

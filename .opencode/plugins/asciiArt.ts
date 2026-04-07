@@ -8,7 +8,7 @@
  *   - Mood overlays (happy / neutral / sad / sleeping / sick)
  *   - ANSI colour helpers
  *   - renderSpeechBubble() — pet art + speech bubble side-by-side, written to stdout
- *   - renderStatusBlock() — compact stat bar for the /gotchi status command
+ *   - renderStatusBlock() — compact stat bar for the /codotchi status command
  */
 
 // ---------------------------------------------------------------------------

@@ -1,19 +1,19 @@
-# /gotchi
+# /codotchi
 
-Interact with your gotchi virtual pet companion.
+Interact with your codotchi virtual pet companion.
 
 ## Usage
 
-- `/gotchi` — show status (equivalent to `/gotchi status`)
-- `/gotchi feed` — give your pet a meal
-- `/gotchi snack` — give your pet a snack
-- `/gotchi play` — play with your pet
-- `/gotchi pat` — gently pat your pet
-- `/gotchi sleep` — put your pet to sleep
-- `/gotchi wake` — wake your pet up
-- `/gotchi clean` — clean up droppings
-- `/gotchi medicine` — give medicine to cure sickness
-- `/gotchi new_game name=<name> petType=<type>` — start a fresh pet
+- `/codotchi` — show status (equivalent to `/codotchi status`)
+- `/codotchi feed` — give your pet a meal
+- `/codotchi snack` — give your pet a snack
+- `/codotchi play` — play with your pet
+- `/codotchi pat` — gently pat your pet
+- `/codotchi sleep` — put your pet to sleep
+- `/codotchi wake` — wake your pet up
+- `/codotchi clean` — clean up droppings
+- `/codotchi medicine` — give medicine to cure sickness
+- `/codotchi new_game name=<name> petType=<type>` — start a fresh pet
 
 ## Instructions
 
