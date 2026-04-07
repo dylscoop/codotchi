@@ -7,8 +7,9 @@
  *   - Stage-specific ASCII art (egg → baby → child → teen → adult → senior)
  *   - Mood overlays (happy / neutral / sad / sleeping / sick)
  *   - ANSI colour helpers
- *   - renderSpeechBubble() — pet art + speech bubble side-by-side, written to stdout
- *   - renderStatusBlock() — compact stat bar for the /codotchi status command
+ *   - buildSpeechBubble() — pet art + speech bubble side-by-side, returned as string
+ *   - buildStatusBlock() — compact stat bar for the /codotchi status command, returned as string
+ *   - buildToast()       — one-line notification string
  */
 
 // ---------------------------------------------------------------------------
@@ -348,7 +349,7 @@ export function buildBubble(message: string, maxWidth = 36): string[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Render pet art + speech bubble side-by-side and write to stdout.
+ * Build pet art + speech bubble side-by-side and return as a string.
  *
  * Layout (art on left, bubble on right, connected by a tail):
  *
@@ -361,12 +362,12 @@ export function buildBubble(message: string, maxWidth = 36): string[] {
  * @param message - The speech bubble text.
  * @param name    - Pet's name (used as a label above the art).
  */
-export function renderSpeechBubble(
+export function buildSpeechBubble(
   stage: string,
   mood: string,
   message: string,
   name: string
-): void {
+): string {
   const art    = getArt(stage, mood);
   const bubble = buildBubble(message);
   const stageColour = STAGE_COLOURS[stage] ?? FG_WHITE;
@@ -380,20 +381,21 @@ export function renderSpeechBubble(
   // Colour the art lines
   const artColoured = artPadded.map((l) => colour(l, stageColour));
 
-  // Print name header
+  // Build name header
   const header = `${BOLD}${stageColour}${name}${RESET} ${FG_GRAY}[${stage}]${RESET}`;
-  process.stdout.write("\n" + header + "\n");
+  const lines: string[] = ["", header];
 
-  // Print combined lines
+  // Build combined lines
   const GAP = "  ";
   for (let i = 0; i < maxLines; i++) {
     const artLine    = artColoured[i]    ?? "";
     const bubbleLine = bubblePadded[i]   ?? "";
     // Connect art row 1 (index 1) to bubble row 1 with a tail arrow
     const connector = i === 1 ? colour("-->", FG_GRAY) : "   ";
-    process.stdout.write(artLine + connector + GAP + bubbleLine + "\n");
+    lines.push(artLine + connector + GAP + bubbleLine);
   }
-  process.stdout.write("\n");
+  lines.push("");
+  return lines.join("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -411,11 +413,11 @@ function statBar(label: string, value: number, barWidth = 10): string {
 }
 
 /**
- * Render a full status readout for the pet and write it to stdout.
+ * Build a full status readout for the pet and return as a string.
  *
  * @param state - Minimal state fields needed for the display.
  */
-export function renderStatus(state: {
+export function buildStatusBlock(state: {
   name: string;
   stage: string;
   mood: string;
@@ -430,11 +432,10 @@ export function renderStatus(state: {
   sick: boolean;
   sleeping: boolean;
   poops: number;
-}): void {
+}): string {
   const stageColour = STAGE_COLOURS[state.stage] ?? FG_WHITE;
   const art = getArt(state.stage, state.mood);
 
-  process.stdout.write("\n");
   // Art + header side by side
   const headerLines = [
     `${BOLD}${stageColour}${state.name}${RESET}`,
@@ -449,27 +450,27 @@ export function renderStatus(state: {
   const artPad = [...art, ...Array(maxH - art.length).fill(" ".repeat((art[0] ?? "").length))];
   const hdrPad = [...headerLines, ...Array(maxH - headerLines.length).fill("")];
 
+  const lines: string[] = [""];
   for (let i = 0; i < maxH; i++) {
-    process.stdout.write(colour(artPad[i] ?? "", stageColour) + "  " + (hdrPad[i] ?? "") + "\n");
+    lines.push(colour(artPad[i] ?? "", stageColour) + "  " + (hdrPad[i] ?? ""));
   }
 
-  // Stats
-  process.stdout.write("\n");
-  process.stdout.write(statBar("Hunger",     state.hunger)     + "\n");
-  process.stdout.write(statBar("Happiness",  state.happiness)  + "\n");
-  process.stdout.write(statBar("Energy",     state.energy)     + "\n");
-  process.stdout.write(statBar("Health",     state.health)     + "\n");
-  process.stdout.write(statBar("Discipline", state.discipline) + "\n");
-  process.stdout.write("\n");
-  process.stdout.write(`  ${FG_CYAN}Weight${RESET}        ${state.weight} / 99\n`);
-  process.stdout.write("\n");
+  lines.push("");
+  lines.push(statBar("Hunger",     state.hunger));
+  lines.push(statBar("Happiness",  state.happiness));
+  lines.push(statBar("Energy",     state.energy));
+  lines.push(statBar("Health",     state.health));
+  lines.push(statBar("Discipline", state.discipline));
+  lines.push("");
+  lines.push(`  ${FG_CYAN}Weight${RESET}        ${state.weight} / 99`);
+  lines.push("");
+  return lines.join("\n");
 }
 
 /**
- * Render a simple one-line toast notification (for minor events).
- * Uses process.stdout so it appears in the terminal without disrupting the TUI.
+ * Build a simple one-line toast notification string (for minor events).
  */
-export function renderToast(stage: string, message: string): void {
+export function buildToast(stage: string, message: string): string {
   const c = STAGE_COLOURS[stage] ?? FG_WHITE;
-  process.stdout.write(`${c}[gotchi]${RESET} ${message}\n`);
+  return `${c}[gotchi]${RESET} ${message}`;
 }
