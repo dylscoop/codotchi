@@ -1,6 +1,55 @@
 # Version History
 
-## v0.9.4 — current
+## v0.10.0 — current
+
+### Changes from v0.9.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.9.4` → `0.10.0` |
+| `pycharm/build.gradle.kts` | Version bumped `0.9.4` → `0.10.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.9.4` → `0.10.0` |
+| `vscode/src/persistence.ts` | Added `getSharedStatePath()`, `saveSharedState()`, `loadSharedState()`; `saveState()` now also writes to shared JSON file; `loadState()` now prefers shared file when its `savedAt` timestamp is newer |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | Added `getSharedStatePath()`, `saveToSharedFile()`, `loadFromSharedFile()`, inner class `SharedStateFile`; `savePetState()` also writes to shared file; `loadPetState()` prefers shared file when its `savedAt` is newer |
+| `.opencode/plugins/gameEngine.ts` | New file — verbatim copy of `vscode/src/gameEngine.ts` (zero VS Code API dependencies) for use by the OpenCode plugin |
+| `.opencode/plugins/asciiArt.ts` | New file — ASCII art renderer: 6 stages × 5 moods, `renderSpeechBubble()`, `renderStatus()`, `renderToast()` |
+| `.opencode/plugins/gotchi.ts` | New file — main OpenCode plugin; tick loop, `file.edited` / `session.idle` / `server.connected` event hooks, `gotchi` tool with 10 actions |
+| `.opencode/commands/gotchi.md` | New file — `/gotchi` slash command definition; maps subcommands to `gotchi` tool actions |
+| `README.md` | Install filenames updated to `0.10.0`; added OpenCode plugin section |
+| `vscode/README.md` | Install filenames updated to `0.10.0` |
+| `pycharm/README.md` | Install filenames updated to `0.10.0` |
+| `vscode/FEATURES.md` | Added OpenCode integration row to Section 11 (Persistence) |
+| `VERSIONS.md` | Added v0.10.0 section |
+
+### Features added
+
+**Cross-IDE shared state bridge** — VS Code, PyCharm, and the new OpenCode
+plugin all read from and write to a single shared JSON file on disk:
+- Linux/macOS: `~/.config/gotchi/state.json`
+- Windows: `%APPDATA%/gotchi/state.json`
+
+Format:
+```json
+{ "state": { ...serialised PetState fields... }, "savedAt": <epoch ms> }
+```
+On load, whichever copy has the larger `savedAt` wins and is promoted into the
+IDE's own storage. This allows the pet to be seamlessly handed off between
+IDEs.
+
+**OpenCode terminal plugin** — a native OpenCode plugin (`gotchi.ts`) that
+runs the same game engine inside the OpenCode TUI:
+- **Tick loop**: pet ticks every 6 s via `setInterval` inside the plugin
+- **Event hooks**: reacts to `file.edited` (coding reward), `session.idle`
+  (idle notification), and `server.connected` (greeting on startup/reconnect)
+- **`gotchi` tool**: supports 10 actions — `status`, `feed`, `snack`, `play`,
+  `pat`, `sleep`, `wake`, `clean`, `medicine`, `new_game`
+- **ASCII art renderer** (`asciiArt.ts`): 30 distinct art frames (6 stages × 5
+  moods), ANSI-coloured speech bubbles and status lines, toast notifications
+- **`/gotchi` slash command**: maps `/gotchi`, `/gotchi feed`, etc. to the tool
+
+---
+
+## v0.9.4 — previous
 
 ### Changes from v0.9.3
 

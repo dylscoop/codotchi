@@ -558,6 +558,7 @@ Status: `[x]`
 | Focus-gated ticker (PyCharm) | `[x]` | Ticker stops when IntelliJ loses focus (`applicationDeactivated`) and restarts on focus-gain (`applicationActivated`); state saved immediately on focus-loss — **skipped when `aiMode` is on** |
 | State migration when PetState schema changes | `[ ]` | Add a `schemaVersion` field |
 | Export / import pet via JSON file | `[ ]` | For sharing or backup |
+| Cross-IDE shared state bridge | `[x]` | VS Code, PyCharm, and OpenCode plugin all read/write `~/.config/gotchi/state.json` (Windows: `%APPDATA%/gotchi/state.json`); on load the copy with the newer `savedAt` timestamp wins |
 
 ---
 
