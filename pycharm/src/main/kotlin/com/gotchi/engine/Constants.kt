@@ -148,6 +148,24 @@ const val OFFLINE_DECAY_MAX_FRACTION: Double = 0.60
 
 /** Age in game days at which a senior pet may die of old age (365 game days = 1 in-game year). */
 const val SENIOR_NATURAL_DEATH_AGE_DAYS: Int = 365
+/** Base per-day probability of a senior dying of old age when all stats are optimal. */
+const val OLD_AGE_DEATH_BASE_CHANCE_PER_DAY: Double = 0.001
+/**
+ * Risk multiplier applied to the base chance when all three longevity factors are at their worst.
+ * At ageFactor=0 (day 365): chance = BASE × (1 + MULTIPLIER × riskScore), range [0.001, 0.010].
+ */
+const val OLD_AGE_DEATH_RISK_MULTIPLIER: Int = 9
+/** Peak age in game days at which old-age death chance is capped (5 in-game years). */
+const val OLD_AGE_DEATH_PEAK_AGE_DAYS: Int = 1825
+/** Best-care (riskScore = 0) per-day death probability at peak age. */
+const val OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE: Double = 0.05
+/** Worst-care (riskScore = 1) per-day death probability at peak age. */
+const val OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE: Double = 0.10
+/**
+ * Multiplier applied to the old-age death chance to get the per-day sickness
+ * chance for senior pets.  Seniors are 3× more likely to fall ill than to die.
+ */
+const val OLD_AGE_SICK_CHANCE_MULTIPLIER: Int = 3
 
 /** Ticks elapsed while awake before the day timer advances by 1.0 (1 game day = 5 real minutes awake). */
 const val TICKS_PER_GAME_DAY_AWAKE: Int = 5 * TICKS_PER_MINUTE

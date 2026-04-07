@@ -429,6 +429,13 @@ class GotchiPlugin : Disposable {
             }
         }
 
+        // Fire notification on old-age natural-causes death
+        if (state != null && state.events.contains("died_of_old_age")) {
+            fireAttentionNotification(
+                "${state.name} has passed away of unforeseen natural causes due to old age."
+            )
+        }
+
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
                 browserPanel?.postState(state, meals, highScore, devMode)

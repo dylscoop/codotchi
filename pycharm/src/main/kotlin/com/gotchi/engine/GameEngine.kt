@@ -541,7 +541,12 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         ticksSinceLastGift       = ticksSinceLastGift,
     )
 
-    return checkStageProgression(afterDecay)
+    // Stage progression + old-age death/sickness rolls (once per day boundary for seniors)
+    val afterStage = checkStageProgression(afterDecay)
+    return if (afterDecay.ageDays > state.ageDays) {
+        val afterDeath = rollOldAgeDeath(afterStage)
+        if (afterDeath.alive) rollOldAgeSickness(afterDeath) else afterDeath
+    } else afterStage
 }
 
 // ---------------------------------------------------------------------------
@@ -898,12 +903,76 @@ fun promoteToSenior(state: PetState): PetState {
     )
 }
 
-fun checkOldAgeDeath(state: PetState): PetState {
+/**
+ * Compute the per-day probability of old-age death for a senior pet.
+ *
+ * riskScore = average of happinessFactor, weightFactor, disciplineFactor  in [0, 1]
+ *
+ * The chance ramps from onset values at day 365 (ageFactor = 0) to peak at day 1825
+ * (ageFactor = 1), then stays at peak:
+ *
+ *   ageFactor = clamp((ageDays - 365) / (1825 - 365), 0, 1)
+ *   minChance = lerp(0.001, 0.05,  ageFactor)
+ *   maxChance = lerp(0.010, 0.10,  ageFactor)
+ *   chance    = lerp(minChance, maxChance, riskScore)
+ */
+fun computeOldAgeDeathChance(state: PetState): Double {
+    val avgHappiness = if (state.careScoreTicks > 0)
+        state.careScoreHappinessSum.toDouble() / state.careScoreTicks
+    else state.happiness.toDouble()
+    val happinessFactor = (100.0 - avgHappiness) / 100.0
+
+    val weightFactor = when {
+        state.weight < WEIGHT_HAPPINESS_LOW_THRESHOLD ->
+            (WEIGHT_HAPPINESS_LOW_THRESHOLD - state.weight).toDouble() /
+            (WEIGHT_HAPPINESS_LOW_THRESHOLD - WEIGHT_MIN).toDouble()
+        state.weight > WEIGHT_HAPPINESS_HIGH_THRESHOLD ->
+            (state.weight - WEIGHT_HAPPINESS_HIGH_THRESHOLD).toDouble() /
+            (WEIGHT_MAX - WEIGHT_HAPPINESS_HIGH_THRESHOLD).toDouble()
+        else -> 0.0
+    }
+
+    val disciplineFactor = (100.0 - state.discipline) / 100.0
+    val riskScore = (happinessFactor + weightFactor + disciplineFactor) / 3.0
+
+    val ageFactor = minOf(1.0, maxOf(0.0,
+        (state.ageDays - SENIOR_NATURAL_DEATH_AGE_DAYS).toDouble() /
+        (OLD_AGE_DEATH_PEAK_AGE_DAYS - SENIOR_NATURAL_DEATH_AGE_DAYS).toDouble()
+    ))
+
+    val baseWorstCare = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY * (1.0 + OLD_AGE_DEATH_RISK_MULTIPLIER)
+    val minChance = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY +
+        ageFactor * (OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE - OLD_AGE_DEATH_BASE_CHANCE_PER_DAY)
+    val maxChance = baseWorstCare +
+        ageFactor * (OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE - baseWorstCare)
+
+    return minChance + riskScore * (maxChance - minChance)
+}
+
+/**
+ * Roll for natural old-age death once per game-day boundary for a senior pet.
+ * Returns state with alive=false and event "died_of_old_age" if the roll hits.
+ */
+fun rollOldAgeDeath(state: PetState): PetState {
     if (state.stage != "senior") return state
     if (state.ageDays < SENIOR_NATURAL_DEATH_AGE_DAYS) return state
-    if (state.health <= HEALTH_DEATH_THRESHOLD)
-        return withDerivedFields(state.copy(alive = false, events = listOf("died_of_old_age")))
-    return state
+    val chance = computeOldAgeDeathChance(state)
+    if (Math.random() >= chance) return state
+    return withDerivedFields(state.copy(alive = false, events = listOf("died_of_old_age")))
+}
+
+/**
+ * Roll for a random age-related illness once per game-day boundary for a senior pet.
+ * Returns state with sick=true and event "became_sick_old_age" if the roll hits.
+ * No-op if the pet is already sick.
+ */
+fun rollOldAgeSickness(state: PetState): PetState {
+    if (state.stage != "senior") return state
+    if (state.ageDays < SENIOR_NATURAL_DEATH_AGE_DAYS) return state
+    if (state.sick) return state
+    val chance = OLD_AGE_SICK_CHANCE_MULTIPLIER * computeOldAgeDeathChance(state)
+    if (Math.random() >= chance) return state
+    return withDerivedFields(state.copy(sick = true, events = state.events + "became_sick_old_age"))
 }
 
 // ---------------------------------------------------------------------------
