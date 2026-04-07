@@ -10,7 +10,7 @@
  *
  * What it does:
  *   1. Copies commands/codotchi.md → ~/.config/opencode/commands/codotchi.md
- *      (Windows: %APPDATA%\opencode\commands\codotchi.md)
+ *      (XDG_CONFIG_HOME/opencode/commands/codotchi.md if XDG_CONFIG_HOME is set)
  *
  *   2. Copies the plugin TypeScript source files into the global plugin directory:
  *        src/index.ts      → ~/.config/opencode/plugins/codotchi.ts
@@ -23,6 +23,9 @@
  *   3. Creates or updates ~/.config/opencode/package.json to add the
  *      @opencode-ai/plugin dependency. OpenCode runs `bun install` on startup,
  *      so the dependency is resolved automatically.
+ *
+ * "~/.config" is resolved via XDG_CONFIG_HOME (if set) or os.homedir()/.config
+ * — the same logic OpenCode itself uses on every platform, including Windows.
  *
  * All three steps are required once per machine so the /codotchi slash command
  * and the plugin are available in every OpenCode project.
@@ -43,11 +46,11 @@ if (!args.includes("--install")) {
 }
 
 // ── Config paths ─────────────────────────────────────────────────────────────
+// Honour XDG_CONFIG_HOME if the user has set it (OpenCode uses the same logic).
+// On Windows this resolves to C:\Users\<name>\.config, which is where OpenCode
+// stores its config — NOT %APPDATA%.
 
-const configBase =
-  process.platform === "win32"
-    ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")
-    : path.join(os.homedir(), ".config");
+const configBase = process.env["XDG_CONFIG_HOME"] ?? path.join(os.homedir(), ".config");
 
 const opencodeDir = path.join(configBase, "opencode");
 const commandsDir = path.join(opencodeDir, "commands");
