@@ -15,20 +15,41 @@ Raises your gotchi in the terminal alongside your coding session.
 
 ## Global install
 
-Run the installer once per machine to set up the slash command and OpenCode
-config globally. Choose the path that matches how you have the package:
+Run the installer once per machine to make your pet available in every OpenCode
+project. Choose the path that matches how you have the package:
 
-### Option A — From source (local clone)
+### Option A — From zip (recommended)
 
-Use this if you have cloned the repository and have not published to npm yet.
+Download `opencode-codotchi-0.10.1.zip` from the
+[Releases page](https://github.com/dylscoop/codotchi/releases), extract it,
+then run the installer:
 
 ```bash
-cd opencode-codotchi
-npm install
+# macOS / Linux
+unzip opencode-codotchi-0.10.1.zip
+cd opencode-codotchi-0.10.1
 node bin/install.js --install
 ```
 
-### Option B — From npm (once published)
+```powershell
+# Windows (PowerShell)
+Expand-Archive opencode-codotchi-0.10.1.zip
+cd opencode-codotchi-0.10.1
+node bin/install.js --install
+```
+
+No npm publish or repository clone required. Node.js is the only prerequisite.
+
+### Option B — From source (local clone)
+
+Use this if you have already cloned the repository.
+
+```bash
+cd opencode-codotchi
+node bin/install.js --install
+```
+
+### Option C — From npm (once published)
 
 > **Note:** `opencode-codotchi` has not yet been published to the npm registry.
 > This path will not work until `npm publish` has been run from `opencode-codotchi/`.
@@ -41,34 +62,29 @@ npx opencode-codotchi --install
 
 ### What the installer does
 
-Both paths run the same script and do two things:
+All three paths run the same script. It does three things:
 
 1. **Copies the slash command** — `commands/codotchi.md` →
    `~/.config/opencode/commands/codotchi.md`
    (Windows: `%APPDATA%\opencode\commands\codotchi.md`)
 
-2. **Copies the OpenCode config** — `config/opencode.json` →
-   `~/.config/opencode/opencode.json`
-   (Windows: `%APPDATA%\opencode\opencode.json`)
-   **Only if the file does not already exist** — your existing config is never
-   overwritten. If it already exists, the installer prints a skip message and
-   reminds you to add `"opencode-codotchi"` to your `"plugin"` array manually.
+2. **Copies the plugin source files** into the global plugin directory:
+   - `src/index.ts` → `~/.config/opencode/plugins/codotchi.ts`
+   - `src/gameEngine.ts` → `~/.config/opencode/plugins/gameEngine.ts`
+   - `src/asciiArt.ts` → `~/.config/opencode/plugins/asciiArt.ts`
 
-The installed `opencode.json` contains:
+   OpenCode loads all files in `~/.config/opencode/plugins/` automatically on
+   every startup — no `"plugin"` config entry needed.
 
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-codotchi"]
-}
-```
-
-OpenCode reads this on startup and automatically downloads the plugin via Bun.
+3. **Adds `@opencode-ai/plugin` to `~/.config/opencode/package.json`** (creates
+   the file if it does not exist). OpenCode runs `bun install` on startup to
+   resolve the dependency automatically.
 
 ### Open OpenCode
 
-After running the installer, open any project in OpenCode — the pet plugin
-loads automatically and your pet will greet you in a speech bubble.
+After running the installer, open any project in OpenCode. On first startup,
+OpenCode installs the plugin dependency via bun, then loads the pet — your
+codotchi will greet you in a speech bubble.
 
 ## Usage
 
@@ -95,13 +111,20 @@ state.
 
 ## Building from source
 
+To compile the TypeScript source (produces `dist/`):
+
 ```bash
 cd opencode-codotchi
 npm install
 npm run build
 ```
 
-This produces `dist/index.js` (the compiled plugin entry point).
+To rebuild the distributable zip:
+
+```bash
+cd opencode-codotchi
+node scripts/package.js
+```
 
 ## Part of the codotchi project
 
