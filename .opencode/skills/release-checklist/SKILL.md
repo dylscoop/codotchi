@@ -172,15 +172,14 @@ must be kept in sync **before committing**:
 updating, copy the changed file(s) manually and include both copies in the same
 commit.
 
-After copying, verify the npm package compiles:
+After copying, verify the npm package builds and installs correctly:
 
 ```bash
-# from opencode-codotchi/
-npm install   # first time only
-npm run build
+cd opencode-codotchi
+node bin/install.js --install
 ```
 
-If the build fails, fix the errors before committing. The `dist/` directory is
+If the install fails, fix the errors before committing. The `dist/` directory is
 gitignored — do not commit it.
 
 Also update `opencode-codotchi/package.json` `"version"` to match the repo
