@@ -1,6 +1,37 @@
 # Version History
 
-## v0.10.2 — current
+## v0.10.3 — current
+
+### Changes from v0.10.2
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/package.json` | Version bumped `0.10.2` → `0.10.3` |
+| `.opencode/plugins/gotchi.ts` | Added `terminalEnabled` persistence across restarts; added session coding activity tracking (`sessionFilesEdited`, `sessionStartMs`); added `artHeader()` showing ASCII art + contextual speech bubble in every tool response; added `buildContextualSpeech` call combining pet mood and coding stats |
+| `opencode-codotchi/src/index.ts` | Mirrored from `.opencode/plugins/gotchi.ts` (same changes) |
+| `.opencode/plugins/asciiArt.ts` | Added `buildContextualSpeech()` helper combining pet mood + session coding activity; redesigned ASCII sprites for all 6 stages (distinct silhouettes) |
+| `opencode-codotchi/src/asciiArt.ts` | Mirrored from `.opencode/plugins/asciiArt.ts` (same changes) |
+| `.opencode/commands/codotchi.md` | Added `/codotchi new_game` entry; updated `/codotchi on` description to "every tool response" |
+| `opencode-codotchi/commands/codotchi.md` | Mirrored from `.opencode/commands/codotchi.md` (same changes) |
+| `vscode/FEATURES.md` | Updated OpenCode integration rows for v0.10.3 features |
+| `README.md` | Install filenames updated to `0.10.3` |
+| `vscode/README.md` | Install filenames updated to `0.10.3` |
+| `pycharm/README.md` | Install filenames updated to `0.10.3` |
+| `VERSIONS.md` | Added v0.10.3 section |
+
+### Features added
+
+**ASCII art in every OpenCode tool response** — when terminal display is enabled
+(`/codotchi on`), the pet's ASCII sprite and a contextual speech bubble appear
+as part of every tool response, not just `/codotchi status`. The speech bubble
+combines pet mood with session coding activity (files edited + session time) for
+a dynamic message on every action. The `terminalEnabled` flag now persists
+across OpenCode restarts. Sprites were redesigned with distinct silhouettes for
+each of the 6 life stages.
+
+---
+
+## v0.10.2 — previous
 
 ### Changes from v0.10.1
 

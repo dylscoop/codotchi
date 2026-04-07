@@ -559,8 +559,10 @@ Status: `[x]`
 | State migration when PetState schema changes | `[ ]` | Add a `schemaVersion` field |
 | Export / import pet via JSON file | `[ ]` | For sharing or backup |
 | Cross-IDE shared state bridge | `[x]` | VS Code, PyCharm, and OpenCode plugin all read/write `~/.config/gotchi/state.json` (Windows: `%APPDATA%/gotchi/state.json`); on load the copy with the newer `savedAt` timestamp wins |
-| OpenCode `/codotchi` slash command | `[x]` | Renamed from `/gotchi` in v0.10.1; defined in `.opencode/commands/codotchi.md` and `opencode-codotchi/commands/codotchi.md` |
+| OpenCode `/codotchi` slash command | `[x]` | Renamed from `/gotchi` in v0.10.1; defined in `.opencode/commands/codotchi.md` and `opencode-codotchi/commands/codotchi.md`; supports `status`, `feed`, `pat`, `sleep`, `clean`, `medicine`, `on`, `off`, `new_game` |
 | OpenCode npm package (`opencode-codotchi`) | `[x]` | Globally-installable distribution of the OpenCode plugin; add to `~/.config/opencode/opencode.json` and run `npx opencode-codotchi --install` |
+| OpenCode ASCII art in every tool response | `[x]` | When enabled via `/codotchi on`, the pet's ASCII sprite + contextual speech bubble (mood + session coding stats) appears in every tool response; `terminalEnabled` flag persists across restarts |
+| OpenCode ASCII sprite redesign | `[x]` | All 6 life stage sprites redesigned with distinct silhouettes (v0.10.3) |
 
 ---
 
