@@ -547,6 +547,15 @@ export const plugin: Plugin = async (_ctx) => {
       }
     },
 
+    // Prepend the codotchi art to every LLM text response when terminal art is
+    // enabled. artHeader() is already gated by terminalEnabled, petState, and alive.
+    async "experimental.text.complete"(_input, output) {
+      const header = artHeader();
+      if (header) {
+        output.text = header + output.text;
+      }
+    },
+
     async event({ event }) {
       // file.edited → code activity reward (throttled)
       if (event.type === "file.edited") {
