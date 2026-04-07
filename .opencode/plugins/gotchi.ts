@@ -144,6 +144,13 @@ let lastCodeActivityMs = 0;
 let terminalEnabled = false;
 
 // ---------------------------------------------------------------------------
+// Session coding activity stats (for contextual speech bubble commentary)
+// ---------------------------------------------------------------------------
+
+let sessionFilesEdited = 0;
+let sessionStartMs = Date.now();
+
+// ---------------------------------------------------------------------------
 // Pending notification queue
 // Tick events fire outside any tool context, so we queue their messages
 // and prepend them to the next tool result.
@@ -507,6 +514,7 @@ export const plugin: Plugin = async (_ctx) => {
       // file.edited → code activity reward (throttled)
       if (event.type === "file.edited") {
         isIdle = false;
+        sessionFilesEdited += 1;
         if (petState !== null && petState.alive && !petState.sleeping) {
           const nowMs = Date.now();
           if (nowMs - lastCodeActivityMs >= CODE_ACTIVITY_THROTTLE_SECONDS * 1_000) {
