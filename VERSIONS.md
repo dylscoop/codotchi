@@ -1,6 +1,51 @@
 # Version History
 
-## v0.9.3 — current
+## v0.9.4 — current
+
+### Changes from v0.9.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | Added `computeOldAgeDeathChance` (age-scaled lerp formula); added `rollOldAgeSickness`; wired both into `tick()` at day boundary; added 4 new constants: `OLD_AGE_DEATH_PEAK_AGE_DAYS`, `OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE`, `OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE`, `OLD_AGE_SICK_CHANCE_MULTIPLIER` |
+| `vscode/src/extension.ts` | Added IDE popup notification for `died_of_old_age` event in `handleStateUpdate()` |
+| `vscode/tests/unit/gameEngine.test.ts` | 13 new tests covering age-scaled death chance, senior sickness rolls, and boundary conditions (224 tests total) |
+| `vscode/media/sidebar.js` | Updated `died_of_old_age` event log text; added `became_sick_old_age` entry |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Added 4 new constants matching the TS constants (`OLD_AGE_DEATH_BASE_CHANCE_PER_DAY`, `OLD_AGE_DEATH_RISK_MULTIPLIER`, `OLD_AGE_DEATH_PEAK_AGE_DAYS`, `OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE`, `OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE`, `OLD_AGE_SICK_CHANCE_MULTIPLIER`) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | Replaced dead-code `checkOldAgeDeath` with `computeOldAgeDeathChance`, `rollOldAgeDeath`, and `rollOldAgeSickness`; wired both rolls into `tick()` at day boundary |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` | Added IntelliJ balloon notification for `died_of_old_age` event in `broadcastState()` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Updated `died_of_old_age` event log text; added `became_sick_old_age` entry |
+| `vscode/FEATURES.md` | Updated Section 9 senior natural death row to document age-scaled formula, sickness mechanic, and special death message |
+| `VERSIONS.md` | Added v0.9.4 section |
+
+### Features added
+
+**Age-scaled senior death chance** — the per-day probability of natural death ramps
+linearly from onset values at day 365 (best care: 0.1%/day, worst care: 1.0%/day) up
+to peak values at day 1825 (5 in-game years; best care: 5%/day, worst care: 10%/day),
+then stays capped at peak. The riskScore driving the range is the average of three
+longevity factors: low happiness, unhealthy weight, and low discipline.
+
+Formula:
+```
+ageFactor = clamp((ageDays − 365) / (1825 − 365), 0, 1)
+minChance = lerp(0.001, 0.05,  ageFactor)   ← best care (riskScore = 0)
+maxChance = lerp(0.010, 0.10,  ageFactor)   ← worst care (riskScore = 1)
+chance    = lerp(minChance, maxChance, riskScore)
+```
+
+**Senior random sickness** — once per day boundary, senior pets also roll for an
+age-related illness at 3× the current death-chance rate (`OLD_AGE_SICK_CHANCE_MULTIPLIER = 3`).
+Fires the `became_sick_old_age` event and shows "came down with an age-related illness."
+in the event log. Skipped if the pet is already sick.
+
+**Special old-age death message** — `died_of_old_age` now renders as
+"passed away of unforeseen natural causes due to old age." in the event log
+(was "passed away of old age..."). Both VS Code and PyCharm fire an IDE popup
+notification on this event (VS Code: `showInformationMessage`; PyCharm: `fireAttentionNotification`).
+
+---
+
+## v0.9.3 — previous
 
 ### Changes from v0.9.2
 
