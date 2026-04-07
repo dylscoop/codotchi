@@ -64,6 +64,11 @@ by OpenCode when you open this repository.
 
 **Option B — Global install via npm (`opencode-codotchi`)**
 
+> **Note:** `opencode-codotchi` has not yet been published to the npm registry.
+> The steps below will not work until the package is published. To publish,
+> run `npm login` (or set `NPM_TOKEN=<token>`) then `npm publish` from
+> `opencode-codotchi/`. See `opencode-codotchi/README.md` for details.
+
 Install the `opencode-codotchi` package to make your pet available in **every
 project** you open in OpenCode:
 

@@ -15,6 +15,11 @@ Raises your gotchi in the terminal alongside your coding session.
 
 ## Global install
 
+> **Note:** `opencode-codotchi` has not yet been published to the npm registry.
+> The steps below will not work until the package is published. To publish, run
+> `npm login` (or set `NPM_TOKEN=<token>`) then `npm publish` from this
+> directory. See [Building from source](#building-from-source) below.
+
 ### 1. Add the plugin to your OpenCode config
 
 Edit `~/.config/opencode/opencode.json` (create it if it doesn't exist):
