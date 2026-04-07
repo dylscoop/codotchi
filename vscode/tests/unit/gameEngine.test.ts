@@ -28,6 +28,7 @@ import {
   applyCodeActivity,
   promoteToSenior,
   rollOldAgeDeath,
+  rollOldAgeSickness,
   applyOfflineDecay,
   moodFromStats,
   tierFromCareScore,
@@ -47,6 +48,10 @@ import {
   SENIOR_NATURAL_DEATH_AGE_DAYS,
   OLD_AGE_DEATH_BASE_CHANCE_PER_DAY,
   OLD_AGE_DEATH_RISK_MULTIPLIER,
+  OLD_AGE_DEATH_PEAK_AGE_DAYS,
+  OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE,
+  OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE,
+  OLD_AGE_SICK_CHANCE_MULTIPLIER,
   VALID_PET_TYPES,
   STAGE_ORDER,
   PetState,
@@ -1408,13 +1413,124 @@ describe("rollOldAgeDeath", () => {
       discipline: 0, weight: 1,
       careScoreHappinessSum: 0, careScoreTicks: 1 });         // avg = 0
     // happinessFactor=1, weightFactor=1, disciplineFactor=1 → riskScore=1
+    // At ageFactor=0 (day 365) the chance equals BASE × (1 + MULTIPLIER) ≈ 0.010
     const maxChance = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY * (1 + OLD_AGE_DEATH_RISK_MULTIPLIER);
     assert.equal(rollOldAgeDeath(worst, maxChance - 0.0001).alive, false);
-    assert.equal(rollOldAgeDeath(worst, maxChance), worst);
+    // Use maxChance + small epsilon to stay safely above the floating-point threshold
+    assert.equal(rollOldAgeDeath(worst, maxChance + 0.0001), worst);
   });
 
   it("SENIOR_NATURAL_DEATH_AGE_DAYS is 365", () => {
     assert.equal(SENIOR_NATURAL_DEATH_AGE_DAYS, 365);
+  });
+
+  it("chance at mid-range age (day 1095) is greater than at onset (day 365) for perfect stats", () => {
+    const onsetPerfect = makePet({ stage: "senior", ageDays: 365,
+      discipline: 100, weight: 40,
+      careScoreHappinessSum: 10000, careScoreTicks: 100 });  // chance = 0.001
+    const midAgePerfect = makePet({ stage: "senior", ageDays: 1095,
+      discipline: 100, weight: 40,
+      careScoreHappinessSum: 10000, careScoreTicks: 100 });  // ageFactor=0.5 → chance ≈ 0.0255
+    // A value between the two thresholds: spares at onset but kills at mid-age
+    const midRandom = 0.002;
+    assert.equal(rollOldAgeDeath(onsetPerfect,  midRandom), onsetPerfect);
+    assert.equal(rollOldAgeDeath(midAgePerfect, midRandom).alive, false);
+  });
+
+  it("at peak age (day 1825) with perfect stats, chance equals OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE", () => {
+    const perfect = makePet({ stage: "senior", ageDays: 1825,
+      discipline: 100, weight: 40,
+      careScoreHappinessSum: 10000, careScoreTicks: 100 });
+    // ageFactor=1, riskScore=0 → chance = OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE = 0.05
+    assert.equal(rollOldAgeDeath(perfect, OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE - 0.001).alive, false);
+    assert.equal(rollOldAgeDeath(perfect, OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE), perfect);
+  });
+
+  it("at peak age (day 1825) with worst stats, chance equals OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE", () => {
+    const worst = makePet({ stage: "senior", ageDays: 1825,
+      discipline: 0, weight: 1,
+      careScoreHappinessSum: 0, careScoreTicks: 1 });
+    // ageFactor=1, riskScore=1 → chance = OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE = 0.10
+    assert.equal(rollOldAgeDeath(worst, OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE - 0.001).alive, false);
+    assert.equal(rollOldAgeDeath(worst, OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE), worst);
+  });
+
+  it("chance is capped at peak values for ageDays beyond OLD_AGE_DEATH_PEAK_AGE_DAYS", () => {
+    const peakPerfect   = makePet({ stage: "senior", ageDays: OLD_AGE_DEATH_PEAK_AGE_DAYS,
+      discipline: 100, weight: 40,
+      careScoreHappinessSum: 10000, careScoreTicks: 100 });
+    const beyondPerfect = makePet({ stage: "senior", ageDays: OLD_AGE_DEATH_PEAK_AGE_DAYS + 200,
+      discipline: 100, weight: 40,
+      careScoreHappinessSum: 10000, careScoreTicks: 100 });
+    // Both have ageFactor=1 → same chance (0.05); a value just below 0.05 kills both
+    assert.equal(rollOldAgeDeath(peakPerfect,   OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE - 0.001).alive, false);
+    assert.equal(rollOldAgeDeath(beyondPerfect, OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE - 0.001).alive, false);
+    // A value at 0.05 spares both (same threshold)
+    assert.equal(rollOldAgeDeath(peakPerfect,   OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE), peakPerfect);
+    assert.equal(rollOldAgeDeath(beyondPerfect, OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE), beyondPerfect);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// rollOldAgeSickness
+// ---------------------------------------------------------------------------
+
+describe("rollOldAgeSickness", () => {
+  it("returns unchanged state for non-senior pets", () => {
+    const pet = makePet({ stage: "adult", ageDays: 400 });
+    assert.equal(rollOldAgeSickness(pet, 0), pet);
+  });
+
+  it("returns unchanged state when ageDays < 365", () => {
+    const pet = makePet({ stage: "senior", ageDays: 364 });
+    assert.equal(rollOldAgeSickness(pet, 0), pet);
+  });
+
+  it("returns unchanged state when already sick", () => {
+    const pet = makePet({ stage: "senior", ageDays: 365, sick: true });
+    assert.equal(rollOldAgeSickness(pet, 0), pet);
+  });
+
+  it("makes the pet sick when random < chance", () => {
+    const pet = makePet({ stage: "senior", ageDays: 365 });
+    const next = rollOldAgeSickness(pet, 0);   // random=0 always < any positive chance
+    assert.equal(next.sick, true);
+    assert.ok(next.events.includes("became_sick_old_age"));
+  });
+
+  it("leaves the pet healthy when random >= chance", () => {
+    const pet = makePet({ stage: "senior", ageDays: 365 });
+    assert.equal(rollOldAgeSickness(pet, 0.9999), pet);
+  });
+
+  it("sickness chance is OLD_AGE_SICK_CHANCE_MULTIPLIER × death chance at onset with perfect stats", () => {
+    const perfect = makePet({ stage: "senior", ageDays: 365,
+      discipline: 100, weight: 40,
+      careScoreHappinessSum: 10000, careScoreTicks: 100 });
+    // onset, riskScore=0 → deathChance = 0.001; sickChance = 3 × 0.001 = 0.003
+    const sickChance = OLD_AGE_SICK_CHANCE_MULTIPLIER * OLD_AGE_DEATH_BASE_CHANCE_PER_DAY;
+    assert.equal(rollOldAgeSickness(perfect, sickChance - 0.0001).sick, true);
+    assert.equal(rollOldAgeSickness(perfect, sickChance), perfect);
+  });
+
+  it("sickness chance is OLD_AGE_SICK_CHANCE_MULTIPLIER × peak worst-care death chance at peak age", () => {
+    const worst = makePet({ stage: "senior", ageDays: 1825,
+      discipline: 0, weight: 1,
+      careScoreHappinessSum: 0, careScoreTicks: 1 });
+    // ageFactor=1, riskScore=1 → deathChance = 0.10; sickChance = 3 × 0.10 = 0.30
+    const sickChance = OLD_AGE_SICK_CHANCE_MULTIPLIER * OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE;
+    assert.equal(rollOldAgeSickness(worst, sickChance - 0.001).sick, true);
+    assert.equal(rollOldAgeSickness(worst, sickChance), worst);
+  });
+
+  it("sick chance at mid-range age (day 1095) is between onset and peak values", () => {
+    const perfect = makePet({ stage: "senior", ageDays: 1095,
+      discipline: 100, weight: 40,
+      careScoreHappinessSum: 10000, careScoreTicks: 100 });
+    // ageFactor=0.5, riskScore=0 → deathChance ≈ 0.0255; sickChance ≈ 0.0765
+    // 0.003 (onset sick threshold) < 0.0765 < 0.15 (peak sick threshold)
+    assert.equal(rollOldAgeSickness(perfect, 0.005).sick, true);   // above onset, but below mid-age
+    assert.equal(rollOldAgeSickness(perfect, 0.080), perfect);     // above mid-age threshold
   });
 });
 

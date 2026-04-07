@@ -101,6 +101,13 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }
 
+    // Fire old-age natural-causes death notification
+    if (state.events.includes("died_of_old_age")) {
+      void vscode.window.showWarningMessage(
+        `${state.name} has passed away of unforeseen natural causes due to old age.`
+      );
+    }
+
     // Update high score when pet dies (suppressed in dev mode — scores don't count)
     const cfg2 = vscode.workspace.getConfiguration("gotchi");
     const devModeActive =

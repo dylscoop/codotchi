@@ -217,9 +217,20 @@ export const OLD_AGE_DEATH_BASE_CHANCE_PER_DAY: number = 0.001;
  * Risk multiplier applied to the base chance when all three longevity factors
  * (happiness, weight, discipline) are at their worst.
  * Final chance = BASE × (1 + MULTIPLIER × riskScore), where riskScore ∈ [0, 1].
- * Range: 0.1 % / day (perfect) → 1.0 % / day (neglected).
+ * Range: 0.1 % / day (perfect) → 1.0 % / day (neglected) at the onset age (day 365).
  */
 export const OLD_AGE_DEATH_RISK_MULTIPLIER: number = 9;
+/** Peak age in game days at which old-age death chance is capped (5 in-game years). */
+export const OLD_AGE_DEATH_PEAK_AGE_DAYS: number = 1825;
+/** Best-care (riskScore = 0) per-day death probability at peak age. */
+export const OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE: number = 0.05;
+/** Worst-care (riskScore = 1) per-day death probability at peak age. */
+export const OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE: number = 0.10;
+/**
+ * Multiplier applied to the old-age death chance to get the per-day sickness
+ * chance for senior pets.  Seniors are 3× more likely to fall ill than to die.
+ */
+export const OLD_AGE_SICK_CHANCE_MULTIPLIER: number = 3;
 
 /**
  * Ticks elapsed while awake before the day timer advances by 1.0 (1 game day = 5 real minutes awake).
@@ -1219,12 +1230,14 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     ticksSinceLastGift,
   };
 
-  // Stage progression + old-age death roll (once per day boundary for seniors)
+  // Stage progression + old-age death/sickness rolls (once per day boundary for seniors)
   const afterStage = checkStageProgression(afterDecay);
   // ageDays is Math.floor(new dayTimer), computed above; state.ageDays is pre-tick value.
-  return ageDays > state.ageDays
-    ? rollOldAgeDeath(afterStage, Math.random())
-    : afterStage;
+  if (ageDays > state.ageDays) {
+    const afterDeath = rollOldAgeDeath(afterStage, Math.random());
+    return afterDeath.alive ? rollOldAgeSickness(afterDeath, Math.random()) : afterDeath;
+  }
+  return afterStage;
 }
 
 // ---------------------------------------------------------------------------
@@ -1760,9 +1773,19 @@ export function promoteToSenior(state: PetState): PetState {
  *   - weightFactor    : 0 inside the healthy zone [17, 66]; scales to 1 at extremes (1 or 99)
  *   - disciplineFactor: based on current discipline stat
  *
- * riskScore  = average of the three factors  ∈ [0, 1]
- * chance/day = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY × (1 + OLD_AGE_DEATH_RISK_MULTIPLIER × riskScore)
- *            = 0.001 × (1 + 9 × riskScore)  →  range [0.001, 0.010]
+ * riskScore = average of the three factors ∈ [0, 1]
+ *
+ * The chance ramps linearly from the onset values at day 365 (ageFactor = 0)
+ * up to the peak values at day 1825 (5 in-game years, ageFactor = 1), then
+ * stays at the peak:
+ *
+ *   ageFactor = clamp((ageDays − 365) / (1825 − 365), 0, 1)
+ *   minChance = lerp(0.001, 0.05,  ageFactor)   ← best care  (riskScore = 0)
+ *   maxChance = lerp(0.010, 0.10,  ageFactor)   ← worst care (riskScore = 1)
+ *   chance    = lerp(minChance, maxChance, riskScore)
+ *
+ * At ageFactor = 0 this is exactly equivalent to:
+ *   OLD_AGE_DEATH_BASE_CHANCE_PER_DAY × (1 + OLD_AGE_DEATH_RISK_MULTIPLIER × riskScore)
  */
 function computeOldAgeDeathChance(state: PetState): number {
   const avgHappiness = state.careScoreTicks > 0
@@ -1782,9 +1805,20 @@ function computeOldAgeDeathChance(state: PetState): number {
   }
 
   const disciplineFactor = (100 - state.discipline) / 100;
-
   const riskScore = (happinessFactor + weightFactor + disciplineFactor) / 3;
-  return OLD_AGE_DEATH_BASE_CHANCE_PER_DAY * (1 + OLD_AGE_DEATH_RISK_MULTIPLIER * riskScore);
+
+  // Age factor: 0 at onset (day 365), ramps to 1 at peak (day 1825), capped there.
+  const ageFactor = Math.min(1,
+    Math.max(0, (state.ageDays - SENIOR_NATURAL_DEATH_AGE_DAYS) /
+                (OLD_AGE_DEATH_PEAK_AGE_DAYS - SENIOR_NATURAL_DEATH_AGE_DAYS)));
+
+  const baseWorstCare = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY * (1 + OLD_AGE_DEATH_RISK_MULTIPLIER);
+  const minChance = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY +
+    ageFactor * (OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE - OLD_AGE_DEATH_BASE_CHANCE_PER_DAY);
+  const maxChance = baseWorstCare +
+    ageFactor * (OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE - baseWorstCare);
+
+  return minChance + riskScore * (maxChance - minChance);
 }
 
 /**
@@ -1814,6 +1848,38 @@ export function rollOldAgeDeath(state: PetState, random: number): PetState {
     ...state,
     alive: false,
     events: ["died_of_old_age"],
+  });
+}
+
+/**
+ * Roll for a random age-related illness once per game-day boundary for a senior pet.
+ *
+ * Guards (all must pass before the roll fires):
+ *   1. Pet is a senior.
+ *   2. ageDays >= SENIOR_NATURAL_DEATH_AGE_DAYS (365).
+ *   3. Pet is not already sick.
+ *   4. random < OLD_AGE_SICK_CHANCE_MULTIPLIER × computeOldAgeDeathChance(state).
+ *
+ * The `random` parameter is injected so the function is deterministically testable.
+ * Call sites should pass Math.random().
+ *
+ * @param state  - The current pet state.
+ * @param random - A uniform random number in [0, 1).
+ * @returns A new PetState with sick === true and event "became_sick_old_age" if the
+ *          roll hits; otherwise the original state reference unchanged.
+ */
+export function rollOldAgeSickness(state: PetState, random: number): PetState {
+  if (state.stage !== "senior") { return state; }
+  if (state.ageDays < SENIOR_NATURAL_DEATH_AGE_DAYS) { return state; }
+  if (state.sick) { return state; }
+
+  const chance = OLD_AGE_SICK_CHANCE_MULTIPLIER * computeOldAgeDeathChance(state);
+  if (random >= chance) { return state; }
+
+  return withDerivedFields({
+    ...state,
+    sick: true,
+    events: [...state.events, "became_sick_old_age"],
   });
 }
 
