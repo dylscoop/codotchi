@@ -199,17 +199,26 @@ export function activate(context: vscode.ExtensionContext): void {
         if (c.get<boolean>("idleResetOnWindowFocus", true)) {
           markActivity();
         }
-        // Pick up state written by the previously-focused window, then resume ticking.
-        reloadAndRefreshUI();
-        startTicker();
+        // Only reload from persistence if the ticker was stopped on focus-loss
+        // (non-AI mode). In AI mode the in-memory state is already current.
+        if (!c.get<boolean>("aiMode", false)) {
+          reloadAndRefreshUI();
+        }
+        startTicker(); // no-op if already running (AI mode)
       } else {
         if (currentState !== null) {
           // Save immediately on focus loss so that offline decay calculations
           // use an accurate timestamp when VS Code is reopened.
           saveState(context, currentState);
         }
-        // Stop ticking — only the focused window should tick.
-        stopTicker();
+        // In AI mode, keep ticking while unfocused so the pet advances
+        // while an AI agent codes in the background. The focus-gate exists
+        // only to prevent multi-window state divergence, which aiMode avoids
+        // by design (the AI doesn't open extra windows).
+        const c = vscode.workspace.getConfiguration("gotchi");
+        if (!c.get<boolean>("aiMode", false)) {
+          stopTicker();
+        }
       }
     }),
     vscode.window.onDidChangeActiveTextEditor(() => {
@@ -304,11 +313,16 @@ export function activate(context: vscode.ExtensionContext): void {
     saveState(context, state);
   }
 
-  // Periodic tick — only the focused window ticks.
+  // Periodic tick — only the focused window ticks (unless AI mode is on).
+  // In AI mode the ticker runs unconditionally so the pet advances while an
+  // AI agent codes in the background with VS Code unfocused.
   // On focus gain, reloadAndRefreshUI() picks up state from the prior ticker
   // and startTicker() resumes the interval.  On focus loss, stopTicker() halts it.
-  if (vscode.window.state.focused) {
-    startTicker();
+  {
+    const initCfg = vscode.workspace.getConfiguration("gotchi");
+    if (vscode.window.state.focused || initCfg.get<boolean>("aiMode", false)) {
+      startTicker();
+    }
   }
 
   // Commands

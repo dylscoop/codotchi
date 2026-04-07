@@ -553,8 +553,8 @@ Status: `[x]`
 | Full state saved to globalState on every action | `[x]` | |
 | State loaded and restored on extension activation | `[x]` | |
 | Offline decay applied on load (capped at 60%) | `[x]` | |
-| Single-window ticker (multi-window isolation) | `[x]` | Only the focused window ticks; on focus-gain the window reloads globalState and resumes ticking; on focus-loss it saves and stops |
-| Focus-gated ticker (PyCharm) | `[x]` | Ticker stops when IntelliJ loses focus (`applicationDeactivated`) and restarts on focus-gain (`applicationActivated`); state saved immediately on focus-loss |
+| Single-window ticker (multi-window isolation) | `[x]` | Only the focused window ticks; on focus-gain the window reloads globalState and resumes ticking; on focus-loss it saves and stops — **skipped when `aiMode` is on** (ticker always runs) |
+| Focus-gated ticker (PyCharm) | `[x]` | Ticker stops when IntelliJ loses focus (`applicationDeactivated`) and restarts on focus-gain (`applicationActivated`); state saved immediately on focus-loss — **skipped when `aiMode` is on** |
 | State migration when PetState schema changes | `[ ]` | Add a `schemaVersion` field |
 | Export / import pet via JSON file | `[ ]` | For sharing or backup |
 

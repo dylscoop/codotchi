@@ -137,7 +137,13 @@ class GotchiPlugin : Disposable {
                         service<GotchiPersistence>().savePetState(state)
                         service<GotchiPersistence>().lastSaveTimestamp = System.currentTimeMillis()
                     }
-                    stopTicker()
+                    // In AI mode, keep ticking while unfocused so the pet advances
+                    // while an AI agent codes in the background. The focus-gate exists
+                    // only to prevent multi-window state divergence, which aiMode avoids
+                    // by design (the AI doesn't open extra windows).
+                    if (!service<GotchiSettings>().aiMode) {
+                        stopTicker()
+                    }
                 }
             }
         )
