@@ -5,6 +5,7 @@ import com.google.gson.JsonSyntaxException
 import com.gotchi.engine.*
 import com.intellij.openapi.components.*
 import org.jdom.Element
+import java.io.File
 
 /**
  * GotchiPersistence — app-level persistent state stored in `gotchi.xml`.
@@ -13,6 +14,15 @@ import org.jdom.Element
  * unknown/future attributes survive round-trips without breaking.
  *
  * JSON serialisation of PetState is handled by Gson (bundled with IntelliJ).
+ *
+ * Cross-IDE shared state: every save also writes to a JSON file on disk at
+ *   Windows : %APPDATA%\gotchi\state.json
+ *   macOS   : ~/.config/gotchi/state.json
+ *   Linux   : ~/.config/gotchi/state.json
+ *
+ * On load, if the shared file is newer than the local `gotchi.xml` copy (e.g.
+ * because VS Code or the OpenCode plugin saved more recently), the shared file
+ * wins and the IntelliJ-side state is promoted to match it.
  */
 @State(
     name = "GotchiPersistence",
@@ -71,9 +81,43 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         }
     }
 
-    /** Serialise [state] into [petStateJson]. */
+    /** Serialise [state] into [petStateJson] and write to the cross-IDE shared file. */
     fun savePetState(state: PetState) {
         petStateJson = gson.toJson(toRaw(state))
+        lastSaveTimestamp = System.currentTimeMillis()
+        saveToSharedFile(state)
+    }
+
+    /**
+     * Deserialise [petStateJson] into a PetState, applying sanitisation for
+     * fields that may be missing in saves from older plugin versions.
+     *
+     * If the cross-IDE shared file is newer than the local copy (e.g. VS Code
+     * or OpenCode saved more recently), the shared file wins and the IntelliJ
+     * state is promoted so the next save picks it up.
+     *
+     * Returns null if there is no saved state or the JSON is corrupt.
+     */
+    fun loadPetState(): PetState? {
+        val localState: PetState? = petStateJson?.let { json ->
+            try {
+                val raw = gson.fromJson(json, RawPetState::class.java) ?: return@let null
+                sanitise(raw)
+            } catch (_: JsonSyntaxException) {
+                null
+            }
+        }
+
+        // Prefer the shared file if it is strictly newer.
+        val shared = loadFromSharedFile()
+        if (shared != null && shared.second > lastSaveTimestamp) {
+            // Promote the shared state so the next getState() / save picks it up.
+            petStateJson      = gson.toJson(toRaw(shared.first))
+            lastSaveTimestamp = shared.second
+            return shared.first
+        }
+
+        return localState
     }
 
     // ── High score helpers ─────────────────────────────────────────────────
@@ -98,6 +142,54 @@ class GotchiPersistence : PersistentStateComponent<Element> {
     /** Clear the saved high score. */
     fun clearHighScore() {
         highScoreJson = null
+    }
+
+    // ── Cross-IDE shared state ─────────────────────────────────────────────
+
+    private data class SharedStateFile(
+        val state: RawPetState?,
+        val savedAt: Long?,
+    )
+
+    private fun getSharedStatePath(): File {
+        val base = if (System.getProperty("os.name").lowercase().contains("win")) {
+            System.getenv("APPDATA") ?: "${System.getProperty("user.home")}/AppData/Roaming"
+        } else {
+            "${System.getProperty("user.home")}/.config"
+        }
+        return File(base, "gotchi/state.json")
+    }
+
+    /**
+     * Write the current pet state to the shared cross-IDE file.
+     * Failures are silently swallowed — the shared file is best-effort only.
+     */
+    private fun saveToSharedFile(state: PetState) {
+        try {
+            val file = getSharedStatePath()
+            file.parentFile?.mkdirs()
+            val payload = SharedStateFile(state = toRaw(state), savedAt = System.currentTimeMillis())
+            file.writeText(gson.toJson(payload))
+        } catch (_: Exception) {
+            // Best-effort — never crash the plugin if the shared file is unavailable.
+        }
+    }
+
+    /**
+     * Read the shared cross-IDE file.
+     * Returns a (PetState, savedAt) pair, or null if the file is absent / unparseable.
+     */
+    private fun loadFromSharedFile(): Pair<PetState, Long>? {
+        return try {
+            val file = getSharedStatePath()
+            if (!file.exists()) return null
+            val raw = gson.fromJson(file.readText(), SharedStateFile::class.java) ?: return null
+            val rawState = raw.state ?: return null
+            val savedAt  = raw.savedAt ?: return null
+            Pair(sanitise(rawState), savedAt)
+        } catch (_: Exception) {
+            null
+        }
     }
 
     // ── Internal raw DTO (maps 1:1 to JSON fields) ─────────────────────────
