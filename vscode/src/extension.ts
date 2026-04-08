@@ -300,10 +300,20 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   /**
-   * Reload pet state from globalState, apply offline decay, and refresh the UI.
+   * Reload pet state from the shared file / globalState, apply offline decay,
+   * and refresh the UI.
    * Called when this window gains focus so it picks up any state written by the
    * previously-focused (ticking) window.  Does NOT fire attention-call
    * notifications — those were already shown in the other window.
+   *
+   * BUGFIX-050: saveState() is intentionally NOT called here. An unfocused
+   * window must not write to the shared file — doing so would reset its
+   * localTimestamp (TIMESTAMP_KEY) to Date.now(), which makes
+   * shared.savedAt < localTimestamp on the next fs.watch event, causing
+   * loadState() to fall back to the stale local globalState copy instead of
+   * the fresh shared file. The active ticker (focused window) is the sole
+   * writer. In AI mode this function is never called (guarded in the
+   * onDidChangeWindowState handler), so AI mode is unaffected.
    */
   function reloadAndRefreshUI(): void {
     const fresh = loadState(context);
@@ -322,7 +332,7 @@ export function activate(context: vscode.ExtensionContext): void {
       cfg.get<string>("developerPasscode", "") === "1234";
     sidebar?.postState(state, currentHighScore, devModeActive);
     statusBar?.update(state);
-    saveState(context, state);
+    // NOTE: saveState() deliberately omitted — see BUGFIX-050 above.
   }
 
   // Periodic tick — only the focused window ticks (unless AI mode is on).
