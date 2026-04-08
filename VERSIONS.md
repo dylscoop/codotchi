@@ -16,6 +16,10 @@
 | `opencode-codotchi/src/asciiArt.ts` | `buildStatusBlock()` now shows `Sprite` row when spriteType is not classic |
 | `.opencode/plugins/asciiArt.ts` | Mirrored asciiArt.ts changes |
 | `VERSIONS.md` | Added v1.0.1 section |
+| `vscode/archive/vsix/vscode-gotchi-1.0.0.vsix` | Archived old vsix before rebuild |
+| `vscode/vscode-gotchi-1.0.1.vsix` | Rebuilt distributable vsix for v1.0.1 |
+| `pycharm/build/distributions/pycharm-gotchi-1.0.1.zip` | Rebuilt distributable zip for v1.0.1 |
+| `opencode-codotchi/opencode-codotchi-1.0.1.zip` | Rebuilt distributable zip for v1.0.1 |
 
 ---
 
