@@ -678,6 +678,23 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 
 ---
 
+## BUGFIX-046 — `bubbleLines.join` called on a string, crashing the `experimental.text.complete` hook in OpenCode 1.4.0
+
+**Status:** Fixed (branch `fix/bubble-lines-join`)
+**Files:** `.opencode/plugins/gotchi.ts`, `opencode-codotchi/src/index.ts`
+
+**Problem:** The `experimental.text.complete` hook stored the return value of
+`buildSpeechBubble()` in a variable named `bubbleLines` and then called
+`.join("\n")` on it. `buildSpeechBubble` returns a `string` (lines are already
+joined internally). In OpenCode 1.4.0, strings no longer have a `.join` method
+exposed in the plugin runtime, so calling `.join` threw a `TypeError` on every
+LLM text response, crashing the entire hook and breaking all text output.
+
+**Fix:** Renamed `bubbleLines` → `bubble` and removed the `.join("\n")` call,
+passing the string return value directly to `stripAnsi()`.
+
+---
+
 ## BUGFIX-045 — ANSI colour bleed from art blocks into subsequent chat text
 
 **Status:** Fixed (branch `feat/show-art-on-every-response`)

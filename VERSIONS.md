@@ -15,7 +15,13 @@
 | `.opencode/plugins/gotchi.ts` | Added `suppressNextTextArt` flag; re-added `experimental.text.complete` hook (plain-ASCII, appended, suppressed after tool calls); added `stripAnsi` to imports |
 | `opencode-codotchi/src/index.ts` | Mirrored from `.opencode/plugins/gotchi.ts` (same changes) |
 | `opencode-codotchi/opencode-codotchi-0.10.4.zip` | Rebuilt distributable zip for v0.10.4 |
-| `VERSIONS.md` | Added v0.10.4 section |
+| `.opencode/plugins/gotchi.ts` | Fixed `bubbleLines.join()` crash — `buildSpeechBubble` returns a string; removed invalid `.join("\n")` call (BUGFIX-046) |
+| `opencode-codotchi/src/index.ts` | Mirrored BUGFIX-046 fix from `.opencode/plugins/gotchi.ts` |
+| `opencode-codotchi/tests/unit/asciiArt.test.ts` | New: 33 unit tests for `buildSpeechBubble`, `stripAnsi`, `buildStatusBlock`, `buildContextualSpeech` — including return-type regression test for BUGFIX-046 |
+| `opencode-codotchi/tsconfig.test.json` | New: test tsconfig for `opencode-codotchi` (commonjs, compiles to `out-test/`) |
+| `opencode-codotchi/package.json` | Added `test` script (`tsc -p tsconfig.test.json && node --test ...`) |
+| `BUGFIXES.md` | Added BUGFIX-046 |
+| `VERSIONS.md` | Updated v0.10.4 section |
 
 ### Features added
 
