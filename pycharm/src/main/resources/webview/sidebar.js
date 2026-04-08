@@ -355,6 +355,13 @@
     }, 1000);
   }
 
+  /**
+   * Draw the two pixel-art doors on the LR canvas.
+   * revealState: null = closed, "correct" = player picked right side, "wrong" = player picked wrong side
+   * On reveal the chosen door opens; the unchosen door stays closed (or dim on wrong).
+   * @param {string|null} revealState
+   * @param {string|null} playerChoice  "left" or "right" (only used when revealState != null)
+   */
   function drawLRDoors(revealState, playerChoice) {
     if (!lrCtx) { return; }
     var W = lrCanvas.width;
@@ -1415,8 +1422,7 @@
 
   /**
    * Draw the pet body at (x, bodyY).
-   * bodyY is the TOP of the body (before adding bobOffset).
-   * For sleeping, a vertical breath bob is applied via breathPhase.
+   * Delegates to window.renderSpriteGrid() (defined in sprites.js, loaded first).
    *
    * @param {object}  state
    * @param {number}  x          - Left edge of body in canvas pixels
@@ -1425,198 +1431,10 @@
    * @param {number}  legFrame   - 0 or 1
    */
   function drawBody(state, x, bodyY, facingLeft, legFrame) {
-    const palette   = getPalette(state.color);
-    const primary   = palette.primary;
-    const secondary = palette.secondary;
-
-    const stageScale     = STAGE_SCALES[state.stage] || 0.5;
-    const bodySize       = Math.round(24 * stageScale);
-    const wt             = state.weight || 50;
-    const weightWidthMult = weightWidthMultiplier(wt);
-    const bodyWidth      = Math.round(bodySize * weightWidthMult);
-    const heightMult     = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
-    const bodyHeight     = Math.round(bodySize * heightMult);
-    const legH           = Math.max(2, Math.round(bodySize * 0.22));
-
-    // Sleeping breath bob
-    var bobY = bodyY;
-    if (state.sleeping) {
-      bobY = bodyY + Math.round(Math.sin(breathPhase) * 1);
-    }
-
-    spriteCtx.save();
-    if (facingLeft) {
-      spriteCtx.translate(x + bodyWidth, 0);
-      spriteCtx.scale(-1, 1);
-      spriteCtx.translate(-x, 0);
-    }
-
-    const stage = state.stage;
-
-    if (stage === "egg") {
-      // Egg: oval + rocking animation
-      spriteCtx.save();
-      var rockAngle = Math.sin(Date.now() / 600) * (5 * Math.PI / 180);
-      var cx = x + bodyWidth / 2;
-      var cy = bobY + bodyHeight / 2;
-      spriteCtx.translate(cx, cy);
-      spriteCtx.rotate(rockAngle);
-      spriteCtx.translate(-cx, -cy);
-
-      spriteCtx.fillStyle = primary;
-      spriteCtx.beginPath();
-      spriteCtx.ellipse(
-        cx, cy,
-        bodyWidth / 2,
-        bodyHeight / 2,
-        0, 0, Math.PI * 2
-      );
-      spriteCtx.fill();
-
-      const dotSize   = Math.max(1, Math.round(bodySize * 0.10));
-      const dotY      = bobY + Math.round(bodyHeight * 0.38);
-      const dotLeftX  = x + Math.round(bodyWidth * 0.28);
-      const dotRightX = x + Math.round(bodyWidth * 0.62);
-      spriteCtx.fillStyle = secondary;
-      spriteCtx.fillRect(dotLeftX,  dotY, dotSize, dotSize);
-      spriteCtx.fillRect(dotRightX, dotY, dotSize, dotSize);
-      spriteCtx.restore();
-
-    } else if (stage === "baby") {
-      const babyLegH = Math.max(1, Math.round(bodySize * 0.12));
-      const legW  = Math.max(2, Math.round(bodyWidth * 0.15));
-      const legX1 = x + Math.round(bodyWidth * 0.2);
-      const legX2 = x + Math.round(bodyWidth * 0.6);
-      const legY  = bobY + bodyHeight;
-      spriteCtx.fillStyle = primary;
-      spriteCtx.fillRect(legX1, legY, legW, legFrame === 0 ? babyLegH     : babyLegH - 1);
-      spriteCtx.fillRect(legX2, legY, legW, legFrame === 0 ? babyLegH - 1 : babyLegH    );
-
-      spriteCtx.fillStyle = primary;
-      spriteCtx.fillRect(x, bobY, bodyWidth, bodyHeight);
-
-      const eyeSize   = Math.max(2, Math.round(bodySize * 0.30));
-      const eyeY      = bobY + Math.round(bodyHeight * 0.20);
-      const leftEyeX  = x + Math.round(bodyWidth * 0.10);
-      const rightEyeX = x + Math.round(bodyWidth * 0.55);
-      spriteCtx.fillStyle = state.sick     ? "#ff0000"  :
-                            state.sleeping ? "#888888"  : secondary;
-      spriteCtx.fillRect(leftEyeX,  eyeY, eyeSize, eyeSize);
-      spriteCtx.fillRect(rightEyeX, eyeY, eyeSize, eyeSize);
-
-      const mouthY = bobY + Math.round(bodyHeight * 0.72);
-      const mouthX = x + Math.round(bodyWidth * 0.3);
-      const mouthW = Math.round(bodyWidth * 0.4);
-      spriteCtx.fillStyle = secondary;
-      if (state.mood === "happy") {
-        spriteCtx.fillRect(mouthX,              mouthY,     2, 2);
-        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY,     2, 2);
-        spriteCtx.fillRect(mouthX + 2,          mouthY + 2, mouthW - 4, 2);
-      } else if (state.mood === "sad" || state.sick) {
-        spriteCtx.fillRect(mouthX,              mouthY + 2, 2, 2);
-        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY + 2, 2, 2);
-        spriteCtx.fillRect(mouthX + 2,          mouthY,     mouthW - 4, 2);
-      } else {
-        spriteCtx.fillRect(mouthX, mouthY + 1, mouthW, 2);
-      }
-
-    } else if (stage === "child") {
-      const legW  = Math.max(2, Math.round(bodyWidth * 0.15));
-      const legX1 = x + Math.round(bodyWidth * 0.2);
-      const legX2 = x + Math.round(bodyWidth * 0.6);
-      const legY  = bobY + bodyHeight;
-      spriteCtx.fillStyle = primary;
-      spriteCtx.fillRect(legX1, legY, legW, legFrame === 0 ? legH     : legH - 1);
-      spriteCtx.fillRect(legX2, legY, legW, legFrame === 0 ? legH - 1 : legH    );
-
-      spriteCtx.fillStyle = primary;
-      spriteCtx.fillRect(x, bobY, bodyWidth, bodyHeight);
-
-      const eyeSize   = Math.max(2, Math.round(bodySize * 0.18));
-      const eyeY      = bobY + Math.round(bodyHeight * 0.25);
-      const leftEyeX  = x + Math.round(bodyWidth * 0.20);
-      const rightEyeX = x + Math.round(bodyWidth * 0.62);
-      spriteCtx.fillStyle = state.sick     ? "#ff0000"  :
-                            state.sleeping ? "#888888"  : secondary;
-      spriteCtx.fillRect(leftEyeX,  eyeY, eyeSize, eyeSize);
-      spriteCtx.fillRect(rightEyeX, eyeY, eyeSize, eyeSize);
-
-      const mouthY = bobY + Math.round(bodyHeight * 0.65);
-      const mouthX = x + Math.round(bodyWidth * 0.3);
-      const mouthW = Math.round(bodyWidth * 0.4);
-      spriteCtx.fillStyle = secondary;
-      if (state.mood === "happy") {
-        spriteCtx.fillRect(mouthX,              mouthY,     2, 2);
-        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY,     2, 2);
-        spriteCtx.fillRect(mouthX + 2,          mouthY + 2, mouthW - 4, 2);
-      } else if (state.mood === "sad" || state.sick) {
-        spriteCtx.fillRect(mouthX,              mouthY + 2, 2, 2);
-        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY + 2, 2, 2);
-        spriteCtx.fillRect(mouthX + 2,          mouthY,     mouthW - 4, 2);
-      } else {
-        spriteCtx.fillRect(mouthX, mouthY + 1, mouthW, 2);
-      }
-
-    } else {
-      // Teen / Adult / Senior
-      const bigLegH    = Math.max(2, Math.round(bodySize * 0.30));
-      const seniorLegH = Math.max(2, Math.round(bodySize * 0.25));
-      const actualLegH = stage === "senior" ? seniorLegH : bigLegH;
-
-      const legW  = Math.max(2, Math.round(bodyWidth * 0.15));
-      const legX1 = x + Math.round(bodyWidth * 0.2);
-      const legX2 = x + Math.round(bodyWidth * 0.6);
-      const legY  = bobY + bodyHeight;
-      spriteCtx.fillStyle = primary;
-      spriteCtx.fillRect(legX1, legY, legW, legFrame === 0 ? actualLegH     : actualLegH - 1);
-      spriteCtx.fillRect(legX2, legY, legW, legFrame === 0 ? actualLegH - 1 : actualLegH    );
-
-      const headFrac   = stage === "teen" ? 0.40 : (stage === "senior" ? 0.42 : 0.38);
-      const headH      = Math.round(bodyHeight * headFrac);
-      const torsoH     = bodyHeight - headH;
-      const torsoYBase = bobY + headH;
-      const torsoWidthFrac = stage === "teen" ? 0.82 : (stage === "senior" ? 0.90 : 1.0);
-      const torsoWidth     = Math.round(bodyWidth * torsoWidthFrac);
-      const torsoX         = x + Math.round((bodyWidth - torsoWidth) / 2);
-
-      spriteCtx.fillStyle = primary;
-      spriteCtx.fillRect(torsoX, torsoYBase, torsoWidth, torsoH);
-
-      if (stage === "adult") {
-        spriteCtx.fillRect(torsoX - 2, torsoYBase, 2, 4);
-        spriteCtx.fillRect(torsoX + torsoWidth, torsoYBase, 2, 4);
-      }
-
-      spriteCtx.fillStyle = primary;
-      spriteCtx.fillRect(x, bobY, bodyWidth, headH);
-
-      const eyeSize   = Math.max(2, Math.round(bodySize * 0.18));
-      const eyeY      = bobY + Math.round(headH * 0.35);
-      const leftEyeX  = x + Math.round(bodyWidth * 0.20);
-      const rightEyeX = x + Math.round(bodyWidth * 0.62);
-      spriteCtx.fillStyle = state.sick     ? "#ff0000"  :
-                            state.sleeping ? "#888888"  : secondary;
-      spriteCtx.fillRect(leftEyeX,  eyeY, eyeSize, eyeSize);
-      spriteCtx.fillRect(rightEyeX, eyeY, eyeSize, eyeSize);
-
-      const mouthY = bobY + Math.round(headH * 0.72);
-      const mouthX = x + Math.round(bodyWidth * 0.3);
-      const mouthW = Math.round(bodyWidth * 0.4);
-      spriteCtx.fillStyle = secondary;
-      if (state.mood === "happy") {
-        spriteCtx.fillRect(mouthX,              mouthY,     2, 2);
-        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY,     2, 2);
-        spriteCtx.fillRect(mouthX + 2,          mouthY + 2, mouthW - 4, 2);
-      } else if (state.mood === "sad" || state.sick) {
-        spriteCtx.fillRect(mouthX,              mouthY + 2, 2, 2);
-        spriteCtx.fillRect(mouthX + mouthW - 2, mouthY + 2, 2, 2);
-        spriteCtx.fillRect(mouthX + 2,          mouthY,     mouthW - 4, 2);
-      } else {
-        spriteCtx.fillRect(mouthX, mouthY + 1, mouthW, 2);
-      }
-    }
-
-    spriteCtx.restore();
+    window.renderSpriteGrid(
+      spriteCtx, state, x, bodyY, facingLeft, legFrame, breathPhase,
+      STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette
+    );
   }
 
   /**
@@ -1919,13 +1737,17 @@
   // ── Idle-activity detection ───────────────────────────────────────────────
   // Mouse movement inside the sidebar resets the host idle timer (BUGFIX-015).
   // Throttled to at most once per 30 s to avoid flooding the extension host.
-  var lastActivityPost = 0;
-  document.addEventListener("mousemove", function () {
-    var now = Date.now();
-    if (now - lastActivityPost < 30000) { return; }
-    lastActivityPost = now;
-    vscode.postMessage({ command: "user_activity" });
-  });
+  // Skipped entirely when gotchi.idleResetOnMouseMovement is disabled.
+  var idleResetMouseEnabled = document.body.dataset.idleResetMouse !== "false";
+  if (idleResetMouseEnabled) {
+    var lastActivityPost = 0;
+    document.addEventListener("mousemove", function () {
+      var now = Date.now();
+      if (now - lastActivityPost < 30000) { return; }
+      lastActivityPost = now;
+      vscode.postMessage({ command: "user_activity" });
+    });
+  }
 
   // ── Initial view ─────────────────────────────────────────────────────────
   showScreen("game");
