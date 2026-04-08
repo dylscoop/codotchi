@@ -94,14 +94,16 @@ The release flow has multiple discrete steps. **Each step requires its own expli
 
 Typical release flow (each line needs separate approval):
 
-1. Rebuild both artifacts and commit as `chore: rebuild artifacts for vX.Y.Z` — **this must be the last commit on the branch before merging**
-2. `git push origin <branch>` — push the feature branch
-3. `git checkout main && git merge <branch>` — merge to main
-4. `git push origin main` — push main
-5. `git tag vX.Y.Z` — create the version tag
-6. `git push origin vX.Y.Z` — push the tag
-7. Copy artifacts to `releases/`, apply the 3-version rule, move older releases to `releases/old_releases/` — see `release-management` skill — commit and push
-8. Create GitHub release — publish release notes
+1. Rebuild both IDE artifacts and commit as `chore: rebuild artifacts for vX.Y.Z` — **this must be the last commit on the branch before merging**
+2. Rebuild the OpenCode zip: `node scripts/package.js` (run from `opencode-codotchi/`) and commit as `chore: rebuild opencode-codotchi zip for vX.Y.Z`
+3. **Ask the user** to confirm before reinstalling the OpenCode plugin locally: `node bin/install.js --install` (run from `opencode-codotchi/`) — **never run without explicit user confirmation**
+4. `git push origin <branch>` — push the feature branch
+5. `git checkout main && git merge <branch>` — merge to main
+6. `git push origin main` — push main
+7. `git tag vX.Y.Z` — create the version tag
+8. `git push origin vX.Y.Z` — push the tag
+9. Copy artifacts to `releases/`, apply the 3-version rule, move older releases to `releases/old_releases/` — see `release-management` skill — commit and push
+10. Create GitHub release — publish release notes
 
 ## GitHub release body — what to include
 
