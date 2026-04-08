@@ -20,6 +20,7 @@ Status legend:
 | Discipline   | 0–100  | `[x]`  | Affected by praise/scold; feeds into care score |
 | Weight       | 1–99   | `[x]`  | Shown in info line; passive -1/min decay; overweight/skinny thresholds affect happiness rate and sprite width |
 | Age (days)   | int    | `[x]`  | Displayed in info line |
+| Sprite type  | string | `[x]`  | Zodiac animal name shown in info line between stage and type (hidden for "classic") |
 | Care Score   | 0.0–1.0| `[~]`  | Computed continuously; drives evolution tier |
 
 ---
@@ -542,6 +543,7 @@ Status: `[x]`
 |---------|--------|-------|
 | Mood emoji + name displayed | `[x]` | |
 | Click to focus sidebar | `[x]` | Uses `gotchiView.focus` command |
+| Sprite name in status bar tooltip | `[x]` | `Sprite: <name>` shown for non-classic spriteTypes |
 | Attention-needed indicator (⚠) | `[ ]` | |
 | `[S]` `gotchi.statusBarEnabled` (default true) | `[ ]` | |
 

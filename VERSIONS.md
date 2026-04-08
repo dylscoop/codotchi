@@ -1,6 +1,25 @@
 ﻿# Version History
 
-## v1.0.0 — current
+## v1.0.1 — current
+
+### Changes from v1.0.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.0.0` → `1.0.1` |
+| `pycharm/build.gradle.kts` | Version bumped `1.0.0` → `1.0.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.0.0` → `1.0.1` |
+| `opencode-codotchi/package.json` | Version bumped `1.0.0` → `1.0.1` |
+| `vscode/media/sidebar.js` | Info line now shows zodiac animal name between stage and type |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored sidebar.js info line change |
+| `vscode/src/statusBar.ts` | Tooltip now includes `Sprite: <name>` when spriteType is not classic |
+| `opencode-codotchi/src/asciiArt.ts` | `buildStatusBlock()` now shows `Sprite` row when spriteType is not classic |
+| `.opencode/plugins/asciiArt.ts` | Mirrored asciiArt.ts changes |
+| `VERSIONS.md` | Added v1.0.1 section |
+
+---
+
+## v1.0.0 — previous
 
 ### Changes from v0.11.2
 

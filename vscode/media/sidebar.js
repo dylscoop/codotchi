@@ -903,9 +903,13 @@
     const poopStr = state.poops === 1 ? "1 poop" : state.poops + " poops";
     const typeLabel = (state.petType || "codeling");
     const typeLabelCap = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
+    const spriteLabel = (state.spriteType && state.spriteType !== "classic")
+      ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
+      : "";
     infoLine.textContent =
       "Age: " + formatAge(state.ageDays) + "  |  " +
       state.stage            + "  |  " +
+      (spriteLabel ? spriteLabel + "  |  " : "") +
       typeLabelCap           + "  |  " +
       poopStr;
 

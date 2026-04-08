@@ -602,6 +602,9 @@ export function buildStatusBlock(state: {
   const headerLines = [
     `${BOLD}${stageColour}${state.name}${RESET}`,
     `${FG_GRAY}Stage   : ${RESET}${state.stage}`,
+    ...(state.spriteType && state.spriteType !== "classic"
+      ? [`${FG_GRAY}Sprite  : ${RESET}${state.spriteType}`]
+      : []),
     `${FG_GRAY}Age     : ${RESET}${state.ageDays} day${state.ageDays !== 1 ? "s" : ""}`,
     `${FG_GRAY}Mood    : ${RESET}${state.mood}`,
     `${FG_GRAY}Status  : ${RESET}${state.sick ? colour("SICK", FG_RED) : state.sleeping ? colour("sleeping", FG_BLUE) : colour("healthy", FG_GREEN)}`,

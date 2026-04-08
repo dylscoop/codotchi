@@ -43,6 +43,9 @@ export class StatusBarManager implements vscode.Disposable {
 
     const emoji = MOOD_EMOJI[state.mood] ?? FALLBACK_EMOJI;
     const stageLabel = state.stage.charAt(0).toUpperCase() + state.stage.slice(1);
+    const spriteLabel = state.spriteType && state.spriteType !== "classic"
+      ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
+      : "";
     this.item.text = `${emoji} ${state.name} (${stageLabel})`;
     this.item.tooltip = [
       `Hunger: ${state.hunger}`,
@@ -51,6 +54,7 @@ export class StatusBarManager implements vscode.Disposable {
       `Energy: ${state.energy}`,
       `Weight: ${state.weight}`,
       `Stage: ${stageLabel}`,
+      spriteLabel ? `Sprite: ${spriteLabel}` : "",
       state.sick ? "⚠ Sick!" : "",
     ]
       .filter(Boolean)
