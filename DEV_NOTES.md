@@ -677,6 +677,8 @@ of `tick()`, wrapped (from v0.4.0 onwards) by the `attentionCallsEnabled` guard.
 
 All text the codotchi can say, grouped by context. Source files: `opencode-codotchi/src/asciiArt.ts` (mood/activity phrases), `opencode-codotchi/src/index.ts` (all other phrases), `vscode/src/extension.ts` (VS Code IDE popups).
 
+**Voice style (v0.11.0+):** Terse, confident, humanised. No exclamation marks on neutral/positive states. Short declarative sentences.
+
 ---
 
 ### Contextual speech bubble — mood phrases
@@ -685,18 +687,18 @@ Displayed in the speech bubble attached to every LLM response and every `/codotc
 
 | Condition | Phrase |
 |-----------|--------|
-| `energy < 15` and not sleeping | `"I'm absolutely exhausted, please let me sleep..."` |
-| `sick === true` | `"I don't feel well at all. I need medicine!"` |
-| `hunger < 15` | `"I'm starving! Please feed me soon."` |
-| `poops > 2` | `"It's getting really messy in here..."` |
-| `happiness < 20` | `"Gotchi wants to play"` |
-| `health < 30` | `"My health is low — please take care of me."` |
-| `sleeping === true` | `"Zzz... I'm recharging. Talk to you soon!"` |
-| `hunger < 40` | `"Getting a bit hungry — a snack would be nice."` |
-| `energy < 40` | `"A bit tired but still with you!"` |
-| `happiness > 70` and `health > 70` | `"I'm thriving! Keep up the great work."` |
-| `mood === "happy"` | `"I'm feeling great today!"` |
-| fallback | `"I'm doing okay. Let's keep coding!"` |
+| `energy < 15` and not sleeping | `"Running on fumes. Let me sleep soon."` |
+| `sick === true` | `"Something's wrong. I need medicine."` |
+| `hunger < 15` | `"Starving. Feed me when you get a chance."` |
+| `poops > 2` | `"It's a mess in here. Clean up?"` |
+| `happiness < 20` | `"Could use some attention right now."` |
+| `health < 30` | `"Health is low. Keep an eye on me."` |
+| `sleeping === true` | `"Recharging. Back soon."` |
+| `hunger < 40` | `"Getting hungry. A meal would help."` |
+| `energy < 40` | `"A bit tired, but still here."` |
+| `happiness > 70` and `health > 70` | `"Feeling good. Let's keep at it."` |
+| `mood === "happy"` | `"Doing well today."` |
+| fallback | `"All good. Ready when you are."` |
 
 ### Contextual speech bubble — activity suffix
 
@@ -704,12 +706,12 @@ Appended after the mood phrase. Session time formats: `"just started"` (< 1 min)
 
 | Condition | Phrase |
 |-----------|--------|
-| `filesEdited === 0` | `"No edits yet this session."` |
-| `filesEdited < 5` (1 file) | `"1 file edited — just warming up!"` |
-| `filesEdited < 5` (2–4 files) | `"{n} files edited — just warming up!"` |
-| `filesEdited < 15` | `"{n} files edited in {time} — nice flow!"` |
-| `filesEdited < 30` | `"{n} files edited in {time} — on a roll!"` |
-| `filesEdited >= 30` | `"{n} files edited in {time} — incredible focus!"` |
+| `filesEdited === 0` | `"Nothing edited yet."` |
+| `filesEdited === 1` | `"1 file touched."` |
+| `filesEdited < 5` (2–4 files) | `"{n} files touched — warming up."` |
+| `filesEdited < 15` | `"{n} files in {time} — solid pace."` |
+| `filesEdited < 30` | `"{n} files in {time} — on a roll."` |
+| `filesEdited >= 30` | `"{n} files in {time} — serious focus."` |
 
 ---
 
@@ -719,21 +721,46 @@ Shown once when the plugin loads.
 
 | Condition | Phrase |
 |-----------|--------|
-| Alive and `hunger < 30` | `"I'm here! I'm hungry... "` |
-| Alive and `sick === true` | `"I'm here! I'm not feeling well. "` |
-| Alive and `energy < 20` | `"I'm here! I'm sleepy. "` |
-| Alive (all stats okay) | `"I'm here! I'm doing well!"` |
+| Alive and `hunger < 30` | `"I'm here. Pretty hungry though."` |
+| Alive and `sick === true` | `"I'm here. Not feeling great."` |
+| Alive and `energy < 20` | `"I'm here. A bit tired."` |
+| Alive (all stats okay) | `"I'm here. Let's get to work."` |
 | Pet is dead | `"My codotchi passed away. Start a new game in VS Code or PyCharm."` |
 
 ### Session reconnect greeting (`server.connected`)
 
 | Condition | Phrase |
 |-----------|--------|
-| `hunger < 30` | `"I'm starving! Please run /codotchi feed"` |
-| `sick === true` | `"I feel terrible... I need medicine (/codotchi medicine)"` |
-| `energy < 20` | `"I'm exhausted. Let me sleep (/codotchi sleep)"` |
-| `happiness < 30` | `"Gotchi wants to play (/codotchi pat)"` |
-| All stats okay | `"Hello! I'm {name}. Ready to code!"` |
+| `hunger < 30` | `"Really hungry. Feed me when you get a chance (/codotchi feed)"` |
+| `sick === true` | `"Not feeling well. Need medicine (/codotchi medicine)"` |
+| `energy < 20` | `"Running on empty. Let me rest (/codotchi sleep)"` |
+| `happiness < 30` | `"Been a while. Pat me? (/codotchi pat)"` |
+| All stats okay | `"Hey. Ready when you are."` |
+
+---
+
+### OpenCode event hook phrases
+
+#### `todo.updated` — status transitions
+
+| Transition | Phrase | Stat effect |
+|-----------|--------|------------|
+| `* → completed` | One of `TODO_COMPLETE_PHRASES(content)` — e.g. `"Done: {content}."`, `"That's a wrap on {content}."`, `"Knocked out {content}."`, `"Shipped: {content}."` | `applyCodeActivity()`: +5 happiness, +2 discipline |
+| `* → in_progress` | `"On it: {content}."` | None |
+| `* → cancelled` | `"Fair enough — {content} dropped."` | None |
+
+#### `session.diff` (deferred — Option B)
+
+When a `session.diff` event arrives with ≥ 1 changed file, `pendingDiffSinceIdle = true`.
+On the next `session.idle`, if the flag is set, a phrase from `SESSION_DIFF_PHRASES` is queued:
+
+Examples: `"Changes landed."`, `"Diff committed to memory."`, `"Code saved. Good progress."`, `"That's in the codebase now."`, `"Solid work."`.
+
+#### `vcs.branch.updated`
+
+| Condition | Phrase |
+|-----------|--------|
+| `branch` is present | `"Switched to {branch}. New mission?"` |
 
 ---
 

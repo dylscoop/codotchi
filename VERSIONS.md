@@ -1,6 +1,51 @@
 # Version History
 
-## v0.10.6 — current
+## v0.11.0 — current
+
+### Changes from v0.10.6
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.10.6` → `0.11.0` |
+| `pycharm/build.gradle.kts` | Version bumped `0.10.6` → `0.11.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.10.6` → `0.11.0` |
+| `opencode-codotchi/package.json` | Version bumped `0.10.6` → `0.11.0` |
+| `.opencode/plugins/asciiArt.ts` | Rewrote all mood phrases and activity suffix phrases to terse, humanised voice; added `pickRandom<T>()` helper; added `TODO_COMPLETE_PHRASES` and `SESSION_DIFF_PHRASES` exported phrase pools |
+| `opencode-codotchi/src/asciiArt.ts` | Mirrored from `.opencode/plugins/asciiArt.ts` (same changes) |
+| `.opencode/plugins/gotchi.ts` | Rewrote startup greeting and `server.connected` greeting to new voice; added `prevTodos`, `pendingDiffSinceIdle` state vars; imported `pickRandom`, `TODO_COMPLETE_PHRASES`, `SESSION_DIFF_PHRASES`; added `todo.updated`, `session.diff`, `vcs.branch.updated` event handlers; extended `session.idle` to fire deferred diff notification (Option B) |
+| `opencode-codotchi/src/index.ts` | Mirrored from `.opencode/plugins/gotchi.ts` (same changes) |
+| `opencode-codotchi/opencode-codotchi-0.11.0.zip` | Rebuilt distributable zip for v0.11.0 |
+| `README.md` | Version references updated to `0.11.0` |
+| `vscode/README.md` | Version references updated to `0.11.0` |
+| `pycharm/README.md` | Version references updated to `0.11.0` |
+| `opencode-codotchi/README.md` | Version references updated to `0.11.0` |
+| `DEV_NOTES.md` | Updated Pet Phrases Reference to reflect new humanised voice and new event hook phrases |
+| `VERSIONS.md` | Added v0.11.0 section |
+
+### Features added
+
+**Humanised pet phrases** — all OpenCode plugin speech rewritten with a terse,
+confident, first-person voice (no exclamation marks on neutral/positive states;
+short declarative sentences). Mood phrases, activity suffixes, startup greeting,
+and `server.connected` greeting are all updated.
+
+**`todo.updated` event hook** — the plugin now tracks todo status transitions:
+- `pending → completed`: applies `applyCodeActivity()` (+5 happiness, +2 discipline)
+  and queues a celebratory phrase from `TODO_COMPLETE_PHRASES`.
+- `pending → in_progress`: queues `"On it: {content}."`.
+- `* → cancelled`: queues `"Fair enough — {content} dropped."`.
+
+**`session.diff` event hook (Option B deferred)** — when a `session.diff` event
+arrives with at least one changed file, a `pendingDiffSinceIdle` flag is set.
+On the next `session.idle`, if the flag is set, a phrase from `SESSION_DIFF_PHRASES`
+is queued and the flag is cleared. This prevents mid-burst spam.
+
+**`vcs.branch.updated` event hook** — when the active branch changes, the plugin
+queues `"Switched to {branch}. New mission?"`.
+
+---
+
+## v0.10.6 — previous
 
 ### Changes from v0.10.5
 
