@@ -51,7 +51,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 |---------|--------|-------|
 | Care-score-based evolution tiers (best / mid / low) | `[x]` | |
 | Distinct character names per type × stage × tier | `[x]` | Sprites not yet drawn |
-| Visual difference between character variants | `[ ]` | Requires sprite assets |
+| Visual difference between character variants | `[x]` | 14 zodiac pixel-art grids via sprites.js |
 | Evolution notification in event log | `[~]` | Event flag exists; no fanfare animation |
 | Egg-hatch animation | `[ ]` | Wiggle before first evolution |
 

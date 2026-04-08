@@ -1,6 +1,39 @@
-# Version History
+﻿# Version History
 
-## v0.11.2 — current
+## v1.0.0 — current
+
+### Changes from v0.11.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.11.2` `1.0.0` |
+| `pycharm/build.gradle.kts` | Version bumped `0.11.2` `1.0.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.11.2` `1.0.0` |
+| `opencode-codotchi/package.json` | Version bumped `0.11.2` `1.0.0` |
+| `vscode/src/gameEngine.ts` | Added `spriteType` field, `ZODIAC_ANIMALS`, `SpriteType` type, `randomSpriteType()` |
+| `opencode-codotchi/src/gameEngine.ts` | Mirrored gameEngine.ts changes |
+| `.opencode/plugins/gameEngine.ts` | Mirrored gameEngine.ts changes |
+| `vscode/media/sprites.js` | New: 14 zodiac pixel-art grids + `renderSpriteGrid()` |
+| `pycharm/src/main/resources/webview/sprites.js` | Copied from vscode/media/sprites.js |
+| `vscode/media/sidebar.html` | Added sprites.js script tag |
+| `pycharm/src/main/resources/webview/sidebar.html` | Added sprites.js script tag |
+| `vscode/src/sidebarProvider.ts` | spritesUri points to sprites.js file |
+| `vscode/media/sidebar.js` | `drawBody()` delegates to `window.renderSpriteGrid()` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored sidebar.js changes |
+| `opencode-codotchi/src/asciiArt.ts` | Added `SPRITE_HEAD` table; `getArt()`/`buildSpeechBubble()`/`buildStatusBlock()` accept `spriteType` |
+| `.opencode/plugins/asciiArt.ts` | Mirrored asciiArt.ts changes |
+| `opencode-codotchi/src/index.ts` | All `buildSpeechBubble()` callers pass `petState.spriteType` |
+| `.opencode/plugins/gotchi.ts` | Mirrored index.ts changes |
+| `vscode/FEATURES.md` | Zodiac sprite rows marked `[x]` |
+| `README.md` | Version references updated to `1.0.0` |
+| `vscode/README.md` | Version references updated to `1.0.0` |
+| `pycharm/README.md` | Version references updated to `1.0.0` |
+| `opencode-codotchi/README.md` | Version references updated to `1.0.0` |
+| `VERSIONS.md` | Added v1.0.0 section |
+
+---
+
+## v0.11.2 — previous
 
 ### Changes from v0.11.1
 
