@@ -14,6 +14,7 @@
  */
 
 import * as vscode from "vscode";
+import * as fs from "fs";
 import {
   PetState,
   HighScore,
@@ -33,6 +34,7 @@ import {
   loadHighScore,
   saveHighScore,
   clearHighScore,
+  getSharedStatePath,
 } from "./persistence";
 
 const TICK_INTERVAL_MS: number = TICK_INTERVAL_SECONDS * 1_000;
@@ -311,6 +313,9 @@ export function activate(context: vscode.ExtensionContext): void {
     // Clear stale events — they were already displayed in the other window.
     const state: PetState = { ...decayed, events: [] };
     currentState = state;
+    // Reset the meal cycle counter — we cannot know how many meals were given
+    // by the other window, so reset to 0 (conservative; allows full quota here).
+    sidebar?.resetMealCycle();
     const cfg = vscode.workspace.getConfiguration("gotchi");
     const devModeActive =
       cfg.get<boolean>("devModeEnabled", false) &&
@@ -330,6 +335,70 @@ export function activate(context: vscode.ExtensionContext): void {
     if (vscode.window.state.focused || initCfg.get<boolean>("aiMode", false)) {
       startTicker();
     }
+  }
+
+  // Cross-window / cross-IDE live sync: watch state.json for changes written by
+  // another VS Code window or another IDE (PyCharm, OpenCode).  When this window
+  // is not the active ticker it won't pick up those changes until focus returns —
+  // the watcher closes that gap by calling reloadAndRefreshUI() immediately.
+  // A 150 ms debounce absorbs rapid successive file-system events (some editors
+  // emit two events per atomic write).
+  {
+    const sharedStatePath = getSharedStatePath();
+    let syncDebounce: ReturnType<typeof setTimeout> | undefined;
+
+    const onSharedStateChanged = (): void => {
+      // Only reload if this window is not the active ticker.  If we ARE ticking,
+      // we're the writer — no need to re-read our own write.
+      if (tickTimer !== undefined) { return; }
+      if (syncDebounce !== undefined) { clearTimeout(syncDebounce); }
+      syncDebounce = setTimeout(() => {
+        syncDebounce = undefined;
+        reloadAndRefreshUI();
+      }, 150);
+    };
+
+    // fs.watch is available in the Node.js runtime used by VS Code extensions
+    // and is more lightweight than a workspace FileSystemWatcher (which only
+    // covers workspace folders).  We only start watching once the file exists;
+    // if it doesn't exist yet we poll briefly on the tick until it does.
+    let fsWatcher: fs.FSWatcher | undefined;
+
+    const startWatcher = (): void => {
+      if (fsWatcher !== undefined) { return; }
+      try {
+        fsWatcher = fs.watch(sharedStatePath, { persistent: false }, onSharedStateChanged);
+        fsWatcher.on("error", () => {
+          fsWatcher?.close();
+          fsWatcher = undefined;
+        });
+      } catch {
+        // File may not exist yet (first launch before any save).  Will be
+        // retried on the next tick via the watchBootstrap interval.
+      }
+    };
+
+    // Try immediately; if the file doesn't exist yet, retry every 10 s.
+    startWatcher();
+    const watchBootstrap = setInterval(() => {
+      if (fsWatcher !== undefined) {
+        clearInterval(watchBootstrap);
+      } else {
+        startWatcher();
+        if (fsWatcher !== undefined) {
+          clearInterval(watchBootstrap);
+        }
+      }
+    }, 10_000);
+
+    context.subscriptions.push({
+      dispose(): void {
+        clearInterval(watchBootstrap);
+        if (syncDebounce !== undefined) { clearTimeout(syncDebounce); }
+        fsWatcher?.close();
+        fsWatcher = undefined;
+      },
+    });
   }
 
   // Commands

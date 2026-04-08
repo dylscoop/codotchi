@@ -1,6 +1,33 @@
 # Version History
 
-## v0.10.5 — current
+## v0.10.6 — current
+
+### Changes from v0.10.5
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.10.5` → `0.10.6` |
+| `pycharm/build.gradle.kts` | Version bumped `0.10.5` → `0.10.6` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.10.5` → `0.10.6` |
+| `opencode-codotchi/package.json` | Version bumped `0.10.5` → `0.10.6` |
+| `vscode/src/persistence.ts` | Exported `getSharedStatePath()` so `extension.ts` can locate the shared file for the watcher (BUGFIX-048) |
+| `vscode/src/extension.ts` | Added `fs.watch` on `state.json` with 150 ms debounce; unfocused windows now reload immediately when another window or IDE saves; added `sidebar.resetMealCycle()` call in `reloadAndRefreshUI()` (BUGFIX-048) |
+| `vscode/src/sidebarProvider.ts` | Added `resetMealCycle()` public method to allow cross-window meal counter sync (BUGFIX-048) |
+| `opencode-codotchi/opencode-codotchi-0.10.6.zip` | Rebuilt distributable zip for v0.10.6 |
+| `BUGFIXES.md` | Added BUGFIX-048 |
+| `VERSIONS.md` | Added v0.10.6 section |
+
+### Bug fixes
+
+**BUGFIX-048 — Multiple VS Code windows show stale / diverged pet state** — an
+`fs.watch` listener on `state.json` now wakes unfocused windows immediately
+when any window or IDE saves new state. `mealsGivenThisCycle` is also reset on
+every cross-window reload so the meal cap cannot be bypassed by switching
+windows between feeds.
+
+---
+
+## v0.10.5 — previous
 
 ### Changes from v0.10.4
 

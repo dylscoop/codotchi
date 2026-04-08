@@ -31,7 +31,7 @@ const HIGH_SCORE_KEY = "gotchi.highScore.v2"; // v2: ageDays now driven by dayTi
 // ---------------------------------------------------------------------------
 
 /** Absolute path to the shared state file used by all IDEs. */
-function getSharedStatePath(): string {
+export function getSharedStatePath(): string {
   const base =
     process.platform === "win32"
       ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")

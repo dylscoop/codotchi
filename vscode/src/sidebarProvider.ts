@@ -366,6 +366,19 @@ export class SidebarProvider
   }
 
   /**
+   * Reset the per-cycle meal counter.
+   *
+   * Called whenever state is reloaded from the shared file (cross-window or
+   * cross-IDE sync) so that the meal cap is not carried over from a stale
+   * in-memory snapshot.  Resetting to 0 is conservative: the reloaded state
+   * may already reflect meals given by another window, so we cannot know the
+   * correct counter value — 0 allows the full cycle quota from this window.
+   */
+  resetMealCycle(): void {
+    this.mealsGivenThisCycle = 0;
+  }
+
+  /**
    * Push a no-active-game stateUpdate to the webview (used to clear the
    * high score display when no pet is alive after a high score reset).
    *
