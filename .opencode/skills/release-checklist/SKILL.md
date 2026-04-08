@@ -187,8 +187,9 @@ version whenever the version is bumped.
 
 ## Step 3f — OpenCode zip artifact and reinstall
 
-**Before finalising any release**, always rebuild the zip automatically, then
-ask the user whether to reinstall the plugin locally.
+**Before finalising any release**, always rebuild the zip and reinstall the
+plugin locally. The zip rebuild is automatic; the reinstall requires explicit
+user confirmation before running.
 
 ### 3f-i. Rebuild the zip (always, no need to ask)
 
@@ -211,11 +212,15 @@ ask the user whether to reinstall the plugin locally.
 4. Update all README references to the zip filename (both
    `opencode-codotchi/README.md` and the root `README.md`).
 
-### 3f-ii. Reinstall locally (mandatory)
+### 3f-ii. Reinstall locally (always ask first)
 
-After rebuilding the zip, **always** reinstall the plugin locally. This is not
-optional — the running OpenCode session uses the installed copy, and skipping
-this step means the old plugin stays active until manually replaced.
+After rebuilding the zip, **always ask the user to confirm** before running
+the reinstall. The running OpenCode session uses the installed copy — skipping
+this step means the old plugin stays active until manually replaced, so
+confirmation is required before proceeding.
+
+Ask: "The OpenCode plugin zip has been rebuilt. Reinstall it locally now?"
+Only run the install command after the user confirms.
 
 ```bash
 # from opencode-codotchi/
@@ -249,5 +254,5 @@ Work through this list in order. Do not commit until all items are checked.
 11. [ ] `opencode-codotchi/` files updated to mirror any `.opencode/plugins/` or `.opencode/commands/` changes
 12. [ ] `opencode-codotchi/package.json` version matches repo version
 13. [ ] `opencode-codotchi/opencode-codotchi-X.Y.Z.zip` rebuilt (Step 3f-i)
-14. [ ] Local reinstall done: `node bin/install.js --install` run from `opencode-codotchi/` (Step 3f-ii)
+14. [ ] Local reinstall confirmed by user and done: `node bin/install.js --install` run from `opencode-codotchi/` (Step 3f-ii) — **always ask before running**
 15. [ ] Both artifacts are staged alongside all source changes in the same commit
