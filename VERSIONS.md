@@ -34,6 +34,8 @@
 | `vscode/vscode-gotchi-1.0.0.vsix` | Rebuilt distributable vsix for v1.0.0 |
 | `pycharm/build/distributions/pycharm-gotchi-1.0.0.zip` | Rebuilt distributable zip for v1.0.0 |
 | `opencode-codotchi/opencode-codotchi-1.0.0.zip` | Rebuilt distributable zip for v1.0.0 |
+| `DEV_NOTES.md` | Updated Character Designs and Sprite Rendering Notes sections to reflect renderSpriteGrid / spriteType system |
+| `vscode/FEATURES.md` | Removed stale "Sprites not yet drawn" note from Evolution table |
 
 ---
 

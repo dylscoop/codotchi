@@ -435,9 +435,17 @@ Effective range per cycle: 16 – 20 min (capped).
 ## Character Designs
 
 Characters are identified by `petType_stage_tier` (e.g. `codeling_child_a`).
-No sprite image files exist yet — the canvas renderer draws a generic
-pixel-art body shape scaled by stage. These descriptions are targets for future
-sprite artwork.
+As of v1.0.0, `spriteType` is a separate field on `PetState` that selects which
+pixel-art grid to render. It is assigned once at new-game time via
+`randomSpriteType()` and never changes: 12 zodiac animals (~8.17% each), plus
+`"classic"` (2%) and `"cat"` (2%). Old saves without a `spriteType` field
+default to `"classic"`.
+
+The 14 sprite grids live in `vscode/media/sprites.js` (mirrored to
+`pycharm/src/main/resources/webview/sprites.js`). Each grid is a 12-column ×
+16-row pixel array per non-egg stage (baby, child, teen, adult, senior). The
+renderer is `window.renderSpriteGrid()`, called from `drawBody()` in
+`sidebar.js`.
 
 ### Egg stage (all types share one visual)
 
@@ -478,8 +486,34 @@ serene. `_b` seniors look tired but content. `_c` seniors look worn out.
 
 ## Sprite Rendering Notes (canvas-based)
 
-The current renderer in `sidebar.js` draws everything programmatically on a
-`<canvas>` element. No image files are loaded.
+The renderer in `sidebar.js` draws everything programmatically on a `<canvas>`
+element. No image files are loaded. As of v1.0.0, body rendering is handled by
+`window.renderSpriteGrid()` (defined in `sprites.js`), which replaced the old
+procedural `drawSprite()` / `drawBody()` approach.
+
+### How renderSpriteGrid works
+
+`renderSpriteGrid(ctx, state, x, bodyY, facingLeft, legFrame, breathPhase,
+STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette)`
+
+1. Looks up the 12×16 pixel grid for `state.spriteType` + `state.stage`.
+2. Computes `cellSize = Math.round(bodySize / 12)`.
+3. Iterates the grid, painting each non-zero cell at the correct canvas position.
+4. Applies the same weight-width multiplier and horizontal flip (`facingLeft`)
+   that the old procedural renderer used.
+5. The egg stage is still drawn as an ellipse directly in `drawBody()` — the
+   grid system only applies to non-egg stages.
+
+### spriteType assignment
+
+| spriteType | Probability |
+|------------|-------------|
+| `rat`, `ox`, `tiger`, `rabbit`, `dragon`, `snake`, `horse`, `goat`, `monkey`, `rooster`, `dog`, `pig` | ~8.17% each (12 × 8.17% ≈ 98%) |
+| `classic` | 1% |
+| `cat` | 1% |
+
+Assigned once by `randomSpriteType()` in `gameEngine.ts` at new-game time.
+Old saves without `spriteType` default to `"classic"` via `deserialiseState`.
 
 ### Key constants
 
@@ -493,18 +527,20 @@ The current renderer in `sidebar.js` draws everything programmatically on a
 | bobOffset    | 0 or 1 px alternating per 10 frames  | Walking animation                |
 | legFrame     | 0 or 1                               | Leg height alternation           |
 
-### Per-stage sprite shapes
+### Per-stage sprite grids
 
-Each stage has a distinct visual shape drawn procedurally in `drawSprite()`:
+Each non-egg stage has a 12-column × 16-row pixel grid per `spriteType` in
+`sprites.js`. The egg stage is still drawn as an ellipse directly in
+`drawBody()`. `cellSize = Math.round(bodySize / 12)`.
 
-| Stage | Shape | Distinctive features |
-|-------|-------|---------------------|
-| Egg | Ellipse (`ctx.ellipse`) | Oval body, dot eyes (10% bodySize), no legs, no mouth |
-| Baby | Square body | Oversized eyes (30% bodySize), tiny legs (12% bodySize), expressive mouth |
-| Child | Square body | Normal eyes (18% bodySize), normal legs (22% bodySize) |
-| Teen | Head + narrower torso (82% width) | Normal eyes in head region, longer legs (30% bodySize) |
-| Adult | Head + full-width torso | Shoulder bumps (2px×4px on each side of torso top), longer legs (30%) |
-| Senior | Head + wide torso (90% width) | Slightly shorter legs than adult (25%), larger head fraction (42%) |
+| Stage | Grid rows used | Notes |
+|-------|---------------|-------|
+| Egg | — | Drawn as `ctx.ellipse`; no grid |
+| Baby | 16 | Compact, large-head proportion |
+| Child | 16 | Legs appear, body elongates |
+| Teen | 16 | Taller, limbs proportional |
+| Adult | 16 | Full size (`stageScale 0.85`) |
+| Senior | 16 | Slightly larger than adult (`stageScale 0.90`) |
 
 ### Weight-based sprite width
 
@@ -529,27 +565,12 @@ walks off the right edge when wide.
 | `weight_no_longer_overweight` | `<Name> has slimmed down.` |
 | `weight_no_longer_too_skinny` | `<Name> is looking healthier now.` |
 
-### Sprite anatomy (pixel positions relative to body rect at x, bodyY)
+### Sprite anatomy
 
-```text
-[legs]      legX1 = x + 20% bodyWidth, legX2 = x + 60% bodyWidth
-[body]      bodyWidth × bodyHeight rect (or ellipse for egg)
-[eyes]      leftEyeX = x + 20%, rightEyeX = x + 62%, eyeY = bodyY + 25% (child/teen/adult/senior)
-[mouth]     mouthY = bodyY + 65%, mouthX = x + 30%, mouthW = 40%
-[indicator] z (sleeping) or + (sick) above body centre
-```
-
-Eye colour:
-
-- Sick → `#ff0000`
-- Sleeping → `#888888`
-- Awake → `palette.secondary`
-
-Mouth shape:
-
-- `happy` → smile (two corner dots, then arc downward)
-- `sad` / `sick` → frown (two corner dots, then arc upward)
-- Otherwise → flat line
+As of v1.0.0, anatomy (eyes, mouth, legs) is encoded in the per-spriteType
+pixel grids in `sprites.js`. Status overlays (Zzz, +) are still drawn by
+`drawBody()` in `sidebar.js` after `renderSpriteGrid()` returns, so they
+always read left-to-right regardless of flip direction.
 
 ### Horizontal flip
 
