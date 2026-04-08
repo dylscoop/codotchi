@@ -327,11 +327,11 @@ export const plugin: Plugin = async (_ctx) => {
 
   if (petState !== null) {
     const greetMsg = petState.alive
-      ? `I'm here! ${
-          petState.hunger < 30 ? "I'm hungry... " :
-          petState.sick        ? "I'm not feeling well. " :
-          petState.energy < 20 ? "I'm sleepy. " :
-          "I'm doing well!"
+      ? `I'm here. ${
+          petState.hunger < 30 ? "Pretty hungry though." :
+          petState.sick        ? "Not feeling great." :
+          petState.energy < 20 ? "A bit tired." :
+          "Let's get to work."
         }`
       : "My codotchi passed away. Start a new game in VS Code or PyCharm.";
     queueNotification(terminalEnabled
@@ -617,14 +617,14 @@ export const plugin: Plugin = async (_ctx) => {
       if (event.type === "server.connected") {
         if (petState !== null && petState.alive) {
           const greet = petState.hunger < 30
-            ? `I'm starving! Please run /codotchi feed`
+            ? `Really hungry. Feed me when you get a chance (/codotchi feed)`
             : petState.sick
-            ? `I feel terrible... I need medicine (/codotchi medicine)`
+            ? `Not feeling well. Need medicine (/codotchi medicine)`
             : petState.energy < 20
-            ? `I'm exhausted. Let me sleep (/codotchi sleep)`
+            ? `Running on empty. Let me rest (/codotchi sleep)`
             : petState.happiness < 30
-            ? `Gotchi wants to play (/codotchi pat)`
-            : `Hello! I'm ${petState.name}. Ready to code!`;
+            ? `Been a while. Pat me? (/codotchi pat)`
+            : `Hey. Ready when you are.`;
           queueNotification(terminalEnabled
             ? buildSpeechBubble(petState.stage, petState.mood, greet, petState.name)
             : `[${petState.name}] ${greet}`);
