@@ -550,11 +550,12 @@ export function buildContextualSpeech(
     ? `${sessionMins}m`
     : "just started";
   const activityPhrase =
-    filesEdited === 0  ? "No edits yet this session."
-    : filesEdited < 5  ? `${filesEdited} file${filesEdited > 1 ? "s" : ""} edited — just warming up!`
-    : filesEdited < 15 ? `${filesEdited} files edited in ${sessionLabel} — nice flow!`
-    : filesEdited < 30 ? `${filesEdited} files edited in ${sessionLabel} — on a roll!`
-    :                    `${filesEdited} files edited in ${sessionLabel} — incredible focus!`;
+    filesEdited === 0  ? "Waiting to see what we build today."
+    : filesEdited === 1 ? "First file in. Let's go."
+    : filesEdited < 5  ? `${filesEdited} files in. Getting into it.`
+    : filesEdited < 15 ? `${filesEdited} files in ${sessionLabel}. Good rhythm.`
+    : filesEdited < 30 ? `${filesEdited} files in ${sessionLabel}. Really cooking now.`
+    :                    `${filesEdited} files in ${sessionLabel}. This is a proper session.`;
 
   // --- Pet mood phrase (most critical stat wins) ---
   let moodPhrase: string;
@@ -571,21 +572,52 @@ export function buildContextualSpeech(
   } else if (pet.health < 30) {
     moodPhrase = "My health is low — please take care of me.";
   } else if (pet.sleeping) {
-    moodPhrase = "Zzz... I'm recharging. Talk to you soon!";
+    moodPhrase = "Recharging. Back soon.";
   } else if (pet.hunger < 40) {
-    moodPhrase = "Getting a bit hungry — a snack would be nice.";
+    moodPhrase = "Could use a snack soon.";
   } else if (pet.energy < 40) {
-    moodPhrase = "A bit tired but still with you!";
+    moodPhrase = "Getting tired, but I'm still here.";
   } else if (pet.happiness > 70 && pet.health > 70) {
-    moodPhrase = "I'm thriving! Keep up the great work.";
+    moodPhrase = "Feeling great. Good session so far.";
   } else if (pet.mood === "happy") {
-    moodPhrase = "I'm feeling great today!";
+    moodPhrase = "Happy right now. Don't stop.";
   } else {
-    moodPhrase = "I'm doing okay. Let's keep coding!";
+    moodPhrase = "Doing okay. Let's see what you build.";
   }
 
   return `${moodPhrase} ${activityPhrase}`;
 }
+
+/**
+ * Pick a random element from an array.
+ */
+export function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * Phrase factories for todo completions.
+ * Each entry is a function that takes the todo content and returns a phrase.
+ */
+export const TODO_COMPLETE_PHRASES: Array<(content: string) => string> = [
+  (c) => `Done: ${c}. That's one down.`,
+  (c) => `Ticked off — ${c}. Keep going.`,
+  (c) => `${c} — sorted. What's next?`,
+  (c) => `Nice. ${c} done.`,
+  (c) => `One off the list: ${c}.`,
+  (c) => `Finished: ${c}. Good work.`,
+];
+
+/**
+ * Phrases shown when the AI finishes a work burst (session.diff + session.idle).
+ */
+export const SESSION_DIFF_PHRASES: string[] = [
+  "Changes are in. Nice work.",
+  "Files updated. That looks like progress.",
+  "Something shipped. Good session.",
+  "You've been busy. Those changes look solid.",
+  "Edits landed. I'm watching you work.",
+];
 
 /**
  * Build a simple one-line toast notification string (for minor events).

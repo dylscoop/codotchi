@@ -703,3 +703,28 @@ passing the string return value directly to `stripAnsi()`.
 **Problem:** `buildSpeechBubble` and `buildStatusBlock` both emitted ANSI colour codes without a leading reset. If the previous terminal output left an active colour or style, it would bleed into the art block's first line. Similarly the block's own colours could bleed into the text that followed it.
 
 **Fix:** Both functions now prepend a `RESET` sentinel as the first element of their output array, ensuring ANSI state is clean before the art block begins.
+
+---
+
+## BUGFIX-047 — Raw ANSI escape codes visible in tool details panel output
+
+**Status:** Fixed (branch `fix/ansi-escape-codes-in-status`)
+**Files:** `.opencode/plugins/gotchi.ts`, `opencode-codotchi/src/index.ts`
+
+**Problem:** The `tool.execute.after` hook assigned the raw `lastToolOutput` string (which contains ANSI escape sequences) directly to `output.output`. OpenCode's tool details panel renders this field as plain text, not a terminal emulator, so the `\x1b` byte was silently dropped and the bracket sequences (e.g. `[33m`, `[0m`) appeared literally in the output.
+
+**Fix:** Applied `stripAnsi(lastToolOutput)` before assigning to `output.output`, consistent with how `output.text` was already handled in the `experimental.text.complete` hook. `stripAnsi` was already imported in both files.
+
+---
+
+## BUGFIX-048 — Multiple VS Code windows show stale / diverged pet state
+
+**Status:** Fixed (branch `fix/cross-window-sync`)
+**Files:** `vscode/src/extension.ts`, `vscode/src/persistence.ts`, `vscode/src/sidebarProvider.ts`
+
+**Problem:** When two or more VS Code windows were open, only the focused window ticked and wrote state. The unfocused window's sidebar and status bar remained frozen at the snapshot taken when it lost focus. Switching windows updated the stale window via `reloadAndRefreshUI()` on the focus event, but any user action in the background window before that focus event would overwrite the newer state from the active window with a stale in-memory snapshot. Additionally, `mealsGivenThisCycle` was never synchronised between windows, allowing the per-cycle meal cap to be bypassed by switching windows between feeds.
+
+**Fix:**
+1. **File watcher (Bug D):** `extension.ts` now registers an `fs.watch` listener on `state.json` at activation. When the file changes and this window is not the active ticker (`tickTimer === undefined`), `reloadAndRefreshUI()` is called after a 150 ms debounce. This makes every write by any window or IDE (PyCharm, OpenCode) immediately visible in all other open windows without waiting for a focus cycle.
+2. **`mealsGivenThisCycle` reset (Bug C):** `SidebarProvider.resetMealCycle()` was added and is called inside `reloadAndRefreshUI()` so that the meal counter is cleared whenever state is reloaded from disk. This prevents a window with a stale counter from blocking or bypassing the meal cap after a cross-window sync.
+3. **`getSharedStatePath()` exported from `persistence.ts`** so `extension.ts` can locate the file to watch without duplicating the path logic.

@@ -673,6 +673,229 @@ of `tick()`, wrapped (from v0.4.0 onwards) by the `attentionCallsEnabled` guard.
 
 ---
 
+## Pet Phrases Reference
+
+All text the codotchi can say, grouped by context. Source files: `opencode-codotchi/src/asciiArt.ts` (mood/activity phrases), `opencode-codotchi/src/index.ts` (all other phrases), `vscode/src/extension.ts` (VS Code IDE popups).
+
+**Voice style (v0.11.0+):** Terse, confident, humanised. No exclamation marks on neutral/positive states. Short declarative sentences.
+
+---
+
+### Contextual speech bubble — mood phrases
+
+Displayed in the speech bubble attached to every LLM response and every `/codotchi` command output. First matching condition wins.
+
+| Condition | Phrase |
+|-----------|--------|
+| `energy < 15` and not sleeping | `"Running on fumes. Let me sleep soon."` |
+| `sick === true` | `"Something's wrong. I need medicine."` |
+| `hunger < 15` | `"Starving. Feed me when you get a chance."` |
+| `poops > 2` | `"It's a mess in here. Clean up?"` |
+| `happiness < 20` | `"Could use some attention right now."` |
+| `health < 30` | `"Health is low. Keep an eye on me."` |
+| `sleeping === true` | `"Recharging. Back soon."` |
+| `hunger < 40` | `"Getting hungry. A meal would help."` |
+| `energy < 40` | `"A bit tired, but still here."` |
+| `happiness > 70` and `health > 70` | `"Feeling good. Let's keep at it."` |
+| `mood === "happy"` | `"Doing well today."` |
+| fallback | `"All good. Ready when you are."` |
+
+### Contextual speech bubble — activity suffix
+
+Appended after the mood phrase. Session time formats: `"just started"` (< 1 min), `"{m}m"` (< 1 hr), `"{h}h {m}m"` (≥ 1 hr).
+
+| Condition | Phrase |
+|-----------|--------|
+| `filesEdited === 0` | `"Nothing edited yet."` |
+| `filesEdited === 1` | `"1 file touched."` |
+| `filesEdited < 5` (2–4 files) | `"{n} files touched — warming up."` |
+| `filesEdited < 15` | `"{n} files in {time} — solid pace."` |
+| `filesEdited < 30` | `"{n} files in {time} — on a roll."` |
+| `filesEdited >= 30` | `"{n} files in {time} — serious focus."` |
+
+---
+
+### Plugin startup greeting
+
+Shown once when the plugin loads.
+
+| Condition | Phrase |
+|-----------|--------|
+| Alive and `hunger < 30` | `"I'm here. Pretty hungry though."` |
+| Alive and `sick === true` | `"I'm here. Not feeling great."` |
+| Alive and `energy < 20` | `"I'm here. A bit tired."` |
+| Alive (all stats okay) | `"I'm here. Let's get to work."` |
+| Pet is dead | `"My codotchi passed away. Start a new game in VS Code or PyCharm."` |
+
+### Session reconnect greeting (`server.connected`)
+
+| Condition | Phrase |
+|-----------|--------|
+| `hunger < 30` | `"Really hungry. Feed me when you get a chance (/codotchi feed)"` |
+| `sick === true` | `"Not feeling well. Need medicine (/codotchi medicine)"` |
+| `energy < 20` | `"Running on empty. Let me rest (/codotchi sleep)"` |
+| `happiness < 30` | `"Been a while. Pat me? (/codotchi pat)"` |
+| All stats okay | `"Hey. Ready when you are."` |
+
+---
+
+### OpenCode event hook phrases
+
+#### `todo.updated` — status transitions
+
+| Transition | Phrase | Stat effect |
+|-----------|--------|------------|
+| `* → completed` | One of `TODO_COMPLETE_PHRASES(content)` — e.g. `"Done: {content}."`, `"That's a wrap on {content}."`, `"Knocked out {content}."`, `"Shipped: {content}."` | `applyCodeActivity()`: +5 happiness, +2 discipline |
+| `* → in_progress` | `"On it: {content}."` | None |
+| `* → cancelled` | `"Fair enough — {content} dropped."` | None |
+
+#### `session.diff` (deferred — Option B)
+
+When a `session.diff` event arrives with ≥ 1 changed file, `pendingDiffSinceIdle = true`.
+On the next `session.idle`, if the flag is set, a phrase from `SESSION_DIFF_PHRASES` is queued:
+
+Examples: `"Changes landed."`, `"Diff committed to memory."`, `"Code saved. Good progress."`, `"That's in the codebase now."`, `"Solid work."`.
+
+#### `vcs.branch.updated`
+
+| Condition | Phrase |
+|-----------|--------|
+| `branch` is present | `"Switched to {branch}. New mission?"` |
+
+---
+
+### Tick events
+
+Queued by the tick loop and prepended to the next command output.
+
+| Event | Phrase |
+|-------|--------|
+| `auto_woke_up` | `"I feel rested! Time to code!"` |
+| `died` | `"Goodbye... take care of the next one."` |
+| `died_of_old_age` | `"I lived a full life. Thank you for everything."` |
+| `evolved_to_baby` / `_child` / `_teen` / `_adult` / `_senior` | `"I evolved into a {stageName}!"` |
+| `attention_call_hunger` | `"I'm so hungry... please feed me!"` |
+| `attention_call_unhappiness` | `"Gotchi wants to play"` |
+| `attention_call_sick` | `"I don't feel well. I need medicine!"` |
+| `attention_call_critical_health` | `"My health is critical! Please help me!"` |
+| `attention_call_low_energy` | `"I'm exhausted... let me sleep!"` |
+| `attention_call_poop` | `"There is a mess here! Can you clean it up?"` |
+| `attention_call_gift` | `"I brought you a gift! Use /codotchi pat to accept it."` |
+| `attention_call_misbehaviour` | `"I'm acting up! Use /codotchi pat or /codotchi feed to discipline me."` |
+
+### Toast notifications (brief, one-line)
+
+| Event | Phrase |
+|-------|--------|
+| `became_sick` | `"{name} has fallen sick."` |
+| `pooped` | `"{name} made a mess! (use /codotchi clean)"` |
+
+---
+
+### Command responses
+
+#### `/codotchi on` / `/codotchi off`
+
+| Condition | Phrase |
+|-----------|--------|
+| `on`, pet exists | `"ASCII art enabled."` |
+| `on`, no pet | `"ASCII art enabled. No pet found yet — start a game in VS Code or PyCharm."` |
+| `off`, pet exists | `"ASCII art disabled. Stats will be shown as plain text."` |
+| `off`, no pet | `"ASCII art disabled."` |
+
+#### `/codotchi new_game`
+
+| Condition | Phrase |
+|-----------|--------|
+| Created | `"New game started! Your {petKind} named \"{petName}\" has hatched."` |
+
+#### Guards (no pet / dead pet)
+
+| Condition | Phrase |
+|-----------|--------|
+| No pet found | `"No pet found. Start a new game first:\n  - In VS Code: open the Gotchi sidebar and choose New Game\n  - In PyCharm: open the Gotchi panel and choose New Game"` |
+| Pet is dead | `"{name} has passed away. Start a new game to continue."` |
+
+#### `/codotchi feed`
+
+| Condition | Phrase |
+|-----------|--------|
+| Pet is sleeping | `"{name} is sleeping and can't eat right now."` |
+| Meal refused (toast) | `"{name} is too full for another meal."` |
+| Meal accepted (toast) | `"{name} enjoyed the meal! (hunger: {n})"` |
+| Meal refused (result) | `"Meal refused — {name} has already had {n} meals this wake cycle."` |
+| Meal accepted (result) | `"Fed {name}. Hunger: {n}/100, Weight: {n}."` |
+
+#### `/codotchi pat`
+
+| Condition | Phrase |
+|-----------|--------|
+| Pet is sleeping | `"{name} is sleeping."` |
+| Pat refused (toast) | `"{name} is too tired even for a pat."` |
+| Pat accepted (toast) | `"{name} enjoyed the pat!"` |
+| Pat refused (result) | `"Pat refused — {name} is too exhausted."` |
+| Pat accepted (result) | `"Patted {name}. Happiness: {n}."` |
+
+#### `/codotchi sleep`
+
+| Condition | Phrase |
+|-----------|--------|
+| Already sleeping | `"{name} is already sleeping."` |
+| Now sleeping | `"{name} is now sleeping. Energy will recharge."` |
+
+#### `/codotchi clean`
+
+| Condition | Phrase |
+|-----------|--------|
+| Already clean (toast) | `"{name}'s area is already clean."` |
+| Cleaned (toast) | `"Cleaned up after {name}."` |
+| Already clean (result) | `"Nothing to clean — {name}'s area is already spotless."` |
+| Cleaned (result) | `"Cleaned up {name}'s mess. Poops remaining: 0."` |
+
+#### `/codotchi medicine`
+
+| Condition | Phrase |
+|-----------|--------|
+| Not sick | `"{name} is not sick — medicine not needed."` |
+| Cured (toast) | `"{name} is cured!"` |
+| Dose given (toast) | `"Gave {name} medicine ({n}/3 doses)."` |
+| Cured (result) | `"{name} has been cured!"` |
+| Dose given (result) | `"Gave medicine to {name}. Doses given: {n}/3."` |
+
+#### Unknown action fallback
+
+`"Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off."`
+
+---
+
+### VS Code IDE popup notifications
+
+Shown as VS Code warning popups with an "Open Gotchi" button. Defined in `vscode/src/extension.ts`.
+
+| Event | Phrase |
+|-------|--------|
+| `attention_call_hunger` | `"{name} is hungry!"` |
+| `attention_call_unhappiness` | `"{name} is feeling sad!"` |
+| `attention_call_poop` | `"{name} made a mess and wants you to clean it up!"` |
+| `attention_call_sick` | `"{name} is sick!"` |
+| `attention_call_low_energy` | `"{name} is exhausted!"` |
+| `attention_call_misbehaviour` | `"{name} is misbehaving!"` |
+| `attention_call_gift` | `"{name} brought you a gift!"` |
+| `attention_call_critical_health` | `"{name}'s health is critical!"` |
+| `died_of_old_age` | `"{name} has passed away of unforeseen natural causes due to old age."` |
+
+### Weight event strings (VS Code sidebar event log)
+
+| Event code | Message |
+|-----------|---------|
+| `weight_became_too_skinny` | `"<Name> is getting too skinny!"` |
+| `weight_became_slightly_fat` | `"<Name> is looking a little chubby."` |
+| `weight_became_overweight` | `"<Name> is overweight!"` |
+| `weight_no_longer_overweight` | `"<Name> has slimmed down."` |
+| `weight_no_longer_too_skinny` | `"<Name> is looking healthier now."` |
+
+---
+
 ## Release Notes
 
 v0.5.1 was built and packaged by [dylscoop](https://github.com/dylscoop).
