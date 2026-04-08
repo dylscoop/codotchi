@@ -549,7 +549,7 @@ export const plugin: Plugin = async (_ctx) => {
     // only to the LLM, not to the panel).
     async "tool.execute.after"({ tool: toolName }, output) {
       if (toolName === "gotchi") {
-        output.output = lastToolOutput;
+        output.output = stripAnsi(lastToolOutput);
       }
     },
 
