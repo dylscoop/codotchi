@@ -1,6 +1,31 @@
 # Version History
 
-## v0.10.4 — current
+## v0.10.5 — current
+
+### Changes from v0.10.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.10.4` → `0.10.5` |
+| `pycharm/build.gradle.kts` | Version bumped `0.10.4` → `0.10.5` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.10.4` → `0.10.5` |
+| `opencode-codotchi/package.json` | Version bumped `0.10.4` → `0.10.5` |
+| `.opencode/plugins/gotchi.ts` | Strip ANSI codes from `output.output` in `tool.execute.after` hook (BUGFIX-047) |
+| `opencode-codotchi/src/index.ts` | Mirrored BUGFIX-047 fix from `.opencode/plugins/gotchi.ts` |
+| `opencode-codotchi/opencode-codotchi-0.10.5.zip` | Rebuilt distributable zip for v0.10.5 |
+| `BUGFIXES.md` | Added BUGFIX-047 |
+| `VERSIONS.md` | Added v0.10.5 section |
+
+### Bug fixes
+
+**BUGFIX-047 — Raw ANSI escape codes in tool details panel** — the
+`tool.execute.after` hook now calls `stripAnsi()` on `lastToolOutput` before
+assigning to `output.output`, so the panel displays clean plain text instead
+of raw bracket sequences like `[33m` and `[0m`.
+
+---
+
+## v0.10.4 — previous
 
 ### Changes from v0.10.3
 

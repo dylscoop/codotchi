@@ -703,3 +703,14 @@ passing the string return value directly to `stripAnsi()`.
 **Problem:** `buildSpeechBubble` and `buildStatusBlock` both emitted ANSI colour codes without a leading reset. If the previous terminal output left an active colour or style, it would bleed into the art block's first line. Similarly the block's own colours could bleed into the text that followed it.
 
 **Fix:** Both functions now prepend a `RESET` sentinel as the first element of their output array, ensuring ANSI state is clean before the art block begins.
+
+---
+
+## BUGFIX-047 — Raw ANSI escape codes visible in tool details panel output
+
+**Status:** Fixed (branch `fix/ansi-escape-codes-in-status`)
+**Files:** `.opencode/plugins/gotchi.ts`, `opencode-codotchi/src/index.ts`
+
+**Problem:** The `tool.execute.after` hook assigned the raw `lastToolOutput` string (which contains ANSI escape sequences) directly to `output.output`. OpenCode's tool details panel renders this field as plain text, not a terminal emulator, so the `\x1b` byte was silently dropped and the bracket sequences (e.g. `[33m`, `[0m`) appeared literally in the output.
+
+**Fix:** Applied `stripAnsi(lastToolOutput)` before assigning to `output.output`, consistent with how `output.text` was already handled in the `experimental.text.complete` hook. `stripAnsi` was already imported in both files.
