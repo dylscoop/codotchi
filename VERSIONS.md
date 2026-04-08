@@ -1,6 +1,33 @@
 # Version History
 
-## v0.11.1 — current
+## v0.11.2 — current
+
+### Changes from v0.11.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.11.1` → `0.11.2` |
+| `pycharm/build.gradle.kts` | Version bumped `0.11.1` → `0.11.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.11.1` → `0.11.2` |
+| `opencode-codotchi/package.json` | Version bumped `0.11.1` → `0.11.2` |
+| `.opencode/commands/codotchi.md` | Renamed `/codotchi on` → `/codotchi show` and `/codotchi off` → `/codotchi hide`; blank/`status` maps to `action: on`; fixed double-output bug by instructing LLM not to wrap tool output in code fences |
+| `opencode-codotchi/commands/codotchi.md` | Mirrored changes from `.opencode/commands/codotchi.md` |
+| `DEV_NOTES.md` | Updated command response table and unknown-action fallback to reflect `show`/`hide` rename |
+| `vscode/FEATURES.md` | Updated slash command feature rows to use `show`/`hide` instead of `on`/`off` |
+| `README.md` | Version references updated to `0.11.2`; added `/codotchi show` / `hide` to command list |
+| `vscode/README.md` | Version references updated to `0.11.2` |
+| `pycharm/README.md` | Version references updated to `0.11.2` |
+| `opencode-codotchi/README.md` | Version references updated to `0.11.2`; added `/codotchi show` / `hide` to usage block |
+| `BUGFIXES.md` | Added BUGFIX-051 (double output bug) |
+| `VERSIONS.md` | Added v0.11.2 section |
+
+### Bug fixes
+
+**BUGFIX-051 — `/codotchi show` output appeared twice in chat** — the slash command prompt now explicitly instructs the LLM to output tool results as plain text with no code fences, preventing the ASCII art sprite from being echoed a second time.
+
+---
+
+## v0.11.1 — previous
 
 ### Changes from v0.11.0
 
