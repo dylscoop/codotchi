@@ -62,6 +62,9 @@ import {
   buildToast,
   buildContextualSpeech,
   stripAnsi,
+  pickRandom,
+  TODO_COMPLETE_PHRASES,
+  SESSION_DIFF_PHRASES,
 } from "./asciiArt.js";
 
 // ---------------------------------------------------------------------------
@@ -159,6 +162,22 @@ let terminalEnabled = false;
 
 let sessionFilesEdited = 0;
 let sessionStartMs = Date.now();
+
+// ---------------------------------------------------------------------------
+// Todo tracking — detect status transitions for celebratory notifications
+// ---------------------------------------------------------------------------
+
+/** Map of todo id → last known status, used to detect transitions. */
+let prevTodos: Map<string, string> = new Map();
+
+// ---------------------------------------------------------------------------
+// Diff tracking — flag when AI has shipped changes since last idle
+// ---------------------------------------------------------------------------
+
+/** True when at least one session.diff with non-empty diff arrived since the
+ *  last session.idle. The notification fires on the NEXT session.idle so we
+ *  don't interrupt mid-burst. */
+let pendingDiffSinceIdle = false;
 
 // ---------------------------------------------------------------------------
 // Suppress text.complete art for one cycle after a gotchi tool call.
@@ -605,11 +624,72 @@ export const plugin: Plugin = async (_ctx) => {
         return;
       }
 
-      // session.idle → flag idle for next tick
+      // session.idle → flag idle for next tick; fire diff notification if pending
       if (event.type === "session.idle") {
         isIdle = true;
         // Save on idle so offline decay is accurate if the user closes OpenCode
         saveState();
+        // Option B: fire session.diff message now that the AI has gone quiet
+        if (pendingDiffSinceIdle && petState !== null && petState.alive) {
+          pendingDiffSinceIdle = false;
+          const phrase = pickRandom(SESSION_DIFF_PHRASES);
+          queueNotification(terminalEnabled
+            ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name)
+            : `[${petState.name}] ${phrase}`);
+        }
+        return;
+      }
+
+      // todo.updated → celebrate completions, encourage in-progress, note cancellations
+      if (event.type === "todo.updated") {
+        const newTodos = new Map<string, string>(
+          event.properties.todos.map((t: { id: string; status: string }) => [t.id, t.status])
+        );
+        for (const todo of event.properties.todos) {
+          const oldStatus = prevTodos.get(todo.id) ?? null;
+          if (oldStatus !== "completed" && todo.status === "completed") {
+            // Apply happiness + discipline boost
+            if (petState !== null && petState.alive && !petState.sleeping) {
+              petState = applyCodeActivity(petState);
+              saveState();
+            }
+            const phrase = pickRandom(TODO_COMPLETE_PHRASES)(todo.content);
+            queueNotification(terminalEnabled && petState !== null
+              ? buildSpeechBubble(petState.stage, "happy", phrase, petState.name)
+              : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
+          } else if (oldStatus !== "in_progress" && todo.status === "in_progress") {
+            const phrase = `On it: ${todo.content}.`;
+            queueNotification(terminalEnabled && petState !== null
+              ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name)
+              : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
+          } else if (oldStatus !== "cancelled" && todo.status === "cancelled") {
+            const phrase = `Fair enough — ${todo.content} dropped.`;
+            queueNotification(terminalEnabled && petState !== null
+              ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name)
+              : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
+          }
+        }
+        prevTodos = newTodos;
+        return;
+      }
+
+      // session.diff → mark that changes arrived; notification deferred to session.idle
+      if (event.type === "session.diff") {
+        if (event.properties.diff && event.properties.diff.length > 0) {
+          pendingDiffSinceIdle = true;
+        }
+        return;
+      }
+
+      // vcs.branch.updated → comment on branch switches
+      if (event.type === "vcs.branch.updated") {
+        const branch = event.properties.branch;
+        if (branch) {
+          const phrase = `Switched to ${branch}. New mission?`;
+          queueNotification(terminalEnabled && petState !== null
+            ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name)
+            : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
+        }
         return;
       }
 
