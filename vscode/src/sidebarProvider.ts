@@ -152,12 +152,12 @@ export class SidebarProvider
       vscode.Uri.file(path.join(mediaPath, "sidebar.js"))
     );
     const spritesUri = webview.asWebviewUri(
-      vscode.Uri.file(path.join(mediaPath, "sprites"))
+      vscode.Uri.file(path.join(mediaPath, "sprites.js"))
     );
 
     html = html.replace("{{cssUri}}", cssUri.toString());
-    html = html.replace("{{jsUri}}", jsUri.toString());
     html = html.replace("{{spritesUri}}", spritesUri.toString());
+    html = html.replace("{{jsUri}}", jsUri.toString());
     html = html.replace(/\{\{cspSource\}\}/g, webview.cspSource);
 
     const fontSizeSetting = vscode.workspace
