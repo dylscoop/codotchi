@@ -1,4 +1,4 @@
-/**
+﻿/**
  * asciiArt.ts
  *
  * Terminal ASCII art renderer for the gotchi OpenCode plugin.
@@ -318,6 +318,108 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
   },
 };
 
+
+// ---------------------------------------------------------------------------
+// Zodiac / sprite-type head-line overrides
+// ---------------------------------------------------------------------------
+// Maps spriteType -> stage -> replacement for line 0 of the stage art.
+// The override string is injected by getArt() when spriteType is provided.
+// Strings are 13 chars (matching the width of the widest stage art line).
+
+const SPRITE_HEAD: Record<string, Record<string, string>> = {
+  classic: {},
+  cat: {
+    baby:   " /\\ /\\ (^.^) ",
+    child:  " /\\ (-_-)/\\  ",
+    teen:   " /\\ (-_-)/\\  ",
+    adult:  " /\\ (-_-)/\\  ",
+    senior: " /\\ (-_-)/\\  ",
+  },
+  rat: {
+    baby:   "   (^o^)  ~  ",
+    child:  "   (-o-)  ~  ",
+    teen:   "   (-o-)  ~  ",
+    adult:  "  \\(-o-)/    ",
+    senior: "  ~(-o-)~    ",
+  },
+  ox: {
+    baby:   "  Y(^_^)Y    ",
+    child:  "  Y(-_-)Y    ",
+    teen:   "  Y(-_-)Y    ",
+    adult:  "  Y(-_-)Y    ",
+    senior: "  Y(-_-)Y    ",
+  },
+  tiger: {
+    baby:   "  ^(^.^)^    ",
+    child:  "  ^(-_-)^    ",
+    teen:   "  ^(-_-)^    ",
+    adult:  "  ^(-_-)^    ",
+    senior: "  ^(-_-)^    ",
+  },
+  rabbit: {
+    baby:   " |(^.^)|     ",
+    child:  " |(-_-)|     ",
+    teen:   " |(-_-)|     ",
+    adult:  " |(-_-)|     ",
+    senior: " |(-_-)|     ",
+  },
+  dragon: {
+    baby:   "  *(^_^)*    ",
+    child:  "  *(-_-)*    ",
+    teen:   "  *(-_-)*    ",
+    adult:  "  *(-_-)*    ",
+    senior: "  *(-_-)*    ",
+  },
+  snake: {
+    baby:   "  ~(^.^)~    ",
+    child:  "  ~(-_-)~    ",
+    teen:   "  ~(-_-)~    ",
+    adult:  "  ~(-_-)~    ",
+    senior: "  ~(-_-)~    ",
+  },
+  horse: {
+    baby:   "  n(^_^)n    ",
+    child:  "  n(-_-)n    ",
+    teen:   "  n(-_-)n    ",
+    adult:  "  n(-_-)n    ",
+    senior: "  n(-_-)n    ",
+  },
+  goat: {
+    baby:   "  V(^.^)V    ",
+    child:  "  V(-_-)V    ",
+    teen:   "  V(-_-)V    ",
+    adult:  "  V(-_-)V    ",
+    senior: "  V(-_-)V    ",
+  },
+  monkey: {
+    baby:   " o(^_^)o     ",
+    child:  " o(-_-)o     ",
+    teen:   " o(-_-)o     ",
+    adult:  " o(-_-)o     ",
+    senior: " o(-_-)o     ",
+  },
+  rooster: {
+    baby:   " r(^.^)r     ",
+    child:  " r(-_-)r     ",
+    teen:   " r(-_-)r     ",
+    adult:  " r(-_-)r     ",
+    senior: " r(-_-)r     ",
+  },
+  dog: {
+    baby:   " U(^_^)U     ",
+    child:  " U(-_-)U     ",
+    teen:   " U(-_-)U     ",
+    adult:  " U(-_-)U     ",
+    senior: " U(-_-)U     ",
+  },
+  pig: {
+    baby:   "  o(^.^)o    ",
+    child:  "  o(-_-)o    ",
+    teen:   "  o(-_-)o    ",
+    adult:  "  o(-_-)o    ",
+    senior: "  o(-_-)o    ",
+  },
+};
 // ---------------------------------------------------------------------------
 // Stage colour schemes
 // ---------------------------------------------------------------------------
@@ -340,7 +442,7 @@ const STAGE_COLOURS: Record<string, string> = {
  * Falls back to the stage's "happy" art if the mood has no specific art.
  * Falls back to egg/default art if the stage is unknown.
  */
-export function getArt(stage: string, mood: string): string[] {
+export function getArt(stage: string, mood: string, spriteType = "classic"): string[] {
   const stageMap = STAGE_ART[stage] ?? STAGE_ART.egg;
   // mood keys: happy / neutral / sad / sleeping / sick
   const moodKey = mood === "sleeping" ? "sleeping"
@@ -348,7 +450,14 @@ export function getArt(stage: string, mood: string): string[] {
     : mood === "sad"     ? "sad"
     : mood === "happy"   ? "happy"
     : "neutral";
-  return stageMap[moodKey] ?? stageMap["happy"] ?? stageMap["default"] ?? STAGE_ART.egg.default;
+  const baseArt = stageMap[moodKey] ?? stageMap["happy"] ?? stageMap["default"] ?? STAGE_ART.egg.default;
+  const headOverride = (SPRITE_HEAD[spriteType] ?? {})[stage];
+  if (headOverride && baseArt.length > 0) {
+    const result = [...baseArt];
+    result[0] = headOverride;
+    return result;
+  }
+  return baseArt;
 }
 
 // ---------------------------------------------------------------------------
@@ -417,9 +526,10 @@ export function buildSpeechBubble(
   stage: string,
   mood: string,
   message: string,
-  name: string
+  name: string,
+  spriteType = "classic"
 ): string {
-  const art    = getArt(stage, mood);
+  const art    = getArt(stage, mood, spriteType);
   const bubble = buildBubble(message);
   const stageColour = STAGE_COLOURS[stage] ?? FG_WHITE;
 
@@ -483,9 +593,10 @@ export function buildStatusBlock(state: {
   sick: boolean;
   sleeping: boolean;
   poops: number;
+  spriteType?: string;
 }): string {
   const stageColour = STAGE_COLOURS[state.stage] ?? FG_WHITE;
-  const art = getArt(state.stage, state.mood);
+  const art = getArt(state.stage, state.mood, state.spriteType ?? "classic");
 
   // Art + header side by side
   const headerLines = [
