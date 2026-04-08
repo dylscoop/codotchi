@@ -1,6 +1,35 @@
 # Version History
 
-## v0.11.0 — current
+## v0.11.1 — current
+
+### Changes from v0.11.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.11.0` → `0.11.1` |
+| `pycharm/build.gradle.kts` | Version bumped `0.11.0` → `0.11.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.11.0` → `0.11.1` |
+| `opencode-codotchi/package.json` | Version bumped `0.11.0` → `0.11.1` |
+| `.opencode/plugins/gotchi.ts` | Added `fs.watch` live-sync watcher on `state.json`; reloads in-memory `petState` when VS Code / PyCharm saves a newer state (BUGFIX-049) |
+| `opencode-codotchi/src/index.ts` | Mirrored BUGFIX-049 fix from `.opencode/plugins/gotchi.ts` |
+| `vscode/src/extension.ts` | Removed `saveState()` call from `reloadAndRefreshUI()` to prevent `localTimestamp` drift that broke multi-window sync after the first reload cycle (BUGFIX-050) |
+| `opencode-codotchi/opencode-codotchi-0.11.1.zip` | Rebuilt distributable zip for v0.11.1 |
+| `BUGFIXES.md` | Added BUGFIX-049 and BUGFIX-050 |
+| `README.md` | Version references updated to `0.11.1` |
+| `vscode/README.md` | Version references updated to `0.11.1` |
+| `pycharm/README.md` | Version references updated to `0.11.1` |
+| `opencode-codotchi/README.md` | Version references updated to `0.11.1` |
+| `VERSIONS.md` | Added v0.11.1 section |
+
+### Bug fixes
+
+**BUGFIX-049 — OpenCode plugin never syncs stats from VS Code while running** — the plugin now registers an `fs.watch` listener on `state.json` at startup. When VS Code saves new state, the plugin reloads it within 150 ms (debounced). A `shared.savedAt <= lastSavedAt` guard prevents the plugin from overwriting state it wrote itself.
+
+**BUGFIX-050 — VS Code multi-window sync breaks after first reload** — `reloadAndRefreshUI()` no longer calls `saveState()`. An unfocused window was resetting its `TIMESTAMP_KEY` to `Date.now()` on every reload, causing `shared.savedAt < localTimestamp` on the next `fs.watch` event and silently falling back to the stale local copy. The active (focused) ticker is now the sole writer.
+
+---
+
+## v0.11.0 — previous
 
 ### Changes from v0.10.6
 

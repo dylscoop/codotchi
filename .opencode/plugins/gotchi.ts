@@ -356,6 +356,57 @@ export const plugin: Plugin = async (_ctx) => {
   }, TICK_INTERVAL_SECONDS * 1_000);
 
   // ---------------------------------------------------------------------------
+  // Cross-IDE live sync (BUGFIX-049)
+  // Watch state.json for writes by VS Code / PyCharm. The OpenCode plugin is
+  // never the "focused window" in the VS Code sense, so we always reload when
+  // the file changes — VS Code is the authoritative ticker whenever it is open.
+  // A 150 ms debounce absorbs rapid successive fs events from atomic writes.
+  // The shared.savedAt <= lastSavedAt guard prevents us from overwriting a
+  // state we just saved ourselves (e.g. after /codotchi feed).
+  // ---------------------------------------------------------------------------
+  {
+    const sharedStatePath = getSharedStatePath();
+    let syncDebounce: ReturnType<typeof setTimeout> | undefined;
+    let fsWatcher: ReturnType<typeof fs.watch> | undefined;
+
+    const reloadFromSharedFile = (): void => {
+      const shared = loadFromSharedFile();
+      if (shared === null) { return; }
+      // Only take the external write if it is strictly newer than our last save.
+      if (shared.savedAt <= lastSavedAt) { return; }
+      const elapsedSeconds = (Date.now() - shared.savedAt) / 1_000;
+      petState = applyOfflineDecay(shared.state, elapsedSeconds);
+      lastSavedAt = shared.savedAt;
+      // Do NOT reset terminalEnabled — it is OpenCode-local.
+      mealsThisCycle = 0;
+    };
+
+    const onSharedStateChanged = (): void => {
+      if (syncDebounce !== undefined) { clearTimeout(syncDebounce); }
+      syncDebounce = setTimeout(() => {
+        syncDebounce = undefined;
+        reloadFromSharedFile();
+      }, 150);
+    };
+
+    const startWatcher = (): void => {
+      if (fsWatcher !== undefined) { return; }
+      try {
+        fsWatcher = fs.watch(sharedStatePath, { persistent: false }, onSharedStateChanged);
+        fsWatcher.on("error", () => { fsWatcher?.close(); fsWatcher = undefined; });
+      } catch { /* file may not exist yet — watchBootstrap will retry */ }
+    };
+
+    startWatcher();
+    // Retry every 10 s if the file didn't exist at startup.
+    const watchBootstrap = setInterval(() => {
+      if (fsWatcher !== undefined) { clearInterval(watchBootstrap); return; }
+      startWatcher();
+      if (fsWatcher !== undefined) { clearInterval(watchBootstrap); }
+    }, 10_000);
+  }
+
+  // ---------------------------------------------------------------------------
   // Tool definition
   // ---------------------------------------------------------------------------
   const gotchiTool = tool({
