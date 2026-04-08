@@ -30,6 +30,10 @@
 | `pycharm/README.md` | Version references updated to `1.0.0` |
 | `opencode-codotchi/README.md` | Version references updated to `1.0.0` |
 | `VERSIONS.md` | Added v1.0.0 section |
+| `vscode/archive/vsix/vscode-gotchi-0.11.2.vsix` | Archived old vsix before rebuild |
+| `vscode/vscode-gotchi-1.0.0.vsix` | Rebuilt distributable vsix for v1.0.0 |
+| `pycharm/build/distributions/pycharm-gotchi-1.0.0.zip` | Rebuilt distributable zip for v1.0.0 |
+| `opencode-codotchi/opencode-codotchi-1.0.0.zip` | Rebuilt distributable zip for v1.0.0 |
 
 ---
 
