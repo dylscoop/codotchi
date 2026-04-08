@@ -20,6 +20,13 @@
 | `pycharm/README.md` | Version references updated to `0.11.1` |
 | `opencode-codotchi/README.md` | Version references updated to `0.11.1` |
 | `VERSIONS.md` | Added v0.11.1 section |
+| `.opencode/commands/codotchi.md` | Renamed `/codotchi on` → `/codotchi show` and `/codotchi off` → `/codotchi hide`; blank/`status` now maps to `action: on`; fixed double-output bug by instructing LLM not to wrap tool output in code fences |
+| `opencode-codotchi/commands/codotchi.md` | Mirrored changes from `.opencode/commands/codotchi.md` |
+| `DEV_NOTES.md` | Updated command response table and unknown-action fallback to reflect `show`/`hide` rename |
+| `vscode/FEATURES.md` | Updated slash command feature rows to use `show`/`hide` instead of `on`/`off` |
+| `README.md` | Added `/codotchi show` / `hide` to command list |
+| `opencode-codotchi/README.md` | Added `/codotchi show` / `hide` to command list |
+| `BUGFIXES.md` | Added BUGFIX-051 (double output bug) |
 
 ### Bug fixes
 

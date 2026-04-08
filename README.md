@@ -113,6 +113,7 @@ Either way, use `/codotchi` to interact with your pet:
 - `/codotchi feed` / `snack` / `play` / `pat` — care actions
 - `/codotchi sleep` / `wake` — sleep cycle
 - `/codotchi clean` / `medicine` — hygiene and health
+- `/codotchi show` / `hide` — toggle ASCII art display
 - `/codotchi new_game name=<name> petType=<type>` — start a fresh pet
 
 For full usage instructions see the individual READMEs:

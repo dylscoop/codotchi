@@ -99,6 +99,8 @@ codotchi will greet you in a speech bubble.
 /codotchi wake         — wake your pet up
 /codotchi clean        — clean up droppings
 /codotchi medicine     — give medicine to cure sickness
+/codotchi show         — enable ASCII art display
+/codotchi hide         — disable ASCII art display
 /codotchi new_game name=<name> petType=<type>  — start a fresh pet
 ```
 

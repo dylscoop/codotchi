@@ -794,14 +794,16 @@ Queued by the tick loop and prepended to the next command output.
 
 ### Command responses
 
-#### `/codotchi on` / `/codotchi off`
+#### `/codotchi show` / `/codotchi hide`
+
+These map to `action: "on"` and `action: "off"` internally.
 
 | Condition | Phrase |
 |-----------|--------|
-| `on`, pet exists | `"ASCII art enabled."` |
-| `on`, no pet | `"ASCII art enabled. No pet found yet — start a game in VS Code or PyCharm."` |
-| `off`, pet exists | `"ASCII art disabled. Stats will be shown as plain text."` |
-| `off`, no pet | `"ASCII art disabled."` |
+| `show` (`on`), pet exists | `"ASCII art enabled."` |
+| `show` (`on`), no pet | `"ASCII art enabled. No pet found yet — start a game in VS Code or PyCharm."` |
+| `hide` (`off`), pet exists | `"ASCII art disabled. Stats will be shown as plain text."` |
+| `hide` (`off`), no pet | `"ASCII art disabled."` |
 
 #### `/codotchi new_game`
 
@@ -864,7 +866,7 @@ Queued by the tick loop and prepended to the next command output.
 
 #### Unknown action fallback
 
-`"Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off."`
+`"Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, show, hide."`
 
 ---
 

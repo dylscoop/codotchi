@@ -760,3 +760,13 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 
 **AI mode:** Unaffected. In AI mode `stopTicker()` is skipped on focus-loss, so the window always has `tickTimer !== undefined` and the `fs.watch` guard (`if (tickTimer !== undefined) { return; }`) prevents any reload attempt. `reloadAndRefreshUI()` is also not called in AI mode on focus-gain (guarded by `if (!c.get<boolean>("aiMode", false))`).
 
+---
+
+## BUGFIX-051 — `/codotchi show` output appeared twice in chat
+
+**Status:** Fixed (branch `fix/codotchi-command-rename`)
+**File:** `.opencode/commands/codotchi.md`, `opencode-codotchi/commands/codotchi.md`
+
+**Problem:** After calling `/codotchi show` (previously `/codotchi on`), the ASCII art sprite appeared twice in the chat — once in the tool output panel and once echoed into the LLM's text response. The command prompt said "return tool output verbatim" which caused the LLM to wrap the art in a fenced code block and re-emit it, doubling the display.
+
+**Fix:** Rewrote the slash command prompt to explicitly instruct the LLM to output the tool result as plain text with no code fences and no extra commentary. The `$ARGUMENTS`-to-`action` mapping was also restructured as a table for clarity, renaming `on` → `show` and `off` → `hide` as user-facing subcommand words.
