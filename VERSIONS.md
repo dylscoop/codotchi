@@ -1,6 +1,89 @@
 # Version History
 
-## v0.10.2 — current
+## v0.10.4 — current
+
+### Changes from v0.10.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `0.10.3` → `0.10.4` |
+| `pycharm/build.gradle.kts` | Version bumped `0.10.3` → `0.10.4` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `0.10.3` → `0.10.4` |
+| `opencode-codotchi/package.json` | Version bumped `0.10.3` → `0.10.4` |
+| `.opencode/plugins/asciiArt.ts` | Added `stripAnsi()` — strips ANSI escape codes from a string for markdown-safe output |
+| `opencode-codotchi/src/asciiArt.ts` | Mirrored from `.opencode/plugins/asciiArt.ts` (same changes) |
+| `.opencode/plugins/gotchi.ts` | Added `suppressNextTextArt` flag; re-added `experimental.text.complete` hook (plain-ASCII, appended, suppressed after tool calls); added `stripAnsi` to imports |
+| `opencode-codotchi/src/index.ts` | Mirrored from `.opencode/plugins/gotchi.ts` (same changes) |
+| `opencode-codotchi/opencode-codotchi-0.10.4.zip` | Rebuilt distributable zip for v0.10.4 |
+| `.opencode/plugins/gotchi.ts` | Fixed `bubbleLines.join()` crash — `buildSpeechBubble` returns a string; removed invalid `.join("\n")` call (BUGFIX-046) |
+| `opencode-codotchi/src/index.ts` | Mirrored BUGFIX-046 fix from `.opencode/plugins/gotchi.ts` |
+| `opencode-codotchi/tests/unit/asciiArt.test.ts` | New: 33 unit tests for `buildSpeechBubble`, `stripAnsi`, `buildStatusBlock`, `buildContextualSpeech` — including return-type regression test for BUGFIX-046 |
+| `opencode-codotchi/tsconfig.test.json` | New: test tsconfig for `opencode-codotchi` (commonjs, compiles to `out-test/`) |
+| `opencode-codotchi/package.json` | Added `test` script (`tsc -p tsconfig.test.json && node --test ...`) |
+| `BUGFIXES.md` | Added BUGFIX-046 |
+| `VERSIONS.md` | Updated v0.10.4 section |
+
+### Features added
+
+**Sprite after every LLM text response** — when terminal display is enabled
+(`/codotchi on`), a plain-ASCII speech bubble and sprite are appended (in a
+fenced code block) to every AI text response. Plain ASCII is used because
+`output.text` is rendered as markdown — ANSI colour codes would appear as raw
+escape sequences. The `suppressNextTextArt` flag prevents a double-sprite when
+the user explicitly calls a `/codotchi` action: the tool output already shows
+the full coloured sprite, so the text response immediately following is
+suppressed.
+
+---
+
+## v0.10.3 — previous
+
+### Changes from v0.10.2
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/package.json` | Version bumped `0.10.2` → `0.10.3` |
+| `.opencode/plugins/gotchi.ts` | Added `terminalEnabled` persistence across restarts; added session coding activity tracking (`sessionFilesEdited`, `sessionStartMs`); added `artHeader()` showing ASCII art + contextual speech bubble in every tool response; added `buildContextualSpeech` call combining pet mood and coding stats |
+| `opencode-codotchi/src/index.ts` | Mirrored from `.opencode/plugins/gotchi.ts` (same changes) |
+| `.opencode/plugins/asciiArt.ts` | Added `buildContextualSpeech()` helper combining pet mood + session coding activity; redesigned ASCII sprites for all 6 stages (distinct silhouettes) |
+| `opencode-codotchi/src/asciiArt.ts` | Mirrored from `.opencode/plugins/asciiArt.ts` (same changes) |
+| `.opencode/commands/codotchi.md` | Added `/codotchi new_game` entry; updated `/codotchi on` description to "every tool response" |
+| `opencode-codotchi/commands/codotchi.md` | Mirrored from `.opencode/commands/codotchi.md` (same changes) |
+| `vscode/FEATURES.md` | Updated OpenCode integration rows for v0.10.3 features |
+| `README.md` | Install filenames updated to `0.10.3` |
+| `vscode/README.md` | Install filenames updated to `0.10.3` |
+| `pycharm/README.md` | Install filenames updated to `0.10.3` |
+| `VERSIONS.md` | Added v0.10.3 section |
+| `.opencode/plugins/gotchi.ts` | Removed `experimental.text.complete` hook (BUGFIX-041); removed `artHeader()` from `status` case (BUGFIX-042); added `Weight` to plain-text stats line (BUGFIX-043); replaced "Play with me?" phrases with third-person variants (BUGFIX-044) |
+| `opencode-codotchi/src/index.ts` | Mirrored from `.opencode/plugins/gotchi.ts` (same changes) |
+| `.opencode/plugins/asciiArt.ts` | Added `RESET` guard to `buildSpeechBubble` and `buildStatusBlock` output (BUGFIX-045); widened `buildBubble` default `maxWidth` 36 → 40; replaced "lonely" phrase (BUGFIX-044) |
+| `opencode-codotchi/src/asciiArt.ts` | Mirrored from `.opencode/plugins/asciiArt.ts` (same changes) |
+| `.opencode/commands/codotchi.md` | Removed `## Usage` section (was injected on every invocation); added `help` action; fixed `status` output format instructions |
+| `opencode-codotchi/commands/codotchi.md` | Mirrored from `.opencode/commands/codotchi.md` (same changes) |
+| `BUGFIXES.md` | Added BUGFIX-041 through BUGFIX-045 |
+| `.opencode/skills/release-checklist/SKILL.md` | Made local reinstall (`node bin/install.js --install`) mandatory rather than optional |
+
+### Features added
+
+**ASCII art in every OpenCode tool response** — when terminal display is enabled
+(`/codotchi on`), the pet's ASCII sprite and a contextual speech bubble appear
+as part of every tool response, not just `/codotchi status`. The speech bubble
+combines pet mood with session coding activity (files edited + session time) for
+a dynamic message on every action. The `terminalEnabled` flag now persists
+across OpenCode restarts. Sprites were redesigned with distinct silhouettes for
+each of the 6 life stages.
+
+### Bug fixes
+
+- **BUGFIX-041** — Removed `experimental.text.complete` hook that caused double sprite and raw ANSI codes in markdown chat
+- **BUGFIX-042** — Removed duplicate `artHeader()` call in `status` case that drew the sprite twice
+- **BUGFIX-043** — Added missing `Weight` field to plain-text stats line in `/codotchi status`
+- **BUGFIX-044** — Replaced first-person "Play with me?" phrases with third-person "Gotchi wants to play"
+- **BUGFIX-045** — Added leading `RESET` to `buildSpeechBubble` and `buildStatusBlock` to prevent ANSI colour bleed
+
+---
+
+## v0.10.2 — previous
 
 ### Changes from v0.10.1
 

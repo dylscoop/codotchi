@@ -7,8 +7,9 @@
  *   - Stage-specific ASCII art (egg → baby → child → teen → adult → senior)
  *   - Mood overlays (happy / neutral / sad / sleeping / sick)
  *   - ANSI colour helpers
- *   - renderSpeechBubble() — pet art + speech bubble side-by-side, written to stdout
- *   - renderStatusBlock() — compact stat bar for the /codotchi status command
+ *   - buildSpeechBubble() — pet art + speech bubble side-by-side, returned as string
+ *   - buildStatusBlock() — compact stat bar for the /codotchi status command, returned as string
+ *   - buildToast()       — one-line notification string
  */
 
 // ---------------------------------------------------------------------------
@@ -34,6 +35,17 @@ export function colour(text: string, ansiCode: string): string {
   return `${ansiCode}${text}${RESET}`;
 }
 
+/**
+ * Strip all ANSI escape sequences from a string, returning plain text.
+ * Used to produce markdown-safe output from art functions (e.g. for the
+ * experimental.text.complete hook, which renders in a markdown context where
+ * ANSI codes appear as raw escape sequences rather than colours).
+ */
+// eslint-disable-next-line no-control-regex
+export function stripAnsi(str: string): string {
+  return str.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
 // ---------------------------------------------------------------------------
 // Sprite art — one entry per life stage, per mood
 // Each art block is an array of strings (lines). All lines are the same width.
@@ -41,227 +53,267 @@ export function colour(text: string, ansiCode: string): string {
 
 /**
  * Minimal, clean ASCII pet art per stage / mood.
- * Each line is exactly 12 characters wide (padded with spaces if needed).
+ * Each stage has a distinct silhouette. Lines are padded to equal width.
+ *
+ * Stage silhouette guide:
+ *   egg    — round shell, no limbs, tiny face peeking through
+ *   baby   — round head + round body, tiny nub arms, nub feet
+ *   child  — oval head, torso with short arms out, stubby legs
+ *   teen   — narrower head, slim torso, long arms, long separate legs
+ *   adult  — wide torso, arm stubs at sides, thick legs with feet
+ *   senior — wider hunched torso, cane on right, short bowed legs
  */
 const STAGE_ART: Record<string, Record<string, string[]>> = {
   egg: {
     default: [
-      "    _____   ",
-      "   /     \\  ",
-      "  | o   o | ",
-      "  |   ~   | ",
-      "   \\_____/  ",
-      "            ",
+      "   .------.  ",
+      "  /  o  o  \\ ",
+      " |    ~    | ",
+      " |         | ",
+      "  \\._____./ ",
+      "             ",
+    ],
+    happy: [
+      "   .------.  ",
+      "  /  ^  ^  \\ ",
+      " |    u    | ",
+      " |         | ",
+      "  \\._____./ ",
+      "             ",
+    ],
+    sad: [
+      "   .------.  ",
+      "  /  T  T  \\ ",
+      " |    _    | ",
+      " |         | ",
+      "  \\._____./ ",
+      "             ",
+    ],
+    sleeping: [
+      "   .------.  ",
+      "  /  -  -  \\ ",
+      " |   ___   | ",
+      " |  (zzz)  | ",
+      "  \\._____./ ",
+      "             ",
+    ],
+    sick: [
+      "   .------.  ",
+      "  /  @  @  \\ ",
+      " |    x    | ",
+      " |  ~~~~~  | ",
+      "  \\._____./ ",
+      "             ",
     ],
   },
   baby: {
     happy: [
-      "   (^.^)    ",
-      "  /|   |\\   ",
-      " / |   | \\  ",
-      "   |___|    ",
-      "  /     \\   ",
-      "            ",
+      "    (^.^)    ",
+      "   ( o   o ) ",
+      "    \\___/    ",
+      "    /   \\    ",
+      "   v     v   ",
+      "             ",
     ],
     neutral: [
-      "   (-_-)    ",
-      "  /|   |\\   ",
-      " / |   | \\  ",
-      "   |___|    ",
-      "  /     \\   ",
-      "            ",
+      "    (-_-)    ",
+      "   ( o   o ) ",
+      "    \\___/    ",
+      "    /   \\    ",
+      "   v     v   ",
+      "             ",
     ],
     sad: [
-      "   (;_;)    ",
-      "  /|   |\\   ",
-      " / |   | \\  ",
-      "   |___|    ",
-      "  /     \\   ",
-      "            ",
+      "    (;_;)    ",
+      "   ( o   o ) ",
+      "    \\___/    ",
+      "    /   \\    ",
+      "   v     v   ",
+      "             ",
     ],
     sleeping: [
-      "   (-_-)    ",
-      "  /|zzz|\\   ",
-      " / |   | \\  ",
-      "   |___|    ",
-      "  /~~~~~\\   ",
-      "            ",
+      "    (-_-)z   ",
+      "   ( o   o ) ",
+      "    \\___/    ",
+      "   /~~~~~\\   ",
+      "  /         \\",
+      "             ",
     ],
     sick: [
-      "   (@_@)    ",
-      "  /|   |\\   ",
-      " / |   | \\  ",
-      "   |___|    ",
-      "  /     \\   ",
-      "            ",
+      "    (@_@)    ",
+      "   ( o   o ) ",
+      "    \\___/    ",
+      "    /   \\    ",
+      "   v     v   ",
+      "             ",
     ],
   },
   child: {
     happy: [
-      "  \\(^o^)/   ",
-      "   |   |    ",
-      "  /|   |\\   ",
-      " / |___| \\  ",
-      "  /     \\   ",
-      "            ",
+      "   (^o^)     ",
+      "  --| |--    ",
+      "    | |      ",
+      "   /| |\\     ",
+      "  / | | \\    ",
+      " J  | |  L   ",
     ],
     neutral: [
-      "  \\(-_-)/   ",
-      "   |   |    ",
-      "  /|   |\\   ",
-      " / |___| \\  ",
-      "  /     \\   ",
-      "            ",
+      "   (-_-)     ",
+      "  --| |--    ",
+      "    | |      ",
+      "   /| |\\     ",
+      "  / | | \\    ",
+      " J  | |  L   ",
     ],
     sad: [
-      "  \\(T_T)/   ",
-      "   |   |    ",
-      "  /|   |\\   ",
-      " / |___| \\  ",
-      "  /     \\   ",
-      "            ",
+      "   (T_T)     ",
+      "  --| |--    ",
+      "    | |      ",
+      "   /| |\\     ",
+      "  / | | \\    ",
+      " J  | |  L   ",
     ],
     sleeping: [
-      "  \\(-.-)/ z ",
-      "   |   |    ",
-      "  /|zzz|\\   ",
-      " / |___| \\  ",
-      "  /~~~~~\\   ",
-      "            ",
+      "   (-.-) z   ",
+      "   --| |--   ",
+      "    |zzz|    ",
+      "   /~~~~~\\   ",
+      "  /       \\  ",
+      " J         L ",
     ],
     sick: [
-      "  \\(@_@)/   ",
-      "   |   |    ",
-      "  /|   |\\   ",
-      " / |___| \\  ",
-      "  /     \\   ",
-      "            ",
+      "   (@_@)     ",
+      "  --| |--    ",
+      "    | |      ",
+      "   /| |\\     ",
+      "  / | | \\    ",
+      " J  | |  L   ",
     ],
   },
   teen: {
     happy: [
-      "  o(^_^)o   ",
-      "  \\|   |/   ",
-      "  /|   |\\   ",
-      " / |___| \\  ",
-      "  /  |  \\   ",
-      "    / \\     ",
+      "   (^_^)     ",
+      "  o-| |-o    ",
+      "    | |      ",
+      "    | |      ",
+      "   /   \\     ",
+      "  /     \\    ",
     ],
     neutral: [
-      "  o(-_-)o   ",
-      "  \\|   |/   ",
-      "  /|   |\\   ",
-      " / |___| \\  ",
-      "  /  |  \\   ",
-      "    / \\     ",
+      "   (-_-)     ",
+      "  o-| |-o    ",
+      "    | |      ",
+      "    | |      ",
+      "   /   \\     ",
+      "  /     \\    ",
     ],
     sad: [
-      "  o(T_T)o   ",
-      "  \\|   |/   ",
-      "  /|   |\\   ",
-      " / |___| \\  ",
-      "  /  |  \\   ",
-      "    / \\     ",
+      "   (T_T)     ",
+      "  o-| |-o    ",
+      "    | |      ",
+      "    | |      ",
+      "   /   \\     ",
+      "  /     \\    ",
     ],
     sleeping: [
-      "  o(-.-)o z ",
-      "  \\|zzz|/   ",
-      "  /|   |\\   ",
-      " / |___| \\  ",
-      "  /~~~~~\\   ",
-      "    / \\     ",
+      "   (-.-)  z  ",
+      "  o-|zzz|-o  ",
+      "    | |      ",
+      "   /~~~\\     ",
+      "  /     \\    ",
+      " /       \\   ",
     ],
     sick: [
-      "  o(@_@)o   ",
-      "  \\|   |/   ",
-      "  /|   |\\   ",
-      " / |___| \\  ",
-      "  /  |  \\   ",
-      "    / \\     ",
+      "   (@_@)     ",
+      "  o-| |-o    ",
+      "    | |      ",
+      "    | |      ",
+      "   /   \\     ",
+      "  /     \\    ",
     ],
   },
   adult: {
     happy: [
-      " \\(^_^)/    ",
-      "  /|   |\\   ",
-      " / | ^ | \\  ",
-      "  /|___|\\   ",
-      " / /   \\ \\  ",
-      "/_/     \\_\\ ",
+      "  \\(^_^)/    ",
+      "  _| | |_    ",
+      " / | | | \\   ",
+      "   |___|     ",
+      "  // | \\\\    ",
+      " //  |  \\\\   ",
     ],
     neutral: [
-      " \\(-_-)/    ",
-      "  /|   |\\   ",
-      " / | - | \\  ",
-      "  /|___|\\   ",
-      " / /   \\ \\  ",
-      "/_/     \\_\\ ",
+      "  \\(-_-)/    ",
+      "  _| | |_    ",
+      " / | | | \\   ",
+      "   |___|     ",
+      "  // | \\\\    ",
+      " //  |  \\\\   ",
     ],
     sad: [
-      " \\(T_T)/    ",
-      "  /|   |\\   ",
-      " / | v | \\  ",
-      "  /|___|\\   ",
-      " / /   \\ \\  ",
-      "/_/     \\_\\ ",
+      "  \\(T_T)/    ",
+      "  _| | |_    ",
+      " / | | | \\   ",
+      "   |___|     ",
+      "  // | \\\\    ",
+      " //  |  \\\\   ",
     ],
     sleeping: [
-      " \\(-.-)/  z ",
-      "  /|zzz|\\   ",
-      " / |   | \\  ",
-      "  /|___|\\   ",
-      " /~~~~~~~\\  ",
-      "/_/     \\_\\ ",
+      "  \\(-.-)/  z ",
+      "  _|zzz|_    ",
+      " / |   | \\   ",
+      "  /~~~~~\\    ",
+      " //     \\\\   ",
+      "//       \\\\  ",
     ],
     sick: [
-      " \\(@_@)/    ",
-      "  /|   |\\   ",
-      " / | x | \\  ",
-      "  /|___|\\   ",
-      " / /   \\ \\  ",
-      "/_/     \\_\\ ",
+      "  \\(@_@)/    ",
+      "  _| | |_    ",
+      " / | | | \\   ",
+      "   |___|     ",
+      "  // | \\\\    ",
+      " //  |  \\\\   ",
     ],
   },
   senior: {
     happy: [
-      "  (^_^) ~   ",
-      " ~|   |~    ",
-      "  | ^ |     ",
-      " /|___|\\    ",
-      "/  / \\  \\   ",
-      "  /   \\     ",
+      "  ~(^_^)~    ",
+      "  ~| | |~    ",
+      " ~ | | | ~   ",
+      "   |___|     ",
+      "  /  |  /    ",
+      " /   | /     ",
     ],
     neutral: [
-      "  (-_-) ~   ",
-      " ~|   |~    ",
-      "  | - |     ",
-      " /|___|\\    ",
-      "/  / \\  \\   ",
-      "  /   \\     ",
+      "  ~(-_-)~    ",
+      "  ~| | |~    ",
+      " ~ | | | ~   ",
+      "   |___|     ",
+      "  /  |  /    ",
+      " /   | /     ",
     ],
     sad: [
-      "  (T_T) ~   ",
-      " ~|   |~    ",
-      "  | v |     ",
-      " /|___|\\    ",
-      "/  / \\  \\   ",
-      "  /   \\     ",
+      "  ~(T_T)~    ",
+      "  ~| | |~    ",
+      " ~ | | | ~   ",
+      "   |___|     ",
+      "  /  |  /    ",
+      " /   | /     ",
     ],
     sleeping: [
-      "  (-.-) z   ",
-      " ~|zzz|~    ",
-      "  |   |     ",
-      " /|___|\\    ",
-      "/~~~~~~~\\   ",
-      "  /   \\     ",
+      "  ~(-.-)~ z  ",
+      "  ~|zzz|~    ",
+      " ~ |   | ~   ",
+      "  /~~~~~\\    ",
+      " /   |   /   ",
+      "/    |  /    ",
     ],
     sick: [
-      "  (@_@) ~   ",
-      " ~|   |~    ",
-      "  | x |     ",
-      " /|___|\\    ",
-      "/  / \\  \\   ",
-      "  /   \\     ",
+      "  ~(@_@)~    ",
+      "  ~| | |~    ",
+      " ~ | | | ~   ",
+      "   |___|     ",
+      "  /  |  /    ",
+      " /   | /     ",
     ],
   },
 };
@@ -309,7 +361,7 @@ export function getArt(stage: string, mood: string): string[] {
  * @param message  - The message text. Long messages are word-wrapped.
  * @param maxWidth - Max characters per bubble line (default 36).
  */
-export function buildBubble(message: string, maxWidth = 36): string[] {
+export function buildBubble(message: string, maxWidth = 40): string[] {
   // Word-wrap the message
   const words = message.split(" ");
   const wrapped: string[] = [];
@@ -348,7 +400,7 @@ export function buildBubble(message: string, maxWidth = 36): string[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Render pet art + speech bubble side-by-side and write to stdout.
+ * Build pet art + speech bubble side-by-side and return as a string.
  *
  * Layout (art on left, bubble on right, connected by a tail):
  *
@@ -361,12 +413,12 @@ export function buildBubble(message: string, maxWidth = 36): string[] {
  * @param message - The speech bubble text.
  * @param name    - Pet's name (used as a label above the art).
  */
-export function renderSpeechBubble(
+export function buildSpeechBubble(
   stage: string,
   mood: string,
   message: string,
   name: string
-): void {
+): string {
   const art    = getArt(stage, mood);
   const bubble = buildBubble(message);
   const stageColour = STAGE_COLOURS[stage] ?? FG_WHITE;
@@ -380,20 +432,21 @@ export function renderSpeechBubble(
   // Colour the art lines
   const artColoured = artPadded.map((l) => colour(l, stageColour));
 
-  // Print name header
+  // Build name header
   const header = `${BOLD}${stageColour}${name}${RESET} ${FG_GRAY}[${stage}]${RESET}`;
-  process.stdout.write("\n" + header + "\n");
+  const lines: string[] = [RESET, "", header];
 
-  // Print combined lines
+  // Build combined lines
   const GAP = "  ";
   for (let i = 0; i < maxLines; i++) {
     const artLine    = artColoured[i]    ?? "";
     const bubbleLine = bubblePadded[i]   ?? "";
     // Connect art row 1 (index 1) to bubble row 1 with a tail arrow
     const connector = i === 1 ? colour("-->", FG_GRAY) : "   ";
-    process.stdout.write(artLine + connector + GAP + bubbleLine + "\n");
+    lines.push(artLine + connector + GAP + bubbleLine);
   }
-  process.stdout.write("\n");
+  lines.push("");
+  return lines.join("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -411,11 +464,11 @@ function statBar(label: string, value: number, barWidth = 10): string {
 }
 
 /**
- * Render a full status readout for the pet and write it to stdout.
+ * Build a full status readout for the pet and return as a string.
  *
  * @param state - Minimal state fields needed for the display.
  */
-export function renderStatus(state: {
+export function buildStatusBlock(state: {
   name: string;
   stage: string;
   mood: string;
@@ -430,11 +483,10 @@ export function renderStatus(state: {
   sick: boolean;
   sleeping: boolean;
   poops: number;
-}): void {
+}): string {
   const stageColour = STAGE_COLOURS[state.stage] ?? FG_WHITE;
   const art = getArt(state.stage, state.mood);
 
-  process.stdout.write("\n");
   // Art + header side by side
   const headerLines = [
     `${BOLD}${stageColour}${state.name}${RESET}`,
@@ -449,27 +501,96 @@ export function renderStatus(state: {
   const artPad = [...art, ...Array(maxH - art.length).fill(" ".repeat((art[0] ?? "").length))];
   const hdrPad = [...headerLines, ...Array(maxH - headerLines.length).fill("")];
 
+  const lines: string[] = [RESET, ""];
   for (let i = 0; i < maxH; i++) {
-    process.stdout.write(colour(artPad[i] ?? "", stageColour) + "  " + (hdrPad[i] ?? "") + "\n");
+    lines.push(colour(artPad[i] ?? "", stageColour) + "  " + (hdrPad[i] ?? ""));
   }
 
-  // Stats
-  process.stdout.write("\n");
-  process.stdout.write(statBar("Hunger",     state.hunger)     + "\n");
-  process.stdout.write(statBar("Happiness",  state.happiness)  + "\n");
-  process.stdout.write(statBar("Energy",     state.energy)     + "\n");
-  process.stdout.write(statBar("Health",     state.health)     + "\n");
-  process.stdout.write(statBar("Discipline", state.discipline) + "\n");
-  process.stdout.write("\n");
-  process.stdout.write(`  ${FG_CYAN}Weight${RESET}        ${state.weight} / 99\n`);
-  process.stdout.write("\n");
+  lines.push("");
+  lines.push(statBar("Hunger",     state.hunger));
+  lines.push(statBar("Happiness",  state.happiness));
+  lines.push(statBar("Energy",     state.energy));
+  lines.push(statBar("Health",     state.health));
+  lines.push(statBar("Discipline", state.discipline));
+  lines.push("");
+  lines.push(`  ${FG_CYAN}Weight${RESET}        ${state.weight} / 99`);
+  lines.push("");
+  return lines.join("\n");
 }
 
 /**
- * Render a simple one-line toast notification (for minor events).
- * Uses process.stdout so it appears in the terminal without disrupting the TUI.
+ * Build a contextual speech line combining pet mood and coding session activity.
+ *
+ * @param pet          - Key pet fields needed to pick a mood-relevant phrase.
+ * @param filesEdited  - Number of files edited this session.
+ * @param sessionMs    - Milliseconds elapsed since the session started.
  */
-export function renderToast(stage: string, message: string): void {
+export function buildContextualSpeech(
+  pet: {
+    name: string;
+    stage: string;
+    mood: string;
+    hunger: number;
+    happiness: number;
+    energy: number;
+    health: number;
+    sick: boolean;
+    sleeping: boolean;
+    poops: number;
+  },
+  filesEdited: number,
+  sessionMs: number
+): string {
+  // --- Session activity phrase ---
+  const sessionMins = Math.floor(sessionMs / 60_000);
+  const sessionHours = Math.floor(sessionMins / 60);
+  const sessionLabel = sessionHours >= 1
+    ? `${sessionHours}h ${sessionMins % 60}m`
+    : sessionMins >= 1
+    ? `${sessionMins}m`
+    : "just started";
+  const activityPhrase =
+    filesEdited === 0  ? "No edits yet this session."
+    : filesEdited < 5  ? `${filesEdited} file${filesEdited > 1 ? "s" : ""} edited — just warming up!`
+    : filesEdited < 15 ? `${filesEdited} files edited in ${sessionLabel} — nice flow!`
+    : filesEdited < 30 ? `${filesEdited} files edited in ${sessionLabel} — on a roll!`
+    :                    `${filesEdited} files edited in ${sessionLabel} — incredible focus!`;
+
+  // --- Pet mood phrase (most critical stat wins) ---
+  let moodPhrase: string;
+  if (!pet.sleeping && pet.energy < 15) {
+    moodPhrase = "I'm absolutely exhausted, please let me sleep...";
+  } else if (pet.sick) {
+    moodPhrase = "I don't feel well at all. I need medicine!";
+  } else if (pet.hunger < 15) {
+    moodPhrase = "I'm starving! Please feed me soon.";
+  } else if (pet.poops > 2) {
+    moodPhrase = "It's getting really messy in here...";
+  } else if (pet.happiness < 20) {
+    moodPhrase = "Gotchi wants to play";
+  } else if (pet.health < 30) {
+    moodPhrase = "My health is low — please take care of me.";
+  } else if (pet.sleeping) {
+    moodPhrase = "Zzz... I'm recharging. Talk to you soon!";
+  } else if (pet.hunger < 40) {
+    moodPhrase = "Getting a bit hungry — a snack would be nice.";
+  } else if (pet.energy < 40) {
+    moodPhrase = "A bit tired but still with you!";
+  } else if (pet.happiness > 70 && pet.health > 70) {
+    moodPhrase = "I'm thriving! Keep up the great work.";
+  } else if (pet.mood === "happy") {
+    moodPhrase = "I'm feeling great today!";
+  } else {
+    moodPhrase = "I'm doing okay. Let's keep coding!";
+  }
+
+  return `${moodPhrase} ${activityPhrase}`;
+}
+
+/**
+ * Build a simple one-line toast notification string (for minor events).
+ */
+export function buildToast(stage: string, message: string): string {
   const c = STAGE_COLOURS[stage] ?? FG_WHITE;
-  process.stdout.write(`${c}[gotchi]${RESET} ${message}\n`);
+  return `${c}[gotchi]${RESET} ${message}`;
 }

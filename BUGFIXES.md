@@ -631,3 +631,75 @@ activeAttentionCall = if (answered != null) answered.activeAttentionCall else st
 **Problem:** The sickness health drain block in `tick()` (`if (sick) { health -= 5; }`) had no idle guard of any kind. If the pet was already sick when the user locked their screen or the computer went to sleep, the extension kept applying 5 HP of damage every 6 seconds for the entire deep-idle period. A sick pet could die overnight with no way for the user to intervene. This was inconsistent with `applyOfflineDecay` (the "VS Code closed" path), which deliberately skips health changes entirely.
 
 **Fix:** Changed the condition to `if (sick && !isDeepIdle)`. Sickness damage is suppressed whenever the IDE is in deep idle (≥ 10 minutes of inactivity, which covers lock screen and OS sleep). A sick pet retains its current health while the user is away and still requires medicine when they return. Damage continues to fire during regular idle (< 10 min) so brief absences still carry consequences.
+
+---
+
+## BUGFIX-041 — `experimental.text.complete` hook caused double sprite and ANSI codes in markdown
+
+**Status:** Fixed (branch `feat/show-art-on-every-response`)
+**File:** `.opencode/plugins/gotchi.ts`, `opencode-codotchi/src/index.ts`
+
+**Problem:** The `experimental.text.complete` hook prepended ANSI art to every LLM markdown text response. This caused three issues: (1) the sprite appeared twice — once in the tool output and once prepended to the text response; (2) raw ANSI escape codes were embedded in markdown, breaking rendering in chat; (3) the sprite could show a different state than the tool output if the pet ticked between responses, causing visible sprite drift on scroll.
+
+**Fix:** Removed the `experimental.text.complete` hook entirely. The sprite is now shown only in tool output (via `buildStatusBlock`), which renders correctly as a code block in the OpenCode chat UI.
+
+---
+
+## BUGFIX-042 — `/codotchi status` showed two sprites (artHeader + buildStatusBlock)
+
+**Status:** Fixed (branch `feat/show-art-on-every-response`)
+**File:** `.opencode/plugins/gotchi.ts`, `opencode-codotchi/src/index.ts`
+
+**Problem:** The `status` case called both `artHeader()` (which renders a speech bubble + sprite) and `buildStatusBlock()` (which renders a separate sprite + stat bars). This produced two sprites in the status output, with the speech bubble art appearing above the stat block art.
+
+**Fix:** Removed the `artHeader()` call from the `status` case. `buildStatusBlock` already includes the sprite; `artHeader` is only needed for actions that do not produce a stat block.
+
+---
+
+## BUGFIX-043 — `/codotchi status` plain-text line was missing `Weight`
+
+**Status:** Fixed (branch `feat/show-art-on-every-response`)
+**File:** `.opencode/plugins/gotchi.ts`, `opencode-codotchi/src/index.ts`
+
+**Problem:** The plain-text stats summary returned by the `status` action listed `Hunger | Happiness | Energy | Health` but omitted `Weight`, which is a core stat visible in the stat block.
+
+**Fix:** Appended `| Weight: ${petState.weight}` to the plain-text stats string.
+
+---
+
+## BUGFIX-044 — "Play with me?" phrases exposed internal phrasing in tool output
+
+**Status:** Fixed (branch `feat/show-art-on-every-response`)
+**File:** `.opencode/plugins/gotchi.ts`, `opencode-codotchi/src/index.ts`, `.opencode/plugins/asciiArt.ts`, `opencode-codotchi/src/asciiArt.ts`
+
+**Problem:** Three notification phrases — `"I'm feeling really sad. Play with me?"`, `"I've been so lonely. Play with me? (/codotchi pat)"`, and `"I'm feeling really lonely. Play with me?"` — used first-person phrasing that read as the AI speaking, which was confusing in the OpenCode chat context where the pet's messages appear alongside LLM responses.
+
+**Fix:** All three phrases replaced with third-person variants: `"Gotchi wants to play"` and `"Gotchi wants to play (/codotchi pat)"`.
+
+---
+
+## BUGFIX-046 — `bubbleLines.join` called on a string, crashing the `experimental.text.complete` hook in OpenCode 1.4.0
+
+**Status:** Fixed (branch `fix/bubble-lines-join`)
+**Files:** `.opencode/plugins/gotchi.ts`, `opencode-codotchi/src/index.ts`
+
+**Problem:** The `experimental.text.complete` hook stored the return value of
+`buildSpeechBubble()` in a variable named `bubbleLines` and then called
+`.join("\n")` on it. `buildSpeechBubble` returns a `string` (lines are already
+joined internally). In OpenCode 1.4.0, strings no longer have a `.join` method
+exposed in the plugin runtime, so calling `.join` threw a `TypeError` on every
+LLM text response, crashing the entire hook and breaking all text output.
+
+**Fix:** Renamed `bubbleLines` → `bubble` and removed the `.join("\n")` call,
+passing the string return value directly to `stripAnsi()`.
+
+---
+
+## BUGFIX-045 — ANSI colour bleed from art blocks into subsequent chat text
+
+**Status:** Fixed (branch `feat/show-art-on-every-response`)
+**File:** `.opencode/plugins/asciiArt.ts`, `opencode-codotchi/src/asciiArt.ts`
+
+**Problem:** `buildSpeechBubble` and `buildStatusBlock` both emitted ANSI colour codes without a leading reset. If the previous terminal output left an active colour or style, it would bleed into the art block's first line. Similarly the block's own colours could bleed into the text that followed it.
+
+**Fix:** Both functions now prepend a `RESET` sentinel as the first element of their output array, ensuring ANSI state is clean before the art block begins.
