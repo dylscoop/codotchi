@@ -574,10 +574,10 @@ export const plugin: Plugin = async (_ctx) => {
         sleeping:  petState.sleeping,
         sick:      petState.sick,
       });
-      const bubbleLines = buildSpeechBubble(
+      const bubble = buildSpeechBubble(
         petState.stage, petState.mood, msg, petState.name
       );
-      const plain = stripAnsi(bubbleLines.join("\n"));
+      const plain = stripAnsi(bubble);
       output.text = output.text + "\n\n```\n" + plain + "\n```";
     },
 
