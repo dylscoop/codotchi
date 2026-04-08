@@ -1,7 +1,7 @@
-/**
+﻿/**
  * index.ts
  *
- * opencode-codotchi — npm-distributable OpenCode plugin.
+ * opencode-codotchi â€” npm-distributable OpenCode plugin.
  * Brings your codotchi into any terminal as a living companion.
  *
  * What this plugin does:
@@ -14,14 +14,14 @@
  *   - Registers the `gotchi` custom tool for slash-command interactions.
  *
  * Slash commands (invoked via /codotchi in the OpenCode TUI):
- *   /codotchi              → show status (text + art if on)
- *   /codotchi feed         → give a meal
- *   /codotchi pat          → pat (gentle happiness boost)
- *   /codotchi sleep        → put to sleep
- *   /codotchi clean        → clean up droppings
- *   /codotchi medicine     → give medicine (cure sickness)
- *   /codotchi on           → enable ASCII art in tool details panel
- *   /codotchi off          → disable ASCII art (plain text stats only)
+ *   /codotchi              â†’ show status (text + art if on)
+ *   /codotchi feed         â†’ give a meal
+ *   /codotchi pat          â†’ pat (gentle happiness boost)
+ *   /codotchi sleep        â†’ put to sleep
+ *   /codotchi clean        â†’ clean up droppings
+ *   /codotchi medicine     â†’ give medicine (cure sickness)
+ *   /codotchi on           â†’ enable ASCII art in tool details panel
+ *   /codotchi off          â†’ disable ASCII art (plain text stats only)
  *
  * Global install (from zip):
  *   1. Download opencode-codotchi-X.Y.Z.zip from Releases and extract it.
@@ -113,7 +113,7 @@ function saveToSharedFile(state: PetState): void {
     };
     fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
   } catch {
-    // Best-effort — never crash the plugin if the shared file is unavailable.
+    // Best-effort â€” never crash the plugin if the shared file is unavailable.
   }
 }
 
@@ -151,7 +151,7 @@ let isIdle = false;
 let lastCodeActivityMs = 0;
 
 // ---------------------------------------------------------------------------
-// Display toggle (default off — art shown in tool details panel when on)
+// Display toggle (default off â€” art shown in tool details panel when on)
 // ---------------------------------------------------------------------------
 
 let terminalEnabled = false;
@@ -164,14 +164,14 @@ let sessionFilesEdited = 0;
 let sessionStartMs = Date.now();
 
 // ---------------------------------------------------------------------------
-// Todo tracking — detect status transitions for celebratory notifications
+// Todo tracking â€” detect status transitions for celebratory notifications
 // ---------------------------------------------------------------------------
 
-/** Map of todo id → last known status, used to detect transitions. */
+/** Map of todo id â†’ last known status, used to detect transitions. */
 let prevTodos: Map<string, string> = new Map();
 
 // ---------------------------------------------------------------------------
-// Diff tracking — flag when AI has shipped changes since last idle
+// Diff tracking â€” flag when AI has shipped changes since last idle
 // ---------------------------------------------------------------------------
 
 /** True when at least one session.diff with non-empty diff arrived since the
@@ -227,7 +227,7 @@ function artHeader(): string {
     sessionFilesEdited,
     Date.now() - sessionStartMs
   );
-  return buildSpeechBubble(petState.stage, petState.mood, speech, petState.name) + "\n";
+  return buildSpeechBubble(petState.stage, petState.mood, speech, petState.name, petState.spriteType) + "\n";
 }
 
 /** Load state from shared file; if none exists, stay null (no pet yet). */
@@ -262,17 +262,17 @@ function applyTick(): void {
       case "auto_woke_up":
         mealsThisCycle = 0;
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, petState.mood, "I feel rested! Time to code!", petState.name)
+          ? buildSpeechBubble(petState.stage, petState.mood, "I feel rested! Time to code!", petState.name, petState.spriteType)
           : `[${petState.name}] I feel rested! Time to code!`);
         break;
       case "died":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sad", "Goodbye... take care of the next one.", petState.name)
+          ? buildSpeechBubble(petState.stage, "sad", "Goodbye... take care of the next one.", petState.name, petState.spriteType)
           : `[${petState.name}] Goodbye... take care of the next one.`);
         break;
       case "died_of_old_age":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sleeping", "I lived a full life. Thank you for everything.", petState.name)
+          ? buildSpeechBubble(petState.stage, "sleeping", "I lived a full life. Thank you for everything.", petState.name, petState.spriteType)
           : `[${petState.name}] I lived a full life. Thank you for everything.`);
         break;
       case "evolved_to_baby":
@@ -282,33 +282,33 @@ function applyTick(): void {
       case "evolved_to_senior": {
         const stageName = event.replace("evolved_to_", "");
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, petState.mood, `I evolved into a ${stageName}!`, petState.name)
+          ? buildSpeechBubble(petState.stage, petState.mood, `I evolved into a ${stageName}!`, petState.name, petState.spriteType)
           : `[${petState.name}] I evolved into a ${stageName}!`);
         break;
       }
       case "attention_call_hunger":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sad", "I'm so hungry... please feed me!", petState.name)
+          ? buildSpeechBubble(petState.stage, "sad", "I'm so hungry... please feed me!", petState.name, petState.spriteType)
           : `[${petState.name}] I'm so hungry... please feed me!`);
         break;
       case "attention_call_unhappiness":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sad", "Gotchi wants to play", petState.name)
+          ? buildSpeechBubble(petState.stage, "sad", "Gotchi wants to play", petState.name, petState.spriteType)
           : `[${petState.name}] Gotchi wants to play`);
         break;
       case "attention_call_sick":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sick", "I don't feel well. I need medicine!", petState.name)
+          ? buildSpeechBubble(petState.stage, "sick", "I don't feel well. I need medicine!", petState.name, petState.spriteType)
           : `[${petState.name}] I don't feel well. I need medicine!`);
         break;
       case "attention_call_critical_health":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sick", "My health is critical! Please help me!", petState.name)
+          ? buildSpeechBubble(petState.stage, "sick", "My health is critical! Please help me!", petState.name, petState.spriteType)
           : `[${petState.name}] My health is critical! Please help me!`);
         break;
       case "attention_call_low_energy":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sad", "I'm exhausted... let me sleep!", petState.name)
+          ? buildSpeechBubble(petState.stage, "sad", "I'm exhausted... let me sleep!", petState.name, petState.spriteType)
           : `[${petState.name}] I'm exhausted... let me sleep!`);
         break;
       case "became_sick":
@@ -319,17 +319,17 @@ function applyTick(): void {
         break;
       case "attention_call_poop":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sad", "There is a mess here! Can you clean it up?", petState.name)
+          ? buildSpeechBubble(petState.stage, "sad", "There is a mess here! Can you clean it up?", petState.name, petState.spriteType)
           : `[${petState.name}] There is a mess here! Can you clean it up?`);
         break;
       case "attention_call_gift":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "happy", "I brought you a gift! Use /codotchi pat to accept it.", petState.name)
+          ? buildSpeechBubble(petState.stage, "happy", "I brought you a gift! Use /codotchi pat to accept it.", petState.name, petState.spriteType)
           : `[${petState.name}] I brought you a gift! Use /codotchi pat to accept it.`);
         break;
       case "attention_call_misbehaviour":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "neutral", "I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", petState.name)
+          ? buildSpeechBubble(petState.stage, "neutral", "I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", petState.name, petState.spriteType)
           : `[${petState.name}] I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.`);
         break;
     }
@@ -341,7 +341,7 @@ function applyTick(): void {
 // ---------------------------------------------------------------------------
 
 export const plugin: Plugin = async (_ctx) => {
-  // Load state on startup — queue greeting as a pending notification
+  // Load state on startup â€” queue greeting as a pending notification
   loadState();
 
   if (petState !== null) {
@@ -354,7 +354,7 @@ export const plugin: Plugin = async (_ctx) => {
         }`
       : "My codotchi passed away. Start a new game in VS Code or PyCharm.";
     queueNotification(terminalEnabled
-      ? buildSpeechBubble(petState.stage, petState.mood, greetMsg, petState.name)
+      ? buildSpeechBubble(petState.stage, petState.mood, greetMsg, petState.name, petState.spriteType)
       : `[${petState.name}] ${greetMsg}`);
   }
 
@@ -367,7 +367,7 @@ export const plugin: Plugin = async (_ctx) => {
   // Cross-IDE live sync (BUGFIX-049)
   // Watch state.json for writes by VS Code / PyCharm. The OpenCode plugin is
   // never the "focused window" in the VS Code sense, so we always reload when
-  // the file changes — VS Code is the authoritative ticker whenever it is open.
+  // the file changes â€” VS Code is the authoritative ticker whenever it is open.
   // A 150 ms debounce absorbs rapid successive fs events from atomic writes.
   // The shared.savedAt <= lastSavedAt guard prevents us from overwriting a
   // state we just saved ourselves (e.g. after /codotchi feed).
@@ -385,7 +385,7 @@ export const plugin: Plugin = async (_ctx) => {
       const elapsedSeconds = (Date.now() - shared.savedAt) / 1_000;
       petState = applyOfflineDecay(shared.state, elapsedSeconds);
       lastSavedAt = shared.savedAt;
-      // Do NOT reset terminalEnabled — it is OpenCode-local.
+      // Do NOT reset terminalEnabled â€” it is OpenCode-local.
       mealsThisCycle = 0;
     };
 
@@ -402,7 +402,7 @@ export const plugin: Plugin = async (_ctx) => {
       try {
         fsWatcher = fs.watch(sharedStatePath, { persistent: false }, onSharedStateChanged);
         fsWatcher.on("error", () => { fsWatcher?.close(); fsWatcher = undefined; });
-      } catch { /* file may not exist yet — watchBootstrap will retry */ }
+      } catch { /* file may not exist yet â€” watchBootstrap will retry */ }
     };
 
     startWatcher();
@@ -428,11 +428,11 @@ export const plugin: Plugin = async (_ctx) => {
       name: tool.schema
         .string()
         .optional()
-        .describe("Pet name — only used when action=new_game"),
+        .describe("Pet name â€” only used when action=new_game"),
       petType: tool.schema
         .enum(["codeling", "bytebug", "pixelpup", "shellscript"])
         .optional()
-        .describe("Pet type — only used when action=new_game"),
+        .describe("Pet type â€” only used when action=new_game"),
     },
     async execute({ action, name, petType }, context) {
       // Drain any queued tick notifications to prepend to this result
@@ -440,7 +440,7 @@ export const plugin: Plugin = async (_ctx) => {
       // Capture every return value so tool.execute.after can write it to output.output
       const ret = (s: string): string => { lastToolOutput = s; return s; };
       // Suppress the text.complete sprite for the LLM response that immediately
-      // follows this tool call — the tool output already shows a coloured sprite.
+      // follows this tool call â€” the tool output already shows a coloured sprite.
       suppressNextTextArt = true;
 
       // Set the tool panel title
@@ -450,7 +450,7 @@ export const plugin: Plugin = async (_ctx) => {
       context.metadata({ title: panelTitle });
 
       // ---------------------------------------------------------------------------
-      // on / off — toggle ASCII art display
+      // on / off â€” toggle ASCII art display
       // ---------------------------------------------------------------------------
       if (action === "on") {
         terminalEnabled = true;
@@ -459,7 +459,7 @@ export const plugin: Plugin = async (_ctx) => {
         const art = artHeader();
         const msg = petState
           ? `ASCII art enabled.`
-          : "ASCII art enabled. No pet found yet — start a game in VS Code or PyCharm.";
+          : "ASCII art enabled. No pet found yet â€” start a game in VS Code or PyCharm.";
         return ret(notification + art + msg);
       }
 
@@ -473,7 +473,7 @@ export const plugin: Plugin = async (_ctx) => {
       }
 
       // ---------------------------------------------------------------------------
-      // new_game — does not require an existing pet
+      // new_game â€” does not require an existing pet
       // ---------------------------------------------------------------------------
       if (action === "new_game") {
         const petName  = name    ?? "Codotchi";
@@ -508,7 +508,7 @@ export const plugin: Plugin = async (_ctx) => {
       switch (action) {
         case "status": {
           // For status: show stat block (includes sprite) + plain text summary.
-          // artHeader() is intentionally omitted here — buildStatusBlock already
+          // artHeader() is intentionally omitted here â€” buildStatusBlock already
           // renders the sprite, so calling artHeader() would draw it twice.
           const statusBlock = terminalEnabled
             ? buildStatusBlock({
@@ -545,7 +545,7 @@ export const plugin: Plugin = async (_ctx) => {
             ? `${petState.name} is too full for another meal.`
             : `${petState.name} enjoyed the meal! (hunger: ${petState.hunger})`);
           const feedResult = refused
-            ? `Meal refused — ${petState.name} has already had ${mealsThisCycle} meals this wake cycle.`
+            ? `Meal refused â€” ${petState.name} has already had ${mealsThisCycle} meals this wake cycle.`
             : `Fed ${petState.name}. Hunger: ${petState.hunger}/100, Weight: ${petState.weight}.`;
           return ret(notification + feedArt + feedToast + "\n" + feedResult);
         }
@@ -562,7 +562,7 @@ export const plugin: Plugin = async (_ctx) => {
             ? `${petState.name} is too tired even for a pat.`
             : `${petState.name} enjoyed the pat!`);
           const patResult = patRefused
-            ? `Pat refused — ${petState.name} is too exhausted.`
+            ? `Pat refused â€” ${petState.name} is too exhausted.`
             : `Patted ${petState.name}. Happiness: ${petState.happiness}.`;
           return ret(notification + patArt + patToast + "\n" + patResult);
         }
@@ -586,14 +586,14 @@ export const plugin: Plugin = async (_ctx) => {
             ? `${petState.name}'s area is already clean.`
             : `Cleaned up after ${petState.name}.`);
           const cleanResult = alreadyClean
-            ? `Nothing to clean — ${petState.name}'s area is already spotless.`
+            ? `Nothing to clean â€” ${petState.name}'s area is already spotless.`
             : `Cleaned up ${petState.name}'s mess. Poops remaining: 0.`;
           return ret(notification + cleanArt + cleanToast + "\n" + cleanResult);
         }
 
         case "medicine": {
           if (!petState.sick) {
-            return ret(notification + artHeader() + `${petState.name} is not sick — medicine not needed.`);
+            return ret(notification + artHeader() + `${petState.name} is not sick â€” medicine not needed.`);
           }
           petState = giveMedicine(petState);
           const cured = petState.events.includes("cured");
@@ -633,7 +633,7 @@ export const plugin: Plugin = async (_ctx) => {
 
     // Append a plain-ASCII speech bubble to every LLM text response when
     // terminal art is enabled. Plain ASCII (no ANSI codes) is used because
-    // output.text is rendered as markdown — ANSI codes would appear as raw
+    // output.text is rendered as markdown â€” ANSI codes would appear as raw
     // escape sequences. The suppressNextTextArt flag prevents a double-sprite
     // when the user explicitly called /codotchi (tool output already has art).
     async "experimental.text.complete"(_input, output) {
@@ -653,14 +653,14 @@ export const plugin: Plugin = async (_ctx) => {
         sick:      petState.sick,
       });
       const bubble = buildSpeechBubble(
-        petState.stage, petState.mood, msg, petState.name
+        petState.stage, petState.mood, msg, petState.name, petState.spriteType
       );
       const plain = stripAnsi(bubble);
       output.text = output.text + "\n\n```\n" + plain + "\n```";
     },
 
     async event({ event }) {
-      // file.edited → code activity reward (throttled)
+      // file.edited â†’ code activity reward (throttled)
       if (event.type === "file.edited") {
         isIdle = false;
         sessionFilesEdited += 1;
@@ -675,7 +675,7 @@ export const plugin: Plugin = async (_ctx) => {
         return;
       }
 
-      // session.idle → flag idle for next tick; fire diff notification if pending
+      // session.idle â†’ flag idle for next tick; fire diff notification if pending
       if (event.type === "session.idle") {
         isIdle = true;
         // Save on idle so offline decay is accurate if the user closes OpenCode
@@ -685,13 +685,13 @@ export const plugin: Plugin = async (_ctx) => {
           pendingDiffSinceIdle = false;
           const phrase = pickRandom(SESSION_DIFF_PHRASES);
           queueNotification(terminalEnabled
-            ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name)
+            ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name, petState.spriteType)
             : `[${petState.name}] ${phrase}`);
         }
         return;
       }
 
-      // todo.updated → celebrate completions, encourage in-progress, note cancellations
+      // todo.updated â†’ celebrate completions, encourage in-progress, note cancellations
       if (event.type === "todo.updated") {
         const newTodos = new Map<string, string>(
           event.properties.todos.map((t: { id: string; status: string }) => [t.id, t.status])
@@ -706,17 +706,17 @@ export const plugin: Plugin = async (_ctx) => {
             }
             const phrase = pickRandom(TODO_COMPLETE_PHRASES)(todo.content);
             queueNotification(terminalEnabled && petState !== null
-              ? buildSpeechBubble(petState.stage, "happy", phrase, petState.name)
+              ? buildSpeechBubble(petState.stage, "happy", phrase, petState.name, petState.spriteType)
               : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
           } else if (oldStatus !== "in_progress" && todo.status === "in_progress") {
             const phrase = `On it: ${todo.content}.`;
             queueNotification(terminalEnabled && petState !== null
-              ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name)
+              ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name, petState.spriteType)
               : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
           } else if (oldStatus !== "cancelled" && todo.status === "cancelled") {
-            const phrase = `Fair enough — ${todo.content} dropped.`;
+            const phrase = `Fair enough â€” ${todo.content} dropped.`;
             queueNotification(terminalEnabled && petState !== null
-              ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name)
+              ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name, petState.spriteType)
               : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
           }
         }
@@ -724,7 +724,7 @@ export const plugin: Plugin = async (_ctx) => {
         return;
       }
 
-      // session.diff → mark that changes arrived; notification deferred to session.idle
+      // session.diff â†’ mark that changes arrived; notification deferred to session.idle
       if (event.type === "session.diff") {
         if (event.properties.diff && event.properties.diff.length > 0) {
           pendingDiffSinceIdle = true;
@@ -732,19 +732,19 @@ export const plugin: Plugin = async (_ctx) => {
         return;
       }
 
-      // vcs.branch.updated → comment on branch switches
+      // vcs.branch.updated â†’ comment on branch switches
       if (event.type === "vcs.branch.updated") {
         const branch = event.properties.branch;
         if (branch) {
           const phrase = `Switched to ${branch}. New mission?`;
           queueNotification(terminalEnabled && petState !== null
-            ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name)
+            ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name, petState.spriteType)
             : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
         }
         return;
       }
 
-      // server.connected → queue greeting notification
+      // server.connected â†’ queue greeting notification
       if (event.type === "server.connected") {
         if (petState !== null && petState.alive) {
           const greet = petState.hunger < 30
@@ -757,13 +757,13 @@ export const plugin: Plugin = async (_ctx) => {
             ? `Been a while. Pat me? (/codotchi pat)`
             : `Hey. Ready when you are.`;
           queueNotification(terminalEnabled
-            ? buildSpeechBubble(petState.stage, petState.mood, greet, petState.name)
+            ? buildSpeechBubble(petState.stage, petState.mood, greet, petState.name, petState.spriteType)
             : `[${petState.name}] ${greet}`);
         }
         return;
       }
 
-      // session.status → resume from idle when a new message arrives
+      // session.status â†’ resume from idle when a new message arrives
       if (event.type === "session.status") {
         isIdle = false;
         return;
