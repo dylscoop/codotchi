@@ -728,3 +728,35 @@ passing the string return value directly to `stripAnsi()`.
 1. **File watcher (Bug D):** `extension.ts` now registers an `fs.watch` listener on `state.json` at activation. When the file changes and this window is not the active ticker (`tickTimer === undefined`), `reloadAndRefreshUI()` is called after a 150 ms debounce. This makes every write by any window or IDE (PyCharm, OpenCode) immediately visible in all other open windows without waiting for a focus cycle.
 2. **`mealsGivenThisCycle` reset (Bug C):** `SidebarProvider.resetMealCycle()` was added and is called inside `reloadAndRefreshUI()` so that the meal counter is cleared whenever state is reloaded from disk. This prevents a window with a stale counter from blocking or bypassing the meal cap after a cross-window sync.
 3. **`getSharedStatePath()` exported from `persistence.ts`** so `extension.ts` can locate the file to watch without duplicating the path logic.
+
+---
+
+## BUGFIX-049 — OpenCode plugin never syncs stats from VS Code while running
+
+**Status:** Fixed (branch `fix/cross-ide-sync`)
+**Files:** `.opencode/plugins/gotchi.ts`, `opencode-codotchi/src/index.ts`
+
+**Problem:** The OpenCode plugin loaded the shared `state.json` file exactly once at startup, then held an in-memory copy for the rest of the session. Any writes to `state.json` by VS Code (every 6 seconds on each tick) were never picked up. The two IDEs would diverge immediately, and whichever saved last would clobber the other's state on the next restart.
+
+**Fix:** Added an `fs.watch` listener on `state.json` inside the plugin entry point, matching the pattern already used in the VS Code extension. When the file changes, a 150 ms debounce fires `reloadFromSharedFile()`, which:
+- Reads the shared file.
+- Guards against replaying our own writes with `if (shared.savedAt <= lastSavedAt) { return; }` — `lastSavedAt` is updated by `saveState()` on every OpenCode write, so OpenCode-originated saves are ignored.
+- Applies a minimal `applyOfflineDecay()` correction for the brief delta since VS Code saved.
+- Does **not** reset `terminalEnabled` — that flag is OpenCode-local and must not be clobbered by VS Code saves.
+- Resets `mealsThisCycle = 0` on every external reload (conservative; prevents meal-cap bypass).
+
+A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did not exist at plugin startup.
+
+---
+
+## BUGFIX-050 — VS Code multi-window sync breaks after first reload due to timestamp drift
+
+**Status:** Fixed (branch `fix/cross-ide-sync`)
+**File:** `vscode/src/extension.ts`
+
+**Problem:** `reloadAndRefreshUI()` (called when an unfocused VS Code window receives an `fs.watch` notification) called `saveState(context, state)` at the end. This updated the unfocused window's `TIMESTAMP_KEY` in `globalState` to `Date.now()`. On the next `fs.watch` event (≈ 6 seconds later when the focused window ticked again), `loadState()` compared `shared.savedAt` (the focused window's last save, ~6 seconds ago) against `localTimestamp` (just set to now by the previous reload). `shared.savedAt < localTimestamp` — so `loadState()` fell back to the unfocused window's stale `globalState` copy instead of the fresh shared file. The unfocused window would display correct stats once, then silently stop syncing.
+
+**Fix:** Removed the `saveState(context, state)` call from `reloadAndRefreshUI()`. The unfocused window now reads and displays state only — the focused window (active ticker) is the sole writer. This preserves the `localTimestamp` at its last-written value, ensuring `shared.savedAt > localTimestamp` remains true on every subsequent `fs.watch` event.
+
+**AI mode:** Unaffected. In AI mode `stopTicker()` is skipped on focus-loss, so the window always has `tickTimer !== undefined` and the `fs.watch` guard (`if (tickTimer !== undefined) { return; }`) prevents any reload attempt. `reloadAndRefreshUI()` is also not called in AI mode on focus-gain (guarded by `if (!c.get<boolean>("aiMode", false))`).
+
