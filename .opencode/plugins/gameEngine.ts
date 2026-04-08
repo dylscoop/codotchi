@@ -459,6 +459,7 @@ export interface PetState {
   // Identity
   readonly name: string;
   readonly petType: string;
+  readonly spriteType: string;
   readonly color: string;
 
   // Core stats
@@ -763,6 +764,38 @@ export function careTierLabel(careScore: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Sprite type — randomly assigned at hatch
+// ---------------------------------------------------------------------------
+
+/**
+ * The 12 Chinese zodiac animals, each with equal probability (~8.17% each).
+ * Two rare sprites ("classic" and "cat") each have a 2% chance.
+ * Total: 12 × 8.1667% + 2% + 2% = 100%.
+ */
+const ZODIAC_ANIMALS = [
+  "rat", "ox", "tiger", "rabbit", "dragon", "snake",
+  "horse", "goat", "monkey", "rooster", "dog", "pig",
+] as const;
+
+/**
+ * All valid sprite type keys.
+ */
+export type SpriteType = typeof ZODIAC_ANIMALS[number] | "classic" | "cat";
+
+/**
+ * Sample a random sprite type at pet creation.
+ * - "cat"     — 2 % chance (rare)
+ * - "classic" — 2 % chance (rare; the original humanoid shape)
+ * - Each of the 12 zodiac animals — 96 % / 12 ≈ 8.17 % chance
+ */
+export function randomSpriteType(): string {
+  const r = Math.random() * 100;
+  if (r < 2) { return "cat"; }
+  if (r < 4) { return "classic"; }
+  return ZODIAC_ANIMALS[Math.floor((r - 4) / (96 / 12))];
+}
+
+// ---------------------------------------------------------------------------
 // Factory — create a new pet
 // ---------------------------------------------------------------------------
 
@@ -781,6 +814,7 @@ export function createPet(name: string, petType: string, color: string): PetStat
   const partial: Omit<PetState, "mood" | "sprite" | "careScore"> = {
     name,
     petType,
+    spriteType: randomSpriteType(),
     color,
     hunger: 50,
     happiness: 50,
@@ -1954,6 +1988,7 @@ export function serialiseState(state: PetState): Record<string, unknown> {
   return {
     name: state.name,
     petType: state.petType,
+    spriteType: state.spriteType,
     color: state.color,
     hunger: state.hunger,
     happiness: state.happiness,
@@ -2031,6 +2066,8 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
   const partial: Omit<PetState, "mood" | "sprite" | "careScore"> = {
     name: getString("name", "Gotchi"),
     petType: getString("petType", "codeling"),
+    // Back-compat: old saves won't have spriteType; default to "classic" (original humanoid).
+    spriteType: getString("spriteType", "classic"),
     color: getString("color", "neon"),
     hunger: getNumber("hunger", 50),
     happiness: getNumber("happiness", 50),
