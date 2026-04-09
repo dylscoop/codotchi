@@ -19,6 +19,7 @@ import com.intellij.openapi.components.*
  *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls
  *  - [petStageHeight]         : canvas height in pixels (default 96)
  *  - [reducedMotion]          : disable rAF animation loop (default false)
+ *  - [petSize]                : "small" | "medium" | "large" — sprite display size (default "medium")
  *  - [devModeEnabled]         : must be true (along with the correct passcode) to activate dev mode (default false)
  *  - [developerPasscode]      : developer passcode (combined with devModeEnabled) to activate developer mode (default "")
  *  - [devModeAgingMultiplier] : aging speed multiplier in dev mode (default 10)
@@ -49,8 +50,9 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
         var idleDeepThresholdSeconds: Int = 600
         var attentionCallExpiry: String = "standard"  // "needy" | "standard" | "chilled"
         var attentionCallRate:   String = "fast"      // "fast" | "medium" | "slow"
-        var petStageHeight: Int = 96
+        var petStageHeight: Int = 160
         var reducedMotion: Boolean = false
+        var petSize: String = "medium"   // "small" | "medium" | "large"
         var devModeEnabled: Boolean = false
         var developerPasscode: String = ""
         var devModeAgingMultiplier: Int = 10
@@ -118,6 +120,10 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
     var reducedMotion: Boolean
         get() = _state.reducedMotion
         set(v) { _state.reducedMotion = v }
+
+    var petSize: String
+        get() = _state.petSize
+        set(v) { _state.petSize = v }
 
     var devModeEnabled: Boolean
         get() = _state.devModeEnabled

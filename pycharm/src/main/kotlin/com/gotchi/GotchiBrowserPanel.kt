@@ -109,8 +109,9 @@ class GotchiBrowserPanel(
         val customPrimary    = settings?.customPrimaryColor    ?: "#ff8c00"
         val customSecondary  = settings?.customSecondaryColor  ?: "#ffffff"
         val customBackground = settings?.customBackgroundColor ?: "#1a1a2e"
-        val stageHeight      = settings?.petStageHeight ?: 96
+        val stageHeight      = settings?.petStageHeight ?: 160
         val reducedMotion    = settings?.reducedMotion ?: false
+        val petSize          = settings?.petSize ?: "medium"
 
         val cssText  = loadResource("/webview/sidebar.css")
         val jsText   = loadResource("/webview/sidebar.js")
@@ -122,6 +123,7 @@ class GotchiBrowserPanel(
         // Substitute stage height and reduced motion
         html = html.replace("{{stageHeight}}", stageHeight.toString())
         html = html.replace("{{reducedMotion}}", reducedMotion.toString())
+        html = html.replace("{{petSize}}", petSize)
 
         // Inline CSS — replace <link rel="stylesheet" href="sidebar.css" />
         // Append a colour override so user preference takes precedence over

@@ -124,6 +124,7 @@ export class SidebarProvider
         e.affectsConfiguration("gotchi.customPrimaryColor") ||
         e.affectsConfiguration("gotchi.customSecondaryColor") ||
         e.affectsConfiguration("gotchi.customBackgroundColor") ||
+        e.affectsConfiguration("gotchi.petSize") ||
         e.affectsConfiguration("gotchi.petStageHeight") ||
         e.affectsConfiguration("gotchi.reducedMotion") ||
         e.affectsConfiguration("gotchi.idleResetOnMouseMovement")
@@ -181,8 +182,11 @@ export class SidebarProvider
       `}</style>`;
     html = html.replace("{{customColorsStyle}}", customColorsStyle);
 
-    const petStageHeight = cfg.get<number>("petStageHeight", 96);
+    const petStageHeight = cfg.get<number>("petStageHeight", 160);
     html = html.replace("{{stageHeight}}", String(petStageHeight));
+
+    const petSize = cfg.get<string>("petSize", "medium");
+    html = html.replace("{{petSize}}", petSize);
 
     const reducedMotion = cfg.get<boolean>("reducedMotion", false);
     html = html.replace("{{reducedMotion}}", reducedMotion ? "true" : "false");

@@ -37,6 +37,7 @@ class GotchiConfigurable : Configurable {
     private var attentionCallRateCombo:    JComboBox<String>?  = null
     private var petStageHeightSpinner:     JSpinner?           = null
     private var reducedMotionCheck:        JCheckBox?          = null
+    private var petSizeCombo:              JComboBox<String>?  = null
     private var devModeEnabledCheck:        JCheckBox?          = null
     private var developerPasscodeField:    JTextField?         = null
     private var devModeAgingSpinner:       JSpinner?           = null
@@ -61,8 +62,9 @@ class GotchiConfigurable : Configurable {
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
         val expiryCombo     = JComboBox(arrayOf("Needy (2 min)", "Standard (5 min)", "Chilled (10 min)"))
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
-        val stageHeightSpinner = JSpinner(SpinnerNumberModel(96, 48, 300, 8))
+        val stageHeightSpinner = JSpinner(SpinnerNumberModel(160, 48, 300, 8))
         val reducedMotionCheckbox = JCheckBox("Reduced motion (disable animation)")
+        val petSizeDropdown = JComboBox(arrayOf("Small", "Medium", "Large"))
         val devModeEnabledCheckbox = JCheckBox("Enable developer mode")
         val devPasscodeField = JTextField(10)
         val devAgingSpinner = JSpinner(SpinnerNumberModel(10, 1, 1000, 1))
@@ -86,6 +88,7 @@ class GotchiConfigurable : Configurable {
         attentionCallRateCombo   = rateCombo
         petStageHeightSpinner    = stageHeightSpinner
         reducedMotionCheck       = reducedMotionCheckbox
+        petSizeCombo             = petSizeDropdown
         devModeEnabledCheck      = devModeEnabledCheckbox
         developerPasscodeField   = devPasscodeField
         devModeAgingSpinner      = devAgingSpinner
@@ -204,14 +207,23 @@ class GotchiConfigurable : Configurable {
         panel.add(reducedMotionCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 12 — Dev mode enabled
-        gbc.gridx = 0; gbc.gridy = 12; gbc.gridwidth = 2
+        // Row 12 — Pet size
+        gbc.gridx = 0; gbc.gridy = 12
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Pet size:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(petSizeDropdown, gbc)
+
+        // Row 13 — Dev mode enabled
+        gbc.gridx = 0; gbc.gridy = 13; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(devModeEnabledCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 13 — Developer passcode
-        gbc.gridx = 0; gbc.gridy = 13
+        // Row 14 — Developer passcode
+        gbc.gridx = 0; gbc.gridy = 14
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Developer passcode:"), gbc)
 
@@ -219,8 +231,8 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devPasscodeField, gbc)
 
-        // Row 14 — Dev mode aging multiplier
-        gbc.gridx = 0; gbc.gridy = 14
+        // Row 15 — Dev mode aging multiplier
+        gbc.gridx = 0; gbc.gridy = 15
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Dev mode aging multiplier:"), gbc)
 
@@ -228,8 +240,8 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devAgingSpinner, gbc)
 
-        // Row 15 — Dev mode health floor
-        gbc.gridx = 0; gbc.gridy = 15
+        // Row 16 — Dev mode health floor
+        gbc.gridx = 0; gbc.gridy = 16
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Dev mode health floor:"), gbc)
 
@@ -237,44 +249,44 @@ class GotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devHealthFloorSpinner, gbc)
 
-        // Row 16 — AI mode
-        gbc.gridx = 0; gbc.gridy = 16; gbc.gridwidth = 2
+        // Row 17 — AI mode
+        gbc.gridx = 0; gbc.gridy = 17; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(aiModeCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 17 — Idle reset: document changes
-        gbc.gridx = 0; gbc.gridy = 17; gbc.gridwidth = 2
+        // Row 18 — Idle reset: document changes
+        gbc.gridx = 0; gbc.gridy = 18; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetDocChangeCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 18 — Idle reset: cursor movement
-        gbc.gridx = 0; gbc.gridy = 18; gbc.gridwidth = 2
+        // Row 19 — Idle reset: cursor movement
+        gbc.gridx = 0; gbc.gridy = 19; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetCursorCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 19 — Idle reset: tab switch
-        gbc.gridx = 0; gbc.gridy = 19; gbc.gridwidth = 2
+        // Row 20 — Idle reset: tab switch
+        gbc.gridx = 0; gbc.gridy = 20; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetTabCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 20 — Idle reset: window focus
-        gbc.gridx = 0; gbc.gridy = 20; gbc.gridwidth = 2
+        // Row 21 — Idle reset: window focus
+        gbc.gridx = 0; gbc.gridy = 21; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetFocusCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 21 — Idle reset: mouse movement
-        gbc.gridx = 0; gbc.gridy = 21; gbc.gridwidth = 2
+        // Row 22 — Idle reset: mouse movement
+        gbc.gridx = 0; gbc.gridy = 22; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetMouseCheckbox, gbc)
         gbc.gridwidth = 1
 
         // Push content to the top
-        gbc.gridx = 0; gbc.gridy = 22; gbc.gridwidth = 2
+        gbc.gridx = 0; gbc.gridy = 23; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -296,6 +308,7 @@ class GotchiConfigurable : Configurable {
         val uiRate       = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         val uiStageHeight = (petStageHeightSpinner?.value as? Int) ?: 96
         val uiReducedMotion = reducedMotionCheck?.isSelected ?: false
+        val uiPetSize = petSizeIndexToKey(petSizeCombo?.selectedIndex ?: 1)
         val uiDevModeEnabled = devModeEnabledCheck?.isSelected ?: false
         val uiDevPasscode = developerPasscodeField?.text ?: ""
         val uiDevAging = (devModeAgingSpinner?.value as? Int) ?: 10
@@ -318,6 +331,7 @@ class GotchiConfigurable : Configurable {
             || uiRate != settings.attentionCallRate
             || uiStageHeight != settings.petStageHeight
             || uiReducedMotion != settings.reducedMotion
+            || uiPetSize != settings.petSize
             || uiDevModeEnabled != settings.devModeEnabled
             || uiDevPasscode != settings.developerPasscode
             || uiDevAging != settings.devModeAgingMultiplier
@@ -344,6 +358,7 @@ class GotchiConfigurable : Configurable {
         settings.attentionCallRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         settings.petStageHeight         = (petStageHeightSpinner?.value as? Int) ?: 96
         settings.reducedMotion          = reducedMotionCheck?.isSelected ?: false
+        settings.petSize                = petSizeIndexToKey(petSizeCombo?.selectedIndex ?: 1)
         settings.devModeEnabled         = devModeEnabledCheck?.isSelected ?: false
         settings.developerPasscode      = developerPasscodeField?.text ?: ""
         settings.devModeAgingMultiplier = (devModeAgingSpinner?.value as? Int) ?: 10
@@ -372,6 +387,7 @@ class GotchiConfigurable : Configurable {
         attentionCallRateCombo?.selectedIndex   = rateKeyToIndex(settings.attentionCallRate)
         petStageHeightSpinner?.value            = settings.petStageHeight
         reducedMotionCheck?.isSelected          = settings.reducedMotion
+        petSizeCombo?.selectedIndex             = petSizeKeyToIndex(settings.petSize)
         devModeEnabledCheck?.isSelected         = settings.devModeEnabled
         developerPasscodeField?.text            = settings.developerPasscode
         devModeAgingSpinner?.value              = settings.devModeAgingMultiplier
@@ -390,6 +406,8 @@ class GotchiConfigurable : Configurable {
     private fun expiryKeyToIndex(key: String) = when (key) { "needy" -> 0; "chilled" -> 2; else -> 1 }
     private fun rateIndexToKey(index: Int)  = when (index) { 1 -> "medium"; 2 -> "slow"; else -> "fast" }
     private fun rateKeyToIndex(key: String) = when (key) { "medium" -> 1; "slow" -> 2; else -> 0 }
+    private fun petSizeIndexToKey(index: Int) = when (index) { 0 -> "small"; 2 -> "large"; else -> "medium" }
+    private fun petSizeKeyToIndex(key: String) = when (key) { "small" -> 0; "large" -> 2; else -> 1 }
 
     // ── Colour helpers ─────────────────────────────────────────────────────
 
