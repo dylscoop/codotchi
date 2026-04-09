@@ -1,6 +1,27 @@
 ﻿# Version History
 
-## v1.0.1 — current
+## v1.0.2 — current
+
+### Changes from v1.0.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.0.1` → `1.0.2` |
+| `pycharm/build.gradle.kts` | Version bumped `1.0.1` → `1.0.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.0.1` → `1.0.2` |
+| `opencode-codotchi/package.json` | Version bumped `1.0.1` → `1.0.2` |
+| `vscode/media/sprites.js` | Full sprite redesign — all 14 zodiac animals redrawn with correct anatomy (horizontal quadrupeds, 4 legs, tails, large 24×32 grids for all types) |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored sprites.js redesign |
+| `SPRITES.md` | Regenerated — full design guide for all 14 sprite types at both resolutions |
+| `vscode/archive/vsix/vscode-gotchi-1.0.1.vsix` | Archived old vsix before rebuild |
+| `pycharm/archive/pycharm-gotchi-1.0.1.zip` | Archived old zip before rebuild |
+| `vscode/vscode-gotchi-1.0.2.vsix` | Rebuilt distributable vsix for v1.0.2 |
+| `pycharm/build/distributions/pycharm-gotchi-1.0.2.zip` | Rebuilt distributable zip for v1.0.2 |
+| `opencode-codotchi/opencode-codotchi-1.0.2.zip` | Rebuilt distributable zip for v1.0.2 |
+
+---
+
+## v1.0.1 — previous
 
 ### Changes from v1.0.0
 
