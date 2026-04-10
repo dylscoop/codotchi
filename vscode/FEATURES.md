@@ -587,7 +587,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 |---------|------|---------|-------------|--------|
 | `gotchi.fontSize` | enum | `normal` | Sidebar font size: `small` / `normal` / `large` | `[x]` |
 | `gotchi.reducedMotion` | boolean | `false` | Disable all pet movement and reaction animations | `[x]` |
-| `gotchi.petStageHeight` | number | `96` | Height in px of the pet stage canvas (range 60–200) | `[x]` |
+| `gotchi.petStageHeight` | number | `192` | Height in px of the pet stage canvas (range 120–480); keep this larger than the sprite box for clear headroom | `[x]` |
 | `gotchi.codingRewards` | boolean | `true` | Enable coding-activity stat rewards | `[ ]` |
 | `gotchi.codingRewardThrottleSeconds` | number | `30` | Minimum seconds between coding rewards | `[ ]` |
 | `gotchi.autoWake` | boolean | `true` | Auto-wake pet when energy reaches 100 | `[ ]` |
@@ -641,7 +641,7 @@ These are lower-priority ideas that require significant design work.
 |---------|-------|
 | Gotchi Points currency | Earned from minigame wins; spent in an in-game shop for cosmetics |
 | In-game shop | Buy accessories, backgrounds, or extra colour palettes |
-| Pixel-art sprite assets | `[x]` Generated PNG/GIF sprite assets replace the old procedural grid renderer; source art lives in `sprite_designs/` and preview output is written to `sprite_designs/previews/` |
+| Pixel-art sprite assets | `[x]` Generated PNG/GIF sprite assets replace the old procedural grid renderer; source art lives in `sprite_designs/` and is now being redrawn at 160×160 symbolic resolution, with preview output written to `sprite_designs/previews/` |
 | Sprite animation frames | Idle walk cycle, happy, sad, sleeping, eating — 2–4 frame flip-book per mood |
 | Redesign game art | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style |
 | Egg-hatch animation | Wiggle → crack → burst sequence (fits naturally into reaction queue) |

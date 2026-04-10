@@ -17,7 +17,7 @@ import com.intellij.openapi.components.*
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
  *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift
  *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls
- *  - [petStageHeight]         : canvas height in pixels (default 96)
+ *  - [petStageHeight]         : canvas height in pixels (default 192)
  *  - [reducedMotion]          : disable rAF animation loop (default false)
  *  - [petSize]                : "small" | "medium" | "large" — sprite display size (default "medium")
  *  - [devModeEnabled]         : must be true (along with the correct passcode) to activate dev mode (default false)
@@ -50,7 +50,7 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
         var idleDeepThresholdSeconds: Int = 600
         var attentionCallExpiry: String = "standard"  // "needy" | "standard" | "chilled"
         var attentionCallRate:   String = "fast"      // "fast" | "medium" | "slow"
-        var petStageHeight: Int = 160
+        var petStageHeight: Int = 192
         var reducedMotion: Boolean = false
         var petSize: String = "medium"   // "small" | "medium" | "large"
         var devModeEnabled: Boolean = false

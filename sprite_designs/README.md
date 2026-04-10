@@ -1,10 +1,12 @@
 Sprite design drafts for the v1.2.0 GIF-based sprite overhaul.
 
-This folder captures per-animal, per-stage pixel layouts in a small fixed grid
+This folder captures per-animal, per-stage pixel layouts in a fixed symbolic grid
 so that both humans and tooling can agree on the intended art before we wire
 it into the runtime renderer / GIF generator.
 
 Grids are defined in JSON as arrays of strings, one string per row.
+The current target is `160x160` cells per stage for animal sprites, while the
+egg remains intentionally small and is generated separately.
 Each character is a symbol, not a final colour:
 
 - `.` = transparent

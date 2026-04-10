@@ -114,19 +114,19 @@
           "type": "string",
           "enum": ["small", "medium", "large"],
           "enumDescriptions": [
-            "Small — compact original size (1× scale, 12×16 sprites).",
-            "Medium — comfortable default, roughly 1.5× larger than small (12×16 sprites).",
-            "Large — twice the original size with higher-detail 24×32 sprites."
+            "Small — compact 160px-era sprite box for tighter sidebars.",
+            "Medium — default 160px sprite box sized for the new higher-detail JSON art.",
+            "Large — slightly larger draw box for extra breathing room."
           ],
           "default": "medium",
-          "description": "Controls the overall display size of the pet sprite. 'Large' uses a more detailed 24×32 pixel grid for every sprite type."
+          "description": "Controls the overall display size of the pet sprite within the stage. Source art is generated separately from symbolic sprite JSON files."
         },
         "gotchi.petStageHeight": {
           "type": "integer",
-          "default": 160,
-          "minimum": 60,
-          "maximum": 320,
-          "description": "Height in pixels of the pet stage canvas. Increase for a taller stage; the pet will have more vertical room to move. Default: 160."
+          "default": 192,
+          "minimum": 120,
+          "maximum": 480,
+          "description": "Height in pixels of the pet stage canvas. Keep this larger than the sprite box so the pet has clear headroom and floor space. Default: 192."
         },
         "gotchi.reducedMotion": {
           "type": "boolean",

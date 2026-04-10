@@ -186,7 +186,7 @@ export class SidebarProvider
       `}</style>`;
     html = html.replace("{{customColorsStyle}}", customColorsStyle);
 
-    const petStageHeight = cfg.get<number>("petStageHeight", 160);
+    const petStageHeight = cfg.get<number>("petStageHeight", 192);
     html = html.replace("{{stageHeight}}", String(petStageHeight));
 
     const petSize = cfg.get<string>("petSize", "medium");

@@ -13,8 +13,10 @@ const PYCHARM_SPRITES_DIR = path.join(ROOT, "pycharm", "src", "main", "resources
 const VSCODE_MANIFEST_PATH = path.join(ROOT, "vscode", "media", "sprite-manifest.js");
 const PYCHARM_MANIFEST_PATH = path.join(ROOT, "pycharm", "src", "main", "resources", "webview", "sprite-manifest.js");
 const PREVIEW_DIR = path.join(ROOT, "sprite_designs", "previews");
-const OUTPUT_SCALE = 6;
-const PREVIEW_SCALE = 8;
+const DEFAULT_TILE_SIZE = 160;
+const EGG_TILE_SIZE = 32;
+const OUTPUT_PIXEL_SIZE = 160;
+const PREVIEW_PIXEL_SIZE = 160;
 const GIF_FPS = 8;
 const GIF_DELAY = Math.round(1000 / GIF_FPS);
 
@@ -39,7 +41,7 @@ const ANIMAL_ORDER = [
   "tiger",
   "rabbit",
   "horse",
-  "goat",
+  "sheep",
   "dog",
   "pig",
   "snake",
@@ -111,7 +113,7 @@ function loadDesigns() {
   for (const file of files) {
     const spriteType = path.basename(file, ".json");
     const json = JSON.parse(fs.readFileSync(path.join(DESIGNS_DIR, file), "utf8"));
-    const tileSize = json.tileSize || 16;
+    const tileSize = json.tileSize || DEFAULT_TILE_SIZE;
     const stages = {};
     for (const stage of STAGE_ORDER) {
       const rows = (json.stages && json.stages[stage]) || [];
@@ -278,6 +280,10 @@ function frameToPng(rows, scale) {
   return png;
 }
 
+function scaleForTileSize(tileSize, targetPixels) {
+  return Math.max(1, Math.round(targetPixels / tileSize));
+}
+
 function writePng(filePath, rows, scale) {
   const png = frameToPng(rows, scale);
   fs.writeFileSync(filePath, PNG.sync.write(png));
@@ -314,7 +320,12 @@ function writeGif(filePath, frameRows, scale) {
 
 function buildPreviewSheet(designs) {
   ensureDir(PREVIEW_DIR);
-  const cellTile = 32 * PREVIEW_SCALE;
+  const previewTileSize = ANIMAL_ORDER.reduce((max, animal) => {
+    const design = designs[animal];
+    return Math.max(max, design ? design.tileSize : 0);
+  }, DEFAULT_TILE_SIZE);
+  const previewScale = scaleForTileSize(previewTileSize, PREVIEW_PIXEL_SIZE);
+  const cellTile = previewTileSize * previewScale;
   const labelHeight = 18;
   const columns = 5;
   const rows = Math.ceil(ANIMAL_ORDER.length / columns);
@@ -338,7 +349,7 @@ function buildPreviewSheet(designs) {
     const row = Math.floor(index / columns);
     const offsetX = col * cellTile;
     const offsetY = row * (cellTile + labelHeight);
-    const sprite = frameToPng(cloneGrid(design.stages.adult), PREVIEW_SCALE);
+    const sprite = frameToPng(cloneGrid(design.stages.adult), previewScale);
     for (let y = 0; y < sprite.height; y += 1) {
       for (let x = 0; x < sprite.width; x += 1) {
         const src = (sprite.width * y + x) << 2;
@@ -390,13 +401,21 @@ function generateSpriteAssets() {
       for (const animationState of ANIMATION_STATES) {
         const frames = buildFrames(rows, animationState);
         const baseName = `${animal}_${stage}_${animationState}`;
-        writeGif(path.join(VSCODE_SPRITES_DIR, `${baseName}.gif`), frames, OUTPUT_SCALE);
+        writeGif(
+          path.join(VSCODE_SPRITES_DIR, `${baseName}.gif`),
+          frames,
+          scaleForTileSize(design.tileSize, OUTPUT_PIXEL_SIZE)
+        );
       }
     }
   }
 
-  const eggFrames = createEggFrames(32);
-  writeGif(path.join(VSCODE_SPRITES_DIR, "egg.gif"), eggFrames, OUTPUT_SCALE);
+  const eggFrames = createEggFrames(EGG_TILE_SIZE);
+  writeGif(
+    path.join(VSCODE_SPRITES_DIR, "egg.gif"),
+    eggFrames,
+    scaleForTileSize(EGG_TILE_SIZE, Math.round(OUTPUT_PIXEL_SIZE * 0.4))
+  );
 
   for (const file of fs.readdirSync(VSCODE_SPRITES_DIR)) {
     fs.copyFileSync(

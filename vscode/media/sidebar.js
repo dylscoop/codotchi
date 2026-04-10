@@ -69,6 +69,9 @@
     healed:        500,
   };
 
+  const BASE_RENDER_SIZE = 160;
+  window.GOTCHI_BASE_RENDER_SIZE = BASE_RENDER_SIZE;
+
   // ── Element references ──────────────────────────────────────────────────
 
   const setupScreen = document.getElementById("setup-screen");
@@ -631,7 +634,7 @@
     // Clamp petX so the pet doesn't walk off the right edge after a resize
     if (lastState) {
       const scale   = STAGE_SCALES[lastState.stage] || 0.5;
-      const bSize   = Math.round(192 * petSizeMultiplier() * scale);
+      const bSize   = Math.round(BASE_RENDER_SIZE * petSizeMultiplier() * scale);
       const wwm     = weightWidthMultiplier(lastState.weight || 50);
       const bWidth  = Math.round(bSize * wwm);
       const maxX    = spriteCanvas.width - bWidth - 4;
@@ -671,10 +674,10 @@
   function getFloorY() {
     if (!lastState) { return spriteCanvas.height - 4; }
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
-    var bSize      = Math.round(192 * petSizeMultiplier() * scale);
+    var bSize      = Math.round(BASE_RENDER_SIZE * petSizeMultiplier() * scale);
     var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
     var bHeight    = Math.round(bSize * heightMult);
-    return spriteCanvas.height - bHeight - 4;
+    return spriteCanvas.height - bHeight - GROUND_LINE_Y_OFFSET;
   }
 
   /**
@@ -704,12 +707,12 @@
 
     // Dimension helpers
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
-    var bSize      = Math.round(192 * petSizeMultiplier() * scale);
+    var bSize      = Math.round(BASE_RENDER_SIZE * petSizeMultiplier() * scale);
     var wwm        = weightWidthMultiplier(lastState.weight || 50);
     var bWidth     = Math.round(bSize * wwm);
     var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
     var bHeight    = Math.round(bSize * heightMult);
-    var floorY     = spriteCanvas.height - bHeight - 4;
+    var floorY     = getFloorY();
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
 
@@ -950,7 +953,7 @@
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
       var scale2   = STAGE_SCALES[state.stage] || 0.5;
-      var bSize2   = Math.round(192 * petSizeMultiplier() * scale2);
+      var bSize2   = Math.round(BASE_RENDER_SIZE * petSizeMultiplier() * scale2);
       var wwm2     = weightWidthMultiplier(state.weight || 50);
       var bWidth2  = Math.round(bSize2 * wwm2);
       var centreX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth2 / 2));
@@ -1469,7 +1472,7 @@
     var t = Math.min(1, (nowMs - reaction.startMs) / reaction.durationMs);
     var palette   = getPalette(state.color);
     var stageScale = STAGE_SCALES[state.stage] || 0.5;
-    var bSize     = Math.round(192 * petSizeMultiplier() * stageScale);
+    var bSize     = Math.round(BASE_RENDER_SIZE * petSizeMultiplier() * stageScale);
     var wwm       = weightWidthMultiplier(state.weight || 50);
     var bWidth    = Math.round(bSize * wwm);
     var hMult     = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
@@ -1605,7 +1608,7 @@
    */
   function drawStatusIndicators(state, x, bodyY) {
     var scale    = STAGE_SCALES[state.stage] || 0.5;
-    var bSize    = Math.round(192 * petSizeMultiplier() * scale);
+    var bSize    = Math.round(BASE_RENDER_SIZE * petSizeMultiplier() * scale);
     var wwm      = weightWidthMultiplier(state.weight || 50);
     var bWidth   = Math.round(bSize * wwm);
     var palette  = getPalette(state.color);
@@ -1633,14 +1636,14 @@
     drawEnvironment(state);
 
     var scale    = STAGE_SCALES[state.stage] || 0.5;
-    var bSize    = Math.round(192 * petSizeMultiplier() * scale);
+    var bSize    = Math.round(BASE_RENDER_SIZE * petSizeMultiplier() * scale);
     var wwm      = weightWidthMultiplier(state.weight || 50);
     var bWidth   = Math.round(bSize * wwm);
     var hMult    = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
     var bHeight  = Math.round(bSize * hMult);
     var H        = spriteCanvas.height;
     var staticX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth / 2));
-    var staticY  = H - bHeight - 4;
+    var staticY  = H - bHeight - GROUND_LINE_Y_OFFSET;
 
     drawBody(state, staticX, staticY, false, state.stage === "egg" ? "egg" : (state.sleeping ? "sleep" : "idle"));
     drawStatusIndicators(state, staticX, staticY);
@@ -1675,23 +1678,25 @@
 
   const STAGE_SCALES = {
     egg:    0.35,
-    baby:   0.65,
-    child:  0.75,
-    teen:   0.85,
+    baby:   0.45,
+    child:  0.58,
+    teen:   0.72,
     adult:  1.00,
-    senior: 1.00,
+    senior: 0.95,
   };
+
+  const GROUND_LINE_Y_OFFSET = 5;
 
   /**
    * Return the base-size multiplier driven by the gotchi.petSize setting.
    * The value is injected into document.body.dataset.petSize by sidebarProvider.ts.
    *   small  = 1.0x  (original size)
-   *   medium = 1.5x  (default)
-   *   large  = 2.0x  (high-detail 24x32 sprites)
+   *   medium = 1.0x  (default 160px sprite box)
+   *   large  = 1.2x  (slightly roomier draw box)
    */
   function petSizeMultiplier() {
     var ps = (document.body && document.body.dataset && document.body.dataset.petSize) || "medium";
-    return ps === "small" ? 1.0 : ps === "large" ? 2.0 : 1.5;
+    return ps === "small" ? 0.85 : ps === "large" ? 1.2 : 1.0;
   }
 
   /** Height multipliers per stage (relative to bodySize).

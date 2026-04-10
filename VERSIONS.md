@@ -22,7 +22,7 @@
 | `sprite_designs/dragon.json` | Redesigned to 32×32, 5 stages — upright pose, spiky dorsal crest |
 | `sprite_designs/snake.json` | Redesigned to 32×32, 5 stages — wide flat head, S-curve body |
 | `sprite_designs/horse.json` | Redesigned to 32×32, 5 stages — mane column, longer legs, tail sweep |
-| `sprite_designs/goat.json` | Redesigned to 32×32, 5 stages — hook horns, chin beard, slender body |
+| `sprite_designs/sheep.json` | Redesigned to 32×32, 5 stages — wool mass, tiny face, stick legs |
 | `sprite_designs/monkey.json` | Redesigned to 32×32, 5 stages — large round side-ears, curling tail |
 | `sprite_designs/rooster.json` | Redesigned to 32×32, 5 stages — comb spikes, tail fan feathers |
 | `sprite_designs/dog.json` | Redesigned to 32×32, 5 stages — floppy ears, wet-nose, wagging tail |
@@ -40,6 +40,21 @@
 | `vscode/README.md` | Updated artifact filenames and version references to v1.3.0 |
 | `pycharm/README.md` | Updated artifact filenames and version references to v1.3.0 |
 | `vscode/FEATURES.md` | Updated sprite section to reflect 32×32 / 192px redesign |
+| `scripts/generate-sprites.js` | Made sprite generation tile-size-aware for upcoming 160×160 redraws, while keeping the egg as a separate small render target |
+| `scripts/normalize-sprite-designs.js` | Reworked row normalization to use each design's declared tile size instead of a fixed 32-row grid |
+| `vscode/media/sprites.js` | Reads a shared base render size so runtime sizing stays aligned with sidebar stage math |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored shared base render size support from the VS Code sprite renderer |
+| `vscode/media/sidebar.js` | Switched runtime sprite sizing to a 160px base render box, reduced pet-size multipliers, and tuned stage scales for the new redraw target |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored 160px runtime sprite sizing and tuned stage scales from the VS Code webview |
+| `vscode/media/sidebar.css` | Increased the default stage container height to 192px so the stage stays larger than the sprite |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored the 192px default stage container height |
+| `vscode/src/sidebarProvider.ts` | Raised the default injected pet stage height from 160px to 192px |
+| `vscode/package.json` | Updated pet size descriptions and raised pet stage height defaults/range for the larger stage requirement |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiSettings.kt` | Updated persisted stage-height default docs/state to 192px |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt` | Raised the default injected stage height to 192px |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiConfigurable.kt` | Raised the PyCharm stage-height control default and max range to match the larger stage requirement |
+| `sprite_designs/README.md` | Documented the new 160×160 sprite-grid target and the separately-generated small egg |
+| `SPRITES.md` | Noted the move toward 160×160 symbolic redraws while keeping the egg separate |
 
 ---
 

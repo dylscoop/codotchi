@@ -9,7 +9,7 @@ Current sprite pipeline reference for the v1.2.0 redesigned image-based sprite s
 The old procedural grid set has been replaced with a generated image pipeline.
 
 Authoring source files live in `sprite_designs/*.json`, one file per sprite type.
-These symbolic 16x16 layouts are converted by `scripts/generate-sprites.js` into
+These symbolic source layouts are converted by `scripts/generate-sprites.js` into
 real PNG/GIF assets under:
 
 - `vscode/media/sprites/`
@@ -30,7 +30,7 @@ of the art itself.
 | Family | Types |
 |------|---------|
 | Upright / mascot | classic, monkey, rooster, dragon |
-| Quadruped | cat, rat, ox, tiger, rabbit, horse, goat, dog, pig |
+| Quadruped | cat, rat, ox, tiger, rabbit, horse, sheep, dog, pig |
 | Serpentine | snake |
 
 Each animal has five life stages:
@@ -75,6 +75,7 @@ at runtime in the canvas renderer.
 - `sidebar.js` selects `idle`, `walk`, `sleep`, or `react` instead of manipulating
   row offsets with `legFrame`.
 - The runtime keeps existing canvas transforms for reactions and facing direction.
+- Animal sprite JSONs are being redrawn at `160x160` symbolic resolution; the egg remains a separate small asset.
 - A future refactor can still move to DOM `<img>` elements if desired.
 
 ---

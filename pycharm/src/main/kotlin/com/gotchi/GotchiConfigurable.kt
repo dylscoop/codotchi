@@ -62,7 +62,7 @@ class GotchiConfigurable : Configurable {
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
         val expiryCombo     = JComboBox(arrayOf("Needy (2 min)", "Standard (5 min)", "Chilled (10 min)"))
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
-        val stageHeightSpinner = JSpinner(SpinnerNumberModel(160, 48, 300, 8))
+        val stageHeightSpinner = JSpinner(SpinnerNumberModel(192, 120, 480, 8))
         val reducedMotionCheckbox = JCheckBox("Reduced motion (disable animation)")
         val petSizeDropdown = JComboBox(arrayOf("Small", "Medium", "Large"))
         val devModeEnabledCheckbox = JCheckBox("Enable developer mode")
@@ -306,7 +306,7 @@ class GotchiConfigurable : Configurable {
         val uiDeepIdle   = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         val uiExpiry     = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         val uiRate       = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
-        val uiStageHeight = (petStageHeightSpinner?.value as? Int) ?: 96
+        val uiStageHeight = (petStageHeightSpinner?.value as? Int) ?: 192
         val uiReducedMotion = reducedMotionCheck?.isSelected ?: false
         val uiPetSize = petSizeIndexToKey(petSizeCombo?.selectedIndex ?: 1)
         val uiDevModeEnabled = devModeEnabledCheck?.isSelected ?: false
@@ -356,7 +356,7 @@ class GotchiConfigurable : Configurable {
         settings.idleDeepThresholdSeconds = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         settings.attentionCallExpiry    = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         settings.attentionCallRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
-        settings.petStageHeight         = (petStageHeightSpinner?.value as? Int) ?: 96
+        settings.petStageHeight         = (petStageHeightSpinner?.value as? Int) ?: 192
         settings.reducedMotion          = reducedMotionCheck?.isSelected ?: false
         settings.petSize                = petSizeIndexToKey(petSizeCombo?.selectedIndex ?: 1)
         settings.devModeEnabled         = devModeEnabledCheck?.isSelected ?: false

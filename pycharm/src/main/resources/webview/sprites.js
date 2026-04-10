@@ -7,6 +7,7 @@
   var READY = false;
   var STARTED = false;
   var READY_CALLBACKS = [];
+  var DEFAULT_RENDER_SIZE = 160;
   var tempCanvas = document.createElement("canvas");
   var tempCtx = tempCanvas.getContext("2d");
 
@@ -89,6 +90,13 @@
       : classicIdle;
   }
 
+  function getBaseRenderSize() {
+    if (typeof window !== "undefined" && typeof window.GOTCHI_BASE_RENDER_SIZE === "number") {
+      return window.GOTCHI_BASE_RENDER_SIZE;
+    }
+    return DEFAULT_RENDER_SIZE;
+  }
+
   function tintSprite(targetCtx, bodyWidth, bodyHeight, state, getPalette) {
     if (!getPalette) {
       return;
@@ -136,8 +144,8 @@
     var petSizeVal = (typeof document !== "undefined" && document.body && document.body.dataset)
       ? (document.body.dataset.petSize || "medium")
       : "medium";
-    var sizeMultiplier = petSizeVal === "small" ? 1.0 : petSizeVal === "large" ? 2.0 : 1.5;
-    var baseSize = 96;
+    var sizeMultiplier = petSizeVal === "small" ? 0.85 : petSizeVal === "large" ? 1.2 : 1.0;
+    var baseSize = getBaseRenderSize();
     var bodySize = Math.round(baseSize * sizeMultiplier * stageScale);
     var bodyWidth = Math.round(bodySize * weightWidthMultiplier((state && state.weight) || 50));
     var bodyHeight = Math.round(bodySize * (STAGE_BODY_HEIGHT_MULTS[stage] || 1.0));
