@@ -1,6 +1,35 @@
 ﻿# Version History
 
-## v1.0.2 — current
+## v1.0.3 — current
+
+### Changes from v1.0.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.0.2` → `1.0.3` |
+| `pycharm/build.gradle.kts` | Version bumped `1.0.2` → `1.0.3` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.0.2` → `1.0.3` |
+| `opencode-codotchi/package.json` | Version bumped `1.0.2` → `1.0.3` |
+| `vscode/media/sprites.js` | Full rewrite — new grid system (32×48 upright, 48×32 quad/snake); all 14 animals × 5 stages redrawn; BUGFIX-052 through BUGFIX-057 applied; `DEFS_LG`/`SPRITES_LG` removed; single `DEFS` at new larger sizes; `UPRIGHT_TYPES` set used to select cols/rows/legRowStart per animal; `colorMap` simplified to indices 1/2/3 |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored sprites.js rewrite from vscode |
+| `vscode/media/sidebar.js` | `STAGE_SCALES` bumped (baby=0.65…adult=1.00); `STAGE_BODY_HEIGHT_MULTS` unified to 0.67 for all stages; `weightWidthMultiplier` thresholds updated (heavy>80=1.50, overweight>50=1.30, underweight<17=0.80) |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored sidebar.js changes from vscode |
+| `SPRITES.md` | Rewritten — full visual block-character sprite designs for all 14 animals × 5 stages at new grid dimensions |
+| `BUGFIXES.md` | Added BUGFIX-052 through BUGFIX-057 |
+| `VERSIONS.md` | Added v1.0.3 section |
+
+### Bug fixes
+
+- **BUGFIX-052** — `legRowStart` wrong for both upright and quadruped types; now derived per type (quad=25, upright=37)
+- **BUGFIX-053** — `accent` colour hardcoded to `palette.secondary`; fixed to `darkenHex(primary, 0.70)`
+- **BUGFIX-054** — Baby sprites too small; fixed by redesigning all grids at larger 32×48 / 48×32 dimensions
+- **BUGFIX-055** — `BASE_SIZE = 24` too small; replaced with local `baseSize = 96` inside renderer
+- **BUGFIX-056** — `STAGE_SCALES` too small across all stages; new values: baby=0.65, child=0.75, teen=0.85, adult=1.00, senior=1.00
+- **BUGFIX-057** — `STAGE_BODY_HEIGHT_MULTS` wrong for landscape quadrupeds; unified to 0.67 for all stages
+
+---
+
+## v1.0.2 — previous
 
 ### Changes from v1.0.1
 

@@ -1669,16 +1669,16 @@
 
   const STAGE_SCALES = {
     egg:    0.35,
-    baby:   0.45,
-    child:  0.55,
-    teen:   0.70,
-    adult:  0.85,
-    senior: 0.90,
+    baby:   0.65,
+    child:  0.75,
+    teen:   0.85,
+    adult:  1.00,
+    senior: 1.00,
   };
 
   /**
    * Return the base-size multiplier driven by the gotchi.petSize setting.
-   * The value is injected into document.body.dataset.petSize by the plugin.
+   * The value is injected into document.body.dataset.petSize by sidebarProvider.ts.
    *   small  = 1.0x  (original size)
    *   medium = 1.5x  (default)
    *   large  = 2.0x  (high-detail 24x32 sprites)
@@ -1688,25 +1688,32 @@
     return ps === "small" ? 1.0 : ps === "large" ? 2.0 : 1.5;
   }
 
-  /** Height multipliers per stage (relative to bodySize). */
+  /** Height multipliers per stage (relative to bodySize).
+   * Quadrupeds are natively landscape (48x32) so height mult < 1.
+   * Uprights are natively portrait (32x48) so height mult > 1.
+   * The renderer uses isUpright to pick the right grid; these mults
+   * are the aspect-ratio correction applied on top of BASE_SIZE.
+   */
   const STAGE_BODY_HEIGHT_MULTS = {
-    egg:    1.3,
-    baby:   1.0,
-    child:  1.0,
-    teen:   1.35,
-    adult:  1.5,
-    senior: 1.4,
+    egg:    1.30,
+    baby:   0.67,
+    child:  0.67,
+    teen:   0.75,
+    adult:  0.67,
+    senior: 0.67,
   };
 
   /**
    * Return the width multiplier for the sprite based on weight.
+   * Quadrupeds: weight affects width only.
+   * Uprights: weight affects width (this) and height (via weightHeightMultiplier).
    * @param {number} weight
    * @returns {number}
    */
   function weightWidthMultiplier(weight) {
-    if (weight > 80)  { return 1.5; }
-    if (weight > 50)  { return 1.25; }
-    if (weight < 17)  { return 0.75; }
+    if (weight > 80)  { return 1.50; }
+    if (weight > 50)  { return 1.30; }
+    if (weight < 17)  { return 0.80; }
     return 1.0;
   }
 
