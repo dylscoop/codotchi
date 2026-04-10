@@ -1,6 +1,6 @@
 # Codotchi Sprites Reference
 
-Current sprite pipeline reference for the v1.2.0 redesigned image-based sprite system.
+Current sprite pipeline reference for the v1.3.0 160x160 redraw set.
 
 ---
 
@@ -75,7 +75,7 @@ at runtime in the canvas renderer.
 - `sidebar.js` selects `idle`, `walk`, `sleep`, or `react` instead of manipulating
   row offsets with `legFrame`.
 - The runtime keeps existing canvas transforms for reactions and facing direction.
-- Animal sprite JSONs are being redrawn at `160x160` symbolic resolution; the egg remains a separate small asset.
+- Animal sprite JSONs now use `160x160` symbolic resolution; `classic` is the only intentional exception and keeps the v1.0.0 mascot art scaled up to the larger runtime, while the egg remains a separate small asset.
 - A future refactor can still move to DOM `<img>` elements if desired.
 
 ---

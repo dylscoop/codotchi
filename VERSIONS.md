@@ -1,45 +1,48 @@
 ﻿# Version History
 
-## v1.3.0 — current
+## v1.4.0 — current
 
-### Changes from v1.2.0
+### Changes from v1.3.0
 
 | File | What changed |
 |------|-------------|
-| `vscode/package.json` | Version bumped to 1.3.0 |
-| `pycharm/build.gradle.kts` | Version bumped to 1.3.0 |
-| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.3.0 |
-| `opencode-codotchi/package.json` | Version bumped to 1.3.0 |
+| `vscode/package.json` | Version bumped to 1.4.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.4.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.4.0 |
+| `opencode-codotchi/package.json` | Version bumped to 1.4.0 |
 | `scripts/generate-sprites.js` | Removed all `writePng` calls; changed egg tile size 16→32; updated preview cell size 16→32 |
 | `vscode/media/sidebar.js` | Sprite render size updated from `Math.round(96 * …)` to `Math.round(192 * …)` (7 occurrences) |
 | `pycharm/src/main/resources/webview/sidebar.js` | Sprite render size updated from `Math.round(96 * …)` to `Math.round(192 * …)` (7 occurrences) |
-| `sprite_designs/classic.json` | Redesigned to 32×32, 5 stages — restored original blob mascot design |
-| `sprite_designs/cat.json` | Redesigned to 32×32, 5 stages — pointed ears, curling tail |
-| `sprite_designs/rat.json` | Redesigned to 32×32, 5 stages — round ears, long thin tail, pointed muzzle |
-| `sprite_designs/ox.json` | Redesigned to 32×32, 5 stages — wide U-shaped horns, stocky body |
-| `sprite_designs/tiger.json` | Redesigned to 32×32, 5 stages — stripe bands across torso, long tail |
-| `sprite_designs/rabbit.json` | Redesigned to 32×32, 5 stages — tall vertical ears, cotton-tail puff |
-| `sprite_designs/dragon.json` | Redesigned to 32×32, 5 stages — upright pose, spiky dorsal crest |
-| `sprite_designs/snake.json` | Redesigned to 32×32, 5 stages — wide flat head, S-curve body |
-| `sprite_designs/horse.json` | Redesigned to 32×32, 5 stages — mane column, longer legs, tail sweep |
-| `sprite_designs/sheep.json` | Redesigned to 32×32, 5 stages — wool mass, tiny face, stick legs |
-| `sprite_designs/monkey.json` | Redesigned to 32×32, 5 stages — large round side-ears, curling tail |
-| `sprite_designs/rooster.json` | Redesigned to 32×32, 5 stages — comb spikes, tail fan feathers |
-| `sprite_designs/dog.json` | Redesigned to 32×32, 5 stages — floppy ears, wet-nose, wagging tail |
-| `sprite_designs/pig.json` | Redesigned to 32×32, 5 stages — large circular snout, curled tail, plump body |
-| `sprite_designs/previews/sprite-sheet-preview.png` | Regenerated at 192px from 32×32 source |
-| `vscode/media/sprites/` | Regenerated: 281 GIFs at 192px base, all old PNGs removed |
-| `pycharm/src/main/resources/webview/sprites/` | Mirrored regenerated GIFs from VS Code |
-| `vscode/media/sprite-manifest.js` | Regenerated to reference 192px GIF assets |
-| `pycharm/src/main/resources/webview/sprite-manifest.js` | Mirrored regenerated sprite manifest |
-| `vscode/archive/vsix/vscode-gotchi-1.2.0.vsix` | Archived old vsix before rebuilding v1.3.0 |
-| `pycharm/archive/pycharm-gotchi-1.2.0.zip` | Archived old zip before rebuilding v1.3.0 |
-| `opencode-codotchi/opencode-codotchi-1.3.0.zip` | Rebuilt distributable zip for v1.3.0 |
-| `VERSIONS.md` | Added v1.3.0 section |
-| `README.md` | Updated artifact filenames and version references to v1.3.0 |
-| `vscode/README.md` | Updated artifact filenames and version references to v1.3.0 |
-| `pycharm/README.md` | Updated artifact filenames and version references to v1.3.0 |
-| `vscode/FEATURES.md` | Updated sprite section to reflect 32×32 / 192px redesign |
+| `sprite_designs/classic.json` | Restored the v1.0.0 front-facing classic pet, scaled to 160×160, then bottom-aligned so the legs sit on the floor line |
+| `sprite_designs/cat.json` | Redrawn at 160×160 with the new side-profile cat silhouette, upright tail, and preserved life-stage progression |
+| `sprite_designs/rat.json` | Redrawn at 160×160 with a compact side profile, rounded ear, and long thin tail |
+| `sprite_designs/ox.json` | Redrawn at 160×160 with a stockier quadruped body and clearer horned head |
+| `sprite_designs/tiger.json` | Redrawn at 160×160 with a larger feline silhouette and visible stripe accents |
+| `sprite_designs/rabbit.json` | Redrawn at 160×160 with upright ears, rounded head, and rear cotton-tail silhouette |
+| `sprite_designs/dragon.json` | Redrawn at 160×160, then refined to read as a dragon with a longer neck, wing, crest, and pointed tail |
+| `sprite_designs/snake.json` | Redrawn at 160×160 as a coiled upright snake with a clearer head and tongue |
+| `sprite_designs/horse.json` | Redrawn at 160×160, then refined with a longer neck, mane, and leg proportions so it reads as a horse |
+| `sprite_designs/sheep.json` | Redrawn at 160×160 with a compact wool body and small face while keeping stage progression intact |
+| `sprite_designs/monkey.json` | Redrawn at 160×160, then refined with a more readable upright body, ears, and curled tail silhouette |
+| `sprite_designs/rooster.json` | Redrawn at 160×160, then refined with a clearer upright bird body, comb, beak, and tail fan |
+| `sprite_designs/dog.json` | Redrawn at 160×160 with a side-profile dog body, muzzle, ears, and tail |
+| `sprite_designs/pig.json` | Redrawn at 160×160 with a plump side-profile pig body, snout, and curled tail |
+| `sprite_designs/previews/sprite-sheet-preview.png` | Regenerated as the 160×160 adult contact sheet for the final redraw set |
+| `vscode/media/sprites/` | Regenerated the VS Code GIF sprite set from the 160×160 JSON redraws |
+| `pycharm/src/main/resources/webview/sprites/` | Mirrored the regenerated 160×160 GIF sprite set into PyCharm |
+| `vscode/media/sprite-manifest.js` | Regenerated the VS Code manifest for the final 160×160 sprite assets |
+| `pycharm/src/main/resources/webview/sprite-manifest.js` | Mirrored the regenerated manifest into PyCharm |
+| `vscode/archive/vsix/vscode-gotchi-1.3.0.vsix` | Archived old vsix before rebuilding v1.4.0 |
+| `pycharm/archive/pycharm-gotchi-1.3.0.zip` | Archived old zip before rebuilding v1.4.0 |
+| `opencode-codotchi/opencode-codotchi-1.4.0.zip` | Rebuilt distributable zip for v1.4.0 |
+| `VERSIONS.md` | Added v1.4.0 section |
+| `README.md` | Updated artifact filenames and version references to v1.4.0 |
+| `vscode/README.md` | Updated artifact filenames and version references to v1.4.0 |
+| `pycharm/README.md` | Updated artifact filenames and version references to v1.4.0 |
+| `opencode-codotchi/README.md` | Updated OpenCode zip install references to v1.4.0 |
+| `vscode/vscode-gotchi-1.4.0.vsix` | Rebuilt distributable VS Code extension for the 1.4.0 release |
+| `pycharm/build/distributions/pycharm-gotchi-1.4.0.zip` | Rebuilt distributable PyCharm plugin for the 1.4.0 release |
+| `vscode/FEATURES.md` | Updated sprite feature notes to describe the 160×160 redraw set and the classic v1.0.0 exception |
 | `scripts/generate-sprites.js` | Made sprite generation tile-size-aware for upcoming 160×160 redraws, while keeping the egg as a separate small render target |
 | `scripts/normalize-sprite-designs.js` | Reworked row normalization to use each design's declared tile size instead of a fixed 32-row grid |
 | `vscode/media/sprites.js` | Reads a shared base render size so runtime sizing stays aligned with sidebar stage math |
@@ -55,6 +58,9 @@
 | `pycharm/src/main/kotlin/com/gotchi/GotchiConfigurable.kt` | Raised the PyCharm stage-height control default and max range to match the larger stage requirement |
 | `sprite_designs/README.md` | Documented the new 160×160 sprite-grid target and the separately-generated small egg |
 | `SPRITES.md` | Noted the move toward 160×160 symbolic redraws while keeping the egg separate |
+| `BUGFIXES.md` | Added BUGFIX-062 for the final zodiac redraw set and classic alignment restoration |
+| `vscode/vscode-gotchi-1.3.0.vsix` | Rebuilt distributable VS Code extension for the final 1.3.0 sprite set |
+| `pycharm/build/distributions/pycharm-gotchi-1.3.0.zip` | Rebuilt distributable PyCharm plugin for the final 1.3.0 sprite set |
 
 ---
 

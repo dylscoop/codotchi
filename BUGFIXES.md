@@ -925,3 +925,14 @@ travel in both cases.
 **Problem:** The existing zodiac sprite set was built entirely from integer grid data inside `sprites.js` and rendered cell-by-cell with `fillRect`. That made the silhouettes hard to redesign, tied the art to renderer internals, and produced animation that was limited to a two-row leg toggle and a sinusoidal sleep bob. The user explicitly wanted the old set replaced because the animal designs were wrong.
 
 **Fix:** Added a new `sprite_designs/` source-of-truth directory with redesigned 16x16 chibi animal layouts for all 14 sprite types across all five life stages. Added `scripts/generate-sprites.js` to generate real sprite image assets (PNG + GIF), mirrored them into both IDE webview folders, and emitted a `sprite-manifest.js` data-URI map so both VS Code and PyCharm can load the same generated assets reliably. Replaced the old 3000-line grid renderer with an image-based `sprites.js`, updated both `sidebar.js` copies to choose animation states (`idle`, `walk`, `sleep`, `react`) instead of `legFrame` / `breathPhase`, and added a preview contact sheet at `sprite_designs/previews/sprite-sheet-preview.png` so the full redesigned set is reviewable as an image file.
+
+---
+
+## BUGFIX-062 — Final zodiac redraw set did not match the intended 160x160 pack
+
+**Status:** Fixed (branch `feat/sprite-overhaul-and-sheep-rename`)
+**Files:** `sprite_designs/*.json`, `sprite_designs/previews/sprite-sheet-preview.png`, `vscode/media/sprite-manifest.js`, `pycharm/src/main/resources/webview/sprite-manifest.js`, `vscode/media/sprites/*.gif`, `pycharm/src/main/resources/webview/sprites/*.gif`
+
+**Problem:** The intermediate sprite pack mixed old 32x32-era layouts, incomplete redraws, and a front-facing classic sprite that was sitting too high above the stage. Several animals also had silhouettes that did not read clearly enough as their intended zodiac type once previewed together.
+
+**Fix:** Reworked the final sprite pack one animal at a time into generated 160x160 JSON art, regenerated the mirrored GIF assets and manifests for both IDEs, restored `classic` to the v1.0.0 look as the only intentionally scaled sprite, bottom-aligned its legs, and refined the dragon, horse, monkey, and rooster silhouettes after reviewing the full sprite-sheet preview.

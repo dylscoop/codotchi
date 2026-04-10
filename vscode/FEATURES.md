@@ -52,7 +52,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 |---------|--------|-------|
 | Care-score-based evolution tiers (best / mid / low) | `[x]` | |
 | Distinct character names per type × stage × tier | `[x]` | |
-| Visual difference between character variants | `[x]` | 14 redesigned zodiac sprite sets (32×32 px source, 192px rendered) generated from `sprite_designs/*.json` into GIF assets, then rendered in the webview via `sprites.js` |
+| Visual difference between character variants | `[x]` | 14 zodiac sprite sets now ship as generated GIF assets from `sprite_designs/*.json`; animal art is authored at 160×160 symbolic resolution, while `classic` intentionally keeps the restored v1.0.0 look and is scaled to fit the new runtime |
 | Evolution notification in event log | `[~]` | Event flag exists; no fanfare animation |
 | Egg-hatch animation | `[ ]` | Wiggle before first evolution |
 
@@ -641,7 +641,7 @@ These are lower-priority ideas that require significant design work.
 |---------|-------|
 | Gotchi Points currency | Earned from minigame wins; spent in an in-game shop for cosmetics |
 | In-game shop | Buy accessories, backgrounds, or extra colour palettes |
-| Pixel-art sprite assets | `[x]` Generated PNG/GIF sprite assets replace the old procedural grid renderer; source art lives in `sprite_designs/` and is now being redrawn at 160×160 symbolic resolution, with preview output written to `sprite_designs/previews/` |
+| Pixel-art sprite assets | `[x]` Generated PNG/GIF sprite assets replace the old procedural grid renderer; source art lives in `sprite_designs/`, all zodiac animals are redrawn at 160×160 symbolic resolution, and `classic` is the only intentionally scaled legacy sprite |
 | Sprite animation frames | Idle walk cycle, happy, sad, sleeping, eating — 2–4 frame flip-book per mood |
 | Redesign game art | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style |
 | Egg-hatch animation | Wiggle → crack → burst sequence (fits naturally into reaction queue) |
