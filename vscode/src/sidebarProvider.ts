@@ -155,8 +155,12 @@ export class SidebarProvider
     const spritesUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "sprites.js"))
     );
+    const spriteManifestUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "sprite-manifest.js"))
+    );
 
     html = html.replace("{{cssUri}}", cssUri.toString());
+    html = html.replace("{{spriteManifestUri}}", spriteManifestUri.toString());
     html = html.replace("{{spritesUri}}", spritesUri.toString());
     html = html.replace("{{jsUri}}", jsUri.toString());
     html = html.replace(/\{\{cspSource\}\}/g, webview.cspSource);

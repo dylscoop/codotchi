@@ -1,6 +1,40 @@
 ﻿# Version History
 
-## v1.1.2 — current
+## v1.2.0 — current
+
+### Changes from v1.1.2
+
+| File | What changed |
+|------|-------------|
+| `package.json` | Added root `generate:sprites` script and pure-JS image generation dependencies (`gifenc`, `pngjs`) |
+| `scripts/generate-sprites.js` | New asset pipeline that reads `sprite_designs/*.json`, generates PNG/GIF sprite assets, emits `sprite-manifest.js`, mirrors assets to PyCharm, and writes a preview contact sheet |
+| `sprite_designs/README.md` | Documented the new symbolic pixel design format used for the redesigned sprite source files |
+| `sprite_designs/*.json` | Added redesigned 16x16 sprite layouts for all 14 sprite types across baby/child/teen/adult/senior |
+| `sprite_designs/previews/sprite-sheet-preview.png` | Added full preview image sheet of the redesigned adult sprites |
+| `vscode/media/sprites/` | Added generated PNG/GIF sprite assets for all type/stage/state combinations plus egg |
+| `pycharm/src/main/resources/webview/sprites/` | Mirrored generated PNG/GIF sprite assets from VS Code |
+| `vscode/media/sprite-manifest.js` | Added generated data-URI manifest consumed by the image-based sprite loader |
+| `pycharm/src/main/resources/webview/sprite-manifest.js` | Mirrored generated sprite manifest for the PyCharm webview |
+| `vscode/media/sprites.js` | Replaced the procedural grid renderer with an image-based manifest loader and canvas draw/tint renderer |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored image-based sprite renderer from VS Code |
+| `vscode/media/sidebar.js` | Switched animation selection from `legFrame` / `breathPhase` to image animation states (`idle`, `walk`, `sleep`, `react`) and waits for sprite assets before starting animation |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored sidebar image-animation changes from VS Code |
+| `vscode/media/sidebar.html` | Loads `sprite-manifest.js` before `sprites.js` |
+| `pycharm/src/main/resources/webview/sidebar.html` | Loads `sprite-manifest.js` before `sprites.js` |
+| `vscode/src/sidebarProvider.ts` | Added `spriteManifestUri` substitution for the VS Code webview |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt` | Inlines `sprite-manifest.js` and `sprites.js` into the JCEF HTML build so generated assets load correctly in PyCharm |
+| `BUGFIXES.md` | Added BUGFIX-061 |
+| `SPRITES.md` | Replaced the old grid dump with a concise reference for the new generated sprite pipeline |
+| `vscode/FEATURES.md` | Updated sprite-related feature rows to describe generated PNG/GIF assets instead of procedural grids |
+| `VERSIONS.md` | Added v1.2.0 section |
+
+### Bug fixes
+
+- **BUGFIX-061** — Procedural sprite grids replaced with redesigned image assets; sprites now come from generated PNG/GIF files backed by `sprite_designs/*.json`, with image-state animation (`idle`, `walk`, `sleep`, `react`) replacing the old `fillRect` grid renderer
+
+---
+
+## v1.1.2 — previous
 
 ### Changes from v1.1.1
 

@@ -914,3 +914,14 @@ flipping when moving left remains a cosmetic lean cue. Quadrupeds/snakes have
 a natural head-left orientation, so the flip is now applied when moving
 **right** (`!facingLeft`), making the head correctly face the direction of
 travel in both cases.
+
+---
+
+## BUGFIX-061 — Procedural sprite grids replaced with redesigned image assets
+
+**Status:** Fixed (branch `fix/sprite-floor-and-walk-direction`)
+**Files:** `scripts/generate-sprites.js`, `sprite_designs/*.json`, `sprite_designs/previews/sprite-sheet-preview.png`, `vscode/media/sprite-manifest.js`, `vscode/media/sprites.js`, `vscode/media/sidebar.js`, `vscode/media/sidebar.html`, `vscode/src/sidebarProvider.ts`, `pycharm/src/main/resources/webview/sprite-manifest.js`, `pycharm/src/main/resources/webview/sprites.js`, `pycharm/src/main/resources/webview/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.html`, `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt`
+
+**Problem:** The existing zodiac sprite set was built entirely from integer grid data inside `sprites.js` and rendered cell-by-cell with `fillRect`. That made the silhouettes hard to redesign, tied the art to renderer internals, and produced animation that was limited to a two-row leg toggle and a sinusoidal sleep bob. The user explicitly wanted the old set replaced because the animal designs were wrong.
+
+**Fix:** Added a new `sprite_designs/` source-of-truth directory with redesigned 16x16 chibi animal layouts for all 14 sprite types across all five life stages. Added `scripts/generate-sprites.js` to generate real sprite image assets (PNG + GIF), mirrored them into both IDE webview folders, and emitted a `sprite-manifest.js` data-URI map so both VS Code and PyCharm can load the same generated assets reliably. Replaced the old 3000-line grid renderer with an image-based `sprites.js`, updated both `sidebar.js` copies to choose animation states (`idle`, `walk`, `sleep`, `react`) instead of `legFrame` / `breathPhase`, and added a preview contact sheet at `sprite_designs/previews/sprite-sheet-preview.png` so the full redesigned set is reviewable as an image file.

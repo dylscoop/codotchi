@@ -2,10 +2,13 @@
   "name": "vscode-gotchi-workspace",
   "private": true,
   "scripts": {
+    "generate:sprites": "node scripts/generate-sprites.js",
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#vscode/node_modules\" \"#.venv\"",
     "format:md": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#vscode/node_modules\" \"#.venv\""
   },
   "devDependencies": {
+    "gifenc": "^1.0.3",
+    "pngjs": "^7.0.0",
     "markdownlint-cli2": "^0.17.0"
   }
 }
