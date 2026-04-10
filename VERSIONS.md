@@ -27,6 +27,12 @@
 | `SPRITES.md` | Replaced the old grid dump with a concise reference for the new generated sprite pipeline |
 | `vscode/FEATURES.md` | Updated sprite-related feature rows to describe generated PNG/GIF assets instead of procedural grids |
 | `VERSIONS.md` | Added v1.2.0 section |
+| `vscode/archive/vsix/vscode-gotchi-1.1.2.vsix` | Archived old vsix before rebuilding v1.2.0 |
+| `pycharm/archive/pycharm-gotchi-1.1.2.zip` | Archived old zip before rebuilding v1.2.0 |
+| `vscode/vscode-gotchi-1.2.0.vsix` | Rebuilt distributable vsix for v1.2.0 |
+| `pycharm/build/distributions/pycharm-gotchi-1.2.0.zip` | Rebuilt distributable zip for v1.2.0 |
+| `opencode-codotchi/README.md` | Updated OpenCode install instructions to reference `opencode-codotchi-1.2.0.zip` |
+| `opencode-codotchi/opencode-codotchi-1.2.0.zip` | Rebuilt distributable OpenCode zip for v1.2.0 |
 
 ### Bug fixes
 
