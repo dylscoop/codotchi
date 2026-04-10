@@ -182,6 +182,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
     private data class RawPetState(
         val name: String?,
         val petType: String?,
+        val spriteType: String?,       // absent in saves before v1.0.3
         val color: String?,
         val hunger: Int?,
         val happiness: Int?,
@@ -234,6 +235,8 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         val partial = PetState(
             name                  = r.name                  ?: "Gotchi",
             petType               = petType,
+            // Back-compat: old saves won't have spriteType; default to "classic"
+            spriteType            = r.spriteType            ?: "classic",
             color                 = r.color                 ?: "neon",
             hunger                = r.hunger                ?: 50,
             happiness             = r.happiness             ?: 50,
@@ -286,6 +289,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
     private fun toRaw(s: PetState) = RawPetState(
         name                  = s.name,
         petType               = s.petType,
+        spriteType            = s.spriteType,
         color                 = s.color,
         hunger                = s.hunger,
         happiness             = s.happiness,

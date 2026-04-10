@@ -168,6 +168,7 @@ fun createPet(name: String, petType: String, color: String): PetState {
         PetState(
             name               = name,
             petType            = petType,
+            spriteType         = randomSpriteType(),
             color              = color,
             hunger             = 50,
             happiness          = 50,
