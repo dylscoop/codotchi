@@ -2959,7 +2959,10 @@
     };
 
     ctx.save();
-    if (facingLeft) {
+    // Quadrupeds/snakes: natural orientation is head-LEFT, so flip when moving right.
+    // Uprights: symmetric front-facing sprite, flip when moving left for subtle lean cue.
+    var shouldFlip = isUpright ? facingLeft : !facingLeft;
+    if (shouldFlip) {
       ctx.translate(x + bodyWidth, 0);
       ctx.scale(-1, 1);
       ctx.translate(-x, 0);

@@ -873,3 +873,44 @@ IDE — silently killing a perfectly healthy pet that had never been touched.
 **Problem:** The PyCharm PetState data class was missing the spriteType field entirely. All PyCharm pets rendered as the classic humanoid sprite because renderSpriteGrid received no spriteType and defaulted to classic. The info line spriteLabel condition was never truthy in PyCharm, so the animal type was never shown. Additionally, createPet() in PyCharm's GameEngine.kt never called randomSpriteType() - every new PyCharm pet was always the classic sprite. On the VS Code side, the condition `state.spriteType !== "classic"` suppressed the label for classic-type pets, so those pets showed no animal type at all.
 
 **Fix:** Added `spriteType: String` to PetState.kt. Added ZODIAC_ANIMALS list and randomSpriteType() to Constants.kt matching the TypeScript implementation. Wired `spriteType = randomSpriteType()` into createPet() in GameEngine.kt. Added spriteType to RawPetState (nullable for back-compat), sanitise() (defaults to `"classic"` on old saves), and toRaw() in GotchiPersistence.kt. Removed the `!== "classic"` suppression from the spriteLabel condition in both sidebar.js copies so the animal type is always shown regardless of type.
+
+---
+
+## BUGFIX-060 — Sprite renders below floor; quadruped walks backwards
+
+**Status:** Fixed (branch `fix/sprite-floor-and-walk-direction`)
+**Files:** `vscode/media/sidebar.js`, `vscode/media/sprites.js`,
+`pycharm/src/main/resources/webview/sidebar.js`,
+`pycharm/src/main/resources/webview/sprites.js`
+
+**Problem (floor):** `sidebar.js` computed `bSize` using `baseSize = 24`
+(`Math.round(24 * petSizeMultiplier() * stageScale)`), then derived `bHeight`
+and `floorY` from that. However, `renderSpriteGrid` in `sprites.js` uses
+`baseSize = 96` — exactly 4× larger. As a result, the rendered sprite was 4×
+taller than `sidebar.js` expected, so the sprite's bottom edge extended far
+below the floor line (`floorY`). The extra `legH` term (`bSize * 0.22`) also
+added spurious extra space since leg pixels are embedded inside the sprite
+grid rows, not drawn separately below `bHeight`.
+
+**Problem (walk direction):** Quadruped and snake sprites are defined with
+`head LEFT, body extends right` (as documented at the top of `sprites.js`).
+`renderSpriteGrid` applied a horizontal canvas flip when `facingLeft === true`.
+This meant: moving left → `facingLeft=true` → flip → head points RIGHT.
+The pet walked in the direction its tail was facing.
+
+**Fix (floor):** Changed all `Math.round(24 * petSizeMultiplier() * ...)` to
+`Math.round(96 * petSizeMultiplier() * ...)` in every floor/body-height
+calculation in both IDEs' `sidebar.js` files (7 call sites: collision bounds,
+`getFloorY`, `animationLoop`, initial placement, `drawBodyWithReaction`,
+`drawStatusIndicators`, `drawStaticPet`). Removed the `legH` addend from
+`floorY`, `staticY`, `feetY`, and overlay `fillRect` heights throughout, since
+legs are already contained within `bodyHeight`.
+
+**Fix (walk direction):** In `renderSpriteGrid`, replaced the bare
+`if (facingLeft)` flip with a sprite-type-aware condition:
+`var shouldFlip = isUpright ? facingLeft : !facingLeft`.
+Uprights (classic, monkey, rooster, dragon) are symmetric front-facing sprites;
+flipping when moving left remains a cosmetic lean cue. Quadrupeds/snakes have
+a natural head-left orientation, so the flip is now applied when moving
+**right** (`!facingLeft`), making the head correctly face the direction of
+travel in both cases.

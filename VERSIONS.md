@@ -1,6 +1,36 @@
 ﻿# Version History
 
-## v1.1.1 — current
+## v1.1.2 — current
+
+### Changes from v1.1.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.1.1` → `1.1.2` |
+| `pycharm/build.gradle.kts` | Version bumped `1.1.1` → `1.1.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.1.1` → `1.1.2` |
+| `opencode-codotchi/package.json` | Version bumped `1.1.1` → `1.1.2` |
+| `vscode/media/sidebar.js` | Changed `baseSize` from `24` to `96` in all floor/body-height calculations; removed spurious `legH` addend from `floorY`, `staticY`, `feetY`, and overlay `fillRect` heights (BUGFIX-060) |
+| `vscode/media/sprites.js` | Replaced `if (facingLeft)` flip with `shouldFlip = isUpright ? facingLeft : !facingLeft` so quadruped head faces direction of travel (BUGFIX-060) |
+| `pycharm/src/main/resources/webview/sidebar.js` | Same as `vscode/media/sidebar.js` (BUGFIX-060) |
+| `pycharm/src/main/resources/webview/sprites.js` | Same as `vscode/media/sprites.js` (BUGFIX-060) |
+| `BUGFIXES.md` | Added BUGFIX-060 |
+| `VERSIONS.md` | Added v1.1.2 section |
+| `README.md` | Version references updated to `1.1.2` |
+| `vscode/README.md` | Version references updated to `1.1.2` |
+| `pycharm/README.md` | Version references updated to `1.1.2` |
+| `opencode-codotchi/README.md` | Version references updated to `1.1.2` |
+| `vscode/vscode-gotchi-1.1.2.vsix` | Rebuilt distributable vsix for v1.1.2 |
+| `pycharm/build/distributions/pycharm-gotchi-1.1.2.zip` | Rebuilt distributable zip for v1.1.2 |
+| `opencode-codotchi/opencode-codotchi-1.1.2.zip` | Rebuilt distributable zip for v1.1.2 |
+
+### Bug fixes
+
+- **BUGFIX-060** — Sprites rendered below the floor (body clips through ground line) and quadruped pets walked backwards; fixed by correcting `baseSize` to `96` in all floor calculations and inverting the horizontal flip for head-left quadruped sprites
+
+---
+
+## v1.1.1 — previous
 
 ### Changes from v1.1.0
 

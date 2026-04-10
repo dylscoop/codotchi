@@ -633,7 +633,7 @@
     // Clamp petX so the pet doesn't walk off the right edge after a resize
     if (lastState) {
       const scale   = STAGE_SCALES[lastState.stage] || 0.5;
-      const bSize   = Math.round(24 * petSizeMultiplier() * scale);
+      const bSize   = Math.round(96 * petSizeMultiplier() * scale);
       const wwm     = weightWidthMultiplier(lastState.weight || 50);
       const bWidth  = Math.round(bSize * wwm);
       const maxX    = spriteCanvas.width - bWidth - 4;
@@ -673,11 +673,10 @@
   function getFloorY() {
     if (!lastState) { return spriteCanvas.height - 4; }
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
-    var bSize      = Math.round(24 * petSizeMultiplier() * scale);
+    var bSize      = Math.round(96 * petSizeMultiplier() * scale);
     var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
     var bHeight    = Math.round(bSize * heightMult);
-    var legH       = Math.max(2, Math.round(bSize * 0.22));
-    return spriteCanvas.height - bHeight - legH - 4;
+    return spriteCanvas.height - bHeight - 4;
   }
 
   /**
@@ -707,13 +706,12 @@
 
     // Dimension helpers
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
-    var bSize      = Math.round(24 * petSizeMultiplier() * scale);
+    var bSize      = Math.round(96 * petSizeMultiplier() * scale);
     var wwm        = weightWidthMultiplier(lastState.weight || 50);
     var bWidth     = Math.round(bSize * wwm);
     var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
     var bHeight    = Math.round(bSize * heightMult);
-    var legH       = Math.max(2, Math.round(bSize * 0.22));
-    var floorY     = spriteCanvas.height - bHeight - legH - 4;
+    var floorY     = spriteCanvas.height - bHeight - 4;
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
 
@@ -947,7 +945,7 @@
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
       var scale2   = STAGE_SCALES[state.stage] || 0.5;
-      var bSize2   = Math.round(24 * petSizeMultiplier() * scale2);
+      var bSize2   = Math.round(96 * petSizeMultiplier() * scale2);
       var wwm2     = weightWidthMultiplier(state.weight || 50);
       var bWidth2  = Math.round(bSize2 * wwm2);
       var centreX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth2 / 2));
@@ -1461,13 +1459,12 @@
     var t = Math.min(1, (nowMs - reaction.startMs) / reaction.durationMs);
     var palette   = getPalette(state.color);
     var stageScale = STAGE_SCALES[state.stage] || 0.5;
-    var bSize     = Math.round(24 * petSizeMultiplier() * stageScale);
+    var bSize     = Math.round(96 * petSizeMultiplier() * stageScale);
     var wwm       = weightWidthMultiplier(state.weight || 50);
     var bWidth    = Math.round(bSize * wwm);
     var hMult     = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
     var bHeight   = Math.round(bSize * hMult);
-    var legH      = Math.max(2, Math.round(bSize * 0.22));
-    var feetY     = bodyY + bHeight + legH;   // canvas Y of the bottom of the feet
+    var feetY     = bodyY + bHeight;   // canvas Y of the bottom of the feet
 
     switch (reaction.type) {
 
@@ -1520,7 +1517,7 @@
         spriteCtx.save();
         spriteCtx.globalAlpha = (1 - t) * 0.35;
         spriteCtx.fillStyle = "#FFD600";
-        spriteCtx.fillRect(x, bodyY + yOff3, bWidth, bHeight + legH);
+        spriteCtx.fillRect(x, bodyY + yOff3, bWidth, bHeight);
         spriteCtx.restore();
         break;
       }
@@ -1535,7 +1532,7 @@
         drawBody(state, x, bodyY, facingLeft, legFrame);
         spriteCtx.globalAlpha = Math.sin(t * Math.PI) * 0.4;
         spriteCtx.fillStyle = "#FFD600";
-        spriteCtx.fillRect(x, bodyY, bWidth, bHeight + legH);
+        spriteCtx.fillRect(x, bodyY, bWidth, bHeight);
         spriteCtx.restore();
         break;
       }
@@ -1574,7 +1571,7 @@
         spriteCtx.save();
         spriteCtx.globalAlpha = (1 - t) * 0.5;
         spriteCtx.fillStyle = "#00c853";
-        spriteCtx.fillRect(x, bodyY, bWidth, bHeight + legH);
+        spriteCtx.fillRect(x, bodyY, bWidth, bHeight);
         spriteCtx.restore();
         break;
       }
@@ -1598,7 +1595,7 @@
    */
   function drawStatusIndicators(state, x, bodyY) {
     var scale    = STAGE_SCALES[state.stage] || 0.5;
-    var bSize    = Math.round(24 * petSizeMultiplier() * scale);
+    var bSize    = Math.round(96 * petSizeMultiplier() * scale);
     var wwm      = weightWidthMultiplier(state.weight || 50);
     var bWidth   = Math.round(bSize * wwm);
     var palette  = getPalette(state.color);
@@ -1626,15 +1623,14 @@
     drawEnvironment(state);
 
     var scale    = STAGE_SCALES[state.stage] || 0.5;
-    var bSize    = Math.round(24 * petSizeMultiplier() * scale);
+    var bSize    = Math.round(96 * petSizeMultiplier() * scale);
     var wwm      = weightWidthMultiplier(state.weight || 50);
     var bWidth   = Math.round(bSize * wwm);
     var hMult    = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
     var bHeight  = Math.round(bSize * hMult);
-    var legH     = Math.max(2, Math.round(bSize * 0.22));
     var H        = spriteCanvas.height;
     var staticX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth / 2));
-    var staticY  = H - bHeight - legH - 4;
+    var staticY  = H - bHeight - 4;
 
     drawBody(state, staticX, staticY, false, 0);
     drawStatusIndicators(state, staticX, staticY);
