@@ -1,6 +1,25 @@
 ﻿# Version History
 
-## v1.0.3 — current
+## v1.1.0 — current
+
+### Changes from v1.0.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.0.3` → `1.1.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.0.3` → `1.1.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.0.3` → `1.1.0` |
+| `opencode-codotchi/package.json` | Version bumped `1.0.3` → `1.1.0` |
+| `vscode/archive/vsix/vscode-gotchi-1.0.2.vsix` | Archived old vsix before rebuild |
+| `pycharm/archive/pycharm-gotchi-1.0.2.zip` | Archived old zip before rebuild |
+| `vscode/vscode-gotchi-1.1.0.vsix` | Rebuilt distributable vsix for v1.1.0 |
+| `pycharm/build/distributions/pycharm-gotchi-1.1.0.zip` | Rebuilt distributable zip for v1.1.0 |
+| `opencode-codotchi/opencode-codotchi-1.1.0.zip` | Rebuilt distributable zip for v1.1.0 |
+| `VERSIONS.md` | Added v1.1.0 section |
+
+---
+
+## v1.0.3 — previous
 
 ### Changes from v1.0.2
 
