@@ -51,6 +51,7 @@ interface SharedStateFile {
  * Failures are silently swallowed — the shared file is best-effort only.
  */
 function saveSharedState(state: PetState): void {
+  if (!state.alive) { return; }
   try {
     const filePath = getSharedStatePath();
     const dir = path.dirname(filePath);
@@ -128,7 +129,7 @@ export function loadState(context: vscode.ExtensionContext): PetState | null {
 
   // Prefer the shared file if it is strictly newer.
   const shared = loadSharedState();
-  if (shared !== null && shared.savedAt > localTimestamp) {
+  if (shared !== null && shared.savedAt > localTimestamp && shared.state.alive) {
     // Promote the shared state into globalState so elapsedSecondsSinceLastSave
     // uses the correct reference timestamp from this point forward.
     void context.globalState.update(STATE_KEY, serialiseState(shared.state));
