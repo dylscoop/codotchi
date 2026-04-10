@@ -17,6 +17,10 @@ const DEFAULT_TILE_SIZE = 160;
 const EGG_TILE_SIZE = 32;
 const OUTPUT_PIXEL_SIZE = 160;
 const PREVIEW_PIXEL_SIZE = 160;
+const SPRITE_FILTER = (process.env.SPRITE_FILTER || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
 const GIF_FPS = 8;
 const GIF_DELAY = Math.round(1000 / GIF_FPS);
 
@@ -52,6 +56,10 @@ const ANIMATION_STATES = ["idle", "walk", "sleep", "react"];
 
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
+}
+
+function shouldGenerateAnimal(animal) {
+  return SPRITE_FILTER.length === 0 || SPRITE_FILTER.includes(animal);
 }
 
 function emptyDir(dirPath) {
@@ -386,11 +394,19 @@ function writeManifest() {
 
 function generateSpriteAssets() {
   const designs = loadDesigns();
-  emptyDir(VSCODE_SPRITES_DIR);
-  emptyDir(PYCHARM_SPRITES_DIR);
+  if (SPRITE_FILTER.length === 0) {
+    emptyDir(VSCODE_SPRITES_DIR);
+    emptyDir(PYCHARM_SPRITES_DIR);
+  } else {
+    ensureDir(VSCODE_SPRITES_DIR);
+    ensureDir(PYCHARM_SPRITES_DIR);
+  }
   ensureDir(PREVIEW_DIR);
 
   for (const animal of ANIMAL_ORDER) {
+    if (!shouldGenerateAnimal(animal)) {
+      continue;
+    }
     const design = designs[animal];
     if (!design) {
       continue;
@@ -410,12 +426,14 @@ function generateSpriteAssets() {
     }
   }
 
-  const eggFrames = createEggFrames(EGG_TILE_SIZE);
-  writeGif(
-    path.join(VSCODE_SPRITES_DIR, "egg.gif"),
-    eggFrames,
-    scaleForTileSize(EGG_TILE_SIZE, Math.round(OUTPUT_PIXEL_SIZE * 0.4))
-  );
+  if (SPRITE_FILTER.length === 0) {
+    const eggFrames = createEggFrames(EGG_TILE_SIZE);
+    writeGif(
+      path.join(VSCODE_SPRITES_DIR, "egg.gif"),
+      eggFrames,
+      scaleForTileSize(EGG_TILE_SIZE, Math.round(OUTPUT_PIXEL_SIZE * 0.4))
+    );
+  }
 
   for (const file of fs.readdirSync(VSCODE_SPRITES_DIR)) {
     fs.copyFileSync(
