@@ -1,5 +1,48 @@
 ﻿# Version History
 
+## v1.3.0 — current
+
+### Changes from v1.2.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.3.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.3.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.3.0 |
+| `opencode-codotchi/package.json` | Version bumped to 1.3.0 |
+| `scripts/generate-sprites.js` | Removed all `writePng` calls; changed egg tile size 16→32; updated preview cell size 16→32 |
+| `vscode/media/sidebar.js` | Sprite render size updated from `Math.round(96 * …)` to `Math.round(192 * …)` (7 occurrences) |
+| `pycharm/src/main/resources/webview/sidebar.js` | Sprite render size updated from `Math.round(96 * …)` to `Math.round(192 * …)` (7 occurrences) |
+| `sprite_designs/classic.json` | Redesigned to 32×32, 5 stages — restored original blob mascot design |
+| `sprite_designs/cat.json` | Redesigned to 32×32, 5 stages — pointed ears, curling tail |
+| `sprite_designs/rat.json` | Redesigned to 32×32, 5 stages — round ears, long thin tail, pointed muzzle |
+| `sprite_designs/ox.json` | Redesigned to 32×32, 5 stages — wide U-shaped horns, stocky body |
+| `sprite_designs/tiger.json` | Redesigned to 32×32, 5 stages — stripe bands across torso, long tail |
+| `sprite_designs/rabbit.json` | Redesigned to 32×32, 5 stages — tall vertical ears, cotton-tail puff |
+| `sprite_designs/dragon.json` | Redesigned to 32×32, 5 stages — upright pose, spiky dorsal crest |
+| `sprite_designs/snake.json` | Redesigned to 32×32, 5 stages — wide flat head, S-curve body |
+| `sprite_designs/horse.json` | Redesigned to 32×32, 5 stages — mane column, longer legs, tail sweep |
+| `sprite_designs/goat.json` | Redesigned to 32×32, 5 stages — hook horns, chin beard, slender body |
+| `sprite_designs/monkey.json` | Redesigned to 32×32, 5 stages — large round side-ears, curling tail |
+| `sprite_designs/rooster.json` | Redesigned to 32×32, 5 stages — comb spikes, tail fan feathers |
+| `sprite_designs/dog.json` | Redesigned to 32×32, 5 stages — floppy ears, wet-nose, wagging tail |
+| `sprite_designs/pig.json` | Redesigned to 32×32, 5 stages — large circular snout, curled tail, plump body |
+| `sprite_designs/previews/sprite-sheet-preview.png` | Regenerated at 192px from 32×32 source |
+| `vscode/media/sprites/` | Regenerated: 281 GIFs at 192px base, all old PNGs removed |
+| `pycharm/src/main/resources/webview/sprites/` | Mirrored regenerated GIFs from VS Code |
+| `vscode/media/sprite-manifest.js` | Regenerated to reference 192px GIF assets |
+| `pycharm/src/main/resources/webview/sprite-manifest.js` | Mirrored regenerated sprite manifest |
+| `vscode/archive/vsix/vscode-gotchi-1.2.0.vsix` | Archived old vsix before rebuilding v1.3.0 |
+| `pycharm/archive/pycharm-gotchi-1.2.0.zip` | Archived old zip before rebuilding v1.3.0 |
+| `opencode-codotchi/opencode-codotchi-1.3.0.zip` | Rebuilt distributable zip for v1.3.0 |
+| `VERSIONS.md` | Added v1.3.0 section |
+| `README.md` | Updated artifact filenames and version references to v1.3.0 |
+| `vscode/README.md` | Updated artifact filenames and version references to v1.3.0 |
+| `pycharm/README.md` | Updated artifact filenames and version references to v1.3.0 |
+| `vscode/FEATURES.md` | Updated sprite section to reflect 32×32 / 192px redesign |
+
+---
+
 ## v1.2.0 — current
 
 ### Changes from v1.1.2
