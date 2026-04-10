@@ -770,3 +770,158 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** After calling `/codotchi show` (previously `/codotchi on`), the ASCII art sprite appeared twice in the chat — once in the tool output panel and once echoed into the LLM's text response. The command prompt said "return tool output verbatim" which caused the LLM to wrap the art in a fenced code block and re-emit it, doubling the display.
 
 **Fix:** Rewrote the slash command prompt to explicitly instruct the LLM to output the tool result as plain text with no code fences and no extra commentary. The `$ARGUMENTS`-to-`action` mapping was also restructured as a table for clarity, renaming `on` → `show` and `off` → `hide` as user-facing subcommand words.
+
+---
+
+## BUGFIX-052 � legRowStart pointed at blank rows (leg animation never fired)
+
+**Status:** Fixed (branch `fix/sprite-grid-bugs`)
+**File:** `vscode/media/sprites.js`, `pycharm/src/main/resources/webview/sprites.js`
+
+**Problem:** `legRowStart` was hardcoded to `14` (small grid) and `30` (large grid). All quadruped leg pixels were in rows 10�11 (small) and 28�31 (large), so the leg-animation offset was never applied to any non-blank pixels. Legs appeared frozen on all quadrupeds.
+
+**Fix:** Dropped the dual DEFS/DEFS_LG system entirely. New single-resolution grids (48�32 quad, 32�48 upright) place legs at rows 25�31 (quad) and 37�47 (upright). `legRowStart` is now derived per sprite type in the renderer: `25` for quadrupeds, `37` for uprights.
+
+---
+
+## BUGFIX-053 � accent colour (index 3) hardcoded to secondary colour
+
+**Status:** Fixed (branch `fix/sprite-grid-bugs`)
+**File:** `vscode/media/sprites.js`, `pycharm/src/main/resources/webview/sprites.js`
+
+**Problem:** Line `var accent = palette.secondary;` made colour index 3 (accent � used for tiger stripes, dragon ridges, rooster comb) identical to secondary. All accent features were invisible unless the pet happened to have secondary == accent.
+
+**Fix:** `accent = darkenHex(primary, 0.70)` placed after the `darkenHex` helper definition. Accent is now primary darkened to 70%, visually distinct on all colour palettes.
+
+---
+
+## BUGFIX-054 � baby/child sprites too small (under-filled bounding box)
+
+**Status:** Fixed (branch `fix/sprite-grid-bugs`)
+**File:** `vscode/media/sprites.js`, `pycharm/src/main/resources/webview/sprites.js`
+
+**Problem:** All baby grids in the 12�16 and 24�32 systems only filled ~6�8 columns out of 12/24. At `STAGE_SCALES.baby = 0.45` and `BASE_SIZE = 24` the rendered pixels were sub-pixel size.
+
+**Fix:** Grids redesigned at 48�32 (quad) / 32�48 (upright). Baby stage fills ~cols 0�18 (quad) or rows 18�25 (upright) � adequate visual mass at the new scale.
+
+---
+
+## BUGFIX-055 � BASE_SIZE too small (24) produced sub-pixel cells at baby stage
+
+**Status:** Fixed (branch `fix/sprite-grid-bugs`)
+**File:** `vscode/media/sprites.js`, `pycharm/src/main/resources/webview/sprites.js`
+
+**Problem:** `BASE_SIZE = 24` with `COLS = 12` gives `cellW = 2px` at `sizeMultiplier=1.0, scale=0.45`. At medium size (1.5�) baby cells were only ~1px, making sprites invisible.
+
+**Fix:** `BASE_SIZE` moved into the renderer as a local `baseSize = 96`. At 48 columns, adult medium: `cellW = round(96 * 1.5 * 1.0 / 48) = 3px`. Baby medium: `cellW = round(96 * 1.5 * 0.65 / 48) = 2px`. Visible at all sizes.
+
+---
+
+## BUGFIX-056 � STAGE_SCALES too small (sprites rendered tiny)
+
+**Status:** Fixed (branch `fix/sprite-grid-bugs`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `baby=0.45, child=0.55, teen=0.70, adult=0.85, senior=0.90` left large gaps of empty canvas above and below all sprites. Adult never filled the bounding box.
+
+**Fix:** `baby=0.65, child=0.75, teen=0.85, adult=1.00, senior=1.00`.
+
+---
+
+## BUGFIX-057 � STAGE_BODY_HEIGHT_MULTS incorrect for quadruped orientation
+
+**Status:** Fixed (branch `fix/sprite-grid-bugs`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** All animals used the same height multipliers (`adult=1.5`), producing a tall portrait bounding box for quadrupeds whose grids are landscape 48�32. Sprites were scaled into a box taller than wide, distorting proportions.
+
+**Fix:** Unified height mult `0.67` for all stages (matching 48�32 native 3:2 ratio). Upright sprites (32�48) use the renderer's `isUpright` flag and their naturally taller grids fill the box correctly.\
+---
+
+## BUGFIX-059 — Dead pet state written to shared file overwrites live pet in other IDE
+
+**Status:** Fixed (branch `fix/no-dead-state-cross-ide-sync`)
+**Files:** `vscode/src/persistence.ts`, `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt`
+
+**Problem:** When a pet died in one IDE (e.g. VS Code), the final dead state
+(`alive = false`) was immediately written to the shared cross-IDE file
+(`%APPDATA%\gotchi\state.json` / `~/.config/gotchi/state.json`) as part of the
+normal save-on-every-tick path. If the other IDE (e.g. PyCharm) was opened
+afterwards, the shared file had a newer `savedAt` timestamp than the local copy,
+so the "newer timestamp wins" load logic promoted the dead state into the local
+IDE — silently killing a perfectly healthy pet that had never been touched.
+
+**Fix:** Two guards added to both persistence layers (4 lines total across 2 files):
+
+1. **Write guard** (`saveSharedState` / `saveToSharedFile`): if `!state.alive`,
+   return immediately without writing to the shared file. A dead pet state is
+   never persisted to the cross-IDE file.
+
+2. **Read guard** (`loadState` / `loadPetState`): the "newer timestamp wins"
+   condition now also requires `shared.state.alive` (VS Code) /
+   `shared.first.alive` (PyCharm). A dead state loaded from the shared file is
+   ignored even if its timestamp is newer, so a live local pet is never replaced
+   by a stale dead state from another IDE.
+
+---
+
+## BUGFIX-058 - Animal type never shown in PyCharm sidebar; Classic type hidden on VS Code
+
+**Status:** Fixed (branch `fix/sprite-grid-bugs`)
+**Files:** `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt`, `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`, `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt`, `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** The PyCharm PetState data class was missing the spriteType field entirely. All PyCharm pets rendered as the classic humanoid sprite because renderSpriteGrid received no spriteType and defaulted to classic. The info line spriteLabel condition was never truthy in PyCharm, so the animal type was never shown. Additionally, createPet() in PyCharm's GameEngine.kt never called randomSpriteType() - every new PyCharm pet was always the classic sprite. On the VS Code side, the condition `state.spriteType !== "classic"` suppressed the label for classic-type pets, so those pets showed no animal type at all.
+
+**Fix:** Added `spriteType: String` to PetState.kt. Added ZODIAC_ANIMALS list and randomSpriteType() to Constants.kt matching the TypeScript implementation. Wired `spriteType = randomSpriteType()` into createPet() in GameEngine.kt. Added spriteType to RawPetState (nullable for back-compat), sanitise() (defaults to `"classic"` on old saves), and toRaw() in GotchiPersistence.kt. Removed the `!== "classic"` suppression from the spriteLabel condition in both sidebar.js copies so the animal type is always shown regardless of type.
+
+---
+
+## BUGFIX-060 — Sprite renders below floor; quadruped walks backwards
+
+**Status:** Fixed (branch `fix/sprite-floor-and-walk-direction`)
+**Files:** `vscode/media/sidebar.js`, `vscode/media/sprites.js`,
+`pycharm/src/main/resources/webview/sidebar.js`,
+`pycharm/src/main/resources/webview/sprites.js`
+
+**Problem (floor):** `sidebar.js` computed `bSize` using `baseSize = 24`
+(`Math.round(24 * petSizeMultiplier() * stageScale)`), then derived `bHeight`
+and `floorY` from that. However, `renderSpriteGrid` in `sprites.js` uses
+`baseSize = 96` — exactly 4× larger. As a result, the rendered sprite was 4×
+taller than `sidebar.js` expected, so the sprite's bottom edge extended far
+below the floor line (`floorY`). The extra `legH` term (`bSize * 0.22`) also
+added spurious extra space since leg pixels are embedded inside the sprite
+grid rows, not drawn separately below `bHeight`.
+
+**Problem (walk direction):** Quadruped and snake sprites are defined with
+`head LEFT, body extends right` (as documented at the top of `sprites.js`).
+`renderSpriteGrid` applied a horizontal canvas flip when `facingLeft === true`.
+This meant: moving left → `facingLeft=true` → flip → head points RIGHT.
+The pet walked in the direction its tail was facing.
+
+**Fix (floor):** Changed all `Math.round(24 * petSizeMultiplier() * ...)` to
+`Math.round(96 * petSizeMultiplier() * ...)` in every floor/body-height
+calculation in both IDEs' `sidebar.js` files (7 call sites: collision bounds,
+`getFloorY`, `animationLoop`, initial placement, `drawBodyWithReaction`,
+`drawStatusIndicators`, `drawStaticPet`). Removed the `legH` addend from
+`floorY`, `staticY`, `feetY`, and overlay `fillRect` heights throughout, since
+legs are already contained within `bodyHeight`.
+
+**Fix (walk direction):** In `renderSpriteGrid`, replaced the bare
+`if (facingLeft)` flip with a sprite-type-aware condition:
+`var shouldFlip = isUpright ? facingLeft : !facingLeft`.
+Uprights (classic, monkey, rooster, dragon) are symmetric front-facing sprites;
+flipping when moving left remains a cosmetic lean cue. Quadrupeds/snakes have
+a natural head-left orientation, so the flip is now applied when moving
+**right** (`!facingLeft`), making the head correctly face the direction of
+travel in both cases.
+
+---
+
+## BUGFIX-061 — Procedural sprite grids replaced with redesigned image assets
+
+**Status:** Fixed (branch `fix/sprite-floor-and-walk-direction`)
+**Files:** `scripts/generate-sprites.js`, `sprite_designs/*.json`, `sprite_designs/previews/sprite-sheet-preview.png`, `vscode/media/sprite-manifest.js`, `vscode/media/sprites.js`, `vscode/media/sidebar.js`, `vscode/media/sidebar.html`, `vscode/src/sidebarProvider.ts`, `pycharm/src/main/resources/webview/sprite-manifest.js`, `pycharm/src/main/resources/webview/sprites.js`, `pycharm/src/main/resources/webview/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.html`, `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt`
+
+**Problem:** The existing zodiac sprite set was built entirely from integer grid data inside `sprites.js` and rendered cell-by-cell with `fillRect`. That made the silhouettes hard to redesign, tied the art to renderer internals, and produced animation that was limited to a two-row leg toggle and a sinusoidal sleep bob. The user explicitly wanted the old set replaced because the animal designs were wrong.
+
+**Fix:** Added a new `sprite_designs/` source-of-truth directory with redesigned 16x16 chibi animal layouts for all 14 sprite types across all five life stages. Added `scripts/generate-sprites.js` to generate real sprite image assets (PNG + GIF), mirrored them into both IDE webview folders, and emitted a `sprite-manifest.js` data-URI map so both VS Code and PyCharm can load the same generated assets reliably. Replaced the old 3000-line grid renderer with an image-based `sprites.js`, updated both `sidebar.js` copies to choose animation states (`idle`, `walk`, `sleep`, `react`) instead of `legFrame` / `breathPhase`, and added a preview contact sheet at `sprite_designs/previews/sprite-sheet-preview.png` so the full redesigned set is reviewable as an image file.

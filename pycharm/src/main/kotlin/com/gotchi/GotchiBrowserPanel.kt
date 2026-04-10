@@ -113,9 +113,11 @@ class GotchiBrowserPanel(
         val reducedMotion    = settings?.reducedMotion ?: false
         val petSize          = settings?.petSize ?: "medium"
 
-        val cssText  = loadResource("/webview/sidebar.css")
-        val jsText   = loadResource("/webview/sidebar.js")
-        var html     = loadResource("/webview/sidebar.html")
+        val cssText        = loadResource("/webview/sidebar.css")
+        val spriteManifest = loadResource("/webview/sprite-manifest.js")
+        val spritesJs      = loadResource("/webview/sprites.js")
+        val jsText         = loadResource("/webview/sidebar.js")
+        var html           = loadResource("/webview/sidebar.html")
 
         // Substitute font-size class from settings
         html = html.replace("{{fontSizeClass}}", fontSizeClass)
@@ -139,6 +141,16 @@ class GotchiBrowserPanel(
         html = html.replace(
             """<link rel="stylesheet" href="sidebar.css" />""",
             "<style>\n$cssText\n$colorOverride\n</style>"
+        )
+
+        html = html.replace(
+            """<script src="sprite-manifest.js"></script>""",
+            "<script>\n$spriteManifest\n</script>"
+        )
+
+        html = html.replace(
+            """<script src="sprites.js"></script>""",
+            "<script>\n$spritesJs\n</script>"
         )
 
         // Build the acquireVsCodeApi shim + sidebar.js as a single inline script block.

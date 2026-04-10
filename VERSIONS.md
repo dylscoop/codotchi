@@ -1,6 +1,180 @@
 ﻿# Version History
 
-## v1.0.1 — current
+## v1.2.0 — current
+
+### Changes from v1.1.2
+
+| File | What changed |
+|------|-------------|
+| `package.json` | Added root `generate:sprites` script and pure-JS image generation dependencies (`gifenc`, `pngjs`) |
+| `scripts/generate-sprites.js` | New asset pipeline that reads `sprite_designs/*.json`, generates PNG/GIF sprite assets, emits `sprite-manifest.js`, mirrors assets to PyCharm, and writes a preview contact sheet |
+| `sprite_designs/README.md` | Documented the new symbolic pixel design format used for the redesigned sprite source files |
+| `sprite_designs/*.json` | Added redesigned 16x16 sprite layouts for all 14 sprite types across baby/child/teen/adult/senior |
+| `sprite_designs/previews/sprite-sheet-preview.png` | Added full preview image sheet of the redesigned adult sprites |
+| `vscode/media/sprites/` | Added generated PNG/GIF sprite assets for all type/stage/state combinations plus egg |
+| `pycharm/src/main/resources/webview/sprites/` | Mirrored generated PNG/GIF sprite assets from VS Code |
+| `vscode/media/sprite-manifest.js` | Added generated data-URI manifest consumed by the image-based sprite loader |
+| `pycharm/src/main/resources/webview/sprite-manifest.js` | Mirrored generated sprite manifest for the PyCharm webview |
+| `vscode/media/sprites.js` | Replaced the procedural grid renderer with an image-based manifest loader and canvas draw/tint renderer |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored image-based sprite renderer from VS Code |
+| `vscode/media/sidebar.js` | Switched animation selection from `legFrame` / `breathPhase` to image animation states (`idle`, `walk`, `sleep`, `react`) and waits for sprite assets before starting animation |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored sidebar image-animation changes from VS Code |
+| `vscode/media/sidebar.html` | Loads `sprite-manifest.js` before `sprites.js` |
+| `pycharm/src/main/resources/webview/sidebar.html` | Loads `sprite-manifest.js` before `sprites.js` |
+| `vscode/src/sidebarProvider.ts` | Added `spriteManifestUri` substitution for the VS Code webview |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt` | Inlines `sprite-manifest.js` and `sprites.js` into the JCEF HTML build so generated assets load correctly in PyCharm |
+| `BUGFIXES.md` | Added BUGFIX-061 |
+| `SPRITES.md` | Replaced the old grid dump with a concise reference for the new generated sprite pipeline |
+| `vscode/FEATURES.md` | Updated sprite-related feature rows to describe generated PNG/GIF assets instead of procedural grids |
+| `VERSIONS.md` | Added v1.2.0 section |
+| `vscode/archive/vsix/vscode-gotchi-1.1.2.vsix` | Archived old vsix before rebuilding v1.2.0 |
+| `pycharm/archive/pycharm-gotchi-1.1.2.zip` | Archived old zip before rebuilding v1.2.0 |
+| `vscode/vscode-gotchi-1.2.0.vsix` | Rebuilt distributable vsix for v1.2.0 |
+| `pycharm/build/distributions/pycharm-gotchi-1.2.0.zip` | Rebuilt distributable zip for v1.2.0 |
+| `opencode-codotchi/README.md` | Updated OpenCode install instructions to reference `opencode-codotchi-1.2.0.zip` |
+| `opencode-codotchi/opencode-codotchi-1.2.0.zip` | Rebuilt distributable OpenCode zip for v1.2.0 |
+
+### Bug fixes
+
+- **BUGFIX-061** — Procedural sprite grids replaced with redesigned image assets; sprites now come from generated PNG/GIF files backed by `sprite_designs/*.json`, with image-state animation (`idle`, `walk`, `sleep`, `react`) replacing the old `fillRect` grid renderer
+
+---
+
+## v1.1.2 — previous
+
+### Changes from v1.1.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.1.1` → `1.1.2` |
+| `pycharm/build.gradle.kts` | Version bumped `1.1.1` → `1.1.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.1.1` → `1.1.2` |
+| `opencode-codotchi/package.json` | Version bumped `1.1.1` → `1.1.2` |
+| `vscode/media/sidebar.js` | Changed `baseSize` from `24` to `96` in all floor/body-height calculations; removed spurious `legH` addend from `floorY`, `staticY`, `feetY`, and overlay `fillRect` heights (BUGFIX-060) |
+| `vscode/media/sprites.js` | Replaced `if (facingLeft)` flip with `shouldFlip = isUpright ? facingLeft : !facingLeft` so quadruped head faces direction of travel (BUGFIX-060) |
+| `pycharm/src/main/resources/webview/sidebar.js` | Same as `vscode/media/sidebar.js` (BUGFIX-060) |
+| `pycharm/src/main/resources/webview/sprites.js` | Same as `vscode/media/sprites.js` (BUGFIX-060) |
+| `BUGFIXES.md` | Added BUGFIX-060 |
+| `VERSIONS.md` | Added v1.1.2 section |
+| `README.md` | Version references updated to `1.1.2` |
+| `vscode/README.md` | Version references updated to `1.1.2` |
+| `pycharm/README.md` | Version references updated to `1.1.2` |
+| `opencode-codotchi/README.md` | Version references updated to `1.1.2` |
+| `vscode/vscode-gotchi-1.1.2.vsix` | Rebuilt distributable vsix for v1.1.2 |
+| `pycharm/build/distributions/pycharm-gotchi-1.1.2.zip` | Rebuilt distributable zip for v1.1.2 |
+| `opencode-codotchi/opencode-codotchi-1.1.2.zip` | Rebuilt distributable zip for v1.1.2 |
+
+### Bug fixes
+
+- **BUGFIX-060** — Sprites rendered below the floor (body clips through ground line) and quadruped pets walked backwards; fixed by correcting `baseSize` to `96` in all floor calculations and inverting the horizontal flip for head-left quadruped sprites
+
+---
+
+## v1.1.1 — previous
+
+### Changes from v1.1.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.1.0` → `1.1.1` |
+| `pycharm/build.gradle.kts` | Version bumped `1.1.0` → `1.1.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.1.0` → `1.1.1` |
+| `opencode-codotchi/package.json` | Version bumped `1.1.0` → `1.1.1` |
+| `vscode/src/persistence.ts` | Added `!state.alive` write guard in `saveSharedState`; added `&& shared.state.alive` read guard in `loadState` (BUGFIX-059) |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | Added `!state.alive` write guard in `saveToSharedFile`; added `&& shared.first.alive` read guard in `loadPetState` (BUGFIX-059) |
+| `BUGFIXES.md` | Added BUGFIX-059 |
+| `VERSIONS.md` | Added v1.1.1 section |
+| `README.md` | Version references updated to `1.1.1` |
+| `vscode/README.md` | Version references updated to `1.1.1` |
+| `pycharm/README.md` | Version references updated to `1.1.1` |
+| `opencode-codotchi/README.md` | Version references updated to `1.1.1` |
+| `vscode/archive/vsix/vscode-gotchi-1.1.0.vsix` | Archived old vsix before rebuild |
+| `pycharm/archive/pycharm-gotchi-1.1.0.zip` | Archived old zip before rebuild |
+| `vscode/vscode-gotchi-1.1.1.vsix` | Rebuilt distributable vsix for v1.1.1 |
+| `pycharm/build/distributions/pycharm-gotchi-1.1.1.zip` | Rebuilt distributable zip for v1.1.1 |
+| `opencode-codotchi/opencode-codotchi-1.1.1.zip` | Rebuilt distributable zip for v1.1.1 |
+
+### Bug fixes
+
+- **BUGFIX-059** — Dead pet state in shared cross-IDE file overwrites live pet in other IDE; fixed by suppressing writes when `alive = false` and ignoring dead-state reads in the "newer timestamp wins" load guard
+
+---
+
+## v1.1.0 — previous
+
+### Changes from v1.0.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.0.3` → `1.1.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.0.3` → `1.1.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.0.3` → `1.1.0` |
+| `opencode-codotchi/package.json` | Version bumped `1.0.3` → `1.1.0` |
+| `vscode/archive/vsix/vscode-gotchi-1.0.2.vsix` | Archived old vsix before rebuild |
+| `pycharm/archive/pycharm-gotchi-1.0.2.zip` | Archived old zip before rebuild |
+| `vscode/vscode-gotchi-1.1.0.vsix` | Rebuilt distributable vsix for v1.1.0 |
+| `pycharm/build/distributions/pycharm-gotchi-1.1.0.zip` | Rebuilt distributable zip for v1.1.0 |
+| `opencode-codotchi/opencode-codotchi-1.1.0.zip` | Rebuilt distributable zip for v1.1.0 |
+| `VERSIONS.md` | Added v1.1.0 section |
+
+---
+
+## v1.0.3 — previous
+
+### Changes from v1.0.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.0.2` → `1.0.3` |
+| `pycharm/build.gradle.kts` | Version bumped `1.0.2` → `1.0.3` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.0.2` → `1.0.3` |
+| `opencode-codotchi/package.json` | Version bumped `1.0.2` → `1.0.3` |
+| `vscode/media/sprites.js` | Full rewrite — new grid system (32×48 upright, 48×32 quad/snake); all 14 animals × 5 stages redrawn; BUGFIX-052 through BUGFIX-057 applied; `DEFS_LG`/`SPRITES_LG` removed; single `DEFS` at new larger sizes; `UPRIGHT_TYPES` set used to select cols/rows/legRowStart per animal; `colorMap` simplified to indices 1/2/3 |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored sprites.js rewrite from vscode |
+| `vscode/media/sidebar.js` | `STAGE_SCALES` bumped (baby=0.65…adult=1.00); `STAGE_BODY_HEIGHT_MULTS` unified to 0.67 for all stages; `weightWidthMultiplier` thresholds updated (heavy>80=1.50, overweight>50=1.30, underweight<17=0.80); removed `!== "classic"` suppression from `spriteLabel` condition so animal type always shows (BUGFIX-058) |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored sidebar.js changes from vscode |
+| `SPRITES.md` | Rewritten — full visual block-character sprite designs for all 14 animals × 5 stages at new grid dimensions |
+| `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt` | Added `spriteType: String` field (BUGFIX-058) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` | Added `ZODIAC_ANIMALS` list and `randomSpriteType()` function (BUGFIX-058) |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | `createPet()` now calls `randomSpriteType()` to assign `spriteType` (BUGFIX-058) |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | Added `spriteType` to `RawPetState`, `sanitise()`, and `toRaw()` (BUGFIX-058) |
+| `BUGFIXES.md` | Added BUGFIX-052 through BUGFIX-057; added BUGFIX-058 |
+| `VERSIONS.md` | Added v1.0.3 section |
+
+### Bug fixes
+
+- **BUGFIX-052** — `legRowStart` wrong for both upright and quadruped types; now derived per type (quad=25, upright=37)
+- **BUGFIX-053** — `accent` colour hardcoded to `palette.secondary`; fixed to `darkenHex(primary, 0.70)`
+- **BUGFIX-054** — Baby sprites too small; fixed by redesigning all grids at larger 32×48 / 48×32 dimensions
+- **BUGFIX-055** — `BASE_SIZE = 24` too small; replaced with local `baseSize = 96` inside renderer
+- **BUGFIX-056** — `STAGE_SCALES` too small across all stages; new values: baby=0.65, child=0.75, teen=0.85, adult=1.00, senior=1.00
+- **BUGFIX-057** — `STAGE_BODY_HEIGHT_MULTS` wrong for landscape quadrupeds; unified to 0.67 for all stages
+- **BUGFIX-058** — Animal type never shown in PyCharm sidebar (`spriteType` field missing from PyCharm `PetState`); classic type hidden on VS Code (removed `!== "classic"` suppression)
+
+---
+
+## v1.0.2 — previous
+
+### Changes from v1.0.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.0.1` → `1.0.2` |
+| `pycharm/build.gradle.kts` | Version bumped `1.0.1` → `1.0.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.0.1` → `1.0.2` |
+| `opencode-codotchi/package.json` | Version bumped `1.0.1` → `1.0.2` |
+| `vscode/media/sprites.js` | Full sprite redesign — all 14 zodiac animals redrawn with correct anatomy (horizontal quadrupeds, 4 legs, tails, large 24×32 grids for all types) |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored sprites.js redesign |
+| `SPRITES.md` | Regenerated — full design guide for all 14 sprite types at both resolutions |
+| `vscode/archive/vsix/vscode-gotchi-1.0.1.vsix` | Archived old vsix before rebuild |
+| `pycharm/archive/pycharm-gotchi-1.0.1.zip` | Archived old zip before rebuild |
+| `vscode/vscode-gotchi-1.0.2.vsix` | Rebuilt distributable vsix for v1.0.2 |
+| `pycharm/build/distributions/pycharm-gotchi-1.0.2.zip` | Rebuilt distributable zip for v1.0.2 |
+| `opencode-codotchi/opencode-codotchi-1.0.2.zip` | Rebuilt distributable zip for v1.0.2 |
+
+---
+
+## v1.0.1 — previous
 
 ### Changes from v1.0.0
 

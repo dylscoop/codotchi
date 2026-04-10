@@ -52,7 +52,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 |---------|--------|-------|
 | Care-score-based evolution tiers (best / mid / low) | `[x]` | |
 | Distinct character names per type × stage × tier | `[x]` | |
-| Visual difference between character variants | `[x]` | 14 zodiac pixel-art grids via sprites.js |
+| Visual difference between character variants | `[x]` | 14 redesigned zodiac sprite sets generated from `sprite_designs/*.json` into PNG/GIF assets, then rendered in the webview via `sprites.js` |
 | Evolution notification in event log | `[~]` | Event flag exists; no fanfare animation |
 | Egg-hatch animation | `[ ]` | Wiggle before first evolution |
 
@@ -641,7 +641,7 @@ These are lower-priority ideas that require significant design work.
 |---------|-------|
 | Gotchi Points currency | Earned from minigame wins; spent in an in-game shop for cosmetics |
 | In-game shop | Buy accessories, backgrounds, or extra colour palettes |
-| Pixel-art sprite assets | Replace procedural canvas drawing with actual PNG sprite sheets |
+| Pixel-art sprite assets | `[x]` Generated PNG/GIF sprite assets replace the old procedural grid renderer; source art lives in `sprite_designs/` and preview output is written to `sprite_designs/previews/` |
 | Sprite animation frames | Idle walk cycle, happy, sad, sleeping, eating — 2–4 frame flip-book per mood |
 | Redesign game art | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style |
 | Egg-hatch animation | Wiggle → crack → burst sequence (fits naturally into reaction queue) |

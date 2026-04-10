@@ -8,6 +8,7 @@ data class PetState(
     // Identity
     val name: String,
     val petType: String,
+    val spriteType: String,
     val color: String,
 
     // Core stats

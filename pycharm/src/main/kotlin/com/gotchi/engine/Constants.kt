@@ -347,3 +347,26 @@ const val MISBEHAVIOUR_BASE_CHANCE: Double = 0.005
 const val MISBEHAVIOUR_MAX_CHANCE: Double = 0.08
 const val GIFT_BASE_CHANCE: Double = 0.002
 const val GIFT_MAX_CHANCE: Double = 0.05
+
+// ---------------------------------------------------------------------------
+// Sprite types — ported 1:1 from vscode/src/gameEngine.ts
+// ---------------------------------------------------------------------------
+
+/** The 12 zodiac animal sprite types. */
+val ZODIAC_ANIMALS = listOf(
+    "rat", "ox", "tiger", "rabbit", "dragon", "snake",
+    "horse", "goat", "monkey", "rooster", "dog", "pig"
+)
+
+/**
+ * Sample a random sprite type at pet creation.
+ * - "cat"     — 2 % chance (rare)
+ * - "classic" — 2 % chance (rare; the original humanoid shape)
+ * - Each of the 12 zodiac animals — 96 % / 12 ≈ 8.17 % chance
+ */
+fun randomSpriteType(): String {
+    val r = Math.random() * 100
+    if (r < 2)  return "cat"
+    if (r < 4)  return "classic"
+    return ZODIAC_ANIMALS[(((r - 4) / (96.0 / 12)).toInt()).coerceIn(0, 11)]
+}

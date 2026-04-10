@@ -94,7 +94,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
 
         // Prefer the shared file if it is strictly newer.
         val shared = loadFromSharedFile()
-        if (shared != null && shared.second > lastSaveTimestamp) {
+        if (shared != null && shared.second > lastSaveTimestamp && shared.first.alive) {
             // Promote the shared state so the next getState() / save picks it up.
             petStateJson      = gson.toJson(toRaw(shared.first))
             lastSaveTimestamp = shared.second
@@ -149,6 +149,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
      * Failures are silently swallowed — the shared file is best-effort only.
      */
     private fun saveToSharedFile(state: PetState) {
+        if (!state.alive) return
         try {
             val file = getSharedStatePath()
             file.parentFile?.mkdirs()
@@ -182,6 +183,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
     private data class RawPetState(
         val name: String?,
         val petType: String?,
+        val spriteType: String?,       // absent in saves before v1.0.3
         val color: String?,
         val hunger: Int?,
         val happiness: Int?,
@@ -234,6 +236,8 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         val partial = PetState(
             name                  = r.name                  ?: "Gotchi",
             petType               = petType,
+            // Back-compat: old saves won't have spriteType; default to "classic"
+            spriteType            = r.spriteType            ?: "classic",
             color                 = r.color                 ?: "neon",
             hunger                = r.hunger                ?: 50,
             happiness             = r.happiness             ?: 50,
@@ -286,6 +290,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
     private fun toRaw(s: PetState) = RawPetState(
         name                  = s.name,
         petType               = s.petType,
+        spriteType            = s.spriteType,
         color                 = s.color,
         hunger                = s.hunger,
         happiness             = s.happiness,

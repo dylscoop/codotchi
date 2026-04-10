@@ -124,9 +124,7 @@
   let petVx         = 0;      // horizontal velocity px/s
   let petVy         = 0;      // vertical velocity px/s
   let petFacingLeft = false;
-  let animTick      = 0;      // raw frame counter (drives leg animation period)
   let lastFrameMs   = 0;      // performance.now() of previous rAF frame
-  let breathPhase   = 0;      // sleeping breath bob phase in radians
   let hopTimer      = HOP_INTERVAL; // seconds until next happy hop
   let idleTimer     = 0;      // seconds until next wander direction/pause change
   let reactionQueue = [];     // [{ type, startMs, durationMs, startX, startY }]
@@ -633,7 +631,7 @@
     // Clamp petX so the pet doesn't walk off the right edge after a resize
     if (lastState) {
       const scale   = STAGE_SCALES[lastState.stage] || 0.5;
-      const bSize   = Math.round(24 * petSizeMultiplier() * scale);
+      const bSize   = Math.round(96 * petSizeMultiplier() * scale);
       const wwm     = weightWidthMultiplier(lastState.weight || 50);
       const bWidth  = Math.round(bSize * wwm);
       const maxX    = spriteCanvas.width - bWidth - 4;
@@ -673,11 +671,10 @@
   function getFloorY() {
     if (!lastState) { return spriteCanvas.height - 4; }
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
-    var bSize      = Math.round(24 * petSizeMultiplier() * scale);
+    var bSize      = Math.round(96 * petSizeMultiplier() * scale);
     var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
     var bHeight    = Math.round(bSize * heightMult);
-    var legH       = Math.max(2, Math.round(bSize * 0.22));
-    return spriteCanvas.height - bHeight - legH - 4;
+    return spriteCanvas.height - bHeight - 4;
   }
 
   /**
@@ -707,13 +704,12 @@
 
     // Dimension helpers
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
-    var bSize      = Math.round(24 * petSizeMultiplier() * scale);
+    var bSize      = Math.round(96 * petSizeMultiplier() * scale);
     var wwm        = weightWidthMultiplier(lastState.weight || 50);
     var bWidth     = Math.round(bSize * wwm);
     var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
     var bHeight    = Math.round(bSize * heightMult);
-    var legH       = Math.max(2, Math.round(bSize * 0.22));
-    var floorY     = spriteCanvas.height - bHeight - legH - 4;
+    var floorY     = spriteCanvas.height - bHeight - 4;
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
 
@@ -739,8 +735,6 @@
     // Active reaction (first in queue, if any)
     var activeReaction = reactionQueue.length > 0 ? reactionQueue[0] : null;
 
-    animTick++;
-
     // ── Movement ──────────────────────────────────────────────────────────
     if (activeReaction && activeReaction.type === "fell_asleep") {
       // Lock to floor in current position during the fell_asleep animation
@@ -756,8 +750,7 @@
       petVy = 0;
 
     } else if (lastState.sleeping) {
-      // Sleeping: breath bob only — all movement frozen
-      breathPhase += 1.8 * dt;
+      // Sleeping: sprite animation handles the visual breathing; movement stays frozen.
       petVx = 0;
       petVy = 0;
       petY  = floorY;
@@ -860,19 +853,29 @@
       petX = Math.max(minX, Math.min(maxX, petX));
     }
 
-    // ── Leg frame ────────────────────────────────────────────────────────
-    var walking  = !lastState.sleeping && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
-    var legFrame = walking ? Math.floor(animTick / 10) % 2 : 0;
-    var walkBob  = (walking && legFrame === 1) ? -1 : 0;
+    // ── Animation state ───────────────────────────────────────────────────
+    var walking = !lastState.sleeping && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
+    var animState = lastState.stage === "egg"
+      ? "egg"
+      : lastState.sleeping
+        ? "sleep"
+        : walking
+          ? "walk"
+          : "idle";
+    if (activeReaction) {
+      animState = "react";
+    }
 
     // ── Draw ──────────────────────────────────────────────────────────────
     drawEnvironment(lastState);
-    drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs);
-    drawStatusIndicators(lastState, Math.round(petX), Math.round(petY) + walkBob);
+    drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY), petFacingLeft, animState, activeReaction, nowMs);
+    drawStatusIndicators(lastState, Math.round(petX), Math.round(petY));
   }
 
   if (!REDUCED_MOTION) {
-    requestAnimationFrame(animationLoop);
+    window.loadGotchiSprites(function () {
+      requestAnimationFrame(animationLoop);
+    });
   }
 
   // ── State rendering ──────────────────────────────────────────────────────
@@ -903,7 +906,7 @@
     const poopStr = state.poops === 1 ? "1 poop" : state.poops + " poops";
     const typeLabel = (state.petType || "codeling");
     const typeLabelCap = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
-    const spriteLabel = (state.spriteType && state.spriteType !== "classic")
+    const spriteLabel = state.spriteType
       ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
       : "";
     infoLine.textContent =
@@ -947,7 +950,7 @@
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
       var scale2   = STAGE_SCALES[state.stage] || 0.5;
-      var bSize2   = Math.round(24 * petSizeMultiplier() * scale2);
+      var bSize2   = Math.round(96 * petSizeMultiplier() * scale2);
       var wwm2     = weightWidthMultiplier(state.weight || 50);
       var bWidth2  = Math.round(bSize2 * wwm2);
       var centreX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth2 / 2));
@@ -963,9 +966,7 @@
       petVx         = 0;
       petVy         = 0;
       petFacingLeft = false;
-      animTick      = 0;
       lastFrameMs   = 0;
-      breathPhase   = 0;
       hopTimer      = HOP_INTERVAL;
       idleTimer     = 0;
       reactionQueue = [];
@@ -1031,7 +1032,14 @@
     }
 
     // Reduced motion: draw a static frame immediately after every state update
-    if (REDUCED_MOTION) { drawStaticPet(state); }
+    if (REDUCED_MOTION) {
+      drawStaticPet(state);
+      window.loadGotchiSprites(function () {
+        if (lastState && lastState.alive) {
+          drawStaticPet(lastState);
+        }
+      });
+    }
   }
 
   /**
@@ -1432,11 +1440,11 @@
    * @param {number}  x          - Left edge of body in canvas pixels
    * @param {number}  bodyY      - Top of body in canvas pixels
    * @param {boolean} facingLeft
-   * @param {number}  legFrame   - 0 or 1
+   * @param {string}  animState
    */
-  function drawBody(state, x, bodyY, facingLeft, legFrame) {
+  function drawBody(state, x, bodyY, facingLeft, animState) {
     window.renderSpriteGrid(
-      spriteCtx, state, x, bodyY, facingLeft, legFrame, breathPhase,
+      spriteCtx, state, x, bodyY, facingLeft, animState,
       STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette
     );
   }
@@ -1448,26 +1456,25 @@
    * @param {number}      x          - Left edge of body (canvas px)
    * @param {number}      bodyY      - Top of body (canvas px)
    * @param {boolean}     facingLeft
-   * @param {number}      legFrame
+   * @param {string}      animState
    * @param {object|null} reaction   - Active reaction object (or null)
    * @param {number}      nowMs      - performance.now()
    */
-  function drawBodyWithReaction(state, x, bodyY, facingLeft, legFrame, reaction, nowMs) {
+  function drawBodyWithReaction(state, x, bodyY, facingLeft, animState, reaction, nowMs) {
     if (!reaction) {
-      drawBody(state, x, bodyY, facingLeft, legFrame);
+      drawBody(state, x, bodyY, facingLeft, animState);
       return;
     }
 
     var t = Math.min(1, (nowMs - reaction.startMs) / reaction.durationMs);
     var palette   = getPalette(state.color);
     var stageScale = STAGE_SCALES[state.stage] || 0.5;
-    var bSize     = Math.round(24 * petSizeMultiplier() * stageScale);
+    var bSize     = Math.round(96 * petSizeMultiplier() * stageScale);
     var wwm       = weightWidthMultiplier(state.weight || 50);
     var bWidth    = Math.round(bSize * wwm);
     var hMult     = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
     var bHeight   = Math.round(bSize * hMult);
-    var legH      = Math.max(2, Math.round(bSize * 0.22));
-    var feetY     = bodyY + bHeight + legH;   // canvas Y of the bottom of the feet
+    var feetY     = bodyY + bHeight;   // canvas Y of the bottom of the feet
 
     switch (reaction.type) {
 
@@ -1475,7 +1482,7 @@
       case "fed_snack": {
         // Bob up then down: yOff = -sin(t*π)*10
         var yOff = -Math.sin(t * Math.PI) * 10;
-        drawBody(state, x, bodyY + yOff, facingLeft, legFrame);
+        drawBody(state, x, bodyY + yOff, facingLeft, animState);
         break;
       }
 
@@ -1488,7 +1495,7 @@
         spriteCtx.translate(cx2, cy2);
         spriteCtx.rotate(t * Math.PI * 2);
         spriteCtx.translate(-cx2, -cy2);
-        drawBody(state, x, bodyY + yOff2, facingLeft, legFrame);
+        drawBody(state, x, bodyY + yOff2, facingLeft, animState);
         spriteCtx.restore();
         break;
       }
@@ -1500,7 +1507,7 @@
         spriteCtx.translate(x + bWidth / 2, feetY);
         spriteCtx.scale(sc, sc);
         spriteCtx.translate(-(x + bWidth / 2), -feetY);
-        drawBody(state, x, bodyY, facingLeft, legFrame);
+        drawBody(state, x, bodyY, facingLeft, animState);
         spriteCtx.restore();
         break;
       }
@@ -1509,18 +1516,18 @@
         // Recoil away from direction of travel
         var dir  = facingLeft ? 1 : -1;
         var xOff = Math.sin(t * Math.PI) * 10 * dir;
-        drawBody(state, x + xOff, bodyY, facingLeft, legFrame);
+        drawBody(state, x + xOff, bodyY, facingLeft, animState);
         break;
       }
 
       case "praised": {
         // Hop up + yellow highlight fade
         var yOff3 = -Math.sin(t * Math.PI) * 16;
-        drawBody(state, x, bodyY + yOff3, facingLeft, legFrame);
+        drawBody(state, x, bodyY + yOff3, facingLeft, animState);
         spriteCtx.save();
         spriteCtx.globalAlpha = (1 - t) * 0.35;
         spriteCtx.fillStyle = "#FFD600";
-        spriteCtx.fillRect(x, bodyY + yOff3, bWidth, bHeight + legH);
+        spriteCtx.fillRect(x, bodyY + yOff3, bWidth, bHeight);
         spriteCtx.restore();
         break;
       }
@@ -1532,10 +1539,10 @@
         spriteCtx.translate(x + bWidth / 2, feetY);
         spriteCtx.scale(sc2, sc2);
         spriteCtx.translate(-(x + bWidth / 2), -feetY);
-        drawBody(state, x, bodyY, facingLeft, legFrame);
+        drawBody(state, x, bodyY, facingLeft, animState);
         spriteCtx.globalAlpha = Math.sin(t * Math.PI) * 0.4;
         spriteCtx.fillStyle = "#FFD600";
-        spriteCtx.fillRect(x, bodyY, bWidth, bHeight + legH);
+        spriteCtx.fillRect(x, bodyY, bWidth, bHeight);
         spriteCtx.restore();
         break;
       }
@@ -1558,35 +1565,35 @@
           }
           fl2 = nearestPooX < x;
         }
-        drawBody(state, x, bodyY, fl2, legFrame);
+        drawBody(state, x, bodyY, fl2, animState);
         break;
       }
 
       case "became_sick": {
         // Random jitter per frame — handled in movement; just draw normally here
-        drawBody(state, x, bodyY, facingLeft, legFrame);
+        drawBody(state, x, bodyY, facingLeft, animState);
         break;
       }
 
       case "healed": {
         // Green overlay fading out
-        drawBody(state, x, bodyY, facingLeft, legFrame);
+        drawBody(state, x, bodyY, facingLeft, animState);
         spriteCtx.save();
         spriteCtx.globalAlpha = (1 - t) * 0.5;
         spriteCtx.fillStyle = "#00c853";
-        spriteCtx.fillRect(x, bodyY, bWidth, bHeight + legH);
+        spriteCtx.fillRect(x, bodyY, bWidth, bHeight);
         spriteCtx.restore();
         break;
       }
 
       case "fell_asleep": {
         // Position handled by movement; just draw the body normally
-        drawBody(state, x, bodyY, facingLeft, legFrame);
+        drawBody(state, x, bodyY, facingLeft, animState);
         break;
       }
 
       default:
-        drawBody(state, x, bodyY, facingLeft, legFrame);
+        drawBody(state, x, bodyY, facingLeft, animState);
     }
   }
 
@@ -1598,7 +1605,7 @@
    */
   function drawStatusIndicators(state, x, bodyY) {
     var scale    = STAGE_SCALES[state.stage] || 0.5;
-    var bSize    = Math.round(24 * petSizeMultiplier() * scale);
+    var bSize    = Math.round(96 * petSizeMultiplier() * scale);
     var wwm      = weightWidthMultiplier(state.weight || 50);
     var bWidth   = Math.round(bSize * wwm);
     var palette  = getPalette(state.color);
@@ -1626,17 +1633,16 @@
     drawEnvironment(state);
 
     var scale    = STAGE_SCALES[state.stage] || 0.5;
-    var bSize    = Math.round(24 * petSizeMultiplier() * scale);
+    var bSize    = Math.round(96 * petSizeMultiplier() * scale);
     var wwm      = weightWidthMultiplier(state.weight || 50);
     var bWidth   = Math.round(bSize * wwm);
     var hMult    = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
     var bHeight  = Math.round(bSize * hMult);
-    var legH     = Math.max(2, Math.round(bSize * 0.22));
     var H        = spriteCanvas.height;
     var staticX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth / 2));
-    var staticY  = H - bHeight - legH - 4;
+    var staticY  = H - bHeight - 4;
 
-    drawBody(state, staticX, staticY, false, 0);
+    drawBody(state, staticX, staticY, false, state.stage === "egg" ? "egg" : (state.sleeping ? "sleep" : "idle"));
     drawStatusIndicators(state, staticX, staticY);
   }
 
@@ -1669,16 +1675,16 @@
 
   const STAGE_SCALES = {
     egg:    0.35,
-    baby:   0.45,
-    child:  0.55,
-    teen:   0.70,
-    adult:  0.85,
-    senior: 0.90,
+    baby:   0.65,
+    child:  0.75,
+    teen:   0.85,
+    adult:  1.00,
+    senior: 1.00,
   };
 
   /**
    * Return the base-size multiplier driven by the gotchi.petSize setting.
-   * The value is injected into document.body.dataset.petSize by the plugin.
+   * The value is injected into document.body.dataset.petSize by sidebarProvider.ts.
    *   small  = 1.0x  (original size)
    *   medium = 1.5x  (default)
    *   large  = 2.0x  (high-detail 24x32 sprites)
@@ -1688,25 +1694,32 @@
     return ps === "small" ? 1.0 : ps === "large" ? 2.0 : 1.5;
   }
 
-  /** Height multipliers per stage (relative to bodySize). */
+  /** Height multipliers per stage (relative to bodySize).
+   * Quadrupeds are natively landscape (48x32) so height mult < 1.
+   * Uprights are natively portrait (32x48) so height mult > 1.
+   * The renderer uses isUpright to pick the right grid; these mults
+   * are the aspect-ratio correction applied on top of BASE_SIZE.
+   */
   const STAGE_BODY_HEIGHT_MULTS = {
-    egg:    1.3,
-    baby:   1.0,
-    child:  1.0,
-    teen:   1.35,
-    adult:  1.5,
-    senior: 1.4,
+    egg:    1.30,
+    baby:   0.67,
+    child:  0.67,
+    teen:   0.75,
+    adult:  0.67,
+    senior: 0.67,
   };
 
   /**
    * Return the width multiplier for the sprite based on weight.
+   * Quadrupeds: weight affects width only.
+   * Uprights: weight affects width (this) and height (via weightHeightMultiplier).
    * @param {number} weight
    * @returns {number}
    */
   function weightWidthMultiplier(weight) {
-    if (weight > 80)  { return 1.5; }
-    if (weight > 50)  { return 1.25; }
-    if (weight < 17)  { return 0.75; }
+    if (weight > 80)  { return 1.50; }
+    if (weight > 50)  { return 1.30; }
+    if (weight < 17)  { return 0.80; }
     return 1.0;
   }
 
