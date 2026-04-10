@@ -355,7 +355,7 @@ const val GIFT_MAX_CHANCE: Double = 0.05
 /** The 12 zodiac animal sprite types. */
 val ZODIAC_ANIMALS = listOf(
     "rat", "ox", "tiger", "rabbit", "dragon", "snake",
-    "horse", "goat", "monkey", "rooster", "dog", "pig"
+    "horse", "sheep", "monkey", "rooster", "dog", "pig"
 )
 
 /**

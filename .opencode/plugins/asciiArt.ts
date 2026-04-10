@@ -384,7 +384,7 @@ const SPRITE_HEAD: Record<string, Record<string, string>> = {
     adult:  "  n(-_-)n    ",
     senior: "  n(-_-)n    ",
   },
-  goat: {
+  sheep: {
     baby:   "  V(^.^)V    ",
     child:  "  V(-_-)V    ",
     teen:   "  V(-_-)V    ",

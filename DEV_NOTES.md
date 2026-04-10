@@ -508,7 +508,7 @@ STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette)`
 
 | spriteType | Probability |
 |------------|-------------|
-| `rat`, `ox`, `tiger`, `rabbit`, `dragon`, `snake`, `horse`, `goat`, `monkey`, `rooster`, `dog`, `pig` | ~8.17% each (12 × 8.17% ≈ 98%) |
+| `rat`, `ox`, `tiger`, `rabbit`, `dragon`, `snake`, `horse`, `sheep`, `monkey`, `rooster`, `dog`, `pig` | ~8.17% each (12 × 8.17% ≈ 98%) |
 | `classic` | 1% |
 | `cat` | 1% |
 

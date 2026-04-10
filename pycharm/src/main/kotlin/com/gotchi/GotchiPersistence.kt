@@ -230,14 +230,19 @@ class GotchiPersistence : PersistentStateComponent<Element> {
 
     private fun sanitise(r: RawPetState): PetState {
         val petType = r.petType ?: "codeling"
+        val spriteType = when (r.spriteType) {
+            null -> "classic"
+            "goat" -> "sheep"
+            else -> r.spriteType
+        }
         // nextPoopIntervalTicks absent in v0.0.1 saves — resample on load
         val nextPoop = r.nextPoopIntervalTicks ?: sampleNextPoopInterval(petType)
 
         val partial = PetState(
             name                  = r.name                  ?: "Gotchi",
             petType               = petType,
-            // Back-compat: old saves won't have spriteType; default to "classic"
-            spriteType            = r.spriteType            ?: "classic",
+            // Back-compat: old saves won't have spriteType; legacy "goat" saves now map to "sheep"
+            spriteType            = spriteType,
             color                 = r.color                 ?: "neon",
             hunger                = r.hunger                ?: 50,
             happiness             = r.happiness             ?: 50,
