@@ -314,7 +314,7 @@ function writeGif(filePath, frameRows, scale) {
 
 function buildPreviewSheet(designs) {
   ensureDir(PREVIEW_DIR);
-  const cellTile = 16 * PREVIEW_SCALE;
+  const cellTile = 32 * PREVIEW_SCALE;
   const labelHeight = 18;
   const columns = 5;
   const rows = Math.ceil(ANIMAL_ORDER.length / columns);
@@ -391,14 +391,12 @@ function generateSpriteAssets() {
         const frames = buildFrames(rows, animationState);
         const baseName = `${animal}_${stage}_${animationState}`;
         writeGif(path.join(VSCODE_SPRITES_DIR, `${baseName}.gif`), frames, OUTPUT_SCALE);
-        writePng(path.join(VSCODE_SPRITES_DIR, `${baseName}.png`), frames[0], OUTPUT_SCALE);
       }
     }
   }
 
-  const eggFrames = createEggFrames(16);
+  const eggFrames = createEggFrames(32);
   writeGif(path.join(VSCODE_SPRITES_DIR, "egg.gif"), eggFrames, OUTPUT_SCALE);
-  writePng(path.join(VSCODE_SPRITES_DIR, "egg.png"), eggFrames[0], OUTPUT_SCALE);
 
   for (const file of fs.readdirSync(VSCODE_SPRITES_DIR)) {
     fs.copyFileSync(
