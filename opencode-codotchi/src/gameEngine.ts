@@ -774,7 +774,7 @@ export function careTierLabel(careScore: number): string {
  */
 const ZODIAC_ANIMALS = [
   "rat", "ox", "tiger", "rabbit", "dragon", "snake",
-  "horse", "goat", "monkey", "rooster", "dog", "pig",
+  "horse", "sheep", "monkey", "rooster", "dog", "pig",
 ] as const;
 
 /**
@@ -2067,7 +2067,11 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     name: getString("name", "Gotchi"),
     petType: getString("petType", "codeling"),
     // Back-compat: old saves won't have spriteType; default to "classic" (original humanoid).
-    spriteType: getString("spriteType", "classic"),
+    // Legacy "goat" saves are silently migrated to "sheep".
+    spriteType: (() => {
+      const s = getString("spriteType", "classic");
+      return s === "goat" ? "sheep" : s;
+    })(),
     color: getString("color", "neon"),
     hunger: getNumber("hunger", 50),
     happiness: getNumber("happiness", 50),
