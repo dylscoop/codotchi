@@ -94,7 +94,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
 
         // Prefer the shared file if it is strictly newer.
         val shared = loadFromSharedFile()
-        if (shared != null && shared.second > lastSaveTimestamp) {
+        if (shared != null && shared.second > lastSaveTimestamp && shared.first.alive) {
             // Promote the shared state so the next getState() / save picks it up.
             petStateJson      = gson.toJson(toRaw(shared.first))
             lastSaveTimestamp = shared.second
@@ -149,6 +149,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
      * Failures are silently swallowed — the shared file is best-effort only.
      */
     private fun saveToSharedFile(state: PetState) {
+        if (!state.alive) return
         try {
             val file = getSharedStatePath()
             file.parentFile?.mkdirs()

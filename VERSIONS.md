@@ -1,6 +1,36 @@
 ﻿# Version History
 
-## v1.1.0 — current
+## v1.1.1 — current
+
+### Changes from v1.1.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.1.0` → `1.1.1` |
+| `pycharm/build.gradle.kts` | Version bumped `1.1.0` → `1.1.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.1.0` → `1.1.1` |
+| `opencode-codotchi/package.json` | Version bumped `1.1.0` → `1.1.1` |
+| `vscode/src/persistence.ts` | Added `!state.alive` write guard in `saveSharedState`; added `&& shared.state.alive` read guard in `loadState` (BUGFIX-059) |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | Added `!state.alive` write guard in `saveToSharedFile`; added `&& shared.first.alive` read guard in `loadPetState` (BUGFIX-059) |
+| `BUGFIXES.md` | Added BUGFIX-059 |
+| `VERSIONS.md` | Added v1.1.1 section |
+| `README.md` | Version references updated to `1.1.1` |
+| `vscode/README.md` | Version references updated to `1.1.1` |
+| `pycharm/README.md` | Version references updated to `1.1.1` |
+| `opencode-codotchi/README.md` | Version references updated to `1.1.1` |
+| `vscode/archive/vsix/vscode-gotchi-1.1.0.vsix` | Archived old vsix before rebuild |
+| `pycharm/archive/pycharm-gotchi-1.1.0.zip` | Archived old zip before rebuild |
+| `vscode/vscode-gotchi-1.1.1.vsix` | Rebuilt distributable vsix for v1.1.1 |
+| `pycharm/build/distributions/pycharm-gotchi-1.1.1.zip` | Rebuilt distributable zip for v1.1.1 |
+| `opencode-codotchi/opencode-codotchi-1.1.1.zip` | Rebuilt distributable zip for v1.1.1 |
+
+### Bug fixes
+
+- **BUGFIX-059** — Dead pet state in shared cross-IDE file overwrites live pet in other IDE; fixed by suppressing writes when `alive = false` and ignoring dead-state reads in the "newer timestamp wins" load guard
+
+---
+
+## v1.1.0 — previous
 
 ### Changes from v1.0.3
 
