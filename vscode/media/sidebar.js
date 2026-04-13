@@ -1717,6 +1717,12 @@
     return 1.0;
   }
 
+  // ── Initial view ─────────────────────────────────────────────────────────
+  // Must be set BEFORE the message listener is registered so that any
+  // bootstrap stateUpdate arriving immediately does not get dropped by the
+  // currentScreen === "setup" guard in the handler below (BUGFIX-016).
+  showScreen("game");
+
   // ── Message handler ──────────────────────────────────────────────────────
 
   window.addEventListener("message", function (event) {
@@ -1771,8 +1777,5 @@
       vscode.postMessage({ command: "user_activity" });
     });
   }
-
-  // ── Initial view ─────────────────────────────────────────────────────────
-  showScreen("game");
 
 }());
