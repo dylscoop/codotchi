@@ -1,6 +1,40 @@
 ﻿# Version History
 
-## v1.1.2 — current
+## v1.1.3 — current
+
+### Changes from v1.1.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.1.2` → `1.1.3` |
+| `pycharm/build.gradle.kts` | Version bumped `1.1.2` → `1.1.3` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.1.2` → `1.1.3` |
+| `opencode-codotchi/package.json` | Version bumped `1.1.2` → `1.1.3` |
+| `vscode/media/sidebar.js` | BUGFIX-066: added stage-change reset block so `petX`/`petY` are cleared on evolution; BUGFIX-067: fixed three reaction `fillRect` heights (`bHeight + legH` → `bHeight`) |
+| `vscode/media/sprites.js` | BUGFIX-068: inverted quadruped/snake flip direction (`!facingLeft`); BUGFIX-069: regenerated all five snake stage sprites anchored at row 31 |
+| `scripts/gen_sprites.js` | BUGFIX-069: rewrote `snakeGrid()` to anchor bottom segment at row 31 |
+| `vscode/src/sidebarProvider.ts` | Bug 4: `petStageHeight` changed from `160` → `240` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiSettings.kt` | Bug 4: `petStageHeight` default changed from `160` → `240` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Synced verbatim from VS Code (BUGFIX-066, BUGFIX-067) |
+| `pycharm/src/main/resources/webview/sprites.js` | Synced verbatim from VS Code (BUGFIX-068, BUGFIX-069) |
+| `BUGFIXES.md` | Added BUGFIX-066, BUGFIX-067, BUGFIX-068, BUGFIX-069 |
+
+### Bug fixes
+
+- **BUGFIX-066** — Evolution causes black screen (petY not reset on stage change)
+- **BUGFIX-067** — Evolution black screen caused by undefined `legH` in reaction fillRects
+- **BUGFIX-068** — All quadruped and snake pets walk backwards (facing wrong direction)
+- **BUGFIX-069** — Snake floats above the floor (body occupies rows 3–19, leaving blank rows 20–31)
+
+### Updated constants
+
+```
+petStageHeight: Int = 240   // was 160 — stage canvas is now 1.5× taller
+```
+
+---
+
+## v1.1.2 — previous
 
 ### Changes from v1.1.1
 

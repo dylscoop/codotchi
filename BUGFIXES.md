@@ -923,3 +923,39 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** `floorY` was calculated as `canvasHeight - bHeight - legH - 4`. The `legH` term was intended to reserve space below the bounding box for leg pixels, but leg pixels are already **inside** the bounding box (rows 37–47 for uprights, rows 25–31 for quadrupeds). Subtracting `legH` pushed every sprite up by ~22% of `bSize`, creating a visible gap between the bottom of the sprite and the floor line.
 
 **Fix:** Removed `legH` from all three floor calculations in `sidebar.js`: `getFloorY()`, `animationLoop()` `floorY`, and `drawBodyWithReaction()` `feetY`. The floor formula is now simply `canvasHeight - bHeight - 4`.
+
+## BUGFIX-066 — Evolution causes black screen (petY not reset on stage change)
+
+**Status:** Fixed (branch `fix/v1.1.3-visual-bugs`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** The `petX`/`petY` reset block in `animationLoop` was gated on `!lastState || !lastState.alive`. On evolution both old and new states are alive, so the block was skipped — `petY` retained the floor position from the previous stage's `bHeight`, causing the pet to render at the wrong Y coordinate and leaving a black frame while the canvas recovered.
+
+**Fix:** Added a second reset block guarded by `state.stage !== lastState.stage` that resets `petX`, `petY`, `petVx`, `petVy`, and `lastFrameMs` whenever the stage changes mid-session.
+
+## BUGFIX-067 — Evolution black screen caused by undefined legH in reaction fillRects
+
+**Status:** Fixed (branch `fix/v1.1.3-visual-bugs`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** Three `fillRect` calls inside `drawBodyWithReaction` (`praised`, `evolved`, `healed` reactions) used `bHeight + legH` as the rectangle height. `legH` was removed from this function's scope in BUGFIX-065 but these three call sites were missed. The undefined variable evaluated to `NaN`, making `fillRect` a no-op and leaving a black frame on every reaction animation.
+
+**Fix:** Changed all three reaction `fillRect` height arguments from `bHeight + legH` to `bHeight`.
+
+## BUGFIX-068 — All quadruped and snake pets walk backwards (facing wrong direction)
+
+**Status:** Fixed (branch `fix/v1.1.3-visual-bugs`)
+**File:** `vscode/media/sprites.js`, `pycharm/src/main/resources/webview/sprites.js`
+
+**Problem:** Quadruped and snake sprite grids have the head at column 0 (left). The flip transform in `renderSpriteGrid` was `if (facingLeft)` — meaning the sprite was mirrored when the pet moved left. Since head-left is the native orientation, this made pets move tail-first to the right.
+
+**Fix:** Changed the flip condition to `if (isUpright ? facingLeft : !facingLeft)`. Quadrupeds and snakes now flip when moving right (i.e. when `facingLeft` is false), matching their head-left native orientation.
+
+## BUGFIX-069 — Snake floats above the floor (body occupies rows 3–19, leaving blank rows 20–31)
+
+**Status:** Fixed (branch `fix/v1.1.3-visual-bugs`)
+**File:** `scripts/gen_sprites.js`, `vscode/media/sprites.js`, `pycharm/src/main/resources/webview/sprites.js`
+
+**Problem:** The snake sprite grid placed the body in rows 3–19 of the 32-row bounding box. The renderer bottom-aligns the full bounding box, so the 12 blank rows beneath the body caused the snake to appear to float above the stage floor.
+
+**Fix:** Rewrote `snakeGrid()` in `scripts/gen_sprites.js` so the bottom horizontal segment of the S-curve always ends at row 31 (the last row). The new design anchors the body at the floor and grows the S-curve upward. Regenerated and re-injected all five snake stage sprites.
