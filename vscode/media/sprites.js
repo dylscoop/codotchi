@@ -2951,6 +2951,11 @@
     var cellW = Math.max(1, Math.round(bodyWidth  / COLS));
     var cellH = Math.max(1, Math.round(bodyHeight / ROWS));
 
+    // Bottom-align: shift the grid down so its last row lands at bodyY+bodyHeight.
+    // Without this, rounding means ROWS*cellH < bodyHeight for small stages, making
+    // the sprite float above the floor instead of standing on it.
+    var gridBottomAlign = bodyHeight - ROWS * cellH;
+
     // Map colour index to actual colour
     var colorMap = {
       1: primary,
@@ -2960,9 +2965,9 @@
 
     ctx.save();
     if (facingLeft) {
-      ctx.translate(x + bodyWidth, 0);
+      ctx.translate(x + bodyWidth / 2, 0);
       ctx.scale(-1, 1);
-      ctx.translate(-x, 0);
+      ctx.translate(-(x + bodyWidth / 2), 0);
     }
 
     for (var row = 0; row < ROWS; row++) {
@@ -2987,7 +2992,7 @@
         ctx.fillStyle = colorMap[cell] || primary;
         ctx.fillRect(
           x + col * cellW,
-          bobY + row * cellH + colOffsetY,
+          bobY + gridBottomAlign + row * cellH + colOffsetY,
           cellW,
           cellH
         );

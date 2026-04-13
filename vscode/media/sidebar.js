@@ -952,7 +952,7 @@
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
       var scale2   = STAGE_SCALES[state.stage] || 0.5;
-      var bSize2   = Math.round(24 * petSizeMultiplier() * scale2);
+      var bSize2   = Math.round(BASE_SIZE * petSizeMultiplier() * scale2);
       var wwm2     = weightWidthMultiplier(state.weight || 50);
       var bWidth2  = Math.round(bSize2 * wwm2);
       var centreX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth2 / 2));
@@ -1673,7 +1673,7 @@
   }
 
   const STAGE_SCALES = {
-    egg:    0.35,
+    egg:    0.65,
     baby:   0.65,
     child:  0.75,
     teen:   0.85,
