@@ -959,7 +959,6 @@ for(var qi=0;qi<quadAnimals.length;qi++){
 function snakeGrid(s) {
   var g = new Array(32).fill(R48);
 
-  // Helper
   function fillRow(r, l, right, col) {
     if(r<0||r>=32) return;
     var a = g[r].split('');
@@ -967,43 +966,48 @@ function snakeGrid(s) {
     g[r]=a.join('');
   }
 
-  // Snake is drawn as an S-curve:
-  // Row range for body depends on scale s (0.4 to 1.0)
-  var bh = Math.round(6*s);   // body half-height
-  var bw = Math.round(8*s);   // body segment half-width
-  var thick = Math.max(1, Math.round(3*s));
+  // Snake S-curve anchored so the bottom segment ends at row 31.
+  // Scale s (0.4..1.0) controls how tall/thick the snake is.
+  var thick   = Math.max(1, Math.round(3 * s));   // body thickness in rows
+  var hSpan   = Math.min(40, Math.round(30 * s));  // horizontal span of each segment
+  var hLeft   = Math.max(2, Math.round(4 + (1-s)*4));
+  var hRight  = Math.min(44, hLeft + hSpan);
 
-  // Top horizontal segment: row range [4, 4+thick], cols [4, 4+bw*2]
-  var t1 = Math.round(4 + (1-s)*8);
-  var t2 = t1 + thick;
-  var hLeft = Math.max(2, Math.round(4 + (1-s)*4));
-  var hRight = Math.min(44, hLeft + Math.round(bw*2*s)+4);
-  for(var r=t1;r<=t2;r++) fillRow(r, hLeft, hRight, 1);
+  // Bottom horizontal segment: rows [31-thick .. 31]  (always at floor)
+  var b2 = 31;
+  var b1 = b2 - thick;
+  for(var r=b1;r<=b2;r++) fillRow(r, hLeft, hRight, 1);
 
-  // Right vertical segment
-  var v1 = t2;
-  var v2 = Math.min(28, t2 + Math.round(bh*2*s));
-  var vl = hRight - thick;
+  // Right vertical segment going up from bottom-right corner
+  var vGap    = Math.max(2, Math.round(8 * s));    // gap between top and bottom segments
+  var v2      = b1;                                 // bottom of right vertical
+  var v1      = Math.max(1, b1 - vGap);             // top of right vertical
+  var vl      = hRight - thick;
   for(var r=v1;r<=v2;r++) fillRow(r, vl, hRight, 1);
 
-  // Bottom horizontal segment
-  var b1 = v2 - thick;
-  var b2 = v2;
-  var bLeft2 = hLeft;
-  for(var r=b1;r<=b2;r++) fillRow(r, bLeft2, hRight, 1);
+  // Top horizontal segment: rows [v1-thick .. v1]
+  var t2 = v1;
+  var t1 = Math.max(1, t2 - thick);
+  for(var r=t1;r<=t2;r++) fillRow(r, hLeft, hRight, 1);
 
-  // Left vertical going back up (partial)
-  var v3 = Math.max(t1, v2 - Math.round(bh*s));
-  for(var r=v3;r<=b1;r++) fillRow(r, hLeft, hLeft+thick, 1);
+  // Left vertical going down (partial return curve) — only for larger snakes
+  if(s >= 0.6) {
+    var v3 = t2;
+    var v4 = Math.min(b1 - 1, t2 + Math.round(vGap * 0.5));
+    for(var r=v3;r<=v4;r++) fillRow(r, hLeft, hLeft+thick, 1);
+  }
 
-  // Head: slightly wider at the start of top segment
-  for(var r=t1-1;r<=t1+thick;r++){
+  // Head at left end of top segment (slightly wider)
+  for(var r=t1-1;r<=t2;r++) {
     fillRow(r, hLeft-1, hLeft+thick+1, 1);
   }
-  // eye
+  // Eye on head
   fillRow(t1, hLeft+1, hLeft+1, 2);
-  // tongue
-  fillRow(t1+1, hLeft-2, hLeft-1, 3);
+  // Tongue (forked) just left of head
+  if(hLeft-2 >= 0) {
+    fillRow(t1,   hLeft-2, hLeft-1, 3);
+    fillRow(t1+1, hLeft-2, hLeft-2, 3);
+  }
 
   return g;
 }
