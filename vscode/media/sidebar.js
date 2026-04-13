@@ -119,7 +119,7 @@
   // ── Animation state ──────────────────────────────────────────────────────
 
   let lastState     = null;   // most recent PetState snapshot
-  let petX          = 4;      // horizontal position (canvas pixels, left edge of body)
+  let petX          = null;   // horizontal position (canvas pixels, left edge of body) — null = init on first frame
   let petY          = null;   // vertical position (null = init on first frame)
   let petVx         = 0;      // horizontal velocity px/s
   let petVy         = 0;      // vertical velocity px/s
@@ -642,7 +642,7 @@
       const wwm     = weightWidthMultiplier(lastState.weight || 50);
       const bWidth  = Math.round(bSize * wwm);
       const maxX    = spriteCanvas.width - bWidth - 4;
-      if (petX > maxX) { petX = Math.max(4, maxX); }
+      if (petX !== null && petX > maxX) { petX = Math.max(4, maxX); }
     }
   }
 
@@ -720,8 +720,9 @@
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
 
-    // Init Y on first frame
+    // Init X and Y on first frame — centre horizontally
     if (petY === null) { petY = floorY; }
+    if (petX === null) { petX = Math.max(minX, Math.min(maxX, Math.floor(spriteCanvas.width / 2 - bWidth / 2))); }
 
     // ── Reaction queue processing ─────────────────────────────────────────
     // Expire finished reactions; handle fell_asleep special case.
@@ -986,7 +987,7 @@
     if (events.indexOf("fell_asleep")   !== -1) {
       pushReaction("fell_asleep",   nowMs);
       // Persist the X position so it survives a webview reload while sleeping
-      try { localStorage.setItem("gotchi_sleepX", String(Math.round(petX))); } catch (e) {}
+      try { localStorage.setItem("gotchi_sleepX", String(Math.round(petX !== null ? petX : 0))); } catch (e) {}
     }
     if (events.indexOf("woke_up")       !== -1 ||
         events.indexOf("auto_woke_up")  !== -1) { pushReaction("woke_up",       nowMs); }
@@ -1006,7 +1007,7 @@
     if (!prevGift && currGift) {
       var gW2 = spriteCanvas.width;
       var gx  = 4 + Math.floor(Math.random() * Math.max(1, gW2 - 28));
-      if (Math.abs(gx - petX) < 24 && gW2 > 60) {
+      if (Math.abs(gx - (petX !== null ? petX : 0)) < 24 && gW2 > 60) {
         gx = gW2 - 28 - gx;
         if (gx < 4) { gx = 4; }
       }
@@ -1220,7 +1221,7 @@
       });
     });
 
-    var x = Math.max(0, Math.min(container.offsetWidth - W, petX));
+    var x = Math.max(0, Math.min(container.offsetWidth - W, petX !== null ? petX : Math.floor(container.offsetWidth / 2)));
     var div = document.createElement("div");
     div.className   = "poo-anim";
     div.style.left  = x + "px";
