@@ -1,6 +1,32 @@
 ﻿# Version History
 
-## v1.1.0 — current
+## v1.1.1 — current
+
+### Changes from v1.1.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.1.0` → `1.1.1` |
+| `pycharm/build.gradle.kts` | Version bumped `1.1.0` → `1.1.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.1.0` → `1.1.1` |
+| `opencode-codotchi/package.json` | Version bumped `1.1.0` → `1.1.1` |
+| `vscode/media/sprites.js` | BUGFIX-061: added `gridBottomAlign` offset so sprite art bottom-aligns to bounding box floor; BUGFIX-063: flip pivot changed from right edge to horizontal centre (`x + bodyWidth/2`) |
+| `vscode/media/sidebar.js` | BUGFIX-062: `STAGE_SCALES.egg` changed from `0.35` to `0.65` to match baby size; residual `24 *` on line 955 changed to `BASE_SIZE *` |
+| `pycharm/src/main/resources/webview/sidebar.js` | BUGFIX-064: synced verbatim from VS Code — adds `BASE_SIZE = 96`, BUGFIX-016 `showScreen` order, and all v1.1.1 fixes |
+| `pycharm/src/main/resources/webview/sprites.js` | BUGFIX-064: synced verbatim from VS Code — adds bottom-align and flip-pivot fixes |
+| `BUGFIXES.md` | Added BUGFIX-061, BUGFIX-062, BUGFIX-063, BUGFIX-064 |
+| `SPRITES.md` | Added note on how to open `sprite_preview.html` in a browser |
+
+### Bug fixes
+
+- **BUGFIX-061** — Sprite floats in the middle of the stage instead of standing on the floor
+- **BUGFIX-062** — Egg sprite wrong size relative to baby stage
+- **BUGFIX-063** — Pet snaps/jumps horizontally when changing direction
+- **BUGFIX-064** — PyCharm webview out of sync with VS Code (stale `24` constant, missing BUGFIX-016 and all v1.1.x fixes)
+
+---
+
+## v1.1.0 — previous
 
 ### Changes from v1.0.3
 
