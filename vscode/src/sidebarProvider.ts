@@ -181,10 +181,10 @@ export class SidebarProvider
       `}</style>`;
     html = html.replace("{{customColorsStyle}}", customColorsStyle);
 
-    // Stage height is fixed at 160 px — no longer a user setting.
+    // Stage height is fixed at 240 px — no longer a user setting.
     // The canvas CSS height is driven by the height attribute (height: auto in CSS)
     // so the pixel buffer and display size always match.
-    const petStageHeight = 160;
+    const petStageHeight = 240;
     html = html.replace("{{stageHeight}}", String(petStageHeight));
 
     const petSize = cfg.get<string>("petSize", "medium");

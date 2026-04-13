@@ -50,7 +50,7 @@ class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
         var idleDeepThresholdSeconds: Int = 600
         var attentionCallExpiry: String = "standard"  // "needy" | "standard" | "chilled"
         var attentionCallRate:   String = "fast"      // "fast" | "medium" | "slow"
-        var petStageHeight: Int = 160
+        var petStageHeight: Int = 240
         var reducedMotion: Boolean = false
         var petSize: String = "medium"   // "small" | "medium" | "large"
         var devModeEnabled: Boolean = false
