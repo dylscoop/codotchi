@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sprite Preview</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background: #111;
+      color: #eee;
+      font-family: monospace;
+      font-size: 13px;
+      margin: 0;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin: 0 0 4px;
+      color: #39ff14;
+    }
+
+    .subtitle {
+      color: #888;
+      margin: 0 0 20px;
+      font-size: 12px;
+    }
+
+    /* ── Controls bar ── */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 10px 14px;
+      background: #1c1c1c;
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+
+    .controls label {
+      color: #aaa;
+      margin-right: 4px;
+    }
+
+    .controls select,
+    .controls input[type="range"],
+    .controls input[type="color"] {
+      background: #2a2a2a;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 3px;
+      padding: 3px 6px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .controls input[type="color"] {
+      padding: 1px 3px;
+      width: 44px;
+      height: 26px;
+      cursor: pointer;
+    }
+
+    .scale-val {
+      color: #39ff14;
+      min-width: 28px;
+      display: inline-block;
+    }
+
+    button.save-all {
+      margin-left: auto;
+      background: #1a3a1a;
+      color: #39ff14;
+      border: 1px solid #39ff14;
+      border-radius: 4px;
+      padding: 5px 14px;
+      font-family: monospace;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    button.save-all:hover { background: #2a4a2a; }
+
+    /* ── Stage filter tabs ── */
+    .stage-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .stage-tab {
+      background: #222;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #aaa;
+      padding: 4px 12px;
+      font-family: monospace;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .stage-tab.active {
+      background: #1a3a1a;
+      border-color: #39ff14;
+      color: #39ff14;
+    }
+
+    /* ── Grid layout ── */
+    .animal-section {
+      margin-bottom: 32px;
+    }
+
+    .animal-title {
+      font-size: 14px;
+      color: #ff00ff;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin: 0 0 10px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 4px;
+    }
+
+    .stage-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .sprite-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .stage-label {
+      font-size: 10px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      border: 1px solid #333;
+      background: #0d0d0d;
+      display: block;
+    }
+
+    .save-btn {
+      font-size: 10px;
+      font-family: monospace;
+      background: #1a1a2e;
+      color: #00cfff;
+      border: 1px solid #004e7c;
+      border-radius: 3px;
+      padding: 2px 8px;
+      cursor: pointer;
+    }
+    .save-btn:hover { background: #001f3f; }
+
+    /* ── Divider between animals ── */
+    .divider {
+      border: none;
+      border-top: 1px solid #222;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Sprite Preview</h1>
+<p class="subtitle">All animals &times; all stages &mdash; edit sprites_adult.js then reload to see changes.</p>
+
+<!-- ── Controls ── -->
+<div class="controls">
+  <label>Scale</label>
+  <input type="range" id="scale-slider" min="1" max="12" value="6" step="1" />
+  <span class="scale-val" id="scale-val">6&times;</span>
+
+  <label style="margin-left:12px">Primary</label>
+  <input type="color" id="col-primary"    value="#39ff14" />
+
+  <label>Secondary</label>
+  <input type="color" id="col-secondary"  value="#ff00ff" />
+
+  <label>BG</label>
+  <input type="color" id="col-bg"         value="#0d0d0d" />
+
+  <label style="margin-left:12px">Source</label>
+  <select id="source-select">
+    <option value="sprites"       selected>sprites.js (all stages)</option>
+    <option value="sprites_adult">sprites_adult.js (adult only)</option>
+  </select>
+
+  <button class="save-all" id="btn-save-all">&#8595; Save all as PNG</button>
+</div>
+
+<!-- ── Stage filter ── -->
+<div class="stage-tabs" id="stage-tabs">
+  <button class="stage-tab active" data-stage="all">All stages</button>
+  <button class="stage-tab" data-stage="egg">Egg</button>
+  <button class="stage-tab" data-stage="baby">Baby</button>
+  <button class="stage-tab" data-stage="child">Child</button>
+  <button class="stage-tab" data-stage="teen">Teen</button>
+  <button class="stage-tab" data-stage="adult">Adult</button>
+  <button class="stage-tab" data-stage="senior">Senior</button>
+</div>
+
+<!-- ── Sprite grid (populated by JS) ── -->
+<div id="grid"></div>
+
+<!-- Load the sprite data files -->
+<script src="sprites.js"></script>
+<script src="sprites_adult.js"></script>
+
+<script>
+(function () {
+  "use strict";
+
+  // ── Config ────────────────────────────────────────────────────────────────
+  var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1 };
+
+  var ALL_ANIMALS = [
+    // Uprights first
+    "classic", "monkey", "rooster", "dragon",
+    // Quadrupeds
+    "cat", "rat", "ox", "tiger", "rabbit",
+    "horse", "sheep", "dog", "pig", "snake"
+  ];
+
+  var ALL_STAGES = ["egg", "baby", "child", "teen", "adult", "senior"];
+
+  // Palette used for rendering (driven by colour pickers)
+  var palette = {
+    primary:    "#39ff14",
+    secondary:  "#ff00ff",
+    background: "#0d0d0d"
+  };
+
+  var pixelScale   = 6;
+  var activeStage  = "all";
+  var activeSource = "sprites"; // "sprites" or "sprites_adult"
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function darkenHex(hex, factor) {
+    var h = hex.replace("#", "");
+    if (h.length === 3) { h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; }
+    var r = Math.round(parseInt(h.substring(0,2),16) * factor);
+    var g = Math.round(parseInt(h.substring(2,4),16) * factor);
+    var b = Math.round(parseInt(h.substring(4,6),16) * factor);
+    return "rgb(" + r + "," + g + "," + b + ")";
+  }
+
+  function getGrid(animal, stage) {
+    if (activeSource === "sprites_adult") {
+      // Use ADULT_DEFS raw strings → parse on the fly
+      if (window.ADULT_DEFS && window.ADULT_DEFS[animal]) {
+        var rows = window.ADULT_DEFS[animal];
+        return rows.map(function(r){ return r.split("").map(Number); });
+      }
+      return null;
+    }
+    // sprites.js parsed grids
+    if (window.SPRITES && window.SPRITES[animal] && window.SPRITES[animal][stage]) {
+      return window.SPRITES[animal][stage];
+    }
+    return null;
+  }
+
+  function drawSprite(ctx, grid, animal, scale) {
+    var isUpright = !!UPRIGHT_TYPES[animal];
+    var COLS      = isUpright ? 32 : 48;
+    var ROWS      = isUpright ? 48 : 32;
+    var cW = scale;
+    var cH = scale;
+
+    var accent = darkenHex(palette.primary, 0.70);
+    var colorMap = {
+      1: palette.primary,
+      2: palette.secondary,
+      3: accent
+    };
+
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillStyle = palette.background;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    if (!grid) {
+      ctx.fillStyle = "#ff4444";
+      ctx.font = (scale * 2) + "px monospace";
+      ctx.fillText("?", scale, scale * 3);
+      return;
+    }
+
+    for (var row = 0; row < ROWS; row++) {
+      if (!grid[row]) { continue; }
+      for (var col = 0; col < COLS; col++) {
+        var cell = grid[row][col];
+        if (!cell) { continue; }
+        ctx.fillStyle = colorMap[cell] || palette.primary;
+        ctx.fillRect(col * cW, row * cH, cW, cH);
+      }
+    }
+  }
+
+  function canvasSize(animal) {
+    var isUpright = !!UPRIGHT_TYPES[animal];
+    return {
+      w: (isUpright ? 32 : 48) * pixelScale,
+      h: (isUpright ? 48 : 32) * pixelScale
+    };
+  }
+
+  // ── Build / rebuild the full grid ─────────────────────────────────────────
+  function buildGrid() {
+    var container = document.getElementById("grid");
+    container.innerHTML = "";
+
+    var stagesToShow = activeStage === "all" ? ALL_STAGES : [activeStage];
+
+    ALL_ANIMALS.forEach(function (animal) {
+      var section = document.createElement("div");
+      section.className = "animal-section";
+      section.setAttribute("data-animal", animal);
+
+      var title = document.createElement("div");
+      title.className = "animal-title";
+      title.textContent = animal + (UPRIGHT_TYPES[animal] ? "  [upright 32×48]" : "  [quadruped 48×32]");
+      section.appendChild(title);
+
+      var row = document.createElement("div");
+      row.className = "stage-row";
+
+      stagesToShow.forEach(function (stage) {
+        // sprites_adult source only has "adult"
+        if (activeSource === "sprites_adult" && stage !== "adult") { return; }
+
+        var size = canvasSize(animal);
+        var cell = document.createElement("div");
+        cell.className = "sprite-cell";
+
+        var lbl = document.createElement("div");
+        lbl.className = "stage-label";
+        lbl.textContent = stage;
+        cell.appendChild(lbl);
+
+        var canvas = document.createElement("canvas");
+        canvas.width  = size.w;
+        canvas.height = size.h;
+        canvas.title  = animal + " / " + stage;
+        canvas.setAttribute("data-animal", animal);
+        canvas.setAttribute("data-stage",  stage);
+
+        var grid = getGrid(animal, stage);
+        var ctx  = canvas.getContext("2d");
+        drawSprite(ctx, grid, animal, pixelScale);
+        cell.appendChild(canvas);
+
+        // Per-sprite save button
+        var btn = document.createElement("button");
+        btn.className = "save-btn";
+        btn.textContent = "PNG";
+        btn.addEventListener("click", function () {
+          saveCanvas(canvas, animal + "_" + stage);
+        });
+        cell.appendChild(btn);
+
+        row.appendChild(cell);
+      });
+
+      // Skip empty rows (e.g. sprites_adult for non-adult stages)
+      if (row.children.length === 0) { return; }
+
+      section.appendChild(row);
+
+      var hr = document.createElement("hr");
+      hr.className = "divider";
+      section.appendChild(hr);
+
+      container.appendChild(section);
+    });
+  }
+
+  // ── Redraw all existing canvases (on colour/scale change) ─────────────────
+  function redrawAll() {
+    document.querySelectorAll("canvas[data-animal]").forEach(function (canvas) {
+      var animal = canvas.getAttribute("data-animal");
+      var stage  = canvas.getAttribute("data-stage");
+      var size   = canvasSize(animal);
+      canvas.width  = size.w;
+      canvas.height = size.h;
+      var grid = getGrid(animal, stage);
+      var ctx  = canvas.getContext("2d");
+      drawSprite(ctx, grid, animal, pixelScale);
+    });
+  }
+
+  // ── Save helpers ──────────────────────────────────────────────────────────
+  function saveCanvas(canvas, name) {
+    var a = document.createElement("a");
+    a.href     = canvas.toDataURL("image/png");
+    a.download = name + "_" + pixelScale + "x.png";
+    a.click();
+  }
+
+  function saveAll() {
+    document.querySelectorAll("canvas[data-animal]").forEach(function (canvas) {
+      var animal = canvas.getAttribute("data-animal");
+      var stage  = canvas.getAttribute("data-stage");
+      saveCanvas(canvas, animal + "_" + stage);
+    });
+  }
+
+  // ── Event wiring ──────────────────────────────────────────────────────────
+  document.getElementById("scale-slider").addEventListener("input", function () {
+    pixelScale = parseInt(this.value, 10);
+    document.getElementById("scale-val").textContent = pixelScale + "×";
+    redrawAll();
+  });
+
+  document.getElementById("col-primary").addEventListener("input", function () {
+    palette.primary = this.value;
+    redrawAll();
+  });
+
+  document.getElementById("col-secondary").addEventListener("input", function () {
+    palette.secondary = this.value;
+    redrawAll();
+  });
+
+  document.getElementById("col-bg").addEventListener("input", function () {
+    palette.background = this.value;
+    redrawAll();
+  });
+
+  document.getElementById("source-select").addEventListener("change", function () {
+    activeSource = this.value;
+    buildGrid();
+  });
+
+  document.getElementById("btn-save-all").addEventListener("click", saveAll);
+
+  document.getElementById("stage-tabs").addEventListener("click", function (e) {
+    var btn = e.target.closest(".stage-tab");
+    if (!btn) { return; }
+    document.querySelectorAll(".stage-tab").forEach(function (t) {
+      t.classList.remove("active");
+    });
+    btn.classList.add("active");
+    activeStage = btn.getAttribute("data-stage");
+    buildGrid();
+  });
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  buildGrid();
+
+}());
+</script>
+
+</body>
+</html>
