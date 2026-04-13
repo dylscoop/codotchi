@@ -9,6 +9,8 @@ Complete visual design guide for all pixel-art sprites in the Codotchi extension
 All sprites are defined in `vscode/media/sprites.js` (mirrored verbatim to
 `pycharm/src/main/resources/webview/sprites.js`).
 
+To preview all sprites interactively, open `vscode/media/sprite_preview.html` directly in any browser (no server needed — it loads `sprites.js` from the same folder via a relative `<script>` tag).
+
 One grid size per animal type:
 
 | Type | Grid (cols × rows) | Animals |
