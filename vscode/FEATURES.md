@@ -259,7 +259,7 @@ footprint to make movement readable.
 | Change | Detail | Status |
 |--------|--------|--------|
 | Expand canvas to full sidebar width | Read `canvas.parentElement.clientWidth` on load and on window resize; set `canvas.width` dynamically | `[x]` |
-| Fixed stage height | Default 96 px; configurable via `gotchi.petStageHeight` | `[x]` |
+| Fixed stage height | Fixed at 160 px; canvas CSS height is dynamic (`height: auto`) so pixel buffer and display always match | `[x]` |
 | Sprite size unchanged | The drawn body size is still driven by stage scale; the extra space is used for movement | `[x]` |
 
 ### 5.2 Animation Loop
@@ -587,7 +587,6 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 |---------|------|---------|-------------|--------|
 | `gotchi.fontSize` | enum | `normal` | Sidebar font size: `small` / `normal` / `large` | `[x]` |
 | `gotchi.reducedMotion` | boolean | `false` | Disable all pet movement and reaction animations | `[x]` |
-| `gotchi.petStageHeight` | number | `96` | Height in px of the pet stage canvas (range 60–200) | `[x]` |
 | `gotchi.codingRewards` | boolean | `true` | Enable coding-activity stat rewards | `[ ]` |
 | `gotchi.codingRewardThrottleSeconds` | number | `30` | Minimum seconds between coding rewards | `[ ]` |
 | `gotchi.autoWake` | boolean | `true` | Auto-wake pet when energy reaches 100 | `[ ]` |

@@ -1,6 +1,78 @@
 ﻿# Version History
 
-## v1.0.3 — current
+## v1.1.2 — current
+
+### Changes from v1.1.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.1.1` → `1.1.2` |
+| `pycharm/build.gradle.kts` | Version bumped `1.1.1` → `1.1.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.1.1` → `1.1.2` |
+| `opencode-codotchi/package.json` | Version bumped `1.1.1` → `1.1.2` |
+| `vscode/media/sidebar.js` | BUGFIX-065: removed `legH` subtraction from `floorY` calculation in `getFloorY`, `animationLoop`, and `feetY` — sprites now sit on the stage floor instead of floating above it |
+| `pycharm/src/main/resources/webview/sidebar.js` | Synced verbatim from VS Code (BUGFIX-065) |
+
+### Bug fixes
+
+- **BUGFIX-065** — All sprites float above the stage floor by a `legH`-sized gap
+
+---
+
+## v1.1.1 — previous
+
+### Changes from v1.1.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.1.0` → `1.1.1` |
+| `pycharm/build.gradle.kts` | Version bumped `1.1.0` → `1.1.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.1.0` → `1.1.1` |
+| `opencode-codotchi/package.json` | Version bumped `1.1.0` → `1.1.1` |
+| `vscode/media/sprites.js` | BUGFIX-061: added `gridBottomAlign` offset so sprite art bottom-aligns to bounding box floor; BUGFIX-063: flip pivot changed from right edge to horizontal centre (`x + bodyWidth/2`) |
+| `vscode/media/sidebar.js` | BUGFIX-062: `STAGE_SCALES.egg` changed from `0.35` to `0.65` to match baby size; residual `24 *` on line 955 changed to `BASE_SIZE *` |
+| `pycharm/src/main/resources/webview/sidebar.js` | BUGFIX-064: synced verbatim from VS Code — adds `BASE_SIZE = 96`, BUGFIX-016 `showScreen` order, and all v1.1.1 fixes |
+| `pycharm/src/main/resources/webview/sprites.js` | BUGFIX-064: synced verbatim from VS Code — adds bottom-align and flip-pivot fixes |
+| `BUGFIXES.md` | Added BUGFIX-061, BUGFIX-062, BUGFIX-063, BUGFIX-064 |
+| `SPRITES.md` | Added note on how to open `sprite_preview.html` in a browser |
+
+### Bug fixes
+
+- **BUGFIX-061** — Sprite floats in the middle of the stage instead of standing on the floor
+- **BUGFIX-062** — Egg sprite wrong size relative to baby stage
+- **BUGFIX-063** — Pet snaps/jumps horizontally when changing direction
+- **BUGFIX-064** — PyCharm webview out of sync with VS Code (stale `24` constant, missing BUGFIX-016 and all v1.1.x fixes)
+
+---
+
+## v1.1.0 — previous
+
+### Changes from v1.0.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.0.3` → `1.1.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.0.3` → `1.1.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.0.3` → `1.1.0` |
+| `opencode-codotchi/package.json` | Version bumped `1.0.3` → `1.1.0` |
+| `vscode/media/sidebar.js` | BUGFIX-058: moved `showScreen("game")` before message listener to prevent bootstrap state being dropped; BUGFIX-059/060: introduced `BASE_SIZE = 96` constant, replaced all six `24 *` occurrences with `BASE_SIZE *` in `resizeCanvas`, `getFloorY`, `animationLoop`, `drawBodyWithReaction`, `drawStatusIndicators`, `drawStaticPet` — fixes sprite sizing, floor position, boundary clamping, reaction pivots, and direction-flip jump |
+| `vscode/media/sidebar.css` | Removed hard-coded `height: 96px` from `.sprite-container` and `#sprite-canvas`; replaced with `height: auto` so canvas pixel buffer and CSS display size always match |
+| `vscode/src/sidebarProvider.ts` | `petStageHeight` hardcoded to 160 (no longer reads from settings); removed `gotchi.petStageHeight` from config-change listener |
+| `vscode/package.json` | Removed `gotchi.petStageHeight` setting block |
+| `vscode/media/sprites_adult.js` | New offline working file — adult sprite string arrays for all 14 animals, with grid format documentation; not wired into extension |
+| `vscode/media/sprite_preview.html` | New browser-based sprite viewer — renders all animals × stages with live colour pickers, scale slider, stage filter tabs, per-sprite and save-all PNG export; loads both `sprites.js` and `sprites_adult.js` |
+| `BUGFIXES.md` | Added BUGFIX-058, BUGFIX-059, BUGFIX-060 |
+| `VERSIONS.md` | Added v1.1.0 section |
+
+### Bug fixes
+
+- **BUGFIX-058** — Pet not visible after extension load/restart; bootstrap state dropped in `showScreen` race window
+- **BUGFIX-059** — Sprites wrong size / clipped / positioned off-canvas; `BASE_SIZE` mismatch (24 vs 96) between `sidebar.js` and `sprites.js`, plus canvas CSS height hard-coded to 96px
+- **BUGFIX-060** — Pet jumps position on direction change; flip axis used wrong `bodyWidth` (resolved by BUGFIX-059)
+
+---
+
+## v1.0.3 — previous
 
 ### Changes from v1.0.2
 
