@@ -121,13 +121,6 @@
           "default": "medium",
           "description": "Controls the overall display size of the pet sprite. 'Large' uses a more detailed 24×32 pixel grid for every sprite type."
         },
-        "gotchi.petStageHeight": {
-          "type": "integer",
-          "default": 160,
-          "minimum": 60,
-          "maximum": 320,
-          "description": "Height in pixels of the pet stage canvas. Increase for a taller stage; the pet will have more vertical room to move. Default: 160."
-        },
         "gotchi.reducedMotion": {
           "type": "boolean",
           "default": false,

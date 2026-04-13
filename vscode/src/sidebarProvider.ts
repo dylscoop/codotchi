@@ -125,7 +125,6 @@ export class SidebarProvider
         e.affectsConfiguration("gotchi.customSecondaryColor") ||
         e.affectsConfiguration("gotchi.customBackgroundColor") ||
         e.affectsConfiguration("gotchi.petSize") ||
-        e.affectsConfiguration("gotchi.petStageHeight") ||
         e.affectsConfiguration("gotchi.reducedMotion") ||
         e.affectsConfiguration("gotchi.idleResetOnMouseMovement")
       ) {
@@ -182,7 +181,10 @@ export class SidebarProvider
       `}</style>`;
     html = html.replace("{{customColorsStyle}}", customColorsStyle);
 
-    const petStageHeight = cfg.get<number>("petStageHeight", 160);
+    // Stage height is fixed at 160 px — no longer a user setting.
+    // The canvas CSS height is driven by the height attribute (height: auto in CSS)
+    // so the pixel buffer and display size always match.
+    const petStageHeight = 160;
     html = html.replace("{{stageHeight}}", String(petStageHeight));
 
     const petSize = cfg.get<string>("petSize", "medium");
