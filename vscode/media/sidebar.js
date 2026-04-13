@@ -977,6 +977,15 @@
       snackItems    = [];
     }
 
+    // Reset position when the pet evolves to a new stage
+    if (lastState && lastState.alive && state.stage !== lastState.stage) {
+      petX      = null;   // re-centred on first rAF frame
+      petY      = null;   // re-floored on first rAF frame
+      petVx     = 0;
+      petVy     = 0;
+      lastFrameMs = 0;
+    }
+
     // ── Map incoming events to reactions ──────────────────────────────────
     var nowMs = performance.now();
     var events = state.events || [];
@@ -1523,7 +1532,7 @@
         spriteCtx.save();
         spriteCtx.globalAlpha = (1 - t) * 0.35;
         spriteCtx.fillStyle = "#FFD600";
-        spriteCtx.fillRect(x, bodyY + yOff3, bWidth, bHeight + legH);
+        spriteCtx.fillRect(x, bodyY + yOff3, bWidth, bHeight);
         spriteCtx.restore();
         break;
       }
@@ -1538,7 +1547,7 @@
         drawBody(state, x, bodyY, facingLeft, legFrame);
         spriteCtx.globalAlpha = Math.sin(t * Math.PI) * 0.4;
         spriteCtx.fillStyle = "#FFD600";
-        spriteCtx.fillRect(x, bodyY, bWidth, bHeight + legH);
+        spriteCtx.fillRect(x, bodyY, bWidth, bHeight);
         spriteCtx.restore();
         break;
       }
@@ -1577,7 +1586,7 @@
         spriteCtx.save();
         spriteCtx.globalAlpha = (1 - t) * 0.5;
         spriteCtx.fillStyle = "#00c853";
-        spriteCtx.fillRect(x, bodyY, bWidth, bHeight + legH);
+        spriteCtx.fillRect(x, bodyY, bWidth, bHeight);
         spriteCtx.restore();
         break;
       }
@@ -1634,10 +1643,9 @@
     var bWidth   = Math.round(bSize * wwm);
     var hMult    = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
     var bHeight  = Math.round(bSize * hMult);
-    var legH     = Math.max(2, Math.round(bSize * 0.22));
     var H        = spriteCanvas.height;
     var staticX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth / 2));
-    var staticY  = H - bHeight - legH - 4;
+    var staticY  = H - bHeight - 4;
 
     drawBody(state, staticX, staticY, false, 0);
     drawStatusIndicators(state, staticX, staticY);
