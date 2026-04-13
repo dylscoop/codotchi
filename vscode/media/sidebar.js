@@ -681,8 +681,7 @@
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
     var bHeight    = Math.round(bSize * heightMult);
-    var legH       = Math.max(2, Math.round(bSize * 0.22));
-    return spriteCanvas.height - bHeight - legH - 4;
+    return spriteCanvas.height - bHeight - 4;
   }
 
   /**
@@ -717,8 +716,7 @@
     var bWidth     = Math.round(bSize * wwm);
     var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
     var bHeight    = Math.round(bSize * heightMult);
-    var legH       = Math.max(2, Math.round(bSize * 0.22));
-    var floorY     = spriteCanvas.height - bHeight - legH - 4;
+    var floorY     = spriteCanvas.height - bHeight - 4;
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
 
@@ -1471,8 +1469,7 @@
     var bWidth    = Math.round(bSize * wwm);
     var hMult     = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
     var bHeight   = Math.round(bSize * hMult);
-    var legH      = Math.max(2, Math.round(bSize * 0.22));
-    var feetY     = bodyY + bHeight + legH;   // canvas Y of the bottom of the feet
+    var feetY     = bodyY + bHeight;              // canvas Y of the bottom of the feet
 
     switch (reaction.type) {
 
