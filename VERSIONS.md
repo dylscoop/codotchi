@@ -1,6 +1,25 @@
 ﻿# Version History
 
-## v1.1.1 — current
+## v1.1.2 — current
+
+### Changes from v1.1.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.1.1` → `1.1.2` |
+| `pycharm/build.gradle.kts` | Version bumped `1.1.1` → `1.1.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.1.1` → `1.1.2` |
+| `opencode-codotchi/package.json` | Version bumped `1.1.1` → `1.1.2` |
+| `vscode/media/sidebar.js` | BUGFIX-065: removed `legH` subtraction from `floorY` calculation in `getFloorY`, `animationLoop`, and `feetY` — sprites now sit on the stage floor instead of floating above it |
+| `pycharm/src/main/resources/webview/sidebar.js` | Synced verbatim from VS Code (BUGFIX-065) |
+
+### Bug fixes
+
+- **BUGFIX-065** — All sprites float above the stage floor by a `legH`-sized gap
+
+---
+
+## v1.1.1 — previous
 
 ### Changes from v1.1.0
 

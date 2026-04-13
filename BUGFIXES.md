@@ -912,3 +912,14 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** The PyCharm `sidebar.js` was never updated to include the `BASE_SIZE = 96` constant (introduced in BUGFIX-059) — it still used the literal `24` in six places, making all layout calculations four times too small. It also lacked the BUGFIX-016 `showScreen("game")` placement fix, meaning the bootstrap state could still be dropped on load. Additionally, the `sprites.js` in PyCharm did not have the BUGFIX-061 bottom-align or BUGFIX-063 flip-pivot fixes.
 
 **Fix:** Copied `vscode/media/sidebar.js` and `vscode/media/sprites.js` verbatim to their PyCharm mirrors, bringing all four fixes (BUGFIX-059/061/062/063) and the BUGFIX-016 screen ordering fix into the PyCharm plugin simultaneously.
+
+---
+
+## BUGFIX-065 — All sprites float above the stage floor by a legH-sized gap
+
+**Status:** Fixed (branch `fix/sprite-floor-and-egg-size`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `floorY` was calculated as `canvasHeight - bHeight - legH - 4`. The `legH` term was intended to reserve space below the bounding box for leg pixels, but leg pixels are already **inside** the bounding box (rows 37–47 for uprights, rows 25–31 for quadrupeds). Subtracting `legH` pushed every sprite up by ~22% of `bSize`, creating a visible gap between the bottom of the sprite and the floor line.
+
+**Fix:** Removed `legH` from all three floor calculations in `sidebar.js`: `getFloorY()`, `animationLoop()` `floorY`, and `drawBodyWithReaction()` `feetY`. The floor formula is now simply `canvasHeight - bHeight - 4`.
