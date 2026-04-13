@@ -107,26 +107,32 @@ Typical release flow (each line needs separate approval):
 
 ## GitHub release body — what to include
 
-When creating a GitHub release for `vX.Y.Z`, the release body must cover **everything new since the previous release tag**, not just the most recent commit. Follow these steps:
+When creating a GitHub release for `vX.Y.Z`, the release body must cover **everything new since the previous GitHub release** (not the previous git tag). These two are often different — some tags are never published as GitHub releases, and some GitHub releases are deleted. Follow these steps:
 
-1. Find the previous release tag:
+1. Find the most recent **GitHub release** (not git tag) by fetching the releases list:
+   ```powershell
+   # use get_release.ps1 pattern to call:
+   # GET https://api.github.com/repos/dylscoop/codotchi/releases
+   # look at the tag_name of the first (most recent) entry
    ```
-   git tag --sort=-version:refname | head -5
+   This tells you the `<prev-release-tag>` to use as the baseline.
+
+2. Collect all non-merge commits between the previous release tag and the new one:
    ```
-2. Collect all commits between the previous tag and the new one:
+   git log <prev-release-tag>..vX.Y.Z --oneline --no-merges
    ```
-   git log <prev-tag>..vX.Y.Z --oneline
-   ```
-3. For each commit, summarise the user-visible changes. Group them into sections:
+
+3. For each `feat:` and `fix:` commit, summarise the **user-visible** change. Group into sections:
    - **Features** — new capabilities (`feat:` commits)
    - **Bug fixes** — defects corrected (`fix:` commits; cross-reference BUGFIX-NNN if applicable)
-   - **Chores / internal** — version bumps, artifact rebuilds, doc updates (`chore:`, `docs:` commits) — keep this section brief or omit if empty
+   - Omit `chore:`, `docs:`, and `test:` commits from the release body entirely
 
 4. Include the artifact filenames so users know exactly what to download:
    ```
    ## Artifacts
    - `vscode-gotchi-X.Y.Z.vsix` — VS Code extension
    - `pycharm-gotchi-X.Y.Z.zip` — PyCharm plugin
+   - `opencode-codotchi-X.Y.Z.zip` — OpenCode plugin
    ```
 
 5. **`gh` CLI is not available on this machine.** Use the GitHub REST API via a PowerShell script instead (see below).
@@ -141,10 +147,12 @@ The PAT is stored in Windows Credential Manager under `git:https://dylscoop@gith
 Retrieve it with:
 
 ```powershell
-$creds = (echo 'protocol=https'; echo 'host=github.com'; echo 'username=dylscoop'; echo '') |
-    & 'C:\Program Files\Git\mingw64\libexec\git-core\git-credential-wincred.exe' get
+$lines = @('protocol=https', 'host=github.com', 'username=dylscoop', '')
+$creds = $lines | & 'C:\Program Files\Git\mingw64\libexec\git-core\git-credential-wincred.exe' get
 $token = ($creds | Where-Object { $_ -match '^password=' }) -replace '^password=', ''
 ```
+
+> **Note:** the pipe-from-`echo` form (`echo 'protocol=https' | ...`) does **not** work in PowerShell 5.1 — use the `@()` array form above.
 
 ### Step 2 — write a temporary PS1 script and run it
 
