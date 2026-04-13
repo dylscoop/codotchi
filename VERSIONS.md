@@ -1,6 +1,33 @@
 ﻿# Version History
 
-## v1.0.3 — current
+## v1.1.0 — current
+
+### Changes from v1.0.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.0.3` → `1.1.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.0.3` → `1.1.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.0.3` → `1.1.0` |
+| `opencode-codotchi/package.json` | Version bumped `1.0.3` → `1.1.0` |
+| `vscode/media/sidebar.js` | BUGFIX-058: moved `showScreen("game")` before message listener to prevent bootstrap state being dropped; BUGFIX-059/060: introduced `BASE_SIZE = 96` constant, replaced all six `24 *` occurrences with `BASE_SIZE *` in `resizeCanvas`, `getFloorY`, `animationLoop`, `drawBodyWithReaction`, `drawStatusIndicators`, `drawStaticPet` — fixes sprite sizing, floor position, boundary clamping, reaction pivots, and direction-flip jump |
+| `vscode/media/sidebar.css` | Removed hard-coded `height: 96px` from `.sprite-container` and `#sprite-canvas`; replaced with `height: auto` so canvas pixel buffer and CSS display size always match |
+| `vscode/src/sidebarProvider.ts` | `petStageHeight` hardcoded to 160 (no longer reads from settings); removed `gotchi.petStageHeight` from config-change listener |
+| `vscode/package.json` | Removed `gotchi.petStageHeight` setting block |
+| `vscode/media/sprites_adult.js` | New offline working file — adult sprite string arrays for all 14 animals, with grid format documentation; not wired into extension |
+| `vscode/media/sprite_preview.html` | New browser-based sprite viewer — renders all animals × stages with live colour pickers, scale slider, stage filter tabs, per-sprite and save-all PNG export; loads both `sprites.js` and `sprites_adult.js` |
+| `BUGFIXES.md` | Added BUGFIX-058, BUGFIX-059, BUGFIX-060 |
+| `VERSIONS.md` | Added v1.1.0 section |
+
+### Bug fixes
+
+- **BUGFIX-058** — Pet not visible after extension load/restart; bootstrap state dropped in `showScreen` race window
+- **BUGFIX-059** — Sprites wrong size / clipped / positioned off-canvas; `BASE_SIZE` mismatch (24 vs 96) between `sidebar.js` and `sprites.js`, plus canvas CSS height hard-coded to 96px
+- **BUGFIX-060** — Pet jumps position on direction change; flip axis used wrong `bodyWidth` (resolved by BUGFIX-059)
+
+---
+
+## v1.0.3 — previous
 
 ### Changes from v1.0.2
 
