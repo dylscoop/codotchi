@@ -2916,7 +2916,7 @@
     };
 
     ctx.save();
-    if (facingLeft) {
+    if (isUpright ? facingLeft : !facingLeft) {
       ctx.translate(x + bodyWidth / 2, 0);
       ctx.scale(-1, 1);
       ctx.translate(-(x + bodyWidth / 2), 0);
