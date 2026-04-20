@@ -1,6 +1,25 @@
 ﻿# Version History
 
-## v1.1.4 — current
+## v1.2.0 — current
+
+### Changes from v1.1.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.1.4` → `1.2.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.1.4` → `1.2.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.1.4` → `1.2.0` |
+| `opencode-codotchi/package.json` | Version bumped `1.1.4` → `1.2.0` |
+| `vscode/media/sprites.js` | Classic sprite restored to v1.0.1 retro blob design (12×16 rows padded to 32×48); all 5 stages now have legs (rows 37–47) |
+| `pycharm/src/main/resources/webview/sprites.js` | Same classic sprite restoration mirrored from VS Code |
+
+### Features
+
+- **Classic sprite restored** — The classic Codotchi is now the original v1.0.1 retro pixel-blob, with its compact round body, dot eyes, and smile, faithfully re-expressed in the current 32×48 upright grid. All five life stages (baby through senior) have proper legs.
+
+---
+
+## v1.1.4 — previous
 
 ### Changes from v1.1.3
 
