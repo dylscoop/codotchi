@@ -270,7 +270,7 @@
     return null;
   }
 
-  function drawSprite(ctx, grid, animal, scale) {
+  function drawSprite(ctx, grid, animal, scale, stage) {
     var isUpright = !!UPRIGHT_TYPES[animal];
     var COLS      = isUpright ? 32 : 48;
     var ROWS      = isUpright ? 48 : 32;
@@ -289,9 +289,30 @@
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     if (!grid) {
-      ctx.fillStyle = "#ff4444";
-      ctx.font = (scale * 2) + "px monospace";
-      ctx.fillText("?", scale, scale * 3);
+      // Egg has no pixel grid — draw it procedurally as a centred oval + two dot eyes
+      if (stage === "egg") {
+        var cW2 = ctx.canvas.width;
+        var cH2 = ctx.canvas.height;
+        var rx = cW2 * 0.175;
+        var ry = cH2 * 0.20;
+        var cx = cW2 / 2;
+        var cy = cH2 / 2;
+        ctx.fillStyle = palette.primary;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+        var dotSize   = Math.max(2, Math.round(cW2 * 0.06));
+        var dotY      = cy - ry * 0.15;
+        var dotLeftX  = cx - rx * 0.35;
+        var dotRightX = cx + rx * 0.15;
+        ctx.fillStyle = palette.secondary;
+        ctx.fillRect(dotLeftX, dotY, dotSize, dotSize);
+        ctx.fillRect(dotRightX, dotY, dotSize, dotSize);
+      } else {
+        ctx.fillStyle = "#ff4444";
+        ctx.font = (scale * 2) + "px monospace";
+        ctx.fillText("?", scale, scale * 3);
+      }
       return;
     }
 
@@ -356,7 +377,7 @@
 
         var grid = getGrid(animal, stage);
         var ctx  = canvas.getContext("2d");
-        drawSprite(ctx, grid, animal, pixelScale);
+        drawSprite(ctx, grid, animal, pixelScale, stage);
         cell.appendChild(canvas);
 
         // Per-sprite save button
@@ -394,7 +415,7 @@
       canvas.height = size.h;
       var grid = getGrid(animal, stage);
       var ctx  = canvas.getContext("2d");
-      drawSprite(ctx, grid, animal, pixelScale);
+      drawSprite(ctx, grid, animal, pixelScale, stage);
     });
   }
 

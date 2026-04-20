@@ -1679,7 +1679,7 @@
   }
 
   const STAGE_SCALES = {
-    egg:    0.65,
+    egg:    0.325,
     baby:   0.65,
     child:  0.75,
     teen:   0.85,
@@ -1706,7 +1706,7 @@
    * are the aspect-ratio correction applied on top of BASE_SIZE.
    */
   const STAGE_BODY_HEIGHT_MULTS = {
-    egg:    1.30,
+    egg:    1.3,
     baby:   0.67,
     child:  0.67,
     teen:   0.75,

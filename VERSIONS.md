@@ -1,6 +1,35 @@
 ﻿# Version History
 
-## v1.1.3 — current
+## v1.1.4 — current
+
+### Changes from v1.1.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.1.3` → `1.1.4` |
+| `pycharm/build.gradle.kts` | Version bumped `1.1.3` → `1.1.4` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.1.3` → `1.1.4` |
+| `opencode-codotchi/package.json` | Version bumped `1.1.3` → `1.1.4` |
+| `vscode/media/sidebar.js` | BUGFIX-070: `STAGE_BODY_HEIGHT_MULTS.egg` changed from `1.30` → `0.75`; BUGFIX-075: `STAGE_SCALES.egg` changed `0.65`→`0.325`, `STAGE_BODY_HEIGHT_MULTS.egg` changed `0.75`→`1.3` |
+| `pycharm/src/main/resources/webview/sidebar.js` | BUGFIX-070, BUGFIX-075: same egg scale fixes mirrored from VS Code |
+| `vscode/media/sprite_preview.html` | BUGFIX-071: added procedural egg oval path in `drawSprite()`; BUGFIX-075: egg radii halved (`rx: 0.35→0.175`, `ry: 0.40→0.20`) |
+| `vscode/media/sprites.js` | BUGFIX-072: widened quadruped baby/child legs to 3 cols; horse baby/child bespoke fixes; BUGFIX-074: added leg rows 37–47 to monkey/rooster/dragon baby and child; BUGFIX-075: `bodyWidth = bodySize` override in egg draw block to ignore weight |
+| `pycharm/src/main/resources/webview/sprites.js` | BUGFIX-072, BUGFIX-074, BUGFIX-075: same fixes mirrored from VS Code |
+| `opencode-codotchi/src/asciiArt.ts` | BUGFIX-073: shifted default baby head row right by 1 space to align face center with body center; realigned all sprite-type baby head overrides to face center at col 7 |
+| `.opencode/plugins/asciiArt.ts` | BUGFIX-073: same ASCII alignment fixes mirrored from opencode-codotchi |
+
+### Bug fixes
+
+- **BUGFIX-070** - Egg sprite renders too large in the game sidebar
+- **BUGFIX-071** - Egg sprite shows `?` in sprite_preview.html instead of the egg shape
+- **BUGFIX-072** - All quadruped baby/child stages have visually invisible 2-column-wide legs
+- **BUGFIX-073** - OpenCode ASCII art baby head is misaligned left of the body
+- **BUGFIX-074** - Biped (monkey, rooster, dragon) baby and child stages have no legs
+- **BUGFIX-075** - Egg sprite renders as landscape oval; too large; weight-width applied incorrectly
+
+---
+
+## v1.1.3 — previous
 
 ### Changes from v1.1.2
 
