@@ -243,7 +243,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
             discipline            = r.discipline            ?: 50,
             energy                = r.energy                ?: 100,
             health                = r.health                ?: 100,
-            weight                = r.weight                ?: 5,
+            weight                = r.weight                ?: 40,
             ageDays               = r.ageDays               ?: 0,
             stage                 = r.stage                 ?: "egg",
             character             = r.character             ?: "",

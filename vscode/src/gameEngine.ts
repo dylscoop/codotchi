@@ -2078,7 +2078,7 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     discipline: getNumber("discipline", 50),
     energy: getNumber("energy", 100),
     health: getNumber("health", 100),
-    weight: getNumber("weight", 5),
+    weight: getNumber("weight", 40),
     ageDays: getNumber("ageDays", 0),
     stage: getString("stage", "egg"),
     character: getString("character", ""),
