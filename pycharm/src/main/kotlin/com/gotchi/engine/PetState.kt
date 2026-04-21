@@ -9,6 +9,7 @@ data class PetState(
     val name: String,
     val petType: String,
     val color: String,
+    val spriteType: String,
 
     // Core stats
     val hunger: Int,

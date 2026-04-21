@@ -169,6 +169,7 @@ fun createPet(name: String, petType: String, color: String): PetState {
             name               = name,
             petType            = petType,
             color              = color,
+            spriteType         = "classic",
             hunger             = 50,
             happiness          = 50,
             discipline         = 50,
