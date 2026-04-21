@@ -114,9 +114,9 @@
           "type": "string",
           "enum": ["small", "medium", "large"],
           "enumDescriptions": [
-            "Small — compact original size (1× scale, 12×16 sprites).",
-            "Medium — comfortable default, roughly 1.5× larger than small (12×16 sprites).",
-            "Large — twice the original size with higher-detail 24×32 sprites."
+            "Small — compact original size (1× scale, 12×16 pixel grid).",
+            "Medium — comfortable default (1.5× scale, 18×24 pixel grid).",
+            "Large — twice the original size with higher-detail 24×32 pixel grid."
           ],
           "default": "medium",
           "description": "Controls the overall display size of the pet sprite. 'Large' uses a more detailed 24×32 pixel grid for every sprite type."
