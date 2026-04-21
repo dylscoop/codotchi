@@ -1,9 +1,9 @@
 ---
 description: Interact with your codotchi virtual pet
 ---
-Map $ARGUMENTS to a `gotchi` tool action using the table below, then follow the output rules.
+Map the `show` argument to a `gotchi` tool action using the table below, then follow the output rules.
 
-| $ARGUMENTS | action to call | output rule |
+| show | action to call | output rule |
 |---|---|---|
 | (blank) or `status` | `on` | Show art block from tool output if present, then output only `Hunger: X | Happiness: X | Energy: X | Health: X | Weight: X` — no bar graph, no commentary |
 | `show` | `on` | Output the tool result as plain text, exactly as returned — no code fences, no extra commentary |
