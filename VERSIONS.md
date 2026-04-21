@@ -1,6 +1,31 @@
 # Version History
 
-## v1.2.1 — current
+## v1.2.2 — current
+
+### Changes from v1.2.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.2.1` → `1.2.2` |
+| `pycharm/build.gradle.kts` | Version bumped `1.2.1` → `1.2.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.2.1` → `1.2.2` |
+| `opencode-codotchi/package.json` | Version bumped `1.2.1` → `1.2.2` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt` | BUGFIX-080: `buildHtml()` now loads and inlines `sprites.js` from classpath as a `<script>` block before the sidebar script, matching how `sidebar.js` is already inlined |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | BUGFIX-081: added `ZODIAC_ANIMALS` list and `randomSpriteType()` helper; `createPet()` now calls `randomSpriteType()` instead of hardcoding `"classic"` |
+| `vscode/archive/vsix/vscode-gotchi-1.2.1.vsix` | Archived old vsix before rebuild |
+| `pycharm/archive/pycharm-gotchi-1.2.1.zip` | Archived old zip before rebuild |
+| `vscode/vscode-gotchi-1.2.2.vsix` | Rebuilt distributable vsix for v1.2.2 |
+| `pycharm/build/distributions/pycharm-gotchi-1.2.2.zip` | Rebuilt distributable zip for v1.2.2 |
+| `opencode-codotchi/opencode-codotchi-1.2.2.zip` | Rebuilt distributable zip for v1.2.2 |
+
+### Bug fixes
+
+- **BUGFIX-080** — PyCharm sprites never rendered; `sprites.js` was not loaded into the JCEF webview
+- **BUGFIX-081** — PyCharm new pets always assigned `spriteType = "classic"`; animal name never shown in info line
+
+---
+
+## v1.2.1 — previous
 
 ### Changes from v1.2.0
 

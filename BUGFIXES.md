@@ -1050,3 +1050,22 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** The `gotchi.petSize` setting had `enumDescriptions` that did not match the actual rendered sizes, misleading users in the VS Code settings UI.
 
 **Fix:** Updated all four `enumDescriptions` entries to accurately reflect the pixel grid size rendered at each option (`small`, `medium`, `large`, `xlarge`).
+
+
+## BUGFIX-080 -- PyCharm sprites never rendered (sprites.js not loaded in JCEF webview)
+
+**Status:** Fixed (branch `fix/pycharm-sprites-and-animal-name`)
+**File:** `pycharm/src/main/kotlin/com/gotchi/GotchiBrowserPanel.kt`
+
+**Problem:** `buildHtml()` inlines `sidebar.css` and `sidebar.js` as `<style>` and `<script>` blocks, but left `<script src="sprites.js"></script>` as a literal tag. Because `browser.loadHTML(html)` feeds the HTML string to JCEF with no base URL, the browser cannot resolve the relative path `sprites.js`. The script silently fails to load, `window.renderSpriteGrid` is never defined, and the animation loop throws a `TypeError` on every tick -- leaving the sprite canvas permanently blank.
+
+**Fix:** Added `val spritesText = loadResource("/webview/sprites.js")` and replaced `<script src="sprites.js"></script>` with an inline `<script>` block containing the full sprites.js source, inserted before the sidebar.js block to preserve load order. Mirrors exactly how sidebar.js is already inlined.
+
+## BUGFIX-081 -- PyCharm new pets always get spriteType = "classic"; animal name never shown
+
+**Status:** Fixed (branch `fix/pycharm-sprites-and-animal-name`)
+**File:** `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`
+
+**Problem:** `createPet()` hardcoded `spriteType = "classic"` for every new pet. VS Code uses `randomSpriteType()` to assign one of 12 zodiac animals (96% chance), cat (2%), or classic (2%). Because PyCharm always assigned classic, the animal name was never shown in the sidebar info line (the label is intentionally suppressed for classic sprites), and the zodiac sprite system was effectively disabled in PyCharm.
+
+**Fix:** Added `ZODIAC_ANIMALS` list and `randomSpriteType()` private helper to `GameEngine.kt`, mirroring the TypeScript implementation. `createPet()` now calls `randomSpriteType()` so new PyCharm pets get a random zodiac animal with the same probability distribution as VS Code.
