@@ -1,27 +1,33 @@
-﻿/**
+/**
  * index.ts
  *
- * opencode-codotchi â€” npm-distributable OpenCode plugin.
+ * opencode-codotchi — npm-distributable OpenCode plugin.
  * Brings your codotchi into any terminal as a living companion.
  *
  * What this plugin does:
- *   - Loads the shared cross-IDE pet state from ~/.config/gotchi/state.json
- *     (Windows: %APPDATA%/gotchi/state.json) on startup.
+ *   - Loads pet state from both VS Code and PyCharm per-IDE state files on startup.
+ *     VS Code : %APPDATA%/gotchi/vscode/state.json  (~/.config/gotchi/vscode/state.json)
+ *     PyCharm : %APPDATA%/gotchi/pycharm/state.json (~/.config/gotchi/pycharm/state.json)
+ *   - Watches both files for live updates from whichever IDE is active.
  *   - Runs a tick timer every TICK_INTERVAL_SECONDS to advance the game.
  *   - Hooks into file.edited events to reward coding activity.
  *   - Hooks into session.idle to flag idle state.
  *   - Hooks into server.connected to queue a greeting notification.
  *   - Registers the `gotchi` custom tool for slash-command interactions.
  *
+ * Both pets are shown simultaneously when active (saved within the last 60 s).
+ * If neither IDE is actively ticking, the most recently saved alive pet is shown.
+ * Actions (feed, pat, etc.) are applied to all currently active pets.
+ *
  * Slash commands (invoked via /codotchi in the OpenCode TUI):
- *   /codotchi              â†’ show status (text + art if on)
- *   /codotchi feed         â†’ give a meal
- *   /codotchi pat          â†’ pat (gentle happiness boost)
- *   /codotchi sleep        â†’ put to sleep
- *   /codotchi clean        â†’ clean up droppings
- *   /codotchi medicine     â†’ give medicine (cure sickness)
- *   /codotchi on           â†’ enable ASCII art in tool details panel
- *   /codotchi off          â†’ disable ASCII art (plain text stats only)
+ *   /codotchi              → show status (text + art if on)
+ *   /codotchi feed         → give a meal
+ *   /codotchi pat          → pat (gentle happiness boost)
+ *   /codotchi sleep        → put to sleep
+ *   /codotchi clean        → clean up droppings
+ *   /codotchi medicine     → give medicine (cure sickness)
+ *   /codotchi on           → enable ASCII art in tool details panel
+ *   /codotchi off          → disable ASCII art (plain text stats only)
  *
  * Global install (from zip):
  *   1. Download opencode-codotchi-X.Y.Z.zip from Releases and extract it.
@@ -40,13 +46,11 @@ import type { Plugin } from "@opencode-ai/plugin";
 import {
   PetState,
   tick,
-  createPet,
   applyOfflineDecay,
   applyCodeActivity,
   feedMeal,
   pat,
   sleep,
-  wake,
   clean,
   giveMedicine,
   serialiseState,
@@ -68,28 +72,36 @@ import {
 } from "./asciiArt.js";
 
 // ---------------------------------------------------------------------------
-// Shared state file helpers
+// Per-IDE state file helpers
 // ---------------------------------------------------------------------------
 
-function getSharedStatePath(): string {
-  const base =
-    process.platform === "win32"
-      ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")
-      : path.join(os.homedir(), ".config");
-  return path.join(base, "gotchi", "state.json");
+/** How recently (ms) a state file must have been saved to count as "active". */
+const ACTIVE_IDE_THRESHOLD_MS = 60_000;
+
+function getIDEBase(): string {
+  return process.platform === "win32"
+    ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")
+    : path.join(os.homedir(), ".config");
 }
 
-interface SharedStateFile {
+function getVSCodeStatePath(): string {
+  return path.join(getIDEBase(), "gotchi", "vscode", "state.json");
+}
+
+function getPyCharmStatePath(): string {
+  return path.join(getIDEBase(), "gotchi", "pycharm", "state.json");
+}
+
+interface IDEStateFile {
   state: Record<string, unknown>;
   savedAt: number;
   terminalEnabled?: boolean;
 }
 
-function loadFromSharedFile(): { state: PetState; savedAt: number; terminalEnabled: boolean } | null {
+function loadFromIDEFile(filePath: string): { state: PetState; savedAt: number; terminalEnabled: boolean } | null {
   try {
-    const filePath = getSharedStatePath();
     if (!fs.existsSync(filePath)) { return null; }
-    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as SharedStateFile;
+    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as IDEStateFile;
     if (!raw.state || typeof raw.savedAt !== "number") { return null; }
     return {
       state: deserialiseState(raw.state),
@@ -101,31 +113,29 @@ function loadFromSharedFile(): { state: PetState; savedAt: number; terminalEnabl
   }
 }
 
-function saveToSharedFile(state: PetState): void {
+function saveToIDEFile(filePath: string, state: PetState): void {
   try {
-    const filePath = getSharedStatePath();
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
-    const payload: SharedStateFile = {
+    const payload: IDEStateFile = {
       state: serialiseState(state) as Record<string, unknown>,
       savedAt: Date.now(),
-      terminalEnabled,
     };
     fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
   } catch {
-    // Best-effort â€” never crash the plugin if the shared file is unavailable.
+    // Best-effort — never crash the plugin if the state file is unavailable.
   }
 }
 
-/** Persist only the terminalEnabled flag, leaving the rest of the file intact. */
+/** Persist only the terminalEnabled flag into the VS Code state file (primary). */
 function saveTerminalEnabled(): void {
   try {
-    const filePath = getSharedStatePath();
+    const filePath = getVSCodeStatePath();
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
-    let existing: SharedStateFile = { state: {}, savedAt: Date.now(), terminalEnabled };
+    let existing: IDEStateFile = { state: {}, savedAt: Date.now(), terminalEnabled };
     if (fs.existsSync(filePath)) {
-      try { existing = JSON.parse(fs.readFileSync(filePath, "utf8")) as SharedStateFile; } catch { /* ignore */ }
+      try { existing = JSON.parse(fs.readFileSync(filePath, "utf8")) as IDEStateFile; } catch { /* ignore */ }
     }
     existing.terminalEnabled = terminalEnabled;
     fs.writeFileSync(filePath, JSON.stringify(existing), "utf8");
@@ -135,17 +145,24 @@ function saveTerminalEnabled(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Meals-per-cycle counter (plugin-local, reset on wake)
+// Meals-per-cycle counters (plugin-local, reset on wake, one per IDE)
 // ---------------------------------------------------------------------------
 
-let mealsThisCycle = 0;
+let vscodeMeals  = 0;
+let pycharmMeals = 0;
 
 // ---------------------------------------------------------------------------
-// Plugin state
+// Plugin state — dual-pet (VS Code + PyCharm, independent)
 // ---------------------------------------------------------------------------
 
-let petState: PetState | null = null;
-let lastSavedAt = 0;
+/** VS Code pet state, or null if no VS Code state file exists. */
+let vscodePetState:    PetState | null = null;
+let vscodeLastSavedAt: number = 0;
+
+/** PyCharm pet state, or null if no PyCharm state file exists. */
+let pycharmPetState:    PetState | null = null;
+let pycharmLastSavedAt: number = 0;
+
 let tickTimer: ReturnType<typeof setInterval> | undefined;
 let isIdle = false;
 let lastCodeActivityMs = 0;
@@ -214,66 +231,154 @@ function drainNotification(): string {
 }
 
 /**
- * Returns the contextual art header (speech bubble) when:
- *   - terminalEnabled is true, AND
- *   - a living pet exists in petState at the time of calling.
- * Always call this AFTER any state-mutating operation so the art
- * reflects the pet's updated stats.
+ * Returns the contextual art header (speech bubble) for all active pets when
+ * terminalEnabled is true. Pets are stacked vertically, separated by a blank line.
+ * Always call this AFTER any state-mutating operation so the art reflects updated stats.
  */
 function artHeader(): string {
-  if (!terminalEnabled || petState === null || !petState.alive) { return ""; }
-  const speech = buildContextualSpeech(
-    petState,
-    sessionFilesEdited,
-    Date.now() - sessionStartMs
-  );
-  return buildSpeechBubble(petState.stage, petState.mood, speech, petState.name, petState.spriteType) + "\n";
+  if (!terminalEnabled) { return ""; }
+  const active = getActivePets();
+  if (active.length === 0) { return ""; }
+  return active
+    .filter(p => p.state.alive)
+    .map(p => {
+      const speech = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs);
+      return buildSpeechBubble(p.state.stage, p.state.mood, speech, p.state.name, p.state.spriteType);
+    })
+    .join("\n") + "\n";
 }
 
-/** Load state from shared file; if none exists, stay null (no pet yet). */
-function loadState(): void {
-  const shared = loadFromSharedFile();
-  if (shared !== null) {
-    const elapsedSeconds = (Date.now() - shared.savedAt) / 1_000;
-    petState = applyOfflineDecay(shared.state, elapsedSeconds);
-    lastSavedAt = shared.savedAt;
-    terminalEnabled = shared.terminalEnabled;
-    // Reset meal counter when loading (we don't persist it cross-IDE)
-    mealsThisCycle = 0;
+// ---------------------------------------------------------------------------
+// Active-pet helpers
+// ---------------------------------------------------------------------------
+
+interface ActivePet {
+  ide:   "vscode" | "pycharm";
+  state: PetState;
+  /** Whether this IDE is currently ticking (savedAt within ACTIVE_IDE_THRESHOLD_MS). */
+  live:  boolean;
+}
+
+/**
+ * Returns pets to show in the current interaction:
+ *   - All IDEs whose state file was saved within ACTIVE_IDE_THRESHOLD_MS → "live"
+ *   - If no IDE is live, returns the most recently saved alive pet as a fallback.
+ *   - At least one pet is always returned if any alive pet exists.
+ */
+function getActivePets(): ActivePet[] {
+  const now = Date.now();
+  const results: ActivePet[] = [];
+
+  if (vscodePetState !== null && vscodePetState.alive) {
+    const live = (now - vscodeLastSavedAt) <= ACTIVE_IDE_THRESHOLD_MS;
+    results.push({ ide: "vscode",  state: vscodePetState,  live });
+  }
+  if (pycharmPetState !== null && pycharmPetState.alive) {
+    const live = (now - pycharmLastSavedAt) <= ACTIVE_IDE_THRESHOLD_MS;
+    results.push({ ide: "pycharm", state: pycharmPetState, live });
+  }
+
+  const liveResults = results.filter(p => p.live);
+  if (liveResults.length > 0) { return liveResults; }
+
+  // Fallback: no live IDE — return the most recently saved alive pet
+  if (results.length > 0) {
+    const newest = results.reduce((a, b) =>
+      (a.ide === "vscode" ? vscodeLastSavedAt : pycharmLastSavedAt) >=
+      (b.ide === "vscode" ? vscodeLastSavedAt : pycharmLastSavedAt) ? a : b
+    );
+    return [newest];
+  }
+
+  // No alive pet at all — include dead pets for the "died" message
+  const dead: ActivePet[] = [];
+  if (vscodePetState !== null)  { dead.push({ ide: "vscode",  state: vscodePetState,  live: false }); }
+  if (pycharmPetState !== null) { dead.push({ ide: "pycharm", state: pycharmPetState, live: false }); }
+  if (dead.length > 0) {
+    const newest = dead.reduce((a, b) =>
+      (a.ide === "vscode" ? vscodeLastSavedAt : pycharmLastSavedAt) >=
+      (b.ide === "vscode" ? vscodeLastSavedAt : pycharmLastSavedAt) ? a : b
+    );
+    return [newest];
+  }
+  return [];
+}
+
+function getMeals(ide: "vscode" | "pycharm"): number {
+  return ide === "vscode" ? vscodeMeals : pycharmMeals;
+}
+function setMeals(ide: "vscode" | "pycharm", n: number): void {
+  if (ide === "vscode") { vscodeMeals = n; } else { pycharmMeals = n; }
+}
+function getSavedAt(ide: "vscode" | "pycharm"): number {
+  return ide === "vscode" ? vscodeLastSavedAt : pycharmLastSavedAt;
+}
+function setSavedAt(ide: "vscode" | "pycharm", t: number): void {
+  if (ide === "vscode") { vscodeLastSavedAt = t; } else { pycharmLastSavedAt = t; }
+}
+function setPetState(ide: "vscode" | "pycharm", s: PetState): void {
+  if (ide === "vscode") { vscodePetState = s; } else { pycharmPetState = s; }
+}
+function getStatePath(ide: "vscode" | "pycharm"): string {
+  return ide === "vscode" ? getVSCodeStatePath() : getPyCharmStatePath();
+}
+
+// ---------------------------------------------------------------------------
+// Load / save / tick
+// ---------------------------------------------------------------------------
+
+/** Load both IDE state files on startup. */
+function loadBothStates(): void {
+  const vscodeFile  = loadFromIDEFile(getVSCodeStatePath());
+  if (vscodeFile !== null) {
+    const elapsed = (Date.now() - vscodeFile.savedAt) / 1_000;
+    vscodePetState    = applyOfflineDecay(vscodeFile.state, elapsed);
+    vscodeLastSavedAt = vscodeFile.savedAt;
+    vscodeMeals = 0;
+    // Restore terminalEnabled from whichever file has it set
+    if (vscodeFile.terminalEnabled) { terminalEnabled = true; }
+  }
+  const pycharmFile = loadFromIDEFile(getPyCharmStatePath());
+  if (pycharmFile !== null) {
+    const elapsed = (Date.now() - pycharmFile.savedAt) / 1_000;
+    pycharmPetState    = applyOfflineDecay(pycharmFile.state, elapsed);
+    pycharmLastSavedAt = pycharmFile.savedAt;
+    pycharmMeals = 0;
   }
 }
 
-function saveState(): void {
-  if (petState !== null) {
-    saveToSharedFile(petState);
-    lastSavedAt = Date.now();
+function saveIDEState(ide: "vscode" | "pycharm"): void {
+  const state = ide === "vscode" ? vscodePetState : pycharmPetState;
+  if (state !== null) {
+    saveToIDEFile(getStatePath(ide), state);
+    setSavedAt(ide, Date.now());
   }
 }
 
-function applyTick(): void {
-  if (petState === null || !petState.alive) { return; }
-  const deepIdle = false; // the plugin has no deep-idle concept yet
-  petState = tick(petState, isIdle, deepIdle, DEFAULT_GAME_CONFIG);
-  saveState();
+function applyTickForPet(ide: "vscode" | "pycharm"): void {
+  const state = ide === "vscode" ? vscodePetState : pycharmPetState;
+  if (state === null || !state.alive) { return; }
+  const next = tick(state, isIdle, false, DEFAULT_GAME_CONFIG);
+  setPetState(ide, next);
+  saveIDEState(ide);
 
-  // Surface key events as queued notifications (no active tool context here)
-  for (const event of petState.events) {
+  for (const event of next.events) {
     switch (event) {
       case "auto_woke_up":
-        mealsThisCycle = 0;
+        setMeals(ide, 0);
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, petState.mood, "I feel rested! Time to code!", petState.name, petState.spriteType)
-          : `[${petState.name}] I feel rested! Time to code!`);
+          ? buildSpeechBubble(next.stage, next.mood, "I feel rested! Time to code!", next.name, next.spriteType)
+          : `[${next.name}] I feel rested! Time to code!`);
         break;
       case "died":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sad", "Goodbye... take care of the next one.", petState.name, petState.spriteType)
-          : `[${petState.name}] Goodbye... take care of the next one.`);
+          ? buildSpeechBubble(next.stage, "sad", "Goodbye... take care of the next one.", next.name, next.spriteType)
+          : `[${next.name}] Goodbye... take care of the next one.`);
         break;
       case "died_of_old_age":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sleeping", "I lived a full life. Thank you for everything.", petState.name, petState.spriteType)
-          : `[${petState.name}] I lived a full life. Thank you for everything.`);
+          ? buildSpeechBubble(next.stage, "sleeping", "I lived a full life. Thank you for everything.", next.name, next.spriteType)
+          : `[${next.name}] I lived a full life. Thank you for everything.`);
         break;
       case "evolved_to_baby":
       case "evolved_to_child":
@@ -282,58 +387,63 @@ function applyTick(): void {
       case "evolved_to_senior": {
         const stageName = event.replace("evolved_to_", "");
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, petState.mood, `I evolved into a ${stageName}!`, petState.name, petState.spriteType)
-          : `[${petState.name}] I evolved into a ${stageName}!`);
+          ? buildSpeechBubble(next.stage, next.mood, `I evolved into a ${stageName}!`, next.name, next.spriteType)
+          : `[${next.name}] I evolved into a ${stageName}!`);
         break;
       }
       case "attention_call_hunger":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sad", "I'm so hungry... please feed me!", petState.name, petState.spriteType)
-          : `[${petState.name}] I'm so hungry... please feed me!`);
+          ? buildSpeechBubble(next.stage, "sad", "I'm so hungry... please feed me!", next.name, next.spriteType)
+          : `[${next.name}] I'm so hungry... please feed me!`);
         break;
       case "attention_call_unhappiness":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sad", "Gotchi wants to play", petState.name, petState.spriteType)
-          : `[${petState.name}] Gotchi wants to play`);
+          ? buildSpeechBubble(next.stage, "sad", "Gotchi wants to play", next.name, next.spriteType)
+          : `[${next.name}] Gotchi wants to play`);
         break;
       case "attention_call_sick":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sick", "I don't feel well. I need medicine!", petState.name, petState.spriteType)
-          : `[${petState.name}] I don't feel well. I need medicine!`);
+          ? buildSpeechBubble(next.stage, "sick", "I don't feel well. I need medicine!", next.name, next.spriteType)
+          : `[${next.name}] I don't feel well. I need medicine!`);
         break;
       case "attention_call_critical_health":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sick", "My health is critical! Please help me!", petState.name, petState.spriteType)
-          : `[${petState.name}] My health is critical! Please help me!`);
+          ? buildSpeechBubble(next.stage, "sick", "My health is critical! Please help me!", next.name, next.spriteType)
+          : `[${next.name}] My health is critical! Please help me!`);
         break;
       case "attention_call_low_energy":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sad", "I'm exhausted... let me sleep!", petState.name, petState.spriteType)
-          : `[${petState.name}] I'm exhausted... let me sleep!`);
+          ? buildSpeechBubble(next.stage, "sad", "I'm exhausted... let me sleep!", next.name, next.spriteType)
+          : `[${next.name}] I'm exhausted... let me sleep!`);
         break;
       case "became_sick":
-        queueNotification(buildToast(petState.stage, `${petState.name} has fallen sick.`));
+        queueNotification(buildToast(next.stage, `${next.name} has fallen sick.`));
         break;
       case "pooped":
-        queueNotification(buildToast(petState.stage, `${petState.name} made a mess! (use /codotchi clean)`));
+        queueNotification(buildToast(next.stage, `${next.name} made a mess! (use /codotchi clean)`));
         break;
       case "attention_call_poop":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "sad", "There is a mess here! Can you clean it up?", petState.name, petState.spriteType)
-          : `[${petState.name}] There is a mess here! Can you clean it up?`);
+          ? buildSpeechBubble(next.stage, "sad", "There is a mess here! Can you clean it up?", next.name, next.spriteType)
+          : `[${next.name}] There is a mess here! Can you clean it up?`);
         break;
       case "attention_call_gift":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "happy", "I brought you a gift! Use /codotchi pat to accept it.", petState.name, petState.spriteType)
-          : `[${petState.name}] I brought you a gift! Use /codotchi pat to accept it.`);
+          ? buildSpeechBubble(next.stage, "happy", "I brought you a gift! Use /codotchi pat to accept it.", next.name, next.spriteType)
+          : `[${next.name}] I brought you a gift! Use /codotchi pat to accept it.`);
         break;
       case "attention_call_misbehaviour":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(petState.stage, "neutral", "I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", petState.name, petState.spriteType)
-          : `[${petState.name}] I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.`);
+          ? buildSpeechBubble(next.stage, "neutral", "I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", next.name, next.spriteType)
+          : `[${next.name}] I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.`);
         break;
     }
   }
+}
+
+function applyTick(): void {
+  applyTickForPet("vscode");
+  applyTickForPet("pycharm");
 }
 
 // ---------------------------------------------------------------------------
@@ -341,21 +451,20 @@ function applyTick(): void {
 // ---------------------------------------------------------------------------
 
 export const plugin: Plugin = async (_ctx) => {
-  // Load state on startup â€” queue greeting as a pending notification
-  loadState();
+  // Load both IDE state files on startup — queue greetings as pending notifications
+  loadBothStates();
 
-  if (petState !== null) {
-    const greetMsg = petState.alive
-      ? `I'm here. ${
-          petState.hunger < 30 ? "Pretty hungry though." :
-          petState.sick        ? "Not feeling great." :
-          petState.energy < 20 ? "A bit tired." :
-          "Let's get to work."
-        }`
-      : "My codotchi passed away. Start a new game in VS Code or PyCharm.";
+  for (const p of getActivePets().filter(p => p.state.alive)) {
+    const s = p.state;
+    const greetMsg = `I'm here. ${
+      s.hunger < 30 ? "Pretty hungry though." :
+      s.sick        ? "Not feeling great."    :
+      s.energy < 20 ? "A bit tired."          :
+      "Let's get to work."
+    }`;
     queueNotification(terminalEnabled
-      ? buildSpeechBubble(petState.stage, petState.mood, greetMsg, petState.name, petState.spriteType)
-      : `[${petState.name}] ${greetMsg}`);
+      ? buildSpeechBubble(s.stage, s.mood, greetMsg, s.name, s.spriteType)
+      : `[${s.name}] ${greetMsg}`);
   }
 
   // Tick timer
@@ -364,49 +473,40 @@ export const plugin: Plugin = async (_ctx) => {
   }, TICK_INTERVAL_SECONDS * 1_000);
 
   // ---------------------------------------------------------------------------
-  // Cross-IDE live sync (BUGFIX-049)
-  // Watch state.json for writes by VS Code / PyCharm. The OpenCode plugin is
-  // never the "focused window" in the VS Code sense, so we always reload when
-  // the file changes â€” VS Code is the authoritative ticker whenever it is open.
+  // Live sync — watch both IDE state files for external writes.
   // A 150 ms debounce absorbs rapid successive fs events from atomic writes.
-  // The shared.savedAt <= lastSavedAt guard prevents us from overwriting a
-  // state we just saved ourselves (e.g. after /codotchi feed).
+  // The savedAt <= lastSavedAt guard prevents us from overwriting a state we
+  // just saved ourselves (e.g. after /codotchi feed).
   // ---------------------------------------------------------------------------
-  {
-    const sharedStatePath = getSharedStatePath();
+  function makeIDEWatcher(ide: "vscode" | "pycharm"): void {
+    const filePath = getStatePath(ide);
     let syncDebounce: ReturnType<typeof setTimeout> | undefined;
     let fsWatcher: ReturnType<typeof fs.watch> | undefined;
 
-    const reloadFromSharedFile = (): void => {
-      const shared = loadFromSharedFile();
-      if (shared === null) { return; }
-      // Only take the external write if it is strictly newer than our last save.
-      if (shared.savedAt <= lastSavedAt) { return; }
-      const elapsedSeconds = (Date.now() - shared.savedAt) / 1_000;
-      petState = applyOfflineDecay(shared.state, elapsedSeconds);
-      lastSavedAt = shared.savedAt;
-      // Do NOT reset terminalEnabled â€” it is OpenCode-local.
-      mealsThisCycle = 0;
+    const reload = (): void => {
+      const loaded = loadFromIDEFile(filePath);
+      if (loaded === null) { return; }
+      if (loaded.savedAt <= getSavedAt(ide)) { return; }
+      const elapsed = (Date.now() - loaded.savedAt) / 1_000;
+      setPetState(ide, applyOfflineDecay(loaded.state, elapsed));
+      setSavedAt(ide, loaded.savedAt);
+      setMeals(ide, 0);
     };
 
-    const onSharedStateChanged = (): void => {
+    const onChange = (): void => {
       if (syncDebounce !== undefined) { clearTimeout(syncDebounce); }
-      syncDebounce = setTimeout(() => {
-        syncDebounce = undefined;
-        reloadFromSharedFile();
-      }, 150);
+      syncDebounce = setTimeout(() => { syncDebounce = undefined; reload(); }, 150);
     };
 
     const startWatcher = (): void => {
       if (fsWatcher !== undefined) { return; }
       try {
-        fsWatcher = fs.watch(sharedStatePath, { persistent: false }, onSharedStateChanged);
+        fsWatcher = fs.watch(filePath, { persistent: false }, onChange);
         fsWatcher.on("error", () => { fsWatcher?.close(); fsWatcher = undefined; });
-      } catch { /* file may not exist yet â€” watchBootstrap will retry */ }
+      } catch { /* file may not exist yet — watchBootstrap will retry */ }
     };
 
     startWatcher();
-    // Retry every 10 s if the file didn't exist at startup.
     const watchBootstrap = setInterval(() => {
       if (fsWatcher !== undefined) { clearInterval(watchBootstrap); return; }
       startWatcher();
@@ -414,82 +514,60 @@ export const plugin: Plugin = async (_ctx) => {
     }, 10_000);
   }
 
+  makeIDEWatcher("vscode");
+  makeIDEWatcher("pycharm");
+
   // ---------------------------------------------------------------------------
   // Tool definition
   // ---------------------------------------------------------------------------
   const gotchiTool = tool({
     description:
       "Interact with your codotchi virtual pet. Use action='status' to see current stats, " +
-      "or one of: feed, pat, sleep, clean, medicine, on, off.",
+      "or one of: feed, pat, sleep, clean, medicine, on, off. " +
+      "Actions apply to all currently active IDE pets (VS Code and/or PyCharm).",
     args: {
       action: tool.schema
-        .enum(["status", "feed", "pat", "sleep", "clean", "medicine", "on", "off", "new_game"])
+        .enum(["status", "feed", "pat", "sleep", "clean", "medicine", "on", "off"])
         .describe("The action to perform"),
-      name: tool.schema
-        .string()
-        .optional()
-        .describe("Pet name â€” only used when action=new_game"),
-      petType: tool.schema
-        .enum(["codeling", "bytebug", "pixelpup", "shellscript"])
-        .optional()
-        .describe("Pet type â€” only used when action=new_game"),
     },
-    async execute({ action, name, petType }, context) {
+    async execute({ action }, context) {
       // Drain any queued tick notifications to prepend to this result
       const notification = drainNotification();
-      // Capture every return value so tool.execute.after can write it to output.output
       const ret = (s: string): string => { lastToolOutput = s; return s; };
-      // Suppress the text.complete sprite for the LLM response that immediately
-      // follows this tool call â€” the tool output already shows a coloured sprite.
       suppressNextTextArt = true;
 
-      // Set the tool panel title
-      const panelTitle = petState
-        ? `${petState.name} [${petState.stage}]`
-        : "codotchi";
-      context.metadata({ title: panelTitle });
+      const active = getActivePets();
+
+      // Build panel title from active pets
+      const titleParts = active.map(p => `${p.state.name} [${p.state.stage}]`);
+      context.metadata({ title: titleParts.join(" / ") || "codotchi" });
 
       // ---------------------------------------------------------------------------
-      // on / off â€” toggle ASCII art display
+      // on / off — toggle ASCII art display
       // ---------------------------------------------------------------------------
       if (action === "on") {
         terminalEnabled = true;
         saveTerminalEnabled();
-        // artHeader() now returns art immediately since terminalEnabled is true
         const art = artHeader();
-        const msg = petState
+        const msg = active.length > 0
           ? `ASCII art enabled.`
-          : "ASCII art enabled. No pet found yet â€” start a game in VS Code or PyCharm.";
+          : "ASCII art enabled. No pet found yet — start a game in VS Code or PyCharm.";
         return ret(notification + art + msg);
       }
 
       if (action === "off") {
         terminalEnabled = false;
         saveTerminalEnabled();
-        const msg = petState
+        const msg = active.length > 0
           ? `ASCII art disabled. Stats will be shown as plain text.`
           : "ASCII art disabled.";
         return ret(notification + msg);
       }
 
       // ---------------------------------------------------------------------------
-      // new_game â€” does not require an existing pet
+      // All other actions require at least one active pet
       // ---------------------------------------------------------------------------
-      if (action === "new_game") {
-        const petName  = name    ?? "Codotchi";
-        const petKind  = petType ?? "codeling";
-        petState = createPet(petName, petKind, "neon");
-        mealsThisCycle = 0;
-        saveState();
-        context.metadata({ title: `${petName} [egg]` });
-        const art = artHeader();
-        return ret(notification + art + `New game started! Your ${petKind} named "${petName}" has hatched.`);
-      }
-
-      // ---------------------------------------------------------------------------
-      // All other actions require an existing pet
-      // ---------------------------------------------------------------------------
-      if (petState === null) {
+      if (active.length === 0) {
         return ret(
           notification +
           "No pet found. Start a new game first:\n" +
@@ -498,114 +576,143 @@ export const plugin: Plugin = async (_ctx) => {
         );
       }
 
-      if (!petState.alive) {
-        return ret(notification + `${petState.name} has passed away. Start a new game to continue.`);
+      const allDead = active.every(p => !p.state.alive);
+      if (allDead) {
+        const names = active.map(p => p.state.name).join(" and ");
+        return ret(notification + `${names} has passed away. Start a new game to continue.`);
       }
 
-      // Update panel title with current stage
-      context.metadata({ title: `${petState.name} [${petState.stage}]` });
+      // Only operate on alive pets
+      const alivePets = active.filter(p => p.state.alive);
 
       switch (action) {
         case "status": {
-          // For status: show stat block (includes sprite) + plain text summary.
-          // artHeader() is intentionally omitted here â€” buildStatusBlock already
-          // renders the sprite, so calling artHeader() would draw it twice.
-          const statusBlock = terminalEnabled
-            ? buildStatusBlock({
-                name:       petState.name,
-                stage:      petState.stage,
-                mood:       petState.mood,
-                hunger:     petState.hunger,
-                happiness:  petState.happiness,
-                energy:     petState.energy,
-                health:     petState.health,
-                discipline: petState.discipline,
-                weight:     petState.weight,
-                ageDays:    petState.ageDays,
-                alive:      petState.alive,
-                sick:       petState.sick,
-                sleeping:   petState.sleeping,
-                poops:      petState.poops,
-              })
-            : "";
-          const textStats = `${petState.name} | Stage: ${petState.stage} | Hunger: ${petState.hunger} | Happiness: ${petState.happiness} | Energy: ${petState.energy} | Health: ${petState.health} | Weight: ${petState.weight}`;
-          return ret(notification + (statusBlock ? statusBlock + "\n" : "") + textStats);
+          // Show stacked status block (art + stats) for each active alive pet.
+          const blocks = alivePets.map(p => {
+            const s = p.state;
+            const ideLabel = p.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
+            const statusBlock = terminalEnabled
+              ? buildStatusBlock({
+                  name: s.name, stage: s.stage, mood: s.mood,
+                  hunger: s.hunger, happiness: s.happiness, energy: s.energy,
+                  health: s.health, discipline: s.discipline, weight: s.weight,
+                  ageDays: s.ageDays, alive: s.alive, sick: s.sick,
+                  sleeping: s.sleeping, poops: s.poops, spriteType: s.spriteType,
+                })
+              : "";
+            const textStats = `${ideLabel} ${s.name} | Stage: ${s.stage} | Hunger: ${s.hunger} | Happiness: ${s.happiness} | Energy: ${s.energy} | Health: ${s.health} | Weight: ${s.weight}`;
+            return (statusBlock ? statusBlock + "\n" : "") + textStats;
+          });
+          return ret(notification + blocks.join("\n\n──────────────────────\n\n"));
         }
 
         case "feed": {
-          if (petState.sleeping) {
-            return ret(notification + artHeader() + `${petState.name} is sleeping and can't eat right now.`);
+          const feedLines: string[] = [];
+          for (const p of alivePets) {
+            const s = p.state;
+            const meals = getMeals(p.ide);
+            if (s.sleeping) {
+              feedLines.push(`[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${s.name} is sleeping and can't eat right now.`);
+              continue;
+            }
+            const next = feedMeal(s, meals);
+            const refused = next.events.includes("meal_refused");
+            if (!refused) { setMeals(p.ide, meals + 1); }
+            setPetState(p.ide, next);
+            saveIDEState(p.ide);
+            const toast = buildToast(next.stage, refused
+              ? `${next.name} is too full for another meal.`
+              : `${next.name} enjoyed the meal! (hunger: ${next.hunger})`);
+            feedLines.push((terminalEnabled
+              ? buildSpeechBubble(next.stage, next.mood, refused ? "I'm too full!" : "Yum!", next.name, next.spriteType) + "\n"
+              : "") + toast + "\n" + (refused
+              ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Meal refused — ${next.name} has already had ${getMeals(p.ide)} meals this wake cycle.`
+              : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Fed ${next.name}. Hunger: ${next.hunger}/100, Weight: ${next.weight}.`));
           }
-          petState = feedMeal(petState, mealsThisCycle);
-          const refused = petState.events.includes("meal_refused");
-          if (!refused) { mealsThisCycle += 1; }
-          saveState();
-          const feedArt = artHeader();
-          const feedToast = buildToast(petState.stage, refused
-            ? `${petState.name} is too full for another meal.`
-            : `${petState.name} enjoyed the meal! (hunger: ${petState.hunger})`);
-          const feedResult = refused
-            ? `Meal refused â€” ${petState.name} has already had ${mealsThisCycle} meals this wake cycle.`
-            : `Fed ${petState.name}. Hunger: ${petState.hunger}/100, Weight: ${petState.weight}.`;
-          return ret(notification + feedArt + feedToast + "\n" + feedResult);
+          return ret(notification + feedLines.join("\n\n"));
         }
 
         case "pat": {
-          if (petState.sleeping) {
-            return ret(notification + artHeader() + `${petState.name} is sleeping.`);
+          const patLines: string[] = [];
+          for (const p of alivePets) {
+            const s = p.state;
+            if (s.sleeping) {
+              patLines.push(`[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${s.name} is sleeping.`);
+              continue;
+            }
+            const next = pat(s);
+            const refused = next.events.includes("pat_refused_no_energy");
+            setPetState(p.ide, next);
+            saveIDEState(p.ide);
+            const toast = buildToast(next.stage, refused
+              ? `${next.name} is too tired even for a pat.`
+              : `${next.name} enjoyed the pat!`);
+            patLines.push((terminalEnabled
+              ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired..." : "Yay!", next.name, next.spriteType) + "\n"
+              : "") + toast + "\n" + (refused
+              ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Pat refused — ${next.name} is too exhausted.`
+              : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Patted ${next.name}. Happiness: ${next.happiness}.`));
           }
-          petState = pat(petState);
-          const patRefused = petState.events.includes("pat_refused_no_energy");
-          saveState();
-          const patArt = artHeader();
-          const patToast = buildToast(petState.stage, patRefused
-            ? `${petState.name} is too tired even for a pat.`
-            : `${petState.name} enjoyed the pat!`);
-          const patResult = patRefused
-            ? `Pat refused â€” ${petState.name} is too exhausted.`
-            : `Patted ${petState.name}. Happiness: ${petState.happiness}.`;
-          return ret(notification + patArt + patToast + "\n" + patResult);
+          return ret(notification + patLines.join("\n\n"));
         }
 
         case "sleep": {
-          petState = sleep(petState);
-          const alreadySleeping = petState.events.includes("already_sleeping");
-          saveState();
-          const sleepArt = artHeader();
-          return ret(notification + sleepArt + (alreadySleeping
-            ? `${petState.name} is already sleeping.`
-            : `${petState.name} is now sleeping. Energy will recharge.`));
+          const sleepLines: string[] = [];
+          for (const p of alivePets) {
+            const next = sleep(p.state);
+            const already = next.events.includes("already_sleeping");
+            setPetState(p.ide, next);
+            saveIDEState(p.ide);
+            sleepLines.push((terminalEnabled
+              ? buildSpeechBubble(next.stage, next.mood, already ? "Already asleep..." : "Goodnight!", next.name, next.spriteType) + "\n"
+              : "") + (already
+              ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${next.name} is already sleeping.`
+              : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${next.name} is now sleeping. Energy will recharge.`));
+          }
+          return ret(notification + sleepLines.join("\n\n"));
         }
 
         case "clean": {
-          petState = clean(petState);
-          const alreadyClean = petState.events.includes("already_clean");
-          saveState();
-          const cleanArt = artHeader();
-          const cleanToast = buildToast(petState.stage, alreadyClean
-            ? `${petState.name}'s area is already clean.`
-            : `Cleaned up after ${petState.name}.`);
-          const cleanResult = alreadyClean
-            ? `Nothing to clean â€” ${petState.name}'s area is already spotless.`
-            : `Cleaned up ${petState.name}'s mess. Poops remaining: 0.`;
-          return ret(notification + cleanArt + cleanToast + "\n" + cleanResult);
+          const cleanLines: string[] = [];
+          for (const p of alivePets) {
+            const next = clean(p.state);
+            const already = next.events.includes("already_clean");
+            setPetState(p.ide, next);
+            saveIDEState(p.ide);
+            const toast = buildToast(next.stage, already
+              ? `${next.name}'s area is already clean.`
+              : `Cleaned up after ${next.name}.`);
+            cleanLines.push((terminalEnabled
+              ? buildSpeechBubble(next.stage, next.mood, already ? "All clean!" : "Thanks for cleaning!", next.name, next.spriteType) + "\n"
+              : "") + toast + "\n" + (already
+              ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Nothing to clean — ${next.name}'s area is already spotless.`
+              : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Cleaned up ${next.name}'s mess.`));
+          }
+          return ret(notification + cleanLines.join("\n\n"));
         }
 
         case "medicine": {
-          if (!petState.sick) {
-            return ret(notification + artHeader() + `${petState.name} is not sick â€” medicine not needed.`);
+          const medLines: string[] = [];
+          for (const p of alivePets) {
+            const s = p.state;
+            if (!s.sick) {
+              medLines.push(`[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${s.name} is not sick — medicine not needed.`);
+              continue;
+            }
+            const next = giveMedicine(s);
+            const cured = next.events.includes("cured");
+            setPetState(p.ide, next);
+            saveIDEState(p.ide);
+            const toast = buildToast(next.stage, cured
+              ? `${next.name} is cured!`
+              : `Gave ${next.name} medicine (${next.medicineDosesGiven}/3 doses).`);
+            medLines.push((terminalEnabled
+              ? buildSpeechBubble(next.stage, next.mood, cured ? "I feel better!" : "Medicine time...", next.name, next.spriteType) + "\n"
+              : "") + toast + "\n" + (cured
+              ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${next.name} has been cured!`
+              : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Gave medicine to ${next.name}. Doses given: ${next.medicineDosesGiven}/3.`));
           }
-          petState = giveMedicine(petState);
-          const cured = petState.events.includes("cured");
-          saveState();
-          const medArt = artHeader();
-          const medToast = buildToast(petState.stage, cured
-            ? `${petState.name} is cured!`
-            : `Gave ${petState.name} medicine (${petState.medicineDosesGiven}/3 doses).`);
-          const medResult = cured
-            ? `${petState.name} has been cured!`
-            : `Gave medicine to ${petState.name}. Doses given: ${petState.medicineDosesGiven}/3.`;
-          return ret(notification + medArt + medToast + "\n" + medResult);
+          return ret(notification + medLines.join("\n\n"));
         }
 
         default:
@@ -622,109 +729,103 @@ export const plugin: Plugin = async (_ctx) => {
       gotchi: gotchiTool,
     },
 
-    // Mirror the tool result to the details panel (output.output is what OpenCode
-    // renders in the tool execution details window; execute()'s return value goes
-    // only to the LLM, not to the panel).
     async "tool.execute.after"({ tool: toolName }, output) {
       if (toolName === "gotchi") {
         output.output = stripAnsi(lastToolOutput);
       }
     },
 
-    // Append a plain-ASCII speech bubble to every LLM text response when
-    // terminal art is enabled. Plain ASCII (no ANSI codes) is used because
-    // output.text is rendered as markdown â€” ANSI codes would appear as raw
-    // escape sequences. The suppressNextTextArt flag prevents a double-sprite
-    // when the user explicitly called /codotchi (tool output already has art).
     async "experimental.text.complete"(_input, output) {
       if (suppressNextTextArt) {
         suppressNextTextArt = false;
         return;
       }
-      if (!terminalEnabled || !petState || !petState.alive) return;
+      if (!terminalEnabled) return;
+      const livePets = getActivePets().filter(p => p.state.alive);
+      if (livePets.length === 0) return;
 
-      const msg = buildContextualSpeech({
-        hunger:    petState.hunger,
-        happiness: petState.happiness,
-        energy:    petState.energy,
-        health:    petState.health,
-        poops:     petState.poops,
-        sleeping:  petState.sleeping,
-        sick:      petState.sick,
+      const bubbles = livePets.map(p => {
+        const s = p.state;
+        const msg = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs);
+        return stripAnsi(buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType));
       });
-      const bubble = buildSpeechBubble(
-        petState.stage, petState.mood, msg, petState.name, petState.spriteType
-      );
-      const plain = stripAnsi(bubble);
-      output.text = output.text + "\n\n```\n" + plain + "\n```";
+      output.text = output.text + "\n\n```\n" + bubbles.join("\n\n") + "\n```";
     },
 
     async event({ event }) {
-      // file.edited â†’ code activity reward (throttled)
+      // file.edited → code activity reward (throttled), applied to all alive pets
       if (event.type === "file.edited") {
         isIdle = false;
         sessionFilesEdited += 1;
-        if (petState !== null && petState.alive && !petState.sleeping) {
-          const nowMs = Date.now();
-          if (nowMs - lastCodeActivityMs >= CODE_ACTIVITY_THROTTLE_SECONDS * 1_000) {
-            lastCodeActivityMs = nowMs;
-            petState = applyCodeActivity(petState);
-            saveState();
+        const nowMs = Date.now();
+        if (nowMs - lastCodeActivityMs >= CODE_ACTIVITY_THROTTLE_SECONDS * 1_000) {
+          lastCodeActivityMs = nowMs;
+          for (const ide of ["vscode", "pycharm"] as const) {
+            const s = ide === "vscode" ? vscodePetState : pycharmPetState;
+            if (s !== null && s.alive && !s.sleeping) {
+              setPetState(ide, applyCodeActivity(s));
+              saveIDEState(ide);
+            }
           }
         }
         return;
       }
 
-      // session.idle â†’ flag idle for next tick; fire diff notification if pending
+      // session.idle → flag idle; fire diff notification if pending
       if (event.type === "session.idle") {
         isIdle = true;
-        // Save on idle so offline decay is accurate if the user closes OpenCode
-        saveState();
-        // Option B: fire session.diff message now that the AI has gone quiet
-        if (pendingDiffSinceIdle && petState !== null && petState.alive) {
+        saveIDEState("vscode");
+        saveIDEState("pycharm");
+        if (pendingDiffSinceIdle) {
           pendingDiffSinceIdle = false;
-          const phrase = pickRandom(SESSION_DIFF_PHRASES);
-          queueNotification(terminalEnabled
-            ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name, petState.spriteType)
-            : `[${petState.name}] ${phrase}`);
+          const livePets = getActivePets().filter(p => p.state.alive);
+          for (const p of livePets) {
+            const phrase = pickRandom(SESSION_DIFF_PHRASES);
+            queueNotification(terminalEnabled
+              ? buildSpeechBubble(p.state.stage, p.state.mood, phrase, p.state.name, p.state.spriteType)
+              : `[${p.state.name}] ${phrase}`);
+          }
         }
         return;
       }
 
-      // todo.updated â†’ celebrate completions, encourage in-progress, note cancellations
+      // todo.updated → celebrate completions
       if (event.type === "todo.updated") {
         const newTodos = new Map<string, string>(
           event.properties.todos.map((t: { id: string; status: string }) => [t.id, t.status])
         );
         for (const todo of event.properties.todos) {
           const oldStatus = prevTodos.get(todo.id) ?? null;
+          const livePets = getActivePets().filter(p => p.state.alive && !p.state.sleeping);
           if (oldStatus !== "completed" && todo.status === "completed") {
-            // Apply happiness + discipline boost
-            if (petState !== null && petState.alive && !petState.sleeping) {
-              petState = applyCodeActivity(petState);
-              saveState();
+            for (const p of livePets) {
+              setPetState(p.ide, applyCodeActivity(p.state));
+              saveIDEState(p.ide);
             }
             const phrase = pickRandom(TODO_COMPLETE_PHRASES)(todo.content);
-            queueNotification(terminalEnabled && petState !== null
-              ? buildSpeechBubble(petState.stage, "happy", phrase, petState.name, petState.spriteType)
-              : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
+            const rep = livePets[0];
+            queueNotification(terminalEnabled && rep
+              ? buildSpeechBubble(rep.state.stage, "happy", phrase, rep.state.name, rep.state.spriteType)
+              : rep ? `[${rep.state.name}] ${phrase}` : phrase);
           } else if (oldStatus !== "in_progress" && todo.status === "in_progress") {
             const phrase = `On it: ${todo.content}.`;
-            queueNotification(terminalEnabled && petState !== null
-              ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name, petState.spriteType)
-              : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
+            const rep = livePets[0];
+            queueNotification(terminalEnabled && rep
+              ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType)
+              : rep ? `[${rep.state.name}] ${phrase}` : phrase);
           } else if (oldStatus !== "cancelled" && todo.status === "cancelled") {
-            const phrase = `Fair enough â€” ${todo.content} dropped.`;
-            queueNotification(terminalEnabled && petState !== null
-              ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name, petState.spriteType)
-              : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
+            const phrase = `Fair enough — ${todo.content} dropped.`;
+            const rep = livePets[0];
+            queueNotification(terminalEnabled && rep
+              ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType)
+              : rep ? `[${rep.state.name}] ${phrase}` : phrase);
           }
         }
         prevTodos = newTodos;
         return;
       }
 
-      // session.diff â†’ mark that changes arrived; notification deferred to session.idle
+      // session.diff → mark changes arrived
       if (event.type === "session.diff") {
         if (event.properties.diff && event.properties.diff.length > 0) {
           pendingDiffSinceIdle = true;
@@ -732,38 +833,40 @@ export const plugin: Plugin = async (_ctx) => {
         return;
       }
 
-      // vcs.branch.updated â†’ comment on branch switches
+      // vcs.branch.updated → comment on branch switches
       if (event.type === "vcs.branch.updated") {
         const branch = event.properties.branch;
         if (branch) {
           const phrase = `Switched to ${branch}. New mission?`;
-          queueNotification(terminalEnabled && petState !== null
-            ? buildSpeechBubble(petState.stage, petState.mood, phrase, petState.name, petState.spriteType)
-            : petState !== null ? `[${petState.name}] ${phrase}` : phrase);
+          const rep = getActivePets().filter(p => p.state.alive)[0];
+          queueNotification(terminalEnabled && rep
+            ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType)
+            : rep ? `[${rep.state.name}] ${phrase}` : phrase);
         }
         return;
       }
 
-      // server.connected â†’ queue greeting notification
+      // server.connected → queue greeting
       if (event.type === "server.connected") {
-        if (petState !== null && petState.alive) {
-          const greet = petState.hunger < 30
+        for (const p of getActivePets().filter(p => p.state.alive)) {
+          const s = p.state;
+          const greet = s.hunger < 30
             ? `Really hungry. Feed me when you get a chance (/codotchi feed)`
-            : petState.sick
+            : s.sick
             ? `Not feeling well. Need medicine (/codotchi medicine)`
-            : petState.energy < 20
+            : s.energy < 20
             ? `Running on empty. Let me rest (/codotchi sleep)`
-            : petState.happiness < 30
+            : s.happiness < 30
             ? `Been a while. Pat me? (/codotchi pat)`
             : `Hey. Ready when you are.`;
           queueNotification(terminalEnabled
-            ? buildSpeechBubble(petState.stage, petState.mood, greet, petState.name, petState.spriteType)
-            : `[${petState.name}] ${greet}`);
+            ? buildSpeechBubble(s.stage, s.mood, greet, s.name, s.spriteType)
+            : `[${s.name}] ${greet}`);
         }
         return;
       }
 
-      // session.status â†’ resume from idle when a new message arrives
+      // session.status → resume from idle
       if (event.type === "session.status") {
         isIdle = false;
         return;
