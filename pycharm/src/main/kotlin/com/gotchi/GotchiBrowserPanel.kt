@@ -113,9 +113,10 @@ class GotchiBrowserPanel(
         val reducedMotion    = settings?.reducedMotion ?: false
         val petSize          = settings?.petSize ?: "medium"
 
-        val cssText  = loadResource("/webview/sidebar.css")
-        val jsText   = loadResource("/webview/sidebar.js")
-        var html     = loadResource("/webview/sidebar.html")
+        val cssText     = loadResource("/webview/sidebar.css")
+        val spritesText = loadResource("/webview/sprites.js")
+        val jsText      = loadResource("/webview/sidebar.js")
+        var html        = loadResource("/webview/sidebar.html")
 
         // Substitute font-size class from settings
         html = html.replace("{{fontSizeClass}}", fontSizeClass)
@@ -159,6 +160,13 @@ class GotchiBrowserPanel(
             })();
             $jsText
         """.trimIndent()
+
+        // Replace <script src="sprites.js"></script> with an inline block.
+        // Must come before sidebar.js is inlined so renderSpriteGrid is defined first.
+        html = html.replace(
+            """<script src="sprites.js"></script>""",
+            "<script>\n$spritesText\n</script>"
+        )
 
         // Replace <script src="sidebar.js"></script>
         html = html.replace(
