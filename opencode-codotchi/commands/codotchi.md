@@ -1,7 +1,7 @@
 ---
 description: Interact with your codotchi virtual pet
 ---
-Map the `show` argument to a `gotchi` tool action using the table below, then follow the output rules.
+Map the `show` argument to a `codotchi` tool action using the table below, then follow the output rules.
 
 | show | action to call | output rule |
 |---|---|---|

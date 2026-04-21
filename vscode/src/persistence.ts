@@ -6,9 +6,9 @@
  * calculate how many seconds elapsed while the extension was closed.
  *
  * Per-IDE state file: every save also writes to a JSON file on disk at
- *   Windows : %APPDATA%\gotchi\vscode\state.json
- *   macOS   : ~/.config/gotchi/vscode/state.json
- *   Linux   : ~/.config/gotchi/vscode/state.json
+ *   Windows : %APPDATA%\codotchi\vscode\state.json
+ *   macOS   : ~/.config/codotchi/vscode/state.json
+ *   Linux   : ~/.config/codotchi/vscode/state.json
  *
  * VS Code's file is independent of PyCharm's file. OpenCode reads both
  * files separately and can display both pets simultaneously.
@@ -21,9 +21,9 @@ import * as os from "os";
 import * as vscode from "vscode";
 import { PetState, HighScore, deserialiseState, serialiseState } from "./gameEngine";
 
-const STATE_KEY = "gotchi.petState";
-const TIMESTAMP_KEY = "gotchi.lastSaveTimestamp";
-const HIGH_SCORE_KEY = "gotchi.highScore.v2"; // v2: ageDays now driven by dayTimer (agingMultiplier)
+const STATE_KEY = "codotchi.petState";
+const TIMESTAMP_KEY = "codotchi.lastSaveTimestamp";
+const HIGH_SCORE_KEY = "codotchi.highScore.v2"; // v2: ageDays now driven by dayTimer (agingMultiplier)
 
 // ---------------------------------------------------------------------------
 // Shared cross-IDE file helpers
@@ -35,7 +35,30 @@ export function getSharedStatePath(): string {
     process.platform === "win32"
       ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")
       : path.join(os.homedir(), ".config");
-  return path.join(base, "gotchi", "vscode", "state.json");
+  return path.join(base, "codotchi", "vscode", "state.json");
+}
+
+/**
+ * One-time migration: if the old gotchi/vscode/state.json exists but the new
+ * codotchi/vscode/state.json does not, copy it across so existing pets survive.
+ * Safe to call on every activation — it no-ops once the new file exists.
+ */
+export function migrateStateFolder(): void {
+  try {
+    const newPath = getSharedStatePath();
+    if (fs.existsSync(newPath)) { return; } // already migrated
+    const base =
+      process.platform === "win32"
+        ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")
+        : path.join(os.homedir(), ".config");
+    const oldPath = path.join(base, "gotchi", "vscode", "state.json");
+    if (!fs.existsSync(oldPath)) { return; }
+    const newDir = path.dirname(newPath);
+    if (!fs.existsSync(newDir)) { fs.mkdirSync(newDir, { recursive: true }); }
+    fs.copyFileSync(oldPath, newPath);
+  } catch {
+    // Best-effort migration — never crash the extension.
+  }
 }
 
 interface SharedStateFile {

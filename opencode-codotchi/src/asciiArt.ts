@@ -1,7 +1,7 @@
-﻿/**
+/**
  * asciiArt.ts
  *
- * Terminal ASCII art renderer for the gotchi OpenCode plugin.
+ * Terminal ASCII art renderer for the codotchi OpenCode plugin.
  *
  * Provides:
  *   - Stage-specific ASCII art (egg → baby → child → teen → adult → senior)
@@ -682,7 +682,7 @@ export function buildContextualSpeech(
   } else if (pet.poops > 2) {
     moodPhrase = "It's getting really messy in here...";
   } else if (pet.happiness < 20) {
-    moodPhrase = "Gotchi wants to play";
+    moodPhrase = "I want to play";
   } else if (pet.health < 30) {
     moodPhrase = "My health is low — please take care of me.";
   } else if (pet.sleeping) {
@@ -738,5 +738,5 @@ export const SESSION_DIFF_PHRASES: string[] = [
  */
 export function buildToast(stage: string, message: string): string {
   const c = STAGE_COLOURS[stage] ?? FG_WHITE;
-  return `${c}[gotchi]${RESET} ${message}`;
+  return `${c}[codotchi]${RESET} ${message}`;
 }

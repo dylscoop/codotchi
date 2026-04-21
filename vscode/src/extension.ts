@@ -7,7 +7,7 @@
  *   1. Loads persisted PetState (or prompts for a new game via the sidebar).
  *   2. Applies offline decay for the time elapsed since last save.
  *   3. Registers the SidebarProvider, StatusBarManager, EventsManager,
- *      and the `gotchi.newGame` / `gotchi.openPanel` commands.
+  *      and the `codotchi.newGame` / `codotchi.openPanel` commands.
  *   4. Starts the periodic tick timer (every TICK_INTERVAL_SECONDS seconds).
  *
  * On deactivation: saves state and disposes all resources.
@@ -35,6 +35,7 @@ import {
   saveHighScore,
   clearHighScore,
   getSharedStatePath,
+  migrateStateFolder,
 } from "./persistence";
 
 const TICK_INTERVAL_MS: number = TICK_INTERVAL_SECONDS * 1_000;
@@ -66,6 +67,9 @@ const DEEP_IDLE_REENTRY_GRACE_MS = 60_000;
  * @param context - The VS Code extension context.
  */
 export function activate(context: vscode.ExtensionContext): void {
+  // Migrate state file from old gotchi/ folder to codotchi/ on first run.
+  migrateStateFolder();
+
   statusBar = new StatusBarManager();
 
   /**
@@ -78,7 +82,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // Fire IDE notifications for attention call events (only when mechanic is enabled)
     const attentionCallsEnabled = vscode.workspace
-      .getConfiguration("gotchi")
+      .getConfiguration("codotchi")
       .get<boolean>("enableAttentionCalls", true);
     if (attentionCallsEnabled) {
       const notificationMessages: Record<string, string> = {
@@ -94,9 +98,9 @@ export function activate(context: vscode.ExtensionContext): void {
       for (const event of state.events) {
         const msg = notificationMessages[event];
         if (msg) {
-          void vscode.window.showWarningMessage(msg, "Open Gotchi").then((selection) => {
-            if (selection === "Open Gotchi") {
-              void vscode.commands.executeCommand("gotchiView.focus");
+          void vscode.window.showWarningMessage(msg, "Open Codotchi").then((selection) => {
+            if (selection === "Open Codotchi") {
+              void vscode.commands.executeCommand("codotchiView.focus");
             }
           });
         }
@@ -111,7 +115,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     // Update high score when pet dies (suppressed in dev mode — scores don't count)
-    const cfg2 = vscode.workspace.getConfiguration("gotchi");
+    const cfg2 = vscode.workspace.getConfiguration("codotchi");
     const devModeActive =
       cfg2.get<boolean>("devModeEnabled", false) &&
       cfg2.get<string>("developerPasscode", "") === "1234";
@@ -153,7 +157,7 @@ export function activate(context: vscode.ExtensionContext): void {
     currentHighScore = null;
     clearHighScore(context);
     // Push a state update so the webview clears the high score display immediately
-    const cfg3 = vscode.workspace.getConfiguration("gotchi");
+    const cfg3 = vscode.workspace.getConfiguration("codotchi");
     const devModeNow =
       cfg3.get<boolean>("devModeEnabled", false) &&
       cfg3.get<string>("developerPasscode", "") === "1234";
@@ -191,20 +195,20 @@ export function activate(context: vscode.ExtensionContext): void {
   // that AI coding agents also fire (document changes, cursor movement, tab switches).
   context.subscriptions.push(
     vscode.window.onDidChangeTextEditorSelection(() => {
-      const c = vscode.workspace.getConfiguration("gotchi");
+      const c = vscode.workspace.getConfiguration("codotchi");
       if (!c.get<boolean>("aiMode", false) && c.get<boolean>("idleResetOnCursorMovement", true)) {
         markActivity();
       }
     }),
     vscode.workspace.onDidChangeTextDocument(() => {
-      const c = vscode.workspace.getConfiguration("gotchi");
+      const c = vscode.workspace.getConfiguration("codotchi");
       if (!c.get<boolean>("aiMode", false) && c.get<boolean>("idleResetOnDocumentChange", true)) {
         markActivity();
       }
     }),
     vscode.window.onDidChangeWindowState((e) => {
       if (e.focused) {
-        const c = vscode.workspace.getConfiguration("gotchi");
+        const c = vscode.workspace.getConfiguration("codotchi");
         if (c.get<boolean>("idleResetOnWindowFocus", true)) {
           markActivity();
         }
@@ -220,18 +224,14 @@ export function activate(context: vscode.ExtensionContext): void {
           // use an accurate timestamp when VS Code is reopened.
           saveState(context, currentState);
         }
-        // In AI mode, keep ticking while unfocused so the pet advances
-        // while an AI agent codes in the background. The focus-gate exists
-        // only to prevent multi-window state divergence, which aiMode avoids
-        // by design (the AI doesn't open extra windows).
-        const c = vscode.workspace.getConfiguration("gotchi");
+        const c = vscode.workspace.getConfiguration("codotchi");
         if (!c.get<boolean>("aiMode", false)) {
           stopTicker();
         }
       }
     }),
     vscode.window.onDidChangeActiveTextEditor(() => {
-      const c = vscode.workspace.getConfiguration("gotchi");
+      const c = vscode.workspace.getConfiguration("codotchi");
       if (!c.get<boolean>("aiMode", false) && c.get<boolean>("idleResetOnTabSwitch", true)) {
         markActivity();
       }
@@ -243,7 +243,7 @@ export function activate(context: vscode.ExtensionContext): void {
   /** Run one game tick. Extracted so startTicker can reference it by name. */
   function runOneTick(): void {
     if (currentState === null) { return; }
-    const cfg = vscode.workspace.getConfiguration("gotchi");
+    const cfg = vscode.workspace.getConfiguration("codotchi");
     const idleThresholdMs = cfg.get<number>("idleThresholdSeconds", 60) * 1_000;
     const idleDeepThresholdMs = cfg.get<number>("idleDeepThresholdSeconds", 600) * 1_000;
     const idleMs = Date.now() - lastActivityMs;
@@ -253,7 +253,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // Refresh the deep-idle timestamp on every tick where the pet is deep idle.
     // When the user returns, the grace period counts from the last such tick,
     // keeping the pet protected for DEEP_IDLE_REENTRY_GRACE_MS (60 s) before
-    // full active decay resumes.  This prevents the gotchi from dying moments
+    // full active decay resumes.  This prevents the codotchi from dying moments
     // after the user unlocks their screen.
     if (rawDeepIdle) {
       lastDeepIdleTickMs = Date.now();
@@ -326,7 +326,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // Reset the meal cycle counter — we cannot know how many meals were given
     // by the other window, so reset to 0 (conservative; allows full quota here).
     sidebar?.resetMealCycle();
-    const cfg = vscode.workspace.getConfiguration("gotchi");
+    const cfg = vscode.workspace.getConfiguration("codotchi");
     const devModeActive =
       cfg.get<boolean>("devModeEnabled", false) &&
       cfg.get<string>("developerPasscode", "") === "1234";
@@ -341,7 +341,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // On focus gain, reloadAndRefreshUI() picks up state from the prior ticker
   // and startTicker() resumes the interval.  On focus loss, stopTicker() halts it.
   {
-    const initCfg = vscode.workspace.getConfiguration("gotchi");
+    const initCfg = vscode.workspace.getConfiguration("codotchi");
     if (vscode.window.state.focused || initCfg.get<boolean>("aiMode", false)) {
       startTicker();
     }
@@ -413,18 +413,18 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Commands
   context.subscriptions.push(
-    vscode.commands.registerCommand("gotchi.openPanel", () => {
-      void vscode.commands.executeCommand("gotchiView.focus");
+    vscode.commands.registerCommand("codotchi.openPanel", () => {
+      void vscode.commands.executeCommand("codotchiView.focus");
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("gotchi.newGame", () => {
+    vscode.commands.registerCommand("codotchi.newGame", () => {
       clearState(context);
       currentState = null;
       // The webview new-game form handles the actual createPet call via the
       // "new_game" message routed through SidebarProvider.
-      void vscode.commands.executeCommand("gotchiView.focus");
+      void vscode.commands.executeCommand("codotchiView.focus");
     })
   );
 

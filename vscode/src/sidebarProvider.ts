@@ -47,7 +47,7 @@ interface WebviewMessage {
 export class SidebarProvider
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
-  public static readonly VIEW_ID = "gotchiView";
+  public static readonly VIEW_ID = "codotchiView";
 
   private webviewView: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
@@ -89,7 +89,7 @@ export class SidebarProvider
     // high score even before the next tick fires.
     const bootstrapState = this.getCurrentState();
     const bootstrapHs    = this.getHighScore();
-    const bootstrapCfg   = vscode.workspace.getConfiguration("gotchi");
+    const bootstrapCfg   = vscode.workspace.getConfiguration("codotchi");
     const bootstrapDevMode =
       bootstrapCfg.get<boolean>("devModeEnabled", false) &&
       bootstrapCfg.get<string>("developerPasscode", "") === "1234";
@@ -120,13 +120,13 @@ export class SidebarProvider
     // Also reload on petStageHeight or reducedMotion changes.
     const configListener = vscode.workspace.onDidChangeConfiguration((e) => {
       if (
-        e.affectsConfiguration("gotchi.fontSize") ||
-        e.affectsConfiguration("gotchi.customPrimaryColor") ||
-        e.affectsConfiguration("gotchi.customSecondaryColor") ||
-        e.affectsConfiguration("gotchi.customBackgroundColor") ||
-        e.affectsConfiguration("gotchi.petSize") ||
-        e.affectsConfiguration("gotchi.reducedMotion") ||
-        e.affectsConfiguration("gotchi.idleResetOnMouseMovement")
+        e.affectsConfiguration("codotchi.fontSize") ||
+        e.affectsConfiguration("codotchi.customPrimaryColor") ||
+        e.affectsConfiguration("codotchi.customSecondaryColor") ||
+        e.affectsConfiguration("codotchi.customBackgroundColor") ||
+        e.affectsConfiguration("codotchi.petSize") ||
+        e.affectsConfiguration("codotchi.reducedMotion") ||
+        e.affectsConfiguration("codotchi.idleResetOnMouseMovement")
       ) {
         webviewView.webview.html = this.buildHtml(webviewView.webview);
       }
@@ -161,7 +161,7 @@ export class SidebarProvider
     html = html.replace(/\{\{cspSource\}\}/g, webview.cspSource);
 
     const fontSizeSetting = vscode.workspace
-      .getConfiguration("gotchi")
+      .getConfiguration("codotchi")
       .get<string>("fontSize", "normal");
     const fontSizeClass =
       fontSizeSetting === "large" ? "font-large" :
@@ -169,15 +169,15 @@ export class SidebarProvider
       "font-normal";
     html = html.replace("{{fontSizeClass}}", fontSizeClass);
 
-    const cfg = vscode.workspace.getConfiguration("gotchi");
+    const cfg = vscode.workspace.getConfiguration("codotchi");
     const customPrimary    = cfg.get<string>("customPrimaryColor",    "#ff8c00");
     const customSecondary  = cfg.get<string>("customSecondaryColor",  "#ffffff");
     const customBackground = cfg.get<string>("customBackgroundColor", "#1a1a2e");
     const customColorsStyle =
       `<style>:root{` +
-      `--gotchi-custom-primary:${customPrimary};` +
-      `--gotchi-custom-secondary:${customSecondary};` +
-      `--gotchi-custom-background:${customBackground};` +
+      `--codotchi-custom-primary:${customPrimary};` +
+      `--codotchi-custom-secondary:${customSecondary};` +
+      `--codotchi-custom-background:${customBackground};` +
       `}</style>`;
     html = html.replace("{{customColorsStyle}}", customColorsStyle);
 

@@ -1,1 +1,1 @@
-rootProject.name = "pycharm-gotchi"
+﻿rootProject.name = "pycharm-codotchi"

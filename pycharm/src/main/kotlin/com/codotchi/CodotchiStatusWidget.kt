@@ -1,6 +1,6 @@
-package com.gotchi
+package com.codotchi
 
-import com.gotchi.engine.PetState
+import com.codotchi.engine.PetState
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
@@ -10,20 +10,20 @@ import com.intellij.util.Consumer
 import java.awt.event.MouseEvent
 
 /**
- * GotchiStatusWidget — displays a compact pet summary in the IDE status bar.
+ * CodotchiStatusWidget — displays a compact pet summary in the IDE status bar.
  *
  * Shows the pet's stage emoji and name, e.g. "🥚 Gotchi".
- * [update] is called by [GotchiPlugin.broadcastState] after every state change.
+ * [update] is called by [CodotchiPlugin.broadcastState] after every state change.
  */
-class GotchiStatusWidget(private val project: Project) : StatusBarWidget, TextPresentation {
+class CodotchiStatusWidget(private val project: Project) : StatusBarWidget, TextPresentation {
 
     private var statusBar: StatusBar? = null
 
     @Volatile private var text: String = "🥚 Gotchi"
-    @Volatile private var tooltip: String = "vscode_gotchi"
+    @Volatile private var tooltip: String = "vscode_codotchi"
 
     companion object {
-        const val ID = "GotchiStatusWidget"
+        const val ID = "CodotchiStatusWidget"
 
         private val STAGE_EMOJI = mapOf(
             "egg"    to "🥚",
@@ -58,7 +58,7 @@ class GotchiStatusWidget(private val project: Project) : StatusBarWidget, TextPr
     override fun getAlignment(): Float = 0f
 
     override fun getClickConsumer(): Consumer<MouseEvent> = Consumer { _ ->
-        ToolWindowManager.getInstance(project).getToolWindow("Gotchi")?.activate(null)
+        ToolWindowManager.getInstance(project).getToolWindow("Codotchi")?.activate(null)
     }
 
     // ── State update ───────────────────────────────────────────────────────

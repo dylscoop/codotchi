@@ -1,9 +1,9 @@
 {
-  "name": "vscode-gotchi",
-  "displayName": "vscode_gotchi",
+  "name": "vscode-codotchi",
+  "displayName": "vscode_codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "1.2.2",
-  "publisher": "vscode-gotchi",
+  "version": "1.3.0",
+  "publisher": "vscode-codotchi",
   "repository": {
     "type": "git",
     "url": "https://github.com/dylscoop/vscode_gotchi.git"
@@ -22,58 +22,58 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "gotchi-sidebar",
-          "title": "vscode_gotchi",
+          "id": "codotchi-sidebar",
+          "title": "vscode_codotchi",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "gotchi-sidebar": [
+      "codotchi-sidebar": [
         {
           "type": "webview",
-          "id": "gotchiView",
+          "id": "codotchiView",
           "name": "Your Pet"
         }
       ]
     },
     "commands": [
       {
-        "command": "gotchi.openPanel",
-        "title": "Gotchi: Open Pet Panel"
-      },
-      {
-        "command": "gotchi.newGame",
-        "title": "Gotchi: Start New Game"
+        "command": "codotchi.openPanel",
+          "title": "Codotchi: Open Pet Panel"
+        },
+        {
+          "command": "codotchi.newGame",
+          "title": "Codotchi: Start New Game"
       }
     ],
     "configuration": {
-      "title": "vscode_gotchi",
+      "title": "vscode_codotchi",
       "properties": {
-        "gotchi.fontSize": {
+        "codotchi.fontSize": {
           "type": "string",
           "enum": ["small", "normal", "large"],
           "default": "normal",
-          "description": "Font size used in the vscode_gotchi sidebar panel."
+          "description": "Font size used in the vscode_codotchi sidebar panel."
         },
-        "gotchi.enableAttentionCalls": {
+        "codotchi.enableAttentionCalls": {
           "type": "boolean",
           "default": true,
           "description": "Enables attention calls (the pet notifying you when it needs care). When disabled, the entire attention-call mechanic is skipped — no events fire, no cooldowns run, no state counters update."
         },
-        "gotchi.idleThresholdSeconds": {
+        "codotchi.idleThresholdSeconds": {
           "type": "integer",
           "default": 60,
           "minimum": 10,
           "description": "Seconds of no IDE activity before the pet is considered idle (decay rate drops to 10% of normal). Default: 60 seconds."
         },
-        "gotchi.idleDeepThresholdSeconds": {
+        "codotchi.idleDeepThresholdSeconds": {
           "type": "integer",
           "default": 600,
           "minimum": 30,
           "description": "Seconds of sustained idle before entering deep idle (stats floored at 20, aging stops). Default: 600 seconds (10 minutes)."
         },
-        "gotchi.attentionCallExpiry": {
+        "codotchi.attentionCallExpiry": {
           "type": "string",
           "enum": ["needy", "standard", "chilled"],
           "enumDescriptions": [
@@ -84,7 +84,7 @@
           "default": "standard",
           "description": "Response window for cleaning, misbehaviour, and gift attention calls before they expire and apply a stat penalty. Other call types (hunger, sick, etc.) always use a fixed 2-minute window."
         },
-        "gotchi.attentionCallRate": {
+        "codotchi.attentionCallRate": {
           "type": "string",
           "enum": ["fast", "medium", "slow"],
           "enumDescriptions": [
@@ -95,22 +95,22 @@
           "default": "fast",
           "description": "How quickly cleaning, misbehaviour, and gift attention calls can spawn. Uses a logarithmic probability curve; this setting scales the curve down to make calls less frequent."
         },
-        "gotchi.customPrimaryColor": {
+        "codotchi.customPrimaryColor": {
           "type": "string",
           "default": "#ff8c00",
           "description": "Primary colour for the Custom palette (pet body). Applies when 'Custom' is chosen as the colour scheme at new-game setup."
         },
-        "gotchi.customSecondaryColor": {
+        "codotchi.customSecondaryColor": {
           "type": "string",
           "default": "#ffffff",
           "description": "Secondary colour for the Custom palette (pet eyes and details). Applies when 'Custom' is chosen as the colour scheme at new-game setup."
         },
-        "gotchi.customBackgroundColor": {
+        "codotchi.customBackgroundColor": {
           "type": "string",
           "default": "#1a1a2e",
           "description": "Background colour for the Custom palette (canvas stage). Applies when 'Custom' is chosen as the colour scheme at new-game setup."
         },
-        "gotchi.petSize": {
+        "codotchi.petSize": {
           "type": "string",
           "enum": ["small", "medium", "large"],
           "enumDescriptions": [
@@ -121,63 +121,63 @@
           "default": "medium",
           "description": "Controls the overall display size of the pet sprite. 'Large' uses a more detailed 24×32 pixel grid for every sprite type."
         },
-        "gotchi.reducedMotion": {
+        "codotchi.reducedMotion": {
           "type": "boolean",
           "default": false,
           "description": "Disable all pet animations (walking, jumping, reaction effects). The pet is drawn statically at the centre of the stage. Also respects the OS-level prefers-reduced-motion setting."
         },
-        "gotchi.devModeEnabled": {
+        "codotchi.devModeEnabled": {
           "type": "boolean",
           "default": false,
           "description": "Check to enable developer mode. Requires the developer passcode to also be set correctly. In developer mode the pet cannot die (health is floored at 1), it ages faster, and high scores are not recorded."
         },
-        "gotchi.developerPasscode": {
+        "codotchi.developerPasscode": {
           "type": "string",
           "default": "",
-          "description": "Developer passcode. Also requires 'Developer Mode Enabled' (gotchi.devModeEnabled) to be checked to activate dev mode."
+          "description": "Developer passcode. Also requires 'Developer Mode Enabled' (codotchi.devModeEnabled) to be checked to activate dev mode."
         },
-        "gotchi.devModeAgingMultiplier": {
+        "codotchi.devModeAgingMultiplier": {
           "type": "integer",
           "default": 10,
           "minimum": 1,
           "description": "Aging speed multiplier applied when developer mode is active. Default: 10 (10× faster than normal)."
         },
-        "gotchi.devModeHealthFloor": {
+        "codotchi.devModeHealthFloor": {
           "type": "integer",
           "default": 1,
           "minimum": 0,
           "maximum": 100,
           "description": "Minimum health value enforced when developer mode is active. Default: 1 (pet cannot die). Set to 0 to allow the pet to die normally even in dev mode — useful for testing the death flow."
         },
-        "gotchi.aiMode": {
+        "codotchi.aiMode": {
           "type": "boolean",
           "default": false,
           "description": "AI mode: suppress idle-timer resets from document changes, cursor movement, and tab switches — the three events an AI coding agent fires. Window focus and mouse movement still reset the timer normally. Enable this when you are using an AI agent to avoid the agent's edits keeping your pet perpetually active."
         },
-        "gotchi.idleResetOnDocumentChange": {
+        "codotchi.idleResetOnDocumentChange": {
           "type": "boolean",
           "default": true,
-          "description": "Reset the idle timer when any document is changed (keystrokes, AI agent edits, etc.). Suppressed automatically when gotchi.aiMode is enabled."
+          "description": "Reset the idle timer when any document is changed (keystrokes, AI agent edits, etc.). Suppressed automatically when codotchi.aiMode is enabled."
         },
-        "gotchi.idleResetOnCursorMovement": {
+        "codotchi.idleResetOnCursorMovement": {
           "type": "boolean",
           "default": true,
-          "description": "Reset the idle timer when the text editor cursor moves or the selection changes. Suppressed automatically when gotchi.aiMode is enabled."
+          "description": "Reset the idle timer when the text editor cursor moves or the selection changes. Suppressed automatically when codotchi.aiMode is enabled."
         },
-        "gotchi.idleResetOnTabSwitch": {
+        "codotchi.idleResetOnTabSwitch": {
           "type": "boolean",
           "default": true,
-          "description": "Reset the idle timer when the active editor tab changes. Suppressed automatically when gotchi.aiMode is enabled."
+          "description": "Reset the idle timer when the active editor tab changes. Suppressed automatically when codotchi.aiMode is enabled."
         },
-        "gotchi.idleResetOnWindowFocus": {
+        "codotchi.idleResetOnWindowFocus": {
           "type": "boolean",
           "default": true,
           "description": "Reset the idle timer when the VS Code window gains focus (e.g. you switch back to VS Code from another app). Never suppressed by aiMode."
         },
-        "gotchi.idleResetOnMouseMovement": {
+        "codotchi.idleResetOnMouseMovement": {
           "type": "boolean",
           "default": true,
-          "description": "Reset the idle timer when the mouse moves inside the Gotchi sidebar panel (throttled to once per 30 seconds). Never suppressed by aiMode."
+          "description": "Reset the idle timer when the mouse moves inside the Codotchi sidebar panel (throttled to once per 30 seconds). Never suppressed by aiMode."
         }
       }
     }

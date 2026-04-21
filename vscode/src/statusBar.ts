@@ -28,7 +28,7 @@ export class StatusBarManager implements vscode.Disposable {
       vscode.StatusBarAlignment.Right,
       100
     );
-    this.item.command = "gotchi.openPanel";
+    this.item.command = "codotchi.openPanel";
     this.item.tooltip = "Click to open your pet";
   }
 

@@ -1,4 +1,4 @@
-package com.gotchi
+﻿package com.codotchi
 
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
@@ -11,23 +11,23 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
 
 /**
- * GotchiToolWindow — creates the browser panel and registers it as the
+ * CodotchiToolWindow — creates the browser panel and registers it as the
  * "Gotchi" tool-window content.
  *
  * Called by IntelliJ when the tool window is first shown.  We create a fresh
- * [GotchiBrowserPanel], register it with [GotchiPlugin] so state broadcasts
+ * [CodotchiBrowserPanel], register it with [CodotchiPlugin] so state broadcasts
  * reach it, then add its Swing component as the only tool-window content.
  *
  * A gear icon is added to the tool-window title bar so users can open the
  * Gotchi settings page (Settings → Tools → Gotchi) without navigating
  * through the IDE settings menu manually.
  */
-class GotchiToolWindow : ToolWindowFactory {
+class CodotchiToolWindow : ToolWindowFactory {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val plugin = service<GotchiPlugin>()
+        val plugin = service<CodotchiPlugin>()
 
-        val panel = GotchiBrowserPanel(
+        val panel = CodotchiBrowserPanel(
             messageHandler    = { message -> plugin.handleCommand(message) },
             parentDisposable  = toolWindow.disposable,
             onReady           = { plugin.broadcastState() },
@@ -44,7 +44,7 @@ class GotchiToolWindow : ToolWindowFactory {
             object : AnAction("Gotchi Settings", "Open Gotchi settings", AllIcons.General.Settings) {
                 override fun actionPerformed(e: AnActionEvent) {
                     ShowSettingsUtil.getInstance()
-                        .showSettingsDialog(project, GotchiConfigurable::class.java)
+                        .showSettingsDialog(project, CodotchiConfigurable::class.java)
                 }
             }
         ))

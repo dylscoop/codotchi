@@ -1,4 +1,4 @@
-package com.gotchi
+﻿package com.codotchi
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
@@ -18,12 +18,12 @@ import javax.swing.JTextField
 import javax.swing.SpinnerNumberModel
 
 /**
- * GotchiConfigurable — IDE settings page for Gotchi display preferences.
+ * CodotchiConfigurable — IDE settings page for Gotchi display preferences.
  *
  * Registered under Settings > Tools > Gotchi.
- * Changes apply immediately to the open tool-window via [GotchiPlugin.reloadWebview].
+ * Changes apply immediately to the open tool-window via [CodotchiPlugin.reloadWebview].
  */
-class GotchiConfigurable : Configurable {
+class CodotchiConfigurable : Configurable {
 
     private var fontSizeCombo:             JComboBox<String>? = null
     private var colorPanel:                ColorPanel?         = null
@@ -49,7 +49,7 @@ class GotchiConfigurable : Configurable {
     private var idleResetOnWindowFocusCheck:    JCheckBox?          = null
     private var idleResetOnMouseMovementCheck:  JCheckBox?          = null
 
-    override fun getDisplayName(): String = "Gotchi"
+    override fun getDisplayName(): String = "Codotchi"
 
     override fun createComponent(): JComponent {
         val combo   = JComboBox(arrayOf("Small", "Normal", "Large"))
@@ -295,7 +295,7 @@ class GotchiConfigurable : Configurable {
     }
 
     override fun isModified(): Boolean {
-        val settings = service<GotchiSettings>()
+        val settings = service<CodotchiSettings>()
         val uiFont       = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
         val uiColor      = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
         val uiPrimary    = customPrimaryPanel?.selectedColor?.let { colorToHex(it) } ?: "#ff8c00"
@@ -345,7 +345,7 @@ class GotchiConfigurable : Configurable {
     }
 
     override fun apply() {
-        val settings = service<GotchiSettings>()
+        val settings = service<CodotchiSettings>()
         settings.fontSize               = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
         settings.textColor              = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
         settings.customPrimaryColor     = customPrimaryPanel?.selectedColor?.let { colorToHex(it) } ?: "#ff8c00"
@@ -370,11 +370,11 @@ class GotchiConfigurable : Configurable {
         settings.idleResetOnWindowFocus    = idleResetOnWindowFocusCheck?.isSelected ?: true
         settings.idleResetOnMouseMovement  = idleResetOnMouseMovementCheck?.isSelected ?: true
         // Reload the webview immediately so the change is visible without a restart
-        ApplicationManager.getApplication().service<GotchiPlugin>().reloadWebview()
+        ApplicationManager.getApplication().service<CodotchiPlugin>().reloadWebview()
     }
 
     override fun reset() {
-        val settings = service<GotchiSettings>()
+        val settings = service<CodotchiSettings>()
         fontSizeCombo?.selectedItem        = settings.fontSize.replaceFirstChar { it.uppercaseChar() }
         colorPanel?.selectedColor          = hexToColor(settings.textColor)
         customPrimaryPanel?.selectedColor    = hexToColor(settings.customPrimaryColor)

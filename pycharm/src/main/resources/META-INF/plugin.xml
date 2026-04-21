@@ -1,8 +1,8 @@
 <idea-plugin>
-    <id>com.gotchi.pycharm-gotchi</id>
-    <name>Gotchi</name>
-    <version>1.2.2</version>
-    <vendor>gotchi</vendor>
+    <id>com.codotchi.pycharm-codotchi</id>
+    <name>Codotchi</name>
+    <version>1.3.0</version>
+    <vendor>codotchi</vendor>
 
     <description><![CDATA[
 <p>Raise a virtual pixel-art pet that lives inside your JetBrains IDE. Feed it, play with it, and keep it happy while you code — neglect it and it will get sick and eventually die.</p>
@@ -16,7 +16,7 @@
   <li>Coding activity rewards: your pet gets happier and more disciplined when you type</li>
   <li>High score tracking: records your best run (age, stage, pet type) across all pets</li>
   <li>Status bar widget showing your pet's current mood at a glance</li>
-  <li>Settings page — click the ⚙ gear icon in the Gotchi tool window, or go to Settings → Tools → Gotchi — to adjust font size, text colour, attention-call behaviour, and idle thresholds</li>
+  <li>Settings page — click the ⚙ gear icon in the Codotchi tool window, or go to Settings → Tools → Codotchi — to adjust font size, text colour, attention-call behaviour, and idle thresholds</li>
 </ul>
 
 <h3>Care Actions</h3>
@@ -39,9 +39,9 @@
 </ul>
 
 <h3>Getting Started</h3>
-<p>Open the <b>Gotchi</b> tool window (right-hand panel) and click <b>New Pet</b> to hatch your first egg.
+<p>Open the <b>Codotchi</b> tool window (right-hand panel) and click <b>New Pet</b> to hatch your first egg.
 Choose a pet type, pick a name, and start coding! Keep an eye on the status bar widget for a quick
-mood summary. Click the <b>⚙ gear icon</b> in the Gotchi tool window title bar (or go to Settings → Tools → Gotchi)
+mood summary. Click the <b>⚙ gear icon</b> in the Codotchi tool window title bar (or go to Settings → Tools → Codotchi)
 to adjust display size, colours, attention-call timing, and idle thresholds.</p>
     ]]></description>
 
@@ -53,39 +53,39 @@ to adjust display size, colours, attention-call timing, and idle thresholds.</p>
 
         <!-- Persistence -->
         <applicationService
-            serviceImplementation="com.gotchi.GotchiPersistence"/>
+            serviceImplementation="com.codotchi.CodotchiPersistence"/>
 
         <!-- Display settings -->
         <applicationService
-            serviceImplementation="com.gotchi.GotchiSettings"/>
+            serviceImplementation="com.codotchi.CodotchiSettings"/>
 
         <!-- Main application service (tick scheduler, state manager) -->
         <applicationService
-            serviceImplementation="com.gotchi.GotchiPlugin"/>
+            serviceImplementation="com.codotchi.CodotchiPlugin"/>
 
         <!-- Tool window -->
         <toolWindow
-            id="Gotchi"
+            id="Codotchi"
             anchor="right"
-            factoryClass="com.gotchi.GotchiToolWindow"
-            icon="/META-INF/gotchi_icon.svg"/>
+            factoryClass="com.codotchi.CodotchiToolWindow"
+            icon="/META-INF/codotchi_icon.svg"/>
 
         <!-- Status bar widget -->
         <statusBarWidgetFactory
-            id="GotchiStatusWidget"
-            implementation="com.gotchi.GotchiStatusWidgetFactory"
+            id="CodotchiStatusWidget"
+            implementation="com.codotchi.CodotchiStatusWidgetFactory"
             order="last"/>
 
-        <!-- Settings page: Settings > Tools > Gotchi -->
+        <!-- Settings page: Settings > Tools > Codotchi -->
         <applicationConfigurable
             parentId="tools"
-            instance="com.gotchi.GotchiConfigurable"
-            id="com.gotchi.GotchiConfigurable"
-            displayName="Gotchi"/>
+            instance="com.codotchi.CodotchiConfigurable"
+            id="com.codotchi.CodotchiConfigurable"
+            displayName="Codotchi"/>
 
         <!-- Notification group for attention calls -->
         <notificationGroup
-            id="Gotchi Attention Calls"
+            id="Codotchi Attention Calls"
             displayType="BALLOON"
             isLogByDefault="true"/>
 
@@ -93,16 +93,16 @@ to adjust display size, colours, attention-call timing, and idle thresholds.</p>
 
     <applicationListeners>
         <listener
-            class="com.gotchi.GotchiAppLifecycleListener"
+            class="com.codotchi.CodotchiAppLifecycleListener"
             topic="com.intellij.ide.AppLifecycleListener"/>
     </applicationListeners>
 
     <projectListeners>
         <listener
-            class="com.gotchi.GotchiEventsManager"
+            class="com.codotchi.CodotchiEventsManager"
             topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
         <listener
-            class="com.gotchi.GotchiTabSwitchListener"
+            class="com.codotchi.CodotchiTabSwitchListener"
             topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
     </projectListeners>
 

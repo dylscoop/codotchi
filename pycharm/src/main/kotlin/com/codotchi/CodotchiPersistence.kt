@@ -1,14 +1,14 @@
-package com.gotchi
+package com.codotchi
 
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
-import com.gotchi.engine.*
+import com.codotchi.engine.*
 import com.intellij.openapi.components.*
 import org.jdom.Element
 import java.io.File
 
 /**
- * GotchiPersistence — app-level persistent state stored in `gotchi.xml`.
+ * CodotchiPersistence — app-level persistent state stored in `codotchi.xml`.
  *
  * Uses IntelliJ's PersistentStateComponent with a raw JDOM Element so that
  * unknown/future attributes survive round-trips without breaking.
@@ -16,19 +16,19 @@ import java.io.File
  * JSON serialisation of PetState is handled by Gson (bundled with IntelliJ).
  *
  * Per-IDE state file: every save also writes to a JSON file on disk at
- *   Windows : %APPDATA%\gotchi\pycharm\state.json
- *   macOS   : ~/.config/gotchi/pycharm/state.json
- *   Linux   : ~/.config/gotchi/pycharm/state.json
+ *   Windows : %APPDATA%\codotchi\pycharm\state.json
+ *   macOS   : ~/.config/codotchi/pycharm/state.json
+ *   Linux   : ~/.config/codotchi/pycharm/state.json
  *
  * PyCharm only reads and writes its own file. VS Code uses a separate path.
  * OpenCode reads both files independently and can display both pets.
  */
 @State(
-    name = "GotchiPersistence",
-    storages = [Storage("gotchi.xml")]
+    name = "CodotchiPersistence",
+    storages = [Storage("codotchi.xml")]
 )
 @Service(Service.Level.APP)
-class GotchiPersistence : PersistentStateComponent<Element> {
+class CodotchiPersistence : PersistentStateComponent<Element> {
 
     private val gson = Gson()
 
@@ -47,7 +47,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
     // ── PersistentStateComponent ───────────────────────────────────────────
 
     override fun getState(): Element {
-        val el = Element("GotchiPersistence")
+        val el = Element("CodotchiPersistence")
         petStateJson?.let { el.setAttribute("petStateJson", it) }
         el.setAttribute("lastSaveTimestamp", lastSaveTimestamp.toString())
         el.setAttribute("mealsGivenThisCycle", mealsGivenThisCycle.toString())
@@ -141,7 +141,30 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         } else {
             "${System.getProperty("user.home")}/.config"
         }
-        return File(base, "gotchi/pycharm/state.json")
+        return File(base, "codotchi/pycharm/state.json")
+    }
+
+    /**
+     * One-time migration: if the old gotchi/pycharm/state.json exists but the new
+     * codotchi/pycharm/state.json does not, copy it across so existing pets survive.
+     * Safe to call on every startup — no-ops once the new file exists.
+     */
+    fun migrateStateFolder() {
+        try {
+            val newFile = getSharedStatePath()
+            if (newFile.exists()) return // already migrated
+            val base = if (System.getProperty("os.name").lowercase().contains("win")) {
+                System.getenv("APPDATA") ?: "${System.getProperty("user.home")}/AppData/Roaming"
+            } else {
+                "${System.getProperty("user.home")}/.config"
+            }
+            val oldFile = File(base, "gotchi/pycharm/state.json")
+            if (!oldFile.exists()) return
+            newFile.parentFile?.mkdirs()
+            oldFile.copyTo(newFile, overwrite = false)
+        } catch (_: Exception) {
+            // Best-effort migration — never crash the plugin.
+        }
     }
 
     /**

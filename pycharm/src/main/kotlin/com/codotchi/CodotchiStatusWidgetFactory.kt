@@ -1,4 +1,4 @@
-package com.gotchi
+﻿package com.codotchi
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
@@ -7,20 +7,20 @@ import com.intellij.openapi.wm.StatusBarWidget
 import com.intellij.openapi.wm.StatusBarWidgetFactory
 
 /**
- * GotchiStatusWidgetFactory — creates [GotchiStatusWidget] instances and
- * registers them with [GotchiPlugin] so state broadcasts reach the widget.
+ * CodotchiStatusWidgetFactory — creates [CodotchiStatusWidget] instances and
+ * registers them with [CodotchiPlugin] so state broadcasts reach the widget.
  */
-class GotchiStatusWidgetFactory : StatusBarWidgetFactory {
+class CodotchiStatusWidgetFactory : StatusBarWidgetFactory {
 
-    override fun getId(): String = GotchiStatusWidget.ID
+    override fun getId(): String = CodotchiStatusWidget.ID
 
-    override fun getDisplayName(): String = "Gotchi"
+    override fun getDisplayName(): String = "Codotchi"
 
     override fun isAvailable(project: Project): Boolean = true
 
     override fun createWidget(project: Project): StatusBarWidget {
-        val widget = GotchiStatusWidget(project)
-        service<GotchiPlugin>().setStatusWidget(widget)
+        val widget = CodotchiStatusWidget(project)
+        service<CodotchiPlugin>().setStatusWidget(widget)
         return widget
     }
 

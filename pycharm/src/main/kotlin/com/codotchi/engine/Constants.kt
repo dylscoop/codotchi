@@ -1,4 +1,4 @@
-package com.gotchi.engine
+﻿package com.codotchi.engine
 
 // ---------------------------------------------------------------------------
 // Constants — ported 1:1 from vscode/src/gameEngine.ts
