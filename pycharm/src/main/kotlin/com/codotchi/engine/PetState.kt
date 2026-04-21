@@ -1,4 +1,4 @@
-package com.gotchi.engine
+﻿package com.codotchi.engine
 
 /**
  * Full serialisable snapshot of the pet's state.

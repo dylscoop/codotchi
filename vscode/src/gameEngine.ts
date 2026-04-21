@@ -1,7 +1,7 @@
 /**
  * gameEngine.ts
  *
- * Pure-TypeScript game engine for vscode_gotchi.
+ * Pure-TypeScript game engine for vscode_codotchi.
  *
  * Replaces the retired Python subprocess architecture.  All game logic lives
  * here as pure functions; side effects (persistence, VS Code API calls) belong
@@ -271,7 +271,7 @@ export interface GameConfig {
    *   - Health is floored at 1 (the pet cannot die from stat decay or old age).
    *   - Aging is multiplied by devModeAgingMultiplier.
    *   - Deaths never update the high score.
-   * Activated by setting gotchi.developerPasscode to "1234".
+   * Activated by setting codotchi.developerPasscode to "1234".
    */
   devMode: boolean;
   /**

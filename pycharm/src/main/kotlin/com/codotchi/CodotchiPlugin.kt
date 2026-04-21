@@ -1,6 +1,6 @@
-package com.gotchi
+﻿package com.codotchi
 
-import com.gotchi.engine.*
+import com.codotchi.engine.*
 import com.intellij.ide.DataManager
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -22,11 +22,11 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 /**
- * GotchiPlugin — application-level service that owns the pet state and
+ * CodotchiPlugin — application-level service that owns the pet state and
  * tick scheduler.
  *
  * Responsibilities:
- *  - Load state from [GotchiPersistence] on [initialize], applying offline decay.
+ *  - Load state from [CodotchiPersistence] on [initialize], applying offline decay.
  *  - Schedule a tick every [TICK_INTERVAL_SECONDS] seconds via a fixed-delay
  *    executor (AppExecutorUtil so IntelliJ owns the thread lifecycle).
  *  - Expose [handleCommand] which mirrors sidebarProvider.ts's switch exactly.
@@ -34,10 +34,10 @@ import kotlin.concurrent.withLock
  *    the status-bar widget — always on the EDT.
  *
  * This class is registered as an app service in plugin.xml and is created lazily
- * by IntelliJ; [GotchiAppLifecycleListener.appStarted] accesses it to force
+ * by IntelliJ; [CodotchiAppLifecycleListener.appStarted] accesses it to force
  * initialisation.
  */
-class GotchiPlugin : Disposable {
+class CodotchiPlugin : Disposable {
 
     /**
      * Guards all reads and writes of [currentState], [currentHighScore], and
@@ -64,7 +64,7 @@ class GotchiPlugin : Disposable {
     /** AWT listener that updates [lastActivityTime] on any key press or mouse event. */
     private val awtActivityListener = AWTEventListener { event ->
         val id = event?.id ?: return@AWTEventListener
-        val settings = service<GotchiSettings>()
+        val settings = service<CodotchiSettings>()
         val ai = settings.aiMode
         val allowed = when {
             // Key press/release/type → treat as "document change" trigger
@@ -83,13 +83,13 @@ class GotchiPlugin : Disposable {
     }
 
     private fun isIdle(): Boolean =
-        System.currentTimeMillis() - lastActivityTime > service<GotchiSettings>().idleThresholdSeconds * 1000L
+        System.currentTimeMillis() - lastActivityTime > service<CodotchiSettings>().idleThresholdSeconds * 1000L
 
     private fun isDeepIdle(): Boolean =
-        System.currentTimeMillis() - lastActivityTime > service<GotchiSettings>().idleDeepThresholdSeconds * 1000L
+        System.currentTimeMillis() - lastActivityTime > service<CodotchiSettings>().idleDeepThresholdSeconds * 1000L
 
-    private var browserPanel:  GotchiBrowserPanel?  = null
-    private var statusWidget:  GotchiStatusWidget?  = null
+    private var browserPanel:  CodotchiBrowserPanel?  = null
+    private var statusWidget:  CodotchiStatusWidget?  = null
 
     private var tickFuture: ScheduledFuture<*>? = null
     private var messageBusConnection: MessageBusConnection? = null
@@ -125,7 +125,7 @@ class GotchiPlugin : Disposable {
             ApplicationActivationListener.TOPIC,
             object : ApplicationActivationListener {
                 override fun applicationActivated(ideFrame: IdeFrame) {
-                    val s = service<GotchiSettings>()
+                    val s = service<CodotchiSettings>()
                     if (s.idleResetOnWindowFocus) {
                         lastActivityTime = System.currentTimeMillis()
                     }
@@ -134,14 +134,14 @@ class GotchiPlugin : Disposable {
                 override fun applicationDeactivated(ideFrame: IdeFrame) {
                     // Save immediately on focus loss so no progress is lost
                     stateLock.withLock { currentState }?.let { state ->
-                        service<GotchiPersistence>().savePetState(state)
-                        service<GotchiPersistence>().lastSaveTimestamp = System.currentTimeMillis()
+                        service<CodotchiPersistence>().savePetState(state)
+                        service<CodotchiPersistence>().lastSaveTimestamp = System.currentTimeMillis()
                     }
                     // In AI mode, keep ticking while unfocused so the pet advances
                     // while an AI agent codes in the background. The focus-gate exists
                     // only to prevent multi-window state divergence, which aiMode avoids
                     // by design (the AI doesn't open extra windows).
-                    if (!service<GotchiSettings>().aiMode) {
+                    if (!service<CodotchiSettings>().aiMode) {
                         stopTicker()
                     }
                 }
@@ -149,7 +149,7 @@ class GotchiPlugin : Disposable {
         )
         messageBusConnection = conn
 
-        val persistence = service<GotchiPersistence>()
+        val persistence = service<CodotchiPersistence>()
 
         // Restore saved high score
         currentHighScore = persistence.loadHighScore()
@@ -183,7 +183,7 @@ class GotchiPlugin : Disposable {
     private fun onTick() {
         val ticked = stateLock.withLock {
             val state = currentState ?: return@withLock false
-            val settings = service<GotchiSettings>()
+            val settings = service<CodotchiSettings>()
 
             // Map attentionCallExpiry setting to tick count.
             val expiryMap = mapOf("needy" to 20, "standard" to 50, "chilled" to 100)
@@ -193,7 +193,7 @@ class GotchiPlugin : Disposable {
             val rateMap = mapOf("fast" to 1.0, "medium" to 1.5, "slow" to 2.0)
             val attentionCallRateDivisor = rateMap[settings.attentionCallRate] ?: 1.0
 
-            val gameConfig = com.gotchi.engine.GameConfig(
+            val gameConfig = com.codotchi.engine.GameConfig(
                 attentionCallsEnabled    = settings.enableAttentionCalls,
                 attentionCallExpiryTicks = attentionCallExpiryTicks,
                 attentionCallRateDivisor = attentionCallRateDivisor,
@@ -312,7 +312,7 @@ class GotchiPlugin : Disposable {
 
                 "reset_high_score" -> {
                     currentHighScore = null
-                    service<GotchiPersistence>().clearHighScore()
+                    service<CodotchiPersistence>().clearHighScore()
                     shouldBroadcast = true
                     return@withLock
                 }
@@ -329,7 +329,7 @@ class GotchiPlugin : Disposable {
         if (shouldBroadcast) broadcastState()
     }
 
-    // ── Code-activity trigger (called by GotchiEventsManager) ─────────────
+    // ── Code-activity trigger (called by CodotchiEventsManager) ─────────────
 
     fun triggerCodeActivity() {
         val now = System.currentTimeMillis()
@@ -346,7 +346,7 @@ class GotchiPlugin : Disposable {
     // ── External activity signal ───────────────────────────────────────────
 
     /**
-     * Mark that user activity has just occurred. Called by [GotchiTabSwitchListener]
+     * Mark that user activity has just occurred. Called by [CodotchiTabSwitchListener]
      * (and any other project-level listener that needs to reset the idle timer).
      */
     fun markActivity() {
@@ -355,12 +355,12 @@ class GotchiPlugin : Disposable {
 
     // ── Panel / widget registration ────────────────────────────────────────
 
-    fun setBrowserPanel(panel: GotchiBrowserPanel) {
+    fun setBrowserPanel(panel: CodotchiBrowserPanel) {
         browserPanel = panel
         broadcastState()
     }
 
-    fun setStatusWidget(widget: GotchiStatusWidget) {
+    fun setStatusWidget(widget: CodotchiStatusWidget) {
         statusWidget = widget
         broadcastState()
     }
@@ -368,7 +368,7 @@ class GotchiPlugin : Disposable {
     /**
      * Reload the JCEF webview with freshly built HTML (picks up new settings),
      * then re-push the current state so the UI is up to date immediately.
-     * Called by [GotchiConfigurable] after the user clicks Apply.
+     * Called by [CodotchiConfigurable] after the user clicks Apply.
      */
     fun reloadWebview() {
         ApplicationManager.getApplication().invokeLater {
@@ -389,7 +389,7 @@ class GotchiPlugin : Disposable {
         val devMode = lastDevMode
 
         // Persist on every broadcast so crashes don't lose state
-        val persistence = service<GotchiPersistence>()
+        val persistence = service<CodotchiPersistence>()
         var highScore = prevHighScore
         if (state != null) {
             persistence.savePetState(state)
@@ -422,7 +422,7 @@ class GotchiPlugin : Disposable {
         persistence.lastSaveTimestamp = System.currentTimeMillis()
 
         // Fire IDE notifications for attention_call_* events (only when mechanic is enabled)
-        if (state != null && service<GotchiSettings>().enableAttentionCalls) {
+        if (state != null && service<CodotchiSettings>().enableAttentionCalls) {
             for (event in state.events) {
                 val msg = attentionCallMessage(state.name, event) ?: continue
                 fireAttentionNotification(msg)
@@ -461,7 +461,7 @@ class GotchiPlugin : Disposable {
     private fun fireAttentionNotification(message: String) {
         ApplicationManager.getApplication().invokeLater {
             val group = NotificationGroupManager.getInstance()
-                .getNotificationGroup("Gotchi Attention Calls")
+                .getNotificationGroup("Codotchi Attention Calls")
                 ?: return@invokeLater
             val notification = group.createNotification(message, NotificationType.WARNING)
             notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
@@ -471,7 +471,7 @@ class GotchiPlugin : Disposable {
                         val ctx = DataManager.getInstance().dataContextFromFocusAsync.blockingGet(500)
                         ctx?.getData(CommonDataKeys.PROJECT)
                     } ?: return
-                    ToolWindowManager.getInstance(project).getToolWindow("Gotchi")?.show()
+                    ToolWindowManager.getInstance(project).getToolWindow("Codotchi")?.show()
                     notification.expire()
                 }
             })

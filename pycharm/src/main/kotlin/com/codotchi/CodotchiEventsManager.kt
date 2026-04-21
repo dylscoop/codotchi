@@ -1,22 +1,22 @@
-package com.gotchi
+﻿package com.codotchi
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener
 
 /**
- * GotchiEventsManager — listens for document-save events and notifies
- * [GotchiPlugin] to apply the code-activity happiness boost.
+ * CodotchiEventsManager — listens for document-save events and notifies
+ * [CodotchiPlugin] to apply the code-activity happiness boost.
  *
  * Registered as a project-level listener in plugin.xml on the
  * [FileDocumentManagerListener] topic.
  *
  * Throttling (CODE_ACTIVITY_THROTTLE_SECONDS) is enforced inside
- * [GotchiPlugin.triggerCodeActivity].
+ * [CodotchiPlugin.triggerCodeActivity].
  */
-class GotchiEventsManager : FileDocumentManagerListener {
+class CodotchiEventsManager : FileDocumentManagerListener {
 
     override fun beforeDocumentSaving(document: Document) {
-        service<GotchiPlugin>().triggerCodeActivity()
+        service<CodotchiPlugin>().triggerCodeActivity()
     }
 }

@@ -1,7 +1,7 @@
-package com.gotchi
+package com.codotchi
 
 import com.google.gson.Gson
-import com.gotchi.engine.PetState
+import com.codotchi.engine.PetState
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
@@ -14,7 +14,7 @@ import java.awt.BorderLayout
 import javax.swing.JPanel
 
 /**
- * GotchiBrowserPanel — wraps a JCEF browser and bridges the webview
+ * CodotchiBrowserPanel — wraps a JCEF browser and bridges the webview
  * message protocol used by sidebar.js.
  *
  * Build process:
@@ -33,7 +33,7 @@ import javax.swing.JPanel
  * page is guaranteed ready to receive messages.  Use it to push an initial
  * state snapshot so the webview never sits in a state-less limbo.
  */
-class GotchiBrowserPanel(
+class CodotchiBrowserPanel(
     private val messageHandler: (Map<*, *>) -> Unit,
     parentDisposable: Disposable,
     private val onReady: () -> Unit = {},
@@ -103,13 +103,13 @@ class GotchiBrowserPanel(
     // ── HTML builder ───────────────────────────────────────────────────────
 
     private fun buildHtml(): String {
-        val settings      = ApplicationManager.getApplication().getService(GotchiSettings::class.java)
+        val settings      = ApplicationManager.getApplication().getService(CodotchiSettings::class.java)
         val fontSizeClass = "font-${settings?.fontSize ?: "normal"}"
         val textColor     = settings?.textColor ?: "#cccccc"
         val customPrimary    = settings?.customPrimaryColor    ?: "#ff8c00"
         val customSecondary  = settings?.customSecondaryColor  ?: "#ffffff"
         val customBackground = settings?.customBackgroundColor ?: "#1a1a2e"
-        val stageHeight      = settings?.petStageHeight ?: 160
+        val stageHeight      = settings?.petStageHeight ?: 240
         val reducedMotion    = settings?.reducedMotion ?: false
         val petSize          = settings?.petSize ?: "medium"
 
@@ -132,9 +132,9 @@ class GotchiBrowserPanel(
         val colorOverride = """
             body { color: $textColor !important; }
             :root {
-                --gotchi-custom-primary: $customPrimary;
-                --gotchi-custom-secondary: $customSecondary;
-                --gotchi-custom-background: $customBackground;
+                --codotchi-custom-primary: $customPrimary;
+                --codotchi-custom-secondary: $customSecondary;
+                --codotchi-custom-background: $customBackground;
             }
         """.trimIndent()
         html = html.replace(
@@ -178,7 +178,7 @@ class GotchiBrowserPanel(
     }
 
     private fun loadResource(path: String): String =
-        GotchiBrowserPanel::class.java.getResourceAsStream(path)
+        CodotchiBrowserPanel::class.java.getResourceAsStream(path)
             ?.bufferedReader()
             ?.readText()
             ?: error("Missing classpath resource: $path")

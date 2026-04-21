@@ -3,8 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.jvm") version "1.9.25"
 }
 
-group = "com.gotchi"
-version = "1.2.2"
+group = "com.codotchi"
+version = "1.3.1"
 
 repositories {
     mavenCentral()

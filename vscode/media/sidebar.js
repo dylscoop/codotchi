@@ -1,5 +1,5 @@
-/**
- * sidebar.js — vscode_gotchi webview client
+﻿/**
+ * sidebar.js — vscode_codotchi webview client
  *
  * Communicates with the extension host via the VS Code webview message API:
  *   - postMessage(cmd)  → sends a command to SidebarProvider
@@ -110,7 +110,7 @@
   const spriteCtx    = spriteCanvas.getContext("2d");
 
   // ── Reduced-motion detection ─────────────────────────────────────────────
-  // Reads the data attribute injected by the host (from gotchi.reducedMotion
+  // Reads the data attribute injected by the host (from codotchi.reducedMotion
   // setting) OR the OS-level prefers-reduced-motion media query.
 
   const REDUCED_MOTION = document.body.dataset.reducedMotion === "true" ||
@@ -958,7 +958,7 @@
       if (state.sleeping) {
         // Restore the position where the pet fell asleep (saved to localStorage).
         // Falls back to centre only if no stored value exists.
-        var storedSleepX = parseFloat(localStorage.getItem("gotchi_sleepX") || "");
+        var storedSleepX = parseFloat(localStorage.getItem("codotchi_sleepX") || "");
         petX = isNaN(storedSleepX) ? centreX : storedSleepX;
       } else {
         petX = centreX;
@@ -996,7 +996,7 @@
     if (events.indexOf("fell_asleep")   !== -1) {
       pushReaction("fell_asleep",   nowMs);
       // Persist the X position so it survives a webview reload while sleeping
-      try { localStorage.setItem("gotchi_sleepX", String(Math.round(petX !== null ? petX : 0))); } catch (e) {}
+      try { localStorage.setItem("codotchi_sleepX", String(Math.round(petX !== null ? petX : 0))); } catch (e) {}
     }
     if (events.indexOf("woke_up")       !== -1 ||
         events.indexOf("auto_woke_up")  !== -1) { pushReaction("woke_up",       nowMs); }
@@ -1670,9 +1670,9 @@
     if (colorKey === "custom") {
       var s = getComputedStyle(document.documentElement);
       return {
-        primary:    s.getPropertyValue("--gotchi-custom-primary").trim()    || "#ff8c00",
-        secondary:  s.getPropertyValue("--gotchi-custom-secondary").trim()  || "#ffffff",
-        background: s.getPropertyValue("--gotchi-custom-background").trim() || "#1a1a2e",
+        primary:    s.getPropertyValue("--codotchi-custom-primary").trim()    || "#ff8c00",
+        secondary:  s.getPropertyValue("--codotchi-custom-secondary").trim()  || "#ffffff",
+        background: s.getPropertyValue("--codotchi-custom-background").trim() || "#1a1a2e",
       };
     }
     return COLOR_PALETTES[colorKey] || COLOR_PALETTES["neon"];
@@ -1688,7 +1688,7 @@
   };
 
   /**
-   * Return the base-size multiplier driven by the gotchi.petSize setting.
+   * Return the base-size multiplier driven by the codotchi.petSize setting.
    * The value is injected into document.body.dataset.petSize by sidebarProvider.ts.
    *   small  = 1.0x  (original size)
    *   medium = 1.5x  (default)
@@ -1777,7 +1777,7 @@
   // ── Idle-activity detection ───────────────────────────────────────────────
   // Mouse movement inside the sidebar resets the host idle timer (BUGFIX-015).
   // Throttled to at most once per 30 s to avoid flooding the extension host.
-  // Skipped entirely when gotchi.idleResetOnMouseMovement is disabled.
+  // Skipped entirely when codotchi.idleResetOnMouseMovement is disabled.
   var idleResetMouseEnabled = document.body.dataset.idleResetMouse !== "false";
   if (idleResetMouseEnabled) {
     var lastActivityPost = 0;

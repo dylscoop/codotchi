@@ -1,11 +1,11 @@
-package com.gotchi
+﻿package com.codotchi
 
 import com.intellij.openapi.components.*
 
 /**
- * GotchiSettings — persisted display preferences for the Gotchi tool window.
+ * CodotchiSettings — persisted display preferences for the Gotchi tool window.
  *
- * Stored in gotchi_settings.xml (separate from game state in gotchi.xml).
+ * Stored in codotchi_settings.xml (separate from game state in codotchi.xml).
  * Fields:
  *  - [fontSize]               : "small" | "normal" | "large"  — maps to CSS body class
  *  - [textColor]              : CSS hex colour string           — injected as body colour override
@@ -32,11 +32,11 @@ import com.intellij.openapi.components.*
  *  - [idleResetOnMouseMovement]   : reset idle timer on mouse movement in the sidebar (default true)
  */
 @State(
-    name = "GotchiSettings",
-    storages = [Storage("gotchi_settings.xml")]
+    name = "CodotchiSettings",
+    storages = [Storage("codotchi_settings.xml")]
 )
 @Service(Service.Level.APP)
-class GotchiSettings : PersistentStateComponent<GotchiSettings.State> {
+class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
 
     /** Plain bean-style class required by IntelliJ's XmlSerializer. */
     class State {
