@@ -62,7 +62,7 @@ class GotchiConfigurable : Configurable {
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
         val expiryCombo     = JComboBox(arrayOf("Needy (2 min)", "Standard (5 min)", "Chilled (10 min)"))
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
-        val stageHeightSpinner = JSpinner(SpinnerNumberModel(160, 48, 300, 8))
+        val stageHeightSpinner = JSpinner(SpinnerNumberModel(240, 48, 300, 8))
         val reducedMotionCheckbox = JCheckBox("Reduced motion (disable animation)")
         val petSizeDropdown = JComboBox(arrayOf("Small", "Medium", "Large"))
         val devModeEnabledCheckbox = JCheckBox("Enable developer mode")
