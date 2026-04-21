@@ -109,7 +109,7 @@ class CodotchiBrowserPanel(
         val customPrimary    = settings?.customPrimaryColor    ?: "#ff8c00"
         val customSecondary  = settings?.customSecondaryColor  ?: "#ffffff"
         val customBackground = settings?.customBackgroundColor ?: "#1a1a2e"
-        val stageHeight      = settings?.petStageHeight ?: 160
+        val stageHeight      = settings?.petStageHeight ?: 240
         val reducedMotion    = settings?.reducedMotion ?: false
         val petSize          = settings?.petSize ?: "medium"
 

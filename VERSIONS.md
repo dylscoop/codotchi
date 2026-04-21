@@ -1,6 +1,38 @@
 # Version History
 
-## v1.2.2 — current
+## v1.3.1 — current
+
+### Changes from v1.3.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.3.0` → `1.3.1` |
+| `pycharm/build.gradle.kts` | Version bumped `1.3.0` → `1.3.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.3.0` → `1.3.1` |
+| `opencode-codotchi/package.json` | Version bumped `1.3.0` → `1.3.1` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | BUGFIX-082: stage height fallback corrected `160` → `240` to match VS Code proportions |
+
+### Bug fixes
+
+- **BUGFIX-082** — PyCharm stage height was shorter than VS Code; fallback default in `buildHtml()` was `160` instead of `240`
+
+---
+
+## v1.3.0 — previous
+
+### Changes from v1.2.2
+
+| File | What changed |
+|------|-------------|
+| All extension files | Full rename `gotchi` → `codotchi` across VS Code, PyCharm, and OpenCode extensions |
+| `vscode/package.json` | Version bumped `1.2.2` → `1.3.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.2.2` → `1.3.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.2.2` → `1.3.0` |
+| `opencode-codotchi/package.json` | Version bumped `1.2.2` → `1.3.0` |
+
+---
+
+## v1.2.2 — previous
 
 ### Changes from v1.2.1
 
