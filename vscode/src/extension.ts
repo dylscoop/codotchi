@@ -347,10 +347,10 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   }
 
-  // Cross-window / cross-IDE live sync: watch state.json for changes written by
-  // another VS Code window or another IDE (PyCharm, OpenCode).  When this window
-  // is not the active ticker it won't pick up those changes until focus returns —
-  // the watcher closes that gap by calling reloadAndRefreshUI() immediately.
+  // Cross-window live sync: watch the VS Code state file for changes written
+  // by another VS Code window.  When this window is not the active ticker it
+  // won't pick up those changes until focus returns — the watcher closes that
+  // gap by calling reloadAndRefreshUI() immediately.
   // A 150 ms debounce absorbs rapid successive file-system events (some editors
   // emit two events per atomic write).
   {

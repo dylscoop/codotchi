@@ -5,15 +5,14 @@
  * Also records the timestamp of the last save so the game engine can
  * calculate how many seconds elapsed while the extension was closed.
  *
- * Cross-IDE shared state: every save also writes to a JSON file on disk at
- *   Windows : %APPDATA%\gotchi\state.json
- *   macOS   : ~/.config/gotchi/state.json
- *   Linux   : ~/.config/gotchi/state.json
+ * Per-IDE state file: every save also writes to a JSON file on disk at
+ *   Windows : %APPDATA%\gotchi\vscode\state.json
+ *   macOS   : ~/.config/gotchi/vscode/state.json
+ *   Linux   : ~/.config/gotchi/vscode/state.json
  *
- * On load, if the shared file is newer than the local globalState copy (e.g.
- * because PyCharm or the OpenCode plugin saved more recently), the shared file
- * wins and globalState is promoted to match it.  This keeps all three IDEs
- * sharing a single pet.
+ * VS Code's file is independent of PyCharm's file. OpenCode reads both
+ * files separately and can display both pets simultaneously.
+ * There is no cross-IDE promotion — VS Code only ever reads its own file.
  */
 
 import * as fs from "fs";
@@ -30,13 +29,13 @@ const HIGH_SCORE_KEY = "gotchi.highScore.v2"; // v2: ageDays now driven by dayTi
 // Shared cross-IDE file helpers
 // ---------------------------------------------------------------------------
 
-/** Absolute path to the shared state file used by all IDEs. */
+/** Absolute path to the VS Code-specific state file. */
 export function getSharedStatePath(): string {
   const base =
     process.platform === "win32"
       ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")
       : path.join(os.homedir(), ".config");
-  return path.join(base, "gotchi", "state.json");
+  return path.join(base, "gotchi", "vscode", "state.json");
 }
 
 interface SharedStateFile {
@@ -47,8 +46,8 @@ interface SharedStateFile {
 }
 
 /**
- * Write the current pet state to the shared cross-IDE file.
- * Failures are silently swallowed — the shared file is best-effort only.
+ * Write the current pet state to the VS Code-specific state file.
+ * Failures are silently swallowed — the file is best-effort only.
  */
 function saveSharedState(state: PetState): void {
   if (!state.alive) { return; }
@@ -74,7 +73,7 @@ interface LoadedSharedState {
 }
 
 /**
- * Read the shared cross-IDE file.
+ * Read the VS Code-specific state file.
  * Returns `null` if the file does not exist or cannot be parsed.
  */
 function loadSharedState(): LoadedSharedState | null {
@@ -99,7 +98,7 @@ function loadSharedState(): LoadedSharedState | null {
 
 /**
  * Persist the pet state and record the current wall-clock timestamp (ms).
- * Also writes to the cross-IDE shared file so PyCharm / OpenCode can sync.
+ * Also writes to the VS Code-specific state file so OpenCode can read it.
  *
  * @param context - The VS Code extension context.
  * @param state - The pet state to persist.
@@ -111,12 +110,9 @@ export function saveState(context: vscode.ExtensionContext, state: PetState): vo
 }
 
 /**
- * Load the most recently saved pet state.
- *
- * If the cross-IDE shared file is newer than the local globalState copy (e.g.
- * PyCharm or OpenCode saved more recently), the shared file wins and
- * globalState is promoted so that `elapsedSecondsSinceLastSave` stays
- * accurate.
+ * Load the most recently saved pet state from globalState.
+ * Also reads the VS Code-specific state file to keep globalState in sync
+ * with the on-disk copy (e.g. if the extension was reloaded).
  *
  * Returns `null` if no state has been saved yet (first launch).
  *
@@ -127,11 +123,11 @@ export function loadState(context: vscode.ExtensionContext): PetState | null {
   const raw = context.globalState.get<Record<string, unknown>>(STATE_KEY);
   const localTimestamp = context.globalState.get<number>(TIMESTAMP_KEY) ?? 0;
 
-  // Prefer the shared file if it is strictly newer.
+  // If the on-disk file is newer than our in-memory globalState (e.g. after
+  // an extension host restart), promote it so elapsedSecondsSinceLastSave
+  // uses the correct reference timestamp.
   const shared = loadSharedState();
   if (shared !== null && shared.savedAt > localTimestamp && shared.state.alive) {
-    // Promote the shared state into globalState so elapsedSecondsSinceLastSave
-    // uses the correct reference timestamp from this point forward.
     void context.globalState.update(STATE_KEY, serialiseState(shared.state));
     void context.globalState.update(TIMESTAMP_KEY, shared.savedAt);
     return shared.state;

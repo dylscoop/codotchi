@@ -15,14 +15,13 @@ import java.io.File
  *
  * JSON serialisation of PetState is handled by Gson (bundled with IntelliJ).
  *
- * Cross-IDE shared state: every save also writes to a JSON file on disk at
- *   Windows : %APPDATA%\gotchi\state.json
- *   macOS   : ~/.config/gotchi/state.json
- *   Linux   : ~/.config/gotchi/state.json
+ * Per-IDE state file: every save also writes to a JSON file on disk at
+ *   Windows : %APPDATA%\gotchi\pycharm\state.json
+ *   macOS   : ~/.config/gotchi/pycharm/state.json
+ *   Linux   : ~/.config/gotchi/pycharm/state.json
  *
- * On load, if the shared file is newer than the local `gotchi.xml` copy (e.g.
- * because VS Code or the OpenCode plugin saved more recently), the shared file
- * wins and the IntelliJ-side state is promoted to match it.
+ * PyCharm only reads and writes its own file. VS Code uses a separate path.
+ * OpenCode reads both files independently and can display both pets.
  */
 @State(
     name = "GotchiPersistence",
@@ -92,10 +91,11 @@ class GotchiPersistence : PersistentStateComponent<Element> {
             }
         }
 
-        // Prefer the shared file if it is strictly newer.
+        // If the on-disk file is newer than our in-memory XML copy (e.g. after
+        // an IDE restart), promote it so elapsed-time calculations stay accurate.
+        // PyCharm only reads its own file — no cross-IDE promotion.
         val shared = loadFromSharedFile()
         if (shared != null && shared.second > lastSaveTimestamp && shared.first.alive) {
-            // Promote the shared state so the next getState() / save picks it up.
             petStateJson      = gson.toJson(toRaw(shared.first))
             lastSaveTimestamp = shared.second
             return shared.first
@@ -141,7 +141,7 @@ class GotchiPersistence : PersistentStateComponent<Element> {
         } else {
             "${System.getProperty("user.home")}/.config"
         }
-        return File(base, "gotchi/state.json")
+        return File(base, "gotchi/pycharm/state.json")
     }
 
     /**
