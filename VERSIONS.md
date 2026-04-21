@@ -1,6 +1,44 @@
-﻿# Version History
+# Version History
 
-## v1.2.0 — current
+## v1.2.1 — current
+
+### Changes from v1.2.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.2.0` → `1.2.1` |
+| `pycharm/build.gradle.kts` | Version bumped `1.2.0` → `1.2.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.2.0` → `1.2.1` |
+| `opencode-codotchi/package.json` | Version bumped `1.2.0` → `1.2.1` |
+| `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt` | BUGFIX-076: added `spriteType` field so PyCharm correctly stores and renders the zodiac animal |
+| `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` | BUGFIX-076: `createPet()` now initialises `spriteType = "classic"` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` | BUGFIX-076: `spriteType` included in DTO, `sanitise()`, and `toRaw()`; BUGFIX-077: weight fallback default changed `5` → `40`; state file path changed to `pycharm/state.json` |
+| `vscode/src/persistence.ts` | BUGFIX-078: state file path changed to `vscode/state.json`; BUGFIX-077: weight fallback default changed `5` → `40` |
+| `vscode/src/gameEngine.ts` | BUGFIX-077: weight fallback default changed `5` → `40` |
+| `pycharm/src/main/kotlin/com/gotchi/GotchiConfigurable.kt` | BUGFIX-078: `petStageHeight` spinner initial value corrected to `240` |
+| `vscode/package.json` | BUGFIX-079: `petSize` `enumDescriptions` corrected to accurately describe pixel-grid size per option |
+| `opencode-codotchi/src/index.ts` | Dual-pet state: reads `vscode/state.json` and `pycharm/state.json` independently; `getActivePets()` returns all live pets; display and actions apply to all active pets |
+| `vscode/archive/vsix/vscode-gotchi-1.2.0.vsix` | Archived old vsix before rebuild |
+| `pycharm/archive/pycharm-gotchi-1.2.0.zip` | Archived old zip before rebuild |
+| `vscode/vscode-gotchi-1.2.1.vsix` | Rebuilt distributable vsix for v1.2.1 |
+| `pycharm/build/distributions/pycharm-gotchi-1.2.1.zip` | Rebuilt distributable zip for v1.2.1 |
+| `opencode-codotchi/opencode-codotchi-1.2.1.zip` | Rebuilt distributable zip for v1.2.1 |
+
+### Bug fixes
+
+- **BUGFIX-076** — PyCharm `PetState` missing `spriteType`; zodiac animal badge renders incorrectly
+- **BUGFIX-077** — Weight fallback default `5` causes underweight pet on first load (correct default is `40`)
+- **BUGFIX-078** — PyCharm `petStageHeight` spinner shows `160` instead of stored default `240`
+- **BUGFIX-079** — `petSize` `enumDescriptions` describe wrong pixel dimensions for each size option
+
+### Features
+
+- **Separate VS Code / PyCharm state files** — each IDE now writes to its own state file (`vscode/state.json` and `pycharm/state.json`), eliminating cross-IDE state collisions
+- **OpenCode dual-pet display** — the OpenCode plugin reads both state files independently and shows both pets when both IDEs are active
+
+---
+
+## v1.2.0 — previous
 
 ### Changes from v1.1.4
 

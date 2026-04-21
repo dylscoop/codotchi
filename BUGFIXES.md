@@ -1013,3 +1013,40 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** `STAGE_SCALES.egg = 0.65` (same as baby) combined with `STAGE_BODY_HEIGHT_MULTS.egg = 0.75` produced a landscape oval (wider than tall). The weight-width multiplier could also stretch the egg horizontally for heavier pets. After the previous BUGFIX-070 the scale was still too large.
 
 **Fix:** Changed `STAGE_SCALES.egg` from `0.65` to `0.325` (halves both dimensions). Changed `STAGE_BODY_HEIGHT_MULTS.egg` from `0.75` to `1.3` so height = 1.3× width (portrait oval). Added `bodyWidth = bodySize` override inside the egg draw block so the weight-width multiplier never applies to the egg, guaranteeing a portrait shape at all pet weights. Updated `sprite_preview.html` egg radii proportionally (`rx: 0.35?0.175`, `ry: 0.40?0.20`).
+
+
+## BUGFIX-076 -- PyCharm PetState missing `spriteType`; zodiac animal badge renders incorrectly
+
+**Status:** Fixed (branch `fix/stats-sync-and-pet-size`)
+**Files:** `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt`, `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt`, `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt`
+
+**Problem:** `PetState` had no `spriteType` field, so the PyCharm sidebar always rendered the classic sprite regardless of which zodiac animal the pet was assigned. The animal badge in the info line also fell back to blank.
+
+**Fix:** Added `spriteType: String = "classic"` to `PetState`. `GameEngine.createPet()` initialises `spriteType = "classic"`. `GotchiPersistence` reads, sanitises, and writes `spriteType` in the DTO, matching the VS Code implementation.
+
+## BUGFIX-077 -- Weight fallback default `5` causes underweight pet on first load
+
+**Status:** Fixed (branch `fix/stats-sync-and-pet-size`)
+**Files:** `vscode/src/persistence.ts`, `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt`
+
+**Problem:** The weight deserialisation fallback was `5` in both VS Code and PyCharm. A missing or corrupt `weight` field in state would produce a severely underweight pet on every restart.
+
+**Fix:** Changed the fallback default from `5` to `40` in all three locations, matching the value used by `GameEngine.createPet()` and the mid-range of the healthy weight band.
+
+## BUGFIX-078 -- PyCharm `petStageHeight` spinner initial value shows 160 instead of 240
+
+**Status:** Fixed (branch `fix/stats-sync-and-pet-size`)
+**File:** `pycharm/src/main/kotlin/com/gotchi/GotchiConfigurable.kt`
+
+**Problem:** The `petStageHeight` settings spinner was initialised with a hardcoded value of `160`, but the stored default is `240` (corrected in v1.1.3). Opening the settings panel therefore showed `160` even when the actual value in use was `240`.
+
+**Fix:** Changed the spinner's initial value from `160` to `240` to match the stored default.
+
+## BUGFIX-079 -- `petSize` `enumDescriptions` describe wrong pixel dimensions
+
+**Status:** Fixed (branch `fix/stats-sync-and-pet-size`)
+**File:** `vscode/package.json`
+
+**Problem:** The `gotchi.petSize` setting had `enumDescriptions` that did not match the actual rendered sizes, misleading users in the VS Code settings UI.
+
+**Fix:** Updated all four `enumDescriptions` entries to accurately reflect the pixel grid size rendered at each option (`small`, `medium`, `large`, `xlarge`).
