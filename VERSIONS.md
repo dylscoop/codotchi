@@ -9,6 +9,10 @@
 | `vscode/package.json` | Version bumped `1.5.2` → `1.6.0` |
 | `pycharm/build.gradle.kts` | Version bumped `1.5.2` → `1.6.0` |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.5.2` → `1.6.0` |
+| `vscode/media/sprites.js` | Added `legFrame === -1` sentinel to `renderSpriteGrid` — both legs render flush/level (upright neutral stance) when `-1` is passed (BUGFIX-088) |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirror of `vscode/media/sprites.js` |
+| `vscode/media/sprite_preview.html` | Fixed missing `quadrupedBellySagRows` argument in `renderSpriteGrid` call — quadrupeds now render correctly (BUGFIX-088); pass `legFrame = -1` when animation disabled so preview shows upright neutral stance; default scale changed from 6× to 1× |
+| `pycharm/src/main/resources/webview/sprite_preview.html` | Mirror of `vscode/media/sprite_preview.html` |
 | `vscode/media/sprites.js` | Monkey sprite fully redesigned: capuchin side profile facing left, colour-3 arms/hands/feet, long prehensile tail curl, colour-2 face patch with nostril, colour-5 fixed-yellow banana held by teen/adult/senior; added `SIDE_FACING_UPRIGHT` flip logic so monkey behaves like a quadruped; added colour index 5 (`#FFD700`) to `colorMap` |
 | `pycharm/src/main/resources/webview/sprites.js` | Mirror of `vscode/media/sprites.js` |
 | `sprites/monkey.md` | New file: full design spec, colour legend, approved ASCII sketches for all 5 monkey stages, renderer change notes |

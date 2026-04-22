@@ -1123,3 +1123,14 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** `sprite_preview.html` still referenced `window.SPRITE_BODY_HEIGHT_MULTS` in three places: `canvasSize()` iterated its values to find the max height multiplier; `drawCell()` read `SPRITE_BODY_HEIGHT_MULTS[stage]` for `bodyHeight`; and the `renderSpriteGrid()` call passed it as the old 8th argument. After BUGFIX-086 removed that export, all three references threw a JS error and no sprites rendered.
 
 **Fix:** Updated `canvasSize()` to use the known constant max ratio (1.5 for upright grids). Updated `drawCell()` to compute `bodyHeight = bodyWidth * window.spriteHeightRatio(animal)`. Updated the `renderSpriteGrid()` call to match the new signature (no `STAGE_BODY_HEIGHT_MULTS`, added `spriteHeightRatio` as last arg). Mirrored to PyCharm.
+
+---
+
+## BUGFIX-088 — Quadruped sprites not rendering in sprite preview; preview default scale too large
+
+**Status:** Fixed (branch `fix/preview-upright-stance`)
+**File:** `vscode/media/sprite_preview.html`, `pycharm/src/main/resources/webview/sprite_preview.html`, `vscode/media/sprites.js`, `pycharm/src/main/resources/webview/sprites.js`
+
+**Problem:** The `renderSpriteGrid()` call in `sprite_preview.html` was missing the `quadrupedBellySagRows` argument (12th parameter). For all non-upright, non-snake sprites, `renderSpriteGrid` called `undefined(wt)` on line 2903, throwing a JS error and causing all quadruped sprites to silently fail to render. Upright types (classic, monkey, rooster, dragon) were unaffected. Additionally, the preview defaulted to 6× scale which was too large.
+
+**Fix:** Passed `window.spriteQuadBellySag` as the 12th argument to `renderSpriteGrid` in both preview files. Added a `legFrame === -1` sentinel to `renderSpriteGrid` in `sprites.js` that renders both legs flush (neutral upright stance) with no per-leg offset — used by the preview when animation is disabled (`animEnabled ? legFrame : -1`). Changed default `pixelScale` from `6` to `1` and updated the slider and label to match. Mirrored all changes to PyCharm.
