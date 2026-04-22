@@ -79,12 +79,43 @@ Do **not** rebuild on every individual commit. Rebuild once, as a dedicated
 | IDE | Command (run from the given directory) | Output artifact to commit |
 |-----|----------------------------------------|--------------------------|
 | VS Code | `npx @vscode/vsce package` (run from `vscode/`) | `vscode/vscode-gotchi-X.Y.Z.vsix` |
-| PyCharm | `powershell -Command "$env:JAVA_HOME='C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'; & '.\gradlew.bat' buildPlugin"` (run from `pycharm/`) | `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip` |
+| PyCharm | See PyCharm build procedure below | `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip` |
 
 The build commit must come **after** all feature, fix, test, and doc commits on
 the branch — never rebuild mid-branch and then continue adding changes on top.
 
 Never merge to `main` without both artifacts present and up to date.
+
+### PyCharm build procedure
+
+The PyCharm build frequently fails with a file-lock error on `extnet.dll` when
+another Java process is still running from a previous build attempt or IDE session.
+**Always follow these steps in order:**
+
+1. **Kill all lingering java/gradle processes** before running the build:
+   ```powershell
+   Get-Process | Where-Object { $_.Name -like "*java*" -or $_.Name -like "*gradle*" } | Stop-Process -Force
+   Start-Sleep -Seconds 3
+   ```
+
+2. **Clear the Gradle configuration cache** (it gets poisoned when a build is
+   interrupted mid-extraction):
+   ```powershell
+   Remove-Item -Recurse -Force ".gradle\configuration-cache" -ErrorAction SilentlyContinue
+   ```
+   (run from `pycharm/`)
+
+3. **Run the build with `--no-configuration-cache`** to prevent re-poisoning:
+   ```powershell
+   $env:JAVA_HOME = 'C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'
+   & '.\gradlew.bat' buildPlugin --no-configuration-cache
+   ```
+   (run from `pycharm/`)
+
+> **Note:** The `powershell -Command "..."` one-liner form does **not** reliably
+> set `$env:JAVA_HOME` inside the child shell on this machine. Always use the
+> two-statement form above (set the variable, then call gradlew) in the same
+> PowerShell session.
 
 ---
 
