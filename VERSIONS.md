@@ -1,6 +1,26 @@
 # Version History
 
-## v1.3.1 — current
+## v1.4.0 — current
+
+### Changes from v1.3.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.3.1` → `1.4.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.3.1` → `1.4.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.3.1` → `1.4.0` |
+| `opencode-codotchi/package.json` | Version bumped `1.3.1` → `1.4.0` |
+| `vscode/media/sprites.js` | Tamagotchi-style redesign of 6 animals: rat, rabbit, cat, pig, sheep, dog |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirror of vscode/media/sprites.js sprite redesigns |
+| `vscode/vscode-codotchi-1.4.0.vsix` | Rebuilt VS Code extension artifact |
+| `pycharm/build/distributions/pycharm-codotchi-1.4.0.zip` | Rebuilt PyCharm plugin artifact |
+| `opencode-codotchi/opencode-codotchi-1.4.0.zip` | Rebuilt OpenCode plugin artifact |
+| `vscode/FEATURES.md` | Added Tamagotchi-style sprite redesign row with completed/remaining animals |
+| `SPRITES.md` | Added redesign status tags to all 12 animal section headers |
+
+---
+
+## v1.3.1 — previous
 
 ### Changes from v1.3.0
 

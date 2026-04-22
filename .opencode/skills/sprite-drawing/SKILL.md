@@ -30,19 +30,22 @@ sprite has no visible feet and violates this rule.
 ## Rule 2 — Body and legs must always be connected — strict adjacency
 
 The bottom row of the body and the top row of the legs must be **directly
-adjacent** — the body's last non-zero row must be exactly one row above
-`legRowStart`.
+adjacent** — the body's last non-zero row must be exactly **one row above
+the first leg pixel row**. There must be **zero blank rows** between them.
 
-- **Quadruped:** `legRowStart = 25`. The body's last non-zero row must be
-  row 24. Row 24 must contain body/belly pixels. Row 25 must contain leg
-  pixels. There must be **zero blank rows** between them.
-- **Upright:** `legRowStart = 37`. The body's last non-zero row must be
-  row 36. Row 36 must contain pelvis pixels. Row 37 must contain leg pixels.
-  There must be **zero blank rows** between them.
+- **Quadruped default:** `legRowStart = 25`. Normally the body's last
+  non-zero row is row 24 and legs begin at row 25.
+- **Upright default:** `legRowStart = 37`. Normally the body's last
+  non-zero row is row 36 and legs begin at row 37.
+- **Short-legged animals** (e.g. rabbit with 3-row legs): legs may begin
+  below `legRowStart` (e.g. row 29), in which case the body's last non-zero
+  row must be row 28 — one row above the first actual leg pixel. Rows
+  between `legRowStart` and the first leg pixel row must remain empty (no
+  belly fill inserted to paper over the gap).
 
-Any all-zero row between body bottom and `legRowStart` is a layout bug.
-Fill the gap with narrowing belly/pelvis pixels until row 24 (quad) or
-row 36 (upright) is non-zero and directly adjacent to the legs.
+**The zero-gap rule is absolute** — the body's last non-zero row must be
+immediately above the first leg pixel row with no blank rows between them.
+Any all-zero row between body bottom and first leg pixel is a layout bug.
 
 ---
 
@@ -137,16 +140,58 @@ and senior.
 
 ---
 
+## Rule 9 — Baby and child must be proportional shrinks of the adult
+
+Baby and child stages must be **scaled-down versions of the adult
+silhouette** — smaller in **both width and height**, not just narrower.
+The silhouette shape, feature placement, and pose must match the adult;
+only the overall size changes.
+
+- **Do not** keep adult body height and merely reduce the width.
+- **Do not** invent chibi proportions (oversized head, stubby body) unless
+  the adult silhouette already has those proportions.
+- All features present on the adult (ears, tail, snout, haunch, horns,
+  stripes, etc.) must appear on baby and child at reduced scale.
+- Typical scale targets:
+  - **Teen:** ~85% of adult width AND ~85% of adult height
+  - **Child:** ~75% of adult width AND ~75% of adult height
+  - **Baby:** ~60% of adult width AND ~60% of adult height
+- Legs must still satisfy Rules 1, 2, and 3 (touch the bottom, connect to
+  body, present on all stages) — scale legs thinner/stubbier but keep them.
+- Head scales with body. Head must occupy the same proportional fraction
+  of the total silhouette as in the adult — no disproportionately large heads.
+
+**Note:** The `rat` animal was designed before Rule 9 was adopted and is
+grandfathered — its baby/child stages use chibi proportions and must not
+be "fixed" unless the user explicitly requests it.
+
+---
+
+## Rule 10 — Tamagotchi pixel-art style
+
+All sprites must read as **Tamagotchi-style pixel art**, not realistic illustrations.
+
+- Aim for **2–3 iconic silhouette cues** per animal (e.g. shiba = prick ears + curled tail + fox muzzle). Do NOT add breed-accurate fine detail (urajiro gradients, saddle shading, chest markings, leg socks, nose tips, etc.)
+- Each colour must form **large contiguous blocks**, not scattered single pixels. The only exceptions are senior age spots (Rule 6) and intentional marking patterns pre-approved by the user.
+- Colour 3 should be used for **one primary purpose** per animal (shading OR markings OR legs/hooves — pick one). Do not sprinkle it across multiple unrelated features.
+- Prefer **blocky chunky shapes** over anatomical accuracy. A slightly oversized head on an adult is correct Tamagotchi style.
+- **Reference benchmark:** the shipped cat, pig, and sheep sprites are the correct style level. Do not exceed their pixel density or detail level.
+- When in doubt, **simplify** — remove the detail rather than adding it.
+
+---
+
 ## Checklist before writing any sprite pixel data
 
 - [ ] Rule 1: Feet pixels present in last 1–2 rows of grid?
-- [ ] Rule 2: Is row 24 (quad) or row 36 (upright) non-zero AND directly adjacent to leg row 25/37 with zero blank rows between them?
+- [ ] Rule 2: Is the body's last non-zero row directly adjacent (one row above) the first leg pixel row, with zero blank rows between them?
 - [ ] Rule 3: All 5 stages have legs in the leg zone?
 - [ ] Rule 4: Is this the classic sprite? → **STOP** unless user explicitly granted permission this session.
 - [ ] Rule 5: Is the change ambiguous? → Show proposed design and wait for confirmation.
 - [ ] Rule 6: If senior stage — is it adult + colour-3 spots only?
 - [ ] Rule 7: Colour 4 used only for whiskers/details, not body fill?
 - [ ] Rule 8: If animal has a tail — is it connected to the body in all stages including baby/child?
+- [ ] Rule 9: Baby and child are proportional shrinks of adult in BOTH width and height (not chibi unless adult is already chibi)?
+- [ ] Rule 10: Is the design Tamagotchi-style (2–3 iconic cues, chunky contiguous colour blocks, no fine anatomical detail)?
 
 ---
 
