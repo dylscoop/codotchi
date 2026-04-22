@@ -13,6 +13,9 @@
 | `pycharm/src/main/resources/webview/sprites.js` | Mirror of `vscode/media/sprites.js` |
 | `sprites/rooster.md` | New file: full design spec, colour legend, approved ASCII sketches for all 5 rooster stages, renderer change notes |
 | `SPRITES.md` | Updated rooster section with new side-profile sketches and description |
+| `vscode/media/sprites.js` | Fixed monkey tail position: shifted tail root down +2 rows (baby), +3 rows (teen), +4 rows (adult/senior) so tail attaches at rump not mid-back (BUGFIX-089) |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirror of `vscode/media/sprites.js` |
+| `BUGFIXES.md` | Added BUGFIX-089 — monkey tail position too high |
 
 ---
 
