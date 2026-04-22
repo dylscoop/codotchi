@@ -1114,3 +1114,12 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** `STAGE_BODY_HEIGHT_MULTS` used a flat 0.67 multiplier for all stages regardless of sprite orientation. This was correct for quadrupeds (48×32 grid, ratio 32/48 ≈ 0.67) but wrong for upright sprites (32×48 grid, ratio 48/32 = 1.5). Uprights were rendered at less than half their correct height, making all sprites look squashed compared to the ASCII sketches in `SPRITES.md`.
 
 **Fix:** Removed `STAGE_BODY_HEIGHT_MULTS`. Added `spriteHeightRatio(spriteType)` to `spriteConstants.js` which returns the exact `ROWS/COLS` ratio for the given sprite type (1.5 for uprights, 0.667 for quadrupeds/snake). `renderSpriteGrid` now computes `bodyHeight = bodyWidth * spriteHeightRatio(spriteType)`, giving square pixel cells that match the ASCII sketch proportions exactly. All `bHeight` calculations in `sidebar.js` updated to match.
+
+## BUGFIX-087 — sprite_preview.html broken after BUGFIX-086: SPRITE_BODY_HEIGHT_MULTS removed but still referenced
+
+**Status:** Fixed (branch `fix/sprite-height-ratio`)
+**File:** `vscode/media/sprite_preview.html`, `pycharm/src/main/resources/webview/sprite_preview.html`
+
+**Problem:** `sprite_preview.html` still referenced `window.SPRITE_BODY_HEIGHT_MULTS` in three places: `canvasSize()` iterated its values to find the max height multiplier; `drawCell()` read `SPRITE_BODY_HEIGHT_MULTS[stage]` for `bodyHeight`; and the `renderSpriteGrid()` call passed it as the old 8th argument. After BUGFIX-086 removed that export, all three references threw a JS error and no sprites rendered.
+
+**Fix:** Updated `canvasSize()` to use the known constant max ratio (1.5 for upright grids). Updated `drawCell()` to compute `bodyHeight = bodyWidth * window.spriteHeightRatio(animal)`. Updated the `renderSpriteGrid()` call to match the new signature (no `STAGE_BODY_HEIGHT_MULTS`, added `spriteHeightRatio` as last arg). Mirrored to PyCharm.

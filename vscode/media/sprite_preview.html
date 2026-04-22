@@ -228,14 +228,11 @@
     var maxBodySize = Math.round(BASE_SIZE * 1.5 * 1.0);
     var wwm = window.spriteWeightWidthMult(globalWeight);
     // Pick the tallest height multiplier across all stages
-    var mults = window.SPRITE_BODY_HEIGHT_MULTS;
-    var hmult = 0;
-    var keys = Object.keys(mults);
-    for (var i = 0; i < keys.length; i++) {
-      if (mults[keys[i]] > hmult) { hmult = mults[keys[i]]; }
-    }
+
     var w = (Math.ceil(maxBodySize * wwm) + 4) * pixelScale;
-    var h = (Math.ceil(maxBodySize * hmult) + 4) * pixelScale;
+    // Max height ratio is 1.5 (upright 32×48 grid). Use that as the ceiling.
+    var maxHRatio = 1.5;
+    var h = (Math.ceil(maxBodySize * maxHRatio) + 4) * pixelScale;
     return { w: w, h: h };
   }
 
@@ -278,8 +275,7 @@
     var bodySize   = Math.round(BASE_SIZE * sizeMultiplier * stageScale);
     var wwm        = window.spriteWeightWidthMult(globalWeight);
     var bodyWidth  = Math.round(bodySize * wwm);
-    var hMult      = window.SPRITE_BODY_HEIGHT_MULTS[stage] || 0.67;
-    var bodyHeight = Math.round(bodySize * hMult);
+    var bodyHeight = Math.round(bodyWidth * window.spriteHeightRatio(animal));
 
     // If sprites_adult source, swap in ADULT_DEFS temporarily by patching SPRITES
     var patchedSprites = false;
@@ -302,8 +298,8 @@
 
     window.renderSpriteGrid(
       ctx, state, x, bodyY, facingLeft, legFrame, bPhase,
-      window.SPRITE_STAGE_SCALES, window.SPRITE_BODY_HEIGHT_MULTS,
-      window.spriteWeightWidthMult, window.spriteGetPalette
+      window.SPRITE_STAGE_SCALES, window.spriteWeightWidthMult,
+      window.spriteGetPalette, window.spriteHeightRatio
     );
 
     // Restore patched SPRITES

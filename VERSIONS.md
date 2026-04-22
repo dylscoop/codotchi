@@ -12,10 +12,12 @@
 | `vscode/media/spriteConstants.js` | Removed `STAGE_BODY_HEIGHT_MULTS` / `SPRITE_BODY_HEIGHT_MULTS`; added `UPRIGHT_TYPES` and `spriteHeightRatio(spriteType)` which returns `48/32` for uprights and `32/48` for quadrupeds/snake |
 | `vscode/media/sprites.js` | `renderSpriteGrid`: replaced `bodyHeight = bodySize * heightMult` with `bodyHeight = bodyWidth * spriteHeightRatio(spriteType)` for square pixel cells matching ASCII sketch proportions |
 | `vscode/media/sidebar.js` | Replaced all `STAGE_BODY_HEIGHT_MULTS` height lookups with `spriteHeightRatio(spriteType)` in `getFloorY`, animation loop, reaction draw, and static draw; added local `spriteHeightRatio()` wrapper |
+| `vscode/media/sprite_preview.html` | Fixed broken references to removed `SPRITE_BODY_HEIGHT_MULTS`: `canvasSize()` now uses constant max ratio 1.5; `drawCell()` uses `spriteHeightRatio(animal)`; `renderSpriteGrid` call updated to new signature (BUGFIX-087) |
 | `pycharm/src/main/resources/webview/spriteConstants.js` | Mirror of `vscode/media/spriteConstants.js` |
+| `pycharm/src/main/resources/webview/sprite_preview.html` | Mirror of VS Code `sprite_preview.html` (BUGFIX-087 fix applied) |
 | `pycharm/src/main/resources/webview/sprites.js` | Mirror of `vscode/media/sprites.js` |
 | `pycharm/src/main/resources/webview/sidebar.js` | Mirror of `vscode/media/sidebar.js` |
-| `BUGFIXES.md` | Added BUGFIX-086 (sprite height squash) |
+| `BUGFIXES.md` | Added BUGFIX-086 (sprite height squash) and BUGFIX-087 (sprite_preview broken after 086) |
 
 ---
 
