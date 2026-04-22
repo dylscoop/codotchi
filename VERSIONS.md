@@ -1,6 +1,23 @@
 # Version History
 
-## v1.5.2 — current
+## v1.6.0 — current
+
+### Changes from v1.5.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.5.2` → `1.6.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.5.2` → `1.6.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.5.2` → `1.6.0` |
+| `vscode/media/sprites.js` | Monkey sprite fully redesigned: capuchin side profile facing left, colour-3 arms/hands/feet, long prehensile tail curl, colour-2 face patch with nostril, colour-5 fixed-yellow banana held by teen/adult/senior; added `SIDE_FACING_UPRIGHT` flip logic so monkey behaves like a quadruped; added colour index 5 (`#FFD700`) to `colorMap` |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirror of `vscode/media/sprites.js` |
+| `sprites/monkey.md` | New file: full design spec, colour legend, approved ASCII sketches for all 5 monkey stages, renderer change notes |
+| `SPRITES.md` | Updated monkey section with new capuchin sketches and description |
+| `.opencode/skills/sprite-sketching/SKILL.md` | New skill: question-driven sprite design workflow — research, ask via question tool, sketch adult, confirm, derive other stages, save to `sprites/<animal>.md` |
+
+---
+
+## v1.5.2 — previous
 
 ### Changes from v1.5.1
 
