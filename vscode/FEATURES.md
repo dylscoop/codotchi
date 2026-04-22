@@ -53,6 +53,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Care-score-based evolution tiers (best / mid / low) | `[x]` | |
 | Distinct character names per type × stage × tier | `[x]` | |
 | Visual difference between character variants | `[x]` | 14 zodiac pixel-art grids via sprites.js |
+| Tamagotchi-style sprite redesign | `[~]` | Redesigned (v1.4.0): rat, rabbit, cat, pig, sheep, dog — Remaining: ox, tiger, horse, rooster, monkey, dragon |
 | Evolution notification in event log | `[~]` | Event flag exists; no fanfare animation |
 | Egg-hatch animation | `[ ]` | Wiggle before first evolution |
 

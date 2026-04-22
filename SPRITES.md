@@ -310,7 +310,7 @@ Same as adult, with age spots (░) at rows 13, 15, 17 across torso. Legs and pe
 
 ---
 
-## monkey  (32 × 48 upright)
+## monkey  (32 × 48 upright) — redesign pending
 
 Upright primate. Round ears (▓) at sides of head. Lighter face-patch (░) around eyes/mouth. Arms visible at sides. Long tail curls below-right.
 
@@ -581,7 +581,7 @@ Upright primate. Round ears (▓) at sides of head. Lighter face-patch (░) aro
 
 ---
 
-## rooster  (32 × 48 upright)
+## rooster  (32 × 48 upright) — redesign pending
 
 Upright bird. Red comb (░) on top of head. Yellow beak (▓). Wattle (▓) below beak. Two scaled legs. Fan tail feathers behind right side (░).
 
@@ -852,7 +852,7 @@ Upright bird. Red comb (░) on top of head. Yellow beak (▓). Wattle (▓) bel
 
 ---
 
-## dragon  (32 × 48 upright)
+## dragon  (32 × 48 upright) — redesign pending
 
 Two-legged upright dragon. Wings spread from torso sides (grow wider each stage). Spiky ridge (░) down back. Horns (▓) on head. Tail extends below body (░).
 
@@ -1132,7 +1132,7 @@ Front legs at cols ~4–7; rear legs track body right edge.
 
 ---
 
-## cat  (48 × 32 quadruped)
+## cat  (48 × 32 quadruped) — redesigned v1.4.0
 
 **Redesigned v2 — realistic domestic shorthair tabby.**
 Two pointy triangular ears on head (left side). Tail arcs up from rump (right side). Muzzle accent (▓), whiskers (colour 4, `-`) on adult/senior. Tabby back stripes (░) on adult/senior. Grey muzzle (░ instead of ▓) on senior. Proportional juvenile shrinks (Rule 9).
@@ -1517,7 +1517,7 @@ row 31 ····██··██················██··██�
 
 ---
 
-## rat  (48 × 32 quadruped)
+## rat  (48 × 32 quadruped) — redesigned v1.4.0
 
 **Redesigned v2 — realistic proportions.**
 Long low-slung elongated body. Pointed snout (▓ nose tip + ▓ eye). Two rounded ears (░-outlined) sitting on top of head. Long bald ░-coloured tail curving down-right from body right edge. Whiskers (colour 4) on adult and senior only. Belly shaded with ░ accent. Chibi proportions on baby/child (larger head, shorter body, stubby legs). Senior = adult + ░ age spots on torso.
@@ -1711,7 +1711,7 @@ Identical to adult with ░ age spots added to torso rows 11–15.
 
 ---
 
-## ox  (48 × 32 quadruped)
+## ox  (48 × 32 quadruped) — redesign pending
 
 Wide curved horns (▓) at top-left of head. Heavy wide body. Broad short head. Short stump tail at right. Large muscular legs.
 
@@ -1902,7 +1902,7 @@ Wide curved horns (▓) at top-left of head. Heavy wide body. Broad short head. 
 
 ---
 
-## tiger  (48 × 32 quadruped)
+## tiger  (48 × 32 quadruped) — redesign pending
 
 Round ears. Three vertical stripe marks across body (░). Round eyes (▓). Slightly longer body than cat. Short thick tail.
 
@@ -2093,7 +2093,7 @@ Round ears. Three vertical stripe marks across body (░). Round eyes (▓). Sli
 
 ---
 
-## rabbit  (48 × 32 quadruped)
+## rabbit  (48 × 32 quadruped) — redesigned v1.4.0
 
 Tall ears: two long columns rising 4 rows above the head. Cotton-ball tail nub (▓) at right. Short round body. Big round eyes (▓).
 
@@ -2284,7 +2284,7 @@ Tall ears: two long columns rising 4 rows above the head. Cotton-ball tail nub (
 
 ---
 
-## horse  (48 × 32 quadruped)
+## horse  (48 × 32 quadruped) — redesign pending
 
 Mane (▓) on top of head. Long flowing tail (▓) at far right. Longest body of all quadrupeds. Slim legs. Slightly taller head.
 
@@ -2475,7 +2475,7 @@ Mane (▓) on top of head. Long flowing tail (▓) at far right. Longest body of
 
 ---
 
-## sheep  (48 × 32 quadruped)
+## sheep  (48 × 32 quadruped) — redesigned v1.4.0
 
 **Redesigned v6 — domestic Suffolk sheep, faces left.**
 Distinct black face (░) sticking out left of white wool fleece (█). Scalloped/bumpy fleece top edge. Small floppy ear (▓) on top of head. Eye (▓) + muzzle (▓). Fluffy tail nub (█) on right rump. 2 thin ░-coloured legs. No colour 4.
@@ -2680,7 +2680,7 @@ row 31 ···············░░···█████········
 
 ---
 
-## dog  (48 × 32 quadruped)
+## dog  (48 × 32 quadruped) — redesigned v1.4.0
 
 **Redesigned v2 — Shiba Inu, faces left. Tamagotchi pixel-art style.**
 Two narrow-set prick ears (▓ inner urajiro). Small hook curl tail arcing from upper-right rump. Tapered muzzle protrudes left 2 pixels. Single eye pixel (▓). Small cream belly patch (▓). 2 visible legs (front + back side-profile). Senior = adult + colour-3 muzzle-graying spots on snout (Rule 6). Proportional juvenile shrinks (Rule 9).
@@ -2884,7 +2884,7 @@ row 31 ·············██·············██····�
 
 ---
 
-## pig  (48 × 32 quadruped)
+## pig  (48 × 32 quadruped) — redesigned v1.4.0
 
 **Redesigned v2 — realistic domestic pig.**
 Tall barrel body. Small floppy ears drooping forward (2 rows, colour 1+2). Flat snout disc (▓) at left tip with 2 nostril dots (░). Corkscrew curl tail on upper rump. 2 visible legs (1 front + 1 back), 3-row trotters with ░ hooves. Senior = adult + 3 ░ age spots (Rule 6). No colour 4.
