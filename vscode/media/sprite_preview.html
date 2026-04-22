@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'none';
                  style-src {{cspSource}} 'unsafe-inline';
-                 script-src {{cspSource}};
+                 script-src {{cspSource}} 'nonce-{{nonce}}';
                  img-src {{cspSource}} data:;" />
   <title>Sprite Preview — Codotchi</title>
   <style>
@@ -170,7 +170,7 @@
 <script src="{{spritesUri}}"></script>
 <script src="{{spritesAdultUri}}"></script>
 
-<script>
+<script nonce="{{nonce}}">
 (function () {
   "use strict";
 

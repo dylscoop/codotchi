@@ -11,6 +11,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
+import * as crypto from "crypto";
 
 export class SpritePreviewPanel {
   private static current: SpritePreviewPanel | undefined;
@@ -59,6 +60,7 @@ export class SpritePreviewPanel {
     }
 
     const webview = this.panel.webview;
+    const nonce   = crypto.randomBytes(16).toString("base64");
 
     const spriteConstantsUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "spriteConstants.js"))
@@ -72,6 +74,7 @@ export class SpritePreviewPanel {
 
     let html = fs.readFileSync(htmlPath, "utf8");
     html = html.replace(/\{\{cspSource\}\}/g, webview.cspSource);
+    html = html.replace(/\{\{nonce\}\}/g,     nonce);
     html = html.replace("{{spriteConstantsUri}}", spriteConstantsUri.toString());
     html = html.replace("{{spritesUri}}",         spritesUri.toString());
     html = html.replace("{{spritesAdultUri}}",    spritesAdultUri.toString());
