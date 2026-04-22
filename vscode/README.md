@@ -34,7 +34,7 @@ to survive and evolve into its final form.
 
 ### Quick install (pre-built `.vsix`)
 
-1. **Download `vscode-codotchi-1.5.2.vsix`** from the
+1. **Download `vscode-codotchi-1.7.0.vsix`** from the
    [Releases page](https://github.com/dylscoop/vscode_gotchi/releases).
 
 2. **Install the `.vsix`:**
@@ -42,7 +42,7 @@ to survive and evolve into its final form.
    **From the terminal:**
 
    ```bash
-   code --install-extension vscode-codotchi-1.5.2.vsix
+   code --install-extension vscode-codotchi-1.7.0.vsix
 ```
 
    **From the VS Code UI:**
@@ -69,11 +69,11 @@ npm install
 # Compile TypeScript
 npm run compile
 
-# Package → produces vscode-codotchi-1.5.2.vsix
+# Package → produces vscode-codotchi-1.7.0.vsix
 npx vsce package --no-dependencies
 
 # Install it
-code --install-extension vscode-codotchi-1.5.2.vsix
+code --install-extension vscode-codotchi-1.7.0.vsix
 ```
 
 ## Using the extension
