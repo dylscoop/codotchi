@@ -1,6 +1,25 @@
 # Version History
 
-## v1.5.1 — current
+## v1.5.2 — current
+
+### Changes from v1.5.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.5.1` → `1.5.2` |
+| `pycharm/build.gradle.kts` | Version bumped `1.5.1` → `1.5.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.5.1` → `1.5.2` |
+| `opencode-codotchi/package.json` | Version bumped `1.4.0` → `1.5.2` |
+| `vscode/media/spriteConstants.js` | Added `quadrupedBellySagRows(weight)` returning 0/1/3 extra sag rows; added `spriteQuadBellySag` window export; updated `weightWidthMultiplier` JSDoc to clarify it applies only to upright/snake types |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | Mirror of `vscode/media/spriteConstants.js` |
+| `vscode/media/sprites.js` | `renderSpriteGrid`: overweight quadrupeds (non-snake) no longer stretch wider; instead `quadrupedBellySagRows()` extra rows are drawn procedurally between body bottom and legs using a tapered silhouette of the last body row; leg rows shift down by `sagRows × cellH`; new `quadrupedBellySagRows` parameter added to function signature |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirror of `vscode/media/sprites.js` |
+| `vscode/media/sidebar.js` | Added `quadrupedBellySagRows()` wrapper, `spriteUsesWidthStretch()` helper, and `effectiveBWidth()` helper; updated `resizeCanvas`, `getFloorY`, `animationLoop`, initial-position reset, `drawReaction`, `drawStatusIndicators`, `drawStaticPet` to use `effectiveBWidth` instead of `bSize * wwm` and to account for belly-sag height where needed |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirror of `vscode/media/sidebar.js` |
+
+---
+
+## v1.5.1 — previous
 
 ### Changes from v1.5.0
 

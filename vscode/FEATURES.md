@@ -18,7 +18,7 @@ Status legend:
 | Energy       | 0–100  | `[x]`  | Decays 1/tick while awake; depleted by play; restored during sleep | 0 triggers health loss
 | Health       | 0–100  | `[x]`  | Drops from starvation, unhappiness, sickness |
 | Discipline   | 0–100  | `[x]`  | Affected by praise/scold; feeds into care score |
-| Weight       | 1–99   | `[x]`  | Shown in info line; passive -1/min decay; overweight/skinny thresholds affect happiness rate and sprite width |
+| Weight       | 1–99   | `[x]`  | Shown in info line; passive -1/min decay; overweight/skinny thresholds affect happiness rate; upright sprites (classic, monkey, rooster, dragon) and snake stretch wider when overweight; all other quadrupeds show a tapered belly-sag (extra rows below body, legs shift down) instead of width stretch |
 | Age (days)   | int    | `[x]`  | Displayed in info line |
 | Sprite type  | string | `[x]`  | Zodiac animal name shown in info line between stage and type (hidden for "classic") |
 | Care Score   | 0.0–1.0| `[~]`  | Computed continuously; drives evolution tier |
