@@ -2958,11 +2958,17 @@
     var colorMap = {
       1: primary,
       2: secondary,
-      3: accent
+      3: accent,
+      5: "#FFD700"
     };
 
+    // Monkey is an upright type but faces sideways (like a quadruped) —
+    // flip it when NOT facing left, same as quadrupeds.
+    var SIDE_FACING_UPRIGHT = { monkey: 1 };
+    var isSideUpright = !!SIDE_FACING_UPRIGHT[spriteType];
+
     ctx.save();
-    if (isUpright ? facingLeft : !facingLeft) {
+    if (isSideUpright ? !facingLeft : (isUpright ? facingLeft : !facingLeft)) {
       ctx.translate(x + bodyWidth / 2, 0);
       ctx.scale(-1, 1);
       ctx.translate(-(x + bodyWidth / 2), 0);
