@@ -22,6 +22,7 @@ Status legend:
 | Age (days)   | int    | `[x]`  | Displayed in info line |
 | Sprite type  | string | `[x]`  | Zodiac animal name shown in info line between stage and type (hidden for "classic") |
 | Care Score   | 0.0–1.0| `[~]`  | Computed continuously; drives evolution tier |
+| Generation   | int    | `[ ]`  | Increments each time offspring hatches; displayed in info line (original Tamagotchi feature) |
 
 ---
 
@@ -636,23 +637,36 @@ Activated when both `gotchi.devModeEnabled = true` AND `gotchi.developerPasscode
 
 ## 14. Future / Stretch Features
 
-These are lower-priority ideas that require significant design work.
+These are lower-priority ideas that require design work before implementation. All rows are `[ ]` unless otherwise noted.
 
-| Feature | Notes |
-|---------|-------|
-| Gotchi Points currency | Earned from minigame wins; spent in an in-game shop for cosmetics |
-| In-game shop | Buy accessories, backgrounds, or extra colour palettes |
-| Pixel-art sprite assets | Replace procedural canvas drawing with actual PNG sprite sheets |
-| Sprite animation frames | Idle walk cycle, happy, sad, sleeping, eating — 2–4 frame flip-book per mood |
-| Redesign game art | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style |
-| Egg-hatch animation | Wiggle → crack → burst sequence (fits naturally into reaction queue) |
-| Sound effects | Short 8-bit clips (optional; respect system/VS Code mute and `gotchi.reducedMotion`) |
-| Day/night cycle | Canvas background shifts with system clock; affects stat decay rates |
-| Multiple simultaneous pets | Tabbed or scrollable sidebar; pets can interact |
-| Marriage mechanic | Two users' pets meet via a shared code (e.g. VS Code Live Share) |
-| Seasonal / holiday characters | Special evolution paths unlocked on calendar dates |
-| New pet types via extension pack | Contribution point so third-party packs can add types |
-| Leaderboard | Opt-in age record sharing via VS Code Settings Sync |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **— Tamagotchi parity gaps —** | | |
+| Potty training | `[ ]` | If player presses Clean during the pre-poop warning animation, pet uses a toilet instead of making a mess. Repeating this trains the pet to go automatically. Original Tamagotchi P1/P2 feature. |
+| Care mistakes counter | `[ ]` | Discrete log of neglect events (stat hit zero and went unattended, fed snack instead of meal when hungry, etc.). Separate from the continuous care score — the original Tamagotchi tracked discrete mistakes and used the total to gate evolution paths. Could expose as a visible stat or keep internal. |
+| Secret / rare characters | `[ ]` | Evolution paths unlocked only by extreme care: perfect care → rare "best" character; total neglect → rare "worst" character. Original Tamagotchi had Mametchi (perfect) and Oyajitchi / Bill (secret via very poor care). |
+| Matchmaker NPC | `[ ]` | If the pet reaches senior age without marrying, a Matchmaker character arrives and automatically pairs it with a CPU partner. Prevents the marriage mechanic from being permanently skipped. Original Tamagotchi Connection feature. |
+| Marriage & offspring | `[ ]` | Two pets (two users / two windows) meet via a shared code (e.g. VS Code Live Share session ID). High enough friendship → kiss animation → female produces an egg; parent departs after ~24 h; new generation begins and generation counter increments. Original Tamagotchi Connection V1+ feature. |
+| Friendship meter | `[ ]` | 0–100 stat tracking closeness to another pet (requires connectivity). Levels: Acquaintance → Buddy → Friend → Good Friend → Best Friend → Partner. Partner level gates marriage. |
+| Gift exchange | `[ ]` | Connected pets can send each other items/gifts. Complement to the marriage/connectivity system. |
+| Pause function | `[ ]` | Explicitly suspend all game ticks (hunger/happiness/energy decay, aging) without closing the IDE. Original Tamagotchi only had a clock-set exploit; later versions added an official pause. Could be a sidebar button or a VS Code command. |
+| Sound effects & mute toggle | `[ ]` | Short 8-bit jingles on key events: hatch, evolve, death, sleep, wake, feed, play win/lose. A mute toggle (VS Code command + sidebar button) to silence all sounds. Respect `gotchi.reducedMotion` and the OS system mute. |
+| Visual night-mode on canvas | `[ ]` | Darken canvas background when pet is sleeping (already tracked in §6.2). |
+| Day / night cycle | `[ ]` | Canvas background shifts with system clock hour; optionally affects stat decay rates at night. |
+| Generation counter display | `[ ]` | Display current generation number in the info line (requires generation stat from §1). |
+| **— Cosmetics & economy —** | | |
+| Gotchi Points currency | `[ ]` | Earned from minigame wins; spent in an in-game shop. Persisted in `PetState`. |
+| In-game shop | `[ ]` | Buy accessories, background skins, or extra colour palettes using Gotchi Points. |
+| Sprite animation frames | `[ ]` | Idle walk cycle, happy, sad, sleeping, eating — 2–4 frame flip-book per mood using the existing `renderSpriteGrid` pipeline. |
+| Redesign minigame art | `[ ]` | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style. |
+| Egg-hatch animation | `[ ]` | Wiggle → crack → burst sequence before baby stage; fits naturally into the reaction queue (already in §2.2). |
+| Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |
+| **— Platform & social —** | | |
+| Multiple simultaneous pets | `[ ]` | Tabbed or scrollable sidebar; pets can interact with each other. |
+| New pet types via extension pack | `[ ]` | Contribution point so third-party packs can add sprite types. |
+| Leaderboard | `[ ]` | Opt-in age record sharing via VS Code Settings Sync or a lightweight backend. |
+| Export / import pet via JSON | `[ ]` | Already tracked in §11; listed here for visibility. Allows sharing or backup of a pet. |
+| State schema versioning | `[ ]` | Already tracked in §11; listed here for visibility. Add `schemaVersion` field to `PetState` for safe migrations. |
 
 ---
 
