@@ -17,13 +17,14 @@
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | Inlines `spriteConstants.js` before `sprites.js` |
 | `vscode/media/sprite_preview.html` | Rewritten: now calls real `renderSpriteGrid()` for accurate output; added mood/color/weight/facing/animate controls; uses `{{spriteConstantsUri}}`, `{{spritesUri}}`, `{{spritesAdultUri}}` tokens |
 | `pycharm/src/main/resources/webview/sprite_preview.html` | Mirror of VS Code `sprite_preview.html` with inline CSP and `<script src>` markers for PyCharm inlining |
-| `vscode/src/spritePreviewPanel.ts` | New: `SpritePreviewPanel` class — opens `sprite_preview.html` in a `WebviewPanel`, dev-mode only |
+| `vscode/src/spritePreviewPanel.ts` | New: `SpritePreviewPanel` class — opens `sprite_preview.html` in a `WebviewPanel`, dev-mode only; fixed to inject CSP nonce and replace relative src paths with webview URIs |
 | `vscode/src/extension.ts` | Registered `codotchi.openSpritePreview` command (dev-mode gated) |
 | `vscode/package.json` | Added `codotchi.openSpritePreview` command contribution |
 | `pycharm/src/main/kotlin/com/codotchi/SpritePreviewBrowserPanel.kt` | New: JCEF panel for PyCharm sprite preview |
 | `pycharm/src/main/kotlin/com/codotchi/OpenSpritePreviewAction.kt` | New: `AnAction` for Tools menu, dev-mode gated |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | Registered `OpenSpritePreviewAction` under Tools menu |
 | `SPRITES.md` | Updated preview instructions to point to in-IDE command |
+| `BUGFIXES.md` | Added BUGFIX-083 (CSP nonce), BUGFIX-084 (pixelScale not applied), BUGFIX-085 (browser relative paths) |
 
 ---
 
