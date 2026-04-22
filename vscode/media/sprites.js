@@ -2990,7 +2990,9 @@
           colOffsetY = sagPixels;
           var halfCols  = COLS / 2;
           var isLeftLeg = col < halfCols;
-          if (legFrame === 0) {
+          if (legFrame === -1) {
+            // -1 = upright/neutral: both legs flush, no per-leg offset
+          } else if (legFrame === 0) {
             colOffsetY += isLeftLeg ? 0 : cellH;
           } else {
             colOffsetY += isLeftLeg ? cellH : 0;
