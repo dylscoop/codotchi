@@ -9,7 +9,7 @@ Complete visual design guide for all pixel-art sprites in the Codotchi extension
 All sprites are defined in `vscode/media/sprites.js` (mirrored verbatim to
 `pycharm/src/main/resources/webview/sprites.js`).
 
-To preview all sprites interactively, open `vscode/media/sprite_preview.html` directly in any browser (no server needed — it loads `sprites.js` from the same folder via a relative `<script>` tag).
+To preview all sprites interactively in-IDE, enable developer mode then open the Command Palette (VS Code) or Tools menu (PyCharm) and run **Codotchi: Open Sprite Preview (Dev)**. The preview uses the real `renderSpriteGrid()` function for pixel-accurate output including leg animation, mood-based colour overrides, stage scaling, and weight proportions. The standalone browser version (`vscode/media/sprite_preview.html`) still works via `file://` but the in-IDE panel is the recommended workflow.
 
 One grid size per animal type:
 

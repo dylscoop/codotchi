@@ -1,6 +1,33 @@
 # Version History
 
-## v1.4.0 — current
+## v1.5.0 — current
+
+### Changes from v1.4.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.4.0` → `1.5.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.4.0` → `1.5.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.4.0` → `1.5.0` |
+| `vscode/media/spriteConstants.js` | New shared file: `SPRITE_COLOR_PALETTES`, `SPRITE_STAGE_SCALES`, `SPRITE_BODY_HEIGHT_MULTS`, `spriteGetPalette()`, `spriteWeightWidthMult()` extracted from `sidebar.js` |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | Mirror of `vscode/media/spriteConstants.js` |
+| `vscode/media/sidebar.js` | Refactored: `COLOR_PALETTES`, `getPalette`, `STAGE_SCALES`, `STAGE_BODY_HEIGHT_MULTS`, `weightWidthMultiplier` now delegate to `window.SPRITE_*` / `window.spriteGetPalette` / `window.spriteWeightWidthMult` from `spriteConstants.js` |
+| `vscode/media/sidebar.html` | Added `{{spriteConstantsUri}}` script tag before `sprites.js` |
+| `vscode/src/sidebarProvider.ts` | Added `spriteConstantsUri` webview URI injection |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | Inlines `spriteConstants.js` before `sprites.js` |
+| `vscode/media/sprite_preview.html` | Rewritten: now calls real `renderSpriteGrid()` for accurate output; added mood/color/weight/facing/animate controls; uses `{{spriteConstantsUri}}`, `{{spritesUri}}`, `{{spritesAdultUri}}` tokens |
+| `pycharm/src/main/resources/webview/sprite_preview.html` | Mirror of VS Code `sprite_preview.html` with inline CSP and `<script src>` markers for PyCharm inlining |
+| `vscode/src/spritePreviewPanel.ts` | New: `SpritePreviewPanel` class — opens `sprite_preview.html` in a `WebviewPanel`, dev-mode only |
+| `vscode/src/extension.ts` | Registered `codotchi.openSpritePreview` command (dev-mode gated) |
+| `vscode/package.json` | Added `codotchi.openSpritePreview` command contribution |
+| `pycharm/src/main/kotlin/com/codotchi/SpritePreviewBrowserPanel.kt` | New: JCEF panel for PyCharm sprite preview |
+| `pycharm/src/main/kotlin/com/codotchi/OpenSpritePreviewAction.kt` | New: `AnAction` for Tools menu, dev-mode gated |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Registered `OpenSpritePreviewAction` under Tools menu |
+| `SPRITES.md` | Updated preview instructions to point to in-IDE command |
+
+---
+
+## v1.4.0 — previous
 
 ### Changes from v1.3.1
 
