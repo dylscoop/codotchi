@@ -4,9 +4,9 @@
  * Exposes on `window`:
  *   SPRITE_COLOR_PALETTES      — keyed colour palette map
  *   SPRITE_STAGE_SCALES        — per-stage size multiplier
- *   SPRITE_BODY_HEIGHT_MULTS   — per-stage height aspect-ratio multiplier
  *   spriteGetPalette(colorKey) — returns the palette object for a given key
  *   spriteWeightWidthMult(w)   — returns width multiplier for a given weight
+ *   spriteHeightRatio(type)    — returns height/width ratio for a given spriteType
  *
  * Loaded by:
  *   - sidebar.html   (before sidebar.js, after sprites.js)
@@ -55,22 +55,21 @@
     senior: 1.00,
   };
 
-  // ── Body height multipliers ───────────────────────────────────────────────
+  // ── Sprite orientation ────────────────────────────────────────────────────
+  /** Sprite types that use a portrait (32 cols × 48 rows) grid. */
+  var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1 };
+
   /**
-   * Height multipliers per stage (relative to bodySize).
-   * Quadrupeds are natively landscape (48x32) so height mult < 1.
-   * Uprights are natively portrait (32x48) so height mult > 1.
-   * The renderer uses isUpright to pick the right grid; these mults
-   * are the aspect-ratio correction applied on top of BASE_SIZE.
+   * Return the height/width ratio for a given spriteType.
+   * Upright grids are 32×48 → ratio 48/32 = 1.5.
+   * Quadruped/snake grids are 48×32 → ratio 32/48 ≈ 0.667.
+   * This gives square pixel cells, matching ASCII sketch proportions.
+   * @param {string} spriteType
+   * @returns {number}
    */
-  var STAGE_BODY_HEIGHT_MULTS = {
-    egg:    1.3,
-    baby:   0.67,
-    child:  0.67,
-    teen:   0.75,
-    adult:  0.67,
-    senior: 0.67,
-  };
+  function spriteHeightRatio(spriteType) {
+    return UPRIGHT_TYPES[spriteType] ? (48 / 32) : (32 / 48);
+  }
 
   // ── Weight → width multiplier ──────────────────────────────────────────────
   /**
@@ -88,8 +87,8 @@
   // ── Exports ───────────────────────────────────────────────────────────────
   window.SPRITE_COLOR_PALETTES    = COLOR_PALETTES;
   window.SPRITE_STAGE_SCALES      = STAGE_SCALES;
-  window.SPRITE_BODY_HEIGHT_MULTS = STAGE_BODY_HEIGHT_MULTS;
   window.spriteGetPalette         = getPalette;
   window.spriteWeightWidthMult    = weightWidthMultiplier;
+  window.spriteHeightRatio        = spriteHeightRatio;
 
 }());

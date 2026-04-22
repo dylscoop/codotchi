@@ -2833,12 +2833,12 @@
    * @param {number}  legFrame    - 0 or 1
    * @param {number}  breathPhase - sleeping breath phase (radians)
    * @param {object}  STAGE_SCALES
-   * @param {object}  STAGE_BODY_HEIGHT_MULTS
    * @param {Function} weightWidthMultiplier
    * @param {Function} getPalette
+   * @param {Function} spriteHeightRatio - returns height/width ratio for a spriteType
    */
   function renderSpriteGrid(ctx, state, x, bodyY, facingLeft, legFrame, breathPhase,
-                            STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette) {
+                            STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio) {
 
     var spriteType = state.spriteType || "classic";
     var stage      = state.stage      || "baby";
@@ -2889,8 +2889,9 @@
     var wt          = state.weight || 50;
     var wwm         = weightWidthMultiplier(wt);
     var bodyWidth   = Math.round(bodySize * wwm);
-    var heightMult  = STAGE_BODY_HEIGHT_MULTS[stage] || 1.0;
-    var bodyHeight  = Math.round(bodySize * heightMult);
+    // Compute bodyHeight so cells are square: height/width = ROWS/COLS.
+    // This matches the ASCII sketch proportions exactly regardless of orientation.
+    var bodyHeight  = Math.round(bodyWidth * spriteHeightRatio(spriteType));
 
     // Sleeping breath bob
     var bobY = bodyY;

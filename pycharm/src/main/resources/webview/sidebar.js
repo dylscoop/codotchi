@@ -1,4 +1,4 @@
-﻿/**
+/**
  * sidebar.js — vscode_codotchi webview client
  *
  * Communicates with the extension host via the VS Code webview message API:
@@ -679,8 +679,9 @@
     if (!lastState) { return spriteCanvas.height - 4; }
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
-    var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
-    var bHeight    = Math.round(bSize * heightMult);
+    var wwm        = weightWidthMultiplier(lastState.weight || 50);
+    var bWidth     = Math.round(bSize * wwm);
+    var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
     return spriteCanvas.height - bHeight - 4;
   }
 
@@ -714,8 +715,7 @@
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var wwm        = weightWidthMultiplier(lastState.weight || 50);
     var bWidth     = Math.round(bSize * wwm);
-    var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
-    var bHeight    = Math.round(bSize * heightMult);
+    var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
     var floorY     = spriteCanvas.height - bHeight - 4;
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
@@ -1450,7 +1450,7 @@
   function drawBody(state, x, bodyY, facingLeft, legFrame) {
     window.renderSpriteGrid(
       spriteCtx, state, x, bodyY, facingLeft, legFrame, breathPhase,
-      STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette
+      STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio
     );
   }
 
@@ -1477,8 +1477,7 @@
     var bSize     = Math.round(BASE_SIZE * petSizeMultiplier() * stageScale);
     var wwm       = weightWidthMultiplier(state.weight || 50);
     var bWidth    = Math.round(bSize * wwm);
-    var hMult     = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
-    var bHeight   = Math.round(bSize * hMult);
+    var bHeight   = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
     var feetY     = bodyY + bHeight;              // canvas Y of the bottom of the feet
 
     switch (reaction.type) {
@@ -1641,8 +1640,7 @@
     var bSize    = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var wwm      = weightWidthMultiplier(state.weight || 50);
     var bWidth   = Math.round(bSize * wwm);
-    var hMult    = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
-    var bHeight  = Math.round(bSize * hMult);
+    var bHeight  = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
     var H        = spriteCanvas.height;
     var staticX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth / 2));
     var staticY  = H - bHeight - 4;
@@ -1653,39 +1651,27 @@
 
   // ── Static look-up tables ────────────────────────────────────────────────
 
-  const COLOR_PALETTES = {
-    neon:   { primary: "#39ff14", secondary: "#ff00ff", background: "#0d0d0d" },
-    pastel: { primary: "#ffb3c1", secondary: "#b5ead7", background: "#57070c" },
-    mono:   { primary: "#e0e0e0", secondary: "#888888", background: "#1a1a1a" },
-    ocean:  { primary: "#00cfff", secondary: "#004e7c", background: "#001f3f" },
-  };
+  // ── Sprite constants — sourced from spriteConstants.js (loaded first) ───────
+  // Values are defined in spriteConstants.js and exposed on window.*
+  // to keep them in a single place shared with sprite_preview.html.
+  var COLOR_PALETTES          = window.SPRITE_COLOR_PALETTES;
+  var STAGE_SCALES            = window.SPRITE_STAGE_SCALES;
+
+  /**
+   * Return the height/width ratio for a given spriteType.
+   * Delegates to spriteConstants.js.
+   */
+  function spriteHeightRatio(spriteType) {
+    return window.spriteHeightRatio(spriteType);
+  }
 
   /**
    * Return the colour palette for a given key.
-   * The "custom" key reads colours from CSS custom properties injected by the
-   * host (sidebarProvider.ts) at HTML-build time via the
-   * --gotchi-custom-* variables, falling back to safe defaults if not set.
+   * Delegates to spriteConstants.js so "custom" CSS-var handling is shared.
    */
   function getPalette(colorKey) {
-    if (colorKey === "custom") {
-      var s = getComputedStyle(document.documentElement);
-      return {
-        primary:    s.getPropertyValue("--codotchi-custom-primary").trim()    || "#ff8c00",
-        secondary:  s.getPropertyValue("--codotchi-custom-secondary").trim()  || "#ffffff",
-        background: s.getPropertyValue("--codotchi-custom-background").trim() || "#1a1a2e",
-      };
-    }
-    return COLOR_PALETTES[colorKey] || COLOR_PALETTES["neon"];
+    return window.spriteGetPalette(colorKey);
   }
-
-  const STAGE_SCALES = {
-    egg:    0.325,
-    baby:   0.65,
-    child:  0.75,
-    teen:   0.85,
-    adult:  1.00,
-    senior: 1.00,
-  };
 
   /**
    * Return the base-size multiplier driven by the codotchi.petSize setting.
@@ -1699,33 +1685,14 @@
     return ps === "small" ? 1.0 : ps === "large" ? 2.0 : 1.5;
   }
 
-  /** Height multipliers per stage (relative to bodySize).
-   * Quadrupeds are natively landscape (48x32) so height mult < 1.
-   * Uprights are natively portrait (32x48) so height mult > 1.
-   * The renderer uses isUpright to pick the right grid; these mults
-   * are the aspect-ratio correction applied on top of BASE_SIZE.
-   */
-  const STAGE_BODY_HEIGHT_MULTS = {
-    egg:    1.3,
-    baby:   0.67,
-    child:  0.67,
-    teen:   0.75,
-    adult:  0.67,
-    senior: 0.67,
-  };
-
   /**
    * Return the width multiplier for the sprite based on weight.
-   * Quadrupeds: weight affects width only.
-   * Uprights: weight affects width (this) and height (via weightHeightMultiplier).
+   * Delegates to spriteConstants.js so thresholds are shared.
    * @param {number} weight
    * @returns {number}
    */
   function weightWidthMultiplier(weight) {
-    if (weight > 80)  { return 1.50; }
-    if (weight > 50)  { return 1.30; }
-    if (weight < 17)  { return 0.80; }
-    return 1.0;
+    return window.spriteWeightWidthMult(weight);
   }
 
   // ── Initial view ─────────────────────────────────────────────────────────

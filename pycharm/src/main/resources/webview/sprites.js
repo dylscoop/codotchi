@@ -1946,13 +1946,13 @@
       "000000000000000000111111111111111100000000000000",//22
       "000000000000000000111111111111111100000000000000",//23
       "000000000000000000111111111111111100000000000000",//24
-      "000000000000000000111000000111000000000000000000",//25
-      "000000000000000000111000000111000000000000000000",//26
-      "000000000000000000111000000111000000000000000000",//27
-      "000000000000000000111000000111000000000000000000",//28
-      "000000000000000000111000000111000000000000000000",//29
-      "000000000000000000111000000111000000000000000000",//30
-      "000000000000000000111000000111000000000000000000"//31
+      "000000000000000000111000000000111000000000000000",//25
+      "000000000000000000111000000000111000000000000000",//26
+      "000000000000000000111000000000111000000000000000",//27
+      "000000000000000000111000000000111000000000000000",//28
+      "000000000000000000111000000000111000000000000000",//29
+      "000000000000000000111000000000111000000000000000",//30
+      "000000000000000000111000000000111000000000000000"//31
     ],
     child: [
       "000000000000000000000000000000000000000000000000",//0
@@ -2833,12 +2833,12 @@
    * @param {number}  legFrame    - 0 or 1
    * @param {number}  breathPhase - sleeping breath phase (radians)
    * @param {object}  STAGE_SCALES
-   * @param {object}  STAGE_BODY_HEIGHT_MULTS
    * @param {Function} weightWidthMultiplier
    * @param {Function} getPalette
+   * @param {Function} spriteHeightRatio - returns height/width ratio for a spriteType
    */
   function renderSpriteGrid(ctx, state, x, bodyY, facingLeft, legFrame, breathPhase,
-                            STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette) {
+                            STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio) {
 
     var spriteType = state.spriteType || "classic";
     var stage      = state.stage      || "baby";
@@ -2889,8 +2889,9 @@
     var wt          = state.weight || 50;
     var wwm         = weightWidthMultiplier(wt);
     var bodyWidth   = Math.round(bodySize * wwm);
-    var heightMult  = STAGE_BODY_HEIGHT_MULTS[stage] || 1.0;
-    var bodyHeight  = Math.round(bodySize * heightMult);
+    // Compute bodyHeight so cells are square: height/width = ROWS/COLS.
+    // This matches the ASCII sketch proportions exactly regardless of orientation.
+    var bodyHeight  = Math.round(bodyWidth * spriteHeightRatio(spriteType));
 
     // Sleeping breath bob
     var bobY = bodyY;

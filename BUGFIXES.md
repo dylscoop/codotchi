@@ -1105,3 +1105,12 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** The `6a62c35` rewrite replaced `<script src="sprites.js">` relative paths with `<script src="{{spritesUri}}">` template tokens. Those tokens are only substituted by the VS Code extension at runtime — opening the file directly in a browser left them as literal strings, so all scripts failed to load.
 
 **Fix:** Restored relative `src="sprites.js"` paths in the HTML for direct browser use. `spritePreviewPanel.ts` now replaces those relative paths with `asWebviewUri` values at load time, and injects the CSP `<meta>` tag via a `{{csp}}` placeholder.
+
+## BUGFIX-086 — Sprites render squashed vertically compared to ASCII sketch designs
+
+**Status:** Fixed (branch `fix/sprite-height-ratio`)
+**File:** `vscode/media/spriteConstants.js`, `vscode/media/sprites.js`, `vscode/media/sidebar.js` (and PyCharm mirrors)
+
+**Problem:** `STAGE_BODY_HEIGHT_MULTS` used a flat 0.67 multiplier for all stages regardless of sprite orientation. This was correct for quadrupeds (48×32 grid, ratio 32/48 ≈ 0.67) but wrong for upright sprites (32×48 grid, ratio 48/32 = 1.5). Uprights were rendered at less than half their correct height, making all sprites look squashed compared to the ASCII sketches in `SPRITES.md`.
+
+**Fix:** Removed `STAGE_BODY_HEIGHT_MULTS`. Added `spriteHeightRatio(spriteType)` to `spriteConstants.js` which returns the exact `ROWS/COLS` ratio for the given sprite type (1.5 for uprights, 0.667 for quadrupeds/snake). `renderSpriteGrid` now computes `bodyHeight = bodyWidth * spriteHeightRatio(spriteType)`, giving square pixel cells that match the ASCII sketch proportions exactly. All `bHeight` calculations in `sidebar.js` updated to match.

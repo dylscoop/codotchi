@@ -679,8 +679,9 @@
     if (!lastState) { return spriteCanvas.height - 4; }
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
-    var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
-    var bHeight    = Math.round(bSize * heightMult);
+    var wwm        = weightWidthMultiplier(lastState.weight || 50);
+    var bWidth     = Math.round(bSize * wwm);
+    var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
     return spriteCanvas.height - bHeight - 4;
   }
 
@@ -714,8 +715,7 @@
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var wwm        = weightWidthMultiplier(lastState.weight || 50);
     var bWidth     = Math.round(bSize * wwm);
-    var heightMult = STAGE_BODY_HEIGHT_MULTS[lastState.stage] || 1.0;
-    var bHeight    = Math.round(bSize * heightMult);
+    var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
     var floorY     = spriteCanvas.height - bHeight - 4;
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
@@ -1450,7 +1450,7 @@
   function drawBody(state, x, bodyY, facingLeft, legFrame) {
     window.renderSpriteGrid(
       spriteCtx, state, x, bodyY, facingLeft, legFrame, breathPhase,
-      STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette
+      STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio
     );
   }
 
@@ -1477,8 +1477,7 @@
     var bSize     = Math.round(BASE_SIZE * petSizeMultiplier() * stageScale);
     var wwm       = weightWidthMultiplier(state.weight || 50);
     var bWidth    = Math.round(bSize * wwm);
-    var hMult     = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
-    var bHeight   = Math.round(bSize * hMult);
+    var bHeight   = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
     var feetY     = bodyY + bHeight;              // canvas Y of the bottom of the feet
 
     switch (reaction.type) {
@@ -1641,8 +1640,7 @@
     var bSize    = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var wwm      = weightWidthMultiplier(state.weight || 50);
     var bWidth   = Math.round(bSize * wwm);
-    var hMult    = STAGE_BODY_HEIGHT_MULTS[state.stage] || 1.0;
-    var bHeight  = Math.round(bSize * hMult);
+    var bHeight  = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
     var H        = spriteCanvas.height;
     var staticX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth / 2));
     var staticY  = H - bHeight - 4;
@@ -1658,7 +1656,14 @@
   // to keep them in a single place shared with sprite_preview.html.
   var COLOR_PALETTES          = window.SPRITE_COLOR_PALETTES;
   var STAGE_SCALES            = window.SPRITE_STAGE_SCALES;
-  var STAGE_BODY_HEIGHT_MULTS = window.SPRITE_BODY_HEIGHT_MULTS;
+
+  /**
+   * Return the height/width ratio for a given spriteType.
+   * Delegates to spriteConstants.js.
+   */
+  function spriteHeightRatio(spriteType) {
+    return window.spriteHeightRatio(spriteType);
+  }
 
   /**
    * Return the colour palette for a given key.
