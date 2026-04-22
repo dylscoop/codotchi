@@ -1,6 +1,24 @@
 # Version History
 
-## v1.7.0 — current
+## v1.8.0 — current
+
+### Changes from v1.7.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.7.0` → `1.8.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.7.0` → `1.8.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.7.0` → `1.8.0` |
+| `vscode/media/sprites.js` | Dragon sprite fully redesigned as Chinese imperial dragon: serpentine coiling body (3–5 coils by stage), head faces right with deer-like snout, curved horns (accent/index 3), flowing mane (accent), subtle whiskers, gold flaming pearl (index 4) held from teen stage onward, flame tip tail; no legs — dragon floats above floor |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirror of `vscode/media/sprites.js` |
+| `vscode/media/sprites.js` | Added colour index 4 (`#FFD700`) to `colorMap` in `renderSpriteGrid` for dragon's gold pearl |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirror of `vscode/media/sprites.js` |
+| `vscode/media/sidebar.js` | Added `floatPhase` state variable; dragon movement branch in animation loop: hovers at ~12% of body height above floor with gentle sinusoidal bob (`floatPhase`), no gravity, no hop; leg frame always `-1` for dragon (no leg animation) |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirror of `vscode/media/sidebar.js` |
+
+---
+
+## v1.7.0 — previous
 
 ### Changes from v1.6.0
 
