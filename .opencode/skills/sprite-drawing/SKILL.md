@@ -167,6 +167,19 @@ be "fixed" unless the user explicitly requests it.
 
 ---
 
+## Rule 10 — Tamagotchi pixel-art style
+
+All sprites must read as **Tamagotchi-style pixel art**, not realistic illustrations.
+
+- Aim for **2–3 iconic silhouette cues** per animal (e.g. shiba = prick ears + curled tail + fox muzzle). Do NOT add breed-accurate fine detail (urajiro gradients, saddle shading, chest markings, leg socks, nose tips, etc.)
+- Each colour must form **large contiguous blocks**, not scattered single pixels. The only exceptions are senior age spots (Rule 6) and intentional marking patterns pre-approved by the user.
+- Colour 3 should be used for **one primary purpose** per animal (shading OR markings OR legs/hooves — pick one). Do not sprinkle it across multiple unrelated features.
+- Prefer **blocky chunky shapes** over anatomical accuracy. A slightly oversized head on an adult is correct Tamagotchi style.
+- **Reference benchmark:** the shipped cat, pig, and sheep sprites are the correct style level. Do not exceed their pixel density or detail level.
+- When in doubt, **simplify** — remove the detail rather than adding it.
+
+---
+
 ## Checklist before writing any sprite pixel data
 
 - [ ] Rule 1: Feet pixels present in last 1–2 rows of grid?
@@ -178,6 +191,7 @@ be "fixed" unless the user explicitly requests it.
 - [ ] Rule 7: Colour 4 used only for whiskers/details, not body fill?
 - [ ] Rule 8: If animal has a tail — is it connected to the body in all stages including baby/child?
 - [ ] Rule 9: Baby and child are proportional shrinks of adult in BOTH width and height (not chibi unless adult is already chibi)?
+- [ ] Rule 10: Is the design Tamagotchi-style (2–3 iconic cues, chunky contiguous colour blocks, no fine anatomical detail)?
 
 ---
 
