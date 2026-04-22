@@ -1,0 +1,81 @@
+/**
+ * spritePreviewPanel.ts
+ *
+ * Opens a VS Code WebviewPanel that renders the sprite preview gallery
+ * (vscode/media/sprite_preview.html).  Only available in developer mode.
+ *
+ * Usage:
+ *   SpritePreviewPanel.open(context);   // opens or focuses the panel
+ */
+
+import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs";
+
+export class SpritePreviewPanel {
+  private static current: SpritePreviewPanel | undefined;
+
+  private readonly panel: vscode.WebviewPanel;
+  private readonly context: vscode.ExtensionContext;
+
+  private constructor(context: vscode.ExtensionContext) {
+    this.context = context;
+
+    this.panel = vscode.window.createWebviewPanel(
+      "codotchi.spritePreview",
+      "Codotchi Sprite Preview",
+      vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        localResourceRoots: [
+          vscode.Uri.file(path.join(context.extensionPath, "media")),
+        ],
+        retainContextWhenHidden: true,
+      }
+    );
+
+    this.panel.webview.html = this.buildHtml();
+
+    this.panel.onDidDispose(() => {
+      SpritePreviewPanel.current = undefined;
+    });
+  }
+
+  /** Open the panel (or focus it if already open). */
+  static open(context: vscode.ExtensionContext): void {
+    if (SpritePreviewPanel.current) {
+      SpritePreviewPanel.current.panel.reveal(vscode.ViewColumn.One);
+      return;
+    }
+    SpritePreviewPanel.current = new SpritePreviewPanel(context);
+  }
+
+  private buildHtml(): string {
+    const mediaPath = path.join(this.context.extensionPath, "media");
+    const htmlPath  = path.join(mediaPath, "sprite_preview.html");
+
+    if (!fs.existsSync(htmlPath)) {
+      return `<html><body><p>sprite_preview.html not found.</p></body></html>`;
+    }
+
+    const webview = this.panel.webview;
+
+    const spriteConstantsUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "spriteConstants.js"))
+    );
+    const spritesUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "sprites.js"))
+    );
+    const spritesAdultUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "sprites_adult.js"))
+    );
+
+    let html = fs.readFileSync(htmlPath, "utf8");
+    html = html.replace(/\{\{cspSource\}\}/g, webview.cspSource);
+    html = html.replace("{{spriteConstantsUri}}", spriteConstantsUri.toString());
+    html = html.replace("{{spritesUri}}",         spritesUri.toString());
+    html = html.replace("{{spritesAdultUri}}",    spritesAdultUri.toString());
+
+    return html;
+  }
+}

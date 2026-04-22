@@ -26,6 +26,7 @@ import {
 import { SidebarProvider } from "./sidebarProvider";
 import { StatusBarManager } from "./statusBar";
 import { EventsManager } from "./events";
+import { SpritePreviewPanel } from "./spritePreviewPanel";
 import {
   saveState,
   loadState,
@@ -425,6 +426,22 @@ export function activate(context: vscode.ExtensionContext): void {
       // The webview new-game form handles the actual createPet call via the
       // "new_game" message routed through SidebarProvider.
       void vscode.commands.executeCommand("codotchiView.focus");
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("codotchi.openSpritePreview", () => {
+      const cfg = vscode.workspace.getConfiguration("codotchi");
+      const devModeActive =
+        cfg.get<boolean>("devModeEnabled", false) &&
+        cfg.get<string>("developerPasscode", "") === "1234";
+      if (!devModeActive) {
+        void vscode.window.showWarningMessage(
+          "Codotchi: Sprite Preview is only available in developer mode."
+        );
+        return;
+      }
+      SpritePreviewPanel.open(context);
     })
   );
 
