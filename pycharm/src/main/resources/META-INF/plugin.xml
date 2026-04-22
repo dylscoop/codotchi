@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>1.5.2</version>
+    <version>1.6.0</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
