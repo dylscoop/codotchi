@@ -2836,9 +2836,11 @@
    * @param {Function} weightWidthMultiplier
    * @param {Function} getPalette
    * @param {Function} spriteHeightRatio - returns height/width ratio for a spriteType
+   * @param {Function} quadrupedBellySagRows - returns extra belly-sag row count for overweight quadrupeds
    */
   function renderSpriteGrid(ctx, state, x, bodyY, facingLeft, legFrame, breathPhase,
-                            STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio) {
+                            STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio,
+                            quadrupedBellySagRows) {
 
     var spriteType = state.spriteType || "classic";
     var stage      = state.stage      || "baby";
@@ -2887,7 +2889,17 @@
     var baseSize    = 96;
     var bodySize    = Math.round(baseSize * sizeMultiplier * stageScale);
     var wt          = state.weight || 50;
-    var wwm         = weightWidthMultiplier(wt);
+
+    // Overweight visual treatment differs by sprite type:
+    //   • Upright sprites (classic, monkey, rooster, dragon) and snake → stretch
+    //     the sprite wider via weightWidthMultiplier (existing behaviour).
+    //   • All other quadrupeds → keep normal width; instead insert extra belly-sag
+    //     rows between the body and legs via quadrupedBellySagRows().
+    var isSnake   = (spriteType === "snake");
+    var useWidthStretch = isUpright || isSnake;
+    var wwm       = useWidthStretch ? weightWidthMultiplier(wt) : 1.0;
+    var sagRows   = (!useWidthStretch && stage !== "egg") ? quadrupedBellySagRows(wt) : 0;
+
     var bodyWidth   = Math.round(bodySize * wwm);
     // Compute bodyHeight so cells are square: height/width = ROWS/COLS.
     // This matches the ASCII sketch proportions exactly regardless of orientation.
@@ -2939,6 +2951,9 @@
     // the sprite float above the floor instead of standing on it.
     var gridBottomAlign = bodyHeight - ROWS * cellH;
 
+    // Belly-sag extra pixels: legs shift down by this amount so the sag fills the gap.
+    var sagPixels = sagRows * cellH;
+
     // Map colour index to actual colour
     var colorMap = {
       1: primary,
@@ -2963,12 +2978,14 @@
 
         var colOffsetY = 0;
         if (isLegRow) {
+          // Leg rows shift down by sagPixels so the belly sag fills the gap above.
+          colOffsetY = sagPixels;
           var halfCols  = COLS / 2;
           var isLeftLeg = col < halfCols;
           if (legFrame === 0) {
-            colOffsetY = isLeftLeg ? 0 : cellH;
+            colOffsetY += isLeftLeg ? 0 : cellH;
           } else {
-            colOffsetY = isLeftLeg ? cellH : 0;
+            colOffsetY += isLeftLeg ? cellH : 0;
           }
         }
 
@@ -2977,6 +2994,39 @@
           x + col * cellW,
           bobY + gridBottomAlign + row * cellH + colOffsetY,
           cellW,
+          cellH
+        );
+      }
+    }
+
+    // -- Belly-sag rows (quadruped overweight only) ---------------------------
+    // Draw procedural rows between body bottom (row legRowStart-1) and the
+    // now-shifted legs.  Each sag row copies the silhouette of the last body row
+    // (row legRowStart-1 = row 24), inset by one extra column on each side per
+    // sag row, giving a tapered hanging-belly shape filled with the primary colour.
+    if (sagRows > 0 && grid[legRowStart - 1]) {
+      var bodyBottomRow = grid[legRowStart - 1];
+      // Determine the leftmost and rightmost non-zero column of the body bottom row.
+      var silLeft  = COLS;
+      var silRight = -1;
+      for (var bc = 0; bc < COLS; bc++) {
+        if (bodyBottomRow[bc]) {
+          if (bc < silLeft)  { silLeft  = bc; }
+          if (bc > silRight) { silRight = bc; }
+        }
+      }
+      ctx.fillStyle = primary;
+      for (var s = 0; s < sagRows; s++) {
+        // Inset by (s+1) columns on each side — sag narrows toward the bottom.
+        var inset    = s + 1;
+        var sagLeft  = silLeft  + inset;
+        var sagRight = silRight - inset;
+        if (sagLeft >= sagRight) { continue; }  // inset has closed off — skip
+        var sagY = bobY + gridBottomAlign + legRowStart * cellH + s * cellH;
+        ctx.fillRect(
+          x + sagLeft  * cellW,
+          sagY,
+          (sagRight - sagLeft + 1) * cellW,
           cellH
         );
       }

@@ -1450,7 +1450,8 @@
   function drawBody(state, x, bodyY, facingLeft, legFrame) {
     window.renderSpriteGrid(
       spriteCtx, state, x, bodyY, facingLeft, legFrame, breathPhase,
-      STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio
+      STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio,
+      quadrupedBellySagRows
     );
   }
 
@@ -1693,6 +1694,16 @@
    */
   function weightWidthMultiplier(weight) {
     return window.spriteWeightWidthMult(weight);
+  }
+
+  /**
+   * Return the number of extra belly-sag rows for an overweight quadruped.
+   * Delegates to spriteConstants.js so thresholds are shared.
+   * @param {number} weight
+   * @returns {number}
+   */
+  function quadrupedBellySagRows(weight) {
+    return window.spriteQuadBellySag(weight);
   }
 
   // ── Initial view ─────────────────────────────────────────────────────────
