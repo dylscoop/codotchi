@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  {{csp}}
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;" />
   <title>Sprite Preview — Codotchi</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
@@ -221,21 +222,20 @@
   }
 
   // ── Canvas size for a given animal at current scale ───────────────────────
-  // We want the canvas to be big enough to show the largest possible stage.
-  // The canvas pixel buffer is sized at physical pixels (raw sprite units × pixelScale).
-  function canvasSize() {
+  // We want the canvas to be big enough to show the largest possible stage
+  // at this animal's grid dimensions. We pad the height a little so the
+  // bottom-aligned sprite is never clipped.
+  function canvasSize(animal) {
+    var isUpright = !!UPRIGHT_TYPES[animal];
+    var COLS = isUpright ? 32 : 48;
+    var ROWS = isUpright ? 48 : 32;
     // largest stage scale is 1.0 (adult/senior), medium petSize = 1.5
     var maxBodySize = Math.round(BASE_SIZE * 1.5 * 1.0);
     var wwm = window.spriteWeightWidthMult(globalWeight);
-    // Pick the tallest height multiplier across all stages
-    var mults = window.SPRITE_BODY_HEIGHT_MULTS;
-    var hmult = 0;
-    var keys = Object.keys(mults);
-    for (var i = 0; i < keys.length; i++) {
-      if (mults[keys[i]] > hmult) { hmult = mults[keys[i]]; }
-    }
-    var w = (Math.ceil(maxBodySize * wwm) + 4) * pixelScale;
-    var h = (Math.ceil(maxBodySize * hmult) + 4) * pixelScale;
+    // width: bodySize * weightMult, height: bodySize * heightMult
+    var hmult = Math.max.apply(null, Object.values(window.SPRITE_BODY_HEIGHT_MULTS));
+    var w = Math.ceil(maxBodySize * wwm) + 4;
+    var h = Math.ceil(maxBodySize * hmult) + 4;
     return { w: w, h: h };
   }
 
@@ -257,17 +257,9 @@
     ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, W, H);
 
-    // All drawing below is in raw sprite units; scale up to pixelScale
-    ctx.save();
-    ctx.scale(pixelScale, pixelScale);
-
-    // Logical dimensions (raw sprite units)
-    var lW = W / pixelScale;
-    var lH = H / pixelScale;
-
     // Draw floor line (subtle) matching the sidebar
     ctx.fillStyle = "rgba(255,255,255,0.08)";
-    ctx.fillRect(0, lH - 2, lW, 1);
+    ctx.fillRect(0, H - 2, W, 1);
 
     var state = makeState(animal, stage);
 
@@ -293,9 +285,9 @@
       patchedSprites = true;
     }
 
-    // Centre horizontally, bottom-align vertically (in raw sprite units)
-    var x     = Math.max(0, Math.floor((lW - bodyWidth) / 2));
-    var bodyY = lH - bodyHeight - 2;
+    // Centre horizontally, bottom-align vertically
+    var x     = Math.max(0, Math.floor((W - bodyWidth) / 2));
+    var bodyY = H - bodyHeight - 2;
 
     // Breath bob phase for sleeping
     var bPhase = (state.sleeping && animEnabled) ? breathPhase : 0;
@@ -310,8 +302,6 @@
     if (patchedSprites) {
       window.SPRITES[animal]["adult"] = origAdult;
     }
-
-    ctx.restore();
   }
 
   // ── Build / rebuild the full grid ─────────────────────────────────────────
@@ -338,7 +328,7 @@
         // sprites_adult source only has "adult"
         if (activeSource === "sprites_adult" && stage !== "adult") { return; }
 
-        var sz    = canvasSize();
+        var sz    = canvasSize(animal);
         var cell  = document.createElement("div");
         cell.className = "sprite-cell";
 

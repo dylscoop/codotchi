@@ -113,9 +113,10 @@ class CodotchiBrowserPanel(
         val reducedMotion    = settings?.reducedMotion ?: false
         val petSize          = settings?.petSize ?: "medium"
 
-        val cssText     = loadResource("/webview/sidebar.css")
-        val spritesText = loadResource("/webview/sprites.js")
-        val jsText      = loadResource("/webview/sidebar.js")
+        val cssText             = loadResource("/webview/sidebar.css")
+        val spriteConstantsText = loadResource("/webview/spriteConstants.js")
+        val spritesText         = loadResource("/webview/sprites.js")
+        val jsText              = loadResource("/webview/sidebar.js")
         var html        = loadResource("/webview/sidebar.html")
 
         // Substitute font-size class from settings
@@ -161,11 +162,12 @@ class CodotchiBrowserPanel(
             $jsText
         """.trimIndent()
 
-        // Replace <script src="sprites.js"></script> with an inline block.
-        // Must come before sidebar.js is inlined so renderSpriteGrid is defined first.
+        // Replace <script src="sprites.js"></script> with spriteConstants.js
+        // inlined first, then sprites.js — constants must be defined before
+        // renderSpriteGrid is called.
         html = html.replace(
             """<script src="sprites.js"></script>""",
-            "<script>\n$spritesText\n</script>"
+            "<script>\n$spriteConstantsText\n</script>\n<script>\n$spritesText\n</script>"
         )
 
         // Replace <script src="sidebar.js"></script>

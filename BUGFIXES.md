@@ -1078,3 +1078,30 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** The `buildHtml()` fallback for `petStageHeight` was `160` instead of `240`. If the settings service was null, the stage canvas would render at 160 px — noticeably shorter than the VS Code sidebar which hardcodes 240 px.
 
 **Fix:** Changed the Elvis-operator fallback on line 112 from `?: 160` to `?: 240` to match the VS Code hardcoded value and the PyCharm settings default.
+
+## BUGFIX-083 — VS Code sprite preview panel: inline script blocked by missing CSP nonce
+
+**Status:** Fixed (branch `feat/sprite-preview-in-ide`)
+**File:** `vscode/src/spritePreviewPanel.ts`, `vscode/media/sprite_preview.html`
+
+**Problem:** The webview Content-Security-Policy used `script-src {{cspSource}}` which only allows scripts loaded via `asWebviewUri`. The inline `<script>` block in `sprite_preview.html` was silently blocked, so no sprites rendered and no controls worked.
+
+**Fix:** `spritePreviewPanel.ts` now generates a cryptographic nonce via `crypto.randomBytes` and injects a full CSP `<meta>` tag with `'nonce-XXXX'` in `script-src`. The inline script tag receives the matching `nonce` attribute at load time.
+
+## BUGFIX-084 — VS Code sprite preview panel: sprites rendered at 1px scale (invisible)
+
+**Status:** Fixed (branch `feat/sprite-preview-in-ide`)
+**File:** `vscode/media/sprite_preview.html`
+
+**Problem:** The `pixelScale` zoom variable was tracked but never applied — canvas buffers were sized in raw sprite units and `ctx.scale()` was never called, so sprites appeared as a handful of pixels.
+
+**Fix:** `canvasSize()` now multiplies by `pixelScale` to size the buffer, and `drawCell()` calls `ctx.save()` / `ctx.scale(pixelScale, pixelScale)` / `ctx.restore()` around all drawing, with coordinates divided back to logical units before being passed to `renderSpriteGrid`.
+
+## BUGFIX-085 — sprite_preview.html: scripts fail to load when opened directly in browser
+
+**Status:** Fixed (branch `feat/sprite-preview-in-ide`)
+**File:** `vscode/media/sprite_preview.html`, `vscode/src/spritePreviewPanel.ts`
+
+**Problem:** The `6a62c35` rewrite replaced `<script src="sprites.js">` relative paths with `<script src="{{spritesUri}}">` template tokens. Those tokens are only substituted by the VS Code extension at runtime — opening the file directly in a browser left them as literal strings, so all scripts failed to load.
+
+**Fix:** Restored relative `src="sprites.js"` paths in the HTML for direct browser use. `spritePreviewPanel.ts` now replaces those relative paths with `asWebviewUri` values at load time, and injects the CSP `<meta>` tag via a `{{csp}}` placeholder.

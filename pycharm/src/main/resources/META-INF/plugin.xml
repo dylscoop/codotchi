@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -90,6 +90,16 @@ to adjust display size, colours, attention-call timing, and idle thresholds.</p>
             isLogByDefault="true"/>
 
     </extensions>
+
+    <actions>
+        <!-- Dev-only sprite preview gallery — visible only when developer mode is active -->
+        <action id="com.codotchi.OpenSpritePreview"
+                class="com.codotchi.OpenSpritePreviewAction"
+                text="Codotchi: Open Sprite Preview (Dev)"
+                description="Open the sprite preview gallery (developer mode only)">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
 
     <applicationListeners>
         <listener
