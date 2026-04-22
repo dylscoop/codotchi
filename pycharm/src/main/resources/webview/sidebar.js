@@ -127,6 +127,7 @@
   let animTick      = 0;      // raw frame counter (drives leg animation period)
   let lastFrameMs   = 0;      // performance.now() of previous rAF frame
   let breathPhase   = 0;      // sleeping breath bob phase in radians
+  let floatPhase    = 0;      // floating bob phase in radians (dragon only)
   let hopTimer      = HOP_INTERVAL; // seconds until next happy hop
   let idleTimer     = 0;      // seconds until next wander direction/pause change
   let reactionQueue = [];     // [{ type, startMs, durationMs, startX, startY }]
@@ -754,6 +755,8 @@
     animTick++;
 
     // ── Movement ──────────────────────────────────────────────────────────
+    var isDragon = (lastState.spriteType === "dragon");
+
     if (activeReaction && activeReaction.type === "fell_asleep") {
       // Lock to floor in current position during the fell_asleep animation
       petY  = floorY;
@@ -772,7 +775,50 @@
       breathPhase += 1.8 * dt;
       petVx = 0;
       petVy = 0;
-      petY  = floorY;
+      petY  = isDragon ? floorY - Math.round(bHeight * 0.12) : floorY;
+
+    } else if (isDragon) {
+      // ── Dragon: hover + gentle float bob, no gravity ─────────────────────
+      floatPhase += 1.2 * dt;
+      var floatOffset = Math.round(Math.sin(floatPhase) * 3);
+      var hoverY = floorY - Math.round(bHeight * 0.12);  // float ~12% of body height above floor
+      petY  = hoverY + floatOffset;
+      petVy = 0;
+
+      // Horizontal movement (same wander logic, no gravity/hop)
+      var speed = getSpeedPPS(lastState);
+      if (snackItems.length > 0 && speed > 0) {
+        var closestSnack = snackItems[0];
+        var closestDist  = Math.abs(petX - snackItems[0].x);
+        for (var si = 1; si < snackItems.length; si++) {
+          var sd = Math.abs(petX - snackItems[si].x);
+          if (sd < closestDist) { closestDist = sd; closestSnack = snackItems[si]; }
+        }
+        if (closestDist < bWidth / 2 + 4) {
+          snackItems.splice(snackItems.indexOf(closestSnack), 1);
+          idleTimer = 0.2;
+          petVx     = 0;
+          window.__vscodeSendMessage(JSON.stringify({ command: "snack_consumed" }));
+        } else {
+          petVx         = closestSnack.x > petX ? speed : -speed;
+          petFacingLeft = petVx < 0;
+          petX         += petVx * dt;
+        }
+      } else if (speed > 0 && idleTimer <= 0) {
+        if (petVx === 0) {
+          petVx         = Math.random() < 0.5 ? speed : -speed;
+          petFacingLeft = petVx < 0;
+        }
+        petX += petVx * dt;
+        if (petX >= maxX) { petX = maxX; petVx = -speed; petFacingLeft = true; }
+        else if (petX <= minX) { petX = minX; petVx = speed; petFacingLeft = false; }
+        if (Math.random() < 0.0015) { petVx = -petVx; petFacingLeft = !petFacingLeft; }
+      } else if (idleTimer > 0) {
+        idleTimer -= dt;
+        if (idleTimer < 0) { idleTimer = 0; if (petVx === 0) { petVx = Math.random() < 0.5 ? speed : -speed; petFacingLeft = petVx < 0; } }
+        petVx = 0;
+      }
+      petX = Math.max(minX, Math.min(maxX, petX));
 
     } else {
       // ── Normal movement (gravity + mood + wander/snack) ──────────────────
@@ -873,8 +919,9 @@
     }
 
     // ── Leg frame ────────────────────────────────────────────────────────
-    var walking  = !lastState.sleeping && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
-    var legFrame = walking ? Math.floor(animTick / 10) % 2 : 0;
+    // Dragon floats — it has no legs, so always pass legFrame -1 (upright/neutral).
+    var walking  = !isDragon && !lastState.sleeping && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
+    var legFrame = isDragon ? -1 : (walking ? Math.floor(animTick / 10) % 2 : 0);
     var walkBob  = (walking && legFrame === 1) ? -1 : 0;
 
     // ── Draw ──────────────────────────────────────────────────────────────

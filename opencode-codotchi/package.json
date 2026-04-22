@@ -1,6 +1,6 @@
 {
   "name": "opencode-codotchi",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "A virtual Tamagotchi-style pet that lives inside OpenCode — globally installable via npm",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
