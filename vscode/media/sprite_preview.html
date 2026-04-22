@@ -2,11 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none';
-                 style-src {{cspSource}} 'unsafe-inline';
-                 script-src {{cspSource}} 'nonce-{{nonce}}';
-                 img-src {{cspSource}} data:;" />
+  {{csp}}
   <title>Sprite Preview — Codotchi</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
@@ -166,11 +162,11 @@
 <div id="grid"></div>
 
 <!-- Load shared constants, then sprite data files -->
-<script src="{{spriteConstantsUri}}"></script>
-<script src="{{spritesUri}}"></script>
-<script src="{{spritesAdultUri}}"></script>
+<script src="spriteConstants.js"></script>
+<script src="sprites.js"></script>
+<script src="sprites_adult.js"></script>
 
-<script nonce="{{nonce}}">
+<script>
 (function () {
   "use strict";
 

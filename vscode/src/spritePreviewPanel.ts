@@ -72,12 +72,17 @@ export class SpritePreviewPanel {
       vscode.Uri.file(path.join(mediaPath, "sprites_adult.js"))
     );
 
+    const cspTag = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}'; img-src ${webview.cspSource} data:;" />`;
+
     let html = fs.readFileSync(htmlPath, "utf8");
-    html = html.replace(/\{\{cspSource\}\}/g, webview.cspSource);
-    html = html.replace(/\{\{nonce\}\}/g,     nonce);
-    html = html.replace("{{spriteConstantsUri}}", spriteConstantsUri.toString());
-    html = html.replace("{{spritesUri}}",         spritesUri.toString());
-    html = html.replace("{{spritesAdultUri}}",    spritesAdultUri.toString());
+    // Inject CSP
+    html = html.replace("{{csp}}", cspTag);
+    // Replace relative script src paths with webview URIs
+    html = html.replace(`src="spriteConstants.js"`, `src="${spriteConstantsUri}"`);
+    html = html.replace(`src="sprites.js"`,         `src="${spritesUri}"`);
+    html = html.replace(`src="sprites_adult.js"`,   `src="${spritesAdultUri}"`);
+    // Add nonce to the inline script tag (the one with no src attribute)
+    html = html.replace(`<script>\n(function`, `<script nonce="${nonce}">\n(function`);
 
     return html;
   }
