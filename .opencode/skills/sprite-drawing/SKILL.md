@@ -192,6 +192,7 @@ All sprites must read as **Tamagotchi-style pixel art**, not realistic illustrat
 - [ ] Rule 8: If animal has a tail — is it connected to the body in all stages including baby/child?
 - [ ] Rule 9: Baby and child are proportional shrinks of adult in BOTH width and height (not chibi unless adult is already chibi)?
 - [ ] Rule 10: Is the design Tamagotchi-style (2–3 iconic cues, chunky contiguous colour blocks, no fine anatomical detail)?
+- [ ] Rule 11: Does the ASCII sketch use square character cells and match the grid's COLS×ROWS proportions? (Quadruped ~3:2 wide, Upright ~2:3 tall — sketches in a monospaced editor are accurate.)
 
 ---
 
@@ -226,3 +227,63 @@ var UPRIGHT_TYPES = { classic: 1, dragon: 1, monkey: 1, rooster: 1 };
 ```
 
 All other animals are quadrupeds (48×32).
+
+---
+
+## Rule 11 — Design sprites for square pixel cells; ASCII sketches are the source of truth
+
+### How the renderer maps grid pixels to screen
+
+The renderer computes cell dimensions as:
+
+```
+cellW = round(bodyWidth / COLS)
+cellH = round(bodyHeight / ROWS)
+```
+
+where `bodyHeight = bodyWidth * spriteHeightRatio(spriteType)` and:
+
+```
+spriteHeightRatio = ROWS / COLS
+```
+
+This means **`cellW ≈ cellH`** — every pixel cell is approximately square on
+screen. The rendered sprite will therefore have the same proportions as the
+raw grid.
+
+### ASCII sketches are proportionally accurate
+
+Because cells are square, an ASCII sketch drawn in a monospaced editor (where
+each character is ~1:1) is a valid visual representation of how the sprite will
+look in the extension. Design sprites against the ASCII sketches in `SPRITES.md`
+— what you draw there is what players see.
+
+### What used to go wrong (BUGFIX-086)
+
+Before v1.5.1, `bodyHeight` was computed from a flat `STAGE_BODY_HEIGHT_MULTS`
+table that used 0.67 for all stages regardless of grid orientation. This made
+cells rectangular (wider than tall) and squashed all sprites vertically —
+upright sprites (32×48) were rendered at ~44% of their correct height.
+
+**Do not reintroduce per-stage height multipliers.** The correct formula is
+always `spriteHeightRatio = ROWS / COLS` derived from the grid dimensions.
+
+### Practical sizing reference
+
+| Grid type | COLS | ROWS | spriteHeightRatio | Cell shape on screen |
+|-----------|------|------|-------------------|----------------------|
+| Quadruped / Snake | 48 | 32 | 0.667 | slightly wider than tall |
+| Upright | 32 | 48 | 1.500 | slightly taller than tall |
+
+> Both ratios are close to square (within 1.5×), so neither orientation looks
+> distorted. The grid proportions directly reflect the rendered proportions.
+
+### Sketch proportions to keep in mind when designing
+
+- A quadruped sprite at adult scale (`stageScale = 1.0`, `petSize = medium 1.5×`)
+  renders at approximately **144 × 96 px** on screen (before weight scaling).
+- An upright sprite at adult scale renders at approximately **144 × 216 px**.
+- The stage canvas is 200 × 240 px, so upright adult sprites fill most of the
+  canvas height — leave a few rows of empty space at the top of the 32×48 grid.
+- Baby stage (`stageScale = 0.65`) renders at ~60% of the adult on-screen size.
+  Sketch babies at roughly 60% the size of the adult sketch.
