@@ -639,8 +639,7 @@
     if (lastState) {
       const scale   = STAGE_SCALES[lastState.stage] || 0.5;
       const bSize   = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
-      const wwm     = weightWidthMultiplier(lastState.weight || 50);
-      const bWidth  = Math.round(bSize * wwm);
+      const bWidth  = effectiveBWidth(lastState, bSize);
       const maxX    = spriteCanvas.width - bWidth - 4;
       if (petX !== null && petX > maxX) { petX = Math.max(4, maxX); }
     }
@@ -679,9 +678,13 @@
     if (!lastState) { return spriteCanvas.height - 4; }
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
-    var wwm        = weightWidthMultiplier(lastState.weight || 50);
-    var bWidth     = Math.round(bSize * wwm);
+    var bWidth     = effectiveBWidth(lastState, bSize);
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
+    // For overweight quadrupeds, belly-sag rows add to the effective height.
+    if (!spriteUsesWidthStretch(lastState.spriteType)) {
+      var sagCellH = Math.max(1, Math.round(bHeight / 32));
+      bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
+    }
     return spriteCanvas.height - bHeight - 4;
   }
 
@@ -711,11 +714,16 @@
     lastFrameMs = nowMs;
 
     // Dimension helpers
+    // Dimension helpers
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
-    var wwm        = weightWidthMultiplier(lastState.weight || 50);
-    var bWidth     = Math.round(bSize * wwm);
+    var bWidth     = effectiveBWidth(lastState, bSize);
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
+    // For overweight quadrupeds, belly-sag rows add to the effective height.
+    if (!spriteUsesWidthStretch(lastState.spriteType)) {
+      var sagCellH = Math.max(1, Math.round(bHeight / 32));
+      bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
+    }
     var floorY     = spriteCanvas.height - bHeight - 4;
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
@@ -952,8 +960,7 @@
     if (!lastState || !lastState.alive) {
       var scale2   = STAGE_SCALES[state.stage] || 0.5;
       var bSize2   = Math.round(BASE_SIZE * petSizeMultiplier() * scale2);
-      var wwm2     = weightWidthMultiplier(state.weight || 50);
-      var bWidth2  = Math.round(bSize2 * wwm2);
+      var bWidth2  = effectiveBWidth(state, bSize2);
       var centreX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth2 / 2));
       if (state.sleeping) {
         // Restore the position where the pet fell asleep (saved to localStorage).
@@ -1476,8 +1483,7 @@
     var palette   = getPalette(state.color);
     var stageScale = STAGE_SCALES[state.stage] || 0.5;
     var bSize     = Math.round(BASE_SIZE * petSizeMultiplier() * stageScale);
-    var wwm       = weightWidthMultiplier(state.weight || 50);
-    var bWidth    = Math.round(bSize * wwm);
+    var bWidth    = effectiveBWidth(state, bSize);
     var bHeight   = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
     var feetY     = bodyY + bHeight;              // canvas Y of the bottom of the feet
 
@@ -1611,8 +1617,7 @@
   function drawStatusIndicators(state, x, bodyY) {
     var scale    = STAGE_SCALES[state.stage] || 0.5;
     var bSize    = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
-    var wwm      = weightWidthMultiplier(state.weight || 50);
-    var bWidth   = Math.round(bSize * wwm);
+    var bWidth   = effectiveBWidth(state, bSize);
     var palette  = getPalette(state.color);
     var secondary = palette.secondary;
 
@@ -1639,9 +1644,13 @@
 
     var scale    = STAGE_SCALES[state.stage] || 0.5;
     var bSize    = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
-    var wwm      = weightWidthMultiplier(state.weight || 50);
-    var bWidth   = Math.round(bSize * wwm);
+    var bWidth   = effectiveBWidth(state, bSize);
     var bHeight  = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
+    // For overweight quadrupeds, belly-sag rows add to the effective height.
+    if (!spriteUsesWidthStretch(state.spriteType)) {
+      var sagCellH2 = Math.max(1, Math.round(bHeight / 32));
+      bHeight += quadrupedBellySagRows(state.weight || 50) * sagCellH2;
+    }
     var H        = spriteCanvas.height;
     var staticX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth / 2));
     var staticY  = H - bHeight - 4;
@@ -1704,6 +1713,34 @@
    */
   function quadrupedBellySagRows(weight) {
     return window.spriteQuadBellySag(weight);
+  }
+
+  /**
+   * Return true if this sprite type uses width-stretching for overweight
+   * (upright types + snake).  All other quadrupeds use belly-sag instead.
+   * @param {string} spriteType
+   * @returns {boolean}
+   */
+  function spriteUsesWidthStretch(spriteType) {
+    return spriteType === "snake" ||
+           spriteType === "classic" ||
+           spriteType === "monkey"  ||
+           spriteType === "rooster" ||
+           spriteType === "dragon"  ||
+           !spriteType;  // unknown type defaults to width stretch (safe fallback)
+  }
+
+  /**
+   * Return the effective rendered width (in canvas px) for a given state and bodySize.
+   * Applies weightWidthMultiplier only for upright/snake types.
+   * @param {object} state
+   * @param {number} bSize  — base body size before wwm
+   * @returns {number}
+   */
+  function effectiveBWidth(state, bSize) {
+    var wt  = state.weight || 50;
+    var wwm = spriteUsesWidthStretch(state.spriteType) ? weightWidthMultiplier(wt) : 1.0;
+    return Math.round(bSize * wwm);
   }
 
   // ── Initial view ─────────────────────────────────────────────────────────
