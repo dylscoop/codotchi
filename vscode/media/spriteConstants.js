@@ -5,8 +5,9 @@
  *   SPRITE_COLOR_PALETTES      — keyed colour palette map
  *   SPRITE_STAGE_SCALES        — per-stage size multiplier
  *   spriteGetPalette(colorKey) — returns the palette object for a given key
- *   spriteWeightWidthMult(w)   — returns width multiplier for a given weight
+ *   spriteWeightWidthMult(w)   — returns width multiplier for a given weight (upright/snake only)
  *   spriteHeightRatio(type)    — returns height/width ratio for a given spriteType
+ *   spriteQuadBellySag(w)      — returns extra belly-sag row count for overweight quadrupeds
  *
  * Loaded by:
  *   - sidebar.html   (before sidebar.js, after sprites.js)
@@ -71,9 +72,11 @@
     return UPRIGHT_TYPES[spriteType] ? (48 / 32) : (32 / 48);
   }
 
-  // ── Weight → width multiplier ──────────────────────────────────────────────
+  // ── Weight → width multiplier (upright sprites and snake only) ───────────
   /**
    * Return the width multiplier for the sprite based on weight.
+   * Used only for upright sprites (classic, monkey, rooster, dragon) and snake.
+   * Quadrupeds other than snake use belly-sag rows instead — see spriteQuadBellySag().
    * @param {number} weight  0–100
    * @returns {number}
    */
@@ -84,11 +87,31 @@
     return 1.0;
   }
 
+  // ── Overweight quadruped belly-sag ────────────────────────────────────────
+  /**
+   * Return the number of extra belly-sag rows to insert between the body and
+   * legs for an overweight quadruped.  Sag rows are drawn procedurally in the
+   * renderer using the body's bottom-row silhouette, so the sprite becomes
+   * taller (not wider) when overweight.
+   *
+   * Only applies to quadruped sprites that are NOT snake.
+   * Snake keeps the standard width-multiplier path.
+   *
+   * @param {number} weight  0–100
+   * @returns {number}  0, 1, or 3 extra rows
+   */
+  function quadrupedBellySagRows(weight) {
+    if (weight > 80)  { return 3; }
+    if (weight > 50)  { return 1; }
+    return 0;
+  }
+
   // ── Exports ───────────────────────────────────────────────────────────────
   window.SPRITE_COLOR_PALETTES    = COLOR_PALETTES;
   window.SPRITE_STAGE_SCALES      = STAGE_SCALES;
   window.spriteGetPalette         = getPalette;
   window.spriteWeightWidthMult    = weightWidthMultiplier;
   window.spriteHeightRatio        = spriteHeightRatio;
+  window.spriteQuadBellySag       = quadrupedBellySagRows;
 
 }());
