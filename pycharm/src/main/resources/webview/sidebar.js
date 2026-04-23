@@ -1733,14 +1733,14 @@
   /**
    * Return the base-size multiplier driven by the codotchi.petSize setting.
    * The value is injected into document.body.dataset.petSize by sidebarProvider.ts.
-   *   small  = 1.0x  (original size)
-   *   medium = 1.5x  (default)
-   *   large  = 2.0x  (high-detail 24x32 sprites)
-   */
-  function petSizeMultiplier() {
-    var ps = (document.body && document.body.dataset && document.body.dataset.petSize) || "medium";
-    return ps === "small" ? 1.0 : ps === "large" ? 2.0 : 1.5;
-  }
+    *   small  = 0.75x (extra small)
+    *   medium = 1.0x  (default)
+    *   large  = 1.5x  (high-detail 24x32 sprites)
+    */
+   function petSizeMultiplier() {
+     var ps = (document.body && document.body.dataset && document.body.dataset.petSize) || "medium";
+     return ps === "small" ? 0.75 : ps === "large" ? 1.5 : 1.0;
+   }
 
   /**
    * Return the width multiplier for the sprite based on weight.
