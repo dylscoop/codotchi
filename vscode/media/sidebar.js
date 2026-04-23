@@ -681,8 +681,10 @@
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var bWidth     = effectiveBWidth(lastState, bSize);
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
-    // For overweight quadrupeds, belly-sag rows add to the effective height.
-    if (!spriteUsesWidthStretch(lastState.spriteType)) {
+    // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
+    var _gsType = lastState.spriteType || "classic";
+    var _gsUOS = (_gsType === "snake" || _gsType === "classic" || _gsType === "monkey" || _gsType === "rooster" || _gsType === "dragon");
+    if (!_gsUOS) {
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
     }
@@ -719,11 +721,16 @@
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var bWidth     = effectiveBWidth(lastState, bSize);
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
-    // For overweight quadrupeds, belly-sag rows add to the effective height.
-    if (!spriteUsesWidthStretch(lastState.spriteType)) {
+    // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
+    var _sType = lastState.spriteType || "classic";
+    var _isUprightOrSnake = (_sType === "snake" || _sType === "classic" || _sType === "monkey" || _sType === "rooster" || _sType === "dragon");
+    if (!_isUprightOrSnake) {
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
     }
+    // Apply weight blur effect to canvas
+    var _wt = lastState.weight || 50;
+    spriteCanvas.style.filter = _wt > 80 ? "blur(1.5px)" : _wt > 50 ? "blur(0.75px)" : "";
     var floorY     = spriteCanvas.height - bHeight - 4;
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
@@ -1692,8 +1699,10 @@
     var bSize    = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var bWidth   = effectiveBWidth(state, bSize);
     var bHeight  = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
-    // For overweight quadrupeds, belly-sag rows add to the effective height.
-    if (!spriteUsesWidthStretch(state.spriteType)) {
+    // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
+    var _dsType = state.spriteType || "classic";
+    var _dsUOS = (_dsType === "snake" || _dsType === "classic" || _dsType === "monkey" || _dsType === "rooster" || _dsType === "dragon");
+    if (!_dsUOS) {
       var sagCellH2 = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(state.weight || 50) * sagCellH2;
     }
@@ -1767,26 +1776,21 @@
    * @param {string} spriteType
    * @returns {boolean}
    */
-  function spriteUsesWidthStretch(spriteType) {
-    return spriteType === "snake" ||
-           spriteType === "classic" ||
-           spriteType === "monkey"  ||
-           spriteType === "rooster" ||
-           spriteType === "dragon"  ||
-           !spriteType;  // unknown type defaults to width stretch (safe fallback)
-  }
+   function spriteUsesWidthStretch(spriteType) {
+     // Width stretch is no longer applied; this function is kept for compatibility
+     // but always returns false. Use spriteIsUpright() to check orientation.
+     return false;
+   }
 
-  /**
-   * Return the effective rendered width (in canvas px) for a given state and bodySize.
-   * Applies weightWidthMultiplier only for upright/snake types.
-   * @param {object} state
-   * @param {number} bSize  — base body size before wwm
-   * @returns {number}
-   */
-  function effectiveBWidth(state, bSize) {
-    var wt  = state.weight || 50;
-    var wwm = spriteUsesWidthStretch(state.spriteType) ? weightWidthMultiplier(wt) : 1.0;
-    return Math.round(bSize * wwm);
+   /**
+    * Return the effective rendered width (in canvas px) for a given state and bodySize.
+    * Weight no longer affects width — blur is used instead.
+    * @param {object} state
+    * @param {number} bSize  — base body size
+    * @returns {number}
+    */
+   function effectiveBWidth(state, bSize) {
+     return Math.round(bSize);
   }
 
   // ── Initial view ─────────────────────────────────────────────────────────
