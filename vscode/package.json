@@ -2,7 +2,7 @@
   "name": "vscode-codotchi",
   "displayName": "vscode_codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "1.8.2",
+  "version": "1.9.0",
   "publisher": "vscode-codotchi",
   "repository": {
     "type": "git",
