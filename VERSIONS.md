@@ -1,8 +1,22 @@
 # Version History
 
-## v1.8.0 — current
+## v1.8.1 — current
 
-### Changes from v1.7.0
+### Changes from v1.8.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.8.0` → `1.8.1` |
+| `pycharm/build.gradle.kts` | Version bumped `1.8.0` → `1.8.1`; JUnit 5 test dependency added; `copySourceForTest` and `test { useJUnitPlatform() }` tasks added |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.8.0` → `1.8.1` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | Removed premature `broadcastState()` call from `setBrowserPanel()` — it raced against JCEF page load and dropped the initial state dispatch silently (BUGFIX-090) |
+| `pycharm/src/main/resources/webview/sidebar.js` | Dragon snack-consumed branch (line 801): changed from `window.__vscodeSendMessage(JSON.stringify(...))` to `vscode.postMessage(...)` for consistency (BUGFIX-090) |
+| `pycharm/src/test/kotlin/com/codotchi/BrowserPanelHtmlTest.kt` | New test: asserts `spriteConstants.js` is inlined before `sprites.js` in the built HTML, and that no raw `<script src="...">` placeholders remain |
+| `pycharm/src/test/kotlin/com/codotchi/PluginStateBroadcastTest.kt` | New test: static source-guard asserting `setBrowserPanel()` does not call `broadcastState()` directly |
+
+---
+
+## v1.8.0 — previous
 
 | File | What changed |
 |------|-------------|

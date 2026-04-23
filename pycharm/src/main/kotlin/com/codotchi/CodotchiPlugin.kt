@@ -1,4 +1,4 @@
-﻿package com.codotchi
+package com.codotchi
 
 import com.codotchi.engine.*
 import com.intellij.ide.DataManager
@@ -357,7 +357,12 @@ class CodotchiPlugin : Disposable {
 
     fun setBrowserPanel(panel: CodotchiBrowserPanel) {
         browserPanel = panel
-        broadcastState()
+        // Do NOT call broadcastState() here — the JCEF page is still loading
+        // at this point and the sidebar.js message listener does not exist yet.
+        // The onReady callback in CodotchiBrowserPanel fires after onLoadEnd,
+        // once the JS bridge is injected, and calls broadcastState() safely.
+        // Calling it here races against the load and the state dispatch is
+        // silently dropped, leaving sprites unrendered (BUGFIX-090).
     }
 
     fun setStatusWidget(widget: CodotchiStatusWidget) {

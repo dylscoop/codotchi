@@ -243,6 +243,7 @@ Work through this list in order. Do not commit until all items are checked.
 0. [ ] Old artifacts archived (version bump only) — old `.vsix` moved to `vscode/archive/vsix/`, old `.zip` moved to `pycharm/archive/` (see `release-management` skill)
 1. [ ] Version is identical in `package.json`, `build.gradle.kts`, and `plugin.xml`
 2. [ ] `npm test` passes (run from `vscode/`) — 0 failures
+2b. [ ] `gradlew unitTest --no-configuration-cache` passes (run from `pycharm/`) — 0 failures. **Do NOT run `gradlew test`** — the IntelliJ plugin hijacks it and fails with a JBR file-lock error when any IDE is open. See `git-workflow` skill → "PyCharm unit tests".
 3. [ ] VS Code artifact rebuilt: `vscode/vscode-gotchi-X.Y.Z.vsix` exists and is up to date
 4. [ ] PyCharm artifact rebuilt: `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip` exists and is up to date
 5. [ ] `VERSIONS.md` updated — row added for every changed file

@@ -798,7 +798,7 @@
           snackItems.splice(snackItems.indexOf(closestSnack), 1);
           idleTimer = 0.2;
           petVx     = 0;
-          window.__vscodeSendMessage(JSON.stringify({ command: "snack_consumed" }));
+          vscode.postMessage({ command: "snack_consumed" });
         } else {
           petVx         = closestSnack.x > petX ? speed : -speed;
           petFacingLeft = petVx < 0;
