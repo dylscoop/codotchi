@@ -23,10 +23,14 @@ This skill is referenced by `release-checklist` (Step 2a) and `git-workflow` (St
 
 | IDE | Current artifact lives in | Archive destination |
 |-----|--------------------------|---------------------|
-| VS Code | `vscode/vscode-gotchi-X.Y.Z.vsix` | `vscode/archive/vsix/` |
-| PyCharm | `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip` | `pycharm/archive/` |
+| VS Code | `vscode/vscode-codotchi-X.Y.Z.vsix` | `vscode/archive/vsix/` |
+| PyCharm | `pycharm/build/distributions/pycharm-codotchi-X.Y.Z.zip` | `pycharm/archive/` |
 
 Both archive directories are tracked in git. Create them with `mkdir` if they do not exist yet.
+
+> **CRITICAL:** Only ONE artifact file should ever exist in `vscode/` and ONE in
+> `pycharm/build/distributions/` at any time. If you see more than one, archive
+> all but the newest immediately before doing anything else.
 
 ---
 
@@ -36,10 +40,12 @@ When the version number is about to change, move the old artifact out of its
 current location **before** running the build command. This keeps only one
 version file in the working directory at a time.
 
+**This step is mandatory. Never skip it.**
+
 ### VS Code
 
 ```
-git mv vscode/vscode-gotchi-OLD.vsix vscode/archive/vsix/
+git mv vscode/vscode-codotchi-OLD.vsix vscode/archive/vsix/
 ```
 
 Then rebuild:
@@ -54,7 +60,7 @@ Gradle does **not** automatically overwrite a zip with a different version
 number in the filename, so move the old zip first:
 
 ```
-git mv "pycharm/build/distributions/pycharm-gotchi-OLD.zip" pycharm/archive/
+git mv "pycharm/build/distributions/pycharm-codotchi-OLD.zip" pycharm/archive/
 ```
 
 Then rebuild:
@@ -74,21 +80,21 @@ This step is part of the release flow in `git-workflow` Step 6. Perform it
 **after** the feature branch is merged to `main` but before pushing `main`.
 
 ```
-copy vscode\vscode-gotchi-X.Y.Z.vsix releases\
+copy vscode\vscode-codotchi-X.Y.Z.vsix releases\
 ```
 
-For PyCharm, the zip may be in `build/distributions/` (if not yet archived) or
-already in `pycharm/archive/` (if the version bump already triggered Step 1).
-Copy from whichever location holds the file:
+For PyCharm, the zip is in `pycharm/build/distributions/` (the archive step
+does NOT happen before copying to releases — copy first, then archive on the
+next version bump):
 
 ```
-copy "pycharm\build\distributions\pycharm-gotchi-X.Y.Z.zip" releases\
+copy "pycharm\build\distributions\pycharm-codotchi-X.Y.Z.zip" releases\
 ```
 
 — OR, if it was already archived —
 
 ```
-copy "pycharm\archive\pycharm-gotchi-X.Y.Z.zip" releases\
+copy "pycharm\archive\pycharm-codotchi-X.Y.Z.zip" releases\
 ```
 
 After copying, immediately apply the 3-version rule (Step 3 below), then
@@ -131,8 +137,8 @@ Apply the same rule independently to `.vsix` files and `.zip` files.
 ### Move command
 
 ```
-git mv releases/vscode-gotchi-OLD.vsix releases/old_releases/
-git mv releases/pycharm-gotchi-OLD.zip releases/old_releases/
+git mv releases/vscode-codotchi-OLD.vsix releases/old_releases/
+git mv releases/pycharm-codotchi-OLD.zip releases/old_releases/
 ```
 
 > `releases/old_releases/` is tracked in git. Create it with `mkdir` if it
