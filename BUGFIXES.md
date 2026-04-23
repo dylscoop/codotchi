@@ -1163,3 +1163,30 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** A stray `};` at line 2986 of `sprites.js` (PyCharm copy only) closed the `renderSpriteGrid` function immediately after building the `colorMap` object. All pixel-drawing code after that point was unreachable. `renderSpriteGrid` returned without drawing anything, leaving the sprite canvas blank. Snacks and environment items (drawn with plain `fillRect` in `drawEnvironment`, not via `renderSpriteGrid`) continued to render normally, which is why the snack items were visible but the animal was not.
 
 **Fix:** Removed the spurious `};` so `renderSpriteGrid` executes its full pixel-draw loop. Added a regression test to `BrowserPanelHtmlTest` that asserts `ctx.save()` appears after the `colorMap` declaration in `sprites.js` and that no double `};` follows the colorMap close.
+
+## BUGFIX-092 - Sprite size tiers too large; large tier oversized relative to medium
+
+**Status:** Fixed (branch `fix/sprite-sizing-and-pycharm-stage`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** The `petSizeMultiplier` function returned `small=1.0`, `medium=1.5`, `large=2.0`. The `large` tier produced a body size of `96 * 2.0 = 192px` before stage scaling, making adult pets span the full canvas height and clip the stage. Medium (`96 * 1.5 = 144px`) was also larger than intended.
+
+**Fix:** Rescaled all three tiers proportionally: `small=0.75`, `medium=1.0`, `large=1.5`. The large tier now matches what medium used to render, medium matches what small used to render, and a new extra-small baseline is available via the small setting.
+
+## BUGFIX-093 - Weight width-stretch distorts sprite proportions for overweight pets
+
+**Status:** Fixed (branch `fix/sprite-sizing-and-pycharm-stage`)
+**Files:** `vscode/media/sidebar.js`, `vscode/media/sprites.js`, `pycharm/src/main/resources/webview/sidebar.js`, `pycharm/src/main/resources/webview/sprites.js`
+
+**Problem:** `weightWidthMultiplier` returned `1.30x` for weight >50 and `1.50x` for weight >80, horizontally stretching upright sprites and snakes. At weight >50 (a common threshold for moderately fed pets), sprites became noticeably wider than the grid proportions intended, making the animal look deformed rather than chubby.
+
+**Fix:** Removed width-stretch from sprite rendering (`wwm` is now always `1.0`). Weight is now communicated visually via CSS `filter: blur()` applied to the canvas element in `sidebar.js`: `blur(0.75px)` at weight >50, `blur(1.5px)` at weight >80. Belly-sag rows (extra height rows for quadruped sprites) are retained.
+
+## BUGFIX-094 - PyCharm stage area too short (hard-coded 96px CSS height clips the sprite canvas)
+
+**Status:** Fixed (branch `fix/sprite-sizing-and-pycharm-stage`)
+**File:** `pycharm/src/main/resources/webview/sidebar.css`
+
+**Problem:** The PyCharm copy of `sidebar.css` had `height: 96px` hard-coded on both `.sprite-container` and `#sprite-canvas`. VS Code uses `height: auto` on the canvas and no fixed height on the container, allowing the stage to scale proportionally with the panel width. The 96px cap caused the PyCharm stage to display only the top ~40% of the rendered canvas, clipping legs and the floor.
+
+**Fix:** Removed `height: 96px` from `.sprite-container` and changed `#sprite-canvas` to `height: auto`, matching the VS Code `sidebar.css` layout.
