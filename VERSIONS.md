@@ -1,6 +1,21 @@
 # Version History
 
-## v1.12.0 — current
+## v1.13.0 — current
+
+### Changes from v1.12.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.12.0` → `1.13.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.12.0` → `1.13.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.12.0` → `1.13.0` |
+| `opencode-codotchi/package.json` | Version bumped `1.12.0` → `1.13.0` |
+| `vscode/media/sprites.js` | Sheep sprite fully redesigned as Suffolk sheep: black face protruding left, bumpy wool outline with curl spots, small floppy ear, 4 visible legs, proportional stage scaling |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored from `vscode/media/sprites.js` (sheep redesign) |
+
+---
+
+## v1.12.0 — previous
 
 ### Changes from v1.11.0
 
