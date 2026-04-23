@@ -2891,9 +2891,9 @@
     var petSizeVal = (typeof document !== "undefined" && document.body && document.body.dataset)
                    ? (document.body.dataset.petSize || "medium")
                    : "medium";
-    var sizeMultiplier = petSizeVal === "small" ? 1.0
-                       : petSizeVal === "large"  ? 2.0
-                       : 1.5; // medium (default)
+     var sizeMultiplier = petSizeVal === "small" ? 0.75
+                        : petSizeVal === "large"  ? 1.5
+                        : 1.0; // medium (default)
 
     // -- Determine grid type -------------------------------------------------
     var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1 };
