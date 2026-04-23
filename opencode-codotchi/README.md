@@ -20,21 +20,21 @@ project. Choose the path that matches how you have the package:
 
 ### Option A — From zip (recommended)
 
-Download `opencode-codotchi-1.7.0.zip` from the
+Download `opencode-codotchi-1.8.2.zip` from the
 [Releases page](https://github.com/dylscoop/codotchi/releases), extract it,
 then run the installer:
 
 ```bash
 # macOS / Linux
-unzip opencode-codotchi-1.7.0.zip
-cd opencode-codotchi-1.7.0
+unzip opencode-codotchi-1.8.2.zip
+cd opencode-codotchi-1.8.2
 node bin/install.js --install
 ```
 
 ```powershell
 # Windows (PowerShell)
-Expand-Archive opencode-codotchi-1.7.0.zip
-cd opencode-codotchi-1.7.0
+Expand-Archive opencode-codotchi-1.8.2.zip
+cd opencode-codotchi-1.8.2
 node bin/install.js --install
 ```
 

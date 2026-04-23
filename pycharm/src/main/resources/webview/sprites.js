@@ -2983,7 +2983,6 @@
       4: "#FFD700",
       5: "#FFD700"
     };
-    };
 
     // Monkey is an upright type but faces sideways (like a quadruped) —
     // flip it when NOT facing left, same as quadrupeds.

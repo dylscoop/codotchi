@@ -115,4 +115,36 @@ class BrowserPanelHtmlTest {
             "Built HTML must not contain a literal <script src=\"spriteConstants.js\"> — it must be inlined via the sprites.js placeholder"
         )
     }
+
+    @Test
+    fun `renderSpriteGrid function body is not truncated by a spurious closing brace`() {
+        // Regression test for BUGFIX-091: a stray '};' after the colorMap object
+        // literal caused renderSpriteGrid to return immediately, leaving the canvas
+        // blank.  This test verifies the function contains the pixel-draw loop that
+        // must execute after colorMap is built.
+        val spritesText = loadResource("/webview/sprites.js")
+
+        // The pixel drawing loop must exist after the colorMap declaration.
+        // "ctx.save()" and the grid iteration are reliable markers that appear
+        // only inside the functional body of renderSpriteGrid, after colorMap.
+        val colorMapIdx = spritesText.indexOf("5: \"#FFD700\"")
+        assertTrue(colorMapIdx >= 0, "sprites.js must contain the colorMap with index 5")
+
+        val ctxSaveAfterColorMap = spritesText.indexOf("ctx.save()", colorMapIdx)
+        assertTrue(
+            ctxSaveAfterColorMap > colorMapIdx,
+            "ctx.save() must appear AFTER the colorMap declaration in sprites.js — " +
+            "if this fails, renderSpriteGrid has a spurious closing brace that truncates it (BUGFIX-091)"
+        )
+
+        // Additionally verify there is no double '};' sequence immediately after the colorMap close.
+        val colorMapClose = spritesText.indexOf("};", colorMapIdx)
+        assertTrue(colorMapClose > colorMapIdx, "colorMap must have a closing };")
+        val afterClose = spritesText.substring(colorMapClose + 2).trimStart()
+        assertFalse(
+            afterClose.startsWith("};"),
+            "There must not be a second immediate '};' after the colorMap close — " +
+            "that would be the spurious brace that truncates renderSpriteGrid (BUGFIX-091)"
+        )
+    }
 }
