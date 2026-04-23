@@ -54,7 +54,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Care-score-based evolution tiers (best / mid / low) | `[x]` | |
 | Distinct character names per type × stage × tier | `[x]` | |
 | Visual difference between character variants | `[x]` | 14 zodiac pixel-art grids via sprites.js |
-| Tamagotchi-style sprite redesign | `[~]` | Redesigned (v1.4.0): rat, rabbit, pig, sheep, dog — Redesigned (v1.6.0): monkey — Redesigned (v1.7.0): rooster — Redesigned (v1.8.0): dragon (Chinese imperial, floating, 5-coil serpentine body, gold pearl) — Redesigned (v1.9.0): cat (Tamagotchi-style generic house cat, pointy ears, whiskers, upward-curling tail, tabby stripes teen+) — Remaining: ox, tiger, horse |
+| Tamagotchi-style sprite redesign | `[~]` | Redesigned (v1.4.0): rabbit, pig, sheep, dog — Redesigned (v1.6.0): monkey — Redesigned (v1.7.0): rooster — Redesigned (v1.8.0): dragon (Chinese imperial, floating, 5-coil serpentine body, gold pearl) — Redesigned (v1.9.0): cat (Tamagotchi-style generic house cat, pointy ears, whiskers, upward-curling tail, tabby stripes teen+) — Redesigned (v1.10.0): rat (low-slung elongated body, small round ears none on baby, pointed snout, whiskers teen+, long thin diagonal tail) — Remaining: ox, tiger, horse |
 | In-IDE sprite preview gallery | `[x]` | `codotchi.openSpritePreview` (dev mode) — uses real `renderSpriteGrid()` with mood/color/weight/facing/animate controls |
 | Evolution notification in event log | `[~]` | Event flag exists; no fanfare animation |
 | Egg-hatch animation | `[ ]` | Wiggle before first evolution |
