@@ -1,6 +1,22 @@
 # Version History
 
-## v1.9.2 — current
+## v1.10.0 — current
+
+### Changes from v1.9.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.9.2` → `1.10.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.9.2` → `1.10.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.9.2` → `1.10.0` |
+| `opencode-codotchi/package.json` | Version bumped `1.9.2` → `1.10.0` |
+| `vscode/media/sprites.js` | Rat sprite fully redesigned (v1.10.0): low-slung elongated body, small round ears (none on baby), pointed snout, whiskers (index 4, teen+), long thin diagonal tail connected to body, proportional stage scaling |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored from `vscode/media/sprites.js` (rat redesign) |
+| `sprites/rat.md` | New design doc for rat sprite |
+
+---
+
+## v1.9.2 — previous
 
 ### Changes from v1.9.1
 
