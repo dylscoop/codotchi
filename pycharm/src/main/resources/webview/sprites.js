@@ -2912,15 +2912,16 @@
     var bodySize    = Math.round(baseSize * sizeMultiplier * stageScale);
     var wt          = state.weight || 50;
 
-    // Overweight visual treatment differs by sprite type:
-    //   • Upright sprites (classic, monkey, rooster, dragon) and snake → stretch
-    //     the sprite wider via weightWidthMultiplier (existing behaviour).
-    //   • All other quadrupeds → keep normal width; instead insert extra belly-sag
-    //     rows between the body and legs via quadrupedBellySagRows().
-    var isSnake   = (spriteType === "snake");
-    var useWidthStretch = isUpright || isSnake;
-    var wwm       = useWidthStretch ? weightWidthMultiplier(wt) : 1.0;
-    var sagRows   = (!useWidthStretch && stage !== "egg") ? quadrupedBellySagRows(wt) : 0;
+     // Overweight visual treatment:
+     //   • All sprites: CSS blur applied to canvas element based on weight (in sidebar.js).
+     //   • Quadrupeds (non-upright, non-snake): extra belly-sag rows inserted between
+     //     body and legs via quadrupedBellySagRows(). Upright sprites and snake keep
+     //     normal proportions — blur is the only visual cue for them.
+     //   • Width stretch (weightWidthMultiplier) is no longer used.
+     var isSnake   = (spriteType === "snake");
+     var useWidthStretch = false;
+     var wwm       = 1.0;
+     var sagRows   = (!isUpright && !isSnake && stage !== "egg") ? quadrupedBellySagRows(wt) : 0;
 
     var bodyWidth   = Math.round(bodySize * wwm);
     // Compute bodyHeight so cells are square: height/width = ROWS/COLS.

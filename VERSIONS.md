@@ -1,6 +1,24 @@
 # Version History
 
-## v1.9.0 — current
+## v1.9.1 — current
+
+### Changes from v1.9.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.9.0` → `1.9.1` |
+| `pycharm/build.gradle.kts` | Version bumped `1.9.0` → `1.9.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.9.0` → `1.9.1` |
+| `opencode-codotchi/package.json` | Version bumped `1.9.0` → `1.9.1` |
+| `vscode/media/sidebar.js` | `petSizeMultiplier` tiers rescaled: small `1.0→0.75`, medium `1.5→1.0`, large `2.0→1.5`; weight width-stretch removed; CSS blur applied to canvas for weight >50 (`0.75px`) and >80 (`1.5px`); belly-sag rows kept for quadrupeds; belly-sag guard updated from `spriteUsesWidthStretch` to inline upright/snake check |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from `vscode/media/sidebar.js` (same changes) |
+| `vscode/media/sprites.js` | Weight width-stretch (`wwm`) removed from `renderSpriteGrid` — `wwm` always `1.0`; belly-sag guard updated to explicit upright/snake check |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored from `vscode/media/sprites.js` (same changes) |
+| `pycharm/src/main/resources/webview/sidebar.css` | Removed hard-coded `height: 96px` from `.sprite-container` and `#sprite-canvas`; set `height: auto` on canvas to match VS Code layout so the stage scales proportionally with the panel width |
+
+---
+
+## v1.9.0 — previous
 
 ### Changes from v1.8.2
 

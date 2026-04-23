@@ -681,8 +681,10 @@
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var bWidth     = effectiveBWidth(lastState, bSize);
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
-    // For overweight quadrupeds, belly-sag rows add to the effective height.
-    if (!spriteUsesWidthStretch(lastState.spriteType)) {
+    // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
+    var _gsType = lastState.spriteType || "classic";
+    var _gsUOS = (_gsType === "snake" || _gsType === "classic" || _gsType === "monkey" || _gsType === "rooster" || _gsType === "dragon");
+    if (!_gsUOS) {
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
     }
@@ -715,16 +717,20 @@
     lastFrameMs = nowMs;
 
     // Dimension helpers
-    // Dimension helpers
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var bWidth     = effectiveBWidth(lastState, bSize);
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
-    // For overweight quadrupeds, belly-sag rows add to the effective height.
-    if (!spriteUsesWidthStretch(lastState.spriteType)) {
+    // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
+    var _sType = lastState.spriteType || "classic";
+    var _isUprightOrSnake = (_sType === "snake" || _sType === "classic" || _sType === "monkey" || _sType === "rooster" || _sType === "dragon");
+    if (!_isUprightOrSnake) {
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
     }
+    // Apply weight blur effect to canvas
+    var _wt = lastState.weight || 50;
+    spriteCanvas.style.filter = _wt > 80 ? "blur(1.5px)" : _wt > 50 ? "blur(0.75px)" : "";
     var floorY     = spriteCanvas.height - bHeight - 4;
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
@@ -1693,8 +1699,10 @@
     var bSize    = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var bWidth   = effectiveBWidth(state, bSize);
     var bHeight  = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
-    // For overweight quadrupeds, belly-sag rows add to the effective height.
-    if (!spriteUsesWidthStretch(state.spriteType)) {
+    // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
+    var _dsType = state.spriteType || "classic";
+    var _dsUOS = (_dsType === "snake" || _dsType === "classic" || _dsType === "monkey" || _dsType === "rooster" || _dsType === "dragon");
+    if (!_dsUOS) {
       var sagCellH2 = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(state.weight || 50) * sagCellH2;
     }
@@ -1733,14 +1741,14 @@
   /**
    * Return the base-size multiplier driven by the codotchi.petSize setting.
    * The value is injected into document.body.dataset.petSize by sidebarProvider.ts.
-   *   small  = 1.0x  (original size)
-   *   medium = 1.5x  (default)
-   *   large  = 2.0x  (high-detail 24x32 sprites)
-   */
-  function petSizeMultiplier() {
-    var ps = (document.body && document.body.dataset && document.body.dataset.petSize) || "medium";
-    return ps === "small" ? 1.0 : ps === "large" ? 2.0 : 1.5;
-  }
+    *   small  = 0.75x (extra small)
+    *   medium = 1.0x  (default)
+    *   large  = 1.5x  (high-detail 24x32 sprites)
+    */
+   function petSizeMultiplier() {
+     var ps = (document.body && document.body.dataset && document.body.dataset.petSize) || "medium";
+     return ps === "small" ? 0.75 : ps === "large" ? 1.5 : 1.0;
+   }
 
   /**
    * Return the width multiplier for the sprite based on weight.
@@ -1763,32 +1771,26 @@
   }
 
   /**
-   * Return true if this sprite type uses width-stretching for overweight
-   * (upright types + snake).  All other quadrupeds use belly-sag instead.
-   * @param {string} spriteType
-   * @returns {boolean}
-   */
-  function spriteUsesWidthStretch(spriteType) {
-    return spriteType === "snake" ||
-           spriteType === "classic" ||
-           spriteType === "monkey"  ||
-           spriteType === "rooster" ||
-           spriteType === "dragon"  ||
-           !spriteType;  // unknown type defaults to width stretch (safe fallback)
-  }
+    * Width stretch is no longer applied; this function is kept for compatibility
+    * but always returns false. Use inline upright/snake checks instead.
+    * @param {string} spriteType
+    * @returns {boolean}
+    */
+   function spriteUsesWidthStretch(spriteType) {
+     // Width stretch removed — blur effect is used instead.
+     return false;
+   }
 
-  /**
-   * Return the effective rendered width (in canvas px) for a given state and bodySize.
-   * Applies weightWidthMultiplier only for upright/snake types.
-   * @param {object} state
-   * @param {number} bSize  — base body size before wwm
-   * @returns {number}
-   */
-  function effectiveBWidth(state, bSize) {
-    var wt  = state.weight || 50;
-    var wwm = spriteUsesWidthStretch(state.spriteType) ? weightWidthMultiplier(wt) : 1.0;
-    return Math.round(bSize * wwm);
-  }
+   /**
+    * Return the effective rendered width (in canvas px) for a given state and bodySize.
+    * Weight no longer affects width — blur is used instead.
+    * @param {object} state
+    * @param {number} bSize  — base body size
+    * @returns {number}
+    */
+   function effectiveBWidth(state, bSize) {
+     return Math.round(bSize);
+   }
 
   // ── Initial view ─────────────────────────────────────────────────────────
   // Must be set BEFORE the message listener is registered so that any
