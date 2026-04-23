@@ -1,6 +1,23 @@
 # Version History
 
-## v1.8.2 — current
+## v1.9.0 — current
+
+### Changes from v1.8.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.8.2` → `1.9.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.8.2` → `1.9.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.8.2` → `1.9.0` |
+| `opencode-codotchi/package.json` | Version bumped `1.8.2` → `1.9.0` |
+| `vscode/media/sprites.js` | Cat sprite redesigned: Tamagotchi-style generic house cat — pointy triangle ears, upward-curling tail (tip+arc on teen/adult/senior), whiskers (index 4, teen+), tabby stripes (index 3, teen+), 1px legs on baby, senior age spots (Rule 6) |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored from vscode/media/sprites.js |
+| `sprites/cat.md` | New — cat sprite design documentation |
+| `vscode/FEATURES.md` | Updated Tamagotchi-style redesign row to include v1.9.0 cat |
+
+---
+
+## v1.8.2 — previous
 
 ### Changes from v1.8.1
 
