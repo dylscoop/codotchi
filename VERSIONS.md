@@ -1,6 +1,20 @@
 # Version History
 
-## v1.11.0 — current
+## v1.12.0 — current
+
+### Changes from v1.11.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.11.0` → `1.12.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.11.0` → `1.12.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.11.0` → `1.12.0` |
+| `vscode/media/sprites.js` | Dog sprite fully redesigned as Shiba Inu (v1.12.0): large bold triangle ears with cream interior, long curled tail sticking right with open-curl negative space, cream urajiro chest+belly markings, rounded chunky body with wedge-shaped muzzle, 4 visible legs (near+far pair), senior age spots on torso, proportional stage scaling |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored from `vscode/media/sprites.js` (dog/Shiba Inu redesign) |
+
+---
+
+## v1.11.0 — previous
 
 ### Changes from v1.10.0
 
