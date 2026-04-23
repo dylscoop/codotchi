@@ -117,6 +117,24 @@ another Java process is still running from a previous build attempt or IDE sessi
 > two-statement form above (set the variable, then call gradlew) in the same
 > PowerShell session.
 
+### PyCharm unit tests
+
+**NEVER run `gradlew test`** — the `org.jetbrains.intellij` plugin hijacks the
+built-in `test` task to set up an IDE sandbox, which re-extracts the JBR and
+fails with a file-lock error (`extnet.dll`) when any IDE or Java process is
+running.
+
+Instead, always run the custom `unitTest` task:
+```powershell
+$env:JAVA_HOME = 'C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'
+& '.\gradlew.bat' unitTest --no-configuration-cache
+```
+(run from `pycharm/`)
+
+The `unitTest` task runs JUnit 5 tests directly on the JVM toolchain — no
+sandbox, no JBR extraction, no IDE dependency. It is safe to run at any time,
+including while PyCharm or VS Code is open.
+
 ---
 
 ## Release / merge to main
