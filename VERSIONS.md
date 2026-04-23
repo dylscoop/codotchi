@@ -1,6 +1,21 @@
 # Version History
 
-## v1.9.1 — current
+## v1.9.2 — current
+
+### Changes from v1.9.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.9.1` → `1.9.2` |
+| `pycharm/build.gradle.kts` | Version bumped `1.9.1` → `1.9.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.9.1` → `1.9.2` |
+| `opencode-codotchi/package.json` | Version bumped `1.9.1` → `1.9.2` |
+| `vscode/media/sprites.js` | Synced `sizeMultiplier` table to match `sidebar.js` `petSizeMultiplier` values introduced in v1.9.1: small `1.0→0.75`, medium `1.5→1.0`, large `2.0→1.5` (BUGFIX-095) |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored from `vscode/media/sprites.js` (same fix) |
+
+---
+
+## v1.9.1 — previous
 
 ### Changes from v1.9.0
 
