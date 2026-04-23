@@ -1,8 +1,25 @@
 # Version History
 
-## v1.8.1 — current
+## v1.8.2 — current
 
-### Changes from v1.8.0
+### Changes from v1.8.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.8.1` → `1.8.2` |
+| `pycharm/build.gradle.kts` | Version bumped `1.8.1` → `1.8.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.8.1` → `1.8.2` |
+| `pycharm/src/main/resources/webview/sprites.js` | Removed spurious `};` after `colorMap` object in `renderSpriteGrid` that was truncating the function and preventing all sprite pixels from being drawn (BUGFIX-091) |
+| `pycharm/src/test/kotlin/com/codotchi/BrowserPanelHtmlTest.kt` | Added `renderSpriteGrid function body is not truncated by a spurious closing brace` regression test (BUGFIX-091) |
+| `opencode-codotchi/package.json` | Version bumped `1.8.0` → `1.8.2` |
+| `opencode-codotchi/README.md` | Updated zip filename references from `1.7.0` to `1.8.2` |
+| `opencode-codotchi/opencode-codotchi-1.8.2.zip` | Rebuilt distributable zip for v1.8.2 |
+| `vscode/vscode-codotchi-1.8.2.vsix` | Rebuilt VS Code artifact for v1.8.2 |
+| `pycharm/build/distributions/pycharm-codotchi-1.8.2.zip` | Rebuilt PyCharm artifact for v1.8.2 |
+
+---
+
+## v1.8.1 — previous
 
 | File | What changed |
 |------|-------------|

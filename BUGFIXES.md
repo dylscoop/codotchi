@@ -1154,3 +1154,12 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem (secondary):** In `pycharm/src/main/resources/webview/sidebar.js` at line 801, the dragon snack-consumed branch used `window.__vscodeSendMessage(JSON.stringify({ command: "snack_consumed" }))` directly instead of `vscode.postMessage({ command: "snack_consumed" })`. This bypasses the `acquireVsCodeApi` shim and relies on the bridge being injected, which may not be the case if the call fires during early page load.
 
 **Fix:** Removed the `broadcastState()` call from `setBrowserPanel()` — the `onReady()` path in `CodotchiBrowserPanel` already handles the safe initial state push. Changed line 801 of `sidebar.js` to use `vscode.postMessage(...)` consistently with all other command sends. Added two regression tests: `BrowserPanelHtmlTest` asserts `spriteConstants.js` is inlined before `sprites.js` in the built HTML; `PluginStateBroadcastTest` asserts `setBrowserPanel()` does not call `broadcastState()` directly.
+
+## BUGFIX-091 — PyCharm animal sprite not visible (spurious closing brace in renderSpriteGrid)
+
+**Status:** Fixed (branch `fix/pycharm-sprite-visible`)
+**File:** `pycharm/src/main/resources/webview/sprites.js`
+
+**Problem:** A stray `};` at line 2986 of `sprites.js` (PyCharm copy only) closed the `renderSpriteGrid` function immediately after building the `colorMap` object. All pixel-drawing code after that point was unreachable. `renderSpriteGrid` returned without drawing anything, leaving the sprite canvas blank. Snacks and environment items (drawn with plain `fillRect` in `drawEnvironment`, not via `renderSpriteGrid`) continued to render normally, which is why the snack items were visible but the animal was not.
+
+**Fix:** Removed the spurious `};` so `renderSpriteGrid` executes its full pixel-draw loop. Added a regression test to `BrowserPanelHtmlTest` that asserts `ctx.save()` appears after the `colorMap` declaration in `sprites.js` and that no double `};` follows the colorMap close.
