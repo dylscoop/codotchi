@@ -1,6 +1,21 @@
 # Version History
 
-## v1.10.0 — current
+## v1.11.0 — current
+
+### Changes from v1.10.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.10.0` → `1.11.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.10.0` → `1.11.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.10.0` → `1.11.0` |
+| `vscode/media/sprites.js` | Horse sprite fully redesigned (v1.11.0): arched neck, diagonal mane cascade (colour 3), long muzzle with eye + nostril, flowing tail draping right (colour 3), tapered body, 4 legs with colour-3 hooves, senior age spots, proportional stage scaling |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored from `vscode/media/sprites.js` (horse redesign) |
+| `sprites/horse.md` | New design doc for horse sprite |
+
+---
+
+## v1.10.0 — previous
 
 ### Changes from v1.9.2
 
