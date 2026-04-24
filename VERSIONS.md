@@ -1,6 +1,21 @@
 # Version History
 
-## v1.13.0 — current
+## v1.14.0 — current
+
+### Changes from v1.13.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.13.0` → `1.14.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.13.0` → `1.14.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.13.0` → `1.14.0` |
+| `opencode-codotchi/package.json` | Version bumped `1.13.0` → `1.14.0` |
+| `vscode/media/sprites.js` | Pig sprite fully redesigned: rotund barrel body, upright triangular ears with colour-2 inner, large 4-col flat snout disc with nostril dots, curly tail curling upward from rump, 4 visible legs (2px adult/teen, 1px child/baby), hooves (3), proportional stage scaling |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored from `vscode/media/sprites.js` (pig redesign) |
+
+---
+
+## v1.13.0 — previous
 
 ### Changes from v1.12.0
 
