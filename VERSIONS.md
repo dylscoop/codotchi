@@ -1,6 +1,21 @@
 # Version History
 
-## v1.14.0 — current
+## v1.14.1 — current
+
+### Changes from v1.14.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.14.0` → `1.14.1` |
+| `pycharm/build.gradle.kts` | Version bumped `1.14.0` → `1.14.1` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.14.0` → `1.14.1` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | BUGFIX-096: replaced single `browserPanel` field with `browserPanels` list; added `unregisterBrowserPanel()`; updated `broadcastState()` and `reloadWebview()` to iterate all panels |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiToolWindow.kt` | BUGFIX-096: added `Disposer.register` to call `unregisterBrowserPanel()` when the tool window is disposed |
+| `BUGFIXES.md` | Added BUGFIX-096 entry |
+
+---
+
+## v1.14.0 — previous
 
 ### Changes from v1.13.0
 

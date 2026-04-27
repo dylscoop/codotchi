@@ -92,8 +92,8 @@ class PluginStateBroadcastTest {
         val fnBody = source.substring(braceOpen, i)
 
         assertTrue(
-            fnBody.contains("browserPanel = panel"),
-            "setBrowserPanel must assign the panel to the browserPanel field"
+            fnBody.contains("browserPanels.add(panel)"),
+            "setBrowserPanel must add the panel to the browserPanels list (BUGFIX-096)"
         )
     }
 }

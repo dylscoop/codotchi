@@ -88,7 +88,7 @@ class CodotchiPlugin : Disposable {
     private fun isDeepIdle(): Boolean =
         System.currentTimeMillis() - lastActivityTime > service<CodotchiSettings>().idleDeepThresholdSeconds * 1000L
 
-    private var browserPanel:  CodotchiBrowserPanel?  = null
+    private val browserPanels: MutableList<CodotchiBrowserPanel> = mutableListOf()
     private var statusWidget:  CodotchiStatusWidget?  = null
 
     private var tickFuture: ScheduledFuture<*>? = null
@@ -356,13 +356,17 @@ class CodotchiPlugin : Disposable {
     // ── Panel / widget registration ────────────────────────────────────────
 
     fun setBrowserPanel(panel: CodotchiBrowserPanel) {
-        browserPanel = panel
+        browserPanels.add(panel)
         // Do NOT call broadcastState() here — the JCEF page is still loading
         // at this point and the sidebar.js message listener does not exist yet.
         // The onReady callback in CodotchiBrowserPanel fires after onLoadEnd,
         // once the JS bridge is injected, and calls broadcastState() safely.
         // Calling it here races against the load and the state dispatch is
         // silently dropped, leaving sprites unrendered (BUGFIX-090).
+    }
+
+    fun unregisterBrowserPanel(panel: CodotchiBrowserPanel) {
+        browserPanels.remove(panel)
     }
 
     fun setStatusWidget(widget: CodotchiStatusWidget) {
@@ -377,7 +381,7 @@ class CodotchiPlugin : Disposable {
      */
     fun reloadWebview() {
         ApplicationManager.getApplication().invokeLater {
-            browserPanel?.reload()
+            browserPanels.forEach { it.reload() }
             broadcastState()
         }
     }
@@ -443,7 +447,7 @@ class CodotchiPlugin : Disposable {
 
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanel?.postState(state, meals, highScore, devMode)
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode) }
                 statusWidget?.update(state)
             }
         }

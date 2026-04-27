@@ -6,6 +6,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
@@ -34,6 +35,12 @@ class CodotchiToolWindow : ToolWindowFactory {
         )
 
         plugin.setBrowserPanel(panel)
+
+        // Unregister when the tool window is closed / project is disposed so the
+        // orphaned panel is not held in the list indefinitely (BUGFIX-096).
+        Disposer.register(toolWindow.disposable) {
+            plugin.unregisterBrowserPanel(panel)
+        }
 
         val content = ContentFactory.getInstance()
             .createContent(panel.component, "", false)
