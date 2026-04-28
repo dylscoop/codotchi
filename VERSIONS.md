@@ -1,6 +1,22 @@
 # Version History
 
-## v1.14.1 — current
+## v1.14.2 — current
+
+### Changes from v1.14.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.14.1` → `1.14.2` |
+| `pycharm/build.gradle.kts` | Version bumped `1.14.1` → `1.14.2` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.14.1` → `1.14.2` |
+| `vscode/src/extension.ts` | Added `markDeepIdle()` callback; passed to `SidebarProvider` constructor |
+| `vscode/src/sidebarProvider.ts` | Added `markDeepIdle` constructor parameter; added `onDidChangeVisibility` listener — hide triggers deep idle, show resets activity |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | Added `markDeepIdle()` method — sets `lastActivityTime` back by the deep-idle threshold |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiToolWindow.kt` | Added `ToolWindowManagerListener` on the project message bus — `toolWindowHidden` calls `markDeepIdle()`, `toolWindowShown` calls `markActivity()` |
+
+---
+
+## v1.14.1 — previous
 
 ### Changes from v1.14.0
 

@@ -9,6 +9,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.ui.content.ContentFactory
 
 /**
@@ -22,6 +24,12 @@ import com.intellij.ui.content.ContentFactory
  * A gear icon is added to the tool-window title bar so users can open the
  * Gotchi settings page (Settings → Tools → Gotchi) without navigating
  * through the IDE settings menu manually.
+ *
+ * Visibility tracking: a [ToolWindowManagerListener] on the project message bus
+ * fires on every tool window state change via [ToolWindowManagerListener.stateChanged].
+ * When the Gotchi tool window transitions to hidden the pet is pushed into deep
+ * idle immediately; when it becomes visible again activity is reset so the pet
+ * exits deep idle right away.
  */
 class CodotchiToolWindow : ToolWindowFactory {
 
@@ -45,6 +53,28 @@ class CodotchiToolWindow : ToolWindowFactory {
         val content = ContentFactory.getInstance()
             .createContent(panel.component, "", false)
         toolWindow.contentManager.addContent(content)
+
+        // Deep-idle on panel hide: subscribe to ToolWindowManagerListener so we
+        // get notified on every tool window state change.  stateChanged() is the
+        // sole abstract method (no-arg) and fires for all tool windows; we filter
+        // to our own window by ID and check isVisible on the ToolWindow object.
+        // On hide → push lastActivityTime back by the deep-idle threshold.
+        // On show → reset activity so the pet exits deep idle immediately.
+        val conn = project.messageBus.connect(toolWindow.disposable)
+        conn.subscribe(
+            ToolWindowManagerListener.TOPIC,
+            object : ToolWindowManagerListener {
+                override fun stateChanged() {
+                    val tw = ToolWindowManager.getInstance(project).getToolWindow(toolWindow.id)
+                        ?: return
+                    if (tw.isVisible) {
+                        plugin.markActivity()
+                    } else {
+                        plugin.markDeepIdle()
+                    }
+                }
+            }
+        )
 
         // Gear icon in the tool-window title bar → opens Settings > Tools > Gotchi
         toolWindow.setTitleActions(listOf(

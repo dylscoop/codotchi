@@ -515,6 +515,14 @@ mouse movement inside the sidebar panel resets it via a throttled `mousemove`
 listener (at most once per 30 s) that posts `{ command: "user_activity" }` to
 the host.
 
+When the sidebar panel is **hidden** (collapsed, tab switched away, etc.) the
+extension immediately sets `lastActivityMs` back by `idleDeepThresholdSeconds`
+so the very next tick enters deep idle without waiting 10 minutes. When the
+panel is **shown** again, `lastActivityMs` is reset to `now` so the pet exits
+deep idle instantly (the 60-second re-entry grace period then applies). The
+equivalent mechanism in PyCharm uses `ToolWindowManagerListener.toolWindowHidden`
+/ `toolWindowShown` to call `markDeepIdle()` / `markActivity()` on `CodotchiPlugin`.
+
 Status: `[x]`
 
 ---
