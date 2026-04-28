@@ -65,7 +65,8 @@ export class SidebarProvider
     private readonly getState: () => PetState | null,
     private readonly getHighScore: () => HighScore | null,
     private readonly markActivity: () => void,
-    private readonly onResetHighScore: () => void
+    private readonly onResetHighScore: () => void,
+    private readonly markDeepIdle: () => void
   ) {}
 
   /** Called by VS Code when the webview becomes visible. */
@@ -113,6 +114,19 @@ export class SidebarProvider
       }
     );
     this.disposables.push(messageListener);
+
+    // When the sidebar panel is hidden (collapsed, tab switched away, etc.)
+    // immediately force deep idle so the pet enters the protected low-decay
+    // state without waiting 10 minutes of inactivity.  When the panel is
+    // re-opened, reset activity so the pet exits deep idle right away.
+    const visibilityListener = webviewView.onDidChangeVisibility(() => {
+      if (webviewView.visible) {
+        this.markActivity();
+      } else {
+        this.markDeepIdle();
+      }
+    });
+    this.disposables.push(visibilityListener);
 
     // BUGFIX-001: hot-reload the webview HTML when the font-size setting changes.
     // Also reload when any custom-colour setting changes so the Custom palette

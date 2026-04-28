@@ -153,6 +153,17 @@ export function activate(context: vscode.ExtensionContext): void {
   // also reset the idle timer (BUGFIX-015).
   const markActivity = (): void => { lastActivityMs = Date.now(); };
 
+  // Deep-idle callback — called when the sidebar panel is hidden so the pet
+  // enters deep idle immediately on the next tick (no need to wait 10 minutes).
+  // Sets lastActivityMs far enough in the past that isDeepIdle() is true on the
+  // very next tick.  The 60-second re-entry grace period in runOneTick() then
+  // softens the transition when the panel is re-opened.
+  const markDeepIdle = (): void => {
+    const cfg = vscode.workspace.getConfiguration("codotchi");
+    const idleDeepThresholdMs = cfg.get<number>("idleDeepThresholdSeconds", 600) * 1_000;
+    lastActivityMs = Date.now() - idleDeepThresholdMs;
+  };
+
   // Reset high score callback — called when the player confirms the reset
   const onResetHighScore = (): void => {
     currentHighScore = null;
@@ -170,7 +181,7 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   // Sidebar provider
-  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore, markActivity, onResetHighScore);
+  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore, markActivity, onResetHighScore, markDeepIdle);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(SidebarProvider.VIEW_ID, sidebar)
   );

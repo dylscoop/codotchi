@@ -353,6 +353,18 @@ class CodotchiPlugin : Disposable {
         lastActivityTime = System.currentTimeMillis()
     }
 
+    /**
+     * Immediately push [lastActivityTime] far enough into the past that the next
+     * tick sees deep idle. Called when the Codotchi tool window is hidden so the
+     * pet enters the protected low-decay state without waiting 10 minutes of
+     * inactivity.  The re-entry path calls [markActivity] when the panel is shown
+     * again so the pet exits deep idle right away.
+     */
+    fun markDeepIdle() {
+        val settings = service<CodotchiSettings>()
+        lastActivityTime = System.currentTimeMillis() - settings.idleDeepThresholdSeconds * 1000L
+    }
+
     // ── Panel / widget registration ────────────────────────────────────────
 
     fun setBrowserPanel(panel: CodotchiBrowserPanel) {
