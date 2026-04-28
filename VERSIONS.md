@@ -12,6 +12,9 @@
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | BUGFIX-096: replaced single `browserPanel` field with `browserPanels` list; added `unregisterBrowserPanel()`; updated `broadcastState()` and `reloadWebview()` to iterate all panels |
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiToolWindow.kt` | BUGFIX-096: added `Disposer.register` to call `unregisterBrowserPanel()` when the tool window is disposed |
 | `BUGFIXES.md` | Added BUGFIX-096 entry |
+| `vscode/media/sprites.js` | Tiger sprite fully redesigned: vertical body stripes (colour 3), rounded ears (teen/adult/senior), downward-hanging tail stepping rightward, wider body, 3px legs (teen/adult/senior) with back legs shifted right, whiskers removed from all stages, prowling head posture (head shifted down 2 rows and left 2 cols with nose merging into body) |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored from `vscode/media/sprites.js` (tiger redesign) |
+| `sprites/tiger.md` | New tiger sprite design spec: colour legend, iconic cues, per-stage feature matrix, ASCII sketches, tail stepping reference |
 
 ---
 
