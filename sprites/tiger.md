@@ -22,6 +22,7 @@
 2. **Vertical body stripes** (colour 3) — 2–3 stripe columns through torso, all stages
 3. **Downward-hanging tail** — tail descends from rump and steps rightward each 2–3 rows; 1px wide on baby/child, 2px wide on teen/adult/senior
 4. **No whiskers** — colour 4 is not used; whiskers removed from all stages
+5. **Prowling head posture** — head shifted down 2 rows and left 2 cols relative to cat; head merges into body rows creating a low, forward-reaching silhouette
 
 ---
 
@@ -37,6 +38,8 @@
 | Age spots (index 3) | No | No | No | No | Yes |
 | Leg width | 1px | 2px | 3px | 3px | 3px |
 | Back leg shift (vs front) | 0px | +2px | +3px | +4px | +4px |
+| Head shift (vs cat) | down 2, left 2 | down 2, left 2 | down 2, left 2 | down 2, left 2 | down 2, left 2 |
+| Head/body overlap rows | 24-25 | 19-20 | 15-16 | 15-16 | 15-16 |
 
 ---
 
