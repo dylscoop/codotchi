@@ -105,12 +105,17 @@ another Java process is still running from a previous build attempt or IDE sessi
    ```
    (run from `pycharm/`)
 
-3. **Run the build with `--no-configuration-cache`** to prevent re-poisoning:
+3. **Run the build with `-x buildSearchableOptions --no-configuration-cache`** to prevent re-poisoning and skip the task that causes the file-lock hang:
    ```powershell
    $env:JAVA_HOME = 'C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'
-   & '.\gradlew.bat' buildPlugin --no-configuration-cache
+   & '.\gradlew.bat' buildPlugin -x buildSearchableOptions --no-configuration-cache
    ```
    (run from `pycharm/`)
+
+   > **Why `-x buildSearchableOptions`?** This task launches a headless IDE
+   > sandbox that extracts `extnet.dll` from the JBR tarball. When PyCharm is
+   > open it holds a lock on that DLL, causing the build to fail or hang every
+   > time. Skipping it produces a fully functional plugin zip.
 
 > **Note:** The `powershell -Command "..."` one-liner form does **not** reliably
 > set `$env:JAVA_HOME` inside the child shell on this machine. Always use the
