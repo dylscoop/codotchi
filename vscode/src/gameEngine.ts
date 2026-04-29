@@ -973,9 +973,29 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   // Capture sleeping state at tick entry so day-timer uses it even if auto-wake fires mid-tick
   const sleepingAtTickStart = sleeping;
 
-  // Stat decay
-  // When idle, hunger/happiness/aging advance at only 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
-  // Decay and aging also only apply every DECAY_TICK_INTERVAL ticks (every 9 real-world seconds).
+  // Stat decay — each stat fires on its own tick interval derived from its multiplier.
+  // Base interval: DECAY_TICK_INTERVAL ticks (every 9 real-world seconds at 3s/tick).
+  // A higher multiplier shortens the interval (faster decay); lower multiplier lengthens it.
+  // Idle: each stat's effective interval is scaled up by IDLE_DECAY_TICK_DIVISOR (same proportional slowdown).
+  // Aging uses the shared decayThisTick gate (unaffected by per-type multipliers).
+  const weightHappinessMult = (state.weight > WEIGHT_HAPPINESS_HIGH_THRESHOLD || state.weight < WEIGHT_HAPPINESS_LOW_THRESHOLD)
+    ? WEIGHT_HAPPINESS_DEBUFF_MULTIPLIER : 1.0;
+
+  const hungerInterval    = Math.round(DECAY_TICK_INTERVAL / modifiers.hungerDecayMultiplier);
+  const happinessInterval = Math.round(DECAY_TICK_INTERVAL / (modifiers.happinessDecayMultiplier * weightHappinessMult));
+  const energyInterval    = DECAY_TICK_INTERVAL; // energy has no per-type multiplier
+
+  const hungerDecayTick    = !isIdle
+    ? (ticksAlive % hungerInterval === 0)
+    : (ticksAlive % (hungerInterval * IDLE_DECAY_TICK_DIVISOR) === 0);
+  const happinessDecayTick = !isIdle
+    ? (ticksAlive % happinessInterval === 0)
+    : (ticksAlive % (happinessInterval * IDLE_DECAY_TICK_DIVISOR) === 0);
+  const energyDecayTick    = !isIdle
+    ? (ticksAlive % energyInterval === 0)
+    : (ticksAlive % (energyInterval * IDLE_DECAY_TICK_DIVISOR) === 0);
+
+  // Shared gate for aging (unaffected by per-type multipliers).
   const decayThisTick = (ticksAlive % DECAY_TICK_INTERVAL === 0) &&
     (!isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR === 0));
   if (!state.wasIdle && isIdle) {
@@ -1001,27 +1021,17 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   } // end Step 0
 
   if (!sleeping) {
-    if (decayThisTick) {
-      const hungerDecay = Math.ceil(HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier);
-      const weightHappinessMult = (state.weight > WEIGHT_HAPPINESS_HIGH_THRESHOLD || state.weight < WEIGHT_HAPPINESS_LOW_THRESHOLD)
-        ? WEIGHT_HAPPINESS_DEBUFF_MULTIPLIER : 1.0;
-      const happinessDecay = Math.ceil(
-        HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier * weightHappinessMult
-      );
-      hunger = clampStat(hunger - hungerDecay);
-      happiness = clampStat(happiness - happinessDecay);
-      // Energy is throttled by idle just like hunger/happiness (BUGFIX-014)
-      energy = clampStat(energy - ENERGY_DECAY_PER_TICK);
-    }
+    if (hungerDecayTick)    hunger    = clampStat(hunger - 1);
+    if (happinessDecayTick) happiness = clampStat(happiness - 1);
+    // Energy uses a fixed interval (no per-type multiplier) — throttled by idle (BUGFIX-014)
+    if (energyDecayTick)    energy    = clampStat(energy - ENERGY_DECAY_PER_TICK);
     // Deep idle: floor stats at IDLE_STAT_FLOOR so they never drop below 20%
     if (isDeepIdle) {
       hunger = Math.max(hunger, IDLE_STAT_FLOOR);
       happiness = Math.max(happiness, IDLE_STAT_FLOOR);
     }
   } else {
-    const energyRegen = Math.ceil(
-      ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier
-    );
+    const energyRegen = ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier;
     energy = clampStat(energy + energyRegen);
 
     // BUGFIX-003: auto-wake when energy is fully restored
@@ -1948,12 +1958,10 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
   const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
   const elapsedTicks = elapsedSeconds / TICK_INTERVAL_SECONDS;
 
-  const hungerDecayTotal = Math.ceil(
-    elapsedTicks * HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier
-  );
-  const happinessDecayTotal = Math.ceil(
-    elapsedTicks * HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier
-  );
+  const hungerDecayTotal =
+    elapsedTicks * HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier;
+  const happinessDecayTotal =
+    elapsedTicks * HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier;
 
   const maxHungerLoss = Math.floor(state.hunger * OFFLINE_DECAY_MAX_FRACTION);
   const maxHappinessLoss = Math.floor(state.happiness * OFFLINE_DECAY_MAX_FRACTION);
