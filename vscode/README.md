@@ -4,36 +4,13 @@
 
 Grow and raise your personal virtual pet as a VS Code extension while you code.
 
----
-
-## Support
-
-**GitHub:** [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi)
-
-### Sponsor this project
-
-<a href="https://buymeacoffee.com/dylscoop"><img src="../bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
-
-[buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
-
-[![Liberapay](https://img.shields.io/badge/Liberapay-dylscoop-yellow)](https://liberapay.com/dylscoop)
-
-[liberapay.com/dylscoop](https://liberapay.com/dylscoop)
-
-### Codotchi Sprites
-
-Want to see a new sprite in the game? Send a drawn sprite or request one to be added — a passcode will be given every time one gets implemented.
-
-[Open a sprite request on GitHub Issues](https://github.com/dylscoop/codotchi/issues)
-
----
-
 ## Overview
 
 codotchi is a VS Code extension that lets you raise a digital pet inspired
 by the original [Tamagotchi](https://en.wikipedia.org/wiki/Tamagotchi). Your pet
 lives in a sidebar panel, reacts to your coding activity, and needs regular care
-to survive and evolve into its final form.
+to survive and evolve into its final form. Any support and feedback is much appreciated
+(links at the bottom)!
 
 ## Features
 
@@ -126,7 +103,56 @@ available:
 | Pixelpup    | High happiness, but happiness decays faster|
 | Shellscript | Slow evolver, high base health             |
 
-Each pet type has its own sprite set
+Each pet animal has its own sprite set
+
+## Settings
+
+Open **Settings → Extensions → codotchi** to configure the extension.
+
+| Setting | Default | Description |
+| ------- | ------- | ----------- |
+| `codotchi.fontSize` | `normal` | Font size in the sidebar panel (`small` / `normal` / `large`). |
+| `codotchi.petSize` | `medium` | Sprite display size (`small` / `medium` / `large`). Large uses a higher-detail 24×32 pixel grid. |
+| `codotchi.reducedMotion` | `false` | Disable all pet animations; pet is drawn statically. Also respects the OS prefers-reduced-motion setting. |
+| `codotchi.customPrimaryColor` | `#ff8c00` | Pet body colour for the Custom palette. |
+| `codotchi.customSecondaryColor` | `#ffffff` | Pet eyes/details colour for the Custom palette. |
+| `codotchi.customBackgroundColor` | `#1a1a2e` | Canvas background colour for the Custom palette. |
+| `codotchi.enableAttentionCalls` | `true` | Enable attention calls (pet notifies you when it needs care). |
+| `codotchi.attentionCallExpiry` | `standard` | Response window before an attention call expires: `needy` (2 min) / `standard` (5 min) / `chilled` (10 min). |
+| `codotchi.attentionCallRate` | `fast` | How quickly calls can spawn: `fast` / `medium` (1.5×) / `slow` (2×). |
+| `codotchi.idleThresholdSeconds` | `60` | Seconds of inactivity before idle mode (decay slows to 10 %). |
+| `codotchi.idleDeepThresholdSeconds` | `600` | Seconds before deep idle (stats floor at 20, aging stops). |
+| `codotchi.aiMode` | `false` | Suppress idle-timer resets from document/cursor/tab events — use when an AI agent is editing for you. |
+| `codotchi.idleResetOnDocumentChange` | `true` | Reset idle timer on document edits (suppressed by `aiMode`). |
+| `codotchi.idleResetOnCursorMovement` | `true` | Reset idle timer on cursor movement (suppressed by `aiMode`). |
+| `codotchi.idleResetOnTabSwitch` | `true` | Reset idle timer on tab switch (suppressed by `aiMode`). |
+| `codotchi.idleResetOnWindowFocus` | `true` | Reset idle timer when VS Code regains focus. |
+| `codotchi.idleResetOnMouseMovement` | `true` | Reset idle timer on mouse movement in the sidebar (throttled to once per 30 s). |
+
 ---
 
 > "Grow your best pet by writing your best code."
+
+---
+
+## Support
+
+**GitHub:** [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi)
+
+### Sponsor this project
+
+<a href="https://buymeacoffee.com/dylscoop"><img src="../bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
+
+[buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
+
+[![Liberapay](https://img.shields.io/badge/Liberapay-dylscoop-yellow)](https://liberapay.com/dylscoop)
+
+[liberapay.com/dylscoop](https://liberapay.com/dylscoop)
+
+### Codotchi Sprites
+
+Want to see a new sprite in the game? Send a drawn sprite or request one to be added — a passcode will be given every time one gets implemented.
+
+[Open a sprite request on GitHub Issues](https://github.com/dylscoop/codotchi/issues)
+
+---

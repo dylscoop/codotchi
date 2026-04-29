@@ -2,36 +2,13 @@
 
 Grow and raise your personal virtual pet as a JetBrains plugin while you code.
 
----
-
-## Support
-
-**GitHub:** [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi)
-
-### Sponsor this project
-
-<a href="https://buymeacoffee.com/dylscoop"><img src="../bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
-
-[buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
-
-[![Liberapay](https://img.shields.io/badge/Liberapay-dylscoop-yellow)](https://liberapay.com/dylscoop)
-
-[liberapay.com/dylscoop](https://liberapay.com/dylscoop)
-
-### Codotchi Sprites
-
-Want to see a new sprite in the game? Send a drawn sprite or request one to be added — a passcode will be given every time one gets implemented.
-
-[Open a sprite request on GitHub Issues](https://github.com/dylscoop/codotchi/issues)
-
----
-
 ## Overview
 
 codotchi is a JetBrains plugin that lets you raise a digital pet inspired
 by the original [Tamagotchi](https://en.wikipedia.org/wiki/Tamagotchi). Your pet
 lives in a tool window panel, reacts to your coding activity, and needs regular
-care to survive and evolve into its final form.
+care to survive and evolve into its final form. Any support and feedback is much
+appreciated (links at the bottom)!
 
 ## Features
 
@@ -129,8 +106,54 @@ available:
 | Pixelpup    | High happiness, but happiness decays faster |
 | Shellscript | Slow evolver, high base health              |
 
-Each pet type has its own sprite set
+Each pet animal has its own sprite set
+
+## Settings
+
+Open **Settings → Tools → Codotchi** to configure the plugin.
+
+| Setting | Default | Description |
+| ------- | ------- | ----------- |
+| Font size | `Normal` | Font size in the tool window panel (`Small` / `Normal` / `Large`). |
+| Pet size | `Medium` | Sprite display size (`Small` / `Medium` / `Large`). Large uses a higher-detail 24×32 pixel grid. |
+| Reduced motion | `off` | Disable all pet animations; pet is drawn statically. |
+| Custom primary colour | `#ff8c00` | Pet body colour for the Custom palette. |
+| Custom secondary colour | `#ffffff` | Pet eyes/details colour for the Custom palette. |
+| Custom background colour | `#1a1a2e` | Canvas background colour for the Custom palette. |
+| Enable attention calls | `on` | Enable attention calls (pet notifies you when it needs care). |
+| Attention call expiry | `Standard` | Response window before an attention call expires: `Needy` (2 min) / `Standard` (5 min) / `Chilled` (10 min). |
+| Attention call rate | `Fast` | How quickly calls can spawn: `Fast` / `Medium` (1.5×) / `Slow` (2×). |
+| Idle threshold (s) | `60` | Seconds of inactivity before idle mode (decay slows to 10 %). |
+| Deep idle threshold (s) | `600` | Seconds before deep idle (stats floor at 20, aging stops). |
+| AI mode | `off` | Suppress idle-timer resets from document/cursor/tab events — use when an AI agent is editing for you. |
+| Idle reset — document change | `on` | Reset idle timer on document edits (suppressed by AI mode). |
+| Idle reset — cursor movement | `on` | Reset idle timer on cursor movement (suppressed by AI mode). |
+| Idle reset — tab switch | `on` | Reset idle timer on tab switch (suppressed by AI mode). |
+| Idle reset — window focus | `on` | Reset idle timer when the IDE regains focus. |
+| Idle reset — mouse movement | `on` | Reset idle timer on mouse movement in the tool window (throttled to once per 30 s). |
 
 ---
 
 > "Grow your best pet by writing your best code."
+
+---
+
+## Support
+
+**GitHub:** [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi)
+
+### Sponsor this project
+
+<a href="https://buymeacoffee.com/dylscoop"><img src="../bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
+
+[buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
+
+[![Liberapay](https://img.shields.io/badge/Liberapay-dylscoop-yellow)](https://liberapay.com/dylscoop)
+
+[liberapay.com/dylscoop](https://liberapay.com/dylscoop)
+
+### Codotchi Sprites
+
+Want to see a new sprite in the game? Send a drawn sprite or request one to be added — a passcode will be given every time one gets implemented.
+
+[Open a sprite request on GitHub Issues](https://github.com/dylscoop/codotchi/issues)
