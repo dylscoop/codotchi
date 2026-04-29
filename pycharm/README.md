@@ -178,6 +178,28 @@ vscode_gotchi/
     │   └── resources/
     │       ├── META-INF/plugin.xml
     │       └── webview/         # sidebar.html / .css / .js (shared with VS Code)
-    └── build/distributions/
+     └── build/distributions/
         └── pycharm-codotchi-1.14.3.zip     ← installable plugin archive
 ```
+
+---
+
+## Support
+
+**GitHub:** [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi)
+
+### Sponsor this project
+
+[![Buy Me a Coffee](../bmc_qr.png)](https://buymeacoffee.com/dylscoop)
+
+[buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
+
+[![Liberapay](https://img.shields.io/badge/Liberapay-dylscoop-yellow)](https://liberapay.com/dylscoop)
+
+[liberapay.com/dylscoop](https://liberapay.com/dylscoop)
+
+### Codotchi Sprites
+
+Want to see a new sprite in the game? Send a drawn sprite or request one to be added — a passcode will be given every time one gets implemented.
+
+[Open a sprite request on GitHub Issues](https://github.com/dylscoop/codotchi/issues)
