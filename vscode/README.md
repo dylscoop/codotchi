@@ -1,7 +1,7 @@
 # codotchi — VS Code extension
 
 <img src="media/icon.svg" width="64" height="64" alt="Codotchi icon" />
-<img src="media/monkey_senior_1x.png" height="64" alt="Monkey sprite" />
+<img src="media/monkey_adult_1x.png" height="64" alt="Monkey sprite" />
 <img src="media/dog_adult_1x.png" height="64" alt="Dog sprite" />
 <img src="media/snake_adult_1x.png" height="64" alt="Snake sprite" />
 
