@@ -25,12 +25,14 @@ This skill is referenced by `release-checklist` (Step 2a) and `git-workflow` (St
 |-----|--------------------------|---------------------|
 | VS Code | `vscode/vscode-codotchi-X.Y.Z.vsix` | `vscode/archive/vsix/` |
 | PyCharm | `pycharm/build/distributions/pycharm-codotchi-X.Y.Z.zip` | `pycharm/archive/` |
+| OpenCode | `opencode-codotchi/opencode-codotchi-X.Y.Z.zip` | `opencode-codotchi/archive/` |
 
-Both archive directories are tracked in git. Create them with `mkdir` if they do not exist yet.
+All archive directories are tracked in git. Create them with `mkdir` if they do not exist yet.
 
-> **CRITICAL:** Only ONE artifact file should ever exist in `vscode/` and ONE in
-> `pycharm/build/distributions/` at any time. If you see more than one, archive
-> all but the newest immediately before doing anything else.
+> **CRITICAL:** Only ONE artifact file should ever exist in `vscode/`, ONE in
+> `pycharm/build/distributions/`, and ONE in `opencode-codotchi/` at any time.
+> If you see more than one, archive all but the newest immediately before doing
+> anything else.
 
 ---
 
@@ -69,6 +71,18 @@ powershell -Command "$env:JAVA_HOME='C:\Users\DylanSiow-Lee\.gradle\caches\modul
 ```
 (run from `pycharm/`)
 
+### OpenCode
+
+```
+git mv opencode-codotchi/opencode-codotchi-OLD.zip opencode-codotchi/archive/
+```
+
+Then rebuild:
+```
+node scripts/package.js
+```
+(run from `opencode-codotchi/`)
+
 > **Note:** if the version number did NOT change (same X.Y.Z, source-only
 > patch), skip Step 1 entirely — just rebuild in place.
 
@@ -95,6 +109,19 @@ copy "pycharm\build\distributions\pycharm-codotchi-X.Y.Z.zip" releases\
 
 ```
 copy "pycharm\archive\pycharm-codotchi-X.Y.Z.zip" releases\
+```
+
+For OpenCode, the zip is in `opencode-codotchi/` (archive step does NOT happen
+before copying to releases — copy first, then archive on the next version bump):
+
+```
+copy "opencode-codotchi\opencode-codotchi-X.Y.Z.zip" releases\
+```
+
+— OR, if it was already archived —
+
+```
+copy "opencode-codotchi\archive\opencode-codotchi-X.Y.Z.zip" releases\
 ```
 
 After copying, immediately apply the 3-version rule (Step 3 below), then
@@ -132,13 +159,14 @@ Example — if `releases/` contains vsix files for
 - Keep: `0.5.2` (latest — always retained), `0.4.2`, `0.3.2`
 - Move to `releases/old_releases/`: `0.2.2`
 
-Apply the same rule independently to `.vsix` files and `.zip` files.
+Apply the same rule independently to `.vsix` files, `pycharm-codotchi-*.zip` files, and `opencode-codotchi-*.zip` files.
 
 ### Move command
 
 ```
 git mv releases/vscode-codotchi-OLD.vsix releases/old_releases/
 git mv releases/pycharm-codotchi-OLD.zip releases/old_releases/
+git mv releases/opencode-codotchi-OLD.zip releases/old_releases/
 ```
 
 > `releases/old_releases/` is tracked in git. Create it with `mkdir` if it
@@ -148,6 +176,6 @@ git mv releases/pycharm-codotchi-OLD.zip releases/old_releases/
 
 ## Quick checklist
 
-- [ ] Version bumped? → Archive old VS Code vsix and old PyCharm zip before rebuilding
-- [ ] Merging to main? → Copy current vsix and zip to `releases/`, apply 3-version rule, commit as `chore: publish vX.Y.Z artifacts to releases/`
-- [ ] After writing to `releases/`? → Confirm latest version is in root; confirm only 3 vsix and 3 zip remain in root (latest always kept, 2 next most recent); move excess to `releases/old_releases/`
+- [ ] Version bumped? → Archive old VS Code vsix, old PyCharm zip, and old OpenCode zip before rebuilding
+- [ ] Merging to main? → Copy current vsix, PyCharm zip, and OpenCode zip to `releases/`, apply 3-version rule, commit as `chore: publish vX.Y.Z artifacts to releases/`
+- [ ] After writing to `releases/`? → Confirm latest version is in root; confirm only 3 vsix, 3 pycharm zip, and 3 opencode zip remain in root (latest always kept, 2 next most recent); move excess to `releases/old_releases/`
