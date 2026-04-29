@@ -18,9 +18,9 @@ import javax.swing.JTextField
 import javax.swing.SpinnerNumberModel
 
 /**
- * CodotchiConfigurable — IDE settings page for Gotchi display preferences.
+ * CodotchiConfigurable — IDE settings page for Codotchi display preferences.
  *
- * Registered under Settings > Tools > Gotchi.
+ * Registered under Settings > Tools > Codotchi.
  * Changes apply immediately to the open tool-window via [CodotchiPlugin.reloadWebview].
  */
 class CodotchiConfigurable : Configurable {

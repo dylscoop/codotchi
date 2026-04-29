@@ -2081,7 +2081,7 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
   };
 
   const partial: Omit<PetState, "mood" | "sprite" | "careScore"> = {
-    name: getString("name", "Gotchi"),
+    name: getString("name", "Codotchi"),
     petType: getString("petType", "codeling"),
     // Back-compat: old saves won't have spriteType; default to "classic" (original humanoid).
     // Legacy "goat" saves are silently migrated to "sheep".

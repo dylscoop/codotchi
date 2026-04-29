@@ -553,7 +553,7 @@ export const plugin: Plugin = async (_ctx) => {
       "Interact with your codotchi virtual pet. Use action='status' to see current stats, " +
       "or one of: feed, pat, sleep, clean, medicine, on, off. " +
       "Actions apply to all currently active IDE pets (VS Code and/or PyCharm). " +
-      "This tool reads state from VS Code and PyCharm — do NOT use any other gotchi tool.",
+      "This tool reads state from VS Code and PyCharm — do NOT use any other codotchi tool.",
     args: {
       action: tool.schema
         .enum(["status", "feed", "pat", "sleep", "clean", "medicine", "on", "off"])
@@ -600,8 +600,8 @@ export const plugin: Plugin = async (_ctx) => {
         return ret(
           notification +
           "No pet found. Start a new game first:\n" +
-          "  - In VS Code: open the Gotchi sidebar and choose New Game\n" +
-          "  - In PyCharm: open the Gotchi panel and choose New Game"
+          "  - In VS Code: open the Codotchi sidebar and choose New Game\n" +
+          "  - In PyCharm: open the Codotchi panel and choose New Game"
         );
       }
 

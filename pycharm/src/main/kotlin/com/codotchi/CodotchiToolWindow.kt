@@ -15,19 +15,19 @@ import com.intellij.ui.content.ContentFactory
 
 /**
  * CodotchiToolWindow — creates the browser panel and registers it as the
- * "Gotchi" tool-window content.
+ * "Codotchi" tool-window content.
  *
  * Called by IntelliJ when the tool window is first shown.  We create a fresh
  * [CodotchiBrowserPanel], register it with [CodotchiPlugin] so state broadcasts
  * reach it, then add its Swing component as the only tool-window content.
  *
  * A gear icon is added to the tool-window title bar so users can open the
- * Gotchi settings page (Settings → Tools → Gotchi) without navigating
+ * Codotchi settings page (Settings → Tools → Codotchi) without navigating
  * through the IDE settings menu manually.
  *
  * Visibility tracking: a [ToolWindowManagerListener] on the project message bus
  * fires on every tool window state change via [ToolWindowManagerListener.stateChanged].
- * When the Gotchi tool window transitions to hidden the pet is pushed into deep
+ * When the Codotchi tool window transitions to hidden the pet is pushed into deep
  * idle immediately; when it becomes visible again activity is reset so the pet
  * exits deep idle right away.
  */
@@ -76,9 +76,9 @@ class CodotchiToolWindow : ToolWindowFactory {
             }
         )
 
-        // Gear icon in the tool-window title bar → opens Settings > Tools > Gotchi
+        // Gear icon in the tool-window title bar → opens Settings > Tools > Codotchi
         toolWindow.setTitleActions(listOf(
-            object : AnAction("Gotchi Settings", "Open Gotchi settings", AllIcons.General.Settings) {
+            object : AnAction("Codotchi Settings", "Open Codotchi settings", AllIcons.General.Settings) {
                 override fun actionPerformed(e: AnActionEvent) {
                     ShowSettingsUtil.getInstance()
                         .showSettingsDialog(project, CodotchiConfigurable::class.java)

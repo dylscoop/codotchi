@@ -1,10 +1,10 @@
-# pycharm_gotchi
+# pycharm_codotchi
 
 Grow and raise your personal virtual pet as a JetBrains plugin while you code.
 
 ## Overview
 
-pycharm_gotchi is a plugin for JetBrains IDEs (PyCharm, IntelliJ IDEA, and any
+pycharm_codotchi is a plugin for JetBrains IDEs (PyCharm, IntelliJ IDEA, and any
 other IDE built on the IntelliJ Platform) that lets you raise a digital pet
 inspired by the original [Tamagotchi](https://en.wikipedia.org/wiki/Tamagotchi).
 Your pet lives in a tool window panel, reacts to your coding activity, and needs
@@ -28,6 +28,9 @@ It shares the same game engine and webview UI as the
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
   and it dies
 - **Coding activity rewards** — every file save makes your pet a little happier
+- **OpenCode integration** — your pet lives in the terminal too; use `/codotchi`
+  commands to care for it alongside your AI coding session, with shared state
+  across VS Code, PyCharm, and OpenCode
 - **Status bar integration** — pet name and stage always visible in the IDE
   status bar
 - **Persistent state** — pet survives IDE restarts; offline time is accounted
@@ -44,7 +47,7 @@ It shares the same game engine and webview UI as the
 ### Quick install (pre-built `.zip`)
 
 1. **Download `pycharm-codotchi-1.14.3.zip`** from the
-   [Releases page](https://github.com/dylscoop/vscode_gotchi/releases).
+   [Releases page](https://github.com/dylscoop/codotchi/releases).
    Do **not** unzip it — JetBrains expects the archive as-is.
 
 2. **Install from disk:**
@@ -54,7 +57,7 @@ It shares the same game engine and webview UI as the
    - Select the downloaded `.zip` file
    - Click **OK**
 
-3. **Restart the IDE** when prompted. The **Gotchi** tool window appears in
+3. **Restart the IDE** when prompted. The **Codotchi** tool window appears in
    the right-hand tool window bar.
 
 ### Build from source
@@ -62,8 +65,8 @@ It shares the same game engine and webview UI as the
 You need a JDK 17+ on your PATH (or the JBR bundled with your JetBrains IDE).
 
 ```bash
-git clone https://github.com/dylscoop/vscode_gotchi.git
-cd vscode_gotchi/pycharm
+git clone https://github.com/dylscoop/codotchi.git
+cd codotchi/pycharm
 
 # On macOS / Linux
 ./gradlew buildPlugin
@@ -93,10 +96,10 @@ described above.
 
 Once installed and the IDE has restarted:
 
-1. Click **Gotchi** in the right-hand tool window bar, or go to
-   **View → Tool Windows → Gotchi**.
+1. Click **Codotchi** in the right-hand tool window bar, or go to
+   **View → Tool Windows → Codotchi**.
 
-2. On first launch the **New Gotchi** setup screen appears:
+2. On first launch the **New Codotchi** setup screen appears:
    - Enter a name (up to 16 characters).
    - Choose a **pet type** — each has different stat decay rates.
    - Choose a **colour palette** — affects the sprite's colour scheme.
@@ -106,14 +109,11 @@ Once installed and the IDE has restarted:
    **Feed**, **Snack**, **Play**, **Pat**, **Sleep**, **Clean**, **Medicine**,
    **Praise**, and **Scold**.
 
-4. Every file you save gives your pet a happiness boost — keep coding to keep
-   it happy.
-
-5. Your pet's state is saved automatically and restored the next time the IDE
+4. Your pet's state is saved automatically and restored the next time the IDE
    opens. Stat decay while the IDE is closed is capped at 60 % of each maximum
    so a long break won't instantly kill your pet.
 
-6. Your pet's name and current life stage are always visible in the **status
+5. Your pet's name and current life stage are always visible in the **status
    bar** at the bottom of the IDE window.
 
 ## Actions
@@ -142,45 +142,6 @@ Once installed and the IDE has restarted:
 | Bytebug     | High energy, hunger decays faster           |
 | Pixelpup    | High happiness, but happiness decays faster |
 | Shellscript | Slow evolver, high base health              |
-
-## Architecture
-
-| Layer | Technology | Responsibility |
-| ----- | ---------- | -------------- |
-| Plugin host | Kotlin | IntelliJ Platform API, tick scheduler, state machine, persistence, event hooks |
-| Webview UI | JCEF (HTML / CSS / JS) | Tool window rendering, action buttons, sprite canvas |
-
-The game logic (stat decay, evolution, poop intervals, sickness, death) is
-implemented in `engine/GameEngine.kt` and is a direct port of the TypeScript
-game engine in the VS Code extension. The webview files (`sidebar.html`,
-`sidebar.css`, `sidebar.js`) are shared between both IDEs; a small shim
-injected at runtime maps `acquireVsCodeApi().postMessage` to the JCEF
-JS-query bridge.
-
-## Project Structure
-
-```text
-vscode_gotchi/
-├── vscode/                      ← VS Code extension (TypeScript)
-└── pycharm/                     ← JetBrains plugin (this package)
-    ├── build.gradle.kts
-    ├── gradle.properties
-    ├── src/main/
-    │   ├── kotlin/com/gotchi/
-    │   │   ├── engine/          # Kotlin game engine (GameEngine.kt, PetState.kt, …)
-    │   │   ├── GotchiPlugin.kt          # Central service: tick loop + command dispatch
-    │   │   ├── GotchiBrowserPanel.kt    # JCEF webview + JS bridge
-    │   │   ├── GotchiToolWindow.kt      # Tool window factory
-    │   │   ├── GotchiStatusWidget.kt    # Status bar widget
-    │   │   ├── GotchiPersistence.kt     # Save / load via PropertiesComponent
-    │   │   ├── GotchiEventsManager.kt   # File-save → happiness reward
-    │   │   └── GotchiAppLifecycleListener.kt
-    │   └── resources/
-    │       ├── META-INF/plugin.xml
-    │       └── webview/         # sidebar.html / .css / .js (shared with VS Code)
-     └── build/distributions/
-        └── pycharm-codotchi-1.14.3.zip     ← installable plugin archive
-```
 
 ---
 

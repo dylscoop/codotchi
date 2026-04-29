@@ -1,11 +1,11 @@
-# gotchi
+# codotchi
 
 A virtual Tamagotchi-style pet that lives inside your IDE and reacts to your
 coding activity. Available for both VS Code and JetBrains IDEs.
 
 ## What is it?
 
-gotchi is a pixel-art virtual pet inspired by the original
+codotchi is a pixel-art virtual pet inspired by the original
 [Tamagotchi](https://en.wikipedia.org/wiki/Tamagotchi). Your pet hatches from
 an egg, grows through several life stages, and eventually reaches its final
 evolved form — but only if you take care of it. Feed it, play with it, put it
@@ -53,7 +53,7 @@ code --install-extension vscode-codotchi-1.14.3.vsix
 
 **Option A — In-repo (this repository only)**
 
-The plugin lives in `.opencode/plugins/gotchi.ts` and is loaded automatically
+The plugin lives in `.opencode/plugins/codotchi.ts` and is loaded automatically
 by OpenCode when you open this repository.
 
 1. Make sure `@opencode-ai/plugin` is installed:
@@ -124,7 +124,7 @@ For full usage instructions see the individual READMEs:
 ## Repository layout
 
 ```text
-gotchi/
+codotchi/
 ├── vscode/                  VS Code extension (TypeScript)
 │   ├── src/                 Extension host + game engine
 │   ├── media/               Webview UI (HTML / CSS / JS)
@@ -134,7 +134,7 @@ gotchi/
 │   ├── src/main/resources/  plugin.xml + shared webview files
 │   └── README.md
 ├── .opencode/               OpenCode terminal plugin (in-repo)
-│   ├── plugins/             gotchi.ts, gameEngine.ts, asciiArt.ts
+│   ├── plugins/             codotchi.ts, gameEngine.ts, asciiArt.ts
 │   └── commands/            /codotchi slash command definition
 ├── opencode-codotchi/       OpenCode npm package (global install)
 │   ├── src/                 index.ts, gameEngine.ts, asciiArt.ts

@@ -3,7 +3,7 @@
 import com.intellij.openapi.components.*
 
 /**
- * CodotchiSettings — persisted display preferences for the Gotchi tool window.
+ * CodotchiSettings — persisted display preferences for the Codotchi tool window.
  *
  * Stored in codotchi_settings.xml (separate from game state in codotchi.xml).
  * Fields:

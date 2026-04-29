@@ -1,7 +1,7 @@
 # opencode-codotchi
 
 A virtual Tamagotchi-style pet that lives inside [OpenCode](https://opencode.ai).
-Raises your gotchi in the terminal alongside your coding session.
+Raises your codotchi in the terminal alongside your coding session.
 
 ## Features
 
@@ -10,8 +10,8 @@ Raises your gotchi in the terminal alongside your coding session.
 - **`/codotchi` slash command** — 10 actions: `status`, `feed`, `snack`, `play`, `pat`, `sleep`, `wake`, `clean`, `medicine`, `new_game`
 - **ASCII art renderer** — 30 frames (6 stages × 5 moods), ANSI-coloured speech bubbles, status bars, toasts
 - **Cross-IDE shared state** — reads from / writes to the same JSON file used by the VS Code and PyCharm extensions:
-  - Linux/macOS: `~/.config/gotchi/state.json`
-  - Windows: `%APPDATA%\gotchi\state.json`
+  - Linux/macOS: `~/.config/codotchi/state.json`
+  - Windows: `%APPDATA%\codotchi\state.json`
 
 ## Global install
 
