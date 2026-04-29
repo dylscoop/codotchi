@@ -28,6 +28,14 @@
 | `vscode/archive/vsix/vscode-codotchi-1.14.4.vsix` | Archived old vsix (filename rename) |
 | `vscode/codotchi-1.14.4.vsix` | Rebuilt VS Code artifact under new name |
 | `opencode-codotchi/opencode-codotchi-1.15.0.zip` | Rebuilt opencode zip |
+| `vscode/package.json` | Version bumped `1.14.4` → `1.15.0` |
+| `pycharm/build.gradle.kts` | Version bumped `1.14.4` → `1.15.0` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.14.4` → `1.15.0` |
+| `vscode/archive/vsix/codotchi-1.14.4.vsix` | Archived old vsix before rebuild |
+| `pycharm/archive/pycharm-codotchi-1.14.4.zip` | Archived old pycharm zip before rebuild |
+| `vscode/codotchi-1.15.0.vsix` | Rebuilt VS Code artifact for v1.15.0 |
+| `pycharm/build/distributions/pycharm-codotchi-1.15.0.zip` | Rebuilt PyCharm artifact for v1.15.0 |
+| `opencode-codotchi/opencode-codotchi-1.15.0.zip` | Rebuilt opencode zip for v1.15.0 |
 
 ---
 
