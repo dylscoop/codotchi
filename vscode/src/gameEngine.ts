@@ -19,7 +19,14 @@
 // ---------------------------------------------------------------------------
 
 /** How many real-world seconds elapse between each game tick. */
-export const TICK_INTERVAL_SECONDS: number = 6;
+export const TICK_INTERVAL_SECONDS: number = 3;
+
+/**
+ * Stat decay (hunger, happiness, energy) and aging are applied only every
+ * DECAY_TICK_INTERVAL ticks, keeping the real-world decay rate identical to
+ * the pre-3s-tick baseline (one decay event every 9 real-world seconds).
+ */
+const DECAY_TICK_INTERVAL: number = 3;
 
 const TICKS_PER_MINUTE: number = 60 / TICK_INTERVAL_SECONDS;
 const TICKS_PER_HOUR: number = 60 * TICKS_PER_MINUTE;
@@ -143,7 +150,7 @@ export const IDLE_STAT_FLOOR: number = 20;
  * normal rate (applied by skipping decay on most ticks — 1 in every
  * IDLE_DECAY_TICK_DIVISOR ticks actually decays).
  */
-const IDLE_DECAY_TICK_DIVISOR: number = 10; // 10% of normal rate
+const IDLE_DECAY_TICK_DIVISOR: number = 20; // 10% of normal rate (every 20 ticks × 3s = every 60s)
 
 const MINIGAME_WIN_HAPPINESS_BOOST: number = 15;   // legacy "guess" fallback
 const MINIGAME_LOSE_HAPPINESS_BOOST: number = 5;   // legacy "guess" fallback
@@ -968,7 +975,9 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
 
   // Stat decay
   // When idle, hunger/happiness/aging advance at only 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
-  const decayThisTick = !isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR === 0);
+  // Decay and aging also only apply every DECAY_TICK_INTERVAL ticks (every 9 real-world seconds).
+  const decayThisTick = (ticksAlive % DECAY_TICK_INTERVAL === 0) &&
+    (!isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR === 0));
   if (!state.wasIdle && isIdle) {
     events.push("went_idle");
   }
