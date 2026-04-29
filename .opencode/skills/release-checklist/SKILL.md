@@ -48,7 +48,7 @@ Run from `vscode/`:
 npx @vscode/vsce package
 ```
 
-Output: `vscode/vscode-gotchi-X.Y.Z.vsix`
+Output: `vscode/codotchi-X.Y.Z.vsix`
 
 ### PyCharm `.zip`
 
@@ -118,7 +118,7 @@ matching prose and update the number:
 
 | File | What to look for |
 |------|-----------------|
-| `README.md` | Quick install filenames (`vscode-gotchi-X.Y.Z.vsix`, `pycharm-gotchi-X.Y.Z.zip`), "Current release" line |
+| `README.md` | Quick install filenames (`codotchi-X.Y.Z.vsix`, `pycharm-codotchi-X.Y.Z.zip`), "Current release" line |
 | `vscode/README.md` | Install filenames and `code --install-extension` examples; Actions table prose (e.g. "Limited to N meals per wake cycle", "More than N snacks in a row") |
 | `pycharm/README.md` | Install filenames and manual install examples |
 
@@ -131,16 +131,16 @@ Common locations of hardcoded numbers in README prose:
 ```
 vscode/README.md  line ~111  "Limited to N meals per wake cycle"
 vscode/README.md  line ~112  "More than N snacks in a row"
-README.md         line ~32   vscode-gotchi-X.Y.Z.vsix filename
-README.md         line ~44   pycharm-gotchi-X.Y.Z.zip filename
+README.md         line ~32   codotchi-X.Y.Z.vsix filename
+README.md         line ~44   pycharm-codotchi-X.Y.Z.zip filename
 README.md         line ~104  "Current release: vX.Y.Z"
-vscode/README.md  line ~37   vscode-gotchi-X.Y.Z.vsix filename
-vscode/README.md  line ~45   code --install-extension vscode-gotchi-X.Y.Z.vsix
-vscode/README.md  line ~72   "Package → produces vscode-gotchi-X.Y.Z.vsix"
-vscode/README.md  line ~76   code --install-extension vscode-gotchi-X.Y.Z.vsix
-pycharm/README.md line ~46   pycharm-gotchi-X.Y.Z.zip filename
-pycharm/README.md line ~78   pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip
-pycharm/README.md line ~181  pycharm-gotchi-X.Y.Z.zip filename
+vscode/README.md  line ~37   codotchi-X.Y.Z.vsix filename
+vscode/README.md  line ~45   code --install-extension codotchi-X.Y.Z.vsix
+vscode/README.md  line ~72   "Package → produces codotchi-X.Y.Z.vsix"
+vscode/README.md  line ~76   code --install-extension codotchi-X.Y.Z.vsix
+pycharm/README.md line ~46   pycharm-codotchi-X.Y.Z.zip filename
+pycharm/README.md line ~78   pycharm/build/distributions/pycharm-codotchi-X.Y.Z.zip
+pycharm/README.md line ~181  pycharm-codotchi-X.Y.Z.zip filename
 ```
 
 ### 3d. BUGFIXES.md (bug fixes only)
@@ -251,8 +251,8 @@ Work through this list in order. Do not commit until all items are checked.
 1. [ ] Version is identical in `package.json`, `build.gradle.kts`, and `plugin.xml`
 2. [ ] `npm test` passes (run from `vscode/`) — 0 failures
 2b. [ ] `gradlew unitTest --no-configuration-cache` passes (run from `pycharm/`) — 0 failures. **Do NOT run `gradlew test`** — the IntelliJ plugin hijacks it and fails with a JBR file-lock error when any IDE is open. See `git-workflow` skill → "PyCharm unit tests".
-3. [ ] VS Code artifact rebuilt: `vscode/vscode-gotchi-X.Y.Z.vsix` exists and is up to date
-4. [ ] PyCharm artifact rebuilt: `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip` exists and is up to date
+3. [ ] VS Code artifact rebuilt: `vscode/codotchi-X.Y.Z.vsix` exists and is up to date
+4. [ ] PyCharm artifact rebuilt: `pycharm/build/distributions/pycharm-codotchi-X.Y.Z.zip` exists and is up to date
 5. [ ] `VERSIONS.md` updated — row added for every changed file
 6. [ ] `VERSIONS.md` constants block updated if any constant changed value
 7. [ ] `vscode/FEATURES.md` updated — status cells and Notes column reflect current state

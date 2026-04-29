@@ -1,6 +1,6 @@
 # Bug Tracker
 
-All known bugs and their resolution status for the vscode_gotchi project.
+All known bugs and their resolution status for the Codotchi project.
 
 ---
 

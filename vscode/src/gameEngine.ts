@@ -1,7 +1,7 @@
 /**
  * gameEngine.ts
  *
- * Pure-TypeScript game engine for vscode_codotchi.
+ * Pure-TypeScript game engine for codotchi.
  *
  * Replaces the retired Python subprocess architecture.  All game logic lives
  * here as pure functions; side effects (persistence, VS Code API calls) belong

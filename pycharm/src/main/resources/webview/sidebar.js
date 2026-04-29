@@ -1,5 +1,5 @@
 /**
- * sidebar.js — vscode_codotchi webview client
+ * sidebar.js — codotchi webview client
  *
  * Communicates with the extension host via the VS Code webview message API:
  *   - postMessage(cmd)  → sends a command to SidebarProvider

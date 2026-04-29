@@ -23,7 +23,7 @@ This skill is referenced by `release-checklist` (Step 2a) and `git-workflow` (St
 
 | IDE | Current artifact lives in | Archive destination |
 |-----|--------------------------|---------------------|
-| VS Code | `vscode/vscode-codotchi-X.Y.Z.vsix` | `vscode/archive/vsix/` |
+| VS Code | `vscode/codotchi-X.Y.Z.vsix` | `vscode/archive/vsix/` |
 | PyCharm | `pycharm/build/distributions/pycharm-codotchi-X.Y.Z.zip` | `pycharm/archive/` |
 | OpenCode | `opencode-codotchi/opencode-codotchi-X.Y.Z.zip` | `opencode-codotchi/archive/` |
 
@@ -47,7 +47,7 @@ version file in the working directory at a time.
 ### VS Code
 
 ```
-git mv vscode/vscode-codotchi-OLD.vsix vscode/archive/vsix/
+git mv vscode/codotchi-OLD.vsix vscode/archive/vsix/
 ```
 
 Then rebuild:
@@ -100,7 +100,7 @@ This step is part of the release flow in `git-workflow` Step 6. Perform it
 **after** the feature branch is merged to `main` but before pushing `main`.
 
 ```
-copy vscode\vscode-codotchi-X.Y.Z.vsix releases\
+copy vscode\codotchi-X.Y.Z.vsix releases\
 ```
 
 For PyCharm, the zip is in `pycharm/build/distributions/` (the archive step
@@ -170,7 +170,7 @@ Apply the same rule independently to `.vsix` files, `pycharm-codotchi-*.zip` fil
 ### Move command
 
 ```
-git mv releases/vscode-codotchi-OLD.vsix releases/old_releases/
+git mv releases/codotchi-OLD.vsix releases/old_releases/
 git mv releases/pycharm-codotchi-OLD.zip releases/old_releases/
 git mv releases/opencode-codotchi-OLD.zip releases/old_releases/
 ```

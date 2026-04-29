@@ -1,5 +1,5 @@
 {
-  "name": "vscode-gotchi-workspace",
+  "name": "codotchi-workspace",
   "private": true,
   "scripts": {
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#vscode/node_modules\" \"#.venv\"",

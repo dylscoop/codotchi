@@ -1,6 +1,5 @@
 # codotchi — VS Code extension
 
-<img src="media/icon.svg" width="64" height="64" alt="Codotchi icon" />
 <img src="media/monkey_adult_1x.png" height="64" alt="Monkey sprite" />
 <img src="media/dog_adult_1x.png" height="64" alt="Dog sprite" />
 <img src="media/snake_adult_1x.png" height="64" alt="Snake sprite" />
@@ -15,7 +14,7 @@ lives in a sidebar panel, reacts to your coding activity, and needs regular care
 to survive and evolve into its final form. Any support and feedback is much appreciated
 (links at the bottom)!
 
-Your pet is drawn from one of **14 sprite sets**, each based on a zodiac animal,
+Your pet is drawn from one of **14 sprite sets**, 12 of which are based on a zodiac animal,
 assigned to you at random when you start a new game.
 
 ## Features

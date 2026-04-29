@@ -32,14 +32,14 @@ PyCharm via a cross-platform JSON file.
 
 ### VS Code
 
-1. Download `vscode-codotchi-1.14.3.vsix` from the Releases page.
+1. Download `codotchi-1.14.4.vsix` from the Releases page.
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
 Or from the terminal:
 
 ```bash
-code --install-extension vscode-codotchi-1.14.3.vsix
+code --install-extension codotchi-1.14.4.vsix
 ```
 
 ### JetBrains
@@ -161,7 +161,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces vscode-codotchi-1.14.3.vsix
+# produces codotchi-1.14.4.vsix
 ```
 
 ### JetBrains plugin

@@ -6,7 +6,7 @@ Intended audience: AI agents and developers. Provides context to allow agents to
 
 ## Project Overview
 
-vscode_gotchi is a VS Code extension that lets developers raise a virtual pet
+Codotchi is a VS Code extension that lets developers raise a virtual pet
 while they write code, inspired by the original Tamagotchi. It consists of:
 
 - A **TypeScript extension host** — registers a sidebar webview, status bar

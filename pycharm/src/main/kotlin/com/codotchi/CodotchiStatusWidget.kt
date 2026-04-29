@@ -20,7 +20,7 @@ class CodotchiStatusWidget(private val project: Project) : StatusBarWidget, Text
     private var statusBar: StatusBar? = null
 
     @Volatile private var text: String = "🥚 Codotchi"
-    @Volatile private var tooltip: String = "vscode_codotchi"
+    @Volatile private var tooltip: String = "Codotchi"
 
     companion object {
         const val ID = "CodotchiStatusWidget"

@@ -78,7 +78,7 @@ Do **not** rebuild on every individual commit. Rebuild once, as a dedicated
 
 | IDE | Command (run from the given directory) | Output artifact to commit |
 |-----|----------------------------------------|--------------------------|
-| VS Code | `npx @vscode/vsce package` (run from `vscode/`) | `vscode/vscode-gotchi-X.Y.Z.vsix` |
+| VS Code | `npx @vscode/vsce package` (run from `vscode/`) | `vscode/codotchi-X.Y.Z.vsix` |
 | PyCharm | See PyCharm build procedure below | `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip` |
 
 The build commit must come **after** all feature, fix, test, and doc commits on
@@ -184,8 +184,8 @@ When creating a GitHub release for `vX.Y.Z`, the release body must cover **every
 4. Include the artifact filenames so users know exactly what to download:
    ```
    ## Artifacts
-   - `vscode-gotchi-X.Y.Z.vsix` — VS Code extension
-   - `pycharm-gotchi-X.Y.Z.zip` — PyCharm plugin
+   - `codotchi-X.Y.Z.vsix` — VS Code extension
+   - `pycharm-codotchi-X.Y.Z.zip` — PyCharm plugin
    - `opencode-codotchi-X.Y.Z.zip` — OpenCode plugin
    ```
 
@@ -224,8 +224,8 @@ $releaseBody = @"
 - ...
 
 ## Artifacts
-- ``vscode-gotchi-X.Y.Z.vsix`` - VS Code extension
-- ``pycharm-gotchi-X.Y.Z.zip`` - PyCharm plugin
+- ``codotchi-X.Y.Z.vsix`` - VS Code extension
+- ``pycharm-codotchi-X.Y.Z.zip`` - PyCharm plugin
 "@
 
 $payload = @{

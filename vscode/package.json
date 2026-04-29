@@ -1,9 +1,9 @@
 {
-  "name": "vscode-codotchi",
-  "displayName": "vscode_codotchi",
+  "name": "codotchi",
+  "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
   "version": "1.14.4",
-  "publisher": "vscode-codotchi",
+  "publisher": "codotchi",
   "repository": {
     "type": "git",
     "url": "https://github.com/dylscoop/vscode_gotchi.git"
@@ -23,7 +23,7 @@
       "activitybar": [
         {
           "id": "codotchi-sidebar",
-          "title": "vscode_codotchi",
+          "title": "Codotchi",
           "icon": "media/icon.svg"
         }
       ]
@@ -66,13 +66,13 @@
       ]
     },
     "configuration": {
-      "title": "vscode_codotchi",
+      "title": "Codotchi",
       "properties": {
         "codotchi.fontSize": {
           "type": "string",
           "enum": ["small", "normal", "large"],
           "default": "normal",
-          "description": "Font size used in the vscode_codotchi sidebar panel."
+          "description": "Font size used in the Codotchi sidebar panel."
         },
         "codotchi.enableAttentionCalls": {
           "type": "boolean",
