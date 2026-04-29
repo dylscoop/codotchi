@@ -1,6 +1,9 @@
 # codotchi — VS Code extension
 
 <img src="media/icon.svg" width="64" height="64" alt="Codotchi icon" />
+<img src="media/sprite_monkey.svg" height="64" alt="Monkey sprite" />
+<img src="media/sprite_dog.svg" height="64" alt="Dog sprite" />
+<img src="media/sprite_snake.svg" height="64" alt="Snake sprite" />
 
 Grow and raise your personal virtual pet as a VS Code extension while you code.
 
