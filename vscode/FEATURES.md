@@ -13,9 +13,9 @@ Status legend:
 
 | Stat         | Range  | Status | Notes |
 |--------------|--------|--------|-------|
-| Hunger       | 0–100  | `[x]`  | Decays over time; 0 triggers health loss |
-| Happiness    | 0–100  | `[x]`  | Decays over time; 0 triggers health loss |
-| Energy       | 0–100  | `[x]`  | Decays 1/tick while awake; depleted by play; restored during sleep | 0 triggers health loss
+| Hunger       | 0–100  | `[x]`  | Decays −1 every 9s (base); interval shortened proportionally for faster pet types (e.g. bytebug: every 6s); 0 triggers health loss |
+| Happiness    | 0–100  | `[x]`  | Decays −1 every 9s (base); interval shortened for faster types and when weight is extreme (overweight/underweight: every 6s); 0 triggers health loss |
+| Energy       | 0–100  | `[x]`  | Decays −1 every 9s while awake (fixed, no per-type multiplier); depleted by play; restored during sleep; 0 triggers health loss |
 | Health       | 0–100  | `[x]`  | Drops from starvation, unhappiness, sickness |
 | Discipline   | 0–100  | `[x]`  | Affected by praise/scold; feeds into care score |
 | Weight       | 1–99   | `[x]`  | Shown in info line; passive -1/min decay; overweight/skinny thresholds affect happiness rate; upright sprites (classic, monkey, rooster, dragon) and snake stretch wider when overweight; all other quadrupeds show a tapered belly-sag (extra rows below body, legs shift down) instead of width stretch |
