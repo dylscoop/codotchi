@@ -12,7 +12,7 @@ Grow and raise your personal virtual pet as a VS Code extension while you code.
 
 ### Sponsor this project
 
-[![Buy Me a Coffee](../bmc_qr.png)](https://buymeacoffee.com/dylscoop)
+<a href="https://buymeacoffee.com/dylscoop"><img src="../bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
 
 [buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
 

@@ -142,7 +142,7 @@ See the root README for VS Code and PyCharm installation instructions.
 
 ### Sponsor this project
 
-[![Buy Me a Coffee](../bmc_qr.png)](https://buymeacoffee.com/dylscoop)
+<a href="https://buymeacoffee.com/dylscoop"><img src="../bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
 
 [buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
 

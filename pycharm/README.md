@@ -12,7 +12,7 @@ regular care to survive and evolve into its final form.
 
 It shares the same game engine and webview UI as the
 [VS Code extension](../vscode/README.md) in this repository.
-
+A
 ## Features
 
 - **Tool window pet panel** — pixel art pet with animated sprites, stat bars,
@@ -151,7 +151,7 @@ Once installed and the IDE has restarted:
 
 ### Sponsor this project
 
-[![Buy Me a Coffee](../bmc_qr.png)](https://buymeacoffee.com/dylscoop)
+<a href="https://buymeacoffee.com/dylscoop"><img src="../bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
 
 [buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
 
