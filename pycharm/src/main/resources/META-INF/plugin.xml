@@ -1,48 +1,120 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>1.15.0</version>
+    <version>1.15.1</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
-<p>Raise a virtual pixel-art pet that lives inside your JetBrains IDE. Feed it, play with it, and keep it happy while you code — neglect it and it will get sick and eventually die.</p>
+<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/vscode/media/monkey_adult_1x.png" height="64" alt="Monkey sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/vscode/media/dog_adult_1x.png" height="64" alt="Dog sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/vscode/media/snake_adult_1x.png" height="64" alt="Snake sprite" />
 
-<h3>Features</h3>
+<p>Grow and raise your personal virtual pet as a JetBrains plugin while you code.</p>
+
+<h2>Overview</h2>
+
+<p>codotchi is a JetBrains plugin that lets you raise a digital pet inspired by the original Tamagotchi. Your pet
+lives in a tool window panel, reacts to your coding activity, and needs regular care to survive and evolve into
+its final form. Any support and feedback is much appreciated!</p>
+
+<p>Your pet is drawn from one of <b>14 sprite sets</b>, 12 of which are based on a zodiac animal, assigned to you
+at random when you start a new game.</p>
+
+<h2>Features</h2>
 <ul>
-  <li>Persistent pet that survives IDE restarts with offline stat decay</li>
-  <li>6 life stages: Egg → Baby → Child → Teen → Adult → Senior</li>
-  <li>3 evolution tiers per stage (Best / Mid / Low) based on how well you care for your pet</li>
-  <li>Care quality score tracks hunger, happiness, discipline, cleanliness, and health over time</li>
-  <li>Coding activity rewards: your pet gets happier and more disciplined when you type</li>
-  <li>High score tracking: records your best run (age, stage, pet type) across all pets</li>
-  <li>Status bar widget showing your pet's current mood at a glance</li>
-  <li>Settings page — click the ⚙ gear icon in the Codotchi tool window, or go to Settings → Tools → Codotchi — to adjust font size, text colour, attention-call behaviour, and idle thresholds</li>
+  <li><b>Tool window pet panel</b> — pixel art pet with animated sprites, stat bars, and action buttons rendered in a JCEF webview</li>
+  <li><b>Classic Tamagotchi mechanics</b> — hunger, happiness, discipline, energy, health, weight, and age stats, all decaying in real time</li>
+  <li><b>Full care system</b> — feed meals and snacks, play mini-games, put pet to sleep, clean droppings, give medicine, scold and praise</li>
+  <li><b>Life cycle &amp; evolution</b> — egg → baby → child → teen → adult → senior, with the final character determined by how well you cared for your pet</li>
+  <li><b>Pet customisation</b> — name your pet, choose a pet type, and pick a colour palette on first launch</li>
+  <li><b>Sickness &amp; death</b> — neglect your pet and it gets sick; leave it untreated and it dies</li>
+  <li><b>OpenCode integration</b> — your pet lives in the terminal too; use /codotchi commands to care for it alongside your AI coding session, with shared state across VS Code, PyCharm, and OpenCode</li>
+  <li><b>Status bar integration</b> — pet name and stage always visible in the IDE status bar</li>
+  <li><b>Persistent state</b> — pet survives IDE restarts; offline time is accounted for with capped stat decay</li>
+  <li><b>Configurable</b> — customise font size, pet size, colours, idle thresholds, attention call behaviour, and more via <b>Settings → Tools → Codotchi</b></li>
 </ul>
 
-<h3>Care Actions</h3>
+<h2>Requirements</h2>
 <ul>
-  <li><b>Feed Meal</b> — restores hunger (up to 3 meals per wake cycle)</li>
-  <li><b>Feed Snack</b> — boosts happiness and hunger (up to 3 snacks per wake cycle; too many snacks cause sickness)</li>
-  <li><b>Play</b> — raises happiness and burns energy (requires at least 25 energy)</li>
-  <li><b>Sleep / Wake</b> — sleeping restores energy and heals HP faster; the pet auto-wakes when fully rested</li>
-  <li><b>Clean</b> — removes droppings (too many droppings cause sickness)</li>
-  <li><b>Medicine</b> — cures sickness after 3 doses</li>
-  <li><b>Scold / Praise</b> — both raise discipline</li>
+  <li>JetBrains IDE version <b>2024.1 or later</b> (IntelliJ IDEA, PyCharm, WebStorm, GoLand, Rider, etc.)</li>
+  <li>JCEF must be enabled in your IDE (it is on by default in 2024.1+)</li>
 </ul>
 
-<h3>Pet Types</h3>
-<ul>
-  <li><b>Codeling</b> — balanced all-rounder with moderate stats and a predictable poop schedule</li>
-  <li><b>Bytebug</b> — fast hunger decay and very unpredictable bathroom habits; energetic energy regen</li>
-  <li><b>Pixelpup</b> — happiness decays faster, needs frequent play; irregular poop timing</li>
-  <li><b>Shellscript</b> — slow metabolism, high base health, near-clockwork poop schedule</li>
-</ul>
+<h2>Installation</h2>
+<p>See the <a href="https://github.com/dylscoop/codotchi">GitHub repository</a> for full installation instructions,
+pre-built releases, and the OpenCode integration download.</p>
 
-<h3>Getting Started</h3>
-<p>Open the <b>Codotchi</b> tool window (right-hand panel) and click <b>New Pet</b> to hatch your first egg.
-Choose a pet type, pick a name, and start coding! Keep an eye on the status bar widget for a quick
-mood summary. Click the <b>⚙ gear icon</b> in the Codotchi tool window title bar (or go to Settings → Tools → Codotchi)
-to adjust display size, colours, attention-call timing, and idle thresholds.</p>
+<h2>Using the plugin</h2>
+<p>Once installed and the IDE has restarted:</p>
+<ol>
+  <li>Click <b>Codotchi</b> in the right-hand tool window bar, or go to <b>View → Tool Windows → Codotchi</b>.</li>
+  <li>On first launch the <b>New Codotchi</b> setup screen appears:
+    <ul>
+      <li>Enter a name (up to 16 characters).</li>
+      <li>Choose a <b>pet type</b> — each has different stat decay rates.</li>
+      <li>Choose a <b>colour palette</b> — affects the sprite's colour scheme.</li>
+      <li>Click <b>Hatch!</b></li>
+    </ul>
+  </li>
+  <li>Your pet now lives in the tool window. Care for it using the action buttons:
+    <b>Feed</b>, <b>Snack</b>, <b>Play</b>, <b>Pat</b>, <b>Sleep</b>, <b>Clean</b>, <b>Medicine</b>,
+    <b>Praise</b>, and <b>Scold</b>.</li>
+  <li>Your pet's state is saved automatically and restored the next time the IDE opens. Stat decay while the IDE
+    is closed is capped at 60% of each maximum so a long break won't instantly kill your pet.</li>
+  <li>Your pet's name and current life stage are always visible in the <b>status bar</b> at the bottom of the IDE window.</li>
+</ol>
+
+<h2>Actions</h2>
+<table>
+  <tr><th>Action</th><th>What it does</th></tr>
+  <tr><td><b>Feed</b></td><td>Gives your pet a full meal. Restores a large chunk of hunger. Limited to 3 meals per wake cycle — overfeeding past that has no effect.</td></tr>
+  <tr><td><b>Snack</b></td><td>Gives a small treat. Boosts happiness instead of hunger, but adds more weight. More than 3 snacks in a row will make your pet sick.</td></tr>
+  <tr><td><b>Play</b></td><td>Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning gives +15–25 happiness; losing applies a −5 penalty. Costs 25 energy — your pet can't play if exhausted.</td></tr>
+  <tr><td><b>Pat</b></td><td>Gives your pet a gentle pat. Boosts happiness by +10. Costs 20 energy. Accessed via the Play menu. Cannot be used while your pet is sleeping or exhausted.</td></tr>
+  <tr><td><b>Sleep</b></td><td>Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy.</td></tr>
+  <tr><td><b>Clean</b></td><td>Clears all droppings from the screen. Pets produce droppings roughly every 20 minutes. Leaving 3 or more uncleaned will make your pet sick.</td></tr>
+  <tr><td><b>Medicine</b></td><td>Treats sickness. Requires 3 doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss.</td></tr>
+  <tr><td><b>Praise</b></td><td>Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution.</td></tr>
+  <tr><td><b>Scold</b></td><td>Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline.</td></tr>
+</table>
+
+<p><b>Tip:</b> keep all four stat bars (Hunger, Happy, Energy, Health) out of the red to maximise your care score,
+which determines which character your pet evolves into at each life stage.</p>
+
+<h2>Mini-games</h2>
+<p>Clicking <b>Play</b> opens the game picker (requires 25 energy). Three games are available:</p>
+<table>
+  <tr><th>Game</th><th>How to win</th></tr>
+  <tr><td><b>Left / Right</b></td><td>3 rounds. The pet hides behind one of two doors. You have 3 seconds per round to pick the correct door. Win 2 out of 3 rounds to win.</td></tr>
+  <tr><td><b>Higher or Lower</b></td><td>5 rounds. A number is shown (1–100). Guess whether the next number will be higher or lower. Get 4 out of 5 correct to win.</td></tr>
+  <tr><td><b>Coin Flip</b></td><td>Call Heads or Tails. A single coin flip decides the outcome.</td></tr>
+</table>
+
+<h2>Pet Types</h2>
+<table>
+  <tr><th>Type</th><th>Tendency</th></tr>
+  <tr><td><b>Codeling</b></td><td>Balanced across all stats</td></tr>
+  <tr><td><b>Bytebug</b></td><td>High energy, hunger decays faster</td></tr>
+  <tr><td><b>Pixelpup</b></td><td>High happiness, but happiness decays faster</td></tr>
+  <tr><td><b>Shellscript</b></td><td>Slow evolver, high base health</td></tr>
+</table>
+<p>Each pet animal has its own sprite set.</p>
+
+<hr/>
+<p><em>"Grow your best pet by writing your best code."</em></p>
+<hr/>
+
+<h2>Support</h2>
+<p><b>GitHub:</b> <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotchi</a></p>
+
+<h3>Sponsor this project</h3>
+<p><a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code" /></a></p>
+<p><a href="https://buymeacoffee.com/dylscoop">buymeacoffee.com/dylscoop</a></p>
+<p><a href="https://liberapay.com/dylscoop">liberapay.com/dylscoop</a></p>
+
+<h3>Codotchi Sprites</h3>
+<p>Want to see a new sprite in the game? Send a drawn sprite or request one to be added — a passcode will be given every time one gets implemented.</p>
+<p><a href="https://github.com/dylscoop/codotchi/issues">Open a sprite request on GitHub Issues</a></p>
     ]]></description>
 
     <idea-version since-build="241"/>
