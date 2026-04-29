@@ -572,6 +572,8 @@ Status: `[x]`
 | State migration when PetState schema changes | `[ ]` | Add a `schemaVersion` field |
 | Export / import pet via JSON file | `[ ]` | For sharing or backup |
 | Cross-IDE shared state bridge | `[x]` | VS Code, PyCharm, and OpenCode plugin all read/write `~/.config/gotchi/state.json` (Windows: `%APPDATA%/gotchi/state.json`); on load the copy with the newer `savedAt` timestamp wins |
+| Manual refresh button (multi-window sync) | `[x]` | `$(refresh)` button in VS Code view/title bar and `AllIcons.Actions.Refresh` in PyCharm tool window title; calls `reloadFromDisk()` — reads shared file, applies offline decay, pushes to UI without saving (inactive window never overwrites active ticker) |
+| Automatic file-watcher sync (multi-window) | `[x]` | VS Code: `fs.watch` on shared state file restarts automatically via 30s health-check; PyCharm: JVM `WatchService` on daemon thread with 200ms debounce; both skip reload when this window is the active ticker |
 | OpenCode `/codotchi` slash command | `[x]` | Renamed from `/gotchi` in v0.10.1; defined in `.opencode/commands/codotchi.md` and `opencode-codotchi/commands/codotchi.md`; supports `status`, `feed`, `pat`, `sleep`, `clean`, `medicine`, `show`, `hide`, `new_game` |
 | OpenCode npm package (`opencode-codotchi`) | `[x]` | Globally-installable distribution of the OpenCode plugin; add to `~/.config/opencode/opencode.json` and run `npx opencode-codotchi --install` |
 | OpenCode ASCII art in every tool response | `[x]` | When enabled via `/codotchi show`, the pet's ASCII sprite + contextual speech bubble (mood + session coding stats) appears in every tool response; `terminalEnabled` flag persists across restarts |

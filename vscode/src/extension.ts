@@ -413,9 +413,20 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }, 10_000);
 
+    // Periodic health-check: fs.watch on Windows can silently stop firing
+    // (e.g. when the file is replaced atomically by another process). Re-create
+    // the watcher every 30 s if it has gone missing so the inactive window
+    // eventually recovers without requiring a window-focus event.
+    const watchHealthCheck = setInterval(() => {
+      if (fsWatcher === undefined) {
+        startWatcher();
+      }
+    }, 30_000);
+
     context.subscriptions.push({
       dispose(): void {
         clearInterval(watchBootstrap);
+        clearInterval(watchHealthCheck);
         if (syncDebounce !== undefined) { clearTimeout(syncDebounce); }
         fsWatcher?.close();
         fsWatcher = undefined;
@@ -453,6 +464,17 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       SpritePreviewPanel.open(context);
+    })
+  );
+
+  // Manual refresh: re-read the shared state file and push to the sidebar.
+  // Useful when fs.watch fails to fire (e.g. multiple VS Code windows on
+  // Windows where atomic-replace writes may not trigger the watcher reliably).
+  // Unlike the fs.watch handler this runs unconditionally — the user explicitly
+  // asked for a sync, so we always reload even if this window is the ticker.
+  context.subscriptions.push(
+    vscode.commands.registerCommand("codotchi.refresh", () => {
+      reloadAndRefreshUI();
     })
   );
 

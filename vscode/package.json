@@ -2,7 +2,7 @@
   "name": "vscode-codotchi",
   "displayName": "vscode_codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "1.14.3",
+  "version": "1.14.4",
   "publisher": "vscode-codotchi",
   "repository": {
     "type": "git",
@@ -49,8 +49,22 @@
         {
           "command": "codotchi.openSpritePreview",
           "title": "Codotchi: Open Sprite Preview (Dev)"
-      }
+        },
+        {
+          "command": "codotchi.refresh",
+          "title": "Refresh",
+          "icon": "$(refresh)"
+        }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "codotchi.refresh",
+          "when": "view == codotchiView",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "vscode_codotchi",
       "properties": {

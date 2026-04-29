@@ -1,6 +1,22 @@
 # Version History
 
-## v1.14.3 — current
+## v1.14.4 — current
+
+### Changes from v1.14.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.14.3` → `1.14.4`; registered `codotchi.refresh` command with `$(refresh)` icon; added `menus.view/title` entry scoped to `codotchiView` |
+| `pycharm/build.gradle.kts` | Version bumped `1.14.3` → `1.14.4` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.14.3` → `1.14.4`; registered `CodotchiRefreshAction` and `CodotchiToolWindowToolbar` group |
+| `vscode/src/extension.ts` | Registered `codotchi.refresh` command handler (calls `reloadAndRefreshUI()` unconditionally); added 30s health-check interval to restart dead `fs.watch` watcher |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiRefreshAction.kt` | New file — `AnAction` using `AllIcons.Actions.Refresh` that calls `CodotchiPlugin.reloadFromDisk()` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | Added `reloadFromDisk()` — reads shared file, applies offline decay, pushes to UI without saving (mirrors VS Code BUGFIX-050); added JVM `WatchService` file watcher daemon thread with 200ms debounce and ticker guard; added `startFileWatcher()` / `stopFileWatcher()` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt` | Added `loadSharedFileForSync()` (public wrapper for `loadFromSharedFile()`); added `getSharedStateDir()` returning parent directory as `Path` for use by WatchService |
+
+---
+
+## v1.14.3 — previous
 
 ### Changes from v1.14.2
 

@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>1.14.3</version>
+    <version>1.14.4</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -99,6 +99,20 @@ to adjust display size, colours, attention-call timing, and idle thresholds.</p>
                 description="Open the sprite preview gallery (developer mode only)">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
+
+        <!-- Refresh button in the Codotchi tool window title bar -->
+        <action id="com.codotchi.Refresh"
+                class="com.codotchi.CodotchiRefreshAction"
+                text="Refresh"
+                description="Reload pet state from disk (sync with other open windows)">
+            <add-to-group group-id="CodotchiToolWindowToolbar" anchor="first"/>
+        </action>
+
+        <!-- Tool window toolbar group (shown in the title bar of the Codotchi panel) -->
+        <group id="CodotchiToolWindowToolbar"
+               class="com.intellij.openapi.actionSystem.DefaultActionGroup">
+            <add-to-group group-id="ToolWindowToolbar" anchor="last"/>
+        </group>
     </actions>
 
     <applicationListeners>
