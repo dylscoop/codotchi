@@ -10,6 +10,9 @@ lives in a tool window panel, reacts to your coding activity, and needs regular
 care to survive and evolve into its final form. Any support and feedback is much
 appreciated (links at the bottom)!
 
+Your pet is drawn from one of **14 sprite sets**, each based on a zodiac animal,
+assigned to you at random when you start a new game.
+
 ## Features
 
 - **Tool window pet panel** — pixel art pet with animated sprites, stat bars,
