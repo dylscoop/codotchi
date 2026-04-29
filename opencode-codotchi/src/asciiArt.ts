@@ -70,7 +70,7 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
       "  /  o  o  \\ ",
       " |    ~    | ",
       " |         | ",
-      "  \\._____./ ",
+      "  \\._____./  ",
       "             ",
     ],
     happy: [
@@ -78,7 +78,7 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
       "  /  ^  ^  \\ ",
       " |    u    | ",
       " |         | ",
-      "  \\._____./ ",
+      "  \\._____./  ",
       "             ",
     ],
     sad: [
@@ -86,7 +86,7 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
       "  /  T  T  \\ ",
       " |    _    | ",
       " |         | ",
-      "  \\._____./ ",
+      "  \\._____./  ",
       "             ",
     ],
     sleeping: [
@@ -94,7 +94,7 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
       "  /  -  -  \\ ",
       " |   ___   | ",
       " |  (zzz)  | ",
-      "  \\._____./ ",
+      "  \\._____./  ",
       "             ",
     ],
     sick: [
@@ -102,7 +102,7 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
       "  /  @  @  \\ ",
       " |    x    | ",
       " |  ~~~~~  | ",
-      "  \\._____./ ",
+      "  \\._____./  ",
       "             ",
     ],
   },
@@ -533,11 +533,15 @@ export function buildSpeechBubble(
   const bubble = buildBubble(message);
   const stageColour = STAGE_COLOURS[stage] ?? FG_WHITE;
 
+  // Normalise all art lines to the same visual width before any padding or colouring.
+  // This guards against art blocks where individual lines are shorter than line 0.
+  const artWidth = Math.max(...art.map((l) => l.length), 1);
+  const artNorm  = art.map((l) => l.padEnd(artWidth));
+
   // Pad art to bubble height (or vice versa)
-  const artWidth = (art[0] ?? "").length;
-  const maxLines = Math.max(art.length, bubble.length);
-  const artPadded    = [...art,    ...Array(maxLines - art.length).fill(" ".repeat(artWidth))];
-  const bubblePadded = [...bubble, ...Array(maxLines - bubble.length).fill("")];
+  const maxLines = Math.max(artNorm.length, bubble.length);
+  const artPadded    = [...artNorm, ...Array(maxLines - artNorm.length).fill(" ".repeat(artWidth))];
+  const bubblePadded = [...bubble,  ...Array(maxLines - bubble.length).fill("")];
 
   // Colour the art lines
   const artColoured = artPadded.map((l) => colour(l, stageColour));
@@ -611,8 +615,9 @@ export function buildStatusBlock(state: {
     `${FG_GRAY}Poops   : ${RESET}${state.poops > 0 ? colour(String(state.poops), FG_YELLOW) : "0"}`,
   ];
 
-  const maxH = Math.max(art.length, headerLines.length);
-  const artPad = [...art, ...Array(maxH - art.length).fill(" ".repeat((art[0] ?? "").length))];
+  const maxH   = Math.max(art.length, headerLines.length);
+  const artW   = Math.max(...art.map((l) => l.length), 1);
+  const artPad = [...art.map((l) => l.padEnd(artW)), ...Array(maxH - art.length).fill(" ".repeat(artW))];
   const hdrPad = [...headerLines, ...Array(maxH - headerLines.length).fill("")];
 
   const lines: string[] = [RESET, ""];
