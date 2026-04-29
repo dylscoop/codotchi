@@ -197,6 +197,12 @@ let terminalEnabled = false;
 
 let sessionFilesEdited = 0;
 let sessionStartMs = Date.now();
+/** Unix ms of the last file.edited event; used to detect long idle stretches. */
+let lastFileEditMs = 0;
+/** Number of user messages sent this session; used for prompting-a-lot commentary. */
+let sessionUserMessages = 0;
+/** True once the "can I help?" offer has been shown this session — fires only once. */
+let hasOfferedHelp = false;
 
 // ---------------------------------------------------------------------------
 // Todo tracking â€” detect status transitions for celebratory notifications
@@ -213,6 +219,8 @@ let prevTodos: Map<string, string> = new Map();
  *  last session.idle. The notification fires on the NEXT session.idle so we
  *  don't interrupt mid-burst. */
 let pendingDiffSinceIdle = false;
+/** True when the current branch is main, master, release/x, or prod — triggers cautious diff commentary. */
+let isOnProdBranch = false;
 
 // ---------------------------------------------------------------------------
 // Suppress text.complete art for one cycle after a codotchi tool call.
@@ -260,7 +268,7 @@ function artHeader(): string {
   return active
     .filter(p => p.state.alive)
     .map(p => {
-      const speech = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs);
+      const speech = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch);
       return buildSpeechBubble(p.state.stage, p.state.mood, speech, p.state.name, p.state.spriteType);
     })
     .join("\n") + "\n";
@@ -390,13 +398,13 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
         break;
       case "died":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sad", "Goodbye... take care of the next one.", next.name, next.spriteType)
-          : `[${next.name}] Goodbye... take care of the next one.`);
+          ? buildSpeechBubble(next.stage, "sad", pickRandom(["Goodbye... take care of the next one.", "I had a good run. See you next time."]), next.name, next.spriteType)
+          : `[${next.name}] ${pickRandom(["Goodbye... take care of the next one.", "I had a good run. See you next time."])}`);
         break;
       case "died_of_old_age":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sleeping", "I lived a full life. Thank you for everything.", next.name, next.spriteType)
-          : `[${next.name}] I lived a full life. Thank you for everything.`);
+          ? buildSpeechBubble(next.stage, "sleeping", pickRandom(["I lived a full life. Thank you for everything.", "What a journey."]), next.name, next.spriteType)
+          : `[${next.name}] ${pickRandom(["I lived a full life. Thank you for everything.", "What a journey."])}`);
         break;
       case "evolved_to_baby":
       case "evolved_to_child":
@@ -480,7 +488,7 @@ export const plugin: Plugin = async (_ctx) => {
       s.hunger < 30 ? "Pretty hungry though." :
       s.sick        ? "Not feeling great."    :
       s.energy < 20 ? "A bit tired."          :
-      "Let's get to work."
+      pickRandom(["Let's get to work.", "Let's build something."])
     }`;
     queueNotification(terminalEnabled
       ? buildSpeechBubble(s.stage, s.mood, greetMsg, s.name, s.spriteType)
@@ -685,7 +693,7 @@ export const plugin: Plugin = async (_ctx) => {
             setPetState(p.ide, next);
             saveIDEState(p.ide);
             sleepLines.push((terminalEnabled
-              ? buildSpeechBubble(next.stage, next.mood, already ? "Already asleep..." : "Goodnight!", next.name, next.spriteType) + "\n"
+              ? buildSpeechBubble(next.stage, next.mood, already ? "Already snoozing. Zzzz..." : "Goodnight!", next.name, next.spriteType) + "\n"
               : "") + (already
               ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${next.name} is already sleeping.`
               : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${next.name} is now sleeping. Energy will recharge.`));
@@ -704,7 +712,7 @@ export const plugin: Plugin = async (_ctx) => {
               ? `${next.name}'s area is already clean.`
               : `Cleaned up after ${next.name}.`);
             cleanLines.push((terminalEnabled
-              ? buildSpeechBubble(next.stage, next.mood, already ? "All clean!" : "Thanks for cleaning!", next.name, next.spriteType) + "\n"
+              ? buildSpeechBubble(next.stage, next.mood, already ? "Already spotless!" : "Thanks for cleaning!", next.name, next.spriteType) + "\n"
               : "") + toast + "\n" + (already
               ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Nothing to clean — ${next.name}'s area is already spotless.`
               : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Cleaned up ${next.name}'s mess.`));
@@ -767,7 +775,7 @@ export const plugin: Plugin = async (_ctx) => {
 
       const bubbles = livePets.map(p => {
         const s = p.state;
-        const msg = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs);
+        const msg = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch);
         return stripAnsi(buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType));
       });
       output.text = output.text + "\n\n```\n" + bubbles.join("\n\n") + "\n```";
@@ -778,6 +786,7 @@ export const plugin: Plugin = async (_ctx) => {
       if (event.type === "file.edited") {
         isIdle = false;
         sessionFilesEdited += 1;
+        lastFileEditMs = Date.now();
         const nowMs = Date.now();
         if (nowMs - lastCodeActivityMs >= CODE_ACTIVITY_THROTTLE_SECONDS * 1_000) {
           lastCodeActivityMs = nowMs;
@@ -792,7 +801,7 @@ export const plugin: Plugin = async (_ctx) => {
         return;
       }
 
-      // session.idle → flag idle; fire diff notification if pending
+      // session.idle → flag idle; fire diff notification if pending; offer help if prompting a lot
       if (event.type === "session.idle") {
         isIdle = true;
         saveIDEState("vscode");
@@ -805,6 +814,17 @@ export const plugin: Plugin = async (_ctx) => {
             queueNotification(terminalEnabled
               ? buildSpeechBubble(p.state.stage, p.state.mood, phrase, p.state.name, p.state.spriteType)
               : `[${p.state.name}] ${phrase}`);
+          }
+        }
+        if (sessionUserMessages >= 10 && !hasOfferedHelp) {
+          hasOfferedHelp = true;
+          const livePets = getActivePets().filter(p => p.state.alive);
+          const rep = livePets[0];
+          const phrase = "You've sent a lot of messages. Want me to take a bigger task off your hands?";
+          if (rep) {
+            queueNotification(terminalEnabled
+              ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType)
+              : `[${rep.state.name}] ${phrase}`);
           }
         }
         return;
@@ -854,11 +874,14 @@ export const plugin: Plugin = async (_ctx) => {
         return;
       }
 
-      // vcs.branch.updated → comment on branch switches
+      // vcs.branch.updated → comment on branch switches + track prod branch
       if (event.type === "vcs.branch.updated") {
         const branch = event.properties.branch;
         if (branch) {
-          const phrase = `Switched to ${branch}. New mission?`;
+          isOnProdBranch = /^(main|master|prod.*)$/.test(branch) || /^release\//.test(branch);
+          const phrase = isOnProdBranch
+            ? `On ${branch}. Be careful — this is production.`
+            : `Switched to ${branch}. New mission?`;
           const rep = getActivePets().filter(p => p.state.alive)[0];
           queueNotification(terminalEnabled && rep
             ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType)
@@ -879,7 +902,7 @@ export const plugin: Plugin = async (_ctx) => {
             ? `Running on empty. Let me rest (/codotchi sleep)`
             : s.happiness < 30
             ? `Been a while. Pat me? (/codotchi pat)`
-            : `Hey. Ready when you are.`;
+            : `Hey. Let's see what we build today.`;
           queueNotification(terminalEnabled
             ? buildSpeechBubble(s.stage, s.mood, greet, s.name, s.spriteType)
             : `[${s.name}] ${greet}`);
@@ -890,6 +913,24 @@ export const plugin: Plugin = async (_ctx) => {
       // session.status → resume from idle
       if (event.type === "session.status") {
         isIdle = false;
+        return;
+      }
+
+      // session.created → reset all per-session counters
+      if (event.type === "session.created") {
+        sessionFilesEdited = 0;
+        sessionStartMs = Date.now();
+        lastFileEditMs = 0;
+        sessionUserMessages = 0;
+        hasOfferedHelp = false;
+        return;
+      }
+
+      // message.updated → count user messages for prompting-a-lot commentary
+      if (event.type === "message.updated") {
+        if (event.properties?.info?.role === "user") {
+          sessionUserMessages += 1;
+        }
         return;
       }
     },

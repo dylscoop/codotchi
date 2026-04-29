@@ -1,6 +1,18 @@
 # Version History
 
-## v1.14.4 — current
+## v1.15.0 — current
+
+### Changes from v1.14.4
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/package.json` | Version bumped `1.14.1` → `1.15.0` |
+| `opencode-codotchi/src/asciiArt.ts` | `buildContextualSpeech`: extended signature with `timeSinceLastEditMs`, `sessionUserMessages`, `isOnProdBranch`; added idle (30m/60m), prompting (5/10/20 msgs), and prod-branch contextual override tiers; randomised first-file phrase (D1) and happy mood phrase (H2); added `TODO_COMPLETE_PHRASES` entries F1/F2; added `SESSION_DIFF_PHRASES` entry G1 |
+| `opencode-codotchi/src/index.ts` | Added `lastFileEditMs`, `sessionUserMessages`, `hasOfferedHelp`, `isOnProdBranch` session vars; `file.edited` now tracks `lastFileEditMs`; `session.created` resets all session counters; `message.updated` increments `sessionUserMessages` on user role; `vcs.branch.updated` sets `isOnProdBranch` and fires prod-aware branch message (C2); `session.idle` fires one-time help offer when `sessionUserMessages >= 10`; updated both `buildContextualSpeech` call sites to pass new args; applied message changes B2, B3, C1, E1, E2 |
+
+---
+
+## v1.14.4 — previous
 
 ### Changes from v1.14.3
 
