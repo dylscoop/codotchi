@@ -1,7 +1,7 @@
 # opencode-codotchi
 
 A virtual Tamagotchi-style pet that lives inside [OpenCode](https://opencode.ai).
-Raises your gotchi in the terminal alongside your coding session.
+Raises your codotchi in the terminal alongside your coding session.
 
 ## Features
 
@@ -10,8 +10,8 @@ Raises your gotchi in the terminal alongside your coding session.
 - **`/codotchi` slash command** — 10 actions: `status`, `feed`, `snack`, `play`, `pat`, `sleep`, `wake`, `clean`, `medicine`, `new_game`
 - **ASCII art renderer** — 30 frames (6 stages × 5 moods), ANSI-coloured speech bubbles, status bars, toasts
 - **Cross-IDE shared state** — reads from / writes to the same JSON file used by the VS Code and PyCharm extensions:
-  - Linux/macOS: `~/.config/gotchi/state.json`
-  - Windows: `%APPDATA%\gotchi\state.json`
+  - Linux/macOS: `~/.config/codotchi/state.json`
+  - Windows: `%APPDATA%\codotchi\state.json`
 
 ## Global install
 
@@ -133,3 +133,25 @@ node scripts/package.js
 
 This package is part of the [codotchi](https://github.com/dylscoop/codotchi) monorepo.
 See the root README for VS Code and PyCharm installation instructions.
+
+---
+
+## Support
+
+**GitHub:** [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi)
+
+### Sponsor this project
+
+<a href="https://buymeacoffee.com/dylscoop"><img src="../bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
+
+[buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
+
+[![Liberapay](https://img.shields.io/badge/Liberapay-dylscoop-yellow)](https://liberapay.com/dylscoop)
+
+[liberapay.com/dylscoop](https://liberapay.com/dylscoop)
+
+### Codotchi Sprites
+
+Want to see a new sprite in the game? Send a drawn sprite or request one to be added — a passcode will be given every time one gets implemented.
+
+[Open a sprite request on GitHub Issues](https://github.com/dylscoop/codotchi/issues)

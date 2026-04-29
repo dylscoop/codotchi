@@ -12,14 +12,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="{{cssUri}}" />
   {{customColorsStyle}}
-  <title>vscode_codotchi</title>
+  <title>Codotchi</title>
 </head>
 <body class="{{fontSizeClass}}" data-reduced-motion="{{reducedMotion}}" data-idle-reset-mouse="{{idleResetOnMouseMovement}}" data-pet-size="{{petSize}}">
   <!-- ── New-game setup screen ── -->
   <section id="setup-screen" class="screen" aria-label="New game setup">
     <button id="btn-continue" class="action-btn primary hidden">Continue</button>
 
-    <h1 class="screen-title">New Gotchi</h1>
+    <h1 class="screen-title">New Codotchi</h1>
 
     <div id="setup-high-score" class="setup-high-score hidden">
       <p class="high-score-title">Best Run</p>
@@ -39,7 +39,7 @@
       type="text"
       maxlength="16"
       placeholder="Enter a name…"
-      value="Gotchi"
+      value="Codotchi"
     />
 
     <label class="field-label">Type</label>
@@ -141,7 +141,7 @@
         <!-- Panel 1: Left / Right game (doors drawn on #lr-canvas in #sprite-container) -->
         <div id="mg-left-right" class="mg-panel hidden">
           <p class="mg-title">Left / Right</p>
-          <p class="mg-subtitle">Which door is the Gotchi behind?</p>
+          <p class="mg-subtitle">Which door is the Codotchi behind?</p>
           <p id="lr-countdown" class="mg-countdown">3</p>
           <div class="mg-btn-row">
             <button class="action-btn mg-dir-btn" id="btn-lr-left">Left</button>
@@ -193,7 +193,7 @@
 
   <!-- ── Dead screen ── -->
   <section id="dead-screen" class="screen hidden" aria-label="Pet died">
-    <p class="dead-title">Your Gotchi passed away.</p>
+    <p class="dead-title">Your Codotchi passed away.</p>
     <p id="dead-stats" class="dead-stats"></p>
     <p id="dead-time" class="dead-time"></p>
     <ul id="dead-event-log" class="dead-event-log" aria-label="Final event log"></ul>

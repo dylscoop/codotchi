@@ -276,7 +276,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val nextPoop = r.nextPoopIntervalTicks ?: sampleNextPoopInterval(petType)
 
         val partial = PetState(
-            name                  = r.name                  ?: "Gotchi",
+                    name                  = r.name                  ?: "Codotchi",
             petType               = petType,
             color                 = r.color                 ?: "neon",
             spriteType            = r.spriteType            ?: "classic",

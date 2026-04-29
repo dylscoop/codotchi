@@ -6,6 +6,35 @@
 
 | File | What changed |
 |------|-------------|
+| `vscode/package.json` | `name` → `codotchi`; `displayName` → `Codotchi`; `publisher` → `codotchi`; activity bar title and settings title → `Codotchi`; font size description updated |
+| `vscode/src/gameEngine.ts` | Updated file comment: `vscode_codotchi` → `codotchi` |
+| `vscode/media/sidebar.js` | Updated file comment: `vscode_codotchi` → `codotchi` |
+| `vscode/media/sidebar.html` | `<title>` → `Codotchi` |
+| `vscode/README.md` | Removed `icon.svg` img tag (SVG blocked by vsce); vsix filename references updated to `codotchi-X.Y.Z.vsix` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiStatusWidget.kt` | Default tooltip `vscode_codotchi` → `Codotchi` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Updated file comment: `vscode_codotchi` → `codotchi` |
+| `pycharm/src/main/resources/webview/sidebar.html` | `<title>` → `Codotchi` |
+| `.opencode/plugins/gameEngine.ts` | Updated file comment: `vscode_gotchi` → `codotchi` |
+| `opencode-codotchi/src/gameEngine.ts` | Updated file comment: `vscode_gotchi` → `codotchi` |
+| `README.md` | vsix install filenames updated to `codotchi-1.14.4.vsix` |
+| `package.json` | Workspace `name` → `codotchi-workspace` |
+| `.github/copilot-instructions.md` | `vscode_gotchi` → `Codotchi` in project overview |
+| `.github/AGENTS.md` | PyCharm output filename updated to `pycharm-codotchi-X.Y.Z.zip` |
+| `developer_notes/BUGFIXES.md` | Project name in header → `Codotchi` |
+| `developer_notes/DEV_NOTES.md` | `vscode_gotchi` → `Codotchi` |
+| `.opencode/skills/release-management/SKILL.md` | vsix filename references updated to `codotchi-X.Y.Z.vsix` |
+| `.opencode/skills/release-checklist/SKILL.md` | vsix filename references updated to `codotchi-X.Y.Z.vsix` |
+| `.opencode/skills/git-workflow/SKILL.md` | vsix filename references updated to `codotchi-X.Y.Z.vsix` |
+| `vscode/archive/vsix/vscode-codotchi-1.14.4.vsix` | Archived old vsix (filename rename) |
+| `vscode/codotchi-1.14.4.vsix` | Rebuilt VS Code artifact under new name |
+| `opencode-codotchi/opencode-codotchi-1.15.0.zip` | Rebuilt opencode zip |
+
+---
+
+### Changes from v1.14.4 (docs + README restructure — branch feat/docs-sponsor-links-reorganize)
+
+| File | What changed |
+|------|-------------|
 | `opencode-codotchi/package.json` | Version bumped `1.14.1` → `1.15.0` |
 | `opencode-codotchi/src/asciiArt.ts` | `buildContextualSpeech`: extended signature with `timeSinceLastEditMs`, `sessionUserMessages`, `isOnProdBranch`; added idle (30m/60m), prompting (5/10/20 msgs), and prod-branch contextual override tiers; randomised first-file phrase (D1) and happy mood phrase (H2); added `TODO_COMPLETE_PHRASES` entries F1/F2; added `SESSION_DIFF_PHRASES` entry G1 |
 | `opencode-codotchi/src/index.ts` | Added `lastFileEditMs`, `sessionUserMessages`, `hasOfferedHelp`, `isOnProdBranch` session vars; `file.edited` now tracks `lastFileEditMs`; `session.created` resets all session counters; `message.updated` increments `sessionUserMessages` on user role; `vcs.branch.updated` sets `isOnProdBranch` and fires prod-aware branch message (C2); `session.idle` fires one-time help offer when `sessionUserMessages >= 10`; updated both `buildContextualSpeech` call sites to pass new args; applied message changes B2, B3, C1, E1, E2 |

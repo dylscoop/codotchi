@@ -312,7 +312,7 @@ class CodotchiPlugin : Disposable {
                 }
 
                 "new_game" -> {
-                    val name    = (message["name"]    as? String) ?: "Gotchi"
+                    val name    = (message["name"]    as? String) ?: "Codotchi"
                     val petType = (message["petType"] as? String) ?: "codeling"
                     val color   = (message["color"]   as? String) ?: "neon"
                     nextState = createPet(name, petType, color)

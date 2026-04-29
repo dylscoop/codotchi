@@ -1,17 +1,21 @@
-# pycharm_gotchi
+# codotchi — JetBrains plugin
+
+<img src="../vscode/media/monkey_adult_1x.png" height="64" alt="Monkey sprite" />
+<img src="../vscode/media/dog_adult_1x.png" height="64" alt="Dog sprite" />
+<img src="../vscode/media/snake_adult_1x.png" height="64" alt="Snake sprite" />
 
 Grow and raise your personal virtual pet as a JetBrains plugin while you code.
 
 ## Overview
 
-pycharm_gotchi is a plugin for JetBrains IDEs (PyCharm, IntelliJ IDEA, and any
-other IDE built on the IntelliJ Platform) that lets you raise a digital pet
-inspired by the original [Tamagotchi](https://en.wikipedia.org/wiki/Tamagotchi).
-Your pet lives in a tool window panel, reacts to your coding activity, and needs
-regular care to survive and evolve into its final form.
+codotchi is a JetBrains plugin that lets you raise a digital pet inspired
+by the original [Tamagotchi](https://en.wikipedia.org/wiki/Tamagotchi). Your pet
+lives in a tool window panel, reacts to your coding activity, and needs regular
+care to survive and evolve into its final form. Any support and feedback is much
+appreciated (links at the bottom)!
 
-It shares the same game engine and webview UI as the
-[VS Code extension](../vscode/README.md) in this repository.
+Your pet is drawn from one of **14 sprite sets**, 12 of which are based on a zodiac animal,
+assigned to you at random when you start a new game.
 
 ## Features
 
@@ -27,11 +31,15 @@ It shares the same game engine and webview UI as the
   palette on first launch
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
   and it dies
-- **Coding activity rewards** — every file save makes your pet a little happier
+- **OpenCode integration** — your pet lives in the terminal too; use `/codotchi`
+  commands to care for it alongside your AI coding session, with shared state
+  across VS Code, PyCharm, and OpenCode
 - **Status bar integration** — pet name and stage always visible in the IDE
   status bar
 - **Persistent state** — pet survives IDE restarts; offline time is accounted
   for with capped stat decay
+- **Configurable** — customise font size, pet size, colours, idle thresholds,
+  attention call behaviour, and more via **Settings → Tools → Codotchi**
 
 ## Requirements
 
@@ -41,62 +49,18 @@ It shares the same game engine and webview UI as the
 
 ## Installation
 
-### Quick install (pre-built `.zip`)
-
-1. **Download `pycharm-codotchi-1.14.3.zip`** from the
-   [Releases page](https://github.com/dylscoop/vscode_gotchi/releases).
-   Do **not** unzip it — JetBrains expects the archive as-is.
-
-2. **Install from disk:**
-   - Open **Settings / Preferences** → **Plugins**
-     (`Ctrl+Alt+S` → Plugins, or `Cmd+,` → Plugins on macOS)
-   - Click the **gear icon** (⚙) → **Install Plugin from Disk…**
-   - Select the downloaded `.zip` file
-   - Click **OK**
-
-3. **Restart the IDE** when prompted. The **Gotchi** tool window appears in
-   the right-hand tool window bar.
-
-### Build from source
-
-You need a JDK 17+ on your PATH (or the JBR bundled with your JetBrains IDE).
-
-```bash
-git clone https://github.com/dylscoop/vscode_gotchi.git
-cd vscode_gotchi/pycharm
-
-# On macOS / Linux
-./gradlew buildPlugin
-
-# On Windows
-gradlew.bat buildPlugin
-```
-
-The plugin zip is produced at:
-
-```text
-pycharm/build/distributions/pycharm-codotchi-1.14.3.zip
-```
-
-Install it via **Settings → Plugins → ⚙ → Install Plugin from Disk…** as
-described above.
-
-> **Note for Windows users:** if your system JDK is not Java 17+, point Gradle
-> at the JBR bundled with your IDE:
->
-> ```bat
->    set "JAVA_HOME=C:\Users\<you>\AppData\Local\Programs\<IDE>\jbr"
-> gradlew.bat buildPlugin
-> ```
+See the [GitHub repository](https://github.com/dylscoop/codotchi) for full
+installation instructions, pre-built releases, and the OpenCode integration
+download.
 
 ## Using the plugin
 
 Once installed and the IDE has restarted:
 
-1. Click **Gotchi** in the right-hand tool window bar, or go to
-   **View → Tool Windows → Gotchi**.
+1. Click **Codotchi** in the right-hand tool window bar, or go to
+   **View → Tool Windows → Codotchi**.
 
-2. On first launch the **New Gotchi** setup screen appears:
+2. On first launch the **New Codotchi** setup screen appears:
    - Enter a name (up to 16 characters).
    - Choose a **pet type** — each has different stat decay rates.
    - Choose a **colour palette** — affects the sprite's colour scheme.
@@ -106,33 +70,41 @@ Once installed and the IDE has restarted:
    **Feed**, **Snack**, **Play**, **Pat**, **Sleep**, **Clean**, **Medicine**,
    **Praise**, and **Scold**.
 
-4. Every file you save gives your pet a happiness boost — keep coding to keep
-   it happy.
-
-5. Your pet's state is saved automatically and restored the next time the IDE
+4. Your pet's state is saved automatically and restored the next time the IDE
    opens. Stat decay while the IDE is closed is capped at 60 % of each maximum
    so a long break won't instantly kill your pet.
 
-6. Your pet's name and current life stage are always visible in the **status
+5. Your pet's name and current life stage are always visible in the **status
    bar** at the bottom of the IDE window.
 
 ## Actions
 
 | Action | What it does |
 | ------ | ------------ |
-| **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Limited to 4 meals per wake cycle — overfeeding past that has no effect. |
+| **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Limited to 3 meals per wake cycle — overfeeding past that has no effect. |
 | **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. More than 3 snacks in a row will make your pet sick. |
-| **Play** | Starts a mini-game. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness significantly; losing applies a small penalty. Costs energy — your pet can't play if exhausted. |
-| **Pat** | Gives your pet a gentle pat. Boosts happiness by +10. Costs 20 energy. Cannot be used while sleeping or exhausted. |
-| **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps; no other actions are possible until it wakes. Wake it manually or wait for full energy. |
-| **Clean** | Clears all droppings. Pets produce droppings over time. Leaving 3 or more uncleaned will make your pet sick. |
-| **Medicine** | Treats sickness. Requires 3 doses to fully cure. Restores a small amount of health per dose. |
+| **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning gives +15–25 happiness; losing applies a −5 penalty. Costs 25 energy — your pet can't play if exhausted. |
+| **Pat** | Gives your pet a gentle pat. Boosts happiness by +10. Costs 20 energy. Accessed via the Play menu (same overlay as the mini-games). Cannot be used while your pet is sleeping or exhausted. |
+| **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. |
+| **Clean** | Clears all droppings from the screen. Pets produce droppings roughly every 20 minutes. Leaving 3 or more uncleaned will make your pet sick. |
+| **Medicine** | Treats sickness. Requires 3 doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss. |
 | **Praise** | Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution. |
-| **Scold** | Corrects bad behaviour. Also raises discipline. |
+| **Scold** | Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline. |
 
 > **Tip:** keep all four stat bars (Hunger, Happy, Energy, Health) out of the
 > red to maximise your care score, which determines which character your pet
 > evolves into at each life stage.
+
+## Mini-games
+
+Clicking **Play** opens the game picker (requires 25 energy). Three games are
+available:
+
+| Game | How to win |
+|------|-----------|
+| **Left / Right** | 3 rounds. The pet hides behind one of two doors. You have 3 seconds per round to pick the correct door. Win 2 out of 3 rounds to win. |
+| **Higher or Lower** | 5 rounds. A number is shown (1–100). Guess whether the next number will be higher or lower. Get 4 out of 5 correct to win. |
+| **Coin Flip** | Call Heads or Tails. A single coin flip decides the outcome. |
 
 ## Pet Types
 
@@ -143,41 +115,30 @@ Once installed and the IDE has restarted:
 | Pixelpup    | High happiness, but happiness decays faster |
 | Shellscript | Slow evolver, high base health              |
 
-## Architecture
+Each pet animal has its own sprite set
 
-| Layer | Technology | Responsibility |
-| ----- | ---------- | -------------- |
-| Plugin host | Kotlin | IntelliJ Platform API, tick scheduler, state machine, persistence, event hooks |
-| Webview UI | JCEF (HTML / CSS / JS) | Tool window rendering, action buttons, sprite canvas |
+---
 
-The game logic (stat decay, evolution, poop intervals, sickness, death) is
-implemented in `engine/GameEngine.kt` and is a direct port of the TypeScript
-game engine in the VS Code extension. The webview files (`sidebar.html`,
-`sidebar.css`, `sidebar.js`) are shared between both IDEs; a small shim
-injected at runtime maps `acquireVsCodeApi().postMessage` to the JCEF
-JS-query bridge.
+> "Grow your best pet by writing your best code."
 
-## Project Structure
+---
 
-```text
-vscode_gotchi/
-├── vscode/                      ← VS Code extension (TypeScript)
-└── pycharm/                     ← JetBrains plugin (this package)
-    ├── build.gradle.kts
-    ├── gradle.properties
-    ├── src/main/
-    │   ├── kotlin/com/gotchi/
-    │   │   ├── engine/          # Kotlin game engine (GameEngine.kt, PetState.kt, …)
-    │   │   ├── GotchiPlugin.kt          # Central service: tick loop + command dispatch
-    │   │   ├── GotchiBrowserPanel.kt    # JCEF webview + JS bridge
-    │   │   ├── GotchiToolWindow.kt      # Tool window factory
-    │   │   ├── GotchiStatusWidget.kt    # Status bar widget
-    │   │   ├── GotchiPersistence.kt     # Save / load via PropertiesComponent
-    │   │   ├── GotchiEventsManager.kt   # File-save → happiness reward
-    │   │   └── GotchiAppLifecycleListener.kt
-    │   └── resources/
-    │       ├── META-INF/plugin.xml
-    │       └── webview/         # sidebar.html / .css / .js (shared with VS Code)
-    └── build/distributions/
-        └── pycharm-codotchi-1.14.3.zip     ← installable plugin archive
-```
+## Support
+
+**GitHub:** [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi)
+
+### Sponsor this project
+
+<a href="https://buymeacoffee.com/dylscoop"><img src="../bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
+
+[buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
+
+[![Liberapay](https://img.shields.io/badge/Liberapay-dylscoop-yellow)](https://liberapay.com/dylscoop)
+
+[liberapay.com/dylscoop](https://liberapay.com/dylscoop)
+
+### Codotchi Sprites
+
+Want to see a new sprite in the game? Send a drawn sprite or request one to be added — a passcode will be given every time one gets implemented.
+
+[Open a sprite request on GitHub Issues](https://github.com/dylscoop/codotchi/issues)

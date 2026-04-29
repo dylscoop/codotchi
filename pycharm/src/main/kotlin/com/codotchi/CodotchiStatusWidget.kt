@@ -12,15 +12,15 @@ import java.awt.event.MouseEvent
 /**
  * CodotchiStatusWidget — displays a compact pet summary in the IDE status bar.
  *
- * Shows the pet's stage emoji and name, e.g. "🥚 Gotchi".
+ * Shows the pet's stage emoji and name, e.g. "🥚 Codotchi".
  * [update] is called by [CodotchiPlugin.broadcastState] after every state change.
  */
 class CodotchiStatusWidget(private val project: Project) : StatusBarWidget, TextPresentation {
 
     private var statusBar: StatusBar? = null
 
-    @Volatile private var text: String = "🥚 Gotchi"
-    @Volatile private var tooltip: String = "vscode_codotchi"
+    @Volatile private var text: String = "🥚 Codotchi"
+    @Volatile private var tooltip: String = "Codotchi"
 
     companion object {
         const val ID = "CodotchiStatusWidget"

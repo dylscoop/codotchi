@@ -1,5 +1,5 @@
 /**
- * sidebar.js — vscode_codotchi webview client
+ * sidebar.js — codotchi webview client
  *
  * Communicates with the extension host via the VS Code webview message API:
  *   - postMessage(cmd)  → sends a command to SidebarProvider
@@ -162,7 +162,7 @@
   });
 
   startBtn.addEventListener("click", function () {
-    const name = petNameInput.value.trim() || "Gotchi";
+    const name = petNameInput.value.trim() || "Codotchi";
     pendingNewGame = true;
     vscode.postMessage({
       command: "new_game",
@@ -957,7 +957,7 @@
 
     showScreen("game");
 
-    petNameDisplay.textContent = state.name || "Gotchi";
+    petNameDisplay.textContent = state.name || "Codotchi";
     moodLabel.textContent      = moodText(state);
 
     setBar(barHunger,    state.hunger);
@@ -1157,7 +1157,7 @@
 
   /** Append new event strings to the scrollable event log. */
   function humaniseEvent(code, name) {
-    var n = name || "Gotchi";
+    var n = name || "Codotchi";
     var labels = {
       "auto_woke_up":           n + " woke up after a full nap.",
       "pooped":                  n + " pooped!",

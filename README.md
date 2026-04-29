@@ -1,11 +1,11 @@
-# gotchi
+# codotchi
 
 A virtual Tamagotchi-style pet that lives inside your IDE and reacts to your
 coding activity. Available for both VS Code and JetBrains IDEs.
 
 ## What is it?
 
-gotchi is a pixel-art virtual pet inspired by the original
+codotchi is a pixel-art virtual pet inspired by the original
 [Tamagotchi](https://en.wikipedia.org/wiki/Tamagotchi). Your pet hatches from
 an egg, grows through several life stages, and eventually reaches its final
 evolved form — but only if you take care of it. Feed it, play with it, put it
@@ -32,14 +32,14 @@ PyCharm via a cross-platform JSON file.
 
 ### VS Code
 
-1. Download `vscode-codotchi-1.14.3.vsix` from the Releases page.
+1. Download `codotchi-1.14.4.vsix` from the Releases page.
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
 Or from the terminal:
 
 ```bash
-code --install-extension vscode-codotchi-1.14.3.vsix
+code --install-extension codotchi-1.14.4.vsix
 ```
 
 ### JetBrains
@@ -53,7 +53,7 @@ code --install-extension vscode-codotchi-1.14.3.vsix
 
 **Option A — In-repo (this repository only)**
 
-The plugin lives in `.opencode/plugins/gotchi.ts` and is loaded automatically
+The plugin lives in `.opencode/plugins/codotchi.ts` and is loaded automatically
 by OpenCode when you open this repository.
 
 1. Make sure `@opencode-ai/plugin` is installed:
@@ -124,7 +124,7 @@ For full usage instructions see the individual READMEs:
 ## Repository layout
 
 ```text
-gotchi/
+codotchi/
 ├── vscode/                  VS Code extension (TypeScript)
 │   ├── src/                 Extension host + game engine
 │   ├── media/               Webview UI (HTML / CSS / JS)
@@ -134,15 +134,21 @@ gotchi/
 │   ├── src/main/resources/  plugin.xml + shared webview files
 │   └── README.md
 ├── .opencode/               OpenCode terminal plugin (in-repo)
-│   ├── plugins/             gotchi.ts, gameEngine.ts, asciiArt.ts
+│   ├── plugins/             codotchi.ts, gameEngine.ts, asciiArt.ts
 │   └── commands/            /codotchi slash command definition
 ├── opencode-codotchi/       OpenCode npm package (global install)
 │   ├── src/                 index.ts, gameEngine.ts, asciiArt.ts
 │   ├── commands/            /codotchi slash command definition
 │   └── bin/                 install.js CLI script
 ├── archive/                 Snapshots of previous versions
-├── VERSIONS.md              Changelog
-└── BUGFIXES.md              Bug fix log
+└── developer_notes/         Dev-facing docs (changelog, design notes, sprites)
+    ├── VERSIONS.md          Changelog
+    ├── BUGFIXES.md          Bug fix log
+    ├── DEV_NOTES.md         Developer notes
+    ├── SPRITES.md           Sprite index
+    ├── sprites/             Per-pet-type sprite markdown files
+    ├── vscode/              VS Code-specific dev docs (FEATURES, DESIGN, BUILD_LOG)
+    └── adr/                 Architecture Decision Records
 ```
 
 ## Building from source
@@ -155,7 +161,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces vscode-codotchi-1.14.3.vsix
+# produces codotchi-1.14.4.vsix
 ```
 
 ### JetBrains plugin
@@ -176,7 +182,7 @@ gradlew.bat buildPlugin
 
 ## Version history
 
-See [VERSIONS.md](VERSIONS.md) for the full changelog.
+See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
 Current release: **v1.14.3** — built by [dylscoop](https://github.com/dylscoop)
 

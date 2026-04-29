@@ -341,7 +341,7 @@ export class SidebarProvider
         break;
 
       case "new_game": {
-        const petName = message.name ?? "Gotchi";
+        const petName = message.name ?? "Codotchi";
         const petType = message.petType ?? "codeling";
         const color = message.color ?? "neon";
         nextState = createPet(petName, petType, color);

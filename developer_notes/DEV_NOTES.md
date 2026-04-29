@@ -15,7 +15,7 @@ identities, and sprite descriptions. Not intended as user-facing documentation.
 
 ## Interaction Philosophy
 
-The core tension in vscode_gotchi is **low friction vs meaningful consequence**.
+The core tension in Codotchi is **low friction vs meaningful consequence**.
 A developer is in the middle of work — the pet must never demand attention in a
 way that interrupts flow, but neglect should have real consequences.
 

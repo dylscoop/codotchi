@@ -1,7 +1,7 @@
 /**
  * gameEngine.ts
  *
- * Pure-TypeScript game engine for vscode_gotchi.
+ * Pure-TypeScript game engine for codotchi.
  *
  * Replaces the retired Python subprocess architecture.  All game logic lives
  * here as pure functions; side effects (persistence, VS Code API calls) belong
@@ -2064,7 +2064,7 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
   };
 
   const partial: Omit<PetState, "mood" | "sprite" | "careScore"> = {
-    name: getString("name", "Gotchi"),
+    name: getString("name", "Codotchi"),
     petType: getString("petType", "codeling"),
     // Back-compat: old saves won't have spriteType; default to "classic" (original humanoid).
     // Legacy "goat" saves are silently migrated to "sheep".
