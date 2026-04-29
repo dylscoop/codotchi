@@ -1,6 +1,15 @@
 # Version History
 
-## v1.15.0 — current
+## v1.15.1 — current
+
+### Changes from v1.15.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/icon_128.png` | New 128×128 egg sprite PNG for the VS Code marketplace/extensions-list icon |
+| `vscode/package.json` | Added top-level `"icon": "media/icon_128.png"` so the egg appears on the marketplace instead of the default VS Code icon |
+
+## v1.15.0
 
 ### Changes from v1.14.4
 
