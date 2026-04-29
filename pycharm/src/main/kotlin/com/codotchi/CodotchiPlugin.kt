@@ -16,8 +16,12 @@ import com.intellij.util.messages.MessageBusConnection
 import java.awt.AWTEvent
 import java.awt.Toolkit
 import java.awt.event.AWTEventListener
+import java.nio.file.FileSystems
+import java.nio.file.Path
+import java.nio.file.StandardWatchEventKinds
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -93,6 +97,11 @@ class CodotchiPlugin : Disposable {
 
     private var tickFuture: ScheduledFuture<*>? = null
     private var messageBusConnection: MessageBusConnection? = null
+
+    /** Background thread running the JVM WatchService for cross-window file sync. */
+    @Volatile private var fileWatcherThread: Thread? = null
+    /** Epoch-ms of the last reload triggered by the file watcher (debounce). */
+    private val lastWatcherReload = AtomicLong(0L)
 
     private fun startTicker() {
         if (tickFuture != null) return
@@ -173,6 +182,9 @@ class CodotchiPlugin : Disposable {
 
         // Start tick scheduler
         startTicker()
+
+        // Start file watcher for cross-window sync
+        startFileWatcher()
 
         // Initial broadcast so UI reflects restored state immediately
         broadcastState()
@@ -398,6 +410,114 @@ class CodotchiPlugin : Disposable {
         }
     }
 
+    // ── Cross-window reload ────────────────────────────────────────────────
+
+    /**
+     * Read the latest state from the shared on-disk file, apply offline decay
+     * for the elapsed time since it was saved, and push the result to the UI.
+     *
+     * This is the PyCharm equivalent of VS Code's `reloadAndRefreshUI()`.  It
+     * is called both from the manual refresh action and from the JVM WatchService
+     * file watcher when another window writes the shared state file.
+     *
+     * NOTE: deliberately does NOT call [broadcastState] / savePetState — an
+     * inactive window must not overwrite the shared file written by the active
+     * ticker (mirrors BUGFIX-050 from the VS Code side).
+     */
+    fun reloadFromDisk() {
+        val persistence = service<CodotchiPersistence>()
+        val shared = persistence.loadSharedFileForSync() ?: return
+        val (freshState, savedAt) = shared
+
+        val elapsedSeconds = if (savedAt > 0L) {
+            ((System.currentTimeMillis() - savedAt) / 1000L).toInt()
+        } else 0
+
+        val decayed = if (elapsedSeconds > 0) {
+            applyOfflineDecay(freshState, elapsedSeconds)
+        } else freshState
+
+        stateLock.withLock {
+            currentState = decayed
+            // Reset meal cycle — we can't know what the other window gave
+            mealsGivenThisCycle = 0
+        }
+
+        // Push to UI without saving (the other window is the authoritative writer)
+        val (state, meals, highScore) = stateLock.withLock {
+            Triple(currentState, mealsGivenThisCycle, currentHighScore)
+        }
+        val devMode = lastDevMode
+        ApplicationManager.getApplication().invokeLater {
+            if (state != null) {
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode) }
+                statusWidget?.update(state)
+            }
+        }
+    }
+
+    /**
+     * Start a JVM WatchService on the directory containing the shared state file.
+     * When the file is modified by another window, calls [reloadFromDisk] with a
+     * 200 ms debounce (WatchService can fire multiple events per atomic write).
+     *
+     * Runs on a daemon thread so it does not prevent IDE shutdown.
+     */
+    private fun startFileWatcher() {
+        if (fileWatcherThread != null) return
+        val persistence = service<CodotchiPersistence>()
+        val stateDir: Path = persistence.getSharedStateDir() ?: return
+
+        val thread = Thread {
+            try {
+                val watcher = FileSystems.getDefault().newWatchService()
+                stateDir.register(
+                    watcher,
+                    StandardWatchEventKinds.ENTRY_CREATE,
+                    StandardWatchEventKinds.ENTRY_MODIFY,
+                )
+                while (!Thread.currentThread().isInterrupted) {
+                    // Poll with a timeout so the thread can be interrupted
+                    val key = watcher.poll(2, TimeUnit.SECONDS) ?: continue
+                    var relevant = false
+                    for (event in key.pollEvents()) {
+                        val ctx = event.context()
+                        if (ctx is Path && ctx.toString() == "state.json") {
+                            relevant = true
+                        }
+                    }
+                    key.reset()
+                    if (!relevant) continue
+
+                    // Debounce: skip if we reloaded within the last 200 ms
+                    val now = System.currentTimeMillis()
+                    if (now - lastWatcherReload.get() < 200L) continue
+
+                    // Only reload if this instance is NOT the active ticker
+                    // (if we are ticking we are the writer — no need to re-read)
+                    if (tickFuture != null) continue
+
+                    lastWatcherReload.set(now)
+                    reloadFromDisk()
+                }
+                watcher.close()
+            } catch (_: InterruptedException) {
+                // Normal shutdown
+            } catch (_: Exception) {
+                // Watch service unavailable on this platform — silent degradation
+            }
+        }
+        thread.isDaemon = true
+        thread.name = "codotchi-file-watcher"
+        thread.start()
+        fileWatcherThread = thread
+    }
+
+    private fun stopFileWatcher() {
+        fileWatcherThread?.interrupt()
+        fileWatcherThread = null
+    }
+
     // ── Broadcast ──────────────────────────────────────────────────────────
 
     fun broadcastState() {
@@ -504,6 +624,7 @@ class CodotchiPlugin : Disposable {
 
     override fun dispose() {
         stopTicker()
+        stopFileWatcher()
         Toolkit.getDefaultToolkit().removeAWTEventListener(awtActivityListener)
         messageBusConnection?.disconnect()
     }

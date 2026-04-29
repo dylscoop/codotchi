@@ -6,6 +6,7 @@ import com.codotchi.engine.*
 import com.intellij.openapi.components.*
 import org.jdom.Element
 import java.io.File
+import java.nio.file.Path
 
 /**
  * CodotchiPersistence — app-level persistent state stored in `codotchi.xml`.
@@ -184,7 +185,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
     }
 
     /**
-     * Read the shared cross-IDE file.
+     * Read the shared on-disk file.
      * Returns a (PetState, savedAt) pair, or null if the file is absent / unparseable.
      */
     private fun loadFromSharedFile(): Pair<PetState, Long>? {
@@ -195,6 +196,24 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             val rawState = raw.state ?: return null
             val savedAt  = raw.savedAt ?: return null
             Pair(sanitise(rawState), savedAt)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Public version of [loadFromSharedFile] used by [CodotchiPlugin.reloadFromDisk]
+     * for cross-window sync.  Returns null when the file is absent or unparseable.
+     */
+    fun loadSharedFileForSync(): Pair<PetState, Long>? = loadFromSharedFile()
+
+    /**
+     * Return the parent directory of the shared state file as a [Path],
+     * or null if it cannot be determined.  Used by the JVM WatchService.
+     */
+    fun getSharedStateDir(): Path? {
+        return try {
+            getSharedStatePath().parentFile?.toPath()
         } catch (_: Exception) {
             null
         }
