@@ -52,13 +52,20 @@ Output: `vscode/vscode-gotchi-X.Y.Z.vsix`
 
 ### PyCharm `.zip`
 
-Run from `pycharm/`:
+Run from `pycharm/` (PowerShell — set JAVA_HOME inline, skip `buildSearchableOptions` to avoid the JBR file-lock error caused by PyCharm holding `extnet.dll`):
 
-```
-powershell -Command "$env:JAVA_HOME='C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'; & '.\gradlew.bat' buildPlugin"
+```powershell
+$env:JAVA_HOME = "C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12"; .\gradlew.bat buildPlugin -x buildSearchableOptions --no-configuration-cache
 ```
 
-Output: `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip`
+> **Why `-x buildSearchableOptions --no-configuration-cache`?**
+> `buildSearchableOptions` launches a headless IDE sandbox that extracts the
+> JBR tarball. When PyCharm is open it holds a lock on `extnet.dll` inside
+> that extracted JBR, causing the task to fail or hang. Skipping it produces a
+> fully functional plugin zip — searchable-options only affect IDE search index
+> quality, not plugin behaviour.
+
+Output: `pycharm/build/distributions/pycharm-codotchi-X.Y.Z.zip`
 
 ---
 

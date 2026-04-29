@@ -66,10 +66,16 @@ git mv "pycharm/build/distributions/pycharm-codotchi-OLD.zip" pycharm/archive/
 ```
 
 Then rebuild:
-```
-powershell -Command "$env:JAVA_HOME='C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'; & '.\gradlew.bat' buildPlugin"
+```powershell
+$env:JAVA_HOME = "C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12"; .\gradlew.bat buildPlugin -x buildSearchableOptions --no-configuration-cache
 ```
 (run from `pycharm/`)
+
+> **Why `-x buildSearchableOptions --no-configuration-cache`?**
+> `buildSearchableOptions` launches a headless IDE sandbox that tries to
+> extract the JBR tarball. When PyCharm is open it holds a lock on
+> `extnet.dll` inside that extracted JBR, causing the build to fail or hang.
+> Skipping it produces a fully functional plugin zip.
 
 ### OpenCode
 
