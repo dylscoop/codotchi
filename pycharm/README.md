@@ -31,6 +31,8 @@ appreciated (links at the bottom)!
   status bar
 - **Persistent state** — pet survives IDE restarts; offline time is accounted
   for with capped stat decay
+- **Configurable** — customise font size, pet size, colours, idle thresholds,
+  attention call behaviour, and more via **Settings → Tools → Codotchi**
 
 ## Requirements
 
@@ -107,30 +109,6 @@ available:
 | Shellscript | Slow evolver, high base health              |
 
 Each pet animal has its own sprite set
-
-## Settings
-
-Open **Settings → Tools → Codotchi** to configure the plugin.
-
-| Setting | Default | Description |
-| ------- | ------- | ----------- |
-| Font size | `Normal` | Font size in the tool window panel (`Small` / `Normal` / `Large`). |
-| Pet size | `Medium` | Sprite display size (`Small` / `Medium` / `Large`). Large uses a higher-detail 24×32 pixel grid. |
-| Reduced motion | `off` | Disable all pet animations; pet is drawn statically. |
-| Custom primary colour | `#ff8c00` | Pet body colour for the Custom palette. |
-| Custom secondary colour | `#ffffff` | Pet eyes/details colour for the Custom palette. |
-| Custom background colour | `#1a1a2e` | Canvas background colour for the Custom palette. |
-| Enable attention calls | `on` | Enable attention calls (pet notifies you when it needs care). |
-| Attention call expiry | `Standard` | Response window before an attention call expires: `Needy` (2 min) / `Standard` (5 min) / `Chilled` (10 min). |
-| Attention call rate | `Fast` | How quickly calls can spawn: `Fast` / `Medium` (1.5×) / `Slow` (2×). |
-| Idle threshold (s) | `60` | Seconds of inactivity before idle mode (decay slows to 10 %). |
-| Deep idle threshold (s) | `600` | Seconds before deep idle (stats floor at 20, aging stops). |
-| AI mode | `off` | Suppress idle-timer resets from document/cursor/tab events — use when an AI agent is editing for you. |
-| Idle reset — document change | `on` | Reset idle timer on document edits (suppressed by AI mode). |
-| Idle reset — cursor movement | `on` | Reset idle timer on cursor movement (suppressed by AI mode). |
-| Idle reset — tab switch | `on` | Reset idle timer on tab switch (suppressed by AI mode). |
-| Idle reset — window focus | `on` | Reset idle timer when the IDE regains focus. |
-| Idle reset — mouse movement | `on` | Reset idle timer on mouse movement in the tool window (throttled to once per 30 s). |
 
 ---
 
