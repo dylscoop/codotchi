@@ -153,9 +153,9 @@ Typical release flow (each line needs separate approval):
 3. **Ask the user** to confirm before reinstalling the OpenCode plugin locally: `node bin/install.js --install` (run from `opencode-codotchi/`) — **never run without explicit user confirmation**
 4. `git push origin <branch>` — push the feature branch
 5. `git checkout main && git merge <branch>` — merge to main
-6. `git push origin main` — push main
-7. `git tag vX.Y.Z` — create the version tag locally
-8. Push the tag via GitHub API (see "Pushing a tag via GitHub API" below) — **do not use `git push` for tags**, it is blocked by a repository rule
+6. `git tag vX.Y.Z` — create the version tag locally on main
+7. Push the tag via GitHub API (see "Pushing a tag via GitHub API" below) — **do not use `git push` for tags**, it is blocked by a repository rule. **Do this before pushing main.**
+8. `git push origin main` — push main (after the tag is live on remote)
 9. Copy artifacts to `releases/`, apply the 3-version rule, move older releases to `releases/old_releases/` — see `release-management` skill — commit and push
 10. Create GitHub release — publish release notes
 
