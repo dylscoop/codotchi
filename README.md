@@ -141,8 +141,14 @@ gotchi/
 │   ├── commands/            /codotchi slash command definition
 │   └── bin/                 install.js CLI script
 ├── archive/                 Snapshots of previous versions
-├── VERSIONS.md              Changelog
-└── BUGFIXES.md              Bug fix log
+└── developer_notes/         Dev-facing docs (changelog, design notes, sprites)
+    ├── VERSIONS.md          Changelog
+    ├── BUGFIXES.md          Bug fix log
+    ├── DEV_NOTES.md         Developer notes
+    ├── SPRITES.md           Sprite index
+    ├── sprites/             Per-pet-type sprite markdown files
+    ├── vscode/              VS Code-specific dev docs (FEATURES, DESIGN, BUILD_LOG)
+    └── adr/                 Architecture Decision Records
 ```
 
 ## Building from source
@@ -176,7 +182,7 @@ gradlew.bat buildPlugin
 
 ## Version history
 
-See [VERSIONS.md](VERSIONS.md) for the full changelog.
+See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
 Current release: **v1.14.3** — built by [dylscoop](https://github.com/dylscoop)
 

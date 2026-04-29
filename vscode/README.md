@@ -165,7 +165,7 @@ The extension is a single self-contained TypeScript process:
 | Extension host + game engine | TypeScript | VS Code API, pet state machine, stat decay, evolution, persistence, event hooks |
 | Webview UI | HTML / CSS / JS | Sidebar rendering, action buttons, sprite canvas |
 
-See [docs/adr/2026-03-11-architecture.md](docs/adr/2026-03-11-architecture.md)
+See [../developer_notes/adr/2026-03-11-architecture.md](../developer_notes/adr/2026-03-11-architecture.md)
 for the full design rationale, including amendment A1 which records the
 decision to remove the original Python subprocess.
 
@@ -189,14 +189,14 @@ vscode_gotchi/          ← repo root
 │   ├── src/            # TypeScript extension host and game engine
 │   ├── media/          # Webview HTML, CSS, JS, and sprite assets
 │   ├── tests/          # Unit tests for the game engine
-│   ├── docs/adr/       # Architecture Decision Records
+│   ├── docs/adr/       # Architecture Decision Records (moved to developer_notes/adr/)
 │   └── README.md       # This file
 └── pycharm/            ← JetBrains plugin (Kotlin + Gradle)
 ```
 
 ## Development Roadmap
 
-See [docs/adr/2026-03-11-architecture.md](docs/adr/2026-03-11-architecture.md)
+See [../developer_notes/adr/2026-03-11-architecture.md](../developer_notes/adr/2026-03-11-architecture.md)
 for the detailed implementation plan. High-level order:
 
 1. Extension scaffold + Python game engine core
