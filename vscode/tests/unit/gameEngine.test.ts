@@ -72,8 +72,8 @@ function makePet(overrides: Partial<PetState> = {}): PetState {
 // ---------------------------------------------------------------------------
 
 describe("constants", () => {
-  it("TICK_INTERVAL_SECONDS is 6", () => {
-    assert.equal(TICK_INTERVAL_SECONDS, 6);
+  it("TICK_INTERVAL_SECONDS is 3", () => {
+    assert.equal(TICK_INTERVAL_SECONDS, 3);
   });
 
   it("CODE_ACTIVITY_THROTTLE_SECONDS is 30", () => {
@@ -256,14 +256,16 @@ describe("characterForStage", () => {
 
 describe("tick — stat decay", () => {
   it("decrements hunger by 1 per tick while awake", () => {
-    const pet = makePet({ hunger: 50 });
+    // ticksAlive starts at 2 → becomes 3 → 3 % DECAY_TICK_INTERVAL(3) === 0 → decay fires
+    const pet = makePet({ hunger: 50, ticksAlive: 2 });
     const next = tick(pet);
     assert.equal(next.hunger, 49);
   });
 
   it("decrements happiness by 1 per tick while awake", () => {
     // weight=40 keeps the pet in the neutral weight range (17–66) so no happiness debuff fires
-    const pet = makePet({ happiness: 50, weight: 40 });
+    // ticksAlive starts at 2 → becomes 3 → decay fires
+    const pet = makePet({ happiness: 50, weight: 40, ticksAlive: 2 });
     const next = tick(pet);
     assert.equal(next.happiness, 49);
   });
@@ -309,61 +311,77 @@ describe("tick — stat decay", () => {
   });
 
   it("bytebug decays hunger faster than codeling", () => {
-    const codeling = createPet("A", "codeling", "neon");
-    const bytebug = createPet("B", "bytebug", "neon");
-    const nextCodeling = tick(codeling);
-    const nextBytebug = tick(bytebug);
+    // bytebug hungerInterval=2, codeling hungerInterval=3.
+    // Run 2 ticks: at tick 2 bytebug fires (2%2=0), codeling does not (2%3≠0).
+    let codeling = createPet("A", "codeling", "neon");
+    let bytebug = createPet("B", "bytebug", "neon");
+    for (let i = 0; i < 2; i++) {
+      codeling = tick(codeling);
+      bytebug  = tick(bytebug);
+    }
     assert.ok(
-      nextBytebug.hunger < nextCodeling.hunger,
+      bytebug.hunger < codeling.hunger,
       "bytebug hunger should drop more than codeling"
     );
   });
 
   it("pixelpup decays happiness faster than codeling", () => {
-    const codeling = createPet("A", "codeling", "neon");
-    const pixelpup = createPet("B", "pixelpup", "neon");
-    const nextCodeling = tick(codeling);
-    const nextPixelpup = tick(pixelpup);
+    // pixelpup happinessInterval=2, codeling happinessInterval=3.
+    // Run 2 ticks: at tick 2 pixelpup fires (2%2=0), codeling does not (2%3≠0).
+    let codeling = createPet("A", "codeling", "neon");
+    let pixelpup = createPet("B", "pixelpup", "neon");
+    for (let i = 0; i < 2; i++) {
+      codeling = tick(codeling);
+      pixelpup = tick(pixelpup);
+    }
     assert.ok(
-      nextPixelpup.happiness < nextCodeling.happiness,
+      pixelpup.happiness < codeling.happiness,
       "pixelpup happiness should drop more than codeling"
     );
   });
 
   it("bytebug accumulates dayTimer faster than codeling per tick", () => {
-    const codeling = createPet("A", "codeling", "neon");
-    const bytebug = createPet("B", "bytebug", "neon");
-    const nextCodeling = tick(codeling);
-    const nextBytebug = tick(bytebug);
+    // decayThisTick fires when ticksAlive % 3 === 0; createPet starts at ticksAlive=0.
+    // After tick 1: ticksAlive=1 → no aging. After tick 3: ticksAlive=3 → aging fires.
+    // Run 3 ticks so aging fires once; bytebug ageMultiplier=1.5 advances dayTimer faster.
+    let codeling = createPet("A", "codeling", "neon");
+    let bytebug = createPet("B", "bytebug", "neon");
+    for (let i = 0; i < 3; i++) {
+      codeling = tick(codeling);
+      bytebug  = tick(bytebug);
+    }
     assert.ok(
-      nextBytebug.dayTimer > nextCodeling.dayTimer,
+      bytebug.dayTimer > codeling.dayTimer,
       "bytebug dayTimer should advance faster (1.5× multiplier)"
     );
   });
 
   it("shellscript accumulates dayTimer slower than codeling per tick", () => {
-    const codeling = createPet("A", "codeling", "neon");
-    const shellscript = createPet("B", "shellscript", "neon");
-    const nextCodeling = tick(codeling);
-    const nextShellscript = tick(shellscript);
+    // Same reasoning: run 3 ticks so decayThisTick fires once.
+    let codeling = createPet("A", "codeling", "neon");
+    let shellscript = createPet("B", "shellscript", "neon");
+    for (let i = 0; i < 3; i++) {
+      codeling    = tick(codeling);
+      shellscript = tick(shellscript);
+    }
     assert.ok(
-      nextShellscript.dayTimer < nextCodeling.dayTimer,
+      shellscript.dayTimer < codeling.dayTimer,
       "shellscript dayTimer should advance slower (0.75× multiplier)"
     );
   });
 
   it("does not decay energy while idle (throttled like hunger/happiness)", () => {
-    // ticksAlive goes from 0 → 1; 1 % 10 ≠ 0, so decayThisTick is false when idle
+    // ticksAlive goes from 0 → 1; 1 % (energyInterval * IDLE_DECAY_TICK_DIVISOR = 3*20=60) ≠ 0 → no decay
     const pet = makePet({ energy: 50 });
     const next = tick(pet, true);  // isIdle = true
     assert.equal(next.energy, 50, "energy should not decay on a throttled idle tick");
   });
 
-  it("decays energy on the 10th idle tick (same divisor as hunger/happiness)", () => {
-    // ticksAlive starts at 9 → becomes 10 → 10 % 10 === 0 → decayThisTick fires
-    const pet = makePet({ energy: 50, ticksAlive: 9 });
+  it("decays energy on the 60th idle tick (IDLE_DECAY_TICK_DIVISOR=20, energyInterval=3)", () => {
+    // ticksAlive starts at 59 → becomes 60 → 60 % 60 === 0 → idle energy decay fires
+    const pet = makePet({ energy: 50, ticksAlive: 59 });
     const next = tick(pet, true);
-    assert.equal(next.energy, 49, "energy should decay by 1 on the 10th idle tick");
+    assert.equal(next.energy, 49, "energy should decay by 1 on the 60th idle tick");
   });
 });
 
@@ -373,15 +391,15 @@ describe("tick — stat decay", () => {
 
 describe("tick — poop accumulation", () => {
   it("accumulates a poop after POOP_TICKS_INTERVAL ticks", () => {
-    // POOP_TICKS_INTERVAL = 20 minutes * (60/6) ticks/min = 200 ticks
-    let state = makePet({ ticksSinceLastPoop: 199 });
+    // POOP_TICKS_INTERVAL = 20 minutes * (60/3) ticks/min = 400 ticks
+    let state = makePet({ ticksSinceLastPoop: 399 });
     state = tick(state);
     assert.equal(state.poops, 1);
     assert.ok(state.events.includes("pooped"));
   });
 
   it("resets ticksSinceLastPoop to 0 after a poop", () => {
-    let state = makePet({ ticksSinceLastPoop: 199 });
+    let state = makePet({ ticksSinceLastPoop: 399 });
     state = tick(state);
     assert.equal(state.ticksSinceLastPoop, 0);
   });
@@ -400,7 +418,7 @@ describe("tick — poop accumulation", () => {
 describe("tick — sickness from dirty environment", () => {
   it("becomes sick when poops reach MAX_UNCLEANED_POOPS_BEFORE_SICK (3)", () => {
     // Already have 2 poops, one more poop during this tick triggers sickness
-    let state = makePet({ poops: 2, ticksSinceLastPoop: 199 });
+    let state = makePet({ poops: 2, ticksSinceLastPoop: 399 });
     state = tick(state);
     assert.equal(state.sick, true);
     assert.ok(state.events.includes("became_sick"));
@@ -420,7 +438,8 @@ describe("tick — sickness from dirty environment", () => {
 
 describe("tick — starvation damage", () => {
   it("starts counting hunger_zero_ticks when hunger reaches 0", () => {
-    const pet = makePet({ hunger: 1 });
+    // ticksAlive:2 → after tick becomes 3 → 3%3=0 → hungerDecayTick fires → hunger 1→0
+    const pet = makePet({ hunger: 1, ticksAlive: 2 });
     const next = tick(pet);
     // hunger will be 0 after decay
     assert.equal(next.hunger, 0);
@@ -575,15 +594,16 @@ describe("tick — care-score accumulation", () => {
 
 describe("tick — stage progression", () => {
   it("promotes egg to baby when dayTimer reaches threshold", () => {
-    // dayTimer just below 0.396 → next tick pushes it over
-    const pet = makePet({ stage: "egg", ticksAlive: EGG_DURATION_TICKS - 1, dayTimer: 0.395 });
+    // dayTimer just below 0.396 → next tick pushes it over.
+    // ticksAlive=38 → after tick=39 → 39%3=0 → decayThisTick fires → ageIncrement added.
+    const pet = makePet({ stage: "egg", ticksAlive: 38, dayTimer: 0.395 });
     const next = tick(pet);
     assert.equal(next.stage, "baby");
     assert.ok(next.events.includes("evolved_to_baby"));
   });
 
   it("resets ticksAlive to 0 on evolution", () => {
-    const pet = makePet({ stage: "egg", ticksAlive: EGG_DURATION_TICKS - 1, dayTimer: 0.395 });
+    const pet = makePet({ stage: "egg", ticksAlive: 38, dayTimer: 0.395 });
     const next = tick(pet);
     assert.equal(next.ticksAlive, 0);
   });
@@ -591,7 +611,7 @@ describe("tick — stage progression", () => {
   it("resets care accumulators on evolution", () => {
     const pet = makePet({
       stage: "egg",
-      ticksAlive: EGG_DURATION_TICKS - 1,
+      ticksAlive: 38,
       dayTimer: 0.395,
       careScoreHungerSum: 1000,
       careScoreTicks: 20,
@@ -602,7 +622,8 @@ describe("tick — stage progression", () => {
   });
 
   it("promotes adult to senior when dayTimer reaches threshold", () => {
-    const pet = makePet({ stage: "adult", ticksAlive: ADULT_DURATION_TICKS - 1, dayTimer: 287.987 });
+    // ticksAlive=19199 → after tick=19200 → 19200%3=0 → decayThisTick fires.
+    const pet = makePet({ stage: "adult", ticksAlive: 19199, dayTimer: 287.987 });
     const next = tick(pet);
     assert.equal(next.stage, "senior");
     assert.ok(next.events.includes("evolved_to_senior"));
@@ -615,19 +636,22 @@ describe("tick — stage progression", () => {
   });
 
   it("promotes baby to child when dayTimer reaches threshold", () => {
-    const pet = makePet({ stage: "baby", ticksAlive: BABY_DURATION_TICKS - 1, dayTimer: 5.987 });
+    // ticksAlive=560 → after tick=561 → 561%3=0 → decayThisTick fires.
+    const pet = makePet({ stage: "baby", ticksAlive: 560, dayTimer: 5.987 });
     const next = tick(pet);
     assert.equal(next.stage, "child");
   });
 
   it("promotes child to teen when dayTimer reaches threshold", () => {
-    const pet = makePet({ stage: "child", ticksAlive: CHILD_DURATION_TICKS - 1, dayTimer: 23.987 });
+    // ticksAlive=1799 → after tick=1800 → 1800%3=0 → decayThisTick fires.
+    const pet = makePet({ stage: "child", ticksAlive: 1799, dayTimer: 23.987 });
     const next = tick(pet);
     assert.equal(next.stage, "teen");
   });
 
   it("promotes teen to adult when dayTimer reaches threshold", () => {
-    const pet = makePet({ stage: "teen", ticksAlive: TEEN_DURATION_TICKS - 1, dayTimer: 95.987 });
+    // ticksAlive=7199 → after tick=7200 → 7200%3=0 → decayThisTick fires.
+    const pet = makePet({ stage: "teen", ticksAlive: 7199, dayTimer: 95.987 });
     const next = tick(pet);
     assert.equal(next.stage, "adult");
   });
@@ -1736,6 +1760,8 @@ describe("integration — action sequence", () => {
       poops: 0,
       sick: false,
       dayTimer: 95.987,
+      // ticksAlive=2 → after tick=3 → 3%3=0 → decayThisTick fires → ageIncrement advances dayTimer
+      ticksAlive: 2,
     } as PetState;
     const next = tick(pet);
     assert.equal(next.stage, "adult");
@@ -1974,7 +2000,8 @@ describe("developer mode — aging multiplier", () => {
     };
 
     // Use a healthy awake pet so decay fires (not deep idle)
-    const base = makePet({ health: 100, hunger: 80, happiness: 80, energy: 80 });
+    // ticksAlive=2 → after tick=3 → 3%3=0 → decayThisTick fires → ageIncrement > 0
+    const base = makePet({ health: 100, hunger: 80, happiness: 80, energy: 80, ticksAlive: 2 });
     const afterNormal = tick(base, false, false, normal);
     const afterFast   = tick(base, false, false, fast);
 
@@ -2007,7 +2034,7 @@ describe("developer mode — aging multiplier", () => {
       devModeHealthFloor: 1,
     };
 
-    const base = makePet({ health: 100, hunger: 80, happiness: 80, energy: 80 });
+    const base = makePet({ health: 100, hunger: 80, happiness: 80, energy: 80, ticksAlive: 2 });
     const afterNodev = tick(base, false, false, nodev);
     const afterDev1  = tick(base, false, false, dev1);
 

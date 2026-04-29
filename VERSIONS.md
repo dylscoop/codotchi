@@ -1,6 +1,34 @@
 # Version History
 
-## v1.14.2 — current
+## v1.14.3 — current
+
+### Changes from v1.14.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped `1.14.2` → `1.14.3` |
+| `pycharm/build.gradle.kts` | Version bumped `1.14.2` → `1.14.3` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped `1.14.2` → `1.14.3` |
+| `vscode/src/gameEngine.ts` | Tick interval halved from 6s to 3s (`TICK_INTERVAL_SECONDS`) |
+| `vscode/src/gameEngine.ts` | Added `DECAY_TICK_INTERVAL = 3` — stat decay and aging apply every 3rd tick (every 9 real-world seconds), preserving original decay rate |
+| `vscode/src/gameEngine.ts` | `IDLE_DECAY_TICK_DIVISOR` doubled from 10 → 20 to preserve the same 60s real-world idle decay interval at the new 3s tick rate |
+| `vscode/src/gameEngine.ts` | Per-stat decay intervals: hunger and happiness now derive their own tick interval from `Math.round(DECAY_TICK_INTERVAL / multiplier)` — faster pet types decay more frequently, slower types less frequently, all still decaying by exactly 1 per event |
+| `vscode/src/gameEngine.ts` | Weight happiness debuff now encoded in `happinessInterval` (shorter interval) rather than a larger per-tick subtraction |
+| `vscode/src/gameEngine.ts` | Removed `Math.ceil` from all decay/regen calculations — decay amount is always exactly 1; multiplier effect expressed through firing frequency |
+| `vscode/src/gameEngine.ts` | `decayThisTick` retained for aging only; hunger/happiness/energy each gate independently |
+| `vscode/src/gameEngine.ts` | Offline decay `Math.ceil` removed for consistency |
+
+### Updated constants
+
+```
+TICK_INTERVAL_SECONDS: number = 3       // was 6
+DECAY_TICK_INTERVAL: number = 3         // new — base decay fires every 3rd tick
+IDLE_DECAY_TICK_DIVISOR: number = 20    // was 10
+```
+
+---
+
+## v1.14.2 — previous
 
 ### Changes from v1.14.1
 
