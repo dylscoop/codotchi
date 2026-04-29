@@ -1,5 +1,9 @@
 # codotchi — JetBrains plugin
 
+<img src="../vscode/media/monkey_adult_1x.png" height="64" alt="Monkey sprite" />
+<img src="../vscode/media/dog_adult_1x.png" height="64" alt="Dog sprite" />
+<img src="../vscode/media/snake_adult_1x.png" height="64" alt="Snake sprite" />
+
 Grow and raise your personal virtual pet as a JetBrains plugin while you code.
 
 ## Overview
@@ -10,7 +14,7 @@ lives in a tool window panel, reacts to your coding activity, and needs regular
 care to survive and evolve into its final form. Any support and feedback is much
 appreciated (links at the bottom)!
 
-Your pet is drawn from one of **14 sprite sets**, each based on a zodiac animal,
+Your pet is drawn from one of **14 sprite sets**, 12 of which are based on a zodiac animal,
 assigned to you at random when you start a new game.
 
 ## Features
