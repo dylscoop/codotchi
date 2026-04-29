@@ -640,9 +640,12 @@ export function buildStatusBlock(state: {
 /**
  * Build a contextual speech line combining pet mood and coding session activity.
  *
- * @param pet          - Key pet fields needed to pick a mood-relevant phrase.
- * @param filesEdited  - Number of files edited this session.
- * @param sessionMs    - Milliseconds elapsed since the session started.
+ * @param pet                 - Key pet fields needed to pick a mood-relevant phrase.
+ * @param filesEdited         - Number of files edited this session.
+ * @param sessionMs           - Milliseconds elapsed since the session started.
+ * @param timeSinceLastEditMs - Milliseconds since the last file.edited event (0 = unknown/not yet).
+ * @param sessionUserMessages - Number of user messages sent this session.
+ * @param isOnProdBranch      - True when the current branch is main, master, release/x, or prod.
  */
 export function buildContextualSpeech(
   pet: {
@@ -658,7 +661,10 @@ export function buildContextualSpeech(
     poops: number;
   },
   filesEdited: number,
-  sessionMs: number
+  sessionMs: number,
+  timeSinceLastEditMs: number = 0,
+  sessionUserMessages: number = 0,
+  isOnProdBranch: boolean = false
 ): string {
   // --- Session activity phrase ---
   const sessionMins = Math.floor(sessionMs / 60_000);
@@ -670,11 +676,55 @@ export function buildContextualSpeech(
     : "just started";
   const activityPhrase =
     filesEdited === 0  ? "Waiting to see what we build today."
-    : filesEdited === 1 ? "First file in. Let's go."
+    : filesEdited === 1 ? pickRandom(["First file in. Let's go.", "First file down. Getting started.", "Good work, work has started."])
     : filesEdited < 5  ? `${filesEdited} files in. Getting into it.`
     : filesEdited < 15 ? `${filesEdited} files in ${sessionLabel}. Good rhythm.`
     : filesEdited < 30 ? `${filesEdited} files in ${sessionLabel}. Really cooking now.`
     :                    `${filesEdited} files in ${sessionLabel}. This is a proper session.`;
+
+  // --- Contextual override: prod branch ---
+  if (isOnProdBranch && filesEdited > 0) {
+    return pickRandom([
+      `${filesEdited} files on main. Make sure these are clean.`,
+      `Shipping to prod. Double-check everything.`,
+      `Production branch. No pressure... okay, some pressure.`,
+    ]);
+  }
+
+  // --- Contextual override: long idle (no file edits for a while) ---
+  const idleMins = timeSinceLastEditMs > 0 ? Math.floor(timeSinceLastEditMs / 60_000) : 0;
+  if (idleMins >= 60) {
+    return pickRandom([
+      `No files touched in over an hour. Thinking things through?`,
+      `Long pause. Still here if you need me.`,
+    ]);
+  }
+  if (idleMins >= 30) {
+    return pickRandom([
+      `It's been ${idleMins} minutes since the last edit. Taking a break?`,
+      `Quiet spell. Ready when you are.`,
+    ]);
+  }
+
+  // --- Contextual override: lots of prompting ---
+  if (sessionUserMessages >= 20) {
+    return pickRandom([
+      `${sessionUserMessages} messages deep. You're really working through something.`,
+      `Long conversation. I'm keeping up.`,
+    ]);
+  }
+  if (sessionUserMessages >= 10) {
+    return pickRandom([
+      `${sessionUserMessages} messages in. Good back-and-forth.`,
+      `We're getting somewhere. Keep going.`,
+    ]);
+  }
+  if (sessionUserMessages >= 5) {
+    return pickRandom([
+      `${sessionUserMessages} prompts sent. Getting into it.`,
+      `Good pace. Let's keep moving.`,
+    ]);
+  }
 
   // --- Pet mood phrase (most critical stat wins) ---
   let moodPhrase: string;
@@ -699,7 +749,7 @@ export function buildContextualSpeech(
   } else if (pet.happiness > 70 && pet.health > 70) {
     moodPhrase = "Feeling great. Good session so far.";
   } else if (pet.mood === "happy") {
-    moodPhrase = "Happy right now. Don't stop.";
+    moodPhrase = pickRandom(["Happy right now. Keep going.", "I'm chilling."]);
   } else {
     moodPhrase = "Doing okay. Let's see what you build.";
   }
@@ -725,6 +775,8 @@ export const TODO_COMPLETE_PHRASES: Array<(content: string) => string> = [
   (c) => `Nice. ${c} done.`,
   (c) => `One off the list: ${c}.`,
   (c) => `Finished: ${c}. Good work.`,
+  (c) => `Checked off: ${c}. Moving on.`,
+  (c) => `${c} — nailed it.`,
 ];
 
 /**
@@ -736,6 +788,7 @@ export const SESSION_DIFF_PHRASES: string[] = [
   "Something shipped. Good session.",
   "You've been busy. Those changes look solid.",
   "Edits landed. I'm watching you work.",
+  "New changes detected. Keep the momentum.",
 ];
 
 /**
