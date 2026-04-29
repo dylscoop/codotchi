@@ -1,8 +1,8 @@
 # codotchi — VS Code extension
 
-<img src="media/monkey_adult_1x.png" height="64" alt="Monkey sprite" />
-<img src="media/dog_adult_1x.png" height="64" alt="Dog sprite" />
-<img src="media/snake_adult_1x.png" height="64" alt="Snake sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/vscode/media/monkey_adult_1x.png" height="64" alt="Monkey sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/vscode/media/dog_adult_1x.png" height="64" alt="Dog sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/vscode/media/snake_adult_1x.png" height="64" alt="Snake sprite" />
 
 Grow and raise your personal virtual pet as a VS Code extension while you code.
 
@@ -124,7 +124,7 @@ Each pet animal has its own sprite set
 
 ### Sponsor this project
 
-<a href="https://buymeacoffee.com/dylscoop"><img src="../bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
+<a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
 
 [buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
 
