@@ -264,6 +264,7 @@ footprint to make movement readable.
 | Expand canvas to full sidebar width | Read `canvas.parentElement.clientWidth` on load and on window resize; set `canvas.width` dynamically | `[x]` |
 | Fixed stage height | Fixed at 160 px; canvas CSS height is dynamic (`height: auto`) so pixel buffer and display always match | `[x]` |
 | Sprite size unchanged | The drawn body size is still driven by stage scale; the extra space is used for movement | `[x]` |
+| Smooth sprite rendering (experimental) | `image-rendering: auto` on `#sprite-canvas` and `.sprite-container` — browser bilinear-interpolates on upscale instead of nearest-neighbour; reduces pixelation at larger sidebar widths | `[x]` |
 
 ### 5.2 Animation Loop
 

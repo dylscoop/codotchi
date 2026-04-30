@@ -1,5 +1,17 @@
 # Version History
 
+## v1.16.0 — current
+
+### Changes from v1.15.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.16.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.16.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.16.0 |
+| `vscode/media/sidebar.css` | Experimental: replaced `image-rendering: pixelated/crisp-edges` with `image-rendering: auto` on `.sprite-container`, `#sprite-canvas`, and `#lr-canvas` — enables browser bilinear smoothing on sprite canvas upscale |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirror of above CSS change |
+
 ## v1.15.2 — current
 
 ### Changes from v1.15.1
