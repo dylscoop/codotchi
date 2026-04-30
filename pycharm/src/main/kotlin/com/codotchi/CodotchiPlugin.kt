@@ -65,6 +65,16 @@ class CodotchiPlugin : Disposable {
     /** Timestamp of the last detected keyboard or mouse activity in the IDE. */
     @Volatile private var lastActivityTime: Long = System.currentTimeMillis()
 
+    /**
+     * Timestamp of the last tick in which the pet was in deep idle.
+     * Used to enforce a re-entry grace period (BUGFIX-097): after the user returns
+     * from deep idle (e.g. screen unlock, IDE focus regain), the pet stays in
+     * deep-idle protection for DEEP_IDLE_REENTRY_GRACE_MS before full active
+     * decay resumes.  Persisted across restarts so a crash/restart also benefits
+     * from the grace period.  Mirrors VS Code lastDeepIdleTickMs in extension.ts.
+     */
+    @Volatile private var lastDeepIdleTickMs: Long = 0L
+
     /** AWT listener that updates [lastActivityTime] on any key press or mouse event. */
     private val awtActivityListener = AWTEventListener { event ->
         val id = event?.id ?: return@AWTEventListener
@@ -146,6 +156,9 @@ class CodotchiPlugin : Disposable {
                         service<CodotchiPersistence>().savePetState(state)
                         service<CodotchiPersistence>().lastSaveTimestamp = System.currentTimeMillis()
                     }
+                    // BUGFIX-097: persist the deep-idle timestamp so the grace period
+                    // survives a crash/force-quit and applies on the next startup.
+                    service<CodotchiPersistence>().lastDeepIdleTickMs = lastDeepIdleTickMs
                     // In AI mode, keep ticking while unfocused so the pet advances
                     // while an AI agent codes in the background. The focus-gate exists
                     // only to prevent multi-window state divergence, which aiMode avoids
@@ -162,6 +175,10 @@ class CodotchiPlugin : Disposable {
 
         // Restore saved high score
         currentHighScore = persistence.loadHighScore()
+
+        // BUGFIX-097: restore deep-idle timestamp so the re-entry grace period
+        // also applies after a crash or force-quit restart.
+        lastDeepIdleTickMs = persistence.lastDeepIdleTickMs
 
         // Restore saved state
         val savedState = persistence.loadPetState()
@@ -214,7 +231,15 @@ class CodotchiPlugin : Disposable {
                 devModeHealthFloor       = maxOf(0, minOf(100, settings.devModeHealthFloor)),
             )
             lastDevMode = gameConfig.devMode
-            currentState = tick(state, isIdle(), isDeepIdle(), gameConfig)
+            // BUGFIX-097: compute deep idle with re-entry grace period so the pet
+            // stays protected for DEEP_IDLE_REENTRY_GRACE_MS after screen unlock
+            // or IDE focus regain — mirrors VS Code extension.ts grace period logic.
+            val rawDeepIdle = isDeepIdle()
+            if (rawDeepIdle) lastDeepIdleTickMs = System.currentTimeMillis()
+            val inGracePeriod = lastDeepIdleTickMs > 0L &&
+                System.currentTimeMillis() - lastDeepIdleTickMs < DEEP_IDLE_REENTRY_GRACE_MS
+            val deepIdle = rawDeepIdle || inGracePeriod
+            currentState = tick(state, isIdle(), deepIdle, gameConfig)
             true
         }
         if (ticked) broadcastState()

@@ -39,6 +39,13 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
     /** Epoch-millis timestamp of the last save (used for offline decay). */
     var lastSaveTimestamp: Long = 0L
 
+    /**
+     * Epoch-millis timestamp of the last tick in which the pet was in deep idle.
+     * Persisted so the DEEP_IDLE_REENTRY_GRACE_MS grace period (BUGFIX-097) also
+     * applies after a crash or force-quit restart.
+     */
+    var lastDeepIdleTickMs: Long = 0L
+
     /** Meals given in the current wake cycle (persisted across restarts). */
     var mealsGivenThisCycle: Int = 0
 
@@ -51,6 +58,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val el = Element("CodotchiPersistence")
         petStateJson?.let { el.setAttribute("petStateJson", it) }
         el.setAttribute("lastSaveTimestamp", lastSaveTimestamp.toString())
+        el.setAttribute("lastDeepIdleTickMs", lastDeepIdleTickMs.toString())
         el.setAttribute("mealsGivenThisCycle", mealsGivenThisCycle.toString())
         highScoreJson?.let { el.setAttribute("highScoreJsonV2", it) } // v2: ageDays now driven by dayTimer
         return el
@@ -59,6 +67,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
     override fun loadState(state: Element) {
         petStateJson        = state.getAttributeValue("petStateJson")
         lastSaveTimestamp   = state.getAttributeValue("lastSaveTimestamp")?.toLongOrNull()  ?: 0L
+        lastDeepIdleTickMs  = state.getAttributeValue("lastDeepIdleTickMs")?.toLongOrNull() ?: 0L
         mealsGivenThisCycle = state.getAttributeValue("mealsGivenThisCycle")?.toIntOrNull() ?: 0
         highScoreJson       = state.getAttributeValue("highScoreJsonV2") // v2: ageDays now driven by dayTimer
     }

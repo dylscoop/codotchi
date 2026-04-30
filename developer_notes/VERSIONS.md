@@ -1,5 +1,26 @@
 # Version History
 
+## v1.17.1 — current
+
+### Changes from v1.17.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.17.1 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.17.1 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.17.1 |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | Added `DEEP_IDLE_REENTRY_GRACE_MS = 60_000L`; changed `IDLE_DECAY_TICK_DIVISOR` from `10` to `20` to match VS Code |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | Added `lastDeepIdleTickMs` field; `onTick()` now computes deep-idle with 60-second re-entry grace period (BUGFIX-097); restores `lastDeepIdleTickMs` from persistence on startup; persists it on `applicationDeactivated` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt` | Added `lastDeepIdleTickMs: Long` field; wired into `getState()` / `loadState()` via `codotchi.xml` attribute |
+| `developer_notes/BUGFIXES.md` | Added BUGFIX-097 |
+
+### Updated constants
+
+```
+IDLE_DECAY_TICK_DIVISOR: Int = 20   // was 10 — now matches VS Code (idle decay at 1/20th normal rate)
+DEEP_IDLE_REENTRY_GRACE_MS: Long = 60_000L   // new — 60-second grace after exiting deep idle
+```
+
 ## v1.17.0 — current
 
 ### Changes from v1.16.0

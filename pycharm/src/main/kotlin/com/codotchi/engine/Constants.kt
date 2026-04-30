@@ -115,9 +115,17 @@ const val IDLE_STAT_FLOOR: Int = 20
 
 /**
  * When the user is idle, hunger/happiness decay fires only once every this
- * many ticks (≈ 10% of normal rate).
+ * many ticks (5% of normal rate — matches VS Code IDLE_DECAY_TICK_DIVISOR).
  */
-const val IDLE_DECAY_TICK_DIVISOR: Int = 10
+const val IDLE_DECAY_TICK_DIVISOR: Int = 20
+
+/**
+ * Grace period (ms) after exiting deep idle before full active decay resumes.
+ * When the user returns from deep idle (e.g. screen unlock, IDE focus regain),
+ * the pet stays in deep-idle protection for this long so it cannot die moments
+ * after the user sits back down.  Mirrors VS Code DEEP_IDLE_REENTRY_GRACE_MS.
+ */
+const val DEEP_IDLE_REENTRY_GRACE_MS: Long = 60_000L // 60 seconds
 
 const val MINIGAME_WIN_HAPPINESS_BOOST: Int = 15
 const val MINIGAME_LOSE_HAPPINESS_BOOST: Int = 5
