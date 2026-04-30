@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>1.15.1</version>
+    <version>1.15.2</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -102,19 +102,6 @@ which determines which character your pet evolves into at each life stage.</p>
 
 <hr/>
 <p><em>"Grow your best pet by writing your best code."</em></p>
-<hr/>
-
-<h2>Support</h2>
-<p><b>GitHub:</b> <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotchi</a></p>
-
-<h3>Sponsor this project</h3>
-<p><a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code" /></a></p>
-<p><a href="https://buymeacoffee.com/dylscoop">buymeacoffee.com/dylscoop</a></p>
-<p><a href="https://liberapay.com/dylscoop">liberapay.com/dylscoop</a></p>
-
-<h3>Codotchi Sprites</h3>
-<p>Want to see a new sprite in the game? Send a drawn sprite or request one to be added — a passcode will be given every time one gets implemented.</p>
-<p><a href="https://github.com/dylscoop/codotchi/issues">Open a sprite request on GitHub Issues</a></p>
     ]]></description>
 
     <idea-version since-build="241"/>
