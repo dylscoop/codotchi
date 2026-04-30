@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.codotchi"
-version = "1.15.1"
+version = "1.15.2"
 
 repositories {
     mavenCentral()
@@ -56,8 +56,8 @@ tasks {
         into(layout.buildDirectory.dir("resources/test/source"))
     }
 
-    val unitTest by registering(Exec::class) {
-        description = "Runs pure JUnit 5 unit tests via java -jar (bypasses IntelliJ plugin hooks)."
+    val unitTest by registering(JavaExec::class) {
+        description = "Runs pure JUnit 5 unit tests via JavaExec (bypasses IntelliJ plugin hooks)."
         group       = "verification"
 
         dependsOn("compileTestKotlin", "processResources", copySourceForTest)
@@ -74,12 +74,11 @@ tasks {
         val mainResourcesDir = sourceSets["main"].output.resourcesDir!!.absolutePath
         val extraResources   = layout.buildDirectory.dir("resources/test").get().asFile.absolutePath
 
-        val java = "${System.getenv("JAVA_HOME") ?: System.getProperty("java.home")}/bin/java.exe"
         val fullCp = "$testOutputCp;$testRuntimeCp;$mainResourcesDir;$extraResources"
 
-        commandLine(
-            java,
-            "-jar", launcherJar.absolutePath,
+        classpath(launcherJar)
+        mainClass.set("org.junit.platform.console.ConsoleLauncher")
+        args(
             "--scan-class-path", testClassesDir,
             "--class-path", fullCp,
             "--details", "tree",
