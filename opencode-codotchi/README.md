@@ -20,21 +20,21 @@ project. Choose the path that matches how you have the package:
 
 ### Option A — From zip (recommended)
 
-Download `opencode-codotchi-1.14.0.zip` from the
+Download `opencode-codotchi-1.15.2.zip` from the
 [Releases page](https://github.com/dylscoop/codotchi/releases), extract it,
 then run the installer:
 
 ```bash
 # macOS / Linux
-unzip opencode-codotchi-1.14.0.zip
-cd opencode-codotchi-1.14.0
+unzip opencode-codotchi-1.15.2.zip
+cd opencode-codotchi-1.15.2
 node bin/install.js --install
 ```
 
 ```powershell
 # Windows (PowerShell)
-Expand-Archive opencode-codotchi-1.14.0.zip
-cd opencode-codotchi-1.14.0
+Expand-Archive opencode-codotchi-1.15.2.zip
+cd opencode-codotchi-1.15.2
 node bin/install.js --install
 ```
 
@@ -139,19 +139,3 @@ See the root README for VS Code and PyCharm installation instructions.
 ## Support
 
 **GitHub:** [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi)
-
-### Sponsor this project
-
-<a href="https://buymeacoffee.com/dylscoop"><img src="../bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
-
-[buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
-
-[![Liberapay](https://img.shields.io/badge/Liberapay-dylscoop-yellow)](https://liberapay.com/dylscoop)
-
-[liberapay.com/dylscoop](https://liberapay.com/dylscoop)
-
-### Codotchi Sprites
-
-Want to see a new sprite in the game? Send a drawn sprite or request one to be added — a passcode will be given every time one gets implemented.
-
-[Open a sprite request on GitHub Issues](https://github.com/dylscoop/codotchi/issues)

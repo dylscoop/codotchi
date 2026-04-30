@@ -1,8 +1,28 @@
 # Version History
 
-## v1.15.1 — current
+## v1.15.2 — current
 
-### Changes from v1.15.0
+### Changes from v1.15.1
+
+| File | What changed |
+|------|-------------|
+| `pycharm/build.gradle.kts` | Version bumped to 1.15.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.15.2; sponsor/support section removed from `<description>` |
+| `vscode/package.json` | Version bumped to 1.15.2 |
+| `opencode-codotchi/package.json` | Version bumped to 1.15.2 |
+| `pycharm/build.gradle.kts` | `unitTest` task switched from `Exec` to `JavaExec` to suppress IntelliJ plugin deprecation warning |
+| `vscode/README.md` | Sponsor/support section removed; moved to `developer_notes/SPONSOR.md` |
+| `pycharm/README.md` | Sponsor/support section removed; moved to `developer_notes/SPONSOR.md` |
+| `opencode-codotchi/README.md` | Sponsor/support section removed; version references updated to 1.15.2 |
+| `README.md` | Version references updated to 1.15.2 |
+| `developer_notes/SPONSOR.md` | New file — holds sponsor/support content extracted from READMEs |
+| `.opencode/skills/pycharm-docs-parity/SKILL.md` | New skill — enforces pycharm/README.md ↔ plugin.xml description sync |
+| `vscode/media/icon_128.png` | New 128×128 egg sprite PNG for VS Code marketplace icon |
+| `vscode/codotchi-1.15.2.vsix` | Rebuilt VS Code artifact for v1.15.2 |
+| `pycharm/build/distributions/pycharm-codotchi-1.15.2.zip` | Rebuilt PyCharm artifact for v1.15.2 |
+| `opencode-codotchi/opencode-codotchi-1.15.2.zip` | Rebuilt OpenCode zip for v1.15.2 |
+
+## v1.15.1
 
 | File | What changed |
 |------|-------------|
