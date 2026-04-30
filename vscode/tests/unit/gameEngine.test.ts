@@ -64,7 +64,7 @@ import {
 
 /** Create a default codeling pet for use in tests. */
 function makePet(overrides: Partial<PetState> = {}): PetState {
-  return { ...createPet("Pixel", "codeling", "neon"), ...overrides };
+  return { ...createPet("Pixel", "codeling"), ...overrides };
 }
 
 // ---------------------------------------------------------------------------
@@ -108,20 +108,19 @@ describe("constants", () => {
 // ---------------------------------------------------------------------------
 
 describe("createPet", () => {
-  it("creates a pet with the given name, type, and color", () => {
-    const pet = createPet("Noodle", "bytebug", "pastel");
+  it("creates a pet with the given name and type", () => {
+    const pet = createPet("Noodle", "bytebug");
     assert.equal(pet.name, "Noodle");
     assert.equal(pet.petType, "bytebug");
-    assert.equal(pet.color, "pastel");
   });
 
   it("starts at stage egg", () => {
-    const pet = createPet("X", "codeling", "neon");
+    const pet = createPet("X", "codeling");
     assert.equal(pet.stage, "egg");
   });
 
   it("starts alive with default stats", () => {
-    const pet = createPet("X", "codeling", "neon");
+    const pet = createPet("X", "codeling");
     assert.equal(pet.alive, true);
     assert.equal(pet.sick, false);
     assert.equal(pet.sleeping, false);
@@ -131,23 +130,23 @@ describe("createPet", () => {
   });
 
   it("shellscript gets base health of 120", () => {
-    const pet = createPet("Shell", "shellscript", "mono");
+    const pet = createPet("Shell", "shellscript");
     assert.equal(pet.health, 120);
   });
 
   it("codeling gets base health of 100", () => {
-    const pet = createPet("Code", "codeling", "neon");
+    const pet = createPet("Code", "codeling");
     assert.equal(pet.health, 100);
   });
 
   it("has mood and sprite derived fields", () => {
-    const pet = createPet("X", "codeling", "neon");
+    const pet = createPet("X", "codeling");
     assert.ok(typeof pet.mood === "string" && pet.mood.length > 0);
     assert.ok(typeof pet.sprite === "string" && pet.sprite.length > 0);
   });
 
   it("care score defaults to 0.5 with no ticks accumulated", () => {
-    const pet = createPet("X", "codeling", "neon");
+    const pet = createPet("X", "codeling");
     assert.equal(pet.careScore, 0.5);
   });
 });
@@ -313,8 +312,8 @@ describe("tick — stat decay", () => {
   it("bytebug decays hunger faster than codeling", () => {
     // bytebug hungerInterval=2, codeling hungerInterval=3.
     // Run 2 ticks: at tick 2 bytebug fires (2%2=0), codeling does not (2%3≠0).
-    let codeling = createPet("A", "codeling", "neon");
-    let bytebug = createPet("B", "bytebug", "neon");
+    let codeling = createPet("A", "codeling");
+    let bytebug = createPet("B", "bytebug");
     for (let i = 0; i < 2; i++) {
       codeling = tick(codeling);
       bytebug  = tick(bytebug);
@@ -328,8 +327,8 @@ describe("tick — stat decay", () => {
   it("pixelpup decays happiness faster than codeling", () => {
     // pixelpup happinessInterval=2, codeling happinessInterval=3.
     // Run 2 ticks: at tick 2 pixelpup fires (2%2=0), codeling does not (2%3≠0).
-    let codeling = createPet("A", "codeling", "neon");
-    let pixelpup = createPet("B", "pixelpup", "neon");
+    let codeling = createPet("A", "codeling");
+    let pixelpup = createPet("B", "pixelpup");
     for (let i = 0; i < 2; i++) {
       codeling = tick(codeling);
       pixelpup = tick(pixelpup);
@@ -344,8 +343,8 @@ describe("tick — stat decay", () => {
     // decayThisTick fires when ticksAlive % 3 === 0; createPet starts at ticksAlive=0.
     // After tick 1: ticksAlive=1 → no aging. After tick 3: ticksAlive=3 → aging fires.
     // Run 3 ticks so aging fires once; bytebug ageMultiplier=1.5 advances dayTimer faster.
-    let codeling = createPet("A", "codeling", "neon");
-    let bytebug = createPet("B", "bytebug", "neon");
+    let codeling = createPet("A", "codeling");
+    let bytebug = createPet("B", "bytebug");
     for (let i = 0; i < 3; i++) {
       codeling = tick(codeling);
       bytebug  = tick(bytebug);
@@ -358,8 +357,8 @@ describe("tick — stat decay", () => {
 
   it("shellscript accumulates dayTimer slower than codeling per tick", () => {
     // Same reasoning: run 3 ticks so decayThisTick fires once.
-    let codeling = createPet("A", "codeling", "neon");
-    let shellscript = createPet("B", "shellscript", "neon");
+    let codeling = createPet("A", "codeling");
+    let shellscript = createPet("B", "shellscript");
     for (let i = 0; i < 3; i++) {
       codeling    = tick(codeling);
       shellscript = tick(shellscript);
@@ -1598,8 +1597,8 @@ describe("applyOfflineDecay", () => {
   });
 
   it("applies faster decay for bytebug (higher hunger multiplier)", () => {
-    const codeling = createPet("A", "codeling", "neon");
-    const bytebug = createPet("B", "bytebug", "neon");
+    const codeling = createPet("A", "codeling");
+    const bytebug = createPet("B", "bytebug");
     const nextCodeling = applyOfflineDecay({ ...codeling, hunger: 80 } as PetState, 100);
     const nextBytebug = applyOfflineDecay({ ...bytebug, hunger: 80 } as PetState, 100);
     assert.ok(
@@ -1662,12 +1661,12 @@ describe("computeCareScore", () => {
 
 describe("serialiseState / deserialiseState", () => {
   it("round-trips a pet state without loss", () => {
-    const original = createPet("RoundTrip", "pixelpup", "ocean");
+    const original = createPet("RoundTrip", "pixelpup");
     const serialised = serialiseState(original);
     const restored = deserialiseState(serialised);
     assert.equal(restored.name, original.name);
     assert.equal(restored.petType, original.petType);
-    assert.equal(restored.color, original.color);
+
     assert.equal(restored.hunger, original.hunger);
     assert.equal(restored.happiness, original.happiness);
     assert.equal(restored.discipline, original.discipline);
@@ -1684,13 +1683,13 @@ describe("serialiseState / deserialiseState", () => {
     const pet = deserialiseState(minimal);
     assert.equal(pet.name, "Ghost");
     assert.equal(pet.petType, "codeling");
-    assert.equal(pet.color, "neon");
+
     assert.equal(pet.hunger, 50);
     assert.equal(pet.alive, true);
   });
 
   it("serialiseState includes derived fields for the webview", () => {
-    const pet = createPet("Test", "codeling", "neon");
+    const pet = createPet("Test", "codeling");
     const serialised = serialiseState(pet);
     assert.ok("mood" in serialised);
     assert.ok("sprite" in serialised);
@@ -1704,7 +1703,7 @@ describe("serialiseState / deserialiseState", () => {
 
 describe("integration — action sequence", () => {
   it("new pet can be fed, played with, and put to sleep", () => {
-    let pet = createPet("Gotchi", "codeling", "neon");
+    let pet = createPet("Gotchi", "codeling");
     pet = feedMeal(pet, 0);
     assert.ok(pet.events.includes("fed_meal"));
 
@@ -1719,7 +1718,7 @@ describe("integration — action sequence", () => {
   });
 
   it("consecutive snacks → sick → medicine → cured", () => {
-    let pet = createPet("Sickly", "codeling", "neon");
+    let pet = createPet("Sickly", "codeling");
     // Use the two-step snack model: startSnack (button press) + consumeSnack (pet eats).
     // consecutiveSnacks is incremented in consumeSnack; sickness fires when it reaches 3.
     pet = consumeSnack(startSnack(pet));                              // snack 1
@@ -1734,7 +1733,7 @@ describe("integration — action sequence", () => {
   });
 
   it("starving pet loses health over time and dies", () => {
-    let pet = createPet("Starved", "codeling", "neon");
+    let pet = createPet("Starved", "codeling");
     // Zero out hunger and simulate HUNGER_ZERO_TICKS_BEFORE_RISK+1 ticks
     pet = { ...pet, hunger: 0, hungerZeroTicks: 0 } as PetState;
     // Run enough ticks so health drains to 0 (100 health / 5 per tick = 20 ticks after risk)
@@ -1750,7 +1749,7 @@ describe("integration — action sequence", () => {
 
   it("evolves from egg through all stages to adult when dayTimer milestones are reached", () => {
     // Seed dayTimer just below the teen→adult threshold; one tick will push it over.
-    let pet = createPet("Grower", "codeling", "neon");
+    let pet = createPet("Grower", "codeling");
     pet = {
       ...pet,
       stage: "teen",
