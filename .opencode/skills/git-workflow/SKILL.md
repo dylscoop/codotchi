@@ -153,57 +153,21 @@ Typical release flow (each line needs separate approval):
 3. **Ask the user** to confirm before reinstalling the OpenCode plugin locally: `node bin/install.js --install` (run from `opencode-codotchi/`) — **never run without explicit user confirmation**
 4. `git push origin <branch>` — push the feature branch
 5. `git checkout main && git merge <branch>` — merge to main
-6. `git tag vX.Y.Z` — create the version tag locally on main
-7. Push the tag via GitHub API (see "Pushing a tag via GitHub API" below) — **do not use `git push` for tags**, it is blocked by a repository rule. **Do this before pushing main.**
-8. `git push origin main` — push main (after the tag is live on remote)
+6. `git push origin main` — push main
+7. `git tag vX.Y.Z` — create the version tag locally on main
+8. `git push origin vX.Y.Z` — push the tag (bypasses the rule with a "Bypassed rule violations" warning — this is expected and the tag is created successfully)
 9. Copy artifacts to `releases/`, apply the 3-version rule, move older releases to `releases/old_releases/` — see `release-management` skill — commit and push
 10. Create GitHub release — publish release notes
 
-## Pushing a tag via GitHub API
+## Pushing a tag
 
-`git push origin vX.Y.Z` is blocked by a repository rule ("Cannot create ref due to
-creations being restricted"). Use the GitHub REST API instead — this bypasses the git
-protocol restriction.
-
-### Retrieve the PAT first (see "Step 1" in "Creating a GitHub release" below)
-
-### Create the tag ref via API
+Use a plain `git push`:
 
 ```powershell
-$token = 'YOUR_PAT'
-$sha = (git rev-parse HEAD)  # or the specific commit SHA to tag
-$headers = @{
-    Authorization          = "token $token"
-    Accept                 = 'application/vnd.github+json'
-    'X-GitHub-Api-Version' = '2022-11-28'
-}
-$payload = @{ ref = "refs/tags/vX.Y.Z"; sha = $sha } | ConvertTo-Json
-$r = Invoke-RestMethod -Uri 'https://api.github.com/repos/dylscoop/codotchi/git/refs' `
-     -Method Post -Headers $headers -Body $payload -ContentType 'application/json'
-Write-Host "Created: $($r.ref) at $($r.object.sha)"
+git push origin vX.Y.Z
 ```
 
-### Update (force-move) an existing tag via API
-
-If the tag already exists on remote and needs to point to a new commit:
-
-```powershell
-$token = 'YOUR_PAT'
-$sha = (git rev-parse HEAD)
-$headers = @{
-    Authorization          = "token $token"
-    Accept                 = 'application/vnd.github+json'
-    'X-GitHub-Api-Version' = '2022-11-28'
-}
-$payload = @{ sha = $sha; force = $true } | ConvertTo-Json
-$r = Invoke-RestMethod -Uri 'https://api.github.com/repos/dylscoop/codotchi/git/refs/tags/vX.Y.Z' `
-     -Method Patch -Headers $headers -Body $payload -ContentType 'application/json'
-Write-Host "Updated: $($r.ref) at $($r.object.sha)"
-```
-
-> **Note:** Both POST (create) and PATCH (update) have been tested and work when
-> the PAT has `repo` scope. The git protocol push is what is blocked — the API
-> is not subject to the same ruleset restriction.
+The remote will respond with a "Bypassed rule violations" warning — this is expected. The tag is created on the remote successfully despite the warning. No API call or PAT required.
 
 ---
 
