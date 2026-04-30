@@ -71,6 +71,21 @@ The following actions each require **explicit user instruction** before performi
 
 ---
 
+## Post-build mandatory actions — do these immediately after every build
+
+After any build command completes (VS Code, PyCharm, or OpenCode), you **must** do all three of the following before stopping or waiting:
+
+1. **List the artifact files produced** — state the exact filename and path of every artifact that was just built.
+2. **Commit the artifacts immediately** as `chore: rebuild artifacts for vX.Y.Z` — do not wait for the user to ask. The commit is already implied by the release flow. Stage and commit all three artifact files in a single commit.
+3. **Report and stop** — after the commit succeeds, output a short summary:
+   - What was built
+   - The commit hash
+   - The next release step (from the numbered list below) that requires explicit user instruction
+
+Never silently halt after a build. Never leave artifact files uncommitted.
+
+---
+
 ## Build artifacts — required before merging to main
 
 Do **not** rebuild on every individual commit. Rebuild once, as a dedicated
