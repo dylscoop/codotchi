@@ -2875,11 +2875,12 @@
 
     var spriteType = state.spriteType || "classic";
     var stage      = state.stage      || "baby";
-    var palette    = getPalette(state.color);
+    var palette    = getPalette(state.spriteType);
     var primary    = palette.primary;
     var secondary  = palette.secondary;
 
-    // -- Derive darkened primary for colour index 3 (accent) -----------------
+    // -- Use the animal's own accent colour (index 3 = stripes, ridges, markings)
+    // Falls back to darkened primary for any palette that lacks an explicit accent.
     function darkenHex(hex, factor) {
       var h = hex.replace("#", "");
       if (h.length === 3) { h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; }
@@ -2889,8 +2890,7 @@
       return "rgb(" + r + "," + g + "," + b + ")";
     }
 
-    // Bug fix #2: accent is darkened primary, NOT secondary
-    var accent = darkenHex(primary, 0.70);
+    var accent = palette.accent || darkenHex(primary, 0.70);
 
     // -- Sick / sleeping colour overrides ------------------------------------
     if (state.sick)     { secondary = "#ff4444"; }

@@ -1687,7 +1687,7 @@
       "000011111111311113111131111111111101100000000000",//16  chin merged body
       "000000011111311113111131111111111100110000000000",//17  body + tail step right cols36-37
       "000000011111311113111131111111111000110000000000",//18  body + tail cols36-37
-      "000000001111311113111111111111111010110000000000",//19  body narrows + tail cols36-37
+      "000000001111311113111111111111111000110000000000",//19  body narrows + tail cols36-37
       "000000001111113111111111111111110000011000000000",//20  lower body + tail step right cols37-38
       "000000000111111111111111111111110000011000000000",//21  lower body + tail cols37-38
       "000000000111111111111111111111100000011000000000",//22  belly + tail cols37-38
@@ -1948,7 +1948,7 @@
   DEFS["horse"] = {
     // Redesigned v1.11.0: arched neck + mane (colour 3), long muzzle, flowing tail (colour 3),
     // tapered body, colour-3 hooves. Head faces left. Quadruped 48x32 grid.
-    // Colour 1 = body, Colour 2 = eye only, Colour 3 = mane/tail/hooves/nostril, Colour 4 = unused.
+    // Colour 1 = body, Colour 2 = eye/nostril, Colour 3 = mane/tail/hooves, Colour 4 = unused.
     baby: [
       "000000000000000000000000000000000000000000000000",//0
       "000000000000000000000000000000000000000000000000",//1
@@ -2059,8 +2059,8 @@
       "000000000000000000000000000000000000000000000000",//4
       "000000000000000000000000000000000000000000000000",//5
       "000000000000000000000000000000000000000000000000",//6
-      "000011010000000000000000000000000000000000000000",//7   ears
-      "000011130000000000000000000000000000000000000000",//8   ear base + mane start
+      "000011010000000000000000000000000000000000000000",//7   ears: col4=1,col5=0,col6=1
+      "000011130000000000000000000000000000000000000000",//8   ear base + mane start col7=3
       "000111113000000000000000000000000000000000000000",//9   head widens + mane
       "000111111330000000000000000000000000000000000000",//10  head + mane cascade
       "000121111113300000000000000000000000000000000000",//11  eye(col3=2) + mane cascade
@@ -2828,6 +2828,7 @@
   // SPRITE LOOKUP TABLE
   // =========================================================================
 
+
   var SPRITES = {};
   var spriteTypes = Object.keys(DEFS);
   for (var si = 0; si < spriteTypes.length; si++) {
@@ -2874,11 +2875,12 @@
 
     var spriteType = state.spriteType || "classic";
     var stage      = state.stage      || "baby";
-    var palette    = getPalette(state.color);
+    var palette    = getPalette(state.spriteType);
     var primary    = palette.primary;
     var secondary  = palette.secondary;
 
-    // -- Derive darkened primary for colour index 3 (accent) -----------------
+    // -- Use the animal's own accent colour (index 3 = stripes, ridges, markings)
+    // Falls back to darkened primary for any palette that lacks an explicit accent.
     function darkenHex(hex, factor) {
       var h = hex.replace("#", "");
       if (h.length === 3) { h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; }
@@ -2888,8 +2890,7 @@
       return "rgb(" + r + "," + g + "," + b + ")";
     }
 
-    // Bug fix #2: accent is darkened primary, NOT secondary
-    var accent = darkenHex(primary, 0.70);
+    var accent = palette.accent || darkenHex(primary, 0.70);
 
     // -- Sick / sleeping colour overrides ------------------------------------
     if (state.sick)     { secondary = "#ff4444"; }

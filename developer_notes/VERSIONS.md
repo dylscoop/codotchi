@@ -6,6 +6,8 @@
 
 | File | What changed |
 |------|-------------|
+| `vscode/media/sprites.js` | `renderSpriteGrid` now calls `getPalette(state.spriteType)` instead of `getPalette(state.color)`; accent colour reads `palette.accent` instead of darkening primary |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirror of above |
 | `vscode/media/spriteConstants.js` | Replaced `COLOR_PALETTES` (theme-keyed) with `ANIMAL_PALETTES` (spriteType-keyed); each animal now has a fixed realistic primary/secondary/accent/background colour. Removed `"custom"` CSS-variable logic. `spriteGetPalette()` now accepts `spriteType` |
 | `pycharm/src/main/resources/webview/spriteConstants.js` | Mirror of above |
 | `vscode/media/sidebar.html` | Removed colour picker button group and `{{customColorsStyle}}` placeholder |
