@@ -467,7 +467,7 @@ export interface PetState {
   readonly name: string;
   readonly petType: string;
   readonly spriteType: string;
-  readonly color: string;
+  readonly color?: string;  // deprecated — kept for back-compat with old saves only
 
   // Core stats
   readonly hunger: number;
@@ -578,7 +578,7 @@ export interface HighScore {
   readonly name: string;
   readonly stage: string;
   readonly petType: string;
-  readonly color: string;
+  readonly color?: string;  // deprecated — kept for back-compat with old saves only
   /** Unix ms when the pet was created. */
   readonly spawnedAt: number;
   /** Unix ms when the pet died (used to compute real elapsed time). */
@@ -811,10 +811,9 @@ export function randomSpriteType(): string {
  *
  * @param name - The player-chosen name for the pet.
  * @param petType - One of the valid pet type identifiers.
- * @param color - The colour palette name (e.g. "neon", "pastel").
  * @returns A freshly initialised PetState.
  */
-export function createPet(name: string, petType: string, color: string): PetState {
+export function createPet(name: string, petType: string): PetState {
   const modifiers = PET_TYPE_MODIFIERS[petType] ?? PET_TYPE_MODIFIERS.codeling;
   const baseHealth = modifiers.baseHealth;
 
@@ -822,7 +821,6 @@ export function createPet(name: string, petType: string, color: string): PetStat
     name,
     petType,
     spriteType: randomSpriteType(),
-    color,
     hunger: 50,
     happiness: 50,
     discipline: 50,
@@ -2006,7 +2004,6 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     name: state.name,
     petType: state.petType,
     spriteType: state.spriteType,
-    color: state.color,
     hunger: state.hunger,
     happiness: state.happiness,
     discipline: state.discipline,
@@ -2089,7 +2086,6 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
       const s = getString("spriteType", "classic");
       return s === "goat" ? "sheep" : s;
     })(),
-    color: getString("color", "neon"),
     hunger: getNumber("hunger", 50),
     happiness: getNumber("happiness", 50),
     discipline: getNumber("discipline", 50),

@@ -1,6 +1,35 @@
 # Version History
 
-## v1.16.0 — current
+## v1.17.0 — current
+
+### Changes from v1.16.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/spriteConstants.js` | Replaced `COLOR_PALETTES` (theme-keyed) with `ANIMAL_PALETTES` (spriteType-keyed); each animal now has a fixed realistic primary/secondary/accent/background colour. Removed `"custom"` CSS-variable logic. `spriteGetPalette()` now accepts `spriteType` |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | Mirror of above |
+| `vscode/media/sidebar.html` | Removed colour picker button group and `{{customColorsStyle}}` placeholder |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirror of above |
+| `vscode/media/sidebar.js` | Removed `selectedColor`, colour picker click handler, `color` from `postMessage`; updated all `getPalette(state.color)` calls to `getPalette(state.spriteType)`; updated `ANIMAL_PALETTES` alias |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirror of above |
+| `vscode/media/sprite_preview.html` | Removed color `<select>` dropdown and `globalColor` variable; background now uses each animal's own palette |
+| `pycharm/src/main/resources/webview/sprite_preview.html` | Mirror of above |
+| `vscode/src/gameEngine.ts` | `color` field on `PetState` marked deprecated/optional; removed from `createPet()` signature and serialisation; removed from `deserialiseState` |
+| `vscode/src/sidebarProvider.ts` | Removed `{{customColorsStyle}}` injection; removed `color` extraction from `new_game` message; updated `createPet()` call to drop `color` arg |
+| `developer_notes/SPRITES.md` | Updated Colour Legend (accent note), added Animal Colour Palettes table |
+| `developer_notes/DEV_NOTES.md` | Updated spriteType assignment note and key constants table to reflect `ANIMAL_PALETTES` |
+
+### Removed constants
+
+- `COLOR_PALETTES` (replaced by `ANIMAL_PALETTES`)
+- `window.SPRITE_COLOR_PALETTES` export (replaced by `window.SPRITE_ANIMAL_PALETTES`)
+
+### New constants
+
+- `ANIMAL_PALETTES` — per-spriteType realistic colour map in `spriteConstants.js`
+- `window.SPRITE_ANIMAL_PALETTES` — window export of the above
+
+## v1.16.0
 
 ### Changes from v1.15.2
 

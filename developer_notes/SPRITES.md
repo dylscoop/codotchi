@@ -28,13 +28,38 @@ Each animal has five life stages: `baby`, `child`, `teen`, `adult`, `senior`.
 ```
 █  = 1  body fill (primary colour)
 ▓  = 2  secondary  (eyes, snout, markings, nose)
-░  = 3  accent     (stripes, comb, ridges — primary darkened ~70%)
+░  = 3  accent     (stripes, comb, ridges — own colour per animal)
    = 0  transparent
 ```
 
 Special render-time overrides:
 - `sick=true` → secondary (▓) renders as `#ff4444`
 - `sleeping=true` → secondary (▓) renders as `#888888`
+
+---
+
+## Animal Colour Palettes
+
+Each animal has a fixed realistic colour palette. Colours are keyed by `spriteType`
+in `ANIMAL_PALETTES` inside `spriteConstants.js` (mirrored to both IDEs).
+The `color` field on `PetState` is deprecated as of v1.17.0.
+
+| Animal  | Primary (body)               | Secondary (eyes/snout)        | Accent (markings)              | Background  |
+|---------|------------------------------|-------------------------------|--------------------------------|-------------|
+| classic | `#39ff14` neon green         | `#ff00ff` magenta             | `#1aad00` dark green           | `#0d0d0d`   |
+| monkey  | `#8b5e3c` medium brown       | `#f5c07a` light tan/peach     | `#5a3a1a` dark brown           | `#1a1a1a`   |
+| rooster | `#c0392b` crimson red        | `#f39c12` orange              | `#7d1f1f` dark red             | `#1a1a1a`   |
+| dragon  | `#2ecc71` emerald green      | `#f1c40f` golden yellow       | `#1a6b3a` dark forest green    | `#0d1a0d`   |
+| cat     | `#e8c98a` sandy tan          | `#6b4c2a` medium brown        | `#b07840` warm tan-brown       | `#1a1a1a`   |
+| rat     | `#9e9e9e` mid grey           | `#f48fb1` pink                | `#616161` dark grey            | `#1a1a1a`   |
+| ox      | `#5d4037` dark chocolate brown | `#d7ccc8` off-white/cream   | `#3e2723` very dark brown      | `#1a1a1a`   |
+| tiger   | `#e67e22` burnt orange       | `#2c2c2c` near-black          | `#1a1a1a` black                | `#1a1a1a`   |
+| rabbit  | `#f5f5f5` off-white          | `#f48fb1` pink                | `#e0e0e0` light grey           | `#1a1a1a`   |
+| horse   | `#8b6914` chestnut brown     | `#4a3728` very dark brown     | `#5c4a1e` dark golden brown    | `#1a1a1a`   |
+| sheep   | `#eceff1` creamy white       | `#5d4037` dark brown          | `#b0bec5` blue-grey            | `#1a1a1a`   |
+| dog     | `#c8853a` rust/copper orange | `#3d2008` very dark brown     | `#8b5320` dark rust brown      | `#1a1a1a`   |
+| pig     | `#f8bbd0` light pink         | `#e91e63` hot pink            | `#f48fb1` soft pink            | `#1a1a1a`   |
+| snake   | `#558b2f` olive green        | `#ffeb3b` bright yellow       | `#33691e` dark olive green     | `#0d1a0d`   |
 
 ---
 

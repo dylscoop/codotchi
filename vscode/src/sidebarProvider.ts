@@ -41,7 +41,7 @@ interface WebviewMessage {
   result?: string;
   name?: string;
   petType?: string;
-  color?: string;
+  color?: string;  // deprecated — ignored, kept for message back-compat only
 }
 
 export class SidebarProvider
@@ -188,16 +188,6 @@ export class SidebarProvider
     html = html.replace("{{fontSizeClass}}", fontSizeClass);
 
     const cfg = vscode.workspace.getConfiguration("codotchi");
-    const customPrimary    = cfg.get<string>("customPrimaryColor",    "#ff8c00");
-    const customSecondary  = cfg.get<string>("customSecondaryColor",  "#ffffff");
-    const customBackground = cfg.get<string>("customBackgroundColor", "#1a1a2e");
-    const customColorsStyle =
-      `<style>:root{` +
-      `--codotchi-custom-primary:${customPrimary};` +
-      `--codotchi-custom-secondary:${customSecondary};` +
-      `--codotchi-custom-background:${customBackground};` +
-      `}</style>`;
-    html = html.replace("{{customColorsStyle}}", customColorsStyle);
 
     // Stage height is fixed at 240 px — no longer a user setting.
     // The canvas CSS height is driven by the height attribute (height: auto in CSS)
@@ -343,8 +333,7 @@ export class SidebarProvider
       case "new_game": {
         const petName = message.name ?? "Codotchi";
         const petType = message.petType ?? "codeling";
-        const color = message.color ?? "neon";
-        nextState = createPet(petName, petType, color);
+        nextState = createPet(petName, petType);
         this.mealsGivenThisCycle = 0;
         break;
       }

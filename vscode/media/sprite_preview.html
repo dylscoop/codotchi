@@ -114,14 +114,6 @@
     <option value="sleeping">Sleeping</option>
   </select>
 
-  <label style="margin-left:12px">Color</label>
-  <select id="color-select">
-    <option value="neon" selected>Neon</option>
-    <option value="pastel">Pastel</option>
-    <option value="mono">Mono</option>
-    <option value="ocean">Ocean</option>
-  </select>
-
   <label style="margin-left:12px">Weight</label>
   <input type="range" id="weight-slider" min="0" max="100" value="50" step="1" />
   <span class="scale-val" id="weight-val">50</span>
@@ -189,7 +181,6 @@
   var activeStage  = "all";
   var activeSource = "sprites";
   var globalMood   = "neutral";
-  var globalColor  = "neon";
   var globalWeight = 50;
   var facingLeft   = false;
   var animEnabled  = true;
@@ -211,7 +202,6 @@
     return {
       spriteType: spriteType,
       stage:      stage,
-      color:      globalColor,
       weight:     globalWeight,
       mood:       mood,
       sick:       mood === "sick",
@@ -249,8 +239,8 @@
 
     ctx.clearRect(0, 0, W, H);
 
-    // Draw background using the palette's background colour
-    var palette = window.spriteGetPalette(globalColor);
+    // Draw background using the animal's palette background colour
+    var palette = window.spriteGetPalette(animal);
     ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, W, H);
 
@@ -448,11 +438,6 @@
 
   document.getElementById("mood-select").addEventListener("change", function () {
     globalMood = this.value;
-    redrawAll();
-  });
-
-  document.getElementById("color-select").addEventListener("change", function () {
-    globalColor = this.value;
     redrawAll();
   });
 

@@ -515,13 +515,20 @@ STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette)`
 Assigned once by `randomSpriteType()` in `gameEngine.ts` at new-game time.
 Old saves without `spriteType` default to `"classic"` via `deserialiseState`.
 
+Each `spriteType` carries its own fixed realistic colour palette (primary body,
+secondary eyes/snout, accent markings, background) defined in `ANIMAL_PALETTES`
+in `spriteConstants.js`. The `color` field on `PetState` is deprecated as of
+v1.17.0 — colour is no longer user-selectable and the colour picker has been
+removed from the new-game setup screen. See `developer_notes/SPRITES.md` for
+the full palette table.
+
 ### Key constants
 
 | Variable     | Value source                         | Purpose                          |
 |--------------|--------------------------------------|----------------------------------|
 | STAGE_SCALES | static map in sidebar.js             | Body size relative to 24px base  |
 | STAGE_BODY_HEIGHT_MULTS | static map in sidebar.js  | Height multiplier per stage (e.g. adult=1.5×) |
-| COLOR_PALETTES | static map in sidebar.js           | primary / secondary / background |
+| ANIMAL_PALETTES | static map in spriteConstants.js  | primary / secondary / accent / background per spriteType |
 | weightWidthMultiplier | function in sidebar.js      | >80→1.5×, >50→1.25×, else 1.0× width |
 | getPetSpeed  | mood-based lookup                    | px/frame horizontal movement     |
 | bobOffset    | 0 or 1 px alternating per 10 frames  | Walking animation                |

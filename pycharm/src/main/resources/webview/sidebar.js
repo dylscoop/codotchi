@@ -141,7 +141,6 @@
   // ── Setup form state ────────────────────────────────────────────────────
 
   let selectedPetType = "codeling";
-  let selectedColor   = "neon";
 
   // Wire up option-button groups
   document.querySelectorAll(".option-row").forEach(function (row) {
@@ -152,11 +151,7 @@
         });
         btn.classList.add("selected");
         const value = btn.dataset["value"];
-        if (row.getAttribute("aria-label") === "Pet type") {
-          selectedPetType = value;
-        } else {
-          selectedColor = value;
-        }
+        selectedPetType = value;
       });
     });
   });
@@ -168,7 +163,6 @@
       command: "new_game",
       name: name,
       petType: selectedPetType,
-      color: selectedColor,
     });
   });
 
@@ -1392,7 +1386,7 @@
    * @param {object} state
    */
   function drawEnvironment(state) {
-    const palette    = getPalette(state.color);
+    const palette    = getPalette(state.spriteType);
     const background = palette.background;
 
     const W = spriteCanvas.width;
@@ -1533,7 +1527,7 @@
     }
 
     var t = Math.min(1, (nowMs - reaction.startMs) / reaction.durationMs);
-    var palette   = getPalette(state.color);
+    var palette   = getPalette(state.spriteType);
     var stageScale = STAGE_SCALES[state.stage] || 0.5;
     var bSize     = Math.round(BASE_SIZE * petSizeMultiplier() * stageScale);
     var bWidth    = effectiveBWidth(state, bSize);
@@ -1671,7 +1665,7 @@
     var scale    = STAGE_SCALES[state.stage] || 0.5;
     var bSize    = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var bWidth   = effectiveBWidth(state, bSize);
-    var palette  = getPalette(state.color);
+    var palette  = getPalette(state.spriteType);
     var secondary = palette.secondary;
 
     var indicatorX = x + Math.round(bWidth / 2) - 4;
@@ -1719,7 +1713,7 @@
   // ── Sprite constants — sourced from spriteConstants.js (loaded first) ───────
   // Values are defined in spriteConstants.js and exposed on window.*
   // to keep them in a single place shared with sprite_preview.html.
-  var COLOR_PALETTES          = window.SPRITE_COLOR_PALETTES;
+  var ANIMAL_PALETTES         = window.SPRITE_ANIMAL_PALETTES;
   var STAGE_SCALES            = window.SPRITE_STAGE_SCALES;
 
   /**
@@ -1731,11 +1725,11 @@
   }
 
   /**
-   * Return the colour palette for a given key.
-   * Delegates to spriteConstants.js so "custom" CSS-var handling is shared.
+   * Return the realistic colour palette for a given spriteType.
+   * Delegates to spriteConstants.js.
    */
-  function getPalette(colorKey) {
-    return window.spriteGetPalette(colorKey);
+  function getPalette(spriteType) {
+    return window.spriteGetPalette(spriteType);
   }
 
   /**
@@ -1771,13 +1765,14 @@
   }
 
   /**
-    * Width stretch is no longer applied; this function is kept for compatibility
-    * but always returns false. Use inline upright/snake checks instead.
-    * @param {string} spriteType
-    * @returns {boolean}
-    */
+   * Return true if this sprite type uses width-stretching for overweight
+   * (upright types + snake).  All other quadrupeds use belly-sag instead.
+   * @param {string} spriteType
+   * @returns {boolean}
+   */
    function spriteUsesWidthStretch(spriteType) {
-     // Width stretch removed — blur effect is used instead.
+     // Width stretch is no longer applied; this function is kept for compatibility
+     // but always returns false. Use spriteIsUpright() to check orientation.
      return false;
    }
 
@@ -1790,7 +1785,7 @@
     */
    function effectiveBWidth(state, bSize) {
      return Math.round(bSize);
-   }
+  }
 
   // ── Initial view ─────────────────────────────────────────────────────────
   // Must be set BEFORE the message listener is registered so that any

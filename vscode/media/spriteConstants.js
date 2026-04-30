@@ -2,12 +2,12 @@
  * spriteConstants.js — shared sprite-rendering constants
  *
  * Exposes on `window`:
- *   SPRITE_COLOR_PALETTES      — keyed colour palette map
- *   SPRITE_STAGE_SCALES        — per-stage size multiplier
- *   spriteGetPalette(colorKey) — returns the palette object for a given key
- *   spriteWeightWidthMult(w)   — returns width multiplier for a given weight (upright/snake only)
- *   spriteHeightRatio(type)    — returns height/width ratio for a given spriteType
- *   spriteQuadBellySag(w)      — returns extra belly-sag row count for overweight quadrupeds
+ *   SPRITE_ANIMAL_PALETTES      — realistic colour palette keyed by spriteType
+ *   SPRITE_STAGE_SCALES         — per-stage size multiplier
+ *   spriteGetPalette(spriteType) — returns the palette object for a given spriteType
+ *   spriteWeightWidthMult(w)    — returns width multiplier for a given weight (upright/snake only)
+ *   spriteHeightRatio(type)     — returns height/width ratio for a given spriteType
+ *   spriteQuadBellySag(w)       — returns extra belly-sag row count for overweight quadrupeds
  *
  * Loaded by:
  *   - sidebar.html   (before sidebar.js, after sprites.js)
@@ -19,30 +19,39 @@
 (function () {
   "use strict";
 
-  // ── Colour palettes ────────────────────────────────────────────────────────
-  var COLOR_PALETTES = {
-    neon:   { primary: "#39ff14", secondary: "#ff00ff", background: "#0d0d0d" },
-    pastel: { primary: "#ffb3c1", secondary: "#b5ead7", background: "#57070c" },
-    mono:   { primary: "#e0e0e0", secondary: "#888888", background: "#1a1a1a" },
-    ocean:  { primary: "#00cfff", secondary: "#004e7c", background: "#001f3f" },
+  // ── Realistic per-animal colour palettes ───────────────────────────────────
+  // primary   = body fill (pixel index 1)
+  // secondary = eyes, snout, markings (pixel index 2)
+  // accent    = stripes, comb, ridges (pixel index 3)
+  // background = canvas background behind the pet
+  var ANIMAL_PALETTES = {
+    classic:  { primary: "#39ff14", secondary: "#ff00ff", accent: "#1aad00", background: "#0d0d0d" },
+    monkey:   { primary: "#8b5e3c", secondary: "#f5c07a", accent: "#5a3a1a", background: "#1a1a1a" },
+    rooster:  { primary: "#c0392b", secondary: "#f39c12", accent: "#7d1f1f", background: "#1a1a1a" },
+    dragon:   { primary: "#2ecc71", secondary: "#f1c40f", accent: "#1a6b3a", background: "#0d1a0d" },
+    cat:      { primary: "#e8c98a", secondary: "#6b4c2a", accent: "#b07840", background: "#1a1a1a" },
+    rat:      { primary: "#9e9e9e", secondary: "#f48fb1", accent: "#616161", background: "#1a1a1a" },
+    ox:       { primary: "#5d4037", secondary: "#d7ccc8", accent: "#3e2723", background: "#1a1a1a" },
+    tiger:    { primary: "#e67e22", secondary: "#2c2c2c", accent: "#1a1a1a", background: "#1a1a1a" },
+    rabbit:   { primary: "#f5f5f5", secondary: "#f48fb1", accent: "#e0e0e0", background: "#1a1a1a" },
+    horse:    { primary: "#8b6914", secondary: "#4a3728", accent: "#5c4a1e", background: "#1a1a1a" },
+    sheep:    { primary: "#eceff1", secondary: "#5d4037", accent: "#b0bec5", background: "#1a1a1a" },
+    dog:      { primary: "#c8853a", secondary: "#3d2008", accent: "#8b5320", background: "#1a1a1a" },
+    pig:      { primary: "#f8bbd0", secondary: "#e91e63", accent: "#f48fb1", background: "#1a1a1a" },
+    snake:    { primary: "#558b2f", secondary: "#ffeb3b", accent: "#33691e", background: "#0d1a0d" },
   };
 
+  /** Fallback palette used when spriteType is not found in ANIMAL_PALETTES. */
+  var FALLBACK_PALETTE = ANIMAL_PALETTES["classic"];
+
   /**
-   * Return the colour palette for a given key.
-   * The "custom" key reads CSS custom properties injected by the host at
-   * HTML-build time via --codotchi-custom-* variables, falling back to
-   * safe defaults if not set.
+   * Return the realistic colour palette for a given spriteType.
+   * Falls back to the classic palette if the type is unknown.
+   * @param {string} spriteType
+   * @returns {{ primary: string, secondary: string, accent: string, background: string }}
    */
-  function getPalette(colorKey) {
-    if (colorKey === "custom") {
-      var s = getComputedStyle(document.documentElement);
-      return {
-        primary:    s.getPropertyValue("--codotchi-custom-primary").trim()    || "#ff8c00",
-        secondary:  s.getPropertyValue("--codotchi-custom-secondary").trim()  || "#ffffff",
-        background: s.getPropertyValue("--codotchi-custom-background").trim() || "#1a1a2e",
-      };
-    }
-    return COLOR_PALETTES[colorKey] || COLOR_PALETTES["neon"];
+  function getPalette(spriteType) {
+    return ANIMAL_PALETTES[spriteType] || FALLBACK_PALETTE;
   }
 
   // ── Stage scales ──────────────────────────────────────────────────────────
@@ -107,7 +116,7 @@
   }
 
   // ── Exports ───────────────────────────────────────────────────────────────
-  window.SPRITE_COLOR_PALETTES    = COLOR_PALETTES;
+  window.SPRITE_ANIMAL_PALETTES   = ANIMAL_PALETTES;
   window.SPRITE_STAGE_SCALES      = STAGE_SCALES;
   window.spriteGetPalette         = getPalette;
   window.spriteWeightWidthMult    = weightWidthMultiplier;
