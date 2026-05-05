@@ -240,6 +240,11 @@ function queueNotification(msg: string): void {
   pendingNotification = pendingNotification ? pendingNotification + "\n" + msg : msg;
 }
 
+/** Prepend msg to the front of the pending notification queue (so it appears before any already-queued messages). */
+function prependNotification(msg: string): void {
+  pendingNotification = pendingNotification ? msg + "\n" + pendingNotification : msg;
+}
+
 /** Drain and return any pending notification, then clear it. */
 function drainNotification(): string {
   if (pendingNotification === null) { return ""; }
@@ -802,7 +807,8 @@ export const plugin: Plugin = async (_ctx) => {
           const livePets = getActivePets().filter(p => p.state.alive);
           for (const p of livePets) {
             const phrase = pickRandom(SESSION_DIFF_PHRASES);
-            queueNotification(terminalEnabled
+            // Prepend so the diff phrase appears before any todo messages already queued
+            prependNotification(terminalEnabled
               ? buildSpeechBubble(p.state.stage, p.state.mood, phrase, p.state.name, p.state.spriteType)
               : `[${p.state.name}] ${phrase}`);
           }

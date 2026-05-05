@@ -1209,6 +1209,15 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 
 **Fix:** Replaced the single `browserPanel` field with `browserPanels: MutableList<CodotchiBrowserPanel>`. `setBrowserPanel()` now adds to the list and a new `unregisterBrowserPanel()` method removes a panel when its tool window is disposed. `broadcastState()` and `reloadWebview()` iterate over all registered panels so every open window is kept in sync.
 
+## BUGFIX-098 — "Files updated" message appears after todo messages instead of before
+
+**Status:** Fixed (branch `fix/diff-message-ordering`)
+**Files:** `opencode-codotchi/src/index.ts`, `.opencode/plugins/codotchi.ts`
+
+**Problem:** When the agent saves files and then completes or starts a todo in the same turn, the `session.diff` event fires first (setting `pendingDiffSinceIdle = true`) but does not immediately queue a message — the diff phrase is only queued when `session.idle` fires later. Meanwhile, `todo.updated` events fire immediately and call `queueNotification()`, inserting todo phrases ("On it: ...", "Finished: ...") into the pending queue. When `session.idle` finally fires, `queueNotification()` appends the diff phrase at the end, resulting in the output order: todo messages → "Files updated. That looks like progress." — the reverse of the intended order.
+
+**Fix:** Added `prependNotification(msg)` function that inserts a message at the front of `pendingNotification` rather than the end. Changed the `session.idle` handler to call `prependNotification()` instead of `queueNotification()` when flushing the pending diff phrase. This guarantees the "Files updated" message always appears before any todo messages queued during the same agent turn.
+
 ## BUGFIX-097 — PyCharm pet dies overnight when computer is locked or IDE is closed
 
 **Status:** Fixed (branch `fix/deep-idle-reentry-grace`)

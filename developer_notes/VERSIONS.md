@@ -13,6 +13,9 @@
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | Added `lastDeepIdleTickMs` field; `onTick()` now computes deep-idle with 60-second re-entry grace period (BUGFIX-097); restores `lastDeepIdleTickMs` from persistence on startup; persists it on `applicationDeactivated` |
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt` | Added `lastDeepIdleTickMs: Long` field; wired into `getState()` / `loadState()` via `codotchi.xml` attribute |
 | `developer_notes/BUGFIXES.md` | Added BUGFIX-097 |
+| `opencode-codotchi/src/index.ts` | Added `prependNotification()`; `session.idle` handler now prepends diff phrase so it appears before todo messages (BUGFIX-098) |
+| `.opencode/plugins/codotchi.ts` | Mirror of above (live plugin) |
+| `developer_notes/BUGFIXES.md` | Added BUGFIX-098 |
 
 ### Updated constants
 
