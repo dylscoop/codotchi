@@ -1187,6 +1187,7 @@
       "scolded":                 n + " was scolded.",
       "praised":                 n + " was praised!",
       "code_activity_rewarded":  n + " felt stimulated!",
+      "commit_activity_rewarded": n + " loved that commit! Happiness boost!",
       "evolved_to_senior":       n + " reached their senior years!",
       "died_of_old_age":         n + " passed away of unforeseen natural causes due to old age.",
       "became_sick_old_age":     n + " came down with an age-related illness.",

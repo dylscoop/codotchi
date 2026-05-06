@@ -18,6 +18,8 @@
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | Added `lastCommitActivityTime` field; `triggerCommitActivity()` method; `startGitCommitWatcher()` / `stopGitCommitWatcher()` that watches `.git/COMMIT_EDITMSG` via JVM WatchService; wired into `initialize()` and `dispose()` |
 | `opencode-codotchi/src/gameEngine.ts` | Mirror of `vscode/src/gameEngine.ts` — added commit constants and `applyCommitActivity()` |
 | `.opencode/plugins/gameEngine.ts` | Mirror of `vscode/src/gameEngine.ts` — added commit constants and `applyCommitActivity()` |
+| `vscode/media/sidebar.js` | Added `"commit_activity_rewarded"` entry to event log display map |
+| `pycharm/src/main/resources/webview/sidebar.js` | Added `"commit_activity_rewarded"` entry to event log display map |
 
 ### New constants
 
