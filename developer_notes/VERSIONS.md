@@ -9,9 +9,17 @@
 | `vscode/package.json` | Version bumped to 1.17.1 |
 | `pycharm/build.gradle.kts` | Version bumped to 1.17.1 |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.17.1 |
-| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | Added `DEEP_IDLE_REENTRY_GRACE_MS = 60_000L`; changed `IDLE_DECAY_TICK_DIVISOR` from `10` to `20` to match VS Code |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | Added `DEEP_IDLE_REENTRY_GRACE_MS = 60_000L`; changed `IDLE_DECAY_TICK_DIVISOR` from `10` to `20` to match VS Code; added `CARE_MISTAKE_BEST_MAX`, `CARE_MISTAKE_MID_MAX`, `CARE_MISTAKE_DELAY_THRESHOLD`, `CARE_MISTAKE_DAYS_PER_EXCESS`, `CARE_MISTAKE_SECRET_WORST_THRESHOLD`, `CARE_MISTAKE_SECRET_BEST_CARE_SCORE`, `CARE_MISTAKE_OLD_AGE_SATURATE`; removed `NEGLECT_DECAY_TICK_INTERVAL` |
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | Added `lastDeepIdleTickMs` field; `onTick()` now computes deep-idle with 60-second re-entry grace period (BUGFIX-097); restores `lastDeepIdleTickMs` from persistence on startup; persists it on `applicationDeactivated` |
-| `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt` | Added `lastDeepIdleTickMs: Long` field; wired into `getState()` / `loadState()` via `codotchi.xml` attribute |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt` | Added `lastDeepIdleTickMs: Long` field; wired into `getState()` / `loadState()` via `codotchi.xml` attribute; replaced `neglectCount` with `careMistakes` + `lifetimeCareMistakes`; back-compat reads old `neglectCount` as fallback |
+| `pycharm/src/main/kotlin/com/codotchi/engine/PetState.kt` | Replaced `neglectCount: Int` with `careMistakes: Int` + `lifetimeCareMistakes: Int` |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | Added `tierFromState()`; updated `characterForStage()` with optional mistake params; replaced `neglectCount` with `careMistakes`/`lifetimeCareMistakes` in `createPet`, tick, `checkStageProgression` (evolution delay), `evolveTo` (reset on stage), `promoteToSenior`, `computeOldAgeDeathChance` (4-factor risk score); removed neglect decay block |
+| `vscode/src/gameEngine.ts` | Added `CARE_MISTAKE_*` constants; replaced `neglectCount` with `careMistakes` + `lifetimeCareMistakes`; added `tierFromState()`; updated `characterForStage`, `checkStageProgression`, `evolveTo`, `promoteToSenior`, `computeOldAgeDeathChance`; back-compat deserialise |
+| `opencode-codotchi/src/gameEngine.ts` | Mirror of `vscode/src/gameEngine.ts` |
+| `.opencode/plugins/gameEngine.ts` | Mirror of `vscode/src/gameEngine.ts` |
+| `vscode/tests/unit/gameEngine.test.ts` | Updated `rollOldAgeDeath` / `rollOldAgeSickness` "worst stats" test cases to set `lifetimeCareMistakes: CARE_MISTAKE_OLD_AGE_SATURATE` so riskScore=1 |
+| `developer_notes/vscode/FEATURES.md` | Updated attention-call table rows; marked care mistakes + secret characters `[x]` |
+| `developer_notes/vscode/FEATURES_2.md` | Updated §1.2 and §1.3 status rows |
 | `developer_notes/BUGFIXES.md` | Added BUGFIX-097 |
 | `opencode-codotchi/src/index.ts` | Added `prependNotification()`; `session.idle` handler now prepends diff phrase so it appears before todo messages (BUGFIX-098) |
 | `.opencode/plugins/codotchi.ts` | Mirror of above (live plugin) |
@@ -22,6 +30,14 @@
 ```
 IDLE_DECAY_TICK_DIVISOR: Int = 20   // was 10 — now matches VS Code (idle decay at 1/20th normal rate)
 DEEP_IDLE_REENTRY_GRACE_MS: Long = 60_000L   // new — 60-second grace after exiting deep idle
+CARE_MISTAKE_BEST_MAX: number/Int = 3       // new — per-stage mistakes before tier is penalised
+CARE_MISTAKE_MID_MAX: number/Int = 6        // new — above this, tier is capped at "low"
+CARE_MISTAKE_DELAY_THRESHOLD: number/Int = 3 // new — same as BEST_MAX
+CARE_MISTAKE_DAYS_PER_EXCESS: number/Int = 1 // new — game-days of evolution delay per excess mistake
+CARE_MISTAKE_SECRET_WORST_THRESHOLD: number/Int = 10  // new — lifetime mistakes for secret_worst tier
+CARE_MISTAKE_SECRET_BEST_CARE_SCORE: number/Double = 0.95 // new — careScore threshold for secret_best
+CARE_MISTAKE_OLD_AGE_SATURATE: number/Int = 20 // new — lifetime mistakes at which risk factor saturates
+// removed: NEGLECT_DECAY_TICK_INTERVAL (was 300)
 ```
 
 ## v1.17.0 — current

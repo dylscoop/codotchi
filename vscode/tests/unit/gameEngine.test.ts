@@ -52,6 +52,7 @@ import {
   OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE,
   OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE,
   OLD_AGE_SICK_CHANCE_MULTIPLIER,
+  CARE_MISTAKE_OLD_AGE_SATURATE,
   VALID_PET_TYPES,
   STAGE_ORDER,
   PetState,
@@ -1434,7 +1435,8 @@ describe("rollOldAgeDeath", () => {
   it("chance is BASE × (1 + MULTIPLIER) when all factors are 1 (worst stats)", () => {
     const worst = makePet({ stage: "senior", ageDays: 365,
       discipline: 0, weight: 1,
-      careScoreHappinessSum: 0, careScoreTicks: 1 });         // avg = 0
+      careScoreHappinessSum: 0, careScoreTicks: 1,
+      lifetimeCareMistakes: CARE_MISTAKE_OLD_AGE_SATURATE });         // mistakesFactor=1
     // happinessFactor=1, weightFactor=1, disciplineFactor=1 → riskScore=1
     // At ageFactor=0 (day 365) the chance equals BASE × (1 + MULTIPLIER) ≈ 0.010
     const maxChance = OLD_AGE_DEATH_BASE_CHANCE_PER_DAY * (1 + OLD_AGE_DEATH_RISK_MULTIPLIER);
@@ -1472,7 +1474,8 @@ describe("rollOldAgeDeath", () => {
   it("at peak age (day 1825) with worst stats, chance equals OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE", () => {
     const worst = makePet({ stage: "senior", ageDays: 1825,
       discipline: 0, weight: 1,
-      careScoreHappinessSum: 0, careScoreTicks: 1 });
+      careScoreHappinessSum: 0, careScoreTicks: 1,
+      lifetimeCareMistakes: CARE_MISTAKE_OLD_AGE_SATURATE });  // mistakesFactor=1 → riskScore=1
     // ageFactor=1, riskScore=1 → chance = OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE = 0.10
     assert.equal(rollOldAgeDeath(worst, OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE - 0.001).alive, false);
     assert.equal(rollOldAgeDeath(worst, OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE), worst);
@@ -1539,7 +1542,8 @@ describe("rollOldAgeSickness", () => {
   it("sickness chance is OLD_AGE_SICK_CHANCE_MULTIPLIER × peak worst-care death chance at peak age", () => {
     const worst = makePet({ stage: "senior", ageDays: 1825,
       discipline: 0, weight: 1,
-      careScoreHappinessSum: 0, careScoreTicks: 1 });
+      careScoreHappinessSum: 0, careScoreTicks: 1,
+      lifetimeCareMistakes: CARE_MISTAKE_OLD_AGE_SATURATE });  // mistakesFactor=1 → riskScore=1
     // ageFactor=1, riskScore=1 → deathChance = 0.10; sickChance = 3 × 0.10 = 0.30
     const sickChance = OLD_AGE_SICK_CHANCE_MULTIPLIER * OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE;
     assert.equal(rollOldAgeSickness(worst, sickChance - 0.001).sick, true);
