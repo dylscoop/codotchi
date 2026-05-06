@@ -1,6 +1,35 @@
 # Version History
 
-## v1.18.1 — current
+## v1.19.0 — current
+
+### Changes from v1.18.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.19.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.19.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.19.0 |
+| `opencode-codotchi/package.json` | Version bumped to 1.19.0 |
+| `vscode/src/gameEngine.ts` | Added `COMMIT_HAPPINESS_BOOST`, `COMMIT_DISCIPLINE_BOOST`, `COMMIT_ACTIVITY_THROTTLE_SECONDS` constants; added `applyCommitActivity()` function |
+| `vscode/src/events.ts` | Added `lastCommitActivityTimestamp` field; `registerGitCommitListener()` method subscribes to `vscode.git` extension `onDidCommit` events; `handleCommit()` applies throttled commit reward |
+| `vscode/tests/unit/gameEngine.test.ts` | Added `applyCommitActivity` test suite (5 tests) covering happiness boost, discipline boost, event emission, clamping, and throttle constant value |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | Added `COMMIT_HAPPINESS_BOOST = 15`, `COMMIT_DISCIPLINE_BOOST = 2`, `COMMIT_ACTIVITY_THROTTLE_SECONDS = 300` |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | Added `applyCommitActivity()` function |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | Added `lastCommitActivityTime` field; `triggerCommitActivity()` method; `startGitCommitWatcher()` / `stopGitCommitWatcher()` that watches `.git/COMMIT_EDITMSG` via JVM WatchService; wired into `initialize()` and `dispose()` |
+| `opencode-codotchi/src/gameEngine.ts` | Mirror of `vscode/src/gameEngine.ts` — added commit constants and `applyCommitActivity()` |
+| `.opencode/plugins/gameEngine.ts` | Mirror of `vscode/src/gameEngine.ts` — added commit constants and `applyCommitActivity()` |
+
+### New constants
+
+```
+COMMIT_HAPPINESS_BOOST: number/Int = 15        // new — happiness granted on git commit
+COMMIT_DISCIPLINE_BOOST: number/Int = 2        // new — discipline granted on git commit
+COMMIT_ACTIVITY_THROTTLE_SECONDS: number/Int = 300  // new — 5-minute cooldown between commit rewards
+```
+
+---
+
+## v1.18.1 — previous
 
 ### Changes from v1.17.1
 

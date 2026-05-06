@@ -481,7 +481,7 @@ All events are displayed using the pet's name and human-readable sentences inste
 | File save reward | Happiness +5, Discipline +2 | `[x]` | Throttled to 1 per 30 s |
 | Save streak (5 saves / 30 min) | Happiness +10 bonus | `[ ]` | Partially in DESIGN.md |
 | Save streak (10 saves / 1 hr) | Happiness +15, Weight −1 | `[ ]` | |
-| Git commit event | Happiness +10 | `[ ]` | Listen via terminal or SCM API |
+| Git commit event | Happiness +15, Discipline +2 | `[x]` | Throttled to 1 per 5 min; VS Code via `vscode.git` API `onDidCommit`; PyCharm via `.git/COMMIT_EDITMSG` WatchService |
 | Test pass event | Happiness +5, Energy −5 | `[ ]` | Parse task output |
 | `[S]` `gotchi.codingRewards` (default true) | Enable/disable all coding rewards | `[ ]` | |
 | `[S]` `gotchi.codingRewardThrottleSeconds` (default 30) | Reward cooldown | `[ ]` | |
