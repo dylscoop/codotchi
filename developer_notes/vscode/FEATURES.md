@@ -478,10 +478,10 @@ All events are displayed using the pet's name and human-readable sentences inste
 
 | Feature | Effect | Status | Notes |
 |---------|--------|--------|-------|
-| File save reward | Happiness +5, Discipline +2 | `[x]` | Throttled to 1 per 30 s; suppressed during idle or deep-idle (`wasIdle`/`wasDeepIdle` guard in `handleFileSave`) |
+| File save reward | Happiness +5, Discipline +2 | `[x]` | Throttled to 1 per 30 s; suppressed during idle or deep-idle (`wasIdle`/`wasDeepIdle` guard in `handleFileSave`); VS Code detects via `onDidSaveTextDocument` (IDE saves) + `FileSystemWatcher` on source-file glob (terminal/external/AI saves); PyCharm via `FileDocumentManagerListener` (IDE saves) + VFS `BulkFileListener` (terminal/external/AI saves) |
 | Save streak (5 saves / 30 min) | Happiness +10 bonus | `[ ]` | Partially in DESIGN.md |
 | Save streak (10 saves / 1 hr) | Happiness +15, Weight −1 | `[ ]` | |
-| Git commit event | Happiness +15, Discipline +2 | `[x]` | Throttled to 1 per 5 min; suppressed during idle or deep-idle (`wasIdle`/`wasDeepIdle` guard in `handleCommit`); VS Code via `vscode.git` API `onDidCommit`; PyCharm via `.git/COMMIT_EDITMSG` WatchService |
+| Git commit event | Happiness +15, Discipline +2 | `[x]` | Throttled to 1 per 5 min; suppressed during idle or deep-idle (`wasIdle`/`wasDeepIdle` guard in `handleCommit`); VS Code via `FileSystemWatcher` on `.git/COMMIT_EDITMSG` per workspace folder (catches all commit sources: terminal, VS Code UI, AI agents, --amend); PyCharm via JVM `WatchService` on `.git/COMMIT_EDITMSG` |
 | Test pass event | Happiness +5, Energy −5 | `[ ]` | Parse task output |
 | `[S]` `gotchi.codingRewards` (default true) | Enable/disable all coding rewards | `[ ]` | |
 | `[S]` `gotchi.codingRewardThrottleSeconds` (default 30) | Reward cooldown | `[ ]` | |
