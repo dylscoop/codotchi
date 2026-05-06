@@ -630,14 +630,11 @@
     const newWidth = Math.max(container.clientWidth, 64);
     if (spriteCanvas.width === newWidth) { return; }
     spriteCanvas.width = newWidth;
-    // Clamp petX so the pet doesn't walk off the right edge after a resize
-    if (lastState) {
-      const scale   = STAGE_SCALES[lastState.stage] || 0.5;
-      const bSize   = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
-      const bWidth  = effectiveBWidth(lastState, bSize);
-      const maxX    = spriteCanvas.width - bWidth - 4;
-      if (petX !== null && petX > maxX) { petX = Math.max(4, maxX); }
-    }
+    // Re-centre the pet on resize: reset petX to null so the animation loop
+    // places the pet at the horizontal centre on the very next frame.
+    // This also handles the first-load case where the canvas width changes
+    // from the hardcoded HTML attribute (200px) to the real container width.
+    petX = null;
   }
 
   if (typeof ResizeObserver !== "undefined") {
@@ -789,18 +786,19 @@
       var speed = getSpeedPPS(lastState);
       if (snackItems.length > 0 && speed > 0) {
         var closestSnack = snackItems[0];
-        var closestDist  = Math.abs(petX - snackItems[0].x);
+        var closestDist  = Math.abs((petX + bWidth / 2) - (snackItems[0].x + 4));
         for (var si = 1; si < snackItems.length; si++) {
-          var sd = Math.abs(petX - snackItems[si].x);
+          var sd = Math.abs((petX + bWidth / 2) - (snackItems[si].x + 4));
           if (sd < closestDist) { closestDist = sd; closestSnack = snackItems[si]; }
         }
         if (closestDist < bWidth / 2 + 4) {
           snackItems.splice(snackItems.indexOf(closestSnack), 1);
           idleTimer = 0.2;
+
           petVx     = 0;
           vscode.postMessage({ command: "snack_consumed" });
         } else {
-          petVx         = closestSnack.x > petX ? speed : -speed;
+          petVx         = (closestSnack.x + 4) > (petX + bWidth / 2) ? speed : -speed;
           petFacingLeft = petVx < 0;
           petX         += petVx * dt;
         }
@@ -853,11 +851,11 @@
 
       // Horizontal movement: snack targeting OR wandering
       if (snackItems.length > 0 && speed > 0) {
-        // Snack targeting
+        // Snack targeting — use center-to-center distance (pet center vs snack center)
         var closestSnack = snackItems[0];
-        var closestDist  = Math.abs(petX - snackItems[0].x);
+        var closestDist  = Math.abs((petX + bWidth / 2) - (snackItems[0].x + 4));
         for (var si = 1; si < snackItems.length; si++) {
-          var sd = Math.abs(petX - snackItems[si].x);
+          var sd = Math.abs((petX + bWidth / 2) - (snackItems[si].x + 4));
           if (sd < closestDist) { closestDist = sd; closestSnack = snackItems[si]; }
         }
         if (closestDist < bWidth / 2 + 4) {
@@ -867,7 +865,7 @@
           petVx     = 0;
           vscode.postMessage({ command: "snack_consumed" });
         } else {
-          petVx         = closestSnack.x > petX ? speed : -speed;
+          petVx         = (closestSnack.x + 4) > (petX + bWidth / 2) ? speed : -speed;
           petFacingLeft = petVx < 0;
           petX         += petVx * dt;
         }
@@ -1090,8 +1088,15 @@
     // Snack items — spawn a floor item when snack_placed fires
     if ((state.events || []).indexOf("snack_placed") !== -1 && snackItems.length < 3) {
       var siW = spriteCanvas.width;
+      // Compute the pet's reachable X range so the snack is always within reach.
+      var siScale  = STAGE_SCALES[(state.stage || lastState && lastState.stage) || "baby"] || 0.5;
+      var siBSize  = Math.round(BASE_SIZE * petSizeMultiplier() * siScale);
+      var siBWidth = effectiveBWidth(state.alive ? state : lastState, siBSize);
+      var siMinX   = 4;
+      var siMaxX   = siW - siBWidth - 4;
+      var siRawX   = 4 + Math.floor(Math.random() * Math.max(1, siW - 20));
       snackItems.push({
-        x:    4 + Math.floor(Math.random() * Math.max(1, siW - 20)),
+        x:    Math.max(siMinX, Math.min(siMaxX, siRawX)),
         type: Math.random() < 0.5 ? "candy" : "bone",
       });
       idleTimer = 0;  // pet walks toward it immediately

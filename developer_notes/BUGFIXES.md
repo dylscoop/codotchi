@@ -1226,3 +1226,21 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** When the computer was locked or PyCharm lost focus, `applicationDeactivated` correctly stopped the tick loop and saved state. On unlock/focus-regain, `applicationActivated` reset `lastActivityTime` to the current time and restarted the ticker. On the very first tick, `isDeepIdle()` returned `false` immediately (because `lastActivityTime` was just reset), so the pet exited deep-idle protection instantly. If the pet had been idle long enough to lose a stat to zero before the computer was locked (stat decay still ran at the idle rate while the IDE was active but unfocused), it could become sick the moment the ticker resumed. The sickness health drain then ran at full active rate with no deep-idle floor, killing the pet. The VS Code extension had already fixed this with a 60-second re-entry grace period (`DEEP_IDLE_REENTRY_GRACE_MS`); PyCharm had no equivalent. Additionally, `IDLE_DECAY_TICK_DIVISOR` was `10` in PyCharm vs `20` in VS Code, making idle decay twice as fast on PyCharm.
 
 **Fix:** Added `DEEP_IDLE_REENTRY_GRACE_MS = 60_000L` to `Constants.kt` and changed `IDLE_DECAY_TICK_DIVISOR` from `10` to `20` to match VS Code. In `CodotchiPlugin.onTick()`, a `lastDeepIdleTickMs` timestamp is updated on every deep-idle tick; after returning from deep idle, the pet stays in deep-idle protection for 60 seconds (matching VS Code `extension.ts` lines 265–276). `lastDeepIdleTickMs` is persisted in `CodotchiPersistence` via `codotchi.xml` so the grace period also applies after a crash or force-quit restart.
+
+## BUGFIX-099 — Pet sprite not centred on initial load
+
+**Status:** Fixed (branch `fix/sprite-centre-snack-reach`)
+**File:** `vscode/media/sidebar.js`
+
+**Problem:** The canvas element has a hardcoded `width="200"` attribute in the HTML template. `resizeCanvas()` is called at startup and updates `spriteCanvas.width` to the real container width. However, `petX` was only reset to `null` (triggering recentring) in `renderState()` when a new pet loaded — not on canvas resize. If `resizeCanvas()` ran before the first `renderState()` call (i.e., before `petX` was set), the initial centring used the old `width=200` value, so the pet appeared off-centre until the next resize event.
+
+**Fix:** Changed `resizeCanvas()` to reset `petX = null` whenever the canvas width changes (instead of just clamping to `maxX`). The animation loop already checks `if (petX === null)` on every frame and re-centres the pet immediately, so the pet is always centred on the frame after any resize, including the very first one.
+
+## BUGFIX-100 — Snack placed too far right; pet cannot reach it and eat it
+
+**Status:** Fixed (branch `fix/sprite-centre-snack-reach`)
+**File:** `vscode/media/sidebar.js`
+
+**Problem:** Snack X was generated as `4 + Math.floor(Math.random() * (siW - 20))`, which could place the snack up to `siW - 17` pixels from the left edge. The pet's movement was clamped to `maxX = spriteCanvas.width - bWidth - 4`, so if the snack landed in the rightmost `bWidth` pixels the pet could never reach it. Additionally, the eat-collision used left-edge-to-left-edge distance (`Math.abs(petX - snack.x)`) rather than center-to-center, making the threshold inconsistent with the visual position of both sprites.
+
+**Fix:** Snack X is now clamped to `[minX, maxX]` (the same range the pet can occupy) using `bWidth` derived from the current state — ensuring every snack is always reachable. The eat-collision now compares pet center (`petX + bWidth/2`) to snack center (`snack.x + 4`, snack sprite is 8px wide at 2× scale) using the same threshold, so the pet visually reaches the snack before consuming it. Both the dragon and normal-movement paths are updated identically.

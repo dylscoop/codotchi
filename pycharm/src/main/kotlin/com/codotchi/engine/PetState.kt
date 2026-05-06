@@ -89,7 +89,10 @@ data class PetState(
     val attentionCallCooldowns: Map<String, Int>,
 
     /** Cumulative count of attention calls that expired unanswered (decays slowly over time). */
-    val neglectCount: Int,
+    val careMistakes: Int,
+
+    /** Lifetime total care mistakes (never resets on stage evolution). */
+    val lifetimeCareMistakes: Int,
 
     /** Ticks the current poop(s) have remained uncleaned; resets to 0 when poops === 0. */
     val ticksWithUncleanedPoop: Int,

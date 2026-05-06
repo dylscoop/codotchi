@@ -77,12 +77,9 @@ After any build command completes (VS Code, PyCharm, or OpenCode), you **must** 
 
 1. **List the artifact files produced** — state the exact filename and path of every artifact that was just built.
 2. **Commit the artifacts immediately** as `chore: rebuild artifacts for vX.Y.Z` — do not wait for the user to ask. The commit is already implied by the release flow. Stage and commit all three artifact files in a single commit.
-3. **Report and stop** — after the commit succeeds, output a short summary:
-   - What was built
-   - The commit hash
-   - The next release step (from the numbered list below) that requires explicit user instruction
+3. **Continue immediately** — after the commit succeeds, move directly to the next todo item. Do not stop and say "build succeeded" and wait. Do not ask "shall I continue?" Keep going until all todos are done or an explicit user decision is required (push, merge, tag, release).
 
-Never silently halt after a build. Never leave artifact files uncommitted.
+Never silently halt after a build. Never leave artifact files uncommitted. Never wait for the user to say "keep going" after a successful build.
 
 ---
 
@@ -136,6 +133,25 @@ another Java process is still running from a previous build attempt or IDE sessi
 > set `$env:JAVA_HOME` inside the child shell on this machine. Always use the
 > two-statement form above (set the variable, then call gradlew) in the same
 > PowerShell session.
+
+### PyCharm build — timeout and retry rules
+
+The Bash tool default timeout is 120 000 ms (2 min). The PyCharm build can take
+up to 3–4 min on a cold daemon. **Always use `timeout: 240000`** (4 min) when
+invoking the build or `unitTest` task.
+
+If the build times out:
+
+1. **Do not stop.** Kill lingering processes, clear the configuration cache, and
+   retry immediately with `timeout: 240000`.
+2. Retry up to **two more times** (three attempts total) before asking the user
+   for help.
+3. If all three attempts fail with a timeout, report the exact error output and
+   ask the user whether to continue.
+
+**Never leave the build in an unresolved state.** If the build succeeds on a
+retry, continue immediately with the next step — do not wait for the user to
+say "keep going".
 
 ### PyCharm unit tests
 
