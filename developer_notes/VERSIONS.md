@@ -20,6 +20,7 @@
 | `.opencode/plugins/gameEngine.ts` | Mirror of `vscode/src/gameEngine.ts` — added commit constants and `applyCommitActivity()` |
 | `vscode/media/sidebar.js` | Added `"commit_activity_rewarded"` entry to event log display map |
 | `pycharm/src/main/resources/webview/sidebar.js` | Added `"commit_activity_rewarded"` entry to event log display map |
+| `developer_notes/vscode/FEATURES.md` | Documented idle guard for coding activity rewards: saves and commits are suppressed during idle/deep-idle; documented AI mode interaction |
 
 ### New constants
 

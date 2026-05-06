@@ -478,10 +478,10 @@ All events are displayed using the pet's name and human-readable sentences inste
 
 | Feature | Effect | Status | Notes |
 |---------|--------|--------|-------|
-| File save reward | Happiness +5, Discipline +2 | `[x]` | Throttled to 1 per 30 s |
+| File save reward | Happiness +5, Discipline +2 | `[x]` | Throttled to 1 per 30 s; suppressed during idle or deep-idle (`wasIdle`/`wasDeepIdle` guard in `handleFileSave`) |
 | Save streak (5 saves / 30 min) | Happiness +10 bonus | `[ ]` | Partially in DESIGN.md |
 | Save streak (10 saves / 1 hr) | Happiness +15, Weight −1 | `[ ]` | |
-| Git commit event | Happiness +15, Discipline +2 | `[x]` | Throttled to 1 per 5 min; VS Code via `vscode.git` API `onDidCommit`; PyCharm via `.git/COMMIT_EDITMSG` WatchService |
+| Git commit event | Happiness +15, Discipline +2 | `[x]` | Throttled to 1 per 5 min; suppressed during idle or deep-idle (`wasIdle`/`wasDeepIdle` guard in `handleCommit`); VS Code via `vscode.git` API `onDidCommit`; PyCharm via `.git/COMMIT_EDITMSG` WatchService |
 | Test pass event | Happiness +5, Energy −5 | `[ ]` | Parse task output |
 | `[S]` `gotchi.codingRewards` (default true) | Enable/disable all coding rewards | `[ ]` | |
 | `[S]` `gotchi.codingRewardThrottleSeconds` (default 30) | Reward cooldown | `[ ]` | |
@@ -515,6 +515,23 @@ resets the idle timer. Additionally, any sidebar button click resets the timer
 mouse movement inside the sidebar panel resets it via a throttled `mousemove`
 listener (at most once per 30 s) that posts `{ command: "user_activity" }` to
 the host.
+
+**Idle guard on coding rewards:** Both `handleFileSave` and `handleCommit` in
+`events.ts` check `state.wasIdle` and `state.wasDeepIdle` before applying any
+reward. If either is `true`, the boost is silently skipped. This means saves
+and commits that happen while the IDE is idle do **not** give happiness boosts —
+the pet only benefits from coding activity when the developer is actively present.
+`wasIdle`/`wasDeepIdle` are the previous-tick snapshot written into `PetState` by
+`tick()`, so no extra wiring is needed; `handleFileSave`/`handleCommit` read them
+directly from the state returned by `getState()`.
+
+**AI mode interaction:** With `gotchi.aiMode = true`, the three events that would
+normally reset the idle timer (document change, cursor move, tab switch) are all
+suppressed. This means an AI coding agent working autonomously will let the pet
+drift into idle and eventually deep-idle as designed. Because of the idle guard
+above, file saves and commits made by the AI agent during idle also give no
+happiness boost — the pet correctly stays in its idle-protected state throughout
+an unattended AI session.
 
 When the sidebar panel is **hidden** (collapsed, tab switched away, etc.) the
 extension immediately sets `lastActivityMs` back by `idleDeepThresholdSeconds`
