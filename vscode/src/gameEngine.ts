@@ -205,8 +205,56 @@ export const ATTENTION_EXPIRY_STAT_PENALTY: number = 10;
 /** Happiness boost applied when a gift attention call is answered via praise(). */
 export const GIFT_PRAISE_HAPPINESS_BOOST: number = 15;
 
-/** neglectCount decrements by 1 every this many ticks (300 × 6 s = 30 min). */
-export const NEGLECT_DECAY_TICK_INTERVAL: number = 300;
+// ---------------------------------------------------------------------------
+// Care Mistakes constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Number of care mistakes in a single stage that are tolerated before the
+ * evolution tier begins to be penalised.  0–CARE_MISTAKE_BEST_MAX = "best"
+ * tier is still achievable (subject to careScore); above this the tier is
+ * capped downward.
+ */
+export const CARE_MISTAKE_BEST_MAX: number = 3;
+
+/**
+ * Above this many per-stage care mistakes the maximum achievable evolution
+ * tier is "low" (regardless of careScore).
+ */
+export const CARE_MISTAKE_MID_MAX: number = 6;
+
+/**
+ * Number of excess per-stage care mistakes (above CARE_MISTAKE_BEST_MAX)
+ * required before any evolution delay is applied.  Mistakes ≤ BEST_MAX = no
+ * delay; each mistake above this threshold adds CARE_MISTAKE_DAYS_PER_EXCESS
+ * game-days to the evolution threshold for that stage.
+ */
+export const CARE_MISTAKE_DELAY_THRESHOLD: number = CARE_MISTAKE_BEST_MAX;
+
+/**
+ * Game-days added to the current stage's evolution threshold for each care
+ * mistake above CARE_MISTAKE_DELAY_THRESHOLD (1 game-day = TICKS_PER_GAME_DAY_AWAKE ticks).
+ */
+export const CARE_MISTAKE_DAYS_PER_EXCESS: number = 1;
+
+/**
+ * Lifetime care mistakes required to unlock the "secret_worst" evolution path
+ * (equivalent to Oyajitchi / Bill in the original Tamagotchi).
+ */
+export const CARE_MISTAKE_SECRET_WORST_THRESHOLD: number = 10;
+
+/**
+ * Per-stage care mistakes must be exactly 0 AND careScore ≥ this value to
+ * unlock the "secret_best" evolution path (equivalent to Mametchi).
+ */
+export const CARE_MISTAKE_SECRET_BEST_CARE_SCORE: number = 0.95;
+
+/**
+ * Lifetime care mistakes saturate the old-age risk factor at this value.
+ * At lifetimeCareMistakes === CARE_MISTAKE_OLD_AGE_SATURATE, the mistakes
+ * factor contributes its maximum (1.0) to the riskScore.
+ */
+export const CARE_MISTAKE_OLD_AGE_SATURATE: number = 20;
 
 // Logarithmic random-chance tuning constants for probabilistic calls.
 export const POOP_CALL_BASE_CHANCE: number = 0.03;
@@ -404,35 +452,37 @@ export const STAGE_ORDER: readonly string[] = [
 /** Evolution character name lookup: petType → stage → tier → characterName. */
 const EVOLUTION_CHARACTERS: Record<string, Record<string, Record<string, string>>> = {
   codeling: {
-    baby: { best: "codeling_baby_a", mid: "codeling_baby_b", low: "codeling_baby_c" },
-    child: { best: "codeling_child_a", mid: "codeling_child_b", low: "codeling_child_c" },
-    teen: { best: "codeling_teen_a", mid: "codeling_teen_b", low: "codeling_teen_c" },
-    adult: { best: "codeling_adult_a", mid: "codeling_adult_b", low: "codeling_adult_c" },
-    senior: { best: "codeling_senior_a", mid: "codeling_senior_b", low: "codeling_senior_c" },
+    baby: { best: "codeling_baby_a", mid: "codeling_baby_b", low: "codeling_baby_c", secret_best: "codeling_baby_a", secret_worst: "codeling_baby_c" },
+    child: { best: "codeling_child_a", mid: "codeling_child_b", low: "codeling_child_c", secret_best: "codeling_child_a", secret_worst: "codeling_child_c" },
+    teen: { best: "codeling_teen_a", mid: "codeling_teen_b", low: "codeling_teen_c", secret_best: "codeling_teen_a", secret_worst: "codeling_teen_c" },
+    adult: { best: "codeling_adult_a", mid: "codeling_adult_b", low: "codeling_adult_c", secret_best: "codeling_adult_a", secret_worst: "codeling_adult_c" },
+    senior: { best: "codeling_senior_a", mid: "codeling_senior_b", low: "codeling_senior_c", secret_best: "codeling_senior_a", secret_worst: "codeling_senior_c" },
   },
   bytebug: {
-    baby: { best: "bytebug_baby_a", mid: "bytebug_baby_b", low: "bytebug_baby_c" },
-    child: { best: "bytebug_child_a", mid: "bytebug_child_b", low: "bytebug_child_c" },
-    teen: { best: "bytebug_teen_a", mid: "bytebug_teen_b", low: "bytebug_teen_c" },
-    adult: { best: "bytebug_adult_a", mid: "bytebug_adult_b", low: "bytebug_adult_c" },
-    senior: { best: "bytebug_senior_a", mid: "bytebug_senior_b", low: "bytebug_senior_c" },
+    baby: { best: "bytebug_baby_a", mid: "bytebug_baby_b", low: "bytebug_baby_c", secret_best: "bytebug_baby_a", secret_worst: "bytebug_baby_c" },
+    child: { best: "bytebug_child_a", mid: "bytebug_child_b", low: "bytebug_child_c", secret_best: "bytebug_child_a", secret_worst: "bytebug_child_c" },
+    teen: { best: "bytebug_teen_a", mid: "bytebug_teen_b", low: "bytebug_teen_c", secret_best: "bytebug_teen_a", secret_worst: "bytebug_teen_c" },
+    adult: { best: "bytebug_adult_a", mid: "bytebug_adult_b", low: "bytebug_adult_c", secret_best: "bytebug_adult_a", secret_worst: "bytebug_adult_c" },
+    senior: { best: "bytebug_senior_a", mid: "bytebug_senior_b", low: "bytebug_senior_c", secret_best: "bytebug_senior_a", secret_worst: "bytebug_senior_c" },
   },
   pixelpup: {
-    baby: { best: "pixelpup_baby_a", mid: "pixelpup_baby_b", low: "pixelpup_baby_c" },
-    child: { best: "pixelpup_child_a", mid: "pixelpup_child_b", low: "pixelpup_child_c" },
-    teen: { best: "pixelpup_teen_a", mid: "pixelpup_teen_b", low: "pixelpup_teen_c" },
-    adult: { best: "pixelpup_adult_a", mid: "pixelpup_adult_b", low: "pixelpup_adult_c" },
-    senior: { best: "pixelpup_senior_a", mid: "pixelpup_senior_b", low: "pixelpup_senior_c" },
+    baby: { best: "pixelpup_baby_a", mid: "pixelpup_baby_b", low: "pixelpup_baby_c", secret_best: "pixelpup_baby_a", secret_worst: "pixelpup_baby_c" },
+    child: { best: "pixelpup_child_a", mid: "pixelpup_child_b", low: "pixelpup_child_c", secret_best: "pixelpup_child_a", secret_worst: "pixelpup_child_c" },
+    teen: { best: "pixelpup_teen_a", mid: "pixelpup_teen_b", low: "pixelpup_teen_c", secret_best: "pixelpup_teen_a", secret_worst: "pixelpup_teen_c" },
+    adult: { best: "pixelpup_adult_a", mid: "pixelpup_adult_b", low: "pixelpup_adult_c", secret_best: "pixelpup_adult_a", secret_worst: "pixelpup_adult_c" },
+    senior: { best: "pixelpup_senior_a", mid: "pixelpup_senior_b", low: "pixelpup_senior_c", secret_best: "pixelpup_senior_a", secret_worst: "pixelpup_senior_c" },
   },
   shellscript: {
-    baby: { best: "shellscript_baby_a", mid: "shellscript_baby_b", low: "shellscript_baby_c" },
-    child: { best: "shellscript_child_a", mid: "shellscript_child_b", low: "shellscript_child_c" },
-    teen: { best: "shellscript_teen_a", mid: "shellscript_teen_b", low: "shellscript_teen_c" },
-    adult: { best: "shellscript_adult_a", mid: "shellscript_adult_b", low: "shellscript_adult_c" },
+    baby: { best: "shellscript_baby_a", mid: "shellscript_baby_b", low: "shellscript_baby_c", secret_best: "shellscript_baby_a", secret_worst: "shellscript_baby_c" },
+    child: { best: "shellscript_child_a", mid: "shellscript_child_b", low: "shellscript_child_c", secret_best: "shellscript_child_a", secret_worst: "shellscript_child_c" },
+    teen: { best: "shellscript_teen_a", mid: "shellscript_teen_b", low: "shellscript_teen_c", secret_best: "shellscript_teen_a", secret_worst: "shellscript_teen_c" },
+    adult: { best: "shellscript_adult_a", mid: "shellscript_adult_b", low: "shellscript_adult_c", secret_best: "shellscript_adult_a", secret_worst: "shellscript_adult_c" },
     senior: {
       best: "shellscript_senior_a",
       mid: "shellscript_senior_b",
       low: "shellscript_senior_c",
+      secret_best: "shellscript_senior_a",
+      secret_worst: "shellscript_senior_c",
     },
   },
 };
@@ -551,8 +601,18 @@ export interface PetState {
   /** Per-type cooldown counters (ticks remaining). Decremented each tick. */
   readonly attentionCallCooldowns: Partial<Record<AttentionCallType, number>>;
 
-  /** Cumulative count of attention calls that expired unanswered (decays slowly over time). */
-  readonly neglectCount: number;
+  /**
+   * Per-stage count of care mistakes (attention calls that expired unanswered).
+   * Resets to 0 on every stage transition.  Used to gate/delay evolution and
+   * select the evolution tier for the current stage.
+   */
+  readonly careMistakes: number;
+
+  /**
+   * Cumulative care mistakes across the pet's entire life — never resets.
+   * Used for old-age death chance and secret character unlocks.
+   */
+  readonly lifetimeCareMistakes: number;
 
   /** Ticks the current poop(s) have remained uncleaned; resets to 0 when poops === 0. */
   readonly ticksWithUncleanedPoop: number;
@@ -700,7 +760,7 @@ export function moodFromStats(
 }
 
 /**
- * Return the evolution tier string for the given care score.
+ * Return the evolution tier string for the given care score (no mistake override).
  *
  * @param careScore - The accumulated care quality score (0.0–1.0).
  * @returns One of: "best" | "mid" | "low".
@@ -716,19 +776,65 @@ export function tierFromCareScore(careScore: number): string {
 }
 
 /**
- * Resolve the character name for a pet type at a given stage and care score.
+ * Return the full evolution tier, applying the care-mistakes override on top of
+ * the care-score tier.  This is the authoritative function for all evolution
+ * character selection.
  *
- * @param petType - The pet type identifier.
- * @param stage - The life stage name.
- * @param careScore - The accumulated care quality score (0.0–1.0).
+ * Priority (highest to lowest):
+ *   1. secret_worst — lifetimeCareMistakes ≥ CARE_MISTAKE_SECRET_WORST_THRESHOLD
+ *   2. secret_best  — careMistakes === 0 AND careScore ≥ CARE_MISTAKE_SECRET_BEST_CARE_SCORE
+ *   3. low          — careMistakes > CARE_MISTAKE_MID_MAX  (cap: cannot be best or mid)
+ *   4. mid          — careMistakes > CARE_MISTAKE_BEST_MAX AND score tier would be "best"
+ *   5. score tier   — otherwise falls through to careScore-derived tier
+ *
+ * @param careScore           - Per-stage accumulated care score (0.0–1.0).
+ * @param careMistakes        - Per-stage mistakes counter (resets on evolution).
+ * @param lifetimeCareMistakes - Total lifetime mistakes (never resets).
+ * @returns One of: "secret_best" | "secret_worst" | "best" | "mid" | "low".
+ */
+export function tierFromState(
+  careScore: number,
+  careMistakes: number,
+  lifetimeCareMistakes: number
+): string {
+  // Secret worst: lifetime neglect overwhelming enough to unlock the "bad" secret path
+  if (lifetimeCareMistakes >= CARE_MISTAKE_SECRET_WORST_THRESHOLD) {
+    return "secret_worst";
+  }
+  // Secret best: flawless stage AND excellent care score
+  if (careMistakes === 0 && careScore >= CARE_MISTAKE_SECRET_BEST_CARE_SCORE) {
+    return "secret_best";
+  }
+  // Standard tier with downward cap from per-stage mistakes
+  const scoreTier = tierFromCareScore(careScore);
+  if (careMistakes > CARE_MISTAKE_MID_MAX) {
+    return "low";
+  }
+  if (careMistakes > CARE_MISTAKE_BEST_MAX && scoreTier === "best") {
+    return "mid";
+  }
+  return scoreTier;
+}
+
+/**
+ * Resolve the character name for a pet type at a given stage using the full
+ * tier resolution (care score + care mistakes + lifetime mistakes).
+ *
+ * @param petType              - The pet type identifier.
+ * @param stage                - The life stage name.
+ * @param careScore            - The accumulated care quality score (0.0–1.0).
+ * @param careMistakes         - Per-stage mistakes counter.
+ * @param lifetimeCareMistakes - Lifetime mistakes counter.
  * @returns The character name string.
  */
 export function characterForStage(
   petType: string,
   stage: string,
-  careScore: number
+  careScore: number,
+  careMistakes: number = 0,
+  lifetimeCareMistakes: number = 0
 ): string {
-  const tier = tierFromCareScore(careScore);
+  const tier = tierFromState(careScore, careMistakes, lifetimeCareMistakes);
   return EVOLUTION_CHARACTERS[petType][stage][tier];
 }
 
@@ -854,7 +960,8 @@ export function createPet(name: string, petType: string): PetState {
     activeAttentionCall: null,
     attentionCallActiveTicks: 0,
     attentionCallCooldowns: {},
-    neglectCount: 0,
+    careMistakes: 0,
+    lifetimeCareMistakes: 0,
     ticksWithUncleanedPoop: 0,
     ticksSinceLastMisbehaviour: 0,
     ticksSinceLastGift: 0,
@@ -963,7 +1070,8 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   let activeAttentionCall: AttentionCallType | null = state.activeAttentionCall;
   let attentionCallActiveTicks: number = state.attentionCallActiveTicks;
   let attentionCallCooldowns: Partial<Record<AttentionCallType, number>> = { ...state.attentionCallCooldowns };
-  let neglectCount: number = state.neglectCount;
+  let careMistakes: number = state.careMistakes;
+  let lifetimeCareMistakes: number = state.lifetimeCareMistakes;
   let ticksWithUncleanedPoop: number = state.ticksWithUncleanedPoop;
   let ticksSinceLastMisbehaviour: number = state.ticksSinceLastMisbehaviour;
   let ticksSinceLastGift: number = state.ticksSinceLastGift;
@@ -1012,10 +1120,6 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   }
   ticksSinceLastMisbehaviour += 1;
   ticksSinceLastGift += 1;
-  // Neglect decay: recover 1 neglect point every 300 ticks
-  if (ticksAlive % NEGLECT_DECAY_TICK_INTERVAL === 0 && neglectCount > 0) {
-    neglectCount = Math.max(0, neglectCount - 1);
-  }
   } // end Step 0
 
   if (!sleeping) {
@@ -1161,13 +1265,14 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
         case "poop":            if (!sick) { sick = true; events.push("became_sick"); } break;
         case "hunger":          hunger = clampStat(hunger - ATTENTION_EXPIRY_STAT_PENALTY); break;
         case "unhappiness":     happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY); break;
-        case "misbehaviour":    health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); neglectCount += 1; break;
+        case "misbehaviour":    health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); careMistakes += 1; lifetimeCareMistakes += 1; break;
         case "low_energy":      happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY); break;
-        case "gift":            happiness = clampStat(happiness - 5); neglectCount += 1; break;
+        case "gift":            happiness = clampStat(happiness - 5); careMistakes += 1; lifetimeCareMistakes += 1; break;
       }
-      // General neglect increment (except misbehaviour and gift which have their own above)
+      // General care mistake increment (except misbehaviour and gift which have their own above)
       if (expiredType !== "misbehaviour" && expiredType !== "gift") {
-        neglectCount += 1;
+        careMistakes += 1;
+        lifetimeCareMistakes += 1;
       }
       attentionCallCooldowns[expiredType] = ATTENTION_EXPIRY_COOLDOWN_TICKS;
       activeAttentionCall = null;
@@ -1251,7 +1356,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       hungerZeroTicks, sick, alive: alive as boolean, ticksAlive, events,
       sleeping, ageDays, dayTimer, weight,
       activeAttentionCall, attentionCallActiveTicks, attentionCallCooldowns,
-      neglectCount, ticksWithUncleanedPoop, ticksSinceLastMisbehaviour, ticksSinceLastGift,
+      careMistakes, lifetimeCareMistakes, ticksWithUncleanedPoop, ticksSinceLastMisbehaviour, ticksSinceLastGift,
     });
   }
 
@@ -1275,7 +1380,8 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     activeAttentionCall,
     attentionCallActiveTicks,
     attentionCallCooldowns,
-    neglectCount,
+    careMistakes,
+    lifetimeCareMistakes,
     ticksWithUncleanedPoop,
     ticksSinceLastMisbehaviour,
     ticksSinceLastGift,
@@ -1319,17 +1425,25 @@ const NEXT_STAGE_MAP: Record<string, string> = {
  * Promote the pet to the next life stage if its cumulative dayTimer has
  * reached the threshold for the current stage.
  *
+ * The effective threshold is extended by CARE_MISTAKE_DAYS_PER_EXCESS game-days
+ * for each per-stage care mistake above CARE_MISTAKE_DELAY_THRESHOLD.
+ *
  * @param partial - State without derived fields.
  * @returns Complete PetState, evolved if the dayTimer threshold was reached.
  */
 function checkStageProgression(
   partial: Omit<PetState, "mood" | "sprite" | "careScore">
 ): PetState {
-  const dayThreshold = EVOLUTION_DAY_THRESHOLDS[partial.stage];
-  if (dayThreshold === undefined) {
+  const baseThreshold = EVOLUTION_DAY_THRESHOLDS[partial.stage];
+  if (baseThreshold === undefined) {
     return withDerivedFields(partial);
   }
-  if (partial.dayTimer < dayThreshold) {
+
+  // Apply delay for excess care mistakes (1 game-day per mistake over threshold)
+  const excessMistakes = Math.max(0, partial.careMistakes - CARE_MISTAKE_DELAY_THRESHOLD);
+  const effectiveThreshold = baseThreshold + excessMistakes * CARE_MISTAKE_DAYS_PER_EXCESS;
+
+  if (partial.dayTimer < effectiveThreshold) {
     return withDerivedFields(partial);
   }
 
@@ -1341,7 +1455,12 @@ function checkStageProgression(
 }
 
 /**
- * Transition a pet to nextStage, assign a character, and reset accumulators.
+ * Transition a pet to nextStage, assign a character, and reset per-stage accumulators.
+ *
+ * careScore and careMistakes are snapshotted NOW to select the character for the
+ * new stage.  careScoreHungerSum/…Sum/Ticks and careMistakes are then wiped to zero
+ * so the new stage's quality is tracked independently.  lifetimeCareMistakes is
+ * preserved and carries forward for the pet's entire life.
  *
  * @param partial - State without derived fields.
  * @param nextStage - The stage to transition into.
@@ -1351,11 +1470,11 @@ function evolveTo(
   partial: Omit<PetState, "mood" | "sprite" | "careScore">,
   nextStage: string
 ): PetState {
-  // We need careScore to pick the character; compute it from partial.
+  // Snapshot care metrics to pick the character tier
   const careScore = computeCareScore(partial as PetState);
   const character =
     nextStage !== "egg"
-      ? characterForStage(partial.petType, nextStage, careScore)
+      ? characterForStage(partial.petType, nextStage, careScore, partial.careMistakes, partial.lifetimeCareMistakes)
       : partial.character;
 
   const evolved: Omit<PetState, "mood" | "sprite" | "careScore"> = {
@@ -1363,10 +1482,13 @@ function evolveTo(
     stage: nextStage,
     character,
     ticksAlive: 0,
+    // Reset per-stage accumulators
     careScoreHungerSum: 0,
     careScoreHappinessSum: 0,
     careScoreHealthSum: 0,
     careScoreTicks: 0,
+    careMistakes: 0,                              // reset for new stage
+    // lifetimeCareMistakes intentionally preserved (already in ...partial)
     events: [...(partial.events as string[]), `evolved_to_${nextStage}`],
   };
 
@@ -1802,7 +1924,7 @@ export function promoteToSenior(state: PetState): PetState {
       `promoteToSenior called on a pet in stage '${state.stage}'; expected 'adult'.`
     );
   }
-  const character = characterForStage(state.petType, "senior", state.careScore);
+  const character = characterForStage(state.petType, "senior", state.careScore, state.careMistakes, state.lifetimeCareMistakes);
   return withDerivedFields({
     ...state,
     stage: "senior",
@@ -1812,6 +1934,7 @@ export function promoteToSenior(state: PetState): PetState {
     careScoreHappinessSum: 0,
     careScoreHealthSum: 0,
     careScoreTicks: 0,
+    careMistakes: 0,
     events: ["evolved_to_senior"],
   });
 }
@@ -1819,12 +1942,13 @@ export function promoteToSenior(state: PetState): PetState {
 /**
  * Compute the per-day probability of old-age death for a senior pet.
  *
- * Three longevity factors, each in [0, 1] where 0 = safest, 1 = riskiest:
- *   - happinessFactor : based on per-stage average happiness (careScore accumulator)
- *   - weightFactor    : 0 inside the healthy zone [17, 66]; scales to 1 at extremes (1 or 99)
- *   - disciplineFactor: based on current discipline stat
+ * Four longevity factors, each in [0, 1] where 0 = safest, 1 = riskiest:
+ *   - happinessFactor        : based on per-stage average happiness (careScore accumulator)
+ *   - weightFactor           : 0 inside the healthy zone [17, 66]; scales to 1 at extremes
+ *   - disciplineFactor       : based on current discipline stat
+ *   - mistakesFactor         : based on lifetimeCareMistakes, saturates at CARE_MISTAKE_OLD_AGE_SATURATE
  *
- * riskScore = average of the three factors ∈ [0, 1]
+ * riskScore = average of the four factors ∈ [0, 1]
  *
  * The chance ramps linearly from the onset values at day 365 (ageFactor = 0)
  * up to the peak values at day 1825 (5 in-game years, ageFactor = 1), then
@@ -1834,9 +1958,6 @@ export function promoteToSenior(state: PetState): PetState {
  *   minChance = lerp(0.001, 0.05,  ageFactor)   ← best care  (riskScore = 0)
  *   maxChance = lerp(0.010, 0.10,  ageFactor)   ← worst care (riskScore = 1)
  *   chance    = lerp(minChance, maxChance, riskScore)
- *
- * At ageFactor = 0 this is exactly equivalent to:
- *   OLD_AGE_DEATH_BASE_CHANCE_PER_DAY × (1 + OLD_AGE_DEATH_RISK_MULTIPLIER × riskScore)
  */
 function computeOldAgeDeathChance(state: PetState): number {
   const avgHappiness = state.careScoreTicks > 0
@@ -1856,7 +1977,11 @@ function computeOldAgeDeathChance(state: PetState): number {
   }
 
   const disciplineFactor = (100 - state.discipline) / 100;
-  const riskScore = (happinessFactor + weightFactor + disciplineFactor) / 3;
+
+  // Lifetime care mistakes factor — saturates at CARE_MISTAKE_OLD_AGE_SATURATE
+  const mistakesFactor = Math.min(1.0, state.lifetimeCareMistakes / CARE_MISTAKE_OLD_AGE_SATURATE);
+
+  const riskScore = (happinessFactor + weightFactor + disciplineFactor + mistakesFactor) / 4;
 
   // Age factor: 0 at onset (day 365), ramps to 1 at peak (day 1825), capped there.
   const ageFactor = Math.min(1,
@@ -2042,7 +2167,8 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     activeAttentionCall: state.activeAttentionCall,
     attentionCallActiveTicks: state.attentionCallActiveTicks,
     attentionCallCooldowns: state.attentionCallCooldowns,
-    neglectCount: state.neglectCount,
+    careMistakes: state.careMistakes,
+    lifetimeCareMistakes: state.lifetimeCareMistakes,
     ticksWithUncleanedPoop: state.ticksWithUncleanedPoop,
     ticksSinceLastMisbehaviour: state.ticksSinceLastMisbehaviour,
     ticksSinceLastGift: state.ticksSinceLastGift,
@@ -2126,7 +2252,9 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     activeAttentionCall: (data["activeAttentionCall"] as AttentionCallType | null) ?? null,
     attentionCallActiveTicks: getNumber("attentionCallActiveTicks", 0),
     attentionCallCooldowns: getCooldowns(),
-    neglectCount: getNumber("neglectCount", 0),
+    // Back-compat: old saves used "neglectCount"; migrate to careMistakes.
+    careMistakes: getNumber("careMistakes", getNumber("neglectCount", 0)),
+    lifetimeCareMistakes: getNumber("lifetimeCareMistakes", getNumber("neglectCount", 0)),
     ticksWithUncleanedPoop: getNumber("ticksWithUncleanedPoop", 0),
     ticksSinceLastMisbehaviour: getNumber("ticksSinceLastMisbehaviour", 0),
     ticksSinceLastGift: getNumber("ticksSinceLastGift", 0),
