@@ -4,6 +4,25 @@
  * Listens for VS Code workspace events (file saves, git commits) and applies
  * code-activity rewards directly via the game engine.
  *
+ * ## Commit detection
+ * Watches `.git/COMMIT_EDITMSG` via a FileSystemWatcher on every workspace
+ * folder.  This file is written by git on every commit regardless of whether
+ * the commit originated from the VS Code UI, the integrated terminal, an
+ * external terminal, or an AI agent — making it the most reliable cross-source
+ * commit signal available without shelling out to git.
+ *
+ * ## File-save detection
+ * Two complementary mechanisms are used:
+ *   1. `onDidSaveTextDocument` — fires for IDE-initiated saves (Ctrl+S,
+ *      auto-save, extension calls).  Zero noise; precise semantics.
+ *   2. FileSystemWatcher on a source-file glob — fires for saves made from the
+ *      integrated terminal (vim/nano), external editors, or AI agents writing
+ *      files directly to the filesystem.  Restricted to known source-file
+ *      extensions to avoid noise from build artifacts, lock files, and logs.
+ *
+ * Both save paths call the same `handleFileSave()` which enforces the 30-second
+ * throttle, so duplicate fires (e.g. a Ctrl+S triggering both) are harmless.
+ *
  * Throttling (CODE_ACTIVITY_THROTTLE_SECONDS / COMMIT_ACTIVITY_THROTTLE_SECONDS)
  * is enforced here so the pet does not receive a happiness/discipline boost on
  * every single keystroke-save or rapid --amend.
@@ -22,6 +41,16 @@ import { saveState } from "./persistence";
 /** Callback invoked with the updated pet state after a code-activity reward. */
 export type StateUpdateCallback = (state: PetState) => void;
 
+/**
+ * Source-file extensions watched by the filesystem watcher.  Restricted to
+ * known programming language file types to minimise noise from build artifacts,
+ * lock files, generated files, and log files.
+ */
+const SOURCE_FILE_GLOB =
+  "**/*.{ts,tsx,js,jsx,mjs,cjs,py,kt,kts,java,go,rs,rb,cs,cpp,cc,cxx,c,h,hpp," +
+  "swift,vue,svelte,html,css,scss,sass,less,json,yaml,yml,toml,sh,bash,zsh,fish," +
+  "lua,php,r,dart,ex,exs,erl,hrl,clj,cljs,elm,hs,ml,mli,fs,fsx,fsi,nim,zig,v,tf}";
+
 export class EventsManager implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   /** Timestamp (ms) of the last time a code-activity reward was applied. */
@@ -37,75 +66,123 @@ export class EventsManager implements vscode.Disposable {
 
   /** Register all workspace event listeners. */
   register(): void {
+    // ── File-save detection (path 1): IDE-initiated saves ────────────────────
     const saveListener = vscode.workspace.onDidSaveTextDocument(() => {
       this.handleFileSave();
     });
     this.disposables.push(saveListener);
 
-    // Register git commit listener via the built-in vscode.git extension API.
-    this.registerGitCommitListener();
+    // ── File-save detection (path 2): terminal / external / AI agent saves ───
+    this.registerSourceFileWatcher();
+
+    // ── Commit detection: watch .git/COMMIT_EDITMSG ───────────────────────────
+    this.registerCommitWatcher();
   }
 
   /**
-   * Attempt to subscribe to git commit events via the built-in vscode.git
-   * extension API.  Gracefully no-ops if the git extension is unavailable or
-   * the API shape is unexpected.
-   */
-  private registerGitCommitListener(): void {
-    try {
-      const gitExtension = vscode.extensions.getExtension("vscode.git");
-      if (!gitExtension) {
-        return;
-      }
-      // The extension may not be activated yet — getExtension() returns the
-      // raw extension object; we must use the exports once it is active.
-      const activate = (): void => {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const api = (gitExtension.exports as any)?.getAPI?.(1);
-          if (!api) {
-            return;
-          }
-          // Subscribe to commits on every repository that is open now.
-          const subscribeToRepo = (repo: any): void => {
-            const d = repo.onDidCommit?.(() => {
-              this.handleCommit();
-            });
-            if (d) {
-              this.disposables.push(d);
-            }
-          };
-          for (const repo of api.repositories ?? []) {
-            subscribeToRepo(repo);
-          }
-          // Also subscribe to repos that open later.
-          const openDisposable = api.onDidOpenRepository?.((repo: any) => {
-            subscribeToRepo(repo);
-          });
-          if (openDisposable) {
-            this.disposables.push(openDisposable);
-          }
-        } catch {
-          // Swallow — git extension API shape may change between VS Code versions.
-        }
-      };
-
-      if (gitExtension.isActive) {
-        activate();
-      } else {
-        gitExtension.activate().then(activate, () => {
-          // Swallow activation failure — commit rewards simply won't fire.
-        });
-      }
-    } catch {
-      // Swallow — commit rewards are a nice-to-have; the extension must not
-      // crash if the git extension is unavailable.
-    }
-  }
-
-  /**
-   * Apply a throttled code-activity reward when any file is saved.
+   * Watch source files in every workspace folder for filesystem-level changes.
+   * Catches saves made from vim/nano in the integrated terminal, external
+   * editors, and AI agents writing files directly — none of which trigger
+   * onDidSaveTextDocument.
    *
+   * One watcher is created per workspace folder so the RelativePattern is
+   * anchored to the correct root.  All watchers share the same handleFileSave()
+   * throttle so duplicate fires are harmless.
+   */
+  private registerSourceFileWatcher(): void {
+    const folders = vscode.workspace.workspaceFolders ?? [];
+    for (const folder of folders) {
+      const pattern = new vscode.RelativePattern(folder, SOURCE_FILE_GLOB);
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        pattern,
+        /* ignoreCreateEvents */ true,
+        /* ignoreChangeEvents */ false,
+        /* ignoreDeleteEvents */ true
+      );
+      watcher.onDidChange(() => this.handleFileSave(), this, this.disposables);
+      this.disposables.push(watcher);
+    }
+
+    // Also handle workspace folders added after activation.
+    const folderListener = vscode.workspace.onDidChangeWorkspaceFolders(
+      (e) => {
+        for (const folder of e.added) {
+          const pattern = new vscode.RelativePattern(folder, SOURCE_FILE_GLOB);
+          const watcher = vscode.workspace.createFileSystemWatcher(
+            pattern,
+            true,
+            false,
+            true
+          );
+          watcher.onDidChange(
+            () => this.handleFileSave(),
+            this,
+            this.disposables
+          );
+          this.disposables.push(watcher);
+        }
+      }
+    );
+    this.disposables.push(folderListener);
+  }
+
+  /**
+   * Watch `.git/COMMIT_EDITMSG` in every workspace folder for changes.
+   * git writes this file on every commit regardless of the originating source
+   * (VS Code UI, integrated terminal, external terminal, AI agent, --amend).
+   * This is more reliable than the vscode.git extension API which only fires
+   * for commits made through VS Code's own git integration.
+   */
+  private registerCommitWatcher(): void {
+    const folders = vscode.workspace.workspaceFolders ?? [];
+    for (const folder of folders) {
+      const pattern = new vscode.RelativePattern(folder, ".git/COMMIT_EDITMSG");
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        pattern,
+        /* ignoreCreateEvents */ false,
+        /* ignoreChangeEvents */ false,
+        /* ignoreDeleteEvents */ true
+      );
+      watcher.onDidChange(() => this.handleCommit(), this, this.disposables);
+      watcher.onDidCreate(() => this.handleCommit(), this, this.disposables);
+      this.disposables.push(watcher);
+    }
+
+    // Also handle workspace folders added after activation.
+    const folderListener = vscode.workspace.onDidChangeWorkspaceFolders(
+      (e) => {
+        for (const folder of e.added) {
+          const pattern = new vscode.RelativePattern(
+            folder,
+            ".git/COMMIT_EDITMSG"
+          );
+          const watcher = vscode.workspace.createFileSystemWatcher(
+            pattern,
+            false,
+            false,
+            true
+          );
+          watcher.onDidChange(
+            () => this.handleCommit(),
+            this,
+            this.disposables
+          );
+          watcher.onDidCreate(
+            () => this.handleCommit(),
+            this,
+            this.disposables
+          );
+          this.disposables.push(watcher);
+        }
+      }
+    );
+    this.disposables.push(folderListener);
+  }
+
+  /**
+   * Apply a throttled code-activity reward when any source file is saved.
+   *
+   * Called from both onDidSaveTextDocument and the source-file FileSystemWatcher.
    * Skipped silently if no pet exists yet or the throttle window has not
    * elapsed since the last reward.
    */
@@ -130,6 +207,7 @@ export class EventsManager implements vscode.Disposable {
   /**
    * Apply a throttled commit reward when a git commit is detected.
    *
+   * Called from the COMMIT_EDITMSG FileSystemWatcher (onDidChange / onDidCreate).
    * Skipped silently if no pet exists yet, the pet is not alive, or the
    * 5-minute throttle window has not elapsed since the last commit reward.
    */
@@ -157,4 +235,3 @@ export class EventsManager implements vscode.Disposable {
     }
   }
 }
-
