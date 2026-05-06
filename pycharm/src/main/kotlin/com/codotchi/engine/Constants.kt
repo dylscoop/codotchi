@@ -95,6 +95,11 @@ const val CODE_ACTIVITY_HAPPINESS_BOOST: Int = 5
 const val CODE_ACTIVITY_DISCIPLINE_BOOST: Int = 2
 const val CODE_ACTIVITY_THROTTLE_SECONDS: Int = 30
 
+const val COMMIT_HAPPINESS_BOOST: Int = 15
+const val COMMIT_DISCIPLINE_BOOST: Int = 2
+/** Minimum seconds between commit happiness boosts (prevents rapid --amend abuse). */
+const val COMMIT_ACTIVITY_THROTTLE_SECONDS: Int = 300
+
 /**
  * Milliseconds of no IDE activity (no keystrokes or mouse events) before the
  * pet is considered "idle" and hunger/happiness decay drops to

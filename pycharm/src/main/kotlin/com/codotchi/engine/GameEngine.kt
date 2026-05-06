@@ -939,6 +939,15 @@ fun applyCodeActivity(state: PetState): PetState =
         )
     )
 
+fun applyCommitActivity(state: PetState): PetState =
+    withDerivedFields(
+        state.copy(
+            happiness  = clampStat(state.happiness  + COMMIT_HAPPINESS_BOOST),
+            discipline = clampStat(state.discipline + COMMIT_DISCIPLINE_BOOST),
+            events     = listOf("commit_activity_rewarded"),
+        )
+    )
+
 // ---------------------------------------------------------------------------
 // Senior promotion
 // ---------------------------------------------------------------------------

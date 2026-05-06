@@ -9,6 +9,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationActivationListener
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.wm.IdeFrame
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.concurrency.AppExecutorUtil
@@ -59,6 +60,7 @@ class CodotchiPlugin : Disposable {
     private var currentHighScore: HighScore? = null
     private var mealsGivenThisCycle: Int = 0
     @Volatile private var lastCodeActivityTime: Long = 0L
+    @Volatile private var lastCommitActivityTime: Long = 0L
     /** True when the last tick ran with dev mode active; used to suppress high score updates. */
     @Volatile private var lastDevMode: Boolean = false
 
@@ -110,6 +112,8 @@ class CodotchiPlugin : Disposable {
 
     /** Background thread running the JVM WatchService for cross-window file sync. */
     @Volatile private var fileWatcherThread: Thread? = null
+    /** Background thread watching .git/COMMIT_EDITMSG for commit events. */
+    @Volatile private var gitCommitWatcherThread: Thread? = null
     /** Epoch-ms of the last reload triggered by the file watcher (debounce). */
     private val lastWatcherReload = AtomicLong(0L)
 
@@ -202,6 +206,9 @@ class CodotchiPlugin : Disposable {
 
         // Start file watcher for cross-window sync
         startFileWatcher()
+
+        // Start git commit watcher for happiness boost on commit
+        startGitCommitWatcher()
 
         // Initial broadcast so UI reflects restored state immediately
         broadcastState()
@@ -380,6 +387,20 @@ class CodotchiPlugin : Disposable {
         if (ticked) broadcastState()
     }
 
+    // ── Commit-activity trigger (called by CodotchiEventsManager) ───────────
+
+    fun triggerCommitActivity() {
+        val now = System.currentTimeMillis()
+        if (now - lastCommitActivityTime < COMMIT_ACTIVITY_THROTTLE_SECONDS * 1000L) return
+        lastCommitActivityTime = now
+        val ticked = stateLock.withLock {
+            val state = currentState ?: return@withLock false
+            currentState = applyCommitActivity(state)
+            true
+        }
+        if (ticked) broadcastState()
+    }
+
     // ── External activity signal ───────────────────────────────────────────
 
     /**
@@ -543,6 +564,68 @@ class CodotchiPlugin : Disposable {
         fileWatcherThread = null
     }
 
+    /**
+     * Start a JVM WatchService on every .git directory found in currently-open
+     * projects, watching for modifications to COMMIT_EDITMSG.  When the file is
+     * written (i.e. a git commit was made), calls [triggerCommitActivity].
+     *
+     * Runs on a single daemon thread.  Gracefully no-ops if no .git directories
+     * are found or if the WatchService is unavailable on this platform.
+     */
+    private fun startGitCommitWatcher() {
+        if (gitCommitWatcherThread != null) return
+
+        // Collect all .git directories from open projects.
+        val gitDirs = ProjectManager.getInstance().openProjects.mapNotNull { project ->
+            project.basePath?.let { base ->
+                val gitDir = java.nio.file.Paths.get(base, ".git")
+                if (gitDir.toFile().isDirectory) gitDir else null
+            }
+        }
+        if (gitDirs.isEmpty()) return
+
+        val thread = Thread {
+            try {
+                val watcher = FileSystems.getDefault().newWatchService()
+                for (gitDir in gitDirs) {
+                    gitDir.register(
+                        watcher,
+                        StandardWatchEventKinds.ENTRY_CREATE,
+                        StandardWatchEventKinds.ENTRY_MODIFY,
+                    )
+                }
+                while (!Thread.currentThread().isInterrupted) {
+                    val key = watcher.poll(2, TimeUnit.SECONDS) ?: continue
+                    var relevant = false
+                    for (event in key.pollEvents()) {
+                        val ctx = event.context()
+                        if (ctx is Path && ctx.toString() == "COMMIT_EDITMSG") {
+                            relevant = true
+                        }
+                    }
+                    key.reset()
+                    if (relevant) {
+                        triggerCommitActivity()
+                    }
+                }
+                watcher.close()
+            } catch (_: InterruptedException) {
+                // Normal shutdown
+            } catch (_: Exception) {
+                // WatchService unavailable or project path inaccessible — silent degradation
+            }
+        }
+        thread.isDaemon = true
+        thread.name = "codotchi-git-commit-watcher"
+        thread.start()
+        gitCommitWatcherThread = thread
+    }
+
+    private fun stopGitCommitWatcher() {
+        gitCommitWatcherThread?.interrupt()
+        gitCommitWatcherThread = null
+    }
+
     // ── Broadcast ──────────────────────────────────────────────────────────
 
     fun broadcastState() {
@@ -650,6 +733,7 @@ class CodotchiPlugin : Disposable {
     override fun dispose() {
         stopTicker()
         stopFileWatcher()
+        stopGitCommitWatcher()
         Toolkit.getDefaultToolkit().removeAWTEventListener(awtActivityListener)
         messageBusConnection?.disconnect()
     }
