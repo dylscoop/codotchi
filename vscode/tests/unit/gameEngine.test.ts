@@ -26,6 +26,8 @@ import {
   scold,
   praise,
   applyCodeActivity,
+  applyCommitActivity,
+  COMMIT_ACTIVITY_THROTTLE_SECONDS,
   promoteToSenior,
   rollOldAgeDeath,
   rollOldAgeSickness,
@@ -1289,6 +1291,40 @@ describe("applyCodeActivity", () => {
     const pet = makePet({ happiness: 98 });
     const next = applyCodeActivity(pet);
     assert.equal(next.happiness, 100);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyCommitActivity
+// ---------------------------------------------------------------------------
+
+describe("applyCommitActivity", () => {
+  it("increases happiness by 15", () => {
+    const pet = makePet({ happiness: 50 });
+    const next = applyCommitActivity(pet);
+    assert.equal(next.happiness, 65);
+  });
+
+  it("increases discipline by 2", () => {
+    const pet = makePet({ discipline: 50 });
+    const next = applyCommitActivity(pet);
+    assert.equal(next.discipline, 52);
+  });
+
+  it("emits commit_activity_rewarded event", () => {
+    const pet = makePet();
+    const next = applyCommitActivity(pet);
+    assert.ok(next.events.includes("commit_activity_rewarded"));
+  });
+
+  it("clamps happiness at 100", () => {
+    const pet = makePet({ happiness: 90 });
+    const next = applyCommitActivity(pet);
+    assert.equal(next.happiness, 100);
+  });
+
+  it("COMMIT_ACTIVITY_THROTTLE_SECONDS is 300", () => {
+    assert.equal(COMMIT_ACTIVITY_THROTTLE_SECONDS, 300);
   });
 });
 

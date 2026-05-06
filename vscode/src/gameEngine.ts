@@ -127,6 +127,11 @@ const CODE_ACTIVITY_DISCIPLINE_BOOST: number = 2;
 /** Minimum seconds between code-activity happiness boosts. */
 export const CODE_ACTIVITY_THROTTLE_SECONDS: number = 30;
 
+const COMMIT_HAPPINESS_BOOST: number = 15;
+const COMMIT_DISCIPLINE_BOOST: number = 2;
+/** Minimum seconds between commit happiness boosts (prevents rapid --amend abuse). */
+export const COMMIT_ACTIVITY_THROTTLE_SECONDS: number = 300;
+
 /**
  * Seconds of no IDE activity (no keystrokes, cursor movement, or window focus)
  * before the pet is considered "idle" and decay is reduced to IDLE_DECAY_FRACTION.
@@ -1901,6 +1906,24 @@ export function applyCodeActivity(state: PetState): PetState {
     happiness: clampStat(state.happiness + CODE_ACTIVITY_HAPPINESS_BOOST),
     discipline: clampStat(state.discipline + CODE_ACTIVITY_DISCIPLINE_BOOST),
     events: ["code_activity_rewarded"],
+  });
+}
+
+/**
+ * Apply the commit happiness and discipline boost.
+ *
+ * Throttling (COMMIT_ACTIVITY_THROTTLE_SECONDS) must be enforced by the caller
+ * (events.ts); this function unconditionally applies the deltas.
+ *
+ * @param state - The current pet state.
+ * @returns A new PetState after the boost is applied.
+ */
+export function applyCommitActivity(state: PetState): PetState {
+  return withDerivedFields({
+    ...state,
+    happiness: clampStat(state.happiness + COMMIT_HAPPINESS_BOOST),
+    discipline: clampStat(state.discipline + COMMIT_DISCIPLINE_BOOST),
+    events: ["commit_activity_rewarded"],
   });
 }
 
