@@ -12,6 +12,9 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.wm.IdeFrame
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.vfs.newvfs.BulkFileListener
+import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.messages.MessageBusConnection
 import java.awt.AWTEvent
@@ -25,6 +28,22 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
+
+/**
+ * Source-file extensions monitored by the VFS BulkFileListener for
+ * external-save detection (terminal, AI agent, external editor).
+ * Mirrors the SOURCE_FILE_GLOB in VS Code's events.ts.
+ */
+private val SOURCE_FILE_EXTENSIONS = setOf(
+    "ts", "tsx", "js", "jsx", "mjs", "cjs",
+    "py", "kt", "kts", "java", "go", "rs", "rb", "cs",
+    "cpp", "cc", "cxx", "c", "h", "hpp",
+    "swift", "vue", "svelte", "html", "css", "scss", "sass", "less",
+    "json", "yaml", "yml", "toml", "sh", "bash", "zsh", "fish",
+    "lua", "php", "r", "dart", "ex", "exs", "erl", "hrl",
+    "clj", "cljs", "elm", "hs", "ml", "mli", "fs", "fsx", "fsi",
+    "nim", "zig", "v", "tf"
+)
 
 /**
  * CodotchiPlugin — application-level service that owns the pet state and
@@ -173,6 +192,25 @@ class CodotchiPlugin : Disposable {
                 }
             }
         )
+        // Subscribe to VFS bulk-file events to catch saves from the integrated
+        // terminal (vim/nano), external editors, and AI agents writing files
+        // directly to disk — none of which trigger FileDocumentManagerListener.
+        // Filtered to source-file extensions to avoid noise from build output,
+        // lock files, and log files.  Mirrors the FileSystemWatcher approach in
+        // the VS Code extension's events.ts.
+        conn.subscribe(
+            VirtualFileManager.VFS_CHANGES,
+            object : BulkFileListener {
+                override fun after(events: List<VFileEvent>) {
+                    val hasSourceChange = events.any { e ->
+                        val ext = e.file?.extension?.lowercase() ?: return@any false
+                        ext in SOURCE_FILE_EXTENSIONS
+                    }
+                    if (hasSourceChange) triggerCodeActivity()
+                }
+            }
+        )
+
         messageBusConnection = conn
 
         val persistence = service<CodotchiPersistence>()
