@@ -43,11 +43,11 @@ does not yet have.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Discrete `careMistakes` counter in `PetState` | `[ ]` | Separate from the continuous `careScore`; tracks specific neglect incidents |
-| Increment on: attention call expired unresponded | `[ ]` | Each expired attention call (hunger, unhappiness, sickness, poop, low energy, critical health) adds 1 |
-| Increment on: fed snack when hungry (not meal) | `[ ]` | Using a snack to answer a `hunger` attention call instead of a meal adds 1 |
-| Increment on: misbehaviour ignored | `[ ]` | Expired `misbehaviour` call already adds to `neglectCount` — wire the same event to `careMistakes` |
-| Use `careMistakes` as a secondary gate in evolution | `[ ]` | Low mistakes → best evolution path; high mistakes → worst path; supplements current `careScore` |
+| Discrete `careMistakes` counter in `PetState` | `[x]` | Per-stage counter; resets to 0 on evolution. `lifetimeCareMistakes` never resets. |
+| Increment on: attention call expired unresponded | `[x]` | Each expired attention call (hunger, unhappiness, sickness, poop, low energy, critical health) adds 1 to both counters |
+| Increment on: fed snack when hungry (not meal) | `[ ]` | Not yet wired — future enhancement |
+| Increment on: misbehaviour ignored | `[x]` | Expired `misbehaviour` call adds 1 to `careMistakes` + `lifetimeCareMistakes` |
+| Use `careMistakes` as a secondary gate in evolution | `[x]` | 0–3 → best tier; 4–6 → mid tier; ≥ 7 → low tier; each excess mistake above 3 delays evolution by 1 game-day |
 | Optionally expose `careMistakes` as a visible stat in the info line | `[ ]` | Hidden internal by default; dev mode or a setting could surface it |
 
 **Design notes:**
@@ -64,10 +64,10 @@ does not yet have.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| "Perfect care" secret character per sprite type | `[ ]` | Unlocked by reaching adult with `careMistakes === 0` AND `careScore ≥ 0.95`; equivalent to Mametchi in the original |
-| "Total neglect" secret character per sprite type | `[ ]` | Unlocked by reaching adult with `careMistakes ≥ 10` OR `careScore ≤ 0.10`; equivalent to Oyajitchi / Bill |
-| Secret character names and sprites | `[ ]` | One extra adult variant per sprite type beyond the existing best/mid/low tiers |
-| Secret character does not appear in standard evolution preview | `[ ]` | Discovery is part of the mechanic |
+| "Perfect care" secret character per sprite type | `[x]` | `secret_best` tier: `careMistakes === 0` AND `careScore ≥ 0.95`; sprites alias existing `_a` characters as placeholders |
+| "Total neglect" secret character per sprite type | `[x]` | `secret_worst` tier: `lifetimeCareMistakes ≥ 10`; sprites alias existing `_c` characters as placeholders |
+| Secret character names and sprites | `[ ]` | Dedicated pixel art not yet drawn; currently aliased to existing sprites |
+| Secret character does not appear in standard evolution preview | `[ ]` | Discovery mechanic not yet implemented |
 
 **Design notes:**
 - Requires the care mistakes counter (§1.2) and/or the continuous `careScore`.

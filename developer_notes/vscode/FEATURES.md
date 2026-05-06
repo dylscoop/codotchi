@@ -99,8 +99,8 @@ The pet fires IDE notifications demanding care, with a **2-minute active
 | Sick                                               | `sick`            | Medicine                | Health −10                             | `[x]`  |
 | Energy < 20                                        | `low_energy`      | Sleep                   | Happiness −10                          | `[x]`  |
 | Health < 50                                        | `critical_health` | Feed meal or snack      | Health −10, Happiness −10              | `[x]`  |
-| Random misbehaviour (log-chance, child+)           | `misbehaviour`    | Scold                   | Health −10 + neglectCount +1           | `[x]`  |
-| Random gift (log-chance)                           | `gift`            | Praise (+happiness +15) | Happiness −5 + neglectCount +1         | `[x]`  |
+| Random misbehaviour (log-chance, child+)           | `misbehaviour`    | Scold                   | Health −10 + careMistakes/lifetimeCareMistakes +1 | `[x]`  |
+| Random gift (log-chance)                           | `gift`            | Praise (+happiness +15) | Happiness −5 + careMistakes/lifetimeCareMistakes +1 | `[x]`  |
 
 Notes:
 - Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (2 min)
@@ -654,8 +654,8 @@ These are lower-priority ideas that require design work before implementation. A
 |---------|--------|-------|
 | **— Tamagotchi parity gaps —** | | |
 | Potty training | `[ ]` | If player presses Clean during the pre-poop warning animation, pet uses a toilet instead of making a mess. Repeating this trains the pet to go automatically. Original Tamagotchi P1/P2 feature. |
-| Care mistakes counter | `[ ]` | Discrete log of neglect events (stat hit zero and went unattended, fed snack instead of meal when hungry, etc.). Separate from the continuous care score — the original Tamagotchi tracked discrete mistakes and used the total to gate evolution paths. Could expose as a visible stat or keep internal. |
-| Secret / rare characters | `[ ]` | Evolution paths unlocked only by extreme care: perfect care → rare "best" character; total neglect → rare "worst" character. Original Tamagotchi had Mametchi (perfect) and Oyajitchi / Bill (secret via very poor care). |
+| Care mistakes counter | `[x]` | `careMistakes` (per-stage, resets on evolution) + `lifetimeCareMistakes` (never resets). Incremented on every expired attention call. Caps the achievable evolution tier; delays evolution threshold; feeds old-age risk factor. |
+| Secret / rare characters | `[x]` | `secret_best` (careMistakes=0 + careScore ≥ 0.95) and `secret_worst` (lifetimeCareMistakes ≥ 10) evolution tiers implemented; sprite assets alias existing `_a`/`_c` sprites as placeholders until dedicated art is drawn. |
 | Matchmaker NPC | `[ ]` | If the pet reaches senior age without marrying, a Matchmaker character arrives and automatically pairs it with a CPU partner. Prevents the marriage mechanic from being permanently skipped. Original Tamagotchi Connection feature. |
 | Marriage & offspring | `[ ]` | Two pets (two users / two windows) meet via a shared code (e.g. VS Code Live Share session ID). High enough friendship → kiss animation → female produces an egg; parent departs after ~24 h; new generation begins and generation counter increments. Original Tamagotchi Connection V1+ feature. |
 | Friendship meter | `[ ]` | 0–100 stat tracking closeness to another pet (requires connectivity). Levels: Acquaintance → Buddy → Friend → Good Friend → Best Friend → Partner. Partner level gates marriage. |
