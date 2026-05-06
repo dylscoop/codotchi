@@ -273,7 +273,9 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val activeAttentionCall: String?,
         val attentionCallActiveTicks: Int?,
         val attentionCallCooldowns: Map<String, Double>?, // Gson deserialises numbers as Double
-        val neglectCount: Int?,
+        val neglectCount: Int?,              // back-compat: absent in saves v0.5.0+
+        val careMistakes: Int?,
+        val lifetimeCareMistakes: Int?,
         val ticksWithUncleanedPoop: Int?,
         val ticksSinceLastMisbehaviour: Int?,
         val ticksSinceLastGift: Int?,
@@ -329,7 +331,9 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             attentionCallCooldowns     = r.attentionCallCooldowns
                                             ?.mapValues { it.value.toInt() }
                                             ?: emptyMap(),
-            neglectCount               = r.neglectCount               ?: 0,
+            // Back-compat: old saves used "neglectCount"; migrate to careMistakes.
+            careMistakes               = r.careMistakes           ?: (r.neglectCount ?: 0),
+            lifetimeCareMistakes       = r.lifetimeCareMistakes   ?: (r.neglectCount ?: 0),
             ticksWithUncleanedPoop     = r.ticksWithUncleanedPoop     ?: 0,
             ticksSinceLastMisbehaviour = r.ticksSinceLastMisbehaviour ?: 0,
             ticksSinceLastGift         = r.ticksSinceLastGift         ?: 0,
@@ -379,7 +383,9 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         activeAttentionCall        = s.activeAttentionCall,
         attentionCallActiveTicks   = s.attentionCallActiveTicks,
         attentionCallCooldowns     = s.attentionCallCooldowns.mapValues { it.value.toDouble() },
-        neglectCount               = s.neglectCount,
+        neglectCount               = null,
+        careMistakes               = s.careMistakes,
+        lifetimeCareMistakes       = s.lifetimeCareMistakes,
         ticksWithUncleanedPoop     = s.ticksWithUncleanedPoop,
         ticksSinceLastMisbehaviour = s.ticksSinceLastMisbehaviour,
         ticksSinceLastGift         = s.ticksSinceLastGift,
