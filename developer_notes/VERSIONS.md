@@ -1,6 +1,20 @@
 # Version History
 
-## v1.17.1 — current
+## v1.18.1 — current
+
+### Changes from v1.17.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.18.1 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.18.1 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.18.1 |
+| `vscode/media/sidebar.js` | `resizeCanvas()` now resets `petX = null` on every canvas width change so the animation loop re-centres the pet on the next frame (BUGFIX-099); snack spawn X clamped to `[minX, maxX]` (pet-reachable range) so snacks are always reachable (BUGFIX-100); eat-collision updated to compare pet center vs snack center in both dragon and normal-pet movement paths (BUGFIX-100) |
+| `developer_notes/BUGFIXES.md` | Added BUGFIX-099, BUGFIX-100 |
+
+---
+
+## v1.17.1 — previous
 
 ### Changes from v1.17.0
 

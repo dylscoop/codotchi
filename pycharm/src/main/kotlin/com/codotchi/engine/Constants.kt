@@ -348,6 +348,22 @@ const val GIFT_PRAISE_HAPPINESS_BOOST: Int = 15
 /** neglectCount decrements by 1 every this many ticks (300 × 6 s = 30 min). */
 const val NEGLECT_DECAY_TICK_INTERVAL: Int = 300
 
+// Care-mistake thresholds — mirror of vscode/src/gameEngine.ts
+/** Per-stage mistakes allowed before tier is penalised (equivalent of CARE_MISTAKE_BEST_MAX in TS). */
+const val CARE_MISTAKE_BEST_MAX: Int = 3
+/** Above this per-stage count, tier is capped at "low". */
+const val CARE_MISTAKE_MID_MAX: Int = 6
+/** Same as CARE_MISTAKE_BEST_MAX — evolution delay kicks in above this value. */
+const val CARE_MISTAKE_DELAY_THRESHOLD: Int = 3
+/** Game-days of evolution delay per excess mistake. */
+const val CARE_MISTAKE_DAYS_PER_EXCESS: Int = 1
+/** Lifetime mistakes at which the secret_worst tier is unlocked. */
+const val CARE_MISTAKE_SECRET_WORST_THRESHOLD: Int = 10
+/** careScore threshold for the secret_best tier (per-stage mistakes must also be 0). */
+const val CARE_MISTAKE_SECRET_BEST_CARE_SCORE: Double = 0.95
+/** Lifetime mistakes at which the old-age risk factor saturates (no further increase). */
+const val CARE_MISTAKE_OLD_AGE_SATURATE: Int = 20
+
 // Logarithmic random-chance tuning constants for probabilistic calls.
 const val POOP_CALL_BASE_CHANCE: Double = 0.03
 const val POOP_CALL_MAX_CHANCE: Double = 0.12
