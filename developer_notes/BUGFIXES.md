@@ -1244,3 +1244,14 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** Snack X was generated as `4 + Math.floor(Math.random() * (siW - 20))`, which could place the snack up to `siW - 17` pixels from the left edge. The pet's movement was clamped to `maxX = spriteCanvas.width - bWidth - 4`, so if the snack landed in the rightmost `bWidth` pixels the pet could never reach it. Additionally, the eat-collision used left-edge-to-left-edge distance (`Math.abs(petX - snack.x)`) rather than center-to-center, making the threshold inconsistent with the visual position of both sprites.
 
 **Fix:** Snack X is now clamped to `[minX, maxX]` (the same range the pet can occupy) using `bWidth` derived from the current state — ensuring every snack is always reachable. The eat-collision now compares pet center (`petX + bWidth/2`) to snack center (`snack.x + 4`, snack sprite is 8px wide at 2× scale) using the same threshold, so the pet visually reaches the snack before consuming it. Both the dragon and normal-movement paths are updated identically.
+
+---
+
+## BUGFIX-101 — Hunger and happiness display as floats in the status bar tooltip
+
+**Status:** Fixed (branch `fix/integer-display-hunger-happiness`)
+**File:** `vscode/src/statusBar.ts`
+
+**Problem:** The status bar tooltip showed hunger and happiness as floating-point numbers (e.g. `Hunger: 72.34567`) because `state.hunger` and `state.happiness` are stored as floats internally and were interpolated directly into the template string with no formatting.
+
+**Fix:** Wrapped both values in `Math.round()` so they display as integers (e.g. `Hunger: 72`).

@@ -48,8 +48,8 @@ export class StatusBarManager implements vscode.Disposable {
       : "";
     this.item.text = `${emoji} ${state.name} (${stageLabel})`;
     this.item.tooltip = [
-      `Hunger: ${state.hunger}`,
-      `Happiness: ${state.happiness}`,
+      `Hunger: ${Math.round(state.hunger)}`,
+      `Happiness: ${Math.round(state.happiness)}`,
       `Health: ${state.health}`,
       `Energy: ${state.energy}`,
       `Weight: ${state.weight}`,
