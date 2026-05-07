@@ -15,15 +15,18 @@ those are covered by `git-workflow`.
 
 ## Step 1 — Confirm the version number
 
-The current version must be identical in all three source-of-truth locations:
+The current version must be identical in all **four** source-of-truth locations:
 
 | File | Field |
 |------|-------|
 | `vscode/package.json` | `"version": "X.Y.Z"` |
 | `pycharm/build.gradle.kts` | `version = "X.Y.Z"` |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | `<version>X.Y.Z</version>` |
+| `opencode-codotchi/package.json` | `"version": "X.Y.Z"` |
 
-If any of the three differs, fix them to agree before doing anything else.
+If any of the four differs, fix them to agree before doing anything else.
+
+> **Version bump rule:** A bug fix or feature **always** requires a patch version bump (e.g. 1.19.1 → 1.19.2). Never build artifacts at the same version number as the previous release — the artifact filename will collide. Bump first, archive the old artifact, then build.
 
 ---
 
@@ -39,6 +42,20 @@ to their archive locations before rebuilding**. See the `release-management`
 skill for the exact `git mv` commands and archive paths.
 
 Skip this sub-step if the version number is unchanged.
+
+### Step 2b — Verify artifact version after build
+
+After each build completes, **immediately** verify the output filename matches the expected version:
+
+```powershell
+# VS Code
+Get-ChildItem vscode\codotchi-*.vsix
+
+# PyCharm
+Get-ChildItem pycharm\build\distributions\*.zip
+```
+
+If the filename contains the old version (e.g. `codotchi-1.19.1.vsix` when you expected `1.19.2`), **stop and fix the version bump** before committing — the version files were not bumped correctly before building.
 
 ### VS Code `.vsix`
 

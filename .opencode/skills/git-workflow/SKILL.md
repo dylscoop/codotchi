@@ -73,13 +73,16 @@ The following actions each require **explicit user instruction** before performi
 
 ## Post-build mandatory actions — do these immediately after every build
 
-After any build command completes (VS Code, PyCharm, or OpenCode), you **must** do all three of the following before stopping or waiting:
+After any build command completes (VS Code, PyCharm, or OpenCode), you **must** do all four of the following before stopping or waiting:
 
-1. **List the artifact files produced** — state the exact filename and path of every artifact that was just built.
-2. **Commit the artifacts immediately** as `chore: rebuild artifacts for vX.Y.Z` — do not wait for the user to ask. The commit is already implied by the release flow. Stage and commit all three artifact files in a single commit.
-3. **Continue immediately** — after the commit succeeds, move directly to the next todo item. Do not stop and say "build succeeded" and wait. Do not ask "shall I continue?" Keep going until all todos are done or an explicit user decision is required (push, merge, tag, release).
+1. **Verify the artifact version** — immediately after the build command returns, run a directory listing to confirm the artifact file exists and its filename contains the correct version number (e.g. `Get-ChildItem vscode/codotchi-*.vsix` and `Get-ChildItem pycharm/build/distributions/*.zip`). If the filename does not match the expected version, stop and report the mismatch before committing anything.
+2. **List the artifact files produced** — state the exact filename and path of every artifact that was just built.
+3. **Commit the artifacts immediately** as `chore: rebuild artifacts for vX.Y.Z` — do not wait for the user to ask. The commit is already implied by the release flow. Stage and commit all three artifact files in a single commit.
+4. **Continue immediately** — after the commit succeeds, move directly to the next todo item. Do not stop and say "build succeeded" and wait. Do not ask "shall I continue?" or "keep going?" Keep going until all todos are done or an explicit user decision is required (push, merge, tag, release).
 
 Never silently halt after a build. Never leave artifact files uncommitted. Never wait for the user to say "keep going" after a successful build.
+
+> **Root cause of version mismatch:** If the version in `package.json` / `build.gradle.kts` was not bumped before building, the artifact will carry the old version number. Always bump versions in all four files (`vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`) and commit the bump **before** running any build.
 
 ---
 
