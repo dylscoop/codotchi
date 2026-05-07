@@ -1,6 +1,20 @@
 # Version History
 
-## v1.19.1 — current
+## v1.19.2 — current
+
+### Changes from v1.19.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.19.2 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.19.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.19.2 |
+| `opencode-codotchi/package.json` | Version bumped to 1.19.2 |
+| `vscode/src/statusBar.ts` | Wrapped hunger and happiness values in `Math.round()` so they display as integers instead of floats in the status bar tooltip |
+
+---
+
+## v1.19.1 — previous
 
 ### Changes from v1.19.0
 
@@ -10,7 +24,6 @@
 | `pycharm/build.gradle.kts` | Version bumped to 1.19.1 |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.19.1 |
 | `opencode-codotchi/package.json` | Version bumped to 1.19.1 |
-| `vscode/src/statusBar.ts` | Wrapped hunger and happiness values in `Math.round()` so they display as integers instead of floats in the status bar tooltip |
 | `vscode/src/events.ts` | Replaced `vscode.git` `onDidCommit` with `FileSystemWatcher` on `.git/COMMIT_EDITMSG` per workspace folder — now detects commits from terminal, external tools, and AI agents. Added second `FileSystemWatcher` on source-file extensions glob to detect saves from terminal (vim/nano), external editors, and AI agents alongside existing `onDidSaveTextDocument`. Both watchers share the same throttled handlers. |
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | Added VFS `BulkFileListener` on `VirtualFileManager.VFS_CHANGES` topic — detects source-file saves from terminal and external processes when IntelliJ's VFS refresh fires. Filtered to `SOURCE_FILE_EXTENSIONS` set to avoid noise. Existing `FileDocumentManagerListener` kept for IDE-initiated saves. |
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiEventsManager.kt` | Updated doc comment to clarify this covers IDE-initiated saves only; external saves now handled by VFS BulkFileListener in `CodotchiPlugin`. |
