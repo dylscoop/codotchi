@@ -1,6 +1,17 @@
 # Version History
 
-## v1.19.2 — current
+## v1.19.3 — current
+
+### Changes from v1.19.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | Replaced single-string `code_activity_rewarded` and `commit_activity_rewarded` event log messages with pools of 3 messages each, randomly selected at display time. Updated lookup logic to handle array values. |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirror of above. |
+
+---
+
+## v1.19.2 — previous
 
 ### Changes from v1.19.1
 

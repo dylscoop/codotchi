@@ -1186,8 +1186,8 @@
       "medicine_given":          "Gave " + n + " medicine.",
       "scolded":                 n + " was scolded.",
       "praised":                 n + " was praised!",
-      "code_activity_rewarded":  n + " felt stimulated!",
-      "commit_activity_rewarded": n + " loved that commit! Happiness boost!",
+      "code_activity_rewarded":  [n + " is in the zone!", n + " loves watching you code!", n + " gets excited watching you work!"],
+      "commit_activity_rewarded": [n + " approves of that commit!", n + " is proud of you for committing!", n + " did a little dance for that commit!"],
       "evolved_to_senior":       n + " reached their senior years!",
       "died_of_old_age":         n + " passed away of unforeseen natural causes due to old age.",
       "became_sick_old_age":     n + " came down with an age-related illness.",
@@ -1233,7 +1233,10 @@
       "minigame_coin_flip_win":     n + " won Coin Flip!",
       "minigame_coin_flip_lose":    n + " lost Coin Flip.",
     };
-    if (labels[code]) { return labels[code]; }
+    var val = labels[code];
+    if (val) {
+      return Array.isArray(val) ? val[Math.floor(Math.random() * val.length)] : val;
+    }
     if (code.indexOf("evolved_to_") === 0) {
       var stage = code.slice("evolved_to_".length);
       return n + " evolved into " + stage + "!";
