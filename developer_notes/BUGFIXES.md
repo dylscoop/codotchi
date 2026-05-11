@@ -1255,3 +1255,14 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Problem:** The status bar tooltip showed hunger and happiness as floating-point numbers (e.g. `Hunger: 72.34567`) because `state.hunger` and `state.happiness` are stored as floats internally and were interpolated directly into the template string with no formatting.
 
 **Fix:** Wrapped both values in `Math.round()` so they display as integers (e.g. `Hunger: 72`).
+
+---
+
+## BUGFIX-102 — PyCharm Bytebug stat decay 4× too fast; deep idle floor never reached in time
+
+**Status:** Fixed (branch `fix/pycharm-bytebug-decay-rate`)
+**File:** `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt`
+
+**Problem:** The PyCharm `GameEngine.kt` decay logic subtracted `ceil(1 × hungerDecayMultiplier)` points every tick, so Bytebug (1.5× hunger multiplier) lost `ceil(1.5) = 2` hunger per tick — 4× faster than VS Code's equivalent rate. VS Code uses an interval-based approach: decay fires 1 point every `round(DECAY_TICK_INTERVAL / multiplier)` ticks. For Bytebug at VS Code's 3s tick, that is every 2 ticks (9s/pt). The PyCharm port missed this interval model entirely, applying a flat per-tick subtraction instead. Because hunger drained so fast, it hit 0 well before the 10-minute deep-idle threshold, triggering health damage and killing the pet while the user was simply away.
+
+**Fix:** Added `DECAY_TICK_INTERVAL = 2` to `Constants.kt` (calibrated for PyCharm's 6s tick to approximate VS Code's 9s/pt baseline). Rewrote the awake decay block in `GameEngine.kt` to compute per-stat tick intervals (`hungerInterval`, `happinessInterval`, `energyInterval`) and gate each stat's decay on `ticksAlive % interval == 0`, with idle stretching the interval by `IDLE_DECAY_TICK_DIVISOR`. The `decayThisTick` gate is retained for aging only, matching VS Code exactly.
