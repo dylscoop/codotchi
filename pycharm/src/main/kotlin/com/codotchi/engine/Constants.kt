@@ -20,6 +20,15 @@ const val STAT_MAX: Int = 100
 const val WEIGHT_MIN: Int = 1
 const val WEIGHT_MAX: Int = 99
 
+/**
+ * Base tick interval for hunger/happiness/energy decay (every N ticks = 1 point lost).
+ * Set to 2 so that at 6 s/tick the real-world drain rate (≈12 s/pt for codeling 1×)
+ * approximates the VS Code rate (DECAY_TICK_INTERVAL=3 at 3 s/tick = 9 s/pt).
+ * Per-type multipliers are applied by shortening this interval proportionally, exactly
+ * mirroring the VS Code formula: interval = round(DECAY_TICK_INTERVAL / multiplier).
+ */
+const val DECAY_TICK_INTERVAL: Int = 2
+
 const val HUNGER_DECAY_PER_TICK: Int = 1
 const val HAPPINESS_DECAY_PER_TICK: Int = 1
 const val ENERGY_REGEN_PER_TICK_SLEEPING: Int = 3

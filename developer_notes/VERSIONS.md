@@ -1,6 +1,41 @@
 # Version History
 
-## v1.19.2 — current
+## v1.19.4 — current
+
+### Changes from v1.19.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.19.4 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.19.4 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.19.4 |
+| `opencode-codotchi/package.json` | Version bumped to 1.19.4 |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | Added `DECAY_TICK_INTERVAL = 2` — base tick interval for interval-based stat decay, calibrated for PyCharm's 6s tick to match VS Code's ~9s/pt baseline rate |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | Rewrote awake decay block to use interval-based approach matching VS Code: each stat decays 1 pt every `round(DECAY_TICK_INTERVAL / multiplier)` ticks instead of `ceil(multiplier)` pts every tick. Fixes Bytebug dying too quickly (BUGFIX-102) |
+| `vscode/codotchi-1.19.4.vsix` | Rebuilt VS Code extension artifact |
+| `pycharm/build/distributions/pycharm-codotchi-1.19.4.zip` | Rebuilt PyCharm plugin artifact |
+| `opencode-codotchi/opencode-codotchi-1.19.4.zip` | Rebuilt OpenCode plugin zip |
+
+### Updated constants
+
+```
+DECAY_TICK_INTERVAL: Int = 2   // new — base decay interval in ticks (PyCharm, 6s/tick)
+```
+
+---
+
+## v1.19.3 — previous
+
+### Changes from v1.19.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | Replaced single-string `code_activity_rewarded` and `commit_activity_rewarded` event log messages with pools of 3 messages each, randomly selected at display time. Updated lookup logic to handle array values. |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirror of above. |
+
+---
+
+## v1.19.2 — previous
 
 ### Changes from v1.19.1
 

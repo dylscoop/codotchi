@@ -303,8 +303,27 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     // Capture sleeping state at tick entry so day-timer uses it even if auto-wake fires mid-tick
     val sleepingAtTickStart = sleeping
 
-    // Stat decay
-    val decayThisTick = !isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR == 0)
+    // Stat decay — interval-based, mirroring VS Code's DECAY_TICK_INTERVAL approach.
+    // Each stat decays 1 point every N ticks; N is scaled by the per-type multiplier
+    // (higher multiplier → shorter interval → faster decay).  During idle the interval
+    // is stretched by IDLE_DECAY_TICK_DIVISOR so decay is ~20× slower.
+    val weightHappinessMult = if (state.weight > WEIGHT_HAPPINESS_HIGH_THRESHOLD || state.weight < WEIGHT_HAPPINESS_LOW_THRESHOLD)
+        WEIGHT_HAPPINESS_DEBUFF_MULTIPLIER else 1.0
+    val hungerInterval    = maxOf(1, Math.round(DECAY_TICK_INTERVAL / modifiers.hungerDecayMultiplier).toInt())
+    val happinessInterval = maxOf(1, Math.round((DECAY_TICK_INTERVAL / (modifiers.happinessDecayMultiplier * weightHappinessMult)).toFloat()).toInt())
+    val energyInterval    = DECAY_TICK_INTERVAL
+
+    val hungerDecayTick    = if (!isIdle) (ticksAlive % hungerInterval    == 0)
+                             else         (ticksAlive % (hungerInterval    * IDLE_DECAY_TICK_DIVISOR) == 0)
+    val happinessDecayTick = if (!isIdle) (ticksAlive % happinessInterval == 0)
+                             else         (ticksAlive % (happinessInterval * IDLE_DECAY_TICK_DIVISOR) == 0)
+    val energyDecayTick    = if (!isIdle) (ticksAlive % energyInterval    == 0)
+                             else         (ticksAlive % (energyInterval    * IDLE_DECAY_TICK_DIVISOR) == 0)
+
+    // Shared gate for aging (unaffected by per-type multipliers).
+    val decayThisTick = (ticksAlive % DECAY_TICK_INTERVAL == 0) &&
+        (!isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR == 0))
+
     if (!state.wasIdle && isIdle) {
         events.add("went_idle")
     }
@@ -327,15 +346,10 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     } // end Step 0
 
     if (!sleeping) {
-        if (decayThisTick) {
-            val hungerDecay    = ceil(HUNGER_DECAY_PER_TICK    * modifiers.hungerDecayMultiplier).toInt()
-            val weightHappinessMult = if (state.weight > WEIGHT_HAPPINESS_HIGH_THRESHOLD || state.weight < WEIGHT_HAPPINESS_LOW_THRESHOLD)
-                WEIGHT_HAPPINESS_DEBUFF_MULTIPLIER else 1.0
-            val happinessDecay = ceil(HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier * weightHappinessMult).toInt()
-            hunger    = clampStat(hunger    - hungerDecay)
-            happiness = clampStat(happiness - happinessDecay)
-            energy    = clampStat(energy    - ENERGY_DECAY_PER_TICK)
-        }
+        if (hungerDecayTick)    hunger    = clampStat(hunger    - 1)
+        if (happinessDecayTick) happiness = clampStat(happiness - 1)
+        if (energyDecayTick)    energy    = clampStat(energy    - ENERGY_DECAY_PER_TICK)
+        // Deep idle: floor stats at IDLE_STAT_FLOOR so they never drop below 20%
         if (isDeepIdle) {
             hunger    = maxOf(hunger,    IDLE_STAT_FLOOR)
             happiness = maxOf(happiness, IDLE_STAT_FLOOR)
