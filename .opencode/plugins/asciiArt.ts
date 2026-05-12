@@ -527,7 +527,8 @@ export function buildSpeechBubble(
   mood: string,
   message: string,
   name: string,
-  spriteType = "classic"
+  spriteType = "classic",
+  ideLabel?: string
 ): string {
   const art    = getArt(stage, mood, spriteType);
   const bubble = buildBubble(message);
@@ -542,8 +543,9 @@ export function buildSpeechBubble(
   // Colour the art lines
   const artColoured = artPadded.map((l) => colour(l, stageColour));
 
-  // Build name header
-  const header = `${BOLD}${stageColour}${name}${RESET} ${FG_GRAY}[${stage}]${RESET}`;
+  // Build name header (with optional IDE label e.g. "[VS Code]")
+  const ideSuffix = ideLabel ? ` ${FG_GRAY}${ideLabel}${RESET}` : "";
+  const header = `${BOLD}${stageColour}${name}${RESET} ${FG_GRAY}[${stage}]${RESET}${ideSuffix}`;
   const lines: string[] = [RESET, "", header];
 
   // Build combined lines
