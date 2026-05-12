@@ -89,6 +89,17 @@ After any **artifact build** command completes (VS Code `vsce package`, PyCharm 
 
 Never silently halt after a build. Never leave artifact files uncommitted. Never wait for the user to say "keep going" after a successful build.
 
+### If the build tool call times out or is aborted by the user
+
+The build may take longer than the tool timeout, causing the call to be aborted even though Gradle/vsce continued running in the background. **When the user pastes build output showing BUILD SUCCESSFUL**, treat it as if the tool call returned that output:
+
+1. **Immediately** run `Get-ChildItem` to verify the artifact exists at the expected path and version.
+2. List the artifact filename and path.
+3. Commit the artifact as `chore: rebuild artifacts for vX.Y.Z`.
+4. Continue to the next todo item without pausing.
+
+**Do not wait to be told to continue. Do not ask "shall I proceed?". Receipt of BUILD SUCCESSFUL output — by any means — is the trigger to verify, commit, and move on.**
+
 > **Root cause of version mismatch:** If the version in `package.json` / `build.gradle.kts` was not bumped before building, the artifact will carry the old version number. Always bump versions in all four files (`vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`) and commit the bump **before** running any build.
 
 ---
