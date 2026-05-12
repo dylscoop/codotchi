@@ -4,7 +4,7 @@
 // Constants — ported 1:1 from vscode/src/gameEngine.ts
 // ---------------------------------------------------------------------------
 
-const val TICK_INTERVAL_SECONDS: Int = 6
+const val TICK_INTERVAL_SECONDS: Int = 3
 
 private const val TICKS_PER_MINUTE: Int = 60 / TICK_INTERVAL_SECONDS
 private const val TICKS_PER_HOUR: Int = 60 * TICKS_PER_MINUTE
@@ -21,13 +21,20 @@ const val WEIGHT_MIN: Int = 1
 const val WEIGHT_MAX: Int = 99
 
 /**
- * Base tick interval for hunger/happiness/energy decay (every N ticks = 1 point lost).
- * Set to 2 so that at 6 s/tick the real-world drain rate (≈12 s/pt for codeling 1×)
- * approximates the VS Code rate (DECAY_TICK_INTERVAL=3 at 3 s/tick = 9 s/pt).
- * Per-type multipliers are applied by shortening this interval proportionally, exactly
- * mirroring the VS Code formula: interval = round(DECAY_TICK_INTERVAL / multiplier).
+ * Stat decay (hunger, happiness, energy) fires once every DECAY_TICK_INTERVAL
+ * ticks — identical to VS Code: one stat point lost every 18 real-world seconds
+ * at 3 s/tick (2× slower than v1.19.x).
+ * Per-type multipliers shorten the interval: interval = round(DECAY_TICK_INTERVAL / multiplier).
  */
-const val DECAY_TICK_INTERVAL: Int = 2
+const val DECAY_TICK_INTERVAL: Int = 6
+
+/**
+ * Aging gate — dayTimer advances once every AGING_TICK_INTERVAL ticks
+ * (every 9 real-world seconds at 3 s/tick), decoupled from stat decay.
+ * Idle stretches this by IDLE_DECAY_TICK_DIVISOR; deep idle stops it entirely.
+ * Identical to VS Code AGING_TICK_INTERVAL.
+ */
+const val AGING_TICK_INTERVAL: Int = 3
 
 const val HUNGER_DECAY_PER_TICK: Int = 1
 const val HAPPINESS_DECAY_PER_TICK: Int = 1
@@ -70,7 +77,7 @@ const val POOP_WEIGHT_LOSS: Int = 5
 const val PLAY_WEIGHT_LOSS_BONUS: Int = 3
 
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
-const val WEIGHT_DECAY_TICK_INTERVAL: Int = TICKS_PER_MINUTE // 10 ticks = 1 min
+const val WEIGHT_DECAY_TICK_INTERVAL: Int = TICKS_PER_MINUTE // 20 ticks = 1 min
 
 /** Weight above which happiness decays 1.5× faster. */
 const val WEIGHT_HAPPINESS_HIGH_THRESHOLD: Int = 66
@@ -304,9 +311,9 @@ data class GameConfig(
     val attentionCallsEnabled: Boolean = true,
     /**
      * Response-window in ticks for poop, misbehaviour, and gift calls.
-     * needy=20 (2 min), standard=50 (5 min), chilled=100 (10 min).
+     * needy=40 (2 min), standard=100 (5 min), chilled=200 (10 min).
      */
-    val attentionCallExpiryTicks: Int = 50,
+    val attentionCallExpiryTicks: Int = 100,
     /**
      * Divisor applied to the base and max logChance probabilities for all
      * probabilistic call spawns (poop, misbehaviour, gift).
@@ -337,7 +344,7 @@ data class GameConfig(
 /** Sensible defaults used when no explicit config is provided. */
 val DEFAULT_GAME_CONFIG = GameConfig()
 
-/** Active (non-idle) ticks the player has to respond before a call expires (20 × 6 s = 2 min). */
+/** Active (non-idle) ticks the player has to respond before a call expires (20 × 3 s = 1 min). */
 const val ATTENTION_CALL_RESPONSE_TICKS: Int = 20
 
 /** Hunger stat at or below which a hunger attention call fires. */
@@ -349,18 +356,18 @@ const val ATTENTION_ENERGY_THRESHOLD: Int = 20
 /** Health stat at or below which a critical_health attention call fires. */
 const val ATTENTION_HEALTH_THRESHOLD: Int = 50
 
-/** Cooldown ticks (50 = 5 min) applied to a call type after it is answered. */
-const val ATTENTION_ANSWER_COOLDOWN_TICKS: Int = 50
-/** Cooldown ticks (20 = 2 min) applied to a call type after it expires unanswered. */
-const val ATTENTION_EXPIRY_COOLDOWN_TICKS: Int = 20
+/** Cooldown ticks (100 = 5 min) applied to a call type after it is answered. */
+const val ATTENTION_ANSWER_COOLDOWN_TICKS: Int = 100
+/** Cooldown ticks (40 = 2 min) applied to a call type after it expires unanswered. */
+const val ATTENTION_EXPIRY_COOLDOWN_TICKS: Int = 40
 /** Stat penalty applied to the relevant stat when an attention call expires. */
 const val ATTENTION_EXPIRY_STAT_PENALTY: Int = 10
 
 /** Happiness boost applied when a gift attention call is answered via praise(). */
 const val GIFT_PRAISE_HAPPINESS_BOOST: Int = 15
 
-/** neglectCount decrements by 1 every this many ticks (300 × 6 s = 30 min). */
-const val NEGLECT_DECAY_TICK_INTERVAL: Int = 300
+/** neglectCount decrements by 1 every this many ticks (600 × 3 s = 30 min). */
+const val NEGLECT_DECAY_TICK_INTERVAL: Int = 600
 
 // Care-mistake thresholds — mirror of vscode/src/gameEngine.ts
 /** Per-stage mistakes allowed before tier is penalised (equivalent of CARE_MISTAKE_BEST_MAX in TS). */

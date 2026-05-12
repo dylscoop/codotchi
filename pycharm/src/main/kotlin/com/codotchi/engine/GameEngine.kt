@@ -307,6 +307,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     // Each stat decays 1 point every N ticks; N is scaled by the per-type multiplier
     // (higher multiplier → shorter interval → faster decay).  During idle the interval
     // is stretched by IDLE_DECAY_TICK_DIVISOR so decay is ~20× slower.
+    // Aging uses a separate AGING_TICK_INTERVAL gate so the two rates are independent.
     val weightHappinessMult = if (state.weight > WEIGHT_HAPPINESS_HIGH_THRESHOLD || state.weight < WEIGHT_HAPPINESS_LOW_THRESHOLD)
         WEIGHT_HAPPINESS_DEBUFF_MULTIPLIER else 1.0
     val hungerInterval    = maxOf(1, Math.round(DECAY_TICK_INTERVAL / modifiers.hungerDecayMultiplier).toInt())
@@ -321,7 +322,9 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
                              else         (ticksAlive % (energyInterval    * IDLE_DECAY_TICK_DIVISOR) == 0)
 
     // Shared gate for aging (unaffected by per-type multipliers).
-    val decayThisTick = (ticksAlive % DECAY_TICK_INTERVAL == 0) &&
+    // Uses AGING_TICK_INTERVAL (3 ticks = 9 s) which is independent of the
+    // stat-decay interval so the two rates can be tuned separately.
+    val decayThisTick = (ticksAlive % AGING_TICK_INTERVAL == 0) &&
         (!isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR == 0))
 
     if (!state.wasIdle && isIdle) {

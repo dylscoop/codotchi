@@ -22,11 +22,19 @@
 export const TICK_INTERVAL_SECONDS: number = 3;
 
 /**
- * Stat decay (hunger, happiness, energy) and aging are applied only every
- * DECAY_TICK_INTERVAL ticks, keeping the real-world decay rate identical to
- * the pre-3s-tick baseline (one decay event every 9 real-world seconds).
+ * Stat decay (hunger, happiness, energy) fires once every DECAY_TICK_INTERVAL
+ * ticks — one stat point lost every 18 real-world seconds at 3 s/tick
+ * (2× slower than v1.19.x).  Aging uses a separate AGING_TICK_INTERVAL so
+ * the two rates can be tuned independently.
  */
-const DECAY_TICK_INTERVAL: number = 3;
+const DECAY_TICK_INTERVAL: number = 6;
+
+/**
+ * Aging gate — dayTimer advances once every AGING_TICK_INTERVAL ticks
+ * (every 9 real-world seconds at 3 s/tick), decoupled from stat decay.
+ * Idle stretches this by IDLE_DECAY_TICK_DIVISOR; deep idle stops it entirely.
+ */
+const AGING_TICK_INTERVAL: number = 3;
 
 const TICKS_PER_MINUTE: number = 60 / TICK_INTERVAL_SECONDS;
 const TICKS_PER_HOUR: number = 60 * TICKS_PER_MINUTE;
@@ -92,7 +100,7 @@ const PLAY_WEIGHT_LOSS_BONUS: number = 3;
 const POOP_WEIGHT_LOSS: number = 5;
 
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
-const WEIGHT_DECAY_TICK_INTERVAL: number = TICKS_PER_MINUTE; // 10 ticks = 1 min
+const WEIGHT_DECAY_TICK_INTERVAL: number = TICKS_PER_MINUTE; // 20 ticks = 1 min
 
 /** Weight above which happiness decays 1.5× faster. */
 const WEIGHT_HAPPINESS_HIGH_THRESHOLD: number = 66;
@@ -188,7 +196,7 @@ const OFFLINE_DECAY_MAX_FRACTION: number = 0.60;
 // Attention Call constants
 // ---------------------------------------------------------------------------
 
-/** Active (non-idle) ticks the player has to respond before a call expires (20 × 6 s = 2 min). */
+/** Active (non-idle) ticks the player has to respond before a call expires (20 × 3 s = 1 min). */
 export const ATTENTION_CALL_RESPONSE_TICKS: number = 20;
 
 /** Hunger stat at or below which a hunger attention call fires. */
@@ -1107,7 +1115,9 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     : (ticksAlive % (energyInterval * IDLE_DECAY_TICK_DIVISOR) === 0);
 
   // Shared gate for aging (unaffected by per-type multipliers).
-  const decayThisTick = (ticksAlive % DECAY_TICK_INTERVAL === 0) &&
+  // Uses AGING_TICK_INTERVAL (3 ticks = 9 s) which is independent of the
+  // stat-decay interval so the two rates can be tuned separately.
+  const decayThisTick = (ticksAlive % AGING_TICK_INTERVAL === 0) &&
     (!isIdle || (ticksAlive % IDLE_DECAY_TICK_DIVISOR === 0));
   if (!state.wasIdle && isIdle) {
     events.push("went_idle");
