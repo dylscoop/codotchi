@@ -74,10 +74,12 @@ Key constants:
 
 | Constant | Value | Notes |
 |----------|-------|-------|
-| `TICK_INTERVAL_SECONDS` | 6 s | Wall-clock time per tick |
-| `TICKS_PER_MINUTE` | 10 | |
-| `TICKS_PER_GAME_DAY_AWAKE` | 50 ticks | 5 min awake = 1 game day (codeling 1×) |
-| `TICKS_PER_GAME_DAY_SLEEPING` | 40 ticks | ~4 min asleep = 1 game day (~25% faster) |
+| `TICK_INTERVAL_SECONDS` | 3 s | Wall-clock time per tick (both VS Code and PyCharm) |
+| `TICKS_PER_MINUTE` | 20 | |
+| `DECAY_TICK_INTERVAL` | 6 | Stat decay fires every 6 ticks = every 18 s (active) |
+| `AGING_TICK_INTERVAL` | 3 | Aging gate fires every 3 ticks = every 9 s (active) |
+| `TICKS_PER_GAME_DAY_AWAKE` | 100 ticks | 15 min awake = 1 game day (codeling 1×) |
+| `TICKS_PER_GAME_DAY_SLEEPING` | 80 ticks | ~12 min asleep = 1 game day (~25% faster) |
 
 `ageDays` is derived as `Math.floor(dayTimer)` on every tick — it is **not**
 manual and does not require sleep/wake events to advance.
@@ -112,8 +114,8 @@ and health reaches 0.
 Each stage lasts for the *difference* between consecutive thresholds, measured
 in game days. The real-world clock time depends on `agingMultiplier`:
 
-**Formula:** `real_minutes = (threshold_end − threshold_start) × 5 / agingMultiplier`
-(since 1 game day = 5 min awake for codeling 1×)
+**Formula:** `real_minutes = (threshold_end − threshold_start) × 15 / agingMultiplier`
+(since 1 game day = 15 min awake for codeling 1× at `TICKS_PER_GAME_DAY_AWAKE = 100`, `TICK_INTERVAL_SECONDS = 3`, `AGING_TICK_INTERVAL = 3`)
 
 #### All types — game-day milestones (identical for every pet type)
 
@@ -126,45 +128,19 @@ in game days. The real-world clock time depends on `agingMultiplier`:
 | Adult  | 95.988 → 287.988       | ~192d                | ~288d          |
 | Senior | 287.988 → ∞            | Indefinite           | Natural death ≥ 365d |
 
-#### Codeling (agingMultiplier = 1.0×)
+#### Consolidated stage duration table — all pet types (active awake time)
 
-| Stage  | Awake time (real) |
-|--------|------------------|
-| Egg    | ~2 min           |
-| Baby   | ~28 min          |
-| Child  | ~90 min (~1.5 hr) |
-| Teen   | ~360 min (6 hr)  |
-| Adult  | ~960 min (16 hr) |
+| Stage | dayTimer span | Codeling (1×) | Bytebug (1.5×) | Pixelpup (1.25×) | Shellscript (0.75×) |
+|-------|--------------|--------------|----------------|-----------------|---------------------|
+| Egg → Baby | 0 → 0.396 | ~6 min | ~4 min | ~4.8 min | ~8 min |
+| Baby → Child | 0.396 → 5.988 | ~84 min (~1.4 hr) | ~56 min | ~67 min | ~112 min (~1.9 hr) |
+| Child → Teen | 5.988 → 23.988 | ~270 min (4.5 hr) | ~180 min (3 hr) | ~216 min (3.6 hr) | ~360 min (6 hr) |
+| Teen → Adult | 23.988 → 95.988 | ~1080 min (18 hr) | ~720 min (12 hr) | ~864 min (14.4 hr) | ~1440 min (24 hr) |
+| Adult → Senior | 95.988 → 287.988 | ~2880 min (48 hr) | ~1920 min (32 hr) | ~2304 min (38.4 hr) | ~3840 min (64 hr) |
+| Senior death risk | ≥ 365 game days | — | — | — | — |
 
-#### Bytebug (agingMultiplier = 1.5×, fastest)
-
-| Stage  | Awake time (real) |
-|--------|------------------|
-| Egg    | ~1.3 min         |
-| Baby   | ~18.7 min        |
-| Child  | ~60 min (1 hr)   |
-| Teen   | ~240 min (4 hr)  |
-| Adult  | ~640 min (~10.7 hr) |
-
-#### Pixelpup (agingMultiplier = 1.25×)
-
-| Stage  | Awake time (real) |
-|--------|------------------|
-| Egg    | ~1.6 min         |
-| Baby   | ~22.4 min        |
-| Child  | ~72 min (1.2 hr) |
-| Teen   | ~288 min (4.8 hr) |
-| Adult  | ~768 min (~12.8 hr) |
-
-#### Shellscript (agingMultiplier = 0.75×, slowest)
-
-| Stage  | Awake time (real) |
-|--------|------------------|
-| Egg    | ~2.7 min         |
-| Baby   | ~37.3 min        |
-| Child  | ~120 min (2 hr)  |
-| Teen   | ~480 min (8 hr)  |
-| Adult  | ~1280 min (~21.3 hr) |
+> All times are **active awake** real time. Sleeping reduces wall-clock time
+> by ~20% (ages 25% faster per real minute asleep). Idle extends it 20×.
 
 ---
 
@@ -179,6 +155,36 @@ in game days. The real-world clock time depends on `agingMultiplier`:
 
 The multiplier applies equally to offline decay (`applyOfflineDecay`) so a
 bytebug that was closed for an hour ages as much offline as it would have awake.
+
+---
+
+### Aging rates
+
+`dayTimer` advances on every tick where `ticksAlive % AGING_TICK_INTERVAL == 0`
+and the pet is not in deep idle. The increment per qualifying tick is:
+
+```
+dayTimer += (1 / TICKS_PER_GAME_DAY_AWAKE) × agingMultiplier    (awake)
+dayTimer += (1 / TICKS_PER_GAME_DAY_SLEEPING) × agingMultiplier  (sleeping)
+```
+
+With `AGING_TICK_INTERVAL = 3`, `TICK_INTERVAL_SECONDS = 3`,
+`TICKS_PER_GAME_DAY_AWAKE = 100`, `TICKS_PER_GAME_DAY_SLEEPING = 80`:
+
+- **Active awake (codeling 1×):** 100 gate firings × 9 s = 900 s = **15 min/game day**
+- **Sleeping (codeling 1×):** 80 gate firings × 9 s = 720 s = **12 min/game day**
+- **Idle:** gate fires every `AGING_TICK_INTERVAL × IDLE_DECAY_TICK_DIVISOR` = 3 × 20 = 60 ticks × 3 s = 180 s;
+  100 firings × 180 s = 18,000 s = **300 min (5 hr)/game day**
+- **Deep idle:** aging stops entirely (`ageIncrement = 0`)
+
+#### Real minutes per game day by pet type
+
+| Pet type | agingMultiplier | Active awake | Sleeping | Idle |
+|----------|----------------|-------------|----------|------|
+| codeling | 1.0× | 15 min | 12 min | 300 min (5 hr) |
+| bytebug | 1.5× | 10 min | 8 min | 200 min (3.3 hr) |
+| pixelpup | 1.25× | 12 min | 9.6 min | 240 min (4 hr) |
+| shellscript | 0.75× | 20 min | 16 min | 400 min (6.7 hr) |
 
 ---
 
@@ -198,6 +204,97 @@ Accumulators (`careScoreHungerSum`, `careScoreHappinessSum`,
 `careScoreHealthSum`, `careScoreTicks`) reset at each stage transition so the
 score reflects care quality *within* the current stage, not lifetime averages.
 
+#### Care score formula
+
+```
+careScore =
+  0.30 × (avgHunger / 100) +
+  0.25 × (avgHappiness / 100) +
+  0.20 × (discipline / 100) +
+  0.15 × clamp(100 − poops × 20) / 100 +
+  0.10 × (avgHealth / 100)
+```
+
+where `avgHunger`, `avgHappiness`, `avgHealth` are running tick-level averages
+since the last stage evolution.
+
+#### Care mistakes and their effects
+
+A **care mistake** is recorded whenever an attention call expires unanswered.
+Two counters are maintained:
+
+- `careMistakes` — per-stage, resets on evolution
+- `lifetimeCareMistakes` — never resets, accumulates across all stages
+
+**Effect on evolution tier (per-stage `careMistakes`):**
+
+| careMistakes this stage | Max achievable tier |
+|------------------------|---------------------|
+| 0–3 | best (Excellent) — subject to careScore |
+| 4–6 | mid (Good) — best blocked even with high careScore |
+| 7+ | low (Poor) — always low regardless of careScore |
+| 0 AND careScore ≥ 0.95 | secret_best |
+
+**Effect on evolution timing:**
+
+Each mistake above `CARE_MISTAKE_DELAY_THRESHOLD = 3` adds 1 game day to the
+stage's evolution threshold:
+
+```
+effectiveThreshold = baseThreshold + max(0, careMistakes − 3) × 1 game day
+```
+
+Example — codeling child stage (1 game day = 15 min awake):
+
+| careMistakes | Extra delay | Wall-clock delay (codeling, awake) |
+|---|---|---|
+| 0–3 | 0 days | 0 min |
+| 4 | 1 day | +15 min |
+| 6 | 3 days | +45 min |
+| 10 | 7 days | +105 min (~1.75 hr) |
+
+**Effect on secret worst tier (`lifetimeCareMistakes`):**
+
+`lifetimeCareMistakes ≥ 10` → always evolves to `secret_worst` regardless of
+careScore or per-stage mistakes.
+
+#### Care factor and senior old-age death risk
+
+For senior pets (≥ day 365), a per-day death probability is computed from four
+longevity risk factors (each 0 = safest, 1 = riskiest):
+
+| Factor | Formula |
+|--------|---------|
+| `happinessFactor` | `(100 − avgHappiness) / 100` |
+| `weightFactor` | 0 inside healthy zone `[17, 66]`; scales to 1 at `weight = 1` or `weight = 99` |
+| `disciplineFactor` | `(100 − discipline) / 100` |
+| `mistakesFactor` | `min(1, lifetimeCareMistakes / 20)` — saturates at 20 mistakes |
+
+```
+riskScore = (happinessFactor + weightFactor + disciplineFactor + mistakesFactor) / 4
+```
+
+Death chance ramps linearly from onset (day 365) to peak (day 1825 = 5 in-game
+years), then stays at peak:
+
+```
+ageFactor = clamp((ageDays − 365) / (1825 − 365), 0, 1)
+minChance = lerp(0.001, 0.05, ageFactor)   ← best care  (riskScore = 0)
+maxChance = lerp(0.010, 0.10, ageFactor)   ← worst care (riskScore = 1)
+chance    = lerp(minChance, maxChance, riskScore)
+```
+
+| Age | Best care (riskScore = 0) | Worst care (riskScore = 1) |
+|-----|--------------------------|---------------------------|
+| Day 365 (onset) | 0.1% / game day | 1.0% / game day |
+| Day 1825 (peak, capped) | 5.0% / game day | 10.0% / game day |
+
+Sickness chance for seniors = `3 × death chance` per game day.
+
+**Practical note:** A perfectly cared-for senior at peak age has a 5% daily
+death chance. A neglected one has 10%. Care matters but cannot make a senior
+immortal — longevity is ultimately a function of age.
+
 ---
 
 ## Stat Decay Rates
@@ -206,28 +303,33 @@ All decay occurs in `tick()`. Rates below assume the pet is **awake**.
 
 ### Active decay (normal coding activity within the last 5 minutes)
 
-| Stat      | Per-tick loss | Per-minute | Full bar (100 pts) lasts |
-|-----------|--------------|------------|--------------------------|
-| Hunger    | 1 pt / tick  | 10 pts/min | ~10 min                  |
-| Happiness | 1 pt / tick  | 10 pts/min | ~10 min                  |
-| Energy    | 1 pt / tick  | 10 pts/min | ~10 min (then sleeps)    |
+Stat decay fires every `DECAY_TICK_INTERVAL = 6` ticks × 3 s = every 18 s for
+the codeling baseline. Per-type multipliers shorten the interval:
+`interval = round(6 / multiplier)` ticks.
 
-Per-type hunger multipliers: bytebug **1.5×** (6.7 min), shellscript **0.8×** (~12.5 min).  
-Per-type happiness multipliers: pixelpup **1.5×** (6.7 min).
+| Stat | Pet type | Interval (ticks) | Seconds/pt | Pts/min | Full bar (100 pts) |
+|------|----------|-----------------|------------|---------|-------------------|
+| Hunger | codeling / pixelpup (1×) | 6 | 18 s | ~3.3 | ~30 min |
+| Hunger | bytebug (1.5×) | 4 | 12 s | ~5 | ~20 min |
+| Hunger | shellscript (0.8×) | 8 | 24 s | ~2.5 | ~40 min |
+| Happiness | codeling / bytebug / shellscript (1×) | 6 | 18 s | ~3.3 | ~30 min |
+| Happiness | pixelpup (1.5×) | 4 | 12 s | ~5 | ~20 min |
+| Energy | all types (no multiplier) | 6 | 18 s | ~3.3 | ~30 min |
 
 ### Idle decay (no IDE activity for ≥ 1 minute)
 
-Hunger, happiness, and **energy** are all skipped on 9 out of every 10 ticks
-(`ticksAlive % IDLE_DECAY_TICK_DIVISOR != 0`). Aging is also slowed.
+Hunger, happiness, and **energy** are all skipped on 19 out of every 20 ticks
+(`ticksAlive % IDLE_DECAY_TICK_DIVISOR != 0`, `IDLE_DECAY_TICK_DIVISOR = 20`).
+Aging is also slowed by the same divisor.
 A `"went_idle"` event is pushed once on the tick when the IDE transitions from
 active to idle, showing "IDE idle — decay and aging slowed." in the event log.
 
-| Stat      | Effective rate | Full bar lasts |
-|-----------|---------------|----------------|
-| Hunger    | 1 pt/min      | ~100 min       |
-| Happiness | 1 pt/min      | ~100 min       |
-| Energy    | 1 pt/min      | ~100 min       |
-| Aging     | 1/10 normal   | 10× longer     |
+| Stat      | Effective rate    | Full bar lasts    |
+|-----------|------------------|-------------------|
+| Hunger    | 1 pt / 6 min     | ~600 min (~10 hr) |
+| Happiness | 1 pt / 6 min     | ~600 min (~10 hr) |
+| Energy    | 1 pt / 6 min     | ~600 min (~10 hr) |
+| Aging     | 1/20 normal rate | 20× longer        |
 
 ### Deep idle (no IDE activity for ≥ 10 minutes)
 
@@ -255,11 +357,11 @@ energy, and health are subject to offline decay.
 ### Sleep decay
 
 While sleeping, hunger and happiness each lose **1 point every 5th sleeping
-tick** (`ticksAlive % SLEEP_DECAY_TICK_INTERVAL === 0`). This prevents the pet
-from entering sleep with low stats and exiting with perfectly preserved hunger
-and happiness. The decay is intentionally slow (≈ 2 pts/min) so a brief nap
-costs very little but an indefinitely sleeping pet will eventually reach
-critical stats.
+tick** (`ticksAlive % SLEEP_DECAY_TICK_INTERVAL === 0`). At 3 s/tick that is
+every 15 s — approximately **4 pts/min**. This prevents the pet from entering
+sleep with low stats and exiting with perfectly preserved hunger and happiness.
+A brief nap costs very little but an indefinitely sleeping pet will eventually
+reach critical stats.
 
 The check is guarded by `sleeping` being `true` at the time it fires — if the
 pet auto-wakes on this same tick the check is skipped, preventing a spurious
