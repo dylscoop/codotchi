@@ -174,6 +174,48 @@ The `unitTest` task runs JUnit 5 tests directly on the JVM toolchain — no
 sandbox, no JBR extraction, no IDE dependency. It is safe to run at any time,
 including while PyCharm or VS Code is open.
 
+#### PyCharm unit tests — timeout, stuck-check, and retry rules
+
+**Always use `timeout: 240000`** (4 min) when invoking `unitTest` — JVM
+cold-start can be slow even without the sandbox.
+
+If the tool call **times out** but the process may have continued running,
+**check for test result XML before declaring failure**:
+
+```powershell
+Get-ChildItem "pycharm\build\test-results\unitTest\*.xml" | Select-Object Name, LastWriteTime
+```
+
+If result files exist and their `LastWriteTime` is **after** the run started,
+the tests completed successfully — read the XML, confirm all tests passed, and
+proceed as if the command succeeded. Do **not** retry in this case.
+
+If no result files exist (genuine hang or failure), follow the same kill →
+clear → retry cycle as `buildPlugin`:
+
+1. Kill lingering java/gradle processes and wait 3 seconds:
+   ```powershell
+   Get-Process | Where-Object { $_.Name -like "*java*" -or $_.Name -like "*gradle*" } | Stop-Process -Force
+   Start-Sleep -Seconds 3
+   ```
+2. Clear the Gradle configuration cache (run from `pycharm/`):
+   ```powershell
+   Remove-Item -Recurse -Force ".gradle\configuration-cache" -ErrorAction SilentlyContinue
+   ```
+3. Re-run with `timeout: 240000`:
+   ```powershell
+   $env:JAVA_HOME = 'C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'
+   & '.\gradlew.bat' unitTest --no-configuration-cache
+   ```
+
+Retry up to **three attempts total**. After each timeout, check for XML results
+before retrying — the test run may have completed despite the tool timeout. If
+all three attempts fail with no result XML, report the exact error output and
+ask the user whether to continue.
+
+**Never leave tests in an unresolved state.** If tests pass on a retry,
+continue immediately to the next todo item without waiting for the user.
+
 ---
 
 ## Release / merge to main
