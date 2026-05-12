@@ -73,7 +73,14 @@ The following actions each require **explicit user instruction** before performi
 
 ## Post-build mandatory actions — do these immediately after every build
 
-After any build command completes (VS Code, PyCharm, or OpenCode), you **must** do all four of the following before stopping or waiting:
+> **Exception: `unitTest` runs.** The post-build artifact steps below do **not** apply to `unitTest`. After `unitTest` completes successfully:
+> 1. Confirm all tests passed (zero failures in the summary output).
+> 2. If there are uncommitted files pending from the current todo item, commit them now.
+> 3. If there is nothing to commit, mark the todo complete and move directly to the next todo item — do **not** pause, do **not** report "tests passed", do **not** wait for the user.
+>
+> **This is the root cause of recurring stuck behaviour** — `unitTest` produces no artifact, so the artifact verify/list/commit steps below cannot fire and cause a silent stall. Never apply the artifact flow to a test-only run.
+
+After any **artifact build** command completes (VS Code `vsce package`, PyCharm `buildPlugin`, or OpenCode `package.js`), you **must** do all four of the following before stopping or waiting:
 
 1. **Verify the artifact version** — immediately after the build command returns, run a directory listing to confirm the artifact file exists and its filename contains the correct version number (e.g. `Get-ChildItem vscode/codotchi-*.vsix` and `Get-ChildItem pycharm/build/distributions/*.zip`). If the filename does not match the expected version, stop and report the mismatch before committing anything.
 2. **List the artifact files produced** — state the exact filename and path of every artifact that was just built.
