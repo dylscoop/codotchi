@@ -1,6 +1,41 @@
 # Version History
 
-## v1.19.4 — current
+## v1.20.0 — current
+
+### Changes from v1.19.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.20.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.20.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.20.0 |
+| `opencode-codotchi/package.json` | Version bumped to 1.20.0 |
+| `vscode/src/gameEngine.ts` | `DECAY_TICK_INTERVAL` doubled to `6` (stat decay 2× slower — 1 pt/18 s active); added `AGING_TICK_INTERVAL = 3` to decouple aging gate from stat decay gate; aging gate updated to use `AGING_TICK_INTERVAL`; fixed `WEIGHT_DECAY_TICK_INTERVAL` and `ATTENTION_CALL_RESPONSE_TICKS` comments |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | `TICK_INTERVAL_SECONDS` corrected `6` → `3` (now identical to VS Code); `DECAY_TICK_INTERVAL` `2` → `6` (identical to VS Code); added `AGING_TICK_INTERVAL = 3`; `NEGLECT_DECAY_TICK_INTERVAL` `300` → `600` (preserves 30-min wall-clock at 3 s/tick); `ATTENTION_ANSWER_COOLDOWN_TICKS` `50` → `100`; `ATTENTION_EXPIRY_COOLDOWN_TICKS` `20` → `40`; `attentionCallExpiryTicks` default `50` → `100`; updated all tick-rate-dependent comments |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | Aging gate updated to use `AGING_TICK_INTERVAL` instead of `DECAY_TICK_INTERVAL`; updated comment |
+| `developer_notes/DEV_NOTES.md` | Updated constants table, stat decay rate tables, aging rate tables (per-type, per-state), consolidated stage progression table, new care factor / old-age death risk section |
+| `.opencode/skills/git-workflow/SKILL.md` | Added PyCharm `unitTest` timeout/stuck-check/retry rules including XML result completion check |
+
+### Updated constants
+
+```
+# VS Code (vscode/src/gameEngine.ts)
+DECAY_TICK_INTERVAL: number = 6        // was 3 — 2× slower stat decay
+AGING_TICK_INTERVAL: number = 3        // new — decoupled aging gate
+
+# PyCharm (pycharm/.../Constants.kt)
+TICK_INTERVAL_SECONDS: Int = 3         // was 6 — corrected to match VS Code
+DECAY_TICK_INTERVAL: Int = 6           // was 2 — now identical to VS Code
+AGING_TICK_INTERVAL: Int = 3           // new — identical to VS Code
+NEGLECT_DECAY_TICK_INTERVAL: Int = 600 // was 300 — adjusted for 3 s/tick
+ATTENTION_ANSWER_COOLDOWN_TICKS: Int = 100  // was 50 — adjusted for 3 s/tick
+ATTENTION_EXPIRY_COOLDOWN_TICKS: Int = 40   // was 20 — adjusted for 3 s/tick
+attentionCallExpiryTicks (default): Int = 100  // was 50 — adjusted for 3 s/tick
+```
+
+---
+
+## v1.19.4 — previous
 
 ### Changes from v1.19.3
 
