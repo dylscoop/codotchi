@@ -1089,9 +1089,9 @@
 
     // Snack items — spawn a floor item when snack_placed fires
     if ((state.events || []).indexOf("snack_placed") !== -1 && snackItems.length < 3) {
-      var siW = spriteCanvas.width;
+      var snackMaxX = getPetMaxX(state);
       snackItems.push({
-        x:    4 + Math.floor(Math.random() * Math.max(1, siW - 20)),
+        x:    4 + Math.floor(Math.random() * Math.max(1, snackMaxX - 4)),
         type: Math.random() < 0.5 ? "candy" : "bone",
       });
       idleTimer = 0;  // pet walks toward it immediately
