@@ -632,11 +632,12 @@
     spriteCanvas.width = newWidth;
     // Clamp petX so the pet doesn't walk off the right edge after a resize
     if (lastState) {
-      const scale   = STAGE_SCALES[lastState.stage] || 0.5;
-      const bSize   = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
-      const bWidth  = effectiveBWidth(lastState, bSize);
-      const maxX    = spriteCanvas.width - bWidth - 4;
+      const maxX = getPetMaxX(lastState);
       if (petX !== null && petX > maxX) { petX = Math.max(4, maxX); }
+      // Re-clamp any snacks that are now beyond the new reachable range
+      snackItems.forEach(function(item) {
+        item.x = Math.max(4, Math.min(maxX, item.x));
+      });
     }
   }
 
