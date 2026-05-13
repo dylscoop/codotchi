@@ -122,10 +122,10 @@ const HEALTH_REGEN_AWAKE_TICK_INTERVAL: number = 5;
 
 const DISCIPLINE_BOOST_PER_ACTION: number = 10;
 
-const CODE_ACTIVITY_HAPPINESS_BOOST: number = 5;
+const CODE_ACTIVITY_HAPPINESS_BOOST: number = 8;
 const CODE_ACTIVITY_DISCIPLINE_BOOST: number = 2;
 /** Minimum seconds between code-activity happiness boosts. */
-export const CODE_ACTIVITY_THROTTLE_SECONDS: number = 30;
+export const CODE_ACTIVITY_THROTTLE_SECONDS: number = 10;
 
 const COMMIT_HAPPINESS_BOOST: number = 15;
 const COMMIT_DISCIPLINE_BOOST: number = 2;
@@ -1410,7 +1410,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
  * Scaled so that real-world evolution timing (in active ticks) is preserved:
  * 1 game day = 50 ticks (5 min awake). */
 const EVOLUTION_DAY_THRESHOLDS: Record<string, number> = {
-  egg:   0.396,    // ≈ tick 20 for codeling 1× (~2 min awake)
+  egg:   0.267,    // ≈ tick 13 for codeling 1× (~2 min awake)
   baby:  5.988,    // ≈ tick 300 cumulative for codeling 1× (~30 min)
   child: 23.988,   // ≈ tick 1200 cumulative for codeling 1× (~2 hr)
   teen:  95.988,   // ≈ tick 4800 cumulative for codeling 1× (~8 hr)
