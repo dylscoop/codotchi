@@ -1791,6 +1791,20 @@
      return Math.round(bSize);
   }
 
+  /**
+   * Return the maximum x position the pet can occupy on the canvas,
+   * accounting for sprite size and the 4 px right margin.
+   * Used by snack spawn and canvas resize to keep snacks within reach.
+   * @param {object|null} state
+   * @returns {number}
+   */
+  function getPetMaxX(state) {
+    var scale  = STAGE_SCALES[(state && state.stage) || "baby"] || 0.5;
+    var bSize  = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
+    var bWidth = effectiveBWidth(state, bSize);
+    return Math.max(4, spriteCanvas.width - bWidth - 4);
+  }
+
   // ── Initial view ─────────────────────────────────────────────────────────
   // Must be set BEFORE the message listener is registered so that any
   // bootstrap stateUpdate arriving immediately does not get dropped by the
