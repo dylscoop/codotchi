@@ -112,6 +112,7 @@ class CodotchiBrowserPanel(
         val stageHeight      = settings?.petStageHeight ?: 240
         val reducedMotion    = settings?.reducedMotion ?: false
         val petSize          = settings?.petSize ?: "medium"
+        val background       = settings?.background ?: "ordered"
 
         val cssText             = loadResource("/webview/sidebar.css")
         val spriteConstantsText = loadResource("/webview/spriteConstants.js")
@@ -126,6 +127,7 @@ class CodotchiBrowserPanel(
         html = html.replace("{{stageHeight}}", stageHeight.toString())
         html = html.replace("{{reducedMotion}}", reducedMotion.toString())
         html = html.replace("{{petSize}}", petSize)
+        html = html.replace("{{background}}", background)
 
         // Inline CSS — replace <link rel="stylesheet" href="sidebar.css" />
         // Append a colour override so user preference takes precedence over

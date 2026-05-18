@@ -30,6 +30,7 @@ import com.intellij.openapi.components.*
  *  - [idleResetOnTabSwitch]       : reset idle timer on active editor tab change (default true)
  *  - [idleResetOnWindowFocus]     : reset idle timer when IDE window gains focus (default true)
  *  - [idleResetOnMouseMovement]   : reset idle timer on mouse movement in the sidebar (default true)
+ *  - [background]                 : "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter" (default "ordered")
  */
 @State(
     name = "CodotchiSettings",
@@ -63,6 +64,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var idleResetOnTabSwitch: Boolean = true
         var idleResetOnWindowFocus: Boolean = true
         var idleResetOnMouseMovement: Boolean = true
+        var background: String = "ordered"  // "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter"
     }
 
     private var _state = State()
@@ -164,4 +166,8 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var idleResetOnMouseMovement: Boolean
         get() = _state.idleResetOnMouseMovement
         set(v) { _state.idleResetOnMouseMovement = v }
+
+    var background: String
+        get() = _state.background
+        set(v) { _state.background = v }
 }

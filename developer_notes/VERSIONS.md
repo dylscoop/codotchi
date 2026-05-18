@@ -1,6 +1,36 @@
 # Version History
 
-## v1.22.0 — current
+## v1.23.0 — current
+
+### Changes from v1.22.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.0 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.0 |
+| `vscode/package.json` | Added `codotchi.background` setting: `"plain" \| "ordered" \| "spring" \| "summer" \| "autumn" \| "winter"`, default `"ordered"` |
+| `vscode/src/sidebarProvider.ts` | Reads `codotchi.background`, injects it via `html.replace("{{background}}", ...)`, and listens for config changes |
+| `vscode/media/sidebar.html` | Added `data-background="{{background}}"` to `<body>` |
+| `vscode/media/sidebar.js` | Added `BG_MODE`, `getActiveSeason()`, `getTimeOfDay()`, `drawBackground(W, H)`; `drawEnvironment()` calls `drawBackground()` after solid fill, before ground line |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt` | Added `background: String = "ordered"` field to `State` class and delegating property |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiConfigurable.kt` | Added `backgroundCombo` dropdown (row 23); wired `isModified`, `apply`, `reset`, and `bgIndexToKey`/`bgKeyToIndex` helpers |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.0 |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | Reads `settings.background`, substitutes `{{background}}` in the webview HTML |
+| `pycharm/src/main/resources/webview/sidebar.html` | Added `data-background="{{background}}"` to `<body>` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Added `BG_MODE`, `getActiveSeason()`, `getTimeOfDay()`, `drawBackground(W, H)`; `drawEnvironment()` calls `drawBackground()` for IDE parity |
+| `vscode/codotchi-1.23.0.vsix` | Rebuilt VS Code artifact for v1.23.0 |
+| `pycharm/build/distributions/pycharm-codotchi-1.23.0.zip` | Rebuilt PyCharm artifact for v1.23.0 |
+| `opencode-codotchi/opencode-codotchi-1.23.0.zip` | Rebuilt OpenCode artifact for v1.23.0 |
+| `pycharm/gradle.properties` | Added `org.gradle.java.installations.paths` pointing to PyCharm JBR |
+| `pycharm/build.gradle.kts` | Changed `jvmToolchain(17)` to `jvmToolchain(21)` to match available JBR |
+| `README.md` | Updated artifact filenames from 1.21.2 to 1.23.0 |
+| `opencode-codotchi/README.md` | Updated artifact filenames from 1.21.2 to 1.23.0 |
+
+---
+
+## v1.22.0 — previous
 
 ### Changes from v1.21.2
 

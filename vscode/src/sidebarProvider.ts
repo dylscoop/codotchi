@@ -135,6 +135,7 @@ export class SidebarProvider
     const configListener = vscode.workspace.onDidChangeConfiguration((e) => {
       if (
         e.affectsConfiguration("codotchi.fontSize") ||
+        e.affectsConfiguration("codotchi.background") ||
         e.affectsConfiguration("codotchi.customPrimaryColor") ||
         e.affectsConfiguration("codotchi.customSecondaryColor") ||
         e.affectsConfiguration("codotchi.customBackgroundColor") ||
@@ -200,6 +201,9 @@ export class SidebarProvider
 
     const reducedMotion = cfg.get<boolean>("reducedMotion", false);
     html = html.replace("{{reducedMotion}}", reducedMotion ? "true" : "false");
+
+    const background = cfg.get<string>("background", "ordered");
+    html = html.replace("{{background}}", background);
 
     const idleResetOnMouseMovement = cfg.get<boolean>("idleResetOnMouseMovement", true);
     html = html.replace("{{idleResetOnMouseMovement}}", idleResetOnMouseMovement ? "true" : "false");

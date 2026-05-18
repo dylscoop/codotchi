@@ -116,6 +116,10 @@
   const REDUCED_MOTION = document.body.dataset.reducedMotion === "true" ||
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // Background mode — injected by sidebarProvider.ts via data-background attribute.
+  // Values: "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter"
+  const BG_MODE = (document.body && document.body.dataset && document.body.dataset.background) || "ordered";
+
   // ── Animation state ──────────────────────────────────────────────────────
 
   let lastState     = null;   // most recent PetState snapshot
@@ -1637,6 +1641,130 @@
    * Draw background, ground line, poos, gift box, snack items.
    * @param {object} state
    */
+  // ── Background helpers ───────────────────────────────────────────────────
+
+  /**
+   * Returns the active season string based on BG_MODE.
+   * "ordered" → derived from real calendar month.
+   * Named season → returned as-is.
+   */
+  function getActiveSeason() {
+    if (BG_MODE === "plain") { return "plain"; }
+    if (BG_MODE === "spring" || BG_MODE === "summer" ||
+        BG_MODE === "autumn" || BG_MODE === "winter") { return BG_MODE; }
+    // "ordered" — use real month
+    var month = new Date().getMonth(); // 0=Jan … 11=Dec
+    if (month >= 2 && month <= 4)  { return "spring"; }
+    if (month >= 5 && month <= 7)  { return "summer"; }
+    if (month >= 8 && month <= 10) { return "autumn"; }
+    return "winter";
+  }
+
+  /**
+   * Returns the current time-of-day bucket from the real clock.
+   * "dawn" 5–8h | "day" 8–18h | "dusk" 18–21h | "night" 21–5h
+   */
+  function getTimeOfDay() {
+    var h = new Date().getHours();
+    if (h >= 5  && h < 8)  { return "dawn";  }
+    if (h >= 8  && h < 18) { return "day";   }
+    if (h >= 18 && h < 21) { return "dusk";  }
+    return "night";
+  }
+
+  /**
+   * Draws pixel-art background overlays on the sprite canvas.
+   * Called from drawEnvironment() after the solid background fillRect.
+   * @param {number} W - canvas width
+   * @param {number} H - canvas height
+   */
+  function drawBackground(W, H) {
+    var season = getActiveSeason();
+    if (season === "plain") { return; }
+
+    var tod = getTimeOfDay();
+
+    // ── Sky overlay ────────────────────────────────────────────────────────
+    var skyColour = "#000000";
+    var skyAlpha  = 0.25;
+    if (tod === "dawn")  { skyColour = "#e8844a"; skyAlpha = 0.22; }
+    if (tod === "day")   { skyColour = "#4a7ec8"; skyAlpha = 0.20; }
+    if (tod === "dusk")  { skyColour = "#7a3a6e"; skyAlpha = 0.25; }
+    if (tod === "night") { skyColour = "#0a0a2a"; skyAlpha = 0.40; }
+
+    spriteCtx.save();
+    spriteCtx.globalAlpha = skyAlpha;
+    spriteCtx.fillStyle = skyColour;
+    spriteCtx.fillRect(0, 0, W, H);
+    spriteCtx.restore();
+
+    // ── Sky accent (sun or stars) ──────────────────────────────────────────
+    spriteCtx.save();
+    spriteCtx.globalAlpha = 0.85;
+    if (tod === "day") {
+      // Sun: 4×4 dot top-right
+      spriteCtx.fillStyle = "#f5d84a";
+      spriteCtx.fillRect(W - 14, 8, 4, 4);
+    } else if (tod === "dawn" || tod === "dusk") {
+      // Low sun: 4×4 dot near horizon (2/3 down canvas)
+      spriteCtx.fillStyle = "#f5a030";
+      spriteCtx.fillRect(W - 14, Math.floor(H * 0.55), 4, 4);
+    } else {
+      // Night: 3–5 stars as 2×2 dots at fixed positions (deterministic)
+      spriteCtx.fillStyle = "#e8e8d8";
+      var starPositions = [
+        [Math.floor(W * 0.15), 7],
+        [Math.floor(W * 0.38), 12],
+        [Math.floor(W * 0.60), 5],
+        [Math.floor(W * 0.80), 14],
+        [Math.floor(W * 0.50), 20],
+      ];
+      for (var si = 0; si < starPositions.length; si++) {
+        spriteCtx.fillRect(starPositions[si][0], starPositions[si][1], 2, 2);
+      }
+    }
+    spriteCtx.restore();
+
+    // ── Ground strip (4px at very bottom) ─────────────────────────────────
+    var groundColour = "#3d7a2a"; // summer default
+    if (season === "spring") { groundColour = "#4a7c3f"; }
+    if (season === "summer") { groundColour = "#3d7a2a"; }
+    if (season === "autumn") { groundColour = "#8b5e3c"; }
+    if (season === "winter") { groundColour = "#c8d8e8"; }
+
+    spriteCtx.save();
+    spriteCtx.globalAlpha = 0.80;
+    spriteCtx.fillStyle = groundColour;
+    spriteCtx.fillRect(0, H - 4, W, 4);
+    spriteCtx.restore();
+
+    // ── Seasonal accent ────────────────────────────────────────────────────
+    spriteCtx.save();
+    spriteCtx.globalAlpha = 0.90;
+
+    if (season === "spring") {
+      // Tiny flower: 3×3 pink dot at bottom-left area
+      spriteCtx.fillStyle = "#e87898";
+      spriteCtx.fillRect(8, H - 9, 3, 3);
+      spriteCtx.fillStyle = "#f8f060";
+      spriteCtx.fillRect(9, H - 8, 1, 1); // centre dot
+    } else if (season === "summer") {
+      // Brighter sky tint already applied — no extra accent for minimalism
+    } else if (season === "autumn") {
+      // Two leaf pixels (orange) near bottom-left
+      spriteCtx.fillStyle = "#d8682a";
+      spriteCtx.fillRect(6,  H - 8, 2, 2);
+      spriteCtx.fillRect(11, H - 7, 2, 2);
+    } else if (season === "winter") {
+      // Snowflake: 5-pixel cross at bottom-left
+      spriteCtx.fillStyle = "#e8f0f8";
+      spriteCtx.fillRect(9,  H - 9, 1, 5); // vertical arm
+      spriteCtx.fillRect(7,  H - 7, 5, 1); // horizontal arm
+    }
+
+    spriteCtx.restore();
+  }
+
   function drawEnvironment(state) {
     const palette    = getPalette(state.spriteType);
     const background = palette.background;
@@ -1649,6 +1777,9 @@
     // Background
     spriteCtx.fillStyle = background;
     spriteCtx.fillRect(0, 0, W, H);
+
+    // Pixel-art background overlays (seasonal + time-of-day)
+    drawBackground(W, H);
 
     // Ground line
     spriteCtx.fillStyle = "rgba(255,255,255,0.08)";

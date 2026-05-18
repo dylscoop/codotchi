@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "1.22.0",
+  "version": "1.23.0",
   "publisher": "codotchi",
   "repository": {
     "type": "git",
@@ -74,6 +74,20 @@
           "enum": ["small", "normal", "large"],
           "default": "normal",
           "description": "Font size used in the Codotchi sidebar panel."
+        },
+        "codotchi.background": {
+          "type": "string",
+          "enum": ["plain", "ordered", "spring", "summer", "autumn", "winter"],
+          "enumDescriptions": [
+            "Solid colour only — no pixel-art elements.",
+            "Season from real calendar + time of day from real clock.",
+            "Spring season (green ground, flower) + real time of day.",
+            "Summer season (bright green ground) + real time of day.",
+            "Autumn season (orange-brown ground, leaves) + real time of day.",
+            "Winter season (pale ground, snowflake) + real time of day."
+          ],
+          "default": "ordered",
+          "description": "Background theme for the pet canvas."
         },
         "codotchi.enableAttentionCalls": {
           "type": "boolean",

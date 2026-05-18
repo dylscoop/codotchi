@@ -787,7 +787,8 @@ export const plugin: Plugin = async (_ctx) => {
       const bubbles = livePets.map(p => {
         const s = p.state;
         const msg = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs);
-        return stripAnsi(buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType));
+        const ideLabel = p.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
+        return stripAnsi(buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType, ideLabel));
       });
       output.text = output.text + "\n\n```\n" + bubbles.join("\n\n") + "\n```";
     },

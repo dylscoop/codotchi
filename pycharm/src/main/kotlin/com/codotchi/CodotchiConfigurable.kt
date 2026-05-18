@@ -48,6 +48,7 @@ class CodotchiConfigurable : Configurable {
     private var idleResetOnTabSwitchCheck:      JCheckBox?          = null
     private var idleResetOnWindowFocusCheck:    JCheckBox?          = null
     private var idleResetOnMouseMovementCheck:  JCheckBox?          = null
+    private var backgroundCombo:               JComboBox<String>?  = null
 
     override fun getDisplayName(): String = "Codotchi"
 
@@ -75,6 +76,7 @@ class CodotchiConfigurable : Configurable {
         val idleResetTabCheckbox = JCheckBox("Reset idle timer on tab switch")
         val idleResetFocusCheckbox = JCheckBox("Reset idle timer on window focus")
         val idleResetMouseCheckbox = JCheckBox("Reset idle timer on mouse movement (sidebar)")
+        val bgCombo = JComboBox(arrayOf("Plain", "Ordered (auto)", "Spring", "Summer", "Autumn", "Winter"))
 
         fontSizeCombo            = combo
         colorPanel               = cp
@@ -99,6 +101,7 @@ class CodotchiConfigurable : Configurable {
         idleResetOnTabSwitchCheck      = idleResetTabCheckbox
         idleResetOnWindowFocusCheck    = idleResetFocusCheckbox
         idleResetOnMouseMovementCheck  = idleResetMouseCheckbox
+        backgroundCombo                = bgCombo
 
         val panel = JPanel(GridBagLayout())
         val gbc   = GridBagConstraints()
@@ -285,8 +288,17 @@ class CodotchiConfigurable : Configurable {
         panel.add(idleResetMouseCheckbox, gbc)
         gbc.gridwidth = 1
 
+        // Row 23 — Background
+        gbc.gridx = 0; gbc.gridy = 23
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Background:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(bgCombo, gbc)
+
         // Push content to the top
-        gbc.gridx = 0; gbc.gridy = 23; gbc.gridwidth = 2
+        gbc.gridx = 0; gbc.gridy = 24; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -319,6 +331,7 @@ class CodotchiConfigurable : Configurable {
         val uiIdleResetTab = idleResetOnTabSwitchCheck?.isSelected ?: true
         val uiIdleResetFocus = idleResetOnWindowFocusCheck?.isSelected ?: true
         val uiIdleResetMouse = idleResetOnMouseMovementCheck?.isSelected ?: true
+        val uiBg = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
         return uiFont != settings.fontSize
             || uiColor != settings.textColor
             || uiPrimary != settings.customPrimaryColor
@@ -342,6 +355,7 @@ class CodotchiConfigurable : Configurable {
             || uiIdleResetTab != settings.idleResetOnTabSwitch
             || uiIdleResetFocus != settings.idleResetOnWindowFocus
             || uiIdleResetMouse != settings.idleResetOnMouseMovement
+            || uiBg != settings.background
     }
 
     override fun apply() {
@@ -369,6 +383,7 @@ class CodotchiConfigurable : Configurable {
         settings.idleResetOnTabSwitch      = idleResetOnTabSwitchCheck?.isSelected ?: true
         settings.idleResetOnWindowFocus    = idleResetOnWindowFocusCheck?.isSelected ?: true
         settings.idleResetOnMouseMovement  = idleResetOnMouseMovementCheck?.isSelected ?: true
+        settings.background                = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
         // Reload the webview immediately so the change is visible without a restart
         ApplicationManager.getApplication().service<CodotchiPlugin>().reloadWebview()
     }
@@ -398,6 +413,7 @@ class CodotchiConfigurable : Configurable {
         idleResetOnTabSwitchCheck?.isSelected      = settings.idleResetOnTabSwitch
         idleResetOnWindowFocusCheck?.isSelected    = settings.idleResetOnWindowFocus
         idleResetOnMouseMovementCheck?.isSelected  = settings.idleResetOnMouseMovement
+        backgroundCombo?.selectedIndex             = bgKeyToIndex(settings.background)
     }
 
     // ── Enum helpers ───────────────────────────────────────────────────────
@@ -408,6 +424,8 @@ class CodotchiConfigurable : Configurable {
     private fun rateKeyToIndex(key: String) = when (key) { "medium" -> 1; "slow" -> 2; else -> 0 }
     private fun petSizeIndexToKey(index: Int) = when (index) { 0 -> "small"; 2 -> "large"; else -> "medium" }
     private fun petSizeKeyToIndex(key: String) = when (key) { "small" -> 0; "large" -> 2; else -> 1 }
+    private fun bgIndexToKey(index: Int) = when (index) { 0 -> "plain"; 2 -> "spring"; 3 -> "summer"; 4 -> "autumn"; 5 -> "winter"; else -> "ordered" }
+    private fun bgKeyToIndex(key: String) = when (key) { "plain" -> 0; "spring" -> 2; "summer" -> 3; "autumn" -> 4; "winter" -> 5; else -> 1 }
 
     // ── Colour helpers ─────────────────────────────────────────────────────
 

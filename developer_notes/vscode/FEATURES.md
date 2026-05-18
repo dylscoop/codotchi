@@ -672,6 +672,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.idleResetOnTabSwitch` | boolean | `true` | Reset idle timer when the active editor tab changes. Suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnWindowFocus` | boolean | `true` | Reset idle timer when the VS Code window gains focus. Never suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnMouseMovement` | boolean | `true` | Reset idle timer on mouse movement in the sidebar panel (throttled to once/30 s). Never suppressed by `aiMode`. | `[x]` |
+| `codotchi.background` | enum | `ordered` | Canvas background mode: `plain` (none), `ordered` (auto season+time), `spring`, `summer`, `autumn`, `winter` | `[x]` |
 
 ---
 
@@ -706,7 +707,7 @@ These are lower-priority ideas that require design work before implementation. A
 | Pause function | `[ ]` | Explicitly suspend all game ticks (hunger/happiness/energy decay, aging) without closing the IDE. Original Tamagotchi only had a clock-set exploit; later versions added an official pause. Could be a sidebar button or a VS Code command. |
 | Sound effects & mute toggle | `[ ]` | Short 8-bit jingles on key events: hatch, evolve, death, sleep, wake, feed, play win/lose. A mute toggle (VS Code command + sidebar button) to silence all sounds. Respect `gotchi.reducedMotion` and the OS system mute. |
 | Visual night-mode on canvas | `[ ]` | Darken canvas background when pet is sleeping (already tracked in §6.2). |
-| Day / night cycle | `[ ]` | Canvas background shifts with system clock hour; optionally affects stat decay rates at night. |
+| Day / night cycle | `[x]` | Seasonal + time-of-day pixel-art backgrounds drawn on canvas via `codotchi.background` setting (`plain` / `ordered` / `spring` / `summer` / `autumn` / `winter`). `ordered` uses real calendar month + clock hour automatically. |
 | Generation counter display | `[ ]` | Display current generation number in the info line (requires generation stat from §1). |
 | **— Cosmetics & economy —** | | |
 | Gotchi Points currency | `[ ]` | Earned from minigame wins; spent in an in-game shop. Persisted in `PetState`. |
