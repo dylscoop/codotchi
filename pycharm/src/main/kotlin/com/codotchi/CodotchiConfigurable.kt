@@ -27,9 +27,6 @@ class CodotchiConfigurable : Configurable {
 
     private var fontSizeCombo:             JComboBox<String>? = null
     private var colorPanel:                ColorPanel?         = null
-    private var customPrimaryPanel:        ColorPanel?         = null
-    private var customSecondaryPanel:      ColorPanel?         = null
-    private var customBackgroundPanel:     ColorPanel?         = null
     private var enableAttentionCallsCheck: JCheckBox?          = null
     private var idleThresholdSpinner:      JSpinner?           = null
     private var idleDeepThresholdSpinner:  JSpinner?           = null
@@ -48,15 +45,13 @@ class CodotchiConfigurable : Configurable {
     private var idleResetOnTabSwitchCheck:      JCheckBox?          = null
     private var idleResetOnWindowFocusCheck:    JCheckBox?          = null
     private var idleResetOnMouseMovementCheck:  JCheckBox?          = null
+    private var backgroundCombo:               JComboBox<String>?  = null
 
     override fun getDisplayName(): String = "Codotchi"
 
     override fun createComponent(): JComponent {
         val combo   = JComboBox(arrayOf("Small", "Normal", "Large"))
         val cp      = ColorPanel()
-        val cpPrimary    = ColorPanel()
-        val cpSecondary  = ColorPanel()
-        val cpBackground = ColorPanel()
         val attentionCheck  = JCheckBox("Enable attention calls")
         val idleSpinner     = JSpinner(SpinnerNumberModel(60, 10, 3600, 10))
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
@@ -75,12 +70,10 @@ class CodotchiConfigurable : Configurable {
         val idleResetTabCheckbox = JCheckBox("Reset idle timer on tab switch")
         val idleResetFocusCheckbox = JCheckBox("Reset idle timer on window focus")
         val idleResetMouseCheckbox = JCheckBox("Reset idle timer on mouse movement (sidebar)")
+        val bgCombo = JComboBox(arrayOf("Plain", "Ordered (auto)", "Spring", "Summer", "Autumn", "Winter"))
 
         fontSizeCombo            = combo
         colorPanel               = cp
-        customPrimaryPanel       = cpPrimary
-        customSecondaryPanel     = cpSecondary
-        customBackgroundPanel    = cpBackground
         enableAttentionCallsCheck = attentionCheck
         idleThresholdSpinner     = idleSpinner
         idleDeepThresholdSpinner = deepIdleSpinner
@@ -99,14 +92,24 @@ class CodotchiConfigurable : Configurable {
         idleResetOnTabSwitchCheck      = idleResetTabCheckbox
         idleResetOnWindowFocusCheck    = idleResetFocusCheckbox
         idleResetOnMouseMovementCheck  = idleResetMouseCheckbox
+        backgroundCombo                = bgCombo
 
         val panel = JPanel(GridBagLayout())
         val gbc   = GridBagConstraints()
         gbc.insets = Insets(4, 4, 4, 4)
 
-        // Row 0 — Font size
+        // Row 0 — Background
         gbc.gridx = 0; gbc.gridy = 0
         gbc.anchor = GridBagConstraints.WEST
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Background:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(bgCombo, gbc)
+
+        // Row 1 — Font size
+        gbc.gridx = 0; gbc.gridy = 1
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Font size:"), gbc)
 
@@ -114,8 +117,8 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(combo, gbc)
 
-        // Row 1 — Text colour
-        gbc.gridx = 0; gbc.gridy = 1
+        // Row 2 — Text colour
+        gbc.gridx = 0; gbc.gridy = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Text colour:"), gbc)
 
@@ -123,41 +126,14 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(cp, gbc)
 
-        // Row 2 — Custom palette: primary (pet body)
-        gbc.gridx = 0; gbc.gridy = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Custom palette — body:"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(cpPrimary, gbc)
-
-        // Row 3 — Custom palette: secondary (eyes / details)
-        gbc.gridx = 0; gbc.gridy = 3
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Custom palette — details:"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(cpSecondary, gbc)
-
-        // Row 4 — Custom palette: background (canvas stage)
-        gbc.gridx = 0; gbc.gridy = 4
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Custom palette — background:"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(cpBackground, gbc)
-
-        // Row 5 — Enable attention calls
-        gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2
+        // Row 3 — Enable attention calls
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(attentionCheck, gbc)
         gbc.gridwidth = 1
 
-        // Row 6 — Idle threshold
-        gbc.gridx = 0; gbc.gridy = 6
+        // Row 4 — Idle threshold
+        gbc.gridx = 0; gbc.gridy = 4
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Idle threshold (seconds):"), gbc)
 
@@ -165,8 +141,8 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(idleSpinner, gbc)
 
-        // Row 7 — Deep-idle threshold
-        gbc.gridx = 0; gbc.gridy = 7
+        // Row 5 — Deep-idle threshold
+        gbc.gridx = 0; gbc.gridy = 5
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Deep-idle threshold (seconds):"), gbc)
 
@@ -174,8 +150,8 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(deepIdleSpinner, gbc)
 
-        // Row 8 — Attention call expiry
-        gbc.gridx = 0; gbc.gridy = 8
+        // Row 6 — Attention call expiry
+        gbc.gridx = 0; gbc.gridy = 6
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Attention call expiry:"), gbc)
 
@@ -183,8 +159,8 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(expiryCombo, gbc)
 
-        // Row 9 — Attention call rate
-        gbc.gridx = 0; gbc.gridy = 9
+        // Row 7 — Attention call rate
+        gbc.gridx = 0; gbc.gridy = 7
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Attention call rate:"), gbc)
 
@@ -192,8 +168,8 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(rateCombo, gbc)
 
-        // Row 10 — Pet stage height
-        gbc.gridx = 0; gbc.gridy = 10
+        // Row 8 — Pet stage height
+        gbc.gridx = 0; gbc.gridy = 8
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Pet stage height (px):"), gbc)
 
@@ -201,14 +177,14 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(stageHeightSpinner, gbc)
 
-        // Row 11 — Reduced motion
-        gbc.gridx = 0; gbc.gridy = 11; gbc.gridwidth = 2
+        // Row 9 — Reduced motion
+        gbc.gridx = 0; gbc.gridy = 9; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(reducedMotionCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 12 — Pet size
-        gbc.gridx = 0; gbc.gridy = 12
+        // Row 10 — Pet size
+        gbc.gridx = 0; gbc.gridy = 10
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Pet size:"), gbc)
 
@@ -216,14 +192,14 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(petSizeDropdown, gbc)
 
-        // Row 13 — Dev mode enabled
-        gbc.gridx = 0; gbc.gridy = 13; gbc.gridwidth = 2
+        // Row 11 — Dev mode enabled
+        gbc.gridx = 0; gbc.gridy = 11; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(devModeEnabledCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 14 — Developer passcode
-        gbc.gridx = 0; gbc.gridy = 14
+        // Row 12 — Developer passcode
+        gbc.gridx = 0; gbc.gridy = 12
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Developer passcode:"), gbc)
 
@@ -231,8 +207,8 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devPasscodeField, gbc)
 
-        // Row 15 — Dev mode aging multiplier
-        gbc.gridx = 0; gbc.gridy = 15
+        // Row 13 — Dev mode aging multiplier
+        gbc.gridx = 0; gbc.gridy = 13
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Dev mode aging multiplier:"), gbc)
 
@@ -240,8 +216,8 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devAgingSpinner, gbc)
 
-        // Row 16 — Dev mode health floor
-        gbc.gridx = 0; gbc.gridy = 16
+        // Row 14 — Dev mode health floor
+        gbc.gridx = 0; gbc.gridy = 14
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Dev mode health floor:"), gbc)
 
@@ -249,44 +225,44 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devHealthFloorSpinner, gbc)
 
-        // Row 17 — AI mode
-        gbc.gridx = 0; gbc.gridy = 17; gbc.gridwidth = 2
+        // Row 15 — AI mode
+        gbc.gridx = 0; gbc.gridy = 15; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(aiModeCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 18 — Idle reset: document changes
-        gbc.gridx = 0; gbc.gridy = 18; gbc.gridwidth = 2
+        // Row 16 — Idle reset: document changes
+        gbc.gridx = 0; gbc.gridy = 16; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetDocChangeCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 19 — Idle reset: cursor movement
-        gbc.gridx = 0; gbc.gridy = 19; gbc.gridwidth = 2
+        // Row 17 — Idle reset: cursor movement
+        gbc.gridx = 0; gbc.gridy = 17; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetCursorCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 20 — Idle reset: tab switch
-        gbc.gridx = 0; gbc.gridy = 20; gbc.gridwidth = 2
+        // Row 18 — Idle reset: tab switch
+        gbc.gridx = 0; gbc.gridy = 18; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetTabCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 21 — Idle reset: window focus
-        gbc.gridx = 0; gbc.gridy = 21; gbc.gridwidth = 2
+        // Row 19 — Idle reset: window focus
+        gbc.gridx = 0; gbc.gridy = 19; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetFocusCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 22 — Idle reset: mouse movement
-        gbc.gridx = 0; gbc.gridy = 22; gbc.gridwidth = 2
+        // Row 20 — Idle reset: mouse movement
+        gbc.gridx = 0; gbc.gridy = 20; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetMouseCheckbox, gbc)
         gbc.gridwidth = 1
 
         // Push content to the top
-        gbc.gridx = 0; gbc.gridy = 23; gbc.gridwidth = 2
+        gbc.gridx = 0; gbc.gridy = 21; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -298,9 +274,6 @@ class CodotchiConfigurable : Configurable {
         val settings = service<CodotchiSettings>()
         val uiFont       = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
         val uiColor      = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
-        val uiPrimary    = customPrimaryPanel?.selectedColor?.let { colorToHex(it) } ?: "#ff8c00"
-        val uiSecondary  = customSecondaryPanel?.selectedColor?.let { colorToHex(it) } ?: "#ffffff"
-        val uiBackground = customBackgroundPanel?.selectedColor?.let { colorToHex(it) } ?: "#1a1a2e"
         val uiAttention  = enableAttentionCallsCheck?.isSelected ?: true
         val uiIdle       = (idleThresholdSpinner?.value as? Int) ?: 60
         val uiDeepIdle   = (idleDeepThresholdSpinner?.value as? Int) ?: 600
@@ -319,11 +292,9 @@ class CodotchiConfigurable : Configurable {
         val uiIdleResetTab = idleResetOnTabSwitchCheck?.isSelected ?: true
         val uiIdleResetFocus = idleResetOnWindowFocusCheck?.isSelected ?: true
         val uiIdleResetMouse = idleResetOnMouseMovementCheck?.isSelected ?: true
+        val uiBg = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
         return uiFont != settings.fontSize
             || uiColor != settings.textColor
-            || uiPrimary != settings.customPrimaryColor
-            || uiSecondary != settings.customSecondaryColor
-            || uiBackground != settings.customBackgroundColor
             || uiAttention != settings.enableAttentionCalls
             || uiIdle != settings.idleThresholdSeconds
             || uiDeepIdle != settings.idleDeepThresholdSeconds
@@ -342,15 +313,13 @@ class CodotchiConfigurable : Configurable {
             || uiIdleResetTab != settings.idleResetOnTabSwitch
             || uiIdleResetFocus != settings.idleResetOnWindowFocus
             || uiIdleResetMouse != settings.idleResetOnMouseMovement
+            || uiBg != settings.background
     }
 
     override fun apply() {
         val settings = service<CodotchiSettings>()
         settings.fontSize               = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
         settings.textColor              = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
-        settings.customPrimaryColor     = customPrimaryPanel?.selectedColor?.let { colorToHex(it) } ?: "#ff8c00"
-        settings.customSecondaryColor   = customSecondaryPanel?.selectedColor?.let { colorToHex(it) } ?: "#ffffff"
-        settings.customBackgroundColor  = customBackgroundPanel?.selectedColor?.let { colorToHex(it) } ?: "#1a1a2e"
         settings.enableAttentionCalls   = enableAttentionCallsCheck?.isSelected ?: true
         settings.idleThresholdSeconds   = (idleThresholdSpinner?.value as? Int) ?: 60
         settings.idleDeepThresholdSeconds = (idleDeepThresholdSpinner?.value as? Int) ?: 600
@@ -369,6 +338,7 @@ class CodotchiConfigurable : Configurable {
         settings.idleResetOnTabSwitch      = idleResetOnTabSwitchCheck?.isSelected ?: true
         settings.idleResetOnWindowFocus    = idleResetOnWindowFocusCheck?.isSelected ?: true
         settings.idleResetOnMouseMovement  = idleResetOnMouseMovementCheck?.isSelected ?: true
+        settings.background                = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
         // Reload the webview immediately so the change is visible without a restart
         ApplicationManager.getApplication().service<CodotchiPlugin>().reloadWebview()
     }
@@ -377,9 +347,6 @@ class CodotchiConfigurable : Configurable {
         val settings = service<CodotchiSettings>()
         fontSizeCombo?.selectedItem        = settings.fontSize.replaceFirstChar { it.uppercaseChar() }
         colorPanel?.selectedColor          = hexToColor(settings.textColor)
-        customPrimaryPanel?.selectedColor    = hexToColor(settings.customPrimaryColor)
-        customSecondaryPanel?.selectedColor  = hexToColor(settings.customSecondaryColor)
-        customBackgroundPanel?.selectedColor = hexToColor(settings.customBackgroundColor)
         enableAttentionCallsCheck?.isSelected = settings.enableAttentionCalls
         idleThresholdSpinner?.value        = settings.idleThresholdSeconds
         idleDeepThresholdSpinner?.value    = settings.idleDeepThresholdSeconds
@@ -398,6 +365,7 @@ class CodotchiConfigurable : Configurable {
         idleResetOnTabSwitchCheck?.isSelected      = settings.idleResetOnTabSwitch
         idleResetOnWindowFocusCheck?.isSelected    = settings.idleResetOnWindowFocus
         idleResetOnMouseMovementCheck?.isSelected  = settings.idleResetOnMouseMovement
+        backgroundCombo?.selectedIndex             = bgKeyToIndex(settings.background)
     }
 
     // ── Enum helpers ───────────────────────────────────────────────────────
@@ -408,6 +376,8 @@ class CodotchiConfigurable : Configurable {
     private fun rateKeyToIndex(key: String) = when (key) { "medium" -> 1; "slow" -> 2; else -> 0 }
     private fun petSizeIndexToKey(index: Int) = when (index) { 0 -> "small"; 2 -> "large"; else -> "medium" }
     private fun petSizeKeyToIndex(key: String) = when (key) { "small" -> 0; "large" -> 2; else -> 1 }
+    private fun bgIndexToKey(index: Int) = when (index) { 0 -> "plain"; 2 -> "spring"; 3 -> "summer"; 4 -> "autumn"; 5 -> "winter"; else -> "ordered" }
+    private fun bgKeyToIndex(key: String) = when (key) { "plain" -> 0; "spring" -> 2; "summer" -> 3; "autumn" -> 4; "winter" -> 5; else -> 1 }
 
     // ── Colour helpers ─────────────────────────────────────────────────────
 

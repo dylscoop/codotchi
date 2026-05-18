@@ -106,12 +106,10 @@ class CodotchiBrowserPanel(
         val settings      = ApplicationManager.getApplication().getService(CodotchiSettings::class.java)
         val fontSizeClass = "font-${settings?.fontSize ?: "normal"}"
         val textColor     = settings?.textColor ?: "#cccccc"
-        val customPrimary    = settings?.customPrimaryColor    ?: "#ff8c00"
-        val customSecondary  = settings?.customSecondaryColor  ?: "#ffffff"
-        val customBackground = settings?.customBackgroundColor ?: "#1a1a2e"
         val stageHeight      = settings?.petStageHeight ?: 240
         val reducedMotion    = settings?.reducedMotion ?: false
         val petSize          = settings?.petSize ?: "medium"
+        val background       = settings?.background ?: "ordered"
 
         val cssText             = loadResource("/webview/sidebar.css")
         val spriteConstantsText = loadResource("/webview/spriteConstants.js")
@@ -126,17 +124,13 @@ class CodotchiBrowserPanel(
         html = html.replace("{{stageHeight}}", stageHeight.toString())
         html = html.replace("{{reducedMotion}}", reducedMotion.toString())
         html = html.replace("{{petSize}}", petSize)
+        html = html.replace("{{background}}", background)
 
         // Inline CSS — replace <link rel="stylesheet" href="sidebar.css" />
         // Append a colour override so user preference takes precedence over
         // the CSS default without touching the shared webview CSS file.
         val colorOverride = """
             body { color: $textColor !important; }
-            :root {
-                --codotchi-custom-primary: $customPrimary;
-                --codotchi-custom-secondary: $customSecondary;
-                --codotchi-custom-background: $customBackground;
-            }
         """.trimIndent()
         html = html.replace(
             """<link rel="stylesheet" href="sidebar.css" />""",

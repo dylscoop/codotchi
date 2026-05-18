@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "1.22.0",
+  "version": "1.23.1",
   "publisher": "codotchi",
   "repository": {
     "type": "git",
@@ -69,6 +69,20 @@
     "configuration": {
       "title": "Codotchi",
       "properties": {
+        "codotchi.background": {
+          "type": "string",
+          "enum": ["plain", "ordered", "spring", "summer", "autumn", "winter"],
+          "enumDescriptions": [
+            "Solid colour only — no pixel-art elements.",
+            "Season from real calendar + time of day from real clock.",
+            "Spring season (green ground, flower) + real time of day.",
+            "Summer season (bright green ground) + real time of day.",
+            "Autumn season (orange-brown ground, leaves) + real time of day.",
+            "Winter season (pale ground, snowflake) + real time of day."
+          ],
+          "default": "ordered",
+          "description": "Background theme for the pet canvas."
+        },
         "codotchi.fontSize": {
           "type": "string",
           "enum": ["small", "normal", "large"],
@@ -113,21 +127,6 @@
           ],
           "default": "fast",
           "description": "How quickly cleaning, misbehaviour, and gift attention calls can spawn. Uses a logarithmic probability curve; this setting scales the curve down to make calls less frequent."
-        },
-        "codotchi.customPrimaryColor": {
-          "type": "string",
-          "default": "#ff8c00",
-          "description": "Primary colour for the Custom palette (pet body). Applies when 'Custom' is chosen as the colour scheme at new-game setup."
-        },
-        "codotchi.customSecondaryColor": {
-          "type": "string",
-          "default": "#ffffff",
-          "description": "Secondary colour for the Custom palette (pet eyes and details). Applies when 'Custom' is chosen as the colour scheme at new-game setup."
-        },
-        "codotchi.customBackgroundColor": {
-          "type": "string",
-          "default": "#1a1a2e",
-          "description": "Background colour for the Custom palette (canvas stage). Applies when 'Custom' is chosen as the colour scheme at new-game setup."
         },
         "codotchi.petSize": {
           "type": "string",

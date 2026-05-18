@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.codotchi"
-version = "1.22.0"
+version = "1.23.1"
 
 repositories {
     mavenCentral()
@@ -27,7 +27,7 @@ intellij {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 tasks {
