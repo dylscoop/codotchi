@@ -1,6 +1,21 @@
 # Version History
 
-## v1.21.0 — current
+## v1.21.1 — current
+
+### Changes from v1.21.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.21.1 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.21.1 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.21.1 |
+| `opencode-codotchi/package.json` | Version bumped to 1.21.1 |
+| `vscode/media/sidebar.js` | Sleep bubble: shows random Zzz text on `fell_asleep` with `expiresAt = Infinity`, cleared on `woke_up`/`auto_woke_up`; praise bubble on `praised` + answered gift/unhappiness call; scold bubble on `scolded` + answered misbehaviour call |
+| `pycharm/src/main/resources/webview/sidebar.js` | Same sleep/praise/scold bubble logic mirrored for IDE parity |
+
+---
+
+## v1.21.0 — previous
 
 ### Changes from v1.20.3
 
