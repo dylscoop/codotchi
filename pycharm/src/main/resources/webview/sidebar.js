@@ -677,7 +677,7 @@
    * @returns {number}
    */
   function getFloorY() {
-    if (!lastState) { return spriteCanvas.height - 4; }
+    if (!lastState) { return spriteCanvas.height - 12; }
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
     var bWidth     = effectiveBWidth(lastState, bSize);
@@ -689,7 +689,7 @@
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
     }
-    return spriteCanvas.height - bHeight - 4;
+    return spriteCanvas.height - bHeight - 12;
   }
 
   /**
@@ -900,7 +900,7 @@
     // Apply weight blur effect to canvas
     var _wt = lastState.weight || 50;
     spriteCanvas.style.filter = _wt > 80 ? "blur(1.5px)" : _wt > 50 ? "blur(0.75px)" : "";
-    var floorY     = spriteCanvas.height - bHeight - 4;
+    var floorY     = spriteCanvas.height - bHeight - 12;
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
 
@@ -1670,7 +1670,17 @@
    */
   function drawBackground(W, H) {
     var season = getActiveSeason();
-    if (season === "plain") { return; }
+    if (season === "plain") {
+      // Plain mode: draw a neutral dark ground strip so the pet stands on something
+      spriteCtx.save();
+      spriteCtx.globalAlpha = 0.85;
+      spriteCtx.fillStyle = "#2a2a3a";
+      spriteCtx.fillRect(0, H - 12, W, 8);
+      spriteCtx.fillStyle = "#3a3a4e";
+      spriteCtx.fillRect(0, H - 12, W, 3);
+      spriteCtx.restore();
+      return;
+    }
 
     var tod = getTimeOfDay();
 
@@ -1847,7 +1857,7 @@
     var PS = 2;
     var pW = POO_PIXELS[0].length * PS;
     var pH = POO_PIXELS.length    * PS;
-    var pooGroundY = H - 4 - pH;
+    var pooGroundY = H - 12 - pH;
     var pooXPositions = [
       Math.round(W * 0.12),
       Math.round(W * 0.52),
@@ -1878,7 +1888,7 @@
       ];
       var GS = 2;
       var gbH = GIFT_PIXELS.length * GS;
-      var gbY = H - 4 - gbH;
+      var gbY = H - 12 - gbH;
       var gbX = Math.round(giftBoxX);
       GIFT_PIXELS.forEach(function (row, ry) {
         row.forEach(function (cell, rx) {
@@ -1908,7 +1918,7 @@
       snackItems.forEach(function (item) {
         var spx = item.type === "candy" ? CANDY_PIXELS : BONE_PIXELS;
         var spH = spx.length * SS;
-        var sY  = H - 4 - spH;
+        var sY  = H - 12 - spH;
         var sX  = Math.round(item.x);
         spx.forEach(function (row, ry) {
           row.forEach(function (cell, rx) {
@@ -2134,7 +2144,7 @@
     }
     var H        = spriteCanvas.height;
     var staticX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth / 2));
-    var staticY  = H - bHeight - 4;
+    var staticY  = H - bHeight - 12;
 
     drawBody(state, staticX, staticY, false, 0);
     drawStatusIndicators(state, staticX, staticY);
