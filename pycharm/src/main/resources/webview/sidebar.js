@@ -1674,7 +1674,7 @@
 
     var tod = getTimeOfDay();
 
-    // ── Sky overlay ────────────────────────────────────────────────────────
+    // ── Sky overlay: time-of-day tint ─────────────────────────────────────
     var skyColour = "#000000";
     var skyAlpha  = 0.25;
     if (tod === "dawn")  { skyColour = "#e8844a"; skyAlpha = 0.22; }
@@ -1688,6 +1688,22 @@
     spriteCtx.fillRect(0, 0, W, H);
     spriteCtx.restore();
 
+    // ── Sky overlay: season tint (C) ──────────────────────────────────────
+    var seasonSkyColour = null;
+    var seasonSkyAlpha  = 0.0;
+    if (season === "spring") { seasonSkyColour = "#90e060"; seasonSkyAlpha = 0.04; }
+    if (season === "summer") { seasonSkyColour = "#f5e050"; seasonSkyAlpha = 0.05; }
+    if (season === "autumn") { seasonSkyColour = "#e07030"; seasonSkyAlpha = 0.05; }
+    if (season === "winter") { seasonSkyColour = "#6080c0"; seasonSkyAlpha = 0.06; }
+
+    if (seasonSkyColour) {
+      spriteCtx.save();
+      spriteCtx.globalAlpha = seasonSkyAlpha;
+      spriteCtx.fillStyle = seasonSkyColour;
+      spriteCtx.fillRect(0, 0, W, H);
+      spriteCtx.restore();
+    }
+
     // ── Sky accent (sun or stars) ──────────────────────────────────────────
     spriteCtx.save();
     spriteCtx.globalAlpha = 0.85;
@@ -1700,7 +1716,12 @@
       spriteCtx.fillStyle = "#f5a030";
       spriteCtx.fillRect(W - 14, Math.floor(H * 0.55), 4, 4);
     } else {
-      // Night: 3–5 stars as 2×2 dots at fixed positions (deterministic)
+      // Night: moon (3×3 block) + 5 stars as 2×2 dots
+      if (season === "winter") {
+        // Winter moon — slightly brighter
+        spriteCtx.fillStyle = "#d8e8ff";
+        spriteCtx.fillRect(W - 14, 6, 3, 3);
+      }
       spriteCtx.fillStyle = "#e8e8d8";
       var starPositions = [
         [Math.floor(W * 0.15), 7],
@@ -1715,41 +1736,75 @@
     }
     spriteCtx.restore();
 
-    // ── Ground strip (4px at very bottom) ─────────────────────────────────
-    var groundColour = "#3d7a2a"; // summer default
-    if (season === "spring") { groundColour = "#4a7c3f"; }
-    if (season === "summer") { groundColour = "#3d7a2a"; }
-    if (season === "autumn") { groundColour = "#8b5e3c"; }
-    if (season === "winter") { groundColour = "#c8d8e8"; }
+    // ── Ground strip: 8px, two-layer (A) ──────────────────────────────────
+    // Layer 1: base colour (darker), 8px tall
+    // Layer 2: lighter highlight, 3px tall at top of strip
+    var groundBase    = "#3a6b30";
+    var groundHighlight = "#5ec44a";
+    if (season === "spring") { groundBase = "#3a6b30"; groundHighlight = "#5ec44a"; }
+    if (season === "summer") { groundBase = "#2d6620"; groundHighlight = "#4caf30"; }
+    if (season === "autumn") { groundBase = "#7a4a20"; groundHighlight = "#c86820"; }
+    if (season === "winter") { groundBase = "#8090a8"; groundHighlight = "#d8e8f0"; }
 
     spriteCtx.save();
-    spriteCtx.globalAlpha = 0.80;
-    spriteCtx.fillStyle = groundColour;
-    spriteCtx.fillRect(0, H - 4, W, 4);
+    spriteCtx.globalAlpha = 0.85;
+    spriteCtx.fillStyle = groundBase;
+    spriteCtx.fillRect(0, H - 12, W, 8);
+    spriteCtx.fillStyle = groundHighlight;
+    spriteCtx.fillRect(0, H - 12, W, 3);
     spriteCtx.restore();
 
-    // ── Seasonal accent ────────────────────────────────────────────────────
+    // ── Seasonal accents (B) ───────────────────────────────────────────────
     spriteCtx.save();
     spriteCtx.globalAlpha = 0.90;
 
     if (season === "spring") {
-      // Tiny flower: 3×3 pink dot at bottom-left area
+      // Two flowers (pink petals + yellow centre) + 3 grass blades
+      // Flower 1
       spriteCtx.fillStyle = "#e87898";
-      spriteCtx.fillRect(8, H - 9, 3, 3);
+      spriteCtx.fillRect(6,  H - 18, 3, 3);
       spriteCtx.fillStyle = "#f8f060";
-      spriteCtx.fillRect(9, H - 8, 1, 1); // centre dot
+      spriteCtx.fillRect(7,  H - 17, 1, 1);
+      // Flower 2
+      spriteCtx.fillStyle = "#e87898";
+      spriteCtx.fillRect(16, H - 17, 3, 3);
+      spriteCtx.fillStyle = "#f8f060";
+      spriteCtx.fillRect(17, H - 16, 1, 1);
+      // Grass blades: 1×4 vertical strips
+      spriteCtx.fillStyle = "#70d840";
+      spriteCtx.fillRect(11, H - 17, 1, 4);
+      spriteCtx.fillRect(22, H - 16, 1, 3);
+      spriteCtx.fillRect(4,  H - 15, 1, 3);
+
     } else if (season === "summer") {
-      // Brighter sky tint already applied — no extra accent for minimalism
+      // Sun shimmer: thin warm-yellow strip just above ground
+      spriteCtx.globalAlpha = 0.18;
+      spriteCtx.fillStyle = "#f8e840";
+      spriteCtx.fillRect(0, H - 22, W, 4);
+
     } else if (season === "autumn") {
-      // Two leaf pixels (orange) near bottom-left
+      // 3 falling leaf pixels + a small leaf pile at bottom-left
       spriteCtx.fillStyle = "#d8682a";
-      spriteCtx.fillRect(6,  H - 8, 2, 2);
-      spriteCtx.fillRect(11, H - 7, 2, 2);
+      spriteCtx.fillRect(6,  H - 20, 2, 2);
+      spriteCtx.fillRect(14, H - 16, 2, 2);
+      spriteCtx.fillStyle = "#c84010";
+      spriteCtx.fillRect(10, H - 13, 2, 2);
+      // Leaf pile: 4 overlapping 2×1 dots
+      spriteCtx.fillStyle = "#a03810";
+      spriteCtx.fillRect(4,  H - 14, 4, 1);
+      spriteCtx.fillStyle = "#d8682a";
+      spriteCtx.fillRect(5,  H - 15, 3, 1);
+
     } else if (season === "winter") {
-      // Snowflake: 5-pixel cross at bottom-left
+      // Snowflake cross + 3 snow dots on ground
       spriteCtx.fillStyle = "#e8f0f8";
-      spriteCtx.fillRect(9,  H - 9, 1, 5); // vertical arm
-      spriteCtx.fillRect(7,  H - 7, 5, 1); // horizontal arm
+      spriteCtx.fillRect(9,  H - 22, 1, 5); // vertical arm
+      spriteCtx.fillRect(7,  H - 20, 5, 1); // horizontal arm
+      // Snow dots on ground
+      spriteCtx.fillStyle = "#ffffff";
+      spriteCtx.fillRect(3,  H - 14, 2, 1);
+      spriteCtx.fillRect(18, H - 14, 2, 1);
+      spriteCtx.fillRect(10, H - 13, 2, 1);
     }
 
     spriteCtx.restore();

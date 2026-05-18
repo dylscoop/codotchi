@@ -129,16 +129,11 @@ export class SidebarProvider
     this.disposables.push(visibilityListener);
 
     // BUGFIX-001: hot-reload the webview HTML when the font-size setting changes.
-    // Also reload when any custom-colour setting changes so the Custom palette
-    // updates immediately for any pet already using it.
     // Also reload on petStageHeight or reducedMotion changes.
     const configListener = vscode.workspace.onDidChangeConfiguration((e) => {
       if (
         e.affectsConfiguration("codotchi.fontSize") ||
         e.affectsConfiguration("codotchi.background") ||
-        e.affectsConfiguration("codotchi.customPrimaryColor") ||
-        e.affectsConfiguration("codotchi.customSecondaryColor") ||
-        e.affectsConfiguration("codotchi.customBackgroundColor") ||
         e.affectsConfiguration("codotchi.petSize") ||
         e.affectsConfiguration("codotchi.reducedMotion") ||
         e.affectsConfiguration("codotchi.idleResetOnMouseMovement")
