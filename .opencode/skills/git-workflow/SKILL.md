@@ -44,7 +44,7 @@ The following actions each require **explicit user instruction** before performi
 | Push a tag to `origin` | User says "push the tag" |
 | Create a GitHub release | User says "create a release" or "publish it" |
 
-**Never chain these steps together automatically.** After completing work, stop and report what is done. Ask the user how they want to proceed with each step.
+**Never chain these steps together automatically.** Each of the actions in the table above requires its own explicit user instruction before performing it.
 
 ---
 
@@ -54,11 +54,12 @@ The following actions each require **explicit user instruction** before performi
 2. **Immediately check out or create that branch** — do not read, edit, or build anything until this step is done.
 3. Do the work (code changes, builds, doc updates).
 4. **Commit after every todo item is completed** (see Commit style below).
-5. When all work is done, stop and tell the user:
+5. When ALL todos are completed and no more commands remain, stop and tell the user:
    - What was changed
    - What commits are on the branch
    - Which of the release steps still need to happen
-6. Wait for the user to explicitly ask for each next step.
+
+> **Do not apply step 5 between intermediate commits.** During an artifact rebuild sequence — IDE artifact build → commit → OpenCode zip rebuild → commit — each commit is an intermediate step, not "all work done". After each intermediate commit, immediately execute the next todo item's command without pausing, without reporting status, and without waiting for the user. Step 5 fires only once: after the final todo is marked complete and there are no more commands to run.
 
 ---
 
