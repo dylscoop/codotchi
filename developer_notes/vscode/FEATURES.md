@@ -472,6 +472,26 @@ All events are displayed using the pet's name and human-readable sentences inste
 | `evolved_to_<stage>` | `<Name> evolved into <stage>!` | `[x]` |
 | All other events | Named equivalents (e.g. fed, slept, woke, cleaned) | `[x]` |
 
+### 7.3 Canvas Speech Bubbles
+
+Selected events cause the pet to speak via a canvas-drawn speech bubble that follows the pet above its head.
+
+| Trigger | Condition | Status | Notes |
+|---------|-----------|--------|-------|
+| Attention call fired | Any `attention_call_*` event (not answered/expired) | `[x]` | Highest priority per tick |
+| Minigame result | Any `minigame_*_win` / `minigame_*_lose` event | `[x]` | Not triggered by pat |
+| Commit activity | `commit_activity_rewarded` event | `[x]` | |
+| Save / code activity | `code_activity_rewarded` event | `[x]` | Lowest priority per tick |
+| Pet dies | `died` / `died_of_old_age` transition | `[x]` | Fires once on the death tick |
+
+Bubble behaviour:
+- Text reuses `humaniseEvent()` strings (same as event log)
+- One bubble at a time — new events replace the current bubble immediately
+- Bubble stays visible for 6 s (one tick interval), then fades out over 0.5 s
+- Last bubble persists indefinitely until a new one arrives or it finishes fading
+- Bubble follows the pet horizontally; flips below the pet if too close to canvas top edge
+- Rendered on `#sprite-canvas` via Canvas 2D API; also works in reduced-motion mode via `drawStaticPet`
+
 ---
 
 ## 8. Coding Activity Rewards
