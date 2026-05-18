@@ -1,6 +1,33 @@
 # Version History
 
-## v1.20.0 — current
+## v1.21.0 — current
+
+### Changes from v1.20.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.21.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.21.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.21.0 |
+| `opencode-codotchi/package.json` | Version bumped to 1.21.0 |
+| `vscode/media/sidebar.js` | Added canvas speech bubble system: `showBubble()`, `wrapBubbleText()`, `drawSpeechBubble()` — bubbles follow the pet above its head and trigger on attention calls, minigame results (not pat), commit activity, and save activity; bubbles persist until replaced, then fade out over 0.5 s after 6 s; death bubble fires on the transition tick |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical speech bubble system mirrored for IDE parity |
+
+---
+
+## v1.20.3 — previous
+
+### Changes from v1.20.0
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/index.ts` | Fixed `experimental.text.complete` to pass `ideLabel` to `buildSpeechBubble` so `[VS Code]` / `[PyCharm]` appears in every post-response art block |
+| `.opencode/plugins/codotchi.ts` | Same fix mirrored to the `.opencode` plugin copy |
+| `opencode-codotchi/opencode-codotchi-1.20.3.zip` | Rebuilt distributable zip for v1.20.3 |
+
+---
+
+## v1.20.0 — previous
 
 ### Changes from v1.19.4
 

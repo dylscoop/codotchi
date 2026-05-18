@@ -200,7 +200,6 @@ export class EventsManager implements vscode.Disposable {
 
     this.lastCodeActivityTimestamp = nowMs;
     const nextState = applyCodeActivity(state);
-    saveState(this.context, nextState);
     this.onStateUpdate(nextState);
   }
 

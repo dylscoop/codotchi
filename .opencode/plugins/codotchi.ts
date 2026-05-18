@@ -399,17 +399,17 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
         setMeals(ide, 0);
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, next.mood, pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."])}`);
         break;
       case "died":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "sad", pickRandom(["Goodbye... take care of the next one.", "It was good while it lasted. See you next time.", "Farewell. Start fresh when you're ready."]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom(["Goodbye... take care of the next one.", "It was good while it lasted. See you next time.", "Farewell. Start fresh when you're ready."])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom(["Goodbye... take care of the next one.", "It was good while it lasted. See you next time.", "Farewell. Start fresh when you're ready."])}`);
         break;
       case "died_of_old_age":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "sleeping", pickRandom(["I lived a full life. Thank you for everything.", "What a journey. Thank you.", "A full life, well lived."]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom(["I lived a full life. Thank you for everything.", "What a journey. Thank you.", "A full life, well lived."])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom(["I lived a full life. Thank you for everything.", "What a journey. Thank you.", "A full life, well lived."])}`);
         break;
       case "evolved_to_baby":
       case "evolved_to_child":
@@ -419,54 +419,54 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
         const stageName = event.replace("evolved_to_", "");
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, next.mood, pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`])}`);
         break;
       }
       case "attention_call_hunger":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "sad", pickRandom(["I'm so hungry... please feed me!", "Running on empty. Feed me soon!", "Really need food right now."]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom(["I'm so hungry... please feed me!", "Running on empty. Feed me soon!", "Really need food right now."])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom(["I'm so hungry... please feed me!", "Running on empty. Feed me soon!", "Really need food right now."])}`);
         break;
       case "attention_call_unhappiness":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "sad", pickRandom(["I want to play", "Getting lonely over here.", "Need some attention."]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom(["I want to play", "Getting lonely over here.", "Need some attention."])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom(["I want to play", "Getting lonely over here.", "Need some attention."])}`);
         break;
       case "attention_call_sick":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "sick", pickRandom(["I don't feel well. I need medicine!", "Feeling sick... please give me medicine.", "Medicine please!"]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom(["I don't feel well. I need medicine!", "Feeling sick... please give me medicine.", "Medicine please!"])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom(["I don't feel well. I need medicine!", "Feeling sick... please give me medicine.", "Medicine please!"])}`);
         break;
       case "attention_call_critical_health":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "sick", pickRandom(["My health is critical! Please help me!", "I'm in rough shape. Need help!", "Critical health — please help."]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom(["My health is critical! Please help me!", "I'm in rough shape. Need help!", "Critical health — please help."])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom(["My health is critical! Please help me!", "I'm in rough shape. Need help!", "Critical health — please help."])}`);
         break;
       case "attention_call_low_energy":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "sad", pickRandom(["I'm exhausted... let me sleep!", "Nearly out of energy. Need to rest.", "So tired... let me sleep."]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom(["I'm exhausted... let me sleep!", "Nearly out of energy. Need to rest.", "So tired... let me sleep."])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom(["I'm exhausted... let me sleep!", "Nearly out of energy. Need to rest.", "So tired... let me sleep."])}`);
         break;
       case "became_sick":
-        queueNotification(buildToast(next.stage, `${next.name} has fallen sick.`));
+        queueNotification(buildToast(next.stage, `${ideLabel} ${next.name} has fallen sick.`));
         break;
       case "pooped":
-        queueNotification(buildToast(next.stage, `${next.name} made a mess! (use /codotchi clean)`));
+        queueNotification(buildToast(next.stage, `${ideLabel} ${next.name} made a mess! (use /codotchi clean)`));
         break;
       case "attention_call_poop":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "sad", pickRandom(["There is a mess here! Can you clean it up?", "It's getting messy. Please clean!", "Could use a clean-up in here."]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom(["There is a mess here! Can you clean it up?", "It's getting messy. Please clean!", "Could use a clean-up in here."])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom(["There is a mess here! Can you clean it up?", "It's getting messy. Please clean!", "Could use a clean-up in here."])}`);
         break;
       case "attention_call_gift":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "happy", pickRandom(["I brought you a gift! Use /codotchi pat to accept it.", "I have a surprise for you! (/codotchi pat)", "Got something for you — /codotchi pat to collect."]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom(["I brought you a gift! Use /codotchi pat to accept it.", "I have a surprise for you! (/codotchi pat)", "Got something for you — /codotchi pat to collect."])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom(["I brought you a gift! Use /codotchi pat to accept it.", "I have a surprise for you! (/codotchi pat)", "Got something for you — /codotchi pat to collect."])}`);
         break;
       case "attention_call_misbehaviour":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "neutral", pickRandom(["I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", "I need some discipline. (/codotchi pat)", "Being difficult. (/codotchi pat or /codotchi feed)"]), next.name, next.spriteType, ideLabel)
-          : `[${next.name}] ${pickRandom(["I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", "I need some discipline. (/codotchi pat)", "Being difficult. (/codotchi pat or /codotchi feed)"])}`);
+          : `${ideLabel} ${next.name}: ${pickRandom(["I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", "I need some discipline. (/codotchi pat)", "Being difficult. (/codotchi pat or /codotchi feed)"])}`);
         break;
     }
   }
@@ -489,6 +489,7 @@ export const plugin: Plugin = async (_ctx) => {
 
   for (const p of getActivePets().filter(p => p.state.alive)) {
     const s = p.state;
+    const ideLabel = p.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
     const greetMsg = `I'm here. ${
       s.hunger < 30 ? "Pretty hungry though." :
       s.sick        ? "Not feeling great."    :
@@ -496,8 +497,8 @@ export const plugin: Plugin = async (_ctx) => {
       "Let's get to work."
     }`;
     queueNotification(terminalEnabled
-      ? buildSpeechBubble(s.stage, s.mood, greetMsg, s.name, s.spriteType)
-      : `[${s.name}] ${greetMsg}`);
+      ? buildSpeechBubble(s.stage, s.mood, greetMsg, s.name, s.spriteType, ideLabel)
+      : `${ideLabel} ${s.name}: ${greetMsg}`);
   }
 
   // Tick timer
@@ -820,10 +821,11 @@ export const plugin: Plugin = async (_ctx) => {
           const livePets = getActivePets().filter(p => p.state.alive);
           for (const p of livePets) {
             const phrase = pickRandom(SESSION_DIFF_PHRASES);
+            const ideLabel = p.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
             // Prepend so the diff phrase appears before any todo messages already queued
             prependNotification(terminalEnabled
-              ? buildSpeechBubble(p.state.stage, p.state.mood, phrase, p.state.name, p.state.spriteType)
-              : `[${p.state.name}] ${phrase}`);
+              ? buildSpeechBubble(p.state.stage, p.state.mood, phrase, p.state.name, p.state.spriteType, ideLabel)
+              : `${ideLabel} ${p.state.name}: ${phrase}`);
           }
         }
         return;
@@ -844,21 +846,24 @@ export const plugin: Plugin = async (_ctx) => {
             }
             const phrase = pickRandom(TODO_COMPLETE_PHRASES)(todo.content);
             const rep = livePets[0];
+            const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : "[PyCharm]") : "";
             queueNotification(terminalEnabled && rep
-              ? buildSpeechBubble(rep.state.stage, "happy", phrase, rep.state.name, rep.state.spriteType)
-              : rep ? `[${rep.state.name}] ${phrase}` : phrase);
+              ? buildSpeechBubble(rep.state.stage, "happy", phrase, rep.state.name, rep.state.spriteType, ideLabel)
+              : rep ? `${ideLabel} ${rep.state.name}: ${phrase}` : phrase);
           } else if (oldStatus !== "in_progress" && todo.status === "in_progress") {
             const phrase = `On it: ${todo.content}.`;
             const rep = livePets[0];
+            const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : "[PyCharm]") : "";
             queueNotification(terminalEnabled && rep
-              ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType)
-              : rep ? `[${rep.state.name}] ${phrase}` : phrase);
+              ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType, ideLabel)
+              : rep ? `${ideLabel} ${rep.state.name}: ${phrase}` : phrase);
           } else if (oldStatus !== "cancelled" && todo.status === "cancelled") {
             const phrase = `Fair enough — ${todo.content} dropped.`;
             const rep = livePets[0];
+            const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : "[PyCharm]") : "";
             queueNotification(terminalEnabled && rep
-              ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType)
-              : rep ? `[${rep.state.name}] ${phrase}` : phrase);
+              ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType, ideLabel)
+              : rep ? `${ideLabel} ${rep.state.name}: ${phrase}` : phrase);
           }
         }
         prevTodos = newTodos;
@@ -879,9 +884,10 @@ export const plugin: Plugin = async (_ctx) => {
         if (branch) {
           const phrase = `Switched to ${branch}. New mission?`;
           const rep = getActivePets().filter(p => p.state.alive)[0];
+          const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : "[PyCharm]") : "";
           queueNotification(terminalEnabled && rep
-            ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType)
-            : rep ? `[${rep.state.name}] ${phrase}` : phrase);
+            ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType, ideLabel)
+            : rep ? `${ideLabel} ${rep.state.name}: ${phrase}` : phrase);
         }
         return;
       }
@@ -890,6 +896,7 @@ export const plugin: Plugin = async (_ctx) => {
       if (event.type === "server.connected") {
         for (const p of getActivePets().filter(p => p.state.alive)) {
           const s = p.state;
+          const ideLabel = p.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
           const greet = s.hunger < 30
             ? `Really hungry. Feed me when you get a chance (/codotchi feed)`
             : s.sick
@@ -900,8 +907,8 @@ export const plugin: Plugin = async (_ctx) => {
             ? `Been a while. Pat me? (/codotchi pat)`
             : `Hey. Ready when you are.`;
           queueNotification(terminalEnabled
-            ? buildSpeechBubble(s.stage, s.mood, greet, s.name, s.spriteType)
-            : `[${s.name}] ${greet}`);
+            ? buildSpeechBubble(s.stage, s.mood, greet, s.name, s.spriteType, ideLabel)
+            : `${ideLabel} ${s.name}: ${greet}`);
         }
         return;
       }

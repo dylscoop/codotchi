@@ -137,6 +137,7 @@
   let pendingNewGame = false; // set when Hatch! is clicked; bypasses setup-screen suppression
   let giftBoxX   = null;     // floor X of gift box while a "gift" attention call is active
   let snackItems = [];       // floor items: [{ x, type: "candy"|"bone" }]
+  let activeBubble = null;   // speech bubble: { text, startMs, fadeOutMs } or null
 
   // ── Setup form state ────────────────────────────────────────────────────
 
@@ -697,6 +698,168 @@
     });
   }
 
+  // ── Speech bubble ─────────────────────────────────────────────────────────
+
+  /**
+   * Queue a speech bubble above the pet.
+   * Calling this while a bubble is already showing replaces it immediately.
+   * The bubble stays visible for 6 s then fades out over 0.5 s.
+   * @param {string} text
+   */
+  function showBubble(text) {
+    var now = performance.now();
+    activeBubble = {
+      text:       text,
+      startMs:    now,
+      fadeOutMs:  now + 6000,   // begin fade after 6 s
+      fadeDurMs:  500,          // fade-out duration in ms
+    };
+  }
+
+  /**
+   * Wrap text to fit inside maxWidth using the current canvas context font.
+   * Returns an array of lines.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {string} text
+   * @param {number} maxWidth
+   * @returns {string[]}
+   */
+  function wrapBubbleText(ctx, text, maxWidth) {
+    var words = text.split(" ");
+    var lines = [];
+    var current = "";
+    for (var i = 0; i < words.length; i++) {
+      var test = current ? current + " " + words[i] : words[i];
+      if (ctx.measureText(test).width > maxWidth && current) {
+        lines.push(current);
+        current = words[i];
+      } else {
+        current = test;
+      }
+    }
+    if (current) { lines.push(current); }
+    return lines;
+  }
+
+  /**
+   * Draw the active speech bubble above the pet at (petCx, petTopY).
+   * Call this from the animation loop after the pet body has been drawn.
+   * Also used by drawStaticPet (reduced-motion mode).
+   *
+   * @param {number} petCx   — horizontal centre of the pet sprite (canvas px)
+   * @param {number} petTopY — top edge of the pet sprite (canvas px)
+   * @param {number} nowMs   — performance.now()
+   */
+  function drawSpeechBubble(petCx, petTopY, nowMs) {
+    if (!activeBubble) { return; }
+
+    var elapsed = nowMs - activeBubble.startMs;
+    var fadeStart = activeBubble.fadeOutMs - activeBubble.startMs; // = 6000 ms
+    var alpha = 1.0;
+
+    if (elapsed >= fadeStart + activeBubble.fadeDurMs) {
+      // Fully faded — clear and stop drawing
+      activeBubble = null;
+      return;
+    } else if (elapsed > fadeStart) {
+      // Fading out
+      alpha = 1.0 - (elapsed - fadeStart) / activeBubble.fadeDurMs;
+    }
+
+    var PAD_X    = 8;
+    var PAD_Y    = 6;
+    var TAIL_H   = 6;   // triangle tail height
+    var TAIL_W   = 8;   // half-width of the tail base
+    var FONT     = "10px monospace";
+    var MAX_W    = Math.min(spriteCanvas.width - 8, 160);
+    var LINE_H   = 13;
+
+    spriteCtx.save();
+    spriteCtx.globalAlpha = alpha;
+    spriteCtx.font = FONT;
+
+    var lines = wrapBubbleText(spriteCtx, activeBubble.text, MAX_W - PAD_X * 2);
+
+    var boxW = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var lw = spriteCtx.measureText(lines[i]).width;
+      if (lw > boxW) { boxW = lw; }
+    }
+    boxW += PAD_X * 2;
+    var boxH = lines.length * LINE_H + PAD_Y * 2;
+
+    // Position: centred on pet, above its head
+    var boxX = Math.round(petCx - boxW / 2);
+    // Clamp to canvas edges
+    boxX = Math.max(4, Math.min(spriteCanvas.width - boxW - 4, boxX));
+
+    var boxBottomY = petTopY - TAIL_H - 2;
+    var boxY = boxBottomY - boxH;
+    // If there's no room above, flip below (pet near top edge — rare)
+    var flipped = false;
+    if (boxY < 2) {
+      boxY = petTopY + 2 + TAIL_H;   // place below pet top instead
+      boxBottomY = boxY + boxH;
+      flipped = true;
+    }
+
+    // Tail tip X — clamped to stay within the box
+    var tailTipX = Math.round(petCx);
+    tailTipX = Math.max(boxX + TAIL_W + 2, Math.min(boxX + boxW - TAIL_W - 2, tailTipX));
+
+    // Draw box
+    spriteCtx.fillStyle = "#1a1a2e";
+    spriteCtx.strokeStyle = "#888888";
+    spriteCtx.lineWidth = 1;
+    spriteCtx.beginPath();
+    spriteCtx.roundRect(boxX, boxY, boxW, boxH, 4);
+    spriteCtx.fill();
+    spriteCtx.stroke();
+
+    // Draw tail triangle
+    spriteCtx.beginPath();
+    if (!flipped) {
+      // Tail points downward from the box bottom
+      spriteCtx.moveTo(tailTipX - TAIL_W, boxBottomY);
+      spriteCtx.lineTo(tailTipX + TAIL_W, boxBottomY);
+      spriteCtx.lineTo(tailTipX, boxBottomY + TAIL_H);
+    } else {
+      // Tail points upward from the box top
+      spriteCtx.moveTo(tailTipX - TAIL_W, boxY);
+      spriteCtx.lineTo(tailTipX + TAIL_W, boxY);
+      spriteCtx.lineTo(tailTipX, boxY - TAIL_H);
+    }
+    spriteCtx.closePath();
+    spriteCtx.fillStyle = "#1a1a2e";
+    spriteCtx.fill();
+    // Stroke only the two outer edges of the tail (not the base shared with the box)
+    spriteCtx.strokeStyle = "#888888";
+    spriteCtx.lineWidth = 1;
+    if (!flipped) {
+      spriteCtx.beginPath();
+      spriteCtx.moveTo(tailTipX - TAIL_W, boxBottomY);
+      spriteCtx.lineTo(tailTipX, boxBottomY + TAIL_H);
+      spriteCtx.lineTo(tailTipX + TAIL_W, boxBottomY);
+      spriteCtx.stroke();
+    } else {
+      spriteCtx.beginPath();
+      spriteCtx.moveTo(tailTipX - TAIL_W, boxY);
+      spriteCtx.lineTo(tailTipX, boxY - TAIL_H);
+      spriteCtx.lineTo(tailTipX + TAIL_W, boxY);
+      spriteCtx.stroke();
+    }
+
+    // Draw text
+    spriteCtx.fillStyle = "#dddddd";
+    spriteCtx.font = FONT;
+    spriteCtx.textBaseline = "top";
+    for (var j = 0; j < lines.length; j++) {
+      spriteCtx.fillText(lines[j], boxX + PAD_X, boxY + PAD_Y + j * LINE_H);
+    }
+
+    spriteCtx.restore();
+  }
+
   // ── Animation loop ────────────────────────────────────────────────────────
 
   function animationLoop(nowMs) {
@@ -926,6 +1089,14 @@
     drawEnvironment(lastState);
     drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs);
     drawStatusIndicators(lastState, Math.round(petX), Math.round(petY) + walkBob);
+
+    // ── Speech bubble ──────────────────────────────────────────────────────
+    var _bScale   = STAGE_SCALES[lastState.stage] || 0.5;
+    var _bSz      = Math.round(BASE_SIZE * petSizeMultiplier() * _bScale);
+    var _bW       = effectiveBWidth(lastState, _bSz);
+    var _petCx    = Math.round(petX) + Math.round(_bW / 2);
+    var _petTopY  = Math.round(petY) + walkBob;
+    drawSpeechBubble(_petCx, _petTopY, nowMs);
   }
 
   if (!REDUCED_MOTION) {
@@ -942,6 +1113,12 @@
    */
   function renderState(state, mealsGiven, highScore) {
     if (!state.alive) {
+      // Fire a death bubble once, on the transition tick
+      if (lastState && lastState.alive) {
+        var _diedCode = (state.events || []).indexOf("died_of_old_age") !== -1
+          ? "died_of_old_age" : "died";
+        showBubble(humaniseEvent(_diedCode, state.name));
+      }
       renderDeadScreen(state, highScore);
       showScreen("dead");
       return;
@@ -1061,6 +1238,38 @@
     for (var ei = 0; ei < events.length; ei++) {
       if (events[ei].indexOf("evolved_to_") === 0) { pushReaction("evolved", nowMs); break; }
     }
+
+    // ── Speech bubble triggers ─────────────────────────────────────────────
+    // Priority: attention calls > minigame result > commit > save.
+    // Only one bubble per tick — first match wins.
+    (function () {
+      var _n = state.name;
+      // 1. Attention calls
+      for (var _ai = 0; _ai < events.length; _ai++) {
+        if (events[_ai].indexOf("attention_call_") === 0 &&
+            events[_ai].indexOf("attention_call_answered_") !== 0 &&
+            events[_ai].indexOf("attention_call_expired_") !== 0) {
+          showBubble(humaniseEvent(events[_ai], _n));
+          return;
+        }
+      }
+      // 2. Minigame results (play, not pat)
+      for (var _mi = 0; _mi < events.length; _mi++) {
+        if (events[_mi].indexOf("minigame_") === 0) {
+          showBubble(humaniseEvent(events[_mi], _n));
+          return;
+        }
+      }
+      // 3. Commit activity
+      if (events.indexOf("commit_activity_rewarded") !== -1) {
+        showBubble(humaniseEvent("commit_activity_rewarded", _n));
+        return;
+      }
+      // 4. Save / code activity
+      if (events.indexOf("code_activity_rewarded") !== -1) {
+        showBubble(humaniseEvent("code_activity_rewarded", _n));
+      }
+    })();
 
     // Gift box — show a box on the floor while a "gift" attention call is active
     var prevGift = lastState && lastState.activeAttentionCall === "gift";
@@ -1715,6 +1924,7 @@
 
     drawBody(state, staticX, staticY, false, 0);
     drawStatusIndicators(state, staticX, staticY);
+    drawSpeechBubble(staticX + Math.round(bWidth / 2), staticY, performance.now());
   }
 
   // ── Static look-up tables ────────────────────────────────────────────────
