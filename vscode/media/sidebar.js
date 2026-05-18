@@ -137,7 +137,8 @@
   let pendingNewGame = false; // set when Hatch! is clicked; bypasses setup-screen suppression
   let giftBoxX   = null;     // floor X of gift box while a "gift" attention call is active
   let snackItems = [];       // floor items: [{ x, type: "candy"|"bone" }]
-  let activeBubble = null;   // speech bubble: { text, startMs, fadeOutMs } or null
+  let activeBubble = null;   // speech bubble: { text, startMs, fadeOutMs, fadeDurMs } or null
+  let petIsSleeping = false; // true while fell_asleep is active; suppresses all other bubbles
 
   // ── Setup form state ────────────────────────────────────────────────────
 
@@ -753,17 +754,23 @@
   function drawSpeechBubble(petCx, petTopY, nowMs) {
     if (!activeBubble) { return; }
 
-    var elapsed = nowMs - activeBubble.startMs;
-    var fadeStart = activeBubble.fadeOutMs - activeBubble.startMs; // = 6000 ms
     var alpha = 1.0;
 
-    if (elapsed >= fadeStart + activeBubble.fadeDurMs) {
-      // Fully faded — clear and stop drawing
-      activeBubble = null;
-      return;
-    } else if (elapsed > fadeStart) {
-      // Fading out
-      alpha = 1.0 - (elapsed - fadeStart) / activeBubble.fadeDurMs;
+    if (activeBubble.fadeOutMs === Infinity) {
+      // Persistent bubble (e.g. sleep) — always full alpha, never cleared here
+      alpha = 1.0;
+    } else {
+      var elapsed = nowMs - activeBubble.startMs;
+      var fadeStart = activeBubble.fadeOutMs - activeBubble.startMs; // = 6000 ms
+
+      if (elapsed >= fadeStart + activeBubble.fadeDurMs) {
+        // Fully faded — clear and stop drawing
+        activeBubble = null;
+        return;
+      } else if (elapsed > fadeStart) {
+        // Fading out
+        alpha = 1.0 - (elapsed - fadeStart) / activeBubble.fadeDurMs;
+      }
     }
 
     var PAD_X    = 8;
@@ -1230,31 +1237,18 @@
       (function () {
         var _sleepTexts = ["Zzz...", "z z Z Z...", "*snoozing*", state.name + " is asleep. Zzz..."];
         showBubble(_sleepTexts[Math.floor(Math.random() * _sleepTexts.length)]);
-        if (activeBubble) { activeBubble.expiresAt = Infinity; }
+        if (activeBubble) { activeBubble.fadeOutMs = Infinity; }
       })();
+      petIsSleeping = true;
     }
     if (events.indexOf("woke_up")       !== -1 ||
         events.indexOf("auto_woke_up")  !== -1) {
+      petIsSleeping = false;
       activeBubble = null; // clear the persistent sleep bubble
       pushReaction("woke_up",       nowMs);
     }
-    if (events.indexOf("scolded")       !== -1) {
-      pushReaction("scolded", nowMs);
-      // Scold bubble — only when answering a misbehaviour attention call
-      if (events.indexOf("attention_call_answered_misbehaviour") !== -1) {
-        var _scoldTexts = ["Hey! Behave yourself, " + state.name + "!", "That's not okay, " + state.name + ".", state.name + "! Stop that right now.", "No more of that, " + state.name + "!"];
-        showBubble(_scoldTexts[Math.floor(Math.random() * _scoldTexts.length)]);
-      }
-    }
-    if (events.indexOf("praised")       !== -1) {
-      pushReaction("praised", nowMs);
-      // Praise bubble — only when answering a gift or unhappiness attention call
-      if (events.indexOf("attention_call_answered_gift") !== -1 ||
-          events.indexOf("attention_call_answered_unhappiness") !== -1) {
-        var _praiseTexts = ["Yay! Good job, " + state.name + "!", state.name + " is so happy!", "You're the best, " + state.name + "!", state.name + " loves the attention!"];
-        showBubble(_praiseTexts[Math.floor(Math.random() * _praiseTexts.length)]);
-      }
-    }
+    if (events.indexOf("scolded")       !== -1) { pushReaction("scolded", nowMs); }
+    if (events.indexOf("praised")       !== -1) { pushReaction("praised", nowMs); }
     if (events.indexOf("became_sick")   !== -1) { pushReaction("became_sick",   nowMs); }
     if (events.indexOf("cured")         !== -1) { pushReaction("healed",        nowMs); }
     if (events.indexOf("pooped")        !== -1) { pushReaction("poop_appeared", nowMs); }
@@ -1264,11 +1258,12 @@
     }
 
     // ── Speech bubble triggers ─────────────────────────────────────────────
-    // Priority: attention calls > minigame result > commit > save.
+    // Suppressed entirely while pet is sleeping (sleep bubble persists until wake).
+    // Priority: attention calls > minigame > praise > scold > commit > save.
     // Only one bubble per tick — first match wins.
-    (function () {
+    if (!petIsSleeping) (function () {
       var _n = state.name;
-      // 1. Attention calls
+      // 1. Attention calls (unanswered, unexpired)
       for (var _ai = 0; _ai < events.length; _ai++) {
         if (events[_ai].indexOf("attention_call_") === 0 &&
             events[_ai].indexOf("attention_call_answered_") !== 0 &&
@@ -1284,12 +1279,27 @@
           return;
         }
       }
-      // 3. Commit activity
+      // 3. Praise — only when answering a gift or unhappiness attention call
+      if (events.indexOf("praised") !== -1 &&
+          (events.indexOf("attention_call_answered_gift") !== -1 ||
+           events.indexOf("attention_call_answered_unhappiness") !== -1)) {
+        var _praiseTexts = ["This makes me happy!", "I feel so loved.", "That means a lot to me.", "I'm happy you're here."];
+        showBubble(_praiseTexts[Math.floor(Math.random() * _praiseTexts.length)]);
+        return;
+      }
+      // 4. Scold — only when answering a misbehaviour attention call
+      if (events.indexOf("scolded") !== -1 &&
+          events.indexOf("attention_call_answered_misbehaviour") !== -1) {
+        var _scoldTexts = ["Okay okay, I'll behave...", "Sorry... I'll stop.", "I didn't mean it...", "Okay! I'll be good!"];
+        showBubble(_scoldTexts[Math.floor(Math.random() * _scoldTexts.length)]);
+        return;
+      }
+      // 5. Commit activity
       if (events.indexOf("commit_activity_rewarded") !== -1) {
         showBubble(humaniseEvent("commit_activity_rewarded", _n));
         return;
       }
-      // 4. Save / code activity
+      // 6. Save / code activity
       if (events.indexOf("code_activity_rewarded") !== -1) {
         showBubble(humaniseEvent("code_activity_rewarded", _n));
       }

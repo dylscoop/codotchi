@@ -489,12 +489,12 @@ Selected events cause the pet to speak via a canvas-drawn speech bubble that fol
 | Praise (attention call) | `praised` + `attention_call_answered_gift` or `_answered_unhappiness` | `[x]` | Random pick from 4 praise texts |
 
 Bubble behaviour:
-- Text reuses `humaniseEvent()` strings (same as event log) for most triggers; inline random-pick arrays for sleep/praise/scold
-- One bubble at a time — new events replace the current bubble immediately
-- Bubble stays visible for 6 s (one tick interval), then fades out over 0.5 s
-- Last bubble persists indefinitely until a new one arrives or it finishes fading
-- Sleep bubble has `expiresAt = Infinity` — it persists until explicitly cleared on wake
-- Praise/scold bubbles only fire when the action is in direct response to an active attention call
+- Text reuses `humaniseEvent()` strings for most triggers; inline random-pick arrays for sleep/praise/scold
+- One bubble at a time — new events replace the current bubble immediately (except sleep bubble, which cannot be overwritten)
+- Bubble stays visible for 6 s then fades out over 0.5 s; sleep bubble has `fadeOutMs = Infinity` — never fades, rendered at full alpha until explicitly cleared on wake
+- All bubbles suppressed while `petIsSleeping === true` (set on `fell_asleep`, cleared on `woke_up`/`auto_woke_up`)
+- Priority order (non-sleeping only): attention calls > minigame > praise > scold > commit > save
+- Praise/scold texts are from Codotchi's perspective (e.g. `"I feel so loved."`, `"Sorry... I'll stop."`)
 - Bubble follows the pet horizontally; flips below the pet if too close to canvas top edge
 - Rendered on `#sprite-canvas` via Canvas 2D API; also works in reduced-motion mode via `drawStaticPet`
 

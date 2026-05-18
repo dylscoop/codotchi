@@ -1268,3 +1268,16 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 **Fix:** Added `DECAY_TICK_INTERVAL = 2` to `Constants.kt` (calibrated for PyCharm's 6s tick to approximate VS Code's 9s/pt baseline). Rewrote the awake decay block in `GameEngine.kt` to compute per-stat tick intervals (`hungerInterval`, `happinessInterval`, `energyInterval`) and gate each stat's decay on `ticksAlive % interval == 0`, with idle stretching the interval by `IDLE_DECAY_TICK_DIVISOR`. The `decayThisTick` gate is retained for aging only, matching VS Code exactly.
 
 > **Superseded (v1.20.0):** `TICK_INTERVAL_SECONDS` in PyCharm was corrected from `6` to `3` (matching VS Code). `DECAY_TICK_INTERVAL` is now `6` on both platforms (a further 2× slowdown for all stat decay). `AGING_TICK_INTERVAL = 3` was introduced to decouple aging from stat decay. The `DECAY_TICK_INTERVAL = 2` value set by this fix no longer exists.
+
+---
+
+## BUGFIX-103 — OpenCode stuck/frozen after PyCharm artifact rebuild
+
+**Status:** Fixed (branch `fix/opencode-stuck-after-pycharm-build`)
+**Files:** `.opencode/skills/git-workflow/SKILL.md`, `opencode-codotchi/bin/install.js`
+
+**Problem:** After `gradlew buildPlugin` completed successfully, OpenCode would freeze instead of continuing the release flow. The `git-workflow` skill's post-build rule said "keep going until all todos are done or an explicit user decision is required (push, merge, tag, release)" — but it did not list `node bin/install.js --install` as an explicit stop point. The `release-checklist` skill correctly gates that step on user confirmation, but the "keep going" rule's wording created ambiguity: OpenCode couldn't decide whether to stop and ask or continue automatically, and froze mid-session.
+
+A secondary correctness bug was also present: `install.js` had `PLUGIN_VER = "1.2.27"` hardcoded, but the running OpenCode session uses `@opencode-ai/plugin@1.14.19`. On a fresh machine install this would write the wrong (much older) version into `~/.config/opencode/package.json`.
+
+**Fix:** Three changes to `git-workflow/SKILL.md`: (1) Added `node bin/install.js --install` explicitly to the "keep going" rule's stop-point list, making the gate unambiguous. (2) Changed "move directly to the next todo item" / "move on" to "immediately execute the next todo item's command — do not output a status summary" in both the normal post-build rule (step 4) and the pasted-BUILD-SUCCESSFUL path. (3) Removed step 6 ("Wait for the user to explicitly ask for each next step") from the Workflow section entirely, and narrowed step 5 to only fire when ALL todos are complete — with an explicit carve-out that the Workflow stop rule does not apply between intermediate artifact rebuild commits (IDE build → commit → OpenCode zip → commit). The Workflow section's "stop and wait" rule was overriding the post-build "keep going" rule after every intermediate commit, causing the stuck behaviour. Also updated `PLUGIN_VER` in `install.js` from `1.2.27` to `1.14.19` to match the actual running plugin version.
