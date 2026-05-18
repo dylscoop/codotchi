@@ -10,7 +10,7 @@
 | `pycharm/build.gradle.kts` | Version bumped to 1.21.2 |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.21.2 |
 | `opencode-codotchi/package.json` | Version bumped to 1.21.2 |
-| `.opencode/skills/git-workflow/SKILL.md` | Added `node bin/install.js --install` as an explicit user-decision stop-point in the post-build "keep going" rule, preventing OpenCode from freezing mid-session after PyCharm artifact builds |
+| `.opencode/skills/git-workflow/SKILL.md` | (1) Added `node bin/install.js --install` as an explicit user-decision stop-point in the post-build "keep going" rule; (2) Changed "move directly to the next todo item" and "move on" to "immediately execute the next todo item's command" and "do not output a status summary" in both the normal post-build rule and the pasted-BUILD-SUCCESSFUL rule — eliminating the ambiguity that caused OpenCode to stop and report status instead of continuing |
 | `opencode-codotchi/bin/install.js` | Fixed `PLUGIN_VER` from stale `1.2.27` to correct `1.14.19` to match the running OpenCode plugin version |
 
 ---

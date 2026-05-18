@@ -85,7 +85,7 @@ After any **artifact build** command completes (VS Code `vsce package`, PyCharm 
 1. **Verify the artifact version** — immediately after the build command returns, run a directory listing to confirm the artifact file exists and its filename contains the correct version number (e.g. `Get-ChildItem vscode/codotchi-*.vsix` and `Get-ChildItem pycharm/build/distributions/*.zip`). If the filename does not match the expected version, stop and report the mismatch before committing anything.
 2. **List the artifact files produced** — state the exact filename and path of every artifact that was just built.
 3. **Commit the artifacts immediately** as `chore: rebuild artifacts for vX.Y.Z` — do not wait for the user to ask. The commit is already implied by the release flow. Stage and commit all three artifact files in a single commit.
-4. **Continue immediately** — after the commit succeeds, move directly to the next todo item. Do not stop and say "build succeeded" and wait. Do not ask "shall I continue?" or "keep going?" Keep going until all todos are done or an explicit user decision is required (push, merge, tag, release, or reinstalling the OpenCode plugin via `node bin/install.js --install` — that step always requires explicit user confirmation before running; stop and ask, then wait for the answer).
+4. **Continue immediately** — after the commit succeeds, immediately execute the next todo item's command. Do not output a status summary. Do not stop and say "build succeeded" and wait. Do not ask "shall I continue?" or "keep going?" The next tool call must be the command for the next todo item — not a message to the user. Keep going until all todos are done or an explicit user decision is required (push, merge, tag, release, or reinstalling the OpenCode plugin via `node bin/install.js --install` — that step always requires explicit user confirmation before running; stop and ask, then wait for the answer).
 
 Never silently halt after a build. Never leave artifact files uncommitted. Never wait for the user to say "keep going" after a successful build.
 
@@ -96,9 +96,9 @@ The build may take longer than the tool timeout, causing the call to be aborted 
 1. **Immediately** run `Get-ChildItem` to verify the artifact exists at the expected path and version.
 2. List the artifact filename and path.
 3. Commit the artifact as `chore: rebuild artifacts for vX.Y.Z`.
-4. Continue to the next todo item without pausing.
+4. **Immediately execute the next todo item's command** — do not output a status summary, do not say "build succeeded", do not pause to report back to the user. The next command must be the very next thing you do after the commit succeeds. Treat pasted BUILD SUCCESSFUL exactly the same as a tool call that returned BUILD SUCCESSFUL: the session never paused, so neither should you.
 
-**Do not wait to be told to continue. Do not ask "shall I proceed?". Receipt of BUILD SUCCESSFUL output — by any means — is the trigger to verify, commit, and move on.**
+**Do not wait to be told to continue. Do not ask "shall I proceed?". Do not write a summary message and wait. Receipt of BUILD SUCCESSFUL output — by any means — is the trigger to verify, commit, and immediately run the next command.**
 
 > **Root cause of version mismatch:** If the version in `package.json` / `build.gradle.kts` was not bumped before building, the artifact will carry the old version number. Always bump versions in all four files (`vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`) and commit the bump **before** running any build.
 
