@@ -1,6 +1,24 @@
 # Version History
 
-## v1.23.1 — current
+## v1.23.2 — current
+
+### Changes from v1.23.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.2 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.2 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.2 |
+| `vscode/media/sidebar.js` | `drawBackground()`: plain mode now draws the same 8px two-layer ground strip (`#2a2a3a` base, `#3a3a4e` highlight) instead of returning with nothing drawn; all 7 floor-Y offsets changed from `- 4` to `- 12` so pet/poos/gift/snacks/staticY sit on top of the strip |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+| `vscode/codotchi-1.23.2.vsix` | Rebuilt VS Code artifact for v1.23.2 |
+| `pycharm/build/distributions/pycharm-codotchi-1.23.2.zip` | Rebuilt PyCharm artifact for v1.23.2 |
+| `opencode-codotchi/opencode-codotchi-1.23.2.zip` | Rebuilt OpenCode artifact for v1.23.2 |
+
+---
+
+## v1.23.1 — previous
 
 ### Changes from v1.23.0
 

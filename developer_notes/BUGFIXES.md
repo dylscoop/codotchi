@@ -1281,3 +1281,16 @@ A `watchBootstrap` `setInterval` (10 s) retries `startWatcher()` if the file did
 A secondary correctness bug was also present: `install.js` had `PLUGIN_VER = "1.2.27"` hardcoded, but the running OpenCode session uses `@opencode-ai/plugin@1.14.19`. On a fresh machine install this would write the wrong (much older) version into `~/.config/opencode/package.json`.
 
 **Fix:** Three changes to `git-workflow/SKILL.md`: (1) Added `node bin/install.js --install` explicitly to the "keep going" rule's stop-point list, making the gate unambiguous. (2) Changed "move directly to the next todo item" / "move on" to "immediately execute the next todo item's command — do not output a status summary" in both the normal post-build rule (step 4) and the pasted-BUILD-SUCCESSFUL path. (3) Removed step 6 ("Wait for the user to explicitly ask for each next step") from the Workflow section entirely, and narrowed step 5 to only fire when ALL todos are complete — with an explicit carve-out that the Workflow stop rule does not apply between intermediate artifact rebuild commits (IDE build → commit → OpenCode zip → commit). The Workflow section's "stop and wait" rule was overriding the post-build "keep going" rule after every intermediate commit, causing the stuck behaviour. Also updated `PLUGIN_VER` in `install.js` from `1.2.27` to `1.14.19` to match the actual running plugin version.
+
+---
+
+## BUGFIX-104 — Pet and floor items sink into the ground strip
+
+**Status:** Fixed (v1.23.2, branch `fix/pet-floor-above-ground`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** v1.23.1 introduced an 8px two-layer ground strip whose top edge is at `H - 12`. All floor-Y positions used offset `- 4` (e.g. `H - 4 - pH`), placing the bottom of every floor item 4px above the canvas bottom — which is 8px *inside* the strip. The pet, poos, gift box, and snacks all appeared to be partially buried in the ground.
+
+Additionally, `plain` background mode returned immediately from `drawBackground()` without drawing any ground strip, so the pet appeared to float on an empty canvas with no visible floor.
+
+**Fix:** Changed all 7 floor-Y offsets per file from `- 4` to `- 12` (14 edits total across both files), aligning the bottom of every floor item with the top of the strip. Replaced the `plain` early-return with a draw block that renders the same 8px two-layer strip using neutral dark colours (`#2a2a3a` base, `#3a3a4e` highlight), giving plain mode a consistent visible floor.
