@@ -12,6 +12,8 @@
 | `opencode-codotchi/package.json` | Version bumped to 1.23.3 |
 | `pycharm/src/main/resources/META-INF/codotchi_icon.svg` | Redrawn to match sidebar egg: portrait oval (`#3B3B3B`) with two `2×2` white square pixel-dot eyes; mouth rect removed |
 | `pycharm/src/main/resources/META-INF/codotchi_icon_dark.svg` | Same but light oval (`#DDDDDD`) with dark (`#2B2B2B`) pixel-dot eyes |
+| `vscode/media/sidebar.js` | Removed poop counter (`"X poops"`) from the info line below the stat bars |
+| `pycharm/src/main/resources/webview/sidebar.js` | Same (IDE parity) |
 | `vscode/codotchi-1.23.3.vsix` | Rebuilt VS Code artifact for v1.23.3 |
 | `pycharm/build/distributions/pycharm-codotchi-1.23.3.zip` | Rebuilt PyCharm artifact for v1.23.3 |
 | `opencode-codotchi/opencode-codotchi-1.23.3.zip` | Rebuilt OpenCode artifact for v1.23.3 |
