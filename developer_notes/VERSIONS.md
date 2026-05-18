@@ -1,6 +1,21 @@
 # Version History
 
-## v1.21.2 — current
+## v1.22.0 — current
+
+### Changes from v1.21.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.22.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.22.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.22.0 |
+| `opencode-codotchi/package.json` | Version bumped to 1.22.0 |
+| `vscode/media/sidebar.js` | Added `petIsSleeping` flag; sleep bubble now uses `fadeOutMs = Infinity` so it never fades; `drawSpeechBubble` respects `Infinity` and renders at full alpha permanently; all other bubbles suppressed while sleeping; praise/scold bubbles moved into priority IIFE (praise > scold > commit > save); bubble texts updated to Codotchi's perspective |
+| `pycharm/src/main/resources/webview/sidebar.js` | Same changes mirrored for IDE parity |
+
+---
+
+## v1.21.2 — previous
 
 ### Changes from v1.21.1
 
