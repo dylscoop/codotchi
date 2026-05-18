@@ -85,7 +85,7 @@ After any **artifact build** command completes (VS Code `vsce package`, PyCharm 
 1. **Verify the artifact version** — immediately after the build command returns, run a directory listing to confirm the artifact file exists and its filename contains the correct version number (e.g. `Get-ChildItem vscode/codotchi-*.vsix` and `Get-ChildItem pycharm/build/distributions/*.zip`). If the filename does not match the expected version, stop and report the mismatch before committing anything.
 2. **List the artifact files produced** — state the exact filename and path of every artifact that was just built.
 3. **Commit the artifacts immediately** as `chore: rebuild artifacts for vX.Y.Z` — do not wait for the user to ask. The commit is already implied by the release flow. Stage and commit all three artifact files in a single commit.
-4. **Continue immediately** — after the commit succeeds, move directly to the next todo item. Do not stop and say "build succeeded" and wait. Do not ask "shall I continue?" or "keep going?" Keep going until all todos are done or an explicit user decision is required (push, merge, tag, release).
+4. **Continue immediately** — after the commit succeeds, move directly to the next todo item. Do not stop and say "build succeeded" and wait. Do not ask "shall I continue?" or "keep going?" Keep going until all todos are done or an explicit user decision is required (push, merge, tag, release, or reinstalling the OpenCode plugin via `node bin/install.js --install` — that step always requires explicit user confirmation before running; stop and ask, then wait for the answer).
 
 Never silently halt after a build. Never leave artifact files uncommitted. Never wait for the user to say "keep going" after a successful build.
 

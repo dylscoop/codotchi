@@ -1,6 +1,21 @@
 # Version History
 
-## v1.21.1 — current
+## v1.21.2 — current
+
+### Changes from v1.21.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.21.2 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.21.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.21.2 |
+| `opencode-codotchi/package.json` | Version bumped to 1.21.2 |
+| `.opencode/skills/git-workflow/SKILL.md` | Added `node bin/install.js --install` as an explicit user-decision stop-point in the post-build "keep going" rule, preventing OpenCode from freezing mid-session after PyCharm artifact builds |
+| `opencode-codotchi/bin/install.js` | Fixed `PLUGIN_VER` from stale `1.2.27` to correct `1.14.19` to match the running OpenCode plugin version |
+
+---
+
+## v1.21.1 — previous
 
 ### Changes from v1.21.0
 

@@ -67,7 +67,7 @@ const pluginFiles = [
 
 const configPkgDest = path.join(opencodeDir, "package.json");
 const PLUGIN_DEP    = "@opencode-ai/plugin";
-const PLUGIN_VER    = "1.2.27";
+const PLUGIN_VER    = "1.14.19";
 
 let anyError = false;
 
