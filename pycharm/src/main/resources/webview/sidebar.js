@@ -1229,11 +1229,35 @@
       pushReaction("fell_asleep",   nowMs);
       // Persist the X position so it survives a webview reload while sleeping
       try { localStorage.setItem("codotchi_sleepX", String(Math.round(petX !== null ? petX : 0))); } catch (e) {}
+      // Sleep bubble — picks one of 4 options at random, persists until wake
+      (function () {
+        var _sleepTexts = ["Zzz...", "z z Z Z...", "*snoozing*", state.name + " is asleep. Zzz..."];
+        showBubble(_sleepTexts[Math.floor(Math.random() * _sleepTexts.length)]);
+        if (activeBubble) { activeBubble.expiresAt = Infinity; }
+      })();
     }
     if (events.indexOf("woke_up")       !== -1 ||
-        events.indexOf("auto_woke_up")  !== -1) { pushReaction("woke_up",       nowMs); }
-    if (events.indexOf("scolded")       !== -1) { pushReaction("scolded",       nowMs); }
-    if (events.indexOf("praised")       !== -1) { pushReaction("praised",       nowMs); }
+        events.indexOf("auto_woke_up")  !== -1) {
+      activeBubble = null; // clear the persistent sleep bubble
+      pushReaction("woke_up",       nowMs);
+    }
+    if (events.indexOf("scolded")       !== -1) {
+      pushReaction("scolded", nowMs);
+      // Scold bubble — only when answering a misbehaviour attention call
+      if (events.indexOf("attention_call_answered_misbehaviour") !== -1) {
+        var _scoldTexts = ["Hey! Behave yourself, " + state.name + "!", "That's not okay, " + state.name + ".", state.name + "! Stop that right now.", "No more of that, " + state.name + "!"];
+        showBubble(_scoldTexts[Math.floor(Math.random() * _scoldTexts.length)]);
+      }
+    }
+    if (events.indexOf("praised")       !== -1) {
+      pushReaction("praised", nowMs);
+      // Praise bubble — only when answering a gift or unhappiness attention call
+      if (events.indexOf("attention_call_answered_gift") !== -1 ||
+          events.indexOf("attention_call_answered_unhappiness") !== -1) {
+        var _praiseTexts = ["Yay! Good job, " + state.name + "!", state.name + " is so happy!", "You're the best, " + state.name + "!", state.name + " loves the attention!"];
+        showBubble(_praiseTexts[Math.floor(Math.random() * _praiseTexts.length)]);
+      }
+    }
     if (events.indexOf("became_sick")   !== -1) { pushReaction("became_sick",   nowMs); }
     if (events.indexOf("cured")         !== -1) { pushReaction("healed",        nowMs); }
     if (events.indexOf("pooped")        !== -1) { pushReaction("poop_appeared", nowMs); }
