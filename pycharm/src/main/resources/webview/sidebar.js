@@ -1148,7 +1148,6 @@
     setBar(barEnergy,    state.energy);
     setHealthBar(barHealth, state.health);
 
-    const poopStr = state.poops === 1 ? "1 poop" : state.poops + " poops";
     const typeLabel = (state.petType || "codeling");
     const typeLabelCap = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
     const spriteLabel = (state.spriteType && state.spriteType !== "classic")
@@ -1158,8 +1157,7 @@
       "Age: " + formatAge(state.ageDays) + "  |  " +
       state.stage            + "  |  " +
       (spriteLabel ? spriteLabel + "  |  " : "") +
-      typeLabelCap           + "  |  " +
-      poopStr;
+      typeLabelCap;
 
     // Update sleep/wake button label to match current state
     const sleepWakeBtn = document.getElementById("btn-sleep-wake");
