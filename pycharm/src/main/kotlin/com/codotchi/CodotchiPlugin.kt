@@ -1,6 +1,7 @@
 package com.codotchi
 
 import com.codotchi.engine.*
+import com.codotchi.getCustomCharacterByPasscode
 import com.intellij.ide.DataManager
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -382,10 +383,14 @@ class CodotchiPlugin : Disposable {
                 }
 
                 "new_game" -> {
-                    val name    = (message["name"]    as? String) ?: "Codotchi"
+                    val rawName = (message["name"]    as? String) ?: "Codotchi"
                     val petType = (message["petType"] as? String) ?: "codeling"
                     val color   = (message["color"]   as? String) ?: "neon"
-                    nextState = createPet(name, petType, color)
+                    val settings = service<CodotchiSettings>()
+                    val customChar = getCustomCharacterByPasscode(settings.characterPasscode)
+                    val resolvedName = customChar?.forcedName ?: rawName
+                    val unlockedCharacter = customChar?.spriteType
+                    nextState = createPet(resolvedName, petType, color, unlockedCharacter)
                     mealsGivenThisCycle = 0
                 }
 
@@ -532,9 +537,10 @@ class CodotchiPlugin : Disposable {
             Triple(currentState, mealsGivenThisCycle, currentHighScore)
         }
         val devMode = lastDevMode
+        val unlockedCharacter2 = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.spriteType
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2) }
                 statusWidget?.update(state)
             }
         }
@@ -674,6 +680,7 @@ class CodotchiPlugin : Disposable {
             Triple(currentState, mealsGivenThisCycle, currentHighScore)
         }
         val devMode = lastDevMode
+        val unlockedCharacter = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.spriteType
 
         // Persist on every broadcast so crashes don't lose state
         val persistence = service<CodotchiPersistence>()
@@ -711,7 +718,7 @@ class CodotchiPlugin : Disposable {
         // Fire IDE notifications for attention_call_* events (only when mechanic is enabled)
         if (state != null && service<CodotchiSettings>().enableAttentionCalls) {
             for (event in state.events) {
-                val msg = attentionCallMessage(state.name, event) ?: continue
+                val msg = attentionCallMessage(state.name, event, state.spriteType) ?: continue
                 fireAttentionNotification(msg)
             }
         }
@@ -725,7 +732,7 @@ class CodotchiPlugin : Disposable {
 
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter) }
                 statusWidget?.update(state)
             }
         }
@@ -733,16 +740,19 @@ class CodotchiPlugin : Disposable {
 
     // ── Attention-call notifications ───────────────────────────────────────
 
-    private fun attentionCallMessage(petName: String, event: String): String? = when (event) {
-        "attention_call_hunger"          -> "$petName is hungry!"
-        "attention_call_unhappiness"     -> "$petName is feeling sad!"
-        "attention_call_poop"            -> "$petName made a mess and wants you to clean it up!"
-        "attention_call_sick"            -> "$petName is sick!"
-        "attention_call_low_energy"      -> "$petName is exhausted!"
-        "attention_call_misbehaviour"    -> "$petName is misbehaving!"
-        "attention_call_gift"            -> "$petName brought you a gift!"
-        "attention_call_critical_health" -> "$petName's health is critical!"
-        else                             -> null
+    private fun attentionCallMessage(petName: String, event: String, spriteType: String? = null): String? {
+        val customChar = spriteType?.let { getCustomCharacterBySpriteType(it) }
+        return when (event) {
+            "attention_call_hunger"          -> "$petName is hungry!"
+            "attention_call_unhappiness"     -> "$petName is feeling sad!"
+            "attention_call_poop"            -> "$petName made a mess and wants you to clean it up!"
+            "attention_call_sick"            -> "$petName is sick!"
+            "attention_call_low_energy"      -> "$petName is exhausted!"
+            "attention_call_misbehaviour"    -> "$petName is misbehaving!"
+            "attention_call_gift"            -> customChar?.giftMessage ?: "$petName brought you a gift!"
+            "attention_call_critical_health" -> "$petName's health is critical!"
+            else                             -> null
+        }
     }
 
     private fun fireAttentionNotification(message: String) {

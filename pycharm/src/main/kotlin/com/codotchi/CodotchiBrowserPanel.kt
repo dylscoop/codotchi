@@ -84,10 +84,11 @@ class CodotchiBrowserPanel(
      * Push a full state snapshot + mealsGivenThisCycle + highScore + devMode to the webview.
      * Must be called on the EDT (JBCefBrowser.executeJavaScript is EDT-safe).
      */
-    fun postState(state: PetState, mealsGivenThisCycle: Int, highScore: HighScore?, devMode: Boolean) {
+    fun postState(state: PetState, mealsGivenThisCycle: Int, highScore: HighScore?, devMode: Boolean, unlockedCharacter: String? = null) {
         val stateJson     = gson.toJson(state)
         val highScoreJson = if (highScore != null) gson.toJson(highScore) else "null"
-        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode}"""
+        val unlockedCharJson = if (unlockedCharacter != null) "\"$unlockedCharacter\"" else "null"
+        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson}"""
         val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
     }
@@ -111,9 +112,10 @@ class CodotchiBrowserPanel(
         val petSize          = settings?.petSize ?: "medium"
         val background       = settings?.background ?: "ordered"
 
-        val cssText             = loadResource("/webview/sidebar.css")
-        val spriteConstantsText = loadResource("/webview/spriteConstants.js")
-        val spritesText         = loadResource("/webview/sprites.js")
+        val cssText                  = loadResource("/webview/sidebar.css")
+        val spriteConstantsText      = loadResource("/webview/spriteConstants.js")
+        val customCharactersText     = loadResource("/webview/customCharacters.js")
+        val spritesText              = loadResource("/webview/sprites.js")
         val jsText              = loadResource("/webview/sidebar.js")
         var html        = loadResource("/webview/sidebar.html")
 
@@ -156,13 +158,15 @@ class CodotchiBrowserPanel(
             $jsText
         """.trimIndent()
 
-        // Replace <script src="sprites.js"></script> with spriteConstants.js
-        // inlined first, then sprites.js — constants must be defined before
-        // renderSpriteGrid is called.
+        // Replace <script src="sprites.js"></script> with spriteConstants.js, customCharacters.js,
+        // and sprites.js inlined in order — constants must be defined before renderSpriteGrid is called.
         html = html.replace(
             """<script src="sprites.js"></script>""",
-            "<script>\n$spriteConstantsText\n</script>\n<script>\n$spritesText\n</script>"
+            "<script>\n$spriteConstantsText\n</script>\n<script>\n$customCharactersText\n</script>\n<script>\n$spritesText\n</script>"
         )
+
+        // Replace {{customCharactersUri}} placeholder (VS Code uses a URI; PyCharm already inlined above)
+        html = html.replace("""<script src="{{customCharactersUri}}"></script>""", "")
 
         // Replace <script src="sidebar.js"></script>
         html = html.replace(

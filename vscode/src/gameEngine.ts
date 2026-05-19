@@ -924,7 +924,7 @@ const ZODIAC_ANIMALS = [
 /**
  * All valid sprite type keys.
  */
-export type SpriteType = typeof ZODIAC_ANIMALS[number] | "classic" | "cat";
+export type SpriteType = typeof ZODIAC_ANIMALS[number] | "classic" | "cat" | "tim";
 
 /**
  * Sample a random sprite type at pet creation.
@@ -948,16 +948,20 @@ export function randomSpriteType(): string {
  *
  * @param name - The player-chosen name for the pet.
  * @param petType - One of the valid pet type identifiers.
+ * @param unlockedCharacter - spriteType of a custom character to force (e.g. "tim"), or null for random.
+ *   When provided, the forced name must be resolved by the caller or registry before passing `name`.
  * @returns A freshly initialised PetState.
  */
-export function createPet(name: string, petType: string): PetState {
+export function createPet(name: string, petType: string, unlockedCharacter: string | null = null): PetState {
   const modifiers = PET_TYPE_MODIFIERS[petType] ?? PET_TYPE_MODIFIERS.codeling;
   const baseHealth = modifiers.baseHealth;
+  const resolvedName   = name;
+  const resolvedSprite = unlockedCharacter ?? randomSpriteType();
 
   const partial: Omit<PetState, "mood" | "sprite" | "careScore"> = {
-    name,
+    name: resolvedName,
     petType,
-    spriteType: randomSpriteType(),
+    spriteType: resolvedSprite,
     hunger: 50,
     happiness: 50,
     discipline: 50,

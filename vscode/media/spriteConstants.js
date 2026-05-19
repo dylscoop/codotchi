@@ -39,6 +39,7 @@
     dog:      { primary: "#c8853a", secondary: "#3d2008", accent: "#8b5320", background: "#1a1a1a" },
     pig:      { primary: "#f8bbd0", secondary: "#e91e63", accent: "#f48fb1", background: "#1a1a1a" },
     snake:    { primary: "#558b2f", secondary: "#ffeb3b", accent: "#33691e", background: "#0d1a0d" },
+    tim:      { primary: "#f5c5a3", secondary: "#4a90d9", accent: "#2c3e50", background: "#1a1a2e" },
   };
 
   /** Fallback palette used when spriteType is not found in ANIMAL_PALETTES. */
@@ -67,7 +68,7 @@
 
   // ── Sprite orientation ────────────────────────────────────────────────────
   /** Sprite types that use a portrait (32 cols × 48 rows) grid. */
-  var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1 };
+  var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1, tim: 1 };
 
   /**
    * Return the height/width ratio for a given spriteType.

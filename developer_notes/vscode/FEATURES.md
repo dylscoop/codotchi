@@ -396,7 +396,7 @@ pet walks in front of them).
 | Item | Trigger | Pixel art | Cleared when | Status |
 |------|---------|-----------|-------------|--------|
 | Gift box | `activeAttentionCall === "gift"` transitions in | 8×7 px at 2×, red body + gold ribbon/bow | Call dismissed (answered or expired) | `[x]` |
-| Snack food (candy/bone, random) | `fed_snack` event | candy: 4×4 at 2×; bone: 6×5 at 2× | Pet walks to it and eats it | `[x]` |
+| Snack food (tea mug) | `fed_snack` event | tea mug: 6×7 at 2×, brown body with steam | Pet walks to it and eats it | `[x]` |
 
 Both item types use the same `H - 4 - itemHeight` ground Y as poo sprites.
 When snack items are present the pet's normal idle-wandering movement is
@@ -660,6 +660,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.statusBarEnabled` | boolean | `true` | Show pet in VS Code status bar | `[ ]` |
 | `gotchi.tickIntervalSeconds` | number | `6` | Game tick rate (lower = faster game time; min 1) | `[ ]` |
 | `gotchi.developerPasscode` | string | `""` | Developer passcode — also requires `gotchi.devModeEnabled = true` to activate dev mode | `[x]` |
+| `codotchi.characterPasscode` | string | `""` | Character passcode — enter the secret passcode to unlock a hidden character on new game | `[x]` |
 | `gotchi.devModeAgingMultiplier` | integer | `10` | Aging speed multiplier when developer mode is active | `[x]` |
 | `gotchi.devModeEnabled` | boolean | `false` | Must be `true` AND passcode must match to activate dev mode | `[x]` |
 | `gotchi.devModeHealthFloor` | integer | `1` | Minimum health in dev mode (0–100); set to 0 to allow pet death in dev mode | `[x]` |

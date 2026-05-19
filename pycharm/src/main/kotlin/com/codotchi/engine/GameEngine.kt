@@ -213,14 +213,15 @@ private fun answerAttentionCall(state: PetState, callType: String): AnsweredCall
 // Factory
 // ---------------------------------------------------------------------------
 
-fun createPet(name: String, petType: String, color: String): PetState {
+fun createPet(name: String, petType: String, color: String, unlockedCharacter: String? = null): PetState {
     val modifiers = PET_TYPE_MODIFIERS[petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
+    val resolvedSprite = unlockedCharacter ?: randomSpriteType()
     return withDerivedFields(
         PetState(
             name               = name,
             petType            = petType,
             color              = color,
-            spriteType         = randomSpriteType(),
+            spriteType         = resolvedSprite,
             hunger             = 50,
             happiness          = 50,
             discipline         = 50,

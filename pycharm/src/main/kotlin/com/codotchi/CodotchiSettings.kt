@@ -19,6 +19,7 @@ import com.intellij.openapi.components.*
  *  - [petSize]                : "small" | "medium" | "large" — sprite display size (default "medium")
  *  - [devModeEnabled]         : must be true (along with the correct passcode) to activate dev mode (default false)
  *  - [developerPasscode]      : developer passcode (combined with devModeEnabled) to activate developer mode (default "")
+ *  - [characterPasscode]      : hidden character passcode — enter to unlock a secret character on next hatch (default "")
  *  - [devModeAgingMultiplier] : aging speed multiplier in dev mode (default 10)
  *  - [devModeHealthFloor]     : minimum health enforced in dev mode; default 1 (pet cannot die); set to 0 to allow death
  *  - [aiMode]                 : suppress document-change, cursor-movement, and tab-switch idle resets (default false)
@@ -50,6 +51,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var petSize: String = "medium"   // "small" | "medium" | "large"
         var devModeEnabled: Boolean = false
         var developerPasscode: String = ""
+        var characterPasscode: String = ""
         var devModeAgingMultiplier: Int = 10
         var devModeHealthFloor: Int = 1
         var aiMode: Boolean = false
@@ -116,6 +118,10 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var developerPasscode: String
         get() = _state.developerPasscode
         set(v) { _state.developerPasscode = v }
+
+    var characterPasscode: String
+        get() = _state.characterPasscode
+        set(v) { _state.characterPasscode = v }
 
     var devModeAgingMultiplier: Int
         get() = _state.devModeAgingMultiplier

@@ -37,6 +37,7 @@ class CodotchiConfigurable : Configurable {
     private var petSizeCombo:              JComboBox<String>?  = null
     private var devModeEnabledCheck:        JCheckBox?          = null
     private var developerPasscodeField:    JTextField?         = null
+    private var characterPasscodeField:    JTextField?         = null
     private var devModeAgingSpinner:       JSpinner?           = null
     private var devModeHealthFloorSpinner: JSpinner?           = null
     private var aiModeCheck:                    JCheckBox?          = null
@@ -62,6 +63,7 @@ class CodotchiConfigurable : Configurable {
         val petSizeDropdown = JComboBox(arrayOf("Small", "Medium", "Large"))
         val devModeEnabledCheckbox = JCheckBox("Enable developer mode")
         val devPasscodeField = JTextField(10)
+        val charPasscodeField = JTextField(10)
         val devAgingSpinner = JSpinner(SpinnerNumberModel(10, 1, 1000, 1))
         val devHealthFloorSpinner = JSpinner(SpinnerNumberModel(1, 0, 100, 1))
         val aiModeCheckbox = JCheckBox("AI mode (suppress doc-change / cursor / tab-switch idle resets)")
@@ -84,6 +86,7 @@ class CodotchiConfigurable : Configurable {
         petSizeCombo             = petSizeDropdown
         devModeEnabledCheck      = devModeEnabledCheckbox
         developerPasscodeField   = devPasscodeField
+        characterPasscodeField   = charPasscodeField
         devModeAgingSpinner      = devAgingSpinner
         devModeHealthFloorSpinner = devHealthFloorSpinner
         aiModeCheck                    = aiModeCheckbox
@@ -207,8 +210,17 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devPasscodeField, gbc)
 
-        // Row 13 — Dev mode aging multiplier
+        // Row 13 — Character passcode
         gbc.gridx = 0; gbc.gridy = 13
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Character passcode:"), gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(charPasscodeField, gbc)
+
+        // Row 14 — Dev mode aging multiplier
+        gbc.gridx = 0; gbc.gridy = 14
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Dev mode aging multiplier:"), gbc)
 
@@ -216,8 +228,8 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devAgingSpinner, gbc)
 
-        // Row 14 — Dev mode health floor
-        gbc.gridx = 0; gbc.gridy = 14
+        // Row 15 — Dev mode health floor
+        gbc.gridx = 0; gbc.gridy = 15
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(JBLabel("Dev mode health floor:"), gbc)
 
@@ -225,44 +237,44 @@ class CodotchiConfigurable : Configurable {
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
         panel.add(devHealthFloorSpinner, gbc)
 
-        // Row 15 — AI mode
-        gbc.gridx = 0; gbc.gridy = 15; gbc.gridwidth = 2
+        // Row 16 — AI mode
+        gbc.gridx = 0; gbc.gridy = 16; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(aiModeCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 16 — Idle reset: document changes
-        gbc.gridx = 0; gbc.gridy = 16; gbc.gridwidth = 2
+        // Row 17 — Idle reset: document changes
+        gbc.gridx = 0; gbc.gridy = 17; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetDocChangeCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 17 — Idle reset: cursor movement
-        gbc.gridx = 0; gbc.gridy = 17; gbc.gridwidth = 2
+        // Row 18 — Idle reset: cursor movement
+        gbc.gridx = 0; gbc.gridy = 18; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetCursorCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 18 — Idle reset: tab switch
-        gbc.gridx = 0; gbc.gridy = 18; gbc.gridwidth = 2
+        // Row 19 — Idle reset: tab switch
+        gbc.gridx = 0; gbc.gridy = 19; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetTabCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 19 — Idle reset: window focus
-        gbc.gridx = 0; gbc.gridy = 19; gbc.gridwidth = 2
+        // Row 20 — Idle reset: window focus
+        gbc.gridx = 0; gbc.gridy = 20; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetFocusCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Row 20 — Idle reset: mouse movement
-        gbc.gridx = 0; gbc.gridy = 20; gbc.gridwidth = 2
+        // Row 21 — Idle reset: mouse movement
+        gbc.gridx = 0; gbc.gridy = 21; gbc.gridwidth = 2
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(idleResetMouseCheckbox, gbc)
         gbc.gridwidth = 1
 
         // Push content to the top
-        gbc.gridx = 0; gbc.gridy = 21; gbc.gridwidth = 2
+        gbc.gridx = 0; gbc.gridy = 22; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -284,6 +296,7 @@ class CodotchiConfigurable : Configurable {
         val uiPetSize = petSizeIndexToKey(petSizeCombo?.selectedIndex ?: 1)
         val uiDevModeEnabled = devModeEnabledCheck?.isSelected ?: false
         val uiDevPasscode = developerPasscodeField?.text ?: ""
+        val uiCharPasscode = characterPasscodeField?.text ?: ""
         val uiDevAging = (devModeAgingSpinner?.value as? Int) ?: 10
         val uiDevHealthFloor = (devModeHealthFloorSpinner?.value as? Int) ?: 1
         val uiAiMode = aiModeCheck?.isSelected ?: false
@@ -305,6 +318,7 @@ class CodotchiConfigurable : Configurable {
             || uiPetSize != settings.petSize
             || uiDevModeEnabled != settings.devModeEnabled
             || uiDevPasscode != settings.developerPasscode
+            || uiCharPasscode != settings.characterPasscode
             || uiDevAging != settings.devModeAgingMultiplier
             || uiDevHealthFloor != settings.devModeHealthFloor
             || uiAiMode != settings.aiMode
@@ -330,6 +344,7 @@ class CodotchiConfigurable : Configurable {
         settings.petSize                = petSizeIndexToKey(petSizeCombo?.selectedIndex ?: 1)
         settings.devModeEnabled         = devModeEnabledCheck?.isSelected ?: false
         settings.developerPasscode      = developerPasscodeField?.text ?: ""
+        settings.characterPasscode      = characterPasscodeField?.text ?: ""
         settings.devModeAgingMultiplier = (devModeAgingSpinner?.value as? Int) ?: 10
         settings.devModeHealthFloor     = (devModeHealthFloorSpinner?.value as? Int) ?: 1
         settings.aiMode                    = aiModeCheck?.isSelected ?: false
@@ -357,6 +372,7 @@ class CodotchiConfigurable : Configurable {
         petSizeCombo?.selectedIndex             = petSizeKeyToIndex(settings.petSize)
         devModeEnabledCheck?.isSelected         = settings.devModeEnabled
         developerPasscodeField?.text            = settings.developerPasscode
+        characterPasscodeField?.text            = settings.characterPasscode
         devModeAgingSpinner?.value              = settings.devModeAgingMultiplier
         devModeHealthFloorSpinner?.value        = settings.devModeHealthFloor
         aiModeCheck?.isSelected                    = settings.aiMode
