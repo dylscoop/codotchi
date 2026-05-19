@@ -1,6 +1,41 @@
 # Version History
 
-## v1.24.0 — current
+## v2.0.0 — current
+
+### Changes from v1.24.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.0.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.0.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.0.0 |
+| `opencode-codotchi/package.json` | Version bumped to 2.0.0 |
+| `vscode/media/customCharacters.js` | Created — custom character registry (webview); Tim entry with passcode `"teawtim"`, forcedName `"Tim"`, custom pat/minigame labels and toasts |
+| `vscode/src/customCharacters.ts` | Created — typed custom character registry with `getCustomCharacterByPasscode` / `getCustomCharacterBySpriteType` |
+| `vscode/package.json` | `codotchi.timPasscode` → `codotchi.characterPasscode` setting |
+| `vscode/src/sidebarProvider.ts` | Reads `characterPasscode`, resolves `unlockedCharacter`; passes to `createPet`; `postState` includes `unlockedCharacter` |
+| `vscode/src/gameEngine.ts` | `createPet` accepts `unlockedCharacter: string \| null`; uses it to override sprite selection |
+| `vscode/src/extension.ts` | `getUnlockedCharacter()` helper; all `postState` calls pass resolved unlocked character |
+| `vscode/media/sidebar.js` | Refactored all `isTim` checks to use `customCharBySpriteType()` registry; `humaniseEvent` takes `state` arg for per-character toast lookup |
+| `vscode/media/sidebar.html` | Added `{{customCharactersUri}}` script tag |
+| `vscode/media/sprites.js` | Tim sprite DEFS (5 stages, 32×48 upright, skin/shirt/hair palette) and `UPRIGHT_TYPES` entry added |
+| `vscode/media/spriteConstants.js` | Tim palette constants; `"tim"` added to `UPRIGHT_TYPES` (fixes `spriteHeightRatio` returning wrong ratio) |
+| `vscode/media/sprite_preview.html` | Canvas height +16 padding; `ALL_ANIMALS` derived from registry + standard animals; no local `UPRIGHT_TYPES` |
+| `vscode/media/sprites_adult.js` | Deleted (unused) |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | Created — `CustomCharacter` data class, `CUSTOM_CHARACTERS` list with Tim, `getCustomCharacterByPasscode` / `getCustomCharacterBySpriteType` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt` | `characterPasscode` field added |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiConfigurable.kt` | "Character passcode" UI row added |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | `createPet` accepts `unlockedCharacter: String?` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | `new_game` resolves `forcedName`/`unlockedCharacter` from registry; `broadcastState` passes `unlockedCharacter` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | `postState` accepts `unlockedCharacter: String?`; `buildHtml` inlines `customCharacters.js` |
+| `pycharm/src/main/resources/webview/customCharacters.js` | Mirrored from VS Code |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from VS Code |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored from VS Code |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | Mirrored from VS Code |
+
+---
+
+## v1.24.0 — previous
 
 ### Changes from v1.23.10
 
