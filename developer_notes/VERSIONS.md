@@ -1,6 +1,21 @@
 # Version History
 
-## v1.23.5 — current
+## v1.23.6 — current
+
+### Changes from v1.23.5
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.6 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.6 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.6 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.6 |
+| `pycharm/src/main/resources/webview/sidebar.js` | Removed 3 orphaned lines after `getTimeOfDay()` (duplicate dusk check + duplicate night return + stray closing brace) that caused the entire IIFE to fail to parse — fixing blank panel, dead buttons, and state-not-loading in PyCharm (BUGFIX-106); also updated morning tint `#a8d8f0` → `#78b8e8`, afternoon tint `#8ecae6` → `#5aaad4`, and halved all season sky tint alphas (spring 0.04→0.02, summer 0.05→0.025, autumn 0.05→0.025, winter 0.06→0.03) |
+| `vscode/media/sidebar.js` | Updated morning tint `#a8d8f0` → `#78b8e8`, afternoon tint `#8ecae6` → `#5aaad4`, halved all season sky tint alphas |
+
+---
+
+## v1.23.5 — previous
 
 ### Changes from v1.23.4
 

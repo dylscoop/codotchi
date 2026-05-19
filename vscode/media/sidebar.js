@@ -1698,8 +1698,8 @@
     var skyColour = "#000000";
     var skyAlpha  = 0.25;
     if (tod === "dawn")      { skyColour = "#e8844a"; skyAlpha = 0.22; }
-    if (tod === "morning")   { skyColour = "#a8d8f0"; skyAlpha = 0.22; }
-    if (tod === "afternoon") { skyColour = "#8ecae6"; skyAlpha = 0.20; }
+    if (tod === "morning")   { skyColour = "#78b8e8"; skyAlpha = 0.22; }
+    if (tod === "afternoon") { skyColour = "#5aaad4"; skyAlpha = 0.20; }
     if (tod === "sunset")    { skyColour = "#e8602a"; skyAlpha = 0.28; }
     if (tod === "dusk")      { skyColour = "#7a3a6e"; skyAlpha = 0.25; }
     if (tod === "night")     { skyColour = "#0a0a2a"; skyAlpha = 0.40; }
@@ -1713,10 +1713,10 @@
     // ── Sky overlay: season tint (C) ──────────────────────────────────────
     var seasonSkyColour = null;
     var seasonSkyAlpha  = 0.0;
-    if (season === "spring") { seasonSkyColour = "#90e060"; seasonSkyAlpha = 0.04; }
-    if (season === "summer") { seasonSkyColour = "#f5e050"; seasonSkyAlpha = 0.05; }
-    if (season === "autumn") { seasonSkyColour = "#e07030"; seasonSkyAlpha = 0.05; }
-    if (season === "winter") { seasonSkyColour = "#6080c0"; seasonSkyAlpha = 0.06; }
+    if (season === "spring") { seasonSkyColour = "#90e060"; seasonSkyAlpha = 0.02; }
+    if (season === "summer") { seasonSkyColour = "#f5e050"; seasonSkyAlpha = 0.025; }
+    if (season === "autumn") { seasonSkyColour = "#e07030"; seasonSkyAlpha = 0.025; }
+    if (season === "winter") { seasonSkyColour = "#6080c0"; seasonSkyAlpha = 0.03; }
 
     if (seasonSkyColour) {
       spriteCtx.save();
