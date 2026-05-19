@@ -1,6 +1,23 @@
 # Version History
 
-## v2.0.0 — current
+## v2.0.1 — current
+
+### Changes from v2.0.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.0.1 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.0.1 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.0.1 |
+| `opencode-codotchi/package.json` | Version bumped to 2.0.1 |
+| `vscode/media/sidebar.js` | Tim-only `fed_snack` message: "had a snack" → "drank some tea"; Tim-only sick messages: "got sick" → "had too much gluten" (+ related sickness/attention-call variants); Tim-only "Hunger" → "Thirst" stat label swap in render function |
+| `vscode/media/sidebar.html` | Added `id="stat-label-hunger"` to hunger `<span>` and `id="bar-track-hunger"` to hunger `<div class="bar-track">` for JS targeting |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored from VS Code (Tim `fed_snack` + gluten sick overrides + Hunger/Thirst label swap) |
+| `pycharm/src/main/resources/webview/sidebar.html` | Mirrored from VS Code (hunger span/bar-track IDs added) |
+
+---
+
+## v2.0.0 — previous
 
 ### Changes from v1.24.0
 

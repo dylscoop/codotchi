@@ -465,11 +465,13 @@ All events are displayed using the pet's name and human-readable sentences inste
 | Event | Log message | Status |
 |-------|-------------|--------|
 | `play_refused_no_energy` | `<Name> doesn't have enough energy to play!` | `[x]` |
-| `sickness_damage` | `<Name> is losing health from being sick!` | `[x]` |
+| `sickness_damage` | `<Name> is losing health from being sick!` (Tim: "from too much gluten!") | `[x]` |
 | `starvation_damage` | `<Name> is starving and losing health!` | `[x]` |
 | `unhappiness_damage` | `<Name> is miserable and losing health!` | `[x]` |
 | `exhaustion_damage` | `<Name> is exhausted and losing health!` | `[x]` |
 | `evolved_to_<stage>` | `<Name> evolved into <stage>!` | `[x]` |
+| `fed_snack` | `<Name> had a snack.` (Tim: "drank some tea.") | `[x]` |
+| `became_sick` | `<Name> got sick!` (Tim: "had too much gluten!") | `[x]` |
 | All other events | Named equivalents (e.g. fed, slept, woke, cleaned) | `[x]` |
 
 ### 7.3 Canvas Speech Bubbles

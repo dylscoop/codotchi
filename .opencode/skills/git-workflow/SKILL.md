@@ -304,17 +304,19 @@ When creating a GitHub release for `vX.Y.Z`, the release body must cover **every
 
 ### Step 1 — retrieve the stored PAT
 
-> **WARNING:** The Windows Credential Manager may only store one entry for `github.com`
-> and it may belong to `dsiowlee` (a different account without push access). Always
-> verify the retrieved token's username. If it returns `dsiowlee`, ask the user to
-> paste the `dylscoop` PAT directly — do not use the `dsiowlee` token.
+> **WARNING:** The Windows Credential Manager stores **two** separate entries for GitHub:
+> - `git:https://github.com` — belongs to `dsiowlee` (wrong account, no push access)
+> - `git:https://dylscoop@github.com` — the correct `dylscoop` account
+>
+> Always retrieve the `dylscoop@github.com` entry by passing `username=dylscoop` explicitly.
+> **Never use the token returned without specifying `username=dylscoop`** — it will return the `dsiowlee` token.
 
 Attempt retrieval with:
 
 ```powershell
-$lines = @('protocol=https', 'host=github.com', '')
+$lines = @('protocol=https', 'host=github.com', 'username=dylscoop', '')
 $creds = $lines | & 'C:\Program Files\Git\mingw64\libexec\git-core\git-credential-wincred.exe' get
-$creds  # check that username=dylscoop before using the password
+$creds  # verify username=dylscoop in output before using the password
 $token = ($creds | Where-Object { $_ -match '^password=' }) -replace '^password=', ''
 ```
 
