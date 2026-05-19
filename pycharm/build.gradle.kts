@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.codotchi"
-version = "1.23.3"
+version = "1.23.4"
 
 repositories {
     mavenCentral()
@@ -27,7 +27,7 @@ intellij {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(17)
 }
 
 tasks {
@@ -66,15 +66,17 @@ tasks {
         val launcherJar = junitConsole.resolvedConfiguration.resolvedArtifacts
             .first { it.name == "junit-platform-console-standalone" }
             .file
-        val testClassesDir   = sourceSets["test"].output.classesDirs.asPath
+        // Use the Kotlin-specific output dir directly — classesDirs.asPath returns
+        // a semicolon-separated list (kotlin + java dirs) which --scan-class-path
+        // treats as a single non-existent path on Windows, finding 0 tests.
+        val testClassesDir   = layout.buildDirectory.dir("classes/kotlin/test").get().asFile.absolutePath
         val testRuntimeCp    = configurations["testRuntimeClasspath"].asPath
-        val testOutputCp     = sourceSets["test"].output.classesDirs.asPath
         // Main resources (webview/*.js, webview/sidebar.html, META-INF/) must be
         // on the test classpath so BrowserPanelHtmlTest can load them.
         val mainResourcesDir = sourceSets["main"].output.resourcesDir!!.absolutePath
         val extraResources   = layout.buildDirectory.dir("resources/test").get().asFile.absolutePath
 
-        val fullCp = "$testOutputCp;$testRuntimeCp;$mainResourcesDir;$extraResources"
+        val fullCp = "$testClassesDir;$testRuntimeCp;$mainResourcesDir;$extraResources"
 
         classpath(launcherJar)
         mainClass.set("org.junit.platform.console.ConsoleLauncher")

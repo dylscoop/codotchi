@@ -377,7 +377,13 @@ const val CARE_MISTAKE_MID_MAX: Int = 6
 /** Same as CARE_MISTAKE_BEST_MAX — evolution delay kicks in above this value. */
 const val CARE_MISTAKE_DELAY_THRESHOLD: Int = 3
 /** Game-days of evolution delay per excess mistake. */
-const val CARE_MISTAKE_DAYS_PER_EXCESS: Int = 1
+const val CARE_MISTAKE_DAYS_PER_EXCESS: Double = 1.0
+/** Maximum total game-days of evolution delay regardless of how many mistakes have accumulated. */
+const val CARE_MISTAKE_DELAY_MAX_DAYS: Double = 9.0
+/** Game-days between automatic forgiveness ticks — careMistakes decrements by 1 every this many game-days. */
+const val CARE_MISTAKE_FORGIVENESS_DAYS: Double = 2.0
+/** Amount by which careMistakes decrements each time an attention call is answered (0.5 = two answered calls = -1 mistake). */
+const val CARE_MISTAKE_ANSWER_CREDIT: Double = 0.5
 /** Lifetime mistakes at which the secret_worst tier is unlocked. */
 const val CARE_MISTAKE_SECRET_WORST_THRESHOLD: Int = 10
 /** careScore threshold for the secret_best tier (per-stage mistakes must also be 0). */

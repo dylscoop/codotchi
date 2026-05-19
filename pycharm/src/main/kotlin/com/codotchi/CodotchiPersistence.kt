@@ -274,7 +274,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val attentionCallActiveTicks: Int?,
         val attentionCallCooldowns: Map<String, Double>?, // Gson deserialises numbers as Double
         val neglectCount: Int?,              // back-compat: absent in saves v0.5.0+
-        val careMistakes: Int?,
+        val careMistakes: Double?,
         val lifetimeCareMistakes: Int?,
         val ticksWithUncleanedPoop: Int?,
         val ticksSinceLastMisbehaviour: Int?,
@@ -332,7 +332,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
                                             ?.mapValues { it.value.toInt() }
                                             ?: emptyMap(),
             // Back-compat: old saves used "neglectCount"; migrate to careMistakes.
-            careMistakes               = r.careMistakes           ?: (r.neglectCount ?: 0),
+            careMistakes               = r.careMistakes           ?: (r.neglectCount?.toDouble() ?: 0.0),
             lifetimeCareMistakes       = r.lifetimeCareMistakes   ?: (r.neglectCount ?: 0),
             ticksWithUncleanedPoop     = r.ticksWithUncleanedPoop     ?: 0,
             ticksSinceLastMisbehaviour = r.ticksSinceLastMisbehaviour ?: 0,
