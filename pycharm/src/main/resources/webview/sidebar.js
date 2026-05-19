@@ -1720,24 +1720,24 @@
     spriteCtx.save();
     spriteCtx.globalAlpha = 0.85;
     if (tod === "morning" || tod === "afternoon") {
-      // High sun, 6×6, moves right→left across the top
+      // High sun, 15×15 (2.5×), moves right→left across the top
       spriteCtx.fillStyle = "#f5d84a";
-      var sunX = tod === "morning" ? Math.floor(W * 0.65) : Math.floor(W * 0.35);
-      spriteCtx.fillRect(sunX, 8, 6, 6);
+      var sunX = tod === "morning" ? Math.floor(W * 0.65) - 4 : Math.floor(W * 0.35) - 4;
+      spriteCtx.fillRect(sunX, 4, 15, 15);
     } else if (tod === "dawn" || tod === "sunset") {
-      // Low sun near horizon, 5×5
+      // Low sun near horizon, 13×13 (2.5×)
       spriteCtx.fillStyle = "#f5a030";
-      var lowX = tod === "dawn" ? W - 14 : 14;
-      spriteCtx.fillRect(lowX, Math.floor(H * 0.55), 5, 5);
+      var lowX = tod === "dawn" ? W - 18 : 10;
+      spriteCtx.fillRect(lowX, Math.floor(H * 0.55) - 4, 13, 13);
     } else if (tod === "dusk") {
-      // Barely-visible sun just off the left edge, 5×5
+      // Barely-visible sun just off the left edge, 13×13 (2.5×)
       spriteCtx.globalAlpha = 0.35;
       spriteCtx.fillStyle = "#f5a030";
-      spriteCtx.fillRect(6, Math.floor(H * 0.55), 5, 5);
+      spriteCtx.fillRect(2, Math.floor(H * 0.55) - 4, 13, 13);
     } else {
       // Night: moon for all seasons + 5 stars as 2×2 dots
       spriteCtx.fillStyle = season === "winter" ? "#d8e8ff" : "#e8dfc0";
-      spriteCtx.fillRect(W - 14, 6, 3, 3);
+      spriteCtx.fillRect(W - 16, 4, 8, 8);
       spriteCtx.fillStyle = "#e8e8d8";
       var starPositions = [
         [Math.floor(W * 0.15), 7],
@@ -1752,12 +1752,24 @@
     }
     spriteCtx.restore();
 
-    // ── Sunset orange glow band (top quarter) ─────────────────────────────
+    // ── Sunset orange→blue gradient band (top third, 16 strips) ──────────
     if (tod === "sunset") {
       spriteCtx.save();
-      spriteCtx.globalAlpha = 0.55;
-      spriteCtx.fillStyle = "#f07020";
-      spriteCtx.fillRect(0, 0, W, Math.floor(H * 0.25));
+      var gradH = Math.floor(H * 0.33);
+      var strips = 16;
+      var stripH = gradH / strips;
+      // Orange top #f07020 → blue bottom #1a4060
+      var r0 = 240, g0 = 112, b0 = 32;
+      var r1 = 26,  g1 = 64,  b1 = 96;
+      for (var gi = 0; gi < strips; gi++) {
+        var t = gi / (strips - 1);
+        var r = Math.round(r0 + (r1 - r0) * t);
+        var g = Math.round(g0 + (g1 - g0) * t);
+        var b = Math.round(b0 + (b1 - b0) * t);
+        spriteCtx.globalAlpha = 0.55;
+        spriteCtx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+        spriteCtx.fillRect(0, Math.round(gi * stripH), W, Math.ceil(stripH));
+      }
       spriteCtx.restore();
     }
 

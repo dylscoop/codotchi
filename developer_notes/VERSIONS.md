@@ -1,6 +1,21 @@
 # Version History
 
-## v1.23.8 — current
+## v1.23.9 — current
+
+### Changes from v1.23.8
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.9 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.9 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.9 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.9 |
+| `vscode/media/sidebar.js` | Sun scaled 2.5× (high sun 6×6→15×15, low/dusk sun 5×5→13×13); moon scaled 2.5× (3×3→8×8); sunset glow band replaced with 16-strip horizontal gradient (`#f07020` orange at top → `#1a4060` blue at bottom) over top 33% of canvas at α=0.55 |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.8 — previous
 
 ### Changes from v1.23.7
 

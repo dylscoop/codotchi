@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.codotchi"
-version = "1.23.8"
+version = "1.23.9"
 
 repositories {
     mavenCentral()
