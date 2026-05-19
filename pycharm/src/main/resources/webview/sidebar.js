@@ -1145,12 +1145,12 @@
 
     const typeLabel = (state.petType || "codeling");
     const _infoCC = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
-    const typeLabelCap = _infoCC
+    const typeLabelCap = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
+    const spriteLabel = _infoCC
       ? _infoCC.forcedName
-      : typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
-    const spriteLabel = (state.spriteType && state.spriteType !== "classic")
-      ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
-      : "";
+      : (state.spriteType && state.spriteType !== "classic")
+        ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
+        : "";
     infoLine.textContent =
       "Age: " + formatAge(state.ageDays) + "  |  " +
       state.stage            + "  |  " +
@@ -1987,15 +1987,15 @@
       var gbX = Math.round(giftBoxX);
       var _giftCc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
       if (_giftCc && _giftCc.spriteType === "tim") {
-        // Big tea mug for Tim
+        // Big tea mug for Tim — with a "T" on the body
         var BIG_MUG_PIXELS = [
           [0,2,0,2,0,0,0,0],
           [0,2,0,2,0,0,0,0],
           [1,1,1,1,1,1,0,0],
-          [1,3,3,3,3,1,1,0],
-          [1,3,3,3,3,1,1,0],
-          [1,3,3,3,3,1,1,0],
-          [1,3,3,3,3,1,1,0],
+          [1,5,5,5,5,1,1,0],
+          [1,3,5,5,3,1,1,0],
+          [1,3,3,5,3,1,1,0],
+          [1,3,3,5,3,1,1,0],
           [1,3,3,3,3,1,0,0],
           [1,1,1,1,1,1,0,0],
           [0,1,1,1,1,0,0,0],
@@ -2006,8 +2006,11 @@
         BIG_MUG_PIXELS.forEach(function (row, ry) {
           row.forEach(function (cell, rx) {
             if (!cell) { return; }
-            // 1=dark brown body, 2=steam blue-white, 3=tea amber
-            spriteCtx.fillStyle = cell === 2 ? "#C8E0FF" : cell === 3 ? "#C49A6C" : "#8B5E3C";
+            // 1=dark brown body, 2=steam blue-white, 3=tea amber, 4=handle, 5=white T
+            spriteCtx.fillStyle = cell === 2 ? "#C8E0FF"
+                                : cell === 3 ? "#C49A6C"
+                                : cell === 5 ? "#FFFFFF"
+                                :              "#8B5E3C";
             spriteCtx.fillRect(gbX + rx * BMS, bmY + ry * BMS, BMS, BMS);
           });
         });
