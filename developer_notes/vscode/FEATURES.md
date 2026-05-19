@@ -704,7 +704,7 @@ These are lower-priority ideas that require design work before implementation. A
 | Pause function | `[ ]` | Explicitly suspend all game ticks (hunger/happiness/energy decay, aging) without closing the IDE. Original Tamagotchi only had a clock-set exploit; later versions added an official pause. Could be a sidebar button or a VS Code command. |
 | Sound effects & mute toggle | `[ ]` | Short 8-bit jingles on key events: hatch, evolve, death, sleep, wake, feed, play win/lose. A mute toggle (VS Code command + sidebar button) to silence all sounds. Respect `gotchi.reducedMotion` and the OS system mute. |
 | Visual night-mode on canvas | `[ ]` | Darken canvas background when pet is sleeping (already tracked in §6.2). |
-| Day / night cycle | `[x]` | Seasonal + time-of-day pixel-art backgrounds drawn on canvas via `codotchi.background` setting (`plain` / `ordered` / `spring` / `summer` / `autumn` / `winter`). `ordered` uses real calendar month + clock hour automatically. |
+| Day / night cycle | `[x]` | Seasonal + time-of-day pixel-art backgrounds drawn on canvas via `codotchi.background` setting (`plain` / `ordered` / `spring` / `summer` / `autumn` / `winter`). `ordered` uses real calendar month + clock hour automatically. 6 time buckets: dawn 07–10, morning 10–13, afternoon 13–16, sunset 16–19, dusk 19–22, night 22–07. Sun moves right→left across the sky; sunset has an orange glow band; moon drawn for all seasons at night. |
 | Generation counter display | `[ ]` | Display current generation number in the info line (requires generation stat from §1). |
 | **— Cosmetics & economy —** | | |
 | Gotchi Points currency | `[ ]` | Earned from minigame wins; spent in an in-game shop. Persisted in `PetState`. |

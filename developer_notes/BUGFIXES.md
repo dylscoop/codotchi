@@ -1313,3 +1313,14 @@ Also: `jvmToolchain(21)` caused test classes compiled at Java 21 class-file vers
 Additionally, `plain` background mode returned immediately from `drawBackground()` without drawing any ground strip, so the pet appeared to float on an empty canvas with no visible floor.
 
 **Fix:** Changed all 7 floor-Y offsets per file from `- 4` to `- 12` (14 edits total across both files), aligning the bottom of every floor item with the top of the strip. Replaced the `plain` early-return with a draw block that renders the same 8px two-layer strip using neutral dark colours (`#2a2a3a` base, `#3a3a4e` highlight), giving plain mode a consistent visible floor.
+
+---
+
+## BUGFIX-106 — PyCharm webview completely non-functional in v1.23.5 (blank panel, buttons dead, state not loaded)
+
+**Status:** Fixed (v1.23.6, branch `feat/time-of-day-rework`)
+**File:** `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** In v1.23.5, the PyCharm sidebar rendered as a static blank panel — buttons could not be clicked and the saved pet state did not load. The root cause was a JavaScript syntax error introduced during the `getTimeOfDay()` refactor in commit `f28d812`. When the function was rewritten from 4 buckets to 6, the edit replaced only the opening lines of the old function, leaving three orphaned lines after the new function's closing brace: a duplicate `if (h >= 19 && h < 22) { return "dusk"; }`, a duplicate `return "night";`, and a stray `}`. The stray `}` was an unmatched closing brace that caused the entire sidebar IIFE to fail to parse. Because all button `addEventListener` calls and the `window.addEventListener("message", ...)` state handler are registered inside the IIFE, none of them executed — producing a fully dead webview. The identical edit in `vscode/media/sidebar.js` was clean and unaffected.
+
+**Fix:** Deleted the three orphaned lines from `pycharm/src/main/resources/webview/sidebar.js` (the duplicate dusk check, duplicate night return, and stray closing brace), restoring valid JS syntax and allowing the IIFE to parse and run correctly.

@@ -1,6 +1,111 @@
 # Version History
 
-## v1.23.4 — current
+## v1.24.0 — current
+
+### Changes from v1.23.10
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.24.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.24.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.24.0 |
+| `opencode-codotchi/package.json` | Version bumped to 1.24.0 |
+| `vscode/media/sidebar.js` | Removed overweight blur (`spriteCanvas.style.filter` always cleared); Spring: 3 flowers (5×5, enlarged from 3×3) with 3rd flower on right side, purple-pink variant for flower 2; Summer: replaced shimmer strip with 5 tall grass blades + 2 sunflowers with stems; Autumn: 5 falling leaves (was 3), two-colour palette (amber + orange-red), wider 3-row leaf pile; Winter: 2 snowflakes (large 7×7 left, small 5×5 right), snow blanket upgraded to three 8×2/6×2 segments |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.10 — previous
+
+### Changes from v1.23.9
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.10 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.10 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.10 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.10 |
+| `vscode/media/sidebar.js` | Sun redesigned as circle (`arc()`) for all time-of-day buckets (r=7 high, r=6 low/dusk); moon redesigned as right-facing crescent ☽ using `destination-out` composite to punch a bite from a full circle |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.9 — previous
+
+### Changes from v1.23.8
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.9 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.9 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.9 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.9 |
+| `vscode/media/sidebar.js` | Sun scaled 2.5× (high sun 6×6→15×15, low/dusk sun 5×5→13×13); moon scaled 2.5× (3×3→8×8); sunset glow band replaced with 16-strip horizontal gradient (`#f07020` orange at top → `#1a4060` blue at bottom) over top 33% of canvas at α=0.55 |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.8 — previous
+
+### Changes from v1.23.7
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.8 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.8 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.8 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.8 |
+| `vscode/media/sidebar.js` | Sunset sky tint changed from `#e8602a` α=0.28 (brown/orange-red) to `#1a4060` α=0.45 (deep twilight blue); sunset glow band moved from mid-canvas to top quarter (`H*0.25`), colour `#f5a030`→`#f07020`, alpha `0.18`→`0.55` — produces blue lower sky with vivid orange band at top |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.7 — previous
+
+### Changes from v1.23.6
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.7 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.7 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.7 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.7 |
+| `vscode/media/sidebar.js` | `drawEnvironment()`: substitute lighter daytime base colour `#243444` (instead of pet palette `#1a1a1a`) during `morning` and `afternoon` buckets so sky tints read clearly; `drawBackground()`: raised morning alpha `0.22→0.50`, afternoon alpha `0.20→0.45` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.6 — previous
+
+### Changes from v1.23.5
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.6 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.6 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.6 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.6 |
+| `pycharm/src/main/resources/webview/sidebar.js` | Removed 3 orphaned lines after `getTimeOfDay()` (duplicate dusk check + duplicate night return + stray closing brace) that caused the entire IIFE to fail to parse — fixing blank panel, dead buttons, and state-not-loading in PyCharm (BUGFIX-106); also updated morning tint `#a8d8f0` → `#78b8e8`, afternoon tint `#8ecae6` → `#5aaad4`, and halved all season sky tint alphas (spring 0.04→0.02, summer 0.05→0.025, autumn 0.05→0.025, winter 0.06→0.03) |
+| `vscode/media/sidebar.js` | Updated morning tint `#a8d8f0` → `#78b8e8`, afternoon tint `#8ecae6` → `#5aaad4`, halved all season sky tint alphas |
+
+---
+
+## v1.23.5 — previous
+
+### Changes from v1.23.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.5 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.5 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.5 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.5 |
+| `vscode/media/sidebar.js` | `getTimeOfDay()`: replaced 4-bucket system (dawn/day/dusk/night) with 6-bucket system (dawn 07–10, morning 10–13, afternoon 13–16, sunset 16–19, dusk 19–22, night 22–07); `drawBackground()`: added sky tints for morning (`#a8d8f0`) and afternoon (`#8ecae6`); sun accent dot now moves right-to-left from dawn through dusk with per-bucket X positions and larger sizes (6×6 high sun, 5×5 low sun); sunset orange glow band added; moon drawn for all seasons at night (not just winter) |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.4 — previous
 
 ### Changes from v1.23.3
 
