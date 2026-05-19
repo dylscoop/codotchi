@@ -38,7 +38,7 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
   {
     spriteType:  "tim",
     passcode:    "teawtim",
-    forcedName:  "Tim",
+    forcedName:  "Timagotchi",
     patLabel:    "Go for a Run",
     mgTitle:     "Play or Go for a Run",
     giftMessage: "Tim wants a tea break!",
