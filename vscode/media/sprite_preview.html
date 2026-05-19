@@ -153,23 +153,34 @@
 <!-- ── Sprite grid (populated by JS) ── -->
 <div id="grid"></div>
 
-<!-- Load shared constants, then sprite data files -->
+<!-- Load shared constants, then sprite data files, then custom characters registry -->
 <script src="spriteConstants.js"></script>
 <script src="sprites.js"></script>
 <script src="sprites_adult.js"></script>
+<script src="customCharacters.js"></script>
 
 <script>
 (function () {
   "use strict";
 
   // ── Config ────────────────────────────────────────────────────────────────
-  var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1 };
+  // UPRIGHT_TYPES is authoritative in spriteConstants.js (window.spriteHeightRatio).
+  // We don't duplicate it here — use window.spriteHeightRatio(animal) > 1 at render time.
 
-  var ALL_ANIMALS = [
+  // Standard (non-custom) animals always shown in the grid.
+  var STANDARD_ANIMALS = [
     "classic", "monkey", "rooster", "dragon",
     "cat", "rat", "ox", "tiger", "rabbit",
     "horse", "sheep", "dog", "pig", "snake"
   ];
+
+  // Custom characters from the registry (loaded from customCharacters.js).
+  // Their spriteTypes are prepended so they appear first in the grid.
+  var CUSTOM_SPRITE_TYPES = window.CUSTOM_CHARACTERS
+    ? Object.keys(window.CUSTOM_CHARACTERS)
+    : [];
+
+  var ALL_ANIMALS = CUSTOM_SPRITE_TYPES.concat(STANDARD_ANIMALS);
 
   var ALL_STAGES = ["egg", "baby", "child", "teen", "adult", "senior"];
 
@@ -221,8 +232,10 @@
 
     var w = (Math.ceil(maxBodySize * wwm) + 4) * pixelScale;
     // Max height ratio is 1.5 (upright 32×48 grid). Use that as the ceiling.
+    // Add 16px vertical padding so upright sprites (Tim, monkey, etc.) are
+    // not crammed against the top edge of the canvas.
     var maxHRatio = 1.5;
-    var h = (Math.ceil(maxBodySize * maxHRatio) + 4) * pixelScale;
+    var h = (Math.ceil(maxBodySize * maxHRatio) + 16) * pixelScale;
     return { w: w, h: h };
   }
 
@@ -280,8 +293,9 @@
     }
 
     // Centre horizontally, bottom-align vertically (in raw sprite units)
+    // Ensure at least 8px top clearance so tall upright sprites aren't clipped.
     var x     = Math.max(0, Math.floor((lW - bodyWidth) / 2));
-    var bodyY = lH - bodyHeight - 2;
+    var bodyY = Math.max(8, lH - bodyHeight - 2);
 
     // Breath bob phase for sleeping
     var bPhase = (state.sleeping && animEnabled) ? breathPhase : 0;
@@ -315,7 +329,7 @@
 
       var title = document.createElement("div");
       title.className = "animal-title";
-      title.textContent = animal + (UPRIGHT_TYPES[animal] ? "  [upright 32\xd748]" : "  [quadruped 48\xd732]");
+      title.textContent = animal + (window.spriteHeightRatio(animal) > 1 ? "  [upright 32\xd748]" : "  [quadruped 48\xd732]");
       section.appendChild(title);
 
       var row = document.createElement("div");

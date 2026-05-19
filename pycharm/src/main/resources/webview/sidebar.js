@@ -116,7 +116,7 @@
   const REDUCED_MOTION = document.body.dataset.reducedMotion === "true" ||
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Background mode — injected by CodotchiBrowserPanel via data-background attribute.
+  // Background mode — injected by sidebarProvider.ts via data-background attribute.
   // Values: "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter"
   const BG_MODE = (document.body && document.body.dataset && document.body.dataset.background) || "ordered";
 
@@ -636,15 +636,11 @@
     const newWidth = Math.max(container.clientWidth, 64);
     if (spriteCanvas.width === newWidth) { return; }
     spriteCanvas.width = newWidth;
-    // Clamp petX so the pet doesn't walk off the right edge after a resize
-    if (lastState) {
-      const maxX = getPetMaxX(lastState);
-      if (petX !== null && petX > maxX) { petX = Math.max(4, maxX); }
-      // Re-clamp any snacks that are now beyond the new reachable range
-      snackItems.forEach(function(item) {
-        item.x = Math.max(4, Math.min(maxX, item.x));
-      });
-    }
+    // Re-centre the pet on resize: reset petX to null so the animation loop
+    // places the pet at the horizontal centre on the very next frame.
+    // This also handles the first-load case where the canvas width changes
+    // from the hardcoded HTML attribute (200px) to the real container width.
+    petX = null;
   }
 
   if (typeof ResizeObserver !== "undefined") {
@@ -962,18 +958,19 @@
       var speed = getSpeedPPS(lastState);
       if (snackItems.length > 0 && speed > 0) {
         var closestSnack = snackItems[0];
-        var closestDist  = Math.abs(petX - snackItems[0].x);
+        var closestDist  = Math.abs((petX + bWidth / 2) - (snackItems[0].x + 4));
         for (var si = 1; si < snackItems.length; si++) {
-          var sd = Math.abs(petX - snackItems[si].x);
+          var sd = Math.abs((petX + bWidth / 2) - (snackItems[si].x + 4));
           if (sd < closestDist) { closestDist = sd; closestSnack = snackItems[si]; }
         }
         if (closestDist < bWidth / 2 + 4) {
           snackItems.splice(snackItems.indexOf(closestSnack), 1);
           idleTimer = 0.2;
+
           petVx     = 0;
           vscode.postMessage({ command: "snack_consumed" });
         } else {
-          petVx         = closestSnack.x > petX ? speed : -speed;
+          petVx         = (closestSnack.x + 4) > (petX + bWidth / 2) ? speed : -speed;
           petFacingLeft = petVx < 0;
           petX         += petVx * dt;
         }
@@ -1026,11 +1023,11 @@
 
       // Horizontal movement: snack targeting OR wandering
       if (snackItems.length > 0 && speed > 0) {
-        // Snack targeting
+        // Snack targeting — use center-to-center distance (pet center vs snack center)
         var closestSnack = snackItems[0];
-        var closestDist  = Math.abs(petX - snackItems[0].x);
+        var closestDist  = Math.abs((petX + bWidth / 2) - (snackItems[0].x + 4));
         for (var si = 1; si < snackItems.length; si++) {
-          var sd = Math.abs(petX - snackItems[si].x);
+          var sd = Math.abs((petX + bWidth / 2) - (snackItems[si].x + 4));
           if (sd < closestDist) { closestDist = sd; closestSnack = snackItems[si]; }
         }
         if (closestDist < bWidth / 2 + 4) {
@@ -1040,7 +1037,7 @@
           petVx     = 0;
           vscode.postMessage({ command: "snack_consumed" });
         } else {
-          petVx         = closestSnack.x > petX ? speed : -speed;
+          petVx         = (closestSnack.x + 4) > (petX + bWidth / 2) ? speed : -speed;
           petFacingLeft = petVx < 0;
           petX         += petVx * dt;
         }
@@ -1129,7 +1126,7 @@
       if (lastState && lastState.alive) {
         var _diedCode = (state.events || []).indexOf("died_of_old_age") !== -1
           ? "died_of_old_age" : "died";
-        showBubble(humaniseEvent(_diedCode, state.name));
+        showBubble(humaniseEvent(_diedCode, state.name, state));
       }
       renderDeadScreen(state, highScore);
       showScreen("dead");
@@ -1187,6 +1184,13 @@
     if (snackBtn && !isSleeping) {
       snackBtn.disabled = snacksLeft <= 0;
     }
+
+    // Custom character button and minigame label overrides
+    var _customChar = customCharBySpriteType(state.spriteType);
+    var mgTitle  = document.querySelector("#mg-select .mg-title");
+    var mgPatBtn = document.getElementById("btn-mg-pat");
+    if (mgTitle)  { mgTitle.textContent  = _customChar ? _customChar.mgTitle  : "Play or Pat"; }
+    if (mgPatBtn) { mgPatBtn.textContent = _customChar ? _customChar.patLabel : "Pat"; }
 
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
@@ -1271,14 +1275,14 @@
         if (events[_ai].indexOf("attention_call_") === 0 &&
             events[_ai].indexOf("attention_call_answered_") !== 0 &&
             events[_ai].indexOf("attention_call_expired_") !== 0) {
-          showBubble(humaniseEvent(events[_ai], _n));
+          showBubble(humaniseEvent(events[_ai], _n, state));
           return;
         }
       }
       // 2. Minigame results (play, not pat)
       for (var _mi = 0; _mi < events.length; _mi++) {
         if (events[_mi].indexOf("minigame_") === 0) {
-          showBubble(humaniseEvent(events[_mi], _n));
+          showBubble(humaniseEvent(events[_mi], _n, state));
           return;
         }
       }
@@ -1297,14 +1301,23 @@
         showBubble(_scoldTexts[Math.floor(Math.random() * _scoldTexts.length)]);
         return;
       }
-      // 5. Commit activity
+      // 5. Custom character pat speech bubble
+      if (events.indexOf("patted") !== -1) {
+        var _patChar = customCharBySpriteType(state.spriteType);
+        if (_patChar && _patChar.patBubbles && _patChar.patBubbles.length > 0) {
+          var _bubbles = _patChar.patBubbles;
+          showBubble(_bubbles[Math.floor(Math.random() * _bubbles.length)]);
+          return;
+        }
+      }
+      // 6. Commit activity
       if (events.indexOf("commit_activity_rewarded") !== -1) {
-        showBubble(humaniseEvent("commit_activity_rewarded", _n));
+        showBubble(humaniseEvent("commit_activity_rewarded", _n, state));
         return;
       }
       // 6. Save / code activity
       if (events.indexOf("code_activity_rewarded") !== -1) {
-        showBubble(humaniseEvent("code_activity_rewarded", _n));
+        showBubble(humaniseEvent("code_activity_rewarded", _n, state));
       }
     })();
 
@@ -1326,16 +1339,23 @@
     // Hand off to animation loop — it owns all drawing
     lastState = state;
 
-    appendEvents(state.events || [], state.name);
+    appendEvents(state.events || [], state.name, state);
 
     // Spawn poo overlay animation
     if ((state.events || []).indexOf("pooped") !== -1) { spawnPooAnim(); }
 
     // Snack items — spawn a floor item when snack_placed fires
     if ((state.events || []).indexOf("snack_placed") !== -1 && snackItems.length < 3) {
-      var snackMaxX = getPetMaxX(state);
+      var siW = spriteCanvas.width;
+      // Compute the pet's reachable X range so the snack is always within reach.
+      var siScale  = STAGE_SCALES[(state.stage || lastState && lastState.stage) || "baby"] || 0.5;
+      var siBSize  = Math.round(BASE_SIZE * petSizeMultiplier() * siScale);
+      var siBWidth = effectiveBWidth(state.alive ? state : lastState, siBSize);
+      var siMinX   = 4;
+      var siMaxX   = siW - siBWidth - 4;
+      var siRawX   = 4 + Math.floor(Math.random() * Math.max(1, siW - 20));
       snackItems.push({
-        x:    4 + Math.floor(Math.random() * Math.max(1, snackMaxX - 4)),
+        x:    Math.max(siMinX, Math.min(siMaxX, siRawX)),
         type: Math.random() < 0.5 ? "candy" : "bone",
       });
       idleTimer = 0;  // pet walks toward it immediately
@@ -1394,8 +1414,9 @@
   }
 
   /** Append new event strings to the scrollable event log. */
-  function humaniseEvent(code, name) {
+  function humaniseEvent(code, name, state) {
     var n = name || "Codotchi";
+    var _cc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
     var labels = {
       "auto_woke_up":           n + " woke up after a full nap.",
       "pooped":                  n + " pooped!",
@@ -1413,8 +1434,8 @@
       "snack_refused":           n + " refused the snack.",
       "play_refused_no_energy":  n + " doesn't have enough energy to play!",
       "played":                  n + " played!",
-      "pat_refused_no_energy":   n + " doesn't have enough energy to be patted!",
-      "patted":                  n + " was patted!",
+      "pat_refused_no_energy":   (_cc && _cc.patToasts) ? _cc.patToasts.pat_refused : n + " doesn't have enough energy to be patted!",
+      "patted":                  (_cc && _cc.patToasts) ? _cc.patToasts.patted       : n + " was patted!",
       "already_sleeping":        n + " is already asleep.",
       "fell_asleep":             n + " fell asleep.",
       "already_awake":           n + " is already awake.",
@@ -1486,10 +1507,10 @@
     return code;
   }
 
-  function appendEvents(events, petName) {
+  function appendEvents(events, petName, state) {
     if (!events.length) { return; }
     events.forEach(function (text) {
-      const label = humaniseEvent(text, petName);
+      const label = humaniseEvent(text, petName, state);
       if (!label) { return; }
       const li = document.createElement("li");
       li.textContent = label;
@@ -1628,6 +1649,12 @@
   }
 
   // ── Sprite drawing ───────────────────────────────────────────────────────
+
+  /**
+   * Draw background, ground line, poos, gift box, snack items.
+   * @param {object} state
+   */
+  // ── Background helpers ───────────────────────────────────────────────────
 
   /**
    * Returns the active season string based on BG_MODE.
@@ -1898,10 +1925,6 @@
     spriteCtx.restore();
   }
 
-  /**
-   * Draw background, ground line, poos, gift box, snack items.
-   * @param {object} state
-   */
   function drawEnvironment(state) {
     const palette    = getPalette(state.spriteType);
     const background = palette.background;
@@ -2309,20 +2332,6 @@
     */
    function effectiveBWidth(state, bSize) {
      return Math.round(bSize);
-  }
-
-  /**
-   * Return the maximum x position the pet can occupy on the canvas,
-   * accounting for sprite size and the 4 px right margin.
-   * Used by snack spawn and canvas resize to keep snacks within reach.
-   * @param {object|null} state
-   * @returns {number}
-   */
-  function getPetMaxX(state) {
-    var scale  = STAGE_SCALES[(state && state.stage) || "baby"] || 0.5;
-    var bSize  = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
-    var bWidth = effectiveBWidth(state, bSize);
-    return Math.max(4, spriteCanvas.width - bWidth - 4);
   }
 
   // ── Initial view ─────────────────────────────────────────────────────────

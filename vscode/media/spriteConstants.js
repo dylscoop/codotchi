@@ -68,7 +68,7 @@
 
   // ── Sprite orientation ────────────────────────────────────────────────────
   /** Sprite types that use a portrait (32 cols × 48 rows) grid. */
-  var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1 };
+  var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1, tim: 1 };
 
   /**
    * Return the height/width ratio for a given spriteType.

@@ -27,6 +27,7 @@ import { SidebarProvider } from "./sidebarProvider";
 import { StatusBarManager } from "./statusBar";
 import { EventsManager } from "./events";
 import { SpritePreviewPanel } from "./spritePreviewPanel";
+import { getCustomCharacterByPasscode } from "./customCharacters";
 import {
   saveState,
   loadState,
@@ -40,6 +41,13 @@ import {
 } from "./persistence";
 
 const TICK_INTERVAL_MS: number = TICK_INTERVAL_SECONDS * 1_000;
+
+/** Read the current characterPasscode setting and return the unlocked spriteType, or null. */
+function getUnlockedCharacter(): string | null {
+  const cfg = vscode.workspace.getConfiguration("codotchi");
+  const passcode = cfg.get<string>("characterPasscode", "");
+  return getCustomCharacterByPasscode(passcode)?.spriteType ?? null;
+}
 
 let currentState: PetState | null = null;
 let currentHighScore: HighScore | null = null;
@@ -144,7 +152,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }
 
-    sidebar?.postState(state, currentHighScore, devModeActive);
+    sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter());
     statusBar?.update(state);
     saveState(context, state);
   }
@@ -174,7 +182,7 @@ export function activate(context: vscode.ExtensionContext): void {
       cfg3.get<boolean>("devModeEnabled", false) &&
       cfg3.get<string>("developerPasscode", "") === "1234";
     if (currentState !== null) {
-      sidebar?.postState(currentState, null, devModeNow);
+      sidebar?.postState(currentState, null, devModeNow, getUnlockedCharacter());
     } else {
       sidebar?.postNoGame(null);
     }
@@ -342,7 +350,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const devModeActive =
       cfg.get<boolean>("devModeEnabled", false) &&
       cfg.get<string>("developerPasscode", "") === "1234";
-    sidebar?.postState(state, currentHighScore, devModeActive);
+    sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter());
     statusBar?.update(state);
     // NOTE: saveState() deliberately omitted — see BUGFIX-050 above.
   }

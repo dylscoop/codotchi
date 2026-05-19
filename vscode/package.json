@@ -154,6 +154,11 @@
           "default": "",
           "description": "Developer passcode. Also requires 'Developer Mode Enabled' (codotchi.devModeEnabled) to be checked to activate dev mode."
         },
+        "codotchi.characterPasscode": {
+          "type": "string",
+          "default": "",
+          "description": "Hidden character passcode. Enter the correct passcode to unlock a secret character on the next hatch."
+        },
         "codotchi.devModeAgingMultiplier": {
           "type": "integer",
           "default": 10,

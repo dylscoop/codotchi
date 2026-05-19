@@ -28,6 +28,7 @@ import {
   praise,
 } from "./gameEngine";
 
+import { getCustomCharacterByPasscode } from "./customCharacters";
 import { StatusBarManager } from "./statusBar";
 
 /** Callback invoked whenever the pet state changes. */
@@ -94,8 +95,10 @@ export class SidebarProvider
     const bootstrapDevMode =
       bootstrapCfg.get<boolean>("devModeEnabled", false) &&
       bootstrapCfg.get<string>("developerPasscode", "") === "1234";
+    const bootstrapPasscode = bootstrapCfg.get<string>("characterPasscode", "");
+    const bootstrapUnlockedChar = getCustomCharacterByPasscode(bootstrapPasscode)?.spriteType ?? null;
     if (bootstrapState !== null) {
-      this.postState(bootstrapState, bootstrapHs, bootstrapDevMode);
+      this.postState(bootstrapState, bootstrapHs, bootstrapDevMode, bootstrapUnlockedChar);
     } else if (bootstrapHs !== null) {
       // No active pet but we have a high score — push it so the setup screen
       // can display it.
@@ -105,6 +108,7 @@ export class SidebarProvider
         mealsGivenThisCycle: 0,
         highScore: bootstrapHs,
         devMode: false,
+        unlockedCharacter: bootstrapUnlockedChar,
       });
     }
 
@@ -167,10 +171,14 @@ export class SidebarProvider
     const spriteConstantsUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "spriteConstants.js"))
     );
+    const customCharactersUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "customCharacters.js"))
+    );
 
     html = html.replace("{{cssUri}}", cssUri.toString());
     html = html.replace("{{spritesUri}}", spritesUri.toString());
     html = html.replace("{{spriteConstantsUri}}", spriteConstantsUri.toString());
+    html = html.replace("{{customCharactersUri}}", customCharactersUri.toString());
     html = html.replace("{{jsUri}}", jsUri.toString());
     html = html.replace(/\{\{cspSource\}\}/g, webview.cspSource);
 
@@ -330,9 +338,13 @@ export class SidebarProvider
         break;
 
       case "new_game": {
-        const petName = message.name ?? "Codotchi";
+        const cfg = vscode.workspace.getConfiguration("codotchi");
+        const passcode = cfg.get<string>("characterPasscode", "");
+        const customChar = getCustomCharacterByPasscode(passcode);
+        const petName = customChar ? customChar.forcedName : (message.name ?? "Codotchi");
         const petType = message.petType ?? "codeling";
-        nextState = createPet(petName, petType);
+        const unlockedCharacter = customChar?.spriteType ?? null;
+        nextState = createPet(petName, petType, unlockedCharacter);
         this.mealsGivenThisCycle = 0;
         break;
       }
@@ -364,8 +376,9 @@ export class SidebarProvider
    * @param state - The pet state to push to the webview.
    * @param highScore - The current best-run record (null if none).
    * @param devMode - Whether developer mode is currently active.
+   * @param unlockedCharacter - spriteType of the unlocked custom character, or null.
    */
-  postState(state: PetState, highScore: HighScore | null, devMode: boolean): void {
+  postState(state: PetState, highScore: HighScore | null, devMode: boolean, unlockedCharacter: string | null = null): void {
     if (this.webviewView) {
       void this.webviewView.webview.postMessage({
         type: "stateUpdate",
@@ -373,6 +386,7 @@ export class SidebarProvider
         mealsGivenThisCycle: this.mealsGivenThisCycle,
         highScore,
         devMode,
+        unlockedCharacter,
       });
     }
   }
