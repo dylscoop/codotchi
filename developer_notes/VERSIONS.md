@@ -1,6 +1,24 @@
 # Version History
 
-## v1.23.3 — current
+## v1.23.4 — current
+
+### Changes from v1.23.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.4 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.4; `jvmToolchain` changed from 21 → 17 (BUGFIX-105) |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.4 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.4 |
+| `vscode/src/gameEngine.ts` | Added `CARE_MISTAKE_DELAY_MAX_DAYS`, `CARE_MISTAKE_FORGIVENESS_DAYS`, `CARE_MISTAKE_ANSWER_CREDIT` constants; applied 9-day cap on evolution delay; added time-based forgiveness tick; added answered-call decrement in all 8 action functions (BUGFIX-105) |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | Added same 3 constants; `CARE_MISTAKE_DAYS_PER_EXCESS` changed from `Int` to `Double` (BUGFIX-105) |
+| `pycharm/src/main/kotlin/com/codotchi/engine/PetState.kt` | `careMistakes` changed from `Int` to `Double` (BUGFIX-105) |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | Applied cap + forgiveness + answered-call decrement; all `careMistakes` literals changed to `Double`; `tierFromState` / `characterForStage` signatures updated; `floor` import added (BUGFIX-105) |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt` | `careMistakes` deserialization field changed from `Int?` to `Double?`; back-compat migration updated (BUGFIX-105) |
+
+---
+
+## v1.23.3 — previous
 
 ### Changes from v1.23.2
 

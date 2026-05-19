@@ -1284,6 +1284,25 @@ A secondary correctness bug was also present: `install.js` had `PLUGIN_VER = "1.
 
 ---
 
+## BUGFIX-105 — Care-mistake evolution delay uncapped and never forgiven
+
+**Status:** Fixed (v1.23.4, branch `fix/care-mistakes-cap-and-decay`)
+**Files:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt`, `pycharm/src/main/kotlin/com/codotchi/engine/PetState.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt`, `pycharm/build.gradle.kts`
+
+**Problem:** Every care mistake added 1 full game-day of evolution delay with no cap. A pet that accumulated many mistakes (e.g. 20) could be permanently stuck — evolution would never trigger because the `effectiveThreshold` kept growing indefinitely. Additionally, care mistakes were never forgiven over time, so even a pet that was being cared for perfectly after an initial rough patch would never evolve.
+
+Also: `jvmToolchain(21)` caused test classes compiled at Java 21 class-file version (65.0) to be unrunnable under the JBR 17 (max version 61.0) used for `unitTest`, producing "0 tests found" and BUILD FAILED.
+
+**Fix:**
+- Added `CARE_MISTAKE_DELAY_MAX_DAYS = 9.0` cap — evolution delay is clamped to at most 9 game-days regardless of mistake count.
+- Added `CARE_MISTAKE_FORGIVENESS_DAYS = 2.0` — every 2 game-days, `careMistakes` is automatically decremented by 1 (floored at 0).
+- Added `CARE_MISTAKE_ANSWER_CREDIT = 0.5` — each answered attention call decrements `careMistakes` by 0.5.
+- Changed `careMistakes` type from `Int` to `Double` (both TS and Kotlin) to support fractional values from the 0.5 credit.
+- Fixed `jvmToolchain(21)` → `17` in `build.gradle.kts` so test classes are compatible with the JBR 17 runtime.
+- Fixed `unitTest` task `--scan-class-path` to use the explicit `classes/kotlin/test` dir instead of `classesDirs.asPath` (which returned a semicolon-separated multi-path treated as a single non-existent path on Windows).
+
+---
+
 ## BUGFIX-104 — Pet and floor items sink into the ground strip
 
 **Status:** Fixed (v1.23.2, branch `fix/pet-floor-above-ground`)

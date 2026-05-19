@@ -2,6 +2,7 @@
 
 import kotlin.math.E
 import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
@@ -128,9 +129,9 @@ fun tierFromCareScore(careScore: Double): String = when {
  *   4. mid          — careMistakes > CARE_MISTAKE_BEST_MAX AND score tier would be "best"
  *   5. otherwise    — standard score-based tier
  */
-fun tierFromState(careScore: Double, careMistakes: Int, lifetimeCareMistakes: Int): String {
+fun tierFromState(careScore: Double, careMistakes: Double, lifetimeCareMistakes: Int): String {
     if (lifetimeCareMistakes >= CARE_MISTAKE_SECRET_WORST_THRESHOLD) return "secret_worst"
-    if (careMistakes == 0 && careScore >= CARE_MISTAKE_SECRET_BEST_CARE_SCORE) return "secret_best"
+    if (careMistakes == 0.0 && careScore >= CARE_MISTAKE_SECRET_BEST_CARE_SCORE) return "secret_best"
     val scoreTier = tierFromCareScore(careScore)
     if (careMistakes > CARE_MISTAKE_MID_MAX) return "low"
     if (careMistakes > CARE_MISTAKE_BEST_MAX && scoreTier == "best") return "mid"
@@ -141,7 +142,7 @@ fun characterForStage(
     petType: String,
     stage: String,
     careScore: Double,
-    careMistakes: Int = 0,
+    careMistakes: Double = 0.0,
     lifetimeCareMistakes: Int = 0,
 ): String {
     val tier = tierFromState(careScore, careMistakes, lifetimeCareMistakes)
@@ -256,7 +257,7 @@ fun createPet(name: String, petType: String, color: String): PetState {
             activeAttentionCall       = null,
             attentionCallActiveTicks  = 0,
             attentionCallCooldowns    = emptyMap(),
-            careMistakes              = 0,
+            careMistakes              = 0.0,
             lifetimeCareMistakes      = 0,
             ticksWithUncleanedPoop    = 0,
             ticksSinceLastMisbehaviour = 0,
@@ -294,7 +295,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     var activeAttentionCall: String?       = state.activeAttentionCall
     var attentionCallActiveTicks: Int      = state.attentionCallActiveTicks
     val attentionCallCooldowns = state.attentionCallCooldowns.toMutableMap()
-    var careMistakes: Int                  = state.careMistakes
+    var careMistakes: Double               = state.careMistakes
     var lifetimeCareMistakes: Int          = state.lifetimeCareMistakes
     var ticksWithUncleanedPoop: Int        = state.ticksWithUncleanedPoop
     var ticksSinceLastMisbehaviour: Int    = state.ticksSinceLastMisbehaviour
@@ -380,6 +381,12 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     else 0.0
     val dayTimer = state.dayTimer + ageIncrement
     ageDays = dayTimer.toInt()
+
+    // Time-based care-mistake forgiveness — decrement by 1 every CARE_MISTAKE_FORGIVENESS_DAYS game-days.
+    if (floor(dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS) >
+            floor(state.dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS)) {
+        careMistakes = max(0.0, careMistakes - 1.0)
+    }
 
     // Poop accumulation — suppressed during any idle state so the pet never
     // poops when the user is away from the IDE.
@@ -624,8 +631,9 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
 
 private fun checkStageProgression(state: PetState): PetState {
     val baseThreshold = EVOLUTION_DAY_THRESHOLDS[state.stage] ?: return withDerivedFields(state)
-    val excessMistakes = max(0, state.careMistakes - CARE_MISTAKE_DELAY_THRESHOLD)
-    val effectiveThreshold = baseThreshold + excessMistakes * CARE_MISTAKE_DAYS_PER_EXCESS
+    val excessMistakes = max(0.0, state.careMistakes - CARE_MISTAKE_DELAY_THRESHOLD)
+    val rawDelay = excessMistakes * CARE_MISTAKE_DAYS_PER_EXCESS
+    val effectiveThreshold = baseThreshold + min(rawDelay, CARE_MISTAKE_DELAY_MAX_DAYS)
     if (state.dayTimer < effectiveThreshold) return withDerivedFields(state)
     val nextStage = NEXT_STAGE_MAP[state.stage] ?: return withDerivedFields(state)
     return evolveTo(state, nextStage)
@@ -646,7 +654,7 @@ private fun evolveTo(state: PetState, nextStage: String): PetState {
             careScoreHappinessSum = 0L,
             careScoreHealthSum    = 0L,
             careScoreTicks        = 0L,
-            careMistakes          = 0,
+            careMistakes          = 0.0,
             // lifetimeCareMistakes intentionally preserved
             events             = state.events + "evolved_to_$nextStage",
         )
@@ -675,6 +683,7 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int): PetState {
             hunger            = clampStat(state.hunger + FEED_MEAL_HUNGER_BOOST),
             weight            = newWeight,
             consecutiveSnacks = 0,
+            careMistakes      = max(0.0, state.careMistakes - if (pick != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events            = events,
             activeAttentionCall      = if (pick != null) pick.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = pick?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
@@ -710,6 +719,7 @@ fun startSnack(state: PetState): PetState {
     return withDerivedFields(
         state.copy(
             snacksGivenThisCycle = snacksGivenThisCycle,
+            careMistakes         = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events               = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
@@ -765,6 +775,7 @@ fun play(state: PetState): PetState {
             energy            = clampStat(state.energy    - PLAY_ENERGY_COST),
             weight            = newWeight,
             consecutiveSnacks = 0,
+            careMistakes      = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events            = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
@@ -792,6 +803,7 @@ fun pat(state: PetState): PetState {
             happiness                = clampStat(state.happiness + PAT_HAPPINESS_BOOST),
             energy                   = clampStat(state.energy    - PAT_ENERGY_COST),
             weight                   = newWeight,
+            careMistakes             = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events                   = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
@@ -847,6 +859,7 @@ fun sleep(state: PetState): PetState {
     return withDerivedFields(
         state.copy(
             sleeping = true,
+            careMistakes = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events   = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
@@ -875,6 +888,7 @@ fun clean(state: PetState): PetState {
             poops                = 0,
             ticksSinceLastPoop   = 0,
             ticksWithUncleanedPoop = 0,
+            careMistakes         = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events               = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
@@ -894,7 +908,9 @@ fun giveMedicine(state: PetState): PetState {
         events.add("cured")
         withDerivedFields(
             state.copy(
-                sick = false, medicineDosesGiven = 0, events = events,
+                sick = false, medicineDosesGiven = 0,
+                careMistakes = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
+                events = events,
                 activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
                 attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
                 attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
@@ -903,7 +919,9 @@ fun giveMedicine(state: PetState): PetState {
     } else {
         withDerivedFields(
             state.copy(
-                medicineDosesGiven = doses, events = events,
+                medicineDosesGiven = doses,
+                careMistakes = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
+                events = events,
                 activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
                 attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
                 attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
@@ -919,6 +937,7 @@ fun scold(state: PetState): PetState {
     return withDerivedFields(
         state.copy(
             discipline = clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
+            careMistakes = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events     = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
@@ -939,6 +958,7 @@ fun praise(state: PetState): PetState {
         state.copy(
             discipline  = clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
             happiness   = clampStat(state.happiness  + happinessBonus),
+            careMistakes = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events      = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
@@ -981,7 +1001,7 @@ fun promoteToSenior(state: PetState): PetState {
             careScoreHappinessSum = 0L,
             careScoreHealthSum    = 0L,
             careScoreTicks        = 0L,
-            careMistakes          = 0,
+            careMistakes          = 0.0,
             // lifetimeCareMistakes intentionally preserved
             events                = listOf("evolved_to_senior"),
         )

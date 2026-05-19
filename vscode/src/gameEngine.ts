@@ -251,6 +251,24 @@ export const CARE_MISTAKE_DELAY_THRESHOLD: number = CARE_MISTAKE_BEST_MAX;
 export const CARE_MISTAKE_DAYS_PER_EXCESS: number = 1;
 
 /**
+ * Maximum total game-days of evolution delay regardless of how many care mistakes
+ * have accumulated (caps at 9 game-days ≈ 1.5× the baby stage duration).
+ */
+export const CARE_MISTAKE_DELAY_MAX_DAYS: number = 9.0;
+
+/**
+ * Game-days between automatic forgiveness ticks — every this many game-days,
+ * careMistakes is decremented by 1 (floored at 0).
+ */
+export const CARE_MISTAKE_FORGIVENESS_DAYS: number = 2.0;
+
+/**
+ * Amount by which careMistakes is decremented each time an attention call is
+ * successfully answered (0.5 = two answered calls forgive one mistake).
+ */
+export const CARE_MISTAKE_ANSWER_CREDIT: number = 0.5;
+
+/**
  * Lifetime care mistakes required to unlock the "secret_worst" evolution path
  * (equivalent to Oyajitchi / Bill in the original Tamagotchi).
  */
@@ -1175,6 +1193,12 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   const dayTimer = state.dayTimer + ageIncrement;
   ageDays = Math.floor(dayTimer);
 
+  // Time-based care-mistake forgiveness — decrement by 1 every CARE_MISTAKE_FORGIVENESS_DAYS game-days.
+  if (Math.floor(dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS) >
+      Math.floor(state.dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS)) {
+    careMistakes = Math.max(0, careMistakes - 1);
+  }
+
   // Poop accumulation — interval is per-type and resampled with high volatility.
   // Suppressed during any idle state (regular idle, deep idle) so the pet never
   // poops when the user is away from the IDE.
@@ -1454,9 +1478,10 @@ function checkStageProgression(
     return withDerivedFields(partial);
   }
 
-  // Apply delay for excess care mistakes (1 game-day per mistake over threshold)
+  // Apply delay for excess care mistakes, capped at CARE_MISTAKE_DELAY_MAX_DAYS
   const excessMistakes = Math.max(0, partial.careMistakes - CARE_MISTAKE_DELAY_THRESHOLD);
-  const effectiveThreshold = baseThreshold + excessMistakes * CARE_MISTAKE_DAYS_PER_EXCESS;
+  const rawDelay = excessMistakes * CARE_MISTAKE_DAYS_PER_EXCESS;
+  const effectiveThreshold = baseThreshold + Math.min(rawDelay, CARE_MISTAKE_DELAY_MAX_DAYS);
 
   if (partial.dayTimer < effectiveThreshold) {
     return withDerivedFields(partial);
@@ -1562,6 +1587,7 @@ export function feedMeal(state: PetState, mealsGivenThisCycle: number): PetState
     hunger: clampStat(state.hunger + FEED_MEAL_HUNGER_BOOST),
     weight: newWeight,
     consecutiveSnacks: 0,
+    careMistakes: Math.max(0, state.careMistakes - ((answered ?? answeredCritical) ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
 }
@@ -1598,6 +1624,7 @@ export function startSnack(state: PetState): PetState {
     ...state,
     ...(answered ?? {}),
     snacksGivenThisCycle,
+    careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
 }
@@ -1662,6 +1689,7 @@ export function play(state: PetState): PetState {
     energy: clampStat(state.energy - PLAY_ENERGY_COST),
     weight: newWeight,
     consecutiveSnacks: 0,
+    careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
 }
@@ -1688,6 +1716,7 @@ export function pat(state: PetState): PetState {
     happiness: clampStat(state.happiness + PAT_HAPPINESS_BOOST),
     energy:    clampStat(state.energy    - PAT_ENERGY_COST),
     weight:    newWeight,
+    careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
 }
@@ -1775,7 +1804,9 @@ export function sleep(state: PetState): PetState {
   const answered = answerAttentionCall(state, "low_energy");
   const events: string[] = ["fell_asleep"];
   if (answered) { events.push("attention_call_answered_low_energy"); }
-  return withDerivedFields({ ...state, ...(answered ?? {}), sleeping: true, events });
+  return withDerivedFields({ ...state, ...(answered ?? {}), sleeping: true,
+    careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
+    events });
 }
 
 /**
@@ -1818,6 +1849,7 @@ export function clean(state: PetState): PetState {
     poops: 0,
     ticksSinceLastPoop: 0,
     ticksWithUncleanedPoop: 0,
+    careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
 }
@@ -1850,11 +1882,14 @@ export function giveMedicine(state: PetState): PetState {
       ...(answered ?? {}),
       sick: sick as boolean,
       medicineDosesGiven: 0,
+      careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
       events,
     });
   }
 
-  return withDerivedFields({ ...state, ...(answered ?? {}), medicineDosesGiven, events });
+  return withDerivedFields({ ...state, ...(answered ?? {}), medicineDosesGiven,
+    careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
+    events });
 }
 
 /**
@@ -1871,6 +1906,7 @@ export function scold(state: PetState): PetState {
     ...state,
     ...(answered ?? {}),
     discipline: clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
+    careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
 }
@@ -1897,6 +1933,7 @@ export function praise(state: PetState): PetState {
     ...(answered ?? {}),
     discipline: clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
     happiness:  clampStat(state.happiness + happinessBonus),
+    careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
 }
