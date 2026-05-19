@@ -1698,8 +1698,8 @@
     var skyColour = "#000000";
     var skyAlpha  = 0.25;
     if (tod === "dawn")      { skyColour = "#e8844a"; skyAlpha = 0.22; }
-    if (tod === "morning")   { skyColour = "#78b8e8"; skyAlpha = 0.22; }
-    if (tod === "afternoon") { skyColour = "#5aaad4"; skyAlpha = 0.20; }
+    if (tod === "morning")   { skyColour = "#78b8e8"; skyAlpha = 0.50; }
+    if (tod === "afternoon") { skyColour = "#5aaad4"; skyAlpha = 0.45; }
     if (tod === "sunset")    { skyColour = "#e8602a"; skyAlpha = 0.28; }
     if (tod === "dusk")      { skyColour = "#7a3a6e"; skyAlpha = 0.25; }
     if (tod === "night")     { skyColour = "#0a0a2a"; skyAlpha = 0.40; }
@@ -1855,8 +1855,11 @@
 
     spriteCtx.clearRect(0, 0, W, H);
 
-    // Background
-    spriteCtx.fillStyle = background;
+    // Background — use lighter daytime base during morning/afternoon so sky tints read clearly
+    var _tod = getTimeOfDay();
+    var baseFill = background;
+    if (_tod === "morning" || _tod === "afternoon") { baseFill = "#243444"; }
+    spriteCtx.fillStyle = baseFill;
     spriteCtx.fillRect(0, 0, W, H);
 
     // Pixel-art background overlays (seasonal + time-of-day)

@@ -1,6 +1,21 @@
 # Version History
 
-## v1.23.6 — current
+## v1.23.7 — current
+
+### Changes from v1.23.6
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.7 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.7 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.7 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.7 |
+| `vscode/media/sidebar.js` | `drawEnvironment()`: substitute lighter daytime base colour `#243444` (instead of pet palette `#1a1a1a`) during `morning` and `afternoon` buckets so sky tints read clearly; `drawBackground()`: raised morning alpha `0.22→0.50`, afternoon alpha `0.20→0.45` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.6 — previous
 
 ### Changes from v1.23.5
 
