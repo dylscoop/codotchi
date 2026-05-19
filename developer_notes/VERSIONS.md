@@ -1,6 +1,21 @@
 # Version History
 
-## v1.23.4 — current
+## v1.23.5 — current
+
+### Changes from v1.23.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.5 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.5 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.5 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.5 |
+| `vscode/media/sidebar.js` | `getTimeOfDay()`: replaced 4-bucket system (dawn/day/dusk/night) with 6-bucket system (dawn 07–10, morning 10–13, afternoon 13–16, sunset 16–19, dusk 19–22, night 22–07); `drawBackground()`: added sky tints for morning (`#a8d8f0`) and afternoon (`#8ecae6`); sun accent dot now moves right-to-left from dawn through dusk with per-bucket X positions and larger sizes (6×6 high sun, 5×5 low sun); sunset orange glow band added; moon drawn for all seasons at night (not just winter) |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.4 — previous
 
 ### Changes from v1.23.3
 

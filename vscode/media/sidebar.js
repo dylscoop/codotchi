@@ -1660,13 +1660,15 @@
 
   /**
    * Returns the current time-of-day bucket from the real clock.
-   * "dawn" 5–8h | "day" 8–18h | "dusk" 18–21h | "night" 21–5h
+   * "dawn" 7–10h | "morning" 10–13h | "afternoon" 13–16h | "sunset" 16–19h | "dusk" 19–22h | "night" 22–7h
    */
   function getTimeOfDay() {
     var h = new Date().getHours();
-    if (h >= 5  && h < 8)  { return "dawn";  }
-    if (h >= 8  && h < 18) { return "day";   }
-    if (h >= 18 && h < 21) { return "dusk";  }
+    if (h >= 7  && h < 10) { return "dawn";      }
+    if (h >= 10 && h < 13) { return "morning";   }
+    if (h >= 13 && h < 16) { return "afternoon"; }
+    if (h >= 16 && h < 19) { return "sunset";    }
+    if (h >= 19 && h < 22) { return "dusk";      }
     return "night";
   }
 
@@ -1695,10 +1697,12 @@
     // ── Sky overlay: time-of-day tint ─────────────────────────────────────
     var skyColour = "#000000";
     var skyAlpha  = 0.25;
-    if (tod === "dawn")  { skyColour = "#e8844a"; skyAlpha = 0.22; }
-    if (tod === "day")   { skyColour = "#4a7ec8"; skyAlpha = 0.20; }
-    if (tod === "dusk")  { skyColour = "#7a3a6e"; skyAlpha = 0.25; }
-    if (tod === "night") { skyColour = "#0a0a2a"; skyAlpha = 0.40; }
+    if (tod === "dawn")      { skyColour = "#e8844a"; skyAlpha = 0.22; }
+    if (tod === "morning")   { skyColour = "#a8d8f0"; skyAlpha = 0.22; }
+    if (tod === "afternoon") { skyColour = "#8ecae6"; skyAlpha = 0.20; }
+    if (tod === "sunset")    { skyColour = "#e8602a"; skyAlpha = 0.28; }
+    if (tod === "dusk")      { skyColour = "#7a3a6e"; skyAlpha = 0.25; }
+    if (tod === "night")     { skyColour = "#0a0a2a"; skyAlpha = 0.40; }
 
     spriteCtx.save();
     spriteCtx.globalAlpha = skyAlpha;
@@ -1725,21 +1729,25 @@
     // ── Sky accent (sun or stars) ──────────────────────────────────────────
     spriteCtx.save();
     spriteCtx.globalAlpha = 0.85;
-    if (tod === "day") {
-      // Sun: 4×4 dot top-right
+    if (tod === "morning" || tod === "afternoon") {
+      // High sun, 6×6, moves right→left across the top
       spriteCtx.fillStyle = "#f5d84a";
-      spriteCtx.fillRect(W - 14, 8, 4, 4);
-    } else if (tod === "dawn" || tod === "dusk") {
-      // Low sun: 4×4 dot near horizon (2/3 down canvas)
+      var sunX = tod === "morning" ? Math.floor(W * 0.65) : Math.floor(W * 0.35);
+      spriteCtx.fillRect(sunX, 8, 6, 6);
+    } else if (tod === "dawn" || tod === "sunset") {
+      // Low sun near horizon, 5×5
       spriteCtx.fillStyle = "#f5a030";
-      spriteCtx.fillRect(W - 14, Math.floor(H * 0.55), 4, 4);
+      var lowX = tod === "dawn" ? W - 14 : 14;
+      spriteCtx.fillRect(lowX, Math.floor(H * 0.55), 5, 5);
+    } else if (tod === "dusk") {
+      // Barely-visible sun just off the left edge, 5×5
+      spriteCtx.globalAlpha = 0.35;
+      spriteCtx.fillStyle = "#f5a030";
+      spriteCtx.fillRect(6, Math.floor(H * 0.55), 5, 5);
     } else {
-      // Night: moon (3×3 block) + 5 stars as 2×2 dots
-      if (season === "winter") {
-        // Winter moon — slightly brighter
-        spriteCtx.fillStyle = "#d8e8ff";
-        spriteCtx.fillRect(W - 14, 6, 3, 3);
-      }
+      // Night: moon for all seasons + 5 stars as 2×2 dots
+      spriteCtx.fillStyle = season === "winter" ? "#d8e8ff" : "#e8dfc0";
+      spriteCtx.fillRect(W - 14, 6, 3, 3);
       spriteCtx.fillStyle = "#e8e8d8";
       var starPositions = [
         [Math.floor(W * 0.15), 7],
@@ -1753,6 +1761,16 @@
       }
     }
     spriteCtx.restore();
+
+    // ── Sunset orange glow band ────────────────────────────────────────────
+    if (tod === "sunset") {
+      spriteCtx.save();
+      spriteCtx.globalAlpha = 0.18;
+      spriteCtx.fillStyle = "#f5a030";
+      var glowY = Math.floor(H * 0.45);
+      spriteCtx.fillRect(0, glowY, W, Math.floor(H * 0.20));
+      spriteCtx.restore();
+    }
 
     // ── Ground strip: 8px, two-layer (A) ──────────────────────────────────
     // Layer 1: base colour (darker), 8px tall
