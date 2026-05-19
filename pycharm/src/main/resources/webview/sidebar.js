@@ -1356,7 +1356,7 @@
       var siRawX   = 4 + Math.floor(Math.random() * Math.max(1, siW - 20));
       snackItems.push({
         x:    Math.max(siMinX, Math.min(siMaxX, siRawX)),
-        type: Math.random() < 0.5 ? "candy" : "bone",
+        type: "tea",
       });
       idleTimer = 0;  // pet walks toward it immediately
     }
@@ -1465,7 +1465,7 @@
       "attention_call_sick":            n + " is calling — they feel sick!",
       "attention_call_low_energy":      n + " is calling — they're exhausted!",
       "attention_call_misbehaviour":    n + " is misbehaving and needs discipline!",
-      "attention_call_gift":            n + " brought you a gift!",
+      "attention_call_gift":            (_cc && _cc.giftMessage) ? _cc.giftMessage : n + " brought you a gift!",
       "attention_call_critical_health": n + " is calling — health is critical!",
       // Attention calls — answered
       "attention_call_answered_hunger":          "You answered " + n + "'s hunger call.",
@@ -1979,57 +1979,82 @@
       });
     }
 
-    // Gift box
+    // Gift box (or big tea mug for Tim)
     if (giftBoxX !== null) {
-      var GIFT_PIXELS = [
-        [0,0,2,0,0,2,0,0],
-        [0,2,2,2,2,2,2,0],
-        [2,2,2,2,2,2,2,2],
-        [1,1,1,2,2,1,1,1],
-        [1,1,1,2,2,1,1,1],
-        [3,3,3,2,2,3,3,3],
-        [3,3,3,3,3,3,3,3],
-      ];
-      var GS = 2;
-      var gbH = GIFT_PIXELS.length * GS;
-      var gbY = H - 12 - gbH;
       var gbX = Math.round(giftBoxX);
-      GIFT_PIXELS.forEach(function (row, ry) {
-        row.forEach(function (cell, rx) {
-          if (!cell) { return; }
-          spriteCtx.fillStyle = cell === 2 ? "#FFD600" : cell === 3 ? "#B71C1C" : "#E53935";
-          spriteCtx.fillRect(gbX + rx * GS, gbY + ry * GS, GS, GS);
+      var _giftCc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
+      if (_giftCc && _giftCc.spriteType === "tim") {
+        // Big tea mug for Tim
+        var BIG_MUG_PIXELS = [
+          [0,2,0,2,0,0,0,0],
+          [0,2,0,2,0,0,0,0],
+          [1,1,1,1,1,1,0,0],
+          [1,3,3,3,3,1,1,0],
+          [1,3,3,3,3,1,1,0],
+          [1,3,3,3,3,1,1,0],
+          [1,3,3,3,3,1,1,0],
+          [1,3,3,3,3,1,0,0],
+          [1,1,1,1,1,1,0,0],
+          [0,1,1,1,1,0,0,0],
+        ];
+        var BMS = 2;
+        var bmH = BIG_MUG_PIXELS.length * BMS;
+        var bmY = H - 12 - bmH;
+        BIG_MUG_PIXELS.forEach(function (row, ry) {
+          row.forEach(function (cell, rx) {
+            if (!cell) { return; }
+            // 1=dark brown body, 2=steam blue-white, 3=tea amber
+            spriteCtx.fillStyle = cell === 2 ? "#C8E0FF" : cell === 3 ? "#C49A6C" : "#8B5E3C";
+            spriteCtx.fillRect(gbX + rx * BMS, bmY + ry * BMS, BMS, BMS);
+          });
         });
-      });
+      } else {
+        var GIFT_PIXELS = [
+          [0,0,2,0,0,2,0,0],
+          [0,2,2,2,2,2,2,0],
+          [2,2,2,2,2,2,2,2],
+          [1,1,1,2,2,1,1,1],
+          [1,1,1,2,2,1,1,1],
+          [3,3,3,2,2,3,3,3],
+          [3,3,3,3,3,3,3,3],
+        ];
+        var GS = 2;
+        var gbH = GIFT_PIXELS.length * GS;
+        var gbY = H - 12 - gbH;
+        GIFT_PIXELS.forEach(function (row, ry) {
+          row.forEach(function (cell, rx) {
+            if (!cell) { return; }
+            spriteCtx.fillStyle = cell === 2 ? "#FFD600" : cell === 3 ? "#B71C1C" : "#E53935";
+            spriteCtx.fillRect(gbX + rx * GS, gbY + ry * GS, GS, GS);
+          });
+        });
+      }
     }
 
-    // Snack items
+    // Snack items — tea mug
     if (snackItems.length > 0) {
-      var CANDY_PIXELS = [
-        [0,1,1,0],
-        [1,2,1,1],
-        [1,1,2,1],
-        [0,1,1,0],
-      ];
-      var BONE_PIXELS = [
-        [1,1,0,0,1,1],
-        [1,2,1,1,2,1],
-        [0,1,1,1,1,0],
-        [1,2,1,1,2,1],
-        [1,1,0,0,1,1],
+      // Tea mug: 6 cols × 6 rows at scale 2 (12×12 px)
+      // 1=dark brown body, 2=steam, 3=tea amber inside, 4=handle
+      var TEA_MUG_PIXELS = [
+        [0,2,0,2,0,0],
+        [1,1,1,1,0,0],
+        [1,3,3,1,4,0],
+        [1,3,3,1,4,0],
+        [1,3,3,1,0,0],
+        [1,1,1,1,0,0],
       ];
       var SS = 2;
       snackItems.forEach(function (item) {
-        var spx = item.type === "candy" ? CANDY_PIXELS : BONE_PIXELS;
-        var spH = spx.length * SS;
+        var spH = TEA_MUG_PIXELS.length * SS;
         var sY  = H - 12 - spH;
         var sX  = Math.round(item.x);
-        spx.forEach(function (row, ry) {
+        TEA_MUG_PIXELS.forEach(function (row, ry) {
           row.forEach(function (cell, rx) {
             if (!cell) { return; }
-            spriteCtx.fillStyle = item.type === "candy"
-              ? (cell === 2 ? "#FFE0E0" : "#FF6B9D")
-              : (cell === 2 ? "#F5DEB3" : "#DEB887");
+            spriteCtx.fillStyle = cell === 2 ? "#C8E0FF"
+                                : cell === 3 ? "#C49A6C"
+                                : cell === 4 ? "#6B3A1F"
+                                :              "#8B5E3C";
             spriteCtx.fillRect(sX + rx * SS, sY + ry * SS, SS, SS);
           });
         });

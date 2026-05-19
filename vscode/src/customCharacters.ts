@@ -26,6 +26,8 @@ export interface CustomCharacter {
   patLabel:    string;
   /** Minigame overlay title — replaces the default "Play or Pat". */
   mgTitle:     string;
+  /** attention_call_gift toast message (optional — uses default if absent). */
+  giftMessage?: string;
   /** Toast notification strings for pat-related events. */
   patToasts:   CustomCharacterToasts;
   /** Speech bubbles shown at random after a successful pat. */
@@ -39,6 +41,7 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     forcedName:  "Tim",
     patLabel:    "Go for a Run",
     mgTitle:     "Play or Go for a Run",
+    giftMessage: "Tim wants a tea break!",
     patToasts: {
       patted:      "Tim went for a run!",
       pat_refused: "Tim doesn't have enough energy for a run!",

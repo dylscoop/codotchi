@@ -19,21 +19,23 @@
    * Registry of custom characters, keyed by spriteType.
    *
    * Each entry shape:
-   *   passcode    {string}   — exact string the user must enter in settings
-   *   forcedName  {string}   — name auto-assigned on hatch (overrides user input)
-   *   patLabel    {string}   — label for the Pat button in the minigame overlay
-   *   mgTitle     {string}   — minigame overlay title (replaces "Play or Pat")
-   *   patToasts   {object}   — toast strings keyed by event name:
+   *   passcode      {string}   — exact string the user must enter in settings
+   *   forcedName    {string}   — name auto-assigned on hatch (overrides user input)
+   *   patLabel      {string}   — label for the Pat button in the minigame overlay
+   *   mgTitle       {string}   — minigame overlay title (replaces "Play or Pat")
+   *   giftMessage   {string}   — attention_call_gift toast message (optional)
+   *   patToasts     {object}   — toast strings keyed by event name:
    *     patted        {string}  — shown when pat succeeds
    *     pat_refused   {string}  — shown when not enough energy
-   *   patBubbles  {string[]} — speech bubbles shown at random after a successful pat
+   *   patBubbles    {string[]} — speech bubbles shown at random after a successful pat
    */
   var CUSTOM_CHARACTERS = {
     tim: {
-      passcode:   "teawtim",
-      forcedName: "Tim",
-      patLabel:   "Go for a Run",
-      mgTitle:    "Play or Go for a Run",
+      passcode:     "teawtim",
+      forcedName:   "Tim",
+      patLabel:     "Go for a Run",
+      mgTitle:      "Play or Go for a Run",
+      giftMessage:  "Tim wants a tea break!",
       patToasts: {
         patted:      "Tim went for a run!",
         pat_refused: "Tim doesn't have enough energy for a run!",

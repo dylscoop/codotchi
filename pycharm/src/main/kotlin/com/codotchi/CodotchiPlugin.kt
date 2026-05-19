@@ -718,7 +718,7 @@ class CodotchiPlugin : Disposable {
         // Fire IDE notifications for attention_call_* events (only when mechanic is enabled)
         if (state != null && service<CodotchiSettings>().enableAttentionCalls) {
             for (event in state.events) {
-                val msg = attentionCallMessage(state.name, event) ?: continue
+                val msg = attentionCallMessage(state.name, event, state.spriteType) ?: continue
                 fireAttentionNotification(msg)
             }
         }
@@ -740,16 +740,19 @@ class CodotchiPlugin : Disposable {
 
     // ── Attention-call notifications ───────────────────────────────────────
 
-    private fun attentionCallMessage(petName: String, event: String): String? = when (event) {
-        "attention_call_hunger"          -> "$petName is hungry!"
-        "attention_call_unhappiness"     -> "$petName is feeling sad!"
-        "attention_call_poop"            -> "$petName made a mess and wants you to clean it up!"
-        "attention_call_sick"            -> "$petName is sick!"
-        "attention_call_low_energy"      -> "$petName is exhausted!"
-        "attention_call_misbehaviour"    -> "$petName is misbehaving!"
-        "attention_call_gift"            -> "$petName brought you a gift!"
-        "attention_call_critical_health" -> "$petName's health is critical!"
-        else                             -> null
+    private fun attentionCallMessage(petName: String, event: String, spriteType: String? = null): String? {
+        val customChar = spriteType?.let { getCustomCharacterBySpriteType(it) }
+        return when (event) {
+            "attention_call_hunger"          -> "$petName is hungry!"
+            "attention_call_unhappiness"     -> "$petName is feeling sad!"
+            "attention_call_poop"            -> "$petName made a mess and wants you to clean it up!"
+            "attention_call_sick"            -> "$petName is sick!"
+            "attention_call_low_energy"      -> "$petName is exhausted!"
+            "attention_call_misbehaviour"    -> "$petName is misbehaving!"
+            "attention_call_gift"            -> customChar?.giftMessage ?: "$petName brought you a gift!"
+            "attention_call_critical_health" -> "$petName's health is critical!"
+            else                             -> null
+        }
     }
 
     private fun fireAttentionNotification(message: String) {

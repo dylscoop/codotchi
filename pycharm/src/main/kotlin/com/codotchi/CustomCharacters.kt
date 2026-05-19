@@ -28,6 +28,8 @@ data class CustomCharacter(
     val patLabel: String,
     /** Minigame overlay title — replaces the default "Play or Pat". */
     val mgTitle: String,
+    /** attention_call_gift notification message (null = use default). */
+    val giftMessage: String? = null,
     /** Toast notification strings for pat-related events. */
     val patToasts: CustomCharacterToasts,
     /** Speech bubbles shown at random after a successful pat. */
@@ -41,6 +43,7 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         forcedName  = "Tim",
         patLabel    = "Go for a Run",
         mgTitle     = "Play or Go for a Run",
+        giftMessage = "Tim wants a tea break!",
         patToasts   = CustomCharacterToasts(
             patted     = "Tim went for a run!",
             patRefused = "Tim doesn't have enough energy for a run!",
