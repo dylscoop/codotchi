@@ -1,6 +1,21 @@
 # Version History
 
-## v1.23.9 — current
+## v1.23.10 — current
+
+### Changes from v1.23.9
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.10 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.10 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.10 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.10 |
+| `vscode/media/sidebar.js` | Sun redesigned as circle (`arc()`) for all time-of-day buckets (r=7 high, r=6 low/dusk); moon redesigned as right-facing crescent ☽ using `destination-out` composite to punch a bite from a full circle |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.9 — previous
 
 ### Changes from v1.23.8
 

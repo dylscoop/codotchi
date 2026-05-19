@@ -1720,24 +1720,43 @@
     spriteCtx.save();
     spriteCtx.globalAlpha = 0.85;
     if (tod === "morning" || tod === "afternoon") {
-      // High sun, 15×15 (2.5×), moves right→left across the top
+      // High sun — circle r=7, moves right→left across the top
       spriteCtx.fillStyle = "#f5d84a";
-      var sunX = tod === "morning" ? Math.floor(W * 0.65) - 4 : Math.floor(W * 0.35) - 4;
-      spriteCtx.fillRect(sunX, 4, 15, 15);
+      var sunCx = tod === "morning" ? Math.floor(W * 0.65) + 3 : Math.floor(W * 0.35) + 3;
+      spriteCtx.beginPath();
+      spriteCtx.arc(sunCx, 11, 7, 0, Math.PI * 2);
+      spriteCtx.fill();
     } else if (tod === "dawn" || tod === "sunset") {
-      // Low sun near horizon, 13×13 (2.5×)
+      // Low sun near horizon — circle r=6
       spriteCtx.fillStyle = "#f5a030";
-      var lowX = tod === "dawn" ? W - 18 : 10;
-      spriteCtx.fillRect(lowX, Math.floor(H * 0.55) - 4, 13, 13);
+      var lowCx = tod === "dawn" ? W - 12 : 16;
+      spriteCtx.beginPath();
+      spriteCtx.arc(lowCx, Math.floor(H * 0.55) + 2, 6, 0, Math.PI * 2);
+      spriteCtx.fill();
     } else if (tod === "dusk") {
-      // Barely-visible sun just off the left edge, 13×13 (2.5×)
+      // Barely-visible sun just off the left edge — circle r=6
       spriteCtx.globalAlpha = 0.35;
       spriteCtx.fillStyle = "#f5a030";
-      spriteCtx.fillRect(2, Math.floor(H * 0.55) - 4, 13, 13);
+      spriteCtx.beginPath();
+      spriteCtx.arc(8, Math.floor(H * 0.55) + 2, 6, 0, Math.PI * 2);
+      spriteCtx.fill();
     } else {
-      // Night: moon for all seasons + 5 stars as 2×2 dots
-      spriteCtx.fillStyle = season === "winter" ? "#d8e8ff" : "#e8dfc0";
-      spriteCtx.fillRect(W - 16, 4, 8, 8);
+      // Night: crescent moon (right-facing ☽) + 5 stars as 2×2 dots
+      var moonColour = season === "winter" ? "#d8e8ff" : "#e8dfc0";
+      var moonCx = W - 12, moonCy = 8, moonR = 4;
+      // Step 1: draw full moon circle
+      spriteCtx.fillStyle = moonColour;
+      spriteCtx.beginPath();
+      spriteCtx.arc(moonCx, moonCy, moonR, 0, Math.PI * 2);
+      spriteCtx.fill();
+      // Step 2: punch crescent bite (destination-out erases pixels → sky shows through)
+      spriteCtx.globalCompositeOperation = "destination-out";
+      spriteCtx.fillStyle = "rgba(0,0,0,1)";
+      spriteCtx.beginPath();
+      spriteCtx.arc(moonCx + moonR * 0.55, moonCy - moonR * 0.1, moonR * 0.85, 0, Math.PI * 2);
+      spriteCtx.fill();
+      spriteCtx.globalCompositeOperation = "source-over";
+      // Stars
       spriteCtx.fillStyle = "#e8e8d8";
       var starPositions = [
         [Math.floor(W * 0.15), 7],
