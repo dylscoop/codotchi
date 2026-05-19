@@ -1,6 +1,21 @@
 # Version History
 
-## v1.23.10 — current
+## v1.24.0 — current
+
+### Changes from v1.23.10
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.24.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.24.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.24.0 |
+| `opencode-codotchi/package.json` | Version bumped to 1.24.0 |
+| `vscode/media/sidebar.js` | Removed overweight blur (`spriteCanvas.style.filter` always cleared); Spring: 3 flowers (5×5, enlarged from 3×3) with 3rd flower on right side, purple-pink variant for flower 2; Summer: replaced shimmer strip with 5 tall grass blades + 2 sunflowers with stems; Autumn: 5 falling leaves (was 3), two-colour palette (amber + orange-red), wider 3-row leaf pile; Winter: 2 snowflakes (large 7×7 left, small 5×5 right), snow blanket upgraded to three 8×2/6×2 segments |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.10 — previous
 
 ### Changes from v1.23.9
 

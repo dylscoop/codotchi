@@ -897,9 +897,7 @@
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
     }
-    // Apply weight blur effect to canvas
-    var _wt = lastState.weight || 50;
-    spriteCanvas.style.filter = _wt > 80 ? "blur(1.5px)" : _wt > 50 ? "blur(0.75px)" : "";
+    spriteCanvas.style.filter = "";
     var floorY     = spriteCanvas.height - bHeight - 12;
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
@@ -1815,52 +1813,86 @@
     spriteCtx.globalAlpha = 0.90;
 
     if (season === "spring") {
-      // Two flowers (pink petals + yellow centre) + 3 grass blades
-      // Flower 1
+      // Three flowers (5×5 petals, 2×2 centre) + grass blades
+      // Flower 1 (left) — pink
       spriteCtx.fillStyle = "#e87898";
-      spriteCtx.fillRect(6,  H - 18, 3, 3);
+      spriteCtx.fillRect(4,  H - 21, 5, 5);
       spriteCtx.fillStyle = "#f8f060";
-      spriteCtx.fillRect(7,  H - 17, 1, 1);
-      // Flower 2
+      spriteCtx.fillRect(6,  H - 19, 2, 2);
+      // Flower 2 (centre-left) — purple-pink
+      spriteCtx.fillStyle = "#d060a8";
+      spriteCtx.fillRect(15, H - 20, 5, 5);
+      spriteCtx.fillStyle = "#f8f060";
+      spriteCtx.fillRect(17, H - 18, 2, 2);
+      // Flower 3 (right) — pink
       spriteCtx.fillStyle = "#e87898";
-      spriteCtx.fillRect(16, H - 17, 3, 3);
+      spriteCtx.fillRect(W - 14, H - 21, 5, 5);
       spriteCtx.fillStyle = "#f8f060";
-      spriteCtx.fillRect(17, H - 16, 1, 1);
-      // Grass blades: 1×4 vertical strips
+      spriteCtx.fillRect(W - 12, H - 19, 2, 2);
+      // Grass blades: 1×5 vertical strips
       spriteCtx.fillStyle = "#70d840";
-      spriteCtx.fillRect(11, H - 17, 1, 4);
-      spriteCtx.fillRect(22, H - 16, 1, 3);
-      spriteCtx.fillRect(4,  H - 15, 1, 3);
+      spriteCtx.fillRect(11, H - 18, 1, 5);
+      spriteCtx.fillRect(23, H - 17, 1, 4);
+      spriteCtx.fillRect(W - 20, H - 17, 1, 4);
 
     } else if (season === "summer") {
-      // Sun shimmer: thin warm-yellow strip just above ground
-      spriteCtx.globalAlpha = 0.18;
-      spriteCtx.fillStyle = "#f8e840";
-      spriteCtx.fillRect(0, H - 22, W, 4);
+      // Tall grass blades + two sunflowers with stems
+      // Tall grass: 1×7 dark-green blades
+      spriteCtx.fillStyle = "#28882a";
+      spriteCtx.fillRect(4,  H - 19, 1, 7);
+      spriteCtx.fillRect(9,  H - 18, 1, 6);
+      spriteCtx.fillRect(14, H - 20, 1, 8);
+      spriteCtx.fillRect(W - 10, H - 18, 1, 6);
+      spriteCtx.fillRect(W - 6,  H - 19, 1, 7);
+      // Sunflower 1 stem
+      spriteCtx.fillStyle = "#4a8020";
+      spriteCtx.fillRect(22, H - 17, 1, 5);
+      // Sunflower 1 head — 5×5 petals
+      spriteCtx.fillStyle = "#f8d020";
+      spriteCtx.fillRect(20, H - 22, 5, 5);
+      spriteCtx.fillStyle = "#8a5010";
+      spriteCtx.fillRect(22, H - 20, 2, 2);
+      // Sunflower 2 stem
+      spriteCtx.fillStyle = "#4a8020";
+      spriteCtx.fillRect(W - 18, H - 17, 1, 5);
+      // Sunflower 2 head — 5×5 petals
+      spriteCtx.fillStyle = "#f8d020";
+      spriteCtx.fillRect(W - 20, H - 22, 5, 5);
+      spriteCtx.fillStyle = "#8a5010";
+      spriteCtx.fillRect(W - 18, H - 20, 2, 2);
 
     } else if (season === "autumn") {
-      // 3 falling leaf pixels + a small leaf pile at bottom-left
-      spriteCtx.fillStyle = "#d8682a";
-      spriteCtx.fillRect(6,  H - 20, 2, 2);
-      spriteCtx.fillRect(14, H - 16, 2, 2);
-      spriteCtx.fillStyle = "#c84010";
-      spriteCtx.fillRect(10, H - 13, 2, 2);
-      // Leaf pile: 4 overlapping 2×1 dots
+      // 5 falling leaves at varied heights — two colours
+      spriteCtx.fillStyle = "#e88020";  // amber
+      spriteCtx.fillRect(5,  H - 24, 3, 3);
+      spriteCtx.fillRect(W - 8, H - 17, 2, 2);
+      spriteCtx.fillStyle = "#d8682a";  // orange
+      spriteCtx.fillRect(W - 14, H - 22, 3, 3);
+      spriteCtx.fillStyle = "#c84010";  // dark orange-red
+      spriteCtx.fillRect(13, H - 19, 2, 2);
+      spriteCtx.fillRect(8,  H - 15, 2, 2);
+      // Wider leaf pile
       spriteCtx.fillStyle = "#a03810";
-      spriteCtx.fillRect(4,  H - 14, 4, 1);
+      spriteCtx.fillRect(3,  H - 14, 6, 1);
+      spriteCtx.fillStyle = "#c85020";
+      spriteCtx.fillRect(4,  H - 15, 5, 1);
       spriteCtx.fillStyle = "#d8682a";
-      spriteCtx.fillRect(5,  H - 15, 3, 1);
+      spriteCtx.fillRect(5,  H - 16, 4, 1);
 
     } else if (season === "winter") {
-      // Snowflake cross + 3 snow dots on ground
+      // Large snowflake (7×7 cross, left) + small snowflake (5×5 cross, right)
       spriteCtx.fillStyle = "#e8f0f8";
-      spriteCtx.fillRect(9,  H - 22, 1, 5); // vertical arm
-      spriteCtx.fillRect(7,  H - 20, 5, 1); // horizontal arm
-      // Snow dots on ground
+      // Large snowflake
+      spriteCtx.fillRect(8,  H - 28, 1, 7); // vertical arm
+      spriteCtx.fillRect(5,  H - 25, 7, 1); // horizontal arm
+      // Small snowflake
+      spriteCtx.fillRect(W - 10, H - 25, 1, 5); // vertical arm
+      spriteCtx.fillRect(W - 12, H - 23, 5, 1); // horizontal arm
+      // Snow blanket on ground (three thicker segments)
       spriteCtx.fillStyle = "#ffffff";
-      spriteCtx.fillRect(3,  H - 14, 2, 1);
-      spriteCtx.fillRect(18, H - 14, 2, 1);
-      spriteCtx.fillRect(10, H - 13, 2, 1);
+      spriteCtx.fillRect(2,  H - 14, 8, 2);
+      spriteCtx.fillRect(14, H - 13, 6, 2);
+      spriteCtx.fillRect(W - 12, H - 14, 8, 2);
     }
 
     spriteCtx.restore();
@@ -2270,7 +2302,7 @@
 
    /**
     * Return the effective rendered width (in canvas px) for a given state and bodySize.
-    * Weight no longer affects width — blur is used instead.
+     * Weight no longer affects width.
     * @param {object} state
     * @param {number} bSize  — base body size
     * @returns {number}
