@@ -1690,7 +1690,7 @@
     if (tod === "dawn")      { skyColour = "#e8844a"; skyAlpha = 0.22; }
     if (tod === "morning")   { skyColour = "#78b8e8"; skyAlpha = 0.50; }
     if (tod === "afternoon") { skyColour = "#5aaad4"; skyAlpha = 0.45; }
-    if (tod === "sunset")    { skyColour = "#e8602a"; skyAlpha = 0.28; }
+    if (tod === "sunset")    { skyColour = "#1a4060"; skyAlpha = 0.45; }
     if (tod === "dusk")      { skyColour = "#7a3a6e"; skyAlpha = 0.25; }
     if (tod === "night")     { skyColour = "#0a0a2a"; skyAlpha = 0.40; }
 
@@ -1752,13 +1752,12 @@
     }
     spriteCtx.restore();
 
-    // ── Sunset orange glow band ────────────────────────────────────────────
+    // ── Sunset orange glow band (top quarter) ─────────────────────────────
     if (tod === "sunset") {
       spriteCtx.save();
-      spriteCtx.globalAlpha = 0.18;
-      spriteCtx.fillStyle = "#f5a030";
-      var glowY = Math.floor(H * 0.45);
-      spriteCtx.fillRect(0, glowY, W, Math.floor(H * 0.20));
+      spriteCtx.globalAlpha = 0.55;
+      spriteCtx.fillStyle = "#f07020";
+      spriteCtx.fillRect(0, 0, W, Math.floor(H * 0.25));
       spriteCtx.restore();
     }
 

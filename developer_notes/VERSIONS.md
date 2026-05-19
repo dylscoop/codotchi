@@ -1,6 +1,21 @@
 # Version History
 
-## v1.23.7 — current
+## v1.23.8 — current
+
+### Changes from v1.23.7
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 1.23.8 |
+| `pycharm/build.gradle.kts` | Version bumped to 1.23.8 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 1.23.8 |
+| `opencode-codotchi/package.json` | Version bumped to 1.23.8 |
+| `vscode/media/sidebar.js` | Sunset sky tint changed from `#e8602a` α=0.28 (brown/orange-red) to `#1a4060` α=0.45 (deep twilight blue); sunset glow band moved from mid-canvas to top quarter (`H*0.25`), colour `#f5a030`→`#f07020`, alpha `0.18`→`0.55` — produces blue lower sky with vivid orange band at top |
+| `pycharm/src/main/resources/webview/sidebar.js` | Identical changes to VS Code (IDE parity) |
+
+---
+
+## v1.23.7 — previous
 
 ### Changes from v1.23.6
 
