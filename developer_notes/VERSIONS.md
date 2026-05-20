@@ -1,6 +1,22 @@
 # Version History
 
-## v2.0.2 — current
+## v2.0.3 — current
+
+### Changes from v2.0.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.0.3 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.0.3 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.0.3 |
+| `opencode-codotchi/package.json` | Version bumped to 2.0.3 |
+| `vscode/media/sidebar.js` | BUGFIX-108: added missing `var _cc` declaration in `renderState()` that caused ReferenceError crash |
+| `pycharm/src/main/resources/webview/sidebar.js` | BUGFIX-108: same `var _cc` fix mirrored |
+| `vscode/src/sidebarProvider.ts` | BUGFIX-108: changed `{{stageHeight}}` replacement from `.replace()` to regex `.replace(/…/g, …)` so both canvases get the correct height |
+
+---
+
+## v2.0.2 — previous
 
 ### Changes from v2.0.1
 

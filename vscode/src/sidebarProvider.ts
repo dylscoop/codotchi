@@ -197,7 +197,7 @@ export class SidebarProvider
     // The canvas CSS height is driven by the height attribute (height: auto in CSS)
     // so the pixel buffer and display size always match.
     const petStageHeight = 240;
-    html = html.replace("{{stageHeight}}", String(petStageHeight));
+    html = html.replace(/\{\{stageHeight\}\}/g, String(petStageHeight));
 
     const petSize = cfg.get<string>("petSize", "medium");
     html = html.replace("{{petSize}}", petSize);

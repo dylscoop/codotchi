@@ -1135,6 +1135,8 @@
 
     showScreen("game");
 
+    var _cc = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
+
     petNameDisplay.textContent = state.name || "Codotchi";
     moodLabel.textContent      = moodText(state);
 

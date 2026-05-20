@@ -1337,3 +1337,12 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 **Fix:**
 - Updated `CodotchiBrowserPanel.kt` to replace the correct `{{...Uri}}` placeholder strings (`{{spriteConstantsUri}}`, `{{spritesUri}}`, `{{customCharactersUri}}`, `{{jsUri}}`, `{{cssUri}}`), added `{{idleResetOnMouseMovement}}` substitution, and added removal of the VS Code CSP `<meta>` tag (not applicable in a native JCEF browser).
 - Added a null guard on the `customCharBySpriteType` call at `sidebar.js` line 1201 (defensive; consistent with all other call-sites) to prevent a silent crash if scripts ever fail to load.
+
+## BUGFIX-108 — Webview blank screen / ReferenceError: _cc is not defined
+
+**Status:** Fixed (v2.0.3, branch `fix/bugfix-108-cc-undefined`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`, `vscode/src/sidebarProvider.ts`
+
+**Problem:** In v2.0.2, `renderState()` in both VS Code and PyCharm crashed on every call with `ReferenceError: _cc is not defined` at the Tim-specific hunger label logic (line 1150). The variable `_cc` was referenced but never declared — the `var _cc = ...` line was accidentally omitted from the v2.0.2 build. Because `renderState()` threw before updating `lastState`, the animation loop never drew anything (blank canvas, no background, no pet), the info-line stayed at its static HTML placeholder ("Age: 0d | egg | wt:5 | 0 poops"), and the Play button's `showMgOverlay()` was never reached because the energy guard checked a null `lastState`.
+
+**Fix:** Added the missing `var _cc = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;` declaration in `renderState()` for both IDEs. Also fixed `sidebarProvider.ts` to use a regex replace for `{{stageHeight}}` so both canvas elements receive the correct height attribute.
