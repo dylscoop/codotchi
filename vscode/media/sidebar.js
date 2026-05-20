@@ -675,7 +675,7 @@
   function getFloorY() {
     if (!lastState) { return spriteCanvas.height - 12; }
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
-    var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
+    var bSize      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType) * scale);
     var bWidth     = effectiveBWidth(lastState, bSize);
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
@@ -883,7 +883,7 @@
 
     // Dimension helpers
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
-    var bSize      = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
+    var bSize      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType) * scale);
     var bWidth     = effectiveBWidth(lastState, bSize);
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
@@ -1101,7 +1101,7 @@
 
     // ── Speech bubble ──────────────────────────────────────────────────────
     var _bScale   = STAGE_SCALES[lastState.stage] || 0.5;
-    var _bSz      = Math.round(BASE_SIZE * petSizeMultiplier() * _bScale);
+    var _bSz      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType) * _bScale);
     var _bW       = effectiveBWidth(lastState, _bSz);
     var _petCx    = Math.round(petX) + Math.round(_bW / 2);
     var _petTopY  = Math.round(petY) + walkBob;
@@ -1209,7 +1209,7 @@
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
       var scale2   = STAGE_SCALES[state.stage] || 0.5;
-      var bSize2   = Math.round(BASE_SIZE * petSizeMultiplier() * scale2);
+      var bSize2   = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * scale2);
       var bWidth2  = effectiveBWidth(state, bSize2);
       var centreX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth2 / 2));
       if (state.sleeping) {
@@ -1363,7 +1363,7 @@
       var siW = spriteCanvas.width;
       // Compute the pet's reachable X range so the snack is always within reach.
       var siScale  = STAGE_SCALES[(state.stage || lastState && lastState.stage) || "baby"] || 0.5;
-      var siBSize  = Math.round(BASE_SIZE * petSizeMultiplier() * siScale);
+      var siBSize  = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType || (lastState && lastState.spriteType)) * siScale);
       var siBWidth = effectiveBWidth(state.alive ? state : lastState, siBSize);
       var siMinX   = 4;
       var siMaxX   = siW - siBWidth - 4;
@@ -2157,7 +2157,7 @@
     var t = Math.min(1, (nowMs - reaction.startMs) / reaction.durationMs);
     var palette   = getPalette(state.spriteType);
     var stageScale = STAGE_SCALES[state.stage] || 0.5;
-    var bSize     = Math.round(BASE_SIZE * petSizeMultiplier() * stageScale);
+    var bSize     = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * stageScale);
     var bWidth    = effectiveBWidth(state, bSize);
     var bHeight   = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
     var feetY     = bodyY + bHeight;              // canvas Y of the bottom of the feet
@@ -2291,7 +2291,7 @@
    */
   function drawStatusIndicators(state, x, bodyY) {
     var scale    = STAGE_SCALES[state.stage] || 0.5;
-    var bSize    = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
+    var bSize    = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * scale);
     var bWidth   = effectiveBWidth(state, bSize);
     var palette  = getPalette(state.spriteType);
     var secondary = palette.secondary;
@@ -2318,7 +2318,7 @@
     drawEnvironment(state);
 
     var scale    = STAGE_SCALES[state.stage] || 0.5;
-    var bSize    = Math.round(BASE_SIZE * petSizeMultiplier() * scale);
+    var bSize    = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * scale);
     var bWidth   = effectiveBWidth(state, bSize);
     var bHeight  = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
@@ -2368,8 +2368,12 @@
     *   medium = 1.0x  (default)
     *   large  = 1.5x  (high-detail 24x32 sprites)
     */
-   function petSizeMultiplier() {
+   function petSizeMultiplier(spriteType) {
      var ps = (document.body && document.body.dataset && document.body.dataset.petSize) || "medium";
+     var isUp = !!(window.UPRIGHT_TYPES && window.UPRIGHT_TYPES[spriteType]);
+     if (isUp) {
+       return ps === "small" ? 0.5625 : ps === "large" ? 1.0 : 0.75;
+     }
      return ps === "small" ? 0.75 : ps === "large" ? 1.5 : 1.0;
    }
 

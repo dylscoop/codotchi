@@ -1,6 +1,30 @@
 # Version History
 
-## v2.1.0 — current
+## v2.1.1 — current
+
+### Changes from v2.1.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.1.1 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.1.1 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.1.1 |
+| `opencode-codotchi/package.json` | Version bumped to 2.1.1 |
+| `vscode/media/sprites.js` | feat: upright animals (classic, dragon, monkey, rooster, tim) now use smaller petSize multipliers — small=0.5625, medium=0.75, large=1.0 (quadrupeds unchanged) |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored upright-size reduction |
+| `vscode/media/sidebar.js` | feat: `petSizeMultiplier(spriteType)` now accepts spriteType and returns upright-specific multipliers; all 8 call sites updated |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored petSizeMultiplier change and call site updates |
+
+### Updated constants
+
+```
+petSizeMultiplier (upright only): small=0.5625 / medium=0.75 / large=1.0
+petSizeMultiplier (quadruped):    small=0.75   / medium=1.0  / large=1.5  (unchanged)
+```
+
+---
+
+## v2.1.0 — previous
 
 ### Changes from v2.0.4
 

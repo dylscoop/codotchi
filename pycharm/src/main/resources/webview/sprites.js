@@ -3119,13 +3119,19 @@
     var petSizeVal = (typeof document !== "undefined" && document.body && document.body.dataset)
                    ? (document.body.dataset.petSize || "medium")
                    : "medium";
-     var sizeMultiplier = petSizeVal === "small" ? 0.75
-                        : petSizeVal === "large"  ? 1.5
-                        : 1.0; // medium (default)
+     // sizeMultiplier is assigned after isUpright is known (see below)
+    var sizeMultiplier;
 
     // -- Determine grid type -------------------------------------------------
     var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1, tim: 1 };
     var isUpright = !!UPRIGHT_TYPES[spriteType];
+
+    // Upright animals render at smaller sizes than quadrupeds.
+    // small=0.5625 / medium=0.75 / large=1.0 for upright;
+    // small=0.75  / medium=1.0  / large=1.5  for quadruped (unchanged).
+    sizeMultiplier = isUpright
+      ? (petSizeVal === "small" ? 0.5625 : petSizeVal === "large" ? 1.0  : 0.75)
+      : (petSizeVal === "small" ? 0.75   : petSizeVal === "large" ? 1.5  : 1.0);
 
     // Bug fix #1: correct COLS/ROWS and legRowStart per grid type
     var COLS        = isUpright ? 32 : 48;
