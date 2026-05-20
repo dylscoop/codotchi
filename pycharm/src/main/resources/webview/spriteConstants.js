@@ -70,15 +70,49 @@
   /** Sprite types that use a portrait (32 cols × 48 rows) grid. */
   var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1, tim: 1 };
 
+  // ── Sprite grid metadata (v2) ─────────────────────────────────────────────
+  /**
+   * Per-spriteType grid dimensions and leg row boundary.
+   * Existing sprites declare their fixed sizes here.
+   * Custom imported sprites (v2) will have entries added dynamically by
+   * scripts/import_sprite.js when --inject is used.
+   *
+   * cols        — number of columns in the sprite grid
+   * rows        — number of rows in the sprite grid
+   * legRowStart — first row index that belongs to the leg zone
+   *               (legs must sit in rows legRowStart..rows-1)
+   */
+  var SPRITE_GRID_META = {
+    // Upright sprites (32 × 48)
+    classic:  { cols: 32, rows: 48, legRowStart: 37 },
+    monkey:   { cols: 32, rows: 48, legRowStart: 37 },
+    rooster:  { cols: 32, rows: 48, legRowStart: 37 },
+    dragon:   { cols: 32, rows: 48, legRowStart: 37 },
+    tim:      { cols: 32, rows: 48, legRowStart: 37 },
+    // Quadruped sprites (48 × 32)
+    cat:      { cols: 48, rows: 32, legRowStart: 25 },
+    rat:      { cols: 48, rows: 32, legRowStart: 25 },
+    ox:       { cols: 48, rows: 32, legRowStart: 25 },
+    tiger:    { cols: 48, rows: 32, legRowStart: 25 },
+    rabbit:   { cols: 48, rows: 32, legRowStart: 25 },
+    horse:    { cols: 48, rows: 32, legRowStart: 25 },
+    sheep:    { cols: 48, rows: 32, legRowStart: 25 },
+    dog:      { cols: 48, rows: 32, legRowStart: 25 },
+    pig:      { cols: 48, rows: 32, legRowStart: 25 },
+    snake:    { cols: 48, rows: 32, legRowStart: 25 },
+  };
+
   /**
    * Return the height/width ratio for a given spriteType.
-   * Upright grids are 32×48 → ratio 48/32 = 1.5.
-   * Quadruped/snake grids are 48×32 → ratio 32/48 ≈ 0.667.
-   * This gives square pixel cells, matching ASCII sketch proportions.
+   * Reads from SPRITE_GRID_META for all known types (including custom v2 imports).
+   * Falls back to UPRIGHT_TYPES heuristic for unknown types.
    * @param {string} spriteType
    * @returns {number}
    */
   function spriteHeightRatio(spriteType) {
+    var meta = SPRITE_GRID_META[spriteType];
+    if (meta) { return meta.rows / meta.cols; }
+    // Fallback for any spriteType not yet registered in SPRITE_GRID_META
     return UPRIGHT_TYPES[spriteType] ? (48 / 32) : (32 / 48);
   }
 
@@ -120,6 +154,7 @@
   window.SPRITE_ANIMAL_PALETTES   = ANIMAL_PALETTES;
   window.SPRITE_STAGE_SCALES      = STAGE_SCALES;
   window.UPRIGHT_TYPES            = UPRIGHT_TYPES;
+  window.SPRITE_GRID_META         = SPRITE_GRID_META;
   window.spriteGetPalette         = getPalette;
   window.spriteWeightWidthMult    = weightWidthMultiplier;
   window.spriteHeightRatio        = spriteHeightRatio;
