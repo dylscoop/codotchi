@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test
  * First occurred: commit db0602e (sprites.js inlining added)
  * Re-occurred:    commit 519ef11 (spriteConstants.js extracted but not inlined)
  * Fixed:          BUGFIX-090 (v1.8.1)
+ * Updated:        BUGFIX-107 (v2.0.2) — HTML now uses {{...Uri}} placeholders
+ *                 instead of literal <script src="..."> tags; tests updated to match.
  *
  * These tests load the raw webview resource files from the classpath (the same
  * way CodotchiBrowserPanel.buildHtml() does) and assert that the substitution
@@ -27,14 +29,19 @@ class BrowserPanelHtmlTest {
             ?: error("Missing classpath resource: $path")
 
     // Simulate the key substitution from buildHtml() so we can inspect output.
+    // Mirrors the {{...Uri}} replacement logic in CodotchiBrowserPanel.buildHtml().
     private fun buildInlinedHtml(): String {
         val spriteConstantsText = loadResource("/webview/spriteConstants.js")
         val spritesText         = loadResource("/webview/sprites.js")
         var html                = loadResource("/webview/sidebar.html")
 
         html = html.replace(
-            """<script src="sprites.js"></script>""",
-            "<script>\n$spriteConstantsText\n</script>\n<script>\n$spritesText\n</script>"
+            """<script src="{{spriteConstantsUri}}"></script>""",
+            "<script>\n$spriteConstantsText\n</script>"
+        )
+        html = html.replace(
+            """<script src="{{spritesUri}}"></script>""",
+            "<script>\n$spritesText\n</script>"
         )
         return html
     }
@@ -55,8 +62,8 @@ class BrowserPanelHtmlTest {
     fun `sidebar html has sprites script placeholder`() {
         val html = loadResource("/webview/sidebar.html")
         assertTrue(
-            html.contains("""<script src="sprites.js"></script>"""),
-            "sidebar.html must contain <script src=\"sprites.js\"></script> for CodotchiBrowserPanel to inline"
+            html.contains("""<script src="{{spritesUri}}"></script>"""),
+            "sidebar.html must contain <script src=\"{{spritesUri}}\"></script> for CodotchiBrowserPanel to inline"
         )
     }
 
@@ -102,8 +109,8 @@ class BrowserPanelHtmlTest {
     fun `built html has no literal script src for sprites js`() {
         val html = buildInlinedHtml()
         assertFalse(
-            html.contains("""<script src="sprites.js"></script>"""),
-            "Built HTML must not contain a literal <script src=\"sprites.js\"> — it must be fully inlined"
+            html.contains("""<script src="{{spritesUri}}"></script>"""),
+            "Built HTML must not contain a literal <script src=\"{{spritesUri}}\"> — it must be fully inlined"
         )
     }
 
@@ -111,8 +118,8 @@ class BrowserPanelHtmlTest {
     fun `built html has no literal script src for spriteConstants js`() {
         val html = buildInlinedHtml()
         assertFalse(
-            html.contains("""<script src="spriteConstants.js"></script>"""),
-            "Built HTML must not contain a literal <script src=\"spriteConstants.js\"> — it must be inlined via the sprites.js placeholder"
+            html.contains("""<script src="{{spriteConstantsUri}}"></script>"""),
+            "Built HTML must not contain a literal <script src=\"{{spriteConstantsUri}}\"> — it must be inlined"
         )
     }
 

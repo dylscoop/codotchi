@@ -79,8 +79,8 @@ describe("constants", () => {
     assert.equal(TICK_INTERVAL_SECONDS, 3);
   });
 
-  it("CODE_ACTIVITY_THROTTLE_SECONDS is 30", () => {
-    assert.equal(CODE_ACTIVITY_THROTTLE_SECONDS, 30);
+  it("CODE_ACTIVITY_THROTTLE_SECONDS is 10", () => {
+    assert.equal(CODE_ACTIVITY_THROTTLE_SECONDS, 10);
   });
 
   it("VALID_PET_TYPES contains the four types", () => {
@@ -258,16 +258,16 @@ describe("characterForStage", () => {
 
 describe("tick — stat decay", () => {
   it("decrements hunger by 1 per tick while awake", () => {
-    // ticksAlive starts at 2 → becomes 3 → 3 % DECAY_TICK_INTERVAL(3) === 0 → decay fires
-    const pet = makePet({ hunger: 50, ticksAlive: 2 });
+    // ticksAlive starts at 5 → becomes 6 → 6 % DECAY_TICK_INTERVAL(6) === 0 → decay fires
+    const pet = makePet({ hunger: 50, ticksAlive: 5 });
     const next = tick(pet);
     assert.equal(next.hunger, 49);
   });
 
   it("decrements happiness by 1 per tick while awake", () => {
     // weight=40 keeps the pet in the neutral weight range (17–66) so no happiness debuff fires
-    // ticksAlive starts at 2 → becomes 3 → decay fires
-    const pet = makePet({ happiness: 50, weight: 40, ticksAlive: 2 });
+    // ticksAlive starts at 5 → becomes 6 → decay fires
+    const pet = makePet({ happiness: 50, weight: 40, ticksAlive: 5 });
     const next = tick(pet);
     assert.equal(next.happiness, 49);
   });
@@ -313,11 +313,11 @@ describe("tick — stat decay", () => {
   });
 
   it("bytebug decays hunger faster than codeling", () => {
-    // bytebug hungerInterval=2, codeling hungerInterval=3.
-    // Run 2 ticks: at tick 2 bytebug fires (2%2=0), codeling does not (2%3≠0).
+    // bytebug hungerInterval=round(6/1.5)=4, codeling hungerInterval=round(6/1.0)=6.
+    // Run 4 ticks: at tick 4 bytebug fires (4%4=0), codeling does not (4%6≠0).
     let codeling = createPet("A", "codeling");
     let bytebug = createPet("B", "bytebug");
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       codeling = tick(codeling);
       bytebug  = tick(bytebug);
     }
@@ -328,11 +328,11 @@ describe("tick — stat decay", () => {
   });
 
   it("pixelpup decays happiness faster than codeling", () => {
-    // pixelpup happinessInterval=2, codeling happinessInterval=3.
-    // Run 2 ticks: at tick 2 pixelpup fires (2%2=0), codeling does not (2%3≠0).
+    // pixelpup happinessInterval=round(6/1.5)=4, codeling happinessInterval=round(6/1.0)=6.
+    // Run 4 ticks: at tick 4 pixelpup fires (4%4=0), codeling does not (4%6≠0).
     let codeling = createPet("A", "codeling");
     let pixelpup = createPet("B", "pixelpup");
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       codeling = tick(codeling);
       pixelpup = tick(pixelpup);
     }
@@ -379,11 +379,11 @@ describe("tick — stat decay", () => {
     assert.equal(next.energy, 50, "energy should not decay on a throttled idle tick");
   });
 
-  it("decays energy on the 60th idle tick (IDLE_DECAY_TICK_DIVISOR=20, energyInterval=3)", () => {
-    // ticksAlive starts at 59 → becomes 60 → 60 % 60 === 0 → idle energy decay fires
-    const pet = makePet({ energy: 50, ticksAlive: 59 });
+  it("decays energy on the 120th idle tick (IDLE_DECAY_TICK_DIVISOR=20, energyInterval=6)", () => {
+    // ticksAlive starts at 119 → becomes 120 → 120 % 120 === 0 → idle energy decay fires
+    const pet = makePet({ energy: 50, ticksAlive: 119 });
     const next = tick(pet, true);
-    assert.equal(next.energy, 49, "energy should decay by 1 on the 60th idle tick");
+    assert.equal(next.energy, 49, "energy should decay by 1 on the 120th idle tick");
   });
 });
 
@@ -440,8 +440,8 @@ describe("tick — sickness from dirty environment", () => {
 
 describe("tick — starvation damage", () => {
   it("starts counting hunger_zero_ticks when hunger reaches 0", () => {
-    // ticksAlive:2 → after tick becomes 3 → 3%3=0 → hungerDecayTick fires → hunger 1→0
-    const pet = makePet({ hunger: 1, ticksAlive: 2 });
+    // ticksAlive:5 → after tick becomes 6 → 6%6=0 → hungerDecayTick fires → hunger 1→0
+    const pet = makePet({ hunger: 1, ticksAlive: 5 });
     const next = tick(pet);
     // hunger will be 0 after decay
     assert.equal(next.hunger, 0);
@@ -1269,10 +1269,10 @@ describe("praise", () => {
 // ---------------------------------------------------------------------------
 
 describe("applyCodeActivity", () => {
-  it("increases happiness by 5", () => {
+  it("increases happiness by 8", () => {
     const pet = makePet({ happiness: 50 });
     const next = applyCodeActivity(pet);
-    assert.equal(next.happiness, 55);
+    assert.equal(next.happiness, 58);
   });
 
   it("increases discipline by 2", () => {

@@ -1,6 +1,21 @@
 # Version History
 
-## v2.0.4 — current
+## v2.1.0 — current
+
+### Changes from v2.0.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.1.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.1.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.1.0 |
+| `opencode-codotchi/package.json` | Version bumped to 2.1.0 |
+| `vscode/media/sprites.js` | feat: classic sprite restored to legacy v0.11.2 procedural renderer — removed DEFS grid data, added `drawClassicProcedural()` with fixed neon green (#39ff14) / magenta (#ff00ff) colours |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored classic procedural renderer change |
+
+---
+
+## v2.0.4 — previous
 
 ### Changes from v2.0.3
 
