@@ -1198,7 +1198,7 @@
     }
 
     // Custom character button and minigame label overrides
-    var _customChar = customCharBySpriteType(state.spriteType);
+    var _customChar = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
     var mgTitle  = document.querySelector("#mg-select .mg-title");
     var mgPatBtn = document.getElementById("btn-mg-pat");
     if (mgTitle)  { mgTitle.textContent  = _customChar ? _customChar.mgTitle  : "Play or Pat"; }

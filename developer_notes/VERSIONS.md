@@ -1,6 +1,22 @@
 # Version History
 
-## v2.0.1 — current
+## v2.0.2 — current
+
+### Changes from v2.0.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.0.2 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.0.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.0.2 |
+| `opencode-codotchi/package.json` | Version bumped to 2.0.2 |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | BUGFIX-107: fixed all `buildHtml()` script/CSS replacements to match `{{...Uri}}` placeholders; added `{{idleResetOnMouseMovement}}` substitution; strip VS Code CSP meta tag |
+| `vscode/media/sidebar.js` | BUGFIX-107 (defensive): null guard on `customCharBySpriteType` call in `renderState()` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored null guard from VS Code |
+
+---
+
+## v2.0.1 — previous
 
 ### Changes from v2.0.0
 

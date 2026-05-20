@@ -127,15 +127,21 @@ class CodotchiBrowserPanel(
         html = html.replace("{{reducedMotion}}", reducedMotion.toString())
         html = html.replace("{{petSize}}", petSize)
         html = html.replace("{{background}}", background)
+        html = html.replace("{{idleResetOnMouseMovement}}", "true")
 
-        // Inline CSS — replace <link rel="stylesheet" href="sidebar.css" />
+        // Remove the VS Code Content-Security-Policy meta tag — PyCharm uses a native
+        // JCEF browser which does not honour webview CSPs and the literal {{cspSource}}
+        // placeholder would be left in the DOM if not stripped.
+        html = html.replace(Regex("""<meta\s[^>]*Content-Security-Policy[^>]*>"""), "")
+
+        // Inline CSS — replace <link rel="stylesheet" href="{{cssUri}}" />
         // Append a colour override so user preference takes precedence over
         // the CSS default without touching the shared webview CSS file.
         val colorOverride = """
             body { color: $textColor !important; }
         """.trimIndent()
         html = html.replace(
-            """<link rel="stylesheet" href="sidebar.css" />""",
+            """<link rel="stylesheet" href="{{cssUri}}" />""",
             "<style>\n$cssText\n$colorOverride\n</style>"
         )
 
@@ -158,19 +164,27 @@ class CodotchiBrowserPanel(
             $jsText
         """.trimIndent()
 
-        // Replace <script src="sprites.js"></script> with spriteConstants.js, customCharacters.js,
-        // and sprites.js inlined in order — constants must be defined before renderSpriteGrid is called.
+        // Replace <script src="{{spriteConstantsUri}}"></script>, <script src="{{spritesUri}}"></script>,
+        // and <script src="{{customCharactersUri}}"></script> with inlined scripts in the correct order.
+        // constants must be defined before renderSpriteGrid is called.
         html = html.replace(
-            """<script src="sprites.js"></script>""",
-            "<script>\n$spriteConstantsText\n</script>\n<script>\n$customCharactersText\n</script>\n<script>\n$spritesText\n</script>"
+            """<script src="{{spriteConstantsUri}}"></script>""",
+            "<script>\n$spriteConstantsText\n</script>"
+        )
+        html = html.replace(
+            """<script src="{{spritesUri}}"></script>""",
+            "<script>\n$spritesText\n</script>"
         )
 
-        // Replace {{customCharactersUri}} placeholder (VS Code uses a URI; PyCharm already inlined above)
-        html = html.replace("""<script src="{{customCharactersUri}}"></script>""", "")
-
-        // Replace <script src="sidebar.js"></script>
+        // Replace {{customCharactersUri}} placeholder (VS Code uses a URI; PyCharm inlines it here)
         html = html.replace(
-            """<script src="sidebar.js"></script>""",
+            """<script src="{{customCharactersUri}}"></script>""",
+            "<script>\n$customCharactersText\n</script>"
+        )
+
+        // Replace <script src="{{jsUri}}"></script> with the shim + sidebar.js inlined
+        html = html.replace(
+            """<script src="{{jsUri}}"></script>""",
             "<script>\n$shimAndJs\n</script>"
         )
 

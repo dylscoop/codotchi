@@ -1324,3 +1324,16 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 **Problem:** In v1.23.5, the PyCharm sidebar rendered as a static blank panel — buttons could not be clicked and the saved pet state did not load. The root cause was a JavaScript syntax error introduced during the `getTimeOfDay()` refactor in commit `f28d812`. When the function was rewritten from 4 buckets to 6, the edit replaced only the opening lines of the old function, leaving three orphaned lines after the new function's closing brace: a duplicate `if (h >= 19 && h < 22) { return "dusk"; }`, a duplicate `return "night";`, and a stray `}`. The stray `}` was an unmatched closing brace that caused the entire sidebar IIFE to fail to parse. Because all button `addEventListener` calls and the `window.addEventListener("message", ...)` state handler are registered inside the IIFE, none of them executed — producing a fully dead webview. The identical edit in `vscode/media/sidebar.js` was clean and unaffected.
 
 **Fix:** Deleted the three orphaned lines from `pycharm/src/main/resources/webview/sidebar.js` (the duplicate dusk check, duplicate night return, and stray closing brace), restoring valid JS syntax and allowing the IIFE to parse and run correctly.
+
+## BUGFIX-107 — PyCharm canvas black screen from v2.0.0 (pet invisible, buttons work)
+
+**Status:** Fixed (v2.0.2, branch `fix/canvas-blank-screen`)
+**Files:** `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** From v2.0.0, the PyCharm canvas showed a black background with no pet, while buttons remained functional. VS Code was unaffected.
+
+`CodotchiBrowserPanel.kt`'s `buildHtml()` method inlined scripts by matching old literal `<script src="sprites.js">` and `<script src="sidebar.js">` patterns. When the shared `sidebar.html` was updated in v2.0.0 to use VS Code-style `{{spriteConstantsUri}}`, `{{spritesUri}}`, `{{customCharactersUri}}`, and `{{jsUri}}` placeholder strings, none of the replacement patterns matched. As a result no scripts were injected — `window.renderSpriteGrid`, `customCharBySpriteType`, and `acquireVsCodeApi` were all undefined. The CSS `<link>` replacement also targeted the old literal `href="sidebar.css"` instead of `href="{{cssUri}}"`, so no styles loaded either. `{{idleResetOnMouseMovement}}` was also left as a literal placeholder. Only static HTML rendered; state updates were never received and the canvas stayed black.
+
+**Fix:**
+- Updated `CodotchiBrowserPanel.kt` to replace the correct `{{...Uri}}` placeholder strings (`{{spriteConstantsUri}}`, `{{spritesUri}}`, `{{customCharactersUri}}`, `{{jsUri}}`, `{{cssUri}}`), added `{{idleResetOnMouseMovement}}` substitution, and added removal of the VS Code CSP `<meta>` tag (not applicable in a native JCEF browser).
+- Added a null guard on the `customCharBySpriteType` call at `sidebar.js` line 1201 (defensive; consistent with all other call-sites) to prevent a silent crash if scripts ever fail to load.
