@@ -680,9 +680,15 @@
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
     var _gsType = lastState.spriteType || "classic";
-    var _gsUOS = (_gsType === "snake" || _gsType === "classic" || _gsType === "monkey" || _gsType === "rooster" || _gsType === "dragon" || _gsType === "tim");
-    if (!_gsUOS) {
-      var sagCellH = Math.max(1, Math.round(bHeight / 32));
+    // Use SPRITE_GRID_META to detect non-quadruped types (v2 variable-grid aware).
+    // Fall back to the hardcoded string check if SPRITE_GRID_META is unavailable.
+    var _gsMeta = window.SPRITE_GRID_META && window.SPRITE_GRID_META[_gsType];
+    var _gsRows = _gsMeta ? _gsMeta.rows : 32;
+    var _gsIsQuad = _gsMeta
+      ? (_gsMeta.rows <= _gsMeta.cols)   // quadrupeds are wider-than-tall grids
+      : !(_gsType === "snake" || _gsType === "classic" || _gsType === "monkey" || _gsType === "rooster" || _gsType === "dragon" || _gsType === "tim");
+    if (_gsIsQuad && _gsType !== "snake") {
+      var sagCellH = Math.max(1, Math.round(bHeight / _gsRows));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
     }
     return spriteCanvas.height - bHeight - 12;
