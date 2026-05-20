@@ -91,6 +91,11 @@
       padding: 2px 8px; cursor: pointer;
     }
     .save-btn:hover { background: #001f3f; }
+    .stage-empty {
+      font-size: 18px; color: #444; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      width: 48px; height: 48px; border: 1px solid #222; border-radius: 3px;
+    }
     .divider { border: none; border-top: 1px solid #222; margin: 20px 0; }
   </style>
 </head>
@@ -315,7 +320,11 @@
 
       var title = document.createElement("div");
       title.className = "animal-title";
-      title.textContent = animal + (UPRIGHT_TYPES[animal] ? "  [upright 32\xd748]" : "  [quadruped 48\xd732]");
+      var _meta = window.SPRITE_GRID_META && window.SPRITE_GRID_META[animal];
+      var _dimLabel = _meta
+        ? "  [" + _meta.cols + "\xd7" + _meta.rows + "]"
+        : (window.spriteHeightRatio(animal) > 1 ? "  [upright 32\xd748]" : "  [quadruped 48\xd732]");
+      title.textContent = animal + _dimLabel;
       section.appendChild(title);
 
       var row = document.createElement("div");
@@ -324,6 +333,23 @@
       stagesToShow.forEach(function (stage) {
         // sprites_adult source only has "adult"
         if (activeSource === "sprites_adult" && stage !== "adult") { return; }
+
+        // Skip stages where no DEFS data exists for this animal
+        var _hasDefs = window.SPRITES && window.SPRITES[animal] && window.SPRITES[animal][stage];
+        if (!_hasDefs) {
+          var _emptyCell = document.createElement("div");
+          _emptyCell.className = "sprite-cell";
+          var _emptyLbl = document.createElement("div");
+          _emptyLbl.className = "stage-label";
+          _emptyLbl.textContent = stage;
+          var _emptyDash = document.createElement("div");
+          _emptyDash.className = "stage-empty";
+          _emptyDash.textContent = "—";
+          _emptyCell.appendChild(_emptyLbl);
+          _emptyCell.appendChild(_emptyDash);
+          row.appendChild(_emptyCell);
+          return;
+        }
 
         var sz    = canvasSize();
         var cell  = document.createElement("div");
