@@ -1143,6 +1143,15 @@
     setBar(barEnergy,    state.energy);
     setHealthBar(barHealth, state.health);
 
+    // Tim-specific: rename "Hunger" label to "Thirst"
+    var _hungerLabelEl = document.getElementById("stat-label-hunger");
+    var _hungerTrackEl = document.getElementById("bar-track-hunger");
+    if (_hungerLabelEl) {
+      var _hungerLabelText = (_cc && _cc.spriteType === "tim") ? "Thirst" : "Hunger";
+      _hungerLabelEl.textContent = _hungerLabelText;
+      if (_hungerTrackEl) { _hungerTrackEl.setAttribute("aria-label", _hungerLabelText); }
+    }
+
     const typeLabel = (state.petType || "codeling");
     const _infoCC = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
     const typeLabelCap = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
@@ -1498,6 +1507,15 @@
     };
     var val = labels[code];
     if (val) {
+      // Tim-specific event message overrides
+      if (_cc && _cc.spriteType === "tim") {
+        if (code === "fed_snack")                      { return n + " drank some tea."; }
+        if (code === "became_sick")                    { return n + " had too much gluten!"; }
+        if (code === "sickness_damage")                { return n + " is losing health from too much gluten!"; }
+        if (code === "attention_call_sick")            { return n + " is calling — gluten intolerance acting up!"; }
+        if (code === "attention_call_answered_sick")   { return "You answered " + n + "'s gluten call."; }
+        if (code === "attention_call_expired_sick")    { return n + "'s gluten call went unanswered!"; }
+      }
       return Array.isArray(val) ? val[Math.floor(Math.random() * val.length)] : val;
     }
     if (code.indexOf("evolved_to_") === 0) {
