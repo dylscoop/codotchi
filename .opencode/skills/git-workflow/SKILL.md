@@ -384,3 +384,56 @@ Then delete the script immediately (it contains the PAT).
 - The repo is `dylscoop/codotchi`; update the URI if the repo ever changes.
 - After a successful release, verify at `https://github.com/dylscoop/codotchi/releases`.
 
+### Step 3 — upload artifacts to the release
+
+After creating the release, upload the three artifact files as release assets.
+**Always create the release as `draft = $true` first**, upload assets, then publish
+by PATCHing `{"draft":false}`. Non-draft releases become immutable immediately and
+reject asset uploads.
+
+If publishing fails with "tag_name was used by an immutable release", the tag was
+previously consumed by a deleted release. Use a suffix tag (e.g. `v2.0.4-1`) instead.
+
+```powershell
+# upload_assets.ps1 (delete after use)
+$token = 'PASTE_TOKEN_HERE'
+$releaseId = RELEASE_ID_HERE
+$uploadBase = "https://uploads.github.com/repos/dylscoop/codotchi/releases/$releaseId/assets"
+
+$artifacts = @(
+    @{ path = 'C:\personal_repos\vscode_gotchi\vscode\codotchi-X.Y.Z.vsix'; name = 'codotchi-X.Y.Z.vsix'; type = 'application/octet-stream' },
+    @{ path = 'C:\personal_repos\vscode_gotchi\pycharm\build\distributions\pycharm-codotchi-X.Y.Z.zip'; name = 'pycharm-codotchi-X.Y.Z.zip'; type = 'application/zip' },
+    @{ path = 'C:\personal_repos\vscode_gotchi\opencode-codotchi\opencode-codotchi-X.Y.Z.zip'; name = 'opencode-codotchi-X.Y.Z.zip'; type = 'application/zip' }
+)
+
+foreach ($a in $artifacts) {
+    $uri = "$uploadBase`?name=$($a.name)"
+    $h = @{
+        Authorization          = "token $token"
+        Accept                 = 'application/vnd.github+json'
+        'X-GitHub-Api-Version' = '2022-11-28'
+        'Content-Type'         = $a.type
+    }
+    $bytes = [System.IO.File]::ReadAllBytes($a.path)
+    $r = Invoke-RestMethod -Uri $uri -Method Post -Headers $h -Body $bytes
+    Write-Host "Uploaded: $($r.name) ($($r.size) bytes)"
+}
+
+# Publish the draft
+$headers = @{
+    Authorization          = "token $token"
+    Accept                 = 'application/vnd.github+json'
+    'X-GitHub-Api-Version' = '2022-11-28'
+}
+$r = Invoke-RestMethod -Uri "https://api.github.com/repos/dylscoop/codotchi/releases/$releaseId" `
+     -Method Patch -Headers $headers -Body '{"draft":false}' -ContentType 'application/json'
+Write-Host "Published: $($r.html_url)"
+```
+
+Run it:
+```
+powershell -ExecutionPolicy Bypass -File upload_assets.ps1
+```
+
+Then delete the script immediately (it contains the PAT).
+
