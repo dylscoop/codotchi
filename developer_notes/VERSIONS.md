@@ -1,6 +1,23 @@
 # Version History
 
-## v2.1.1 — current
+## v2.1.2 — current
+
+### Changes from v2.1.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.1.2 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.1.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.1.2 |
+| `opencode-codotchi/package.json` | Version bumped to 2.1.2 |
+| `vscode/media/sprites.js` | fix: classic procedural renderer now uses upright-specific size multipliers (small=0.5625, medium=0.75, large=1.0) to match sidebar floor calculation — fixes classic appearing off-canvas |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored classic sizeMulC fix |
+| `vscode/media/sidebar.js` | fix: added `tim` to `_gsUOS`, `_isUprightOrSnake`, `_dsUOS` upright lists — prevents incorrect belly-sag height being applied to tim |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored tim belly-sag exclusion fix |
+
+---
+
+## v2.1.1 — previous
 
 ### Changes from v2.1.0
 

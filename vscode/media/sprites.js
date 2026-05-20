@@ -3088,7 +3088,8 @@
     if (spriteType === "classic") {
       var petSizeValC = (typeof document !== "undefined" && document.body && document.body.dataset)
                       ? (document.body.dataset.petSize || "medium") : "medium";
-      var sizeMulC = petSizeValC === "small" ? 0.75 : petSizeValC === "large" ? 1.5 : 1.0;
+      // Classic is an upright type — use the same upright-specific multipliers as the grid renderer.
+      var sizeMulC = petSizeValC === "small" ? 0.5625 : petSizeValC === "large" ? 1.0 : 0.75;
       drawClassicProcedural(ctx, state, x, bodyY, facingLeft, legFrame, breathPhase,
                             STAGE_SCALES, weightWidthMultiplier, sizeMulC);
       return;

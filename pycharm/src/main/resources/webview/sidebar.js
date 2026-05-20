@@ -680,7 +680,7 @@
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
     var _gsType = lastState.spriteType || "classic";
-    var _gsUOS = (_gsType === "snake" || _gsType === "classic" || _gsType === "monkey" || _gsType === "rooster" || _gsType === "dragon");
+    var _gsUOS = (_gsType === "snake" || _gsType === "classic" || _gsType === "monkey" || _gsType === "rooster" || _gsType === "dragon" || _gsType === "tim");
     if (!_gsUOS) {
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
@@ -888,7 +888,7 @@
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
     var _sType = lastState.spriteType || "classic";
-    var _isUprightOrSnake = (_sType === "snake" || _sType === "classic" || _sType === "monkey" || _sType === "rooster" || _sType === "dragon");
+    var _isUprightOrSnake = (_sType === "snake" || _sType === "classic" || _sType === "monkey" || _sType === "rooster" || _sType === "dragon" || _sType === "tim");
     if (!_isUprightOrSnake) {
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
@@ -2323,7 +2323,7 @@
     var bHeight  = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
     var _dsType = state.spriteType || "classic";
-    var _dsUOS = (_dsType === "snake" || _dsType === "classic" || _dsType === "monkey" || _dsType === "rooster" || _dsType === "dragon");
+    var _dsUOS = (_dsType === "snake" || _dsType === "classic" || _dsType === "monkey" || _dsType === "rooster" || _dsType === "dragon" || _dsType === "tim");
     if (!_dsUOS) {
       var sagCellH2 = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(state.weight || 50) * sagCellH2;
