@@ -119,6 +119,7 @@
   // ── Exports ───────────────────────────────────────────────────────────────
   window.SPRITE_ANIMAL_PALETTES   = ANIMAL_PALETTES;
   window.SPRITE_STAGE_SCALES      = STAGE_SCALES;
+  window.UPRIGHT_TYPES            = UPRIGHT_TYPES;
   window.spriteGetPalette         = getPalette;
   window.spriteWeightWidthMult    = weightWidthMultiplier;
   window.spriteHeightRatio        = spriteHeightRatio;
