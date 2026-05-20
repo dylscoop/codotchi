@@ -1346,3 +1346,30 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 **Problem:** In v2.0.2, `renderState()` in both VS Code and PyCharm crashed on every call with `ReferenceError: _cc is not defined` at the Tim-specific hunger label logic (line 1150). The variable `_cc` was referenced but never declared — the `var _cc = ...` line was accidentally omitted from the v2.0.2 build. Because `renderState()` threw before updating `lastState`, the animation loop never drew anything (blank canvas, no background, no pet), the info-line stayed at its static HTML placeholder ("Age: 0d | egg | wt:5 | 0 poops"), and the Play button's `showMgOverlay()` was never reached because the energy guard checked a null `lastState`.
 
 **Fix:** Added the missing `var _cc = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;` declaration in `renderState()` for both IDEs. Also fixed `sidebarProvider.ts` to use a regex replace for `{{stageHeight}}` so both canvas elements receive the correct height attribute.
+
+## BUGFIX-109 — "Hunger" label overlaps stat bar in VS Code
+
+**Status:** Fixed (v2.0.4, branch `fix/bugfix-109-110-hunger-overlap-snack-tea`)
+**Files:** `vscode/media/sidebar.css`, `pycharm/src/main/resources/webview/sidebar.css`
+
+**Problem:** The `.stat-name` label had a fixed width of 44px which was too narrow for "Hunger" in VS Code's webview font rendering, causing the text to overlap the progress bar.
+
+**Fix:** Increased `.stat-name` width from 44px to 52px in both IDE CSS files.
+
+## BUGFIX-110 — All snacks render as tea mugs for every pet type
+
+**Status:** Fixed (v2.0.4, branch `fix/bugfix-109-110-hunger-overlap-snack-tea`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** In v2.0.0, the snack item type was changed from randomly choosing "candy" or "bone" to hardcoded "tea" for all pets, and the rendering was changed to only draw a tea mug sprite. Tea mugs should only appear for the Timagotchi hidden character (password-unlocked `spriteType === "tim"`).
+
+**Fix:** Snack spawn now checks if the active character is Tim (`state.spriteType === "tim"`); if so, uses "tea", otherwise randomly picks from "candy", "bone", or "cookie". Restored the original candy and bone pixel sprites from v1.24.0 and added a new cookie sprite. Rendering branches on item type to draw the correct sprite with appropriate colours.
+
+## BUGFIX-111 — Tim gift box renders as normal gift; notification says "brought you a gift"
+
+**Status:** Fixed (v2.0.4, branch `fix/bugfix-109-110-hunger-overlap-snack-tea`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`, `vscode/src/extension.ts`
+
+**Problem:** The Tim-specific gift (big tea mug sprite) and notification ("Tim wants a tea break!") were not appearing because: (1) the gift box check used `_giftCc.spriteType === "tim"` which compared the character registry object's own property rather than the pet's active `state.spriteType`, and (2) the VS Code notification in `extension.ts` was hardcoded to "brought you a gift!" without consulting the custom character's `giftMessage` field. The same pattern affected the Thirst label and Tim event messages — all checked `_cc.spriteType` instead of `state.spriteType`.
+
+**Fix:** Changed all Tim-specific guards in both sidebar.js files to check `state.spriteType === "tim"` instead of `_cc.spriteType === "tim"`. Updated `extension.ts` to look up the custom character's `giftMessage` for the notification toast, falling back to the default message for normal pets.

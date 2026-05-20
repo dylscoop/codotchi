@@ -1,6 +1,26 @@
 # Version History
 
-## v2.0.3 — current
+## v2.0.4 — current
+
+### Changes from v2.0.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.0.4 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.0.4 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.0.4 |
+| `opencode-codotchi/package.json` | Version bumped to 2.0.4 |
+| `vscode/media/sidebar.css` | BUGFIX-109: increased `.stat-name` width from 44px to 52px to prevent "Hunger" overlapping the bar |
+| `pycharm/src/main/resources/webview/sidebar.css` | Mirrored `.stat-name` width fix |
+| `vscode/media/sidebar.js` | BUGFIX-110: snack items now use candy/bone/cookie for normal pets; tea mug only for Tim (password-unlocked character) |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored snack type and rendering fix |
+| `vscode/media/sidebar.js` | BUGFIX-111: all Tim-specific guards now check `state.spriteType === "tim"` instead of `_cc.spriteType === "tim"` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored spriteType check fix |
+| `vscode/src/extension.ts` | BUGFIX-111: gift notification now uses custom character `giftMessage` ("Tim wants a tea break!") instead of hardcoded default |
+
+---
+
+## v2.0.3 — previous
 
 ### Changes from v2.0.2
 

@@ -1149,7 +1149,7 @@
     var _hungerLabelEl = document.getElementById("stat-label-hunger");
     var _hungerTrackEl = document.getElementById("bar-track-hunger");
     if (_hungerLabelEl) {
-      var _hungerLabelText = (_cc && _cc.spriteType === "tim") ? "Thirst" : "Hunger";
+      var _hungerLabelText = (_cc && state.spriteType === "tim") ? "Thirst" : "Hunger";
       _hungerLabelEl.textContent = _hungerLabelText;
       if (_hungerTrackEl) { _hungerTrackEl.setAttribute("aria-label", _hungerLabelText); }
     }
@@ -1370,7 +1370,7 @@
       var siRawX   = 4 + Math.floor(Math.random() * Math.max(1, siW - 20));
       snackItems.push({
         x:    Math.max(siMinX, Math.min(siMaxX, siRawX)),
-        type: "tea",
+        type: (_cc && state.spriteType === "tim") ? "tea" : (["candy", "bone", "cookie"][Math.floor(Math.random() * 3)]),
       });
       idleTimer = 0;  // pet walks toward it immediately
     }
@@ -1510,7 +1510,7 @@
     var val = labels[code];
     if (val) {
       // Tim-specific event message overrides
-      if (_cc && _cc.spriteType === "tim") {
+      if (_cc && state.spriteType === "tim") {
         if (code === "fed_snack")                      { return n + " drank some tea."; }
         if (code === "became_sick")                    { return n + " had too much gluten!"; }
         if (code === "sickness_damage")                { return n + " is losing health from too much gluten!"; }
@@ -2006,7 +2006,7 @@
     if (giftBoxX !== null) {
       var gbX = Math.round(giftBoxX);
       var _giftCc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
-      if (_giftCc && _giftCc.spriteType === "tim") {
+      if (_giftCc && state.spriteType === "tim") {
         // Big tea mug for Tim — with a "T" on the body
         var BIG_MUG_PIXELS = [
           [0,2,0,2,0,0,0,0],
@@ -2057,10 +2057,10 @@
       }
     }
 
-    // Snack items — tea mug
+    // Snack items — tea mug (Tim) or candy/bone/cookie (others)
     if (snackItems.length > 0) {
       // Tea mug: 6 cols × 6 rows at scale 2 (12×12 px)
-      // 1=dark brown body, 2=steam, 3=tea amber inside, 4=handle
+      // 1=dark brown body, 2=steam blue-white, 3=tea amber, 4=handle
       var TEA_MUG_PIXELS = [
         [0,2,0,2,0,0],
         [1,1,1,1,0,0],
@@ -2069,18 +2069,49 @@
         [1,3,3,1,0,0],
         [1,1,1,1,0,0],
       ];
+      var CANDY_PIXELS = [
+        [0,1,1,0],
+        [1,2,1,1],
+        [1,1,2,1],
+        [0,1,1,0],
+      ];
+      var BONE_PIXELS = [
+        [1,1,0,0,1,1],
+        [1,2,1,1,2,1],
+        [0,1,1,1,1,0],
+        [1,2,1,1,2,1],
+        [1,1,0,0,1,1],
+      ];
+      var COOKIE_PIXELS = [
+        [0,1,1,1,0],
+        [1,1,2,1,1],
+        [1,2,1,1,1],
+        [1,1,1,2,1],
+        [0,1,1,1,0],
+      ];
       var SS = 2;
       snackItems.forEach(function (item) {
-        var spH = TEA_MUG_PIXELS.length * SS;
+        var spx = item.type === "tea" ? TEA_MUG_PIXELS
+                : item.type === "candy" ? CANDY_PIXELS
+                : item.type === "cookie" ? COOKIE_PIXELS : BONE_PIXELS;
+        var spH = spx.length * SS;
         var sY  = H - 12 - spH;
         var sX  = Math.round(item.x);
-        TEA_MUG_PIXELS.forEach(function (row, ry) {
+        spx.forEach(function (row, ry) {
           row.forEach(function (cell, rx) {
             if (!cell) { return; }
-            spriteCtx.fillStyle = cell === 2 ? "#C8E0FF"
-                                : cell === 3 ? "#C49A6C"
-                                : cell === 4 ? "#6B3A1F"
-                                :              "#8B5E3C";
+            if (item.type === "tea") {
+              spriteCtx.fillStyle = cell === 2 ? "#C8E0FF"
+                                  : cell === 3 ? "#C49A6C"
+                                  : cell === 4 ? "#6B3A1F"
+                                  :              "#8B5E3C";
+            } else if (item.type === "candy") {
+              spriteCtx.fillStyle = cell === 2 ? "#FFE0E0" : "#FF6B9D";
+            } else if (item.type === "cookie") {
+              spriteCtx.fillStyle = cell === 2 ? "#4A2800" : "#D2961E";
+            } else {
+              spriteCtx.fillStyle = cell === 2 ? "#F5DEB3" : "#DEB887";
+            }
             spriteCtx.fillRect(sX + rx * SS, sY + ry * SS, SS, SS);
           });
         });
