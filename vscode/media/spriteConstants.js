@@ -25,6 +25,7 @@
   // accent    = stripes, comb, ridges (pixel index 3)
   // background = canvas background behind the pet
   var ANIMAL_PALETTES = {
+    testsprite: { primary: "#000000", secondary: "#444444", accent: "#888888", background: "#ffffff" },
     classic:  { primary: "#39ff14", secondary: "#ff00ff", accent: "#1aad00", background: "#0d0d0d" },
     monkey:   { primary: "#8b5e3c", secondary: "#f5c07a", accent: "#5a3a1a", background: "#1a1a1a" },
     rooster:  { primary: "#c0392b", secondary: "#f39c12", accent: "#7d1f1f", background: "#1a1a1a" },
