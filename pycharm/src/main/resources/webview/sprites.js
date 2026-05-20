@@ -3135,9 +3135,14 @@
       : (petSizeVal === "small" ? 0.75   : petSizeVal === "large" ? 1.5  : 1.0);
 
     // Bug fix #1: correct COLS/ROWS and legRowStart per grid type
-    var COLS        = isUpright ? 32 : 48;
-    var ROWS        = isUpright ? 48 : 32;
-    var legRowStart = isUpright ? 37  : 25;
+    // v2: read from SPRITE_GRID_META for variable-grid support; fall back to
+    // legacy hardcoded values so existing sprites are unaffected.
+    var _gridMeta   = (window.SPRITE_GRID_META && window.SPRITE_GRID_META[spriteType])
+                    || (isUpright ? { cols: 32, rows: 48, legRowStart: 37 }
+                                  : { cols: 48, rows: 32, legRowStart: 25 });
+    var COLS        = _gridMeta.cols;
+    var ROWS        = _gridMeta.rows;
+    var legRowStart = _gridMeta.legRowStart;
 
     // -- Body dimensions ------------------------------------------------------
     var stageScale  = STAGE_SCALES[stage] || 0.65;
@@ -3201,17 +3206,6 @@
 
     if (!grid) { return; }
 
-    var cellW = Math.max(1, Math.round(bodyWidth  / COLS));
-    var cellH = Math.max(1, Math.round(bodyHeight / ROWS));
-
-    // Bottom-align: shift the grid down so its last row lands at bodyY+bodyHeight.
-    // Without this, rounding means ROWS*cellH < bodyHeight for small stages, making
-    // the sprite float above the floor instead of standing on it.
-    var gridBottomAlign = bodyHeight - ROWS * cellH;
-
-    // Belly-sag extra pixels: legs shift down by this amount so the sag fills the gap.
-    var sagPixels = sagRows * cellH;
-
     // Map colour index to actual colour
     // Index 4 = gold pearl (used by dragon sprite for the flaming pearl)
     // Index 5 = gold (used by monkey sprite for banana) — same colour
@@ -3235,70 +3229,166 @@
       ctx.translate(-(x + bodyWidth / 2), 0);
     }
 
-    for (var row = 0; row < ROWS; row++) {
-      if (!grid[row]) { continue; }
-      var isLegRow = (row >= legRowStart);
+    var cellWExact = bodyWidth  / COLS;
+    var cellHExact = bodyHeight / ROWS;
 
-      for (var col = 0; col < COLS; col++) {
-        var cell = grid[row][col];
-        if (!cell) { continue; }
+    if (cellWExact >= 1) {
+      // ── STANDARD PATH (all existing sprites) ────────────────────────────────
+      // Each grid cell maps to at least 1 screen pixel.  Render with fillRect.
+      var cellW = Math.max(1, Math.round(cellWExact));
+      var cellH = Math.max(1, Math.round(cellHExact));
 
-        var colOffsetY = 0;
-        if (isLegRow) {
-          // Leg rows shift down by sagPixels so the belly sag fills the gap above.
-          colOffsetY = sagPixels;
-          var halfCols  = COLS / 2;
-          var isLeftLeg = col < halfCols;
-          if (legFrame === -1) {
-            // -1 = upright/neutral: both legs flush, no per-leg offset
-          } else if (legFrame === 0) {
-            colOffsetY += isLeftLeg ? 0 : cellH;
-          } else {
-            colOffsetY += isLeftLeg ? cellH : 0;
+      // Bottom-align: shift the grid down so its last row lands at bodyY+bodyHeight.
+      // Without this, rounding means ROWS*cellH < bodyHeight for small stages, making
+      // the sprite float above the floor instead of standing on it.
+      var gridBottomAlign = bodyHeight - ROWS * cellH;
+
+      // Belly-sag extra pixels: legs shift down by this amount so the sag fills the gap.
+      var sagPixels = sagRows * cellH;
+
+      for (var row = 0; row < ROWS; row++) {
+        if (!grid[row]) { continue; }
+        var isLegRow = (row >= legRowStart);
+
+        for (var col = 0; col < COLS; col++) {
+          var cell = grid[row][col];
+          if (!cell) { continue; }
+
+          var colOffsetY = 0;
+          if (isLegRow) {
+            // Leg rows shift down by sagPixels so the belly sag fills the gap above.
+            colOffsetY = sagPixels;
+            var halfCols  = COLS / 2;
+            var isLeftLeg = col < halfCols;
+            if (legFrame === -1) {
+              // -1 = upright/neutral: both legs flush, no per-leg offset
+            } else if (legFrame === 0) {
+              colOffsetY += isLeftLeg ? 0 : cellH;
+            } else {
+              colOffsetY += isLeftLeg ? cellH : 0;
+            }
+          }
+
+          ctx.fillStyle = colorMap[cell] || primary;
+          ctx.fillRect(
+            x + col * cellW,
+            bobY + gridBottomAlign + row * cellH + colOffsetY,
+            cellW,
+            cellH
+          );
+        }
+      }
+
+      // -- Belly-sag rows (quadruped overweight only) ---------------------------
+      // Draw procedural rows between body bottom (row legRowStart-1) and the
+      // now-shifted legs.  Each sag row copies the silhouette of the last body row
+      // (row legRowStart-1 = row 24), inset by one extra column on each side per
+      // sag row, giving a tapered hanging-belly shape filled with the primary colour.
+      if (sagRows > 0 && grid[legRowStart - 1]) {
+        var bodyBottomRow = grid[legRowStart - 1];
+        // Determine the leftmost and rightmost non-zero column of the body bottom row.
+        var silLeft  = COLS;
+        var silRight = -1;
+        for (var bc = 0; bc < COLS; bc++) {
+          if (bodyBottomRow[bc]) {
+            if (bc < silLeft)  { silLeft  = bc; }
+            if (bc > silRight) { silRight = bc; }
           }
         }
-
-        ctx.fillStyle = colorMap[cell] || primary;
-        ctx.fillRect(
-          x + col * cellW,
-          bobY + gridBottomAlign + row * cellH + colOffsetY,
-          cellW,
-          cellH
-        );
-      }
-    }
-
-    // -- Belly-sag rows (quadruped overweight only) ---------------------------
-    // Draw procedural rows between body bottom (row legRowStart-1) and the
-    // now-shifted legs.  Each sag row copies the silhouette of the last body row
-    // (row legRowStart-1 = row 24), inset by one extra column on each side per
-    // sag row, giving a tapered hanging-belly shape filled with the primary colour.
-    if (sagRows > 0 && grid[legRowStart - 1]) {
-      var bodyBottomRow = grid[legRowStart - 1];
-      // Determine the leftmost and rightmost non-zero column of the body bottom row.
-      var silLeft  = COLS;
-      var silRight = -1;
-      for (var bc = 0; bc < COLS; bc++) {
-        if (bodyBottomRow[bc]) {
-          if (bc < silLeft)  { silLeft  = bc; }
-          if (bc > silRight) { silRight = bc; }
+        ctx.fillStyle = primary;
+        for (var s = 0; s < sagRows; s++) {
+          // Inset by (s+1) columns on each side — sag narrows toward the bottom.
+          var inset    = s + 1;
+          var sagLeft  = silLeft  + inset;
+          var sagRight = silRight - inset;
+          if (sagLeft >= sagRight) { continue; }  // inset has closed off — skip
+          var sagY = bobY + gridBottomAlign + legRowStart * cellH + s * cellH;
+          ctx.fillRect(
+            x + sagLeft  * cellW,
+            sagY,
+            (sagRight - sagLeft + 1) * cellW,
+            cellH
+          );
         }
       }
-      ctx.fillStyle = primary;
-      for (var s = 0; s < sagRows; s++) {
-        // Inset by (s+1) columns on each side — sag narrows toward the bottom.
-        var inset    = s + 1;
-        var sagLeft  = silLeft  + inset;
-        var sagRight = silRight - inset;
-        if (sagLeft >= sagRight) { continue; }  // inset has closed off — skip
-        var sagY = bobY + gridBottomAlign + legRowStart * cellH + s * cellH;
-        ctx.fillRect(
-          x + sagLeft  * cellW,
-          sagY,
-          (sagRight - sagLeft + 1) * cellW,
-          cellH
-        );
+
+    } else {
+      // ── V2 OFFSCREEN PATH (high-res imported sprites) ────────────────────────
+      // cellWExact < 1 means the grid is larger than the on-screen bounding box.
+      // Render the full grid at 1 px/cell on an offscreen canvas, then scale-blit
+      // it to the main canvas.  This preserves full imported detail while fitting
+      // the sprite inside the same stage area as existing sprites.
+      //
+      // Leg animation and belly-sag are applied on the offscreen canvas before
+      // the blit, so they work identically to the standard path.
+
+      var ofcH = ROWS + sagRows;  // offscreen canvas height includes sag rows
+      var ofc    = document.createElement('canvas');
+      ofc.width  = COLS;
+      ofc.height = ofcH;
+      var ofcCtx = ofc.getContext('2d');
+
+      // Render each cell at 1×1 px on the offscreen canvas.
+      for (var oRow = 0; oRow < ROWS; oRow++) {
+        if (!grid[oRow]) { continue; }
+        var oIsLegRow = (oRow >= legRowStart);
+
+        for (var oCol = 0; oCol < COLS; oCol++) {
+          var oCell = grid[oRow][oCol];
+          if (!oCell) { continue; }
+
+          var oDrawRow = oRow;
+          if (oIsLegRow) {
+            // Shift legs down to make room for belly-sag rows above them.
+            oDrawRow += sagRows;
+            var oHalfCols  = COLS / 2;
+            var oIsLeftLeg = oCol < oHalfCols;
+            if (legFrame === 0) {
+              oDrawRow += oIsLeftLeg ? 0 : 1;
+            } else if (legFrame === 1) {
+              oDrawRow += oIsLeftLeg ? 1 : 0;
+            }
+            // legFrame === -1: no per-leg offset (upright/neutral)
+          }
+
+          ofcCtx.fillStyle = colorMap[oCell] || primary;
+          ofcCtx.fillRect(oCol, oDrawRow, 1, 1);
+        }
       }
+
+      // Belly-sag procedural rows on offscreen canvas (same logic as standard path).
+      if (sagRows > 0 && grid[legRowStart - 1]) {
+        var oBodyBottomRow = grid[legRowStart - 1];
+        var oSilLeft  = COLS;
+        var oSilRight = -1;
+        for (var obc = 0; obc < COLS; obc++) {
+          if (oBodyBottomRow[obc]) {
+            if (obc < oSilLeft)  { oSilLeft  = obc; }
+            if (obc > oSilRight) { oSilRight = obc; }
+          }
+        }
+        ofcCtx.fillStyle = primary;
+        for (var os = 0; os < sagRows; os++) {
+          var oInset    = os + 1;
+          var oSagLeft  = oSilLeft  + oInset;
+          var oSagRight = oSilRight - oInset;
+          if (oSagLeft >= oSagRight) { continue; }
+          // Sag row sits just above legRowStart (shifted by sagRows).
+          ofcCtx.fillRect(oSagLeft, legRowStart + os, oSagRight - oSagLeft + 1, 1);
+        }
+      }
+
+      // Scale-blit offscreen canvas to main canvas.
+      // imageSmoothingEnabled = false keeps pixel-art crispness — no blurring.
+      var oGridBottomAlign = bodyHeight - Math.round(bodyHeight);  // rounding guard
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(
+        ofc,
+        x,
+        bobY + oGridBottomAlign,
+        bodyWidth,
+        bodyHeight + sagRows * Math.round(bodyHeight / ROWS)
+      );
     }
 
     ctx.restore();
