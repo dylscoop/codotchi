@@ -1,6 +1,27 @@
 # Version History
 
-## v2.1.3 — current
+## v2.2.0 — current
+
+### Changes from v2.1.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.2.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.2.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.2.0 |
+| `opencode-codotchi/package.json` | Version bumped to 2.2.0 |
+| `vscode/media/spriteConstants.js` | feat: add `SPRITE_GRID_META` map with per-animal cols/rows/legRowStart; update `spriteHeightRatio()` to read from meta for variable-grid support |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | Mirrored SPRITE_GRID_META and spriteHeightRatio() changes |
+| `vscode/media/sprites.js` | feat: generalise `renderSpriteGrid()` to read COLS/ROWS/legRowStart from SPRITE_GRID_META; add v2 offscreen canvas rendering path for high-res imported sprites (cellW < 1); all existing sprites unchanged via standard fillRect path |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored sprites.js renderer changes |
+| `vscode/media/sidebar.js` | fix: replace hardcoded `/ 32` in `getFloorY` with SPRITE_GRID_META-aware row count; replace `_gsUOS` string list with metadata-based quadruped detection |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored sidebar.js fix |
+| `scripts/import_sprite.js` | feat: new PNG/.pixil → DEFS string array import tool — supports any resolution up to 700×550, explicit or auto colour mapping, ASCII preview, and --inject to splice result directly into sprites.js |
+| `scripts/validate_sprites.js` | fix: use SPRITE_GRID_META for per-animal expected column width; add missing `tim` to legacy upright type list |
+
+---
+
+## v2.1.3 — previous
 
 ### Changes from v2.1.2
 
