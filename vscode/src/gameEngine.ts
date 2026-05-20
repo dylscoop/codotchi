@@ -924,7 +924,7 @@ const ZODIAC_ANIMALS = [
 /**
  * All valid sprite type keys.
  */
-export type SpriteType = typeof ZODIAC_ANIMALS[number] | "classic" | "cat" | "tim";
+export type SpriteType = typeof ZODIAC_ANIMALS[number] | "classic" | "cat" | "tim" | "testsprite";
 
 /**
  * Sample a random sprite type at pet creation.
