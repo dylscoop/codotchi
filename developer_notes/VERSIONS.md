@@ -1,6 +1,21 @@
 # Version History
 
-## v2.1.2 — current
+## v2.1.3 — current
+
+### Changes from v2.1.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.1.3 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.1.3 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.1.3 |
+| `opencode-codotchi/package.json` | Version bumped to 2.1.3 |
+| `vscode/media/spriteConstants.js` | fix: export `window.UPRIGHT_TYPES` so `petSizeMultiplier()` in sidebar.js correctly detects upright sprite types and uses the smaller upright size multipliers — fixes grid upright sprites (tim, dragon, monkey, rooster) floating above the ground |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | Mirrored UPRIGHT_TYPES export fix |
+
+---
+
+## v2.1.2 — previous
 
 ### Changes from v2.1.1
 
