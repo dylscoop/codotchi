@@ -1,0 +1,597 @@
+#!/usr/bin/env node
+/**
+ * import_sprite.js — convert a PNG or .pixil file into a Codotchi DEFS entry
+ *
+ * Usage:
+ *   node scripts/import_sprite.js <file.png|file.pixil> <spriteType> <stage> [options]
+ *
+ * Options:
+ *   --frame      <N>      .pixil frame index to use (default: 0)
+ *   --leg-row    <N>      Row index where leg zone begins (default: floor(rows * 0.78))
+ *   --primary    <hex>    Colour in source image → index 1 (body fill)
+ *   --secondary  <hex>    Colour in source image → index 2 (eyes/markings)
+ *   --accent     <hex>    Colour in source image → index 3 (stripes/accent)
+ *   --threshold  <0-255>  Alpha value below which a pixel is treated as transparent (default: 128)
+ *   --preview             Print an ASCII art preview of the mapped grid to stdout
+ *   --inject              Splice the DEFS entry and SPRITE_GRID_META registration into
+ *                         vscode/media/sprites.js and pycharm/.../sprites.js
+ *
+ * Resolution:
+ *   The output grid uses the source image's native pixel dimensions (up to 700×550).
+ *   If the source image is larger than 700×550, it is scaled down to fit using
+ *   nearest-neighbour sampling while preserving the aspect ratio.
+ *
+ * Colour mapping (pixel art mode — 3-4 flat colours):
+ *   If --primary / --secondary / --accent are given, each pixel is mapped to the
+ *   nearest provided colour by Euclidean RGB distance.
+ *   If no palette flags are given, the three most frequent non-transparent colours
+ *   are ranked by luminance (brightest → primary, mid → secondary, darkest → accent).
+ *
+ * Zero npm dependencies — uses only Node.js built-ins (fs, path, zlib, child_process).
+ */
+
+"use strict";
+
+var fs   = require("fs");
+var path = require("path");
+var zlib = require("zlib");
+
+// ── CLI argument parsing ──────────────────────────────────────────────────────
+
+var args = process.argv.slice(2);
+
+function getFlag(name, def) {
+  var i = args.indexOf(name);
+  if (i === -1) { return def; }
+  return args[i + 1];
+}
+function hasFlag(name) { return args.indexOf(name) !== -1; }
+
+var inputFile   = args[0];
+var spriteType  = args[1];
+var stage       = args[2];
+
+if (!inputFile || !spriteType || !stage) {
+  console.error("Usage: node scripts/import_sprite.js <file.png|file.pixil> <spriteType> <stage> [options]");
+  console.error("Options: --frame N  --leg-row N  --primary #hex  --secondary #hex  --accent #hex  --threshold N  --preview  --inject");
+  process.exit(1);
+}
+
+var frameIndex  = parseInt(getFlag("--frame",     "0"), 10);
+var legRowArg   = getFlag("--leg-row",   null);
+var primaryHex  = getFlag("--primary",   null);
+var secondaryHex= getFlag("--secondary", null);
+var accentHex   = getFlag("--accent",    null);
+var alphaThresh = parseInt(getFlag("--threshold", "128"), 10);
+var doPreview   = hasFlag("--preview");
+var doInject    = hasFlag("--inject");
+
+var MAX_COLS = 700;
+var MAX_ROWS = 550;
+
+// ── Colour utilities ──────────────────────────────────────────────────────────
+
+function hexToRgb(hex) {
+  hex = hex.replace(/^#/, "");
+  if (hex.length === 3) { hex = hex.split("").map(function(c){ return c+c; }).join(""); }
+  return {
+    r: parseInt(hex.slice(0, 2), 16),
+    g: parseInt(hex.slice(2, 4), 16),
+    b: parseInt(hex.slice(4, 6), 16)
+  };
+}
+
+function rgbDist(a, b) {
+  var dr = a.r - b.r, dg = a.g - b.g, db = a.b - b.b;
+  return dr*dr + dg*dg + db*db;
+}
+
+function luminance(rgb) {
+  return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+}
+
+// ── PNG decoder (pure Node — no dependencies) ─────────────────────────────────
+// Supports 8-bit RGBA, RGB, greyscale, and paletted (indexed) PNG files.
+
+function decodePng(buffer) {
+  // Verify PNG signature
+  var sig = [137, 80, 78, 71, 13, 10, 26, 10];
+  for (var i = 0; i < 8; i++) {
+    if (buffer[i] !== sig[i]) { throw new Error("Not a valid PNG file"); }
+  }
+
+  var offset = 8;
+  var width, height, bitDepth, colorType, palette;
+  var idatChunks = [];
+
+  function readUint32(buf, off) {
+    return ((buf[off] << 24) | (buf[off+1] << 16) | (buf[off+2] << 8) | buf[off+3]) >>> 0;
+  }
+  function readStr(buf, off, len) {
+    return buf.slice(off, off + len).toString("ascii");
+  }
+
+  while (offset < buffer.length) {
+    var chunkLen  = readUint32(buffer, offset);     offset += 4;
+    var chunkType = readStr(buffer, offset, 4);      offset += 4;
+    var chunkData = buffer.slice(offset, offset + chunkLen);  offset += chunkLen;
+    offset += 4; // skip CRC
+
+    if (chunkType === "IHDR") {
+      width     = readUint32(chunkData, 0);
+      height    = readUint32(chunkData, 4);
+      bitDepth  = chunkData[8];
+      colorType = chunkData[9];
+      // interlace = chunkData[12]  (we don't support interlaced PNGs)
+      if (chunkData[12] !== 0) { throw new Error("Interlaced PNGs are not supported"); }
+    } else if (chunkType === "PLTE") {
+      palette = [];
+      for (var pi = 0; pi < chunkLen; pi += 3) {
+        palette.push({ r: chunkData[pi], g: chunkData[pi+1], b: chunkData[pi+2], a: 255 });
+      }
+    } else if (chunkType === "tRNS") {
+      // Transparency chunk — add alpha to palette entries
+      if (colorType === 3 && palette) {
+        for (var ti = 0; ti < chunkData.length; ti++) {
+          if (palette[ti]) { palette[ti].a = chunkData[ti]; }
+        }
+      }
+    } else if (chunkType === "IDAT") {
+      idatChunks.push(chunkData);
+    } else if (chunkType === "IEND") {
+      break;
+    }
+  }
+
+  if (!width || !height) { throw new Error("PNG missing IHDR chunk"); }
+
+  // Inflate all IDAT chunks together
+  var compressed = Buffer.concat(idatChunks);
+  var raw = zlib.inflateSync(compressed);
+
+  // Determine bytes per sample and channels
+  var channels;
+  if      (colorType === 0) { channels = 1; }  // greyscale
+  else if (colorType === 2) { channels = 3; }  // RGB
+  else if (colorType === 3) { channels = 1; }  // indexed (palette)
+  else if (colorType === 4) { channels = 2; }  // greyscale + alpha
+  else if (colorType === 6) { channels = 4; }  // RGBA
+  else { throw new Error("Unsupported PNG color type: " + colorType); }
+
+  var bytesPerSample = bitDepth / 8;
+  if (bytesPerSample < 1) { bytesPerSample = 1; } // sub-byte depth — we'll handle below
+  var stride = Math.ceil(width * channels * bitDepth / 8) + 1; // +1 for filter byte
+
+  // Reconstruct pixel rows from filter types
+  var pixels = []; // array of rows, each row is array of {r,g,b,a}
+  var prevRow = new Uint8Array(stride - 1);
+
+  for (var row = 0; row < height; row++) {
+    var filterType = raw[row * stride];
+    var rowData    = new Uint8Array(stride - 1);
+
+    for (var bi = 0; bi < stride - 1; bi++) {
+      var x    = raw[row * stride + 1 + bi];
+      var a    = rowData[bi - channels * bytesPerSample] || 0;  // left pixel same channel
+      var b2   = prevRow[bi];                                    // pixel above
+      var c2   = (bi >= channels * bytesPerSample) ? prevRow[bi - channels * bytesPerSample] : 0;
+      switch (filterType) {
+        case 0: rowData[bi] = x; break;
+        case 1: rowData[bi] = (x + a) & 0xFF; break;
+        case 2: rowData[bi] = (x + b2) & 0xFF; break;
+        case 3: rowData[bi] = (x + Math.floor((a + b2) / 2)) & 0xFF; break;
+        case 4: // Paeth
+          var pa = Math.abs(b2 - c2);
+          var pb2= Math.abs(a  - c2);
+          var pc2= Math.abs(a + b2 - 2*c2);
+          var pr = (pa <= pb2 && pa <= pc2) ? a : (pb2 <= pc2) ? b2 : c2;
+          rowData[bi] = (x + pr) & 0xFF;
+          break;
+        default: throw new Error("Unknown PNG filter type: " + filterType);
+      }
+    }
+    prevRow = rowData;
+
+    // Extract RGBA pixels from rowData
+    var pixelRow = [];
+    for (var col = 0; col < width; col++) {
+      var r2, g2, b3, a2;
+      if (bitDepth === 1 || bitDepth === 2 || bitDepth === 4) {
+        // Sub-byte depth — extract pixel index
+        var samplesPerByte = 8 / bitDepth;
+        var byteIndex = Math.floor(col / samplesPerByte);
+        var shift = bitDepth * (samplesPerByte - 1 - (col % samplesPerByte));
+        var mask  = (1 << bitDepth) - 1;
+        var idx   = (rowData[byteIndex] >> shift) & mask;
+        if (colorType === 3 && palette) {
+          var pe = palette[idx] || { r: 0, g: 0, b: 0, a: 0 };
+          pixelRow.push({ r: pe.r, g: pe.g, b: pe.b, a: pe.a });
+        } else {
+          var v = Math.round(idx * 255 / mask);
+          pixelRow.push({ r: v, g: v, b: v, a: 255 });
+        }
+        continue;
+      }
+      var base = col * channels * bytesPerSample;
+      if (colorType === 0) { // greyscale
+        r2 = g2 = b3 = rowData[base]; a2 = 255;
+      } else if (colorType === 2) { // RGB
+        r2 = rowData[base]; g2 = rowData[base+1]; b3 = rowData[base+2]; a2 = 255;
+      } else if (colorType === 3) { // indexed
+        var pe2 = palette[rowData[base]] || { r: 0, g: 0, b: 0, a: 0 };
+        r2 = pe2.r; g2 = pe2.g; b3 = pe2.b; a2 = pe2.a;
+      } else if (colorType === 4) { // greyscale + alpha
+        r2 = g2 = b3 = rowData[base]; a2 = rowData[base+1];
+      } else { // RGBA
+        r2 = rowData[base]; g2 = rowData[base+1]; b3 = rowData[base+2]; a2 = rowData[base+3];
+      }
+      pixelRow.push({ r: r2, g: g2, b: b3, a: a2 });
+    }
+    pixels.push(pixelRow);
+  }
+
+  return { width: width, height: height, pixels: pixels };
+}
+
+// ── .pixil decoder ────────────────────────────────────────────────────────────
+// Pixilart .pixil files are plain JSON.  Structure:
+//   { frames: [ { layers: [ { data: { "<x>,<y>": "#rrggbb" }, ... } ] }, ... ] }
+// Alpha is always 255 (Pixilart doesn't support per-pixel alpha in this format).
+// Empty pixel entries or missing keys = transparent.
+
+function decodePixil(buffer, frameIdx) {
+  var json;
+  try {
+    json = JSON.parse(buffer.toString("utf8"));
+  } catch (e) {
+    throw new Error("Failed to parse .pixil file as JSON: " + e.message);
+  }
+
+  var frames = json.frames || json.art || [];
+  if (!Array.isArray(frames) || frames.length === 0) {
+    throw new Error(".pixil file contains no frames");
+  }
+  if (frameIdx >= frames.length) {
+    throw new Error(".pixil frame " + frameIdx + " does not exist (file has " + frames.length + " frame(s))");
+  }
+
+  var frame = frames[frameIdx];
+
+  // Determine canvas dimensions
+  var canvasW = json.width  || (frame && frame.width)  || 0;
+  var canvasH = json.height || (frame && frame.height) || 0;
+
+  // Flatten all layers (bottom to top — later layers overwrite earlier ones)
+  var flatPixels = {};  // key = "col,row", value = {r,g,b,a}
+
+  var layers = frame.layers || [];
+  for (var li = 0; li < layers.length; li++) {
+    var layer = layers[li];
+    if (!layer || !layer.data) { continue; }
+    var data = layer.data;
+    for (var key in data) {
+      if (!Object.prototype.hasOwnProperty.call(data, key)) { continue; }
+      var hex = data[key];
+      if (!hex || hex === "" || hex === "null") { continue; }
+      var rgb = hexToRgb(hex);
+      flatPixels[key] = { r: rgb.r, g: rgb.g, b: rgb.b, a: 255 };
+
+      // Infer canvas dimensions from the pixel coordinates if not declared
+      var parts = key.split(",");
+      var px = parseInt(parts[0], 10) + 1;
+      var py = parseInt(parts[1], 10) + 1;
+      if (px > canvasW) { canvasW = px; }
+      if (py > canvasH) { canvasH = py; }
+    }
+  }
+
+  if (canvasW === 0 || canvasH === 0) {
+    throw new Error(".pixil file has no pixel data and no canvas dimensions");
+  }
+
+  // Build pixel grid
+  var pixels = [];
+  for (var row = 0; row < canvasH; row++) {
+    var pixelRow = [];
+    for (var col = 0; col < canvasW; col++) {
+      var p = flatPixels[col + "," + row];
+      pixelRow.push(p || { r: 0, g: 0, b: 0, a: 0 });
+    }
+    pixels.push(pixelRow);
+  }
+
+  return { width: canvasW, height: canvasH, pixels: pixels };
+}
+
+// ── Nearest-neighbour resampling ──────────────────────────────────────────────
+
+function resample(src, targetW, targetH) {
+  if (src.width === targetW && src.height === targetH) { return src; }
+  var pixels = [];
+  for (var row = 0; row < targetH; row++) {
+    var srcRow = Math.min(Math.floor(row * src.height / targetH), src.height - 1);
+    var pixelRow = [];
+    for (var col = 0; col < targetW; col++) {
+      var srcCol = Math.min(Math.floor(col * src.width / targetW), src.width - 1);
+      pixelRow.push(src.pixels[srcRow][srcCol]);
+    }
+    pixels.push(pixelRow);
+  }
+  return { width: targetW, height: targetH, pixels: pixels };
+}
+
+// ── Colour quantisation ───────────────────────────────────────────────────────
+// Map each pixel to 0 (transparent), 1, 2, or 3.
+// If palette colours are provided, use RGB distance.
+// Otherwise auto-detect the 3 most frequent colours and rank by luminance.
+
+function buildColourMapper(pixels, width, height, alphaThresh, priHex, secHex, accHex) {
+  if (priHex || secHex || accHex) {
+    // Explicit palette mapping
+    var targets = [];
+    if (priHex) { targets.push({ idx: 1, rgb: hexToRgb(priHex) }); }
+    if (secHex) { targets.push({ idx: 2, rgb: hexToRgb(secHex) }); }
+    if (accHex) { targets.push({ idx: 3, rgb: hexToRgb(accHex) }); }
+
+    return function(px) {
+      if (px.a < alphaThresh) { return 0; }
+      var best = 0, bestDist = Infinity;
+      for (var ti = 0; ti < targets.length; ti++) {
+        var d = rgbDist({ r: px.r, g: px.g, b: px.b }, targets[ti].rgb);
+        if (d < bestDist) { bestDist = d; best = targets[ti].idx; }
+      }
+      return best || 1;
+    };
+  }
+
+  // Auto-detect: count colour frequencies
+  var freq = {};
+  for (var row = 0; row < height; row++) {
+    for (var col = 0; col < width; col++) {
+      var px = pixels[row][col];
+      if (px.a < alphaThresh) { continue; }
+      var key = px.r + "," + px.g + "," + px.b;
+      freq[key] = (freq[key] || 0) + 1;
+    }
+  }
+
+  // Sort by frequency descending, take top 3
+  var sorted = Object.keys(freq).sort(function(a, b) { return freq[b] - freq[a]; });
+  var top3 = sorted.slice(0, 3).map(function(k) {
+    var parts = k.split(",");
+    return { r: parseInt(parts[0]), g: parseInt(parts[1]), b: parseInt(parts[2]) };
+  });
+
+  if (top3.length === 0) {
+    console.error("Warning: no non-transparent pixels found in source image");
+    return function() { return 0; };
+  }
+
+  // Rank top 3 by luminance: highest luminance = primary (1), mid = secondary (2), lowest = accent (3)
+  var ranked = top3.slice().sort(function(a, b) { return luminance(b) - luminance(a); });
+
+  console.error("Auto-detected palette:");
+  ranked.forEach(function(c, i) {
+    console.error("  index " + (i + 1) + ": rgb(" + c.r + "," + c.g + "," + c.b + ")  lum=" + luminance(c).toFixed(1));
+  });
+
+  return function(px) {
+    if (px.a < alphaThresh) { return 0; }
+    var best = 0, bestDist = Infinity;
+    for (var ri = 0; ri < ranked.length; ri++) {
+      var d = rgbDist({ r: px.r, g: px.g, b: px.b }, ranked[ri]);
+      if (d < bestDist) { bestDist = d; best = ri + 1; }
+    }
+    return best;
+  };
+}
+
+// ── ASCII preview ─────────────────────────────────────────────────────────────
+
+var PREVIEW_CHARS = { 0: " ", 1: "█", 2: "▓", 3: "░" };
+
+function printPreview(grid, cols, rows) {
+  var border = "+" + "-".repeat(cols) + "+";
+  console.log(border);
+  for (var row = 0; row < rows; row++) {
+    var line = "|";
+    for (var col = 0; col < cols; col++) {
+      line += PREVIEW_CHARS[grid[row][col]] || "?";
+    }
+    line += "|";
+    console.log(line);
+  }
+  console.log(border);
+}
+
+// ── DEFS string generation ────────────────────────────────────────────────────
+
+function buildDefsEntry(spriteType, stage, grid, cols, rows) {
+  var lines = [];
+  lines.push('  DEFS["' + spriteType + '"] = DEFS["' + spriteType + '"] || {};');
+  lines.push('  DEFS["' + spriteType + '"]["' + stage + '"] = [');
+  for (var row = 0; row < rows; row++) {
+    var rowStr = grid[row].join("");
+    var comma  = (row < rows - 1) ? "," : "";
+    lines.push('    "' + rowStr + '"' + comma + ' //' + row);
+  }
+  lines.push("  ];");
+  return lines.join("\n");
+}
+
+// ── Injection into sprites.js ─────────────────────────────────────────────────
+
+function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legRowStart) {
+  var content = fs.readFileSync(filePath, "utf8");
+
+  // 1. Insert or update the DEFS entry
+  //    We look for an existing DEFS["spriteType"]["stage"] block and replace it,
+  //    or append a new one before the closing '// Exports' section.
+  var defsBlock = buildDefsEntry(spriteType, stage, grid, cols, rows);
+
+  var existingPattern = new RegExp(
+    '  DEFS\\["' + spriteType + '"\\] = DEFS\\["' + spriteType + '"\\] \\|\\| \\{\\};\\s*' +
+    '  DEFS\\["' + spriteType + '"\\]\\["' + stage + '"\\] = \\[[\\s\\S]*?\\];',
+    "m"
+  );
+
+  if (existingPattern.test(content)) {
+    content = content.replace(existingPattern, defsBlock);
+    console.error("Updated existing DEFS[\"" + spriteType + '"]["' + stage + '"] in ' + filePath);
+  } else {
+    // Append before the exports section
+    var exportMarker = "  // =========================================================================\n  // Exports";
+    if (content.indexOf(exportMarker) === -1) {
+      // Try simpler marker
+      var simpleMarker = "window.SPRITES";
+      var simpleIdx = content.indexOf(simpleMarker);
+      if (simpleIdx !== -1) {
+        content = content.slice(0, simpleIdx) + defsBlock + "\n\n  " + content.slice(simpleIdx);
+      } else {
+        throw new Error("Cannot find insertion point in " + filePath);
+      }
+    } else {
+      content = content.replace(exportMarker, defsBlock + "\n\n" + exportMarker);
+    }
+    console.error('Inserted new DEFS["' + spriteType + '"]["' + stage + '"] in ' + filePath);
+  }
+
+  // 2. Register SPRITE_GRID_META entry (append after existing SPRITE_GRID_META block if needed)
+  //    Only add if the spriteType isn't already in the meta block.
+  var metaEntry = '    ' + spriteType.padEnd(10) + ': { cols: ' + cols + ', rows: ' + rows + ', legRowStart: ' + legRowStart + ' },';
+  var metaPattern = new RegExp('    ' + spriteType + '\\s*:');
+  if (!metaPattern.test(content)) {
+    // Append before the closing }; of SPRITE_GRID_META
+    var metaClose = "  };\n\n  /**\n   * Return the height/width ratio";
+    if (content.indexOf(metaClose) !== -1) {
+      content = content.replace(metaClose, "  " + metaEntry + "\n" + metaClose);
+      console.error("Added SPRITE_GRID_META entry for " + spriteType + " in " + filePath);
+    }
+  } else {
+    // Update existing entry
+    content = content.replace(
+      new RegExp('    ' + spriteType + '\\s*:.*\\n'),
+      "  " + metaEntry + "\n"
+    );
+    console.error("Updated SPRITE_GRID_META entry for " + spriteType + " in " + filePath);
+  }
+
+  fs.writeFileSync(filePath, content, "utf8");
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+(function main() {
+  var repoRoot = path.resolve(__dirname, "..");
+  var ext      = path.extname(inputFile).toLowerCase();
+  var buffer   = fs.readFileSync(inputFile);
+  var imgData;
+
+  // 1. Decode
+  if (ext === ".png") {
+    console.error("Decoding PNG: " + inputFile);
+    imgData = decodePng(buffer);
+  } else if (ext === ".pixil") {
+    console.error("Decoding .pixil (frame " + frameIndex + "): " + inputFile);
+    imgData = decodePixil(buffer, frameIndex);
+  } else {
+    console.error("Unsupported file type: " + ext + " (expected .png or .pixil)");
+    process.exit(1);
+  }
+
+  console.error("Source dimensions: " + imgData.width + " × " + imgData.height);
+
+  // 2. Clamp to max grid size (preserve aspect ratio)
+  var targetW = imgData.width;
+  var targetH = imgData.height;
+  if (targetW > MAX_COLS || targetH > MAX_ROWS) {
+    var scaleW = MAX_COLS / targetW;
+    var scaleH = MAX_ROWS / targetH;
+    var scale  = Math.min(scaleW, scaleH);
+    targetW = Math.round(targetW * scale);
+    targetH = Math.round(targetH * scale);
+    console.error("Scaling down to: " + targetW + " × " + targetH + " (max " + MAX_COLS + "×" + MAX_ROWS + ")");
+  }
+
+  // 3. Resample if needed
+  var resampled = resample(imgData, targetW, targetH);
+  var cols = resampled.width;
+  var rows = resampled.height;
+
+  // 4. Determine leg row
+  var legRowStart = legRowArg !== null ? parseInt(legRowArg, 10) : Math.floor(rows * 0.78);
+  console.error("Grid: " + cols + " cols × " + rows + " rows, legRowStart=" + legRowStart);
+
+  // 5. Build colour mapper
+  var mapColour = buildColourMapper(
+    resampled.pixels, cols, rows, alphaThresh,
+    primaryHex, secondaryHex, accentHex
+  );
+
+  // 6. Build grid (array of arrays of colour indices)
+  var grid = [];
+  for (var row = 0; row < rows; row++) {
+    var gridRow = [];
+    for (var col = 0; col < cols; col++) {
+      gridRow.push(mapColour(resampled.pixels[row][col]));
+    }
+    grid.push(gridRow);
+  }
+
+  // 7. Preview
+  if (doPreview) {
+    printPreview(grid, cols, rows);
+  }
+
+  // 8. Emit DEFS text to stdout (always — useful for piping / review)
+  var defsText = buildDefsEntry(spriteType, stage, grid, cols, rows);
+  console.log("// ── Imported: " + path.basename(inputFile) + " → " + spriteType + "/" + stage + " (" + cols + "×" + rows + ") ──");
+  console.log(defsText);
+  console.log("");
+  console.log("// SPRITE_GRID_META entry to add to spriteConstants.js:");
+  console.log("//   " + spriteType + ": { cols: " + cols + ", rows: " + rows + ", legRowStart: " + legRowStart + " },");
+
+  // 9. Inject into both sprites.js files
+  if (doInject) {
+    var vscodeSprites  = path.join(repoRoot, "vscode",   "media",                               "sprites.js");
+    var pycharmSprites = path.join(repoRoot, "pycharm",  "src", "main", "resources", "webview", "sprites.js");
+    var vscodeConst    = path.join(repoRoot, "vscode",   "media",                               "spriteConstants.js");
+    var pycharmConst   = path.join(repoRoot, "pycharm",  "src", "main", "resources", "webview", "spriteConstants.js");
+
+    injectIntoSpritesJs(vscodeSprites,  spriteType, stage, grid, cols, rows, legRowStart);
+    injectIntoSpritesJs(pycharmSprites, spriteType, stage, grid, cols, rows, legRowStart);
+
+    // Also register the SPRITE_GRID_META entry in both spriteConstants.js files
+    [vscodeConst, pycharmConst].forEach(function(constFile) {
+      var constContent = fs.readFileSync(constFile, "utf8");
+      var metaLine = '    ' + spriteType.padEnd(10) + ': { cols: ' + cols + ', rows: ' + rows + ', legRowStart: ' + legRowStart + ' },';
+      var existsPattern = new RegExp('    ' + spriteType + '\\s*:');
+      if (!existsPattern.test(constContent)) {
+        // Append before the closing }; of SPRITE_GRID_META
+        var insertBefore = "  };\n\n  /**\n   * Return the height/width ratio";
+        if (constContent.indexOf(insertBefore) !== -1) {
+          constContent = constContent.replace(insertBefore, "  " + metaLine + "\n" + insertBefore);
+          fs.writeFileSync(constFile, constContent, "utf8");
+          console.error("Added SPRITE_GRID_META entry for " + spriteType + " in " + constFile);
+        }
+      } else {
+        console.error("SPRITE_GRID_META entry for " + spriteType + " already exists in " + constFile);
+      }
+    });
+
+    // Also register in ANIMAL_PALETTES if missing (with a default neutral palette)
+    [vscodeConst, pycharmConst].forEach(function(constFile) {
+      var constContent = fs.readFileSync(constFile, "utf8");
+      if (constContent.indexOf('"' + spriteType + '"') === -1 &&
+          constContent.indexOf("'" + spriteType + "'") === -1) {
+        var paletteLine = '    ' + spriteType.padEnd(10) + ': { primary: "#888888", secondary: "#444444", accent: "#222222", background: "#1a1a1a" },';
+        var insertAfter = "var ANIMAL_PALETTES = {";
+        constContent = constContent.replace(insertAfter, insertAfter + "\n  " + paletteLine);
+        fs.writeFileSync(constFile, constContent, "utf8");
+        console.error("Added default ANIMAL_PALETTES entry for " + spriteType + " in " + constFile + " (update colours manually)");
+      }
+    });
+
+    console.error("\nInjection complete. Run node scripts/validate_sprites.js to verify row lengths.");
+  }
+}());
