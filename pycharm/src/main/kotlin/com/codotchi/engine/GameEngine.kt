@@ -358,6 +358,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         if (isDeepIdle) {
             hunger    = maxOf(hunger,    IDLE_STAT_FLOOR)
             happiness = maxOf(happiness, IDLE_STAT_FLOOR)
+            health    = maxOf(health,    IDLE_STAT_FLOOR)
         }
     } else {
         val energyRegen = ceil(ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier).toInt()
@@ -370,6 +371,11 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         if (sleeping && ticksAlive % SLEEP_DECAY_TICK_INTERVAL == 0) {
             hunger    = clampStat(hunger    - 1)
             happiness = clampStat(happiness - 1)
+        }
+        // Random chance to recover from sickness while sleeping
+        if (sleeping && sick && Math.random() < SLEEP_SICK_RECOVERY_CHANCE) {
+            sick = false
+            events.add("recovered_while_sleeping")
         }
     }
 
@@ -444,9 +450,10 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         events.add("exhaustion_damage")
     }
 
-    // Sickness health drain
-    if (sick) {
-        health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
+    // Sickness health drain — suppressed during deep idle; slowed during regular idle
+    if (sick && !isDeepIdle) {
+        val sickDmg = if (isIdle) IDLE_SICK_DAMAGE_PER_TICK else CRITICAL_HEALTH_DAMAGE_PER_TICK
+        health = clampStat(health - sickDmg)
         events.add("sickness_damage")
     }
 
@@ -804,6 +811,7 @@ fun pat(state: PetState): PetState {
             happiness                = clampStat(state.happiness + PAT_HAPPINESS_BOOST),
             energy                   = clampStat(state.energy    - PAT_ENERGY_COST),
             weight                   = newWeight,
+            consecutiveSnacks        = 0,
             careMistakes             = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events                   = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
@@ -860,6 +868,7 @@ fun sleep(state: PetState): PetState {
     return withDerivedFields(
         state.copy(
             sleeping = true,
+            consecutiveSnacks = 0,
             careMistakes = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events   = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
