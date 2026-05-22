@@ -1373,3 +1373,12 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 **Problem:** The Tim-specific gift (big tea mug sprite) and notification ("Tim wants a tea break!") were not appearing because: (1) the gift box check used `_giftCc.spriteType === "tim"` which compared the character registry object's own property rather than the pet's active `state.spriteType`, and (2) the VS Code notification in `extension.ts` was hardcoded to "brought you a gift!" without consulting the custom character's `giftMessage` field. The same pattern affected the Thirst label and Tim event messages â€” all checked `_cc.spriteType` instead of `state.spriteType`.
 
 **Fix:** Changed all Tim-specific guards in both sidebar.js files to check `state.spriteType === "tim"` instead of `_cc.spriteType === "tim"`. Updated `extension.ts` to look up the custom character's `giftMessage` for the notification toast, falling back to the default message for normal pets.
+
+## BUGFIX-112 — Snack streak counter carries over after sleep, pat, or play
+
+**Status:** Fixed (v2.2.3, branch `fix/snack-streak-idle-sick`)
+**Files:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
+
+**Problem:** The `consecutiveSnacks` counter was only reset by `feedMeal()` and `play()`. Sleeping or patting the pet did not reset it, meaning a snack eaten before sleep would still count toward the 3-in-a-row sickness trigger after waking up, even with other actions in between.
+
+**Fix:** Added `consecutiveSnacks: 0` reset to `pat()` and `sleep()` in both the TypeScript and Kotlin game engines. The streak now only causes sickness on a strict uninterrupted sequence of 3 snacks — any meal, play, pat, or sleep resets it.

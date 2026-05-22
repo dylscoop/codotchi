@@ -91,11 +91,6 @@
       padding: 2px 8px; cursor: pointer;
     }
     .save-btn:hover { background: #001f3f; }
-    .stage-empty {
-      font-size: 18px; color: #444; line-height: 1;
-      display: flex; align-items: center; justify-content: center;
-      width: 48px; height: 48px; border: 1px solid #222; border-radius: 3px;
-    }
     .divider { border: none; border-top: 1px solid #222; margin: 20px 0; }
   </style>
 </head>
@@ -135,12 +130,6 @@
     <option value="no">No</option>
   </select>
 
-  <label style="margin-left:12px">Source</label>
-  <select id="source-select">
-    <option value="sprites" selected>sprites.js (all stages)</option>
-    <option value="sprites_adult">sprites_adult.js (adult only)</option>
-  </select>
-
   <button class="save-all" id="btn-save-all">&#8595; Save all as PNG</button>
 </div>
 
@@ -158,10 +147,9 @@
 <!-- ── Sprite grid (populated by JS) ── -->
 <div id="grid"></div>
 
-<!-- Load shared constants, then sprite data files, then custom characters registry -->
+<!-- Load shared constants, then sprite data, then custom characters registry -->
 <script src="spriteConstants.js"></script>
 <script src="sprites.js"></script>
-<script src="sprites_adult.js"></script>
 <script src="customCharacters.js"></script>
 
 <script>
@@ -195,7 +183,6 @@
   // ── Controls state ────────────────────────────────────────────────────────
   var pixelScale   = 1;
   var activeStage  = "all";
-  var activeSource = "sprites";
   var globalMood   = "neutral";
   var globalWeight = 50;
   var facingLeft   = false;
@@ -285,18 +272,6 @@
     var bodyWidth  = Math.round(bodySize * wwm);
     var bodyHeight = Math.round(bodyWidth * window.spriteHeightRatio(animal));
 
-    // If sprites_adult source, swap in ADULT_DEFS temporarily by patching SPRITES
-    var patchedSprites = false;
-    if (activeSource === "sprites_adult" && stage === "adult"
-        && window.ADULT_DEFS && window.ADULT_DEFS[animal]
-        && window.SPRITES && window.SPRITES[animal]) {
-      var origAdult = window.SPRITES[animal]["adult"];
-      window.SPRITES[animal]["adult"] = window.ADULT_DEFS[animal].map(function (r) {
-        return r.split("").map(Number);
-      });
-      patchedSprites = true;
-    }
-
     // Centre horizontally, bottom-align vertically (in raw sprite units)
     // Ensure at least 8px top clearance so tall upright sprites aren't clipped.
     var x     = Math.max(0, Math.floor((lW - bodyWidth) / 2));
@@ -311,11 +286,6 @@
       window.spriteGetPalette, window.spriteHeightRatio,
       window.spriteQuadBellySag
     );
-
-    // Restore patched SPRITES
-    if (patchedSprites) {
-      window.SPRITES[animal]["adult"] = origAdult;
-    }
 
     ctx.restore();
   }
@@ -345,26 +315,6 @@
       row.className = "stage-row";
 
       stagesToShow.forEach(function (stage) {
-        // sprites_adult source only has "adult"
-        if (activeSource === "sprites_adult" && stage !== "adult") { return; }
-
-        // Skip stages where no DEFS data exists for this animal
-        var _hasDefs = window.SPRITES && window.SPRITES[animal] && window.SPRITES[animal][stage];
-        if (!_hasDefs) {
-          var _emptyCell = document.createElement("div");
-          _emptyCell.className = "sprite-cell";
-          var _emptyLbl = document.createElement("div");
-          _emptyLbl.className = "stage-label";
-          _emptyLbl.textContent = stage;
-          var _emptyDash = document.createElement("div");
-          _emptyDash.className = "stage-empty";
-          _emptyDash.textContent = "—";
-          _emptyCell.appendChild(_emptyLbl);
-          _emptyCell.appendChild(_emptyDash);
-          row.appendChild(_emptyCell);
-          return;
-        }
-
         var sz    = canvasSize();
         var cell  = document.createElement("div");
         cell.className = "sprite-cell";
@@ -499,11 +449,6 @@
       breathPhase = 0;
       redrawAll();
     }
-  });
-
-  document.getElementById("source-select").addEventListener("change", function () {
-    activeSource = this.value;
-    buildGrid();
   });
 
   document.getElementById("btn-save-all").addEventListener("click", saveAll);

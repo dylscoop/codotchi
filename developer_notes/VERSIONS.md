@@ -1,6 +1,39 @@
 # Version History
 
-## v2.2.0 — current
+## v2.2.3 — current
+
+### Changes from v2.2.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.2.3 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.2.3 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.2.3 |
+| `opencode-codotchi/package.json` | Version bumped to 2.2.3 |
+| `vscode/src/gameEngine.ts` | fix: `pat()` and `sleep()` now reset `consecutiveSnacks: 0` — snack streak only triggers sickness on strict 3-in-a-row with no other action in between (BUGFIX-112) |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | Mirrored `consecutiveSnacks = 0` reset in `pat()` and `sleep()` |
+| `vscode/src/gameEngine.ts` | feat: 3% per-tick chance to recover from sickness while sleeping; fires `"recovered_while_sleeping"` event |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | Mirrored sleep sickness recovery logic |
+| `vscode/src/gameEngine.ts` | feat: sickness drain slowed to `IDLE_SICK_DAMAGE_PER_TICK` (1/tick) during regular idle (was 5/tick); health now also floored at `IDLE_STAT_FLOOR` (20) in deep idle alongside hunger/happiness |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | Mirrored idle sickness drain slowdown and deep idle health floor |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | Added `IDLE_SICK_DAMAGE_PER_TICK = 1`, `SLEEP_SICK_RECOVERY_CHANCE = 0.03` |
+
+### New constants (v2.2.3)
+
+```ts
+IDLE_SICK_DAMAGE_PER_TICK: number = 1     // sickness HP drain per tick during regular idle (was CRITICAL_HEALTH_DAMAGE_PER_TICK = 5)
+SLEEP_SICK_RECOVERY_CHANCE: number = 0.03 // 3% per-tick probability of natural sickness recovery while sleeping
+```
+
+---
+
+## v2.2.2 — previous
+
+### Changes from v2.2.1
+
+---
+
+## v2.2.0 — previous
 
 ### Changes from v2.1.3
 

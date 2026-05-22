@@ -75,10 +75,10 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Action      | Effect                                           | Constraint                               | Status |
 |-------------|--------------------------------------------------|------------------------------------------|--------|
 | Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle               | `[x]`  |
-| Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle; resets on auto-wake | `[x]`  |
-| Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; refused via event log | `[x]`  |
-| Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; accessed via Play menu — direct boost (no minigame) | `[x]`  |
-| Sleep       | Energy regenerates; cannot act while sleeping    | —                                        | `[x]`  |
+| Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle; streak resets on meal, play, pat, or sleep | `[x]`  |
+| Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; resets snack streak | `[x]`  |
+| Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; resets snack streak | `[x]`  |
+| Sleep       | Energy regenerates; 3% per-tick chance to recover from sickness | Resets snack streak | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
 | Medicine    | Cures sickness after 3 doses (no health boost)   | —                                        | `[x]`  |

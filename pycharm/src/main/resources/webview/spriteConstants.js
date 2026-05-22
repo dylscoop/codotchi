@@ -101,6 +101,7 @@
     dog:      { cols: 48, rows: 32, legRowStart: 25 },
     pig:      { cols: 48, rows: 32, legRowStart: 25 },
     snake:    { cols: 48, rows: 32, legRowStart: 25 },
+    testsprite: { cols: 700, rows: 550, legRowStart: 429 },
   };
 
   /**
