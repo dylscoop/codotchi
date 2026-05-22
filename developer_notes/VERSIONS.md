@@ -1,6 +1,33 @@
 # Version History
 
-## v2.2.3 — current
+## v2.3.0 — current
+
+### Changes from v2.2.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.3.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.3.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.3.0 |
+| `opencode-codotchi/package.json` | Version bumped to 2.3.0 |
+| `vscode/src/customCharacters.ts` | feat: rename `forcedName` → `defaultName` on `CustomCharacter` interface; field is now a suggested default rather than a hard override |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | Mirrored `forcedName` → `defaultName` rename on `CustomCharacter` data class |
+| `vscode/media/customCharacters.js` | Mirrored `forcedName` → `defaultName` rename in JS registry |
+| `pycharm/src/main/resources/webview/customCharacters.js` | Mirrored `forcedName` → `defaultName` rename in JS registry |
+| `vscode/src/sidebarProvider.ts` | feat: Tim-specific name logic — `"Codotchi"` (case-insensitive) falls back to `"Timagotchi"` when Tim passcode active; other custom chars unchanged; `postState()` now accepts and forwards `defaultPetName`; bootstrap sends `defaultPetName` in all branches including no-game case |
+| `vscode/src/extension.ts` | feat: add `getDefaultPetName()` helper; thread into all three `postState()` call sites |
+| `vscode/media/sidebar.js` | feat: track `setupDefaultName` from `stateUpdate`; pre-fill name input when host sends `defaultPetName`; use `setupDefaultName` as hatch fallback; fix live name-display fallback and info-line sprite label to use `defaultName` |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored all sidebar.js naming changes |
+| `vscode/README.md` | docs: update Overview support sentence; restore full `## Support` section (GitHub, Buy Me a Coffee, Liberapay, sprite request) |
+| `pycharm/README.md` | docs: same support-section restore as vscode/README.md |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | docs: update Overview support sentence; restore HTML `<h2>Support</h2>` block in `<description>` |
+| `opencode-codotchi/README.md` | docs: extend bare `## Support` with Buy Me a Coffee, Liberapay, and sprite request links |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: Tim naming logic in `new_game` handler (`defaultName` + `isTimChar` check); `postState` calls now pass `defaultPetName` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | feat: `postState()` accepts and serialises `defaultPetName` into the webview JSON payload |
+
+---
+
+## v2.2.3 — previous
 
 ### Changes from v2.2.2
 

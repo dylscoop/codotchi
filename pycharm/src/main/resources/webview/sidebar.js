@@ -139,6 +139,7 @@
   let currentScreen = "game"; // tracks which screen is visible
   let hasActiveGame = false;  // true once a real (non-needs_new_game) state is received
   let pendingNewGame = false; // set when Hatch! is clicked; bypasses setup-screen suppression
+  let setupDefaultName = "Codotchi"; // default name for the setup screen name input; updated from stateUpdate
   let giftBoxX   = null;     // floor X of gift box while a "gift" attention call is active
   let snackItems = [];       // floor items: [{ x, type: "candy"|"bone" }]
   let activeBubble = null;   // speech bubble: { text, startMs, fadeOutMs, fadeDurMs } or null
@@ -163,7 +164,7 @@
   });
 
   startBtn.addEventListener("click", function () {
-    const name = petNameInput.value.trim() || "Codotchi";
+    const name = petNameInput.value.trim() || setupDefaultName;
     pendingNewGame = true;
     vscode.postMessage({
       command: "new_game",
@@ -1143,7 +1144,8 @@
 
     var _cc = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
 
-    petNameDisplay.textContent = state.name || "Codotchi";
+    var _nameDefault = _cc ? _cc.defaultName : "Codotchi";
+    petNameDisplay.textContent = state.name || _nameDefault;
     moodLabel.textContent      = moodText(state);
 
     setBar(barHunger,    state.hunger);
@@ -1164,7 +1166,7 @@
     const _infoCC = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
     const typeLabelCap = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
     const spriteLabel = _infoCC
-      ? _infoCC.forcedName
+      ? _infoCC.defaultName
       : (state.spriteType && state.spriteType !== "classic")
         ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
         : "";
@@ -2443,7 +2445,13 @@
     if (message.highScore) { latestHighScore = message.highScore; }
     if (message.highScore === null) { latestHighScore = null; }
 
-    // Show/hide dev mode banner
+    // Update the setup screen default name whenever the host sends one.
+    if (message.defaultPetName) {
+      setupDefaultName = message.defaultPetName;
+      if (petNameInput && petNameInput.value.toLowerCase() === "codotchi") {
+        petNameInput.value = setupDefaultName;
+      }
+    }
     if (devModeBanner) {
       devModeBanner.classList.toggle("hidden", !message.devMode);
     }

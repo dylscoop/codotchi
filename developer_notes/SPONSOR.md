@@ -1,8 +1,5 @@
 # Sponsor
 
-> **Note:** This content is temporarily moved here for restructuring.
-> Add it back to the public-facing READMEs when ready.
-
 ## Support
 
 **GitHub:** [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi)
