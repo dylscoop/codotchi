@@ -55,6 +55,23 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
             "That counts as cardio.",
         ),
     ),
+    CustomCharacter(
+        spriteType  = "testsprite",
+        passcode    = "pixel",
+        forcedName  = "Pixel",
+        patLabel    = "Pat",
+        mgTitle     = "Play or Pat",
+        patToasts   = CustomCharacterToasts(
+            patted     = "Pixel enjoyed the attention!",
+            patRefused = "Pixel is too tired for that right now!",
+        ),
+        patBubbles  = listOf(
+            "...",
+            "beep.",
+            "I am rendered.",
+            "700 columns wide and loving it.",
+        ),
+    ),
     // ── Add future custom characters here ────────────────────────────────────
 )
 

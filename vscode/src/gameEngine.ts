@@ -120,6 +120,12 @@ const ENERGY_DECAY_PER_TICK: number = 1;
 /** Health lost per tick when the pet's energy is fully depleted while awake. Slower than other critical conditions. */
 const EXHAUSTION_HEALTH_DAMAGE_PER_TICK: number = 2;
 
+/** Health lost per tick from sickness while the user is idle (regular idle, not deep idle). Much slower than active rate. */
+const IDLE_SICK_DAMAGE_PER_TICK: number = 1;
+
+/** Per-tick probability that sickness clears naturally while the pet is sleeping. */
+const SLEEP_SICK_RECOVERY_CHANCE: number = 0.03;
+
 /** While sleeping, hunger and happiness decay once every this many ticks (very slow drain). */
 const SLEEP_DECAY_TICK_INTERVAL: number = 5;
 
@@ -924,7 +930,7 @@ const ZODIAC_ANIMALS = [
 /**
  * All valid sprite type keys.
  */
-export type SpriteType = typeof ZODIAC_ANIMALS[number] | "classic" | "cat" | "tim";
+export type SpriteType = typeof ZODIAC_ANIMALS[number] | "classic" | "cat" | "tim" | "testsprite";
 
 /**
  * Sample a random sprite type at pet creation.
@@ -1166,8 +1172,9 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     if (energyDecayTick)    energy    = clampStat(energy - ENERGY_DECAY_PER_TICK);
     // Deep idle: floor stats at IDLE_STAT_FLOOR so they never drop below 20%
     if (isDeepIdle) {
-      hunger = Math.max(hunger, IDLE_STAT_FLOOR);
+      hunger    = Math.max(hunger,    IDLE_STAT_FLOOR);
       happiness = Math.max(happiness, IDLE_STAT_FLOOR);
+      health    = Math.max(health,    IDLE_STAT_FLOOR);
     }
   } else {
     const energyRegen = ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier;
@@ -1182,6 +1189,11 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     if (sleeping && ticksAlive % SLEEP_DECAY_TICK_INTERVAL === 0) {
       hunger = clampStat(hunger - 1);
       happiness = clampStat(happiness - 1);
+    }
+    // Random chance to recover from sickness while sleeping
+    if (sleeping && sick && Math.random() < SLEEP_SICK_RECOVERY_CHANCE) {
+      sick = false;
+      events.push("recovered_while_sleeping");
     }
   }
 
@@ -1271,10 +1283,12 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   // that is already sick when the user locks their screen or the computer
   // sleeps cannot die while they are away. Matches applyOfflineDecay / closed
   // behaviour which skips sickness damage entirely during offline periods.
-  // Damage still fires during regular idle (< 10 min inactivity) so brief
-  // absences with a sick pet still carry consequences.
+  // During regular idle (< 10 min inactivity) damage is slowed to
+  // IDLE_SICK_DAMAGE_PER_TICK (1/tick) rather than the full 5/tick, so brief
+  // absences with a sick pet still carry consequences but won't kill the pet.
   if (sick && !isDeepIdle) {
-    health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
+    const sickDmg = isIdle ? IDLE_SICK_DAMAGE_PER_TICK : CRITICAL_HEALTH_DAMAGE_PER_TICK;
+    health = clampStat(health - sickDmg);
     events.push("sickness_damage");
   }
 
@@ -1717,9 +1731,10 @@ export function pat(state: PetState): PetState {
   return withDerivedFields({
     ...state,
     ...(answered ?? {}),
-    happiness: clampStat(state.happiness + PAT_HAPPINESS_BOOST),
-    energy:    clampStat(state.energy    - PAT_ENERGY_COST),
-    weight:    newWeight,
+    happiness:        clampStat(state.happiness + PAT_HAPPINESS_BOOST),
+    energy:           clampStat(state.energy    - PAT_ENERGY_COST),
+    weight:           newWeight,
+    consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
@@ -1809,6 +1824,7 @@ export function sleep(state: PetState): PetState {
   const events: string[] = ["fell_asleep"];
   if (answered) { events.push("attention_call_answered_low_energy"); }
   return withDerivedFields({ ...state, ...(answered ?? {}), sleeping: true,
+    consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events });
 }

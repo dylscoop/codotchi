@@ -53,6 +53,23 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
       "That counts as cardio.",
     ],
   },
+  {
+    spriteType:  "testsprite",
+    passcode:    "pixel",
+    forcedName:  "Pixel",
+    patLabel:    "Pat",
+    mgTitle:     "Play or Pat",
+    patToasts: {
+      patted:      "Pixel enjoyed the attention!",
+      pat_refused: "Pixel is too tired for that right now!",
+    },
+    patBubbles: [
+      "...",
+      "beep.",
+      "I am rendered.",
+      "700 columns wide and loving it.",
+    ],
+  },
   // ── Add future custom characters here ──────────────────────────────────────
 ];
 

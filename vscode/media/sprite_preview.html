@@ -130,12 +130,6 @@
     <option value="no">No</option>
   </select>
 
-  <label style="margin-left:12px">Source</label>
-  <select id="source-select">
-    <option value="sprites" selected>sprites.js (all stages)</option>
-    <option value="sprites_adult">sprites_adult.js (adult only)</option>
-  </select>
-
   <button class="save-all" id="btn-save-all">&#8595; Save all as PNG</button>
 </div>
 
@@ -153,10 +147,9 @@
 <!-- ── Sprite grid (populated by JS) ── -->
 <div id="grid"></div>
 
-<!-- Load shared constants, then sprite data files, then custom characters registry -->
+<!-- Load shared constants, then sprite data, then custom characters registry -->
 <script src="spriteConstants.js"></script>
 <script src="sprites.js"></script>
-<script src="sprites_adult.js"></script>
 <script src="customCharacters.js"></script>
 
 <script>
@@ -190,7 +183,6 @@
   // ── Controls state ────────────────────────────────────────────────────────
   var pixelScale   = 1;
   var activeStage  = "all";
-  var activeSource = "sprites";
   var globalMood   = "neutral";
   var globalWeight = 50;
   var facingLeft   = false;
@@ -280,18 +272,6 @@
     var bodyWidth  = Math.round(bodySize * wwm);
     var bodyHeight = Math.round(bodyWidth * window.spriteHeightRatio(animal));
 
-    // If sprites_adult source, swap in ADULT_DEFS temporarily by patching SPRITES
-    var patchedSprites = false;
-    if (activeSource === "sprites_adult" && stage === "adult"
-        && window.ADULT_DEFS && window.ADULT_DEFS[animal]
-        && window.SPRITES && window.SPRITES[animal]) {
-      var origAdult = window.SPRITES[animal]["adult"];
-      window.SPRITES[animal]["adult"] = window.ADULT_DEFS[animal].map(function (r) {
-        return r.split("").map(Number);
-      });
-      patchedSprites = true;
-    }
-
     // Centre horizontally, bottom-align vertically (in raw sprite units)
     // Ensure at least 8px top clearance so tall upright sprites aren't clipped.
     var x     = Math.max(0, Math.floor((lW - bodyWidth) / 2));
@@ -306,11 +286,6 @@
       window.spriteGetPalette, window.spriteHeightRatio,
       window.spriteQuadBellySag
     );
-
-    // Restore patched SPRITES
-    if (patchedSprites) {
-      window.SPRITES[animal]["adult"] = origAdult;
-    }
 
     ctx.restore();
   }
@@ -329,16 +304,17 @@
 
       var title = document.createElement("div");
       title.className = "animal-title";
-      title.textContent = animal + (window.spriteHeightRatio(animal) > 1 ? "  [upright 32\xd748]" : "  [quadruped 48\xd732]");
+      var _meta = window.SPRITE_GRID_META && window.SPRITE_GRID_META[animal];
+      var _dimLabel = _meta
+        ? "  [" + _meta.cols + "\xd7" + _meta.rows + "]"
+        : (window.spriteHeightRatio(animal) > 1 ? "  [upright 32\xd748]" : "  [quadruped 48\xd732]");
+      title.textContent = animal + _dimLabel;
       section.appendChild(title);
 
       var row = document.createElement("div");
       row.className = "stage-row";
 
       stagesToShow.forEach(function (stage) {
-        // sprites_adult source only has "adult"
-        if (activeSource === "sprites_adult" && stage !== "adult") { return; }
-
         var sz    = canvasSize();
         var cell  = document.createElement("div");
         cell.className = "sprite-cell";
@@ -473,11 +449,6 @@
       breathPhase = 0;
       redrawAll();
     }
-  });
-
-  document.getElementById("source-select").addEventListener("change", function () {
-    activeSource = this.value;
-    buildGrid();
   });
 
   document.getElementById("btn-save-all").addEventListener("click", saveAll);

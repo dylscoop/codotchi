@@ -97,6 +97,12 @@ const val ENERGY_DECAY_PER_TICK: Int = 1
 /** Health lost per tick when the pet's energy is fully depleted while awake. */
 const val EXHAUSTION_HEALTH_DAMAGE_PER_TICK: Int = 2
 
+/** Health lost per tick from sickness while the user is idle (regular idle, not deep idle). Much slower than active rate. */
+const val IDLE_SICK_DAMAGE_PER_TICK: Int = 1
+
+/** Per-tick probability that sickness clears naturally while the pet is sleeping. */
+const val SLEEP_SICK_RECOVERY_CHANCE: Double = 0.03
+
 /** While sleeping, hunger and happiness decay once every this many ticks (very slow drain). */
 const val SLEEP_DECAY_TICK_INTERVAL: Int = 5
 

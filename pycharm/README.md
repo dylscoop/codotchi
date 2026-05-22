@@ -120,3 +120,4 @@ Each pet animal has its own sprite set
 ---
 
 > "Grow your best pet by writing your best code."
+
