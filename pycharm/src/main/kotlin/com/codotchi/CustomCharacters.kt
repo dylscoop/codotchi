@@ -22,8 +22,8 @@ data class CustomCharacter(
     val spriteType: String,
     /** Exact passcode the user enters in the Character Passcode setting. */
     val passcode: String,
-    /** Name auto-assigned on hatch, overriding the user's chosen name. */
-    val forcedName: String,
+    /** Default name pre-filled on the setup screen. For Tim, also overrides "Codotchi" (case-insensitive). */
+    val defaultName: String,
     /** Label for the Pat button in the minigame overlay. */
     val patLabel: String,
     /** Minigame overlay title — replaces the default "Play or Pat". */
@@ -40,7 +40,7 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
     CustomCharacter(
         spriteType  = "tim",
         passcode    = "teawtim",
-        forcedName  = "Timagotchi",
+        defaultName  = "Timagotchi",
         patLabel    = "Go for a Run",
         mgTitle     = "Play or Go for a Run",
         giftMessage = "Tim wants a tea break!",
@@ -58,7 +58,7 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
     CustomCharacter(
         spriteType  = "testsprite",
         passcode    = "pixel",
-        forcedName  = "Pixel",
+        defaultName  = "Pixel",
         patLabel    = "Pat",
         mgTitle     = "Play or Pat",
         patToasts   = CustomCharacterToasts(

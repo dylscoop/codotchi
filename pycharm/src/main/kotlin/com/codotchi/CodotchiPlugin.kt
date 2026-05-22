@@ -383,12 +383,18 @@ class CodotchiPlugin : Disposable {
                 }
 
                 "new_game" -> {
-                    val rawName = (message["name"]    as? String) ?: "Codotchi"
+                    val rawName = (message["name"]    as? String)?.trim() ?: ""
                     val petType = (message["petType"] as? String) ?: "codeling"
                     val color   = (message["color"]   as? String) ?: "neon"
                     val settings = service<CodotchiSettings>()
                     val customChar = getCustomCharacterByPasscode(settings.characterPasscode)
-                    val resolvedName = customChar?.forcedName ?: rawName
+                    val defaultName = customChar?.defaultName ?: "Codotchi"
+                    val isTimChar   = customChar?.spriteType == "tim"
+                    val resolvedName = when {
+                        isTimChar && rawName.lowercase() == "codotchi" -> defaultName
+                        rawName.isNotEmpty() -> rawName
+                        else -> defaultName
+                    }
                     val unlockedCharacter = customChar?.spriteType
                     nextState = createPet(resolvedName, petType, color, unlockedCharacter)
                     mealsGivenThisCycle = 0
@@ -538,9 +544,10 @@ class CodotchiPlugin : Disposable {
         }
         val devMode = lastDevMode
         val unlockedCharacter2 = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.spriteType
+        val defaultPetName2 = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.defaultName ?: "Codotchi"
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2) }
                 statusWidget?.update(state)
             }
         }
@@ -681,6 +688,7 @@ class CodotchiPlugin : Disposable {
         }
         val devMode = lastDevMode
         val unlockedCharacter = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.spriteType
+        val defaultPetName = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.defaultName ?: "Codotchi"
 
         // Persist on every broadcast so crashes don't lose state
         val persistence = service<CodotchiPersistence>()
@@ -732,7 +740,7 @@ class CodotchiPlugin : Disposable {
 
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName) }
                 statusWidget?.update(state)
             }
         }

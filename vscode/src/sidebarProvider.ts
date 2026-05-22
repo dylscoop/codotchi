@@ -97,8 +97,10 @@ export class SidebarProvider
       bootstrapCfg.get<string>("developerPasscode", "") === "1234";
     const bootstrapPasscode = bootstrapCfg.get<string>("characterPasscode", "");
     const bootstrapUnlockedChar = getCustomCharacterByPasscode(bootstrapPasscode)?.spriteType ?? null;
+    const bootstrapCustomChar = getCustomCharacterByPasscode(bootstrapPasscode);
+    const bootstrapDefaultPetName = bootstrapCustomChar?.defaultName ?? "Codotchi";
     if (bootstrapState !== null) {
-      this.postState(bootstrapState, bootstrapHs, bootstrapDevMode, bootstrapUnlockedChar);
+      this.postState(bootstrapState, bootstrapHs, bootstrapDevMode, bootstrapUnlockedChar, bootstrapDefaultPetName);
     } else if (bootstrapHs !== null) {
       // No active pet but we have a high score — push it so the setup screen
       // can display it.
@@ -109,6 +111,19 @@ export class SidebarProvider
         highScore: bootstrapHs,
         devMode: false,
         unlockedCharacter: bootstrapUnlockedChar,
+        defaultPetName: bootstrapDefaultPetName,
+      });
+    } else {
+      // No pet and no high score — still push defaultPetName so setup screen
+      // can pre-fill the name input correctly.
+      void webviewView.webview.postMessage({
+        type: "stateUpdate",
+        state: { needs_new_game: true },
+        mealsGivenThisCycle: 0,
+        highScore: null,
+        devMode: false,
+        unlockedCharacter: bootstrapUnlockedChar,
+        defaultPetName: bootstrapDefaultPetName,
       });
     }
 
@@ -341,7 +356,12 @@ export class SidebarProvider
         const cfg = vscode.workspace.getConfiguration("codotchi");
         const passcode = cfg.get<string>("characterPasscode", "");
         const customChar = getCustomCharacterByPasscode(passcode);
-        const petName = customChar ? customChar.forcedName : (message.name ?? "Codotchi");
+        const defaultName = customChar?.defaultName ?? "Codotchi";
+        const isTimChar   = customChar?.spriteType === "tim";
+        const userTyped   = message.name?.trim() ?? "";
+        const petName     = (isTimChar && userTyped.toLowerCase() === "codotchi")
+                            ? defaultName
+                            : (userTyped || defaultName);
         const petType = message.petType ?? "codeling";
         const unlockedCharacter = customChar?.spriteType ?? null;
         nextState = createPet(petName, petType, unlockedCharacter);
@@ -378,7 +398,7 @@ export class SidebarProvider
    * @param devMode - Whether developer mode is currently active.
    * @param unlockedCharacter - spriteType of the unlocked custom character, or null.
    */
-  postState(state: PetState, highScore: HighScore | null, devMode: boolean, unlockedCharacter: string | null = null): void {
+  postState(state: PetState, highScore: HighScore | null, devMode: boolean, unlockedCharacter: string | null = null, defaultPetName: string = "Codotchi"): void {
     if (this.webviewView) {
       void this.webviewView.webview.postMessage({
         type: "stateUpdate",
@@ -387,6 +407,7 @@ export class SidebarProvider
         highScore,
         devMode,
         unlockedCharacter,
+        defaultPetName,
       });
     }
   }

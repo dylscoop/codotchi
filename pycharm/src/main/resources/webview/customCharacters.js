@@ -20,7 +20,7 @@
    *
    * Each entry shape:
    *   passcode      {string}   — exact string the user must enter in settings
-   *   forcedName    {string}   — name auto-assigned on hatch (overrides user input)
+   *   defaultName   {string}   — default name pre-filled on setup screen; for Tim, overrides "Codotchi" (case-insensitive)
    *   patLabel      {string}   — label for the Pat button in the minigame overlay
    *   mgTitle       {string}   — minigame overlay title (replaces "Play or Pat")
    *   giftMessage   {string}   — attention_call_gift toast message (optional)
@@ -32,7 +32,7 @@
   var CUSTOM_CHARACTERS = {
     tim: {
       passcode:     "teawtim",
-      forcedName:   "Timagotchi",
+      defaultName:  "Timagotchi",
       patLabel:     "Go for a Run",
       mgTitle:      "Play or Go for a Run",
       giftMessage:  "Tim wants a tea break!",
@@ -50,7 +50,7 @@
     // ── Add future custom characters here ────────────────────────────────────
     // example: {
     //   passcode:   "teawjess",
-    //   forcedName: "Jess",
+    //   defaultName: "Jess",
     //   patLabel:   "Hug",
     //   mgTitle:    "Play or Hug",
     //   patToasts: { patted: "Jess got a hug!", pat_refused: "Jess is too tired for a hug!" },

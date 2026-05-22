@@ -49,6 +49,13 @@ function getUnlockedCharacter(): string | null {
   return getCustomCharacterByPasscode(passcode)?.spriteType ?? null;
 }
 
+/** Return the defaultName for the currently configured custom character, or "Codotchi". */
+function getDefaultPetName(): string {
+  const cfg = vscode.workspace.getConfiguration("codotchi");
+  const passcode = cfg.get<string>("characterPasscode", "");
+  return getCustomCharacterByPasscode(passcode)?.defaultName ?? "Codotchi";
+}
+
 let currentState: PetState | null = null;
 let currentHighScore: HighScore | null = null;
 let sidebar: SidebarProvider | undefined;
@@ -152,7 +159,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }
 
-    sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter());
+    sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter(), getDefaultPetName());
     statusBar?.update(state);
     saveState(context, state);
   }
@@ -182,7 +189,7 @@ export function activate(context: vscode.ExtensionContext): void {
       cfg3.get<boolean>("devModeEnabled", false) &&
       cfg3.get<string>("developerPasscode", "") === "1234";
     if (currentState !== null) {
-      sidebar?.postState(currentState, null, devModeNow, getUnlockedCharacter());
+      sidebar?.postState(currentState, null, devModeNow, getUnlockedCharacter(), getDefaultPetName());
     } else {
       sidebar?.postNoGame(null);
     }
@@ -350,7 +357,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const devModeActive =
       cfg.get<boolean>("devModeEnabled", false) &&
       cfg.get<string>("developerPasscode", "") === "1234";
-    sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter());
+    sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter(), getDefaultPetName());
     statusBar?.update(state);
     // NOTE: saveState() deliberately omitted — see BUGFIX-050 above.
   }
