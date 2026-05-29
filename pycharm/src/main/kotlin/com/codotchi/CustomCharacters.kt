@@ -91,10 +91,10 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
             patRefused = "Stu doesn't have enough energy to collect stickers!",
         ),
         patBubbles   = listOf(
-            "Magic: The Gathering. Obviously.",
             "That's going in the binder.",
-            "Holographic. Rare. Mine.",
             "No, you cannot have that one.",
+            "Scotland sticker. Rarest of them all.",
+            "Thanks for fuelling the addiction.",
         ),
         feedMealMaxPerCycle  = 10,
         feedSnackMaxPerCycle = 10,
