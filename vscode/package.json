@@ -201,6 +201,12 @@
           "type": "boolean",
           "default": true,
           "description": "Reset the idle timer when the mouse moves inside the Codotchi sidebar panel (throttled to once per 30 seconds). Never suppressed by aiMode."
+        },
+        "codotchi.perWorkspacePet": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "description": "Give each workspace its own independent pet. When enabled, state is stored in a workspace-specific file derived from the workspace path. On first enable the current shared pet is copied to the workspace file as the starting point. When disabled, all workspaces share one global pet."
         }
       }
     }
