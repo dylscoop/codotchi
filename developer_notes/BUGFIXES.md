@@ -1382,3 +1382,12 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 **Problem:** The `consecutiveSnacks` counter was only reset by `feedMeal()` and `play()`. Sleeping or patting the pet did not reset it, meaning a snack eaten before sleep would still count toward the 3-in-a-row sickness trigger after waking up, even with other actions in between.
 
 **Fix:** Added `consecutiveSnacks: 0` reset to `pat()` and `sleep()` in both the TypeScript and Kotlin game engines. The streak now only causes sickness on a strict uninterrupted sequence of 3 snacks — any meal, play, pat, or sleep resets it.
+
+## BUGFIX-113 — Multiple snacks placed on floor do not trigger "threw the snack away"
+
+**Status:** Fixed (v2.5.1, branch `fix/floor-snack-refused`)
+**Files:** `vscode/src/gameEngine.ts`, `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt`, `pycharm/src/main/kotlin/com/codotchi/engine/PetState.kt`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiToolWindow.kt`
+
+**Problem:** The "threw the snack away" toast (`snack_refused`) only fired when the per-cycle cap (`snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE`) was hit. If 3 snacks were already placed on the stage floor and not yet eaten, clicking Feed again would silently drop the `snack_placed` event in the webview (existing guard: `snackItems.length < 3`) while the engine still incremented `snacksGivenThisCycle` and emitted no toast.
+
+**Fix:** Added `snacksOnFloor: number` to `PetState` (default 0, serialised/deserialised). `startSnack` now checks `snacksOnFloor >= MAX_FLOOR_SNACKS` (= 3) before the per-cycle cap — if the floor is full it returns `snack_refused` without spending cycle quota. On success, `snacksOnFloor` is incremented; `consumeSnack` decrements it (clamped at 0). A `resetFloorSnacks()` helper zeros the field whenever the webview reloads to keep the engine in sync with the freshly empty `snackItems[]`.

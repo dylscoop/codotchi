@@ -75,7 +75,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Action      | Effect                                           | Constraint                               | Status |
 |-------------|--------------------------------------------------|------------------------------------------|--------|
 | Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle (configurable per custom character) | `[x]`  |
-| Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle (configurable per custom character); streak resets on meal, play, pat, or sleep | `[x]`  |
+| Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle (configurable per custom character); max 3 snacks on floor simultaneously — 4th refused with toast; streak resets on meal, play, pat, or sleep | `[x]`  |
 | Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; resets snack streak | `[x]`  |
 | Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; resets snack streak | `[x]`  |
 | Sleep       | Energy regenerates; 3% per-tick chance to recover from sickness | Resets snack streak | `[x]`  |

@@ -1,6 +1,44 @@
 # Version History
 
-## v2.5.0 — current
+## v2.5.1 — current
+
+### Changes from v2.5.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.1 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.1; add `mainClassesDir` to `unitTest` classpath so `GameEngineTest.kt` can import engine classes |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.1 |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.1 |
+| `vscode/src/gameEngine.ts` | fix (BUGFIX-113): add `MAX_FLOOR_SNACKS = 3` constant; add `snacksOnFloor` field to `PetState`; `startSnack` guards on `snacksOnFloor >= MAX_FLOOR_SNACKS` before placing, increments on success; `consumeSnack` decrements `snacksOnFloor` (min 0); add `resetFloorSnacks()` export; `snacksOnFloor` included in `initialState`, `serialiseState`, `deserialiseState` |
+| `vscode/src/sidebarProvider.ts` | fix (BUGFIX-113): import `resetFloorSnacks`; call `resetFloorSnacks` after every `buildHtml()` call (panel open + config reload) to sync engine counter with freshly-empty `snackItems[]` |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | fix (BUGFIX-113): add `MAX_FLOOR_SNACKS = 3` |
+| `pycharm/src/main/kotlin/com/codotchi/engine/PetState.kt` | fix (BUGFIX-113): add `snacksOnFloor: Int` field |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix (BUGFIX-113): `startSnack` guards on `snacksOnFloor >= MAX_FLOOR_SNACKS`; increments on success; `consumeSnack` decrements `snacksOnFloor`; `createPet` initialises `snacksOnFloor = 0` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt` | fix (BUGFIX-113): add `snacksOnFloor: Int?` to `RawPetState`; sanitise with `?: 0`; serialise in `toRaw` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix (BUGFIX-113): add `resetFloorSnacks()` method; call it in `reloadWebview()` before broadcasting |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiToolWindow.kt` | fix (BUGFIX-113): `onReady` callback calls `plugin.resetFloorSnacks()` before `plugin.broadcastState()` |
+| `vscode/tests/unit/gameEngine.test.ts` | test: add `resetFloorSnacks`, `MAX_FLOOR_SNACKS` imports; add 7 new tests for floor-cap and `resetFloorSnacks` |
+| `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | test: new file — 6 JUnit 5 tests for floor-cap `startSnack`/`consumeSnack` behaviour |
+| `vscode/codotchi-2.5.1.vsix` | Rebuilt distributable for v2.5.1 |
+| `pycharm/build/distributions/pycharm-codotchi-2.5.1.zip` | Rebuilt distributable for v2.5.1 |
+| `opencode-codotchi/opencode-codotchi-2.5.1.zip` | Rebuilt distributable for v2.5.1 |
+
+### New constant (v2.5.1)
+
+```
+MAX_FLOOR_SNACKS: number = 3   // max snacks on stage floor simultaneously
+```
+
+### New PetState field (v2.5.1)
+
+```
+snacksOnFloor: number = 0   // snacks placed on floor but not yet consumed; resets to 0 on webview reload
+```
+
+---
+
+## v2.5.0 — previous
 
 ### Changes from v2.4.0
 
