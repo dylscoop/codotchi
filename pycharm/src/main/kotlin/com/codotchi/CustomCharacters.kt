@@ -40,6 +40,8 @@ data class CustomCharacter(
     val feedSnackMaxPerCycle: Int? = null,
     /** Multiplier applied to hunger boost from each meal and snack (null = 1.0). */
     val feedHungerMult: Double? = null,
+    /** Consecutive snacks before the pet gets sick (null = global default of 3). */
+    val snackSickThreshold: Int? = null,
 )
 
 val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
@@ -99,6 +101,7 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         feedMealMaxPerCycle  = 10,
         feedSnackMaxPerCycle = 10,
         feedHungerMult       = 0.25,
+        snackSickThreshold   = 5,
     ),
 )
 

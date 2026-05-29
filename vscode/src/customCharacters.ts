@@ -38,6 +38,8 @@ export interface CustomCharacter {
   feedSnackMaxPerCycle?: number;
   /** Multiplier applied to the hunger boost from each meal and snack (default: 1.0). */
   feedHungerMult?: number;
+  /** Consecutive snacks before the pet gets sick (default: MAX_CONSECUTIVE_SNACKS_BEFORE_SICK = 3). */
+  snackSickThreshold?: number;
 }
 
 export const CUSTOM_CHARACTERS: CustomCharacter[] = [
@@ -97,6 +99,7 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     feedMealMaxPerCycle:  10,
     feedSnackMaxPerCycle: 10,
     feedHungerMult:       0.25,
+    snackSickThreshold:   5,
   },
 ];
 

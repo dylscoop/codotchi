@@ -83,6 +83,7 @@
       feedMealMaxPerCycle:  10,
       feedSnackMaxPerCycle: 10,
       feedHungerMult:       0.25,
+      snackSickThreshold:   5,
     },
   };
 
