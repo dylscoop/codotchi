@@ -1671,13 +1671,14 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
  * @param opts.hungerMult - Multiplier on the hunger boost (default 1.0).
  * @returns A new PetState after the action.
  */
-export function consumeSnack(state: PetState, opts?: { hungerMult?: number }): PetState {
+export function consumeSnack(state: PetState, opts?: { hungerMult?: number; sickThreshold?: number }): PetState {
   const hungerBoost = Math.round(FEED_SNACK_HUNGER_BOOST * (opts?.hungerMult ?? 1));
+  const sickAt = opts?.sickThreshold ?? MAX_CONSECUTIVE_SNACKS_BEFORE_SICK;
   const events: string[] = [];
   let sick = state.sick;
 
   const consecutiveSnacks = state.consecutiveSnacks + 1;
-  if (consecutiveSnacks >= MAX_CONSECUTIVE_SNACKS_BEFORE_SICK && !sick) {
+  if (consecutiveSnacks >= sickAt && !sick) {
     sick = true;
     events.push("became_sick");
   }

@@ -746,12 +746,13 @@ fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
  * Increments [PetState.consecutiveSnacks] and — if the new count reaches
  * the maximum — triggers sickness.
  */
-fun consumeSnack(state: PetState, feedHungerMult: Double? = null): PetState {
+fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThreshold: Int? = null): PetState {
     val hungerBoost = (FEED_SNACK_HUNGER_BOOST * (feedHungerMult ?: 1.0)).toInt()
+    val sickAt = snackSickThreshold ?: MAX_CONSECUTIVE_SNACKS_BEFORE_SICK
     val events = mutableListOf<String>()
     var sick = state.sick
     val consecutiveSnacks = state.consecutiveSnacks + 1
-    if (consecutiveSnacks >= MAX_CONSECUTIVE_SNACKS_BEFORE_SICK && !sick) {
+    if (consecutiveSnacks >= sickAt && !sick) {
         sick = true
         events.add("became_sick")
     }
