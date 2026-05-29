@@ -1,6 +1,54 @@
 # Version History
 
-## v2.3.0 — current
+## v2.4.0 — current
+
+### Changes from v2.3.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.4.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.4.0; jvmToolchain 17 → 21 to match installed JBR |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.4.0 |
+| `opencode-codotchi/package.json` | Version bumped to 2.4.0 |
+| `pycharm/gradle.properties` | `org.gradle.java.installations.paths` updated to PyCharm 2025.2.3 JBR (OpenJDK 21) |
+| `vscode/src/customCharacters.ts` | feat: extend `CustomCharacter` interface with `feedMealMaxPerCycle?`, `feedSnackMaxPerCycle?`, `feedHungerMult?`; add Stugotchi entry to `CUSTOM_CHARACTERS` |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | Mirrored `CustomCharacter` interface extension and Stugotchi entry |
+| `vscode/media/customCharacters.js` | Mirrored Stugotchi entry in JS registry |
+| `pycharm/src/main/resources/webview/customCharacters.js` | Mirrored Stugotchi entry in JS registry |
+| `vscode/src/gameEngine.ts` | feat: add `"stu"` to `SpriteType` union; `feedMeal`, `startSnack`, `consumeSnack` now accept optional `opts` (`maxPerCycle`, `hungerMult`) with defaults 3/3/1.0 |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | Mirrored feed function opts params and defaults |
+| `vscode/src/sidebarProvider.ts` | feat: look up custom char by `spriteType`; pass `feedMealMaxPerCycle`, `feedSnackMaxPerCycle`, `feedHungerMult` opts to all three feed functions |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | Mirrored custom char look-up and feed opts pass-through |
+| `vscode/media/spriteConstants.js` | feat: add `"stu"` to `UPRIGHT_TYPES`, `SPRITE_GRID_META` (`cols:64, rows:48, legRowStart:37`), and `ANIMAL_PALETTES` |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | Mirrored spriteConstants.js changes |
+| `vscode/media/sprites.js` | feat: add `DEFS["stu"]` (64×48, all 5 stages, Tim rows doubled horizontally); add `"stu"` to renderer-local `UPRIGHT_TYPES`; fix Tim teen row-39 typo (31 → 32 chars) |
+| `pycharm/src/main/resources/webview/sprites.js` | Mirrored sprites.js changes |
+| `vscode/media/sidebar.js` | feat: add `stu` to all 3 upright type lists; dynamic `MEAL_MAX`/`SNACK_MAX` from custom char; add `guinness`/`salmon` snack types with pixel art renderers |
+| `pycharm/src/main/resources/webview/sidebar.js` | Mirrored sidebar.js changes |
+| `vscode/tests/unit/gameEngine.test.ts` | fix: update stale BUGFIX-040 assertion — deep idle now floors health at 20 (`IDLE_STAT_FLOOR`, added v2.2.3), not 5 |
+
+### New constants (v2.4.0)
+
+```ts
+// CustomCharacter optional fields
+feedMealMaxPerCycle?: number    // absolute meal cap per wake cycle (default 3)
+feedSnackMaxPerCycle?: number   // absolute snack cap per wake cycle (default 3)
+feedHungerMult?: number         // hunger gain multiplier per feed (default 1.0)
+```
+
+### Stugotchi details
+
+- **Passcode:** `rubylovessalmon`
+- **Sprite:** 64×48, Tim grid doubled horizontally
+- **Palette:** skin `#f0f0e8` · shirt `#0055b3` · kilt `#cc1100`
+- **Feed cap:** 10 meals + 10 snacks per wake cycle (`feedMealMaxPerCycle: 10, feedSnackMaxPerCycle: 10`)
+- **Hunger per feed:** 5 per meal, 1.25 per snack (`feedHungerMult: 0.25`)
+- **Snack:** random Guinness pint or smoked salmon (50/50)
+- **Pat action:** "Collect Stickers"
+
+---
+
+## v2.3.0 — previous
 
 ### Changes from v2.2.3
 
