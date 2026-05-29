@@ -6,15 +6,20 @@
  * calculate how many seconds elapsed while the extension was closed.
  *
  * Per-IDE state file: every save also writes to a JSON file on disk at
- *   Windows : %APPDATA%\codotchi\vscode\state.json
- *   macOS   : ~/.config/codotchi/vscode/state.json
- *   Linux   : ~/.config/codotchi/vscode/state.json
+ *   Windows : %APPDATA%\codotchi\vscode\state.json          (shared/global)
+ *             %APPDATA%\codotchi\vscode\<hash12>\state.json  (per-workspace)
+ *   macOS   : ~/.config/codotchi/vscode/state.json          (shared/global)
+ *             ~/.config/codotchi/vscode/<hash12>/state.json  (per-workspace)
+ *
+ * <hash12> is the first 12 hex characters of the SHA-256 of the
+ * workspace root path (case-normalised on Windows).
  *
  * VS Code's file is independent of PyCharm's file. OpenCode reads both
  * files separately and can display both pets simultaneously.
  * There is no cross-IDE promotion — VS Code only ever reads its own file.
  */
 
+import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
@@ -29,13 +34,74 @@ const HIGH_SCORE_KEY = "codotchi.highScore.v2"; // v2: ageDays now driven by day
 // Shared cross-IDE file helpers
 // ---------------------------------------------------------------------------
 
-/** Absolute path to the VS Code-specific state file. */
-export function getSharedStatePath(): string {
+/** Returns the base directory for all codotchi VS Code state files. */
+function getBaseDir(): string {
   const base =
     process.platform === "win32"
       ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")
       : path.join(os.homedir(), ".config");
-  return path.join(base, "codotchi", "vscode", "state.json");
+  return path.join(base, "codotchi", "vscode");
+}
+
+/**
+ * Returns the first 12 hex characters of the SHA-256 of the workspace root
+ * path (lower-cased on Windows for case-insensitive consistency).
+ * Returns `null` if no workspace folder is open.
+ */
+export function getWorkspaceHash(): string | null {
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders || folders.length === 0) { return null; }
+  let workspacePath = folders[0].uri.fsPath;
+  if (process.platform === "win32") { workspacePath = workspacePath.toLowerCase(); }
+  return crypto.createHash("sha256").update(workspacePath).digest("hex").slice(0, 12);
+}
+
+/** Absolute path to the shared (global) VS Code state file. */
+export function getSharedStatePath(): string {
+  return path.join(getBaseDir(), "state.json");
+}
+
+/**
+ * Absolute path to the workspace-specific state file.
+ * Returns `null` if no workspace folder is open (falls back to shared).
+ */
+export function getWorkspaceStatePath(): string | null {
+  const hash = getWorkspaceHash();
+  if (hash === null) { return null; }
+  return path.join(getBaseDir(), hash, "state.json");
+}
+
+/**
+ * Returns the active state file path based on the perWorkspacePet setting.
+ * Falls back to the shared path if no workspace is open.
+ */
+export function getActiveStatePath(): string {
+  const cfg = vscode.workspace.getConfiguration("codotchi");
+  const perWorkspace = cfg.get<boolean>("perWorkspacePet", false);
+  if (perWorkspace) {
+    return getWorkspaceStatePath() ?? getSharedStatePath();
+  }
+  return getSharedStatePath();
+}
+
+/**
+ * Copies the shared state file to the workspace-specific path if the
+ * workspace file does not yet exist. Used on first enable of perWorkspacePet.
+ * Safe to call multiple times — no-ops if destination already exists.
+ */
+export function copySharedToWorkspace(): void {
+  try {
+    const src = getSharedStatePath();
+    const dst = getWorkspaceStatePath();
+    if (dst === null) { return; }
+    if (fs.existsSync(dst)) { return; }
+    if (!fs.existsSync(src)) { return; }
+    const dir = path.dirname(dst);
+    if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
+    fs.copyFileSync(src, dst);
+  } catch {
+    // Best-effort — never crash the extension.
+  }
 }
 
 /**
@@ -60,7 +126,6 @@ export function migrateStateFolder(): void {
     // Best-effort migration — never crash the extension.
   }
 }
-
 interface SharedStateFile {
   /** Serialised PetState as a plain JSON object. */
   state: Record<string, unknown>;
@@ -75,7 +140,7 @@ interface SharedStateFile {
 function saveSharedState(state: PetState): void {
   if (!state.alive) { return; }
   try {
-    const filePath = getSharedStatePath();
+    const filePath = getActiveStatePath();
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -101,7 +166,7 @@ interface LoadedSharedState {
  */
 function loadSharedState(): LoadedSharedState | null {
   try {
-    const filePath = getSharedStatePath();
+    const filePath = getActiveStatePath();
     if (!fs.existsSync(filePath)) {
       return null;
     }

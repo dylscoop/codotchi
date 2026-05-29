@@ -36,7 +36,8 @@ import {
   loadHighScore,
   saveHighScore,
   clearHighScore,
-  getSharedStatePath,
+  getActiveStatePath,
+  copySharedToWorkspace,
   migrateStateFolder,
 } from "./persistence";
 
@@ -381,8 +382,10 @@ export function activate(context: vscode.ExtensionContext): void {
   // A 150 ms debounce absorbs rapid successive file-system events (some editors
   // emit two events per atomic write).
   {
-    const sharedStatePath = getSharedStatePath();
     let syncDebounce: ReturnType<typeof setTimeout> | undefined;
+    let fsWatcher: fs.FSWatcher | undefined;
+    let watchBootstrap: ReturnType<typeof setInterval> | undefined;
+    let watchHealthCheck: ReturnType<typeof setInterval> | undefined;
 
     const onSharedStateChanged = (): void => {
       // Only reload if this window is not the active ticker.  If we ARE ticking,
@@ -395,16 +398,23 @@ export function activate(context: vscode.ExtensionContext): void {
       }, 150);
     };
 
+    const stopWatcher = (): void => {
+      if (watchBootstrap !== undefined) { clearInterval(watchBootstrap); watchBootstrap = undefined; }
+      if (watchHealthCheck !== undefined) { clearInterval(watchHealthCheck); watchHealthCheck = undefined; }
+      if (syncDebounce !== undefined) { clearTimeout(syncDebounce); syncDebounce = undefined; }
+      fsWatcher?.close();
+      fsWatcher = undefined;
+    };
+
     // fs.watch is available in the Node.js runtime used by VS Code extensions
     // and is more lightweight than a workspace FileSystemWatcher (which only
     // covers workspace folders).  We only start watching once the file exists;
     // if it doesn't exist yet we poll briefly on the tick until it does.
-    let fsWatcher: fs.FSWatcher | undefined;
-
     const startWatcher = (): void => {
       if (fsWatcher !== undefined) { return; }
+      const watchPath = getActiveStatePath();
       try {
-        fsWatcher = fs.watch(sharedStatePath, { persistent: false }, onSharedStateChanged);
+        fsWatcher = fs.watch(watchPath, { persistent: false }, onSharedStateChanged);
         fsWatcher.on("error", () => {
           fsWatcher?.close();
           fsWatcher = undefined;
@@ -415,36 +425,55 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     };
 
-    // Try immediately; if the file doesn't exist yet, retry every 10 s.
-    startWatcher();
-    const watchBootstrap = setInterval(() => {
-      if (fsWatcher !== undefined) {
-        clearInterval(watchBootstrap);
-      } else {
-        startWatcher();
+    const startWatcherWithPolling = (): void => {
+      startWatcher();
+      watchBootstrap = setInterval(() => {
         if (fsWatcher !== undefined) {
           clearInterval(watchBootstrap);
+          watchBootstrap = undefined;
+        } else {
+          startWatcher();
+          if (fsWatcher !== undefined) {
+            clearInterval(watchBootstrap);
+            watchBootstrap = undefined;
+          }
         }
-      }
-    }, 10_000);
+      }, 10_000);
 
-    // Periodic health-check: fs.watch on Windows can silently stop firing
-    // (e.g. when the file is replaced atomically by another process). Re-create
-    // the watcher every 30 s if it has gone missing so the inactive window
-    // eventually recovers without requiring a window-focus event.
-    const watchHealthCheck = setInterval(() => {
-      if (fsWatcher === undefined) {
-        startWatcher();
-      }
-    }, 30_000);
+      // Periodic health-check: fs.watch on Windows can silently stop firing
+      // (e.g. when the file is replaced atomically by another process). Re-create
+      // the watcher every 30 s if it has gone missing so the inactive window
+      // eventually recovers without requiring a window-focus event.
+      watchHealthCheck = setInterval(() => {
+        if (fsWatcher === undefined) {
+          startWatcher();
+        }
+      }, 30_000);
+    };
+
+    // Try immediately; if the file doesn't exist yet, retry every 10 s.
+    startWatcherWithPolling();
+
+    // React to perWorkspacePet setting changes.
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (!e.affectsConfiguration("codotchi.perWorkspacePet")) { return; }
+        const cfg = vscode.workspace.getConfiguration("codotchi");
+        const perWorkspace = cfg.get<boolean>("perWorkspacePet", false);
+        if (perWorkspace) {
+          // Copy shared → workspace file if this is the first enable.
+          copySharedToWorkspace();
+        }
+        // Restart the file watcher on the new active path and reload state.
+        stopWatcher();
+        startWatcherWithPolling();
+        reloadAndRefreshUI();
+      })
+    );
 
     context.subscriptions.push({
       dispose(): void {
-        clearInterval(watchBootstrap);
-        clearInterval(watchHealthCheck);
-        if (syncDebounce !== undefined) { clearTimeout(syncDebounce); }
-        fsWatcher?.close();
-        fsWatcher = undefined;
+        stopWatcher();
       },
     });
   }
