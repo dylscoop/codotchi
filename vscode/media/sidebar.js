@@ -1456,7 +1456,7 @@
       "cured":                   n + " recovered!",
       "meal_refused":            n + " refused the meal.",
       "fed_meal":                n + " ate a meal.",
-      "snack_refused":           n + " refused the snack.",
+      "snack_refused":           n + " threw the snack away.",
       "play_refused_no_energy":  n + " doesn't have enough energy to play!",
       "played":                  n + " played!",
       "pat_refused_no_energy":   (_cc && _cc.patToasts) ? _cc.patToasts.pat_refused : n + " doesn't have enough energy to be patted!",
