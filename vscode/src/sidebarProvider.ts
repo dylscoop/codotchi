@@ -290,7 +290,8 @@ export class SidebarProvider
           return;
         }
         nextState = consumeSnack(state, {
-          hungerMult: getCustomCharacterBySpriteType(state.spriteType)?.feedHungerMult,
+          hungerMult:    getCustomCharacterBySpriteType(state.spriteType)?.feedHungerMult,
+          sickThreshold: getCustomCharacterBySpriteType(state.spriteType)?.snackSickThreshold,
         });
         break;
 

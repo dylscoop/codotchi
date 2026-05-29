@@ -336,7 +336,9 @@ class CodotchiPlugin : Disposable {
                 "snack_consumed" -> {
                     state ?: return@withLock
                     val _cc = getCustomCharacterBySpriteType(state.spriteType)
-                    nextState = consumeSnack(state, feedHungerMult = _cc?.feedHungerMult)
+                    nextState = consumeSnack(state,
+                        feedHungerMult     = _cc?.feedHungerMult,
+                        snackSickThreshold = _cc?.snackSickThreshold)
                 }
 
                 "play" -> {
