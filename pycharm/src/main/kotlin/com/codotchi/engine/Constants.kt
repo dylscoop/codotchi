@@ -50,6 +50,8 @@ const val MAX_CONSECUTIVE_SNACKS_BEFORE_SICK: Int = 3
 const val MAX_UNCLEANED_POOPS_BEFORE_SICK: Int = 3
 /** Maximum snacks allowed per wake cycle before further snacks are refused. */
 const val SNACK_MAX_PER_CYCLE: Int = 3
+/** Maximum snacks allowed on the stage floor simultaneously before further snacks are refused. */
+const val MAX_FLOOR_SNACKS: Int = 3
 /** Maximum number of events kept in recentEventLog. */
 const val RECENT_EVENT_LOG_MAX: Int = 20
 const val POOP_TICKS_INTERVAL: Int = 20 * TICKS_PER_MINUTE

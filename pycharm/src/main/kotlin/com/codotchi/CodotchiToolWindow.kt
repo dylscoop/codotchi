@@ -39,7 +39,9 @@ class CodotchiToolWindow : ToolWindowFactory {
         val panel = CodotchiBrowserPanel(
             messageHandler    = { message -> plugin.handleCommand(message) },
             parentDisposable  = toolWindow.disposable,
-            onReady           = { plugin.broadcastState() },
+            // Webview loads fresh with an empty snackItems[] — zero the floor
+            // counter before broadcasting so the engine stays in sync (BUGFIX-NNN).
+            onReady           = { plugin.resetFloorSnacks(); plugin.broadcastState() },
         )
 
         plugin.setBrowserPanel(panel)

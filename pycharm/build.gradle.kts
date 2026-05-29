@@ -70,13 +70,14 @@ tasks {
         // a semicolon-separated list (kotlin + java dirs) which --scan-class-path
         // treats as a single non-existent path on Windows, finding 0 tests.
         val testClassesDir   = layout.buildDirectory.dir("classes/kotlin/test").get().asFile.absolutePath
+        val mainClassesDir   = layout.buildDirectory.dir("classes/kotlin/main").get().asFile.absolutePath
         val testRuntimeCp    = configurations["testRuntimeClasspath"].asPath
         // Main resources (webview/*.js, webview/sidebar.html, META-INF/) must be
         // on the test classpath so BrowserPanelHtmlTest can load them.
         val mainResourcesDir = sourceSets["main"].output.resourcesDir!!.absolutePath
         val extraResources   = layout.buildDirectory.dir("resources/test").get().asFile.absolutePath
 
-        val fullCp = "$testClassesDir;$testRuntimeCp;$mainResourcesDir;$extraResources"
+        val fullCp = "$testClassesDir;$mainClassesDir;$testRuntimeCp;$mainResourcesDir;$extraResources"
 
         classpath(launcherJar)
         mainClass.set("org.junit.platform.console.ConsoleLauncher")

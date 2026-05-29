@@ -40,6 +40,7 @@ import {
   happinessDeltaForMinigame,
   serialiseState,
   deserialiseState,
+  resetFloorSnacks,
   TICK_INTERVAL_SECONDS,
   CODE_ACTIVITY_THROTTLE_SECONDS,
   EGG_DURATION_TICKS,
@@ -55,6 +56,7 @@ import {
   OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE,
   OLD_AGE_SICK_CHANCE_MULTIPLIER,
   CARE_MISTAKE_OLD_AGE_SATURATE,
+  MAX_FLOOR_SNACKS,
   VALID_PET_TYPES,
   STAGE_ORDER,
   PetState,
@@ -743,6 +745,24 @@ describe("startSnack", () => {
     const next = startSnack(pet);
     assert.ok(next.events.includes("snack_refused"));
   });
+
+  it("emits snack_refused when floor is full", () => {
+    const pet = makePet({ snacksOnFloor: MAX_FLOOR_SNACKS });
+    const next = startSnack(pet);
+    assert.ok(next.events.includes("snack_refused"));
+  });
+
+  it("does not increment snacksGivenThisCycle when floor is full", () => {
+    const pet = makePet({ snacksOnFloor: MAX_FLOOR_SNACKS, snacksGivenThisCycle: 1 });
+    const next = startSnack(pet);
+    assert.equal(next.snacksGivenThisCycle, 1);
+  });
+
+  it("increments snacksOnFloor on success", () => {
+    const pet = makePet({ snacksOnFloor: 1 });
+    const next = startSnack(pet);
+    assert.equal(next.snacksOnFloor, 2);
+  });
 });
 
 describe("consumeSnack", () => {
@@ -783,6 +803,36 @@ describe("consumeSnack", () => {
     const pet = makePet({ happiness: 95 });
     const next = consumeSnack(pet);
     assert.equal(next.happiness, 100);
+  });
+
+  it("decrements snacksOnFloor", () => {
+    const pet = makePet({ snacksOnFloor: 2 });
+    const next = consumeSnack(pet);
+    assert.equal(next.snacksOnFloor, 1);
+  });
+
+  it("snacksOnFloor does not go below 0", () => {
+    const pet = makePet({ snacksOnFloor: 0 });
+    const next = consumeSnack(pet);
+    assert.equal(next.snacksOnFloor, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resetFloorSnacks
+// ---------------------------------------------------------------------------
+
+describe("resetFloorSnacks", () => {
+  it("sets snacksOnFloor to 0", () => {
+    const pet = makePet({ snacksOnFloor: 3 });
+    const next = resetFloorSnacks(pet);
+    assert.equal(next.snacksOnFloor, 0);
+  });
+
+  it("is a no-op when snacksOnFloor is already 0", () => {
+    const pet = makePet({ snacksOnFloor: 0 });
+    const next = resetFloorSnacks(pet);
+    assert.equal(next.snacksOnFloor, 0);
   });
 });
 

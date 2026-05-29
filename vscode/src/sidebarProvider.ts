@@ -26,6 +26,7 @@ import {
   giveMedicine,
   scold,
   praise,
+  resetFloorSnacks,
 } from "./gameEngine";
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
@@ -86,6 +87,13 @@ export class SidebarProvider
     };
 
     webviewView.webview.html = this.buildHtml(webviewView.webview);
+
+    // The webview starts with an empty snackItems[] — zero out the engine's
+    // floor counter so it stays in sync (BUGFIX-NNN).
+    const staleState = this.getCurrentState();
+    if (staleState !== null) {
+      this.onStateUpdate(resetFloorSnacks(staleState));
+    }
 
     // Re-send current state to the freshly-loaded webview so it has the
     // high score even before the next tick fires.
@@ -158,6 +166,9 @@ export class SidebarProvider
         e.affectsConfiguration("codotchi.idleResetOnMouseMovement")
       ) {
         webviewView.webview.html = this.buildHtml(webviewView.webview);
+        // Webview reloaded — snackItems[] reset to empty (BUGFIX-NNN).
+        const s = this.getCurrentState();
+        if (s !== null) { this.onStateUpdate(resetFloorSnacks(s)); }
       }
     });
     this.disposables.push(configListener);

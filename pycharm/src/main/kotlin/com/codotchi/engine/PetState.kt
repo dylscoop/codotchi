@@ -77,6 +77,9 @@ data class PetState(
     /** Snacks given in the current wake cycle (resets on wake/createPet). */
     val snacksGivenThisCycle: Int,
 
+    /** Snacks currently placed on the floor but not yet consumed. Resets to 0 when the webview reloads. */
+    val snacksOnFloor: Int,
+
     // ── Attention Call fields ────────────────────────────────────────────────
 
     /** The currently active attention call type, or null if none is active. */

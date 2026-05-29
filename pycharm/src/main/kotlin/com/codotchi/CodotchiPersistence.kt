@@ -331,6 +331,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val recentEventLog: List<String>?,  // absent in saves before v0.0.5
         val spawnedAt: Long?,               // absent in saves before v0.0.5
         val snacksGivenThisCycle: Int?,     // absent in saves before v0.0.5
+        val snacksOnFloor: Int?,            // absent in saves before v2.6.0
         val wasIdle: Boolean?,              // absent in saves before v0.1.4
         val wasDeepIdle: Boolean?,          // absent in saves before v0.2.0
         // absent in saves before v0.4.0
@@ -389,6 +390,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             wasDeepIdle           = r.wasDeepIdle           ?: false,
             spawnedAt             = r.spawnedAt             ?: System.currentTimeMillis(),
             snacksGivenThisCycle  = r.snacksGivenThisCycle ?: 0,
+            snacksOnFloor         = r.snacksOnFloor         ?: 0,
             // v0.4.0 attention-call fields — default to clean slate on old saves
             activeAttentionCall        = r.activeAttentionCall,
             attentionCallActiveTicks   = r.attentionCallActiveTicks   ?: 0,
@@ -443,6 +445,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         wasDeepIdle           = s.wasDeepIdle,
         spawnedAt             = s.spawnedAt,
         snacksGivenThisCycle  = s.snacksGivenThisCycle,
+        snacksOnFloor         = s.snacksOnFloor,
         // v0.4.0 attention-call fields
         activeAttentionCall        = s.activeAttentionCall,
         attentionCallActiveTicks   = s.attentionCallActiveTicks,

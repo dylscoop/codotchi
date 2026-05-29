@@ -512,8 +512,21 @@ class CodotchiPlugin : Disposable {
      */
     fun reloadWebview() {
         ApplicationManager.getApplication().invokeLater {
+            // Webview reloads with an empty snackItems[] — zero the floor counter (BUGFIX-NNN).
+            resetFloorSnacks()
             browserPanels.forEach { it.reload() }
             broadcastState()
+        }
+    }
+
+    /**
+     * Zero out the in-flight floor snack counter.
+     * Call whenever the webview reloads so the engine stays in sync with the
+     * webview's empty snackItems[].
+     */
+    fun resetFloorSnacks() {
+        stateLock.withLock {
+            currentState = currentState?.copy(snacksOnFloor = 0)
         }
     }
 

@@ -73,6 +73,9 @@ const MAX_UNCLEANED_POOPS_BEFORE_SICK: number = 3;
 /** Maximum snacks allowed per wake cycle before further snacks are refused. */
 export const SNACK_MAX_PER_CYCLE: number = 3;
 
+/** Maximum snacks allowed on the stage floor simultaneously before further snacks are refused. */
+export const MAX_FLOOR_SNACKS: number = 3;
+
 /** Maximum number of events kept in recentEventLog. */
 const RECENT_EVENT_LOG_MAX: number = 20;
 /** Ticks between droppings (≈ 20 real minutes). */
@@ -627,6 +630,9 @@ export interface PetState {
   /** Snacks given in the current wake cycle (resets on wake/createPet). */
   readonly snacksGivenThisCycle: number;
 
+  /** Snacks currently placed on the floor but not yet consumed. Resets to 0 when the webview reloads. */
+  readonly snacksOnFloor: number;
+
   // ── Attention Call fields ────────────────────────────────────────────────
 
   /** The currently active attention call type, or null if none is active. */
@@ -997,6 +1003,7 @@ export function createPet(name: string, petType: string, unlockedCharacter: stri
     wasDeepIdle: false,
     spawnedAt: Date.now(),
     snacksGivenThisCycle: 0,
+    snacksOnFloor: 0,
     dayTimer: 0,
     activeAttentionCall: null,
     attentionCallActiveTicks: 0,
@@ -1636,6 +1643,9 @@ export function feedMeal(
  * @returns A new PetState after the action.
  */
 export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): PetState {
+  if (state.snacksOnFloor >= MAX_FLOOR_SNACKS) {
+    return withDerivedFields({ ...state, events: ["snack_refused"] });
+  }
   const cap = opts?.maxPerCycle ?? SNACK_MAX_PER_CYCLE;
   if (state.snacksGivenThisCycle >= cap) {
     return withDerivedFields({ ...state, events: ["snack_refused"] });
@@ -1654,6 +1664,7 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
     ...state,
     ...(answered ?? {}),
     snacksGivenThisCycle,
+    snacksOnFloor: state.snacksOnFloor + 1,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
@@ -1693,9 +1704,20 @@ export function consumeSnack(state: PetState, opts?: { hungerMult?: number; sick
     happiness: clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
     weight: newWeight,
     consecutiveSnacks,
+    snacksOnFloor: Math.max(0, state.snacksOnFloor - 1),
     sick,
     events,
   });
+}
+
+/**
+ * Zero out the in-flight floor snack counter.
+ *
+ * Call whenever the webview is reloaded (panel open, config change) so that
+ * the engine's count stays in sync with the webview's empty `snackItems[]`.
+ */
+export function resetFloorSnacks(state: PetState): PetState {
+  return withDerivedFields({ ...state, snacksOnFloor: 0 });
 }
 
 /**
@@ -2268,6 +2290,7 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     wasDeepIdle: state.wasDeepIdle,
     spawnedAt: state.spawnedAt,
     snacksGivenThisCycle: state.snacksGivenThisCycle,
+    snacksOnFloor: state.snacksOnFloor,
     dayTimer: state.dayTimer,
     // Attention call fields
     activeAttentionCall: state.activeAttentionCall,
@@ -2352,6 +2375,7 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     wasDeepIdle: false, // back-compat: old saves default to not deep idle
     spawnedAt: getNumber("spawnedAt", Date.now()),
     snacksGivenThisCycle: getNumber("snacksGivenThisCycle", 0),
+    snacksOnFloor: getNumber("snacksOnFloor", 0),
     // Back-compat: old saves use ageDays as an integer; seed dayTimer from it.
     dayTimer: getNumber("dayTimer", getNumber("ageDays", 0)),
     // Attention call fields — back-compat: all default to inactive/zero.

@@ -255,6 +255,7 @@ fun createPet(name: String, petType: String, color: String, unlockedCharacter: S
             wasDeepIdle        = false,
             spawnedAt          = System.currentTimeMillis(),
             snacksGivenThisCycle = 0,
+            snacksOnFloor        = 0,
             activeAttentionCall       = null,
             attentionCallActiveTicks  = 0,
             attentionCallCooldowns    = emptyMap(),
@@ -714,6 +715,8 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int
  * `snack_refused` if the cap has been reached.
  */
 fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
+    if (state.snacksOnFloor >= MAX_FLOOR_SNACKS)
+        return withDerivedFields(state.copy(events = listOf("snack_refused")))
     val cap = feedSnackMaxPerCycle ?: SNACK_MAX_PER_CYCLE
     if (state.snacksGivenThisCycle >= cap)
         return withDerivedFields(state.copy(events = listOf("snack_refused")))
@@ -730,6 +733,7 @@ fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
     return withDerivedFields(
         state.copy(
             snacksGivenThisCycle = snacksGivenThisCycle,
+            snacksOnFloor        = state.snacksOnFloor + 1,
             careMistakes         = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events               = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
@@ -766,6 +770,7 @@ fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThres
             hunger            = clampStat(state.hunger    + hungerBoost),
             weight            = newWeight,
             consecutiveSnacks = consecutiveSnacks,
+            snacksOnFloor     = max(0, state.snacksOnFloor - 1),
             sick              = sick,
             events            = events,
         )
