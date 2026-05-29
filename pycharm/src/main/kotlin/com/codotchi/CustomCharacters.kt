@@ -34,6 +34,12 @@ data class CustomCharacter(
     val patToasts: CustomCharacterToasts,
     /** Speech bubbles shown at random after a successful pat. */
     val patBubbles: List<String>,
+    /** Maximum meals allowed per wake cycle (null = use global default of 3). */
+    val feedMealMaxPerCycle: Int? = null,
+    /** Maximum snacks allowed per wake cycle (null = use global default of 3). */
+    val feedSnackMaxPerCycle: Int? = null,
+    /** Multiplier applied to hunger boost from each meal and snack (null = 1.0). */
+    val feedHungerMult: Double? = null,
 )
 
 val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
@@ -73,6 +79,27 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         ),
     ),
     // ── Add future custom characters here ────────────────────────────────────
+    CustomCharacter(
+        spriteType   = "stu",
+        passcode     = "rubylovessalmon",
+        defaultName  = "Stugotchi",
+        patLabel     = "Collect Stickers",
+        mgTitle      = "Play or Collect Stickers",
+        giftMessage  = "Stu wants a pint!",
+        patToasts    = CustomCharacterToasts(
+            patted     = "Stu collected some stickers!",
+            patRefused = "Stu doesn't have enough energy to collect stickers!",
+        ),
+        patBubbles   = listOf(
+            "Magic: The Gathering. Obviously.",
+            "That's going in the binder.",
+            "Holographic. Rare. Mine.",
+            "No, you cannot have that one.",
+        ),
+        feedMealMaxPerCycle  = 10,
+        feedSnackMaxPerCycle = 10,
+        feedHungerMult       = 0.25,
+    ),
 )
 
 /** Look up a custom character by passcode. Returns null if not found. */

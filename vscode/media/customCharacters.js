@@ -64,14 +64,26 @@
       ],
     },
     // ── Add future custom characters here ────────────────────────────────────
-    // example: {
-    //   passcode:   "teawjess",
-    //   defaultName: "Jess",
-    //   patLabel:   "Hug",
-    //   mgTitle:    "Play or Hug",
-    //   patToasts: { patted: "Jess got a hug!", pat_refused: "Jess is too tired for a hug!" },
-    //   patBubbles: ["That was lovely!", "Needed that."],
-    // },
+    stu: {
+      passcode:     "rubylovessalmon",
+      defaultName:  "Stugotchi",
+      patLabel:     "Collect Stickers",
+      mgTitle:      "Play or Collect Stickers",
+      giftMessage:  "Stu wants a pint!",
+      patToasts: {
+        patted:      "Stu collected some stickers!",
+        pat_refused: "Stu doesn't have enough energy to collect stickers!",
+      },
+      patBubbles: [
+        "Magic: The Gathering. Obviously.",
+        "That's going in the binder.",
+        "Holographic. Rare. Mine.",
+        "No, you cannot have that one.",
+      ],
+      feedMealMaxPerCycle:  10,
+      feedSnackMaxPerCycle: 10,
+      feedHungerMult:       0.25,
+    },
   };
 
   /**

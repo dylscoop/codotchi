@@ -930,7 +930,7 @@ const ZODIAC_ANIMALS = [
 /**
  * All valid sprite type keys.
  */
-export type SpriteType = typeof ZODIAC_ANIMALS[number] | "classic" | "cat" | "tim" | "testsprite";
+export type SpriteType = typeof ZODIAC_ANIMALS[number] | "classic" | "cat" | "tim" | "testsprite" | "stu";
 
 /**
  * Sample a random sprite type at pet creation.
@@ -1580,15 +1580,24 @@ function answerAttentionCall(
 /**
  * Give the pet a meal.
  *
- * If the cycle cap (FEED_MEAL_MAX_PER_CYCLE) is exceeded the action is a
- * no-op and a "meal_refused" event is emitted.
+ * If the cycle cap (opts.maxPerCycle ?? FEED_MEAL_MAX_PER_CYCLE) is exceeded
+ * the action is a no-op and a "meal_refused" event is emitted.
  *
  * @param state - The current pet state.
  * @param mealsGivenThisCycle - Meals already given in the current wake cycle.
+ * @param opts - Optional per-character overrides.
+ * @param opts.maxPerCycle - Feed cap for this character (overrides FEED_MEAL_MAX_PER_CYCLE).
+ * @param opts.hungerMult  - Multiplier on the hunger boost for this character (default 1.0).
  * @returns A new PetState after the action.
  */
-export function feedMeal(state: PetState, mealsGivenThisCycle: number): PetState {
-  if (mealsGivenThisCycle >= FEED_MEAL_MAX_PER_CYCLE) {
+export function feedMeal(
+  state: PetState,
+  mealsGivenThisCycle: number,
+  opts?: { maxPerCycle?: number; hungerMult?: number },
+): PetState {
+  const cap = opts?.maxPerCycle ?? FEED_MEAL_MAX_PER_CYCLE;
+  const hungerBoost = Math.round(FEED_MEAL_HUNGER_BOOST * (opts?.hungerMult ?? 1));
+  if (mealsGivenThisCycle >= cap) {
     return withDerivedFields({ ...state, events: ["meal_refused"] });
   }
   const newWeight = clampWeight(state.weight + FEED_MEAL_WEIGHT_GAIN);
@@ -1602,7 +1611,7 @@ export function feedMeal(state: PetState, mealsGivenThisCycle: number): PetState
   return withDerivedFields({
     ...state,
     ...(answered ?? answeredCritical ?? {}),
-    hunger: clampStat(state.hunger + FEED_MEAL_HUNGER_BOOST),
+    hunger: clampStat(state.hunger + hungerBoost),
     weight: newWeight,
     consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - ((answered ?? answeredCritical) ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
@@ -1622,10 +1631,13 @@ export function feedMeal(state: PetState, mealsGivenThisCycle: number): PetState
  * `snack_refused` if the cap has been reached.
  *
  * @param state - The current pet state.
+ * @param opts - Optional per-character overrides.
+ * @param opts.maxPerCycle - Snack cap for this character (overrides SNACK_MAX_PER_CYCLE).
  * @returns A new PetState after the action.
  */
-export function startSnack(state: PetState): PetState {
-  if (state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE) {
+export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): PetState {
+  const cap = opts?.maxPerCycle ?? SNACK_MAX_PER_CYCLE;
+  if (state.snacksGivenThisCycle >= cap) {
     return withDerivedFields({ ...state, events: ["snack_refused"] });
   }
 
@@ -1655,9 +1667,12 @@ export function startSnack(state: PetState): PetState {
  * — triggers sickness.
  *
  * @param state - The current pet state.
+ * @param opts - Optional per-character overrides.
+ * @param opts.hungerMult - Multiplier on the hunger boost (default 1.0).
  * @returns A new PetState after the action.
  */
-export function consumeSnack(state: PetState): PetState {
+export function consumeSnack(state: PetState, opts?: { hungerMult?: number }): PetState {
+  const hungerBoost = Math.round(FEED_SNACK_HUNGER_BOOST * (opts?.hungerMult ?? 1));
   const events: string[] = [];
   let sick = state.sick;
 
@@ -1673,7 +1688,7 @@ export function consumeSnack(state: PetState): PetState {
 
   return withDerivedFields({
     ...state,
-    hunger: clampStat(state.hunger + FEED_SNACK_HUNGER_BOOST),
+    hunger: clampStat(state.hunger + hungerBoost),
     happiness: clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
     weight: newWeight,
     consecutiveSnacks,
