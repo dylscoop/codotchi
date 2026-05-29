@@ -28,7 +28,7 @@ import {
   praise,
 } from "./gameEngine";
 
-import { getCustomCharacterByPasscode } from "./customCharacters";
+import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
 import { StatusBarManager } from "./statusBar";
 
 /** Callback invoked whenever the pet state changes. */
@@ -271,9 +271,14 @@ export class SidebarProvider
           return;
         }
         if (message.feedType === "snack") {
-          nextState = startSnack(state);
+          const _cc = getCustomCharacterBySpriteType(state.spriteType);
+          nextState = startSnack(state, { maxPerCycle: _cc?.feedSnackMaxPerCycle });
         } else {
-          nextState = feedMeal(state, this.mealsGivenThisCycle);
+          const _cc = getCustomCharacterBySpriteType(state.spriteType);
+          nextState = feedMeal(state, this.mealsGivenThisCycle, {
+            maxPerCycle: _cc?.feedMealMaxPerCycle,
+            hungerMult:  _cc?.feedHungerMult,
+          });
           if (nextState.events.includes("fed_meal")) {
             this.mealsGivenThisCycle += 1;
           }
@@ -284,7 +289,9 @@ export class SidebarProvider
         if (state === null) {
           return;
         }
-        nextState = consumeSnack(state);
+        nextState = consumeSnack(state, {
+          hungerMult: getCustomCharacterBySpriteType(state.spriteType)?.feedHungerMult,
+        });
         break;
 
       case "play":

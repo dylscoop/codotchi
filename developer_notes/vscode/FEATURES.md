@@ -74,8 +74,8 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 
 | Action      | Effect                                           | Constraint                               | Status |
 |-------------|--------------------------------------------------|------------------------------------------|--------|
-| Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle               | `[x]`  |
-| Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle; streak resets on meal, play, pat, or sleep | `[x]`  |
+| Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle (configurable per custom character) | `[x]`  |
+| Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle (configurable per custom character); streak resets on meal, play, pat, or sleep | `[x]`  |
 | Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; resets snack streak | `[x]`  |
 | Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; resets snack streak | `[x]`  |
 | Sleep       | Energy regenerates; 3% per-tick chance to recover from sickness | Resets snack streak | `[x]`  |
@@ -744,3 +744,27 @@ These are lower-priority ideas that require design work before implementation. A
 15. **Sleep/wake UX polish** — Lights Off button, auto-wake, visual night mode
 16. **Settings wiring** — expose remaining `gotchi.*` settings in `package.json`
 17. **Coding activity streaks** — build on existing file-save listener
+
+---
+
+## 12. Custom Characters
+
+Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharacters.ts` / `customCharacters.js` / `CustomCharacters.kt`.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `spriteType` | `string` | — | Matches a key in `DEFS` in `sprites.js` |
+| `passcode` | `string` | — | Exact-match string entered in the new-game screen |
+| `defaultName` | `string` | — | Suggested name pre-filled on new-game screen |
+| `patActionLabel` | `string?` | `"Go for a Run"` | Label shown on the pat button |
+| `patBubbles` | `string[]?` | — | Bubble messages shown on pat |
+| `snackType` | `string?` | `"candy"` | Controls snack pixel art drawn in sidebar |
+| `feedMealMaxPerCycle` | `number?` | `3` | Absolute meal cap per wake cycle |
+| `feedSnackMaxPerCycle` | `number?` | `3` | Absolute snack cap per wake cycle |
+| `feedHungerMult` | `number?` | `1.0` | Hunger gain multiplier per feed event |
+
+### 12.1 Registered custom characters
+
+| Name | Passcode | spriteType | Feed cap | Notes |
+|------|----------|------------|----------|-------|
+| Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 10 snacks | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" pat |

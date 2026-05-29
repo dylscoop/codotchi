@@ -673,8 +673,10 @@ private fun evolveTo(state: PetState, nextStage: String): PetState {
 // Actions
 // ---------------------------------------------------------------------------
 
-fun feedMeal(state: PetState, mealsGivenThisCycle: Int): PetState {
-    if (mealsGivenThisCycle >= FEED_MEAL_MAX_PER_CYCLE)
+fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int? = null, feedHungerMult: Double? = null): PetState {
+    val cap = feedMealMaxPerCycle ?: FEED_MEAL_MAX_PER_CYCLE
+    val hungerBoost = (FEED_MEAL_HUNGER_BOOST * (feedHungerMult ?: 1.0)).toInt()
+    if (mealsGivenThisCycle >= cap)
         return withDerivedFields(state.copy(events = listOf("meal_refused")))
     val newWeight = clampWeight(state.weight + FEED_MEAL_WEIGHT_GAIN)
     val events = mutableListOf("fed_meal")
@@ -688,7 +690,7 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int): PetState {
     val pick = answered ?: answeredCritical
     return withDerivedFields(
         state.copy(
-            hunger            = clampStat(state.hunger + FEED_MEAL_HUNGER_BOOST),
+            hunger            = clampStat(state.hunger + hungerBoost),
             weight            = newWeight,
             consecutiveSnacks = 0,
             careMistakes      = max(0.0, state.careMistakes - if (pick != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
@@ -711,8 +713,9 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int): PetState {
  * Emits `snack_placed` (triggers the floor-item animation in the webview) or
  * `snack_refused` if the cap has been reached.
  */
-fun startSnack(state: PetState): PetState {
-    if (state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE)
+fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
+    val cap = feedSnackMaxPerCycle ?: SNACK_MAX_PER_CYCLE
+    if (state.snacksGivenThisCycle >= cap)
         return withDerivedFields(state.copy(events = listOf("snack_refused")))
 
     val snacksGivenThisCycle = state.snacksGivenThisCycle + 1
@@ -743,7 +746,8 @@ fun startSnack(state: PetState): PetState {
  * Increments [PetState.consecutiveSnacks] and — if the new count reaches
  * the maximum — triggers sickness.
  */
-fun consumeSnack(state: PetState): PetState {
+fun consumeSnack(state: PetState, feedHungerMult: Double? = null): PetState {
+    val hungerBoost = (FEED_SNACK_HUNGER_BOOST * (feedHungerMult ?: 1.0)).toInt()
     val events = mutableListOf<String>()
     var sick = state.sick
     val consecutiveSnacks = state.consecutiveSnacks + 1
@@ -758,7 +762,7 @@ fun consumeSnack(state: PetState): PetState {
     return withDerivedFields(
         state.copy(
             happiness         = clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
-            hunger            = clampStat(state.hunger    + FEED_SNACK_HUNGER_BOOST),
+            hunger            = clampStat(state.hunger    + hungerBoost),
             weight            = newWeight,
             consecutiveSnacks = consecutiveSnacks,
             sick              = sick,

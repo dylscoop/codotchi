@@ -687,7 +687,7 @@
     var _gsRows = _gsMeta ? _gsMeta.rows : 32;
     var _gsIsQuad = _gsMeta
       ? (_gsMeta.rows <= _gsMeta.cols)   // quadrupeds are wider-than-tall grids
-      : !(_gsType === "snake" || _gsType === "classic" || _gsType === "monkey" || _gsType === "rooster" || _gsType === "dragon" || _gsType === "tim");
+      : !(_gsType === "snake" || _gsType === "classic" || _gsType === "monkey" || _gsType === "rooster" || _gsType === "dragon" || _gsType === "tim" || _gsType === "stu");
     if (_gsIsQuad && _gsType !== "snake") {
       var sagCellH = Math.max(1, Math.round(bHeight / _gsRows));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
@@ -895,7 +895,7 @@
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
     var _sType = lastState.spriteType || "classic";
-    var _isUprightOrSnake = (_sType === "snake" || _sType === "classic" || _sType === "monkey" || _sType === "rooster" || _sType === "dragon" || _sType === "tim");
+    var _isUprightOrSnake = (_sType === "snake" || _sType === "classic" || _sType === "monkey" || _sType === "rooster" || _sType === "dragon" || _sType === "tim" || _sType === "stu");
     if (!_isUprightOrSnake) {
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
@@ -1190,14 +1190,15 @@
     });
 
     // Meals-left badge on Feed button
-    var MEAL_MAX = 3;
+    var _feedCC = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
+    var MEAL_MAX = (_feedCC && _feedCC.feedMealMaxPerCycle) ? _feedCC.feedMealMaxPerCycle : 3;
     var mealsLeft = Math.max(0, MEAL_MAX - mealsGiven);
     if (mealsLeftEl) {
       mealsLeftEl.textContent = mealsLeft > 0 ? mealsLeft + "" : "";
     }
 
     // Snacks-left badge on Snack button + disable when at limit
-    var SNACK_MAX = 3;
+    var SNACK_MAX = (_feedCC && _feedCC.feedSnackMaxPerCycle) ? _feedCC.feedSnackMaxPerCycle : 3;
     var snacksLeft = Math.max(0, SNACK_MAX - (state.snacksGivenThisCycle || 0));
     if (snacksLeftEl) {
       snacksLeftEl.textContent = snacksLeft > 0 ? snacksLeft + "" : "";
@@ -1378,7 +1379,9 @@
       var siRawX   = 4 + Math.floor(Math.random() * Math.max(1, siW - 20));
       snackItems.push({
         x:    Math.max(siMinX, Math.min(siMaxX, siRawX)),
-        type: (_cc && state.spriteType === "tim") ? "tea" : (["candy", "bone", "cookie"][Math.floor(Math.random() * 3)]),
+        type: (_cc && state.spriteType === "tim") ? "tea"
+            : (_cc && state.spriteType === "stu") ? (Math.random() < 0.5 ? "guinness" : "salmon")
+            : (["candy", "bone", "cookie"][Math.floor(Math.random() * 3)]),
       });
       idleTimer = 0;  // pet walks toward it immediately
     }
@@ -2065,7 +2068,7 @@
       }
     }
 
-    // Snack items — tea mug (Tim) or candy/bone (others)
+    // Snack items — tea mug (Tim), guinness/salmon (Stu) or candy/bone/cookie (others)
     if (snackItems.length > 0) {
       // Tea mug: 6 cols × 6 rows at scale 2 (12×12 px)
       // 1=dark brown body, 2=steam blue-white, 3=tea amber, 4=handle
@@ -2076,6 +2079,26 @@
         [1,3,3,1,4,0],
         [1,3,3,1,0,0],
         [1,1,1,1,0,0],
+      ];
+      // Guinness pint: 6 cols × 8 rows at scale 2 (12×16 px)
+      // 1=dark stout, 2=cream head, 3=glass/rim/G letter
+      var GUINNESS_PIXELS = [
+        [0,3,3,3,3,0],  // rim
+        [0,2,3,3,0,0],  // cream + G top:  ##.
+        [0,2,3,0,0,0],  // cream + G left: #..
+        [0,2,3,3,3,0],  // cream + G bar:  ###
+        [0,2,3,3,0,0],  // cream + G bot:  ##.
+        [0,1,1,1,1,0],  // dark stout
+        [0,1,1,1,1,0],  // dark stout
+        [0,3,3,3,3,0],  // base
+      ];
+      // Smoked salmon: 6 cols × 4 rows at scale 2 (12×8 px)
+      // 1=salmon flesh, 2=fat stripe, 3=dark edge
+      var SALMON_PIXELS = [
+        [3,3,3,3,3,3],
+        [3,1,2,1,2,3],
+        [3,2,1,2,1,3],
+        [3,3,3,3,3,3],
       ];
       var CANDY_PIXELS = [
         [0,1,1,0],
@@ -2099,9 +2122,11 @@
       ];
       var SS = 2;
       snackItems.forEach(function (item) {
-        var spx = item.type === "tea" ? TEA_MUG_PIXELS
-                : item.type === "candy" ? CANDY_PIXELS
-                : item.type === "cookie" ? COOKIE_PIXELS : BONE_PIXELS;
+        var spx = item.type === "tea"      ? TEA_MUG_PIXELS
+                : item.type === "guinness" ? GUINNESS_PIXELS
+                : item.type === "salmon"   ? SALMON_PIXELS
+                : item.type === "candy"    ? CANDY_PIXELS
+                : item.type === "cookie"   ? COOKIE_PIXELS : BONE_PIXELS;
         var spH = spx.length * SS;
         var sY  = H - 12 - spH;
         var sX  = Math.round(item.x);
@@ -2113,6 +2138,14 @@
                                   : cell === 3 ? "#C49A6C"
                                   : cell === 4 ? "#6B3A1F"
                                   :              "#8B5E3C";
+            } else if (item.type === "guinness") {
+              spriteCtx.fillStyle = cell === 1 ? "#0d0400"
+                                  : cell === 2 ? "#ede0c4"
+                                  :              "#8a8070";
+            } else if (item.type === "salmon") {
+              spriteCtx.fillStyle = cell === 1 ? "#e07050"
+                                  : cell === 2 ? "#f0c8a0"
+                                  :              "#a03020";
             } else if (item.type === "candy") {
               spriteCtx.fillStyle = cell === 2 ? "#FFE0E0" : "#FF6B9D";
             } else if (item.type === "cookie") {
@@ -2331,7 +2364,7 @@
     var bHeight  = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
     var _dsType = state.spriteType || "classic";
-    var _dsUOS = (_dsType === "snake" || _dsType === "classic" || _dsType === "monkey" || _dsType === "rooster" || _dsType === "dragon" || _dsType === "tim");
+    var _dsUOS = (_dsType === "snake" || _dsType === "classic" || _dsType === "monkey" || _dsType === "rooster" || _dsType === "dragon" || _dsType === "tim" || _dsType === "stu");
     if (!_dsUOS) {
       var sagCellH2 = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(state.weight || 50) * sagCellH2;

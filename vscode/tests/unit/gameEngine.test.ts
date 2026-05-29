@@ -566,7 +566,8 @@ describe("tick — sickness health drain and death", () => {
     const pet = makePet({ sick: true, health: 5 });
     const next = tick(pet, false, true); // isIdle=false, isDeepIdle=true
     assert.equal(next.alive, true);
-    assert.equal(next.health, 5);
+    // IDLE_STAT_FLOOR=20 raises health from 5 to 20 during deep idle (added v2.2.3)
+    assert.equal(next.health, 20);
   });
 });
 

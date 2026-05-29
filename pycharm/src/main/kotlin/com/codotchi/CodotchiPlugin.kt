@@ -2,6 +2,7 @@ package com.codotchi
 
 import com.codotchi.engine.*
 import com.codotchi.getCustomCharacterByPasscode
+import com.codotchi.getCustomCharacterBySpriteType
 import com.intellij.ide.DataManager
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -320,10 +321,13 @@ class CodotchiPlugin : Disposable {
                 "feed" -> {
                     state ?: return@withLock
                     val feedType = message["feedType"] as? String
+                    val _cc = getCustomCharacterBySpriteType(state.spriteType)
                     nextState = if (feedType == "snack") {
-                        startSnack(state)
+                        startSnack(state, feedSnackMaxPerCycle = _cc?.feedSnackMaxPerCycle)
                     } else {
-                        val ns = feedMeal(state, mealsGivenThisCycle)
+                        val ns = feedMeal(state, mealsGivenThisCycle,
+                            feedMealMaxPerCycle = _cc?.feedMealMaxPerCycle,
+                            feedHungerMult      = _cc?.feedHungerMult)
                         if ("fed_meal" in ns.events) mealsGivenThisCycle++
                         ns
                     }
@@ -331,7 +335,8 @@ class CodotchiPlugin : Disposable {
 
                 "snack_consumed" -> {
                     state ?: return@withLock
-                    nextState = consumeSnack(state)
+                    val _cc = getCustomCharacterBySpriteType(state.spriteType)
+                    nextState = consumeSnack(state, feedHungerMult = _cc?.feedHungerMult)
                 }
 
                 "play" -> {

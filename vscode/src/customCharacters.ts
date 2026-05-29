@@ -32,6 +32,12 @@ export interface CustomCharacter {
   patToasts:   CustomCharacterToasts;
   /** Speech bubbles shown at random after a successful pat. */
   patBubbles:  string[];
+  /** Maximum meals allowed per wake cycle (default: FEED_MEAL_MAX_PER_CYCLE = 3). */
+  feedMealMaxPerCycle?: number;
+  /** Maximum snacks allowed per wake cycle (default: SNACK_MAX_PER_CYCLE = 3). */
+  feedSnackMaxPerCycle?: number;
+  /** Multiplier applied to the hunger boost from each meal and snack (default: 1.0). */
+  feedHungerMult?: number;
 }
 
 export const CUSTOM_CHARACTERS: CustomCharacter[] = [
@@ -71,6 +77,27 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     ],
   },
   // ── Add future custom characters here ──────────────────────────────────────
+  {
+    spriteType:  "stu",
+    passcode:    "rubylovessalmon",
+    defaultName: "Stugotchi",
+    patLabel:    "Collect Stickers",
+    mgTitle:     "Play or Collect Stickers",
+    giftMessage: "Stu wants a pint!",
+    patToasts: {
+      patted:      "Stu collected some stickers!",
+      pat_refused: "Stu doesn't have enough energy to collect stickers!",
+    },
+    patBubbles: [
+      "Magic: The Gathering. Obviously.",
+      "That's going in the binder.",
+      "Holographic. Rare. Mine.",
+      "No, you cannot have that one.",
+    ],
+    feedMealMaxPerCycle:  10,
+    feedSnackMaxPerCycle: 10,
+    feedHungerMult:       0.25,
+  },
 ];
 
 /** Look up a custom character by passcode. Returns undefined if not found. */
