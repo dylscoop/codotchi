@@ -7,6 +7,7 @@ import com.intellij.openapi.components.*
 import org.jdom.Element
 import java.io.File
 import java.nio.file.Path
+import java.security.MessageDigest
 
 /**
  * CodotchiPersistence — app-level persistent state stored in `codotchi.xml`.
@@ -51,6 +52,13 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
 
     /** Raw JSON string of the all-time high score, or null if none. */
     var highScoreJson: String? = null
+
+    /**
+     * Base path of the currently open project. Set by [CodotchiPlugin] on startup
+     * and when the active project changes. Used to determine the active state file
+     * path when [CodotchiSettings.perWorkspacePet] is enabled.
+     */
+    var currentProjectBasePath: String? = null
 
     // ── PersistentStateComponent ───────────────────────────────────────────
 
@@ -145,13 +153,69 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val savedAt: Long?,
     )
 
-    private fun getSharedStatePath(): File {
+    /** Returns the base directory for all codotchi PyCharm state files. */
+    private fun getBaseDir(): File {
         val base = if (System.getProperty("os.name").lowercase().contains("win")) {
             System.getenv("APPDATA") ?: "${System.getProperty("user.home")}/AppData/Roaming"
         } else {
             "${System.getProperty("user.home")}/.config"
         }
-        return File(base, "codotchi/pycharm/state.json")
+        return File(base, "codotchi/pycharm")
+    }
+
+    /**
+     * Returns the first 12 hex characters of SHA-256 of the project base path
+     * (lower-cased on Windows for case-insensitive consistency).
+     * Returns null if [projectBasePath] is null.
+     */
+    private fun projectHash(projectBasePath: String?): String? {
+        if (projectBasePath == null) return null
+        val normalised = if (System.getProperty("os.name").lowercase().contains("win"))
+            projectBasePath.lowercase() else projectBasePath
+        val bytes = MessageDigest.getInstance("SHA-256").digest(normalised.toByteArray(Charsets.UTF_8))
+        return bytes.joinToString("") { "%02x".format(it) }.take(12)
+    }
+
+    /** Absolute path to the shared (global) state file. */
+    private fun getSharedStatePath(): File = File(getBaseDir(), "state.json")
+
+    /**
+     * Absolute path to the project-specific state file, or null if
+     * [projectBasePath] is null (no project open).
+     */
+    private fun getProjectStatePath(projectBasePath: String?): File? {
+        val hash = projectHash(projectBasePath) ?: return null
+        return File(getBaseDir(), "$hash/state.json")
+    }
+
+    /**
+     * Returns the active state file path based on the perWorkspacePet setting.
+     * Falls back to the shared path if no project is open.
+     */
+    fun getActiveStatePath(projectBasePath: String?): File {
+        val settings = service<CodotchiSettings>()
+        if (settings.perWorkspacePet) {
+            return getProjectStatePath(projectBasePath) ?: getSharedStatePath()
+        }
+        return getSharedStatePath()
+    }
+
+    /**
+     * Copies the shared state file to the project-specific path if the project
+     * file does not yet exist. Used on first enable of perWorkspacePet.
+     * Safe to call multiple times — no-ops if destination already exists.
+     */
+    fun copySharedToProject(projectBasePath: String?) {
+        try {
+            val src = getSharedStatePath()
+            val dst = getProjectStatePath(projectBasePath) ?: return
+            if (dst.exists()) return
+            if (!src.exists()) return
+            dst.parentFile?.mkdirs()
+            src.copyTo(dst, overwrite = false)
+        } catch (_: Exception) {
+            // Best-effort — never crash the plugin.
+        }
     }
 
     /**
@@ -178,13 +242,13 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
     }
 
     /**
-     * Write the current pet state to the shared cross-IDE file.
-     * Failures are silently swallowed — the shared file is best-effort only.
+     * Write the current pet state to the active state file (shared or project-specific).
+     * Failures are silently swallowed — the file is best-effort only.
      */
     private fun saveToSharedFile(state: PetState) {
         if (!state.alive) return
         try {
-            val file = getSharedStatePath()
+            val file = getActiveStatePath(currentProjectBasePath)
             file.parentFile?.mkdirs()
             val payload = SharedStateFile(state = toRaw(state), savedAt = System.currentTimeMillis())
             file.writeText(gson.toJson(payload))
@@ -194,12 +258,12 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
     }
 
     /**
-     * Read the shared on-disk file.
+     * Read the active state file.
      * Returns a (PetState, savedAt) pair, or null if the file is absent / unparseable.
      */
     private fun loadFromSharedFile(): Pair<PetState, Long>? {
         return try {
-            val file = getSharedStatePath()
+            val file = getActiveStatePath(currentProjectBasePath)
             if (!file.exists()) return null
             val raw = gson.fromJson(file.readText(), SharedStateFile::class.java) ?: return null
             val rawState = raw.state ?: return null
@@ -217,12 +281,12 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
     fun loadSharedFileForSync(): Pair<PetState, Long>? = loadFromSharedFile()
 
     /**
-     * Return the parent directory of the shared state file as a [Path],
+     * Return the parent directory of the active state file as a [Path],
      * or null if it cannot be determined.  Used by the JVM WatchService.
      */
     fun getSharedStateDir(): Path? {
         return try {
-            getSharedStatePath().parentFile?.toPath()
+            getActiveStatePath(currentProjectBasePath).parentFile?.toPath()
         } catch (_: Exception) {
             null
         }

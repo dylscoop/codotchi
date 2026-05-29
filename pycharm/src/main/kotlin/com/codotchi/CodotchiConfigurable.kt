@@ -47,6 +47,7 @@ class CodotchiConfigurable : Configurable {
     private var idleResetOnWindowFocusCheck:    JCheckBox?          = null
     private var idleResetOnMouseMovementCheck:  JCheckBox?          = null
     private var backgroundCombo:               JComboBox<String>?  = null
+    private var perWorkspacePetCheck:          JCheckBox?          = null
 
     override fun getDisplayName(): String = "Codotchi"
 
@@ -73,6 +74,7 @@ class CodotchiConfigurable : Configurable {
         val idleResetFocusCheckbox = JCheckBox("Reset idle timer on window focus")
         val idleResetMouseCheckbox = JCheckBox("Reset idle timer on mouse movement (sidebar)")
         val bgCombo = JComboBox(arrayOf("Plain", "Ordered (auto)", "Spring", "Summer", "Autumn", "Winter"))
+        val perWorkspacePetCheckbox = JCheckBox("Per-project pet (each project gets its own independent pet)")
 
         fontSizeCombo            = combo
         colorPanel               = cp
@@ -96,6 +98,7 @@ class CodotchiConfigurable : Configurable {
         idleResetOnWindowFocusCheck    = idleResetFocusCheckbox
         idleResetOnMouseMovementCheck  = idleResetMouseCheckbox
         backgroundCombo                = bgCombo
+        perWorkspacePetCheck           = perWorkspacePetCheckbox
 
         val panel = JPanel(GridBagLayout())
         val gbc   = GridBagConstraints()
@@ -273,8 +276,14 @@ class CodotchiConfigurable : Configurable {
         panel.add(idleResetMouseCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Push content to the top
+        // Row 22 — Per-project pet
         gbc.gridx = 0; gbc.gridy = 22; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(perWorkspacePetCheckbox, gbc)
+        gbc.gridwidth = 1
+
+        // Push content to the top
+        gbc.gridx = 0; gbc.gridy = 23; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -306,6 +315,7 @@ class CodotchiConfigurable : Configurable {
         val uiIdleResetFocus = idleResetOnWindowFocusCheck?.isSelected ?: true
         val uiIdleResetMouse = idleResetOnMouseMovementCheck?.isSelected ?: true
         val uiBg = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
+        val uiPerWorkspacePet = perWorkspacePetCheck?.isSelected ?: false
         return uiFont != settings.fontSize
             || uiColor != settings.textColor
             || uiAttention != settings.enableAttentionCalls
@@ -328,6 +338,7 @@ class CodotchiConfigurable : Configurable {
             || uiIdleResetFocus != settings.idleResetOnWindowFocus
             || uiIdleResetMouse != settings.idleResetOnMouseMovement
             || uiBg != settings.background
+            || uiPerWorkspacePet != settings.perWorkspacePet
     }
 
     override fun apply() {
@@ -354,8 +365,20 @@ class CodotchiConfigurable : Configurable {
         settings.idleResetOnWindowFocus    = idleResetOnWindowFocusCheck?.isSelected ?: true
         settings.idleResetOnMouseMovement  = idleResetOnMouseMovementCheck?.isSelected ?: true
         settings.background                = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
+        val newPerWorkspace = perWorkspacePetCheck?.isSelected ?: false
+        val prevPerWorkspace = settings.perWorkspacePet
+        settings.perWorkspacePet           = newPerWorkspace
         // Reload the webview immediately so the change is visible without a restart
-        ApplicationManager.getApplication().service<CodotchiPlugin>().reloadWebview()
+        val plugin = ApplicationManager.getApplication().service<CodotchiPlugin>()
+        if (newPerWorkspace && !prevPerWorkspace) {
+            // First enable: copy shared state to project file then restart watcher
+            plugin.onPerWorkspacePetEnabled()
+        } else if (!newPerWorkspace && prevPerWorkspace) {
+            // Disabled: restart watcher on the shared path and reload
+            plugin.onPerWorkspacePetDisabled()
+        } else {
+            plugin.reloadWebview()
+        }
     }
 
     override fun reset() {
@@ -382,6 +405,7 @@ class CodotchiConfigurable : Configurable {
         idleResetOnWindowFocusCheck?.isSelected    = settings.idleResetOnWindowFocus
         idleResetOnMouseMovementCheck?.isSelected  = settings.idleResetOnMouseMovement
         backgroundCombo?.selectedIndex             = bgKeyToIndex(settings.background)
+        perWorkspacePetCheck?.isSelected           = settings.perWorkspacePet
     }
 
     // ── Enum helpers ───────────────────────────────────────────────────────

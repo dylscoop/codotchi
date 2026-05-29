@@ -29,6 +29,7 @@ import com.intellij.openapi.components.*
  *  - [idleResetOnWindowFocus]     : reset idle timer when IDE window gains focus (default true)
  *  - [idleResetOnMouseMovement]   : reset idle timer on mouse movement in the sidebar (default true)
  *  - [background]                 : "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter" (default "ordered")
+ *  - [perWorkspacePet]            : each project gets its own independent pet state file (default false)
  */
 @State(
     name = "CodotchiSettings",
@@ -61,6 +62,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var idleResetOnWindowFocus: Boolean = true
         var idleResetOnMouseMovement: Boolean = true
         var background: String = "ordered"  // "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter"
+        var perWorkspacePet: Boolean = false
     }
 
     private var _state = State()
@@ -158,4 +160,8 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var background: String
         get() = _state.background
         set(v) { _state.background = v }
+
+    var perWorkspacePet: Boolean
+        get() = _state.perWorkspacePet
+        set(v) { _state.perWorkspacePet = v }
 }

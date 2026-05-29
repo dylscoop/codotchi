@@ -217,6 +217,11 @@ class CodotchiPlugin : Disposable {
 
         val persistence = service<CodotchiPersistence>()
 
+        // Populate the current project base path so persistence can compute the
+        // workspace-specific state file path when perWorkspacePet is enabled.
+        persistence.currentProjectBasePath =
+            ProjectManager.getInstance().openProjects.firstOrNull()?.basePath
+
         // Restore saved high score
         currentHighScore = persistence.loadHighScore()
 
@@ -615,6 +620,36 @@ class CodotchiPlugin : Disposable {
         thread.name = "codotchi-file-watcher"
         thread.start()
         fileWatcherThread = thread
+    }
+
+    /** Stop the file-watcher thread if it is running. */
+    private fun stopFileWatcher() {
+        fileWatcherThread?.interrupt()
+        fileWatcherThread = null
+    }
+
+    /**
+     * Called by [CodotchiConfigurable] when the user enables [perWorkspacePet].
+     * Copies the shared state file to the project-specific path (first-enable
+     * migration), then restarts the file watcher on the new directory and reloads
+     * the webview.
+     */
+    fun onPerWorkspacePetEnabled() {
+        val persistence = service<CodotchiPersistence>()
+        persistence.copySharedToProject(persistence.currentProjectBasePath)
+        stopFileWatcher()
+        startFileWatcher()
+        reloadWebview()
+    }
+
+    /**
+     * Called by [CodotchiConfigurable] when the user disables [perWorkspacePet].
+     * Restarts the file watcher on the shared (global) state directory and reloads.
+     */
+    fun onPerWorkspacePetDisabled() {
+        stopFileWatcher()
+        startFileWatcher()
+        reloadWebview()
     }
 
     private fun stopFileWatcher() {
