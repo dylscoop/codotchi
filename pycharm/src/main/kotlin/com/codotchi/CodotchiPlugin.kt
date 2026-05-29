@@ -652,11 +652,6 @@ class CodotchiPlugin : Disposable {
         reloadWebview()
     }
 
-    private fun stopFileWatcher() {
-        fileWatcherThread?.interrupt()
-        fileWatcherThread = null
-    }
-
     /**
      * Start a JVM WatchService on every .git directory found in currently-open
      * projects, watching for modifications to COMMIT_EDITMSG.  When the file is
