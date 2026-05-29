@@ -1,6 +1,39 @@
 # Version History
 
-## v2.4.0 — current
+## v2.5.0 — current
+
+### Changes from v2.4.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.0; add `codotchi.perWorkspacePet` boolean setting (default `false`, scope `window`) |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.0 |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.0 |
+| `vscode/src/persistence.ts` | feat: add `getBaseDir()`, `getWorkspaceHash()`, `getWorkspaceStatePath()`, `getActiveStatePath()`, `copySharedToWorkspace()`; `saveSharedState` and `loadSharedState` now use `getActiveStatePath()` so writes go to the workspace-specific file when setting is enabled; add `import * as crypto` |
+| `vscode/src/extension.ts` | feat: replace hardcoded `getSharedStatePath()` with `getActiveStatePath()`; extract `stopWatcher()` and `startWatcherWithPolling()` helpers; add `onDidChangeConfiguration` listener for `codotchi.perWorkspacePet` — on enable calls `copySharedToWorkspace()`, restarts watcher, reloads state |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt` | feat: add `perWorkspacePet: Boolean = false` to `State` class and public accessor |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt` | feat: add `import java.security.MessageDigest`; add `getBaseDir()`, `projectHash()`, `getProjectStatePath()`, `getActiveStatePath()`, `copySharedToProject()`; add `currentProjectBasePath: String?` field; `saveToSharedFile` and `loadFromSharedFile` now use `getActiveStatePath(currentProjectBasePath)`; `getSharedStateDir()` returns the active path's parent |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiConfigurable.kt` | feat: add `perWorkspacePetCheck: JCheckBox?` field; create `perWorkspacePetCheckbox` in `createComponent()`; add Row 22 in panel; include in `isModified()`, `apply()`, and `reset()`; `apply()` calls `onPerWorkspacePetEnabled()` or `onPerWorkspacePetDisabled()` on change |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: set `persistence.currentProjectBasePath` at plugin startup; add `onPerWorkspacePetEnabled()` and `onPerWorkspacePetDisabled()` public methods (called from Configurable.apply()) |
+
+### New setting (v2.5.0)
+
+```
+codotchi.perWorkspacePet: Boolean = false
+```
+
+When `true`, each workspace/project stores its pet state in a separate file at:
+- VS Code:  `%APPDATA%\codotchi\vscode\<hash12>\state.json`
+- PyCharm:  `%APPDATA%\codotchi\pycharm\<hash12>\state.json`
+
+`<hash12>` = first 12 hex characters of SHA-256 of the workspace/project root path (lower-cased on Windows).
+
+On first enable, the current shared state is copied to the workspace file so the pet is preserved. Disabling the setting switches back to the shared file immediately; the workspace file is preserved for re-enabling.
+
+---
+
+## v2.4.0 — previous
 
 ### Changes from v2.3.0
 

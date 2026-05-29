@@ -673,6 +673,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.idleResetOnWindowFocus` | boolean | `true` | Reset idle timer when the VS Code window gains focus. Never suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnMouseMovement` | boolean | `true` | Reset idle timer on mouse movement in the sidebar panel (throttled to once/30 s). Never suppressed by `aiMode`. | `[x]` |
 | `codotchi.background` | enum | `ordered` | Canvas background mode: `plain` (none), `ordered` (auto season+time), `spring`, `summer`, `autumn`, `winter` | `[x]` |
+| `codotchi.perWorkspacePet` | boolean | `false` | Give each workspace its own independent pet. State is stored in a workspace-specific file (`<hash12>/state.json`). On first enable the current shared pet is copied to the workspace file. | `[x]` |
 
 ---
 
