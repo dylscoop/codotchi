@@ -1,6 +1,21 @@
 # Version History
 
-## v2.5.1 — current
+## v2.5.2 — current
+
+### Changes from v2.5.1
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/package.json` | Version bumped to 2.5.2 |
+| `opencode-codotchi/src/statePathResolver.ts` | fix (BUGFIX-114): new module — `getIDEBase()`, `resolveVSCodeStatePath()` (mtime-scan with lazy cache), `_resetVSCodePathCache()` test helper |
+| `opencode-codotchi/src/index.ts` | fix (BUGFIX-114): import `getIDEBase`, `resolveVSCodeStatePath`, `_resetVSCodePathCache` from `statePathResolver.js`; `getVSCodeStatePath()` delegates to `resolveVSCodeStatePath()` instead of hardcoding flat path |
+| `opencode-codotchi/tests/unit/statePath.test.ts` | test: new file — 6 tests for `resolveVSCodeStatePath`: no-dir fallback, empty-dir fallback, per-workspace newer wins, global newer wins, non-hash dirs ignored, cache hit |
+| `opencode-codotchi/tsconfig.test.json` | chore: add `src/statePathResolver.ts` to `include` list |
+| `opencode-codotchi/opencode-codotchi-2.5.2.zip` | Rebuilt distributable for v2.5.2 |
+
+---
+
+## v2.5.1 — previous
 
 ### Changes from v2.5.0
 

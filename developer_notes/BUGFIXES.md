@@ -1391,3 +1391,12 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 **Problem:** The "threw the snack away" toast (`snack_refused`) only fired when the per-cycle cap (`snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE`) was hit. If 3 snacks were already placed on the stage floor and not yet eaten, clicking Feed again would silently drop the `snack_placed` event in the webview (existing guard: `snackItems.length < 3`) while the engine still incremented `snacksGivenThisCycle` and emitted no toast.
 
 **Fix:** Added `snacksOnFloor: number` to `PetState` (default 0, serialised/deserialised). `startSnack` now checks `snacksOnFloor >= MAX_FLOOR_SNACKS` (= 3) before the per-cycle cap — if the floor is full it returns `snack_refused` without spending cycle quota. On success, `snacksOnFloor` is incremented; `consumeSnack` decrements it (clamped at 0). A `resetFloorSnacks()` helper zeros the field whenever the webview reloads to keep the engine in sync with the freshly empty `snackItems[]`.
+
+## BUGFIX-114 — opencode-codotchi does not link when VS Code perWorkspacePet is enabled
+
+**Status:** Fixed (v2.5.2, branch `fix/opencode-perworkspace-link`)
+**Files:** `opencode-codotchi/src/statePathResolver.ts`, `opencode-codotchi/src/index.ts`
+
+**Problem:** `getVSCodeStatePath()` in `index.ts` always returned the flat global path (`…/codotchi/vscode/state.json`). When `codotchi.perWorkspacePet = true`, VS Code writes state to `…/codotchi/vscode/<hash12>/state.json` instead. opencode-codotchi read stale or empty global state, wrote actions back to the wrong file, and watched the wrong file — a complete disconnect.
+
+**Fix:** Extracted a new `statePathResolver.ts` module. `resolveVSCodeStatePath()` scans `…/codotchi/vscode/` for `state.json` files in the flat global location and in any subdirectory whose name is exactly 12 lowercase hex chars (the per-workspace hash format). It returns the most-recently-modified candidate, falling back to the global path if none are found. The result is cached after the first call (startup-time resolution). `index.ts` now delegates `getVSCodeStatePath()` to this resolver, fixing all four call sites: `loadBothStates`, `makeIDEWatcher`, `saveIDEState`, and `saveTerminalEnabled`.

@@ -9,9 +9,7 @@ Raises your codotchi in the terminal alongside your coding session.
 - **Event hooks** — reacts to `file.edited` (coding reward), `session.idle` (idle), `server.connected` (greeting)
 - **`/codotchi` slash command** — 10 actions: `status`, `feed`, `snack`, `play`, `pat`, `sleep`, `wake`, `clean`, `medicine`, `new_game`
 - **ASCII art renderer** — 30 frames (6 stages × 5 moods), ANSI-coloured speech bubbles, status bars, toasts
-- **Cross-IDE shared state** — reads from / writes to the same JSON file used by the VS Code and PyCharm extensions:
-  - Linux/macOS: `~/.config/codotchi/state.json`
-  - Windows: `%APPDATA%\codotchi\state.json`
+- **Cross-IDE shared state** — auto-detects and links to the correct VS Code state file, including per-workspace state (`codotchi.perWorkspacePet`). Picks whichever `state.json` under `…/codotchi/vscode/` was written most recently at startup.
 
 ## Global install
 
@@ -20,21 +18,21 @@ project. Choose the path that matches how you have the package:
 
 ### Option A — From zip (recommended)
 
-Download `opencode-codotchi-2.5.1.zip` from the
+Download `opencode-codotchi-2.5.2.zip` from the
 [Releases page](https://github.com/dylscoop/codotchi/releases), extract it,
 then run the installer:
 
 ```bash
 # macOS / Linux
-unzip opencode-codotchi-2.5.1.zip
-cd opencode-codotchi-1.23.3
+unzip opencode-codotchi-2.5.2.zip
+cd opencode-codotchi-2.5.2
 node bin/install.js --install
 ```
 
 ```powershell
 # Windows (PowerShell)
-Expand-Archive opencode-codotchi-2.5.1.zip
-cd opencode-codotchi-1.23.3
+Expand-Archive opencode-codotchi-2.5.2.zip
+cd opencode-codotchi-2.5.2
 node bin/install.js --install
 ```
 
