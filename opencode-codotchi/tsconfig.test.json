@@ -9,6 +9,6 @@
     "esModuleInterop": true,
     "types": ["node"]
   },
-  "include": ["src/asciiArt.ts", "src/gameEngine.ts", "tests/**/*.ts"],
+  "include": ["src/asciiArt.ts", "src/gameEngine.ts", "src/statePathResolver.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

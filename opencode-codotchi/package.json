@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/asciiArt.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/asciiArt.test.js out-test/tests/unit/statePath.test.js"
   },
   "keywords": ["opencode", "plugin", "tamagotchi", "virtual-pet", "codotchi"],
   "author": "dylscoop",

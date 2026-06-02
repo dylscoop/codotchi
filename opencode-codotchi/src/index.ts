@@ -42,6 +42,8 @@ import * as path from "path";
 import * as os   from "os";
 import { tool }  from "@opencode-ai/plugin";
 import type { Plugin } from "@opencode-ai/plugin";
+import { getIDEBase as _getIDEBase, resolveVSCodeStatePath, _resetVSCodePathCache } from "./statePathResolver.js";
+export { _resetVSCodePathCache };
 
 import {
   PetState,
@@ -79,13 +81,12 @@ import {
 const ACTIVE_IDE_THRESHOLD_MS = 60_000;
 
 function getIDEBase(): string {
-  return process.platform === "win32"
-    ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")
-    : path.join(os.homedir(), ".config");
+  return _getIDEBase();
 }
 
+/** Delegates to statePathResolver — scans for most-recently-modified state.json. */
 function getVSCodeStatePath(): string {
-  return path.join(getIDEBase(), "codotchi", "vscode", "state.json");
+  return resolveVSCodeStatePath();
 }
 
 function getPyCharmStatePath(): string {
