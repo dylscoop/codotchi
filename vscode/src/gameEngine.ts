@@ -633,6 +633,9 @@ export interface PetState {
   /** Snacks currently placed on the floor but not yet consumed. Resets to 0 when the webview reloads. */
   readonly snacksOnFloor: number;
 
+  /** When true all tick-based changes (decay, aging, code activity) are frozen until resumed. */
+  readonly paused: boolean;
+
   // ── Attention Call fields ────────────────────────────────────────────────
 
   /** The currently active attention call type, or null if none is active. */
@@ -1004,6 +1007,7 @@ export function createPet(name: string, petType: string, unlockedCharacter: stri
     spawnedAt: Date.now(),
     snacksGivenThisCycle: 0,
     snacksOnFloor: 0,
+    paused: false,
     dayTimer: 0,
     activeAttentionCall: null,
     attentionCallActiveTicks: 0,
@@ -1096,7 +1100,9 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   if (!state.alive) {
     return state;
   }
-
+  if (state.paused) {
+    return state;
+  }
   const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
   const events: string[] = [];
   let hunger: number = state.hunger;
@@ -2006,6 +2012,9 @@ export function praise(state: PetState): PetState {
  * @returns A new PetState after the boost is applied.
  */
 export function applyCodeActivity(state: PetState): PetState {
+  if (state.paused) {
+    return state;
+  }
   return withDerivedFields({
     ...state,
     happiness: clampStat(state.happiness + CODE_ACTIVITY_HAPPINESS_BOOST),
@@ -2192,6 +2201,23 @@ export function rollOldAgeSickness(state: PetState, random: number): PetState {
 // ---------------------------------------------------------------------------
 
 /**
+ * Freeze all tick-based progression. While paused:
+ * - `tick()` returns state unchanged
+ * - `applyOfflineDecay()` returns state unchanged
+ * - `applyCodeActivity()` returns state unchanged
+ */
+export function pause(state: PetState): PetState {
+  return withDerivedFields({ ...state, paused: true, events: ["game_paused"] });
+}
+
+/**
+ * Resume normal tick-based progression after a pause.
+ */
+export function resume(state: PetState): PetState {
+  return withDerivedFields({ ...state, paused: false, events: ["game_resumed"] });
+}
+
+/**
  * Decay stats for time elapsed while the extension was closed.
  *
  * The maximum total decay is capped at OFFLINE_DECAY_MAX_FRACTION of each
@@ -2202,7 +2228,7 @@ export function rollOldAgeSickness(state: PetState, random: number): PetState {
  * @returns A new PetState after offline decay is applied.
  */
 export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetState {
-  if (elapsedSeconds <= 0 || !state.alive) {
+  if (elapsedSeconds <= 0 || !state.alive || state.paused) {
     return state;
   }
 
@@ -2291,7 +2317,7 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     spawnedAt: state.spawnedAt,
     snacksGivenThisCycle: state.snacksGivenThisCycle,
     snacksOnFloor: state.snacksOnFloor,
-    dayTimer: state.dayTimer,
+    paused: state.paused,
     // Attention call fields
     activeAttentionCall: state.activeAttentionCall,
     attentionCallActiveTicks: state.attentionCallActiveTicks,
@@ -2376,7 +2402,7 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     spawnedAt: getNumber("spawnedAt", Date.now()),
     snacksGivenThisCycle: getNumber("snacksGivenThisCycle", 0),
     snacksOnFloor: getNumber("snacksOnFloor", 0),
-    // Back-compat: old saves use ageDays as an integer; seed dayTimer from it.
+    paused: getBool("paused", false),
     dayTimer: getNumber("dayTimer", getNumber("ageDays", 0)),
     // Attention call fields — back-compat: all default to inactive/zero.
     activeAttentionCall: (data["activeAttentionCall"] as AttentionCallType | null) ?? null,

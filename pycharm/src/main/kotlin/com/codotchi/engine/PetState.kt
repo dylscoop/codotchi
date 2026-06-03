@@ -80,6 +80,9 @@ data class PetState(
     /** Snacks currently placed on the floor but not yet consumed. Resets to 0 when the webview reloads. */
     val snacksOnFloor: Int,
 
+    /** When true all tick-based changes (decay, aging, code activity) are frozen until resumed. */
+    val paused: Boolean = false,
+
     // ── Attention Call fields ────────────────────────────────────────────────
 
     /** The currently active attention call type, or null if none is active. */

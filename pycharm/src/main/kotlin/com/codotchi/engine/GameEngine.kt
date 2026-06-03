@@ -256,6 +256,7 @@ fun createPet(name: String, petType: String, color: String, unlockedCharacter: S
             spawnedAt          = System.currentTimeMillis(),
             snacksGivenThisCycle = 0,
             snacksOnFloor        = 0,
+            paused               = false,
             activeAttentionCall       = null,
             attentionCallActiveTicks  = 0,
             attentionCallCooldowns    = emptyMap(),
@@ -274,6 +275,7 @@ fun createPet(name: String, petType: String, color: String, unlockedCharacter: S
 
 fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG): PetState {
     if (!state.alive) return state
+    if (state.paused) return state
 
     val modifiers = PET_TYPE_MODIFIERS[state.petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
     val events    = mutableListOf<String>()
@@ -987,14 +989,24 @@ fun praise(state: PetState): PetState {
     )
 }
 
-fun applyCodeActivity(state: PetState): PetState =
-    withDerivedFields(
+fun applyCodeActivity(state: PetState): PetState {
+    if (state.paused) return state
+    return withDerivedFields(
         state.copy(
             happiness  = clampStat(state.happiness  + CODE_ACTIVITY_HAPPINESS_BOOST),
             discipline = clampStat(state.discipline + CODE_ACTIVITY_DISCIPLINE_BOOST),
             events     = listOf("code_activity_rewarded"),
         )
     )
+}
+
+/** Freeze all tick-based progression (decay, aging, code activity). */
+fun pause(state: PetState): PetState =
+    withDerivedFields(state.copy(paused = true, events = listOf("game_paused")))
+
+/** Resume normal tick-based progression after a pause. */
+fun resume(state: PetState): PetState =
+    withDerivedFields(state.copy(paused = false, events = listOf("game_resumed")))
 
 fun applyCommitActivity(state: PetState): PetState =
     withDerivedFields(
@@ -1109,7 +1121,7 @@ fun rollOldAgeSickness(state: PetState): PetState {
 // ---------------------------------------------------------------------------
 
 fun applyOfflineDecay(state: PetState, elapsedSeconds: Int): PetState {
-    if (elapsedSeconds <= 0 || !state.alive) return state
+    if (elapsedSeconds <= 0 || !state.alive || state.paused) return state
     val modifiers = PET_TYPE_MODIFIERS[state.petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
     val elapsedTicks = elapsedSeconds.toDouble() / TICK_INTERVAL_SECONDS
 
