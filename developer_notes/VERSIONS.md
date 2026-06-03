@@ -1,6 +1,29 @@
 # Version History
 
-## v2.5.4 — current
+## v2.5.5 — current
+
+### Changes from v2.5.4
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.5 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.5 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.5 |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.5 |
+| `vscode/src/gameEngine.ts` | fix: `tick()` paused branch clears stale `events` to `[]` instead of returning unchanged state; `withDerivedFields` filters `SILENT_EVENTS` (`game_paused`, `game_resumed`, `snack_placed`) before appending to `recentEventLog` |
+| `opencode-codotchi/src/gameEngine.ts` | chore: re-synced from vscode copy (picks up Fix A + Fix B) |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: same `tick()` paused events-clear and `silentEvents` filter in `withDerivedFields` |
+| `vscode/media/sidebar.js` | fix: dead screen `recentEventLog` now passed through `humaniseEvent` before rendering (safety net for any raw event codes) |
+| `pycharm/src/main/resources/webview/sidebar.js` | fix: same dead screen `humaniseEvent` fix |
+| `vscode/tests/unit/gameEngine.test.ts` | test: 6 new tests — tick clears events while paused (2); pause/resume/snack_placed don't append to recentEventLog (3); fed_meal does append (1) |
+| `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | test: 6 new tests — same scenarios in Kotlin |
+| `vscode/codotchi-2.5.5.vsix` | Rebuilt distributable for v2.5.5 |
+| `pycharm/build/distributions/pycharm-codotchi-2.5.5.zip` | Rebuilt distributable for v2.5.5 |
+| `opencode-codotchi/opencode-codotchi-2.5.5.zip` | Rebuilt distributable for v2.5.5 |
+
+---
+
+## v2.5.4 — previous
 
 ### Changes from v2.5.3
 
