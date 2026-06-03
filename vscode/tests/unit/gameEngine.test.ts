@@ -28,6 +28,8 @@ import {
   applyCodeActivity,
   applyCommitActivity,
   COMMIT_ACTIVITY_THROTTLE_SECONDS,
+  pause,
+  resume,
   promoteToSenior,
   rollOldAgeDeath,
   rollOldAgeSickness,
@@ -833,6 +835,78 @@ describe("resetFloorSnacks", () => {
     const pet = makePet({ snacksOnFloor: 0 });
     const next = resetFloorSnacks(pet);
     assert.equal(next.snacksOnFloor, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pause / resume
+// ---------------------------------------------------------------------------
+
+describe("pause", () => {
+  it("sets paused to true", () => {
+    const pet = makePet({});
+    assert.equal(pet.paused, false);
+    const next = pause(pet);
+    assert.equal(next.paused, true);
+  });
+
+  it("emits game_paused event", () => {
+    const next = pause(makePet({}));
+    assert.ok(next.events.includes("game_paused"));
+  });
+});
+
+describe("resume", () => {
+  it("sets paused to false", () => {
+    const pet = makePet({ paused: true });
+    const next = resume(pet);
+    assert.equal(next.paused, false);
+  });
+
+  it("emits game_resumed event", () => {
+    const next = resume(makePet({ paused: true }));
+    assert.ok(next.events.includes("game_resumed"));
+  });
+});
+
+describe("tick — paused early-out", () => {
+  it("returns state unchanged when paused", () => {
+    const pet = makePet({ paused: true, hunger: 80 });
+    const next = tick(pet);
+    assert.equal(next.hunger, pet.hunger);
+    assert.equal(next.ticksAlive, pet.ticksAlive);
+  });
+});
+
+describe("applyOfflineDecay — paused early-out", () => {
+  it("returns state unchanged when paused", () => {
+    const pet = makePet({ paused: true, hunger: 80, happiness: 80 });
+    const next = applyOfflineDecay(pet, 3600);
+    assert.equal(next.hunger, 80);
+    assert.equal(next.happiness, 80);
+  });
+});
+
+describe("applyCodeActivity — paused early-out", () => {
+  it("returns state unchanged when paused", () => {
+    const pet = makePet({ paused: true, happiness: 50 });
+    const next = applyCodeActivity(pet);
+    assert.equal(next.happiness, 50);
+  });
+});
+
+describe("serialise/deserialise — paused field", () => {
+  it("round-trips paused: true", () => {
+    const pet = pause(makePet({}));
+    const restored = deserialiseState(serialiseState(pet));
+    assert.equal(restored.paused, true);
+  });
+
+  it("deserialises missing paused field as false (back-compat)", () => {
+    const raw = serialiseState(makePet({}));
+    delete (raw as Record<string, unknown>)["paused"];
+    const restored = deserialiseState(raw);
+    assert.equal(restored.paused, false);
   });
 });
 

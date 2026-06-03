@@ -5,11 +5,11 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 /**
- * Unit tests for startSnack / consumeSnack floor-cap behaviour.
+ * Unit tests for the game engine.
  *
- * Covers the BUGFIX for "floor-snack refused" — when 3 snacks are already
- * placed on the stage floor, further snack requests emit snack_refused without
- * spending the per-cycle quota.
+ * Covers:
+ * - BUGFIX-113: floor-snack cap (startSnack / consumeSnack)
+ * - Pause / resume behaviour
  */
 class GameEngineTest {
 
@@ -17,11 +17,13 @@ class GameEngineTest {
     private fun makePet(
         snacksOnFloor: Int = 0,
         snacksGivenThisCycle: Int = 0,
+        paused: Boolean = false,
     ): PetState {
         val base = createPet("Pixel", "codeling", "neon")
         return base.copy(
             snacksOnFloor        = snacksOnFloor,
             snacksGivenThisCycle = snacksGivenThisCycle,
+            paused               = paused,
         )
     }
 
@@ -70,5 +72,47 @@ class GameEngineTest {
         val pet  = makePet(snacksOnFloor = 0)
         val next = consumeSnack(pet)
         assertEquals(0, next.snacksOnFloor)
+    }
+
+    // ── pause / resume ───────────────────────────────────────────────────────
+
+    @Test
+    fun `pause sets paused to true and emits game_paused`() {
+        val pet  = makePet()
+        assertFalse(pet.paused)
+        val next = pause(pet)
+        assertTrue(next.paused)
+        assertTrue(next.events.contains("game_paused"))
+    }
+
+    @Test
+    fun `resume sets paused to false and emits game_resumed`() {
+        val pet  = makePet(paused = true)
+        val next = resume(pet)
+        assertFalse(next.paused)
+        assertTrue(next.events.contains("game_resumed"))
+    }
+
+    @Test
+    fun `tick returns state unchanged when paused`() {
+        val pet  = makePet(paused = true)
+        val next = tick(pet)
+        assertEquals(pet.hunger,     next.hunger)
+        assertEquals(pet.ticksAlive, next.ticksAlive)
+    }
+
+    @Test
+    fun `applyOfflineDecay returns state unchanged when paused`() {
+        val pet  = makePet(paused = true).copy(hunger = 80, happiness = 80)
+        val next = applyOfflineDecay(pet, 3600)
+        assertEquals(80, next.hunger)
+        assertEquals(80, next.happiness)
+    }
+
+    @Test
+    fun `applyCodeActivity returns state unchanged when paused`() {
+        val pet  = makePet(paused = true).copy(happiness = 50)
+        val next = applyCodeActivity(pet)
+        assertEquals(50, next.happiness)
     }
 }
