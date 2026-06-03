@@ -14,7 +14,10 @@
 | `opencode-codotchi/src/gameEngine.ts` | chore: re-synced from vscode copy (picks up Fix A + Fix B) |
 | `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: same `tick()` paused events-clear and `silentEvents` filter in `withDerivedFields` |
 | `vscode/media/sidebar.js` | fix: dead screen `recentEventLog` now passed through `humaniseEvent` before rendering (safety net for any raw event codes) |
-| `pycharm/src/main/resources/webview/sidebar.js` | fix: same dead screen `humaniseEvent` fix |
+| `pycharm/src/main/resources/webview/sidebar.js` | fix: remove duplicate `var sleepWakeBtn` re-declaration (same strict-mode SyntaxError as VS Code — caused entire sidebar to fail to load on PyCharm); dead screen `humaniseEvent` fix |
+| `vscode/src/gameEngine.ts` | fix: add `if (state.paused) return state` early-out to `applyCommitActivity` (was missing unlike `applyCodeActivity`) |
+| `opencode-codotchi/src/gameEngine.ts` | chore: re-synced from vscode copy (picks up `applyCommitActivity` paused guard) |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: same `applyCommitActivity` paused guard in Kotlin |
 | `vscode/tests/unit/gameEngine.test.ts` | test: 6 new tests — tick clears events while paused (2); pause/resume/snack_placed don't append to recentEventLog (3); fed_meal does append (1) |
 | `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | test: 6 new tests — same scenarios in Kotlin |
 | `vscode/codotchi-2.5.5.vsix` | Rebuilt distributable for v2.5.5 |
