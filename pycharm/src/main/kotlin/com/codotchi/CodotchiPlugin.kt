@@ -320,6 +320,11 @@ class CodotchiPlugin : Disposable {
             val sleepBlocked = setOf("feed", "play", "pat", "clean", "medicine", "praise", "scold")
             if (isSleeping && command in sleepBlocked) return@withLock
 
+            // Block all actions while paused, except the pause toggle itself and new_game
+            val isPaused = state?.paused ?: false
+            val pauseBlocked = setOf("feed", "snack_consumed", "play", "pat", "sleep", "wake", "clean", "medicine", "scold", "praise", "reset_high_score")
+            if (isPaused && command in pauseBlocked) return@withLock
+
             var nextState: PetState? = null
 
             when (command) {
@@ -392,6 +397,11 @@ class CodotchiPlugin : Disposable {
                 "pat" -> {
                     state ?: return@withLock
                     nextState = pat(state)
+                }
+
+                "pause" -> {
+                    state ?: return@withLock
+                    nextState = if (state.paused) resume(state) else pause(state)
                 }
 
                 "new_game" -> {

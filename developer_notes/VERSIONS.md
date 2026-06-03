@@ -1,6 +1,41 @@
 # Version History
 
-## v2.5.2 — current
+## v2.5.3 — current
+
+### Changes from v2.5.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.3 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.3 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.3 |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.3 |
+| `vscode/src/gameEngine.ts` | feat: add `paused: boolean` to `PetState`; export `pause()` / `resume()` — emit `game_paused` / `game_resumed` events; early-out in `tick()`, `applyOfflineDecay()`, `applyCodeActivity()` when paused; `serialiseState` / `deserialiseState` include `paused` (back-compat default `false`) |
+| `opencode-codotchi/src/gameEngine.ts` | feat: re-synced from vscode copy — all pause changes + v2.5.1 `snacksOnFloor` changes applied |
+| `pycharm/src/main/kotlin/com/codotchi/engine/PetState.kt` | feat: add `val paused: Boolean = false` |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | feat: add `pause()` / `resume()`; early-out in `tick()`, `applyOfflineDecay()`, `applyCodeActivity()` when paused |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt` | feat: add `paused: Boolean?` to `RawPetState`; sanitise `?: false`; serialise in `toRaw` |
+| `vscode/media/sidebar.html` | feat: add `btn-pause` button (⏸) after `btn-scold` |
+| `vscode/media/sidebar.js` | feat: add `btn-pause` click handler; extend disable loop to cover `isPaused`; update `renderState()` to toggle ⏸/▶ icon + title; snack quota guard also checks `!isPaused` |
+| `vscode/src/sidebarProvider.ts` | feat: import `pause`, `resume`; add pause block guard; add `case "pause"` routing `pause()`/`resume()` |
+| `pycharm/src/main/resources/webview/sidebar.html` | feat: add `btn-pause` button (⏸) after `btn-scold` |
+| `pycharm/src/main/resources/webview/sidebar.js` | feat: same JS changes as VS Code sidebar.js — pause handler, disable loop, icon toggle, snack guard |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: add pause block guard; add `"pause"` when branch routing `pause()`/`resume()` |
+| `vscode/tests/unit/gameEngine.test.ts` | test: 6 new pause tests (pause/resume, tick no-op, offlineDecay no-op, codeActivity no-op, serialise round-trip + back-compat) |
+| `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | test: 5 new pause tests (same scenarios as TS) |
+| `vscode/codotchi-2.5.3.vsix` | Rebuilt distributable for v2.5.3 |
+| `pycharm/build/distributions/pycharm-codotchi-2.5.3.zip` | Rebuilt distributable for v2.5.3 |
+| `opencode-codotchi/opencode-codotchi-2.5.3.zip` | Rebuilt distributable for v2.5.3 |
+
+### New PetState field (v2.5.3)
+
+```
+paused: boolean = false   // when true: tick, offlineDecay, codeActivity all no-op; care actions blocked
+```
+
+---
+
+## v2.5.2 — previous
 
 ### Changes from v2.5.1
 

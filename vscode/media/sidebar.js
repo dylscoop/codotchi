@@ -216,6 +216,10 @@
     vscode.postMessage({ command: "scold" });
   });
 
+  document.getElementById("btn-pause").addEventListener("click", function () {
+    vscode.postMessage({ command: "pause" });
+  });
+
   btnNewGame.addEventListener("click", function () {
     showScreen("setup");
   });
@@ -1181,13 +1185,21 @@
     sleepWakeBtn.textContent = state.sleeping ? "Wake" : "Sleep";
     sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
 
-    // BUGFIX-002: disable care buttons while pet is sleeping
+    // BUGFIX-002: disable care buttons while pet is sleeping; also disable while paused
     const isSleeping = state.sleeping;
-    ["btn-feed-meal", "btn-feed-snack", "btn-play",
+    const isPaused   = !!state.paused;
+    ["btn-feed-meal", "btn-feed-snack", "btn-play", "btn-sleep-wake",
      "btn-clean", "btn-medicine", "btn-praise", "btn-scold"].forEach(function (id) {
       const btn = document.getElementById(id);
-      if (btn) { btn.disabled = isSleeping; }
+      if (btn) { btn.disabled = isSleeping || isPaused; }
     });
+
+    // Pause button: ⏸ while running, ▶ while paused
+    var pauseBtn = document.getElementById("btn-pause");
+    if (pauseBtn) {
+      pauseBtn.textContent = isPaused ? "▶" : "⏸";
+      pauseBtn.title = isPaused ? "Resume game" : "Pause game";
+    }
 
     // Meals-left badge on Feed button
     var _feedCC = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
@@ -1204,7 +1216,7 @@
       snacksLeftEl.textContent = snacksLeft > 0 ? snacksLeft + "" : "";
     }
     var snackBtn = document.getElementById("btn-feed-snack");
-    if (snackBtn && !isSleeping) {
+    if (snackBtn && !isSleeping && !isPaused) {
       snackBtn.disabled = snacksLeft <= 0;
     }
 
