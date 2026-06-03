@@ -1011,14 +1011,16 @@ fun pause(state: PetState): PetState =
 fun resume(state: PetState): PetState =
     withDerivedFields(state.copy(paused = false, events = listOf("game_resumed")))
 
-fun applyCommitActivity(state: PetState): PetState =
-    withDerivedFields(
+fun applyCommitActivity(state: PetState): PetState {
+    if (state.paused) return state
+    return withDerivedFields(
         state.copy(
             happiness  = clampStat(state.happiness  + COMMIT_HAPPINESS_BOOST),
             discipline = clampStat(state.discipline + COMMIT_DISCIPLINE_BOOST),
             events     = listOf("commit_activity_rewarded"),
         )
     )
+}
 
 // ---------------------------------------------------------------------------
 // Senior promotion

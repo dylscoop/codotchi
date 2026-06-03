@@ -2036,6 +2036,7 @@ export function applyCodeActivity(state: PetState): PetState {
  * @returns A new PetState after the boost is applied.
  */
 export function applyCommitActivity(state: PetState): PetState {
+  if (state.paused) { return state; }
   return withDerivedFields({
     ...state,
     happiness: clampStat(state.happiness + COMMIT_HAPPINESS_BOOST),
