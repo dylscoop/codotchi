@@ -1199,7 +1199,7 @@
     // Pause button: ⏸ while running, ▶ while paused
     var pauseBtn = document.getElementById("btn-pause");
     if (pauseBtn) {
-      pauseBtn.textContent = isPaused ? "▶" : "⏸";
+      pauseBtn.textContent = isPaused ? "Resume" : "Pause";
       pauseBtn.title = isPaused ? "Resume game" : "Pause game";
     }
 
