@@ -1188,11 +1188,14 @@
     // BUGFIX-002: disable care buttons while pet is sleeping; also disable while paused
     const isSleeping = state.sleeping;
     const isPaused   = !!state.paused;
-    ["btn-feed-meal", "btn-feed-snack", "btn-play", "btn-sleep-wake",
+    ["btn-feed-meal", "btn-feed-snack", "btn-play",
      "btn-clean", "btn-medicine", "btn-praise", "btn-scold"].forEach(function (id) {
       const btn = document.getElementById(id);
       if (btn) { btn.disabled = isSleeping || isPaused; }
     });
+    // Sleep/Wake button: only disabled while paused (must remain clickable to Wake while sleeping)
+    var sleepWakeBtn = document.getElementById("btn-sleep-wake");
+    if (sleepWakeBtn) { sleepWakeBtn.disabled = isPaused; }
 
     // Pause button: ⏸ while running, ▶ while paused
     var pauseBtn = document.getElementById("btn-pause");
@@ -1465,6 +1468,8 @@
       "died":                    n + " passed away...",
       "fed_snack":               n + " had a snack.",
       "snack_placed":            "",   // silent — only triggers the floor-item animation
+      "game_paused":             "",   // silent — pause state shown via button icon
+      "game_resumed":            "",   // silent
       "cured":                   n + " recovered!",
       "meal_refused":            n + " refused the meal.",
       "fed_meal":                n + " ate a meal.",

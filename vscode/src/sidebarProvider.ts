@@ -482,4 +482,12 @@ export class SidebarProvider
       d.dispose();
     }
   }
+
+  /** Called by the toolbar pause/resume commands to toggle pause state externally. */
+  handleExternalPauseToggle(): void {
+    const state = this.getCurrentState();
+    if (state === null) { return; }
+    const nextState = state.paused ? resume(state) : pause(state);
+    this.onStateUpdate(nextState);
+  }
 }

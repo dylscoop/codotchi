@@ -163,6 +163,7 @@ export function activate(context: vscode.ExtensionContext): void {
     sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter(), getDefaultPetName());
     statusBar?.update(state);
     saveState(context, state);
+    void vscode.commands.executeCommand("setContext", "codotchi:paused", state.paused);
   }
 
   // Activity callback — shared with SidebarProvider so sidebar button clicks
@@ -519,6 +520,15 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("codotchi.refresh", () => {
       reloadAndRefreshUI();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("codotchi.pause", () => {
+      sidebar?.handleExternalPauseToggle();
+    }),
+    vscode.commands.registerCommand("codotchi.resume", () => {
+      sidebar?.handleExternalPauseToggle();
     })
   );
 

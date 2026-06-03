@@ -55,6 +55,16 @@
           "command": "codotchi.refresh",
           "title": "Refresh",
           "icon": "$(refresh)"
+        },
+        {
+          "command": "codotchi.pause",
+          "title": "Pause Game",
+          "icon": "$(debug-pause)"
+        },
+        {
+          "command": "codotchi.resume",
+          "title": "Resume Game",
+          "icon": "$(debug-start)"
         }
     ],
     "menus": {
@@ -62,6 +72,16 @@
         {
           "command": "codotchi.refresh",
           "when": "view == codotchiView",
+          "group": "navigation"
+        },
+        {
+          "command": "codotchi.pause",
+          "when": "view == codotchiView && !codotchi:paused",
+          "group": "navigation"
+        },
+        {
+          "command": "codotchi.resume",
+          "when": "view == codotchiView && codotchi:paused",
           "group": "navigation"
         }
       ]
