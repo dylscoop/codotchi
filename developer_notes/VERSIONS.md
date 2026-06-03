@@ -1,6 +1,27 @@
 # Version History
 
-## v2.5.3 — current
+## v2.5.4 — current
+
+### Changes from v2.5.3
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.4; add `codotchi.pause` (`$(debug-pause)`) and `codotchi.resume` (`$(debug-start)`) commands; add two `view/title` menu entries with `codotchi:paused` context `when` clauses |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.4 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.4 |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.4 |
+| `vscode/src/extension.ts` | feat: register `codotchi.pause` and `codotchi.resume` commands; call `setContext("codotchi:paused", ...)` in `handleStateUpdate` so toolbar icon switches |
+| `vscode/src/sidebarProvider.ts` | feat: add `handleExternalPauseToggle()` public method for toolbar commands |
+| `vscode/media/sidebar.html` | fix: remove `btn-pause` from action grid (now in VS Code toolbar) |
+| `vscode/media/sidebar.js` | fix: remove `btn-pause` click handler; fix `btn-sleep-wake` incorrectly disabled while sleeping — now only disabled while paused; silence `game_paused`/`game_resumed` in event log |
+| `pycharm/src/main/resources/webview/sidebar.js` | fix: same sleep/wake disable fix; silence `game_paused`/`game_resumed` in event log |
+| `vscode/codotchi-2.5.4.vsix` | Rebuilt distributable for v2.5.4 |
+| `pycharm/build/distributions/pycharm-codotchi-2.5.4.zip` | Rebuilt distributable for v2.5.4 |
+| `opencode-codotchi/opencode-codotchi-2.5.4.zip` | Rebuilt distributable for v2.5.4 |
+
+---
+
+## v2.5.3 — previous
 
 ### Changes from v2.5.2
 
