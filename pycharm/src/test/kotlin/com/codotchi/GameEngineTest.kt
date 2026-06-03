@@ -115,4 +115,56 @@ class GameEngineTest {
         val next = applyCodeActivity(pet)
         assertEquals(50, next.happiness)
     }
+
+    // ── tick clears stale events while paused ───────────────────────────────
+
+    @Test
+    fun `tick clears events when paused and events non-empty`() {
+        val pet  = makePet(paused = true).copy(events = listOf("game_paused"))
+        val next = tick(pet)
+        assertTrue(next.events.isEmpty())
+    }
+
+    @Test
+    fun `tick returns same reference when paused and events already empty`() {
+        val pet  = makePet(paused = true).copy(events = emptyList())
+        val next = tick(pet)
+        assertSame(pet, next)
+    }
+
+    // ── SILENT_EVENTS — recentEventLog filtering ────────────────────────────
+
+    @Test
+    fun `pause does not append to recentEventLog`() {
+        val pet    = makePet()
+        val before = pet.recentEventLog.size
+        val next   = pause(pet)
+        assertEquals(before, next.recentEventLog.size)
+    }
+
+    @Test
+    fun `resume does not append to recentEventLog`() {
+        val pet    = makePet(paused = true)
+        val before = pet.recentEventLog.size
+        val next   = resume(pet)
+        assertEquals(before, next.recentEventLog.size)
+    }
+
+    @Test
+    fun `snack_placed does not append to recentEventLog`() {
+        val pet    = makePet()
+        val before = pet.recentEventLog.size
+        val next   = startSnack(pet)
+        assertTrue(next.events.contains("snack_placed"))
+        assertEquals(before, next.recentEventLog.size)
+    }
+
+    @Test
+    fun `fed_meal non-silent event appends to recentEventLog`() {
+        val pet    = makePet().copy(hunger = 50)
+        val before = pet.recentEventLog.size
+        val next   = feedMeal(pet, 0)
+        assertTrue(next.events.contains("fed_meal"))
+        assertEquals(before + 1, next.recentEventLog.size)
+    }
 }

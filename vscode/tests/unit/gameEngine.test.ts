@@ -910,6 +910,53 @@ describe("serialise/deserialise — paused field", () => {
   });
 });
 
+describe("tick — paused clears stale events", () => {
+  it("clears events array when paused and events is non-empty", () => {
+    const pet = makePet({ paused: true, events: ["game_paused"] as any });
+    const next = tick(pet);
+    assert.deepEqual(next.events, []);
+  });
+
+  it("returns same reference when paused and events already empty", () => {
+    const pet = makePet({ paused: true, events: [] as any });
+    const next = tick(pet);
+    assert.equal(next, pet);
+  });
+});
+
+describe("SILENT_EVENTS — recentEventLog filtering", () => {
+  it("pause() does not append to recentEventLog", () => {
+    const pet = makePet({});
+    const before = pet.recentEventLog.length;
+    const next = pause(pet);
+    assert.equal(next.recentEventLog.length, before);
+  });
+
+  it("resume() does not append to recentEventLog", () => {
+    const pet = makePet({ paused: true });
+    const before = pet.recentEventLog.length;
+    const next = resume(pet);
+    assert.equal(next.recentEventLog.length, before);
+  });
+
+  it("snack_placed does not append to recentEventLog", () => {
+    const pet = makePet({});
+    const before = pet.recentEventLog.length;
+    const next = startSnack(pet);
+    // snack_placed is the event emitted; recentEventLog must not grow
+    assert.ok(next.events.includes("snack_placed"));
+    assert.equal(next.recentEventLog.length, before);
+  });
+
+  it("fed_meal (non-silent) does append to recentEventLog", () => {
+    const pet = makePet({ hunger: 50 });
+    const before = pet.recentEventLog.length;
+    const next = feedMeal(pet, 0);
+    assert.ok(next.events.includes("fed_meal"));
+    assert.equal(next.recentEventLog.length, before + 1);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // play
 // ---------------------------------------------------------------------------

@@ -1039,8 +1039,11 @@ function withDerivedFields(
   const mood = moodFromStats(partial.hunger, partial.happiness, partial.health, partial.sleeping);
   const sprite = `${partial.stage}_${mood}`;
   // Append current events to the rolling log (capped at RECENT_EVENT_LOG_MAX)
-  const newLog = (partial.events as string[]).length > 0
-    ? [...(partial.recentEventLog as string[]), ...(partial.events as string[])].slice(-RECENT_EVENT_LOG_MAX)
+  // Silent events (display-suppressed) are excluded from the persistent log.
+  const SILENT_EVENTS = new Set(["game_paused", "game_resumed", "snack_placed"]);
+  const loggableEvents = (partial.events as string[]).filter(e => !SILENT_EVENTS.has(e));
+  const newLog = loggableEvents.length > 0
+    ? [...(partial.recentEventLog as string[]), ...loggableEvents].slice(-RECENT_EVENT_LOG_MAX)
     : partial.recentEventLog;
   return { ...partial, careScore: Math.round(careScore * 10000) / 10000, mood, sprite, recentEventLog: newLog };
 }
@@ -1101,7 +1104,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     return state;
   }
   if (state.paused) {
-    return state;
+    return state.events.length > 0 ? { ...state, events: [] } : state;
   }
   const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
   const events: string[] = [];

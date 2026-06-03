@@ -1671,8 +1671,10 @@
       var log = state.recentEventLog || [];
       var reversed = log.slice().reverse();
       reversed.forEach(function (text) {
+        var label = humaniseEvent(text, state.name, state);
+        if (!label) { return; }
         var li = document.createElement("li");
-        li.textContent = text;
+        li.textContent = label;
         deadEventLog.appendChild(li);
       });
     }

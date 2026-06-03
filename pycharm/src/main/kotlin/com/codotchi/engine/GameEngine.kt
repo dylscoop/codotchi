@@ -168,8 +168,11 @@ private fun withDerivedFields(s: PetState): PetState {
     val mood      = moodFromStats(s.hunger, s.happiness, s.health, s.sleeping)
     val sprite    = "${s.stage}_${mood}"
     // Append current events to the rolling log (capped at RECENT_EVENT_LOG_MAX)
-    val newLog = if (s.events.isNotEmpty())
-        (s.recentEventLog + s.events).takeLast(RECENT_EVENT_LOG_MAX)
+    // Silent events (display-suppressed) are excluded from the persistent log.
+    val silentEvents = setOf("game_paused", "game_resumed", "snack_placed")
+    val loggableEvents = s.events.filter { it !in silentEvents }
+    val newLog = if (loggableEvents.isNotEmpty())
+        (s.recentEventLog + loggableEvents).takeLast(RECENT_EVENT_LOG_MAX)
     else
         s.recentEventLog
     return s.copy(
@@ -275,7 +278,7 @@ fun createPet(name: String, petType: String, color: String, unlockedCharacter: S
 
 fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG): PetState {
     if (!state.alive) return state
-    if (state.paused) return state
+    if (state.paused) return if (state.events.isNotEmpty()) state.copy(events = emptyList()) else state
 
     val modifiers = PET_TYPE_MODIFIERS[state.petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
     val events    = mutableListOf<String>()
