@@ -1190,7 +1190,6 @@
       if (btn) { btn.disabled = isSleeping || isPaused; }
     });
     // Sleep/Wake button: only disabled while paused (must remain clickable to Wake while sleeping)
-    var sleepWakeBtn = document.getElementById("btn-sleep-wake");
     if (sleepWakeBtn) { sleepWakeBtn.disabled = isPaused; }
 
     // Meals-left badge on Feed button
