@@ -26,6 +26,8 @@ import {
   giveMedicine,
   scold,
   praise,
+  pause,
+  resume,
   resetFloorSnacks,
 } from "./gameEngine";
 
@@ -274,6 +276,12 @@ export class SidebarProvider
       return;
     }
 
+    // Block all actions while paused, except the pause toggle itself and new_game
+    const PAUSE_BLOCKED: readonly string[] = ["feed", "snack_consumed", "play", "pat", "sleep", "wake", "clean", "medicine", "scold", "praise", "reset_high_score"];
+    if (state !== null && state.paused && PAUSE_BLOCKED.includes(message.command)) {
+      return;
+    }
+
     let nextState: PetState | null = null;
 
     switch (message.command) {
@@ -369,6 +377,13 @@ export class SidebarProvider
           return;
         }
         nextState = pat(state);
+        break;
+
+      case "pause":
+        if (state === null) {
+          return;
+        }
+        nextState = state.paused ? resume(state) : pause(state);
         break;
 
       case "new_game": {
