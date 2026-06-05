@@ -679,12 +679,12 @@ private fun evolveTo(state: PetState, nextStage: String): PetState {
 // Actions
 // ---------------------------------------------------------------------------
 
-fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int? = null, feedHungerMult: Double? = null): PetState {
+fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int? = null, feedHungerMult: Double? = null, feedMealWeightGain: Int? = null): PetState {
     val cap = feedMealMaxPerCycle ?: FEED_MEAL_MAX_PER_CYCLE
     val hungerBoost = (FEED_MEAL_HUNGER_BOOST * (feedHungerMult ?: 1.0)).toInt()
     if (mealsGivenThisCycle >= cap)
         return withDerivedFields(state.copy(events = listOf("meal_refused")))
-    val newWeight = clampWeight(state.weight + FEED_MEAL_WEIGHT_GAIN)
+    val newWeight = clampWeight(state.weight + (feedMealWeightGain ?: FEED_MEAL_WEIGHT_GAIN))
     val events = mutableListOf("fed_meal")
     checkWeightTierEvents(state.weight, newWeight, events)
 
@@ -755,7 +755,7 @@ fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
  * Increments [PetState.consecutiveSnacks] and — if the new count reaches
  * the maximum — triggers sickness.
  */
-fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThreshold: Int? = null): PetState {
+fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThreshold: Int? = null, feedSnackWeightGain: Int? = null): PetState {
     val hungerBoost = (FEED_SNACK_HUNGER_BOOST * (feedHungerMult ?: 1.0)).toInt()
     val sickAt = snackSickThreshold ?: MAX_CONSECUTIVE_SNACKS_BEFORE_SICK
     val events = mutableListOf<String>()
@@ -766,7 +766,7 @@ fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThres
         events.add("became_sick")
     }
     events.add("fed_snack")
-    val newWeight = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN)
+    val newWeight = clampWeight(state.weight + (feedSnackWeightGain ?: FEED_SNACK_WEIGHT_GAIN))
     checkWeightTierEvents(state.weight, newWeight, events)
 
     return withDerivedFields(
@@ -782,10 +782,10 @@ fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThres
     )
 }
 
-fun play(state: PetState): PetState {
+fun play(state: PetState, playWeightLoss: Int? = null): PetState {
     if (state.energy < PLAY_ENERGY_COST)
         return withDerivedFields(state.copy(events = listOf("play_refused_no_energy")))
-    val newWeight = clampWeight(state.weight - PLAY_WEIGHT_LOSS)
+    val newWeight = clampWeight(state.weight - (playWeightLoss ?: PLAY_WEIGHT_LOSS))
     val events = mutableListOf("played")
     checkWeightTierEvents(state.weight, newWeight, events)
 

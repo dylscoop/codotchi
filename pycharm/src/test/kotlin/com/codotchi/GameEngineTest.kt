@@ -167,4 +167,27 @@ class GameEngineTest {
         assertTrue(next.events.contains("fed_meal"))
         assertEquals(before + 1, next.recentEventLog.size)
     }
+
+    // ── per-character weight overrides ───────────────────────────────────────
+
+    @Test
+    fun `feedMeal feedMealWeightGain overrides default weight gain`() {
+        val pet  = makePet().copy(weight = 10)
+        val next = feedMeal(pet, 0, feedMealWeightGain = 1)
+        assertEquals(11, next.weight)
+    }
+
+    @Test
+    fun `consumeSnack feedSnackWeightGain overrides default weight gain`() {
+        val pet  = makePet().copy(weight = 10)
+        val next = consumeSnack(pet, feedSnackWeightGain = 2)
+        assertEquals(12, next.weight)
+    }
+
+    @Test
+    fun `play playWeightLoss overrides default weight loss`() {
+        val pet  = makePet().copy(weight = 10, energy = 50)
+        val next = play(pet, playWeightLoss = 5)
+        assertEquals(5, next.weight)
+    }
 }

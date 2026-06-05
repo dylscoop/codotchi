@@ -1,6 +1,42 @@
 # Version History
 
-## v2.5.5 — current
+## v2.5.6 — current
+
+### Changes from v2.5.5
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.6 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.6 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.6 |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.6 |
+| `vscode/src/customCharacters.ts` | fix: add `feedMealWeightGain?`, `feedSnackWeightGain?`, `playWeightLoss?` to `CustomCharacter` interface; set `feedMealWeightGain: 1`, `feedSnackWeightGain: 2`, `playWeightLoss: 5` on Stugotchi |
+| `vscode/src/gameEngine.ts` | fix: add `opts.weightGain` override to `feedMeal` and `consumeSnack`; add `opts.weightLoss` override to `play` |
+| `vscode/src/sidebarProvider.ts` | fix: pass `feedMealWeightGain`, `feedSnackWeightGain`, `playWeightLoss` from custom character through to engine opts at `feed`, `snack_consumed`, `play` dispatch |
+| `vscode/media/customCharacters.js` | fix: mirror Stugotchi `feedMealWeightGain: 1`, `feedSnackWeightGain: 2`, `playWeightLoss: 5` |
+| `opencode-codotchi/src/gameEngine.ts` | chore: re-synced from vscode copy (weight override opts) |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | fix: add `feedMealWeightGain: Int?`, `feedSnackWeightGain: Int?`, `playWeightLoss: Int?` to `CustomCharacter` data class; set 1/2/5 on Stugotchi |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: add `feedMealWeightGain`, `feedSnackWeightGain`, `playWeightLoss` named params to `feedMeal`, `consumeSnack`, `play` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: pass new weight fields from custom character through to engine at `feed`, `snack_consumed`, `play` dispatch |
+| `pycharm/src/main/resources/webview/customCharacters.js` | fix: mirror Stugotchi `feedMealWeightGain: 1`, `feedSnackWeightGain: 2`, `playWeightLoss: 5` |
+| `vscode/tests/unit/gameEngine.test.ts` | test: 3 new tests — `opts.weightGain` overrides in `feedMeal` and `consumeSnack`; `opts.weightLoss` override in `play` (254 total) |
+| `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | test: 3 new tests — same scenarios in Kotlin (31 total) |
+| `vscode/codotchi-2.5.6.vsix` | Rebuilt distributable for v2.5.6 |
+| `pycharm/build/distributions/pycharm-codotchi-2.5.6.zip` | Rebuilt distributable for v2.5.6 |
+| `opencode-codotchi/opencode-codotchi-2.5.6.zip` | Rebuilt distributable for v2.5.6 |
+
+### Updated constants
+
+```
+Stugotchi (spriteType "stu"):
+  feedMealWeightGain:  Int = 1    // half of default FEED_MEAL_WEIGHT_GAIN (2)
+  feedSnackWeightGain: Int = 2    // half of default FEED_SNACK_WEIGHT_GAIN (5), rounded
+  playWeightLoss:      Int = 5    // 1.5× default PLAY_WEIGHT_LOSS (3), rounded
+```
+
+---
+
+## v2.5.5 — previous
 
 ### Changes from v2.5.4
 

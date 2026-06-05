@@ -42,6 +42,12 @@ data class CustomCharacter(
     val feedHungerMult: Double? = null,
     /** Consecutive snacks before the pet gets sick (null = global default of 3). */
     val snackSickThreshold: Int? = null,
+    /** Weight gained per meal (null = global default of 2). */
+    val feedMealWeightGain: Int? = null,
+    /** Weight gained per snack consumed (null = global default of 5). */
+    val feedSnackWeightGain: Int? = null,
+    /** Weight lost per play session (null = global default of 3). */
+    val playWeightLoss: Int? = null,
 )
 
 val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
@@ -102,6 +108,9 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         feedSnackMaxPerCycle = 10,
         feedHungerMult       = 0.25,
         snackSickThreshold   = 5,
+        feedMealWeightGain   = 1,
+        feedSnackWeightGain  = 2,
+        playWeightLoss       = 5,
     ),
 )
 

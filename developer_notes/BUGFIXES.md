@@ -1400,3 +1400,12 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 **Problem:** `getVSCodeStatePath()` in `index.ts` always returned the flat global path (`…/codotchi/vscode/state.json`). When `codotchi.perWorkspacePet = true`, VS Code writes state to `…/codotchi/vscode/<hash12>/state.json` instead. opencode-codotchi read stale or empty global state, wrote actions back to the wrong file, and watched the wrong file — a complete disconnect.
 
 **Fix:** Extracted a new `statePathResolver.ts` module. `resolveVSCodeStatePath()` scans `…/codotchi/vscode/` for `state.json` files in the flat global location and in any subdirectory whose name is exactly 12 lowercase hex chars (the per-workspace hash format). It returns the most-recently-modified candidate, falling back to the global path if none are found. The result is cached after the first call (startup-time resolution). `index.ts` now delegates `getVSCodeStatePath()` to this resolver, fixing all four call sites: `loadBothStates`, `makeIDEWatcher`, `saveIDEState`, and `saveTerminalEnabled`.
+
+## BUGFIX-115 — Stugotchi gains too much weight from food/snacks and loses too little from play
+
+**Status:** Fixed (v2.5.6, branch `fix/stugotchi-weight-tuning`)
+**Files:** `vscode/src/customCharacters.ts`, `vscode/src/gameEngine.ts`, `vscode/src/sidebarProvider.ts`, `vscode/media/customCharacters.js`, `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `pycharm/src/main/resources/webview/customCharacters.js`, `opencode-codotchi/src/gameEngine.ts`
+
+**Problem:** Stugotchi used the global default weight constants (`FEED_MEAL_WEIGHT_GAIN = 2`, `FEED_SNACK_WEIGHT_GAIN = 5`, `PLAY_WEIGHT_LOSS = 3`). There was no per-character override mechanism for weight deltas, so Stugotchi accumulated weight too quickly relative to his high feed caps (10 meals, 10 snacks per cycle) and could not shed it fast enough through play.
+
+**Fix:** Added `feedMealWeightGain?`, `feedSnackWeightGain?`, and `playWeightLoss?` optional fields to the `CustomCharacter` interface (TS) and `CustomCharacter` data class (Kotlin). Updated `feedMeal`, `consumeSnack`, and `play` in both engines to accept these overrides via opts/named params, falling back to global constants when absent. Stugotchi is now set to `feedMealWeightGain: 1`, `feedSnackWeightGain: 2`, `playWeightLoss: 5`.

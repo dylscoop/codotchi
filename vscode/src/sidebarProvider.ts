@@ -297,6 +297,7 @@ export class SidebarProvider
           nextState = feedMeal(state, this.mealsGivenThisCycle, {
             maxPerCycle: _cc?.feedMealMaxPerCycle,
             hungerMult:  _cc?.feedHungerMult,
+            weightGain:  _cc?.feedMealWeightGain,
           });
           if (nextState.events.includes("fed_meal")) {
             this.mealsGivenThisCycle += 1;
@@ -311,6 +312,7 @@ export class SidebarProvider
         nextState = consumeSnack(state, {
           hungerMult:    getCustomCharacterBySpriteType(state.spriteType)?.feedHungerMult,
           sickThreshold: getCustomCharacterBySpriteType(state.spriteType)?.snackSickThreshold,
+          weightGain:    getCustomCharacterBySpriteType(state.spriteType)?.feedSnackWeightGain,
         });
         break;
 
@@ -318,7 +320,9 @@ export class SidebarProvider
         if (state === null) {
           return;
         }
-        nextState = play(state);
+        nextState = play(state, {
+          weightLoss: getCustomCharacterBySpriteType(state.spriteType)?.playWeightLoss,
+        });
         if (message.game !== undefined && message.result !== undefined) {
           // Only apply minigame happiness delta if play wasn't refused
           if (!nextState.events.includes("play_refused_no_energy")) {

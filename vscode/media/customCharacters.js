@@ -84,6 +84,9 @@
       feedSnackMaxPerCycle: 10,
       feedHungerMult:       0.25,
       snackSickThreshold:   5,
+      feedMealWeightGain:   1,
+      feedSnackWeightGain:  2,
+      playWeightLoss:       5,
     },
   };
 
