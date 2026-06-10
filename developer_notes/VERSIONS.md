@@ -1,6 +1,22 @@
 # Version History
 
-## v2.5.6 — current
+## v2.5.7 — current
+
+### Changes from v2.5.6
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.7 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.7 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.7 |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.7 |
+| `opencode-codotchi/bin/install.js` | fix: add `src/statePathResolver.ts` → `~/.config/opencode/plugins/statePathResolver.ts` to the list of plugin files copied during install; absence of this file caused the globally installed plugin to fail to load on any repository other than the codotchi workspace itself |
+| `developer_notes/vscode/FEATURES.md` | docs: add Kangaroo character and Language packs rows to §14 Future/Stretch Features |
+| `opencode-codotchi/opencode-codotchi-2.5.7.zip` | Rebuilt distributable zip for v2.5.7 |
+
+---
+
+## v2.5.6 — previous
 
 ### Changes from v2.5.5
 

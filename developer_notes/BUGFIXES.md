@@ -1374,34 +1374,34 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 
 **Fix:** Changed all Tim-specific guards in both sidebar.js files to check `state.spriteType === "tim"` instead of `_cc.spriteType === "tim"`. Updated `extension.ts` to look up the custom character's `giftMessage` for the notification toast, falling back to the default message for normal pets.
 
-## BUGFIX-112 — Snack streak counter carries over after sleep, pat, or play
+## BUGFIX-112 ï¿½ Snack streak counter carries over after sleep, pat, or play
 
 **Status:** Fixed (v2.2.3, branch `fix/snack-streak-idle-sick`)
 **Files:** `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
 
 **Problem:** The `consecutiveSnacks` counter was only reset by `feedMeal()` and `play()`. Sleeping or patting the pet did not reset it, meaning a snack eaten before sleep would still count toward the 3-in-a-row sickness trigger after waking up, even with other actions in between.
 
-**Fix:** Added `consecutiveSnacks: 0` reset to `pat()` and `sleep()` in both the TypeScript and Kotlin game engines. The streak now only causes sickness on a strict uninterrupted sequence of 3 snacks — any meal, play, pat, or sleep resets it.
+**Fix:** Added `consecutiveSnacks: 0` reset to `pat()` and `sleep()` in both the TypeScript and Kotlin game engines. The streak now only causes sickness on a strict uninterrupted sequence of 3 snacks ï¿½ any meal, play, pat, or sleep resets it.
 
-## BUGFIX-113 — Multiple snacks placed on floor do not trigger "threw the snack away"
+## BUGFIX-113 ï¿½ Multiple snacks placed on floor do not trigger "threw the snack away"
 
 **Status:** Fixed (v2.5.1, branch `fix/floor-snack-refused`)
 **Files:** `vscode/src/gameEngine.ts`, `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt`, `pycharm/src/main/kotlin/com/codotchi/engine/PetState.kt`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiToolWindow.kt`
 
 **Problem:** The "threw the snack away" toast (`snack_refused`) only fired when the per-cycle cap (`snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE`) was hit. If 3 snacks were already placed on the stage floor and not yet eaten, clicking Feed again would silently drop the `snack_placed` event in the webview (existing guard: `snackItems.length < 3`) while the engine still incremented `snacksGivenThisCycle` and emitted no toast.
 
-**Fix:** Added `snacksOnFloor: number` to `PetState` (default 0, serialised/deserialised). `startSnack` now checks `snacksOnFloor >= MAX_FLOOR_SNACKS` (= 3) before the per-cycle cap — if the floor is full it returns `snack_refused` without spending cycle quota. On success, `snacksOnFloor` is incremented; `consumeSnack` decrements it (clamped at 0). A `resetFloorSnacks()` helper zeros the field whenever the webview reloads to keep the engine in sync with the freshly empty `snackItems[]`.
+**Fix:** Added `snacksOnFloor: number` to `PetState` (default 0, serialised/deserialised). `startSnack` now checks `snacksOnFloor >= MAX_FLOOR_SNACKS` (= 3) before the per-cycle cap ï¿½ if the floor is full it returns `snack_refused` without spending cycle quota. On success, `snacksOnFloor` is incremented; `consumeSnack` decrements it (clamped at 0). A `resetFloorSnacks()` helper zeros the field whenever the webview reloads to keep the engine in sync with the freshly empty `snackItems[]`.
 
-## BUGFIX-114 — opencode-codotchi does not link when VS Code perWorkspacePet is enabled
+## BUGFIX-114 ï¿½ opencode-codotchi does not link when VS Code perWorkspacePet is enabled
 
 **Status:** Fixed (v2.5.2, branch `fix/opencode-perworkspace-link`)
 **Files:** `opencode-codotchi/src/statePathResolver.ts`, `opencode-codotchi/src/index.ts`
 
-**Problem:** `getVSCodeStatePath()` in `index.ts` always returned the flat global path (`…/codotchi/vscode/state.json`). When `codotchi.perWorkspacePet = true`, VS Code writes state to `…/codotchi/vscode/<hash12>/state.json` instead. opencode-codotchi read stale or empty global state, wrote actions back to the wrong file, and watched the wrong file — a complete disconnect.
+**Problem:** `getVSCodeStatePath()` in `index.ts` always returned the flat global path (`ï¿½/codotchi/vscode/state.json`). When `codotchi.perWorkspacePet = true`, VS Code writes state to `ï¿½/codotchi/vscode/<hash12>/state.json` instead. opencode-codotchi read stale or empty global state, wrote actions back to the wrong file, and watched the wrong file ï¿½ a complete disconnect.
 
-**Fix:** Extracted a new `statePathResolver.ts` module. `resolveVSCodeStatePath()` scans `…/codotchi/vscode/` for `state.json` files in the flat global location and in any subdirectory whose name is exactly 12 lowercase hex chars (the per-workspace hash format). It returns the most-recently-modified candidate, falling back to the global path if none are found. The result is cached after the first call (startup-time resolution). `index.ts` now delegates `getVSCodeStatePath()` to this resolver, fixing all four call sites: `loadBothStates`, `makeIDEWatcher`, `saveIDEState`, and `saveTerminalEnabled`.
+**Fix:** Extracted a new `statePathResolver.ts` module. `resolveVSCodeStatePath()` scans `ï¿½/codotchi/vscode/` for `state.json` files in the flat global location and in any subdirectory whose name is exactly 12 lowercase hex chars (the per-workspace hash format). It returns the most-recently-modified candidate, falling back to the global path if none are found. The result is cached after the first call (startup-time resolution). `index.ts` now delegates `getVSCodeStatePath()` to this resolver, fixing all four call sites: `loadBothStates`, `makeIDEWatcher`, `saveIDEState`, and `saveTerminalEnabled`.
 
-## BUGFIX-115 — Stugotchi gains too much weight from food/snacks and loses too little from play
+## BUGFIX-115 ï¿½ Stugotchi gains too much weight from food/snacks and loses too little from play
 
 **Status:** Fixed (v2.5.6, branch `fix/stugotchi-weight-tuning`)
 **Files:** `vscode/src/customCharacters.ts`, `vscode/src/gameEngine.ts`, `vscode/src/sidebarProvider.ts`, `vscode/media/customCharacters.js`, `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `pycharm/src/main/resources/webview/customCharacters.js`, `opencode-codotchi/src/gameEngine.ts`
@@ -1409,3 +1409,12 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 **Problem:** Stugotchi used the global default weight constants (`FEED_MEAL_WEIGHT_GAIN = 2`, `FEED_SNACK_WEIGHT_GAIN = 5`, `PLAY_WEIGHT_LOSS = 3`). There was no per-character override mechanism for weight deltas, so Stugotchi accumulated weight too quickly relative to his high feed caps (10 meals, 10 snacks per cycle) and could not shed it fast enough through play.
 
 **Fix:** Added `feedMealWeightGain?`, `feedSnackWeightGain?`, and `playWeightLoss?` optional fields to the `CustomCharacter` interface (TS) and `CustomCharacter` data class (Kotlin). Updated `feedMeal`, `consumeSnack`, and `play` in both engines to accept these overrides via opts/named params, falling back to global constants when absent. Stugotchi is now set to `feedMealWeightGain: 1`, `feedSnackWeightGain: 2`, `playWeightLoss: 5`.
+
+## BUGFIX-116 â€” opencode-codotchi installer does not copy statePathResolver.ts
+
+**Status:** Fixed (v2.5.7, branch `fix/installer-state-resolver`)
+**File:** `opencode-codotchi/bin/install.js`
+
+**Problem:** `bin/install.js` copied three plugin source files to `~/.config/opencode/plugins/` (`codotchi.ts`, `gameEngine.ts`, `asciiArt.ts`) but omitted `statePathResolver.ts`. Because `src/index.ts` imports from `./statePathResolver.js`, the globally installed plugin failed to load in any repository other than the `codotchi` workspace (which has its own self-contained `.opencode/plugins/codotchi.ts` with an inline path resolver). As a result, the `codotchi` tool was never registered and `/codotchi show` (and all other `/codotchi` actions) did nothing on other projects.
+
+**Fix:** Added `{ src: "src/statePathResolver.ts", dest: "statePathResolver.ts" }` to the `pluginFiles` array in `bin/install.js`, so the missing dependency is now copied alongside the other plugin files during install.
