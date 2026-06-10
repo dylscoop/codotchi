@@ -270,6 +270,23 @@ The remote will respond with a "Bypassed rule violations" warning — this is ex
 
 All git and GitHub API operations in this repo must use the **`dylscoop`** account. Never use `dsiowlee`.
 
+### Git committer identity
+
+The global git identity must be set to:
+
+```powershell
+git config --global user.name  "dylscoop"
+git config --global user.email "dylan.kw.siowlee@gmail.com"
+```
+
+Verify at any time with:
+```powershell
+git config user.name   # must show: dylscoop
+git config user.email  # must show: dylan.kw.siowlee@gmail.com
+```
+
+If either is wrong, fix immediately before making any commits — commits carry the identity baked in and cannot be changed after pushing.
+
 ### Git push (branch, main, tags)
 
 The remote URL is already set to embed the username:
