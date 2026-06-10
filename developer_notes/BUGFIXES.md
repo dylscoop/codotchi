@@ -1418,3 +1418,12 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 **Problem:** `bin/install.js` copied three plugin source files to `~/.config/opencode/plugins/` (`codotchi.ts`, `gameEngine.ts`, `asciiArt.ts`) but omitted `statePathResolver.ts`. Because `src/index.ts` imports from `./statePathResolver.js`, the globally installed plugin failed to load in any repository other than the `codotchi` workspace (which has its own self-contained `.opencode/plugins/codotchi.ts` with an inline path resolver). As a result, the `codotchi` tool was never registered and `/codotchi show` (and all other `/codotchi` actions) did nothing on other projects.
 
 **Fix:** Added `{ src: "src/statePathResolver.ts", dest: "statePathResolver.ts" }` to the `pluginFiles` array in `bin/install.js`, so the missing dependency is now copied alongside the other plugin files during install.
+
+## BUGFIX-117 — in-repo OpenCode plugin always reads the flat global VS Code state path
+
+**Status:** Fixed (v2.5.8, branch `fix/in-repo-plugin-state-path`)
+**Files:** `.opencode/plugins/codotchi.ts`, `.opencode/plugins/statePathResolver.ts` (new)
+
+**Problem:** `.opencode/plugins/codotchi.ts` (the plugin that runs when OpenCode is open inside the `codotchi` workspace) had a hardcoded `getVSCodeStatePath()` that always returned `%APPDATA%/codotchi/vscode/state.json` — the flat global path. The `codotchi` workspace has `"codotchi.perWorkspacePet": true` in `.vscode/settings.json`, so VS Code writes state to a per-workspace hashed subdirectory (`%APPDATA%/codotchi/vscode/<hash12>/state.json`). The in-repo plugin watched the flat path VS Code was not writing to, so OpenCode never saw the pet's current state.
+
+**Fix:** Copied `opencode-codotchi/src/statePathResolver.ts` to `.opencode/plugins/statePathResolver.ts` and updated `.opencode/plugins/codotchi.ts` to import `getIDEBase` and `resolveVSCodeStatePath` from it. Replaced the hardcoded `getIDEBase()` body and `getVSCodeStatePath()` body with thin wrapper calls, exactly mirroring the pattern already used in `opencode-codotchi/src/index.ts`.

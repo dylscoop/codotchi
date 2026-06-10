@@ -1,6 +1,22 @@
 # Version History
 
-## v2.5.7 — current
+## v2.5.8 — current
+
+### Changes from v2.5.7
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.8 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.8 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.8 |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.8 |
+| `.opencode/plugins/statePathResolver.ts` | fix: added — copy of `opencode-codotchi/src/statePathResolver.ts`; provides `resolveVSCodeStatePath()` to the in-repo plugin |
+| `.opencode/plugins/codotchi.ts` | fix: replace hardcoded `getIDEBase()` / `getVSCodeStatePath()` with thin wrappers that delegate to `statePathResolver.ts`; the in-repo plugin now scans for the most-recently-modified `state.json` (including per-workspace hash subdirs) instead of always reading the flat global path |
+| `opencode-codotchi/opencode-codotchi-2.5.8.zip` | Rebuilt distributable zip for v2.5.8 |
+
+---
+
+## v2.5.7 — previous
 
 ### Changes from v2.5.6
 
