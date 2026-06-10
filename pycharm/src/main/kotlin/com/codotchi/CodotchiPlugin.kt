@@ -337,7 +337,8 @@ class CodotchiPlugin : Disposable {
                     } else {
                         val ns = feedMeal(state, mealsGivenThisCycle,
                             feedMealMaxPerCycle = _cc?.feedMealMaxPerCycle,
-                            feedHungerMult      = _cc?.feedHungerMult)
+                            feedHungerMult      = _cc?.feedHungerMult,
+                            feedMealWeightGain  = _cc?.feedMealWeightGain)
                         if ("fed_meal" in ns.events) mealsGivenThisCycle++
                         ns
                     }
@@ -347,13 +348,14 @@ class CodotchiPlugin : Disposable {
                     state ?: return@withLock
                     val _cc = getCustomCharacterBySpriteType(state.spriteType)
                     nextState = consumeSnack(state,
-                        feedHungerMult     = _cc?.feedHungerMult,
-                        snackSickThreshold = _cc?.snackSickThreshold)
+                        feedHungerMult      = _cc?.feedHungerMult,
+                        snackSickThreshold  = _cc?.snackSickThreshold,
+                        feedSnackWeightGain = _cc?.feedSnackWeightGain)
                 }
 
                 "play" -> {
                     state ?: return@withLock
-                    var ns = play(state)
+                    var ns = play(state, playWeightLoss = getCustomCharacterBySpriteType(state.spriteType)?.playWeightLoss)
                     val game   = message["game"]   as? String
                     val result = message["result"] as? String
                     if (game != null && result != null && "play_refused_no_energy" !in ns.events) {

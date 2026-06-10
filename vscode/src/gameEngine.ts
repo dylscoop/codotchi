@@ -1604,19 +1604,20 @@ function answerAttentionCall(
  * @param opts - Optional per-character overrides.
  * @param opts.maxPerCycle - Feed cap for this character (overrides FEED_MEAL_MAX_PER_CYCLE).
  * @param opts.hungerMult  - Multiplier on the hunger boost for this character (default 1.0).
+ * @param opts.weightGain  - Weight gained per meal (overrides FEED_MEAL_WEIGHT_GAIN).
  * @returns A new PetState after the action.
  */
 export function feedMeal(
   state: PetState,
   mealsGivenThisCycle: number,
-  opts?: { maxPerCycle?: number; hungerMult?: number },
+  opts?: { maxPerCycle?: number; hungerMult?: number; weightGain?: number },
 ): PetState {
   const cap = opts?.maxPerCycle ?? FEED_MEAL_MAX_PER_CYCLE;
   const hungerBoost = Math.round(FEED_MEAL_HUNGER_BOOST * (opts?.hungerMult ?? 1));
   if (mealsGivenThisCycle >= cap) {
     return withDerivedFields({ ...state, events: ["meal_refused"] });
   }
-  const newWeight = clampWeight(state.weight + FEED_MEAL_WEIGHT_GAIN);
+  const newWeight = clampWeight(state.weight + (opts?.weightGain ?? FEED_MEAL_WEIGHT_GAIN));
   const events: string[] = ["fed_meal"];
   checkWeightTierEvents(state.weight, newWeight, events);
   const answered = answerAttentionCall(state, "hunger");
@@ -1689,9 +1690,10 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
  * @param state - The current pet state.
  * @param opts - Optional per-character overrides.
  * @param opts.hungerMult - Multiplier on the hunger boost (default 1.0).
+ * @param opts.weightGain - Weight gained per snack consumed (overrides FEED_SNACK_WEIGHT_GAIN).
  * @returns A new PetState after the action.
  */
-export function consumeSnack(state: PetState, opts?: { hungerMult?: number; sickThreshold?: number }): PetState {
+export function consumeSnack(state: PetState, opts?: { hungerMult?: number; sickThreshold?: number; weightGain?: number }): PetState {
   const hungerBoost = Math.round(FEED_SNACK_HUNGER_BOOST * (opts?.hungerMult ?? 1));
   const sickAt = opts?.sickThreshold ?? MAX_CONSECUTIVE_SNACKS_BEFORE_SICK;
   const events: string[] = [];
@@ -1704,7 +1706,7 @@ export function consumeSnack(state: PetState, opts?: { hungerMult?: number; sick
   }
   events.push("fed_snack");
 
-  const newWeight = clampWeight(state.weight + FEED_SNACK_WEIGHT_GAIN);
+  const newWeight = clampWeight(state.weight + (opts?.weightGain ?? FEED_SNACK_WEIGHT_GAIN));
   checkWeightTierEvents(state.weight, newWeight, events);
 
   return withDerivedFields({
@@ -1736,13 +1738,15 @@ export function resetFloorSnacks(state: PetState): PetState {
  * Energy must be above zero; if the pet has no energy the action is refused.
  *
  * @param state - The current pet state.
+ * @param opts - Optional per-character overrides.
+ * @param opts.weightLoss - Weight lost per play session (overrides PLAY_WEIGHT_LOSS).
  * @returns A new PetState after the action.
  */
-export function play(state: PetState): PetState {
+export function play(state: PetState, opts?: { weightLoss?: number }): PetState {
   if (state.energy < PLAY_ENERGY_COST) {
     return withDerivedFields({ ...state, events: ["play_refused_no_energy"] });
   }
-  const newWeight = clampWeight(state.weight - PLAY_WEIGHT_LOSS);
+  const newWeight = clampWeight(state.weight - (opts?.weightLoss ?? PLAY_WEIGHT_LOSS));
   const events: string[] = ["played"];
   checkWeightTierEvents(state.weight, newWeight, events);
   const answered = answerAttentionCall(state, "unhappiness");

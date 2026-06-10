@@ -713,6 +713,12 @@ describe("feedMeal", () => {
       assert.ok(pet.events.includes("fed_meal"));
     }
   });
+
+  it("opts.weightGain overrides FEED_MEAL_WEIGHT_GAIN", () => {
+    const pet = makePet({ weight: 10 });
+    const next = feedMeal(pet, 0, { weightGain: 1 });
+    assert.equal(next.weight, 11);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -817,6 +823,12 @@ describe("consumeSnack", () => {
     const pet = makePet({ snacksOnFloor: 0 });
     const next = consumeSnack(pet);
     assert.equal(next.snacksOnFloor, 0);
+  });
+
+  it("opts.weightGain overrides FEED_SNACK_WEIGHT_GAIN", () => {
+    const pet = makePet({ weight: 10 });
+    const next = consumeSnack(pet, { weightGain: 2 });
+    assert.equal(next.weight, 12);
   });
 });
 
@@ -1009,6 +1021,12 @@ describe("play", () => {
     const pet = makePet({ weight: 1, energy: 50 });
     const next = play(pet);
     assert.equal(next.weight, 1);
+  });
+
+  it("opts.weightLoss overrides PLAY_WEIGHT_LOSS", () => {
+    const pet = makePet({ weight: 10, energy: 50 });
+    const next = play(pet, { weightLoss: 5 });
+    assert.equal(next.weight, 5);
   });
 });
 

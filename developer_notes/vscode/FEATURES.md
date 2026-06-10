@@ -717,12 +717,14 @@ These are lower-priority ideas that require design work before implementation. A
 | Redesign minigame art | `[ ]` | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style. |
 | Egg-hatch animation | `[ ]` | Wiggle → crack → burst sequence before baby stage; fits naturally into the reaction queue (already in §2.2). |
 | Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |
+| Kangaroo character | `[ ]` | New pixel-art sprite type (baby through senior stages) drawn in the existing `sprites.js` pipeline; added to the new-game pet-type picker. |
 | **— Platform & social —** | | |
 | Multiple simultaneous pets | `[ ]` | Tabbed or scrollable sidebar; pets can interact with each other. |
 | New pet types via extension pack | `[ ]` | Contribution point so third-party packs can add sprite types. |
 | Leaderboard | `[ ]` | Opt-in age record sharing via VS Code Settings Sync or a lightweight backend. |
 | Export / import pet via JSON | `[ ]` | Already tracked in §11; listed here for visibility. Allows sharing or backup of a pet. |
 | State schema versioning | `[ ]` | Already tracked in §11; listed here for visibility. Add `schemaVersion` field to `PetState` for safe migrations. |
+| Language packs | `[ ]` | Localise all UI strings into regional language variants; initial packs: Australian English, Scottish English. Community-contributed packs loadable at runtime. |
 
 ---
 

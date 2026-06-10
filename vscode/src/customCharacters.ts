@@ -40,6 +40,12 @@ export interface CustomCharacter {
   feedHungerMult?: number;
   /** Consecutive snacks before the pet gets sick (default: MAX_CONSECUTIVE_SNACKS_BEFORE_SICK = 3). */
   snackSickThreshold?: number;
+  /** Weight gained per meal (default: FEED_MEAL_WEIGHT_GAIN = 2). */
+  feedMealWeightGain?: number;
+  /** Weight gained per snack consumed (default: FEED_SNACK_WEIGHT_GAIN = 5). */
+  feedSnackWeightGain?: number;
+  /** Weight lost per play session (default: PLAY_WEIGHT_LOSS = 3). */
+  playWeightLoss?: number;
 }
 
 export const CUSTOM_CHARACTERS: CustomCharacter[] = [
@@ -100,6 +106,9 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     feedSnackMaxPerCycle: 10,
     feedHungerMult:       0.25,
     snackSickThreshold:   5,
+    feedMealWeightGain:   1,
+    feedSnackWeightGain:  2,
+    playWeightLoss:       5,
   },
 ];
 

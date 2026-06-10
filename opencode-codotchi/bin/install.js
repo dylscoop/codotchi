@@ -13,9 +13,10 @@
  *      (XDG_CONFIG_HOME/opencode/commands/codotchi.md if XDG_CONFIG_HOME is set)
  *
  *   2. Copies the plugin TypeScript source files into the global plugin directory:
- *        src/index.ts      → ~/.config/opencode/plugins/codotchi.ts
- *        src/gameEngine.ts → ~/.config/opencode/plugins/gameEngine.ts
- *        src/asciiArt.ts   → ~/.config/opencode/plugins/asciiArt.ts
+ *        src/index.ts             → ~/.config/opencode/plugins/codotchi.ts
+ *        src/gameEngine.ts        → ~/.config/opencode/plugins/gameEngine.ts
+ *        src/asciiArt.ts          → ~/.config/opencode/plugins/asciiArt.ts
+ *        src/statePathResolver.ts → ~/.config/opencode/plugins/statePathResolver.ts
  *
  *      Files in ~/.config/opencode/plugins/ are loaded automatically by OpenCode
  *      on every startup — no "plugin" config entry needed.
@@ -60,9 +61,10 @@ const commandSrc  = path.join(__dirname, "..", "commands", "codotchi.md");
 const commandDest = path.join(commandsDir, "codotchi.md");
 
 const pluginFiles = [
-  { src: path.join(__dirname, "..", "src", "index.ts"),      dest: path.join(pluginsDir, "codotchi.ts")   },
-  { src: path.join(__dirname, "..", "src", "gameEngine.ts"), dest: path.join(pluginsDir, "gameEngine.ts") },
-  { src: path.join(__dirname, "..", "src", "asciiArt.ts"),   dest: path.join(pluginsDir, "asciiArt.ts")   },
+  { src: path.join(__dirname, "..", "src", "index.ts"),             dest: path.join(pluginsDir, "codotchi.ts")           },
+  { src: path.join(__dirname, "..", "src", "gameEngine.ts"),        dest: path.join(pluginsDir, "gameEngine.ts")         },
+  { src: path.join(__dirname, "..", "src", "asciiArt.ts"),          dest: path.join(pluginsDir, "asciiArt.ts")           },
+  { src: path.join(__dirname, "..", "src", "statePathResolver.ts"), dest: path.join(pluginsDir, "statePathResolver.ts")  },
 ];
 
 const configPkgDest = path.join(opencodeDir, "package.json");
