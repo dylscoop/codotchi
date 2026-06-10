@@ -113,7 +113,7 @@ Do **not** rebuild on every individual commit. Rebuild once, as a dedicated
 | IDE | Command (run from the given directory) | Output artifact to commit |
 |-----|----------------------------------------|--------------------------|
 | VS Code | `npx @vscode/vsce package` (run from `vscode/`) | `vscode/codotchi-X.Y.Z.vsix` |
-| PyCharm | See PyCharm build procedure below | `pycharm/build/distributions/pycharm-gotchi-X.Y.Z.zip` |
+| PyCharm | See PyCharm build procedure below | `pycharm/build/distributions/pycharm-codotchi-X.Y.Z.zip` |
 
 The build commit must come **after** all feature, fix, test, and doc commits on
 the branch — never rebuild mid-branch and then continue adding changes on top.
@@ -141,7 +141,7 @@ another Java process is still running from a previous build attempt or IDE sessi
 
 3. **Run the build with `-x buildSearchableOptions --no-configuration-cache`** to prevent re-poisoning and skip the task that causes the file-lock hang:
    ```powershell
-   $env:JAVA_HOME = 'C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'
+    $env:JAVA_HOME = 'C:\Program Files\JetBrains\PyCharm 2025.2.3\jbr'
    & '.\gradlew.bat' buildPlugin -x buildSearchableOptions --no-configuration-cache
    ```
    (run from `pycharm/`)
@@ -184,7 +184,7 @@ running.
 
 Instead, always run the custom `unitTest` task:
 ```powershell
-$env:JAVA_HOME = 'C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'
+$env:JAVA_HOME = 'C:\Program Files\JetBrains\PyCharm 2025.2.3\jbr'
 & '.\gradlew.bat' unitTest --no-configuration-cache
 ```
 (run from `pycharm/`)
@@ -223,7 +223,7 @@ clear → retry cycle as `buildPlugin`:
    ```
 3. Re-run with `timeout: 240000`:
    ```powershell
-   $env:JAVA_HOME = 'C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.jetbrains\jbre\jbr_jcef-17.0.10-windows-x64-b1207.12\extracted\jbr_jcef-17.0.10-windows-x64-b1207.12'
+    $env:JAVA_HOME = 'C:\Program Files\JetBrains\PyCharm 2025.2.3\jbr'
    & '.\gradlew.bat' unitTest --no-configuration-cache
    ```
 
@@ -266,6 +266,36 @@ The remote will respond with a "Bypassed rule violations" warning — this is ex
 
 ---
 
+## GitHub account — always dylscoop
+
+All git and GitHub API operations in this repo must use the **`dylscoop`** account. Never use `dsiowlee`.
+
+### Git push (branch, main, tags)
+
+The remote URL is already set to embed the username:
+
+```
+https://dylscoop@github.com/dylscoop/codotchi.git
+```
+
+Because the username is in the URL, git automatically looks up the `git:https://dylscoop@github.com` entry in the Windows Credential Manager — the correct one. **Never change the remote URL to `https://github.com/...`** (without the username prefix) — that would cause git to look up the wrong credential entry and push as `dsiowlee`.
+
+Verify at any time with:
+```powershell
+git remote get-url origin   # must show: https://dylscoop@github.com/dylscoop/codotchi.git
+```
+
+If the URL is wrong, fix it with:
+```powershell
+git remote set-url origin https://dylscoop@github.com/dylscoop/codotchi.git
+```
+
+### GitHub API calls (PAT retrieval)
+
+Always pass `username=dylscoop` explicitly when retrieving the PAT from the Windows Credential Manager (see "Step 1 — retrieve the stored PAT" below).
+
+---
+
 ## GitHub release body — what to include
 
 When creating a GitHub release for `vX.Y.Z`, the release body must cover **everything new since the previous GitHub release** (not the previous git tag). These two are often different — some tags are never published as GitHub releases, and some GitHub releases are deleted. Follow these steps:
@@ -304,12 +334,7 @@ When creating a GitHub release for `vX.Y.Z`, the release body must cover **every
 
 ### Step 1 — retrieve the stored PAT
 
-> **WARNING:** The Windows Credential Manager stores **two** separate entries for GitHub:
-> - `git:https://github.com` — belongs to `dsiowlee` (wrong account, no push access)
-> - `git:https://dylscoop@github.com` — the correct `dylscoop` account
->
-> Always retrieve the `dylscoop@github.com` entry by passing `username=dylscoop` explicitly.
-> **Never use the token returned without specifying `username=dylscoop`** — it will return the `dsiowlee` token.
+> **Always use the `dylscoop` account.** Pass `username=dylscoop` explicitly when retrieving credentials from the Windows Credential Manager to ensure the correct entry is returned.
 
 Attempt retrieval with:
 
@@ -401,9 +426,9 @@ $releaseId = RELEASE_ID_HERE
 $uploadBase = "https://uploads.github.com/repos/dylscoop/codotchi/releases/$releaseId/assets"
 
 $artifacts = @(
-    @{ path = 'C:\personal_repos\vscode_gotchi\vscode\codotchi-X.Y.Z.vsix'; name = 'codotchi-X.Y.Z.vsix'; type = 'application/octet-stream' },
-    @{ path = 'C:\personal_repos\vscode_gotchi\pycharm\build\distributions\pycharm-codotchi-X.Y.Z.zip'; name = 'pycharm-codotchi-X.Y.Z.zip'; type = 'application/zip' },
-    @{ path = 'C:\personal_repos\vscode_gotchi\opencode-codotchi\opencode-codotchi-X.Y.Z.zip'; name = 'opencode-codotchi-X.Y.Z.zip'; type = 'application/zip' }
+    @{ path = 'C:\personal_repos\codotchi\vscode\codotchi-X.Y.Z.vsix'; name = 'codotchi-X.Y.Z.vsix'; type = 'application/octet-stream' },
+    @{ path = 'C:\personal_repos\codotchi\pycharm\build\distributions\pycharm-codotchi-X.Y.Z.zip'; name = 'pycharm-codotchi-X.Y.Z.zip'; type = 'application/zip' },
+    @{ path = 'C:\personal_repos\codotchi\opencode-codotchi\opencode-codotchi-X.Y.Z.zip'; name = 'opencode-codotchi-X.Y.Z.zip'; type = 'application/zip' }
 )
 
 foreach ($a in $artifacts) {

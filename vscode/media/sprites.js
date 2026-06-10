@@ -3695,6 +3695,16 @@
     var bodyHeight   = Math.round(bodySize * heightMult);
     var legH         = Math.max(2, Math.round(bodySize * 0.22));
 
+    // Ground-anchor: classic uses a 24px base; floorY was computed from the 96px
+    // grid base. Shift bodyY down so the feet align with the grid ground line.
+    var groundLegH = stage === "egg"    ? 0
+                   : stage === "baby"   ? Math.max(1, Math.round(bodySize * 0.12))
+                   : stage === "senior" ? Math.max(2, Math.round(bodySize * 0.25))
+                   : stage === "child"  ? legH
+                   : Math.max(2, Math.round(bodySize * 0.30)); // teen / adult
+    var gridBHeight = Math.round(Math.round(96 * stageScale * sizeMultiplier) * 1.5);
+    bodyY = bodyY + (gridBHeight - bodyHeight - groundLegH);
+
     // Sleeping breath bob
     var bobY = bodyY;
     if (state.sleeping) {

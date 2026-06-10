@@ -1,6 +1,22 @@
 # Version History
 
-## v2.5.8 — current
+## v2.5.9 — current
+
+### Changes from v2.5.8
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.9 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.9 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.9 |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.9 |
+| `vscode/media/sprites.js` | fix: classic sprite ground anchor (BUGFIX-118) — shift `bodyY` in `drawClassicProcedural` so feet land on the grid ground line instead of floating ~44–76 px above it |
+| `pycharm/src/main/resources/webview/sprites.js` | fix: same ground-anchor fix mirrored for PyCharm (ide-parity) |
+| `opencode-codotchi/opencode-codotchi-2.5.9.zip` | Rebuilt distributable zip for v2.5.9 |
+
+---
+
+## v2.5.8 — previous
 
 ### Changes from v2.5.7
 
