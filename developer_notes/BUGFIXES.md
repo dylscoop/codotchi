@@ -4,6 +4,17 @@ All known bugs and their resolution status for the Codotchi project.
 
 ---
 
+## BUGFIX-118 — Classic sprite floats above the ground
+
+**Status:** Fixed (v2.5.9, branch `fix/classic-sprite-ground-anchor`)
+**Files:** `vscode/media/sprites.js`, `pycharm/src/main/resources/webview/sprites.js`
+
+**Problem:** The classic (procedural) sprite appeared to float above the stage floor instead of standing on it. The `floorY` anchor in `sidebar.js` is computed using the **96px grid base** (`gridBHeight = round(round(96 × sizeMul × stageScale) × 1.5)`), which reserves ~54–108 px of vertical space for the sprite. `drawClassicProcedural` uses the legacy **24px base** (4× smaller), so its total height (`bodyHeight + legH`) is only ~10–38 px at medium size. The sprite was drawn at `bodyY = floorY` and its feet landed `gridBHeight − (bodyHeight + legH)` ≈ 44–76 px above the intended ground line.
+
+**Fix:** Added a ground-anchor adjustment inside `drawClassicProcedural`, immediately after computing `bodyHeight` and `legH`. The adjustment computes the per-stage effective leg height (`groundLegH`) and the grid-equivalent `gridBHeight`, then shifts `bodyY` down by `gridBHeight − bodyHeight − groundLegH` so the bottom of the feet aligns exactly with the grid ground line. Applied identically to both the VS Code and PyCharm webview copies of `sprites.js`.
+
+---
+
 ## BUGFIX-001 — Font size setting does not hot-reload
 
 **Status:** Fixed (commit `db47873`)
