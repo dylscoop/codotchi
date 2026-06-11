@@ -272,17 +272,17 @@ All git and GitHub API operations in this repo must use the **`dylscoop`** accou
 
 ### Git committer identity
 
-The global git identity must be set to:
+This identity applies to **this repo only**. Do not set `--global` — that would affect all repos on the machine. Use `--local` (repo-scoped):
 
 ```powershell
-git config --global user.name  "dylscoop"
-git config --global user.email "dylan.kw.siowlee@gmail.com"
+git config --local user.name  "dylscoop"
+git config --local user.email "dylan.kw.siowlee@gmail.com"
 ```
 
 Verify at any time with:
 ```powershell
-git config user.name   # must show: dylscoop
-git config user.email  # must show: dylan.kw.siowlee@gmail.com
+git config --local user.name   # must show: dylscoop
+git config --local user.email  # must show: dylan.kw.siowlee@gmail.com
 ```
 
 If either is wrong, fix immediately before making any commits — commits carry the identity baked in and cannot be changed after pushing.
