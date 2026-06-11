@@ -9,8 +9,11 @@
   },
   "scripts": {
     "build": "tsc",
+    "bundle": "node scripts/bundle-plugin.js",
     "prepublishOnly": "npm run build",
-    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/asciiArt.test.js out-test/tests/unit/statePath.test.js"
+    "test:node": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/asciiArt.test.js out-test/tests/unit/statePath.test.js",
+    "test:plugin": "node scripts/bundle-plugin.js && bun test tests/unit/pluginContract.test.ts",
+    "test": "npm run test:node && npm run test:plugin"
   },
   "keywords": ["opencode", "plugin", "tamagotchi", "virtual-pet", "codotchi"],
   "author": "dylscoop",
