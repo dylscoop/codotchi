@@ -9,11 +9,18 @@
  * The zip contains a top-level folder named opencode-codotchi-X.Y.Z/ with:
  *   bin/install.js
  *   commands/codotchi.md
- *   src/index.ts
- *   src/gameEngine.ts
- *   src/asciiArt.ts
+ *   dist-plugin/codotchi.js   ← single bundled plugin (built here if absent)
+ *   scripts/bundle-plugin.js  ← so users can rebuild from source if needed
+ *   src/                      ← source reference (not loaded as plugins)
  *   package.json
  *   README.md
+ *
+ * WHY dist-plugin/ INSTEAD OF src/?
+ *   OpenCode loads every .ts/.js file in ~/.config/opencode/plugins/ as a
+ *   plugin.  Shipping the four source files (index.ts, gameEngine.ts,
+ *   asciiArt.ts, statePathResolver.ts) caused OpenCode to try to load each
+ *   helper as an independent plugin and crash with "Plugin export is not a
+ *   function".  The installer now copies only the single bundled codotchi.js.
  *
  * Usage (run from opencode-codotchi/):
  *   node scripts/package.js
@@ -29,7 +36,32 @@ const zipName = `opencode-codotchi-${version}.zip`;
 const rootDir = path.resolve(__dirname, "..");
 const outPath = path.join(rootDir, zipName);
 
-const includes = ["bin", "commands", "src", "package.json", "README.md"];
+// ── Step 0: Build the bundle if missing ──────────────────────────────────────
+
+const bundleFile = path.join(rootDir, "dist-plugin", "codotchi.js");
+if (!fs.existsSync(bundleFile)) {
+  console.log("Bundle not found — building dist-plugin/codotchi.js ...");
+  execSync("node scripts/bundle-plugin.js", { cwd: rootDir, stdio: "inherit" });
+}
+
+if (!fs.existsSync(bundleFile)) {
+  console.error(`Bundle still missing: ${bundleFile}`);
+  process.exit(1);
+}
+
+// ── Items to stage ────────────────────────────────────────────────────────────
+// dist-plugin/ is included so the installer can copy codotchi.js directly.
+// src/ is included as a source reference but must NOT be placed in plugins/.
+
+const includes = [
+  "bin",
+  "commands",
+  "dist-plugin",
+  "scripts/bundle-plugin.js",
+  "src",
+  "package.json",
+  "README.md",
+];
 
 // ── Recursive directory copy ──────────────────────────────────────────────────
 function copyDirSync(src, dest) {
@@ -52,6 +84,10 @@ fs.mkdirSync(stageDir, { recursive: true });
 for (const item of includes) {
   const src  = path.join(rootDir, item);
   const dest = path.join(stageDir, item);
+  if (!fs.existsSync(src)) {
+    console.warn(`Warning: staged item not found, skipping: ${src}`);
+    continue;
+  }
   const stat = fs.statSync(src);
   if (stat.isDirectory()) {
     copyDirSync(src, dest);
