@@ -42,8 +42,7 @@ import * as path from "path";
 import * as os   from "os";
 import { tool }  from "@opencode-ai/plugin";
 import type { Plugin } from "@opencode-ai/plugin";
-import { getIDEBase as _getIDEBase, resolveVSCodeStatePath, _resetVSCodePathCache } from "./statePathResolver.js";
-export { _resetVSCodePathCache };
+import { getIDEBase as _getIDEBase, resolveVSCodeStatePath } from "./statePathResolver.js";
 
 import {
   PetState,
