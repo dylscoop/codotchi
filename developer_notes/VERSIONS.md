@@ -12,6 +12,15 @@
 | `opencode-codotchi/package.json` | Version bumped to 2.5.9 |
 | `vscode/media/sprites.js` | fix: classic sprite ground anchor (BUGFIX-118) — shift `bodyY` in `drawClassicProcedural` so feet land on the grid ground line instead of floating ~44–76 px above it |
 | `pycharm/src/main/resources/webview/sprites.js` | fix: same ground-anchor fix mirrored for PyCharm (ide-parity) |
+| `opencode-codotchi/src/index.ts` | fix: removed `_resetVSCodePathCache` re-export that caused OpenCode to invoke it as a plugin and crash (BUGFIX-119A) |
+| `opencode-codotchi/bin/install.js` | fix: copies only single bundled `dist-plugin/codotchi.js`; removes stale helper `.ts` files; aligns `PLUGIN_VER` to `1.2.27` (BUGFIX-119B) |
+| `opencode-codotchi/scripts/bundle-plugin.js` | new: Bun bundler script producing `dist-plugin/codotchi.js` — single self-contained ESM plugin (BUGFIX-119B) |
+| `opencode-codotchi/scripts/package.js` | fix: builds bundle before zipping; ships `dist-plugin/codotchi.js` instead of loose helper `.ts` files (BUGFIX-119B) |
+| `opencode-codotchi/.gitignore` | chore: added `dist-plugin/` and `out-test/` to gitignore |
+| `opencode-codotchi/tests/unit/pluginContract.test.ts` | new: 45 Bun-based loader-contract regression tests (BUGFIX-119) |
+| `opencode-codotchi/package.json` | test: added `bundle`, `test:node`, `test:plugin` scripts; `npm test` now runs both node:test and bun:test suites |
+| `opencode-codotchi/tsconfig.test.json` | chore: exclude `pluginContract.test.ts` from Node/CJS test compile pass |
+| `developer_notes/BUGFIXES.md` | docs: added BUGFIX-119 entry |
 | `opencode-codotchi/opencode-codotchi-2.5.9.zip` | Rebuilt distributable zip for v2.5.9 |
 
 ---
