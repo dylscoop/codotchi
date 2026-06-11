@@ -4,7 +4,24 @@ All known bugs and their resolution status for the Codotchi project.
 
 ---
 
-## BUGFIX-118 — Classic sprite floats above the ground
+## BUGFIX-119 — OpenCode plugin crashes on every startup with "undefined is not an object (evaluating 'hook.config')"
+
+**Status:** Fixed (v2.5.9, branch `opencode_fix`)
+**Files:** `opencode-codotchi/src/index.ts`, `opencode-codotchi/bin/install.js`, `opencode-codotchi/scripts/bundle-plugin.js` (new), `opencode-codotchi/scripts/package.js`, `opencode-codotchi/tests/unit/pluginContract.test.ts` (new)
+
+**Problem (Bug A — fatal):** `opencode-codotchi/src/index.ts` re-exported `_resetVSCodePathCache` from `statePathResolver` (`export { _resetVSCodePathCache }`). OpenCode's plugin loader (`getLegacyPlugins`) iterates every exported value of a plugin module and invokes each one as a plugin function. `_resetVSCodePathCache` is called, returns `undefined`, and that `undefined` is pushed into the hooks list. The loader then runs `hook.config?.(cfg)` on every hooks entry; `undefined.config` throws `"undefined is not an object (evaluating 'hook.config')"`, crashing the entire plugin context on every OpenCode startup. Reproduced exactly by replicating the loader against the real source, matching the `opencode.log` entries (`"plugin config hook failed" error="undefined is not an object (evaluating 'j.config')"`).
+
+**Problem (Bug B — secondary):** `bin/install.js` copied four separate `.ts` source files into `~/.config/opencode/plugins/`: `codotchi.ts` (the plugin), `gameEngine.ts`, `asciiArt.ts`, and `statePathResolver.ts` (helper modules). OpenCode loads **every file** in that directory as a plugin. `gameEngine.ts` and `asciiArt.ts` export non-function values (constants, arrays), causing OpenCode to throw `"Plugin export is not a function"` for each. `statePathResolver.ts` also contributed a non-plugin function export that pushed another `undefined` into the hooks list, triggering the same crash. This matched the additional `"failed to load plugin"` log lines for those two files.
+
+**Fix (Bug A):** Removed the `export { _resetVSCodePathCache }` re-export from `src/index.ts`. The module now exports only `plugin` and `export default plugin` (same reference), which OpenCode deduplicates to exactly one invocation, producing one non-undefined hooks entry. The unit test for `statePathResolver.ts` already imports `_resetVSCodePathCache` directly from `statePathResolver.ts`, so no test was broken.
+
+**Fix (Bug B):** Added `scripts/bundle-plugin.js` which uses Bun's bundler to combine all four source files into a single self-contained ESM bundle (`dist-plugin/codotchi.js`, ~87 KB) with `@opencode-ai/plugin` and `@opencode-ai/sdk` kept external. Updated `bin/install.js` to copy only this one file to `~/.config/opencode/plugins/codotchi.js`, and to delete any stale `codotchi.ts`, `gameEngine.ts`, `asciiArt.ts`, `statePathResolver.ts` files left behind by previous installs. Updated `scripts/package.js` to build the bundle before zipping and include `dist-plugin/codotchi.js` in the distributable instead of the loose helper `.ts` files. Also aligned `PLUGIN_VER` in `bin/install.js` to `1.2.27` (was `1.14.19`, a stale mismatch).
+
+**Tests added:** `tests/unit/pluginContract.test.ts` (Bun, 45 assertions) replicates OpenCode's `getLegacyPlugins` + config-hook loop and asserts: every exported value is a plugin function; zero undefined hook entries; the config-hook loop does not throw; all 30+ real OpenCode event types survive; `experimental.text.complete` and `tool.execute.after` hooks run without throwing; and the source `index.ts` exports are exclusively plugin-safe values (guard against future stray re-exports). Wired into `npm test` via a `test:plugin` script.
+
+---
+
+
 
 **Status:** Fixed (v2.5.9, branch `fix/classic-sprite-ground-anchor`)
 **Files:** `vscode/media/sprites.js`, `pycharm/src/main/resources/webview/sprites.js`
