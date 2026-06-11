@@ -9,32 +9,35 @@
  *   (or: npx opencode-codotchi --install  — once the package is published to npm)
  *
  * What it does:
- *   1. Copies commands/codotchi.md → ~/.config/opencode/commands/codotchi.md
- *      (XDG_CONFIG_HOME/opencode/commands/codotchi.md if XDG_CONFIG_HOME is set)
+ *   1. Builds the single-file plugin bundle (dist-plugin/codotchi.js) if it is
+ *      not already present, then copies it to the global plugin directory:
+ *        dist-plugin/codotchi.js  → ~/.config/opencode/plugins/codotchi.js
  *
- *   2. Copies the plugin TypeScript source files into the global plugin directory:
- *        src/index.ts             → ~/.config/opencode/plugins/codotchi.ts
- *        src/gameEngine.ts        → ~/.config/opencode/plugins/gameEngine.ts
- *        src/asciiArt.ts          → ~/.config/opencode/plugins/asciiArt.ts
- *        src/statePathResolver.ts → ~/.config/opencode/plugins/statePathResolver.ts
+ *      OpenCode loads every file in ~/.config/opencode/plugins/ as a plugin.
+ *      Shipping a single bundled file means only the real plugin is loaded;
+ *      previous installs copied four loose helper .ts files into that directory
+ *      which OpenCode also attempted to load as plugins, crashing the process.
  *
- *      Files in ~/.config/opencode/plugins/ are loaded automatically by OpenCode
- *      on every startup — no "plugin" config entry needed.
+ *   2. Removes any stale helper files left behind by previous installs:
+ *        ~/.config/opencode/plugins/codotchi.ts   (old entry point)
+ *        ~/.config/opencode/plugins/gameEngine.ts
+ *        ~/.config/opencode/plugins/asciiArt.ts
+ *        ~/.config/opencode/plugins/statePathResolver.ts
  *
- *   3. Creates or updates ~/.config/opencode/package.json to add the
+ *   3. Copies commands/codotchi.md → ~/.config/opencode/commands/codotchi.md
+ *
+ *   4. Creates or updates ~/.config/opencode/package.json to add the
  *      @opencode-ai/plugin dependency. OpenCode runs `bun install` on startup,
  *      so the dependency is resolved automatically.
  *
  * "~/.config" is resolved via XDG_CONFIG_HOME (if set) or os.homedir()/.config
  * — the same logic OpenCode itself uses on every platform, including Windows.
- *
- * All three steps are required once per machine so the /codotchi slash command
- * and the plugin are available in every OpenCode project.
  */
 
-const fs   = require("fs");
-const path = require("path");
-const os   = require("os");
+const fs            = require("fs");
+const path          = require("path");
+const os            = require("os");
+const { execSync }  = require("child_process");
 
 const args = process.argv.slice(2);
 
@@ -60,20 +63,47 @@ const pluginsDir  = path.join(opencodeDir, "plugins");
 const commandSrc  = path.join(__dirname, "..", "commands", "codotchi.md");
 const commandDest = path.join(commandsDir, "codotchi.md");
 
-const pluginFiles = [
-  { src: path.join(__dirname, "..", "src", "index.ts"),             dest: path.join(pluginsDir, "codotchi.ts")           },
-  { src: path.join(__dirname, "..", "src", "gameEngine.ts"),        dest: path.join(pluginsDir, "gameEngine.ts")         },
-  { src: path.join(__dirname, "..", "src", "asciiArt.ts"),          dest: path.join(pluginsDir, "asciiArt.ts")           },
-  { src: path.join(__dirname, "..", "src", "statePathResolver.ts"), dest: path.join(pluginsDir, "statePathResolver.ts")  },
+// Single bundled plugin file — the only file that should live in plugins/
+const bundleSrc  = path.join(__dirname, "..", "dist-plugin", "codotchi.js");
+const bundleDest = path.join(pluginsDir, "codotchi.js");
+
+// Stale files left behind by old installs (shipped four loose .ts helpers that
+// OpenCode attempted to load as plugins, crashing the process).
+const staleFiles = [
+  path.join(pluginsDir, "codotchi.ts"),
+  path.join(pluginsDir, "gameEngine.ts"),
+  path.join(pluginsDir, "asciiArt.ts"),
+  path.join(pluginsDir, "statePathResolver.ts"),
 ];
 
 const configPkgDest = path.join(opencodeDir, "package.json");
 const PLUGIN_DEP    = "@opencode-ai/plugin";
-const PLUGIN_VER    = "1.14.19";
+const PLUGIN_VER    = "1.2.27";   // must match opencode-codotchi/package.json
 
 let anyError = false;
 
-// ── Step 1: Install /codotchi slash command ──────────────────────────────────
+// ── Step 0: Build the bundle if missing ──────────────────────────────────────
+
+if (!fs.existsSync(bundleSrc)) {
+  console.log("Bundle not found — building dist-plugin/codotchi.js ...");
+  try {
+    execSync("node scripts/bundle-plugin.js", {
+      cwd: path.join(__dirname, ".."),
+      stdio: "inherit",
+    });
+  } catch (err) {
+    console.error(`Failed to build bundle: ${err.message}`);
+    console.error("Run: node scripts/bundle-plugin.js  (requires bun on PATH)");
+    anyError = true;
+  }
+}
+
+if (!fs.existsSync(bundleSrc)) {
+  console.error(`Bundle still missing after build attempt: ${bundleSrc}`);
+  process.exit(1);
+}
+
+// ── Step 1: Install /codotchi slash command ───────────────────────────────────
 
 if (!fs.existsSync(commandsDir)) {
   fs.mkdirSync(commandsDir, { recursive: true });
@@ -88,24 +118,36 @@ try {
   anyError = true;
 }
 
-// ── Step 2: Install plugin source files ──────────────────────────────────────
+// ── Step 2: Remove stale plugin files from previous installs ─────────────────
 
 if (!fs.existsSync(pluginsDir)) {
   fs.mkdirSync(pluginsDir, { recursive: true });
   console.log(`Created directory: ${pluginsDir}`);
 }
 
-for (const { src, dest } of pluginFiles) {
-  try {
-    fs.copyFileSync(src, dest);
-    console.log(`Installed plugin file:  ${dest}`);
-  } catch (err) {
-    console.error(`Failed to install ${path.basename(dest)}: ${err.message}`);
-    anyError = true;
+for (const stale of staleFiles) {
+  if (fs.existsSync(stale)) {
+    try {
+      fs.rmSync(stale);
+      console.log(`Removed stale plugin file: ${stale}`);
+    } catch (err) {
+      console.error(`Failed to remove stale file ${path.basename(stale)}: ${err.message}`);
+      anyError = true;
+    }
   }
 }
 
-// ── Step 3: Add @opencode-ai/plugin to ~/.config/opencode/package.json ────────
+// ── Step 3: Install the single bundled plugin file ────────────────────────────
+
+try {
+  fs.copyFileSync(bundleSrc, bundleDest);
+  console.log(`Installed plugin bundle:  ${bundleDest}`);
+} catch (err) {
+  console.error(`Failed to install plugin bundle: ${err.message}`);
+  anyError = true;
+}
+
+// ── Step 4: Add @opencode-ai/plugin to ~/.config/opencode/package.json ────────
 
 let pkg = { dependencies: {} };
 
@@ -119,14 +161,14 @@ if (fs.existsSync(configPkgDest)) {
   }
 }
 
-if (pkg.dependencies[PLUGIN_DEP]) {
-  console.log(`Dependency already present: ${PLUGIN_DEP} — skipping.`);
+if (pkg.dependencies[PLUGIN_DEP] === PLUGIN_VER) {
+  console.log(`Dependency already at correct version: ${PLUGIN_DEP}@${PLUGIN_VER} — skipping.`);
 } else {
   pkg.dependencies[PLUGIN_DEP] = PLUGIN_VER;
   try {
     fs.writeFileSync(configPkgDest, JSON.stringify(pkg, null, 2) + "\n", "utf8");
     console.log(`Updated package.json:   ${configPkgDest}`);
-    console.log(`  Added dependency: ${PLUGIN_DEP}@${PLUGIN_VER}`);
+    console.log(`  Set dependency: ${PLUGIN_DEP}@${PLUGIN_VER}`);
   } catch (err) {
     console.error(`Failed to update package.json: ${err.message}`);
     anyError = true;
@@ -140,6 +182,6 @@ if (anyError) {
   console.error("Installation completed with errors. See above for details.");
   process.exit(1);
 } else {
-  console.log("Done! Open any project in OpenCode — the /codotchi plugin loads automatically.");
+  console.log("Done! Restart OpenCode — the /codotchi plugin loads from the single bundle automatically.");
   console.log("On first startup, OpenCode installs plugin dependencies via bun.");
 }
