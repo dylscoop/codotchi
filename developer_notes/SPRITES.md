@@ -77,7 +77,7 @@ Custom characters are unlocked by entering a passcode in **Settings → Characte
 | spriteType | Passcode | Default name | Pat action | Notes |
 |------------|----------|--------------|------------|-------|
 | `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message |
-| `kangaroo` | `straya` | Kangagotchi | Bounce | Also in random rotation pool |
+| `kangaroo` | `straya` | Skippy | Bounce | Also in random rotation pool |
 | `testsprite` | `pixel` | Pixel | Pat | Dev/test sprite; 700-column grid |
 | `stu` | `rubylovessalmon` | Stugotchi | Collect Stickers | Modified feed/weight stats: 10 meals/snacks per cycle, hunger mult 0.25×, weight gain 1/2, weight loss 5 |
 

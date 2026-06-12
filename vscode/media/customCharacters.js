@@ -49,13 +49,13 @@
     },
     kangaroo: {
       passcode:     "straya",
-      defaultName:  "Kangagotchi",
+      defaultName:  "Skippy",
       patLabel:     "Bounce",
       mgTitle:      "Play or Bounce",
-      giftMessage:  "Kangagotchi found a souvenir!",
+      giftMessage:  "Skippy found a souvenir!",
       patToasts: {
-        patted:      "Kangagotchi had a bounce!",
-        pat_refused: "Kangagotchi is too tired to bounce!",
+        patted:      "Skippy had a bounce!",
+        pat_refused: "Skippy is too tired to bounce!",
       },
       patBubbles: [
         "Straight from the pixel bush.",

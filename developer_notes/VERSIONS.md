@@ -14,7 +14,13 @@
 | `opencode-codotchi/src/gameEngine.ts` | fix: same restructure — add `ROTATION_ANIMALS`, update `randomSpriteType()`, update `SpriteType` union (BUGFIX-118) |
 | `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: replace `STANDARD_SPRITE_TYPES` with `ZODIAC_ANIMALS` + `ROTATION_ANIMALS`; rewrite `randomSpriteType()` to uniform pick from `ROTATION_ANIMALS` (BUGFIX-118) |
 | `vscode/tests/unit/gameEngine.test.ts` | test: replace `randomSpriteType includes kangaroo` test with two new tests covering the full rotation pool and verifying zodiac-only animals are never returned by random |
-| `developer_notes/SPRITES.md` | docs: add Sprite Pools section (ROTATION_ANIMALS + ZODIAC_ANIMALS tables); add Custom Characters passcode table |
+| `vscode/src/customCharacters.ts` | fix: rename kangaroo default name from "Kangagotchi" to "Skippy"; update gift/toast messages |
+| `vscode/media/customCharacters.js` | fix: mirror Skippy rename |
+| `pycharm/src/main/resources/webview/customCharacters.js` | fix: mirror Skippy rename |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | fix: mirror Skippy rename |
+| `developer_notes/SPRITES.md` | docs: update kangaroo default name to Skippy |
+| `developer_notes/DEV_NOTES.md` | docs: update kangaroo default name to Skippy |
+| `developer_notes/vscode/FEATURES.md` | docs: update kangaroo entry name to Skippy |
 | `developer_notes/DEV_NOTES.md` | docs: add Custom Characters passcode table at top; update Character Designs section and spriteType assignment table to reflect new pool structure |
 
 ### Updated constants

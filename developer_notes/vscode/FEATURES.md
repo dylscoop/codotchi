@@ -771,4 +771,4 @@ Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharac
 | Name | Passcode | spriteType | Feed cap | Notes |
 |------|----------|------------|----------|-------|
 | Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 10 snacks | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" pat |
-| Kangagotchi | `straya` | `kangaroo` | default | Kangaroo sprite scraped from a web pixel-art reference; Bounce pat action |
+| Skippy | `straya` | `kangaroo` | default | Kangaroo sprite scraped from a web pixel-art reference; Bounce pat action |
