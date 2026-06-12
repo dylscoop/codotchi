@@ -1,6 +1,28 @@
 # Version History
 
-## v2.5.10 — current
+## v2.5.11 — current
+
+### Changes from v2.5.10
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.11 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.11 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.11 |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.11 |
+| `developer_notes/SPRITE_IMPORT.md` | docs: new guide documenting the sprite image converter (`import_sprite.js`) — pipeline, supported formats, all flags, worked examples, injection behaviour, and gotchas |
+| `README.md` | docs: update release artifact filenames and current release to v2.5.11 |
+| `opencode-codotchi/README.md` | docs: update OpenCode zip examples to v2.5.11 |
+| `vscode/codotchi-2.5.11.vsix` | Rebuilt VS Code extension artifact for v2.5.11 |
+| `pycharm/build/distributions/pycharm-codotchi-2.5.11.zip` | Rebuilt PyCharm plugin artifact for v2.5.11 |
+| `opencode-codotchi/opencode-codotchi-2.5.11.zip` | Rebuilt OpenCode distributable zip for v2.5.11 |
+| `vscode/archive/vsix/codotchi-2.5.10.vsix` | Archived previous VS Code artifact before rebuilding v2.5.11 |
+| `pycharm/archive/pycharm-codotchi-2.5.10.zip` | Archived previous PyCharm artifact before rebuilding v2.5.11 |
+| `opencode-codotchi/archive/opencode-codotchi-2.5.10.zip` | Archived previous OpenCode artifact before rebuilding v2.5.11 |
+
+---
+
+## v2.5.10 — previous
 
 ### Changes from v2.5.9
 
@@ -39,7 +61,6 @@
 | `vscode/archive/vsix/codotchi-2.5.9.vsix` | Archived previous VS Code artifact before rebuilding v2.5.10 |
 | `pycharm/archive/pycharm-codotchi-2.5.9.zip` | Archived previous PyCharm artifact before rebuilding v2.5.10 |
 | `opencode-codotchi/archive/opencode-codotchi-2.5.9.zip` | Archived previous OpenCode artifact before rebuilding v2.5.10 |
-| `developer_notes/SPRITE_IMPORT.md` | docs: new guide documenting the sprite image converter (`import_sprite.js`) — pipeline, supported formats, all flags, worked examples, injection behaviour, and gotchas |
 
 ---
 
