@@ -1,9 +1,25 @@
 #!/usr/bin/env node
 /**
- * import_sprite.js — convert a PNG or .pixil file into a Codotchi DEFS entry
+ * import_sprite.js — convert a PNG, JPEG, WebP, or .pixil file into a Codotchi DEFS entry
  *
  * Usage:
- *   node scripts/import_sprite.js <file.png|file.pixil> <spriteType> <stage> [options]
+ *   node scripts/import_sprite.js <file> <spriteType> <stage> [options]
+ *
+ * Supported formats:
+ *   .png    — decoded natively (pure JS, no dependencies)
+ *   .pixil  — Pixilart JSON format, decoded natively
+ *   .jpg / .jpeg — transcoded to PNG via PowerShell System.Drawing or ImageMagick
+ *   .webp   — transcoded to PNG via PowerShell System.Drawing or ImageMagick
+ *
+ *   Format is detected from file content (magic bytes), not just the extension.
+ *   A JPEG file named .png is handled correctly; a warning is printed when the
+ *   detected format disagrees with the file extension.
+ *
+ *   JPEG/WebP transcoding requires one of the following to be available:
+ *     1. ImageMagick v7+  (magick)           — install from https://imagemagick.org
+ *     2. PowerShell System.Drawing            — built into Windows, no install needed
+ *     3. ImageMagick legacy (convert)         — only used when not C:\Windows\System32\convert.exe
+ *     4. ffmpeg                               — install from https://ffmpeg.org
  *
  * Options:
  *   --frame      <N>      .pixil frame index to use (default: 0)
@@ -27,14 +43,16 @@
  *   If no palette flags are given, the three most frequent non-transparent colours
  *   are ranked by luminance (brightest → primary, mid → secondary, darkest → accent).
  *
- * Zero npm dependencies — uses only Node.js built-ins (fs, path, zlib, child_process).
+ * Zero npm dependencies — uses only Node.js built-ins (fs, path, zlib, os, child_process).
  */
 
 "use strict";
 
-var fs   = require("fs");
-var path = require("path");
-var zlib = require("zlib");
+var fs             = require("fs");
+var path           = require("path");
+var zlib           = require("zlib");
+var os             = require("os");
+var child_process  = require("child_process");
 
 // ── CLI argument parsing ──────────────────────────────────────────────────────
 
@@ -52,7 +70,8 @@ var spriteType  = args[1];
 var stage       = args[2];
 
 if (!inputFile || !spriteType || !stage) {
-  console.error("Usage: node scripts/import_sprite.js <file.png|file.pixil> <spriteType> <stage> [options]");
+  console.error("Usage: node scripts/import_sprite.js <file> <spriteType> <stage> [options]");
+  console.error("Supported formats: .png, .jpg/.jpeg, .webp (via external converter), .pixil");
   console.error("Options: --frame N  --leg-row N  --primary #hex  --secondary #hex  --accent #hex  --threshold N  --preview  --inject");
   process.exit(1);
 }
@@ -88,6 +107,123 @@ function rgbDist(a, b) {
 
 function luminance(rgb) {
   return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+}
+
+// ── Format detection (magic bytes) ───────────────────────────────────────────
+// Detects the actual image format from file content, not the file extension.
+// Returns "png", "jpeg", "webp", or "pixil".
+
+function detectFormat(buffer, ext) {
+  // PNG:  89 50 4E 47 0D 0A 1A 0A
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+    return "png";
+  }
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+    return "jpeg";
+  }
+  // WebP: RIFF????WEBP  (bytes 0-3 = "RIFF", bytes 8-11 = "WEBP")
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
+    return "webp";
+  }
+  // .pixil: Pixilart JSON — try JSON parse heuristic or fall back to extension
+  if (ext === ".pixil") { return "pixil"; }
+  // Last-resort: try to detect JSON (pixil files start with "{")
+  if (buffer[0] === 0x7B) { return "pixil"; }
+  return null;
+}
+
+// ── JPEG/WebP → PNG transcoder ────────────────────────────────────────────────
+// Converts a JPEG or WebP file to a temporary PNG using an available external
+// tool, then returns the PNG buffer. Tries converters in order: ImageMagick v7+
+// (magick), PowerShell System.Drawing, ImageMagick legacy (convert, guarded
+// against Windows System32\convert.exe), then ffmpeg. On WebP, PowerShell may
+// fail if the Windows WebP codec is not installed — the next converter is tried.
+
+function transcodeToPng(inputFile, format) {
+  var tmpFile = path.join(os.tmpdir(), "codotchi_import_" + Date.now() + ".png");
+  var absInput = path.resolve(inputFile);
+  var lastError = null;
+
+  // Helper: attempt a single converter command, return true on success
+  function tryCmd(label, cmd) {
+    try {
+      child_process.execSync(cmd, { stdio: "pipe", timeout: 30000 });
+      if (fs.existsSync(tmpFile) && fs.statSync(tmpFile).size > 0) {
+        console.error("Transcoding " + format.toUpperCase() + " → PNG via " + label + ": " + inputFile);
+        return true;
+      }
+    } catch (e) {
+      lastError = e.message || String(e);
+    }
+    return false;
+  }
+
+  // Helper: safe where.exe lookup
+  function which(cmd) {
+    try {
+      var r = child_process.execSync("where.exe " + cmd + " 2>NUL", { encoding: "utf8" }).trim();
+      return r.split(/\r?\n/)[0] || null;
+    } catch (e) { return null; }
+  }
+
+  var success = false;
+
+  // 1. ImageMagick v7+ (magick) — supports PNG, JPEG, WebP natively
+  var magick = which("magick");
+  if (!success && magick) {
+    success = tryCmd("ImageMagick (magick)", '"' + magick + '" "' + absInput + '" "' + tmpFile + '"');
+  }
+
+  // 2. PowerShell System.Drawing — supports JPEG/BMP/GIF/TIFF on Windows;
+  //    WebP requires the optional Windows WebP codec (may not be installed)
+  if (!success) {
+    var psCmd = [
+      "Add-Type -AssemblyName System.Drawing;",
+      "$b = [System.Drawing.Bitmap]::new('" + absInput.replace(/\\/g, "\\\\").replace(/'/g, "''") + "');",
+      "$b.Save('" + tmpFile.replace(/\\/g, "\\\\").replace(/'/g, "''") + "', [System.Drawing.Imaging.ImageFormat]::Png);",
+      "$b.Dispose()"
+    ].join(" ");
+    success = tryCmd("PowerShell System.Drawing", 'powershell -NoProfile -Command "' + psCmd + '"');
+  }
+
+  // 3. ImageMagick legacy (convert) — guard against Windows System32\convert.exe
+  if (!success) {
+    var convert = which("convert");
+    if (convert && !/System32[\\\/]convert\.exe$/i.test(convert)) {
+      success = tryCmd("ImageMagick (convert)", '"' + convert + '" "' + absInput + '" "' + tmpFile + '"');
+    }
+  }
+
+  // 4. ffmpeg
+  if (!success) {
+    var ffmpeg = which("ffmpeg");
+    if (ffmpeg) {
+      success = tryCmd("ffmpeg", '"' + ffmpeg + '" -y -i "' + absInput + '" "' + tmpFile + '"');
+    }
+  }
+
+  if (!success) {
+    try { fs.unlinkSync(tmpFile); } catch (e) { /* best-effort */ }
+    console.error("Error: could not transcode " + format.toUpperCase() + " to PNG. No working converter found.");
+    if (lastError) { console.error("Last error: " + lastError); }
+    console.error("Install one of the following, then retry:");
+    console.error("  - ImageMagick v7+  https://imagemagick.org  (recommended, supports all formats)");
+    console.error("  - ffmpeg           https://ffmpeg.org");
+    if (format === "webp") {
+      console.error("  - Or install the Windows WebP codec to enable PowerShell System.Drawing support.");
+    }
+    console.error("  Or pre-convert the file to PNG before importing.");
+    process.exit(1);
+  }
+
+  try {
+    var pngBuffer = fs.readFileSync(tmpFile);
+    return pngBuffer;
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch (e) { /* best-effort cleanup */ }
+  }
 }
 
 // ── PNG decoder (pure Node — no dependencies) ─────────────────────────────────
@@ -487,16 +623,32 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
   var buffer   = fs.readFileSync(inputFile);
   var imgData;
 
-  // 1. Decode
-  if (ext === ".png") {
+  // 1. Detect actual format from magic bytes (not just extension)
+  var detectedFormat = detectFormat(buffer, ext);
+
+  if (!detectedFormat) {
+    console.error("Unsupported file type: " + ext + " (supported: .png, .jpg, .jpeg, .webp, .pixil)");
+    process.exit(1);
+  }
+
+  // Warn if extension disagrees with detected content
+  var extFormats = { ".png": "png", ".jpg": "jpeg", ".jpeg": "jpeg", ".webp": "webp", ".pixil": "pixil" };
+  var expectedByExt = extFormats[ext] || null;
+  if (expectedByExt && expectedByExt !== detectedFormat) {
+    console.error("Warning: file extension is '" + ext + "' but content is detected as " + detectedFormat.toUpperCase() + " — treating as " + detectedFormat.toUpperCase() + ".");
+  }
+
+  // 2. Decode
+  if (detectedFormat === "png") {
     console.error("Decoding PNG: " + inputFile);
     imgData = decodePng(buffer);
-  } else if (ext === ".pixil") {
+  } else if (detectedFormat === "pixil") {
     console.error("Decoding .pixil (frame " + frameIndex + "): " + inputFile);
     imgData = decodePixil(buffer, frameIndex);
-  } else {
-    console.error("Unsupported file type: " + ext + " (expected .png or .pixil)");
-    process.exit(1);
+  } else if (detectedFormat === "jpeg" || detectedFormat === "webp") {
+    var pngBuffer = transcodeToPng(inputFile, detectedFormat);
+    console.error("Decoding transcoded PNG from " + detectedFormat.toUpperCase() + ": " + inputFile);
+    imgData = decodePng(pngBuffer);
   }
 
   console.error("Source dimensions: " + imgData.width + " × " + imgData.height);

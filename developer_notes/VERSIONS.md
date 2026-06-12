@@ -11,6 +11,8 @@
 | `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.11 |
 | `opencode-codotchi/package.json` | Version bumped to 2.5.11 |
 | `developer_notes/SPRITE_IMPORT.md` | docs: new guide documenting the sprite image converter (`import_sprite.js`) — pipeline, supported formats, all flags, worked examples, injection behaviour, and gotchas |
+| `scripts/import_sprite.js` | feat: add JPEG and WebP import support via magic-byte content-sniffing and shell-out transcoder (ImageMagick / PowerShell System.Drawing / ffmpeg); misnamed files (e.g. JPEG saved as .png) are detected and handled with a warning |
+| `developer_notes/SPRITE_IMPORT.md` | docs: update supported-formats section and prerequisites for JPEG/WebP/content-sniffing |
 | `README.md` | docs: update release artifact filenames and current release to v2.5.11 |
 | `opencode-codotchi/README.md` | docs: update OpenCode zip examples to v2.5.11 |
 | `vscode/codotchi-2.5.11.vsix` | Rebuilt VS Code extension artifact for v2.5.11 |

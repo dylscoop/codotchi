@@ -41,13 +41,35 @@ The converter runs a five-stage pipeline:
 
 ## Supported formats
 
-| Extension | Format | Notes |
-|-----------|--------|-------|
-| `.png` | PNG | Pure-JS decoder — 8-bit RGBA, RGB, greyscale, and indexed (paletted) PNG files. Non-interlaced only. |
-| `.pixil` | Pixilart JSON | Multi-layer files are supported; layers are flattened bottom-to-top. Use `--frame` to select a frame other than 0. |
+| Extension | Format | Decoding method |
+|-----------|--------|-----------------|
+| `.png` | PNG | Pure-JS decoder — 8-bit RGBA, RGB, greyscale, and indexed (paletted). Non-interlaced only. |
+| `.pixil` | Pixilart JSON | Pure-JS decoder. Multi-layer files are supported; layers are flattened bottom-to-top. Use `--frame` to select a frame other than 0. |
+| `.jpg` / `.jpeg` | JPEG | Transcoded to PNG via an external converter (see Prerequisites). |
+| `.webp` | WebP | Transcoded to PNG via an external converter (see Prerequisites). |
 
-Dispatch is by **file extension** — the file must have the correct extension
-for its format. `.jpg`, `.jpeg`, and `.webp` are not currently supported.
+Format is detected from **file content (magic bytes)**, not just the file extension. If a
+JPEG is mistakenly named `.png`, the tool detects it, prints a warning, and processes
+it correctly as JPEG. Unsupported formats receive a clear error.
+
+### External converter — JPEG and WebP
+
+JPEG and WebP files are transcoded to a temporary PNG in-memory before decoding. The
+tool tries the following converters in order, using the first one that works:
+
+1. **ImageMagick v7+** (`magick`) — supports all formats including WebP.
+   Install from <https://imagemagick.org>.
+2. **PowerShell `System.Drawing`** — built into Windows, no install needed.
+   Supports JPEG reliably; WebP requires the optional Windows WebP codec.
+3. **ImageMagick legacy** (`convert`) — used only when the found binary is not
+   `C:\Windows\System32\convert.exe` (the Windows disk utility, not ImageMagick).
+4. **ffmpeg** — install from <https://ffmpeg.org>.
+
+If no converter can handle the format, the tool exits with a clear error listing
+install options. On Windows, JPEG works out of the box via PowerShell. For WebP,
+install ImageMagick v7+ or ffmpeg.
+
+The temporary PNG is deleted immediately after decoding; no files are left behind.
 
 ---
 
@@ -56,7 +78,10 @@ for its format. `.jpg`, `.jpeg`, and `.webp` are not currently supported.
 - **Node.js 18 or later** (uses the built-in `node:test` runner in the test
   suite; the importer itself works on Node 16+ but 18 is the project standard).
 - No `npm install` step — the script uses only Node built-ins (`fs`, `path`,
-  `zlib`, `child_process`).
+  `zlib`, `os`, `child_process`).
+- **For JPEG/WebP:** an external converter must be available. On Windows,
+  JPEG works without any install (PowerShell `System.Drawing` is built in).
+  For WebP, install ImageMagick v7+ or ffmpeg (see Supported formats above).
 
 ---
 
@@ -204,7 +229,7 @@ palette table in [`SPRITES.md`](SPRITES.md) for examples.
 | Limitation | Detail |
 |------------|--------|
 | Maximum grid size | 700 columns × 550 rows. Larger images are scaled down (aspect preserved). |
-| Extension-based dispatch | The file extension must match the actual format — a JPEG renamed to `.png` will crash with "Not a valid PNG file". |
+| WebP requires a converter | PowerShell `System.Drawing` does not support WebP unless the Windows WebP codec is installed. Install ImageMagick v7+ or ffmpeg for reliable WebP support. |
 | Interlaced PNGs unsupported | The PNG decoder rejects interlaced files. Re-export as non-interlaced (progressive) PNG. |
 | Brittle injection markers | `--inject` finds insertion points by searching for exact string patterns in `sprites.js` and `spriteConstants.js`. Reformatting those files can break injection. |
 | High-density grids | When a grid is denser than the on-screen bounding box (`cellWExact < 1`), the renderer switches to an offscreen canvas path. This is expected behaviour for very large imported grids. See `sprites.js` line 4141 for the v2 offscreen path. |
