@@ -11,6 +11,9 @@ All sprites are defined in `vscode/media/sprites.js` (mirrored verbatim to
 
 To preview all sprites interactively in-IDE, enable developer mode then open the Command Palette (VS Code) or Tools menu (PyCharm) and run **Codotchi: Open Sprite Preview (Dev)**. The preview uses the real `renderSpriteGrid()` function for pixel-accurate output including leg animation, mood-based colour overrides, stage scaling, and weight proportions. The standalone browser version (`vscode/media/sprite_preview.html`) still works via `file://` but the in-IDE panel is the recommended workflow.
 
+To import a new sprite from a PNG or Pixilart `.pixil` file, see
+[`SPRITE_IMPORT.md`](SPRITE_IMPORT.md).
+
 One grid size per animal type:
 
 | Type | Grid (cols × rows) | Animals |

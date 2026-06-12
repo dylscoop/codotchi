@@ -39,6 +39,7 @@
 | `vscode/archive/vsix/codotchi-2.5.9.vsix` | Archived previous VS Code artifact before rebuilding v2.5.10 |
 | `pycharm/archive/pycharm-codotchi-2.5.9.zip` | Archived previous PyCharm artifact before rebuilding v2.5.10 |
 | `opencode-codotchi/archive/opencode-codotchi-2.5.9.zip` | Archived previous OpenCode artifact before rebuilding v2.5.10 |
+| `developer_notes/SPRITE_IMPORT.md` | docs: new guide documenting the sprite image converter (`import_sprite.js`) — pipeline, supported formats, all flags, worked examples, injection behaviour, and gotchas |
 
 ---
 
