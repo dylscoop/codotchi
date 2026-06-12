@@ -927,32 +927,40 @@ export function careTierLabel(careScore: number): string {
 // ---------------------------------------------------------------------------
 
 /**
- * The 12 Chinese zodiac animals plus kangaroo, each with equal probability (~7.38% each).
- * Two rare sprites ("classic" and "cat") each have a 2% chance.
- * Total: 13 × 7.3846% + 2% + 2% = 100%.
+ * All 12 Chinese zodiac animals. Accessible via character code only —
+ * not part of the random rotation pool.
  */
-const STANDARD_SPRITE_TYPES = [
+const ZODIAC_ANIMALS = [
   "rat", "ox", "tiger", "rabbit", "dragon", "snake",
   "horse", "sheep", "monkey", "rooster", "dog", "pig",
-  "kangaroo",
+] as const;
+
+/**
+ * Animals in the random rotation pool at pet creation.
+ * All entries have equal probability (1 / ROTATION_ANIMALS.length each).
+ * Note: some rotation animals (dog, snake, sheep, rooster, tiger) are also
+ * zodiac animals — they remain accessible via zodiac character codes too.
+ * More animals will be added to this set in the future.
+ */
+const ROTATION_ANIMALS = [
+  "cat", "dog", "snake", "sheep", "classic",
+  "rooster", "tiger", "kangaroo",
 ] as const;
 
 /**
  * All valid sprite type keys.
  */
-export type SpriteType = typeof STANDARD_SPRITE_TYPES[number] | "classic" | "cat" | "tim" | "testsprite" | "stu";
+export type SpriteType =
+  | typeof ZODIAC_ANIMALS[number]
+  | typeof ROTATION_ANIMALS[number]
+  | "tim" | "testsprite" | "stu";
 
 /**
  * Sample a random sprite type at pet creation.
- * - "cat"     — 2 % chance (rare)
- * - "classic" — 2 % chance (rare; the original humanoid shape)
- * - Each standard sprite — 96 % / 13 ≈ 7.38 % chance
+ * Each entry in ROTATION_ANIMALS has equal probability.
  */
 export function randomSpriteType(): string {
-  const r = Math.random() * 100;
-  if (r < 2) { return "cat"; }
-  if (r < 4) { return "classic"; }
-  return STANDARD_SPRITE_TYPES[Math.floor((r - 4) / (96 / STANDARD_SPRITE_TYPES.length))];
+  return ROTATION_ANIMALS[Math.floor(Math.random() * ROTATION_ANIMALS.length)];
 }
 
 // ---------------------------------------------------------------------------

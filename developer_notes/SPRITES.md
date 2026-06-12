@@ -26,6 +26,65 @@ Each animal has five life stages: `baby`, `child`, `teen`, `adult`, `senior`.
 
 ---
 
+## Sprite Pools
+
+### Random rotation pool
+
+Animals assigned at random when a new pet hatches. All entries have equal probability (1/8 each = 12.5%).
+
+| spriteType | Notes |
+|------------|-------|
+| `cat` | |
+| `dog` | also a zodiac animal |
+| `snake` | also a zodiac animal |
+| `sheep` | also a zodiac animal |
+| `classic` | original procedural humanoid shape |
+| `rooster` | also a zodiac animal |
+| `tiger` | also a zodiac animal |
+| `kangaroo` | |
+
+Defined as `ROTATION_ANIMALS` in `vscode/src/gameEngine.ts` (mirrored to PyCharm and OpenCode).
+
+### Zodiac animals (character code only)
+
+The 12 Chinese zodiac animals. Not in the random rotation pool — accessible only by entering the corresponding zodiac character code in Settings → Character Passcode, or via a custom-character passcode that maps to one of these sprites.
+
+| spriteType | Zodiac sign |
+|------------|-------------|
+| `rat` | Year of the Rat |
+| `ox` | Year of the Ox |
+| `tiger` | Year of the Tiger |
+| `rabbit` | Year of the Rabbit |
+| `dragon` | Year of the Dragon |
+| `snake` | Year of the Snake |
+| `horse` | Year of the Horse |
+| `sheep` | Year of the Sheep |
+| `monkey` | Year of the Monkey |
+| `rooster` | Year of the Rooster |
+| `dog` | Year of the Dog |
+| `pig` | Year of the Pig |
+
+> Note: `tiger`, `snake`, `sheep`, `rooster`, and `dog` appear in both pools — they can be obtained via random hatch **or** unlocked via character code.
+
+Defined as `ZODIAC_ANIMALS` in `vscode/src/gameEngine.ts` (mirrored to PyCharm and OpenCode).
+
+---
+
+## Custom Characters (passcode-unlocked)
+
+Custom characters are unlocked by entering a passcode in **Settings → Character Passcode** (VS Code) or **Settings → Codotchi → Character Passcode** (PyCharm). The passcode forces a specific `spriteType` on the next new game and pre-fills a default pet name.
+
+| spriteType | Passcode | Default name | Pat action | Notes |
+|------------|----------|--------------|------------|-------|
+| `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message |
+| `kangaroo` | `straya` | Skippy | Bounce | Also in random rotation pool |
+| `testsprite` | `pixel` | Pixel | Pat | Dev/test sprite; 700-column grid |
+| `stu` | `rubylovessalmon` | Stugotchi | Collect Stickers | Modified feed/weight stats: 10 meals/snacks per cycle, hunger mult 0.25×, weight gain 1/2, weight loss 5 |
+
+Custom characters are defined in `vscode/src/customCharacters.ts` (mirrored to PyCharm's `CustomCharacters.kt` and the webview `customCharacters.js` files).
+
+---
+
 ## Colour Legend
 
 ```

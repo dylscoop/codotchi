@@ -72,13 +72,13 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
     CustomCharacter(
         spriteType  = "kangaroo",
         passcode    = "straya",
-        defaultName  = "Kangagotchi",
+        defaultName  = "Skippy",
         patLabel    = "Bounce",
         mgTitle     = "Play or Bounce",
-        giftMessage = "Kangagotchi found a souvenir!",
+        giftMessage = "Skippy found a souvenir!",
         patToasts   = CustomCharacterToasts(
-            patted     = "Kangagotchi had a bounce!",
-            patRefused = "Kangagotchi is too tired to bounce!",
+            patted     = "Skippy had a bounce!",
+            patRefused = "Skippy is too tired to bounce!",
         ),
         patBubbles  = listOf(
             "Straight from the pixel bush.",

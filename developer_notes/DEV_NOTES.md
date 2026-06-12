@@ -1,5 +1,23 @@
 # Developer Notes
 
+## Custom Characters (passcode-unlocked)
+
+Custom characters are unlocked by entering a passcode in **Settings → Character Passcode** (VS Code) or **Settings → Codotchi → Character Passcode** (PyCharm). The passcode forces a specific `spriteType` on the next new game and pre-fills a default pet name.
+
+| spriteType | Passcode | Default name | Pat action | Special behaviour |
+|------------|----------|--------------|------------|-------------------|
+| `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message ("Tim wants a tea break!"); "Codotchi" (case-insensitive) name auto-replaces with "Timagotchi" |
+| `kangaroo` | `straya` | Skippy | Bounce | Also in the random rotation pool |
+| `testsprite` | `pixel` | Pixel | Pat | Dev/test sprite; 700-column grid; single adult stage only |
+| `stu` | `rubylovessalmon` | Stugotchi | Collect Stickers | 10 meals/snacks per cycle; hunger mult 0.25×; meal weight gain 1; snack weight gain 2; play weight loss 5; snack-sick threshold 5 |
+
+Defined in `vscode/src/customCharacters.ts` (`CUSTOM_CHARACTERS` array). Mirrored to:
+- `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt`
+- `vscode/media/customCharacters.js` (webview runtime)
+- `pycharm/src/main/resources/webview/customCharacters.js` (webview runtime)
+
+---
+
 ## Dev Mode Passcode
 
 `1234`
@@ -539,9 +557,11 @@ Effective range per cycle: 16 – 20 min (capped).
 Characters are identified by `petType_stage_tier` (e.g. `codeling_child_a`).
 As of v1.0.0, `spriteType` is a separate field on `PetState` that selects which
 pixel-art grid to render. It is assigned once at new-game time via
-`randomSpriteType()` and never changes: 12 zodiac animals (~8.17% each), plus
-`"classic"` (2%) and `"cat"` (2%). Old saves without a `spriteType` field
-default to `"classic"`.
+`randomSpriteType()` and never changes. The random pool (`ROTATION_ANIMALS`) is
+8 animals with equal probability (12.5% each): `cat`, `dog`, `snake`, `sheep`,
+`classic`, `rooster`, `tiger`, `kangaroo`. The 12 Chinese zodiac animals
+(`ZODIAC_ANIMALS`) are accessible only via character code. Old saves without a
+`spriteType` field default to `"classic"`.
 
 The 15 sprite grids live in `vscode/media/sprites.js` (mirrored to
 `pycharm/src/main/resources/webview/sprites.js`). Each grid is a 12-column ×
@@ -608,13 +628,20 @@ STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette)`
 
 ### spriteType assignment
 
-| spriteType | Probability |
-|------------|-------------|
-| `rat`, `ox`, `tiger`, `rabbit`, `dragon`, `snake`, `horse`, `sheep`, `monkey`, `rooster`, `dog`, `pig`, `kangaroo` | ~7.38% each (13 × 7.38% ≈ 96%) |
-| `classic` | 1% |
-| `cat` | 1% |
+`spriteType` is assigned once by `randomSpriteType()` in `gameEngine.ts` at new-game time from the `ROTATION_ANIMALS` pool. All 8 entries have equal probability (12.5% each).
 
-Assigned once by `randomSpriteType()` in `gameEngine.ts` at new-game time.
+| spriteType | Pool | Probability |
+|------------|------|-------------|
+| `cat` | `ROTATION_ANIMALS` | 12.5% |
+| `dog` | `ROTATION_ANIMALS` | 12.5% |
+| `snake` | `ROTATION_ANIMALS` | 12.5% |
+| `sheep` | `ROTATION_ANIMALS` | 12.5% |
+| `classic` | `ROTATION_ANIMALS` | 12.5% |
+| `rooster` | `ROTATION_ANIMALS` | 12.5% |
+| `tiger` | `ROTATION_ANIMALS` | 12.5% |
+| `kangaroo` | `ROTATION_ANIMALS` | 12.5% |
+| `rat`, `ox`, `rabbit`, `dragon`, `horse`, `monkey`, `pig` | `ZODIAC_ANIMALS` (code only) | 0% (random) |
+
 Old saves without `spriteType` default to `"classic"` via `deserialiseState`.
 
 Each `spriteType` carries its own fixed realistic colour palette (primary body,
