@@ -12,6 +12,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   createPet,
+  randomSpriteType,
   tick,
   feedMeal,
   startSnack,
@@ -100,6 +101,16 @@ describe("constants", () => {
     assert.deepEqual([...STAGE_ORDER], [
       "egg", "baby", "child", "teen", "adult", "senior",
     ]);
+  });
+
+  it("randomSpriteType includes kangaroo in the standard rotation", () => {
+    const originalRandom = Math.random;
+    try {
+      Math.random = () => 0.99;
+      assert.equal(randomSpriteType(), "kangaroo");
+    } finally {
+      Math.random = originalRandom;
+    }
   });
 
   it("stage durations are positive integers", () => {

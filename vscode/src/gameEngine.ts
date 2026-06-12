@@ -927,31 +927,32 @@ export function careTierLabel(careScore: number): string {
 // ---------------------------------------------------------------------------
 
 /**
- * The 12 Chinese zodiac animals, each with equal probability (~8.17% each).
+ * The 12 Chinese zodiac animals plus kangaroo, each with equal probability (~7.38% each).
  * Two rare sprites ("classic" and "cat") each have a 2% chance.
- * Total: 12 × 8.1667% + 2% + 2% = 100%.
+ * Total: 13 × 7.3846% + 2% + 2% = 100%.
  */
-const ZODIAC_ANIMALS = [
+const STANDARD_SPRITE_TYPES = [
   "rat", "ox", "tiger", "rabbit", "dragon", "snake",
   "horse", "sheep", "monkey", "rooster", "dog", "pig",
+  "kangaroo",
 ] as const;
 
 /**
  * All valid sprite type keys.
  */
-export type SpriteType = typeof ZODIAC_ANIMALS[number] | "classic" | "cat" | "tim" | "testsprite" | "stu";
+export type SpriteType = typeof STANDARD_SPRITE_TYPES[number] | "classic" | "cat" | "tim" | "testsprite" | "stu";
 
 /**
  * Sample a random sprite type at pet creation.
  * - "cat"     — 2 % chance (rare)
  * - "classic" — 2 % chance (rare; the original humanoid shape)
- * - Each of the 12 zodiac animals — 96 % / 12 ≈ 8.17 % chance
+ * - Each standard sprite — 96 % / 13 ≈ 7.38 % chance
  */
 export function randomSpriteType(): string {
   const r = Math.random() * 100;
   if (r < 2) { return "cat"; }
   if (r < 4) { return "classic"; }
-  return ZODIAC_ANIMALS[Math.floor((r - 4) / (96 / 12))];
+  return STANDARD_SPRITE_TYPES[Math.floor((r - 4) / (96 / STANDARD_SPRITE_TYPES.length))];
 }
 
 // ---------------------------------------------------------------------------

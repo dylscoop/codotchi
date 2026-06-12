@@ -14,7 +14,7 @@ lives in a tool window panel, reacts to your coding activity, and needs regular
 care to survive and evolve into its final form. Any support and feedback is much
 appreciated — see the [Support](#support) section below!
 
-Your pet is drawn from one of **14 sprite sets**, 12 of which are based on a zodiac animal,
+Your pet is drawn from one of **15 sprite sets**, 12 of which are based on a zodiac animal,
 assigned to you at random when you start a new game.
 
 ## Features

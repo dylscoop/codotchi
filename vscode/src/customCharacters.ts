@@ -68,6 +68,24 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     ],
   },
   {
+    spriteType:  "kangaroo",
+    passcode:    "straya",
+    defaultName:  "Kangagotchi",
+    patLabel:    "Bounce",
+    mgTitle:     "Play or Bounce",
+    giftMessage: "Kangagotchi found a souvenir!",
+    patToasts: {
+      patted:      "Kangagotchi had a bounce!",
+      pat_refused: "Kangagotchi is too tired to bounce!",
+    },
+    patBubbles: [
+      "Straight from the pixel bush.",
+      "Pouch secured.",
+      "Big tail, bigger hops.",
+      "That's proper straya.",
+    ],
+  },
+  {
     spriteType:  "testsprite",
     passcode:    "pixel",
     defaultName:  "Pixel",

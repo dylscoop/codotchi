@@ -717,7 +717,7 @@ These are lower-priority ideas that require design work before implementation. A
 | Redesign minigame art | `[ ]` | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style. |
 | Egg-hatch animation | `[ ]` | Wiggle → crack → burst sequence before baby stage; fits naturally into the reaction queue (already in §2.2). |
 | Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |
-| Kangaroo character | `[ ]` | New pixel-art sprite type (baby through senior stages) drawn in the existing `sprites.js` pipeline; added to the new-game pet-type picker. |
+| Kangaroo character | `[x]` | Web-image-derived pixel-art sprite type (baby through senior stages) in the existing `sprites.js` pipeline; included in random hatch rotation and unlockable with character passcode `straya`. |
 | **— Platform & social —** | | |
 | Multiple simultaneous pets | `[ ]` | Tabbed or scrollable sidebar; pets can interact with each other. |
 | New pet types via extension pack | `[ ]` | Contribution point so third-party packs can add sprite types. |
@@ -771,3 +771,4 @@ Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharac
 | Name | Passcode | spriteType | Feed cap | Notes |
 |------|----------|------------|----------|-------|
 | Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 10 snacks | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" pat |
+| Kangagotchi | `straya` | `kangaroo` | default | Kangaroo sprite scraped from a web pixel-art reference; Bounce pat action |

@@ -15,7 +15,7 @@ One grid size per animal type:
 
 | Type | Grid (cols × rows) | Animals |
 |------|--------------------|---------|
-| Quadruped | 48 × 32 | cat, rat, ox, tiger, rabbit, horse, goat, dog, pig |
+| Quadruped | 48 × 32 | cat, rat, ox, tiger, rabbit, horse, sheep, dog, pig, kangaroo |
 | Snake | 48 × 32 | snake |
 | Upright | 32 × 48 | classic, monkey, rooster, dragon |
 
@@ -60,6 +60,7 @@ The `color` field on `PetState` is deprecated as of v1.17.0.
 | dog     | `#c8853a` rust/copper orange | `#3d2008` very dark brown     | `#8b5320` dark rust brown      | `#1a1a1a`   |
 | pig     | `#f8bbd0` light pink         | `#e91e63` hot pink            | `#f48fb1` soft pink            | `#1a1a1a`   |
 | snake   | `#558b2f` olive green        | `#ffeb3b` bright yellow       | `#33691e` dark olive green     | `#0d1a0d`   |
+| kangaroo | `#d9bb7b` tan               | `#663300` dark brown          | `#8c5a24` age spots            | `#1a1a1a`   |
 
 ---
 

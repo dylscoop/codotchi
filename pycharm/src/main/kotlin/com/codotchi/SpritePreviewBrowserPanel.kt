@@ -32,7 +32,7 @@ class SpritePreviewBrowserPanel(parentDisposable: Disposable) : Disposable {
     private fun buildHtml(): String {
         val spriteConstantsText = loadResource("/webview/spriteConstants.js")
         val spritesText         = loadResource("/webview/sprites.js")
-        val spritesAdultText    = loadResource("/webview/sprites_adult.js")
+        val customCharactersText = loadResource("/webview/customCharacters.js")
         var html                = loadResource("/webview/sprite_preview.html")
 
         // Inline spriteConstants.js
@@ -47,10 +47,10 @@ class SpritePreviewBrowserPanel(parentDisposable: Disposable) : Disposable {
             "<script>\n$spritesText\n</script>"
         )
 
-        // Inline sprites_adult.js
+        // Inline customCharacters.js
         html = html.replace(
-            """<script src="sprites_adult.js"></script>""",
-            "<script>\n$spritesAdultText\n</script>"
+            """<script src="customCharacters.js"></script>""",
+            "<script>\n$customCharactersText\n</script>"
         )
 
         return html

@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.5.9</version>
+    <version>2.5.10</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -17,7 +17,7 @@
 lives in a tool window panel, reacts to your coding activity, and needs regular care to survive and evolve into
 its final form. Any support and feedback is much appreciated — see the Support section below!</p>
 
-<p>Your pet is drawn from one of <b>14 sprite sets</b>, 12 of which are based on a zodiac animal, assigned to you
+<p>Your pet is drawn from one of <b>15 sprite sets</b>, 12 of which are based on a zodiac animal, assigned to you
 at random when you start a new game.</p>
 
 <h2>Features</h2>

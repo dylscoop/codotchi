@@ -1,6 +1,48 @@
 # Version History
 
-## v2.5.9 — current
+## v2.5.10 — current
+
+### Changes from v2.5.9
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.10 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.10 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.10; sprite count updated for kangaroo |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.10 |
+| `vscode/media/sprites.js` | feat: add web-image-derived `kangaroo` sprite grids for baby, child, teen, adult, and senior |
+| `pycharm/src/main/resources/webview/sprites.js` | feat: mirrored kangaroo sprite grids for PyCharm |
+| `vscode/media/spriteConstants.js` | feat: add kangaroo palette and 48×32 grid metadata |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | feat: mirrored kangaroo palette and grid metadata |
+| `vscode/src/gameEngine.ts` | feat: include kangaroo in standard random sprite rotation |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | feat: mirror kangaroo random sprite rotation |
+| `vscode/src/customCharacters.ts` | feat: add `straya` character passcode for Kangagotchi |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | feat: mirror `straya` character passcode for Kangagotchi |
+| `vscode/media/customCharacters.js` | feat: expose Kangagotchi `straya` passcode to the webview runtime and preview gallery |
+| `pycharm/src/main/resources/webview/customCharacters.js` | feat: mirror Kangagotchi webview custom-character registry |
+| `vscode/media/sprite_preview.html` | feat: include kangaroo in the sprite preview gallery; derive final preview list from loaded sprite data and metadata so new sprites cannot be hidden by stale static lists |
+| `pycharm/src/main/resources/webview/sprite_preview.html` | feat: include kangaroo in the PyCharm sprite preview gallery; mirror data-derived preview list logic |
+| `pycharm/src/main/kotlin/com/codotchi/SpritePreviewBrowserPanel.kt` | fix: inline `customCharacters.js` in the PyCharm sprite preview panel so passcode/custom sprites are available there too |
+| `pycharm/src/test/kotlin/com/codotchi/BrowserPanelHtmlTest.kt` | test: assert custom character resources exist and kangaroo is listed in sprite preview HTML |
+| `vscode/tests/unit/gameEngine.test.ts` | test: cover kangaroo in random sprite rotation |
+| `developer_notes/vscode/FEATURES.md` | docs: mark kangaroo implemented and document `straya` passcode |
+| `developer_notes/DEV_NOTES.md` | docs: update random sprite probability table for kangaroo |
+| `developer_notes/SPRITES.md` | docs: add kangaroo to the sprite grid and palette reference |
+| `developer_notes/sprites/kangaroo.md` | docs: document kangaroo source, palette, and sprite-rule checklist |
+| `vscode/README.md` | docs: update sprite-set count to include kangaroo |
+| `pycharm/README.md` | docs: update sprite-set count to include kangaroo |
+| `README.md` | docs: update release artifact filenames and current release to v2.5.10 |
+| `opencode-codotchi/README.md` | docs: update OpenCode zip examples to v2.5.10 |
+| `vscode/codotchi-2.5.10.vsix` | Rebuilt VS Code extension artifact for v2.5.10 |
+| `pycharm/build/distributions/pycharm-codotchi-2.5.10.zip` | Rebuilt PyCharm plugin artifact for v2.5.10 |
+| `opencode-codotchi/opencode-codotchi-2.5.10.zip` | Rebuilt OpenCode distributable zip for v2.5.10 |
+| `vscode/archive/vsix/codotchi-2.5.9.vsix` | Archived previous VS Code artifact before rebuilding v2.5.10 |
+| `pycharm/archive/pycharm-codotchi-2.5.9.zip` | Archived previous PyCharm artifact before rebuilding v2.5.10 |
+| `opencode-codotchi/archive/opencode-codotchi-2.5.9.zip` | Archived previous OpenCode artifact before rebuilding v2.5.10 |
+
+---
+
+## v2.5.9 — previous
 
 ### Changes from v2.5.8
 

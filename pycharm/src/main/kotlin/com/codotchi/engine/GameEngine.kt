@@ -23,16 +23,17 @@ private fun clampWeight(value: Int): Int = clamp(value, WEIGHT_MIN, WEIGHT_MAX)
 // Sprite helpers
 // ---------------------------------------------------------------------------
 
-private val ZODIAC_ANIMALS = listOf(
+private val STANDARD_SPRITE_TYPES = listOf(
     "rat", "ox", "tiger", "rabbit", "dragon", "snake",
-    "horse", "sheep", "monkey", "rooster", "dog", "pig"
+    "horse", "sheep", "monkey", "rooster", "dog", "pig",
+    "kangaroo"
 )
 
 /**
  * Sample a random sprite type at pet creation.
  *  - "cat"     — 2 % chance (rare)
  *  - "classic" — 2 % chance (rare; the original humanoid shape)
- *  - Each of the 12 zodiac animals — 96 % / 12 ≈ 8.17 % chance
+ *  - Each standard sprite — 96 % / 13 ≈ 7.38 % chance
  * Mirrors randomSpriteType() in vscode/src/gameEngine.ts.
  */
 private fun randomSpriteType(): String {
@@ -40,7 +41,7 @@ private fun randomSpriteType(): String {
     return when {
         r < 2.0 -> "cat"
         r < 4.0 -> "classic"
-        else    -> ZODIAC_ANIMALS[((r - 4.0) / (96.0 / 12)).toInt()]
+        else    -> STANDARD_SPRITE_TYPES[((r - 4.0) / (96.0 / STANDARD_SPRITE_TYPES.size)).toInt()]
     }
 }
 

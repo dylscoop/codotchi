@@ -59,6 +59,12 @@ class BrowserPanelHtmlTest {
     }
 
     @Test
+    fun `customCharacters resource exists on classpath`() {
+        val content = loadResource("/webview/customCharacters.js")
+        assertTrue(content.isNotBlank(), "customCharacters.js must not be empty")
+    }
+
+    @Test
     fun `sidebar html has sprites script placeholder`() {
         val html = loadResource("/webview/sidebar.html")
         assertTrue(
@@ -84,6 +90,33 @@ class BrowserPanelHtmlTest {
         assertTrue(
             html.contains("renderSpriteGrid"),
             "Built HTML must contain inlined sprites.js content (expected renderSpriteGrid function)"
+        )
+    }
+
+    @Test
+    fun `sprite preview includes kangaroo in the gallery list`() {
+        val html = loadResource("/webview/sprite_preview.html")
+        assertTrue(
+            html.contains("\"kangaroo\""),
+            "sprite_preview.html must include kangaroo in ALL_ANIMALS so it appears in the preview gallery"
+        )
+    }
+
+    @Test
+    fun `sprite preview derives gallery list from loaded sprite data`() {
+        val html = loadResource("/webview/sprite_preview.html")
+        assertTrue(
+            html.contains("Object.keys(window.SPRITES)"),
+            "sprite_preview.html must append Object.keys(window.SPRITES) so newly-added sprite data appears in preview"
+        )
+    }
+
+    @Test
+    fun `kangaroo sprite data exists`() {
+        val spritesText = loadResource("/webview/sprites.js")
+        assertTrue(
+            spritesText.contains("DEFS[\"kangaroo\"]"),
+            "sprites.js must contain kangaroo sprite data for the preview renderer"
         )
     }
 

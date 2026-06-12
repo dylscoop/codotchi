@@ -543,7 +543,7 @@ pixel-art grid to render. It is assigned once at new-game time via
 `"classic"` (2%) and `"cat"` (2%). Old saves without a `spriteType` field
 default to `"classic"`.
 
-The 14 sprite grids live in `vscode/media/sprites.js` (mirrored to
+The 15 sprite grids live in `vscode/media/sprites.js` (mirrored to
 `pycharm/src/main/resources/webview/sprites.js`). Each grid is a 12-column ×
 16-row pixel array per non-egg stage (baby, child, teen, adult, senior). The
 renderer is `window.renderSpriteGrid()`, called from `drawBody()` in
@@ -610,7 +610,7 @@ STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette)`
 
 | spriteType | Probability |
 |------------|-------------|
-| `rat`, `ox`, `tiger`, `rabbit`, `dragon`, `snake`, `horse`, `goat`, `monkey`, `rooster`, `dog`, `pig` | ~8.17% each (12 × 8.17% ≈ 98%) |
+| `rat`, `ox`, `tiger`, `rabbit`, `dragon`, `snake`, `horse`, `sheep`, `monkey`, `rooster`, `dog`, `pig`, `kangaroo` | ~7.38% each (13 × 7.38% ≈ 96%) |
 | `classic` | 1% |
 | `cat` | 1% |
 

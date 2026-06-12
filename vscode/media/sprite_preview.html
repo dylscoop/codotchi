@@ -160,11 +160,13 @@
   // UPRIGHT_TYPES is authoritative in spriteConstants.js (window.spriteHeightRatio).
   // We don't duplicate it here — use window.spriteHeightRatio(animal) > 1 at render time.
 
-  // Standard (non-custom) animals always shown in the grid.
+  // Standard animals shown first in the grid. The final gallery list also
+  // appends keys discovered from loaded sprite data so new sprites cannot be
+  // hidden by a stale hand-maintained list.
   var STANDARD_ANIMALS = [
     "classic", "monkey", "rooster", "dragon",
     "cat", "rat", "ox", "tiger", "rabbit",
-    "horse", "sheep", "dog", "pig", "snake"
+    "horse", "sheep", "dog", "pig", "snake", "kangaroo"
   ];
 
   // Custom characters from the registry (loaded from customCharacters.js).
@@ -173,7 +175,16 @@
     ? Object.keys(window.CUSTOM_CHARACTERS)
     : [];
 
-  var ALL_ANIMALS = CUSTOM_SPRITE_TYPES.concat(STANDARD_ANIMALS);
+  var DATA_SPRITE_TYPES = window.SPRITES ? Object.keys(window.SPRITES) : [];
+  var META_SPRITE_TYPES = window.SPRITE_GRID_META ? Object.keys(window.SPRITE_GRID_META) : [];
+
+  var ALL_ANIMALS = CUSTOM_SPRITE_TYPES
+    .concat(STANDARD_ANIMALS)
+    .concat(DATA_SPRITE_TYPES)
+    .concat(META_SPRITE_TYPES)
+    .filter(function(animal, index, arr) {
+    return arr.indexOf(animal) === index;
+  });
 
   var ALL_STAGES = ["egg", "baby", "child", "teen", "adult", "senior"];
 
