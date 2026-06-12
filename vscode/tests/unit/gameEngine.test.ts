@@ -103,11 +103,52 @@ describe("constants", () => {
     ]);
   });
 
-  it("randomSpriteType includes kangaroo in the standard rotation", () => {
+  it("randomSpriteType returns a value from the ROTATION_ANIMALS pool", () => {
+    const ROTATION_ANIMALS = [
+      "cat", "dog", "snake", "sheep", "classic",
+      "rooster", "tiger", "kangaroo",
+    ];
+    // Run enough iterations to cover all 8 slots
     const originalRandom = Math.random;
     try {
+      for (let i = 0; i < ROTATION_ANIMALS.length; i++) {
+        // Simulate Math.random() returning a value that selects index i
+        Math.random = () => i / ROTATION_ANIMALS.length;
+        const result = randomSpriteType();
+        assert.ok(
+          ROTATION_ANIMALS.includes(result),
+          `Expected "${result}" to be in ROTATION_ANIMALS`,
+        );
+      }
+    } finally {
+      Math.random = originalRandom;
+    }
+  });
+
+  it("randomSpriteType includes kangaroo, cat, classic, and rotation-zodiac animals", () => {
+    const ROTATION_ANIMALS = [
+      "cat", "dog", "snake", "sheep", "classic",
+      "rooster", "tiger", "kangaroo",
+    ];
+    const originalRandom = Math.random;
+    try {
+      // Force last index → kangaroo
       Math.random = () => 0.99;
       assert.equal(randomSpriteType(), "kangaroo");
+      // Force first index → cat
+      Math.random = () => 0;
+      assert.equal(randomSpriteType(), "cat");
+      // Confirm a zodiac-only animal (rat) is never returned
+      for (let i = 0; i < ROTATION_ANIMALS.length; i++) {
+        Math.random = () => i / ROTATION_ANIMALS.length;
+        assert.notEqual(randomSpriteType(), "rat");
+        assert.notEqual(randomSpriteType(), "ox");
+        assert.notEqual(randomSpriteType(), "rabbit");
+        assert.notEqual(randomSpriteType(), "dragon");
+        assert.notEqual(randomSpriteType(), "horse");
+        assert.notEqual(randomSpriteType(), "monkey");
+        assert.notEqual(randomSpriteType(), "pig");
+      }
     } finally {
       Math.random = originalRandom;
     }

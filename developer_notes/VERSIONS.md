@@ -1,6 +1,32 @@
 # Version History
 
-## v2.5.11 — current
+## v2.5.12 — current
+
+### Changes from v2.5.11
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.5.12 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.5.12 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.5.12 |
+| `opencode-codotchi/package.json` | Version bumped to 2.5.12 |
+| `vscode/src/gameEngine.ts` | fix: replace `STANDARD_SPRITE_TYPES` with `ZODIAC_ANIMALS` + `ROTATION_ANIMALS` enums; rewrite `randomSpriteType()` to equal-probability uniform pick from `ROTATION_ANIMALS`; update `SpriteType` union (BUGFIX-118) |
+| `opencode-codotchi/src/gameEngine.ts` | fix: same restructure — add `ROTATION_ANIMALS`, update `randomSpriteType()`, update `SpriteType` union (BUGFIX-118) |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: replace `STANDARD_SPRITE_TYPES` with `ZODIAC_ANIMALS` + `ROTATION_ANIMALS`; rewrite `randomSpriteType()` to uniform pick from `ROTATION_ANIMALS` (BUGFIX-118) |
+| `vscode/tests/unit/gameEngine.test.ts` | test: replace `randomSpriteType includes kangaroo` test with two new tests covering the full rotation pool and verifying zodiac-only animals are never returned by random |
+| `developer_notes/SPRITES.md` | docs: add Sprite Pools section (ROTATION_ANIMALS + ZODIAC_ANIMALS tables); add Custom Characters passcode table |
+| `developer_notes/DEV_NOTES.md` | docs: add Custom Characters passcode table at top; update Character Designs section and spriteType assignment table to reflect new pool structure |
+
+### Updated constants
+
+```
+ROTATION_ANIMALS: string[] = ["cat","dog","snake","sheep","classic","rooster","tiger","kangaroo"]   // replaces STANDARD_SPRITE_TYPES; equal 12.5% probability each
+ZODIAC_ANIMALS:   string[] = ["rat","ox","tiger","rabbit","dragon","snake","horse","sheep","monkey","rooster","dog","pig"]  // character-code access only
+```
+
+---
+
+## v2.5.11 — previous
 
 ### Changes from v2.5.10
 

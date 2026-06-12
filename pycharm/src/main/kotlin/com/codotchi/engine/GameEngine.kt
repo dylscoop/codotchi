@@ -23,26 +23,31 @@ private fun clampWeight(value: Int): Int = clamp(value, WEIGHT_MIN, WEIGHT_MAX)
 // Sprite helpers
 // ---------------------------------------------------------------------------
 
-private val STANDARD_SPRITE_TYPES = listOf(
+private val ZODIAC_ANIMALS = listOf(
     "rat", "ox", "tiger", "rabbit", "dragon", "snake",
-    "horse", "sheep", "monkey", "rooster", "dog", "pig",
-    "kangaroo"
+    "horse", "sheep", "monkey", "rooster", "dog", "pig"
+)
+
+/**
+ * Animals in the random rotation pool at pet creation.
+ * All entries have equal probability (1 / ROTATION_ANIMALS.size each).
+ * Note: some rotation animals (dog, snake, sheep, rooster, tiger) are also
+ * zodiac animals — they remain accessible via zodiac character codes too.
+ * More animals will be added to this set in the future.
+ * Mirrors ROTATION_ANIMALS in vscode/src/gameEngine.ts.
+ */
+private val ROTATION_ANIMALS = listOf(
+    "cat", "dog", "snake", "sheep", "classic",
+    "rooster", "tiger", "kangaroo"
 )
 
 /**
  * Sample a random sprite type at pet creation.
- *  - "cat"     — 2 % chance (rare)
- *  - "classic" — 2 % chance (rare; the original humanoid shape)
- *  - Each standard sprite — 96 % / 13 ≈ 7.38 % chance
+ * Each entry in ROTATION_ANIMALS has equal probability.
  * Mirrors randomSpriteType() in vscode/src/gameEngine.ts.
  */
 private fun randomSpriteType(): String {
-    val r = Random.nextDouble() * 100
-    return when {
-        r < 2.0 -> "cat"
-        r < 4.0 -> "classic"
-        else    -> STANDARD_SPRITE_TYPES[((r - 4.0) / (96.0 / STANDARD_SPRITE_TYPES.size)).toInt()]
-    }
+    return ROTATION_ANIMALS[Random.nextInt(ROTATION_ANIMALS.size)]
 }
 
 /**

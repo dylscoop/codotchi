@@ -1455,3 +1455,21 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 **Problem:** `.opencode/plugins/codotchi.ts` (the plugin that runs when OpenCode is open inside the `codotchi` workspace) had a hardcoded `getVSCodeStatePath()` that always returned `%APPDATA%/codotchi/vscode/state.json` — the flat global path. The `codotchi` workspace has `"codotchi.perWorkspacePet": true` in `.vscode/settings.json`, so VS Code writes state to a per-workspace hashed subdirectory (`%APPDATA%/codotchi/vscode/<hash12>/state.json`). The in-repo plugin watched the flat path VS Code was not writing to, so OpenCode never saw the pet's current state.
 
 **Fix:** Copied `opencode-codotchi/src/statePathResolver.ts` to `.opencode/plugins/statePathResolver.ts` and updated `.opencode/plugins/codotchi.ts` to import `getIDEBase` and `resolveVSCodeStatePath` from it. Replaced the hardcoded `getIDEBase()` body and `getVSCodeStatePath()` body with thin wrapper calls, exactly mirroring the pattern already used in `opencode-codotchi/src/index.ts`.
+
+---
+
+## BUGFIX-118 — Random rotation pool was wrong: zodiac animals dominated, cat/classic had broken 1% weights, new animals lacked equal footing
+
+**Status:** Fixed (v2.5.12, branch `fix/animal-rotation-enums`)
+**Files:** `vscode/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
+
+**Problem:** `randomSpriteType()` used a weighted scheme where all 13 animals in `STANDARD_SPRITE_TYPES` (12 zodiacs + kangaroo) shared 96% probability (~7.38% each), and `"cat"` and `"classic"` each had 2%. This meant:
+1. The intended rotation pool (cat, dog, snake, sheep, classic, rooster, tiger, kangaroo) was mixed together with zodiac-only animals (rat, ox, rabbit, dragon, horse, monkey, pig) that should only be accessible via character code.
+2. The weighting was hard to maintain — adding a new rotation animal required recalculating bucket math.
+3. There was no named constant grouping the "random pool" separately from the "zodiac" set.
+
+**Fix:** Split the single array into two named enums:
+- `ZODIAC_ANIMALS` (12 Chinese zodiac animals) — character-code access only, not in random pool.
+- `ROTATION_ANIMALS` (cat, dog, snake, sheep, classic, rooster, tiger, kangaroo) — the random rotation pool.
+
+Rewrote `randomSpriteType()` to do a simple uniform pick from `ROTATION_ANIMALS` — no weights, no `if` branches, equal 12.5% per animal. Added `ROTATION_ANIMALS` to the `SpriteType` union so the type system covers all members. Note: five rotation animals (dog, snake, sheep, rooster, tiger) also appear in `ZODIAC_ANIMALS` — they are accessible both ways, by design.
