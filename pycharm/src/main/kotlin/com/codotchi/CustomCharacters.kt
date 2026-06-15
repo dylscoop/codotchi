@@ -90,20 +90,15 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
     CustomCharacter(
         spriteType  = "dog",
         passcode    = "shiba",
-        defaultName  = "Shibagotchi",
+        defaultName  = "Codotchi",
         patLabel    = "Pat",
         mgTitle     = "Play or Pat",
-        giftMessage = "Shibagotchi found a tiny tennis ball!",
+        giftMessage = "__Name__ found a tiny tennis ball!",
         patToasts   = CustomCharacterToasts(
-            patted     = "Shibagotchi enjoyed the attention!",
-            patRefused = "Shibagotchi is too tired for pats!",
+            patted     = "__Name__ enjoyed the attention!",
+            patRefused = "__Name__ is too tired for pats!",
         ),
-        patBubbles  = listOf(
-            "Curled tail, full confidence.",
-            "Tiny fox dog energy.",
-            "The white fur stays white now.",
-            "Much Shiba. Very gotchi.",
-        ),
+        patBubbles  = listOf(),
     ),
     CustomCharacter(
         spriteType  = "testsprite",

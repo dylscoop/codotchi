@@ -819,7 +819,7 @@ class CodotchiPlugin : Disposable {
             "attention_call_sick"            -> "$petName is sick!"
             "attention_call_low_energy"      -> "$petName is exhausted!"
             "attention_call_misbehaviour"    -> "$petName is misbehaving!"
-            "attention_call_gift"            -> customChar?.giftMessage ?: "$petName brought you a gift!"
+            "attention_call_gift"            -> (customChar?.giftMessage ?: "$petName brought you a gift!").replace("__Name__", petName)
             "attention_call_critical_health" -> "$petName's health is critical!"
             else                             -> null
         }

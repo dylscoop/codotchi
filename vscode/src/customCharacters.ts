@@ -88,20 +88,14 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
   {
     spriteType:  "dog",
     passcode:    "shiba",
-    defaultName:  "Shibagotchi",
+    defaultName:  "Codotchi",
     patLabel:    "Pat",
     mgTitle:     "Play or Pat",
-    giftMessage: "Shibagotchi found a tiny tennis ball!",
+    giftMessage: "__Name__ found a tiny tennis ball!",
     patToasts: {
-      patted:      "Shibagotchi enjoyed the attention!",
-      pat_refused: "Shibagotchi is too tired for pats!",
+      patted:      "__Name__ enjoyed the attention!",
+      pat_refused: "__Name__ is too tired for pats!",
     },
-    patBubbles: [
-      "Curled tail, full confidence.",
-      "Tiny fox dog energy.",
-      "The white fur stays white now.",
-      "Much Shiba. Very gotchi.",
-    ],
   },
   {
     spriteType:  "testsprite",
