@@ -627,7 +627,7 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
 
   // 1. Insert or update the DEFS entry
   //    We look for an existing DEFS["spriteType"]["stage"] block and replace it,
-  //    or append a new one before the closing '// Exports' section.
+  //    or append a new one before SPRITES is built from Object.keys(DEFS).
   var defsBlock = buildDefsEntry(spriteType, stage, grid, cols, rows);
 
   var existingPattern = new RegExp(
@@ -640,19 +640,14 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
     content = content.replace(existingPattern, defsBlock);
     console.error("Updated existing DEFS[\"" + spriteType + '"]["' + stage + '"] in ' + filePath);
   } else {
-    // Append before the exports section
-    var exportMarker = "  // =========================================================================\n  // Exports";
-    if (content.indexOf(exportMarker) === -1) {
-      // Try simpler marker
-      var simpleMarker = "window.SPRITES";
-      var simpleIdx = content.indexOf(simpleMarker);
-      if (simpleIdx !== -1) {
-        content = content.slice(0, simpleIdx) + defsBlock + "\n\n  " + content.slice(simpleIdx);
-      } else {
-        throw new Error("Cannot find insertion point in " + filePath);
-      }
+    // Append before SPRITES is parsed/exported.  Inserting after this leaves
+    // DEFS text in the file but never exposes it via window.SPRITES.
+    var parseMarker = "  var SPRITES = {};";
+    var parseIdx = content.indexOf(parseMarker);
+    if (parseIdx !== -1) {
+      content = content.slice(0, parseIdx) + defsBlock + "\n\n" + content.slice(parseIdx);
     } else {
-      content = content.replace(exportMarker, defsBlock + "\n\n" + exportMarker);
+      throw new Error("Cannot find SPRITES parse insertion point in " + filePath);
     }
     console.error('Inserted new DEFS["' + spriteType + '"]["' + stage + '"] in ' + filePath);
   }

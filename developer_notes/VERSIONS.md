@@ -22,9 +22,9 @@
 | `developer_notes/DEV_NOTES.md` | docs: update kangaroo default name to Skippy |
 | `developer_notes/vscode/FEATURES.md` | docs: update kangaroo entry name to Skippy |
 | `developer_notes/DEV_NOTES.md` | docs: add Custom Characters passcode table at top; update Character Designs section and spriteType assignment table to reflect new pool structure |
-| `scripts/import_sprite.js` | feat: add `--transparent`, `--transparent-distance`, and `--crop-transparent` options so JPEG imports can key out flat backgrounds before colour detection; fix `--inject` metadata/palette detection for unquoted sprite keys |
-| `vscode/media/sprites.js` | feat: reimport roo (Roogotchi) from `downloaded_sprites/kangaroo.jpg` with white background removed and transparent border cropped |
-| `pycharm/src/main/resources/webview/sprites.js` | feat: mirror cropped transparent roo sprite data |
+| `scripts/import_sprite.js` | feat: add `--transparent`, `--transparent-distance`, and `--crop-transparent` options so JPEG imports can key out flat backgrounds before colour detection; fix `--inject` metadata/palette detection for unquoted sprite keys and insert new DEFS blocks before `SPRITES` is built |
+| `vscode/media/sprites.js` | feat: reimport roo (Roogotchi) from `downloaded_sprites/kangaroo.jpg` with white background removed and transparent border cropped; move roo DEFS before the `SPRITES` parse so it exports to the preview runtime |
+| `pycharm/src/main/resources/webview/sprites.js` | feat: mirror cropped transparent roo sprite data and pre-parse DEFS placement |
 | `vscode/media/spriteConstants.js` | fix: update roo grid metadata to 644×531 and keep a single kangaroo-colour palette entry |
 | `pycharm/src/main/resources/webview/spriteConstants.js` | fix: mirror roo grid metadata/palette cleanup |
 | `developer_notes/SPRITE_IMPORT.md` | docs: document JPEG background keying and transparent-border cropping options |
