@@ -96,6 +96,7 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
       patted:      "__Name__ enjoyed the attention!",
       pat_refused: "__Name__ is too tired for pats!",
     },
+    patBubbles:  [],
   },
   {
     spriteType:  "testsprite",
