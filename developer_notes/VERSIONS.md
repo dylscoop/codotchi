@@ -22,6 +22,16 @@
 | `developer_notes/DEV_NOTES.md` | docs: update kangaroo default name to Skippy |
 | `developer_notes/vscode/FEATURES.md` | docs: update kangaroo entry name to Skippy |
 | `developer_notes/DEV_NOTES.md` | docs: add Custom Characters passcode table at top; update Character Designs section and spriteType assignment table to reflect new pool structure |
+| `scripts/import_sprite.js` | feat: add `--transparent`, `--transparent-distance`, and `--crop-transparent` options so JPEG imports can key out flat backgrounds before colour detection; fix `--inject` metadata/palette detection for unquoted sprite keys and insert new DEFS blocks before `SPRITES` is built |
+| `vscode/media/sprites.js` | feat: reimport roo (Roogotchi) from `downloaded_sprites/kangaroo.jpg` with white background removed and transparent border cropped; move roo DEFS before the `SPRITES` parse so it exports to the preview runtime |
+| `pycharm/src/main/resources/webview/sprites.js` | feat: mirror cropped transparent roo sprite data and pre-parse DEFS placement |
+| `vscode/media/spriteConstants.js` | fix: update roo grid metadata to 644×531 and keep a single kangaroo-colour palette entry |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | fix: mirror roo grid metadata/palette cleanup |
+| `developer_notes/SPRITE_IMPORT.md` | docs: document JPEG background keying and transparent-border cropping options |
+| `vscode/src/customCharacters.ts` | feat: register roo/Roogotchi host-side passcode (`bounce`) so VS Code setup can unlock it |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | feat: mirror roo/Roogotchi host-side passcode registration for PyCharm |
+| `vscode/src/gameEngine.ts` | feat: include `roo` in the `SpriteType` union for custom-character validation parity |
+| `opencode-codotchi/src/gameEngine.ts` | feat: mirror `roo` in the OpenCode `SpriteType` union |
 
 ### Updated constants
 
@@ -45,6 +55,12 @@ ZODIAC_ANIMALS:   string[] = ["rat","ox","tiger","rabbit","dragon","snake","hors
 | `developer_notes/SPRITE_IMPORT.md` | docs: new guide documenting the sprite image converter (`import_sprite.js`) — pipeline, supported formats, all flags, worked examples, injection behaviour, and gotchas |
 | `scripts/import_sprite.js` | feat: add JPEG and WebP import support via magic-byte content-sniffing and shell-out transcoder (ImageMagick / PowerShell System.Drawing / ffmpeg); misnamed files (e.g. JPEG saved as .png) are detected and handled with a warning |
 | `developer_notes/SPRITE_IMPORT.md` | docs: update supported-formats section and prerequisites for JPEG/WebP/content-sniffing |
+| `vscode/media/sprites.js` | feat: inject roo (Roogotchi) DEFS for all 5 stages from downloaded_sprites/kangaroo.jpg via import_sprite.js |
+| `pycharm/src/main/resources/webview/sprites.js` | feat: mirror roo DEFS for all 5 stages |
+| `vscode/media/spriteConstants.js` | feat: add roo palette (kangaroo colors) and 550×550 SPRITE_GRID_META entry |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | feat: mirror roo palette and grid meta |
+| `vscode/media/customCharacters.js` | feat: register roo as Roogotchi custom character (passcode: bounce) |
+| `pycharm/src/main/resources/webview/customCharacters.js` | feat: mirror Roogotchi custom character registration |
 | `README.md` | docs: update release artifact filenames and current release to v2.5.11 |
 | `opencode-codotchi/README.md` | docs: update OpenCode zip examples to v2.5.11 |
 | `vscode/codotchi-2.5.11.vsix` | Rebuilt VS Code extension artifact for v2.5.11 |
