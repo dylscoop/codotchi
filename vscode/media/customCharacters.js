@@ -64,6 +64,23 @@
         "That's proper straya.",
       ],
     },
+    dog: {
+      passcode:     "shiba",
+      defaultName:  "Shibagotchi",
+      patLabel:     "Pat",
+      mgTitle:      "Play or Pat",
+      giftMessage:  "Shibagotchi found a tiny tennis ball!",
+      patToasts: {
+        patted:      "Shibagotchi enjoyed the attention!",
+        pat_refused: "Shibagotchi is too tired for pats!",
+      },
+      patBubbles: [
+        "Curled tail, full confidence.",
+        "Tiny fox dog energy.",
+        "The white fur stays white now.",
+        "Much Shiba. Very gotchi.",
+      ],
+    },
     testsprite: {
       passcode:     "pixel",
       defaultName:  "Pixel",

@@ -88,6 +88,24 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         ),
     ),
     CustomCharacter(
+        spriteType  = "dog",
+        passcode    = "shiba",
+        defaultName  = "Shibagotchi",
+        patLabel    = "Pat",
+        mgTitle     = "Play or Pat",
+        giftMessage = "Shibagotchi found a tiny tennis ball!",
+        patToasts   = CustomCharacterToasts(
+            patted     = "Shibagotchi enjoyed the attention!",
+            patRefused = "Shibagotchi is too tired for pats!",
+        ),
+        patBubbles  = listOf(
+            "Curled tail, full confidence.",
+            "Tiny fox dog energy.",
+            "The white fur stays white now.",
+            "Much Shiba. Very gotchi.",
+        ),
+    ),
+    CustomCharacter(
         spriteType  = "testsprite",
         passcode    = "pixel",
         defaultName  = "Pixel",

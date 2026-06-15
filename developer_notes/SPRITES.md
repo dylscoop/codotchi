@@ -18,7 +18,8 @@ One grid size per animal type:
 
 | Type | Grid (cols × rows) | Animals |
 |------|--------------------|---------|
-| Quadruped | 48 × 32 | cat, rat, ox, tiger, rabbit, horse, sheep, dog, pig, kangaroo |
+| Quadruped | 48 × 32 | cat, rat, ox, tiger, rabbit, horse, sheep, pig, kangaroo |
+| Imported | 573 × 550 | dog |
 | Snake | 48 × 32 | snake |
 | Upright | 32 × 48 | classic, monkey, rooster, dragon |
 
@@ -119,7 +120,7 @@ The `color` field on `PetState` is deprecated as of v1.17.0.
 | rabbit  | `#f5f5f5` off-white          | `#f48fb1` pink                | `#e0e0e0` light grey           | `#1a1a1a`   |
 | horse   | `#8b6914` chestnut brown     | `#4a3728` very dark brown     | `#5c4a1e` dark golden brown    | `#1a1a1a`   |
 | sheep   | `#eceff1` creamy white       | `#5d4037` dark brown          | `#b0bec5` blue-grey            | `#1a1a1a`   |
-| dog     | `#c8853a` rust/copper orange | `#3d2008` very dark brown     | `#8b5320` dark rust brown      | `#1a1a1a`   |
+| dog     | `#f2994a` Shiba orange       | `#f2eadf` cream markings      | `#5b2f1f` dark facial detail   | `#1a1a1a`   |
 | pig     | `#f8bbd0` light pink         | `#e91e63` hot pink            | `#f48fb1` soft pink            | `#1a1a1a`   |
 | snake   | `#558b2f` olive green        | `#ffeb3b` bright yellow       | `#33691e` dark olive green     | `#0d1a0d`   |
 | kangaroo | `#d9bb7b` tan               | `#663300` dark brown          | `#8c5a24` age spots            | `#1a1a1a`   |
@@ -2774,12 +2775,12 @@ row 31 ···············░░···█████········
 
 ---
 
-## dog  (48 × 32 quadruped) — redesigned v1.4.0
+## dog  (573 × 550 imported) — Shiba import v2.6.0
 
-**Redesigned v2 — Shiba Inu, faces left. Tamagotchi pixel-art style.**
-Two narrow-set prick ears (▓ inner urajiro). Small hook curl tail arcing from upper-right rump. Tapered muzzle protrudes left 2 pixels. Single eye pixel (▓). Small cream belly patch (▓). 2 visible legs (front + back side-profile). Senior = adult + colour-3 muzzle-graying spots on snout (Rule 6). Proportional juvenile shrinks (Rule 9).
+**Imported v2.6.0 — Shiba Inu, faces left.**
+Based on the edge-masked downloaded Shiba image. The `shiba` character code maps to this built-in `dog` sprite type. Cream muzzle/chest/belly pixels are preserved by masking only edge-connected near-white background before import.
 
-Legend: █ 1 red-orange body · ▓ 2 cream (ear interior, eye, belly) · ░ 3 senior muzzle graying · · 0 transparent
+Legend: █ 1 Shiba orange body · ▓ 2 cream markings · ░ 3 dark eye/facial detail and senior age spots · · 0 transparent
 
 ### baby
 
