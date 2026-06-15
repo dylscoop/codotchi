@@ -28,6 +28,9 @@
  *   --secondary  <hex>    Colour in source image → index 2 (eyes/markings)
  *   --accent     <hex>    Colour in source image → index 3 (stripes/accent)
  *   --threshold  <0-255>  Alpha value below which a pixel is treated as transparent (default: 128)
+ *   --transparent <hex>   Source colour to treat as transparent (for JPEG/flat backgrounds)
+ *   --transparent-distance <N>  RGB distance tolerance for --transparent (default: 2500)
+ *   --crop-transparent    Trim transparent border after applying --transparent
  *   --preview             Print an ASCII art preview of the mapped grid to stdout
  *   --inject              Splice the DEFS entry and SPRITE_GRID_META registration into
  *                         vscode/media/sprites.js and pycharm/.../sprites.js
@@ -72,7 +75,7 @@ var stage       = args[2];
 if (!inputFile || !spriteType || !stage) {
   console.error("Usage: node scripts/import_sprite.js <file> <spriteType> <stage> [options]");
   console.error("Supported formats: .png, .jpg/.jpeg, .webp (via external converter), .pixil");
-  console.error("Options: --frame N  --leg-row N  --primary #hex  --secondary #hex  --accent #hex  --threshold N  --preview  --inject");
+  console.error("Options: --frame N  --leg-row N  --primary #hex  --secondary #hex  --accent #hex  --threshold N  --transparent #hex  --transparent-distance N  --crop-transparent  --preview  --inject");
   process.exit(1);
 }
 
@@ -82,6 +85,9 @@ var primaryHex  = getFlag("--primary",   null);
 var secondaryHex= getFlag("--secondary", null);
 var accentHex   = getFlag("--accent",    null);
 var alphaThresh = parseInt(getFlag("--threshold", "128"), 10);
+var transparentHex  = getFlag("--transparent", null);
+var transparentDist = parseInt(getFlag("--transparent-distance", "2500"), 10);
+var cropTransparent = hasFlag("--crop-transparent");
 var doPreview   = hasFlag("--preview");
 var doInject    = hasFlag("--inject");
 
@@ -107,6 +113,65 @@ function rgbDist(a, b) {
 
 function luminance(rgb) {
   return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+}
+
+function applyTransparentColour(src, transparentHex, transparentDist) {
+  if (!transparentHex) { return src; }
+  var target = hexToRgb(transparentHex);
+  var changed = 0;
+  var pixels = [];
+  for (var row = 0; row < src.height; row++) {
+    var pixelRow = [];
+    for (var col = 0; col < src.width; col++) {
+      var px = src.pixels[row][col];
+      var next = { r: px.r, g: px.g, b: px.b, a: px.a };
+      if (rgbDist(px, target) <= transparentDist) {
+        next.a = 0;
+        changed++;
+      }
+      pixelRow.push(next);
+    }
+    pixels.push(pixelRow);
+  }
+  console.error("Applied transparent colour " + transparentHex + " (distance <= " + transparentDist + "): " + changed + " pixels");
+  return { width: src.width, height: src.height, pixels: pixels };
+}
+
+function cropTransparentBorder(src, alphaThresh) {
+  var minX = src.width, minY = src.height, maxX = -1, maxY = -1;
+  for (var row = 0; row < src.height; row++) {
+    for (var col = 0; col < src.width; col++) {
+      if (src.pixels[row][col].a >= alphaThresh) {
+        if (col < minX) { minX = col; }
+        if (col > maxX) { maxX = col; }
+        if (row < minY) { minY = row; }
+        if (row > maxY) { maxY = row; }
+      }
+    }
+  }
+
+  if (maxX < minX || maxY < minY) {
+    console.error("Warning: --crop-transparent found no visible pixels; leaving image unchanged");
+    return src;
+  }
+
+  if (minX === 0 && minY === 0 && maxX === src.width - 1 && maxY === src.height - 1) {
+    console.error("--crop-transparent: no transparent border to trim");
+    return src;
+  }
+
+  var newW = maxX - minX + 1;
+  var newH = maxY - minY + 1;
+  var pixels = [];
+  for (var y = minY; y <= maxY; y++) {
+    var pixelRow = [];
+    for (var x = minX; x <= maxX; x++) {
+      pixelRow.push(src.pixels[y][x]);
+    }
+    pixels.push(pixelRow);
+  }
+  console.error("Cropped transparent border: " + src.width + " × " + src.height + " → " + newW + " × " + newH);
+  return { width: newW, height: newH, pixels: pixels };
 }
 
 // ── Format detection (magic bytes) ───────────────────────────────────────────
@@ -653,7 +718,13 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
 
   console.error("Source dimensions: " + imgData.width + " × " + imgData.height);
 
-  // 2. Clamp to max grid size (preserve aspect ratio)
+  // 2. Optional background transparency and crop (useful for JPEGs with a flat backdrop)
+  imgData = applyTransparentColour(imgData, transparentHex, transparentDist);
+  if (cropTransparent) {
+    imgData = cropTransparentBorder(imgData, alphaThresh);
+  }
+
+  // 3. Clamp to max grid size (preserve aspect ratio)
   var targetW = imgData.width;
   var targetH = imgData.height;
   if (targetW > MAX_COLS || targetH > MAX_ROWS) {
@@ -665,22 +736,22 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
     console.error("Scaling down to: " + targetW + " × " + targetH + " (max " + MAX_COLS + "×" + MAX_ROWS + ")");
   }
 
-  // 3. Resample if needed
+  // 4. Resample if needed
   var resampled = resample(imgData, targetW, targetH);
   var cols = resampled.width;
   var rows = resampled.height;
 
-  // 4. Determine leg row
+  // 5. Determine leg row
   var legRowStart = legRowArg !== null ? parseInt(legRowArg, 10) : Math.floor(rows * 0.78);
   console.error("Grid: " + cols + " cols × " + rows + " rows, legRowStart=" + legRowStart);
 
-  // 5. Build colour mapper
+  // 6. Build colour mapper
   var mapColour = buildColourMapper(
     resampled.pixels, cols, rows, alphaThresh,
     primaryHex, secondaryHex, accentHex
   );
 
-  // 6. Build grid (array of arrays of colour indices)
+  // 7. Build grid (array of arrays of colour indices)
   var grid = [];
   for (var row = 0; row < rows; row++) {
     var gridRow = [];
@@ -690,12 +761,12 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
     grid.push(gridRow);
   }
 
-  // 7. Preview
+  // 8. Preview
   if (doPreview) {
     printPreview(grid, cols, rows);
   }
 
-  // 8. Emit DEFS text to stdout (always — useful for piping / review)
+  // 9. Emit DEFS text to stdout (always — useful for piping / review)
   var defsText = buildDefsEntry(spriteType, stage, grid, cols, rows);
   console.log("// ── Imported: " + path.basename(inputFile) + " → " + spriteType + "/" + stage + " (" + cols + "×" + rows + ") ──");
   console.log(defsText);
@@ -703,7 +774,7 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
   console.log("// SPRITE_GRID_META entry to add to spriteConstants.js:");
   console.log("//   " + spriteType + ": { cols: " + cols + ", rows: " + rows + ", legRowStart: " + legRowStart + " },");
 
-  // 9. Inject into both sprites.js files
+  // 10. Inject into both sprites.js files
   if (doInject) {
     var vscodeSprites  = path.join(repoRoot, "vscode",   "media",                               "sprites.js");
     var pycharmSprites = path.join(repoRoot, "pycharm",  "src", "main", "resources", "webview", "sprites.js");
@@ -713,12 +784,12 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
     injectIntoSpritesJs(vscodeSprites,  spriteType, stage, grid, cols, rows, legRowStart);
     injectIntoSpritesJs(pycharmSprites, spriteType, stage, grid, cols, rows, legRowStart);
 
-    // Also register the SPRITE_GRID_META entry in both spriteConstants.js files
+    // Also register/update the SPRITE_GRID_META entry in both spriteConstants.js files
     [vscodeConst, pycharmConst].forEach(function(constFile) {
       var constContent = fs.readFileSync(constFile, "utf8");
       var metaLine = '    ' + spriteType.padEnd(10) + ': { cols: ' + cols + ', rows: ' + rows + ', legRowStart: ' + legRowStart + ' },';
-      var existsPattern = new RegExp('    ' + spriteType + '\\s*:');
-      if (!existsPattern.test(constContent)) {
+      var metaExistsPattern = new RegExp('^\\s*' + spriteType + '\\s*:\\s*\\{\\s*cols\\s*:', "m");
+      if (!metaExistsPattern.test(constContent)) {
         // Append before the closing }; of SPRITE_GRID_META
         var insertBefore = "  };\n\n  /**\n   * Return the height/width ratio";
         if (constContent.indexOf(insertBefore) !== -1) {
@@ -727,15 +798,22 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
           console.error("Added SPRITE_GRID_META entry for " + spriteType + " in " + constFile);
         }
       } else {
-        console.error("SPRITE_GRID_META entry for " + spriteType + " already exists in " + constFile);
+        constContent = constContent.replace(
+          new RegExp('^\\s*' + spriteType + '\\s*:\\s*\\{\\s*cols\\s*:.*$', "m"),
+          metaLine
+        );
+        fs.writeFileSync(constFile, constContent, "utf8");
+        console.error("Updated SPRITE_GRID_META entry for " + spriteType + " in " + constFile);
       }
     });
 
     // Also register in ANIMAL_PALETTES if missing (with a default neutral palette)
     [vscodeConst, pycharmConst].forEach(function(constFile) {
       var constContent = fs.readFileSync(constFile, "utf8");
-      if (constContent.indexOf('"' + spriteType + '"') === -1 &&
-          constContent.indexOf("'" + spriteType + "'") === -1) {
+      var paletteExistsPattern = new RegExp('^\\s*' + spriteType + '\\s*:\\s*\\{\\s*primary\\s*:', "m");
+      var quotedPaletteExists = constContent.indexOf('"' + spriteType + '"') !== -1 ||
+                                constContent.indexOf("'" + spriteType + "'") !== -1;
+      if (!paletteExistsPattern.test(constContent) && !quotedPaletteExists) {
         var paletteLine = '    ' + spriteType.padEnd(10) + ': { primary: "#888888", secondary: "#444444", accent: "#222222", background: "#1a1a1a" },';
         var insertAfter = "var ANIMAL_PALETTES = {";
         constContent = constContent.replace(insertAfter, insertAfter + "\n  " + paletteLine);

@@ -106,7 +106,7 @@
     pig:      { cols: 48, rows: 32, legRowStart: 25 },
     snake:    { cols: 48, rows: 32, legRowStart: 25 },
     kangaroo: { cols: 48, rows: 32, legRowStart: 25 },
-    roo:      { cols: 550, rows: 550, legRowStart: 429 },
+    roo       : { cols: 644, rows: 531, legRowStart: 380 },
     testsprite: { cols: 700, rows: 550, legRowStart: 429 },
   };
 

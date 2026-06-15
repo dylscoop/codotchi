@@ -107,6 +107,9 @@ node scripts/import_sprite.js <file> <spriteType> <stage> [options]
 | `--secondary <#hex>` | auto | Source colour to map to index 2 (eyes / markings). |
 | `--accent <#hex>` | auto | Source colour to map to index 3 (stripes / accent). |
 | `--threshold <0–255>` | `128` | Alpha value below which a pixel is treated as transparent. |
+| `--transparent <#hex>` | off | Source colour to key out as transparent before quantization (useful for JPEGs with white backgrounds). |
+| `--transparent-distance <N>` | `2500` | Squared RGB-distance tolerance for `--transparent`; larger values remove more near-background pixels. |
+| `--crop-transparent` | off | Trim the transparent border after applying alpha / `--transparent`, before max-size scaling. |
 | `--preview` | off | Print an ASCII art preview of the quantized grid to stderr. |
 | `--inject` | off | Splice the output directly into both IDEs' `sprites.js` and `spriteConstants.js`. |
 
@@ -154,6 +157,21 @@ node scripts/import_sprite.js source.png mysprite adult \
 
 The `DEFS` entry is printed to stdout. Redirect to a file or pipe to a
 reviewer before injecting.
+
+### JPEG with white background removal
+
+JPEGs do not have alpha, so a flat white background imports as opaque pixels
+unless you key it out first:
+
+```sh
+node scripts/import_sprite.js downloaded_sprites/kangaroo.jpg roo adult \
+  --transparent "#ffffff" --transparent-distance 2500 --crop-transparent --preview
+```
+
+`--transparent` runs before colour auto-detection, so the background will not
+be counted as the most frequent colour. `--crop-transparent` then trims the
+empty border so the grid metadata matches the visible sprite rather than the
+original canvas size.
 
 ### Full inject flow (all stages)
 
@@ -229,6 +247,7 @@ palette table in [`SPRITES.md`](SPRITES.md) for examples.
 | Limitation | Detail |
 |------------|--------|
 | Maximum grid size | 700 columns × 550 rows. Larger images are scaled down (aspect preserved). |
+| JPEG backgrounds | JPEGs are fully opaque. Use `--transparent "#ffffff" --transparent-distance N --crop-transparent` for flat white backgrounds before importing. |
 | WebP requires a converter | PowerShell `System.Drawing` does not support WebP unless the Windows WebP codec is installed. Install ImageMagick v7+ or ffmpeg for reliable WebP support. |
 | Interlaced PNGs unsupported | The PNG decoder rejects interlaced files. Re-export as non-interlaced (progressive) PNG. |
 | Brittle injection markers | `--inject` finds insertion points by searching for exact string patterns in `sprites.js` and `spriteConstants.js`. Reformatting those files can break injection. |
