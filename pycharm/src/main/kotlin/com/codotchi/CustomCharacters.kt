@@ -106,6 +106,24 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
     ),
     // ── Add future custom characters here ────────────────────────────────────
     CustomCharacter(
+        spriteType   = "roo",
+        passcode     = "bounce",
+        defaultName  = "Roogotchi",
+        patLabel     = "Bounce",
+        mgTitle      = "Play or Bounce",
+        giftMessage  = "Roogotchi found something in its pouch!",
+        patToasts    = CustomCharacterToasts(
+            patted     = "Roogotchi had a bounce!",
+            patRefused = "Roogotchi is too tired to bounce!",
+        ),
+        patBubbles   = listOf(
+            "Imported straight from a JPEG.",
+            "Pouch secured.",
+            "550 pixels tall and ready to hop.",
+            "Not bad for a photo.",
+        ),
+    ),
+    CustomCharacter(
         spriteType   = "stu",
         passcode     = "rubylovessalmon",
         defaultName  = "Stugotchi",

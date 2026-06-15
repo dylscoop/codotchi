@@ -28,6 +28,10 @@
 | `vscode/media/spriteConstants.js` | fix: update roo grid metadata to 644×531 and keep a single kangaroo-colour palette entry |
 | `pycharm/src/main/resources/webview/spriteConstants.js` | fix: mirror roo grid metadata/palette cleanup |
 | `developer_notes/SPRITE_IMPORT.md` | docs: document JPEG background keying and transparent-border cropping options |
+| `vscode/src/customCharacters.ts` | feat: register roo/Roogotchi host-side passcode (`bounce`) so VS Code setup can unlock it |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | feat: mirror roo/Roogotchi host-side passcode registration for PyCharm |
+| `vscode/src/gameEngine.ts` | feat: include `roo` in the `SpriteType` union for custom-character validation parity |
+| `opencode-codotchi/src/gameEngine.ts` | feat: mirror `roo` in the OpenCode `SpriteType` union |
 
 ### Updated constants
 

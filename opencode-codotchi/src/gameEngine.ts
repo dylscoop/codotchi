@@ -953,7 +953,7 @@ const ROTATION_ANIMALS = [
 export type SpriteType =
   | typeof ZODIAC_ANIMALS[number]
   | typeof ROTATION_ANIMALS[number]
-  | "tim" | "testsprite" | "stu";
+  | "tim" | "testsprite" | "roo" | "stu";
 
 /**
  * Sample a random sprite type at pet creation.

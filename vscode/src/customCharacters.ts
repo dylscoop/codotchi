@@ -104,6 +104,24 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
   },
   // ── Add future custom characters here ──────────────────────────────────────
   {
+    spriteType:  "roo",
+    passcode:    "bounce",
+    defaultName: "Roogotchi",
+    patLabel:    "Bounce",
+    mgTitle:     "Play or Bounce",
+    giftMessage: "Roogotchi found something in its pouch!",
+    patToasts: {
+      patted:      "Roogotchi had a bounce!",
+      pat_refused: "Roogotchi is too tired to bounce!",
+    },
+    patBubbles: [
+      "Imported straight from a JPEG.",
+      "Pouch secured.",
+      "550 pixels tall and ready to hop.",
+      "Not bad for a photo.",
+    ],
+  },
+  {
     spriteType:  "stu",
     passcode:    "rubylovessalmon",
     defaultName: "Stugotchi",
