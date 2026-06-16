@@ -808,7 +808,7 @@ export function buildContextualSpeech(
         `${costStr} TODAY. ${tokStrUp} TOKENS. THIS IS GETTING EXPENSIVE.`,
         `RACKING UP — ${costStr} AND ${tokStrUp} TOKENS TODAY.`,
       ]);
-      return `${phrase} ${shoutSuffix}`.toUpperCase();
+      return colour(`${phrase} ${shoutSuffix}`.toUpperCase(), FG_RED);
     } else if (dailyCostUSD >= costWarnThreshold) {
       // Warning tier — lowercase but notable
       const warnSuffix = pickRandom([
@@ -817,7 +817,7 @@ export function buildContextualSpeech(
         `${costStr} and ${tokStr} tokens today. That's climbing.`,
         `Not cheap — ${costStr} and ${tokStr} tokens today.`,
       ]);
-      return `${phrase} ${warnSuffix}`;
+      return `${phrase} ${colour(warnSuffix, FG_YELLOW)}`;
     } else {
       // Normal tier — casual mention
       const normalSuffix = pickRandom([

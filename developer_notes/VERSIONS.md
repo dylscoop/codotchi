@@ -1,6 +1,19 @@
 # Version History
 
-## v2.7.2 — current
+## v2.7.3 — current
+
+### Changes from v2.7.2
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/asciiArt.ts` | feat: shout-tier speech now coloured red (`FG_RED`); warn-tier suffix coloured yellow (`FG_YELLOW`) |
+| `opencode-codotchi/src/index.ts` | feat: suppress stat notifications (hunger, happiness, energy, sickness, poop, gift, misbehaviour) for OpenCode-local pet — only wakeup, evolution, and old-age death events are shown |
+| `opencode-codotchi/package.json` | chore: bump version to 2.7.3 |
+| `opencode-codotchi/opencode-codotchi-2.7.3.zip` | Rebuilt distributable zip for v2.7.3 |
+
+---
+
+## v2.7.2 — previous
 
 ### Changes from v2.7.1
 
