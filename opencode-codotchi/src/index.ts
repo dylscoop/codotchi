@@ -1296,6 +1296,7 @@ export const plugin: Plugin = async (_ctx) => {
         }
         if (info?.role === "assistant" && typeof info.cost === "number") {
           const t = (info.tokens?.input ?? 0) + (info.tokens?.output ?? 0)
+                  + (info.tokens?.reasoning ?? 0)
                   + (info.tokens?.cache?.read ?? 0) + (info.tokens?.cache?.write ?? 0);
           sessionCostUSD += info.cost;
           sessionTokens  += t;
