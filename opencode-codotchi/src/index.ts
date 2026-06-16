@@ -1,4 +1,4 @@
-/**
+﻿/**
  * index.ts
  *
  * opencode-codotchi — npm-distributable OpenCode plugin.
@@ -144,7 +144,7 @@ function loadFromIDEFile(filePath: string): { state: PetState; savedAt: number; 
     return {
       state: deserialiseState(raw.state),
       savedAt: raw.savedAt,
-      terminalEnabled: raw.terminalEnabled ?? false,
+      terminalEnabled: raw.terminalEnabled ?? true,
     };
   } catch {
     return null;
@@ -343,10 +343,10 @@ let isIdle = false;
 let lastCodeActivityMs = 0;
 
 // ---------------------------------------------------------------------------
-// Display toggle (default off â€” art shown in tool details panel when on)
+// Display toggle (default on)
 // ---------------------------------------------------------------------------
 
-let terminalEnabled = false;
+let terminalEnabled = true;
 
 // ---------------------------------------------------------------------------
 // Session coding activity stats (for contextual speech bubble commentary)
@@ -573,8 +573,8 @@ function loadAllStates(): void {
     vscodePetState    = applyOfflineDecay(vscodeFile.state, elapsed);
     vscodeLastSavedAt = vscodeFile.savedAt;
     vscodeMeals = 0;
-    // Restore terminalEnabled from whichever file has it set
-    if (vscodeFile.terminalEnabled) { terminalEnabled = true; }
+    // Restore terminalEnabled from the VS Code state file (respects explicit off)
+    terminalEnabled = vscodeFile.terminalEnabled;
   }
   const pycharmFile = loadFromIDEFile(getPyCharmStatePath());
   if (pycharmFile !== null) {
@@ -902,6 +902,9 @@ export const plugin: Plugin = async (_ctx) => {
       // on / off — toggle ASCII art display
       // ---------------------------------------------------------------------------
       if (action === "on") {
+        if (terminalEnabled) {
+          return ret(notification + "ASCII art is already enabled.");
+        }
         terminalEnabled = true;
         saveTerminalEnabled();
         const art = artHeader();
