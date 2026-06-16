@@ -1,6 +1,17 @@
 # Version History
 
-## v2.6.0 — current
+## v2.6.1 — current
+
+### Changes from v2.6.0
+
+| File | What changed |
+|------|-------------|
+| `scripts/import_sprite.ps1` | feat: add interactive PowerShell launcher for import_sprite.js with file picker dialog and prompts for all flags |
+| `scripts/import_sprite.bat` | feat: add double-click batch launcher that calls import_sprite.ps1 via PowerShell |
+
+---
+
+## v2.6.0 — previous
 
 ### Changes from v2.5.12
 
