@@ -1546,3 +1546,14 @@ Rewrote `randomSpriteType()` to do a simple uniform pick from `ROTATION_ANIMALS`
 **Problem:** The BUGFIX-124 fix for cost colour introduced a `costPrefix` markdown blockquote (`> 🚨 **$X today — check your usage!**`) that appeared *above* the ASCII code block, separate from the pet's speech bubble. This created a duplicate cost mention (one in the blockquote, one inside the bubble as random phrase text) and the blockquote was visually disconnected from the pet art.
 
 **Fix:** Replaced the multiple random shout/warn suffix phrases in `buildContextualSpeech()` with a single deterministic emoji-prefixed format (`🚨 $X TODAY — CHECK YOUR USAGE! (Ym TOKENS)` at shout tier; `⚠️ $X today — getting spendy. (Ym tokens)` at warn tier). This text is word-wrapped naturally inside the speech bubble by `buildBubble()`. The `costPrefix` blockquote and its conditional logic were removed from `index.ts` entirely.
+
+---
+
+## BUGFIX-126 — Speech bubble borders misaligned when message contains wide emoji
+
+**Status:** Fixed (branch `fix/bubble-align-and-banner`)
+**File:** `opencode-codotchi/src/asciiArt.ts`
+
+**Problem:** `buildBubble()` computed `innerWidth` using `String.length` and padded each content line with `.padEnd()`. Both measure in UTF-16 code units. Wide emoji such as `🚨` (U+1F6A8, a surrogate pair with `.length === 2`) and `⚠️` (U+26A0 + variation selector, `.length === 2`) are visually 2 terminal columns wide but only 1 codepoint. This caused `innerWidth` to be underestimated by 1 per emoji, making the top and bottom border lines shorter than the content lines and the right border column to visually drift left.
+
+**Fix:** Added `visualLength(s)` and `visualPadEnd(s, width)` helpers in `asciiArt.ts`. `visualLength` iterates over Unicode codepoints (correctly handling surrogate pairs) and counts emoji/wide-Unicode chars as 2 columns. `visualPadEnd` pads to a target visual width rather than a code-unit count. `buildBubble` now uses these helpers for `innerWidth` calculation, word-wrap overflow check, and per-line padding, so all three operations agree on the same visual column count and the bubble borders stay aligned regardless of emoji content.

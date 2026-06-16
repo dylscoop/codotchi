@@ -470,15 +470,60 @@ export function getArt(stage: string, mood: string, spriteType = "classic"): str
  * @param message  - The message text. Long messages are word-wrapped.
  * @param maxWidth - Max characters per bubble line (default 36).
  */
+
+/**
+ * Return the visual (terminal column) width of a plain-text string.
+ * Emoji and other wide Unicode codepoints count as 2 columns; everything
+ * else counts as 1.  ANSI escape codes must be stripped before calling.
+ */
+function visualLength(s: string): number {
+  // Iterate over Unicode codepoints (handles surrogate pairs correctly).
+  let width = 0;
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) ?? 0;
+    // Variation selectors, zero-width joiners and zero-width non-joiners
+    // are invisible — add nothing.
+    if (cp === 0xFE0F || cp === 0xFE0E || cp === 0x200D || cp === 0x200C) {
+      continue;
+    }
+    // Most emoji fall in these ranges and occupy 2 terminal columns.
+    if (
+      (cp >= 0x1F000 && cp <= 0x1FFFF) || // Mahjong, dominos, miscellaneous symbols and pictographs, transport, etc.
+      (cp >= 0x2600  && cp <= 0x27BF)  || // Misc symbols, Dingbats
+      (cp >= 0x2300  && cp <= 0x23FF)  || // Misc technical
+      (cp >= 0xFE00  && cp <= 0xFE0F)  || // Variation selectors (wide glyphs)
+      (cp >= 0x1F900 && cp <= 0x1F9FF) || // Supplemental symbols
+      (cp >= 0x1FA00 && cp <= 0x1FA6F) || // Chess symbols
+      (cp >= 0x1FA70 && cp <= 0x1FAFF)    // More supplemental
+    ) {
+      width += 2;
+    } else {
+      width += 1;
+    }
+  }
+  return width;
+}
+
+/**
+ * Pad a plain-text string to `targetVisualWidth` terminal columns by
+ * appending spaces.  Uses visualLength() so wide characters are counted
+ * correctly.
+ */
+function visualPadEnd(s: string, targetVisualWidth: number): string {
+  const current = visualLength(s);
+  const needed  = Math.max(0, targetVisualWidth - current);
+  return s + " ".repeat(needed);
+}
+
 export function buildBubble(message: string, maxWidth = 40): string[] {
-  // Word-wrap the message
+  // Word-wrap the message using visual width so emoji don't overflow.
   const words = message.split(" ");
   const wrapped: string[] = [];
   let current = "";
   for (const word of words) {
     if (current.length === 0) {
       current = word;
-    } else if (current.length + 1 + word.length <= maxWidth) {
+    } else if (visualLength(current) + 1 + visualLength(word) <= maxWidth) {
       current += " " + word;
     } else {
       wrapped.push(current);
@@ -487,13 +532,13 @@ export function buildBubble(message: string, maxWidth = 40): string[] {
   }
   if (current.length > 0) { wrapped.push(current); }
 
-  const innerWidth = Math.max(...wrapped.map((l) => l.length), 4);
+  const innerWidth = Math.max(...wrapped.map((l) => visualLength(l)), 4);
   const top    = ` ${"_".repeat(innerWidth + 2)} `;
   const bottom = ` ${"‾".repeat(innerWidth + 2)} `;
 
   const lines: string[] = [top];
   for (let i = 0; i < wrapped.length; i++) {
-    const padded = wrapped[i].padEnd(innerWidth, " ");
+    const padded = visualPadEnd(wrapped[i], innerWidth);
     const isFirst = i === 0;
     const isLast  = i === wrapped.length - 1;
     const left  = isFirst && isLast ? "<" : isFirst ? "/" : isLast ? "\\" : "|";
