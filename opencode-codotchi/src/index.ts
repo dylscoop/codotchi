@@ -1160,19 +1160,13 @@ export const plugin: Plugin = async (ctx) => {
       const livePets = getActivePets().filter(p => p.state.alive);
       if (livePets.length === 0) return;
 
-      const costPrefix = dailyCostUSD >= costShoutThreshold
-        ? `\n\n> 🚨 **${formatCost(dailyCostUSD)} today — check your usage!** (${formatTokens(dailyTokens)} tokens)`
-        : dailyCostUSD >= costWarnThreshold
-        ? `\n\n> ⚠️ *${formatCost(dailyCostUSD)} today — getting spendy.* (${formatTokens(dailyTokens)} tokens)`
-        : "";
-
       const bubbles = livePets.map(p => {
         const s = p.state;
         const msg = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
         const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
         return stripAnsi(buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType, ideLabel));
       });
-      output.text = output.text + costPrefix + "\n\n```\n" + bubbles.join("\n\n") + "\n```";
+      output.text = output.text + "\n\n```\n" + bubbles.join("\n\n") + "\n```";
     },
 
     async event({ event }) {

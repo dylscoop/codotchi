@@ -1535,3 +1535,14 @@ Rewrote `randomSpriteType()` to do a simple uniform pick from `ROTATION_ANIMALS`
 **Problem:** `buildContextualSpeech()` had six early-return branches for contextual overrides (prod branch, idle ≥60min, idle ≥30min, messages ≥20, messages ≥10, messages ≥5). Every one of these returned before reaching the cost/token suffix block at the bottom of the function. In practice any session with 5 or more messages — which covers nearly every real session — would pick the message-count override and return a bare phrase with no cost suffix, regardless of how high `dailyCostUSD` was.
 
 **Fix:** Restructured `buildContextualSpeech()` to use a single `phrase` variable assigned by an `if/else if/else` chain instead of early returns. The cost/token suffix block now always executes at the bottom of the function regardless of which phrase was chosen. Eight new tests added covering cost suffix on every override branch.
+
+---
+
+## BUGFIX-125 — Cost alert rendered outside speech bubble as separate blockquote
+
+**Status:** Fixed (branch `fix/cost-alert-inside-bubble`)
+**Files:** `opencode-codotchi/src/asciiArt.ts`, `opencode-codotchi/src/index.ts`
+
+**Problem:** The BUGFIX-124 fix for cost colour introduced a `costPrefix` markdown blockquote (`> 🚨 **$X today — check your usage!**`) that appeared *above* the ASCII code block, separate from the pet's speech bubble. This created a duplicate cost mention (one in the blockquote, one inside the bubble as random phrase text) and the blockquote was visually disconnected from the pet art.
+
+**Fix:** Replaced the multiple random shout/warn suffix phrases in `buildContextualSpeech()` with a single deterministic emoji-prefixed format (`🚨 $X TODAY — CHECK YOUR USAGE! (Ym TOKENS)` at shout tier; `⚠️ $X today — getting spendy. (Ym tokens)` at warn tier). This text is word-wrapped naturally inside the speech bubble by `buildBubble()`. The `costPrefix` blockquote and its conditional logic were removed from `index.ts` entirely.
