@@ -833,6 +833,15 @@ export function buildContextualSpeech(
       ]);
       return `${base} ${normalSuffix}`;
     }
+  } else if (dailyTokens > 0) {
+    // Token-only tier — free/local model, no cost to report
+    const tokStr = formatTokens(dailyTokens);
+    const tokenOnlySuffix = pickRandom([
+      `${tokStr} tokens used today.`,
+      `Running on ${tokStr} tokens so far.`,
+      `${tokStr} tokens in today.`,
+    ]);
+    return `${base} ${tokenOnlySuffix}`;
   }
 
   return base;
