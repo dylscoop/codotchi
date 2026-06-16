@@ -303,4 +303,55 @@ describe("buildContextualSpeech", () => {
     const result = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 60, 100_000, 30, 50);
     assert.equal(result, result.toUpperCase(), "expected ALL CAPS output at shout threshold");
   });
+
+  // --- Cost suffix always appended — even when a contextual override phrase is chosen ---
+
+  it("appends cost suffix when sessionUserMessages >= 5 (override branch)", () => {
+    // 8 messages → picks the >= 5 override phrase, but cost suffix must still appear
+    const result = buildContextualSpeech(basePet, 0, 0, 0, 8, false, 5, 10_000, 30, 50);
+    assert.ok(result.includes("$"), `expected "$" in: ${result}`);
+    assert.ok(result.includes("tokens"), `expected "tokens" in: ${result}`);
+  });
+
+  it("appends cost suffix when sessionUserMessages >= 10 (override branch)", () => {
+    const result = buildContextualSpeech(basePet, 0, 0, 0, 12, false, 5, 10_000, 30, 50);
+    assert.ok(result.includes("$"), `expected "$" in: ${result}`);
+    assert.ok(result.includes("tokens"), `expected "tokens" in: ${result}`);
+  });
+
+  it("appends cost suffix when sessionUserMessages >= 20 (override branch)", () => {
+    const result = buildContextualSpeech(basePet, 0, 0, 0, 25, false, 5, 10_000, 30, 50);
+    assert.ok(result.includes("$"), `expected "$" in: ${result}`);
+    assert.ok(result.includes("tokens"), `expected "tokens" in: ${result}`);
+  });
+
+  it("appends warn-tier cost suffix on high message count override", () => {
+    const result = buildContextualSpeech(basePet, 0, 0, 0, 15, false, 35, 50_000, 30, 50);
+    assert.ok(result.includes("$35.00"), `expected cost string in: ${result}`);
+  });
+
+  it("returns ALL CAPS on high message count override when cost >= shout threshold", () => {
+    const result = buildContextualSpeech(basePet, 0, 0, 0, 15, false, 60, 100_000, 30, 50);
+    assert.equal(result, result.toUpperCase(), "expected ALL CAPS even on message-count override branch");
+  });
+
+  it("appends cost suffix on prod branch override", () => {
+    const result = buildContextualSpeech(basePet, 3, 0, 0, 0, true, 5, 10_000, 30, 50);
+    assert.ok(result.includes("$"), `expected "$" in: ${result}`);
+    assert.ok(result.includes("tokens"), `expected "tokens" in: ${result}`);
+  });
+
+  it("appends cost suffix on long-idle override (>= 60 min)", () => {
+    // timeSinceLastEditMs = 65 minutes
+    const result = buildContextualSpeech(basePet, 1, 0, 65 * 60_000, 0, false, 5, 10_000, 30, 50);
+    assert.ok(result.includes("$"), `expected "$" in: ${result}`);
+    assert.ok(result.includes("tokens"), `expected "tokens" in: ${result}`);
+  });
+
+  it("appends cost suffix on idle override (>= 30 min)", () => {
+    // timeSinceLastEditMs = 35 minutes
+    const result = buildContextualSpeech(basePet, 1, 0, 35 * 60_000, 0, false, 5, 10_000, 30, 50);
+    assert.ok(result.includes("$"), `expected "$" in: ${result}`);
+    assert.ok(result.includes("tokens"), `expected "tokens" in: ${result}`);
+  });
 });

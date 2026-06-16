@@ -1513,3 +1513,14 @@ Rewrote `randomSpriteType()` to do a simple uniform pick from `ROTATION_ANIMALS`
 **Problem:** The `message.updated` handler summed `tokens.input + tokens.output + tokens.cache.read + tokens.cache.write` but omitted `tokens.reasoning`. Models that emit reasoning tokens (e.g. extended thinking models) reported a lower token count than actually consumed, causing the speech bubble to underreport usage.
 
 **Fix:** Added `+ (info.tokens?.reasoning ?? 0)` to the token accumulation sum so all five token sub-fields are included.
+
+---
+
+## BUGFIX-123 — Cost/token suffix never shown when session has 5+ messages
+
+**Status:** Fixed (branch `fix/cost-suffix-always-shown`)
+**File:** `opencode-codotchi/src/asciiArt.ts`
+
+**Problem:** `buildContextualSpeech()` had six early-return branches for contextual overrides (prod branch, idle ≥60min, idle ≥30min, messages ≥20, messages ≥10, messages ≥5). Every one of these returned before reaching the cost/token suffix block at the bottom of the function. In practice any session with 5 or more messages — which covers nearly every real session — would pick the message-count override and return a bare phrase with no cost suffix, regardless of how high `dailyCostUSD` was.
+
+**Fix:** Restructured `buildContextualSpeech()` to use a single `phrase` variable assigned by an `if/else if/else` chain instead of early returns. The cost/token suffix block now always executes at the bottom of the function regardless of which phrase was chosen. Eight new tests added covering cost suffix on every override branch.

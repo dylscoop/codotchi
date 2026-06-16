@@ -724,81 +724,77 @@ export function buildContextualSpeech(
     : filesEdited < 30 ? `${filesEdited} files in ${sessionLabel}. Really cooking now.`
     :                    `${filesEdited} files in ${sessionLabel}. This is a proper session.`;
 
-  // --- Contextual override: prod branch ---
+  const idleMins = timeSinceLastEditMs > 0 ? Math.floor(timeSinceLastEditMs / 60_000) : 0;
+
+  // --- Build the contextual phrase (no early returns — cost suffix always appended below) ---
+  let phrase: string;
+
   if (isOnProdBranch && filesEdited > 0) {
-    return pickRandom([
+    // Contextual override: prod branch
+    phrase = pickRandom([
       `${filesEdited} files on main. Make sure these are clean.`,
       `Shipping to prod. Double-check everything.`,
       `Production branch. No pressure... okay, some pressure.`,
     ]);
-  }
-
-  // --- Contextual override: long idle (no file edits for a while) ---
-  const idleMins = timeSinceLastEditMs > 0 ? Math.floor(timeSinceLastEditMs / 60_000) : 0;
-  if (idleMins >= 60) {
-    return pickRandom([
+  } else if (idleMins >= 60) {
+    // Contextual override: long idle
+    phrase = pickRandom([
       `No files touched in over an hour. Thinking things through?`,
       `Long pause. Still here if you need me.`,
     ]);
-  }
-  if (idleMins >= 30) {
-    return pickRandom([
+  } else if (idleMins >= 30) {
+    phrase = pickRandom([
       `It's been ${idleMins} minutes since the last edit. Taking a break?`,
       `Quiet spell. Ready when you are.`,
     ]);
-  }
-
-  // --- Contextual override: lots of prompting ---
-  if (sessionUserMessages >= 20) {
-    return pickRandom([
+  } else if (sessionUserMessages >= 20) {
+    // Contextual override: lots of prompting
+    phrase = pickRandom([
       `${sessionUserMessages} messages deep. You're really working through something.`,
       `Long conversation. I'm keeping up.`,
     ]);
-  }
-  if (sessionUserMessages >= 10) {
-    return pickRandom([
+  } else if (sessionUserMessages >= 10) {
+    phrase = pickRandom([
       `${sessionUserMessages} messages in. Good back-and-forth.`,
       `We're getting somewhere. Keep going.`,
     ]);
-  }
-  if (sessionUserMessages >= 5) {
-    return pickRandom([
+  } else if (sessionUserMessages >= 5) {
+    phrase = pickRandom([
       `${sessionUserMessages} prompts sent. Getting into it.`,
       `Good pace. Let's keep moving.`,
     ]);
-  }
-
-  // --- Pet mood phrase (most critical stat wins) ---
-  let moodPhrase: string;
-  if (!pet.sleeping && pet.energy < 15) {
-    moodPhrase = "I'm absolutely exhausted, please let me sleep...";
-  } else if (pet.sick) {
-    moodPhrase = "I don't feel well at all. I need medicine!";
-  } else if (pet.hunger < 15) {
-    moodPhrase = "I'm starving! Please feed me soon.";
-  } else if (pet.poops > 2) {
-    moodPhrase = "It's getting really messy in here...";
-  } else if (pet.happiness < 20) {
-    moodPhrase = "I want to play";
-  } else if (pet.health < 30) {
-    moodPhrase = "My health is low — please take care of me.";
-  } else if (pet.sleeping) {
-    moodPhrase = "Recharging. Back soon.";
-  } else if (pet.hunger < 40) {
-    moodPhrase = "Could use a snack soon.";
-  } else if (pet.energy < 40) {
-    moodPhrase = "Getting tired, but I'm still here.";
-  } else if (pet.happiness > 70 && pet.health > 70) {
-    moodPhrase = "Feeling great. Good session so far.";
-  } else if (pet.mood === "happy") {
-    moodPhrase = pickRandom(["Happy right now. Keep going.", "I'm chilling."]);
   } else {
-    moodPhrase = "Doing okay. Let's see what you build.";
+    // Default: pet mood + activity
+    let moodPhrase: string;
+    if (!pet.sleeping && pet.energy < 15) {
+      moodPhrase = "I'm absolutely exhausted, please let me sleep...";
+    } else if (pet.sick) {
+      moodPhrase = "I don't feel well at all. I need medicine!";
+    } else if (pet.hunger < 15) {
+      moodPhrase = "I'm starving! Please feed me soon.";
+    } else if (pet.poops > 2) {
+      moodPhrase = "It's getting really messy in here...";
+    } else if (pet.happiness < 20) {
+      moodPhrase = "I want to play";
+    } else if (pet.health < 30) {
+      moodPhrase = "My health is low — please take care of me.";
+    } else if (pet.sleeping) {
+      moodPhrase = "Recharging. Back soon.";
+    } else if (pet.hunger < 40) {
+      moodPhrase = "Could use a snack soon.";
+    } else if (pet.energy < 40) {
+      moodPhrase = "Getting tired, but I'm still here.";
+    } else if (pet.happiness > 70 && pet.health > 70) {
+      moodPhrase = "Feeling great. Good session so far.";
+    } else if (pet.mood === "happy") {
+      moodPhrase = pickRandom(["Happy right now. Keep going.", "I'm chilling."]);
+    } else {
+      moodPhrase = "Doing okay. Let's see what you build.";
+    }
+    phrase = `${moodPhrase} ${activityPhrase}`;
   }
 
-  const base = `${moodPhrase} ${activityPhrase}`;
-
-  // --- Daily cost / token suffix ---
+  // --- Daily cost / token suffix — always appended regardless of which phrase was chosen ---
   if (dailyCostUSD > 0) {
     const costStr   = formatCost(dailyCostUSD);
     const tokStr    = formatTokens(dailyTokens);
@@ -812,7 +808,7 @@ export function buildContextualSpeech(
         `${costStr} TODAY. ${tokStrUp} TOKENS. THIS IS GETTING EXPENSIVE.`,
         `RACKING UP — ${costStr} AND ${tokStrUp} TOKENS TODAY.`,
       ]);
-      return `${base} ${shoutSuffix}`.toUpperCase();
+      return `${phrase} ${shoutSuffix}`.toUpperCase();
     } else if (dailyCostUSD >= costWarnThreshold) {
       // Warning tier — lowercase but notable
       const warnSuffix = pickRandom([
@@ -821,7 +817,7 @@ export function buildContextualSpeech(
         `${costStr} and ${tokStr} tokens today. That's climbing.`,
         `Not cheap — ${costStr} and ${tokStr} tokens today.`,
       ]);
-      return `${base} ${warnSuffix}`;
+      return `${phrase} ${warnSuffix}`;
     } else {
       // Normal tier — casual mention
       const normalSuffix = pickRandom([
@@ -831,7 +827,7 @@ export function buildContextualSpeech(
         `Racked up ${costStr} and ${tokStr} tokens so far.`,
         `Ticking along at ${costStr} and ${tokStr} tokens.`,
       ]);
-      return `${base} ${normalSuffix}`;
+      return `${phrase} ${normalSuffix}`;
     }
   } else if (dailyTokens > 0) {
     // Token-only tier — free/local model, no cost to report
@@ -841,10 +837,10 @@ export function buildContextualSpeech(
       `Running on ${tokStr} tokens so far.`,
       `${tokStr} tokens in today.`,
     ]);
-    return `${base} ${tokenOnlySuffix}`;
+    return `${phrase} ${tokenOnlySuffix}`;
   }
 
-  return base;
+  return phrase;
 }
 
 /**
