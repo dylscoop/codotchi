@@ -639,6 +639,38 @@ export function buildStatusBlock(state: {
   return lines.join("\n");
 }
 
+// ---------------------------------------------------------------------------
+// Usage formatting helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Format a token count as a human-readable string.
+ *   0        → "0"
+ *   < 1000   → "950"
+ *   < 10000  → "1.2k"
+ *   < 1000000 → "45k"
+ *   ≥ 1000000 → "1.5M"
+ */
+export function formatTokens(n: number): string {
+  if (n <= 0)          { return "0"; }
+  if (n < 1_000)       { return String(Math.round(n)); }
+  if (n < 10_000)      { return `${(n / 1_000).toFixed(1)}k`; }
+  if (n < 1_000_000)   { return `${Math.round(n / 1_000)}k`; }
+  return `${(n / 1_000_000).toFixed(1)}M`;
+}
+
+/**
+ * Format a USD cost value as a human-readable string.
+ *   0         → "$0.00"
+ *   < 0.01    → "<$0.01"
+ *   otherwise → "$X.XX"
+ */
+export function formatCost(usd: number): string {
+  if (usd <= 0)   { return "$0.00"; }
+  if (usd < 0.01) { return "<$0.01"; }
+  return `$${usd.toFixed(2)}`;
+}
+
 /**
  * Build a contextual speech line combining pet mood and coding session activity.
  *
@@ -648,6 +680,10 @@ export function buildStatusBlock(state: {
  * @param timeSinceLastEditMs - Milliseconds since the last file.edited event (0 = unknown/not yet).
  * @param sessionUserMessages - Number of user messages sent this session.
  * @param isOnProdBranch      - True when the current branch is main, master, release/x, or prod.
+ * @param dailyCostUSD        - Total USD spent today (across all OpenCode sessions).
+ * @param dailyTokens         - Total tokens consumed today (across all OpenCode sessions).
+ * @param costWarnThreshold   - Daily cost (USD) at which the pet switches to a warning tone (default 30).
+ * @param costShoutThreshold  - Daily cost (USD) at which the pet switches to ALL CAPS shouting (default 50).
  */
 export function buildContextualSpeech(
   pet: {
@@ -666,7 +702,11 @@ export function buildContextualSpeech(
   sessionMs: number,
   timeSinceLastEditMs: number = 0,
   sessionUserMessages: number = 0,
-  isOnProdBranch: boolean = false
+  isOnProdBranch: boolean = false,
+  dailyCostUSD: number = 0,
+  dailyTokens: number = 0,
+  costWarnThreshold: number = 30,
+  costShoutThreshold: number = 50,
 ): string {
   // --- Session activity phrase ---
   const sessionMins = Math.floor(sessionMs / 60_000);
@@ -756,7 +796,46 @@ export function buildContextualSpeech(
     moodPhrase = "Doing okay. Let's see what you build.";
   }
 
-  return `${moodPhrase} ${activityPhrase}`;
+  const base = `${moodPhrase} ${activityPhrase}`;
+
+  // --- Daily cost / token suffix ---
+  if (dailyCostUSD > 0) {
+    const costStr   = formatCost(dailyCostUSD);
+    const tokStr    = formatTokens(dailyTokens);
+    const tokStrUp  = tokStr.toUpperCase();
+
+    if (dailyCostUSD >= costShoutThreshold) {
+      // ALL CAPS shouting tier
+      const shoutSuffix = pickRandom([
+        `${costStr} AND ${tokStrUp} TOKENS TODAY. CHECK YOUR USAGE.`,
+        `SPENT ${costStr} AND BURNED THROUGH ${tokStrUp} TOKENS TODAY.`,
+        `${costStr} TODAY. ${tokStrUp} TOKENS. THIS IS GETTING EXPENSIVE.`,
+        `RACKING UP — ${costStr} AND ${tokStrUp} TOKENS TODAY.`,
+      ]);
+      return `${base} ${shoutSuffix}`.toUpperCase();
+    } else if (dailyCostUSD >= costWarnThreshold) {
+      // Warning tier — lowercase but notable
+      const warnSuffix = pickRandom([
+        `Heads up — ${costStr} and ${tokStr} tokens today. Getting spendy.`,
+        `${costStr} and ${tokStr} tokens. Worth keeping an eye on.`,
+        `${costStr} and ${tokStr} tokens today. That's climbing.`,
+        `Not cheap — ${costStr} and ${tokStr} tokens today.`,
+      ]);
+      return `${base} ${warnSuffix}`;
+    } else {
+      // Normal tier — casual mention
+      const normalSuffix = pickRandom([
+        `${costStr} and ${tokStr} tokens today.`,
+        `Running a tab — ${costStr}, ${tokStr} tokens.`,
+        `${costStr} spent, ${tokStr} tokens burned.`,
+        `Racked up ${costStr} and ${tokStr} tokens so far.`,
+        `Ticking along at ${costStr} and ${tokStr} tokens.`,
+      ]);
+      return `${base} ${normalSuffix}`;
+    }
+  }
+
+  return base;
 }
 
 /**
