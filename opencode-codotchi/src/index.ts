@@ -98,7 +98,7 @@ const LOCAL_PET_GAME_CONFIG: GameConfig = {
 };
 
 /** Name pool for auto-created OpenCode-local pets. */
-const LOCAL_PET_NAMES = ["Byte", "Chip", "Null", "Proc", "Stack", "Heap", "Flux", "Cron"];
+const LOCAL_PET_NAMES = ["Copilot"];
 
 function getIDEBase(): string {
   return _getIDEBase();
@@ -935,18 +935,23 @@ export const plugin: Plugin = async (ctx) => {
       "or one of: feed, pat, sleep, clean, medicine, on, off. " +
       "Use warnthreshold <value> or shoutthreshold <value> to set the daily USD cost thresholds " +
       "at which the pet's speech changes tone (defaults: warn=$30, shout=$50). " +
+      "Use rename <new-name> to rename the built-in OpenCode pet only (does not affect VS Code or PyCharm pets). " +
       "Actions apply to all currently active pets (VS Code, PyCharm, or the built-in OpenCode pet). " +
       "This tool reads state from VS Code, PyCharm, and the local OpenCode pet — do NOT use any other codotchi tool.",
     args: {
       action: tool.schema
-        .enum(["status", "feed", "pat", "sleep", "clean", "medicine", "on", "off", "warnthreshold", "shoutthreshold"])
+        .enum(["status", "feed", "pat", "sleep", "clean", "medicine", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
         .describe("The action to perform"),
       value: tool.schema
         .number()
         .optional()
         .describe("Numeric USD value for warnthreshold or shoutthreshold actions"),
+      name: tool.schema
+        .string()
+        .optional()
+        .describe("New name for the OpenCode pet — used with the rename action only"),
     },
-    async execute({ action, value }, context) {
+    async execute({ action, value, name }, context) {
       // Drain any queued tick notifications to prepend to this result
       const notification = drainNotification();
       const ret = (s: string): string => { lastToolOutput = s; return s; };
@@ -999,6 +1004,27 @@ export const plugin: Plugin = async (ctx) => {
           savePluginConfig();
           return ret(notification + `Cost shouting threshold set to $${value}. The pet will shout in ALL CAPS when daily spend reaches this amount.`);
         }
+      }
+      // ---------------------------------------------------------------------------
+      // rename — change the OpenCode-local pet's display name
+      // ---------------------------------------------------------------------------
+      if (action === "rename") {
+        const newName = (name ?? "").trim();
+        if (!newName) {
+          return ret(notification + "Please provide a name, e.g. /codotchi rename Pixel");
+        }
+        if (!localPetState) {
+          return ret(notification + "No local OpenCode pet to rename.");
+        }
+        const oldName = localPetState.name;
+        localPetState = { ...localPetState, name: newName } as PetState;
+        saveLocalState();
+        const bubble = terminalEnabled && localPetState
+          ? buildSpeechBubble(localPetState.stage, localPetState.mood,
+              `${oldName} is now ${newName}. Got it.`,
+              newName, localPetState.spriteType, "[OpenCode]")
+          : `[OpenCode] ${newName}: ${oldName} is now ${newName}. Got it.`;
+        return ret(notification + bubble);
       }
 
       // ---------------------------------------------------------------------------

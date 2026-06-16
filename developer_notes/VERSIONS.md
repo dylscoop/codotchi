@@ -1,6 +1,18 @@
 # Version History
 
-## v2.7.1 — current
+## v2.7.2 — current
+
+### Changes from v2.7.1
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/index.ts` | feat: rename action — rename the OpenCode-local pet via `/codotchi rename <name>`; default pet name changed from random pool to always "Copilot" |
+| `opencode-codotchi/package.json` | chore: bump version to 2.7.2 |
+| `opencode-codotchi/opencode-codotchi-2.7.2.zip` | Rebuilt distributable zip for v2.7.2 |
+
+---
+
+## v2.7.1 — previous
 
 ### Changes from v2.7.0
 
