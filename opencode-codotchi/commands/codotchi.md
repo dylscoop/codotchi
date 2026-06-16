@@ -6,7 +6,7 @@ Map the `show` argument to a `codotchi` tool action using the table below, then 
 | show | action to call | output rule |
 |---|---|---|
 | (blank) or `status` | `status` | Show art block from tool output if present, then output only `Hunger: X | Happiness: X | Energy: X | Health: X | Weight: X` — no bar graph, no commentary |
-| `show` | `on` | Output the tool result as plain text, exactly as returned — no code fences, no extra commentary |
+| `show` | `on` | Output the tool result as plain text, exactly as returned — no code fences, no extra commentary. If the result is "ASCII art is already enabled." do not add anything else. |
 | `hide` | `off` | Output the tool result as plain text, exactly as returned — no code fences, no extra commentary |
 | `warnthreshold <amount>` | `warnthreshold` with value=amount | Output the tool result as plain text, exactly as returned |
 | `shoutthreshold <amount>` | `shoutthreshold` with value=amount | Output the tool result as plain text, exactly as returned |
