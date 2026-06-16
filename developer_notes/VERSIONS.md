@@ -11,6 +11,8 @@
 | `opencode-codotchi/tests/unit/asciiArt.test.ts` | test: add 4 cases covering token-only, normal cost, warn, and shout tiers |
 | `opencode-codotchi/package.json` | chore: bump version to 2.7.1 |
 | `opencode-codotchi/opencode-codotchi-2.7.1.zip` | Rebuilt distributable zip for v2.7.1 |
+| `opencode-codotchi/src/asciiArt.ts` | fix: cost/token suffix now always appended — restructured `buildContextualSpeech` to use single `phrase` variable instead of early returns (BUGFIX-123) |
+| `opencode-codotchi/tests/unit/asciiArt.test.ts` | test: 8 new cases covering cost suffix on all contextual override branches |
 
 ---
 
