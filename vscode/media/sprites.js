@@ -9351,6 +9351,61 @@ DEFS["roo"] = DEFS["roo"] || {};
    * @param {Function} spriteHeightRatio - returns height/width ratio for a spriteType
    * @param {Function} quadrupedBellySagRows - returns extra belly-sag row count for overweight quadrupeds
    */
+  // ── Sprite raster cache ──────────────────────────────────────────────────
+  // Caches pre-painted offscreen canvases for the high-res imported path so
+  // renderSpriteGrid never repaints a full grid unless the visual state changes.
+  // Also caches sparse pixel data per (spriteType|stage) to avoid full-grid
+  // scans even when a cache miss requires a repaint.
+  //
+  // LRU bound: max 64 entries; oldest entry evicted when limit is reached.
+  var _rasterCache = [];   // array of { key, canvas }  — LRU order (0=oldest)
+  var _rasterMap   = {};   // key → index into _rasterCache for O(1) lookup
+  var RASTER_MAX   = 64;
+
+  // Sparse pixel data: per (spriteType|stage), stores array of
+  // { row, col, cell } for non-zero cells only.  Built once on first use.
+  var _sparseCache = {};   // "spriteType|stage" → Array<{row,col,cell}>
+
+  function _getSparse(spriteType, stage, grid, ROWS, COLS) {
+    var sparseKey = spriteType + "|" + stage;
+    if (_sparseCache[sparseKey]) { return _sparseCache[sparseKey]; }
+    var sparse = [];
+    for (var r = 0; r < ROWS; r++) {
+      if (!grid[r]) { continue; }
+      for (var c = 0; c < COLS; c++) {
+        var v = grid[r][c];
+        if (v) { sparse.push(r, c, v); }  // flat triplet array — fewer objects
+      }
+    }
+    _sparseCache[sparseKey] = sparse;
+    return sparse;
+  }
+
+  function _getRaster(cacheKey, COLS, ofcH) {
+    var idx = _rasterMap[cacheKey];
+    if (idx !== undefined) {
+      // Move to end (most-recently-used).
+      var entry = _rasterCache.splice(idx, 1)[0];
+      _rasterCache.push(entry);
+      // Rebuild index map.
+      for (var i = 0; i < _rasterCache.length; i++) { _rasterMap[_rasterCache[i].key] = i; }
+      return entry.canvas;
+    }
+    // Miss — evict oldest if at capacity.
+    if (_rasterCache.length >= RASTER_MAX) {
+      var evicted = _rasterCache.shift();
+      delete _rasterMap[evicted.key];
+      for (var j = 0; j < _rasterCache.length; j++) { _rasterMap[_rasterCache[j].key] = j; }
+    }
+    // Allocate new offscreen canvas.
+    var ofc = document.createElement('canvas');
+    ofc.width  = COLS;
+    ofc.height = ofcH;
+    _rasterCache.push({ key: cacheKey, canvas: ofc });
+    _rasterMap[cacheKey] = _rasterCache.length - 1;
+    return null;  // null signals caller to paint the canvas
+  }
+
   function renderSpriteGrid(ctx, state, x, bodyY, facingLeft, legFrame, breathPhase,
                             STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio,
                             quadrupedBellySagRows) {
@@ -9587,74 +9642,84 @@ DEFS["roo"] = DEFS["roo"] || {};
       }
 
     } else {
-      // ── V2 OFFSCREEN PATH (high-res imported sprites) ────────────────────────
-      // cellWExact < 1 means the grid is larger than the on-screen bounding box.
-      // Render the full grid at 1 px/cell on an offscreen canvas, then scale-blit
-      // it to the main canvas.  This preserves full imported detail while fitting
-      // the sprite inside the same stage area as existing sprites.
-      //
-      // Leg animation and belly-sag are applied on the offscreen canvas before
-      // the blit, so they work identically to the standard path.
+      // ── V2 OFFSCREEN PATH (high-res imported sprites) — CACHED ───────────────
+      // cellWExact < 1: grid is larger than the on-screen bounding box.
+      // Render full grid at 1 px/cell on an offscreen canvas, then scale-blit.
+      // The offscreen canvas is cached by visual state so it is painted at most
+      // once per unique combination of (spriteType, stage, legFrame, sagRows,
+      // palette colours).  Subsequent frames reuse the cached canvas via drawImage
+      // only — no loops, no allocations.
 
-      var ofcH = ROWS + sagRows;  // offscreen canvas height includes sag rows
-      var ofc    = document.createElement('canvas');
-      ofc.width  = COLS;
-      ofc.height = ofcH;
-      var ofcCtx = ofc.getContext('2d');
+      var ofcH = ROWS + sagRows;
+      var rasterKey = spriteType + "|" + stage + "|" + legFrame + "|" + sagRows +
+                      "|" + primary + "|" + secondary + "|" + accent;
+      var ofc = null;
+      var cachedCanvas = _getRaster(rasterKey, COLS, ofcH);
 
-      // Render each cell at 1×1 px on the offscreen canvas.
-      for (var oRow = 0; oRow < ROWS; oRow++) {
-        if (!grid[oRow]) { continue; }
-        var oIsLegRow = (oRow >= legRowStart);
+      if (cachedCanvas) {
+        // Cache hit — reuse existing painted canvas.
+        ofc = cachedCanvas;
+      } else {
+        // Cache miss — retrieve the newly allocated (blank) canvas and paint it.
+        ofc = _rasterCache[_rasterCache.length - 1].canvas;
+        var ofcCtx = ofc.getContext('2d');
+        ofcCtx.clearRect(0, 0, COLS, ofcH);
 
-        for (var oCol = 0; oCol < COLS; oCol++) {
-          var oCell = grid[oRow][oCol];
-          if (!oCell) { continue; }
+        // Use sparse pixel list to avoid scanning all ROWS*COLS every paint.
+        var sparse = _getSparse(spriteType, stage, grid, ROWS, COLS);
+        var oHalfCols = COLS / 2;
+        for (var si = 0, slen = sparse.length; si < slen; si += 3) {
+          var oRow  = sparse[si];
+          var oCol  = sparse[si + 1];
+          var oCell = sparse[si + 2];
 
           var oDrawRow = oRow;
+          var oIsLegRow = (oRow >= legRowStart);
           if (oIsLegRow) {
-            // Shift legs down to make room for belly-sag rows above them.
             oDrawRow += sagRows;
-            var oHalfCols  = COLS / 2;
             var oIsLeftLeg = oCol < oHalfCols;
             if (legFrame === 0) {
               oDrawRow += oIsLeftLeg ? 0 : 1;
             } else if (legFrame === 1) {
               oDrawRow += oIsLeftLeg ? 1 : 0;
             }
-            // legFrame === -1: no per-leg offset (upright/neutral)
+            // legFrame === -1: upright/neutral — no per-leg offset
           }
 
           ofcCtx.fillStyle = colorMap[oCell] || primary;
           ofcCtx.fillRect(oCol, oDrawRow, 1, 1);
         }
-      }
 
-      // Belly-sag procedural rows on offscreen canvas (same logic as standard path).
-      if (sagRows > 0 && grid[legRowStart - 1]) {
-        var oBodyBottomRow = grid[legRowStart - 1];
-        var oSilLeft  = COLS;
-        var oSilRight = -1;
-        for (var obc = 0; obc < COLS; obc++) {
-          if (oBodyBottomRow[obc]) {
-            if (obc < oSilLeft)  { oSilLeft  = obc; }
-            if (obc > oSilRight) { oSilRight = obc; }
+        // Belly-sag procedural rows (same logic as standard path).
+        if (sagRows > 0 && grid[legRowStart - 1]) {
+          var oBodyBottomRow = grid[legRowStart - 1];
+          var oSilLeft  = COLS;
+          var oSilRight = -1;
+          // Use sparse scan of just the bottom body row.
+          var sagSparse = _getSparse(spriteType, stage, grid, ROWS, COLS);
+          for (var ss = 0, sslen = sagSparse.length; ss < sslen; ss += 3) {
+            if (sagSparse[ss] === legRowStart - 1) {
+              var bc = sagSparse[ss + 1];
+              if (bc < oSilLeft)  { oSilLeft  = bc; }
+              if (bc > oSilRight) { oSilRight = bc; }
+            }
+          }
+          if (oSilRight >= oSilLeft) {
+            ofcCtx.fillStyle = primary;
+            for (var os = 0; os < sagRows; os++) {
+              var oInset    = os + 1;
+              var oSagLeft  = oSilLeft  + oInset;
+              var oSagRight = oSilRight - oInset;
+              if (oSagLeft >= oSagRight) { continue; }
+              ofcCtx.fillRect(oSagLeft, legRowStart + os, oSagRight - oSagLeft + 1, 1);
+            }
           }
         }
-        ofcCtx.fillStyle = primary;
-        for (var os = 0; os < sagRows; os++) {
-          var oInset    = os + 1;
-          var oSagLeft  = oSilLeft  + oInset;
-          var oSagRight = oSilRight - oInset;
-          if (oSagLeft >= oSagRight) { continue; }
-          // Sag row sits just above legRowStart (shifted by sagRows).
-          ofcCtx.fillRect(oSagLeft, legRowStart + os, oSagRight - oSagLeft + 1, 1);
-        }
       }
 
-      // Scale-blit offscreen canvas to main canvas.
-      // imageSmoothingEnabled = false keeps pixel-art crispness — no blurring.
-      var oGridBottomAlign = bodyHeight - Math.round(bodyHeight);  // rounding guard
+      // Scale-blit cached offscreen canvas to main canvas.
+      // imageSmoothingEnabled = false keeps pixel-art crispness.
+      var oGridBottomAlign = bodyHeight - Math.round(bodyHeight);
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(
         ofc,
@@ -9674,5 +9739,11 @@ DEFS["roo"] = DEFS["roo"] || {};
 
   window.SPRITES          = SPRITES;
   window.renderSpriteGrid = renderSpriteGrid;
+  // Exposed for testing and palette-change invalidation.
+  window.invalidateSpriteRasterCache = function() {
+    _rasterCache.length = 0;
+    _rasterMap   = {};
+    _sparseCache = {};
+  };
 
 }());

@@ -126,8 +126,8 @@
 
   <label style="margin-left:12px">Animate</label>
   <select id="animate-select">
-    <option value="yes" selected>Yes</option>
-    <option value="no">No</option>
+    <option value="yes">Yes</option>
+    <option value="no" selected>No</option>
   </select>
 
   <button class="save-all" id="btn-save-all">&#8595; Save all as PNG</button>
@@ -197,7 +197,7 @@
   var globalMood   = "neutral";
   var globalWeight = 50;
   var facingLeft   = false;
-  var animEnabled  = true;
+  var animEnabled  = false;  // default OFF — avoids per-frame full-grid repaint on large sprites
 
   // ── Animation state (drives leg frames across all cells) ──────────────────
   var legFrame    = 0;       // 0 or 1 — toggles every ~250 ms
@@ -396,21 +396,29 @@
     var dt = nowMs - lastFrameMs;
     lastFrameMs = nowMs;
 
+    var stateChanged = false;
+
     // Leg toggle
     legAccumMs += dt;
     if (legAccumMs >= LEG_PERIOD_MS) {
       legAccumMs -= LEG_PERIOD_MS;
       legFrame = legFrame === 0 ? 1 : 0;
+      stateChanged = true;
     }
 
     // Breath bob
     if (globalMood === "sleeping") {
       breathPhase += dt * 0.001 * Math.PI;
+      stateChanged = true;
     } else {
       breathPhase = 0;
     }
 
-    redrawAll();
+    // Only redraw when animation state actually changed — avoids redundant
+    // full-grid repaints on every rAF tick when nothing has moved.
+    if (stateChanged) {
+      redrawAll();
+    }
   }
   requestAnimationFrame(tick);
 
