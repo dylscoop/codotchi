@@ -1,6 +1,21 @@
 # Version History
 
-## v2.7.3 — current
+## v2.7.4 — current
+
+### Changes from v2.7.3
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/asciiArt.ts` | fix: replace random cost suffix phrases at shout/warn tiers with single emoji-prefixed format (`🚨 $X TODAY — CHECK YOUR USAGE!` / `⚠️ $X today — getting spendy.`) so the alert appears inside the speech bubble (BUGFIX-125) |
+| `opencode-codotchi/src/index.ts` | fix: remove `costPrefix` blockquote above code block — cost alert is now fully contained inside the speech bubble text |
+| `vscode/package.json` | chore: bump version to 2.7.4 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.7.4 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.7.4 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.7.4 |
+
+---
+
+## v2.7.3 — previous
 
 ### Changes from v2.7.2
 
