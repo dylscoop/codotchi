@@ -802,21 +802,11 @@ export function buildContextualSpeech(
 
     if (dailyCostUSD >= costShoutThreshold) {
       // ALL CAPS shouting tier
-      const shoutSuffix = pickRandom([
-        `${costStr} AND ${tokStrUp} TOKENS TODAY. CHECK YOUR USAGE.`,
-        `SPENT ${costStr} AND BURNED THROUGH ${tokStrUp} TOKENS TODAY.`,
-        `${costStr} TODAY. ${tokStrUp} TOKENS. THIS IS GETTING EXPENSIVE.`,
-        `RACKING UP — ${costStr} AND ${tokStrUp} TOKENS TODAY.`,
-      ]);
+      const shoutSuffix = `🚨 ${costStr} TODAY — CHECK YOUR USAGE! (${tokStrUp} TOKENS)`;
       return colour(`${phrase} ${shoutSuffix}`.toUpperCase(), FG_RED);
     } else if (dailyCostUSD >= costWarnThreshold) {
       // Warning tier — lowercase but notable
-      const warnSuffix = pickRandom([
-        `Heads up — ${costStr} and ${tokStr} tokens today. Getting spendy.`,
-        `${costStr} and ${tokStr} tokens. Worth keeping an eye on.`,
-        `${costStr} and ${tokStr} tokens today. That's climbing.`,
-        `Not cheap — ${costStr} and ${tokStr} tokens today.`,
-      ]);
+      const warnSuffix = `⚠️ ${costStr} today — getting spendy. (${tokStr} tokens)`;
       return `${phrase} ${colour(warnSuffix, FG_YELLOW)}`;
     } else {
       // Normal tier — casual mention
