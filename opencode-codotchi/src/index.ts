@@ -46,6 +46,7 @@ import { getIDEBase as _getIDEBase, resolveVSCodeStatePath } from "./statePathRe
 
 import {
   PetState,
+  GameConfig,
   tick,
   applyOfflineDecay,
   applyCodeActivity,
@@ -56,6 +57,7 @@ import {
   giveMedicine,
   serialiseState,
   deserialiseState,
+  createPet,
   DEFAULT_GAME_CONFIG,
   TICK_INTERVAL_SECONDS,
   CODE_ACTIVITY_THROTTLE_SECONDS,
@@ -66,6 +68,8 @@ import {
   buildStatusBlock,
   buildToast,
   buildContextualSpeech,
+  formatTokens,
+  formatCost,
   stripAnsi,
   pickRandom,
   TODO_COMPLETE_PHRASES,
@@ -78,6 +82,22 @@ import {
 
 /** How recently (ms) a state file must have been saved to count as "active". */
 const ACTIVE_IDE_THRESHOLD_MS = 60_000;
+
+// ---------------------------------------------------------------------------
+// OpenCode-local pet config — unkillable from neglect, normal aging speed
+// ---------------------------------------------------------------------------
+
+/** GameConfig used for the OpenCode-local pet: health floored at 1 (never dies
+ *  from stat decay), but aging runs at the normal 1× rate (not the 10× dev speed). */
+const LOCAL_PET_GAME_CONFIG: GameConfig = {
+  ...DEFAULT_GAME_CONFIG,
+  devMode: true,
+  devModeHealthFloor: 1,
+  devModeAgingMultiplier: 1,
+};
+
+/** Name pool for auto-created OpenCode-local pets. */
+const LOCAL_PET_NAMES = ["Byte", "Chip", "Null", "Proc", "Stack", "Heap", "Flux", "Cron"];
 
 function getIDEBase(): string {
   return _getIDEBase();
@@ -163,11 +183,144 @@ function saveTerminalEnabled(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Meals-per-cycle counters (plugin-local, reset on wake, one per IDE)
+// Daily usage sidecar helpers
+// ---------------------------------------------------------------------------
+
+function getDailyUsagePath(): string {
+  return path.join(os.homedir(), ".config", "opencode", "codotchi-daily.json");
+}
+
+function todayUTC(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function loadDailyUsage(): void {
+  try {
+    const filePath = getDailyUsagePath();
+    if (!fs.existsSync(filePath)) { return; }
+    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number };
+    const today = todayUTC();
+    if (raw.date === today) {
+      dailyCostUSD = typeof raw.costUSD === "number" ? raw.costUSD : 0;
+      dailyTokens  = typeof raw.tokens  === "number" ? raw.tokens  : 0;
+      dailyDate    = today;
+    }
+    // If stored date differs it's a new day — keep zeroed defaults
+  } catch { /* best-effort */ }
+}
+
+function saveDailyUsage(): void {
+  try {
+    const filePath = getDailyUsagePath();
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
+    fs.writeFileSync(filePath, JSON.stringify({ date: dailyDate, costUSD: dailyCostUSD, tokens: dailyTokens }), "utf8");
+  } catch { /* best-effort */ }
+}
+
+function checkDayRollover(): void {
+  const today = todayUTC();
+  if (dailyDate !== today) {
+    dailyCostUSD = 0;
+    dailyTokens  = 0;
+    dailyDate    = today;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Plugin config sidecar helpers (cost speech thresholds)
+// ---------------------------------------------------------------------------
+
+function getPluginConfigPath(): string {
+  return path.join(os.homedir(), ".config", "opencode", "codotchi-config.json");
+}
+
+function loadPluginConfig(): void {
+  try {
+    const filePath = getPluginConfigPath();
+    if (!fs.existsSync(filePath)) { return; }
+    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as { costWarnThreshold?: number; costShoutThreshold?: number };
+    if (typeof raw.costWarnThreshold  === "number" && raw.costWarnThreshold  > 0) { costWarnThreshold  = raw.costWarnThreshold; }
+    if (typeof raw.costShoutThreshold === "number" && raw.costShoutThreshold > 0) { costShoutThreshold = raw.costShoutThreshold; }
+  } catch { /* best-effort */ }
+}
+
+function savePluginConfig(): void {
+  try {
+    const filePath = getPluginConfigPath();
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
+    fs.writeFileSync(filePath, JSON.stringify({ costWarnThreshold, costShoutThreshold }), "utf8");
+  } catch { /* best-effort */ }
+}
+
+// ---------------------------------------------------------------------------
+// OpenCode-local pet sidecar helpers
+// ---------------------------------------------------------------------------
+
+function getLocalStatePath(): string {
+  return path.join(os.homedir(), ".config", "opencode", "codotchi-local.json");
+}
+
+function loadLocalState(): void {
+  try {
+    const filePath = getLocalStatePath();
+    if (!fs.existsSync(filePath)) {
+      createLocalPet();
+      return;
+    }
+    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as IDEStateFile;
+    if (!raw.state || typeof raw.savedAt !== "number") {
+      createLocalPet();
+      return;
+    }
+    const elapsed = (Date.now() - raw.savedAt) / 1_000;
+    localPetState    = applyOfflineDecay(deserialiseState(raw.state), elapsed);
+    localLastSavedAt = raw.savedAt;
+    localMeals = 0;
+    // If the pet is dead (old age), immediately respawn
+    if (!localPetState.alive) {
+      createLocalPet();
+    }
+  } catch {
+    createLocalPet();
+  }
+}
+
+function saveLocalState(): void {
+  try {
+    if (localPetState === null) { return; }
+    const filePath = getLocalStatePath();
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
+    const payload: IDEStateFile = {
+      state: serialiseState(localPetState) as Record<string, unknown>,
+      savedAt: Date.now(),
+    };
+    fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
+    localLastSavedAt = payload.savedAt;
+  } catch { /* best-effort */ }
+}
+
+function createLocalPet(): void {
+  const name = pickRandom(LOCAL_PET_NAMES);
+  localPetState = createPet(name, "codeling");
+  localMeals = 0;
+  saveLocalState();
+  queueNotification(terminalEnabled && localPetState
+    ? buildSpeechBubble(localPetState.stage, localPetState.mood,
+        `Hi! I'm ${name}. I live in OpenCode — no IDE needed.`,
+        name, localPetState.spriteType, "[OpenCode]")
+    : `[OpenCode] ${name}: Hi! I'm ${name}. I live in OpenCode — no IDE needed.`);
+}
+
+// ---------------------------------------------------------------------------
+// Meals-per-cycle counters (plugin-local, reset on wake, one per source)
 // ---------------------------------------------------------------------------
 
 let vscodeMeals  = 0;
 let pycharmMeals = 0;
+let localMeals   = 0;
 
 // ---------------------------------------------------------------------------
 // Plugin state — dual-pet (VS Code + PyCharm, independent)
@@ -180,6 +333,10 @@ let vscodeLastSavedAt: number = 0;
 /** PyCharm pet state, or null if no PyCharm state file exists. */
 let pycharmPetState:    PetState | null = null;
 let pycharmLastSavedAt: number = 0;
+
+/** OpenCode-local pet — always exists, unkillable from neglect. */
+let localPetState:    PetState | null = null;
+let localLastSavedAt: number = 0;
 
 let tickTimer: ReturnType<typeof setInterval> | undefined;
 let isIdle = false;
@@ -203,6 +360,34 @@ let lastFileEditMs = 0;
 let sessionUserMessages = 0;
 /** True once the "can I help?" offer has been shown this session — fires only once. */
 let hasOfferedHelp = false;
+
+// ---------------------------------------------------------------------------
+// Daily usage tracking (persisted to codotchi-daily.json sidecar)
+// Accumulates cost + token spend across all OpenCode sessions today (UTC).
+// ---------------------------------------------------------------------------
+
+/** Session-level cost accumulator (reset on session.created). */
+let sessionCostUSD = 0;
+/** Session-level token accumulator (reset on session.created). */
+let sessionTokens  = 0;
+/** How many assistant messages this session (drives local-pet evolution). */
+let localPetSessionMessages = 0;
+
+/** Running daily USD cost (loaded from sidecar, reset at UTC midnight). */
+let dailyCostUSD = 0;
+/** Running daily token count (loaded from sidecar, reset at UTC midnight). */
+let dailyTokens  = 0;
+/** UTC date string "YYYY-MM-DD" for the currently stored daily totals. */
+let dailyDate    = "";
+
+// ---------------------------------------------------------------------------
+// Configurable cost speech thresholds (persisted to codotchi-config.json)
+// ---------------------------------------------------------------------------
+
+/** Daily cost (USD) at which the pet switches to a warning tone. */
+let costWarnThreshold  = 30;
+/** Daily cost (USD) at which the pet switches to ALL CAPS shouting. */
+let costShoutThreshold = 50;
 
 // ---------------------------------------------------------------------------
 // Todo tracking â€” detect status transitions for celebratory notifications
@@ -273,8 +458,8 @@ function artHeader(): string {
   return active
     .filter(p => p.state.alive)
     .map(p => {
-      const speech = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch);
-      const ideLabel = p.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
+      const speech = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
+      const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
       return buildSpeechBubble(p.state.stage, p.state.mood, speech, p.state.name, p.state.spriteType, ideLabel);
     })
     .join("\n") + "\n";
@@ -285,7 +470,7 @@ function artHeader(): string {
 // ---------------------------------------------------------------------------
 
 interface ActivePet {
-  ide:   "vscode" | "pycharm";
+  ide:   "vscode" | "pycharm" | "opencode";
   state: PetState;
   /** Whether this IDE is currently ticking (savedAt within ACTIVE_IDE_THRESHOLD_MS). */
   live:  boolean;
@@ -294,35 +479,42 @@ interface ActivePet {
 /**
  * Returns pets to show in the current interaction:
  *   - All IDEs whose state file was saved within ACTIVE_IDE_THRESHOLD_MS → "live"
- *   - If no IDE is live, returns the most recently saved alive pet as a fallback.
+ *   - The OpenCode-local pet is shown when no IDE pet is live.
  *   - At least one pet is always returned if any alive pet exists.
  */
 function getActivePets(): ActivePet[] {
   const now = Date.now();
-  const results: ActivePet[] = [];
+  const idePets: ActivePet[] = [];
 
   if (vscodePetState !== null && vscodePetState.alive) {
     const live = (now - vscodeLastSavedAt) <= ACTIVE_IDE_THRESHOLD_MS;
-    results.push({ ide: "vscode",  state: vscodePetState,  live });
+    idePets.push({ ide: "vscode",  state: vscodePetState,  live });
   }
   if (pycharmPetState !== null && pycharmPetState.alive) {
     const live = (now - pycharmLastSavedAt) <= ACTIVE_IDE_THRESHOLD_MS;
-    results.push({ ide: "pycharm", state: pycharmPetState, live });
+    idePets.push({ ide: "pycharm", state: pycharmPetState, live });
   }
 
-  const liveResults = results.filter(p => p.live);
-  if (liveResults.length > 0) { return liveResults; }
+  const liveIDEPets = idePets.filter(p => p.live);
 
-  // Fallback: no live IDE — return the most recently saved alive pet
-  if (results.length > 0) {
-    const newest = results.reduce((a, b) =>
+  // If any IDE pet is live, return only those — local pet steps aside
+  if (liveIDEPets.length > 0) { return liveIDEPets; }
+
+  // No live IDE pet — show the local pet (always "live" in-process)
+  if (localPetState !== null && localPetState.alive) {
+    return [{ ide: "opencode", state: localPetState, live: true }];
+  }
+
+  // Fallback: IDE pets exist but none live — return most recently saved alive IDE pet
+  if (idePets.length > 0) {
+    const newest = idePets.reduce((a, b) =>
       (a.ide === "vscode" ? vscodeLastSavedAt : pycharmLastSavedAt) >=
       (b.ide === "vscode" ? vscodeLastSavedAt : pycharmLastSavedAt) ? a : b
     );
     return [newest];
   }
 
-  // No alive pet at all — include dead pets for the "died" message
+  // No alive pet at all — include dead IDE pets for the "died" message
   const dead: ActivePet[] = [];
   if (vscodePetState !== null)  { dead.push({ ide: "vscode",  state: vscodePetState,  live: false }); }
   if (pycharmPetState !== null) { dead.push({ ide: "pycharm", state: pycharmPetState, live: false }); }
@@ -333,23 +525,37 @@ function getActivePets(): ActivePet[] {
     );
     return [newest];
   }
+  // Last resort: return local pet even if dead
+  if (localPetState !== null) {
+    return [{ ide: "opencode", state: localPetState, live: false }];
+  }
   return [];
 }
 
-function getMeals(ide: "vscode" | "pycharm"): number {
-  return ide === "vscode" ? vscodeMeals : pycharmMeals;
+function getMeals(ide: "vscode" | "pycharm" | "opencode"): number {
+  if (ide === "vscode") { return vscodeMeals; }
+  if (ide === "pycharm") { return pycharmMeals; }
+  return localMeals;
 }
-function setMeals(ide: "vscode" | "pycharm", n: number): void {
-  if (ide === "vscode") { vscodeMeals = n; } else { pycharmMeals = n; }
+function setMeals(ide: "vscode" | "pycharm" | "opencode", n: number): void {
+  if (ide === "vscode") { vscodeMeals = n; }
+  else if (ide === "pycharm") { pycharmMeals = n; }
+  else { localMeals = n; }
 }
-function getSavedAt(ide: "vscode" | "pycharm"): number {
-  return ide === "vscode" ? vscodeLastSavedAt : pycharmLastSavedAt;
+function getSavedAt(ide: "vscode" | "pycharm" | "opencode"): number {
+  if (ide === "vscode") { return vscodeLastSavedAt; }
+  if (ide === "pycharm") { return pycharmLastSavedAt; }
+  return localLastSavedAt;
 }
-function setSavedAt(ide: "vscode" | "pycharm", t: number): void {
-  if (ide === "vscode") { vscodeLastSavedAt = t; } else { pycharmLastSavedAt = t; }
+function setSavedAt(ide: "vscode" | "pycharm" | "opencode", t: number): void {
+  if (ide === "vscode") { vscodeLastSavedAt = t; }
+  else if (ide === "pycharm") { pycharmLastSavedAt = t; }
+  else { localLastSavedAt = t; }
 }
-function setPetState(ide: "vscode" | "pycharm", s: PetState): void {
-  if (ide === "vscode") { vscodePetState = s; } else { pycharmPetState = s; }
+function setPetState(ide: "vscode" | "pycharm" | "opencode", s: PetState): void {
+  if (ide === "vscode") { vscodePetState = s; }
+  else if (ide === "pycharm") { pycharmPetState = s; }
+  else { localPetState = s; }
 }
 function getStatePath(ide: "vscode" | "pycharm"): string {
   return ide === "vscode" ? getVSCodeStatePath() : getPyCharmStatePath();
@@ -359,8 +565,8 @@ function getStatePath(ide: "vscode" | "pycharm"): string {
 // Load / save / tick
 // ---------------------------------------------------------------------------
 
-/** Load both IDE state files on startup. */
-function loadBothStates(): void {
+/** Load all IDE state files + local pet on startup. */
+function loadAllStates(): void {
   const vscodeFile  = loadFromIDEFile(getVSCodeStatePath());
   if (vscodeFile !== null) {
     const elapsed = (Date.now() - vscodeFile.savedAt) / 1_000;
@@ -377,9 +583,15 @@ function loadBothStates(): void {
     pycharmLastSavedAt = pycharmFile.savedAt;
     pycharmMeals = 0;
   }
+  // Always load (or create) the OpenCode-local pet
+  loadLocalState();
 }
 
-function saveIDEState(ide: "vscode" | "pycharm"): void {
+function saveIDEState(ide: "vscode" | "pycharm" | "opencode"): void {
+  if (ide === "opencode") {
+    saveLocalState();
+    return;
+  }
   const state = ide === "vscode" ? vscodePetState : pycharmPetState;
   if (state !== null) {
     saveToIDEFile(getStatePath(ide), state);
@@ -478,6 +690,96 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
 function applyTick(): void {
   applyTickForPet("vscode");
   applyTickForPet("pycharm");
+  applyTickForLocal();
+}
+
+// ---------------------------------------------------------------------------
+// OpenCode-local pet tick
+// ---------------------------------------------------------------------------
+
+function applyTickForLocal(): void {
+  if (localPetState === null || !localPetState.alive) { return; }
+  const next = tick(localPetState, isIdle, false, LOCAL_PET_GAME_CONFIG);
+  localPetState = next;
+  saveLocalState();
+
+  const ideLabel = "[OpenCode]";
+
+  for (const event of next.events) {
+    switch (event) {
+      case "auto_woke_up":
+        localMeals = 0;
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, next.mood, pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."])}`);
+        break;
+      case "died_of_old_age": {
+        // Queue farewell then immediately respawn
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "sleeping", pickRandom(["I lived a full life. Thank you for everything.", "What a journey. Thank you.", "A full life, well lived."]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I lived a full life. Thank you for everything.", "What a journey. Thank you.", "A full life, well lived."])}`);
+        createLocalPet();
+        break;
+      }
+      case "evolved_to_baby":
+      case "evolved_to_child":
+      case "evolved_to_teen":
+      case "evolved_to_adult":
+      case "evolved_to_senior": {
+        const stageName = event.replace("evolved_to_", "");
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, next.mood, pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`])}`);
+        break;
+      }
+      case "attention_call_hunger":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "sad", pickRandom(["I'm so hungry... please feed me!", "Running on empty. Feed me soon!", "Really need food right now."]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I'm so hungry... please feed me!", "Running on empty. Feed me soon!", "Really need food right now."])}`);
+        break;
+      case "attention_call_unhappiness":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "sad", pickRandom(["I want to play", "Getting lonely over here.", "Need some attention."]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I want to play", "Getting lonely over here.", "Need some attention."])}`);
+        break;
+      case "attention_call_sick":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "sick", pickRandom(["I don't feel well. I need medicine!", "Feeling sick... please give me medicine.", "Medicine please!"]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I don't feel well. I need medicine!", "Feeling sick... please give me medicine.", "Medicine please!"])}`);
+        break;
+      case "attention_call_critical_health":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "sick", pickRandom(["My health is critical! Please help me!", "I'm in rough shape. Need help!", "Critical health — please help."]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["My health is critical! Please help me!", "I'm in rough shape. Need help!", "Critical health — please help."])}`);
+        break;
+      case "attention_call_low_energy":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "sad", pickRandom(["I'm exhausted... let me sleep!", "Nearly out of energy. Need to rest.", "So tired... let me sleep."]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I'm exhausted... let me sleep!", "Nearly out of energy. Need to rest.", "So tired... let me sleep."])}`);
+        break;
+      case "became_sick":
+        queueNotification(buildToast(next.stage, `${ideLabel} ${next.name} has fallen sick.`));
+        break;
+      case "pooped":
+        queueNotification(buildToast(next.stage, `${ideLabel} ${next.name} made a mess! (use /codotchi clean)`));
+        break;
+      case "attention_call_poop":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "sad", pickRandom(["There is a mess here! Can you clean it up?", "It's getting messy. Please clean!", "Could use a clean-up in here."]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["There is a mess here! Can you clean it up?", "It's getting messy. Please clean!", "Could use a clean-up in here."])}`);
+        break;
+      case "attention_call_gift":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "happy", pickRandom(["I brought you a gift! Use /codotchi pat to accept it.", "I have a surprise for you! (/codotchi pat)", "Got something for you — /codotchi pat to collect."]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I brought you a gift! Use /codotchi pat to accept it.", "I have a surprise for you! (/codotchi pat)", "Got something for you — /codotchi pat to collect."])}`);
+        break;
+      case "attention_call_misbehaviour":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "neutral", pickRandom(["I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", "I need some discipline. (/codotchi pat)", "Being difficult. (/codotchi pat or /codotchi feed)"]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", "I need some discipline. (/codotchi pat)", "Being difficult. (/codotchi pat or /codotchi feed)"])}`);
+        break;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -487,18 +789,23 @@ function applyTick(): void {
 export const plugin: Plugin = async (_ctx) => {
   // Migrate state files from old gotchi/ folder to codotchi/ on first run.
   migrateStateFolders();
-  // Load both IDE state files on startup — queue greetings as pending notifications
-  loadBothStates();
+  // Load daily usage + plugin config sidecars
+  loadDailyUsage();
+  loadPluginConfig();
+  // Load all IDE state files + local pet on startup — queue greetings as pending notifications
+  loadAllStates();
 
   for (const p of getActivePets().filter(p => p.state.alive)) {
     const s = p.state;
-    const ideLabel = p.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
-    const greetMsg = `I'm here. ${
-      s.hunger < 30 ? "Pretty hungry though." :
-      s.sick        ? "Not feeling great."    :
-      s.energy < 20 ? "A bit tired."          :
-      pickRandom(["Let's get to work.", "Let's build something."])
-    }`;
+    const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
+    const greetMsg = p.ide === "opencode"
+      ? `I'm here. I live in OpenCode — no IDE needed.`
+      : `I'm here. ${
+          s.hunger < 30 ? "Pretty hungry though." :
+          s.sick        ? "Not feeling great."    :
+          s.energy < 20 ? "A bit tired."          :
+          pickRandom(["Let's get to work.", "Let's build something."])
+        }`;
     queueNotification(terminalEnabled
       ? buildSpeechBubble(s.stage, s.mood, greetMsg, s.name, s.spriteType, ideLabel)
       : `${ideLabel} ${s.name}: ${greetMsg}`);
@@ -566,14 +873,20 @@ export const plugin: Plugin = async (_ctx) => {
     description:
       "Interact with your codotchi virtual pet. Use action='status' to see current stats, " +
       "or one of: feed, pat, sleep, clean, medicine, on, off. " +
-      "Actions apply to all currently active IDE pets (VS Code and/or PyCharm). " +
-      "This tool reads state from VS Code and PyCharm — do NOT use any other codotchi tool.",
+      "Use warnthreshold <value> or shoutthreshold <value> to set the daily USD cost thresholds " +
+      "at which the pet's speech changes tone (defaults: warn=$30, shout=$50). " +
+      "Actions apply to all currently active pets (VS Code, PyCharm, or the built-in OpenCode pet). " +
+      "This tool reads state from VS Code, PyCharm, and the local OpenCode pet — do NOT use any other codotchi tool.",
     args: {
       action: tool.schema
-        .enum(["status", "feed", "pat", "sleep", "clean", "medicine", "on", "off"])
+        .enum(["status", "feed", "pat", "sleep", "clean", "medicine", "on", "off", "warnthreshold", "shoutthreshold"])
         .describe("The action to perform"),
+      value: tool.schema
+        .number()
+        .optional()
+        .describe("Numeric USD value for warnthreshold or shoutthreshold actions"),
     },
-    async execute({ action }, context) {
+    async execute({ action, value }, context) {
       // Drain any queued tick notifications to prepend to this result
       const notification = drainNotification();
       const ret = (s: string): string => { lastToolOutput = s; return s; };
@@ -592,37 +905,46 @@ export const plugin: Plugin = async (_ctx) => {
         terminalEnabled = true;
         saveTerminalEnabled();
         const art = artHeader();
-        const msg = active.length > 0
-          ? `ASCII art enabled.`
-          : "ASCII art enabled. No pet found yet — start a game in VS Code or PyCharm.";
-        return ret(notification + art + msg);
+        return ret(notification + art + "ASCII art enabled.");
       }
 
       if (action === "off") {
         terminalEnabled = false;
         saveTerminalEnabled();
-        const msg = active.length > 0
-          ? `ASCII art disabled. Stats will be shown as plain text.`
-          : "ASCII art disabled.";
-        return ret(notification + msg);
+        return ret(notification + "ASCII art disabled. Stats will be shown as plain text.");
       }
 
       // ---------------------------------------------------------------------------
-      // All other actions require at least one active pet
+      // warnthreshold / shoutthreshold — configure cost speech tiers
       // ---------------------------------------------------------------------------
-      if (active.length === 0) {
-        return ret(
-          notification +
-          "No pet found. Start a new game first:\n" +
-          "  - In VS Code: open the Codotchi sidebar and choose New Game\n" +
-          "  - In PyCharm: open the Codotchi panel and choose New Game"
-        );
+      if (action === "warnthreshold" || action === "shoutthreshold") {
+        if (typeof value !== "number" || value <= 0) {
+          return ret(notification + `Please provide a positive number, e.g. /codotchi ${action} 40`);
+        }
+        if (action === "warnthreshold") {
+          if (value >= costShoutThreshold) {
+            return ret(notification + `Warning threshold ($${value}) must be less than the shout threshold ($${costShoutThreshold}). Adjust the shout threshold first if needed.`);
+          }
+          costWarnThreshold = value;
+          savePluginConfig();
+          return ret(notification + `Cost warning threshold set to $${value}. The pet will switch to a warning tone when daily spend reaches this amount.`);
+        } else {
+          if (value <= costWarnThreshold) {
+            return ret(notification + `Shout threshold ($${value}) must be greater than the warning threshold ($${costWarnThreshold}). Adjust the warn threshold first if needed.`);
+          }
+          costShoutThreshold = value;
+          savePluginConfig();
+          return ret(notification + `Cost shouting threshold set to $${value}. The pet will shout in ALL CAPS when daily spend reaches this amount.`);
+        }
       }
 
+      // ---------------------------------------------------------------------------
+      // All other actions — at least one pet is always available (local pet fallback)
+      // ---------------------------------------------------------------------------
       const allDead = active.every(p => !p.state.alive);
       if (allDead) {
         const names = active.map(p => p.state.name).join(" and ");
-        return ret(notification + `${names} has passed away. Start a new game to continue.`);
+        return ret(notification + `${names} has passed away. Start a new game in VS Code or PyCharm to continue, or wait — the OpenCode pet will respawn automatically.`);
       }
 
       // Only operate on alive pets
@@ -633,7 +955,7 @@ export const plugin: Plugin = async (_ctx) => {
           // Show stacked status block (art + stats) for each active alive pet.
           const blocks = alivePets.map(p => {
             const s = p.state;
-            const ideLabel = p.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
+            const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
             const statusBlock = terminalEnabled
               ? buildStatusBlock({
                   name: s.name, stage: s.stage, mood: s.mood,
@@ -654,8 +976,9 @@ export const plugin: Plugin = async (_ctx) => {
           for (const p of alivePets) {
             const s = p.state;
             const meals = getMeals(p.ide);
+            const pLabel = p.ide === "vscode" ? "VS Code" : p.ide === "pycharm" ? "PyCharm" : "OpenCode";
             if (s.sleeping) {
-              feedLines.push(`[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${s.name} is sleeping and can't eat right now.`);
+              feedLines.push(`[${pLabel}] ${s.name} is sleeping and can't eat right now.`);
               continue;
             }
             const next = feedMeal(s, meals);
@@ -679,8 +1002,9 @@ export const plugin: Plugin = async (_ctx) => {
           const patLines: string[] = [];
           for (const p of alivePets) {
             const s = p.state;
+            const pLabel = p.ide === "vscode" ? "VS Code" : p.ide === "pycharm" ? "PyCharm" : "OpenCode";
             if (s.sleeping) {
-              patLines.push(`[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${s.name} is sleeping.`);
+              patLines.push(`[${pLabel}] ${s.name} is sleeping.`);
               continue;
             }
             const next = pat(s);
@@ -693,8 +1017,8 @@ export const plugin: Plugin = async (_ctx) => {
             patLines.push((terminalEnabled
               ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired..." : "Yay!", next.name, next.spriteType) + "\n"
               : "") + toast + "\n" + (refused
-              ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Pat refused — ${next.name} is too exhausted.`
-              : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Patted ${next.name}. Happiness: ${next.happiness}.`));
+              ? `[${pLabel}] Pat refused — ${next.name} is too exhausted.`
+              : `[${pLabel}] Patted ${next.name}. Happiness: ${next.happiness}.`));
           }
           return ret(notification + patLines.join("\n\n"));
         }
@@ -702,6 +1026,7 @@ export const plugin: Plugin = async (_ctx) => {
         case "sleep": {
           const sleepLines: string[] = [];
           for (const p of alivePets) {
+            const pLabel = p.ide === "vscode" ? "VS Code" : p.ide === "pycharm" ? "PyCharm" : "OpenCode";
             const next = sleep(p.state);
             const already = next.events.includes("already_sleeping");
             setPetState(p.ide, next);
@@ -709,8 +1034,8 @@ export const plugin: Plugin = async (_ctx) => {
             sleepLines.push((terminalEnabled
               ? buildSpeechBubble(next.stage, next.mood, already ? "Already snoozing. Zzzz..." : "Goodnight!", next.name, next.spriteType) + "\n"
               : "") + (already
-              ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${next.name} is already sleeping.`
-              : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${next.name} is now sleeping. Energy will recharge.`));
+              ? `[${pLabel}] ${next.name} is already sleeping.`
+              : `[${pLabel}] ${next.name} is now sleeping. Energy will recharge.`));
           }
           return ret(notification + sleepLines.join("\n\n"));
         }
@@ -718,6 +1043,7 @@ export const plugin: Plugin = async (_ctx) => {
         case "clean": {
           const cleanLines: string[] = [];
           for (const p of alivePets) {
+            const pLabel = p.ide === "vscode" ? "VS Code" : p.ide === "pycharm" ? "PyCharm" : "OpenCode";
             const next = clean(p.state);
             const already = next.events.includes("already_clean");
             setPetState(p.ide, next);
@@ -728,8 +1054,8 @@ export const plugin: Plugin = async (_ctx) => {
             cleanLines.push((terminalEnabled
               ? buildSpeechBubble(next.stage, next.mood, already ? "Already spotless!" : "Thanks for cleaning!", next.name, next.spriteType) + "\n"
               : "") + toast + "\n" + (already
-              ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Nothing to clean — ${next.name}'s area is already spotless.`
-              : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Cleaned up ${next.name}'s mess.`));
+              ? `[${pLabel}] Nothing to clean — ${next.name}'s area is already spotless.`
+              : `[${pLabel}] Cleaned up ${next.name}'s mess.`));
           }
           return ret(notification + cleanLines.join("\n\n"));
         }
@@ -738,8 +1064,9 @@ export const plugin: Plugin = async (_ctx) => {
           const medLines: string[] = [];
           for (const p of alivePets) {
             const s = p.state;
+            const pLabel = p.ide === "vscode" ? "VS Code" : p.ide === "pycharm" ? "PyCharm" : "OpenCode";
             if (!s.sick) {
-              medLines.push(`[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${s.name} is not sick — medicine not needed.`);
+              medLines.push(`[${pLabel}] ${s.name} is not sick — medicine not needed.`);
               continue;
             }
             const next = giveMedicine(s);
@@ -752,14 +1079,14 @@ export const plugin: Plugin = async (_ctx) => {
             medLines.push((terminalEnabled
               ? buildSpeechBubble(next.stage, next.mood, cured ? "I feel better!" : "Medicine time...", next.name, next.spriteType) + "\n"
               : "") + toast + "\n" + (cured
-              ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] ${next.name} has been cured!`
-              : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Gave medicine to ${next.name}. Doses given: ${next.medicineDosesGiven}/3.`));
+              ? `[${pLabel}] ${next.name} has been cured!`
+              : `[${pLabel}] Gave medicine to ${next.name}. Doses given: ${next.medicineDosesGiven}/3.`));
           }
           return ret(notification + medLines.join("\n\n"));
         }
 
         default:
-          return ret(notification + artHeader() + "Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off.");
+          return ret(notification + artHeader() + "Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off, warnthreshold, shoutthreshold.");
       }
     },
   });
@@ -789,8 +1116,8 @@ export const plugin: Plugin = async (_ctx) => {
 
       const bubbles = livePets.map(p => {
         const s = p.state;
-        const msg = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch);
-        const ideLabel = p.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
+        const msg = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
+        const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
         return stripAnsi(buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType, ideLabel));
       });
       output.text = output.text + "\n\n```\n" + bubbles.join("\n\n") + "\n```";
@@ -812,6 +1139,11 @@ export const plugin: Plugin = async (_ctx) => {
               saveIDEState(ide);
             }
           }
+          // Also boost the local pet on file edits
+          if (localPetState !== null && localPetState.alive && !localPetState.sleeping) {
+            localPetState = applyCodeActivity(localPetState);
+            saveLocalState();
+          }
         }
         return;
       }
@@ -821,12 +1153,13 @@ export const plugin: Plugin = async (_ctx) => {
         isIdle = true;
         saveIDEState("vscode");
         saveIDEState("pycharm");
+        saveIDEState("opencode");
         if (pendingDiffSinceIdle) {
           pendingDiffSinceIdle = false;
           const livePets = getActivePets().filter(p => p.state.alive);
           for (const p of livePets) {
             const phrase = pickRandom(SESSION_DIFF_PHRASES);
-            const ideLabel = p.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
+            const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
             // Prepend so the diff phrase appears before any todo messages already queued
             prependNotification(terminalEnabled
               ? buildSpeechBubble(p.state.stage, p.state.mood, phrase, p.state.name, p.state.spriteType, ideLabel)
@@ -839,7 +1172,7 @@ export const plugin: Plugin = async (_ctx) => {
           const rep = livePets[0];
           const phrase = "You've sent a lot of messages. Want me to take a bigger task off your hands?";
           if (rep) {
-            const ideLabel = rep.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
+            const ideLabel = rep.ide === "vscode" ? "[VS Code]" : rep.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
             queueNotification(terminalEnabled
               ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType, ideLabel)
               : `${ideLabel} ${rep.state.name}: ${phrase}`);
@@ -863,21 +1196,21 @@ export const plugin: Plugin = async (_ctx) => {
             }
             const phrase = pickRandom(TODO_COMPLETE_PHRASES)(todo.content);
             const rep = livePets[0];
-            const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : "[PyCharm]") : "";
+            const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : rep.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]") : "";
             queueNotification(terminalEnabled && rep
               ? buildSpeechBubble(rep.state.stage, "happy", phrase, rep.state.name, rep.state.spriteType, ideLabel)
               : rep ? `${ideLabel} ${rep.state.name}: ${phrase}` : phrase);
           } else if (oldStatus !== "in_progress" && todo.status === "in_progress") {
             const phrase = `On it: ${todo.content}.`;
             const rep = livePets[0];
-            const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : "[PyCharm]") : "";
+            const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : rep.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]") : "";
             queueNotification(terminalEnabled && rep
               ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType, ideLabel)
               : rep ? `${ideLabel} ${rep.state.name}: ${phrase}` : phrase);
           } else if (oldStatus !== "cancelled" && todo.status === "cancelled") {
             const phrase = `Fair enough — ${todo.content} dropped.`;
             const rep = livePets[0];
-            const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : "[PyCharm]") : "";
+            const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : rep.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]") : "";
             queueNotification(terminalEnabled && rep
               ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType, ideLabel)
               : rep ? `${ideLabel} ${rep.state.name}: ${phrase}` : phrase);
@@ -904,7 +1237,7 @@ export const plugin: Plugin = async (_ctx) => {
             ? `On ${branch}. Be careful — this is production.`
             : `Switched to ${branch}. New mission?`;
           const rep = getActivePets().filter(p => p.state.alive)[0];
-          const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : "[PyCharm]") : "";
+          const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : rep.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]") : "";
           queueNotification(terminalEnabled && rep
             ? buildSpeechBubble(rep.state.stage, rep.state.mood, phrase, rep.state.name, rep.state.spriteType, ideLabel)
             : rep ? `${ideLabel} ${rep.state.name}: ${phrase}` : phrase);
@@ -916,8 +1249,10 @@ export const plugin: Plugin = async (_ctx) => {
       if (event.type === "server.connected") {
         for (const p of getActivePets().filter(p => p.state.alive)) {
           const s = p.state;
-          const ideLabel = p.ide === "vscode" ? "[VS Code]" : "[PyCharm]";
-          const greet = s.hunger < 30
+          const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
+          const greet = p.ide === "opencode"
+            ? `I'm here. I live in OpenCode — no IDE needed.`
+            : s.hunger < 30
             ? `Really hungry. Feed me when you get a chance (/codotchi feed)`
             : s.sick
             ? `Not feeling well. Need medicine (/codotchi medicine)`
@@ -945,14 +1280,36 @@ export const plugin: Plugin = async (_ctx) => {
         sessionStartMs = Date.now();
         lastFileEditMs = 0;
         sessionUserMessages = 0;
+        sessionCostUSD = 0;
+        sessionTokens  = 0;
+        localPetSessionMessages = 0;
         hasOfferedHelp = false;
         return;
       }
 
-      // message.updated → count user messages for prompting-a-lot commentary
+      // message.updated → count user messages; accumulate assistant cost + tokens
       if (event.type === "message.updated") {
-        if (event.properties?.info?.role === "user") {
+        const info = event.properties?.info;
+        if (info?.role === "user") {
           sessionUserMessages += 1;
+          return;
+        }
+        if (info?.role === "assistant" && typeof info.cost === "number") {
+          const t = (info.tokens?.input ?? 0) + (info.tokens?.output ?? 0)
+                  + (info.tokens?.cache?.read ?? 0) + (info.tokens?.cache?.write ?? 0);
+          sessionCostUSD += info.cost;
+          sessionTokens  += t;
+          checkDayRollover();
+          dailyCostUSD   += info.cost;
+          dailyTokens    += t;
+          dailyDate = todayUTC();
+          saveDailyUsage();
+          // Conversation-driven evolution: boost local pet every 5 assistant replies
+          localPetSessionMessages += 1;
+          if (localPetSessionMessages % 5 === 0 && localPetState !== null && localPetState.alive) {
+            localPetState = applyCodeActivity(localPetState);
+            saveLocalState();
+          }
         }
         return;
       }
