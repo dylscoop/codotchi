@@ -282,4 +282,25 @@ describe("buildContextualSpeech", () => {
     assert.doesNotThrow(() => buildContextualSpeech(basePet, 0, 0));
     assert.doesNotThrow(() => buildContextualSpeech(basePet, 100, 3_600_000));
   });
+
+  it("includes token text when tokens > 0 and cost is zero", () => {
+    const result = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 0, 1500);
+    assert.ok(result.includes("tokens"), `expected "tokens" in: ${result}`);
+  });
+
+  it("includes cost and token text in normal tier (cost > 0, below warn threshold)", () => {
+    const result = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000);
+    assert.ok(result.includes("$"), `expected "$" in: ${result}`);
+    assert.ok(result.includes("tokens"), `expected "tokens" in: ${result}`);
+  });
+
+  it("includes warn-tone text when cost >= warn threshold", () => {
+    const result = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 35, 50_000, 30, 50);
+    assert.ok(result.includes("$35.00"), `expected cost string in: ${result}`);
+  });
+
+  it("returns ALL CAPS output when cost >= shout threshold", () => {
+    const result = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 60, 100_000, 30, 50);
+    assert.equal(result, result.toUpperCase(), "expected ALL CAPS output at shout threshold");
+  });
 });
