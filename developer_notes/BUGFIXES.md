@@ -1516,6 +1516,17 @@ Rewrote `randomSpriteType()` to do a simple uniform pick from `ROTATION_ANIMALS`
 
 ---
 
+## BUGFIX-124 — Cost text colour not changing at warn/shout thresholds in OpenCode text output
+
+**Status:** Fixed (branch `fix/cost-colour-threshold`)
+**File:** `opencode-codotchi/src/index.ts`
+
+**Problem:** The `experimental.text.complete` hook always called `stripAnsi()` on the speech bubble before appending it to `output.text`. This stripped the `\x1b[33m` (yellow, warn tier) and `\x1b[31m` (red, shout tier) ANSI codes that `buildContextualSpeech()` correctly produced. Because `output.text` is rendered as markdown, raw ANSI codes would appear as garbage — the stripping was intentional for the art block — but it also meant the cost threshold colour change was never visible to the user.
+
+**Fix:** Added a `costPrefix` markdown blockquote computed before building the bubbles. When `dailyCostUSD >= costShoutThreshold`, a bold red 🚨 blockquote line is prepended above the code block. When `dailyCostUSD >= costWarnThreshold`, an italic ⚠️ blockquote line is prepended. At the normal tier no prefix is added. This uses markdown-native emphasis (bold/italic blockquotes) which renders correctly in the OpenCode TUI, providing visible colour differentiation without injecting ANSI codes into the markdown stream.
+
+---
+
 ## BUGFIX-123 — Cost/token suffix never shown when session has 5+ messages
 
 **Status:** Fixed (branch `fix/cost-suffix-always-shown`)
