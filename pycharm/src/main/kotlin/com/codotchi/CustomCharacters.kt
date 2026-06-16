@@ -88,6 +88,19 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         ),
     ),
     CustomCharacter(
+        spriteType  = "dog",
+        passcode    = "shiba",
+        defaultName  = "Codotchi",
+        patLabel    = "Pat",
+        mgTitle     = "Play or Pat",
+        giftMessage = "__Name__ found a tiny tennis ball!",
+        patToasts   = CustomCharacterToasts(
+            patted     = "__Name__ enjoyed the attention!",
+            patRefused = "__Name__ is too tired for pats!",
+        ),
+        patBubbles  = listOf(),
+    ),
+    CustomCharacter(
         spriteType  = "testsprite",
         passcode    = "pixel",
         defaultName  = "Pixel",

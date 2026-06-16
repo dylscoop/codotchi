@@ -86,6 +86,19 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     ],
   },
   {
+    spriteType:  "dog",
+    passcode:    "shiba",
+    defaultName:  "Codotchi",
+    patLabel:    "Pat",
+    mgTitle:     "Play or Pat",
+    giftMessage: "__Name__ found a tiny tennis ball!",
+    patToasts: {
+      patted:      "__Name__ enjoyed the attention!",
+      pat_refused: "__Name__ is too tired for pats!",
+    },
+    patBubbles:  [],
+  },
+  {
     spriteType:  "testsprite",
     passcode:    "pixel",
     defaultName:  "Pixel",

@@ -18,21 +18,21 @@ project. Choose the path that matches how you have the package:
 
 ### Option A — From zip (recommended)
 
-Download `opencode-codotchi-2.5.11.zip` from the
+Download `opencode-codotchi-2.6.0.zip` from the
 [Releases page](https://github.com/dylscoop/codotchi/releases), extract it,
 then run the installer:
 
 ```bash
 # macOS / Linux
-unzip opencode-codotchi-2.5.11.zip
-cd opencode-codotchi-2.5.11
+unzip opencode-codotchi-2.6.0.zip
+cd opencode-codotchi-2.6.0
 node bin/install.js --install
 ```
 
 ```powershell
 # Windows (PowerShell)
-Expand-Archive opencode-codotchi-2.5.11.zip
-cd opencode-codotchi-2.5.11
+Expand-Archive opencode-codotchi-2.6.0.zip
+cd opencode-codotchi-2.6.0
 node bin/install.js --install
 ```
 
@@ -87,7 +87,7 @@ codotchi will greet you in a speech bubble.
 
 ## Usage
 
-```
+```text
 /codotchi              — show status
 /codotchi feed         — give a meal
 /codotchi snack        — give a snack

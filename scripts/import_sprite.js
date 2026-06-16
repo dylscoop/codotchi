@@ -36,9 +36,11 @@
  *                         vscode/media/sprites.js and pycharm/.../sprites.js
  *
  * Resolution:
- *   The output grid uses the source image's native pixel dimensions (up to 700×550).
- *   If the source image is larger than 700×550, it is scaled down to fit using
+ *   The output grid is capped at 192×128 for runtime performance.
+ *   If the source image is larger than 192×128, it is scaled down to fit using
  *   nearest-neighbour sampling while preserving the aspect ratio.
+ *   A warning is printed to stderr when downsampling occurs so the operator
+ *   knows the runtime grid differs from the source image resolution.
  *
  * Colour mapping (pixel art mode — 3-4 flat colours):
  *   If --primary / --secondary / --accent are given, each pixel is mapped to the
@@ -91,8 +93,8 @@ var cropTransparent = hasFlag("--crop-transparent");
 var doPreview   = hasFlag("--preview");
 var doInject    = hasFlag("--inject");
 
-var MAX_COLS = 700;
-var MAX_ROWS = 550;
+var MAX_COLS = 192;
+var MAX_ROWS = 128;
 
 // ── Colour utilities ──────────────────────────────────────────────────────────
 
@@ -728,7 +730,10 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
     var scale  = Math.min(scaleW, scaleH);
     targetW = Math.round(targetW * scale);
     targetH = Math.round(targetH * scale);
-    console.error("Scaling down to: " + targetW + " × " + targetH + " (max " + MAX_COLS + "×" + MAX_ROWS + ")");
+    console.error("[import] Source " + imgData.width + "×" + imgData.height +
+                  " exceeds runtime cap " + MAX_COLS + "×" + MAX_ROWS +
+                  " — downsampling to " + targetW + "×" + targetH +
+                  " (aspect-ratio preserved). Runtime grid will differ from source resolution.");
   }
 
   // 4. Resample if needed

@@ -932,7 +932,7 @@ function applyAnimalTweaks(animal, cfg, s, isSenior, d) {
 var _centerRow = 14;
 
 // Emit quadruped animals
-var quadAnimals = ['cat','rat','ox','tiger','rabbit','horse','sheep','dog','pig'];
+var quadAnimals = ['cat','rat','ox','tiger','rabbit','horse','sheep','pig'];
 var stages = ['baby','child','teen','adult','senior'];
 
 for(var qi=0;qi<quadAnimals.length;qi++){

@@ -1,6 +1,43 @@
 # Version History
 
-## v2.5.12 — current
+## v2.6.0 — current
+
+### Changes from v2.5.12
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | Version bumped to 2.6.0 |
+| `vscode/package-lock.json` | Version metadata aligned to 2.6.0 |
+| `pycharm/build.gradle.kts` | Version bumped to 2.6.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version bumped to 2.6.0 |
+| `opencode-codotchi/package.json` | Version bumped to 2.6.0 |
+| `opencode-codotchi/package-lock.json` | Version metadata aligned to 2.6.0 |
+| `vscode/media/sprites.js` | feat: replace the built-in `dog` sprite with imported 573×550 Shiba grids for all five stages |
+| `pycharm/src/main/resources/webview/sprites.js` | feat: mirror the imported 573×550 Shiba dog grids |
+| `vscode/media/spriteConstants.js` | feat: update the dog palette and grid metadata for the imported Shiba image |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | feat: mirror the imported Shiba dog palette and grid metadata |
+| `vscode/src/customCharacters.ts` | feat: add `shiba` character code mapping to `dog` with Shibagotchi defaults |
+| `vscode/media/customCharacters.js` | feat: expose the `shiba` dog passcode in the webview runtime |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | feat: mirror the `shiba` dog passcode |
+| `pycharm/src/main/resources/webview/customCharacters.js` | feat: mirror the `shiba` dog passcode in the webview runtime |
+| `scripts/gen_sprites.js` | feat: remove `dog` from procedural sprite generation because dog is now imported from image data |
+| `.opencode/skills/sprite-import/SKILL.md` | docs: add a reusable sprite-import workflow skill based on the Shiba import |
+| `README.md` | docs: update release artifact filenames and current release to v2.6.0 |
+| `opencode-codotchi/README.md` | docs: update OpenCode zip examples to v2.6.0 |
+| `developer_notes/SPRITES.md` | docs: document the imported Shiba dog palette, grid, and passcode relationship |
+| `developer_notes/sprites/dog.md` | docs: add dedicated imported dog sprite note and sprite-rule checklist |
+| `developer_notes/DEV_NOTES.md` | docs: add `shiba` to the custom-character passcode table |
+
+### Updated constants
+
+```js
+ANIMAL_PALETTES.dog = { primary: "#f2994a", secondary: "#f2eadf", accent: "#5b2f1f", background: "#1a1a1a" }
+SPRITE_GRID_META.dog = { cols: 573, rows: 550, legRowStart: 385 }
+```
+
+---
+
+## v2.5.12 — previous
 
 ### Changes from v2.5.11
 

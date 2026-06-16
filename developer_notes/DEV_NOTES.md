@@ -8,6 +8,7 @@ Custom characters are unlocked by entering a passcode in **Settings → Characte
 |------------|----------|--------------|------------|-------------------|
 | `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message ("Tim wants a tea break!"); "Codotchi" (case-insensitive) name auto-replaces with "Timagotchi" |
 | `kangaroo` | `straya` | Skippy | Bounce | Also in the random rotation pool |
+| `dog` | `shiba` | Shibagotchi | Pat | Imported Shiba dog sprite; passcode maps to the built-in dog sprite type |
 | `testsprite` | `pixel` | Pixel | Pat | Dev/test sprite; 700-column grid; single adult stage only |
 | `stu` | `rubylovessalmon` | Stugotchi | Collect Stickers | 10 meals/snacks per cycle; hunger mult 0.25×; meal weight gain 1; snack weight gain 2; play weight loss 5; snack-sick threshold 5 |
 

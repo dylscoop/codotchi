@@ -109,7 +109,7 @@ export function activate(context: vscode.ExtensionContext): void {
         "attention_call_sick":           `${state.name} is sick!`,
         "attention_call_low_energy":     `${state.name} is exhausted!`,
         "attention_call_misbehaviour":   `${state.name} is misbehaving!`,
-        "attention_call_gift":           getCustomCharacterByPasscode(vscode.workspace.getConfiguration("codotchi").get<string>("characterPasscode", ""))?.giftMessage ?? `${state.name} brought you a gift!`,
+        "attention_call_gift":           (getCustomCharacterByPasscode(vscode.workspace.getConfiguration("codotchi").get<string>("characterPasscode", ""))?.giftMessage ?? `${state.name} brought you a gift!`).replace("__Name__", state.name),
         "attention_call_critical_health":`${state.name}'s health is critical!`,
       };
       for (const event of state.events) {

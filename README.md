@@ -32,66 +32,70 @@ PyCharm via a cross-platform JSON file.
 
 ### VS Code
 
-1. Download `codotchi-2.5.11.vsix` from the Releases page.
+1. Download `codotchi-2.6.0.vsix` from the Releases page.
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
 Or from the terminal:
 
 ```bash
-code --install-extension codotchi-2.5.11.vsix
+code --install-extension codotchi-2.6.0.vsix
 ```
 
 ### JetBrains
 
-1. Download `pycharm-codotchi-2.5.11.zip` from the Releases page.
+1. Download `pycharm-codotchi-2.6.0.zip` from the Releases page.
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
 
 ### OpenCode
 
-**Option A — In-repo (this repository only)**
+#### Option A — In-repo (this repository only)
 
 The plugin lives in `.opencode/plugins/codotchi.ts` and is loaded automatically
 by OpenCode when you open this repository.
 
 1. Make sure `@opencode-ai/plugin` is installed:
+
    ```bash
    cd .opencode && npm install
    ```
+
 2. Open the repo in OpenCode — the pet plugin loads on startup.
 
-**Option B — Global install (`opencode-codotchi`)**
+#### Option B — Global install (`opencode-codotchi`)
 
 Make your pet available in **every project** you open in OpenCode by installing
 it once per machine. The easiest path is downloading the zip from the Releases
 page — no repository clone required:
 
-**From zip (recommended):**
+#### From Zip
 
-1. Download `opencode-codotchi-2.5.11.zip` from the
+1. Download `opencode-codotchi-2.6.0.zip` from the
    [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. Extract it and run the installer:
+
    ```bash
    # macOS / Linux
-   unzip opencode-codotchi-2.5.11.zip && cd opencode-codotchi-2.5.11
-   node bin/install.js --install
-   ```
-   ```powershell
-   # Windows (PowerShell)
-   Expand-Archive opencode-codotchi-2.5.11.zip; cd opencode-codotchi-2.5.11
+   unzip opencode-codotchi-2.6.0.zip && cd opencode-codotchi-2.6.0
    node bin/install.js --install
    ```
 
-**From source (local clone):**
+   ```powershell
+   # Windows (PowerShell)
+   Expand-Archive opencode-codotchi-2.6.0.zip; cd opencode-codotchi-2.6.0
+   node bin/install.js --install
+   ```
+
+#### From Source
 
 ```bash
 cd opencode-codotchi
 node bin/install.js --install
 ```
 
-**From npm (once published):**
+#### From NPM
 
 > **Note:** `opencode-codotchi` has not yet been published to the npm registry.
 
@@ -109,6 +113,7 @@ After running the installer, open any project in OpenCode — on first startup
 the plugin dependency is installed via bun and the pet loads automatically.
 
 Either way, use `/codotchi` to interact with your pet:
+
 - `/codotchi` — show status
 - `/codotchi feed` / `snack` / `play` / `pat` — care actions
 - `/codotchi sleep` / `wake` — sleep cycle
@@ -161,7 +166,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.5.11.vsix
+# produces codotchi-2.6.0.vsix
 ```
 
 ### JetBrains plugin
@@ -177,16 +182,14 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.5.11.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.6.0.zip
 ```
 
 ## Version history
 
 See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
-Current release: **v2.5.11** — built by [dylscoop](https://github.com/dylscoop)
-
----
+Current release: **v2.6.0** — built by [dylscoop](https://github.com/dylscoop)
 
 > "Grow your best pet by writing your best code."
 
