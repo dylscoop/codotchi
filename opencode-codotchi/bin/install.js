@@ -82,20 +82,20 @@ const PLUGIN_VER    = "1.2.27";   // must match opencode-codotchi/package.json
 
 let anyError = false;
 
-// ── Step 0: Build the bundle if missing ──────────────────────────────────────
+// ── Step 0: Always rebuild the bundle from source ────────────────────────────
+// Never skip: a stale bundle from a previous version would be installed
+// silently, defeating the purpose of the install step.
 
-if (!fs.existsSync(bundleSrc)) {
-  console.log("Bundle not found — building dist-plugin/codotchi.js ...");
-  try {
-    execSync("node scripts/bundle-plugin.js", {
-      cwd: path.join(__dirname, ".."),
-      stdio: "inherit",
-    });
-  } catch (err) {
-    console.error(`Failed to build bundle: ${err.message}`);
-    console.error("Run: node scripts/bundle-plugin.js  (requires bun on PATH)");
-    anyError = true;
-  }
+console.log("Building dist-plugin/codotchi.js from source...");
+try {
+  execSync("node scripts/bundle-plugin.js", {
+    cwd: path.join(__dirname, ".."),
+    stdio: "inherit",
+  });
+} catch (err) {
+  console.error(`Failed to build bundle: ${err.message}`);
+  console.error("Run: node scripts/bundle-plugin.js  (requires bun on PATH)");
+  anyError = true;
 }
 
 if (!fs.existsSync(bundleSrc)) {

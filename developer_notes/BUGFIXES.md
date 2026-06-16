@@ -1557,3 +1557,14 @@ Rewrote `randomSpriteType()` to do a simple uniform pick from `ROTATION_ANIMALS`
 **Problem:** `buildBubble()` computed `innerWidth` using `String.length` and padded each content line with `.padEnd()`. Both measure in UTF-16 code units. Wide emoji such as `🚨` (U+1F6A8, a surrogate pair with `.length === 2`) and `⚠️` (U+26A0 + variation selector, `.length === 2`) are visually 2 terminal columns wide but only 1 codepoint. This caused `innerWidth` to be underestimated by 1 per emoji, making the top and bottom border lines shorter than the content lines and the right border column to visually drift left.
 
 **Fix:** Added `visualLength(s)` and `visualPadEnd(s, width)` helpers in `asciiArt.ts`. `visualLength` iterates over Unicode codepoints (correctly handling surrogate pairs) and counts emoji/wide-Unicode chars as 2 columns. `visualPadEnd` pads to a target visual width rather than a code-unit count. `buildBubble` now uses these helpers for `innerWidth` calculation, word-wrap overflow check, and per-line padding, so all three operations agree on the same visual column count and the bubble borders stay aligned regardless of emoji content.
+
+---
+
+## BUGFIX-127 — install.js skipped bundle rebuild, installing stale bundle from prior version
+
+**Status:** Fixed (branch `fix/bubble-align-and-banner`)
+**File:** `opencode-codotchi/bin/install.js`
+
+**Problem:** `bin/install.js` only built `dist-plugin/codotchi.js` if the file was missing (`if (!fs.existsSync(bundleSrc))`). If a stale bundle from a prior version was already present on disk (e.g. left over from the previous install), the script silently skipped the rebuild and copied the old bundle into the live plugin directory. This meant source fixes were committed and the zip was rebuilt, but the installed plugin still ran old code.
+
+**Fix:** Removed the `if (!fs.existsSync(...))` guard. `install.js` now unconditionally rebuilds the bundle by running `node scripts/bundle-plugin.js` on every install, ensuring the installed plugin always reflects the current source.

@@ -9,7 +9,8 @@
 | `opencode-codotchi/src/asciiArt.ts` | fix: replace random cost suffix phrases at shout/warn tiers with single emoji-prefixed format (`🚨 $X TODAY — CHECK YOUR USAGE!` / `⚠️ $X today — getting spendy.`) so the alert appears inside the speech bubble (BUGFIX-125) |
 | `opencode-codotchi/src/index.ts` | fix: remove `costPrefix` blockquote above code block — cost alert is now fully contained inside the speech bubble text |
 | `opencode-codotchi/src/asciiArt.ts` | fix: replace `String.length`/`.padEnd()` with `visualLength()`/`visualPadEnd()` in `buildBubble` — bubble borders now align correctly when message contains wide emoji like 🚨/⚠️ (BUGFIX-126) |
-| `opencode-codotchi/opencode-codotchi-2.7.4.zip` | Rebuilt distributable zip for v2.7.4 (includes BUGFIX-126 bubble alignment fix) |
+| `opencode-codotchi/bin/install.js` | fix: always rebuild bundle on install instead of skipping if file exists — prevents stale bundle from prior version being installed (BUGFIX-127) |
+| `opencode-codotchi/opencode-codotchi-2.7.4.zip` | Rebuilt distributable zip for v2.7.4 (includes BUGFIX-126 bubble alignment fix and BUGFIX-127 install fix) |
 | `vscode/package.json` | chore: bump version to 2.7.4 |
 | `pycharm/build.gradle.kts` | chore: bump version to 2.7.4 |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.7.4 |
