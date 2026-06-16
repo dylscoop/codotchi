@@ -41,8 +41,9 @@ import * as fs   from "fs";
 import * as path from "path";
 import * as os   from "os";
 import { tool }  from "@opencode-ai/plugin";
-import type { Plugin } from "@opencode-ai/plugin";
+import type { Plugin, PluginInput } from "@opencode-ai/plugin";
 import { getIDEBase as _getIDEBase, resolveVSCodeStatePath } from "./statePathResolver.js";
+import { sumCompletedAssistantUsage } from "./usageBackfill.js";
 
 import {
   PetState,
@@ -225,6 +226,63 @@ function checkDayRollover(): void {
     dailyTokens  = 0;
     dailyDate    = today;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Backfill daily usage from historical sessions on startup
+// ---------------------------------------------------------------------------
+
+/**
+ * On startup, the module-level dailyCostUSD / dailyTokens accumulators are
+ * seeded from the sidecar file (which only records what was observed during
+ * previous plugin runs). This async helper queries the OpenCode API for all
+ * sessions that were active today and sums the cost + tokens across every
+ * completed AssistantMessage, then replaces the sidecar values if the API
+ * total is larger (to avoid double-counting live events already received).
+ *
+ * It is called fire-and-forget from the plugin entry point so startup is
+ * never delayed or blocked by API latency.
+ */
+async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> {
+  try {
+    const today = todayUTC();
+    const todayStartMs = new Date(today + "T00:00:00.000Z").getTime();
+
+    const listResult = await client.session.list();
+    const sessions = listResult.data ?? [];
+
+    // Only fetch messages for sessions that were active today
+    const todaySessions = sessions.filter(
+      (s) => s.time.updated >= todayStartMs
+    );
+
+    let backfilledCost   = 0;
+    let backfilledTokens = 0;
+
+    for (const s of todaySessions) {
+      try {
+        const msgResult = await client.session.messages({ path: { id: s.id } });
+        const messages = msgResult.data ?? [];
+        const totals = sumCompletedAssistantUsage(messages);
+        backfilledCost   += totals.costUSD;
+        backfilledTokens += totals.tokens;
+      } catch { /* skip individual session errors — best-effort */ }
+    }
+
+    // Only overwrite if the API total exceeds what we already have from
+    // the sidecar + live events so far (prevents double-counting).
+    checkDayRollover();
+    if (backfilledCost > dailyCostUSD) {
+      dailyCostUSD = backfilledCost;
+    }
+    if (backfilledTokens > dailyTokens) {
+      dailyTokens = backfilledTokens;
+    }
+    if (backfilledCost > 0 || backfilledTokens > 0) {
+      dailyDate = today;
+      saveDailyUsage();
+    }
+  } catch { /* best-effort — never block startup */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -786,12 +844,14 @@ function applyTickForLocal(): void {
 // Plugin entry point
 // ---------------------------------------------------------------------------
 
-export const plugin: Plugin = async (_ctx) => {
+export const plugin: Plugin = async (ctx) => {
   // Migrate state files from old gotchi/ folder to codotchi/ on first run.
   migrateStateFolders();
   // Load daily usage + plugin config sidecars
   loadDailyUsage();
   loadPluginConfig();
+  // Backfill daily usage from historical sessions (fire-and-forget)
+  backfillDailyUsage(ctx.client).catch(() => { /* best-effort */ });
   // Load all IDE state files + local pet on startup — queue greetings as pending notifications
   loadAllStates();
 
