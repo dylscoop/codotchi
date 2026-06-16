@@ -1,6 +1,20 @@
 # Version History
 
-## v2.7.0 — current
+## v2.7.1 — current
+
+### Changes from v2.7.0
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/asciiArt.ts` | fix: widen speech bubble cost/token gate — `if (dailyCostUSD > 0 \|\| dailyTokens > 0)`; add token-only compact branch for free/local models (BUGFIX-121) |
+| `opencode-codotchi/src/index.ts` | fix: include `tokens.reasoning` in daily token accumulation (BUGFIX-122) |
+| `opencode-codotchi/tests/unit/asciiArt.test.ts` | test: add 4 cases covering token-only, normal cost, warn, and shout tiers |
+| `opencode-codotchi/package.json` | chore: bump version to 2.7.1 |
+| `opencode-codotchi/opencode-codotchi-2.7.1.zip` | Rebuilt distributable zip for v2.7.1 |
+
+---
+
+## v2.7.0 — previous
 
 ### Changes from v2.6.1
 

@@ -1495,3 +1495,21 @@ Rewrote `randomSpriteType()` to do a simple uniform pick from `ROTATION_ANIMALS`
 **Problem:** The info line (e.g. `Age: 5d  |  adult  |  Codotchi  |  Codeling`) used `_infoCC.defaultName` as the species label when a custom character was active. For the `shiba` passcode, `defaultName` is `"Codotchi"` — the pet's own name — so both the name display and the species slot showed "Codotchi". No "Dog" label appeared anywhere in the UI.
 
 **Fix:** Replaced the `_infoCC ? _infoCC.defaultName : ...` ternary with a direct `spriteType`-derived capitalised string. The info line now reads `Age: 5d  |  adult  |  Dog  |  Codeling` for a shiba pet — the species is derived from `state.spriteType` regardless of whether a custom character is active.
+
+## BUGFIX-121 — Token/cost usage never appears in the ASCII art speech bubble
+
+**Status:** Fixed (branch `fix/ascii-art-token-display`)
+**File:** `opencode-codotchi/src/asciiArt.ts`
+
+**Problem:** The speech bubble cost/token suffix was gated solely on `dailyCostUSD > 0`. For free or local models where `dailyCostUSD` is always `0`, the gate was never entered and no token text appeared regardless of how many tokens were consumed. Additionally, even paid models would silently suppress token text if the sidecar had not yet accumulated any cost for the current UTC day.
+
+**Fix:** Widened the gate to `if (dailyCostUSD > 0 || dailyTokens > 0)`. When `dailyCostUSD === 0` but `dailyTokens > 0`, a new token-only compact branch fires, picking from three neutral phrases (e.g. `"1.2k tokens used today."`). The three existing cost tiers (normal / warn / shout) are unchanged and only fire when `dailyCostUSD > 0`.
+
+## BUGFIX-122 — Reasoning tokens excluded from daily token accumulation
+
+**Status:** Fixed (branch `fix/ascii-art-token-display`)
+**File:** `opencode-codotchi/src/index.ts`
+
+**Problem:** The `message.updated` handler summed `tokens.input + tokens.output + tokens.cache.read + tokens.cache.write` but omitted `tokens.reasoning`. Models that emit reasoning tokens (e.g. extended thinking models) reported a lower token count than actually consumed, causing the speech bubble to underreport usage.
+
+**Fix:** Added `+ (info.tokens?.reasoning ?? 0)` to the token accumulation sum so all five token sub-fields are included.
