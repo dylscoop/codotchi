@@ -1,6 +1,22 @@
 # Version History
 
-## v2.6.1 — current
+## v2.7.0 — current
+
+### Changes from v2.6.1
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/asciiArt.ts` | feat: add `formatTokens()` and `formatCost()` helpers; extend `buildContextualSpeech()` with 4 new params (`dailyCostUSD`, `dailyTokens`, `costWarnThreshold`, `costShoutThreshold`) and three-tier cost speech (normal / warning / ALL CAPS shouting) |
+| `opencode-codotchi/src/index.ts` | feat: daily cost+token accumulation across sessions (sidecar `codotchi-daily.json`); configurable thresholds (`codotchi-config.json`); `warnthreshold`/`shoutthreshold` slash commands; OpenCode-local unkillable pet (`codotchi-local.json`) that evolves with time and conversations, hidden when IDE pet is live |
+| `opencode-codotchi/commands/codotchi.md` | feat: add `warnthreshold`/`shoutthreshold` routing rows and help text |
+| `vscode/package.json` | chore: bump version to 2.7.0 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.7.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.7.0 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.7.0 |
+
+---
+
+## v2.6.1 — previous
 
 ### Changes from v2.6.0
 
