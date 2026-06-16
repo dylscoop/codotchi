@@ -13,6 +13,11 @@
 | `pycharm/build.gradle.kts` | chore: bump version to 2.7.0 |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.7.0 |
 | `opencode-codotchi/package.json` | chore: bump version to 2.7.0 |
+| `vscode/media/sprites.js` | fix: horizontally mirror all five roo sprite stages so Roogotchi faces left in raw data and walks correctly (BUGFIX-119) |
+| `pycharm/src/main/resources/webview/sprites.js` | fix: mirror roo sprite stages (BUGFIX-119) |
+| `scripts/mirror_roo.js` | chore: add helper script used to mirror roo pixel rows |
+| `vscode/media/sidebar.js` | fix: spriteLabel now derived from spriteType, not defaultName — shiba passcode shows "Dog" not "Codotchi" (BUGFIX-120) |
+| `pycharm/src/main/resources/webview/sidebar.js` | fix: same spriteLabel fix as VS Code (BUGFIX-120) |
 
 ---
 

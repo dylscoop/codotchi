@@ -1473,3 +1473,25 @@ Additionally, `plain` background mode returned immediately from `drawBackground(
 - `ROTATION_ANIMALS` (cat, dog, snake, sheep, classic, rooster, tiger, kangaroo) — the random rotation pool.
 
 Rewrote `randomSpriteType()` to do a simple uniform pick from `ROTATION_ANIMALS` — no weights, no `if` branches, equal 12.5% per animal. Added `ROTATION_ANIMALS` to the `SpriteType` union so the type system covers all members. Note: five rotation animals (dog, snake, sheep, rooster, tiger) also appear in `ZODIAC_ANIMALS` — they are accessible both ways, by design.
+
+---
+
+## BUGFIX-119 — Roo sprite faces wrong way during walk animation
+
+**Status:** Fixed (branch `fix/roo-facing-shiba-type-label`)
+**Files:** `vscode/media/sprites.js`, `pycharm/src/main/resources/webview/sprites.js`, `scripts/mirror_roo.js`
+
+**Problem:** The imported `roo` sprite was sourced from a reference image that faces right. All other quadruped sprites face left in their raw pixel data, which matches the renderer's flip convention (`ctx.scale(-1,1)` when `!facingLeft`). Because `roo` faced right, the pet walked backwards when moving left — the head trailed the direction of travel instead of leading it. The leg animation was also visually lopsided since all foot pixels were in the right half of the grid.
+
+**Fix:** Horizontally mirrored all five stages of the `roo` sprite by reversing each 644-character pixel row string. A helper script `scripts/mirror_roo.js` performs the transform. After mirroring the sprite faces left in the raw data, consistent with all other quadrupeds, and the renderer's flip logic produces correct left/right walking in both IDEs.
+
+---
+
+## BUGFIX-120 — Shiba passcode shows "Codotchi" as animal type instead of "Dog"
+
+**Status:** Fixed (branch `fix/roo-facing-shiba-type-label`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** The info line (e.g. `Age: 5d  |  adult  |  Codotchi  |  Codeling`) used `_infoCC.defaultName` as the species label when a custom character was active. For the `shiba` passcode, `defaultName` is `"Codotchi"` — the pet's own name — so both the name display and the species slot showed "Codotchi". No "Dog" label appeared anywhere in the UI.
+
+**Fix:** Replaced the `_infoCC ? _infoCC.defaultName : ...` ternary with a direct `spriteType`-derived capitalised string. The info line now reads `Age: 5d  |  adult  |  Dog  |  Codeling` for a shiba pet — the species is derived from `state.spriteType` regardless of whether a custom character is active.
