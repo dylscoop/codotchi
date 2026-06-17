@@ -276,19 +276,4 @@ Then edit `C:\Users\<you>\.config\opencode\package.json` and remove the `@openco
 - The state file should be in `~/.config/gotchi/` (macOS/Linux) or `AppData/Roaming/codotchi/` (Windows)
 - Manual sync: close all IDEs, edit the state file, then reopen
 
-## Support & Links
-
-- **GitHub repository**: [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi)
-- **Report bugs or request features**: [GitHub Issues](https://github.com/dylscoop/codotchi/issues)
-- **Want a new sprite?** Open a [sprite request](https://github.com/dylscoop/codotchi/issues) — you'll get a passcode!
-
-## Sponsor This Project
-
-If you love your codotchi, consider supporting the developer:
-
-- **Buy Me a Coffee**: [buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
-- **Liberapay**: [liberapay.com/dylscoop](https://liberapay.com/dylscoop)
-
----
-
 Enjoy raising your codotchi! 🐣→🐥→🦆→🦅→👑✨
