@@ -1268,7 +1268,7 @@ export const plugin: Plugin = async (ctx) => {
         const s = p.state;
         const { message: msg, bubbleColor } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
         const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
-        return stripAnsi(buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType, ideLabel, bubbleColor));
+        return buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType, ideLabel, bubbleColor);
       });
       output.text = output.text + "\n\n```\n" + bubbles.join("\n\n") + "\n```";
     },
