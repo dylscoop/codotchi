@@ -575,7 +575,8 @@ export function buildSpeechBubble(
   name: string,
   spriteType = "classic",
   ideLabel?: string,
-  bubbleColor?: string
+  bubbleColor?: string,
+  tierEmoji?: string
 ): string {
   const art    = getArt(stage, mood, spriteType);
   const bubble = buildBubble(message, 40, bubbleColor);
@@ -596,7 +597,8 @@ export function buildSpeechBubble(
 
   // Build name header (with optional IDE label e.g. "[VS Code]")
   const ideSuffix = ideLabel ? ` ${FG_GRAY}${ideLabel}${RESET}` : "";
-  const header = `${BOLD}${stageColour}${name}${RESET} ${FG_GRAY}[${stage}]${RESET}${ideSuffix}`;
+  const emojiPrefix = tierEmoji ? `${tierEmoji} ` : "";
+  const header = `${emojiPrefix}${BOLD}${stageColour}${name}${RESET} ${FG_GRAY}[${stage}]${RESET}${ideSuffix}`;
   const lines: string[] = [RESET, "", header];
 
   // Build combined lines
@@ -754,7 +756,7 @@ export function buildContextualSpeech(
   dailyTokens: number = 0,
   costWarnThreshold: number = 30,
   costShoutThreshold: number = 50,
-): { message: string; bubbleColor: string } {
+): { message: string; bubbleColor: string; tierEmoji: string } {
   // --- Session activity phrase ---
   const sessionMins = Math.floor(sessionMs / 60_000);
   const sessionHours = Math.floor(sessionMins / 60);
@@ -852,14 +854,16 @@ export function buildContextualSpeech(
       const shoutSuffix = `🚨 ${costStr} TODAY — CHECK YOUR USAGE! (${tokStrUp} TOKENS)`;
       return { 
         message: colour(`${phrase} ${shoutSuffix}`.toUpperCase(), FG_RED),
-        bubbleColor: FG_RED
+        bubbleColor: FG_RED,
+        tierEmoji: "🔴"
       };
     } else if (dailyCostUSD >= costWarnThreshold) {
       // Warning tier — yellow border + yellow cost suffix
       const warnSuffix = `⚠️ ${costStr} today — getting spendy. (${tokStr} tokens)`;
       return { 
         message: `${phrase} ${colour(warnSuffix, FG_YELLOW)}`,
-        bubbleColor: FG_YELLOW
+        bubbleColor: FG_YELLOW,
+        tierEmoji: "🟡"
       };
     } else {
       // Normal tier — green border + casual mention
@@ -872,7 +876,8 @@ export function buildContextualSpeech(
       ]);
       return { 
         message: `${phrase} ${normalSuffix}`,
-        bubbleColor: FG_GREEN
+        bubbleColor: FG_GREEN,
+        tierEmoji: "🟢"
       };
     }
   } else if (dailyTokens > 0) {
@@ -885,12 +890,13 @@ export function buildContextualSpeech(
     ]);
     return { 
       message: `${phrase} ${tokenOnlySuffix}`,
-      bubbleColor: FG_GREEN
+      bubbleColor: FG_GREEN,
+      tierEmoji: "🟢"
     };
   }
 
   // No cost/tokens at all — green border
-  return { message: phrase, bubbleColor: FG_GREEN };
+  return { message: phrase, bubbleColor: FG_GREEN, tierEmoji: "🟢" };
 }
 
 /**

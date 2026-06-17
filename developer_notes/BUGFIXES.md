@@ -1568,3 +1568,19 @@ Rewrote `randomSpriteType()` to do a simple uniform pick from `ROTATION_ANIMALS`
 **Problem:** `bin/install.js` only built `dist-plugin/codotchi.js` if the file was missing (`if (!fs.existsSync(bundleSrc))`). If a stale bundle from a prior version was already present on disk (e.g. left over from the previous install), the script silently skipped the rebuild and copied the old bundle into the live plugin directory. This meant source fixes were committed and the zip was rebuilt, but the installed plugin still ran old code.
 
 **Fix:** Removed the `if (!fs.existsSync(...))` guard. `install.js` now unconditionally rebuilds the bundle by running `node scripts/bundle-plugin.js` on every install, ensuring the installed plugin always reflects the current source.
+
+---
+
+## BUGFIX-128 — Pet speech bubble text shifts when highlighting in OpenCode chat (ANSI selection alignment)
+
+**Status:** Fixed (branch `opencode-codotchi-v2.8.2`)
+**Files:** `opencode-codotchi/src/asciiArt.ts`, `opencode-codotchi/src/index.ts`
+
+**Problem:** In v2.8.1, ANSI escape sequences were retained in the speech bubble output inserted into the chat markdown code block (`` ``` ``). When the user highlighted/selected text in the chat, the renderer calculated selection positions using character count, but ANSI escape codes take up bytes (e.g. `\x1b[32m` = 7 bytes) without any visible width. This caused a mismatch: the cursor landed at byte offsets rather than visual column offsets, making the highlighted text appear to shift left or right relative to its actual position. The `\`\`\`ansi\`\`\`` code block hint was tested as a fix but OpenCode's markdown renderer does not support ANSI-aware text selection for that syntax.
+
+**Fix:** 
+1. Strip ANSI codes from all speech bubbles before inserting into `output.text` — the renderer now receives pure ASCII monochrome art with no escape sequences.
+2. Preserve the cost tier indicator (🟢 green / 🟡 yellow / 🔴 red) by adding a `tierEmoji` field to `buildContextualSpeech()`, which is prepended to the header line **before** ANSI is stripped, so the emoji survives into the final output and signals the cost tier at a glance.
+3. Revert from `` ```ansi `` to plain `` ``` `` code block fence.
+
+The bubbles remain perfectly aligned when highlighted, and the emoji indicators provide visual feedback on cost tier without requiring ANSI colors.

@@ -1,6 +1,29 @@
 # Version History
 
-## v2.7.4 — current
+## v2.8.2 — current
+
+### Changes from v2.8.1
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/asciiArt.ts` | fix: add `tierEmoji` field to `buildContextualSpeech()` return type; map returns green 🟢, yellow 🟡, red 🔴 based on cost tier (BUGFIX-128) |
+| `opencode-codotchi/src/asciiArt.ts` | fix: add optional `tierEmoji` parameter to `buildSpeechBubble()` and prepend to header line so emoji survives ANSI stripping (BUGFIX-128) |
+| `opencode-codotchi/src/index.ts` | fix: revert code block from `` ```ansi `` to plain `` ``` ``; destructure `tierEmoji` from `buildContextualSpeech()`; strip ANSI codes from all bubbles with `bubbles.map(stripAnsi)` before inserting into output — fixes text selection misalignment caused by ANSI escape codes (BUGFIX-128) |
+| `opencode-codotchi/package.json` | chore: bump version to 2.8.2 |
+
+---
+
+## v2.8.1 — previous
+
+### Changes from v2.8.0
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/index.ts` | feat: change code block fence from `` ``` `` to `` ```ansi `` to preserve ANSI color codes in speech bubbles (reverted in v2.8.2 due to selection misalignment) |
+
+---
+
+## v2.7.4 — previous
 
 ### Changes from v2.7.3
 
