@@ -10,6 +10,5 @@
   "homepage": "https://github.com/dylscoop/codotchi",
   "repository": "https://github.com/dylscoop/codotchi",
   "license": "MIT",
-  "keywords": ["tamagotchi", "virtual-pet", "codotchi", "statusline", "game"],
-  "hooks": "./hooks/hooks.json"
+  "keywords": ["tamagotchi", "virtual-pet", "codotchi", "statusline", "game"]
 }
