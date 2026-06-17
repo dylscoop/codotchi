@@ -1,0 +1,883 @@
+/**
+ * asciiArt.ts
+ *
+ * Terminal ASCII art renderer for the codotchi OpenCode plugin.
+ *
+ * Provides:
+ *   - Stage-specific ASCII art (egg → baby → child → teen → adult → senior)
+ *   - Mood overlays (happy / neutral / sad / sleeping / sick)
+ *   - ANSI colour helpers
+ *   - buildSpeechBubble() — pet art + speech bubble side-by-side, returned as string
+ *   - buildStatusBlock() — compact stat bar for the /codotchi status command, returned as string
+ *   - buildToast()       — one-line notification string
+ */
+// ---------------------------------------------------------------------------
+// ANSI helpers
+// ---------------------------------------------------------------------------
+const RESET = "\x1b[0m";
+const BOLD = "\x1b[1m";
+const DIM = "\x1b[2m";
+// Foreground colours
+const FG_CYAN = "\x1b[36m";
+const FG_GREEN = "\x1b[32m";
+const FG_YELLOW = "\x1b[33m";
+const FG_RED = "\x1b[31m";
+const FG_BLUE = "\x1b[34m";
+const FG_MAGENTA = "\x1b[35m";
+const FG_WHITE = "\x1b[37m";
+const FG_GRAY = "\x1b[90m";
+/** Wrap text in an ANSI colour code and reset. */
+export function colour(text, ansiCode) {
+    return `${ansiCode}${text}${RESET}`;
+}
+/**
+ * Strip all ANSI escape sequences from a string, returning plain text.
+ * Used to produce markdown-safe output from art functions (e.g. for the
+ * experimental.text.complete hook, which renders in a markdown context where
+ * ANSI codes appear as raw escape sequences rather than colours).
+ */
+// eslint-disable-next-line no-control-regex
+export function stripAnsi(str) {
+    return str.replace(/\x1b\[[0-9;]*m/g, "");
+}
+// ---------------------------------------------------------------------------
+// Sprite art — one entry per life stage, per mood
+// Each art block is an array of strings (lines). All lines are the same width.
+// ---------------------------------------------------------------------------
+/**
+ * Minimal, clean ASCII pet art per stage / mood.
+ * Each stage has a distinct silhouette. Lines are padded to equal width.
+ *
+ * Stage silhouette guide:
+ *   egg    — round shell, no limbs, tiny face peeking through
+ *   baby   — round head + round body, tiny nub arms, nub feet
+ *   child  — oval head, torso with short arms out, stubby legs
+ *   teen   — narrower head, slim torso, long arms, long separate legs
+ *   adult  — wide torso, arm stubs at sides, thick legs with feet
+ *   senior — wider hunched torso, cane on right, short bowed legs
+ */
+const STAGE_ART = {
+    egg: {
+        default: [
+            "   .------.  ",
+            "  /  o  o  \\ ",
+            " |    ~    | ",
+            " |         | ",
+            "  \\._____./  ",
+            "             ",
+        ],
+        happy: [
+            "   .------.  ",
+            "  /  ^  ^  \\ ",
+            " |    u    | ",
+            " |         | ",
+            "  \\._____./  ",
+            "             ",
+        ],
+        sad: [
+            "   .------.  ",
+            "  /  T  T  \\ ",
+            " |    _    | ",
+            " |         | ",
+            "  \\._____./  ",
+            "             ",
+        ],
+        sleeping: [
+            "   .------.  ",
+            "  /  -  -  \\ ",
+            " |   ___   | ",
+            " |  (zzz)  | ",
+            "  \\._____./  ",
+            "             ",
+        ],
+        sick: [
+            "   .------.  ",
+            "  /  @  @  \\ ",
+            " |    x    | ",
+            " |  ~~~~~  | ",
+            "  \\._____./  ",
+            "             ",
+        ],
+    },
+    baby: {
+        happy: [
+            "     (^.^)   ",
+            "   ( o   o ) ",
+            "    \\___/    ",
+            "    /   \\    ",
+            "   v     v   ",
+            "             ",
+        ],
+        neutral: [
+            "     (-_-)   ",
+            "   ( o   o ) ",
+            "    \\___/    ",
+            "    /   \\    ",
+            "   v     v   ",
+            "             ",
+        ],
+        sad: [
+            "     (;_;)   ",
+            "   ( o   o ) ",
+            "    \\___/    ",
+            "    /   \\    ",
+            "   v     v   ",
+            "             ",
+        ],
+        sleeping: [
+            "     (-_-)z  ",
+            "   ( o   o ) ",
+            "    \\___/    ",
+            "   /~~~~~\\   ",
+            "  /         \\",
+            "             ",
+        ],
+        sick: [
+            "     (@_@)   ",
+            "   ( o   o ) ",
+            "    \\___/    ",
+            "    /   \\    ",
+            "   v     v   ",
+            "             ",
+        ],
+    },
+    child: {
+        happy: [
+            "   (^o^)     ",
+            "  --| |--    ",
+            "    | |      ",
+            "   /| |\\     ",
+            "  / | | \\    ",
+            " J  | |  L   ",
+        ],
+        neutral: [
+            "   (-_-)     ",
+            "  --| |--    ",
+            "    | |      ",
+            "   /| |\\     ",
+            "  / | | \\    ",
+            " J  | |  L   ",
+        ],
+        sad: [
+            "   (T_T)     ",
+            "  --| |--    ",
+            "    | |      ",
+            "   /| |\\     ",
+            "  / | | \\    ",
+            " J  | |  L   ",
+        ],
+        sleeping: [
+            "   (-.-) z   ",
+            "   --| |--   ",
+            "    |zzz|    ",
+            "   /~~~~~\\   ",
+            "  /       \\  ",
+            " J         L ",
+        ],
+        sick: [
+            "   (@_@)     ",
+            "  --| |--    ",
+            "    | |      ",
+            "   /| |\\     ",
+            "  / | | \\    ",
+            " J  | |  L   ",
+        ],
+    },
+    teen: {
+        happy: [
+            "   (^_^)     ",
+            "  o-| |-o    ",
+            "    | |      ",
+            "    | |      ",
+            "   /   \\     ",
+            "  /     \\    ",
+        ],
+        neutral: [
+            "   (-_-)     ",
+            "  o-| |-o    ",
+            "    | |      ",
+            "    | |      ",
+            "   /   \\     ",
+            "  /     \\    ",
+        ],
+        sad: [
+            "   (T_T)     ",
+            "  o-| |-o    ",
+            "    | |      ",
+            "    | |      ",
+            "   /   \\     ",
+            "  /     \\    ",
+        ],
+        sleeping: [
+            "   (-.-)  z  ",
+            "  o-|zzz|-o  ",
+            "    | |      ",
+            "   /~~~\\     ",
+            "  /     \\    ",
+            " /       \\   ",
+        ],
+        sick: [
+            "   (@_@)     ",
+            "  o-| |-o    ",
+            "    | |      ",
+            "    | |      ",
+            "   /   \\     ",
+            "  /     \\    ",
+        ],
+    },
+    adult: {
+        happy: [
+            "  \\(^_^)/    ",
+            "  _| | |_    ",
+            " / | | | \\   ",
+            "   |___|     ",
+            "  // | \\\\    ",
+            " //  |  \\\\   ",
+        ],
+        neutral: [
+            "  \\(-_-)/    ",
+            "  _| | |_    ",
+            " / | | | \\   ",
+            "   |___|     ",
+            "  // | \\\\    ",
+            " //  |  \\\\   ",
+        ],
+        sad: [
+            "  \\(T_T)/    ",
+            "  _| | |_    ",
+            " / | | | \\   ",
+            "   |___|     ",
+            "  // | \\\\    ",
+            " //  |  \\\\   ",
+        ],
+        sleeping: [
+            "  \\(-.-)/  z ",
+            "  _|zzz|_    ",
+            " / |   | \\   ",
+            "  /~~~~~\\    ",
+            " //     \\\\   ",
+            "//       \\\\  ",
+        ],
+        sick: [
+            "  \\(@_@)/    ",
+            "  _| | |_    ",
+            " / | | | \\   ",
+            "   |___|     ",
+            "  // | \\\\    ",
+            " //  |  \\\\   ",
+        ],
+    },
+    senior: {
+        happy: [
+            "  ~(^_^)~    ",
+            "  ~| | |~    ",
+            " ~ | | | ~   ",
+            "   |___|     ",
+            "  /  |  /    ",
+            " /   | /     ",
+        ],
+        neutral: [
+            "  ~(-_-)~    ",
+            "  ~| | |~    ",
+            " ~ | | | ~   ",
+            "   |___|     ",
+            "  /  |  /    ",
+            " /   | /     ",
+        ],
+        sad: [
+            "  ~(T_T)~    ",
+            "  ~| | |~    ",
+            " ~ | | | ~   ",
+            "   |___|     ",
+            "  /  |  /    ",
+            " /   | /     ",
+        ],
+        sleeping: [
+            "  ~(-.-)~ z  ",
+            "  ~|zzz|~    ",
+            " ~ |   | ~   ",
+            "  /~~~~~\\    ",
+            " /   |   /   ",
+            "/    |  /    ",
+        ],
+        sick: [
+            "  ~(@_@)~    ",
+            "  ~| | |~    ",
+            " ~ | | | ~   ",
+            "   |___|     ",
+            "  /  |  /    ",
+            " /   | /     ",
+        ],
+    },
+};
+// ---------------------------------------------------------------------------
+// Zodiac / sprite-type head-line overrides
+// ---------------------------------------------------------------------------
+// Maps spriteType -> stage -> replacement for line 0 of the stage art.
+// The override string is injected by getArt() when spriteType is provided.
+// Strings are 13 chars (matching the width of the widest stage art line).
+const SPRITE_HEAD = {
+    classic: {},
+    cat: {
+        baby: "   /\\(^.^)/\\ ",
+        child: " /\\ (-_-)/\\  ",
+        teen: " /\\ (-_-)/\\  ",
+        adult: " /\\ (-_-)/\\  ",
+        senior: " /\\ (-_-)/\\  ",
+    },
+    rat: {
+        baby: "     (^o^) ~ ",
+        child: "   (-o-)  ~  ",
+        teen: "   (-o-)  ~  ",
+        adult: "  \\(-o-)/    ",
+        senior: "  ~(-o-)~    ",
+    },
+    ox: {
+        baby: "    Y(^_^)Y  ",
+        child: "  Y(-_-)Y    ",
+        teen: "  Y(-_-)Y    ",
+        adult: "  Y(-_-)Y    ",
+        senior: "  Y(-_-)Y    ",
+    },
+    tiger: {
+        baby: "    ^(^.^)^  ",
+        child: "  ^(-_-)^    ",
+        teen: "  ^(-_-)^    ",
+        adult: "  ^(-_-)^    ",
+        senior: "  ^(-_-)^    ",
+    },
+    rabbit: {
+        baby: "    |(^.^)|  ",
+        child: " |(-_-)|     ",
+        teen: " |(-_-)|     ",
+        adult: " |(-_-)|     ",
+        senior: " |(-_-)|     ",
+    },
+    dragon: {
+        baby: "    *(^_^)*  ",
+        child: "  *(-_-)*    ",
+        teen: "  *(-_-)*    ",
+        adult: "  *(-_-)*    ",
+        senior: "  *(-_-)*    ",
+    },
+    snake: {
+        baby: "    ~(^.^)~  ",
+        child: "  ~(-_-)~    ",
+        teen: "  ~(-_-)~    ",
+        adult: "  ~(-_-)~    ",
+        senior: "  ~(-_-)~    ",
+    },
+    horse: {
+        baby: "    n(^_^)n  ",
+        child: "  n(-_-)n    ",
+        teen: "  n(-_-)n    ",
+        adult: "  n(-_-)n    ",
+        senior: "  n(-_-)n    ",
+    },
+    goat: {
+        baby: "    V(^.^)V  ",
+        child: "  V(-_-)V    ",
+        teen: "  V(-_-)V    ",
+        adult: "  V(-_-)V    ",
+        senior: "  V(-_-)V    ",
+    },
+    monkey: {
+        baby: "    o(^_^)o  ",
+        child: " o(-_-)o     ",
+        teen: " o(-_-)o     ",
+        adult: " o(-_-)o     ",
+        senior: " o(-_-)o     ",
+    },
+    rooster: {
+        baby: "    r(^.^)r  ",
+        child: " r(-_-)r     ",
+        teen: " r(-_-)r     ",
+        adult: " r(-_-)r     ",
+        senior: " r(-_-)r     ",
+    },
+    dog: {
+        baby: "    U(^_^)U  ",
+        child: " U(-_-)U     ",
+        teen: " U(-_-)U     ",
+        adult: " U(-_-)U     ",
+        senior: " U(-_-)U     ",
+    },
+    pig: {
+        baby: "    o(^.^)o  ",
+        child: "  o(-_-)o    ",
+        teen: "  o(-_-)o    ",
+        adult: "  o(-_-)o    ",
+        senior: "  o(-_-)o    ",
+    },
+};
+// ---------------------------------------------------------------------------
+// Stage colour schemes
+// ---------------------------------------------------------------------------
+const STAGE_COLOURS = {
+    egg: FG_CYAN,
+    baby: FG_GREEN,
+    child: FG_YELLOW,
+    teen: FG_MAGENTA,
+    adult: FG_BLUE,
+    senior: FG_WHITE,
+};
+// ---------------------------------------------------------------------------
+// Art lookup
+// ---------------------------------------------------------------------------
+/**
+ * Return the art lines for a pet at the given stage and mood.
+ * Falls back to the stage's "happy" art if the mood has no specific art.
+ * Falls back to egg/default art if the stage is unknown.
+ */
+export function getArt(stage, mood, spriteType = "classic") {
+    const stageMap = STAGE_ART[stage] ?? STAGE_ART.egg;
+    // mood keys: happy / neutral / sad / sleeping / sick
+    const moodKey = mood === "sleeping" ? "sleeping"
+        : mood === "sick" ? "sick"
+            : mood === "sad" ? "sad"
+                : mood === "happy" ? "happy"
+                    : "neutral";
+    const baseArt = stageMap[moodKey] ?? stageMap["happy"] ?? stageMap["default"] ?? STAGE_ART.egg.default;
+    const headOverride = (SPRITE_HEAD[spriteType] ?? {})[stage];
+    if (headOverride && baseArt.length > 0) {
+        const result = [...baseArt];
+        result[0] = headOverride;
+        return result;
+    }
+    return baseArt;
+}
+// ---------------------------------------------------------------------------
+// Speech bubble
+// ---------------------------------------------------------------------------
+/**
+ * Build a speech bubble as an array of lines.
+ *
+ * @param message  - The message text. Long messages are word-wrapped.
+ * @param maxWidth - Max characters per bubble line (default 36).
+ */
+/**
+ * Return the visual (terminal column) width of a plain-text string.
+ * Emoji and other wide Unicode codepoints count as 2 columns; everything
+ * else counts as 1.  ANSI escape codes must be stripped before calling.
+ */
+function visualLength(s) {
+    // Iterate over Unicode codepoints (handles surrogate pairs correctly).
+    let width = 0;
+    for (const ch of s) {
+        const cp = ch.codePointAt(0) ?? 0;
+        // Variation selectors, zero-width joiners and zero-width non-joiners
+        // are invisible — add nothing.
+        if (cp === 0xFE0F || cp === 0xFE0E || cp === 0x200D || cp === 0x200C) {
+            continue;
+        }
+        // Most emoji fall in these ranges and occupy 2 terminal columns.
+        if ((cp >= 0x1F000 && cp <= 0x1FFFF) || // Mahjong, dominos, miscellaneous symbols and pictographs, transport, etc.
+            (cp >= 0x2600 && cp <= 0x27BF) || // Misc symbols, Dingbats
+            (cp >= 0x2300 && cp <= 0x23FF) || // Misc technical
+            (cp >= 0xFE00 && cp <= 0xFE0F) || // Variation selectors (wide glyphs)
+            (cp >= 0x1F900 && cp <= 0x1F9FF) || // Supplemental symbols
+            (cp >= 0x1FA00 && cp <= 0x1FA6F) || // Chess symbols
+            (cp >= 0x1FA70 && cp <= 0x1FAFF) // More supplemental
+        ) {
+            width += 2;
+        }
+        else {
+            width += 1;
+        }
+    }
+    return width;
+}
+/**
+ * Pad a plain-text string to `targetVisualWidth` terminal columns by
+ * appending spaces.  Uses visualLength() so wide characters are counted
+ * correctly.
+ */
+function visualPadEnd(s, targetVisualWidth) {
+    const current = visualLength(s);
+    const needed = Math.max(0, targetVisualWidth - current);
+    return s + " ".repeat(needed);
+}
+export function buildBubble(message, maxWidth = 40, bubbleColor) {
+    // Word-wrap the message using visual width so emoji don't overflow.
+    const words = message.split(" ");
+    const wrapped = [];
+    let current = "";
+    for (const word of words) {
+        if (current.length === 0) {
+            current = word;
+        }
+        else if (visualLength(current) + 1 + visualLength(word) <= maxWidth) {
+            current += " " + word;
+        }
+        else {
+            wrapped.push(current);
+            current = word;
+        }
+    }
+    if (current.length > 0) {
+        wrapped.push(current);
+    }
+    const innerWidth = Math.max(...wrapped.map((l) => visualLength(l)), 4);
+    const c = (s) => bubbleColor ? colour(s, bubbleColor) : s;
+    const top = c(` ${"_".repeat(innerWidth + 2)} `);
+    const bottom = c(` ${"‾".repeat(innerWidth + 2)} `);
+    const lines = [top];
+    for (let i = 0; i < wrapped.length; i++) {
+        const padded = visualPadEnd(wrapped[i], innerWidth);
+        const isFirst = i === 0;
+        const isLast = i === wrapped.length - 1;
+        const left = isFirst && isLast ? "<" : isFirst ? "/" : isLast ? "\\" : "|";
+        const right = isFirst && isLast ? ">" : isFirst ? "\\" : isLast ? "/" : "|";
+        lines.push(c(`${left} `) + padded + c(` ${right}`));
+    }
+    lines.push(bottom);
+    return lines;
+}
+// ---------------------------------------------------------------------------
+// Combined render
+// ---------------------------------------------------------------------------
+/**
+ * Build pet art + speech bubble side-by-side and return as a string.
+ *
+ * Layout (art on left, bubble on right, connected by a tail):
+ *
+ *    (^_^)        ________
+ *    |   |       < Hello! >
+ *    ...          ‾‾‾‾‾‾‾‾
+ *
+ * @param stage   - Life stage of the pet.
+ * @param mood    - Current mood key.
+ * @param message - The speech bubble text.
+ * @param name    - Pet's name (used as a label above the art).
+ */
+export function buildSpeechBubble(stage, mood, message, name, spriteType = "classic", ideLabel, bubbleColor, tierEmoji) {
+    const art = getArt(stage, mood, spriteType);
+    const bubble = buildBubble(message, 40, bubbleColor);
+    const stageColour = STAGE_COLOURS[stage] ?? FG_WHITE;
+    // Normalise all art lines to the same visual width before any padding or colouring.
+    // This guards against art blocks where individual lines are shorter than line 0.
+    const artWidth = Math.max(...art.map((l) => l.length), 1);
+    const artNorm = art.map((l) => l.padEnd(artWidth));
+    // Pad art to bubble height (or vice versa)
+    const maxLines = Math.max(artNorm.length, bubble.length);
+    const artPadded = [...artNorm, ...Array(maxLines - artNorm.length).fill(" ".repeat(artWidth))];
+    const bubblePadded = [...bubble, ...Array(maxLines - bubble.length).fill("")];
+    // Colour the art lines
+    const artColoured = artPadded.map((l) => colour(l, stageColour));
+    // Build name header (with optional IDE label e.g. "[VS Code]")
+    const ideSuffix = ideLabel ? ` ${FG_GRAY}${ideLabel}${RESET}` : "";
+    const emojiPrefix = tierEmoji ? `${tierEmoji} ` : "";
+    const header = `${emojiPrefix}${BOLD}${stageColour}${name}${RESET} ${FG_GRAY}[${stage}]${RESET}${ideSuffix}`;
+    const lines = [RESET, "", header];
+    // Build combined lines
+    const GAP = "  ";
+    for (let i = 0; i < maxLines; i++) {
+        const artLine = artColoured[i] ?? "";
+        const bubbleLine = bubblePadded[i] ?? "";
+        // Connect art row 1 (index 1) to bubble row 1 with a tail arrow
+        const connector = i === 1 ? colour("-->", FG_GRAY) : "   ";
+        lines.push(artLine + connector + GAP + bubbleLine);
+    }
+    lines.push("");
+    return lines.join("\n");
+}
+// ---------------------------------------------------------------------------
+// Status block
+// ---------------------------------------------------------------------------
+/** Render a single stat bar of the form:  Label [████░░░░] 72 */
+function statBar(label, value, barWidth = 10) {
+    const filled = Math.round((value / 100) * barWidth);
+    const empty = barWidth - filled;
+    const barColour = value >= 50 ? FG_GREEN : value >= 25 ? FG_YELLOW : FG_RED;
+    const bar = colour("█".repeat(filled), barColour) + colour("░".repeat(empty), FG_GRAY);
+    const labelPad = label.padEnd(12, " ");
+    return `  ${FG_CYAN}${labelPad}${RESET}[${bar}] ${value}`;
+}
+/**
+ * Build a full status readout for the pet and return as a string.
+ *
+ * @param state - Minimal state fields needed for the display.
+ */
+export function buildStatusBlock(state) {
+    const stageColour = STAGE_COLOURS[state.stage] ?? FG_WHITE;
+    const art = getArt(state.stage, state.mood, state.spriteType ?? "classic");
+    // Art + header side by side
+    const headerLines = [
+        `${BOLD}${stageColour}${state.name}${RESET}`,
+        `${FG_GRAY}Stage   : ${RESET}${state.stage}`,
+        ...(state.spriteType && state.spriteType !== "classic"
+            ? [`${FG_GRAY}Sprite  : ${RESET}${state.spriteType}`]
+            : []),
+        `${FG_GRAY}Age     : ${RESET}${state.ageDays} day${state.ageDays !== 1 ? "s" : ""}`,
+        `${FG_GRAY}Mood    : ${RESET}${state.mood}`,
+        `${FG_GRAY}Status  : ${RESET}${state.sick ? colour("SICK", FG_RED) : state.sleeping ? colour("sleeping", FG_BLUE) : colour("healthy", FG_GREEN)}`,
+        `${FG_GRAY}Poops   : ${RESET}${state.poops > 0 ? colour(String(state.poops), FG_YELLOW) : "0"}`,
+    ];
+    const maxH = Math.max(art.length, headerLines.length);
+    const artW = Math.max(...art.map((l) => l.length), 1);
+    const artPad = [...art.map((l) => l.padEnd(artW)), ...Array(maxH - art.length).fill(" ".repeat(artW))];
+    const hdrPad = [...headerLines, ...Array(maxH - headerLines.length).fill("")];
+    const lines = [RESET, ""];
+    for (let i = 0; i < maxH; i++) {
+        lines.push(colour(artPad[i] ?? "", stageColour) + "  " + (hdrPad[i] ?? ""));
+    }
+    lines.push("");
+    lines.push(statBar("Hunger", state.hunger));
+    lines.push(statBar("Happiness", state.happiness));
+    lines.push(statBar("Energy", state.energy));
+    lines.push(statBar("Health", state.health));
+    lines.push(statBar("Discipline", state.discipline));
+    lines.push("");
+    lines.push(`  ${FG_CYAN}Weight${RESET}        ${state.weight} / 99`);
+    lines.push("");
+    return lines.join("\n");
+}
+// ---------------------------------------------------------------------------
+// Usage formatting helpers
+// ---------------------------------------------------------------------------
+/**
+ * Format a token count as a human-readable string.
+ *   0        → "0"
+ *   < 1000   → "950"
+ *   < 10000  → "1.2k"
+ *   < 1000000 → "45k"
+ *   ≥ 1000000 → "1.5M"
+ */
+export function formatTokens(n) {
+    if (n <= 0) {
+        return "0";
+    }
+    if (n < 1000) {
+        return String(Math.round(n));
+    }
+    if (n < 10000) {
+        return `${(n / 1000).toFixed(1)}k`;
+    }
+    if (n < 1000000) {
+        return `${Math.round(n / 1000)}k`;
+    }
+    return `${(n / 1000000).toFixed(1)}M`;
+}
+/**
+ * Format a USD cost value as a human-readable string.
+ *   0         → "$0.00"
+ *   < 0.01    → "<$0.01"
+ *   otherwise → "$X.XX"
+ */
+export function formatCost(usd) {
+    if (usd <= 0) {
+        return "$0.00";
+    }
+    if (usd < 0.01) {
+        return "<$0.01";
+    }
+    return `$${usd.toFixed(2)}`;
+}
+/**
+ * Build a contextual speech line combining pet mood and coding session activity.
+ *
+ * @param pet                 - Key pet fields needed to pick a mood-relevant phrase.
+ * @param filesEdited         - Number of files edited this session.
+ * @param sessionMs           - Milliseconds elapsed since the session started.
+ * @param timeSinceLastEditMs - Milliseconds since the last file.edited event (0 = unknown/not yet).
+ * @param sessionUserMessages - Number of user messages sent this session.
+ * @param isOnProdBranch      - True when the current branch is main, master, release/x, or prod.
+ * @param dailyCostUSD        - Total USD spent today (across all OpenCode sessions).
+ * @param dailyTokens         - Total tokens consumed today (across all OpenCode sessions).
+ * @param costWarnThreshold   - Daily cost (USD) at which the pet switches to a warning tone (default 30).
+ * @param costShoutThreshold  - Daily cost (USD) at which the pet switches to ALL CAPS shouting (default 50).
+ */
+export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLastEditMs = 0, sessionUserMessages = 0, isOnProdBranch = false, dailyCostUSD = 0, dailyTokens = 0, costWarnThreshold = 30, costShoutThreshold = 50) {
+    // --- Session activity phrase ---
+    const sessionMins = Math.floor(sessionMs / 60000);
+    const sessionHours = Math.floor(sessionMins / 60);
+    const sessionLabel = sessionHours >= 1
+        ? `${sessionHours}h ${sessionMins % 60}m`
+        : sessionMins >= 1
+            ? `${sessionMins}m`
+            : "just started";
+    const activityPhrase = filesEdited === 0 ? "Waiting to see what we build today."
+        : filesEdited === 1 ? pickRandom(["First file in. Let's go.", "First file down. Getting started.", "Good work, work has started."])
+            : filesEdited < 5 ? `${filesEdited} files in. Getting into it.`
+                : filesEdited < 15 ? `${filesEdited} files in ${sessionLabel}. Good rhythm.`
+                    : filesEdited < 30 ? `${filesEdited} files in ${sessionLabel}. Really cooking now.`
+                        : `${filesEdited} files in ${sessionLabel}. This is a proper session.`;
+    const idleMins = timeSinceLastEditMs > 0 ? Math.floor(timeSinceLastEditMs / 60000) : 0;
+    // --- Build the contextual phrase (no early returns — cost suffix always appended below) ---
+    let phrase;
+    if (isOnProdBranch && filesEdited > 0) {
+        // Contextual override: prod branch
+        phrase = pickRandom([
+            `${filesEdited} files on main. Make sure these are clean.`,
+            `Shipping to prod. Double-check everything.`,
+            `Production branch. No pressure... okay, some pressure.`,
+        ]);
+    }
+    else if (idleMins >= 60) {
+        // Contextual override: long idle
+        phrase = pickRandom([
+            `No files touched in over an hour. Thinking things through?`,
+            `Long pause. Still here if you need me.`,
+        ]);
+    }
+    else if (idleMins >= 30) {
+        phrase = pickRandom([
+            `It's been ${idleMins} minutes since the last edit. Taking a break?`,
+            `Quiet spell. Ready when you are.`,
+        ]);
+    }
+    else if (sessionUserMessages >= 20) {
+        // Contextual override: lots of prompting
+        phrase = pickRandom([
+            `${sessionUserMessages} messages deep. You're really working through something.`,
+            `Long conversation. I'm keeping up.`,
+        ]);
+    }
+    else if (sessionUserMessages >= 10) {
+        phrase = pickRandom([
+            `${sessionUserMessages} messages in. Good back-and-forth.`,
+            `We're getting somewhere. Keep going.`,
+        ]);
+    }
+    else if (sessionUserMessages >= 5) {
+        phrase = pickRandom([
+            `${sessionUserMessages} prompts sent. Getting into it.`,
+            `Good pace. Let's keep moving.`,
+        ]);
+    }
+    else {
+        // Default: pet mood + activity
+        let moodPhrase;
+        if (!pet.sleeping && pet.energy < 15) {
+            moodPhrase = "I'm absolutely exhausted, please let me sleep...";
+        }
+        else if (pet.sick) {
+            moodPhrase = "I don't feel well at all. I need medicine!";
+        }
+        else if (pet.hunger < 15) {
+            moodPhrase = "I'm starving! Please feed me soon.";
+        }
+        else if (pet.poops > 2) {
+            moodPhrase = "It's getting really messy in here...";
+        }
+        else if (pet.happiness < 20) {
+            moodPhrase = "I want to play";
+        }
+        else if (pet.health < 30) {
+            moodPhrase = "My health is low — please take care of me.";
+        }
+        else if (pet.sleeping) {
+            moodPhrase = "Recharging. Back soon.";
+        }
+        else if (pet.hunger < 40) {
+            moodPhrase = "Could use a snack soon.";
+        }
+        else if (pet.energy < 40) {
+            moodPhrase = "Getting tired, but I'm still here.";
+        }
+        else if (pet.happiness > 70 && pet.health > 70) {
+            moodPhrase = "Feeling great. Good session so far.";
+        }
+        else if (pet.mood === "happy") {
+            moodPhrase = pickRandom(["Happy right now. Keep going.", "I'm chilling."]);
+        }
+        else {
+            moodPhrase = "Doing okay. Let's see what you build.";
+        }
+        phrase = `${moodPhrase} ${activityPhrase}`;
+    }
+    // --- Daily cost / token suffix — always appended regardless of which phrase was chosen ---
+    if (dailyCostUSD > 0) {
+        const costStr = formatCost(dailyCostUSD);
+        const tokStr = formatTokens(dailyTokens);
+        const tokStrUp = tokStr.toUpperCase();
+        if (dailyCostUSD >= costShoutThreshold) {
+            // ALL CAPS shouting tier — red border + red text
+            const shoutSuffix = `🚨 ${costStr} TODAY — CHECK YOUR USAGE! (${tokStrUp} TOKENS)`;
+            return {
+                message: colour(`${phrase} ${shoutSuffix}`.toUpperCase(), FG_RED),
+                bubbleColor: FG_RED,
+                tierEmoji: "🔴"
+            };
+        }
+        else if (dailyCostUSD >= costWarnThreshold) {
+            // Warning tier — yellow border + yellow cost suffix
+            const warnSuffix = `⚠️ ${costStr} today — getting spendy. (${tokStr} tokens)`;
+            return {
+                message: `${phrase} ${colour(warnSuffix, FG_YELLOW)}`,
+                bubbleColor: FG_YELLOW,
+                tierEmoji: "🟡"
+            };
+        }
+        else {
+            // Normal tier — green border + casual mention
+            const normalSuffix = pickRandom([
+                `${costStr} and ${tokStr} tokens today.`,
+                `Running a tab — ${costStr}, ${tokStr} tokens.`,
+                `${costStr} spent, ${tokStr} tokens burned.`,
+                `Racked up ${costStr} and ${tokStr} tokens so far.`,
+                `Ticking along at ${costStr} and ${tokStr} tokens.`,
+            ]);
+            return {
+                message: `${phrase} ${normalSuffix}`,
+                bubbleColor: FG_GREEN,
+                tierEmoji: "🟢"
+            };
+        }
+    }
+    else if (dailyTokens > 0) {
+        // Token-only tier — free/local model, no cost to report — green border
+        const tokStr = formatTokens(dailyTokens);
+        const tokenOnlySuffix = pickRandom([
+            `${tokStr} tokens used today.`,
+            `Running on ${tokStr} tokens so far.`,
+            `${tokStr} tokens in today.`,
+        ]);
+        return {
+            message: `${phrase} ${tokenOnlySuffix}`,
+            bubbleColor: FG_GREEN,
+            tierEmoji: "🟢"
+        };
+    }
+    // No cost/tokens at all — green border
+    return { message: phrase, bubbleColor: FG_GREEN, tierEmoji: "🟢" };
+}
+/**
+ * Pick a random element from an array.
+ */
+export function pickRandom(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+/**
+ * Phrase factories for todo completions.
+ * Each entry is a function that takes the todo content and returns a phrase.
+ */
+export const TODO_COMPLETE_PHRASES = [
+    (c) => `Done: ${c}. That's one down.`,
+    (c) => `Ticked off — ${c}. Keep going.`,
+    (c) => `${c} — sorted. What's next?`,
+    (c) => `Nice. ${c} done.`,
+    (c) => `One off the list: ${c}.`,
+    (c) => `Finished: ${c}. Good work.`,
+    (c) => `Checked off: ${c}. Moving on.`,
+    (c) => `${c} — nailed it.`,
+];
+/**
+ * Phrases shown when the AI finishes a work burst (session.diff + session.idle).
+ */
+export const SESSION_DIFF_PHRASES = [
+    "Changes are in. Nice work.",
+    "Files updated. That looks like progress.",
+    "Something shipped. Good session.",
+    "You've been busy. Those changes look solid.",
+    "Edits landed. I'm watching you work.",
+    "New changes detected. Keep the momentum.",
+];
+/**
+ * Build a simple one-line toast notification string (for minor events).
+ */
+export function buildToast(stage, message) {
+    const c = STAGE_COLOURS[stage] ?? FG_WHITE;
+    return `${c}[codotchi]${RESET} ${message}`;
+}
+//# sourceMappingURL=asciiArt.js.map

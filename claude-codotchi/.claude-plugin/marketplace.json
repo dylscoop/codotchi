@@ -1,0 +1,22 @@
+{
+  "name": "codotchi-marketplace",
+  "owner": {
+    "name": "dylscoop",
+    "email": "dylan.kw.siowlee@gmail.com"
+  },
+  "description": "Codotchi virtual pet plugin for Claude Code",
+  "plugins": [
+    {
+      "name": "claude-codotchi",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/dylscoop/codotchi.git",
+        "path": "claude-codotchi",
+        "ref": "main"
+      },
+      "description": "A virtual Tamagotchi-style pet that lives inside Claude Code",
+      "version": "1.0.0",
+      "author": { "name": "dylscoop" }
+    }
+  ]
+}
