@@ -137,6 +137,13 @@ interface IDEStateFile {
   terminalEnabled?: boolean;
 }
 
+interface LocalStateFile {
+  state: Record<string, unknown>;
+  savedAt: number;
+  createdDate?: string; // UTC date string "YYYY-MM-DD"
+  totalMessages?: number; // Cumulative message count across days
+}
+
 function loadFromIDEFile(filePath: string): { state: PetState; savedAt: number; terminalEnabled: boolean } | null {
   try {
     if (!fs.existsSync(filePath)) { return null; }
@@ -225,6 +232,11 @@ function checkDayRollover(): void {
     dailyCostUSD = 0;
     dailyTokens  = 0;
     dailyDate    = today;
+    // Daily reset for OpenCode-local pet — respawn with same name and message count
+    if (localPetState !== null && localPetState.alive) {
+      createLocalPet();
+      advanceLocalPetStageIfNeeded();
+    }
   }
 }
 
@@ -320,6 +332,54 @@ function getLocalStatePath(): string {
   return path.join(os.homedir(), ".config", "opencode", "codotchi-local.json");
 }
 
+/** Total messages (persisted across daily resets) for message-based aging. */
+let localPetTotalMessages = 0;
+
+/** Message thresholds for stage progression. 100 messages per stage, doubling interval. */
+function stageForMessages(n: number): string {
+  if (n < 100) return "baby";
+  if (n < 300) return "child";
+  if (n < 700) return "teen";
+  if (n < 1500) return "adult";
+  return "senior";
+}
+
+/** Pin companion stats to healthy values (no hunger, no decay). */
+function pinnedCompanionStats(state: PetState): PetState {
+  return {
+    ...state,
+    hunger: 100,
+    happiness: 100,
+    energy: 100,
+    health: 100,
+    sick: false,
+    poops: 0,
+  };
+}
+
+/** Advance local pet to the correct stage based on total message count. */
+function advanceLocalPetStageIfNeeded(): void {
+  if (localPetState === null || !localPetState.alive) { return; }
+  const targetStage = stageForMessages(localPetTotalMessages);
+  if (targetStage === localPetState.stage) { return; }
+  
+  // Advance stage using type assertion
+  const updated: any = {
+    ...localPetState,
+    stage: targetStage,
+  };
+  localPetState = pinnedCompanionStats(updated);
+  
+  // Queue evolution notification
+  const ideLabel = "[OpenCode]";
+  const stageName = targetStage;
+  queueNotification(terminalEnabled && localPetState
+    ? buildSpeechBubble(localPetState.stage, localPetState.mood, pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`]), localPetState.name, localPetState.spriteType, ideLabel)
+    : `${ideLabel} ${localPetState.name}: ${pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`])}`);
+  
+  saveLocalState();
+}
+
 function loadLocalState(): void {
   try {
     const filePath = getLocalStatePath();
@@ -327,18 +387,33 @@ function loadLocalState(): void {
       createLocalPet();
       return;
     }
-    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as IDEStateFile;
+    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as LocalStateFile;
     if (!raw.state || typeof raw.savedAt !== "number") {
       createLocalPet();
       return;
     }
+    
+    // Load persistent message count before checking date
+    localPetTotalMessages = typeof raw.totalMessages === "number" ? raw.totalMessages : 0;
+    
+    // Check if the pet was created on a different day — if so, respawn
+    const createdDate = raw.createdDate ?? null;
+    const today = todayUTC();
+    if (createdDate !== today) {
+      // New day — respawn the pet and set its stage based on message count
+      createLocalPet();
+      advanceLocalPetStageIfNeeded();
+      return;
+    }
+    
     const elapsed = (Date.now() - raw.savedAt) / 1_000;
-    localPetState    = applyOfflineDecay(deserialiseState(raw.state), elapsed);
+    localPetState    = pinnedCompanionStats(applyOfflineDecay(deserialiseState(raw.state), elapsed));
     localLastSavedAt = raw.savedAt;
     localMeals = 0;
     // If the pet is dead (old age), immediately respawn
     if (!localPetState.alive) {
       createLocalPet();
+      advanceLocalPetStageIfNeeded();
     }
   } catch {
     createLocalPet();
@@ -351,9 +426,11 @@ function saveLocalState(): void {
     const filePath = getLocalStatePath();
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
-    const payload: IDEStateFile = {
+    const payload: LocalStateFile = {
       state: serialiseState(localPetState) as Record<string, unknown>,
       savedAt: Date.now(),
+      createdDate: todayUTC(),
+      totalMessages: localPetTotalMessages,
     };
     fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
     localLastSavedAt = payload.savedAt;
@@ -362,7 +439,9 @@ function saveLocalState(): void {
 
 function createLocalPet(): void {
   const name = pickRandom(LOCAL_PET_NAMES);
-  localPetState = createPet(name, "codeling");
+  localPetState = pinnedCompanionStats(createPet(name, "codeling"));
+  // Set the stage based on current message count
+  (localPetState as any).stage = stageForMessages(localPetTotalMessages);
   localMeals = 0;
   saveLocalState();
   queueNotification(terminalEnabled && localPetState
@@ -758,41 +837,29 @@ function applyTick(): void {
 function applyTickForLocal(): void {
   if (localPetState === null || !localPetState.alive) { return; }
   const next = tick(localPetState, isIdle, false, LOCAL_PET_GAME_CONFIG);
-  localPetState = next;
+  // Pin stats to healthy values for companion-only mode
+  localPetState = pinnedCompanionStats(next);
   saveLocalState();
 
   const ideLabel = "[OpenCode]";
 
+  // Only handle evolution events; ignore all stat-based events (hunger, happiness, etc.)
   for (const event of next.events) {
     switch (event) {
-      case "auto_woke_up":
-        localMeals = 0;
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, next.mood, pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."])}`);
-        break;
-      case "died_of_old_age": {
-        // Queue farewell then immediately respawn
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sleeping", pickRandom(["I lived a full life. Thank you for everything.", "What a journey. Thank you.", "A full life, well lived."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I lived a full life. Thank you for everything.", "What a journey. Thank you.", "A full life, well lived."])}`);
-        createLocalPet();
-        break;
-      }
       case "evolved_to_baby":
       case "evolved_to_child":
       case "evolved_to_teen":
       case "evolved_to_adult":
       case "evolved_to_senior": {
         const stageName = event.replace("evolved_to_", "");
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, next.mood, pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`])}`);
+        queueNotification(terminalEnabled && localPetState
+          ? buildSpeechBubble(localPetState.stage, localPetState.mood, pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`]), localPetState.name, localPetState.spriteType, ideLabel)
+          : `${ideLabel} ${localPetState.name}: ${pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`])}`);
         break;
       }
-      // Stat-related events (hunger, happiness, energy, sickness, poop, gift,
-      // misbehaviour) are intentionally ignored for the OpenCode-local pet —
-      // its stats are managed automatically and do not require user attention.
+      // All other events (hunger, happiness, energy, sickness, poop, gift,
+      // misbehaviour, etc.) are intentionally ignored for the OpenCode-local pet —
+      // its stats are pinned to healthy values and do not require user attention.
     }
   }
 }
@@ -1002,6 +1069,18 @@ export const plugin: Plugin = async (ctx) => {
           const blocks = alivePets.map(p => {
             const s = p.state;
             const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
+            
+            // OpenCode-local pet: show ASCII art with cost, no stat bars
+            if (p.ide === "opencode") {
+              const { message: costMsg } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
+              const artBlock = terminalEnabled
+                ? buildSpeechBubble(s.stage, s.mood, costMsg, s.name, s.spriteType, ideLabel)
+                : "";
+              const textStats = `${ideLabel} ${s.name} | Stage: ${s.stage} | Daily cost: ${formatCost(dailyCostUSD)}`;
+              return (artBlock ? artBlock + "\n" : "") + textStats;
+            }
+            
+            // IDE pets: show full stat blocks
             const statusBlock = terminalEnabled
               ? buildStatusBlock({
                   name: s.name, stage: s.stage, mood: s.mood,
@@ -1017,119 +1096,144 @@ export const plugin: Plugin = async (ctx) => {
           return ret(notification + blocks.join("\n\n──────────────────────\n\n"));
         }
 
-        case "feed": {
-          const feedLines: string[] = [];
-          for (const p of alivePets) {
-            const s = p.state;
-            const meals = getMeals(p.ide);
-            const pLabel = p.ide === "vscode" ? "VS Code" : p.ide === "pycharm" ? "PyCharm" : "OpenCode";
-            if (s.sleeping) {
-              feedLines.push(`[${pLabel}] ${s.name} is sleeping and can't eat right now.`);
-              continue;
-            }
-            const next = feedMeal(s, meals);
-            const refused = next.events.includes("meal_refused");
-            if (!refused) { setMeals(p.ide, meals + 1); }
-            setPetState(p.ide, next);
-            saveIDEState(p.ide);
-            const toast = buildToast(next.stage, refused
-              ? `${next.name} is too full for another meal.`
-              : `${next.name} enjoyed the meal! (hunger: ${next.hunger})`);
-            feedLines.push((terminalEnabled
-              ? buildSpeechBubble(next.stage, next.mood, refused ? "I'm too full!" : "Yum!", next.name, next.spriteType) + "\n"
-              : "") + toast + "\n" + (refused
-              ? `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Meal refused — ${next.name} has already had ${getMeals(p.ide)} meals this wake cycle.`
-              : `[${p.ide === "vscode" ? "VS Code" : "PyCharm"}] Fed ${next.name}. Hunger: ${next.hunger}/100, Weight: ${next.weight}.`));
-          }
-          return ret(notification + feedLines.join("\n\n"));
-        }
+         case "feed": {
+           const feedLines: string[] = [];
+           for (const p of alivePets) {
+             // Skip OpenCode-local pet
+             if (p.ide === "opencode") {
+               feedLines.push(`[OpenCode] I'm just a companion — I don't need feeding.`);
+               continue;
+             }
+             const s = p.state;
+             const meals = getMeals(p.ide);
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             if (s.sleeping) {
+               feedLines.push(`[${pLabel}] ${s.name} is sleeping and can't eat right now.`);
+               continue;
+             }
+             const next = feedMeal(s, meals);
+             const refused = next.events.includes("meal_refused");
+             if (!refused) { setMeals(p.ide, meals + 1); }
+             setPetState(p.ide, next);
+             saveIDEState(p.ide);
+             const toast = buildToast(next.stage, refused
+               ? `${next.name} is too full for another meal.`
+               : `${next.name} enjoyed the meal! (hunger: ${next.hunger})`);
+             feedLines.push((terminalEnabled
+               ? buildSpeechBubble(next.stage, next.mood, refused ? "I'm too full!" : "Yum!", next.name, next.spriteType) + "\n"
+               : "") + toast + "\n" + (refused
+               ? `[${pLabel}] Meal refused — ${next.name} has already had ${getMeals(p.ide)} meals this wake cycle.`
+               : `[${pLabel}] Fed ${next.name}. Hunger: ${next.hunger}/100, Weight: ${next.weight}.`));
+           }
+           return ret(notification + feedLines.join("\n\n"));
+         }
 
-        case "pat": {
-          const patLines: string[] = [];
-          for (const p of alivePets) {
-            const s = p.state;
-            const pLabel = p.ide === "vscode" ? "VS Code" : p.ide === "pycharm" ? "PyCharm" : "OpenCode";
-            if (s.sleeping) {
-              patLines.push(`[${pLabel}] ${s.name} is sleeping.`);
-              continue;
-            }
-            const next = pat(s);
-            const refused = next.events.includes("pat_refused_no_energy");
-            setPetState(p.ide, next);
-            saveIDEState(p.ide);
-            const toast = buildToast(next.stage, refused
-              ? `${next.name} is too tired even for a pat.`
-              : `${next.name} enjoyed the pat!`);
-            patLines.push((terminalEnabled
-              ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired..." : "Yay!", next.name, next.spriteType) + "\n"
-              : "") + toast + "\n" + (refused
-              ? `[${pLabel}] Pat refused — ${next.name} is too exhausted.`
-              : `[${pLabel}] Patted ${next.name}. Happiness: ${next.happiness}.`));
-          }
-          return ret(notification + patLines.join("\n\n"));
-        }
+         case "pat": {
+           const patLines: string[] = [];
+           for (const p of alivePets) {
+             // Skip OpenCode-local pet
+             if (p.ide === "opencode") {
+               patLines.push(`[OpenCode] I'm just a companion — I don't need pats.`);
+               continue;
+             }
+             const s = p.state;
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             if (s.sleeping) {
+               patLines.push(`[${pLabel}] ${s.name} is sleeping.`);
+               continue;
+             }
+             const next = pat(s);
+             const refused = next.events.includes("pat_refused_no_energy");
+             setPetState(p.ide, next);
+             saveIDEState(p.ide);
+             const toast = buildToast(next.stage, refused
+               ? `${next.name} is too tired even for a pat.`
+               : `${next.name} enjoyed the pat!`);
+             patLines.push((terminalEnabled
+               ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired..." : "Yay!", next.name, next.spriteType) + "\n"
+               : "") + toast + "\n" + (refused
+               ? `[${pLabel}] Pat refused — ${next.name} is too exhausted.`
+               : `[${pLabel}] Patted ${next.name}. Happiness: ${next.happiness}.`));
+           }
+           return ret(notification + patLines.join("\n\n"));
+         }
 
-        case "sleep": {
-          const sleepLines: string[] = [];
-          for (const p of alivePets) {
-            const pLabel = p.ide === "vscode" ? "VS Code" : p.ide === "pycharm" ? "PyCharm" : "OpenCode";
-            const next = sleep(p.state);
-            const already = next.events.includes("already_sleeping");
-            setPetState(p.ide, next);
-            saveIDEState(p.ide);
-            sleepLines.push((terminalEnabled
-              ? buildSpeechBubble(next.stage, next.mood, already ? "Already snoozing. Zzzz..." : "Goodnight!", next.name, next.spriteType) + "\n"
-              : "") + (already
-              ? `[${pLabel}] ${next.name} is already sleeping.`
-              : `[${pLabel}] ${next.name} is now sleeping. Energy will recharge.`));
-          }
-          return ret(notification + sleepLines.join("\n\n"));
-        }
+         case "sleep": {
+           const sleepLines: string[] = [];
+           for (const p of alivePets) {
+             // Skip OpenCode-local pet
+             if (p.ide === "opencode") {
+               sleepLines.push(`[OpenCode] I'm just a companion — I don't sleep.`);
+               continue;
+             }
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             const next = sleep(p.state);
+             const already = next.events.includes("already_sleeping");
+             setPetState(p.ide, next);
+             saveIDEState(p.ide);
+             sleepLines.push((terminalEnabled
+               ? buildSpeechBubble(next.stage, next.mood, already ? "Already snoozing. Zzzz..." : "Goodnight!", next.name, next.spriteType) + "\n"
+               : "") + (already
+               ? `[${pLabel}] ${next.name} is already sleeping.`
+               : `[${pLabel}] ${next.name} is now sleeping. Energy will recharge.`));
+           }
+           return ret(notification + sleepLines.join("\n\n"));
+         }
 
-        case "clean": {
-          const cleanLines: string[] = [];
-          for (const p of alivePets) {
-            const pLabel = p.ide === "vscode" ? "VS Code" : p.ide === "pycharm" ? "PyCharm" : "OpenCode";
-            const next = clean(p.state);
-            const already = next.events.includes("already_clean");
-            setPetState(p.ide, next);
-            saveIDEState(p.ide);
-            const toast = buildToast(next.stage, already
-              ? `${next.name}'s area is already clean.`
-              : `Cleaned up after ${next.name}.`);
-            cleanLines.push((terminalEnabled
-              ? buildSpeechBubble(next.stage, next.mood, already ? "Already spotless!" : "Thanks for cleaning!", next.name, next.spriteType) + "\n"
-              : "") + toast + "\n" + (already
-              ? `[${pLabel}] Nothing to clean — ${next.name}'s area is already spotless.`
-              : `[${pLabel}] Cleaned up ${next.name}'s mess.`));
-          }
-          return ret(notification + cleanLines.join("\n\n"));
-        }
+         case "clean": {
+           const cleanLines: string[] = [];
+           for (const p of alivePets) {
+             // Skip OpenCode-local pet
+             if (p.ide === "opencode") {
+               cleanLines.push(`[OpenCode] I'm just a companion — I don't need cleaning.`);
+               continue;
+             }
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             const next = clean(p.state);
+             const already = next.events.includes("already_clean");
+             setPetState(p.ide, next);
+             saveIDEState(p.ide);
+             const toast = buildToast(next.stage, already
+               ? `${next.name}'s area is already clean.`
+               : `Cleaned up after ${next.name}.`);
+             cleanLines.push((terminalEnabled
+               ? buildSpeechBubble(next.stage, next.mood, already ? "Already spotless!" : "Thanks for cleaning!", next.name, next.spriteType) + "\n"
+               : "") + toast + "\n" + (already
+               ? `[${pLabel}] Nothing to clean — ${next.name}'s area is already spotless.`
+               : `[${pLabel}] Cleaned up ${next.name}'s mess.`));
+           }
+           return ret(notification + cleanLines.join("\n\n"));
+         }
 
-        case "medicine": {
-          const medLines: string[] = [];
-          for (const p of alivePets) {
-            const s = p.state;
-            const pLabel = p.ide === "vscode" ? "VS Code" : p.ide === "pycharm" ? "PyCharm" : "OpenCode";
-            if (!s.sick) {
-              medLines.push(`[${pLabel}] ${s.name} is not sick — medicine not needed.`);
-              continue;
-            }
-            const next = giveMedicine(s);
-            const cured = next.events.includes("cured");
-            setPetState(p.ide, next);
-            saveIDEState(p.ide);
-            const toast = buildToast(next.stage, cured
-              ? `${next.name} is cured!`
-              : `Gave ${next.name} medicine (${next.medicineDosesGiven}/3 doses).`);
-            medLines.push((terminalEnabled
-              ? buildSpeechBubble(next.stage, next.mood, cured ? "I feel better!" : "Medicine time...", next.name, next.spriteType) + "\n"
-              : "") + toast + "\n" + (cured
-              ? `[${pLabel}] ${next.name} has been cured!`
-              : `[${pLabel}] Gave medicine to ${next.name}. Doses given: ${next.medicineDosesGiven}/3.`));
-          }
-          return ret(notification + medLines.join("\n\n"));
-        }
+         case "medicine": {
+           const medLines: string[] = [];
+           for (const p of alivePets) {
+             // Skip OpenCode-local pet
+             if (p.ide === "opencode") {
+               medLines.push(`[OpenCode] I'm just a companion — I don't need medicine.`);
+               continue;
+             }
+             const s = p.state;
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             if (!s.sick) {
+               medLines.push(`[${pLabel}] ${s.name} is not sick — medicine not needed.`);
+               continue;
+             }
+             const next = giveMedicine(s);
+             const cured = next.events.includes("cured");
+             setPetState(p.ide, next);
+             saveIDEState(p.ide);
+             const toast = buildToast(next.stage, cured
+               ? `${next.name} is cured!`
+               : `Gave ${next.name} medicine (${next.medicineDosesGiven}/3 doses).`);
+             medLines.push((terminalEnabled
+               ? buildSpeechBubble(next.stage, next.mood, cured ? "I feel better!" : "Medicine time...", next.name, next.spriteType) + "\n"
+               : "") + toast + "\n" + (cured
+               ? `[${pLabel}] ${next.name} has been cured!`
+               : `[${pLabel}] Gave medicine to ${next.name}. Doses given: ${next.medicineDosesGiven}/3.`));
+           }
+           return ret(notification + medLines.join("\n\n"));
+         }
 
         default:
           return ret(notification + artHeader() + "Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off, warnthreshold, shoutthreshold.");
@@ -1185,11 +1289,11 @@ export const plugin: Plugin = async (ctx) => {
               saveIDEState(ide);
             }
           }
-          // Also boost the local pet on file edits
-          if (localPetState !== null && localPetState.alive && !localPetState.sleeping) {
-            localPetState = applyCodeActivity(localPetState);
-            saveLocalState();
-          }
+           // Also boost the local pet on file edits
+           if (localPetState !== null && localPetState.alive && !localPetState.sleeping) {
+             localPetState = pinnedCompanionStats(applyCodeActivity(localPetState));
+             saveLocalState();
+           }
         }
         return;
       }
@@ -1235,11 +1339,14 @@ export const plugin: Plugin = async (ctx) => {
         for (const todo of event.properties.todos) {
           const oldStatus = prevTodos.get(todo.id) ?? null;
           const livePets = getActivePets().filter(p => p.state.alive && !p.state.sleeping);
-          if (oldStatus !== "completed" && todo.status === "completed") {
-            for (const p of livePets) {
-              setPetState(p.ide, applyCodeActivity(p.state));
-              saveIDEState(p.ide);
-            }
+           if (oldStatus !== "completed" && todo.status === "completed") {
+             for (const p of livePets) {
+               const updated = applyCodeActivity(p.state);
+               // Pin stats for local pet
+               const final = p.ide === "opencode" ? pinnedCompanionStats(updated) : updated;
+               setPetState(p.ide, final);
+               saveIDEState(p.ide);
+             }
             const phrase = pickRandom(TODO_COMPLETE_PHRASES)(todo.content);
             const rep = livePets[0];
             const ideLabel = rep ? (rep.ide === "vscode" ? "[VS Code]" : rep.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]") : "";
@@ -1333,33 +1440,30 @@ export const plugin: Plugin = async (ctx) => {
         return;
       }
 
-      // message.updated → count user messages; accumulate assistant cost + tokens
-      if (event.type === "message.updated") {
-        const info = event.properties?.info;
-        if (info?.role === "user") {
-          sessionUserMessages += 1;
-          return;
-        }
-        if (info?.role === "assistant" && typeof info.cost === "number") {
-          const t = (info.tokens?.input ?? 0) + (info.tokens?.output ?? 0)
-                  + (info.tokens?.reasoning ?? 0)
-                  + (info.tokens?.cache?.read ?? 0) + (info.tokens?.cache?.write ?? 0);
-          sessionCostUSD += info.cost;
-          sessionTokens  += t;
-          checkDayRollover();
-          dailyCostUSD   += info.cost;
-          dailyTokens    += t;
-          dailyDate = todayUTC();
-          saveDailyUsage();
-          // Conversation-driven evolution: boost local pet every 5 assistant replies
-          localPetSessionMessages += 1;
-          if (localPetSessionMessages % 5 === 0 && localPetState !== null && localPetState.alive) {
-            localPetState = applyCodeActivity(localPetState);
-            saveLocalState();
-          }
-        }
-        return;
-      }
+       // message.updated → count user messages; accumulate assistant cost + tokens
+       if (event.type === "message.updated") {
+         const info = event.properties?.info;
+         if (info?.role === "user") {
+           sessionUserMessages += 1;
+           return;
+         }
+         if (info?.role === "assistant" && typeof info.cost === "number") {
+           const t = (info.tokens?.input ?? 0) + (info.tokens?.output ?? 0)
+                   + (info.tokens?.reasoning ?? 0)
+                   + (info.tokens?.cache?.read ?? 0) + (info.tokens?.cache?.write ?? 0);
+           sessionCostUSD += info.cost;
+           sessionTokens  += t;
+           checkDayRollover();
+           dailyCostUSD   += info.cost;
+           dailyTokens    += t;
+           dailyDate = todayUTC();
+           saveDailyUsage();
+           // Message-based aging: increment total message count and advance stage if needed
+           localPetTotalMessages += 1;
+           advanceLocalPetStageIfNeeded();
+         }
+         return;
+       }
     },
   };
 };
