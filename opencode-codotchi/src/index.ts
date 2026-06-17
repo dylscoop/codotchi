@@ -516,9 +516,9 @@ function artHeader(): string {
   return active
     .filter(p => p.state.alive)
     .map(p => {
-      const speech = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
+      const { message: speech, bubbleColor } = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
       const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
-      return buildSpeechBubble(p.state.stage, p.state.mood, speech, p.state.name, p.state.spriteType, ideLabel);
+      return buildSpeechBubble(p.state.stage, p.state.mood, speech, p.state.name, p.state.spriteType, ideLabel, bubbleColor);
     })
     .join("\n") + "\n";
 }
@@ -1162,9 +1162,9 @@ export const plugin: Plugin = async (ctx) => {
 
       const bubbles = livePets.map(p => {
         const s = p.state;
-        const msg = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
+        const { message: msg, bubbleColor } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
         const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
-        return stripAnsi(buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType, ideLabel));
+        return stripAnsi(buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType, ideLabel, bubbleColor));
       });
       output.text = output.text + "\n\n```\n" + bubbles.join("\n\n") + "\n```";
     },

@@ -515,7 +515,7 @@ function visualPadEnd(s: string, targetVisualWidth: number): string {
   return s + " ".repeat(needed);
 }
 
-export function buildBubble(message: string, maxWidth = 40): string[] {
+export function buildBubble(message: string, maxWidth = 40, bubbleColor?: string): string[] {
   // Word-wrap the message using visual width so emoji don't overflow.
   const words = message.split(" ");
   const wrapped: string[] = [];
@@ -533,8 +533,9 @@ export function buildBubble(message: string, maxWidth = 40): string[] {
   if (current.length > 0) { wrapped.push(current); }
 
   const innerWidth = Math.max(...wrapped.map((l) => visualLength(l)), 4);
-  const top    = ` ${"_".repeat(innerWidth + 2)} `;
-  const bottom = ` ${"‾".repeat(innerWidth + 2)} `;
+  const c = (s: string) => bubbleColor ? colour(s, bubbleColor) : s;
+  const top    = c(` ${"_".repeat(innerWidth + 2)} `);
+  const bottom = c(` ${"‾".repeat(innerWidth + 2)} `);
 
   const lines: string[] = [top];
   for (let i = 0; i < wrapped.length; i++) {
@@ -543,7 +544,7 @@ export function buildBubble(message: string, maxWidth = 40): string[] {
     const isLast  = i === wrapped.length - 1;
     const left  = isFirst && isLast ? "<" : isFirst ? "/" : isLast ? "\\" : "|";
     const right = isFirst && isLast ? ">" : isFirst ? "\\" : isLast ? "/" : "|";
-    lines.push(`${left} ${padded} ${right}`);
+    lines.push(c(`${left} `) + padded + c(` ${right}`));
   }
   lines.push(bottom);
   return lines;
@@ -573,10 +574,11 @@ export function buildSpeechBubble(
   message: string,
   name: string,
   spriteType = "classic",
-  ideLabel?: string
+  ideLabel?: string,
+  bubbleColor?: string
 ): string {
   const art    = getArt(stage, mood, spriteType);
-  const bubble = buildBubble(message);
+  const bubble = buildBubble(message, 40, bubbleColor);
   const stageColour = STAGE_COLOURS[stage] ?? FG_WHITE;
 
   // Normalise all art lines to the same visual width before any padding or colouring.
@@ -752,7 +754,7 @@ export function buildContextualSpeech(
   dailyTokens: number = 0,
   costWarnThreshold: number = 30,
   costShoutThreshold: number = 50,
-): string {
+): { message: string; bubbleColor: string } {
   // --- Session activity phrase ---
   const sessionMins = Math.floor(sessionMs / 60_000);
   const sessionHours = Math.floor(sessionMins / 60);
@@ -846,15 +848,21 @@ export function buildContextualSpeech(
     const tokStrUp  = tokStr.toUpperCase();
 
     if (dailyCostUSD >= costShoutThreshold) {
-      // ALL CAPS shouting tier
+      // ALL CAPS shouting tier — red border + red text
       const shoutSuffix = `🚨 ${costStr} TODAY — CHECK YOUR USAGE! (${tokStrUp} TOKENS)`;
-      return colour(`${phrase} ${shoutSuffix}`.toUpperCase(), FG_RED);
+      return { 
+        message: colour(`${phrase} ${shoutSuffix}`.toUpperCase(), FG_RED),
+        bubbleColor: FG_RED
+      };
     } else if (dailyCostUSD >= costWarnThreshold) {
-      // Warning tier — lowercase but notable
+      // Warning tier — yellow border + yellow cost suffix
       const warnSuffix = `⚠️ ${costStr} today — getting spendy. (${tokStr} tokens)`;
-      return `${phrase} ${colour(warnSuffix, FG_YELLOW)}`;
+      return { 
+        message: `${phrase} ${colour(warnSuffix, FG_YELLOW)}`,
+        bubbleColor: FG_YELLOW
+      };
     } else {
-      // Normal tier — casual mention
+      // Normal tier — green border + casual mention
       const normalSuffix = pickRandom([
         `${costStr} and ${tokStr} tokens today.`,
         `Running a tab — ${costStr}, ${tokStr} tokens.`,
@@ -862,20 +870,27 @@ export function buildContextualSpeech(
         `Racked up ${costStr} and ${tokStr} tokens so far.`,
         `Ticking along at ${costStr} and ${tokStr} tokens.`,
       ]);
-      return `${phrase} ${normalSuffix}`;
+      return { 
+        message: `${phrase} ${normalSuffix}`,
+        bubbleColor: FG_GREEN
+      };
     }
   } else if (dailyTokens > 0) {
-    // Token-only tier — free/local model, no cost to report
+    // Token-only tier — free/local model, no cost to report — green border
     const tokStr = formatTokens(dailyTokens);
     const tokenOnlySuffix = pickRandom([
       `${tokStr} tokens used today.`,
       `Running on ${tokStr} tokens so far.`,
       `${tokStr} tokens in today.`,
     ]);
-    return `${phrase} ${tokenOnlySuffix}`;
+    return { 
+      message: `${phrase} ${tokenOnlySuffix}`,
+      bubbleColor: FG_GREEN
+    };
   }
 
-  return phrase;
+  // No cost/tokens at all — green border
+  return { message: phrase, bubbleColor: FG_GREEN };
 }
 
 /**
