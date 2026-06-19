@@ -1,6 +1,37 @@
 # Version History
 
-## v2.10.2 — current
+## v2.11.0 — current
+
+### Changes from v2.10.2
+
+| File | What changed |
+|------|-------------|
+| `claude-codotchi/src/asciiArt.ts` | feat: add `FG_ORANGE` ANSI colour constant; replace 🚨 with 🔴 in shout suffix, ⚠️ with 🟡 in warn suffix, prefix normal-tier cost phrases with 🟢; remove usage-light emoji from the no-cost-no-tokens fallback |
+| `claude-codotchi/scripts/state.mjs` | feat: rewrite `accumulateDailyUsage()` — reads per-session JSONL transcript from `~/.claude/projects/` and computes real cost+token totals using model-specific pricing table; adds `scanAllDailyUsage()` fallback; deprecates `accumulateDailyCost()` |
+| `claude-codotchi/scripts/state.mjs` | feat: add `readSessionUsage(sessionId)` — parses assistant turns in a session JSONL and sums cost+tokens; add `MODEL_PRICING` table for opus-4, sonnet-4, haiku-4, opus-3, sonnet-3, haiku-3 |
+| `claude-codotchi/scripts/state.mjs` | feat: add `petSpeechIntervalMs: 300000` to `DEFAULT_CONFIG` |
+| `claude-codotchi/scripts/action.mjs` | feat: add `orangethreshold`, `redthreshold`, `levels`, and `speechinterval` actions; show contextual speech bubble above stat block on status/default action |
+| `claude-codotchi/scripts/hook-post-tool.mjs` | feat: emit periodic mid-session pet speech as `systemMessage` based on `petSpeechIntervalMs` config |
+| `claude-codotchi/scripts/hook-session-start.mjs` | feat: call `accumulateDailyUsage()` to populate real cost/tokens into session-start speech bubble |
+| `claude-codotchi/scripts/hook-stop.mjs` | feat: call `accumulateDailyUsage()` to populate real cost/tokens into session-stop speech bubble |
+| `claude-codotchi/scripts/statusline.mjs` | feat: switch from `accumulateDailyCost()` to `accumulateDailyUsage()`; fix stdin read to use fd 0 instead of `/dev/stdin`; set bubble colour to `orange` (not `yellow`) at warn tier |
+| `claude-codotchi/commands/codotchi.md` | feat: expand slash command — add `orangethreshold`, `redthreshold`, `levels`, `speechinterval` actions; improve blank-argument behaviour to show art + action list |
+| `claude-codotchi/.claude-plugin/plugin.json` | chore: updated plugin metadata |
+| `claude-codotchi/dist/asciiArt.js` | chore: rebuilt dist from updated asciiArt.ts |
+| `claude-codotchi/dist/gameEngine.js` | chore: rebuilt dist |
+| `claude-codotchi/package.json` | chore: bump version to 2.11.0 |
+| `vscode/package.json` | chore: bump version to 2.11.0 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.11.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.11.0 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.11.0 |
+| `vscode/codotchi-2.11.0.vsix` | Rebuilt VS Code extension artifact for v2.11.0 |
+| `pycharm/build/distributions/pycharm-codotchi-2.11.0.zip` | Rebuilt PyCharm plugin artifact for v2.11.0 |
+| `opencode-codotchi/opencode-codotchi-2.11.0.zip` | Rebuilt OpenCode plugin zip for v2.11.0 |
+| `claude-codotchi/claude-codotchi-2.11.0.zip` | Rebuilt Claude Code plugin zip for v2.11.0 |
+
+---
+
+## v2.10.2 — previous
 
 ### Changes from v2.9.0
 

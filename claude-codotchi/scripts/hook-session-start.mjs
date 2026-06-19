@@ -10,7 +10,7 @@
 import { fileURLToPath, pathToFileURL } from "url";
 import path from "path";
 import fs from "fs";
-import { loadStateFile, saveStateFile, loadConfig } from "./state.mjs";
+import { loadStateFile, saveStateFile, loadConfig, accumulateDailyUsage } from "./state.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, "..", "dist");
@@ -28,6 +28,8 @@ async function main() {
 
   const cfg = loadConfig();
   const now = Date.now();
+  const sessionId = hookInput.session_id ?? process.env.CLAUDE_CODE_SESSION_ID;
+  const { costUsd: dailyCostUsd, tokens: dailyTokens } = accumulateDailyUsage(sessionId);
   let file = loadStateFile();
   let state;
 
@@ -51,7 +53,7 @@ async function main() {
   }
 
   const speech = aa.buildContextualSpeech
-    ? aa.buildContextualSpeech(state, 0, 0, 0, 0, false, 0, 0, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50)
+    ? aa.buildContextualSpeech(state, 0, 0, 0, 0, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50)
     : { message: `${state.name ?? "Codotchi"} is ready!` };
 
   const rawBubble = aa.buildSpeechBubble

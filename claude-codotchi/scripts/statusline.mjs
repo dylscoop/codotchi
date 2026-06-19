@@ -15,7 +15,7 @@ import {
   loadStateFile,
   saveStateFile,
   loadConfig,
-  accumulateDailyCost,
+  accumulateDailyUsage,
 } from "./state.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -32,19 +32,22 @@ async function loadEngine() {
 async function main() {
   // Read stdin JSON (Claude Code passes statusline context).
   let stdinJson = {};
+  let _rawStdin = "";
   try {
-    const raw = fs.readFileSync("/dev/stdin", "utf8").trim();
-    if (raw) stdinJson = JSON.parse(raw);
+    if (!process.stdin.isTTY) {
+      const raw = fs.readFileSync(0, "utf8").trim();
+      _rawStdin = raw;
+      if (raw) stdinJson = JSON.parse(raw);
+    }
   } catch {
     // stdin not available in some test contexts — continue with empty object
   }
-
   const { ge, aa } = await loadEngine();
   const cfg = loadConfig();
   const now = Date.now();
 
-  // Accumulate daily cost from statusline context.
-  const dailyCostUsd = accumulateDailyCost(stdinJson);
+  // Accumulate daily cost and tokens from the session's JSONL transcript.
+  const { costUsd: dailyCostUsd, tokens: dailyTokens } = accumulateDailyUsage(stdinJson.session_id);
 
   // Load or create pet state.
   let file = loadStateFile();
@@ -84,7 +87,7 @@ async function main() {
   const shoutUsd = cfg.shoutThresholdUsd ?? 50;
   let bubbleColor = "green";
   if (dailyCostUsd >= shoutUsd) bubbleColor = "red";
-  else if (dailyCostUsd >= warnUsd) bubbleColor = "yellow";
+  else if (dailyCostUsd >= warnUsd) bubbleColor = "orange";
 
   let output;
   if (cfg.terminalEnabled === false) {
@@ -98,7 +101,7 @@ async function main() {
       /*sessionUserMessages*/ file.totalMessages ?? 0,
       /*isOnProdBranch*/ false,
       /*dailyCostUSD*/ dailyCostUsd,
-      /*dailyTokens*/ stdinJson.context_window?.total_input_tokens ?? 0,
+      /*dailyTokens*/ dailyTokens,
       /*warnThresholdUSD*/ warnUsd,
       /*shoutThresholdUSD*/ shoutUsd
     );
