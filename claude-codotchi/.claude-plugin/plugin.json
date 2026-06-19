@@ -1,7 +1,7 @@
 {
   "name": "claude-codotchi",
   "displayName": "Codotchi",
-  "version": "2.9.0",
+  "version": "2.10.3",
   "description": "A virtual Tamagotchi-style pet that lives inside Claude Code — shown in the statusline, rewarded by coding activity, and interactable via /codotchi.",
   "author": {
     "name": "dylscoop",
@@ -10,5 +10,6 @@
   "homepage": "https://github.com/dylscoop/codotchi",
   "repository": "https://github.com/dylscoop/codotchi",
   "license": "MIT",
-  "keywords": ["tamagotchi", "virtual-pet", "codotchi", "statusline", "game"]
+  "keywords": ["tamagotchi", "virtual-pet", "codotchi", "statusline", "game"],
+  "docs": "USER_GUIDE.md"
 }

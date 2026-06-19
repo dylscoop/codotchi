@@ -24,6 +24,7 @@ const DIM    = "\x1b[2m";
 const FG_CYAN    = "\x1b[36m";
 const FG_GREEN   = "\x1b[32m";
 const FG_YELLOW  = "\x1b[33m";
+const FG_ORANGE  = "\x1b[38;5;208m";
 const FG_RED     = "\x1b[31m";
 const FG_BLUE    = "\x1b[34m";
 const FG_MAGENTA = "\x1b[35m";
@@ -851,16 +852,16 @@ export function buildContextualSpeech(
 
     if (dailyCostUSD >= costShoutThreshold) {
       // ALL CAPS shouting tier — red border + red text
-      const shoutSuffix = `🚨 ${costStr} TODAY — CHECK YOUR USAGE! (${tokStrUp} TOKENS)`;
-      return { 
+      const shoutSuffix = `🔴 ${costStr} TODAY — CHECK YOUR USAGE! (${tokStrUp} TOKENS)`;
+      return {
         message: colour(`${phrase} ${shoutSuffix}`.toUpperCase(), FG_RED),
         bubbleColor: FG_RED,
         tierEmoji: "🔴"
       };
     } else if (dailyCostUSD >= costWarnThreshold) {
       // Warning tier — yellow border + yellow cost suffix
-      const warnSuffix = `⚠️ ${costStr} today — getting spendy. (${tokStr} tokens)`;
-      return { 
+      const warnSuffix = `🟡 ${costStr} today — getting spendy. (${tokStr} tokens)`;
+      return {
         message: `${phrase} ${colour(warnSuffix, FG_YELLOW)}`,
         bubbleColor: FG_YELLOW,
         tierEmoji: "🟡"
@@ -868,13 +869,13 @@ export function buildContextualSpeech(
     } else {
       // Normal tier — green border + casual mention
       const normalSuffix = pickRandom([
-        `${costStr} and ${tokStr} tokens today.`,
-        `Running a tab — ${costStr}, ${tokStr} tokens.`,
-        `${costStr} spent, ${tokStr} tokens burned.`,
-        `Racked up ${costStr} and ${tokStr} tokens so far.`,
-        `Ticking along at ${costStr} and ${tokStr} tokens.`,
+        `🟢 ${costStr} and ${tokStr} tokens today.`,
+        `🟢 Running a tab — ${costStr}, ${tokStr} tokens.`,
+        `🟢 ${costStr} spent, ${tokStr} tokens burned.`,
+        `🟢 Racked up ${costStr} and ${tokStr} tokens so far.`,
+        `🟢 Ticking along at ${costStr} and ${tokStr} tokens.`,
       ]);
-      return { 
+      return {
         message: `${phrase} ${normalSuffix}`,
         bubbleColor: FG_GREEN,
         tierEmoji: "🟢"
@@ -884,19 +885,19 @@ export function buildContextualSpeech(
     // Token-only tier — free/local model, no cost to report — green border
     const tokStr = formatTokens(dailyTokens);
     const tokenOnlySuffix = pickRandom([
-      `${tokStr} tokens used today.`,
-      `Running on ${tokStr} tokens so far.`,
-      `${tokStr} tokens in today.`,
+      `🟢 ${tokStr} tokens used today.`,
+      `🟢 Running on ${tokStr} tokens so far.`,
+      `🟢 ${tokStr} tokens in today.`,
     ]);
-    return { 
+    return {
       message: `${phrase} ${tokenOnlySuffix}`,
       bubbleColor: FG_GREEN,
       tierEmoji: "🟢"
     };
   }
 
-  // No cost/tokens at all — green border
-  return { message: phrase, bubbleColor: FG_GREEN, tierEmoji: "🟢" };
+  // No cost/tokens at all — green border, no usage light
+  return { message: phrase, bubbleColor: FG_GREEN, tierEmoji: "" };
 }
 
 /**
