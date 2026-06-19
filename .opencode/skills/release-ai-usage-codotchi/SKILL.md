@@ -1,6 +1,6 @@
 ---
 name: release-ai-usage-codotchi
-description: Releases a new version of the OpenCode and Claude Code plugins to the ai_usage_codotchi repo (dsiowlee/ai_usage_codotchi). Copies folders and zips, rewrites the README from the canonical template, commits, pushes, and creates a GitHub release with both zips as assets.
+description: Releases a new version of the OpenCode and Claude Code plugins to the ai_usage_codotchi repo (dsiowlee/ai_usage_codotchi). Copies folders and zips, updates version numbers in the existing README (never rewrites it), commits, pushes, and creates a GitHub release with both zips as assets.
 license: MIT
 compatibility: opencode
 ---
@@ -124,135 +124,24 @@ Copy-Item $ccZip $target
 
 ---
 
-## Step 5 — Rewrite the README
+## Step 5 — Update version numbers in the README
 
-Rewrite `C:\personal_repos\ai_usage_codotchi\README.md` from the template below.
-Replace every occurrence of `X.Y.Z` with the actual version number.
+**Never rewrite or replace the README.** The `ai_usage_codotchi/README.md` is maintained by the user and may contain custom content (screenshots, custom feature descriptions, etc.) that must be preserved.
 
-> **This is a full rewrite every time.** Do not preserve old content.
-
----
-
-### README template
-
-```markdown
-# Codotchi
-
-A Tamagotchi-style virtual pet that lives inside your AI coding assistant.
-Raises your pet in the terminal alongside your coding session and tracks your
-daily API usage cost.
-
-Available for **OpenCode** and **Claude Code**.
-
----
-
-## OpenCode
-
-### Features
-
-| Feature | Description |
-|---------|-------------|
-| **Tick loop** | Pet advances every 6 s via a background timer |
-| **Event hooks** | Reacts to file edits (coding reward), session idle, and server connect |
-| **`/codotchi` slash command** | Control your pet directly from OpenCode |
-| **ASCII art renderer** | 30 frames (6 stages × 5 moods), ANSI-coloured speech bubbles, status bars |
-| **Daily cost tracking** | Pet speech bubble colour reflects today's OpenCode API spend |
-
-### Installation
-
-Download `opencode-codotchi-X.Y.Z.zip` from the
-[Releases page](https://github.com/dsiowlee/ai_usage_codotchi/releases),
-extract it, then run the installer:
-
-**Windows (PowerShell):**
+Instead, perform a targeted find-and-replace of the old version number with the new one:
 
 ```powershell
-Expand-Archive opencode-codotchi-X.Y.Z.zip
-cd opencode-codotchi-X.Y.Z
-node bin/install.js --install
+# Read current README, replace old version with new version, write back
+$readmePath = "C:\personal_repos\ai_usage_codotchi\README.md"
+$content = Get-Content $readmePath -Raw
+# Replace all occurrences of the previous version number with the new one
+$content = $content -replace 'X\.OLD\.Z', 'X.Y.Z'
+Set-Content $readmePath $content
 ```
 
-**macOS / Linux:**
+In practice: find every occurrence of the old `X.OLD.Z` version string (e.g. `2.10.2`) in the README and replace it with the new version (`X.Y.Z`, e.g. `2.11.0`). This covers the zip filenames in the Installation sections and the "Current release" line at the bottom.
 
-```bash
-unzip opencode-codotchi-X.Y.Z.zip
-cd opencode-codotchi-X.Y.Z
-node bin/install.js --install
-```
-
-Node.js is the only prerequisite. No npm publish or repository clone required.
-
-After running the installer, open any project in OpenCode. Your codotchi will
-greet you in a speech bubble on first startup.
-
----
-
-## Claude Code
-
-### Features
-
-| Feature | Description |
-|---------|-------------|
-| **Statusline pet** | Multiline ANSI ASCII art renders in the statusline, refreshes every 10 seconds |
-| **Coding rewards** | Every file write/edit boosts your pet's happiness and discipline |
-| **Session hooks** | Pet greets you on session start and says farewell when the session stops |
-| **`/codotchi` slash command** | Control your pet directly from Claude Code |
-| **Daily cost tracking** | Pet speech bubble colour reflects today's Claude API spend |
-
-### Installation
-
-Download `claude-codotchi-X.Y.Z.zip` from the
-[Releases page](https://github.com/dsiowlee/ai_usage_codotchi/releases),
-extract it, then run the installer script to get the exact commands for your
-machine:
-
-**Windows (PowerShell):**
-
-```powershell
-Expand-Archive claude-codotchi-X.Y.Z.zip
-cd claude-codotchi-X.Y.Z
-.\install.ps1
-```
-
-**macOS / Linux:**
-
-```bash
-unzip claude-codotchi-X.Y.Z.zip
-cd claude-codotchi-X.Y.Z
-chmod +x install.sh && ./install.sh
-```
-
-The script prints the two `/plugin` commands to paste into a Claude Code
-session:
-
-```
-/plugin marketplace add <path-to-extracted-folder>
-/plugin install claude-codotchi
-```
-
-See `INSTALL.md` inside the zip for full installation details.
-
----
-
-## Daily cost tracking
-
-The pet's speech bubble colour reflects how much you've spent on API calls today:
-
-| Spend | Colour | Tone |
-|-------|--------|------|
-| Below warn threshold | Green | Cheerful |
-| Warn → shout threshold | Yellow | Concerned |
-| Above shout threshold | Red | ALL CAPS alarm |
-
-Default thresholds: **$30 warn / $50 shout**. Configurable per plugin.
-
----
-
-## Current release: vX.Y.Z
-
-- `opencode-codotchi-X.Y.Z.zip` — OpenCode plugin
-- `claude-codotchi-X.Y.Z.zip` — Claude Code plugin
-```
+Do **not** add, remove, or reorder any sections. Do **not** change any prose other than the version numbers.
 
 ---
 
@@ -378,7 +267,7 @@ Delete both scripts immediately after running (they contain the PAT).
 - [ ] `claude-codotchi-X.Y.Z.zip` built (`node scripts/package.js` from `claude-codotchi/`)
 - [ ] `opencode-codotchi-X.Y.Z.zip` confirmed present
 - [ ] Both folders + both zips copied to `ai_usage_codotchi/`
-- [ ] `ai_usage_codotchi/README.md` rewritten from template with correct version
+- [ ] `ai_usage_codotchi/README.md` version numbers updated (find-and-replace old → new, no other changes)
 - [ ] Committed in `ai_usage_codotchi` as `chore: release vX.Y.Z`
 - [ ] Pushed to `dsiowlee/ai_usage_codotchi` (explicit user instruction required)
 - [ ] GitHub release created with both zips uploaded (explicit user instruction required)
