@@ -21,9 +21,13 @@
  *   node scripts/package.js
  */
 
-const fs           = require("fs");
-const path         = require("path");
-const { execSync } = require("child_process");
+import fs           from "fs";
+import path         from "path";
+import { execSync } from "child_process";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
 
 const pkg     = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
 const version = pkg.version;
