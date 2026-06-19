@@ -43,7 +43,7 @@ import * as os   from "os";
 import { tool }  from "@opencode-ai/plugin";
 import type { Plugin, PluginInput } from "@opencode-ai/plugin";
 import { getIDEBase as _getIDEBase, resolveVSCodeStatePath } from "./statePathResolver.js";
-import { sumCompletedAssistantUsage } from "./usageBackfill.js";
+import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry } from "./usageBackfill.js";
 
 import {
   PetState,
@@ -270,6 +270,8 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
 
     let backfilledCost   = 0;
     let backfilledTokens = 0;
+    const oneHourAgo = Date.now() - 3_600_000;
+    const backfilledEvents: TimestampedUsageEntry[] = [];
 
     for (const s of todaySessions) {
       try {
@@ -278,6 +280,13 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
         const totals = sumCompletedAssistantUsage(messages);
         backfilledCost   += totals.costUSD;
         backfilledTokens += totals.tokens;
+        // Collect last-1h events from historical messages
+        const timestamped = extractTimestampedUsage(messages);
+        for (const e of timestamped) {
+          if (e.completedAt >= oneHourAgo) {
+            backfilledEvents.push(e);
+          }
+        }
       } catch { /* skip individual session errors — best-effort */ }
     }
 
@@ -293,6 +302,11 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     if (backfilledCost > 0 || backfilledTokens > 0) {
       dailyDate = today;
       saveDailyUsage();
+    }
+    // Merge backfilled last-1h events — replace buffer with backfill result
+    // (backfill is the authoritative source; live events will append from here on)
+    if (backfilledEvents.length > 0) {
+      costEvents = backfilledEvents;
     }
   } catch { /* best-effort — never block startup */ }
 }
@@ -518,6 +532,27 @@ let dailyTokens  = 0;
 let dailyDate    = "";
 
 // ---------------------------------------------------------------------------
+// Rolling last-1h cost buffer (in-memory only, backfilled on startup)
+// ---------------------------------------------------------------------------
+
+/** Each entry represents one completed assistant message with its timestamp. */
+let costEvents: TimestampedUsageEntry[] = [];
+
+/** Sum cost and tokens for all events completed within the last 60 minutes. */
+function lastHourUsage(): { costUSD: number; tokens: number } {
+  const cutoff = Date.now() - 3_600_000;
+  let costUSD = 0;
+  let tokens  = 0;
+  for (const e of costEvents) {
+    if (e.completedAt >= cutoff) {
+      costUSD += e.costUSD;
+      tokens  += e.tokens;
+    }
+  }
+  return { costUSD, tokens };
+}
+
+// ---------------------------------------------------------------------------
 // Configurable cost speech thresholds (persisted to codotchi-config.json)
 // ---------------------------------------------------------------------------
 
@@ -595,7 +630,8 @@ function artHeader(): string {
   return active
     .filter(p => p.state.alive)
     .map(p => {
-      const { message: speech, bubbleColor } = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
+      const _1h0 = lastHourUsage();
+      const { message: speech, bubbleColor } = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h0.costUSD, _1h0.tokens);
       const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
       return buildSpeechBubble(p.state.stage, p.state.mood, speech, p.state.name, p.state.spriteType, ideLabel, bubbleColor);
     })
@@ -1072,7 +1108,8 @@ export const plugin: Plugin = async (ctx) => {
             
             // OpenCode-local pet: show ASCII art with cost, no stat bars
             if (p.ide === "opencode") {
-              const { message: costMsg } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
+              const _1h1 = lastHourUsage();
+              const { message: costMsg } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h1.costUSD, _1h1.tokens);
               const artBlock = terminalEnabled
                 ? buildSpeechBubble(s.stage, s.mood, costMsg, s.name, s.spriteType, ideLabel)
                 : "";
@@ -1266,7 +1303,8 @@ export const plugin: Plugin = async (ctx) => {
 
       const bubbles = livePets.map(p => {
         const s = p.state;
-        const { message: msg, bubbleColor, tierEmoji } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold);
+        const _1h2 = lastHourUsage();
+        const { message: msg, bubbleColor, tierEmoji } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h2.costUSD, _1h2.tokens);
         const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
         return buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType, ideLabel, bubbleColor, tierEmoji);
       });
@@ -1448,20 +1486,25 @@ export const plugin: Plugin = async (ctx) => {
            return;
          }
          if (info?.role === "assistant" && typeof info.cost === "number") {
-           const t = (info.tokens?.input ?? 0) + (info.tokens?.output ?? 0)
-                   + (info.tokens?.reasoning ?? 0)
-                   + (info.tokens?.cache?.read ?? 0) + (info.tokens?.cache?.write ?? 0);
-           sessionCostUSD += info.cost;
-           sessionTokens  += t;
-           checkDayRollover();
-           dailyCostUSD   += info.cost;
-           dailyTokens    += t;
-           dailyDate = todayUTC();
-           saveDailyUsage();
-           // Message-based aging: increment total message count and advance stage if needed
-           localPetTotalMessages += 1;
-           advanceLocalPetStageIfNeeded();
-         }
+            const t = (info.tokens?.input ?? 0) + (info.tokens?.output ?? 0)
+                    + (info.tokens?.reasoning ?? 0)
+                    + (info.tokens?.cache?.read ?? 0) + (info.tokens?.cache?.write ?? 0);
+            sessionCostUSD += info.cost;
+            sessionTokens  += t;
+            checkDayRollover();
+            dailyCostUSD   += info.cost;
+            dailyTokens    += t;
+            dailyDate = todayUTC();
+            saveDailyUsage();
+            // Push to rolling last-1h buffer
+            const completedAt = (typeof info.time?.completed === "number" && info.time.completed > 0)
+              ? info.time.completed
+              : Date.now();
+            costEvents.push({ completedAt, costUSD: info.cost, tokens: t });
+            // Message-based aging: increment total message count and advance stage if needed
+            localPetTotalMessages += 1;
+            advanceLocalPetStageIfNeeded();
+          }
          return;
        }
     },

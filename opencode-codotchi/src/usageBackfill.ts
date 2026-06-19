@@ -29,6 +29,14 @@ export interface UsageTotals {
   tokens:  number;
 }
 
+/** A single completed assistant message's cost + tokens, with its completion timestamp. */
+export interface TimestampedUsageEntry {
+  completedAt: number;
+  costUSD:     number;
+  tokens:      number;
+}
+
+
 /**
  * Sum cost and tokens across all completed assistant messages in `messages`.
  *
@@ -61,4 +69,31 @@ export function sumCompletedAssistantUsage(messages: RawMessageEntry[]): UsageTo
   }
 
   return { costUSD, tokens };
+}
+
+/**
+ * Extract per-message timestamped cost + token data from a list of raw messages.
+ *
+ * Returns one entry per completed assistant message, carrying its `completedAt`
+ * Unix-ms timestamp. Used to populate the rolling last-1h cost buffer.
+ */
+export function extractTimestampedUsage(messages: RawMessageEntry[]): TimestampedUsageEntry[] {
+  const entries: TimestampedUsageEntry[] = [];
+
+  for (const m of messages) {
+    const info = m.info;
+    if (info.role !== "assistant")  { continue; }
+    if (!info.time?.completed)      { continue; }
+
+    const cost = typeof info.cost === "number" && !isNaN(info.cost) ? info.cost : 0;
+    const t    = (info.tokens?.input          ?? 0)
+               + (info.tokens?.output         ?? 0)
+               + (info.tokens?.reasoning      ?? 0)
+               + (info.tokens?.cache?.read    ?? 0)
+               + (info.tokens?.cache?.write   ?? 0);
+
+    entries.push({ completedAt: info.time.completed as number, costUSD: cost, tokens: t });
+  }
+
+  return entries;
 }
