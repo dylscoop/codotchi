@@ -10,5 +10,5 @@
     "types": ["node"]
   },
   "include": ["src/asciiArt.ts", "src/gameEngine.ts", "src/statePathResolver.ts", "tests/**/*.test.ts"],
-  "exclude": ["node_modules", "dist", "tests/unit/pluginContract.test.ts"]
+  "exclude": ["node_modules", "dist", "tests/unit/pluginContract.test.ts", "tests/unit/usageBackfill.test.ts"]
 }

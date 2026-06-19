@@ -756,6 +756,8 @@ export function buildContextualSpeech(
   dailyTokens: number = 0,
   costWarnThreshold: number = 30,
   costShoutThreshold: number = 50,
+  lastHourCostUSD: number = 0,
+  lastHourTokens: number = 0,
 ): { message: string; bubbleColor: string; tierEmoji: string } {
   // --- Session activity phrase ---
   const sessionMins = Math.floor(sessionMs / 60_000);
@@ -848,10 +850,15 @@ export function buildContextualSpeech(
     const costStr   = formatCost(dailyCostUSD);
     const tokStr    = formatTokens(dailyTokens);
     const tokStrUp  = tokStr.toUpperCase();
+    // Last-1h suffix fragment — only shown when there's meaningful 1h data
+    const has1h = lastHourCostUSD > 0;
+    const cost1hStr = has1h ? formatCost(lastHourCostUSD) : "";
+    const hour1hFrag = has1h ? ` (${cost1hStr} last 1h)` : "";
+    const hour1hFragUp = has1h ? ` (${cost1hStr.toUpperCase()} LAST 1H)` : "";
 
     if (dailyCostUSD >= costShoutThreshold) {
       // ALL CAPS shouting tier — red border + red text
-      const shoutSuffix = `🚨 ${costStr} TODAY — CHECK YOUR USAGE! (${tokStrUp} TOKENS)`;
+      const shoutSuffix = `🚨 ${costStr} TODAY${hour1hFragUp} — CHECK YOUR USAGE! (${tokStrUp} TOKENS)`;
       return { 
         message: colour(`${phrase} ${shoutSuffix}`.toUpperCase(), FG_RED),
         bubbleColor: FG_RED,
@@ -859,7 +866,7 @@ export function buildContextualSpeech(
       };
     } else if (dailyCostUSD >= costWarnThreshold) {
       // Warning tier — yellow border + yellow cost suffix
-      const warnSuffix = `⚠️ ${costStr} today — getting spendy. (${tokStr} tokens)`;
+      const warnSuffix = `⚠️ ${costStr} today${hour1hFrag} — getting spendy. (${tokStr} tokens)`;
       return { 
         message: `${phrase} ${colour(warnSuffix, FG_YELLOW)}`,
         bubbleColor: FG_YELLOW,
@@ -868,11 +875,11 @@ export function buildContextualSpeech(
     } else {
       // Normal tier — green border + casual mention
       const normalSuffix = pickRandom([
-        `${costStr} and ${tokStr} tokens today.`,
-        `Running a tab — ${costStr}, ${tokStr} tokens.`,
-        `${costStr} spent, ${tokStr} tokens burned.`,
-        `Racked up ${costStr} and ${tokStr} tokens so far.`,
-        `Ticking along at ${costStr} and ${tokStr} tokens.`,
+        `${costStr} and ${tokStr} tokens today${hour1hFrag}.`,
+        `Running a tab — ${costStr}${hour1hFrag}, ${tokStr} tokens.`,
+        `${costStr} spent${hour1hFrag}, ${tokStr} tokens burned.`,
+        `Racked up ${costStr}${hour1hFrag} and ${tokStr} tokens so far.`,
+        `Ticking along at ${costStr}${hour1hFrag} and ${tokStr} tokens.`,
       ]);
       return { 
         message: `${phrase} ${normalSuffix}`,

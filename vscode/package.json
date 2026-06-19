@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.9.0",
+  "version": "2.10.2",
   "publisher": "codotchi",
   "repository": {
     "type": "git",

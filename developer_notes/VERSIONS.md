@@ -1,6 +1,24 @@
 # Version History
 
-## v2.8.2 — current
+## v2.10.2 — current
+
+### Changes from v2.9.0
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/usageBackfill.ts` | feat: add `TimestampedUsageEntry` interface and `extractTimestampedUsage()` — returns per-message cost+token entries with `completedAt` timestamps for rolling 1h window |
+| `opencode-codotchi/src/index.ts` | feat: add `costEvents` rolling buffer and `lastHourUsage()` helper — tracks completed assistant messages by timestamp for last-1h cost/token sum |
+| `opencode-codotchi/src/index.ts` | feat: push entry to `costEvents` on every `message.updated` assistant event; seed from historical messages in `backfillDailyUsage()` |
+| `opencode-codotchi/src/index.ts` | feat: pass `lastHourCostUSD` and `lastHourTokens` to all three `buildContextualSpeech()` call sites |
+| `opencode-codotchi/src/asciiArt.ts` | feat: add `lastHourCostUSD` and `lastHourTokens` params to `buildContextualSpeech()`; append `($X.XX last 1h)` fragment to cost suffix in all three tiers (normal, warn, shout) |
+| `vscode/package.json` | chore: bump version to 2.10.2 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.10.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.10.2 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.10.2 |
+
+---
+
+## v2.8.2 — previous
 
 ### Changes from v2.8.1
 
