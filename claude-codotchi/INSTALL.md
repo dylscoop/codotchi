@@ -68,27 +68,8 @@ If you have a previous version installed, use:
 | **Statusline pet** | Multiline ANSI ASCII art renders in the statusline, refreshes every 10 seconds |
 | **Coding rewards** | Every file write/edit boosts your pet's happiness and discipline |
 | **Session hooks** | Pet greets you on session start and says farewell when the session stops |
-| **Slash command** | `/codotchi <action>` for all care actions |
+| **`/codotchi` slash command** | Control your pet directly from Claude Code |
 | **Daily cost tracking** | Pet speech bubble colour reflects today's Claude API spend |
-
----
-
-## Actions
-
-| Action | Description |
-|--------|-------------|
-| `/codotchi` or `/codotchi status` | Show the pet's current ASCII art and full stats |
-| `/codotchi feed` | Give a meal (max 3 per wake cycle) |
-| `/codotchi pat` | Pat the pet — gentle happiness boost |
-| `/codotchi sleep` | Put the pet to sleep — energy regenerates 3x faster |
-| `/codotchi wake` | Wake the pet up |
-| `/codotchi clean` | Remove droppings |
-| `/codotchi medicine` | Give medicine (3 doses to cure sickness) |
-| `/codotchi on` | Enable ASCII art in the statusline |
-| `/codotchi off` | Disable ASCII art — plain text stats instead |
-| `/codotchi rename <name>` | Rename your pet |
-| `/codotchi warnthreshold <amount>` | Set daily USD spend for warning tone (default: $30) |
-| `/codotchi shoutthreshold <amount>` | Set daily USD spend for ALL CAPS alarm (default: $50) |
 
 ---
 
