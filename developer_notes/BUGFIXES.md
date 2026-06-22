@@ -1606,3 +1606,12 @@ The bubbles remain perfectly aligned when highlighted, and the emoji indicators 
 **Problem:** In the `baby` stage ASCII art, the arms line `( o   o )` (line 1) had 3 leading spaces and 1 trailing space. The visual centre of `( o   o )` fell at column 8, while the torso, legs, and feet all centre at column 7 — leaving the arms 1 column too far right relative to the rest of the body. Affected all 5 moods (happy, neutral, sad, sleeping, sick).
 
 **Fix:** Reduced leading spaces on the arms line from 3 to 2 and added 1 trailing space (keeping string width constant at 13 chars). Applied identically to both `opencode-codotchi/src/asciiArt.ts` and `claude-codotchi/src/asciiArt.ts`.
+
+## BUGFIX-131 — Duplicate pet bubbles within a single agentic turn (text.complete fires multiple times)
+
+**Status:** Fixed (branch `fix/text-art-cooldown`)
+**File:** `opencode-codotchi/src/index.ts`
+
+**Problem:** The `experimental.text.complete` hook fires once per LLM text segment. An agentic turn with N tool calls produces N+1 (or more) text segments, each independently triggering the hook and appending a pet speech bubble to the output. Users with multiple PyCharm or VS Code windows open could see the same pet bubble rendered 4+ times in a single response, all with identical cost/token stats (confirming they were from the same moment in time within one turn).
+
+**Fix:** Added a 30-second cooldown (`TEXT_ART_COOLDOWN_MS = 30_000`) tracked by `lastTextArtMs`. The hook now exits early if less than 30 s has elapsed since the last rendering. `lastTextArtMs` is reset to 0 whenever a new user message arrives (`message.updated` with `role === "user"`), ensuring the pet always shows on the first text segment of the next response turn.
