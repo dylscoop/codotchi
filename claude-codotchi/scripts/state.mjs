@@ -179,6 +179,11 @@ function scanAllDailyUsage() {
  * Accumulate today's cost and tokens from the current session's JSONL transcript.
  * sessionId defaults to CLAUDE_CODE_SESSION_ID env var.
  * Returns { costUsd, tokens } — both accumulated across all sessions today.
+ *
+ * Uses a read-modify-write-verify pattern to guard against the race condition
+ * where two concurrent Claude Code windows both read the file, compute their
+ * deltas, and write back — with the second write clobbering the first.
+ * After writing, we re-read the file once and repair any clobbered entry.
  */
 export function accumulateDailyUsage(sessionId) {
   // Back-compat: callers may pass a stdinJson object — ignore it.
@@ -193,8 +198,9 @@ export function accumulateDailyUsage(sessionId) {
   const { costUsd: currentCost, tokens: currentTokens } = readSessionUsage(sessionId);
 
   const today = new Date().toISOString().slice(0, 10);
-  const daily = loadDaily();
 
+  // ----- attempt 1 -----
+  const daily = loadDaily();
   if (!daily[today]) daily[today] = { costUsd: 0, tokens: 0, sessions: {} };
   const todayEntry = daily[today];
   if (todayEntry.tokens == null) todayEntry.tokens = 0;
@@ -211,6 +217,37 @@ export function accumulateDailyUsage(sessionId) {
   todayEntry.tokens  = (todayEntry.tokens  || 0) + tokenDelta;
 
   saveDaily(daily);
+
+  // ----- verify: guard against concurrent-write clobber -----
+  // Re-read immediately; if our session entry was overwritten by a concurrent
+  // write from another window, apply the delta to the freshly-read file and
+  // save once more.  One retry is sufficient — the odds of a second collision
+  // within milliseconds are negligible.
+  try {
+    const verify = loadDaily();
+    const vEntry = verify[today]?.sessions?.[sessionId];
+    const savedCost = typeof vEntry === "object" ? (vEntry.lastCostUsd ?? 0) : (vEntry ?? 0);
+    if (savedCost !== currentCost) {
+      // Our write was clobbered — repair
+      if (!verify[today]) verify[today] = { costUsd: 0, tokens: 0, sessions: {} };
+      const vToday = verify[today];
+      if (vToday.tokens == null) vToday.tokens = 0;
+      const vPrev = vToday.sessions[sessionId];
+      const vPrevCost   = typeof vPrev === "object" ? (vPrev.lastCostUsd ?? 0) : (vPrev ?? 0);
+      const vPrevTokens = typeof vPrev === "object" ? (vPrev.lastTokens  ?? 0) : 0;
+      const vCostDelta   = Math.max(0, currentCost   - vPrevCost);
+      const vTokenDelta  = Math.max(0, currentTokens - vPrevTokens);
+      vToday.sessions[sessionId] = { lastCostUsd: currentCost, lastTokens: currentTokens };
+      vToday.costUsd = (vToday.costUsd || 0) + vCostDelta;
+      vToday.tokens  = (vToday.tokens  || 0) + vTokenDelta;
+      saveDaily(verify);
+      // Return from the repaired file
+      if (vToday.costUsd === 0 && vToday.tokens === 0) {
+        return scanAllDailyUsage();
+      }
+      return { costUsd: vToday.costUsd, tokens: vToday.tokens };
+    }
+  } catch { /* best-effort verify — don't block on repair failure */ }
 
   // If per-session tracking has no data yet (new session or JSONL not found),
   // fall back to scanning all project JSONLs so we always show something.

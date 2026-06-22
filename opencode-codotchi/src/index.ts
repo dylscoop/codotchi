@@ -290,25 +290,59 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
       } catch { /* skip individual session errors — best-effort */ }
     }
 
-    // Only overwrite if the API total exceeds what we already have from
-    // the sidecar + live events so far (prevents double-counting).
+    // Set the daily totals from the authoritative API backfill result.
+    // Then replay any live events that arrived while backfill was in-flight
+    // (they were held in pendingLiveEvents to avoid double-counting here).
     checkDayRollover();
-    if (backfilledCost > dailyCostUSD) {
-      dailyCostUSD = backfilledCost;
+
+    // Start from the backfill total (truth from the API).
+    dailyCostUSD = backfilledCost;
+    dailyTokens  = backfilledTokens;
+
+    // Replay live events that occurred *after* the backfill data was fetched.
+    // Only events whose completedAt is AFTER the most recent backfilled message
+    // are truly new; the rest were already captured by the API scan.
+    const latestBackfillTs = backfilledEvents.length > 0
+      ? Math.max(...backfilledEvents.map(e => e.completedAt))
+      : 0;
+    for (const ev of pendingLiveEvents) {
+      if (ev.completedAt > latestBackfillTs) {
+        dailyCostUSD += ev.cost;
+        dailyTokens  += ev.tokens;
+        // Also add to costEvents buffer for last-1h tracking
+        costEvents.push({ completedAt: ev.completedAt, costUSD: ev.cost, tokens: ev.tokens });
+      }
     }
-    if (backfilledTokens > dailyTokens) {
-      dailyTokens = backfilledTokens;
-    }
-    if (backfilledCost > 0 || backfilledTokens > 0) {
+    pendingLiveEvents = [];
+
+    if (dailyCostUSD > 0 || dailyTokens > 0) {
       dailyDate = today;
       saveDailyUsage();
     }
-    // Merge backfilled last-1h events — replace buffer with backfill result
-    // (backfill is the authoritative source; live events will append from here on)
+
+    // Replace last-1h buffer with backfilled events (plus any replayed live events
+    // appended above). Only keep backfill events if they aren't already there.
     if (backfilledEvents.length > 0) {
-      costEvents = backfilledEvents;
+      // Merge: start from backfill, live replays were already appended above
+      costEvents = [...backfilledEvents, ...costEvents];
+      // Deduplicate by completedAt in case of any overlap
+      const seen = new Set<number>();
+      costEvents = costEvents.filter(e => { if (seen.has(e.completedAt)) return false; seen.add(e.completedAt); return true; });
     }
-  } catch { /* best-effort — never block startup */ }
+
+    // Mark backfill done — future live events go directly to dailyCostUSD.
+    backfillComplete = true;
+  } catch {
+    // If backfill fails entirely, still unblock live events.
+    backfillComplete = true;
+    for (const ev of pendingLiveEvents) {
+      dailyCostUSD += ev.cost;
+      dailyTokens  += ev.tokens;
+      costEvents.push({ completedAt: ev.completedAt, costUSD: ev.cost, tokens: ev.tokens });
+    }
+    pendingLiveEvents = [];
+    /* best-effort — never block startup */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -530,6 +564,18 @@ let dailyCostUSD = 0;
 let dailyTokens  = 0;
 /** UTC date string "YYYY-MM-DD" for the currently stored daily totals. */
 let dailyDate    = "";
+
+/**
+ * Set to true once backfillDailyUsage() has finished.
+ * Live message.updated events that arrive before backfill completes are held
+ * in pendingLiveEvents and replayed after the backfill result is known — this
+ * prevents the backfill from double-counting a message that was already
+ * incremented by a live event.
+ */
+let backfillComplete = false;
+
+/** Live cost/token events that arrived while backfill was still running. */
+let pendingLiveEvents: Array<{ cost: number; tokens: number; completedAt: number }> = [];
 
 // ---------------------------------------------------------------------------
 // Rolling last-1h cost buffer (in-memory only, backfilled on startup)
@@ -1001,6 +1047,56 @@ export const plugin: Plugin = async (ctx) => {
 
   makeIDEWatcher("vscode");
   makeIDEWatcher("pycharm");
+
+  // ---------------------------------------------------------------------------
+  // Cross-window daily usage sync — watch codotchi-daily.json for writes from
+  // other OpenCode windows.  When another window saves a higher total, adopt it
+  // so all windows converge on the same number.
+  // ---------------------------------------------------------------------------
+  {
+    const dailyFilePath = getDailyUsagePath();
+    let dailySyncDebounce: ReturnType<typeof setTimeout> | undefined;
+    let dailyFsWatcher: ReturnType<typeof fs.watch> | undefined;
+
+    const reloadDaily = (): void => {
+      if (!backfillComplete) { return; } // don't interfere while backfill is running
+      try {
+        if (!fs.existsSync(dailyFilePath)) { return; }
+        const raw = JSON.parse(fs.readFileSync(dailyFilePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number };
+        if (raw.date !== todayUTC()) { return; }
+        const fileCost   = typeof raw.costUSD === "number" ? raw.costUSD : 0;
+        const fileTokens = typeof raw.tokens  === "number" ? raw.tokens  : 0;
+        // Take the maximum of what we know vs what another window wrote.
+        // This ensures no window's costs are lost, and no window shows a stale low value.
+        if (fileCost > dailyCostUSD || fileTokens > dailyTokens) {
+          dailyCostUSD = Math.max(dailyCostUSD, fileCost);
+          dailyTokens  = Math.max(dailyTokens,  fileTokens);
+          // Don't call saveDailyUsage() here — this is a read-only sync;
+          // the writing window already saved the correct value.
+        }
+      } catch { /* best-effort */ }
+    };
+
+    const onDailyChange = (): void => {
+      if (dailySyncDebounce !== undefined) { clearTimeout(dailySyncDebounce); }
+      dailySyncDebounce = setTimeout(() => { dailySyncDebounce = undefined; reloadDaily(); }, 150);
+    };
+
+    const startDailyWatcher = (): void => {
+      if (dailyFsWatcher !== undefined) { return; }
+      try {
+        dailyFsWatcher = fs.watch(dailyFilePath, { persistent: false }, onDailyChange);
+        dailyFsWatcher.on("error", () => { dailyFsWatcher?.close(); dailyFsWatcher = undefined; });
+      } catch { /* file may not exist yet — dailyWatchBootstrap will retry */ }
+    };
+
+    startDailyWatcher();
+    const dailyWatchBootstrap = setInterval(() => {
+      if (dailyFsWatcher !== undefined) { clearInterval(dailyWatchBootstrap); return; }
+      startDailyWatcher();
+      if (dailyFsWatcher !== undefined) { clearInterval(dailyWatchBootstrap); }
+    }, 10_000);
+  }
 
   // ---------------------------------------------------------------------------
   // Tool definition
@@ -1511,16 +1607,23 @@ export const plugin: Plugin = async (ctx) => {
                     + (info.tokens?.cache?.read ?? 0) + (info.tokens?.cache?.write ?? 0);
             sessionCostUSD += info.cost;
             sessionTokens  += t;
-            checkDayRollover();
-            dailyCostUSD   += info.cost;
-            dailyTokens    += t;
-            dailyDate = todayUTC();
-            saveDailyUsage();
-            // Push to rolling last-1h buffer
             const completedAt = (typeof info.time?.completed === "number" && info.time.completed > 0)
               ? info.time.completed
               : Date.now();
-            costEvents.push({ completedAt, costUSD: info.cost, tokens: t });
+            if (!backfillComplete) {
+              // Backfill is still in-flight — hold this event to avoid double-counting.
+              // It will be replayed (or discarded if already captured by backfill) once
+              // backfillDailyUsage() finishes.
+              pendingLiveEvents.push({ cost: info.cost, tokens: t, completedAt });
+            } else {
+              checkDayRollover();
+              dailyCostUSD   += info.cost;
+              dailyTokens    += t;
+              dailyDate = todayUTC();
+              saveDailyUsage();
+              // Push to rolling last-1h buffer
+              costEvents.push({ completedAt, costUSD: info.cost, tokens: t });
+            }
             // Message-based aging: increment total message count and advance stage if needed
             localPetTotalMessages += 1;
             advanceLocalPetStageIfNeeded();
