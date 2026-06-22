@@ -1615,3 +1615,24 @@ The bubbles remain perfectly aligned when highlighted, and the emoji indicators 
 **Problem:** The `experimental.text.complete` hook fires once per LLM text segment. An agentic turn with N tool calls produces N+1 (or more) text segments, each independently triggering the hook and appending a pet speech bubble to the output. Users with multiple PyCharm or VS Code windows open could see the same pet bubble rendered 4+ times in a single response, all with identical cost/token stats (confirming they were from the same moment in time within one turn).
 
 **Fix:** Added a 30-second cooldown (`TEXT_ART_COOLDOWN_MS = 30_000`) tracked by `lastTextArtMs`. The hook now exits early if less than 30 s has elapsed since the last rendering. `lastTextArtMs` is reset to 0 whenever a new user message arrives (`message.updated` with `role === "user"`), ensuring the pet always shows on the first text segment of the next response turn.
+
+---
+
+## BUGFIX-132 — Daily cost total differs across OpenCode windows and can appear inflated
+
+**Status:** Fixed (branch `fix/daily-cost-multiwindow-sync`)
+**Files:** `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/state.mjs`
+
+**Problem (OpenCode — two separate bugs):**
+
+_Bug A — stale reads across windows:_ Each OpenCode window loads `codotchi-daily.json` exactly once at startup and never re-reads it. If Window A spends $1 and writes $11 to the sidecar while Window B is running, Window B's in-memory `dailyCostUSD` stays at $10. Window B then spends $2 and writes $12 to the sidecar, losing Window A's $1. Neither window shows the true $13 total.
+
+_Bug B — backfill double-count race:_ `backfillDailyUsage()` runs asynchronously after startup. Live `message.updated` events that arrive before backfill completes would be added to `dailyCostUSD` by the live handler, and could then be counted again when the backfill result was applied via the `if (backfilledCost > dailyCostUSD)` guard — if the backfill fetched the same just-completed message, the guard `>` would be false and the total correct, but if timing shifted slightly (live event counted a new message, backfill returned a slightly larger total for a different reason), the live cost was double-counted.
+
+**Problem (Claude Code):** `accumulateDailyUsage()` used a plain read-modify-write with no retry. Two concurrent hook invocations from different Claude Code windows could both read the same file, each compute their session delta, and each write back — the second write clobbering the first session's delta entry.
+
+**Fix (OpenCode):**
+1. Added `fs.watch` on `codotchi-daily.json` using the same debounced-watcher pattern as the existing IDE state file watchers. On every external write, the in-memory `dailyCostUSD` and `dailyTokens` are updated to `Math.max(inMemory, fileValue)`, so all windows converge on the highest known total.
+2. Added `backfillComplete` flag and `pendingLiveEvents` queue. Live `message.updated` events that arrive before `backfillDailyUsage()` finishes are held in `pendingLiveEvents` rather than applied immediately. After backfill completes, the authoritative API total is used as the base, and only live events whose `completedAt` timestamp is newer than the latest backfilled message are replayed — eliminating the double-count race entirely.
+
+**Fix (Claude Code):** Added a read-modify-write-verify pattern to `accumulateDailyUsage()`. After writing the daily file, it is immediately re-read. If the written session entry was clobbered by a concurrent write, the delta is recomputed against the freshly-read file and saved once more. One retry is sufficient given the negligible likelihood of a second collision within milliseconds.
