@@ -108,7 +108,7 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
   },
   baby: {
     happy: [
-      "     (^.^)   ",
+      "    (^.^)    ",
       "   ( o   o ) ",
       "    \\___/    ",
       "    /   \\    ",
@@ -116,7 +116,7 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
       "             ",
     ],
     neutral: [
-      "     (-_-)   ",
+      "    (-_-)    ",
       "   ( o   o ) ",
       "    \\___/    ",
       "    /   \\    ",
@@ -124,7 +124,7 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
       "             ",
     ],
     sad: [
-      "     (;_;)   ",
+      "    (;_;)    ",
       "   ( o   o ) ",
       "    \\___/    ",
       "    /   \\    ",
@@ -132,7 +132,7 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
       "             ",
     ],
     sleeping: [
-      "     (-_-)z  ",
+      "    (-_-)z   ",
       "   ( o   o ) ",
       "    \\___/    ",
       "   /~~~~~\\   ",
@@ -140,7 +140,7 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
       "             ",
     ],
     sick: [
-      "     (@_@)   ",
+      "    (@_@)    ",
       "   ( o   o ) ",
       "    \\___/    ",
       "    /   \\    ",

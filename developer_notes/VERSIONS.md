@@ -1,6 +1,21 @@
 # Version History
 
-## v2.11.0 — current
+## v2.11.1 — current
+
+### Changes from v2.11.0
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/asciiArt.ts` | fix: reduce leading spaces on baby stage head line from 5 to 4 in all 5 moods — head was 1 column too far right relative to torso (BUGFIX-129) |
+| `claude-codotchi/src/asciiArt.ts` | fix: same baby stage head alignment fix as opencode-codotchi (BUGFIX-129) |
+| `opencode-codotchi/package.json` | chore: bump version to 2.11.1 |
+| `vscode/package.json` | chore: bump version to 2.11.1 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.11.1 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.11.1 |
+
+---
+
+## v2.11.0 — previous
 
 ### Changes from v2.10.2
 

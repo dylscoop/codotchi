@@ -1584,3 +1584,14 @@ Rewrote `randomSpriteType()` to do a simple uniform pick from `ROTATION_ANIMALS`
 3. Revert from `` ```ansi `` to plain `` ``` `` code block fence.
 
 The bubbles remain perfectly aligned when highlighted, and the emoji indicators provide visual feedback on cost tier without requiring ANSI colors.
+
+---
+
+## BUGFIX-129 — Baby stage head line 1 space too far right (ASCII art misalignment)
+
+**Status:** Fixed (branch `fix/baby-stage-head-alignment`)
+**Files:** `opencode-codotchi/src/asciiArt.ts`, `claude-codotchi/src/asciiArt.ts`
+
+**Problem:** In the `baby` stage ASCII art, the head line (line 0) had 5 leading spaces, while the `\___/` torso line had 4 leading spaces. This pushed the head 1 column to the right relative to the body, causing a visible misalignment across all 5 moods (happy, neutral, sad, sleeping, sick).
+
+**Fix:** Reduced the leading spaces on the head line from 5 to 4 in all 5 baby moods, and added 1 trailing space to keep the string width constant (13 chars). Applied identically to both `opencode-codotchi/src/asciiArt.ts` and `claude-codotchi/src/asciiArt.ts`.
