@@ -8,6 +8,8 @@
 |------|-------------|
 | `opencode-codotchi/src/asciiArt.ts` | fix: reduce leading spaces on baby stage head line from 5 to 4 in all 5 moods — head was 1 column too far right relative to torso (BUGFIX-129) |
 | `claude-codotchi/src/asciiArt.ts` | fix: same baby stage head alignment fix as opencode-codotchi (BUGFIX-129) |
+| `opencode-codotchi/src/asciiArt.ts` | fix: reduce leading spaces on baby stage arms line from 3 to 2 in all 5 moods — arms were 1 column too far right (BUGFIX-130) |
+| `claude-codotchi/src/asciiArt.ts` | fix: same baby stage arms alignment fix as opencode-codotchi (BUGFIX-130) |
 | `opencode-codotchi/package.json` | chore: bump version to 2.11.1 |
 | `vscode/package.json` | chore: bump version to 2.11.1 |
 | `pycharm/build.gradle.kts` | chore: bump version to 2.11.1 |

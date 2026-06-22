@@ -1595,3 +1595,14 @@ The bubbles remain perfectly aligned when highlighted, and the emoji indicators 
 **Problem:** In the `baby` stage ASCII art, the head line (line 0) had 5 leading spaces, while the `\___/` torso line had 4 leading spaces. This pushed the head 1 column to the right relative to the body, causing a visible misalignment across all 5 moods (happy, neutral, sad, sleeping, sick).
 
 **Fix:** Reduced the leading spaces on the head line from 5 to 4 in all 5 baby moods, and added 1 trailing space to keep the string width constant (13 chars). Applied identically to both `opencode-codotchi/src/asciiArt.ts` and `claude-codotchi/src/asciiArt.ts`.
+
+---
+
+## BUGFIX-130 — Baby stage arms line 1 space too far right (ASCII art misalignment)
+
+**Status:** Fixed (branch `fix/baby-arms-alignment`)
+**Files:** `opencode-codotchi/src/asciiArt.ts`, `claude-codotchi/src/asciiArt.ts`
+
+**Problem:** In the `baby` stage ASCII art, the arms line `( o   o )` (line 1) had 3 leading spaces and 1 trailing space. The visual centre of `( o   o )` fell at column 8, while the torso, legs, and feet all centre at column 7 — leaving the arms 1 column too far right relative to the rest of the body. Affected all 5 moods (happy, neutral, sad, sleeping, sick).
+
+**Fix:** Reduced leading spaces on the arms line from 3 to 2 and added 1 trailing space (keeping string width constant at 13 chars). Applied identically to both `opencode-codotchi/src/asciiArt.ts` and `claude-codotchi/src/asciiArt.ts`.
