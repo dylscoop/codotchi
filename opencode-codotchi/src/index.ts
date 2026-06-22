@@ -589,6 +589,22 @@ let isOnProdBranch = false;
 let suppressNextTextArt = false;
 
 // ---------------------------------------------------------------------------
+// text.complete art cooldown — prevents duplicate pet bubbles within a single
+// agentic turn. An LLM response with N tool calls produces N+1 text segments,
+// each triggering text.complete independently. Without a cooldown, the pet
+// bubble appears once per segment (e.g. 4 identical bubbles in one turn).
+//
+// Cooldown: 30 s minimum between showings.
+// Reset:    cleared to 0 when a new user message arrives, so the pet always
+//           shows on the first text segment of the next response.
+// ---------------------------------------------------------------------------
+
+/** Unix ms timestamp of the last text.complete pet art render. */
+let lastTextArtMs: number = 0;
+/** Minimum gap (ms) between consecutive text.complete pet art renders. */
+const TEXT_ART_COOLDOWN_MS = 30_000;
+
+// ---------------------------------------------------------------------------
 // Pending notification queue
 // Tick events fire outside any tool context, so we queue their messages
 // and prepend them to the next tool result.
@@ -1298,6 +1314,9 @@ export const plugin: Plugin = async (ctx) => {
         return;
       }
       if (!terminalEnabled) return;
+      const now = Date.now();
+      if (now - lastTextArtMs < TEXT_ART_COOLDOWN_MS) return;
+      lastTextArtMs = now;
       const livePets = getActivePets().filter(p => p.state.alive);
       if (livePets.length === 0) return;
 
@@ -1481,10 +1500,11 @@ export const plugin: Plugin = async (ctx) => {
        // message.updated → count user messages; accumulate assistant cost + tokens
        if (event.type === "message.updated") {
          const info = event.properties?.info;
-         if (info?.role === "user") {
-           sessionUserMessages += 1;
-           return;
-         }
+          if (info?.role === "user") {
+            sessionUserMessages += 1;
+            lastTextArtMs = 0;   // reset cooldown so first response to this message always shows art
+            return;
+          }
          if (info?.role === "assistant" && typeof info.cost === "number") {
             const t = (info.tokens?.input ?? 0) + (info.tokens?.output ?? 0)
                     + (info.tokens?.reasoning ?? 0)

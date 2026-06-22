@@ -1,6 +1,21 @@
 # Version History
 
-## v2.11.1 — current
+## v2.11.2 — current
+
+### Changes from v2.11.1
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/index.ts` | fix: add 30 s cooldown to `text.complete` pet art rendering to prevent duplicate pet bubbles within a single agentic turn (BUGFIX-131) |
+| `opencode-codotchi/package.json` | chore: bump version to 2.11.2 |
+| `vscode/package.json` | chore: bump version to 2.11.2 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.11.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.11.2 |
+| `claude-codotchi/package.json` | chore: bump version to 2.11.2 |
+
+---
+
+## v2.11.1 — previous
 
 ### Changes from v2.11.0
 
