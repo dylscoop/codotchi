@@ -1,6 +1,24 @@
 # Version History
 
-## v2.11.2 — current
+## v2.11.3 — current
+
+### Changes from v2.11.2
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/index.ts` | fix: daily cost differs across windows and can be inflated — add fs.watch cross-window sync and backfill double-count fix (BUGFIX-132) |
+| `claude-codotchi/scripts/state.mjs` | fix: daily cost read-modify-write race across concurrent windows — add verify-and-repair retry pattern (BUGFIX-132) |
+| `opencode-codotchi/package.json` | chore: bump version to 2.11.3 |
+| `claude-codotchi/package.json` | chore: bump version to 2.11.3 |
+| `vscode/package.json` | chore: bump version to 2.11.3 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.11.3 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.11.3 |
+| `opencode-codotchi/opencode-codotchi-2.11.3.zip` | Rebuilt OpenCode plugin zip for v2.11.3 |
+| `claude-codotchi/claude-codotchi-2.11.3.zip` | Rebuilt Claude Code plugin zip for v2.11.3 |
+
+---
+
+## v2.11.2 — previous
 
 ### Changes from v2.11.1
 
