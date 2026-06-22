@@ -272,6 +272,9 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     let backfilledTokens = 0;
     const oneHourAgo = Date.now() - 3_600_000;
     const backfilledEvents: TimestampedUsageEntry[] = [];
+    // Track ALL backfilled message timestamps (not just the last-1h subset)
+    // so latestBackfillTs reflects the true latest message across all of today.
+    let latestBackfillTsAll = 0;
 
     for (const s of todaySessions) {
       try {
@@ -280,9 +283,11 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
         const totals = sumCompletedAssistantUsage(messages);
         backfilledCost   += totals.costUSD;
         backfilledTokens += totals.tokens;
-        // Collect last-1h events from historical messages
+        // Collect timestamped entries — filter to last-1h for the rolling buffer,
+        // but track the global latest timestamp across all of today's messages.
         const timestamped = extractTimestampedUsage(messages);
         for (const e of timestamped) {
+          if (e.completedAt > latestBackfillTsAll) { latestBackfillTsAll = e.completedAt; }
           if (e.completedAt >= oneHourAgo) {
             backfilledEvents.push(e);
           }
@@ -295,16 +300,19 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     // (they were held in pendingLiveEvents to avoid double-counting here).
     checkDayRollover();
 
-    // Start from the backfill total (truth from the API).
-    dailyCostUSD = backfilledCost;
-    dailyTokens  = backfilledTokens;
+    // Take the maximum of what we already know (loaded from sidecar) and what
+    // the API returned.  The backfill API may return an incomplete session list
+    // when called very shortly after startup (timing race), so we must never
+    // let a lower API value overwrite a correct sidecar value.
+    dailyCostUSD = Math.max(dailyCostUSD, backfilledCost);
+    dailyTokens  = Math.max(dailyTokens,  backfilledTokens);
 
-    // Replay live events that occurred *after* the backfill data was fetched.
-    // Only events whose completedAt is AFTER the most recent backfilled message
-    // are truly new; the rest were already captured by the API scan.
-    const latestBackfillTs = backfilledEvents.length > 0
-      ? Math.max(...backfilledEvents.map(e => e.completedAt))
-      : 0;
+    // Replay live events that arrived before backfill completed.
+    // Use latestBackfillTsAll (the latest message across ALL of today, not just
+    // the last-1h subset) as the deduplication boundary — any pending live event
+    // whose completedAt falls within the backfill window is already counted in
+    // backfilledCost and must be dropped; only truly-new events are replayed.
+    const latestBackfillTs = latestBackfillTsAll;
     for (const ev of pendingLiveEvents) {
       if (ev.completedAt > latestBackfillTs) {
         dailyCostUSD += ev.cost;
