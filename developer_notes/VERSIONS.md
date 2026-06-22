@@ -12,6 +12,10 @@
 | `pycharm/build.gradle.kts` | chore: bump version to 2.11.2 |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.11.2 |
 | `claude-codotchi/package.json` | chore: bump version to 2.11.2 |
+| `vscode/codotchi-2.11.2.vsix` | Rebuilt VS Code extension artifact for v2.11.2 |
+| `pycharm/build/distributions/pycharm-codotchi-2.11.2.zip` | Rebuilt PyCharm plugin artifact for v2.11.2 |
+| `opencode-codotchi/opencode-codotchi-2.11.2.zip` | Rebuilt OpenCode plugin zip for v2.11.2 |
+| `claude-codotchi/claude-codotchi-2.11.2.zip` | Rebuilt Claude Code plugin zip for v2.11.2 |
 
 ---
 
