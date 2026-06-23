@@ -1645,3 +1645,22 @@ _Bug B — backfill double-count race:_ `backfillDailyUsage()` runs asynchronous
 **Problem:** When Track A (SQLite direct query) succeeds, `dailyCostUSD` is set to the authoritative DB total. The `pendingLiveEvents` replay loop then uses `latestBackfillTsAll` as the deduplication boundary — but that variable is built only from sessions where `time.updated >= todayStartMs` (Track B's filter). Cross-day sessions (started before UTC midnight, still active today) are excluded from Track B, so their message timestamps never update `latestBackfillTsAll`. Live events for those messages pass the `ev.completedAt > latestBackfillTs` guard and are added on top of a DB total that already counted them, inflating the displayed daily cost by the sum of those messages (~$3 observed).
 
 **Fix:** Hoist `trackASnapshotTime = Date.now()` to the outer Track A scope, recorded immediately before the `spawnSync` DB query. In the replay loop, use `const dedupeTs = trackASucceeded ? trackASnapshotTime : latestBackfillTsAll`. Any message with `time.completed <= trackASnapshotTime` is guaranteed in the DB snapshot regardless of session filter, so no cross-day session can slip through.
+
+## BUGFIX-134 — OpenCode plugin daily cost still inflated (~$3+) vs `agentsview` ground truth after BUGFIX-133
+
+**Status:** Fixed (branch `fix/daily-cost-double-counting`)
+**File:** `opencode-codotchi/src/index.ts`
+
+**Problem:** Three compounding bugs caused `dailyCostUSD` to permanently exceed the authoritative DB total even after BUGFIX-133:
+
+_Bug A — Streaming chunk double-count:_ `message.updated` fires once per streaming token chunk, not just on final completion. The old handler incremented `dailyCostUSD` on every event where `typeof info.cost === "number"`, which is true for every chunk. A single assistant message could be counted dozens of times, once per streaming update, inflating the daily total by a large multiple of the true message cost.
+
+_Bug B — Stale sidecar pre-poisoning:_ `loadDailyUsage()` loaded `codotchi-daily.json` and immediately assigned its value into `dailyCostUSD` on startup — before `backfillDailyUsage()` ran. This meant that any inflated value previously baked into the sidecar (e.g. by Bug A) was immediately set as the live accumulator baseline, and Track A's direct-assign would overwrite it — but only if Track A succeeded. If Track A failed even once, the inflated sidecar value persisted.
+
+_Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.watch handler used `Math.max(dailyCostUSD, fileCost)` to sync values across windows. Once an inflated value was written to the sidecar by any window (via Bug A or B), `Math.max` made it permanent — no window could ever report a lower (correct) value, and every window that started up would adopt the inflated number and accumulate further on top of it.
+
+**Fix:**
+1. _Streaming dedup:_ In `message.updated`, skip events where `time.completed <= 0` (streaming, not yet final). Deduplicate by message ID using `countedMessageIds: Set<string>` — cleared on UTC day rollover — so even if `message.updated` fires multiple times for the same completed message (e.g. metadata update after completion), it is only counted once.
+2. _Sidecar isolation:_ `loadDailyUsage()` now stores the sidecar value in `sidecarCostUSD`/`sidecarTokens` (new module-level vars) instead of directly setting `dailyCostUSD`. `dailyCostUSD` starts at 0 and is only set by `backfillDailyUsage()`. Track B fallback uses `Math.max(sidecarCostUSD, backfilledCost)` as before, but the sidecar value no longer poisons the live accumulator if Track A succeeds.
+3. _Sidecar correction on Track A success:_ After Track A assigns `dailyCostUSD = dbCostUSD`, it immediately calls `saveDailyUsage()` to flush the correct authoritative value to disk. This ensures that other windows watching the sidecar via fs.watch pick up the corrected (lower) value immediately.
+4. _Cross-window sync without Math.max:_ `reloadDaily` now uses a plain replace (`dailyCostUSD = fileCost`) when the file and in-memory values differ by more than a float noise threshold. This allows a window that has been corrected by Track A to propagate the corrected (lower) value to other windows, breaking the inflation lock-in.
