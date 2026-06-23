@@ -26,12 +26,11 @@
   // background = canvas background behind the pet
   var ANIMAL_PALETTES = {
     roo:      { primary: "#d9bb7b", secondary: "#663300", accent: "#8c5a24", background: "#1a1a1a" },
-    testsprite: { primary: "#000000", secondary: "#444444", accent: "#888888", background: "#ffffff" },
     classic:  { primary: "#39ff14", secondary: "#ff00ff", accent: "#1aad00", background: "#0d0d0d" },
     monkey:   { primary: "#8b5e3c", secondary: "#f5c07a", accent: "#5a3a1a", background: "#1a1a1a" },
     rooster:  { primary: "#c0392b", secondary: "#f39c12", accent: "#7d1f1f", background: "#1a1a1a" },
     dragon:   { primary: "#2ecc71", secondary: "#f1c40f", accent: "#1a6b3a", background: "#0d1a0d" },
-    cat:      { primary: "#e8c98a", secondary: "#6b4c2a", accent: "#b07840", background: "#1a1a1a" },
+    cat:      { primary: "#1e1e1e", secondary: "#e8c44a", accent: "#333333", background: "#1a1a1a" },
     rat:      { primary: "#9e9e9e", secondary: "#f48fb1", accent: "#616161", background: "#1a1a1a" },
     ox:       { primary: "#5d4037", secondary: "#d7ccc8", accent: "#3e2723", background: "#1a1a1a" },
     tiger:    { primary: "#e67e22", secondary: "#2c2c2c", accent: "#1a1a1a", background: "#1a1a1a" },
@@ -95,7 +94,7 @@
     tim:      { cols: 32, rows: 48, legRowStart: 37 },
     stu:      { cols: 64, rows: 48, legRowStart: 37 },
     // Quadruped sprites (48 × 32)
-    cat:      { cols: 48, rows: 32, legRowStart: 25 },
+    cat       : { cols: 142, rows: 128, legRowStart: 99 },
     rat:      { cols: 48, rows: 32, legRowStart: 25 },
     ox:       { cols: 48, rows: 32, legRowStart: 25 },
     tiger:    { cols: 48, rows: 32, legRowStart: 25 },
@@ -107,7 +106,6 @@
     snake:    { cols: 48, rows: 32, legRowStart: 25 },
     kangaroo: { cols: 48, rows: 32, legRowStart: 25 },
     roo       : { cols: 644, rows: 531, legRowStart: 380 },
-    testsprite: { cols: 700, rows: 550, legRowStart: 429 },
   };
 
   /**

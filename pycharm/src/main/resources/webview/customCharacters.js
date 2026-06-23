@@ -75,20 +75,21 @@
         pat_refused: "__Name__ is too tired for pats!",
       },
     },
-    testsprite: {
-      passcode:     "pixel",
-      defaultName:  "Pixel",
-      patLabel:     "Pat",
-      mgTitle:      "Play or Pat",
+    cat: {
+      passcode:     "blackcat",
+      defaultName:  "Codotchi",
+      patLabel:     "Pet",
+      mgTitle:      "Play or Pet",
+      giftMessage:  "__Name__ found a toy mouse!",
       patToasts: {
-        patted:      "Pixel enjoyed the attention!",
-        pat_refused: "Pixel is too tired for that right now!",
+        patted:      "__Name__ purred!",
+        pat_refused: "__Name__ is too tired for cuddles!",
       },
       patBubbles: [
-        "...",
-        "beep.",
-        "I am rendered.",
-        "700 columns wide and loving it.",
+        "Purrrr.",
+        "Don't stop.",
+        "I will knock that off the desk.",
+        "Fine. You may pet me.",
       ],
     },
     // ── Add future custom characters here ────────────────────────────────────
