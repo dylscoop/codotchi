@@ -279,18 +279,21 @@ function findOpencodeCli(): string | null {
  * seeded from the sidecar file (which only records what was observed during
  * previous plugin runs). This async helper uses a two-track approach:
  *
- * Track A — SQLite direct query (cross-project, authoritative):
+ * Track A — SQLite direct query (cross-project, single source of truth):
  *   Spawns the opencode-cli binary to run a SQL query against the OpenCode
  *   database. Filters on individual message completion timestamps so that
  *   cross-day sessions (started yesterday, still active today) are counted
  *   correctly — only their today-messages are included. This gives the same
  *   total as `opencode stats` and `agentsview usage statusline`.
+ *   The DB value is assigned directly — Math.max is NOT used — so that a
+ *   stale/inflated sidecar can never win over the authoritative DB total.
  *
  * Track B — API loop (current-project only, last-1h costEvents buffer):
  *   Calls client.session.list() + session.messages() for the current project
  *   to populate the rolling last-1h costEvents buffer used by lastHourUsage().
- *   No longer sets dailyCostUSD/dailyTokens — that is Track A's job.
- *   Falls back to setting dailyCostUSD/dailyTokens if Track A failed.
+ *   Only sets dailyCostUSD/dailyTokens if Track A failed (fallback path).
+ *   Math.max is kept here because the API can return an incomplete session
+ *   list under timing races at startup.
  *
  * Both tracks run in sequence. If Track A fails (binary absent, DB missing,
  * query error), Track B's API totals are used instead (BUGFIX-133 behaviour).
@@ -342,8 +345,14 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
             const dbCostUSD = typeof rows[0]?.costUSD === "number" ? rows[0].costUSD : 0;
             const dbTokens  = typeof rows[0]?.tokens  === "number" ? rows[0].tokens  : 0;
             checkDayRollover();
-            dailyCostUSD = Math.max(dailyCostUSD, dbCostUSD);
-            dailyTokens  = Math.max(dailyTokens,  dbTokens);
+            // DB is the single source of truth — assign directly, never Math.max.
+            // The sidecar value loaded at startup is discarded; the DB value wins.
+            // Math.max is intentionally NOT used here: the sidecar can hold an
+            // inflated value (e.g. accumulated by a bugged previous plugin run)
+            // and Math.max would preserve the poison. The DB always has the
+            // authoritative cross-project total.
+            dailyCostUSD = dbCostUSD;
+            dailyTokens  = dbTokens;
             trackASucceeded = true;
           }
         }
