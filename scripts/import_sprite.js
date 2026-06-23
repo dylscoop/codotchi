@@ -31,6 +31,9 @@
  *   --transparent <hex>   Source colour to treat as transparent (for JPEG/flat backgrounds)
  *   --transparent-distance <N>  RGB distance tolerance for --transparent (default: 2500)
  *   --crop-transparent    Trim transparent border after applying --transparent
+ *   --flip                Mirror the grid horizontally (reverse each row) so the sprite
+ *                         faces the opposite direction; use when the source image faces right
+ *                         but the sprite should face left in-game
  *   --preview             Print an ASCII art preview of the mapped grid to stdout
  *   --inject              Splice the DEFS entry and SPRITE_GRID_META registration into
  *                         vscode/media/sprites.js and pycharm/.../sprites.js
@@ -77,7 +80,7 @@ var stage       = args[2];
 if (!inputFile || !spriteType || !stage) {
   console.error("Usage: node scripts/import_sprite.js <file> <spriteType> <stage> [options]");
   console.error("Supported formats: .png, .jpg/.jpeg, .webp (via external converter), .pixil");
-  console.error("Options: --frame N  --leg-row N  --primary #hex  --secondary #hex  --accent #hex  --threshold N  --transparent #hex  --transparent-distance N  --crop-transparent  --preview  --inject");
+  console.error("Options: --frame N  --leg-row N  --primary #hex  --secondary #hex  --accent #hex  --threshold N  --transparent #hex  --transparent-distance N  --crop-transparent  --flip  --preview  --inject");
   process.exit(1);
 }
 
@@ -90,6 +93,7 @@ var alphaThresh = parseInt(getFlag("--threshold", "128"), 10);
 var transparentHex  = getFlag("--transparent", null);
 var transparentDist = parseInt(getFlag("--transparent-distance", "2500"), 10);
 var cropTransparent = hasFlag("--crop-transparent");
+var doFlip      = hasFlag("--flip");
 var doPreview   = hasFlag("--preview");
 var doInject    = hasFlag("--inject");
 
@@ -625,7 +629,7 @@ function buildDefsEntry(spriteType, stage, grid, cols, rows) {
 // ── Injection into sprites.js ─────────────────────────────────────────────────
 
 function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legRowStart) {
-  var content = fs.readFileSync(filePath, "utf8");
+  var content = fs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\n");
 
   // 1. Insert or update the DEFS entry
   //    We look for an existing DEFS["spriteType"]["stage"] block and replace it,
@@ -715,6 +719,37 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
 
   console.error("Source dimensions: " + imgData.width + " × " + imgData.height);
 
+  // Auto-detect and remove solid background for fully-opaque images (e.g. RGB PNG, JPEG/WebP).
+  // When every pixel has alpha >= alphaThresh and all four corners share the same colour
+  // (within transparentDist), that corner colour is almost certainly the background.
+  // Skip this when the caller already supplied --transparent.
+  if (!transparentHex) {
+    var opaqueOnly = true;
+    outerCheck: for (var _r = 0; _r < imgData.height; _r++) {
+      for (var _c = 0; _c < imgData.width; _c++) {
+        if (imgData.pixels[_r][_c].a < alphaThresh) { opaqueOnly = false; break outerCheck; }
+      }
+    }
+    if (opaqueOnly) {
+      var corners = [
+        imgData.pixels[0][0],
+        imgData.pixels[0][imgData.width - 1],
+        imgData.pixels[imgData.height - 1][0],
+        imgData.pixels[imgData.height - 1][imgData.width - 1]
+      ];
+      var bg = corners[0];
+      var uniformCorners = corners.every(function(p) { return rgbDist(p, bg) <= transparentDist; });
+      if (uniformCorners) {
+        var autoBgHex = "#" + [bg.r, bg.g, bg.b].map(function(v) {
+          return ("0" + v.toString(16)).slice(-2);
+        }).join("");
+        console.error("Auto-background: image is fully opaque with uniform corners (" + autoBgHex + ") — removing as background and cropping. Use --transparent to override.");
+        imgData = applyTransparentColour(imgData, autoBgHex, transparentDist);
+        imgData = cropTransparentBorder(imgData, alphaThresh);
+      }
+    }
+  }
+
   // 2. Optional background transparency and crop (useful for JPEGs with a flat backdrop)
   imgData = applyTransparentColour(imgData, transparentHex, transparentDist);
   if (cropTransparent) {
@@ -761,6 +796,14 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
     grid.push(gridRow);
   }
 
+  // 7b. Horizontal flip (reverses each row so the sprite faces the opposite direction)
+  if (doFlip) {
+    for (var fi = 0; fi < grid.length; fi++) {
+      grid[fi] = grid[fi].slice().reverse();
+    }
+    console.error("Horizontally flipped grid (" + cols + " cols).");
+  }
+
   // 8. Preview
   if (doPreview) {
     printPreview(grid, cols, rows);
@@ -786,7 +829,7 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
 
     // Also register/update the SPRITE_GRID_META entry in both spriteConstants.js files
     [vscodeConst, pycharmConst].forEach(function(constFile) {
-      var constContent = fs.readFileSync(constFile, "utf8");
+      var constContent = fs.readFileSync(constFile, "utf8").replace(/\r\n/g, "\n");
       var metaLine = '    ' + spriteType.padEnd(10) + ': { cols: ' + cols + ', rows: ' + rows + ', legRowStart: ' + legRowStart + ' },';
       var metaExistsPattern = new RegExp('^\\s*' + spriteType + '\\s*:\\s*\\{\\s*cols\\s*:', "m");
       if (!metaExistsPattern.test(constContent)) {
@@ -809,7 +852,7 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
 
     // Also register in ANIMAL_PALETTES if missing (with a default neutral palette)
     [vscodeConst, pycharmConst].forEach(function(constFile) {
-      var constContent = fs.readFileSync(constFile, "utf8");
+      var constContent = fs.readFileSync(constFile, "utf8").replace(/\r\n/g, "\n");
       var paletteExistsPattern = new RegExp('^\\s*' + spriteType + '\\s*:\\s*\\{\\s*primary\\s*:', "m");
       var quotedPaletteExists = constContent.indexOf('"' + spriteType + '"') !== -1 ||
                                 constContent.indexOf("'" + spriteType + "'") !== -1;
