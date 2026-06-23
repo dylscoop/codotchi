@@ -1636,3 +1636,12 @@ _Bug B — backfill double-count race:_ `backfillDailyUsage()` runs asynchronous
 2. Added `backfillComplete` flag and `pendingLiveEvents` queue. Live `message.updated` events that arrive before `backfillDailyUsage()` finishes are held in `pendingLiveEvents` rather than applied immediately. After backfill completes, the authoritative API total is used as the base, and only live events whose `completedAt` timestamp is newer than the latest backfilled message are replayed — eliminating the double-count race entirely.
 
 **Fix (Claude Code):** Added a read-modify-write-verify pattern to `accumulateDailyUsage()`. After writing the daily file, it is immediately re-read. If the written session entry was clobbered by a concurrent write, the delta is recomputed against the freshly-read file and saved once more. One retry is sufficient given the negligible likelihood of a second collision within milliseconds.
+
+## BUGFIX-133 — OpenCode plugin shows daily cost ~$3 higher than `agentsview` / true DB total
+
+**Status:** Fixed (branch `fix/pending-live-events-double-count`)
+**File:** `opencode-codotchi/src/index.ts`
+
+**Problem:** When Track A (SQLite direct query) succeeds, `dailyCostUSD` is set to the authoritative DB total. The `pendingLiveEvents` replay loop then uses `latestBackfillTsAll` as the deduplication boundary — but that variable is built only from sessions where `time.updated >= todayStartMs` (Track B's filter). Cross-day sessions (started before UTC midnight, still active today) are excluded from Track B, so their message timestamps never update `latestBackfillTsAll`. Live events for those messages pass the `ev.completedAt > latestBackfillTs` guard and are added on top of a DB total that already counted them, inflating the displayed daily cost by the sum of those messages (~$3 observed).
+
+**Fix:** Hoist `trackASnapshotTime = Date.now()` to the outer Track A scope, recorded immediately before the `spawnSync` DB query. In the replay loop, use `const dedupeTs = trackASucceeded ? trackASnapshotTime : latestBackfillTsAll`. Any message with `time.completed <= trackASnapshotTime` is guaranteed in the DB snapshot regardless of session filter, so no cross-day session can slip through.
