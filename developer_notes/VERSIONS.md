@@ -1,6 +1,18 @@
 # Version History
 
-## v2.11.3 — current
+## v2.11.6 — current
+
+### Changes from v2.11.3
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/index.ts` | fix: pendingLiveEvents double-count when Track A succeeds — use trackASnapshotTime as dedup boundary instead of latestBackfillTsAll (BUGFIX-133) |
+| `opencode-codotchi/package.json` | chore: bump version to 2.11.6 |
+| `opencode-codotchi/opencode-codotchi-2.11.6.zip` | Rebuilt OpenCode plugin zip for v2.11.6 |
+
+---
+
+## v2.11.3 — previous
 
 ### Changes from v2.11.2
 
