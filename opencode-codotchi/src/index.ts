@@ -310,6 +310,10 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     // Track A — cross-project daily totals via SQLite
     // ------------------------------------------------------------------
     let trackASucceeded = false;
+    // Wall-clock time when the Track A DB snapshot was taken. Used as the
+    // deduplication boundary for pendingLiveEvents replay: any message with
+    // time.completed <= trackASnapshotTime is in the DB snapshot already.
+    let trackASnapshotTime = 0;
     try {
       const cli = findOpencodeCli();
       if (cli) {
@@ -335,6 +339,7 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
               AND json_extract(data,'$.time.completed') IS NOT NULL
               AND CAST(json_extract(data,'$.time.completed') AS INTEGER) >= ${todayStartMs}
           `;
+          trackASnapshotTime = Date.now();
           const queryResult = spawnSync(cli, ["db", "--format", "json", sql], {
             timeout: 3000,
             encoding: "utf8",
@@ -411,13 +416,21 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     }
 
     // Replay live events that arrived before backfill completed.
-    // Use latestBackfillTsAll (the latest message across ALL of today, not just
-    // the last-1h subset) as the deduplication boundary — any pending live event
-    // whose completedAt falls within the backfill window is already counted and
-    // must be dropped; only truly-new events are replayed.
-    const latestBackfillTs = latestBackfillTsAll;
+    // Deduplication boundary:
+    //   - Track A succeeded: use trackASnapshotTime (the wall-clock instant the
+    //     spawnSync DB query was issued). Any message with time.completed <=
+    //     trackASnapshotTime is guaranteed to be in the DB snapshot already —
+    //     regardless of which session it belongs to. Using latestBackfillTsAll
+    //     here would be wrong because Track B only iterates sessions with
+    //     time.updated >= todayStartMs, so cross-day sessions are excluded and
+    //     their message timestamps never update latestBackfillTsAll, causing
+    //     those messages to pass the guard and be double-counted on top of the
+    //     DB total that Track A already assigned.
+    //   - Track A failed: fall back to latestBackfillTsAll (Track B's max
+    //     message timestamp) as before.
+    const dedupeTs = trackASucceeded ? trackASnapshotTime : latestBackfillTsAll;
     for (const ev of pendingLiveEvents) {
-      if (ev.completedAt > latestBackfillTs) {
+      if (ev.completedAt > dedupeTs) {
         dailyCostUSD += ev.cost;
         dailyTokens  += ev.tokens;
         // Also add to costEvents buffer for last-1h tracking
