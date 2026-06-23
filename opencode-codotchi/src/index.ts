@@ -40,6 +40,7 @@
 import * as fs   from "fs";
 import * as path from "path";
 import * as os   from "os";
+import { spawnSync } from "child_process";
 import { tool }  from "@opencode-ai/plugin";
 import type { Plugin, PluginInput } from "@opencode-ai/plugin";
 import { getIDEBase as _getIDEBase, resolveVSCodeStatePath } from "./statePathResolver.js";
@@ -245,21 +246,113 @@ function checkDayRollover(): void {
 // ---------------------------------------------------------------------------
 
 /**
+ * Locate the opencode-cli binary by trying three candidate paths in order:
+ *   1. %LOCALAPPDATA%\opencode\opencode-cli.exe  (Windows installer)
+ *   2. ~/.local/share/opencode/opencode-cli      (Linux / Mac)
+ *   3. "opencode" on PATH                        (generic fallback)
+ * Returns the first path whose binary exits with status 0, or null if none found.
+ */
+function findOpencodeCli(): string | null {
+  const candidates: string[] = [
+    // Windows
+    ...(process.env.LOCALAPPDATA
+      ? [path.join(process.env.LOCALAPPDATA, "opencode", "opencode-cli.exe")]
+      : []),
+    // Linux / Mac
+    path.join(os.homedir(), ".local", "share", "opencode", "opencode-cli"),
+    // Generic PATH fallback (main opencode binary also has the `db` subcommand)
+    "opencode",
+  ];
+
+  for (const c of candidates) {
+    try {
+      if (c !== "opencode" && !fs.existsSync(c)) { continue; }
+      const result = spawnSync(c, ["--version"], { timeout: 2000, encoding: "utf8" });
+      if (result.status === 0) { return c; }
+    } catch { /* try next */ }
+  }
+  return null;
+}
+
+/**
  * On startup, the module-level dailyCostUSD / dailyTokens accumulators are
  * seeded from the sidecar file (which only records what was observed during
- * previous plugin runs). This async helper queries the OpenCode API for all
- * sessions that were active today and sums the cost + tokens across every
- * completed AssistantMessage, then replaces the sidecar values if the API
- * total is larger (to avoid double-counting live events already received).
+ * previous plugin runs). This async helper uses a two-track approach:
  *
- * It is called fire-and-forget from the plugin entry point so startup is
- * never delayed or blocked by API latency.
+ * Track A — SQLite direct query (cross-project, authoritative):
+ *   Spawns the opencode-cli binary to run a SQL query against the OpenCode
+ *   database. Filters on individual message completion timestamps so that
+ *   cross-day sessions (started yesterday, still active today) are counted
+ *   correctly — only their today-messages are included. This gives the same
+ *   total as `opencode stats` and `agentsview usage statusline`.
+ *
+ * Track B — API loop (current-project only, last-1h costEvents buffer):
+ *   Calls client.session.list() + session.messages() for the current project
+ *   to populate the rolling last-1h costEvents buffer used by lastHourUsage().
+ *   No longer sets dailyCostUSD/dailyTokens — that is Track A's job.
+ *   Falls back to setting dailyCostUSD/dailyTokens if Track A failed.
+ *
+ * Both tracks run in sequence. If Track A fails (binary absent, DB missing,
+ * query error), Track B's API totals are used instead (BUGFIX-133 behaviour).
+ *
+ * Called fire-and-forget from the plugin entry point so startup is never
+ * delayed or blocked.
  */
 async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> {
   try {
     const today = todayUTC();
     const todayStartMs = new Date(today + "T00:00:00.000Z").getTime();
 
+    // ------------------------------------------------------------------
+    // Track A — cross-project daily totals via SQLite
+    // ------------------------------------------------------------------
+    let trackASucceeded = false;
+    try {
+      const cli = findOpencodeCli();
+      if (cli) {
+        // Get DB path
+        const pathResult = spawnSync(cli, ["db", "path"], { timeout: 3000, encoding: "utf8" });
+        const dbPath = pathResult.stdout?.trim();
+
+        if (dbPath && fs.existsSync(dbPath)) {
+          // Filter on message-level time.completed (not session.time_updated) so that
+          // cross-day sessions contribute only their today-messages to the daily total.
+          const sql = `
+            SELECT
+              ROUND(SUM(CAST(json_extract(data,'$.cost') AS REAL)), 6) AS costUSD,
+              SUM(
+                COALESCE(json_extract(data,'$.tokens.input'),0) +
+                COALESCE(json_extract(data,'$.tokens.output'),0) +
+                COALESCE(json_extract(data,'$.tokens.reasoning'),0) +
+                COALESCE(json_extract(data,'$.tokens.cache.read'),0) +
+                COALESCE(json_extract(data,'$.tokens.cache.write'),0)
+              ) AS tokens
+            FROM message
+            WHERE json_extract(data,'$.role') = 'assistant'
+              AND json_extract(data,'$.time.completed') IS NOT NULL
+              AND CAST(json_extract(data,'$.time.completed') AS INTEGER) >= ${todayStartMs}
+          `;
+          const queryResult = spawnSync(cli, ["db", "--format", "json", sql], {
+            timeout: 3000,
+            encoding: "utf8",
+          });
+
+          if (queryResult.status === 0 && queryResult.stdout) {
+            const rows = JSON.parse(queryResult.stdout.trim()) as Array<{ costUSD?: number; tokens?: number }>;
+            const dbCostUSD = typeof rows[0]?.costUSD === "number" ? rows[0].costUSD : 0;
+            const dbTokens  = typeof rows[0]?.tokens  === "number" ? rows[0].tokens  : 0;
+            checkDayRollover();
+            dailyCostUSD = Math.max(dailyCostUSD, dbCostUSD);
+            dailyTokens  = Math.max(dailyTokens,  dbTokens);
+            trackASucceeded = true;
+          }
+        }
+      }
+    } catch { /* Track A failed — fall through to Track B for cost totals */ }
+
+    // ------------------------------------------------------------------
+    // Track B — current-project API loop for last-1h costEvents buffer
+    // ------------------------------------------------------------------
     const listResult = await client.session.list();
     const sessions = listResult.data ?? [];
 
@@ -280,11 +373,13 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
       try {
         const msgResult = await client.session.messages({ path: { id: s.id } });
         const messages = msgResult.data ?? [];
-        const totals = sumCompletedAssistantUsage(messages);
-        backfilledCost   += totals.costUSD;
-        backfilledTokens += totals.tokens;
-        // Collect timestamped entries — filter to last-1h for the rolling buffer,
-        // but track the global latest timestamp across all of today's messages.
+        if (!trackASucceeded) {
+          // Track A failed — use API totals as fallback for cost/token totals
+          const totals = sumCompletedAssistantUsage(messages);
+          backfilledCost   += totals.costUSD;
+          backfilledTokens += totals.tokens;
+        }
+        // Always collect timestamped entries for the last-1h rolling buffer.
         const timestamped = extractTimestampedUsage(messages);
         for (const e of timestamped) {
           if (e.completedAt > latestBackfillTsAll) { latestBackfillTsAll = e.completedAt; }
@@ -295,23 +390,22 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
       } catch { /* skip individual session errors — best-effort */ }
     }
 
-    // Set the daily totals from the authoritative API backfill result.
-    // Then replay any live events that arrived while backfill was in-flight
-    // (they were held in pendingLiveEvents to avoid double-counting here).
-    checkDayRollover();
-
-    // Take the maximum of what we already know (loaded from sidecar) and what
-    // the API returned.  The backfill API may return an incomplete session list
-    // when called very shortly after startup (timing race), so we must never
-    // let a lower API value overwrite a correct sidecar value.
-    dailyCostUSD = Math.max(dailyCostUSD, backfilledCost);
-    dailyTokens  = Math.max(dailyTokens,  backfilledTokens);
+    // If Track A failed, apply Track B's API totals (current-project only fallback).
+    if (!trackASucceeded) {
+      checkDayRollover();
+      // Take the maximum of what we already know (loaded from sidecar) and what
+      // the API returned. The backfill API may return an incomplete session list
+      // when called very shortly after startup (timing race), so we must never
+      // let a lower API value overwrite a correct sidecar value.
+      dailyCostUSD = Math.max(dailyCostUSD, backfilledCost);
+      dailyTokens  = Math.max(dailyTokens,  backfilledTokens);
+    }
 
     // Replay live events that arrived before backfill completed.
     // Use latestBackfillTsAll (the latest message across ALL of today, not just
     // the last-1h subset) as the deduplication boundary — any pending live event
-    // whose completedAt falls within the backfill window is already counted in
-    // backfilledCost and must be dropped; only truly-new events are replayed.
+    // whose completedAt falls within the backfill window is already counted and
+    // must be dropped; only truly-new events are replayed.
     const latestBackfillTs = latestBackfillTsAll;
     for (const ev of pendingLiveEvents) {
       if (ev.completedAt > latestBackfillTs) {
