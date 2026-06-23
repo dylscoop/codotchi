@@ -210,11 +210,14 @@ function loadDailyUsage(): void {
     const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number };
     const today = todayUTC();
     if (raw.date === today) {
-      dailyCostUSD = typeof raw.costUSD === "number" ? raw.costUSD : 0;
-      dailyTokens  = typeof raw.tokens  === "number" ? raw.tokens  : 0;
-      dailyDate    = today;
+      // Store into sidecar vars only — do NOT pre-seed dailyCostUSD.
+      // backfillDailyUsage() will set dailyCostUSD from the authoritative SQLite
+      // DB (Track A). The sidecar value is only used as a floor when Track A
+      // fails and Track B is the sole source.
+      sidecarCostUSD = typeof raw.costUSD === "number" ? raw.costUSD : 0;
+      sidecarTokens  = typeof raw.tokens  === "number" ? raw.tokens  : 0;
     }
-    // If stored date differs it's a new day — keep zeroed defaults
+    // If stored date differs it's a new day — sidecar values stay zero
   } catch { /* best-effort */ }
 }
 
@@ -233,6 +236,9 @@ function checkDayRollover(): void {
     dailyCostUSD = 0;
     dailyTokens  = 0;
     dailyDate    = today;
+    sidecarCostUSD = 0;
+    sidecarTokens  = 0;
+    countedMessageIds.clear();
     // Daily reset for OpenCode-local pet — respawn with same name and message count
     if (localPetState !== null && localPetState.alive) {
       createLocalPet();
@@ -359,6 +365,11 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
             dailyCostUSD = dbCostUSD;
             dailyTokens  = dbTokens;
             trackASucceeded = true;
+            // Immediately persist the correct DB value to the sidecar so that
+            // any other OpenCode window watching the file via fs.watch will pick
+            // up the authoritative total (instead of a stale inflated value).
+            dailyDate = today;
+            saveDailyUsage();
           }
         }
       }
@@ -407,12 +418,13 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     // If Track A failed, apply Track B's API totals (current-project only fallback).
     if (!trackASucceeded) {
       checkDayRollover();
-      // Take the maximum of what we already know (loaded from sidecar) and what
-      // the API returned. The backfill API may return an incomplete session list
-      // when called very shortly after startup (timing race), so we must never
-      // let a lower API value overwrite a correct sidecar value.
-      dailyCostUSD = Math.max(dailyCostUSD, backfilledCost);
-      dailyTokens  = Math.max(dailyTokens,  backfilledTokens);
+      // Use Math.max against sidecarCostUSD (not dailyCostUSD which is 0 at this point)
+      // to handle the timing race where the API returns an incomplete session list.
+      // sidecarCostUSD is the value from the last plugin run and acts as a floor,
+      // but it is never seeded into dailyCostUSD pre-backfill to avoid propagating
+      // an inflated stale value into the live accumulator.
+      dailyCostUSD = Math.max(sidecarCostUSD, backfilledCost);
+      dailyTokens  = Math.max(sidecarTokens,  backfilledTokens);
     }
 
     // Replay live events that arrived before backfill completed.
@@ -682,12 +694,29 @@ let sessionTokens  = 0;
 /** How many assistant messages this session (drives local-pet evolution). */
 let localPetSessionMessages = 0;
 
-/** Running daily USD cost (loaded from sidecar, reset at UTC midnight). */
+/** Running daily USD cost (set by backfillDailyUsage on startup, reset at UTC midnight). */
 let dailyCostUSD = 0;
-/** Running daily token count (loaded from sidecar, reset at UTC midnight). */
+/** Running daily token count (set by backfillDailyUsage on startup, reset at UTC midnight). */
 let dailyTokens  = 0;
 /** UTC date string "YYYY-MM-DD" for the currently stored daily totals. */
 let dailyDate    = "";
+
+/**
+ * Sidecar values loaded at startup — kept separate from dailyCostUSD so that
+ * a stale/inflated sidecar cannot pre-poison the live accumulator.
+ * backfillDailyUsage() uses these as a floor for the Track B fallback only;
+ * Track A (SQLite) always overwrites them entirely and ignores sidecarCostUSD.
+ */
+let sidecarCostUSD = 0;
+let sidecarTokens  = 0;
+
+/**
+ * Set of message IDs already counted toward dailyCostUSD/dailyTokens this day.
+ * Prevents double-counting when message.updated fires multiple times for the
+ * same message (e.g. once per streaming chunk before the final completion).
+ * Cleared on UTC day rollover in checkDayRollover().
+ */
+const countedMessageIds = new Set<string>();
 
 /**
  * Set to true once backfillDailyUsage() has finished.
@@ -1190,13 +1219,18 @@ export const plugin: Plugin = async (ctx) => {
         if (raw.date !== todayUTC()) { return; }
         const fileCost   = typeof raw.costUSD === "number" ? raw.costUSD : 0;
         const fileTokens = typeof raw.tokens  === "number" ? raw.tokens  : 0;
-        // Take the maximum of what we know vs what another window wrote.
-        // This ensures no window's costs are lost, and no window shows a stale low value.
-        if (fileCost > dailyCostUSD || fileTokens > dailyTokens) {
-          dailyCostUSD = Math.max(dailyCostUSD, fileCost);
-          dailyTokens  = Math.max(dailyTokens,  fileTokens);
-          // Don't call saveDailyUsage() here — this is a read-only sync;
-          // the writing window already saved the correct value.
+        // Adopt the file value if it differs meaningfully from what we hold.
+        // We no longer use Math.max here — since Track A (SQLite) now immediately
+        // overwrites the sidecar with the authoritative DB value on every startup,
+        // the file always reflects the most accurate known total. Math.max would
+        // permanently lock in any inflated value that a previous bugged run wrote.
+        // Instead: accept the file value if it is larger than our current total
+        // (another window counted more messages than us), but also accept it if it
+        // is meaningfully *lower* (another window corrected the total via Track A).
+        // The threshold avoids thrashing on floating-point noise.
+        if (Math.abs(fileCost - dailyCostUSD) > 0.0001 || Math.abs(fileTokens - dailyTokens) > 10) {
+          dailyCostUSD = fileCost;
+          dailyTokens  = fileTokens;
         }
       } catch { /* best-effort */ }
     };
@@ -1726,14 +1760,24 @@ export const plugin: Plugin = async (ctx) => {
             return;
           }
          if (info?.role === "assistant" && typeof info.cost === "number") {
+            // Only count the final completion event — skip intermediate streaming
+            // chunks (those have time.completed = 0 or unset). Without this guard,
+            // every streaming update increments dailyCostUSD with a partial cost,
+            // causing the same message to be counted dozens of times.
+            const completedAt = typeof info.time?.completed === "number" ? info.time.completed : 0;
+            if (completedAt <= 0) { return; }   // still streaming — skip
+
+            // Deduplicate by message ID: message.updated can fire multiple times
+            // for the same message ID even after completion (e.g. metadata updates).
+            const msgId: string = typeof info.id === "string" ? info.id : "";
+            if (msgId && countedMessageIds.has(msgId)) { return; }
+            if (msgId) { countedMessageIds.add(msgId); }
+
             const t = (info.tokens?.input ?? 0) + (info.tokens?.output ?? 0)
                     + (info.tokens?.reasoning ?? 0)
                     + (info.tokens?.cache?.read ?? 0) + (info.tokens?.cache?.write ?? 0);
             sessionCostUSD += info.cost;
             sessionTokens  += t;
-            const completedAt = (typeof info.time?.completed === "number" && info.time.completed > 0)
-              ? info.time.completed
-              : Date.now();
             if (!backfillComplete) {
               // Backfill is still in-flight — hold this event to avoid double-counting.
               // It will be replayed (or discarded if already captured by backfill) once

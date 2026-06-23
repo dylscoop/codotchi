@@ -1,6 +1,18 @@
 # Version History
 
-## v2.11.6 — current
+## v2.11.7 — current
+
+### Changes from v2.11.6
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/index.ts` | fix: daily cost inflation from streaming chunk double-count, stale sidecar pre-seeding, and Math.max cross-window lock-in (BUGFIX-134) |
+| `opencode-codotchi/package.json` | chore: bump version to 2.11.7 |
+| `opencode-codotchi/opencode-codotchi-2.11.7.zip` | Rebuilt OpenCode plugin zip for v2.11.7 |
+
+---
+
+## v2.11.6 — previous
 
 ### Changes from v2.11.3
 
