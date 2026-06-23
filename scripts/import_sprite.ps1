@@ -192,6 +192,16 @@ if ($null -ne $transparent) {
 }
 
 # ---------------------------------------------------------------------------
+# Direction
+# ---------------------------------------------------------------------------
+
+Write-Host ""
+Write-Host "  -- Sprite direction -------------------------------------" -ForegroundColor DarkGray
+Write-Host "  Sprites are rendered facing LEFT by default." -ForegroundColor DarkGray
+Write-Host "  If the source image faces RIGHT, enable --flip to mirror it." -ForegroundColor DarkGray
+$flip = Prompt-YN -Label "--flip (source image faces right — mirror horizontally)?" -Default $false
+
+# ---------------------------------------------------------------------------
 # Output options
 # ---------------------------------------------------------------------------
 
@@ -238,6 +248,7 @@ try {
         if ($null -ne $transparent)      { $nodeArgs += "--transparent";          $nodeArgs += $transparent }
         if ($null -ne $transparentDist)  { $nodeArgs += "--transparent-distance"; $nodeArgs += "$transparentDist" }
         if ($cropTransparent)            { $nodeArgs += "--crop-transparent" }
+        if ($flip)                       { $nodeArgs += "--flip" }
         if ($preview)                    { $nodeArgs += "--preview" }
         if ($inject)                     { $nodeArgs += "--inject" }
         if ($null -ne $frame)            { $nodeArgs += "--frame";                $nodeArgs += "$frame" }

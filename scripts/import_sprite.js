@@ -31,6 +31,9 @@
  *   --transparent <hex>   Source colour to treat as transparent (for JPEG/flat backgrounds)
  *   --transparent-distance <N>  RGB distance tolerance for --transparent (default: 2500)
  *   --crop-transparent    Trim transparent border after applying --transparent
+ *   --flip                Mirror the grid horizontally (reverse each row) so the sprite
+ *                         faces the opposite direction; use when the source image faces right
+ *                         but the sprite should face left in-game
  *   --preview             Print an ASCII art preview of the mapped grid to stdout
  *   --inject              Splice the DEFS entry and SPRITE_GRID_META registration into
  *                         vscode/media/sprites.js and pycharm/.../sprites.js
@@ -77,7 +80,7 @@ var stage       = args[2];
 if (!inputFile || !spriteType || !stage) {
   console.error("Usage: node scripts/import_sprite.js <file> <spriteType> <stage> [options]");
   console.error("Supported formats: .png, .jpg/.jpeg, .webp (via external converter), .pixil");
-  console.error("Options: --frame N  --leg-row N  --primary #hex  --secondary #hex  --accent #hex  --threshold N  --transparent #hex  --transparent-distance N  --crop-transparent  --preview  --inject");
+  console.error("Options: --frame N  --leg-row N  --primary #hex  --secondary #hex  --accent #hex  --threshold N  --transparent #hex  --transparent-distance N  --crop-transparent  --flip  --preview  --inject");
   process.exit(1);
 }
 
@@ -90,6 +93,7 @@ var alphaThresh = parseInt(getFlag("--threshold", "128"), 10);
 var transparentHex  = getFlag("--transparent", null);
 var transparentDist = parseInt(getFlag("--transparent-distance", "2500"), 10);
 var cropTransparent = hasFlag("--crop-transparent");
+var doFlip      = hasFlag("--flip");
 var doPreview   = hasFlag("--preview");
 var doInject    = hasFlag("--inject");
 
@@ -790,6 +794,14 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
       gridRow.push(mapColour(resampled.pixels[row][col]));
     }
     grid.push(gridRow);
+  }
+
+  // 7b. Horizontal flip (reverses each row so the sprite faces the opposite direction)
+  if (doFlip) {
+    for (var fi = 0; fi < grid.length; fi++) {
+      grid[fi] = grid[fi].slice().reverse();
+    }
+    console.error("Horizontally flipped grid (" + cols + " cols).");
   }
 
   // 8. Preview
