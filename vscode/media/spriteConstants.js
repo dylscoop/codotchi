@@ -30,7 +30,7 @@
     monkey:   { primary: "#8b5e3c", secondary: "#f5c07a", accent: "#5a3a1a", background: "#1a1a1a" },
     rooster:  { primary: "#c0392b", secondary: "#f39c12", accent: "#7d1f1f", background: "#1a1a1a" },
     dragon:   { primary: "#2ecc71", secondary: "#f1c40f", accent: "#1a6b3a", background: "#0d1a0d" },
-    cat:      { primary: "#1e1e1e", secondary: "#e8c44a", accent: "#333333", background: "#1a1a1a" },
+    cat:      { primary: "#222222", secondary: "#888888", accent: "#111111", background: "#1a1a1a" },
     rat:      { primary: "#9e9e9e", secondary: "#f48fb1", accent: "#616161", background: "#1a1a1a" },
     ox:       { primary: "#5d4037", secondary: "#d7ccc8", accent: "#3e2723", background: "#1a1a1a" },
     tiger:    { primary: "#e67e22", secondary: "#2c2c2c", accent: "#1a1a1a", background: "#1a1a1a" },

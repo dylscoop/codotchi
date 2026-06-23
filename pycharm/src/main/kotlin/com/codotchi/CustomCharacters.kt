@@ -100,24 +100,25 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         ),
         patBubbles  = listOf(),
     ),
+    // ── Add future custom characters here ────────────────────────────────────
     CustomCharacter(
-        spriteType  = "testsprite",
-        passcode    = "pixel",
-        defaultName  = "Pixel",
-        patLabel    = "Pat",
-        mgTitle     = "Play or Pat",
-        patToasts   = CustomCharacterToasts(
-            patted     = "Pixel enjoyed the attention!",
-            patRefused = "Pixel is too tired for that right now!",
+        spriteType   = "cat",
+        passcode     = "blackcat",
+        defaultName  = "Codotchi",
+        patLabel     = "Pet",
+        mgTitle      = "Play or Pet",
+        giftMessage  = "__Name__ found a toy mouse!",
+        patToasts    = CustomCharacterToasts(
+            patted     = "__Name__ purred!",
+            patRefused = "__Name__ is too tired for cuddles!",
         ),
-        patBubbles  = listOf(
-            "...",
-            "beep.",
-            "I am rendered.",
-            "700 columns wide and loving it.",
+        patBubbles   = listOf(
+            "Purrrr.",
+            "Don't stop.",
+            "I will knock that off the desk.",
+            "Fine. You may pet me.",
         ),
     ),
-    // ── Add future custom characters here ────────────────────────────────────
     CustomCharacter(
         spriteType   = "roo",
         passcode     = "bounce",
