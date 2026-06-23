@@ -625,7 +625,7 @@ function buildDefsEntry(spriteType, stage, grid, cols, rows) {
 // ── Injection into sprites.js ─────────────────────────────────────────────────
 
 function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legRowStart) {
-  var content = fs.readFileSync(filePath, "utf8");
+  var content = fs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\n");
 
   // 1. Insert or update the DEFS entry
   //    We look for an existing DEFS["spriteType"]["stage"] block and replace it,
@@ -715,6 +715,37 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
 
   console.error("Source dimensions: " + imgData.width + " × " + imgData.height);
 
+  // Auto-detect and remove solid background for fully-opaque images (e.g. RGB PNG, JPEG/WebP).
+  // When every pixel has alpha >= alphaThresh and all four corners share the same colour
+  // (within transparentDist), that corner colour is almost certainly the background.
+  // Skip this when the caller already supplied --transparent.
+  if (!transparentHex) {
+    var opaqueOnly = true;
+    outerCheck: for (var _r = 0; _r < imgData.height; _r++) {
+      for (var _c = 0; _c < imgData.width; _c++) {
+        if (imgData.pixels[_r][_c].a < alphaThresh) { opaqueOnly = false; break outerCheck; }
+      }
+    }
+    if (opaqueOnly) {
+      var corners = [
+        imgData.pixels[0][0],
+        imgData.pixels[0][imgData.width - 1],
+        imgData.pixels[imgData.height - 1][0],
+        imgData.pixels[imgData.height - 1][imgData.width - 1]
+      ];
+      var bg = corners[0];
+      var uniformCorners = corners.every(function(p) { return rgbDist(p, bg) <= transparentDist; });
+      if (uniformCorners) {
+        var autoBgHex = "#" + [bg.r, bg.g, bg.b].map(function(v) {
+          return ("0" + v.toString(16)).slice(-2);
+        }).join("");
+        console.error("Auto-background: image is fully opaque with uniform corners (" + autoBgHex + ") — removing as background and cropping. Use --transparent to override.");
+        imgData = applyTransparentColour(imgData, autoBgHex, transparentDist);
+        imgData = cropTransparentBorder(imgData, alphaThresh);
+      }
+    }
+  }
+
   // 2. Optional background transparency and crop (useful for JPEGs with a flat backdrop)
   imgData = applyTransparentColour(imgData, transparentHex, transparentDist);
   if (cropTransparent) {
@@ -786,7 +817,7 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
 
     // Also register/update the SPRITE_GRID_META entry in both spriteConstants.js files
     [vscodeConst, pycharmConst].forEach(function(constFile) {
-      var constContent = fs.readFileSync(constFile, "utf8");
+      var constContent = fs.readFileSync(constFile, "utf8").replace(/\r\n/g, "\n");
       var metaLine = '    ' + spriteType.padEnd(10) + ': { cols: ' + cols + ', rows: ' + rows + ', legRowStart: ' + legRowStart + ' },';
       var metaExistsPattern = new RegExp('^\\s*' + spriteType + '\\s*:\\s*\\{\\s*cols\\s*:', "m");
       if (!metaExistsPattern.test(constContent)) {
@@ -809,7 +840,7 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
 
     // Also register in ANIMAL_PALETTES if missing (with a default neutral palette)
     [vscodeConst, pycharmConst].forEach(function(constFile) {
-      var constContent = fs.readFileSync(constFile, "utf8");
+      var constContent = fs.readFileSync(constFile, "utf8").replace(/\r\n/g, "\n");
       var paletteExistsPattern = new RegExp('^\\s*' + spriteType + '\\s*:\\s*\\{\\s*primary\\s*:', "m");
       var quotedPaletteExists = constContent.indexOf('"' + spriteType + '"') !== -1 ||
                                 constContent.indexOf("'" + spriteType + "'") !== -1;

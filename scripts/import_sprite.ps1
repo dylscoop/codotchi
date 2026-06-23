@@ -43,16 +43,39 @@ function Prompt-YN {
     return ($val -eq 'y' -or $val -eq 'yes')
 }
 
+$ColourNames = @{
+    'red'    = '#cc3333'
+    'orange' = '#dd6622'
+    'yellow' = '#ddcc00'
+    'green'  = '#339944'
+    'blue'   = '#3366cc'
+    'purple' = '#7744bb'
+    'pink'   = '#dd5599'
+    'white'  = '#ffffff'
+    'grey'   = '#888888'
+    'gray'   = '#888888'
+    'black'  = '#222222'
+    'brown'  = '#8b4513'
+    'tan'    = '#c8a060'
+    'cream'  = '#f0e0b0'
+}
+
 function Prompt-Hex {
     param([string]$Label)
     while ($true) {
-        $val = Prompt-Text -Label $Label -Hint "e.g. #f2994a, or blank to skip"
+        $val = Prompt-Text -Label $Label -Hint "e.g. red, brown, #f2994a, or blank to skip"
         if ($val -eq '') { return $null }
+        $lower = $val.ToLower()
+        if ($ColourNames.ContainsKey($lower)) {
+            $resolved = $ColourNames[$lower]
+            Write-Host "  -> $lower = $resolved" -ForegroundColor DarkGray
+            return $resolved
+        }
         if ($val -match '^#?[0-9a-fA-F]{6}$') {
             if (-not $val.StartsWith('#')) { $val = "#$val" }
             return $val
         }
-        Write-Host "  Invalid hex colour. Try again." -ForegroundColor Yellow
+        Write-Host "  Unknown colour name or invalid hex. Try again." -ForegroundColor Yellow
     }
 }
 
@@ -113,29 +136,35 @@ while ($spriteType -eq '') {
 Write-Host ""
 Write-Host "  -- Stage ------------------------------------------------" -ForegroundColor DarkGray
 Write-Host "  Choose a stage:" -ForegroundColor White
-Write-Host "    1) baby   2) child   3) teen   4) adult   5) senior" -ForegroundColor DarkGray
+Write-Host "    1) baby   2) child   3) teen   4) adult   5) senior   6) all" -ForegroundColor DarkGray
 $stageMap = @{
-    '1'='baby'; '2'='child'; '3'='teen'; '4'='adult'; '5'='senior'
-    'baby'='baby'; 'child'='child'; 'teen'='teen'; 'adult'='adult'; 'senior'='senior'
+    '1'='baby'; '2'='child'; '3'='teen'; '4'='adult'; '5'='senior'; '6'='all'
+    'baby'='baby'; 'child'='child'; 'teen'='teen'; 'adult'='adult'; 'senior'='senior'; 'all'='all'
 }
 $stage = ''
 while ($stage -eq '') {
-    $raw = Prompt-Text -Label "Stage:" -Hint "number 1-5 or name"
+    $raw = Prompt-Text -Label "Stage:" -Hint "number 1-6 or name, or 'all' for all stages"
     $rawLower = $raw.ToLower()
     if ($stageMap.ContainsKey($rawLower)) {
         $stage = $stageMap[$rawLower]
     } else {
-        Write-Host "  Invalid stage. Enter 1-5 or baby/child/teen/adult/senior." -ForegroundColor Yellow
+        Write-Host "  Invalid stage. Enter 1-6 or baby/child/teen/adult/senior/all." -ForegroundColor Yellow
     }
 }
-Write-Host "  Stage set to: $stage" -ForegroundColor Green
+if ($stage -eq 'all') {
+    $stages = @('baby', 'child', 'teen', 'adult', 'senior')
+    Write-Host "  Stage set to: all (baby, child, teen, adult, senior)" -ForegroundColor Green
+} else {
+    $stages = @($stage)
+    Write-Host "  Stage set to: $stage" -ForegroundColor Green
+}
 
 # ---------------------------------------------------------------------------
 # Colour palette (optional)
 # ---------------------------------------------------------------------------
 
 Write-Host ""
-Write-Host "  -- Colour palette (blank = auto-detect) -----------------" -ForegroundColor DarkGray
+Write-Host "  -- Colour palette (blank = auto-detect; names: red, white, blue, brown...) --" -ForegroundColor DarkGray
 $primary   = Prompt-Hex -Label "--primary   (body fill):"
 $secondary = Prompt-Hex -Label "--secondary (eyes / markings):"
 $accent    = Prompt-Hex -Label "--accent    (stripes / accent):"
@@ -191,42 +220,43 @@ if ($imageFile -imatch '\.pixil$') {
 }
 
 # ---------------------------------------------------------------------------
-# Build argument list
+# Build argument list and run (once per stage)
 # ---------------------------------------------------------------------------
 
 $repoRoot  = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $jsScript  = Join-Path $PSScriptRoot "import_sprite.js"
 
-$nodeArgs = @("`"$jsScript`"", "`"$imageFile`"", $spriteType, $stage)
-
-if ($null -ne $primary)          { $nodeArgs += "--primary";              $nodeArgs += $primary }
-if ($null -ne $secondary)        { $nodeArgs += "--secondary";            $nodeArgs += $secondary }
-if ($null -ne $accent)           { $nodeArgs += "--accent";               $nodeArgs += $accent }
-if ($null -ne $legRow)           { $nodeArgs += "--leg-row";              $nodeArgs += "$legRow" }
-if ($null -ne $transparent)      { $nodeArgs += "--transparent";          $nodeArgs += $transparent }
-if ($null -ne $transparentDist)  { $nodeArgs += "--transparent-distance"; $nodeArgs += "$transparentDist" }
-if ($cropTransparent)            { $nodeArgs += "--crop-transparent" }
-if ($preview)                    { $nodeArgs += "--preview" }
-if ($inject)                     { $nodeArgs += "--inject" }
-if ($null -ne $frame)            { $nodeArgs += "--frame";                $nodeArgs += "$frame" }
-
-$fullCmd = "node " + ($nodeArgs -join " ")
-
-# ---------------------------------------------------------------------------
-# Show and run
-# ---------------------------------------------------------------------------
-
-Write-Host ""
-Write-Host "  -- Command ----------------------------------------------" -ForegroundColor DarkGray
-Write-Host "  $fullCmd" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  Running..." -ForegroundColor DarkGray
-Write-Host "  --------------------------------------------------------" -ForegroundColor DarkGray
-Write-Host ""
-
 Push-Location $repoRoot
 try {
-    & node $nodeArgs
+    foreach ($stg in $stages) {
+        $nodeArgs = @("`"$jsScript`"", "`"$imageFile`"", $spriteType, $stg)
+
+        if ($null -ne $primary)          { $nodeArgs += "--primary";              $nodeArgs += $primary }
+        if ($null -ne $secondary)        { $nodeArgs += "--secondary";            $nodeArgs += $secondary }
+        if ($null -ne $accent)           { $nodeArgs += "--accent";               $nodeArgs += $accent }
+        if ($null -ne $legRow)           { $nodeArgs += "--leg-row";              $nodeArgs += "$legRow" }
+        if ($null -ne $transparent)      { $nodeArgs += "--transparent";          $nodeArgs += $transparent }
+        if ($null -ne $transparentDist)  { $nodeArgs += "--transparent-distance"; $nodeArgs += "$transparentDist" }
+        if ($cropTransparent)            { $nodeArgs += "--crop-transparent" }
+        if ($preview)                    { $nodeArgs += "--preview" }
+        if ($inject)                     { $nodeArgs += "--inject" }
+        if ($null -ne $frame)            { $nodeArgs += "--frame";                $nodeArgs += "$frame" }
+
+        $fullCmd = "node " + ($nodeArgs -join " ")
+
+        Write-Host ""
+        Write-Host "  -- Stage: $stg ---------------------------------------" -ForegroundColor Magenta
+        Write-Host "  $fullCmd" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "  Running..." -ForegroundColor DarkGray
+        Write-Host "  --------------------------------------------------------" -ForegroundColor DarkGray
+        Write-Host ""
+
+        & node $nodeArgs
+
+        Write-Host ""
+        Write-Host "  Stage '$stg' complete." -ForegroundColor Green
+    }
 } finally {
     Pop-Location
 }
