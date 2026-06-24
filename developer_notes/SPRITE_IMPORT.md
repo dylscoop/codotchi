@@ -63,11 +63,15 @@ tool tries the following converters in order, using the first one that works:
    Supports JPEG reliably; WebP requires the optional Windows WebP codec.
 3. **ImageMagick legacy** (`convert`) — used only when the found binary is not
    `C:\Windows\System32\convert.exe` (the Windows disk utility, not ImageMagick).
+3b. **`dwebp`** (Google libwebp) — **WebP only.** Tiny standalone tool from
+   <https://developers.google.com/speed/webp/download>. Skipped for JPEG.
 4. **ffmpeg** — install from <https://ffmpeg.org>.
+5. **Python + Pillow** — tried via `py` (Windows Launcher) then `python`.
+   Requires Pillow: `pip install Pillow`. Works for both JPEG and WebP.
 
 If no converter can handle the format, the tool exits with a clear error listing
 install options. On Windows, JPEG works out of the box via PowerShell. For WebP,
-install ImageMagick v7+ or ffmpeg.
+install any of: ImageMagick v7+, `dwebp`, ffmpeg, or Python + Pillow.
 
 The temporary PNG is deleted immediately after decoding; no files are left behind.
 
@@ -81,7 +85,8 @@ The temporary PNG is deleted immediately after decoding; no files are left behin
   `zlib`, `os`, `child_process`).
 - **For JPEG/WebP:** an external converter must be available. On Windows,
   JPEG works without any install (PowerShell `System.Drawing` is built in).
-  For WebP, install ImageMagick v7+ or ffmpeg (see Supported formats above).
+  For WebP, install any of: ImageMagick v7+, `dwebp`, ffmpeg, or Python + Pillow
+  (see Supported formats above).
 
 ---
 
@@ -248,7 +253,7 @@ palette table in [`SPRITES.md`](SPRITES.md) for examples.
 |------------|--------|
 | Maximum grid size | 700 columns × 550 rows. Larger images are scaled down (aspect preserved). |
 | JPEG backgrounds | JPEGs are fully opaque. Use `--transparent "#ffffff" --transparent-distance N --crop-transparent` for flat white backgrounds before importing. |
-| WebP requires a converter | PowerShell `System.Drawing` does not support WebP unless the Windows WebP codec is installed. Install ImageMagick v7+ or ffmpeg for reliable WebP support. |
+| WebP requires a converter | PowerShell `System.Drawing` does not support WebP unless the Windows WebP codec is installed. Install ImageMagick v7+, `dwebp`, ffmpeg, or Python + Pillow for reliable WebP support. |
 | Interlaced PNGs unsupported | The PNG decoder rejects interlaced files. Re-export as non-interlaced (progressive) PNG. |
 | Brittle injection markers | `--inject` finds insertion points by searching for exact string patterns in `sprites.js` and `spriteConstants.js`. Reformatting those files can break injection. |
 | High-density grids | When a grid is denser than the on-screen bounding box (`cellWExact < 1`), the renderer switches to an offscreen canvas path. This is expected behaviour for very large imported grids. See `sprites.js` line 4141 for the v2 offscreen path. |

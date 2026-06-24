@@ -8,8 +8,8 @@
  * Supported formats:
  *   .png    — decoded natively (pure JS, no dependencies)
  *   .pixil  — Pixilart JSON format, decoded natively
- *   .jpg / .jpeg — transcoded to PNG via PowerShell System.Drawing or ImageMagick
- *   .webp   — transcoded to PNG via PowerShell System.Drawing or ImageMagick
+ *   .jpg / .jpeg — transcoded to PNG via PowerShell System.Drawing, ImageMagick, ffmpeg, or Python/Pillow
+ *   .webp   — transcoded to PNG via ImageMagick, dwebp, ffmpeg, or Python/Pillow
  *
  *   Format is detected from file content (magic bytes), not just the extension.
  *   A JPEG file named .png is handled correctly; a warning is printed when the
@@ -19,7 +19,9 @@
  *     1. ImageMagick v7+  (magick)           — install from https://imagemagick.org
  *     2. PowerShell System.Drawing            — built into Windows, no install needed
  *     3. ImageMagick legacy (convert)         — only used when not C:\Windows\System32\convert.exe
+ *     3b. dwebp (Google libwebp)             — WebP only; install from https://developers.google.com/speed/webp/download
  *     4. ffmpeg                               — install from https://ffmpeg.org
+ *     5. Python + Pillow                     — pip install Pillow (if Python is already installed)
  *
  * Options:
  *   --frame      <N>      .pixil frame index to use (default: 0)
@@ -267,11 +269,35 @@ function transcodeToPng(inputFile, format) {
     }
   }
 
+  // 3b. dwebp (Google libwebp) — WebP only
+  if (!success && format === "webp") {
+    var dwebp = which("dwebp");
+    if (dwebp) {
+      success = tryCmd("dwebp", '"' + dwebp + '" "' + absInput + '" -o "' + tmpFile + '"');
+    }
+  }
+
   // 4. ffmpeg
   if (!success) {
     var ffmpeg = which("ffmpeg");
     if (ffmpeg) {
       success = tryCmd("ffmpeg", '"' + ffmpeg + '" -y -i "' + absInput + '" "' + tmpFile + '"');
+    }
+  }
+
+  // 5. Python + Pillow — try 'py' (Windows Launcher) then 'python'
+  if (!success) {
+    var pyScript = "from PIL import Image; Image.open('" +
+      absInput.replace(/\\/g, "/").replace(/'/g, "\\'") +
+      "').convert('RGBA').save('" +
+      tmpFile.replace(/\\/g, "/").replace(/'/g, "\\'") +
+      "')";
+    var pyLaunchers = ["py", "python"];
+    for (var pi = 0; !success && pi < pyLaunchers.length; pi++) {
+      var pyLauncher = which(pyLaunchers[pi]);
+      if (pyLauncher) {
+        success = tryCmd("Python (Pillow)", '"' + pyLauncher + '" -c "' + pyScript + '"');
+      }
     }
   }
 
@@ -281,7 +307,11 @@ function transcodeToPng(inputFile, format) {
     if (lastError) { console.error("Last error: " + lastError); }
     console.error("Install one of the following, then retry:");
     console.error("  - ImageMagick v7+  https://imagemagick.org  (recommended, supports all formats)");
+    if (format === "webp") {
+      console.error("  - dwebp (Google libwebp)  https://developers.google.com/speed/webp/download  (WebP only, tiny tool)");
+    }
     console.error("  - ffmpeg           https://ffmpeg.org");
+    console.error("  - Python + Pillow  pip install Pillow  (if Python is already installed)");
     if (format === "webp") {
       console.error("  - Or install the Windows WebP codec to enable PowerShell System.Drawing support.");
     }
