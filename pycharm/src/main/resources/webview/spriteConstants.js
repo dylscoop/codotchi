@@ -25,12 +25,11 @@
   // accent    = stripes, comb, ridges (pixel index 3)
   // background = canvas background behind the pet
   var ANIMAL_PALETTES = {
-      dragon_2  : { primary: "#888888", secondary: "#444444", accent: "#222222", background: "#1a1a1a" },
+    dragon:   { primary: "#fcc135", secondary: "#f5810a", accent: "#e6332d", background: "#1a1a1a" },
     roo:      { primary: "#d9bb7b", secondary: "#663300", accent: "#8c5a24", background: "#1a1a1a" },
     classic:  { primary: "#39ff14", secondary: "#ff00ff", accent: "#1aad00", background: "#0d0d0d" },
     monkey:   { primary: "#8b5e3c", secondary: "#f5c07a", accent: "#5a3a1a", background: "#1a1a1a" },
     rooster:  { primary: "#c0392b", secondary: "#f39c12", accent: "#7d1f1f", background: "#1a1a1a" },
-    dragon:   { primary: "#2ecc71", secondary: "#f1c40f", accent: "#1a6b3a", background: "#0d1a0d" },
     cat:      { primary: "#222222", secondary: "#888888", accent: "#111111", background: "#1a1a1a" },
     rat:      { primary: "#9e9e9e", secondary: "#f48fb1", accent: "#616161", background: "#1a1a1a" },
     ox:       { primary: "#5d4037", secondary: "#d7ccc8", accent: "#3e2723", background: "#1a1a1a" },
@@ -72,7 +71,7 @@
 
   // ── Sprite orientation ────────────────────────────────────────────────────
   /** Sprite types that use a portrait (32 cols × 48 rows) grid. */
-  var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1, tim: 1, stu: 1 };
+  var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, tim: 1, stu: 1 };
 
   // ── Sprite grid metadata (v2) ─────────────────────────────────────────────
   /**
@@ -91,7 +90,6 @@
     classic:  { cols: 32, rows: 48, legRowStart: 37 },
     monkey:   { cols: 32, rows: 48, legRowStart: 37 },
     rooster:  { cols: 32, rows: 48, legRowStart: 37 },
-    dragon:   { cols: 32, rows: 48, legRowStart: 37 },
     tim:      { cols: 32, rows: 48, legRowStart: 37 },
     stu:      { cols: 64, rows: 48, legRowStart: 37 },
     // Quadruped sprites (48 × 32)
@@ -107,7 +105,7 @@
     snake:    { cols: 48, rows: 32, legRowStart: 25 },
     kangaroo: { cols: 48, rows: 32, legRowStart: 25 },
     roo       : { cols: 644, rows: 531, legRowStart: 380 },
-    dragon_2  : { cols: 135, rows: 128, legRowStart: 99 },
+    dragon    : { cols: 112, rows: 128, legRowStart: 99 },
   };
 
   /**

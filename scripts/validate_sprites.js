@@ -32,7 +32,7 @@ try {
 }
 
 // Legacy upright types (includes tim, which the old validator was missing)
-var legacyUprightTypes = { classic: 1, monkey: 1, rooster: 1, dragon: 1, tim: 1 };
+var legacyUprightTypes = { classic: 1, monkey: 1, rooster: 1, tim: 1 };
 
 function expectedColsForType(spriteType) {
   if (SPRITE_GRID_META && SPRITE_GRID_META[spriteType]) {
