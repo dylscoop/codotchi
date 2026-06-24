@@ -352,6 +352,19 @@ When creating a GitHub release for `vX.Y.Z`, the release body must cover **every
 
 `gh` is not installed. Use this PowerShell approach every time.
 
+### Step 0 — disable "Require immutable releases" in the tag Ruleset
+
+Before creating ANY release, verify the repo's tag Ruleset does not block publishing:
+
+1. Go to **https://github.com/dylscoop/codotchi/settings/rules**
+2. Find the ruleset protecting `v*` tags (likely named "Tag protection" or similar)
+3. Click **Edit**
+4. Under **Rules**, find **"Require immutable releases"** and **uncheck it**
+5. Save the ruleset
+
+Leave it unchecked permanently — immutable releases prevent all future edits,
+re-publishes, and asset uploads via both API and web UI, even after deletion.
+
 ### Step 1 — retrieve the stored PAT
 
 > **Always use the `dylscoop` account.** Pass `username=dylscoop` explicitly when retrieving credentials from the Windows Credential Manager to ensure the correct entry is returned.
@@ -397,7 +410,7 @@ $payload = @{
     target_commitish = 'main'
     name             = 'vX.Y.Z - Short release headline'
     body             = $releaseBody
-    draft            = $false
+    draft            = $true
     prerelease       = $false
 } | ConvertTo-Json -Depth 3
 
@@ -487,16 +500,23 @@ powershell -ExecutionPolicy Bypass -File upload_assets.ps1
 
 Then delete the script immediately (it contains the PAT).
 
-#### Immutable release — "tag_name was used by an immutable release"
+#### Immutable release — API or web UI blocked
 
-This error occurs when you try to publish a draft whose tag was previously consumed
-by a deleted published release. GitHub locks the tag internally even after deletion.
+**Symptom A (API):** `"tag_name was used by an immutable release"` (422)  
+**Symptom B (web UI):** "tag name unavailable for this release" — tag field greyed out in the draft editor
 
-**Workaround:** The draft is already created and assets are already uploaded correctly.
-Just publish it manually from the GitHub web UI:
+**Root cause:** The repo Ruleset has "Require immutable releases" for `v*` tags. This locks
+any release tied to a protected tag — permanently, even after the release is deleted.
 
-1. Go to https://github.com/dylscoop/codotchi/releases
-2. Find the draft for the affected version
-3. Click **Edit** → **Publish release**
+**Fix (disable the ruleset):**
+1. Go to https://github.com/dylscoop/codotchi/settings/rules
+2. Edit the tag-protection ruleset
+3. Uncheck **"Require immutable releases"** and save
 
-Do NOT delete the draft and create a new one — the assets are already there.
+After disabling:
+- **Draft with assets already uploaded:** refresh the draft editor — the tag field becomes
+  selectable. Pick the version tag and click **Publish release**.
+- **No draft exists:** run Step 2 normally to create one.
+
+Do NOT delete the draft and recreate it — assets are already attached, and the tag's
+immutability state persists across deletion/recreation.
