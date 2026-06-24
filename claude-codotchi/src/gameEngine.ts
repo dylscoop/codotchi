@@ -944,7 +944,7 @@ const ZODIAC_ANIMALS = [
  */
 const ROTATION_ANIMALS = [
   "cat", "dog", "snake", "sheep", "classic",
-  "rooster", "tiger", "kangaroo",
+  "rooster", "tiger", "kangaroo", "dragon",
 ] as const;
 
 /**
