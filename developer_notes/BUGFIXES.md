@@ -1664,3 +1664,12 @@ _Bug C â€” Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 2. _Sidecar isolation:_ `loadDailyUsage()` now stores the sidecar value in `sidecarCostUSD`/`sidecarTokens` (new module-level vars) instead of directly setting `dailyCostUSD`. `dailyCostUSD` starts at 0 and is only set by `backfillDailyUsage()`. Track B fallback uses `Math.max(sidecarCostUSD, backfilledCost)` as before, but the sidecar value no longer poisons the live accumulator if Track A succeeds.
 3. _Sidecar correction on Track A success:_ After Track A assigns `dailyCostUSD = dbCostUSD`, it immediately calls `saveDailyUsage()` to flush the correct authoritative value to disk. This ensures that other windows watching the sidecar via fs.watch pick up the corrected (lower) value immediately.
 4. _Cross-window sync without Math.max:_ `reloadDaily` now uses a plain replace (`dailyCostUSD = fileCost`) when the file and in-memory values differ by more than a float noise threshold. This allows a window that has been corrected by Track A to propagate the corrected (lower) value to other windows, breaking the inflation lock-in.
+
+## BUGFIX-135 — claude-codotchi daily cost inflated vs actual API billing
+
+**Status:** Fixed (branch `fix/daily-cost-accumulator`)
+**File:** `claude-codotchi/scripts/state.mjs`
+
+**Problem:** `accumulateDailyUsage()` maintained a checkpoint/delta accumulator in `codotchi-daily.json`. On the first invocation each UTC day for a given session, `prevCost` was 0 (no entry for today), so the full lifetime session cost was added as the day's delta — including all usage from previous days. Additionally, when the AppData daily JSON (used by the statusline via `CLAUDE_PLUGIN_DATA`) accumulated inflated state from the old code, same-day sessions had checkpoint ˜ current cost, so the self-healing delta was 0 and the inflation persisted indefinitely.
+
+**Fix:** Replaced the checkpoint/delta body of `accumulateDailyUsage()` with a direct call to `scanAllDailyUsage()`, which already existed as the fallback and correctly reads all JSONL files modified today, filtering messages by `d.timestamp.startsWith(today)`. No stale daily JSON state is consulted — the displayed value is recomputed fresh from the source of truth on every invocation.

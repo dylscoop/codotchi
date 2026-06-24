@@ -99,7 +99,7 @@ function pricingForModel(model = "") {
  * Read current session's cumulative token usage from its JSONL transcript.
  * Returns { costUsd, tokens } for the session so far.
  */
-export function readSessionUsage(sessionId) {
+export function readSessionUsage(sessionId, date = null) {
   if (!sessionId) return { costUsd: 0, tokens: 0 };
   const projsDir = path.join(os.homedir(), ".claude", "projects");
   let jsonlPath = null;
@@ -118,6 +118,7 @@ export function readSessionUsage(sessionId) {
       try {
         const d = JSON.parse(line);
         if (d.type !== "assistant" || !d.message?.usage) continue;
+        if (date && d.timestamp && !d.timestamp.startsWith(date)) continue;
         const u = d.message.usage;
         const p = pricingForModel(d.message.model ?? "");
         const inp = u.input_tokens ?? 0;
@@ -188,74 +189,10 @@ function scanAllDailyUsage() {
 export function accumulateDailyUsage(sessionId) {
   // Back-compat: callers may pass a stdinJson object — ignore it.
   if (sessionId && typeof sessionId === "object") sessionId = undefined;
-  sessionId = sessionId ?? process.env.CLAUDE_CODE_SESSION_ID;
-
-  // No session ID — fall back to scanning all project JSONLs for today.
-  if (!sessionId) {
-    return scanAllDailyUsage();
-  }
-
-  const { costUsd: currentCost, tokens: currentTokens } = readSessionUsage(sessionId);
-
-  const today = new Date().toISOString().slice(0, 10);
-
-  // ----- attempt 1 -----
-  const daily = loadDaily();
-  if (!daily[today]) daily[today] = { costUsd: 0, tokens: 0, sessions: {} };
-  const todayEntry = daily[today];
-  if (todayEntry.tokens == null) todayEntry.tokens = 0;
-
-  const prevEntry = todayEntry.sessions[sessionId];
-  const prevCost   = typeof prevEntry === "object" ? (prevEntry.lastCostUsd  ?? 0) : (prevEntry ?? 0);
-  const prevTokens = typeof prevEntry === "object" ? (prevEntry.lastTokens   ?? 0) : 0;
-
-  const costDelta   = Math.max(0, currentCost   - prevCost);
-  const tokenDelta  = Math.max(0, currentTokens - prevTokens);
-
-  todayEntry.sessions[sessionId] = { lastCostUsd: currentCost, lastTokens: currentTokens };
-  todayEntry.costUsd = (todayEntry.costUsd || 0) + costDelta;
-  todayEntry.tokens  = (todayEntry.tokens  || 0) + tokenDelta;
-
-  saveDaily(daily);
-
-  // ----- verify: guard against concurrent-write clobber -----
-  // Re-read immediately; if our session entry was overwritten by a concurrent
-  // write from another window, apply the delta to the freshly-read file and
-  // save once more.  One retry is sufficient — the odds of a second collision
-  // within milliseconds are negligible.
-  try {
-    const verify = loadDaily();
-    const vEntry = verify[today]?.sessions?.[sessionId];
-    const savedCost = typeof vEntry === "object" ? (vEntry.lastCostUsd ?? 0) : (vEntry ?? 0);
-    if (savedCost !== currentCost) {
-      // Our write was clobbered — repair
-      if (!verify[today]) verify[today] = { costUsd: 0, tokens: 0, sessions: {} };
-      const vToday = verify[today];
-      if (vToday.tokens == null) vToday.tokens = 0;
-      const vPrev = vToday.sessions[sessionId];
-      const vPrevCost   = typeof vPrev === "object" ? (vPrev.lastCostUsd ?? 0) : (vPrev ?? 0);
-      const vPrevTokens = typeof vPrev === "object" ? (vPrev.lastTokens  ?? 0) : 0;
-      const vCostDelta   = Math.max(0, currentCost   - vPrevCost);
-      const vTokenDelta  = Math.max(0, currentTokens - vPrevTokens);
-      vToday.sessions[sessionId] = { lastCostUsd: currentCost, lastTokens: currentTokens };
-      vToday.costUsd = (vToday.costUsd || 0) + vCostDelta;
-      vToday.tokens  = (vToday.tokens  || 0) + vTokenDelta;
-      saveDaily(verify);
-      // Return from the repaired file
-      if (vToday.costUsd === 0 && vToday.tokens === 0) {
-        return scanAllDailyUsage();
-      }
-      return { costUsd: vToday.costUsd, tokens: vToday.tokens };
-    }
-  } catch { /* best-effort verify — don't block on repair failure */ }
-
-  // If per-session tracking has no data yet (new session or JSONL not found),
-  // fall back to scanning all project JSONLs so we always show something.
-  if (todayEntry.costUsd === 0 && todayEntry.tokens === 0) {
-    return scanAllDailyUsage();
-  }
-
-  return { costUsd: todayEntry.costUsd, tokens: todayEntry.tokens };
+  // Always read directly from today's JSONL files — bypasses the checkpoint/delta
+  // accumulator in codotchi-daily.json which produced inflated values when
+  // sessions spanned UTC midnight or when the daily JSON had stale state.
+  return scanAllDailyUsage();
 }
 
 /** @deprecated Use accumulateDailyUsage instead. */
