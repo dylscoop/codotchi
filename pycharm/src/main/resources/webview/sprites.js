@@ -9950,7 +9950,7 @@ DEFS["roo"] = DEFS["roo"] || {};
     var sizeMultiplier;
 
     // -- Determine grid type -------------------------------------------------
-    var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, dragon: 1, tim: 1, stu: 1 };
+    var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, tim: 1, stu: 1 };
     var isUpright = !!UPRIGHT_TYPES[spriteType];
 
     // Upright animals render at smaller sizes than quadrupeds.
