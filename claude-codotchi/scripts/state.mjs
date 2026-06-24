@@ -140,7 +140,8 @@ export function readSessionUsage(sessionId, date = null) {
 function scanAllDailyUsage() {
   const projsDir = path.join(os.homedir(), ".claude", "projects");
   const today = new Date().toISOString().slice(0, 10);
-  let costUsd = 0, tokens = 0;
+  const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
+  let costUsd = 0, tokens = 0, hourlyCostUsd = 0;
   try {
     for (const proj of fs.readdirSync(projsDir)) {
       const projPath = path.join(projsDir, proj);
@@ -165,15 +166,17 @@ function scanAllDailyUsage() {
               const out = u.output_tokens ?? 0;
               const cr  = u.cache_read_input_tokens ?? 0;
               const cc  = u.cache_creation_input_tokens ?? 0;
-              costUsd += (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
+              const entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
+              costUsd += entryCost;
               tokens  += inp + out + cr + cc;
+              if (d.timestamp && d.timestamp >= oneHourAgo) hourlyCostUsd += entryCost;
             } catch { /* skip malformed lines */ }
           }
         } catch {}
       }
     }
   } catch {}
-  return { costUsd, tokens };
+  return { costUsd, tokens, hourlyCostUsd };
 }
 
 /**
@@ -229,4 +232,69 @@ export function saveConfig(cfg) {
   const dir = dataDir();
   ensureDir(dir);
   fs.writeFileSync(configPath(), JSON.stringify(cfg, null, 2), "utf8");
+}
+
+// ---------------------------------------------------------------------------
+// IDE state file helpers (VS Code / PyCharm)
+// ---------------------------------------------------------------------------
+
+/** Platform-specific base directory for all codotchi IDE state files. */
+export function getIDEBase() {
+  return process.platform === "win32"
+    ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")
+    : path.join(os.homedir(), ".config");
+}
+
+/**
+ * Returns the VS Code state file path to use.
+ *
+ * Scans `getIDEBase()/codotchi/vscode/` for state.json files in the global
+ * location and in any 12-char lowercase-hex subdirectory (per-workspace hashes
+ * written by the VS Code extension when `codotchi.perWorkspacePet` is enabled).
+ * Returns the most-recently-modified file. Falls back to the global flat path.
+ */
+export function resolveVSCodeStatePath() {
+  const base   = path.join(getIDEBase(), "codotchi", "vscode");
+  const global = path.join(base, "state.json");
+  try {
+    if (!fs.existsSync(base)) return global;
+    const candidates = [];
+    if (fs.existsSync(global)) {
+      candidates.push({ filePath: global, mtime: fs.statSync(global).mtimeMs });
+    }
+    for (const entry of fs.readdirSync(base, { withFileTypes: true })) {
+      if (entry.isDirectory() && /^[0-9a-f]{12}$/.test(entry.name)) {
+        const candidate = path.join(base, entry.name, "state.json");
+        if (fs.existsSync(candidate)) {
+          candidates.push({ filePath: candidate, mtime: fs.statSync(candidate).mtimeMs });
+        }
+      }
+    }
+    if (candidates.length === 0) return global;
+    candidates.sort((a, b) => b.mtime - a.mtime);
+    return candidates[0].filePath;
+  } catch {
+    return global;
+  }
+}
+
+/**
+ * Load a VS Code or PyCharm state file.
+ * Returns the parsed file object (with `state` and `savedAt`) or null.
+ */
+export function loadIDEStateFile(ide) {
+  let filePath;
+  if (ide === "vscode") {
+    filePath = resolveVSCodeStatePath();
+  } else if (ide === "pycharm") {
+    filePath = path.join(getIDEBase(), "codotchi", "pycharm", "state.json");
+  } else {
+    return null;
+  }
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch {
+    return null;
+  }
 }

@@ -613,7 +613,7 @@ const ZODIAC_ANIMALS = [
  */
 const ROTATION_ANIMALS = [
     "cat", "dog", "snake", "sheep", "classic",
-    "rooster", "tiger", "kangaroo",
+    "rooster", "tiger", "kangaroo", "dragon",
 ];
 /**
  * Sample a random sprite type at pet creation.

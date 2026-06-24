@@ -413,7 +413,7 @@ declare const ZODIAC_ANIMALS: readonly ["rat", "ox", "tiger", "rabbit", "dragon"
  * zodiac animals — they remain accessible via zodiac character codes too.
  * More animals will be added to this set in the future.
  */
-declare const ROTATION_ANIMALS: readonly ["cat", "dog", "snake", "sheep", "classic", "rooster", "tiger", "kangaroo"];
+declare const ROTATION_ANIMALS: readonly ["cat", "dog", "snake", "sheep", "classic", "rooster", "tiger", "kangaroo", "dragon"];
 /**
  * All valid sprite type keys.
  */

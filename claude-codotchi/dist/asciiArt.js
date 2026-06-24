@@ -688,7 +688,7 @@ export function formatCost(usd) {
  * @param costWarnThreshold   - Daily cost (USD) at which the pet switches to a warning tone (default 30).
  * @param costShoutThreshold  - Daily cost (USD) at which the pet switches to ALL CAPS shouting (default 50).
  */
-export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLastEditMs = 0, sessionUserMessages = 0, isOnProdBranch = false, dailyCostUSD = 0, dailyTokens = 0, costWarnThreshold = 30, costShoutThreshold = 50) {
+export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLastEditMs = 0, sessionUserMessages = 0, isOnProdBranch = false, dailyCostUSD = 0, dailyTokens = 0, costWarnThreshold = 30, costShoutThreshold = 50, hourlyCostUSD = 0) {
     // --- Session activity phrase ---
     const sessionMins = Math.floor(sessionMs / 60000);
     const sessionHours = Math.floor(sessionMins / 60);
@@ -792,9 +792,11 @@ export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLast
         const costStr = formatCost(dailyCostUSD);
         const tokStr = formatTokens(dailyTokens);
         const tokStrUp = tokStr.toUpperCase();
+        const hourlyStr = hourlyCostUSD > 0 ? ` ${formatCost(hourlyCostUSD)}/hr` : "";
+        const hourlyStrUp = hourlyStr.toUpperCase();
         if (dailyCostUSD >= costShoutThreshold) {
             // ALL CAPS shouting tier — red border + red text
-            const shoutSuffix = `🔴 ${costStr} TODAY — CHECK YOUR USAGE! (${tokStrUp} TOKENS)`;
+            const shoutSuffix = `🔴 ${costStr} TODAY — CHECK YOUR USAGE! (${tokStrUp} TOKENS${hourlyStrUp})`;
             return {
                 message: colour(`${phrase} ${shoutSuffix}`.toUpperCase(), FG_RED),
                 bubbleColor: FG_RED,
@@ -803,7 +805,7 @@ export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLast
         }
         else if (dailyCostUSD >= costWarnThreshold) {
             // Warning tier — yellow border + yellow cost suffix
-            const warnSuffix = `🟡 ${costStr} today — getting spendy. (${tokStr} tokens)`;
+            const warnSuffix = `🟡 ${costStr} today — getting spendy.${hourlyStr} (${tokStr} tokens)`;
             return {
                 message: `${phrase} ${colour(warnSuffix, FG_YELLOW)}`,
                 bubbleColor: FG_YELLOW,
@@ -813,11 +815,11 @@ export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLast
         else {
             // Normal tier — green border + casual mention
             const normalSuffix = pickRandom([
-                `🟢 ${costStr} and ${tokStr} tokens today.`,
-                `🟢 Running a tab — ${costStr}, ${tokStr} tokens.`,
-                `🟢 ${costStr} spent, ${tokStr} tokens burned.`,
-                `🟢 Racked up ${costStr} and ${tokStr} tokens so far.`,
-                `🟢 Ticking along at ${costStr} and ${tokStr} tokens.`,
+                `🟢 ${costStr} and ${tokStr} tokens today.${hourlyStr}`,
+                `🟢 Running a tab — ${costStr}, ${tokStr} tokens.${hourlyStr}`,
+                `🟢 ${costStr} spent, ${tokStr} tokens burned.${hourlyStr}`,
+                `🟢 Racked up ${costStr} and ${tokStr} tokens so far.${hourlyStr}`,
+                `🟢 Ticking along at ${costStr} and ${tokStr} tokens.${hourlyStr}`,
             ]);
             return {
                 message: `${phrase} ${normalSuffix}`,

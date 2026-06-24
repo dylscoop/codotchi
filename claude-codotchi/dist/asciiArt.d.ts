@@ -105,7 +105,7 @@ export declare function buildContextualSpeech(pet: {
     sick: boolean;
     sleeping: boolean;
     poops: number;
-}, filesEdited: number, sessionMs: number, timeSinceLastEditMs?: number, sessionUserMessages?: number, isOnProdBranch?: boolean, dailyCostUSD?: number, dailyTokens?: number, costWarnThreshold?: number, costShoutThreshold?: number): {
+}, filesEdited: number, sessionMs: number, timeSinceLastEditMs?: number, sessionUserMessages?: number, isOnProdBranch?: boolean, dailyCostUSD?: number, dailyTokens?: number, costWarnThreshold?: number, costShoutThreshold?: number, hourlyCostUSD?: number): {
     message: string;
     bubbleColor: string;
     tierEmoji: string;

@@ -3,5 +3,10 @@
     "type": "command",
     "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/statusline.mjs\"",
     "refreshInterval": 10
+  },
+  "panel": {
+    "type": "url",
+    "title": "Codotchi",
+    "url": "http://127.0.0.1:39847/"
   }
 }

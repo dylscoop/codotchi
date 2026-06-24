@@ -44,7 +44,7 @@ async function main() {
   const { ge, aa } = await loadEngine();
   const cfg = loadConfig();
   const now = Date.now();
-  const { costUsd: dailyCostUsd, tokens: dailyTokens } = accumulateDailyUsage(
+  const { costUsd: dailyCostUsd, tokens: dailyTokens, hourlyCostUsd } = accumulateDailyUsage(
     process.env.CLAUDE_CODE_SESSION_ID
   );
 
@@ -253,7 +253,8 @@ async function main() {
   const contextSpeech = aa.buildContextualSpeech(
     state, 0, 0, 0, file.totalMessages ?? 0, false,
     dailyCostUsd, dailyTokens,
-    cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50
+    cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50,
+    hourlyCostUsd
   );
   const { bubbleColor, tierEmoji } = contextSpeech;
 
