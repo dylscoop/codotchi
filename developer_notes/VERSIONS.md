@@ -9,6 +9,10 @@
 | `opencode-codotchi/src/index.ts` | fix: daily cost inflation from streaming chunk double-count, stale sidecar pre-seeding, and Math.max cross-window lock-in (BUGFIX-134) |
 | `opencode-codotchi/package.json` | chore: bump version to 2.11.7 |
 | `opencode-codotchi/opencode-codotchi-2.11.7.zip` | Rebuilt OpenCode plugin zip for v2.11.7 |
+| `claude-codotchi/scripts/state.mjs` | fix: replace checkpoint/delta accumulator with direct scanAllDailyUsage() — eliminates inflated daily cost from multi-day sessions and stale daily JSON (BUGFIX-135) |
+| `claude-codotchi/.claude-plugin/plugin.json` | chore: bump version to 2.11.7 |
+| `claude-codotchi/package.json` | chore: bump version to 2.11.7 |
+| `claude-codotchi/claude-codotchi-2.11.7.zip` | Rebuilt Claude Code plugin zip for v2.11.7 |
 
 ---
 

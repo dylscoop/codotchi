@@ -16,6 +16,7 @@ import {
   saveStateFile,
   loadConfig,
   accumulateDailyUsage,
+  loadIDEStateFile,
 } from "./state.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -47,7 +48,7 @@ async function main() {
   const now = Date.now();
 
   // Accumulate daily cost and tokens from the session's JSONL transcript.
-  const { costUsd: dailyCostUsd, tokens: dailyTokens } = accumulateDailyUsage(stdinJson.session_id);
+  const { costUsd: dailyCostUsd, tokens: dailyTokens, hourlyCostUsd } = accumulateDailyUsage(stdinJson.session_id);
 
   // Load or create pet state.
   let file = loadStateFile();
@@ -89,9 +90,37 @@ async function main() {
   if (dailyCostUsd >= shoutUsd) bubbleColor = "red";
   else if (dailyCostUsd >= warnUsd) bubbleColor = "orange";
 
-  let output;
+  // Load IDE pets and determine which are active (saved within 60 seconds).
+  const ACTIVE_IDE_THRESHOLD_MS = 60_000;
+  const gameConfig = ge.LOCAL_PET_GAME_CONFIG ?? ge.DEFAULT_GAME_CONFIG;
+  const idePets = [];
+  for (const [ide, label] of [["vscode", "[VS Code]"], ["pycharm", "[PyCharm]"]]) {
+    const ideFile = loadIDEStateFile(ide);
+    if (!ideFile || !ideFile.state) continue;
+    const live = (now - (ideFile.savedAt ?? 0)) <= ACTIVE_IDE_THRESHOLD_MS;
+    if (!live) continue;
+    try {
+      let ideState = ge.deserialiseState(ideFile.state);
+      if (!ideState.alive) continue;
+      const ideElapsedMs = now - (ideFile.savedAt ?? now);
+      const ideElapsedTicks = Math.floor(ideElapsedMs / (ge.TICK_INTERVAL_SECONDS * 1000));
+      if (ideElapsedTicks > 0) {
+        ideState = ge.applyOfflineDecay(ideState, ideElapsedTicks, gameConfig);
+      }
+      idePets.push({ state: ideState, label });
+    } catch {
+      // skip corrupt IDE state
+    }
+  }
+
+  const hasIDEPets = idePets.length > 0;
+  const outputs = [];
+
   if (cfg.terminalEnabled === false) {
-    output = aa.stripAnsi(aa.buildStatusBlock(state));
+    outputs.push(aa.stripAnsi(aa.buildStatusBlock(state)));
+    for (const { state: ideState } of idePets) {
+      outputs.push(aa.stripAnsi(aa.buildStatusBlock(ideState)));
+    }
   } else {
     const speech = aa.buildContextualSpeech(
       state,
@@ -103,19 +132,38 @@ async function main() {
       /*dailyCostUSD*/ dailyCostUsd,
       /*dailyTokens*/ dailyTokens,
       /*warnThresholdUSD*/ warnUsd,
-      /*shoutThresholdUSD*/ shoutUsd
+      /*shoutThresholdUSD*/ shoutUsd,
+      /*hourlyCostUSD*/ hourlyCostUsd
     );
-    output = aa.buildSpeechBubble(
+    outputs.push(aa.buildSpeechBubble(
       state.stage,
       state.mood,
       speech.message,
       state.name,
       state.spriteType,
-      undefined,
+      hasIDEPets ? "[Claude Code]" : undefined,
       speech.bubbleColor ?? bubbleColor,
       speech.tierEmoji
-    );
+    ));
+    for (const { state: ideState, label } of idePets) {
+      const ideSpeech = aa.buildContextualSpeech(
+        ideState,
+        0, 0, 0, 0, false, 0, 0, warnUsd, shoutUsd
+      );
+      outputs.push(aa.buildSpeechBubble(
+        ideState.stage,
+        ideState.mood,
+        ideSpeech.message,
+        ideState.name,
+        ideState.spriteType,
+        label,
+        ideSpeech.bubbleColor ?? "green",
+        ideSpeech.tierEmoji
+      ));
+    }
   }
+
+  const output = outputs.join("\n");
 
   // Save updated state.
   file.state = ge.serialiseState(state);
