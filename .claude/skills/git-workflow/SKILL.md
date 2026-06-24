@@ -309,6 +309,11 @@ git remote set-url origin https://dylscoop@github.com/dylscoop/codotchi.git
 
 Always pass `username=dylscoop` explicitly when retrieving the PAT from the Windows Credential Manager (see "Step 1 — retrieve the stored PAT" below).
 
+> **Known PAT:** the user has a classic PAT (`ghp_` prefix) with `repo` scope. If
+> Credential Manager retrieval fails, ask the user to paste it. Fine-grained PATs
+> (`github_pat_` prefix) may authenticate successfully but fail release creation
+> with 403 — only a classic PAT is confirmed to work end-to-end.
+
 ---
 
 ## GitHub release body — what to include
@@ -431,44 +436,49 @@ After creating the release, upload the three artifact files as release assets.
 by PATCHing `{"draft":false}`. Non-draft releases become immutable immediately and
 reject asset uploads.
 
-If publishing fails with "tag_name was used by an immutable release", the tag was
-previously consumed by a deleted release. Use a suffix tag (e.g. `v2.0.4-1`) instead.
+Upload from the `releases/` directory (not the build directories):
 
 ```powershell
 # upload_assets.ps1 (delete after use)
-$token = 'PASTE_TOKEN_HERE'
-$releaseId = RELEASE_ID_HERE
-$uploadBase = "https://uploads.github.com/repos/dylscoop/codotchi/releases/$releaseId/assets"
+$token     = 'PASTE_TOKEN_HERE'
+$releaseId = RELEASE_ID_HERE   # returned by the create call above
+$ver       = 'X.Y.Z'
 
 $artifacts = @(
-    @{ path = 'C:\personal_repos\codotchi\vscode\codotchi-X.Y.Z.vsix'; name = 'codotchi-X.Y.Z.vsix'; type = 'application/octet-stream' },
-    @{ path = 'C:\personal_repos\codotchi\pycharm\build\distributions\pycharm-codotchi-X.Y.Z.zip'; name = 'pycharm-codotchi-X.Y.Z.zip'; type = 'application/zip' },
-    @{ path = 'C:\personal_repos\codotchi\opencode-codotchi\opencode-codotchi-X.Y.Z.zip'; name = 'opencode-codotchi-X.Y.Z.zip'; type = 'application/zip' }
+    @{ path = "C:\personal_repos\codotchi\releases\codotchi-$ver.vsix";              name = "codotchi-$ver.vsix";              mime = 'application/octet-stream' },
+    @{ path = "C:\personal_repos\codotchi\releases\pycharm-codotchi-$ver.zip";       name = "pycharm-codotchi-$ver.zip";       mime = 'application/zip' },
+    @{ path = "C:\personal_repos\codotchi\releases\opencode-codotchi-$ver.zip";      name = "opencode-codotchi-$ver.zip";      mime = 'application/zip' }
 )
 
 foreach ($a in $artifacts) {
-    $uri = "$uploadBase`?name=$($a.name)"
-    $h = @{
-        Authorization          = "token $token"
-        Accept                 = 'application/vnd.github+json'
-        'X-GitHub-Api-Version' = '2022-11-28'
-        'Content-Type'         = $a.type
+    Write-Host "Uploading $($a.name)..."
+    $url = "https://uploads.github.com/repos/dylscoop/codotchi/releases/$releaseId/assets?name=$([Uri]::EscapeDataString($a.name))"
+    $client = New-Object System.Net.WebClient
+    $client.Headers.Add('Authorization', "token $token")
+    $client.Headers.Add('Content-Type', $a.mime)
+    $client.Headers.Add('Accept', 'application/vnd.github+json')
+    try {
+        $respBytes = $client.UploadFile($url, 'POST', $a.path)
+        $respJson  = [System.Text.Encoding]::UTF8.GetString($respBytes) | ConvertFrom-Json
+        Write-Host "  -> $($respJson.browser_download_url)"
+    } catch [System.Net.WebException] {
+        $stream = $_.Exception.Response.GetResponseStream()
+        $reader = New-Object System.IO.StreamReader($stream)
+        Write-Host "  ERROR: $($reader.ReadToEnd())"
     }
-    $bytes = [System.IO.File]::ReadAllBytes($a.path)
-    $r = Invoke-RestMethod -Uri $uri -Method Post -Headers $h -Body $bytes
-    Write-Host "Uploaded: $($r.name) ($($r.size) bytes)"
+    $client.Dispose()
 }
 
 # Publish the draft
-$headers = @{
-    Authorization          = "token $token"
-    Accept                 = 'application/vnd.github+json'
-    'X-GitHub-Api-Version' = '2022-11-28'
-}
+$headers = @{ 'Authorization' = "token $token"; 'Accept' = 'application/vnd.github+json' }
 $r = Invoke-RestMethod -Uri "https://api.github.com/repos/dylscoop/codotchi/releases/$releaseId" `
      -Method Patch -Headers $headers -Body '{"draft":false}' -ContentType 'application/json'
 Write-Host "Published: $($r.html_url)"
 ```
+
+> **IMPORTANT — use `WebClient.UploadFile` for binary assets, NOT `Invoke-RestMethod` with
+> `[File]::ReadAllBytes()`.** PowerShell 5.1's `Invoke-RestMethod` re-encodes binary bodies
+> and produces 422 errors for large files. `WebClient.UploadFile` sends the raw bytes correctly.
 
 Run it:
 ```
@@ -476,3 +486,17 @@ powershell -ExecutionPolicy Bypass -File upload_assets.ps1
 ```
 
 Then delete the script immediately (it contains the PAT).
+
+#### Immutable release — "tag_name was used by an immutable release"
+
+This error occurs when you try to publish a draft whose tag was previously consumed
+by a deleted published release. GitHub locks the tag internally even after deletion.
+
+**Workaround:** The draft is already created and assets are already uploaded correctly.
+Just publish it manually from the GitHub web UI:
+
+1. Go to https://github.com/dylscoop/codotchi/releases
+2. Find the draft for the affected version
+3. Click **Edit** → **Publish release**
+
+Do NOT delete the draft and create a new one — the assets are already there.
