@@ -123,6 +123,11 @@ function luminance(rgb) {
   return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
 }
 
+function rgbToHex(rgb) {
+  function h(n) { return ("0" + Math.max(0, Math.min(255, n)).toString(16)).slice(-2); }
+  return "#" + h(rgb.r) + h(rgb.g) + h(rgb.b);
+}
+
 function applyTransparentColour(src, transparentHex, transparentDist) {
   if (!transparentHex) { return src; }
   var target = hexToRgb(transparentHex);
@@ -570,14 +575,21 @@ function buildColourMapper(pixels, width, height, alphaThresh, priHex, secHex, a
     if (secHex) { targets.push({ idx: 2, rgb: hexToRgb(secHex) }); }
     if (accHex) { targets.push({ idx: 3, rgb: hexToRgb(accHex) }); }
 
-    return function(px) {
-      if (px.a < alphaThresh) { return 0; }
-      var best = 0, bestDist = Infinity;
-      for (var ti = 0; ti < targets.length; ti++) {
-        var d = rgbDist({ r: px.r, g: px.g, b: px.b }, targets[ti].rgb);
-        if (d < bestDist) { bestDist = d; best = targets[ti].idx; }
-      }
-      return best || 1;
+    return {
+      fn: function(px) {
+        if (px.a < alphaThresh) { return 0; }
+        var best = 0, bestDist = Infinity;
+        for (var ti = 0; ti < targets.length; ti++) {
+          var d = rgbDist({ r: px.r, g: px.g, b: px.b }, targets[ti].rgb);
+          if (d < bestDist) { bestDist = d; best = targets[ti].idx; }
+        }
+        return best || 1;
+      },
+      palette: {
+        primary:   priHex || "#888888",
+        secondary: secHex || "#444444",
+        accent:    accHex || "#222222",
+      },
     };
   }
 
@@ -601,7 +613,10 @@ function buildColourMapper(pixels, width, height, alphaThresh, priHex, secHex, a
 
   if (top3.length === 0) {
     console.error("Warning: no non-transparent pixels found in source image");
-    return function() { return 0; };
+    return {
+      fn: function() { return 0; },
+      palette: { primary: "#888888", secondary: "#444444", accent: "#222222" },
+    };
   }
 
   // Rank top 3 by luminance: highest luminance = primary (1), mid = secondary (2), lowest = accent (3)
@@ -609,17 +624,24 @@ function buildColourMapper(pixels, width, height, alphaThresh, priHex, secHex, a
 
   console.error("Auto-detected palette:");
   ranked.forEach(function(c, i) {
-    console.error("  index " + (i + 1) + ": rgb(" + c.r + "," + c.g + "," + c.b + ")  lum=" + luminance(c).toFixed(1));
+    console.error("  index " + (i + 1) + ": rgb(" + c.r + "," + c.g + "," + c.b + ")  lum=" + luminance(c).toFixed(1) + "  hex=" + rgbToHex(c));
   });
 
-  return function(px) {
-    if (px.a < alphaThresh) { return 0; }
-    var best = 0, bestDist = Infinity;
-    for (var ri = 0; ri < ranked.length; ri++) {
-      var d = rgbDist({ r: px.r, g: px.g, b: px.b }, ranked[ri]);
-      if (d < bestDist) { bestDist = d; best = ri + 1; }
-    }
-    return best;
+  return {
+    fn: function(px) {
+      if (px.a < alphaThresh) { return 0; }
+      var best = 0, bestDist = Infinity;
+      for (var ri = 0; ri < ranked.length; ri++) {
+        var d = rgbDist({ r: px.r, g: px.g, b: px.b }, ranked[ri]);
+        if (d < bestDist) { bestDist = d; best = ri + 1; }
+      }
+      return best;
+    },
+    palette: {
+      primary:   ranked[0] ? rgbToHex(ranked[0]) : "#888888",
+      secondary: ranked[1] ? rgbToHex(ranked[1]) : "#444444",
+      accent:    ranked[2] ? rgbToHex(ranked[2]) : "#222222",
+    },
   };
 }
 
@@ -811,10 +833,12 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
   console.error("Grid: " + cols + " cols × " + rows + " rows, legRowStart=" + legRowStart);
 
   // 6. Build colour mapper
-  var mapColour = buildColourMapper(
+  var colorMapper    = buildColourMapper(
     resampled.pixels, cols, rows, alphaThresh,
     primaryHex, secondaryHex, accentHex
   );
+  var mapColour      = colorMapper.fn;
+  var displayPalette = colorMapper.palette;
 
   // 7. Build grid (array of arrays of colour indices)
   var grid = [];
@@ -880,18 +904,29 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
       }
     });
 
-    // Also register in ANIMAL_PALETTES if missing (with a default neutral palette)
+    // Also register/update in ANIMAL_PALETTES with the resolved display colours
     [vscodeConst, pycharmConst].forEach(function(constFile) {
       var constContent = fs.readFileSync(constFile, "utf8").replace(/\r\n/g, "\n");
+      var paletteLine = '    ' + spriteType.padEnd(10) +
+        ': { primary: "' + displayPalette.primary +
+        '", secondary: "' + displayPalette.secondary +
+        '", accent: "' + displayPalette.accent +
+        '", background: "#1a1a1a" },';
       var paletteExistsPattern = new RegExp('^\\s*' + spriteType + '\\s*:\\s*\\{\\s*primary\\s*:', "m");
       var quotedPaletteExists = constContent.indexOf('"' + spriteType + '"') !== -1 ||
                                 constContent.indexOf("'" + spriteType + "'") !== -1;
       if (!paletteExistsPattern.test(constContent) && !quotedPaletteExists) {
-        var paletteLine = '    ' + spriteType.padEnd(10) + ': { primary: "#888888", secondary: "#444444", accent: "#222222", background: "#1a1a1a" },';
         var insertAfter = "var ANIMAL_PALETTES = {";
         constContent = constContent.replace(insertAfter, insertAfter + "\n  " + paletteLine);
         fs.writeFileSync(constFile, constContent, "utf8");
-        console.error("Added default ANIMAL_PALETTES entry for " + spriteType + " in " + constFile + " (update colours manually)");
+        console.error("Added ANIMAL_PALETTES entry for " + spriteType + " in " + constFile);
+      } else if (paletteExistsPattern.test(constContent)) {
+        constContent = constContent.replace(
+          new RegExp('^([ \\t]*' + spriteType + '[ \\t]*:.*)$', "m"),
+          "  " + paletteLine
+        );
+        fs.writeFileSync(constFile, constContent, "utf8");
+        console.error("Updated ANIMAL_PALETTES entry for " + spriteType + " in " + constFile);
       }
     });
 
