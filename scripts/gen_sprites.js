@@ -522,76 +522,6 @@ out.push('    ]');
 out.push('  };');
 
 // ============================================================================
-// DRAGON — upright, horns (3) on top, wings (3) on back, spiky tail (3)
-// ============================================================================
-function dragonGrid(bt, bl, br, eyeRow, hasLegs) {
-  var g = new Array(48).fill(R32);
-  var mid = Math.round((bl+br)/2);
-  // horns
-  if (bt >= 3) {
-    [[bt-3,mid-3,mid-3],[bt-2,mid-3,mid-2],[bt-3,mid+3,mid+3],[bt-2,mid+2,mid+3]].forEach(function(sp){
-      var a=g[sp[0]].split(''); for(var c=sp[1];c<=sp[2];c++)a[c]='3'; g[sp[0]]=a.join('');
-    });
-  }
-  // body (slightly wider)
-  for (var r=bt;r<=36;r++){
-    var arr=new Array(32).fill('0');
-    var ind=(r===bt)?1:0;
-    for(var c=bl+ind;c<=br-ind;c++) arr[c]='1';
-    g[r]=arr.join('');
-  }
-  // eyes (slit pupils = accent)
-  if(eyeRow>=0){
-    var a=g[eyeRow].split('');
-    a[bl+2]='2';a[bl+3]='3';a[br-3]='2';a[br-2]='3';
-    g[eyeRow]=a.join('');
-  }
-  // nostrils
-  if(eyeRow+2<37){var a2=g[eyeRow+2].split('');a2[mid-1]='3';a2[mid+1]='3';g[eyeRow+2]=a2.join('');}
-  // wings (rows on each side, accent)
-  for(var r2=eyeRow+2;r2<=eyeRow+10;r2++){
-    if(r2<37){
-      var a3=g[r2].split('');
-      var w=Math.min(4, r2-eyeRow);
-      for(var c2=bl-w;c2<bl&&c2>=0;c2++) a3[c2]='3';
-      for(var c3=br+1;c3<=br+w&&c3<32;c3++) a3[c3]='3';
-      g[r2]=a3.join('');
-    }
-  }
-  // spine/back ridges
-  for(var r3=bt;r3<=36;r3+=2){
-    var a4=g[r3].split('');
-    if(br+1<32) a4[br+1]='3';
-    g[r3]=a4.join('');
-  }
-  if(hasLegs){
-    var ll=10,lr=12,rl=19,rr=21;
-    for(var r4=37;r4<=40;r4++){var a5=new Array(32).fill('0');for(var c4=ll;c4<=lr;c4++)a5[c4]='1';for(var c5=rl;c5<=rr;c5++)a5[c5]='1';g[r4]=a5.join('');}
-    for(var r5=42;r5<=45;r5++){var a6=new Array(32).fill('0');for(var c6=ll;c6<=lr;c6++)a6[c6]='1';for(var c7=rl;c7<=rr;c7++)a6[c7]='1';g[r5]=a6.join('');}
-    for(var r6=46;r6<=47;r6++){var a7=new Array(32).fill('0');for(var c8=ll-1;c8<=lr+1;c8++)if(c8>=0&&c8<32)a7[c8]='1';for(var c9=rl-1;c9<=rr+1;c9++)if(c9>=0&&c9<32)a7[c9]='1';g[r6]=a7.join('');}
-  }
-  return g;
-}
-
-out.push('  DEFS["dragon"] = {');
-out.push('    baby: [');
-dragonGrid(22,13,18,24,false).forEach(function(r,i){out.push('      "'+r+'"'+(i<47?',':'')+'//' +i);});
-out.push('    ],');
-out.push('    child: [');
-dragonGrid(18,12,19,20,false).forEach(function(r,i){out.push('      "'+r+'"'+(i<47?',':'')+'//' +i);});
-out.push('    ],');
-out.push('    teen: [');
-dragonGrid(14,11,20,16,true).forEach(function(r,i){out.push('      "'+r+'"'+(i<47?',':'')+'//' +i);});
-out.push('    ],');
-out.push('    adult: [');
-dragonGrid(10,9,22,12,true).forEach(function(r,i){out.push('      "'+r+'"'+(i<47?',':'')+'//' +i);});
-out.push('    ],');
-out.push('    senior: [');
-dragonGrid(10,9,22,12,true).forEach(function(r,i){out.push('      "'+r+'"'+(i<47?',':'')+'//' +i);});
-out.push('    ]');
-out.push('  };');
-
-// ============================================================================
 // QUADRUPED BUILDER — shared function, parameterised per animal
 // 48 cols x 32 rows. Head LEFT, tail RIGHT. Legs rows 25-31.
 // ============================================================================
@@ -1029,7 +959,7 @@ out.push('  };');
 
 // Validate all rows
 var errors = 0;
-var uprightTypes = {classic:1,monkey:1,rooster:1,dragon:1};
+var uprightTypes = {classic:1,monkey:1,rooster:1};
 out.forEach(function(line){
   var m = line.match(/^\s+"([01230-9]+)"[,]?\/\/\d+$/);
   if(!m) return;

@@ -38,7 +38,7 @@ private val ZODIAC_ANIMALS = listOf(
  */
 private val ROTATION_ANIMALS = listOf(
     "cat", "dog", "snake", "sheep", "classic",
-    "rooster", "tiger", "kangaroo"
+    "rooster", "tiger", "kangaroo", "dragon"
 )
 
 /**
