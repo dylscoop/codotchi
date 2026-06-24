@@ -199,7 +199,7 @@ Write-Host ""
 Write-Host "  -- Sprite direction -------------------------------------" -ForegroundColor DarkGray
 Write-Host "  Sprites are rendered facing LEFT by default." -ForegroundColor DarkGray
 Write-Host "  If the source image faces RIGHT, enable --flip to mirror it." -ForegroundColor DarkGray
-$flip = Prompt-YN -Label "--flip (source image faces right — mirror horizontally)?" -Default $false
+$flip = Prompt-YN -Label "--flip (source image faces right - mirror horizontally)?" -Default $false
 
 # ---------------------------------------------------------------------------
 # Output options

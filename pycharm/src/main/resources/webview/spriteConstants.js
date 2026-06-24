@@ -25,6 +25,7 @@
   // accent    = stripes, comb, ridges (pixel index 3)
   // background = canvas background behind the pet
   var ANIMAL_PALETTES = {
+      dragon_2  : { primary: "#888888", secondary: "#444444", accent: "#222222", background: "#1a1a1a" },
     roo:      { primary: "#d9bb7b", secondary: "#663300", accent: "#8c5a24", background: "#1a1a1a" },
     classic:  { primary: "#39ff14", secondary: "#ff00ff", accent: "#1aad00", background: "#0d0d0d" },
     monkey:   { primary: "#8b5e3c", secondary: "#f5c07a", accent: "#5a3a1a", background: "#1a1a1a" },
@@ -106,6 +107,7 @@
     snake:    { cols: 48, rows: 32, legRowStart: 25 },
     kangaroo: { cols: 48, rows: 32, legRowStart: 25 },
     roo       : { cols: 644, rows: 531, legRowStart: 380 },
+    dragon_2  : { cols: 135, rows: 128, legRowStart: 99 },
   };
 
   /**
