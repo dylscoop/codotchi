@@ -1,8 +1,8 @@
 # codotchi — VS Code extension
 
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/vscode/media/monkey_adult_1x.png" height="64" alt="Monkey sprite" />
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/vscode/media/dog_adult_1x.png" height="64" alt="Dog sprite" />
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/vscode/media/snake_adult_1x.png" height="64" alt="Snake sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/dog_adult_1x.png" height="64" alt="Dog sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/dragon_adult_1x.png" height="64" alt="Dragon sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/kangaroo_adult_1x.png" height="64" alt="Kangaroo sprite" />
 
 Grow and raise your personal virtual pet as a VS Code extension while you code.
 
@@ -14,7 +14,7 @@ lives in a sidebar panel, reacts to your coding activity, and needs regular care
 to survive and evolve into its final form. Any support and feedback is much appreciated
 — see the [Support](#support) section below!
 
-Your pet is drawn from one of **15 sprite sets**, 12 of which are based on a zodiac animal,
+Your pet is drawn from one of **7 sprite sets**, with more to be added in the future,
 assigned to you at random when you start a new game.
 
 ## Features

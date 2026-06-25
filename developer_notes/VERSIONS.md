@@ -1,6 +1,25 @@
 # Version History
 
-## v2.11.7 — current
+## v2.14.1 — current
+
+### Changes from v2.14.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/README.md` | chore: replace monkey/dog/snake showcase sprites with dog/dragon/kangaroo (root-level PNG paths) |
+| `pycharm/README.md` | chore: replace monkey/dog/snake showcase sprites with dog/dragon/kangaroo (root-level PNG paths) |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: replace monkey/dog/snake showcase sprites with dog/dragon/kangaroo (root-level PNG paths) |
+| `vscode/package.json` | chore: bump version to 2.14.1 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.14.1 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.14.1 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.14.1 |
+| `vscode/codotchi-2.14.1.vsix` | Rebuilt VS Code extension artifact for v2.14.1 |
+| `pycharm/build/distributions/pycharm-codotchi-2.14.1.zip` | Rebuilt PyCharm plugin artifact for v2.14.1 |
+| `opencode-codotchi/opencode-codotchi-2.14.1.zip` | Rebuilt OpenCode plugin zip for v2.14.1 |
+
+---
+
+## v2.11.7 — previous
 
 ### Changes from v2.11.6
 

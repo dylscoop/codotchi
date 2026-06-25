@@ -106,9 +106,9 @@ describe("constants", () => {
   it("randomSpriteType returns a value from the ROTATION_ANIMALS pool", () => {
     const ROTATION_ANIMALS = [
       "cat", "dog", "snake", "sheep", "classic",
-      "rooster", "tiger", "kangaroo",
+      "rooster", "tiger", "kangaroo", "dragon",
     ];
-    // Run enough iterations to cover all 8 slots
+    // Run enough iterations to cover all 9 slots
     const originalRandom = Math.random;
     try {
       for (let i = 0; i < ROTATION_ANIMALS.length; i++) {
@@ -125,26 +125,25 @@ describe("constants", () => {
     }
   });
 
-  it("randomSpriteType includes kangaroo, cat, classic, and rotation-zodiac animals", () => {
+  it("randomSpriteType includes kangaroo, dragon, cat, classic, and rotation-zodiac animals", () => {
     const ROTATION_ANIMALS = [
       "cat", "dog", "snake", "sheep", "classic",
-      "rooster", "tiger", "kangaroo",
+      "rooster", "tiger", "kangaroo", "dragon",
     ];
     const originalRandom = Math.random;
     try {
-      // Force last index → kangaroo
+      // Force last index → dragon
       Math.random = () => 0.99;
-      assert.equal(randomSpriteType(), "kangaroo");
+      assert.equal(randomSpriteType(), "dragon");
       // Force first index → cat
       Math.random = () => 0;
       assert.equal(randomSpriteType(), "cat");
-      // Confirm a zodiac-only animal (rat) is never returned
+      // Confirm zodiac-only animals are never returned
       for (let i = 0; i < ROTATION_ANIMALS.length; i++) {
         Math.random = () => i / ROTATION_ANIMALS.length;
         assert.notEqual(randomSpriteType(), "rat");
         assert.notEqual(randomSpriteType(), "ox");
         assert.notEqual(randomSpriteType(), "rabbit");
-        assert.notEqual(randomSpriteType(), "dragon");
         assert.notEqual(randomSpriteType(), "horse");
         assert.notEqual(randomSpriteType(), "monkey");
         assert.notEqual(randomSpriteType(), "pig");

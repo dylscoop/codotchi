@@ -12,8 +12,8 @@ evolved form — but only if you take care of it. Feed it, play with it, put it
 to sleep, and keep its environment clean. Neglect it and it gets sick. Leave it
 sick long enough and it dies.
 
-Your coding activity matters too: every file you save makes your pet a little
-happier.
+Your coding activity matters too: every file you save and commit makes your pet a 
+little happier.
 
 ## Platforms
 
