@@ -17,6 +17,10 @@ to survive and evolve into its final form. Any support and feedback is much appr
 Your pet is drawn from one of **7 sprite sets**, with more to be added in the future,
 assigned to you at random when you start a new game.
 
+## Preview
+
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/example_skippy.png" width="400" alt="Skippy the kangaroo — Codotchi in action" />
+
 ## Features
 
 - **Sidebar pet panel** — pixel art pet with animated sprites, stat bars, and

@@ -16,6 +16,12 @@
 | `vscode/codotchi-2.14.1.vsix` | Rebuilt VS Code extension artifact for v2.14.1 |
 | `pycharm/build/distributions/pycharm-codotchi-2.14.1.zip` | Rebuilt PyCharm plugin artifact for v2.14.1 |
 | `opencode-codotchi/opencode-codotchi-2.14.1.zip` | Rebuilt OpenCode plugin zip for v2.14.1 |
+| `vscode/package.json` | chore: add marketplace metadata — keywords, bugs, homepage, pricing, galleryBanner, fix repository URL to codotchi |
+| `vscode/CHANGELOG.md` | chore: create CHANGELOG.md with v2.14.1 and v2.14.0 entries for VS Code Marketplace |
+| `vscode/README.md` | chore: add Preview section with example_skippy.png screenshot |
+| `pycharm/README.md` | chore: add Preview section with example_skippy.png screenshot |
+| `vscode/codotchi-2.14.1.vsix` | Rebuilt with marketplace metadata changes |
+| `pycharm/build/distributions/pycharm-codotchi-2.14.1.zip` | Rebuilt with README preview section |
 
 ---
 
