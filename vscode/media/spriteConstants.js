@@ -28,17 +28,9 @@
       dragon    : { primary: "#ffac30", secondary: "#d50219", accent: "#d5011d", background: "#1a1a1a" },
     roo:      { primary: "#d9bb7b", secondary: "#663300", accent: "#8c5a24", background: "#1a1a1a" },
     classic:  { primary: "#39ff14", secondary: "#ff00ff", accent: "#1aad00", background: "#0d0d0d" },
-    monkey:   { primary: "#8b5e3c", secondary: "#f5c07a", accent: "#5a3a1a", background: "#1a1a1a" },
-    rooster:  { primary: "#c0392b", secondary: "#f39c12", accent: "#7d1f1f", background: "#1a1a1a" },
     cat:      { primary: "#222222", secondary: "#ffffffff", accent: "#333333ff", background: "#1a1a1a" },
-    rat:      { primary: "#9e9e9e", secondary: "#f48fb1", accent: "#616161", background: "#1a1a1a" },
-    ox:       { primary: "#5d4037", secondary: "#d7ccc8", accent: "#3e2723", background: "#1a1a1a" },
-    tiger:    { primary: "#e67e22", secondary: "#2c2c2c", accent: "#1a1a1a", background: "#1a1a1a" },
-    rabbit:   { primary: "#f5f5f5", secondary: "#f48fb1", accent: "#e0e0e0", background: "#1a1a1a" },
-    horse:    { primary: "#8b6914", secondary: "#4a3728", accent: "#5c4a1e", background: "#1a1a1a" },
     sheep:    { primary: "#eceff1", secondary: "#5d4037", accent: "#b0bec5", background: "#1a1a1a" },
     dog:      { primary: "#f2994a", secondary: "#f2eadf", accent: "#5b2f1f", background: "#1a1a1a" },
-    pig:      { primary: "#f8bbd0", secondary: "#e91e63", accent: "#f48fb1", background: "#1a1a1a" },
     snake:    { primary: "#558b2f", secondary: "#ffeb3b", accent: "#33691e", background: "#0d1a0d" },
     kangaroo: { primary: "#d9bb7b", secondary: "#663300", accent: "#8c5a24", background: "#1a1a1a" },
     tim:      { primary: "#f5c5a3", secondary: "#4a90d9", accent: "#2c3e50", background: "#1a1a2e" },
@@ -71,7 +63,7 @@
 
   // ── Sprite orientation ────────────────────────────────────────────────────
   /** Sprite types that use a portrait (32 cols × 48 rows) grid. */
-  var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, tim: 1, stu: 1 };
+  var UPRIGHT_TYPES = { classic: 1, tim: 1, stu: 1 };
 
   // ── Sprite grid metadata (v2) ─────────────────────────────────────────────
   /**
@@ -88,20 +80,12 @@
   var SPRITE_GRID_META = {
     // Upright sprites (32 × 48)
     classic:  { cols: 32, rows: 48, legRowStart: 37 },
-    monkey:   { cols: 32, rows: 48, legRowStart: 37 },
-    rooster:  { cols: 32, rows: 48, legRowStart: 37 },
     tim:      { cols: 32, rows: 48, legRowStart: 37 },
     stu:      { cols: 64, rows: 48, legRowStart: 37 },
     // Quadruped sprites (48 × 32)
     cat       : { cols: 142, rows: 128, legRowStart: 99 },
-    rat:      { cols: 48, rows: 32, legRowStart: 25 },
-    ox:       { cols: 48, rows: 32, legRowStart: 25 },
-    tiger:    { cols: 48, rows: 32, legRowStart: 25 },
-    rabbit:   { cols: 48, rows: 32, legRowStart: 25 },
-    horse:    { cols: 48, rows: 32, legRowStart: 25 },
     sheep:    { cols: 48, rows: 32, legRowStart: 25 },
     dog:      { cols: 573, rows: 550, legRowStart: 385 },
-    pig:      { cols: 48, rows: 32, legRowStart: 25 },
     snake:    { cols: 48, rows: 32, legRowStart: 25 },
     kangaroo: { cols: 48, rows: 32, legRowStart: 25 },
     roo       : { cols: 644, rows: 531, legRowStart: 380 },
@@ -125,7 +109,7 @@
   // ── Weight → width multiplier (upright sprites and snake only) ───────────
   /**
    * Return the width multiplier for the sprite based on weight.
-   * Used only for upright sprites (classic, monkey, rooster, dragon) and snake.
+   * Used only for upright sprites (classic, tim, stu) and snake.
    * Quadrupeds other than snake use belly-sag rows instead — see spriteQuadBellySag().
    * @param {number} weight  0–100
    * @returns {number}
