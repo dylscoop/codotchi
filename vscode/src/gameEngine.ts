@@ -938,13 +938,12 @@ const ZODIAC_ANIMALS = [
 /**
  * Animals in the random rotation pool at pet creation.
  * All entries have equal probability (1 / ROTATION_ANIMALS.length each).
- * Note: some rotation animals (dog, snake, sheep, rooster, tiger) are also
- * zodiac animals — they remain accessible via zodiac character codes too.
- * More animals will be added to this set in the future.
+ * Note: some rotation animals (dog, snake, sheep) are also zodiac animals —
+ * they remain accessible via zodiac character codes too.
  */
 const ROTATION_ANIMALS = [
   "cat", "dog", "snake", "sheep", "classic",
-  "rooster", "tiger", "kangaroo", "dragon",
+  "kangaroo", "dragon",
 ] as const;
 
 /**
