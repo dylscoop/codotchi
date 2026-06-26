@@ -2420,6 +2420,9 @@
      if (isUp) {
        return ps === "small" ? 0.5625 : ps === "large" ? 1.0 : 0.75;
      }
+     if (spriteType === "cat" || spriteType === "dog") {
+       return ps === "small" ? 0.64 : ps === "large" ? 1.28 : 0.85;
+     }
      return ps === "small" ? 0.75 : ps === "large" ? 1.5 : 1.0;
    }
 

@@ -1,6 +1,27 @@
 # Version History
 
-## v2.14.1 — current
+## v2.15.1 — current
+
+### Changes from v2.15.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/spriteConstants.js` | feat: rework dog sprite — new beige/tan palette, grid resized to 136×128 to match cat |
+| `pycharm/src/main/resources/webview/spriteConstants.js` | feat: rework dog sprite — new beige/tan palette, grid resized to 136×128 to match cat |
+| `vscode/media/sprites.js` | feat: replace dog sprite data with new 136×128 grid frames |
+| `pycharm/src/main/resources/webview/sprites.js` | feat: replace dog sprite data with new 136×128 grid frames |
+| `vscode/media/sidebar.js` | feat: scale down cat and dog renders to 0.85× at medium pet size (was 1.0×) |
+| `pycharm/src/main/resources/webview/sidebar.js` | feat: scale down cat and dog renders to 0.85× at medium pet size (was 1.0×) |
+| `vscode/package.json` | chore: bump version to 2.15.1 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.15.1 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.15.1 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.15.1 |
+| `vscode/codotchi-2.15.1.vsix` | Rebuilt VS Code extension artifact for v2.15.1 |
+| `pycharm/build/distributions/pycharm-codotchi-2.15.1.zip` | Rebuilt PyCharm plugin artifact for v2.15.1 |
+
+---
+
+## v2.14.1 — previous
 
 ### Changes from v2.14.0
 
