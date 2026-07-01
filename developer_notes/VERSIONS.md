@@ -18,6 +18,21 @@
 | `opencode-codotchi/package.json` | chore: bump version to 2.15.1 |
 | `vscode/codotchi-2.15.1.vsix` | Rebuilt VS Code extension artifact for v2.15.1 |
 | `pycharm/build/distributions/pycharm-codotchi-2.15.1.zip` | Rebuilt PyCharm plugin artifact for v2.15.1 |
+| `claude-desktop-codotchi/` | feat: new Claude Desktop integration — MCP App + .mcpb bundle with canvas widget (same sprites as VS Code), speech bubble session stats, rewards while talking via `codotchi_activity` tool |
+| `claude-desktop-codotchi/package.json` | feat: initial package — deps @modelcontextprotocol/sdk + @modelcontextprotocol/ext-apps |
+| `claude-desktop-codotchi/manifest.json` | feat: MCPB manifest v0.2 — 8 tools, user_config (pet_name, pet_type, reduced_motion) |
+| `claude-desktop-codotchi/src/server.ts` | feat: MCP server — registerAppResource + registerAppTool with structuredContent payload |
+| `claude-desktop-codotchi/src/tools.ts` | feat: tool handlers — show/tick/activity/feed/pat/sleepToggle/clean/medicine |
+| `claude-desktop-codotchi/src/state.ts` | feat: state + session persistence — offline-decay catch-up, daily session sidecar |
+| `claude-desktop-codotchi/src/gameEngine.ts` | feat: copy of shared game engine (from claude-codotchi/src/gameEngine.ts) |
+| `claude-desktop-codotchi/src/asciiArt.ts` | feat: copy of shared ASCII renderer (from claude-codotchi/src/asciiArt.ts) |
+| `claude-desktop-codotchi/ui/index.html` | feat: MCP App widget — adapted from claude-codotchi panel; action buttons, session stats |
+| `claude-desktop-codotchi/ui/companion.js` | feat: canvas renderer adapted for MCP App bridge transport + speech bubble session stats |
+| `claude-desktop-codotchi/ui/mcp-bridge.js` | feat: ext-apps App bridge replacing SSE transport |
+| `claude-desktop-codotchi/scripts/build.mjs` | feat: build script — typecheck, esbuild server (ESM), inline HTML resource |
+| `claude-desktop-codotchi/scripts/bundle-mcpb.mjs` | feat: .mcpb bundler using adm-zip (forward-slash ZIP entries) |
+| `README.md` | docs: add Claude Desktop to platforms table and repo layout |
+| `claude-desktop-codotchi/README.md` | docs: new README — install, tools table, rewards/speech bubble, dev commands |
 
 ---
 

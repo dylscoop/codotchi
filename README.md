@@ -195,7 +195,7 @@ gradlew.bat buildPlugin
 
 See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
-Current release: **v2.11.3** — built by [dylscoop](https://github.com/dylscoop)
+Current release: **v2.15.1** — built by [dylscoop](https://github.com/dylscoop)
 
 > "Grow your best pet by writing your best code."
 
