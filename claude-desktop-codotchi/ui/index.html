@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="companion.css" />
+  <style>
+    .hidden { display: none !important; }
+    .actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin: 6px 0 2px; }
+    .actions button {
+      font: inherit; font-size: 11px; cursor: pointer;
+      color: #ddd; background: #2a2a40; border: 1px solid #444;
+      border-radius: 4px; padding: 3px 8px;
+    }
+    .actions button:hover { background: #34345a; }
+    .actions button:active { transform: translateY(1px); }
+    .actions button:disabled { opacity: 0.5; cursor: default; }
+  </style>
+  <title>Codotchi</title>
+</head>
+<body>
+
+  <!-- Connecting state -->
+  <div id="connecting">Connecting to pet…</div>
+
+  <!-- Panel root (shown after first state arrives) -->
+  <div id="panel-root" class="hidden">
+
+    <!-- Game screen -->
+    <div id="game-screen">
+      <div class="pet-stage">
+        <div id="sprite-container" class="sprite-container">
+          <canvas id="sprite-canvas" width="200" height="200"></canvas>
+        </div>
+        <div id="pet-name-display" class="pet-name"></div>
+        <div id="mood-label" class="mood-label">…</div>
+      </div>
+
+      <div class="stats-section">
+        <div class="stat-row">
+          <span class="stat-name">Hunger</span>
+          <div class="bar-track">
+            <div id="bar-hunger" class="bar-fill hunger"></div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Happy</span>
+          <div class="bar-track">
+            <div id="bar-happiness" class="bar-fill happiness"></div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Energy</span>
+          <div class="bar-track">
+            <div id="bar-energy" class="bar-fill energy"></div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Health</span>
+          <div class="bar-track">
+            <div id="bar-health" class="bar-fill health"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive action buttons (call MCP tools via the app bridge) -->
+      <div class="actions" id="actions">
+        <button data-action="codotchi_feed">Feed</button>
+        <button data-action="codotchi_pat">Pat</button>
+        <button data-action="codotchi_sleep">Sleep</button>
+        <button data-action="codotchi_clean">Clean</button>
+        <button data-action="codotchi_medicine">Medicine</button>
+      </div>
+
+      <div class="info-strip">
+        <div id="attention-pill" class="attention-pill hidden"></div>
+        <div id="info-line" class="info-line">–</div>
+      </div>
+    </div>
+
+    <!-- No-pet screen (shown when alive=false or no state) -->
+    <div id="no-pet-screen" class="hidden">
+      <p class="no-pet-text">No active pet.</p>
+      <p class="no-pet-hint">Ask Claude to "show my codotchi"<br>to hatch a new pet.</p>
+    </div>
+
+    <!-- Source strip (always visible at bottom) -->
+    <div class="source-strip">
+      <span class="source-label">codotchi</span>
+      <span id="source-badge" class="source-badge">Claude Desktop</span>
+    </div>
+
+  </div>
+
+  <script src="vendor/spriteConstants.js"></script>
+  <script src="vendor/sprites.js"></script>
+  <script src="vendor/customCharacters.js"></script>
+  <script src="mcp-bridge.js"></script>
+  <script src="companion.js"></script>
+</body>
+</html>

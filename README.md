@@ -1,7 +1,8 @@
 # codotchi
 
 A virtual Tamagotchi-style pet that lives inside your IDE and reacts to your
-coding activity. Available for both VS Code and JetBrains IDEs.
+coding activity. Available for VS Code, JetBrains IDEs, OpenCode, and Claude
+Desktop.
 
 ## What is it?
 
@@ -22,6 +23,7 @@ little happier.
 | VS Code | `vscode/` | `.vsix` from [Releases](https://github.com/dylscoop/vscode_gotchi/releases) |
 | JetBrains (PyCharm, IntelliJ, etc.) | `pycharm/` | `.zip` from [Releases](https://github.com/dylscoop/vscode_gotchi/releases) |
 | OpenCode | `.opencode/` + `opencode-codotchi/` | In-repo plugin (auto-loaded) or npm package (global install) |
+| Claude Desktop | `claude-desktop-codotchi/` | `.mcpb` one-click install (an MCP App — the pet renders inline in chat) |
 
 Both extensions share the same game engine logic and the same webview UI
 (`sidebar.html` / `sidebar.css` / `sidebar.js`). The OpenCode plugin uses a
@@ -145,6 +147,10 @@ codotchi/
 │   ├── src/                 index.ts, gameEngine.ts, asciiArt.ts
 │   ├── commands/            /codotchi slash command definition
 │   └── bin/                 install.js CLI script
+├── claude-desktop-codotchi/ Claude Desktop integration (MCP App + .mcpb bundle)
+│   ├── src/                 server.ts, tools.ts, state.ts, gameEngine.ts, asciiArt.ts
+│   ├── ui/                  MCP App widget (companion.js + sprites, bridged via ext-apps)
+│   └── scripts/             build.mjs + bundle-mcpb.mjs
 ├── archive/                 Snapshots of previous versions
 └── developer_notes/         Dev-facing docs (changelog, design notes, sprites)
     ├── VERSIONS.md          Changelog
