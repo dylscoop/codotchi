@@ -22,7 +22,7 @@ import com.intellij.openapi.components.*
  *  - [characterPasscode]      : hidden character passcode — enter to unlock a secret character on next hatch (default "")
  *  - [devModeAgingMultiplier] : aging speed multiplier in dev mode (default 10)
  *  - [devModeHealthFloor]     : minimum health enforced in dev mode; default 1 (pet cannot die); set to 0 to allow death
- *  - [aiMode]                 : suppress document-change, cursor-movement, and tab-switch idle resets (default false)
+ *  - [aiMode]                 : suppress document-change, cursor-movement, and tab-switch idle resets (default true)
  *  - [idleResetOnDocumentChange]  : reset idle timer on document changes (default true)
  *  - [idleResetOnCursorMovement]  : reset idle timer on cursor/selection changes (default true)
  *  - [idleResetOnTabSwitch]       : reset idle timer on active editor tab change (default true)
@@ -55,7 +55,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var characterPasscode: String = ""
         var devModeAgingMultiplier: Int = 10
         var devModeHealthFloor: Int = 1
-        var aiMode: Boolean = false
+        var aiMode: Boolean = true
         var idleResetOnDocumentChange: Boolean = true
         var idleResetOnCursorMovement: Boolean = true
         var idleResetOnTabSwitch: Boolean = true

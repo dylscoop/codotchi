@@ -668,7 +668,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.devModeAgingMultiplier` | integer | `10` | Aging speed multiplier when developer mode is active | `[x]` |
 | `gotchi.devModeEnabled` | boolean | `false` | Must be `true` AND passcode must match to activate dev mode | `[x]` |
 | `gotchi.devModeHealthFloor` | integer | `1` | Minimum health in dev mode (0–100); set to 0 to allow pet death in dev mode | `[x]` |
-| `gotchi.aiMode` | boolean | `false` | Suppress doc-change / cursor / tab-switch idle resets (the three events AI agents fire). Window focus and mouse movement still work. | `[x]` |
+| `gotchi.aiMode` | boolean | `true` | Suppress doc-change / cursor / tab-switch idle resets (the three events AI agents fire). Window focus and mouse movement still work. | `[x]` |
 | `gotchi.idleResetOnDocumentChange` | boolean | `true` | Reset idle timer on text document changes (keystrokes, AI edits). Suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnCursorMovement` | boolean | `true` | Reset idle timer on cursor/selection changes. Suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnTabSwitch` | boolean | `true` | Reset idle timer when the active editor tab changes. Suppressed by `aiMode`. | `[x]` |
