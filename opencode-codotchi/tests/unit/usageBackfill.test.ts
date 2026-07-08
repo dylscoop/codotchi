@@ -190,6 +190,51 @@ describe("sumCompletedAssistantUsage — token accumulation", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Suite 3b — Message count (used for tokens-per-message averaging)
+// ---------------------------------------------------------------------------
+
+describe("sumCompletedAssistantUsage — message count", () => {
+  it("returns messages=0 for an empty array", () => {
+    const result = sumCompletedAssistantUsage([]);
+    expect(result.messages).toBe(0);
+  });
+
+  it("counts a single completed assistant message as messages=1", () => {
+    const result = sumCompletedAssistantUsage([makeAssistant({ cost: 1.23 })]);
+    expect(result.messages).toBe(1);
+  });
+
+  it("counts multiple completed assistant messages", () => {
+    const result = sumCompletedAssistantUsage([
+      makeAssistant({ tokens: { input: 100, output: 200 } }),
+      makeAssistant({ tokens: { input: 300, output: 100, reasoning: 50 } }),
+      makeAssistant({ tokens: { input: 50, output: 25 } }),
+    ]);
+    expect(result.messages).toBe(3);
+  });
+
+  it("does not count user messages toward messages", () => {
+    const result = sumCompletedAssistantUsage([makeUser(), makeUser()]);
+    expect(result.messages).toBe(0);
+  });
+
+  it("does not count incomplete (in-progress) assistant messages", () => {
+    const result = sumCompletedAssistantUsage([makeIncomplete()]);
+    expect(result.messages).toBe(0);
+  });
+
+  it("messages count stays in lockstep with tokens — enables tokens/message averaging", () => {
+    const result = sumCompletedAssistantUsage([
+      makeAssistant({ tokens: { input: 1000, output: 500 } }), // 1500
+      makeAssistant({ tokens: { input: 2000, output: 1000 } }), // 3000
+    ]);
+    expect(result.tokens).toBe(4500);
+    expect(result.messages).toBe(2);
+    expect(result.tokens / result.messages).toBe(2250);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Suite 4 — Filtering rules
 // ---------------------------------------------------------------------------
 
@@ -198,6 +243,7 @@ describe("sumCompletedAssistantUsage — filtering rules", () => {
     const result = sumCompletedAssistantUsage([makeIncomplete()]);
     expect(result.costUSD).toBe(0);
     expect(result.tokens).toBe(0);
+    expect(result.messages).toBe(0);
   });
 
   it("excludes assistant messages with time.completed = 0 (falsy)", () => {
@@ -212,6 +258,7 @@ describe("sumCompletedAssistantUsage — filtering rules", () => {
     const result = sumCompletedAssistantUsage([msg]);
     expect(result.costUSD).toBe(0);
     expect(result.tokens).toBe(0);
+    expect(result.messages).toBe(0);
   });
 
   it("excludes messages with role='user' even when cost is present", () => {
@@ -226,6 +273,7 @@ describe("sumCompletedAssistantUsage — filtering rules", () => {
     const result = sumCompletedAssistantUsage([msg]);
     expect(result.costUSD).toBe(0);
     expect(result.tokens).toBe(0);
+    expect(result.messages).toBe(0);
   });
 
   it("handles mixed message types — only counts completed assistant messages", () => {
@@ -238,6 +286,7 @@ describe("sumCompletedAssistantUsage — filtering rules", () => {
     ]);
     expect(result.costUSD).toBeCloseTo(1.50, 6);
     expect(result.tokens).toBe(375);
+    expect(result.messages).toBe(2);
   });
 });
 

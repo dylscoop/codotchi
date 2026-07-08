@@ -18,6 +18,7 @@ import {
   buildContextualSpeech,
   colour,
   stripAnsi,
+  formatTokens,
 } from "../../src/asciiArt";
 
 // ---------------------------------------------------------------------------
@@ -377,5 +378,88 @@ describe("buildContextualSpeech", () => {
   it("includes last-1h cost in shout tier (uppercased)", () => {
     const { message } = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 60, 100_000, 30, 50, 3.00, 2000);
     assert.ok(message.includes("LAST 1H"), `expected "LAST 1H" in shout tier: ${message}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildContextualSpeech — tokens-per-message averaging (dailyMessages param)
+// ---------------------------------------------------------------------------
+
+describe("buildContextualSpeech — tokens-per-message averaging", () => {
+  const basePet = {
+    name: "Pixel",
+    stage: "adult",
+    mood: "happy",
+    hunger: 80,
+    happiness: 75,
+    energy: 60,
+    health: 90,
+    sick: false,
+    sleeping: false,
+    poops: 0,
+  };
+
+  it("shows the averaged tokens/message value, not the raw daily total (normal tier)", () => {
+    // dailyTokens=10_000 over dailyMessages=4 → average = 2_500
+    const { message } = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 4);
+    const expected = formatTokens(2_500);
+    assert.ok(message.includes(expected), `expected averaged "${expected}" in: ${message}`);
+    assert.ok(!message.includes(formatTokens(10_000)), `raw total should not appear in: ${message}`);
+    assert.ok(message.includes("per message"), `expected "per message" wording in: ${message}`);
+  });
+
+  it("shows the averaged tokens/message value in warn tier", () => {
+    // dailyTokens=50_000 over dailyMessages=5 → average = 10_000
+    const { message } = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 35, 50_000, 30, 50, 0, 0, 5);
+    const expected = formatTokens(10_000);
+    assert.ok(message.includes(expected), `expected averaged "${expected}" in: ${message}`);
+    assert.ok(message.includes("per message"), `expected "per message" wording in: ${message}`);
+  });
+
+  it("shows the averaged tokens/message value in shout tier (uppercased)", () => {
+    // dailyTokens=1_000_000 over dailyMessages=10 → average = 100_000
+    const { message } = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 60, 1_000_000, 30, 50, 0, 0, 10);
+    const expected = formatTokens(100_000).toUpperCase();
+    assert.ok(message.includes(expected), `expected averaged "${expected}" in: ${message}`);
+    assert.ok(message.includes("PER MESSAGE"), `expected "PER MESSAGE" wording in: ${message}`);
+  });
+
+  it("shows the averaged tokens/message value in token-only tier (no cost)", () => {
+    // dailyTokens=8_000 over dailyMessages=4 → average = 2_000
+    const { message } = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 0, 8_000, 30, 50, 0, 0, 4);
+    const expected = formatTokens(2_000);
+    assert.ok(message.includes(expected), `expected averaged "${expected}" in: ${message}`);
+    assert.ok(message.includes("per message"), `expected "per message" wording in: ${message}`);
+  });
+
+  it("falls back to the raw daily total when dailyMessages is 0 (default)", () => {
+    // No dailyMessages arg passed — defaults to 0 — should fall back to the raw total.
+    const { message } = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50);
+    const expected = formatTokens(10_000);
+    assert.ok(message.includes(expected), `expected raw total "${expected}" fallback in: ${message}`);
+  });
+
+  it("falls back to the raw daily total when dailyMessages is explicitly 0", () => {
+    const { message } = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 0);
+    const expected = formatTokens(10_000);
+    assert.ok(message.includes(expected), `expected raw total "${expected}" fallback in: ${message}`);
+  });
+
+  it("does not divide by zero / produce NaN or Infinity when dailyMessages is 0", () => {
+    const { message } = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 0);
+    assert.ok(!message.includes("NaN"), `message should never contain NaN: ${message}`);
+    assert.ok(!message.includes("Infinity"), `message should never contain Infinity: ${message}`);
+  });
+
+  it("single message (dailyMessages=1) shows the same value as the raw total", () => {
+    const { message } = buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 1);
+    const expected = formatTokens(10_000);
+    assert.ok(message.includes(expected), `expected "${expected}" in: ${message}`);
+  });
+
+  it("does not throw for edge-case dailyMessages inputs", () => {
+    assert.doesNotThrow(() => buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 0));
+    assert.doesNotThrow(() => buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 1));
+    assert.doesNotThrow(() => buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 1_000));
   });
 });
