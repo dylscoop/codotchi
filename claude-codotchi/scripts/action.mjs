@@ -258,25 +258,18 @@ async function main() {
   );
   const { bubbleColor, tierEmoji } = contextSpeech;
 
-  // Render output.
+  // Render output. ANSI is stripped because this text is ultimately relayed
+  // by the model into a markdown chat response (see BUGFIX-136), not printed
+  // to a raw terminal, so escape codes would appear as garbage and stray
+  // underscores in the art would be parsed as markdown emphasis.
   if (showArt && cfg.terminalEnabled !== false) {
-    const art = aa.buildStatusBlock(state);
-    if (message) {
-      const bubble = aa.buildSpeechBubble(
-        state.stage, state.mood, message,
-        state.name, state.spriteType,
-        undefined, bubbleColor, tierEmoji
-      );
-      process.stdout.write(bubble + "\n" + art + "\n");
-    } else {
-      // status action: show contextual speech bubble above stat block
-      const bubble = aa.buildSpeechBubble(
-        state.stage, state.mood, contextSpeech.message,
-        state.name, state.spriteType,
-        undefined, bubbleColor, tierEmoji
-      );
-      process.stdout.write(bubble + "\n" + art + "\n");
-    }
+    // Just the art + speech bubble — no numeric stats block (see BUGFIX-137).
+    const bubble = aa.buildSpeechBubble(
+      state.stage, state.mood, message || contextSpeech.message,
+      state.name, state.spriteType,
+      undefined, bubbleColor, tierEmoji
+    );
+    process.stdout.write(aa.stripAnsi(bubble) + "\n");
   } else {
     if (message) process.stdout.write(message + "\n");
     else process.stdout.write(aa.stripAnsi(aa.buildStatusBlock(state)) + "\n");

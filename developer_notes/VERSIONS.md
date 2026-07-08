@@ -18,6 +18,15 @@
 | `pycharm/build/distributions/pycharm-codotchi-2.15.2.zip` | Rebuilt PyCharm plugin artifact for v2.15.2 |
 | `opencode-codotchi/opencode-codotchi-2.15.2.zip` | Rebuilt OpenCode plugin zip for v2.15.2 |
 | `claude-desktop-codotchi/codotchi-desktop.mcpb` | Rebuilt Claude Desktop mcpb for v2.15.2 |
+| `claude-codotchi/src/gameEngine.ts` | feat: add `immortal` flag to `GameConfig` + export `LOCAL_PET_GAME_CONFIG` with `immortal: true`; immortal pet never dies (health floored at 1, death checks skipped) |
+| `claude-codotchi/src/asciiArt.ts` | fix: add leading space to `buildSpeechBubble` name/stage header line for alignment under pet art (BUGFIX-137) |
+| `claude-codotchi/scripts/action.mjs` | fix: remove `buildStatusBlock` from art-mode output; strip ANSI before stdout; simplify message branching (BUGFIX-136, BUGFIX-137) |
+| `claude-codotchi/panel/` | chore: delete pixel-art widget panel — ASCII-art only going forward (BUGFIX-138) |
+| `claude-desktop-codotchi/src/state.ts` | feat: share most-recently-modified IDE state file (VS Code / PyCharm) instead of isolated Desktop state; drop `mealsGivenThisCycle` persistence; add `devMode` via `CODOTCHI_DEV_MODE` env var (BUGFIX-138) |
+| `claude-desktop-codotchi/src/tools.ts` | feat: remove `tick` tool; switch render to `buildSpeechBubble`; add `applyDevMode` revival logic (BUGFIX-138) |
+| `claude-desktop-codotchi/src/server.ts` | chore: remove MCP App resource/widget layer (`registerAppResource`, `registerAppTool`); switch to plain `server.registerTool`; drop `codotchi_tick` registration (BUGFIX-138) |
+| `claude-desktop-codotchi/ui/` | chore: delete MCP App pixel-art widget UI — ASCII-art only going forward (BUGFIX-138) |
+| `claude-desktop-codotchi/package.json` | fix: revert version drift 2.15.3 → 2.15.2 |
 
 ---
 

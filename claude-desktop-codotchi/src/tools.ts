@@ -3,16 +3,12 @@
  *
  * Each handler loads the pet (with offline-decay catch-up), applies an action
  * from the shared game engine, persists, and returns a `ToolPayload`. server.ts
- * turns that into an MCP tool result (ASCII text fallback + structuredContent
- * for the MCP App widget).
+ * turns that into an MCP tool result rendered as ASCII art text.
  */
 
 import {
   type PetState,
-  type GameConfig,
-  DEFAULT_GAME_CONFIG,
   CODE_ACTIVITY_THROTTLE_SECONDS,
-  tick as engineTick,
   feedMeal,
   pat as enginePat,
   sleep as engineSleep,
@@ -21,7 +17,7 @@ import {
   giveMedicine,
   applyCodeActivity,
 } from "./gameEngine.js";
-import { buildStatusBlock, stripAnsi } from "./asciiArt.js";
+import { buildSpeechBubble, stripAnsi } from "./asciiArt.js";
 import {
   type DesktopConfig,
   SOURCE,
@@ -31,6 +27,13 @@ import {
   saveSession,
 } from "./state.js";
 
+/** When devMode is on, prevent the pet from dying: revive it and floor health at 1. */
+function applyDevMode(state: PetState, cfg: DesktopConfig): PetState {
+  if (!cfg.devMode) return state;
+  if (state.alive && state.health >= 1) return state;
+  return { ...state, alive: true, health: Math.max(1, state.health), sick: false } as PetState;
+}
+
 export interface ToolPayload {
   state: PetState;
   source: string;
@@ -38,18 +41,21 @@ export interface ToolPayload {
   asciiArt: string;
 }
 
-function gameConfig(): GameConfig {
-  return { ...DEFAULT_GAME_CONFIG };
-}
+const MOOD_MESSAGES: Record<string, string> = {
+  happy:   "Feeling great! Keep it up!",
+  neutral: "Ticking along nicely.",
+  sad:     "Feeling a bit down...",
+  sick:    "I don't feel so good...",
+  sleeping:"Zzz...",
+};
 
-/** Build the plain-text fallback shown in clients without MCP App support. */
-function renderText(state: PetState, session: { interactionsToday: number; treatsToday: number }): string {
+/** Build the plain-text pet display returned by every tool. */
+function renderText(state: PetState, _session: { interactionsToday: number; treatsToday: number }): string {
   if (!state.alive) {
     return `${state.name} is no longer with us. Start a new chat to hatch a fresh pet.`;
   }
-  const block = stripAnsi(buildStatusBlock(state));
-  const stats = `${session.interactionsToday} message${session.interactionsToday === 1 ? "" : "s"} today — ${session.treatsToday} treat${session.treatsToday === 1 ? "" : "s"} earned!`;
-  return `${block}\n  ${stats}\n`;
+  const message = MOOD_MESSAGES[state.mood] ?? "Hello!";
+  return stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop"));
 }
 
 function payload(state: PetState, session: { interactionsToday: number; treatsToday: number }): ToolPayload {
@@ -68,14 +74,7 @@ function payload(state: PetState, session: { interactionsToday: number; treatsTo
 /** Show the pet (also persists the offline-decay catch-up applied on load). */
 export function show(cfg: DesktopConfig): ToolPayload {
   const { state, mealsGivenThisCycle } = loadPet(cfg);
-  savePet(state, mealsGivenThisCycle);
-  return payload(state, loadSession());
-}
-
-/** Advance the simulation by one live tick — used by the widget's self-poll. */
-export function tick(cfg: DesktopConfig): ToolPayload {
-  const { state, mealsGivenThisCycle } = loadPet(cfg);
-  const next = engineTick(state, false, false, gameConfig());
+  const next = applyDevMode(state, cfg);
   savePet(next, mealsGivenThisCycle);
   return payload(next, loadSession());
 }
@@ -104,7 +103,7 @@ export function activity(cfg: DesktopConfig): ToolPayload {
 
 export function feed(cfg: DesktopConfig): ToolPayload {
   const { state, mealsGivenThisCycle } = loadPet(cfg);
-  const next = feedMeal(state, mealsGivenThisCycle);
+  const next = applyDevMode(feedMeal(state, mealsGivenThisCycle), cfg);
   const refused = next.events.includes("meal_refused");
   savePet(next, refused ? mealsGivenThisCycle : mealsGivenThisCycle + 1);
   return payload(next, loadSession());
@@ -112,7 +111,7 @@ export function feed(cfg: DesktopConfig): ToolPayload {
 
 export function petAction(cfg: DesktopConfig): ToolPayload {
   const { state, mealsGivenThisCycle } = loadPet(cfg);
-  const next = enginePat(state);
+  const next = applyDevMode(enginePat(state), cfg);
   savePet(next, mealsGivenThisCycle);
   return payload(next, loadSession());
 }
@@ -120,21 +119,21 @@ export function petAction(cfg: DesktopConfig): ToolPayload {
 /** Toggle sleep: wake a sleeping pet, otherwise put it to sleep. */
 export function sleepToggle(cfg: DesktopConfig): ToolPayload {
   const { state, mealsGivenThisCycle } = loadPet(cfg);
-  const next = state.sleeping ? engineWake(state) : engineSleep(state);
+  const next = applyDevMode(state.sleeping ? engineWake(state) : engineSleep(state), cfg);
   savePet(next, mealsGivenThisCycle);
   return payload(next, loadSession());
 }
 
 export function clean(cfg: DesktopConfig): ToolPayload {
   const { state, mealsGivenThisCycle } = loadPet(cfg);
-  const next = engineClean(state);
+  const next = applyDevMode(engineClean(state), cfg);
   savePet(next, mealsGivenThisCycle);
   return payload(next, loadSession());
 }
 
 export function medicine(cfg: DesktopConfig): ToolPayload {
   const { state, mealsGivenThisCycle } = loadPet(cfg);
-  const next = giveMedicine(state);
+  const next = applyDevMode(giveMedicine(state), cfg);
   savePet(next, mealsGivenThisCycle);
   return payload(next, loadSession());
 }

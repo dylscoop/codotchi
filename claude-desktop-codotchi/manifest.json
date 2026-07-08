@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "codotchi-desktop",
   "display_name": "Codotchi",
-  "version": "2.15.1",
+  "version": "2.15.3",
   "description": "A Tamagotchi-style virtual pet that lives in your Claude Desktop chats. Feed it, pat it, and keep it happy while you work.",
   "author": {
     "name": "dylscoop",
@@ -21,18 +21,17 @@
       "env": {
         "CODOTCHI_PET_NAME": "${user_config.pet_name}",
         "CODOTCHI_PET_TYPE": "${user_config.pet_type}",
-        "CODOTCHI_REDUCED_MOTION": "${user_config.reduced_motion}"
+        "CODOTCHI_DEV_MODE": "true"
       }
     }
   },
   "tools": [
-    { "name": "codotchi", "description": "Show your codotchi pet in an interactive widget" },
+    { "name": "codotchi", "description": "Show your codotchi pet as ASCII art" },
     { "name": "codotchi_feed", "description": "Feed your codotchi a meal" },
     { "name": "codotchi_pat", "description": "Pat your codotchi" },
     { "name": "codotchi_sleep", "description": "Put your codotchi to sleep (or wake it)" },
     { "name": "codotchi_clean", "description": "Clean up after your codotchi" },
     { "name": "codotchi_medicine", "description": "Give your codotchi medicine when it is sick" },
-    { "name": "codotchi_tick", "description": "Advance the pet simulation by one tick" },
     { "name": "codotchi_activity", "description": "Register coding/chat activity so the pet stays happy" }
   ],
   "user_config": {
@@ -49,13 +48,6 @@
       "description": "Personality/metabolism: codeling, bytebug, pixelpup, or shellscript.",
       "required": false,
       "default": "codeling"
-    },
-    "reduced_motion": {
-      "type": "boolean",
-      "title": "Reduce animation",
-      "description": "Render a still pet instead of the walking/hopping animation.",
-      "required": false,
-      "default": false
     }
   }
 }

@@ -5,7 +5,7 @@ Run the codotchi action specified by $ARGUMENTS and display the result.
 
 Valid actions: `status` `feed` `pat` `sleep` `wake` `clean` `medicine` `on` `off` `rename <name>` `warnthreshold <amount>` `shoutthreshold <amount>` `orangethreshold <amount>` `redthreshold <amount>` `levels` `speechinterval <seconds|off>` `help`
 
-If $ARGUMENTS is blank, run `!node "${CLAUDE_PLUGIN_ROOT}/scripts/action.mjs"` to get the pet's current art and stats, then output the following action list below it:
+If $ARGUMENTS is blank, run `!node "${CLAUDE_PLUGIN_ROOT}/scripts/action.mjs"` to get the pet's current art and stats, wrap that output verbatim in a fenced code block (\`\`\`), then output the following action list below it:
 
 ```
 Actions:
@@ -28,7 +28,7 @@ Actions:
 - /codotchi help         — Show this action list
 ```
 
-If $ARGUMENTS is `status`, run `!node "${CLAUDE_PLUGIN_ROOT}/scripts/action.mjs" status` and show the output only (no action list).
+If $ARGUMENTS is `status`, run `!node "${CLAUDE_PLUGIN_ROOT}/scripts/action.mjs" status`, wrap the output verbatim in a fenced code block (\`\`\`), and show it alone (no action list).
 
 If $ARGUMENTS is `help`, output only the action list above — do NOT run the script.
 
@@ -37,4 +37,4 @@ Otherwise, run:
 !node "${CLAUDE_PLUGIN_ROOT}/scripts/action.mjs" $ARGUMENTS
 ```
 
-Output the result as plain text exactly as returned — no code fences, no extra commentary.
+Wrap the result verbatim in a single fenced code block (\`\`\`) — no extra commentary. The script output is already markdown-safe plain text; the fence exists only to preserve its whitespace alignment, so do not re-wrap or reformat it.

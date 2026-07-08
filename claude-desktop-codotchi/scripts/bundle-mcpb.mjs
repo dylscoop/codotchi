@@ -1,5 +1,5 @@
 /**
- * bundle-mcpb.mjs — package the built server + UI into a one-click .mcpb bundle.
+ * bundle-mcpb.mjs — package the built server into a one-click .mcpb bundle.
  *
  * A .mcpb is just a ZIP with manifest.json at the root. Because build.mjs
  * produces a self-contained dist/server.mjs (all deps inlined), the bundle only
@@ -20,7 +20,7 @@ import AdmZip from "adm-zip";
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const out = path.join(root, "codotchi-desktop.mcpb");
 
-const required = ["manifest.json", path.join("dist", "server.mjs"), path.join("dist", "ui", "index.html")];
+const required = ["manifest.json", path.join("dist", "server.mjs")];
 for (const rel of required) {
   if (!fs.existsSync(path.join(root, rel))) {
     console.error(`✗ missing ${rel} — run 'npm run build' first.`);

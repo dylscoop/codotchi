@@ -200,9 +200,21 @@ export interface GameConfig {
      * Set to 0 to allow the pet to die normally even in dev mode.
      */
     devModeHealthFloor: number;
+    /**
+     * When true, the pet can never die — the stat-decay death check and the
+     * senior old-age death roll are both skipped, independent of devMode
+     * (which also speeds up aging and is meant for testing, not permanent play).
+     */
+    immortal: boolean;
 }
 /** Sensible defaults used when no explicit config is provided. */
 export declare const DEFAULT_GAME_CONFIG: GameConfig;
+/**
+ * Config used by the claude-codotchi Claude Code plugin. Looked up by
+ * scripts/action.mjs, statusline.mjs, and the hooks via `LOCAL_PET_GAME_CONFIG
+ * ?? DEFAULT_GAME_CONFIG` — the pet living in Claude's own chat is immortal.
+ */
+export declare const LOCAL_PET_GAME_CONFIG: GameConfig;
 /** All valid pet type identifiers. */
 export declare const VALID_PET_TYPES: readonly string[];
 /** Life-stage names in order. */

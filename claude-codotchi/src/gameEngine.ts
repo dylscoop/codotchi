@@ -380,6 +380,12 @@ export interface GameConfig {
    * Set to 0 to allow the pet to die normally even in dev mode.
    */
   devModeHealthFloor: number;
+  /**
+   * When true, the pet can never die — the stat-decay death check and the
+   * senior old-age death roll are both skipped, independent of devMode
+   * (which also speeds up aging and is meant for testing, not permanent play).
+   */
+  immortal: boolean;
 }
 
 /** Sensible defaults used when no explicit config is provided. */
@@ -390,6 +396,17 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   devMode:                  false,
   devModeAgingMultiplier:   10,
   devModeHealthFloor:       1,
+  immortal:                 false,
+};
+
+/**
+ * Config used by the claude-codotchi Claude Code plugin. Looked up by
+ * scripts/action.mjs, statusline.mjs, and the hooks via `LOCAL_PET_GAME_CONFIG
+ * ?? DEFAULT_GAME_CONFIG` — the pet living in Claude's own chat is immortal.
+ */
+export const LOCAL_PET_GAME_CONFIG: GameConfig = {
+  ...DEFAULT_GAME_CONFIG,
+  immortal: true,
 };
 
 /** Per-type stat multipliers applied on top of base config constants. */
@@ -1427,8 +1444,13 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     health = config.devModeHealthFloor;
   }
 
+  // Immortal pets never drop below 1 health, so the bar never reads "0" while alive.
+  if (config.immortal && health < 1) {
+    health = 1;
+  }
+
   // Death check
-  if (health <= HEALTH_DEATH_THRESHOLD) {
+  if (!config.immortal && health <= HEALTH_DEATH_THRESHOLD) {
     alive = false;
     events.push("died");
     return withDerivedFields({
@@ -1472,7 +1494,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   // Stage progression + old-age death/sickness rolls (once per day boundary for seniors)
   const afterStage = checkStageProgression(afterDecay);
   // ageDays is Math.floor(new dayTimer), computed above; state.ageDays is pre-tick value.
-  if (ageDays > state.ageDays) {
+  if (ageDays > state.ageDays && !config.immortal) {
     const afterDeath = rollOldAgeDeath(afterStage, Math.random());
     return afterDeath.alive ? rollOldAgeSickness(afterDeath, Math.random()) : afterDeath;
   }

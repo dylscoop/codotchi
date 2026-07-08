@@ -568,7 +568,10 @@ export function buildSpeechBubble(stage, mood, message, name, spriteType = "clas
     // Build name header (with optional IDE label e.g. "[VS Code]")
     const ideSuffix = ideLabel ? ` ${FG_GRAY}${ideLabel}${RESET}` : "";
     const emojiPrefix = tierEmoji ? `${tierEmoji} ` : "";
-    const header = `${emojiPrefix}${BOLD}${stageColour}${name}${RESET} ${FG_GRAY}[${stage}]${RESET}${ideSuffix}`;
+    // Leading space aligns the header under the art below it, which itself
+    // starts one column in — without it the header reads flush-left while
+    // every art row is indented, and a wide emoji prefix makes the offset worse.
+    const header = ` ${emojiPrefix}${BOLD}${stageColour}${name}${RESET} ${FG_GRAY}[${stage}]${RESET}${ideSuffix}`;
     const lines = [RESET, "", header];
     // Build combined lines
     const GAP = "  ";

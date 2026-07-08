@@ -63,7 +63,6 @@ activates the statusline script, registers the event hooks, and makes the
 | **Session hooks** | Pet greets you on session start and says farewell when the session stops |
 | **Slash command** | `/codotchi <action>` for all care actions |
 | **Daily cost tracking** | Pet speech bubble colour reflects today's Claude API spend, with hourly rate |
-| **Desktop panel** | Browser-based panel UI served locally; starts/stops automatically with the session |
 
 ---
 
@@ -71,7 +70,7 @@ activates the statusline script, registers the event hooks, and makes the
 
 | Action | Description |
 |--------|-------------|
-| `/codotchi` or `/codotchi status` | Show the pet's current ASCII art and full stats |
+| `/codotchi` or `/codotchi status` | Show the pet's ASCII art and speech bubble |
 | `/codotchi feed` | Give a meal — restores hunger (max 3 meals per wake cycle) |
 | `/codotchi pat` | Pat the pet — gentle happiness boost |
 | `/codotchi sleep` | Put the pet to sleep — energy regenerates 3× faster while sleeping |
@@ -106,16 +105,6 @@ Default thresholds: **$30 warn / $50 shout**. Change them any time:
 /codotchi warnthreshold 20
 /codotchi shoutthreshold 40
 ```
-
----
-
-## Desktop panel
-
-The plugin automatically starts a lightweight HTTP server on `http://127.0.0.1:39847/` when a Claude Code session begins and shuts it down when the session ends. Open that URL in any browser to see a live canvas panel displaying your pet, stat bars, mood, and speech bubble — updated in real time via Server-Sent Events.
-
-- **Port**: 39847 by default (falls back to 39848+ if the port is taken)
-- **No action required**: the `SessionStart` hook launches the server and `Stop` shuts it down
-- **State file**: the server watches `codotchi-state.json` and pushes updates to all open browser tabs within ~150 ms
 
 ---
 

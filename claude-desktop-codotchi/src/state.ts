@@ -1,13 +1,14 @@
 /**
  * state.ts — persistence for the Claude Desktop codotchi pet.
  *
- * The Desktop pet is INDEPENDENT of the VS Code / PyCharm / OpenCode pets: it
- * has its own state file under a dedicated `claude-desktop` subdirectory so it
- * never conflicts with the IDE integrations.
+ * The Desktop pet shares the same state file as the VS Code / PyCharm IDE
+ * extensions — it picks the most-recently-modified IDE state file so changes
+ * from the IDE are reflected in Desktop chats and vice-versa.
  *
- * Files written (in the same directory):
- *   state.json     — { state: SerialisedPetState, savedAt, mealsGivenThisCycle }
- *   session.json   — { day, interactionsToday, treatsToday, lastActivityRewardMs }
+ * Files read/written:
+ *   {ideBase}/codotchi/vscode/[<hash12>/]state.json  — shared VS Code pet state
+ *   {ideBase}/codotchi/pycharm/state.json             — shared PyCharm pet state
+ *   {ideBase}/codotchi/claude-desktop/session.json    — Desktop-only session counters
  *
  * Because a Claude Desktop MCP server only runs while one of its tools is being
  * called, real time passes "offline" between calls. On every load we apply
@@ -34,31 +35,64 @@ export const SOURCE = "claude-desktop" as const;
 // Paths
 // ---------------------------------------------------------------------------
 
-/** Base directory shared with the other codotchi integrations. */
+/** Base config directory shared with the other codotchi integrations. */
 function ideBase(): string {
   return process.platform === "win32"
     ? process.env["APPDATA"] ?? path.join(os.homedir(), "AppData", "Roaming")
     : path.join(os.homedir(), ".config");
 }
 
-/** Dedicated directory for the Claude Desktop pet. */
-export function stateDir(): string {
+/**
+ * Find the most-recently-modified IDE state file across VS Code (flat and
+ * per-workspace hash subdirectories) and PyCharm. Falls back to the VS Code
+ * flat path so a fresh pet is written there on first run.
+ */
+export function resolveIDEStatePath(): string {
+  const base = ideBase();
+  const vscodeDir = path.join(base, "codotchi", "vscode");
+  const fallback = path.join(vscodeDir, "state.json");
+  const candidates: { path: string; mtime: number }[] = [];
+
+  // VS Code flat (shared/global) path
+  try {
+    candidates.push({ path: fallback, mtime: fs.statSync(fallback).mtimeMs });
+  } catch { /* not found */ }
+
+  // VS Code per-workspace hash subdirectories
+  try {
+    for (const entry of fs.readdirSync(vscodeDir, { withFileTypes: true })) {
+      if (entry.isDirectory() && /^[0-9a-f]{12}$/.test(entry.name)) {
+        const p = path.join(vscodeDir, entry.name, "state.json");
+        try {
+          candidates.push({ path: p, mtime: fs.statSync(p).mtimeMs });
+        } catch { /* not found */ }
+      }
+    }
+  } catch { /* vscodeDir not found */ }
+
+  // PyCharm flat path
+  const pycharmPath = path.join(base, "codotchi", "pycharm", "state.json");
+  try {
+    candidates.push({ path: pycharmPath, mtime: fs.statSync(pycharmPath).mtimeMs });
+  } catch { /* not found */ }
+
+  if (candidates.length === 0) return fallback;
+  candidates.sort((a, b) => b.mtime - a.mtime);
+  return candidates[0].path;
+}
+
+/** Directory for Desktop-only session data (not shared with IDEs). */
+function sessionDir(): string {
   return path.join(ideBase(), "codotchi", "claude-desktop");
 }
 
-function statePath(): string {
-  return path.join(stateDir(), "state.json");
-}
-
 function sessionPath(): string {
-  return path.join(stateDir(), "session.json");
+  return path.join(sessionDir(), "session.json");
 }
 
-function ensureDir(): void {
-  const dir = stateDir();
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+function ensureSessionDir(): void {
+  const dir = sessionDir();
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
 // ---------------------------------------------------------------------------
@@ -68,28 +102,28 @@ function ensureDir(): void {
 export interface DesktopConfig {
   petName: string;
   petType: string;
-  reducedMotion: boolean;
+  devMode: boolean;
 }
 
 export function readConfig(): DesktopConfig {
   const rawType = (process.env["CODOTCHI_PET_TYPE"] ?? "codeling").trim();
   const petType = VALID_PET_TYPES.includes(rawType) ? rawType : "codeling";
   const name = (process.env["CODOTCHI_PET_NAME"] ?? "").trim();
+  const rawDev = (process.env["CODOTCHI_DEV_MODE"] ?? "").trim().toLowerCase();
   return {
     petName: name.length > 0 ? name : "Codotchi",
     petType,
-    reducedMotion: /^(1|true|yes)$/i.test(process.env["CODOTCHI_REDUCED_MOTION"] ?? ""),
+    devMode: rawDev === "true" || rawDev === "1",
   };
 }
 
 // ---------------------------------------------------------------------------
-// Pet state
+// Pet state  (shared IDE format: { state, savedAt })
 // ---------------------------------------------------------------------------
 
-interface StoredFile {
+interface IDEStateFile {
   state: Record<string, unknown>;
   savedAt: number;
-  mealsGivenThisCycle: number;
 }
 
 export interface LoadedPet {
@@ -98,19 +132,20 @@ export interface LoadedPet {
 }
 
 /**
- * Load the pet, applying offline decay for the elapsed time since it was last
- * saved. Creates a fresh pet on first run (or if the file is missing/corrupt).
+ * Load the pet from the most-recently-modified IDE state file, applying
+ * offline decay for the elapsed time since it was last saved. Creates a fresh
+ * pet (written to the VS Code flat path) on first run or if no IDE state exists.
  */
 export function loadPet(cfg: DesktopConfig): LoadedPet {
-  let stored: StoredFile | null = null;
+  const statePath = resolveIDEStatePath();
+  let stored: IDEStateFile | null = null;
   try {
-    const raw = fs.readFileSync(statePath(), "utf8");
-    stored = JSON.parse(raw) as StoredFile;
+    stored = JSON.parse(fs.readFileSync(statePath, "utf8")) as IDEStateFile;
   } catch {
     stored = null;
   }
 
-  if (!stored || typeof stored !== "object" || !stored.state) {
+  if (!stored || !stored.state) {
     const fresh = createPet(cfg.petName, cfg.petType);
     return { state: fresh, mealsGivenThisCycle: 0 };
   }
@@ -121,30 +156,23 @@ export function loadPet(cfg: DesktopConfig): LoadedPet {
   if (elapsedSeconds > 0) {
     state = applyOfflineDecay(state, elapsedSeconds);
   }
-
-  return {
-    state,
-    mealsGivenThisCycle:
-      typeof stored.mealsGivenThisCycle === "number" ? stored.mealsGivenThisCycle : 0,
-  };
+  return { state, mealsGivenThisCycle: 0 };
 }
 
-/** Persist the pet. Resets the meal cycle when the pet has just woken up. */
-export function savePet(state: PetState, mealsGivenThisCycle: number): void {
-  ensureDir();
-  const wokeUp =
-    state.events.includes("woke_up") || state.events.includes("auto_woke_up");
-  const meals = wokeUp ? 0 : mealsGivenThisCycle;
-  const file: StoredFile = {
+/** Persist the pet back to the same IDE state file it was loaded from. */
+export function savePet(state: PetState, _mealsGivenThisCycle: number): void {
+  const statePath = resolveIDEStatePath();
+  const dir = path.dirname(statePath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const file: IDEStateFile = {
     state: serialiseState(state),
     savedAt: Date.now(),
-    mealsGivenThisCycle: meals,
   };
-  fs.writeFileSync(statePath(), JSON.stringify(file, null, 2), "utf8");
+  fs.writeFileSync(statePath, JSON.stringify(file), "utf8");
 }
 
 // ---------------------------------------------------------------------------
-// Session activity proxy (drives the speech-bubble stats)
+// Session activity proxy (Desktop-only, drives the speech-bubble stats)
 // ---------------------------------------------------------------------------
 
 export interface SessionData {
@@ -155,7 +183,6 @@ export interface SessionData {
 }
 
 function today(): string {
-  // Local calendar day, YYYY-MM-DD.
   const d = new Date();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
@@ -171,7 +198,6 @@ export function loadSession(): SessionData {
   }
   const day = today();
   if (!data || data.day !== day) {
-    // New calendar day (or first run) — reset the daily counters.
     return { day, interactionsToday: 0, treatsToday: 0, lastActivityRewardMs: 0 };
   }
   return {
@@ -183,6 +209,6 @@ export function loadSession(): SessionData {
 }
 
 export function saveSession(session: SessionData): void {
-  ensureDir();
+  ensureSessionDir();
   fs.writeFileSync(sessionPath(), JSON.stringify(session, null, 2), "utf8");
 }

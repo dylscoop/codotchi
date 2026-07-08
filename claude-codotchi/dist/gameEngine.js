@@ -288,6 +288,16 @@ export const DEFAULT_GAME_CONFIG = {
     devMode: false,
     devModeAgingMultiplier: 10,
     devModeHealthFloor: 1,
+    immortal: false,
+};
+/**
+ * Config used by the claude-codotchi Claude Code plugin. Looked up by
+ * scripts/action.mjs, statusline.mjs, and the hooks via `LOCAL_PET_GAME_CONFIG
+ * ?? DEFAULT_GAME_CONFIG` — the pet living in Claude's own chat is immortal.
+ */
+export const LOCAL_PET_GAME_CONFIG = {
+    ...DEFAULT_GAME_CONFIG,
+    immortal: true,
 };
 const PET_TYPE_MODIFIERS = {
     /**
@@ -1104,8 +1114,12 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
     if (config.devMode && health <= config.devModeHealthFloor) {
         health = config.devModeHealthFloor;
     }
+    // Immortal pets never drop below 1 health, so the bar never reads "0" while alive.
+    if (config.immortal && health < 1) {
+        health = 1;
+    }
     // Death check
-    if (health <= HEALTH_DEATH_THRESHOLD) {
+    if (!config.immortal && health <= HEALTH_DEATH_THRESHOLD) {
         alive = false;
         events.push("died");
         return withDerivedFields({
@@ -1146,7 +1160,7 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
     // Stage progression + old-age death/sickness rolls (once per day boundary for seniors)
     const afterStage = checkStageProgression(afterDecay);
     // ageDays is Math.floor(new dayTimer), computed above; state.ageDays is pre-tick value.
-    if (ageDays > state.ageDays) {
+    if (ageDays > state.ageDays && !config.immortal) {
         const afterDeath = rollOldAgeDeath(afterStage, Math.random());
         return afterDeath.alive ? rollOldAgeSickness(afterDeath, Math.random()) : afterDeath;
     }
