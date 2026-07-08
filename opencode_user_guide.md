@@ -65,7 +65,7 @@ Toggle the art display on/off with `/codotchi show` and `/codotchi hide`.
 
 ### Daily Cost & Token Tracking 💰
 
-As you use OpenCode with integrated LLMs, your codotchi monitors your daily spending and token usage. It speaks in different tones based on cost thresholds:
+As you use OpenCode with integrated LLMs, your codotchi monitors your daily spending and reports your average tokens-per-message usage — a number comparable to the model's context window (e.g. ~300k), rather than an unbounded running total. It speaks in different tones based on cost thresholds:
 
 - **Normal** ($0–$30): cheerful, supportive tone green light
 - **Warning** ($30–$50): concerned, suggesting breaks orange light

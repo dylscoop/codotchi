@@ -1,6 +1,33 @@
 # Version History
 
-## v2.15.2 — current
+## v2.15.3 — current
+
+### Changes from v2.15.2
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/usageBackfill.ts` | feat: `sumCompletedAssistantUsage()` now also returns `messages` (count of completed assistant messages included in the totals) |
+| `opencode-codotchi/src/index.ts` | feat: track `dailyMessages` (persisted in `codotchi-daily.json`, reset at UTC midnight alongside `dailyCostUSD`/`dailyTokens`); Track A SQL query now also selects `COUNT(*) AS messages`; Track B fallback and pendingLiveEvents replay updated to keep `dailyMessages` in sync; wire `dailyMessages` through all 3 `buildContextualSpeech` call sites |
+| `opencode-codotchi/src/asciiArt.ts` | feat: `buildContextualSpeech` gains a `dailyMessages` parameter; the pet's speech bubble now shows average tokens **per message** (`dailyTokens / dailyMessages`) instead of the raw cumulative daily total, keeping the number comparable to the model's context window instead of growing unbounded; falls back to the raw total when `dailyMessages` is 0 |
+| `opencode-codotchi/tests/unit/usageBackfill.test.ts` | test: cover the new `messages` count field |
+| `opencode-codotchi/tests/unit/asciiArt.test.ts` | test: cover tokens-per-message averaging (all 4 speech tiers, zero-message fallback guard, no NaN/Infinity) |
+| `claude-codotchi/scripts/state.mjs` | feat: `scanAllDailyUsage()` (via `accumulateDailyUsage()`) now also returns `messageCount` |
+| `claude-codotchi/src/asciiArt.ts` | feat: mirror of the OpenCode `buildContextualSpeech` change — new `dailyMessages` parameter, same tokens-per-message averaging behaviour |
+| `claude-codotchi/scripts/hook-session-start.mjs`, `hook-stop.mjs`, `hook-post-tool.mjs`, `statusline.mjs`, `action.mjs` | feat: wire `messageCount` through to `buildContextualSpeech` at all 5 call sites |
+| `claude-codotchi/dist/asciiArt.js` (+ `.d.ts`, sourcemaps) | chore: rebuilt from `src/asciiArt.ts` via `npm run build` |
+| `claude-codotchi/tests/unit/state.test.mjs` | test: new — first-ever unit test harness for `claude-codotchi`; covers `messageCount` counting, date filtering, and malformed-input robustness using a temporary fixture `~/.claude/projects` tree |
+| `claude-codotchi/tests/unit/asciiArt.test.mjs` | test: new — covers tokens-per-message averaging against the compiled `dist/asciiArt.js` |
+| `claude-codotchi/package.json` | chore: add `"test": "node --test tests/unit/state.test.mjs tests/unit/asciiArt.test.mjs"` script; bump version to 2.16.2 |
+| `opencode_user_guide.md` | docs: reword "Daily Cost & Token Tracking" section to describe the average-tokens-per-message behaviour instead of a cumulative daily total |
+| `developer_notes/vscode/FEATURES.md` | docs: update "OpenCode daily cost + token speech" row to describe the `dailyTokens / dailyMessages` average and its fallback behaviour |
+| `vscode/package.json` | chore: bump version to 2.15.3 (no functional change — kept in lockstep per `release-checklist`) |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.15.3 (no functional change) |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.15.3 (no functional change) |
+| `opencode-codotchi/package.json` | chore: bump version to 2.15.3 |
+
+---
+
+## v2.15.2 — previous
 
 ### Changes from v2.15.1
 
