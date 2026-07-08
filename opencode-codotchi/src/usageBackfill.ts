@@ -25,8 +25,10 @@ export interface RawMessageEntry {
 }
 
 export interface UsageTotals {
-  costUSD: number;
-  tokens:  number;
+  costUSD:  number;
+  tokens:   number;
+  /** Count of completed assistant messages included in this total (used to compute tokens/message averages). */
+  messages: number;
 }
 
 /** A single completed assistant message's cost + tokens, with its completion timestamp. */
@@ -47,10 +49,13 @@ export interface TimestampedUsageEntry {
  *  - cost defaults to 0 if missing or NaN (covers GitHub Copilot which bills
  *    $0 per-token).
  *  - token fields default to 0 if missing.
+ *  - `messages` counts how many entries were included in the totals above —
+ *    used by callers to compute a tokens-per-message average.
  */
 export function sumCompletedAssistantUsage(messages: RawMessageEntry[]): UsageTotals {
-  let costUSD = 0;
-  let tokens  = 0;
+  let costUSD  = 0;
+  let tokens   = 0;
+  let msgCount = 0;
 
   for (const m of messages) {
     const info = m.info;
@@ -64,11 +69,12 @@ export function sumCompletedAssistantUsage(messages: RawMessageEntry[]): UsageTo
                + (info.tokens?.cache?.read    ?? 0)
                + (info.tokens?.cache?.write   ?? 0);
 
-    costUSD += cost;
-    tokens  += t;
+    costUSD  += cost;
+    tokens   += t;
+    msgCount += 1;
   }
 
-  return { costUSD, tokens };
+  return { costUSD, tokens, messages: msgCount };
 }
 
 /**

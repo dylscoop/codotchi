@@ -207,15 +207,16 @@ function loadDailyUsage(): void {
   try {
     const filePath = getDailyUsagePath();
     if (!fs.existsSync(filePath)) { return; }
-    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number };
+    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number; messages?: number };
     const today = todayUTC();
     if (raw.date === today) {
       // Store into sidecar vars only — do NOT pre-seed dailyCostUSD.
       // backfillDailyUsage() will set dailyCostUSD from the authoritative SQLite
       // DB (Track A). The sidecar value is only used as a floor when Track A
       // fails and Track B is the sole source.
-      sidecarCostUSD = typeof raw.costUSD === "number" ? raw.costUSD : 0;
-      sidecarTokens  = typeof raw.tokens  === "number" ? raw.tokens  : 0;
+      sidecarCostUSD  = typeof raw.costUSD  === "number" ? raw.costUSD  : 0;
+      sidecarTokens   = typeof raw.tokens   === "number" ? raw.tokens   : 0;
+      sidecarMessages = typeof raw.messages === "number" ? raw.messages : 0;
     }
     // If stored date differs it's a new day — sidecar values stay zero
   } catch { /* best-effort */ }
@@ -226,18 +227,20 @@ function saveDailyUsage(): void {
     const filePath = getDailyUsagePath();
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
-    fs.writeFileSync(filePath, JSON.stringify({ date: dailyDate, costUSD: dailyCostUSD, tokens: dailyTokens }), "utf8");
+    fs.writeFileSync(filePath, JSON.stringify({ date: dailyDate, costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages }), "utf8");
   } catch { /* best-effort */ }
 }
 
 function checkDayRollover(): void {
   const today = todayUTC();
   if (dailyDate !== today) {
-    dailyCostUSD = 0;
-    dailyTokens  = 0;
-    dailyDate    = today;
-    sidecarCostUSD = 0;
-    sidecarTokens  = 0;
+    dailyCostUSD    = 0;
+    dailyTokens     = 0;
+    dailyMessages   = 0;
+    dailyDate       = today;
+    sidecarCostUSD  = 0;
+    sidecarTokens   = 0;
+    sidecarMessages = 0;
     countedMessageIds.clear();
     // Daily reset for OpenCode-local pet — respawn with same name and message count
     if (localPetState !== null && localPetState.alive) {
@@ -339,7 +342,8 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
                 COALESCE(json_extract(data,'$.tokens.reasoning'),0) +
                 COALESCE(json_extract(data,'$.tokens.cache.read'),0) +
                 COALESCE(json_extract(data,'$.tokens.cache.write'),0)
-              ) AS tokens
+              ) AS tokens,
+              COUNT(*) AS messages
             FROM message
             WHERE json_extract(data,'$.role') = 'assistant'
               AND json_extract(data,'$.time.completed') IS NOT NULL
@@ -352,9 +356,10 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
           });
 
           if (queryResult.status === 0 && queryResult.stdout) {
-            const rows = JSON.parse(queryResult.stdout.trim()) as Array<{ costUSD?: number; tokens?: number }>;
-            const dbCostUSD = typeof rows[0]?.costUSD === "number" ? rows[0].costUSD : 0;
-            const dbTokens  = typeof rows[0]?.tokens  === "number" ? rows[0].tokens  : 0;
+            const rows = JSON.parse(queryResult.stdout.trim()) as Array<{ costUSD?: number; tokens?: number; messages?: number }>;
+            const dbCostUSD   = typeof rows[0]?.costUSD  === "number" ? rows[0].costUSD  : 0;
+            const dbTokens    = typeof rows[0]?.tokens   === "number" ? rows[0].tokens   : 0;
+            const dbMessages  = typeof rows[0]?.messages === "number" ? rows[0].messages : 0;
             checkDayRollover();
             // DB is the single source of truth — assign directly, never Math.max.
             // The sidecar value loaded at startup is discarded; the DB value wins.
@@ -362,8 +367,9 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
             // inflated value (e.g. accumulated by a bugged previous plugin run)
             // and Math.max would preserve the poison. The DB always has the
             // authoritative cross-project total.
-            dailyCostUSD = dbCostUSD;
-            dailyTokens  = dbTokens;
+            dailyCostUSD  = dbCostUSD;
+            dailyTokens   = dbTokens;
+            dailyMessages = dbMessages;
             trackASucceeded = true;
             // Immediately persist the correct DB value to the sidecar so that
             // any other OpenCode window watching the file via fs.watch will pick
@@ -386,8 +392,9 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
       (s) => s.time.updated >= todayStartMs
     );
 
-    let backfilledCost   = 0;
-    let backfilledTokens = 0;
+    let backfilledCost     = 0;
+    let backfilledTokens   = 0;
+    let backfilledMessages = 0;
     const oneHourAgo = Date.now() - 3_600_000;
     const backfilledEvents: TimestampedUsageEntry[] = [];
     // Track ALL backfilled message timestamps (not just the last-1h subset)
@@ -401,8 +408,9 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
         if (!trackASucceeded) {
           // Track A failed — use API totals as fallback for cost/token totals
           const totals = sumCompletedAssistantUsage(messages);
-          backfilledCost   += totals.costUSD;
-          backfilledTokens += totals.tokens;
+          backfilledCost     += totals.costUSD;
+          backfilledTokens   += totals.tokens;
+          backfilledMessages += totals.messages;
         }
         // Always collect timestamped entries for the last-1h rolling buffer.
         const timestamped = extractTimestampedUsage(messages);
@@ -423,8 +431,9 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
       // sidecarCostUSD is the value from the last plugin run and acts as a floor,
       // but it is never seeded into dailyCostUSD pre-backfill to avoid propagating
       // an inflated stale value into the live accumulator.
-      dailyCostUSD = Math.max(sidecarCostUSD, backfilledCost);
-      dailyTokens  = Math.max(sidecarTokens,  backfilledTokens);
+      dailyCostUSD  = Math.max(sidecarCostUSD,  backfilledCost);
+      dailyTokens   = Math.max(sidecarTokens,   backfilledTokens);
+      dailyMessages = Math.max(sidecarMessages, backfilledMessages);
     }
 
     // Replay live events that arrived before backfill completed.
@@ -443,8 +452,9 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     const dedupeTs = trackASucceeded ? trackASnapshotTime : latestBackfillTsAll;
     for (const ev of pendingLiveEvents) {
       if (ev.completedAt > dedupeTs) {
-        dailyCostUSD += ev.cost;
-        dailyTokens  += ev.tokens;
+        dailyCostUSD  += ev.cost;
+        dailyTokens   += ev.tokens;
+        dailyMessages += 1;
         // Also add to costEvents buffer for last-1h tracking
         costEvents.push({ completedAt: ev.completedAt, costUSD: ev.cost, tokens: ev.tokens });
       }
@@ -472,8 +482,9 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     // If backfill fails entirely, still unblock live events.
     backfillComplete = true;
     for (const ev of pendingLiveEvents) {
-      dailyCostUSD += ev.cost;
-      dailyTokens  += ev.tokens;
+      dailyCostUSD  += ev.cost;
+      dailyTokens   += ev.tokens;
+      dailyMessages += 1;
       costEvents.push({ completedAt: ev.completedAt, costUSD: ev.cost, tokens: ev.tokens });
     }
     pendingLiveEvents = [];
@@ -698,6 +709,14 @@ let localPetSessionMessages = 0;
 let dailyCostUSD = 0;
 /** Running daily token count (set by backfillDailyUsage on startup, reset at UTC midnight). */
 let dailyTokens  = 0;
+/**
+ * Count of completed assistant messages today (set by backfillDailyUsage on
+ * startup, reset at UTC midnight). Used as the denominator for the
+ * tokens-per-message average shown in the speech bubble — dailyTokens /
+ * dailyMessages. Incremented at the exact same point dailyTokens is, so the
+ * two values are always in sync (no separate filtering needed).
+ */
+let dailyMessages = 0;
 /** UTC date string "YYYY-MM-DD" for the currently stored daily totals. */
 let dailyDate    = "";
 
@@ -707,8 +726,9 @@ let dailyDate    = "";
  * backfillDailyUsage() uses these as a floor for the Track B fallback only;
  * Track A (SQLite) always overwrites them entirely and ignores sidecarCostUSD.
  */
-let sidecarCostUSD = 0;
-let sidecarTokens  = 0;
+let sidecarCostUSD  = 0;
+let sidecarTokens   = 0;
+let sidecarMessages = 0;
 
 /**
  * Set of message IDs already counted toward dailyCostUSD/dailyTokens this day.
@@ -846,7 +866,7 @@ function artHeader(): string {
     .filter(p => p.state.alive)
     .map(p => {
       const _1h0 = lastHourUsage();
-      const { message: speech, bubbleColor } = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h0.costUSD, _1h0.tokens);
+      const { message: speech, bubbleColor } = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h0.costUSD, _1h0.tokens, dailyMessages);
       const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
       return buildSpeechBubble(p.state.stage, p.state.mood, speech, p.state.name, p.state.spriteType, ideLabel, bubbleColor);
     })
@@ -1379,7 +1399,7 @@ export const plugin: Plugin = async (ctx) => {
             // OpenCode-local pet: show ASCII art with cost, no stat bars
             if (p.ide === "opencode") {
               const _1h1 = lastHourUsage();
-              const { message: costMsg } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h1.costUSD, _1h1.tokens);
+              const { message: costMsg } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h1.costUSD, _1h1.tokens, dailyMessages);
               const artBlock = terminalEnabled
                 ? buildSpeechBubble(s.stage, s.mood, costMsg, s.name, s.spriteType, ideLabel)
                 : "";
@@ -1577,7 +1597,7 @@ export const plugin: Plugin = async (ctx) => {
       const bubbles = livePets.map(p => {
         const s = p.state;
         const _1h2 = lastHourUsage();
-        const { message: msg, bubbleColor, tierEmoji } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h2.costUSD, _1h2.tokens);
+        const { message: msg, bubbleColor, tierEmoji } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h2.costUSD, _1h2.tokens, dailyMessages);
         const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
         return buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType, ideLabel, bubbleColor, tierEmoji);
       });
@@ -1787,6 +1807,7 @@ export const plugin: Plugin = async (ctx) => {
               checkDayRollover();
               dailyCostUSD   += info.cost;
               dailyTokens    += t;
+              dailyMessages  += 1;
               dailyDate = todayUTC();
               saveDailyUsage();
               // Push to rolling last-1h buffer

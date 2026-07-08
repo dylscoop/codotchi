@@ -733,6 +733,12 @@ export function formatCost(usd: number): string {
  * @param dailyTokens         - Total tokens consumed today (across all OpenCode sessions).
  * @param costWarnThreshold   - Daily cost (USD) at which the pet switches to a warning tone (default 30).
  * @param costShoutThreshold  - Daily cost (USD) at which the pet switches to ALL CAPS shouting (default 50).
+ * @param dailyMessages       - Count of completed assistant messages today. Used to compute
+ *                              a tokens-per-message average (dailyTokens / dailyMessages) shown
+ *                              in the speech bubble instead of the raw cumulative token total —
+ *                              a number comparable to the model's context window, unlike the
+ *                              unbounded daily sum. Falls back to the raw dailyTokens total when
+ *                              dailyMessages is 0 (e.g. before the first message of the day).
  */
 export function buildContextualSpeech(
   pet: {
@@ -758,6 +764,7 @@ export function buildContextualSpeech(
   costShoutThreshold: number = 50,
   lastHourCostUSD: number = 0,
   lastHourTokens: number = 0,
+  dailyMessages: number = 0,
 ): { message: string; bubbleColor: string; tierEmoji: string } {
   // --- Session activity phrase ---
   const sessionMins = Math.floor(sessionMs / 60_000);
@@ -846,9 +853,15 @@ export function buildContextualSpeech(
   }
 
   // --- Daily cost / token suffix — always appended regardless of which phrase was chosen ---
+  // Tokens are shown as an average per message (dailyTokens / dailyMessages) rather than the
+  // raw cumulative total — this keeps the number comparable to the model's context window
+  // (e.g. ~300k) instead of growing unbounded across the whole day. Falls back to the raw
+  // total when dailyMessages is 0 (e.g. before the first message of the day is counted).
+  const avgTokensPerMessage = dailyMessages > 0 ? dailyTokens / dailyMessages : dailyTokens;
+
   if (dailyCostUSD > 0) {
     const costStr   = formatCost(dailyCostUSD);
-    const tokStr    = formatTokens(dailyTokens);
+    const tokStr    = formatTokens(avgTokensPerMessage);
     const tokStrUp  = tokStr.toUpperCase();
     // Last-1h suffix fragment — only shown when there's meaningful 1h data
     const has1h = lastHourCostUSD > 0;
@@ -858,7 +871,7 @@ export function buildContextualSpeech(
 
     if (dailyCostUSD >= costShoutThreshold) {
       // ALL CAPS shouting tier — red border + red text
-      const shoutSuffix = `🚨 ${costStr} TODAY${hour1hFragUp} — CHECK YOUR USAGE! (${tokStrUp} TOKENS)`;
+      const shoutSuffix = `🚨 ${costStr} TODAY${hour1hFragUp} — CHECK YOUR USAGE! (AVERAGING ${tokStrUp} TOKENS PER MESSAGE)`;
       return { 
         message: colour(`${phrase} ${shoutSuffix}`.toUpperCase(), FG_RED),
         bubbleColor: FG_RED,
@@ -866,7 +879,7 @@ export function buildContextualSpeech(
       };
     } else if (dailyCostUSD >= costWarnThreshold) {
       // Warning tier — yellow border + yellow cost suffix
-      const warnSuffix = `⚠️ ${costStr} today${hour1hFrag} — getting spendy. (${tokStr} tokens)`;
+      const warnSuffix = `⚠️ ${costStr} today${hour1hFrag} — getting spendy. (averaging ${tokStr} tokens per message)`;
       return { 
         message: `${phrase} ${colour(warnSuffix, FG_YELLOW)}`,
         bubbleColor: FG_YELLOW,
@@ -875,11 +888,11 @@ export function buildContextualSpeech(
     } else {
       // Normal tier — green border + casual mention
       const normalSuffix = pickRandom([
-        `${costStr} and ${tokStr} tokens today${hour1hFrag}.`,
-        `Running a tab — ${costStr}${hour1hFrag}, ${tokStr} tokens.`,
-        `${costStr} spent${hour1hFrag}, ${tokStr} tokens burned.`,
-        `Racked up ${costStr}${hour1hFrag} and ${tokStr} tokens so far.`,
-        `Ticking along at ${costStr}${hour1hFrag} and ${tokStr} tokens.`,
+        `${costStr} today${hour1hFrag} — averaging ${tokStr} tokens per message.`,
+        `Running a tab — ${costStr}${hour1hFrag}, averaging ${tokStr} tokens per message.`,
+        `${costStr} spent${hour1hFrag}, averaging ${tokStr} tokens per message.`,
+        `Racked up ${costStr}${hour1hFrag}, averaging ${tokStr} tokens per message.`,
+        `Ticking along at ${costStr}${hour1hFrag}, averaging ${tokStr} tokens per message.`,
       ]);
       return { 
         message: `${phrase} ${normalSuffix}`,
@@ -889,11 +902,11 @@ export function buildContextualSpeech(
     }
   } else if (dailyTokens > 0) {
     // Token-only tier — free/local model, no cost to report — green border
-    const tokStr = formatTokens(dailyTokens);
+    const tokStr = formatTokens(avgTokensPerMessage);
     const tokenOnlySuffix = pickRandom([
-      `${tokStr} tokens used today.`,
-      `Running on ${tokStr} tokens so far.`,
-      `${tokStr} tokens in today.`,
+      `Averaging ${tokStr} tokens per message today.`,
+      `Running on ${tokStr} tokens per message so far.`,
+      `Averaging ${tokStr} tokens per message.`,
     ]);
     return { 
       message: `${phrase} ${tokenOnlySuffix}`,
