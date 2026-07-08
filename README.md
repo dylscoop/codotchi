@@ -1,7 +1,8 @@
 # codotchi
 
 A virtual Tamagotchi-style pet that lives inside your IDE and reacts to your
-coding activity. Available for both VS Code and JetBrains IDEs.
+coding activity. Available for VS Code, JetBrains IDEs, OpenCode, and Claude
+Desktop.
 
 ## What is it?
 
@@ -22,6 +23,7 @@ little happier.
 | VS Code | `vscode/` | `.vsix` from [Releases](https://github.com/dylscoop/vscode_gotchi/releases) |
 | JetBrains (PyCharm, IntelliJ, etc.) | `pycharm/` | `.zip` from [Releases](https://github.com/dylscoop/vscode_gotchi/releases) |
 | OpenCode | `.opencode/` + `opencode-codotchi/` | In-repo plugin (auto-loaded) or npm package (global install) |
+| Claude Desktop | `claude-desktop-codotchi/` | `.mcpb` one-click install (the pet renders as ASCII art inline in chat) |
 
 Both extensions share the same game engine logic and the same webview UI
 (`sidebar.html` / `sidebar.css` / `sidebar.js`). The OpenCode plugin uses a
@@ -32,19 +34,19 @@ PyCharm via a cross-platform JSON file.
 
 ### VS Code
 
-1. Download `codotchi-2.11.3.vsix` from the Releases page.
+1. Download `codotchi-2.15.2.vsix` from the Releases page.
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
 Or from the terminal:
 
 ```bash
-code --install-extension codotchi-2.11.3.vsix
+code --install-extension codotchi-2.15.2.vsix
 ```
 
 ### JetBrains
 
-1. Download `pycharm-codotchi-2.11.3.zip` from the Releases page.
+1. Download `pycharm-codotchi-2.15.2.zip` from the Releases page.
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -72,19 +74,19 @@ page — no repository clone required:
 
 #### From Zip
 
-1. Download `opencode-codotchi-2.11.3.zip` from the
+1. Download `opencode-codotchi-2.15.2.zip` from the
    [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. Extract it and run the installer:
 
    ```bash
    # macOS / Linux
-   unzip opencode-codotchi-2.11.3.zip && cd opencode-codotchi-2.11.3
+   unzip opencode-codotchi-2.15.2.zip && cd opencode-codotchi-2.15.2
    node bin/install.js --install
    ```
 
    ```powershell
    # Windows (PowerShell)
-   Expand-Archive opencode-codotchi-2.11.3.zip; cd opencode-codotchi-2.11.3
+   Expand-Archive opencode-codotchi-2.15.2.zip; cd opencode-codotchi-2.15.2
    node bin/install.js --install
    ```
 
@@ -145,6 +147,9 @@ codotchi/
 │   ├── src/                 index.ts, gameEngine.ts, asciiArt.ts
 │   ├── commands/            /codotchi slash command definition
 │   └── bin/                 install.js CLI script
+├── claude-desktop-codotchi/ Claude Desktop integration (.mcpb bundle, ASCII-art pet)
+│   ├── src/                 server.ts, tools.ts, state.ts, gameEngine.ts, asciiArt.ts
+│   └── scripts/             build.mjs + bundle-mcpb.mjs
 ├── archive/                 Snapshots of previous versions
 └── developer_notes/         Dev-facing docs (changelog, design notes, sprites)
     ├── VERSIONS.md          Changelog
@@ -166,7 +171,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.11.3.vsix
+# produces codotchi-2.15.2.vsix
 ```
 
 ### JetBrains plugin
@@ -182,14 +187,14 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.11.3.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.15.2.zip
 ```
 
 ## Version history
 
 See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
-Current release: **v2.11.3** — built by [dylscoop](https://github.com/dylscoop)
+Current release: **v2.15.2** — built by [dylscoop](https://github.com/dylscoop)
 
 > "Grow your best pet by writing your best code."
 

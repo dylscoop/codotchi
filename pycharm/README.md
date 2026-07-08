@@ -75,8 +75,8 @@ Once installed and the IDE has restarted:
    **Praise**, and **Scold**.
 
 4. Your pet's state is saved automatically and restored the next time the IDE
-   opens. Stat decay while the IDE is closed is capped at 60 % of each maximum
-   so a long break won't instantly kill your pet.
+   opens. Stat decay while the IDE is closed is capped so a long break
+   won't instantly kill your pet.
 
 5. Your pet's name and current life stage are always visible in the **status
    bar** at the bottom of the IDE window.
@@ -85,13 +85,13 @@ Once installed and the IDE has restarted:
 
 | Action | What it does |
 | ------ | ------------ |
-| **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Limited to 3 meals per wake cycle — overfeeding past that has no effect. |
-| **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. More than 3 snacks in a row will make your pet sick. |
-| **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning gives +15–25 happiness; losing applies a −5 penalty. Costs 25 energy — your pet can't play if exhausted. |
-| **Pat** | Gives your pet a gentle pat. Boosts happiness by +10. Costs 20 energy. Accessed via the Play menu (same overlay as the mini-games). Cannot be used while your pet is sleeping or exhausted. |
+| **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect. |
+| **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick. |
+| **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted. |
+| **Pat** | Gives your pet a gentle pat. Boosts happiness. Costs energy. Accessed via the Play menu (same overlay as the mini-games). Cannot be used while your pet is sleeping or exhausted. |
 | **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. |
-| **Clean** | Clears all droppings from the screen. Pets produce droppings roughly every 20 minutes. Leaving 3 or more uncleaned will make your pet sick. |
-| **Medicine** | Treats sickness. Requires 3 doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss. |
+| **Clean** | Clears all droppings from the screen. Leaving too many uncleaned will make your pet sick. |
+| **Medicine** | Treats sickness. Requires multiple doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss. |
 | **Praise** | Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution. |
 | **Scold** | Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline. |
 
@@ -101,13 +101,13 @@ Once installed and the IDE has restarted:
 
 ## Mini-games
 
-Clicking **Play** opens the game picker (requires 25 energy). Three games are
+Clicking **Play** opens the game picker (requires energy). Three games are
 available:
 
 | Game | How to win |
 |------|-----------|
-| **Left / Right** | 3 rounds. The pet hides behind one of two doors. You have 3 seconds per round to pick the correct door. Win 2 out of 3 rounds to win. |
-| **Higher or Lower** | 5 rounds. A number is shown (1–100). Guess whether the next number will be higher or lower. Get 4 out of 5 correct to win. |
+| **Left / Right** | The pet hides behind one of two doors. Pick the correct door each round to win. |
+| **Higher or Lower** | A number is shown. Guess whether the next number will be higher or lower. Get enough correct to win. |
 | **Coin Flip** | Call Heads or Tails. A single coin flip decides the outcome. |
 
 ## Pet Types

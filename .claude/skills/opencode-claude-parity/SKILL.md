@@ -1,24 +1,24 @@
 ---
 name: opencode-claude-parity
-description: Enforces feature parity between the OpenCode plugin and the Claude Code plugin — any functional change to one must be mirrored to the other unless the user explicitly restricts the change to one plugin only.
+description: Enforces feature parity between the OpenCode plugin, the Claude Code plugin, and the Claude Desktop integration — any functional change to a shared file must be mirrored to all copies unless the user explicitly restricts the change.
 ---
 
 ## Rule
 
-Any time a feature or functional change is made to either plugin, apply the equivalent change to the other as well — unless the user **explicitly** says to change only one (e.g. "OpenCode only", "just Claude Code", "don't touch the other plugin").
+Any time a feature or functional change is made to any plugin, apply the equivalent change to the others as well — unless the user **explicitly** says to change only one (e.g. "OpenCode only", "just Claude Code", "don't touch the Desktop integration").
 
-When in doubt, always do both.
+When in doubt, always do all three.
 
 ---
 
 ## Shared files — literal copies (must be identical)
 
-| Concern | OpenCode | Claude Code |
-|---------|----------|-------------|
-| Game engine | `opencode-codotchi/src/gameEngine.ts` | `claude-codotchi/src/gameEngine.ts` |
-| ASCII art renderer | `opencode-codotchi/src/asciiArt.ts` | `claude-codotchi/src/asciiArt.ts` |
+| Concern | OpenCode | Claude Code | Claude Desktop |
+|---------|----------|-------------|----------------|
+| Game engine | `opencode-codotchi/src/gameEngine.ts` | `claude-codotchi/src/gameEngine.ts` | `claude-desktop-codotchi/src/gameEngine.ts` |
+| ASCII art renderer | `opencode-codotchi/src/asciiArt.ts` | `claude-codotchi/src/asciiArt.ts` | `claude-desktop-codotchi/src/asciiArt.ts` |
 
-**When either shared file changes:** copy the updated file to the other plugin in the same commit. Never let these files diverge.
+**When any shared file changes:** copy the updated file to all other plugins in the same commit. Never let these files diverge.
 
 ---
 
@@ -62,10 +62,11 @@ When in doubt, always do both.
 
 ## After any change
 
-1. Shared file changed → copy to other plugin immediately.
-2. New action → both `commands/codotchi.md` + both action handlers.
-3. Mechanic changed → verify consistent behaviour in both plugins.
-4. Rebuild both:
+1. Shared file changed → copy to all other plugins immediately.
+2. New action → all `commands/codotchi.md` files + all action handlers.
+3. Mechanic changed → verify consistent behaviour in all plugins.
+4. Rebuild all:
    - OpenCode: `node scripts/package.js` (from `opencode-codotchi/`)
    - Claude Code: `node scripts/build.js` then `node scripts/package.js` (from `claude-codotchi/`)
-5. Commit both sets of changes together.
+   - Claude Desktop: `npm run build` then `npm run bundle` (from `claude-desktop-codotchi/`)
+5. Commit all sets of changes together.

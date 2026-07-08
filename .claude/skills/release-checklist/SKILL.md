@@ -13,7 +13,7 @@ those are covered by `git-workflow`.
 
 ## Step 1 — Confirm the version number
 
-The current version must be identical in all **four** source-of-truth locations:
+The current version must be identical in all **five** source-of-truth locations:
 
 | File | Field |
 |------|-------|
@@ -21,8 +21,9 @@ The current version must be identical in all **four** source-of-truth locations:
 | `pycharm/build.gradle.kts` | `version = "X.Y.Z"` |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | `<version>X.Y.Z</version>` |
 | `opencode-codotchi/package.json` | `"version": "X.Y.Z"` |
+| `claude-desktop-codotchi/package.json` | `"version": "X.Y.Z"` |
 
-If any of the four differs, fix them to agree before doing anything else.
+If any of the five differs, fix them to agree before doing anything else.
 
 > **Version bump rule:** A bug fix or feature **always** requires a patch version bump (e.g. 1.19.1 → 1.19.2). Never build artifacts at the same version number as the previous release — the artifact filename will collide. Bump first, archive the old artifact, then build.
 
@@ -51,6 +52,9 @@ Get-ChildItem vscode\codotchi-*.vsix
 
 # PyCharm
 Get-ChildItem pycharm\build\distributions\*.zip
+
+# Claude Desktop
+Get-ChildItem claude-desktop-codotchi\*.mcpb
 ```
 
 If the filename contains the old version, **stop and fix the version bump** before committing.
@@ -74,6 +78,16 @@ $env:JAVA_HOME = "C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.
 ```
 
 Output: `pycharm/build/distributions/pycharm-codotchi-X.Y.Z.zip`
+
+### Claude Desktop `.mcpb`
+
+Run from `claude-desktop-codotchi/`:
+
+```
+npm run build && npm run bundle
+```
+
+Output: `claude-desktop-codotchi/codotchi-desktop.mcpb` (note: the `.mcpb` uses a fixed name, not version-stamped in the filename).
 
 ---
 
@@ -145,7 +159,7 @@ Rebuild zip: `node scripts/package.js` (from `opencode-codotchi/`). Always ask u
 ## Step 4 — Final checklist before committing
 
 0. [ ] Old artifacts archived (version bump only)
-1. [ ] Version identical in all four files
+1. [ ] Version identical in all five files
 2. [ ] `npm test` passes from `vscode/` — 0 failures
 3. [ ] `gradlew unitTest --no-configuration-cache` passes from `pycharm/` — 0 failures (**not** `gradlew test`)
 4. [ ] VS Code artifact rebuilt: `vscode/codotchi-X.Y.Z.vsix` exists
@@ -159,4 +173,6 @@ Rebuild zip: `node scripts/package.js` (from `opencode-codotchi/`). Always ask u
 12. [ ] `opencode-codotchi/package.json` version matches repo version
 13. [ ] `opencode-codotchi/opencode-codotchi-X.Y.Z.zip` rebuilt
 14. [ ] Local reinstall confirmed by user and done
-15. [ ] Both artifacts staged alongside all source changes in the same commit
+15. [ ] `claude-desktop-codotchi/package.json` version matches repo version
+16. [ ] `claude-desktop-codotchi/` rebuilt: `npm run build && npm run bundle`
+17. [ ] All artifacts staged alongside all source changes in the same commit

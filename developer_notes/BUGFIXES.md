@@ -1665,11 +1665,47 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 3. _Sidecar correction on Track A success:_ After Track A assigns `dailyCostUSD = dbCostUSD`, it immediately calls `saveDailyUsage()` to flush the correct authoritative value to disk. This ensures that other windows watching the sidecar via fs.watch pick up the corrected (lower) value immediately.
 4. _Cross-window sync without Math.max:_ `reloadDaily` now uses a plain replace (`dailyCostUSD = fileCost`) when the file and in-memory values differ by more than a float noise threshold. This allows a window that has been corrected by Track A to propagate the corrected (lower) value to other windows, breaking the inflation lock-in.
 
-## BUGFIX-135 � claude-codotchi daily cost inflated vs actual API billing
+## BUGFIX-135 � claude-codotchi daily cost inflated vs actual API billing
 
 **Status:** Fixed (branch `fix/daily-cost-accumulator`)
 **File:** `claude-codotchi/scripts/state.mjs`
 
-**Problem:** `accumulateDailyUsage()` maintained a checkpoint/delta accumulator in `codotchi-daily.json`. On the first invocation each UTC day for a given session, `prevCost` was 0 (no entry for today), so the full lifetime session cost was added as the day's delta � including all usage from previous days. Additionally, when the AppData daily JSON (used by the statusline via `CLAUDE_PLUGIN_DATA`) accumulated inflated state from the old code, same-day sessions had checkpoint � current cost, so the self-healing delta was 0 and the inflation persisted indefinitely.
+**Problem:** `accumulateDailyUsage()` maintained a checkpoint/delta accumulator in `codotchi-daily.json`. On the first invocation each UTC day for a given session, `prevCost` was 0 (no entry for today), so the full lifetime session cost was added as the day's delta � including all usage from previous days. Additionally, when the AppData daily JSON (used by the statusline via `CLAUDE_PLUGIN_DATA`) accumulated inflated state from the old code, same-day sessions had checkpoint � current cost, so the self-healing delta was 0 and the inflation persisted indefinitely.
 
-**Fix:** Replaced the checkpoint/delta body of `accumulateDailyUsage()` with a direct call to `scanAllDailyUsage()`, which already existed as the fallback and correctly reads all JSONL files modified today, filtering messages by `d.timestamp.startsWith(today)`. No stale daily JSON state is consulted � the displayed value is recomputed fresh from the source of truth on every invocation.
+**Fix:** Replaced the checkpoint/delta body of `accumulateDailyUsage()` with a direct call to `scanAllDailyUsage()`, which already existed as the fallback and correctly reads all JSONL files modified today, filtering messages by `d.timestamp.startsWith(today)`. No stale daily JSON state is consulted � the displayed value is recomputed fresh from the source of truth on every invocation.
+
+---
+
+## BUGFIX-136 — `/codotchi` ASCII art garbled in chat (raw ANSI codes + collapsed whitespace + underscores parsed as markdown)
+
+**Status:** Fixed (branch `feat/claude-desktop-codotchi`)
+**Files:** `claude-codotchi/scripts/action.mjs`, `claude-codotchi/commands/codotchi.md`
+
+**Problem:** `codotchi.md` instructed the model to relay `action.mjs`'s stdout "as plain text exactly as returned — no code fences" (a rule carried over from BUGFIX-051, where OpenCode's tool-output panel already renders the raw output and fencing it caused a duplicate). But claude-codotchi's `!command` output is relayed by the model into its own markdown chat response, which has no equivalent raw-terminal panel: the embedded ANSI escape sequences showed up as literal garbage, runs of spaces used for art alignment collapsed, and stray `_` characters in the sprite (e.g. `U(-_-)U`) were parsed as markdown emphasis markers.
+
+**Fix:** `action.mjs` now strips ANSI from the speech-bubble + status-block output before writing to stdout (matching the treatment already applied to hooks in `hook-session-start.mjs` / `hook-post-tool.mjs` / `hook-stop.mjs` and to the "off" display mode), and `codotchi.md` now instructs the model to wrap the relayed output in a fenced code block to preserve whitespace alignment and prevent markdown from reinterpreting `_`/`*` characters in the art.
+
+---
+
+## BUGFIX-137 — claude-codotchi header row misaligned; user requested unkillable pet + no stats block for the chat display
+
+**Status:** Fixed (branch `feat/claude-desktop-codotchi`)
+**Files:** `claude-codotchi/src/asciiArt.ts`, `claude-codotchi/src/gameEngine.ts`, `claude-codotchi/scripts/action.mjs`
+
+**Problem:** In `buildSpeechBubble()`, the name/stage header line was built flush-left while every art row below it is indented by at least one column (the sprite's own leading space, worsened by the tier emoji prefix rendering wider than one column in some fonts), so the header visually sat one column left of the pet art. Separately, the user asked for the claude-codotchi chat display to be simplified: no numeric stats block, and the pet should never die.
+
+**Fix:**
+1. `buildSpeechBubble()`'s header line now has a single leading space to align under the art.
+2. Added a `GameConfig.immortal` flag (default `false`) — when true, `tick()` skips both the stat-decay death check and the senior old-age death roll, and floors health at 1. Added `LOCAL_PET_GAME_CONFIG` (`{ ...DEFAULT_GAME_CONFIG, immortal: true }`), which `action.mjs`/`statusline.mjs`/the hooks already looked up via `LOCAL_PET_GAME_CONFIG ?? DEFAULT_GAME_CONFIG` but which never existed until now — so the claude-codotchi pet is now immortal without affecting other platforms' copies of the engine.
+3. `action.mjs` no longer appends `buildStatusBlock()` to the art-enabled display — every action now shows only the header + art + speech bubble, no numeric stats. The `/codotchi off` plain-text stats mode is untouched.
+
+---
+
+## BUGFIX-138 — Pixel-art widget removed; claude-desktop pet now shares IDE state file
+
+**Status:** Fixed (branch `feat/claude-desktop-codotchi`)
+**Files:** `claude-desktop-codotchi/src/state.ts`, `claude-desktop-codotchi/src/tools.ts`, `claude-desktop-codotchi/src/server.ts`, `claude-desktop-codotchi/ui/` (deleted), `claude-codotchi/panel/` (deleted)
+
+**Problem:** The MCP App widget (pixel-art companion) required a resource URI and a `tick` poll tool that added complexity without reliability. The claude-desktop pet also maintained its own isolated state file (`codotchi/claude-desktop/state.json`), causing it to diverge from the IDE pet over time. The in-chat Claude Code plugin pet could die during long AI-driven sessions.
+
+**Fix:** Removed the MCP App widget layer from both plugins; both are now ASCII-art only via speech bubble. `claude-desktop-codotchi/src/state.ts` now resolves and shares the most-recently-modified IDE state file (scanning VS Code flat, VS Code per-workspace, and PyCharm paths). `claude-desktop-codotchi/src/server.ts` drops `registerAppResource`/`registerAppTool` in favour of plain `server.registerTool`. The `tick` tool and `codotchi_tick` registration are removed. `applyDevMode()` in `tools.ts` revives the pet when `CODOTCHI_DEV_MODE` is set.

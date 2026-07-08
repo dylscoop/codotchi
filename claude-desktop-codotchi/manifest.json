@@ -1,0 +1,53 @@
+{
+  "manifest_version": "0.2",
+  "name": "codotchi-desktop",
+  "display_name": "Codotchi",
+  "version": "2.15.3",
+  "description": "A Tamagotchi-style virtual pet that lives in your Claude Desktop chats. Feed it, pat it, and keep it happy while you work.",
+  "author": {
+    "name": "dylscoop",
+    "url": "https://github.com/dylscoop/codotchi"
+  },
+  "homepage": "https://github.com/dylscoop/codotchi",
+  "license": "MIT",
+  "keywords": ["tamagotchi", "virtual-pet", "codotchi", "game", "mcp-app"],
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/server.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/server.mjs"],
+      "env": {
+        "CODOTCHI_PET_NAME": "${user_config.pet_name}",
+        "CODOTCHI_PET_TYPE": "${user_config.pet_type}",
+        "CODOTCHI_DEV_MODE": "true"
+      }
+    }
+  },
+  "tools": [
+    { "name": "codotchi", "description": "Show your codotchi pet as ASCII art" },
+    { "name": "codotchi_feed", "description": "Feed your codotchi a meal" },
+    { "name": "codotchi_pat", "description": "Pat your codotchi" },
+    { "name": "codotchi_sleep", "description": "Put your codotchi to sleep (or wake it)" },
+    { "name": "codotchi_clean", "description": "Clean up after your codotchi" },
+    { "name": "codotchi_medicine", "description": "Give your codotchi medicine when it is sick" },
+    { "name": "codotchi_activity", "description": "Register coding/chat activity so the pet stays happy" }
+  ],
+  "user_config": {
+    "pet_name": {
+      "type": "string",
+      "title": "Pet name",
+      "description": "What to call your pet the first time it hatches.",
+      "required": false,
+      "default": "Codotchi"
+    },
+    "pet_type": {
+      "type": "string",
+      "title": "Pet type",
+      "description": "Personality/metabolism: codeling, bytebug, pixelpup, or shellscript.",
+      "required": false,
+      "default": "codeling"
+    }
+  }
+}

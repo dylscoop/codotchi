@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.15.1",
+  "version": "2.15.2",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -205,7 +205,7 @@
         },
         "codotchi.aiMode": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "AI mode: suppress idle-timer resets from document changes, cursor movement, and tab switches — the three events an AI coding agent fires. Window focus and mouse movement still reset the timer normally. Enable this when you are using an AI agent to avoid the agent's edits keeping your pet perpetually active."
         },
         "codotchi.idleResetOnDocumentChange": {

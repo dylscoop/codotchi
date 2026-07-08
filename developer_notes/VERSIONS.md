@@ -1,6 +1,36 @@
 # Version History
 
-## v2.15.1 — current
+## v2.15.2 — current
+
+### Changes from v2.15.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | fix: enable `codotchi.aiMode` by default (was `false`, now `true`) so AI agent edits don't keep the pet perpetually active |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt` | fix: set `aiMode` default to `true` in State class and update doc comment |
+| `developer_notes/vscode/FEATURES.md` | docs: update aiMode default to `true` in settings reference table |
+| `vscode/package.json` | chore: bump version to 2.15.2 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.15.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.15.2 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.15.2 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.15.2 |
+| `vscode/codotchi-2.15.2.vsix` | Rebuilt VS Code extension artifact for v2.15.2 |
+| `pycharm/build/distributions/pycharm-codotchi-2.15.2.zip` | Rebuilt PyCharm plugin artifact for v2.15.2 |
+| `opencode-codotchi/opencode-codotchi-2.15.2.zip` | Rebuilt OpenCode plugin zip for v2.15.2 |
+| `claude-desktop-codotchi/codotchi-desktop.mcpb` | Rebuilt Claude Desktop mcpb for v2.15.2 |
+| `claude-codotchi/src/gameEngine.ts` | feat: add `immortal` flag to `GameConfig` + export `LOCAL_PET_GAME_CONFIG` with `immortal: true`; immortal pet never dies (health floored at 1, death checks skipped) |
+| `claude-codotchi/src/asciiArt.ts` | fix: add leading space to `buildSpeechBubble` name/stage header line for alignment under pet art (BUGFIX-137) |
+| `claude-codotchi/scripts/action.mjs` | fix: remove `buildStatusBlock` from art-mode output; strip ANSI before stdout; simplify message branching (BUGFIX-136, BUGFIX-137) |
+| `claude-codotchi/panel/` | chore: delete pixel-art widget panel — ASCII-art only going forward (BUGFIX-138) |
+| `claude-desktop-codotchi/src/state.ts` | feat: share most-recently-modified IDE state file (VS Code / PyCharm) instead of isolated Desktop state; drop `mealsGivenThisCycle` persistence; add `devMode` via `CODOTCHI_DEV_MODE` env var (BUGFIX-138) |
+| `claude-desktop-codotchi/src/tools.ts` | feat: remove `tick` tool; switch render to `buildSpeechBubble`; add `applyDevMode` revival logic (BUGFIX-138) |
+| `claude-desktop-codotchi/src/server.ts` | chore: remove MCP App resource/widget layer (`registerAppResource`, `registerAppTool`); switch to plain `server.registerTool`; drop `codotchi_tick` registration (BUGFIX-138) |
+| `claude-desktop-codotchi/ui/` | chore: delete MCP App pixel-art widget UI — ASCII-art only going forward (BUGFIX-138) |
+| `claude-desktop-codotchi/package.json` | fix: revert version drift 2.15.3 → 2.15.2 |
+
+---
+
+## v2.15.1 — previous
 
 ### Changes from v2.15.0
 
@@ -18,6 +48,18 @@
 | `opencode-codotchi/package.json` | chore: bump version to 2.15.1 |
 | `vscode/codotchi-2.15.1.vsix` | Rebuilt VS Code extension artifact for v2.15.1 |
 | `pycharm/build/distributions/pycharm-codotchi-2.15.1.zip` | Rebuilt PyCharm plugin artifact for v2.15.1 |
+| `claude-desktop-codotchi/` | feat: new Claude Desktop integration — .mcpb bundle, pet rendered as ASCII art in chat, rewards while talking via `codotchi_activity` tool |
+| `claude-desktop-codotchi/package.json` | feat: initial package — deps @modelcontextprotocol/sdk |
+| `claude-desktop-codotchi/manifest.json` | feat: MCPB manifest v0.2 — 7 tools, user_config (pet_name, pet_type) |
+| `claude-desktop-codotchi/src/server.ts` | feat: MCP server — plain `server.registerTool` tools returning ASCII art text + structuredContent payload |
+| `claude-desktop-codotchi/src/tools.ts` | feat: tool handlers — show/activity/feed/pat/sleepToggle/clean/medicine |
+| `claude-desktop-codotchi/src/state.ts` | feat: state + session persistence — offline-decay catch-up, daily session sidecar |
+| `claude-desktop-codotchi/src/gameEngine.ts` | feat: copy of shared game engine (from claude-codotchi/src/gameEngine.ts) |
+| `claude-desktop-codotchi/src/asciiArt.ts` | feat: copy of shared ASCII renderer (from claude-codotchi/src/asciiArt.ts) |
+| `claude-desktop-codotchi/scripts/build.mjs` | feat: build script — typecheck + esbuild server (ESM) |
+| `claude-desktop-codotchi/scripts/bundle-mcpb.mjs` | feat: .mcpb bundler using adm-zip (forward-slash ZIP entries) |
+| `README.md` | docs: add Claude Desktop to platforms table and repo layout |
+| `claude-desktop-codotchi/README.md` | docs: new README — install, tools table, rewards/speech bubble, dev commands |
 
 ---
 
