@@ -29,7 +29,7 @@ async function main() {
   const cfg = loadConfig();
   const now = Date.now();
   const sessionId = hookInput.session_id ?? process.env.CLAUDE_CODE_SESSION_ID;
-  const { costUsd: dailyCostUsd, tokens: dailyTokens, hourlyCostUsd } = accumulateDailyUsage(sessionId);
+  const { costUsd: dailyCostUsd, tokens: dailyTokens, hourlyCostUsd, messageCount } = accumulateDailyUsage(sessionId);
   let file = loadStateFile();
   let state;
 
@@ -53,7 +53,7 @@ async function main() {
   }
 
   const speech = aa.buildContextualSpeech
-    ? aa.buildContextualSpeech(state, 0, 0, 0, 0, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, hourlyCostUsd)
+    ? aa.buildContextualSpeech(state, 0, 0, 0, 0, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, hourlyCostUsd, messageCount)
     : { message: `${state.name ?? "Codotchi"} is ready!` };
 
   const rawBubble = aa.buildSpeechBubble

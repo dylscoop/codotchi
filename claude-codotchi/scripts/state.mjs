@@ -141,7 +141,7 @@ function scanAllDailyUsage() {
   const projsDir = path.join(os.homedir(), ".claude", "projects");
   const today = new Date().toISOString().slice(0, 10);
   const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
-  let costUsd = 0, tokens = 0, hourlyCostUsd = 0;
+  let costUsd = 0, tokens = 0, hourlyCostUsd = 0, messageCount = 0;
   try {
     for (const proj of fs.readdirSync(projsDir)) {
       const projPath = path.join(projsDir, proj);
@@ -169,6 +169,7 @@ function scanAllDailyUsage() {
               const entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
               costUsd += entryCost;
               tokens  += inp + out + cr + cc;
+              messageCount += 1;
               if (d.timestamp && d.timestamp >= oneHourAgo) hourlyCostUsd += entryCost;
             } catch { /* skip malformed lines */ }
           }
@@ -176,13 +177,16 @@ function scanAllDailyUsage() {
       }
     }
   } catch {}
-  return { costUsd, tokens, hourlyCostUsd };
+  return { costUsd, tokens, hourlyCostUsd, messageCount };
 }
 
 /**
  * Accumulate today's cost and tokens from the current session's JSONL transcript.
  * sessionId defaults to CLAUDE_CODE_SESSION_ID env var.
- * Returns { costUsd, tokens } — both accumulated across all sessions today.
+ * Returns { costUsd, tokens, hourlyCostUsd, messageCount } — all accumulated across
+ * all sessions today. messageCount is the number of completed assistant turns today
+ * (including sub-agent/Task turns) — used to compute a tokens-per-message average
+ * for display instead of the raw cumulative token total.
  *
  * Uses a read-modify-write-verify pattern to guard against the race condition
  * where two concurrent Claude Code windows both read the file, compute their

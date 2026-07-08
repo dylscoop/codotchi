@@ -48,7 +48,7 @@ async function main() {
   const now = Date.now();
 
   // Accumulate daily cost and tokens from the session's JSONL transcript.
-  const { costUsd: dailyCostUsd, tokens: dailyTokens, hourlyCostUsd } = accumulateDailyUsage(stdinJson.session_id);
+  const { costUsd: dailyCostUsd, tokens: dailyTokens, hourlyCostUsd, messageCount } = accumulateDailyUsage(stdinJson.session_id);
 
   // Load or create pet state.
   let file = loadStateFile();
@@ -133,7 +133,8 @@ async function main() {
       /*dailyTokens*/ dailyTokens,
       /*warnThresholdUSD*/ warnUsd,
       /*shoutThresholdUSD*/ shoutUsd,
-      /*hourlyCostUSD*/ hourlyCostUsd
+      /*hourlyCostUSD*/ hourlyCostUsd,
+      /*dailyMessages*/ messageCount
     );
     outputs.push(aa.buildSpeechBubble(
       state.stage,

@@ -60,11 +60,12 @@ async function main() {
       try {
         const aa = await import(pathToFileURL(path.join(distDir, "asciiArt.js")).href);
         const sessionId = hookInput.session_id ?? process.env.CLAUDE_CODE_SESSION_ID;
-        const { costUsd: dailyCostUsd, tokens: dailyTokens } = accumulateDailyUsage(sessionId);
+        const { costUsd: dailyCostUsd, tokens: dailyTokens, messageCount } = accumulateDailyUsage(sessionId);
         const speech = aa.buildContextualSpeech(
           state, 0, 0, 0, file.totalMessages ?? 0, false,
           dailyCostUsd, dailyTokens,
-          cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50
+          cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50,
+          0, messageCount
         );
         const rawBubble = aa.buildSpeechBubble(
           state.stage, state.mood, speech.message, state.name, state.spriteType

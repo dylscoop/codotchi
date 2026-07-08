@@ -29,7 +29,7 @@ async function main() {
   const cfg = loadConfig();
   const now = Date.now();
   const sessionId = hookInput.session_id ?? process.env.CLAUDE_CODE_SESSION_ID;
-  const { costUsd: dailyCostUsd, tokens: dailyTokens } = accumulateDailyUsage(sessionId);
+  const { costUsd: dailyCostUsd, tokens: dailyTokens, messageCount } = accumulateDailyUsage(sessionId);
   let file = loadStateFile();
   if (!file || !file.state) {
     process.stdout.write(JSON.stringify({ continue: true }) + "\n");
@@ -54,7 +54,7 @@ async function main() {
   file.totalMessages = (file.totalMessages ?? 0) + 1;
 
   const speech = aa.buildContextualSpeech
-    ? aa.buildContextualSpeech(state, 0, 0, 0, file.totalMessages, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50)
+    ? aa.buildContextualSpeech(state, 0, 0, 0, file.totalMessages, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, 0, messageCount)
     : { message: `See you later! ${state.name ?? "Codotchi"} waves goodbye.` };
 
   const rawBubble = aa.buildSpeechBubble

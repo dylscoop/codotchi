@@ -93,6 +93,12 @@ export declare function formatCost(usd: number): string;
  * @param dailyTokens         - Total tokens consumed today (across all OpenCode sessions).
  * @param costWarnThreshold   - Daily cost (USD) at which the pet switches to a warning tone (default 30).
  * @param costShoutThreshold  - Daily cost (USD) at which the pet switches to ALL CAPS shouting (default 50).
+ * @param dailyMessages       - Count of completed assistant messages today. Used to compute
+ *                              a tokens-per-message average (dailyTokens / dailyMessages) shown
+ *                              in the speech bubble instead of the raw cumulative token total —
+ *                              a number comparable to the model's context window, unlike the
+ *                              unbounded daily sum. Falls back to the raw dailyTokens total when
+ *                              dailyMessages is 0 (e.g. before the first message of the day).
  */
 export declare function buildContextualSpeech(pet: {
     name: string;
@@ -105,7 +111,7 @@ export declare function buildContextualSpeech(pet: {
     sick: boolean;
     sleeping: boolean;
     poops: number;
-}, filesEdited: number, sessionMs: number, timeSinceLastEditMs?: number, sessionUserMessages?: number, isOnProdBranch?: boolean, dailyCostUSD?: number, dailyTokens?: number, costWarnThreshold?: number, costShoutThreshold?: number, hourlyCostUSD?: number): {
+}, filesEdited: number, sessionMs: number, timeSinceLastEditMs?: number, sessionUserMessages?: number, isOnProdBranch?: boolean, dailyCostUSD?: number, dailyTokens?: number, costWarnThreshold?: number, costShoutThreshold?: number, hourlyCostUSD?: number, dailyMessages?: number): {
     message: string;
     bubbleColor: string;
     tierEmoji: string;
