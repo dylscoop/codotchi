@@ -1,6 +1,30 @@
 # Version History
 
-## v2.15.3 — current
+## v2.16.0 — current
+
+### Changes from v2.15.3
+
+| File | What changed |
+|------|-------------|
+| `claude-codotchi/scripts/action.mjs` | feat: import `loadIDEStateFile` from `state.mjs`; after loading local state, scan VS Code and PyCharm state files, apply offline decay, collect "live" IDE pets (saved within 60 s); render each live IDE pet's art + speech bubble below the local pet's bubble |
+| `vscode/media/sidebar.html` | feat: add "Today's Token Cost" button (`btn-mg-cost`) to the minigame-select overlay below Pat |
+| `vscode/media/sidebar.js` | feat: wire click handler for `btn-mg-cost` → sends `token_cost` command to extension host; extend message listener to handle `type: "showBubble"` and call `showBubble(text)` directly |
+| `vscode/src/sidebarProvider.ts` | feat: add `import * as os from "os"`; add `MODEL_PRICING` table + `pricingForModel()` + `scanDailyUsage()` (reads `~/.claude/projects/*.jsonl`, sums cost/tokens/messages/last-1h cost for today); add `token_cost` case to `handleWebviewMessage` — computes formatted cost string and posts `showBubble` message back without consuming energy |
+| `vscode/src/customCharacters.ts` | feat: add `CUSTOM_CHARACTER_POOLS` map (`"dylscoop" → ["tim", "stu"]`); update `getCustomCharacterByPasscode` to randomly pick from the pool before falling back to exact-passcode lookup |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | feat: mirror — add `CUSTOM_CHARACTER_POOLS` map and update `getCustomCharacterByPasscode` with the same pool-pick logic |
+| `claude-codotchi/.claude-plugin/plugin.json` | chore: bump version to 2.16.0 |
+| `claude-codotchi/package.json` | chore: bump version to 2.16.0 |
+| `developer_notes/VERSIONS.md` | docs: add v2.16.0 changes |
+| `developer_notes/vscode/FEATURES.md` | docs: document "Today's Token Cost" minigame overlay option and claude-codotchi IDE pet linking |
+| `vscode/package.json` | chore: bump version to 2.16.0 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.16.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.0 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.16.0 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.0 (was stale at 2.15.2) |
+
+---
+
+## v2.15.3 — previous
 
 ### Changes from v2.15.2
 

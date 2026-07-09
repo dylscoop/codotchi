@@ -17,6 +17,7 @@ import {
   loadConfig,
   saveConfig,
   accumulateDailyUsage,
+  loadIDEStateFile,
 } from "./state.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -59,6 +60,19 @@ async function main() {
       totalMessages: 0,
     };
   }
+
+  // Read VS Code and PyCharm pets — same live-window logic as opencode.
+  const LIVE_THRESHOLD_MS = 60_000;
+  const idePets = [];
+  for (const ide of ["vscode", "pycharm"]) {
+    const ideFile = loadIDEStateFile(ide);
+    if (!ideFile) { continue; }
+    const elapsed = (now - (ideFile.savedAt ?? 0)) / 1_000;
+    const ideState = ge.deserialiseState(ideFile.state);
+    idePets.push({ ide, state: ge.applyOfflineDecay(ideState, elapsed), savedAt: ideFile.savedAt ?? 0 });
+  }
+  idePets.sort((a, b) => b.savedAt - a.savedAt);
+  const livePets = idePets.filter(p => (now - p.savedAt) < LIVE_THRESHOLD_MS);
 
   const gameConfig = ge.LOCAL_PET_GAME_CONFIG ?? ge.DEFAULT_GAME_CONFIG;
   let message = "";
@@ -270,6 +284,20 @@ async function main() {
       undefined, bubbleColor, tierEmoji
     );
     process.stdout.write(aa.stripAnsi(bubble) + "\n");
+
+    // Also render any live IDE pets (VS Code / PyCharm) that are active.
+    for (const { ide, state: ideState } of livePets) {
+      const ideContext = aa.buildContextualSpeech(
+        ideState, 0, 0, 0, 0, false,
+        0, 0, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, 0, 0
+      );
+      const ideBubble = aa.buildSpeechBubble(
+        ideState.stage, ideState.mood, ideContext.message,
+        ideState.name, ideState.spriteType,
+        undefined, ideContext.bubbleColor, ideContext.tierEmoji
+      );
+      process.stdout.write(aa.stripAnsi(ideBubble) + "\n");
+    }
   } else {
     if (message) process.stdout.write(message + "\n");
     else process.stdout.write(aa.stripAnsi(aa.buildStatusBlock(state)) + "\n");

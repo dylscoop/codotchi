@@ -10,6 +10,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
+import * as os from "os";
 import {
   PetState,
   HighScore,
@@ -33,6 +34,95 @@ import {
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
 import { StatusBarManager } from "./statusBar";
+
+// Pricing per million tokens (USD) — mirrors state.mjs MODEL_PRICING table.
+const MODEL_PRICING: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
+  "claude-opus-4":   { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 },
+  "claude-sonnet-4": { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  },
+  "claude-haiku-4":  { input: 0.80, output: 4,    cacheRead: 0.08,  cacheWrite: 1.00  },
+  "claude-opus-3":   { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 },
+  "claude-sonnet-3": { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  },
+  "claude-haiku-3":  { input: 0.25, output: 1.25, cacheRead: 0.03,  cacheWrite: 0.30  },
+  "default":         { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  },
+};
+
+function pricingForModel(model: string = "") {
+  for (const [prefix, p] of Object.entries(MODEL_PRICING)) {
+    if (prefix !== "default" && model.startsWith(prefix)) { return p; }
+  }
+  return MODEL_PRICING["default"];
+}
+
+/** Scan ~/.claude/projects JSONL files and return today's usage totals. */
+function scanDailyUsage(): { costUsd: number; hourlyCostUsd: number; tokens: number; messageCount: number } {
+  const projsDir = path.join(os.homedir(), ".claude", "projects");
+  const today = new Date().toISOString().slice(0, 10);
+  const oneHourAgoMs = Date.now() - 3_600_000;
+  const oneHourAgoIso = new Date(oneHourAgoMs).toISOString();
+  let costUsd = 0, hourlyCostUsd = 0, tokens = 0, messageCount = 0;
+
+  // Track A — Claude Code: read ~/.claude/projects/*.jsonl
+  try {
+    for (const proj of fs.readdirSync(projsDir)) {
+      const projPath = path.join(projsDir, proj);
+      let files: string[];
+      try { files = fs.readdirSync(projPath); } catch { continue; }
+      for (const f of files) {
+        if (!f.endsWith(".jsonl")) { continue; }
+        const fp = path.join(projPath, f);
+        try {
+          const stat = fs.statSync(fp);
+          if (stat.mtime.toISOString().slice(0, 10) < today) { continue; }
+        } catch { continue; }
+        try {
+          const lines = fs.readFileSync(fp, "utf8").trim().split("\n");
+          for (const line of lines) {
+            try {
+              const d = JSON.parse(line);
+              if (d.type !== "assistant" || !d.message?.usage) { continue; }
+              if (d.timestamp && !d.timestamp.startsWith(today)) { continue; }
+              const u = d.message.usage;
+              const p = pricingForModel(d.message.model ?? "");
+              const inp = u.input_tokens ?? 0;
+              const out = u.output_tokens ?? 0;
+              const cr  = u.cache_read_input_tokens ?? 0;
+              const cc  = u.cache_creation_input_tokens ?? 0;
+              const entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
+              costUsd      += entryCost;
+              tokens       += inp + out + cr + cc;
+              messageCount += 1;
+              if (d.timestamp && d.timestamp >= oneHourAgoIso) { hourlyCostUsd += entryCost; }
+            } catch { /* skip malformed lines */ }
+          }
+        } catch { /* skip unreadable files */ }
+      }
+    }
+  } catch { /* projsDir missing */ }
+
+  // Track B — OpenCode: read ~/.config/opencode/codotchi-daily.json
+  try {
+    const xdgConfig = process.env["XDG_CONFIG_HOME"] ?? path.join(os.homedir(), ".config");
+    const ocDailyPath = path.join(xdgConfig, "opencode", "codotchi-daily.json");
+    if (fs.existsSync(ocDailyPath)) {
+      const ocData = JSON.parse(fs.readFileSync(ocDailyPath, "utf8"));
+      // Only include if the file is for today (UTC)
+      if ((ocData.date ?? ocData.createdDate ?? "") === today) {
+        costUsd      += ocData.dailyCostUSD ?? 0;
+        tokens       += ocData.dailyTokens ?? 0;
+        messageCount += ocData.dailyMessages ?? 0;
+        // Sum last-1h events if present
+        const events: Array<{ completedAt?: number; costUSD?: number }> = ocData.costEvents ?? [];
+        for (const ev of events) {
+          if ((ev.completedAt ?? 0) >= oneHourAgoMs) {
+            hourlyCostUsd += ev.costUSD ?? 0;
+          }
+        }
+      }
+    }
+  } catch { /* opencode daily file missing or malformed */ }
+
+  return { costUsd, hourlyCostUsd, tokens, messageCount };
+}
 
 /** Callback invoked whenever the pet state changes. */
 export type StateUpdateCallback = (state: PetState) => void;
@@ -271,13 +361,13 @@ export class SidebarProvider
     }
 
   // BUGFIX-002: block care actions while the pet is sleeping
-  const SLEEP_BLOCKED: readonly string[] = ["feed", "play", "pat", "clean", "medicine", "scold", "praise"];
+  const SLEEP_BLOCKED: readonly string[] = ["feed", "play", "pat", "clean", "medicine", "scold", "praise", "token_cost"];
     if (state !== null && state.sleeping && SLEEP_BLOCKED.includes(message.command)) {
       return;
     }
 
     // Block all actions while paused, except the pause toggle itself and new_game
-    const PAUSE_BLOCKED: readonly string[] = ["feed", "snack_consumed", "play", "pat", "sleep", "wake", "clean", "medicine", "scold", "praise", "reset_high_score"];
+    const PAUSE_BLOCKED: readonly string[] = ["feed", "snack_consumed", "play", "pat", "sleep", "wake", "clean", "medicine", "scold", "praise", "reset_high_score", "token_cost"];
     if (state !== null && state.paused && PAUSE_BLOCKED.includes(message.command)) {
       return;
     }
@@ -410,6 +500,26 @@ export class SidebarProvider
       case "user_activity":
         // Idle timer already reset above; no state change needed.
         return;
+
+      case "token_cost": {
+        if (state === null) { return; }
+        const usage = scanDailyUsage();
+        const avgTok = usage.messageCount > 0
+          ? Math.round(usage.tokens / usage.messageCount)
+          : usage.tokens;
+        const fmt = (n: number) =>
+          n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M`
+          : n >= 1000    ? `${(n / 1000).toFixed(1)}k`
+          : String(n);
+        const fmtCost = (u: number) => u < 0.005 ? "<$0.01" : `$${u.toFixed(2)}`;
+        const text = `Today: ${fmtCost(usage.costUsd)} | Last 1h: ${fmtCost(usage.hourlyCostUsd)} | Avg: ${fmt(avgTok)} tok/msg (Claude + OpenCode)`;
+        // Apply pat mechanics: −20 energy, +10 happiness.
+        nextState = pat(state);
+        if (this.webviewView) {
+          void this.webviewView.webview.postMessage({ type: "showBubble", text });
+        }
+        break;
+      }
 
       default:
         return;

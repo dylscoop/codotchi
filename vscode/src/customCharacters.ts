@@ -162,8 +162,18 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
   },
 ];
 
+/** Passcodes that randomly select one spriteType from a pool instead of a fixed character. */
+export const CUSTOM_CHARACTER_POOLS: Record<string, string[]> = {
+  "dylscoop": ["tim", "stu"],
+};
+
 /** Look up a custom character by passcode. Returns undefined if not found. */
 export function getCustomCharacterByPasscode(passcode: string): CustomCharacter | undefined {
+  const pool = CUSTOM_CHARACTER_POOLS[passcode];
+  if (pool && pool.length > 0) {
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    return CUSTOM_CHARACTERS.find(c => c.spriteType === pick);
+  }
   return CUSTOM_CHARACTERS.find(c => c.passcode === passcode);
 }
 

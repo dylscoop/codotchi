@@ -164,9 +164,20 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
     ),
 )
 
+/** Passcodes that randomly select one spriteType from a pool instead of a fixed character. */
+val CUSTOM_CHARACTER_POOLS: Map<String, List<String>> = mapOf(
+    "dylscoop" to listOf("tim", "stu"),
+)
+
 /** Look up a custom character by passcode. Returns null if not found. */
-fun getCustomCharacterByPasscode(passcode: String): CustomCharacter? =
-    CUSTOM_CHARACTERS.firstOrNull { it.passcode == passcode }
+fun getCustomCharacterByPasscode(passcode: String): CustomCharacter? {
+    val pool = CUSTOM_CHARACTER_POOLS[passcode]
+    if (!pool.isNullOrEmpty()) {
+        val pick = pool[(Math.random() * pool.size).toInt()]
+        return CUSTOM_CHARACTERS.firstOrNull { it.spriteType == pick }
+    }
+    return CUSTOM_CHARACTERS.firstOrNull { it.passcode == passcode }
+}
 
 /** Look up a custom character by spriteType. Returns null if not found. */
 fun getCustomCharacterBySpriteType(spriteType: String): CustomCharacter? =

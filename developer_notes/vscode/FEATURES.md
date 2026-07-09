@@ -117,7 +117,9 @@ Notes:
 Three interactive minigames are implemented: **Left / Right**, **Higher or
 Lower**, and **Coin Flip**. All are launched via a game-select overlay that appears when the
 player presses the Play button. The **Pat** action is also accessible from this
-same overlay.
+same overlay. A non-game **Today's Token Cost** option is also available in the overlay —
+it closes the overlay and fires a speech bubble above the pet showing today's cost, last-1h
+cost, and average tokens per message; no energy is consumed.
 
 Each game runs in a temporary **game overlay** rendered inside the
 sidebar (a `<div>` that covers the game screen for the duration of the game,
@@ -627,6 +629,9 @@ Status: `[x]`
 | OpenCode sprite after every LLM text response | `[x]` | Plain-ASCII speech bubble appended (in fenced code block) to every AI text response when art is enabled; `suppressNextTextArt` flag prevents double-sprite after explicit `/codotchi` calls (v0.10.4) |
 | OpenCode daily cost + token speech | `[x]` | Pet mentions daily USD cost and average tokens-per-message in speech bubble; four tiers: token-only compact (cost=$0, tokens>0), normal (cost>0, < warn threshold), warning (>= warn), ALL CAPS shout (>= shout); thresholds configurable via `/codotchi warnthreshold` and `/codotchi shoutthreshold` (defaults: $30 / $50); cost and token totals persisted in `codotchi-daily.json` across sessions; reasoning tokens included in accumulation; displayed token figure is `dailyTokens / dailyMessages` (average per completed assistant message, comparable to the model's context window) rather than the raw cumulative total, falling back to the raw total before the first message of the day is counted |
 | OpenCode-local unkillable pet | `[x]` | When no IDE pet is active, an OpenCode-resident codotchi auto-spawns (`codotchi-local.json`); evolves through all stages, gains activity from conversations and file edits; cannot die from neglect (health floored at 1); respawns automatically on old-age death; labelled `[OpenCode]`; default name is "Copilot"; can be renamed via `/codotchi rename <name>` |
+| claude-codotchi links to IDE pets | `[x]` | `/codotchi` commands (status, feed, etc.) read VS Code and PyCharm state files via `loadIDEStateFile()`; live IDE pets (saved within 60 s) have offline decay applied and are rendered below the local pet's art + speech bubble, matching OpenCode's multi-pet display |
+| VSCode "Today's Token Cost" play option | `[x]` | Button in the minigame-select overlay; reads `~/.claude/projects/*.jsonl` via `scanDailyUsage()` in `sidebarProvider.ts`; fires a speech bubble showing `Today: $X.XX \| Last 1h: $X.XX \| Avg: Xk tok/msg` without consuming energy or changing state |
+| "dylscoop" character pool passcode | `[x]` | `CUSTOM_CHARACTER_POOLS` in `customCharacters.ts` maps `"dylscoop"` → `["tim", "stu"]`; entering this passcode randomly selects Timagotchi or Stugotchi at each new game; mirrored in `CustomCharacters.kt` |
 
 ---
 
