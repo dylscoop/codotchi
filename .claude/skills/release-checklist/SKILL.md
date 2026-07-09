@@ -119,10 +119,12 @@ Status tokens: `[x]` fully implemented · `[~]` partial · `[ ]` not yet · `[S]
 | File | What to look for |
 |------|-----------------|
 | `README.md` | Quick install filenames, "Current release" line |
-| `vscode/README.md` | Install filenames, Actions table prose (meal/snack caps) |
-| `pycharm/README.md` | Install filenames and manual install examples |
+| `vscode/README.md` | Install filenames, Actions table prose (meal/snack caps); new features |
+| `pycharm/README.md` | Install filenames and manual install examples; new features |
 
 **Critical:** if `FEED_MEAL_MAX_PER_CYCLE`, `SNACK_MAX_PER_CYCLE`, `PLAY_ENERGY_COST`, or any other player-facing constant changes, grep all three README files for the old number and update every occurrence.
+
+**README writing rule — no discrete game mechanics:** Do NOT document specific stat deltas (e.g. "−20 energy", "+10 happiness", "costs 15 energy") in `vscode/README.md` or `pycharm/README.md`. Describe *what* an action does in plain terms ("your pet reacts", "restores hunger", "boosts happiness") — leave the exact numbers for the player to discover. The only exception is FEATURES.md, which is an internal developer reference.
 
 ### 3d. BUGFIXES.md (bug fixes only)
 

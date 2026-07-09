@@ -105,8 +105,7 @@ the day, drawn from both **Claude Code** and **OpenCode**:
   persist per-hour data to disk)
 - **Avg** — average tokens per message today
 
-Using this option costs −20 energy and +10 happiness (same as Pat), so your pet
-benefits every time you check in.
+Your pet reacts when you use this option.
 
 ## Mini-games
 
