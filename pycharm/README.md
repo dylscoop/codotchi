@@ -38,6 +38,8 @@ assigned to you at random when you start a new game.
 - **OpenCode integration** — your pet lives in the terminal too; use `/codotchi`
   commands to care for it alongside your AI coding session, with shared state
   across VS Code, PyCharm, and OpenCode
+- **AI token usage** — VS Code users can check today's combined Claude Code +
+  OpenCode cost via **Play → Today's Token Cost** (VS Code extension only)
 - **Status bar integration** — pet name and stage always visible in the IDE
   status bar
 - **Persistent state** — pet survives IDE restarts; offline time is accounted

@@ -107,16 +107,10 @@ function scanDailyUsage(): { costUsd: number; hourlyCostUsd: number; tokens: num
       const ocData = JSON.parse(fs.readFileSync(ocDailyPath, "utf8"));
       // Only include if the file is for today (UTC)
       if ((ocData.date ?? ocData.createdDate ?? "") === today) {
-        costUsd      += ocData.dailyCostUSD ?? 0;
-        tokens       += ocData.dailyTokens ?? 0;
-        messageCount += ocData.dailyMessages ?? 0;
-        // Sum last-1h events if present
-        const events: Array<{ completedAt?: number; costUSD?: number }> = ocData.costEvents ?? [];
-        for (const ev of events) {
-          if ((ev.completedAt ?? 0) >= oneHourAgoMs) {
-            hourlyCostUsd += ev.costUSD ?? 0;
-          }
-        }
+        costUsd      += ocData.costUSD ?? 0;
+        tokens       += ocData.tokens ?? 0;
+        messageCount += ocData.messages ?? 0;
+        // OpenCode only persists daily totals — last-1h is in-memory in the plugin, not in this file
       }
     }
   } catch { /* opencode daily file missing or malformed */ }

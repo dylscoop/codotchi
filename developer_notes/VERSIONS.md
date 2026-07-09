@@ -1,6 +1,23 @@
 # Version History
 
-## v2.16.0 — current
+## v2.16.1 — current
+
+### Changes from v2.16.0
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/sidebarProvider.ts` | fix: correct OpenCode field names in `scanDailyUsage()` Track B — was reading `dailyCostUSD`/`dailyTokens`/`dailyMessages` (undefined) instead of `costUSD`/`tokens`/`messages`; remove non-existent `costEvents` hourly loop |
+| `vscode/README.md` | docs: add "Today's Token Cost" section describing the Play → cost feature |
+| `pycharm/README.md` | docs: note that VS Code users can check daily AI token usage via Play menu |
+| `vscode/package.json` | chore: bump version to 2.16.1 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.16.1 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.1 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.16.1 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.1 |
+
+---
+
+## v2.16.0 — previous
 
 ### Changes from v2.15.3
 
