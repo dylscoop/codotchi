@@ -18,6 +18,10 @@
 | `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.1 |
 | `opencode-codotchi/package.json` | chore: bump version to 2.16.1 |
 | `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.1 |
+| `vscode/src/customCharacters.ts` | fix: correct cat custom character label from "Pet"/"Play or Pet" to "Pat"/"Play or Pat" |
+| `vscode/media/customCharacters.js` | fix: mirror — same cat label correction |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | fix: mirror — same cat label correction |
+| `pycharm/src/main/resources/webview/customCharacters.js` | fix: mirror — same cat label correction |
 
 ---
 

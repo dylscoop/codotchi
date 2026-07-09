@@ -103,8 +103,8 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     spriteType:  "cat",
     passcode:    "blackcat",
     defaultName:  "Codotchi",
-    patLabel:    "Pet",
-    mgTitle:     "Play or Pet",
+    patLabel:    "Pat",
+    mgTitle:     "Play or Pat",
     giftMessage: "__Name__ found a toy mouse!",
     patToasts: {
       patted:      "__Name__ purred!",
