@@ -38,8 +38,6 @@ assigned to you at random when you start a new game.
 - **OpenCode integration** — your pet lives in the terminal too; use `/codotchi`
   commands to care for it alongside your AI coding session, with shared state
   across VS Code, PyCharm, and OpenCode
-- **AI token usage** — VS Code users can check today's combined Claude Code +
-  OpenCode cost via **Play → Today's Token Cost** (VS Code extension only)
 - **Status bar integration** — pet name and stage always visible in the IDE
   status bar
 - **Persistent state** — pet survives IDE restarts; offline time is accounted
@@ -89,7 +87,7 @@ Once installed and the IDE has restarted:
 | ------ | ------------ |
 | **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect. |
 | **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick. |
-| **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted. |
+| **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted. Also contains **Today's Token Cost** — see below. |
 | **Pat** | Gives your pet a gentle pat. Boosts happiness. Costs energy. Accessed via the Play menu (same overlay as the mini-games). Cannot be used while your pet is sleeping or exhausted. |
 | **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. |
 | **Clean** | Clears all droppings from the screen. Leaving too many uncleaned will make your pet sick. |
@@ -100,6 +98,19 @@ Once installed and the IDE has restarted:
 > **Tip:** keep all four stat bars (Hunger, Happy, Energy, Health) out of the
 > red to maximise your care score, which determines which character your pet
 > evolves into at each life stage.
+
+## Today's Token Cost
+
+The **Play** menu also includes a non-game option: **Today's Token Cost**.
+Clicking it shows a speech bubble above your pet with your combined AI usage for
+the day, drawn from both **Claude Code** and **OpenCode**:
+
+- **Today** — total cost (USD) across both tools since midnight UTC
+- **Last 1h** — cost in the past hour (Claude Code only; OpenCode does not
+  persist per-hour data to disk)
+- **Avg** — average tokens per message today
+
+Your pet reacts when you use this option.
 
 ## Mini-games
 

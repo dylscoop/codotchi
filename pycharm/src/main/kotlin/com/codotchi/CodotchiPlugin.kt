@@ -3,6 +3,9 @@ package com.codotchi
 import com.codotchi.engine.*
 import com.codotchi.getCustomCharacterByPasscode
 import com.codotchi.getCustomCharacterBySpriteType
+import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
+import java.io.File
 import com.intellij.ide.DataManager
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -297,6 +300,93 @@ class CodotchiPlugin : Disposable {
         if (ticked) broadcastState()
     }
 
+    // ── Daily token cost scanning ──────────────────────────────────────────
+
+    private data class DailyUsage(
+        val costUsd: Double,
+        val hourlyCostUsd: Double,
+        val tokens: Long,
+        val messageCount: Int,
+    )
+
+    private fun scanDailyUsage(): DailyUsage {
+        val home = System.getProperty("user.home") ?: ""
+        val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString() // "YYYY-MM-DD"
+        val oneHourAgoMs = System.currentTimeMillis() - 3_600_000L
+        val oneHourAgoIso = java.time.Instant.ofEpochMilli(oneHourAgoMs).toString().substring(0, 19)
+        var costUsd = 0.0; var hourlyCostUsd = 0.0; var tokens = 0L; var messageCount = 0
+        val gson = Gson()
+
+        data class Pricing(val input: Double, val output: Double, val cacheRead: Double, val cacheWrite: Double)
+        fun pricingForModel(model: String): Pricing = when {
+            "opus" in model    -> Pricing(15.0, 75.0, 1.5, 18.75)
+            "haiku" in model   -> Pricing(0.80, 4.0, 0.08, 1.0)
+            else               -> Pricing(3.0, 15.0, 0.30, 3.75) // sonnet default
+        }
+
+        // Track A — Claude Code: ~/.claude/projects/**/*.jsonl
+        try {
+            val projsDir = File(home, ".claude/projects")
+            if (projsDir.isDirectory) {
+                for (proj in projsDir.listFiles() ?: emptyArray()) {
+                    if (!proj.isDirectory) continue
+                    for (f in proj.listFiles() ?: emptyArray()) {
+                        if (!f.name.endsWith(".jsonl")) continue
+                        try {
+                            val modified = java.time.Instant.ofEpochMilli(f.lastModified())
+                                .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+                            if (modified < today) continue
+                        } catch (_: Exception) { continue }
+                        try {
+                            for (line in f.readLines()) {
+                                try {
+                                    @Suppress("UNCHECKED_CAST")
+                                    val d = gson.fromJson(line, Map::class.java) as? Map<*, *> ?: continue
+                                    if (d["type"] != "assistant") continue
+                                    @Suppress("UNCHECKED_CAST")
+                                    val msg = d["message"] as? Map<*, *> ?: continue
+                                    @Suppress("UNCHECKED_CAST")
+                                    val u = msg["usage"] as? Map<*, *> ?: continue
+                                    val ts = d["timestamp"] as? String ?: ""
+                                    if (ts.isNotEmpty() && !ts.startsWith(today)) continue
+                                    val p = pricingForModel(msg["model"] as? String ?: "")
+                                    val inp = (u["input_tokens"] as? Number)?.toLong() ?: 0L
+                                    val out = (u["output_tokens"] as? Number)?.toLong() ?: 0L
+                                    val cr  = (u["cache_read_input_tokens"] as? Number)?.toLong() ?: 0L
+                                    val cc  = (u["cache_creation_input_tokens"] as? Number)?.toLong() ?: 0L
+                                    val entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000.0
+                                    costUsd += entryCost
+                                    tokens += inp + out + cr + cc
+                                    messageCount++
+                                    if (ts.isNotEmpty() && ts >= oneHourAgoIso) hourlyCostUsd += entryCost
+                                } catch (_: Exception) { /* skip malformed line */ }
+                            }
+                        } catch (_: Exception) { /* skip unreadable file */ }
+                    }
+                }
+            }
+        } catch (_: Exception) { /* projsDir missing */ }
+
+        // Track B — OpenCode: ~/.config/opencode/codotchi-daily.json
+        try {
+            val xdgConfig = System.getenv("XDG_CONFIG_HOME")
+                ?: File(home, ".config").absolutePath
+            val ocFile = File(xdgConfig, "opencode/codotchi-daily.json")
+            if (ocFile.exists()) {
+                @Suppress("UNCHECKED_CAST")
+                val ocData = gson.fromJson(ocFile.readText(), Map::class.java) as? Map<*, *>
+                val date = ocData?.get("date") as? String ?: ""
+                if (date == today) {
+                    costUsd      += (ocData?.get("costUSD") as? Number)?.toDouble() ?: 0.0
+                    tokens       += (ocData?.get("tokens") as? Number)?.toLong() ?: 0L
+                    messageCount += (ocData?.get("messages") as? Number)?.toInt() ?: 0
+                }
+            }
+        } catch (_: Exception) { /* opencode daily file missing or malformed */ }
+
+        return DailyUsage(costUsd, hourlyCostUsd, tokens, messageCount)
+    }
+
     // ── Commands (mirrors sidebarProvider.ts handleWebviewMessage exactly) ─
 
     fun handleCommand(message: Map<*, *>) {
@@ -310,6 +400,9 @@ class CodotchiPlugin : Disposable {
         // this handler and onTick cannot interleave (one would otherwise silently
         // overwrite the other's changes with a stale-snapshot result).
         var shouldBroadcast = false
+        // Pre-compute file I/O outside the state lock to avoid holding it during disk reads
+        val dailyUsage = if (command == "token_cost") scanDailyUsage() else null
+
         stateLock.withLock {
             val state   = currentState
 
@@ -317,12 +410,12 @@ class CodotchiPlugin : Disposable {
 
             // BUGFIX-002: block care actions server-side while pet is sleeping
             val isSleeping = state?.sleeping ?: false
-            val sleepBlocked = setOf("feed", "play", "pat", "clean", "medicine", "praise", "scold")
+            val sleepBlocked = setOf("feed", "play", "pat", "token_cost", "clean", "medicine", "praise", "scold")
             if (isSleeping && command in sleepBlocked) return@withLock
 
             // Block all actions while paused, except the pause toggle itself and new_game
             val isPaused = state?.paused ?: false
-            val pauseBlocked = setOf("feed", "snack_consumed", "play", "pat", "sleep", "wake", "clean", "medicine", "scold", "praise", "reset_high_score")
+            val pauseBlocked = setOf("feed", "snack_consumed", "play", "pat", "token_cost", "sleep", "wake", "clean", "medicine", "scold", "praise", "reset_high_score")
             if (isPaused && command in pauseBlocked) return@withLock
 
             var nextState: PetState? = null
@@ -401,6 +494,12 @@ class CodotchiPlugin : Disposable {
                     nextState = pat(state)
                 }
 
+                "token_cost" -> {
+                    state ?: return@withLock
+                    nextState = pat(state)
+                    // bubble dispatched after lock via dailyUsage (see below)
+                }
+
                 "pause" -> {
                     state ?: return@withLock
                     nextState = if (state.paused) resume(state) else pause(state)
@@ -444,6 +543,26 @@ class CodotchiPlugin : Disposable {
         }
 
         if (shouldBroadcast) broadcastState()
+
+        // Token cost bubble — dispatched after state broadcast so the energy/happiness
+        // update lands first, then the speech bubble appears on top.
+        if (command == "token_cost" && dailyUsage != null) {
+            fun fmtTok(n: Long) = when {
+                n >= 1_000_000L -> "${"%.1f".format(n / 1_000_000.0)}M"
+                n >= 1_000L     -> "${"%.1f".format(n / 1_000.0)}k"
+                else            -> "$n"
+            }
+            fun fmtCost(u: Double) = if (u < 0.005) "<$0.01" else "$" + "%.2f".format(u)
+            val avg = if (dailyUsage.messageCount > 0)
+                dailyUsage.tokens / dailyUsage.messageCount
+            else dailyUsage.tokens
+            val text = "Today: ${fmtCost(dailyUsage.costUsd)} | Last 1h: ${fmtCost(dailyUsage.hourlyCostUsd)} | Avg: ${fmtTok(avg)} tok/msg (Claude + OpenCode)"
+            val escaped = text.replace("\\", "\\\\").replace("\"", "\\\"")
+            val payload = """{"type":"showBubble","text":"$escaped"}"""
+            ApplicationManager.getApplication().invokeLater {
+                browserPanels.forEach { it.postMessage(payload) }
+            }
+        }
     }
 
     // ── Code-activity trigger (called by CodotchiEventsManager) ─────────────

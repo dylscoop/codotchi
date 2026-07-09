@@ -93,6 +93,12 @@ class CodotchiBrowserPanel(
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
     }
 
+    /** Send an arbitrary JSON payload to the webview as a MessageEvent. */
+    fun postMessage(payload: String) {
+        val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
+        browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
+    }
+
     /**
      * Reload the webview with freshly built HTML (picks up latest settings).
      * Safe to call from any thread — defers to the EDT internally via JCEF.

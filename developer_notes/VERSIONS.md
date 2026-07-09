@@ -8,7 +8,11 @@
 |------|-------------|
 | `vscode/src/sidebarProvider.ts` | fix: correct OpenCode field names in `scanDailyUsage()` Track B — was reading `dailyCostUSD`/`dailyTokens`/`dailyMessages` (undefined) instead of `costUSD`/`tokens`/`messages`; remove non-existent `costEvents` hourly loop |
 | `vscode/README.md` | docs: add "Today's Token Cost" section describing the Play → cost feature |
-| `pycharm/README.md` | docs: note that VS Code users can check daily AI token usage via Play menu |
+| `pycharm/README.md` | docs: add "Today's Token Cost" section (feature now available in PyCharm too) |
+| `pycharm/src/main/resources/webview/sidebar.html` | feat: add "Today's Token Cost" button to Play overlay |
+| `pycharm/src/main/resources/webview/sidebar.js` | feat: add click handler for `btn-mg-cost` → sends `token_cost` command; extend message listener to handle `showBubble` type |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | feat: add `postMessage(payload)` method for sending arbitrary JSON events to the webview |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: add `scanDailyUsage()` (reads Claude Code JSONL + OpenCode daily JSON); add `token_cost` command case (calls `pat()`, dispatches `showBubble` payload); add `token_cost` to `sleepBlocked` and `pauseBlocked` |
 | `vscode/package.json` | chore: bump version to 2.16.1 |
 | `pycharm/build.gradle.kts` | chore: bump version to 2.16.1 |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.1 |

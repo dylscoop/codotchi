@@ -318,6 +318,10 @@
     hideMgOverlay();
     vscode.postMessage({ command: "pat" });
   });
+  document.getElementById("btn-mg-cost").addEventListener("click", function () {
+    hideMgOverlay();
+    vscode.postMessage({ command: "token_cost" });
+  });
   document.getElementById("btn-mg-cancel").addEventListener("click", function () {
     hideMgOverlay();
   });
@@ -2490,6 +2494,10 @@
 
   window.addEventListener("message", function (event) {
     const message = event.data;
+    if (message && message.type === "showBubble") {
+      showBubble(message.text);
+      return;
+    }
     if (!message || message.type !== "stateUpdate") { return; }
 
     const state = message.state;
