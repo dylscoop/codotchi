@@ -95,6 +95,7 @@ async function main() {
   const gameConfig = ge.LOCAL_PET_GAME_CONFIG ?? ge.DEFAULT_GAME_CONFIG;
   const idePets = [];
   for (const [ide, label] of [["vscode", "[VS Code]"], ["pycharm", "[PyCharm]"]]) {
+    if (file._anchor?.ide === ide) continue; // already the primary pet, don't peek at it too
     const ideFile = loadIDEStateFile(ide);
     if (!ideFile || !ideFile.state) continue;
     const live = (now - (ideFile.savedAt ?? 0)) <= ACTIVE_IDE_THRESHOLD_MS;
