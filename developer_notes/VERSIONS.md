@@ -22,6 +22,7 @@
 | `vscode/media/customCharacters.js` | fix: mirror — same cat label correction |
 | `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | fix: mirror — same cat label correction |
 | `pycharm/src/main/resources/webview/customCharacters.js` | fix: mirror — same cat label correction |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: remove `rooster` and `tiger` from `ROTATION_ANIMALS` to match VS Code's 7-animal pool (rooster/tiger sprite data doesn't exist in VS Code — cross-IDE rendering would break) |
 
 ---
 
