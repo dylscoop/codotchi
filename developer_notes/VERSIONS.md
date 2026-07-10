@@ -1,5 +1,29 @@
 # Version History
 
+## claude-codotchi v2.16.1 — current (claude-codotchi only, decoupled from lockstep)
+
+Branch `feat/claude-codotchi-ide-merge`, forked from `main` at v2.16.0. Only
+`claude-codotchi`'s own version was bumped — vscode/pycharm/opencode/claude-desktop
+versions are intentionally left untouched here because another concurrent branch
+(`fix/opencode-field-names-v2161`) is already mid-release on its own v2.16.1 for
+those products. Reconcile version numbers when the two branches merge.
+
+### Changes from v2.16.0
+
+| File | What changed |
+|------|-------------|
+| `claude-codotchi/scripts/state.mjs` | feat: claude-codotchi now merges its pet identity with whichever of VS Code/PyCharm is most recently active instead of keeping its own separate pet (see BUGFIX-139) — adds `resolvePyCharmStatePath()`, `resolveCanonicalPetPath()`; `loadStateFile()`/`saveStateFile()` prefer the resolved anchor and write back to it |
+| `claude-codotchi/scripts/action.mjs` | fix: "live IDE peek" loop now skips whichever IDE was used as the merge anchor, since it's already the primary bubble |
+| `claude-codotchi/scripts/statusline.mjs` | fix: same anchor-skip as `action.mjs` |
+| `claude-codotchi/tests/unit/state.test.mjs` | test: cover `resolveCanonicalPetPath`/`resolveVSCodeStatePath`/`resolvePyCharmStatePath`/`loadStateFile`/`saveStateFile` merge logic |
+| `claude-codotchi/tests/integration/actionMerge.test.mjs` | test: new — end-to-end check that `action.mjs status` prints the merged IDE pet's name instead of the local "Copilot" fallback |
+| `claude-codotchi/package.json` | chore: bump version to 2.16.1; add integration test to `test` script |
+| `claude-codotchi/.claude-plugin/plugin.json` | chore: bump version to 2.16.1 |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-139 |
+| `developer_notes/VERSIONS.md` | docs: add this section |
+
+---
+
 ## v2.16.0 — current
 
 ### Changes from v2.15.3
