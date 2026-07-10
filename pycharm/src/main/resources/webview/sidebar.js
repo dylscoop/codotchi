@@ -645,11 +645,10 @@
     const newWidth = Math.max(container.clientWidth, 64);
     if (spriteCanvas.width === newWidth) { return; }
     spriteCanvas.width = newWidth;
-    // Re-centre the pet on resize: reset petX to null so the animation loop
-    // places the pet at the horizontal centre on the very next frame.
-    // This also handles the first-load case where the canvas width changes
-    // from the hardcoded HTML attribute (200px) to the real container width.
-    petX = null;
+    // Do NOT reset petX here — the per-frame clamp (petX vs minX/maxX) already
+    // keeps the pet in-bounds after a resize. Resetting to null recentres the
+    // pet, which fired on every play/pat click because toggling the mini-game
+    // overlay nudges the container width (e.g. scrollbar show/hide).
   }
 
   if (typeof ResizeObserver !== "undefined") {

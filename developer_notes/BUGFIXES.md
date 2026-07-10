@@ -1720,3 +1720,25 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** The v2.16.0 "IDE pet linking" feature only added a read-only peek: if VS Code/PyCharm had saved state within the last 60 seconds, an *extra* speech bubble was appended below claude-codotchi's own, separate pet. claude-codotchi always kept its own local pet (defaulting to the hardcoded fallback name "Copilot" on first run) — it never became the *same* pet as VS Code/PyCharm, unlike `claude-desktop-codotchi` which already merges with whichever of those two is most recently active (see BUGFIX-138). Separately, `loadIDEStateFile('pycharm')` only ever checked PyCharm's flat global state file — it never scanned PyCharm's per-project hash subdirectories the way the VS Code path already did, even though `CodotchiPersistence.kt` writes that same per-project scheme.
 
 **Fix:** `state.mjs` gained `resolvePyCharmStatePath()` (mirroring `resolveVSCodeStatePath()`, fixing the missing per-project scan) and `resolveCanonicalPetPath()`, which finds the most-recently-modified state file across both IDEs (cascading past any corrupt/partial candidate). `loadStateFile()` now returns that anchor's pet identity (keeping local-only bookkeeping fields like `terminalEnabled`/`totalMessages` from claude-codotchi's own wrapper file) and tags the result with `_anchor: {ide, filePath}`. `saveStateFile()` always writes an unconditional private local mirror first, then — reusing the same `_anchor` rather than re-resolving, to avoid drifting mid-invocation — writes `{state, savedAt}` back to that anchor file too (skipped for a dead pet, and skipped when the content is unchanged, to avoid pointless writes on every `hook-post-tool.mjs` invocation). Falls back to today's private local pet only when neither IDE has any state at all; that local pet is never written anywhere VS Code/PyCharm would discover it. `action.mjs`/`statusline.mjs`'s "live IDE peek" loop now skips whichever IDE was used as the anchor, since that pet is already the primary bubble.
+
+---
+
+## BUGFIX-140 — "Today's Token Cost" applied Pat mechanics instead of just displaying cost
+
+**Status:** Fixed (branch `fix/v2.16.2-release`)
+**Files:** `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** The `"token_cost"` webview command handler computed the correct usage/cost summary text but then called `pat(state)` to "flavor" the interaction, applying real Pat mechanics (−20 energy, +10 happiness, weight loss, `events: ["patted"]`). This meant simply checking your token cost silently drained the pet's energy and could trigger the random Pat speech-bubble reaction, which raced with (and sometimes visually replaced) the intended cost-summary bubble. `FEATURES.md` already documented the intended behavior as "without consuming energy or changing state" — the code never matched that.
+
+**Fix:** Removed the `pat(state)` call from the `"token_cost"` case in both `sidebarProvider.ts` and `CodotchiPlugin.kt`. The handler now only computes `scanDailyUsage()` and posts the `showBubble` message — no state mutation, no `"patted"` event, no side effects on the pet.
+
+---
+
+## BUGFIX-141 — Pet snapped back to the horizontal centre every time Play or Pat was pressed
+
+**Status:** Fixed (branch `fix/v2.16.2-release`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** `resizeCanvas()` unconditionally reset `petX = null` whenever the sprite canvas's container width changed, which the animation loop then re-centres on the next frame. Opening the mini-game overlay (Play button) or returning from it (Pat button, which calls `hideMgOverlay()`) toggles the `btn-grid`/`game-panels` visibility, which can nudge the webview body's layout enough to change the container's `clientWidth` by a pixel or two (e.g. a scrollbar showing/hiding) — triggering the `ResizeObserver` and fully recentring the pet mid-walk on every Play or Pat click.
+
+**Fix:** Removed the `petX = null` reset from `resizeCanvas()`. The per-frame clamp (`petX = Math.max(minX, Math.min(maxX, petX))`) already present in the animation loop keeps the pet within bounds after a genuine resize, so no explicit recentre is needed — the pet now stays where it was instead of jumping to the middle.

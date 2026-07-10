@@ -1,6 +1,20 @@
 # Version History
 
-## v2.16.1 — current
+## v2.16.2 — current
+
+### Changes from v2.16.1
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/sidebarProvider.ts` | fix: BUGFIX-140 — remove `pat(state)` call from the `"token_cost"` case; viewing token cost no longer mutates energy/happiness/weight or fires the `"patted"` event |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: BUGFIX-140 — mirror — remove `pat(state)` call from the `"token_cost"` branch |
+| `vscode/media/sidebar.js` | fix: BUGFIX-141 — remove the `petX = null` reset in `resizeCanvas()`; the existing per-frame clamp keeps the pet in-bounds without recentring it on every Play/Pat click |
+| `pycharm/src/main/resources/webview/sidebar.js` | fix: BUGFIX-141 — mirror — same `resizeCanvas()` fix |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-140, BUGFIX-141 |
+
+---
+
+## v2.16.1 — previous
 
 ### Changes from v2.16.0
 

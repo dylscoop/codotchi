@@ -507,8 +507,6 @@ export class SidebarProvider
           : String(n);
         const fmtCost = (u: number) => u < 0.005 ? "<$0.01" : `$${u.toFixed(2)}`;
         const text = `Today: ${fmtCost(usage.costUsd)} | Last 1h: ${fmtCost(usage.hourlyCostUsd)} | Avg: ${fmt(avgTok)} tok/msg (Claude + OpenCode)`;
-        // Apply pat mechanics: −20 energy, +10 happiness.
-        nextState = pat(state);
         if (this.webviewView) {
           void this.webviewView.webview.postMessage({ type: "showBubble", text });
         }
