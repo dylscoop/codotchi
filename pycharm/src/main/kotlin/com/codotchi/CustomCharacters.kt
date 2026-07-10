@@ -1,5 +1,7 @@
 package com.codotchi
 
+import com.codotchi.engine.ROTATION_ANIMALS
+
 /**
  * CustomCharacters.kt — registry of hidden/unlockable custom characters.
  *
@@ -166,7 +168,7 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
 
 /** Passcodes that randomly select one spriteType from a pool instead of a fixed character. */
 val CUSTOM_CHARACTER_POOLS: Map<String, List<String>> = mapOf(
-    "dylscoop" to listOf("tim", "stu"),
+    "dylscoop" to (ROTATION_ANIMALS + listOf("tim", "stu", "roo")),
 )
 
 /** Look up a custom character by passcode. Returns null if not found. */
@@ -174,7 +176,21 @@ fun getCustomCharacterByPasscode(passcode: String): CustomCharacter? {
     val pool = CUSTOM_CHARACTER_POOLS[passcode]
     if (!pool.isNullOrEmpty()) {
         val pick = pool[(Math.random() * pool.size).toInt()]
-        return CUSTOM_CHARACTERS.firstOrNull { it.spriteType == pick }
+        // Pool members without a dedicated CUSTOM_CHARACTERS entry (plain rotation
+        // animals) still need their spriteType forced — synthesize a vanilla
+        // character matching the default fallback text used everywhere else.
+        return CUSTOM_CHARACTERS.firstOrNull { it.spriteType == pick } ?: CustomCharacter(
+            spriteType  = pick,
+            passcode    = passcode,
+            defaultName = "Codotchi",
+            patLabel    = "Pat",
+            mgTitle     = "Play or Pat",
+            patToasts   = CustomCharacterToasts(
+                patted     = "__Name__ was patted!",
+                patRefused = "__Name__ doesn't have enough energy to be patted!",
+            ),
+            patBubbles  = listOf(),
+        )
     }
     return CUSTOM_CHARACTERS.firstOrNull { it.passcode == passcode }
 }

@@ -36,7 +36,7 @@ private val ZODIAC_ANIMALS = listOf(
  * More animals will be added to this set in the future.
  * Mirrors ROTATION_ANIMALS in vscode/src/gameEngine.ts.
  */
-private val ROTATION_ANIMALS = listOf(
+val ROTATION_ANIMALS = listOf(
     "cat", "dog", "snake", "sheep", "classic",
     "kangaroo", "dragon"
 )

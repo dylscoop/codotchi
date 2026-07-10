@@ -10,6 +10,8 @@
  *   6. Add entry to CustomCharacters.kt (pycharm mirror).
  */
 
+import { ROTATION_ANIMALS } from "./gameEngine";
+
 export interface CustomCharacterToasts {
   patted:      string;
   pat_refused: string;
@@ -164,7 +166,7 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
 
 /** Passcodes that randomly select one spriteType from a pool instead of a fixed character. */
 export const CUSTOM_CHARACTER_POOLS: Record<string, string[]> = {
-  "dylscoop": ["tim", "stu"],
+  "dylscoop": [...ROTATION_ANIMALS, "tim", "stu", "roo"],
 };
 
 /** Look up a custom character by passcode. Returns undefined if not found. */
@@ -172,7 +174,21 @@ export function getCustomCharacterByPasscode(passcode: string): CustomCharacter 
   const pool = CUSTOM_CHARACTER_POOLS[passcode];
   if (pool && pool.length > 0) {
     const pick = pool[Math.floor(Math.random() * pool.length)];
-    return CUSTOM_CHARACTERS.find(c => c.spriteType === pick);
+    // Pool members without a dedicated CUSTOM_CHARACTERS entry (plain rotation
+    // animals) still need their spriteType forced — synthesize a vanilla
+    // character matching the default fallback text used everywhere else.
+    return CUSTOM_CHARACTERS.find(c => c.spriteType === pick) ?? {
+      spriteType:  pick,
+      passcode,
+      defaultName: "Codotchi",
+      patLabel:    "Pat",
+      mgTitle:     "Play or Pat",
+      patToasts: {
+        patted:      "__Name__ was patted!",
+        pat_refused: "__Name__ doesn't have enough energy to be patted!",
+      },
+      patBubbles: [],
+    };
   }
   return CUSTOM_CHARACTERS.find(c => c.passcode === passcode);
 }

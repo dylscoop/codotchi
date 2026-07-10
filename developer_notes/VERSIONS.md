@@ -11,6 +11,11 @@
 | `vscode/media/sidebar.js` | fix: BUGFIX-141 — remove the `petX = null` reset in `resizeCanvas()`; the existing per-frame clamp keeps the pet in-bounds without recentring it on every Play/Pat click |
 | `pycharm/src/main/resources/webview/sidebar.js` | fix: BUGFIX-141 — mirror — same `resizeCanvas()` fix |
 | `developer_notes/BUGFIXES.md` | docs: add BUGFIX-140, BUGFIX-141 |
+| `vscode/src/gameEngine.ts` | feat: export `ROTATION_ANIMALS` so `customCharacters.ts` can reuse it |
+| `vscode/src/customCharacters.ts` | feat: expand the `"dylscoop"` pool from `["tim", "stu"]` to the full rotation + tim + stu + roo (10 total); `getCustomCharacterByPasscode()` now synthesizes a vanilla `CustomCharacter` for pool picks with no dedicated registry entry (plain rotation animals), so the picked spriteType is always forced correctly |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | feat: make `ROTATION_ANIMALS` public (`private val` → `val`) so `CustomCharacters.kt` can reuse it |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | feat: mirror — same `"dylscoop"` pool expansion and vanilla-character synthesis |
+| `developer_notes/vscode/FEATURES.md` | docs: update the `"dylscoop"` pool row to describe the 10-member pool |
 
 ---
 

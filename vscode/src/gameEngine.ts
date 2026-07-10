@@ -941,7 +941,7 @@ const ZODIAC_ANIMALS = [
  * Note: some rotation animals (dog, snake, sheep) are also zodiac animals —
  * they remain accessible via zodiac character codes too.
  */
-const ROTATION_ANIMALS = [
+export const ROTATION_ANIMALS = [
   "cat", "dog", "snake", "sheep", "classic",
   "kangaroo", "dragon",
 ] as const;
