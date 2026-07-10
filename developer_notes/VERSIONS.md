@@ -1,6 +1,23 @@
 # Version History
 
-## v2.16.2 — current
+## v2.16.3 — current
+
+### Changes from v2.16.2
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | fix: BUGFIX-142 — add `applyTokenCostView()`, applying the same energy/happiness deltas as Pat with no weight, events, or attention-call side effects |
+| `vscode/src/sidebarProvider.ts` | fix: BUGFIX-142 — `"token_cost"` case calls `applyTokenCostView()` and broadcasts state before showing the cost bubble |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: BUGFIX-142 — mirror — add `applyTokenCostView()` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: BUGFIX-142 — mirror — `"token_cost"` branch calls `applyTokenCostView()` |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-142 |
+| `developer_notes/vscode/FEATURES.md` | docs: update the "Today's Token Cost" rows to describe the restored energy/happiness cost |
+| `vscode/README.md` | docs: "Today's Token Cost" section now notes it costs energy and boosts happiness, same as a Pat |
+| `pycharm/README.md` | docs: mirror — same "Today's Token Cost" wording |
+
+---
+
+## v2.16.2 — previous
 
 ### Changes from v2.16.1
 

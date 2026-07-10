@@ -18,12 +18,18 @@ class GameEngineTest {
         snacksOnFloor: Int = 0,
         snacksGivenThisCycle: Int = 0,
         paused: Boolean = false,
+        energy: Int = 100,
+        happiness: Int = 50,
+        weight: Int = 40,
     ): PetState {
         val base = createPet("Pixel", "codeling", "neon")
         return base.copy(
             snacksOnFloor        = snacksOnFloor,
             snacksGivenThisCycle = snacksGivenThisCycle,
             paused               = paused,
+            energy               = energy,
+            happiness            = happiness,
+            weight               = weight,
         )
     }
 
@@ -189,5 +195,43 @@ class GameEngineTest {
         val pet  = makePet().copy(weight = 10, energy = 50)
         val next = play(pet, playWeightLoss = 5)
         assertEquals(5, next.weight)
+    }
+
+    // ── applyTokenCostView — BUGFIX-142 ─────────────────────────────────────
+
+    @Test
+    fun `applyTokenCostView increases happiness by 10`() {
+        val pet  = makePet(happiness = 50, energy = 50)
+        val next = applyTokenCostView(pet)
+        assertEquals(60, next.happiness)
+    }
+
+    @Test
+    fun `applyTokenCostView decreases energy by 20`() {
+        val pet  = makePet(energy = 50)
+        val next = applyTokenCostView(pet)
+        assertEquals(30, next.energy)
+    }
+
+    @Test
+    fun `applyTokenCostView does not change weight`() {
+        val pet  = makePet(weight = 30, energy = 50)
+        val next = applyTokenCostView(pet)
+        assertEquals(30, next.weight)
+    }
+
+    @Test
+    fun `applyTokenCostView does not emit a patted event`() {
+        val pet  = makePet(energy = 50)
+        val next = applyTokenCostView(pet)
+        assertTrue(next.events.isEmpty())
+    }
+
+    @Test
+    fun `applyTokenCostView clamps energy at 0 rather than refusing when energy below 20`() {
+        val pet  = makePet(energy = 15, happiness = 50)
+        val next = applyTokenCostView(pet)
+        assertEquals(0, next.energy)
+        assertEquals(60, next.happiness)
     }
 }

@@ -1800,6 +1800,23 @@ export function pat(state: PetState): PetState {
 }
 
 /**
+ * Apply the stat cost of viewing the token cost overlay: same energy/happiness
+ * change as a pat, but no weight, events, or attention-call side effects — the
+ * cost bubble is shown separately, so this must not emit a "patted" event that
+ * would race it with a reaction bubble (BUGFIX-140).
+ *
+ * @param state - The current pet state.
+ * @returns A new PetState after the action.
+ */
+export function applyTokenCostView(state: PetState): PetState {
+  return withDerivedFields({
+    ...state,
+    happiness: clampStat(state.happiness + PAT_HAPPINESS_BOOST),
+    energy:    clampStat(state.energy    - PAT_ENERGY_COST),
+  });
+}
+
+/**
  * Return the happiness delta for a mini-game outcome.
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),

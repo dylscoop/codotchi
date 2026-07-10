@@ -496,6 +496,7 @@ class CodotchiPlugin : Disposable {
 
                 "token_cost" -> {
                     state ?: return@withLock
+                    nextState = applyTokenCostView(state)
                     // bubble dispatched after lock via dailyUsage (see below)
                 }
 

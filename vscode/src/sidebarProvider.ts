@@ -21,6 +21,7 @@ import {
   play,
   applyMinigameResult,
   pat,
+  applyTokenCostView,
   sleep,
   wake,
   clean,
@@ -497,6 +498,9 @@ export class SidebarProvider
 
       case "token_cost": {
         if (state === null) { return; }
+        // Apply and broadcast the energy/happiness cost first, then show the
+        // cost bubble on top, so the stat bars land before the bubble appears.
+        this.onStateUpdate(applyTokenCostView(state));
         const usage = scanDailyUsage();
         const avgTok = usage.messageCount > 0
           ? Math.round(usage.tokens / usage.messageCount)
@@ -510,7 +514,7 @@ export class SidebarProvider
         if (this.webviewView) {
           void this.webviewView.webview.postMessage({ type: "showBubble", text });
         }
-        break;
+        return;
       }
 
       default:

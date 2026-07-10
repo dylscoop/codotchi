@@ -119,7 +119,8 @@ Lower**, and **Coin Flip**. All are launched via a game-select overlay that appe
 player presses the Play button. The **Pat** action is also accessible from this
 same overlay. A non-game **Today's Token Cost** option is also available in the overlay —
 it closes the overlay and fires a speech bubble above the pet showing today's cost, last-1h
-cost, and average tokens per message; no energy is consumed.
+cost, and average tokens per message; applies the same energy/happiness cost as a Pat (−20
+energy, +10 happiness), but with no weight change and no `"patted"` event/reaction bubble.
 
 Each game runs in a temporary **game overlay** rendered inside the
 sidebar (a `<div>` that covers the game screen for the duration of the game,
@@ -630,7 +631,7 @@ Status: `[x]`
 | OpenCode daily cost + token speech | `[x]` | Pet mentions daily USD cost and average tokens-per-message in speech bubble; four tiers: token-only compact (cost=$0, tokens>0), normal (cost>0, < warn threshold), warning (>= warn), ALL CAPS shout (>= shout); thresholds configurable via `/codotchi warnthreshold` and `/codotchi shoutthreshold` (defaults: $30 / $50); cost and token totals persisted in `codotchi-daily.json` across sessions; reasoning tokens included in accumulation; displayed token figure is `dailyTokens / dailyMessages` (average per completed assistant message, comparable to the model's context window) rather than the raw cumulative total, falling back to the raw total before the first message of the day is counted |
 | OpenCode-local unkillable pet | `[x]` | When no IDE pet is active, an OpenCode-resident codotchi auto-spawns (`codotchi-local.json`); evolves through all stages, gains activity from conversations and file edits; cannot die from neglect (health floored at 1); respawns automatically on old-age death; labelled `[OpenCode]`; default name is "Copilot"; can be renamed via `/codotchi rename <name>` |
 | claude-codotchi merges identity with IDE pets | `[x]` | `resolveCanonicalPetPath()` in `state.mjs` finds the most-recently-modified VS Code/PyCharm state file (scanning both flat and per-workspace/per-project hash subdirectories); `loadStateFile()`/`saveStateFile()` adopt that pet as claude-codotchi's own — same pattern as claude-desktop-codotchi — instead of keeping a separate local pet, and write edits (feed, pat, etc.) back to it. Falls back to a private local pet (default name "Copilot") only when neither IDE has any state; that fallback pet is never written anywhere discoverable. Any other still-independent IDE pet saved within the last 60 s is still shown as an extra "peek" speech bubble below the primary one (BUGFIX-139) |
-| VSCode "Today's Token Cost" play option | `[x]` | Button in the minigame-select overlay; reads `~/.claude/projects/*.jsonl` via `scanDailyUsage()` in `sidebarProvider.ts`; fires a speech bubble showing `Today: $X.XX \| Last 1h: $X.XX \| Avg: Xk tok/msg` without consuming energy or changing state |
+| VSCode "Today's Token Cost" play option | `[x]` | Button in the minigame-select overlay; reads `~/.claude/projects/*.jsonl` via `scanDailyUsage()` in `sidebarProvider.ts`; fires a speech bubble showing `Today: $X.XX \| Last 1h: $X.XX \| Avg: Xk tok/msg`; applies `applyTokenCostView()` (−20 energy, +10 happiness — same deltas as Pat, but no weight loss, events, or attention-call side effects) |
 | "dylscoop" character pool passcode | `[x]` | `CUSTOM_CHARACTER_POOLS` in `customCharacters.ts` maps `"dylscoop"` → the full `ROTATION_ANIMALS` set (cat, dog, snake, sheep, classic, kangaroo, dragon) plus tim, stu, and roo (10 total); entering this passcode randomly forces one of the ten at each new game; mirrored in `CustomCharacters.kt` |
 
 ---

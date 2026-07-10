@@ -19,6 +19,7 @@ import {
   consumeSnack,
   play,
   pat,
+  applyTokenCostView,
   applyMinigameResult,
   sleep,
   wake,
@@ -1121,6 +1122,43 @@ describe("pat", () => {
     const pet = makePet({ weight: 1, energy: 50 });
     const next = pat(pet);
     assert.equal(next.weight, 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyTokenCostView — BUGFIX-142
+// ---------------------------------------------------------------------------
+
+describe("applyTokenCostView", () => {
+  it("increases happiness by 10", () => {
+    const pet = makePet({ happiness: 50, energy: 50 });
+    const next = applyTokenCostView(pet);
+    assert.equal(next.happiness, 60);
+  });
+
+  it("decreases energy by 20", () => {
+    const pet = makePet({ energy: 50 });
+    const next = applyTokenCostView(pet);
+    assert.equal(next.energy, 30);
+  });
+
+  it("does not change weight", () => {
+    const pet = makePet({ weight: 30, energy: 50 });
+    const next = applyTokenCostView(pet);
+    assert.equal(next.weight, 30);
+  });
+
+  it("does not emit a patted event", () => {
+    const pet = makePet({ energy: 50 });
+    const next = applyTokenCostView(pet);
+    assert.equal(next.events.length, 0);
+  });
+
+  it("clamps energy at 0 rather than refusing when energy < 20", () => {
+    const pet = makePet({ energy: 15, happiness: 50 });
+    const next = applyTokenCostView(pet);
+    assert.equal(next.energy, 0);
+    assert.equal(next.happiness, 60);
   });
 });
 

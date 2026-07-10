@@ -110,7 +110,7 @@ the day, drawn from both **Claude Code** and **OpenCode**:
   persist per-hour data to disk)
 - **Avg** — average tokens per message today
 
-Your pet reacts when you use this option.
+Costs energy and boosts happiness, same as a Pat.
 
 ## Mini-games
 

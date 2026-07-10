@@ -1742,3 +1742,14 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** `resizeCanvas()` unconditionally reset `petX = null` whenever the sprite canvas's container width changed, which the animation loop then re-centres on the next frame. Opening the mini-game overlay (Play button) or returning from it (Pat button, which calls `hideMgOverlay()`) toggles the `btn-grid`/`game-panels` visibility, which can nudge the webview body's layout enough to change the container's `clientWidth` by a pixel or two (e.g. a scrollbar showing/hiding) — triggering the `ResizeObserver` and fully recentring the pet mid-walk on every Play or Pat click.
 
 **Fix:** Removed the `petX = null` reset from `resizeCanvas()`. The per-frame clamp (`petX = Math.max(minX, Math.min(maxX, petX))`) already present in the animation loop keeps the pet within bounds after a genuine resize, so no explicit recentre is needed — the pet now stays where it was instead of jumping to the middle.
+
+---
+
+## BUGFIX-142 — "Today's Token Cost" no longer costs energy or boosts happiness
+
+**Status:** Fixed (v2.16.3)
+**Files:** `vscode/src/gameEngine.ts`, `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** BUGFIX-140 removed the `pat(state)` call from the `"token_cost"` handler entirely to stop it from applying full Pat mechanics (weight loss, `"patted"` event racing the cost bubble). That also silently dropped the intended energy/happiness cost — checking your token cost became completely free, with no state change at all. The PyCharm side still carried a stale comment ("dispatched after state broadcast so the energy/happiness update lands first...") describing behavior the code no longer implemented.
+
+**Fix:** Added a dedicated `applyTokenCostView()` to both game engines that applies only the energy cost and happiness boost (same deltas as Pat) via `clampStat`, with no weight change, no `events`, and no attention-call side effects — so it cannot trigger the `"patted"` reaction bubble that raced the cost bubble in BUGFIX-140. The `"token_cost"` handlers in `sidebarProvider.ts` and `CodotchiPlugin.kt` now call it and broadcast the updated state before showing the cost bubble.
