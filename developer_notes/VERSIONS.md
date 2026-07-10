@@ -16,6 +16,12 @@
 | `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | feat: make `ROTATION_ANIMALS` public (`private val` → `val`) so `CustomCharacters.kt` can reuse it |
 | `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | feat: mirror — same `"dylscoop"` pool expansion and vanilla-character synthesis |
 | `developer_notes/vscode/FEATURES.md` | docs: update the `"dylscoop"` pool row to describe the 10-member pool |
+| `vscode/package.json` | chore: bump version to 2.16.2 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.16.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.2 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.16.2 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.2 |
+| `claude-desktop-codotchi/manifest.json` | chore: bump version to 2.16.2 (was drifted at 2.15.3) |
 
 ---
 
