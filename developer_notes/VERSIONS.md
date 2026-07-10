@@ -13,16 +13,25 @@
 | `pycharm/src/main/resources/webview/sidebar.js` | feat: add click handler for `btn-mg-cost` → sends `token_cost` command; extend message listener to handle `showBubble` type |
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | feat: add `postMessage(payload)` method for sending arbitrary JSON events to the webview |
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: add `scanDailyUsage()` (reads Claude Code JSONL + OpenCode daily JSON); add `token_cost` command case (calls `pat()`, dispatches `showBubble` payload); add `token_cost` to `sleepBlocked` and `pauseBlocked` |
-| `vscode/package.json` | chore: bump version to 2.16.1 |
-| `pycharm/build.gradle.kts` | chore: bump version to 2.16.1 |
-| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.1 |
-| `opencode-codotchi/package.json` | chore: bump version to 2.16.1 |
-| `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.1 |
 | `vscode/src/customCharacters.ts` | fix: correct cat custom character label from "Pet"/"Play or Pet" to "Pat"/"Play or Pat" |
 | `vscode/media/customCharacters.js` | fix: mirror — same cat label correction |
 | `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | fix: mirror — same cat label correction |
 | `pycharm/src/main/resources/webview/customCharacters.js` | fix: mirror — same cat label correction |
 | `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: remove `rooster` and `tiger` from `ROTATION_ANIMALS` to match VS Code's 7-animal pool (rooster/tiger sprite data doesn't exist in VS Code — cross-IDE rendering would break) |
+| `claude-codotchi/scripts/state.mjs` | feat: claude-codotchi now merges its pet identity with whichever of VS Code/PyCharm is most recently active instead of keeping its own separate pet (see BUGFIX-139) — adds `resolvePyCharmStatePath()`, `resolveCanonicalPetPath()`; `loadStateFile()`/`saveStateFile()` prefer the resolved anchor and write back to it |
+| `claude-codotchi/scripts/action.mjs` | fix: "live IDE peek" loop now skips whichever IDE was used as the merge anchor, since it's already the primary bubble |
+| `claude-codotchi/scripts/statusline.mjs` | fix: same anchor-skip as `action.mjs` |
+| `claude-codotchi/tests/unit/state.test.mjs` | test: cover `resolveCanonicalPetPath`/`resolveVSCodeStatePath`/`resolvePyCharmStatePath`/`loadStateFile`/`saveStateFile` merge logic |
+| `claude-codotchi/tests/integration/actionMerge.test.mjs` | test: new — end-to-end check that `action.mjs status` prints the merged IDE pet's name instead of the local "Copilot" fallback |
+| `claude-codotchi/package.json` | chore: bump version to 2.16.1; add integration test to `test` script |
+| `claude-codotchi/.claude-plugin/plugin.json` | chore: bump version to 2.16.1 |
+| `vscode/package.json` | chore: bump version to 2.16.1 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.16.1 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.1 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.16.1 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.1 |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-139 |
+| `developer_notes/VERSIONS.md` | docs: add this section (merged from `fix/opencode-field-names-v2161` and `feat/claude-codotchi-ide-merge`, both independently landing on v2.16.1) |
 
 ---
 

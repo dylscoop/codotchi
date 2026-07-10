@@ -65,6 +65,7 @@ async function main() {
   const LIVE_THRESHOLD_MS = 60_000;
   const idePets = [];
   for (const ide of ["vscode", "pycharm"]) {
+    if (file._anchor?.ide === ide) continue; // already the primary pet, don't peek at it too
     const ideFile = loadIDEStateFile(ide);
     if (!ideFile) { continue; }
     const elapsed = (now - (ideFile.savedAt ?? 0)) / 1_000;
