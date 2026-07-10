@@ -14,6 +14,12 @@
 | `developer_notes/vscode/FEATURES.md` | docs: update the "Today's Token Cost" rows to describe the restored energy/happiness cost |
 | `vscode/README.md` | docs: "Today's Token Cost" section now notes it costs energy and boosts happiness, same as a Pat |
 | `pycharm/README.md` | docs: mirror — same "Today's Token Cost" wording |
+| `vscode/package.json` | chore: bump version to 2.16.3 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.16.3 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.3 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.16.3 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.3 |
+| `claude-desktop-codotchi/manifest.json` | chore: bump version to 2.16.3 |
 
 ---
 
