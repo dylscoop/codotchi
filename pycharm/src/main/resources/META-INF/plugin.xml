@@ -165,6 +165,12 @@ which determines which character your pet evolves into at each life stage.</p>
             displayType="BALLOON"
             isLogByDefault="true"/>
 
+        <!-- Notification group for Copilot quota sign-in/sign-out -->
+        <notificationGroup
+            id="Codotchi Copilot Quota"
+            displayType="BALLOON"
+            isLogByDefault="true"/>
+
     </extensions>
 
     <actions>
@@ -173,6 +179,20 @@ which determines which character your pet evolves into at each life stage.</p>
                 class="com.codotchi.OpenSpritePreviewAction"
                 text="Codotchi: Open Sprite Preview (Dev)"
                 description="Open the sprite preview gallery (developer mode only)">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <!-- GitHub Copilot quota sign-in / sign-out (OAuth device flow — no PAT required) -->
+        <action id="com.codotchi.CopilotSignIn"
+                class="com.codotchi.CopilotSignInAction"
+                text="Codotchi: Sign in to GitHub (Copilot Quota)"
+                description="Sign in to GitHub via device flow to show your Copilot premium-quota percentage in Today's Token Cost">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action id="com.codotchi.CopilotSignOut"
+                class="com.codotchi.CopilotSignOutAction"
+                text="Codotchi: Sign out (Copilot Quota)"
+                description="Forget the stored GitHub Copilot quota sign-in">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
 
