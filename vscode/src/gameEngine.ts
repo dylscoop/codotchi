@@ -1742,7 +1742,7 @@ export function consumeSnack(state: PetState, opts?: { hungerMult?: number; sick
  * the engine's count stays in sync with the webview's empty `snackItems[]`.
  */
 export function resetFloorSnacks(state: PetState): PetState {
-  return withDerivedFields({ ...state, snacksOnFloor: 0 });
+  return withDerivedFields({ ...state, snacksOnFloor: 0, events: [] });
 }
 
 /**
@@ -1819,6 +1819,7 @@ export function applyTokenCostView(state: PetState): PetState {
     ...state,
     happiness: clampStat(state.happiness + PAT_HAPPINESS_BOOST),
     energy:    clampStat(state.energy    - PAT_ENERGY_COST),
+    events: [],
   });
 }
 

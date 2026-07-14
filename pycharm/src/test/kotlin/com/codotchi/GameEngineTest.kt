@@ -237,4 +237,11 @@ class GameEngineTest {
         assertEquals(0, next.energy)
         assertEquals(60, next.happiness)
     }
+
+    @Test
+    fun `applyTokenCostView clears any stale events already on state`() {
+        val pet  = makePet(energy = 50).copy(events = listOf("snack_placed"))
+        val next = applyTokenCostView(pet)
+        assertTrue(next.events.isEmpty())
+    }
 }

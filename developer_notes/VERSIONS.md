@@ -1,6 +1,29 @@
 # Version History
 
-## v2.16.5 — current
+## v2.16.6 — current
+
+### Changes from v2.16.5
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | fix: BUGFIX-145 — `applyTokenCostView()` now explicitly clears `events: []`; `resetFloorSnacks()` hardened the same way |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: BUGFIX-145 — mirror — `applyTokenCostView()` now sets `events = emptyList()` |
+| `claude-codotchi/src/gameEngine.ts` | fix: BUGFIX-145 — `resetFloorSnacks()` hardened to clear `events: []` (no `applyTokenCostView` in this copy) |
+| `opencode-codotchi/src/gameEngine.ts` | fix: BUGFIX-145 — mirror — same `resetFloorSnacks()` hardening |
+| `claude-desktop-codotchi/src/gameEngine.ts` | fix: BUGFIX-145 — mirror — same `resetFloorSnacks()` hardening |
+| `vscode/tests/unit/gameEngine.test.ts` | test: add stale-events-cleared coverage for `applyTokenCostView` and `resetFloorSnacks` |
+| `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | test: mirror — same `applyTokenCostView` coverage |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-145 |
+| `vscode/package.json` | chore: bump version to 2.16.6 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.16.6 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.6 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.16.6 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.6 |
+| `claude-desktop-codotchi/manifest.json` | chore: bump version to 2.16.6 |
+
+---
+
+## v2.16.5 — previous
 
 ### Changes from v2.16.4
 

@@ -900,6 +900,12 @@ describe("resetFloorSnacks", () => {
     assert.equal(next.snacksOnFloor, 0);
   });
 
+  it("clears any stale events already on state", () => {
+    const pet = makePet({ snacksOnFloor: 1, events: ["snack_placed"] });
+    const next = resetFloorSnacks(pet);
+    assert.deepEqual(next.events, []);
+  });
+
   it("is a no-op when snacksOnFloor is already 0", () => {
     const pet = makePet({ snacksOnFloor: 0 });
     const next = resetFloorSnacks(pet);
@@ -1157,6 +1163,12 @@ describe("applyTokenCostView", () => {
     const pet = makePet({ energy: 50 });
     const next = applyTokenCostView(pet);
     assert.equal(next.events.length, 0);
+  });
+
+  it("clears any stale events already on state (does not leak a prior action's one-shot event)", () => {
+    const pet = makePet({ energy: 50, events: ["snack_placed"] });
+    const next = applyTokenCostView(pet);
+    assert.deepEqual(next.events, []);
   });
 
   it("clamps energy at 0 rather than refusing when energy < 20", () => {

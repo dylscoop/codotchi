@@ -860,6 +860,7 @@ fun applyTokenCostView(state: PetState): PetState {
         state.copy(
             happiness = clampStat(state.happiness + PAT_HAPPINESS_BOOST),
             energy    = clampStat(state.energy    - PAT_ENERGY_COST),
+            events    = emptyList(),
         )
     )
 }
