@@ -238,6 +238,15 @@
           "default": false,
           "scope": "window",
           "description": "Give each workspace its own independent pet. When enabled, state is stored in a workspace-specific file derived from the workspace path. On first enable the current shared pet is copied to the workspace file as the starting point. When disabled, all workspaces share one global pet."
+        },
+        "codotchi.tokenCostSources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["claudeCode", "openCode", "copilot"]
+          },
+          "default": ["claudeCode", "openCode"],
+          "description": "Which sources contribute to the 'Today's Token Cost' bubble. 'claudeCode' and 'openCode' report a dollar cost from local usage logs. 'copilot' reports a GitHub Copilot premium-request quota percentage (no API key needed — you'll be prompted to sign in to GitHub via VS Code's built-in authentication the first time). Select any combination, e.g. just ['copilot'], or all three to show everything at once."
         }
       }
     }

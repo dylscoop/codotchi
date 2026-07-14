@@ -35,6 +35,7 @@ import {
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
 import { StatusBarManager } from "./statusBar";
+import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
 
 // Pricing per million tokens (USD) — mirrors state.mjs MODEL_PRICING table.
 const MODEL_PRICING: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
@@ -54,8 +55,16 @@ function pricingForModel(model: string = "") {
   return MODEL_PRICING["default"];
 }
 
+/** Which local usage sources (Track A/B) to include in {@link scanDailyUsage}. */
+interface DailyUsageSources {
+  claudeCode: boolean;
+  openCode: boolean;
+}
+
 /** Scan ~/.claude/projects JSONL files and return today's usage totals. */
-function scanDailyUsage(): { costUsd: number; hourlyCostUsd: number; tokens: number; messageCount: number } {
+function scanDailyUsage(
+  sources: DailyUsageSources = { claudeCode: true, openCode: true }
+): { costUsd: number; hourlyCostUsd: number; tokens: number; messageCount: number } {
   const projsDir = path.join(os.homedir(), ".claude", "projects");
   const today = new Date().toISOString().slice(0, 10);
   const oneHourAgoMs = Date.now() - 3_600_000;
@@ -63,58 +72,62 @@ function scanDailyUsage(): { costUsd: number; hourlyCostUsd: number; tokens: num
   let costUsd = 0, hourlyCostUsd = 0, tokens = 0, messageCount = 0;
 
   // Track A — Claude Code: read ~/.claude/projects/*.jsonl
-  try {
-    for (const proj of fs.readdirSync(projsDir)) {
-      const projPath = path.join(projsDir, proj);
-      let files: string[];
-      try { files = fs.readdirSync(projPath); } catch { continue; }
-      for (const f of files) {
-        if (!f.endsWith(".jsonl")) { continue; }
-        const fp = path.join(projPath, f);
-        try {
-          const stat = fs.statSync(fp);
-          if (stat.mtime.toISOString().slice(0, 10) < today) { continue; }
-        } catch { continue; }
-        try {
-          const lines = fs.readFileSync(fp, "utf8").trim().split("\n");
-          for (const line of lines) {
-            try {
-              const d = JSON.parse(line);
-              if (d.type !== "assistant" || !d.message?.usage) { continue; }
-              if (d.timestamp && !d.timestamp.startsWith(today)) { continue; }
-              const u = d.message.usage;
-              const p = pricingForModel(d.message.model ?? "");
-              const inp = u.input_tokens ?? 0;
-              const out = u.output_tokens ?? 0;
-              const cr  = u.cache_read_input_tokens ?? 0;
-              const cc  = u.cache_creation_input_tokens ?? 0;
-              const entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
-              costUsd      += entryCost;
-              tokens       += inp + out + cr + cc;
-              messageCount += 1;
-              if (d.timestamp && d.timestamp >= oneHourAgoIso) { hourlyCostUsd += entryCost; }
-            } catch { /* skip malformed lines */ }
-          }
-        } catch { /* skip unreadable files */ }
+  if (sources.claudeCode) {
+    try {
+      for (const proj of fs.readdirSync(projsDir)) {
+        const projPath = path.join(projsDir, proj);
+        let files: string[];
+        try { files = fs.readdirSync(projPath); } catch { continue; }
+        for (const f of files) {
+          if (!f.endsWith(".jsonl")) { continue; }
+          const fp = path.join(projPath, f);
+          try {
+            const stat = fs.statSync(fp);
+            if (stat.mtime.toISOString().slice(0, 10) < today) { continue; }
+          } catch { continue; }
+          try {
+            const lines = fs.readFileSync(fp, "utf8").trim().split("\n");
+            for (const line of lines) {
+              try {
+                const d = JSON.parse(line);
+                if (d.type !== "assistant" || !d.message?.usage) { continue; }
+                if (d.timestamp && !d.timestamp.startsWith(today)) { continue; }
+                const u = d.message.usage;
+                const p = pricingForModel(d.message.model ?? "");
+                const inp = u.input_tokens ?? 0;
+                const out = u.output_tokens ?? 0;
+                const cr  = u.cache_read_input_tokens ?? 0;
+                const cc  = u.cache_creation_input_tokens ?? 0;
+                const entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
+                costUsd      += entryCost;
+                tokens       += inp + out + cr + cc;
+                messageCount += 1;
+                if (d.timestamp && d.timestamp >= oneHourAgoIso) { hourlyCostUsd += entryCost; }
+              } catch { /* skip malformed lines */ }
+            }
+          } catch { /* skip unreadable files */ }
+        }
       }
-    }
-  } catch { /* projsDir missing */ }
+    } catch { /* projsDir missing */ }
+  }
 
   // Track B — OpenCode: read ~/.config/opencode/codotchi-daily.json
-  try {
-    const xdgConfig = process.env["XDG_CONFIG_HOME"] ?? path.join(os.homedir(), ".config");
-    const ocDailyPath = path.join(xdgConfig, "opencode", "codotchi-daily.json");
-    if (fs.existsSync(ocDailyPath)) {
-      const ocData = JSON.parse(fs.readFileSync(ocDailyPath, "utf8"));
-      // Only include if the file is for today (UTC)
-      if ((ocData.date ?? ocData.createdDate ?? "") === today) {
-        costUsd      += ocData.costUSD ?? 0;
-        tokens       += ocData.tokens ?? 0;
-        messageCount += ocData.messages ?? 0;
-        // OpenCode only persists daily totals — last-1h is in-memory in the plugin, not in this file
+  if (sources.openCode) {
+    try {
+      const xdgConfig = process.env["XDG_CONFIG_HOME"] ?? path.join(os.homedir(), ".config");
+      const ocDailyPath = path.join(xdgConfig, "opencode", "codotchi-daily.json");
+      if (fs.existsSync(ocDailyPath)) {
+        const ocData = JSON.parse(fs.readFileSync(ocDailyPath, "utf8"));
+        // Only include if the file is for today (UTC)
+        if ((ocData.date ?? ocData.createdDate ?? "") === today) {
+          costUsd      += ocData.costUSD ?? 0;
+          tokens       += ocData.tokens ?? 0;
+          messageCount += ocData.messages ?? 0;
+          // OpenCode only persists daily totals — last-1h is in-memory in the plugin, not in this file
+        }
       }
-    }
-  } catch { /* opencode daily file missing or malformed */ }
+    } catch { /* opencode daily file missing or malformed */ }
+  }
 
   return { costUsd, hourlyCostUsd, tokens, messageCount };
 }
@@ -146,6 +159,13 @@ export class SidebarProvider
    * This must be held here because PetState is immutable.
    */
   private mealsGivenThisCycle: number = 0;
+
+  /**
+   * Whether the "no GitHub session" hint has already been shown once this
+   * session. Reset on extension reload — matches the in-memory,
+   * process-lifetime nature of the quota cache in copilotQuota.ts.
+   */
+  private copilotNoSessionHintShown = false;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -501,19 +521,7 @@ export class SidebarProvider
         // Apply and broadcast the energy/happiness cost first, then show the
         // cost bubble on top, so the stat bars land before the bubble appears.
         this.onStateUpdate(applyTokenCostView(state));
-        const usage = scanDailyUsage();
-        const avgTok = usage.messageCount > 0
-          ? Math.round(usage.tokens / usage.messageCount)
-          : usage.tokens;
-        const fmt = (n: number) =>
-          n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M`
-          : n >= 1000    ? `${(n / 1000).toFixed(1)}k`
-          : String(n);
-        const fmtCost = (u: number) => u < 0.005 ? "<$0.01" : `$${u.toFixed(2)}`;
-        const text = `Today: ${fmtCost(usage.costUsd)} | Last 1h: ${fmtCost(usage.hourlyCostUsd)} | Avg: ${fmt(avgTok)} tok/msg (Claude + OpenCode)`;
-        if (this.webviewView) {
-          void this.webviewView.webview.postMessage({ type: "showBubble", text });
-        }
+        void this.handleTokenCostBubble();
         return;
       }
 
@@ -532,6 +540,69 @@ export class SidebarProvider
    */
   private getCurrentState(): PetState | null {
     return this.getState();
+  }
+
+  /**
+   * Build and show the "Today's Token Cost" speech bubble. Split out from
+   * the "token_cost" case so the (potentially network-bound) Copilot quota
+   * fetch doesn't force the whole `handleWebviewMessage` switch to become
+   * async. Claude Code/OpenCode figures must always show even if the
+   * Copilot fetch fails or the user has no GitHub session — this never
+   * throws out to the caller.
+   */
+  private async handleTokenCostBubble(): Promise<void> {
+    const config = vscode.workspace.getConfiguration("codotchi");
+    const selectedSources = config.get<string[]>("tokenCostSources", ["claudeCode", "openCode"]);
+    const includeClaudeCode = selectedSources.includes("claudeCode");
+    const includeOpenCode = selectedSources.includes("openCode");
+    const includeCopilot = selectedSources.includes("copilot");
+
+    const fmt = (n: number) =>
+      n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M`
+      : n >= 1000    ? `${(n / 1000).toFixed(1)}k`
+      : String(n);
+    const fmtCost = (u: number) => u < 0.005 ? "<$0.01" : `$${u.toFixed(2)}`;
+
+    const segments: string[] = [];
+
+    if (includeClaudeCode || includeOpenCode) {
+      const usage = scanDailyUsage({ claudeCode: includeClaudeCode, openCode: includeOpenCode });
+      const avgTok = usage.messageCount > 0
+        ? Math.round(usage.tokens / usage.messageCount)
+        : usage.tokens;
+      const sourceLabels = [includeClaudeCode && "Claude", includeOpenCode && "OpenCode"].filter(Boolean);
+      segments.push(
+        `Today: ${fmtCost(usage.costUsd)} | Last 1h: ${fmtCost(usage.hourlyCostUsd)} | Avg: ${fmt(avgTok)} tok/msg (${sourceLabels.join(" + ")})`
+      );
+    }
+
+    if (includeCopilot) {
+      try {
+        const outcome: CopilotQuotaOutcome = await getCachedCopilotQuota(
+          (createIfNone) => vscode.authentication.getSession("github", ["read:user"], { createIfNone }) as Promise<{ accessToken: string } | undefined>,
+          fetch,
+          true
+        );
+        if (outcome.ok) {
+          segments.push(
+            outcome.unlimited
+              ? "Copilot: unlimited premium requests"
+              : `Copilot: ${outcome.percentRemaining}% premium quota remaining`
+          );
+        } else if (outcome.reason === "no_session" && !this.copilotNoSessionHintShown) {
+          this.copilotNoSessionHintShown = true;
+          segments.push("Copilot: sign in to GitHub when prompted to include quota");
+        }
+        // network_error / unauthorized / parse_error -> silently omit; never break the base bubble
+      } catch {
+        /* swallow — never break the base bubble */
+      }
+    }
+
+    const text = segments.length > 0 ? segments.join(" | ") : "Today's Token Cost: no sources selected";
+    if (this.webviewView) {
+      void this.webviewView.webview.postMessage({ type: "showBubble", text });
+    }
   }
 
   /**
