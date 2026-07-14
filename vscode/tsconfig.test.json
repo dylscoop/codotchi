@@ -9,6 +9,6 @@
     "esModuleInterop": true,
     "types": ["node"]
   },
-  "include": ["src/gameEngine.ts", "tests/unit/**/*.ts"],
+  "include": ["src/gameEngine.ts", "src/copilotQuota.ts", "tests/unit/**/*.ts"],
   "exclude": ["node_modules", ".vscode-test"]
 }
