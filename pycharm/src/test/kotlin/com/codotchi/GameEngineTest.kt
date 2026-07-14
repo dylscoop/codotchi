@@ -74,10 +74,13 @@ class GameEngineTest {
     }
 
     @Test
-    fun `consumeSnack snacksOnFloor does not go below 0`() {
-        val pet  = makePet(snacksOnFloor = 0)
+    fun `consumeSnack is refused when snacksOnFloor is already 0 (duplicate or stale report)`() {
+        val pet  = makePet(snacksOnFloor = 0, happiness = 40, weight = 10)
         val next = consumeSnack(pet)
         assertEquals(0, next.snacksOnFloor)
+        assertEquals(40, next.happiness)
+        assertEquals(10, next.weight)
+        assertEquals(listOf("snack_refused"), next.events)
     }
 
     // ── pause / resume ───────────────────────────────────────────────────────
@@ -185,7 +188,7 @@ class GameEngineTest {
 
     @Test
     fun `consumeSnack feedSnackWeightGain overrides default weight gain`() {
-        val pet  = makePet().copy(weight = 10)
+        val pet  = makePet().copy(weight = 10, snacksOnFloor = 1)
         val next = consumeSnack(pet, feedSnackWeightGain = 2)
         assertEquals(12, next.weight)
     }

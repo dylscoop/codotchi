@@ -1693,7 +1693,10 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
  *
  * Called when the webview detects the pet touching the snack floor item.
  * Increments `consecutiveSnacks` and — if the new count reaches the maximum
- * — triggers sickness.
+ * — triggers sickness. Refused (no stat effects) if `snacksOnFloor` is
+ * already 0 — guards against a stale/duplicate `snack_consumed` report (e.g.
+ * a second open editor window sharing the same pet independently simulating
+ * the same floor item) applying the effect more than once.
  *
  * @param state - The current pet state.
  * @param opts - Optional per-character overrides.
@@ -1702,6 +1705,9 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
  * @returns A new PetState after the action.
  */
 export function consumeSnack(state: PetState, opts?: { hungerMult?: number; sickThreshold?: number; weightGain?: number }): PetState {
+  if (state.snacksOnFloor <= 0) {
+    return withDerivedFields({ ...state, events: ["snack_refused"] });
+  }
   const hungerBoost = Math.round(FEED_SNACK_HUNGER_BOOST * (opts?.hungerMult ?? 1));
   const sickAt = opts?.sickThreshold ?? MAX_CONSECUTIVE_SNACKS_BEFORE_SICK;
   const events: string[] = [];
@@ -1978,6 +1984,7 @@ export function giveMedicine(state: PetState): PetState {
       ...(answered ?? {}),
       sick: sick as boolean,
       medicineDosesGiven: 0,
+      consecutiveSnacks: 0,
       careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
       events,
     });

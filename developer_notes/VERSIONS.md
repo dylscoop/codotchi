@@ -1,6 +1,31 @@
 # Version History
 
-## v2.16.3 — current
+## v2.16.5 — current
+
+### Changes from v2.16.4
+
+> Note: v2.16.4 only bumped `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, and `opencode-codotchi/package.json` (no source changes); it was not separately documented here.
+
+| File | What changed |
+|------|-------------|
+| `claude-codotchi/src/gameEngine.ts` | fix: BUGFIX-143 — `giveMedicine()` cure branch now also resets `consecutiveSnacks` to 0; fix: BUGFIX-144 — `consumeSnack()` refuses (no stat effects) when `snacksOnFloor` is already 0 |
+| `opencode-codotchi/src/gameEngine.ts` | fix: mirror — same BUGFIX-143 and BUGFIX-144 fixes |
+| `claude-desktop-codotchi/src/gameEngine.ts` | fix: mirror — same BUGFIX-143 and BUGFIX-144 fixes |
+| `vscode/src/gameEngine.ts` | fix: mirror — same BUGFIX-143 and BUGFIX-144 fixes |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: mirror — same BUGFIX-143 and BUGFIX-144 fixes |
+| `vscode/tests/unit/gameEngine.test.ts` | test: add cure-resets-`consecutiveSnacks` coverage; set `snacksOnFloor` explicitly on existing `consumeSnack` tests and add a refusal test for BUGFIX-144 |
+| `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | test: mirror — same `consumeSnack` refusal coverage |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-143, BUGFIX-144 |
+| `vscode/package.json` | chore: bump version to 2.16.5 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.16.5 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.5 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.16.5 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.5 (was drifted at 2.16.3) |
+| `claude-desktop-codotchi/manifest.json` | chore: bump version to 2.16.5 (was drifted at 2.16.3) |
+
+---
+
+## v2.16.3 — previous
 
 ### Changes from v2.16.2
 

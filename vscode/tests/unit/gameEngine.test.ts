@@ -827,26 +827,26 @@ describe("startSnack", () => {
 
 describe("consumeSnack", () => {
   it("increases happiness by 5", () => {
-    const pet = makePet({ happiness: 40 });
+    const pet = makePet({ happiness: 40, snacksOnFloor: 1 });
     const next = consumeSnack(pet);
     assert.equal(next.happiness, 45);
   });
 
   it("increases weight by 5 (FEED_SNACK_WEIGHT_GAIN)", () => {
-    const pet = makePet({ weight: 10 });
+    const pet = makePet({ weight: 10, snacksOnFloor: 1 });
     const next = consumeSnack(pet);
     assert.equal(next.weight, 15);
   });
 
   it("triggers sickness on 3rd consecutive snack consumed", () => {
-    const pet = makePet({ consecutiveSnacks: 2 });
+    const pet = makePet({ consecutiveSnacks: 2, snacksOnFloor: 1 });
     const next = consumeSnack(pet);
     assert.equal(next.sick, true);
     assert.ok(next.events.includes("became_sick"));
   });
 
   it("does not trigger sickness again if already sick", () => {
-    const pet = makePet({ consecutiveSnacks: 2, sick: true });
+    const pet = makePet({ consecutiveSnacks: 2, sick: true, snacksOnFloor: 1 });
     const next = consumeSnack(pet);
     assert.equal(next.sick, true);
     const becameSickCount = next.events.filter((e: string) => e === "became_sick").length;
@@ -854,13 +854,13 @@ describe("consumeSnack", () => {
   });
 
   it("emits fed_snack event", () => {
-    const pet = makePet();
+    const pet = makePet({ snacksOnFloor: 1 });
     const next = consumeSnack(pet);
     assert.ok(next.events.includes("fed_snack"));
   });
 
   it("clamps happiness at 100", () => {
-    const pet = makePet({ happiness: 95 });
+    const pet = makePet({ happiness: 95, snacksOnFloor: 1 });
     const next = consumeSnack(pet);
     assert.equal(next.happiness, 100);
   });
@@ -871,16 +871,21 @@ describe("consumeSnack", () => {
     assert.equal(next.snacksOnFloor, 1);
   });
 
-  it("snacksOnFloor does not go below 0", () => {
-    const pet = makePet({ snacksOnFloor: 0 });
-    const next = consumeSnack(pet);
-    assert.equal(next.snacksOnFloor, 0);
-  });
-
   it("opts.weightGain overrides FEED_SNACK_WEIGHT_GAIN", () => {
-    const pet = makePet({ weight: 10 });
+    const pet = makePet({ weight: 10, snacksOnFloor: 1 });
     const next = consumeSnack(pet, { weightGain: 2 });
     assert.equal(next.weight, 12);
+  });
+
+  it("is refused when snacksOnFloor is already 0 (duplicate/stale report)", () => {
+    const pet = makePet({ snacksOnFloor: 0, happiness: 40, weight: 10, consecutiveSnacks: 2 });
+    const next = consumeSnack(pet);
+    assert.equal(next.snacksOnFloor, 0);
+    assert.equal(next.happiness, 40);
+    assert.equal(next.weight, 10);
+    assert.equal(next.consecutiveSnacks, 2);
+    assert.equal(next.sick, false);
+    assert.deepEqual(next.events, ["snack_refused"]);
   });
 });
 
@@ -1485,6 +1490,18 @@ describe("giveMedicine", () => {
     assert.equal(pet.medicineDosesGiven, 0);
   });
 
+  it("resets consecutiveSnacks to 0 after cure", () => {
+    let pet = makePet({ sick: true, medicineDosesGiven: 2, consecutiveSnacks: 3 });
+    pet = giveMedicine(pet);
+    assert.equal(pet.consecutiveSnacks, 0);
+  });
+
+  it("does not reset consecutiveSnacks before the cure (partial dose)", () => {
+    const pet = makePet({ sick: true, medicineDosesGiven: 0, consecutiveSnacks: 3 });
+    const next = giveMedicine(pet);
+    assert.equal(next.consecutiveSnacks, 3);
+  });
+
   it("emits medicine_given event", () => {
     const pet = makePet({ sick: true });
     const next = giveMedicine(pet);
@@ -2049,6 +2066,7 @@ describe("integration — action sequence", () => {
     pet = giveMedicine(pet);
     pet = giveMedicine(pet);
     assert.equal(pet.sick, false);
+    assert.equal(pet.consecutiveSnacks, 0);
   });
 
   it("starving pet loses health over time and dies", () => {

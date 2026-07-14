@@ -759,9 +759,16 @@ fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
  *
  * Called when the webview detects the pet touching the snack floor item.
  * Increments [PetState.consecutiveSnacks] and — if the new count reaches
- * the maximum — triggers sickness.
+ * the maximum — triggers sickness. Refused (no stat effects) if
+ * [PetState.snacksOnFloor] is already 0 — guards against a stale/duplicate
+ * `snack_consumed` report (e.g. a second open project window sharing the
+ * same pet independently simulating the same floor item) applying the
+ * effect more than once.
  */
 fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThreshold: Int? = null, feedSnackWeightGain: Int? = null): PetState {
+    if (state.snacksOnFloor <= 0) {
+        return withDerivedFields(state.copy(events = listOf("snack_refused")))
+    }
     val hungerBoost = (FEED_SNACK_HUNGER_BOOST * (feedHungerMult ?: 1.0)).toInt()
     val sickAt = snackSickThreshold ?: MAX_CONSECUTIVE_SNACKS_BEFORE_SICK
     val events = mutableListOf<String>()
@@ -954,7 +961,7 @@ fun giveMedicine(state: PetState): PetState {
         events.add("cured")
         withDerivedFields(
             state.copy(
-                sick = false, medicineDosesGiven = 0,
+                sick = false, medicineDosesGiven = 0, consecutiveSnacks = 0,
                 careMistakes = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
                 events = events,
                 activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
