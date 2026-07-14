@@ -309,7 +309,7 @@ class CodotchiPlugin : Disposable {
         val messageCount: Int,
     )
 
-    private fun scanDailyUsage(): DailyUsage {
+    private fun scanDailyUsage(includeClaudeCode: Boolean, includeOpenCode: Boolean): DailyUsage {
         val home = System.getProperty("user.home") ?: ""
         val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString() // "YYYY-MM-DD"
         val oneHourAgoMs = System.currentTimeMillis() - 3_600_000L
@@ -325,7 +325,7 @@ class CodotchiPlugin : Disposable {
         }
 
         // Track A — Claude Code: ~/.claude/projects/**/*.jsonl
-        try {
+        if (includeClaudeCode) try {
             val projsDir = File(home, ".claude/projects")
             if (projsDir.isDirectory) {
                 for (proj in projsDir.listFiles() ?: emptyArray()) {
@@ -368,7 +368,7 @@ class CodotchiPlugin : Disposable {
         } catch (_: Exception) { /* projsDir missing */ }
 
         // Track B — OpenCode: ~/.config/opencode/codotchi-daily.json
-        try {
+        if (includeOpenCode) try {
             val xdgConfig = System.getenv("XDG_CONFIG_HOME")
                 ?: File(home, ".config").absolutePath
             val ocFile = File(xdgConfig, "opencode/codotchi-daily.json")
@@ -400,8 +400,17 @@ class CodotchiPlugin : Disposable {
         // this handler and onTick cannot interleave (one would otherwise silently
         // overwrite the other's changes with a stale-snapshot result).
         var shouldBroadcast = false
-        // Pre-compute file I/O outside the state lock to avoid holding it during disk reads
-        val dailyUsage = if (command == "token_cost") scanDailyUsage() else null
+        // Pre-compute file I/O (and the Copilot quota network call) outside the
+        // state lock to avoid holding it during disk reads / HTTP requests.
+        val tokenCostSettings = service<CodotchiSettings>()
+        val dailyUsage = if (command == "token_cost")
+            scanDailyUsage(tokenCostSettings.tokenCostIncludeClaudeCode, tokenCostSettings.tokenCostIncludeOpenCode)
+        else null
+        val copilotQuota: CopilotQuotaResult? = if (command == "token_cost" && tokenCostSettings.tokenCostIncludeCopilot) {
+            val token = CopilotQuotaToken.get()
+            if (token == null) CopilotQuotaResult.NoToken
+            else CopilotQuotaCache.get { fetchQuota(token) }
+        } else null
 
         stateLock.withLock {
             val state   = currentState
@@ -553,10 +562,37 @@ class CodotchiPlugin : Disposable {
                 else            -> "$n"
             }
             fun fmtCost(u: Double) = if (u < 0.005) "<$0.01" else "$" + "%.2f".format(u)
-            val avg = if (dailyUsage.messageCount > 0)
-                dailyUsage.tokens / dailyUsage.messageCount
-            else dailyUsage.tokens
-            val text = "Today: ${fmtCost(dailyUsage.costUsd)} | Last 1h: ${fmtCost(dailyUsage.hourlyCostUsd)} | Avg: ${fmtTok(avg)} tok/msg (Claude + OpenCode)"
+
+            val segments = mutableListOf<String>()
+
+            val includeClaudeCode = tokenCostSettings.tokenCostIncludeClaudeCode
+            val includeOpenCode = tokenCostSettings.tokenCostIncludeOpenCode
+            if (includeClaudeCode || includeOpenCode) {
+                val avg = if (dailyUsage.messageCount > 0)
+                    dailyUsage.tokens / dailyUsage.messageCount
+                else dailyUsage.tokens
+                val sourceLabels = listOfNotNull(
+                    "Claude".takeIf { includeClaudeCode },
+                    "OpenCode".takeIf { includeOpenCode },
+                )
+                segments.add(
+                    "Today: ${fmtCost(dailyUsage.costUsd)} | Last 1h: ${fmtCost(dailyUsage.hourlyCostUsd)} | Avg: ${fmtTok(avg)} tok/msg (${sourceLabels.joinToString(" + ")})"
+                )
+            }
+
+            when (copilotQuota) {
+                is CopilotQuotaResult.Ok -> segments.add(
+                    if (copilotQuota.unlimited) "Copilot: unlimited premium requests"
+                    else "Copilot: ${copilotQuota.percentRemaining}% premium quota remaining"
+                )
+                is CopilotQuotaResult.NoToken -> segments.add(
+                    "Copilot: run Tools > Codotchi: Sign in to GitHub (Copilot Quota) to include it"
+                )
+                // Unauthorized / NetworkError / ParseError / null -> silently omit; never break the base bubble
+                else -> {}
+            }
+
+            val text = if (segments.isNotEmpty()) segments.joinToString(" | ") else "Today's Token Cost: no sources selected"
             val escaped = text.replace("\\", "\\\\").replace("\"", "\\\"")
             val payload = """{"type":"showBubble","text":"$escaped"}"""
             ApplicationManager.getApplication().invokeLater {

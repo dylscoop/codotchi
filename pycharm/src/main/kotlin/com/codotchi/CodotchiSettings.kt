@@ -30,6 +30,9 @@ import com.intellij.openapi.components.*
  *  - [idleResetOnMouseMovement]   : reset idle timer on mouse movement in the sidebar (default true)
  *  - [background]                 : "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter" (default "ordered")
  *  - [perWorkspacePet]            : each project gets its own independent pet state file (default false)
+ *  - [tokenCostIncludeClaudeCode] : include Claude Code dollar-cost usage in Today's Token Cost (default true)
+ *  - [tokenCostIncludeOpenCode]   : include OpenCode dollar-cost usage in Today's Token Cost (default true)
+ *  - [tokenCostIncludeCopilot]    : include GitHub Copilot premium-quota percentage in Today's Token Cost (default false); requires signing in via "Codotchi: Sign in to GitHub (Copilot Quota)"
  */
 @State(
     name = "CodotchiSettings",
@@ -63,6 +66,9 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var idleResetOnMouseMovement: Boolean = true
         var background: String = "ordered"  // "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter"
         var perWorkspacePet: Boolean = false
+        var tokenCostIncludeClaudeCode: Boolean = true
+        var tokenCostIncludeOpenCode: Boolean = true
+        var tokenCostIncludeCopilot: Boolean = false
     }
 
     private var _state = State()
@@ -164,4 +170,16 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var perWorkspacePet: Boolean
         get() = _state.perWorkspacePet
         set(v) { _state.perWorkspacePet = v }
+
+    var tokenCostIncludeClaudeCode: Boolean
+        get() = _state.tokenCostIncludeClaudeCode
+        set(v) { _state.tokenCostIncludeClaudeCode = v }
+
+    var tokenCostIncludeOpenCode: Boolean
+        get() = _state.tokenCostIncludeOpenCode
+        set(v) { _state.tokenCostIncludeOpenCode = v }
+
+    var tokenCostIncludeCopilot: Boolean
+        get() = _state.tokenCostIncludeCopilot
+        set(v) { _state.tokenCostIncludeCopilot = v }
 }

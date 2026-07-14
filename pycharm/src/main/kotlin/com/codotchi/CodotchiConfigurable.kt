@@ -48,6 +48,9 @@ class CodotchiConfigurable : Configurable {
     private var idleResetOnMouseMovementCheck:  JCheckBox?          = null
     private var backgroundCombo:               JComboBox<String>?  = null
     private var perWorkspacePetCheck:          JCheckBox?          = null
+    private var tokenCostIncludeClaudeCodeCheck: JCheckBox?        = null
+    private var tokenCostIncludeOpenCodeCheck:   JCheckBox?        = null
+    private var tokenCostIncludeCopilotCheck:    JCheckBox?        = null
 
     override fun getDisplayName(): String = "Codotchi"
 
@@ -75,6 +78,9 @@ class CodotchiConfigurable : Configurable {
         val idleResetMouseCheckbox = JCheckBox("Reset idle timer on mouse movement (sidebar)")
         val bgCombo = JComboBox(arrayOf("Plain", "Ordered (auto)", "Spring", "Summer", "Autumn", "Winter"))
         val perWorkspacePetCheckbox = JCheckBox("Per-project pet (each project gets its own independent pet)")
+        val tokenCostClaudeCodeCheckbox = JCheckBox("Today's Token Cost: include Claude Code")
+        val tokenCostOpenCodeCheckbox = JCheckBox("Today's Token Cost: include OpenCode")
+        val tokenCostCopilotCheckbox = JCheckBox("Today's Token Cost: include GitHub Copilot quota % (Tools > Codotchi: Sign in to GitHub (Copilot Quota))")
 
         fontSizeCombo            = combo
         colorPanel               = cp
@@ -99,6 +105,9 @@ class CodotchiConfigurable : Configurable {
         idleResetOnMouseMovementCheck  = idleResetMouseCheckbox
         backgroundCombo                = bgCombo
         perWorkspacePetCheck           = perWorkspacePetCheckbox
+        tokenCostIncludeClaudeCodeCheck = tokenCostClaudeCodeCheckbox
+        tokenCostIncludeOpenCodeCheck   = tokenCostOpenCodeCheckbox
+        tokenCostIncludeCopilotCheck    = tokenCostCopilotCheckbox
 
         val panel = JPanel(GridBagLayout())
         val gbc   = GridBagConstraints()
@@ -282,8 +291,26 @@ class CodotchiConfigurable : Configurable {
         panel.add(perWorkspacePetCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Push content to the top
+        // Row 23 — Today's Token Cost: include Claude Code
         gbc.gridx = 0; gbc.gridy = 23; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(tokenCostClaudeCodeCheckbox, gbc)
+        gbc.gridwidth = 1
+
+        // Row 24 — Today's Token Cost: include OpenCode
+        gbc.gridx = 0; gbc.gridy = 24; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(tokenCostOpenCodeCheckbox, gbc)
+        gbc.gridwidth = 1
+
+        // Row 25 — Today's Token Cost: include Copilot quota %
+        gbc.gridx = 0; gbc.gridy = 25; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(tokenCostCopilotCheckbox, gbc)
+        gbc.gridwidth = 1
+
+        // Push content to the top
+        gbc.gridx = 0; gbc.gridy = 26; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -316,6 +343,9 @@ class CodotchiConfigurable : Configurable {
         val uiIdleResetMouse = idleResetOnMouseMovementCheck?.isSelected ?: true
         val uiBg = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
         val uiPerWorkspacePet = perWorkspacePetCheck?.isSelected ?: false
+        val uiTokenCostClaudeCode = tokenCostIncludeClaudeCodeCheck?.isSelected ?: true
+        val uiTokenCostOpenCode = tokenCostIncludeOpenCodeCheck?.isSelected ?: true
+        val uiTokenCostCopilot = tokenCostIncludeCopilotCheck?.isSelected ?: false
         return uiFont != settings.fontSize
             || uiColor != settings.textColor
             || uiAttention != settings.enableAttentionCalls
@@ -339,6 +369,9 @@ class CodotchiConfigurable : Configurable {
             || uiIdleResetMouse != settings.idleResetOnMouseMovement
             || uiBg != settings.background
             || uiPerWorkspacePet != settings.perWorkspacePet
+            || uiTokenCostClaudeCode != settings.tokenCostIncludeClaudeCode
+            || uiTokenCostOpenCode != settings.tokenCostIncludeOpenCode
+            || uiTokenCostCopilot != settings.tokenCostIncludeCopilot
     }
 
     override fun apply() {
@@ -365,6 +398,9 @@ class CodotchiConfigurable : Configurable {
         settings.idleResetOnWindowFocus    = idleResetOnWindowFocusCheck?.isSelected ?: true
         settings.idleResetOnMouseMovement  = idleResetOnMouseMovementCheck?.isSelected ?: true
         settings.background                = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
+        settings.tokenCostIncludeClaudeCode = tokenCostIncludeClaudeCodeCheck?.isSelected ?: true
+        settings.tokenCostIncludeOpenCode   = tokenCostIncludeOpenCodeCheck?.isSelected ?: true
+        settings.tokenCostIncludeCopilot    = tokenCostIncludeCopilotCheck?.isSelected ?: false
         val newPerWorkspace = perWorkspacePetCheck?.isSelected ?: false
         val prevPerWorkspace = settings.perWorkspacePet
         settings.perWorkspacePet           = newPerWorkspace
@@ -406,6 +442,9 @@ class CodotchiConfigurable : Configurable {
         idleResetOnMouseMovementCheck?.isSelected  = settings.idleResetOnMouseMovement
         backgroundCombo?.selectedIndex             = bgKeyToIndex(settings.background)
         perWorkspacePetCheck?.isSelected           = settings.perWorkspacePet
+        tokenCostIncludeClaudeCodeCheck?.isSelected = settings.tokenCostIncludeClaudeCode
+        tokenCostIncludeOpenCodeCheck?.isSelected   = settings.tokenCostIncludeOpenCode
+        tokenCostIncludeCopilotCheck?.isSelected    = settings.tokenCostIncludeCopilot
     }
 
     // ── Enum helpers ───────────────────────────────────────────────────────
