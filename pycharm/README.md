@@ -103,12 +103,21 @@ Once installed and the IDE has restarted:
 
 The **Play** menu also includes a non-game option: **Today's Token Cost**.
 Clicking it shows a speech bubble above your pet with your combined AI usage for
-the day, drawn from both **Claude Code** and **OpenCode**:
+the day, drawn from **Claude Code**, **OpenCode**, and/or **GitHub Copilot**:
 
-- **Today** — total cost (USD) across both tools since midnight UTC
+- **Today** — total cost (USD) across Claude Code/OpenCode since midnight UTC
 - **Last 1h** — cost in the past hour (Claude Code only; OpenCode does not
   persist per-hour data to disk)
 - **Avg** — average tokens per message today
+- **Copilot** — your GitHub Copilot premium-request quota, shown as a
+  **percentage remaining** (not a dollar figure). Run
+  **Tools → Codotchi: Sign in to GitHub (Copilot Quota)** once to authorize
+  via GitHub's device-code sign-in flow — no personal access token or admin
+  access needed. **Tools → Codotchi: Sign out (Copilot Quota)** forgets it.
+
+Which sources feed the bubble is configurable via three checkboxes in
+**Settings → Tools → Codotchi** — pick any combination (e.g. just Copilot,
+just Claude + OpenCode, or all three).
 
 Costs energy and boosts happiness, same as a Pat.
 

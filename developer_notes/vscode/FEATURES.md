@@ -121,6 +121,12 @@ same overlay. A non-game **Today's Token Cost** option is also available in the 
 it closes the overlay and fires a speech bubble above the pet showing today's cost, last-1h
 cost, and average tokens per message; applies the same energy/happiness cost as a Pat (−20
 energy, +10 happiness), but with no weight change and no `"patted"` event/reaction bubble.
+Which sources feed the bubble is controlled by `codotchi.tokenCostSources`
+(VS Code) / three checkboxes in Settings > Tools > Codotchi (PyCharm): any
+combination of `claudeCode`, `openCode` (both dollar-cost, from local usage
+logs), and `copilot` (a GitHub Copilot premium-quota *percentage*, fetched
+via GitHub OAuth sign-in — no PAT or org billing-admin access required; see
+`copilotQuota.ts` / `CopilotQuota.kt`).
 
 Each game runs in a temporary **game overlay** rendered inside the
 sidebar (a `<div>` that covers the game screen for the duration of the game,
@@ -632,6 +638,7 @@ Status: `[x]`
 | OpenCode-local unkillable pet | `[x]` | When no IDE pet is active, an OpenCode-resident codotchi auto-spawns (`codotchi-local.json`); evolves through all stages, gains activity from conversations and file edits; cannot die from neglect (health floored at 1); respawns automatically on old-age death; labelled `[OpenCode]`; default name is "Copilot"; can be renamed via `/codotchi rename <name>` |
 | claude-codotchi merges identity with IDE pets | `[x]` | `resolveCanonicalPetPath()` in `state.mjs` finds the most-recently-modified VS Code/PyCharm state file (scanning both flat and per-workspace/per-project hash subdirectories); `loadStateFile()`/`saveStateFile()` adopt that pet as claude-codotchi's own — same pattern as claude-desktop-codotchi — instead of keeping a separate local pet, and write edits (feed, pat, etc.) back to it. Falls back to a private local pet (default name "Copilot") only when neither IDE has any state; that fallback pet is never written anywhere discoverable. Any other still-independent IDE pet saved within the last 60 s is still shown as an extra "peek" speech bubble below the primary one (BUGFIX-139) |
 | VSCode "Today's Token Cost" play option | `[x]` | Button in the minigame-select overlay; reads `~/.claude/projects/*.jsonl` via `scanDailyUsage()` in `sidebarProvider.ts`; fires a speech bubble showing `Today: $X.XX \| Last 1h: $X.XX \| Avg: Xk tok/msg`; applies `applyTokenCostView()` (−20 energy, +10 happiness — same deltas as Pat, but no weight loss, events, or attention-call side effects) |
+| Today's Token Cost — GitHub Copilot quota source | `[x]` | `codotchi.tokenCostSources` (VS Code, multi-select array) / three checkboxes (PyCharm) choose any combination of `claudeCode`, `openCode`, `copilot`. The `copilot` source reports a premium-request quota **percentage**, not a dollar figure — fetched via `vscode.authentication.getSession('github', ['read:user'])` (VS Code) or a manually-implemented GitHub OAuth Device Flow (PyCharm, `CopilotDeviceFlow` in `CopilotQuota.kt`, Tools > Codotchi: Sign in to GitHub (Copilot Quota)); hits the undocumented `api.github.com/copilot_internal/user` endpoint used by VS Code's own Copilot status bar. No PAT, no org billing-admin access needed. 12-minute in-memory cache; failures/no-session degrade silently (base Claude/OpenCode segment always still shows) |
 | "dylscoop" character pool passcode | `[x]` | `CUSTOM_CHARACTER_POOLS` in `customCharacters.ts` maps `"dylscoop"` → the full `ROTATION_ANIMALS` set (cat, dog, snake, sheep, classic, kangaroo, dragon) plus tim, stu, and roo (10 total); entering this passcode randomly forces one of the ten at each new game; mirrored in `CustomCharacters.kt` |
 
 ---
