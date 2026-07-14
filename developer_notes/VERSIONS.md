@@ -1,6 +1,25 @@
 # Version History
 
-## v2.16.6 — current
+## v2.16.7 — current
+
+### Changes from v2.16.6
+
+| File | What changed |
+|------|-------------|
+| `vscode/README.md` | docs: drop the colour-palette mention from "Pet customization" (feature was removed) and stop implying `/codotchi` lets you care for the pet from the terminal |
+| `pycharm/README.md` | docs: mirror — same "Pet customisation" and "OpenCode integration" wording fixes |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | docs: mirror the same wording fixes into the plugin description block |
+| `README.md` | chore: bump artifact filenames/version references to 2.16.7 |
+| `opencode-codotchi/README.md` | chore: bump artifact filenames/version references to 2.16.7 |
+| `vscode/package.json` | chore: bump version to 2.16.7 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.16.7 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.16.7 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.7 |
+| `claude-desktop-codotchi/manifest.json` | chore: bump version to 2.16.7 |
+
+---
+
+## v2.16.6 — previous
 
 ### Changes from v2.16.5
 

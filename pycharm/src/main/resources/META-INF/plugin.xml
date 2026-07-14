@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.16.6</version>
+    <version>2.16.7</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -26,9 +26,9 @@ at random when you start a new game.</p>
   <li><b>Classic Tamagotchi mechanics</b> — hunger, happiness, discipline, energy, health, weight, and age stats, all decaying in real time</li>
   <li><b>Full care system</b> — feed meals and snacks, play mini-games, put pet to sleep, clean droppings, give medicine, scold and praise</li>
   <li><b>Life cycle &amp; evolution</b> — egg → baby → child → teen → adult → senior, with the final character determined by how well you cared for your pet</li>
-  <li><b>Pet customisation</b> — name your pet, choose a pet type, and pick a colour palette on first launch</li>
+  <li><b>Pet customisation</b> — name your pet and choose a pet type on first launch</li>
   <li><b>Sickness &amp; death</b> — neglect your pet and it gets sick; leave it untreated and it dies</li>
-  <li><b>OpenCode integration</b> — your pet lives in the terminal too; use /codotchi commands to care for it alongside your AI coding session, with shared state across VS Code, PyCharm, and OpenCode</li>
+  <li><b>OpenCode integration</b> — your pet lives in the terminal too, with shared state across VS Code, PyCharm, and OpenCode</li>
   <li><b>Status bar integration</b> — pet name and stage always visible in the IDE status bar</li>
   <li><b>Persistent state</b> — pet survives IDE restarts; offline time is accounted for with capped stat decay</li>
   <li><b>Configurable</b> — customise font size, pet size, colours, idle thresholds, attention call behaviour, and more via <b>Settings → Tools → Codotchi</b></li>
@@ -52,7 +52,6 @@ pre-built releases, and the OpenCode integration download.</p>
     <ul>
       <li>Enter a name (up to 16 characters).</li>
       <li>Choose a <b>pet type</b> — each has different stat decay rates.</li>
-      <li>Choose a <b>colour palette</b> — affects the sprite's colour scheme.</li>
       <li>Click <b>Hatch!</b></li>
     </ul>
   </li>

@@ -31,13 +31,11 @@ assigned to you at random when you start a new game.
   sleep, clean droppings, give medicine, scold and praise
 - **Life cycle & evolution** — egg → baby → child → teen → adult → senior, with
   the final character determined by how well you cared for your pet
-- **Pet customization** — name your pet, choose a pet type, and pick a color
-  palette on first launch
+- **Pet customization** — name your pet and choose a pet type on first launch
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
   and it dies
-- **OpenCode integration** — your pet lives in the terminal too; use `/codotchi`
-  commands to care for it alongside your AI coding session, with shared state
-  across VS Code, PyCharm, and OpenCode
+- **OpenCode integration** — your pet lives in the terminal too, with shared
+  state across VS Code, PyCharm, and OpenCode
 - **Status bar integration** — pet name and mood always visible in the VS Code
   status bar; click to open the sidebar
 - **Persistent state** — pet survives VS Code restarts; offline time is
@@ -62,7 +60,6 @@ Once installed and VS Code has reloaded:
 2. On first launch the **New Codotchi** setup screen appears:
    - Enter a name (up to 16 characters).
    - Choose a **pet type** — each has different stat decay rates.
-   - Choose a **colour palette** — affects the sprite's colour scheme.
    - Click **Hatch!**
 
 3. Your pet now lives in the sidebar. Care for it using the action buttons:
