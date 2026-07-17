@@ -1,6 +1,20 @@
 # Version History
 
-## v2.16.9 — current
+## v2.17.0 — current
+
+### Changes from v2.16.9
+
+Version-only rebuild — no source changes. All five products bumped in lockstep
+and all artifacts rebuilt from the same BUGFIX-149 source already released in
+v2.16.9, to rule out a stale-install explanation for a reported energy-bounce
+regression that could not be reproduced by re-running the fixed `tick()` logic
+directly or by inspecting the already-installed v2.16.9 plugin's `dist/gameEngine.js`
+(both confirmed correct). If the reported bug persists after installing this
+build, it indicates a real second bug distinct from BUGFIX-149.
+
+---
+
+## v2.16.9 — previous
 
 ### Changes from v2.16.8
 
