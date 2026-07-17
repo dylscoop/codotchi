@@ -1791,7 +1791,7 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 
 ## BUGFIX-146 — Pet could become sick and take lethal damage from starvation before idle protection had any chance to engage
 
-**Status:** Fixed (pending release)
+**Status:** Fixed (v2.16.8)
 **Files:** `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts`, `vscode/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`, `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt`
 
 **Problem:** The dirty-environment sickness trigger and the "already sick" damage drain were both correctly idle-gated (`!isIdle` / `!isDeepIdle`, see BUGFIX-040), but the starvation path was not: once hunger hit 0, `hungerZeroTicks` incremented every tick regardless of idle state, and after just `HUNGER_ZERO_TICKS_BEFORE_RISK` (3) ticks — 9 real seconds — the pet took full `CRITICAL_HEALTH_DAMAGE_PER_TICK` (5) damage per tick and was marked `sick`, with zero idle awareness. By the time the 60-second idle threshold engaged, the pet could already be sick and critically damaged. Separately, the deep-idle stat floor (`IDLE_STAT_FLOOR = 20`) was applied *before* the tick's damage blocks ran, so a same-tick damage source could still push health below the floor even during deep idle, and the floor never applied during regular idle at all.
