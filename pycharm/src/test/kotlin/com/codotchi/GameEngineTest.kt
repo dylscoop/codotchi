@@ -244,4 +244,61 @@ class GameEngineTest {
         val next = applyTokenCostView(pet)
         assertTrue(next.events.isEmpty())
     }
+
+    // ── Sickness sources: only poop / overfeeding, never starvation ──────────
+
+    @Test
+    fun `does not become sick from starvation damage`() {
+        val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 2, health = 100)
+        val next = tick(pet)
+        assertFalse(next.sick)
+        assertFalse(next.events.contains("became_sick"))
+        assertTrue(next.events.contains("starvation_damage"))
+    }
+
+    @Test
+    fun `stays sick-free after many consecutive starvation-damage ticks`() {
+        var pet = makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 100)
+        repeat(10) { pet = tick(pet) }
+        assertFalse(pet.sick)
+    }
+
+    // ── Idle safety floor: sick or losing health while idle ───────────────────
+
+    @Test
+    fun `floors health at IDLE_STAT_FLOOR when starving pet takes damage while idle`() {
+        val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 5)
+        val next = tick(pet, isIdle = true, isDeepIdle = false)
+        assertEquals(IDLE_STAT_FLOOR, next.health)
+    }
+
+    @Test
+    fun `floors health at IDLE_STAT_FLOOR when starving pet takes damage during deep idle`() {
+        val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 5)
+        val next = tick(pet, isIdle = false, isDeepIdle = true)
+        assertEquals(IDLE_STAT_FLOOR, next.health)
+    }
+
+    @Test
+    fun `does not floor health when starving and not idle -- pet can still die`() {
+        val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 5)
+        val next = tick(pet)
+        assertFalse(next.alive)
+    }
+
+    @Test
+    fun `floors hunger happiness and energy along with health for a sick pet while idle`() {
+        val pet  = makePet().copy(sick = true, hunger = 5, happiness = 5, energy = 5, health = 50)
+        val next = tick(pet, isIdle = true, isDeepIdle = false)
+        assertEquals(IDLE_STAT_FLOOR, next.hunger)
+        assertEquals(IDLE_STAT_FLOOR, next.happiness)
+        assertEquals(IDLE_STAT_FLOOR, next.energy)
+    }
+
+    @Test
+    fun `a same-tick damage source cannot push health back below the floor`() {
+        val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 99, sick = true, health = 21)
+        val next = tick(pet, isIdle = true, isDeepIdle = false)
+        assertTrue(next.health >= IDLE_STAT_FLOOR, "health should never drop below the idle floor (got ${next.health})")
+    }
 }

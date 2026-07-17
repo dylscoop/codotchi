@@ -517,22 +517,20 @@ describe("tick — starvation damage", () => {
     assert.equal(state.hungerZeroTicks, 0);
   });
 
-  it("becomes sick when starvation damage fires (BUGFIX-007)", () => {
+  it("does not become sick from starvation damage — sickness only comes from poop/overfeeding", () => {
     let state = makePet({ hunger: 0, hungerZeroTicks: 2, health: 100 });
     state = tick(state);
-    assert.equal(state.sick, true);
-    assert.ok(state.events.includes("became_sick"));
+    assert.equal(state.sick, false);
+    assert.ok(!state.events.includes("became_sick"));
+    assert.ok(state.events.includes("starvation_damage"));
   });
 
-  it("medicine cures starvation-induced sickness (BUGFIX-007)", () => {
-    let state = makePet({ hunger: 0, hungerZeroTicks: 2, health: 100 });
-    state = tick(state); // starvation damage → sick = true
-    assert.equal(state.sick, true);
-    state = giveMedicine(state);
-    state = giveMedicine(state);
-    state = giveMedicine(state);
+  it("stays sick-free even after many consecutive starvation-damage ticks", () => {
+    let state = makePet({ hunger: 0, hungerZeroTicks: 99, health: 100 });
+    for (let i = 0; i < 10; i++) {
+      state = tick(state);
+    }
     assert.equal(state.sick, false);
-    assert.ok(state.events.includes("cured"));
   });
 });
 
@@ -624,6 +622,51 @@ describe("tick — sickness health drain and death", () => {
     assert.equal(next.alive, true);
     // IDLE_STAT_FLOOR=20 raises health from 5 to 20 during deep idle (added v2.2.3)
     assert.equal(next.health, 20);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// tick — idle safety floor (sick or losing health while idle)
+// ---------------------------------------------------------------------------
+
+describe("tick — idle safety floor for sick/losing-health pets", () => {
+  it("floors health at IDLE_STAT_FLOOR when starving pet takes damage while idle", () => {
+    const pet = makePet({ hunger: 0, hungerZeroTicks: 99, health: 5 });
+    const next = tick(pet, true, false); // isIdle=true, isDeepIdle=false
+    assert.equal(next.health, 20);
+  });
+
+  it("floors health at IDLE_STAT_FLOOR when starving pet takes damage during deep idle", () => {
+    const pet = makePet({ hunger: 0, hungerZeroTicks: 99, health: 5 });
+    const next = tick(pet, false, true); // isIdle=false, isDeepIdle=true
+    assert.equal(next.health, 20);
+  });
+
+  it("does not floor health when starving and NOT idle — pet can still die", () => {
+    const pet = makePet({ hunger: 0, hungerZeroTicks: 99, health: 5 });
+    const next = tick(pet); // active
+    assert.equal(next.alive, false);
+  });
+
+  it("floors hunger/happiness/energy along with health for a sick pet while idle", () => {
+    const pet = makePet({ sick: true, hunger: 5, happiness: 5, energy: 5, health: 50 });
+    const next = tick(pet, true, false);
+    assert.equal(next.hunger, 20);
+    assert.equal(next.happiness, 20);
+    assert.equal(next.energy, 20);
+  });
+
+  it("does not floor stats when the pet is neither sick nor taking damage while idle", () => {
+    const pet = makePet({ hunger: 5, happiness: 5, energy: 5, health: 50, sick: false });
+    const next = tick(pet, true, false);
+    assert.ok(next.hunger <= 5, "hunger should not be artificially raised when not sick/damaged");
+  });
+
+  it("a same-tick damage source cannot push health back below the floor", () => {
+    // Starving (damage) + sick (damage) stacked in the same tick, health just above floor.
+    const pet = makePet({ hunger: 0, hungerZeroTicks: 99, sick: true, health: 21 });
+    const next = tick(pet, true, false);
+    assert.ok(next.health >= 20, `health should never drop below the idle floor (got ${next.health})`);
   });
 });
 

@@ -1127,6 +1127,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   let nextPoopIntervalTicks: number = state.nextPoopIntervalTicks;
   let hungerZeroTicks: number = state.hungerZeroTicks;
   let sick: boolean = state.sick;
+  let tookDamageThisTick: boolean = false;
   let alive: boolean = state.alive;
   let sleeping: boolean = state.sleeping;
   let ageDays: number = state.ageDays;
@@ -1195,12 +1196,6 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     if (happinessDecayTick) happiness = clampStat(happiness - 1);
     // Energy uses a fixed interval (no per-type multiplier) — throttled by idle (BUGFIX-014)
     if (energyDecayTick)    energy    = clampStat(energy - ENERGY_DECAY_PER_TICK);
-    // Deep idle: floor stats at IDLE_STAT_FLOOR so they never drop below 20%
-    if (isDeepIdle) {
-      hunger    = Math.max(hunger,    IDLE_STAT_FLOOR);
-      happiness = Math.max(happiness, IDLE_STAT_FLOOR);
-      health    = Math.max(health,    IDLE_STAT_FLOOR);
-    }
   } else {
     const energyRegen = ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier;
     energy = clampStat(energy + energyRegen);
@@ -1282,26 +1277,27 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     hungerZeroTicks = 0;
   }
 
-  // Starvation damage — also triggers sickness so medicine can cure it
+  // Starvation damage — no longer triggers sickness. Sickness is now only
+  // caused by a dirty environment (poop) or overfeeding (snacks), so a pet
+  // left hungry takes health damage but must not become "sick" from it.
   if (hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK) {
     health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
     events.push("starvation_damage");
-    if (!sick) {
-      sick = true;
-      events.push("became_sick");
-    }
+    tookDamageThisTick = true;
   }
 
-  // Happiness-critical health drain
+  // Happiness-critical health drain — does not cause sickness (see above).
   if (happiness === STAT_MIN && !sleeping) {
     health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
     events.push("unhappiness_damage");
+    tookDamageThisTick = true;
   }
 
   // Energy-exhaustion health drain (slower than hunger/happiness critical)
   if (energy === STAT_MIN && !sleeping) {
     health = clampStat(health - EXHAUSTION_HEALTH_DAMAGE_PER_TICK);
     events.push("exhaustion_damage");
+    tookDamageThisTick = true;
   }
 
   // Sickness health drain — BUGFIX-040: suppressed during deep idle so a pet
@@ -1315,6 +1311,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     const sickDmg = isIdle ? IDLE_SICK_DAMAGE_PER_TICK : CRITICAL_HEALTH_DAMAGE_PER_TICK;
     health = clampStat(health - sickDmg);
     events.push("sickness_damage");
+    tookDamageThisTick = true;
   }
 
   // BUGFIX-004: passive health regen — full rate while sleeping, much slower awake
@@ -1420,6 +1417,19 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     }
   }
   } // end if (config.attentionCallsEnabled)
+
+  // Idle safety floor — while idle (regular or deep) and the pet is sick or took
+  // damage this tick, floor hunger/happiness/health/energy at IDLE_STAT_FLOOR.
+  // Applied last, after every stat-decay and damage block above, so a same-tick
+  // damage source can never push a stat back below the floor. This gives a
+  // neglected pet a real chance to be rescued once the user returns, instead of
+  // dying or bottoming out while nobody is there to respond.
+  if ((isIdle || isDeepIdle) && (sick || tookDamageThisTick)) {
+    hunger    = Math.max(hunger,    IDLE_STAT_FLOOR);
+    happiness = Math.max(happiness, IDLE_STAT_FLOOR);
+    health    = Math.max(health,    IDLE_STAT_FLOOR);
+    energy    = Math.max(energy,    IDLE_STAT_FLOOR);
+  }
 
   // Dev mode: configurable health floor — prevents death from stat decay or old age
   // when devModeHealthFloor > 0 (default 1). Set floor to 0 to allow death in dev mode.

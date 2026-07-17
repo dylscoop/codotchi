@@ -299,6 +299,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     var nextPoopIntervalTicks = state.nextPoopIntervalTicks
     var hungerZeroTicks    = state.hungerZeroTicks
     var sick               = state.sick
+    var tookDamageThisTick = false
     var alive              = state.alive
     var sleeping           = state.sleeping
     var ageDays            = state.ageDays
@@ -366,12 +367,6 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         if (hungerDecayTick)    hunger    = clampStat(hunger    - 1)
         if (happinessDecayTick) happiness = clampStat(happiness - 1)
         if (energyDecayTick)    energy    = clampStat(energy    - ENERGY_DECAY_PER_TICK)
-        // Deep idle: floor stats at IDLE_STAT_FLOOR so they never drop below 20%
-        if (isDeepIdle) {
-            hunger    = maxOf(hunger,    IDLE_STAT_FLOOR)
-            happiness = maxOf(happiness, IDLE_STAT_FLOOR)
-            health    = maxOf(health,    IDLE_STAT_FLOOR)
-        }
     } else {
         val energyRegen = ceil(ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier).toInt()
         energy = clampStat(energy + energyRegen)
@@ -440,26 +435,27 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     // Starvation counter
     if (hunger == STAT_MIN) hungerZeroTicks += 1 else hungerZeroTicks = 0
 
-    // Starvation damage
+    // Starvation damage — no longer triggers sickness. Sickness is now only
+    // caused by a dirty environment (poop) or overfeeding (snacks), so a pet
+    // left hungry takes health damage but must not become "sick" from it.
     if (hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK) {
         health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
         events.add("starvation_damage")
-        if (!sick) {
-            sick = true
-            events.add("became_sick")
-        }
+        tookDamageThisTick = true
     }
 
-    // Happiness-critical health drain
+    // Happiness-critical health drain — does not cause sickness (see above).
     if (happiness == STAT_MIN && !sleeping) {
         health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
         events.add("unhappiness_damage")
+        tookDamageThisTick = true
     }
 
     // Energy-exhaustion health drain
     if (energy == STAT_MIN && !sleeping) {
         health = clampStat(health - EXHAUSTION_HEALTH_DAMAGE_PER_TICK)
         events.add("exhaustion_damage")
+        tookDamageThisTick = true
     }
 
     // Sickness health drain — suppressed during deep idle; slowed during regular idle
@@ -467,6 +463,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         val sickDmg = if (isIdle) IDLE_SICK_DAMAGE_PER_TICK else CRITICAL_HEALTH_DAMAGE_PER_TICK
         health = clampStat(health - sickDmg)
         events.add("sickness_damage")
+        tookDamageThisTick = true
     }
 
     // Passive health regen
@@ -572,6 +569,19 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     }
 
     } // end if (config.attentionCallsEnabled)
+
+    // Idle safety floor — while idle (regular or deep) and the pet is sick or took
+    // damage this tick, floor hunger/happiness/health/energy at IDLE_STAT_FLOOR.
+    // Applied last, after every stat-decay and damage block above, so a same-tick
+    // damage source can never push a stat back below the floor. This gives a
+    // neglected pet a real chance to be rescued once the user returns, instead of
+    // dying or bottoming out while nobody is there to respond.
+    if ((isIdle || isDeepIdle) && (sick || tookDamageThisTick)) {
+        hunger    = maxOf(hunger,    IDLE_STAT_FLOOR)
+        happiness = maxOf(happiness, IDLE_STAT_FLOOR)
+        health    = maxOf(health,    IDLE_STAT_FLOOR)
+        energy    = maxOf(energy,    IDLE_STAT_FLOOR)
+    }
 
     // Dev mode: configurable health floor — prevents death from stat decay or old age
     // when devModeHealthFloor > 0 (default 1). Set floor to 0 to allow death in dev mode.
