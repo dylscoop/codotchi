@@ -643,6 +643,20 @@ describe("tick — idle safety floor for sick/losing-health pets", () => {
     assert.equal(next.health, 5);
   });
 
+  it("does not log a health-loss event when the idle floor fully absorbs the damage (net health unchanged)", () => {
+    const pet = makePet({ hunger: 0, hungerZeroTicks: 99, health: 5 });
+    const next = tick(pet, true, false); // isIdle=true, isDeepIdle=false
+    assert.equal(next.health, 5);
+    assert.ok(!next.events.includes("starvation_damage"), `events should not include starvation_damage (got ${JSON.stringify(next.events)})`);
+  });
+
+  it("still logs a health-loss event when the pet is idle but actually losing health", () => {
+    const pet = makePet({ hunger: 0, hungerZeroTicks: 99, health: 25 });
+    const next = tick(pet, true, false); // isIdle=true, isDeepIdle=false
+    assert.ok(next.health < 25, `health should have actually decreased (got ${next.health})`);
+    assert.ok(next.events.includes("starvation_damage"), `events should include starvation_damage (got ${JSON.stringify(next.events)})`);
+  });
+
   it("floors health at IDLE_STAT_FLOOR when a healthy pet takes damage while idle", () => {
     const pet = makePet({ hunger: 0, hungerZeroTicks: 99, sick: true, health: 25 });
     const next = tick(pet, true, false); // isIdle=true, isDeepIdle=false

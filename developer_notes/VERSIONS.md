@@ -4,13 +4,31 @@
 
 ### Changes from v2.16.9
 
-Version-only rebuild — no source changes. All five products bumped in lockstep
-and all artifacts rebuilt from the same BUGFIX-149 source already released in
-v2.16.9, to rule out a stale-install explanation for a reported energy-bounce
-regression that could not be reproduced by re-running the fixed `tick()` logic
-directly or by inspecting the already-installed v2.16.9 plugin's `dist/gameEngine.js`
-(both confirmed correct). If the reported bug persists after installing this
-build, it indicates a real second bug distinct from BUGFIX-149.
+Initial v2.17.0 rebuild was version-only (no source changes; see below). This
+release also folds in BUGFIX-150, a same-version follow-up fix — no additional
+version bump per explicit instruction.
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | fix: BUGFIX-150 — after the BUGFIX-149 idle floor block, strip `_damage` events from the tick when the floor left health unchanged, so idle logging/notifications stop claiming the pet is losing health once it's flatlined at the floor |
+| `claude-codotchi/src/gameEngine.ts` | fix: BUGFIX-150 — mirror |
+| `opencode-codotchi/src/gameEngine.ts` | fix: BUGFIX-150 — mirror |
+| `claude-desktop-codotchi/src/gameEngine.ts` | fix: BUGFIX-150 — mirror |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | fix: BUGFIX-150 — add `HEALTH_DAMAGE_EVENTS` set |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: BUGFIX-150 — mirror the event-stripping logic in `tick()`'s idle floor block |
+| `vscode/tests/unit/gameEngine.test.ts` | test: add cases asserting the damage event is suppressed when the floor absorbs the loss, and still fires when health actually decreases |
+| `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | test: mirror |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-150 |
+| `developer_notes/DEV_NOTES.md` | docs: note event suppression in the idle safety floor description |
+| `developer_notes/vscode/FEATURES.md` | docs: note event suppression in the idle safety floor description |
+
+Prior version-only rebuild note (still applicable to the base of this release):
+all five products were bumped in lockstep and all artifacts rebuilt from the
+same BUGFIX-149 source already released in v2.16.9, to rule out a stale-install
+explanation for a reported energy-bounce regression that could not be
+reproduced by re-running the fixed `tick()` logic directly or by inspecting the
+already-installed v2.16.9 plugin's `dist/gameEngine.js` (both confirmed
+correct).
 
 ---
 

@@ -143,6 +143,19 @@ const val IDLE_DEEP_THRESHOLD_MS: Long = 10 * 60 * 1000L // 10 minutes
 const val IDLE_STAT_FLOOR: Int = 20
 
 /**
+ * Event names that report health loss. When the idle safety floor fully
+ * absorbs a tick's computed damage (net health unchanged), these are
+ * stripped from the tick's events so logging/notifications don't claim the
+ * pet is losing health when it isn't (follow-up to BUGFIX-149).
+ */
+val HEALTH_DAMAGE_EVENTS: Set<String> = setOf(
+    "starvation_damage",
+    "unhappiness_damage",
+    "exhaustion_damage",
+    "sickness_damage"
+)
+
+/**
  * When the user is idle, hunger/happiness decay fires only once every this
  * many ticks (5% of normal rate — matches VS Code IDLE_DECAY_TICK_DIVISOR).
  */

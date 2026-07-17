@@ -582,6 +582,13 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         happiness = maxOf(happiness, minOf(state.happiness, IDLE_STAT_FLOOR))
         health    = maxOf(health,    minOf(state.health,    IDLE_STAT_FLOOR))
         energy    = maxOf(energy,    minOf(state.energy,    IDLE_STAT_FLOOR))
+
+        // If the floor above fully absorbed this tick's health loss (net health
+        // unchanged), drop the damage events pushed earlier this tick so idle
+        // logging/notifications don't claim the pet is losing health when it isn't.
+        if (health == state.health) {
+            events.removeAll { it in HEALTH_DAMAGE_EVENTS }
+        }
     }
 
     // Dev mode: configurable health floor — prevents death from stat decay or old age

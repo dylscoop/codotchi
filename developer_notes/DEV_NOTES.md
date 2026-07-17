@@ -371,7 +371,10 @@ raised back up; it only stops that tick's decay from crossing below 20
 (BUGFIX-149). Unlike the earlier deep-idle-only floor, this now also engages
 during regular idle (≥ 1 minute) when the pet is sick/losing health, giving
 the user a real chance to return and rescue a neglected pet rather than
-finding it dead or bottomed out.
+finding it dead or bottomed out. When the floor fully absorbs a tick's health
+loss (net health unchanged), that tick's `_damage` events are stripped so idle
+logging/notifications stop reporting the pet as "losing health" once it has
+flatlined at the floor (BUGFIX-150).
 
 ### Offline decay (IDE fully closed)
 
