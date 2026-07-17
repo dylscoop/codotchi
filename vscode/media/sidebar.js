@@ -1547,13 +1547,32 @@
     return code;
   }
 
+  // Health-loss events that repeat every tick while the underlying condition
+  // persists — collapse consecutive repeats into one updating line instead of
+  // flooding the log with identical entries.
+  const REPEATABLE_DAMAGE_EVENTS = new Set([
+    "sickness_damage",
+    "starvation_damage",
+    "unhappiness_damage",
+    "exhaustion_damage",
+  ]);
+
   function appendEvents(events, petName, state) {
     if (!events.length) { return; }
     events.forEach(function (text) {
       const label = humaniseEvent(text, petName, state);
       if (!label) { return; }
+      const mostRecent = eventLog.firstChild;
+      if (REPEATABLE_DAMAGE_EVENTS.has(text) && mostRecent && mostRecent.dataset && mostRecent.dataset.eventCode === text) {
+        const count = (parseInt(mostRecent.dataset.count, 10) || 1) + 1;
+        mostRecent.dataset.count = String(count);
+        mostRecent.textContent = label + " (×" + count + ")";
+        return;
+      }
       const li = document.createElement("li");
       li.textContent = label;
+      li.dataset.eventCode = text;
+      li.dataset.count = "1";
       eventLog.insertBefore(li, eventLog.firstChild);
     });
     while (eventLog.children.length > 20) {
