@@ -50,6 +50,9 @@ private val SOURCE_FILE_EXTENSIONS = setOf(
     "nim", "zig", "v", "tf"
 )
 
+/** How often to re-fire the rescue notification while the pet is sick/losing health while idle. */
+private const val RESCUE_NOTIFY_REPEAT_MS: Long = 5 * 60_000L // 5 minutes
+
 /**
  * CodotchiPlugin — application-level service that owns the pet state and
  * tick scheduler.
@@ -100,6 +103,9 @@ class CodotchiPlugin : Disposable {
      * from the grace period.  Mirrors VS Code lastDeepIdleTickMs in extension.ts.
      */
     @Volatile private var lastDeepIdleTickMs: Long = 0L
+
+    /** Epoch-ms of the last "pet needs rescue while idle" notification, so it can repeat. */
+    @Volatile private var lastRescueNotifyMs: Long = 0L
 
     /** AWT listener that updates [lastActivityTime] on any key press or mouse event. */
     private val awtActivityListener = AWTEventListener { event ->
@@ -955,6 +961,25 @@ class CodotchiPlugin : Disposable {
             )
         }
 
+        // Sick or losing health while idle means the pet needs the user to come back
+        // and rescue it. Escalate to error-level severity and keep re-firing every
+        // RESCUE_NOTIFY_REPEAT_MS while the condition persists, so a notification the
+        // user missed or dismissed doesn't leave them unaware the pet is at risk.
+        if (state != null && state.alive && isIdle()) {
+            val tookDamageThisTick = state.events.any { it.endsWith("_damage") }
+            if (state.sick || tookDamageThisTick) {
+                val now = System.currentTimeMillis()
+                if (now - lastRescueNotifyMs >= RESCUE_NOTIFY_REPEAT_MS) {
+                    lastRescueNotifyMs = now
+                    fireRescueNotification("${state.name} needs help and you're away — come back and rescue them!")
+                }
+            } else {
+                lastRescueNotifyMs = 0L
+            }
+        } else {
+            lastRescueNotifyMs = 0L
+        }
+
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
                 browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName) }
@@ -990,6 +1015,27 @@ class CodotchiPlugin : Disposable {
                 override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
                     val project = e.project ?: run {
                         // Fallback: grab the project from DataManager
+                        val ctx = DataManager.getInstance().dataContextFromFocusAsync.blockingGet(500)
+                        ctx?.getData(CommonDataKeys.PROJECT)
+                    } ?: return
+                    ToolWindowManager.getInstance(project).getToolWindow("Codotchi")?.show()
+                    notification.expire()
+                }
+            })
+            notification.notify(null)  // null = app-level notification visible in all projects
+        }
+    }
+
+    /** Error-level notification for the sick/losing-health-while-idle rescue case — louder than [fireAttentionNotification]. */
+    private fun fireRescueNotification(message: String) {
+        ApplicationManager.getApplication().invokeLater {
+            val group = NotificationGroupManager.getInstance()
+                .getNotificationGroup("Codotchi Attention Calls")
+                ?: return@invokeLater
+            val notification = group.createNotification(message, NotificationType.ERROR)
+            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
+                override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+                    val project = e.project ?: run {
                         val ctx = DataManager.getInstance().dataContextFromFocusAsync.blockingGet(500)
                         ctx?.getData(CommonDataKeys.PROJECT)
                     } ?: return

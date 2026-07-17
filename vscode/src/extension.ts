@@ -78,6 +78,12 @@ let lastDeepIdleTickMs: number = 0;
 /** Grace period (ms) after exiting deep idle before full active decay resumes. */
 const DEEP_IDLE_REENTRY_GRACE_MS = 60_000;
 
+/** Timestamp of the last "pet needs rescue while idle" notification, so it can repeat. */
+let lastRescueNotifyMs = 0;
+
+/** How often to re-fire the rescue notification while the sick/losing-health-while-idle condition persists. */
+const RESCUE_NOTIFY_REPEAT_MS = 5 * 60_000;
+
 /**
  * Activate the extension.
  *
@@ -94,7 +100,7 @@ export function activate(context: vscode.ExtensionContext): void {
    *
    * @param state - The new pet state to broadcast.
    */
-  function handleStateUpdate(state: PetState): void {
+  function handleStateUpdate(state: PetState, isIdle: boolean = false): void {
     currentState = state;
 
     // Fire IDE notifications for attention call events (only when mechanic is enabled)
@@ -129,6 +135,28 @@ export function activate(context: vscode.ExtensionContext): void {
       void vscode.window.showWarningMessage(
         `${state.name} has passed away of unforeseen natural causes due to old age.`
       );
+    }
+
+    // Sick or losing health while idle means the pet needs the user to come back
+    // and rescue it. Escalate to error-level severity and keep re-firing every
+    // RESCUE_NOTIFY_REPEAT_MS while the condition persists, so a toast the user
+    // missed or dismissed doesn't leave them unaware the pet is at risk.
+    const tookDamageThisTick = state.events.some((e) => e.endsWith("_damage"));
+    if (state.alive && isIdle && (state.sick || tookDamageThisTick)) {
+      const now = Date.now();
+      if (now - lastRescueNotifyMs >= RESCUE_NOTIFY_REPEAT_MS) {
+        lastRescueNotifyMs = now;
+        void vscode.window.showErrorMessage(
+          `${state.name} needs help and you're away — come back and rescue them!`,
+          "Open Codotchi"
+        ).then((selection) => {
+          if (selection === "Open Codotchi") {
+            void vscode.commands.executeCommand("codotchiView.focus");
+          }
+        });
+      }
+    } else {
+      lastRescueNotifyMs = 0;
     }
 
     // Update high score when pet dies (suppressed in dev mode — scores don't count)
@@ -311,7 +339,7 @@ export function activate(context: vscode.ExtensionContext): void {
       devModeHealthFloor:       Math.max(0, Math.min(100, cfg.get<number>("devModeHealthFloor", 1))),
     };
     const next = tick(currentState, idle, deepIdle, gameConfig);
-    handleStateUpdate(next);
+    handleStateUpdate(next, idle);
   }
 
   /** Start the periodic tick timer. No-op if already running. */
