@@ -1,6 +1,58 @@
 # Version History
 
-## v2.16.7 — current
+## v2.16.9 — current
+
+### Changes from v2.16.8
+
+| File | What changed |
+|------|-------------|
+| `claude-codotchi/scripts/state.mjs` | fix: BUGFIX-147 — `MODEL_PRICING` rebuilt as an explicitly ordered, most-specific-prefix-first list covering both Claude 3.x (generation-before-family) and 4.x+/5.x (family-before-generation) model-ID formats, instead of silently falling through to the `$3/$15` default rate |
+| `vscode/src/sidebarProvider.ts` | fix: BUGFIX-147 — mirror the same `MODEL_PRICING` rewrite; fix: BUGFIX-148 — split `scanDailyUsage()` into independent `scanClaudeCodeDailyUsage()`/`scanOpenCodeDailyUsage()` so the token-cost bubble shows one segment per source instead of a blended average |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: BUGFIX-147 — bring the Kotlin pricing function up to the same generation-aware granularity as the TypeScript/JS versions; fix: BUGFIX-148 — mirror the independent-per-source scan split and bubble segments |
+| `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | fix: pool-passcode custom characters show the plain "Codotchi" default name instead of the picked character's own `defaultName` |
+| `vscode/src/customCharacters.ts` | fix: mirror the same pool-passcode default-name fix |
+| `claude-codotchi/tests/unit/state.test.mjs` | test: add 15-case pricing regression suite covering every Claude 3.x/4.x/5.x model ID pattern from `MODEL_PRICING` |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-147, BUGFIX-148 |
+| `developer_notes/vscode/FEATURES.md` | docs: update the "Today's Token Cost" row for the renamed scan functions and the new per-source bubble format |
+| `README.md` | chore: bump vscode/pycharm artifact filenames and version references to 2.16.9 (opencode-codotchi artifact unchanged this release — still 2.16.7, no source change) |
+| `vscode/package.json` | chore: bump version to 2.16.9 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.16.9 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.9 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.16.9 (version-only lockstep bump; no OpenCode source changed this release) |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.9 (was still 2.16.7 — missed in the v2.16.8 release commit; caught up here) |
+| `claude-desktop-codotchi/manifest.json` | chore: bump version to 2.16.9 (same catch-up) |
+| `claude-codotchi/package.json` | chore: bump version to 2.16.8 (claude-codotchi versions independently of the other four products — see `664f5d3`) |
+| `claude-codotchi/.claude-plugin/plugin.json` | chore: bump version to 2.16.8 (was still 2.16.1 on `main`; catches up to the working-tree package.json) |
+
+---
+
+## v2.16.8 — previous
+
+### Changes from v2.16.7
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | fix: BUGFIX-146 — sickness now only ever caused by dirty environment (poop) or overfeeding (snacks), not starvation/happiness-critical damage; new idle safety floor applied last in `tick()` so no same-tick damage source can undo it |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: BUGFIX-146 — mirror the same sickness-source restriction and idle floor |
+| `claude-codotchi/src/gameEngine.ts` | fix: BUGFIX-146 — mirror |
+| `opencode-codotchi/src/gameEngine.ts` | fix: BUGFIX-146 — mirror |
+| `claude-desktop-codotchi/src/gameEngine.ts` | fix: BUGFIX-146 — mirror |
+| `vscode/src/extension.ts` | feat: BUGFIX-146 — louder, error-level notification that repeats every 5 minutes while the pet is sick/losing health and the user is idle |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: BUGFIX-146 — mirror the repeating sick/idle notification |
+| `vscode/tests/unit/gameEngine.test.ts` | test: BUGFIX-146 — coverage for the sickness-source restriction and idle floor, including the same-tick-damage-cannot-undo-the-floor case |
+| `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | test: BUGFIX-146 — mirror |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-146 |
+| `developer_notes/DEV_NOTES.md` | docs: describe the idle-safety-floor design |
+| `developer_notes/vscode/DESIGN.md` | docs: update sickness-trigger design notes |
+| `developer_notes/vscode/FEATURES.md` | docs: update sickness/idle-floor/notification rows |
+| `vscode/package.json` | chore: bump version to 2.16.8 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.16.8 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.16.8 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.16.8 |
+
+---
+
+## v2.16.7 — previous
 
 ### Changes from v2.16.6
 

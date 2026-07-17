@@ -1,6 +1,6 @@
 {
   "name": "claude-desktop-codotchi",
-  "version": "2.16.7",
+  "version": "2.16.9",
   "description": "Codotchi for Claude Desktop — a Tamagotchi-style virtual pet that lives in your chats, rendered as an interactive MCP App and packaged as a one-click .mcpb bundle.",
   "type": "module",
   "private": true,

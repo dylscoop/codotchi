@@ -179,7 +179,7 @@ fun getCustomCharacterByPasscode(passcode: String): CustomCharacter? {
         // Pool members without a dedicated CUSTOM_CHARACTERS entry (plain rotation
         // animals) still need their spriteType forced — synthesize a vanilla
         // character matching the default fallback text used everywhere else.
-        return CUSTOM_CHARACTERS.firstOrNull { it.spriteType == pick } ?: CustomCharacter(
+        val character = CUSTOM_CHARACTERS.firstOrNull { it.spriteType == pick } ?: CustomCharacter(
             spriteType  = pick,
             passcode    = passcode,
             defaultName = "Codotchi",
@@ -191,6 +191,9 @@ fun getCustomCharacterByPasscode(passcode: String): CustomCharacter? {
             ),
             patBubbles  = listOf(),
         )
+        // Pool passcodes always use the plain "Codotchi" default name, regardless
+        // of the picked character's own defaultName (e.g. Timagotchi, Stugotchi).
+        return character.copy(defaultName = "Codotchi")
     }
     return CUSTOM_CHARACTERS.firstOrNull { it.passcode == passcode }
 }

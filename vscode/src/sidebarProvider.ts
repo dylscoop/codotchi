@@ -38,96 +38,109 @@ import { StatusBarManager } from "./statusBar";
 import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
 
 // Pricing per million tokens (USD) — mirrors state.mjs MODEL_PRICING table.
-const MODEL_PRICING: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
-  "claude-opus-4":   { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 },
-  "claude-sonnet-4": { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  },
-  "claude-haiku-4":  { input: 0.80, output: 4,    cacheRead: 0.08,  cacheWrite: 1.00  },
-  "claude-opus-3":   { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 },
-  "claude-sonnet-3": { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  },
-  "claude-haiku-3":  { input: 0.25, output: 1.25, cacheRead: 0.03,  cacheWrite: 0.30  },
-  "default":         { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  },
-};
+// Ordered most-specific first — checked with startsWith(), so longer/pricier
+// sub-prefixes (e.g. claude-opus-4-8) must precede their shorter generic
+// parent (claude-opus-4). Covers both real model-ID orderings: Claude 3.x
+// puts the generation digit before the family name (claude-3-opus-...),
+// while 4.x+ puts the family name first (claude-opus-4-...).
+const MODEL_PRICING: Array<[string, { input: number; output: number; cacheRead: number; cacheWrite: number }]> = [
+  ["claude-opus-4-8",   { input: 5,    output: 25,   cacheRead: 0.50,  cacheWrite: 6.25  }],
+  ["claude-opus-4-1",   { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
+  ["claude-3-5-sonnet", { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
+  ["claude-3-5-haiku",  { input: 0.80, output: 4,    cacheRead: 0.08,  cacheWrite: 1.00  }],
+  ["claude-3-opus",     { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
+  ["claude-3-sonnet",   { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
+  ["claude-3-haiku",    { input: 0.25, output: 1.25, cacheRead: 0.03,  cacheWrite: 0.30  }],
+  ["claude-opus-4",     { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
+  ["claude-sonnet-5",   { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
+  ["claude-sonnet-4",   { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
+  ["claude-haiku-4-5",  { input: 1,    output: 5,    cacheRead: 0.10,  cacheWrite: 1.25  }],
+  ["claude-fable-5",    { input: 10,   output: 50,   cacheRead: 1.00,  cacheWrite: 12.50 }],
+];
+const DEFAULT_PRICING = { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 };
 
 function pricingForModel(model: string = "") {
-  for (const [prefix, p] of Object.entries(MODEL_PRICING)) {
-    if (prefix !== "default" && model.startsWith(prefix)) { return p; }
+  for (const [prefix, p] of MODEL_PRICING) {
+    if (model.startsWith(prefix)) { return p; }
   }
-  return MODEL_PRICING["default"];
+  return DEFAULT_PRICING;
 }
 
-/** Which local usage sources (Track A/B) to include in {@link scanDailyUsage}. */
-interface DailyUsageSources {
-  claudeCode: boolean;
-  openCode: boolean;
+/** Today's usage totals for a single source. */
+interface DailyUsage {
+  costUsd: number;
+  hourlyCostUsd: number;
+  tokens: number;
+  messageCount: number;
 }
 
-/** Scan ~/.claude/projects JSONL files and return today's usage totals. */
-function scanDailyUsage(
-  sources: DailyUsageSources = { claudeCode: true, openCode: true }
-): { costUsd: number; hourlyCostUsd: number; tokens: number; messageCount: number } {
+/** Scan ~/.claude/projects JSONL files and return today's Claude Code usage totals. */
+function scanClaudeCodeDailyUsage(): DailyUsage {
   const projsDir = path.join(os.homedir(), ".claude", "projects");
   const today = new Date().toISOString().slice(0, 10);
   const oneHourAgoMs = Date.now() - 3_600_000;
   const oneHourAgoIso = new Date(oneHourAgoMs).toISOString();
   let costUsd = 0, hourlyCostUsd = 0, tokens = 0, messageCount = 0;
 
-  // Track A — Claude Code: read ~/.claude/projects/*.jsonl
-  if (sources.claudeCode) {
-    try {
-      for (const proj of fs.readdirSync(projsDir)) {
-        const projPath = path.join(projsDir, proj);
-        let files: string[];
-        try { files = fs.readdirSync(projPath); } catch { continue; }
-        for (const f of files) {
-          if (!f.endsWith(".jsonl")) { continue; }
-          const fp = path.join(projPath, f);
-          try {
-            const stat = fs.statSync(fp);
-            if (stat.mtime.toISOString().slice(0, 10) < today) { continue; }
-          } catch { continue; }
-          try {
-            const lines = fs.readFileSync(fp, "utf8").trim().split("\n");
-            for (const line of lines) {
-              try {
-                const d = JSON.parse(line);
-                if (d.type !== "assistant" || !d.message?.usage) { continue; }
-                if (d.timestamp && !d.timestamp.startsWith(today)) { continue; }
-                const u = d.message.usage;
-                const p = pricingForModel(d.message.model ?? "");
-                const inp = u.input_tokens ?? 0;
-                const out = u.output_tokens ?? 0;
-                const cr  = u.cache_read_input_tokens ?? 0;
-                const cc  = u.cache_creation_input_tokens ?? 0;
-                const entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
-                costUsd      += entryCost;
-                tokens       += inp + out + cr + cc;
-                messageCount += 1;
-                if (d.timestamp && d.timestamp >= oneHourAgoIso) { hourlyCostUsd += entryCost; }
-              } catch { /* skip malformed lines */ }
-            }
-          } catch { /* skip unreadable files */ }
-        }
+  try {
+    for (const proj of fs.readdirSync(projsDir)) {
+      const projPath = path.join(projsDir, proj);
+      let files: string[];
+      try { files = fs.readdirSync(projPath); } catch { continue; }
+      for (const f of files) {
+        if (!f.endsWith(".jsonl")) { continue; }
+        const fp = path.join(projPath, f);
+        try {
+          const stat = fs.statSync(fp);
+          if (stat.mtime.toISOString().slice(0, 10) < today) { continue; }
+        } catch { continue; }
+        try {
+          const lines = fs.readFileSync(fp, "utf8").trim().split("\n");
+          for (const line of lines) {
+            try {
+              const d = JSON.parse(line);
+              if (d.type !== "assistant" || !d.message?.usage) { continue; }
+              if (d.timestamp && !d.timestamp.startsWith(today)) { continue; }
+              const u = d.message.usage;
+              const p = pricingForModel(d.message.model ?? "");
+              const inp = u.input_tokens ?? 0;
+              const out = u.output_tokens ?? 0;
+              const cr  = u.cache_read_input_tokens ?? 0;
+              const cc  = u.cache_creation_input_tokens ?? 0;
+              const entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
+              costUsd      += entryCost;
+              tokens       += inp + out + cr + cc;
+              messageCount += 1;
+              if (d.timestamp && d.timestamp >= oneHourAgoIso) { hourlyCostUsd += entryCost; }
+            } catch { /* skip malformed lines */ }
+          }
+        } catch { /* skip unreadable files */ }
       }
-    } catch { /* projsDir missing */ }
-  }
+    }
+  } catch { /* projsDir missing */ }
 
-  // Track B — OpenCode: read ~/.config/opencode/codotchi-daily.json
-  if (sources.openCode) {
-    try {
-      const xdgConfig = process.env["XDG_CONFIG_HOME"] ?? path.join(os.homedir(), ".config");
-      const ocDailyPath = path.join(xdgConfig, "opencode", "codotchi-daily.json");
-      if (fs.existsSync(ocDailyPath)) {
-        const ocData = JSON.parse(fs.readFileSync(ocDailyPath, "utf8"));
-        // Only include if the file is for today (UTC)
-        if ((ocData.date ?? ocData.createdDate ?? "") === today) {
-          costUsd      += ocData.costUSD ?? 0;
-          tokens       += ocData.tokens ?? 0;
-          messageCount += ocData.messages ?? 0;
-          // OpenCode only persists daily totals — last-1h is in-memory in the plugin, not in this file
-        }
+  return { costUsd, hourlyCostUsd, tokens, messageCount };
+}
+
+/** Read ~/.config/opencode/codotchi-daily.json and return today's OpenCode usage totals. */
+function scanOpenCodeDailyUsage(): DailyUsage {
+  const today = new Date().toISOString().slice(0, 10);
+  let costUsd = 0, hourlyCostUsd = 0, tokens = 0, messageCount = 0;
+
+  try {
+    const xdgConfig = process.env["XDG_CONFIG_HOME"] ?? path.join(os.homedir(), ".config");
+    const ocDailyPath = path.join(xdgConfig, "opencode", "codotchi-daily.json");
+    if (fs.existsSync(ocDailyPath)) {
+      const ocData = JSON.parse(fs.readFileSync(ocDailyPath, "utf8"));
+      // Only include if the file is for today (UTC)
+      if ((ocData.date ?? ocData.createdDate ?? "") === today) {
+        costUsd      = ocData.costUSD ?? 0;
+        tokens       = ocData.tokens ?? 0;
+        messageCount = ocData.messages ?? 0;
+        // OpenCode only persists daily totals — last-1h is in-memory in the plugin, not in this file
       }
-    } catch { /* opencode daily file missing or malformed */ }
-  }
+    }
+  } catch { /* opencode daily file missing or malformed */ }
 
   return { costUsd, hourlyCostUsd, tokens, messageCount };
 }
@@ -565,15 +578,27 @@ export class SidebarProvider
 
     const segments: string[] = [];
 
-    if (includeClaudeCode || includeOpenCode) {
-      const usage = scanDailyUsage({ claudeCode: includeClaudeCode, openCode: includeOpenCode });
+    // Each source reports its own totals — never merged, so a source with a
+    // different message-count/token shape (e.g. OpenCode) can't drag another
+    // source's "avg tok/msg" figure away from what it shows on its own (this
+    // is what caused the VS Code bubble to disagree with the claude-codotchi
+    // statusline, which only ever reports Claude Code's own figure).
+    const usageSegment = (label: string, usage: DailyUsage, showHourly: boolean): string => {
       const avgTok = usage.messageCount > 0
         ? Math.round(usage.tokens / usage.messageCount)
         : usage.tokens;
-      const sourceLabels = [includeClaudeCode && "Claude", includeOpenCode && "OpenCode"].filter(Boolean);
-      segments.push(
-        `Today: ${fmtCost(usage.costUsd)} | Last 1h: ${fmtCost(usage.hourlyCostUsd)} | Avg: ${fmt(avgTok)} tok/msg (${sourceLabels.join(" + ")})`
-      );
+      const hourlyPart = showHourly ? ` | Last 1h: ${fmtCost(usage.hourlyCostUsd)}` : "";
+      return `${label}: ${fmtCost(usage.costUsd)}${hourlyPart}, Avg ${fmt(avgTok)} tok/msg`;
+    };
+
+    if (includeClaudeCode) {
+      segments.push(usageSegment("Claude", scanClaudeCodeDailyUsage(), true));
+    }
+    if (includeOpenCode) {
+      // OpenCode's daily file only persists a running total — no last-1h
+      // breakdown is available (see scanOpenCodeDailyUsage), so omit it
+      // rather than show a misleading $0.00.
+      segments.push(usageSegment("OpenCode", scanOpenCodeDailyUsage(), false));
     }
 
     if (includeCopilot) {

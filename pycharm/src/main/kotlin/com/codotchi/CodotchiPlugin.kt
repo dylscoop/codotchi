@@ -315,7 +315,30 @@ class CodotchiPlugin : Disposable {
         val messageCount: Int,
     )
 
-    private fun scanDailyUsage(includeClaudeCode: Boolean, includeOpenCode: Boolean): DailyUsage {
+    // Mirrors state.mjs / sidebarProvider.ts MODEL_PRICING — most-specific
+    // prefix first, since e.g. claude-opus-4-8 must be checked before the
+    // generic claude-opus-4 / bare "opus" fallback.
+    private data class Pricing(val input: Double, val output: Double, val cacheRead: Double, val cacheWrite: Double)
+    private fun pricingForModel(model: String): Pricing = when {
+        model.startsWith("claude-opus-4-8")   -> Pricing(5.0, 25.0, 0.50, 6.25)
+        model.startsWith("claude-opus-4-1")   -> Pricing(15.0, 75.0, 1.50, 18.75)
+        model.startsWith("claude-3-5-sonnet") -> Pricing(3.0, 15.0, 0.30, 3.75)
+        model.startsWith("claude-3-5-haiku")  -> Pricing(0.80, 4.0, 0.08, 1.00)
+        model.startsWith("claude-3-opus")     -> Pricing(15.0, 75.0, 1.50, 18.75)
+        model.startsWith("claude-3-sonnet")   -> Pricing(3.0, 15.0, 0.30, 3.75)
+        model.startsWith("claude-3-haiku")    -> Pricing(0.25, 1.25, 0.03, 0.30)
+        model.startsWith("claude-opus-4")     -> Pricing(15.0, 75.0, 1.50, 18.75)
+        model.startsWith("claude-sonnet-5")   -> Pricing(3.0, 15.0, 0.30, 3.75)
+        model.startsWith("claude-sonnet-4")   -> Pricing(3.0, 15.0, 0.30, 3.75)
+        model.startsWith("claude-haiku-4-5")  -> Pricing(1.0, 5.0, 0.10, 1.25)
+        model.startsWith("claude-fable-5")    -> Pricing(10.0, 50.0, 1.00, 12.50)
+        "opus" in model    -> Pricing(15.0, 75.0, 1.5, 18.75)
+        "haiku" in model   -> Pricing(0.80, 4.0, 0.08, 1.0)
+        else               -> Pricing(3.0, 15.0, 0.30, 3.75) // sonnet default
+    }
+
+    /** Scan ~/.claude/projects (all .jsonl transcripts) and return today's Claude Code usage totals. */
+    private fun scanClaudeCodeDailyUsage(): DailyUsage {
         val home = System.getProperty("user.home") ?: ""
         val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString() // "YYYY-MM-DD"
         val oneHourAgoMs = System.currentTimeMillis() - 3_600_000L
@@ -323,15 +346,7 @@ class CodotchiPlugin : Disposable {
         var costUsd = 0.0; var hourlyCostUsd = 0.0; var tokens = 0L; var messageCount = 0
         val gson = Gson()
 
-        data class Pricing(val input: Double, val output: Double, val cacheRead: Double, val cacheWrite: Double)
-        fun pricingForModel(model: String): Pricing = when {
-            "opus" in model    -> Pricing(15.0, 75.0, 1.5, 18.75)
-            "haiku" in model   -> Pricing(0.80, 4.0, 0.08, 1.0)
-            else               -> Pricing(3.0, 15.0, 0.30, 3.75) // sonnet default
-        }
-
-        // Track A — Claude Code: ~/.claude/projects/**/*.jsonl
-        if (includeClaudeCode) try {
+        try {
             val projsDir = File(home, ".claude/projects")
             if (projsDir.isDirectory) {
                 for (proj in projsDir.listFiles() ?: emptyArray()) {
@@ -373,8 +388,17 @@ class CodotchiPlugin : Disposable {
             }
         } catch (_: Exception) { /* projsDir missing */ }
 
-        // Track B — OpenCode: ~/.config/opencode/codotchi-daily.json
-        if (includeOpenCode) try {
+        return DailyUsage(costUsd, hourlyCostUsd, tokens, messageCount)
+    }
+
+    /** Read ~/.config/opencode/codotchi-daily.json and return today's OpenCode usage totals. */
+    private fun scanOpenCodeDailyUsage(): DailyUsage {
+        val home = System.getProperty("user.home") ?: ""
+        val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString() // "YYYY-MM-DD"
+        var costUsd = 0.0; var tokens = 0L; var messageCount = 0
+        val gson = Gson()
+
+        try {
             val xdgConfig = System.getenv("XDG_CONFIG_HOME")
                 ?: File(home, ".config").absolutePath
             val ocFile = File(xdgConfig, "opencode/codotchi-daily.json")
@@ -383,14 +407,15 @@ class CodotchiPlugin : Disposable {
                 val ocData = gson.fromJson(ocFile.readText(), Map::class.java) as? Map<*, *>
                 val date = ocData?.get("date") as? String ?: ""
                 if (date == today) {
-                    costUsd      += (ocData?.get("costUSD") as? Number)?.toDouble() ?: 0.0
-                    tokens       += (ocData?.get("tokens") as? Number)?.toLong() ?: 0L
-                    messageCount += (ocData?.get("messages") as? Number)?.toInt() ?: 0
+                    costUsd      = (ocData?.get("costUSD") as? Number)?.toDouble() ?: 0.0
+                    tokens       = (ocData?.get("tokens") as? Number)?.toLong() ?: 0L
+                    messageCount = (ocData?.get("messages") as? Number)?.toInt() ?: 0
                 }
             }
         } catch (_: Exception) { /* opencode daily file missing or malformed */ }
 
-        return DailyUsage(costUsd, hourlyCostUsd, tokens, messageCount)
+        // OpenCode only persists daily totals — last-1h is in-memory in the plugin, not in this file.
+        return DailyUsage(costUsd, 0.0, tokens, messageCount)
     }
 
     // ── Commands (mirrors sidebarProvider.ts handleWebviewMessage exactly) ─
@@ -409,8 +434,14 @@ class CodotchiPlugin : Disposable {
         // Pre-compute file I/O (and the Copilot quota network call) outside the
         // state lock to avoid holding it during disk reads / HTTP requests.
         val tokenCostSettings = service<CodotchiSettings>()
-        val dailyUsage = if (command == "token_cost")
-            scanDailyUsage(tokenCostSettings.tokenCostIncludeClaudeCode, tokenCostSettings.tokenCostIncludeOpenCode)
+        // Each source is scanned independently (never merged) so one source's
+        // message-count/token shape can't drag another source's own "avg
+        // tok/msg" figure away from what it reports on its own.
+        val claudeCodeUsage = if (command == "token_cost" && tokenCostSettings.tokenCostIncludeClaudeCode)
+            scanClaudeCodeDailyUsage()
+        else null
+        val openCodeUsage = if (command == "token_cost" && tokenCostSettings.tokenCostIncludeOpenCode)
+            scanOpenCodeDailyUsage()
         else null
         val copilotQuota: CopilotQuotaResult? = if (command == "token_cost" && tokenCostSettings.tokenCostIncludeCopilot) {
             val token = CopilotQuotaToken.get()
@@ -561,29 +592,33 @@ class CodotchiPlugin : Disposable {
 
         // Token cost bubble — dispatched after state broadcast so the energy/happiness
         // update lands first, then the speech bubble appears on top.
-        if (command == "token_cost" && dailyUsage != null) {
+        if (command == "token_cost") {
             fun fmtTok(n: Long) = when {
                 n >= 1_000_000L -> "${"%.1f".format(n / 1_000_000.0)}M"
                 n >= 1_000L     -> "${"%.1f".format(n / 1_000.0)}k"
                 else            -> "$n"
             }
             fun fmtCost(u: Double) = if (u < 0.005) "<$0.01" else "$" + "%.2f".format(u)
+            // Each source reports its own totals — never merged, so a source
+            // with a different message-count/token shape (e.g. OpenCode)
+            // can't drag another source's "avg tok/msg" figure away from
+            // what it shows on its own.
+            fun usageSegment(label: String, usage: DailyUsage, showHourly: Boolean): String {
+                val avg = if (usage.messageCount > 0) usage.tokens / usage.messageCount else usage.tokens
+                val hourlyPart = if (showHourly) " | Last 1h: ${fmtCost(usage.hourlyCostUsd)}" else ""
+                return "$label: ${fmtCost(usage.costUsd)}$hourlyPart, Avg ${fmtTok(avg)} tok/msg"
+            }
 
             val segments = mutableListOf<String>()
 
-            val includeClaudeCode = tokenCostSettings.tokenCostIncludeClaudeCode
-            val includeOpenCode = tokenCostSettings.tokenCostIncludeOpenCode
-            if (includeClaudeCode || includeOpenCode) {
-                val avg = if (dailyUsage.messageCount > 0)
-                    dailyUsage.tokens / dailyUsage.messageCount
-                else dailyUsage.tokens
-                val sourceLabels = listOfNotNull(
-                    "Claude".takeIf { includeClaudeCode },
-                    "OpenCode".takeIf { includeOpenCode },
-                )
-                segments.add(
-                    "Today: ${fmtCost(dailyUsage.costUsd)} | Last 1h: ${fmtCost(dailyUsage.hourlyCostUsd)} | Avg: ${fmtTok(avg)} tok/msg (${sourceLabels.joinToString(" + ")})"
-                )
+            if (claudeCodeUsage != null) {
+                segments.add(usageSegment("Claude", claudeCodeUsage, showHourly = true))
+            }
+            if (openCodeUsage != null) {
+                // OpenCode's daily file only persists a running total — no
+                // last-1h breakdown is available, so omit it rather than
+                // show a misleading $0.00.
+                segments.add(usageSegment("OpenCode", openCodeUsage, showHourly = false))
             }
 
             when (copilotQuota) {

@@ -341,6 +341,69 @@ describe("accumulateDailyUsage — integration: tokens-per-message averaging", (
 });
 
 // ---------------------------------------------------------------------------
+// Suite 5b — pricingForModel (via accumulateDailyUsage.costUsd), BUGFIX-147
+//
+// Regression coverage for the prefix-matching bug: Claude 3.x model IDs put
+// the generation digit before the family name (claude-3-opus-...), while
+// 4.x+ IDs put the family name first (claude-opus-4-...). A single ordering
+// can't match both, so each representative model below must resolve to its
+// real per-model rate rather than silently falling through to the $3/$15
+// default (which is what happened for every Claude-3-generation ID, and for
+// claude-sonnet-5, before the fix).
+// ---------------------------------------------------------------------------
+
+describe("accumulateDailyUsage — pricingForModel — model ID prefix matching", () => {
+  /** costUsd for a single assistant line with 1,000,000 input + 1,000,000 output tokens. */
+  async function costForModel(model) {
+    let result;
+    await withFixture(
+      [
+        {
+          project: "proj1",
+          session: "sess1",
+          lines: [assistantLine({ timestamp: todayIso(), inputTokens: 1_000_000, outputTokens: 1_000_000, model })],
+        },
+      ],
+      async () => {
+        result = accumulateDailyUsage();
+      }
+    );
+    return result.costUsd;
+  }
+
+  const cases = [
+    // Claude 3.x — generation digit before family name.
+    ["claude-3-opus-20240229", 15 + 75],
+    ["claude-3-sonnet-20240229", 3 + 15],
+    ["claude-3-5-sonnet-20240620", 3 + 15],
+    ["claude-3-5-sonnet-20241022", 3 + 15],
+    ["claude-3-haiku-20240307", 0.25 + 1.25],
+    ["claude-3-5-haiku-20241022", 0.80 + 4],
+    // Claude 4.x+ / 5.x — family name before generation digit.
+    ["claude-opus-4-20250514", 15 + 75],
+    ["claude-opus-4-1-20250805", 15 + 75],
+    ["claude-opus-4-8", 5 + 25],
+    ["claude-sonnet-4-20250514", 3 + 15],
+    ["claude-sonnet-4-5-20250929", 3 + 15],
+    ["claude-sonnet-5", 3 + 15],
+    ["claude-haiku-4-5-20251001", 1 + 5],
+    ["claude-fable-5", 10 + 50],
+  ];
+
+  for (const [model, expectedCost] of cases) {
+    it(`prices ${model} at its own rate, not the $3/$15 default`, async () => {
+      const cost = await costForModel(model);
+      assert.equal(cost, expectedCost);
+    });
+  }
+
+  it("falls back to the $3/$15 default rate only for a genuinely unknown model", async () => {
+    const cost = await costForModel("claude-some-future-model-nobody-has-priced-yet");
+    assert.equal(cost, 3 + 15);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // IDE identity merge — fixture helpers
 //
 // Covers resolveVSCodeStatePath / resolvePyCharmStatePath / resolveCanonicalPetPath

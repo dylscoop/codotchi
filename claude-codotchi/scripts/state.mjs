@@ -159,22 +159,33 @@ export function saveDaily(data) {
   fs.writeFileSync(dailyPath(), JSON.stringify(data, null, 2), "utf8");
 }
 
-// Pricing per million tokens (USD) by model prefix.
-const MODEL_PRICING = {
-  "claude-opus-4":    { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 },
-  "claude-sonnet-4":  { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  },
-  "claude-haiku-4":   { input: 0.80, output: 4,    cacheRead: 0.08,  cacheWrite: 1.00  },
-  "claude-opus-3":    { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 },
-  "claude-sonnet-3":  { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  },
-  "claude-haiku-3":   { input: 0.25, output: 1.25, cacheRead: 0.03,  cacheWrite: 0.30  },
-  "default":          { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  },
-};
+// Pricing per million tokens (USD) by model prefix. Ordered most-specific
+// first — checked with startsWith(), so longer/pricier sub-prefixes (e.g.
+// claude-opus-4-8) must precede their shorter generic parent (claude-opus-4).
+// Covers both real model-ID orderings: Claude 3.x puts the generation digit
+// before the family name (claude-3-opus-...), while 4.x+ puts the family
+// name first (claude-opus-4-...) — a single ordering can't match both.
+const MODEL_PRICING = [
+  ["claude-opus-4-8",    { input: 5,    output: 25,   cacheRead: 0.50,  cacheWrite: 6.25  }],
+  ["claude-opus-4-1",    { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
+  ["claude-3-5-sonnet",  { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
+  ["claude-3-5-haiku",   { input: 0.80, output: 4,    cacheRead: 0.08,  cacheWrite: 1.00  }],
+  ["claude-3-opus",      { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
+  ["claude-3-sonnet",    { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
+  ["claude-3-haiku",     { input: 0.25, output: 1.25, cacheRead: 0.03,  cacheWrite: 0.30  }],
+  ["claude-opus-4",      { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
+  ["claude-sonnet-5",    { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
+  ["claude-sonnet-4",    { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
+  ["claude-haiku-4-5",   { input: 1,    output: 5,    cacheRead: 0.10,  cacheWrite: 1.25  }],
+  ["claude-fable-5",     { input: 10,   output: 50,   cacheRead: 1.00,  cacheWrite: 12.50 }],
+];
+const DEFAULT_PRICING = { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 };
 
 function pricingForModel(model = "") {
-  for (const [prefix, p] of Object.entries(MODEL_PRICING)) {
-    if (prefix !== "default" && model.startsWith(prefix)) return p;
+  for (const [prefix, p] of MODEL_PRICING) {
+    if (model.startsWith(prefix)) return p;
   }
-  return MODEL_PRICING["default"];
+  return DEFAULT_PRICING;
 }
 
 /**
