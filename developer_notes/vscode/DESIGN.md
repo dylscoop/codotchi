@@ -210,10 +210,11 @@ Shown on first launch (or new game):
 
 ### Sickness Triggers
 
+Sickness comes only from neglecting cleanliness or overfeeding — never from
+starvation or unhappiness (those cause health damage but not sickness):
+
 - Overfeeding snacks: >3 snacks in a 5-minute window
 - Leaving droppings uncleaned for >5 minutes
-- Hunger reaching 0 while happiness is also below 20
-- Happiness reaching 0 while hunger is also below 20
 
 ### Sick State
 

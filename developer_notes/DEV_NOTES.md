@@ -358,10 +358,16 @@ transition, showing "IDE idle 10 min — stats protected, aging stopped." in the
 event log.
 
 In deep-idle mode:
-- Hunger and happiness are **floored at `IDLE_STAT_FLOOR = 20`** — they cannot
-  decay below 20, so the pet is protected from starvation/misery while you step
-  away for an extended period.
 - `ageIncrement` is set to **0** — aging stops completely.
+
+**Idle safety floor (regular or deep idle):** whenever the pet is idle and is
+either sick or actively taking health damage that tick, hunger, happiness,
+health, *and* energy are all floored at `IDLE_STAT_FLOOR = 20`. This is applied
+last in `tick()`, after every stat-decay and damage block, so a same-tick
+damage source can never push a stat back below the floor. Unlike the earlier
+deep-idle-only floor, this now also engages during regular idle (≥ 1 minute)
+when the pet is sick/losing health, giving the user a real chance to return
+and rescue a neglected pet rather than finding it dead or bottomed out.
 
 ### Offline decay (IDE fully closed)
 
@@ -1043,6 +1049,15 @@ Shown as VS Code warning popups with an "Open Gotchi" button. Defined in `vscode
 | `attention_call_gift` | `"{name} brought you a gift!"` |
 | `attention_call_critical_health` | `"{name}'s health is critical!"` |
 | `died_of_old_age` | `"{name} has passed away of unforeseen natural causes due to old age."` |
+
+**Rescue notification (error-level, repeating):** when the pet is sick or
+losing health *while idle*, a separate notification fires at error severity
+(`showErrorMessage` in VS Code, `NotificationType.ERROR` in PyCharm) — louder
+than the warning-level table above — with the message `"{name} needs help and
+you're away — come back and rescue them!"`. It re-fires every 5 minutes
+(`RESCUE_NOTIFY_REPEAT_MS`) while the sick/losing-health-while-idle condition
+persists, rather than firing once, so a dismissed or missed toast doesn't
+leave the user unaware the pet is at risk.
 
 ### Weight event strings (VS Code sidebar event log)
 

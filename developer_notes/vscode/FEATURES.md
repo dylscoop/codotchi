@@ -107,8 +107,9 @@ Notes:
 - Post-answer cooldown: `ATTENTION_ANSWER_COOLDOWN_TICKS = 50` ticks (5 min)
 - Post-expiry cooldown: `ATTENTION_EXPIRY_COOLDOWN_TICKS = 20` ticks (2 min)
 - Only one call active at a time; `poop` call can fire while sleeping
-- IDE notifications fire via `showWarningMessage` (VS Code) / `Notifications.Bus` (PyCharm)
+- IDE notifications fire via `showWarningMessage` (VS Code) / `NotificationType.WARNING` (PyCharm)
 - "Open Gotchi" button on notification focuses the sidebar/tool window
+- Exception: when the pet is sick or losing health *while idle*, a separate "come back and rescue them" notification escalates to `showErrorMessage` (VS Code) / `NotificationType.ERROR` (PyCharm) and re-fires every 5 minutes while the condition persists, instead of firing once at warning level
 
 ---
 
@@ -471,6 +472,12 @@ Features that deepen the existing care actions.
 
 All events are displayed using the pet's name and human-readable sentences instead of raw event codes.
 
+Health-loss events (`sickness_damage`, `starvation_damage`, `unhappiness_damage`,
+`exhaustion_damage`) fire every tick while the underlying condition persists.
+Instead of inserting a new log line each tick, a repeat of the same event
+updates the existing line in place with a `(×N)` counter, so the 20-entry log
+doesn't get flooded with identical entries.
+
 | Event | Log message | Status |
 |-------|-------------|--------|
 | `play_refused_no_energy` | `<Name> doesn't have enough energy to play!` | `[x]` |
@@ -531,9 +538,15 @@ normal rate** (one in every 10 ticks fires decay; the rest are skipped). Aging
 is also slowed to 10% during idle.
 
 When the IDE has been idle for ≥ **10 minutes**, the pet enters **deep idle**.
-Hunger and happiness are floored at `IDLE_STAT_FLOOR = 20` (cannot decay
-below this value) and aging stops entirely (`ageIncrement = 0`). This protects
-the pet during extended breaks.
+Aging stops entirely (`ageIncrement = 0`) during deep idle.
+
+**Idle safety floor:** whenever the pet is idle (regular *or* deep) and is
+either sick or actively taking health damage that tick, hunger, happiness,
+health, and energy are all floored at `IDLE_STAT_FLOOR = 20`, applied after
+every other stat-decay/damage block in `tick()` so a same-tick damage source
+can never push a stat back below the floor. This guarantees a neglected pet
+survives long enough for the user to return and rescue it, rather than dying
+or bottoming out while nobody is there to respond.
 
 Aging does **not** advance while the IDE is closed (`applyOfflineDecay`
 preserves `dayTimer`/`ageDays` exactly).
@@ -543,7 +556,7 @@ preserves `dayTimer`/`ageDays` exactly).
 | Idle after | `IDLE_THRESHOLD_SECONDS` | 60 s (1 min) |
 | Deep idle after | `IDLE_DEEP_THRESHOLD_SECONDS` | 600 s (10 min) |
 | Decay divisor | `IDLE_DECAY_TICK_DIVISOR` | 10 (1 pt/min vs 10 pt/min active) |
-| Stat floor (deep idle) | `IDLE_STAT_FLOOR` | 20 |
+| Stat floor (idle + sick/damage) | `IDLE_STAT_FLOOR` | 20 — hunger, happiness, health, energy |
 
 Activity is tracked via `onDidChangeTextEditorSelection`, `onDidChangeTextDocument`,
 `onDidChangeWindowState`, and `onDidChangeActiveTextEditor`. Any of these events
@@ -588,9 +601,8 @@ Status: `[x]`
 |---------|--------|-------|
 | Sickness from overfeeding snacks (>3 consecutive) | `[x]` | |
 | Sickness from uncleaned poops (>3) | `[x]` | |
-| Sickness from hunger + happiness both critical | `[x]` | |
 | Health reaches 0 → death | `[x]` | |
-| Hunger stays 0 for 3+ ticks → health damage | `[x]` | `starvation_damage` event; humanised in event log |
+| Hunger stays 0 for 3+ ticks → health damage | `[x]` | `starvation_damage` event; humanised in event log; does **not** trigger sickness — only poop/overfeeding do |
 | Unhappiness health drain | `[x]` | `unhappiness_damage` event; humanised in event log |
 | Energy stays 0 while awake → health damage (2/tick) | `[x]` | `exhaustion_damage` event; slower than starvation/unhappiness (2 vs 5/tick) |
 | Sleep decay: hunger/happiness lose 1 every 5th sleeping tick | `[x]` | Prevents infinite stat preservation during extended sleep |
