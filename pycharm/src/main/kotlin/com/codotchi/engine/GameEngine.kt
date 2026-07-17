@@ -571,16 +571,17 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     } // end if (config.attentionCallsEnabled)
 
     // Idle safety floor — while idle (regular or deep) and the pet is sick or took
-    // damage this tick, floor hunger/happiness/health/energy at IDLE_STAT_FLOOR.
-    // Applied last, after every stat-decay and damage block above, so a same-tick
-    // damage source can never push a stat back below the floor. This gives a
-    // neglected pet a real chance to be rescued once the user returns, instead of
-    // dying or bottoming out while nobody is there to respond.
+    // damage this tick, prevent hunger/happiness/health/energy from decaying below
+    // IDLE_STAT_FLOOR this tick. Applied last, after every stat-decay and damage
+    // block above, so a same-tick damage source can never push a stat back below
+    // the floor. The floor is capped at each stat's value entering this tick, so a
+    // stat already below IDLE_STAT_FLOOR (e.g. from earlier exhaustion) is never
+    // raised back up — it only stops *this tick's* decay from crossing the floor.
     if ((isIdle || isDeepIdle) && (sick || tookDamageThisTick)) {
-        hunger    = maxOf(hunger,    IDLE_STAT_FLOOR)
-        happiness = maxOf(happiness, IDLE_STAT_FLOOR)
-        health    = maxOf(health,    IDLE_STAT_FLOOR)
-        energy    = maxOf(energy,    IDLE_STAT_FLOOR)
+        hunger    = maxOf(hunger,    minOf(state.hunger,    IDLE_STAT_FLOOR))
+        happiness = maxOf(happiness, minOf(state.happiness, IDLE_STAT_FLOOR))
+        health    = maxOf(health,    minOf(state.health,    IDLE_STAT_FLOOR))
+        energy    = maxOf(energy,    minOf(state.energy,    IDLE_STAT_FLOOR))
     }
 
     // Dev mode: configurable health floor — prevents death from stat decay or old age

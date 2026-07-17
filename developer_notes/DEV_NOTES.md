@@ -362,12 +362,16 @@ In deep-idle mode:
 
 **Idle safety floor (regular or deep idle):** whenever the pet is idle and is
 either sick or actively taking health damage that tick, hunger, happiness,
-health, *and* energy are all floored at `IDLE_STAT_FLOOR = 20`. This is applied
-last in `tick()`, after every stat-decay and damage block, so a same-tick
-damage source can never push a stat back below the floor. Unlike the earlier
-deep-idle-only floor, this now also engages during regular idle (≥ 1 minute)
-when the pet is sick/losing health, giving the user a real chance to return
-and rescue a neglected pet rather than finding it dead or bottomed out.
+health, *and* energy are each prevented from decaying below `IDLE_STAT_FLOOR = 20`
+for that tick. This is applied last in `tick()`, after every stat-decay and
+damage block, so a same-tick damage source can never push a stat back below
+the floor. The floor is capped at `min(previousStat, 20)` — the stat's value
+entering the tick — so a stat already below 20 from earlier neglect is never
+raised back up; it only stops that tick's decay from crossing below 20
+(BUGFIX-149). Unlike the earlier deep-idle-only floor, this now also engages
+during regular idle (≥ 1 minute) when the pet is sick/losing health, giving
+the user a real chance to return and rescue a neglected pet rather than
+finding it dead or bottomed out.
 
 ### Offline decay (IDE fully closed)
 

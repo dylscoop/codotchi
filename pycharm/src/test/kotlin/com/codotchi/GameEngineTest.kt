@@ -266,17 +266,24 @@ class GameEngineTest {
     // ── Idle safety floor: sick or losing health while idle ───────────────────
 
     @Test
-    fun `floors health at IDLE_STAT_FLOOR when starving pet takes damage while idle`() {
+    fun `does not raise health already below IDLE_STAT_FLOOR when starving pet takes damage while idle`() {
         val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 5)
         val next = tick(pet, isIdle = true, isDeepIdle = false)
-        assertEquals(IDLE_STAT_FLOOR, next.health)
+        assertEquals(5, next.health)
     }
 
     @Test
-    fun `floors health at IDLE_STAT_FLOOR when starving pet takes damage during deep idle`() {
+    fun `does not raise health already below IDLE_STAT_FLOOR during deep idle`() {
         val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 5)
         val next = tick(pet, isIdle = false, isDeepIdle = true)
-        assertEquals(IDLE_STAT_FLOOR, next.health)
+        assertEquals(5, next.health)
+    }
+
+    @Test
+    fun `floors health at IDLE_STAT_FLOOR when a healthy pet takes damage while idle`() {
+        val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 99, sick = true, health = 25)
+        val next = tick(pet, isIdle = true, isDeepIdle = false)
+        assertTrue(next.health >= IDLE_STAT_FLOOR, "health should not decay below the idle floor (got ${next.health})")
     }
 
     @Test
@@ -287,12 +294,12 @@ class GameEngineTest {
     }
 
     @Test
-    fun `floors hunger happiness and energy along with health for a sick pet while idle`() {
+    fun `does not raise hunger happiness and energy already below IDLE_STAT_FLOOR for a sick pet while idle`() {
         val pet  = makePet().copy(sick = true, hunger = 5, happiness = 5, energy = 5, health = 50)
         val next = tick(pet, isIdle = true, isDeepIdle = false)
-        assertEquals(IDLE_STAT_FLOOR, next.hunger)
-        assertEquals(IDLE_STAT_FLOOR, next.happiness)
-        assertEquals(IDLE_STAT_FLOOR, next.energy)
+        assertTrue(next.hunger <= 5, "hunger should not be raised above its starting value (got ${next.hunger})")
+        assertTrue(next.happiness <= 5, "happiness should not be raised above its starting value (got ${next.happiness})")
+        assertTrue(next.energy <= 5, "energy should not be raised above its starting value (got ${next.energy})")
     }
 
     @Test

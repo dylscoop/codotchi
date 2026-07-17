@@ -1418,16 +1418,17 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   } // end if (config.attentionCallsEnabled)
 
   // Idle safety floor — while idle (regular or deep) and the pet is sick or took
-  // damage this tick, floor hunger/happiness/health/energy at IDLE_STAT_FLOOR.
-  // Applied last, after every stat-decay and damage block above, so a same-tick
-  // damage source can never push a stat back below the floor. This gives a
-  // neglected pet a real chance to be rescued once the user returns, instead of
-  // dying or bottoming out while nobody is there to respond.
+  // damage this tick, prevent hunger/happiness/health/energy from decaying below
+  // IDLE_STAT_FLOOR this tick. Applied last, after every stat-decay and damage
+  // block above, so a same-tick damage source can never push a stat back below
+  // the floor. The floor is capped at each stat's value entering this tick, so a
+  // stat already below IDLE_STAT_FLOOR (e.g. from earlier exhaustion) is never
+  // raised back up — it only stops *this tick's* decay from crossing the floor.
   if ((isIdle || isDeepIdle) && (sick || tookDamageThisTick)) {
-    hunger    = Math.max(hunger,    IDLE_STAT_FLOOR);
-    happiness = Math.max(happiness, IDLE_STAT_FLOOR);
-    health    = Math.max(health,    IDLE_STAT_FLOOR);
-    energy    = Math.max(energy,    IDLE_STAT_FLOOR);
+    hunger    = Math.max(hunger,    Math.min(state.hunger,    IDLE_STAT_FLOOR));
+    happiness = Math.max(happiness, Math.min(state.happiness, IDLE_STAT_FLOOR));
+    health    = Math.max(health,    Math.min(state.health,    IDLE_STAT_FLOOR));
+    energy    = Math.max(energy,    Math.min(state.energy,    IDLE_STAT_FLOOR));
   }
 
   // Dev mode: configurable health floor — prevents death from stat decay or old age
@@ -2303,9 +2304,10 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
   return withDerivedFields({
     ...state,
     // Being offline is equivalent to deep idle: apply the same IDLE_STAT_FLOOR
-    // so offline decay can never push stats below the deep-idle floor of 20.
-    hunger:    Math.max(decayedHunger,    IDLE_STAT_FLOOR),
-    happiness: Math.max(decayedHappiness, IDLE_STAT_FLOOR),
+    // so offline decay can never push stats below the deep-idle floor of 20 —
+    // but never raise a stat that was already below the floor before going offline.
+    hunger:    Math.max(decayedHunger,    Math.min(state.hunger,    IDLE_STAT_FLOOR)),
+    happiness: Math.max(decayedHappiness, Math.min(state.happiness, IDLE_STAT_FLOOR)),
     // Reset the starvation streak counter: offline time breaks the continuity
     // of consecutive zero-hunger ticks.  Without this reset the pet could die
     // on the very first tick after VS Code reopens.

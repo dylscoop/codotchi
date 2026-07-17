@@ -12,7 +12,14 @@
 | `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | fix: pool-passcode custom characters show the plain "Codotchi" default name instead of the picked character's own `defaultName` |
 | `vscode/src/customCharacters.ts` | fix: mirror the same pool-passcode default-name fix |
 | `claude-codotchi/tests/unit/state.test.mjs` | test: add 15-case pricing regression suite covering every Claude 3.x/4.x/5.x model ID pattern from `MODEL_PRICING` |
-| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-147, BUGFIX-148 |
+| `vscode/src/gameEngine.ts` | fix: BUGFIX-149 — idle safety floor (`tick()` and `applyOfflineDecay()`) now caps decay at `min(previousStat, IDLE_STAT_FLOOR)` instead of unconditionally raising the stat to 20, so an already-low stat is never raised back up |
+| `claude-codotchi/src/gameEngine.ts` | fix: BUGFIX-149 — mirror |
+| `opencode-codotchi/src/gameEngine.ts` | fix: BUGFIX-149 — mirror |
+| `claude-desktop-codotchi/src/gameEngine.ts` | fix: BUGFIX-149 — mirror |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | fix: BUGFIX-149 — mirror (Kotlin `applyOfflineDecay` has no floor logic and was left as-is; pre-existing parity gap unrelated to this fix) |
+| `vscode/tests/unit/gameEngine.test.ts` | test: rewrite idle-safety-floor cases to assert the corrected never-raise/still-cap semantics |
+| `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | test: mirror |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-147, BUGFIX-148, BUGFIX-149 |
 | `developer_notes/vscode/FEATURES.md` | docs: update the "Today's Token Cost" row for the renamed scan functions and the new per-source bubble format |
 | `README.md` | chore: bump vscode/pycharm artifact filenames and version references to 2.16.9 (opencode-codotchi artifact unchanged this release — still 2.16.7, no source change) |
 | `vscode/package.json` | chore: bump version to 2.16.9 |
@@ -21,8 +28,8 @@
 | `opencode-codotchi/package.json` | chore: bump version to 2.16.9 (version-only lockstep bump; no OpenCode source changed this release) |
 | `claude-desktop-codotchi/package.json` | chore: bump version to 2.16.9 (was still 2.16.7 — missed in the v2.16.8 release commit; caught up here) |
 | `claude-desktop-codotchi/manifest.json` | chore: bump version to 2.16.9 (same catch-up) |
-| `claude-codotchi/package.json` | chore: bump version to 2.16.8 (claude-codotchi versions independently of the other four products — see `664f5d3`) |
-| `claude-codotchi/.claude-plugin/plugin.json` | chore: bump version to 2.16.8 (was still 2.16.1 on `main`; catches up to the working-tree package.json) |
+| `claude-codotchi/package.json` | chore: bump version to 2.16.9 (previously versioned independently of the other four products — see `664f5d3` — but caught back up to lockstep for this release since BUGFIX-149 touches its `gameEngine.ts` too) |
+| `claude-codotchi/.claude-plugin/plugin.json` | chore: bump version to 2.16.9 (was still 2.16.1 on `main`; catches up to the working-tree package.json) |
 
 ---
 

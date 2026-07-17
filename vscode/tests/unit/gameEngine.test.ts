@@ -616,12 +616,13 @@ describe("tick — sickness health drain and death", () => {
     assert.ok(next.events.includes("sickness_damage"));
   });
 
-  it("sick pet at 5 hp does not die when deep idle (BUGFIX-040)", () => {
+  it("sick pet at 5 hp does not die when deep idle, and health is not raised (BUGFIX-040)", () => {
     const pet = makePet({ sick: true, health: 5 });
     const next = tick(pet, false, true); // isIdle=false, isDeepIdle=true
     assert.equal(next.alive, true);
-    // IDLE_STAT_FLOOR=20 raises health from 5 to 20 during deep idle (added v2.2.3)
-    assert.equal(next.health, 20);
+    // The idle floor prevents this tick's decay from dropping health below its
+    // starting value (5), but must never raise an already-low stat up to 20.
+    assert.equal(next.health, 5);
   });
 });
 
@@ -630,16 +631,22 @@ describe("tick — sickness health drain and death", () => {
 // ---------------------------------------------------------------------------
 
 describe("tick — idle safety floor for sick/losing-health pets", () => {
-  it("floors health at IDLE_STAT_FLOOR when starving pet takes damage while idle", () => {
+  it("does not raise health already below IDLE_STAT_FLOOR when starving pet takes damage while idle", () => {
     const pet = makePet({ hunger: 0, hungerZeroTicks: 99, health: 5 });
     const next = tick(pet, true, false); // isIdle=true, isDeepIdle=false
-    assert.equal(next.health, 20);
+    assert.equal(next.health, 5);
   });
 
-  it("floors health at IDLE_STAT_FLOOR when starving pet takes damage during deep idle", () => {
+  it("does not raise health already below IDLE_STAT_FLOOR during deep idle", () => {
     const pet = makePet({ hunger: 0, hungerZeroTicks: 99, health: 5 });
     const next = tick(pet, false, true); // isIdle=false, isDeepIdle=true
-    assert.equal(next.health, 20);
+    assert.equal(next.health, 5);
+  });
+
+  it("floors health at IDLE_STAT_FLOOR when a healthy pet takes damage while idle", () => {
+    const pet = makePet({ hunger: 0, hungerZeroTicks: 99, sick: true, health: 25 });
+    const next = tick(pet, true, false); // isIdle=true, isDeepIdle=false
+    assert.ok(next.health >= 20, `health should not decay below the idle floor (got ${next.health})`);
   });
 
   it("does not floor health when starving and NOT idle — pet can still die", () => {
@@ -648,12 +655,12 @@ describe("tick — idle safety floor for sick/losing-health pets", () => {
     assert.equal(next.alive, false);
   });
 
-  it("floors hunger/happiness/energy along with health for a sick pet while idle", () => {
+  it("does not raise hunger/happiness/energy already below IDLE_STAT_FLOOR for a sick pet while idle", () => {
     const pet = makePet({ sick: true, hunger: 5, happiness: 5, energy: 5, health: 50 });
     const next = tick(pet, true, false);
-    assert.equal(next.hunger, 20);
-    assert.equal(next.happiness, 20);
-    assert.equal(next.energy, 20);
+    assert.ok(next.hunger <= 5, `hunger should not be raised above its starting value (got ${next.hunger})`);
+    assert.ok(next.happiness <= 5, `happiness should not be raised above its starting value (got ${next.happiness})`);
+    assert.ok(next.energy <= 5, `energy should not be raised above its starting value (got ${next.energy})`);
   });
 
   it("does not floor stats when the pet is neither sick nor taking damage while idle", () => {

@@ -542,11 +542,15 @@ Aging stops entirely (`ageIncrement = 0`) during deep idle.
 
 **Idle safety floor:** whenever the pet is idle (regular *or* deep) and is
 either sick or actively taking health damage that tick, hunger, happiness,
-health, and energy are all floored at `IDLE_STAT_FLOOR = 20`, applied after
-every other stat-decay/damage block in `tick()` so a same-tick damage source
-can never push a stat back below the floor. This guarantees a neglected pet
-survives long enough for the user to return and rescue it, rather than dying
-or bottoming out while nobody is there to respond.
+health, and energy are each prevented from decaying below `IDLE_STAT_FLOOR = 20`
+*for that tick*, applied after every other stat-decay/damage block in `tick()`
+so a same-tick damage source can never push a stat back below the floor. The
+floor is capped at the stat's value entering the tick (`min(previousStat, 20)`),
+so it only holds a stat that was already at/above 20 from decaying past it —
+a stat already below 20 (e.g. from earlier neglect) is left alone and never
+raised back up (BUGFIX-149). This guarantees a neglected pet survives long
+enough for the user to return and rescue it, rather than dying or bottoming
+out while nobody is there to respond.
 
 Aging does **not** advance while the IDE is closed (`applyOfflineDecay`
 preserves `dayTimer`/`ageDays` exactly).
