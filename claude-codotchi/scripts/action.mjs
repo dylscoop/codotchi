@@ -278,13 +278,16 @@ async function main() {
   // to a raw terminal, so escape codes would appear as garbage and stray
   // underscores in the art would be parsed as markdown emphasis.
   if (showArt && cfg.terminalEnabled !== false) {
-    // Just the art + speech bubble — no numeric stats block (see BUGFIX-137).
-    const bubble = aa.buildSpeechBubble(
-      state.stage, state.mood, message || contextSpeech.message,
-      state.name, state.spriteType,
-      undefined, bubbleColor, tierEmoji
-    );
-    process.stdout.write(aa.stripAnsi(bubble) + "\n");
+    // Only show the local Claude Code pet when no IDE pet is live — it is a
+    // fallback placeholder and should be suppressed while an IDE extension is active.
+    if (livePets.length === 0) {
+      const bubble = aa.buildSpeechBubble(
+        state.stage, state.mood, message || contextSpeech.message,
+        state.name, state.spriteType,
+        undefined, bubbleColor, tierEmoji
+      );
+      process.stdout.write(aa.stripAnsi(bubble) + "\n");
+    }
 
     // Also render any live IDE pets (VS Code / PyCharm) that are active.
     for (const { ide, state: ideState } of livePets) {

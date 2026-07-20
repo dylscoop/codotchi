@@ -118,35 +118,41 @@ async function main() {
   const outputs = [];
 
   if (cfg.terminalEnabled === false) {
-    outputs.push(aa.stripAnsi(aa.buildStatusBlock(state)));
+    if (!hasIDEPets) {
+      outputs.push(aa.stripAnsi(aa.buildStatusBlock(state)));
+    }
     for (const { state: ideState } of idePets) {
       outputs.push(aa.stripAnsi(aa.buildStatusBlock(ideState)));
     }
   } else {
-    const speech = aa.buildContextualSpeech(
-      state,
-      /*filesEdited*/ 0,
-      /*sessionMs*/ 0,
-      /*timeSinceLastEditMs*/ 0,
-      /*sessionUserMessages*/ file.totalMessages ?? 0,
-      /*isOnProdBranch*/ false,
-      /*dailyCostUSD*/ dailyCostUsd,
-      /*dailyTokens*/ dailyTokens,
-      /*warnThresholdUSD*/ warnUsd,
-      /*shoutThresholdUSD*/ shoutUsd,
-      /*hourlyCostUSD*/ hourlyCostUsd,
-      /*dailyMessages*/ messageCount
-    );
-    outputs.push(aa.buildSpeechBubble(
-      state.stage,
-      state.mood,
-      speech.message,
-      state.name,
-      state.spriteType,
-      hasIDEPets ? "[Claude Code]" : undefined,
-      speech.bubbleColor ?? bubbleColor,
-      speech.tierEmoji
-    ));
+    // Only show the local Claude Code pet when no IDE pet is active — it is a
+    // fallback placeholder and should be suppressed while an IDE extension is running.
+    if (!hasIDEPets) {
+      const speech = aa.buildContextualSpeech(
+        state,
+        /*filesEdited*/ 0,
+        /*sessionMs*/ 0,
+        /*timeSinceLastEditMs*/ 0,
+        /*sessionUserMessages*/ file.totalMessages ?? 0,
+        /*isOnProdBranch*/ false,
+        /*dailyCostUSD*/ dailyCostUsd,
+        /*dailyTokens*/ dailyTokens,
+        /*warnThresholdUSD*/ warnUsd,
+        /*shoutThresholdUSD*/ shoutUsd,
+        /*hourlyCostUSD*/ hourlyCostUsd,
+        /*dailyMessages*/ messageCount
+      );
+      outputs.push(aa.buildSpeechBubble(
+        state.stage,
+        state.mood,
+        speech.message,
+        state.name,
+        state.spriteType,
+        undefined,
+        speech.bubbleColor ?? bubbleColor,
+        speech.tierEmoji
+      ));
+    }
     for (const { state: ideState, label } of idePets) {
       const ideSpeech = aa.buildContextualSpeech(
         ideState,
