@@ -143,6 +143,7 @@
   let giftBoxX   = null;     // floor X of gift box while a "gift" attention call is active
   let snackItems = [];       // floor items: [{ x, type: "candy"|"bone" }]
   let activeBubble = null;   // speech bubble: { text, startMs, fadeOutMs, fadeDurMs } or null
+  let bubbleQueue  = [];     // pending attention-call text; at most 1 entry
   let petIsSleeping = false; // true while fell_asleep is active; suppresses all other bubbles
 
   // ── Setup form state ────────────────────────────────────────────────────
@@ -735,6 +736,17 @@
     };
   }
 
+  // Queue an attention-call bubble instead of overriding the current one.
+  // Only one pending entry is kept — ticking the same attention call many
+  // times should not stack messages, so later text simply replaces earlier.
+  function queueBubble(text) {
+    if (!activeBubble) {
+      showBubble(text);
+    } else {
+      bubbleQueue[0] = text;
+    }
+  }
+
   /**
    * Wrap text to fit inside maxWidth using the current canvas context font.
    * Returns an array of lines.
@@ -782,8 +794,9 @@
       var fadeStart = activeBubble.fadeOutMs - activeBubble.startMs; // = 6000 ms
 
       if (elapsed >= fadeStart + activeBubble.fadeDurMs) {
-        // Fully faded — clear and stop drawing
+        // Fully faded — clear and show any queued attention-call bubble
         activeBubble = null;
+        if (bubbleQueue.length > 0) { showBubble(bubbleQueue.shift()); }
         return;
       } else if (elapsed > fadeStart) {
         // Fading out
@@ -1308,12 +1321,12 @@
     // Only one bubble per tick — first match wins.
     if (!petIsSleeping) (function () {
       var _n = state.name;
-      // 1. Attention calls (unanswered, unexpired)
+      // 1. Attention calls (unanswered, unexpired) — queued so they don't clobber an active bubble
       for (var _ai = 0; _ai < events.length; _ai++) {
         if (events[_ai].indexOf("attention_call_") === 0 &&
             events[_ai].indexOf("attention_call_answered_") !== 0 &&
             events[_ai].indexOf("attention_call_expired_") !== 0) {
-          showBubble(humaniseEvent(events[_ai], _n, state));
+          queueBubble(humaniseEvent(events[_ai], _n, state));
           return;
         }
       }
