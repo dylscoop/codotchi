@@ -308,4 +308,20 @@ class GameEngineTest {
         val next = tick(pet, isIdle = true, isDeepIdle = false)
         assertTrue(next.health >= IDLE_STAT_FLOOR, "health should never drop below the idle floor (got ${next.health})")
     }
+
+    @Test
+    fun `does not log a health-loss event when the idle floor fully absorbs the damage`() {
+        val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 5)
+        val next = tick(pet, isIdle = true, isDeepIdle = false)
+        assertEquals(5, next.health)
+        assertFalse(next.events.contains("starvation_damage"), "events should not include starvation_damage (got ${next.events})")
+    }
+
+    @Test
+    fun `still logs a health-loss event when the pet is idle but actually losing health`() {
+        val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 25)
+        val next = tick(pet, isIdle = true, isDeepIdle = false)
+        assertTrue(next.health < 25, "health should have actually decreased (got ${next.health})")
+        assertTrue(next.events.contains("starvation_damage"), "events should include starvation_damage (got ${next.events})")
+    }
 }

@@ -134,6 +134,18 @@ export const IDLE_DEEP_THRESHOLD_SECONDS = 600; // 10 minutes
  */
 export const IDLE_STAT_FLOOR = 20;
 /**
+ * Event names that report health loss. When the idle safety floor fully
+ * absorbs a tick's computed damage (net health unchanged), these are
+ * stripped from the tick's events so logging/notifications don't claim the
+ * pet is losing health when it isn't (follow-up to BUGFIX-149).
+ */
+const HEALTH_DAMAGE_EVENTS = new Set([
+    "starvation_damage",
+    "unhappiness_damage",
+    "exhaustion_damage",
+    "sickness_damage",
+]);
+/**
  * When the user is idle, hunger and happiness decay at this fraction of the
  * normal rate (applied by skipping decay on most ticks — 1 in every
  * IDLE_DECAY_TICK_DIVISOR ticks actually decays).
@@ -1118,6 +1130,15 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
         happiness = Math.max(happiness, Math.min(state.happiness, IDLE_STAT_FLOOR));
         health = Math.max(health, Math.min(state.health, IDLE_STAT_FLOOR));
         energy = Math.max(energy, Math.min(state.energy, IDLE_STAT_FLOOR));
+        // If the floor above fully absorbed this tick's health loss (net health
+        // unchanged), drop the damage events pushed earlier this tick so idle
+        // logging/notifications don't claim the pet is losing health when it isn't.
+        if (health === state.health) {
+            for (let i = events.length - 1; i >= 0; i--) {
+                if (HEALTH_DAMAGE_EVENTS.has(events[i]))
+                    events.splice(i, 1);
+            }
+        }
     }
     // Dev mode: configurable health floor — prevents death from stat decay or old age
     // when devModeHealthFloor > 0 (default 1). Set floor to 0 to allow death in dev mode.

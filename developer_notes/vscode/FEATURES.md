@@ -550,7 +550,10 @@ so it only holds a stat that was already at/above 20 from decaying past it —
 a stat already below 20 (e.g. from earlier neglect) is left alone and never
 raised back up (BUGFIX-149). This guarantees a neglected pet survives long
 enough for the user to return and rescue it, rather than dying or bottoming
-out while nobody is there to respond.
+out while nobody is there to respond. If the floor fully absorbs a tick's
+health loss (net health unchanged), that tick's `_damage` events are stripped
+so the sidebar/notification stop reporting "losing health" once health has
+flatlined at the floor (BUGFIX-150).
 
 Aging does **not** advance while the IDE is closed (`applyOfflineDecay`
 preserves `dayTimer`/`ageDays` exactly).
