@@ -1,10 +1,12 @@
 /**
  * statusline.mjs — Claude Code statusline renderer for claude-codotchi.
  *
- * Invoked by Claude Code on session events and every refreshInterval (10s).
- * Reads statusline JSON from stdin, advances the pet, renders multiline ANSI output.
+ * Invoked by Claude Code on session events and every refreshInterval (1s).
+ * Reads statusline JSON from stdin, advances the pet, renders output.
  *
- * Stdout: multiline ANSI text (one line per row of the art + stats block).
+ * Two display modes (cfg.statuslineMode, set via /codotchi emoji):
+ *   "full"  (default) — multiline ANSI art + speech bubble / stat block.
+ *   "emoji" — a single line with a moving emoji matching the pet's creature.
  * On error: exits silently (empty statusline is better than a crash message).
  */
 
@@ -17,7 +19,14 @@ import {
   loadConfig,
   accumulateDailyUsage,
   loadIDEStateFile,
+  loadUsageCache,
+  saveUsageCache,
 } from "./state.mjs";
+import { pickPetEmoji, renderMovingEmojiLine, currentFrameIndex } from "./emoji.mjs";
+
+// Usage scan cache TTL — accumulateDailyUsage() walks today's JSONL transcripts,
+// which is too expensive to redo on every refresh once refreshInterval is 1s.
+const USAGE_CACHE_TTL_MS = 10_000;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, "..", "dist");
@@ -48,7 +57,13 @@ async function main() {
   const now = Date.now();
 
   // Accumulate daily cost and tokens from the session's JSONL transcript.
-  const { costUsd: dailyCostUsd, tokens: dailyTokens, hourlyCostUsd, messageCount } = accumulateDailyUsage(stdinJson.session_id);
+  // Cached: a full scan on every 1s refresh would be too expensive.
+  let usage = loadUsageCache();
+  if (!usage || (now - (usage.at ?? 0)) > USAGE_CACHE_TTL_MS) {
+    usage = { ...accumulateDailyUsage(stdinJson.session_id), at: now };
+    saveUsageCache(usage);
+  }
+  const { costUsd: dailyCostUsd, tokens: dailyTokens, hourlyCostUsd, messageCount } = usage;
 
   // Load or create pet state.
   let file = loadStateFile();
@@ -117,7 +132,20 @@ async function main() {
   const hasIDEPets = idePets.length > 0;
   const outputs = [];
 
-  if (cfg.terminalEnabled === false) {
+  if (cfg.statuslineMode === "emoji") {
+    // Compact one-line moving-emoji mode: no ANSI, just a shuffling emoji
+    // (auto-matched to the pet's creature, or a user-pinned override).
+    const frameIndex = currentFrameIndex(now);
+    const columns = process.env.COLUMNS ? Number(process.env.COLUMNS) : undefined;
+    if (!hasIDEPets) {
+      const emoji = pickPetEmoji(state, cfg.statuslineEmoji);
+      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns));
+    }
+    for (const { state: ideState, label } of idePets) {
+      const emoji = pickPetEmoji(ideState, cfg.statuslineEmoji);
+      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${label} `));
+    }
+  } else if (cfg.terminalEnabled === false) {
     if (!hasIDEPets) {
       outputs.push(aa.stripAnsi(aa.buildStatusBlock(state)));
     }
