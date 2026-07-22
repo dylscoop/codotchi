@@ -1549,7 +1549,8 @@
       "minigame_coin_flip_lose":    n + " lost Coin Flip.",
     };
     var val = labels[code];
-    if (val) {
+    if (code in labels) {
+      if (!val) { return ""; }
       // Tim-specific event message overrides
       if (_cc && state.spriteType === "tim") {
         if (code === "fed_snack")                      { return n + " drank some tea."; }
