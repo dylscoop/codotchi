@@ -301,6 +301,36 @@ export function accumulateDailyCost(stdinJson) {
 }
 
 // ---------------------------------------------------------------------------
+// Usage scan cache
+//
+// scanAllDailyUsage() walks every ~/.claude/projects/**/*.jsonl file modified
+// today, which is too expensive to redo on every statusline refresh once
+// refreshInterval is 1 second. Callers that refresh that often should cache
+// the result here and only rescan every ~10s.
+// ---------------------------------------------------------------------------
+
+export function usageCachePath() {
+  return path.join(dataDir(), "codotchi-usage-cache.json");
+}
+
+/** Returns the cached { at, costUsd, tokens, hourlyCostUsd, messageCount }, or null. */
+export function loadUsageCache() {
+  const p = usageCachePath();
+  if (!fs.existsSync(p)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(p, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+export function saveUsageCache(data) {
+  const dir = dataDir();
+  ensureDir(dir);
+  fs.writeFileSync(usageCachePath(), JSON.stringify(data, null, 2), "utf8");
+}
+
+// ---------------------------------------------------------------------------
 // Config (cost thresholds, display toggle)
 // ---------------------------------------------------------------------------
 
@@ -313,6 +343,10 @@ const DEFAULT_CONFIG = {
   warnThresholdUsd: 30,
   shoutThresholdUsd: 50,
   petSpeechIntervalMs: 300000,
+  // "full" = multi-line ASCII pet (default); "emoji" = compact moving-emoji line.
+  statuslineMode: "full",
+  // null = auto-match the pet's spriteType/stage/mood; set via /codotchi emoji <emoji>.
+  statuslineEmoji: null,
 };
 
 export function loadConfig() {
