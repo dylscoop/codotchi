@@ -695,7 +695,7 @@
     var _gsRows = _gsMeta ? _gsMeta.rows : 32;
     var _gsIsQuad = _gsMeta
       ? (_gsMeta.rows <= _gsMeta.cols)   // quadrupeds are wider-than-tall grids
-      : !(_gsType === "snake" || _gsType === "classic" || _gsType === "monkey" || _gsType === "rooster" || _gsType === "dragon" || _gsType === "tim" || _gsType === "stu");
+      : !(_gsType === "snake" || _gsType === "classic" || _gsType === "dragon" || _gsType === "tim" || _gsType === "stu");
     if (_gsIsQuad && _gsType !== "snake") {
       var sagCellH = Math.max(1, Math.round(bHeight / _gsRows));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
@@ -915,7 +915,7 @@
     var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
     var _sType = lastState.spriteType || "classic";
-    var _isUprightOrSnake = (_sType === "snake" || _sType === "classic" || _sType === "monkey" || _sType === "rooster" || _sType === "dragon" || _sType === "tim" || _sType === "stu");
+    var _isUprightOrSnake = (_sType === "snake" || _sType === "classic" || _sType === "dragon" || _sType === "tim" || _sType === "stu");
     if (!_isUprightOrSnake) {
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
@@ -1486,7 +1486,7 @@
       "cured":                   n + " recovered!",
       "meal_refused":            n + " refused the meal.",
       "fed_meal":                n + " ate a meal.",
-      "snack_refused":           n + " threw the snack away.",
+      "snack_refused":           "",
       "play_refused_no_energy":  n + " doesn't have enough energy to play!",
       "played":                  n + " played!",
       "pat_refused_no_energy":   (_cc && _cc.patToasts) ? _cc.patToasts.pat_refused.replace("__Name__", n) : n + " doesn't have enough energy to be patted!",
@@ -2415,7 +2415,7 @@
     var bHeight  = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
     var _dsType = state.spriteType || "classic";
-    var _dsUOS = (_dsType === "snake" || _dsType === "classic" || _dsType === "monkey" || _dsType === "rooster" || _dsType === "dragon" || _dsType === "tim" || _dsType === "stu");
+    var _dsUOS = (_dsType === "snake" || _dsType === "classic" || _dsType === "dragon" || _dsType === "tim" || _dsType === "stu");
     if (!_dsUOS) {
       var sagCellH2 = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(state.weight || 50) * sagCellH2;
