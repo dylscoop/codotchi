@@ -10,7 +10,7 @@
       "name": "claude-codotchi",
       "source": "./claude-codotchi",
       "description": "A virtual Tamagotchi-style pet that lives inside Claude Code — shown in the statusline, rewarded by coding activity, and interactable via /codotchi.",
-      "version": "2.9.0",
+      "version": "2.18.0",
       "author": { "name": "dylscoop" }
     }
   ]
