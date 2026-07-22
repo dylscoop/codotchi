@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "test": "node --test tests/unit/state.test.mjs tests/unit/asciiArt.test.mjs tests/integration/actionMerge.test.mjs"
+    "test": "node --test tests/unit/state.test.mjs tests/unit/asciiArt.test.mjs tests/unit/emoji.test.mjs tests/integration/actionMerge.test.mjs tests/integration/emojiMode.test.mjs"
   },
   "author": "dylscoop",
   "license": "MIT",
