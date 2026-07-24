@@ -59,7 +59,7 @@ activates the statusline script, registers the event hooks, and makes the
 | Feature | Description |
 |---------|-------------|
 | **Statusline pet** | Multiline ANSI ASCII art renders in the statusline and refreshes every second |
-| **Statusline emoji mode** | Optional compact one-line display — a single emoji matching your pet, shuffling across the statusline about once per second |
+| **Statusline emoji mode** | Optional compact one-line display — your pet's name and a single emoji matching it, shuffling across the statusline about once per second |
 | **Coding rewards** | Every file write / edit boosts your pet's happiness and discipline (throttled to once per 10 s) |
 | **Session hooks** | Pet greets you on session start and says farewell when the session stops |
 | **Slash command** | `/codotchi <action>` for all care actions |
@@ -107,12 +107,12 @@ Switch back to the full ASCII pet any time:
 /codotchi emoji off
 ```
 
-The emoji shuffles back and forth across the statusline about **once per
-second** — this is the Claude Code statusline's refresh floor (it captures
-your script's stdout as plain text, so images and smooth animation aren't
-possible there). No `/statusline` configuration is needed; the plugin
-registers its own statusline automatically with `refreshInterval: 1` so the
-shuffle is visible.
+The line shows the pet's name followed by the emoji shuffling back and forth
+across the statusline about **once per second** — this is the Claude Code
+statusline's refresh floor (it captures your script's stdout as plain text,
+so images and smooth animation aren't possible there). No `/statusline`
+configuration is needed; the plugin registers its own statusline
+automatically with `refreshInterval: 1` so the shuffle is visible.
 
 ---
 

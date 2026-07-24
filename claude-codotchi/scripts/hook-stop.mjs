@@ -46,7 +46,7 @@ async function main() {
     20 // cap to avoid runaway decay on long sessions
   );
   for (let i = 0; i < elapsedTicks; i++) {
-    const result = ge.tick(state, gameConfig);
+    const result = ge.tick(state, false, false, gameConfig);
     state = result.state ?? result;
   }
 

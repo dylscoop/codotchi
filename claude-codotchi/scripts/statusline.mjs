@@ -26,7 +26,7 @@ import { pickPetEmoji, renderMovingEmojiLine, currentFrameIndex } from "./emoji.
 
 // Usage scan cache TTL — accumulateDailyUsage() walks today's JSONL transcripts,
 // which is too expensive to redo on every refresh once refreshInterval is 1s.
-const USAGE_CACHE_TTL_MS = 10_000;
+const USAGE_CACHE_TTL_MS = 3_000;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, "..", "dist");
@@ -89,10 +89,10 @@ async function main() {
     // Apply offline decay for long gaps, then tick forward.
     const gameConfig = ge.LOCAL_PET_GAME_CONFIG ?? ge.DEFAULT_GAME_CONFIG;
     if (elapsedTicks > 60) {
-      state = ge.applyOfflineDecay(state, elapsedTicks, gameConfig);
+      state = ge.applyOfflineDecay(state, elapsedMs / 1000);
     } else {
       for (let i = 0; i < elapsedTicks; i++) {
-        const result = ge.tick(state, gameConfig);
+        const result = ge.tick(state, false, false, gameConfig);
         state = result.state ?? result; // tick may return { state, events } or state directly
       }
     }
@@ -121,7 +121,7 @@ async function main() {
       const ideElapsedMs = now - (ideFile.savedAt ?? now);
       const ideElapsedTicks = Math.floor(ideElapsedMs / (ge.TICK_INTERVAL_SECONDS * 1000));
       if (ideElapsedTicks > 0) {
-        ideState = ge.applyOfflineDecay(ideState, ideElapsedTicks, gameConfig);
+        ideState = ge.applyOfflineDecay(ideState, ideElapsedMs / 1000);
       }
       idePets.push({ state: ideState, label });
     } catch {
@@ -139,11 +139,11 @@ async function main() {
     const columns = process.env.COLUMNS ? Number(process.env.COLUMNS) : undefined;
     if (!hasIDEPets) {
       const emoji = pickPetEmoji(state, cfg.statuslineEmoji);
-      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns));
+      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${state.name} `));
     }
     for (const { state: ideState, label } of idePets) {
       const emoji = pickPetEmoji(ideState, cfg.statuslineEmoji);
-      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${label} `));
+      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${label} ${ideState.name} `));
     }
   } else if (cfg.terminalEnabled === false) {
     if (!hasIDEPets) {

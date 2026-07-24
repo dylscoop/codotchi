@@ -138,7 +138,7 @@ describe("statusline.mjs — emoji mode rendering (integration)", () => {
       const output = runStatusline(tmpBase, { columns: 40 }).replace(/\r?\n$/, "");
 
       assert.doesNotMatch(output, /\x1b/, "emoji mode output must not contain ANSI escape codes");
-      assert.match(output, /^ *🐉$/, "expected a bare, possibly space-padded dragon emoji line");
+      assert.match(output, /^DragonBuddy {1,}🐉$/, "expected the pet's name before a space-padded dragon emoji");
     });
   });
 
@@ -150,7 +150,7 @@ describe("statusline.mjs — emoji mode rendering (integration)", () => {
 
       runAction(tmpBase, "emoji", "auto");
       const output = runStatusline(tmpBase, { columns: 40 }).replace(/\r?\n$/, "");
-      assert.match(output, /^ *🥚$/);
+      assert.match(output, /^EggBuddy {1,}🥚$/);
     });
   });
 
@@ -172,7 +172,7 @@ describe("statusline.mjs — emoji mode rendering (integration)", () => {
       const lines = output.split("\n");
 
       assert.equal(lines.length, 1, `expected exactly 1 line, got: ${JSON.stringify(lines)}`);
-      assert.match(lines[0], /^\[PyCharm\] +🐱$/, "the peeked (PyCharm) pet's line should carry its IDE label");
+      assert.match(lines[0], /^\[PyCharm\] PyPet {1,}🐱$/, "the peeked (PyCharm) pet's line should carry its IDE label and name");
     });
   });
 
@@ -184,7 +184,7 @@ describe("statusline.mjs — emoji mode rendering (integration)", () => {
 
       runAction(tmpBase, "emoji", "🐸");
       const output = runStatusline(tmpBase, { columns: 40 }).replace(/\r?\n$/, "");
-      assert.match(output, /^ *🐸$/, "pinned override should win over the pet's own dragon spriteType");
+      assert.match(output, /^DragonBuddy {1,}🐸$/, "pinned override should win over the pet's own dragon spriteType, name still shown");
     });
   });
 
