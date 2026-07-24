@@ -3,7 +3,7 @@
  *
  * Usage: node action.mjs <action> [value|name]
  *
- * Actions: status feed pat sleep wake clean medicine on off rename warnthreshold shoutthreshold orangethreshold redthreshold levels speechinterval
+ * Actions: status feed pat sleep wake clean medicine on off rename warnthreshold shoutthreshold orangethreshold redthreshold levels speechinterval emoji
  *
  * Prints ANSI art + status block or plain confirmation text to stdout.
  * Claude Code surfaces this output as the slash command result.
@@ -228,6 +228,34 @@ async function main() {
       const red = cfg.shoutThresholdUsd ?? 50;
       message = `Usage levels:\n🟢 Green  : $0 – $${orange}\n🟠 Orange : $${orange} – $${red}\n🔴 Red    : $${red}+\n\nSet with: /codotchi orangethreshold <n>  /codotchi redthreshold <n>`;
       showArt = false;
+      break;
+    }
+
+    case "emoji": {
+      const arg = (valueArg ?? "").trim();
+      if (!arg) {
+        const modeLabel = cfg.statuslineMode === "emoji" ? "emoji" : "full";
+        const emojiLabel = cfg.statuslineEmoji ? cfg.statuslineEmoji : "auto";
+        message = `Usage: /codotchi emoji <emoji|auto|off>  (current: ${modeLabel}, emoji: ${emojiLabel})`;
+        showArt = false;
+      } else if (arg.toLowerCase() === "off" || arg.toLowerCase() === "full") {
+        cfg.statuslineMode = "full";
+        saveConfig(cfg);
+        message = "Statusline set back to the full ASCII pet.";
+        showArt = false;
+      } else if (arg.toLowerCase() === "auto") {
+        cfg.statuslineMode = "emoji";
+        cfg.statuslineEmoji = null;
+        saveConfig(cfg);
+        message = "Statusline emoji will auto-match your pet.";
+        showArt = false;
+      } else {
+        cfg.statuslineMode = "emoji";
+        cfg.statuslineEmoji = arg;
+        saveConfig(cfg);
+        message = `Statusline emoji set to ${arg}.`;
+        showArt = false;
+      }
       break;
     }
 

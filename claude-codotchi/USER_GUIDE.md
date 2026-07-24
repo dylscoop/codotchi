@@ -58,7 +58,8 @@ activates the statusline script, registers the event hooks, and makes the
 
 | Feature | Description |
 |---------|-------------|
-| **Statusline pet** | Multiline ANSI ASCII art renders in the statusline and refreshes every 10 seconds |
+| **Statusline pet** | Multiline ANSI ASCII art renders in the statusline and refreshes every second |
+| **Statusline emoji mode** | Optional compact one-line display — your pet's name and a single emoji matching it, shuffling across the statusline about once per second |
 | **Coding rewards** | Every file write / edit boosts your pet's happiness and discipline (throttled to once per 10 s) |
 | **Session hooks** | Pet greets you on session start and says farewell when the session stops |
 | **Slash command** | `/codotchi <action>` for all care actions |
@@ -79,10 +80,39 @@ activates the statusline script, registers the event hooks, and makes the
 | `/codotchi medicine` | Give medicine — takes 3 doses to cure sickness |
 | `/codotchi on` | Enable ASCII art in the statusline (default: on) |
 | `/codotchi off` | Disable ASCII art — shows plain text stats instead |
+| `/codotchi emoji <emoji>` | Switch the statusline to compact mode and pin it to `<emoji>` |
+| `/codotchi emoji auto` | Switch to compact mode, auto-matching the emoji to your pet's creature |
+| `/codotchi emoji off` | Switch back to the full ASCII pet |
 | `/codotchi rename <name>` | Rename your Claude Code pet |
 | `/codotchi warnthreshold <amount>` | Set the daily USD spend at which the pet speaks in a warning tone (default: $30) |
 | `/codotchi shoutthreshold <amount>` | Set the daily USD spend at which the pet shouts in ALL CAPS (default: $50) |
 | `/codotchi help` | Show this action list |
+
+---
+
+## Statusline emoji mode
+
+By default codotchi shows a multi-line ASCII pet in the statusline. You can
+switch to a compact **moving emoji** that mirrors the creature currently shown
+in your VS Code / PyCharm pet instead:
+
+```
+/codotchi emoji auto      # emoji auto-matches your pet's creature (🐱 🐉 🐶 …)
+/codotchi emoji 🐸        # or pin a specific emoji of your choice
+```
+
+Switch back to the full ASCII pet any time:
+
+```
+/codotchi emoji off
+```
+
+The line shows the pet's name followed by the emoji shuffling back and forth
+across the statusline about **once per second** — this is the Claude Code
+statusline's refresh floor (it captures your script's stdout as plain text,
+so images and smooth animation aren't possible there). No `/statusline`
+configuration is needed; the plugin registers its own statusline
+automatically with `refreshInterval: 1` so the shuffle is visible.
 
 ---
 

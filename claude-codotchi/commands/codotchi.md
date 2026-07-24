@@ -3,7 +3,7 @@ description: Interact with your codotchi virtual pet
 ---
 Run the codotchi action specified by $ARGUMENTS and display the result.
 
-Valid actions: `status` `feed` `pat` `sleep` `wake` `clean` `medicine` `on` `off` `rename <name>` `warnthreshold <amount>` `shoutthreshold <amount>` `orangethreshold <amount>` `redthreshold <amount>` `levels` `speechinterval <seconds|off>` `help`
+Valid actions: `status` `feed` `pat` `sleep` `wake` `clean` `medicine` `on` `off` `emoji <emoji|auto|off>` `rename <name>` `warnthreshold <amount>` `shoutthreshold <amount>` `orangethreshold <amount>` `redthreshold <amount>` `levels` `speechinterval <seconds|off>` `help`
 
 If $ARGUMENTS is blank, run `!node "${CLAUDE_PLUGIN_ROOT}/scripts/action.mjs"` to get the pet's current art and stats, wrap that output verbatim in a fenced code block (\`\`\`), then output the following action list below it:
 
@@ -18,6 +18,9 @@ Actions:
 - /codotchi medicine     — Give medicine (3 doses to cure sickness)
 - /codotchi on           — Enable ASCII art in the statusline
 - /codotchi off          — Show plain text stats in the statusline
+- /codotchi emoji <emoji> — Switch statusline to a moving emoji, pinned to <emoji>
+- /codotchi emoji auto   — Switch statusline to a moving emoji matching your pet
+- /codotchi emoji off    — Switch statusline back to the full ASCII pet
 - /codotchi rename <name> — Rename your pet
 - /codotchi levels               — Show current 🟢/🟠/🔴 usage thresholds
 - /codotchi orangethreshold <n>  — Set 🟠 orange threshold in USD (default: $30)
