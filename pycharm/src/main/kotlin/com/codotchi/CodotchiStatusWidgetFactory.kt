@@ -24,9 +24,5 @@ class CodotchiStatusWidgetFactory : StatusBarWidgetFactory {
         return widget
     }
 
-    override fun disposeWidget(widget: StatusBarWidget) {
-        widget.dispose()
-    }
-
     override fun canBeEnabledOn(statusBar: StatusBar): Boolean = true
 }

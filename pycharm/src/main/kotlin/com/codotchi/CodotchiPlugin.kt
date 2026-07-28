@@ -6,11 +6,9 @@ import com.codotchi.getCustomCharacterBySpriteType
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import java.io.File
-import com.intellij.ide.DataManager
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationActivationListener
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
@@ -66,8 +64,7 @@ private const val RESCUE_NOTIFY_REPEAT_MS: Long = 5 * 60_000L // 5 minutes
  *    the status-bar widget — always on the EDT.
  *
  * This class is registered as an app service in plugin.xml and is created lazily
- * by IntelliJ; [CodotchiAppLifecycleListener.appStarted] accesses it to force
- * initialisation.
+ * by IntelliJ; [CodotchiStartupActivity] accesses it to force initialisation.
  */
 class CodotchiPlugin : Disposable {
 
@@ -1048,11 +1045,9 @@ class CodotchiPlugin : Disposable {
             val notification = group.createNotification(message, NotificationType.WARNING)
             notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
                 override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
-                    val project = e.project ?: run {
-                        // Fallback: grab the project from DataManager
-                        val ctx = DataManager.getInstance().dataContextFromFocusAsync.blockingGet(500)
-                        ctx?.getData(CommonDataKeys.PROJECT)
-                    } ?: return
+                    val project = e.project
+                        ?: ProjectManager.getInstance().openProjects.firstOrNull()
+                        ?: return
                     ToolWindowManager.getInstance(project).getToolWindow("Codotchi")?.show()
                     notification.expire()
                 }
@@ -1070,10 +1065,9 @@ class CodotchiPlugin : Disposable {
             val notification = group.createNotification(message, NotificationType.ERROR)
             notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
                 override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
-                    val project = e.project ?: run {
-                        val ctx = DataManager.getInstance().dataContextFromFocusAsync.blockingGet(500)
-                        ctx?.getData(CommonDataKeys.PROJECT)
-                    } ?: return
+                    val project = e.project
+                        ?: ProjectManager.getInstance().openProjects.firstOrNull()
+                        ?: return
                     ToolWindowManager.getInstance(project).getToolWindow("Codotchi")?.show()
                     notification.expire()
                 }
