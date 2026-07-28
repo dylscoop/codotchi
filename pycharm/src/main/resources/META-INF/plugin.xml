@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.17.2</version>
+    <version>2.17.3</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -17,7 +17,7 @@
 lives in a tool window panel, reacts to your coding activity, and needs regular care to survive and evolve into
 its final form. Any support and feedback is much appreciated — see the Support section below!</p>
 
-<p>Your pet is drawn from one of <b>15 sprite sets</b>, 12 of which are based on a zodiac animal, assigned to you
+<p>Your pet is drawn from one of <b>7 sprite sets</b>, with more to be added in the future, assigned to you
 at random when you start a new game.</p>
 
 <h2>Features</h2>
@@ -66,13 +66,13 @@ pre-built releases, and the OpenCode integration download.</p>
 <h2>Actions</h2>
 <table>
   <tr><th>Action</th><th>What it does</th></tr>
-  <tr><td><b>Feed</b></td><td>Gives your pet a full meal. Restores a large chunk of hunger. Limited to 3 meals per wake cycle — overfeeding past that has no effect.</td></tr>
-  <tr><td><b>Snack</b></td><td>Gives a small treat. Boosts happiness instead of hunger, but adds more weight. More than 3 snacks in a row will make your pet sick.</td></tr>
-  <tr><td><b>Play</b></td><td>Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning gives +15–25 happiness; losing applies a −5 penalty. Costs 25 energy — your pet can't play if exhausted.</td></tr>
-  <tr><td><b>Pat</b></td><td>Gives your pet a gentle pat. Boosts happiness by +10. Costs 20 energy. Accessed via the Play menu. Cannot be used while your pet is sleeping or exhausted.</td></tr>
+  <tr><td><b>Feed</b></td><td>Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect.</td></tr>
+  <tr><td><b>Snack</b></td><td>Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick.</td></tr>
+  <tr><td><b>Play</b></td><td>Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted.</td></tr>
+  <tr><td><b>Pat</b></td><td>Gives your pet a gentle pat. Boosts happiness. Costs energy. Accessed via the Play menu. Cannot be used while your pet is sleeping or exhausted.</td></tr>
   <tr><td><b>Sleep</b></td><td>Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy.</td></tr>
-  <tr><td><b>Clean</b></td><td>Clears all droppings from the screen. Pets produce droppings roughly every 20 minutes. Leaving 3 or more uncleaned will make your pet sick.</td></tr>
-  <tr><td><b>Medicine</b></td><td>Treats sickness. Requires 3 doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss.</td></tr>
+  <tr><td><b>Clean</b></td><td>Clears all droppings from the screen. Leaving too many uncleaned will make your pet sick.</td></tr>
+  <tr><td><b>Medicine</b></td><td>Treats sickness. Requires multiple doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss.</td></tr>
   <tr><td><b>Praise</b></td><td>Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution.</td></tr>
   <tr><td><b>Scold</b></td><td>Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline.</td></tr>
 </table>
@@ -81,11 +81,11 @@ pre-built releases, and the OpenCode integration download.</p>
 which determines which character your pet evolves into at each life stage.</p>
 
 <h2>Mini-games</h2>
-<p>Clicking <b>Play</b> opens the game picker (requires 25 energy). Three games are available:</p>
+<p>Clicking <b>Play</b> opens the game picker (requires energy). Three games are available:</p>
 <table>
   <tr><th>Game</th><th>How to win</th></tr>
-  <tr><td><b>Left / Right</b></td><td>3 rounds. The pet hides behind one of two doors. You have 3 seconds per round to pick the correct door. Win 2 out of 3 rounds to win.</td></tr>
-  <tr><td><b>Higher or Lower</b></td><td>5 rounds. A number is shown (1–100). Guess whether the next number will be higher or lower. Get 4 out of 5 correct to win.</td></tr>
+  <tr><td><b>Left / Right</b></td><td>The pet hides behind one of two doors. Pick the correct door each round to win.</td></tr>
+  <tr><td><b>Higher or Lower</b></td><td>A number is shown. Guess whether the next number will be higher or lower. Get enough correct to win.</td></tr>
   <tr><td><b>Coin Flip</b></td><td>Call Heads or Tails. A single coin flip decides the outcome.</td></tr>
 </table>
 
@@ -170,6 +170,9 @@ which determines which character your pet evolves into at each life stage.</p>
             displayType="BALLOON"
             isLogByDefault="true"/>
 
+        <!-- Startup: force CodotchiPlugin initialisation on first project open -->
+        <postStartupActivity implementation="com.codotchi.CodotchiStartupActivity"/>
+
     </extensions>
 
     <actions>
@@ -209,12 +212,6 @@ which determines which character your pet evolves into at each life stage.</p>
             <add-to-group group-id="ToolWindowToolbar" anchor="last"/>
         </group>
     </actions>
-
-    <applicationListeners>
-        <listener
-            class="com.codotchi.CodotchiAppLifecycleListener"
-            topic="com.intellij.ide.AppLifecycleListener"/>
-    </applicationListeners>
 
     <projectListeners>
         <listener
