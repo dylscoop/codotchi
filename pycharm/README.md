@@ -49,6 +49,11 @@ assigned to you at random when you start a new game.
   GoLand, Rider, etc.)
 - JCEF must be enabled in your IDE (it is on by default in 2024.1+)
 
+> **If the Codotchi panel appears blank:** your IDE may be running on a
+> JetBrains Runtime without JCEF. Open **Help → Find Action** (Shift+Ctrl+A /
+> ⇧⌘A), search for **"Choose Boot Java Runtime for the IDE"**, select a runtime
+> with **JCEF** in its name, and restart the IDE.
+
 ## Installation
 
 See the [GitHub repository](https://github.com/dylscoop/codotchi) for full

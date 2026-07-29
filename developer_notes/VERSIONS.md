@@ -1,6 +1,20 @@
 # Version History
 
-## v2.17.0 — current
+## v2.17.4 — current
+
+### Changes from v2.17.3
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/resources/META-INF/plugin.xml` | fix: BUGFIX-151 — remove `CodotchiToolWindowToolbar` group and its `<add-to-group group-id="ToolWindowToolbar">` (removed in PyCharm 2026.x), which threw `PluginException` on load and caused a blank tool window; bump version to 2.17.4 |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiToolWindow.kt` | fix: BUGFIX-151 — wire Refresh action into `setTitleActions()` via `ActionManager.getInstance().getAction("com.codotchi.Refresh")` (previously relied on the dead XML group); add `JBCefApp.isSupported()` guard with an actionable Swing fallback label for non-JCEF runtimes; import `ActionManager`, `JBCefApp`, `JLabel`, `SwingConstants` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | fix: BUGFIX-151 — add `CefLoadHandler.onLoadError` override to surface load failures as a visible HTML message instead of a silent blank panel; import `CefLoadHandler`, `CefRequest` |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.17.4; SDK platform remains `2024.1` (Gradle IntelliJ Plugin 1.x does not support 2024.2+ without a major DSL migration — deferred) |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-151 |
+
+---
+
+## v2.17.0 — previous
 
 ### Changes from v2.16.9
 

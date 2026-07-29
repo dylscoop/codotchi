@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.17.3</version>
+    <version>2.17.4</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -39,6 +39,9 @@ at random when you start a new game.</p>
   <li>JetBrains IDE version <b>2024.1 or later</b> (IntelliJ IDEA, PyCharm, WebStorm, GoLand, Rider, etc.)</li>
   <li>JCEF must be enabled in your IDE (it is on by default in 2024.1+)</li>
 </ul>
+<p><b>If the Codotchi panel appears blank:</b> your IDE may be running on a JetBrains Runtime without JCEF.
+Open <b>Help → Find Action</b> (Shift+Ctrl+A / ⇧⌘A), search for <b>"Choose Boot Java Runtime for the IDE"</b>,
+select a runtime with <b>JCEF</b> in its name, and restart the IDE.</p>
 
 <h2>Installation</h2>
 <p>See the <a href="https://github.com/dylscoop/codotchi">GitHub repository</a> for full installation instructions,
@@ -199,18 +202,13 @@ which determines which character your pet evolves into at each life stage.</p>
         </action>
 
         <!-- Refresh button in the Codotchi tool window title bar -->
+        <!-- Note: added to the title bar programmatically via ToolWindow.setTitleActions()
+             in CodotchiToolWindow.kt — no add-to-group needed here. The action is kept
+             registered so it remains invokable via Find Action. -->
         <action id="com.codotchi.Refresh"
                 class="com.codotchi.CodotchiRefreshAction"
                 text="Refresh"
-                description="Reload pet state from disk (sync with other open windows)">
-            <add-to-group group-id="CodotchiToolWindowToolbar" anchor="first"/>
-        </action>
-
-        <!-- Tool window toolbar group (shown in the title bar of the Codotchi panel) -->
-        <group id="CodotchiToolWindowToolbar"
-               class="com.intellij.openapi.actionSystem.DefaultActionGroup">
-            <add-to-group group-id="ToolWindowToolbar" anchor="last"/>
-        </group>
+                description="Reload pet state from disk (sync with other open windows)"/>
     </actions>
 
     <projectListeners>

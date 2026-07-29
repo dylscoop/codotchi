@@ -1,6 +1,7 @@
 ﻿package com.codotchi
 
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
@@ -11,7 +12,10 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
+import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.content.ContentFactory
+import javax.swing.JLabel
+import javax.swing.SwingConstants
 
 /**
  * CodotchiToolWindow — creates the browser panel and registers it as the
@@ -35,6 +39,29 @@ class CodotchiToolWindow : ToolWindowFactory {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val plugin = service<CodotchiPlugin>()
+
+        // Guard: JCEF (the embedded Chromium browser used to render the pet panel)
+        // must be available.  It is on by default in 2024.1+ with the JetBrains
+        // Runtime, but can be absent if the user switched to a non-JCEF JBR.
+        // Without this check the plugin silently shows a blank panel with no
+        // diagnostic message.
+        if (!JBCefApp.isSupported()) {
+            val msg = "<html><body style='padding:12px; font-family:sans-serif;'>" +
+                "<b>Codotchi requires JCEF to render the pet panel.</b><br><br>" +
+                "Your IDE is currently running on a JetBrains Runtime without JCEF support.<br><br>" +
+                "To fix this:<br>" +
+                "1. Open <b>Help → Find Action</b> (Shift+Ctrl+A / ⇧⌘A)<br>" +
+                "2. Search for <b>Choose Boot Java Runtime for the IDE</b><br>" +
+                "3. Select a runtime with <b>JCEF</b> in the name<br>" +
+                "4. Restart the IDE<br><br>" +
+                "Codotchi will appear here after restarting with a JCEF-enabled runtime." +
+                "</body></html>"
+            val label = JLabel(msg, SwingConstants.LEFT)
+            label.verticalAlignment = SwingConstants.TOP
+            val content = ContentFactory.getInstance().createContent(label, "", false)
+            toolWindow.contentManager.addContent(content)
+            return
+        }
 
         val panel = CodotchiBrowserPanel(
             messageHandler    = { message -> plugin.handleCommand(message) },
@@ -78,15 +105,19 @@ class CodotchiToolWindow : ToolWindowFactory {
             }
         )
 
-        // Gear icon in the tool-window title bar → opens Settings > Tools > Codotchi
-        toolWindow.setTitleActions(listOf(
-            object : AnAction("Codotchi Settings", "Open Codotchi settings", AllIcons.General.Settings) {
-                override fun actionPerformed(e: AnActionEvent) {
-                    ShowSettingsUtil.getInstance()
-                        .showSettingsDialog(project, CodotchiConfigurable::class.java)
-                }
+        // Title bar actions: Refresh (sync state from disk) + Settings gear.
+        // Both are wired here via the supported setTitleActions() API.
+        // The CodotchiToolWindowToolbar XML group was removed in 2.17.4 because
+        // the platform group "ToolWindowToolbar" it relied on was removed in
+        // PyCharm 2026.x, causing a PluginException on load.
+        val refreshAction = ActionManager.getInstance().getAction("com.codotchi.Refresh")
+        val settingsAction = object : AnAction("Codotchi Settings", "Open Codotchi settings", AllIcons.General.Settings) {
+            override fun actionPerformed(e: AnActionEvent) {
+                ShowSettingsUtil.getInstance()
+                    .showSettingsDialog(project, CodotchiConfigurable::class.java)
             }
-        ))
+        }
+        toolWindow.setTitleActions(listOfNotNull(refreshAction, settingsAction))
     }
 }
 
