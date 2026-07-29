@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.17.4</version>
+    <version>2.17.5</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -126,6 +126,14 @@ which determines which character your pet evolves into at each life stage.</p>
     <idea-version since-build="241"/>
 
     <depends>com.intellij.modules.platform</depends>
+    <!-- JCEF was extracted into a separate bundled plugin (id=com.intellij.modules.jcef)
+         starting with PyCharm 2026.2 (build 262).  Without this dependency the JCEF
+         classes (com.intellij.ui.jcef.*) are invisible to the Codotchi classloader,
+         causing a NoClassDefFoundError on the JBCefApp.isSupported() guard in
+         CodotchiToolWindow.kt.  The dependency is marked optional so the plugin still
+         loads on runtimes where JCEF is absent (non-JCEF JBR, Linux headless, etc.) —
+         in that case the existing fallback panel with instructions is shown instead. -->
+    <depends optional="true" config-file="codotchi-jcef.xml">com.intellij.modules.jcef</depends>
 
     <extensions defaultExtensionNs="com.intellij">
 

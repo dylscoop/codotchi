@@ -45,7 +45,22 @@ class CodotchiToolWindow : ToolWindowFactory {
         // Runtime, but can be absent if the user switched to a non-JCEF JBR.
         // Without this check the plugin silently shows a blank panel with no
         // diagnostic message.
-        if (!JBCefApp.isSupported()) {
+        //
+        // In PyCharm 2026.2+ (build 262) JCEF was extracted into a separate
+        // bundled plugin (com.intellij.modules.jcef).  We declare it as an
+        // optional dependency in plugin.xml so the classes are visible when it
+        // is present, but the JBCefApp reference below must still be guarded
+        // with a try/catch for ClassNotFoundException / NoClassDefFoundError to
+        // prevent an EDT crash on environments where JCEF is absent at runtime
+        // (e.g. a non-JCEF JBR or an IDE build that strips the jcef-plugin).
+        val jcefSupported: Boolean = try {
+            JBCefApp.isSupported()
+        } catch (e: ClassNotFoundException) {
+            false
+        } catch (e: NoClassDefFoundError) {
+            false
+        }
+        if (!jcefSupported) {
             val msg = "<html><body style='padding:12px; font-family:sans-serif;'>" +
                 "<b>Codotchi requires JCEF to render the pet panel.</b><br><br>" +
                 "Your IDE is currently running on a JetBrains Runtime without JCEF support.<br><br>" +
