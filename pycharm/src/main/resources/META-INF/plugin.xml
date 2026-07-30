@@ -1,8 +1,9 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.17.5</version>
+    <version>2.18.0</version>
     <vendor>codotchi</vendor>
+    <icon>META-INF/icon_128.png</icon>
 
     <description><![CDATA[
 <img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/dog_adult_1x.png" height="64" alt="Dog sprite" />
@@ -19,6 +20,22 @@ its final form. Any support and feedback is much appreciated — see the Support
 
 <p>Your pet is drawn from one of <b>7 sprite sets</b>, with more to be added in the future, assigned to you
 at random when you start a new game.</p>
+
+<h2>Preview</h2>
+
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/example_skippy.png" width="400" alt="Skippy the kangaroo — Codotchi in action"/>
+
+<h3>Sponsor this project</h3>
+
+<p><a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"/></a></p>
+<p><a href="https://buymeacoffee.com/dylscoop">buymeacoffee.com/dylscoop</a></p>
+
+<p><a href="https://liberapay.com/dylscoop">liberapay.com/dylscoop</a></p>
+
+<h2>Integrations</h2>
+
+<p>Looking for the <b>Claude Code</b> or <b>OpenCode</b> terminal integrations?
+Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotchi</a> to download the plugins — your pet's state is shared across VS Code, PyCharm, and the terminal.</p>
 
 <h2>Features</h2>
 <ul>
@@ -108,14 +125,6 @@ which determines which character your pet evolves into at each life stage.</p>
 <h2>Support</h2>
 
 <p><b>GitHub:</b> <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotchi</a></p>
-
-<h3>Sponsor this project</h3>
-
-<p><a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"/></a></p>
-<p><a href="https://buymeacoffee.com/dylscoop">buymeacoffee.com/dylscoop</a></p>
-
-<p><a href="https://liberapay.com/dylscoop"><img src="https://img.shields.io/badge/Liberapay-dylscoop-yellow" alt="Liberapay"/></a></p>
-<p><a href="https://liberapay.com/dylscoop">liberapay.com/dylscoop</a></p>
 
 <h3>Codotchi Sprites</h3>
 

@@ -1,6 +1,24 @@
 # Version History
 
-## v2.17.4 — current
+## v2.18.0 — current
+
+### Changes from v2.17.5 (docs restructure + PyCharm icon — branch feat/docs-restructure-2.18.0)
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | chore: bump version to 2.18.0 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.18.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.18.0; add `<icon>META-INF/icon_128.png</icon>`; restructure `<description>`: sponsor block moved under Preview, new Integrations section added, Liberapay shields.io badge removed (plain text link kept), sponsor removed from bottom Support section |
+| `pycharm/src/main/resources/META-INF/icon_128.png` | feat: add 128×128 marketplace icon (copied from vscode/media/icon_128.png) |
+| `opencode-codotchi/package.json` | chore: bump version to 2.18.0 |
+| `vscode/README.md` | docs: move Sponsor section under Preview; add Integrations section; remove Sponsor from bottom Support section |
+| `pycharm/README.md` | docs: move Sponsor section under Preview; add Integrations section; remove Sponsor from bottom Support section |
+| `opencode-codotchi/README.md` | docs: update zip filename references to 2.18.0 |
+| `README.md` | docs: update all version references to 2.18.0 |
+
+---
+
+## v2.17.4 — previous
 
 ### Changes from v2.17.3
 
