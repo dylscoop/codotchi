@@ -1,0 +1,6 @@
+<!-- Optional plugin descriptor loaded only when com.intellij.modules.jcef is present.
+     The JCEF module (plugins/jcef-plugin/) provides com.intellij.ui.jcef.JBCefApp and
+     related classes.  This file is intentionally empty — its sole purpose is to satisfy
+     the <depends optional="true" config-file="codotchi-jcef.xml"> declaration in
+     plugin.xml so the classloader makes JCEF classes visible to the Codotchi plugin. -->
+<idea-plugin/>

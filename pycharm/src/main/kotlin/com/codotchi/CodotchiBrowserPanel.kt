@@ -9,7 +9,9 @@ import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.ui.jcef.JBCefJSQuery
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
+import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
+import org.cef.network.CefRequest
 import java.awt.BorderLayout
 import javax.swing.JPanel
 
@@ -57,7 +59,8 @@ class CodotchiBrowserPanel(
             null   // no return value needed
         }
 
-        // Inject the bridge after every page load
+        // Inject the bridge after every page load; surface an error message if the
+        // page fails to load (e.g. missing resource, JCEF initialisation failure).
         browser.jbCefClient.addLoadHandler(object : CefLoadHandlerAdapter() {
             override fun onLoadEnd(b: CefBrowser, frame: CefFrame, httpStatusCode: Int) {
                 if (!frame.isMain) return
@@ -72,6 +75,25 @@ class CodotchiBrowserPanel(
                 // Notify the caller that the page is ready and the bridge is
                 // injected — safe to push state now.
                 onReady()
+            }
+
+            override fun onLoadError(
+                b: CefBrowser,
+                frame: CefFrame,
+                errorCode: CefLoadHandler.ErrorCode,
+                errorText: String?,
+                failedUrl: String?,
+            ) {
+                if (!frame.isMain) return
+                val msg = errorText ?: "unknown error"
+                val fallbackHtml = """
+                    <html><body style='padding:12px;font-family:sans-serif;color:#cc0000;'>
+                    <b>Codotchi failed to load the pet panel.</b><br><br>
+                    Error: $msg<br><br>
+                    Try reopening the tool window or restarting the IDE.
+                    </body></html>
+                """.trimIndent()
+                b.loadURL("data:text/html;charset=utf-8,${java.net.URLEncoder.encode(fallbackHtml, "UTF-8").replace("+", "%20")}")
             }
         }, browser.cefBrowser)
 

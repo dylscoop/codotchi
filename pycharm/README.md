@@ -21,6 +21,21 @@ assigned to you at random when you start a new game.
 
 <img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/example_skippy.png" width="400" alt="Skippy the kangaroo — Codotchi in action" />
 
+### Sponsor this project
+
+<a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
+
+[buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
+
+[![Liberapay](https://img.shields.io/badge/Liberapay-dylscoop-yellow)](https://liberapay.com/dylscoop)
+
+[liberapay.com/dylscoop](https://liberapay.com/dylscoop)
+
+## Integrations
+
+Looking for the **Claude Code** or **OpenCode** terminal integrations?
+Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to download the plugins — your pet's state is shared across VS Code, PyCharm, and the terminal.
+
 ## Features
 
 - **Tool window pet panel** — pixel art pet with animated sprites, stat bars,
@@ -48,6 +63,11 @@ assigned to you at random when you start a new game.
 - JetBrains IDE version **2024.1 or later** (IntelliJ IDEA, PyCharm, WebStorm,
   GoLand, Rider, etc.)
 - JCEF must be enabled in your IDE (it is on by default in 2024.1+)
+
+> **If the Codotchi panel appears blank:** your IDE may be running on a
+> JetBrains Runtime without JCEF. Open **Help → Find Action** (Shift+Ctrl+A /
+> ⇧⌘A), search for **"Choose Boot Java Runtime for the IDE"**, select a runtime
+> with **JCEF** in its name, and restart the IDE.
 
 ## Installation
 
@@ -149,16 +169,6 @@ Each pet animal has its own sprite set
 ## Support
 
 **GitHub:** [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi)
-
-### Sponsor this project
-
-<a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
-
-[buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
-
-[![Liberapay](https://img.shields.io/badge/Liberapay-dylscoop-yellow)](https://liberapay.com/dylscoop)
-
-[liberapay.com/dylscoop](https://liberapay.com/dylscoop)
 
 ### Codotchi Sprites
 

@@ -1,6 +1,38 @@
 # Version History
 
-## v2.17.0 — current
+## v2.18.0 — current
+
+### Changes from v2.17.5 (docs restructure + PyCharm icon — branch feat/docs-restructure-2.18.0)
+
+| File | What changed |
+|------|-------------|
+| `vscode/package.json` | chore: bump version to 2.18.0 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.18.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.18.0; add `<icon>META-INF/icon_128.png</icon>`; restructure `<description>`: sponsor block moved under Preview, new Integrations section added, Liberapay shields.io badge removed (plain text link kept), sponsor removed from bottom Support section |
+| `pycharm/src/main/resources/META-INF/icon_128.png` | feat: add 128×128 marketplace icon (copied from vscode/media/icon_128.png) |
+| `opencode-codotchi/package.json` | chore: bump version to 2.18.0 |
+| `vscode/README.md` | docs: move Sponsor section under Preview; add Integrations section; remove Sponsor from bottom Support section |
+| `pycharm/README.md` | docs: move Sponsor section under Preview; add Integrations section; remove Sponsor from bottom Support section |
+| `opencode-codotchi/README.md` | docs: update zip filename references to 2.18.0 |
+| `README.md` | docs: update all version references to 2.18.0 |
+
+---
+
+## v2.17.4 — previous
+
+### Changes from v2.17.3
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/resources/META-INF/plugin.xml` | fix: BUGFIX-151 — remove `CodotchiToolWindowToolbar` group and its `<add-to-group group-id="ToolWindowToolbar">` (removed in PyCharm 2026.x), which threw `PluginException` on load and caused a blank tool window; bump version to 2.17.4 |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiToolWindow.kt` | fix: BUGFIX-151 — wire Refresh action into `setTitleActions()` via `ActionManager.getInstance().getAction("com.codotchi.Refresh")` (previously relied on the dead XML group); add `JBCefApp.isSupported()` guard with an actionable Swing fallback label for non-JCEF runtimes; import `ActionManager`, `JBCefApp`, `JLabel`, `SwingConstants` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | fix: BUGFIX-151 — add `CefLoadHandler.onLoadError` override to surface load failures as a visible HTML message instead of a silent blank panel; import `CefLoadHandler`, `CefRequest` |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.17.4; SDK platform remains `2024.1` (Gradle IntelliJ Plugin 1.x does not support 2024.2+ without a major DSL migration — deferred) |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-151 |
+
+---
+
+## v2.17.0 — previous
 
 ### Changes from v2.16.9
 
