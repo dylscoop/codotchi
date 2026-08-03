@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Codotchi Leaderboard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --accent: #58a6ff;
+      --gold: #ffd700;
+      --silver: #c0c0c0;
+      --bronze: #cd7f32;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    header { margin-bottom: 2rem; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); font-size: 0.875rem; }
+    .subtitle a { color: var(--accent); text-decoration: none; }
+    .subtitle a:hover { text-decoration: underline; }
+    .how-to {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .how-to strong { color: var(--text); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    thead th {
+      background: #1c2128;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    tbody td { padding: 0.7rem 1rem; vertical-align: middle; }
+    .rank { font-weight: 700; font-size: 1rem; text-align: center; width: 2.5rem; }
+    .rank-1 { color: var(--gold); }
+    .rank-2 { color: var(--silver); }
+    .rank-3 { color: var(--bronze); }
+    .pet-name { font-weight: 600; }
+    .github-link { color: var(--accent); text-decoration: none; }
+    .github-link:hover { text-decoration: underline; }
+    .age { font-variant-numeric: tabular-nums; }
+    .elapsed { color: var(--muted); font-size: 0.82rem; }
+    .submitted { color: var(--muted); font-size: 0.8rem; }
+    .empty { text-align: center; padding: 3rem; color: var(--muted); }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      background: rgba(88,166,255,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(88,166,255,0.2);
+    }
+    @media (max-width: 600px) {
+      .col-elapsed, .col-submitted { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Codotchi Leaderboard</h1>
+      <p class="subtitle">
+        Best runs from <a href="https://github.com/dylscoop/codotchi">Codotchi</a> — the virtual pet that lives in your IDE.
+      </p>
+    </header>
+
+    <div class="how-to">
+      <strong>How to submit:</strong> Play Codotchi in VS Code or PyCharm.
+      After your pet passes away, click <em>Submit to Leaderboard</em> on the game over screen.
+      Your GitHub account is used to authenticate the submission.
+    </div>
+
+    <table id="leaderboard-table">
+      <thead>
+        <tr>
+          <th class="rank">#</th>
+          <th>Pet Name</th>
+          <th>GitHub</th>
+          <th>Age</th>
+          <th>Species</th>
+          <th>Stage</th>
+          <th class="col-elapsed">Real Time</th>
+          <th class="col-submitted">Submitted</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="8" class="empty">Loading scores…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    function formatAge(ageDays) {
+      var years = Math.floor(ageDays / 365);
+      var days  = ageDays % 365;
+      if (years > 0) { return years + "y " + days + "d"; }
+      return days + "d";
+    }
+
+    function formatElapsed(spawnedAt, diedAt) {
+      if (!spawnedAt || !diedAt) { return "—"; }
+      var ms = diedAt - spawnedAt;
+      var totalSec = Math.floor(ms / 1000);
+      var d = Math.floor(totalSec / 86400);
+      var h = Math.floor((totalSec % 86400) / 3600);
+      var m = Math.floor((totalSec % 3600) / 60);
+      var parts = [];
+      if (d > 0) { parts.push(d + "d"); }
+      if (h > 0) { parts.push(h + "h"); }
+      if (m > 0) { parts.push(m + "m"); }
+      if (parts.length === 0) { parts.push("< 1m"); }
+      return parts.join(" ");
+    }
+
+    function formatDate(ts) {
+      if (!ts) { return "—"; }
+      return new Date(ts).toISOString().slice(0, 10);
+    }
+
+    function rankIcon(i) {
+      if (i === 0) { return "🥇"; }
+      if (i === 1) { return "🥈"; }
+      if (i === 2) { return "🥉"; }
+      return i + 1;
+    }
+
+    function rankClass(i) {
+      if (i === 0) { return "rank rank-1"; }
+      if (i === 1) { return "rank rank-2"; }
+      if (i === 2) { return "rank rank-3"; }
+      return "rank";
+    }
+
+    fetch("scores.json")
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var scores = data.scores || [];
+        var tbody = document.getElementById("leaderboard-body");
+
+        if (scores.length === 0) {
+          tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">No scores yet — be the first to submit!</td></tr>";
+          return;
+        }
+
+        tbody.innerHTML = scores.map(function(s, i) {
+          var petType = s.petType ? (s.petType.charAt(0).toUpperCase() + s.petType.slice(1)) : "—";
+          var stage   = s.stage   ? (s.stage.charAt(0).toUpperCase()   + s.stage.slice(1))   : "—";
+          return "<tr>" +
+            "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
+            "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "</td>" +
+            "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.githubUsername) + "\" target=\"_blank\">@" + escHtml(s.githubUsername || "—") + "</a></td>" +
+            "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
+            "<td><span class=\"badge\">" + escHtml(petType) + "</span></td>" +
+            "<td>" + escHtml(stage) + "</td>" +
+            "<td class=\"elapsed col-elapsed\">" + formatElapsed(s.spawnedAt, s.diedAt) + "</td>" +
+            "<td class=\"submitted col-submitted\">" + formatDate(s.submittedAt) + "</td>" +
+            "</tr>";
+        }).join("");
+      })
+      .catch(function() {
+        var tbody = document.getElementById("leaderboard-body");
+        tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">Could not load scores. Try refreshing.</td></tr>";
+      });
+
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+  </script>
+</body>
+</html>

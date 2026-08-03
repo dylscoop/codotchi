@@ -110,7 +110,7 @@ class CodotchiBrowserPanel(
         val stateJson     = gson.toJson(state)
         val highScoreJson = if (highScore != null) gson.toJson(highScore) else "null"
         val unlockedCharJson = if (unlockedCharacter != null) "\"$unlockedCharacter\"" else "null"
-        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName"}"""
+        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","leaderboardAvailable":true}"""
         val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
     }

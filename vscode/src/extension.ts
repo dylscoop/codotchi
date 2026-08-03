@@ -63,6 +63,7 @@ let sidebar: SidebarProvider | undefined;
 let statusBar: StatusBarManager | undefined;
 let eventsManager: EventsManager | undefined;
 let tickTimer: ReturnType<typeof setInterval> | undefined;
+let lastRunDiedAt: number | null = null;
 
 /** Timestamp of the last detected IDE activity (keystroke, cursor, focus). */
 let lastActivityMs: number = Date.now();
@@ -186,6 +187,8 @@ export function activate(context: vscode.ExtensionContext): void {
         };
         saveHighScore(context, currentHighScore);
       }
+      // Track diedAt for leaderboard submission (updated on every dead tick so it stays accurate)
+      lastRunDiedAt = currentHighScore?.diedAt ?? Date.now();
     }
 
     sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter(), getDefaultPetName());
@@ -226,7 +229,7 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   // Sidebar provider
-  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore, markActivity, onResetHighScore, markDeepIdle);
+  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore, markActivity, onResetHighScore, markDeepIdle, () => lastRunDiedAt);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(SidebarProvider.VIEW_ID, sidebar)
   );

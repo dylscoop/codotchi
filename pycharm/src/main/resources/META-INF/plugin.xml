@@ -190,6 +190,12 @@ which determines which character your pet evolves into at each life stage.</p>
             displayType="BALLOON"
             isLogByDefault="true"/>
 
+        <!-- Notification group for leaderboard actions -->
+        <notificationGroup
+            id="Codotchi Leaderboard"
+            displayType="BALLOON"
+            isLogByDefault="true"/>
+
         <!-- Startup: force CodotchiPlugin initialisation on first project open -->
         <postStartupActivity implementation="com.codotchi.CodotchiStartupActivity"/>
 
@@ -201,6 +207,14 @@ which determines which character your pet evolves into at each life stage.</p>
                 class="com.codotchi.OpenSpritePreviewAction"
                 text="Codotchi: Open Sprite Preview (Dev)"
                 description="Open the sprite preview gallery (developer mode only)">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <!-- View public leaderboard in browser -->
+        <action id="com.codotchi.ViewLeaderboard"
+                class="com.codotchi.ViewLeaderboardAction"
+                text="Codotchi: View Leaderboard"
+                description="Open the Codotchi public leaderboard in a browser">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
 

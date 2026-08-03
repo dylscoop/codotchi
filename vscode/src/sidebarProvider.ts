@@ -37,6 +37,11 @@ import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./
 import { StatusBarManager } from "./statusBar";
 import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
 
+const LEADERBOARD_REPO_OWNER = "dylscoop";
+const LEADERBOARD_REPO_NAME  = "codotchi";
+const LEADERBOARD_PAGES_URL  = `https://${LEADERBOARD_REPO_OWNER}.github.io/${LEADERBOARD_REPO_NAME}/leaderboard/`;
+const LEADERBOARD_GITHUB_SCOPES = ["read:user", "public_repo"];
+
 // Pricing per million tokens (USD) — mirrors state.mjs MODEL_PRICING table.
 // Ordered most-specific first — checked with startsWith(), so longer/pricier
 // sub-prefixes (e.g. claude-opus-4-8) must precede their shorter generic
@@ -188,7 +193,8 @@ export class SidebarProvider
     private readonly getHighScore: () => HighScore | null,
     private readonly markActivity: () => void,
     private readonly onResetHighScore: () => void,
-    private readonly markDeepIdle: () => void
+    private readonly markDeepIdle: () => void,
+    private readonly getLastRunDiedAt: () => number | null = () => null
   ) {}
 
   /** Called by VS Code when the webview becomes visible. */
@@ -529,6 +535,14 @@ export class SidebarProvider
         // Idle timer already reset above; no state change needed.
         return;
 
+      case "submit_leaderboard":
+        void this.handleLeaderboardSubmit();
+        return;
+
+      case "open_leaderboard_url":
+        void vscode.env.openExternal(vscode.Uri.parse(LEADERBOARD_PAGES_URL));
+        return;
+
       case "token_cost": {
         if (state === null) { return; }
         // Apply and broadcast the energy/happiness cost first, then show the
@@ -648,6 +662,7 @@ export class SidebarProvider
         devMode,
         unlockedCharacter,
         defaultPetName,
+        leaderboardAvailable: true,
       });
     }
   }
@@ -680,6 +695,99 @@ export class SidebarProvider
         highScore,
         devMode: false,
       });
+    }
+  }
+
+  /** Submit the current dead pet's score to the public GitHub leaderboard. */
+  private async handleLeaderboardSubmit(): Promise<void> {
+    const postResult = (status: string, message?: string): void => {
+      if (this.webviewView) {
+        void this.webviewView.webview.postMessage({ type: "leaderboard_submit_result", status, message });
+      }
+    };
+
+    try {
+      const state = this.getCurrentState();
+      if (state === null || state.alive) {
+        postResult("error", "No dead pet state available.");
+        return;
+      }
+
+      const session = await vscode.authentication.getSession(
+        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
+      );
+
+      if (!session) {
+        postResult("cancelled");
+        return;
+      }
+
+      // Fetch GitHub username
+      let username: string;
+      try {
+        const userRes = await fetch("https://api.github.com/user", {
+          headers: {
+            "Authorization": `token ${session.accessToken}`,
+            "Accept": "application/json",
+            "User-Agent": "Codotchi-VSCode",
+          },
+        });
+        if (!userRes.ok) {
+          postResult("error", `GitHub API error: ${userRes.status}`);
+          return;
+        }
+        const userBody = await userRes.json() as Record<string, unknown>;
+        username = String(userBody.login ?? "");
+        if (!username) {
+          postResult("error", "Could not read GitHub username.");
+          return;
+        }
+      } catch {
+        postResult("error", "Network error fetching GitHub username.");
+        return;
+      }
+
+      const diedAt = this.getLastRunDiedAt() ?? Date.now();
+      const scoreData = {
+        schemaVersion: 1,
+        githubUsername: username,
+        petName:        state.name,
+        ageDays:        state.ageDays,
+        stage:          state.stage,
+        petType:        state.petType,
+        spawnedAt:      state.spawnedAt,
+        diedAt,
+      };
+      const issueBody =
+        `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``;
+      const issueTitle =
+        `[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @${username}`;
+
+      try {
+        const issueRes = await fetch(
+          `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `token ${session.accessToken}`,
+              "Accept": "application/vnd.github+json",
+              "Content-Type": "application/json",
+              "User-Agent": "Codotchi-VSCode",
+            },
+            body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ["leaderboard-submission"] }),
+          }
+        );
+        if (issueRes.status === 201) {
+          postResult("success");
+        } else {
+          const errBody = await issueRes.text().catch(() => "");
+          postResult("error", `Failed to create issue (HTTP ${issueRes.status}): ${errBody.slice(0, 120)}`);
+        }
+      } catch {
+        postResult("error", "Network error creating GitHub issue.");
+      }
+    } catch {
+      postResult("error", "Unexpected error during submission.");
     }
   }
 

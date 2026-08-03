@@ -344,6 +344,19 @@ body.font-large  { font-size: 16px; }
   opacity: 0.85;
 }
 
+/* ── Leaderboard submit section on dead screen ── */
+#leaderboard-section {
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.leaderboard-status {
+  font-size: 0.80em;
+  color: var(--vscode-errorForeground, #f48771);
+  text-align: center;
+  margin-top: 4px;
+}
+
 /* ── Best-run panel on setup screen ── */
 .setup-high-score {
   border: 1px solid rgba(255,255,255,0.12);

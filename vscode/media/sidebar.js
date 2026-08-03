@@ -20,6 +20,9 @@
   /** Number of in-game days that equal one displayed year. */
   const GAME_DAYS_PER_YEAR = 365;
 
+  /** Public leaderboard URL (GitHub Pages). */
+  const LEADERBOARD_PAGES_URL = "https://dylscoop.github.io/codotchi/leaderboard/";
+
   /** Energy cost of the play action — must match PLAY_ENERGY_COST in gameEngine.ts. */
   var PLAY_ENERGY_COST = 25;
 
@@ -88,8 +91,12 @@
   const deadStats      = document.getElementById("dead-stats");
   const deadTime       = document.getElementById("dead-time");
   const deadEventLog   = document.getElementById("dead-event-log");
-  const highScoreSection = document.getElementById("high-score-section");
-  const highScoreStats   = document.getElementById("high-score-stats");
+  const highScoreSection   = document.getElementById("high-score-section");
+  const highScoreStats     = document.getElementById("high-score-stats");
+  const leaderboardSection = document.getElementById("leaderboard-section");
+  const btnSubmitLB        = document.getElementById("btn-submit-leaderboard");
+  const leaderboardStatus  = document.getElementById("leaderboard-status");
+  const btnViewLB          = document.getElementById("btn-view-leaderboard");
   const setupHighScore   = document.getElementById("setup-high-score");
   const setupHsStats     = document.getElementById("setup-hs-stats");
   const mealsLeftEl    = document.getElementById("meals-left");
@@ -136,6 +143,8 @@
   let idleTimer     = 0;      // seconds until next wander direction/pause change
   let reactionQueue = [];     // [{ type, startMs, durationMs, startX, startY }]
   let latestHighScore = null; // cached high score from last stateUpdate
+  let leaderboardAvailable = false; // true when host supports leaderboard submission
+  let leaderboardSubmitted = false; // true once user successfully submitted this death
   let currentScreen = "game"; // tracks which screen is visible
   let hasActiveGame = false;  // true once a real (non-needs_new_game) state is received
   let pendingNewGame = false; // set when Hatch! is clicked; bypasses setup-screen suppression
@@ -252,6 +261,22 @@
       vscode.postMessage({ command: "reset_high_score" });
       if (resetHsConfirm) { resetHsConfirm.classList.add("hidden"); }
       if (setupHighScore) { setupHighScore.classList.add("hidden"); }
+    });
+  }
+
+  if (btnSubmitLB) {
+    btnSubmitLB.addEventListener("click", function () {
+      btnSubmitLB.disabled = true;
+      btnSubmitLB.textContent = "Submitting…";
+      if (leaderboardStatus) { leaderboardStatus.classList.add("hidden"); }
+      vscode.postMessage({ command: "submit_leaderboard" });
+    });
+  }
+
+  if (btnViewLB) {
+    btnViewLB.addEventListener("click", function (e) {
+      e.preventDefault();
+      vscode.postMessage({ command: "open_leaderboard_url" });
     });
   }
 
@@ -1720,6 +1745,27 @@
         highScoreSection.classList.add("hidden");
       }
     }
+
+    // Leaderboard submit button — shown when VS Code/PyCharm host supports it
+    if (leaderboardSection) {
+      if (leaderboardAvailable) {
+        leaderboardSection.classList.remove("hidden");
+        // Reset button state for a fresh death (unless already submitted this run)
+        if (btnSubmitLB && !leaderboardSubmitted) {
+          btnSubmitLB.disabled = false;
+          btnSubmitLB.textContent = "Submit to Leaderboard";
+        }
+        if (leaderboardStatus) { leaderboardStatus.classList.add("hidden"); }
+      } else {
+        leaderboardSection.classList.add("hidden");
+      }
+    }
+
+    // "View Leaderboard" link is always visible on the dead screen regardless of platform
+    if (btnViewLB) {
+      btnViewLB.classList.remove("hidden");
+      btnViewLB.href = LEADERBOARD_PAGES_URL;
+    }
   }
 
   // ── Sprite drawing ───────────────────────────────────────────────────────
@@ -2519,12 +2565,39 @@
       showBubble(message.text);
       return;
     }
+    if (message.type === "leaderboard_submit_result") {
+      if (!btnSubmitLB) { return; }
+      if (message.status === "success") {
+        btnSubmitLB.textContent = "Submitted ✓";
+        btnSubmitLB.disabled = true;
+        leaderboardSubmitted = true;
+      } else if (message.status === "browser_opened") {
+        // PyCharm: issue creation page opened in browser — let user complete it
+        btnSubmitLB.textContent = "Opened in browser ✓";
+        btnSubmitLB.disabled = true;
+        leaderboardSubmitted = true;
+      } else if (message.status === "cancelled") {
+        btnSubmitLB.disabled = false;
+        btnSubmitLB.textContent = "Submit to Leaderboard";
+      } else {
+        btnSubmitLB.disabled = false;
+        btnSubmitLB.textContent = "Try Again";
+        if (leaderboardStatus) {
+          leaderboardStatus.textContent = message.message || "Submission failed.";
+          leaderboardStatus.classList.remove("hidden");
+        }
+      }
+      return;
+    }
     if (message.type !== "stateUpdate") { return; }
 
     const state = message.state;
 
     if (message.highScore) { latestHighScore = message.highScore; }
     if (message.highScore === null) { latestHighScore = null; }
+
+    // Track whether the host supports leaderboard submission
+    if (message.leaderboardAvailable) { leaderboardAvailable = true; }
 
     // Update the setup screen default name whenever the host sends one.
     if (message.defaultPetName) {
@@ -2547,6 +2620,9 @@
 
     if (state) {
       hasActiveGame = true;
+      // Reset submission state when a new live pet arrives
+      if (state.alive && !lastState) { leaderboardSubmitted = false; }
+      else if (state.alive && lastState && !lastState.alive) { leaderboardSubmitted = false; }
 
       if (currentScreen === "setup" && !pendingNewGame) {
         if (btnContinue) { btnContinue.classList.toggle("hidden", !hasActiveGame); }

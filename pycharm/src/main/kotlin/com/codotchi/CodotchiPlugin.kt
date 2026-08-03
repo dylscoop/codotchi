@@ -83,6 +83,7 @@ class CodotchiPlugin : Disposable {
     private var currentState: PetState? = null
     private var currentHighScore: HighScore? = null
     private var mealsGivenThisCycle: Int = 0
+    @Volatile private var lastRunDiedAt: Long = 0L
     @Volatile private var lastCodeActivityTime: Long = 0L
     @Volatile private var lastCommitActivityTime: Long = 0L
     /** True when the last tick ran with dev mode active; used to suppress high score updates. */
@@ -569,6 +570,33 @@ class CodotchiPlugin : Disposable {
                 // Idle timer already reset above; no state change needed (BUGFIX-015).
                 "user_activity" -> return@withLock
 
+                "submit_leaderboard" -> {
+                    // Capture state snapshot under lock, then open browser outside the lock
+                    val deadState  = currentState?.takeIf { !it.alive }
+                    val diedAtSnap = lastRunDiedAt.takeIf { it > 0L } ?: System.currentTimeMillis()
+                    shouldBroadcast = false
+                    if (deadState != null) {
+                        AppExecutorUtil.getAppExecutorService().submit {
+                            val url = buildLeaderboardIssueUrl(deadState, diedAtSnap)
+                            com.intellij.ide.BrowserUtil.browse(url)
+                            // Notify the webview that submission was handed off to the browser
+                            val payload = """{"type":"leaderboard_submit_result","status":"browser_opened"}"""
+                            ApplicationManager.getApplication().invokeLater {
+                                browserPanels.forEach { it.postMessage(payload) }
+                            }
+                        }
+                    }
+                    return@withLock
+                }
+
+                "open_leaderboard_url" -> {
+                    shouldBroadcast = false
+                    AppExecutorUtil.getAppExecutorService().submit {
+                        com.intellij.ide.BrowserUtil.browse(LEADERBOARD_PAGES_URL)
+                    }
+                    return@withLock
+                }
+
                 "reset_high_score" -> {
                     currentHighScore = null
                     service<CodotchiPersistence>().clearHighScore()
@@ -974,6 +1002,8 @@ class CodotchiPlugin : Disposable {
                     highScore = newScore
                     persistence.saveHighScore(newScore)
                 }
+                // Track diedAt for leaderboard submission
+                lastRunDiedAt = highScore?.diedAt ?: diedAt
             }
         }
         persistence.lastSaveTimestamp = System.currentTimeMillis()

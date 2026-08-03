@@ -1,4 +1,4 @@
-/* sidebar.css — retro pixel-art theme for vscode_codotchi */
+﻿/* sidebar.css — retro pixel-art theme for vscode_codotchi */
 
 /* ── Reset / base ── */
 *, *::before, *::after {
@@ -10,7 +10,7 @@
 body {
   font-family: var(--vscode-font-family, monospace);
   font-size: 12px;
-  color: var(--vscode-foreground, #cccccc);
+  color: var(--vscode-foreground);
   background: var(--vscode-sideBar-background, #1e1e1e);
   padding: 8px;
   display: flex;
@@ -342,6 +342,19 @@ body.font-large  { font-size: 16px; }
   text-align: center;
   line-height: 1.6;
   opacity: 0.85;
+}
+
+/* ── Leaderboard submit section on dead screen ── */
+#leaderboard-section {
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.leaderboard-status {
+  font-size: 0.80em;
+  color: var(--vscode-errorForeground, #f48771);
+  text-align: center;
+  margin-top: 4px;
 }
 
 /* ── Best-run panel on setup screen ── */
