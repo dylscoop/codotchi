@@ -22,6 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: leaderboard
           fetch-depth: 1
 
       - name: Validate and append score
@@ -150,7 +151,7 @@ jobs:
           git add leaderboard/scores.json
           ENTRY_DESC=$(python3 -c "import json; e=json.load(open('/tmp/new_entry.json')); print(e['petName'] + ' ' + str(e['ageDays']) + 'd')")
           git commit -m "leaderboard: add ${{ github.event.issue.user.login }} ${ENTRY_DESC}"
-          git push
+          git push origin leaderboard
 
       - name: Comment and close (success)
         if: steps.validate.outputs.valid == 'true'
