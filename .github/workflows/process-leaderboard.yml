@@ -148,7 +148,8 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leaderboard/scores.json
-          git commit -m "leaderboard: add ${{ github.event.issue.user.login }} $(cat /tmp/new_entry.json | python3 -c 'import json,sys; e=json.load(sys.stdin); print(f\"{e[\"petName\"]} {e[\"ageDays\"]}d\")')"
+          ENTRY_DESC=$(python3 -c "import json; e=json.load(open('/tmp/new_entry.json')); print(e['petName'] + ' ' + str(e['ageDays']) + 'd')")
+          git commit -m "leaderboard: add ${{ github.event.issue.user.login }} ${ENTRY_DESC}"
           git push
 
       - name: Comment and close (success)
