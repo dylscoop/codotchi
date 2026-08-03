@@ -16,6 +16,13 @@ sick long enough and it dies.
 Your coding activity matters too: every file you save and commit makes your pet a 
 little happier.
 
+## Leaderboard
+
+After your pet dies, click **Submit to Leaderboard** on the game over screen to publish your run.
+Your GitHub account is used to authenticate the submission.
+
+**[View the public leaderboard →](https://dylscoop.github.io/codotchi/leaderboard/)**
+
 ## Platforms
 
 | IDE | Package | Install |
@@ -34,19 +41,19 @@ PyCharm via a cross-platform JSON file.
 
 ### VS Code
 
-1. Download `codotchi-2.18.0.vsix` from the Releases page.
+1. Download `codotchi-2.19.0.vsix` from the Releases page.
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
 Or from the terminal:
 
 ```bash
-code --install-extension codotchi-2.18.0.vsix
+code --install-extension codotchi-2.19.0.vsix
 ```
 
 ### JetBrains
 
-1. Download `pycharm-codotchi-2.18.0.zip` from the Releases page.
+1. Download `pycharm-codotchi-2.19.0.zip` from the Releases page.
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -74,19 +81,19 @@ page — no repository clone required:
 
 #### From Zip
 
-1. Download `opencode-codotchi-2.18.0.zip` from the
+1. Download `opencode-codotchi-2.19.0.zip` from the
    [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. Extract it and run the installer:
 
    ```bash
    # macOS / Linux
-   unzip opencode-codotchi-2.18.0.zip && cd opencode-codotchi-2.18.0
+   unzip opencode-codotchi-2.19.0.zip && cd opencode-codotchi-2.18.0
    node bin/install.js --install
    ```
 
    ```powershell
    # Windows (PowerShell)
-   Expand-Archive opencode-codotchi-2.18.0.zip; cd opencode-codotchi-2.18.0
+   Expand-Archive opencode-codotchi-2.19.0.zip; cd opencode-codotchi-2.18.0
    node bin/install.js --install
    ```
 
@@ -150,6 +157,7 @@ codotchi/
 ├── claude-desktop-codotchi/ Claude Desktop integration (.mcpb bundle, ASCII-art pet)
 │   ├── src/                 server.ts, tools.ts, state.ts, gameEngine.ts, asciiArt.ts
 │   └── scripts/             build.mjs + bundle-mcpb.mjs
+├── leaderboard/             GitHub Pages leaderboard (scores.json + index.html)
 ├── archive/                 Snapshots of previous versions
 └── developer_notes/         Dev-facing docs (changelog, design notes, sprites)
     ├── VERSIONS.md          Changelog
@@ -171,7 +179,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.18.0.vsix
+# produces codotchi-2.19.0.vsix
 ```
 
 ### JetBrains plugin
@@ -187,7 +195,7 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.18.0.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.19.0.zip
 ```
 
 ## Version history
