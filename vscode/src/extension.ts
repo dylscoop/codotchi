@@ -165,7 +165,9 @@ export function activate(context: vscode.ExtensionContext): void {
     const devModeActive =
       cfg2.get<boolean>("devModeEnabled", false) &&
       cfg2.get<string>("developerPasscode", "") === "1234";
-    if (!state.alive && !devModeActive) {
+    if (state.alive) {
+      lastRunDiedAt = null; // reset so the next death gets a fresh timestamp
+    } else if (!devModeActive) {
       const elapsed = state.spawnedAt > 0 ? Date.now() - state.spawnedAt : 0;
       const prevElapsed = currentHighScore
         ? currentHighScore.diedAt - currentHighScore.spawnedAt
@@ -187,8 +189,12 @@ export function activate(context: vscode.ExtensionContext): void {
         };
         saveHighScore(context, currentHighScore);
       }
-      // Track diedAt for leaderboard submission (updated on every dead tick so it stays accurate)
-      lastRunDiedAt = currentHighScore?.diedAt ?? Date.now();
+      // Capture actual death time of THIS run on the first dead tick only.
+      // Using currentHighScore.diedAt would be wrong when the current run isn't
+      // a new record — it would reference the previous run's death time.
+      if (lastRunDiedAt === null) {
+        lastRunDiedAt = Date.now();
+      }
     }
 
     sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter(), getDefaultPetName());
