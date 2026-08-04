@@ -701,6 +701,8 @@ class CodotchiPlugin : Disposable {
      * Mark that user activity has just occurred. Called by [CodotchiTabSwitchListener]
      * (and any other project-level listener that needs to reset the idle timer).
      */
+    fun isPaused(): Boolean = stateLock.withLock { currentState?.paused ?: false }
+
     fun markActivity() {
         lastActivityTime = System.currentTimeMillis()
     }
