@@ -138,6 +138,12 @@ class CodotchiPlugin : Disposable {
     private var tickFuture: ScheduledFuture<*>? = null
     private var messageBusConnection: MessageBusConnection? = null
 
+    // Live rank cache — refreshed at most every 5 minutes from scores.json.
+    private data class RankCache(val rank: Int, val total: Int, val at: Long)
+    @Volatile private var rankCache: RankCache? = null
+    private val RANK_CACHE_TTL_MS = 5 * 60_000L
+    private val SCORES_JSON_URL = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/scores.json"
+
     /** Background thread running the JVM WatchService for cross-window file sync. */
     @Volatile private var fileWatcherThread: Thread? = null
     /** Background thread watching .git/COMMIT_EDITMSG for commit events. */
@@ -597,6 +603,14 @@ class CodotchiPlugin : Disposable {
                     return@withLock
                 }
 
+                "toggle_live_subscribe" -> {
+                    shouldBroadcast = true
+                    val props = com.intellij.ide.util.PropertiesComponent.getInstance()
+                    val current = props.getBoolean("codotchi.liveSubscribed", false)
+                    props.setValue("codotchi.liveSubscribed", !current)
+                    return@withLock
+                }
+
                 "reset_high_score" -> {
                     currentHighScore = null
                     service<CodotchiPersistence>().clearHighScore()
@@ -703,6 +717,36 @@ class CodotchiPlugin : Disposable {
      */
     fun isPaused(): Boolean = stateLock.withLock { currentState?.paused ?: false }
 
+    /** Fetch live rank in the background; result stored in [rankCache]. */
+    private fun fetchLiveRankAsync(ageDays: Int) {
+        val now = System.currentTimeMillis()
+        val cached = rankCache
+        if (cached != null && now - cached.at < RANK_CACHE_TTL_MS) return
+        AppExecutorUtil.getAppExecutorService().execute {
+            try {
+                val url = java.net.URL(SCORES_JSON_URL)
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+                conn.setRequestProperty("Accept", "application/json")
+                conn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                if (conn.responseCode != 200) return@execute
+                val text = conn.inputStream.bufferedReader().readText()
+                @Suppress("UNCHECKED_CAST")
+                val parsed = Gson().fromJson(text, Any::class.java)
+                val scoresList: List<Map<String, Any>> = when (parsed) {
+                    is List<*> -> parsed as List<Map<String, Any>>
+                    is Map<*, *> -> (parsed["scores"] as? List<Map<String, Any>>) ?: emptyList()
+                    else -> emptyList()
+                }
+                val rank = scoresList.count { (it["ageDays"] as? Number)?.toInt()?.let { d -> d > ageDays } == true } + 1
+                rankCache = RankCache(rank, scoresList.size + 1, System.currentTimeMillis())
+                // Re-broadcast so the sidebar picks up the new rank immediately
+                broadcastState()
+            } catch (_: Exception) { /* network failure — keep stale cache */ }
+        }
+    }
+
     fun markActivity() {
         lastActivityTime = System.currentTimeMillis()
     }
@@ -805,9 +849,14 @@ class CodotchiPlugin : Disposable {
         val devMode = lastDevMode
         val unlockedCharacter2 = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.spriteType
         val defaultPetName2 = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.defaultName ?: "Codotchi"
+        val cached2 = rankCache
+        val liveRank2 = if (state != null && state.alive && cached2 != null) cached2.rank else null
+        val liveTotalScores2 = if (state != null && state.alive && cached2 != null) cached2.total else null
+        val liveSubscribed2 = com.intellij.ide.util.PropertiesComponent.getInstance()
+            .getBoolean("codotchi.liveSubscribed", false)
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2) }
                 statusWidget?.update(state)
             }
         }
@@ -1065,9 +1114,18 @@ class CodotchiPlugin : Disposable {
             lastRescueNotifyMs = 0L
         }
 
+        // Kick off a background rank refresh if the cache is stale
+        if (state != null && state.alive) { fetchLiveRankAsync(state.ageDays) }
+
+        val cached = rankCache
+        val liveRank = if (state != null && state.alive && cached != null) cached.rank else null
+        val liveTotalScores = if (state != null && state.alive && cached != null) cached.total else null
+        val liveSubscribed = com.intellij.ide.util.PropertiesComponent.getInstance()
+            .getBoolean("codotchi.liveSubscribed", false)
+
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed) }
                 statusWidget?.update(state)
             }
         }

@@ -185,6 +185,13 @@ export class SidebarProvider
    */
   private copilotNoSessionHintShown = false;
 
+  // Live rank cache — refreshed at most every 5 minutes.
+  private static readonly RANK_CACHE_TTL_MS = 5 * 60 * 1000;
+  private rankCache: { rank: number; total: number; at: number } | null = null;
+  // URL for fetching live rank data from the leaderboard branch.
+  private static readonly SCORES_JSON_URL =
+    `https://raw.githubusercontent.com/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/leaderboard/leaderboard/scores.json`;
+
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly statusBar: StatusBarManager,
@@ -543,6 +550,17 @@ export class SidebarProvider
         void vscode.env.openExternal(vscode.Uri.parse(LEADERBOARD_PAGES_URL));
         return;
 
+      case "toggle_live_subscribe": {
+        const subscribed = this.context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
+        void this.context.globalState.update("leaderboardLiveSubscribed", !subscribed);
+        // Re-broadcast current state so the sidebar button label updates.
+        const s = this.getCurrentState();
+        if (s !== null) {
+          this.onStateUpdate(s);
+        }
+        return;
+      }
+
       case "token_cost": {
         if (state === null) { return; }
         // Apply and broadcast the energy/happiness cost first, then show the
@@ -653,18 +671,28 @@ export class SidebarProvider
    * @param unlockedCharacter - spriteType of the unlocked custom character, or null.
    */
   postState(state: PetState, highScore: HighScore | null, devMode: boolean, unlockedCharacter: string | null = null, defaultPetName: string = "Codotchi"): void {
-    if (this.webviewView) {
-      void this.webviewView.webview.postMessage({
-        type: "stateUpdate",
-        state,
-        mealsGivenThisCycle: this.mealsGivenThisCycle,
-        highScore,
-        devMode,
-        unlockedCharacter,
-        defaultPetName,
-        leaderboardAvailable: true,
-      });
-    }
+    if (!this.webviewView) { return; }
+
+    // Kick off a background rank refresh if the cache is stale; use whatever
+    // is cached right now so the message doesn't block on a network call.
+    if (state.alive) { void this.fetchLiveRank(state.ageDays); }
+
+    const liveSubscribed = this.context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
+    const cached = this.rankCache;
+
+    void this.webviewView.webview.postMessage({
+      type: "stateUpdate",
+      state,
+      mealsGivenThisCycle: this.mealsGivenThisCycle,
+      highScore,
+      devMode,
+      unlockedCharacter,
+      defaultPetName,
+      leaderboardAvailable: true,
+      liveRank: (state.alive && cached) ? cached.rank : null,
+      liveTotalScores: (state.alive && cached) ? cached.total : null,
+      liveSubscribed,
+    });
   }
 
   /**
@@ -788,6 +816,94 @@ export class SidebarProvider
       }
     } catch {
       postResult("error", "Unexpected error during submission.");
+    }
+  }
+
+  /** Fetch scores.json and compute current rank; result is cached for 5 minutes. */
+  async fetchLiveRank(ageDays: number): Promise<void> {
+    const now = Date.now();
+    if (this.rankCache && (now - this.rankCache.at) < SidebarProvider.RANK_CACHE_TTL_MS) {
+      return; // still fresh
+    }
+    try {
+      const res = await fetch(SidebarProvider.SCORES_JSON_URL, {
+        headers: { "Accept": "application/json", "User-Agent": "Codotchi-VSCode" },
+      });
+      if (!res.ok) { return; }
+      const json = await res.json() as { scores?: Array<{ ageDays: number }> } | Array<{ ageDays: number }>;
+      const scores: Array<{ ageDays: number }> = Array.isArray(json) ? json : (json.scores ?? []);
+      const rank = scores.filter(s => s.ageDays > ageDays).length + 1;
+      this.rankCache = { rank, total: scores.length + 1, at: now };
+    } catch {
+      // Network failure — keep stale cache if available
+    }
+  }
+
+  /** Push current pet state to leaderboard/live.json on the leaderboard branch. */
+  async pushLiveScore(state: PetState): Promise<void> {
+    if (!state.alive) { return; }
+    try {
+      const session = await vscode.authentication.getSession(
+        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: false }
+      );
+      if (!session) { return; }
+
+      // Fetch GitHub username
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: {
+          "Authorization": `token ${session.accessToken}`,
+          "Accept": "application/json",
+          "User-Agent": "Codotchi-VSCode",
+        },
+      });
+      if (!userRes.ok) { return; }
+      const userBody = await userRes.json() as Record<string, unknown>;
+      const username = String(userBody.login ?? "");
+      if (!username) { return; }
+
+      const payload = {
+        username,
+        petName: state.name,
+        ageDays: state.ageDays,
+        stage: state.stage,
+        petType: state.petType,
+        updatedAt: Date.now(),
+      };
+      const contentBase64 = Buffer.from(JSON.stringify(payload, null, 2), "utf8").toString("base64");
+
+      // Get current SHA so we can update the file (not create a duplicate).
+      const getUrl = `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/contents/leaderboard/live.json?ref=leaderboard`;
+      const getRes = await fetch(getUrl, {
+        headers: {
+          "Authorization": `token ${session.accessToken}`,
+          "Accept": "application/vnd.github+json",
+          "User-Agent": "Codotchi-VSCode",
+        },
+      });
+      let sha: string | undefined;
+      if (getRes.ok) {
+        const getBody = await getRes.json() as Record<string, unknown>;
+        sha = typeof getBody.sha === "string" ? getBody.sha : undefined;
+      }
+
+      const putUrl = `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/contents/leaderboard/live.json`;
+      await fetch(putUrl, {
+        method: "PUT",
+        headers: {
+          "Authorization": `token ${session.accessToken}`,
+          "Accept": "application/vnd.github+json",
+          "Content-Type": "application/json",
+          "User-Agent": "Codotchi-VSCode",
+        },
+        body: JSON.stringify({
+          message: `live: update ${username}'s run (${state.ageDays}d ${state.stage})`,
+          content: contentBase64,
+          branch: "leaderboard",
+          ...(sha ? { sha } : {}),
+        }),
+      });
+    } catch {
+      // Live push is best-effort; never surface errors to the user
     }
   }
 

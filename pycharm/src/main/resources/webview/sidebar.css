@@ -241,6 +241,15 @@ body.font-large  { font-size: 16px; }
   letter-spacing: 0.5px;
 }
 
+/* ── Live rank indicator ── */
+.rank-display {
+  font-size: 0.80em;
+  font-style: italic;
+  opacity: 0.55;
+  text-align: center;
+  margin-top: 2px;
+}
+
 /* ── Button grid ── */
 .btn-grid {
   display: grid;

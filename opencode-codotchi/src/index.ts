@@ -835,6 +835,26 @@ let pendingNotification: string | null = null;
 // to the details panel via output.output.
 let lastToolOutput = "";
 
+// Live rank cache — refreshed at most every 5 minutes from leaderboard/scores.json.
+let liveRankCache: { rank: number; total: number; at: number } | null = null;
+const RANK_CACHE_TTL_MS_OC = 5 * 60 * 1000;
+const SCORES_JSON_URL_OC = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/scores.json";
+
+async function refreshLiveRank(ageDays: number): Promise<void> {
+  const now = Date.now();
+  if (liveRankCache && now - liveRankCache.at < RANK_CACHE_TTL_MS_OC) { return; }
+  try {
+    const res = await fetch(SCORES_JSON_URL_OC);
+    if (!res.ok) { return; }
+    const json = await res.json() as Record<string, unknown> | Array<unknown>;
+    const scores: Array<{ ageDays?: number }> = Array.isArray(json)
+      ? (json as Array<{ ageDays?: number }>)
+      : ((json as Record<string, unknown>).scores as Array<{ ageDays?: number }> ?? []);
+    const rank = scores.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
+    liveRankCache = { rank, total: scores.length + 1, at: now };
+  } catch { /* network failure — keep stale */ }
+}
+
 function queueNotification(msg: string): void {
   // If a notification is already pending, append (newline-separated)
   pendingNotification = pendingNotification ? pendingNotification + "\n" + msg : msg;
@@ -862,15 +882,27 @@ function artHeader(): string {
   if (!terminalEnabled) { return ""; }
   const active = getActivePets();
   if (active.length === 0) { return ""; }
-  return active
-    .filter(p => p.state.alive)
+  const alivePets = active.filter(p => p.state.alive);
+  if (alivePets.length === 0) { return ""; }
+
+  // Trigger a background rank refresh (fire-and-forget) on each artHeader call.
+  const firstAlive = alivePets[0];
+  void refreshLiveRank(firstAlive.state.ageDays ?? 0);
+
+  const bubbles = alivePets
     .map(p => {
       const _1h0 = lastHourUsage();
       const { message: speech, bubbleColor } = buildContextualSpeech(p.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h0.costUSD, _1h0.tokens, dailyMessages);
       const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
       return buildSpeechBubble(p.state.stage, p.state.mood, speech, p.state.name, p.state.spriteType, ideLabel, bubbleColor);
     })
-    .join("\n") + "\n";
+    .join("\n");
+
+  const rankLine = liveRankCache
+    ? `  Rank #${liveRankCache.rank} of ${liveRankCache.total} on the leaderboard\n`
+    : "";
+
+  return bubbles + "\n" + rankLine;
 }
 
 // ---------------------------------------------------------------------------

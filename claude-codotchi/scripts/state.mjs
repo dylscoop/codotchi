@@ -330,6 +330,27 @@ export function saveUsageCache(data) {
   fs.writeFileSync(usageCachePath(), JSON.stringify(data, null, 2), "utf8");
 }
 
+export function rankCachePath() {
+  return path.join(dataDir(), "codotchi-rank-cache.json");
+}
+
+/** Returns the cached { at, rank, total }, or null. */
+export function loadRankCache() {
+  const p = rankCachePath();
+  if (!fs.existsSync(p)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(p, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+export function saveRankCache(data) {
+  const dir = dataDir();
+  ensureDir(dir);
+  fs.writeFileSync(rankCachePath(), JSON.stringify(data, null, 2), "utf8");
+}
+
 // ---------------------------------------------------------------------------
 // Config (cost thresholds, display toggle)
 // ---------------------------------------------------------------------------
