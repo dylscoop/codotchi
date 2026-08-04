@@ -98,6 +98,7 @@
   const leaderboardStatus  = document.getElementById("leaderboard-status");
   const btnViewLB          = document.getElementById("btn-view-leaderboard");
   const rankDisplay        = document.getElementById("rank-display");
+  const btnViewLBLive      = document.getElementById("btn-view-leaderboard-live");
   const btnLiveSubscribe   = document.getElementById("btn-live-subscribe");
   const setupHighScore   = document.getElementById("setup-high-score");
   const setupHsStats     = document.getElementById("setup-hs-stats");
@@ -277,6 +278,13 @@
 
   if (btnViewLB) {
     btnViewLB.addEventListener("click", function (e) {
+      e.preventDefault();
+      vscode.postMessage({ command: "open_leaderboard_url" });
+    });
+  }
+
+  if (btnViewLBLive) {
+    btnViewLBLive.addEventListener("click", function (e) {
       e.preventDefault();
       vscode.postMessage({ command: "open_leaderboard_url" });
     });
@@ -2620,9 +2628,11 @@
       devModeBanner.classList.toggle("hidden", !message.devMode);
     }
 
-    // Live rank indicator
+    // Live rank section — only visible when liveRankEnabled setting is true
+    const liveEnabled = !!message.liveRankEnabled;
+
     if (rankDisplay) {
-      if (state && state.alive && message.liveRank != null) {
+      if (liveEnabled && state && state.alive && message.liveRank != null) {
         rankDisplay.textContent = "Rank #" + message.liveRank + " of " + message.liveTotalScores + " on the leaderboard";
         rankDisplay.classList.remove("hidden");
       } else {
@@ -2630,9 +2640,17 @@
       }
     }
 
+    if (btnViewLBLive) {
+      if (liveEnabled && state && state.alive) {
+        btnViewLBLive.classList.remove("hidden");
+      } else {
+        btnViewLBLive.classList.add("hidden");
+      }
+    }
+
     // Live subscribe button
     if (btnLiveSubscribe) {
-      if (state && state.alive) {
+      if (liveEnabled && state && state.alive) {
         btnLiveSubscribe.textContent = message.liveSubscribed
           ? "Unsubscribe live progress"
           : "Push live progress";

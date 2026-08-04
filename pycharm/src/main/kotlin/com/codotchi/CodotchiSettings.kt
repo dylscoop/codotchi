@@ -69,6 +69,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var tokenCostIncludeClaudeCode: Boolean = true
         var tokenCostIncludeOpenCode: Boolean = true
         var tokenCostIncludeCopilot: Boolean = false
+        var showLiveRank: Boolean = false
     }
 
     private var _state = State()
@@ -182,4 +183,8 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var tokenCostIncludeCopilot: Boolean
         get() = _state.tokenCostIncludeCopilot
         set(v) { _state.tokenCostIncludeCopilot = v }
+
+    var showLiveRank: Boolean
+        get() = _state.showLiveRank
+        set(v) { _state.showLiveRank = v }
 }

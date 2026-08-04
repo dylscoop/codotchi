@@ -673,9 +673,11 @@ export class SidebarProvider
   postState(state: PetState, highScore: HighScore | null, devMode: boolean, unlockedCharacter: string | null = null, defaultPetName: string = "Codotchi"): void {
     if (!this.webviewView) { return; }
 
-    // Kick off a background rank refresh if the cache is stale; use whatever
-    // is cached right now so the message doesn't block on a network call.
-    if (state.alive) { void this.fetchLiveRank(state.ageDays); }
+    const cfg = vscode.workspace.getConfiguration("codotchi");
+    const liveRankEnabled = cfg.get<boolean>("leaderboard.showLiveRank", false);
+
+    // Only fetch rank when the feature is enabled.
+    if (liveRankEnabled && state.alive) { void this.fetchLiveRank(state.ageDays); }
 
     const liveSubscribed = this.context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
     const cached = this.rankCache;
@@ -689,8 +691,9 @@ export class SidebarProvider
       unlockedCharacter,
       defaultPetName,
       leaderboardAvailable: true,
-      liveRank: (state.alive && cached) ? cached.rank : null,
-      liveTotalScores: (state.alive && cached) ? cached.total : null,
+      liveRankEnabled,
+      liveRank: (liveRankEnabled && state.alive && cached) ? cached.rank : null,
+      liveTotalScores: (liveRankEnabled && state.alive && cached) ? cached.total : null,
       liveSubscribed,
     });
   }

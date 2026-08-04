@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.19.4",
+  "version": "2.19.5",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -257,6 +257,11 @@
           "type": "boolean",
           "default": false,
           "description": "When enabled via the sidebar toggle button, pushes your pet's current age to the leaderboard hourly while it is alive. Requires a GitHub sign-in (prompted on first push)."
+        },
+        "codotchi.leaderboard.showLiveRank": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a live rank indicator ('You'd be rank #X') and leaderboard link while your pet is alive. Fetches the public leaderboard every 5 minutes. Disabled by default."
         }
       }
     }
