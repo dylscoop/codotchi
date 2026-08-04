@@ -2628,11 +2628,9 @@
       devModeBanner.classList.toggle("hidden", !message.devMode);
     }
 
-    // Live rank section — only visible when liveRankEnabled setting is true
-    const liveEnabled = !!message.liveRankEnabled;
-
+    // Rank visible only when subscribed (opted in via push button).
     if (rankDisplay) {
-      if (liveEnabled && state && state.alive && message.liveRank != null) {
+      if (message.liveSubscribed && state && state.alive && message.liveRank != null) {
         rankDisplay.textContent = "Rank #" + message.liveRank + " of " + message.liveTotalScores + " on the leaderboard";
         rankDisplay.classList.remove("hidden");
       } else {
@@ -2641,16 +2639,16 @@
     }
 
     if (btnViewLBLive) {
-      if (liveEnabled && state && state.alive) {
+      if (state && state.alive) {
         btnViewLBLive.classList.remove("hidden");
       } else {
         btnViewLBLive.classList.add("hidden");
       }
     }
 
-    // Live subscribe button
+    // Live subscribe button — always shown when alive.
     if (btnLiveSubscribe) {
-      if (liveEnabled && state && state.alive) {
+      if (state && state.alive) {
         btnLiveSubscribe.textContent = message.liveSubscribed
           ? "Unsubscribe live progress"
           : "Push live progress";

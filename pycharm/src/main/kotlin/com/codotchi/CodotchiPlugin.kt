@@ -849,15 +849,14 @@ class CodotchiPlugin : Disposable {
         val devMode = lastDevMode
         val unlockedCharacter2 = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.spriteType
         val defaultPetName2 = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.defaultName ?: "Codotchi"
-        val liveRankEnabled2 = service<CodotchiSettings>().showLiveRank
-        val cached2 = rankCache
-        val liveRank2 = if (liveRankEnabled2 && state != null && state.alive && cached2 != null) cached2.rank else null
-        val liveTotalScores2 = if (liveRankEnabled2 && state != null && state.alive && cached2 != null) cached2.total else null
         val liveSubscribed2 = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getBoolean("codotchi.liveSubscribed", false)
+        val cached2 = rankCache
+        val liveRank2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.rank else null
+        val liveTotalScores2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.total else null
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2, liveRankEnabled2) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2) }
                 statusWidget?.update(state)
             }
         }
@@ -1115,20 +1114,19 @@ class CodotchiPlugin : Disposable {
             lastRescueNotifyMs = 0L
         }
 
-        val liveRankEnabled = service<CodotchiSettings>().showLiveRank
-
-        // Kick off a background rank refresh if the cache is stale
-        if (liveRankEnabled && state != null && state.alive) { fetchLiveRankAsync(state.ageDays) }
-
-        val cached = rankCache
-        val liveRank = if (liveRankEnabled && state != null && state.alive && cached != null) cached.rank else null
-        val liveTotalScores = if (liveRankEnabled && state != null && state.alive && cached != null) cached.total else null
         val liveSubscribed = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getBoolean("codotchi.liveSubscribed", false)
 
+        // Kick off a background rank refresh when subscribed and alive.
+        if (liveSubscribed && state != null && state.alive) { fetchLiveRankAsync(state.ageDays) }
+
+        val cached = rankCache
+        val liveRank = if (liveSubscribed && state != null && state.alive && cached != null) cached.rank else null
+        val liveTotalScores = if (liveSubscribed && state != null && state.alive && cached != null) cached.total else null
+
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveRankEnabled) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed) }
                 statusWidget?.update(state)
             }
         }
