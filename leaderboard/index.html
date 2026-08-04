@@ -87,6 +87,50 @@
     @media (max-width: 600px) {
       .col-elapsed, .col-submitted { display: none; }
     }
+    .autorefresh-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      font-size: 0.85rem;
+    }
+    .autorefresh-banner span { flex: 1; min-width: 0; }
+    .banner-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.2rem 0.65rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .banner-btn:hover { background: rgba(255,255,255,0.06); }
+    .banner-btn-muted { color: var(--muted); }
+    .refresh-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.6rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .refresh-now-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+      color: var(--accent);
+    }
+    .refresh-now-btn:hover { background: rgba(88,166,255,0.1); }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -97,6 +141,12 @@
         Best runs from <a href="https://github.com/dylscoop/codotchi">Codotchi</a> — the virtual pet that lives in your IDE.
       </p>
     </header>
+
+    <div id="autorefresh-banner" class="autorefresh-banner hidden">
+      <span>Auto-refresh is on — this page reloads scores every hour automatically.</span>
+      <button id="btn-keep-refresh" class="banner-btn">Keep it</button>
+      <button id="btn-disable-refresh" class="banner-btn banner-btn-muted">Disable</button>
+    </div>
 
     <div class="how-to">
       <strong>How to submit:</strong> Play Codotchi in VS Code or PyCharm.
@@ -121,6 +171,10 @@
         <tr><td colspan="8" class="empty">Loading scores…</td></tr>
       </tbody>
     </table>
+    <div class="refresh-bar">
+      <span id="last-updated"></span>
+      <button id="btn-refresh-now" class="refresh-now-btn">Refresh now</button>
+    </div>
   </div>
 
   <script>
@@ -165,36 +219,88 @@
       return "rank";
     }
 
-    fetch("scores.json")
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        var scores = data.scores || [];
-        var tbody = document.getElementById("leaderboard-body");
+    var AUTOREFRESH_KEY = "codotchi-autorefresh";
+    var autoRefreshTimer = null;
+    var lastLoadedAt = null;
 
-        if (scores.length === 0) {
-          tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">No scores yet — be the first to submit!</td></tr>";
-          return;
-        }
+    function loadScores() {
+      lastLoadedAt = Date.now();
+      updateLastUpdated();
+      fetch("scores.json")
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var scores = data.scores || [];
+          var tbody = document.getElementById("leaderboard-body");
 
-        tbody.innerHTML = scores.map(function(s, i) {
-          var petType = s.petType ? (s.petType.charAt(0).toUpperCase() + s.petType.slice(1)) : "—";
-          var stage   = s.stage   ? (s.stage.charAt(0).toUpperCase()   + s.stage.slice(1))   : "—";
-          return "<tr>" +
-            "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
-            "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "</td>" +
-            "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.githubUsername) + "\" target=\"_blank\">@" + escHtml(s.githubUsername || "—") + "</a></td>" +
-            "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
-            "<td><span class=\"badge\">" + escHtml(petType) + "</span></td>" +
-            "<td>" + escHtml(stage) + "</td>" +
-            "<td class=\"elapsed col-elapsed\">" + formatElapsed(s.spawnedAt, s.diedAt) + "</td>" +
-            "<td class=\"submitted col-submitted\">" + formatDate(s.submittedAt) + "</td>" +
-            "</tr>";
-        }).join("");
-      })
-      .catch(function() {
-        var tbody = document.getElementById("leaderboard-body");
-        tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">Could not load scores. Try refreshing.</td></tr>";
-      });
+          if (scores.length === 0) {
+            tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">No scores yet — be the first to submit!</td></tr>";
+            return;
+          }
+
+          tbody.innerHTML = scores.map(function(s, i) {
+            var petType = s.petType ? (s.petType.charAt(0).toUpperCase() + s.petType.slice(1)) : "—";
+            var stage   = s.stage   ? (s.stage.charAt(0).toUpperCase()   + s.stage.slice(1))   : "—";
+            return "<tr>" +
+              "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
+              "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "</td>" +
+              "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.githubUsername) + "\" target=\"_blank\">@" + escHtml(s.githubUsername || "—") + "</a></td>" +
+              "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
+              "<td><span class=\"badge\">" + escHtml(petType) + "</span></td>" +
+              "<td>" + escHtml(stage) + "</td>" +
+              "<td class=\"elapsed col-elapsed\">" + formatElapsed(s.spawnedAt, s.diedAt) + "</td>" +
+              "<td class=\"submitted col-submitted\">" + formatDate(s.submittedAt) + "</td>" +
+              "</tr>";
+          }).join("");
+        })
+        .catch(function() {
+          var tbody = document.getElementById("leaderboard-body");
+          tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">Could not load scores. Try refreshing.</td></tr>";
+        });
+    }
+
+    function updateLastUpdated() {
+      var el = document.getElementById("last-updated");
+      if (!el || !lastLoadedAt) { return; }
+      var mins = Math.round((Date.now() - lastLoadedAt) / 60000);
+      el.textContent = mins === 0 ? "Just updated" : "Updated " + mins + "m ago";
+    }
+
+    function startAutoRefresh() {
+      autoRefreshTimer = setInterval(loadScores, 60 * 60 * 1000);
+      setInterval(updateLastUpdated, 60000);
+    }
+
+    function stopAutoRefresh() {
+      if (autoRefreshTimer) {
+        clearInterval(autoRefreshTimer);
+        autoRefreshTimer = null;
+      }
+    }
+
+    // Initialise: check stored preference
+    var pref = localStorage.getItem(AUTOREFRESH_KEY);
+    if (pref !== "false") {
+      startAutoRefresh();
+      if (pref === null) {
+        // First visit — show the opt-out banner
+        document.getElementById("autorefresh-banner").classList.remove("hidden");
+      }
+    }
+
+    loadScores();
+
+    document.getElementById("btn-keep-refresh").addEventListener("click", function() {
+      localStorage.setItem(AUTOREFRESH_KEY, "true");
+      document.getElementById("autorefresh-banner").classList.add("hidden");
+    });
+    document.getElementById("btn-disable-refresh").addEventListener("click", function() {
+      localStorage.setItem(AUTOREFRESH_KEY, "false");
+      document.getElementById("autorefresh-banner").classList.add("hidden");
+      stopAutoRefresh();
+    });
+    document.getElementById("btn-refresh-now").addEventListener("click", function() {
+      loadScores();
+    });
 
     function escHtml(s) {
       return String(s)
