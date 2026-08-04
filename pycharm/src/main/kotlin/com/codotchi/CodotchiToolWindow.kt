@@ -120,19 +120,35 @@ class CodotchiToolWindow : ToolWindowFactory {
             }
         )
 
-        // Title bar actions: Refresh (sync state from disk) + Settings gear.
+        // Title bar actions: Refresh + Pause/Resume + Settings gear.
         // Both are wired here via the supported setTitleActions() API.
         // The CodotchiToolWindowToolbar XML group was removed in 2.17.4 because
         // the platform group "ToolWindowToolbar" it relied on was removed in
         // PyCharm 2026.x, causing a PluginException on load.
         val refreshAction = ActionManager.getInstance().getAction("com.codotchi.Refresh")
+        val pauseAction = object : AnAction() {
+            override fun actionPerformed(e: AnActionEvent) {
+                plugin.handleCommand(mapOf("command" to "pause"))
+            }
+            override fun update(e: AnActionEvent) {
+                if (plugin.isPaused()) {
+                    e.presentation.icon = AllIcons.Actions.Execute
+                    e.presentation.text = "Resume game"
+                } else {
+                    e.presentation.icon = AllIcons.Actions.Pause
+                    e.presentation.text = "Pause game"
+                }
+            }
+            override fun getActionUpdateThread() =
+                com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
+        }
         val settingsAction = object : AnAction("Codotchi Settings", "Open Codotchi settings", AllIcons.General.Settings) {
             override fun actionPerformed(e: AnActionEvent) {
                 ShowSettingsUtil.getInstance()
                     .showSettingsDialog(project, CodotchiConfigurable::class.java)
             }
         }
-        toolWindow.setTitleActions(listOfNotNull(refreshAction, settingsAction))
+        toolWindow.setTitleActions(listOfNotNull(refreshAction, pauseAction, settingsAction))
     }
 }
 
