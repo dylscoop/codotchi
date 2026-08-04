@@ -1,6 +1,34 @@
 # Version History
 
-## v2.19.3 — current
+## v2.19.4 — current
+
+### Changes from v2.19.3 (live rank indicator + subscribe toggle — branch feat/live-rank-indicator)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.html` | feat: add `#rank-display` div below info-line and `#btn-live-subscribe` button above Menu link |
+| `vscode/media/sidebar.css` | feat: add `.rank-display` style (small italic muted text, centred) |
+| `vscode/media/sidebar.js` | feat: DOM refs for rank display and subscribe button; update rank text and subscribe label from `stateUpdate` message; click handler posts `toggle_live_subscribe` |
+| `vscode/src/sidebarProvider.ts` | feat: `fetchLiveRank()` with 5-min TTL cache; `pushLiveScore()` via GitHub Contents API to `leaderboard/live.json`; include `liveRank`, `liveTotalScores`, `liveSubscribed` in `postState`; handle `toggle_live_subscribe` command |
+| `vscode/src/extension.ts` | feat: hourly `setInterval` to call `pushLiveScore()` when user is subscribed and pet is alive |
+| `vscode/package.json` | feat: add `codotchi.leaderboard.livePush` setting |
+| `pycharm/src/main/resources/webview/sidebar.html` | feat: same HTML additions as VS Code |
+| `pycharm/src/main/resources/webview/sidebar.css` | feat: same `.rank-display` style as VS Code |
+| `pycharm/src/main/resources/webview/sidebar.js` | feat: same JS additions as VS Code |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | feat: extend `postState()` signature with `liveRank`, `liveTotalScores`, `liveSubscribed`; include in JS payload |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: `fetchLiveRankAsync()` on pooled thread with 5-min cache; pass rank to `postState()`; handle `toggle_live_subscribe` command via `PropertiesComponent` |
+| `claude-codotchi/scripts/state.mjs` | feat: `loadRankCache()` / `saveRankCache()` using `codotchi-rank-cache.json` in dataDir |
+| `claude-codotchi/scripts/statusline.mjs` | feat: import rank cache fns; fetch scores.json (5-min cache); append rank line to outputs |
+| `opencode-codotchi/src/index.ts` | feat: `refreshLiveRank()` async fn with module-level cache; trigger on each `artHeader()` call; append rank line to output |
+| `vscode/package.json` | chore: bump version to 2.19.4 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.19.4 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.19.4 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.19.4 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.19.4 |
+
+---
+
+## v2.19.3 — previous
 
 ### Changes from v2.19.2 (PyCharm pause button — branch fix/pycharm-pause-button)
 
