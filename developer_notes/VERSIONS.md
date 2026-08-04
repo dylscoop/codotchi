@@ -1,6 +1,23 @@
 # Version History
 
-## v2.19.2 — current
+## v2.19.3 — current
+
+### Changes from v2.19.2 (PyCharm pause button — branch fix/pycharm-pause-button)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiToolWindow.kt` | fix: BUGFIX-152 — add Pause/Resume `AnAction` to `setTitleActions()` between Refresh and Settings; icon toggles between `AllIcons.Actions.Pause` and `AllIcons.Actions.Execute` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: BUGFIX-152 — add `isPaused()` public helper reading `currentState?.paused` under `stateLock` |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-152 |
+| `vscode/package.json` | chore: bump version to 2.19.3 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.19.3 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.19.3 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.19.3 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.19.3 |
+
+---
+
+## v2.19.2 — previous
 
 ### Changes from v2.19.1 (live leaderboard auto-refresh + admin delete — branch feat/live-leaderboard-autorefresh)
 
