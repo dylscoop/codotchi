@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.19.3",
+  "version": "2.19.4",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -252,6 +252,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show a one-time notification about the leaderboard when your pet first dies. The leaderboard page also auto-refreshes every hour when left open in a browser — this can be disabled directly on the leaderboard page."
+        },
+        "codotchi.leaderboard.livePush": {
+          "type": "boolean",
+          "default": false,
+          "description": "When enabled via the sidebar toggle button, pushes your pet's current age to the leaderboard hourly while it is alive. Requires a GitHub sign-in (prompted on first push)."
         }
       }
     }
