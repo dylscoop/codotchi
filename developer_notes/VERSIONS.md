@@ -1,6 +1,25 @@
 # Version History
 
-## v2.18.0 — current
+## v2.19.2 — current
+
+### Changes from v2.19.1 (live leaderboard auto-refresh + admin delete — branch feat/live-leaderboard-autorefresh)
+
+| File | What changed |
+|------|-------------|
+| `leaderboard/index.html` | feat: extract `loadScores()`, add hourly `setInterval` auto-refresh, `localStorage` opt-out banner (first-visit only), "Last updated" counter, "Refresh now" button |
+| `vscode/package.json` | feat: add `codotchi.leaderboard.autoRefresh` boolean setting (default `true`) |
+| `vscode/src/extension.ts` | feat: fire one-time VS Code info notification on first pet death when `leaderboard.autoRefresh` is enabled; tracked via `globalState("leaderboardDeathNotifShown")` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: fire one-time IDEA information notification on first pet death; tracked via `PropertiesComponent("codotchi.leaderboardDeathNotifShown")` |
+| `.github/workflows/delete-leaderboard-score.yml` | feat: add `workflow_dispatch` admin workflow to delete leaderboard entries by `github_username` and optional `spawned_at`; only repo owners/collaborators with write access can trigger |
+| `vscode/package.json` | chore: bump version to 2.19.2 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.19.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.19.2 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.19.2 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.19.2 |
+
+---
+
+## v2.18.0 — previous
 
 ### Changes from v2.17.5 (docs restructure + PyCharm icon — branch feat/docs-restructure-2.18.0)
 

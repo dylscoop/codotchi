@@ -1,0 +1,103 @@
+name: Delete Leaderboard Score (Admin)
+
+on:
+  workflow_dispatch:
+    inputs:
+      github_username:
+        description: 'GitHub username of the score to delete'
+        required: true
+        type: string
+      spawned_at:
+        description: 'spawnedAt epoch-ms of the specific run to delete (optional — omit to delete all entries for the user)'
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: leaderboard-update
+  cancel-in-progress: false
+
+jobs:
+  delete:
+    name: Delete score entry
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout leaderboard branch
+        uses: actions/checkout@v4
+        with:
+          ref: leaderboard
+          fetch-depth: 1
+
+      - name: Remove matching entries
+        id: delete
+        env:
+          TARGET_USER: ${{ github.event.inputs.github_username }}
+          TARGET_SPAWNED_AT: ${{ github.event.inputs.spawned_at }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, sys
+
+          target_user      = os.environ.get("TARGET_USER", "").strip().lower()
+          spawned_at_raw   = os.environ.get("TARGET_SPAWNED_AT", "").strip()
+          target_spawned   = int(spawned_at_raw) if spawned_at_raw else None
+
+          with open("leaderboard/scores.json") as f:
+              data = json.load(f)
+
+          original_count = len(data.get("scores", []))
+          kept = []
+          removed = []
+
+          for s in data.get("scores", []):
+              username_match = s.get("githubUsername", "").lower() == target_user
+              if not username_match:
+                  kept.append(s)
+                  continue
+              if target_spawned is not None and int(s.get("spawnedAt", 0)) != target_spawned:
+                  kept.append(s)
+                  continue
+              removed.append(s)
+
+          if not removed:
+              print(f"No matching entries found for user='{target_user}'" +
+                    (f" spawnedAt={target_spawned}" if target_spawned else "") + ".")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write("deleted=false\n")
+                  f.write(f"count=0\n")
+              sys.exit(0)
+
+          data["scores"] = kept
+
+          with open("leaderboard/scores.json", "w") as f:
+              json.dump(data, f, indent=2)
+              f.write("\n")
+
+          print(f"Removed {len(removed)} entr{'y' if len(removed)==1 else 'ies'} for '{target_user}':")
+          for e in removed:
+              print(f"  {e['petName']} — {e['ageDays']}d (spawnedAt={e['spawnedAt']})")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write("deleted=true\n")
+              f.write(f"count={len(removed)}\n")
+          PYEOF
+
+      - name: Commit deletion
+        if: steps.delete.outputs.deleted == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leaderboard/scores.json
+          git commit -m "leaderboard: remove ${{ github.event.inputs.count || steps.delete.outputs.count }} score(s) for ${{ github.event.inputs.github_username }}"
+          git push origin leaderboard
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.delete.outputs.deleted }}" = "true" ]; then
+            echo "✅ Deleted ${{ steps.delete.outputs.count }} entr(y/ies) for ${{ github.event.inputs.github_username }}."
+          else
+            echo "⚠️ No matching entries found — scores.json unchanged."
+          fi

@@ -1004,6 +1004,27 @@ class CodotchiPlugin : Disposable {
                 }
                 // Track diedAt for leaderboard submission
                 lastRunDiedAt = highScore?.diedAt ?: diedAt
+
+                // One-time leaderboard notification on first death
+                val props = com.intellij.ide.util.PropertiesComponent.getInstance()
+                if (!props.getBoolean("codotchi.leaderboardDeathNotifShown", false)) {
+                    props.setValue("codotchi.leaderboardDeathNotifShown", true)
+                    ApplicationManager.getApplication().invokeLater {
+                        val group = NotificationGroupManager.getInstance()
+                            .getNotificationGroup("Codotchi Attention Calls")
+                            ?: return@invokeLater
+                        val notification = group.createNotification(
+                            "Your Codotchi died! The leaderboard link is on the death screen — the page auto-refreshes every hour.",
+                            NotificationType.INFORMATION
+                        )
+                        notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("View Leaderboard") {
+                            override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+                                com.intellij.ide.BrowserUtil.browse("https://dylscoop.github.io/codotchi/leaderboard/")
+                            }
+                        })
+                        notification.notify(null)
+                    }
+                }
             }
         }
         persistence.lastSaveTimestamp = System.currentTimeMillis()

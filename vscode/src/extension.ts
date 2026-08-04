@@ -194,6 +194,23 @@ export function activate(context: vscode.ExtensionContext): void {
       // a new record — it would reference the previous run's death time.
       if (lastRunDiedAt === null) {
         lastRunDiedAt = Date.now();
+        const cfg3 = vscode.workspace.getConfiguration("codotchi");
+        const notifEnabled = cfg3.get<boolean>("leaderboard.autoRefresh", true);
+        const notifShown = context.globalState.get<boolean>("leaderboardDeathNotifShown", false);
+        if (notifEnabled && !notifShown) {
+          void context.globalState.update("leaderboardDeathNotifShown", true);
+          void vscode.window.showInformationMessage(
+            "Your Codotchi died! The leaderboard link is on the death screen — the page auto-refreshes every hour.",
+            "View Leaderboard",
+            "Disable"
+          ).then(choice => {
+            if (choice === "View Leaderboard") {
+              void vscode.env.openExternal(vscode.Uri.parse("https://dylscoop.github.io/codotchi/leaderboard/"));
+            } else if (choice === "Disable") {
+              void cfg3.update("leaderboard.autoRefresh", false, vscode.ConfigurationTarget.Global);
+            }
+          });
+        }
       }
     }
 

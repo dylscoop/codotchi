@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.19.1",
+  "version": "2.19.2",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -247,6 +247,11 @@
           },
           "default": ["claudeCode", "openCode"],
           "description": "Which sources contribute to the 'Today's Token Cost' bubble. 'claudeCode' and 'openCode' report a dollar cost from local usage logs. 'copilot' reports a GitHub Copilot premium-request quota percentage (no API key needed — you'll be prompted to sign in to GitHub via VS Code's built-in authentication the first time). Select any combination, e.g. just ['copilot'], or all three to show everything at once."
+        },
+        "codotchi.leaderboard.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a one-time notification about the leaderboard when your pet first dies. The leaderboard page also auto-refreshes every hour when left open in a browser — this can be disabled directly on the leaderboard page."
         }
       }
     }
