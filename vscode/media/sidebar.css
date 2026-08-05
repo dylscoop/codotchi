@@ -366,6 +366,22 @@ body.font-large  { font-size: 16px; }
   margin-top: 4px;
 }
 
+.live-push-status {
+  font-size: 0.75em;
+  opacity: 0.5;
+  text-align: center;
+  margin-top: 2px;
+}
+
+.delete-link {
+  font-size: 0.78em;
+  opacity: 0.55;
+  color: var(--vscode-errorForeground, #f48771);
+}
+.delete-link:hover {
+  opacity: 0.85;
+}
+
 /* ── Best-run panel on setup screen ── */
 .setup-high-score {
   border: 1px solid rgba(255,255,255,0.12);

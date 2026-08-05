@@ -15,6 +15,7 @@
       --gold: #ffd700;
       --silver: #c0c0c0;
       --bronze: #cd7f32;
+      --live: #3fb950;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -41,6 +42,28 @@
       color: var(--muted);
     }
     .how-to strong { color: var(--text); }
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 0.6rem 1.2rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      color: var(--muted);
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -69,6 +92,18 @@
     .rank-2 { color: var(--silver); }
     .rank-3 { color: var(--bronze); }
     .pet-name { font-weight: 600; }
+    .live-badge {
+      display: inline-block;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: rgba(63,185,80,0.15);
+      color: var(--live);
+      border: 1px solid rgba(63,185,80,0.3);
+      margin-left: 0.35rem;
+      vertical-align: middle;
+    }
     .github-link { color: var(--accent); text-decoration: none; }
     .github-link:hover { text-decoration: underline; }
     .age { font-variant-numeric: tabular-nums; }
@@ -84,8 +119,13 @@
       color: var(--accent);
       border: 1px solid rgba(88,166,255,0.2);
     }
+    .stale-note {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
     @media (max-width: 600px) {
-      .col-elapsed, .col-submitted { display: none; }
+      .col-elapsed, .col-submitted, .col-updated { display: none; }
     }
     .autorefresh-banner {
       background: var(--surface);
@@ -152,32 +192,81 @@
       <strong>How to submit:</strong> Play Codotchi in VS Code or PyCharm.
       After your pet passes away, click <em>Submit to Leaderboard</em> on the game over screen.
       Your GitHub account is used to authenticate the submission.
+      To appear on <em>Currently Alive</em>, click <em>Push live progress</em> in the sidebar while your pet is alive.
     </div>
 
-    <table id="leaderboard-table">
-      <thead>
-        <tr>
-          <th class="rank">#</th>
-          <th>Pet Name</th>
-          <th>GitHub</th>
-          <th>Age</th>
-          <th>Species</th>
-          <th>Stage</th>
-          <th class="col-elapsed">Real Time</th>
-          <th class="col-submitted">Submitted</th>
-        </tr>
-      </thead>
-      <tbody id="leaderboard-body">
-        <tr><td colspan="8" class="empty">Loading scores…</td></tr>
-      </tbody>
-    </table>
-    <div class="refresh-bar">
-      <span id="last-updated"></span>
-      <button id="btn-refresh-now" class="refresh-now-btn">Refresh now</button>
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-alltime" onclick="switchTab('alltime')">All-time</button>
+      <button class="tab-btn" id="tab-alive" onclick="switchTab('alive')">Currently Alive</button>
+    </div>
+
+    <!-- All-time tab -->
+    <div class="tab-panel active" id="panel-alltime">
+      <table id="leaderboard-table">
+        <thead>
+          <tr>
+            <th class="rank">#</th>
+            <th>Pet Name</th>
+            <th>GitHub</th>
+            <th>Age</th>
+            <th>Species</th>
+            <th>Stage</th>
+            <th class="col-elapsed">Real Time</th>
+            <th class="col-submitted">Submitted</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-body">
+          <tr><td colspan="8" class="empty">Loading scores…</td></tr>
+        </tbody>
+      </table>
+      <div class="refresh-bar">
+        <span id="last-updated-alltime"></span>
+        <button id="btn-refresh-alltime" class="refresh-now-btn">Refresh now</button>
+      </div>
+    </div>
+
+    <!-- Currently Alive tab -->
+    <div class="tab-panel" id="panel-alive">
+      <table id="alive-table">
+        <thead>
+          <tr>
+            <th class="rank">#</th>
+            <th>Pet Name</th>
+            <th>GitHub</th>
+            <th>Age</th>
+            <th>Species</th>
+            <th>Stage</th>
+            <th class="col-updated">Last Seen</th>
+          </tr>
+        </thead>
+        <tbody id="alive-body">
+          <tr><td colspan="7" class="empty">Loading live pets…</td></tr>
+        </tbody>
+      </table>
+      <p class="stale-note">Entries older than 2 hours are hidden. Push hourly from the Codotchi sidebar to stay visible.</p>
+      <div class="refresh-bar">
+        <span id="last-updated-alive"></span>
+        <button id="btn-refresh-alive" class="refresh-now-btn">Refresh now</button>
+      </div>
     </div>
   </div>
 
   <script>
+    var activeTab = "alltime";
+    var lastLoadedAlltime = null;
+    var lastLoadedAlive = null;
+    var autoRefreshTimer = null;
+    var AUTOREFRESH_KEY = "codotchi-autorefresh";
+    var LIVE_STALE_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+    function switchTab(name) {
+      activeTab = name;
+      document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
+      document.querySelectorAll(".tab-panel").forEach(function(p) { p.classList.remove("active"); });
+      document.getElementById("tab-" + name).classList.add("active");
+      document.getElementById("panel-" + name).classList.add("active");
+    }
+
     function formatAge(ageDays) {
       var years = Math.floor(ageDays / 365);
       var days  = ageDays % 365;
@@ -200,6 +289,16 @@
       return parts.join(" ");
     }
 
+    function formatRelativeTime(ts) {
+      if (!ts) { return "—"; }
+      var diff = Date.now() - ts;
+      var mins = Math.floor(diff / 60000);
+      if (mins < 1) { return "just now"; }
+      if (mins < 60) { return mins + "m ago"; }
+      var hrs = Math.floor(mins / 60);
+      return hrs + "h ago";
+    }
+
     function formatDate(ts) {
       if (!ts) { return "—"; }
       return new Date(ts).toISOString().slice(0, 10);
@@ -219,75 +318,121 @@
       return "rank";
     }
 
-    var AUTOREFRESH_KEY = "codotchi-autorefresh";
-    var autoRefreshTimer = null;
-    var lastLoadedAt = null;
+    function capStr(s) {
+      if (!s) { return "—"; }
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function updateLastUpdated(elId, ts) {
+      var el = document.getElementById(elId);
+      if (!el || !ts) { return; }
+      var mins = Math.round((Date.now() - ts) / 60000);
+      el.textContent = mins === 0 ? "Just updated" : "Updated " + mins + "m ago";
+    }
 
     function loadScores() {
-      lastLoadedAt = Date.now();
-      updateLastUpdated();
-      fetch("scores.json")
+      lastLoadedAlltime = Date.now();
+      updateLastUpdated("last-updated-alltime", lastLoadedAlltime);
+      fetch("scores.json?t=" + lastLoadedAlltime)
         .then(function(r) { return r.json(); })
         .then(function(data) {
           var scores = data.scores || [];
           var tbody = document.getElementById("leaderboard-body");
-
           if (scores.length === 0) {
             tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">No scores yet — be the first to submit!</td></tr>";
             return;
           }
-
           tbody.innerHTML = scores.map(function(s, i) {
-            var petType = s.petType ? (s.petType.charAt(0).toUpperCase() + s.petType.slice(1)) : "—";
-            var stage   = s.stage   ? (s.stage.charAt(0).toUpperCase()   + s.stage.slice(1))   : "—";
             return "<tr>" +
               "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
               "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "</td>" +
               "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.githubUsername) + "\" target=\"_blank\">@" + escHtml(s.githubUsername || "—") + "</a></td>" +
               "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
-              "<td><span class=\"badge\">" + escHtml(petType) + "</span></td>" +
-              "<td>" + escHtml(stage) + "</td>" +
+              "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
+              "<td>" + escHtml(capStr(s.stage)) + "</td>" +
               "<td class=\"elapsed col-elapsed\">" + formatElapsed(s.spawnedAt, s.diedAt) + "</td>" +
               "<td class=\"submitted col-submitted\">" + formatDate(s.submittedAt) + "</td>" +
               "</tr>";
           }).join("");
         })
         .catch(function() {
-          var tbody = document.getElementById("leaderboard-body");
-          tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">Could not load scores. Try refreshing.</td></tr>";
+          document.getElementById("leaderboard-body").innerHTML =
+            "<tr><td colspan=\"8\" class=\"empty\">Could not load scores. Try refreshing.</td></tr>";
         });
     }
 
-    function updateLastUpdated() {
-      var el = document.getElementById("last-updated");
-      if (!el || !lastLoadedAt) { return; }
-      var mins = Math.round((Date.now() - lastLoadedAt) / 60000);
-      el.textContent = mins === 0 ? "Just updated" : "Updated " + mins + "m ago";
+    function loadLive() {
+      lastLoadedAlive = Date.now();
+      updateLastUpdated("last-updated-alive", lastLoadedAlive);
+      fetch("live.json?t=" + lastLoadedAlive)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var entries = Array.isArray(data) ? data : [];
+          var now = Date.now();
+          // Filter entries updated within the last 2 hours
+          var fresh = entries.filter(function(e) {
+            return e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS;
+          });
+          // Sort by ageDays descending
+          fresh.sort(function(a, b) { return (b.ageDays || 0) - (a.ageDays || 0); });
+
+          var tbody = document.getElementById("alive-body");
+          if (fresh.length === 0) {
+            tbody.innerHTML = "<tr><td colspan=\"7\" class=\"empty\">No live pets right now — enable \"Push live progress\" in the Codotchi sidebar!</td></tr>";
+            return;
+          }
+          tbody.innerHTML = fresh.map(function(s, i) {
+            return "<tr>" +
+              "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
+              "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "<span class=\"live-badge\">live</span></td>" +
+              "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.username) + "\" target=\"_blank\">@" + escHtml(s.username || "—") + "</a></td>" +
+              "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
+              "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
+              "<td>" + escHtml(capStr(s.stage)) + "</td>" +
+              "<td class=\"col-updated\">" + formatRelativeTime(s.updatedAt) + "</td>" +
+              "</tr>";
+          }).join("");
+        })
+        .catch(function() {
+          document.getElementById("alive-body").innerHTML =
+            "<tr><td colspan=\"7\" class=\"empty\">Could not load live data. Try refreshing.</td></tr>";
+        });
+    }
+
+    function loadAll() {
+      loadScores();
+      loadLive();
     }
 
     function startAutoRefresh() {
-      autoRefreshTimer = setInterval(loadScores, 60 * 60 * 1000);
-      setInterval(updateLastUpdated, 60000);
+      autoRefreshTimer = setInterval(loadAll, 60 * 60 * 1000);
+      setInterval(function() {
+        updateLastUpdated("last-updated-alltime", lastLoadedAlltime);
+        updateLastUpdated("last-updated-alive", lastLoadedAlive);
+      }, 60000);
     }
 
     function stopAutoRefresh() {
-      if (autoRefreshTimer) {
-        clearInterval(autoRefreshTimer);
-        autoRefreshTimer = null;
-      }
+      if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
     }
 
-    // Initialise: check stored preference
     var pref = localStorage.getItem(AUTOREFRESH_KEY);
     if (pref !== "false") {
       startAutoRefresh();
       if (pref === null) {
-        // First visit — show the opt-out banner
         document.getElementById("autorefresh-banner").classList.remove("hidden");
       }
     }
 
-    loadScores();
+    loadAll();
 
     document.getElementById("btn-keep-refresh").addEventListener("click", function() {
       localStorage.setItem(AUTOREFRESH_KEY, "true");
@@ -298,17 +443,8 @@
       document.getElementById("autorefresh-banner").classList.add("hidden");
       stopAutoRefresh();
     });
-    document.getElementById("btn-refresh-now").addEventListener("click", function() {
-      loadScores();
-    });
-
-    function escHtml(s) {
-      return String(s)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
+    document.getElementById("btn-refresh-alltime").addEventListener("click", loadScores);
+    document.getElementById("btn-refresh-alive").addEventListener("click", loadLive);
   </script>
 </body>
 </html>

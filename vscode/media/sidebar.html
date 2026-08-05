@@ -100,6 +100,7 @@
     <!-- Info line -->
     <div id="info-line" class="info-line">Age: 0d  |  egg  |  wt:5  |  0 poops</div>
     <div id="rank-display" class="rank-display hidden"></div>
+    <a id="btn-view-leaderboard-live" class="link-btn hidden" href="#">View Leaderboard</a>
 
     <!-- Action area: shows btn-grid normally; swaps to game-panels while playing -->
     <div id="action-area">
@@ -180,6 +181,7 @@
 
     <!-- Live leaderboard subscribe toggle (above Menu) -->
     <button id="btn-live-subscribe" class="link-btn hidden"></button>
+    <p id="live-push-status" class="live-push-status hidden"></p>
 
     <!-- New-game link -->
     <button id="btn-new-game" class="link-btn">Menu</button>
@@ -199,6 +201,10 @@
     <div id="leaderboard-section" class="hidden">
       <button id="btn-submit-leaderboard" class="action-btn secondary">Submit to Leaderboard</button>
       <p id="leaderboard-status" class="leaderboard-status hidden"></p>
+    </div>
+    <div id="leaderboard-delete-section" class="hidden">
+      <button id="btn-delete-leaderboard" class="link-btn delete-link">Delete my entry</button>
+      <p id="leaderboard-delete-status" class="leaderboard-status hidden"></p>
     </div>
     <a id="btn-view-leaderboard" class="link-btn hidden" href="#">View Leaderboard</a>
     <button id="btn-restart" class="action-btn primary">New Game</button>

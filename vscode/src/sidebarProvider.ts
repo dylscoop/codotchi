@@ -546,15 +546,24 @@ export class SidebarProvider
         void this.handleLeaderboardSubmit();
         return;
 
+      case "delete_leaderboard_entry":
+        void this.handleLeaderboardDelete();
+        return;
+
       case "open_leaderboard_url":
         void vscode.env.openExternal(vscode.Uri.parse(LEADERBOARD_PAGES_URL));
         return;
 
       case "toggle_live_subscribe": {
         const subscribed = this.context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
-        void this.context.globalState.update("leaderboardLiveSubscribed", !subscribed);
-        // Re-broadcast current state so the sidebar button label updates.
+        const nowSubscribed = !subscribed;
+        void this.context.globalState.update("leaderboardLiveSubscribed", nowSubscribed);
         const s = this.getCurrentState();
+        // Instant push when subscribing so the user sees immediate feedback.
+        // promptAuth=true so VS Code shows the GitHub OAuth popup if not yet authenticated.
+        if (nowSubscribed && s !== null && s.alive) {
+          void this.pushLiveScore(s, true);
+        }
         if (s !== null) {
           this.onStateUpdate(s);
         }
@@ -673,11 +682,12 @@ export class SidebarProvider
   postState(state: PetState, highScore: HighScore | null, devMode: boolean, unlockedCharacter: string | null = null, defaultPetName: string = "Codotchi"): void {
     if (!this.webviewView) { return; }
 
-    // Kick off a background rank refresh if the cache is stale; use whatever
-    // is cached right now so the message doesn't block on a network call.
-    if (state.alive) { void this.fetchLiveRank(state.ageDays); }
-
     const liveSubscribed = this.context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
+    const liveLastPushedAt = this.context.globalState.get<number>("leaderboardLastPushedAt", 0);
+
+    // Fetch rank whenever subscribed and alive (showing rank = opt-in via subscribe button).
+    if (liveSubscribed && state.alive) { void this.fetchLiveRank(state.ageDays); }
+
     const cached = this.rankCache;
 
     void this.webviewView.webview.postMessage({
@@ -689,9 +699,10 @@ export class SidebarProvider
       unlockedCharacter,
       defaultPetName,
       leaderboardAvailable: true,
-      liveRank: (state.alive && cached) ? cached.rank : null,
-      liveTotalScores: (state.alive && cached) ? cached.total : null,
+      liveRank: (liveSubscribed && state.alive && cached) ? cached.rank : null,
+      liveTotalScores: (liveSubscribed && state.alive && cached) ? cached.total : null,
       liveSubscribed,
+      liveLastPushedAt,
     });
   }
 
@@ -839,16 +850,89 @@ export class SidebarProvider
     }
   }
 
-  /** Push current pet state to leaderboard/live.json on the leaderboard branch. */
-  async pushLiveScore(state: PetState): Promise<void> {
+  /** Push current pet state to the live leaderboard via a GitHub issue.
+   *  The process-leaderboard-live workflow reads the issue, upserts the entry
+   *  in live.json on the leaderboard branch, then closes the issue.
+   *  Pass promptAuth=true when triggered by a user action (subscribe click) so
+   *  VS Code shows the GitHub OAuth popup. Keep false for background hourly pushes. */
+  async pushLiveScore(state: PetState, promptAuth = false): Promise<void> {
     if (!state.alive) { return; }
     try {
       const session = await vscode.authentication.getSession(
-        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: false }
+        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: promptAuth }
       );
       if (!session) { return; }
 
-      // Fetch GitHub username
+      const authHeaders = {
+        "Authorization": `token ${session.accessToken}`,
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "Codotchi-VSCode",
+      };
+
+      // Resolve GitHub username.
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: { ...authHeaders, "Accept": "application/json" },
+      });
+      if (!userRes.ok) { return; }
+      const userBody = await userRes.json() as Record<string, unknown>;
+      const username = String(userBody.login ?? "");
+      if (!username) { return; }
+
+      const entry = {
+        username,
+        petName:  state.name,
+        petRunId: state.spawnedAt,
+        ageDays:  state.ageDays,
+        stage:    state.stage,
+        petType:  state.petType,
+        updatedAt: Date.now(),
+      };
+
+      const issueRes = await fetch(
+        `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
+        {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify({
+            title: `[Live] ${username} — ${state.name} (${state.ageDays}d ${state.stage})`,
+            body:  JSON.stringify(entry),
+            labels: ["leaderboard-live"],
+          }),
+        }
+      );
+
+      if (issueRes.status === 201) {
+        await this.context.globalState.update("leaderboardLastPushedAt", Date.now());
+        // Refresh sidebar so "last synced" timestamp updates immediately.
+        const current = this.getCurrentState();
+        if (current !== null) { this.onStateUpdate(current); }
+      }
+    } catch {
+      // Live push is best-effort; never surface errors to the user
+    }
+  }
+
+  /** Request deletion of the user's leaderboard entry via a GitHub issue. */
+  private async handleLeaderboardDelete(): Promise<void> {
+    const postResult = (status: string, message?: string): void => {
+      if (this.webviewView) {
+        void this.webviewView.webview.postMessage({ type: "leaderboard_delete_result", status, message });
+      }
+    };
+
+    try {
+      const state = this.getCurrentState();
+      if (state === null || state.alive) {
+        postResult("error", "No finished run state available.");
+        return;
+      }
+
+      const session = await vscode.authentication.getSession(
+        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
+      );
+      if (!session) { postResult("cancelled"); return; }
+
       const userRes = await fetch("https://api.github.com/user", {
         headers: {
           "Authorization": `token ${session.accessToken}`,
@@ -856,54 +940,42 @@ export class SidebarProvider
           "User-Agent": "Codotchi-VSCode",
         },
       });
-      if (!userRes.ok) { return; }
+      if (!userRes.ok) { postResult("error", `GitHub API error: ${userRes.status}`); return; }
       const userBody = await userRes.json() as Record<string, unknown>;
       const username = String(userBody.login ?? "");
-      if (!username) { return; }
+      if (!username) { postResult("error", "Could not read GitHub username."); return; }
 
-      const payload = {
-        username,
+      const deleteData = {
+        schemaVersion: 1,
+        githubUsername: username,
+        petRunId: state.spawnedAt,
         petName: state.name,
-        ageDays: state.ageDays,
-        stage: state.stage,
-        petType: state.petType,
-        updatedAt: Date.now(),
       };
-      const contentBase64 = Buffer.from(JSON.stringify(payload, null, 2), "utf8").toString("base64");
+      const issueBody =
+        `Leaderboard deletion request.\n\n\`\`\`json\n${JSON.stringify(deleteData, null, 2)}\n\`\`\``;
+      const issueTitle = `[Leaderboard Delete] ${state.name} — @${username}`;
 
-      // Get current SHA so we can update the file (not create a duplicate).
-      const getUrl = `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/contents/leaderboard/live.json?ref=leaderboard`;
-      const getRes = await fetch(getUrl, {
-        headers: {
-          "Authorization": `token ${session.accessToken}`,
-          "Accept": "application/vnd.github+json",
-          "User-Agent": "Codotchi-VSCode",
-        },
-      });
-      let sha: string | undefined;
-      if (getRes.ok) {
-        const getBody = await getRes.json() as Record<string, unknown>;
-        sha = typeof getBody.sha === "string" ? getBody.sha : undefined;
+      const issueRes = await fetch(
+        `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `token ${session.accessToken}`,
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+            "User-Agent": "Codotchi-VSCode",
+          },
+          body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ["leaderboard-delete"] }),
+        }
+      );
+      if (issueRes.status === 201) {
+        postResult("success");
+      } else {
+        const errBody = await issueRes.text().catch(() => "");
+        postResult("error", `Failed to create issue (HTTP ${issueRes.status}): ${errBody.slice(0, 120)}`);
       }
-
-      const putUrl = `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/contents/leaderboard/live.json`;
-      await fetch(putUrl, {
-        method: "PUT",
-        headers: {
-          "Authorization": `token ${session.accessToken}`,
-          "Accept": "application/vnd.github+json",
-          "Content-Type": "application/json",
-          "User-Agent": "Codotchi-VSCode",
-        },
-        body: JSON.stringify({
-          message: `live: update ${username}'s run (${state.ageDays}d ${state.stage})`,
-          content: contentBase64,
-          branch: "leaderboard",
-          ...(sha ? { sha } : {}),
-        }),
-      });
     } catch {
-      // Live push is best-effort; never surface errors to the user
+      postResult("error", "Unexpected error during deletion request.");
     }
   }
 

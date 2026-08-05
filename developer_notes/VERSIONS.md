@@ -1,6 +1,28 @@
 # Version History
 
-## v2.19.4 — current
+## v2.19.5 — current
+
+### Changes from v2.19.4 (live rank settings + view leaderboard link — branch feat/live-rank-settings)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.html` | feat: add `#btn-view-leaderboard-live` anchor link below rank-display on game screen |
+| `pycharm/src/main/resources/webview/sidebar.html` | feat: same `#btn-view-leaderboard-live` anchor link as VS Code |
+| `vscode/media/sidebar.js` | feat: DOM ref and click handler for `btn-view-leaderboard-live`; gate rank display, view link, and subscribe button on `liveRankEnabled` from stateUpdate |
+| `pycharm/src/main/resources/webview/sidebar.js` | feat: same JS additions as VS Code |
+| `vscode/package.json` | feat: add `codotchi.leaderboard.showLiveRank` setting (default false); chore: bump version to 2.19.5 |
+| `vscode/src/sidebarProvider.ts` | feat: read `showLiveRank` setting and include `liveRankEnabled` in stateUpdate; gate rank fetch on setting |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt` | feat: add `showLiveRank: Boolean = false` to `State` class and delegate property |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: read `showLiveRank` from settings; gate rank fetch and pass `liveRankEnabled` to both `postState()` call sites |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | feat: add `liveRankEnabled: Boolean = false` param to `postState()`; include in JS payload |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.19.5 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.19.5 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.19.5 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.19.5 |
+
+---
+
+## v2.19.4 — previous
 
 ### Changes from v2.19.3 (live rank indicator + subscribe toggle — branch feat/live-rank-indicator)
 

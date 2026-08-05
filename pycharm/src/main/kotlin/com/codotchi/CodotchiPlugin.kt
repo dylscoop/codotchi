@@ -556,6 +556,7 @@ class CodotchiPlugin : Disposable {
                 }
 
                 "new_game" -> {
+                    lastRunDiedAt = 0L   // reset so the next death gets a fresh timestamp
                     val rawName = (message["name"]    as? String)?.trim() ?: ""
                     val petType = (message["petType"] as? String) ?: "codeling"
                     val color   = (message["color"]   as? String) ?: "neon"
@@ -849,11 +850,11 @@ class CodotchiPlugin : Disposable {
         val devMode = lastDevMode
         val unlockedCharacter2 = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.spriteType
         val defaultPetName2 = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.defaultName ?: "Codotchi"
-        val cached2 = rankCache
-        val liveRank2 = if (state != null && state.alive && cached2 != null) cached2.rank else null
-        val liveTotalScores2 = if (state != null && state.alive && cached2 != null) cached2.total else null
         val liveSubscribed2 = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getBoolean("codotchi.liveSubscribed", false)
+        val cached2 = rankCache
+        val liveRank2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.rank else null
+        val liveTotalScores2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.total else null
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
                 browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2) }
@@ -1053,8 +1054,11 @@ class CodotchiPlugin : Disposable {
                     highScore = newScore
                     persistence.saveHighScore(newScore)
                 }
-                // Track diedAt for leaderboard submission
-                lastRunDiedAt = highScore?.diedAt ?: diedAt
+                // Capture death time of THIS run on the first dead tick only.
+                // Never use highScore.diedAt — when the current run is not a new record,
+                // highScore still points to the previous run, whose diedAt predates this
+                // run's spawnedAt and causes leaderboard validation to reject the submission.
+                if (lastRunDiedAt == 0L) { lastRunDiedAt = diedAt }
 
                 // One-time leaderboard notification on first death
                 val props = com.intellij.ide.util.PropertiesComponent.getInstance()
@@ -1114,14 +1118,15 @@ class CodotchiPlugin : Disposable {
             lastRescueNotifyMs = 0L
         }
 
-        // Kick off a background rank refresh if the cache is stale
-        if (state != null && state.alive) { fetchLiveRankAsync(state.ageDays) }
-
-        val cached = rankCache
-        val liveRank = if (state != null && state.alive && cached != null) cached.rank else null
-        val liveTotalScores = if (state != null && state.alive && cached != null) cached.total else null
         val liveSubscribed = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getBoolean("codotchi.liveSubscribed", false)
+
+        // Kick off a background rank refresh when subscribed and alive.
+        if (liveSubscribed && state != null && state.alive) { fetchLiveRankAsync(state.ageDays) }
+
+        val cached = rankCache
+        val liveRank = if (liveSubscribed && state != null && state.alive && cached != null) cached.rank else null
+        val liveTotalScores = if (liveSubscribed && state != null && state.alive && cached != null) cached.total else null
 
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
