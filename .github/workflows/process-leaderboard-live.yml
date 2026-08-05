@@ -51,8 +51,15 @@ jobs:
           except Exception:
               entries = []
 
-          # Upsert: remove old entry for this user, append fresh one.
-          entries = [e for e in entries if e.get("username", "").lower() != author]
+          # Upsert: remove old entry for this (user, petRunId) pair, append fresh one.
+          # Using (username, petRunId) as the key so multiple simultaneous pets
+          # from the same user (e.g. VS Code + PyCharm) are tracked independently.
+          new_run_id = str(data.get("petRunId", ""))
+          entries = [
+              e for e in entries
+              if not (e.get("username", "").lower() == author and
+                      str(e.get("petRunId", "")) == new_run_id)
+          ]
           entries.append(data)
 
           with open(path, "w") as f:

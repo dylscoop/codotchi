@@ -102,8 +102,10 @@
   const btnViewLB          = document.getElementById("btn-view-leaderboard");
   const rankDisplay        = document.getElementById("rank-display");
   const btnViewLBLive      = document.getElementById("btn-view-leaderboard-live");
-  const btnLiveSubscribe   = document.getElementById("btn-live-subscribe");
-  const livePushStatus     = document.getElementById("live-push-status");
+  const btnLiveSubscribe      = document.getElementById("btn-live-subscribe");
+  const livePushStatus        = document.getElementById("live-push-status");
+  const btnSignInLeaderboard  = document.getElementById("btn-sign-in-leaderboard");
+  const lbSignInStatus        = document.getElementById("lb-sign-in-status");
   const setupHighScore   = document.getElementById("setup-high-score");
   const setupHsStats     = document.getElementById("setup-hs-stats");
   const mealsLeftEl    = document.getElementById("meals-left");
@@ -300,6 +302,14 @@
     btnViewLBLive.addEventListener("click", function (e) {
       e.preventDefault();
       vscode.postMessage({ command: "open_leaderboard_url" });
+    });
+  }
+
+  if (btnSignInLeaderboard) {
+    btnSignInLeaderboard.addEventListener("click", function () {
+      vscode.postMessage({ command: "sign_in_leaderboard" });
+      btnSignInLeaderboard.textContent = "Opening sign-in…";
+      btnSignInLeaderboard.disabled = true;
     });
   }
 
@@ -2627,6 +2637,25 @@
       }
       return;
     }
+    if (message.type === "leaderboard_sign_in_result") {
+      if (message.username) {
+        if (lbSignInStatus) {
+          lbSignInStatus.textContent = "Leaderboard: @" + message.username;
+          lbSignInStatus.classList.remove("hidden");
+        }
+        if (btnSignInLeaderboard) btnSignInLeaderboard.classList.add("hidden");
+      } else {
+        if (lbSignInStatus) {
+          lbSignInStatus.textContent = "Sign-in failed — try again";
+          lbSignInStatus.classList.remove("hidden");
+        }
+        if (btnSignInLeaderboard) {
+          btnSignInLeaderboard.textContent = "Sign in to GitHub (Leaderboard)";
+          btnSignInLeaderboard.disabled = false;
+        }
+      }
+      return;
+    }
     if (message.type === "leaderboard_delete_result") {
       if (!btnDeleteLB) { return; }
       if (message.status === "success") {
@@ -2688,6 +2717,31 @@
       } else {
         btnViewLBLive.classList.add("hidden");
       }
+    }
+
+    // Sign-in status + button — shown when alive.
+    if (state && state.alive) {
+      if (lbSignInStatus) {
+        if (message.leaderboardGithubUsername) {
+          lbSignInStatus.textContent = "Leaderboard: @" + message.leaderboardGithubUsername;
+          lbSignInStatus.classList.remove("hidden");
+        } else {
+          lbSignInStatus.textContent = "Not signed in to GitHub";
+          lbSignInStatus.classList.remove("hidden");
+        }
+      }
+      if (btnSignInLeaderboard) {
+        if (message.leaderboardGithubUsername) {
+          btnSignInLeaderboard.classList.add("hidden");
+        } else {
+          btnSignInLeaderboard.textContent = "Sign in to GitHub (Leaderboard)";
+          btnSignInLeaderboard.disabled = false;
+          btnSignInLeaderboard.classList.remove("hidden");
+        }
+      }
+    } else {
+      if (lbSignInStatus) lbSignInStatus.classList.add("hidden");
+      if (btnSignInLeaderboard) btnSignInLeaderboard.classList.add("hidden");
     }
 
     // Live subscribe button — always shown when alive.

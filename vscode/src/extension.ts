@@ -586,13 +586,13 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // Hourly live score push — fires once per hour when the user has subscribed.
+  // Live score push every 15 minutes when the user has subscribed.
   const livePushInterval = setInterval(() => {
     const subscribed = context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
     if (subscribed && currentState !== null && currentState.alive) {
       void sidebar?.pushLiveScore(currentState);
     }
-  }, 60 * 60 * 1000);
+  }, 15 * 60 * 1000);
   context.subscriptions.push({ dispose(): void { clearInterval(livePushInterval); } });
 
   // Register disposables
