@@ -560,8 +560,9 @@ export class SidebarProvider
         void this.context.globalState.update("leaderboardLiveSubscribed", nowSubscribed);
         const s = this.getCurrentState();
         // Instant push when subscribing so the user sees immediate feedback.
+        // promptAuth=true so VS Code shows the GitHub OAuth popup if not yet authenticated.
         if (nowSubscribed && s !== null && s.alive) {
-          void this.pushLiveScore(s);
+          void this.pushLiveScore(s, true);
         }
         if (s !== null) {
           this.onStateUpdate(s);
@@ -849,12 +850,14 @@ export class SidebarProvider
     }
   }
 
-  /** Push current pet state to leaderboard/live.json (array) on the leaderboard branch. */
-  async pushLiveScore(state: PetState): Promise<void> {
+  /** Push current pet state to leaderboard/live.json (array) on the leaderboard branch.
+   *  Pass promptAuth=true when triggered by a user action (subscribe click) so VS Code
+   *  shows the GitHub OAuth popup. Keep false for background hourly pushes. */
+  async pushLiveScore(state: PetState, promptAuth = false): Promise<void> {
     if (!state.alive) { return; }
     try {
       const session = await vscode.authentication.getSession(
-        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: false }
+        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: promptAuth }
       );
       if (!session) { return; }
 
