@@ -556,9 +556,13 @@ export class SidebarProvider
 
       case "toggle_live_subscribe": {
         const subscribed = this.context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
-        void this.context.globalState.update("leaderboardLiveSubscribed", !subscribed);
-        // Re-broadcast current state so the sidebar button label updates.
+        const nowSubscribed = !subscribed;
+        void this.context.globalState.update("leaderboardLiveSubscribed", nowSubscribed);
         const s = this.getCurrentState();
+        // Instant push when subscribing so the user sees immediate feedback.
+        if (nowSubscribed && s !== null && s.alive) {
+          void this.pushLiveScore(s);
+        }
         if (s !== null) {
           this.onStateUpdate(s);
         }
@@ -678,6 +682,7 @@ export class SidebarProvider
     if (!this.webviewView) { return; }
 
     const liveSubscribed = this.context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
+    const liveLastPushedAt = this.context.globalState.get<number>("leaderboardLastPushedAt", 0);
 
     // Fetch rank whenever subscribed and alive (showing rank = opt-in via subscribe button).
     if (liveSubscribed && state.alive) { void this.fetchLiveRank(state.ageDays); }
@@ -696,6 +701,7 @@ export class SidebarProvider
       liveRank: (liveSubscribed && state.alive && cached) ? cached.rank : null,
       liveTotalScores: (liveSubscribed && state.alive && cached) ? cached.total : null,
       liveSubscribed,
+      liveLastPushedAt,
     });
   }
 
@@ -896,7 +902,7 @@ export class SidebarProvider
       const contentBase64 = Buffer.from(JSON.stringify(updated, null, 2), "utf8").toString("base64");
 
       const putUrl = `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/contents/leaderboard/live.json`;
-      await fetch(putUrl, {
+      const putRes = await fetch(putUrl, {
         method: "PUT",
         headers: { ...authHeaders, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -906,6 +912,12 @@ export class SidebarProvider
           ...(sha ? { sha } : {}),
         }),
       });
+      if (putRes.ok || putRes.status === 201) {
+        await this.context.globalState.update("leaderboardLastPushedAt", Date.now());
+        // Refresh sidebar so "last synced" timestamp updates immediately.
+        const current = this.getCurrentState();
+        if (current !== null) { this.onStateUpdate(current); }
+      }
     } catch {
       // Live push is best-effort; never surface errors to the user
     }

@@ -103,6 +103,7 @@
   const rankDisplay        = document.getElementById("rank-display");
   const btnViewLBLive      = document.getElementById("btn-view-leaderboard-live");
   const btnLiveSubscribe   = document.getElementById("btn-live-subscribe");
+  const livePushStatus     = document.getElementById("live-push-status");
   const setupHighScore   = document.getElementById("setup-high-score");
   const setupHsStats     = document.getElementById("setup-hs-stats");
   const mealsLeftEl    = document.getElementById("meals-left");
@@ -2698,6 +2699,23 @@
         btnLiveSubscribe.classList.remove("hidden");
       } else {
         btnLiveSubscribe.classList.add("hidden");
+      }
+    }
+
+    // "Last synced" line — shown when subscribed and at least one push has happened.
+    if (livePushStatus) {
+      if (state && state.alive && message.liveSubscribed && message.liveLastPushedAt) {
+        var diffMs = Date.now() - message.liveLastPushedAt;
+        var diffMins = Math.floor(diffMs / 60000);
+        var syncedText = diffMins < 1
+          ? "Synced just now"
+          : diffMins < 60
+            ? "Synced " + diffMins + "m ago"
+            : "Synced " + Math.floor(diffMins / 60) + "h ago";
+        livePushStatus.textContent = syncedText;
+        livePushStatus.classList.remove("hidden");
+      } else {
+        livePushStatus.classList.add("hidden");
       }
     }
 
