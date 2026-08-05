@@ -850,9 +850,11 @@ export class SidebarProvider
     }
   }
 
-  /** Push current pet state to leaderboard/live.json (array) on the leaderboard branch.
-   *  Pass promptAuth=true when triggered by a user action (subscribe click) so VS Code
-   *  shows the GitHub OAuth popup. Keep false for background hourly pushes. */
+  /** Push current pet state to the live leaderboard via a GitHub issue.
+   *  The process-leaderboard-live workflow reads the issue, upserts the entry
+   *  in live.json on the leaderboard branch, then closes the issue.
+   *  Pass promptAuth=true when triggered by a user action (subscribe click) so
+   *  VS Code shows the GitHub OAuth popup. Keep false for background hourly pushes. */
   async pushLiveScore(state: PetState, promptAuth = false): Promise<void> {
     if (!state.alive) { return; }
     try {
@@ -864,10 +866,11 @@ export class SidebarProvider
       const authHeaders = {
         "Authorization": `token ${session.accessToken}`,
         "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
         "User-Agent": "Codotchi-VSCode",
       };
 
-      // Fetch username once.
+      // Resolve GitHub username.
       const userRes = await fetch("https://api.github.com/user", {
         headers: { ...authHeaders, "Accept": "application/json" },
       });
@@ -876,46 +879,30 @@ export class SidebarProvider
       const username = String(userBody.login ?? "");
       if (!username) { return; }
 
-      const getUrl = `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/contents/leaderboard/live.json?ref=leaderboard`;
-      const getRes = await fetch(getUrl, { headers: authHeaders });
-
-      // Decode existing array (or start fresh).
-      let existing: Array<Record<string, unknown>> = [];
-      let sha: string | undefined;
-      if (getRes.ok) {
-        const getBody = await getRes.json() as Record<string, unknown>;
-        sha = typeof getBody.sha === "string" ? getBody.sha : undefined;
-        try {
-          const decoded = JSON.parse(Buffer.from(String(getBody.content ?? ""), "base64").toString("utf8"));
-          if (Array.isArray(decoded)) { existing = decoded; }
-        } catch { /* start fresh */ }
-      }
-
-      // Upsert: remove old entry for this username, add updated entry.
       const entry = {
         username,
-        petName: state.name,
+        petName:  state.name,
         petRunId: state.spawnedAt,
-        ageDays: state.ageDays,
-        stage: state.stage,
-        petType: state.petType,
+        ageDays:  state.ageDays,
+        stage:    state.stage,
+        petType:  state.petType,
         updatedAt: Date.now(),
       };
-      const updated = [...existing.filter(e => e["username"] !== username), entry];
-      const contentBase64 = Buffer.from(JSON.stringify(updated, null, 2), "utf8").toString("base64");
 
-      const putUrl = `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/contents/leaderboard/live.json`;
-      const putRes = await fetch(putUrl, {
-        method: "PUT",
-        headers: { ...authHeaders, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: `live: update ${username}'s run (${state.ageDays}d ${state.stage})`,
-          content: contentBase64,
-          branch: "leaderboard",
-          ...(sha ? { sha } : {}),
-        }),
-      });
-      if (putRes.ok || putRes.status === 201) {
+      const issueRes = await fetch(
+        `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
+        {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify({
+            title: `[Live] ${username} — ${state.name} (${state.ageDays}d ${state.stage})`,
+            body:  JSON.stringify(entry),
+            labels: ["leaderboard-live"],
+          }),
+        }
+      );
+
+      if (issueRes.status === 201) {
         await this.context.globalState.update("leaderboardLastPushedAt", Date.now());
         // Refresh sidebar so "last synced" timestamp updates immediately.
         const current = this.getCurrentState();

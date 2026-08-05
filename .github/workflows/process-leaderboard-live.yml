@@ -1,0 +1,79 @@
+name: Process Live Leaderboard Update
+
+on:
+  issues:
+    types: [opened]
+
+concurrency:
+  group: leaderboard-update
+  cancel-in-progress: false
+
+jobs:
+  update-live:
+    if: contains(github.event.issue.labels.*.name, 'leaderboard-live')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: leaderboard
+
+      - name: Update live.json
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, sys
+
+          body   = os.environ["ISSUE_BODY"]
+          author = os.environ["ISSUE_AUTHOR"].lower()
+
+          try:
+              data = json.loads(body)
+          except Exception as e:
+              print(f"Invalid JSON body: {e}")
+              sys.exit(1)
+
+          if data.get("username", "").lower() != author:
+              print(f"Username mismatch: body says '{data.get('username')}', issue author is '{author}'")
+              sys.exit(1)
+
+          path = "leaderboard/live.json"
+          try:
+              with open(path) as f:
+                  entries = json.load(f)
+              if not isinstance(entries, list):
+                  entries = []
+          except Exception:
+              entries = []
+
+          # Upsert: remove old entry for this user, append fresh one.
+          entries = [e for e in entries if e.get("username", "").lower() != author]
+          entries.append(data)
+
+          with open(path, "w") as f:
+              json.dump(entries, f, indent=2)
+
+          print(f"live.json updated — {len(entries)} active entries")
+          PYEOF
+
+      - name: Commit and push
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add leaderboard/live.json
+          git diff --cached --quiet || git commit -m "live: update ${{ github.event.issue.user.login }}'s run"
+          git push
+
+      - name: Close issue
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.update({
+              ...context.repo,
+              issue_number: context.issue.number,
+              state: 'closed'
+            });
