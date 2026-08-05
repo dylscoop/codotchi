@@ -1,5 +1,20 @@
 # Version History
 
+## v2.20.3 -- current
+
+### Changes from v2.20.2 (GitHub device flow sign-in for PyCharm live push)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: replace PAT prompt with GitHub OAuth device flow; `startDeviceFlowAsync()` POSTs to /login/device/code, opens browser, shows user code in a notification balloon, polls /login/oauth/access_token in background; stores access_token in PasswordSafe under same key -- existing PAT tokens continue working |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | chore: remove unused `Messages` import; add `BrowserUtil` import |
+| `vscode/package.json` | chore: bump version to 2.20.3 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.20.3 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.20.3 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.20.3 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.20.3 |
+
+---
 ## v2.20.2 — current
 
 ### Changes from v2.20.1 (PyCharm live push, 48h threshold, all-time includes live pets — branch main)
