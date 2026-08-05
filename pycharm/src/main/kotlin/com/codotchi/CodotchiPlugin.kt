@@ -6,6 +6,9 @@ import com.codotchi.getCustomCharacterBySpriteType
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import java.io.File
+import com.intellij.credentialStore.CredentialAttributes
+import com.intellij.ide.BrowserUtil
+import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
@@ -143,6 +146,10 @@ class CodotchiPlugin : Disposable {
     @Volatile private var rankCache: RankCache? = null
     private val RANK_CACHE_TTL_MS = 5 * 60_000L
     private val SCORES_JSON_URL = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/scores.json"
+    private val LIVE_JSON_URL   = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/live.json"
+    private val GITHUB_ISSUES_API = "https://api.github.com/repos/dylscoop/codotchi/issues"
+    private val LIVE_PUSH_INTERVAL_MS = 60 * 60_000L
+    @Volatile private var liveLastPushedAtMs: Long = 0L
 
     /** Background thread running the JVM WatchService for cross-window file sync. */
     @Volatile private var fileWatcherThread: Thread? = null
@@ -169,6 +176,9 @@ class CodotchiPlugin : Disposable {
     // ── Initialisation ─────────────────────────────────────────────────────
 
     fun initialize() {
+        liveLastPushedAtMs = com.intellij.ide.util.PropertiesComponent.getInstance()
+            .getValue("codotchi.liveLastPushedAt")?.toLongOrNull() ?: 0L
+
         // Register AWT event listener to track keyboard/mouse activity for idle detection
         val activityMask = AWTEvent.KEY_EVENT_MASK or
             AWTEvent.MOUSE_EVENT_MASK or
@@ -605,10 +615,15 @@ class CodotchiPlugin : Disposable {
                 }
 
                 "toggle_live_subscribe" -> {
-                    shouldBroadcast = true
                     val props = com.intellij.ide.util.PropertiesComponent.getInstance()
                     val current = props.getBoolean("codotchi.liveSubscribed", false)
-                    props.setValue("codotchi.liveSubscribed", !current)
+                    val subscribing = !current
+                    props.setValue("codotchi.liveSubscribed", subscribing)
+                    shouldBroadcast = true
+                    if (subscribing) {
+                        val stateSnap = currentState?.takeIf { it.alive }
+                        if (stateSnap != null) pushLiveScoreAsync(stateSnap, promptIfNoToken = true)
+                    }
                     return@withLock
                 }
 
@@ -725,26 +740,174 @@ class CodotchiPlugin : Disposable {
         if (cached != null && now - cached.at < RANK_CACHE_TTL_MS) return
         AppExecutorUtil.getAppExecutorService().execute {
             try {
-                val url = java.net.URL(SCORES_JSON_URL)
-                val conn = url.openConnection() as java.net.HttpURLConnection
-                conn.connectTimeout = 5000
-                conn.readTimeout = 5000
-                conn.setRequestProperty("Accept", "application/json")
-                conn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
-                if (conn.responseCode != 200) return@execute
-                val text = conn.inputStream.bufferedReader().readText()
+                fun get(rawUrl: String): String? {
+                    val conn = java.net.URL(rawUrl).openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 5000
+                    conn.readTimeout = 5000
+                    conn.setRequestProperty("Accept", "application/json")
+                    conn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                    return if (conn.responseCode == 200) conn.inputStream.bufferedReader().readText() else null
+                }
+
+                val scoresText = get(SCORES_JSON_URL) ?: return@execute
+                val liveText   = try { get(LIVE_JSON_URL) } catch (_: Exception) { null }
+
                 @Suppress("UNCHECKED_CAST")
-                val parsed = Gson().fromJson(text, Any::class.java)
-                val scoresList: List<Map<String, Any>> = when (parsed) {
-                    is List<*> -> parsed as List<Map<String, Any>>
-                    is Map<*, *> -> (parsed["scores"] as? List<Map<String, Any>>) ?: emptyList()
+                val scoresParsed = Gson().fromJson(scoresText, Any::class.java)
+                val scoresList: List<Map<String, Any>> = when (scoresParsed) {
+                    is List<*> -> scoresParsed as List<Map<String, Any>>
+                    is Map<*, *> -> (scoresParsed["scores"] as? List<Map<String, Any>>) ?: emptyList()
                     else -> emptyList()
                 }
-                val rank = scoresList.count { (it["ageDays"] as? Number)?.toInt()?.let { d -> d > ageDays } == true } + 1
-                rankCache = RankCache(rank, scoresList.size + 1, System.currentTimeMillis())
+
+                val staleMs = 48 * 60 * 60 * 1000L
+                @Suppress("UNCHECKED_CAST")
+                val freshLive: List<Map<String, Any>> = if (liveText != null) {
+                    val liveParsed = Gson().fromJson(liveText, Any::class.java)
+                    val liveList = if (liveParsed is List<*>) liveParsed as List<Map<String, Any>> else emptyList()
+                    liveList.filter { entry ->
+                        val updatedAt = (entry["updatedAt"] as? Number)?.toLong() ?: 0L
+                        updatedAt > 0L && (now - updatedAt) < staleMs
+                    }
+                } else emptyList()
+
+                val combined = scoresList + freshLive
+                val rank = combined.count { (it["ageDays"] as? Number)?.toInt()?.let { d -> d > ageDays } == true } + 1
+                rankCache = RankCache(rank, combined.size + 1, System.currentTimeMillis())
                 // Re-broadcast so the sidebar picks up the new rank immediately
                 broadcastState()
             } catch (_: Exception) { /* network failure — keep stale cache */ }
+        }
+    }
+
+    private fun pushLiveScoreAsync(state: PetState, promptIfNoToken: Boolean) {
+        AppExecutorUtil.getAppExecutorService().execute {
+            try {
+                val credAttrs = CredentialAttributes("Codotchi", "github-pat")
+                var pat = PasswordSafe.instance.getPassword(credAttrs)
+
+                if (pat.isNullOrBlank()) {
+                    if (!promptIfNoToken) return@execute
+                    startDeviceFlowAsync(state)
+                    return@execute
+                }
+
+                // Resolve GitHub username
+                val userConn = java.net.URL("https://api.github.com/user").openConnection() as java.net.HttpURLConnection
+                userConn.connectTimeout = 5000
+                userConn.readTimeout = 5000
+                userConn.setRequestProperty("Authorization", "token $pat")
+                userConn.setRequestProperty("Accept", "application/vnd.github+json")
+                userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                if (userConn.responseCode != 200) return@execute
+                @Suppress("UNCHECKED_CAST")
+                val userMap = Gson().fromJson(userConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                val username = userMap["login"] as? String ?: return@execute
+
+                val entry = mapOf(
+                    "username" to username,
+                    "petName" to state.name,
+                    "petRunId" to state.spawnedAt,
+                    "ageDays" to state.ageDays,
+                    "stage" to state.stage,
+                    "petType" to state.petType,
+                    "updatedAt" to System.currentTimeMillis()
+                )
+                val issueBody = mapOf(
+                    "title" to "[Live] $username — ${state.name} (${state.ageDays}d ${state.stage})",
+                    "body" to Gson().toJson(entry),
+                    "labels" to listOf("leaderboard-live")
+                )
+
+                val issueConn = java.net.URL(GITHUB_ISSUES_API).openConnection() as java.net.HttpURLConnection
+                issueConn.requestMethod = "POST"
+                issueConn.doOutput = true
+                issueConn.connectTimeout = 10000
+                issueConn.readTimeout = 10000
+                issueConn.setRequestProperty("Authorization", "token $pat")
+                issueConn.setRequestProperty("Accept", "application/vnd.github+json")
+                issueConn.setRequestProperty("Content-Type", "application/json")
+                issueConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                issueConn.outputStream.writer().use { it.write(Gson().toJson(issueBody)) }
+
+                if (issueConn.responseCode == 201) {
+                    val now = System.currentTimeMillis()
+                    liveLastPushedAtMs = now
+                    com.intellij.ide.util.PropertiesComponent.getInstance()
+                        .setValue("codotchi.liveLastPushedAt", now.toString())
+                    broadcastState()
+                }
+            } catch (_: Exception) { /* network failure — silent */ }
+        }
+    }
+
+    private fun startDeviceFlowAsync(state: PetState) {
+        AppExecutorUtil.getAppExecutorService().execute {
+            try {
+                val clientId = "Ov23lilG4ngpe3lHdC88"
+
+                val dcConn = java.net.URL("https://github.com/login/device/code").openConnection() as java.net.HttpURLConnection
+                dcConn.requestMethod = "POST"
+                dcConn.doOutput = true
+                dcConn.connectTimeout = 10000
+                dcConn.readTimeout = 10000
+                dcConn.setRequestProperty("Accept", "application/json")
+                dcConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                dcConn.outputStream.writer().use { it.write("client_id=$clientId&scope=public_repo") }
+                if (dcConn.responseCode != 200) return@execute
+
+                @Suppress("UNCHECKED_CAST")
+                val dcResp = Gson().fromJson(dcConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                val deviceCode     = dcResp["device_code"] as? String ?: return@execute
+                val userCode       = dcResp["user_code"]   as? String ?: return@execute
+                val verifyUri      = (dcResp["verification_uri_complete"] as? String)
+                    ?: dcResp["verification_uri"] as? String
+                    ?: "https://github.com/login/device"
+                val expiresIn      = (dcResp["expires_in"] as? Double)?.toLong() ?: 900L
+                var pollInterval   = (dcResp["interval"]   as? Double)?.toLong() ?: 5L
+
+                ApplicationManager.getApplication().invokeLater {
+                    BrowserUtil.browse(verifyUri)
+                    NotificationGroupManager.getInstance()
+                        .getNotificationGroup("Codotchi Leaderboard")
+                        .createNotification(
+                            "Codotchi: Sign in to GitHub",
+                            "Your code is <b>$userCode</b>. Enter it on the GitHub page that just opened, then authorise. Live progress will start syncing automatically.",
+                            NotificationType.INFORMATION
+                        )
+                        .notify(null)
+                }
+
+                val deadline = System.currentTimeMillis() + expiresIn * 1000L
+                while (System.currentTimeMillis() < deadline) {
+                    Thread.sleep(pollInterval * 1000L)
+
+                    val tokConn = java.net.URL("https://github.com/login/oauth/access_token").openConnection() as java.net.HttpURLConnection
+                    tokConn.requestMethod = "POST"
+                    tokConn.doOutput = true
+                    tokConn.connectTimeout = 10000
+                    tokConn.readTimeout = 10000
+                    tokConn.setRequestProperty("Accept", "application/json")
+                    tokConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                    tokConn.outputStream.writer().use {
+                        it.write("client_id=$clientId&device_code=$deviceCode&grant_type=urn:ietf:params:oauth:grant-type:device_code")
+                    }
+
+                    @Suppress("UNCHECKED_CAST")
+                    val tokResp = Gson().fromJson(tokConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                    val accessToken = tokResp["access_token"] as? String
+                    if (!accessToken.isNullOrBlank()) {
+                        PasswordSafe.instance.setPassword(CredentialAttributes("Codotchi", "github-pat"), accessToken)
+                        pushLiveScoreAsync(state, promptIfNoToken = false)
+                        return@execute
+                    }
+                    when (tokResp["error"] as? String) {
+                        "slow_down"             -> pollInterval += 5
+                        "authorization_pending" -> { /* continue polling */ }
+                        else                    -> return@execute
+                    }
+                }
+            } catch (_: Exception) { /* network failure — silent */ }
         }
     }
 
@@ -855,9 +1018,10 @@ class CodotchiPlugin : Disposable {
         val cached2 = rankCache
         val liveRank2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.rank else null
         val liveTotalScores2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.total else null
+        val liveLastPushed2 = liveLastPushedAtMs.takeIf { it > 0L }
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2, liveLastPushed2) }
                 statusWidget?.update(state)
             }
         }
@@ -1122,15 +1286,24 @@ class CodotchiPlugin : Disposable {
             .getBoolean("codotchi.liveSubscribed", false)
 
         // Kick off a background rank refresh when subscribed and alive.
-        if (liveSubscribed && state != null && state.alive) { fetchLiveRankAsync(state.ageDays) }
+        if (liveSubscribed && state != null && state.alive) {
+            fetchLiveRankAsync(state.ageDays)
+            // Hourly live push — optimistically update timestamp to prevent duplicate launches.
+            val now = System.currentTimeMillis()
+            if (now - liveLastPushedAtMs >= LIVE_PUSH_INTERVAL_MS) {
+                liveLastPushedAtMs = now
+                pushLiveScoreAsync(state, promptIfNoToken = false)
+            }
+        }
 
         val cached = rankCache
         val liveRank = if (liveSubscribed && state != null && state.alive && cached != null) cached.rank else null
         val liveTotalScores = if (liveSubscribed && state != null && state.alive && cached != null) cached.total else null
+        val liveLastPushed = liveLastPushedAtMs.takeIf { it > 0L }
 
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveLastPushed) }
                 statusWidget?.update(state)
             }
         }

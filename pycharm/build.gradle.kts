@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.codotchi"
-version = "2.20.1"
+version = "2.20.3"
 
 repositories {
     mavenCentral()
@@ -48,7 +48,7 @@ tasks {
     // Usage: gradlew unitTest --no-configuration-cache
     //        (from pycharm/)
     //
-    // Do NOT run `gradlew test` â€” that is the IntelliJ-sandbox path.
+    // Do NOT run `gradlew test` Ã¢â‚¬â€ that is the IntelliJ-sandbox path.
 
     val copySourceForTest by registering(Copy::class) {
         description = "Copies CodotchiPlugin.kt into test resources for source-guard tests."
@@ -66,7 +66,7 @@ tasks {
         val launcherJar = junitConsole.resolvedConfiguration.resolvedArtifacts
             .first { it.name == "junit-platform-console-standalone" }
             .file
-        // Use the Kotlin-specific output dir directly â€” classesDirs.asPath returns
+        // Use the Kotlin-specific output dir directly Ã¢â‚¬â€ classesDirs.asPath returns
         // a semicolon-separated list (kotlin + java dirs) which --scan-class-path
         // treats as a single non-existent path on Windows, finding 0 tests.
         val testClassesDir   = layout.buildDirectory.dir("classes/kotlin/test").get().asFile.absolutePath

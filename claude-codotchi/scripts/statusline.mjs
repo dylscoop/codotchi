@@ -137,18 +137,27 @@ async function main() {
 
   const hasIDEPets = idePets.length > 0;
 
-  // Fetch live rank from leaderboard/scores.json (cached 5 min).
+  // Fetch live rank from leaderboard/scores.json + live.json (cached 5 min).
   let rankData = loadRankCache();
   const activePetState = hasIDEPets ? idePets[0].state : state;
   if (activePetState.alive && (!rankData || (now - (rankData.at ?? 0)) > RANK_CACHE_TTL_MS)) {
     try {
-      const rankRes = await fetch("https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/scores.json");
-      if (rankRes.ok) {
-        const rankJson = await rankRes.json();
+      const base = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/";
+      const [scoresRes, liveRes] = await Promise.all([
+        fetch(base + "scores.json"),
+        fetch(base + "live.json").catch(() => null),
+      ]);
+      if (scoresRes.ok) {
+        const rankJson = await scoresRes.json();
         const scores = Array.isArray(rankJson) ? rankJson : (rankJson.scores ?? []);
+        const liveJson = liveRes?.ok ? await liveRes.json().catch(() => []) : [];
+        const staleMs = 48 * 60 * 60 * 1000;
+        const freshLive = Array.isArray(liveJson)
+          ? liveJson.filter(e => e.updatedAt && (now - e.updatedAt) < staleMs) : [];
+        const combined = scores.concat(freshLive);
         const ageDays = activePetState.ageDays ?? 0;
-        const rank = scores.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
-        rankData = { at: now, rank, total: scores.length + 1 };
+        const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
+        rankData = { at: now, rank, total: combined.length + 1 };
         saveRankCache(rankData);
       }
     } catch { /* network failure — keep stale cache */ }
