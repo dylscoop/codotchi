@@ -188,6 +188,10 @@ export class SidebarProvider
   // Live rank cache — refreshed at most every 5 minutes.
   private static readonly RANK_CACHE_TTL_MS = 5 * 60 * 1000;
   private rankCache: { rank: number; total: number; at: number } | null = null;
+  // Cached GitHub username for the leaderboard — resolved on sign-in or subscribe.
+  private leaderboardGithubUsername: string | null = null;
+  // Approx ms per game day (awake rate: 5 real min = 1 game day) for live rank extrapolation.
+  private static readonly MS_PER_GAME_DAY_APPROX = 5 * 60 * 1000;
   // URLs for fetching rank data from the leaderboard branch.
   private static readonly SCORES_JSON_URL =
     `https://raw.githubusercontent.com/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/leaderboard/leaderboard/scores.json`;
@@ -556,6 +560,10 @@ export class SidebarProvider
         void vscode.env.openExternal(vscode.Uri.parse(LEADERBOARD_PAGES_URL));
         return;
 
+      case "sign_in_leaderboard":
+        void this.handleSignInLeaderboard();
+        return;
+
       case "toggle_live_subscribe": {
         const subscribed = this.context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
         const nowSubscribed = !subscribed;
@@ -705,6 +713,7 @@ export class SidebarProvider
       liveTotalScores: (liveSubscribed && state.alive && cached) ? cached.total : null,
       liveSubscribed,
       liveLastPushedAt,
+      leaderboardGithubUsername: this.leaderboardGithubUsername,
     });
   }
 
@@ -783,6 +792,7 @@ export class SidebarProvider
           postResult("error", "Could not read GitHub username.");
           return;
         }
+        this.leaderboardGithubUsername = username;
       } catch {
         postResult("error", "Network error fetching GitHub username.");
         return;
@@ -850,12 +860,43 @@ export class SidebarProvider
       const liveJson: Array<{ ageDays?: number; updatedAt?: number }> = liveRes?.ok
         ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; updatedAt?: number }> : [];
       const staleMs = 48 * 60 * 60 * 1000;
-      const freshLive = liveJson.filter(e => e.updatedAt && (now - e.updatedAt) < staleMs);
-      const combined = (scores as Array<{ ageDays: number }>).concat(freshLive as Array<{ ageDays: number }>);
+      // Extrapolate current ageDays from storedAgeDays + elapsed time since last push.
+      const freshLive = liveJson
+        .filter(e => e.updatedAt && (now - e.updatedAt) < staleMs)
+        .map(e => ({
+          ageDays: (e.ageDays ?? 0) + (e.updatedAt ? (now - e.updatedAt) / SidebarProvider.MS_PER_GAME_DAY_APPROX : 0),
+        }));
+      const combined = (scores as Array<{ ageDays: number }>).concat(freshLive);
       const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
       this.rankCache = { rank, total: combined.length + 1, at: now };
     } catch {
       // Network failure — keep stale cache if available
+    }
+  }
+
+  /** Sign in to GitHub for the leaderboard and cache the resolved username. */
+  async handleSignInLeaderboard(): Promise<void> {
+    try {
+      const session = await vscode.authentication.getSession(
+        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
+      );
+      if (!session) {
+        this.leaderboardGithubUsername = null;
+        if (this.webviewView) {
+          void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username: null });
+        }
+        return;
+      }
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: { "Authorization": `token ${session.accessToken}`, "Accept": "application/json", "User-Agent": "Codotchi-VSCode" },
+      });
+      const username = userRes.ok ? String((await userRes.json() as Record<string, unknown>).login ?? "") : "";
+      this.leaderboardGithubUsername = username || null;
+      if (this.webviewView) {
+        void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username: this.leaderboardGithubUsername });
+      }
+    } catch {
+      // silent — sign-in is best-effort
     }
   }
 
@@ -887,14 +928,16 @@ export class SidebarProvider
       const userBody = await userRes.json() as Record<string, unknown>;
       const username = String(userBody.login ?? "");
       if (!username) { return; }
+      this.leaderboardGithubUsername = username;
 
       const entry = {
         username,
-        petName:  state.name,
-        petRunId: state.spawnedAt,
-        ageDays:  state.ageDays,
-        stage:    state.stage,
-        petType:  state.petType,
+        petName:   state.name,
+        petRunId:  state.spawnedAt,
+        spawnedAt: state.spawnedAt,
+        ageDays:   state.ageDays,
+        stage:     state.stage,
+        petType:   state.petType,
         updatedAt: Date.now(),
       };
 

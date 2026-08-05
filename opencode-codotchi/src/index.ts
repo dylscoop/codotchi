@@ -857,8 +857,13 @@ async function refreshLiveRank(ageDays: number): Promise<void> {
     const liveJson: Array<{ ageDays?: number; updatedAt?: number }> = liveRes?.ok
       ? await liveRes.json().catch(() => []) : [];
     const staleMs = 48 * 60 * 60 * 1000;
-    const freshLive = liveJson.filter((e): e is { ageDays?: number; updatedAt: number } =>
-      typeof e.updatedAt === "number" && now - e.updatedAt < staleMs);
+    const msPerGameDayApprox = 5 * 60 * 1000; // 5 real min ≈ 1 game day (awake rate)
+    const freshLive = liveJson
+      .filter((e): e is { ageDays?: number; updatedAt: number } =>
+        typeof e.updatedAt === "number" && now - e.updatedAt < staleMs)
+      .map(e => ({
+        ageDays: (e.ageDays ?? 0) + (now - e.updatedAt) / msPerGameDayApprox,
+      }));
     const combined = (scores as Array<{ ageDays?: number }>).concat(freshLive);
     const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
     liveRankCache = { rank, total: combined.length + 1, at: now };

@@ -1,5 +1,7 @@
 ﻿package com.codotchi
 
+import com.intellij.credentialStore.CredentialAttributes
+import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.Configurable
@@ -9,6 +11,7 @@ import java.awt.Color
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
+import javax.swing.JButton
 import javax.swing.JCheckBox
 import javax.swing.JComboBox
 import javax.swing.JComponent
@@ -51,6 +54,9 @@ class CodotchiConfigurable : Configurable {
     private var tokenCostIncludeClaudeCodeCheck: JCheckBox?        = null
     private var tokenCostIncludeOpenCodeCheck:   JCheckBox?        = null
     private var tokenCostIncludeCopilotCheck:    JCheckBox?        = null
+    private var lbSignInButton:  JButton?  = null
+    private var lbSignOutButton: JButton?  = null
+    private var lbSignInStatus:  JBLabel?  = null
 
     override fun getDisplayName(): String = "Codotchi"
 
@@ -81,6 +87,25 @@ class CodotchiConfigurable : Configurable {
         val tokenCostClaudeCodeCheckbox = JCheckBox("Today's Token Cost: include Claude Code")
         val tokenCostOpenCodeCheckbox = JCheckBox("Today's Token Cost: include OpenCode")
         val tokenCostCopilotCheckbox = JCheckBox("Today's Token Cost: include GitHub Copilot quota % (Tools > Codotchi: Sign in to GitHub (Copilot Quota))")
+
+        val signInBtn  = JButton("Sign in to GitHub (Leaderboard)")
+        val signOutBtn = JButton("Sign out")
+        val signInStatusLabel = JBLabel("")
+        lbSignInButton  = signInBtn
+        lbSignOutButton = signOutBtn
+        lbSignInStatus  = signInStatusLabel
+
+        refreshSignInStatus(signInStatusLabel, signInBtn, signOutBtn)
+
+        signInBtn.addActionListener {
+            val plugin = ApplicationManager.getApplication().service<CodotchiPlugin>()
+            plugin.startLeaderboardSignIn()
+            signInStatusLabel.text = "Opening browser for sign-in…"
+        }
+        signOutBtn.addActionListener {
+            PasswordSafe.instance.setPassword(CredentialAttributes("Codotchi", "github-pat"), null)
+            refreshSignInStatus(signInStatusLabel, signInBtn, signOutBtn)
+        }
 
         fontSizeCombo            = combo
         colorPanel               = cp
@@ -309,8 +334,29 @@ class CodotchiConfigurable : Configurable {
         panel.add(tokenCostCopilotCheckbox, gbc)
         gbc.gridwidth = 1
 
-        // Push content to the top
+        // Row 26 — Leaderboard sign-in label
         gbc.gridx = 0; gbc.gridy = 26; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(JBLabel("Leaderboard GitHub account:"), gbc)
+        gbc.gridwidth = 1
+
+        // Row 27 — sign-in status
+        gbc.gridx = 0; gbc.gridy = 27; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(signInStatusLabel, gbc)
+        gbc.gridwidth = 1
+
+        // Row 28 — sign-in / sign-out buttons
+        gbc.gridx = 0; gbc.gridy = 28
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(signInBtn, gbc)
+
+        gbc.gridx = 1
+        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+        panel.add(signOutBtn, gbc)
+
+        // Push content to the top
+        gbc.gridx = 0; gbc.gridy = 29; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -457,6 +503,20 @@ class CodotchiConfigurable : Configurable {
     private fun petSizeKeyToIndex(key: String) = when (key) { "small" -> 0; "large" -> 2; else -> 1 }
     private fun bgIndexToKey(index: Int) = when (index) { 0 -> "plain"; 2 -> "spring"; 3 -> "summer"; 4 -> "autumn"; 5 -> "winter"; else -> "ordered" }
     private fun bgKeyToIndex(key: String) = when (key) { "plain" -> 0; "spring" -> 2; "summer" -> 3; "autumn" -> 4; "winter" -> 5; else -> 1 }
+
+    private fun refreshSignInStatus(label: JBLabel, signInBtn: JButton, signOutBtn: JButton) {
+        val pat = PasswordSafe.instance.getPassword(CredentialAttributes("Codotchi", "github-pat"))
+        if (!pat.isNullOrBlank()) {
+            val cached = ApplicationManager.getApplication().service<CodotchiPlugin>().getLeaderboardUsername()
+            label.text = if (cached != null) "Signed in as @$cached" else "Signed in"
+            signInBtn.isEnabled = false
+            signOutBtn.isEnabled = true
+        } else {
+            label.text = "Not signed in — leaderboard pushes are disabled"
+            signInBtn.isEnabled = true
+            signOutBtn.isEnabled = false
+        }
+    }
 
     // ── Colour helpers ─────────────────────────────────────────────────────
 
