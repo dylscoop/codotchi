@@ -96,6 +96,9 @@
   const leaderboardSection = document.getElementById("leaderboard-section");
   const btnSubmitLB        = document.getElementById("btn-submit-leaderboard");
   const leaderboardStatus  = document.getElementById("leaderboard-status");
+  const lbDeleteSection    = document.getElementById("leaderboard-delete-section");
+  const btnDeleteLB        = document.getElementById("btn-delete-leaderboard");
+  const lbDeleteStatus     = document.getElementById("leaderboard-delete-status");
   const btnViewLB          = document.getElementById("btn-view-leaderboard");
   const rankDisplay        = document.getElementById("rank-display");
   const btnViewLBLive      = document.getElementById("btn-view-leaderboard-live");
@@ -273,6 +276,15 @@
       btnSubmitLB.textContent = "Submitting…";
       if (leaderboardStatus) { leaderboardStatus.classList.add("hidden"); }
       vscode.postMessage({ command: "submit_leaderboard" });
+    });
+  }
+
+  if (btnDeleteLB) {
+    btnDeleteLB.addEventListener("click", function () {
+      btnDeleteLB.disabled = true;
+      btnDeleteLB.textContent = "Requesting deletion…";
+      if (lbDeleteStatus) { lbDeleteStatus.classList.add("hidden"); }
+      vscode.postMessage({ command: "delete_leaderboard_entry" });
     });
   }
 
@@ -1777,6 +1789,15 @@
       }
     }
 
+    // Delete entry button — shown after submission
+    if (lbDeleteSection) {
+      if (leaderboardAvailable && leaderboardSubmitted) {
+        lbDeleteSection.classList.remove("hidden");
+      } else {
+        lbDeleteSection.classList.add("hidden");
+      }
+    }
+
     // "View Leaderboard" link is always visible on the dead screen regardless of platform
     if (btnViewLB) {
       btnViewLB.classList.remove("hidden");
@@ -2601,6 +2622,28 @@
         if (leaderboardStatus) {
           leaderboardStatus.textContent = message.message || "Submission failed.";
           leaderboardStatus.classList.remove("hidden");
+        }
+      }
+      return;
+    }
+    if (message.type === "leaderboard_delete_result") {
+      if (!btnDeleteLB) { return; }
+      if (message.status === "success") {
+        btnDeleteLB.textContent = "Deletion requested ✓";
+        btnDeleteLB.disabled = true;
+        if (lbDeleteStatus) {
+          lbDeleteStatus.textContent = "Your entry will be removed shortly.";
+          lbDeleteStatus.classList.remove("hidden");
+        }
+      } else if (message.status === "cancelled") {
+        btnDeleteLB.disabled = false;
+        btnDeleteLB.textContent = "Delete my entry";
+      } else {
+        btnDeleteLB.disabled = false;
+        btnDeleteLB.textContent = "Delete my entry";
+        if (lbDeleteStatus) {
+          lbDeleteStatus.textContent = message.message || "Deletion request failed.";
+          lbDeleteStatus.classList.remove("hidden");
         }
       }
       return;

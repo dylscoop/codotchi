@@ -546,6 +546,10 @@ export class SidebarProvider
         void this.handleLeaderboardSubmit();
         return;
 
+      case "delete_leaderboard_entry":
+        void this.handleLeaderboardDelete();
+        return;
+
       case "open_leaderboard_url":
         void vscode.env.openExternal(vscode.Uri.parse(LEADERBOARD_PAGES_URL));
         return;
@@ -839,7 +843,7 @@ export class SidebarProvider
     }
   }
 
-  /** Push current pet state to leaderboard/live.json on the leaderboard branch. */
+  /** Push current pet state to leaderboard/live.json (array) on the leaderboard branch. */
   async pushLiveScore(state: PetState): Promise<void> {
     if (!state.alive) { return; }
     try {
@@ -848,53 +852,53 @@ export class SidebarProvider
       );
       if (!session) { return; }
 
-      // Fetch GitHub username
+      const authHeaders = {
+        "Authorization": `token ${session.accessToken}`,
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "Codotchi-VSCode",
+      };
+
+      // Fetch username once.
       const userRes = await fetch("https://api.github.com/user", {
-        headers: {
-          "Authorization": `token ${session.accessToken}`,
-          "Accept": "application/json",
-          "User-Agent": "Codotchi-VSCode",
-        },
+        headers: { ...authHeaders, "Accept": "application/json" },
       });
       if (!userRes.ok) { return; }
       const userBody = await userRes.json() as Record<string, unknown>;
       const username = String(userBody.login ?? "");
       if (!username) { return; }
 
-      const payload = {
+      const getUrl = `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/contents/leaderboard/live.json?ref=leaderboard`;
+      const getRes = await fetch(getUrl, { headers: authHeaders });
+
+      // Decode existing array (or start fresh).
+      let existing: Array<Record<string, unknown>> = [];
+      let sha: string | undefined;
+      if (getRes.ok) {
+        const getBody = await getRes.json() as Record<string, unknown>;
+        sha = typeof getBody.sha === "string" ? getBody.sha : undefined;
+        try {
+          const decoded = JSON.parse(Buffer.from(String(getBody.content ?? ""), "base64").toString("utf8"));
+          if (Array.isArray(decoded)) { existing = decoded; }
+        } catch { /* start fresh */ }
+      }
+
+      // Upsert: remove old entry for this username, add updated entry.
+      const entry = {
         username,
         petName: state.name,
+        petRunId: state.spawnedAt,
         ageDays: state.ageDays,
         stage: state.stage,
         petType: state.petType,
         updatedAt: Date.now(),
       };
-      const contentBase64 = Buffer.from(JSON.stringify(payload, null, 2), "utf8").toString("base64");
-
-      // Get current SHA so we can update the file (not create a duplicate).
-      const getUrl = `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/contents/leaderboard/live.json?ref=leaderboard`;
-      const getRes = await fetch(getUrl, {
-        headers: {
-          "Authorization": `token ${session.accessToken}`,
-          "Accept": "application/vnd.github+json",
-          "User-Agent": "Codotchi-VSCode",
-        },
-      });
-      let sha: string | undefined;
-      if (getRes.ok) {
-        const getBody = await getRes.json() as Record<string, unknown>;
-        sha = typeof getBody.sha === "string" ? getBody.sha : undefined;
-      }
+      const updated = [...existing.filter(e => e["username"] !== username), entry];
+      const contentBase64 = Buffer.from(JSON.stringify(updated, null, 2), "utf8").toString("base64");
 
       const putUrl = `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/contents/leaderboard/live.json`;
       await fetch(putUrl, {
         method: "PUT",
-        headers: {
-          "Authorization": `token ${session.accessToken}`,
-          "Accept": "application/vnd.github+json",
-          "Content-Type": "application/json",
-          "User-Agent": "Codotchi-VSCode",
-        },
+        headers: { ...authHeaders, "Content-Type": "application/json" },
         body: JSON.stringify({
           message: `live: update ${username}'s run (${state.ageDays}d ${state.stage})`,
           content: contentBase64,
@@ -904,6 +908,72 @@ export class SidebarProvider
       });
     } catch {
       // Live push is best-effort; never surface errors to the user
+    }
+  }
+
+  /** Request deletion of the user's leaderboard entry via a GitHub issue. */
+  private async handleLeaderboardDelete(): Promise<void> {
+    const postResult = (status: string, message?: string): void => {
+      if (this.webviewView) {
+        void this.webviewView.webview.postMessage({ type: "leaderboard_delete_result", status, message });
+      }
+    };
+
+    try {
+      const state = this.getCurrentState();
+      if (state === null || state.alive) {
+        postResult("error", "No finished run state available.");
+        return;
+      }
+
+      const session = await vscode.authentication.getSession(
+        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
+      );
+      if (!session) { postResult("cancelled"); return; }
+
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: {
+          "Authorization": `token ${session.accessToken}`,
+          "Accept": "application/json",
+          "User-Agent": "Codotchi-VSCode",
+        },
+      });
+      if (!userRes.ok) { postResult("error", `GitHub API error: ${userRes.status}`); return; }
+      const userBody = await userRes.json() as Record<string, unknown>;
+      const username = String(userBody.login ?? "");
+      if (!username) { postResult("error", "Could not read GitHub username."); return; }
+
+      const deleteData = {
+        schemaVersion: 1,
+        githubUsername: username,
+        petRunId: state.spawnedAt,
+        petName: state.name,
+      };
+      const issueBody =
+        `Leaderboard deletion request.\n\n\`\`\`json\n${JSON.stringify(deleteData, null, 2)}\n\`\`\``;
+      const issueTitle = `[Leaderboard Delete] ${state.name} — @${username}`;
+
+      const issueRes = await fetch(
+        `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `token ${session.accessToken}`,
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+            "User-Agent": "Codotchi-VSCode",
+          },
+          body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ["leaderboard-delete"] }),
+        }
+      );
+      if (issueRes.status === 201) {
+        postResult("success");
+      } else {
+        const errBody = await issueRes.text().catch(() => "");
+        postResult("error", `Failed to create issue (HTTP ${issueRes.status}): ${errBody.slice(0, 120)}`);
+      }
+    } catch {
+      postResult("error", "Unexpected error during deletion request.");
     }
   }
 
