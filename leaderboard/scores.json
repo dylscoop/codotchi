@@ -1,1 +1,15 @@
-{"scores":[]}
+{
+  "scores": [
+    {
+      "schemaVersion": 1,
+      "githubUsername": "dylscoop",
+      "petName": "Codotchi",
+      "ageDays": 1,
+      "stage": "baby",
+      "petType": "bytebug",
+      "spawnedAt": 1785773317734,
+      "diedAt": 1785774780909,
+      "submittedAt": 1785775001182
+    }
+  ]
+}
