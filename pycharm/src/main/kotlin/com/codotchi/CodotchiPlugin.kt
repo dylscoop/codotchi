@@ -556,6 +556,7 @@ class CodotchiPlugin : Disposable {
                 }
 
                 "new_game" -> {
+                    lastRunDiedAt = 0L   // reset so the next death gets a fresh timestamp
                     val rawName = (message["name"]    as? String)?.trim() ?: ""
                     val petType = (message["petType"] as? String) ?: "codeling"
                     val color   = (message["color"]   as? String) ?: "neon"
@@ -1053,8 +1054,11 @@ class CodotchiPlugin : Disposable {
                     highScore = newScore
                     persistence.saveHighScore(newScore)
                 }
-                // Track diedAt for leaderboard submission
-                lastRunDiedAt = highScore?.diedAt ?: diedAt
+                // Capture death time of THIS run on the first dead tick only.
+                // Never use highScore.diedAt — when the current run is not a new record,
+                // highScore still points to the previous run, whose diedAt predates this
+                // run's spawnedAt and causes leaderboard validation to reject the submission.
+                if (lastRunDiedAt == 0L) { lastRunDiedAt = diedAt }
 
                 // One-time leaderboard notification on first death
                 val props = com.intellij.ide.util.PropertiesComponent.getInstance()
