@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -192,7 +192,7 @@
       <strong>How to submit:</strong> Play Codotchi in VS Code or PyCharm.
       After your pet passes away, click <em>Submit to Leaderboard</em> on the game over screen.
       Your GitHub account is used to authenticate the submission.
-      To appear on <em>Currently Alive</em>, click <em>Push live progress</em> in the sidebar while your pet is alive.
+      To appear on <em>Currently Alive</em>, click <em>Push live progress</em> in the sidebar while your pet is alive. Entries expire after 48 hours.
     </div>
 
     <div class="tabs">
@@ -212,7 +212,7 @@
             <th>Species</th>
             <th>Stage</th>
             <th class="col-elapsed">Real Time</th>
-            <th class="col-submitted">Submitted</th>
+            <th class="col-submitted">Submitted / Last Seen</th>
           </tr>
         </thead>
         <tbody id="leaderboard-body">
@@ -243,7 +243,7 @@
           <tr><td colspan="7" class="empty">Loading live pets…</td></tr>
         </tbody>
       </table>
-      <p class="stale-note">Entries older than 2 hours are hidden. Push hourly from the Codotchi sidebar to stay visible.</p>
+      <p class="stale-note">Entries older than 48 hours are hidden. Push from the Codotchi sidebar to stay visible.</p>
       <div class="refresh-bar">
         <span id="last-updated-alive"></span>
         <button id="btn-refresh-alive" class="refresh-now-btn">Refresh now</button>
@@ -257,7 +257,7 @@
     var lastLoadedAlive = null;
     var autoRefreshTimer = null;
     var AUTOREFRESH_KEY = "codotchi-autorefresh";
-    var LIVE_STALE_MS = 2 * 60 * 60 * 1000; // 2 hours
+    var LIVE_STALE_MS = 48 * 60 * 60 * 1000; // 48 hours
 
     function switchTab(name) {
       activeTab = name;
@@ -341,25 +341,44 @@
     function loadScores() {
       lastLoadedAlltime = Date.now();
       updateLastUpdated("last-updated-alltime", lastLoadedAlltime);
-      fetch("scores.json?t=" + lastLoadedAlltime)
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          var scores = data.scores || [];
+      var t = lastLoadedAlltime;
+      Promise.all([
+        fetch("scores.json?t=" + t).then(function(r) { return r.json(); }),
+        fetch("live.json?t=" + t).then(function(r) { return r.json(); }).catch(function() { return []; })
+      ]).then(function(results) {
+          var scores = (results[0].scores || []).map(function(s) {
+            return { alive: false, githubUsername: s.githubUsername, petName: s.petName,
+                     ageDays: s.ageDays || 0, petType: s.petType, stage: s.stage,
+                     spawnedAt: s.spawnedAt, diedAt: s.diedAt, submittedAt: s.submittedAt };
+          });
+          var now = Date.now();
+          var live = (Array.isArray(results[1]) ? results[1] : [])
+            .filter(function(e) { return e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS; })
+            .map(function(e) {
+              return { alive: true, githubUsername: e.username, petName: e.petName,
+                       ageDays: e.ageDays || 0, petType: e.petType, stage: e.stage,
+                       updatedAt: e.updatedAt };
+            });
+          var combined = scores.concat(live);
+          combined.sort(function(a, b) { return b.ageDays - a.ageDays; });
           var tbody = document.getElementById("leaderboard-body");
-          if (scores.length === 0) {
+          if (combined.length === 0) {
             tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">No scores yet — be the first to submit!</td></tr>";
             return;
           }
-          tbody.innerHTML = scores.map(function(s, i) {
+          tbody.innerHTML = combined.map(function(s, i) {
+            var namePart = escHtml(s.petName || "—") + (s.alive ? "<span class=\"live-badge\">live</span>" : "");
+            var elapsedPart = s.alive ? "—" : formatElapsed(s.spawnedAt, s.diedAt);
+            var submittedPart = s.alive ? formatRelativeTime(s.updatedAt) : formatDate(s.submittedAt);
             return "<tr>" +
               "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
-              "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "</td>" +
+              "<td class=\"pet-name\">" + namePart + "</td>" +
               "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.githubUsername) + "\" target=\"_blank\">@" + escHtml(s.githubUsername || "—") + "</a></td>" +
-              "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
+              "<td class=\"age\">" + formatAge(s.ageDays) + "</td>" +
               "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
               "<td>" + escHtml(capStr(s.stage)) + "</td>" +
-              "<td class=\"elapsed col-elapsed\">" + formatElapsed(s.spawnedAt, s.diedAt) + "</td>" +
-              "<td class=\"submitted col-submitted\">" + formatDate(s.submittedAt) + "</td>" +
+              "<td class=\"elapsed col-elapsed\">" + elapsedPart + "</td>" +
+              "<td class=\"submitted col-submitted\">" + submittedPart + "</td>" +
               "</tr>";
           }).join("");
         })
