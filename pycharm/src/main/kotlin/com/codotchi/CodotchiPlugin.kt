@@ -7,8 +7,8 @@ import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import java.io.File
 import com.intellij.credentialStore.CredentialAttributes
+import com.intellij.ide.BrowserUtil
 import com.intellij.ide.passwordSafe.PasswordSafe
-import com.intellij.openapi.ui.Messages
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
@@ -788,17 +788,8 @@ class CodotchiPlugin : Disposable {
 
                 if (pat.isNullOrBlank()) {
                     if (!promptIfNoToken) return@execute
-                    var entered: String? = null
-                    ApplicationManager.getApplication().invokeAndWait {
-                        entered = Messages.showInputDialog(
-                            "Enter a GitHub Personal Access Token with 'public_repo' scope to push live progress to the leaderboard.",
-                            "GitHub Token Required",
-                            null
-                        )
-                    }
-                    if (entered.isNullOrBlank()) return@execute
-                    pat = entered
-                    PasswordSafe.instance.setPassword(credAttrs, pat)
+                    startDeviceFlowAsync(state)
+                    return@execute
                 }
 
                 // Resolve GitHub username
@@ -845,6 +836,76 @@ class CodotchiPlugin : Disposable {
                     com.intellij.ide.util.PropertiesComponent.getInstance()
                         .setValue("codotchi.liveLastPushedAt", now.toString())
                     broadcastState()
+                }
+            } catch (_: Exception) { /* network failure — silent */ }
+        }
+    }
+
+    private fun startDeviceFlowAsync(state: PetState) {
+        AppExecutorUtil.getAppExecutorService().execute {
+            try {
+                val clientId = "Ov23lilG4ngpe3lHdC88"
+
+                val dcConn = java.net.URL("https://github.com/login/device/code").openConnection() as java.net.HttpURLConnection
+                dcConn.requestMethod = "POST"
+                dcConn.doOutput = true
+                dcConn.connectTimeout = 10000
+                dcConn.readTimeout = 10000
+                dcConn.setRequestProperty("Accept", "application/json")
+                dcConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                dcConn.outputStream.writer().use { it.write("client_id=$clientId&scope=public_repo") }
+                if (dcConn.responseCode != 200) return@execute
+
+                @Suppress("UNCHECKED_CAST")
+                val dcResp = Gson().fromJson(dcConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                val deviceCode     = dcResp["device_code"] as? String ?: return@execute
+                val userCode       = dcResp["user_code"]   as? String ?: return@execute
+                val verifyUri      = (dcResp["verification_uri_complete"] as? String)
+                    ?: dcResp["verification_uri"] as? String
+                    ?: "https://github.com/login/device"
+                val expiresIn      = (dcResp["expires_in"] as? Double)?.toLong() ?: 900L
+                var pollInterval   = (dcResp["interval"]   as? Double)?.toLong() ?: 5L
+
+                ApplicationManager.getApplication().invokeLater {
+                    BrowserUtil.browse(verifyUri)
+                    NotificationGroupManager.getInstance()
+                        .getNotificationGroup("Codotchi Leaderboard")
+                        .createNotification(
+                            "Codotchi: Sign in to GitHub",
+                            "Your code is <b>$userCode</b>. Enter it on the GitHub page that just opened, then authorise. Live progress will start syncing automatically.",
+                            NotificationType.INFORMATION
+                        )
+                        .notify(null)
+                }
+
+                val deadline = System.currentTimeMillis() + expiresIn * 1000L
+                while (System.currentTimeMillis() < deadline) {
+                    Thread.sleep(pollInterval * 1000L)
+
+                    val tokConn = java.net.URL("https://github.com/login/oauth/access_token").openConnection() as java.net.HttpURLConnection
+                    tokConn.requestMethod = "POST"
+                    tokConn.doOutput = true
+                    tokConn.connectTimeout = 10000
+                    tokConn.readTimeout = 10000
+                    tokConn.setRequestProperty("Accept", "application/json")
+                    tokConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                    tokConn.outputStream.writer().use {
+                        it.write("client_id=$clientId&device_code=$deviceCode&grant_type=urn:ietf:params:oauth:grant-type:device_code")
+                    }
+
+                    @Suppress("UNCHECKED_CAST")
+                    val tokResp = Gson().fromJson(tokConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                    val accessToken = tokResp["access_token"] as? String
+                    if (!accessToken.isNullOrBlank()) {
+                        PasswordSafe.instance.setPassword(CredentialAttributes("Codotchi", "github-pat"), accessToken)
+                        pushLiveScoreAsync(state, promptIfNoToken = false)
+                        return@execute
+                    }
+                    when (tokResp["error"] as? String) {
+                        "slow_down"             -> pollInterval += 5
+                        "authorization_pending" -> { /* continue polling */ }
+                        else                    -> return@execute
+                    }
                 }
             } catch (_: Exception) { /* network failure — silent */ }
         }
