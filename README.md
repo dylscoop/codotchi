@@ -18,10 +18,19 @@ little happier.
 
 ## Leaderboard
 
-After your pet dies, click **Submit to Leaderboard** on the game over screen to publish your run.
-Your GitHub account is used to authenticate the submission.
-
 **[View the public leaderboard →](https://dylscoop.github.io/codotchi/leaderboard/)**
+
+### All-time tab — submit on death
+
+After your pet dies, click **Submit to Leaderboard** on the game over screen. VS Code uses your existing GitHub sign-in (OAuth — no extra setup). The submission creates a GitHub issue that the workflow processes automatically.
+
+### Live tab — push while alive
+
+You can also appear on the leaderboard **while your pet is still alive**. Your entry shows your current age with a "live" badge and disappears after 48 hours if you stop pushing.
+
+**VS Code:** Click the **Push live progress** toggle in the Codotchi sidebar. You'll be prompted to sign in to GitHub the first time. Your age is pushed hourly and immediately when you toggle on.
+
+**PyCharm:** Click the same **Push live progress** toggle. On first use you'll be prompted to enter a [GitHub Personal Access Token](https://github.com/settings/tokens) with `public_repo` scope. The token is stored securely in the IDE keychain and never needs to be re-entered.
 
 ## Platforms
 
@@ -41,19 +50,19 @@ PyCharm via a cross-platform JSON file.
 
 ### VS Code
 
-1. Download `codotchi-2.19.0.vsix` from the Releases page.
+1. Download `codotchi-2.20.2.vsix` from the Releases page.
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
 Or from the terminal:
 
 ```bash
-code --install-extension codotchi-2.19.0.vsix
+code --install-extension codotchi-2.20.2.vsix
 ```
 
 ### JetBrains
 
-1. Download `pycharm-codotchi-2.19.0.zip` from the Releases page.
+1. Download `pycharm-codotchi-2.20.2.zip` from the Releases page.
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -81,19 +90,19 @@ page — no repository clone required:
 
 #### From Zip
 
-1. Download `opencode-codotchi-2.19.0.zip` from the
+1. Download `opencode-codotchi-2.20.2.zip` from the
    [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. Extract it and run the installer:
 
    ```bash
    # macOS / Linux
-   unzip opencode-codotchi-2.19.0.zip && cd opencode-codotchi-2.18.0
+   unzip opencode-codotchi-2.20.2.zip && cd opencode-codotchi-2.18.0
    node bin/install.js --install
    ```
 
    ```powershell
    # Windows (PowerShell)
-   Expand-Archive opencode-codotchi-2.19.0.zip; cd opencode-codotchi-2.18.0
+   Expand-Archive opencode-codotchi-2.20.2.zip; cd opencode-codotchi-2.18.0
    node bin/install.js --install
    ```
 
@@ -179,7 +188,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.19.0.vsix
+# produces codotchi-2.20.2.vsix
 ```
 
 ### JetBrains plugin
@@ -195,14 +204,14 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.19.0.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.20.2.zip
 ```
 
 ## Version history
 
 See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
-Current release: **v2.18.0** — built by [dylscoop](https://github.com/dylscoop)
+Current release: **v2.20.2** — built by [dylscoop](https://github.com/dylscoop)
 
 > "Grow your best pet by writing your best code."
 

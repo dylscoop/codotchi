@@ -106,13 +106,14 @@ class CodotchiBrowserPanel(
      * Push a full state snapshot + mealsGivenThisCycle + highScore + devMode to the webview.
      * Must be called on the EDT (JBCefBrowser.executeJavaScript is EDT-safe).
      */
-    fun postState(state: PetState, mealsGivenThisCycle: Int, highScore: HighScore?, devMode: Boolean, unlockedCharacter: String? = null, defaultPetName: String = "Codotchi", liveRank: Int? = null, liveTotalScores: Int? = null, liveSubscribed: Boolean = false) {
+    fun postState(state: PetState, mealsGivenThisCycle: Int, highScore: HighScore?, devMode: Boolean, unlockedCharacter: String? = null, defaultPetName: String = "Codotchi", liveRank: Int? = null, liveTotalScores: Int? = null, liveSubscribed: Boolean = false, liveLastPushedAt: Long? = null) {
         val stateJson     = gson.toJson(state)
         val highScoreJson = if (highScore != null) gson.toJson(highScore) else "null"
         val unlockedCharJson = if (unlockedCharacter != null) "\"$unlockedCharacter\"" else "null"
         val liveRankJson = liveRank?.toString() ?: "null"
         val liveTotalJson = liveTotalScores?.toString() ?: "null"
-        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","leaderboardAvailable":true,"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed}"""
+        val liveLastPushedJson = liveLastPushedAt?.toString() ?: "null"
+        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","leaderboardAvailable":true,"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson}"""
         val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
     }

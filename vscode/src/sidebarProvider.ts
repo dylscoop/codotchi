@@ -188,9 +188,11 @@ export class SidebarProvider
   // Live rank cache — refreshed at most every 5 minutes.
   private static readonly RANK_CACHE_TTL_MS = 5 * 60 * 1000;
   private rankCache: { rank: number; total: number; at: number } | null = null;
-  // URL for fetching live rank data from the leaderboard branch.
+  // URLs for fetching rank data from the leaderboard branch.
   private static readonly SCORES_JSON_URL =
     `https://raw.githubusercontent.com/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/leaderboard/leaderboard/scores.json`;
+  private static readonly LIVE_JSON_URL =
+    `https://raw.githubusercontent.com/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/leaderboard/leaderboard/live.json`;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -837,14 +839,21 @@ export class SidebarProvider
       return; // still fresh
     }
     try {
-      const res = await fetch(SidebarProvider.SCORES_JSON_URL, {
-        headers: { "Accept": "application/json", "User-Agent": "Codotchi-VSCode" },
-      });
-      if (!res.ok) { return; }
-      const json = await res.json() as { scores?: Array<{ ageDays: number }> } | Array<{ ageDays: number }>;
-      const scores: Array<{ ageDays: number }> = Array.isArray(json) ? json : (json.scores ?? []);
-      const rank = scores.filter(s => s.ageDays > ageDays).length + 1;
-      this.rankCache = { rank, total: scores.length + 1, at: now };
+      const headers = { "Accept": "application/json", "User-Agent": "Codotchi-VSCode" };
+      const [scoresRes, liveRes] = await Promise.all([
+        fetch(SidebarProvider.SCORES_JSON_URL, { headers }),
+        fetch(SidebarProvider.LIVE_JSON_URL, { headers }).catch(() => null),
+      ]);
+      if (!scoresRes.ok) { return; }
+      const scoresJson = await scoresRes.json() as { scores?: Array<{ ageDays: number }> } | Array<{ ageDays: number }>;
+      const scores: Array<{ ageDays: number }> = Array.isArray(scoresJson) ? scoresJson : (scoresJson.scores ?? []);
+      const liveJson: Array<{ ageDays?: number; updatedAt?: number }> = liveRes?.ok
+        ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; updatedAt?: number }> : [];
+      const staleMs = 48 * 60 * 60 * 1000;
+      const freshLive = liveJson.filter(e => e.updatedAt && (now - e.updatedAt) < staleMs);
+      const combined = (scores as Array<{ ageDays: number }>).concat(freshLive as Array<{ ageDays: number }>);
+      const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
+      this.rankCache = { rank, total: combined.length + 1, at: now };
     } catch {
       // Network failure — keep stale cache if available
     }

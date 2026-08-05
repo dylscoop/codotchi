@@ -839,19 +839,29 @@ let lastToolOutput = "";
 let liveRankCache: { rank: number; total: number; at: number } | null = null;
 const RANK_CACHE_TTL_MS_OC = 5 * 60 * 1000;
 const SCORES_JSON_URL_OC = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/scores.json";
+const LIVE_JSON_URL_OC   = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/live.json";
 
 async function refreshLiveRank(ageDays: number): Promise<void> {
   const now = Date.now();
   if (liveRankCache && now - liveRankCache.at < RANK_CACHE_TTL_MS_OC) { return; }
   try {
-    const res = await fetch(SCORES_JSON_URL_OC);
-    if (!res.ok) { return; }
-    const json = await res.json() as Record<string, unknown> | Array<unknown>;
+    const [scoresRes, liveRes] = await Promise.all([
+      fetch(SCORES_JSON_URL_OC),
+      fetch(LIVE_JSON_URL_OC).catch(() => null),
+    ]);
+    if (!scoresRes.ok) { return; }
+    const json = await scoresRes.json() as Record<string, unknown> | Array<unknown>;
     const scores: Array<{ ageDays?: number }> = Array.isArray(json)
       ? (json as Array<{ ageDays?: number }>)
       : ((json as Record<string, unknown>).scores as Array<{ ageDays?: number }> ?? []);
-    const rank = scores.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
-    liveRankCache = { rank, total: scores.length + 1, at: now };
+    const liveJson: Array<{ ageDays?: number; updatedAt?: number }> = liveRes?.ok
+      ? await liveRes.json().catch(() => []) : [];
+    const staleMs = 48 * 60 * 60 * 1000;
+    const freshLive = liveJson.filter((e): e is { ageDays?: number; updatedAt: number } =>
+      typeof e.updatedAt === "number" && now - e.updatedAt < staleMs);
+    const combined = (scores as Array<{ ageDays?: number }>).concat(freshLive);
+    const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
+    liveRankCache = { rank, total: combined.length + 1, at: now };
   } catch { /* network failure — keep stale */ }
 }
 
