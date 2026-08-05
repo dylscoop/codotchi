@@ -12,6 +12,9 @@ jobs:
   update-live:
     if: contains(github.event.issue.labels.*.name, 'leaderboard-live')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
 
     steps:
       - uses: actions/checkout@v4
