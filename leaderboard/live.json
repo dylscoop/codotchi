@@ -1,11 +1,11 @@
 [
   {
     "username": "dylscoop",
-    "petName": "Codotchi",
-    "petRunId": 1785863514210,
-    "ageDays": 1,
-    "stage": "baby",
-    "petType": "codeling",
-    "updatedAt": 1785940665157
+    "petName": "Mike Hunt",
+    "petRunId": 1785921262544,
+    "ageDays": 10,
+    "stage": "child",
+    "petType": "bytebug",
+    "updatedAt": 1785940838680
   }
 ]
