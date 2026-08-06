@@ -7,5 +7,15 @@
     "stage": "child",
     "petType": "bytebug",
     "updatedAt": 1785945002210
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Codotchi",
+    "petRunId": 1785863514210,
+    "spawnedAt": 1785863514210,
+    "ageDays": 1,
+    "stage": "baby",
+    "petType": "codeling",
+    "updatedAt": 1786005554288
   }
 ]
