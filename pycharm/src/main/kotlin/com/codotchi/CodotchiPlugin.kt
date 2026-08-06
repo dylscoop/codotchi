@@ -589,20 +589,11 @@ class CodotchiPlugin : Disposable {
                 "user_activity" -> return@withLock
 
                 "submit_leaderboard" -> {
-                    // Capture state snapshot under lock, then open browser outside the lock
                     val deadState  = currentState?.takeIf { !it.alive }
                     val diedAtSnap = lastRunDiedAt.takeIf { it > 0L } ?: System.currentTimeMillis()
                     shouldBroadcast = false
                     if (deadState != null) {
-                        AppExecutorUtil.getAppExecutorService().submit {
-                            val url = buildLeaderboardIssueUrl(deadState, diedAtSnap)
-                            com.intellij.ide.BrowserUtil.browse(url)
-                            // Notify the webview that submission was handed off to the browser
-                            val payload = """{"type":"leaderboard_submit_result","status":"browser_opened"}"""
-                            ApplicationManager.getApplication().invokeLater {
-                                browserPanels.forEach { it.postMessage(payload) }
-                            }
-                        }
+                        submitLeaderboardAsync(deadState, diedAtSnap)
                     }
                     return@withLock
                 }
@@ -859,7 +850,71 @@ class CodotchiPlugin : Disposable {
         }
     }
 
-    private fun startDeviceFlowAsync(state: PetState?) {
+    private fun submitLeaderboardAsync(state: PetState, diedAt: Long) {
+        AppExecutorUtil.getAppExecutorService().execute {
+            fun postResult(status: String, message: String? = null) {
+                val msgPart = if (message != null) ""","message":"${message.replace("\"", "\\\"")}"""" else ""
+                val payload = """{"type":"leaderboard_submit_result","status":"$status"$msgPart}"""
+                ApplicationManager.getApplication().invokeLater {
+                    browserPanels.forEach { it.postMessage(payload) }
+                }
+            }
+            try {
+                val credAttrs = CredentialAttributes("Codotchi", "github-pat")
+                val pat = PasswordSafe.instance.getPassword(credAttrs)
+                if (pat.isNullOrBlank()) {
+                    startDeviceFlowAsync(null) { submitLeaderboardAsync(state, diedAt) }
+                    return@execute
+                }
+
+                val userConn = java.net.URL("https://api.github.com/user").openConnection() as java.net.HttpURLConnection
+                userConn.connectTimeout = 5000
+                userConn.readTimeout = 5000
+                userConn.setRequestProperty("Authorization", "token $pat")
+                userConn.setRequestProperty("Accept", "application/vnd.github+json")
+                userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                if (userConn.responseCode != 200) {
+                    postResult("error", "GitHub API error: ${userConn.responseCode}")
+                    return@execute
+                }
+                @Suppress("UNCHECKED_CAST")
+                val userMap = Gson().fromJson(userConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                val username = userMap["login"] as? String ?: run { postResult("error", "Could not read GitHub username."); return@execute }
+                leaderboardGithubUsername = username
+
+                val scoreJson = """{"schemaVersion":1,"petName":"${state.name.replace("\"","\\\"")}","ageDays":${state.ageDays},"stage":"${state.stage}","petType":"${state.petType}","spawnedAt":${state.spawnedAt},"diedAt":$diedAt}"""
+                val issueBody = "Leaderboard submission.\n\n```json\n$scoreJson\n```"
+                val issueTitle = "[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @$username"
+                val issuePayload = mapOf(
+                    "title" to issueTitle,
+                    "body"  to issueBody,
+                    "labels" to listOf("leaderboard-submission")
+                )
+
+                val issueConn = java.net.URL(GITHUB_ISSUES_API).openConnection() as java.net.HttpURLConnection
+                issueConn.requestMethod = "POST"
+                issueConn.doOutput = true
+                issueConn.connectTimeout = 10000
+                issueConn.readTimeout = 10000
+                issueConn.setRequestProperty("Authorization", "token $pat")
+                issueConn.setRequestProperty("Accept", "application/vnd.github+json")
+                issueConn.setRequestProperty("Content-Type", "application/json")
+                issueConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                issueConn.outputStream.writer().use { it.write(Gson().toJson(issuePayload)) }
+
+                if (issueConn.responseCode == 201) {
+                    postResult("success")
+                } else {
+                    val errBody = issueConn.errorStream?.bufferedReader()?.readText()?.take(120) ?: ""
+                    postResult("error", "Failed to submit (HTTP ${issueConn.responseCode}): $errBody")
+                }
+            } catch (e: Exception) {
+                postResult("error", "Network error: ${e.message?.take(80)}")
+            }
+        }
+    }
+
+    private fun startDeviceFlowAsync(state: PetState?, onAuthSuccess: (() -> Unit)? = null) {
         AppExecutorUtil.getAppExecutorService().execute {
             try {
                 val clientId = "Ov23lilG4ngpe3lHdC88"
@@ -917,7 +972,11 @@ class CodotchiPlugin : Disposable {
                     if (!accessToken.isNullOrBlank()) {
                         PasswordSafe.instance.setPassword(CredentialAttributes("Codotchi", "github-pat"), accessToken)
                         resolveAndCacheLeaderboardUsername(accessToken)
-                        if (state != null) pushLiveScoreAsync(state, promptIfNoToken = false)
+                        if (onAuthSuccess != null) {
+                            onAuthSuccess()
+                        } else if (state != null) {
+                            pushLiveScoreAsync(state, promptIfNoToken = false)
+                        }
                         return@execute
                     }
                     when (tokResp["error"] as? String) {
