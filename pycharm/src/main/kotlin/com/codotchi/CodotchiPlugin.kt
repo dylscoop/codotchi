@@ -815,7 +815,7 @@ class CodotchiPlugin : Disposable {
                 val entry = mapOf(
                     "username" to username,
                     "petName" to state.name,
-                    "petRunId" to state.spawnedAt,
+                    "petRunId" to com.intellij.openapi.application.PermanentInstallationID.get(),
                     "spawnedAt" to state.spawnedAt,
                     "ageDays" to state.ageDays,
                     "stage" to state.stage,

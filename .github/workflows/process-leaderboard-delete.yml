@@ -100,7 +100,7 @@ jobs:
           live_pruned = [
               e for e in live
               if not (e.get("username", "").lower() == author and
-                      int(e.get("spawnedAt", e.get("petRunId", 0))) == pet_run_id)
+                      int(e.get("spawnedAt", 0)) == pet_run_id)
           ]
           with open(live_path, "w") as f:
               json.dump(live_pruned, f, indent=2)

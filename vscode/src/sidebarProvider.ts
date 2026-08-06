@@ -933,7 +933,7 @@ export class SidebarProvider
       const entry = {
         username,
         petName:   state.name,
-        petRunId:  state.spawnedAt,
+        petRunId:  vscode.env.machineId,
         spawnedAt: state.spawnedAt,
         ageDays:   state.ageDays,
         stage:     state.stage,
