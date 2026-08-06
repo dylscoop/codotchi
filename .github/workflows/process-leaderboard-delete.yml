@@ -87,6 +87,24 @@ jobs:
           with open("/tmp/removed_entry.json", "w") as f:
               json.dump(removed_entry, f)
 
+          # Also remove any matching live entry for this run.
+          live_path = "leaderboard/live.json"
+          try:
+              with open(live_path) as f:
+                  live = json.load(f)
+              if not isinstance(live, list):
+                  live = []
+          except Exception:
+              live = []
+
+          live_pruned = [
+              e for e in live
+              if not (e.get("username", "").lower() == author and
+                      int(e.get("spawnedAt", 0)) == pet_run_id)
+          ]
+          with open(live_path, "w") as f:
+              json.dump(live_pruned, f, indent=2)
+
           print(f"Removed entry: {removed_entry['petName']} ({removed_entry['ageDays']}d) for '{author}'")
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write("deleted=true\n")
@@ -97,7 +115,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add leaderboard/scores.json
+          git add leaderboard/scores.json leaderboard/live.json
           ENTRY_DESC=$(python3 -c "import json; e=json.load(open('/tmp/removed_entry.json')); print(e['petName'] + ' ' + str(e['ageDays']) + 'd')")
           git commit -m "leaderboard: remove ${{ github.event.issue.user.login }} ${ENTRY_DESC}"
           git push origin leaderboard

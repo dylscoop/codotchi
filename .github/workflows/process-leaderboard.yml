@@ -144,11 +144,31 @@ jobs:
           with open("leaderboard/scores.json", "w") as f:
               json.dump(data, f, indent=2)
               f.write("\n")
+
+          # Remove the user's live entry for this run — pet died, live entry is stale.
+          live_path = "leaderboard/live.json"
+          try:
+              with open(live_path) as f:
+                  live = json.load(f)
+              if not isinstance(live, list):
+                  live = []
+          except Exception:
+              live = []
+
+          live_user = entry["githubUsername"].lower()
+          spawned   = int(entry["spawnedAt"])
+          live_pruned = [
+              e for e in live
+              if not (e.get("username", "").lower() == live_user and
+                      int(e.get("spawnedAt", 0)) == spawned)
+          ]
+          with open(live_path, "w") as f:
+              json.dump(live_pruned, f, indent=2)
           PYEOF
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add leaderboard/scores.json
+          git add leaderboard/scores.json leaderboard/live.json
           ENTRY_DESC=$(python3 -c "import json; e=json.load(open('/tmp/new_entry.json')); print(e['petName'] + ' ' + str(e['ageDays']) + 'd')")
           git commit -m "leaderboard: add ${{ github.event.issue.user.login }} ${ENTRY_DESC}"
           git push origin leaderboard

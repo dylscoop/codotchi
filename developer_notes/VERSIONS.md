@@ -1,5 +1,19 @@
 # Version History
 
+## v2.20.5 — current
+
+### Changes from v2.20.4 (leaderboard fixes — branch fix/pycharm-direct-submit)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `submitLeaderboardAsync()` — posts death submission directly via GitHub Issues API using stored PAT; no longer opens browser URL that users could edit; `startDeviceFlowAsync()` gains optional `onAuthSuccess` callback so Device Flow retries the correct action after auth |
+| `vscode/src/sidebarProvider.ts` | fix: `pushLiveScore()` — `petRunId` changed from `state.spawnedAt` to `vscode.env.machineId` (stable per-VS-Code-installation UUID) so repeat pushes correctly upsert instead of accumulating |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `pushLiveScoreAsync()` — `petRunId` changed from `state.spawnedAt` to `PermanentInstallationID.get()` (stable per-PyCharm-installation UUID) |
+| `.github/workflows/process-leaderboard.yml` | fix: on successful death submission, also remove matching live entry from `live.json` (matched by username + spawnedAt) |
+| `.github/workflows/process-leaderboard-delete.yml` | fix: on deletion, also remove matching live entry from `live.json`; simplified live match to use `spawnedAt` directly (no fallback to UUID petRunId) |
+
+---
+
 ## v2.20.3 -- current
 
 ### Changes from v2.20.2 (GitHub device flow sign-in for PyCharm live push)

@@ -1,7 +1,7 @@
 {
   "name": "opencode-codotchi",
-  "version": "2.20.4",
-  "description": "A virtual Tamagotchi-style pet that lives inside OpenCode Ã¢â‚¬â€ globally installable via npm",
+  "version": "2.20.5",
+  "description": "A virtual Tamagotchi-style pet that lives inside OpenCode ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â globally installable via npm",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -36,4 +36,5 @@
     "config/"
   ]
 }
+
 
