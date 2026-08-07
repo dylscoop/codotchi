@@ -12,7 +12,7 @@ jobs:
   process:
     name: Validate and record score
     runs-on: ubuntu-latest
-    if: contains(github.event.issue.labels.*.name, 'leaderboard-submission')
+    if: startsWith(github.event.issue.title, '[Leaderboard]')
 
     permissions:
       contents: write

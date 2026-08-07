@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   update-live:
-    if: contains(github.event.issue.labels.*.name, 'leaderboard-live')
+    if: startsWith(github.event.issue.title, '[Live]')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -60,6 +60,19 @@ jobs:
               if not (e.get("username", "").lower() == author and
                       str(e.get("petRunId", "")) == new_run_id)
           ]
+
+          # Also remove any legacy entries where petRunId == spawnedAt (old format
+          # before stable machineId was adopted). Without this, old entries persist
+          # alongside the new machineId-keyed entry and inflate the live count.
+          new_spawned_at = data.get("spawnedAt")
+          if new_spawned_at is not None:
+              entries = [
+                  e for e in entries
+                  if not (e.get("username", "").lower() == author and
+                          e.get("spawnedAt") == new_spawned_at and
+                          str(e.get("petRunId", "")) != new_run_id)
+              ]
+
           entries.append(data)
 
           with open(path, "w") as f:
@@ -76,14 +89,26 @@ jobs:
           git diff --cached --quiet || git commit -m "live: update ${{ github.event.issue.user.login }}'s run"
           git push
 
-      - name: Close issue
+      - name: Close this and any other open live issues for this user
         if: always()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.rest.issues.update({
-              ...context.repo,
-              issue_number: context.issue.number,
-              state: 'closed'
+            const author = context.payload.issue.user.login;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              creator: author,
             });
+            for (const issue of issues) {
+              if (issue.title.startsWith('[Live]')) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  state: 'closed',
+                });
+              }
+            }
