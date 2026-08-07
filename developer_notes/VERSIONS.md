@@ -1,5 +1,16 @@
 # Version History
 
+## v2.20.6 — current
+
+### Changes from v2.20.5 (PyCharm leaderboard rank self-exclusion fix — branch fix/pycharm-leaderboard-rank)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `fetchLiveRankAsync()` — exclude the current user's own live entry from the comparison pool; stale extrapolation of the user's own entry was inflating their apparent age and pushing them to rank 2 instead of rank 1 |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | feat: extend `postState()` signature to accept `liveRank`, `liveTotalScores`, `liveSubscribed`, `liveLastPushedAt`, `leaderboardGithubUsername` and include them in the JS payload |
+
+---
+
 ## v2.20.5 — current
 
 ### Changes from v2.20.4 (leaderboard fixes — branch fix/pycharm-direct-submit)

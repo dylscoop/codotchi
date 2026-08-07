@@ -1858,3 +1858,12 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** The pause button disappeared from the PyCharm plugin. It was accidentally dropped in the commit that introduced the leaderboard section in `sidebar.html` (commit `e22f975`). The VS Code extension was unaffected because its pause control lives in the IDE toolbar (registered in `package.json`) rather than in the webview HTML. PyCharm had no equivalent IDE-level action.
 
 **Fix:** Added a `Pause/Resume` `AnAction` to `CodotchiToolWindow.setTitleActions()` between the existing Refresh and Settings buttons. The action reads pause state via a new `CodotchiPlugin.isPaused()` helper (reads `currentState?.paused` under `stateLock`) and toggles icon/text between `AllIcons.Actions.Pause` and `AllIcons.Actions.Execute`. Sends `handleCommand(mapOf("command" to "pause"))` on click — the same path the webview button previously used.
+
+## BUGFIX-153 — PyCharm leaderboard rank shows user ranked behind themselves
+
+**Status:** Fixed (v2.20.6, branch `fix/pycharm-leaderboard-rank`)
+**Files:** `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt`
+
+**Problem:** The PyCharm plugin's `fetchLiveRankAsync()` included the current user's own entry from `live.json` in the comparison pool when computing rank. Because `live.json` stores `ageDays` at the time of last push and the code extrapolates forward assuming the pet is always awake (5 min/game-day), a pet that was 1 game-day old when last pushed 35 hours ago would extrapolate to ~420 game days — far above the real current age of 8 days. This caused the user to appear ranked below their own stale entry, showing "Rank #2 of 2" instead of the correct position. The VS Code extension already had this fix (`sidebarProvider.ts` line 924), but it was never ported to the Kotlin plugin.
+
+**Fix:** Added `selfUsername = leaderboardGithubUsername?.lowercase()` before the `freshLive` filter in `fetchLiveRankAsync()`, and added a second filter condition `&& (selfUsername == null || entryUsername != selfUsername)` to exclude the current user's own live entry. The `combined.size + 1` total is now correct — `combined` excludes self, and `+1` accounts for the current user.

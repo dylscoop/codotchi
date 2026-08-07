@@ -110,10 +110,10 @@ class CodotchiBrowserPanel(
         val stateJson     = gson.toJson(state)
         val highScoreJson = if (highScore != null) gson.toJson(highScore) else "null"
         val unlockedCharJson = if (unlockedCharacter != null) "\"$unlockedCharacter\"" else "null"
-        val liveRankJson = liveRank?.toString() ?: "null"
-        val liveTotalJson = liveTotalScores?.toString() ?: "null"
-        val liveLastPushedJson = liveLastPushedAt?.toString() ?: "null"
-        val lbUsernameJson = if (leaderboardGithubUsername != null) "\"$leaderboardGithubUsername\"" else "null"
+        val liveRankJson = if (liveRank != null) liveRank.toString() else "null"
+        val liveTotalJson = if (liveTotalScores != null) liveTotalScores.toString() else "null"
+        val liveLastPushedJson = if (liveLastPushedAt != null) liveLastPushedAt.toString() else "null"
+        val lbUsernameJson = if (leaderboardGithubUsername != null) "\"${leaderboardGithubUsername.replace("\"", "\\\"")}\"" else "null"
         val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","leaderboardAvailable":true,"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson,"leaderboardGithubUsername":$lbUsernameJson}"""
         val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
