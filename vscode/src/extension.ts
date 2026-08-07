@@ -194,6 +194,11 @@ export function activate(context: vscode.ExtensionContext): void {
       // a new record — it would reference the previous run's death time.
       if (lastRunDiedAt === null) {
         lastRunDiedAt = Date.now();
+
+        // Auto-submit to leaderboard on first death tick if the user was subscribed.
+        const wasSubscribed = context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
+        if (wasSubscribed) { void sidebar?.autoSubmitLeaderboard(); }
+
         const cfg3 = vscode.workspace.getConfiguration("codotchi");
         const notifEnabled = cfg3.get<boolean>("leaderboard.autoRefresh", true);
         const notifShown = context.globalState.get<boolean>("leaderboardDeathNotifShown", false);

@@ -696,7 +696,7 @@ export class SidebarProvider
     const liveLastPushedAt = this.context.globalState.get<number>("leaderboardLastPushedAt", 0);
 
     // Fetch rank whenever subscribed and alive (showing rank = opt-in via subscribe button).
-    if (liveSubscribed && state.alive) { void this.fetchLiveRank(state.ageDays); }
+    if (liveSubscribed && state.alive) { void this.fetchLiveRank(state.ageDays, this.leaderboardGithubUsername); }
 
     const cached = this.rankCache;
 
@@ -842,8 +842,64 @@ export class SidebarProvider
     }
   }
 
-  /** Fetch scores.json and compute current rank; result is cached for 5 minutes. */
-  async fetchLiveRank(ageDays: number): Promise<void> {
+  /** Silently submit the dead pet to the leaderboard using the existing GitHub session.
+   *  Called automatically on first death tick when the user is subscribed to the live board.
+   *  Uses createIfNone:false so no auth popup is shown. */
+  async autoSubmitLeaderboard(): Promise<void> {
+    try {
+      const state = this.getCurrentState();
+      if (state === null || state.alive) { return; }
+
+      const session = await vscode.authentication.getSession(
+        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: false }
+      ).catch(() => null);
+      if (!session) { return; }
+
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: { "Authorization": `token ${session.accessToken}`, "Accept": "application/json", "User-Agent": "Codotchi-VSCode" },
+      });
+      if (!userRes.ok) { return; }
+      const userBody = await userRes.json() as Record<string, unknown>;
+      const username = String(userBody.login ?? "");
+      if (!username) { return; }
+      this.leaderboardGithubUsername = username;
+
+      const diedAt = this.getLastRunDiedAt() ?? Date.now();
+      const scoreData = {
+        schemaVersion: 1,
+        githubUsername: username,
+        petName:        state.name,
+        ageDays:        state.ageDays,
+        stage:          state.stage,
+        petType:        state.petType,
+        spawnedAt:      state.spawnedAt,
+        diedAt,
+      };
+      const issueBody  = `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``;
+      const issueTitle = `[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @${username}`;
+
+      await fetch(
+        `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `token ${session.accessToken}`,
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+            "User-Agent": "Codotchi-VSCode",
+          },
+          body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ["leaderboard-submission"] }),
+        }
+      );
+    } catch {
+      // Auto-submit is best-effort; never surface errors to the user
+    }
+  }
+
+  /** Fetch scores.json and compute current rank; result is cached for 5 minutes.
+   *  Pass username so the user's own live entry is excluded from the pool —
+   *  the unconditional +1 at the end already accounts for the current user. */
+  async fetchLiveRank(ageDays: number, username: string | null = null): Promise<void> {
     const now = Date.now();
     if (this.rankCache && (now - this.rankCache.at) < SidebarProvider.RANK_CACHE_TTL_MS) {
       return; // still fresh
@@ -857,12 +913,15 @@ export class SidebarProvider
       if (!scoresRes.ok) { return; }
       const scoresJson = await scoresRes.json() as { scores?: Array<{ ageDays: number }> } | Array<{ ageDays: number }>;
       const scores: Array<{ ageDays: number }> = Array.isArray(scoresJson) ? scoresJson : (scoresJson.scores ?? []);
-      const liveJson: Array<{ ageDays?: number; updatedAt?: number }> = liveRes?.ok
-        ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; updatedAt?: number }> : [];
+      const liveJson: Array<{ ageDays?: number; updatedAt?: number; username?: string }> = liveRes?.ok
+        ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; updatedAt?: number; username?: string }> : [];
       const staleMs = 48 * 60 * 60 * 1000;
+      const userLower = username?.toLowerCase() ?? null;
       // Extrapolate current ageDays from storedAgeDays + elapsed time since last push.
+      // Exclude the current user's own entry — the +1 below already represents them.
       const freshLive = liveJson
         .filter(e => e.updatedAt && (now - e.updatedAt) < staleMs)
+        .filter(e => !userLower || (e.username?.toLowerCase() ?? "") !== userLower)
         .map(e => ({
           ageDays: (e.ageDays ?? 0) + (e.updatedAt ? (now - e.updatedAt) / SidebarProvider.MS_PER_GAME_DAY_APPROX : 0),
         }));
