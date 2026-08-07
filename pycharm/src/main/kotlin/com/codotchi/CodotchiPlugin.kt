@@ -176,9 +176,18 @@ class CodotchiPlugin : Disposable {
 
     // ── Initialisation ─────────────────────────────────────────────────────
 
+    private fun setLeaderboardUsername(username: String?) {
+        leaderboardGithubUsername = username
+        val props = com.intellij.ide.util.PropertiesComponent.getInstance()
+        if (username != null) props.setValue("codotchi.leaderboardGithubUsername", username)
+        else props.unsetValue("codotchi.leaderboardGithubUsername")
+    }
+
     fun initialize() {
         liveLastPushedAtMs = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getValue("codotchi.liveLastPushedAt")?.toLongOrNull() ?: 0L
+        leaderboardGithubUsername = com.intellij.ide.util.PropertiesComponent.getInstance()
+            .getValue("codotchi.leaderboardGithubUsername")
 
         // Register AWT event listener to track keyboard/mouse activity for idle detection
         val activityMask = AWTEvent.KEY_EVENT_MASK or
@@ -732,10 +741,8 @@ class CodotchiPlugin : Disposable {
      */
     fun isPaused(): Boolean = stateLock.withLock { currentState?.paused ?: false }
 
-    /** Fetch live rank in the background; result stored in [rankCache].
-     *  Pass username so the user's own live entry is excluded from the pool —
-     *  the unconditional +1 at the end already accounts for the current user. */
-    private fun fetchLiveRankAsync(ageDays: Int, username: String? = null) {
+    /** Fetch live rank in the background; result stored in [rankCache]. */
+    private fun fetchLiveRankAsync(ageDays: Int) {
         val now = System.currentTimeMillis()
         val cached = rankCache
         if (cached != null && now - cached.at < RANK_CACHE_TTL_MS) return
@@ -763,7 +770,7 @@ class CodotchiPlugin : Disposable {
 
                 val staleMs = 48 * 60 * 60 * 1000L
                 val msPerGameDayApprox = 5 * 60 * 1000L // 5 real min ≈ 1 game day (awake rate)
-                val userLower = username?.lowercase()
+                val selfRunId = com.intellij.openapi.application.PermanentInstallationID.get()
                 @Suppress("UNCHECKED_CAST")
                 val freshLive: List<Map<String, Any>> = if (liveText != null) {
                     val liveParsed = Gson().fromJson(liveText, Any::class.java)
@@ -771,11 +778,10 @@ class CodotchiPlugin : Disposable {
                     liveList
                         .filter { entry ->
                             val updatedAt = (entry["updatedAt"] as? Number)?.toLong() ?: 0L
+                            val entryRunId = entry["petRunId"] as? String
+                            // Exclude own entry by petRunId only — username exclusion was too broad.
                             updatedAt > 0L && (now - updatedAt) < staleMs
-                        }
-                        // Exclude the current user's own entry — the +1 below already represents them.
-                        .filter { entry ->
-                            userLower == null || (entry["username"] as? String)?.lowercase() != userLower
+                                && entryRunId != selfRunId
                         }
                         .map { entry ->
                             val storedAge = (entry["ageDays"] as? Number)?.toDouble() ?: 0.0
@@ -791,48 +797,6 @@ class CodotchiPlugin : Disposable {
                 // Re-broadcast so the sidebar picks up the new rank immediately
                 broadcastState()
             } catch (_: Exception) { /* network failure — keep stale cache */ }
-        }
-    }
-
-    /** Silently submit the dead pet to the leaderboard using the stored PAT.
-     *  Called automatically on first death tick when the user is subscribed.
-     *  Never prompts for auth — if no token is stored, does nothing. */
-    private fun autoSubmitLeaderboardAsync(state: PetState, diedAt: Long) {
-        AppExecutorUtil.getAppExecutorService().execute {
-            try {
-                val credAttrs = CredentialAttributes("Codotchi", "github-pat")
-                val pat = PasswordSafe.instance.getPassword(credAttrs)
-                if (pat.isNullOrBlank()) return@execute
-
-                val userConn = java.net.URL("https://api.github.com/user").openConnection() as java.net.HttpURLConnection
-                userConn.connectTimeout = 5000
-                userConn.readTimeout = 5000
-                userConn.setRequestProperty("Authorization", "token $pat")
-                userConn.setRequestProperty("Accept", "application/vnd.github+json")
-                userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
-                if (userConn.responseCode != 200) return@execute
-                @Suppress("UNCHECKED_CAST")
-                val userMap = Gson().fromJson(userConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
-                val username = userMap["login"] as? String ?: return@execute
-                leaderboardGithubUsername = username
-
-                val scoreJson = """{"schemaVersion":1,"petName":"${state.name.replace("\"","\\\"")}","ageDays":${state.ageDays},"stage":"${state.stage}","petType":"${state.petType}","spawnedAt":${state.spawnedAt},"diedAt":$diedAt}"""
-                val issueBody  = "Leaderboard submission.\n\n```json\n$scoreJson\n```"
-                val issueTitle = "[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @$username"
-                val issuePayload = mapOf("title" to issueTitle, "body" to issueBody, "labels" to listOf("leaderboard-submission"))
-
-                val issueConn = java.net.URL(GITHUB_ISSUES_API).openConnection() as java.net.HttpURLConnection
-                issueConn.requestMethod = "POST"
-                issueConn.doOutput = true
-                issueConn.connectTimeout = 10000
-                issueConn.readTimeout = 10000
-                issueConn.setRequestProperty("Authorization", "token $pat")
-                issueConn.setRequestProperty("Accept", "application/vnd.github+json")
-                issueConn.setRequestProperty("Content-Type", "application/json")
-                issueConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
-                issueConn.outputStream.writer().use { it.write(Gson().toJson(issuePayload)) }
-                issueConn.responseCode // consume response
-            } catch (_: Exception) { /* auto-submit is best-effort; never surface errors */ }
         }
     }
 
@@ -859,7 +823,7 @@ class CodotchiPlugin : Disposable {
                 @Suppress("UNCHECKED_CAST")
                 val userMap = Gson().fromJson(userConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
                 val username = userMap["login"] as? String ?: return@execute
-                leaderboardGithubUsername = username
+                setLeaderboardUsername(username)
 
                 val entry = mapOf(
                     "username" to username,
@@ -929,7 +893,7 @@ class CodotchiPlugin : Disposable {
                 @Suppress("UNCHECKED_CAST")
                 val userMap = Gson().fromJson(userConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
                 val username = userMap["login"] as? String ?: run { postResult("error", "Could not read GitHub username."); return@execute }
-                leaderboardGithubUsername = username
+                setLeaderboardUsername(username)
 
                 val scoreJson = """{"schemaVersion":1,"petName":"${state.name.replace("\"","\\\"")}","ageDays":${state.ageDays},"stage":"${state.stage}","petType":"${state.petType}","spawnedAt":${state.spawnedAt},"diedAt":$diedAt}"""
                 val issueBody = "Leaderboard submission.\n\n```json\n$scoreJson\n```"
@@ -1050,7 +1014,7 @@ class CodotchiPlugin : Disposable {
                 @Suppress("UNCHECKED_CAST")
                 val map = Gson().fromJson(conn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
                 val username = map["login"] as? String ?: return@execute
-                leaderboardGithubUsername = username
+                setLeaderboardUsername(username)
                 ApplicationManager.getApplication().invokeLater {
                     browserPanels.forEach { it.postMessage("""{"type":"leaderboard_sign_in_result","username":"$username"}""") }
                 }
@@ -1375,13 +1339,7 @@ class CodotchiPlugin : Disposable {
                 // Never use highScore.diedAt — when the current run is not a new record,
                 // highScore still points to the previous run, whose diedAt predates this
                 // run's spawnedAt and causes leaderboard validation to reject the submission.
-                if (lastRunDiedAt == 0L) {
-                    lastRunDiedAt = diedAt
-                    // Auto-submit to leaderboard if the user was subscribed to the live board.
-                    val wasSubscribed = com.intellij.ide.util.PropertiesComponent.getInstance()
-                        .getBoolean("codotchi.liveSubscribed", false)
-                    if (wasSubscribed) { autoSubmitLeaderboardAsync(state, diedAt) }
-                }
+                if (lastRunDiedAt == 0L) { lastRunDiedAt = diedAt }
 
                 // One-time leaderboard notification on first death
                 val props = com.intellij.ide.util.PropertiesComponent.getInstance()
@@ -1446,7 +1404,7 @@ class CodotchiPlugin : Disposable {
 
         // Kick off a background rank refresh when subscribed and alive.
         if (liveSubscribed && state != null && state.alive) {
-            fetchLiveRankAsync(state.ageDays, leaderboardGithubUsername)
+            fetchLiveRankAsync(state.ageDays)
             // Hourly live push — optimistically update timestamp to prevent duplicate launches.
             val now = System.currentTimeMillis()
             if (now - liveLastPushedAtMs >= LIVE_PUSH_INTERVAL_MS) {
