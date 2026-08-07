@@ -850,8 +850,8 @@ export class SidebarProvider
       const state = this.getCurrentState();
       if (state === null || state.alive) { return; }
 
-      const session = await vscode.authentication.getSession(
-        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: false }
+      const session = await Promise.resolve(
+        vscode.authentication.getSession("github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: false })
       ).catch(() => null);
       if (!session) { return; }
 
