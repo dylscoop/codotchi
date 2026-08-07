@@ -8,5 +8,15 @@
     "stage": "baby",
     "petType": "codeling",
     "updatedAt": 1786090349352
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Mike Hunt",
+    "petRunId": "0",
+    "spawnedAt": 1786008693789,
+    "ageDays": 5,
+    "stage": "baby",
+    "petType": "bytebug",
+    "updatedAt": 1786090403320
   }
 ]
