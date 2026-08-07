@@ -18,5 +18,14 @@
     "stage": "baby",
     "petType": "bytebug",
     "updatedAt": 1786090403320
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Supak",
+    "petRunId": 1784709246445,
+    "ageDays": 31,
+    "stage": "child",
+    "petType": "bytebug",
+    "updatedAt": 1786090414460
   }
 ]
