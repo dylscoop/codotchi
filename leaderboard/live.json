@@ -18,5 +18,15 @@
     "stage": "child",
     "petType": "bytebug",
     "updatedAt": 1786097171322
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Mike Hunt",
+    "petRunId": "0",
+    "spawnedAt": 1786008693789,
+    "ageDays": 6,
+    "stage": "child",
+    "petType": "bytebug",
+    "updatedAt": 1786097480181
   }
 ]
