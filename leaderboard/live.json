@@ -8,5 +8,15 @@
     "stage": "adult",
     "petType": "codeling",
     "updatedAt": 1786096936648
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Supak",
+    "petRunId": "b68ca4c6f25d5c541f9eb73d12e36859b0333c31516adffe676bd4e6e703fd1f",
+    "spawnedAt": 1784709246445,
+    "ageDays": 31,
+    "stage": "child",
+    "petType": "bytebug",
+    "updatedAt": 1786097164504
   }
 ]
