@@ -176,9 +176,18 @@ class CodotchiPlugin : Disposable {
 
     // ── Initialisation ─────────────────────────────────────────────────────
 
+    private fun setLeaderboardUsername(username: String?) {
+        leaderboardGithubUsername = username
+        val props = com.intellij.ide.util.PropertiesComponent.getInstance()
+        if (username != null) props.setValue("codotchi.leaderboardGithubUsername", username)
+        else props.unsetValue("codotchi.leaderboardGithubUsername")
+    }
+
     fun initialize() {
         liveLastPushedAtMs = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getValue("codotchi.liveLastPushedAt")?.toLongOrNull() ?: 0L
+        leaderboardGithubUsername = com.intellij.ide.util.PropertiesComponent.getInstance()
+            .getValue("codotchi.leaderboardGithubUsername")
 
         // Register AWT event listener to track keyboard/mouse activity for idle detection
         val activityMask = AWTEvent.KEY_EVENT_MASK or
@@ -813,7 +822,7 @@ class CodotchiPlugin : Disposable {
                 @Suppress("UNCHECKED_CAST")
                 val userMap = Gson().fromJson(userConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
                 val username = userMap["login"] as? String ?: return@execute
-                leaderboardGithubUsername = username
+                setLeaderboardUsername(username)
 
                 val entry = mapOf(
                     "username" to username,
@@ -883,7 +892,7 @@ class CodotchiPlugin : Disposable {
                 @Suppress("UNCHECKED_CAST")
                 val userMap = Gson().fromJson(userConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
                 val username = userMap["login"] as? String ?: run { postResult("error", "Could not read GitHub username."); return@execute }
-                leaderboardGithubUsername = username
+                setLeaderboardUsername(username)
 
                 val scoreJson = """{"schemaVersion":1,"petName":"${state.name.replace("\"","\\\"")}","ageDays":${state.ageDays},"stage":"${state.stage}","petType":"${state.petType}","spawnedAt":${state.spawnedAt},"diedAt":$diedAt}"""
                 val issueBody = "Leaderboard submission.\n\n```json\n$scoreJson\n```"
@@ -1004,7 +1013,7 @@ class CodotchiPlugin : Disposable {
                 @Suppress("UNCHECKED_CAST")
                 val map = Gson().fromJson(conn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
                 val username = map["login"] as? String ?: return@execute
-                leaderboardGithubUsername = username
+                setLeaderboardUsername(username)
                 ApplicationManager.getApplication().invokeLater {
                     browserPanels.forEach { it.postMessage("""{"type":"leaderboard_sign_in_result","username":"$username"}""") }
                 }

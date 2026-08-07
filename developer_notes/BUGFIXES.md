@@ -1876,3 +1876,12 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** `leaderboardGithubUsername` was stored only in memory (`private leaderboardGithubUsername: string | null = null`). After a VS Code restart or extension reload, the value reset to `null`. `fetchLiveRank()` was called with `username = null`, so `userLower` was null, `!userLower` evaluated to true, and no entries were filtered — the user's own stale live.json entry was included in the comparison pool, causing the "Rank #2 of 2" bug to reappear even though the self-exclusion filter existed in the code (BUGFIX-153 introduced it but didn't persist the value).
 
 **Fix:** Added `setLeaderboardUsername(username: string | null)` helper that assigns the field and persists to `context.globalState` under key `"leaderboardGithubUsername"`. Restored from `globalState` in the constructor. Replaced all four direct `this.leaderboardGithubUsername = …` assignment sites with calls to the helper.
+
+## BUGFIX-155 — PyCharm leaderboard rank reverts to "2 of 2" after restart
+
+**Status:** Fixed (v2.20.6, branch `fix/pycharm-leaderboard-rank`)
+**File:** `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** Same as BUGFIX-154 but in the Kotlin plugin. `leaderboardGithubUsername` was `@Volatile private var ... = null` with no persistence. After a PyCharm restart the field reset to null, so `fetchLiveRankAsync()` passed null as `selfUsername`, the self-exclusion filter was disabled, and "Rank #2 of 2" returned.
+
+**Fix:** Added `setLeaderboardUsername(username: String?)` helper that assigns the field and calls `PropertiesComponent.getInstance().setValue/unsetValue("codotchi.leaderboardGithubUsername", ...)`. In `initialize()`, restored from `PropertiesComponent` alongside the existing `liveLastPushedAt` restore. Replaced the three direct `leaderboardGithubUsername = username` assignment sites with `setLeaderboardUsername(username)`.
