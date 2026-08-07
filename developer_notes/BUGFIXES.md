@@ -1893,4 +1893,15 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 
 **Problem:** BUGFIX-153/154/155 excluded the user's own live.json entry by username, but the username is null until the user has signed in at least once in that session (or has the persisted value from BUGFIX-154/155). On a fresh install the persisted key doesn't exist yet, so the exclusion was skipped and the stale extrapolated entry pushed the user to rank 2.
 
+---
+
+## BUGFIX-157 — Leaderboard rank pool username filter over-excludes other users' entries (both IDEs)
+
+**Status:** Fixed (v2.20.8, branch `fix/pycharm-leaderboard-rank`)
+**Files:** `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `vscode/src/sidebarProvider.ts`
+
+**Problem:** The rank pool filter excluded live.json entries where `username == leaderboardGithubUsername`, in addition to the `petRunId` check. Since the upsert key for live.json is `(username, petRunId)`, each user can have at most one live entry per machine. However, the username filter incorrectly excluded ALL entries for that username regardless of petRunId — meaning if another user somehow shared the same GitHub username, or if the exclusion logic was applied incorrectly, entries that should have been in the pool were dropped. More practically, the username filter was masking bugs: `petRunId` alone is sufficient to identify and exclude the user's own entry (it equals `vscode.env.machineId` / `PermanentInstallationID.get()`, which is always available and stable), making the username fallback redundant and dangerous.
+
+**Fix:** Removed the username-based exclusion condition and `selfUsername`/`userLower` variable from both IDEs. The rank pool now excludes only entries where `petRunId == selfRunId`.
+
 **Fix:** Added `petRunId` as the primary exclusion key — `PermanentInstallationID.get()` in PyCharm, `vscode.env.machineId` in VS Code. These are stable installation IDs always available without auth. The live.json entry's `petRunId` field (already pushed since v2.20.5) is matched against the local ID. Username exclusion is kept as a secondary guard.

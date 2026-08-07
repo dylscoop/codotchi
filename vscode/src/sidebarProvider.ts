@@ -924,11 +924,10 @@ export class SidebarProvider
         ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; updatedAt?: number; username?: string; petRunId?: string }> : [];
       const staleMs = 48 * 60 * 60 * 1000;
       const selfRunId = vscode.env.machineId;
-      const userLower = username?.toLowerCase() ?? null;
-      // Exclude own entry by petRunId (always available) and username (when known).
+      // Exclude own entry by petRunId only — username exclusion was too broad.
       const freshLive = liveJson
         .filter(e => e.updatedAt && (now - e.updatedAt) < staleMs)
-        .filter(e => e.petRunId !== selfRunId && (!userLower || (e.username?.toLowerCase() ?? "") !== userLower))
+        .filter(e => e.petRunId !== selfRunId)
         .map(e => ({
           ageDays: (e.ageDays ?? 0) + (e.updatedAt ? (now - e.updatedAt) / SidebarProvider.MS_PER_GAME_DAY_APPROX : 0),
         }));

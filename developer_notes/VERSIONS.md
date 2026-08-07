@@ -1,6 +1,17 @@
 # Version History
 
-## v2.20.7 — current
+## v2.20.8 — current
+
+### Changes from v2.20.7 (leaderboard rank pool username over-exclusion — branch fix/pycharm-leaderboard-rank)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/sidebarProvider.ts` | fix: `fetchLiveRank()` — exclude own live entry by `petRunId` only; removed username fallback filter that was incorrectly excluding other users' entries when username happened to match |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `fetchLiveRankAsync()` — same; removed `selfUsername` variable and username-based exclusion condition from live pool filter |
+
+---
+
+## v2.20.7
 
 ### Changes from v2.20.6 (petRunId-based leaderboard self-exclusion — branch fix/pycharm-leaderboard-rank)
 
