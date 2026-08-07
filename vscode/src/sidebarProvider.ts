@@ -920,15 +920,15 @@ export class SidebarProvider
       if (!scoresRes.ok) { return; }
       const scoresJson = await scoresRes.json() as { scores?: Array<{ ageDays: number }> } | Array<{ ageDays: number }>;
       const scores: Array<{ ageDays: number }> = Array.isArray(scoresJson) ? scoresJson : (scoresJson.scores ?? []);
-      const liveJson: Array<{ ageDays?: number; updatedAt?: number; username?: string }> = liveRes?.ok
-        ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; updatedAt?: number; username?: string }> : [];
+      const liveJson: Array<{ ageDays?: number; updatedAt?: number; username?: string; petRunId?: string }> = liveRes?.ok
+        ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; updatedAt?: number; username?: string; petRunId?: string }> : [];
       const staleMs = 48 * 60 * 60 * 1000;
+      const selfRunId = vscode.env.machineId;
       const userLower = username?.toLowerCase() ?? null;
-      // Extrapolate current ageDays from storedAgeDays + elapsed time since last push.
-      // Exclude the current user's own entry — the +1 below already represents them.
+      // Exclude own entry by petRunId (always available) and username (when known).
       const freshLive = liveJson
         .filter(e => e.updatedAt && (now - e.updatedAt) < staleMs)
-        .filter(e => !userLower || (e.username?.toLowerCase() ?? "") !== userLower)
+        .filter(e => e.petRunId !== selfRunId && (!userLower || (e.username?.toLowerCase() ?? "") !== userLower))
         .map(e => ({
           ageDays: (e.ageDays ?? 0) + (e.updatedAt ? (now - e.updatedAt) / SidebarProvider.MS_PER_GAME_DAY_APPROX : 0),
         }));

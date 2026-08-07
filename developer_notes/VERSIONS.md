@@ -1,5 +1,16 @@
 # Version History
 
+## v2.20.7 — current
+
+### Changes from v2.20.6 (petRunId-based leaderboard self-exclusion — branch fix/pycharm-leaderboard-rank)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `fetchLiveRankAsync()` — exclude own live entry by `PermanentInstallationID.get()` (petRunId) first, username second; petRunId is always available so exclusion works from first launch without requiring prior auth |
+| `vscode/src/sidebarProvider.ts` | fix: `fetchLiveRank()` — exclude own live entry by `vscode.env.machineId` (petRunId) first, username second; same rationale |
+
+---
+
 ## v2.20.6 — current
 
 ### Changes from v2.20.5 (PyCharm leaderboard rank self-exclusion fix — branch fix/pycharm-leaderboard-rank)

@@ -1885,3 +1885,12 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** Same as BUGFIX-154 but in the Kotlin plugin. `leaderboardGithubUsername` was `@Volatile private var ... = null` with no persistence. After a PyCharm restart the field reset to null, so `fetchLiveRankAsync()` passed null as `selfUsername`, the self-exclusion filter was disabled, and "Rank #2 of 2" returned.
 
 **Fix:** Added `setLeaderboardUsername(username: String?)` helper that assigns the field and calls `PropertiesComponent.getInstance().setValue/unsetValue("codotchi.leaderboardGithubUsername", ...)`. In `initialize()`, restored from `PropertiesComponent` alongside the existing `liveLastPushedAt` restore. Replaced the three direct `leaderboardGithubUsername = username` assignment sites with `setLeaderboardUsername(username)`.
+
+## BUGFIX-156 — Leaderboard rank self-exclusion fragile when username unknown (both IDEs)
+
+**Status:** Fixed (v2.20.7, branch `fix/pycharm-leaderboard-rank`)
+**Files:** `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `vscode/src/sidebarProvider.ts`
+
+**Problem:** BUGFIX-153/154/155 excluded the user's own live.json entry by username, but the username is null until the user has signed in at least once in that session (or has the persisted value from BUGFIX-154/155). On a fresh install the persisted key doesn't exist yet, so the exclusion was skipped and the stale extrapolated entry pushed the user to rank 2.
+
+**Fix:** Added `petRunId` as the primary exclusion key — `PermanentInstallationID.get()` in PyCharm, `vscode.env.machineId` in VS Code. These are stable installation IDs always available without auth. The live.json entry's `petRunId` field (already pushed since v2.20.5) is matched against the local ID. Username exclusion is kept as a secondary guard.

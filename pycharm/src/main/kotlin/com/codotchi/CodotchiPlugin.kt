@@ -770,6 +770,7 @@ class CodotchiPlugin : Disposable {
 
                 val staleMs = 48 * 60 * 60 * 1000L
                 val msPerGameDayApprox = 5 * 60 * 1000L // 5 real min ≈ 1 game day (awake rate)
+                val selfRunId = com.intellij.openapi.application.PermanentInstallationID.get()
                 val selfUsername = leaderboardGithubUsername?.lowercase()
                 @Suppress("UNCHECKED_CAST")
                 val freshLive: List<Map<String, Any>> = if (liveText != null) {
@@ -778,8 +779,10 @@ class CodotchiPlugin : Disposable {
                     liveList
                         .filter { entry ->
                             val updatedAt = (entry["updatedAt"] as? Number)?.toLong() ?: 0L
+                            val entryRunId = entry["petRunId"] as? String
                             val entryUsername = (entry["username"] as? String)?.lowercase()
                             updatedAt > 0L && (now - updatedAt) < staleMs
+                                && entryRunId != selfRunId
                                 && (selfUsername == null || entryUsername != selfUsername)
                         }
                         .map { entry ->
