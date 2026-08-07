@@ -1867,3 +1867,12 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** The PyCharm plugin's `fetchLiveRankAsync()` included the current user's own entry from `live.json` in the comparison pool when computing rank. Because `live.json` stores `ageDays` at the time of last push and the code extrapolates forward assuming the pet is always awake (5 min/game-day), a pet that was 1 game-day old when last pushed 35 hours ago would extrapolate to ~420 game days — far above the real current age of 8 days. This caused the user to appear ranked below their own stale entry, showing "Rank #2 of 2" instead of the correct position. The VS Code extension already had this fix (`sidebarProvider.ts` line 924), but it was never ported to the Kotlin plugin.
 
 **Fix:** Added `selfUsername = leaderboardGithubUsername?.lowercase()` before the `freshLive` filter in `fetchLiveRankAsync()`, and added a second filter condition `&& (selfUsername == null || entryUsername != selfUsername)` to exclude the current user's own live entry. The `combined.size + 1` total is now correct — `combined` excludes self, and `+1` accounts for the current user.
+
+## BUGFIX-154 — VS Code leaderboard rank reverts to "2 of 2" after restart
+
+**Status:** Fixed (v2.20.6, branch `fix/pycharm-leaderboard-rank`)
+**File:** `vscode/src/sidebarProvider.ts`
+
+**Problem:** `leaderboardGithubUsername` was stored only in memory (`private leaderboardGithubUsername: string | null = null`). After a VS Code restart or extension reload, the value reset to `null`. `fetchLiveRank()` was called with `username = null`, so `userLower` was null, `!userLower` evaluated to true, and no entries were filtered — the user's own stale live.json entry was included in the comparison pool, causing the "Rank #2 of 2" bug to reappear even though the self-exclusion filter existed in the code (BUGFIX-153 introduced it but didn't persist the value).
+
+**Fix:** Added `setLeaderboardUsername(username: string | null)` helper that assigns the field and persists to `context.globalState` under key `"leaderboardGithubUsername"`. Restored from `globalState` in the constructor. Replaced all four direct `this.leaderboardGithubUsername = …` assignment sites with calls to the helper.

@@ -8,6 +8,7 @@
 |------|-------------|
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `fetchLiveRankAsync()` — exclude the current user's own live entry from the comparison pool; stale extrapolation of the user's own entry was inflating their apparent age and pushing them to rank 2 instead of rank 1 |
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | feat: extend `postState()` signature to accept `liveRank`, `liveTotalScores`, `liveSubscribed`, `liveLastPushedAt`, `leaderboardGithubUsername` and include them in the JS payload |
+| `vscode/src/sidebarProvider.ts` | fix: persist `leaderboardGithubUsername` to `globalState` via `setLeaderboardUsername()` helper and restore on construction; previously the username was in-memory only, so after VS Code restart the self-exclusion rank filter was bypassed and the bug returned |
 
 ---
 

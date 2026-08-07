@@ -189,7 +189,12 @@ export class SidebarProvider
   private static readonly RANK_CACHE_TTL_MS = 5 * 60 * 1000;
   private rankCache: { rank: number; total: number; at: number } | null = null;
   // Cached GitHub username for the leaderboard — resolved on sign-in or subscribe.
+  // Persisted to globalState so restart doesn't break the self-exclusion rank filter.
   private leaderboardGithubUsername: string | null = null;
+  private setLeaderboardUsername(username: string | null): void {
+    this.leaderboardGithubUsername = username;
+    void this.context.globalState.update("leaderboardGithubUsername", username ?? undefined);
+  }
   // Approx ms per game day (awake rate: 5 real min = 1 game day) for live rank extrapolation.
   private static readonly MS_PER_GAME_DAY_APPROX = 5 * 60 * 1000;
   // URLs for fetching rank data from the leaderboard branch.
@@ -208,7 +213,9 @@ export class SidebarProvider
     private readonly onResetHighScore: () => void,
     private readonly markDeepIdle: () => void,
     private readonly getLastRunDiedAt: () => number | null = () => null
-  ) {}
+  ) {
+    this.leaderboardGithubUsername = context.globalState.get<string>("leaderboardGithubUsername") ?? null;
+  }
 
   /** Called by VS Code when the webview becomes visible. */
   resolveWebviewView(
@@ -792,7 +799,7 @@ export class SidebarProvider
           postResult("error", "Could not read GitHub username.");
           return;
         }
-        this.leaderboardGithubUsername = username;
+        this.setLeaderboardUsername(username);
       } catch {
         postResult("error", "Network error fetching GitHub username.");
         return;
@@ -862,7 +869,7 @@ export class SidebarProvider
       const userBody = await userRes.json() as Record<string, unknown>;
       const username = String(userBody.login ?? "");
       if (!username) { return; }
-      this.leaderboardGithubUsername = username;
+      this.setLeaderboardUsername(username);
 
       const diedAt = this.getLastRunDiedAt() ?? Date.now();
       const scoreData = {
@@ -940,7 +947,7 @@ export class SidebarProvider
         "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
       );
       if (!session) {
-        this.leaderboardGithubUsername = null;
+        this.setLeaderboardUsername(null);
         if (this.webviewView) {
           void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username: null });
         }
@@ -950,7 +957,7 @@ export class SidebarProvider
         headers: { "Authorization": `token ${session.accessToken}`, "Accept": "application/json", "User-Agent": "Codotchi-VSCode" },
       });
       const username = userRes.ok ? String((await userRes.json() as Record<string, unknown>).login ?? "") : "";
-      this.leaderboardGithubUsername = username || null;
+      this.setLeaderboardUsername(username || null);
       if (this.webviewView) {
         void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username: this.leaderboardGithubUsername });
       }
@@ -987,7 +994,7 @@ export class SidebarProvider
       const userBody = await userRes.json() as Record<string, unknown>;
       const username = String(userBody.login ?? "");
       if (!username) { return; }
-      this.leaderboardGithubUsername = username;
+      this.setLeaderboardUsername(username);
 
       const entry = {
         username,
