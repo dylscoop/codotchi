@@ -258,6 +258,12 @@
     var autoRefreshTimer = null;
     var AUTOREFRESH_KEY = "codotchi-autorefresh";
     var LIVE_STALE_MS = 48 * 60 * 60 * 1000; // 48 hours
+    var MS_PER_GAME_DAY = 5 * 60 * 1000; // 5 real minutes = 1 game day
+    var cachedLiveEntries = [];
+
+    function liveAgeDays(entry) {
+      return (entry.ageDays || 0) + (Date.now() - (entry.updatedAt || 0)) / MS_PER_GAME_DAY;
+    }
 
     function switchTab(name) {
       activeTab = name;
@@ -356,7 +362,7 @@
             .filter(function(e) { return e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS; })
             .map(function(e) {
               return { alive: true, githubUsername: e.username, petName: e.petName,
-                       ageDays: e.ageDays || 0, petType: e.petType, stage: e.stage,
+                       ageDays: liveAgeDays(e), petType: e.petType, stage: e.stage,
                        updatedAt: e.updatedAt };
             });
           var combined = scores.concat(live);
@@ -374,7 +380,7 @@
               "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
               "<td class=\"pet-name\">" + namePart + "</td>" +
               "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.githubUsername) + "\" target=\"_blank\">@" + escHtml(s.githubUsername || "—") + "</a></td>" +
-              "<td class=\"age\">" + formatAge(s.ageDays) + "</td>" +
+              "<td class=\"age\">" + formatAge(Math.floor(s.ageDays)) + "</td>" +
               "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
               "<td>" + escHtml(capStr(s.stage)) + "</td>" +
               "<td class=\"elapsed col-elapsed\">" + elapsedPart + "</td>" +
@@ -386,6 +392,25 @@
           document.getElementById("leaderboard-body").innerHTML =
             "<tr><td colspan=\"8\" class=\"empty\">Could not load scores. Try refreshing.</td></tr>";
         });
+    }
+
+    function renderLive() {
+      if (!cachedLiveEntries.length) { return; }
+      var sorted = cachedLiveEntries.slice().sort(function(a, b) {
+        return liveAgeDays(b) - liveAgeDays(a);
+      });
+      var tbody = document.getElementById("alive-body");
+      tbody.innerHTML = sorted.map(function(s, i) {
+        return "<tr>" +
+          "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
+          "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "<span class=\"live-badge\">live</span></td>" +
+          "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.username) + "\" target=\"_blank\">@" + escHtml(s.username || "—") + "</a></td>" +
+          "<td class=\"age\">" + formatAge(Math.floor(liveAgeDays(s))) + "</td>" +
+          "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
+          "<td>" + escHtml(capStr(s.stage)) + "</td>" +
+          "<td class=\"col-updated\">" + formatRelativeTime(s.updatedAt) + "</td>" +
+          "</tr>";
+      }).join("");
     }
 
     function loadLive() {
@@ -405,20 +430,12 @@
 
           var tbody = document.getElementById("alive-body");
           if (fresh.length === 0) {
+            cachedLiveEntries = [];
             tbody.innerHTML = "<tr><td colspan=\"7\" class=\"empty\">No live pets right now — enable \"Push live progress\" in the Codotchi sidebar!</td></tr>";
             return;
           }
-          tbody.innerHTML = fresh.map(function(s, i) {
-            return "<tr>" +
-              "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
-              "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "<span class=\"live-badge\">live</span></td>" +
-              "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.username) + "\" target=\"_blank\">@" + escHtml(s.username || "—") + "</a></td>" +
-              "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
-              "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
-              "<td>" + escHtml(capStr(s.stage)) + "</td>" +
-              "<td class=\"col-updated\">" + formatRelativeTime(s.updatedAt) + "</td>" +
-              "</tr>";
-          }).join("");
+          cachedLiveEntries = fresh;
+          renderLive();
         })
         .catch(function() {
           document.getElementById("alive-body").innerHTML =
@@ -436,6 +453,7 @@
       setInterval(function() {
         updateLastUpdated("last-updated-alltime", lastLoadedAlltime);
         updateLastUpdated("last-updated-alive", lastLoadedAlive);
+        renderLive();
       }, 60000);
     }
 
