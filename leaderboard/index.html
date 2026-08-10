@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -393,6 +393,32 @@
         });
     }
 
+    function loadLive() {
+      lastLoadedAlive = Date.now();
+      updateLastUpdated("last-updated-alive", lastLoadedAlive);
+      fetch("live.json?t=" + lastLoadedAlive)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var entries = Array.isArray(data) ? data : [];
+          var now = Date.now();
+          var fresh = entries.filter(function(e) {
+            return e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS;
+          });
+          var tbody = document.getElementById("alive-body");
+          if (fresh.length === 0) {
+            cachedLiveEntries = [];
+            tbody.innerHTML = "<tr><td colspan=\"7\" class=\"empty\">No live pets right now — enable \"Push live progress\" in the Codotchi sidebar!</td></tr>";
+            return;
+          }
+          cachedLiveEntries = fresh;
+          renderLive();
+        })
+        .catch(function() {
+          document.getElementById("alive-body").innerHTML =
+            "<tr><td colspan=\"7\" class=\"empty\">Could not load live data. Try refreshing.</td></tr>";
+        });
+    }
+
     function renderLive() {
       if (!cachedLiveEntries.length) { return; }
       var sorted = cachedLiveEntries.slice().sort(function(a, b) {
@@ -411,36 +437,6 @@
           "<td class=\"col-updated\">" + formatRelativeTime(s.updatedAt) + "</td>" +
           "</tr>";
       }).join("");
-    }
-
-    function loadLive() {
-      lastLoadedAlive = Date.now();
-      updateLastUpdated("last-updated-alive", lastLoadedAlive);
-      fetch("live.json?t=" + lastLoadedAlive)
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          var entries = Array.isArray(data) ? data : [];
-          var now = Date.now();
-          // Filter entries updated within the last 2 hours
-          var fresh = entries.filter(function(e) {
-            return e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS;
-          });
-          // Sort by ageDays descending
-          fresh.sort(function(a, b) { return (b.ageDays || 0) - (a.ageDays || 0); });
-
-          var tbody = document.getElementById("alive-body");
-          if (fresh.length === 0) {
-            cachedLiveEntries = [];
-            tbody.innerHTML = "<tr><td colspan=\"7\" class=\"empty\">No live pets right now — enable \"Push live progress\" in the Codotchi sidebar!</td></tr>";
-            return;
-          }
-          cachedLiveEntries = fresh;
-          renderLive();
-        })
-        .catch(function() {
-          document.getElementById("alive-body").innerHTML =
-            "<tr><td colspan=\"7\" class=\"empty\">Could not load live data. Try refreshing.</td></tr>";
-        });
     }
 
     function loadAll() {
