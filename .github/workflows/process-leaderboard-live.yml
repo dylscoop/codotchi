@@ -5,7 +5,7 @@ on:
     types: [opened]
 
 concurrency:
-  group: leaderboard-update
+  group: leaderboard-live
   cancel-in-progress: false
 
 jobs:
@@ -97,7 +97,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git add leaderboard/live.json
           git diff --cached --quiet || git commit -m "live: update ${{ github.event.issue.user.login }}'s run"
-          git push
+          for i in 1 2 3; do
+            git push origin leaderboard && break
+            echo "Push failed (attempt $i), rebasing..."
+            git pull --rebase origin leaderboard
+          done
 
       - name: Close this and any other open live issues for this user
         if: always()
