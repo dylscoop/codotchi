@@ -1905,3 +1905,25 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Fix:** Removed the username-based exclusion condition and `selfUsername`/`userLower` variable from both IDEs. The rank pool now excludes only entries where `petRunId == selfRunId`.
 
 **Fix:** Added `petRunId` as the primary exclusion key — `PermanentInstallationID.get()` in PyCharm, `vscode.env.machineId` in VS Code. These are stable installation IDs always available without auth. The live.json entry's `petRunId` field (already pushed since v2.20.5) is matched against the local ID. Username exclusion is kept as a secondary guard.
+
+---
+
+## BUGFIX-158 — Leaderboard rank stale in IDE due to GitHub CDN caching (both IDEs)
+
+**Status:** Fixed (v2.20.9, branch `fix/leaderboard-concurrent-submissions`)
+**Files:** `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** Both IDEs fetched `scores.json` and `live.json` from bare `raw.githubusercontent.com` URLs with no cache-busting. GitHub's CDN caches raw file responses, so a recently-committed entry (e.g. a new 0d live pet) would not appear in the IDE's rank calculation until the CDN cache expired. The website already appended `?t=<timestamp>` to every fetch, making it always current. The result was rank discrepancies between the IDE and the website — the IDE showed stale total/rank (e.g. rank 3/4) while the website showed the correct value (rank 2/4).
+
+**Fix:** Appended `?t=<Date.now()>` (VS Code) and `?t=<System.currentTimeMillis()>` (PyCharm) to both fetch URLs in each IDE's rank-fetch function, matching the website pattern.
+
+---
+
+## BUGFIX-159 — Concurrent leaderboard submissions cancel each other via shared GitHub Actions concurrency group
+
+**Status:** Fixed (v2.20.9, branch `fix/leaderboard-concurrent-submissions`)
+**Files:** `.github/workflows/process-leaderboard.yml`, `.github/workflows/process-leaderboard-live.yml`, `.github/workflows/process-leaderboard-delete.yml`
+
+**Problem:** All three issue-triggered workflows shared the same `concurrency.group: leaderboard-update`. Opening a single GitHub issue triggers all three simultaneously; GitHub Actions allows only 1 running + 1 pending per group, so the third run is immediately cancelled. With two simultaneous submissions (e.g. a live push and a death submission), 6 runs compete for the same slot and 4 are cancelled — including the runs that actually needed to do work. Scores and live updates were silently lost; the issue was still closed with a success comment.
+
+**Fix:** Each workflow now has its own concurrency group (`leaderboard-scores`, `leaderboard-live`, `leaderboard-delete-action`), eliminating cross-type contention. Also added a 3-attempt `git push` retry with `git pull --rebase` in `process-leaderboard.yml` and `process-leaderboard-live.yml` to handle the edge case where two same-type submissions push simultaneously.

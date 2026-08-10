@@ -1,5 +1,19 @@
 # Version History
 
+## v2.20.9 — current
+
+### Changes from v2.20.8 (stale leaderboard rank + concurrent submission cancellations — branch fix/leaderboard-concurrent-submissions)
+
+| File | What changed |
+|------|-------------|
+| `.github/workflows/process-leaderboard.yml` | fix: concurrency group renamed from `leaderboard-update` to `leaderboard-scores` so simultaneous submissions no longer compete with live-push or delete workflows for the same queue slot; add 3-attempt push retry with `git pull --rebase` to handle simultaneous death submissions |
+| `.github/workflows/process-leaderboard-live.yml` | fix: concurrency group renamed to `leaderboard-live`; add 3-attempt push retry with `git pull --rebase` |
+| `.github/workflows/process-leaderboard-delete.yml` | fix: concurrency group renamed to `leaderboard-delete-action` |
+| `vscode/src/sidebarProvider.ts` | fix: `fetchLiveRank()` — append `?t=<timestamp>` cache-buster to `scores.json` and `live.json` fetch URLs; without this, GitHub CDN served stale data causing rank to show entries that were missing or outdated |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `fetchLiveRankAsync()` — same cache-busting fix |
+
+---
+
 ## v2.20.8 — current
 
 ### Changes from v2.20.7 (leaderboard rank pool username over-exclusion — branch fix/pycharm-leaderboard-rank)
