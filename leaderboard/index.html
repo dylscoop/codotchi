@@ -258,12 +258,8 @@
     var autoRefreshTimer = null;
     var AUTOREFRESH_KEY = "codotchi-autorefresh";
     var LIVE_STALE_MS = 48 * 60 * 60 * 1000; // 48 hours
-    var MS_PER_GAME_DAY = 5 * 60 * 1000; // 5 real minutes = 1 game day
+    var STAGE_ORDER = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
     var cachedLiveEntries = [];
-
-    function liveAgeDays(entry) {
-      return (entry.ageDays || 0) + (Date.now() - (entry.updatedAt || 0)) / MS_PER_GAME_DAY;
-    }
 
     function switchTab(name) {
       activeTab = name;
@@ -362,11 +358,14 @@
             .filter(function(e) { return e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS; })
             .map(function(e) {
               return { alive: true, githubUsername: e.username, petName: e.petName,
-                       ageDays: liveAgeDays(e), petType: e.petType, stage: e.stage,
+                       ageDays: e.ageDays || 0, petType: e.petType, stage: e.stage,
                        updatedAt: e.updatedAt };
             });
           var combined = scores.concat(live);
-          combined.sort(function(a, b) { return b.ageDays - a.ageDays; });
+          combined.sort(function(a, b) {
+            var sd = (STAGE_ORDER[b.stage] || 0) - (STAGE_ORDER[a.stage] || 0);
+            return sd !== 0 ? sd : b.ageDays - a.ageDays;
+          });
           var tbody = document.getElementById("leaderboard-body");
           if (combined.length === 0) {
             tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">No scores yet — be the first to submit!</td></tr>";
@@ -397,7 +396,8 @@
     function renderLive() {
       if (!cachedLiveEntries.length) { return; }
       var sorted = cachedLiveEntries.slice().sort(function(a, b) {
-        return liveAgeDays(b) - liveAgeDays(a);
+        var sd = (STAGE_ORDER[b.stage] || 0) - (STAGE_ORDER[a.stage] || 0);
+        return sd !== 0 ? sd : (b.ageDays || 0) - (a.ageDays || 0);
       });
       var tbody = document.getElementById("alive-body");
       tbody.innerHTML = sorted.map(function(s, i) {
@@ -405,7 +405,7 @@
           "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
           "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "<span class=\"live-badge\">live</span></td>" +
           "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.username) + "\" target=\"_blank\">@" + escHtml(s.username || "—") + "</a></td>" +
-          "<td class=\"age\">" + formatAge(Math.floor(liveAgeDays(s))) + "</td>" +
+          "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
           "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
           "<td>" + escHtml(capStr(s.stage)) + "</td>" +
           "<td class=\"col-updated\">" + formatRelativeTime(s.updatedAt) + "</td>" +
