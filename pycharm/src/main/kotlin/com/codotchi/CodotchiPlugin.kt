@@ -145,6 +145,7 @@ class CodotchiPlugin : Disposable {
     private data class RankCache(val rank: Int, val total: Int, val at: Long)
     @Volatile private var rankCache: RankCache? = null
     private val RANK_CACHE_TTL_MS = 5 * 60_000L
+    private val STAGE_ORDER = mapOf("egg" to 0, "baby" to 1, "child" to 2, "teen" to 3, "adult" to 4, "senior" to 5)
     private val SCORES_JSON_URL = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/scores.json"
     private val LIVE_JSON_URL   = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/live.json"
     private val GITHUB_ISSUES_API = "https://api.github.com/repos/dylscoop/codotchi/issues"
@@ -742,7 +743,7 @@ class CodotchiPlugin : Disposable {
     fun isPaused(): Boolean = stateLock.withLock { currentState?.paused ?: false }
 
     /** Fetch live rank in the background; result stored in [rankCache]. */
-    private fun fetchLiveRankAsync(ageDays: Int) {
+    private fun fetchLiveRankAsync(ageDays: Int, stage: String) {
         val now = System.currentTimeMillis()
         val cached = rankCache
         if (cached != null && now - cached.at < RANK_CACHE_TTL_MS) return
@@ -793,7 +794,12 @@ class CodotchiPlugin : Disposable {
                 } else emptyList()
 
                 val combined = scoresList + freshLive
-                val rank = combined.count { (it["ageDays"] as? Number)?.toDouble()?.let { d -> d > ageDays } == true } + 1
+                val myStageRank = STAGE_ORDER[stage] ?: 0
+                val rank = combined.count { entry ->
+                    val entryStageRank = STAGE_ORDER[entry["stage"] as? String ?: ""] ?: 0
+                    if (entryStageRank != myStageRank) entryStageRank > myStageRank
+                    else (entry["ageDays"] as? Number)?.toDouble()?.let { it > ageDays } == true
+                } + 1
                 rankCache = RankCache(rank, combined.size + 1, System.currentTimeMillis())
                 // Re-broadcast so the sidebar picks up the new rank immediately
                 broadcastState()
@@ -1419,7 +1425,7 @@ class CodotchiPlugin : Disposable {
 
         // Kick off a background rank refresh when subscribed and alive.
         if (liveSubscribed && state != null && state.alive) {
-            fetchLiveRankAsync(state.ageDays)
+            fetchLiveRankAsync(state.ageDays, state.stage)
             // Hourly live push — optimistically update timestamp to prevent duplicate launches.
             val now = System.currentTimeMillis()
             if (now - liveLastPushedAtMs >= LIVE_PUSH_INTERVAL_MS) {
