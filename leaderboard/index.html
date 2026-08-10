@@ -258,6 +258,8 @@
     var autoRefreshTimer = null;
     var AUTOREFRESH_KEY = "codotchi-autorefresh";
     var LIVE_STALE_MS = 48 * 60 * 60 * 1000; // 48 hours
+    var STAGE_ORDER = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
+    var cachedLiveEntries = [];
 
     function switchTab(name) {
       activeTab = name;
@@ -359,7 +361,6 @@
                        ageDays: e.ageDays || 0, petType: e.petType, stage: e.stage,
                        updatedAt: e.updatedAt };
             });
-          var STAGE_ORDER = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
           var combined = scores.concat(live);
           combined.sort(function(a, b) {
             var sd = (STAGE_ORDER[b.stage] || 0) - (STAGE_ORDER[a.stage] || 0);
@@ -378,7 +379,7 @@
               "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
               "<td class=\"pet-name\">" + namePart + "</td>" +
               "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.githubUsername) + "\" target=\"_blank\">@" + escHtml(s.githubUsername || "—") + "</a></td>" +
-              "<td class=\"age\">" + formatAge(s.ageDays) + "</td>" +
+              "<td class=\"age\">" + formatAge(Math.floor(s.ageDays)) + "</td>" +
               "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
               "<td>" + escHtml(capStr(s.stage)) + "</td>" +
               "<td class=\"elapsed col-elapsed\">" + elapsedPart + "</td>" +
@@ -400,38 +401,42 @@
         .then(function(data) {
           var entries = Array.isArray(data) ? data : [];
           var now = Date.now();
-          // Filter entries updated within the last 2 hours
           var fresh = entries.filter(function(e) {
             return e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS;
           });
-          // Sort by stage descending, then ageDays descending
-          var STAGE_ORDER_ALIVE = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
-          fresh.sort(function(a, b) {
-            var sd = (STAGE_ORDER_ALIVE[b.stage] || 0) - (STAGE_ORDER_ALIVE[a.stage] || 0);
-            return sd !== 0 ? sd : (b.ageDays || 0) - (a.ageDays || 0);
-          });
-
           var tbody = document.getElementById("alive-body");
           if (fresh.length === 0) {
+            cachedLiveEntries = [];
             tbody.innerHTML = "<tr><td colspan=\"7\" class=\"empty\">No live pets right now — enable \"Push live progress\" in the Codotchi sidebar!</td></tr>";
             return;
           }
-          tbody.innerHTML = fresh.map(function(s, i) {
-            return "<tr>" +
-              "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
-              "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "<span class=\"live-badge\">live</span></td>" +
-              "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.username) + "\" target=\"_blank\">@" + escHtml(s.username || "—") + "</a></td>" +
-              "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
-              "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
-              "<td>" + escHtml(capStr(s.stage)) + "</td>" +
-              "<td class=\"col-updated\">" + formatRelativeTime(s.updatedAt) + "</td>" +
-              "</tr>";
-          }).join("");
+          cachedLiveEntries = fresh;
+          renderLive();
         })
         .catch(function() {
           document.getElementById("alive-body").innerHTML =
             "<tr><td colspan=\"7\" class=\"empty\">Could not load live data. Try refreshing.</td></tr>";
         });
+    }
+
+    function renderLive() {
+      if (!cachedLiveEntries.length) { return; }
+      var sorted = cachedLiveEntries.slice().sort(function(a, b) {
+        var sd = (STAGE_ORDER[b.stage] || 0) - (STAGE_ORDER[a.stage] || 0);
+        return sd !== 0 ? sd : (b.ageDays || 0) - (a.ageDays || 0);
+      });
+      var tbody = document.getElementById("alive-body");
+      tbody.innerHTML = sorted.map(function(s, i) {
+        return "<tr>" +
+          "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
+          "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "<span class=\"live-badge\">live</span></td>" +
+          "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.username) + "\" target=\"_blank\">@" + escHtml(s.username || "—") + "</a></td>" +
+          "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
+          "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
+          "<td>" + escHtml(capStr(s.stage)) + "</td>" +
+          "<td class=\"col-updated\">" + formatRelativeTime(s.updatedAt) + "</td>" +
+          "</tr>";
+      }).join("");
     }
 
     function loadAll() {
@@ -444,6 +449,7 @@
       setInterval(function() {
         updateLastUpdated("last-updated-alltime", lastLoadedAlltime);
         updateLastUpdated("last-updated-alive", lastLoadedAlive);
+        renderLive();
       }, 60000);
     }
 
