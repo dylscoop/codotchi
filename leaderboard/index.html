@@ -359,8 +359,12 @@
                        ageDays: e.ageDays || 0, petType: e.petType, stage: e.stage,
                        updatedAt: e.updatedAt };
             });
+          var STAGE_ORDER = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
           var combined = scores.concat(live);
-          combined.sort(function(a, b) { return b.ageDays - a.ageDays; });
+          combined.sort(function(a, b) {
+            var sd = (STAGE_ORDER[b.stage] || 0) - (STAGE_ORDER[a.stage] || 0);
+            return sd !== 0 ? sd : b.ageDays - a.ageDays;
+          });
           var tbody = document.getElementById("leaderboard-body");
           if (combined.length === 0) {
             tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">No scores yet — be the first to submit!</td></tr>";
@@ -400,8 +404,12 @@
           var fresh = entries.filter(function(e) {
             return e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS;
           });
-          // Sort by ageDays descending
-          fresh.sort(function(a, b) { return (b.ageDays || 0) - (a.ageDays || 0); });
+          // Sort by stage descending, then ageDays descending
+          var STAGE_ORDER_ALIVE = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
+          fresh.sort(function(a, b) {
+            var sd = (STAGE_ORDER_ALIVE[b.stage] || 0) - (STAGE_ORDER_ALIVE[a.stage] || 0);
+            return sd !== 0 ? sd : (b.ageDays || 0) - (a.ageDays || 0);
+          });
 
           var tbody = document.getElementById("alive-body");
           if (fresh.length === 0) {
