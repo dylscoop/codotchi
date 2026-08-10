@@ -11,7 +11,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
-import * as crypto from "crypto";
+
 import {
   PetState,
   HighScore,
@@ -42,18 +42,6 @@ const LEADERBOARD_REPO_OWNER = "dylscoop";
 const LEADERBOARD_REPO_NAME  = "codotchi";
 const LEADERBOARD_PAGES_URL  = `https://${LEADERBOARD_REPO_OWNER}.github.io/${LEADERBOARD_REPO_NAME}/leaderboard/`;
 const LEADERBOARD_GITHUB_SCOPES = ["read:user", "public_repo"];
-// Shared secret for HMAC-SHA256 submission signing — must match LEADERBOARD_HMAC_SECRET in GitHub Secrets
-const LB_HMAC_K = ["257efa6c9f92", "dfdaf5f5fcaf", "3cf4c3a5ed2c", "8d38"].join("");
-
-function leaderboardHmacDeath(ageDays: number, petType: string, stage: string, spawnedAt: number, diedAt: number): string {
-  const msg = `${ageDays}:${petType}:${stage}:${spawnedAt}:${diedAt}`;
-  return crypto.createHmac("sha256", LB_HMAC_K).update(msg).digest("hex");
-}
-
-function leaderboardHmacLive(username: string, petRunId: string, ageDays: number, petType: string, stage: string, spawnedAt: number, updatedAt: number): string {
-  const msg = `${username}:${petRunId}:${ageDays}:${petType}:${stage}:${spawnedAt}:${updatedAt}`;
-  return crypto.createHmac("sha256", LB_HMAC_K).update(msg).digest("hex");
-}
 
 // Pricing per million tokens (USD) — mirrors state.mjs MODEL_PRICING table.
 // Ordered most-specific first — checked with startsWith(), so longer/pricier
@@ -209,7 +197,6 @@ export class SidebarProvider
     void this.context.globalState.update("leaderboardGithubUsername", username ?? undefined);
   }
   // Approx ms per game day (awake rate: 5 real min = 1 game day) for live rank extrapolation.
-  private static readonly MS_PER_GAME_DAY_APPROX = 5 * 60 * 1000;
   // URLs for fetching rank data from the leaderboard branch.
   private static readonly SCORES_JSON_URL =
     `https://raw.githubusercontent.com/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/leaderboard/leaderboard/scores.json`;
@@ -840,7 +827,6 @@ export class SidebarProvider
         petType:        state.petType,
         spawnedAt:      state.spawnedAt,
         diedAt,
-        hmac:           leaderboardHmacDeath(state.ageDays, state.petType, state.stage, state.spawnedAt, diedAt),
       };
       const issueBody =
         `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``;
@@ -907,7 +893,6 @@ export class SidebarProvider
         petType:        state.petType,
         spawnedAt:      state.spawnedAt,
         diedAt,
-        hmac:           leaderboardHmacDeath(state.ageDays, state.petType, state.stage, state.spawnedAt, diedAt),
       };
       const issueBody  = `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``;
       const issueTitle = `[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @${username}`;
@@ -958,7 +943,7 @@ export class SidebarProvider
         .filter(e => e.updatedAt && (now - e.updatedAt) < staleMs)
         .filter(e => e.petRunId !== selfRunId)
         .map(e => ({
-          ageDays: (e.ageDays ?? 0) + (e.updatedAt ? (now - e.updatedAt) / SidebarProvider.MS_PER_GAME_DAY_APPROX : 0),
+          ageDays: e.ageDays ?? 0,
           stage: e.stage,
         }));
       const combined = (scores as Array<{ ageDays: number; stage?: string }>).concat(freshLive);
@@ -1030,18 +1015,15 @@ export class SidebarProvider
       if (!username) { return; }
       this.setLeaderboardUsername(username);
 
-      const updatedAt = Date.now();
-      const petRunId  = vscode.env.machineId;
       const entry = {
         username,
         petName:   state.name,
-        petRunId,
+        petRunId:  vscode.env.machineId,
         spawnedAt: state.spawnedAt,
         ageDays:   state.ageDays,
         stage:     state.stage,
         petType:   state.petType,
-        updatedAt,
-        hmac:      leaderboardHmacLive(username, petRunId, state.ageDays, state.petType, state.stage, state.spawnedAt, updatedAt),
+        updatedAt: Date.now(),
       };
 
       const issueRes = await fetch(

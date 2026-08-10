@@ -34,25 +34,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
-
-// Shared secret for HMAC-SHA256 submission signing — must match LEADERBOARD_HMAC_SECRET in GitHub Secrets
-private val LB_HMAC_K = "257efa6c9f92" + "dfdaf5f5fcaf" + "3cf4c3a5ed2c" + "8d38"
-
-private fun lbHmacDeath(ageDays: Int, petType: String, stage: String, spawnedAt: Long, diedAt: Long): String {
-    val msg = "$ageDays:$petType:$stage:$spawnedAt:$diedAt"
-    val mac = Mac.getInstance("HmacSHA256")
-    mac.init(SecretKeySpec(LB_HMAC_K.toByteArray(), "HmacSHA256"))
-    return mac.doFinal(msg.toByteArray()).joinToString("") { "%02x".format(it) }
-}
-
-private fun lbHmacLive(username: String, petRunId: String, ageDays: Int, petType: String, stage: String, spawnedAt: Long, updatedAt: Long): String {
-    val msg = "$username:$petRunId:$ageDays:$petType:$stage:$spawnedAt:$updatedAt"
-    val mac = Mac.getInstance("HmacSHA256")
-    mac.init(SecretKeySpec(LB_HMAC_K.toByteArray(), "HmacSHA256"))
-    return mac.doFinal(msg.toByteArray()).joinToString("") { "%02x".format(it) }
-}
 
 /**
  * Source-file extensions monitored by the VFS BulkFileListener for
@@ -844,18 +825,15 @@ class CodotchiPlugin : Disposable {
                 val username = userMap["login"] as? String ?: return@execute
                 setLeaderboardUsername(username)
 
-                val petRunId  = com.intellij.openapi.application.PermanentInstallationID.get()
-                val updatedAt = System.currentTimeMillis()
                 val entry = mapOf(
                     "username" to username,
                     "petName" to state.name,
-                    "petRunId" to petRunId,
+                    "petRunId" to com.intellij.openapi.application.PermanentInstallationID.get(),
                     "spawnedAt" to state.spawnedAt,
                     "ageDays" to state.ageDays,
                     "stage" to state.stage,
                     "petType" to state.petType,
-                    "updatedAt" to updatedAt,
-                    "hmac" to lbHmacLive(username, petRunId, state.ageDays, state.petType, state.stage, state.spawnedAt, updatedAt)
+                    "updatedAt" to System.currentTimeMillis()
                 )
                 val issueBody = mapOf(
                     "title" to "[Live] $username — ${state.name} (${state.ageDays}d ${state.stage})",
@@ -931,8 +909,7 @@ class CodotchiPlugin : Disposable {
                     return@execute
                 }
 
-                val hmac = lbHmacDeath(state.ageDays, state.petType, state.stage, state.spawnedAt, diedAt)
-                val scoreJson = """{"schemaVersion":1,"petName":"${state.name.replace("\"","\\\"")}","ageDays":${state.ageDays},"stage":"${state.stage}","petType":"${state.petType}","spawnedAt":${state.spawnedAt},"diedAt":$diedAt,"hmac":"$hmac"}"""
+                val scoreJson = """{"schemaVersion":1,"petName":"${state.name.replace("\"","\\\"")}","ageDays":${state.ageDays},"stage":"${state.stage}","petType":"${state.petType}","spawnedAt":${state.spawnedAt},"diedAt":$diedAt}"""
                 val issueBody = "Leaderboard submission.\n\n```json\n$scoreJson\n```"
                 val issueTitle = "[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @$username"
                 val issuePayload = mapOf(

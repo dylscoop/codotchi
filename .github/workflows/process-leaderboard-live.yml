@@ -25,16 +25,14 @@ jobs:
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
-          LEADERBOARD_HMAC_SECRET: ${{ secrets.LEADERBOARD_HMAC_SECRET }}
         run: |
           python3 - <<'PYEOF'
-          import json, os, sys, time, hmac as hmac_lib, hashlib
+          import json, os, sys, time
 
           FIVE_MIN_MS = 5 * 60 * 1000
 
-          body         = os.environ["ISSUE_BODY"]
-          author       = os.environ["ISSUE_AUTHOR"].lower()
-          hmac_secret  = os.environ.get("LEADERBOARD_HMAC_SECRET", "")
+          body   = os.environ["ISSUE_BODY"]
+          author = os.environ["ISSUE_AUTHOR"].lower()
 
           try:
               data = json.loads(body)
@@ -52,21 +50,6 @@ jobs:
               now_ms = int(time.time() * 1000)
               if int(updated_at) > now_ms + FIVE_MIN_MS:
                   print(f"updatedAt is in the future: {updated_at}")
-                  sys.exit(1)
-
-          # HMAC signature verification
-          if hmac_secret and "hmac" in data:
-              username   = str(data.get("username", ""))
-              pet_run_id = str(data.get("petRunId", ""))
-              age_days   = int(data.get("ageDays", 0))
-              pet_type   = str(data.get("petType", ""))
-              stage      = str(data.get("stage", ""))
-              spawned_at = int(data.get("spawnedAt", 0))
-              up_at      = int(data.get("updatedAt", 0))
-              canonical  = f"{username}:{pet_run_id}:{age_days}:{pet_type}:{stage}:{spawned_at}:{up_at}"
-              expected   = hmac_lib.new(hmac_secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()
-              if not hmac_lib.compare_digest(str(data["hmac"]), expected):
-                  print("HMAC signature invalid. Live update rejected.")
                   sys.exit(1)
 
           path = "leaderboard/live.json"

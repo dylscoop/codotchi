@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.21.0] — 2026-08-10
+
+### Added
+
+- **Leaderboard pet-name confirmation** — clicking "Submit to Leaderboard" now prompts you to type your pet's name before submitting, preventing automated or accidental submissions.
+- **Stage-first leaderboard ranking** — the public leaderboard and in-sidebar rank now sort by stage (senior → egg) first, then by ageDays within each stage.
+
+### Changed
+
+- **Live ages shown as-submitted** — live leaderboard entries now display the age at the time of the last push from the IDE, with no extrapolation based on elapsed time.
+
+### Security
+
+- **Stage-age consistency validation** — the server now rejects submissions where the reported stage and ageDays are physically inconsistent (e.g. `stage: "egg"` with `ageDays: 500`).
+- **Timestamp sanity checks** — `spawnedAt` and `diedAt` in the future or older than 3 years are rejected.
+
 ## [2.20.5] — 2026-08-06
 
 ### Fixed

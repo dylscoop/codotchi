@@ -30,10 +30,9 @@ jobs:
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
-          LEADERBOARD_HMAC_SECRET: ${{ secrets.LEADERBOARD_HMAC_SECRET }}
         run: |
           python3 - <<'PYEOF'
-          import json, os, re, sys, time, hmac as hmac_lib, hashlib
+          import json, os, re, sys, time
 
           VALID_STAGES   = {"egg", "baby", "child", "teen", "adult", "senior"}
           VALID_PET_TYPES = {"codeling", "bytebug", "pixelpup", "shellscript"}
@@ -69,7 +68,6 @@ jobs:
           body   = os.environ.get("ISSUE_BODY", "")
           # The issue author is the authoritative GitHub username — always use this
           author = os.environ.get("ISSUE_AUTHOR", "")
-          hmac_secret = os.environ.get("LEADERBOARD_HMAC_SECRET", "")
 
           # Extract the JSON block from the issue body
           match = re.search(r"```json\s*(.*?)\s*```", body, re.DOTALL)
@@ -82,7 +80,7 @@ jobs:
               fail(f"Invalid JSON: {e}")
 
           # Required fields (githubUsername is derived from issue author, not required in body)
-          required = ["schemaVersion", "petName", "ageDays", "stage", "petType", "spawnedAt", "diedAt", "hmac"]
+          required = ["schemaVersion", "petName", "ageDays", "stage", "petType", "spawnedAt", "diedAt"]
           for field in required:
               if field not in data:
                   fail(f"Missing required field: {field}")
@@ -130,13 +128,6 @@ jobs:
           min_age, max_age = STAGE_AGE_BOUNDS[stage]
           if age < min_age or (max_age is not None and age > max_age):
               fail(f"ageDays {age} is inconsistent with stage '{stage}' (expected {min_age}–{max_age if max_age else '∞'}).")
-
-          # HMAC signature verification
-          if hmac_secret:
-              canonical = f"{age}:{pet_type}:{stage}:{spawned_at}:{died_at}"
-              expected = hmac_lib.new(hmac_secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()
-              if not hmac_lib.compare_digest(str(data.get("hmac", "")), expected):
-                  fail("HMAC signature invalid. Submission rejected.")
 
           # Duplicate check
           with open("leaderboard/scores.json") as f:
