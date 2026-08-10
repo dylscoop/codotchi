@@ -5,7 +5,7 @@ on:
     types: [opened]
 
 concurrency:
-  group: leaderboard-update
+  group: leaderboard-delete-action
   cancel-in-progress: false
 
 jobs:

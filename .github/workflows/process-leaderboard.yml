@@ -5,7 +5,7 @@ on:
     types: [opened]
 
 concurrency:
-  group: leaderboard-update
+  group: leaderboard-scores
   cancel-in-progress: false
 
 jobs:
@@ -198,7 +198,11 @@ jobs:
           git add leaderboard/scores.json leaderboard/live.json
           ENTRY_DESC=$(python3 -c "import json; e=json.load(open('/tmp/new_entry.json')); print(e['petName'] + ' ' + str(e['ageDays']) + 'd')")
           git commit -m "leaderboard: add ${{ github.event.issue.user.login }} ${ENTRY_DESC}"
-          git push origin leaderboard
+          for i in 1 2 3; do
+            git push origin leaderboard && break
+            echo "Push failed (attempt $i), rebasing..."
+            git pull --rebase origin leaderboard
+          done
 
       - name: Comment and close (success)
         if: steps.validate.outputs.valid == 'true'

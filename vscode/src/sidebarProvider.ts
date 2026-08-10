@@ -927,9 +927,10 @@ export class SidebarProvider
     }
     try {
       const headers = { "Accept": "application/json", "User-Agent": "Codotchi-VSCode" };
+      const t = Date.now();
       const [scoresRes, liveRes] = await Promise.all([
-        fetch(SidebarProvider.SCORES_JSON_URL, { headers }),
-        fetch(SidebarProvider.LIVE_JSON_URL, { headers }).catch(() => null),
+        fetch(`${SidebarProvider.SCORES_JSON_URL}?t=${t}`, { headers }),
+        fetch(`${SidebarProvider.LIVE_JSON_URL}?t=${t}`, { headers }).catch(() => null),
       ]);
       if (!scoresRes.ok) { return; }
       const scoresJson = await scoresRes.json() as { scores?: Array<{ ageDays: number; stage?: string }> } | Array<{ ageDays: number; stage?: string }>;
