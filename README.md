@@ -22,7 +22,7 @@ little happier.
 
 ### All-time tab — submit on death
 
-After your pet dies, click **Submit to Leaderboard** on the game over screen. VS Code uses your existing GitHub sign-in (OAuth — no extra setup). The submission creates a GitHub issue that the workflow processes automatically.
+After your pet dies, click **Submit to Leaderboard** on the game over screen. VS Code uses your existing GitHub sign-in (OAuth — no extra setup). You'll be prompted to type your pet's name to confirm before the submission is sent. The submission creates a GitHub issue that the workflow processes automatically.
 
 ### Live tab — push while alive
 

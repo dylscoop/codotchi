@@ -27,7 +27,9 @@ jobs:
           ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
         run: |
           python3 - <<'PYEOF'
-          import json, os, sys
+          import json, os, sys, time
+
+          FIVE_MIN_MS = 5 * 60 * 1000
 
           body   = os.environ["ISSUE_BODY"]
           author = os.environ["ISSUE_AUTHOR"].lower()
@@ -41,6 +43,14 @@ jobs:
           if data.get("username", "").lower() != author:
               print(f"Username mismatch: body says '{data.get('username')}', issue author is '{author}'")
               sys.exit(1)
+
+          # Timestamp sanity — updatedAt must not be more than 5 minutes in the future
+          updated_at = data.get("updatedAt")
+          if updated_at is not None:
+              now_ms = int(time.time() * 1000)
+              if int(updated_at) > now_ms + FIVE_MIN_MS:
+                  print(f"updatedAt is in the future: {updated_at}")
+                  sys.exit(1)
 
           path = "leaderboard/live.json"
           try:

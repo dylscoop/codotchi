@@ -11,6 +11,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
+
 import {
   PetState,
   HighScore,
@@ -196,7 +197,6 @@ export class SidebarProvider
     void this.context.globalState.update("leaderboardGithubUsername", username ?? undefined);
   }
   // Approx ms per game day (awake rate: 5 real min = 1 game day) for live rank extrapolation.
-  private static readonly MS_PER_GAME_DAY_APPROX = 5 * 60 * 1000;
   // URLs for fetching rank data from the leaderboard branch.
   private static readonly SCORES_JSON_URL =
     `https://raw.githubusercontent.com/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/leaderboard/leaderboard/scores.json`;
@@ -703,7 +703,7 @@ export class SidebarProvider
     const liveLastPushedAt = this.context.globalState.get<number>("leaderboardLastPushedAt", 0);
 
     // Fetch rank whenever subscribed and alive (showing rank = opt-in via subscribe button).
-    if (liveSubscribed && state.alive) { void this.fetchLiveRank(state.ageDays, this.leaderboardGithubUsername); }
+    if (liveSubscribed && state.alive) { void this.fetchLiveRank(state.ageDays, state.stage, this.leaderboardGithubUsername); }
 
     const cached = this.rankCache;
 
@@ -805,6 +805,18 @@ export class SidebarProvider
         return;
       }
 
+      // Require the user to type their pet's name — blocks automated API submissions
+      const confirmed = await vscode.window.showInputBox({
+        title: "Confirm Leaderboard Submission",
+        prompt: `Type your pet's name to confirm submission`,
+        placeHolder: state.name,
+        validateInput: (v) => v === state.name ? null : "Name doesn't match — check spelling and case",
+      });
+      if (!confirmed) {
+        postResult("cancelled");
+        return;
+      }
+
       const diedAt = this.getLastRunDiedAt() ?? Date.now();
       const scoreData = {
         schemaVersion: 1,
@@ -903,10 +915,12 @@ export class SidebarProvider
     }
   }
 
+  private static readonly STAGE_ORDER: Record<string, number> = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
+
   /** Fetch scores.json and compute current rank; result is cached for 5 minutes.
    *  Pass username so the user's own live entry is excluded from the pool —
    *  the unconditional +1 at the end already accounts for the current user. */
-  async fetchLiveRank(ageDays: number, username: string | null = null): Promise<void> {
+  async fetchLiveRank(ageDays: number, stage: string, username: string | null = null): Promise<void> {
     const now = Date.now();
     if (this.rankCache && (now - this.rankCache.at) < SidebarProvider.RANK_CACHE_TTL_MS) {
       return; // still fresh
@@ -918,10 +932,10 @@ export class SidebarProvider
         fetch(SidebarProvider.LIVE_JSON_URL, { headers }).catch(() => null),
       ]);
       if (!scoresRes.ok) { return; }
-      const scoresJson = await scoresRes.json() as { scores?: Array<{ ageDays: number }> } | Array<{ ageDays: number }>;
-      const scores: Array<{ ageDays: number }> = Array.isArray(scoresJson) ? scoresJson : (scoresJson.scores ?? []);
-      const liveJson: Array<{ ageDays?: number; updatedAt?: number; username?: string; petRunId?: string }> = liveRes?.ok
-        ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; updatedAt?: number; username?: string; petRunId?: string }> : [];
+      const scoresJson = await scoresRes.json() as { scores?: Array<{ ageDays: number; stage?: string }> } | Array<{ ageDays: number; stage?: string }>;
+      const scores: Array<{ ageDays: number; stage?: string }> = Array.isArray(scoresJson) ? scoresJson : (scoresJson.scores ?? []);
+      const liveJson: Array<{ ageDays?: number; stage?: string; updatedAt?: number; username?: string; petRunId?: string }> = liveRes?.ok
+        ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; stage?: string; updatedAt?: number; username?: string; petRunId?: string }> : [];
       const staleMs = 48 * 60 * 60 * 1000;
       const selfRunId = vscode.env.machineId;
       // Exclude own entry by petRunId only — username exclusion was too broad.
@@ -929,10 +943,16 @@ export class SidebarProvider
         .filter(e => e.updatedAt && (now - e.updatedAt) < staleMs)
         .filter(e => e.petRunId !== selfRunId)
         .map(e => ({
-          ageDays: (e.ageDays ?? 0) + (e.updatedAt ? (now - e.updatedAt) / SidebarProvider.MS_PER_GAME_DAY_APPROX : 0),
+          ageDays: e.ageDays ?? 0,
+          stage: e.stage,
         }));
-      const combined = (scores as Array<{ ageDays: number }>).concat(freshLive);
-      const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
+      const combined = (scores as Array<{ ageDays: number; stage?: string }>).concat(freshLive);
+      const myStageRank = SidebarProvider.STAGE_ORDER[stage] ?? 0;
+      const rank = combined.filter(s => {
+        const sStageRank = SidebarProvider.STAGE_ORDER[s.stage ?? ""] ?? 0;
+        if (sStageRank !== myStageRank) return sStageRank > myStageRank;
+        return (s.ageDays ?? 0) > ageDays;
+      }).length + 1;
       this.rankCache = { rank, total: combined.length + 1, at: now };
     } catch {
       // Network failure — keep stale cache if available

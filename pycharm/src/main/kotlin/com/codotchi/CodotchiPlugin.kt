@@ -895,6 +895,20 @@ class CodotchiPlugin : Disposable {
                 val username = userMap["login"] as? String ?: run { postResult("error", "Could not read GitHub username."); return@execute }
                 setLeaderboardUsername(username)
 
+                // Require the user to type their pet's name — blocks automated API submissions
+                var confirmed: String? = null
+                ApplicationManager.getApplication().invokeAndWait {
+                    confirmed = com.intellij.openapi.ui.Messages.showInputDialog(
+                        "Type your pet's name to confirm submission",
+                        "Confirm Leaderboard Submission",
+                        com.intellij.openapi.ui.Messages.getQuestionIcon()
+                    )
+                }
+                if (confirmed != state.name) {
+                    postResult("cancelled")
+                    return@execute
+                }
+
                 val scoreJson = """{"schemaVersion":1,"petName":"${state.name.replace("\"","\\\"")}","ageDays":${state.ageDays},"stage":"${state.stage}","petType":"${state.petType}","spawnedAt":${state.spawnedAt},"diedAt":$diedAt}"""
                 val issueBody = "Leaderboard submission.\n\n```json\n$scoreJson\n```"
                 val issueTitle = "[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @$username"
