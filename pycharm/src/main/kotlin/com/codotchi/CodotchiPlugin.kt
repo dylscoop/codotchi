@@ -757,8 +757,9 @@ class CodotchiPlugin : Disposable {
                     return if (conn.responseCode == 200) conn.inputStream.bufferedReader().readText() else null
                 }
 
-                val scoresText = get(SCORES_JSON_URL) ?: return@execute
-                val liveText   = try { get(LIVE_JSON_URL) } catch (_: Exception) { null }
+                val t = System.currentTimeMillis()
+                val scoresText = get("$SCORES_JSON_URL?t=$t") ?: return@execute
+                val liveText   = try { get("$LIVE_JSON_URL?t=$t") } catch (_: Exception) { null }
 
                 @Suppress("UNCHECKED_CAST")
                 val scoresParsed = Gson().fromJson(scoresText, Any::class.java)
