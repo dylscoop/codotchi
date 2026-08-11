@@ -10,6 +10,17 @@
       "spawnedAt": 1786008693789,
       "diedAt": 1786462478760,
       "submittedAt": 1786462531495
+    },
+    {
+      "schemaVersion": 1,
+      "githubUsername": "Yharooer",
+      "petName": "Codotchi",
+      "ageDays": 0,
+      "stage": "baby",
+      "petType": "codeling",
+      "spawnedAt": 1786022837162,
+      "diedAt": 1786485158128,
+      "submittedAt": 1786485173666
     }
   ]
 }
