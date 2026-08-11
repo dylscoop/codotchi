@@ -21,16 +21,6 @@
   },
   {
     "username": "dylscoop",
-    "petName": "Mike Hunt",
-    "petRunId": "0",
-    "spawnedAt": 1786008693789,
-    "ageDays": 30,
-    "stage": "teen",
-    "petType": "bytebug",
-    "updatedAt": 1786436979777
-  },
-  {
-    "username": "dylscoop",
     "petName": "Codotchi",
     "petRunId": "someValue.machineId",
     "spawnedAt": 1785863514210,
@@ -48,5 +38,15 @@
     "stage": "teen",
     "petType": "bytebug",
     "updatedAt": 1786437844284
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Mike Hunt",
+    "petRunId": "0",
+    "spawnedAt": 1786008693789,
+    "ageDays": 30,
+    "stage": "teen",
+    "petType": "bytebug",
+    "updatedAt": 1786437882013
   }
 ]
