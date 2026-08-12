@@ -260,7 +260,8 @@
     var AUTOREFRESH_KEY = "codotchi-autorefresh";
     var LIVE_STALE_MS = 48 * 60 * 60 * 1000; // 48 hours
     var STAGE_ORDER = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
-    var cachedLiveEntries = [];
+    var cachedLiveEntries  = [];
+    var cachedAlltimeEntries = [];
 
     function switchTab(name) {
       activeTab = name;
@@ -372,21 +373,8 @@
             tbody.innerHTML = "<tr><td colspan=\"8\" class=\"empty\">No scores yet — be the first to submit!</td></tr>";
             return;
           }
-          tbody.innerHTML = combined.map(function(s, i) {
-            var namePart = escHtml(s.petName || "—") + (s.alive ? "<span class=\"live-badge\">live</span>" : "");
-            var elapsedPart = formatElapsed(s.spawnedAt, s.alive ? Date.now() : s.diedAt);
-            var submittedPart = s.alive ? formatRelativeTime(s.updatedAt) : formatDate(s.submittedAt);
-            return "<tr>" +
-              "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
-              "<td class=\"pet-name\">" + namePart + "</td>" +
-              "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.githubUsername) + "\" target=\"_blank\">@" + escHtml(s.githubUsername || "—") + "</a></td>" +
-              "<td class=\"age\">" + formatAge(Math.floor(s.ageDays)) + "</td>" +
-              "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
-              "<td>" + escHtml(capStr(s.stage)) + "</td>" +
-              "<td class=\"elapsed col-elapsed\">" + elapsedPart + "</td>" +
-              "<td class=\"submitted col-submitted\">" + submittedPart + "</td>" +
-              "</tr>";
-          }).join("");
+          cachedAlltimeEntries = combined;
+          renderAlltime();
         })
         .catch(function() {
           document.getElementById("leaderboard-body").innerHTML =
@@ -420,6 +408,26 @@
         });
     }
 
+    function renderAlltime() {
+      if (!cachedAlltimeEntries.length) { return; }
+      var tbody = document.getElementById("leaderboard-body");
+      tbody.innerHTML = cachedAlltimeEntries.map(function(s, i) {
+        var namePart = escHtml(s.petName || "—") + (s.alive ? "<span class=\"live-badge\">live</span>" : "");
+        var elapsedPart = formatElapsed(s.spawnedAt, s.alive ? Date.now() : s.diedAt);
+        var submittedPart = s.alive ? formatRelativeTime(s.updatedAt) : formatDate(s.submittedAt);
+        return "<tr>" +
+          "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
+          "<td class=\"pet-name\">" + namePart + "</td>" +
+          "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.githubUsername) + "\" target=\"_blank\">@" + escHtml(s.githubUsername || "—") + "</a></td>" +
+          "<td class=\"age\">" + formatAge(Math.floor(s.ageDays)) + "</td>" +
+          "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
+          "<td>" + escHtml(capStr(s.stage)) + "</td>" +
+          "<td class=\"elapsed col-elapsed\">" + elapsedPart + "</td>" +
+          "<td class=\"submitted col-submitted\">" + submittedPart + "</td>" +
+          "</tr>";
+      }).join("");
+    }
+
     function renderLive() {
       if (!cachedLiveEntries.length) { return; }
       var sorted = cachedLiveEntries.slice().sort(function(a, b) {
@@ -451,6 +459,7 @@
       setInterval(function() {
         updateLastUpdated("last-updated-alltime", lastLoadedAlltime);
         updateLastUpdated("last-updated-alive", lastLoadedAlive);
+        renderAlltime();
         renderLive();
       }, 60000);
     }

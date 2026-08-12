@@ -32,7 +32,7 @@
     sheep:    { primary: "#eceff1", secondary: "#5d4037", accent: "#b0bec5", background: "#1a1a1a" },
       dog       : { primary: "#eee1d9", secondary: "#eea062", accent: "#ed9d5e", background: "#1a1a1a" },
     snake:    { primary: "#558b2f", secondary: "#ffeb3b", accent: "#33691e", background: "#0d1a0d" },
-    kangaroo: { primary: "#d9bb7b", secondary: "#663300", accent: "#8c5a24", background: "#1a1a1a" },
+      kangaroo  : { primary: "#ffc645", secondary: "#b59049", accent: "#000000", background: "#1a1a1a" },
     tim:      { primary: "#f5c5a3", secondary: "#4a90d9", accent: "#2c3e50", background: "#1a1a2e" },
     stu:      { primary: "#f0f0e8", secondary: "#0055b3", accent: "#cc1100", background: "#1a1a2e" },
   };
@@ -87,7 +87,7 @@
     sheep:    { cols: 48, rows: 32, legRowStart: 25 },
     dog       : { cols: 136, rows: 128, legRowStart: 99 },
     snake:    { cols: 48, rows: 32, legRowStart: 25 },
-    kangaroo: { cols: 48, rows: 32, legRowStart: 25 },
+    kangaroo  : { cols: 179, rows: 128, legRowStart: 99 },
     roo       : { cols: 644, rows: 531, legRowStart: 380 },
     dragon    : { cols: 180, rows: 128, legRowStart: 99 },
   };
