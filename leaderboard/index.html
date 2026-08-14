@@ -451,8 +451,8 @@
       setInterval(function() {
         updateLastUpdated("last-updated-alltime", lastLoadedAlltime);
         updateLastUpdated("last-updated-alive", lastLoadedAlive);
-        renderLive();
       }, 60000);
+      setInterval(renderLive, 1000);
     }
 
     function stopAutoRefresh() {
