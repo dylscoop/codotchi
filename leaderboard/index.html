@@ -236,11 +236,12 @@
             <th>Age</th>
             <th>Species</th>
             <th>Stage</th>
+            <th class="col-elapsed">Real Time</th>
             <th class="col-updated">Last Seen</th>
           </tr>
         </thead>
         <tbody id="alive-body">
-          <tr><td colspan="7" class="empty">Loading live pets…</td></tr>
+          <tr><td colspan="8" class="empty">Loading live pets…</td></tr>
         </tbody>
       </table>
       <p class="stale-note">Entries older than 48 hours are hidden. Push from the Codotchi sidebar to stay visible.</p>
@@ -359,7 +360,7 @@
             .map(function(e) {
               return { alive: true, githubUsername: e.username, petName: e.petName,
                        ageDays: e.ageDays || 0, petType: e.petType, stage: e.stage,
-                       updatedAt: e.updatedAt };
+                       spawnedAt: e.spawnedAt, updatedAt: e.updatedAt };
             });
           var combined = scores.concat(live);
           combined.sort(function(a, b) {
@@ -373,7 +374,7 @@
           }
           tbody.innerHTML = combined.map(function(s, i) {
             var namePart = escHtml(s.petName || "—") + (s.alive ? "<span class=\"live-badge\">live</span>" : "");
-            var elapsedPart = s.alive ? "—" : formatElapsed(s.spawnedAt, s.diedAt);
+            var elapsedPart = formatElapsed(s.spawnedAt, s.alive ? Date.now() : s.diedAt);
             var submittedPart = s.alive ? formatRelativeTime(s.updatedAt) : formatDate(s.submittedAt);
             return "<tr>" +
               "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
