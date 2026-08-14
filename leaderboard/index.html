@@ -292,6 +292,12 @@
       return parts.join(" ");
     }
 
+    function formatAgeDays(ageDays) {
+      var d = Math.floor(ageDays || 0);
+      var h = Math.floor(((ageDays || 0) - d) * 24);
+      return h > 0 ? d + "d " + h + "h" : d + "d";
+    }
+
     function formatRelativeTime(ts) {
       if (!ts) { return "—"; }
       var diff = Date.now() - ts;
@@ -374,7 +380,7 @@
           }
           tbody.innerHTML = combined.map(function(s, i) {
             var namePart = escHtml(s.petName || "—") + (s.alive ? "<span class=\"live-badge\">live</span>" : "");
-            var elapsedPart = formatElapsed(s.spawnedAt || (s.updatedAt - (s.ageDays || 0) * 86400000), s.alive ? Date.now() : s.diedAt);
+            var elapsedPart = s.spawnedAt ? formatElapsed(s.spawnedAt, s.alive ? Date.now() : s.diedAt) : formatAgeDays(s.ageDays);
             var submittedPart = s.alive ? formatRelativeTime(s.updatedAt) : formatDate(s.submittedAt);
             return "<tr>" +
               "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
@@ -435,7 +441,7 @@
           "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
           "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
           "<td>" + escHtml(capStr(s.stage)) + "</td>" +
-          "<td class=\"col-elapsed\">" + formatElapsed(s.spawnedAt || (s.updatedAt - (s.ageDays || 0) * 86400000), Date.now()) + "</td>" +
+          "<td class=\"col-elapsed\">" + (s.spawnedAt ? formatElapsed(s.spawnedAt, Date.now()) : formatAgeDays(s.ageDays)) + "</td>" +
           "<td class=\"col-updated\">" + formatRelativeTime(s.updatedAt) + "</td>" +
           "</tr>";
       }).join("");
