@@ -96,7 +96,16 @@
   const leaderboardSection = document.getElementById("leaderboard-section");
   const btnSubmitLB        = document.getElementById("btn-submit-leaderboard");
   const leaderboardStatus  = document.getElementById("leaderboard-status");
+  const lbDeleteSection    = document.getElementById("leaderboard-delete-section");
+  const btnDeleteLB        = document.getElementById("btn-delete-leaderboard");
+  const lbDeleteStatus     = document.getElementById("leaderboard-delete-status");
   const btnViewLB          = document.getElementById("btn-view-leaderboard");
+  const rankDisplay        = document.getElementById("rank-display");
+  const btnViewLBLive      = document.getElementById("btn-view-leaderboard-live");
+  const btnLiveSubscribe      = document.getElementById("btn-live-subscribe");
+  const livePushStatus        = document.getElementById("live-push-status");
+  const btnSignInLeaderboard  = document.getElementById("btn-sign-in-leaderboard");
+  const lbSignInStatus        = document.getElementById("lb-sign-in-status");
   const setupHighScore   = document.getElementById("setup-high-score");
   const setupHsStats     = document.getElementById("setup-hs-stats");
   const mealsLeftEl    = document.getElementById("meals-left");
@@ -273,10 +282,40 @@
     });
   }
 
+  if (btnDeleteLB) {
+    btnDeleteLB.addEventListener("click", function () {
+      btnDeleteLB.disabled = true;
+      btnDeleteLB.textContent = "Requesting deletion…";
+      if (lbDeleteStatus) { lbDeleteStatus.classList.add("hidden"); }
+      vscode.postMessage({ command: "delete_leaderboard_entry" });
+    });
+  }
+
   if (btnViewLB) {
     btnViewLB.addEventListener("click", function (e) {
       e.preventDefault();
       vscode.postMessage({ command: "open_leaderboard_url" });
+    });
+  }
+
+  if (btnViewLBLive) {
+    btnViewLBLive.addEventListener("click", function (e) {
+      e.preventDefault();
+      vscode.postMessage({ command: "open_leaderboard_url" });
+    });
+  }
+
+  if (btnSignInLeaderboard) {
+    btnSignInLeaderboard.addEventListener("click", function () {
+      vscode.postMessage({ command: "sign_in_leaderboard" });
+      btnSignInLeaderboard.textContent = "Opening sign-in…";
+      btnSignInLeaderboard.disabled = true;
+    });
+  }
+
+  if (btnLiveSubscribe) {
+    btnLiveSubscribe.addEventListener("click", function () {
+      vscode.postMessage({ command: "toggle_live_subscribe" });
     });
   }
 
@@ -1761,6 +1800,15 @@
       }
     }
 
+    // Delete entry button — shown after submission (user can only delete what they've submitted)
+    if (lbDeleteSection) {
+      if (leaderboardAvailable && leaderboardSubmitted) {
+        lbDeleteSection.classList.remove("hidden");
+      } else {
+        lbDeleteSection.classList.add("hidden");
+      }
+    }
+
     // "View Leaderboard" link is always visible on the dead screen regardless of platform
     if (btnViewLB) {
       btnViewLB.classList.remove("hidden");
@@ -2589,6 +2637,47 @@
       }
       return;
     }
+    if (message.type === "leaderboard_sign_in_result") {
+      if (message.username) {
+        if (lbSignInStatus) {
+          lbSignInStatus.textContent = "Leaderboard: @" + message.username;
+          lbSignInStatus.classList.remove("hidden");
+        }
+        if (btnSignInLeaderboard) btnSignInLeaderboard.classList.add("hidden");
+      } else {
+        if (lbSignInStatus) {
+          lbSignInStatus.textContent = "Sign-in failed — try again";
+          lbSignInStatus.classList.remove("hidden");
+        }
+        if (btnSignInLeaderboard) {
+          btnSignInLeaderboard.textContent = "Sign in to GitHub (Leaderboard)";
+          btnSignInLeaderboard.disabled = false;
+        }
+      }
+      return;
+    }
+    if (message.type === "leaderboard_delete_result") {
+      if (!btnDeleteLB) { return; }
+      if (message.status === "success") {
+        btnDeleteLB.textContent = "Deletion requested ✓";
+        btnDeleteLB.disabled = true;
+        if (lbDeleteStatus) {
+          lbDeleteStatus.textContent = "Your entry will be removed shortly.";
+          lbDeleteStatus.classList.remove("hidden");
+        }
+      } else if (message.status === "cancelled") {
+        btnDeleteLB.disabled = false;
+        btnDeleteLB.textContent = "Delete my entry";
+      } else {
+        btnDeleteLB.disabled = false;
+        btnDeleteLB.textContent = "Delete my entry";
+        if (lbDeleteStatus) {
+          lbDeleteStatus.textContent = message.message || "Deletion request failed.";
+          lbDeleteStatus.classList.remove("hidden");
+        }
+      }
+      return;
+    }
     if (message.type !== "stateUpdate") { return; }
 
     const state = message.state;
@@ -2610,6 +2699,78 @@
     // Show/hide dev mode banner
     if (devModeBanner) {
       devModeBanner.classList.toggle("hidden", !message.devMode);
+    }
+
+    // Rank visible only when subscribed (opted in via push button).
+    if (rankDisplay) {
+      if (message.liveSubscribed && state && state.alive && message.liveRank != null) {
+        rankDisplay.textContent = "Rank #" + message.liveRank + " of " + message.liveTotalScores + " on the leaderboard";
+        rankDisplay.classList.remove("hidden");
+      } else {
+        rankDisplay.classList.add("hidden");
+      }
+    }
+
+    if (btnViewLBLive) {
+      if (state && state.alive) {
+        btnViewLBLive.classList.remove("hidden");
+      } else {
+        btnViewLBLive.classList.add("hidden");
+      }
+    }
+
+    // Sign-in status + button — shown when alive.
+    if (state && state.alive) {
+      if (lbSignInStatus) {
+        if (message.leaderboardGithubUsername) {
+          lbSignInStatus.textContent = "Leaderboard: @" + message.leaderboardGithubUsername;
+          lbSignInStatus.classList.remove("hidden");
+        } else {
+          lbSignInStatus.textContent = "Not signed in to GitHub";
+          lbSignInStatus.classList.remove("hidden");
+        }
+      }
+      if (btnSignInLeaderboard) {
+        if (message.leaderboardGithubUsername) {
+          btnSignInLeaderboard.classList.add("hidden");
+        } else {
+          btnSignInLeaderboard.textContent = "Sign in to GitHub (Leaderboard)";
+          btnSignInLeaderboard.disabled = false;
+          btnSignInLeaderboard.classList.remove("hidden");
+        }
+      }
+    } else {
+      if (lbSignInStatus) lbSignInStatus.classList.add("hidden");
+      if (btnSignInLeaderboard) btnSignInLeaderboard.classList.add("hidden");
+    }
+
+    // Live subscribe button — always shown when alive.
+    if (btnLiveSubscribe) {
+      if (state && state.alive) {
+        btnLiveSubscribe.textContent = message.liveSubscribed
+          ? "Unsubscribe live progress"
+          : "Push live progress";
+        btnLiveSubscribe.classList.remove("hidden");
+      } else {
+        btnLiveSubscribe.classList.add("hidden");
+      }
+    }
+
+    // "Last synced" line — shown when subscribed and at least one push has happened.
+    if (livePushStatus) {
+      if (state && state.alive && message.liveSubscribed && message.liveLastPushedAt) {
+        var diffMs = Date.now() - message.liveLastPushedAt;
+        var diffMins = Math.floor(diffMs / 60000);
+        var syncedText = diffMins < 1
+          ? "Synced just now"
+          : diffMins < 60
+            ? "Synced " + diffMins + "m ago"
+            : "Synced " + Math.floor(diffMins / 60) + "h ago";
+        livePushStatus.textContent = syncedText;
+        livePushStatus.classList.remove("hidden");
+      } else {
+        livePushStatus.classList.add("hidden");
+      }
     }
 
     if (state && state.needs_new_game) {

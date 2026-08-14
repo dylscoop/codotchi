@@ -1849,3 +1849,81 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** `plugin.xml` declared a `<group id="CodotchiToolWindowToolbar">` with `<add-to-group group-id="ToolWindowToolbar" anchor="last"/>`. In PyCharm 2026.x the built-in platform group `ToolWindowToolbar` was removed. During plugin load, `ActionPluginRegistrar` attempted to attach the custom group to this non-existent parent and threw a `PluginException`, aborting action registration and leaving the Codotchi tool window completely blank with no diagnostic message to the user.
 
 **Fix:** Removed the `CodotchiToolWindowToolbar` group and its `add-to-group` reference from `plugin.xml`. The Refresh action's `add-to-group` child was also removed from the `<action>` element (the action itself is kept so it remains invokable via Find Action). The Refresh button is now wired into the tool window title bar programmatically via `ToolWindow.setTitleActions()` in `CodotchiToolWindow.kt` — the same API already used for the Settings gear — by fetching the registered action with `ActionManager.getInstance().getAction("com.codotchi.Refresh")`. Added a `JBCefApp.isSupported()` guard in `createToolWindowContent` so that if JCEF is unavailable (non-JCEF JBR runtime), the tool window shows a plain Swing label with actionable instructions instead of a silent blank panel. Added a `CefLoadHandler.onLoadError` override in `CodotchiBrowserPanel` to surface load failures as a visible HTML message rather than a blank body.
+
+## BUGFIX-152 — PyCharm pause button missing from tool window
+
+**Status:** Fixed (branch `fix/pycharm-pause-button`)
+**Files:** `pycharm/src/main/kotlin/com/codotchi/CodotchiToolWindow.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** The pause button disappeared from the PyCharm plugin. It was accidentally dropped in the commit that introduced the leaderboard section in `sidebar.html` (commit `e22f975`). The VS Code extension was unaffected because its pause control lives in the IDE toolbar (registered in `package.json`) rather than in the webview HTML. PyCharm had no equivalent IDE-level action.
+
+**Fix:** Added a `Pause/Resume` `AnAction` to `CodotchiToolWindow.setTitleActions()` between the existing Refresh and Settings buttons. The action reads pause state via a new `CodotchiPlugin.isPaused()` helper (reads `currentState?.paused` under `stateLock`) and toggles icon/text between `AllIcons.Actions.Pause` and `AllIcons.Actions.Execute`. Sends `handleCommand(mapOf("command" to "pause"))` on click — the same path the webview button previously used.
+
+## BUGFIX-153 — PyCharm leaderboard rank shows user ranked behind themselves
+
+**Status:** Fixed (v2.20.6, branch `fix/pycharm-leaderboard-rank`)
+**Files:** `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt`
+
+**Problem:** The PyCharm plugin's `fetchLiveRankAsync()` included the current user's own entry from `live.json` in the comparison pool when computing rank. Because `live.json` stores `ageDays` at the time of last push and the code extrapolates forward assuming the pet is always awake (5 min/game-day), a pet that was 1 game-day old when last pushed 35 hours ago would extrapolate to ~420 game days — far above the real current age of 8 days. This caused the user to appear ranked below their own stale entry, showing "Rank #2 of 2" instead of the correct position. The VS Code extension already had this fix (`sidebarProvider.ts` line 924), but it was never ported to the Kotlin plugin.
+
+**Fix:** Added `selfUsername = leaderboardGithubUsername?.lowercase()` before the `freshLive` filter in `fetchLiveRankAsync()`, and added a second filter condition `&& (selfUsername == null || entryUsername != selfUsername)` to exclude the current user's own live entry. The `combined.size + 1` total is now correct — `combined` excludes self, and `+1` accounts for the current user.
+
+## BUGFIX-154 — VS Code leaderboard rank reverts to "2 of 2" after restart
+
+**Status:** Fixed (v2.20.6, branch `fix/pycharm-leaderboard-rank`)
+**File:** `vscode/src/sidebarProvider.ts`
+
+**Problem:** `leaderboardGithubUsername` was stored only in memory (`private leaderboardGithubUsername: string | null = null`). After a VS Code restart or extension reload, the value reset to `null`. `fetchLiveRank()` was called with `username = null`, so `userLower` was null, `!userLower` evaluated to true, and no entries were filtered — the user's own stale live.json entry was included in the comparison pool, causing the "Rank #2 of 2" bug to reappear even though the self-exclusion filter existed in the code (BUGFIX-153 introduced it but didn't persist the value).
+
+**Fix:** Added `setLeaderboardUsername(username: string | null)` helper that assigns the field and persists to `context.globalState` under key `"leaderboardGithubUsername"`. Restored from `globalState` in the constructor. Replaced all four direct `this.leaderboardGithubUsername = …` assignment sites with calls to the helper.
+
+## BUGFIX-155 — PyCharm leaderboard rank reverts to "2 of 2" after restart
+
+**Status:** Fixed (v2.20.6, branch `fix/pycharm-leaderboard-rank`)
+**File:** `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** Same as BUGFIX-154 but in the Kotlin plugin. `leaderboardGithubUsername` was `@Volatile private var ... = null` with no persistence. After a PyCharm restart the field reset to null, so `fetchLiveRankAsync()` passed null as `selfUsername`, the self-exclusion filter was disabled, and "Rank #2 of 2" returned.
+
+**Fix:** Added `setLeaderboardUsername(username: String?)` helper that assigns the field and calls `PropertiesComponent.getInstance().setValue/unsetValue("codotchi.leaderboardGithubUsername", ...)`. In `initialize()`, restored from `PropertiesComponent` alongside the existing `liveLastPushedAt` restore. Replaced the three direct `leaderboardGithubUsername = username` assignment sites with `setLeaderboardUsername(username)`.
+
+## BUGFIX-156 — Leaderboard rank self-exclusion fragile when username unknown (both IDEs)
+
+**Status:** Fixed (v2.20.7, branch `fix/pycharm-leaderboard-rank`)
+**Files:** `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `vscode/src/sidebarProvider.ts`
+
+**Problem:** BUGFIX-153/154/155 excluded the user's own live.json entry by username, but the username is null until the user has signed in at least once in that session (or has the persisted value from BUGFIX-154/155). On a fresh install the persisted key doesn't exist yet, so the exclusion was skipped and the stale extrapolated entry pushed the user to rank 2.
+
+---
+
+## BUGFIX-157 — Leaderboard rank pool username filter over-excludes other users' entries (both IDEs)
+
+**Status:** Fixed (v2.20.8, branch `fix/pycharm-leaderboard-rank`)
+**Files:** `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `vscode/src/sidebarProvider.ts`
+
+**Problem:** The rank pool filter excluded live.json entries where `username == leaderboardGithubUsername`, in addition to the `petRunId` check. Since the upsert key for live.json is `(username, petRunId)`, each user can have at most one live entry per machine. However, the username filter incorrectly excluded ALL entries for that username regardless of petRunId — meaning if another user somehow shared the same GitHub username, or if the exclusion logic was applied incorrectly, entries that should have been in the pool were dropped. More practically, the username filter was masking bugs: `petRunId` alone is sufficient to identify and exclude the user's own entry (it equals `vscode.env.machineId` / `PermanentInstallationID.get()`, which is always available and stable), making the username fallback redundant and dangerous.
+
+**Fix:** Removed the username-based exclusion condition and `selfUsername`/`userLower` variable from both IDEs. The rank pool now excludes only entries where `petRunId == selfRunId`.
+
+**Fix:** Added `petRunId` as the primary exclusion key — `PermanentInstallationID.get()` in PyCharm, `vscode.env.machineId` in VS Code. These are stable installation IDs always available without auth. The live.json entry's `petRunId` field (already pushed since v2.20.5) is matched against the local ID. Username exclusion is kept as a secondary guard.
+
+---
+
+## BUGFIX-158 — Leaderboard rank stale in IDE due to GitHub CDN caching (both IDEs)
+
+**Status:** Fixed (v2.20.9, branch `fix/leaderboard-concurrent-submissions`)
+**Files:** `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** Both IDEs fetched `scores.json` and `live.json` from bare `raw.githubusercontent.com` URLs with no cache-busting. GitHub's CDN caches raw file responses, so a recently-committed entry (e.g. a new 0d live pet) would not appear in the IDE's rank calculation until the CDN cache expired. The website already appended `?t=<timestamp>` to every fetch, making it always current. The result was rank discrepancies between the IDE and the website — the IDE showed stale total/rank (e.g. rank 3/4) while the website showed the correct value (rank 2/4).
+
+**Fix:** Appended `?t=<Date.now()>` (VS Code) and `?t=<System.currentTimeMillis()>` (PyCharm) to both fetch URLs in each IDE's rank-fetch function, matching the website pattern.
+
+---
+
+## BUGFIX-159 — Concurrent leaderboard submissions cancel each other via shared GitHub Actions concurrency group
+
+**Status:** Fixed (v2.20.9, branch `fix/leaderboard-concurrent-submissions`)
+**Files:** `.github/workflows/process-leaderboard.yml`, `.github/workflows/process-leaderboard-live.yml`, `.github/workflows/process-leaderboard-delete.yml`
+
+**Problem:** All three issue-triggered workflows shared the same `concurrency.group: leaderboard-update`. Opening a single GitHub issue triggers all three simultaneously; GitHub Actions allows only 1 running + 1 pending per group, so the third run is immediately cancelled. With two simultaneous submissions (e.g. a live push and a death submission), 6 runs compete for the same slot and 4 are cancelled — including the runs that actually needed to do work. Scores and live updates were silently lost; the issue was still closed with a success comment.
+
+**Fix:** Each workflow now has its own concurrency group (`leaderboard-scores`, `leaderboard-live`, `leaderboard-delete-action`), eliminating cross-type contention. Also added a 3-attempt `git push` retry with `git pull --rebase` in `process-leaderboard.yml` and `process-leaderboard-live.yml` to handle the edge case where two same-type submissions push simultaneously.

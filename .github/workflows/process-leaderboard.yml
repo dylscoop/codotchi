@@ -5,14 +5,14 @@ on:
     types: [opened]
 
 concurrency:
-  group: leaderboard-update
+  group: leaderboard-scores
   cancel-in-progress: false
 
 jobs:
   process:
     name: Validate and record score
     runs-on: ubuntu-latest
-    if: contains(github.event.issue.labels.*.name, 'leaderboard-submission')
+    if: startsWith(github.event.issue.title, '[Leaderboard]')
 
     permissions:
       contents: write
@@ -32,12 +32,24 @@ jobs:
           ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
         run: |
           python3 - <<'PYEOF'
-          import json, os, re, sys
+          import json, os, re, sys, time
 
           VALID_STAGES   = {"egg", "baby", "child", "teen", "adult", "senior"}
           VALID_PET_TYPES = {"codeling", "bytebug", "pixelpup", "shellscript"}
           # Minimum real ms per game day: 80 ticks × 3 s/tick = 240 s = 240 000 ms
           MIN_MS_PER_GAME_DAY = 240_000
+          # Stage-age bounds: (min_ageDays, max_ageDays or None)
+          # Based on EVOLUTION_DAY_THRESHOLDS from gameEngine.ts + max 9 care-mistake delay days
+          STAGE_AGE_BOUNDS = {
+              "egg":    (0,   9),
+              "baby":   (0,  14),
+              "child":  (5,  32),
+              "teen":   (23, 104),
+              "adult":  (95, 296),
+              "senior": (287, None),
+          }
+          FIVE_MIN_MS = 5 * 60 * 1000
+          THREE_YR_MS = 3 * 365 * 24 * 60 * 60 * 1000
 
           def fail(reason):
               with open(os.environ["GITHUB_OUTPUT"], "a") as f:
@@ -79,16 +91,18 @@ jobs:
 
           # ageDays range
           age = int(data["ageDays"])
-          if age < 1 or age > 10000:
+          if age < 0 or age > 10000:
               fail(f"ageDays out of range: {age}")
 
           # stage
-          if str(data["stage"]) not in VALID_STAGES:
-              fail(f"Invalid stage: {data['stage']}")
+          stage = str(data["stage"])
+          if stage not in VALID_STAGES:
+              fail(f"Invalid stage: {stage}")
 
           # petType
-          if str(data["petType"]) not in VALID_PET_TYPES:
-              fail(f"Invalid petType: {data['petType']}")
+          pet_type = str(data["petType"])
+          if pet_type not in VALID_PET_TYPES:
+              fail(f"Invalid petType: {pet_type}")
 
           # timestamps
           spawned_at = int(data["spawnedAt"])
@@ -96,10 +110,24 @@ jobs:
           if died_at <= spawned_at:
               fail("diedAt must be after spawnedAt.")
 
+          # Timestamp sanity
+          now_ms = int(time.time() * 1000)
+          if spawned_at > now_ms + FIVE_MIN_MS:
+              fail("spawnedAt is in the future.")
+          if spawned_at < now_ms - THREE_YR_MS:
+              fail("spawnedAt is implausibly old.")
+          if died_at > now_ms + FIVE_MIN_MS:
+              fail("diedAt is in the future.")
+
           # Physics floor anti-cheat
           elapsed_ms = died_at - spawned_at
           if elapsed_ms < age * MIN_MS_PER_GAME_DAY:
               fail(f"Real elapsed time ({elapsed_ms} ms) is less than the minimum for {age} game days ({age * MIN_MS_PER_GAME_DAY} ms). Submission rejected.")
+
+          # Stage-age consistency check
+          min_age, max_age = STAGE_AGE_BOUNDS[stage]
+          if age < min_age or (max_age is not None and age > max_age):
+              fail(f"ageDays {age} is inconsistent with stage '{stage}' (expected {min_age}–{max_age if max_age else '∞'}).")
 
           # Duplicate check
           with open("leaderboard/scores.json") as f:
@@ -108,7 +136,6 @@ jobs:
               if int(s.get("spawnedAt", 0)) == spawned_at and int(s.get("diedAt", 0)) == died_at:
                   fail("This run has already been submitted.")
 
-          import time
           entry = {
               "schemaVersion":  1,
               "githubUsername": author,  # always use the authenticated issue author
@@ -144,14 +171,38 @@ jobs:
           with open("leaderboard/scores.json", "w") as f:
               json.dump(data, f, indent=2)
               f.write("\n")
+
+          # Remove the user's live entry for this run — pet died, live entry is stale.
+          live_path = "leaderboard/live.json"
+          try:
+              with open(live_path) as f:
+                  live = json.load(f)
+              if not isinstance(live, list):
+                  live = []
+          except Exception:
+              live = []
+
+          live_user = entry["githubUsername"].lower()
+          spawned   = int(entry["spawnedAt"])
+          live_pruned = [
+              e for e in live
+              if not (e.get("username", "").lower() == live_user and
+                      int(e.get("spawnedAt", 0)) == spawned)
+          ]
+          with open(live_path, "w") as f:
+              json.dump(live_pruned, f, indent=2)
           PYEOF
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add leaderboard/scores.json
+          git add leaderboard/scores.json leaderboard/live.json
           ENTRY_DESC=$(python3 -c "import json; e=json.load(open('/tmp/new_entry.json')); print(e['petName'] + ' ' + str(e['ageDays']) + 'd')")
           git commit -m "leaderboard: add ${{ github.event.issue.user.login }} ${ENTRY_DESC}"
-          git push origin leaderboard
+          for i in 1 2 3; do
+            git push origin leaderboard && break
+            echo "Push failed (attempt $i), rebasing..."
+            git pull --rebase origin leaderboard
+          done
 
       - name: Comment and close (success)
         if: steps.validate.outputs.valid == 'true'

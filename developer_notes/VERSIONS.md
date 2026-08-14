@@ -1,6 +1,238 @@
 # Version History
 
-## v2.18.0 — current
+## v2.20.10 — current
+
+### Changes from v2.20.9 (real-time elapsed for live pets on leaderboard — branch fix/leaderboard-live-realtime)
+
+| File | What changed |
+|------|-------------|
+| `leaderboard/index.html` | fix: both tabs now display wall-clock elapsed time for live pets via `formatElapsed(spawnedAt, Date.now())` instead of "—"; Currently Alive tab gains a Real Time column; All-time tab passes `spawnedAt` through from `live.json` so the column is populated |
+
+---
+
+## v2.20.9
+
+### Changes from v2.20.8 (stale leaderboard rank + concurrent submission cancellations — branch fix/leaderboard-concurrent-submissions)
+
+| File | What changed |
+|------|-------------|
+| `.github/workflows/process-leaderboard.yml` | fix: concurrency group renamed from `leaderboard-update` to `leaderboard-scores` so simultaneous submissions no longer compete with live-push or delete workflows for the same queue slot; add 3-attempt push retry with `git pull --rebase` to handle simultaneous death submissions |
+| `.github/workflows/process-leaderboard-live.yml` | fix: concurrency group renamed to `leaderboard-live`; add 3-attempt push retry with `git pull --rebase` |
+| `.github/workflows/process-leaderboard-delete.yml` | fix: concurrency group renamed to `leaderboard-delete-action` |
+| `vscode/src/sidebarProvider.ts` | fix: `fetchLiveRank()` — append `?t=<timestamp>` cache-buster to `scores.json` and `live.json` fetch URLs; without this, GitHub CDN served stale data causing rank to show entries that were missing or outdated |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `fetchLiveRankAsync()` — same cache-busting fix |
+
+---
+
+## v2.20.8 — current
+
+### Changes from v2.20.7 (leaderboard rank pool username over-exclusion — branch fix/pycharm-leaderboard-rank)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/sidebarProvider.ts` | fix: `fetchLiveRank()` — exclude own live entry by `petRunId` only; removed username fallback filter that was incorrectly excluding other users' entries when username happened to match |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `fetchLiveRankAsync()` — same; removed `selfUsername` variable and username-based exclusion condition from live pool filter |
+
+---
+
+## v2.20.7
+
+### Changes from v2.20.6 (petRunId-based leaderboard self-exclusion — branch fix/pycharm-leaderboard-rank)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `fetchLiveRankAsync()` — exclude own live entry by `PermanentInstallationID.get()` (petRunId) first, username second; petRunId is always available so exclusion works from first launch without requiring prior auth |
+| `vscode/src/sidebarProvider.ts` | fix: `fetchLiveRank()` — exclude own live entry by `vscode.env.machineId` (petRunId) first, username second; same rationale |
+
+---
+
+## v2.20.6 — current
+
+### Changes from v2.20.5 (PyCharm leaderboard rank self-exclusion fix — branch fix/pycharm-leaderboard-rank)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `fetchLiveRankAsync()` — exclude the current user's own live entry from the comparison pool; stale extrapolation of the user's own entry was inflating their apparent age and pushing them to rank 2 instead of rank 1 |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | feat: extend `postState()` signature to accept `liveRank`, `liveTotalScores`, `liveSubscribed`, `liveLastPushedAt`, `leaderboardGithubUsername` and include them in the JS payload |
+| `vscode/src/sidebarProvider.ts` | fix: persist `leaderboardGithubUsername` to `globalState` via `setLeaderboardUsername()` helper and restore on construction; previously the username was in-memory only, so after VS Code restart the self-exclusion rank filter was bypassed and the bug returned |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: same persistence fix for PyCharm — `setLeaderboardUsername()` helper persists to `PropertiesComponent` under `codotchi.leaderboardGithubUsername`; restored in `initialize()` alongside `liveLastPushedAt` |
+
+---
+
+## v2.20.5 — current
+
+### Changes from v2.20.4 (leaderboard fixes — branch fix/pycharm-direct-submit)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `submitLeaderboardAsync()` — posts death submission directly via GitHub Issues API using stored PAT; no longer opens browser URL that users could edit; `startDeviceFlowAsync()` gains optional `onAuthSuccess` callback so Device Flow retries the correct action after auth |
+| `vscode/src/sidebarProvider.ts` | fix: `pushLiveScore()` — `petRunId` changed from `state.spawnedAt` to `vscode.env.machineId` (stable per-VS-Code-installation UUID) so repeat pushes correctly upsert instead of accumulating |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: `pushLiveScoreAsync()` — `petRunId` changed from `state.spawnedAt` to `PermanentInstallationID.get()` (stable per-PyCharm-installation UUID) |
+| `.github/workflows/process-leaderboard.yml` | fix: on successful death submission, also remove matching live entry from `live.json` (matched by username + spawnedAt) |
+| `.github/workflows/process-leaderboard-delete.yml` | fix: on deletion, also remove matching live entry from `live.json`; simplified live match to use `spawnedAt` directly (no fallback to UUID petRunId) |
+
+---
+
+## v2.20.3 -- current
+
+### Changes from v2.20.2 (GitHub device flow sign-in for PyCharm live push)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: replace PAT prompt with GitHub OAuth device flow; `startDeviceFlowAsync()` POSTs to /login/device/code, opens browser, shows user code in a notification balloon, polls /login/oauth/access_token in background; stores access_token in PasswordSafe under same key -- existing PAT tokens continue working |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | chore: remove unused `Messages` import; add `BrowserUtil` import |
+| `vscode/package.json` | chore: bump version to 2.20.3 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.20.3 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.20.3 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.20.3 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.20.3 |
+
+---
+## v2.20.2 — current
+
+### Changes from v2.20.1 (PyCharm live push, 48h threshold, all-time includes live pets — branch main)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: `pushLiveScoreAsync()` — reads PAT from PasswordSafe, prompts on first use, POSTs a `leaderboard-live` GitHub issue, stores timestamp; hourly push in `broadcastState()`; instant push on subscribe; updated `fetchLiveRankAsync` to combine `scores.json` + `live.json` (48h filter) |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | feat: add `liveLastPushedAt: Long? = null` to `postState()`; include in JS payload |
+| `vscode/src/sidebarProvider.ts` | feat: update `fetchLiveRank` to fetch `live.json` in parallel, filter entries <48h stale, combine with scores for rank and total |
+| `opencode-codotchi/src/index.ts` | feat: update `refreshLiveRank` to combine `scores.json` + `live.json` (48h filter) for rank computation |
+| `claude-codotchi/scripts/statusline.mjs` | feat: update rank fetch to combine `scores.json` + `live.json` (48h filter) |
+| `leaderboard/index.html` | feat: `loadScores()` fetches both `scores.json` and `live.json` in parallel; fresh live entries merged into all-time tab with "live" badge and relative "last seen" time; column renamed "Submitted / Last Seen"; stale threshold raised from 2h to 48h |
+| `developer_notes/leaderboard/ADMIN.md` | docs: new admin guide — workflow_dispatch delete, how to find spawnedAt, user self-delete, direct live.json editing |
+| `vscode/package.json` | chore: bump version to 2.20.2 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.20.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.20.2 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.20.2 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.20.2 |
+
+---
+
+## v2.20.1 — previous
+
+### Changes from v2.20.0 (fix live push to issue-based approach — branch feat/pet-run-id-and-leaderboard-v2)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/sidebarProvider.ts` | fix: replace GitHub Contents API push with issue POST (`leaderboard-live` label) — works for all users, not just repo owner; `pushLiveScore()` now calls `POST /repos/dylscoop/codotchi/issues` |
+| `.github/workflows/process-leaderboard-live.yml` | feat: new workflow triggered by `leaderboard-live` label; validates JSON body, upserts entry in `live.json` on leaderboard branch |
+| `.github/workflows/process-leaderboard-live.yml` | fix: add `issues: write` permission |
+| `vscode/package.json` | chore: bump version to 2.20.1 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.20.1 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.20.1 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.20.1 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.20.1 |
+
+---
+
+## v2.20.0 — previous
+
+### Changes from v2.19.5 (live leaderboard array, self-service delete, two-tab page — branch feat/pet-run-id-and-leaderboard-v2)
+
+| File | What changed |
+|------|-------------|
+| `leaderboard/index.html` | feat: two-tab layout (All-time / Currently Alive); `live.json` array for live entries; auto-refresh every hour; last-updated counter; `LIVE_STALE_MS = 2h` |
+| `vscode/src/sidebarProvider.ts` | feat: instant push on subscribe toggle; `liveLastPushedAt` timestamp sent in stateUpdate; `pushLiveScore()` writes to `leaderboard/live.json` via Contents API |
+| `vscode/src/extension.ts` | feat: hourly interval triggers `pushLiveScore()` when subscribed |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: BUGFIX-153 — `diedAt` was using previous run's timestamp; now captured at death event time |
+| `.github/workflows/process-leaderboard-delete.yml` | feat: new `leaderboard-delete` label workflow for user self-delete |
+| `developer_notes/BUGFIXES.md` | docs: BUGFIX-153 |
+| `vscode/package.json` | chore: bump version to 2.20.0 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.20.0 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.20.0 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.20.0 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.20.0 |
+
+---
+
+## v2.19.5 — previous
+
+### Changes from v2.19.4 (live rank settings + view leaderboard link — branch feat/live-rank-settings)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.html` | feat: add `#btn-view-leaderboard-live` anchor link below rank-display on game screen |
+| `pycharm/src/main/resources/webview/sidebar.html` | feat: same `#btn-view-leaderboard-live` anchor link as VS Code |
+| `vscode/media/sidebar.js` | feat: DOM ref and click handler for `btn-view-leaderboard-live`; gate rank display, view link, and subscribe button on `liveRankEnabled` from stateUpdate |
+| `pycharm/src/main/resources/webview/sidebar.js` | feat: same JS additions as VS Code |
+| `vscode/package.json` | feat: add `codotchi.leaderboard.showLiveRank` setting (default false); chore: bump version to 2.19.5 |
+| `vscode/src/sidebarProvider.ts` | feat: read `showLiveRank` setting and include `liveRankEnabled` in stateUpdate; gate rank fetch on setting |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt` | feat: add `showLiveRank: Boolean = false` to `State` class and delegate property |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: read `showLiveRank` from settings; gate rank fetch and pass `liveRankEnabled` to both `postState()` call sites |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | feat: add `liveRankEnabled: Boolean = false` param to `postState()`; include in JS payload |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.19.5 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.19.5 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.19.5 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.19.5 |
+
+---
+
+## v2.19.4 — previous
+
+### Changes from v2.19.3 (live rank indicator + subscribe toggle — branch feat/live-rank-indicator)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.html` | feat: add `#rank-display` div below info-line and `#btn-live-subscribe` button above Menu link |
+| `vscode/media/sidebar.css` | feat: add `.rank-display` style (small italic muted text, centred) |
+| `vscode/media/sidebar.js` | feat: DOM refs for rank display and subscribe button; update rank text and subscribe label from `stateUpdate` message; click handler posts `toggle_live_subscribe` |
+| `vscode/src/sidebarProvider.ts` | feat: `fetchLiveRank()` with 5-min TTL cache; `pushLiveScore()` via GitHub Contents API to `leaderboard/live.json`; include `liveRank`, `liveTotalScores`, `liveSubscribed` in `postState`; handle `toggle_live_subscribe` command |
+| `vscode/src/extension.ts` | feat: hourly `setInterval` to call `pushLiveScore()` when user is subscribed and pet is alive |
+| `vscode/package.json` | feat: add `codotchi.leaderboard.livePush` setting |
+| `pycharm/src/main/resources/webview/sidebar.html` | feat: same HTML additions as VS Code |
+| `pycharm/src/main/resources/webview/sidebar.css` | feat: same `.rank-display` style as VS Code |
+| `pycharm/src/main/resources/webview/sidebar.js` | feat: same JS additions as VS Code |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | feat: extend `postState()` signature with `liveRank`, `liveTotalScores`, `liveSubscribed`; include in JS payload |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: `fetchLiveRankAsync()` on pooled thread with 5-min cache; pass rank to `postState()`; handle `toggle_live_subscribe` command via `PropertiesComponent` |
+| `claude-codotchi/scripts/state.mjs` | feat: `loadRankCache()` / `saveRankCache()` using `codotchi-rank-cache.json` in dataDir |
+| `claude-codotchi/scripts/statusline.mjs` | feat: import rank cache fns; fetch scores.json (5-min cache); append rank line to outputs |
+| `opencode-codotchi/src/index.ts` | feat: `refreshLiveRank()` async fn with module-level cache; trigger on each `artHeader()` call; append rank line to output |
+| `vscode/package.json` | chore: bump version to 2.19.4 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.19.4 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.19.4 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.19.4 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.19.4 |
+
+---
+
+## v2.19.3 — previous
+
+### Changes from v2.19.2 (PyCharm pause button — branch fix/pycharm-pause-button)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiToolWindow.kt` | fix: BUGFIX-152 — add Pause/Resume `AnAction` to `setTitleActions()` between Refresh and Settings; icon toggles between `AllIcons.Actions.Pause` and `AllIcons.Actions.Execute` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: BUGFIX-152 — add `isPaused()` public helper reading `currentState?.paused` under `stateLock` |
+| `developer_notes/BUGFIXES.md` | docs: add BUGFIX-152 |
+| `vscode/package.json` | chore: bump version to 2.19.3 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.19.3 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.19.3 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.19.3 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.19.3 |
+
+---
+
+## v2.19.2 — previous
+
+### Changes from v2.19.1 (live leaderboard auto-refresh + admin delete — branch feat/live-leaderboard-autorefresh)
+
+| File | What changed |
+|------|-------------|
+| `leaderboard/index.html` | feat: extract `loadScores()`, add hourly `setInterval` auto-refresh, `localStorage` opt-out banner (first-visit only), "Last updated" counter, "Refresh now" button |
+| `vscode/package.json` | feat: add `codotchi.leaderboard.autoRefresh` boolean setting (default `true`) |
+| `vscode/src/extension.ts` | feat: fire one-time VS Code info notification on first pet death when `leaderboard.autoRefresh` is enabled; tracked via `globalState("leaderboardDeathNotifShown")` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | feat: fire one-time IDEA information notification on first pet death; tracked via `PropertiesComponent("codotchi.leaderboardDeathNotifShown")` |
+| `.github/workflows/delete-leaderboard-score.yml` | feat: add `workflow_dispatch` admin workflow to delete leaderboard entries by `github_username` and optional `spawned_at`; only repo owners/collaborators with write access can trigger |
+| `vscode/package.json` | chore: bump version to 2.19.2 |
+| `pycharm/build.gradle.kts` | chore: bump version to 2.19.2 |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.19.2 |
+| `opencode-codotchi/package.json` | chore: bump version to 2.19.2 |
+| `claude-desktop-codotchi/package.json` | chore: bump version to 2.19.2 |
+
+---
+
+## v2.18.0 — previous
 
 ### Changes from v2.17.5 (docs restructure + PyCharm icon — branch feat/docs-restructure-2.18.0)
 

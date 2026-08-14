@@ -241,6 +241,15 @@ body.font-large  { font-size: 16px; }
   letter-spacing: 0.5px;
 }
 
+/* ── Live rank indicator ── */
+.rank-display {
+  font-size: 0.80em;
+  font-style: italic;
+  opacity: 0.55;
+  text-align: center;
+  margin-top: 2px;
+}
+
 /* ── Button grid ── */
 .btn-grid {
   display: grid;
@@ -355,6 +364,22 @@ body.font-large  { font-size: 16px; }
   color: var(--vscode-errorForeground, #f48771);
   text-align: center;
   margin-top: 4px;
+}
+
+.live-push-status {
+  font-size: 0.75em;
+  opacity: 0.5;
+  text-align: center;
+  margin-top: 2px;
+}
+
+.delete-link {
+  font-size: 0.78em;
+  opacity: 0.55;
+  color: var(--vscode-errorForeground, #f48771);
+}
+.delete-link:hover {
+  opacity: 0.85;
 }
 
 /* ── Best-run panel on setup screen ── */

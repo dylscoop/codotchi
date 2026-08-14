@@ -1,0 +1,158 @@
+name: Process Leaderboard Delete Request
+
+on:
+  issues:
+    types: [opened]
+
+concurrency:
+  group: leaderboard-delete-action
+  cancel-in-progress: false
+
+jobs:
+  delete:
+    name: Remove user's leaderboard entry
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'leaderboard-delete')
+
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: leaderboard
+          fetch-depth: 1
+
+      - name: Find and remove entry
+        id: delete
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, re, sys
+
+          def fail(reason):
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write("deleted=false\n")
+                  f.write(f"reason={reason}\n")
+              sys.exit(0)
+
+          body   = os.environ.get("ISSUE_BODY", "")
+          author = os.environ.get("ISSUE_AUTHOR", "").strip().lower()
+
+          match = re.search(r"```json\s*(.*?)\s*```", body, re.DOTALL)
+          if not match:
+              fail("No JSON code block found in issue body.")
+
+          try:
+              data = json.loads(match.group(1))
+          except json.JSONDecodeError as e:
+              fail(f"Invalid JSON: {e}")
+
+          for field in ["schemaVersion", "githubUsername", "petRunId"]:
+              if field not in data:
+                  fail(f"Missing required field: {field}")
+
+          # Security: the issue author must match the claimed username
+          claimed = str(data["githubUsername"]).strip().lower()
+          if claimed != author:
+              fail(f"Username mismatch: issue author is '{author}' but body claims '{claimed}'.")
+
+          pet_run_id = int(data["petRunId"])
+
+          with open("leaderboard/scores.json") as f:
+              scores_data = json.load(f)
+
+          kept = []
+          removed = []
+          for s in scores_data.get("scores", []):
+              if (s.get("githubUsername", "").lower() == author and
+                      int(s.get("spawnedAt", 0)) == pet_run_id):
+                  removed.append(s)
+              else:
+                  kept.append(s)
+
+          if not removed:
+              fail(f"No entry found for user '{author}' with petRunId={pet_run_id}.")
+
+          scores_data["scores"] = kept
+          with open("leaderboard/scores.json", "w") as f:
+              json.dump(scores_data, f, indent=2)
+              f.write("\n")
+
+          removed_entry = removed[0]
+          with open("/tmp/removed_entry.json", "w") as f:
+              json.dump(removed_entry, f)
+
+          # Also remove any matching live entry for this run.
+          live_path = "leaderboard/live.json"
+          try:
+              with open(live_path) as f:
+                  live = json.load(f)
+              if not isinstance(live, list):
+                  live = []
+          except Exception:
+              live = []
+
+          live_pruned = [
+              e for e in live
+              if not (e.get("username", "").lower() == author and
+                      int(e.get("spawnedAt", 0)) == pet_run_id)
+          ]
+          with open(live_path, "w") as f:
+              json.dump(live_pruned, f, indent=2)
+
+          print(f"Removed entry: {removed_entry['petName']} ({removed_entry['ageDays']}d) for '{author}'")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write("deleted=true\n")
+          PYEOF
+
+      - name: Commit deletion
+        if: steps.delete.outputs.deleted == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leaderboard/scores.json leaderboard/live.json
+          ENTRY_DESC=$(python3 -c "import json; e=json.load(open('/tmp/removed_entry.json')); print(e['petName'] + ' ' + str(e['ageDays']) + 'd')")
+          git commit -m "leaderboard: remove ${{ github.event.issue.user.login }} ${ENTRY_DESC}"
+          git push origin leaderboard
+
+      - name: Comment and close (success)
+        if: steps.delete.outputs.deleted == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+              body: `✅ **Entry removed.** Your leaderboard entry has been deleted.\n\n[View the leaderboard](https://dylscoop.github.io/codotchi/leaderboard/)`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed',
+            });
+
+      - name: Comment and close (failure)
+        if: steps.delete.outputs.deleted == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reason = `${{ steps.delete.outputs.reason }}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+              body: `❌ Could not process deletion: **${reason}**\n\nIf this looks like a bug, please contact the repo owner.`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed',
+            });

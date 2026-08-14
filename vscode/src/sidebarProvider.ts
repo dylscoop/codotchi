@@ -11,6 +11,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
+
 import {
   PetState,
   HighScore,
@@ -185,6 +186,23 @@ export class SidebarProvider
    */
   private copilotNoSessionHintShown = false;
 
+  // Live rank cache — refreshed at most every 5 minutes.
+  private static readonly RANK_CACHE_TTL_MS = 5 * 60 * 1000;
+  private rankCache: { rank: number; total: number; at: number } | null = null;
+  // Cached GitHub username for the leaderboard — resolved on sign-in or subscribe.
+  // Persisted to globalState so restart doesn't break the self-exclusion rank filter.
+  private leaderboardGithubUsername: string | null = null;
+  private setLeaderboardUsername(username: string | null): void {
+    this.leaderboardGithubUsername = username;
+    void this.context.globalState.update("leaderboardGithubUsername", username ?? undefined);
+  }
+  // Approx ms per game day (awake rate: 5 real min = 1 game day) for live rank extrapolation.
+  // URLs for fetching rank data from the leaderboard branch.
+  private static readonly SCORES_JSON_URL =
+    `https://raw.githubusercontent.com/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/leaderboard/leaderboard/scores.json`;
+  private static readonly LIVE_JSON_URL =
+    `https://raw.githubusercontent.com/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/leaderboard/leaderboard/live.json`;
+
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly statusBar: StatusBarManager,
@@ -195,7 +213,9 @@ export class SidebarProvider
     private readonly onResetHighScore: () => void,
     private readonly markDeepIdle: () => void,
     private readonly getLastRunDiedAt: () => number | null = () => null
-  ) {}
+  ) {
+    this.leaderboardGithubUsername = context.globalState.get<string>("leaderboardGithubUsername") ?? null;
+  }
 
   /** Called by VS Code when the webview becomes visible. */
   resolveWebviewView(
@@ -539,9 +559,33 @@ export class SidebarProvider
         void this.handleLeaderboardSubmit();
         return;
 
+      case "delete_leaderboard_entry":
+        void this.handleLeaderboardDelete();
+        return;
+
       case "open_leaderboard_url":
         void vscode.env.openExternal(vscode.Uri.parse(LEADERBOARD_PAGES_URL));
         return;
+
+      case "sign_in_leaderboard":
+        void this.handleSignInLeaderboard();
+        return;
+
+      case "toggle_live_subscribe": {
+        const subscribed = this.context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
+        const nowSubscribed = !subscribed;
+        void this.context.globalState.update("leaderboardLiveSubscribed", nowSubscribed);
+        const s = this.getCurrentState();
+        // Instant push when subscribing so the user sees immediate feedback.
+        // promptAuth=true so VS Code shows the GitHub OAuth popup if not yet authenticated.
+        if (nowSubscribed && s !== null && s.alive) {
+          void this.pushLiveScore(s, true);
+        }
+        if (s !== null) {
+          this.onStateUpdate(s);
+        }
+        return;
+      }
 
       case "token_cost": {
         if (state === null) { return; }
@@ -653,18 +697,31 @@ export class SidebarProvider
    * @param unlockedCharacter - spriteType of the unlocked custom character, or null.
    */
   postState(state: PetState, highScore: HighScore | null, devMode: boolean, unlockedCharacter: string | null = null, defaultPetName: string = "Codotchi"): void {
-    if (this.webviewView) {
-      void this.webviewView.webview.postMessage({
-        type: "stateUpdate",
-        state,
-        mealsGivenThisCycle: this.mealsGivenThisCycle,
-        highScore,
-        devMode,
-        unlockedCharacter,
-        defaultPetName,
-        leaderboardAvailable: true,
-      });
-    }
+    if (!this.webviewView) { return; }
+
+    const liveSubscribed = this.context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
+    const liveLastPushedAt = this.context.globalState.get<number>("leaderboardLastPushedAt", 0);
+
+    // Fetch rank whenever subscribed and alive (showing rank = opt-in via subscribe button).
+    if (liveSubscribed && state.alive) { void this.fetchLiveRank(state.ageDays, state.stage, this.leaderboardGithubUsername); }
+
+    const cached = this.rankCache;
+
+    void this.webviewView.webview.postMessage({
+      type: "stateUpdate",
+      state,
+      mealsGivenThisCycle: this.mealsGivenThisCycle,
+      highScore,
+      devMode,
+      unlockedCharacter,
+      defaultPetName,
+      leaderboardAvailable: true,
+      liveRank: (liveSubscribed && state.alive && cached) ? cached.rank : null,
+      liveTotalScores: (liveSubscribed && state.alive && cached) ? cached.total : null,
+      liveSubscribed,
+      liveLastPushedAt,
+      leaderboardGithubUsername: this.leaderboardGithubUsername,
+    });
   }
 
   /**
@@ -742,8 +799,21 @@ export class SidebarProvider
           postResult("error", "Could not read GitHub username.");
           return;
         }
+        this.setLeaderboardUsername(username);
       } catch {
         postResult("error", "Network error fetching GitHub username.");
+        return;
+      }
+
+      // Require the user to type their pet's name — blocks automated API submissions
+      const confirmed = await vscode.window.showInputBox({
+        title: "Confirm Leaderboard Submission",
+        prompt: `Type your pet's name to confirm submission`,
+        placeHolder: state.name,
+        validateInput: (v) => v === state.name ? null : "Name doesn't match — check spelling and case",
+      });
+      if (!confirmed) {
+        postResult("cancelled");
         return;
       }
 
@@ -788,6 +858,262 @@ export class SidebarProvider
       }
     } catch {
       postResult("error", "Unexpected error during submission.");
+    }
+  }
+
+  /** Silently submit the dead pet to the leaderboard using the existing GitHub session.
+   *  Called automatically on first death tick when the user is subscribed to the live board.
+   *  Uses createIfNone:false so no auth popup is shown. */
+  async autoSubmitLeaderboard(): Promise<void> {
+    try {
+      const state = this.getCurrentState();
+      if (state === null || state.alive) { return; }
+
+      const session = await Promise.resolve(
+        vscode.authentication.getSession("github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: false })
+      ).catch(() => null);
+      if (!session) { return; }
+
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: { "Authorization": `token ${session.accessToken}`, "Accept": "application/json", "User-Agent": "Codotchi-VSCode" },
+      });
+      if (!userRes.ok) { return; }
+      const userBody = await userRes.json() as Record<string, unknown>;
+      const username = String(userBody.login ?? "");
+      if (!username) { return; }
+      this.setLeaderboardUsername(username);
+
+      const diedAt = this.getLastRunDiedAt() ?? Date.now();
+      const scoreData = {
+        schemaVersion: 1,
+        githubUsername: username,
+        petName:        state.name,
+        ageDays:        state.ageDays,
+        stage:          state.stage,
+        petType:        state.petType,
+        spawnedAt:      state.spawnedAt,
+        diedAt,
+      };
+      const issueBody  = `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``;
+      const issueTitle = `[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @${username}`;
+
+      await fetch(
+        `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `token ${session.accessToken}`,
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+            "User-Agent": "Codotchi-VSCode",
+          },
+          body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ["leaderboard-submission"] }),
+        }
+      );
+    } catch {
+      // Auto-submit is best-effort; never surface errors to the user
+    }
+  }
+
+  private static readonly STAGE_ORDER: Record<string, number> = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
+
+  /** Fetch scores.json and compute current rank; result is cached for 5 minutes.
+   *  Pass username so the user's own live entry is excluded from the pool —
+   *  the unconditional +1 at the end already accounts for the current user. */
+  async fetchLiveRank(ageDays: number, stage: string, username: string | null = null): Promise<void> {
+    const now = Date.now();
+    if (this.rankCache && (now - this.rankCache.at) < SidebarProvider.RANK_CACHE_TTL_MS) {
+      return; // still fresh
+    }
+    try {
+      const headers = { "Accept": "application/json", "User-Agent": "Codotchi-VSCode" };
+      const t = Date.now();
+      const [scoresRes, liveRes] = await Promise.all([
+        fetch(`${SidebarProvider.SCORES_JSON_URL}?t=${t}`, { headers }),
+        fetch(`${SidebarProvider.LIVE_JSON_URL}?t=${t}`, { headers }).catch(() => null),
+      ]);
+      if (!scoresRes.ok) { return; }
+      const scoresJson = await scoresRes.json() as { scores?: Array<{ ageDays: number; stage?: string }> } | Array<{ ageDays: number; stage?: string }>;
+      const scores: Array<{ ageDays: number; stage?: string }> = Array.isArray(scoresJson) ? scoresJson : (scoresJson.scores ?? []);
+      const liveJson: Array<{ ageDays?: number; stage?: string; updatedAt?: number; username?: string; petRunId?: string }> = liveRes?.ok
+        ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; stage?: string; updatedAt?: number; username?: string; petRunId?: string }> : [];
+      const staleMs = 48 * 60 * 60 * 1000;
+      const selfRunId = vscode.env.machineId;
+      // Exclude own entry by petRunId only — username exclusion was too broad.
+      const freshLive = liveJson
+        .filter(e => e.updatedAt && (now - e.updatedAt) < staleMs)
+        .filter(e => e.petRunId !== selfRunId)
+        .map(e => ({
+          ageDays: e.ageDays ?? 0,
+          stage: e.stage,
+        }));
+      const combined = (scores as Array<{ ageDays: number; stage?: string }>).concat(freshLive);
+      const myStageRank = SidebarProvider.STAGE_ORDER[stage] ?? 0;
+      const rank = combined.filter(s => {
+        const sStageRank = SidebarProvider.STAGE_ORDER[s.stage ?? ""] ?? 0;
+        if (sStageRank !== myStageRank) return sStageRank > myStageRank;
+        return (s.ageDays ?? 0) > ageDays;
+      }).length + 1;
+      this.rankCache = { rank, total: combined.length + 1, at: now };
+    } catch {
+      // Network failure — keep stale cache if available
+    }
+  }
+
+  /** Sign in to GitHub for the leaderboard and cache the resolved username. */
+  async handleSignInLeaderboard(): Promise<void> {
+    try {
+      const session = await vscode.authentication.getSession(
+        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
+      );
+      if (!session) {
+        this.setLeaderboardUsername(null);
+        if (this.webviewView) {
+          void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username: null });
+        }
+        return;
+      }
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: { "Authorization": `token ${session.accessToken}`, "Accept": "application/json", "User-Agent": "Codotchi-VSCode" },
+      });
+      const username = userRes.ok ? String((await userRes.json() as Record<string, unknown>).login ?? "") : "";
+      this.setLeaderboardUsername(username || null);
+      if (this.webviewView) {
+        void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username: this.leaderboardGithubUsername });
+      }
+    } catch {
+      // silent — sign-in is best-effort
+    }
+  }
+
+  /** Push current pet state to the live leaderboard via a GitHub issue.
+   *  The process-leaderboard-live workflow reads the issue, upserts the entry
+   *  in live.json on the leaderboard branch, then closes the issue.
+   *  Pass promptAuth=true when triggered by a user action (subscribe click) so
+   *  VS Code shows the GitHub OAuth popup. Keep false for background hourly pushes. */
+  async pushLiveScore(state: PetState, promptAuth = false): Promise<void> {
+    if (!state.alive) { return; }
+    try {
+      const session = await vscode.authentication.getSession(
+        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: promptAuth }
+      );
+      if (!session) { return; }
+
+      const authHeaders = {
+        "Authorization": `token ${session.accessToken}`,
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "Codotchi-VSCode",
+      };
+
+      // Resolve GitHub username.
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: { ...authHeaders, "Accept": "application/json" },
+      });
+      if (!userRes.ok) { return; }
+      const userBody = await userRes.json() as Record<string, unknown>;
+      const username = String(userBody.login ?? "");
+      if (!username) { return; }
+      this.setLeaderboardUsername(username);
+
+      const entry = {
+        username,
+        petName:   state.name,
+        petRunId:  vscode.env.machineId,
+        spawnedAt: state.spawnedAt,
+        ageDays:   state.ageDays,
+        stage:     state.stage,
+        petType:   state.petType,
+        updatedAt: Date.now(),
+      };
+
+      const issueRes = await fetch(
+        `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
+        {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify({
+            title: `[Live] ${username} — ${state.name} (${state.ageDays}d ${state.stage})`,
+            body:  JSON.stringify(entry),
+            labels: ["leaderboard-live"],
+          }),
+        }
+      );
+
+      if (issueRes.status === 201) {
+        await this.context.globalState.update("leaderboardLastPushedAt", Date.now());
+        // Refresh sidebar so "last synced" timestamp updates immediately.
+        const current = this.getCurrentState();
+        if (current !== null) { this.onStateUpdate(current); }
+      }
+    } catch {
+      // Live push is best-effort; never surface errors to the user
+    }
+  }
+
+  /** Request deletion of the user's leaderboard entry via a GitHub issue. */
+  private async handleLeaderboardDelete(): Promise<void> {
+    const postResult = (status: string, message?: string): void => {
+      if (this.webviewView) {
+        void this.webviewView.webview.postMessage({ type: "leaderboard_delete_result", status, message });
+      }
+    };
+
+    try {
+      const state = this.getCurrentState();
+      if (state === null || state.alive) {
+        postResult("error", "No finished run state available.");
+        return;
+      }
+
+      const session = await vscode.authentication.getSession(
+        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
+      );
+      if (!session) { postResult("cancelled"); return; }
+
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: {
+          "Authorization": `token ${session.accessToken}`,
+          "Accept": "application/json",
+          "User-Agent": "Codotchi-VSCode",
+        },
+      });
+      if (!userRes.ok) { postResult("error", `GitHub API error: ${userRes.status}`); return; }
+      const userBody = await userRes.json() as Record<string, unknown>;
+      const username = String(userBody.login ?? "");
+      if (!username) { postResult("error", "Could not read GitHub username."); return; }
+
+      const deleteData = {
+        schemaVersion: 1,
+        githubUsername: username,
+        petRunId: state.spawnedAt,
+        petName: state.name,
+      };
+      const issueBody =
+        `Leaderboard deletion request.\n\n\`\`\`json\n${JSON.stringify(deleteData, null, 2)}\n\`\`\``;
+      const issueTitle = `[Leaderboard Delete] ${state.name} — @${username}`;
+
+      const issueRes = await fetch(
+        `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `token ${session.accessToken}`,
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+            "User-Agent": "Codotchi-VSCode",
+          },
+          body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ["leaderboard-delete"] }),
+        }
+      );
+      if (issueRes.status === 201) {
+        postResult("success");
+      } else {
+        const errBody = await issueRes.text().catch(() => "");
+        postResult("error", `Failed to create issue (HTTP ${issueRes.status}): ${errBody.slice(0, 120)}`);
+      }
+    } catch {
+      postResult("error", "Unexpected error during deletion request.");
     }
   }
 

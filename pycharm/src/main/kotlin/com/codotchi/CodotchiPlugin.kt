@@ -6,6 +6,9 @@ import com.codotchi.getCustomCharacterBySpriteType
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import java.io.File
+import com.intellij.credentialStore.CredentialAttributes
+import com.intellij.ide.BrowserUtil
+import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
@@ -138,6 +141,18 @@ class CodotchiPlugin : Disposable {
     private var tickFuture: ScheduledFuture<*>? = null
     private var messageBusConnection: MessageBusConnection? = null
 
+    // Live rank cache — refreshed at most every 5 minutes from scores.json.
+    private data class RankCache(val rank: Int, val total: Int, val at: Long)
+    @Volatile private var rankCache: RankCache? = null
+    private val RANK_CACHE_TTL_MS = 5 * 60_000L
+    private val STAGE_ORDER = mapOf("egg" to 0, "baby" to 1, "child" to 2, "teen" to 3, "adult" to 4, "senior" to 5)
+    private val SCORES_JSON_URL = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/scores.json"
+    private val LIVE_JSON_URL   = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/live.json"
+    private val GITHUB_ISSUES_API = "https://api.github.com/repos/dylscoop/codotchi/issues"
+    private val LIVE_PUSH_INTERVAL_MS = 15 * 60_000L
+    @Volatile private var liveLastPushedAtMs: Long = 0L
+    @Volatile private var leaderboardGithubUsername: String? = null
+
     /** Background thread running the JVM WatchService for cross-window file sync. */
     @Volatile private var fileWatcherThread: Thread? = null
     /** Background thread watching .git/COMMIT_EDITMSG for commit events. */
@@ -162,7 +177,19 @@ class CodotchiPlugin : Disposable {
 
     // ── Initialisation ─────────────────────────────────────────────────────
 
+    private fun setLeaderboardUsername(username: String?) {
+        leaderboardGithubUsername = username
+        val props = com.intellij.ide.util.PropertiesComponent.getInstance()
+        if (username != null) props.setValue("codotchi.leaderboardGithubUsername", username)
+        else props.unsetValue("codotchi.leaderboardGithubUsername")
+    }
+
     fun initialize() {
+        liveLastPushedAtMs = com.intellij.ide.util.PropertiesComponent.getInstance()
+            .getValue("codotchi.liveLastPushedAt")?.toLongOrNull() ?: 0L
+        leaderboardGithubUsername = com.intellij.ide.util.PropertiesComponent.getInstance()
+            .getValue("codotchi.leaderboardGithubUsername")
+
         // Register AWT event listener to track keyboard/mouse activity for idle detection
         val activityMask = AWTEvent.KEY_EVENT_MASK or
             AWTEvent.MOUSE_EVENT_MASK or
@@ -550,6 +577,7 @@ class CodotchiPlugin : Disposable {
                 }
 
                 "new_game" -> {
+                    lastRunDiedAt = 0L   // reset so the next death gets a fresh timestamp
                     val rawName = (message["name"]    as? String)?.trim() ?: ""
                     val petType = (message["petType"] as? String) ?: "codeling"
                     val color   = (message["color"]   as? String) ?: "neon"
@@ -571,20 +599,11 @@ class CodotchiPlugin : Disposable {
                 "user_activity" -> return@withLock
 
                 "submit_leaderboard" -> {
-                    // Capture state snapshot under lock, then open browser outside the lock
                     val deadState  = currentState?.takeIf { !it.alive }
                     val diedAtSnap = lastRunDiedAt.takeIf { it > 0L } ?: System.currentTimeMillis()
                     shouldBroadcast = false
                     if (deadState != null) {
-                        AppExecutorUtil.getAppExecutorService().submit {
-                            val url = buildLeaderboardIssueUrl(deadState, diedAtSnap)
-                            com.intellij.ide.BrowserUtil.browse(url)
-                            // Notify the webview that submission was handed off to the browser
-                            val payload = """{"type":"leaderboard_submit_result","status":"browser_opened"}"""
-                            ApplicationManager.getApplication().invokeLater {
-                                browserPanels.forEach { it.postMessage(payload) }
-                            }
-                        }
+                        submitLeaderboardAsync(deadState, diedAtSnap)
                     }
                     return@withLock
                 }
@@ -593,6 +612,26 @@ class CodotchiPlugin : Disposable {
                     shouldBroadcast = false
                     AppExecutorUtil.getAppExecutorService().submit {
                         com.intellij.ide.BrowserUtil.browse(LEADERBOARD_PAGES_URL)
+                    }
+                    return@withLock
+                }
+
+                "sign_in_leaderboard" -> {
+                    val stateSnap = currentState
+                    shouldBroadcast = false
+                    startDeviceFlowAsync(stateSnap?.takeIf { it.alive })
+                    return@withLock
+                }
+
+                "toggle_live_subscribe" -> {
+                    val props = com.intellij.ide.util.PropertiesComponent.getInstance()
+                    val current = props.getBoolean("codotchi.liveSubscribed", false)
+                    val subscribing = !current
+                    props.setValue("codotchi.liveSubscribed", subscribing)
+                    shouldBroadcast = true
+                    if (subscribing) {
+                        val stateSnap = currentState?.takeIf { it.alive }
+                        if (stateSnap != null) pushLiveScoreAsync(stateSnap, promptIfNoToken = true)
                     }
                     return@withLock
                 }
@@ -701,6 +740,315 @@ class CodotchiPlugin : Disposable {
      * Mark that user activity has just occurred. Called by [CodotchiTabSwitchListener]
      * (and any other project-level listener that needs to reset the idle timer).
      */
+    fun isPaused(): Boolean = stateLock.withLock { currentState?.paused ?: false }
+
+    /** Fetch live rank in the background; result stored in [rankCache]. */
+    private fun fetchLiveRankAsync(ageDays: Int, stage: String) {
+        val now = System.currentTimeMillis()
+        val cached = rankCache
+        if (cached != null && now - cached.at < RANK_CACHE_TTL_MS) return
+        AppExecutorUtil.getAppExecutorService().execute {
+            try {
+                fun get(rawUrl: String): String? {
+                    val conn = java.net.URL(rawUrl).openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 5000
+                    conn.readTimeout = 5000
+                    conn.setRequestProperty("Accept", "application/json")
+                    conn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                    return if (conn.responseCode == 200) conn.inputStream.bufferedReader().readText() else null
+                }
+
+                val t = System.currentTimeMillis()
+                val scoresText = get("$SCORES_JSON_URL?t=$t") ?: return@execute
+                val liveText   = try { get("$LIVE_JSON_URL?t=$t") } catch (_: Exception) { null }
+
+                @Suppress("UNCHECKED_CAST")
+                val scoresParsed = Gson().fromJson(scoresText, Any::class.java)
+                val scoresList: List<Map<String, Any>> = when (scoresParsed) {
+                    is List<*> -> scoresParsed as List<Map<String, Any>>
+                    is Map<*, *> -> (scoresParsed["scores"] as? List<Map<String, Any>>) ?: emptyList()
+                    else -> emptyList()
+                }
+
+                val staleMs = 48 * 60 * 60 * 1000L
+                val msPerGameDayApprox = 5 * 60 * 1000L // 5 real min ≈ 1 game day (awake rate)
+                val selfRunId = com.intellij.openapi.application.PermanentInstallationID.get()
+                @Suppress("UNCHECKED_CAST")
+                val freshLive: List<Map<String, Any>> = if (liveText != null) {
+                    val liveParsed = Gson().fromJson(liveText, Any::class.java)
+                    val liveList = if (liveParsed is List<*>) liveParsed as List<Map<String, Any>> else emptyList()
+                    liveList
+                        .filter { entry ->
+                            val updatedAt = (entry["updatedAt"] as? Number)?.toLong() ?: 0L
+                            val entryRunId = entry["petRunId"] as? String
+                            // Exclude own entry by petRunId only — username exclusion was too broad.
+                            updatedAt > 0L && (now - updatedAt) < staleMs
+                                && entryRunId != selfRunId
+                        }
+                        .map { entry ->
+                            val storedAge = (entry["ageDays"] as? Number)?.toDouble() ?: 0.0
+                            val updatedAt = (entry["updatedAt"] as? Number)?.toLong() ?: now
+                            val extrapolated = storedAge + (now - updatedAt).toDouble() / msPerGameDayApprox
+                            entry + mapOf("ageDays" to extrapolated)
+                        }
+                } else emptyList()
+
+                val combined = scoresList + freshLive
+                val myStageRank = STAGE_ORDER[stage] ?: 0
+                val rank = combined.count { entry ->
+                    val entryStageRank = STAGE_ORDER[entry["stage"] as? String ?: ""] ?: 0
+                    if (entryStageRank != myStageRank) entryStageRank > myStageRank
+                    else (entry["ageDays"] as? Number)?.toDouble()?.let { it > ageDays } == true
+                } + 1
+                rankCache = RankCache(rank, combined.size + 1, System.currentTimeMillis())
+                // Re-broadcast so the sidebar picks up the new rank immediately
+                broadcastState()
+            } catch (_: Exception) { /* network failure — keep stale cache */ }
+        }
+    }
+
+    private fun pushLiveScoreAsync(state: PetState, promptIfNoToken: Boolean) {
+        AppExecutorUtil.getAppExecutorService().execute {
+            try {
+                val credAttrs = CredentialAttributes("Codotchi", "github-pat")
+                var pat = PasswordSafe.instance.getPassword(credAttrs)
+
+                if (pat.isNullOrBlank()) {
+                    if (!promptIfNoToken) return@execute
+                    startDeviceFlowAsync(state)
+                    return@execute
+                }
+
+                // Resolve GitHub username
+                val userConn = java.net.URL("https://api.github.com/user").openConnection() as java.net.HttpURLConnection
+                userConn.connectTimeout = 5000
+                userConn.readTimeout = 5000
+                userConn.setRequestProperty("Authorization", "token $pat")
+                userConn.setRequestProperty("Accept", "application/vnd.github+json")
+                userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                if (userConn.responseCode != 200) return@execute
+                @Suppress("UNCHECKED_CAST")
+                val userMap = Gson().fromJson(userConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                val username = userMap["login"] as? String ?: return@execute
+                setLeaderboardUsername(username)
+
+                val entry = mapOf(
+                    "username" to username,
+                    "petName" to state.name,
+                    "petRunId" to com.intellij.openapi.application.PermanentInstallationID.get(),
+                    "spawnedAt" to state.spawnedAt,
+                    "ageDays" to state.ageDays,
+                    "stage" to state.stage,
+                    "petType" to state.petType,
+                    "updatedAt" to System.currentTimeMillis()
+                )
+                val issueBody = mapOf(
+                    "title" to "[Live] $username — ${state.name} (${state.ageDays}d ${state.stage})",
+                    "body" to Gson().toJson(entry),
+                    "labels" to listOf("leaderboard-live")
+                )
+
+                val issueConn = java.net.URL(GITHUB_ISSUES_API).openConnection() as java.net.HttpURLConnection
+                issueConn.requestMethod = "POST"
+                issueConn.doOutput = true
+                issueConn.connectTimeout = 10000
+                issueConn.readTimeout = 10000
+                issueConn.setRequestProperty("Authorization", "token $pat")
+                issueConn.setRequestProperty("Accept", "application/vnd.github+json")
+                issueConn.setRequestProperty("Content-Type", "application/json")
+                issueConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                issueConn.outputStream.writer().use { it.write(Gson().toJson(issueBody)) }
+
+                if (issueConn.responseCode == 201) {
+                    val now = System.currentTimeMillis()
+                    liveLastPushedAtMs = now
+                    com.intellij.ide.util.PropertiesComponent.getInstance()
+                        .setValue("codotchi.liveLastPushedAt", now.toString())
+                    broadcastState()
+                }
+            } catch (_: Exception) { /* network failure — silent */ }
+        }
+    }
+
+    private fun submitLeaderboardAsync(state: PetState, diedAt: Long) {
+        AppExecutorUtil.getAppExecutorService().execute {
+            fun postResult(status: String, message: String? = null) {
+                val msgPart = if (message != null) ""","message":"${message.replace("\"", "\\\"")}"""" else ""
+                val payload = """{"type":"leaderboard_submit_result","status":"$status"$msgPart}"""
+                ApplicationManager.getApplication().invokeLater {
+                    browserPanels.forEach { it.postMessage(payload) }
+                }
+            }
+            try {
+                val credAttrs = CredentialAttributes("Codotchi", "github-pat")
+                val pat = PasswordSafe.instance.getPassword(credAttrs)
+                if (pat.isNullOrBlank()) {
+                    startDeviceFlowAsync(null) { submitLeaderboardAsync(state, diedAt) }
+                    return@execute
+                }
+
+                val userConn = java.net.URL("https://api.github.com/user").openConnection() as java.net.HttpURLConnection
+                userConn.connectTimeout = 5000
+                userConn.readTimeout = 5000
+                userConn.setRequestProperty("Authorization", "token $pat")
+                userConn.setRequestProperty("Accept", "application/vnd.github+json")
+                userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                if (userConn.responseCode != 200) {
+                    postResult("error", "GitHub API error: ${userConn.responseCode}")
+                    return@execute
+                }
+                @Suppress("UNCHECKED_CAST")
+                val userMap = Gson().fromJson(userConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                val username = userMap["login"] as? String ?: run { postResult("error", "Could not read GitHub username."); return@execute }
+                setLeaderboardUsername(username)
+
+                // Require the user to type their pet's name — blocks automated API submissions
+                var confirmed: String? = null
+                ApplicationManager.getApplication().invokeAndWait {
+                    confirmed = com.intellij.openapi.ui.Messages.showInputDialog(
+                        "Type your pet's name to confirm submission",
+                        "Confirm Leaderboard Submission",
+                        com.intellij.openapi.ui.Messages.getQuestionIcon()
+                    )
+                }
+                if (confirmed != state.name) {
+                    postResult("cancelled")
+                    return@execute
+                }
+
+                val scoreJson = """{"schemaVersion":1,"petName":"${state.name.replace("\"","\\\"")}","ageDays":${state.ageDays},"stage":"${state.stage}","petType":"${state.petType}","spawnedAt":${state.spawnedAt},"diedAt":$diedAt}"""
+                val issueBody = "Leaderboard submission.\n\n```json\n$scoreJson\n```"
+                val issueTitle = "[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @$username"
+                val issuePayload = mapOf(
+                    "title" to issueTitle,
+                    "body"  to issueBody,
+                    "labels" to listOf("leaderboard-submission")
+                )
+
+                val issueConn = java.net.URL(GITHUB_ISSUES_API).openConnection() as java.net.HttpURLConnection
+                issueConn.requestMethod = "POST"
+                issueConn.doOutput = true
+                issueConn.connectTimeout = 10000
+                issueConn.readTimeout = 10000
+                issueConn.setRequestProperty("Authorization", "token $pat")
+                issueConn.setRequestProperty("Accept", "application/vnd.github+json")
+                issueConn.setRequestProperty("Content-Type", "application/json")
+                issueConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                issueConn.outputStream.writer().use { it.write(Gson().toJson(issuePayload)) }
+
+                if (issueConn.responseCode == 201) {
+                    postResult("success")
+                } else {
+                    val errBody = issueConn.errorStream?.bufferedReader()?.readText()?.take(120) ?: ""
+                    postResult("error", "Failed to submit (HTTP ${issueConn.responseCode}): $errBody")
+                }
+            } catch (e: Exception) {
+                postResult("error", "Network error: ${e.message?.take(80)}")
+            }
+        }
+    }
+
+    private fun startDeviceFlowAsync(state: PetState?, onAuthSuccess: (() -> Unit)? = null) {
+        AppExecutorUtil.getAppExecutorService().execute {
+            try {
+                val clientId = "Ov23lilG4ngpe3lHdC88"
+
+                val dcConn = java.net.URL("https://github.com/login/device/code").openConnection() as java.net.HttpURLConnection
+                dcConn.requestMethod = "POST"
+                dcConn.doOutput = true
+                dcConn.connectTimeout = 10000
+                dcConn.readTimeout = 10000
+                dcConn.setRequestProperty("Accept", "application/json")
+                dcConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                dcConn.outputStream.writer().use { it.write("client_id=$clientId&scope=public_repo") }
+                if (dcConn.responseCode != 200) return@execute
+
+                @Suppress("UNCHECKED_CAST")
+                val dcResp = Gson().fromJson(dcConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                val deviceCode     = dcResp["device_code"] as? String ?: return@execute
+                val userCode       = dcResp["user_code"]   as? String ?: return@execute
+                val verifyUri      = (dcResp["verification_uri_complete"] as? String)
+                    ?: dcResp["verification_uri"] as? String
+                    ?: "https://github.com/login/device"
+                val expiresIn      = (dcResp["expires_in"] as? Double)?.toLong() ?: 900L
+                var pollInterval   = (dcResp["interval"]   as? Double)?.toLong() ?: 5L
+
+                ApplicationManager.getApplication().invokeLater {
+                    BrowserUtil.browse(verifyUri)
+                    NotificationGroupManager.getInstance()
+                        .getNotificationGroup("Codotchi Leaderboard")
+                        .createNotification(
+                            "Codotchi: Sign in to GitHub",
+                            "Your code is <b>$userCode</b>. Enter it on the GitHub page that just opened, then authorise. Live progress will start syncing automatically.",
+                            NotificationType.INFORMATION
+                        )
+                        .notify(null)
+                }
+
+                val deadline = System.currentTimeMillis() + expiresIn * 1000L
+                while (System.currentTimeMillis() < deadline) {
+                    Thread.sleep(pollInterval * 1000L)
+
+                    val tokConn = java.net.URL("https://github.com/login/oauth/access_token").openConnection() as java.net.HttpURLConnection
+                    tokConn.requestMethod = "POST"
+                    tokConn.doOutput = true
+                    tokConn.connectTimeout = 10000
+                    tokConn.readTimeout = 10000
+                    tokConn.setRequestProperty("Accept", "application/json")
+                    tokConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                    tokConn.outputStream.writer().use {
+                        it.write("client_id=$clientId&device_code=$deviceCode&grant_type=urn:ietf:params:oauth:grant-type:device_code")
+                    }
+
+                    @Suppress("UNCHECKED_CAST")
+                    val tokResp = Gson().fromJson(tokConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                    val accessToken = tokResp["access_token"] as? String
+                    if (!accessToken.isNullOrBlank()) {
+                        PasswordSafe.instance.setPassword(CredentialAttributes("Codotchi", "github-pat"), accessToken)
+                        resolveAndCacheLeaderboardUsername(accessToken)
+                        if (onAuthSuccess != null) {
+                            onAuthSuccess()
+                        } else if (state != null) {
+                            pushLiveScoreAsync(state, promptIfNoToken = false)
+                        }
+                        return@execute
+                    }
+                    when (tokResp["error"] as? String) {
+                        "slow_down"             -> pollInterval += 5
+                        "authorization_pending" -> { /* continue polling */ }
+                        else                    -> return@execute
+                    }
+                }
+            } catch (_: Exception) { /* network failure — silent */ }
+        }
+    }
+
+    private fun resolveAndCacheLeaderboardUsername(pat: String) {
+        AppExecutorUtil.getAppExecutorService().execute {
+            try {
+                val conn = java.net.URL("https://api.github.com/user").openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 5000; conn.readTimeout = 5000
+                conn.setRequestProperty("Authorization", "token $pat")
+                conn.setRequestProperty("Accept", "application/vnd.github+json")
+                conn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                if (conn.responseCode != 200) return@execute
+                @Suppress("UNCHECKED_CAST")
+                val map = Gson().fromJson(conn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                val username = map["login"] as? String ?: return@execute
+                setLeaderboardUsername(username)
+                ApplicationManager.getApplication().invokeLater {
+                    browserPanels.forEach { it.postMessage("""{"type":"leaderboard_sign_in_result","username":"$username"}""") }
+                }
+            } catch (_: Exception) { /* silent */ }
+        }
+    }
+
+    fun startLeaderboardSignIn() {
+        startDeviceFlowAsync(stateLock.withLock { currentState?.takeIf { it.alive } })
+    }
+
+    fun getLeaderboardUsername(): String? = leaderboardGithubUsername
+
     fun markActivity() {
         lastActivityTime = System.currentTimeMillis()
     }
@@ -803,9 +1151,15 @@ class CodotchiPlugin : Disposable {
         val devMode = lastDevMode
         val unlockedCharacter2 = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.spriteType
         val defaultPetName2 = getCustomCharacterByPasscode(service<CodotchiSettings>().characterPasscode)?.defaultName ?: "Codotchi"
+        val liveSubscribed2 = com.intellij.ide.util.PropertiesComponent.getInstance()
+            .getBoolean("codotchi.liveSubscribed", false)
+        val cached2 = rankCache
+        val liveRank2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.rank else null
+        val liveTotalScores2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.total else null
+        val liveLastPushed2 = liveLastPushedAtMs.takeIf { it > 0L }
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2, liveLastPushed2) }
                 statusWidget?.update(state)
             }
         }
@@ -1002,8 +1356,32 @@ class CodotchiPlugin : Disposable {
                     highScore = newScore
                     persistence.saveHighScore(newScore)
                 }
-                // Track diedAt for leaderboard submission
-                lastRunDiedAt = highScore?.diedAt ?: diedAt
+                // Capture death time of THIS run on the first dead tick only.
+                // Never use highScore.diedAt — when the current run is not a new record,
+                // highScore still points to the previous run, whose diedAt predates this
+                // run's spawnedAt and causes leaderboard validation to reject the submission.
+                if (lastRunDiedAt == 0L) { lastRunDiedAt = diedAt }
+
+                // One-time leaderboard notification on first death
+                val props = com.intellij.ide.util.PropertiesComponent.getInstance()
+                if (!props.getBoolean("codotchi.leaderboardDeathNotifShown", false)) {
+                    props.setValue("codotchi.leaderboardDeathNotifShown", true)
+                    ApplicationManager.getApplication().invokeLater {
+                        val group = NotificationGroupManager.getInstance()
+                            .getNotificationGroup("Codotchi Attention Calls")
+                            ?: return@invokeLater
+                        val notification = group.createNotification(
+                            "Your Codotchi died! The leaderboard link is on the death screen — the page auto-refreshes every hour.",
+                            NotificationType.INFORMATION
+                        )
+                        notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("View Leaderboard") {
+                            override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+                                com.intellij.ide.BrowserUtil.browse("https://dylscoop.github.io/codotchi/leaderboard/")
+                            }
+                        })
+                        notification.notify(null)
+                    }
+                }
             }
         }
         persistence.lastSaveTimestamp = System.currentTimeMillis()
@@ -1042,9 +1420,28 @@ class CodotchiPlugin : Disposable {
             lastRescueNotifyMs = 0L
         }
 
+        val liveSubscribed = com.intellij.ide.util.PropertiesComponent.getInstance()
+            .getBoolean("codotchi.liveSubscribed", false)
+
+        // Kick off a background rank refresh when subscribed and alive.
+        if (liveSubscribed && state != null && state.alive) {
+            fetchLiveRankAsync(state.ageDays, state.stage)
+            // Hourly live push — optimistically update timestamp to prevent duplicate launches.
+            val now = System.currentTimeMillis()
+            if (now - liveLastPushedAtMs >= LIVE_PUSH_INTERVAL_MS) {
+                liveLastPushedAtMs = now
+                pushLiveScoreAsync(state, promptIfNoToken = false)
+            }
+        }
+
+        val cached = rankCache
+        val liveRank = if (liveSubscribed && state != null && state.alive && cached != null) cached.rank else null
+        val liveTotalScores = if (liveSubscribed && state != null && state.alive && cached != null) cached.total else null
+        val liveLastPushed = liveLastPushedAtMs.takeIf { it > 0L }
+
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveLastPushed, leaderboardGithubUsername) }
                 statusWidget?.update(state)
             }
         }

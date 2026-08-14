@@ -1,5 +1,41 @@
 # Changelog
 
+## [2.21.0] — 2026-08-10
+
+### Added
+
+- **Leaderboard pet-name confirmation** — clicking "Submit to Leaderboard" now prompts you to type your pet's name before submitting, preventing automated or accidental submissions.
+- **Stage-first leaderboard ranking** — the public leaderboard and in-sidebar rank now sort by stage (senior → egg) first, then by ageDays within each stage.
+
+### Changed
+
+- **Live ages shown as-submitted** — live leaderboard entries now display the age at the time of the last push from the IDE, with no extrapolation based on elapsed time.
+
+### Security
+
+- **Stage-age consistency validation** — the server now rejects submissions where the reported stage and ageDays are physically inconsistent (e.g. `stage: "egg"` with `ageDays: 500`).
+- **Timestamp sanity checks** — `spawnedAt` and `diedAt` in the future or older than 3 years are rejected.
+
+## [2.20.5] — 2026-08-06
+
+### Fixed
+
+- **Live leaderboard upsert** — live score pushes now use a stable per-IDE-installation ID (`vscode.env.machineId` / `PermanentInstallationID`) instead of `spawnedAt`, so repeat pushes correctly replace the previous entry rather than accumulating duplicates.
+- **PyCharm death submission** — leaderboard submissions from PyCharm now POST directly to the GitHub API from the IDE; the browser URL (which users could edit before submitting) is no longer used.
+- **Live entry cleanup** — when a user submits their death score or requests a deletion, their live entry in `live.json` is now automatically removed by the GitHub Actions workflow.
+
+## [2.20.4] — 2026-08-05
+
+### Added
+
+- **Leaderboard sign-in button** — a "Sign in to GitHub" button and signed-in status label now appear in the sidebar when your pet is alive, making it clear whether you're authenticated for leaderboard pushes.
+- **Sign in to GitHub (Leaderboard)** section added to PyCharm Settings > Tools > Codotchi with sign-in and sign-out buttons.
+
+### Fixed
+
+- **Live leaderboard pet uniqueness** — multiple pets from the same GitHub account (VS Code + PyCharm, or two windows) are now tracked as separate entries in `live.json` instead of overwriting each other.
+- **Real-time live rank** — live leaderboard rank now extrapolates current age from the last push timestamp, so scores stay accurate between syncs. Push interval also reduced from 60 min to 15 min.
+
 ## [2.15.2] — 2026-07-08
 
 ### Changed

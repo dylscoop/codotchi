@@ -21,6 +21,8 @@ import {
   loadIDEStateFile,
   loadUsageCache,
   saveUsageCache,
+  loadRankCache,
+  saveRankCache,
 } from "./state.mjs";
 import { pickPetEmoji, renderMovingEmojiLine, currentFrameIndex } from "./emoji.mjs";
 
@@ -64,6 +66,10 @@ async function main() {
     saveUsageCache(usage);
   }
   const { costUsd: dailyCostUsd, tokens: dailyTokens, hourlyCostUsd, messageCount } = usage;
+
+  // Fetch live rank from the leaderboard branch (cached 5 minutes).
+  // Only attempted when the pet is alive — skipped otherwise.
+  const RANK_CACHE_TTL_MS = 5 * 60 * 1000;
 
   // Load or create pet state.
   let file = loadStateFile();
@@ -130,6 +136,33 @@ async function main() {
   }
 
   const hasIDEPets = idePets.length > 0;
+
+  // Fetch live rank from leaderboard/scores.json + live.json (cached 5 min).
+  let rankData = loadRankCache();
+  const activePetState = hasIDEPets ? idePets[0].state : state;
+  if (activePetState.alive && (!rankData || (now - (rankData.at ?? 0)) > RANK_CACHE_TTL_MS)) {
+    try {
+      const base = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/";
+      const [scoresRes, liveRes] = await Promise.all([
+        fetch(base + "scores.json"),
+        fetch(base + "live.json").catch(() => null),
+      ]);
+      if (scoresRes.ok) {
+        const rankJson = await scoresRes.json();
+        const scores = Array.isArray(rankJson) ? rankJson : (rankJson.scores ?? []);
+        const liveJson = liveRes?.ok ? await liveRes.json().catch(() => []) : [];
+        const staleMs = 48 * 60 * 60 * 1000;
+        const freshLive = Array.isArray(liveJson)
+          ? liveJson.filter(e => e.updatedAt && (now - e.updatedAt) < staleMs) : [];
+        const combined = scores.concat(freshLive);
+        const ageDays = activePetState.ageDays ?? 0;
+        const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
+        rankData = { at: now, rank, total: combined.length + 1 };
+        saveRankCache(rankData);
+      }
+    } catch { /* network failure — keep stale cache */ }
+  }
+
   const outputs = [];
 
   if (cfg.statuslineMode === "emoji") {
@@ -197,6 +230,11 @@ async function main() {
         ideSpeech.tierEmoji
       ));
     }
+  }
+
+  // Append live rank line when pet is alive and rank data is available.
+  if (rankData && activePetState.alive) {
+    outputs.push(`  Rank #${rankData.rank} of ${rankData.total} on the leaderboard`);
   }
 
   const output = outputs.join("\n");

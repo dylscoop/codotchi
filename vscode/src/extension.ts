@@ -165,7 +165,9 @@ export function activate(context: vscode.ExtensionContext): void {
     const devModeActive =
       cfg2.get<boolean>("devModeEnabled", false) &&
       cfg2.get<string>("developerPasscode", "") === "1234";
-    if (!state.alive && !devModeActive) {
+    if (state.alive) {
+      lastRunDiedAt = null; // reset so the next death gets a fresh timestamp
+    } else if (!devModeActive) {
       const elapsed = state.spawnedAt > 0 ? Date.now() - state.spawnedAt : 0;
       const prevElapsed = currentHighScore
         ? currentHighScore.diedAt - currentHighScore.spawnedAt
@@ -187,8 +189,34 @@ export function activate(context: vscode.ExtensionContext): void {
         };
         saveHighScore(context, currentHighScore);
       }
-      // Track diedAt for leaderboard submission (updated on every dead tick so it stays accurate)
-      lastRunDiedAt = currentHighScore?.diedAt ?? Date.now();
+      // Capture actual death time of THIS run on the first dead tick only.
+      // Using currentHighScore.diedAt would be wrong when the current run isn't
+      // a new record — it would reference the previous run's death time.
+      if (lastRunDiedAt === null) {
+        lastRunDiedAt = Date.now();
+
+        // Auto-submit to leaderboard on first death tick if the user was subscribed.
+        const wasSubscribed = context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
+        if (wasSubscribed) { void sidebar?.autoSubmitLeaderboard(); }
+
+        const cfg3 = vscode.workspace.getConfiguration("codotchi");
+        const notifEnabled = cfg3.get<boolean>("leaderboard.autoRefresh", true);
+        const notifShown = context.globalState.get<boolean>("leaderboardDeathNotifShown", false);
+        if (notifEnabled && !notifShown) {
+          void context.globalState.update("leaderboardDeathNotifShown", true);
+          void vscode.window.showInformationMessage(
+            "Your Codotchi died! The leaderboard link is on the death screen — the page auto-refreshes every hour.",
+            "View Leaderboard",
+            "Disable"
+          ).then(choice => {
+            if (choice === "View Leaderboard") {
+              void vscode.env.openExternal(vscode.Uri.parse("https://dylscoop.github.io/codotchi/leaderboard/"));
+            } else if (choice === "Disable") {
+              void cfg3.update("leaderboard.autoRefresh", false, vscode.ConfigurationTarget.Global);
+            }
+          });
+        }
+      }
     }
 
     sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter(), getDefaultPetName());
@@ -562,6 +590,15 @@ export function activate(context: vscode.ExtensionContext): void {
       sidebar?.handleExternalPauseToggle();
     })
   );
+
+  // Live score push every 15 minutes when the user has subscribed.
+  const livePushInterval = setInterval(() => {
+    const subscribed = context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
+    if (subscribed && currentState !== null && currentState.alive) {
+      void sidebar?.pushLiveScore(currentState);
+    }
+  }, 15 * 60 * 1000);
+  context.subscriptions.push({ dispose(): void { clearInterval(livePushInterval); } });
 
   // Register disposables
   context.subscriptions.push(statusBar, eventsManager);
