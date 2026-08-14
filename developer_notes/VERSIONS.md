@@ -1,6 +1,16 @@
 # Version History
 
-## v2.20.9 — current
+## v2.20.10 — current
+
+### Changes from v2.20.9 (real-time elapsed for live pets on leaderboard — branch fix/leaderboard-live-realtime)
+
+| File | What changed |
+|------|-------------|
+| `leaderboard/index.html` | fix: both tabs now display wall-clock elapsed time for live pets via `formatElapsed(spawnedAt, Date.now())` instead of "—"; Currently Alive tab gains a Real Time column; All-time tab passes `spawnedAt` through from `live.json` so the column is populated |
+
+---
+
+## v2.20.9
 
 ### Changes from v2.20.8 (stale leaderboard rank + concurrent submission cancellations — branch fix/leaderboard-concurrent-submissions)
 
