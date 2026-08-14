@@ -70,8 +70,15 @@ async function main() {
         const rawBubble = aa.buildSpeechBubble(
           state.stage, state.mood, speech.message, state.name, state.spriteType
         );
-        systemMessage = aa.stripAnsi(rawBubble);
+        const candidate = aa.stripAnsi(rawBubble);
         file.lastPetSpeechAt = now;
+        if (candidate !== (file.lastPetSpeechMessage ?? "")) {
+          systemMessage = candidate;
+          file.lastPetSpeechMessage = candidate;
+          file.lastPetSpeechCount = 1;
+        } else {
+          file.lastPetSpeechCount = (file.lastPetSpeechCount ?? 1) + 1;
+        }
       } catch {}
     }
   }
