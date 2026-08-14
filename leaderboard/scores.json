@@ -1,4 +1,37 @@
 {
   "scores": [
+    {
+      "schemaVersion": 1,
+      "githubUsername": "dylscoop",
+      "petName": "Supak",
+      "ageDays": 57,
+      "stage": "teen",
+      "petType": "bytebug",
+      "spawnedAt": 1784709246445,
+      "diedAt": 1786695425766,
+      "submittedAt": 1786695440404
+    },
+    {
+      "schemaVersion": 1,
+      "githubUsername": "dylscoop",
+      "petName": "Mike Hunt",
+      "ageDays": 42,
+      "stage": "teen",
+      "petType": "bytebug",
+      "spawnedAt": 1786008693789,
+      "diedAt": 1786462478760,
+      "submittedAt": 1786462531495
+    },
+    {
+      "schemaVersion": 1,
+      "githubUsername": "Yharooer",
+      "petName": "Codotchi",
+      "ageDays": 0,
+      "stage": "baby",
+      "petType": "codeling",
+      "spawnedAt": 1786022837162,
+      "diedAt": 1786485158128,
+      "submittedAt": 1786485173666
+    }
   ]
 }
