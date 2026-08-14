@@ -10,16 +10,6 @@
     "updatedAt": 1786466541011
   },
   {
-    "username": "dylscoop",
-    "petName": "Dropbear",
-    "petRunId": "aaa0bea407ecd34efe70485ac42886c0de3e2ca473687917ba1b6de5e28de6de",
-    "spawnedAt": 1785591021624,
-    "ageDays": 6,
-    "stage": "child",
-    "petType": "bytebug",
-    "updatedAt": 1786717806168
-  },
-  {
     "username": "Stuart-Mac",
     "petName": "Big Gordon",
     "petRunId": "6e62d552218d1b2c647d5272a2d3c97dfbb546826ca8c0c665b944eed1ecfc29",
@@ -48,5 +38,15 @@
     "stage": "baby",
     "petType": "bytebug",
     "updatedAt": 1786718391440
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Dropbear",
+    "petRunId": "aaa0bea407ecd34efe70485ac42886c0de3e2ca473687917ba1b6de5e28de6de",
+    "spawnedAt": 1785591021624,
+    "ageDays": 6,
+    "stage": "child",
+    "petType": "bytebug",
+    "updatedAt": 1786718706250
   }
 ]
