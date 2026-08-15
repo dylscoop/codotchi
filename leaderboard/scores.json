@@ -24,6 +24,17 @@
     },
     {
       "schemaVersion": 1,
+      "githubUsername": "dylscoop",
+      "petName": "Dropbear",
+      "ageDays": 8,
+      "stage": "child",
+      "petType": "bytebug",
+      "spawnedAt": 1785591021624,
+      "diedAt": 1786805954085,
+      "submittedAt": 1786805966242
+    },
+    {
+      "schemaVersion": 1,
       "githubUsername": "Yharooer",
       "petName": "Codotchi",
       "ageDays": 0,
