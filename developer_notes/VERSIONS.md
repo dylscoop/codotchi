@@ -1,5 +1,17 @@
 # Version History
 
+## v2.20.11 — current
+
+### Changes from v2.20.10 (leaderboard total under-count — branch fix/leaderboard-total-count)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: increase live.json staleness threshold from 48h to 30 days; include entries with missing/zero `updatedAt` instead of silently dropping them |
+| `claude-codotchi/scripts/statusline.mjs` | fix: same 48h→30d threshold change and permissive `updatedAt` filter |
+| `opencode-codotchi/src/index.ts` | fix: same 48h→30d threshold change; permissive filter and safe extrapolation when `updatedAt` is absent |
+
+---
+
 ## v2.20.10 — current
 
 ### Changes from v2.20.9 (real-time elapsed for live pets on leaderboard — branch fix/leaderboard-live-realtime)

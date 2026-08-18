@@ -1,8 +1,8 @@
-{
+﻿{
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.20.10",
+  "version": "2.20.11",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -104,7 +104,7 @@
           "type": "string",
           "enum": ["plain", "ordered", "spring", "summer", "autumn", "winter"],
           "enumDescriptions": [
-            "Solid colour only ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no pixel-art elements.",
+            "Solid colour only ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â no pixel-art elements.",
             "Season from real calendar + time of day from real clock.",
             "Spring season (green ground, flower) + real time of day.",
             "Summer season (bright green ground) + real time of day.",
@@ -123,7 +123,7 @@
         "codotchi.enableAttentionCalls": {
           "type": "boolean",
           "default": true,
-          "description": "Enables attention calls (the pet notifying you when it needs care). When disabled, the entire attention-call mechanic is skipped ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no events fire, no cooldowns run, no state counters update."
+          "description": "Enables attention calls (the pet notifying you when it needs care). When disabled, the entire attention-call mechanic is skipped ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â no events fire, no cooldowns run, no state counters update."
         },
         "codotchi.idleThresholdSeconds": {
           "type": "integer",
@@ -141,9 +141,9 @@
           "type": "string",
           "enum": ["needy", "standard", "chilled"],
           "enumDescriptions": [
-            "Needy (2 minutes) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the pet demands a quick response.",
-            "Standard (5 minutes) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â a comfortable response window.",
-            "Chilled (10 minutes) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â plenty of time before the call expires."
+            "Needy (2 minutes) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the pet demands a quick response.",
+            "Standard (5 minutes) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â a comfortable response window.",
+            "Chilled (10 minutes) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â plenty of time before the call expires."
           ],
           "default": "standard",
           "description": "Response window for cleaning, misbehaviour, and gift attention calls before they expire and apply a stat penalty. Other call types (hunger, sick, etc.) always use a fixed 2-minute window."
@@ -152,9 +152,9 @@
           "type": "string",
           "enum": ["fast", "medium", "slow"],
           "enumDescriptions": [
-            "Fast ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â current default spawn rate.",
-            "Medium ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â 1.5ÃƒÆ’Ã¢â‚¬â€ slower spawn rate.",
-            "Slow ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â 2ÃƒÆ’Ã¢â‚¬â€ slower spawn rate."
+            "Fast ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â current default spawn rate.",
+            "Medium ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â 1.5ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â slower spawn rate.",
+            "Slow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â 2ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â slower spawn rate."
           ],
           "default": "fast",
           "description": "How quickly cleaning, misbehaviour, and gift attention calls can spawn. Uses a logarithmic probability curve; this setting scales the curve down to make calls less frequent."
@@ -163,12 +163,12 @@
           "type": "string",
           "enum": ["small", "medium", "large"],
           "enumDescriptions": [
-            "Small ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â compact original size (1ÃƒÆ’Ã¢â‚¬â€ scale, 12ÃƒÆ’Ã¢â‚¬â€16 pixel grid).",
-            "Medium ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â comfortable default (1.5ÃƒÆ’Ã¢â‚¬â€ scale, 18ÃƒÆ’Ã¢â‚¬â€24 pixel grid).",
-            "Large ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â twice the original size with higher-detail 24ÃƒÆ’Ã¢â‚¬â€32 pixel grid."
+            "Small ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â compact original size (1ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â scale, 12ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â16 pixel grid).",
+            "Medium ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â comfortable default (1.5ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â scale, 18ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â24 pixel grid).",
+            "Large ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â twice the original size with higher-detail 24ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â32 pixel grid."
           ],
           "default": "medium",
-          "description": "Controls the overall display size of the pet sprite. 'Large' uses a more detailed 24ÃƒÆ’Ã¢â‚¬â€32 pixel grid for every sprite type."
+          "description": "Controls the overall display size of the pet sprite. 'Large' uses a more detailed 24ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â32 pixel grid for every sprite type."
         },
         "codotchi.reducedMotion": {
           "type": "boolean",
@@ -194,19 +194,19 @@
           "type": "integer",
           "default": 10,
           "minimum": 1,
-          "description": "Aging speed multiplier applied when developer mode is active. Default: 10 (10ÃƒÆ’Ã¢â‚¬â€ faster than normal)."
+          "description": "Aging speed multiplier applied when developer mode is active. Default: 10 (10ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â faster than normal)."
         },
         "codotchi.devModeHealthFloor": {
           "type": "integer",
           "default": 1,
           "minimum": 0,
           "maximum": 100,
-          "description": "Minimum health value enforced when developer mode is active. Default: 1 (pet cannot die). Set to 0 to allow the pet to die normally even in dev mode ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â useful for testing the death flow."
+          "description": "Minimum health value enforced when developer mode is active. Default: 1 (pet cannot die). Set to 0 to allow the pet to die normally even in dev mode ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â useful for testing the death flow."
         },
         "codotchi.aiMode": {
           "type": "boolean",
           "default": true,
-          "description": "AI mode: suppress idle-timer resets from document changes, cursor movement, and tab switches ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the three events an AI coding agent fires. Window focus and mouse movement still reset the timer normally. Enable this when you are using an AI agent to avoid the agent's edits keeping your pet perpetually active."
+          "description": "AI mode: suppress idle-timer resets from document changes, cursor movement, and tab switches ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the three events an AI coding agent fires. Window focus and mouse movement still reset the timer normally. Enable this when you are using an AI agent to avoid the agent's edits keeping your pet perpetually active."
         },
         "codotchi.idleResetOnDocumentChange": {
           "type": "boolean",
@@ -246,12 +246,12 @@
             "enum": ["claudeCode", "openCode", "copilot"]
           },
           "default": ["claudeCode", "openCode"],
-          "description": "Which sources contribute to the 'Today's Token Cost' bubble. 'claudeCode' and 'openCode' report a dollar cost from local usage logs. 'copilot' reports a GitHub Copilot premium-request quota percentage (no API key needed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â you'll be prompted to sign in to GitHub via VS Code's built-in authentication the first time). Select any combination, e.g. just ['copilot'], or all three to show everything at once."
+          "description": "Which sources contribute to the 'Today's Token Cost' bubble. 'claudeCode' and 'openCode' report a dollar cost from local usage logs. 'copilot' reports a GitHub Copilot premium-request quota percentage (no API key needed ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â you'll be prompted to sign in to GitHub via VS Code's built-in authentication the first time). Select any combination, e.g. just ['copilot'], or all three to show everything at once."
         },
         "codotchi.leaderboard.autoRefresh": {
           "type": "boolean",
           "default": true,
-          "description": "Show a one-time notification about the leaderboard when your pet first dies. The leaderboard page also auto-refreshes every hour when left open in a browser ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â this can be disabled directly on the leaderboard page."
+          "description": "Show a one-time notification about the leaderboard when your pet first dies. The leaderboard page also auto-refreshes every hour when left open in a browser ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â this can be disabled directly on the leaderboard page."
         },
         "codotchi.leaderboard.livePush": {
           "type": "boolean",
@@ -274,5 +274,6 @@
     "typescript": "^5.3.0"
   }
 }
+
 
 

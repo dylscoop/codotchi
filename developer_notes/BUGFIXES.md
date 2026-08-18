@@ -1927,3 +1927,14 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** All three issue-triggered workflows shared the same `concurrency.group: leaderboard-update`. Opening a single GitHub issue triggers all three simultaneously; GitHub Actions allows only 1 running + 1 pending per group, so the third run is immediately cancelled. With two simultaneous submissions (e.g. a live push and a death submission), 6 runs compete for the same slot and 4 are cancelled — including the runs that actually needed to do work. Scores and live updates were silently lost; the issue was still closed with a success comment.
 
 **Fix:** Each workflow now has its own concurrency group (`leaderboard-scores`, `leaderboard-live`, `leaderboard-delete-action`), eliminating cross-type contention. Also added a 3-attempt `git push` retry with `git pull --rebase` in `process-leaderboard.yml` and `process-leaderboard-live.yml` to handle the edge case where two same-type submissions push simultaneously.
+
+---
+
+## BUGFIX-160 — Leaderboard total under-counts live pets (all three plugins)
+
+**Status:** Fixed (v2.20.11, branch `fix/leaderboard-total-count`)
+**Files:** `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `claude-codotchi/scripts/statusline.mjs`, `opencode-codotchi/src/index.ts`
+
+**Problem:** All three plugins filtered `live.json` entries with a 48-hour staleness threshold (`(now - updatedAt) < 48h`). Live pets that hadn't pushed a heartbeat update in more than 48 hours (e.g. users on holiday or with inactive IDE sessions) were silently excluded from the rank pool. Additionally, entries where `updatedAt` was missing or non-numeric fell back to `0` and were also excluded by the `updatedAt > 0` guard. The result was the leaderboard showing "Rank #3 of 6" when there were actually 9 pets.
+
+**Fix:** Increased the staleness threshold from 48 hours to 30 days. Since dead pets are committed to `scores.json` when they die, `live.json` only contains genuinely active pets — a 30-day window safely includes all of them without risk of double-counting. Also made the filter permissive for entries with missing/non-numeric `updatedAt`: such entries are now included (with no age extrapolation) rather than dropped.
