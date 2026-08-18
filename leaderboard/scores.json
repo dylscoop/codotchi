@@ -24,6 +24,17 @@
     },
     {
       "schemaVersion": 1,
+      "githubUsername": "jobytennant",
+      "petName": "Scrambled Shmegg",
+      "ageDays": 11,
+      "stage": "child",
+      "petType": "bytebug",
+      "spawnedAt": 1787042680268,
+      "diedAt": 1787064455278,
+      "submittedAt": 1787064466256
+    },
+    {
+      "schemaVersion": 1,
       "githubUsername": "dylscoop",
       "petName": "Dropbear",
       "ageDays": 8,
