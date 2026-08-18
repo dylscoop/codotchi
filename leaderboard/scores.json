@@ -35,6 +35,17 @@
     },
     {
       "schemaVersion": 1,
+      "githubUsername": "jobytennant",
+      "petName": "Frank",
+      "ageDays": 1,
+      "stage": "baby",
+      "petType": "pixelpup",
+      "spawnedAt": 1782833392497,
+      "diedAt": 1787040601257,
+      "submittedAt": 1787042646886
+    },
+    {
+      "schemaVersion": 1,
       "githubUsername": "Yharooer",
       "petName": "Codotchi",
       "ageDays": 0,
