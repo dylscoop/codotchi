@@ -20,16 +20,6 @@
     "updatedAt": 1786807436715
   },
   {
-    "username": "jobytennant",
-    "petName": "Scrambled Shmegg",
-    "petRunId": "186e3326b7954ffd2c76678aa9371d642e19740ef4d6fa74443c330c7fa79379",
-    "spawnedAt": 1787042680268,
-    "ageDays": 1,
-    "stage": "baby",
-    "petType": "bytebug",
-    "updatedAt": 1787049601707
-  },
-  {
     "username": "Stuart-Mac",
     "petName": "Big Gordon",
     "petRunId": "6e62d552218d1b2c647d5272a2d3c97dfbb546826ca8c0c665b944eed1ecfc29",
@@ -58,5 +48,15 @@
     "stage": "child",
     "petType": "bytebug",
     "updatedAt": 1787050395232
+  },
+  {
+    "username": "jobytennant",
+    "petName": "Scrambled Shmegg",
+    "petRunId": "186e3326b7954ffd2c76678aa9371d642e19740ef4d6fa74443c330c7fa79379",
+    "spawnedAt": 1787042680268,
+    "ageDays": 2,
+    "stage": "baby",
+    "petType": "bytebug",
+    "updatedAt": 1787050501813
   }
 ]
