@@ -31,16 +31,6 @@
   },
   {
     "username": "dylscoop",
-    "petName": "Mini Stu",
-    "petRunId": "b68ca4c6f25d5c541f9eb73d12e36859b0333c31516adffe676bd4e6e703fd1f",
-    "spawnedAt": 1786695651882,
-    "ageDays": 14,
-    "stage": "child",
-    "petType": "bytebug",
-    "updatedAt": 1787038130053
-  },
-  {
-    "username": "dylscoop",
     "petName": "Mike Hunt Jr",
     "petRunId": "0",
     "spawnedAt": 1786701642987,
@@ -48,5 +38,15 @@
     "stage": "teen",
     "petType": "bytebug",
     "updatedAt": 1787038201212
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Mini Stu",
+    "petRunId": "b68ca4c6f25d5c541f9eb73d12e36859b0333c31516adffe676bd4e6e703fd1f",
+    "spawnedAt": 1786695651882,
+    "ageDays": 14,
+    "stage": "child",
+    "petType": "bytebug",
+    "updatedAt": 1787039030032
   }
 ]
