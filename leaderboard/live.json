@@ -43,10 +43,10 @@
     "username": "dylscoop",
     "petName": "Mike Hunt Jr",
     "petRunId": "0",
-    "spawnedAt": 1787129766704,
-    "ageDays": 0,
-    "stage": "egg",
+    "spawnedAt": 1787064432766,
+    "ageDays": 10,
+    "stage": "child",
     "petType": "bytebug",
-    "updatedAt": 1787129766940
+    "updatedAt": 1787130025760
   }
 ]
