@@ -129,17 +129,26 @@ jobs:
           if age < min_age or (max_age is not None and age > max_age):
               fail(f"ageDays {age} is inconsistent with stage '{stage}' (expected {min_age}–{max_age if max_age else '∞'}).")
 
-          # Duplicate check
+          # Duplicate / resubmission check.
+          # A run is uniquely identified by (githubUsername, petName, spawnedAt), not diedAt —
+          # diedAt can vary across resubmissions of the same run. If a matching run already
+          # exists, only accept the resubmission if it reports a longer survival time (larger
+          # diedAt); the append step will then replace the old entry rather than add a new row.
+          pet_name = str(data["petName"])[:64]
           with open("leaderboard/scores.json") as f:
               existing = json.load(f)
           for s in existing.get("scores", []):
-              if int(s.get("spawnedAt", 0)) == spawned_at and int(s.get("diedAt", 0)) == died_at:
-                  fail("This run has already been submitted.")
+              if (s.get("githubUsername") == author and
+                      s.get("petName") == pet_name and
+                      int(s.get("spawnedAt", 0)) == spawned_at):
+                  if died_at <= int(s.get("diedAt", 0)):
+                      fail("This run has already been submitted.")
+                  break
 
           entry = {
               "schemaVersion":  1,
               "githubUsername": author,  # always use the authenticated issue author
-              "petName":        str(data["petName"])[:64],
+              "petName":        pet_name,
               "ageDays":        age,
               "stage":          str(data["stage"]),
               "petType":        str(data["petType"]),
@@ -162,7 +171,17 @@ jobs:
           with open("/tmp/new_entry.json") as f:
               entry = json.load(f)
 
-          data["scores"].append(entry)
+          # Replace an existing entry for the same run (same owner/pet/spawnedAt) instead of
+          # appending a duplicate row; append only if this is a genuinely new run.
+          for i, s in enumerate(data["scores"]):
+              if (s.get("githubUsername") == entry["githubUsername"] and
+                      s.get("petName") == entry["petName"] and
+                      int(s.get("spawnedAt", 0)) == int(entry["spawnedAt"])):
+                  data["scores"][i] = entry
+                  break
+          else:
+              data["scores"].append(entry)
+
           data["scores"].sort(
               key=lambda s: (s["ageDays"], s["diedAt"] - s["spawnedAt"]),
               reverse=True,
