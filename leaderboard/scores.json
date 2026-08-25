@@ -30,6 +30,17 @@
       "stage": "child",
       "petType": "bytebug",
       "spawnedAt": 1787042680268,
+      "diedAt": 1787653882567,
+      "submittedAt": 1787653895079
+    },
+    {
+      "schemaVersion": 1,
+      "githubUsername": "jobytennant",
+      "petName": "Scrambled Shmegg",
+      "ageDays": 11,
+      "stage": "child",
+      "petType": "bytebug",
+      "spawnedAt": 1787042680268,
       "diedAt": 1787653728936,
       "submittedAt": 1787653741477
     },
