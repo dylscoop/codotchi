@@ -151,9 +151,9 @@ async function main() {
         const rankJson = await scoresRes.json();
         const scores = Array.isArray(rankJson) ? rankJson : (rankJson.scores ?? []);
         const liveJson = liveRes?.ok ? await liveRes.json().catch(() => []) : [];
-        const staleMs = 48 * 60 * 60 * 1000;
+        const staleMs = 30 * 24 * 60 * 60 * 1000;
         const freshLive = Array.isArray(liveJson)
-          ? liveJson.filter(e => e.updatedAt && (now - e.updatedAt) < staleMs) : [];
+          ? liveJson.filter(e => !e.updatedAt || (now - e.updatedAt) < staleMs) : [];
         const combined = scores.concat(freshLive);
         const ageDays = activePetState.ageDays ?? 0;
         const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;

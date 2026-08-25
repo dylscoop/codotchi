@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.20.10</version>
+    <version>2.20.11</version>
     <vendor>codotchi</vendor>
     <icon>META-INF/icon_128.png</icon>
 
@@ -16,14 +16,14 @@
 
 <p>codotchi is a JetBrains plugin that lets you raise a digital pet inspired by the original Tamagotchi. Your pet
 lives in a tool window panel, reacts to your coding activity, and needs regular care to survive and evolve into
-its final form. Any support and feedback is much appreciated ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see the Support section below!</p>
+its final form. Any support and feedback is much appreciated ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â see the Support section below!</p>
 
 <p>Your pet is drawn from one of <b>7 sprite sets</b>, with more to be added in the future, assigned to you
 at random when you start a new game.</p>
 
 <h2>Preview</h2>
 
-<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/example_skippy.png" width="400" alt="Skippy the kangaroo ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Codotchi in action"/>
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/example_skippy.png" width="400" alt="Skippy the kangaroo ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Codotchi in action"/>
 
 <h3>Sponsor this project</h3>
 
@@ -35,20 +35,20 @@ at random when you start a new game.</p>
 <h2>Integrations</h2>
 
 <p>Looking for the <b>Claude Code</b> or <b>OpenCode</b> terminal integrations?
-Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotchi</a> to download the plugins ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â your pet's state is shared across VS Code, PyCharm, and the terminal.</p>
+Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotchi</a> to download the plugins ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â your pet's state is shared across VS Code, PyCharm, and the terminal.</p>
 
 <h2>Features</h2>
 <ul>
-  <li><b>Tool window pet panel</b> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â pixel art pet with animated sprites, stat bars, and action buttons rendered in a JCEF webview</li>
-  <li><b>Classic Tamagotchi mechanics</b> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â hunger, happiness, discipline, energy, health, weight, and age stats, all decaying in real time</li>
-  <li><b>Full care system</b> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â feed meals and snacks, play mini-games, put pet to sleep, clean droppings, give medicine, scold and praise</li>
-  <li><b>Life cycle &amp; evolution</b> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â egg ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ baby ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ child ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ teen ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ adult ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ senior, with the final character determined by how well you cared for your pet</li>
-  <li><b>Pet customisation</b> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â name your pet and choose a pet type on first launch</li>
-  <li><b>Sickness &amp; death</b> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â neglect your pet and it gets sick; leave it untreated and it dies</li>
-  <li><b>OpenCode integration</b> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â your pet lives in the terminal too, with shared state across VS Code, PyCharm, and OpenCode</li>
-  <li><b>Status bar integration</b> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â pet name and stage always visible in the IDE status bar</li>
-  <li><b>Persistent state</b> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â pet survives IDE restarts; offline time is accounted for with capped stat decay</li>
-  <li><b>Configurable</b> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â customise font size, pet size, colours, idle thresholds, attention call behaviour, and more via <b>Settings ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Tools ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Codotchi</b></li>
+  <li><b>Tool window pet panel</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â pixel art pet with animated sprites, stat bars, and action buttons rendered in a JCEF webview</li>
+  <li><b>Classic Tamagotchi mechanics</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â hunger, happiness, discipline, energy, health, weight, and age stats, all decaying in real time</li>
+  <li><b>Full care system</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â feed meals and snacks, play mini-games, put pet to sleep, clean droppings, give medicine, scold and praise</li>
+  <li><b>Life cycle &amp; evolution</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â egg ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ baby ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ child ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ teen ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ adult ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ senior, with the final character determined by how well you cared for your pet</li>
+  <li><b>Pet customisation</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â name your pet and choose a pet type on first launch</li>
+  <li><b>Sickness &amp; death</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â neglect your pet and it gets sick; leave it untreated and it dies</li>
+  <li><b>OpenCode integration</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â your pet lives in the terminal too, with shared state across VS Code, PyCharm, and OpenCode</li>
+  <li><b>Status bar integration</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â pet name and stage always visible in the IDE status bar</li>
+  <li><b>Persistent state</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â pet survives IDE restarts; offline time is accounted for with capped stat decay</li>
+  <li><b>Configurable</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â customise font size, pet size, colours, idle thresholds, attention call behaviour, and more via <b>Settings ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Tools ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Codotchi</b></li>
 </ul>
 
 <h2>Requirements</h2>
@@ -57,7 +57,7 @@ Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotch
   <li>JCEF must be enabled in your IDE (it is on by default in 2024.1+)</li>
 </ul>
 <p><b>If the Codotchi panel appears blank:</b> your IDE may be running on a JetBrains Runtime without JCEF.
-Open <b>Help ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Find Action</b> (Shift+Ctrl+A / ÃƒÂ¢Ã¢â‚¬Â¡Ã‚Â§ÃƒÂ¢Ã…â€™Ã‹Å“A), search for <b>"Choose Boot Java Runtime for the IDE"</b>,
+Open <b>Help ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Find Action</b> (Shift+Ctrl+A / ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬â„¢Ãƒâ€¹Ã…â€œA), search for <b>"Choose Boot Java Runtime for the IDE"</b>,
 select a runtime with <b>JCEF</b> in its name, and restart the IDE.</p>
 
 <h2>Installation</h2>
@@ -67,11 +67,11 @@ pre-built releases, and the OpenCode integration download.</p>
 <h2>Using the plugin</h2>
 <p>Once installed and the IDE has restarted:</p>
 <ol>
-  <li>Click <b>Codotchi</b> in the right-hand tool window bar, or go to <b>View ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Tool Windows ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Codotchi</b>.</li>
+  <li>Click <b>Codotchi</b> in the right-hand tool window bar, or go to <b>View ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Tool Windows ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Codotchi</b>.</li>
   <li>On first launch the <b>New Codotchi</b> setup screen appears:
     <ul>
       <li>Enter a name (up to 16 characters).</li>
-      <li>Choose a <b>pet type</b> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â each has different stat decay rates.</li>
+      <li>Choose a <b>pet type</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â each has different stat decay rates.</li>
       <li>Click <b>Hatch!</b></li>
     </ul>
   </li>
@@ -88,7 +88,7 @@ pre-built releases, and the OpenCode integration download.</p>
   <tr><th>Action</th><th>What it does</th></tr>
   <tr><td><b>Feed</b></td><td>Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect.</td></tr>
   <tr><td><b>Snack</b></td><td>Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick.</td></tr>
-  <tr><td><b>Play</b></td><td>Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â your pet can't play if exhausted.</td></tr>
+  <tr><td><b>Play</b></td><td>Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â your pet can't play if exhausted.</td></tr>
   <tr><td><b>Pat</b></td><td>Gives your pet a gentle pat. Boosts happiness. Costs energy. Accessed via the Play menu. Cannot be used while your pet is sleeping or exhausted.</td></tr>
   <tr><td><b>Sleep</b></td><td>Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy.</td></tr>
   <tr><td><b>Clean</b></td><td>Clears all droppings from the screen. Leaving too many uncleaned will make your pet sick.</td></tr>
@@ -128,7 +128,7 @@ which determines which character your pet evolves into at each life stage.</p>
 
 <h3>Codotchi Sprites</h3>
 
-<p>Want to see a new sprite in the game? Send a drawn sprite or request one to be added ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â a passcode will be given every time one gets implemented.</p>
+<p>Want to see a new sprite in the game? Send a drawn sprite or request one to be added ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â a passcode will be given every time one gets implemented.</p>
 <p><a href="https://github.com/dylscoop/codotchi/issues">Open a sprite request on GitHub Issues</a></p>
     ]]></description>
 
@@ -140,7 +140,7 @@ which determines which character your pet evolves into at each life stage.</p>
          classes (com.intellij.ui.jcef.*) are invisible to the Codotchi classloader,
          causing a NoClassDefFoundError on the JBCefApp.isSupported() guard in
          CodotchiToolWindow.kt.  The dependency is marked optional so the plugin still
-         loads on runtimes where JCEF is absent (non-JCEF JBR, Linux headless, etc.) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+         loads on runtimes where JCEF is absent (non-JCEF JBR, Linux headless, etc.) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
          in that case the existing fallback panel with instructions is shown instead. -->
     <depends optional="true" config-file="codotchi-jcef.xml">com.intellij.modules.jcef</depends>
 
@@ -202,7 +202,7 @@ which determines which character your pet evolves into at each life stage.</p>
     </extensions>
 
     <actions>
-        <!-- Dev-only sprite preview gallery ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â visible only when developer mode is active -->
+        <!-- Dev-only sprite preview gallery ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â visible only when developer mode is active -->
         <action id="com.codotchi.OpenSpritePreview"
                 class="com.codotchi.OpenSpritePreviewAction"
                 text="Codotchi: Open Sprite Preview (Dev)"
@@ -218,7 +218,7 @@ which determines which character your pet evolves into at each life stage.</p>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
 
-        <!-- GitHub Copilot quota sign-in / sign-out (OAuth device flow ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no PAT required) -->
+        <!-- GitHub Copilot quota sign-in / sign-out (OAuth device flow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â no PAT required) -->
         <action id="com.codotchi.CopilotSignIn"
                 class="com.codotchi.CopilotSignInAction"
                 text="Codotchi: Sign in to GitHub (Copilot Quota)"
@@ -234,7 +234,7 @@ which determines which character your pet evolves into at each life stage.</p>
 
         <!-- Refresh button in the Codotchi tool window title bar -->
         <!-- Note: added to the title bar programmatically via ToolWindow.setTitleActions()
-             in CodotchiToolWindow.kt ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no add-to-group needed here. The action is kept
+             in CodotchiToolWindow.kt ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â no add-to-group needed here. The action is kept
              registered so it remains invokable via Find Action. -->
         <action id="com.codotchi.Refresh"
                 class="com.codotchi.CodotchiRefreshAction"
@@ -252,5 +252,6 @@ which determines which character your pet evolves into at each life stage.</p>
     </projectListeners>
 
 </idea-plugin>
+
 
 
