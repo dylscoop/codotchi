@@ -24,6 +24,17 @@
     },
     {
       "schemaVersion": 1,
+      "githubUsername": "dylscoop",
+      "petName": "Mini Stu",
+      "ageDays": 28,
+      "stage": "child",
+      "petType": "bytebug",
+      "spawnedAt": 1786695651882,
+      "diedAt": 1788433992481,
+      "submittedAt": 1788434003636
+    },
+    {
+      "schemaVersion": 1,
       "githubUsername": "jobytennant",
       "petName": "Scrambled Shmegg",
       "ageDays": 11,
