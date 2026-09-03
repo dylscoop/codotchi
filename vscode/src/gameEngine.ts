@@ -1501,8 +1501,11 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     ticksSinceLastGift,
   };
 
-  // Stage progression + old-age death/sickness rolls (once per day boundary for seniors)
-  const afterStage = checkStageProgression(afterDecay);
+  // Stage progression + old-age death/sickness rolls (once per day boundary for seniors).
+  // Evolution only fires on active (non-idle) ticks so the user is present to witness it;
+  // dayTimer keeps accumulating while idle (see aging above), so once the threshold is
+  // reached while idle the promotion is simply deferred — not lost — to the next active tick.
+  const afterStage = isIdle ? withDerivedFields(afterDecay) : checkStageProgression(afterDecay);
   // ageDays is Math.floor(new dayTimer), computed above; state.ageDays is pre-tick value.
   if (ageDays > state.ageDays) {
     const afterDeath = rollOldAgeDeath(afterStage, Math.random());

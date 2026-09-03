@@ -655,8 +655,11 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         ticksSinceLastGift       = ticksSinceLastGift,
     )
 
-    // Stage progression + old-age death/sickness rolls (once per day boundary for seniors)
-    val afterStage = checkStageProgression(afterDecay)
+    // Stage progression + old-age death/sickness rolls (once per day boundary for seniors).
+    // Evolution only fires on active (non-idle) ticks so the user is present to witness it;
+    // dayTimer keeps accumulating while idle (see aging above), so once the threshold is
+    // reached while idle the promotion is simply deferred — not lost — to the next active tick.
+    val afterStage = if (isIdle) withDerivedFields(afterDecay) else checkStageProgression(afterDecay)
     return if (afterDecay.ageDays > state.ageDays) {
         val afterDeath = rollOldAgeDeath(afterStage)
         if (afterDeath.alive) rollOldAgeSickness(afterDeath) else afterDeath
