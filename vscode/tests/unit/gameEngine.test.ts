@@ -731,6 +731,36 @@ describe("tick — stage progression", () => {
     assert.equal(next.ticksAlive, 0);
   });
 
+  it("does not evolve while idle even if dayTimer threshold is reached", () => {
+    const pet = makePet({ stage: "egg", ticksAlive: 38, dayTimer: 0.395 });
+    const next = tick(pet, true); // isIdle=true
+    assert.equal(next.stage, "egg");
+    assert.ok(!next.events.includes("evolved_to_baby"));
+  });
+
+  it("evolves on the first non-idle tick after threshold was reached while idle", () => {
+    // ticksAlive 59→60 hits the idle aging gate (60 % 3 === 0 && 60 % 20 === 0),
+    // so dayTimer actually crosses the threshold on this idle tick.
+    const pet = makePet({ stage: "egg", ticksAlive: 59, dayTimer: 0.395 });
+    const idled = tick(pet, true); // isIdle=true — threshold crossed but evolution deferred
+    assert.equal(idled.stage, "egg");
+    assert.ok(idled.dayTimer >= 0.396);
+    const next = tick(idled, false); // user returns — deferred evolution fires now
+    assert.equal(next.stage, "baby");
+    assert.ok(next.events.includes("evolved_to_baby"));
+  });
+
+  it("deep idle also blocks evolution", () => {
+    // Real callers always pass isIdle=true whenever isDeepIdle=true (deep idle
+    // is a stricter/longer threshold than regular idle) — the gate itself
+    // only checks isIdle, matching the house convention used for every other
+    // idle-suppressed mechanic (poop, sickness, attention calls).
+    const pet = makePet({ stage: "egg", ticksAlive: 38, dayTimer: 0.395 });
+    const next = tick(pet, true, true); // isIdle=true, isDeepIdle=true
+    assert.equal(next.stage, "egg");
+    assert.ok(!next.events.includes("evolved_to_baby"));
+  });
+
   it("resets care accumulators on evolution", () => {
     const pet = makePet({
       stage: "egg",
