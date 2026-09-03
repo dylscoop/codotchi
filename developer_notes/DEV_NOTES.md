@@ -107,6 +107,14 @@ Evolution is triggered in `checkStageProgression()` whenever
 `dayTimer >= EVOLUTION_DAY_THRESHOLDS[stage]`. The threshold is **cumulative**
 from birth, not relative to the start of the current stage.
 
+**Evolution requires an active (non-idle) tick.** `checkStageProgression()`
+is only invoked when `isIdle` is `false` — while idle or deep-idle, the
+pet's `dayTimer` keeps accumulating (slowed, per the Aging rates section
+below) but the stage-promotion check itself is skipped for that tick. A
+threshold reached while the user is away is never lost: the promotion
+fires on the next tick where the user is active again, so evolutions are
+always witnessed rather than happening silently in the background.
+
 ---
 
 ### EVOLUTION_DAY_THRESHOLDS (cumulative from birth)
@@ -340,6 +348,8 @@ the codeling baseline. Per-type multipliers shorten the interval:
 Hunger, happiness, and **energy** are all skipped on 19 out of every 20 ticks
 (`ticksAlive % IDLE_DECAY_TICK_DIVISOR != 0`, `IDLE_DECAY_TICK_DIVISOR = 20`).
 Aging is also slowed by the same divisor.
+Stage evolution is also deferred (not skipped) during idle — see the
+Evolution System section above.
 A `"went_idle"` event is pushed once on the tick when the IDE transitions from
 active to idle, showing "IDE idle — decay and aging slowed." in the event log.
 
