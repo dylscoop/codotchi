@@ -2,6 +2,17 @@
   "scores": [
     {
       "schemaVersion": 1,
+      "githubUsername": "Stuart-Mac",
+      "petName": "Big Gordon",
+      "ageDays": 339,
+      "stage": "senior",
+      "petType": "codeling",
+      "spawnedAt": 1784286227223,
+      "diedAt": 1789653531134,
+      "submittedAt": 1789653544075
+    },
+    {
+      "schemaVersion": 1,
       "githubUsername": "dylscoop",
       "petName": "Supak",
       "ageDays": 57,
