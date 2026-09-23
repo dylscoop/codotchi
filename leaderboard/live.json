@@ -34,9 +34,9 @@
     "petName": "Mike Hunt Jr",
     "petRunId": "0",
     "spawnedAt": 1790167921398,
-    "ageDays": 5,
-    "stage": "baby",
+    "ageDays": 7,
+    "stage": "child",
     "petType": "bytebug",
-    "updatedAt": 1790171425755
+    "updatedAt": 1790172326407
   }
 ]
