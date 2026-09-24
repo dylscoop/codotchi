@@ -397,14 +397,14 @@ Expands the FEATURES.md §14 "Language packs" row.
 
 | Key | en | en-SCO | en-AU |
 |-----|----|--------|-------|
-| `hungry` | "__Name__ is hungry." | "__Name__'s starvin'. Gie us a piece!" | "__Name__'s starvin', mate. Chuck us a snag?" |
-| `happy` | "__Name__ is happy!" | "__Name__'s pure buzzin'!" | "__Name__'s stoked!" |
-| `sick` | "__Name__ feels unwell." | "__Name__'s lookin' awfy peely-wally." | "__Name__'s feelin' crook." |
-| `sleep` | "__Name__ fell asleep." | "__Name__'s away for a wee kip." | "__Name__'s havin' a nap this arvo." |
-| `praise` | "Good job!" | "Braw, that!" | "Good on ya!" |
-| `scold` | "__Name__ was scolded." | "__Name__'s been gettin' a row." | "__Name__ copped an earful." |
-| `poop` | "__Name__ made a mess." | "__Name__'s made a right midden." | "__Name__'s left a mess, fair dinkum." |
-| `cost_high` | "That's a lot of tokens today." | "Haud on, that's a lot o' tokens!" | "Strewth, that's heaps of tokens!" |
+| `hungry` | `__Name__ is hungry.` | `__Name__'s starvin'. Gie us a piece!` | `__Name__'s starvin', mate. Chuck us a snag?` |
+| `happy` | `__Name__ is happy!` | `__Name__'s pure buzzin'!` | `__Name__'s stoked!` |
+| `sick` | `__Name__ feels unwell.` | `__Name__'s lookin' awfy peely-wally.` | `__Name__'s feelin' crook.` |
+| `sleep` | `__Name__ fell asleep.` | `__Name__'s away for a wee kip.` | `__Name__'s havin' a nap this arvo.` |
+| `praise` | `Good job!` | `Braw, that!` | `Good on ya!` |
+| `scold` | `__Name__ was scolded.` | `__Name__'s been gettin' a row.` | `__Name__ copped an earful.` |
+| `poop` | `__Name__ made a mess.` | `__Name__'s made a right midden.` | `__Name__'s left a mess, fair dinkum.` |
+| `cost_high` | `That's a lot of tokens today.` | `Haud on, that's a lot o' tokens!` | `Strewth, that's heaps of tokens!` |
 
 **Design notes:**
 
@@ -421,7 +421,7 @@ Expands the FEATURES.md §14 "Language packs" row.
 Expands the FEATURES.md §14 "Multiple simultaneous pets" row and builds on
 FEATURES_2.md §2.
 
-**Phase A — several pets per user**
+#### Phase A — several pets per user
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -431,7 +431,7 @@ FEATURES_2.md §2.
 | Pets interact on the same canvas | `[ ]` | Idle wandering together; occasional play/emote reactions |
 | Terminal plugins show the active pet | `[ ]` | `/codotchi switch <name>` |
 
-**Phase B — visit and talk to other people's pets**
+#### Phase B — visit and talk to other people's pets
 
 | Feature | Status | Notes |
 |---------|--------|-------|
