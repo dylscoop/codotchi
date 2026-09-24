@@ -333,93 +333,13 @@ class CodotchiPlugin : Disposable {
 
     // ── Daily token cost scanning ──────────────────────────────────────────
 
-    private data class DailyUsage(
-        val costUsd: Double,
-        val hourlyCostUsd: Double,
-        val tokens: Long,
-        val messageCount: Int,
-    )
-
-    // Mirrors state.mjs / sidebarProvider.ts MODEL_PRICING — most-specific
-    // prefix first, since e.g. claude-opus-4-8 must be checked before the
-    // generic claude-opus-4 / bare "opus" fallback.
-    private data class Pricing(val input: Double, val output: Double, val cacheRead: Double, val cacheWrite: Double)
-    private fun pricingForModel(model: String): Pricing = when {
-        model.startsWith("claude-opus-4-8")   -> Pricing(5.0, 25.0, 0.50, 6.25)
-        model.startsWith("claude-opus-4-1")   -> Pricing(15.0, 75.0, 1.50, 18.75)
-        model.startsWith("claude-3-5-sonnet") -> Pricing(3.0, 15.0, 0.30, 3.75)
-        model.startsWith("claude-3-5-haiku")  -> Pricing(0.80, 4.0, 0.08, 1.00)
-        model.startsWith("claude-3-opus")     -> Pricing(15.0, 75.0, 1.50, 18.75)
-        model.startsWith("claude-3-sonnet")   -> Pricing(3.0, 15.0, 0.30, 3.75)
-        model.startsWith("claude-3-haiku")    -> Pricing(0.25, 1.25, 0.03, 0.30)
-        model.startsWith("claude-opus-4")     -> Pricing(15.0, 75.0, 1.50, 18.75)
-        model.startsWith("claude-sonnet-5")   -> Pricing(3.0, 15.0, 0.30, 3.75)
-        model.startsWith("claude-sonnet-4")   -> Pricing(3.0, 15.0, 0.30, 3.75)
-        model.startsWith("claude-haiku-4-5")  -> Pricing(1.0, 5.0, 0.10, 1.25)
-        model.startsWith("claude-fable-5")    -> Pricing(10.0, 50.0, 1.00, 12.50)
-        "opus" in model    -> Pricing(15.0, 75.0, 1.5, 18.75)
-        "haiku" in model   -> Pricing(0.80, 4.0, 0.08, 1.0)
-        else               -> Pricing(3.0, 15.0, 0.30, 3.75) // sonnet default
-    }
-
-    /** Scan ~/.claude/projects (all .jsonl transcripts) and return today's Claude Code usage totals. */
-    private fun scanClaudeCodeDailyUsage(): DailyUsage {
-        val home = System.getProperty("user.home") ?: ""
-        val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString() // "YYYY-MM-DD"
-        val oneHourAgoMs = System.currentTimeMillis() - 3_600_000L
-        val oneHourAgoIso = java.time.Instant.ofEpochMilli(oneHourAgoMs).toString().substring(0, 19)
-        var costUsd = 0.0; var hourlyCostUsd = 0.0; var tokens = 0L; var messageCount = 0
-        val gson = Gson()
-
-        try {
-            val projsDir = File(home, ".claude/projects")
-            if (projsDir.isDirectory) {
-                for (proj in projsDir.listFiles() ?: emptyArray()) {
-                    if (!proj.isDirectory) continue
-                    for (f in proj.listFiles() ?: emptyArray()) {
-                        if (!f.name.endsWith(".jsonl")) continue
-                        try {
-                            val modified = java.time.Instant.ofEpochMilli(f.lastModified())
-                                .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
-                            if (modified < today) continue
-                        } catch (_: Exception) { continue }
-                        try {
-                            for (line in f.readLines()) {
-                                try {
-                                    @Suppress("UNCHECKED_CAST")
-                                    val d = gson.fromJson(line, Map::class.java) as? Map<*, *> ?: continue
-                                    if (d["type"] != "assistant") continue
-                                    @Suppress("UNCHECKED_CAST")
-                                    val msg = d["message"] as? Map<*, *> ?: continue
-                                    @Suppress("UNCHECKED_CAST")
-                                    val u = msg["usage"] as? Map<*, *> ?: continue
-                                    val ts = d["timestamp"] as? String ?: ""
-                                    if (ts.isNotEmpty() && !ts.startsWith(today)) continue
-                                    val p = pricingForModel(msg["model"] as? String ?: "")
-                                    val inp = (u["input_tokens"] as? Number)?.toLong() ?: 0L
-                                    val out = (u["output_tokens"] as? Number)?.toLong() ?: 0L
-                                    val cr  = (u["cache_read_input_tokens"] as? Number)?.toLong() ?: 0L
-                                    val cc  = (u["cache_creation_input_tokens"] as? Number)?.toLong() ?: 0L
-                                    val entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000.0
-                                    costUsd += entryCost
-                                    tokens += inp + out + cr + cc
-                                    messageCount++
-                                    if (ts.isNotEmpty() && ts >= oneHourAgoIso) hourlyCostUsd += entryCost
-                                } catch (_: Exception) { /* skip malformed line */ }
-                            }
-                        } catch (_: Exception) { /* skip unreadable file */ }
-                    }
-                }
-            }
-        } catch (_: Exception) { /* projsDir missing */ }
-
-        return DailyUsage(costUsd, hourlyCostUsd, tokens, messageCount)
-    }
+    /** Scan ~/.claude/projects and return today's Claude Code usage totals (local day). */
+    private fun scanClaudeCodeDailyUsage(): DailyUsage = ClaudeUsageScanner.scan()
 
     /** Read ~/.config/opencode/codotchi-daily.json and return today's OpenCode usage totals. */
     private fun scanOpenCodeDailyUsage(): DailyUsage {
         val home = System.getProperty("user.home") ?: ""
-        val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString() // "YYYY-MM-DD"
+        val today = ClaudeUsageScanner.localDateKey() // local "YYYY-MM-DD", matching the OpenCode plugin
         var costUsd = 0.0; var tokens = 0L; var messageCount = 0
         val gson = Gson()
 
