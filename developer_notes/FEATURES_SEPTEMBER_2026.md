@@ -72,7 +72,7 @@ in the older docs as part of this review:
 
 ### BUG-S01 — Claude token count and today's cost go wrong when a session crosses midnight
 
-**Status:** Open
+**Status:** Fixed (v2.20.13, branch `fix/daily-token-cost`, BUGFIX-161)
 **Files:** `claude-codotchi/scripts/state.mjs` (`scanAllDailyUsage`, ~233-274),
 `vscode/src/sidebarProvider.ts` (`scanClaudeCodeDailyUsage`, ~84-129),
 `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` (`scanClaudeCodeDailyUsage`, ~366-417),

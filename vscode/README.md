@@ -112,7 +112,7 @@ The **Play** menu also includes a non-game option: **Today's Token Cost**.
 Clicking it shows a speech bubble above your pet with your combined AI usage for
 the day, drawn from **Claude Code**, **OpenCode**, and/or **GitHub Copilot**:
 
-- **Today** — total cost (USD) across Claude Code/OpenCode since midnight UTC
+- **Today** — total cost (USD) across Claude Code/OpenCode since local midnight
 - **Last 1h** — cost in the past hour (Claude Code only; OpenCode does not
   persist per-hour data to disk)
 - **Avg** — average tokens per message today

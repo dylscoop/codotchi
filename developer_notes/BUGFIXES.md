@@ -1938,3 +1938,42 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** All three plugins filtered `live.json` entries with a 48-hour staleness threshold (`(now - updatedAt) < 48h`). Live pets that hadn't pushed a heartbeat update in more than 48 hours (e.g. users on holiday or with inactive IDE sessions) were silently excluded from the rank pool. Additionally, entries where `updatedAt` was missing or non-numeric fell back to `0` and were also excluded by the `updatedAt > 0` guard. The result was the leaderboard showing "Rank #3 of 6" when there were actually 9 pets.
 
 **Fix:** Increased the staleness threshold from 48 hours to 30 days. Since dead pets are committed to `scores.json` when they die, `live.json` only contains genuinely active pets — a 30-day window safely includes all of them without risk of double-counting. Also made the filter permissive for entries with missing/non-numeric `updatedAt`: such entries are now included (with no age extrapolation) rather than dropped.
+
+---
+
+## BUGFIX-161 — Today's token cost wrong across midnight, double-counted, and missing subagents (all hosts)
+
+**Status:** Fixed (v2.20.13, branch `fix/daily-token-cost`)
+**Files:** `claude-codotchi/scripts/state.mjs`, `claude-codotchi/scripts/statusline.mjs`, `vscode/src/claudeUsage.ts` (new), `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/ClaudeUsageScanner.kt` (new), `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `opencode-codotchi/src/index.ts`, `opencode-codotchi/src/usageBackfill.ts`
+
+**Problem:** "Today's Token Cost" and the tokens-per-message figure in pet speech didn't add up, especially when a session ran past midnight.
+- **UTC day.** All three Claude Code transcript scanners keyed "today" on the UTC date (`toISOString().slice(0,10)` / `ZoneOffset.UTC`), so in BST the day reset at 01:00 and messages sent between 00:00 and 01:00 counted towards yesterday.
+- **Double counting.** Claude Code writes one JSONL line per content block, each repeating the reply's `message.usage` (earlier lines can carry partial `output_tokens`). The scanners summed every line, so cost, tokens and message count were roughly 2× too high. On one machine, 14,621 assistant lines held only 7,473 unique replies.
+- **Missing subagents.** Transcripts under `<session>/subagents/*.jsonl` were never read.
+- **OpenCode rollover.**
+  - The live handler added the message ID to the dedupe set before `checkDayRollover()` cleared it.
+  - Events were assigned to the day they arrived, not the day they completed.
+  - The fallback path summed whole sessions, including earlier days.
+  - The cross-window reload didn't adopt the message count.
+- The statusline usage cache had no date field.
+
+**Fix:**
+- **Claude scanners.** The scanner is now a pure, testable function in each host (`scanClaudeUsage` in state.mjs, `claudeUsage.ts`, `ClaudeUsageScanner.kt`):
+  - It compares each message's parsed timestamp with local midnight.
+  - It dedupes by `message.id:requestId`, keeping the last line's usage.
+  - It also reads subagent transcripts.
+  - The file pre-filter uses `mtime >= local midnight`.
+- **OpenCode.**
+  - The day key and the Track A/B window use local midnight.
+  - The rollover runs before the dedupe check.
+  - Live and replayed events count only if they completed today.
+  - `sumCompletedAssistantUsage` takes a `sinceMs` filter.
+  - `reloadDaily` adopts `messages`.
+- **Readers.** VS Code and PyCharm read the OpenCode sidecar by local date.
+- **Statusline.** The cache stores the day key.
+
+**Tests added:**
+- `claude-codotchi/tests/unit/state.test.mjs`: new suite "scanClaudeUsage — local day boundary, dedupe and subagents". The fixtures now use local hours.
+- `vscode/tests/unit/claudeUsage.test.ts`.
+- `pycharm/src/test/kotlin/com/codotchi/ClaudeUsageScannerTest.kt` (Europe/London zone).
+- `opencode-codotchi/tests/unit/usageBackfill.test.ts`: new `sinceMs` suite. The file now runs under node:test in `test:node`; before, it was bun-only and never executed.

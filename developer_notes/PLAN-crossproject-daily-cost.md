@@ -1,6 +1,6 @@
 # Plan: Cross-Project Daily Cost via Direct SQLite Query
 
-**Status:** Planned — not yet implemented  
+**Status:** Implemented (SQLite Track A in `opencode-codotchi/src/index.ts`; day window switched to local midnight in v2.20.13, BUGFIX-161)  
 **Branch:** will continue on `main` (hotfix, no new branch needed)  
 **Relates to:** BUGFIX-132, BUGFIX-133
 

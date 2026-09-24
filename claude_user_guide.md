@@ -89,7 +89,7 @@ activates the statusline script, registers the event hooks, and makes the
 ## Daily cost tracking
 
 The pet's speech bubble colour reflects how much you've spent on Claude API
-calls today (UTC day):
+calls today (your local calendar day, from midnight):
 
 | Spend | Bubble colour | Tone |
 |-------|--------------|------|
@@ -117,7 +117,7 @@ State is stored in a persistent data directory that survives plugin updates:
 | Outside Claude Code (testing) | `~/.codotchi/claude/codotchi-state.json` |
 
 Additional files in the same directory:
-- `codotchi-daily.json` — daily cost accumulator (UTC-date keyed)
+- `codotchi-daily.json` — legacy daily cost accumulator (no longer written; today's usage is re-read from your Claude Code transcripts)
 - `codotchi-config.json` — thresholds and display toggle
 
 ---

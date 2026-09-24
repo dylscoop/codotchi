@@ -1,6 +1,23 @@
 # Version History
 
-## v2.20.11 — current
+## v2.20.13 — current
+
+### Changes from v2.20.12 (today's token cost fixed across midnight, double counting and subagents — branch fix/daily-token-cost, BUGFIX-161)
+
+| File | What changed |
+|------|-------------|
+| `claude-codotchi/scripts/state.mjs` | fix: `scanClaudeUsage()` counts by local day, dedupes replies by `message.id:requestId` (last line wins), includes `<session>/subagents/*.jsonl`; removed unused `readSessionUsage` |
+| `claude-codotchi/scripts/statusline.mjs` | fix: usage cache is keyed by local date so it can't show yesterday's total after midnight |
+| `vscode/src/claudeUsage.ts` | new: Claude transcript scanner moved out of `sidebarProvider.ts` with the same local-day, dedupe and subagent rules |
+| `vscode/src/sidebarProvider.ts` | uses `claudeUsage.ts`; reads the OpenCode sidecar by local date |
+| `pycharm/src/main/kotlin/com/codotchi/ClaudeUsageScanner.kt` | new: Kotlin mirror of `claudeUsage.ts` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | delegates to `ClaudeUsageScanner`; reads the OpenCode sidecar by local date |
+| `opencode-codotchi/src/index.ts` | fix: local-midnight day key and backfill window; rollover before message dedupe; live/replayed events bucketed by completion time; fallback only sums today's messages; cross-window reload adopts message count |
+| `opencode-codotchi/src/usageBackfill.ts` | `sumCompletedAssistantUsage(messages, sinceMs?)` optional day filter |
+
+---
+
+## v2.20.11
 
 ### Changes from v2.20.10 (leaderboard total under-count — branch fix/leaderboard-total-count)
 
@@ -12,7 +29,7 @@
 
 ---
 
-## v2.20.10 — current
+## v2.20.10
 
 ### Changes from v2.20.9 (real-time elapsed for live pets on leaderboard — branch fix/leaderboard-live-realtime)
 
