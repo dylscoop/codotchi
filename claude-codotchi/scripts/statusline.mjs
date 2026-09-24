@@ -20,6 +20,7 @@ import {
   accumulateDailyUsage,
   loadIDEStateFile,
   loadUsageCache,
+  localDateKey,
   saveUsageCache,
   loadRankCache,
   saveRankCache,
@@ -61,8 +62,9 @@ async function main() {
   // Accumulate daily cost and tokens from the session's JSONL transcript.
   // Cached: a full scan on every 1s refresh would be too expensive.
   let usage = loadUsageCache();
-  if (!usage || (now - (usage.at ?? 0)) > USAGE_CACHE_TTL_MS) {
-    usage = { ...accumulateDailyUsage(stdinJson.session_id), at: now };
+  const todayKey = localDateKey(now);
+  if (!usage || usage.day !== todayKey || (now - (usage.at ?? 0)) > USAGE_CACHE_TTL_MS) {
+    usage = { ...accumulateDailyUsage(stdinJson.session_id), at: now, day: todayKey };
     saveUsageCache(usage);
   }
   const { costUsd: dailyCostUsd, tokens: dailyTokens, hourlyCostUsd, messageCount } = usage;
