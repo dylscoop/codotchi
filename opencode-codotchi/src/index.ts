@@ -141,7 +141,7 @@ interface IDEStateFile {
 interface LocalStateFile {
   state: Record<string, unknown>;
   savedAt: number;
-  createdDate?: string; // UTC date string "YYYY-MM-DD"
+  createdDate?: string; // local date string "YYYY-MM-DD"
   totalMessages?: number; // Cumulative message count across days
 }
 
@@ -199,8 +199,17 @@ function getDailyUsagePath(): string {
   return path.join(os.homedir(), ".config", "opencode", "codotchi-daily.json");
 }
 
-function todayUTC(): string {
-  return new Date().toISOString().slice(0, 10);
+/** Local calendar date ("YYYY-MM-DD") — "today" for daily usage and the local pet. */
+function todayLocal(nowMs: number = Date.now()): string {
+  const d = new Date(nowMs);
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Epoch ms of local midnight at the start of today. */
+function todayStartLocalMs(nowMs: number = Date.now()): number {
+  const d = new Date(nowMs);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
 function loadDailyUsage(): void {
@@ -208,7 +217,7 @@ function loadDailyUsage(): void {
     const filePath = getDailyUsagePath();
     if (!fs.existsSync(filePath)) { return; }
     const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number; messages?: number };
-    const today = todayUTC();
+    const today = todayLocal();
     if (raw.date === today) {
       // Store into sidecar vars only — do NOT pre-seed dailyCostUSD.
       // backfillDailyUsage() will set dailyCostUSD from the authoritative SQLite
@@ -232,7 +241,7 @@ function saveDailyUsage(): void {
 }
 
 function checkDayRollover(): void {
-  const today = todayUTC();
+  const today = todayLocal();
   if (dailyDate !== today) {
     dailyCostUSD    = 0;
     dailyTokens     = 0;
@@ -312,8 +321,8 @@ function findOpencodeCli(): string | null {
  */
 async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> {
   try {
-    const today = todayUTC();
-    const todayStartMs = new Date(today + "T00:00:00.000Z").getTime();
+    const today = todayLocal();
+    const todayStartMs = todayStartLocalMs();
 
     // ------------------------------------------------------------------
     // Track A — cross-project daily totals via SQLite
@@ -407,7 +416,9 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
         const messages = msgResult.data ?? [];
         if (!trackASucceeded) {
           // Track A failed — use API totals as fallback for cost/token totals
-          const totals = sumCompletedAssistantUsage(messages);
+          // Only messages completed today — a session updated today may also
+          // hold earlier days' messages, which must not inflate today's total.
+          const totals = sumCompletedAssistantUsage(messages, todayStartMs);
           backfilledCost     += totals.costUSD;
           backfilledTokens   += totals.tokens;
           backfilledMessages += totals.messages;
@@ -451,7 +462,7 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     //     message timestamp) as before.
     const dedupeTs = trackASucceeded ? trackASnapshotTime : latestBackfillTsAll;
     for (const ev of pendingLiveEvents) {
-      if (ev.completedAt > dedupeTs) {
+      if (ev.completedAt > dedupeTs && ev.completedAt >= todayStartMs) {
         dailyCostUSD  += ev.cost;
         dailyTokens   += ev.tokens;
         dailyMessages += 1;
@@ -593,7 +604,7 @@ function loadLocalState(): void {
     
     // Check if the pet was created on a different day — if so, respawn
     const createdDate = raw.createdDate ?? null;
-    const today = todayUTC();
+    const today = todayLocal();
     if (createdDate !== today) {
       // New day — respawn the pet and set its stage based on message count
       createLocalPet();
@@ -624,7 +635,7 @@ function saveLocalState(): void {
     const payload: LocalStateFile = {
       state: serialiseState(localPetState) as Record<string, unknown>,
       savedAt: Date.now(),
-      createdDate: todayUTC(),
+      createdDate: todayLocal(),
       totalMessages: localPetTotalMessages,
     };
     fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
@@ -695,7 +706,7 @@ let hasOfferedHelp = false;
 
 // ---------------------------------------------------------------------------
 // Daily usage tracking (persisted to codotchi-daily.json sidecar)
-// Accumulates cost + token spend across all OpenCode sessions today (UTC).
+// Accumulates cost + token spend across all OpenCode sessions today (local calendar day).
 // ---------------------------------------------------------------------------
 
 /** Session-level cost accumulator (reset on session.created). */
@@ -705,19 +716,19 @@ let sessionTokens  = 0;
 /** How many assistant messages this session (drives local-pet evolution). */
 let localPetSessionMessages = 0;
 
-/** Running daily USD cost (set by backfillDailyUsage on startup, reset at UTC midnight). */
+/** Running daily USD cost (set by backfillDailyUsage on startup, reset at local midnight). */
 let dailyCostUSD = 0;
-/** Running daily token count (set by backfillDailyUsage on startup, reset at UTC midnight). */
+/** Running daily token count (set by backfillDailyUsage on startup, reset at local midnight). */
 let dailyTokens  = 0;
 /**
  * Count of completed assistant messages today (set by backfillDailyUsage on
- * startup, reset at UTC midnight). Used as the denominator for the
+ * startup, reset at local midnight). Used as the denominator for the
  * tokens-per-message average shown in the speech bubble — dailyTokens /
  * dailyMessages. Incremented at the exact same point dailyTokens is, so the
  * two values are always in sync (no separate filtering needed).
  */
 let dailyMessages = 0;
-/** UTC date string "YYYY-MM-DD" for the currently stored daily totals. */
+/** Local date string "YYYY-MM-DD" for the currently stored daily totals. */
 let dailyDate    = "";
 
 /**
@@ -734,7 +745,7 @@ let sidecarMessages = 0;
  * Set of message IDs already counted toward dailyCostUSD/dailyTokens this day.
  * Prevents double-counting when message.updated fires multiple times for the
  * same message (e.g. once per streaming chunk before the final completion).
- * Cleared on UTC day rollover in checkDayRollover().
+ * Cleared on local day rollover in checkDayRollover().
  */
 const countedMessageIds = new Set<string>();
 
@@ -1283,10 +1294,11 @@ export const plugin: Plugin = async (ctx) => {
       if (!backfillComplete) { return; } // don't interfere while backfill is running
       try {
         if (!fs.existsSync(dailyFilePath)) { return; }
-        const raw = JSON.parse(fs.readFileSync(dailyFilePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number };
-        if (raw.date !== todayUTC()) { return; }
-        const fileCost   = typeof raw.costUSD === "number" ? raw.costUSD : 0;
-        const fileTokens = typeof raw.tokens  === "number" ? raw.tokens  : 0;
+        const raw = JSON.parse(fs.readFileSync(dailyFilePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number; messages?: number };
+        if (raw.date !== todayLocal()) { return; }
+        const fileCost     = typeof raw.costUSD  === "number" ? raw.costUSD  : 0;
+        const fileTokens   = typeof raw.tokens   === "number" ? raw.tokens   : 0;
+        const fileMessages = typeof raw.messages === "number" ? raw.messages : dailyMessages;
         // Adopt the file value if it differs meaningfully from what we hold.
         // We no longer use Math.max here — since Track A (SQLite) now immediately
         // overwrites the sidecar with the authoritative DB value on every startup,
@@ -1297,8 +1309,9 @@ export const plugin: Plugin = async (ctx) => {
         // is meaningfully *lower* (another window corrected the total via Track A).
         // The threshold avoids thrashing on floating-point noise.
         if (Math.abs(fileCost - dailyCostUSD) > 0.0001 || Math.abs(fileTokens - dailyTokens) > 10) {
-          dailyCostUSD = fileCost;
-          dailyTokens  = fileTokens;
+          dailyCostUSD  = fileCost;
+          dailyTokens   = fileTokens;
+          dailyMessages = fileMessages;   // keep the tok/msg average consistent with the adopted totals
         }
       } catch { /* best-effort */ }
     };
@@ -1837,6 +1850,10 @@ export const plugin: Plugin = async (ctx) => {
 
             // Deduplicate by message ID: message.updated can fire multiple times
             // for the same message ID even after completion (e.g. metadata updates).
+            // Roll the day over *before* the dedupe check: checkDayRollover()
+            // clears countedMessageIds, so running it afterwards would forget
+            // the message that triggered the rollover.
+            if (backfillComplete) { checkDayRollover(); }
             const msgId: string = typeof info.id === "string" ? info.id : "";
             if (msgId && countedMessageIds.has(msgId)) { return; }
             if (msgId) { countedMessageIds.add(msgId); }
@@ -1851,12 +1868,14 @@ export const plugin: Plugin = async (ctx) => {
               // It will be replayed (or discarded if already captured by backfill) once
               // backfillDailyUsage() finishes.
               pendingLiveEvents.push({ cost: info.cost, tokens: t, completedAt });
-            } else {
-              checkDayRollover();
+            } else if (completedAt >= todayStartLocalMs()) {
+              // Bucket by completion time, not arrival time: a reply that
+              // finished before midnight but whose event arrives after it
+              // belongs to yesterday, not today.
               dailyCostUSD   += info.cost;
               dailyTokens    += t;
               dailyMessages  += 1;
-              dailyDate = todayUTC();
+              dailyDate = todayLocal();
               saveDailyUsage();
               // Push to rolling last-1h buffer
               costEvents.push({ completedAt, costUSD: info.cost, tokens: t });
