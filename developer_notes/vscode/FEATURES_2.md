@@ -45,7 +45,7 @@ does not yet have.
 |---------|--------|-------|
 | Discrete `careMistakes` counter in `PetState` | `[x]` | Per-stage counter; resets to 0 on evolution. `lifetimeCareMistakes` never resets. |
 | Increment on: attention call expired unresponded | `[x]` | Each expired attention call (hunger, unhappiness, sickness, poop, low energy, critical health) adds 1 to both counters |
-| Increment on: fed snack when hungry (not meal) | `[ ]` | Not yet wired — future enhancement |
+| Increment on: fed snack when hungry (not meal) | `[ ]` | Not yet wired. Currently the reverse happens: a snack that answers a hunger call *reduces* `careMistakes` |
 | Increment on: misbehaviour ignored | `[x]` | Expired `misbehaviour` call adds 1 to `careMistakes` + `lifetimeCareMistakes` |
 | Use `careMistakes` as a secondary gate in evolution | `[x]` | 0–3 → best tier; 4–6 → mid tier; ≥ 7 → low tier; each excess mistake above 3 delays evolution by 1 game-day |
 | Optionally expose `careMistakes` as a visible stat in the info line | `[ ]` | Hidden internal by default; dev mode or a setting could surface it |
@@ -96,10 +96,10 @@ in the parity gap set.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Explicit pause command / sidebar button | `[ ]` | Suspends all game ticks (hunger/happiness/energy decay, aging, attention calls) |
-| `isPaused` flag in `PetState` | `[ ]` | Persisted so pause survives IDE restarts |
-| UI indicator while paused | `[ ]` | "PAUSED" banner or icon overlay on the canvas |
-| Pause excluded from offline decay | `[ ]` | Time spent paused does not count toward offline decay calculation on next load |
+| Explicit pause command / sidebar button | `[x]` | `codotchi.pause` / `codotchi.resume` commands in the view title bar (VS Code) and tool window (PyCharm); `tick()` stops early when paused, including attention calls |
+| `isPaused` flag in `PetState` | `[x]` | Implemented as `paused`; saved and loaded so pause survives IDE restarts |
+| UI indicator while paused | `[~]` | Title-bar icon switches between pause and play, and care buttons are disabled; no "PAUSED" banner on the canvas |
+| Pause excluded from offline decay | `[x]` | `applyOfflineDecay` returns early when paused |
 
 **Design notes:**
 - Original Tamagotchi used the clock-set screen as an unofficial pause; later
@@ -141,7 +141,7 @@ Already tracked in `FEATURES.md §2.2` — listed here for parity gap visibility
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Egg wiggle phase (pre-hatch) | `[ ]` | Egg rocks ±5° for a configurable duration before hatching |
+| Egg wiggle phase (pre-hatch) | `[~]` | Egg rocks ±5° for the whole egg stage, not for a configurable time before hatching |
 | Crack overlay | `[ ]` | One or two crack lines drawn on the egg after the wiggle |
 | Burst / reveal | `[ ]` | Egg shell fragments fly outward; baby sprite fades in |
 
@@ -227,7 +227,7 @@ Already tracked in `FEATURES.md §14` — listed here for parity gap visibility.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Idle walk cycle (2–4 frames) | `[ ]` | Flip-book animation using existing `renderSpriteGrid` pipeline |
+| Idle walk cycle (2–4 frames) | `[x]` | 2-frame leg cycle with bob in the `renderSpriteGrid` pipeline |
 | Mood-specific frames (happy, sad, sleeping, eating) | `[ ]` | |
 
 ---
@@ -236,8 +236,8 @@ Already tracked in `FEATURES.md §14` — listed here for parity gap visibility.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Canvas background shifts with system clock hour | `[ ]` | Gradual colour transition across the day |
-| Night hours (e.g. 22:00–06:00) use darker palette | `[ ]` | Complements the sleep night-mode in §1.4 |
+| Canvas background shifts with system clock hour | `[x]` | `getTimeOfDay()` picks one of 6 buckets for the sky tint; it steps between them rather than blending |
+| Night hours (e.g. 22:00–06:00) use darker palette | `[x]` | Night tint plus moon and stars |
 | Optionally affects stat decay rates at night | `[ ]` | Hunger decays slightly slower at night, matching real sleep patterns |
 
 ---

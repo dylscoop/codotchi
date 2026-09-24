@@ -21,7 +21,7 @@ Status legend:
 | Weight       | 1–99   | `[x]`  | Shown in info line; passive -1/min decay; overweight/skinny thresholds affect happiness rate; upright sprites (classic, monkey, rooster, dragon) and snake stretch wider when overweight; all other quadrupeds show a tapered belly-sag (extra rows below body, legs shift down) instead of width stretch |
 | Age (days)   | int    | `[x]`  | Displayed in info line |
 | Sprite type  | string | `[x]`  | Zodiac animal name shown in info line between stage and type (hidden for "classic") |
-| Care Score   | 0.0–1.0| `[~]`  | Computed continuously; drives evolution tier |
+| Care Score   | 0.0–1.0| `[x]`  | Computed continuously (`computeCareScore`, refreshed in `withDerivedFields`); drives evolution tier; not shown in the UI |
 | Generation   | int    | `[ ]`  | Increments each time offspring hatches; displayed in info line (original Tamagotchi feature) |
 
 ---
@@ -54,10 +54,10 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Care-score-based evolution tiers (best / mid / low) | `[x]` | |
 | Distinct character names per type × stage × tier | `[x]` | |
 | Visual difference between character variants | `[x]` | 14 zodiac pixel-art grids via sprites.js |
-| Tamagotchi-style sprite redesign | `[~]` | Redesigned (v1.4.0): rabbit, pig, sheep, dog — Redesigned (v1.6.0): monkey — Redesigned (v1.7.0): rooster — Redesigned (v1.8.0): dragon (Chinese imperial, floating, 5-coil serpentine body, gold pearl) — Redesigned (v1.9.0): cat (Tamagotchi-style generic house cat, pointy ears, whiskers, upward-curling tail, tabby stripes teen+) — Redesigned (v1.10.0): rat (low-slung elongated body, small round ears none on baby, pointed snout, whiskers teen+, long thin diagonal tail) — Redesigned (v1.11.0): horse (arched neck, diagonal mane cascade, long muzzle, flowing tail, tapered body, colour-3 hooves) — Remaining: ox, tiger |
+| Tamagotchi-style sprite redesign | `[x]` | Redesigned (v1.4.0): rabbit, pig, sheep, dog — Redesigned (v1.6.0): monkey — Redesigned (v1.7.0): rooster — Redesigned (v1.8.0): dragon (Chinese imperial, floating, 5-coil serpentine body, gold pearl) — Redesigned (v1.9.0): cat (Tamagotchi-style generic house cat, pointy ears, whiskers, upward-curling tail, tabby stripes teen+) — Redesigned (v1.10.0): rat (low-slung elongated body, small round ears none on baby, pointed snout, whiskers teen+, long thin diagonal tail) — Redesigned (v1.11.0): horse (arched neck, diagonal mane cascade, long muzzle, flowing tail, tapered body, colour-3 hooves) — Tiger redesigned later; ox never redesigned. Ox, tiger and the other zodiac sprites have since been archived (`media/archived_sprites/`). New art for them is tracked under bulk sprite upload (see `developer_notes/FEATURES_SEPTEMBER_2026.md` §2.2) |
 | In-IDE sprite preview gallery | `[x]` | `codotchi.openSpritePreview` (dev mode) — uses real `renderSpriteGrid()` with mood/color/weight/facing/animate controls |
-| Evolution notification in event log | `[~]` | Event flag exists; no fanfare animation |
-| Egg-hatch animation | `[ ]` | Wiggle before first evolution |
+| Evolution notification in event log | `[x]` | `evolved_to_*` event queues the `evolved` reaction (scale 1.0→1.3→1.0 with gold flash, 900 ms); no sound |
+| Egg-hatch animation | `[~]` | The egg rocks ±5° for its whole life; no separate pre-hatch wiggle, crack or burst |
 
 ### 2.3 Pet Types
 
@@ -84,7 +84,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Medicine    | Cures sickness after 3 doses (no health boost)   | —                                        | `[x]`  |
 | Praise      | Discipline +10                                   | —                                        | `[x]`  |
 | Scold       | Discipline +10                                   | —                                        | `[x]`  |
-| Light off   | Force sleep early (manual bedtime)               | —                                        | `[ ]`  |
+| Light off   | Force sleep early (manual bedtime)               | —                                        | `[x]`  |
 
 ### 3.1 Attention Calls
 
@@ -355,7 +355,7 @@ hands control back.
 Reactions are stored in a simple queue; if a new one arrives while one is
 playing, it is appended and plays immediately after.
 
-Status: `[x]`
+Status: `[~]` — every reaction except `died` is implemented; `REACTION_DURATIONS` has no `died` entry and nothing queues it (see `developer_notes/FEATURES_SEPTEMBER_2026.md` BUG-S05)
 
 ### 5.7 Direction Flip (Sprite Mirroring)
 
@@ -433,7 +433,7 @@ Features that deepen the existing care actions.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Manual "Lights Off" button to put pet to sleep early | `[ ]` | |
+| Manual "Lights Off" button to put pet to sleep early | `[x]` | Covered by the Sleep button: `sleep()` has no energy or time gate. A separate Lights Off control with canvas darkening is not built |
 | Auto-wake after energy reaches 100 | `[x]` | Implemented in BUGFIX-003; snack count resets on auto-wake |
 | `[S]` `gotchi.autoWake` (default true) — auto-wake when energy full | `[ ]` | |
 | Sleep schedule: pet refuses to sleep if recently slept | `[ ]` | |
@@ -452,8 +452,8 @@ Features that deepen the existing care actions.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Medicine doses remaining shown on button | `[ ]` | |
-| Disable Feed/Play while sick | `[ ]` | Engine enforces; no UI feedback |
-| Sick animation (canvas shake or flicker) | `[ ]` | Superseded by section 5.6 `became_sick` reaction |
+| Disable Feed/Play while sick | `[ ]` | The engine does **not** enforce this: `feedMeal`/`play` never check `sick` (see `developer_notes/FEATURES_SEPTEMBER_2026.md` BUG-S04) |
+| Sick animation (canvas shake or flicker) | `[x]` | `became_sick` reaction, constant tremor at 0.05× speed, red "+" indicator |
 
 ---
 
@@ -629,7 +629,7 @@ Status: `[x]`
 | Mood emoji + name displayed | `[x]` | |
 | Click to focus sidebar | `[x]` | Uses `gotchiView.focus` command |
 | Sprite name in status bar tooltip | `[x]` | `Sprite: <name>` shown for non-classic spriteTypes |
-| Attention-needed indicator (⚠) | `[ ]` | |
+| Attention-needed indicator (⚠) | `[~]` | Tooltip shows "⚠ Sick!" when sick; nothing reacts to `activeAttentionCall` and the bar text never changes |
 | `[S]` `gotchi.statusBarEnabled` (default true) | `[ ]` | |
 
 ---
@@ -643,7 +643,7 @@ Status: `[x]`
 | Offline decay applied on load (capped at 60%) | `[x]` | |
 | Single-window ticker (multi-window isolation) | `[x]` | Only the focused window ticks; on focus-gain the window reloads globalState and resumes ticking; on focus-loss it saves and stops — **skipped when `aiMode` is on** (ticker always runs) |
 | Focus-gated ticker (PyCharm) | `[x]` | Ticker stops when IntelliJ loses focus (`applicationDeactivated`) and restarts on focus-gain (`applicationActivated`); state saved immediately on focus-loss — **skipped when `aiMode` is on** |
-| State migration when PetState schema changes | `[ ]` | Add a `schemaVersion` field |
+| State migration when PetState schema changes | `[~]` | `deserialiseState` fills in defaults so older saves load, and `migrateStateFolder` moves old save files; there is no `schemaVersion` field yet |
 | Export / import pet via JSON file | `[ ]` | For sharing or backup |
 | Cross-IDE shared state bridge | `[x]` | VS Code, PyCharm, and OpenCode plugin all read/write `~/.config/gotchi/state.json` (Windows: `%APPDATA%/gotchi/state.json`); on load the copy with the newer `savedAt` timestamp wins |
 | Manual refresh button (multi-window sync) | `[x]` | `$(refresh)` button in VS Code view/title bar and `AllIcons.Actions.Refresh` in PyCharm tool window title; calls `reloadFromDisk()` — reads shared file, applies offline decay, pushes to UI without saving (inactive window never overwrites active ticker) |
@@ -747,18 +747,18 @@ These are lower-priority ideas that require design work before implementation. A
 | **— Cosmetics & economy —** | | |
 | Gotchi Points currency | `[ ]` | Earned from minigame wins; spent in an in-game shop. Persisted in `PetState`. |
 | In-game shop | `[ ]` | Buy accessories, background skins, or extra colour palettes using Gotchi Points. |
-| Sprite animation frames | `[ ]` | Idle walk cycle, happy, sad, sleeping, eating — 2–4 frame flip-book per mood using the existing `renderSpriteGrid` pipeline. |
+| Sprite animation frames | `[~]` | 2-frame leg walk cycle with bob is done. Happy, sad, sleeping and eating frames (2–4 frame flip-book per mood using the existing `renderSpriteGrid` pipeline) are not |
 | Redesign minigame art | `[ ]` | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style. |
 | Egg-hatch animation | `[ ]` | Wiggle → crack → burst sequence before baby stage; fits naturally into the reaction queue (already in §2.2). |
 | Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |
 | Kangaroo character | `[x]` | Web-image-derived pixel-art sprite type (baby through senior stages) in the existing `sprites.js` pipeline; included in random hatch rotation and unlockable with character passcode `straya`. |
 | **— Platform & social —** | | |
-| Multiple simultaneous pets | `[ ]` | Tabbed or scrollable sidebar; pets can interact with each other. |
+| Multiple simultaneous pets | `[ ]` | Tabbed or scrollable sidebar; pets can interact with each other. Expanded (multi-pet, visiting and emoting with other people's pets): see `developer_notes/FEATURES_SEPTEMBER_2026.md` §2.4 |
 | New pet types via extension pack | `[ ]` | Contribution point so third-party packs can add sprite types. |
 | Leaderboard | `[x]` | GitHub Pages leaderboard at `https://dylscoop.github.io/codotchi/leaderboard/`. Submit via VS Code (GitHub OAuth → issue POST) or PyCharm (pre-filled issue URL). Auto-refreshes every hour in the browser (localStorage opt-out). One-time IDE death notification (VS Code setting `codotchi.leaderboard.autoRefresh`; PyCharm via `PropertiesComponent`). Admin delete via `workflow_dispatch` in `.github/workflows/delete-leaderboard-score.yml`. Live rank indicator: "Rank #X of Y" shown in VS Code sidebar, PyCharm tool window, Claude Code statusline, and OpenCode while pet is alive (5-min cache); rank pool combines `scores.json` + fresh `live.json` entries (<48h). "View Leaderboard" link on game screen while pet is alive. Subscribe toggle above Menu link pushes hourly live progress to `leaderboard/live.json` via `leaderboard-live` GitHub issue (VS Code and PyCharm via PasswordSafe PAT). All-time leaderboard tab shows live pets inline with "live" badge and "last seen" time; stale threshold 48h. Manual death submission requires typing the pet's name to confirm (blocks automated API submissions). Server validates: stage-age consistency (bounds from `EVOLUTION_DAY_THRESHOLDS` + 9-day care-mistake tolerance), timestamp sanity (future or >3yr-old timestamps rejected), physics floor. Ranked by stage descending (senior → egg) then ageDays descending; live ages shown as-submitted (no extrapolation). |
 | Export / import pet via JSON | `[ ]` | Already tracked in §11; listed here for visibility. Allows sharing or backup of a pet. |
-| State schema versioning | `[ ]` | Already tracked in §11; listed here for visibility. Add `schemaVersion` field to `PetState` for safe migrations. |
-| Language packs | `[ ]` | Localise all UI strings into regional language variants; initial packs: Australian English, Scottish English. Community-contributed packs loadable at runtime. |
+| State schema versioning | `[~]` | Already tracked in §11; listed here for visibility. Defaults fill-in migration exists; still need a `schemaVersion` field on `PetState` for safe migrations. |
+| Language packs | `[ ]` | Localise all UI strings into regional language variants; initial packs: Australian English, Scottish English. Community-contributed packs loadable at runtime. Full design and sample phrases: see `developer_notes/FEATURES_SEPTEMBER_2026.md` §2.3 |
 
 ---
 
