@@ -37,100 +37,16 @@ import {
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
 import { StatusBarManager } from "./statusBar";
 import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
+import { scanClaudeCodeDailyUsage, localDateKey, type DailyUsage } from "./claudeUsage";
 
 const LEADERBOARD_REPO_OWNER = "dylscoop";
 const LEADERBOARD_REPO_NAME  = "codotchi";
 const LEADERBOARD_PAGES_URL  = `https://${LEADERBOARD_REPO_OWNER}.github.io/${LEADERBOARD_REPO_NAME}/leaderboard/`;
 const LEADERBOARD_GITHUB_SCOPES = ["read:user", "public_repo"];
 
-// Pricing per million tokens (USD) — mirrors state.mjs MODEL_PRICING table.
-// Ordered most-specific first — checked with startsWith(), so longer/pricier
-// sub-prefixes (e.g. claude-opus-4-8) must precede their shorter generic
-// parent (claude-opus-4). Covers both real model-ID orderings: Claude 3.x
-// puts the generation digit before the family name (claude-3-opus-...),
-// while 4.x+ puts the family name first (claude-opus-4-...).
-const MODEL_PRICING: Array<[string, { input: number; output: number; cacheRead: number; cacheWrite: number }]> = [
-  ["claude-opus-4-8",   { input: 5,    output: 25,   cacheRead: 0.50,  cacheWrite: 6.25  }],
-  ["claude-opus-4-1",   { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
-  ["claude-3-5-sonnet", { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
-  ["claude-3-5-haiku",  { input: 0.80, output: 4,    cacheRead: 0.08,  cacheWrite: 1.00  }],
-  ["claude-3-opus",     { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
-  ["claude-3-sonnet",   { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
-  ["claude-3-haiku",    { input: 0.25, output: 1.25, cacheRead: 0.03,  cacheWrite: 0.30  }],
-  ["claude-opus-4",     { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
-  ["claude-sonnet-5",   { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
-  ["claude-sonnet-4",   { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
-  ["claude-haiku-4-5",  { input: 1,    output: 5,    cacheRead: 0.10,  cacheWrite: 1.25  }],
-  ["claude-fable-5",    { input: 10,   output: 50,   cacheRead: 1.00,  cacheWrite: 12.50 }],
-];
-const DEFAULT_PRICING = { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 };
-
-function pricingForModel(model: string = "") {
-  for (const [prefix, p] of MODEL_PRICING) {
-    if (model.startsWith(prefix)) { return p; }
-  }
-  return DEFAULT_PRICING;
-}
-
-/** Today's usage totals for a single source. */
-interface DailyUsage {
-  costUsd: number;
-  hourlyCostUsd: number;
-  tokens: number;
-  messageCount: number;
-}
-
-/** Scan ~/.claude/projects JSONL files and return today's Claude Code usage totals. */
-function scanClaudeCodeDailyUsage(): DailyUsage {
-  const projsDir = path.join(os.homedir(), ".claude", "projects");
-  const today = new Date().toISOString().slice(0, 10);
-  const oneHourAgoMs = Date.now() - 3_600_000;
-  const oneHourAgoIso = new Date(oneHourAgoMs).toISOString();
-  let costUsd = 0, hourlyCostUsd = 0, tokens = 0, messageCount = 0;
-
-  try {
-    for (const proj of fs.readdirSync(projsDir)) {
-      const projPath = path.join(projsDir, proj);
-      let files: string[];
-      try { files = fs.readdirSync(projPath); } catch { continue; }
-      for (const f of files) {
-        if (!f.endsWith(".jsonl")) { continue; }
-        const fp = path.join(projPath, f);
-        try {
-          const stat = fs.statSync(fp);
-          if (stat.mtime.toISOString().slice(0, 10) < today) { continue; }
-        } catch { continue; }
-        try {
-          const lines = fs.readFileSync(fp, "utf8").trim().split("\n");
-          for (const line of lines) {
-            try {
-              const d = JSON.parse(line);
-              if (d.type !== "assistant" || !d.message?.usage) { continue; }
-              if (d.timestamp && !d.timestamp.startsWith(today)) { continue; }
-              const u = d.message.usage;
-              const p = pricingForModel(d.message.model ?? "");
-              const inp = u.input_tokens ?? 0;
-              const out = u.output_tokens ?? 0;
-              const cr  = u.cache_read_input_tokens ?? 0;
-              const cc  = u.cache_creation_input_tokens ?? 0;
-              const entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
-              costUsd      += entryCost;
-              tokens       += inp + out + cr + cc;
-              messageCount += 1;
-              if (d.timestamp && d.timestamp >= oneHourAgoIso) { hourlyCostUsd += entryCost; }
-            } catch { /* skip malformed lines */ }
-          }
-        } catch { /* skip unreadable files */ }
-      }
-    }
-  } catch { /* projsDir missing */ }
-
-  return { costUsd, hourlyCostUsd, tokens, messageCount };
-}
-
 /** Read ~/.config/opencode/codotchi-daily.json and return today's OpenCode usage totals. */
 function scanOpenCodeDailyUsage(): DailyUsage {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
   let costUsd = 0, hourlyCostUsd = 0, tokens = 0, messageCount = 0;
 
   try {
@@ -138,7 +54,7 @@ function scanOpenCodeDailyUsage(): DailyUsage {
     const ocDailyPath = path.join(xdgConfig, "opencode", "codotchi-daily.json");
     if (fs.existsSync(ocDailyPath)) {
       const ocData = JSON.parse(fs.readFileSync(ocDailyPath, "utf8"));
-      // Only include if the file is for today (UTC)
+      // Only include if the file is for today (local calendar day, matching the OpenCode plugin)
       if ((ocData.date ?? ocData.createdDate ?? "") === today) {
         costUsd      = ocData.costUSD ?? 0;
         tokens       = ocData.tokens ?? 0;
