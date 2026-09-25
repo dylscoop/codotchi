@@ -2002,3 +2002,14 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 - **Both:** the cached username is cleared and `leaderboardAuthExpired` is set. Background expiries show a single notification with a **Sign in** action. The sidebar shows **Sign in to GitHub again** or **Retry GitHub sign-in** with the error, and the flag clears on the next success. Sign-in failures are reported in `leaderboard_sign_in_result.error`. The Copilot quota bubble now says when its token is unauthorized.
 
 **Tests added:** `vscode/tests/unit/githubAuth.test.ts` (14 cases: forced re-auth, single retry, cancelled prompt, background no-prompt, rate-limit 403). `pycharm/src/test/kotlin/com/codotchi/GitHubAuthTest.kt` (pure classification plus source guards).
+
+---
+
+## BUGFIX-164 — Pet walks right forever after the sidebar is narrowed while a snack is on the floor
+
+**Status:** Fixed (v2.20.16, branch `fix/unreachable-snack`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** A floor snack’s `x` is fixed when it spawns, using the canvas width at that moment. If the sidebar was made narrower afterwards, `resizeCanvas()` shrank the canvas but the snack kept its old `x`, past the new right edge (and not drawn, because it was off-canvas). Snack targeting set `petVx = +speed` every frame, the pet was clamped at `maxX` and never got within reach, so it faced right against the wall forever and the wander turn-around logic never ran. Widening the panel again made the snack reachable, so it seemed to "fix itself".
+
+**Fix:** `animationLoop()` clamps every floor snack into the current `[minX, maxX]` each frame, before the movement branches, using the same range the spawn code uses. This covers both the normal and dragon movement paths.

@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.20.16] — 2026-09-25
+
+### Fixed
+
+- **Pet stuck walking right** — narrowing the sidebar while a snack was on the floor could leave the snack out of reach, so the pet pushed against the right wall forever. Snacks now stay inside the visible area.
+
 ## [2.20.15] — 2026-09-25
 
 ### Fixed

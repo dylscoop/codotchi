@@ -1,6 +1,18 @@
 # Version History
 
-## v2.20.15 — current
+## v2.20.16 — current
+
+### Changes from v2.20.15 (pet stuck walking right after the sidebar is narrowed — branch fix/unreachable-snack, BUGFIX-164)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | fix: `animationLoop()` clamps floor snacks into the current reachable range each frame so a snack left off-canvas by a narrower sidebar can’t pin the pet against the right wall |
+| `pycharm/src/main/resources/webview/sidebar.js` | mirrored the `vscode/media/sidebar.js` change |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json` | version bump to 2.20.16 |
+
+---
+
+## v2.20.15
 
 ### Changes from v2.20.14 (GitHub leaderboard sign-in re-prompts when the token dies — branch fix/github-reauth, BUGFIX-163 / BUG-S08; PyCharm plugin icon and description encoding)
 
