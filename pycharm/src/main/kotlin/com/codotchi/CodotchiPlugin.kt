@@ -152,6 +152,8 @@ class CodotchiPlugin : Disposable {
     private val LIVE_PUSH_INTERVAL_MS = 15 * 60_000L
     @Volatile private var liveLastPushedAtMs: Long = 0L
     @Volatile private var leaderboardGithubUsername: String? = null
+    /** True once the stored GitHub token was rejected (401/403); cleared on the next success (BUG-S08). */
+    @Volatile private var leaderboardAuthExpired: Boolean = false
 
     /** Background thread running the JVM WatchService for cross-window file sync. */
     @Volatile private var fileWatcherThread: Thread? = null
@@ -184,11 +186,62 @@ class CodotchiPlugin : Disposable {
         else props.unsetValue("codotchi.leaderboardGithubUsername")
     }
 
+    private fun setLeaderboardAuthExpired(expired: Boolean) {
+        if (leaderboardAuthExpired == expired) return
+        leaderboardAuthExpired = expired
+        com.intellij.ide.util.PropertiesComponent.getInstance()
+            .setValue("codotchi.leaderboardAuthExpired", expired)
+        broadcastState()
+    }
+
+    private fun postSignInResult(username: String?, error: String? = null) {
+        val userJson = if (username != null) "\"${username.replace("\"", "\\\"")}\"" else "null"
+        val errJson = if (error != null) "\"${error.replace("\"", "\\\"")}\"" else "null"
+        val payload = """{"type":"leaderboard_sign_in_result","username":$userJson,"error":$errJson}"""
+        ApplicationManager.getApplication().invokeLater {
+            browserPanels.forEach { it.postMessage(payload) }
+        }
+    }
+
+    /**
+     * The stored GitHub token was rejected (BUG-S08). Forget it and the cached
+     * username so the sidebar shows the Sign-in button again, then either
+     * restart the device flow (user-initiated action, with [retry] run once
+     * after re-auth) or, for background pushes, flag it and show a one-off
+     * notification with a Sign in action.
+     */
+    private fun handleLeaderboardAuthFailure(interactive: Boolean, state: PetState?, retry: (() -> Unit)? = null) {
+        val alreadyFlagged = leaderboardAuthExpired
+        PasswordSafe.instance.setPassword(CredentialAttributes("Codotchi", "github-pat"), null)
+        setLeaderboardUsername(null)
+        setLeaderboardAuthExpired(true)
+        if (interactive) {
+            startDeviceFlowAsync(state, retry)
+            return
+        }
+        if (alreadyFlagged) return
+        ApplicationManager.getApplication().invokeLater {
+            NotificationGroupManager.getInstance()
+                .getNotificationGroup("Codotchi Leaderboard")
+                .createNotification(
+                    "Codotchi: GitHub sign-in expired",
+                    "Live leaderboard sync is paused until you sign in again.",
+                    NotificationType.WARNING
+                )
+                .addAction(com.intellij.notification.NotificationAction.createSimpleExpiring("Sign in") {
+                    startLeaderboardSignIn()
+                })
+                .notify(null)
+        }
+    }
+
     fun initialize() {
         liveLastPushedAtMs = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getValue("codotchi.liveLastPushedAt")?.toLongOrNull() ?: 0L
         leaderboardGithubUsername = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getValue("codotchi.leaderboardGithubUsername")
+        leaderboardAuthExpired = com.intellij.ide.util.PropertiesComponent.getInstance()
+            .getBoolean("codotchi.leaderboardAuthExpired", false)
 
         // Register AWT event listener to track keyboard/mouse activity for idle detection
         val activityMask = AWTEvent.KEY_EVENT_MASK or
@@ -613,7 +666,10 @@ class CodotchiPlugin : Disposable {
                 is CopilotQuotaResult.NoToken -> segments.add(
                     "Copilot: run Tools > Codotchi: Sign in to GitHub (Copilot Quota) to include it"
                 )
-                // Unauthorized / NetworkError / ParseError / null -> silently omit; never break the base bubble
+                is CopilotQuotaResult.Unauthorized -> segments.add(
+                    "Copilot: GitHub sign-in expired — run Tools > Codotchi: Sign in to GitHub (Copilot Quota) again"
+                )
+                // NetworkError / ParseError / null -> silently omit; never break the base bubble
                 else -> {}
             }
 
@@ -746,6 +802,10 @@ class CodotchiPlugin : Disposable {
                 userConn.setRequestProperty("Authorization", "token $pat")
                 userConn.setRequestProperty("Accept", "application/vnd.github+json")
                 userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                if (userConn.isGithubAuthFailure()) {
+                    handleLeaderboardAuthFailure(interactive = promptIfNoToken, state = state)
+                    return@execute
+                }
                 if (userConn.responseCode != 200) return@execute
                 @Suppress("UNCHECKED_CAST")
                 val userMap = Gson().fromJson(userConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
@@ -779,7 +839,12 @@ class CodotchiPlugin : Disposable {
                 issueConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
                 issueConn.outputStream.writer().use { it.write(Gson().toJson(issueBody)) }
 
+                if (issueConn.isGithubAuthFailure()) {
+                    handleLeaderboardAuthFailure(interactive = promptIfNoToken, state = state)
+                    return@execute
+                }
                 if (issueConn.responseCode == 201) {
+                    setLeaderboardAuthExpired(false)
                     val now = System.currentTimeMillis()
                     liveLastPushedAtMs = now
                     com.intellij.ide.util.PropertiesComponent.getInstance()
@@ -790,7 +855,8 @@ class CodotchiPlugin : Disposable {
         }
     }
 
-    private fun submitLeaderboardAsync(state: PetState, diedAt: Long) {
+    /** @param retried true when this is the one retry after a forced re-auth — never re-auth twice. */
+    private fun submitLeaderboardAsync(state: PetState, diedAt: Long, retried: Boolean = false) {
         AppExecutorUtil.getAppExecutorService().execute {
             fun postResult(status: String, message: String? = null) {
                 val msgPart = if (message != null) ""","message":"${message.replace("\"", "\\\"")}"""" else ""
@@ -803,8 +869,22 @@ class CodotchiPlugin : Disposable {
                 val credAttrs = CredentialAttributes("Codotchi", "github-pat")
                 val pat = PasswordSafe.instance.getPassword(credAttrs)
                 if (pat.isNullOrBlank()) {
-                    startDeviceFlowAsync(null) { submitLeaderboardAsync(state, diedAt) }
+                    startDeviceFlowAsync(null, { submitLeaderboardAsync(state, diedAt, retried = true) }) { err ->
+                        postResult("error", err)
+                    }
                     return@execute
+                }
+                val reauthAndRetry: () -> Unit = {
+                    if (retried) {
+                        postResult("error", "GitHub rejected the new sign-in too — check the token has public_repo access.")
+                    } else {
+                        PasswordSafe.instance.setPassword(credAttrs, null)
+                        setLeaderboardUsername(null)
+                        setLeaderboardAuthExpired(true)
+                        startDeviceFlowAsync(null, { submitLeaderboardAsync(state, diedAt, retried = true) }) { err ->
+                            postResult("error", err)
+                        }
+                    }
                 }
 
                 val userConn = java.net.URL("https://api.github.com/user").openConnection() as java.net.HttpURLConnection
@@ -813,6 +893,7 @@ class CodotchiPlugin : Disposable {
                 userConn.setRequestProperty("Authorization", "token $pat")
                 userConn.setRequestProperty("Accept", "application/vnd.github+json")
                 userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                if (userConn.isGithubAuthFailure()) { reauthAndRetry(); return@execute }
                 if (userConn.responseCode != 200) {
                     postResult("error", "GitHub API error: ${userConn.responseCode}")
                     return@execute
@@ -857,7 +938,10 @@ class CodotchiPlugin : Disposable {
                 issueConn.outputStream.writer().use { it.write(Gson().toJson(issuePayload)) }
 
                 if (issueConn.responseCode == 201) {
+                    setLeaderboardAuthExpired(false)
                     postResult("success")
+                } else if (issueConn.isGithubAuthFailure()) {
+                    reauthAndRetry()
                 } else {
                     val errBody = issueConn.errorStream?.bufferedReader()?.readText()?.take(120) ?: ""
                     postResult("error", "Failed to submit (HTTP ${issueConn.responseCode}): $errBody")
@@ -868,8 +952,30 @@ class CodotchiPlugin : Disposable {
         }
     }
 
-    private fun startDeviceFlowAsync(state: PetState?, onAuthSuccess: (() -> Unit)? = null) {
+    /**
+     * GitHub OAuth device flow. Failures are reported (sign-in result + error
+     * notification + [onAuthFailure]) rather than swallowed, so the user always
+     * gets a way to retry (BUG-S08).
+     */
+    private fun startDeviceFlowAsync(
+        state: PetState?,
+        onAuthSuccess: (() -> Unit)? = null,
+        onAuthFailure: ((String) -> Unit)? = null,
+    ) {
         AppExecutorUtil.getAppExecutorService().execute {
+            fun fail(message: String) {
+                postSignInResult(null, message)
+                onAuthFailure?.invoke(message)
+                ApplicationManager.getApplication().invokeLater {
+                    NotificationGroupManager.getInstance()
+                        .getNotificationGroup("Codotchi Leaderboard")
+                        .createNotification("Codotchi: GitHub sign-in failed", message, NotificationType.WARNING)
+                        .addAction(com.intellij.notification.NotificationAction.createSimpleExpiring("Try again") {
+                            startDeviceFlowAsync(state, onAuthSuccess, onAuthFailure)
+                        })
+                        .notify(null)
+                }
+            }
             try {
                 val clientId = "Ov23lilG4ngpe3lHdC88"
 
@@ -881,12 +987,12 @@ class CodotchiPlugin : Disposable {
                 dcConn.setRequestProperty("Accept", "application/json")
                 dcConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
                 dcConn.outputStream.writer().use { it.write("client_id=$clientId&scope=public_repo") }
-                if (dcConn.responseCode != 200) return@execute
+                if (dcConn.responseCode != 200) { fail("Could not start GitHub sign-in (HTTP ${dcConn.responseCode})."); return@execute }
 
                 @Suppress("UNCHECKED_CAST")
                 val dcResp = Gson().fromJson(dcConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
-                val deviceCode     = dcResp["device_code"] as? String ?: return@execute
-                val userCode       = dcResp["user_code"]   as? String ?: return@execute
+                val deviceCode     = dcResp["device_code"] as? String ?: run { fail("GitHub sign-in returned no device code."); return@execute }
+                val userCode       = dcResp["user_code"]   as? String ?: run { fail("GitHub sign-in returned no user code."); return@execute }
                 val verifyUri      = (dcResp["verification_uri_complete"] as? String)
                     ?: dcResp["verification_uri"] as? String
                     ?: "https://github.com/login/device"
@@ -925,6 +1031,7 @@ class CodotchiPlugin : Disposable {
                     val accessToken = tokResp["access_token"] as? String
                     if (!accessToken.isNullOrBlank()) {
                         PasswordSafe.instance.setPassword(CredentialAttributes("Codotchi", "github-pat"), accessToken)
+                        setLeaderboardAuthExpired(false)
                         resolveAndCacheLeaderboardUsername(accessToken)
                         if (onAuthSuccess != null) {
                             onAuthSuccess()
@@ -933,13 +1040,16 @@ class CodotchiPlugin : Disposable {
                         }
                         return@execute
                     }
-                    when (tokResp["error"] as? String) {
+                    when (val error = tokResp["error"] as? String) {
                         "slow_down"             -> pollInterval += 5
                         "authorization_pending" -> { /* continue polling */ }
-                        else                    -> return@execute
+                        else                    -> { fail(describeDeviceFlowError(error)); return@execute }
                     }
                 }
-            } catch (_: Exception) { /* network failure — silent */ }
+                fail(describeDeviceFlowError(null))
+            } catch (e: Exception) {
+                fail("Network error during GitHub sign-in: ${e.message?.take(80) ?: "unknown"}")
+            }
         }
     }
 
@@ -951,15 +1061,21 @@ class CodotchiPlugin : Disposable {
                 conn.setRequestProperty("Authorization", "token $pat")
                 conn.setRequestProperty("Accept", "application/vnd.github+json")
                 conn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
-                if (conn.responseCode != 200) return@execute
+                if (conn.responseCode != 200) {
+                    setLeaderboardUsername(null)
+                    postSignInResult(null, "Signed in, but GitHub returned HTTP ${conn.responseCode} for your profile — try again.")
+                    return@execute
+                }
                 @Suppress("UNCHECKED_CAST")
                 val map = Gson().fromJson(conn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
-                val username = map["login"] as? String ?: return@execute
+                val username = map["login"] as? String
+                    ?: run { postSignInResult(null, "Could not read your GitHub username — try again."); return@execute }
                 setLeaderboardUsername(username)
-                ApplicationManager.getApplication().invokeLater {
-                    browserPanels.forEach { it.postMessage("""{"type":"leaderboard_sign_in_result","username":"$username"}""") }
-                }
-            } catch (_: Exception) { /* silent */ }
+                postSignInResult(username)
+                broadcastState()
+            } catch (_: Exception) {
+                postSignInResult(null, "Network error reading your GitHub profile — try again.")
+            }
         }
     }
 
@@ -1361,7 +1477,7 @@ class CodotchiPlugin : Disposable {
 
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveLastPushed, leaderboardGithubUsername) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveLastPushed, leaderboardGithubUsername, leaderboardAuthExpired) }
                 statusWidget?.update(state)
             }
         }
