@@ -472,11 +472,12 @@ Features that deepen the existing care actions.
 
 All events are displayed using the pet's name and human-readable sentences instead of raw event codes.
 
-Health-loss events (`sickness_damage`, `starvation_damage`, `unhappiness_damage`,
-`exhaustion_damage`) fire every tick while the underlying condition persists.
-Instead of inserting a new log line each tick, a repeat of the same event
-updates the existing line in place with a `(×N)` counter, so the 20-entry log
-doesn't get flooded with identical entries.
+When the same event fires several times in a row (health-loss ticks like
+`sickness_damage`, and repeated actions like patting, snacks or medicine), the
+log shows it once with a `(×N)` counter instead of adding a new line each
+time, so the 20-entry log doesn't fill up with identical entries. The line
+keeps its first wording, so randomised messages don't change as the count
+goes up. The death-screen log groups repeats the same way.
 
 | Event | Log message | Status |
 |-------|-------------|--------|

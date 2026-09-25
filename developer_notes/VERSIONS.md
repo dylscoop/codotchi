@@ -1,6 +1,18 @@
 # Version History
 
-## v2.20.13 — current
+## v2.20.14 — current
+
+### Changes from v2.20.13 (repeated log messages grouped with (×N), including on the death screen — branch fix/collapse-repeated-log-events, BUGFIX-162)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | fix: live event log groups any consecutive repeated event (not just health-loss ticks) and keeps the first label; death-screen log groups consecutive repeats with `(×N)` |
+| `pycharm/src/main/resources/webview/sidebar.js` | mirrored the `vscode/media/sidebar.js` change |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json` | version bump to 2.20.14 (desktop was behind at 2.20.11) |
+
+---
+
+## v2.20.13
 
 ### Changes from v2.20.12 (today's token cost fixed across midnight, double counting and subagents — branch fix/daily-token-cost, BUGFIX-161)
 
