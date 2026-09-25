@@ -49,8 +49,12 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 - **Pet customisation** — name your pet and choose a pet type on first launch
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
   and it dies
-- **OpenCode integration** — your pet lives in the terminal too, with shared
-  state across VS Code, PyCharm, and OpenCode
+- **Terminal & Claude integrations** — your pet lives in Claude Code, OpenCode
+  and Claude Desktop too, with shared state across every host
+- **Today's Token Cost** — see how much Claude Code / OpenCode has cost you
+  today, plus your GitHub Copilot premium quota
+- **Public leaderboard** — sign in with GitHub to submit your pet when it
+  dies, or push live progress while it's still going
 - **Status bar integration** — pet name and stage always visible in the IDE
   status bar
 - **Persistent state** — pet survives IDE restarts; offline time is accounted
