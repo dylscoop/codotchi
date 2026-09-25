@@ -1977,3 +1977,12 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 - `vscode/tests/unit/claudeUsage.test.ts`.
 - `pycharm/src/test/kotlin/com/codotchi/ClaudeUsageScannerTest.kt` (Europe/London zone).
 - `opencode-codotchi/tests/unit/usageBackfill.test.ts`: new `sinceMs` suite. The file now runs under node:test in `test:node`; before, it was bun-only and never executed.
+
+## BUGFIX-162 — Repeated log messages not grouped for actions or on the death screen
+
+**Status:** Fixed (branch `fix/collapse-repeated-log-events`)
+**File:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** The live event log only grouped repeats of the four health-loss events into one `(×N)` line. Patting, snacks, medicine and other repeated actions each got their own line. The death-screen log (built from `recentEventLog`) grouped nothing, so a pet that died of sickness showed the same damage line many times.
+
+**Fix:** `appendEvents()` now groups any event that matches the one above it, and keeps the line's first wording so randomised messages stay the same. The death-screen log groups consecutive repeats with the same `(×N)` counter.

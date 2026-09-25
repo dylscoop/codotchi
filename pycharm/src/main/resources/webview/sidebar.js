@@ -1624,31 +1624,26 @@
     return code;
   }
 
-  // Health-loss events that repeat every tick while the underlying condition
-  // persists — collapse consecutive repeats into one updating line instead of
-  // flooding the log with identical entries.
-  const REPEATABLE_DAMAGE_EVENTS = new Set([
-    "sickness_damage",
-    "starvation_damage",
-    "unhappiness_damage",
-    "exhaustion_damage",
-  ]);
-
+  // Consecutive repeats of the same event (damage ticks, pats, snacks,
+  // medicine, …) collapse into one updating line with a (×N) counter instead of
+  // flooding the log with identical entries.  The first label is kept so
+  // events with randomised wording don't change text on every repeat.
   function appendEvents(events, petName, state) {
     if (!events.length) { return; }
     events.forEach(function (text) {
       const label = humaniseEvent(text, petName, state);
       if (!label) { return; }
       const mostRecent = eventLog.firstChild;
-      if (REPEATABLE_DAMAGE_EVENTS.has(text) && mostRecent && mostRecent.dataset && mostRecent.dataset.eventCode === text) {
+      if (mostRecent && mostRecent.dataset && mostRecent.dataset.eventCode === text) {
         const count = (parseInt(mostRecent.dataset.count, 10) || 1) + 1;
         mostRecent.dataset.count = String(count);
-        mostRecent.textContent = label + " (×" + count + ")";
+        mostRecent.textContent = (mostRecent.dataset.label || label) + " (×" + count + ")";
         return;
       }
       const li = document.createElement("li");
       li.textContent = label;
       li.dataset.eventCode = text;
+      li.dataset.label = label;
       li.dataset.count = "1";
       eventLog.insertBefore(li, eventLog.firstChild);
     });
@@ -1755,12 +1750,21 @@
       deadEventLog.innerHTML = "";
       var log = state.recentEventLog || [];
       var reversed = log.slice().reverse();
+      // Collapse consecutive repeats into one line with a (×N) counter,
+      // matching the live event log.
+      var lastCode = null, lastLi = null, lastLabel = "", lastCount = 0;
       reversed.forEach(function (text) {
         var label = humaniseEvent(text, state.name, state);
         if (!label) { return; }
+        if (lastLi && text === lastCode) {
+          lastCount += 1;
+          lastLi.textContent = lastLabel + " (×" + lastCount + ")";
+          return;
+        }
         var li = document.createElement("li");
         li.textContent = label;
         deadEventLog.appendChild(li);
+        lastCode = text; lastLi = li; lastLabel = label; lastCount = 1;
       });
     }
 
