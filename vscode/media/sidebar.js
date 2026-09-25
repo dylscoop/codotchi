@@ -991,6 +991,12 @@
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
 
+    // Keep floor snacks reachable after the sidebar is narrowed — otherwise the
+    // pet chases an off-canvas snack against the right wall forever (BUGFIX-164).
+    for (var sk = 0; sk < snackItems.length; sk++) {
+      snackItems[sk].x = Math.max(minX, Math.min(maxX, snackItems[sk].x));
+    }
+
     // Init X and Y on first frame — centre horizontally
     if (petY === null) { petY = floorY; }
     if (petX === null) { petX = Math.max(minX, Math.min(maxX, Math.floor(spriteCanvas.width / 2 - bWidth / 2))); }
