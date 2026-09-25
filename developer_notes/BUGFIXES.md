@@ -1986,3 +1986,19 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** The live event log only grouped repeats of the four health-loss events into one `(×N)` line. Patting, snacks, medicine and other repeated actions each got their own line. The death-screen log (built from `recentEventLog`) grouped nothing, so a pet that died of sickness showed the same damage line many times.
 
 **Fix:** `appendEvents()` now groups any event that matches the one above it, and keeps the line's first wording so randomised messages stay the same. The death-screen log groups consecutive repeats with the same `(×N)` counter.
+
+---
+
+## BUGFIX-163 — GitHub leaderboard sign-in never re-prompts after the token dies (VS Code + PyCharm)
+
+**Status:** Fixed (v2.20.15, branch `fix/github-reauth`, backlog BUG-S08)
+**Files:** `vscode/src/githubAuth.ts` (new), `vscode/src/sidebarProvider.ts`, `vscode/media/sidebar.js`, `pycharm/src/main/kotlin/com/codotchi/GitHubAuth.kt` (new), `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** Once the GitHub token was revoked or expired, users got stuck. The GitHub username was saved to disk, and the sidebar hides the **Sign in to GitHub (Leaderboard)** button whenever a username is present, so the button never came back. VS Code's `getSession` kept returning the cached dead session, and every flow either returned silently on a 401 (live push, auto-submit) or showed `GitHub API error: 401` and reused the same session on retry (submit, delete). `handleSignInLeaderboard` swallowed every exception. In PyCharm the dead token in PasswordSafe was never cleared, and the device flow failed silently on network errors, expiry or `access_denied`.
+
+**Fix:** A 401, or a 403 that is not a rate limit (`X-RateLimit-Remaining: 0` or `Retry-After`), from `api.github.com` now counts as "session invalid" everywhere.
+- **VS Code:** `resolveGithubUser()` forces one fresh session (`forceNewSession`) and retries for user actions. Background pushes get `auth_expired` instead.
+- **PyCharm:** the `github-pat` credential is cleared, and the device flow restarts (submit retries once).
+- **Both:** the cached username is cleared and `leaderboardAuthExpired` is set. Background expiries show a single notification with a **Sign in** action. The sidebar shows **Sign in to GitHub again** or **Retry GitHub sign-in** with the error, and the flag clears on the next success. Sign-in failures are reported in `leaderboard_sign_in_result.error`. The Copilot quota bubble now says when its token is unauthorized.
+
+**Tests added:** `vscode/tests/unit/githubAuth.test.ts` (14 cases: forced re-auth, single retry, cancelled prompt, background no-prompt, rate-limit 403). `pycharm/src/test/kotlin/com/codotchi/GitHubAuthTest.kt` (pure classification plus source guards).

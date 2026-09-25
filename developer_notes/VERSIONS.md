@@ -1,6 +1,28 @@
 # Version History
 
-## v2.20.14 — current
+## v2.20.15 — current
+
+### Changes from v2.20.14 (GitHub leaderboard sign-in re-prompts when the token dies — branch fix/github-reauth, BUGFIX-163 / BUG-S08; PyCharm plugin icon and description encoding)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/githubAuth.ts` | new: `resolveGithubUser()` treats 401 / non-rate-limit 403 from `/user` as session invalid; one `forceNewSession` retry for user actions, `auth_expired` for background callers |
+| `vscode/src/sidebarProvider.ts` | fix: submit / delete / sign-in / live push / auto-submit use `resolveGithubUser`; 401/403 on issue POST handled; clears cached username, sets `leaderboardAuthExpired`, one-off **Sign in** warning for background expiry; sign-in errors posted instead of swallowed; Copilot bubble reports unauthorized |
+| `vscode/media/sidebar.js` | fix: shows sign-in error with **Retry GitHub sign-in**, **Sign in to GitHub again** when `leaderboardAuthExpired`; stateUpdates no longer reset the button mid-sign-in |
+| `vscode/tests/unit/githubAuth.test.ts` | new: 14 tests for auth-failure classification and re-auth flow |
+| `pycharm/src/main/kotlin/com/codotchi/GitHubAuth.kt` | new: `isGithubAuthFailure()` + `describeDeviceFlowError()` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: dead token clears the `github-pat` credential and username; user actions restart the device flow (submit retries once), background pushes flag + notify once; device flow and username lookup report failures with a **Try again** action; Copilot bubble reports unauthorized |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | `postState` sends `leaderboardAuthExpired` |
+| `pycharm/src/main/resources/webview/sidebar.js` | mirrored the `vscode/media/sidebar.js` change |
+| `pycharm/src/test/kotlin/com/codotchi/GitHubAuthTest.kt` | new: classification tests + source guards |
+| `pycharm/src/main/resources/META-INF/pluginIcon.svg`, `pluginIcon_dark.svg` | new: 40×40 codotchi egg plugin icon (replaces the default icon in Settings → Plugins / Marketplace); removed the unsupported `<icon>` element |
+| `pycharm/src/main/resources/META-INF/plugin.xml`, `pycharm/README.md` | fix: repaired mojibake (`—`/`→` shown as `ÃƒÂ¢Ã¢â€šÂ¬`); refreshed feature list; new Leaderboard section |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `opencode-codotchi/src/index.ts` | fix: repaired the same mojibake; version bump to 2.20.15 |
+| `.claude/skills/release-checklist/SKILL.md`, `.opencode/skills/release-checklist/SKILL.md` | encoding rule for version bumps |
+
+---
+
+## v2.20.14
 
 ### Changes from v2.20.13 (repeated log messages grouped with (×N), including on the death screen — branch fix/collapse-repeated-log-events, BUGFIX-162)
 

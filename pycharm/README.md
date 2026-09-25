@@ -142,6 +142,21 @@ just Claude + OpenCode, or all three).
 
 Costs energy and boosts happiness, same as a Pat.
 
+## Leaderboard
+
+Click **Sign in to GitHub (Leaderboard)** in the pet panel to link your GitHub
+account. The plugin uses GitHub's device-code sign-in: a browser page opens and
+a notification shows the code to enter. With **live push** turned on, your
+pet's progress is synced to the public
+[leaderboard](https://dylscoop.github.io/codotchi/leaderboard/) while it's
+alive. When it dies, click **Submit to Leaderboard** on the game over screen.
+
+If GitHub rejects the saved sign-in (for example, because you revoked the app
+at github.com/settings/applications), the plugin forgets the old token. It then
+shows **Sign in to GitHub again** in the panel, and a notification with a
+**Sign in** action if live push was running in the background. Submitting a
+score starts a fresh sign-in automatically and retries the submission once.
+
 ## Mini-games
 
 Clicking **Play** opens the game picker (requires energy). Three games are

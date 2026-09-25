@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.20.14</version>
+    <version>2.20.15</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -100,6 +100,16 @@ pre-built releases, and the OpenCode integration download.</p>
 
 <p><b>Tip:</b> keep all four stat bars (Hunger, Happy, Energy, Health) out of the red to maximise your care score,
 which determines which character your pet evolves into at each life stage.</p>
+
+<h2>Leaderboard</h2>
+<p>Click <b>Sign in to GitHub (Leaderboard)</b> in the pet panel to link your GitHub account. The plugin uses GitHub's
+device-code sign-in: a browser page opens and a notification shows the code to enter. With <b>live push</b> turned
+on, your pet's progress is synced to the public <a href="https://dylscoop.github.io/codotchi/leaderboard/">leaderboard</a>
+while it's alive. When it dies, click <b>Submit to Leaderboard</b> on the game over screen.</p>
+<p>If GitHub rejects the saved sign-in (for example, because you revoked the app at github.com/settings/applications),
+the plugin forgets the old token. It then shows <b>Sign in to GitHub again</b> in the panel, and a notification with a
+<b>Sign in</b> action if live push was running in the background. Submitting a score starts a fresh sign-in
+automatically and retries the submission once.</p>
 
 <h2>Mini-games</h2>
 <p>Clicking <b>Play</b> opens the game picker (requires energy). Three games are available:</p>
