@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.20.15] — 2026-09-25
+
+### Fixed
+
+- **GitHub leaderboard sign-in re-prompts when it expires** — if GitHub rejects your saved sign-in, codotchi asks VS Code for a fresh one (Submit / Delete / Sign in) instead of failing with `GitHub API error: 401`. Background live pushes show a one-off **Sign in** notification, and the sidebar shows **Sign in to GitHub again**. Sign-in errors are now shown with a **Retry** button instead of being swallowed.
+- **Copilot quota** — the Today’s Token Cost bubble now says when the Copilot GitHub sign-in has expired.
+
 ## [2.21.0] — 2026-08-10
 
 ### Added

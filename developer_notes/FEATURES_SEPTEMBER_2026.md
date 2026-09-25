@@ -246,7 +246,7 @@ attention half as often.
 
 ### BUG-S08 — GitHub account sync doesn't re-prompt properly when sign-in fails
 
-**Status:** Open
+**Status:** Fixed (v2.20.15, branch `fix/github-reauth`, BUGFIX-163)
 **Files:** `vscode/src/sidebarProvider.ts` (`handleSignInLeaderboard`,
 `pushLiveScore`, leaderboard submit/delete handlers, Copilot quota segment),
 `vscode/src/copilotQuota.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`

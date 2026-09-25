@@ -792,14 +792,14 @@ let costWarnThreshold  = 30;
 let costShoutThreshold = 50;
 
 // ---------------------------------------------------------------------------
-// Todo tracking â€” detect status transitions for celebratory notifications
+// Todo tracking — detect status transitions for celebratory notifications
 // ---------------------------------------------------------------------------
 
-/** Map of todo id â†’ last known status, used to detect transitions. */
+/** Map of todo id → last known status, used to detect transitions. */
 let prevTodos: Map<string, string> = new Map();
 
 // ---------------------------------------------------------------------------
-// Diff tracking â€” flag when AI has shipped changes since last idle
+// Diff tracking — flag when AI has shipped changes since last idle
 // ---------------------------------------------------------------------------
 
 /** True when at least one session.diff with non-empty diff arrived since the

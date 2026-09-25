@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <!-- Codotchi egg (light theme) - same proportions as the in-game egg in sprites.js -->
+  <ellipse cx="20" cy="21" rx="13" ry="17" fill="#3B3B3B"/>
+  <rect x="14" y="17" width="3" height="3" fill="#FFFFFF"/>
+  <rect x="23" y="17" width="3" height="3" fill="#FFFFFF"/>
+</svg>

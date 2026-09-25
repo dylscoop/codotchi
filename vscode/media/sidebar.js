@@ -305,8 +305,14 @@
     });
   }
 
+  // Sign-in in flight (stateUpdates must not reset the button mid-flow) and the
+  // last sign-in error, kept visible until the next successful sign-in (BUG-S08).
+  let lbSignInPending = false;
+  let lbSignInError = null;
+
   if (btnSignInLeaderboard) {
     btnSignInLeaderboard.addEventListener("click", function () {
+      lbSignInPending = true;
       vscode.postMessage({ command: "sign_in_leaderboard" });
       btnSignInLeaderboard.textContent = "Opening sign-in…";
       btnSignInLeaderboard.disabled = true;
@@ -2642,20 +2648,24 @@
       return;
     }
     if (message.type === "leaderboard_sign_in_result") {
+      lbSignInPending = false;
       if (message.username) {
+        lbSignInError = null;
         if (lbSignInStatus) {
           lbSignInStatus.textContent = "Leaderboard: @" + message.username;
           lbSignInStatus.classList.remove("hidden");
         }
         if (btnSignInLeaderboard) btnSignInLeaderboard.classList.add("hidden");
       } else {
+        lbSignInError = message.error || "Sign-in failed — try again";
         if (lbSignInStatus) {
-          lbSignInStatus.textContent = "Sign-in failed — try again";
+          lbSignInStatus.textContent = lbSignInError;
           lbSignInStatus.classList.remove("hidden");
         }
         if (btnSignInLeaderboard) {
-          btnSignInLeaderboard.textContent = "Sign in to GitHub (Leaderboard)";
+          btnSignInLeaderboard.textContent = "Retry GitHub sign-in";
           btnSignInLeaderboard.disabled = false;
+          btnSignInLeaderboard.classList.remove("hidden");
         }
       }
       return;
@@ -2725,20 +2735,28 @@
 
     // Sign-in status + button — shown when alive.
     if (state && state.alive) {
+      if (message.leaderboardGithubUsername) { lbSignInError = null; }
       if (lbSignInStatus) {
         if (message.leaderboardGithubUsername) {
           lbSignInStatus.textContent = "Leaderboard: @" + message.leaderboardGithubUsername;
-          lbSignInStatus.classList.remove("hidden");
+        } else if (lbSignInError) {
+          lbSignInStatus.textContent = lbSignInError;
+        } else if (message.leaderboardAuthExpired) {
+          lbSignInStatus.textContent = "GitHub sign-in expired — leaderboard sync paused";
         } else {
           lbSignInStatus.textContent = "Not signed in to GitHub";
-          lbSignInStatus.classList.remove("hidden");
         }
+        lbSignInStatus.classList.remove("hidden");
       }
       if (btnSignInLeaderboard) {
         if (message.leaderboardGithubUsername) {
           btnSignInLeaderboard.classList.add("hidden");
-        } else {
-          btnSignInLeaderboard.textContent = "Sign in to GitHub (Leaderboard)";
+        } else if (!lbSignInPending) {
+          btnSignInLeaderboard.textContent = lbSignInError
+            ? "Retry GitHub sign-in"
+            : message.leaderboardAuthExpired
+              ? "Sign in to GitHub again"
+              : "Sign in to GitHub (Leaderboard)";
           btnSignInLeaderboard.disabled = false;
           btnSignInLeaderboard.classList.remove("hidden");
         }
