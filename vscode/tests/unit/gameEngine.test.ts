@@ -63,9 +63,13 @@ import {
   MAX_FLOOR_SNACKS,
   VALID_PET_TYPES,
   STAGE_ORDER,
+  DEFAULT_GAME_CONFIG,
   PetState,
   GameConfig,
 } from "../../src/gameEngine";
+
+/** Config with attention calls off, so random calls don't perturb deterministic tick tests. */
+const NO_CALLS: GameConfig = { ...DEFAULT_GAME_CONFIG, attentionCallsEnabled: false };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -474,19 +478,136 @@ describe("tick — poop accumulation", () => {
 // ---------------------------------------------------------------------------
 
 describe("tick — sickness from dirty environment", () => {
-  it("becomes sick when poops reach MAX_UNCLEANED_POOPS_BEFORE_SICK (3)", () => {
-    // Already have 2 poops, one more poop during this tick triggers sickness
-    let state = makePet({ poops: 2, ticksSinceLastPoop: 399 });
-    state = tick(state);
+  it("becomes sick only after POOP_SICK_GRACE_TICKS (20) active ticks at MAX_UNCLEANED_POOPS_BEFORE_SICK (5)", () => {
+    let state = makePet({ poops: 5, nextPoopIntervalTicks: 99999 });
+    for (let i = 0; i < 19; i++) {
+      state = tick(state, false, false, NO_CALLS);
+      assert.equal(state.sick, false, `should not be sick after ${i + 1} ticks`);
+    }
+    assert.equal(state.poopOverLimitTicks, 19);
+    state = tick(state, false, false, NO_CALLS);
     assert.equal(state.sick, true);
     assert.ok(state.events.includes("became_sick"));
   });
 
+  it("never becomes sick with 4 poops", () => {
+    let state = makePet({ poops: 4, nextPoopIntervalTicks: 99999 });
+    for (let i = 0; i < 100; i++) state = tick(state, false, false, NO_CALLS);
+    assert.equal(state.sick, false);
+    assert.equal(state.poopOverLimitTicks, 0);
+  });
+
+  it("cleaning within the grace period prevents sickness and resets the counter", () => {
+    let state = makePet({ poops: 5, nextPoopIntervalTicks: 99999 });
+    for (let i = 0; i < 15; i++) state = tick(state, false, false, NO_CALLS);
+    state = clean(state);
+    assert.equal(state.poopOverLimitTicks, 0);
+    for (let i = 0; i < 30; i++) state = tick(state, false, false, NO_CALLS);
+    assert.equal(state.sick, false);
+  });
+
+  it("idle ticks freeze the grace counter (no increment, no reset)", () => {
+    let state = makePet({ poops: 5, poopOverLimitTicks: 10, nextPoopIntervalTicks: 99999 });
+    for (let i = 0; i < 50; i++) state = tick(state, true, false, NO_CALLS);
+    assert.equal(state.poopOverLimitTicks, 10);
+    for (let i = 0; i < 50; i++) state = tick(state, false, true, NO_CALLS);
+    assert.equal(state.poopOverLimitTicks, 10);
+    assert.equal(state.sick, false);
+  });
+
+  it("poopOverLimitTicks round-trips through serialise/deserialise and defaults to 0", () => {
+    const pet = makePet({ poops: 5, poopOverLimitTicks: 7 });
+    assert.equal(deserialiseState(serialiseState(pet)).poopOverLimitTicks, 7);
+    const legacy = serialiseState(pet) as Record<string, unknown>;
+    delete legacy.poopOverLimitTicks;
+    assert.equal(deserialiseState(legacy).poopOverLimitTicks, 0);
+  });
+
   it("does not trigger sickness again if already sick", () => {
-    let state = makePet({ poops: 3, sick: true });
+    let state = makePet({ poops: 5, poopOverLimitTicks: 99, sick: true });
     state = tick(state);
     const becameSickCount = state.events.filter((e) => e === "became_sick").length;
     assert.equal(becameSickCount, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// tick — poop attention call (expiry + idle suppression)
+// ---------------------------------------------------------------------------
+
+describe("tick — poop attention call", () => {
+  it("an expired poop call below the poop limit is a care mistake, not sickness", () => {
+    const pet = makePet({ poops: 2, activeAttentionCall: "poop", attentionCallActiveTicks: 999, careMistakes: 0, nextPoopIntervalTicks: 99999 });
+    const next = tick(pet);
+    assert.ok(next.events.includes("attention_call_expired_poop"));
+    assert.equal(next.sick, false);
+    assert.equal(next.careMistakes, 1);
+  });
+
+  it("an expired poop call at the poop limit makes the pet sick", () => {
+    const pet = makePet({ poops: 5, activeAttentionCall: "poop", attentionCallActiveTicks: 999, nextPoopIntervalTicks: 99999 });
+    const next = tick(pet);
+    assert.ok(next.events.includes("attention_call_expired_poop"));
+    assert.equal(next.sick, true);
+  });
+
+  it("no poop call fires while idle or deep idle", () => {
+    const originalRandom = Math.random;
+    Math.random = () => 0; // any chance-based call would fire
+    try {
+      const pet = makePet({ poops: 3, ticksWithUncleanedPoop: 500, nextPoopIntervalTicks: 99999 });
+      assert.ok(!tick(pet, true, false).events.includes("attention_call_poop"));
+      assert.ok(!tick(pet, false, true).events.includes("attention_call_poop"));
+      assert.ok(tick(pet).events.includes("attention_call_poop"), "control: fires when active");
+    } finally {
+      Math.random = originalRandom;
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// tick — no health loss while idle (BUG-S02)
+// ---------------------------------------------------------------------------
+
+describe("tick — no health loss while idle (BUG-S02)", () => {
+  const cases: Array<[string, Partial<PetState>]> = [
+    ["starving",  { hunger: 0, hungerZeroTicks: 99 }],
+    ["unhappy",   { happiness: 0 }],
+    ["exhausted", { energy: 0 }],
+    ["sick",      { sick: true }],
+    ["all at once", { hunger: 0, hungerZeroTicks: 99, happiness: 0, energy: 0, sick: true }],
+  ];
+  for (const [label, overrides] of cases) {
+    for (const [mode, idle, deep] of [["idle", true, false], ["deep idle", false, true]] as const) {
+      it(`${label} pet keeps its health over 200 ${mode} ticks`, () => {
+        let state = makePet({ ...overrides, health: 80, nextPoopIntervalTicks: 99999 });
+        for (let i = 0; i < 200; i++) {
+          state = tick(state, idle, deep);
+          for (const e of ["starvation_damage", "unhappiness_damage", "exhaustion_damage", "sickness_damage"]) {
+            assert.ok(!state.events.includes(e), `unexpected ${e} on tick ${i}`);
+          }
+        }
+        assert.ok(state.health >= 80, `health dropped to ${state.health}`);
+        assert.equal(state.alive, true);
+      });
+    }
+  }
+
+  it("a senior crossing a day boundary while idle skips the old-age rolls", () => {
+    const originalRandom = Math.random;
+    Math.random = () => 0; // guarantees death if the roll happens
+    try {
+      // ticksAlive 59 → 60, divisible by AGING_TICK_INTERVAL (3) and IDLE_DECAY_TICK_DIVISOR (20),
+      // so aging advances even in regular idle and dayTimer crosses into the next whole day.
+      const age = SENIOR_NATURAL_DEATH_AGE_DAYS + 10;
+      const pet = makePet({ stage: "senior", ticksAlive: 59, ageDays: age, dayTimer: age + 0.99999 });
+      const idleNext = tick(pet, true, false, NO_CALLS);
+      assert.equal(idleNext.ageDays, age + 1, "precondition: day boundary crossed");
+      assert.equal(idleNext.alive, true);
+      assert.equal(tick(pet, false, false, NO_CALLS).alive, false, "control: active tick rolls old-age death");
+    } finally {
+      Math.random = originalRandom;
+    }
   });
 });
 
@@ -609,11 +730,12 @@ describe("tick — sickness health drain and death", () => {
     assert.ok(!next.events.includes("sickness_damage"));
   });
 
-  it("sick pet still takes sickness damage during regular idle (BUGFIX-040)", () => {
+  it("sick pet takes no sickness damage during regular idle and stays sick (BUG-S02)", () => {
     const pet = makePet({ sick: true, health: 50 });
     const next = tick(pet, true, false); // isIdle=true, isDeepIdle=false
-    assert.ok(next.health < 50);
-    assert.ok(next.events.includes("sickness_damage"));
+    assert.equal(next.health, 50);
+    assert.equal(next.sick, true);
+    assert.ok(!next.events.includes("sickness_damage"));
   });
 
   it("sick pet at 5 hp does not die when deep idle, and health is not raised (BUGFIX-040)", () => {
@@ -650,11 +772,11 @@ describe("tick — idle safety floor for sick/losing-health pets", () => {
     assert.ok(!next.events.includes("starvation_damage"), `events should not include starvation_damage (got ${JSON.stringify(next.events)})`);
   });
 
-  it("still logs a health-loss event when the pet is idle but actually losing health", () => {
+  it("does not lose health while idle even when well above IDLE_STAT_FLOOR (BUG-S02)", () => {
     const pet = makePet({ hunger: 0, hungerZeroTicks: 99, health: 25 });
     const next = tick(pet, true, false); // isIdle=true, isDeepIdle=false
-    assert.ok(next.health < 25, `health should have actually decreased (got ${next.health})`);
-    assert.ok(next.events.includes("starvation_damage"), `events should include starvation_damage (got ${JSON.stringify(next.events)})`);
+    assert.equal(next.health, 25);
+    assert.ok(!next.events.includes("starvation_damage"), `events should not include starvation_damage (got ${JSON.stringify(next.events)})`);
   });
 
   it("floors health at IDLE_STAT_FLOOR when a healthy pet takes damage while idle", () => {

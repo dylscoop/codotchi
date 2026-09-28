@@ -318,10 +318,126 @@ class GameEngineTest {
     }
 
     @Test
-    fun `still logs a health-loss event when the pet is idle but actually losing health`() {
+    fun `does not lose health while idle even when well above IDLE_STAT_FLOOR (BUG-S02)`() {
         val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 25)
         val next = tick(pet, isIdle = true, isDeepIdle = false)
-        assertTrue(next.health < 25, "health should have actually decreased (got ${next.health})")
-        assertTrue(next.events.contains("starvation_damage"), "events should include starvation_damage (got ${next.events})")
+        assertEquals(25, next.health)
+        assertFalse(next.events.contains("starvation_damage"), "events should not include starvation_damage (got ${next.events})")
+    }
+
+    // ── No health loss while idle (BUG-S02) ──────────────────────────────────
+
+    private val damageEvents = listOf("starvation_damage", "unhappiness_damage", "exhaustion_damage", "sickness_damage")
+
+    private fun assertNoIdleHealthLoss(start: PetState) {
+        for ((idle, deep) in listOf(true to false, false to true)) {
+            var pet = start.copy(health = 80, nextPoopIntervalTicks = 99999)
+            repeat(200) { i ->
+                pet = tick(pet, isIdle = idle, isDeepIdle = deep)
+                damageEvents.forEach { e -> assertFalse(pet.events.contains(e), "unexpected $e on tick $i (idle=$idle deep=$deep)") }
+            }
+            assertTrue(pet.health >= 80, "health dropped to ${pet.health} (idle=$idle deep=$deep)")
+            assertTrue(pet.alive)
+        }
+    }
+
+    @Test fun `starving pet keeps its health while idle`()  = assertNoIdleHealthLoss(makePet().copy(hunger = 0, hungerZeroTicks = 99))
+    @Test fun `unhappy pet keeps its health while idle`()   = assertNoIdleHealthLoss(makePet(happiness = 0))
+    @Test fun `exhausted pet keeps its health while idle`() = assertNoIdleHealthLoss(makePet(energy = 0))
+    @Test fun `sick pet keeps its health while idle`()      = assertNoIdleHealthLoss(makePet().copy(sick = true))
+    @Test fun `pet with every damage source keeps its health while idle`() =
+        assertNoIdleHealthLoss(makePet(happiness = 0, energy = 0).copy(hunger = 0, hungerZeroTicks = 99, sick = true))
+
+    @Test
+    fun `sick pet stays sick while idle`() {
+        val next = tick(makePet().copy(sick = true, health = 50), isIdle = true, isDeepIdle = false)
+        assertTrue(next.sick)
+        assertEquals(50, next.health)
+    }
+
+    @Test
+    fun `a very old senior crossing a day boundary while idle never rolls old-age death`() {
+        // ticksAlive 59 → 60 is divisible by AGING_TICK_INTERVAL (3) and IDLE_DECAY_TICK_DIVISOR (20),
+        // so aging advances even in regular idle. The Kotlin roll uses Math.random() internally,
+        // so repeat enough times that an un-gated roll would almost certainly kill the pet.
+        val age = SENIOR_NATURAL_DEATH_AGE_DAYS * 3
+        val pet = makePet().copy(stage = "senior", ticksAlive = 59, ageDays = age, dayTimer = age + 0.99999)
+        repeat(200) {
+            val next = tick(pet, isIdle = true, isDeepIdle = false, config = NO_CALLS)
+            assertEquals(age + 1, next.ageDays, "precondition: day boundary crossed")
+            assertTrue(next.alive)
+            assertFalse(next.sick)
+        }
+    }
+
+    // ── Poop sickness grace period and poop attention call ───────────────────
+
+    private val NO_CALLS = DEFAULT_GAME_CONFIG.copy(attentionCallsEnabled = false)
+
+    @Test
+    fun `becomes sick only after POOP_SICK_GRACE_TICKS active ticks at the poop limit`() {
+        var pet = makePet().copy(poops = MAX_UNCLEANED_POOPS_BEFORE_SICK, nextPoopIntervalTicks = 99999)
+        repeat(POOP_SICK_GRACE_TICKS - 1) { i ->
+            pet = tick(pet, config = NO_CALLS)
+            assertFalse(pet.sick, "should not be sick after ${i + 1} ticks")
+        }
+        pet = tick(pet, config = NO_CALLS)
+        assertTrue(pet.sick)
+        assertTrue(pet.events.contains("became_sick"))
+    }
+
+    @Test
+    fun `never becomes sick one poop below the limit`() {
+        var pet = makePet().copy(poops = MAX_UNCLEANED_POOPS_BEFORE_SICK - 1, nextPoopIntervalTicks = 99999)
+        repeat(100) { pet = tick(pet, config = NO_CALLS) }
+        assertFalse(pet.sick)
+        assertEquals(0, pet.poopOverLimitTicks)
+    }
+
+    @Test
+    fun `clean resets the grace counter and prevents sickness`() {
+        var pet = makePet().copy(poops = MAX_UNCLEANED_POOPS_BEFORE_SICK, nextPoopIntervalTicks = 99999)
+        repeat(15) { pet = tick(pet, config = NO_CALLS) }
+        pet = clean(pet)
+        assertEquals(0, pet.poopOverLimitTicks)
+        repeat(30) { pet = tick(pet, config = NO_CALLS) }
+        assertFalse(pet.sick)
+    }
+
+    @Test
+    fun `idle ticks freeze the grace counter`() {
+        var pet = makePet().copy(poops = MAX_UNCLEANED_POOPS_BEFORE_SICK, poopOverLimitTicks = 10, nextPoopIntervalTicks = 99999)
+        repeat(50) { pet = tick(pet, isIdle = true, isDeepIdle = false, config = NO_CALLS) }
+        repeat(50) { pet = tick(pet, isIdle = false, isDeepIdle = true, config = NO_CALLS) }
+        assertEquals(10, pet.poopOverLimitTicks)
+        assertFalse(pet.sick)
+    }
+
+    @Test
+    fun `an expired poop call below the poop limit is a care mistake, not sickness`() {
+        val pet  = makePet().copy(poops = 2, activeAttentionCall = "poop", attentionCallActiveTicks = 999,
+                                  careMistakes = 0.0, nextPoopIntervalTicks = 99999)
+        val next = tick(pet)
+        assertTrue(next.events.contains("attention_call_expired_poop"))
+        assertFalse(next.sick)
+        assertEquals(1.0, next.careMistakes)
+    }
+
+    @Test
+    fun `an expired poop call at the poop limit makes the pet sick`() {
+        val pet  = makePet().copy(poops = MAX_UNCLEANED_POOPS_BEFORE_SICK, activeAttentionCall = "poop",
+                                  attentionCallActiveTicks = 999, nextPoopIntervalTicks = 99999)
+        val next = tick(pet)
+        assertTrue(next.events.contains("attention_call_expired_poop"))
+        assertTrue(next.sick)
+    }
+
+    @Test
+    fun `no poop call fires while idle`() {
+        val pet = makePet().copy(poops = 3, ticksWithUncleanedPoop = 5000, nextPoopIntervalTicks = 99999)
+        repeat(200) {
+            assertFalse(tick(pet, isIdle = true, isDeepIdle = false).events.contains("attention_call_poop"))
+            assertFalse(tick(pet, isIdle = false, isDeepIdle = true).events.contains("attention_call_poop"))
+        }
     }
 }

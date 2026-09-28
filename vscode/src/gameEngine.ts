@@ -1287,11 +1287,11 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   // limit for POOP_SICK_GRACE_TICKS consecutive active ticks first, so cleaning
   // up in time prevents it. The counter is frozen (not reset) while idle or
   // asleep, so the pet cannot be made sick by poop while the user is away.
-  if (!isIdle && !sleeping) {
+  if (!isIdle && !isDeepIdle && !sleeping) {
     poopOverLimitTicks = poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK ? poopOverLimitTicks + 1 : 0;
   }
   if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK && poopOverLimitTicks >= POOP_SICK_GRACE_TICKS &&
-      !sick && !isIdle) {
+      !sick && !isIdle && !isDeepIdle) {
     sick = true;
     events.push("became_sick");
   }
