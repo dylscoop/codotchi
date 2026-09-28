@@ -2013,3 +2013,33 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** A floor snack’s `x` is fixed when it spawns, using the canvas width at that moment. If the sidebar was made narrower afterwards, `resizeCanvas()` shrank the canvas but the snack kept its old `x`, past the new right edge (and not drawn, because it was off-canvas). Snack targeting set `petVx = +speed` every frame, the pet was clamped at `maxX` and never got within reach, so it faced right against the wall forever and the wander turn-around logic never ran. Widening the panel again made the snack reachable, so it seemed to "fix itself".
 
 **Fix:** `animationLoop()` clamps every floor snack into the current `[minX, maxX]` each frame, before the movement branches, using the same range the spawn code uses. This covers both the normal and dragon movement paths.
+
+---
+
+## BUGFIX-165 — Idle pets still lose health; poop sickness too harsh
+
+**Status:** Fixed (v2.20.17, branch `feat/forgiving-idle-poop`, BUG-S02 / September backlog §2.1)
+**Files:** `vscode/src/gameEngine.ts`, `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/{GameEngine,Constants,PetState}.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt`, `claude-codotchi/scripts/{state,statusline,hook-stop}.mjs`
+
+**Problem:** While the user was idle, the pet still lost health:
+
+- starvation, unhappiness and exhaustion damage had no idle guard
+- sickness still did 1 damage per tick in regular idle
+- health kept falling until `IDLE_STAT_FLOOR` (20) stopped it
+- the senior old-age death and sickness rolls still ran, so a senior could die while nobody was there
+- the Claude Code `statusline.mjs` / `hook-stop.mjs` replays ticked the shared IDE pet as always active, bypassing idle protection
+
+Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an ignored poop call always made it sick.
+
+**Fix:**
+
+- **No health loss while idle:** every health-damage block in `tick()` is skipped while `isIdle || isDeepIdle`, and the idle floor clamps health to its value entering the tick. The old-age rolls are skipped on idle ticks, and the poop call no longer fires while idle.
+- **Poop sickness:** the limit is now 5 (`MAX_UNCLEANED_POOPS_BEFORE_SICK`). The pet only gets sick after `POOP_SICK_GRACE_TICKS` (20, about 1 minute) consecutive active ticks over the limit, counted in the new `poopOverLimitTicks` field. The counter is frozen while idle or asleep and reset by `clean()`.
+- **Ignored poop call:** an expired poop call is now only a care mistake, unless the poop count is already at the limit.
+- **Claude Code replays:** the scripts pass the IDE's raw `wasIdle` / `wasDeepIdle` through `idleFlagsForFile()`. `IDLE_SICK_DAMAGE_PER_TICK` was removed.
+
+**Tests added:**
+
+- `vscode/tests/unit/gameEngine.test.ts`: poop grace period, clean reset, idle freeze, serialisation fallback, poop-call expiry below/at the limit, no poop call while idle, no health loss for every damage source in idle and deep idle, senior old-age roll skipped while idle.
+- The matching cases in `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt`.
+- `claude-codotchi/tests/integration/idleReplay.test.mjs`.

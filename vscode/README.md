@@ -49,6 +49,9 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 - **Pet customization** — name your pet and choose a pet type on first launch
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
   and it dies
+- **Safe while you are away** — when you step away from the IDE your pet gets
+  hungry and bored more slowly and never loses health, so it is waiting for you
+  when you come back
 - **OpenCode integration** — your pet lives in the terminal too, with shared
   state across VS Code, PyCharm, and OpenCode
 - **Status bar integration** — pet name and mood always visible in the VS Code
@@ -97,7 +100,7 @@ Once installed and VS Code has reloaded:
 | **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted. Also contains **Today's Token Cost** — see below. |
 | **Pat** | Gives your pet a gentle pat. Boosts happiness. Costs energy. Accessed via the Play menu (same overlay as the mini-games). Cannot be used while your pet is sleeping or exhausted. |
 | **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. |
-| **Clean** | Clears all droppings from the screen. Leaving too many uncleaned will make your pet sick. |
+| **Clean** | Clears all droppings from the screen. Leaving too many uncleaned for too long will make your pet sick. |
 | **Medicine** | Treats sickness. Requires multiple doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss. |
 | **Praise** | Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution. |
 | **Scold** | Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline. |

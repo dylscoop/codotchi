@@ -1,6 +1,25 @@
 # Version History
 
-## v2.20.16 — current
+## v2.20.17 — current
+
+### Changes from v2.20.16 (no health loss while idle, forgiving poop sickness — branch feat/forgiving-idle-poop, BUGFIX-165 / BUG-S02)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | feat: health damage skipped while idle/deep idle; health can't drop on an idle tick; old-age rolls and the poop call skipped while idle; poop limit 3 → 5 with a 20-tick grace period (`poopOverLimitTicks`); an expired poop call only causes sickness at the limit |
+| `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts` | mirrored the `vscode/src/gameEngine.ts` change (claude-codotchi keeps its `immortal` guard) |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `Constants.kt`, `PetState.kt`, `CodotchiPersistence.kt` | mirrored in Kotlin; `poopOverLimitTicks` persisted with a 0 fallback |
+| `claude-codotchi/scripts/state.mjs`, `statusline.mjs`, `hook-stop.mjs` | fix: tick replays on an IDE-anchored pet pass through the IDE's `wasIdle` / `wasDeepIdle` (`idleFlagsForFile`) |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt`, `claude-codotchi/tests/integration/idleReplay.test.mjs` | tests for all of the above |
+| `vscode/package.json` | idle / deep-idle setting descriptions say the pet can't lose health |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml` | "Safe while you are away" feature bullet; the Clean row says "for too long" |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json` | version bump to 2.20.17 |
+
+**Updated constants:** `MAX_UNCLEANED_POOPS_BEFORE_SICK` 3 → 5; new `POOP_SICK_GRACE_TICKS = 20`; removed `IDLE_SICK_DAMAGE_PER_TICK`.
+
+---
+
+## v2.20.16
 
 ### Changes from v2.20.15 (pet stuck walking right after the sidebar is narrowed — branch fix/unreachable-snack, BUGFIX-164)
 

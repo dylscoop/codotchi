@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.20.16</version>
+    <version>2.20.17</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -44,6 +44,7 @@ Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotch
   <li><b>Life cycle &amp; evolution</b> — egg → baby → child → teen → adult → senior, with the final character determined by how well you cared for your pet</li>
   <li><b>Pet customisation</b> — name your pet and choose a pet type on first launch</li>
   <li><b>Sickness &amp; death</b> — neglect your pet and it gets sick; leave it untreated and it dies</li>
+  <li><b>Safe while you are away</b> — when you step away from the IDE your pet gets hungry and bored more slowly and never loses health, so it is waiting for you when you come back</li>
   <li><b>Terminal &amp; Claude integrations</b> — your pet lives in Claude Code, OpenCode and Claude Desktop too, with shared state across every host</li>
   <li><b>Today's Token Cost</b> — see how much Claude Code / OpenCode has cost you today, plus your GitHub Copilot premium quota</li>
   <li><b>Public leaderboard</b> — sign in with GitHub to submit your pet when it dies, or push live progress while it's still going</li>
@@ -92,7 +93,7 @@ pre-built releases, and the OpenCode integration download.</p>
   <tr><td><b>Play</b></td><td>Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted.</td></tr>
   <tr><td><b>Pat</b></td><td>Gives your pet a gentle pat. Boosts happiness. Costs energy. Accessed via the Play menu. Cannot be used while your pet is sleeping or exhausted.</td></tr>
   <tr><td><b>Sleep</b></td><td>Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy.</td></tr>
-  <tr><td><b>Clean</b></td><td>Clears all droppings from the screen. Leaving too many uncleaned will make your pet sick.</td></tr>
+  <tr><td><b>Clean</b></td><td>Clears all droppings from the screen. Leaving too many uncleaned for too long will make your pet sick.</td></tr>
   <tr><td><b>Medicine</b></td><td>Treats sickness. Requires multiple doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss.</td></tr>
   <tr><td><b>Praise</b></td><td>Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution.</td></tr>
   <tr><td><b>Scold</b></td><td>Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline.</td></tr>

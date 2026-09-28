@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.20.17] — 2026-09-28
+
+### Changed
+
+- **Safe while you're away** — your pet no longer loses health while you're idle or away from the IDE, and a senior pet can't die of old age while you're gone. It still gets hungry and bored (slowly), so there's something to do when you're back.
+- **More forgiving mess** — your pet tolerates more droppings before getting sick, and only gets sick if they're left for a while, so cleaning up in time prevents it. Ignoring a "clean up" call counts as a care mistake rather than always making the pet sick.
+
 ## [2.20.16] — 2026-09-25
 
 ### Fixed
