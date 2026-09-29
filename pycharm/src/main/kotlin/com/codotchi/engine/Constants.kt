@@ -47,7 +47,13 @@ const val HUNGER_ZERO_TICKS_BEFORE_RISK: Int = 3
 const val CRITICAL_HEALTH_DAMAGE_PER_TICK: Int = 5
 
 const val MAX_CONSECUTIVE_SNACKS_BEFORE_SICK: Int = 3
-const val MAX_UNCLEANED_POOPS_BEFORE_SICK: Int = 3
+const val MAX_UNCLEANED_POOPS_BEFORE_SICK: Int = 5
+/**
+ * Consecutive active (awake, non-idle) ticks the pet must spend at or above
+ * MAX_UNCLEANED_POOPS_BEFORE_SICK before it becomes sick (≈ 1 real minute),
+ * so cleaning up in time prevents the sickness.
+ */
+const val POOP_SICK_GRACE_TICKS: Int = 20
 /** Maximum snacks allowed per wake cycle before further snacks are refused. */
 const val SNACK_MAX_PER_CYCLE: Int = 3
 /** Maximum snacks allowed on the stage floor simultaneously before further snacks are refused. */
@@ -98,9 +104,6 @@ const val ENERGY_DECAY_PER_TICK: Int = 1
 
 /** Health lost per tick when the pet's energy is fully depleted while awake. */
 const val EXHAUSTION_HEALTH_DAMAGE_PER_TICK: Int = 2
-
-/** Health lost per tick from sickness while the user is idle (regular idle, not deep idle). Much slower than active rate. */
-const val IDLE_SICK_DAMAGE_PER_TICK: Int = 1
 
 /** Per-tick probability that sickness clears naturally while the pet is sleeping. */
 const val SLEEP_SICK_RECOVERY_CHANCE: Double = 0.03

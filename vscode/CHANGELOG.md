@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.20.17] — 2026-09-28
+
+### Changed
+
+- **Safe while you're away** — your pet no longer loses health while you're idle or away from the IDE, and a senior pet can't die of old age while you're gone. It still gets hungry and bored (slowly), so there's something to do when you're back.
+- **More forgiving mess** — your pet tolerates more droppings before getting sick, and only gets sick if they're left for a while, so cleaning up in time prevents it. Ignoring a "clean up" call counts as a care mistake rather than always making the pet sick.
+
+## [2.20.16] — 2026-09-25
+
+### Fixed
+
+- **Pet stuck walking right** — narrowing the sidebar while a snack was on the floor could leave the snack out of reach, so the pet pushed against the right wall forever. Snacks now stay inside the visible area.
+
+## [2.20.15] — 2026-09-25
+
+### Fixed
+
+- **GitHub leaderboard sign-in re-prompts when it expires** — if GitHub rejects your saved sign-in, codotchi asks VS Code for a fresh one (Submit / Delete / Sign in) instead of failing with `GitHub API error: 401`. Background live pushes show a one-off **Sign in** notification, and the sidebar shows **Sign in to GitHub again**. Sign-in errors are now shown with a **Retry** button instead of being swallowed.
+- **Copilot quota** — the Today’s Token Cost bubble now says when the Copilot GitHub sign-in has expired.
+
 ## [2.21.0] — 2026-08-10
 
 ### Added

@@ -345,6 +345,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val ticksWithUncleanedPoop: Int?,
         val ticksSinceLastMisbehaviour: Int?,
         val ticksSinceLastGift: Int?,
+        val poopOverLimitTicks: Int? = null,
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -404,6 +405,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             ticksWithUncleanedPoop     = r.ticksWithUncleanedPoop     ?: 0,
             ticksSinceLastMisbehaviour = r.ticksSinceLastMisbehaviour ?: 0,
             ticksSinceLastGift         = r.ticksSinceLastGift         ?: 0,
+            poopOverLimitTicks         = r.poopOverLimitTicks         ?: 0,
         )
         return partial
     }
@@ -457,6 +459,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         ticksWithUncleanedPoop     = s.ticksWithUncleanedPoop,
         ticksSinceLastMisbehaviour = s.ticksSinceLastMisbehaviour,
         ticksSinceLastGift         = s.ticksSinceLastGift,
+        poopOverLimitTicks         = s.poopOverLimitTicks,
     )
 }
 

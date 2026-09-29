@@ -108,4 +108,7 @@ data class PetState(
 
     /** Ticks since the last gift attention call fired; used for log-chance formula. */
     val ticksSinceLastGift: Int,
+
+    /** Consecutive active ticks spent at or above MAX_UNCLEANED_POOPS_BEFORE_SICK; frozen while idle or asleep, reset by clean(). */
+    val poopOverLimitTicks: Int = 0,
 )

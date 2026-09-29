@@ -370,21 +370,31 @@ event log.
 In deep-idle mode:
 - `ageIncrement` is set to **0** — aging stops completely.
 
-**Idle safety floor (regular or deep idle):** whenever the pet is idle and is
-either sick or actively taking health damage that tick, hunger, happiness,
-health, *and* energy are each prevented from decaying below `IDLE_STAT_FLOOR = 20`
-for that tick. This is applied last in `tick()`, after every stat-decay and
-damage block, so a same-tick damage source can never push a stat back below
-the floor. The floor is capped at `min(previousStat, 20)` — the stat's value
-entering the tick — so a stat already below 20 from earlier neglect is never
-raised back up; it only stops that tick's decay from crossing below 20
-(BUGFIX-149). Unlike the earlier deep-idle-only floor, this now also engages
-during regular idle (≥ 1 minute) when the pet is sick/losing health, giving
-the user a real chance to return and rescue a neglected pet rather than
-finding it dead or bottomed out. When the floor fully absorbs a tick's health
-loss (net health unchanged), that tick's `_damage` events are stripped so idle
-logging/notifications stop reporting the pet as "losing health" once it has
-flatlined at the floor (BUGFIX-150).
+**No health loss while idle (regular or deep idle, BUG-S02 / BUGFIX-165):**
+starvation, unhappiness, exhaustion and sickness damage are all skipped while
+`isIdle || isDeepIdle`. Hunger and happiness still decay (slowed, see above)
+so there is something to care for on return, but health never falls below its
+value entering the tick. A pet that is already sick stays sick (no auto-cure)
+but takes no damage. The following are also suspended while idle:
+
+- the senior old-age death and sickness rolls — a day boundary crossed while
+  idle simply does not roll, so a senior can't die while the user is away
+- poop spawning, poop sickness and the poop attention call
+- attention-call expiry timers (they only advance on active ticks)
+
+**Idle safety floor:** applied last in `tick()`, after every stat-decay and
+damage block. Health is clamped to `max(health, previousHealth)`. When the pet
+is also sick or took damage that tick, hunger, happiness and energy are each
+prevented from decaying below `IDLE_STAT_FLOOR = 20`. That floor is capped at
+`min(previousStat, 20)`, so a stat already below 20 from earlier neglect is
+never raised back up (BUGFIX-149). Any `_damage` events are stripped from idle
+ticks so logging/notifications never report the pet as losing health while
+the user is away (BUGFIX-150).
+
+**Claude Code replays:** `statusline.mjs` and `hook-stop.mjs` replay elapsed
+ticks on the shared IDE pet. They pass the IDE's own last-known idle flags
+(the raw `wasIdle` / `wasDeepIdle` in the anchored state file, via
+`idleFlagsForFile()` in `state.mjs`) so a replay can't bypass idle protection.
 
 ### Offline decay (IDE fully closed)
 
@@ -507,6 +517,23 @@ rate). `nextPoopIntervalTicks` is stored in `PetState` so it is:
 
 Old save files that lack `nextPoopIntervalTicks` fall back to a fresh sample
 at load time (see `deserialiseState`).
+
+### Poop sickness
+
+- **Limit:** `MAX_UNCLEANED_POOPS_BEFORE_SICK = 5` (was 3 before v2.20.17).
+- **Grace period:** the pet only gets sick after spending
+  `POOP_SICK_GRACE_TICKS = 20` consecutive active ticks (≈ 1 minute) at or
+  above the limit. The count lives in `PetState.poopOverLimitTicks`:
+  - it goes up on every awake, non-idle tick at the limit, and resets to 0 on
+    any awake, non-idle tick below the limit
+  - it is frozen (not reset) while idle, deep idle or asleep
+  - `clean()` sets it back to 0
+  - saves without the field load as 0
+- **Ignored poop call:** an expired `poop` attention call is a care mistake
+  (like every other expired call). It only makes the pet sick if the poop
+  count is already at the limit.
+- **No poop while idle:** poops don't spawn and the poop call doesn't fire
+  while the user is idle.
 
 ### Per-type summary
 

@@ -135,7 +135,7 @@ across midnight.
 
 ### BUG-S02 — Idle pets still lose health
 
-**Status:** Open
+**Status:** Fixed (v2.20.17, branch `feat/forgiving-idle-poop`, BUGFIX-165)
 **Files:** `vscode/src/gameEngine.ts` (`tick()`), plus the claude-codotchi,
 opencode-codotchi and claude-desktop-codotchi copies, and
 `pycharm/.../engine/GameEngine.kt`
@@ -246,7 +246,7 @@ attention half as often.
 
 ### BUG-S08 — GitHub account sync doesn't re-prompt properly when sign-in fails
 
-**Status:** Open
+**Status:** Fixed (v2.20.15, branch `fix/github-reauth`, BUGFIX-163)
 **Files:** `vscode/src/sidebarProvider.ts` (`handleSignInLeaderboard`,
 `pushLiveScore`, leaderboard submit/delete handlers, Copilot quota segment),
 `vscode/src/copilotQuota.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
@@ -310,13 +310,13 @@ reliably ask the user to sign in again, so they get stuck.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Raise `MAX_UNCLEANED_POOPS_BEFORE_SICK` from 3 to 5 | `[ ]` | Update all 4 TS engines + `Constants.kt` |
-| Poop sickness grace period | `[ ]` | New `POOP_SICK_GRACE_TICKS` (suggested 20 ticks ≈ 1 min): the pet only gets sick after being over the poop limit for that many consecutive active ticks, so cleaning up in time prevents it |
-| Expired poop attention call → care mistake instead of guaranteed sickness | `[ ]` | Today an expired `poop` call makes the pet sick; replace that with `careMistakes += 1` and only make it sick if the poop count is over the limit |
-| No health loss of any kind while idle | `[ ]` | Fixes BUG-S02. Starvation, unhappiness, exhaustion and sickness damage are all skipped while `isIdle` or `isDeepIdle`; the health floor becomes `max(health, state.health)` |
+| Raise `MAX_UNCLEANED_POOPS_BEFORE_SICK` from 3 to 5 | `[x]` | Update all 4 TS engines + `Constants.kt` |
+| Poop sickness grace period | `[x]` | New `POOP_SICK_GRACE_TICKS` (suggested 20 ticks ≈ 1 min): the pet only gets sick after being over the poop limit for that many consecutive active ticks, so cleaning up in time prevents it |
+| Expired poop attention call → care mistake instead of guaranteed sickness | `[x]` | Today an expired `poop` call makes the pet sick; replace that with `careMistakes += 1` and only make it sick if the poop count is over the limit |
+| No health loss of any kind while idle | `[x]` | Fixes BUG-S02. Starvation, unhappiness, exhaustion and sickness damage are all skipped while `isIdle` or `isDeepIdle`; the health floor becomes `max(health, state.health)` |
 | Idle freezes poop timer | `[x]` | Already true: poop builds up only while `!sleeping && !isIdle` |
-| Old-age rolls skipped while idle | `[ ]` | Stops a senior pet dying while the user is away |
-| Poop attention call suppressed while idle | `[ ]` | The call can currently fire while idle even though it can't expire |
+| Old-age rolls skipped while idle | `[x]` | Stops a senior pet dying while the user is away |
+| Poop attention call suppressed while idle | `[x]` | The call can currently fire while idle even though it can't expire |
 
 **Design notes:**
 
@@ -487,8 +487,8 @@ Most valuable first.
   archived species.
 - The VS Code and PyCharm READMEs and `plugin.xml` say medicine restores health
   per dose, but `giveMedicine` no longer changes health.
-- `vscode/package.json` says deep idle floors stats at 20; the floor only
-  applies when sick or damaged that tick.
+- ~~`vscode/package.json` says deep idle floors stats at 20; the floor only
+  applies when sick or damaged that tick.~~ Fixed in v2.20.17.
 - `DEV_NOTES.md` says offline decay hits energy and health; the code only
   decays hunger and happiness.
 - `BUGFIXES.md` has one section with no `## BUGFIX-` heading (classic sprite

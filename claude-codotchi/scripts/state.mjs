@@ -76,6 +76,22 @@ export function loadStateFile() {
 }
 
 /**
+ * Idle flags to pass to tick() when replaying elapsed ticks for a loaded file.
+ *
+ * When the pet comes from an IDE anchor, the IDE's own last-known idle state
+ * (the raw `wasIdle` / `wasDeepIdle` it serialised) is passed through, so a
+ * Claude Code replay can't bypass the IDE's idle protection and damage a pet
+ * whose owner is away (BUG-S02). deserialiseState() resets wasIdle on load,
+ * so this must read the raw file state. The local pet is always "active".
+ *
+ * @returns {{ isIdle: boolean, isDeepIdle: boolean }}
+ */
+export function idleFlagsForFile(file) {
+  if (!file?._anchor || !file.state) return { isIdle: false, isDeepIdle: false };
+  return { isIdle: file.state.wasIdle === true, isDeepIdle: file.state.wasDeepIdle === true };
+}
+
+/**
  * Save the file object (must include { state, savedAt, terminalEnabled, createdDate, totalMessages }).
  *
  * Always writes the full object to the local wrapper file first — an

@@ -311,6 +311,8 @@ export interface PetState {
     readonly lifetimeCareMistakes: number;
     /** Ticks the current poop(s) have remained uncleaned; resets to 0 when poops === 0. */
     readonly ticksWithUncleanedPoop: number;
+    /** Consecutive active ticks spent at or above MAX_UNCLEANED_POOPS_BEFORE_SICK; frozen while idle or asleep, reset by clean(). */
+    readonly poopOverLimitTicks: number;
     /** Ticks since the last misbehaviour attention call fired; used for log-chance formula. */
     readonly ticksSinceLastMisbehaviour: number;
     /** Ticks since the last gift attention call fired; used for log-chance formula. */

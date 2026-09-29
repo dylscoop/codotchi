@@ -28,6 +28,8 @@ If any of the four differs, fix them to agree before doing anything else.
 
 > **Version bump rule:** A bug fix or feature **always** requires a patch version bump (e.g. 1.19.1 → 1.19.2). Never build artifacts at the same version number as the previous release — the artifact filename will collide. Bump first, archive the old artifact, then build.
 
+> **Encoding rule:** Bump versions with the Edit tool (or `sed`), never Windows PowerShell `Get-Content`/`Set-Content` without `-Encoding utf8` — PowerShell 5.1 round-trips these files through the ANSI codepage and turns every `—` / `→` into mojibake like `ÃƒÂ¢Ã¢â€šÂ¬`. After bumping, `git grep -I -n "Ã|â€" -- vscode/package.json pycharm opencode-codotchi/package.json claude-desktop-codotchi/package.json` must print nothing.
+
 ---
 
 ## Step 2 — Rebuild both artifacts

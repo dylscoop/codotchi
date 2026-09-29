@@ -95,7 +95,7 @@ The pet fires IDE notifications demanding care, with a **2-minute active
 |----------------------------------------------------|-------------------|-------------------------|----------------------------------------|--------|
 | Hunger < 25                                        | `hunger`          | Feed meal or snack      | Hunger −10                             | `[x]`  |
 | Happiness < 40                                     | `unhappiness`     | Play or praise          | Happiness −10                          | `[x]`  |
-| Poop present (log-chance, rises with uncleaned ticks)| `poop`          | Clean                   | Becomes sick                           | `[x]`  |
+| Poop present (log-chance, rises with uncleaned ticks; not while idle)| `poop`          | Clean                   | Care mistake; sick only if poops ≥ 5   | `[x]`  |
 | Sick                                               | `sick`            | Medicine                | Health −10                             | `[x]`  |
 | Energy < 20                                        | `low_energy`      | Sleep                   | Happiness −10                          | `[x]`  |
 | Health < 50                                        | `critical_health` | Feed meal or snack      | Health −10, Happiness −10              | `[x]`  |
@@ -541,20 +541,18 @@ is also slowed to 10% during idle.
 When the IDE has been idle for ≥ **10 minutes**, the pet enters **deep idle**.
 Aging stops entirely (`ageIncrement = 0`) during deep idle.
 
-**Idle safety floor:** whenever the pet is idle (regular *or* deep) and is
-either sick or actively taking health damage that tick, hunger, happiness,
-health, and energy are each prevented from decaying below `IDLE_STAT_FLOOR = 20`
-*for that tick*, applied after every other stat-decay/damage block in `tick()`
-so a same-tick damage source can never push a stat back below the floor. The
-floor is capped at the stat's value entering the tick (`min(previousStat, 20)`),
-so it only holds a stat that was already at/above 20 from decaying past it —
-a stat already below 20 (e.g. from earlier neglect) is left alone and never
-raised back up (BUGFIX-149). This guarantees a neglected pet survives long
-enough for the user to return and rescue it, rather than dying or bottoming
-out while nobody is there to respond. If the floor fully absorbs a tick's
-health loss (net health unchanged), that tick's `_damage` events are stripped
-so the sidebar/notification stop reporting "losing health" once health has
-flatlined at the floor (BUGFIX-150).
+**No health loss while idle (BUGFIX-165):** while the pet is idle (regular
+*or* deep), health never goes down. Starvation, unhappiness, exhaustion and
+sickness damage are skipped, and the senior old-age rolls don't run. A sick
+pet stays sick but takes no damage.
+
+**Idle safety floor:** applied after every other stat-decay/damage block in
+`tick()`. On every idle tick, health is clamped to its value entering the
+tick. When the pet is also sick or took damage, hunger, happiness and energy
+are held at `IDLE_STAT_FLOOR = 20`. That floor is capped at the stat's value
+entering the tick (`min(previousStat, 20)`), so a stat already below 20 is
+never raised back up (BUGFIX-149). `_damage` events are stripped from idle
+ticks (BUGFIX-150).
 
 Aging does **not** advance while the IDE is closed (`applyOfflineDecay`
 preserves `dayTimer`/`ageDays` exactly).
@@ -564,7 +562,7 @@ preserves `dayTimer`/`ageDays` exactly).
 | Idle after | `IDLE_THRESHOLD_SECONDS` | 60 s (1 min) |
 | Deep idle after | `IDLE_DEEP_THRESHOLD_SECONDS` | 600 s (10 min) |
 | Decay divisor | `IDLE_DECAY_TICK_DIVISOR` | 10 (1 pt/min vs 10 pt/min active) |
-| Stat floor (idle + sick/damage) | `IDLE_STAT_FLOOR` | 20 — hunger, happiness, health, energy |
+| Stat floor (idle + sick/damage) | `IDLE_STAT_FLOOR` | 20 — hunger, happiness, energy (health never drops while idle) |
 
 Activity is tracked via `onDidChangeTextEditorSelection`, `onDidChangeTextDocument`,
 `onDidChangeWindowState`, and `onDidChangeActiveTextEditor`. Any of these events
@@ -608,7 +606,7 @@ Status: `[x]`
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Sickness from overfeeding snacks (>3 consecutive) | `[x]` | |
-| Sickness from uncleaned poops (>3) | `[x]` | |
+| Sickness from uncleaned poops (≥ 5 for 20 active ticks) | `[x]` | `MAX_UNCLEANED_POOPS_BEFORE_SICK = 5`, `POOP_SICK_GRACE_TICKS = 20` (≈ 1 min); counter frozen while idle/asleep, reset by Clean (BUGFIX-165) |
 | Health reaches 0 → death | `[x]` | |
 | Hunger stays 0 for 3+ ticks → health damage | `[x]` | `starvation_damage` event; humanised in event log; does **not** trigger sickness — only poop/overfeeding do |
 | Unhappiness health drain | `[x]` | `unhappiness_damage` event; humanised in event log |

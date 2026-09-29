@@ -49,8 +49,15 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 - **Pet customisation** — name your pet and choose a pet type on first launch
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
   and it dies
-- **OpenCode integration** — your pet lives in the terminal too, with shared
-  state across VS Code, PyCharm, and OpenCode
+- **Safe while you are away** — when you step away from the IDE your pet gets
+  hungry and bored more slowly and never loses health, so it is waiting for you
+  when you come back
+- **Terminal & Claude integrations** — your pet lives in Claude Code, OpenCode
+  and Claude Desktop too, with shared state across every host
+- **Today's Token Cost** — see how much Claude Code / OpenCode has cost you
+  today, plus your GitHub Copilot premium quota
+- **Public leaderboard** — sign in with GitHub to submit your pet when it
+  dies, or push live progress while it's still going
 - **Status bar integration** — pet name and stage always visible in the IDE
   status bar
 - **Persistent state** — pet survives IDE restarts; offline time is accounted
@@ -107,7 +114,7 @@ Once installed and the IDE has restarted:
 | **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted. Also contains **Today's Token Cost** — see below. |
 | **Pat** | Gives your pet a gentle pat. Boosts happiness. Costs energy. Accessed via the Play menu (same overlay as the mini-games). Cannot be used while your pet is sleeping or exhausted. |
 | **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. |
-| **Clean** | Clears all droppings from the screen. Leaving too many uncleaned will make your pet sick. |
+| **Clean** | Clears all droppings from the screen. Leaving too many uncleaned for too long will make your pet sick. |
 | **Medicine** | Treats sickness. Requires multiple doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss. |
 | **Praise** | Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution. |
 | **Scold** | Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline. |
@@ -137,6 +144,21 @@ Which sources feed the bubble is configurable via three checkboxes in
 just Claude + OpenCode, or all three).
 
 Costs energy and boosts happiness, same as a Pat.
+
+## Leaderboard
+
+Click **Sign in to GitHub (Leaderboard)** in the pet panel to link your GitHub
+account. The plugin uses GitHub's device-code sign-in: a browser page opens and
+a notification shows the code to enter. With **live push** turned on, your
+pet's progress is synced to the public
+[leaderboard](https://dylscoop.github.io/codotchi/leaderboard/) while it's
+alive. When it dies, click **Submit to Leaderboard** on the game over screen.
+
+If GitHub rejects the saved sign-in (for example, because you revoked the app
+at github.com/settings/applications), the plugin forgets the old token. It then
+shows **Sign in to GitHub again** in the panel, and a notification with a
+**Sign in** action if live push was running in the background. Submitting a
+score starts a fresh sign-in automatically and retries the submission once.
 
 ## Mini-games
 

@@ -68,7 +68,13 @@ const HUNGER_ZERO_TICKS_BEFORE_RISK: number = 3;
 const CRITICAL_HEALTH_DAMAGE_PER_TICK: number = 5;
 
 const MAX_CONSECUTIVE_SNACKS_BEFORE_SICK: number = 3;
-const MAX_UNCLEANED_POOPS_BEFORE_SICK: number = 3;
+const MAX_UNCLEANED_POOPS_BEFORE_SICK: number = 5;
+/**
+ * Consecutive active (awake, non-idle) ticks the pet must spend at or above
+ * MAX_UNCLEANED_POOPS_BEFORE_SICK before it becomes sick (≈ 1 real minute),
+ * so cleaning up in time prevents the sickness.
+ */
+const POOP_SICK_GRACE_TICKS: number = 20;
 
 /** Maximum snacks allowed per wake cycle before further snacks are refused. */
 export const SNACK_MAX_PER_CYCLE: number = 3;
@@ -122,9 +128,6 @@ const ENERGY_DECAY_PER_TICK: number = 1;
 
 /** Health lost per tick when the pet's energy is fully depleted while awake. Slower than other critical conditions. */
 const EXHAUSTION_HEALTH_DAMAGE_PER_TICK: number = 2;
-
-/** Health lost per tick from sickness while the user is idle (regular idle, not deep idle). Much slower than active rate. */
-const IDLE_SICK_DAMAGE_PER_TICK: number = 1;
 
 /** Per-tick probability that sickness clears naturally while the pet is sleeping. */
 const SLEEP_SICK_RECOVERY_CHANCE: number = 0.03;
@@ -676,6 +679,9 @@ export interface PetState {
   /** Ticks the current poop(s) have remained uncleaned; resets to 0 when poops === 0. */
   readonly ticksWithUncleanedPoop: number;
 
+  /** Consecutive active ticks spent at or above MAX_UNCLEANED_POOPS_BEFORE_SICK; frozen while idle or asleep, reset by clean(). */
+  readonly poopOverLimitTicks: number;
+
   /** Ticks since the last misbehaviour attention call fired; used for log-chance formula. */
   readonly ticksSinceLastMisbehaviour: number;
 
@@ -1036,6 +1042,7 @@ export function createPet(name: string, petType: string, unlockedCharacter: stri
     careMistakes: 0,
     lifetimeCareMistakes: 0,
     ticksWithUncleanedPoop: 0,
+    poopOverLimitTicks: 0,
     ticksSinceLastMisbehaviour: 0,
     ticksSinceLastGift: 0,
   };
@@ -1152,6 +1159,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   let careMistakes: number = state.careMistakes;
   let lifetimeCareMistakes: number = state.lifetimeCareMistakes;
   let ticksWithUncleanedPoop: number = state.ticksWithUncleanedPoop;
+  let poopOverLimitTicks: number = state.poopOverLimitTicks;
   let ticksSinceLastMisbehaviour: number = state.ticksSinceLastMisbehaviour;
   let ticksSinceLastGift: number = state.ticksSinceLastGift;
 
@@ -1275,9 +1283,15 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     checkWeightTierEvents(prevWeight, weight, events);
   }
 
-  // Sickness from dirty environment — only fires when the IDE is active so the
-  // pet cannot be made sick by accumulated poop during idle or while closed.
-  if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK && !sick && !isIdle) {
+  // Sickness from dirty environment — the pet must sit at or above the poop
+  // limit for POOP_SICK_GRACE_TICKS consecutive active ticks first, so cleaning
+  // up in time prevents it. The counter is frozen (not reset) while idle or
+  // asleep, so the pet cannot be made sick by poop while the user is away.
+  if (!isIdle && !isDeepIdle && !sleeping) {
+    poopOverLimitTicks = poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK ? poopOverLimitTicks + 1 : 0;
+  }
+  if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK && poopOverLimitTicks >= POOP_SICK_GRACE_TICKS &&
+      !sick && !isIdle && !isDeepIdle) {
     sick = true;
     events.push("became_sick");
   }
@@ -1289,41 +1303,40 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     hungerZeroTicks = 0;
   }
 
-  // Starvation damage — no longer triggers sickness. Sickness is now only
-  // caused by a dirty environment (poop) or overfeeding (snacks), so a pet
-  // left hungry takes health damage but must not become "sick" from it.
-  if (hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK) {
-    health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
-    events.push("starvation_damage");
-    tookDamageThisTick = true;
-  }
+  // Health damage only applies while the user is active (BUG-S02). While idle
+  // or deep idle, hunger and happiness still decay slowly so there is something
+  // to care for on return, but the pet never loses health. Existing sickness
+  // stays (no auto-cure) but does no damage — matching applyOfflineDecay.
+  if (!isIdle && !isDeepIdle) {
+    // Starvation damage — no longer triggers sickness. Sickness is now only
+    // caused by a dirty environment (poop) or overfeeding (snacks), so a pet
+    // left hungry takes health damage but must not become "sick" from it.
+    if (hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK) {
+      health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
+      events.push("starvation_damage");
+      tookDamageThisTick = true;
+    }
 
-  // Happiness-critical health drain — does not cause sickness (see above).
-  if (happiness === STAT_MIN && !sleeping) {
-    health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
-    events.push("unhappiness_damage");
-    tookDamageThisTick = true;
-  }
+    // Happiness-critical health drain — does not cause sickness (see above).
+    if (happiness === STAT_MIN && !sleeping) {
+      health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
+      events.push("unhappiness_damage");
+      tookDamageThisTick = true;
+    }
 
-  // Energy-exhaustion health drain (slower than hunger/happiness critical)
-  if (energy === STAT_MIN && !sleeping) {
-    health = clampStat(health - EXHAUSTION_HEALTH_DAMAGE_PER_TICK);
-    events.push("exhaustion_damage");
-    tookDamageThisTick = true;
-  }
+    // Energy-exhaustion health drain (slower than hunger/happiness critical)
+    if (energy === STAT_MIN && !sleeping) {
+      health = clampStat(health - EXHAUSTION_HEALTH_DAMAGE_PER_TICK);
+      events.push("exhaustion_damage");
+      tookDamageThisTick = true;
+    }
 
-  // Sickness health drain — BUGFIX-040: suppressed during deep idle so a pet
-  // that is already sick when the user locks their screen or the computer
-  // sleeps cannot die while they are away. Matches applyOfflineDecay / closed
-  // behaviour which skips sickness damage entirely during offline periods.
-  // During regular idle (< 10 min inactivity) damage is slowed to
-  // IDLE_SICK_DAMAGE_PER_TICK (1/tick) rather than the full 5/tick, so brief
-  // absences with a sick pet still carry consequences but won't kill the pet.
-  if (sick && !isDeepIdle) {
-    const sickDmg = isIdle ? IDLE_SICK_DAMAGE_PER_TICK : CRITICAL_HEALTH_DAMAGE_PER_TICK;
-    health = clampStat(health - sickDmg);
-    events.push("sickness_damage");
-    tookDamageThisTick = true;
+    // Sickness health drain.
+    if (sick) {
+      health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
+      events.push("sickness_damage");
+      tookDamageThisTick = true;
+    }
   }
 
   // BUGFIX-004: passive health regen — full rate while sleeping, much slower awake
@@ -1353,7 +1366,9 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       switch (expiredType) {
         case "critical_health": health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY); break;
         case "sick":            health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); break;
-        case "poop":            if (!sick) { sick = true; events.push("became_sick"); } break;
+        // An ignored poop call is a care mistake (counted below); it only makes
+        // the pet sick if the poop pile is already over the sickness limit.
+        case "poop":            if (!sick && poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK) { sick = true; events.push("became_sick"); } break;
         case "hunger":          hunger = clampStat(hunger - ATTENTION_EXPIRY_STAT_PENALTY); break;
         case "unhappiness":     happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY); break;
         case "misbehaviour":    health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); careMistakes += 1; lifetimeCareMistakes += 1; break;
@@ -1384,9 +1399,10 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   if (activeAttentionCall === null) {
     const cooldownClear = (t: AttentionCallType): boolean => !(attentionCallCooldowns[t] ?? 0);
     const rd = config.attentionCallRateDivisor;
-    // Poop call fires even while sleeping (poops accumulate regardless).
-    // All other calls are suppressed while the pet is asleep.
-    if (poops >= 1 && cooldownClear("poop") &&
+    // Poop call fires even while sleeping (poops accumulate regardless), but
+    // not while the user is idle — it could never expire and nobody is there
+    // to answer it. All other calls are suppressed while the pet is asleep.
+    if (poops >= 1 && !isIdle && !isDeepIdle && cooldownClear("poop") &&
                Math.random() < logChance(ticksWithUncleanedPoop, POOP_CALL_BASE_CHANCE / rd, POOP_CALL_MAX_CHANCE / rd)) {
       activeAttentionCall = "poop";
       attentionCallActiveTicks = 0;
@@ -1430,26 +1446,25 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   }
   } // end if (config.attentionCallsEnabled)
 
-  // Idle safety floor — while idle (regular or deep) and the pet is sick or took
-  // damage this tick, prevent hunger/happiness/health/energy from decaying below
-  // IDLE_STAT_FLOOR this tick. Applied last, after every stat-decay and damage
-  // block above, so a same-tick damage source can never push a stat back below
-  // the floor. The floor is capped at each stat's value entering this tick, so a
-  // stat already below IDLE_STAT_FLOOR (e.g. from earlier exhaustion) is never
-  // raised back up — it only stops *this tick's* decay from crossing the floor.
-  if ((isIdle || isDeepIdle) && (sick || tookDamageThisTick)) {
-    hunger    = Math.max(hunger,    Math.min(state.hunger,    IDLE_STAT_FLOOR));
-    happiness = Math.max(happiness, Math.min(state.happiness, IDLE_STAT_FLOOR));
-    health    = Math.max(health,    Math.min(state.health,    IDLE_STAT_FLOOR));
-    energy    = Math.max(energy,    Math.min(state.energy,    IDLE_STAT_FLOOR));
+  // Idle safety floor — applied last, after every stat-decay and damage block
+  // above, so a same-tick damage source can never slip through.
+  //  • Health never falls below its value entering this tick while idle
+  //    (BUG-S02) — the damage blocks above are already gated, this is the net.
+  //  • When sick or damaged, hunger/happiness/energy stop decaying at
+  //    IDLE_STAT_FLOOR. The floor is capped at each stat's value entering this
+  //    tick, so a stat already below IDLE_STAT_FLOOR is never raised back up.
+  if (isIdle || isDeepIdle) {
+    health = Math.max(health, state.health);
+    if (sick || tookDamageThisTick) {
+      hunger    = Math.max(hunger,    Math.min(state.hunger,    IDLE_STAT_FLOOR));
+      happiness = Math.max(happiness, Math.min(state.happiness, IDLE_STAT_FLOOR));
+      energy    = Math.max(energy,    Math.min(state.energy,    IDLE_STAT_FLOOR));
+    }
 
-    // If the floor above fully absorbed this tick's health loss (net health
-    // unchanged), drop the damage events pushed earlier this tick so idle
-    // logging/notifications don't claim the pet is losing health when it isn't.
-    if (health === state.health) {
-      for (let i = events.length - 1; i >= 0; i--) {
-        if (HEALTH_DAMAGE_EVENTS.has(events[i])) events.splice(i, 1);
-      }
+    // Drop any damage events pushed earlier this tick so idle logging /
+    // notifications don't claim the pet is losing health when it isn't.
+    for (let i = events.length - 1; i >= 0; i--) {
+      if (HEALTH_DAMAGE_EVENTS.has(events[i])) events.splice(i, 1);
     }
   }
 
@@ -1470,7 +1485,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       hungerZeroTicks, sick, alive: alive as boolean, ticksAlive, events,
       sleeping, ageDays, dayTimer, weight,
       activeAttentionCall, attentionCallActiveTicks, attentionCallCooldowns,
-      careMistakes, lifetimeCareMistakes, ticksWithUncleanedPoop, ticksSinceLastMisbehaviour, ticksSinceLastGift,
+      careMistakes, lifetimeCareMistakes, ticksWithUncleanedPoop, poopOverLimitTicks, ticksSinceLastMisbehaviour, ticksSinceLastGift,
     });
   }
 
@@ -1497,6 +1512,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     careMistakes,
     lifetimeCareMistakes,
     ticksWithUncleanedPoop,
+    poopOverLimitTicks,
     ticksSinceLastMisbehaviour,
     ticksSinceLastGift,
   };
@@ -1507,7 +1523,8 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   // reached while idle the promotion is simply deferred — not lost — to the next active tick.
   const afterStage = isIdle ? withDerivedFields(afterDecay) : checkStageProgression(afterDecay);
   // ageDays is Math.floor(new dayTimer), computed above; state.ageDays is pre-tick value.
-  if (ageDays > state.ageDays) {
+  // Skipped while idle so a senior can never die of old age while the user is away.
+  if (ageDays > state.ageDays && !isIdle && !isDeepIdle) {
     const afterDeath = rollOldAgeDeath(afterStage, Math.random());
     return afterDeath.alive ? rollOldAgeSickness(afterDeath, Math.random()) : afterDeath;
   }
@@ -1988,6 +2005,7 @@ export function clean(state: PetState): PetState {
     poops: 0,
     ticksSinceLastPoop: 0,
     ticksWithUncleanedPoop: 0,
+    poopOverLimitTicks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
@@ -2403,6 +2421,7 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     careMistakes: state.careMistakes,
     lifetimeCareMistakes: state.lifetimeCareMistakes,
     ticksWithUncleanedPoop: state.ticksWithUncleanedPoop,
+    poopOverLimitTicks: state.poopOverLimitTicks,
     ticksSinceLastMisbehaviour: state.ticksSinceLastMisbehaviour,
     ticksSinceLastGift: state.ticksSinceLastGift,
   };
@@ -2490,6 +2509,7 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     careMistakes: getNumber("careMistakes", getNumber("neglectCount", 0)),
     lifetimeCareMistakes: getNumber("lifetimeCareMistakes", getNumber("neglectCount", 0)),
     ticksWithUncleanedPoop: getNumber("ticksWithUncleanedPoop", 0),
+    poopOverLimitTicks: getNumber("poopOverLimitTicks", 0),
     ticksSinceLastMisbehaviour: getNumber("ticksSinceLastMisbehaviour", 0),
     ticksSinceLastGift: getNumber("ticksSinceLastGift", 0),
   };

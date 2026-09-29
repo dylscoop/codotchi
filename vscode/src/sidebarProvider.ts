@@ -37,6 +37,12 @@ import {
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
 import { StatusBarManager } from "./statusBar";
 import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
+import {
+  resolveGithubUser,
+  describeGithubUserFailure,
+  isAuthFailure,
+  type GithubUserOutcome,
+} from "./githubAuth";
 import { scanClaudeCodeDailyUsage, localDateKey, type DailyUsage } from "./claudeUsage";
 
 const LEADERBOARD_REPO_OWNER = "dylscoop";
@@ -111,6 +117,45 @@ export class SidebarProvider
   private setLeaderboardUsername(username: string | null): void {
     this.leaderboardGithubUsername = username;
     void this.context.globalState.update("leaderboardGithubUsername", username ?? undefined);
+  }
+
+  /** Resolve the leaderboard GitHub user; forces a fresh session on 401/403
+   *  when interactive (BUG-S08). */
+  private resolveLeaderboardUser(interactive: boolean): Promise<GithubUserOutcome> {
+    return resolveGithubUser(
+      (opts) => Promise.resolve(vscode.authentication.getSession("github", LEADERBOARD_GITHUB_SCOPES, opts)),
+      fetch,
+      interactive
+    );
+  }
+
+  private isLeaderboardAuthExpired(): boolean {
+    return this.context.globalState.get<boolean>("leaderboardAuthExpired", false);
+  }
+
+  /** The GitHub token stopped working: forget the cached username so the
+   *  sidebar shows the Sign-in button again. Background callers also get a
+   *  one-off warning with a Sign in action (not repeated until the next success). */
+  private markLeaderboardAuthExpired(notify: boolean): void {
+    const alreadyFlagged = this.isLeaderboardAuthExpired();
+    this.setLeaderboardUsername(null);
+    void this.context.globalState.update("leaderboardAuthExpired", true);
+    const current = this.getCurrentState();
+    if (current !== null) { this.onStateUpdate(current); }
+    if (notify && !alreadyFlagged) {
+      void vscode.window.showWarningMessage(
+        "Codotchi: GitHub sign-in expired — live leaderboard sync is paused.",
+        "Sign in"
+      ).then((choice) => {
+        if (choice === "Sign in") { void this.handleSignInLeaderboard(); }
+      });
+    }
+  }
+
+  private clearLeaderboardAuthExpired(): void {
+    if (this.isLeaderboardAuthExpired()) {
+      void this.context.globalState.update("leaderboardAuthExpired", false);
+    }
   }
   // Approx ms per game day (awake rate: 5 real min = 1 game day) for live rank extrapolation.
   // URLs for fetching rank data from the leaderboard branch.
@@ -583,16 +628,21 @@ export class SidebarProvider
           true
         );
         if (outcome.ok) {
+          // Re-arm the hint so a later expiry is surfaced again (BUG-S08).
+          this.copilotNoSessionHintShown = false;
           segments.push(
             outcome.unlimited
               ? "Copilot: unlimited premium requests"
               : `Copilot: ${outcome.percentRemaining}% premium quota remaining`
           );
+        } else if (outcome.reason === "unauthorized") {
+          // Expired/revoked token — always say so, never silently drop it.
+          segments.push("Copilot: GitHub sign-in expired — sign in again to include quota");
         } else if (outcome.reason === "no_session" && !this.copilotNoSessionHintShown) {
           this.copilotNoSessionHintShown = true;
           segments.push("Copilot: sign in to GitHub when prompted to include quota");
         }
-        // network_error / unauthorized / parse_error -> silently omit; never break the base bubble
+        // network_error / parse_error -> silently omit; never break the base bubble
       } catch {
         /* swallow — never break the base bubble */
       }
@@ -637,6 +687,7 @@ export class SidebarProvider
       liveSubscribed,
       liveLastPushedAt,
       leaderboardGithubUsername: this.leaderboardGithubUsername,
+      leaderboardAuthExpired: this.isLeaderboardAuthExpired(),
     });
   }
 
@@ -686,40 +737,16 @@ export class SidebarProvider
         return;
       }
 
-      const session = await vscode.authentication.getSession(
-        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
-      );
-
-      if (!session) {
-        postResult("cancelled");
+      const user = await this.resolveLeaderboardUser(true);
+      if (!user.ok) {
+        if (user.reason === "no_session") { postResult("cancelled"); return; }
+        if (user.reason === "auth_expired") { this.markLeaderboardAuthExpired(false); }
+        postResult("error", describeGithubUserFailure(user));
         return;
       }
-
-      // Fetch GitHub username
-      let username: string;
-      try {
-        const userRes = await fetch("https://api.github.com/user", {
-          headers: {
-            "Authorization": `token ${session.accessToken}`,
-            "Accept": "application/json",
-            "User-Agent": "Codotchi-VSCode",
-          },
-        });
-        if (!userRes.ok) {
-          postResult("error", `GitHub API error: ${userRes.status}`);
-          return;
-        }
-        const userBody = await userRes.json() as Record<string, unknown>;
-        username = String(userBody.login ?? "");
-        if (!username) {
-          postResult("error", "Could not read GitHub username.");
-          return;
-        }
-        this.setLeaderboardUsername(username);
-      } catch {
-        postResult("error", "Network error fetching GitHub username.");
-        return;
-      }
+      const { session, username } = user;
+      this.setLeaderboardUsername(username);
+      this.clearLeaderboardAuthExpired();
 
       // Require the user to type their pet's name — blocks automated API submissions
       const confirmed = await vscode.window.showInputBox({
@@ -765,6 +792,9 @@ export class SidebarProvider
         );
         if (issueRes.status === 201) {
           postResult("success");
+        } else if (isAuthFailure(issueRes)) {
+          this.markLeaderboardAuthExpired(false);
+          postResult("error", "GitHub sign-in expired or lacks access — try again and accept the GitHub sign-in prompt.");
         } else {
           const errBody = await issueRes.text().catch(() => "");
           postResult("error", `Failed to create issue (HTTP ${issueRes.status}): ${errBody.slice(0, 120)}`);
@@ -785,19 +815,15 @@ export class SidebarProvider
       const state = this.getCurrentState();
       if (state === null || state.alive) { return; }
 
-      const session = await Promise.resolve(
-        vscode.authentication.getSession("github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: false })
-      ).catch(() => null);
-      if (!session) { return; }
-
-      const userRes = await fetch("https://api.github.com/user", {
-        headers: { "Authorization": `token ${session.accessToken}`, "Accept": "application/json", "User-Agent": "Codotchi-VSCode" },
-      });
-      if (!userRes.ok) { return; }
-      const userBody = await userRes.json() as Record<string, unknown>;
-      const username = String(userBody.login ?? "");
-      if (!username) { return; }
+      const user = await this.resolveLeaderboardUser(false).catch(() => null);
+      if (!user) { return; }
+      if (!user.ok) {
+        if (user.reason === "auth_expired") { this.markLeaderboardAuthExpired(true); }
+        return;
+      }
+      const { session, username } = user;
       this.setLeaderboardUsername(username);
+      this.clearLeaderboardAuthExpired();
 
       const diedAt = this.getLastRunDiedAt() ?? Date.now();
       const scoreData = {
@@ -813,7 +839,7 @@ export class SidebarProvider
       const issueBody  = `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``;
       const issueTitle = `[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @${username}`;
 
-      await fetch(
+      const issueRes = await fetch(
         `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
         {
           method: "POST",
@@ -826,8 +852,9 @@ export class SidebarProvider
           body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ["leaderboard-submission"] }),
         }
       );
+      if (isAuthFailure(issueRes)) { this.markLeaderboardAuthExpired(true); }
     } catch {
-      // Auto-submit is best-effort; never surface errors to the user
+      // Auto-submit is best-effort; only an expired sign-in is surfaced
     }
   }
 
@@ -878,27 +905,26 @@ export class SidebarProvider
 
   /** Sign in to GitHub for the leaderboard and cache the resolved username. */
   async handleSignInLeaderboard(): Promise<void> {
+    const postResult = (username: string | null, error?: string): void => {
+      if (this.webviewView) {
+        void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username, error });
+      }
+    };
     try {
-      const session = await vscode.authentication.getSession(
-        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
-      );
-      if (!session) {
+      const user = await this.resolveLeaderboardUser(true);
+      if (!user.ok) {
         this.setLeaderboardUsername(null);
-        if (this.webviewView) {
-          void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username: null });
-        }
+        postResult(null, describeGithubUserFailure(user));
         return;
       }
-      const userRes = await fetch("https://api.github.com/user", {
-        headers: { "Authorization": `token ${session.accessToken}`, "Accept": "application/json", "User-Agent": "Codotchi-VSCode" },
-      });
-      const username = userRes.ok ? String((await userRes.json() as Record<string, unknown>).login ?? "") : "";
-      this.setLeaderboardUsername(username || null);
-      if (this.webviewView) {
-        void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username: this.leaderboardGithubUsername });
-      }
-    } catch {
-      // silent — sign-in is best-effort
+      this.setLeaderboardUsername(user.username);
+      this.clearLeaderboardAuthExpired();
+      postResult(user.username);
+      const current = this.getCurrentState();
+      if (current !== null) { this.onStateUpdate(current); }
+    } catch (err) {
+      // User dismissed the sign-in dialog or the auth provider failed.
+      postResult(null, err instanceof Error && err.message ? `Sign-in failed: ${err.message}` : "Sign-in failed — try again.");
     }
   }
 
@@ -910,10 +936,13 @@ export class SidebarProvider
   async pushLiveScore(state: PetState, promptAuth = false): Promise<void> {
     if (!state.alive) { return; }
     try {
-      const session = await vscode.authentication.getSession(
-        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: promptAuth }
-      );
-      if (!session) { return; }
+      const user = await this.resolveLeaderboardUser(promptAuth);
+      if (!user.ok) {
+        if (user.reason === "auth_expired") { this.markLeaderboardAuthExpired(!promptAuth); }
+        return;
+      }
+      const { session, username } = user;
+      this.setLeaderboardUsername(username);
 
       const authHeaders = {
         "Authorization": `token ${session.accessToken}`,
@@ -921,16 +950,6 @@ export class SidebarProvider
         "Content-Type": "application/json",
         "User-Agent": "Codotchi-VSCode",
       };
-
-      // Resolve GitHub username.
-      const userRes = await fetch("https://api.github.com/user", {
-        headers: { ...authHeaders, "Accept": "application/json" },
-      });
-      if (!userRes.ok) { return; }
-      const userBody = await userRes.json() as Record<string, unknown>;
-      const username = String(userBody.login ?? "");
-      if (!username) { return; }
-      this.setLeaderboardUsername(username);
 
       const entry = {
         username,
@@ -956,7 +975,12 @@ export class SidebarProvider
         }
       );
 
+      if (isAuthFailure(issueRes)) {
+        this.markLeaderboardAuthExpired(!promptAuth);
+        return;
+      }
       if (issueRes.status === 201) {
+        this.clearLeaderboardAuthExpired();
         await this.context.globalState.update("leaderboardLastPushedAt", Date.now());
         // Refresh sidebar so "last synced" timestamp updates immediately.
         const current = this.getCurrentState();
@@ -982,22 +1006,16 @@ export class SidebarProvider
         return;
       }
 
-      const session = await vscode.authentication.getSession(
-        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
-      );
-      if (!session) { postResult("cancelled"); return; }
-
-      const userRes = await fetch("https://api.github.com/user", {
-        headers: {
-          "Authorization": `token ${session.accessToken}`,
-          "Accept": "application/json",
-          "User-Agent": "Codotchi-VSCode",
-        },
-      });
-      if (!userRes.ok) { postResult("error", `GitHub API error: ${userRes.status}`); return; }
-      const userBody = await userRes.json() as Record<string, unknown>;
-      const username = String(userBody.login ?? "");
-      if (!username) { postResult("error", "Could not read GitHub username."); return; }
+      const user = await this.resolveLeaderboardUser(true);
+      if (!user.ok) {
+        if (user.reason === "no_session") { postResult("cancelled"); return; }
+        if (user.reason === "auth_expired") { this.markLeaderboardAuthExpired(false); }
+        postResult("error", describeGithubUserFailure(user));
+        return;
+      }
+      const { session, username } = user;
+      this.setLeaderboardUsername(username);
+      this.clearLeaderboardAuthExpired();
 
       const deleteData = {
         schemaVersion: 1,
@@ -1024,6 +1042,9 @@ export class SidebarProvider
       );
       if (issueRes.status === 201) {
         postResult("success");
+      } else if (isAuthFailure(issueRes)) {
+        this.markLeaderboardAuthExpired(false);
+        postResult("error", "GitHub sign-in expired or lacks access — try again and accept the GitHub sign-in prompt.");
       } else {
         const errBody = await issueRes.text().catch(() => "");
         postResult("error", `Failed to create issue (HTTP ${issueRes.status}): ${errBody.slice(0, 120)}`);

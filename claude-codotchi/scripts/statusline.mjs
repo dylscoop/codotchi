@@ -24,6 +24,7 @@ import {
   saveUsageCache,
   loadRankCache,
   saveRankCache,
+  idleFlagsForFile,
 } from "./state.mjs";
 import { pickPetEmoji, renderMovingEmojiLine, currentFrameIndex } from "./emoji.mjs";
 
@@ -99,8 +100,10 @@ async function main() {
     if (elapsedTicks > 60) {
       state = ge.applyOfflineDecay(state, elapsedMs / 1000);
     } else {
+      // Honour the IDE's idle flag for an IDE-anchored pet (BUG-S02).
+      const { isIdle, isDeepIdle } = idleFlagsForFile(file);
       for (let i = 0; i < elapsedTicks; i++) {
-        const result = ge.tick(state, false, false, gameConfig);
+        const result = ge.tick(state, isIdle, isDeepIdle, gameConfig);
         state = result.state ?? result; // tick may return { state, events } or state directly
       }
     }

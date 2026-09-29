@@ -312,6 +312,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     var careMistakes: Double               = state.careMistakes
     var lifetimeCareMistakes: Int          = state.lifetimeCareMistakes
     var ticksWithUncleanedPoop: Int        = state.ticksWithUncleanedPoop
+    var poopOverLimitTicks: Int            = state.poopOverLimitTicks
     var ticksSinceLastMisbehaviour: Int    = state.ticksSinceLastMisbehaviour
     var ticksSinceLastGift: Int            = state.ticksSinceLastGift
 
@@ -426,8 +427,15 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         checkWeightTierEvents(prevWeight, weight, events)
     }
 
-    // Sickness from dirty environment — only fires when the IDE is active.
-    if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK && !sick && !isIdle) {
+    // Sickness from dirty environment — the pet must sit at or above the poop
+    // limit for POOP_SICK_GRACE_TICKS consecutive active ticks first, so cleaning
+    // up in time prevents it. The counter is frozen (not reset) while idle or
+    // asleep, so the pet cannot be made sick by poop while the user is away.
+    if (!isIdle && !isDeepIdle && !sleeping) {
+        poopOverLimitTicks = if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK) poopOverLimitTicks + 1 else 0
+    }
+    if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK && poopOverLimitTicks >= POOP_SICK_GRACE_TICKS &&
+        !sick && !isIdle && !isDeepIdle) {
         sick = true
         events.add("became_sick")
     }
@@ -435,35 +443,40 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     // Starvation counter
     if (hunger == STAT_MIN) hungerZeroTicks += 1 else hungerZeroTicks = 0
 
-    // Starvation damage — no longer triggers sickness. Sickness is now only
-    // caused by a dirty environment (poop) or overfeeding (snacks), so a pet
-    // left hungry takes health damage but must not become "sick" from it.
-    if (hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK) {
-        health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
-        events.add("starvation_damage")
-        tookDamageThisTick = true
-    }
+    // Health damage only applies while the user is active (BUG-S02). While idle
+    // or deep idle, hunger and happiness still decay slowly so there is something
+    // to care for on return, but the pet never loses health. Existing sickness
+    // stays (no auto-cure) but does no damage — matching applyOfflineDecay.
+    if (!isIdle && !isDeepIdle) {
+        // Starvation damage — no longer triggers sickness. Sickness is now only
+        // caused by a dirty environment (poop) or overfeeding (snacks), so a pet
+        // left hungry takes health damage but must not become "sick" from it.
+        if (hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK) {
+            health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
+            events.add("starvation_damage")
+            tookDamageThisTick = true
+        }
 
-    // Happiness-critical health drain — does not cause sickness (see above).
-    if (happiness == STAT_MIN && !sleeping) {
-        health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
-        events.add("unhappiness_damage")
-        tookDamageThisTick = true
-    }
+        // Happiness-critical health drain — does not cause sickness (see above).
+        if (happiness == STAT_MIN && !sleeping) {
+            health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
+            events.add("unhappiness_damage")
+            tookDamageThisTick = true
+        }
 
-    // Energy-exhaustion health drain
-    if (energy == STAT_MIN && !sleeping) {
-        health = clampStat(health - EXHAUSTION_HEALTH_DAMAGE_PER_TICK)
-        events.add("exhaustion_damage")
-        tookDamageThisTick = true
-    }
+        // Energy-exhaustion health drain
+        if (energy == STAT_MIN && !sleeping) {
+            health = clampStat(health - EXHAUSTION_HEALTH_DAMAGE_PER_TICK)
+            events.add("exhaustion_damage")
+            tookDamageThisTick = true
+        }
 
-    // Sickness health drain — suppressed during deep idle; slowed during regular idle
-    if (sick && !isDeepIdle) {
-        val sickDmg = if (isIdle) IDLE_SICK_DAMAGE_PER_TICK else CRITICAL_HEALTH_DAMAGE_PER_TICK
-        health = clampStat(health - sickDmg)
-        events.add("sickness_damage")
-        tookDamageThisTick = true
+        // Sickness health drain.
+        if (sick) {
+            health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK)
+            events.add("sickness_damage")
+            tookDamageThisTick = true
+        }
     }
 
     // Passive health regen
@@ -493,7 +506,9 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
             when (expiredType) {
                 "critical_health" -> { health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY) }
                 "sick"            -> health    = clampStat(health    - ATTENTION_EXPIRY_STAT_PENALTY)
-                "poop"            -> if (!sick) { sick = true; events.add("became_sick") }
+                // An ignored poop call is a care mistake (counted below); it only makes
+                // the pet sick if the poop pile is already over the sickness limit.
+                "poop"            -> if (!sick && poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK) { sick = true; events.add("became_sick") }
                 "hunger"          -> hunger    = clampStat(hunger    - ATTENTION_EXPIRY_STAT_PENALTY)
                 "unhappiness"     -> happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY)
                 "misbehaviour"    -> { health  = clampStat(health    - ATTENTION_EXPIRY_STAT_PENALTY); careMistakes += 1; lifetimeCareMistakes += 1 }
@@ -524,8 +539,9 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         fun cooldownClear(t: String) = (attentionCallCooldowns[t] ?: 0) == 0
         val rd = config.attentionCallRateDivisor
 
-        // Poop call fires even while sleeping
-        if (poops >= 1 && cooldownClear("poop") &&
+        // Poop call fires even while sleeping, but not while the user is idle —
+        // it could never expire and nobody is there to answer it.
+        if (poops >= 1 && !isIdle && !isDeepIdle && cooldownClear("poop") &&
             Random.nextDouble() < logChance(ticksWithUncleanedPoop, POOP_CALL_BASE_CHANCE / rd, POOP_CALL_MAX_CHANCE / rd)) {
             activeAttentionCall = "poop"
             attentionCallActiveTicks = 0
@@ -570,25 +586,24 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
 
     } // end if (config.attentionCallsEnabled)
 
-    // Idle safety floor — while idle (regular or deep) and the pet is sick or took
-    // damage this tick, prevent hunger/happiness/health/energy from decaying below
-    // IDLE_STAT_FLOOR this tick. Applied last, after every stat-decay and damage
-    // block above, so a same-tick damage source can never push a stat back below
-    // the floor. The floor is capped at each stat's value entering this tick, so a
-    // stat already below IDLE_STAT_FLOOR (e.g. from earlier exhaustion) is never
-    // raised back up — it only stops *this tick's* decay from crossing the floor.
-    if ((isIdle || isDeepIdle) && (sick || tookDamageThisTick)) {
-        hunger    = maxOf(hunger,    minOf(state.hunger,    IDLE_STAT_FLOOR))
-        happiness = maxOf(happiness, minOf(state.happiness, IDLE_STAT_FLOOR))
-        health    = maxOf(health,    minOf(state.health,    IDLE_STAT_FLOOR))
-        energy    = maxOf(energy,    minOf(state.energy,    IDLE_STAT_FLOOR))
-
-        // If the floor above fully absorbed this tick's health loss (net health
-        // unchanged), drop the damage events pushed earlier this tick so idle
-        // logging/notifications don't claim the pet is losing health when it isn't.
-        if (health == state.health) {
-            events.removeAll { it in HEALTH_DAMAGE_EVENTS }
+    // Idle safety floor — applied last, after every stat-decay and damage block
+    // above, so a same-tick damage source can never slip through.
+    //  • Health never falls below its value entering this tick while idle
+    //    (BUG-S02) — the damage blocks above are already gated, this is the net.
+    //  • When sick or damaged, hunger/happiness/energy stop decaying at
+    //    IDLE_STAT_FLOOR. The floor is capped at each stat's value entering this
+    //    tick, so a stat already below IDLE_STAT_FLOOR is never raised back up.
+    if (isIdle || isDeepIdle) {
+        health = maxOf(health, state.health)
+        if (sick || tookDamageThisTick) {
+            hunger    = maxOf(hunger,    minOf(state.hunger,    IDLE_STAT_FLOOR))
+            happiness = maxOf(happiness, minOf(state.happiness, IDLE_STAT_FLOOR))
+            energy    = maxOf(energy,    minOf(state.energy,    IDLE_STAT_FLOOR))
         }
+
+        // Drop any damage events pushed earlier this tick so idle logging /
+        // notifications don't claim the pet is losing health when it isn't.
+        events.removeAll { it in HEALTH_DAMAGE_EVENTS }
     }
 
     // Dev mode: configurable health floor — prevents death from stat decay or old age
@@ -617,6 +632,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
                 careMistakes             = careMistakes,
                 lifetimeCareMistakes     = lifetimeCareMistakes,
                 ticksWithUncleanedPoop   = ticksWithUncleanedPoop,
+                poopOverLimitTicks       = poopOverLimitTicks,
                 ticksSinceLastMisbehaviour = ticksSinceLastMisbehaviour,
                 ticksSinceLastGift       = ticksSinceLastGift,
             )
@@ -651,6 +667,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         careMistakes             = careMistakes,
         lifetimeCareMistakes     = lifetimeCareMistakes,
         ticksWithUncleanedPoop   = ticksWithUncleanedPoop,
+        poopOverLimitTicks       = poopOverLimitTicks,
         ticksSinceLastMisbehaviour = ticksSinceLastMisbehaviour,
         ticksSinceLastGift       = ticksSinceLastGift,
     )
@@ -660,7 +677,8 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     // dayTimer keeps accumulating while idle (see aging above), so once the threshold is
     // reached while idle the promotion is simply deferred — not lost — to the next active tick.
     val afterStage = if (isIdle) withDerivedFields(afterDecay) else checkStageProgression(afterDecay)
-    return if (afterDecay.ageDays > state.ageDays) {
+    // Skipped while idle so a senior can never die of old age while the user is away.
+    return if (afterDecay.ageDays > state.ageDays && !isIdle && !isDeepIdle) {
         val afterDeath = rollOldAgeDeath(afterStage)
         if (afterDeath.alive) rollOldAgeSickness(afterDeath) else afterDeath
     } else afterStage
@@ -963,6 +981,7 @@ fun clean(state: PetState): PetState {
             poops                = 0,
             ticksSinceLastPoop   = 0,
             ticksWithUncleanedPoop = 0,
+            poopOverLimitTicks   = 0,
             careMistakes         = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events               = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,

@@ -1986,3 +1986,60 @@ _Bug C — Math.max cross-window sync locks in inflation:_ The `reloadDaily` fs.
 **Problem:** The live event log only grouped repeats of the four health-loss events into one `(×N)` line. Patting, snacks, medicine and other repeated actions each got their own line. The death-screen log (built from `recentEventLog`) grouped nothing, so a pet that died of sickness showed the same damage line many times.
 
 **Fix:** `appendEvents()` now groups any event that matches the one above it, and keeps the line's first wording so randomised messages stay the same. The death-screen log groups consecutive repeats with the same `(×N)` counter.
+
+---
+
+## BUGFIX-163 — GitHub leaderboard sign-in never re-prompts after the token dies (VS Code + PyCharm)
+
+**Status:** Fixed (v2.20.15, branch `fix/github-reauth`, backlog BUG-S08)
+**Files:** `vscode/src/githubAuth.ts` (new), `vscode/src/sidebarProvider.ts`, `vscode/media/sidebar.js`, `pycharm/src/main/kotlin/com/codotchi/GitHubAuth.kt` (new), `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** Once the GitHub token was revoked or expired, users got stuck. The GitHub username was saved to disk, and the sidebar hides the **Sign in to GitHub (Leaderboard)** button whenever a username is present, so the button never came back. VS Code's `getSession` kept returning the cached dead session, and every flow either returned silently on a 401 (live push, auto-submit) or showed `GitHub API error: 401` and reused the same session on retry (submit, delete). `handleSignInLeaderboard` swallowed every exception. In PyCharm the dead token in PasswordSafe was never cleared, and the device flow failed silently on network errors, expiry or `access_denied`.
+
+**Fix:** A 401, or a 403 that is not a rate limit (`X-RateLimit-Remaining: 0` or `Retry-After`), from `api.github.com` now counts as "session invalid" everywhere.
+- **VS Code:** `resolveGithubUser()` forces one fresh session (`forceNewSession`) and retries for user actions. Background pushes get `auth_expired` instead.
+- **PyCharm:** the `github-pat` credential is cleared, and the device flow restarts (submit retries once).
+- **Both:** the cached username is cleared and `leaderboardAuthExpired` is set. Background expiries show a single notification with a **Sign in** action. The sidebar shows **Sign in to GitHub again** or **Retry GitHub sign-in** with the error, and the flag clears on the next success. Sign-in failures are reported in `leaderboard_sign_in_result.error`. The Copilot quota bubble now says when its token is unauthorized.
+
+**Tests added:** `vscode/tests/unit/githubAuth.test.ts` (14 cases: forced re-auth, single retry, cancelled prompt, background no-prompt, rate-limit 403). `pycharm/src/test/kotlin/com/codotchi/GitHubAuthTest.kt` (pure classification plus source guards).
+
+---
+
+## BUGFIX-164 — Pet walks right forever after the sidebar is narrowed while a snack is on the floor
+
+**Status:** Fixed (v2.20.16, branch `fix/unreachable-snack`)
+**Files:** `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js`
+
+**Problem:** A floor snack’s `x` is fixed when it spawns, using the canvas width at that moment. If the sidebar was made narrower afterwards, `resizeCanvas()` shrank the canvas but the snack kept its old `x`, past the new right edge (and not drawn, because it was off-canvas). Snack targeting set `petVx = +speed` every frame, the pet was clamped at `maxX` and never got within reach, so it faced right against the wall forever and the wander turn-around logic never ran. Widening the panel again made the snack reachable, so it seemed to "fix itself".
+
+**Fix:** `animationLoop()` clamps every floor snack into the current `[minX, maxX]` each frame, before the movement branches, using the same range the spawn code uses. This covers both the normal and dragon movement paths.
+
+---
+
+## BUGFIX-165 — Idle pets still lose health; poop sickness too harsh
+
+**Status:** Fixed (v2.20.17, branch `feat/forgiving-idle-poop`, BUG-S02 / September backlog §2.1)
+**Files:** `vscode/src/gameEngine.ts`, `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/{GameEngine,Constants,PetState}.kt`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt`, `claude-codotchi/scripts/{state,statusline,hook-stop}.mjs`
+
+**Problem:** While the user was idle, the pet still lost health:
+
+- starvation, unhappiness and exhaustion damage had no idle guard
+- sickness still did 1 damage per tick in regular idle
+- health kept falling until `IDLE_STAT_FLOOR` (20) stopped it
+- the senior old-age death and sickness rolls still ran, so a senior could die while nobody was there
+- the Claude Code `statusline.mjs` / `hook-stop.mjs` replays ticked the shared IDE pet as always active, bypassing idle protection
+
+Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an ignored poop call always made it sick.
+
+**Fix:**
+
+- **No health loss while idle:** every health-damage block in `tick()` is skipped while `isIdle || isDeepIdle`, and the idle floor clamps health to its value entering the tick. The old-age rolls are skipped on idle ticks, and the poop call no longer fires while idle.
+- **Poop sickness:** the limit is now 5 (`MAX_UNCLEANED_POOPS_BEFORE_SICK`). The pet only gets sick after `POOP_SICK_GRACE_TICKS` (20, about 1 minute) consecutive active ticks over the limit, counted in the new `poopOverLimitTicks` field. The counter is frozen while idle or asleep and reset by `clean()`.
+- **Ignored poop call:** an expired poop call is now only a care mistake, unless the poop count is already at the limit.
+- **Claude Code replays:** the scripts pass the IDE's raw `wasIdle` / `wasDeepIdle` through `idleFlagsForFile()`. `IDLE_SICK_DAMAGE_PER_TICK` was removed.
+
+**Tests added:**
+
+- `vscode/tests/unit/gameEngine.test.ts`: poop grace period, clean reset, idle freeze, serialisation fallback, poop-call expiry below/at the limit, no poop call while idle, no health loss for every damage source in idle and deep idle, senior old-age roll skipped while idle.
+- The matching cases in `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt`.
+- `claude-codotchi/tests/integration/idleReplay.test.mjs`.
