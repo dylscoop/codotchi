@@ -445,7 +445,10 @@ string keys.
 | `sleep` | Falls asleep | `__Name__ is off to the moooon for a nap.` |
 | `poop` | Poop appears | `__Name__ left a cow pat. Classic.` |
 | `cost_high` | Daily cost over the warn threshold | `That token bill is no bull.` |
-| `commit` | Commit activity | `Commit? That's legen-dairy.` |
+| `commit` | Commit activity | `Commit? That's legen-dairy.` / `Grazing the standards, one commit at a time.` |
+| `laughed` | New laugh reaction, e.g. after winning a mini-game or being patted while happy | `Very bullish attitude.` / `Udderly ridiculous.` |
+| `buttering_up` | After `played` / `fed_meal` / `fed_snack` | `Buttering me up, are you?` |
+| `session_start` | Claude Code / OpenCode session start | `Grab the bull by the horns, pal.` |
 
 **Design notes:**
 
@@ -502,6 +505,7 @@ and a `sprite.json`.
 | **Dinosaurs:** t-rex, triceratops, stegosaurus, brontosaurus, pterodactyl | `[ ]` | Egg stage could be a fossil egg; the t-rex is `upright` |
 | **Mythical:** unicorn, phoenix, griffin, kraken, kitsune, yeti | `[ ]` | The phoenix could be reborn as an egg when it dies, instead of the game-over screen (ties in with the FEATURES.md generation counter) |
 | **Regional mythical tie-ins:** Nessie (Scottish), bunyip (Australian) | `[ ]` | Suggest `en-SCO` / `en-AU` when hatched, as `stu` / `roo` do (§2.3) |
+| **Crow / magpie — the shiny-thing thief** | `[ ]` | Every so often it swoops across the canvas and steals a floor item (a snack, the gift box, a poop, the coin from coin flip) or a small decorative "shiny". It drops each item in its **nest stash**, a small inset panel in the corner of the canvas that shows a `hoardCount`. Clicking the nest gives the items back. It can only steal from its own webview canvas, not the editor. Reuses the dragon flight path; emoji 🐦‍⬛ |
 | Flying movement for winged species | `[ ]` | Pterodactyl, phoenix and griffin reuse the dragon flight path in `sidebar.js` instead of walking |
 | Aquatic movement for the kraken / Nessie | `[ ]` | Bob along the bottom of the canvas; needs a new movement branch |
 | How to get them | `[ ]` | Decide per species: in `ROTATION_ANIMALS`, passcode unlock, or a special evolution (e.g. `secret_best` care rolls a mythical adult) |
