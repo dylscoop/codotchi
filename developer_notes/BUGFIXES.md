@@ -2043,3 +2043,22 @@ Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an
 - `vscode/tests/unit/gameEngine.test.ts`: poop grace period, clean reset, idle freeze, serialisation fallback, poop-call expiry below/at the limit, no poop call while idle, no health loss for every damage source in idle and deep idle, senior old-age roll skipped while idle.
 - The matching cases in `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt`.
 - `claude-codotchi/tests/integration/idleReplay.test.mjs`.
+
+---
+
+## BUGFIX-166 — Attention-call cooldowns differ between the IDEs; answered call lost after a mini-game
+
+**Status:** Fixed (v2.20.18, branch `feat/play-pat-craving-calls`, BUG-S06)
+**Files:** `vscode/src/gameEngine.ts` (plus the claude-codotchi, opencode and desktop copies), `pycharm/src/main/kotlin/com/codotchi/engine/{GameEngine,Constants}.kt`
+
+**Problem:**
+
+- **Cooldowns:** `ATTENTION_ANSWER_COOLDOWN_TICKS` / `ATTENTION_EXPIRY_COOLDOWN_TICKS` were 50/20 in TypeScript but 100/40 in Kotlin, so a PyCharm pet called for attention about half as often as a VS Code one. The TypeScript comments also claimed 5 / 2 minutes when the values meant 2.5 / 1. Cooldowns counted down during idle time too, so calls could build up while the user was away.
+- **Mini-games:** `applyMinigameResult()` replaced the event list instead of adding to it. The hosts call it straight after `play()`, so `play()`'s `attention_call_answered_unhappiness` event was thrown away. The call was cleared, but no toast or log line appeared.
+
+**Fix:**
+
+- Both cooldowns are 100 ticks (5 min) in every engine, and the Step 2 decrement only runs on active (non-idle) ticks.
+- `applyMinigameResult()` keeps any `attention_call_answered_*` events already on the state.
+
+**Tests added:** cooldown values, active-only countdown, and the answered event surviving `applyMinigameResult()`, in `vscode/tests/unit/gameEngine.test.ts` and `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt`.
