@@ -367,7 +367,7 @@ Goal: drop in images for every animal at once, instead of running
 
 ---
 
-### 2.3 Language Packs — Scottish and Australian English
+### 2.3 Language Packs — Scottish, Australian and Cow
 
 Expands the FEATURES.md §14 "Language packs" row.
 
@@ -376,7 +376,7 @@ Expands the FEATURES.md §14 "Language packs" row.
 | Pull user-facing strings out into `lang/en.json` | `[ ]` | String IDs with `__Name__` placeholders (same pattern as `customCharacters.js`) |
 | `en-SCO` pack (Scottish English) | `[ ]` | Keys it doesn't define fall back to `en` |
 | `en-AU` pack (Australian English) | `[ ]` | Keys it doesn't define fall back to `en` |
-| `[S]` `codotchi.languagePack` setting (`en` / `en-SCO` / `en-AU`) | `[ ]` | VS Code setting + PyCharm settings page |
+| `[S]` `codotchi.languagePack` setting (`en` / `en-SCO` / `en-AU` / `moo`) | `[ ]` | VS Code setting + PyCharm settings page |
 | `/codotchi lang <pack>` command | `[ ]` | Claude Code and OpenCode plugins; saved in plugin state |
 | Community packs loadable at runtime | `[ ]` | Phase 2: drop a JSON file into the codotchi state folder |
 
@@ -414,6 +414,49 @@ Expands the FEATURES.md §14 "Language packs" row.
 - One `en.json` should be the source for all hosts. A build step copies it into
   each plugin, as with the shared core in §3.
 
+#### Novelty pack — `moo` (cow puns)
+
+A joke pack where the pet talks in cow and dairy puns. It uses the same
+string IDs as `en`, and any key it doesn't define falls back to `en`. Unlike
+the regional packs, it mostly swaps in **new lines for coding-activity
+triggers** that today have little or no speech, so it also needs a few new
+string keys.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| `moo` pack file (`lang/moo.json`) | `[ ]` | Loaded like `en-SCO` / `en-AU`; missing keys fall back to `en` |
+| New trigger keys: `coding_active`, `long_session`, `many_messages`, `ignored_call` | `[ ]` | Added to `en.json` too, so every pack can use them; see the table below |
+| Several variants per key, picked at random | `[ ]` | e.g. `"coding_active": ["…", "…"]`; avoids repeating the same pun every time |
+| Pair with a cow / ox sprite | `[ ]` | The ox is one of the species still waiting for real art (§2.2); picking `moo` could suggest it, as `stu` / `roo` suggest their packs |
+
+**Phrases:**
+
+| Key | Trigger | `moo` |
+|-----|---------|-------|
+| `coding_active` | Saves / edits (`applyCodeActivity`), throttled | `Mooooving the code, I see?` |
+| `long_session` | Long unbroken coding session or high message count | `Boss making you work? How dairy.` |
+| `many_messages` | Lots of AI messages today (Claude Code / OpenCode `messageCount`) | `You're really milking this, eh?` |
+| `praise` | Praise button | `Good job, take the wee calf.` |
+| `scold` | Scold button | `You and I will have beef soon.` |
+| `ignored_call` | An attention call expires unanswered | `Udderly ignored. Again.` |
+| `hungry` | Hunger attention call | `__Name__ could really go for some grass-fed code.` |
+| `happy` | High happiness | `__Name__ is in a good mooood!` |
+| `sick` | Becomes sick | `__Name__ is feeling a bit mooo-dy… and unwell.` |
+| `sleep` | Falls asleep | `__Name__ is off to the moooon for a nap.` |
+| `poop` | Poop appears | `__Name__ left a cow pat. Classic.` |
+| `cost_high` | Daily cost over the warn threshold | `That token bill is no bull.` |
+| `commit` | Commit activity | `Commit? That's legen-dairy.` |
+
+**Design notes:**
+
+- `moo` is a novelty pack, not a locale, so its ID should never look like a
+  BCP-47 tag. That keeps it out of any future "match the OS language" logic.
+- Throttle `coding_active` well above the existing code-activity throttle,
+  so the pun lands occasionally rather than on every save.
+- The Claude Code / OpenCode speech bubble already has a slot for
+  message-count lines (`buildContextualSpeech`), so `many_messages` and
+  `long_session` fit there without new UI.
+
 ---
 
 ### 2.4 Multiple Pets and Talking to Other People's Codotchis
@@ -445,6 +488,72 @@ FEATURES_2.md §2.
 **Phase C — Connection-era mechanics:** friendship meter, gift exchange,
 matchmaker, marriage and offspring, and the generation counter. The designs are
 already in FEATURES_2.md §2.1-2.4 and §3.3; they build on the Phase B link.
+
+---
+
+### 2.5 New Sprites — Dinosaurs and Mythical Creatures
+
+New species beyond the zodiac set. They depend on the bulk sprite pipeline
+(§2.2): each species is a `sprites/<species>/` folder with five stage images
+and a `sprite.json`.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **Dinosaurs:** t-rex, triceratops, stegosaurus, brontosaurus, pterodactyl | `[ ]` | Egg stage could be a fossil egg; the t-rex is `upright` |
+| **Mythical:** unicorn, phoenix, griffin, kraken, kitsune, yeti | `[ ]` | The phoenix could be reborn as an egg when it dies, instead of the game-over screen (ties in with the FEATURES.md generation counter) |
+| **Regional mythical tie-ins:** Nessie (Scottish), bunyip (Australian) | `[ ]` | Suggest `en-SCO` / `en-AU` when hatched, as `stu` / `roo` do (§2.3) |
+| Flying movement for winged species | `[ ]` | Pterodactyl, phoenix and griffin reuse the dragon flight path in `sidebar.js` instead of walking |
+| Aquatic movement for the kraken / Nessie | `[ ]` | Bob along the bottom of the canvas; needs a new movement branch |
+| How to get them | `[ ]` | Decide per species: in `ROTATION_ANIMALS`, passcode unlock, or a special evolution (e.g. `secret_best` care rolls a mythical adult) |
+| Terminal heads and emoji | `[ ]` | `SPRITE_HEAD` in the `asciiArt.ts` copies and `emoji.mjs` (🦖 🦕 🦄 🐉 🦅 🐙 🦊) |
+| Pet-type flavour | `[ ]` | Optional per-species modifiers, e.g. dinosaurs get hungry faster, and the phoenix recovers from sickness while sleeping more often |
+
+**Design notes:**
+
+- Add these only after §2.2 lands and BUG-S03's fallback is fixed. Otherwise
+  every new species has the invisible-sprite problem.
+- §2.2 estimates about 1 MB of source for every 8 species, and this adds 13
+  more. That is another reason to generate `sprites.generated.js`.
+
+---
+
+### 2.6 New Attention Calls — Play, Pat and Random Cravings
+
+Three new `AttentionCallType` values. They follow the same lifecycle as the
+existing calls: fire, wait for an answer, then expire as a care mistake
+with a stat penalty.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| `play` call — "Play a game with me!" | `[ ]` | Answered by finishing any mini-game. Fires at random (log-chance on ticks since the last play, like `misbehaviour` / `gift`), not only when happiness is low |
+| `pat` call — "I want a pat!" | `[ ]` | Answered by Pat. Also random, with a shorter cooldown than `play` because it's cheaper to answer |
+| `craving` call — "Feed me!" / "I want a snack!" | `[ ]` | Can fire **at any hunger level**, not just below `ATTENTION_HUNGER_THRESHOLD`. The call says whether the pet wants a meal or a snack; the matching action answers it |
+| Unanswered → health loss | `[ ]` | On expiry: `health -= ATTENTION_EXPIRY_STAT_PENALTY`, `careMistakes += 1`. `play` / `pat` also cost some happiness |
+| Wrong answer | `[ ]` | Feeding a meal to a snack craving (or the reverse) feeds the pet but doesn't answer the call |
+| Speech / toast text | `[ ]` | New keys in `en.json` (§2.3), so the language packs cover them too |
+| Terminal plugins | `[ ]` | `/codotchi play`, `/codotchi pat`, `/codotchi feed` answer them; the calls show in the status line like the others |
+| Mirror to all four TypeScript engines + Kotlin | `[ ]` | ide-parity / opencode-claude-parity |
+
+**Design notes:**
+
+- **Idle safety still applies.** Calls only fire and only expire on active
+  ticks, and health never drops while idle (BUGFIX-165). The health penalty
+  therefore only lands if the user is present and ignores the call.
+- **Snack cravings vs overfeeding:** answering a snack craving counts towards
+  `MAX_CONSECUTIVE_SNACKS_BEFORE_SICK`. Either exempt answered cravings from
+  that count or have cravings ask for a meal when `consecutiveSnacks` is
+  already high, so the game never asks for something that makes the pet sick.
+- **Call frequency:** three more random calls could make the pet nagging.
+  Scale them by `config.attentionCallRateDivisor` like the existing random
+  calls, and give each its own cooldown. Fix BUG-S06 (TS / Kotlin cooldown
+  mismatch) first so both IDEs nag at the same rate.
+- **Priority:** in the if/else chain in `tick()` Step 3, put these after the
+  need-based calls (`critical_health`, `sick`, `hunger`, `unhappiness`) so
+  a real need always wins over a whim.
+- New constants (names indicative): `PLAY_CALL_BASE_CHANCE` /
+  `PLAY_CALL_MAX_CHANCE`, `PAT_CALL_*`, `CRAVING_CALL_*`, plus
+  `ticksSinceLastPlayCall` / `ticksSinceLastPatCall` / `ticksSinceLastCraving`
+  in `PetState` (defaults of 0 for old saves).
 
 ---
 
