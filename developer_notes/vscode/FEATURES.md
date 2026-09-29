@@ -88,8 +88,9 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 
 ### 3.1 Attention Calls
 
-The pet fires IDE notifications demanding care, with a **2-minute active
-(non-idle) response window**. Idle time does NOT count toward the timer.
+The pet fires IDE notifications demanding care, with a **1-minute active
+(non-idle) response window** (the random calls use the configurable
+`codotchi.attentionCallExpiry` window instead). Idle time does NOT count toward the timer.
 
 | Trigger                                            | Attention Type    | Correct Response        | Expiry penalty                         | Status |
 |----------------------------------------------------|-------------------|-------------------------|----------------------------------------|--------|
@@ -101,11 +102,16 @@ The pet fires IDE notifications demanding care, with a **2-minute active
 | Health < 50                                        | `critical_health` | Feed meal or snack      | Health −10, Happiness −10              | `[x]`  |
 | Random misbehaviour (log-chance, child+)           | `misbehaviour`    | Scold                   | Health −10 + careMistakes/lifetimeCareMistakes +1 | `[x]`  |
 | Random gift (log-chance)                           | `gift`            | Praise (+happiness +15) | Happiness −5 + careMistakes/lifetimeCareMistakes +1 | `[x]`  |
+| Random craving (log-chance, any hunger; not while idle/asleep/sick/full) | `craving` | The craved food: meal (Feed) or snack (Snack) | Health −10 | `[x]`  |
+| Random "play with me" (log-chance; energy ≥ 25, not sick) | `play`    | Play (any mini-game)    | Health −10                             | `[x]`  |
+| Random "pat me" (log-chance; energy ≥ 20)         | `pat`             | Pat                     | Health −10                             | `[x]`  |
 
 Notes:
-- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (2 min)
-- Post-answer cooldown: `ATTENTION_ANSWER_COOLDOWN_TICKS = 50` ticks (5 min)
-- Post-expiry cooldown: `ATTENTION_EXPIRY_COOLDOWN_TICKS = 20` ticks (2 min)
+- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (1 min) for need-based calls; poop, misbehaviour, gift, play, pat and craving use `config.attentionCallExpiryTicks` (Needy 20 / Standard 50 / Chilled 100 ticks)
+- Post-answer cooldown: `ATTENTION_ANSWER_COOLDOWN_TICKS = 100` ticks (5 min)
+- Post-expiry cooldown: `ATTENTION_EXPIRY_COOLDOWN_TICKS = 100` ticks (5 min)
+- Cooldowns only count down on active (non-idle) ticks. TS and Kotlin share the same values (BUG-S06 / BUGFIX-166)
+- Whim calls (craving, play, pat) come after every need-based call in the fire order, so a real need always wins. A craving asks for a meal once the pet has had 2+ snacks in a row or the snack caps are used up, so it never asks for a snack that would make the pet sick
 - Only one call active at a time; `poop` call can fire while sleeping
 - IDE notifications fire via `showWarningMessage` (VS Code) / `NotificationType.WARNING` (PyCharm)
 - "Open Gotchi" button on notification focuses the sidebar/tool window

@@ -213,7 +213,7 @@ has been corrected to `[~]`.
 
 ### BUG-S06 — Attention-call cooldowns differ between TypeScript and Kotlin
 
-**Status:** Open
+**Status:** Fixed (v2.20.18, branch `feat/play-pat-craving-calls`, BUGFIX-166). Both cooldowns are now 100 ticks (5 min) in every engine, and they only count down on active ticks
 **Files:** `vscode/src/gameEngine.ts`, `pycharm/.../engine/Constants.kt`
 
 **Problem:** `ATTENTION_ANSWER_COOLDOWN_TICKS` / `ATTENTION_EXPIRY_COOLDOWN_TICKS`
@@ -529,14 +529,14 @@ with a stat penalty.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| `play` call — "Play a game with me!" | `[ ]` | Answered by finishing any mini-game. Fires at random (log-chance on ticks since the last play, like `misbehaviour` / `gift`), not only when happiness is low |
-| `pat` call — "I want a pat!" | `[ ]` | Answered by Pat. Also random, with a shorter cooldown than `play` because it's cheaper to answer |
-| `craving` call — "Feed me!" / "I want a snack!" | `[ ]` | Can fire **at any hunger level**, not just below `ATTENTION_HUNGER_THRESHOLD`. The call says whether the pet wants a meal or a snack; the matching action answers it |
-| Unanswered → health loss | `[ ]` | On expiry: `health -= ATTENTION_EXPIRY_STAT_PENALTY`, `careMistakes += 1`. `play` / `pat` also cost some happiness |
-| Wrong answer | `[ ]` | Feeding a meal to a snack craving (or the reverse) feeds the pet but doesn't answer the call |
-| Speech / toast text | `[ ]` | New keys in `en.json` (§2.3), so the language packs cover them too |
-| Terminal plugins | `[ ]` | `/codotchi play`, `/codotchi pat`, `/codotchi feed` answer them; the calls show in the status line like the others |
-| Mirror to all four TypeScript engines + Kotlin | `[ ]` | ide-parity / opencode-claude-parity |
+| `play` call — "Play a game with me!" | `[x]` | Answered by finishing any mini-game (or `/codotchi play` in the terminal). Fires at random (log-chance on `ticksSinceLastPlayCall`, like `misbehaviour` / `gift`), not only when happiness is low. Needs energy ≥ `PLAY_ENERGY_COST` and no sickness |
+| `pat` call — "I want a pat!" | `[x]` | Answered by Pat. Also random, and needs energy ≥ `PAT_ENERGY_COST`. Uses the same 5-minute cooldown as every other call |
+| `craving` call — "Feed me!" / "I want a snack!" | `[x]` | Can fire **at any hunger level** (not when sick or full). `PetState.cravingFood` records whether the pet wants a meal or a snack; the matching action answers it |
+| Unanswered → health loss | `[x]` | On expiry: `health -= ATTENTION_EXPIRY_STAT_PENALTY` (10) and `careMistakes += 1`, for all three. The expiry window is the `codotchi.attentionCallExpiry` setting |
+| Wrong answer | `[x]` | Feeding a meal to a snack craving (or the reverse) feeds the pet but doesn't answer the call |
+| Speech / toast text | `[~]` | Webview labels / bubbles, IDE toasts and OpenCode speech are done. Moving them into `en.json` waits for §2.3 |
+| Terminal plugins | `[x]` | New `/codotchi play` and `/codotchi snack` (claude-codotchi, OpenCode) and `codotchi_play` / `codotchi_snack` (Claude Desktop). OpenCode announces the calls; the Claude Code status line doesn't show any calls yet (true for the older calls too) |
+| Mirror to all four TypeScript engines + Kotlin | `[x]` | ide-parity / opencode-claude-parity |
 
 **Design notes:**
 

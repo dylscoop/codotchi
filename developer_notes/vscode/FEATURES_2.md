@@ -44,7 +44,7 @@ does not yet have.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Discrete `careMistakes` counter in `PetState` | `[x]` | Per-stage counter; resets to 0 on evolution. `lifetimeCareMistakes` never resets. |
-| Increment on: attention call expired unresponded | `[x]` | Each expired attention call (hunger, unhappiness, sickness, poop, low energy, critical health) adds 1 to both counters |
+| Increment on: attention call expired unresponded | `[x]` | Each expired attention call (hunger, unhappiness, sickness, poop, low energy, critical health, play, pat, craving) adds 1 to both counters |
 | Increment on: fed snack when hungry (not meal) | `[ ]` | Not yet wired. Currently the reverse happens: a snack that answers a hunger call *reduces* `careMistakes` |
 | Increment on: misbehaviour ignored | `[x]` | Expired `misbehaviour` call adds 1 to `careMistakes` + `lifetimeCareMistakes` |
 | Use `careMistakes` as a secondary gate in evolution | `[x]` | 0–3 → best tier; 4–6 → mid tier; ≥ 7 → low tier; each excess mistake above 3 delays evolution by 1 game-day |
