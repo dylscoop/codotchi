@@ -111,4 +111,16 @@ data class PetState(
 
     /** Consecutive active ticks spent at or above MAX_UNCLEANED_POOPS_BEFORE_SICK; frozen while idle or asleep, reset by clean(). */
     val poopOverLimitTicks: Int = 0,
+
+    /** Ticks since the last play attention call fired; used for log-chance formula. */
+    val ticksSinceLastPlayCall: Int = 0,
+
+    /** Ticks since the last pat attention call fired; used for log-chance formula. */
+    val ticksSinceLastPatCall: Int = 0,
+
+    /** Ticks since the last craving attention call fired; used for log-chance formula. */
+    val ticksSinceLastCraving: Int = 0,
+
+    /** What the active craving call asks for ("meal" or "snack"); null when no craving call is active. */
+    val cravingFood: String? = null,
 )

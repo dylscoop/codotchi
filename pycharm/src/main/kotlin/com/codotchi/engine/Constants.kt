@@ -380,10 +380,13 @@ const val ATTENTION_ENERGY_THRESHOLD: Int = 20
 /** Health stat at or below which a critical_health attention call fires. */
 const val ATTENTION_HEALTH_THRESHOLD: Int = 50
 
-/** Cooldown ticks (100 = 5 min) applied to a call type after it is answered. */
+/**
+ * Cooldown ticks (100 × 3 s = 5 min) applied to a call type after it is answered.
+ * Cooldowns only count down on active (non-idle) ticks. Must match gameEngine.ts (BUG-S06).
+ */
 const val ATTENTION_ANSWER_COOLDOWN_TICKS: Int = 100
-/** Cooldown ticks (40 = 2 min) applied to a call type after it expires unanswered. */
-const val ATTENTION_EXPIRY_COOLDOWN_TICKS: Int = 40
+/** Cooldown ticks (100 × 3 s = 5 min) applied to a call type after it expires unanswered. */
+const val ATTENTION_EXPIRY_COOLDOWN_TICKS: Int = 100
 /** Stat penalty applied to the relevant stat when an attention call expires. */
 const val ATTENTION_EXPIRY_STAT_PENALTY: Int = 10
 
@@ -422,3 +425,12 @@ const val MISBEHAVIOUR_BASE_CHANCE: Double = 0.005
 const val MISBEHAVIOUR_MAX_CHANCE: Double = 0.08
 const val GIFT_BASE_CHANCE: Double = 0.002
 const val GIFT_MAX_CHANCE: Double = 0.05
+// Whim calls — fire at any stat level, unlike the need-based calls.
+const val PLAY_CALL_BASE_CHANCE: Double = 0.003
+const val PLAY_CALL_MAX_CHANCE: Double = 0.04
+const val PAT_CALL_BASE_CHANCE: Double = 0.004
+const val PAT_CALL_MAX_CHANCE: Double = 0.05
+const val CRAVING_CALL_BASE_CHANCE: Double = 0.003
+const val CRAVING_CALL_MAX_CHANCE: Double = 0.04
+/** A craving never asks for a meal when hunger is already at or above this. */
+const val CRAVING_MEAL_MAX_HUNGER: Int = 90
