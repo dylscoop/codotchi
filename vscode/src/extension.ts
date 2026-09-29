@@ -118,6 +118,10 @@ export function activate(context: vscode.ExtensionContext): void {
         "attention_call_misbehaviour":   `${state.name} is misbehaving!`,
         "attention_call_gift":           (getCustomCharacterByPasscode(vscode.workspace.getConfiguration("codotchi").get<string>("characterPasscode", ""))?.giftMessage ?? `${state.name} brought you a gift!`).replace("__Name__", state.name),
         "attention_call_critical_health":`${state.name}'s health is critical!`,
+        "attention_call_play":           `${state.name} wants to play a game!`,
+        "attention_call_pat":            `${state.name} wants a pat!`,
+        "attention_call_craving_meal":   `${state.name} is craving a meal!`,
+        "attention_call_craving_snack":  `${state.name} is craving a snack!`,
       };
       for (const event of state.events) {
         const msg = notificationMessages[event];

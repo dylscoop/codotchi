@@ -1496,6 +1496,10 @@ class CodotchiPlugin : Disposable {
             "attention_call_misbehaviour"    -> "$petName is misbehaving!"
             "attention_call_gift"            -> (customChar?.giftMessage ?: "$petName brought you a gift!").replace("__Name__", petName)
             "attention_call_critical_health" -> "$petName's health is critical!"
+            "attention_call_play"            -> "$petName wants to play a game!"
+            "attention_call_pat"             -> "$petName wants a pat!"
+            "attention_call_craving_meal"    -> "$petName is craving a meal!"
+            "attention_call_craving_snack"   -> "$petName is craving a snack!"
             else                             -> null
         }
     }

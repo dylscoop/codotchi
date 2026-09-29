@@ -1587,6 +1587,10 @@
       "attention_call_misbehaviour":    n + " is misbehaving and needs discipline!",
       "attention_call_gift":            (_cc && _cc.giftMessage) ? _cc.giftMessage.replace("__Name__", n) : n + " brought you a gift!",
       "attention_call_critical_health": n + " is calling — health is critical!",
+      "attention_call_play":            n + " wants to play a game with you!",
+      "attention_call_pat":             n + " wants a pat!",
+      "attention_call_craving_meal":    n + " is craving a proper meal!",
+      "attention_call_craving_snack":   n + " is craving a snack!",
       // Attention calls — answered
       "attention_call_answered_hunger":          "You answered " + n + "'s hunger call.",
       "attention_call_answered_unhappiness":     "You answered " + n + "'s sadness call.",
@@ -1596,6 +1600,9 @@
       "attention_call_answered_misbehaviour":    "You scolded " + n + " and answered their call.",
       "attention_call_answered_gift":            "You accepted " + n + "'s gift!",
       "attention_call_answered_critical_health": "You answered " + n + "'s critical health call.",
+      "attention_call_answered_play":            "You played with " + n + " when they asked.",
+      "attention_call_answered_pat":             "You gave " + n + " the pat they wanted.",
+      "attention_call_answered_craving":         "You satisfied " + n + "'s craving.",
       // Attention calls — expired
       "attention_call_expired_hunger":          n + "'s hunger call went unanswered!",
       "attention_call_expired_unhappiness":     n + "'s sadness call went unanswered!",
@@ -1605,6 +1612,9 @@
       "attention_call_expired_misbehaviour":    n + "'s misbehaviour call went unanswered!",
       "attention_call_expired_gift":            n + "'s gift was ignored.",
       "attention_call_expired_critical_health": n + "'s critical health call went unanswered!",
+      "attention_call_expired_play":            n + " wanted to play and was ignored.",
+      "attention_call_expired_pat":             n + " wanted a pat and was ignored.",
+      "attention_call_expired_craving":         n + "'s craving went unanswered.",
       // Mini-game results
       "minigame_left_right_win":    n + " won Left / Right!",
       "minigame_left_right_lose":   n + " lost Left / Right.",

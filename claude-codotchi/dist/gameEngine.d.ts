@@ -62,9 +62,12 @@ export declare const ATTENTION_UNHAPPINESS_THRESHOLD: number;
 export declare const ATTENTION_ENERGY_THRESHOLD: number;
 /** Health stat at or below which a critical_health attention call fires. */
 export declare const ATTENTION_HEALTH_THRESHOLD: number;
-/** Cooldown ticks (50 = 5 min) applied to a call type after it is answered. */
+/**
+ * Cooldown ticks (100 × 3 s = 5 min) applied to a call type after it is answered.
+ * Cooldowns only count down on active (non-idle) ticks. Must match Constants.kt (BUG-S06).
+ */
 export declare const ATTENTION_ANSWER_COOLDOWN_TICKS: number;
-/** Cooldown ticks (20 = 2 min) applied to a call type after it expires unanswered. */
+/** Cooldown ticks (100 × 3 s = 5 min) applied to a call type after it expires unanswered. */
 export declare const ATTENTION_EXPIRY_COOLDOWN_TICKS: number;
 /** Stat penalty applied to the relevant stat when an attention call expires. */
 export declare const ATTENTION_EXPIRY_STAT_PENALTY: number;
@@ -131,6 +134,12 @@ export declare const MISBEHAVIOUR_BASE_CHANCE: number;
 export declare const MISBEHAVIOUR_MAX_CHANCE: number;
 export declare const GIFT_BASE_CHANCE: number;
 export declare const GIFT_MAX_CHANCE: number;
+export declare const PLAY_CALL_BASE_CHANCE: number;
+export declare const PLAY_CALL_MAX_CHANCE: number;
+export declare const PAT_CALL_BASE_CHANCE: number;
+export declare const PAT_CALL_MAX_CHANCE: number;
+export declare const CRAVING_CALL_BASE_CHANCE: number;
+export declare const CRAVING_CALL_MAX_CHANCE: number;
 /** Age in game days at which a senior pet may die of old age (365 game days = 1 in-game year). */
 export declare const SENIOR_NATURAL_DEATH_AGE_DAYS: number;
 /** Base per-day probability of a senior dying of old age when all stats are optimal. */
@@ -223,7 +232,9 @@ export declare const STAGE_ORDER: readonly string[];
  * All valid attention call type identifiers.
  * A call of each type can be active at most once at any given time.
  */
-export type AttentionCallType = "hunger" | "unhappiness" | "poop" | "sick" | "low_energy" | "misbehaviour" | "gift" | "critical_health";
+export type AttentionCallType = "hunger" | "unhappiness" | "poop" | "sick" | "low_energy" | "misbehaviour" | "gift" | "critical_health" | "play" | "pat" | "craving";
+/** What a craving attention call asks for. */
+export type CravingFood = "meal" | "snack";
 /**
  * Full serialisable snapshot of the pet's state.
  *
@@ -317,6 +328,14 @@ export interface PetState {
     readonly ticksSinceLastMisbehaviour: number;
     /** Ticks since the last gift attention call fired; used for log-chance formula. */
     readonly ticksSinceLastGift: number;
+    /** Ticks since the last play attention call fired; used for log-chance formula. */
+    readonly ticksSinceLastPlayCall: number;
+    /** Ticks since the last pat attention call fired; used for log-chance formula. */
+    readonly ticksSinceLastPatCall: number;
+    /** Ticks since the last craving attention call fired; used for log-chance formula. */
+    readonly ticksSinceLastCraving: number;
+    /** What the active craving call asks for; null when no craving call is active. */
+    readonly cravingFood: CravingFood | null;
 }
 /**
  * Summary of the best run ever recorded for this installation.
