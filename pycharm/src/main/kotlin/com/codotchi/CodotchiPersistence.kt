@@ -346,6 +346,10 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val ticksSinceLastMisbehaviour: Int?,
         val ticksSinceLastGift: Int?,
         val poopOverLimitTicks: Int? = null,
+        val ticksSinceLastPlayCall: Int? = null,
+        val ticksSinceLastPatCall: Int? = null,
+        val ticksSinceLastCraving: Int? = null,
+        val cravingFood: String? = null,
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -406,6 +410,10 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             ticksSinceLastMisbehaviour = r.ticksSinceLastMisbehaviour ?: 0,
             ticksSinceLastGift         = r.ticksSinceLastGift         ?: 0,
             poopOverLimitTicks         = r.poopOverLimitTicks         ?: 0,
+            ticksSinceLastPlayCall     = r.ticksSinceLastPlayCall     ?: 0,
+            ticksSinceLastPatCall      = r.ticksSinceLastPatCall      ?: 0,
+            ticksSinceLastCraving      = r.ticksSinceLastCraving      ?: 0,
+            cravingFood                = r.cravingFood?.takeIf { it == "meal" || it == "snack" },
         )
         return partial
     }
@@ -460,6 +468,10 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         ticksSinceLastMisbehaviour = s.ticksSinceLastMisbehaviour,
         ticksSinceLastGift         = s.ticksSinceLastGift,
         poopOverLimitTicks         = s.poopOverLimitTicks,
+        ticksSinceLastPlayCall     = s.ticksSinceLastPlayCall,
+        ticksSinceLastPatCall      = s.ticksSinceLastPatCall,
+        ticksSinceLastCraving      = s.ticksSinceLastCraving,
+        cravingFood                = s.cravingFood,
     )
 }
 

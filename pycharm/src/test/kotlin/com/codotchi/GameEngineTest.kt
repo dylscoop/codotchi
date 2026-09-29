@@ -440,4 +440,142 @@ class GameEngineTest {
             assertFalse(tick(pet, isIdle = false, isDeepIdle = true).events.contains("attention_call_poop"))
         }
     }
+
+    // ── Whim attention calls: play, pat, craving (§2.6) ──────────────────────
+
+    /** A tiny rate divisor pushes every random-call chance above 1, so random calls always fire. */
+    private val ALWAYS_CALLS = DEFAULT_GAME_CONFIG.copy(attentionCallRateDivisor = 1e-6)
+
+    /** A content pet that no need-based call would fire for, with the given calls on cooldown. */
+    private fun contentPet(vararg blocked: String): PetState {
+        val cooldowns = (listOf("misbehaviour") + blocked).associateWith { 999 }
+        return makePet(energy = 80, happiness = 80).copy(
+            hunger = 70, health = 100, nextPoopIntervalTicks = 99999, attentionCallCooldowns = cooldowns,
+        )
+    }
+
+    @Test
+    fun `cooldowns are 5 minutes after an answer and after an expiry (BUG-S06)`() {
+        assertEquals(100, ATTENTION_ANSWER_COOLDOWN_TICKS)
+        assertEquals(100, ATTENTION_EXPIRY_COOLDOWN_TICKS)
+    }
+
+    @Test
+    fun `a craving fires at any hunger level and records the food`() {
+        val next = tick(contentPet().copy(hunger = 95), config = ALWAYS_CALLS)
+        assertEquals("craving", next.activeAttentionCall)
+        assertEquals("snack", next.cravingFood, "nearly full: asks for a snack, not a pointless meal")
+        assertTrue(next.events.contains("attention_call_craving_snack"))
+        assertEquals(0, next.ticksSinceLastCraving)
+    }
+
+    @Test
+    fun `a craving asks for a meal after 2+ snacks in a row or when the snack cap is used up`() {
+        assertEquals("meal", tick(contentPet().copy(consecutiveSnacks = 2), config = ALWAYS_CALLS).cravingFood)
+        assertEquals("meal", tick(contentPet().copy(snacksGivenThisCycle = SNACK_MAX_PER_CYCLE), config = ALWAYS_CALLS).cravingFood)
+    }
+
+    @Test
+    fun `no craving when sick, full, or when only a pointless meal is left`() {
+        for (pet in listOf(
+            contentPet("play", "pat", "sick", "gift").copy(sick = true),
+            contentPet("play", "pat", "sick", "gift").copy(hunger = 100),
+            contentPet("play", "pat", "sick", "gift").copy(hunger = 95, consecutiveSnacks = 2),
+        )) {
+            assertNotEquals("craving", tick(pet, config = ALWAYS_CALLS).activeAttentionCall)
+        }
+    }
+
+    @Test
+    fun `play and pat calls fire when the earlier calls are on cooldown`() {
+        assertEquals("play", tick(contentPet("craving"), config = ALWAYS_CALLS).activeAttentionCall)
+        assertEquals("pat", tick(contentPet("craving", "play"), config = ALWAYS_CALLS).activeAttentionCall)
+    }
+
+    @Test
+    fun `play needs energy and health, pat needs energy`() {
+        assertEquals("pat", tick(contentPet("craving", "low_energy").copy(energy = 22), config = ALWAYS_CALLS).activeAttentionCall)
+        assertEquals("pat", tick(contentPet("craving", "sick", "critical_health").copy(sick = true), config = ALWAYS_CALLS).activeAttentionCall)
+        val drained = tick(contentPet("craving", "low_energy").copy(energy = 10), config = ALWAYS_CALLS).activeAttentionCall
+        assertTrue(drained != "play" && drained != "pat")
+    }
+
+    @Test
+    fun `no whim call fires while sleeping, idle or deep idle`() {
+        val whims = setOf("play", "pat", "craving")
+        assertFalse(tick(contentPet("gift"), isIdle = true, isDeepIdle = false, config = ALWAYS_CALLS).activeAttentionCall in whims)
+        assertFalse(tick(contentPet("gift"), isIdle = false, isDeepIdle = true, config = ALWAYS_CALLS).activeAttentionCall in whims)
+        assertFalse(tick(contentPet("gift").copy(sleeping = true, energy = 50), config = ALWAYS_CALLS).activeAttentionCall in whims)
+    }
+
+    @Test
+    fun `need-based calls win over whims`() {
+        assertEquals("hunger", tick(contentPet().copy(hunger = 10), config = ALWAYS_CALLS).activeAttentionCall)
+    }
+
+    @Test
+    fun `cooldowns only count down on active ticks`() {
+        val never = DEFAULT_GAME_CONFIG.copy(attentionCallRateDivisor = 1e9)
+        var pet = contentPet().copy(attentionCallCooldowns = mapOf("play" to 10))
+        repeat(20) { pet = tick(pet, isIdle = true, isDeepIdle = false, config = never) }
+        assertEquals(10, pet.attentionCallCooldowns["play"])
+        pet = tick(pet, config = never)
+        assertEquals(9, pet.attentionCallCooldowns["play"])
+    }
+
+    @Test
+    fun `play answers a play call and pat answers a pat call`() {
+        val played = play(makePet(energy = 80).copy(activeAttentionCall = "play", careMistakes = 1.0))
+        assertNull(played.activeAttentionCall)
+        assertTrue(played.events.contains("attention_call_answered_play"))
+        assertEquals(100, played.attentionCallCooldowns["play"])
+        assertEquals(0.5, played.careMistakes)
+        val patted = pat(makePet(energy = 80).copy(activeAttentionCall = "pat"))
+        assertNull(patted.activeAttentionCall)
+        assertTrue(patted.events.contains("attention_call_answered_pat"))
+    }
+
+    @Test
+    fun `the answered event survives applyMinigameResult after play`() {
+        val afterGame = applyMinigameResult(play(makePet(energy = 80).copy(activeAttentionCall = "play")), "coin_flip", "win")
+        assertTrue(afterGame.events.contains("attention_call_answered_play"), afterGame.events.toString())
+        assertTrue(afterGame.events.contains("minigame_coin_flip_win"))
+        assertFalse(afterGame.events.contains("played"))
+    }
+
+    @Test
+    fun `only the craved food answers a craving`() {
+        val wantsMeal = makePet().copy(activeAttentionCall = "craving", cravingFood = "meal")
+        assertEquals("craving", startSnack(wantsMeal).activeAttentionCall)
+        val fed = feedMeal(wantsMeal, 0)
+        assertNull(fed.activeAttentionCall)
+        assertNull(fed.cravingFood)
+        assertTrue(fed.events.contains("attention_call_answered_craving"))
+
+        val wantsSnack = makePet().copy(activeAttentionCall = "craving", cravingFood = "snack")
+        assertEquals("craving", feedMeal(wantsSnack, 0).activeAttentionCall)
+        val placed = startSnack(wantsSnack)
+        assertNull(placed.activeAttentionCall)
+        assertNull(placed.cravingFood)
+        assertTrue(placed.events.contains("attention_call_answered_craving"))
+    }
+
+    @Test
+    fun `an ignored whim call costs 10 health and a care mistake, using the configurable expiry`() {
+        val cfg = DEFAULT_GAME_CONFIG.copy(attentionCallExpiryTicks = 50)
+        for (type in listOf("play", "pat", "craving")) {
+            val pet = makePet().copy(
+                activeAttentionCall = type, cravingFood = if (type == "craving") "meal" else null,
+                attentionCallActiveTicks = 48, health = 100, careMistakes = 0.0, nextPoopIntervalTicks = 99999,
+            )
+            val stillOpen = tick(pet, config = cfg)
+            assertEquals(type, stillOpen.activeAttentionCall, "$type: tick 49 of 50 — still open")
+            val expired = tick(stillOpen, config = cfg)
+            assertTrue(expired.events.contains("attention_call_expired_$type"))
+            assertEquals(90, expired.health, type)
+            assertEquals(1.0, expired.careMistakes, type)
+            assertNull(expired.cravingFood)
+            assertEquals(99, expired.attentionCallCooldowns[type], "$type: expiry cooldown set, then counted down once")
+        }
+    }
 }

@@ -60,6 +60,24 @@ private fun logChance(ticksSinceLast: Int, base: Double, max: Double): Double =
     min(max, base * ln(ticksSinceLast.toDouble() + E))
 
 /**
+ * Decide what a craving call asks for ("meal" / "snack"), or null if the pet shouldn't crave now.
+ *
+ * Asks for a meal instead of a snack once another snack would be risky or
+ * impossible (2+ snacks in a row, or the snack caps are used up), so a craving
+ * never asks for something that makes the pet sick. Otherwise it's a 50/50 pick.
+ */
+private fun pickCravingFood(state: PetState, hunger: Int, sick: Boolean): String? {
+    if (sick || hunger >= STAT_MAX) return null
+    val snackBlocked = state.consecutiveSnacks >= 2 ||
+        state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE ||
+        state.snacksOnFloor >= MAX_FLOOR_SNACKS
+    val mealPointless = hunger >= CRAVING_MEAL_MAX_HUNGER
+    if (snackBlocked) return if (mealPointless) null else "meal"
+    if (mealPointless) return "snack"
+    return if (Random.nextDouble() < 0.5) "snack" else "meal"
+}
+
+/**
  * Sample the next poop interval (in ticks) for a given pet type.
  *
  * Mirrors [sampleNextPoopInterval] in gameEngine.ts exactly:
@@ -218,6 +236,14 @@ private fun answerAttentionCall(state: PetState, callType: String): AnsweredCall
     )
 }
 
+/**
+ * Answer an active craving call, but only with the food it asked for — the
+ * wrong food still feeds the pet but leaves the call open. Callers clear
+ * cravingFood when this returns non-null.
+ */
+private fun answerCraving(state: PetState, food: String): AnsweredCall? =
+    if (state.cravingFood == food) answerAttentionCall(state, "craving") else null
+
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
@@ -315,6 +341,10 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     var poopOverLimitTicks: Int            = state.poopOverLimitTicks
     var ticksSinceLastMisbehaviour: Int    = state.ticksSinceLastMisbehaviour
     var ticksSinceLastGift: Int            = state.ticksSinceLastGift
+    var ticksSinceLastPlayCall: Int        = state.ticksSinceLastPlayCall
+    var ticksSinceLastPatCall: Int         = state.ticksSinceLastPatCall
+    var ticksSinceLastCraving: Int         = state.ticksSinceLastCraving
+    var cravingFood: String?               = state.cravingFood
 
     // Capture sleeping state at tick entry so day-timer uses it even if auto-wake fires mid-tick
     val sleepingAtTickStart = sleeping
@@ -361,6 +391,9 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     }
     ticksSinceLastMisbehaviour += 1
     ticksSinceLastGift += 1
+    ticksSinceLastPlayCall += 1
+    ticksSinceLastPatCall += 1
+    ticksSinceLastCraving += 1
 
     } // end Step 0
 
@@ -492,11 +525,14 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     if (config.attentionCallsEnabled) {
     if (activeAttentionCall != null && !isIdle) {
         attentionCallActiveTicks += 1
-        // poop / misbehaviour / gift use the configurable expiry window;
-        // all other call types use the fixed 2-minute (20-tick) window.
+        // poop / misbehaviour / gift and the whim calls (play / pat / craving) use the
+        // configurable expiry window; all other call types use the fixed 1-minute (20-tick) window.
         val expiryTicks = if (activeAttentionCall == "poop" ||
                               activeAttentionCall == "misbehaviour" ||
-                              activeAttentionCall == "gift")
+                              activeAttentionCall == "gift" ||
+                              activeAttentionCall == "play" ||
+                              activeAttentionCall == "pat" ||
+                              activeAttentionCall == "craving")
             config.attentionCallExpiryTicks
         else
             ATTENTION_CALL_RESPONSE_TICKS
@@ -514,6 +550,8 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
                 "misbehaviour"    -> { health  = clampStat(health    - ATTENTION_EXPIRY_STAT_PENALTY); careMistakes += 1; lifetimeCareMistakes += 1 }
                 "low_energy"      -> happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY)
                 "gift"            -> { happiness = clampStat(happiness - 5); careMistakes += 1; lifetimeCareMistakes += 1 }
+                "play", "pat"     -> health    = clampStat(health    - ATTENTION_EXPIRY_STAT_PENALTY)
+                "craving"         -> { health  = clampStat(health    - ATTENTION_EXPIRY_STAT_PENALTY); cravingFood = null }
             }
             // General care mistake increment (except misbehaviour and gift which have their own above)
             if (expiredType != "misbehaviour" && expiredType != "gift") {
@@ -526,10 +564,14 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         }
     }
 
-    // ── Step 2: Decrement all cooldowns ────────────────────────────────────────
-    for (type in attentionCallCooldowns.keys.toList()) {
-        val remaining = (attentionCallCooldowns[type] ?: 0) - 1
-        attentionCallCooldowns[type] = max(0, remaining)
+    // ── Step 2: Decrement all cooldowns (non-idle ticks only) ──────────────────
+    // Idle time doesn't count towards a cooldown, so a pet can't save up calls
+    // while the user is away and fire them all the moment they return.
+    if (!isIdle && !isDeepIdle) {
+        for (type in attentionCallCooldowns.keys.toList()) {
+            val remaining = (attentionCallCooldowns[type] ?: 0) - 1
+            attentionCallCooldowns[type] = max(0, remaining)
+        }
     }
 
     // ── Step 3: Fire new call if none active ────────────────────────────────────
@@ -538,6 +580,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     if (activeAttentionCall == null) {
         fun cooldownClear(t: String) = (attentionCallCooldowns[t] ?: 0) == 0
         val rd = config.attentionCallRateDivisor
+        var cravingPick: String? = null
 
         // Poop call fires even while sleeping, but not while the user is idle —
         // it could never expire and nobody is there to answer it.
@@ -572,6 +615,30 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
             activeAttentionCall = "low_energy"
             attentionCallActiveTicks = 0
             events.add("attention_call_low_energy")
+        // Whim calls — random, at any stat level, after every need-based call so a
+        // real need always wins. Not while idle: nobody is there to answer them.
+        } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("craving") &&
+            Random.nextDouble() < logChance(ticksSinceLastCraving, CRAVING_CALL_BASE_CHANCE / rd, CRAVING_CALL_MAX_CHANCE / rd) &&
+            pickCravingFood(state, hunger, sick).also { cravingPick = it } != null) {
+            activeAttentionCall = "craving"
+            attentionCallActiveTicks = 0
+            ticksSinceLastCraving = 0
+            cravingFood = cravingPick
+            events.add("attention_call_craving_$cravingPick")
+        } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("play") &&
+            energy >= PLAY_ENERGY_COST && !sick &&
+            Random.nextDouble() < logChance(ticksSinceLastPlayCall, PLAY_CALL_BASE_CHANCE / rd, PLAY_CALL_MAX_CHANCE / rd)) {
+            activeAttentionCall = "play"
+            attentionCallActiveTicks = 0
+            ticksSinceLastPlayCall = 0
+            events.add("attention_call_play")
+        } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("pat") &&
+            energy >= PAT_ENERGY_COST &&
+            Random.nextDouble() < logChance(ticksSinceLastPatCall, PAT_CALL_BASE_CHANCE / rd, PAT_CALL_MAX_CHANCE / rd)) {
+            activeAttentionCall = "pat"
+            attentionCallActiveTicks = 0
+            ticksSinceLastPatCall = 0
+            events.add("attention_call_pat")
         } else if (!sleeping && cooldownClear("gift") &&
             health > ATTENTION_HEALTH_THRESHOLD &&
             !sick &&
@@ -635,6 +702,10 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
                 poopOverLimitTicks       = poopOverLimitTicks,
                 ticksSinceLastMisbehaviour = ticksSinceLastMisbehaviour,
                 ticksSinceLastGift       = ticksSinceLastGift,
+                ticksSinceLastPlayCall   = ticksSinceLastPlayCall,
+                ticksSinceLastPatCall    = ticksSinceLastPatCall,
+                ticksSinceLastCraving    = ticksSinceLastCraving,
+                cravingFood              = cravingFood,
             )
         )
     }
@@ -670,6 +741,10 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         poopOverLimitTicks       = poopOverLimitTicks,
         ticksSinceLastMisbehaviour = ticksSinceLastMisbehaviour,
         ticksSinceLastGift       = ticksSinceLastGift,
+        ticksSinceLastPlayCall   = ticksSinceLastPlayCall,
+        ticksSinceLastPatCall    = ticksSinceLastPatCall,
+        ticksSinceLastCraving    = ticksSinceLastCraving,
+        cravingFood              = cravingFood,
     )
 
     // Stage progression + old-age death/sickness rolls (once per day boundary for seniors).
@@ -733,12 +808,12 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int
     val events = mutableListOf("fed_meal")
     checkWeightTierEvents(state.weight, newWeight, events)
 
-    val answered = answerAttentionCall(state, "hunger")
-    if (answered != null) events.add("attention_call_answered_hunger")
-    val answeredCritical = if (answered == null) answerAttentionCall(state, "critical_health") else null
-    if (answeredCritical != null) events.add("attention_call_answered_critical_health")
+    // Answers hunger, a meal craving, or critical_health — whichever is active.
+    val pick = answerAttentionCall(state, "hunger")
+        ?: answerCraving(state, "meal")
+        ?: answerAttentionCall(state, "critical_health")
+    if (pick != null) events.add("attention_call_answered_${state.activeAttentionCall}")
 
-    val pick = answered ?: answeredCritical
     return withDerivedFields(
         state.copy(
             hunger            = clampStat(state.hunger + hungerBoost),
@@ -749,6 +824,7 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int
             activeAttentionCall      = if (pick != null) pick.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = pick?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = pick?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
+            cravingFood              = if (pick != null && state.activeAttentionCall == "craving") null else state.cravingFood,
         )
     )
 }
@@ -774,11 +850,10 @@ fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
     val snacksGivenThisCycle = state.snacksGivenThisCycle + 1
     val events = mutableListOf("snack_placed")
 
-    val answered = answerAttentionCall(state, "hunger") ?: answerAttentionCall(state, "critical_health")
-    if (answered != null) {
-        val label = if (state.activeAttentionCall == "hunger") "hunger" else "critical_health"
-        events.add("attention_call_answered_$label")
-    }
+    val answered = answerAttentionCall(state, "hunger")
+        ?: answerCraving(state, "snack")
+        ?: answerAttentionCall(state, "critical_health")
+    if (answered != null) events.add("attention_call_answered_${state.activeAttentionCall}")
 
     return withDerivedFields(
         state.copy(
@@ -789,6 +864,7 @@ fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
+            cravingFood              = if (answered != null && state.activeAttentionCall == "craving") null else state.cravingFood,
         )
     )
 }
@@ -841,8 +917,8 @@ fun play(state: PetState, playWeightLoss: Int? = null): PetState {
     val events = mutableListOf("played")
     checkWeightTierEvents(state.weight, newWeight, events)
 
-    val answered = answerAttentionCall(state, "unhappiness")
-    if (answered != null) events.add("attention_call_answered_unhappiness")
+    val answered = answerAttentionCall(state, "play") ?: answerAttentionCall(state, "unhappiness")
+    if (answered != null) events.add("attention_call_answered_${state.activeAttentionCall}")
 
     return withDerivedFields(
         state.copy(
@@ -868,10 +944,10 @@ fun pat(state: PetState): PetState {
         return withDerivedFields(state.copy(events = listOf("pat_refused_no_energy")))
 
     val newWeight = clampWeight(state.weight - PAT_WEIGHT_LOSS)
-    val answered = answerAttentionCall(state, "unhappiness")
+    val answered = answerAttentionCall(state, "pat") ?: answerAttentionCall(state, "unhappiness")
     val events = mutableListOf("patted")
     checkWeightTierEvents(state.weight, newWeight, events)
-    if (answered != null) events.add("attention_call_answered_unhappiness")
+    if (answered != null) events.add("attention_call_answered_${state.activeAttentionCall}")
 
     return withDerivedFields(
         state.copy(
@@ -932,7 +1008,10 @@ fun applyMinigameResult(state: PetState, game: String, result: String): PetState
     // 3 already lost in play(). coin_flip keeps total weight loss at 3 (no bonus here).
     val weightBonus = if (game == "left_right" || game == "higher_lower") PLAY_WEIGHT_LOSS_BONUS else 0
     val newWeight = clampWeight(state.weight - weightBonus)
-    val events = mutableListOf("minigame_${game}_${result}")
+    // Hosts call this straight after play(): carry over any attention call that
+    // play() answered, otherwise its answered event (and notification / log line) is lost.
+    val events = state.events.filter { it.startsWith("attention_call_answered_") }.toMutableList()
+    events.add("minigame_${game}_${result}")
     if (weightBonus > 0) checkWeightTierEvents(state.weight, newWeight, events)
     return withDerivedFields(
         state.copy(
