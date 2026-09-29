@@ -52,6 +52,9 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 - **Safe while you are away** — when you step away from the IDE your pet gets
   hungry and bored more slowly and never loses health, so it is waiting for you
   when you come back
+- **Little whims** — now and then your pet just wants to play a game, get a
+  pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in
+  time and it's happy; ignore it and its health suffers
 - **Terminal & Claude integrations** — your pet lives in Claude Code, OpenCode
   and Claude Desktop too, with shared state across every host
 - **Today's Token Cost** — see how much Claude Code / OpenCode has cost you
