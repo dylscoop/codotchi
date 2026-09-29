@@ -12,8 +12,8 @@ import com.intellij.openapi.components.*
  *  - [enableAttentionCalls]   : whether to show balloon notifications for attention calls
  *  - [idleThresholdSeconds]   : seconds of no IDE activity before idle mode (default 60)
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
- *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift
- *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls
+ *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift/play/pat/craving
+ *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls (poop/misbehaviour/gift/play/pat/craving)
  *  - [petStageHeight]         : canvas height in pixels (default 96)
  *  - [reducedMotion]          : disable rAF animation loop (default false)
  *  - [petSize]                : "small" | "medium" | "large" — sprite display size (default "medium")

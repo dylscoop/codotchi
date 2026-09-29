@@ -3,7 +3,7 @@
  *
  * Usage: node action.mjs <action> [value|name]
  *
- * Actions: status feed pat sleep wake clean medicine on off rename warnthreshold shoutthreshold orangethreshold redthreshold levels speechinterval emoji
+ * Actions: status feed snack pat play sleep wake clean medicine on off rename warnthreshold shoutthreshold orangethreshold redthreshold levels speechinterval emoji
  *
  * Prints ANSI art + status block or plain confirmation text to stdout.
  * Claude Code surfaces this output as the slash command result.
@@ -96,6 +96,37 @@ async function main() {
       const result = ge.pat(state, gameConfig);
       state = result.state ?? result;
       message = "Pat given! Happiness boosted.";
+      break;
+    }
+
+    case "play": {
+      // No mini-game in the terminal — play() applies the stat changes and
+      // answers a "play" (or "unhappiness") attention call.
+      const next = ge.play(state);
+      if (next.events.includes("play_refused_no_energy")) {
+        message = "Too tired to play right now.";
+      } else {
+        const answered = next.events.includes("attention_call_answered_play");
+        state = next;
+        message = answered ? "Played a game — just what they wanted!" : "Played a game! Happiness boosted.";
+      }
+      break;
+    }
+
+    case "snack": {
+      // The IDE drops a snack on the floor and the pet walks to it; in the
+      // terminal it's eaten straight away. startSnack answers a snack craving.
+      const placed = ge.startSnack(state);
+      if (placed.events.includes("snack_refused")) {
+        message = "No more snacks right now.";
+      } else {
+        const answered = placed.events.includes("attention_call_answered_craving");
+        const eaten = ge.consumeSnack(placed);
+        state = eaten;
+        message = eaten.events.includes("became_sick")
+          ? "Crunch! ...too many snacks in a row — they feel sick."
+          : answered ? "Crunch! That hit the spot — just what they were craving." : "Crunch! Snack eaten.";
+      }
       break;
     }
 

@@ -10,7 +10,10 @@ import {
   type PetState,
   CODE_ACTIVITY_THROTTLE_SECONDS,
   feedMeal,
+  startSnack,
+  consumeSnack,
   pat as enginePat,
+  play as enginePlay,
   sleep as engineSleep,
   wake as engineWake,
   clean as engineClean,
@@ -112,6 +115,23 @@ export function feed(cfg: DesktopConfig): ToolPayload {
 export function petAction(cfg: DesktopConfig): ToolPayload {
   const { state, mealsGivenThisCycle } = loadPet(cfg);
   const next = applyDevMode(enginePat(state), cfg);
+  savePet(next, mealsGivenThisCycle);
+  return payload(next, loadSession());
+}
+
+/** Play with the pet — no mini-game here; answers a "play with me" call. */
+export function playAction(cfg: DesktopConfig): ToolPayload {
+  const { state, mealsGivenThisCycle } = loadPet(cfg);
+  const next = applyDevMode(enginePlay(state), cfg);
+  savePet(next, mealsGivenThisCycle);
+  return payload(next, loadSession());
+}
+
+/** Give a snack, eaten straight away (the IDEs drop it on the floor first); answers a snack craving. */
+export function snack(cfg: DesktopConfig): ToolPayload {
+  const { state, mealsGivenThisCycle } = loadPet(cfg);
+  const placed = startSnack(state);
+  const next = applyDevMode(placed.events.includes("snack_refused") ? placed : consumeSnack(placed), cfg);
   savePet(next, mealsGivenThisCycle);
   return payload(next, loadSession());
 }
