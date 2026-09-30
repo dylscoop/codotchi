@@ -2098,6 +2098,17 @@ Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an
 
 **Tests:** `vscode/tests/unit/spriteData.test.ts` checks that every rotation animal has a grid for every stage.
 
+## BUGFIX-173 — `died` reaction animation never implemented (BUG-S05)
+
+**Status:** Fixed (v2.22.0, branch `feat/hatch-death-statusline-calls`)
+**Files:** `vscode/media/sidebar.js` (`REACTION_DURATIONS`, `renderState`, `drawBodyWithReaction`)
+
+**Problem:** FEATURES.md §5.6 listed a 1200 ms `died` float-up reaction as done, but `REACTION_DURATIONS` had no `died` entry and nothing queued one. On death the webview showed the death bubble and switched straight to the game-over screen.
+
+**Fix:** On the alive → dead transition, `renderState` clears the reaction queue, queues `died` and waits 1200 ms before showing the dead screen. The animation plays on the last alive snapshot (`lastState` stays unchanged until the timer fires). A `pendingDeathTimer` guard stops later dead-state updates from restarting it, and a new live pet cancels it. The pet floats up 40 px and fades out under a gold halo, with movement frozen. Reduced motion skips the animation. PyCharm gets the same change because it copies `vscode/media` at build time.
+
+**Tests:** `vscode/tests/unit/webviewAnimations.test.ts` checks that every `REACTION_DURATIONS` key has a draw case, and that `died` and `hatched` are queued.
+
 ## BUGFIX-172 — Classic sprite floated above the stage floor
 
 *(Logged without a number in v2.5.9; numbered on 2026-09-30.)*

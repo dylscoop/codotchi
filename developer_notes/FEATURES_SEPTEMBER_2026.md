@@ -201,7 +201,7 @@ engine and grey out the buttons, or correct the docs.
 
 ### BUG-S05 — `died` reaction animation never implemented
 
-**Status:** Open
+**Status:** Fixed (v2.22.0, branch `feat/hatch-death-statusline-calls`, BUGFIX-173)
 **File:** `vscode/media/sidebar.js`
 
 **Problem:** FEATURES.md §5.6 listed a `died` float-up reaction (1200 ms) as
@@ -622,8 +622,8 @@ Implementation Order" lists.
 
 ### Important (do first)
 
-1. BUG-S05: `died` float-up reaction animation
-2. Full egg-hatch sequence: wiggle, crack, burst (FEATURES.md §2.2, FEATURES_2.md §1.7)
+1. BUG-S05: `died` float-up reaction animation — **done in v2.22.0**
+2. Full egg-hatch sequence: wiggle, crack, burst (FEATURES.md §2.2, FEATURES_2.md §1.7) — **done in v2.22.0**
 3. Mood animation frames: happy, sad, sleeping, eating (FEATURES_2.md §3.1)
 4. Show active attention calls in the Claude Code status line (§2.6)
 5. Pixel-art redesign of the minigame visuals (FEATURES.md §14)

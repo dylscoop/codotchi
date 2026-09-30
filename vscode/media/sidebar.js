@@ -67,9 +67,11 @@
     scolded:       500,
     praised:       600,
     evolved:       900,
+    hatched:       900,
     poop_appeared: 700,
     became_sick:   600,
     healed:        500,
+    died:          1200,
   };
 
   // ── Element references ──────────────────────────────────────────────────
@@ -162,6 +164,7 @@
   let snackItems = [];       // floor items: [{ x, type: "candy"|"bone" }]
   let activeBubble = null;   // speech bubble: { text, startMs, fadeOutMs, fadeDurMs } or null
   let bubbleQueue  = [];     // pending attention-call text; at most 1 entry
+  let pendingDeathTimer = null; // setTimeout id while the "died" reaction plays before the dead screen
   let petIsSleeping = false; // true while fell_asleep is active; suppresses all other bubbles
 
   // Speech when a whim attention call is answered — one line picked at random.
@@ -1033,8 +1036,8 @@
     // ── Movement ──────────────────────────────────────────────────────────
     var isDragon = (lastState.spriteType === "dragon");
 
-    if (activeReaction && activeReaction.type === "fell_asleep") {
-      // Lock to floor in current position during the fell_asleep animation
+    if (activeReaction && (activeReaction.type === "fell_asleep" || activeReaction.type === "died")) {
+      // Lock to floor in current position during the fell_asleep / died animation
       petY  = floorY;
       petVx = 0;
       petVy = 0;
@@ -1229,15 +1232,36 @@
    */
   function renderState(state, mealsGiven, highScore) {
     if (!state.alive) {
+      // The "died" reaction is still playing — the timer shows the dead screen.
+      if (pendingDeathTimer !== null) { return; }
       // Fire a death bubble once, on the transition tick
       if (lastState && lastState.alive) {
         var _diedCode = (state.events || []).indexOf("died_of_old_age") !== -1
           ? "died_of_old_age" : "died";
         showBubble(humaniseEvent(_diedCode, state.name, state));
+        if (!REDUCED_MOTION && currentScreen === "game") {
+          // Play the float-up on the last alive snapshot (lastState is left
+          // untouched), then switch to the dead screen.
+          reactionQueue = [];
+          pushReaction("died", performance.now());
+          pendingDeathTimer = setTimeout(function () {
+            pendingDeathTimer = null;
+            reactionQueue = [];
+            lastState = state;
+            renderDeadScreen(state, highScore);
+            showScreen("dead");
+          }, REACTION_DURATIONS.died);
+          return;
+        }
       }
       renderDeadScreen(state, highScore);
       showScreen("dead");
       return;
+    }
+
+    if (pendingDeathTimer !== null) {
+      clearTimeout(pendingDeathTimer);
+      pendingDeathTimer = null;
     }
 
     showScreen("game");
@@ -1383,8 +1407,9 @@
     if (events.indexOf("became_sick")   !== -1) { pushReaction("became_sick",   nowMs); }
     if (events.indexOf("cured")         !== -1) { pushReaction("healed",        nowMs); }
     if (events.indexOf("pooped")        !== -1) { pushReaction("poop_appeared", nowMs); }
-    // evolved: any evolved_to_* event
+    // evolved: any evolved_to_* event (egg → baby gets the hatch burst instead)
     for (var ei = 0; ei < events.length; ei++) {
+      if (events[ei] === "evolved_to_baby") { pushReaction("hatched", nowMs); break; }
       if (events[ei].indexOf("evolved_to_") === 0) { pushReaction("evolved", nowMs); break; }
     }
 
@@ -2450,6 +2475,47 @@
         break;
       }
 
+      case "hatched": {
+        // Baby grows out of the egg (pivot: feet) while two shell halves fly
+        // apart and sparkles burst outwards
+        var sc3 = 0.5 + t * 0.5;
+        spriteCtx.save();
+        spriteCtx.translate(x + bWidth / 2, feetY);
+        spriteCtx.scale(sc3, sc3);
+        spriteCtx.translate(-(x + bWidth / 2), -feetY);
+        drawBody(state, x, bodyY, facingLeft, legFrame);
+        spriteCtx.restore();
+
+        var hcx    = x + bWidth / 2;
+        var hcy    = feetY - bHeight * 0.3;
+        var shellR = Math.max(4, bWidth * 0.3);
+        var lift   = -Math.sin(t * Math.PI) * 20;
+        spriteCtx.save();
+        spriteCtx.globalAlpha = 1 - t;
+        spriteCtx.fillStyle   = palette.primary;
+        for (var side = -1; side <= 1; side += 2) {
+          spriteCtx.save();
+          spriteCtx.translate(hcx + side * t * 30, hcy + lift);
+          spriteCtx.rotate(side * t * Math.PI / 2);
+          spriteCtx.beginPath();
+          // Left half is the left side of the egg, right half the right side
+          spriteCtx.ellipse(0, 0, shellR, shellR * 1.3, 0,
+            side < 0 ? Math.PI / 2 : -Math.PI / 2,
+            side < 0 ? Math.PI * 1.5 : Math.PI / 2);
+          spriteCtx.fill();
+          spriteCtx.restore();
+        }
+        spriteCtx.fillStyle = "#FFD600";
+        var sparkR = t * bWidth * 0.8;
+        for (var sp = 0; sp < 8; sp++) {
+          var ang = sp * Math.PI / 4;
+          spriteCtx.fillRect(Math.round(hcx + Math.cos(ang) * sparkR) - 1,
+                             Math.round(hcy + Math.sin(ang) * sparkR) - 1, 2, 2);
+        }
+        spriteCtx.restore();
+        break;
+      }
+
       case "poop_appeared": {
         // Force facing toward nearest poo for first half
         var fl2 = facingLeft;
@@ -2492,6 +2558,21 @@
       case "fell_asleep": {
         // Position handled by movement; just draw the body normally
         drawBody(state, x, bodyY, facingLeft, legFrame);
+        break;
+      }
+
+      case "died": {
+        // Float up and fade out, with a halo above the head
+        var yOff4 = -t * 40;
+        spriteCtx.save();
+        spriteCtx.globalAlpha = 1 - t;
+        drawBody(state, x, bodyY + yOff4, facingLeft, legFrame);
+        spriteCtx.strokeStyle = "#FFD600";
+        spriteCtx.lineWidth   = 2;
+        spriteCtx.beginPath();
+        spriteCtx.ellipse(x + bWidth / 2, bodyY + yOff4 - 6, Math.max(4, bWidth * 0.25), 3, 0, 0, Math.PI * 2);
+        spriteCtx.stroke();
+        spriteCtx.restore();
         break;
       }
 

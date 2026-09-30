@@ -58,7 +58,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Tamagotchi-style sprite redesign | `[x]` | Redesigned (v1.4.0): rabbit, pig, sheep, dog — Redesigned (v1.6.0): monkey — Redesigned (v1.7.0): rooster — Redesigned (v1.8.0): dragon (Chinese imperial, floating, 5-coil serpentine body, gold pearl) — Redesigned (v1.9.0): cat (Tamagotchi-style generic house cat, pointy ears, whiskers, upward-curling tail, tabby stripes teen+) — Redesigned (v1.10.0): rat (low-slung elongated body, small round ears none on baby, pointed snout, whiskers teen+, long thin diagonal tail) — Redesigned (v1.11.0): horse (arched neck, diagonal mane cascade, long muzzle, flowing tail, tapered body, colour-3 hooves) — Tiger redesigned later; ox never redesigned. Ox, tiger and the other zodiac sprites have since been archived (`media/archived_sprites/`). New art for them is tracked under bulk sprite upload (see `developer_notes/FEATURES_SEPTEMBER_2026.md` §2.2) |
 | In-IDE sprite preview gallery | `[x]` | `codotchi.openSpritePreview` (dev mode) — uses real `renderSpriteGrid()` with mood/color/weight/facing/animate controls |
 | Evolution notification in event log | `[x]` | `evolved_to_*` event queues the `evolved` reaction (scale 1.0→1.3→1.0 with gold flash, 900 ms); no sound |
-| Egg-hatch animation | `[~]` | The egg rocks ±5° for its whole life; no separate pre-hatch wiggle, crack or burst |
+| Egg-hatch animation | `[x]` | v2.22.0: the rocking widens 5°→12° as `dayTimer` nears the hatch threshold, with a faster wobble from 50% and shake bursts from 80%; cracks at 50% and 80%; `hatched` burst reaction on `evolved_to_baby` |
 
 ### 2.3 Pet Types
 
@@ -356,15 +356,16 @@ hands control back.
 | `scolded` | Recoil: dart left or right ~10 px, then return | 500 ms |
 | `praised` | Jump + brief yellow flash behind sprite | 600 ms |
 | `evolved` | Scale up from 1.0→1.3→1.0 with colour flash | 900 ms |
+| `hatched` (`evolved_to_baby`) | Baby grows 0.5→1.0 out of the egg; shell halves fly apart; gold sparkles | 900 ms |
 | `poop_appeared` | Pet briefly faces the poop position, then looks away | 700 ms |
 | `became_sick` | Fast shake: ±4 px random horizontal jitter | 600 ms |
 | `healed` | Brief green colour overlay fading out | 500 ms |
-| `died` | Slow float upward off the top of the canvas | 1200 ms |
+| `died` | Floats up 40 px and fades out under a gold halo; the dead screen appears when it ends (skipped with reduced motion) | 1200 ms |
 
 Reactions are stored in a simple queue; if a new one arrives while one is
 playing, it is appended and plays immediately after.
 
-Status: `[~]` — every reaction except `died` is implemented; `REACTION_DURATIONS` has no `died` entry and nothing queues it (see `developer_notes/FEATURES_SEPTEMBER_2026.md` BUG-S05)
+Status: `[x]` — `died` added in v2.22.0 (BUG-S05, BUGFIX-173)
 
 ### 5.7 Direction Flip (Sprite Mirroring)
 
@@ -625,7 +626,7 @@ Status: `[x]`
 | Death screen with age/stage stats | `[x]` | |
 | Senior natural death (age-scaled chance after age ≥ 365d) | `[x]` | Roll fires once per day boundary; chance ramps from 0.1%–1.0%/day at day 365 (best/worst care) to 5%–10%/day at day 1825 (5 in-game years), capped at peak; `ageFactor = clamp((ageDays−365)/(1825−365),0,1)`; `minChance = lerp(0.001, 0.05, ageFactor)`; `maxChance = lerp(0.010, 0.10, ageFactor)`; `chance = lerp(minChance, maxChance, riskScore)`; riskScore = avg of happiness, weight, and discipline factors; fires `died_of_old_age` event with message "passed away of unforeseen natural causes due to old age." and IDE popup notification |
 | Senior age-related random sickness (after age ≥ 365d) | `[x]` | Fires `became_sick_old_age` event once per day boundary; chance = `3 × computeOldAgeDeathChance(state)` (`OLD_AGE_SICK_CHANCE_MULTIPLIER = 3`); skipped if already sick; message: "came down with an age-related illness." |
-| Peaceful death animation | `[ ]` | Covered by `died` reaction in section 5.6 |
+| Peaceful death animation | `[x]` | Covered by `died` reaction in section 5.6 (v2.22.0) |
 | `[S]` `gotchi.offlineDecayMaxFraction` (default 0.60) | `[ ]` | Cap offline stat loss; value hardcoded, expose as setting |
 
 ---
@@ -758,7 +759,7 @@ These are lower-priority ideas that require design work before implementation. A
 | In-game shop | `[ ]` | Buy accessories, background skins, or extra colour palettes using Gotchi Points. |
 | Sprite animation frames | `[~]` | 2-frame leg walk cycle with bob is done. Happy, sad, sleeping and eating frames (2–4 frame flip-book per mood using the existing `renderSpriteGrid` pipeline) are not |
 | Redesign minigame art | `[ ]` | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style. |
-| Egg-hatch animation | `[ ]` | Wiggle → crack → burst sequence before baby stage; fits naturally into the reaction queue (already in §2.2). |
+| Egg-hatch animation | `[x]` | Wiggle → crack → burst sequence before baby stage (v2.22.0; see §2.2). |
 | Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |
 | Kangaroo character | `[x]` | Web-image-derived pixel-art sprite type (baby through senior stages) in the existing `sprites.js` pipeline; included in random hatch rotation and unlockable with character passcode `straya`. |
 | **— Platform & social —** | | |

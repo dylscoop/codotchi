@@ -142,9 +142,9 @@ Already tracked in `FEATURES.md §2.2` — listed here for parity gap visibility
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Egg wiggle phase (pre-hatch) | `[~]` | Egg rocks ±5° for the whole egg stage, not for a configurable time before hatching |
-| Crack overlay | `[ ]` | One or two crack lines drawn on the egg after the wiggle |
-| Burst / reveal | `[ ]` | Egg shell fragments fly outward; baby sprite fades in |
+| Egg wiggle phase (pre-hatch) | `[x]` | v2.22.0: rocking widens 5°→12° with hatch progress (`dayTimer / SPRITE_EGG_HATCH_DAYS`); faster wobble from 50%, shake bursts from 80% |
+| Crack overlay | `[x]` | One zig-zag crack at 50%, a second at 80% |
+| Burst / reveal | `[x]` | `hatched` reaction: two shell halves fly apart, sparkles, baby grows 0.5→1.0 |
 
 ---
 
