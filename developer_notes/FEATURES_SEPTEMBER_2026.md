@@ -13,6 +13,8 @@ Status legend:
 - `[ ]` Not yet implemented
 - `[S]` Controlled by a setting
 
+Priorities: see §4 Triage (2026-09-30).
+
 ---
 
 ## 0. Current State
@@ -228,7 +230,7 @@ attention half as often.
 
 ### BUG-S07 — Sprite tooling broken or out of step
 
-**Status:** Open
+**Status:** Won't do (triage 2026-09-30; replaced by §2.2)
 **Files:** `scripts/inject_sprites.js`, `scripts/validate_sprites.js`,
 `pycharm/src/main/resources/webview/sprites.js`
 
@@ -611,14 +613,83 @@ Most valuable first.
 
 ---
 
-## 4. Marketing Drafts
+## 4. Triage (2026-09-30)
+
+Every open item in this doc, `vscode/FEATURES.md` and `vscode/FEATURES_2.md`
+was triaged, with items that appear in more than one doc merged. This section
+is the single place for priorities. It replaces the older "Suggested
+Implementation Order" lists.
+
+### Important (do first)
+
+1. BUG-S05: `died` float-up reaction animation
+2. Full egg-hatch sequence: wiggle, crack, burst (FEATURES.md §2.2, FEATURES_2.md §1.7)
+3. Mood animation frames: happy, sad, sleeping, eating (FEATURES_2.md §3.1)
+4. Show active attention calls in the Claude Code status line (§2.6)
+5. Pixel-art redesign of the minigame visuals (FEATURES.md §14)
+6. Bulk sprite upload pipeline (§2.2)
+7. Shared core package (§3 #1)
+8. Copy the PyCharm webview assets at build time (§3 #2)
+9. Move release binaries out of git (§3 #3)
+10. Repo tidy-up: stop shipping archived sprites, remove stray files, tidy the root, prune `scripts/` (§3 #4–7)
+11. Dead code and naming mismatches (§3 #10–11)
+12. Tests and CI (§3 #12)
+13. Doc drift (§3 #13)
+14. Better-looking seasonal backgrounds and morning sky (`codotchi.background`; FEATURES.md §14 "Background art polish")
+
+### Yes (do)
+
+- Sickness UX (BUG-S04): block Feed/Play while sick, grey out the buttons, add a medicine dose badge
+- Sound effects, mute toggle and `soundEnabled` (FEATURES_2.md §1.6)
+- Dedicated art for the secret characters, hidden from the evolution preview (FEATURES_2.md §1.3)
+- Sleep polish: night-mode canvas while sleeping, `autoWake` setting, cooldown before sleeping again (FEATURES.md §6.2)
+- ⚠ in the status bar during attention calls, plus `statusBarEnabled` (FEATURES.md §10)
+- Catch the Bug minigame (FEATURES.md §4.3)
+- Save streaks (FEATURES.md §8)
+- Test-pass reward (FEATURES.md §8)
+- Settings wiring: coding rewards on/off, reward throttle, offline decay cap, tick interval, minigame timings; fix the FEATURES.md §12 table
+- `schemaVersion` on `PetState` (FEATURES.md §11)
+- Multiple pets, Phase A (§2.4)
+- Visiting and emotes, Phase B (§2.4)
+- Friendship meter, gift exchange, marriage and offspring with the generation counter, matchmaker NPC (FEATURES_2.md §2.1–2.4, §3.3)
+- New species: dinosaurs and mythical creatures (§2.5)
+- Crow / magpie thief (§2.5)
+- Seasonal and holiday characters (FEATURES.md §14)
+- Language packs: `en.json`, `en-SCO`, `en-AU`, the setting and `/codotchi lang` (§2.3)
+- `moo` novelty pack (§2.3)
+- Community language packs (§2.3)
+
+### Backlog
+
+- BUG-S03: zodiac sprite fallback. The bulk sprite upload (Important) includes this renderer fallback, so it will probably get fixed there
+- Visible `careMistakes` count (FEATURES_2.md §1.2)
+- PAUSED banner on the canvas (FEATURES_2.md §1.5)
+- Slower stat decay at night (FEATURES_2.md §3.2)
+- Pattern Memory / Simon (FEATURES.md §4.2)
+- Type Sprint (FEATURES.md §4.5)
+- Export / import a pet as JSON (FEATURES.md §11)
+- Gotchi Points and the shop (FEATURES_2.md §2.5)
+- Extension-pack pet types (FEATURES.md §14)
+- One usage scanner and the `sidebarProvider.ts` split (§3 #8–9)
+
+### Won't do
+
+Marked `[-]` in the older docs.
+
+- BUG-S07: sprite tooling. The bulk sprite upload replaces most of it
+- Potty training (FEATURES_2.md §1.1, FEATURES.md §14)
+- Counting a snack fed while hungry as a care mistake (FEATURES_2.md §1.2)
+
+---
+
+## 5. Marketing Drafts
 
 Suggested visuals: `dragon_adult_1x.png`, `dog_adult_1x.png`,
 `kangaroo_adult_1x.png` and `example_skippy.png` from the repo root, plus a
 short screen recording of the pet reacting to a save or commit and the
 "Today's Token Cost" readout.
 
-### 4.1 LinkedIn
+### 5.1 LinkedIn
 
 > I built a Tamagotchi that lives in my IDE. 🥚➡️🐉
 >
@@ -649,7 +720,7 @@ short screen recording of the pet reacting to a save or commit and the
 >
 > #DeveloperTools #VSCode #JetBrains #ClaudeCode #AI #OpenSource #IndieDev #PixelArt
 
-### 4.2 Instagram — launch post
+### 5.2 Instagram — launch post
 
 > Meet your new coding buddy 🐣💻
 >
@@ -669,7 +740,7 @@ short screen recording of the pet reacting to a save or commit and the
 **Suggested carousel:** 1) egg → 2) baby → 3) adult dragon → 4) the sidebar
 mid-mini-game → 5) the leaderboard page.
 
-### 4.3 Instagram — feature teaser (language packs)
+### 5.3 Instagram — feature teaser (language packs)
 
 > Your codotchi's picking up an accent 🏴󠁧󠁢󠁳󠁣󠁴󠁿🇦🇺
 >
@@ -681,7 +752,7 @@ mid-mini-game → 5) the leaderboard page.
 >
 > #codotchi #pixelart #developer #scotland #australia #codinghumour #indiedev
 
-### 4.4 X / Threads (short)
+### 5.4 X / Threads (short)
 
 > I made a Tamagotchi for your IDE 🥚 It evolves when you code, gets sick if
 > you ignore it, and tells you how much Claude has cost you today 💸
