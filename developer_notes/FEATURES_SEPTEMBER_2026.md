@@ -635,6 +635,7 @@ Implementation Order" lists.
 11. Dead code and naming mismatches (§3 #10–11)
 12. Tests and CI (§3 #12)
 13. Doc drift (§3 #13)
+14. Better-looking seasonal backgrounds and morning sky (`codotchi.background`; FEATURES.md §14 "Background art polish")
 
 ### Yes (do)
 
