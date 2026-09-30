@@ -402,8 +402,8 @@ Capped at **`OFFLINE_DECAY_MAX_FRACTION = 0.60`** of the current value —
 regardless of how long the IDE was closed, no stat can lose more than 60%.
 
 **Aging does not advance while the IDE is closed.** `applyOfflineDecay()`
-preserves `dayTimer` and `ageDays` exactly as saved. Only hunger, happiness,
-energy, and health are subject to offline decay.
+preserves `dayTimer` and `ageDays` exactly as saved. Only hunger and
+happiness are subject to offline decay; energy and health are left as saved.
 
 ### Sleep decay
 

@@ -30,7 +30,7 @@ Each animal has five life stages: `baby`, `child`, `teen`, `adult`, `senior`.
 
 ### Random rotation pool
 
-Animals assigned at random when a new pet hatches. All entries have equal probability (1/8 each = 12.5%).
+Animals assigned at random when a new pet hatches. All entries have equal probability (1/7 each ≈ 14.3%).
 
 | spriteType | Notes |
 |------------|-------|
@@ -39,11 +39,10 @@ Animals assigned at random when a new pet hatches. All entries have equal probab
 | `snake` | also a zodiac animal |
 | `sheep` | also a zodiac animal |
 | `classic` | original procedural humanoid shape |
-| `rooster` | also a zodiac animal |
-| `tiger` | also a zodiac animal |
 | `kangaroo` | |
+| `dragon` | also a zodiac animal |
 
-Defined as `ROTATION_ANIMALS` in `vscode/src/gameEngine.ts` (mirrored to PyCharm and OpenCode).
+Defined as `ROTATION_ANIMALS` in `packages/core/src/gameEngine.ts` (synced to every TypeScript plugin) and mirrored in PyCharm's `GameEngine.kt`.
 
 ### Zodiac animals (character code only)
 
@@ -64,9 +63,11 @@ The 12 Chinese zodiac animals. Not in the random rotation pool — accessible on
 | `dog` | Year of the Dog |
 | `pig` | Year of the Pig |
 
-> Note: `tiger`, `snake`, `sheep`, `rooster`, and `dog` appear in both pools — they can be obtained via random hatch **or** unlocked via character code.
+> Note: `dragon`, `snake`, `sheep` and `dog` appear in both pools — they can be obtained via random hatch **or** unlocked via character code.
+>
+> Only the rotation animals currently have sprite art. The other zodiac animals (rat, ox, tiger, rabbit, horse, monkey, rooster, pig) are drawn as the procedural classic creature until their new art lands (bulk sprite upload, `FEATURES_SEPTEMBER_2026.md` §2.2).
 
-Defined as `ZODIAC_ANIMALS` in `vscode/src/gameEngine.ts` (mirrored to PyCharm and OpenCode).
+The zodiac names are part of the `SpriteType` union in `packages/core/src/gameEngine.ts`.
 
 ---
 

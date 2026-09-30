@@ -210,7 +210,7 @@
 
 ---
 
-## v2.20.8 — current
+## v2.20.8
 
 ### Changes from v2.20.7 (leaderboard rank pool username over-exclusion — branch fix/pycharm-leaderboard-rank)
 
@@ -232,7 +232,7 @@
 
 ---
 
-## v2.20.6 — current
+## v2.20.6
 
 ### Changes from v2.20.5 (PyCharm leaderboard rank self-exclusion fix — branch fix/pycharm-leaderboard-rank)
 
@@ -245,7 +245,7 @@
 
 ---
 
-## v2.20.5 — current
+## v2.20.5
 
 ### Changes from v2.20.4 (leaderboard fixes — branch fix/pycharm-direct-submit)
 
@@ -274,7 +274,7 @@
 | `claude-desktop-codotchi/package.json` | chore: bump version to 2.20.3 |
 
 ---
-## v2.20.2 — current
+## v2.20.2
 
 ### Changes from v2.20.1 (PyCharm live push, 48h threshold, all-time includes live pets — branch main)
 
@@ -1062,8 +1062,8 @@ correct).
 | `pycharm/build.gradle.kts` | chore: bump version to 2.7.0 |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.7.0 |
 | `opencode-codotchi/package.json` | chore: bump version to 2.7.0 |
-| `vscode/media/sprites.js` | fix: horizontally mirror all five roo sprite stages so Roogotchi faces left in raw data and walks correctly (BUGFIX-119) |
-| `pycharm/src/main/resources/webview/sprites.js` | fix: mirror roo sprite stages (BUGFIX-119) |
+| `vscode/media/sprites.js` | fix: horizontally mirror all five roo sprite stages so Roogotchi faces left in raw data and walks correctly (BUGFIX-171) |
+| `pycharm/src/main/resources/webview/sprites.js` | fix: mirror roo sprite stages (BUGFIX-171) |
 | `scripts/mirror_roo.js` | chore: add helper script used to mirror roo pixel rows |
 | `vscode/media/sidebar.js` | fix: spriteLabel now derived from spriteType, not defaultName — shiba passcode shows "Dog" not "Codotchi" (BUGFIX-120) |
 | `pycharm/src/main/resources/webview/sidebar.js` | fix: same spriteLabel fix as VS Code (BUGFIX-120) |
@@ -1249,7 +1249,7 @@ ZODIAC_ANIMALS:   string[] = ["rat","ox","tiger","rabbit","dragon","snake","hors
 | `opencode-codotchi/scripts/bundle-plugin.js` | new: Bun bundler script producing `dist-plugin/codotchi.js` — single self-contained ESM plugin (BUGFIX-119B) |
 | `opencode-codotchi/scripts/package.js` | fix: builds bundle before zipping; ships `dist-plugin/codotchi.js` instead of loose helper `.ts` files (BUGFIX-119B) |
 | `opencode-codotchi/.gitignore` | chore: added `dist-plugin/` and `out-test/` to gitignore |
-| `opencode-codotchi/tests/unit/pluginContract.test.ts` | new: 45 Bun-based loader-contract regression tests (BUGFIX-119) |
+| `opencode-codotchi/tests/unit/pluginContract.test.ts` | new: 45 Bun-based loader-contract regression tests (BUGFIX-171) |
 | `opencode-codotchi/package.json` | test: added `bundle`, `test:node`, `test:plugin` scripts; `npm test` now runs both node:test and bun:test suites |
 | `opencode-codotchi/tsconfig.test.json` | chore: exclude `pluginContract.test.ts` from Node/CJS test compile pass |
 | `developer_notes/BUGFIXES.md` | docs: added BUGFIX-119 entry |
@@ -2271,7 +2271,7 @@ CARE_MISTAKE_OLD_AGE_SATURATE: number/Int = 20 // new — lifetime mistakes at w
 // removed: NEGLECT_DECAY_TICK_INTERVAL (was 300)
 ```
 
-## v1.17.0 — current
+## v1.17.0
 
 ### Changes from v1.16.0
 
@@ -2314,7 +2314,7 @@ CARE_MISTAKE_OLD_AGE_SATURATE: number/Int = 20 // new — lifetime mistakes at w
 | `vscode/media/sidebar.css` | Experimental: replaced `image-rendering: pixelated/crisp-edges` with `image-rendering: auto` on `.sprite-container`, `#sprite-canvas`, and `#lr-canvas` — enables browser bilinear smoothing on sprite canvas upscale |
 | `pycharm/src/main/resources/webview/sidebar.css` | Mirror of above CSS change |
 
-## v1.15.2 — current
+## v1.15.2
 
 ### Changes from v1.15.1
 

@@ -26,10 +26,9 @@ private fun clampWeight(value: Int): Int = clamp(value, WEIGHT_MIN, WEIGHT_MAX)
 /**
  * Animals in the random rotation pool at pet creation.
  * All entries have equal probability (1 / ROTATION_ANIMALS.size each).
- * Note: some rotation animals (dog, snake, sheep, rooster, tiger) are also
- * zodiac animals — they remain accessible via zodiac character codes too.
- * More animals will be added to this set in the future.
- * Mirrors ROTATION_ANIMALS in vscode/src/gameEngine.ts.
+ * Note: some rotation animals (dog, snake, sheep) are also zodiac animals —
+ * they remain accessible via zodiac character codes too.
+ * Mirrors ROTATION_ANIMALS in packages/core/src/gameEngine.ts.
  */
 val ROTATION_ANIMALS = listOf(
     "cat", "dog", "snake", "sheep", "classic",

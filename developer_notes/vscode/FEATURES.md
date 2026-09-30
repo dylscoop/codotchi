@@ -161,6 +161,8 @@ which minigame to play (or cancel).
 
 Status: `[x]`
 
+### 4.2 Pattern Memory (Simon)
+
 *Tests attention and short-term memory.*
 
 - Four coloured buttons (matching the pet's colour palette) are arranged in a 2×2 grid.
@@ -775,7 +777,7 @@ Superseded by the 2026-09-30 triage: see `developer_notes/FEATURES_SEPTEMBER_202
 
 ---
 
-## 12. Custom Characters
+## 16. Custom Characters
 
 Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharacters.ts` / `customCharacters.js` / `CustomCharacters.kt`.
 
@@ -791,7 +793,7 @@ Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharac
 | `feedSnackMaxPerCycle` | `number?` | `3` | Absolute snack cap per wake cycle |
 | `feedHungerMult` | `number?` | `1.0` | Hunger gain multiplier per feed event |
 
-### 12.1 Registered custom characters
+### 16.1 Registered custom characters
 
 | Name | Passcode | spriteType | Feed cap | Notes |
 |------|----------|------------|----------|-------|
