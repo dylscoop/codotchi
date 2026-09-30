@@ -5,6 +5,7 @@ Status legend:
 - `[x]` Implemented
 - `[~]` Partially implemented
 - `[ ]` Not yet implemented
+- `[-]` Won't do (triage 2026-09-30)
 - `[S]` Controlled by a VS Code setting (toggle on/off)
 
 ---
@@ -737,7 +738,7 @@ These are lower-priority ideas that require design work before implementation. A
 | Feature | Status | Notes |
 |---------|--------|-------|
 | **— Tamagotchi parity gaps —** | | |
-| Potty training | `[ ]` | If player presses Clean during the pre-poop warning animation, pet uses a toilet instead of making a mess. Repeating this trains the pet to go automatically. Original Tamagotchi P1/P2 feature. |
+| Potty training | `[-]` | If player presses Clean during the pre-poop warning animation, pet uses a toilet instead of making a mess. Repeating this trains the pet to go automatically. Original Tamagotchi P1/P2 feature. |
 | Care mistakes counter | `[x]` | `careMistakes` (per-stage, resets on evolution) + `lifetimeCareMistakes` (never resets). Incremented on every expired attention call. Caps the achievable evolution tier; delays evolution threshold; feeds old-age risk factor. |
 | Secret / rare characters | `[x]` | `secret_best` (careMistakes=0 + careScore ≥ 0.95) and `secret_worst` (lifetimeCareMistakes ≥ 10) evolution tiers implemented; sprite assets alias existing `_a`/`_c` sprites as placeholders until dedicated art is drawn. |
 | Matchmaker NPC | `[ ]` | If the pet reaches senior age without marrying, a Matchmaker character arrives and automatically pairs it with a CPU partner. Prevents the marriage mechanic from being permanently skipped. Original Tamagotchi Connection feature. |
@@ -769,23 +770,7 @@ These are lower-priority ideas that require design work before implementation. A
 
 ## 15. Suggested Implementation Order
 
-1. **Stage area resize** — widen canvas to sidebar width; sets up room for movement (section 5.1)
-2. **Animation loop** — replace one-shot draw with rAF loop; reduced-motion fallback (section 5.2)
-3. **Idle wandering** — random drift + boundary bounce + direction flip (sections 5.3, 5.5, 5.7)
-4. **Mood locomotion** — speed and pattern vary by mood/state (section 5.4)
-5. **Reaction animations** — event-driven one-shots; queue architecture (section 5.6)
-6. **Weight in UI** — low effort; value already in state (`weight` field)
-7. **Overfeeding feedback** — disable Feed Meal at max; snack warning text
-8. **Minigame overlay architecture** — generic overlay + game-select screen
-9. **Left / Right minigame** — simplest interactive game; validates overlay pattern
-10. **Higher or Lower minigame** — pure JS, no canvas required
-11. **Pattern Memory (Simon)** — button flash timing; most polished feel
-12. **Catch the Bug** — canvas animation; most visually engaging
-13. **Type Sprint** — keyboard-focused; unique to a code editor context
-14. **Attention calls** — poll state each tick; surface in status bar + event log
-15. **Sleep/wake UX polish** — Lights Off button, auto-wake, visual night mode
-16. **Settings wiring** — expose remaining `gotchi.*` settings in `package.json`
-17. **Coding activity streaks** — build on existing file-save listener
+Superseded by the 2026-09-30 triage: see `developer_notes/FEATURES_SEPTEMBER_2026.md` §4.
 
 ---
 

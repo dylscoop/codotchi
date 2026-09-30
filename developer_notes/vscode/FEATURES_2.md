@@ -9,6 +9,7 @@ Status legend:
 - `[x]` Implemented
 - `[~]` Partially implemented
 - `[ ]` Not yet implemented
+- `[-]` Won't do (triage 2026-09-30)
 - `[S]` Controlled by a VS Code setting
 
 ---
@@ -22,10 +23,10 @@ does not yet have.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Pre-poop warning animation (stink lines / face) | `[ ]` | Pet shows a visual "about to go" state for a short window before the poop is placed on the floor |
-| Toilet action during warning window | `[ ]` | If the player presses Clean while the pre-poop animation is playing, the pet uses a toilet instead of making a mess |
-| Training counter | `[ ]` | Each successful toilet use increments a hidden counter |
-| Auto-potty threshold | `[ ]` | Once the counter reaches a configurable threshold, the pet goes to the toilet automatically without requiring a player action |
+| Pre-poop warning animation (stink lines / face) | `[-]` | Pet shows a visual "about to go" state for a short window before the poop is placed on the floor |
+| Toilet action during warning window | `[-]` | If the player presses Clean while the pre-poop animation is playing, the pet uses a toilet instead of making a mess |
+| Training counter | `[-]` | Each successful toilet use increments a hidden counter |
+| Auto-potty threshold | `[-]` | Once the counter reaches a configurable threshold, the pet goes to the toilet automatically without requiring a player action |
 
 **Design notes:**
 - Add a `poopWarning` boolean to `PetState`; set it `true` for a fixed window
@@ -45,7 +46,7 @@ does not yet have.
 |---------|--------|-------|
 | Discrete `careMistakes` counter in `PetState` | `[x]` | Per-stage counter; resets to 0 on evolution. `lifetimeCareMistakes` never resets. |
 | Increment on: attention call expired unresponded | `[x]` | Each expired attention call (hunger, unhappiness, sickness, poop, low energy, critical health, play, pat, craving) adds 1 to both counters |
-| Increment on: fed snack when hungry (not meal) | `[ ]` | Not yet wired. Currently the reverse happens: a snack that answers a hunger call *reduces* `careMistakes` |
+| Increment on: fed snack when hungry (not meal) | `[-]` | Not yet wired. Currently the reverse happens: a snack that answers a hunger call *reduces* `careMistakes` |
 | Increment on: misbehaviour ignored | `[x]` | Expired `misbehaviour` call adds 1 to `careMistakes` + `lifetimeCareMistakes` |
 | Use `careMistakes` as a secondary gate in evolution | `[x]` | 0–3 → best tier; 4–6 → mid tier; ≥ 7 → low tier; each excess mistake above 3 delays evolution by 1 game-day |
 | Optionally expose `careMistakes` as a visible stat in the info line | `[ ]` | Hidden internal by default; dev mode or a setting could surface it |
@@ -255,21 +256,4 @@ Already tracked in `FEATURES.md §1` and `§14` — listed here for parity gap v
 
 ## 4. Suggested Implementation Order (parity gaps only)
 
-The ordering below prioritises features that are close to original P1/P2 parity
-and have minimal dependencies on unbuilt systems.
-
-1. **Sickness UX polish** — medicine dose badge + disable Feed/Play while sick (§1.8) — low effort, high fidelity gain
-2. **Lights Off button** (§1.4) — one sidebar button + engine flag
-3. **Care mistakes counter** (§1.2) — adds `careMistakes` to `PetState`; wires existing attention-call expiry events
-4. **Egg-hatch animation** (§1.7) — pure canvas animation; no state changes
-5. **Potty training** (§1.1) — new `poopWarning` state + Clean window + training counter
-6. **Secret / rare characters** (§1.3) — depends on care mistakes counter (step 3)
-7. **Pause function** (§1.5) — `isPaused` flag + VS Code command + UI indicator
-8. **Sound effects** (§1.6) — Web Audio API; mute toggle; `gotchi.soundEnabled` setting
-9. **Day / night cycle** (§3.2) — canvas cosmetic; no state dependency
-10. **Generation counter display** (§3.3) — display-only; depends on `generation` stat
-11. **Matchmaker NPC** (§2.1) — senior-stage logic; no connectivity required
-12. **Friendship meter** (§2.3) — new stat; prerequisite for marriage
-13. **Gotchi Points + shop** (§2.5) — economy layer
-14. **Marriage & offspring** (§2.2) — depends on friendship meter + connectivity
-15. **Gift exchange** (§2.4) — depends on connectivity + shop item types
+Superseded by the 2026-09-30 triage: see `developer_notes/FEATURES_SEPTEMBER_2026.md` §4.
