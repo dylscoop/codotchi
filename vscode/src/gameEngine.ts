@@ -380,7 +380,7 @@ export interface GameConfig {
   attentionCallsEnabled: boolean;
   /**
    * Response-window in ticks for poop, misbehaviour, and gift calls.
-   * needy=20 (2 min), standard=50 (5 min), chilled=100 (10 min).
+   * needy=40 (2 min), standard=100 (5 min), chilled=200 (10 min).
    */
   attentionCallExpiryTicks: number;
   /**
@@ -413,7 +413,7 @@ export interface GameConfig {
 /** Sensible defaults used when no explicit config is provided. */
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   attentionCallsEnabled:    true,
-  attentionCallExpiryTicks: 50,   // "standard" = 5 min
+  attentionCallExpiryTicks: 100,  // "standard" = 5 min
   attentionCallRateDivisor: 1.0,  // "fast"
   devMode:                  false,
   devModeAgingMultiplier:   10,
@@ -1264,17 +1264,22 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   }
 
   if (config.attentionCallsEnabled) {
-  // ── Step 0: Maintain log counters (every tick, even idle) ────────────────
-  if (poops > 0) {
-    ticksWithUncleanedPoop += 1;
-  } else {
+  // ── Step 0: Maintain log counters (active ticks only) ────────────────────
+  // Idle time doesn't raise the chance of a call, so the pet can't build up a
+  // burst of calls while the user is away.
+  const activeTick = !isIdle && !isDeepIdle;
+  if (poops === 0) {
     ticksWithUncleanedPoop = 0;
+  } else if (activeTick) {
+    ticksWithUncleanedPoop += 1;
   }
-  ticksSinceLastMisbehaviour += 1;
-  ticksSinceLastGift += 1;
-  ticksSinceLastPlayCall += 1;
-  ticksSinceLastPatCall += 1;
-  ticksSinceLastCraving += 1;
+  if (activeTick) {
+    ticksSinceLastMisbehaviour += 1;
+    ticksSinceLastGift += 1;
+    ticksSinceLastPlayCall += 1;
+    ticksSinceLastPatCall += 1;
+    ticksSinceLastCraving += 1;
+  }
   } // end Step 0
 
   if (!sleeping) {
@@ -1500,7 +1505,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       activeAttentionCall = "unhappiness";
       attentionCallActiveTicks = 0;
       events.push("attention_call_unhappiness");
-    } else if (!sleeping && cooldownClear("misbehaviour") &&
+    } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("misbehaviour") &&
                Math.random() < logChance(ticksSinceLastMisbehaviour, MISBEHAVIOUR_BASE_CHANCE / rd, MISBEHAVIOUR_MAX_CHANCE / rd)) {
       activeAttentionCall = "misbehaviour";
       attentionCallActiveTicks = 0;
@@ -1534,7 +1539,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       attentionCallActiveTicks = 0;
       ticksSinceLastPatCall = 0;
       events.push("attention_call_pat");
-    } else if (!sleeping && cooldownClear("gift") &&
+    } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("gift") &&
                health > ATTENTION_HEALTH_THRESHOLD &&
                !sick &&
                (currentMood === "happy" || currentMood === "neutral") &&
@@ -1868,7 +1873,7 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
  *
  * Called when the webview detects the pet touching the snack floor item.
  * Increments `consecutiveSnacks` and — if the new count reaches the maximum
- * — triggers sickness. Refused (no stat effects) if `snacksOnFloor` is
+ * — triggers sickness. Ignored (no stat effects, no events, so no toast) if `snacksOnFloor` is
  * already 0 — guards against a stale/duplicate `snack_consumed` report (e.g.
  * a second open editor window sharing the same pet independently simulating
  * the same floor item) applying the effect more than once.
@@ -1881,7 +1886,7 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
  */
 export function consumeSnack(state: PetState, opts?: { hungerMult?: number; sickThreshold?: number; weightGain?: number }): PetState {
   if (state.snacksOnFloor <= 0) {
-    return withDerivedFields({ ...state, events: ["snack_refused"] });
+    return withDerivedFields({ ...state, events: [] });
   }
   const hungerBoost = Math.round(FEED_SNACK_HUNGER_BOOST * (opts?.hungerMult ?? 1));
   const sickAt = opts?.sickThreshold ?? MAX_CONSECUTIVE_SNACKS_BEFORE_SICK;
