@@ -143,9 +143,13 @@ async function main() {
   const hasIDEPets = idePets.length > 0;
 
   // Fetch live rank from leaderboard/scores.json + live.json (cached 5 min).
-  let rankData = loadRankCache();
+  // CODOTCHI_NO_RANK=1 turns the rank line off entirely (no network, no cache)
+  // — used by the integration tests so their output doesn't depend on the
+  // live leaderboard.
+  const rankDisabled = process.env.CODOTCHI_NO_RANK === "1";
+  let rankData = rankDisabled ? null : loadRankCache();
   const activePetState = hasIDEPets ? idePets[0].state : state;
-  if (activePetState.alive && (!rankData || (now - (rankData.at ?? 0)) > RANK_CACHE_TTL_MS)) {
+  if (!rankDisabled && activePetState.alive && (!rankData || (now - (rankData.at ?? 0)) > RANK_CACHE_TTL_MS)) {
     try {
       const base = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/";
       const [scoresRes, liveRes] = await Promise.all([

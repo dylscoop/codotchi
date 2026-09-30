@@ -47,6 +47,8 @@ function baseEnv(tmpBase, extra = {}) {
     USERPROFILE: tmpBase,
     CLAUDE_PLUGIN_DATA: path.join(tmpBase, "claude-plugin-data"),
     CLAUDE_CODE_SESSION_ID: "",
+    // Keep output independent of the live leaderboard (no network rank line).
+    CODOTCHI_NO_RANK: "1",
     ...extra,
   };
 }

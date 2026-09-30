@@ -56,6 +56,7 @@ function runStatusline(tmpBase) {
     HOME: tmpBase,
     USERPROFILE: tmpBase,
     CLAUDE_PLUGIN_DATA: path.join(tmpBase, "claude-plugin-data"),
+    CODOTCHI_NO_RANK: "1", // no network: the rank line depends on the live leaderboard
     CLAUDE_CODE_SESSION_ID: "",
   };
   execFileSync("node", [statuslineScript], { env, encoding: "utf8", input: "{}" });
