@@ -17,7 +17,7 @@
 | `vscode/package.json`, `pycharm/.../CodotchiSettings.kt` | attention call expiry / rate descriptions cover the new calls; fixed window is 1 minute |
 | `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt`, `claude-codotchi/tests/integration/whimCalls.test.mjs` | tests for all of the above |
 | `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `claude-codotchi/USER_GUIDE.md`, `claude-desktop-codotchi/README.md` | "Little whims" feature bullet; new commands / tools |
-| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json` | version bump to 2.20.18 (claude-codotchi plugin 2.18.8) |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | version bump to 2.20.18; claude-codotchi plugin 2.18.7 → 2.20.18 so it matches the other hosts |
 
 **Updated constants:**
 
