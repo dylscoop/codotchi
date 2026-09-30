@@ -1,6 +1,27 @@
 # Version History
 
-## v2.21.1 — current
+## v2.21.2 — current
+
+### Changes from v2.21.1 (stage height setting, settings text fixes — branch feat/stage-height)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/stageHeight.ts`, `pycharm/src/main/kotlin/com/codotchi/StageHeight.kt` | new `stageHeightPx` preset map: compact 180 / normal 240 / tall 320 / extraTall 400 px |
+| `vscode/package.json` | new `codotchi.stageHeight` setting; idle threshold description 10% → 5%; pet size descriptions drop stale grid sizes |
+| `vscode/src/sidebarProvider.ts` | stage canvas height reads `codotchi.stageHeight` (was hardcoded 240); webview reloads when it changes |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `CodotchiBrowserPanel.kt` | `petStageHeight: Int` spinner replaced by `stageHeight: String` preset dropdown |
+| `vscode/tests/unit/stageHeight.test.ts`, `pycharm/src/test/kotlin/com/codotchi/StageHeightTest.kt` | preset mapping, fallback and package.json parity tests |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml` | "Configurable" bullet mentions stage height |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | version bump to 2.21.2 |
+
+**Updated constants:**
+
+- New `STAGE_HEIGHT_PX`: compact 180, normal 240 (unchanged default), tall 320, extraTall 400.
+- PyCharm: a custom `petStageHeight` pixel value is no longer read; every user starts on Normal (240 px, the old default).
+
+---
+
+## v2.21.1
 
 ### Changes from v2.21.0 (longer attention-call expiry and slower call rates — branch feat/longer-call-timers)
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.21.2] — 2026-09-30
+
+### Added
+
+- **Stage height setting** — choose Compact, Normal, Tall or Extra tall for the pet stage (`codotchi.stageHeight`). PyCharm's pixel box is now the same dropdown.
+
+### Fixed
+
+- **Settings descriptions** — the idle threshold now states the right idle decay rate, and the pet size options no longer list outdated pixel grids.
+
 ## [2.21.1] — 2026-09-30
 
 ### Changed
