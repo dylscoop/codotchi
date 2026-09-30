@@ -6066,6 +6066,15 @@ DEFS["roo"] = DEFS["roo"] || {};
     var spriteType = state.spriteType || "classic";
     var stage      = state.stage      || "baby";
 
+    // -- Missing sprite data (BUG-S03): a species with no grid for this stage
+    // uses its adult grid (see the grid lookup below); a species with no adult
+    // grid either (e.g. the archived zodiac animals) is drawn as the procedural
+    // classic creature, so a pet is never invisible.
+    if (spriteType !== "classic" &&
+        !(SPRITES[spriteType] && (SPRITES[spriteType][stage] || SPRITES[spriteType]["adult"]))) {
+      spriteType = "classic";
+    }
+
     // -- Classic: legacy procedural renderer (v0.11.2 style, fixed neon green)
     if (spriteType === "classic") {
       var petSizeValC = (typeof document !== "undefined" && document.body && document.body.dataset)
@@ -6183,8 +6192,7 @@ DEFS["roo"] = DEFS["roo"] || {};
     }
 
     // -- Grid lookup ---------------------------------------------------------
-    var grid = (SPRITES[spriteType] && SPRITES[spriteType][stage])
-             || (SPRITES["monkey"]  && SPRITES["monkey"][stage]);
+    var grid = SPRITES[spriteType][stage] || SPRITES[spriteType]["adult"];
 
     if (!grid) { return; }
 

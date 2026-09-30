@@ -198,9 +198,8 @@ the existing `DEFS` block for that stage.
 
 ## What `--inject` writes
 
-For each target file (`vscode/media/sprites.js`,
-`pycharm/src/main/resources/webview/sprites.js`, and both matching
-`spriteConstants.js` files):
+For `vscode/media/sprites.js` and `vscode/media/spriteConstants.js`
+(PyCharm copies both at build time):
 
 | What is written | Where |
 |-----------------|-------|

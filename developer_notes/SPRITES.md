@@ -6,8 +6,7 @@ Complete visual design guide for all pixel-art sprites in the Codotchi extension
 
 ## Overview
 
-All sprites are defined in `vscode/media/sprites.js` (mirrored verbatim to
-`pycharm/src/main/resources/webview/sprites.js`).
+All sprites are defined in `vscode/media/sprites.js` (copied into the PyCharm plugin at build time).
 
 To preview all sprites interactively in-IDE, enable developer mode then open the Command Palette (VS Code) or Tools menu (PyCharm) and run **Codotchi: Open Sprite Preview (Dev)**. The preview uses the real `renderSpriteGrid()` function for pixel-accurate output including leg animation, mood-based colour overrides, stage scaling, and weight proportions. The standalone browser version (`vscode/media/sprite_preview.html`) still works via `file://` but the in-IDE panel is the recommended workflow.
 
@@ -3422,7 +3421,6 @@ The following bugs exist in v1.0.2 `sprites.js` and must be fixed in this redesi
 # File Locations
 
 ```
-vscode/media/sprites.js                              ← source of truth (sprites + renderer)
-pycharm/src/main/resources/webview/sprites.js        ← exact copy (updated after every sprites.js change)
+vscode/media/sprites.js                              ← source of truth (sprites + renderer); PyCharm copies it at build time
 SPRITES.md                                           ← this file
 ```

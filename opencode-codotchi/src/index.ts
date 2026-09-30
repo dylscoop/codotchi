@@ -89,7 +89,7 @@ import {
 const ACTIVE_IDE_THRESHOLD_MS = 60_000;
 
 // Speech when a whim attention call is answered — one line picked at random.
-// Mirrored in vscode/media/sidebar.js and pycharm/src/main/resources/webview/sidebar.js.
+// Mirrored in vscode/media/sidebar.js (shared by both IDEs) and claude-codotchi/scripts/whimSpeech.mjs.
 const WHIM_ANSWER_SPEECH = {
   play:    ["Yay, you played with me!", "That's just what I wanted!", "Again! Again!", "Best game ever!"],
   pat:     ["Ahh, that's the spot.", "I needed that, thank you!", "More pats, please!", "You always know what I need."],

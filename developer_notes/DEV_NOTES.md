@@ -14,8 +14,7 @@ Custom characters are unlocked by entering a passcode in **Settings → Characte
 
 Defined in `vscode/src/customCharacters.ts` (`CUSTOM_CHARACTERS` array). Mirrored to:
 - `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt`
-- `vscode/media/customCharacters.js` (webview runtime)
-- `pycharm/src/main/resources/webview/customCharacters.js` (webview runtime)
+- `vscode/media/customCharacters.js` (webview runtime, also used by PyCharm — copied at build time)
 
 ---
 
@@ -614,8 +613,7 @@ pixel-art grid to render. It is assigned once at new-game time via
 (`ZODIAC_ANIMALS`) are accessible only via character code. Old saves without a
 `spriteType` field default to `"classic"`.
 
-The 15 sprite grids live in `vscode/media/sprites.js` (mirrored to
-`pycharm/src/main/resources/webview/sprites.js`). Each grid is a 12-column ×
+The 15 sprite grids live in `vscode/media/sprites.js` (copied into the PyCharm plugin at build time). Each grid is a 12-column ×
 16-row pixel array per non-egg stage (baby, child, teen, adult, senior). The
 renderer is `window.renderSpriteGrid()`, called from `drawBody()` in
 `sidebar.js`.

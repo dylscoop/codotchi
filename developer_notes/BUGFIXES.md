@@ -2095,3 +2095,14 @@ Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an
 **Fix:** The counters only advance on active ticks (`ticksWithUncleanedPoop` still resets when there is no poop), and misbehaviour and gift calls don't fire while idle or deep idle.
 
 **Tests:** idle ticks leave the counters unchanged; misbehaviour and gift don't fire while idle; a seeded simulation checks that cravings keep firing on active ticks (VS Code).
+
+## BUGFIX-170 — Zodiac species drew nothing in VS Code (BUG-S03)
+
+**Status:** Fixed (v2.21.3, branch `chore/repo-cleanup`)
+**Files:** `vscode/media/sprites.js` (`renderSpriteGrid`), `packages/core/src/gameEngine.ts` (`ROTATION_ANIMALS`)
+
+**Problem:** When a `spriteType` had no grid, `renderSpriteGrid()` fell back to `SPRITES["monkey"]`, but monkey had been moved to `media/archived_sprites/`. The fallback was empty, so nothing was drawn for rat, ox, tiger, rabbit, horse, monkey, rooster or pig. The terminal engines still put rooster and tiger in the hatch rotation, so pets hatched there and shown in an IDE were invisible. Sharing PyCharm's webview with VS Code (so it lost its extra zodiac sprites) would have spread the problem to PyCharm.
+
+**Fix:** A species with no grid for the current stage uses its adult grid. A species with no adult grid either is drawn as the procedural classic creature. `ROTATION_ANIMALS` is now the same 7-animal set in every engine (it lives in `packages/core`), so the terminal plugins no longer hatch rooster or tiger.
+
+**Tests:** `vscode/tests/unit/spriteData.test.ts` checks that every rotation animal has a grid for every stage.

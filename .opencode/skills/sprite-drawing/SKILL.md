@@ -8,8 +8,7 @@ compatibility: opencode
 ## When to apply this skill
 
 Apply this skill any time a sprite is being created or modified in
-`vscode/media/sprites.js` (and its mirror
-`pycharm/src/main/resources/webview/sprites.js`).
+`vscode/media/sprites.js` (PyCharm copies it at build time).
 
 ---
 

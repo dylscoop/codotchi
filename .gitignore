@@ -46,3 +46,6 @@ downloaded_sprites/
 
 # IDE project files
 .idea/
+
+# Generated from vscode/media by pycharm/build.gradle.kts (processResources)
+pycharm/src/main/resources/webview/
