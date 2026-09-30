@@ -1,6 +1,38 @@
 # Version History
 
-## v2.21.2 — current
+## v2.21.3 — current
+
+### Changes from v2.21.2 (repo clean-up: shared core, generated PyCharm webview, binaries out of git, CI — branch chore/repo-cleanup)
+
+| File | What changed |
+|------|-------------|
+| `.gitignore`, `releases/`, `*/archive/`, `*.vsix` / `*.zip` / `*.mcpb` | release binaries untracked (~564 MB); kept on disk and uploaded to GitHub Releases only |
+| `.claude/skills/release-management`, `release-checklist`, `git-workflow` (+ `.opencode/skills/` notes) | artifacts are moved locally and never committed |
+| `vscode/.vscodeignore` | archived sprites, `archive/` and old vsix files are no longer packaged |
+| `.idea/`, `pycharm/build/test-results/`, `vscode/tests/unit/gameEngine.test.js(.map)` | untracked / deleted stray files |
+| `scripts/inject_sprites.js`, `scripts/mirror_roo.js`, `scripts/legacy/gen_sprites.js` | broken injector and one-off mirror script deleted; old generator moved to `scripts/legacy/` |
+| `packages/core/src/gameEngine.ts`, `packages/core/src/asciiArt.ts`, `scripts/sync-core.mjs` | new shared core; the 4 engine and 3 asciiArt copies are generated from it (`--check` fails on drift) |
+| `vscode`, `opencode-codotchi`, `claude-codotchi`, `claude-desktop-codotchi` `package.json` | build/test scripts run `sync-core.mjs` first; opencode `test:plugin` uses a 30 s bun timeout |
+| `packages/core/src/gameEngine.ts` | optional `GameConfig.immortal` + `LOCAL_PET_GAME_CONFIG`; `ROTATION_ANIMALS` exported and the same 7 animals everywhere (no rooster / tiger); `ZODIAC_ANIMALS` inlined into `SpriteType` |
+| `packages/core/src/asciiArt.ts` | `buildContextualSpeech` `opts.costStyle` ("lastHour" / "hourlyRate"); `SPRITE_HEAD` goat → sheep, new kangaroo / roo / tim / stu heads; header leading space everywhere |
+| `claude-codotchi/scripts/*.mjs`, `claude-codotchi/dist/` | callers pass `{ costStyle: "hourlyRate" }`; dist rebuilt |
+| `claude-codotchi/scripts/emoji.mjs` | goat → sheep 🐑; kangaroo / roo 🦘, tim ☕, stu 🐟 |
+| `claude-codotchi/scripts/state.mjs` | removed unused `dailyPath` / `loadDaily` / `saveDaily` |
+| `claude-codotchi/scripts/statusline.mjs` | `CODOTCHI_NO_RANK=1` skips the live leaderboard rank (used by tests) |
+| `vscode/media/sprites.js` | BUGFIX-170: missing stage → adult grid, no grid → procedural classic; reads `UPRIGHT_TYPES` from `spriteConstants.js` |
+| `pycharm/build.gradle.kts` | `processResources` copies the webview from `vscode/media`; `unitTest` classpath uses `File.pathSeparator` |
+| `pycharm/src/main/resources/webview/` | removed (generated at build time; gitignored) |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | removed unused `ZODIAC_ANIMALS`; rotation comment updated |
+| `scripts/import_sprite.js` | `--inject` writes `vscode/media` only |
+| `.github/workflows/tests.yml` | new CI: sync-core check, every npm suite, claude-codotchi stale-dist check, pycharm `unitTest` |
+| `vscode/tests/unit/spriteData.test.ts`, `claude-desktop-codotchi/tests/tools.test.mjs` | new sprite-data and Claude Desktop smoke tests |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml` | medicine: three doses cure it, no health restored |
+| `developer_notes/*` | doc drift fixes (VERSIONS, FEATURES, SPRITE_IMPORT, SPRITES, DEV_NOTES, BUGFIXES renumbering) |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.21.2 → 2.21.3 |
+
+---
+
+## v2.21.2
 
 ### Changes from v2.21.1 (stage height setting, settings text fixes, answered whim-call speech — branch feat/stage-height)
 

@@ -169,7 +169,7 @@ through the IDE's idle flag, or skip damage.
 
 ### BUG-S03 — Zodiac species draw nothing in VS Code
 
-**Status:** Open
+**Status:** Fixed (v2.21.3, branch `chore/repo-cleanup`, BUGFIX-170). Missing stage → adult grid; no grid → procedural classic; `ROTATION_ANIMALS` aligned in every engine
 **File:** `vscode/media/sprites.js` (~6186)
 
 **Problem:** When a `spriteType` has no grid, the renderer falls back to
@@ -571,19 +571,19 @@ Most valuable first.
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 1 | Shared core package | `[ ]` | `gameEngine.ts` is copied 4 times (~2,500 lines each, drifting by 29-55 lines) and `asciiArt.ts` 3 times (the claude-desktop copy uses an old `buildContextualSpeech` signature). Create `packages/core` and build it into each plugin; move plugin-specific behaviour (immortal pets, rotation list) into config |
-| 2 | Generate PyCharm webview assets | `[ ]` | `sidebar.js/.css/.html`, `customCharacters.js`, `spriteConstants.js` and `sprites.js` are hand-copied into `pycharm/src/main/resources/webview/`; copy them at build time instead |
-| 3 | Move release binaries out of git | `[ ]` | ~564 MB of tracked zip/vsix/mcpb files under `archive/` and `releases/` (`.git` is 185 MB). Use GitHub Releases, which the release skill already publishes to |
-| 4 | Stop shipping archived sprites | `[ ]` | `vscode/media/archived_sprites/` is packaged into the vsix; add it and `archive/` to `vscode/.vscodeignore` |
-| 5 | Remove stray tracked files | `[ ]` | stale `vscode/tests/unit/gameEngine.test.js` (+ `.map`), `.idea/`, `pycharm/build/test-results/`, old `claude-codotchi/claude-codotchi-2.17.0.zip` |
-| 6 | Tidy repo root | `[ ]` | Move `dog_adult_1x.png`, `dragon_adult_1x.png`, `kangaroo_adult_1x.png`, `example_skippy.png`, `bmc_qr.png` to `docs/images/` and update the README URLs that point at them; delete the local `downloaded_sprites/` folder (gitignored) |
-| 7 | Prune `scripts/` | `[ ]` | Delete `inject_sprites.js` (broken) and `mirror_roo.js` (replaced by `--flip`); archive `gen_sprites.js`; rewrite `validate_sprites.js` (§2.2) |
+| 1 | Shared core package | `[x]` | Done in v2.21.3. `gameEngine.ts` is copied 4 times (~2,500 lines each, drifting by 29-55 lines) and `asciiArt.ts` 3 times (the claude-desktop copy uses an old `buildContextualSpeech` signature). Create `packages/core` and build it into each plugin; move plugin-specific behaviour (immortal pets, rotation list) into config |
+| 2 | Generate PyCharm webview assets | `[x]` | Done in v2.21.3. `sidebar.js/.css/.html`, `customCharacters.js`, `spriteConstants.js` and `sprites.js` are hand-copied into `pycharm/src/main/resources/webview/`; copy them at build time instead |
+| 3 | Move release binaries out of git | `[x]` | Done in v2.21.3. ~564 MB of tracked zip/vsix/mcpb files under `archive/` and `releases/` (`.git` is 185 MB). Use GitHub Releases, which the release skill already publishes to |
+| 4 | Stop shipping archived sprites | `[x]` | Done in v2.21.3. `vscode/media/archived_sprites/` is packaged into the vsix; add it and `archive/` to `vscode/.vscodeignore` |
+| 5 | Remove stray tracked files | `[x]` | Done in v2.21.3. stale `vscode/tests/unit/gameEngine.test.js` (+ `.map`), `.idea/`, `pycharm/build/test-results/`, old `claude-codotchi/claude-codotchi-2.17.0.zip` |
+| 6 | Tidy repo root | `[~]` | v2.21.3: the PNGs stay at the root on purpose (published marketplace listings link to them); the rest is done or local-only. Move `dog_adult_1x.png`, `dragon_adult_1x.png`, `kangaroo_adult_1x.png`, `example_skippy.png`, `bmc_qr.png` to `docs/images/` and update the README URLs that point at them; delete the local `downloaded_sprites/` folder (gitignored) |
+| 7 | Prune `scripts/` | `[x]` | Done in v2.21.3. Delete `inject_sprites.js` (broken) and `mirror_roo.js` (replaced by `--flip`); archive `gen_sprites.js`; rewrite `validate_sprites.js` (§2.2) |
 | 8 | One usage scanner + pricing table | `[ ]` | `MODEL_PRICING` and the transcript scan exist in `state.mjs`, `sidebarProvider.ts` and `CodotchiPlugin.kt` (BUG-S01) |
 | 9 | Split `sidebarProvider.ts` | `[ ]` | Move usage parsing into `usageScanner.ts`; break the ~215-line `handleWebviewMessage` switch into handlers |
-| 10 | Dead code | `[ ]` | `ZODIAC_ANIMALS` (union-only); unused `readSessionUsage` and leftover `codotchi-daily.json` load/save in `state.mjs`; local `UPRIGHT_TYPES` in `sprites.js` shadowing `spriteConstants.js`; duplicate `DEFS["cat"]` in the PyCharm copy |
-| 11 | Name mismatch | `[ ]` | `asciiArt.ts` `SPRITE_HEAD` uses `goat` but the engine calls it `sheep`; no heads for kangaroo, roo, tim, stu |
-| 12 | Tests and CI | `[ ]` | `usageBackfill.test.ts` isn't in opencode's `test` script; claude-desktop has no tests; no sprite-data test; add a GitHub Actions workflow that runs every suite |
-| 13 | Doc drift | `[ ]` | See the list below |
+| 10 | Dead code | `[x]` | Done in v2.21.3. `ZODIAC_ANIMALS` (union-only); unused `readSessionUsage` and leftover `codotchi-daily.json` load/save in `state.mjs`; local `UPRIGHT_TYPES` in `sprites.js` shadowing `spriteConstants.js`; duplicate `DEFS["cat"]` in the PyCharm copy |
+| 11 | Name mismatch | `[x]` | Done in v2.21.3. `asciiArt.ts` `SPRITE_HEAD` uses `goat` but the engine calls it `sheep`; no heads for kangaroo, roo, tim, stu |
+| 12 | Tests and CI | `[x]` | Done in v2.21.3. `usageBackfill.test.ts` isn't in opencode's `test` script; claude-desktop has no tests; no sprite-data test; add a GitHub Actions workflow that runs every suite |
+| 13 | Doc drift | `[x]` | Done in v2.21.3. See the list below |
 
 **Doc drift to fix (item 13):**
 
@@ -628,13 +628,13 @@ Implementation Order" lists.
 4. Show active attention calls in the Claude Code status line (§2.6)
 5. Pixel-art redesign of the minigame visuals (FEATURES.md §14)
 6. Bulk sprite upload pipeline (§2.2)
-7. Shared core package (§3 #1)
-8. Copy the PyCharm webview assets at build time (§3 #2)
-9. Move release binaries out of git (§3 #3)
-10. Repo tidy-up: stop shipping archived sprites, remove stray files, tidy the root, prune `scripts/` (§3 #4–7)
-11. Dead code and naming mismatches (§3 #10–11)
-12. Tests and CI (§3 #12)
-13. Doc drift (§3 #13)
+7. Shared core package (§3 #1) — **done in v2.21.3**
+8. Copy the PyCharm webview assets at build time (§3 #2) — **done in v2.21.3**
+9. Move release binaries out of git (§3 #3) — **done in v2.21.3**
+10. Repo tidy-up: stop shipping archived sprites, remove stray files, tidy the root, prune `scripts/` (§3 #4–7) — **done in v2.21.3**
+11. Dead code and naming mismatches (§3 #10–11) — **done in v2.21.3**
+12. Tests and CI (§3 #12) — **done in v2.21.3**
+13. Doc drift (§3 #13) — **done in v2.21.3**
 14. Better-looking seasonal backgrounds and morning sky (`codotchi.background`; FEATURES.md §14 "Background art polish")
 
 ### Yes (do)
@@ -661,7 +661,7 @@ Implementation Order" lists.
 
 ### Backlog
 
-- BUG-S03: zodiac sprite fallback. The bulk sprite upload (Important) includes this renderer fallback, so it will probably get fixed there
+- ~~BUG-S03: zodiac sprite fallback~~ — done in v2.21.3 (pulled into the clean-up)
 - Visible `careMistakes` count (FEATURES_2.md §1.2)
 - PAUSED banner on the canvas (FEATURES_2.md §1.5)
 - Slower stat decay at night (FEATURES_2.md §3.2)

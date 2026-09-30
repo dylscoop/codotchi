@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.21.3] — 2026-09-30
+
+### Fixed
+
+- **No more invisible pets** — a pet whose creature has no artwork yet (rat, ox, tiger, rabbit, horse, monkey, rooster, pig) is now drawn as the classic Codotchi instead of nothing. New pets no longer hatch as rooster or tiger in Claude Code, OpenCode or Claude Desktop.
+- **Medicine description** — the help text now says three doses cure sickness and that medicine doesn't restore health.
+- **Claude Code / OpenCode sheep** — sheep pets get their own face and emoji; kangaroo, Roo, Tim and Stu get one too.
+
+### Changed
+
+- **Smaller download** — archived sprite files are no longer packaged into the extension.
+
 ## [2.21.2] — 2026-09-30
 
 ### Added
