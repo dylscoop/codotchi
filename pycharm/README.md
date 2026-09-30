@@ -1,8 +1,8 @@
 # codotchi — JetBrains plugin
 
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/dog_adult_1x.png" height="64" alt="Dog sprite" />
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/dragon_adult_1x.png" height="64" alt="Dragon sprite" />
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/kangaroo_adult_1x.png" height="64" alt="Kangaroo sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/dog_adult_1x.png" height="64" alt="Dog sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/dragon_adult_1x.png" height="64" alt="Dragon sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/kangaroo_adult_1x.png" height="64" alt="Kangaroo sprite" />
 
 Grow and raise your personal virtual pet as a JetBrains plugin while you code.
 
@@ -23,7 +23,7 @@ assigned to you at random when you start a new game.
 
 ### Sponsor this project
 
-<a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
+<a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
 
 [buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
 
@@ -81,9 +81,11 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 
 ## Installation
 
-See the [GitHub repository](https://github.com/dylscoop/codotchi) for full
-installation instructions, pre-built releases, and the OpenCode integration
-download.
+Install **[Codotchi from the JetBrains Marketplace](https://plugins.jetbrains.com/plugin/33203-codotchi)**,
+or go to **Settings → Plugins → Marketplace** and search for **Codotchi**.
+
+See the [GitHub repository](https://github.com/dylscoop/codotchi) for manual
+installation, pre-built releases, and the OpenCode integration download.
 
 ## Using the plugin
 
