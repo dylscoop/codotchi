@@ -19,6 +19,7 @@ import {
   accumulateDailyUsage,
   loadIDEStateFile,
 } from "./state.mjs";
+import { whimSpeech } from "./whimSpeech.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, "..", "dist");
@@ -88,14 +89,16 @@ async function main() {
       const result = ge.feedMeal(state, gameConfig);
       state = result.state ?? result;
       const ev = (result.events ?? []).find((e) => e.type === "meal_refused");
-      message = ev ? "Not hungry right now." : "Nom nom! Hunger restored.";
+      message = ev ? "Not hungry right now."
+        : state.events?.includes("attention_call_answered_craving") ? whimSpeech("craving")
+        : "Nom nom! Hunger restored.";
       break;
     }
 
     case "pat": {
       const result = ge.pat(state, gameConfig);
       state = result.state ?? result;
-      message = "Pat given! Happiness boosted.";
+      message = state.events?.includes("attention_call_answered_pat") ? whimSpeech("pat") : "Pat given! Happiness boosted.";
       break;
     }
 
@@ -108,7 +111,7 @@ async function main() {
       } else {
         const answered = next.events.includes("attention_call_answered_play");
         state = next;
-        message = answered ? "Played a game — just what they wanted!" : "Played a game! Happiness boosted.";
+        message = answered ? whimSpeech("play") : "Played a game! Happiness boosted.";
       }
       break;
     }
@@ -125,7 +128,7 @@ async function main() {
         state = eaten;
         message = eaten.events.includes("became_sick")
           ? "Crunch! ...too many snacks in a row — they feel sick."
-          : answered ? "Crunch! That hit the spot — just what they were craving." : "Crunch! Snack eaten.";
+          : answered ? whimSpeech("craving") : "Crunch! Snack eaten.";
       }
       break;
     }

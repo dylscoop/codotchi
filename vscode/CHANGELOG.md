@@ -5,6 +5,7 @@
 ### Added
 
 - **Stage height setting** — choose Compact, Normal, Tall or Extra tall for the pet stage (`codotchi.stageHeight`). PyCharm's pixel box is now the same dropdown.
+- **Whim speech** — when you answer a play, pat or craving call, your pet thanks you with one of several new lines (in the IDEs, OpenCode and Claude Code).
 
 ### Fixed
 

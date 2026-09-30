@@ -164,6 +164,14 @@
   let bubbleQueue  = [];     // pending attention-call text; at most 1 entry
   let petIsSleeping = false; // true while fell_asleep is active; suppresses all other bubbles
 
+  // Speech when a whim attention call is answered — one line picked at random.
+  // Mirrored in opencode-codotchi/src/index.ts and claude-codotchi/scripts/action.mjs.
+  const WHIM_ANSWER_SPEECH = {
+    play:    ["Yay, you played with me!", "That's just what I wanted!", "Again! Again!", "Best game ever!"],
+    pat:     ["Ahh, that's the spot.", "I needed that, thank you!", "More pats, please!", "You always know what I need."],
+    craving: ["Mmm, just what I was craving!", "You read my mind!", "That hit the spot!", "Exactly what I wanted, yum!"],
+  };
+
   // ── Setup form state ────────────────────────────────────────────────────
 
   let selectedPetType = "codeling";
@@ -1392,6 +1400,14 @@
             events[_ai].indexOf("attention_call_answered_") !== 0 &&
             events[_ai].indexOf("attention_call_expired_") !== 0) {
           queueBubble(humaniseEvent(events[_ai], _n, state));
+          return;
+        }
+      }
+      // 1b. Answered whim calls (play / pat / craving) — outranks the minigame result
+      for (var _wk in WHIM_ANSWER_SPEECH) {
+        if (events.indexOf("attention_call_answered_" + _wk) !== -1) {
+          var _wl = WHIM_ANSWER_SPEECH[_wk];
+          showBubble(_wl[Math.floor(Math.random() * _wl.length)]);
           return;
         }
       }

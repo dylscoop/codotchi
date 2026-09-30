@@ -26,6 +26,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const scriptsDir = path.join(__dirname, "..", "..", "scripts");
 const distDir = path.join(__dirname, "..", "..", "dist");
 const actionScript = path.join(scriptsDir, "action.mjs");
+const { WHIM_ANSWER_SPEECH } = await import(pathToFileURL(path.join(scriptsDir, "whimSpeech.mjs")).href);
+
+/** Assert the (whitespace-collapsed) output contains one of the answered-call lines for `call`. */
+function assertWhimSpeech(output, call) {
+  const lines = WHIM_ANSWER_SPEECH[call].map((l) => l.replace(/[\s\\/|]+/g, " "));
+  assert.ok(lines.some((l) => output.includes(l)), `expected a ${call} answer line in: ${output}`);
+}
 
 async function withRunFixture(fn) {
   const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), "codotchi-whim-test-"));
@@ -74,7 +81,7 @@ describe("action.mjs play / snack — answering whim calls (integration)", () =>
     await withRunFixture(async (tmpBase) => {
       writeVSCodeState(tmpBase, await petWithCall({ activeAttentionCall: "play" }));
       const output = runAction(tmpBase, "play");
-      assert.match(output, /just what they wanted/);
+      assertWhimSpeech(output, "play");
       const saved = readVSCodeState(tmpBase);
       assert.equal(saved.activeAttentionCall, null);
       assert.equal(saved.attentionCallCooldowns.play, 100);
@@ -85,12 +92,30 @@ describe("action.mjs play / snack — answering whim calls (integration)", () =>
     await withRunFixture(async (tmpBase) => {
       writeVSCodeState(tmpBase, await petWithCall({ activeAttentionCall: "craving", cravingFood: "snack" }));
       const output = runAction(tmpBase, "snack");
-      assert.match(output, /hit the spot/);
+      assertWhimSpeech(output, "craving");
       const saved = readVSCodeState(tmpBase);
       assert.equal(saved.activeAttentionCall, null);
       assert.equal(saved.cravingFood, null);
       assert.equal(saved.snacksOnFloor, 0, "eaten straight away in the terminal");
       assert.ok(saved.hunger > 60);
+    });
+  });
+
+  it("/codotchi pat answers an active pat call with pat speech", async () => {
+    await withRunFixture(async (tmpBase) => {
+      writeVSCodeState(tmpBase, await petWithCall({ activeAttentionCall: "pat" }));
+      const output = runAction(tmpBase, "pat");
+      assertWhimSpeech(output, "pat");
+      assert.equal(readVSCodeState(tmpBase).activeAttentionCall, null);
+    });
+  });
+
+  it("/codotchi feed answers a meal craving with craving speech", async () => {
+    await withRunFixture(async (tmpBase) => {
+      writeVSCodeState(tmpBase, await petWithCall({ activeAttentionCall: "craving", cravingFood: "meal" }));
+      const output = runAction(tmpBase, "feed");
+      assertWhimSpeech(output, "craving");
+      assert.equal(readVSCodeState(tmpBase).activeAttentionCall, null);
     });
   });
 

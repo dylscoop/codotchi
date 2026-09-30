@@ -2,7 +2,7 @@
 
 ## v2.21.2 — current
 
-### Changes from v2.21.1 (stage height setting, settings text fixes — branch feat/stage-height)
+### Changes from v2.21.1 (stage height setting, settings text fixes, answered whim-call speech — branch feat/stage-height)
 
 | File | What changed |
 |------|-------------|
@@ -12,6 +12,9 @@
 | `pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `CodotchiBrowserPanel.kt` | `petStageHeight: Int` spinner replaced by `stageHeight: String` preset dropdown |
 | `vscode/tests/unit/stageHeight.test.ts`, `pycharm/src/test/kotlin/com/codotchi/StageHeightTest.kt` | preset mapping, fallback and package.json parity tests |
 | `vscode/README.md`, `pycharm/README.md`, `plugin.xml` | "Configurable" bullet mentions stage height |
+| `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js` | new `WHIM_ANSWER_SPEECH` pools; answering a play / pat / craving call shows a random line (bubble step 1b, ahead of the minigame result) |
+| `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/whimSpeech.mjs`, `claude-codotchi/scripts/action.mjs` | same pools; answered pat and meal-craving now get speech too (before, only play and snack craving had a fixed line) |
+| `vscode/tests/unit/whimSpeech.test.ts`, `claude-codotchi/tests/integration/whimCalls.test.mjs` | pools identical across all four hosts; bubble priority; pat / meal-craving speech in the terminal |
 | `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | version bump to 2.21.2 |
 
 **Updated constants:**

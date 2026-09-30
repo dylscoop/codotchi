@@ -88,6 +88,19 @@ import {
 /** How recently (ms) a state file must have been saved to count as "active". */
 const ACTIVE_IDE_THRESHOLD_MS = 60_000;
 
+// Speech when a whim attention call is answered — one line picked at random.
+// Mirrored in vscode/media/sidebar.js and pycharm/src/main/resources/webview/sidebar.js.
+const WHIM_ANSWER_SPEECH = {
+  play:    ["Yay, you played with me!", "That's just what I wanted!", "Again! Again!", "Best game ever!"],
+  pat:     ["Ahh, that's the spot.", "I needed that, thank you!", "More pats, please!", "You always know what I need."],
+  craving: ["Mmm, just what I was craving!", "You read my mind!", "That hit the spot!", "Exactly what I wanted, yum!"],
+};
+
+function whimSpeech(call: keyof typeof WHIM_ANSWER_SPEECH): string {
+  const lines = WHIM_ANSWER_SPEECH[call];
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
 // ---------------------------------------------------------------------------
 // OpenCode-local pet config — unkillable from neglect, normal aging speed
 // ---------------------------------------------------------------------------
@@ -1531,7 +1544,7 @@ export const plugin: Plugin = async (ctx) => {
                ? `${next.name} is too full for another meal.`
                : `${next.name} enjoyed the meal! (hunger: ${next.hunger})`);
              feedLines.push((terminalEnabled
-               ? buildSpeechBubble(next.stage, next.mood, refused ? "I'm too full!" : "Yum!", next.name, next.spriteType) + "\n"
+               ? buildSpeechBubble(next.stage, next.mood, refused ? "I'm too full!" : next.events.includes("attention_call_answered_craving") ? whimSpeech("craving") : "Yum!", next.name, next.spriteType) + "\n"
                : "") + toast + "\n" + (refused
                ? `[${pLabel}] Meal refused — ${next.name} has already had ${getMeals(p.ide)} meals this wake cycle.`
                : `[${pLabel}] Fed ${next.name}. Hunger: ${next.hunger}/100, Weight: ${next.weight}.`));
@@ -1565,7 +1578,7 @@ export const plugin: Plugin = async (ctx) => {
              saveIDEState(p.ide);
              const gotSick = next.events.includes("became_sick");
              snackLines.push((terminalEnabled
-               ? buildSpeechBubble(next.stage, next.mood, gotSick ? "Ugh, too many snacks..." : answered ? "Just what I was craving!" : "Crunch!", next.name, next.spriteType) + "\n"
+               ? buildSpeechBubble(next.stage, next.mood, gotSick ? "Ugh, too many snacks..." : answered ? whimSpeech("craving") : "Crunch!", next.name, next.spriteType) + "\n"
                : "") + `[${pLabel}] Gave ${next.name} a snack. Hunger: ${next.hunger}/100, Happiness: ${next.happiness}.` +
                (gotSick ? ` ${next.name} ate too many snacks in a row and feels sick.` : ""));
            }
@@ -1594,7 +1607,7 @@ export const plugin: Plugin = async (ctx) => {
                ? `${next.name} is too tired even for a pat.`
                : `${next.name} enjoyed the pat!`);
              patLines.push((terminalEnabled
-               ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired..." : "Yay!", next.name, next.spriteType) + "\n"
+               ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired..." : next.events.includes("attention_call_answered_pat") ? whimSpeech("pat") : "Yay!", next.name, next.spriteType) + "\n"
                : "") + toast + "\n" + (refused
                ? `[${pLabel}] Pat refused — ${next.name} is too exhausted.`
                : `[${pLabel}] Patted ${next.name}. Happiness: ${next.happiness}.`));
@@ -1625,7 +1638,7 @@ export const plugin: Plugin = async (ctx) => {
              }
              const answered = next.events.includes("attention_call_answered_play");
              playLines.push((terminalEnabled
-               ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired to play..." : answered ? "Yes! That's what I wanted!" : "That was fun!", next.name, next.spriteType) + "\n"
+               ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired to play..." : answered ? whimSpeech("play") : "That was fun!", next.name, next.spriteType) + "\n"
                : "") + (refused
                ? `[${pLabel}] Play refused — ${next.name} is too tired.`
                : `[${pLabel}] Played with ${next.name}. Happiness: ${next.happiness}, Energy: ${next.energy}.`));
