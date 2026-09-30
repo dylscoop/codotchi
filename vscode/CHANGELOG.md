@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.21.0] — 2026-09-30
+
+### Fixed
+
+- **"Threw the snack away" with several windows open** — when more than one IDE window was open, the other windows said your pet threw the snack away after it ate it. They now stay quiet.
+- **Attention call expiry now matches the setting** — Needy, Standard and Chilled calls now last 2, 5 and 10 minutes as labelled. Before, they expired in half that time.
+- **Time away no longer builds up calls** — time spent away doesn't make calls more likely when you come back, and misbehaviour and gift calls no longer appear while you're away.
+
 ## [2.20.18] — 2026-09-29
 
 ### Added

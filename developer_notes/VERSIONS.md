@@ -1,6 +1,26 @@
 # Version History
 
-## v2.20.18 — current
+## v2.21.0 — current
+
+### Changes from v2.20.18 (silent duplicate snack consume, idle-proof attention calls, expiry matches its labels — branch feat/play-pat-craving-calls, BUGFIX-167 / 168 / 169)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | fix: `consumeSnack()` ignores a duplicate report with no events (BUGFIX-167); call-chance counters only advance on active ticks, and misbehaviour / gift don't fire while idle (BUGFIX-169); `DEFAULT_GAME_CONFIG.attentionCallExpiryTicks` 50 → 100 and expiry comment corrected (BUGFIX-168) |
+| `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts` | mirrored the engine change |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | mirrored the engine change in Kotlin |
+| `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: expiry setting maps to 40 / 100 / 200 ticks (2 / 5 / 10 min) instead of 20 / 50 / 100 (BUGFIX-168) |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | tests for all of the above, plus a seeded craving-rate simulation |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | version bump to 2.21.0 |
+
+**Updated constants:**
+
+- Expiry setting ticks: needy 20 → 40, standard 50 → 100, chilled 100 → 200 (both IDEs).
+- `DEFAULT_GAME_CONFIG.attentionCallExpiryTicks` (TS): 50 → 100 (Kotlin already 100).
+
+---
+
+## v2.20.18
 
 ### Changes from v2.20.17 (play / pat / craving attention calls; BUG-S06 cooldown fix — branch feat/play-pat-craving-calls, BUGFIX-166)
 
