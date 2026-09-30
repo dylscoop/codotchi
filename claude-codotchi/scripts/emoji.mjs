@@ -20,11 +20,15 @@ const EMOJI_BY_SPRITE = {
   dragon: "🐉",
   snake: "🐍",
   horse: "🐴",
-  goat: "🐐",
+  sheep: "🐑",
   monkey: "🐵",
   rooster: "🐓",
   dog: "🐶",
   pig: "🐷",
+  kangaroo: "🦘",
+  roo: "🦘",
+  tim: "☕",
+  stu: "🐟",
 };
 
 const DEFAULT_EMOJI = "🐾";

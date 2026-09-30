@@ -23,11 +23,6 @@ private fun clampWeight(value: Int): Int = clamp(value, WEIGHT_MIN, WEIGHT_MAX)
 // Sprite helpers
 // ---------------------------------------------------------------------------
 
-private val ZODIAC_ANIMALS = listOf(
-    "rat", "ox", "tiger", "rabbit", "dragon", "snake",
-    "horse", "sheep", "monkey", "rooster", "dog", "pig"
-)
-
 /**
  * Animals in the random rotation pool at pet creation.
  * All entries have equal probability (1 / ROTATION_ANIMALS.size each).
