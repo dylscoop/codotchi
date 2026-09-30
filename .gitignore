@@ -43,3 +43,6 @@ pycharm/.gradle/
 pycharm/build/
 
 downloaded_sprites/
+
+# IDE project files
+.idea/

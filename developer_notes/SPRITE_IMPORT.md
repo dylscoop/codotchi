@@ -265,7 +265,6 @@ palette table in [`SPRITES.md`](SPRITES.md) for examples.
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/gen_sprites.js` | Procedurally generates the built-in animal `DEFS` (not file import). |
-| `scripts/inject_sprites.js` | Splices `gen_sprites.js` output into `sprites.js`. |
-| `scripts/validate_sprites.js` | Verifies that every row string in `sprites.js` has the correct width for its `spriteType` per `SPRITE_GRID_META`. |
+| `scripts/legacy/gen_sprites.js` | Legacy: the old procedural `DEFS` generator, kept for reference. Nothing calls it except `validate_sprites.js`. |
+| `scripts/validate_sprites.js` | Checks row widths of the legacy `gen_sprites.js` output against `SPRITE_GRID_META`. It does not yet check `sprites.js` itself (rewrite tracked in `FEATURES_SEPTEMBER_2026.md` §2.2). |
 | `vscode/media/sprite_preview.html` | Standalone browser gallery for all sprites. |

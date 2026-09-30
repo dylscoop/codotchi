@@ -1,7 +1,7 @@
 /**
  * gen_sprites.js
  * Generates the DEFS block for sprites.js.
- * Run: node scripts/gen_sprites.js > /tmp/defs.txt
+ * Run: node scripts/legacy/gen_sprites.js > /tmp/defs.txt
  *
  * Grid conventions:
  *   Upright (classic,monkey,rooster,dragon): 32 cols x 48 rows
