@@ -53,7 +53,10 @@ import {
   applyOfflineDecay,
   applyCodeActivity,
   feedMeal,
+  startSnack,
+  consumeSnack,
   pat,
+  play,
   sleep,
   clean,
   giveMedicine,
@@ -1142,13 +1145,33 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
         break;
       case "attention_call_gift":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "happy", pickRandom(["I brought you a gift! Use /codotchi pat to accept it.", "I have a surprise for you! (/codotchi pat)", "Got something for you — /codotchi pat to collect."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I brought you a gift! Use /codotchi pat to accept it.", "I have a surprise for you! (/codotchi pat)", "Got something for you — /codotchi pat to collect."])}`);
+          ? buildSpeechBubble(next.stage, "happy", pickRandom(["I brought you a gift! Praise me in the IDE to accept it.", "I have a surprise for you! (Praise me in the IDE.)", "Got something for you — praise me in the IDE to collect."]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I brought you a gift! Praise me in the IDE to accept it.", "I have a surprise for you! (Praise me in the IDE.)", "Got something for you — praise me in the IDE to collect."])}`);
         break;
       case "attention_call_misbehaviour":
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "neutral", pickRandom(["I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", "I need some discipline. (/codotchi pat)", "Being difficult. (/codotchi pat or /codotchi feed)"]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", "I need some discipline. (/codotchi pat)", "Being difficult. (/codotchi pat or /codotchi feed)"])}`);
+          ? buildSpeechBubble(next.stage, "neutral", pickRandom(["I'm acting up! Scold me in the IDE to discipline me.", "I need some discipline. (Scold me in the IDE.)", "Being difficult. (Scold me in the IDE.)"]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I'm acting up! Scold me in the IDE to discipline me.", "I need some discipline. (Scold me in the IDE.)", "Being difficult. (Scold me in the IDE.)"])}`);
+        break;
+      case "attention_call_play":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "happy", pickRandom(["Play a game with me! (/codotchi play)", "I'm bored — let's play! (/codotchi play)", "Game time? /codotchi play"]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["Play a game with me! (/codotchi play)", "I'm bored — let's play! (/codotchi play)", "Game time? /codotchi play"])}`);
+        break;
+      case "attention_call_pat":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "happy", pickRandom(["I want a pat! (/codotchi pat)", "Pat me? Pretty please! (/codotchi pat)", "A little pat would be nice. (/codotchi pat)"]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I want a pat! (/codotchi pat)", "Pat me? Pretty please! (/codotchi pat)", "A little pat would be nice. (/codotchi pat)"])}`);
+        break;
+      case "attention_call_craving_meal":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "neutral", pickRandom(["I'm craving a proper meal! (/codotchi feed)", "Feed me? A real meal, please. (/codotchi feed)", "Could really go for a meal. (/codotchi feed)"]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I'm craving a proper meal! (/codotchi feed)", "Feed me? A real meal, please. (/codotchi feed)", "Could really go for a meal. (/codotchi feed)"])}`);
+        break;
+      case "attention_call_craving_snack":
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, "happy", pickRandom(["I'm craving a snack! (/codotchi snack)", "Snack time? (/codotchi snack)", "Just a little snack... (/codotchi snack)"]), next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${pickRandom(["I'm craving a snack! (/codotchi snack)", "Snack time? (/codotchi snack)", "Just a little snack... (/codotchi snack)"])}`);
         break;
     }
   }
@@ -1351,7 +1374,7 @@ export const plugin: Plugin = async (ctx) => {
       "This tool reads state from VS Code, PyCharm, and the local OpenCode pet — do NOT use any other codotchi tool.",
     args: {
       action: tool.schema
-        .enum(["status", "feed", "pat", "sleep", "clean", "medicine", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
+        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
         .describe("The action to perform"),
       value: tool.schema
         .number()
@@ -1516,6 +1539,39 @@ export const plugin: Plugin = async (ctx) => {
            return ret(notification + feedLines.join("\n\n"));
          }
 
+         case "snack": {
+           const snackLines: string[] = [];
+           for (const p of alivePets) {
+             // Skip OpenCode-local pet
+             if (p.ide === "opencode") {
+               snackLines.push(`[OpenCode] I'm just a companion — I don't need snacks.`);
+               continue;
+             }
+             const s = p.state;
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             if (s.sleeping) {
+               snackLines.push(`[${pLabel}] ${s.name} is sleeping and can't eat right now.`);
+               continue;
+             }
+             // The IDE drops the snack on the floor and the pet walks to it; here it's eaten straight away.
+             const placed = startSnack(s);
+             if (placed.events.includes("snack_refused")) {
+               snackLines.push(`[${pLabel}] Snack refused — no more snacks for ${s.name} right now.`);
+               continue;
+             }
+             const answered = placed.events.includes("attention_call_answered_craving");
+             const next = consumeSnack(placed);
+             setPetState(p.ide, next);
+             saveIDEState(p.ide);
+             const gotSick = next.events.includes("became_sick");
+             snackLines.push((terminalEnabled
+               ? buildSpeechBubble(next.stage, next.mood, gotSick ? "Ugh, too many snacks..." : answered ? "Just what I was craving!" : "Crunch!", next.name, next.spriteType) + "\n"
+               : "") + `[${pLabel}] Gave ${next.name} a snack. Hunger: ${next.hunger}/100, Happiness: ${next.happiness}.` +
+               (gotSick ? ` ${next.name} ate too many snacks in a row and feels sick.` : ""));
+           }
+           return ret(notification + snackLines.join("\n\n"));
+         }
+
          case "pat": {
            const patLines: string[] = [];
            for (const p of alivePets) {
@@ -1544,6 +1600,37 @@ export const plugin: Plugin = async (ctx) => {
                : `[${pLabel}] Patted ${next.name}. Happiness: ${next.happiness}.`));
            }
            return ret(notification + patLines.join("\n\n"));
+         }
+
+         case "play": {
+           const playLines: string[] = [];
+           for (const p of alivePets) {
+             // Skip OpenCode-local pet
+             if (p.ide === "opencode") {
+               playLines.push(`[OpenCode] I'm just a companion — I don't need games.`);
+               continue;
+             }
+             const s = p.state;
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             if (s.sleeping) {
+               playLines.push(`[${pLabel}] ${s.name} is sleeping.`);
+               continue;
+             }
+             // No mini-game in the terminal — play() applies the stat changes and answers a play call.
+             const next = play(s);
+             const refused = next.events.includes("play_refused_no_energy");
+             if (!refused) {
+               setPetState(p.ide, next);
+               saveIDEState(p.ide);
+             }
+             const answered = next.events.includes("attention_call_answered_play");
+             playLines.push((terminalEnabled
+               ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired to play..." : answered ? "Yes! That's what I wanted!" : "That was fun!", next.name, next.spriteType) + "\n"
+               : "") + (refused
+               ? `[${pLabel}] Play refused — ${next.name} is too tired.`
+               : `[${pLabel}] Played with ${next.name}. Happiness: ${next.happiness}, Energy: ${next.energy}.`));
+           }
+           return ret(notification + playLines.join("\n\n"));
          }
 
          case "sleep": {
@@ -1624,7 +1711,7 @@ export const plugin: Plugin = async (ctx) => {
          }
 
         default:
-          return ret(notification + artHeader() + "Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off, warnthreshold, shoutthreshold.");
+          return ret(notification + artHeader() + "Unknown action. Use one of: status, feed, snack, pat, play, sleep, clean, medicine, on, off, warnthreshold, shoutthreshold.");
       }
     },
   });

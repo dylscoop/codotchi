@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.21.0] — 2026-09-30
+
+### Fixed
+
+- **"Threw the snack away" with several windows open** — when more than one IDE window was open, the other windows said your pet threw the snack away after it ate it. They now stay quiet.
+- **Attention call expiry now matches the setting** — Needy, Standard and Chilled calls now last 2, 5 and 10 minutes as labelled. Before, they expired in half that time.
+- **Time away no longer builds up calls** — time spent away doesn't make calls more likely when you come back, and misbehaviour and gift calls no longer appear while you're away.
+
+## [2.20.18] — 2026-09-29
+
+### Added
+
+- **Little whims** — every now and then your pet just wants to play a game, get a pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in time and it's happy; ignore it and its health suffers. The Attention Call Rate and Expiry settings apply to these too.
+- Terminal plugins: `/codotchi play` and `/codotchi snack` (Claude Code, OpenCode), and play / snack tools in Claude Desktop.
+
+### Fixed
+
+- **Same call rate in VS Code and PyCharm** — after a call, the pet now waits 5 minutes of active time before repeating it in both IDEs. Previously VS Code repeated calls about twice as often, and time spent away counted towards the wait.
+- **Answered call after a mini-game** — finishing a mini-game to answer a call now shows the "answered" message, which was previously lost.
+
 ## [2.20.17] — 2026-09-28
 
 ### Changed

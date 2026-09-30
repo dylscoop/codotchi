@@ -1,6 +1,53 @@
 # Version History
 
-## v2.20.17 — current
+## v2.21.0 — current
+
+### Changes from v2.20.18 (silent duplicate snack consume, idle-proof attention calls, expiry matches its labels — branch feat/play-pat-craving-calls, BUGFIX-167 / 168 / 169)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | fix: `consumeSnack()` ignores a duplicate report with no events (BUGFIX-167); call-chance counters only advance on active ticks, and misbehaviour / gift don't fire while idle (BUGFIX-169); `DEFAULT_GAME_CONFIG.attentionCallExpiryTicks` 50 → 100 and expiry comment corrected (BUGFIX-168) |
+| `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts` | mirrored the engine change |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | mirrored the engine change in Kotlin |
+| `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: expiry setting maps to 40 / 100 / 200 ticks (2 / 5 / 10 min) instead of 20 / 50 / 100 (BUGFIX-168) |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | tests for all of the above, plus a seeded craving-rate simulation |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | version bump to 2.21.0 |
+
+**Updated constants:**
+
+- Expiry setting ticks: needy 20 → 40, standard 50 → 100, chilled 100 → 200 (both IDEs).
+- `DEFAULT_GAME_CONFIG.attentionCallExpiryTicks` (TS): 50 → 100 (Kotlin already 100).
+
+---
+
+## v2.20.18
+
+### Changes from v2.20.17 (play / pat / craving attention calls; BUG-S06 cooldown fix — branch feat/play-pat-craving-calls, BUGFIX-166)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | feat: new `play`, `pat` and `craving` attention calls:<br>• they fire at random at any stat level, after every need-based call, and never while asleep or idle<br>• they use the rate and expiry settings<br>• unanswered costs health −10 plus a care mistake<br>• `pickCravingFood` chooses meal or snack and `answerCraving` only accepts that food<br>• new fields `ticksSinceLastPlayCall` / `ticksSinceLastPatCall` / `ticksSinceLastCraving` / `cravingFood`<br>fix: cooldowns are 100/100 and only count down on active ticks; `applyMinigameResult` keeps answered events |
+| `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts` | mirrored the engine change |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `Constants.kt`, `PetState.kt`, `CodotchiPersistence.kt` | mirrored in Kotlin; new fields persisted with safe fallbacks |
+| `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js` | fired / answered / expired labels (and so speech bubbles) for the new calls |
+| `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | IDE notifications for the new calls |
+| `claude-codotchi/scripts/action.mjs`, `commands/codotchi.md` | new `/codotchi play` and `/codotchi snack` |
+| `opencode-codotchi/src/index.ts` | new `play` / `snack` actions; speech for the new calls; gift / misbehaviour hints point at the IDE's praise / scold instead of `/codotchi pat` |
+| `claude-desktop-codotchi/src/tools.ts`, `server.ts`, `manifest.json` | new `codotchi_play` / `codotchi_snack` tools |
+| `vscode/package.json`, `pycharm/.../CodotchiSettings.kt` | attention call expiry / rate descriptions cover the new calls; fixed window is 1 minute |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt`, `claude-codotchi/tests/integration/whimCalls.test.mjs` | tests for all of the above |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `claude-codotchi/USER_GUIDE.md`, `claude-desktop-codotchi/README.md` | "Little whims" feature bullet; new commands / tools |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | version bump to 2.20.18; claude-codotchi plugin 2.18.7 → 2.20.18 so it matches the other hosts |
+
+**Updated constants:**
+
+- `ATTENTION_ANSWER_COOLDOWN_TICKS`: 50 → 100 in TS (Kotlin already 100).
+- `ATTENTION_EXPIRY_COOLDOWN_TICKS`: TS 20 → 100, Kotlin 40 → 100.
+- New: `PLAY_CALL_BASE_CHANCE` / `MAX` 0.003 / 0.04, `PAT_CALL_BASE_CHANCE` / `MAX` 0.004 / 0.05, `CRAVING_CALL_BASE_CHANCE` / `MAX` 0.003 / 0.04, `CRAVING_MEAL_MAX_HUNGER = 90`.
+
+---
+
+## v2.20.17
 
 ### Changes from v2.20.16 (no health loss while idle, forgiving poop sickness — branch feat/forgiving-idle-poop, BUGFIX-165 / BUG-S02)
 

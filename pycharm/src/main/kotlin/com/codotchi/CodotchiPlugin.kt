@@ -354,8 +354,9 @@ class CodotchiPlugin : Disposable {
             val settings = service<CodotchiSettings>()
 
             // Map attentionCallExpiry setting to tick count.
-            val expiryMap = mapOf("needy" to 20, "standard" to 50, "chilled" to 100)
-            val attentionCallExpiryTicks = expiryMap[settings.attentionCallExpiry] ?: 50
+            // 3 s/tick: needy 2 min, standard 5 min, chilled 10 min.
+            val expiryMap = mapOf("needy" to 40, "standard" to 100, "chilled" to 200)
+            val attentionCallExpiryTicks = expiryMap[settings.attentionCallExpiry] ?: 100
 
             // Map attentionCallRate setting to rate divisor.
             val rateMap = mapOf("fast" to 1.0, "medium" to 1.5, "slow" to 2.0)
@@ -1496,6 +1497,10 @@ class CodotchiPlugin : Disposable {
             "attention_call_misbehaviour"    -> "$petName is misbehaving!"
             "attention_call_gift"            -> (customChar?.giftMessage ?: "$petName brought you a gift!").replace("__Name__", petName)
             "attention_call_critical_health" -> "$petName's health is critical!"
+            "attention_call_play"            -> "$petName wants to play a game!"
+            "attention_call_pat"             -> "$petName wants a pat!"
+            "attention_call_craving_meal"    -> "$petName is craving a meal!"
+            "attention_call_craving_snack"   -> "$petName is craving a snack!"
             else                             -> null
         }
     }

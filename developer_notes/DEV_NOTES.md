@@ -816,7 +816,8 @@ removed for JCEF compatibility.
 
 ## Attention-Call Probability Formula
 
-Probabilistic attention calls (poop, misbehaviour, gift) use a **logarithmic
+Probabilistic attention calls (poop, misbehaviour, gift, and the whim calls
+craving, play and pat) use a **logarithmic
 probability function** — not a flat random chance — so that the longer the
 event has not fired, the higher the chance it fires on the next tick.
 
@@ -828,7 +829,10 @@ logChance(ticksSinceLast, base, max) = min(max, base × ln(ticksSinceLast + e))
 
 - `ticksSinceLast` — ticks since the event last fired (or since the counter was
   last reset).  For poop calls this is `ticksWithUncleanedPoop`; for misbehaviour
-  it is `ticksSinceLastMisbehaviour`; for gifts it is `ticksSinceLastGift`.
+  it is `ticksSinceLastMisbehaviour`; for gifts it is `ticksSinceLastGift`; for
+  the whim calls it is `ticksSinceLastCraving` / `ticksSinceLastPlayCall` /
+  `ticksSinceLastPatCall`. These counters rise every tick and reset only when
+  the call fires.
 - `base` — scaling factor (slope of the log curve).
 - `max` — hard cap on the probability.
 - Returns a probability in `[0, max]`.  Each tick a `Math.random()` / `Random.nextDouble()`
@@ -841,10 +845,16 @@ logChance(ticksSinceLast, base, max) = min(max, base × ln(ticksSinceLast + e))
 | Poop          | `POOP_CALL_BASE_CHANCE`    | 0.03   | `POOP_CALL_MAX_CHANCE`    | 0.12   |
 | Misbehaviour  | `MISBEHAVIOUR_BASE_CHANCE` | 0.005  | `MISBEHAVIOUR_MAX_CHANCE` | 0.08   |
 | Gift          | `GIFT_BASE_CHANCE`         | 0.002  | `GIFT_MAX_CHANCE`         | 0.05   |
+| Craving       | `CRAVING_CALL_BASE_CHANCE` | 0.003  | `CRAVING_CALL_MAX_CHANCE` | 0.04   |
+| Play          | `PLAY_CALL_BASE_CHANCE`    | 0.003  | `PLAY_CALL_MAX_CHANCE`    | 0.04   |
+| Pat           | `PAT_CALL_BASE_CHANCE`     | 0.004  | `PAT_CALL_MAX_CHANCE`     | 0.05   |
 
-Constants are defined in:
-- TypeScript: `vscode/src/gameEngine.ts` lines 183–189
-- Kotlin: `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` lines 256–262
+Both base and max are divided by `config.attentionCallRateDivisor` (the
+`codotchi.attentionCallRate` setting: Fast 1.0, Medium 1.5, Slow 2.0).
+
+Constants are defined next to each other in:
+- TypeScript: `vscode/src/gameEngine.ts` (search `POOP_CALL_BASE_CHANCE`)
+- Kotlin: `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt`
 
 ### How the curve behaves (poop example, base=0.03, max=0.12)
 
@@ -856,12 +866,36 @@ rare events that gradually become more likely the longer nothing has happened.
 
 ### Where it fires
 
-- `gameEngine.ts:1029` / `GameEngine.kt:418` — poop call gate
-- `gameEngine.ts:1050` / `GameEngine.kt:439` — misbehaviour call gate
-- `gameEngine.ts:1063` / `GameEngine.kt:452` — gift call gate
+All call sites are in **Step 3** (the fire chain) of the attention-call section
+of `tick()`, wrapped by the `attentionCallsEnabled` guard. Only one call can be
+active at a time, and the chain is an if/else in this order:
 
-All three call sites are inside **Steps 1–3** of the attention-call section
-of `tick()`, wrapped (from v0.4.0 onwards) by the `attentionCallsEnabled` guard.
+1. `poop` (can fire while asleep; not while idle)
+2. need-based calls: `critical_health`, `sick`, `hunger`, `unhappiness`
+3. `misbehaviour`, then `low_energy`
+4. whim calls: `craving`, `play`, `pat`. These need the pet awake and the user
+   active; `play` needs energy ≥ `PLAY_ENERGY_COST` and no sickness, and `pat`
+   needs energy ≥ `PAT_ENERGY_COST`
+5. `gift`
+
+**Craving food:** `pickCravingFood()` picks `meal` or `snack`:
+
+- It asks for a meal once another snack would be risky or impossible: 2+
+  snacks in a row, `SNACK_MAX_PER_CYCLE` used up, or `MAX_FLOOR_SNACKS` on the
+  floor.
+- It asks for a snack when the pet is nearly full (hunger ≥ 90), since a meal
+  would be pointless.
+- Otherwise it's 50/50.
+- It doesn't fire at all when the pet is sick or full.
+
+The choice is stored in `PetState.cravingFood`. The fired event is
+`attention_call_craving_meal` / `attention_call_craving_snack`. Only the
+matching food answers the call: `feedMeal` for a meal, `startSnack` for a snack.
+
+**Cooldowns:** after a call is answered or expires, that type waits
+`ATTENTION_ANSWER_COOLDOWN_TICKS` / `ATTENTION_EXPIRY_COOLDOWN_TICKS` (both
+100 ticks = 5 min). Cooldowns only count down on active (non-idle) ticks,
+and TS and Kotlin share the same values (BUGFIX-166).
 
 ---
 
@@ -983,13 +1017,17 @@ Queued by the tick loop and prepended to the next command output.
 | `died_of_old_age` | `"I lived a full life. Thank you for everything."` |
 | `evolved_to_baby` / `_child` / `_teen` / `_adult` / `_senior` | `"I evolved into a {stageName}!"` |
 | `attention_call_hunger` | `"I'm so hungry... please feed me!"` |
-| `attention_call_unhappiness` | `"Gotchi wants to play"` |
+| `attention_call_unhappiness` | `"I want to play"` |
 | `attention_call_sick` | `"I don't feel well. I need medicine!"` |
 | `attention_call_critical_health` | `"My health is critical! Please help me!"` |
 | `attention_call_low_energy` | `"I'm exhausted... let me sleep!"` |
 | `attention_call_poop` | `"There is a mess here! Can you clean it up?"` |
-| `attention_call_gift` | `"I brought you a gift! Use /codotchi pat to accept it."` |
-| `attention_call_misbehaviour` | `"I'm acting up! Use /codotchi pat or /codotchi feed to discipline me."` |
+| `attention_call_gift` | `"I brought you a gift! Praise me in the IDE to accept it."` |
+| `attention_call_misbehaviour` | `"I'm acting up! Scold me in the IDE to discipline me."` |
+| `attention_call_play` | `"Play a game with me! (/codotchi play)"` |
+| `attention_call_pat` | `"I want a pat! (/codotchi pat)"` |
+| `attention_call_craving_meal` | `"I'm craving a proper meal! (/codotchi feed)"` |
+| `attention_call_craving_snack` | `"I'm craving a snack! (/codotchi snack)"` |
 
 ### Toast notifications (brief, one-line)
 
@@ -1092,6 +1130,10 @@ Shown as VS Code warning popups with an "Open Gotchi" button. Defined in `vscode
 | `attention_call_misbehaviour` | `"{name} is misbehaving!"` |
 | `attention_call_gift` | `"{name} brought you a gift!"` |
 | `attention_call_critical_health` | `"{name}'s health is critical!"` |
+| `attention_call_play` | `"{name} wants to play a game!"` |
+| `attention_call_pat` | `"{name} wants a pat!"` |
+| `attention_call_craving_meal` | `"{name} is craving a meal!"` |
+| `attention_call_craving_snack` | `"{name} is craving a snack!"` |
 | `died_of_old_age` | `"{name} has passed away of unforeseen natural causes due to old age."` |
 
 **Rescue notification (error-level, repeating):** when the pet is sick or
