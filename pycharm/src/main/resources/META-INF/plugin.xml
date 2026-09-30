@@ -51,7 +51,7 @@ Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotch
   <li><b>Public leaderboard</b> — sign in with GitHub to submit your pet when it dies, or push live progress while it's still going</li>
   <li><b>Status bar integration</b> — pet name and stage always visible in the IDE status bar</li>
   <li><b>Persistent state</b> — pet survives IDE restarts; offline time is accounted for with capped stat decay</li>
-  <li><b>Configurable</b> — customise font size, pet size, colours, idle thresholds, attention call behaviour, and more via <b>Settings → Tools → Codotchi</b></li>
+  <li><b>Configurable</b> — customise font size, pet size, stage height, colours, idle thresholds, attention call behaviour, and more via <b>Settings → Tools → Codotchi</b></li>
 </ul>
 
 <h2>Requirements</h2>

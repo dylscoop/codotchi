@@ -129,7 +129,7 @@
           "type": "integer",
           "default": 60,
           "minimum": 10,
-          "description": "Seconds of no IDE activity before the pet is considered idle (decay rate drops to 10% of normal and the pet cannot lose health). Default: 60 seconds."
+          "description": "Seconds of no IDE activity before the pet is considered idle (stats decay at 5% of the normal rate and the pet cannot lose health). Default: 60 seconds."
         },
         "codotchi.idleDeepThresholdSeconds": {
           "type": "integer",
@@ -163,12 +163,24 @@
           "type": "string",
           "enum": ["small", "medium", "large"],
           "enumDescriptions": [
-            "Small — compact original size (1× scale, 12×16 pixel grid).",
-            "Medium — comfortable default (1.5× scale, 18×24 pixel grid).",
-            "Large — twice the original size with higher-detail 24×32 pixel grid."
+            "Small — a compact pet.",
+            "Medium — the default size.",
+            "Large — the biggest pet. Pairs well with a Tall stage."
           ],
           "default": "medium",
-          "description": "Controls the overall display size of the pet sprite. 'Large' uses a more detailed 24×32 pixel grid for every sprite type."
+          "description": "Display size of the pet sprite on the stage."
+        },
+        "codotchi.stageHeight": {
+          "type": "string",
+          "enum": ["compact", "normal", "tall", "extraTall"],
+          "enumDescriptions": [
+            "Compact (180 px) — a shorter stage that leaves more room for the rest of the panel.",
+            "Normal (240 px) — the default stage height.",
+            "Tall (320 px) — more room for the pet to jump and play.",
+            "Extra tall (400 px) — the biggest stage."
+          ],
+          "default": "normal",
+          "description": "Height of the pet stage (the area your pet walks around in). The stage scales with the sidebar width, so the on-screen height is proportional to these sizes."
         },
         "codotchi.reducedMotion": {
           "type": "boolean",
@@ -265,7 +277,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

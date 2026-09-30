@@ -139,7 +139,7 @@ class CodotchiBrowserPanel(
         val settings      = ApplicationManager.getApplication().getService(CodotchiSettings::class.java)
         val fontSizeClass = "font-${settings?.fontSize ?: "normal"}"
         val textColor     = settings?.textColor ?: "#cccccc"
-        val stageHeight      = settings?.petStageHeight ?: 240
+        val stageHeight      = stageHeightPx(settings?.stageHeight)
         val reducedMotion    = settings?.reducedMotion ?: false
         val petSize          = settings?.petSize ?: "medium"
         val background       = settings?.background ?: "ordered"

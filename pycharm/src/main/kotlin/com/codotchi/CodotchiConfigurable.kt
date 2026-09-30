@@ -35,7 +35,7 @@ class CodotchiConfigurable : Configurable {
     private var idleDeepThresholdSpinner:  JSpinner?           = null
     private var attentionCallExpiryCombo:  JComboBox<String>?  = null
     private var attentionCallRateCombo:    JComboBox<String>?  = null
-    private var petStageHeightSpinner:     JSpinner?           = null
+    private var stageHeightCombo:          JComboBox<String>?  = null
     private var reducedMotionCheck:        JCheckBox?          = null
     private var petSizeCombo:              JComboBox<String>?  = null
     private var devModeEnabledCheck:        JCheckBox?          = null
@@ -68,7 +68,7 @@ class CodotchiConfigurable : Configurable {
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
         val expiryCombo     = JComboBox(arrayOf("Needy (4 min)", "Standard (10 min)", "Chilled (20 min)"))
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
-        val stageHeightSpinner = JSpinner(SpinnerNumberModel(240, 48, 300, 8))
+        val stageHeightDropdown = JComboBox(arrayOf("Compact (180 px)", "Normal (240 px)", "Tall (320 px)", "Extra tall (400 px)"))
         val reducedMotionCheckbox = JCheckBox("Reduced motion (disable animation)")
         val petSizeDropdown = JComboBox(arrayOf("Small", "Medium", "Large"))
         val devModeEnabledCheckbox = JCheckBox("Enable developer mode")
@@ -114,7 +114,7 @@ class CodotchiConfigurable : Configurable {
         idleDeepThresholdSpinner = deepIdleSpinner
         attentionCallExpiryCombo = expiryCombo
         attentionCallRateCombo   = rateCombo
-        petStageHeightSpinner    = stageHeightSpinner
+        stageHeightCombo         = stageHeightDropdown
         reducedMotionCheck       = reducedMotionCheckbox
         petSizeCombo             = petSizeDropdown
         devModeEnabledCheck      = devModeEnabledCheckbox
@@ -211,11 +211,11 @@ class CodotchiConfigurable : Configurable {
         // Row 8 — Pet stage height
         gbc.gridx = 0; gbc.gridy = 8
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Pet stage height (px):"), gbc)
+        panel.add(JBLabel("Pet stage height:"), gbc)
 
         gbc.gridx = 1
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(stageHeightSpinner, gbc)
+        panel.add(stageHeightDropdown, gbc)
 
         // Row 9 — Reduced motion
         gbc.gridx = 0; gbc.gridy = 9; gbc.gridwidth = 2
@@ -373,7 +373,7 @@ class CodotchiConfigurable : Configurable {
         val uiDeepIdle   = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         val uiExpiry     = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         val uiRate       = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
-        val uiStageHeight = (petStageHeightSpinner?.value as? Int) ?: 96
+        val uiStageHeight = stageHeightIndexToKey(stageHeightCombo?.selectedIndex ?: 1)
         val uiReducedMotion = reducedMotionCheck?.isSelected ?: false
         val uiPetSize = petSizeIndexToKey(petSizeCombo?.selectedIndex ?: 1)
         val uiDevModeEnabled = devModeEnabledCheck?.isSelected ?: false
@@ -399,7 +399,7 @@ class CodotchiConfigurable : Configurable {
             || uiDeepIdle != settings.idleDeepThresholdSeconds
             || uiExpiry != settings.attentionCallExpiry
             || uiRate != settings.attentionCallRate
-            || uiStageHeight != settings.petStageHeight
+            || uiStageHeight != settings.stageHeight
             || uiReducedMotion != settings.reducedMotion
             || uiPetSize != settings.petSize
             || uiDevModeEnabled != settings.devModeEnabled
@@ -429,7 +429,7 @@ class CodotchiConfigurable : Configurable {
         settings.idleDeepThresholdSeconds = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         settings.attentionCallExpiry    = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         settings.attentionCallRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
-        settings.petStageHeight         = (petStageHeightSpinner?.value as? Int) ?: 96
+        settings.stageHeight            = stageHeightIndexToKey(stageHeightCombo?.selectedIndex ?: 1)
         settings.reducedMotion          = reducedMotionCheck?.isSelected ?: false
         settings.petSize                = petSizeIndexToKey(petSizeCombo?.selectedIndex ?: 1)
         settings.devModeEnabled         = devModeEnabledCheck?.isSelected ?: false
@@ -472,7 +472,7 @@ class CodotchiConfigurable : Configurable {
         idleDeepThresholdSpinner?.value    = settings.idleDeepThresholdSeconds
         attentionCallExpiryCombo?.selectedIndex = expiryKeyToIndex(settings.attentionCallExpiry)
         attentionCallRateCombo?.selectedIndex   = rateKeyToIndex(settings.attentionCallRate)
-        petStageHeightSpinner?.value            = settings.petStageHeight
+        stageHeightCombo?.selectedIndex         = stageHeightKeyToIndex(settings.stageHeight)
         reducedMotionCheck?.isSelected          = settings.reducedMotion
         petSizeCombo?.selectedIndex             = petSizeKeyToIndex(settings.petSize)
         devModeEnabledCheck?.isSelected         = settings.devModeEnabled
@@ -501,6 +501,8 @@ class CodotchiConfigurable : Configurable {
     private fun rateKeyToIndex(key: String) = when (key) { "medium" -> 1; "slow" -> 2; else -> 0 }
     private fun petSizeIndexToKey(index: Int) = when (index) { 0 -> "small"; 2 -> "large"; else -> "medium" }
     private fun petSizeKeyToIndex(key: String) = when (key) { "small" -> 0; "large" -> 2; else -> 1 }
+    private fun stageHeightIndexToKey(index: Int) = when (index) { 0 -> "compact"; 2 -> "tall"; 3 -> "extraTall"; else -> "normal" }
+    private fun stageHeightKeyToIndex(key: String) = when (key) { "compact" -> 0; "tall" -> 2; "extraTall" -> 3; else -> 1 }
     private fun bgIndexToKey(index: Int) = when (index) { 0 -> "plain"; 2 -> "spring"; 3 -> "summer"; 4 -> "autumn"; 5 -> "winter"; else -> "ordered" }
     private fun bgKeyToIndex(key: String) = when (key) { "plain" -> 0; "spring" -> 2; "summer" -> 3; "autumn" -> 4; "winter" -> 5; else -> 1 }
 

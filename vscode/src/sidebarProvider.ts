@@ -36,6 +36,7 @@ import {
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
 import { StatusBarManager } from "./statusBar";
+import { stageHeightPx } from "./stageHeight";
 import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
 import {
   resolveGithubUser,
@@ -263,12 +264,13 @@ export class SidebarProvider
     this.disposables.push(visibilityListener);
 
     // BUGFIX-001: hot-reload the webview HTML when the font-size setting changes.
-    // Also reload on petStageHeight or reducedMotion changes.
+    // Also reload on stageHeight, petSize or reducedMotion changes.
     const configListener = vscode.workspace.onDidChangeConfiguration((e) => {
       if (
         e.affectsConfiguration("codotchi.fontSize") ||
         e.affectsConfiguration("codotchi.background") ||
         e.affectsConfiguration("codotchi.petSize") ||
+        e.affectsConfiguration("codotchi.stageHeight") ||
         e.affectsConfiguration("codotchi.reducedMotion") ||
         e.affectsConfiguration("codotchi.idleResetOnMouseMovement")
       ) {
@@ -326,10 +328,9 @@ export class SidebarProvider
 
     const cfg = vscode.workspace.getConfiguration("codotchi");
 
-    // Stage height is fixed at 240 px — no longer a user setting.
     // The canvas CSS height is driven by the height attribute (height: auto in CSS)
     // so the pixel buffer and display size always match.
-    const petStageHeight = 240;
+    const petStageHeight = stageHeightPx(cfg.get<string>("stageHeight", "normal"));
     html = html.replace(/\{\{stageHeight\}\}/g, String(petStageHeight));
 
     const petSize = cfg.get<string>("petSize", "medium");

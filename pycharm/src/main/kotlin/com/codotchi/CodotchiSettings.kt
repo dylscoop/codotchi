@@ -14,7 +14,7 @@ import com.intellij.openapi.components.*
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
  *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift/play/pat/craving
  *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls (poop/misbehaviour/gift/play/pat/craving)
- *  - [petStageHeight]         : canvas height in pixels (default 96)
+ *  - [stageHeight]            : "compact" | "normal" | "tall" | "extraTall" — pet stage height preset (default "normal")
  *  - [reducedMotion]          : disable rAF animation loop (default false)
  *  - [petSize]                : "small" | "medium" | "large" — sprite display size (default "medium")
  *  - [devModeEnabled]         : must be true (along with the correct passcode) to activate dev mode (default false)
@@ -50,7 +50,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var idleDeepThresholdSeconds: Int = 600
         var attentionCallExpiry: String = "standard"  // "needy" | "standard" | "chilled"
         var attentionCallRate:   String = "fast"      // "fast" | "medium" | "slow"
-        var petStageHeight: Int = 240
+        var stageHeight: String = "normal"  // "compact" | "normal" | "tall" | "extraTall"
         var reducedMotion: Boolean = false
         var petSize: String = "medium"   // "small" | "medium" | "large"
         var devModeEnabled: Boolean = false
@@ -107,9 +107,9 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         get() = _state.attentionCallRate
         set(v) { _state.attentionCallRate = v }
 
-    var petStageHeight: Int
-        get() = _state.petStageHeight
-        set(v) { _state.petStageHeight = v }
+    var stageHeight: String
+        get() = _state.stageHeight
+        set(v) { _state.stageHeight = v }
 
     var reducedMotion: Boolean
         get() = _state.reducedMotion

@@ -61,7 +61,7 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   status bar; click to open the sidebar
 - **Persistent state** — pet survives VS Code restarts; offline time is
   accounted for with capped stat decay
-- **Configurable** — customise font size, pet size, colours, idle thresholds,
+- **Configurable** — customise font size, pet size, stage height, colours, idle thresholds,
   attention call behaviour, and more via **Settings → Extensions → codotchi**
 
 ## Installation
