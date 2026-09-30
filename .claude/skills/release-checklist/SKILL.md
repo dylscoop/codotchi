@@ -33,14 +33,15 @@ If any of the five differs, fix them to agree before doing anything else.
 
 ## Step 2 — Rebuild both artifacts
 
-After any source change, **always** rebuild both distribution artifacts and
-include them in the commit. Use the exact commands below.
+After any source change, **always** rebuild both distribution artifacts. They
+are gitignored (local only, uploaded to GitHub Releases), so don't commit them.
+Use the exact commands below.
 
 ### Step 2a — Archive old artifacts first (version bump only)
 
 If the version number changed since the last build, **move the old artifacts
 to their archive locations before rebuilding**. See the `release-management`
-skill for the exact `git mv` commands and archive paths.
+skill for the exact `mv` commands and archive paths.
 
 Skip this sub-step if the version number is unchanged.
 
@@ -179,4 +180,4 @@ Rebuild zip: `node scripts/package.js` (from `opencode-codotchi/`). Always ask u
 14. [ ] Local reinstall confirmed by user and done
 15. [ ] `claude-desktop-codotchi/package.json` version matches repo version
 16. [ ] `claude-desktop-codotchi/` rebuilt: `npm run build && npm run bundle`
-17. [ ] All artifacts staged alongside all source changes in the same commit
+17. [ ] Artifacts rebuilt locally and NOT staged (gitignored; only `claude-codotchi/dist/` is committed)
