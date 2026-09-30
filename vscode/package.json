@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.21.0",
+  "version": "2.21.1",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -141,9 +141,9 @@
           "type": "string",
           "enum": ["needy", "standard", "chilled"],
           "enumDescriptions": [
-            "Needy (2 minutes) — the pet demands a quick response.",
-            "Standard (5 minutes) — a comfortable response window.",
-            "Chilled (10 minutes) — plenty of time before the call expires."
+            "Needy (4 minutes) — the pet demands a quick response.",
+            "Standard (10 minutes) — a comfortable response window.",
+            "Chilled (20 minutes) — plenty of time before the call expires."
           ],
           "default": "standard",
           "description": "Response window for cleaning, misbehaviour, gift, play, pat and craving attention calls before they expire and apply a stat penalty. Other call types (hunger, sick, etc.) always use a fixed 1-minute window."
@@ -152,9 +152,9 @@
           "type": "string",
           "enum": ["fast", "medium", "slow"],
           "enumDescriptions": [
-            "Fast — current default spawn rate.",
-            "Medium — 1.5× slower spawn rate.",
-            "Slow — 2× slower spawn rate."
+            "Fast — the default spawn rate.",
+            "Medium — 1.5× slower than Fast.",
+            "Slow — 2× slower than Fast."
           ],
           "default": "fast",
           "description": "How quickly the random attention calls (cleaning, misbehaviour, gift, play, pat and craving) can spawn. Uses a logarithmic probability curve; this setting scales the curve down to make calls less frequent. After any call, the same call type waits 5 minutes of active time before it can fire again."

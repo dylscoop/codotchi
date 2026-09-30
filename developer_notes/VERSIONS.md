@@ -1,6 +1,27 @@
 # Version History
 
-## v2.21.0 — current
+## v2.21.1 — current
+
+### Changes from v2.21.0 (longer attention-call expiry and slower call rates — branch feat/longer-call-timers)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | expiry setting maps to 80 / 200 / 400 ticks (4 / 10 / 20 min); rate setting maps to divisors 1.5 / 2.25 / 3.0 |
+| `vscode/src/gameEngine.ts`, `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | `DEFAULT_GAME_CONFIG` expiry 100 → 200 ticks and rate divisor 1.0 → 1.5 (used as-is by the OpenCode and Claude plugins) |
+| `vscode/package.json`, `pycharm/src/main/kotlin/com/codotchi/CodotchiConfigurable.kt` | expiry labels now say 4 / 10 / 20 minutes; rate descriptions are relative to Fast |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | tests for the new maps and defaults |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | version bump to 2.21.1 |
+
+**Updated constants:**
+
+- Expiry setting ticks: needy 40 → 80, standard 100 → 200, chilled 200 → 400 (both IDEs).
+- Rate setting divisors: fast 1.0 → 1.5, medium 1.5 → 2.25, slow 2.0 → 3.0 (both IDEs).
+- `DEFAULT_GAME_CONFIG.attentionCallExpiryTicks`: 100 → 200; `attentionCallRateDivisor`: 1.0 → 1.5.
+- Unchanged: 1-minute window for need-based calls, 5-minute answer / expiry cooldowns.
+
+---
+
+## v2.21.0
 
 ### Changes from v2.20.18 (silent duplicate snack consume, idle-proof attention calls, expiry matches its labels — branch feat/play-pat-craving-calls, BUGFIX-167 / 168 / 169)
 

@@ -850,7 +850,7 @@ logChance(ticksSinceLast, base, max) = min(max, base × ln(ticksSinceLast + e))
 | Pat           | `PAT_CALL_BASE_CHANCE`     | 0.004  | `PAT_CALL_MAX_CHANCE`     | 0.05   |
 
 Both base and max are divided by `config.attentionCallRateDivisor` (the
-`codotchi.attentionCallRate` setting: Fast 1.0, Medium 1.5, Slow 2.0).
+`codotchi.attentionCallRate` setting: Fast 1.5, Medium 2.25, Slow 3.0).
 
 Constants are defined next to each other in:
 - TypeScript: `vscode/src/gameEngine.ts` (search `POOP_CALL_BASE_CHANCE`)

@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.21.1] — 2026-09-30
+
+### Changed
+
+- **More time to answer calls** — the Needy, Standard and Chilled response windows are now 4, 10 and 20 minutes (were 2, 5 and 10).
+- **Fewer random calls** — every call rate setting now spawns random calls about 1.5× less often. Medium and Slow are still 1.5× and 2× slower than Fast.
+
 ## [2.21.0] — 2026-09-30
 
 ### Fixed

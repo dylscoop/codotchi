@@ -380,13 +380,13 @@ export interface GameConfig {
   attentionCallsEnabled: boolean;
   /**
    * Response-window in ticks for poop, misbehaviour, and gift calls.
-   * needy=40 (2 min), standard=100 (5 min), chilled=200 (10 min).
+   * needy=80 (4 min), standard=200 (10 min), chilled=400 (20 min).
    */
   attentionCallExpiryTicks: number;
   /**
    * Divisor applied to the base and max logChance probabilities for all
    * probabilistic call spawns (poop, misbehaviour, gift).
-   * fast=1.0, medium=1.5, slow=2.0.
+   * fast=1.5, medium=2.25, slow=3.0.
    */
   attentionCallRateDivisor: number;
   /**
@@ -419,8 +419,8 @@ export interface GameConfig {
 /** Sensible defaults used when no explicit config is provided. */
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   attentionCallsEnabled:    true,
-  attentionCallExpiryTicks: 100,  // "standard" = 5 min
-  attentionCallRateDivisor: 1.0,  // "fast"
+  attentionCallExpiryTicks: 200,  // "standard" = 10 min
+  attentionCallRateDivisor: 1.5,  // "fast"
   devMode:                  false,
   devModeAgingMultiplier:   10,
   devModeHealthFloor:       1,
