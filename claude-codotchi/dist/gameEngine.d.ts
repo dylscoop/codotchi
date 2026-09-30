@@ -181,7 +181,7 @@ export interface GameConfig {
     attentionCallsEnabled: boolean;
     /**
      * Response-window in ticks for poop, misbehaviour, and gift calls.
-     * needy=20 (2 min), standard=50 (5 min), chilled=100 (10 min).
+     * needy=40 (2 min), standard=100 (5 min), chilled=200 (10 min).
      */
     attentionCallExpiryTicks: number;
     /**
@@ -527,7 +527,7 @@ export declare function startSnack(state: PetState, opts?: {
  *
  * Called when the webview detects the pet touching the snack floor item.
  * Increments `consecutiveSnacks` and — if the new count reaches the maximum
- * — triggers sickness. Refused (no stat effects) if `snacksOnFloor` is
+ * — triggers sickness. Ignored (no stat effects, no events, so no toast) if `snacksOnFloor` is
  * already 0 — guards against a stale/duplicate `snack_consumed` report (e.g.
  * a second open editor window sharing the same pet independently simulating
  * the same floor item) applying the effect more than once.
