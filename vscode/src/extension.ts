@@ -355,15 +355,15 @@ export function activate(context: vscode.ExtensionContext): void {
       Date.now() - lastDeepIdleTickMs < DEEP_IDLE_REENTRY_GRACE_MS;
     const deepIdle = rawDeepIdle || inGracePeriod;
 
-    // Map the attentionCallExpiry setting to a tick count (3 s/tick: needy 2 min, standard 5 min, chilled 10 min).
-    const expiryMap: Record<string, number> = { needy: 40, standard: 100, chilled: 200 };
+    // Map the attentionCallExpiry setting to a tick count (3 s/tick: needy 4 min, standard 10 min, chilled 20 min).
+    const expiryMap: Record<string, number> = { needy: 80, standard: 200, chilled: 400 };
     const expiryKey = cfg.get<string>("attentionCallExpiry", "standard");
-    const attentionCallExpiryTicks = expiryMap[expiryKey] ?? 100;
+    const attentionCallExpiryTicks = expiryMap[expiryKey] ?? 200;
 
     // Map the attentionCallRate setting to a rate divisor.
-    const rateMap: Record<string, number> = { fast: 1.0, medium: 1.5, slow: 2.0 };
+    const rateMap: Record<string, number> = { fast: 1.5, medium: 2.25, slow: 3.0 };
     const rateKey = cfg.get<string>("attentionCallRate", "fast");
-    const attentionCallRateDivisor = rateMap[rateKey] ?? 1.0;
+    const attentionCallRateDivisor = rateMap[rateKey] ?? 1.5;
 
     const gameConfig: GameConfig = {
       attentionCallsEnabled:    cfg.get<boolean>("enableAttentionCalls", true),

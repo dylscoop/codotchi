@@ -506,11 +506,18 @@ class GameEngineTest {
     }
 
     @Test
-    fun `expiry settings map to 2, 5 and 10 minutes of ticks`() {
+    fun `expiry settings map to 4, 10 and 20 minutes of ticks`() {
         val source = javaClass.getResourceAsStream("/source/CodotchiPlugin.kt")!!.bufferedReader().readText()
-        assertTrue(source.contains("""mapOf("needy" to 40, "standard" to 100, "chilled" to 200)"""))
-        assertEquals(100, DEFAULT_GAME_CONFIG.attentionCallExpiryTicks)
+        assertTrue(source.contains("""mapOf("needy" to 80, "standard" to 200, "chilled" to 400)"""))
+        assertEquals(200, DEFAULT_GAME_CONFIG.attentionCallExpiryTicks)
         assertEquals(3, TICK_INTERVAL_SECONDS)
+    }
+
+    @Test
+    fun `rate settings map to divisors 1_5, 2_25 and 3_0`() {
+        val source = javaClass.getResourceAsStream("/source/CodotchiPlugin.kt")!!.bufferedReader().readText()
+        assertTrue(source.contains("""mapOf("fast" to 1.5, "medium" to 2.25, "slow" to 3.0)"""))
+        assertEquals(1.5, DEFAULT_GAME_CONFIG.attentionCallRateDivisor)
     }
 
     @Test

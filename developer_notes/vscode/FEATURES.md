@@ -107,7 +107,7 @@ The pet fires IDE notifications demanding care, with a **1-minute active
 | Random "pat me" (log-chance; energy ≥ 20)         | `pat`             | Pat                     | Health −10                             | `[x]`  |
 
 Notes:
-- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (1 min) for need-based calls; poop, misbehaviour, gift, play, pat and craving use `config.attentionCallExpiryTicks` (Needy 40 / Standard 100 / Chilled 200 ticks = 2 / 5 / 10 min; BUGFIX-168). The chance counters for random calls only advance on active ticks, and misbehaviour / gift never fire while idle (BUGFIX-169)
+- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (1 min) for need-based calls; poop, misbehaviour, gift, play, pat and craving use `config.attentionCallExpiryTicks` (Needy 80 / Standard 200 / Chilled 400 ticks = 4 / 10 / 20 min; v2.21.1). The chance counters for random calls only advance on active ticks, and misbehaviour / gift never fire while idle (BUGFIX-169)
 - Post-answer cooldown: `ATTENTION_ANSWER_COOLDOWN_TICKS = 100` ticks (5 min)
 - Post-expiry cooldown: `ATTENTION_EXPIRY_COOLDOWN_TICKS = 100` ticks (5 min)
 - Cooldowns only count down on active (non-idle) ticks. TS and Kotlin share the same values (BUG-S06 / BUGFIX-166)
