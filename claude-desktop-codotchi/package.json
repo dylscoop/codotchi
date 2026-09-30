@@ -7,6 +7,8 @@
   "scripts": {
     "prebuild": "node ../scripts/sync-core.mjs",
     "build": "node scripts/build.mjs",
+    "pretest": "node ../scripts/sync-core.mjs",
+    "test": "tsc -p tsconfig.test.json && node --test tests/tools.test.mjs",
     "bundle": "node scripts/bundle-mcpb.mjs",
     "start": "node dist/server.mjs"
   },

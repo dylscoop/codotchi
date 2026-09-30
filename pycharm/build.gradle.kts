@@ -91,7 +91,9 @@ tasks {
         val mainResourcesDir = sourceSets["main"].output.resourcesDir!!.absolutePath
         val extraResources   = layout.buildDirectory.dir("resources/test").get().asFile.absolutePath
 
-        val fullCp = "$testClassesDir;$mainClassesDir;$testRuntimeCp;$mainResourcesDir;$extraResources"
+        // File.pathSeparator (";" on Windows, ":" elsewhere) so CI on Linux works too.
+        val fullCp = listOf(testClassesDir, mainClassesDir, testRuntimeCp, mainResourcesDir, extraResources)
+            .joinToString(File.pathSeparator)
 
         classpath(launcherJar)
         mainClass.set("org.junit.platform.console.ConsoleLauncher")
