@@ -222,6 +222,8 @@ attention half as often.
 
 **Proposed fix:** pick one pair of values and mirror it (ide-parity).
 
+**Follow-up (v2.21.0, BUGFIX-168 / 169):** the expiry setting was also half its labelled time in both IDEs (now 40 / 100 / 200 ticks). The random-call chance counters now only advance on active ticks, and misbehaviour / gift calls no longer fire while idle. A duplicate `snack_consumed` from a second window no longer shows "threw the snack away" (BUGFIX-167).
+
 ---
 
 ### BUG-S07 — Sprite tooling broken or out of step

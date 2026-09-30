@@ -2062,3 +2062,36 @@ Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an
 - `applyMinigameResult()` keeps any `attention_call_answered_*` events already on the state.
 
 **Tests added:** cooldown values, active-only countdown, and the answered event surviving `applyMinigameResult()`, in `vscode/tests/unit/gameEngine.test.ts` and `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt`.
+
+## BUGFIX-167 — "threw the snack away" shown when several IDE windows are open
+
+**Status:** Fixed (v2.21.0, branch `feat/play-pat-craving-calls`)
+**Files:** `vscode/src/gameEngine.ts` (plus the claude-codotchi, opencode and desktop copies), `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
+
+**Problem:** Each open IDE window runs its own stage, so when the pet reached a snack every window posted `snack_consumed`. The first report was applied. The rest hit the `snacksOnFloor <= 0` guard in `consumeSnack()`, which emitted `snack_refused`, so the other windows showed "<name> threw the snack away."
+
+**Fix:** The duplicate-report guard now returns the state with no events, so nothing is shown. `startSnack()` still emits `snack_refused` when the floor is full or the per-cycle cap is reached.
+
+**Tests:** the duplicate-consume tests in `vscode/tests/unit/gameEngine.test.ts` and `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` now expect no events.
+
+## BUGFIX-168 — Attention-call expiry setting was half the labelled time
+
+**Status:** Fixed (v2.21.0, branch `feat/play-pat-craving-calls`)
+**Files:** `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `vscode/src/gameEngine.ts` (plus copies)
+
+**Problem:** The expiry setting is labelled Needy 2 min / Standard 5 min / Chilled 10 min, but both IDEs mapped it to 20 / 50 / 100 ticks. At 3 s per tick that is 1 / 2.5 / 5 min, so "Chilled (10 min)" calls expired after 5 minutes.
+
+**Fix:** Both IDEs map the setting to 40 / 100 / 200 ticks (fallback 100), and the TypeScript `DEFAULT_GAME_CONFIG` default is 100, matching Kotlin.
+
+**Tests:** a Kotlin source-guard test checks the PyCharm mapping and the default.
+
+## BUGFIX-169 — Idle time still made attention calls more likely
+
+**Status:** Fixed (v2.21.0, branch `feat/play-pat-craving-calls`)
+**Files:** `vscode/src/gameEngine.ts` (plus copies), `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
+
+**Problem:** The `ticksSinceLast*` and `ticksWithUncleanedPoop` counters that raise the chance of a random call went up on idle ticks too. After time away, misbehaviour, gift, play, pat and craving calls were much more likely the moment the user came back. Misbehaviour and gift calls also had no idle check, so they could fire while nobody was there.
+
+**Fix:** The counters only advance on active ticks (`ticksWithUncleanedPoop` still resets when there is no poop), and misbehaviour and gift calls don't fire while idle or deep idle.
+
+**Tests:** idle ticks leave the counters unchanged; misbehaviour and gift don't fire while idle; a seeded simulation checks that cravings keep firing on active ticks (VS Code).
