@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Enforces branch and commit discipline — never push directly to main, always work on a named feature branch, always ask the user for a branch name before touching any file, and commit after every completed todo item.
+description: Enforces branch and commit discipline — never push or merge directly to main (main only changes through a GitHub PR with linear history), always work on a named feature branch, always ask the user for a branch name before touching any file, and commit after every completed todo item.
 ---
 
 ## MANDATORY — do these two things before anything else
@@ -22,6 +22,7 @@ what is done before continuing.
 
 - **Never push directly to `main`.**
 - **Never commit directly to `main`.**
+- **Never merge into `main` locally** (`git merge` on `main`). `main` only changes through a GitHub pull request — see "`main` branch rules on GitHub" below.
 - **Never write, edit, or build any code until a feature branch is checked out.**
 - For every new feature or bug fix, ask the user what branch name to use. Suggest a name based on the feature (e.g. `feat/poo-animation`, `fix/health-bar-colour`).
 - Only skip asking if the user has already named the branch themselves in their message.
@@ -36,8 +37,8 @@ The following actions each require **explicit user instruction** before performi
 | Action | What "explicit" means |
 |--------|----------------------|
 | Push a branch to `origin` | User says "push the branch" or "push to origin" |
-| Merge into `main` | User says "merge to main" or "merge it" |
-| Push `main` to `origin` | User says "push main" |
+| Open a PR into `main` | User says "create the PR", "open a PR" or "merge to main" (merging means opening the PR) |
+| Merge the PR on GitHub | User says "merge the PR" or "merge it" once the PR exists |
 | Create a tag | User says "tag it" or "create a tag" |
 | Push a tag to `origin` | User says "push the tag" |
 | Create a GitHub release | User says "create a release" or "publish it" |
@@ -242,13 +243,28 @@ Typical release flow (each line needs separate approval):
 1. Rebuild both IDE artifacts locally (they are gitignored, so there is nothing to commit; `claude-codotchi/dist/` is the exception and is still committed when it changes)
 2. Rebuild the OpenCode zip locally: `node scripts/package.js` (run from `opencode-codotchi/`)
 3. **Ask the user** to confirm before reinstalling the OpenCode plugin locally: `node bin/install.js --install` (run from `opencode-codotchi/`) — **never run without explicit user confirmation**
-4. `git push origin <branch>` — push the feature branch
-5. `git checkout main && git merge <branch>` — merge to main
-6. `git push origin main` — push main
-7. `git tag vX.Y.Z` — create the version tag locally on main
+4. `git push -u origin <branch>` — push the feature branch (rebase it onto `origin/main` first if `main` has moved: `git fetch && git rebase origin/main`)
+5. `gh pr create --base main --head <branch>` — open the PR (title `vX.Y.Z: <summary>`; body ends with the attribution line)
+6. `gh pr merge <n> --rebase` (or `--squash`) — merge on GitHub once CI (`tests` workflow) is green. **Never `--merge`**: merge commits are rejected
+7. `git checkout main && git pull --ff-only` — bring local `main` up to date, then `git tag vX.Y.Z` — create the version tag locally on main
 8. `git push origin vX.Y.Z` — push the tag (bypasses the rule with a "Bypassed rule violations" warning — this is expected and the tag is created successfully)
 9. Copy artifacts to `releases/`, apply the 3-version rule, move older releases to `releases/old_releases/` — see `release-management` skill (local only, never committed)
 10. Create GitHub release — publish release notes
+
+## `main` branch rules on GitHub
+
+`main` has three active rulesets (Settings → Rules → Rulesets):
+
+| Ruleset | Rules | Bypass |
+|---------|-------|--------|
+| `main: require PR` | changes must come through a pull request (0 approvals needed) | repository admins |
+| `main: protections` / `main: hard protections` | no deletion, **no force push**, **linear history required** | nobody |
+
+Consequences:
+
+- A merge commit can never reach `main` — not by `git push`, not by the GitHub "Create a merge commit" button. Keep branches linear (`git rebase origin/main`, never `git merge main` into a branch) and merge PRs with **rebase** or **squash**.
+- Force-pushing `main` is blocked for everyone. It is never needed: if local `main` has diverged (e.g. an old local merge), put the work on a branch, rebase it onto `origin/main`, open a PR, and after it merges run `git checkout main && git reset --hard origin/main` (ask the user first — it discards local-only commits).
+- Force-pushing a **feature branch** after a rebase is fine: `git push --force-with-lease origin <branch>`.
 
 ## Pushing a tag
 
