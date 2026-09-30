@@ -131,6 +131,42 @@ export declare function buildContextualSpeech(pet: {
  * Pick a random element from an array.
  */
 export declare function pickRandom<T>(arr: T[]): T;
+/** What an attention call looks like in the terminal plugins. */
+export interface AttentionCallText {
+    /** Speech-bubble phrases; one is picked each time the call is shown. */
+    phrases: string[];
+    /** Mood key for the pet art next to the bubble. */
+    mood: string;
+    /** Short "wants …" label for one-line displays (emoji / plain status line). */
+    label: string;
+    /** How to answer it from the terminal, or "" if it must be answered in the IDE. */
+    command: string;
+}
+/**
+ * Text for every attention call, keyed by the `attention_call_<key>` event
+ * suffix. A craving has two keys, `craving_meal` and `craving_snack`, picked by
+ * `PetState.cravingFood` (see attentionCallKey).
+ */
+export declare const ATTENTION_CALL_TEXT: Record<string, AttentionCallText>;
+/**
+ * Map an active call (`PetState.activeAttentionCall`) to its ATTENTION_CALL_TEXT
+ * key. A craving becomes `craving_meal` or `craving_snack`; the default is meal.
+ */
+export declare function attentionCallKey(call: string, cravingFood?: string | null): string;
+/**
+ * Speech for an attention call, or null for an unknown key.
+ *
+ * @param key       - ATTENTION_CALL_TEXT key (use attentionCallKey for an active call).
+ * @param pickIndex - Which phrase to use (wraps round). Omit for a random one;
+ *                    pass a stable value so a redrawn display doesn't flicker.
+ */
+export declare function attentionCallSpeech(key: string, pickIndex?: number): {
+    message: string;
+    mood: string;
+    label: string;
+    command: string;
+    bubbleColor: string;
+} | null;
 /**
  * Phrase factories for todo completions.
  * Each entry is a function that takes the todo content and returns a phrase.

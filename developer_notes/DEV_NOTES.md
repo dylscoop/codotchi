@@ -1027,6 +1027,15 @@ Queued by the tick loop and prepended to the next command output.
 | `attention_call_craving_meal` | `"I'm craving a proper meal! (/codotchi feed)"` |
 | `attention_call_craving_snack` | `"I'm craving a snack! (/codotchi snack)"` |
 
+The attention-call phrases, moods and short labels live in `ATTENTION_CALL_TEXT`
+in `packages/core/src/asciiArt.ts` (`attentionCallSpeech` / `attentionCallKey`).
+OpenCode uses them for these notifications, and the Claude Code status line
+uses them to show the active call (v2.22.0). In bubble mode the call phrase
+replaces the usual speech and the header gets a ⚠. In emoji mode the line
+reads `<name> ⚠ wants <label>`. In plain mode (`/codotchi off`) a
+`⚠ <name> wants <label> (<command>)` line is added. The status line changes
+phrase once a minute, not on every refresh.
+
 ### Toast notifications (brief, one-line)
 
 | Event | Phrase |

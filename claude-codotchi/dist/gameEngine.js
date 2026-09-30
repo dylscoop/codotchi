@@ -433,6 +433,11 @@ const EVOLUTION_CHARACTERS = {
         },
     },
 };
+/** Every AttentionCallType, for code that needs to list them at runtime. */
+export const ATTENTION_CALL_TYPES = [
+    "hunger", "unhappiness", "poop", "sick", "low_energy", "misbehaviour",
+    "gift", "critical_health", "play", "pat", "craving",
+];
 // ---------------------------------------------------------------------------
 // Helper — pure stat math
 // ---------------------------------------------------------------------------

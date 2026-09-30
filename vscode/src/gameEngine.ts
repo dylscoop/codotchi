@@ -596,6 +596,12 @@ export type AttentionCallType =
   | "pat"
   | "craving";
 
+/** Every AttentionCallType, for code that needs to list them at runtime. */
+export const ATTENTION_CALL_TYPES: readonly AttentionCallType[] = [
+  "hunger", "unhappiness", "poop", "sick", "low_energy", "misbehaviour",
+  "gift", "critical_health", "play", "pat", "craving",
+];
+
 /** What a craving attention call asks for. */
 export type CravingFood = "meal" | "snack";
 

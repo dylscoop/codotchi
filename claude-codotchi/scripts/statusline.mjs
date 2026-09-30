@@ -43,6 +43,24 @@ async function loadEngine() {
   return { ge, aa };
 }
 
+/**
+ * Speech for the pet's active attention call, or null when there is none.
+ * The phrase changes once a minute rather than on every 1s refresh, so the
+ * status line doesn't flicker between phrases.
+ */
+function activeCallSpeech(aa, petState, now) {
+  const call = petState.activeAttentionCall;
+  if (!call || !aa.attentionCallSpeech) return null;
+  return aa.attentionCallSpeech(aa.attentionCallKey(call, petState.cravingFood), Math.floor(now / 60_000));
+}
+
+/** One-line "⚠ <name> wants <label> (<how>)" text for the plain status block. */
+function callLine(call, name, ideLabel) {
+  const how = ideLabel ? `answer in ${ideLabel.replace(/[[\]]/g, "")}`
+    : call.command || "answer in the IDE";
+  return `  ⚠ ${name} wants ${call.label} (${how})`;
+}
+
 async function main() {
   // Read stdin JSON (Claude Code passes statusline context).
   let stdinJson = {};
@@ -179,20 +197,28 @@ async function main() {
     // (auto-matched to the pet's creature, or a user-pinned override).
     const frameIndex = currentFrameIndex(now);
     const columns = process.env.COLUMNS ? Number(process.env.COLUMNS) : undefined;
+    const callSuffix = (petState) => {
+      const call = activeCallSpeech(aa, petState, now);
+      return call ? `⚠ wants ${call.label} ` : "";
+    };
     if (!hasIDEPets) {
       const emoji = pickPetEmoji(state, cfg.statuslineEmoji);
-      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${state.name} `));
+      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${state.name} ${callSuffix(state)}`));
     }
     for (const { state: ideState, label } of idePets) {
       const emoji = pickPetEmoji(ideState, cfg.statuslineEmoji);
-      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${label} ${ideState.name} `));
+      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${label} ${ideState.name} ${callSuffix(ideState)}`));
     }
   } else if (cfg.terminalEnabled === false) {
     if (!hasIDEPets) {
       outputs.push(aa.stripAnsi(aa.buildStatusBlock(state)));
+      const call = activeCallSpeech(aa, state, now);
+      if (call) outputs.push(callLine(call, state.name));
     }
-    for (const { state: ideState } of idePets) {
+    for (const { state: ideState, label } of idePets) {
       outputs.push(aa.stripAnsi(aa.buildStatusBlock(ideState)));
+      const call = activeCallSpeech(aa, ideState, now);
+      if (call) outputs.push(callLine(call, ideState.name, label));
     }
   } else {
     // Only show the local Claude Code pet when no IDE pet is active — it is a
@@ -214,15 +240,17 @@ async function main() {
         /*dailyMessages*/ messageCount,
         { costStyle: "hourlyRate" }
       );
+      // An active attention call takes over the bubble.
+      const call = activeCallSpeech(aa, state, now);
       outputs.push(aa.buildSpeechBubble(
         state.stage,
-        state.mood,
-        speech.message,
+        call ? call.mood : state.mood,
+        call ? call.message : speech.message,
         state.name,
         state.spriteType,
         undefined,
-        speech.bubbleColor ?? bubbleColor,
-        speech.tierEmoji
+        call ? call.bubbleColor : (speech.bubbleColor ?? bubbleColor),
+        call ? "⚠" : speech.tierEmoji
       ));
     }
     for (const { state: ideState, label } of idePets) {
@@ -230,15 +258,16 @@ async function main() {
         ideState,
         0, 0, 0, 0, false, 0, 0, warnUsd, shoutUsd, 0, 0, 0, { costStyle: "hourlyRate" }
       );
+      const call = activeCallSpeech(aa, ideState, now);
       outputs.push(aa.buildSpeechBubble(
         ideState.stage,
-        ideState.mood,
-        ideSpeech.message,
+        call ? call.mood : ideState.mood,
+        call ? call.message : ideSpeech.message,
         ideState.name,
         ideState.spriteType,
         label,
-        ideSpeech.bubbleColor ?? "green",
-        ideSpeech.tierEmoji
+        call ? call.bubbleColor : (ideSpeech.bubbleColor ?? "green"),
+        call ? "⚠" : ideSpeech.tierEmoji
       ));
     }
   }

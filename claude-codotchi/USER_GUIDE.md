@@ -64,6 +64,7 @@ activates the statusline script, registers the event hooks, and makes the
 | **Session hooks** | Pet greets you on session start and says farewell when the session stops |
 | **Slash command** | `/codotchi <action>` for all care actions |
 | **Daily cost tracking** | Pet speech bubble colour reflects today's Claude API spend, with hourly rate |
+| **Attention calls** | When the pet needs something (food, medicine, a pat, a game…) the statusline shows it with a ⚠ |
 
 ---
 
@@ -115,6 +116,24 @@ statusline's refresh floor (it captures your script's stdout as plain text,
 so images and smooth animation aren't possible there). No `/statusline`
 configuration is needed; the plugin registers its own statusline
 automatically with `refreshInterval: 1` so the shuffle is visible.
+
+---
+
+## Attention calls
+
+Now and then your pet asks for something: food, medicine, sleep, a clean-up,
+a pat, a game, or a meal or snack it's craving. While a call is active, the
+statusline shows it in every mode:
+
+| Mode | What you see |
+|------|--------------|
+| Full ASCII (default) | The speech bubble shows the request (e.g. "I want a pat! (/codotchi pat)"), with ⚠ before the pet's name |
+| Emoji | `Pixel ⚠ wants a pat  🐶` |
+| Plain (`/codotchi off`) | An extra line: `⚠ Pixel wants a pat (/codotchi pat)` |
+
+Run the command shown to answer the call. Gifts and misbehaviour can only be
+answered in the IDE (Praise / Scold). A call that isn't answered in time
+counts as a care mistake.
 
 ---
 

@@ -988,6 +988,113 @@ export function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// ---------------------------------------------------------------------------
+// Attention calls
+// ---------------------------------------------------------------------------
+
+/** What an attention call looks like in the terminal plugins. */
+export interface AttentionCallText {
+  /** Speech-bubble phrases; one is picked each time the call is shown. */
+  phrases: string[];
+  /** Mood key for the pet art next to the bubble. */
+  mood: string;
+  /** Short "wants …" label for one-line displays (emoji / plain status line). */
+  label: string;
+  /** How to answer it from the terminal, or "" if it must be answered in the IDE. */
+  command: string;
+}
+
+/**
+ * Text for every attention call, keyed by the `attention_call_<key>` event
+ * suffix. A craving has two keys, `craving_meal` and `craving_snack`, picked by
+ * `PetState.cravingFood` (see attentionCallKey).
+ */
+export const ATTENTION_CALL_TEXT: Record<string, AttentionCallText> = {
+  hunger: {
+    phrases: ["I'm so hungry... please feed me!", "Running on empty. Feed me soon!", "Really need food right now."],
+    mood: "sad", label: "food", command: "/codotchi feed",
+  },
+  unhappiness: {
+    phrases: ["I want to play", "Getting lonely over here.", "Need some attention."],
+    mood: "sad", label: "attention", command: "/codotchi play",
+  },
+  sick: {
+    phrases: ["I don't feel well. I need medicine!", "Feeling sick... please give me medicine.", "Medicine please!"],
+    mood: "sick", label: "medicine", command: "/codotchi medicine",
+  },
+  critical_health: {
+    phrases: ["My health is critical! Please help me!", "I'm in rough shape. Need help!", "Critical health — please help."],
+    mood: "sick", label: "help", command: "/codotchi medicine",
+  },
+  low_energy: {
+    phrases: ["I'm exhausted... let me sleep!", "Nearly out of energy. Need to rest.", "So tired... let me sleep."],
+    mood: "sad", label: "sleep", command: "/codotchi sleep",
+  },
+  poop: {
+    phrases: ["There is a mess here! Can you clean it up?", "It's getting messy. Please clean!", "Could use a clean-up in here."],
+    mood: "sad", label: "a clean-up", command: "/codotchi clean",
+  },
+  gift: {
+    phrases: ["I brought you a gift! Praise me in the IDE to accept it.", "I have a surprise for you! (Praise me in the IDE.)", "Got something for you — praise me in the IDE to collect."],
+    mood: "happy", label: "praise (gift)", command: "",
+  },
+  misbehaviour: {
+    phrases: ["I'm acting up! Scold me in the IDE to discipline me.", "I need some discipline. (Scold me in the IDE.)", "Being difficult. (Scold me in the IDE.)"],
+    mood: "neutral", label: "discipline", command: "",
+  },
+  play: {
+    phrases: ["Play a game with me! (/codotchi play)", "I'm bored — let's play! (/codotchi play)", "Game time? /codotchi play"],
+    mood: "happy", label: "a game", command: "/codotchi play",
+  },
+  pat: {
+    phrases: ["I want a pat! (/codotchi pat)", "Pat me? Pretty please! (/codotchi pat)", "A little pat would be nice. (/codotchi pat)"],
+    mood: "happy", label: "a pat", command: "/codotchi pat",
+  },
+  craving_meal: {
+    phrases: ["I'm craving a proper meal! (/codotchi feed)", "Feed me? A real meal, please. (/codotchi feed)", "Could really go for a meal. (/codotchi feed)"],
+    mood: "neutral", label: "a meal", command: "/codotchi feed",
+  },
+  craving_snack: {
+    phrases: ["I'm craving a snack! (/codotchi snack)", "Snack time? (/codotchi snack)", "Just a little snack... (/codotchi snack)"],
+    mood: "happy", label: "a snack", command: "/codotchi snack",
+  },
+};
+
+/**
+ * Map an active call (`PetState.activeAttentionCall`) to its ATTENTION_CALL_TEXT
+ * key. A craving becomes `craving_meal` or `craving_snack`; the default is meal.
+ */
+export function attentionCallKey(call: string, cravingFood?: string | null): string {
+  if (call === "craving") { return cravingFood === "snack" ? "craving_snack" : "craving_meal"; }
+  return call;
+}
+
+/**
+ * Speech for an attention call, or null for an unknown key.
+ *
+ * @param key       - ATTENTION_CALL_TEXT key (use attentionCallKey for an active call).
+ * @param pickIndex - Which phrase to use (wraps round). Omit for a random one;
+ *                    pass a stable value so a redrawn display doesn't flicker.
+ */
+export function attentionCallSpeech(
+  key: string,
+  pickIndex?: number
+): { message: string; mood: string; label: string; command: string; bubbleColor: string } | null {
+  const text = ATTENTION_CALL_TEXT[key];
+  if (!text) { return null; }
+  const message = pickIndex === undefined
+    ? pickRandom(text.phrases)
+    : text.phrases[Math.abs(Math.floor(pickIndex)) % text.phrases.length];
+  const urgent = key === "sick" || key === "critical_health";
+  return {
+    message,
+    mood: text.mood,
+    label: text.label,
+    command: text.command,
+    bubbleColor: urgent ? FG_RED : FG_YELLOW,
+  };
+}
+
 /**
  * Phrase factories for todo completions.
  * Each entry is a function that takes the todo content and returns a phrase.

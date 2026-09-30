@@ -234,6 +234,8 @@ export declare const STAGE_ORDER: readonly string[];
  * A call of each type can be active at most once at any given time.
  */
 export type AttentionCallType = "hunger" | "unhappiness" | "poop" | "sick" | "low_energy" | "misbehaviour" | "gift" | "critical_health" | "play" | "pat" | "craving";
+/** Every AttentionCallType, for code that needs to list them at runtime. */
+export declare const ATTENTION_CALL_TYPES: readonly AttentionCallType[];
 /** What a craving attention call asks for. */
 export type CravingFood = "meal" | "snack";
 /**

@@ -77,6 +77,7 @@ import {
   formatCost,
   stripAnsi,
   pickRandom,
+  attentionCallSpeech,
   TODO_COMPLETE_PHRASES,
   SESSION_DIFF_PHRASES,
 } from "./asciiArt.js";
@@ -1121,70 +1122,31 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
         break;
       }
       case "attention_call_hunger":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sad", pickRandom(["I'm so hungry... please feed me!", "Running on empty. Feed me soon!", "Really need food right now."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I'm so hungry... please feed me!", "Running on empty. Feed me soon!", "Really need food right now."])}`);
-        break;
       case "attention_call_unhappiness":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sad", pickRandom(["I want to play", "Getting lonely over here.", "Need some attention."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I want to play", "Getting lonely over here.", "Need some attention."])}`);
-        break;
       case "attention_call_sick":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sick", pickRandom(["I don't feel well. I need medicine!", "Feeling sick... please give me medicine.", "Medicine please!"]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I don't feel well. I need medicine!", "Feeling sick... please give me medicine.", "Medicine please!"])}`);
-        break;
       case "attention_call_critical_health":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sick", pickRandom(["My health is critical! Please help me!", "I'm in rough shape. Need help!", "Critical health — please help."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["My health is critical! Please help me!", "I'm in rough shape. Need help!", "Critical health — please help."])}`);
-        break;
       case "attention_call_low_energy":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sad", pickRandom(["I'm exhausted... let me sleep!", "Nearly out of energy. Need to rest.", "So tired... let me sleep."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I'm exhausted... let me sleep!", "Nearly out of energy. Need to rest.", "So tired... let me sleep."])}`);
+      case "attention_call_poop":
+      case "attention_call_gift":
+      case "attention_call_misbehaviour":
+      case "attention_call_play":
+      case "attention_call_pat":
+      case "attention_call_craving_meal":
+      case "attention_call_craving_snack":
+      {
+        const call = attentionCallSpeech(event.replace("attention_call_", ""));
+        if (call) {
+          queueNotification(terminalEnabled
+            ? buildSpeechBubble(next.stage, call.mood, call.message, next.name, next.spriteType, ideLabel)
+            : `${ideLabel} ${next.name}: ${call.message}`);
+        }
         break;
+      }
       case "became_sick":
         queueNotification(buildToast(next.stage, `${ideLabel} ${next.name} has fallen sick.`));
         break;
       case "pooped":
         queueNotification(buildToast(next.stage, `${ideLabel} ${next.name} made a mess! (use /codotchi clean)`));
-        break;
-      case "attention_call_poop":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sad", pickRandom(["There is a mess here! Can you clean it up?", "It's getting messy. Please clean!", "Could use a clean-up in here."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["There is a mess here! Can you clean it up?", "It's getting messy. Please clean!", "Could use a clean-up in here."])}`);
-        break;
-      case "attention_call_gift":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "happy", pickRandom(["I brought you a gift! Praise me in the IDE to accept it.", "I have a surprise for you! (Praise me in the IDE.)", "Got something for you — praise me in the IDE to collect."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I brought you a gift! Praise me in the IDE to accept it.", "I have a surprise for you! (Praise me in the IDE.)", "Got something for you — praise me in the IDE to collect."])}`);
-        break;
-      case "attention_call_misbehaviour":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "neutral", pickRandom(["I'm acting up! Scold me in the IDE to discipline me.", "I need some discipline. (Scold me in the IDE.)", "Being difficult. (Scold me in the IDE.)"]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I'm acting up! Scold me in the IDE to discipline me.", "I need some discipline. (Scold me in the IDE.)", "Being difficult. (Scold me in the IDE.)"])}`);
-        break;
-      case "attention_call_play":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "happy", pickRandom(["Play a game with me! (/codotchi play)", "I'm bored — let's play! (/codotchi play)", "Game time? /codotchi play"]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["Play a game with me! (/codotchi play)", "I'm bored — let's play! (/codotchi play)", "Game time? /codotchi play"])}`);
-        break;
-      case "attention_call_pat":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "happy", pickRandom(["I want a pat! (/codotchi pat)", "Pat me? Pretty please! (/codotchi pat)", "A little pat would be nice. (/codotchi pat)"]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I want a pat! (/codotchi pat)", "Pat me? Pretty please! (/codotchi pat)", "A little pat would be nice. (/codotchi pat)"])}`);
-        break;
-      case "attention_call_craving_meal":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "neutral", pickRandom(["I'm craving a proper meal! (/codotchi feed)", "Feed me? A real meal, please. (/codotchi feed)", "Could really go for a meal. (/codotchi feed)"]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I'm craving a proper meal! (/codotchi feed)", "Feed me? A real meal, please. (/codotchi feed)", "Could really go for a meal. (/codotchi feed)"])}`);
-        break;
-      case "attention_call_craving_snack":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "happy", pickRandom(["I'm craving a snack! (/codotchi snack)", "Snack time? (/codotchi snack)", "Just a little snack... (/codotchi snack)"]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I'm craving a snack! (/codotchi snack)", "Snack time? (/codotchi snack)", "Just a little snack... (/codotchi snack)"])}`);
         break;
     }
   }

@@ -539,7 +539,7 @@ with a stat penalty.
 | Unanswered → health loss | `[x]` | On expiry: `health -= ATTENTION_EXPIRY_STAT_PENALTY` (10) and `careMistakes += 1`, for all three. The expiry window is the `codotchi.attentionCallExpiry` setting |
 | Wrong answer | `[x]` | Feeding a meal to a snack craving (or the reverse) feeds the pet but doesn't answer the call |
 | Speech / toast text | `[~]` | Webview labels / bubbles, IDE toasts and OpenCode speech are done. Moving them into `en.json` waits for §2.3 |
-| Terminal plugins | `[x]` | New `/codotchi play` and `/codotchi snack` (claude-codotchi, OpenCode) and `codotchi_play` / `codotchi_snack` (Claude Desktop). OpenCode announces the calls; the Claude Code status line doesn't show any calls yet (true for the older calls too) |
+| Terminal plugins | `[x]` | New `/codotchi play` and `/codotchi snack` (claude-codotchi, OpenCode) and `codotchi_play` / `codotchi_snack` (Claude Desktop). OpenCode announces the calls. Since v2.22.0 the Claude Code status line shows the active call (every call type) in bubble, emoji and plain modes |
 | Mirror to all four TypeScript engines + Kotlin | `[x]` | ide-parity / opencode-claude-parity |
 
 **Design notes:**
@@ -625,7 +625,7 @@ Implementation Order" lists.
 1. BUG-S05: `died` float-up reaction animation — **done in v2.22.0**
 2. Full egg-hatch sequence: wiggle, crack, burst (FEATURES.md §2.2, FEATURES_2.md §1.7) — **done in v2.22.0**
 3. Mood animation frames: happy, sad, sleeping, eating (FEATURES_2.md §3.1)
-4. Show active attention calls in the Claude Code status line (§2.6)
+4. Show active attention calls in the Claude Code status line (§2.6) — **done in v2.22.0**
 5. Pixel-art redesign of the minigame visuals (FEATURES.md §14)
 6. Bulk sprite upload pipeline (§2.2)
 7. Shared core package (§3 #1) — **done in v2.21.3**

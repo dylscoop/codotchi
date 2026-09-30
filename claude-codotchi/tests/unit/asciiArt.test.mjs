@@ -19,7 +19,8 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildContextualSpeech, formatTokens } from "../../dist/asciiArt.js";
+import { buildContextualSpeech, formatTokens, attentionCallKey, attentionCallSpeech, ATTENTION_CALL_TEXT } from "../../dist/asciiArt.js";
+import { ATTENTION_CALL_TYPES } from "../../dist/gameEngine.js";
 
 /** claude-codotchi always asks for the Claude Code cost wording. */
 const HOURLY = { costStyle: "hourlyRate" };
@@ -107,5 +108,35 @@ describe("buildContextualSpeech — tokens-per-message averaging", () => {
     assert.doesNotThrow(() => buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 0, HOURLY));
     assert.doesNotThrow(() => buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 1, HOURLY));
     assert.doesNotThrow(() => buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 1_000, HOURLY));
+  });
+});
+
+describe("attentionCallSpeech()", () => {
+  it("has text for every attention call type (both craving foods)", () => {
+    for (const call of ATTENTION_CALL_TYPES) {
+      for (const food of call === "craving" ? ["meal", "snack"] : [null]) {
+        const speech = attentionCallSpeech(attentionCallKey(call, food), 0);
+        assert.ok(speech, `no speech for ${call}${food ? `/${food}` : ""}`);
+        assert.ok(speech.message.length > 0);
+        assert.ok(speech.label.length > 0);
+      }
+    }
+  });
+
+  it("maps a craving to the food it asks for, defaulting to meal", () => {
+    assert.equal(attentionCallKey("craving", "snack"), "craving_snack");
+    assert.equal(attentionCallKey("craving", "meal"), "craving_meal");
+    assert.equal(attentionCallKey("craving", null), "craving_meal");
+    assert.equal(attentionCallKey("pat"), "pat");
+  });
+
+  it("picks a stable phrase for a given index, wrapping round", () => {
+    const phrases = ATTENTION_CALL_TEXT.pat.phrases;
+    assert.equal(attentionCallSpeech("pat", 0).message, phrases[0]);
+    assert.equal(attentionCallSpeech("pat", phrases.length + 1).message, phrases[1]);
+  });
+
+  it("returns null for an unknown key", () => {
+    assert.equal(attentionCallSpeech("nope"), null);
   });
 });
