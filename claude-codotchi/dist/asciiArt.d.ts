@@ -1,7 +1,8 @@
 /**
  * asciiArt.ts
  *
- * Terminal ASCII art renderer for the codotchi OpenCode plugin.
+ * Terminal ASCII art renderer shared by the codotchi terminal plugins
+ * (OpenCode, Claude Code and Claude Desktop).
  *
  * Provides:
  *   - Stage-specific ASCII art (egg → baby → child → teen → adult → senior)
@@ -80,6 +81,11 @@ export declare function formatTokens(n: number): string;
  *   otherwise → "$X.XX"
  */
 export declare function formatCost(usd: number): string;
+/** Options for buildContextualSpeech(). */
+export interface ContextualSpeechOptions {
+    /** "lastHour" (default, OpenCode wording) or "hourlyRate" (Claude Code wording). */
+    costStyle?: "lastHour" | "hourlyRate";
+}
 /**
  * Build a contextual speech line combining pet mood and coding session activity.
  *
@@ -99,6 +105,11 @@ export declare function formatCost(usd: number): string;
  *                              a number comparable to the model's context window, unlike the
  *                              unbounded daily sum. Falls back to the raw dailyTokens total when
  *                              dailyMessages is 0 (e.g. before the first message of the day).
+ * @param lastHourCostUSD     - USD spent in the last hour. Shown as "(… last 1h)" in the
+ *                              default style, or as the " $X/hr" rate in the hourlyRate style.
+ * @param lastHourTokens      - Tokens used in the last hour (reserved; not shown yet).
+ * @param opts.costStyle      - "lastHour" (default; OpenCode wording) or "hourlyRate"
+ *                              (Claude Code wording: 🟢/🟡/🔴 lights and a $X/hr suffix).
  */
 export declare function buildContextualSpeech(pet: {
     name: string;
@@ -111,7 +122,7 @@ export declare function buildContextualSpeech(pet: {
     sick: boolean;
     sleeping: boolean;
     poops: number;
-}, filesEdited: number, sessionMs: number, timeSinceLastEditMs?: number, sessionUserMessages?: number, isOnProdBranch?: boolean, dailyCostUSD?: number, dailyTokens?: number, costWarnThreshold?: number, costShoutThreshold?: number, hourlyCostUSD?: number, dailyMessages?: number): {
+}, filesEdited: number, sessionMs: number, timeSinceLastEditMs?: number, sessionUserMessages?: number, isOnProdBranch?: boolean, dailyCostUSD?: number, dailyTokens?: number, costWarnThreshold?: number, costShoutThreshold?: number, lastHourCostUSD?: number, lastHourTokens?: number, dailyMessages?: number, opts?: ContextualSpeechOptions): {
     message: string;
     bubbleColor: string;
     tierEmoji: string;

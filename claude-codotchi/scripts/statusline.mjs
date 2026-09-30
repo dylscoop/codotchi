@@ -205,8 +205,10 @@ async function main() {
         /*dailyTokens*/ dailyTokens,
         /*warnThresholdUSD*/ warnUsd,
         /*shoutThresholdUSD*/ shoutUsd,
-        /*hourlyCostUSD*/ hourlyCostUsd,
-        /*dailyMessages*/ messageCount
+        /*lastHourCostUSD (shown as $X/hr)*/ hourlyCostUsd,
+        /*lastHourTokens*/ 0,
+        /*dailyMessages*/ messageCount,
+        { costStyle: "hourlyRate" }
       );
       outputs.push(aa.buildSpeechBubble(
         state.stage,
@@ -222,7 +224,7 @@ async function main() {
     for (const { state: ideState, label } of idePets) {
       const ideSpeech = aa.buildContextualSpeech(
         ideState,
-        0, 0, 0, 0, false, 0, 0, warnUsd, shoutUsd
+        0, 0, 0, 0, false, 0, 0, warnUsd, shoutUsd, 0, 0, 0, { costStyle: "hourlyRate" }
       );
       outputs.push(aa.buildSpeechBubble(
         ideState.stage,

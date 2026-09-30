@@ -1,7 +1,10 @@
+// GENERATED from packages/core/src/asciiArt.ts by scripts/sync-core.mjs — do not edit here.
+// Edit packages/core/src/asciiArt.ts, then run: node scripts/sync-core.mjs
 /**
  * asciiArt.ts
  *
- * Terminal ASCII art renderer for the codotchi OpenCode plugin.
+ * Terminal ASCII art renderer shared by the codotchi terminal plugins
+ * (OpenCode, Claude Code and Claude Desktop).
  *
  * Provides:
  *   - Stage-specific ASCII art (egg → baby → child → teen → adult → senior)
@@ -21,7 +24,6 @@ const DIM = "\x1b[2m";
 const FG_CYAN = "\x1b[36m";
 const FG_GREEN = "\x1b[32m";
 const FG_YELLOW = "\x1b[33m";
-const FG_ORANGE = "\x1b[38;5;208m";
 const FG_RED = "\x1b[31m";
 const FG_BLUE = "\x1b[34m";
 const FG_MAGENTA = "\x1b[35m";
@@ -375,7 +377,7 @@ const SPRITE_HEAD = {
         adult: "  n(-_-)n    ",
         senior: "  n(-_-)n    ",
     },
-    goat: {
+    sheep: {
         baby: "    V(^.^)V  ",
         child: "  V(-_-)V    ",
         teen: "  V(-_-)V    ",
@@ -409,6 +411,34 @@ const SPRITE_HEAD = {
         teen: "  o(-_-)o    ",
         adult: "  o(-_-)o    ",
         senior: "  o(-_-)o    ",
+    },
+    kangaroo: {
+        baby: "    d(^.^)b  ",
+        child: "  d(-_-)b    ",
+        teen: "  d(-_-)b    ",
+        adult: "  d(-_-)b    ",
+        senior: "  d(-_-)b    ",
+    },
+    roo: {
+        baby: "    d(^.^)b  ",
+        child: "  d(-_-)b    ",
+        teen: "  d(-_-)b    ",
+        adult: "  d(-_-)b    ",
+        senior: "  d(-_-)b    ",
+    },
+    tim: {
+        baby: "    [(^.^)]  ",
+        child: "  [(-_-)]    ",
+        teen: "  [(-_-)]    ",
+        adult: "  [(-_-)]    ",
+        senior: "  [(-_-)]    ",
+    },
+    stu: {
+        baby: "    #(^.^)#  ",
+        child: "  #(-_-)#    ",
+        teen: "  #(-_-)#    ",
+        adult: "  #(-_-)#    ",
+        senior: "  #(-_-)#    ",
     },
 };
 // ---------------------------------------------------------------------------
@@ -696,8 +726,13 @@ export function formatCost(usd) {
  *                              a number comparable to the model's context window, unlike the
  *                              unbounded daily sum. Falls back to the raw dailyTokens total when
  *                              dailyMessages is 0 (e.g. before the first message of the day).
+ * @param lastHourCostUSD     - USD spent in the last hour. Shown as "(… last 1h)" in the
+ *                              default style, or as the " $X/hr" rate in the hourlyRate style.
+ * @param lastHourTokens      - Tokens used in the last hour (reserved; not shown yet).
+ * @param opts.costStyle      - "lastHour" (default; OpenCode wording) or "hourlyRate"
+ *                              (Claude Code wording: 🟢/🟡/🔴 lights and a $X/hr suffix).
  */
-export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLastEditMs = 0, sessionUserMessages = 0, isOnProdBranch = false, dailyCostUSD = 0, dailyTokens = 0, costWarnThreshold = 30, costShoutThreshold = 50, hourlyCostUSD = 0, dailyMessages = 0) {
+export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLastEditMs = 0, sessionUserMessages = 0, isOnProdBranch = false, dailyCostUSD = 0, dailyTokens = 0, costWarnThreshold = 30, costShoutThreshold = 50, lastHourCostUSD = 0, lastHourTokens = 0, dailyMessages = 0, opts = {}) {
     // --- Session activity phrase ---
     const sessionMins = Math.floor(sessionMs / 60000);
     const sessionHours = Math.floor(sessionMins / 60);
@@ -802,15 +837,26 @@ export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLast
     // (e.g. ~300k) instead of growing unbounded across the whole day. Falls back to the raw
     // total when dailyMessages is 0 (e.g. before the first message of the day is counted).
     const avgTokensPerMessage = dailyMessages > 0 ? dailyTokens / dailyMessages : dailyTokens;
+    const hourlyRate = opts.costStyle === "hourlyRate";
+    // hourlyRate style prefixes every usage line with its tier light.
+    const light = (emoji) => (hourlyRate ? `${emoji} ` : "");
     if (dailyCostUSD > 0) {
         const costStr = formatCost(dailyCostUSD);
         const tokStr = formatTokens(avgTokensPerMessage);
         const tokStrUp = tokStr.toUpperCase();
-        const hourlyStr = hourlyCostUSD > 0 ? ` ${formatCost(hourlyCostUSD)}/hr` : "";
+        // lastHour style: "(… last 1h)" after the daily cost. hourlyRate style:
+        // " $X/hr" at the end of the line. Both only when there's data.
+        const hasHour = lastHourCostUSD > 0;
+        const hourCostStr = hasHour ? formatCost(lastHourCostUSD) : "";
+        const hour1hFrag = !hourlyRate && hasHour ? ` (${hourCostStr} last 1h)` : "";
+        const hour1hFragUp = hour1hFrag.toUpperCase();
+        const hourlyStr = hourlyRate && hasHour ? ` ${hourCostStr}/hr` : "";
         const hourlyStrUp = hourlyStr.toUpperCase();
         if (dailyCostUSD >= costShoutThreshold) {
             // ALL CAPS shouting tier — red border + red text
-            const shoutSuffix = `🔴 ${costStr} TODAY — CHECK YOUR USAGE! (AVERAGING ${tokStrUp} TOKENS PER MESSAGE${hourlyStrUp})`;
+            const shoutSuffix = hourlyRate
+                ? `🔴 ${costStr} TODAY — CHECK YOUR USAGE! (AVERAGING ${tokStrUp} TOKENS PER MESSAGE${hourlyStrUp})`
+                : `🚨 ${costStr} TODAY${hour1hFragUp} — CHECK YOUR USAGE! (AVERAGING ${tokStrUp} TOKENS PER MESSAGE)`;
             return {
                 message: colour(`${phrase} ${shoutSuffix}`.toUpperCase(), FG_RED),
                 bubbleColor: FG_RED,
@@ -819,7 +865,9 @@ export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLast
         }
         else if (dailyCostUSD >= costWarnThreshold) {
             // Warning tier — yellow border + yellow cost suffix
-            const warnSuffix = `🟡 ${costStr} today — getting spendy.${hourlyStr} (averaging ${tokStr} tokens per message)`;
+            const warnSuffix = hourlyRate
+                ? `🟡 ${costStr} today — getting spendy.${hourlyStr} (averaging ${tokStr} tokens per message)`
+                : `⚠️ ${costStr} today${hour1hFrag} — getting spendy. (averaging ${tokStr} tokens per message)`;
             return {
                 message: `${phrase} ${colour(warnSuffix, FG_YELLOW)}`,
                 bubbleColor: FG_YELLOW,
@@ -828,13 +876,21 @@ export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLast
         }
         else {
             // Normal tier — green border + casual mention
-            const normalSuffix = pickRandom([
-                `🟢 ${costStr} today, averaging ${tokStr} tokens per message.${hourlyStr}`,
-                `🟢 Running a tab — ${costStr}, averaging ${tokStr} tokens per message.${hourlyStr}`,
-                `🟢 ${costStr} spent, averaging ${tokStr} tokens per message.${hourlyStr}`,
-                `🟢 Racked up ${costStr}, averaging ${tokStr} tokens per message.${hourlyStr}`,
-                `🟢 Ticking along at ${costStr}, averaging ${tokStr} tokens per message.${hourlyStr}`,
-            ]);
+            const normalSuffix = hourlyRate
+                ? pickRandom([
+                    `🟢 ${costStr} today, averaging ${tokStr} tokens per message.${hourlyStr}`,
+                    `🟢 Running a tab — ${costStr}, averaging ${tokStr} tokens per message.${hourlyStr}`,
+                    `🟢 ${costStr} spent, averaging ${tokStr} tokens per message.${hourlyStr}`,
+                    `🟢 Racked up ${costStr}, averaging ${tokStr} tokens per message.${hourlyStr}`,
+                    `🟢 Ticking along at ${costStr}, averaging ${tokStr} tokens per message.${hourlyStr}`,
+                ])
+                : pickRandom([
+                    `${costStr} today${hour1hFrag} — averaging ${tokStr} tokens per message.`,
+                    `Running a tab — ${costStr}${hour1hFrag}, averaging ${tokStr} tokens per message.`,
+                    `${costStr} spent${hour1hFrag}, averaging ${tokStr} tokens per message.`,
+                    `Racked up ${costStr}${hour1hFrag}, averaging ${tokStr} tokens per message.`,
+                    `Ticking along at ${costStr}${hour1hFrag}, averaging ${tokStr} tokens per message.`,
+                ]);
             return {
                 message: `${phrase} ${normalSuffix}`,
                 bubbleColor: FG_GREEN,
@@ -846,9 +902,9 @@ export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLast
         // Token-only tier — free/local model, no cost to report — green border
         const tokStr = formatTokens(avgTokensPerMessage);
         const tokenOnlySuffix = pickRandom([
-            `🟢 Averaging ${tokStr} tokens per message today.`,
-            `🟢 Running on ${tokStr} tokens per message so far.`,
-            `🟢 Averaging ${tokStr} tokens per message.`,
+            `${light("🟢")}Averaging ${tokStr} tokens per message today.`,
+            `${light("🟢")}Running on ${tokStr} tokens per message so far.`,
+            `${light("🟢")}Averaging ${tokStr} tokens per message.`,
         ]);
         return {
             message: `${phrase} ${tokenOnlySuffix}`,
@@ -856,8 +912,8 @@ export function buildContextualSpeech(pet, filesEdited, sessionMs, timeSinceLast
             tierEmoji: "🟢"
         };
     }
-    // No cost/tokens at all — green border, no usage light
-    return { message: phrase, bubbleColor: FG_GREEN, tierEmoji: "" };
+    // No cost/tokens at all — green border (hourlyRate style shows no usage light)
+    return { message: phrase, bubbleColor: FG_GREEN, tierEmoji: hourlyRate ? "" : "🟢" };
 }
 /**
  * Pick a random element from an array.

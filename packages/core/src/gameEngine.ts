@@ -1,5 +1,3 @@
-// GENERATED from packages/core/src/gameEngine.ts by scripts/sync-core.mjs — do not edit here.
-// Edit packages/core/src/gameEngine.ts, then run: node scripts/sync-core.mjs
 /**
  * gameEngine.ts
  *

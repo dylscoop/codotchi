@@ -1,3 +1,5 @@
+// GENERATED from packages/core/src/gameEngine.ts by scripts/sync-core.mjs — do not edit here.
+// Edit packages/core/src/gameEngine.ts, then run: node scripts/sync-core.mjs
 /**
  * gameEngine.ts
  *
@@ -408,6 +410,13 @@ export interface GameConfig {
    * Set to 0 to allow the pet to die normally even in dev mode.
    */
   devModeHealthFloor: number;
+  /**
+   * When true, the pet can never die — the stat-decay death check and the
+   * senior old-age death roll are both skipped, independent of devMode
+   * (which also speeds up aging and is meant for testing, not permanent play).
+   * Optional so existing config literals don't need it; absent means false.
+   */
+  immortal?: boolean;
 }
 
 /** Sensible defaults used when no explicit config is provided. */
@@ -418,6 +427,17 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   devMode:                  false,
   devModeAgingMultiplier:   10,
   devModeHealthFloor:       1,
+  immortal:                 false,
+};
+
+/**
+ * Config used by the claude-codotchi Claude Code plugin. Looked up by
+ * scripts/action.mjs, statusline.mjs, and the hooks via `LOCAL_PET_GAME_CONFIG
+ * ?? DEFAULT_GAME_CONFIG` — the pet living in Claude's own chat is immortal.
+ */
+export const LOCAL_PET_GAME_CONFIG: GameConfig = {
+  ...DEFAULT_GAME_CONFIG,
+  immortal: true,
 };
 
 /** Per-type stat multipliers applied on top of base config constants. */
@@ -1001,31 +1021,23 @@ export function careTierLabel(careScore: number): string {
 // ---------------------------------------------------------------------------
 
 /**
- * All 12 Chinese zodiac animals. Accessible via character code only —
- * not part of the random rotation pool.
- */
-const ZODIAC_ANIMALS = [
-  "rat", "ox", "tiger", "rabbit", "dragon", "snake",
-  "horse", "sheep", "monkey", "rooster", "dog", "pig",
-] as const;
-
-/**
  * Animals in the random rotation pool at pet creation.
  * All entries have equal probability (1 / ROTATION_ANIMALS.length each).
- * Note: some rotation animals (dog, snake, sheep, rooster, tiger) are also
- * zodiac animals — they remain accessible via zodiac character codes too.
- * More animals will be added to this set in the future.
+ * Note: some rotation animals (dog, snake, sheep) are also zodiac animals —
+ * they remain accessible via zodiac character codes too.
  */
-const ROTATION_ANIMALS = [
+export const ROTATION_ANIMALS = [
   "cat", "dog", "snake", "sheep", "classic",
-  "rooster", "tiger", "kangaroo", "dragon",
+  "kangaroo", "dragon",
 ] as const;
 
 /**
- * All valid sprite type keys.
+ * All valid sprite type keys: the 12 Chinese zodiac animals (reachable via
+ * character code only), the rotation pool, and the custom characters.
  */
 export type SpriteType =
-  | typeof ZODIAC_ANIMALS[number]
+  | "rat" | "ox" | "tiger" | "rabbit" | "dragon" | "snake"
+  | "horse" | "sheep" | "monkey" | "rooster" | "dog" | "pig"
   | typeof ROTATION_ANIMALS[number]
   | "tim" | "testsprite" | "roo" | "stu";
 
@@ -1581,8 +1593,13 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     health = config.devModeHealthFloor;
   }
 
+  // Immortal pets never drop below 1 health, so the bar never reads "0" while alive.
+  if (config.immortal && health < 1) {
+    health = 1;
+  }
+
   // Death check
-  if (health <= HEALTH_DEATH_THRESHOLD) {
+  if (!config.immortal && health <= HEALTH_DEATH_THRESHOLD) {
     alive = false;
     events.push("died");
     return withDerivedFields({
@@ -1636,7 +1653,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   const afterStage = isIdle ? withDerivedFields(afterDecay) : checkStageProgression(afterDecay);
   // ageDays is Math.floor(new dayTimer), computed above; state.ageDays is pre-tick value.
   // Skipped while idle so a senior can never die of old age while the user is away.
-  if (ageDays > state.ageDays && !isIdle && !isDeepIdle) {
+  if (ageDays > state.ageDays && !config.immortal && !isIdle && !isDeepIdle) {
     const afterDeath = rollOldAgeDeath(afterStage, Math.random());
     return afterDeath.alive ? rollOldAgeSickness(afterDeath, Math.random()) : afterDeath;
   }
@@ -1983,6 +2000,24 @@ export function pat(state: PetState): PetState {
     consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
+  });
+}
+
+/**
+ * Apply the stat cost of viewing the token cost overlay: same energy/happiness
+ * change as a pat, but no weight, events, or attention-call side effects — the
+ * cost bubble is shown separately, so this must not emit a "patted" event that
+ * would race it with a reaction bubble (BUGFIX-140).
+ *
+ * @param state - The current pet state.
+ * @returns A new PetState after the action.
+ */
+export function applyTokenCostView(state: PetState): PetState {
+  return withDerivedFields({
+    ...state,
+    happiness: clampStat(state.happiness + PAT_HAPPINESS_BOOST),
+    energy:    clampStat(state.energy    - PAT_ENERGY_COST),
+    events: [],
   });
 }
 

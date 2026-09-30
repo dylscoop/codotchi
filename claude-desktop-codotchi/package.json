@@ -5,6 +5,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "prebuild": "node ../scripts/sync-core.mjs",
     "build": "node scripts/build.mjs",
     "bundle": "node scripts/bundle-mcpb.mjs",
     "start": "node dist/server.mjs"

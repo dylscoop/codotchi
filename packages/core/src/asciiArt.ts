@@ -1,5 +1,3 @@
-// GENERATED from packages/core/src/asciiArt.ts by scripts/sync-core.mjs — do not edit here.
-// Edit packages/core/src/asciiArt.ts, then run: node scripts/sync-core.mjs
 /**
  * asciiArt.ts
  *

@@ -15,7 +15,7 @@ When in doubt, always do both.
 
 | Concern | VS Code | PyCharm |
 |---------|---------|---------|
-| Game engine (logic) | `vscode/src/gameEngine.ts` | `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` |
+| Game engine (logic) | `packages/core/src/gameEngine.ts` (synced to `vscode/src/` by `scripts/sync-core.mjs`) | `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` |
 | Pet state model | `vscode/src/gameEngine.ts` (`PetState` interface) | `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt` |
 | Constants / tuning | `vscode/src/gameEngine.ts` (top of file) | `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` |
 | Command handling / message routing | `vscode/src/sidebarProvider.ts` | `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` |
