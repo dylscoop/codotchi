@@ -74,13 +74,13 @@ class GameEngineTest {
     }
 
     @Test
-    fun `consumeSnack is refused when snacksOnFloor is already 0 (duplicate or stale report)`() {
+    fun `consumeSnack is silently ignored when snacksOnFloor is already 0 (duplicate report from another window)`() {
         val pet  = makePet(snacksOnFloor = 0, happiness = 40, weight = 10)
         val next = consumeSnack(pet)
         assertEquals(0, next.snacksOnFloor)
         assertEquals(40, next.happiness)
         assertEquals(10, next.weight)
-        assertEquals(listOf("snack_refused"), next.events)
+        assertEquals(emptyList<String>(), next.events, "no snack_refused, so no 'threw the snack away' toast")
     }
 
     // ── pause / resume ───────────────────────────────────────────────────────
@@ -467,6 +467,50 @@ class GameEngineTest {
         assertEquals("snack", next.cravingFood, "nearly full: asks for a snack, not a pointless meal")
         assertTrue(next.events.contains("attention_call_craving_snack"))
         assertEquals(0, next.ticksSinceLastCraving)
+    }
+
+    @Test
+    fun `idle ticks don't advance the call-chance counters`() {
+        val pet = contentPet().copy(
+            poops = 1, ticksWithUncleanedPoop = 5, ticksSinceLastMisbehaviour = 5, ticksSinceLastGift = 5,
+            ticksSinceLastPlayCall = 5, ticksSinceLastPatCall = 5, ticksSinceLastCraving = 5,
+        )
+        val quiet = DEFAULT_GAME_CONFIG.copy(attentionCallRateDivisor = 1e9)
+        for ((idle, deep) in listOf(true to false, false to true)) {
+            val next = tick(pet, isIdle = idle, isDeepIdle = deep, config = quiet)
+            assertEquals(5, next.ticksWithUncleanedPoop, "idle=$idle deep=$deep")
+            assertEquals(5, next.ticksSinceLastMisbehaviour)
+            assertEquals(5, next.ticksSinceLastGift)
+            assertEquals(5, next.ticksSinceLastPlayCall)
+            assertEquals(5, next.ticksSinceLastPatCall)
+            assertEquals(5, next.ticksSinceLastCraving)
+        }
+        val active = tick(pet, config = quiet)
+        assertEquals(6, active.ticksSinceLastCraving, "control: counts on active ticks")
+        assertEquals(6, active.ticksWithUncleanedPoop)
+    }
+
+    @Test
+    fun `misbehaviour and gift calls don't fire while idle`() {
+        val pet = makePet(energy = 80, happiness = 80).copy(
+            hunger = 70, health = 100, nextPoopIntervalTicks = 99999,
+            attentionCallCooldowns = mapOf("craving" to 999, "play" to 999, "pat" to 999),
+        )
+        for ((idle, deep) in listOf(true to false, false to true)) {
+            val next = tick(pet, isIdle = idle, isDeepIdle = deep, config = ALWAYS_CALLS)
+            assertNull(next.activeAttentionCall, "idle=$idle deep=$deep fired ${next.activeAttentionCall}")
+        }
+        assertEquals("misbehaviour", tick(pet, config = ALWAYS_CALLS).activeAttentionCall, "control: fires when active")
+        val noMisbehaviour = pet.copy(attentionCallCooldowns = pet.attentionCallCooldowns + ("misbehaviour" to 999))
+        assertEquals("gift", tick(noMisbehaviour, config = ALWAYS_CALLS).activeAttentionCall, "control: gift fires when active")
+    }
+
+    @Test
+    fun `expiry settings map to 2, 5 and 10 minutes of ticks`() {
+        val source = javaClass.getResourceAsStream("/source/CodotchiPlugin.kt")!!.bufferedReader().readText()
+        assertTrue(source.contains("""mapOf("needy" to 40, "standard" to 100, "chilled" to 200)"""))
+        assertEquals(100, DEFAULT_GAME_CONFIG.attentionCallExpiryTicks)
+        assertEquals(3, TICK_INTERVAL_SECONDS)
     }
 
     @Test

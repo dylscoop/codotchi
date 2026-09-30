@@ -354,8 +354,9 @@ class CodotchiPlugin : Disposable {
             val settings = service<CodotchiSettings>()
 
             // Map attentionCallExpiry setting to tick count.
-            val expiryMap = mapOf("needy" to 20, "standard" to 50, "chilled" to 100)
-            val attentionCallExpiryTicks = expiryMap[settings.attentionCallExpiry] ?: 50
+            // 3 s/tick: needy 2 min, standard 5 min, chilled 10 min.
+            val expiryMap = mapOf("needy" to 40, "standard" to 100, "chilled" to 200)
+            val attentionCallExpiryTicks = expiryMap[settings.attentionCallExpiry] ?: 100
 
             // Map attentionCallRate setting to rate divisor.
             val rateMap = mapOf("fast" to 1.0, "medium" to 1.5, "slow" to 2.0)

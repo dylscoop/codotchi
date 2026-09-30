@@ -607,6 +607,59 @@ describe("tick — whim attention calls (play / pat / craving)", () => {
     assert.equal(next.ticksSinceLastCraving, 0);
   });
 
+  it("idle ticks don't advance the call-chance counters", () => {
+    const pet = contentPet([], {
+      poops: 1, ticksWithUncleanedPoop: 5, ticksSinceLastMisbehaviour: 5, ticksSinceLastGift: 5,
+      ticksSinceLastPlayCall: 5, ticksSinceLastPatCall: 5, ticksSinceLastCraving: 5,
+    });
+    const quiet: GameConfig = { ...DEFAULT_GAME_CONFIG, attentionCallRateDivisor: 1e9 };
+    for (const [idle, deep] of [[true, false], [false, true]] as const) {
+      const next = tick(pet, idle, deep, quiet);
+      for (const k of ["ticksWithUncleanedPoop", "ticksSinceLastMisbehaviour", "ticksSinceLastGift",
+                       "ticksSinceLastPlayCall", "ticksSinceLastPatCall", "ticksSinceLastCraving"] as const) {
+        assert.equal(next[k], 5, `${k} (idle=${idle} deep=${deep})`);
+      }
+    }
+    const active = tick(pet, false, false, quiet);
+    assert.equal(active.ticksSinceLastCraving, 6, "control: counts on active ticks");
+    assert.equal(active.ticksWithUncleanedPoop, 6);
+  });
+
+  it("misbehaviour and gift calls don't fire while idle", () => {
+    const pet = makePet({
+      hunger: 70, happiness: 80, energy: 80, health: 100, nextPoopIntervalTicks: 99999,
+      attentionCallCooldowns: { craving: 999, play: 999, pat: 999 },
+    });
+    for (const [idle, deep] of [[true, false], [false, true]] as const) {
+      const next = withRandom(0, () => tick(pet, idle, deep));
+      assert.equal(next.activeAttentionCall, null, `idle=${idle} deep=${deep} fired ${next.activeAttentionCall}`);
+    }
+    assert.equal(withRandom(0, () => tick(pet)).activeAttentionCall, "misbehaviour", "control: fires when active");
+    const noMisbehaviour = { ...pet, attentionCallCooldowns: { ...pet.attentionCallCooldowns, misbehaviour: 999 } };
+    assert.equal(withRandom(0, () => tick(noMisbehaviour)).activeAttentionCall, "gift", "control: gift fires when active");
+  });
+
+  it("cravings fire regularly for a well-kept pet on active ticks", () => {
+    // Seeded LCG so the run is deterministic; every call is answered straight away.
+    let seed = 12345;
+    const originalRandom = Math.random;
+    Math.random = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+    let cravings = 0;
+    try {
+      let s = makePet({ nextPoopIntervalTicks: 99999 });
+      for (let i = 0; i < 20 * 60 * 2; i++) { // 2 hours active
+        s = tick(s);
+        if (s.events.some((e) => e.startsWith("attention_call_craving_"))) cravings++;
+        const cd = s.activeAttentionCall ? { ...s.attentionCallCooldowns, [s.activeAttentionCall]: 100 } : s.attentionCallCooldowns;
+        s = { ...s, activeAttentionCall: null, cravingFood: null, attentionCallCooldowns: cd,
+              hunger: 60, happiness: 80, energy: 90, health: 100, poops: 0, sleeping: false };
+      }
+    } finally {
+      Math.random = originalRandom;
+    }
+    assert.ok(cravings >= 5, `only ${cravings} cravings in 2 active hours`);
+  });
+
   it("a craving asks for a meal after 2+ snacks in a row or when the snack cap is used up", () => {
     const afterSnacks = withRandom(0, () => tick(contentPet([], { consecutiveSnacks: 2 })));
     assert.equal(afterSnacks.cravingFood, "meal");
@@ -1260,7 +1313,7 @@ describe("consumeSnack", () => {
     assert.equal(next.weight, 12);
   });
 
-  it("is refused when snacksOnFloor is already 0 (duplicate/stale report)", () => {
+  it("is silently ignored when snacksOnFloor is already 0 (duplicate report from another window)", () => {
     const pet = makePet({ snacksOnFloor: 0, happiness: 40, weight: 10, consecutiveSnacks: 2 });
     const next = consumeSnack(pet);
     assert.equal(next.snacksOnFloor, 0);
@@ -1268,7 +1321,7 @@ describe("consumeSnack", () => {
     assert.equal(next.weight, 10);
     assert.equal(next.consecutiveSnacks, 2);
     assert.equal(next.sick, false);
-    assert.deepEqual(next.events, ["snack_refused"]);
+    assert.deepEqual(next.events, [], "no snack_refused, so no 'threw the snack away' toast");
   });
 });
 

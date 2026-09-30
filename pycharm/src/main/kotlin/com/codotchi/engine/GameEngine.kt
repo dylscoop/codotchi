@@ -383,17 +383,22 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     // ── Step 0–3: Attention-call mechanic (skipped when disabled) ────────────
     if (config.attentionCallsEnabled) {
 
-    // ── Step 0: Maintain log counters (every tick, even idle) ────────────────
-    if (poops > 0) {
-        ticksWithUncleanedPoop += 1
-    } else {
+    // ── Step 0: Maintain log counters (active ticks only) ────────────────────
+    // Idle time doesn't raise the chance of a call, so the pet can't build up a
+    // burst of calls while the user is away.
+    val activeTick = !isIdle && !isDeepIdle
+    if (poops == 0) {
         ticksWithUncleanedPoop = 0
+    } else if (activeTick) {
+        ticksWithUncleanedPoop += 1
     }
-    ticksSinceLastMisbehaviour += 1
-    ticksSinceLastGift += 1
-    ticksSinceLastPlayCall += 1
-    ticksSinceLastPatCall += 1
-    ticksSinceLastCraving += 1
+    if (activeTick) {
+        ticksSinceLastMisbehaviour += 1
+        ticksSinceLastGift += 1
+        ticksSinceLastPlayCall += 1
+        ticksSinceLastPatCall += 1
+        ticksSinceLastCraving += 1
+    }
 
     } // end Step 0
 
@@ -605,7 +610,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
             activeAttentionCall = "unhappiness"
             attentionCallActiveTicks = 0
             events.add("attention_call_unhappiness")
-        } else if (!sleeping && cooldownClear("misbehaviour") &&
+        } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("misbehaviour") &&
             Random.nextDouble() < logChance(ticksSinceLastMisbehaviour, MISBEHAVIOUR_BASE_CHANCE / rd, MISBEHAVIOUR_MAX_CHANCE / rd)) {
             activeAttentionCall = "misbehaviour"
             attentionCallActiveTicks = 0
@@ -639,7 +644,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
             attentionCallActiveTicks = 0
             ticksSinceLastPatCall = 0
             events.add("attention_call_pat")
-        } else if (!sleeping && cooldownClear("gift") &&
+        } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("gift") &&
             health > ATTENTION_HEALTH_THRESHOLD &&
             !sick &&
             (currentMood == "happy" || currentMood == "neutral") &&
@@ -874,7 +879,7 @@ fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
  *
  * Called when the webview detects the pet touching the snack floor item.
  * Increments [PetState.consecutiveSnacks] and — if the new count reaches
- * the maximum — triggers sickness. Refused (no stat effects) if
+ * the maximum — triggers sickness. Ignored (no stat effects, no events, so no toast) if
  * [PetState.snacksOnFloor] is already 0 — guards against a stale/duplicate
  * `snack_consumed` report (e.g. a second open project window sharing the
  * same pet independently simulating the same floor item) applying the
@@ -882,7 +887,7 @@ fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
  */
 fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThreshold: Int? = null, feedSnackWeightGain: Int? = null): PetState {
     if (state.snacksOnFloor <= 0) {
-        return withDerivedFields(state.copy(events = listOf("snack_refused")))
+        return withDerivedFields(state.copy(events = emptyList()))
     }
     val hungerBoost = (FEED_SNACK_HUNGER_BOOST * (feedHungerMult ?: 1.0)).toInt()
     val sickAt = snackSickThreshold ?: MAX_CONSECUTIVE_SNACKS_BEFORE_SICK
