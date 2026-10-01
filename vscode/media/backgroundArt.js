@@ -32,7 +32,7 @@
   // dark, so it gets a lighter veil. Vivid is the scene at full strength.
   var VEIL = {
     vivid:  [0, 0],
-    medium: [0.30, 0.10],
+    medium: [0.10, 0.05],
     subtle: [0.45, 0.15],
   };
 
@@ -52,18 +52,19 @@
     [0,    "#0b1030", "#1e2a58"],   // night
     [5,    "#0b1030", "#1e2a58"],
     [6.5,  "#5c6aa8", "#f2a878"],   // dawn
-    [8,    "#a9cdea", "#f6e2c8"],   // soft pastel morning
-    [10.5, "#a9cdea", "#f6e2c8"],
-    [13,   "#8cc4ee", "#e4f2f8"],   // midday
-    [15.5, "#7ab4e6", "#d6eaf4"],   // afternoon
-    [18,   "#4a4a8c", "#f08a48"],   // sunset
-    [19.5, "#26204e", "#8a4a78"],   // dusk
-    [21,   "#0b1030", "#1e2a58"],   // night
+    [8,    "#a9cdea", "#c4d4de"],   // soft pastel morning (horizon kept off-white so the pet reads)
+    [10.5, "#a9cdea", "#c4d4de"],
+    [12.5, "#8cc4ee", "#abd4f2"],   // midday
+    [14.5, "#7ab4e6", "#9ac7eb"],   // afternoon
+    [16,   "#6a86c4", "#e8a87a"],   // golden hour: the sunset bucket starts here
+    [17.5, "#4a4a8c", "#f08a48"],   // sunset
+    [19,   "#26204e", "#8a4a78"],   // dusk
+    [20.5, "#0b1030", "#1e2a58"],   // night
     [24,   "#0b1030", "#1e2a58"],
   ];
 
   // How dark the scene is (0 day … 1 night).
-  var DARK_KEYS = [[0, 1], [5, 1], [7.5, 0], [17, 0], [20.5, 1], [24, 1]];
+  var DARK_KEYS = [[0, 1], [5, 1], [7.5, 0], [16, 0], [20, 1], [24, 1]];
 
   var SKY_BANDS = 8;
 
@@ -536,8 +537,10 @@
     ctx.restore();
   }
 
+  var SUNRISE = 6, SUNSET = 18.5;   // the sun crosses the sky between these hours
+
   function drawSun(ctx, W, L, h) {
-    var t = (h - 6) / 13.5;
+    var t = (h - SUNRISE) / (SUNSET - SUNRISE);
     if (t <= 0 || t >= 1) { return; }
     var lift = Math.sin(Math.PI * t);
     var size = SUN[0].length * L.pp;

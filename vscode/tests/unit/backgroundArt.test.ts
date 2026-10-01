@@ -82,9 +82,17 @@ describe("background seasons and time of day (backgroundArt.js)", () => {
     for (const h of [8, 9, 10, 11]) {
       const sky = art.skyColours(at(h, 30));
       assert.ok(luminance(sky.top) > 0.45, `top at ${h}:30 is ${sky.top}`);
-      assert.ok(luminance(sky.bottom) > 0.6, `horizon at ${h}:30 is ${sky.bottom}`);
+      assert.ok(luminance(sky.bottom) > 0.5, `horizon at ${h}:30 is ${sky.bottom}`);
     }
     assert.ok(luminance(art.skyColours(at(23)).top) < 0.05, "night stays dark");
+  });
+
+  it("daytime sky has a gentle gradient, not a near-white horizon", () => {
+    for (let h = 8; h <= 14; h++) {
+      const sky = art.skyColours(at(h, 30));
+      assert.ok(luminance(sky.bottom) < 0.7, `horizon at ${h}:30 is too white: ${sky.bottom}`);
+      assert.ok(luminance(sky.bottom) - luminance(sky.top) < 0.15, `gradient at ${h}:30 is too strong`);
+    }
   });
 
   it("sky blends minute by minute with no jumps", () => {
@@ -98,6 +106,13 @@ describe("background seasons and time of day (backgroundArt.js)", () => {
       }
       prev = cur;
     }
+  });
+
+  it("the sunset bucket looks like sunset: warm horizon from 16:00", () => {
+    const warm = (hex: string) => { const [r, , b] = rgb(hex); return r - b; };
+    assert.ok(warm(art.skyColours(at(12)).bottom) < 0, "midday horizon is blue");
+    assert.ok(warm(art.skyColours(at(16, 15)).bottom) > 40, "warm by 16:15");
+    assert.ok(warm(art.skyColours(at(17, 30)).bottom) > 120, "full sunset at 17:30");
   });
 
   it("darkness is 0 by day and 1 at night", () => {
@@ -244,15 +259,15 @@ describe("background opacity and still mode (backgroundArt.js)", () => {
   it("veil strength: vivid none, medium default, subtle strongest; lighter at night", () => {
     assert.equal(art.veilAlpha("vivid", at(12)), 0);
     assert.equal(art.veilAlpha("vivid", at(2)), 0);
-    assert.ok(Math.abs(art.veilAlpha("medium", at(12)) - 0.30) < 1e-9);
-    assert.ok(Math.abs(art.veilAlpha("medium", at(2)) - 0.10) < 1e-9);
+    assert.ok(Math.abs(art.veilAlpha("medium", at(12)) - 0.10) < 1e-9);
+    assert.ok(Math.abs(art.veilAlpha("medium", at(2)) - 0.05) < 1e-9);
     assert.ok(art.veilAlpha("subtle", at(12)) > art.veilAlpha("medium", at(12)));
     assert.equal(art.veilAlpha(undefined, at(12)), art.veilAlpha("medium", at(12)));
     assert.equal(art.veilAlpha("bogus", at(12)), art.veilAlpha("medium", at(12)));
   });
 
   it("lays the pet backdrop over the scene, except in vivid", () => {
-    assert.deepEqual(fullFills({ opacity: "medium", backdrop: "#123456" }), [["#123456", 0.3]]);
+    assert.deepEqual(fullFills({ opacity: "medium", backdrop: "#123456" }), [["#123456", 0.1]]);
     assert.deepEqual(fullFills({ opacity: "vivid", backdrop: "#123456" }), []);
     assert.equal(fullFills(undefined).length, 1, "no options means medium");
   });
