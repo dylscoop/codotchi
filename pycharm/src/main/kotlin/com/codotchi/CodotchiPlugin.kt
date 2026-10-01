@@ -108,6 +108,9 @@ class CodotchiPlugin : Disposable {
     /** Epoch-ms of the last "pet needs rescue while idle" notification, so it can repeat. */
     @Volatile private var lastRescueNotifyMs: Long = 0L
 
+    /** Per-stat epoch-ms of the last desktop notification for a critical stat (see [CriticalStatNotifier]). */
+    @Volatile private var criticalStatTracker: Map<String, Long> = emptyMap()
+
     /** AWT listener that updates [lastActivityTime] on any key press or mouse event. */
     private val awtActivityListener = AWTEventListener { event ->
         val id = event?.id ?: return@AWTEventListener
@@ -1457,6 +1460,16 @@ class CodotchiPlugin : Disposable {
             lastRescueNotifyMs = 0L
         }
 
+        // Desktop (OS) notification when a stat drops below 20, so a minimised IDE
+        // doesn't hide it. Independent of the attention-call mechanic.
+        if (state != null && service<CodotchiSettings>().osNotifications) {
+            val result = CriticalStatNotifier.evaluate(state, criticalStatTracker, System.currentTimeMillis())
+            criticalStatTracker = result.tracker
+            result.message?.let { fireCriticalStatNotification(it) }
+        } else {
+            criticalStatTracker = emptyMap()
+        }
+
         val liveSubscribed = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getBoolean("codotchi.liveSubscribed", false)
 
@@ -1531,6 +1544,30 @@ class CodotchiPlugin : Disposable {
                 .getNotificationGroup("Codotchi Attention Calls")
                 ?: return@invokeLater
             val notification = group.createNotification(message, NotificationType.ERROR)
+            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
+                override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+                    val project = e.project
+                        ?: ProjectManager.getInstance().openProjects.firstOrNull()
+                        ?: return
+                    ToolWindowManager.getInstance(project).getToolWindow("Codotchi")?.show()
+                    notification.expire()
+                }
+            })
+            notification.notify(null)  // null = app-level notification visible in all projects
+        }
+    }
+
+    /**
+     * Critical-stat alert: a native OS notification via [com.intellij.ui.SystemNotifications]
+     * (visible when the IDE is minimised) plus an in-IDE balloon with an "Open Gotchi" action.
+     */
+    private fun fireCriticalStatNotification(message: String) {
+        ApplicationManager.getApplication().invokeLater {
+            com.intellij.ui.SystemNotifications.getInstance().notify("Codotchi Critical Stats", "Codotchi", message)
+            val group = NotificationGroupManager.getInstance()
+                .getNotificationGroup("Codotchi Critical Stats")
+                ?: return@invokeLater
+            val notification = group.createNotification(message, NotificationType.WARNING)
             notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
                 override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
                     val project = e.project

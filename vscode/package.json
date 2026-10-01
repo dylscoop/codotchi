@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.22.2",
+  "version": "2.23.0",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -97,181 +97,221 @@
         }
       ]
     },
-    "configuration": {
-      "title": "Codotchi",
-      "properties": {
-        "codotchi.background": {
-          "type": "string",
-          "enum": ["plain", "ordered", "spring", "summer", "autumn", "winter"],
-          "enumDescriptions": [
-            "Solid colour only — no pixel-art elements.",
-            "Season from real calendar + time of day from real clock.",
-            "Spring season (green ground, flower) + real time of day.",
-            "Summer season (bright green ground) + real time of day.",
-            "Autumn season (orange-brown ground, leaves) + real time of day.",
-            "Winter season (pale ground, snowflake) + real time of day."
-          ],
-          "default": "ordered",
-          "description": "Background theme for the pet canvas."
-        },
-        "codotchi.fontSize": {
-          "type": "string",
-          "enum": ["small", "normal", "large"],
-          "default": "normal",
-          "description": "Font size used in the Codotchi sidebar panel."
-        },
-        "codotchi.enableAttentionCalls": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enables attention calls (the pet notifying you when it needs care). When disabled, the entire attention-call mechanic is skipped — no events fire, no cooldowns run, no state counters update."
-        },
-        "codotchi.idleThresholdSeconds": {
-          "type": "integer",
-          "default": 60,
-          "minimum": 10,
-          "description": "Seconds of no IDE activity before the pet is considered idle (stats decay at 5% of the normal rate and the pet cannot lose health). Default: 60 seconds."
-        },
-        "codotchi.idleDeepThresholdSeconds": {
-          "type": "integer",
-          "default": 600,
-          "minimum": 30,
-          "description": "Seconds of sustained idle before entering deep idle (aging stops; as in regular idle, the pet cannot lose health). Default: 600 seconds (10 minutes)."
-        },
-        "codotchi.attentionCallExpiry": {
-          "type": "string",
-          "enum": ["needy", "standard", "chilled"],
-          "enumDescriptions": [
-            "Needy (4 minutes) — the pet demands a quick response.",
-            "Standard (10 minutes) — a comfortable response window.",
-            "Chilled (20 minutes) — plenty of time before the call expires."
-          ],
-          "default": "standard",
-          "description": "Response window for cleaning, misbehaviour, gift, play, pat and craving attention calls before they expire and apply a stat penalty. Other call types (hunger, sick, etc.) always use a fixed 1-minute window."
-        },
-        "codotchi.attentionCallRate": {
-          "type": "string",
-          "enum": ["fast", "medium", "slow"],
-          "enumDescriptions": [
-            "Fast — the default spawn rate.",
-            "Medium — 1.5× slower than Fast.",
-            "Slow — 2× slower than Fast."
-          ],
-          "default": "fast",
-          "description": "How quickly the random attention calls (cleaning, misbehaviour, gift, play, pat and craving) can spawn. Uses a logarithmic probability curve; this setting scales the curve down to make calls less frequent. After any call, the same call type waits 5 minutes of active time before it can fire again."
-        },
-        "codotchi.petSize": {
-          "type": "string",
-          "enum": ["small", "medium", "large"],
-          "enumDescriptions": [
-            "Small — a compact pet.",
-            "Medium — the default size.",
-            "Large — the biggest pet. Pairs well with a Tall stage."
-          ],
-          "default": "medium",
-          "description": "Display size of the pet sprite on the stage."
-        },
-        "codotchi.stageHeight": {
-          "type": "string",
-          "enum": ["compact", "normal", "tall", "extraTall"],
-          "enumDescriptions": [
-            "Compact (150 px) — a shorter stage that leaves more room for the rest of the panel.",
-            "Normal (180 px) — the default stage height.",
-            "Tall (210 px) — more room for the pet to jump and play.",
-            "Extra tall (240 px) — the biggest stage."
-          ],
-          "default": "normal",
-          "description": "Height of the pet stage (the area your pet walks around in). The stage scales with the sidebar width, so the on-screen height is proportional to these sizes."
-        },
-        "codotchi.reducedMotion": {
-          "type": "boolean",
-          "default": false,
-          "description": "Disable all pet animations (walking, jumping, reaction effects). The pet is drawn statically at the centre of the stage. Also respects the OS-level prefers-reduced-motion setting."
-        },
-        "codotchi.devModeEnabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Check to enable developer mode. Requires the developer passcode to also be set correctly. In developer mode the pet cannot die (health is floored at 1), it ages faster, and high scores are not recorded."
-        },
-        "codotchi.developerPasscode": {
-          "type": "string",
-          "default": "",
-          "description": "Developer passcode. Also requires 'Developer Mode Enabled' (codotchi.devModeEnabled) to be checked to activate dev mode."
-        },
-        "codotchi.characterPasscode": {
-          "type": "string",
-          "default": "",
-          "description": "Hidden character passcode. Enter the correct passcode to unlock a secret character on the next hatch."
-        },
-        "codotchi.devModeAgingMultiplier": {
-          "type": "integer",
-          "default": 10,
-          "minimum": 1,
-          "description": "Aging speed multiplier applied when developer mode is active. Default: 10 (10× faster than normal)."
-        },
-        "codotchi.devModeHealthFloor": {
-          "type": "integer",
-          "default": 1,
-          "minimum": 0,
-          "maximum": 100,
-          "description": "Minimum health value enforced when developer mode is active. Default: 1 (pet cannot die). Set to 0 to allow the pet to die normally even in dev mode — useful for testing the death flow."
-        },
-        "codotchi.aiMode": {
-          "type": "boolean",
-          "default": true,
-          "description": "AI mode: suppress idle-timer resets from document changes, cursor movement, and tab switches — the three events an AI coding agent fires. Window focus and mouse movement still reset the timer normally. Enable this when you are using an AI agent to avoid the agent's edits keeping your pet perpetually active."
-        },
-        "codotchi.idleResetOnDocumentChange": {
-          "type": "boolean",
-          "default": true,
-          "description": "Reset the idle timer when any document is changed (keystrokes, AI agent edits, etc.). Suppressed automatically when codotchi.aiMode is enabled."
-        },
-        "codotchi.idleResetOnCursorMovement": {
-          "type": "boolean",
-          "default": true,
-          "description": "Reset the idle timer when the text editor cursor moves or the selection changes. Suppressed automatically when codotchi.aiMode is enabled."
-        },
-        "codotchi.idleResetOnTabSwitch": {
-          "type": "boolean",
-          "default": true,
-          "description": "Reset the idle timer when the active editor tab changes. Suppressed automatically when codotchi.aiMode is enabled."
-        },
-        "codotchi.idleResetOnWindowFocus": {
-          "type": "boolean",
-          "default": true,
-          "description": "Reset the idle timer when the VS Code window gains focus (e.g. you switch back to VS Code from another app). Never suppressed by aiMode."
-        },
-        "codotchi.idleResetOnMouseMovement": {
-          "type": "boolean",
-          "default": true,
-          "description": "Reset the idle timer when the mouse moves inside the Codotchi sidebar panel (throttled to once per 30 seconds). Never suppressed by aiMode."
-        },
-        "codotchi.perWorkspacePet": {
-          "type": "boolean",
-          "default": false,
-          "scope": "window",
-          "description": "Give each workspace its own independent pet. When enabled, state is stored in a workspace-specific file derived from the workspace path. On first enable the current shared pet is copied to the workspace file as the starting point. When disabled, all workspaces share one global pet."
-        },
-        "codotchi.tokenCostSources": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": ["claudeCode", "openCode", "copilot"]
+    "configuration": [
+      {
+        "title": "Codotchi",
+        "order": 1,
+        "properties": {
+          "codotchi.enableAttentionCalls": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enables attention calls (the pet notifying you when it needs care). When disabled, the entire attention-call mechanic is skipped — no events fire, no cooldowns run, no state counters update.",
+            "order": 1
           },
-          "default": ["claudeCode", "openCode"],
-          "description": "Which sources contribute to the 'Today's Token Cost' bubble. 'claudeCode' and 'openCode' report a dollar cost from local usage logs. 'copilot' reports a GitHub Copilot premium-request quota percentage (no API key needed — you'll be prompted to sign in to GitHub via VS Code's built-in authentication the first time). Select any combination, e.g. just ['copilot'], or all three to show everything at once."
-        },
-        "codotchi.leaderboard.autoRefresh": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show a one-time notification about the leaderboard when your pet first dies. The leaderboard page also auto-refreshes every hour when left open in a browser — this can be disabled directly on the leaderboard page."
-        },
-        "codotchi.leaderboard.livePush": {
-          "type": "boolean",
-          "default": false,
-          "description": "When enabled via the sidebar toggle button, pushes your pet's current age to the leaderboard hourly while it is alive. Requires a GitHub sign-in (prompted on first push)."
+          "codotchi.attentionCallExpiry": {
+            "type": "string",
+            "enum": ["needy", "standard", "chilled"],
+            "enumDescriptions": [
+              "Needy (4 minutes) — the pet demands a quick response.",
+              "Standard (10 minutes) — a comfortable response window.",
+              "Chilled (20 minutes) — plenty of time before the call expires."
+            ],
+            "default": "standard",
+            "description": "Response window for cleaning, misbehaviour, gift, play, pat and craving attention calls before they expire and apply a stat penalty. Other call types (hunger, sick, etc.) always use a fixed 1-minute window.",
+            "order": 2
+          },
+          "codotchi.attentionCallRate": {
+            "type": "string",
+            "enum": ["fast", "medium", "slow"],
+            "enumDescriptions": [
+              "Fast — the default spawn rate.",
+              "Medium — 1.5× slower than Fast.",
+              "Slow — 2× slower than Fast."
+            ],
+            "default": "fast",
+            "description": "How quickly the random attention calls (cleaning, misbehaviour, gift, play, pat and craving) can spawn. Uses a logarithmic probability curve; this setting scales the curve down to make calls less frequent. After any call, the same call type waits 5 minutes of active time before it can fire again.",
+            "order": 3
+          },
+          "codotchi.osNotifications": {
+            "type": "boolean",
+            "default": true,
+            "description": "Send a desktop (OS) notification when hunger, happiness, energy or health falls below 20, so you see it even when VS Code is minimised. Repeats every 15 minutes while the stat stays critical. Works independently of attention calls.",
+            "order": 4
+          },
+          "codotchi.petSize": {
+            "type": "string",
+            "enum": ["small", "medium", "large"],
+            "enumDescriptions": [
+              "Small — a compact pet.",
+              "Medium — the default size.",
+              "Large — the biggest pet. Pairs well with a Tall stage."
+            ],
+            "default": "medium",
+            "description": "Display size of the pet sprite on the stage.",
+            "order": 5
+          },
+          "codotchi.reducedMotion": {
+            "type": "boolean",
+            "default": false,
+            "description": "Disable all pet animations (walking, jumping, reaction effects). The pet is drawn statically at the centre of the stage. Also respects the OS-level prefers-reduced-motion setting.",
+            "order": 6
+          },
+          "codotchi.perWorkspacePet": {
+            "type": "boolean",
+            "default": false,
+            "scope": "window",
+            "description": "Give each workspace its own independent pet. When enabled, state is stored in a workspace-specific file derived from the workspace path. On first enable the current shared pet is copied to the workspace file as the starting point. When disabled, all workspaces share one global pet.",
+            "order": 7
+          },
+          "codotchi.characterPasscode": {
+            "type": "string",
+            "default": "",
+            "description": "Hidden character passcode. Enter the correct passcode to unlock a secret character on the next hatch.",
+            "order": 8
+          },
+          "codotchi.aiMode": {
+            "type": "boolean",
+            "default": true,
+            "description": "AI mode: suppress idle-timer resets from document changes, cursor movement, and tab switches — the three events an AI coding agent fires. Window focus and mouse movement still reset the timer normally. Enable this when you are using an AI agent to avoid the agent's edits keeping your pet perpetually active.",
+            "order": 9
+          },
+          "codotchi.stageHeight": {
+            "type": "string",
+            "enum": ["compact", "normal", "tall", "extraTall"],
+            "enumDescriptions": [
+              "Compact (150 px) — a shorter stage that leaves more room for the rest of the panel.",
+              "Normal (180 px) — the default stage height.",
+              "Tall (210 px) — more room for the pet to jump and play.",
+              "Extra tall (240 px) — the biggest stage."
+            ],
+            "default": "normal",
+            "description": "Height of the pet stage (the area your pet walks around in). The stage scales with the sidebar width, so the on-screen height is proportional to these sizes.",
+            "order": 10
+          },
+          "codotchi.tokenCostSources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["claudeCode", "openCode", "copilot"]
+            },
+            "default": ["claudeCode", "openCode"],
+            "description": "Which sources contribute to the 'Today's Token Cost' bubble. 'claudeCode' and 'openCode' report a dollar cost from local usage logs. 'copilot' reports a GitHub Copilot premium-request quota percentage (no API key needed — you'll be prompted to sign in to GitHub via VS Code's built-in authentication the first time). Select any combination, e.g. just ['copilot'], or all three to show everything at once.",
+            "order": 11
+          },
+          "codotchi.background": {
+            "type": "string",
+            "enum": ["plain", "ordered", "spring", "summer", "autumn", "winter"],
+            "enumDescriptions": [
+              "Solid colour only — no pixel-art elements.",
+              "Season from real calendar + time of day from real clock.",
+              "Spring season (green ground, flower) + real time of day.",
+              "Summer season (bright green ground) + real time of day.",
+              "Autumn season (orange-brown ground, leaves) + real time of day.",
+              "Winter season (pale ground, snowflake) + real time of day."
+            ],
+            "default": "ordered",
+            "description": "Background theme for the pet canvas.",
+            "order": 12
+          },
+          "codotchi.fontSize": {
+            "type": "string",
+            "enum": ["small", "normal", "large"],
+            "default": "normal",
+            "description": "Font size used in the Codotchi sidebar panel.",
+            "order": 13
+          },
+          "codotchi.idleThresholdSeconds": {
+            "type": "integer",
+            "default": 60,
+            "minimum": 10,
+            "description": "Seconds of no IDE activity before the pet is considered idle (stats decay at 5% of the normal rate and the pet cannot lose health). Default: 60 seconds.",
+            "order": 14
+          },
+          "codotchi.idleDeepThresholdSeconds": {
+            "type": "integer",
+            "default": 600,
+            "minimum": 30,
+            "description": "Seconds of sustained idle before entering deep idle (aging stops; as in regular idle, the pet cannot lose health). Default: 600 seconds (10 minutes).",
+            "order": 15
+          },
+          "codotchi.idleResetOnDocumentChange": {
+            "type": "boolean",
+            "default": true,
+            "description": "Reset the idle timer when any document is changed (keystrokes, AI agent edits, etc.). Suppressed automatically when codotchi.aiMode is enabled.",
+            "order": 16
+          },
+          "codotchi.idleResetOnCursorMovement": {
+            "type": "boolean",
+            "default": true,
+            "description": "Reset the idle timer when the text editor cursor moves or the selection changes. Suppressed automatically when codotchi.aiMode is enabled.",
+            "order": 17
+          },
+          "codotchi.idleResetOnTabSwitch": {
+            "type": "boolean",
+            "default": true,
+            "description": "Reset the idle timer when the active editor tab changes. Suppressed automatically when codotchi.aiMode is enabled.",
+            "order": 18
+          },
+          "codotchi.idleResetOnWindowFocus": {
+            "type": "boolean",
+            "default": true,
+            "description": "Reset the idle timer when the VS Code window gains focus (e.g. you switch back to VS Code from another app). Never suppressed by aiMode.",
+            "order": 19
+          },
+          "codotchi.idleResetOnMouseMovement": {
+            "type": "boolean",
+            "default": true,
+            "description": "Reset the idle timer when the mouse moves inside the Codotchi sidebar panel (throttled to once per 30 seconds). Never suppressed by aiMode.",
+            "order": 20
+          },
+          "codotchi.leaderboard.autoRefresh": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show a one-time notification about the leaderboard when your pet first dies. The leaderboard page also auto-refreshes every hour when left open in a browser — this can be disabled directly on the leaderboard page.",
+            "order": 21
+          },
+          "codotchi.leaderboard.livePush": {
+            "type": "boolean",
+            "default": false,
+            "description": "When enabled via the sidebar toggle button, pushes your pet's current age to the leaderboard hourly while it is alive. Requires a GitHub sign-in (prompted on first push).",
+            "order": 22
+          }
+        }
+      },
+      {
+        "title": "Developer",
+        "order": 2,
+        "properties": {
+          "codotchi.devModeEnabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Check to enable developer mode. Requires the developer passcode to also be set correctly. In developer mode the pet cannot die (health is floored at 1), it ages faster, and high scores are not recorded.",
+            "order": 1
+          },
+          "codotchi.developerPasscode": {
+            "type": "string",
+            "default": "",
+            "description": "Developer passcode. Also requires 'Developer Mode Enabled' (codotchi.devModeEnabled) to be checked to activate dev mode.",
+            "order": 2
+          },
+          "codotchi.devModeAgingMultiplier": {
+            "type": "integer",
+            "default": 10,
+            "minimum": 1,
+            "description": "Aging speed multiplier applied when developer mode is active. Default: 10 (10× faster than normal).",
+            "order": 3
+          },
+          "codotchi.devModeHealthFloor": {
+            "type": "integer",
+            "default": 1,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Minimum health value enforced when developer mode is active. Default: 1 (pet cannot die). Set to 0 to allow the pet to die normally even in dev mode — useful for testing the death flow.",
+            "order": 4
+          }
         }
       }
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -279,7 +319,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "node ../scripts/sync-core.mjs",
-    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/criticalStatNotifier.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

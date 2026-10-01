@@ -10,6 +10,7 @@ import com.intellij.openapi.components.*
  *  - [fontSize]               : "small" | "normal" | "large"  — maps to CSS body class
  *  - [textColor]              : CSS hex colour string           — injected as body colour override
  *  - [enableAttentionCalls]   : whether to show balloon notifications for attention calls
+ *  - [osNotifications]        : desktop (OS) notification when hunger, happiness, energy or health < 20 (default true)
  *  - [idleThresholdSeconds]   : seconds of no IDE activity before idle mode (default 60)
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
  *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift/play/pat/craving
@@ -46,6 +47,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var fontSize:  String  = "normal"    // "small" | "normal" | "large"
         var textColor: String  = "#cccccc"   // any CSS hex colour
         var enableAttentionCalls: Boolean = true
+        var osNotifications: Boolean = true
         var idleThresholdSeconds: Int = 60
         var idleDeepThresholdSeconds: Int = 600
         var attentionCallExpiry: String = "standard"  // "needy" | "standard" | "chilled"
@@ -90,6 +92,10 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var enableAttentionCalls: Boolean
         get() = _state.enableAttentionCalls
         set(v) { _state.enableAttentionCalls = v }
+
+    var osNotifications: Boolean
+        get() = _state.osNotifications
+        set(v) { _state.osNotifications = v }
 
     var idleThresholdSeconds: Int
         get() = _state.idleThresholdSeconds

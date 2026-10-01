@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.23.0] — 2026-10-01
+
+### Added
+
+- **Desktop alerts** — when hunger, happiness, energy or health drops below 20, you get a desktop notification, even with the IDE minimised. It repeats every 15 minutes while the stat stays low. Turn it off with `codotchi.osNotifications`.
+
+### Changed
+
+- **Tidier settings** — settings are grouped: general options first, then AI mode, display (stage height, token cost sources, background, font size), idle timers and the leaderboard. Developer-mode settings moved to their own **Developer** section.
+
+### Fixed
+
+- **Sleeping pet** — the blanket that covered a sleeping pet like a blue box is gone; the pet now just rests on its pillow.
+
 ## [2.22.2] — 2026-10-01
 
 ### Changed

@@ -49,6 +49,9 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 - **Moods you can see** — a happy pet sparkles, a sad pet sheds a tear, a
   sleeping pet rests on a pillow, and an eating pet chomps from a bowl
 - **Pet customization** — name your pet and choose a pet type on first launch
+- **Desktop alerts** — when hunger, happiness, energy or health drops below 20
+  you get a desktop notification, even with VS Code minimised. It repeats every
+  15 minutes while the stat stays low; turn it off with `codotchi.osNotifications`
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
   and it dies
 - **Safe while you are away** — when you step away from the IDE your pet gets
@@ -64,7 +67,8 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 - **Persistent state** — pet survives VS Code restarts; offline time is
   accounted for with capped stat decay
 - **Configurable** — customise font size, pet size, stage height, colours, idle thresholds,
-  attention call behaviour, and more via **Settings → Extensions → codotchi**
+  attention call behaviour, and more via **Settings → Extensions → codotchi**.
+  Developer-mode settings live in their own **Developer** section
 
 ## Installation
 

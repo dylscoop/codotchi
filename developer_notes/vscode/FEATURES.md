@@ -707,6 +707,8 @@ Status: `[x]`
 
 All settings live under the `gotchi.*` namespace in VS Code settings.
 
+Since v2.23.0 `contributes.configuration` is an array of two categories, each with an explicit `order` per setting: **Codotchi** (general → AI mode → display → idle → leaderboard) and **Developer** (`devModeEnabled`, `developerPasscode`, `devModeAgingMultiplier`, `devModeHealthFloor`), which shows as its own node in the Settings tree. PyCharm's settings page uses the same order and puts the four developer settings in a collapsed **Developer settings** section (`HideableDecorator`).
+
 | Setting | Type | Default | Description | Status |
 |---------|------|---------|-------------|--------|
 | `gotchi.fontSize` | enum | `normal` | Sidebar font size: `small` / `normal` / `large` | `[x]` |
@@ -715,6 +717,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.codingRewardThrottleSeconds` | number | `30` | Minimum seconds between coding rewards | `[ ]` |
 | `gotchi.autoWake` | boolean | `true` | Auto-wake pet when energy reaches 100 | `[ ]` |
 | `gotchi.enableAttentionCalls` | boolean | `true` | Enable/disable the entire attention-call mechanic | `[x]` |
+| `codotchi.osNotifications` | boolean | `true` | Desktop (OS) notification when hunger, happiness, energy or health < 20 (`CRITICAL_STAT_THRESHOLD`); repeats every 15 min (`CRITICAL_STAT_NOTIFY_REPEAT_MS`) while critical. VS Code: `src/criticalStatNotifier.ts` shells out to a PowerShell toast / osascript / notify-send. PyCharm: `CriticalStatNotifier.kt` + `SystemNotifications` and a "Codotchi Critical Stats" balloon | `[x]` |
 | `gotchi.idleThresholdSeconds` | integer | `60` | Seconds of no activity before idle mode (min 10) | `[x]` |
 | `gotchi.idleDeepThresholdSeconds` | integer | `600` | Seconds of no activity before deep-idle mode (min 30) | `[x]` |
 | `gotchi.alwaysShowGamePicker` | boolean | `false` | Always show game select screen before playing | `[ ]` |

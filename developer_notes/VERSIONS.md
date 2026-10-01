@@ -1,6 +1,24 @@
 # Version History
 
-## v2.22.2 — current
+## v2.23.0 — current
+
+### Changes from v2.22.2 (desktop alerts for critical stats; settings regrouped with a Developer section; sleeping blanket removed — branch feat/os-notifications-settings)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/criticalStatNotifier.ts` (new) | `evaluateCriticalStats` (hunger / happiness / energy / health < `CRITICAL_STAT_THRESHOLD` 20; re-notify every `CRITICAL_STAT_NOTIFY_REPEAT_MS` 15 min; one message for all critical stats) and `sendOsNotification` (PowerShell WinRT toast / osascript / notify-send via `execFile`, text passed in env vars) |
+| `vscode/src/extension.ts` | `handleStateUpdate` sends the desktop notification when `codotchi.osNotifications` is on |
+| `vscode/package.json` | new `codotchi.osNotifications` (default true); `contributes.configuration` split into **Codotchi** and **Developer** categories with an `order` on every setting; new test in `npm test` |
+| `pycharm/.../CriticalStatNotifier.kt` (new), `CodotchiPlugin.kt`, `plugin.xml` | same rules; `SystemNotifications` OS notification plus a "Codotchi Critical Stats" balloon with "Open Gotchi" |
+| `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt` | `osNotifications` setting and checkbox; layout rebuilt with a running row counter in the new order; developer settings in a collapsed `HideableDecorator` section |
+| `vscode/media/sprites.js`, `vscode/media/sidebar.js` | BUGFIX-178: sleeping blanket removed; all mood props (bowl, plate, pillow) drawn before the body |
+| `vscode/tests/unit/criticalStatNotifier.test.ts` (new), `webviewAnimations.test.ts`, `stageHeight.test.ts`, `pycharm/.../CriticalStatNotifierTest.kt` (new) | notifier, command, settings-layout and pillow-only tests; `stageHeight` test reads the category array |
+| `developer_notes/*`, `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | desktop alerts, settings layout, BUGFIX-178 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.22.2 → 2.23.0 |
+
+---
+
+## v2.22.2
 
 ### Changes from v2.22.1 (pixel-art mini-game visuals; snack text waits for the pet to eat — branch feat/minigame-pixel-art)
 

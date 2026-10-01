@@ -28,6 +28,7 @@ import { StatusBarManager } from "./statusBar";
 import { EventsManager } from "./events";
 import { SpritePreviewPanel } from "./spritePreviewPanel";
 import { getCustomCharacterByPasscode } from "./customCharacters";
+import { CriticalStatTracker, evaluateCriticalStats, sendOsNotification } from "./criticalStatNotifier";
 import {
   saveState,
   loadState,
@@ -84,6 +85,9 @@ let lastRescueNotifyMs = 0;
 
 /** How often to re-fire the rescue notification while the sick/losing-health-while-idle condition persists. */
 const RESCUE_NOTIFY_REPEAT_MS = 5 * 60_000;
+
+/** Per-stat timestamps of the last desktop notification for a critical stat. */
+let criticalStatTracker: CriticalStatTracker = {};
 
 /**
  * Activate the extension.
@@ -162,6 +166,18 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     } else {
       lastRescueNotifyMs = 0;
+    }
+
+    // Desktop (OS) notification when a stat drops below 20, so a minimised IDE
+    // doesn't hide it. Independent of the attention-call mechanic.
+    if (vscode.workspace.getConfiguration("codotchi").get<boolean>("osNotifications", true)) {
+      const result = evaluateCriticalStats(state, criticalStatTracker, Date.now());
+      criticalStatTracker = result.tracker;
+      if (result.message) {
+        sendOsNotification("Codotchi", result.message);
+      }
+    } else {
+      criticalStatTracker = {};
     }
 
     // Update high score when pet dies (suppressed in dev mode — scores don't count)
