@@ -685,8 +685,9 @@ STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette)`
 2. `frame(mood, animTick)` gives the flip-book frame.
 3. `spawn` / `step` update the particle pool (at most 20), and `drawParticles`
    draws it.
-4. `drawProps` draws the bowl or plate before the body and the blanket after
-   it.
+4. `drawProps` draws the meal bowl before the body, so it sits behind the pet.
+   Snacks and every other mood draw no props. During `fed_meal` the movement
+   chain locks the pet in place, so the bowl doesn't slide.
 5. `scaleY(mood, frame)` is passed to `drawBodyWithReaction`, which squashes
    the body around the feet when no reaction is playing.
 
@@ -1146,7 +1147,7 @@ These map to `action: "on"` and `action: "off"` internally.
 
 ### VS Code IDE popup notifications
 
-Shown as VS Code warning popups with an "Open Gotchi" button. Defined in `vscode/src/extension.ts`.
+Shown as VS Code warning popups with an "Open Codotchi" button. Defined in `vscode/src/extension.ts`.
 
 | Event | Phrase |
 |-------|--------|

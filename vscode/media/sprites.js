@@ -6490,51 +6490,27 @@ DEFS["roo"] = DEFS["roo"] || {};
   function moodPx(box) { return Math.max(1, Math.round(box.w / 16)); }
 
   /**
-   * Food bowl (eating) or blanket and pillow (sleeping). box = {x, y, w, h}
-   * of the drawn pet, with y + h at the feet.
+   * Food bowl for a meal, drawn behind the pet. Snacks and other moods have no
+   * props. box = {x, y, w, h} of the drawn pet, with y + h at the feet.
    */
   function drawMoodProps(ctx, mood, frame, box, facingLeft, snack) {
+    if (mood !== "eating" || snack) { return; }
     var px = moodPx(box);
     var feetY = box.y + box.h;
+    var bw = 6 * px;
+    var bx = facingLeft ? box.x - bw - px : box.x + box.w + px;
     ctx.save();
-    if (mood === "eating") {
-      var bw = 6 * px;
-      var bx = facingLeft ? box.x - bw - px : box.x + box.w + px;
-      if (snack) {
-        // Plate with one treat that shrinks each chomp
-        ctx.fillStyle = "#d9d9d9";
-        ctx.fillRect(bx, feetY - px, bw, px);
-        var treat = 2 - frame;
-        if (treat > 0) {
-          ctx.fillStyle = "#e8c547";
-          ctx.fillRect(bx + 2 * px, feetY - (1 + treat) * px, 2 * px, treat * px);
-        }
-      } else {
-        // Bowl, food level 2 → 1 → 0 across the chomp
-        var fill = 2 - frame;
-        if (fill > 0) {
-          ctx.fillStyle = "#c8843c";
-          ctx.fillRect(bx + px, feetY - (3 + fill) * px + px, bw - 2 * px, fill * px);
-        }
-        ctx.fillStyle = "#5b8fd9";
-        ctx.fillRect(bx, feetY - 3 * px, bw, px);
-        ctx.fillRect(bx + px, feetY - 2 * px, bw - 2 * px, px);
-        ctx.fillStyle = "#3d6bb0";
-        ctx.fillRect(bx + px, feetY - px, bw - 2 * px, px);
-      }
-    } else if (mood === "sleeping") {
-      // Pillow under the head, blanket over the lower part of the body
-      var pw = Math.max(3 * px, Math.round(box.w * 0.3));
-      var pillowX = facingLeft ? box.x - px : box.x + box.w - pw + px;
-      ctx.fillStyle = "#e6e6f0";
-      ctx.fillRect(pillowX, feetY - 2 * px, pw, 2 * px);
-      var blanketH = Math.round(box.h * 0.4);
-      ctx.globalAlpha = 0.92;
-      ctx.fillStyle = "#6a5acd";
-      ctx.fillRect(box.x - px, feetY - blanketH, box.w + 2 * px, blanketH);
-      ctx.fillStyle = "#483d8b";
-      ctx.fillRect(box.x - px, feetY - blanketH, box.w + 2 * px, px);
+    // Bowl, food level 2 → 1 → 0 across the chomp
+    var fill = 2 - frame;
+    if (fill > 0) {
+      ctx.fillStyle = "#c8843c";
+      ctx.fillRect(bx + px, feetY - (3 + fill) * px + px, bw - 2 * px, fill * px);
     }
+    ctx.fillStyle = "#5b8fd9";
+    ctx.fillRect(bx, feetY - 3 * px, bw, px);
+    ctx.fillRect(bx + px, feetY - 2 * px, bw - 2 * px, px);
+    ctx.fillStyle = "#3d6bb0";
+    ctx.fillRect(bx + px, feetY - px, bw - 2 * px, px);
     ctx.restore();
   }
 

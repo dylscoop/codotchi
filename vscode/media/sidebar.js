@@ -1061,6 +1061,12 @@
       petVx = 0;
       petVy = 0;
 
+    } else if (activeReaction && activeReaction.type === "fed_meal") {
+      // Eating a meal: stand still at the bowl (wander resumes once the reaction ends)
+      petVx = 0;
+      petVy = 0;
+      petY  = isDragon ? floorY - Math.round(bHeight * 0.12) : floorY;
+
     } else if (lastState.stage === "egg") {
       // Egg: static at floor-centre (rocking handled in drawBody)
       petX  = Math.max(minX, Math.min(maxX, Math.floor(spriteCanvas.width / 2 - bWidth / 2)));
@@ -1243,14 +1249,11 @@
 
     // ── Draw ──────────────────────────────────────────────────────────────
     drawEnvironment(lastState);
-    if (moodProps && mood === "eating") {
+    if (moodProps) {
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
     drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                          window.spriteMood.scaleY(mood, moodFrame));
-    if (moodProps && mood === "sleeping") {
-      window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, false);
-    }
     window.spriteMood.drawParticles(spriteCtx, moodParticles, window.spriteMood.px(moodBox));
     drawStatusIndicators(lastState, Math.round(petX), Math.round(petY) + walkBob);
 

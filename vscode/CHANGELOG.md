@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.23.0] — 2026-10-01
+
+### Added
+
+- **Desktop alerts** — when hunger, happiness or energy hits 0, or health drops below 25, you get a desktop notification, even with the IDE minimised. It repeats every 15 minutes while the stat stays low. Turn it off with `codotchi.osNotifications`.
+
+### Changed
+
+- **Tidier settings** — settings are grouped: general options first, then AI mode, display (stage height, token cost sources, background, font size), idle timers and the leaderboard. Developer-mode settings moved to their own **Developer** section.
+
+### Fixed
+
+- **Sleeping pet** — the blanket and pillow that showed as a blue and a white box are gone; a sleeping pet just dozes.
+- **Eating** — your pet now stops to eat its meal, so the bowl stays put instead of sliding along with it. Snacks no longer show a plate.
+- **PyCharm desktop alerts** — now show as a real Windows / macOS / Linux notification, not only inside the IDE. The notification button now reads "Open Codotchi".
+
 ## [2.22.2] — 2026-10-01
 
 ### Changed

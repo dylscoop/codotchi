@@ -115,7 +115,7 @@ Notes:
 - Whim calls (craving, play, pat) come after every need-based call in the fire order, so a real need always wins. A craving asks for a meal once the pet has had 2+ snacks in a row or the snack caps are used up, so it never asks for a snack that would make the pet sick
 - Only one call active at a time; `poop` call can fire while sleeping
 - IDE notifications fire via `showWarningMessage` (VS Code) / `NotificationType.WARNING` (PyCharm)
-- "Open Gotchi" button on notification focuses the sidebar/tool window
+- "Open Codotchi" button on notification focuses the sidebar/tool window
 - Exception: when the pet is sick or losing health *while idle*, a separate "come back and rescue them" notification escalates to `showErrorMessage` (VS Code) / `NotificationType.ERROR` (PyCharm) and re-fires every 5 minutes while the condition persists, instead of firing once at warning level
 
 ---
@@ -382,12 +382,12 @@ props, a squash/stretch and particles drawn around the unchanged sprite
 
 | Mood | Shown when | Layer |
 |------|-----------|-------|
-| eating | `fed_meal` / `fed_snack` reaction, or a 0.6 s floor-snack chomp | Bowl (meal) or plate (snack) that empties over a 3-frame chomp; crumbs |
-| sleeping | `state.sleeping` | Blanket over the lower body, pillow under the head; squashed to 88 %; drifting z's |
+| eating | `fed_meal` / `fed_snack` reaction, or a 0.6 s floor-snack chomp | Bowl for a meal (the pet stands still during `fed_meal`, v2.23.0) that empties over a 3-frame chomp; no plate for a snack; crumbs |
+| sleeping | `state.sleeping` | No props (blanket and pillow removed in v2.23.0, BUGFIX-178); squashed to 88 %; drifting z's |
 | happy | `state.mood === "happy"` | Nothing most of the time; a ~1 s burst every ~30 s (first after ~20 s): two 4 % stretch pulses and 2–4 sparkles |
 | sad | `state.mood === "sad"` | Steady 95 % droop; a ~1.5 s burst of 3 tears from the head side every ~30 s (first after ~10 s) |
 
-Neutral and sick have no layer. The dragon hovers, so it gets no bowl or blanket.
+Neutral and sick have no layer. The dragon hovers, so it gets no bowl.
 
 ### 5.7 Direction Flip (Sprite Mirroring)
 
@@ -707,6 +707,8 @@ Status: `[x]`
 
 All settings live under the `gotchi.*` namespace in VS Code settings.
 
+Since v2.23.0 `contributes.configuration` is an array of two categories, each with an explicit `order` per setting: **Codotchi** (general → AI mode → display → idle → leaderboard) and **Developer** (`devModeEnabled`, `developerPasscode`, `devModeAgingMultiplier`, `devModeHealthFloor`), which shows as its own node in the Settings tree. PyCharm's settings page uses the same order and puts the four developer settings in a collapsed **Developer settings** section (`HideableDecorator`).
+
 | Setting | Type | Default | Description | Status |
 |---------|------|---------|-------------|--------|
 | `gotchi.fontSize` | enum | `normal` | Sidebar font size: `small` / `normal` / `large` | `[x]` |
@@ -715,6 +717,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.codingRewardThrottleSeconds` | number | `30` | Minimum seconds between coding rewards | `[ ]` |
 | `gotchi.autoWake` | boolean | `true` | Auto-wake pet when energy reaches 100 | `[ ]` |
 | `gotchi.enableAttentionCalls` | boolean | `true` | Enable/disable the entire attention-call mechanic | `[x]` |
+| `codotchi.osNotifications` | boolean | `true` | Desktop (OS) notification when hunger, happiness or energy hits 0 (`ZERO_ALERT_STATS`) or health < 25 (`HEALTH_ALERT_THRESHOLD`); repeats every 15 min (`CRITICAL_STAT_NOTIFY_REPEAT_MS`) while critical. VS Code: `src/criticalStatNotifier.ts` shells out to a PowerShell toast / osascript / notify-send. PyCharm: `CriticalStatNotifier.kt` runs the same commands via `ProcessBuilder`, plus a "Codotchi Critical Stats" balloon | `[x]` |
 | `gotchi.idleThresholdSeconds` | integer | `60` | Seconds of no activity before idle mode (min 10) | `[x]` |
 | `gotchi.idleDeepThresholdSeconds` | integer | `600` | Seconds of no activity before deep-idle mode (min 30) | `[x]` |
 | `gotchi.alwaysShowGamePicker` | boolean | `false` | Always show game select screen before playing | `[ ]` |

@@ -229,7 +229,7 @@ Already tracked in `FEATURES.md §14` — listed here for parity gap visibility.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Idle walk cycle (2–4 frames) | `[x]` | 2-frame leg cycle with bob in the `renderSpriteGrid` pipeline |
-| Mood-specific frames (happy, sad, sleeping, eating) | `[x]` | v2.22.1: a mood layer drawn around the pet, not new art: bowl / plate while eating, blanket + pillow while sleeping, squash/stretch, sparkles / tears / crumbs / z's (`window.spriteMood` in `sprites.js`). Happy sparkles and sad tears only come in short bursts about every 30 s (`MOOD_BURSTS`). Optional per-mood grids `DEFS[type][stage + "_" + mood]` are used when present (none shipped) |
+| Mood-specific frames (happy, sad, sleeping, eating) | `[x]` | v2.22.1: a mood layer drawn around the pet, not new art: bowl for a meal (v2.23.0: pet stands still, no snack plate), nothing while sleeping (blanket and pillow removed in v2.23.0, BUGFIX-178), squash/stretch, sparkles / tears / crumbs / z's (`window.spriteMood` in `sprites.js`). Happy sparkles and sad tears only come in short bursts about every 30 s (`MOOD_BURSTS`). Optional per-mood grids `DEFS[type][stage + "_" + mood]` are used when present (none shipped) |
 
 ---
 

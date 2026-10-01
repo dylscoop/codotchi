@@ -6,7 +6,9 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.Configurable
 import com.intellij.ui.ColorPanel
+import com.intellij.ui.HideableDecorator
 import com.intellij.ui.components.JBLabel
+import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
@@ -31,6 +33,7 @@ class CodotchiConfigurable : Configurable {
     private var fontSizeCombo:             JComboBox<String>? = null
     private var colorPanel:                ColorPanel?         = null
     private var enableAttentionCallsCheck: JCheckBox?          = null
+    private var osNotificationsCheck:      JCheckBox?          = null
     private var idleThresholdSpinner:      JSpinner?           = null
     private var idleDeepThresholdSpinner:  JSpinner?           = null
     private var attentionCallExpiryCombo:  JComboBox<String>?  = null
@@ -64,6 +67,7 @@ class CodotchiConfigurable : Configurable {
         val combo   = JComboBox(arrayOf("Small", "Normal", "Large"))
         val cp      = ColorPanel()
         val attentionCheck  = JCheckBox("Enable attention calls")
+        val osNotificationsCheckbox = JCheckBox("Desktop notification when hunger, happiness or energy hits 0, or health drops below 25")
         val idleSpinner     = JSpinner(SpinnerNumberModel(60, 10, 3600, 10))
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
         val expiryCombo     = JComboBox(arrayOf("Needy (4 min)", "Standard (10 min)", "Chilled (20 min)"))
@@ -110,6 +114,7 @@ class CodotchiConfigurable : Configurable {
         fontSizeCombo            = combo
         colorPanel               = cp
         enableAttentionCallsCheck = attentionCheck
+        osNotificationsCheck     = osNotificationsCheckbox
         idleThresholdSpinner     = idleSpinner
         idleDeepThresholdSpinner = deepIdleSpinner
         attentionCallExpiryCombo = expiryCombo
@@ -137,226 +142,87 @@ class CodotchiConfigurable : Configurable {
         val panel = JPanel(GridBagLayout())
         val gbc   = GridBagConstraints()
         gbc.insets = Insets(4, 4, 4, 4)
-
-        // Row 0 — Background
-        gbc.gridx = 0; gbc.gridy = 0
         gbc.anchor = GridBagConstraints.WEST
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Background:"), gbc)
+        var row = 0
 
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(bgCombo, gbc)
+        /** Label in column 0, control stretched across column 1. */
+        fun addLabeled(target: JPanel, label: String, control: JComponent) {
+            gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 1
+            gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+            target.add(JBLabel(label), gbc)
+            gbc.gridx = 1
+            gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+            target.add(control, gbc)
+            row++
+        }
 
-        // Row 1 — Font size
-        gbc.gridx = 0; gbc.gridy = 1
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Font size:"), gbc)
+        /** A control spanning both columns (checkboxes, labels). */
+        fun addFull(target: JPanel, control: JComponent) {
+            gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2
+            gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
+            target.add(control, gbc)
+            gbc.gridwidth = 1
+            row++
+        }
 
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(combo, gbc)
+        // General
+        addFull(panel, attentionCheck)
+        addLabeled(panel, "Attention call expiry:", expiryCombo)
+        addLabeled(panel, "Attention call rate:", rateCombo)
+        addFull(panel, osNotificationsCheckbox)
+        addLabeled(panel, "Pet size:", petSizeDropdown)
+        addFull(panel, reducedMotionCheckbox)
+        addFull(panel, perWorkspacePetCheckbox)
+        addLabeled(panel, "Character passcode:", charPasscodeField)
 
-        // Row 2 — Text colour
-        gbc.gridx = 0; gbc.gridy = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Text colour:"), gbc)
+        // AI mode
+        addFull(panel, aiModeCheckbox)
 
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(cp, gbc)
+        // Display
+        addLabeled(panel, "Pet stage height:", stageHeightDropdown)
+        addFull(panel, tokenCostClaudeCodeCheckbox)
+        addFull(panel, tokenCostOpenCodeCheckbox)
+        addFull(panel, tokenCostCopilotCheckbox)
+        addLabeled(panel, "Background:", bgCombo)
+        addLabeled(panel, "Font size:", combo)
+        addLabeled(panel, "Text colour:", cp)
 
-        // Row 3 — Enable attention calls
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(attentionCheck, gbc)
-        gbc.gridwidth = 1
+        // Idle
+        addLabeled(panel, "Idle threshold (seconds):", idleSpinner)
+        addLabeled(panel, "Deep-idle threshold (seconds):", deepIdleSpinner)
+        addFull(panel, idleResetDocChangeCheckbox)
+        addFull(panel, idleResetCursorCheckbox)
+        addFull(panel, idleResetTabCheckbox)
+        addFull(panel, idleResetFocusCheckbox)
+        addFull(panel, idleResetMouseCheckbox)
 
-        // Row 4 — Idle threshold
-        gbc.gridx = 0; gbc.gridy = 4
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Idle threshold (seconds):"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(idleSpinner, gbc)
-
-        // Row 5 — Deep-idle threshold
-        gbc.gridx = 0; gbc.gridy = 5
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Deep-idle threshold (seconds):"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(deepIdleSpinner, gbc)
-
-        // Row 6 — Attention call expiry
-        gbc.gridx = 0; gbc.gridy = 6
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Attention call expiry:"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(expiryCombo, gbc)
-
-        // Row 7 — Attention call rate
-        gbc.gridx = 0; gbc.gridy = 7
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Attention call rate:"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(rateCombo, gbc)
-
-        // Row 8 — Pet stage height
-        gbc.gridx = 0; gbc.gridy = 8
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Pet stage height:"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(stageHeightDropdown, gbc)
-
-        // Row 9 — Reduced motion
-        gbc.gridx = 0; gbc.gridy = 9; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(reducedMotionCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 10 — Pet size
-        gbc.gridx = 0; gbc.gridy = 10
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Pet size:"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(petSizeDropdown, gbc)
-
-        // Row 11 — Dev mode enabled
-        gbc.gridx = 0; gbc.gridy = 11; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(devModeEnabledCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 12 — Developer passcode
-        gbc.gridx = 0; gbc.gridy = 12
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Developer passcode:"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(devPasscodeField, gbc)
-
-        // Row 13 — Character passcode
-        gbc.gridx = 0; gbc.gridy = 13
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Character passcode:"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(charPasscodeField, gbc)
-
-        // Row 14 — Dev mode aging multiplier
-        gbc.gridx = 0; gbc.gridy = 14
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Dev mode aging multiplier:"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(devAgingSpinner, gbc)
-
-        // Row 15 — Dev mode health floor
-        gbc.gridx = 0; gbc.gridy = 15
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Dev mode health floor:"), gbc)
-
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
-        panel.add(devHealthFloorSpinner, gbc)
-
-        // Row 16 — AI mode
-        gbc.gridx = 0; gbc.gridy = 16; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(aiModeCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 17 — Idle reset: document changes
-        gbc.gridx = 0; gbc.gridy = 17; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(idleResetDocChangeCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 18 — Idle reset: cursor movement
-        gbc.gridx = 0; gbc.gridy = 18; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(idleResetCursorCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 19 — Idle reset: tab switch
-        gbc.gridx = 0; gbc.gridy = 19; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(idleResetTabCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 20 — Idle reset: window focus
-        gbc.gridx = 0; gbc.gridy = 20; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(idleResetFocusCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 21 — Idle reset: mouse movement
-        gbc.gridx = 0; gbc.gridy = 21; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(idleResetMouseCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 22 — Per-project pet
-        gbc.gridx = 0; gbc.gridy = 22; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(perWorkspacePetCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 23 — Today's Token Cost: include Claude Code
-        gbc.gridx = 0; gbc.gridy = 23; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(tokenCostClaudeCodeCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 24 — Today's Token Cost: include OpenCode
-        gbc.gridx = 0; gbc.gridy = 24; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(tokenCostOpenCodeCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 25 — Today's Token Cost: include Copilot quota %
-        gbc.gridx = 0; gbc.gridy = 25; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(tokenCostCopilotCheckbox, gbc)
-        gbc.gridwidth = 1
-
-        // Row 26 — Leaderboard sign-in label
-        gbc.gridx = 0; gbc.gridy = 26; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(JBLabel("Leaderboard GitHub account:"), gbc)
-        gbc.gridwidth = 1
-
-        // Row 27 — sign-in status
-        gbc.gridx = 0; gbc.gridy = 27; gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
-        panel.add(signInStatusLabel, gbc)
-        gbc.gridwidth = 1
-
-        // Row 28 — sign-in / sign-out buttons
-        gbc.gridx = 0; gbc.gridy = 28
+        // Leaderboard
+        addFull(panel, JBLabel("Leaderboard GitHub account:"))
+        addFull(panel, signInStatusLabel)
+        gbc.gridx = 0; gbc.gridy = row
         gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(signInBtn, gbc)
-
         gbc.gridx = 1
-        gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0
         panel.add(signOutBtn, gbc)
+        row++
+
+        // Developer settings — collapsed by default to keep the page uncluttered
+        val devContent = JPanel(GridBagLayout())
+        addFull(devContent, devModeEnabledCheckbox)
+        addLabeled(devContent, "Developer passcode:", devPasscodeField)
+        addLabeled(devContent, "Dev mode aging multiplier:", devAgingSpinner)
+        addLabeled(devContent, "Dev mode health floor:", devHealthFloorSpinner)
+        val devSection = JPanel(BorderLayout())
+        HideableDecorator(devSection, "Developer settings", false).apply {
+            setContentComponent(devContent)
+            setOn(false)
+        }
+        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0
+        panel.add(devSection, gbc)
 
         // Push content to the top
-        gbc.gridx = 0; gbc.gridy = 29; gbc.gridwidth = 2
+        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2
         gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
         panel.add(JPanel(), gbc)
 
@@ -369,6 +235,7 @@ class CodotchiConfigurable : Configurable {
         val uiFont       = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
         val uiColor      = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
         val uiAttention  = enableAttentionCallsCheck?.isSelected ?: true
+        val uiOsNotifications = osNotificationsCheck?.isSelected ?: true
         val uiIdle       = (idleThresholdSpinner?.value as? Int) ?: 60
         val uiDeepIdle   = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         val uiExpiry     = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
@@ -395,6 +262,7 @@ class CodotchiConfigurable : Configurable {
         return uiFont != settings.fontSize
             || uiColor != settings.textColor
             || uiAttention != settings.enableAttentionCalls
+            || uiOsNotifications != settings.osNotifications
             || uiIdle != settings.idleThresholdSeconds
             || uiDeepIdle != settings.idleDeepThresholdSeconds
             || uiExpiry != settings.attentionCallExpiry
@@ -425,6 +293,7 @@ class CodotchiConfigurable : Configurable {
         settings.fontSize               = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
         settings.textColor              = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
         settings.enableAttentionCalls   = enableAttentionCallsCheck?.isSelected ?: true
+        settings.osNotifications        = osNotificationsCheck?.isSelected ?: true
         settings.idleThresholdSeconds   = (idleThresholdSpinner?.value as? Int) ?: 60
         settings.idleDeepThresholdSeconds = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         settings.attentionCallExpiry    = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
@@ -468,6 +337,7 @@ class CodotchiConfigurable : Configurable {
         fontSizeCombo?.selectedItem        = settings.fontSize.replaceFirstChar { it.uppercaseChar() }
         colorPanel?.selectedColor          = hexToColor(settings.textColor)
         enableAttentionCallsCheck?.isSelected = settings.enableAttentionCalls
+        osNotificationsCheck?.isSelected      = settings.osNotifications
         idleThresholdSpinner?.value        = settings.idleThresholdSeconds
         idleDeepThresholdSpinner?.value    = settings.idleDeepThresholdSeconds
         attentionCallExpiryCombo?.selectedIndex = expiryKeyToIndex(settings.attentionCallExpiry)

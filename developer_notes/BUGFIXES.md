@@ -2161,3 +2161,16 @@ Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an
 **Fix:** `tick` now computes `inDamageState` (starving past `HUNGER_ZERO_TICKS_BEFORE_RISK`, happiness 0 awake, energy 0 awake, or sick) before the damage blocks. The idle floor uses `inDamageState || tookDamageThisTick`. Health is still never lost while idle, and a stat already below the floor is still never raised.
 
 **Tests:** `vscode/tests/unit/gameEngine.test.ts` and `pycharm/.../GameEngineTest.kt` tick a starving pet and a miserable pet 3000 times while idle and deep idle, and check that the other stats stay ≥ 20. The TS tests fail on the old engine.
+
+## BUGFIX-178 — Sleeping pet covered by a blue box (then a white box)
+
+**Status:** Fixed (branch `feat/os-notifications-settings`)
+**Files:** `vscode/media/sprites.js`, `vscode/media/sidebar.js` (PyCharm copies both at build time)
+
+**Problem:** The v2.22.1 sleeping mood drew a 92 %-opaque slate-blue blanket over the bottom 40 % of the pet, after the body. At pixel scale it read as a solid blue box hiding the pet.
+
+After the blanket was removed, the light pillow rect under the pet read as a white box.
+
+**Fix:** The blanket and the pillow are gone; `drawMoodProps` draws nothing for sleeping. The meal bowl is now the only prop, drawn before the body.
+
+**Tests:** `vscode/tests/unit/webviewAnimations.test.ts` checks that sleeping (and a snack) draw no rects.

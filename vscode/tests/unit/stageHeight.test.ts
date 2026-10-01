@@ -19,7 +19,9 @@ describe("stageHeightPx", () => {
 
   it("matches the codotchi.stageHeight setting declared in package.json", () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "../../../package.json"), "utf8"));
-    const prop = pkg.contributes.configuration.properties["codotchi.stageHeight"];
+    const prop = pkg.contributes.configuration
+      .map((c: { properties: Record<string, any> }) => c.properties["codotchi.stageHeight"])
+      .find(Boolean);
     assert.deepEqual(prop.enum, Object.keys(STAGE_HEIGHT_PX));
     assert.equal(prop.default, "normal");
     prop.enumDescriptions.forEach((d: string, i: number) =>

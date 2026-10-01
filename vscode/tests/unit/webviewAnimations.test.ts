@@ -124,15 +124,17 @@ describe("mood layer (vscode/media/sprites.js window.spriteMood)", () => {
     assert.ok(mood.scaleY("sleeping", 0) < 1);
   });
 
-  it("draws a bowl while eating and a blanket while sleeping, nothing otherwise", () => {
-    for (const m of ["eating", "sleeping"]) {
+  it("draws a bowl only for a meal — no plate for a snack, nothing while sleeping", () => {
+    const eating = mockCtx();
+    mood.drawProps(eating.ctx, "eating", 0, box, false, false);
+    assert.ok((eating.calls["fillRect"] ?? 0) >= 3, "eating: no bowl drawn");
+
+    // The blanket read as a blue box and the pillow as a white box (BUGFIX-178)
+    for (const [m, snack] of [["eating", true], ["sleeping", false], ["happy", false]] as const) {
       const { ctx, calls } = mockCtx();
-      mood.drawProps(ctx, m, 0, box, false, false);
-      assert.ok((calls["fillRect"] ?? 0) >= 3, `${m}: no props drawn`);
+      mood.drawProps(ctx, m, 0, box, false, snack);
+      assert.equal(calls["fillRect"] ?? 0, 0, `${m}${snack ? " (snack)" : ""}: no props expected`);
     }
-    const { ctx, calls } = mockCtx();
-    mood.drawProps(ctx, "happy", 0, box, false, false);
-    assert.equal(calls["fillRect"] ?? 0, 0);
   });
 
   it("empties the bowl across the chomp", () => {
@@ -232,6 +234,16 @@ describe("per-mood sprite grids (renderSpriteGrid hook)", () => {
     for (const stages of Object.values(w.SPRITES as Record<string, Record<string, unknown>>)) {
       assert.ok(!Object.keys(stages).some((k) => k.includes("_")), "no per-mood grids are shipped yet");
     }
+  });
+});
+
+describe("pet stands still while eating a meal (sidebar.js)", () => {
+  it("locks movement during the fed_meal reaction so the bowl stays put", () => {
+    assert.match(sidebarSource,
+      /\} else if \(activeReaction && activeReaction\.type === "fed_meal"\) \{[^}]*petVx = 0;/);
+    const lock = sidebarSource.indexOf('activeReaction.type === "fed_meal") {');
+    const wander = sidebarSource.indexOf("// ── Normal movement");
+    assert.ok(lock > 0 && lock < wander, "fed_meal lock must come before the wander branch");
   });
 });
 
