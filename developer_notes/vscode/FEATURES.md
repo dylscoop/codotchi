@@ -751,6 +751,8 @@ Since v2.23.0 `contributes.configuration` is an array of two categories, each wi
 | `gotchi.idleResetOnTabSwitch` | boolean | `true` | Reset idle timer when the active editor tab changes. Suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnWindowFocus` | boolean | `true` | Reset idle timer when the VS Code window gains focus. Never suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnMouseMovement` | boolean | `true` | Reset idle timer on mouse movement in the sidebar panel (throttled to once/30 s). Never suppressed by `aiMode`. | `[x]` |
+| `codotchi.backgroundOpacity` | enum | `medium` | `subtle` / `medium` / `vivid`: veil of the pet backdrop colour over the scene, [day, night] alpha `subtle` [0.45, 0.15] · `medium` [0.30, 0.10] · `vivid` none; small moving bits draw above it (v2.25.0) | `[x]` |
+| `codotchi.backgroundAnimations` | boolean | `true` | Off (or reduced motion) draws one still frame: no drifting clouds, twinkle, light cycling, petals / leaves, weather or critters (v2.25.0) | `[x]` |
 | `codotchi.background` | enum | `ordered` | Canvas background mode: `plain` (pet colour + dark ground strip), `ordered` (auto season+time), `spring`, `summer`, `autumn`, `winter` | `[x]` |
 | `codotchi.perWorkspacePet` | boolean | `false` | Give each workspace its own independent pet. State is stored in a workspace-specific file (`<hash12>/state.json`). On first enable the current shared pet is copied to the workspace file. | `[x]` |
 
