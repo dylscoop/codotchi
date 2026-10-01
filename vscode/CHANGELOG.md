@@ -4,7 +4,7 @@
 
 ### Added
 
-- **Desktop alerts** — when hunger, happiness, energy or health drops below 20, you get a desktop notification, even with the IDE minimised. It repeats every 15 minutes while the stat stays low. Turn it off with `codotchi.osNotifications`.
+- **Desktop alerts** — when hunger, happiness or energy hits 0, or health drops below 25, you get a desktop notification, even with the IDE minimised. It repeats every 15 minutes while the stat stays low. Turn it off with `codotchi.osNotifications`.
 
 ### Changed
 
@@ -12,7 +12,9 @@
 
 ### Fixed
 
-- **Sleeping pet** — the blanket that covered a sleeping pet like a blue box is gone; the pet now just rests on its pillow.
+- **Sleeping pet** — the blanket and pillow that showed as a blue and a white box are gone; a sleeping pet just dozes.
+- **Eating** — your pet now stops to eat its meal, so the bowl stays put instead of sliding along with it. Snacks no longer show a plate.
+- **PyCharm desktop alerts** — now show as a real Windows / macOS / Linux notification, not only inside the IDE. The notification button now reads "Open Codotchi".
 
 ## [2.22.2] — 2026-10-01
 

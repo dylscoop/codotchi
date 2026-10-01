@@ -42,9 +42,9 @@ Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotch
   <li><b>Classic Tamagotchi mechanics</b> — hunger, happiness, discipline, energy, health, weight, and age stats, all decaying in real time</li>
   <li><b>Full care system</b> — feed meals and snacks, play mini-games, put pet to sleep, clean droppings, give medicine, scold and praise</li>
   <li><b>Life cycle &amp; evolution</b> — egg → baby → child → teen → adult → senior, with the final character determined by how well you cared for your pet</li>
-  <li><b>Moods you can see</b> — a happy pet sparkles, a sad pet sheds a tear, a sleeping pet rests on a pillow, and an eating pet chomps from a bowl</li>
+  <li><b>Moods you can see</b> — a happy pet sparkles, a sad pet sheds a tear, a sleeping pet dozes with drifting z's, and a pet stops to eat its meal from a bowl</li>
   <li><b>Pet customisation</b> — name your pet and choose a pet type on first launch</li>
-  <li><b>Desktop alerts</b> — when hunger, happiness, energy or health drops below 20 you get a desktop notification, even with the IDE minimised. It repeats every 15 minutes while the stat stays low; turn it off in Settings</li>
+  <li><b>Desktop alerts</b> — when hunger, happiness or energy hits 0, or health drops below 25, you get a desktop notification, even with the IDE minimised. It repeats every 15 minutes while the stat stays low; turn it off in Settings</li>
   <li><b>Sickness &amp; death</b> — neglect your pet and it gets sick; leave it untreated and it dies</li>
   <li><b>Safe while you are away</b> — when you step away from the IDE your pet gets hungry and bored more slowly and never loses health, so it is waiting for you when you come back</li>
   <li><b>Little whims</b> — now and then your pet just wants to play a game, get a pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in time and it's happy; ignore it and its health suffers</li>
@@ -201,7 +201,7 @@ automatically and retries the submission once.</p>
             displayType="BALLOON"
             isLogByDefault="true"/>
 
-        <!-- Notification group for critical stats (< 20); also sent as an OS notification -->
+        <!-- Notification group for critical stats (hunger/happiness/energy at 0, health < 25); also sent as an OS notification -->
         <notificationGroup
             id="Codotchi Critical Stats"
             displayType="BALLOON"

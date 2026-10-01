@@ -2162,13 +2162,15 @@ Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an
 
 **Tests:** `vscode/tests/unit/gameEngine.test.ts` and `pycharm/.../GameEngineTest.kt` tick a starving pet and a miserable pet 3000 times while idle and deep idle, and check that the other stats stay ≥ 20. The TS tests fail on the old engine.
 
-## BUGFIX-178 — Sleeping pet covered by a blue box
+## BUGFIX-178 — Sleeping pet covered by a blue box (then a white box)
 
 **Status:** Fixed (branch `feat/os-notifications-settings`)
 **Files:** `vscode/media/sprites.js`, `vscode/media/sidebar.js` (PyCharm copies both at build time)
 
 **Problem:** The v2.22.1 sleeping mood drew a 92 %-opaque slate-blue blanket over the bottom 40 % of the pet, after the body. At pixel scale it read as a solid blue box hiding the pet.
 
-**Fix:** The blanket is gone. `drawMoodProps` draws only the pillow for sleeping, and `sidebar.js` now draws every mood prop before the body, so the pillow sits behind the pet.
+After the blanket was removed, the light pillow rect under the pet read as a white box.
 
-**Tests:** `vscode/tests/unit/webviewAnimations.test.ts` checks that sleeping draws exactly one rect (the pillow).
+**Fix:** The blanket and the pillow are gone; `drawMoodProps` draws nothing for sleeping. The meal bowl is now the only prop, drawn before the body.
+
+**Tests:** `vscode/tests/unit/webviewAnimations.test.ts` checks that sleeping (and a snack) draw no rects.

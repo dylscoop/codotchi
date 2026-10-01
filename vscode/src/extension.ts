@@ -168,8 +168,9 @@ export function activate(context: vscode.ExtensionContext): void {
       lastRescueNotifyMs = 0;
     }
 
-    // Desktop (OS) notification when a stat drops below 20, so a minimised IDE
-    // doesn't hide it. Independent of the attention-call mechanic.
+    // Desktop (OS) notification when hunger, happiness or energy hits 0 or health
+    // drops below 25, so a minimised IDE doesn't hide it. Independent of the
+    // attention-call mechanic.
     if (vscode.workspace.getConfiguration("codotchi").get<boolean>("osNotifications", true)) {
       const result = evaluateCriticalStats(state, criticalStatTracker, Date.now());
       criticalStatTracker = result.tracker;

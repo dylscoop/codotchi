@@ -1,6 +1,7 @@
 /**
- * Tests for src/criticalStatNotifier.ts — desktop notifications when a stat
- * falls below 20 — and the settings layout in package.json.
+ * Tests for src/criticalStatNotifier.ts — desktop notifications when hunger,
+ * happiness or energy hits 0 or health drops below 25 — and the settings
+ * layout in package.json.
  */
 
 import { describe, it } from "node:test";
@@ -18,20 +19,22 @@ const healthy: CriticalStatInput = { name: "Pip", alive: true, hunger: 60, happi
 const T0 = 1_000_000;
 
 describe("evaluateCriticalStats", () => {
-  it("stays quiet while every stat is 20 or more", () => {
-    const r = evaluateCriticalStats({ ...healthy, hunger: 20 }, {}, T0);
-    assert.equal(r.message, null);
-    assert.deepEqual(r.tracker, {});
+  it("stays quiet until hunger, happiness or energy hits 0", () => {
+    for (const stat of ["hunger", "happiness", "energy"] as const) {
+      assert.equal(evaluateCriticalStats({ ...healthy, [stat]: 1 }, {}, T0).message, null, `${stat} 1`);
+      assert.equal(evaluateCriticalStats({ ...healthy, [stat]: 0 }, {}, T0).message, `Pip needs you — ${stat} 0`);
+    }
   });
 
-  it("notifies as soon as a stat drops below 20", () => {
-    const r = evaluateCriticalStats({ ...healthy, hunger: 12.4 }, {}, T0);
-    assert.equal(r.message, "Pip needs you — critical hunger 12");
-    assert.deepEqual(r.tracker, { hunger: T0 });
+  it("alerts when health drops below 25", () => {
+    assert.equal(evaluateCriticalStats({ ...healthy, health: 25 }, {}, T0).message, null);
+    const r = evaluateCriticalStats({ ...healthy, health: 24.4 }, {}, T0);
+    assert.equal(r.message, "Pip needs you — health 24");
+    assert.deepEqual(r.tracker, { health: T0 });
   });
 
   it("repeats only after 15 minutes while the stat stays critical", () => {
-    const low = { ...healthy, energy: 5 };
+    const low = { ...healthy, energy: 0 };
     const first = evaluateCriticalStats(low, {}, T0);
     const soon = evaluateCriticalStats(low, first.tracker, T0 + CRITICAL_STAT_NOTIFY_REPEAT_MS - 1);
     assert.equal(soon.message, null);
@@ -49,10 +52,10 @@ describe("evaluateCriticalStats", () => {
   });
 
   it("lists every critical stat in one message and restarts all their timers", () => {
-    const first = evaluateCriticalStats({ ...healthy, hunger: 10 }, {}, T0);
-    const both = evaluateCriticalStats({ ...healthy, hunger: 10, energy: 8 }, first.tracker, T0 + 1000);
-    assert.equal(both.message, "Pip needs you — critical hunger 10, energy 8");
-    assert.deepEqual(both.tracker, { hunger: T0 + 1000, energy: T0 + 1000 });
+    const first = evaluateCriticalStats({ ...healthy, hunger: 0 }, {}, T0);
+    const both = evaluateCriticalStats({ ...healthy, hunger: 0, health: 18 }, first.tracker, T0 + 1000);
+    assert.equal(both.message, "Pip needs you — hunger 0, health 18");
+    assert.deepEqual(both.tracker, { hunger: T0 + 1000, health: T0 + 1000 });
   });
 
   it("ignores discipline and dead pets", () => {

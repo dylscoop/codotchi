@@ -1460,8 +1460,9 @@ class CodotchiPlugin : Disposable {
             lastRescueNotifyMs = 0L
         }
 
-        // Desktop (OS) notification when a stat drops below 20, so a minimised IDE
-        // doesn't hide it. Independent of the attention-call mechanic.
+        // Desktop (OS) notification when hunger, happiness or energy hits 0 or health
+        // drops below 25, so a minimised IDE doesn't hide it. Independent of the
+        // attention-call mechanic.
         if (state != null && service<CodotchiSettings>().osNotifications) {
             val result = CriticalStatNotifier.evaluate(state, criticalStatTracker, System.currentTimeMillis())
             criticalStatTracker = result.tracker
@@ -1524,7 +1525,7 @@ class CodotchiPlugin : Disposable {
                 .getNotificationGroup("Codotchi Attention Calls")
                 ?: return@invokeLater
             val notification = group.createNotification(message, NotificationType.WARNING)
-            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
+            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Codotchi") {
                 override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
                     val project = e.project
                         ?: ProjectManager.getInstance().openProjects.firstOrNull()
@@ -1544,7 +1545,7 @@ class CodotchiPlugin : Disposable {
                 .getNotificationGroup("Codotchi Attention Calls")
                 ?: return@invokeLater
             val notification = group.createNotification(message, NotificationType.ERROR)
-            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
+            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Codotchi") {
                 override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
                     val project = e.project
                         ?: ProjectManager.getInstance().openProjects.firstOrNull()
@@ -1558,17 +1559,17 @@ class CodotchiPlugin : Disposable {
     }
 
     /**
-     * Critical-stat alert: a native OS notification via [com.intellij.ui.SystemNotifications]
-     * (visible when the IDE is minimised) plus an in-IDE balloon with an "Open Gotchi" action.
+     * Critical-stat alert: a native OS notification via [CriticalStatNotifier.sendOsNotification]
+     * (visible when the IDE is minimised) plus an in-IDE balloon with an "Open Codotchi" action.
      */
     private fun fireCriticalStatNotification(message: String) {
+        CriticalStatNotifier.sendOsNotification("Codotchi", message)
         ApplicationManager.getApplication().invokeLater {
-            com.intellij.ui.SystemNotifications.getInstance().notify("Codotchi Critical Stats", "Codotchi", message)
             val group = NotificationGroupManager.getInstance()
                 .getNotificationGroup("Codotchi Critical Stats")
                 ?: return@invokeLater
             val notification = group.createNotification(message, NotificationType.WARNING)
-            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
+            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Codotchi") {
                 override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
                     val project = e.project
                         ?: ProjectManager.getInstance().openProjects.firstOrNull()

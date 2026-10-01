@@ -10,7 +10,7 @@ import com.intellij.openapi.components.*
  *  - [fontSize]               : "small" | "normal" | "large"  — maps to CSS body class
  *  - [textColor]              : CSS hex colour string           — injected as body colour override
  *  - [enableAttentionCalls]   : whether to show balloon notifications for attention calls
- *  - [osNotifications]        : desktop (OS) notification when hunger, happiness, energy or health < 20 (default true)
+ *  - [osNotifications]        : desktop (OS) notification when hunger, happiness or energy hits 0, or health < 25 (default true)
  *  - [idleThresholdSeconds]   : seconds of no IDE activity before idle mode (default 60)
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
  *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift/play/pat/craving

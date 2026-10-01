@@ -1061,6 +1061,12 @@
       petVx = 0;
       petVy = 0;
 
+    } else if (activeReaction && activeReaction.type === "fed_meal") {
+      // Eating a meal: stand still at the bowl (wander resumes once the reaction ends)
+      petVx = 0;
+      petVy = 0;
+      petY  = isDragon ? floorY - Math.round(bHeight * 0.12) : floorY;
+
     } else if (lastState.stage === "egg") {
       // Egg: static at floor-centre (rocking handled in drawBody)
       petX  = Math.max(minX, Math.min(maxX, Math.floor(spriteCanvas.width / 2 - bWidth / 2)));

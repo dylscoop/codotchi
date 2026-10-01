@@ -67,7 +67,7 @@ class CodotchiConfigurable : Configurable {
         val combo   = JComboBox(arrayOf("Small", "Normal", "Large"))
         val cp      = ColorPanel()
         val attentionCheck  = JCheckBox("Enable attention calls")
-        val osNotificationsCheckbox = JCheckBox("Desktop notification when hunger, happiness, energy or health is below 20")
+        val osNotificationsCheckbox = JCheckBox("Desktop notification when hunger, happiness or energy hits 0, or health drops below 25")
         val idleSpinner     = JSpinner(SpinnerNumberModel(60, 10, 3600, 10))
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
         val expiryCombo     = JComboBox(arrayOf("Needy (4 min)", "Standard (10 min)", "Chilled (20 min)"))

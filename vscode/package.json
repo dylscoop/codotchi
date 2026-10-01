@@ -135,7 +135,7 @@
           "codotchi.osNotifications": {
             "type": "boolean",
             "default": true,
-            "description": "Send a desktop (OS) notification when hunger, happiness, energy or health falls below 20, so you see it even when VS Code is minimised. Repeats every 15 minutes while the stat stays critical. Works independently of attention calls.",
+            "description": "Send a desktop (OS) notification when hunger, happiness or energy hits 0, or health drops below 25, so you see it even when VS Code is minimised. Repeats every 15 minutes while the stat stays that low. Works independently of attention calls.",
             "order": 4
           },
           "codotchi.petSize": {
