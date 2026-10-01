@@ -63,6 +63,13 @@ describe("webview reactions (vscode/media/sidebar.js)", () => {
     }
   });
 
+  it("eats a meal for twice as long as a snack, bobbing twice", () => {
+    const dur = (k: string) => Number(new RegExp(`^\\s*${k}:\\s*(\\d+)`, "m").exec(sidebarSource)![1]);
+    assert.equal(dur("fed_meal"), 1000);
+    assert.equal(dur("fed_meal"), 2 * dur("fed_snack"));
+    assert.match(sidebarSource, /var bobs = reaction\.type === "fed_meal" \? 2 : 1;/);
+  });
+
   it("queues died on death and hatched on egg -> baby", () => {
     assert.match(sidebarSource, /pushReaction\("died"/);
     assert.match(sidebarSource, /"evolved_to_baby"\) \{ pushReaction\("hatched"/);

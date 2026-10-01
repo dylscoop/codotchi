@@ -59,7 +59,7 @@
 
   /** Reaction animation durations in ms. */
   const REACTION_DURATIONS = {
-    fed_meal:      500,
+    fed_meal:      1000,   // twice the snack — the pet lingers at its bowl
     fed_snack:     500,
     played:        700,
     fell_asleep:   600,
@@ -2559,8 +2559,10 @@
 
       case "fed_meal":
       case "fed_snack": {
-        // Bob up then down: yOff = -sin(t*π)*10
-        var yOff = -Math.sin(t * Math.PI) * 10;
+        // Bob up then down: yOff = -|sin(t*π*bobs)|*10 — a meal lasts twice as
+        // long as a snack, so it bobs twice at the same pace
+        var bobs = reaction.type === "fed_meal" ? 2 : 1;
+        var yOff = -Math.abs(Math.sin(t * Math.PI * bobs)) * 10;
         drawBody(state, x, bodyY + yOff, facingLeft, legFrame);
         break;
       }
