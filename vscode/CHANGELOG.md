@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.22.1] — 2026-10-01
+
+### Added
+
+- **Moods you can see** — a happy pet sparkles and bounces, a sad pet droops and sheds a tear, a sleeping pet tucks in under a blanket with drifting z's, and an eating pet chomps from a bowl (or a snack plate) with crumbs flying. The pet artwork itself is unchanged.
+
+### Changed
+
+- **Stage heights** — the stage height options are now Compact 150 px, Normal 180 px (the default), Tall 210 px and Extra tall 240 px. Your chosen option keeps its name.
+
 ## [2.22.0] — 2026-09-30
 
 ### Added

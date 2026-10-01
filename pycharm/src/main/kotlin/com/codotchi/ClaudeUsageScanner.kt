@@ -34,7 +34,8 @@ object ClaudeUsageScanner {
 
     // Mirrors state.mjs / claudeUsage.ts MODEL_PRICING — most-specific
     // prefix first, since e.g. claude-opus-4-8 must be checked before the
-    // generic claude-opus-4 / bare "opus" fallback.
+    // generic claude-opus-4. Unmatched models fall back to sonnet pricing,
+    // same as the other two copies.
     private fun pricingForModel(model: String): Pricing = when {
         model.startsWith("claude-opus-4-8")   -> Pricing(5.0, 25.0, 0.50, 6.25)
         model.startsWith("claude-opus-4-1")   -> Pricing(15.0, 75.0, 1.50, 18.75)
@@ -48,9 +49,7 @@ object ClaudeUsageScanner {
         model.startsWith("claude-sonnet-4")   -> Pricing(3.0, 15.0, 0.30, 3.75)
         model.startsWith("claude-haiku-4-5")  -> Pricing(1.0, 5.0, 0.10, 1.25)
         model.startsWith("claude-fable-5")    -> Pricing(10.0, 50.0, 1.00, 12.50)
-        "opus" in model    -> Pricing(15.0, 75.0, 1.5, 18.75)
-        "haiku" in model   -> Pricing(0.80, 4.0, 0.08, 1.0)
-        else               -> Pricing(3.0, 15.0, 0.30, 3.75) // sonnet default
+        else                                  -> Pricing(3.0, 15.0, 0.30, 3.75) // sonnet default
     }
 
     private data class Entry(val usage: Map<*, *>, val model: String, val tsMs: Long?)

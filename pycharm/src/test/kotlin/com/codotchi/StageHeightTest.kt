@@ -8,16 +8,16 @@ class StageHeightTest {
 
     @Test
     fun `maps each preset to its pixel height`() {
-        assertEquals(180, stageHeightPx("compact"))
-        assertEquals(240, stageHeightPx("normal"))
-        assertEquals(320, stageHeightPx("tall"))
-        assertEquals(400, stageHeightPx("extraTall"))
+        assertEquals(150, stageHeightPx("compact"))
+        assertEquals(180, stageHeightPx("normal"))
+        assertEquals(210, stageHeightPx("tall"))
+        assertEquals(240, stageHeightPx("extraTall"))
     }
 
     @Test
     fun `falls back to Normal for missing or unknown values`() {
-        assertEquals(240, stageHeightPx(null))
-        assertEquals(240, stageHeightPx("huge"))
+        assertEquals(180, stageHeightPx(null))
+        assertEquals(180, stageHeightPx("huge"))
     }
 
     @Test

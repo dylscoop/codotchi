@@ -6,15 +6,15 @@ import { STAGE_HEIGHT_PX, stageHeightPx } from "../../src/stageHeight";
 
 describe("stageHeightPx", () => {
   it("maps each preset to its pixel height", () => {
-    assert.equal(stageHeightPx("compact"), 180);
-    assert.equal(stageHeightPx("normal"), 240);
-    assert.equal(stageHeightPx("tall"), 320);
-    assert.equal(stageHeightPx("extraTall"), 400);
+    assert.equal(stageHeightPx("compact"), 150);
+    assert.equal(stageHeightPx("normal"), 180);
+    assert.equal(stageHeightPx("tall"), 210);
+    assert.equal(stageHeightPx("extraTall"), 240);
   });
 
   it("falls back to Normal for missing or unknown values", () => {
-    assert.equal(stageHeightPx(undefined), 240);
-    assert.equal(stageHeightPx("huge"), 240);
+    assert.equal(stageHeightPx(undefined), 180);
+    assert.equal(stageHeightPx("huge"), 180);
   });
 
   it("matches the codotchi.stageHeight setting declared in package.json", () => {

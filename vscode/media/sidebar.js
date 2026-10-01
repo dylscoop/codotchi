@@ -153,6 +153,11 @@
   let hopTimer      = HOP_INTERVAL; // seconds until next happy hop
   let idleTimer     = 0;      // seconds until next wander direction/pause change
   let reactionQueue = [];     // [{ type, startMs, durationMs, startX, startY }]
+  let moodParticles = [];     // sparkles / tears / crumbs / z's (window.spriteMood)
+  let lastMood      = null;   // mood drawn last frame — particles reset when it changes
+  let lastMoodFrame = -1;     // flip-book frame drawn last frame
+  let chompUntilMs  = 0;      // performance.now() until which a floor-snack chomp plays
+  let snackChomp    = false;  // the current "eating" is a snack (plate) rather than a meal (bowl)
   let latestHighScore = null; // cached high score from last stateUpdate
   let leaderboardAvailable = false; // true when host supports leaderboard submission
   let leaderboardSubmitted = false; // true once user successfully submitted this death
@@ -1075,8 +1080,8 @@
         }
         if (closestDist < bWidth / 2 + 4) {
           snackItems.splice(snackItems.indexOf(closestSnack), 1);
-          idleTimer = 0.2;
-
+          idleTimer = 0.6;  // chomp pause (mood layer "eating")
+          chompUntilMs = nowMs + 600;
           petVx     = 0;
           vscode.postMessage({ command: "snack_consumed" });
         } else {
@@ -1143,7 +1148,8 @@
         if (closestDist < bWidth / 2 + 4) {
           // Pet reached the snack
           snackItems.splice(snackItems.indexOf(closestSnack), 1);
-          idleTimer = 0.2;  // brief chomp pause
+          idleTimer = 0.6;  // chomp pause (mood layer "eating")
+          chompUntilMs = nowMs + 600;
           petVx     = 0;
           vscode.postMessage({ command: "snack_consumed" });
         } else {
@@ -1204,9 +1210,32 @@
     var legFrame = isDragon ? -1 : (walking ? Math.floor(animTick / 10) % 2 : 0);
     var walkBob  = (walking && legFrame === 1) ? -1 : 0;
 
+    // ── Mood layer: props, body squash, particles (window.spriteMood) ─────
+    var feeding = activeReaction && (activeReaction.type === "fed_meal" || activeReaction.type === "fed_snack");
+    if (nowMs < chompUntilMs) { snackChomp = true; }
+    else if (feeding) { snackChomp = (activeReaction.type === "fed_snack"); }
+    var mood = window.spriteMood.current(lastState, activeReaction && activeReaction.type, nowMs < chompUntilMs);
+    if (mood !== lastMood) { moodParticles.length = 0; lastMoodFrame = -1; }
+    lastMood = mood;
+    lastState.displayMood = mood;   // lets renderSpriteGrid pick optional per-mood grids
+    var moodFrame = window.spriteMood.frame(mood, animTick);
+    var moodBox   = { x: Math.round(petX), y: Math.round(petY) + walkBob, w: bWidth, h: bHeight };
+    window.spriteMood.spawn(moodParticles, mood, moodFrame, moodFrame !== lastMoodFrame, moodBox, petFacingLeft, dt);
+    window.spriteMood.step(moodParticles, dt, floorY + bHeight);
+    lastMoodFrame = moodFrame;
+    var moodProps = mood && !isDragon;   // the dragon hovers, so no floor props
+
     // ── Draw ──────────────────────────────────────────────────────────────
     drawEnvironment(lastState);
-    drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs);
+    if (moodProps && mood === "eating") {
+      window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
+    }
+    drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
+                         window.spriteMood.scaleY(mood, moodFrame));
+    if (moodProps && mood === "sleeping") {
+      window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, false);
+    }
+    window.spriteMood.drawParticles(spriteCtx, moodParticles, window.spriteMood.px(moodBox));
     drawStatusIndicators(lastState, Math.round(petX), Math.round(petY) + walkBob);
 
     // ── Speech bubble ──────────────────────────────────────────────────────
@@ -1364,6 +1393,9 @@
       hopTimer      = HOP_INTERVAL;
       idleTimer     = 0;
       reactionQueue = [];
+      moodParticles = [];
+      lastMood      = null;
+      chompUntilMs  = 0;
       giftBoxX      = null;
       snackItems    = [];
     }
@@ -2389,10 +2421,26 @@
    * @param {number}      legFrame
    * @param {object|null} reaction   - Active reaction object (or null)
    * @param {number}      nowMs      - performance.now()
+   * @param {number}      [moodScaleY] - mood squash/stretch (1 = none); a reaction overrides it
    */
-  function drawBodyWithReaction(state, x, bodyY, facingLeft, legFrame, reaction, nowMs) {
+  function drawBodyWithReaction(state, x, bodyY, facingLeft, legFrame, reaction, nowMs, moodScaleY) {
     if (!reaction) {
-      drawBody(state, x, bodyY, facingLeft, legFrame);
+      if (moodScaleY && moodScaleY !== 1) {
+        // Squash/stretch anchored at the feet, widened slightly to keep the volume
+        var mScale = STAGE_SCALES[state.stage] || 0.5;
+        var mW     = effectiveBWidth(state, Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * mScale));
+        var mH     = Math.round(mW * spriteHeightRatio(state.spriteType || "classic"));
+        var mCx    = x + mW / 2;
+        var mFeet  = bodyY + mH;
+        spriteCtx.save();
+        spriteCtx.translate(mCx, mFeet);
+        spriteCtx.scale(1 + (1 - moodScaleY) * 0.5, moodScaleY);
+        spriteCtx.translate(-mCx, -mFeet);
+        drawBody(state, x, bodyY, facingLeft, legFrame);
+        spriteCtx.restore();
+      } else {
+        drawBody(state, x, bodyY, facingLeft, legFrame);
+      }
       return;
     }
 

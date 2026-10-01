@@ -281,7 +281,7 @@ footprint to make movement readable.
 | Change | Detail | Status |
 |--------|--------|--------|
 | Expand canvas to full sidebar width | Read `canvas.parentElement.clientWidth` on load and on window resize; set `canvas.width` dynamically | `[x]` |
-| Stage height setting | `stageHeight` preset: Compact 180 / Normal 240 / Tall 320 / Extra tall 400 px (`stageHeightPx` in `vscode/src/stageHeight.ts`, `pycharm/.../StageHeight.kt`); canvas CSS height is dynamic (`height: auto`) so pixel buffer and display always match | `[S]` |
+| Stage height setting | `stageHeight` preset: Compact 150 / Normal 180 / Tall 210 / Extra tall 240 px (v2.22.1; was 180 / 240 / 320 / 400) (`stageHeightPx` in `vscode/src/stageHeight.ts`, `pycharm/.../StageHeight.kt`); canvas CSS height is dynamic (`height: auto`) so pixel buffer and display always match | `[S]` |
 | Sprite size unchanged | The drawn body size is still driven by stage scale; the extra space is used for movement | `[x]` |
 | Smooth sprite rendering (experimental) | `image-rendering: auto` on `#sprite-canvas` and `.sprite-container` — browser bilinear-interpolates on upscale instead of nearest-neighbour; reduces pixelation at larger sidebar widths | `[x]` |
 
@@ -366,6 +366,19 @@ Reactions are stored in a simple queue; if a new one arrives while one is
 playing, it is appended and plays immediately after.
 
 Status: `[x]` — `died` added in v2.22.0 (BUG-S05, BUGFIX-173)
+
+**Mood layer (v2.22.1).** Between reactions the pet shows its mood with
+props, a squash/stretch and particles drawn around the unchanged sprite
+(`window.spriteMood` in `sprites.js`). A reaction overrides the squash.
+
+| Mood | Shown when | Layer |
+|------|-----------|-------|
+| eating | `fed_meal` / `fed_snack` reaction, or a 0.6 s floor-snack chomp | Bowl (meal) or plate (snack) that empties over a 3-frame chomp; crumbs |
+| sleeping | `state.sleeping` | Blanket over the lower body, pillow under the head; squashed to 88 %; drifting z's |
+| happy | `state.mood === "happy"` | Nothing most of the time; a ~1 s burst every ~30 s (first after ~20 s): two 4 % stretch pulses and 2–4 sparkles |
+| sad | `state.mood === "sad"` | Steady 95 % droop; a ~1.5 s burst of 3 tears from the head side every ~30 s (first after ~10 s) |
+
+Neutral and sick have no layer. The dragon hovers, so it gets no bowl or blanket.
 
 ### 5.7 Direction Flip (Sprite Mirroring)
 
@@ -757,7 +770,7 @@ These are lower-priority ideas that require design work before implementation. A
 | **— Cosmetics & economy —** | | |
 | Gotchi Points currency | `[ ]` | Earned from minigame wins; spent in an in-game shop. Persisted in `PetState`. |
 | In-game shop | `[ ]` | Buy accessories, background skins, or extra colour palettes using Gotchi Points. |
-| Sprite animation frames | `[~]` | 2-frame leg walk cycle with bob is done. Happy, sad, sleeping and eating frames (2–4 frame flip-book per mood using the existing `renderSpriteGrid` pipeline) are not |
+| Sprite animation frames | `[x]` | 2-frame leg walk cycle with bob. v2.22.1: happy, sad, sleeping and eating get a 2–3 frame flip-book mood layer (props, squash/stretch, particles) drawn around the unchanged sprite; see FEATURES_2.md §3.1 |
 | Redesign minigame art | `[ ]` | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style. |
 | Egg-hatch animation | `[x]` | Wiggle → crack → burst sequence before baby stage (v2.22.0; see §2.2). |
 | Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |

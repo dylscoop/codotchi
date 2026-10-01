@@ -159,6 +159,16 @@ After copying, verify: `node bin/install.js --install` from `opencode-codotchi/`
 
 Rebuild zip: `node scripts/package.js` (from `opencode-codotchi/`). Always ask user before reinstalling: `node bin/install.js --install`.
 
+### 3g — Local IDE install for testing
+
+- **Never install the `.vsix` into VS Code** (`code --install-extension`). VS Code gets codotchi only from the
+  Marketplace, and the user uploads it there after testing.
+- **Test builds go into VSCodium.** From the repo root, run
+  `"/c/Program Files/VSCodium/bin/codium" --install-extension vscode/codotchi-X.Y.Z.vsix --force`.
+  Check the result with `codium --list-extensions --show-versions`. The user then reloads the VSCodium window to test it.
+- **PyCharm:** unzip `pycharm/build/distributions/pycharm-codotchi-X.Y.Z.zip` into
+  `%APPDATA%/JetBrains/PyCharm2026.2/plugins/` (replace the `pycharm-codotchi` folder). PyCharm needs a restart.
+
 ---
 
 ## Step 4 — Final checklist before committing
@@ -177,7 +187,7 @@ Rebuild zip: `node scripts/package.js` (from `opencode-codotchi/`). Always ask u
 11. [ ] `opencode-codotchi/` files updated to mirror any `.opencode/plugins/` changes
 12. [ ] `opencode-codotchi/package.json` version matches repo version
 13. [ ] `opencode-codotchi/opencode-codotchi-X.Y.Z.zip` rebuilt
-14. [ ] Local reinstall confirmed by user and done
+14. [ ] Local reinstall done: `.vsix` into **VSCodium** (never VS Code) and PyCharm zip into the plugins folder (see 3g)
 15. [ ] `claude-desktop-codotchi/package.json` version matches repo version
 16. [ ] `claude-desktop-codotchi/` rebuilt: `npm run build && npm run bundle`
 17. [ ] Artifacts rebuilt locally and NOT staged (gitignored; only `claude-codotchi/dist/` is committed)

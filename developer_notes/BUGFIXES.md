@@ -2119,3 +2119,12 @@ Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an
 **Problem:** The classic (procedural) sprite appeared to float above the stage floor instead of standing on it. The `floorY` anchor in `sidebar.js` is computed using the **96px grid base** (`gridBHeight = round(round(96 × sizeMul × stageScale) × 1.5)`), which reserves ~54–108 px of vertical space for the sprite. `drawClassicProcedural` uses the legacy **24px base** (4× smaller), so its total height (`bodyHeight + legH`) is only ~10–38 px at medium size. The sprite was drawn at `bodyY = floorY` and its feet landed `gridBHeight − (bodyHeight + legH)` ≈ 44–76 px above the intended ground line.
 
 **Fix:** Added a ground-anchor adjustment inside `drawClassicProcedural`, immediately after computing `bodyHeight` and `legH`. The adjustment computes the per-stage effective leg height (`groundLegH`) and the grid-equivalent `gridBHeight`, then shifts `bodyY` down by `gridBHeight − bodyHeight − groundLegH` so the bottom of the feet aligns exactly with the grid ground line. Applied identically to both the VS Code and PyCharm webview copies of `sprites.js`.
+
+## BUGFIX-174 — PyCharm Claude daily cost too high for Opus 5.x
+
+**Status:** Fixed (branch `fix/pycharm-opus-pricing`)
+**File:** `pycharm/src/main/kotlin/com/codotchi/ClaudeUsageScanner.kt`
+
+**Problem:** PyCharm showed a much higher Claude "Today's Token Cost" than VS Code for the same transcripts. The PyCharm `pricingForModel` had two substring fallbacks that `claudeUsage.ts` and `state.mjs` don't have: `"opus" in model` priced at $15/$75 and `"haiku" in model` at $0.80/$4. No table prefix matches a model like `claude-opus-5-5`, so VS Code priced it at the sonnet default ($3/$15) while PyCharm used $15/$75, five times as much.
+
+**Fix:** Removed the two substring fallbacks, so unmatched models now get the sonnet default in all three copies. (None of the three tables has an Opus 5.x entry yet.)
