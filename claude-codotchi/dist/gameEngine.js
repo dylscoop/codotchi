@@ -204,6 +204,14 @@ export const ATTENTION_EXPIRY_COOLDOWN_TICKS = 100;
 export const ATTENTION_EXPIRY_STAT_PENALTY = 10;
 /** Happiness boost applied when a gift attention call is answered via praise(). */
 export const GIFT_PRAISE_HAPPINESS_BOOST = 15;
+/**
+ * Active (non-idle, awake) ticks between "take a break" calls: 600 × 3 s = 30 min.
+ * The timer restarts when the call fires and whenever the user goes deep-idle
+ * (they have taken a break on their own).
+ */
+export const BREAK_CALL_INTERVAL_TICKS = 600;
+/** Happiness boost when a break call is answered via praise() — same as a gift. */
+export const BREAK_PRAISE_HAPPINESS_BOOST = GIFT_PRAISE_HAPPINESS_BOOST;
 // ---------------------------------------------------------------------------
 // Care Mistakes constants
 // ---------------------------------------------------------------------------
@@ -436,7 +444,7 @@ const EVOLUTION_CHARACTERS = {
 /** Every AttentionCallType, for code that needs to list them at runtime. */
 export const ATTENTION_CALL_TYPES = [
     "hunger", "unhappiness", "poop", "sick", "low_energy", "misbehaviour",
-    "gift", "critical_health", "play", "pat", "craving",
+    "gift", "critical_health", "play", "pat", "craving", "break",
 ];
 // ---------------------------------------------------------------------------
 // Helper — pure stat math
@@ -750,6 +758,7 @@ export function createPet(name, petType, unlockedCharacter = null) {
         ticksSinceLastPlayCall: 0,
         ticksSinceLastPatCall: 0,
         ticksSinceLastCraving: 0,
+        ticksSinceLastBreakCall: 0,
         cravingFood: null,
     };
     return withDerivedFields(partial);
@@ -878,6 +887,7 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
     let ticksSinceLastPlayCall = state.ticksSinceLastPlayCall;
     let ticksSinceLastPatCall = state.ticksSinceLastPatCall;
     let ticksSinceLastCraving = state.ticksSinceLastCraving;
+    let ticksSinceLastBreakCall = state.ticksSinceLastBreakCall;
     let cravingFood = state.cravingFood;
     // Capture sleeping state at tick entry so day-timer uses it even if auto-wake fires mid-tick
     const sleepingAtTickStart = sleeping;
@@ -928,6 +938,13 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
             ticksSinceLastPlayCall += 1;
             ticksSinceLastPatCall += 1;
             ticksSinceLastCraving += 1;
+            if (!sleeping) {
+                ticksSinceLastBreakCall += 1;
+            }
+        }
+        // Away from the keyboard counts as a break
+        if (isDeepIdle) {
+            ticksSinceLastBreakCall = 0;
         }
     } // end Step 0
     if (!sleeping) {
@@ -1079,7 +1096,8 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
                 activeAttentionCall === "gift" ||
                 activeAttentionCall === "play" ||
                 activeAttentionCall === "pat" ||
-                activeAttentionCall === "craving")
+                activeAttentionCall === "craving" ||
+                activeAttentionCall === "break")
                 ? config.attentionCallExpiryTicks
                 : ATTENTION_CALL_RESPONSE_TICKS;
             if (attentionCallActiveTicks >= expiryTicks) {
@@ -1129,9 +1147,11 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
                         health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY);
                         cravingFood = null;
                         break;
+                    case "break": break; // just a reminder — no penalty for skipping it
                 }
-                // General care mistake increment (except misbehaviour and gift which have their own above)
-                if (expiredType !== "misbehaviour" && expiredType !== "gift") {
+                // General care mistake increment (except misbehaviour and gift which have their own
+                // above, and break, which is never a care mistake)
+                if (expiredType !== "misbehaviour" && expiredType !== "gift" && expiredType !== "break") {
                     careMistakes += 1;
                     lifetimeCareMistakes += 1;
                 }
@@ -1196,6 +1216,14 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
                 activeAttentionCall = "low_energy";
                 attentionCallActiveTicks = 0;
                 events.push("attention_call_low_energy");
+                // Break reminder — every 30 active minutes, after the real needs but before the whims
+            }
+            else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("break") &&
+                ticksSinceLastBreakCall >= BREAK_CALL_INTERVAL_TICKS) {
+                activeAttentionCall = "break";
+                attentionCallActiveTicks = 0;
+                ticksSinceLastBreakCall = 0;
+                events.push("attention_call_break");
                 // Whim calls — random, at any stat level, after every need-based call so a
                 // real need always wins. Not while idle: nobody is there to answer them.
             }
@@ -1281,7 +1309,7 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
             sleeping, ageDays, dayTimer, weight,
             activeAttentionCall, attentionCallActiveTicks, attentionCallCooldowns,
             careMistakes, lifetimeCareMistakes, ticksWithUncleanedPoop, poopOverLimitTicks, ticksSinceLastMisbehaviour, ticksSinceLastGift,
-            ticksSinceLastPlayCall, ticksSinceLastPatCall, ticksSinceLastCraving, cravingFood,
+            ticksSinceLastPlayCall, ticksSinceLastPatCall, ticksSinceLastCraving, ticksSinceLastBreakCall, cravingFood,
         });
     }
     // Care-score accumulation
@@ -1312,6 +1340,7 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
         ticksSinceLastPlayCall,
         ticksSinceLastPatCall,
         ticksSinceLastCraving,
+        ticksSinceLastBreakCall,
         cravingFood,
     };
     // Stage progression + old-age death/sickness rolls (once per day boundary for seniors).
@@ -1854,6 +1883,8 @@ export function scold(state) {
  * Praise the pet to raise discipline.
  * If a "gift" attention call is active, it is answered and a happiness bonus
  * (GIFT_PRAISE_HAPPINESS_BOOST) is applied on top of the discipline boost.
+ * If a "break" call is active, it is answered with the same happiness bonus
+ * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet goes to sleep while you rest.
  * If an "unhappiness" attention call is active, it is answered instead.
  *
  * @param state - The current pet state.
@@ -1861,22 +1892,33 @@ export function scold(state) {
  */
 export function praise(state) {
     const answeredGift = answerAttentionCall(state, "gift");
-    const answeredUnhappiness = !answeredGift ? answerAttentionCall(state, "unhappiness") : null;
-    const answered = answeredGift ?? answeredUnhappiness;
+    const answeredBreak = !answeredGift ? answerAttentionCall(state, "break") : null;
+    const answeredUnhappiness = !answeredGift && !answeredBreak ? answerAttentionCall(state, "unhappiness") : null;
+    const answered = answeredGift ?? answeredBreak ?? answeredUnhappiness;
     const events = ["praised"];
     if (answeredGift) {
         events.push("attention_call_answered_gift");
     }
+    if (answeredBreak) {
+        events.push("attention_call_answered_break");
+    }
     if (answeredUnhappiness) {
         events.push("attention_call_answered_unhappiness");
     }
-    const happinessBonus = answeredGift ? GIFT_PRAISE_HAPPINESS_BOOST : 0;
+    const happinessBonus = answeredGift ? GIFT_PRAISE_HAPPINESS_BOOST
+        : answeredBreak ? BREAK_PRAISE_HAPPINESS_BOOST : 0;
+    // Answering a break call sends the pet to sleep while you take your break
+    const goesToSleep = answeredBreak !== null && !state.sleeping;
+    if (goesToSleep) {
+        events.push("fell_asleep");
+    }
     return withDerivedFields({
         ...state,
         ...(answered ?? {}),
         discipline: clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
         happiness: clampStat(state.happiness + happinessBonus),
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
+        ...(goesToSleep ? { sleeping: true, consecutiveSnacks: 0 } : {}),
         events,
     });
 }
@@ -2195,6 +2237,7 @@ export function serialiseState(state) {
         ticksSinceLastPlayCall: state.ticksSinceLastPlayCall,
         ticksSinceLastPatCall: state.ticksSinceLastPatCall,
         ticksSinceLastCraving: state.ticksSinceLastCraving,
+        ticksSinceLastBreakCall: state.ticksSinceLastBreakCall,
         cravingFood: state.cravingFood,
     };
 }
@@ -2277,6 +2320,7 @@ export function deserialiseState(data) {
         ticksSinceLastPlayCall: getNumber("ticksSinceLastPlayCall", 0),
         ticksSinceLastPatCall: getNumber("ticksSinceLastPatCall", 0),
         ticksSinceLastCraving: getNumber("ticksSinceLastCraving", 0),
+        ticksSinceLastBreakCall: getNumber("ticksSinceLastBreakCall", 0),
         cravingFood: data["cravingFood"] === "meal" || data["cravingFood"] === "snack" ? data["cravingFood"] : null,
     };
     return withDerivedFields(partial);

@@ -2188,3 +2188,25 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** `--inject` is removed. `import_sprite.js` only prints, and species are built by `import_sprites_bulk.js` from `sprites/<species>/` into a generated `sprites.generated.js`. That file is rewritten from scratch, with one grid size and one palette per species, so nothing is spliced into hand-maintained files.
 
 **Tests:** `vscode/tests/unit/spriteImportBulk.test.ts`; `spriteData.test.ts` now requires every stage to match `SPRITE_GRID_META` exactly; CI runs `import_sprites_bulk.js --check` and `validate_sprites.js`.
+
+## BUGFIX-180 — Classic pet off-centre with empty space above it
+
+**Status:** Fixed (branch `v2.24.2-classic-centre`)
+**Files:** `vscode/media/sprites.js`, `vscode/media/sidebar.js`, `vscode/media/sprite_preview.html` (PyCharm copies the media files at build time)
+
+**Problem:** The procedural classic creature is drawn at a 24 px base, but the sidebar sized its bounding box like a 96 px upright 32×48 grid. Classic filled only the left quarter of that box, and its feet were pushed down to the box floor. So it sat left of centre, stopped short of the right wall, and its z / + indicator, speech bubble and reactions floated well above it.
+
+**Fix:** `classicBox` returns the creature's real width and height (body plus longest leg), and the sidebar uses it as classic's box through `effectiveBWidth` / `petBoxHeight`. This also covers species with no art that fall back to classic (`drawsAsClassic`). `drawClassicProcedural` draws at the box's top-left. Props and particles keep their grid size via `moodBox.pxW`.
+
+**Tests:** `vscode/tests/unit/webviewAnimations.test.ts` draws classic at every stage and both leg frames, and checks that its head is at the box top, its longest leg at the box floor, and its body exactly the box width.
+
+## BUGFIX-181 — Speech bubble covered the sleeping z's and pat hearts
+
+**Status:** Fixed (branch `v2.24.2-classic-centre`)
+**File:** `vscode/media/sidebar.js`
+
+**Problem:** The speech bubble sat 8 px above the pet's head, in the same band as the drifting z's (sleeping), the hearts and the patting hand, so the bubble hid them.
+
+**Fix:** `emojiClearance` lifts the bubble about 24 px (or 12 prop-pixels) higher while the pet sleeps, is patted, or still has z / heart particles in the air. If that would push the bubble off the canvas, it is pinned to the top edge instead of flipping below the head.
+
+**Tests:** `vscode/tests/unit/webviewAnimations.test.ts`.

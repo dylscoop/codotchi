@@ -1,6 +1,24 @@
 # Version History
 
-## v2.24.1 — current
+## v2.24.2 — current
+
+### Changes from v2.24.1 (classic sprite box; speech bubble clears the z's / hearts; "take a break" call every 30 active minutes — branch v2.24.2-classic-centre)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sprites.js` | `classicBox` (`window.spriteClassicBox`) gives the classic creature's real size, and `drawClassicProcedural` draws at the box's top-left (no grid ground-anchor shift); `drawsAsClassic` (`window.spriteDrawsAsClassic`) shared with the sidebar; `moodPx` prefers `box.pxW` (BUGFIX-180) |
+| `vscode/media/sidebar.js` | `effectiveBWidth` / new `petBoxHeight` use classic's own box; no belly sag for pets drawn as classic; `moodBox.pxW` keeps grid-sized props; `emojiClearance` lifts the speech bubble above the z / heart band (pinned to the top edge if needed); break call bubble / log text (BUGFIX-180, BUGFIX-181) |
+| `vscode/media/sprite_preview.html` | classic cells sized with `spriteClassicBox` |
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt`, `PetState.kt`, `CodotchiPersistence.kt` | new `break` attention call: `BREAK_CALL_INTERVAL_TICKS = 600` (30 active, awake min; deep idle restarts it), `ticksSinceLastBreakCall` (persisted), configurable expiry window, no expiry penalty or care mistake; `praise()` answers it with `BREAK_PRAISE_HAPPINESS_BOOST` (= gift's 15) and puts the pet to sleep |
+| `packages/core/src/asciiArt.ts` (+ synced copies), `opencode-codotchi/src/index.ts` | break call text ("praise (take a break)") for the terminal plugins |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | break call IDE notification |
+| `vscode/tests/unit/webviewAnimations.test.ts`, `vscode/tests/unit/gameEngine.test.ts`, `pycharm/.../GameEngineTest.kt` | classic box / bubble clearance tests; break call tests |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `BUGFIXES.md`, `SPRITES.md` | break reminders, classic box, BUGFIX-180 / 181 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.24.1 → 2.24.2 |
+
+---
+
+## v2.24.1
 
 ### Changes from v2.24.0 (bulk sprite pipeline: sprites/<species>/ → sprites.generated.js; dog, cat, dragon and roo moved over — branch feat/bulk-sprite-pipeline)
 

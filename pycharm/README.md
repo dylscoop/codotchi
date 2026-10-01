@@ -60,6 +60,9 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 - **Little whims** — now and then your pet just wants to play a game, get a
   pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in
   time and it's happy; ignore it and its health suffers
+- **Break reminders** — after 30 minutes of coding, your pet reminds you to
+  take a break. Praise it to answer: it's happier for it and naps while you
+  rest. Skipping it does no harm, and stepping away from the IDE counts as a break
 - **Terminal & Claude integrations** — your pet lives in Claude Code, OpenCode
   and Claude Desktop too, with shared state across every host
 - **Today's Token Cost** — see how much Claude Code / OpenCode has cost you

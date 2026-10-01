@@ -106,9 +106,10 @@ The pet fires IDE notifications demanding care, with a **1-minute active
 | Random craving (log-chance, any hunger; not while idle/asleep/sick/full) | `craving` | The craved food: meal (Feed) or snack (Snack) | Health −10 | `[x]`  |
 | Random "play with me" (log-chance; energy ≥ 25, not sick) | `play`    | Play (any mini-game)    | Health −10                             | `[x]`  |
 | Random "pat me" (log-chance; energy ≥ 20)         | `pat`             | Pat                     | Health −10                             | `[x]`  |
+| Every 30 active, awake minutes (`BREAK_CALL_INTERVAL_TICKS = 600`; deep idle restarts the timer; after need calls, before whims) | `break` | Praise (+happiness +15, pet falls asleep) | None — no stat penalty, no care mistake | `[x]`  |
 
 Notes:
-- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (1 min) for need-based calls; poop, misbehaviour, gift, play, pat and craving use `config.attentionCallExpiryTicks` (Needy 80 / Standard 200 / Chilled 400 ticks = 4 / 10 / 20 min; v2.21.1). The chance counters for random calls only advance on active ticks, and misbehaviour / gift never fire while idle (BUGFIX-169)
+- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (1 min) for need-based calls; poop, misbehaviour, gift, play, pat, craving and break use `config.attentionCallExpiryTicks` (Needy 80 / Standard 200 / Chilled 400 ticks = 4 / 10 / 20 min; v2.21.1). The chance counters for random calls only advance on active ticks, and misbehaviour / gift never fire while idle (BUGFIX-169)
 - Post-answer cooldown: `ATTENTION_ANSWER_COOLDOWN_TICKS = 100` ticks (5 min)
 - Post-expiry cooldown: `ATTENTION_EXPIRY_COOLDOWN_TICKS = 100` ticks (5 min)
 - Cooldowns only count down on active (non-idle) ticks. TS and Kotlin share the same values (BUG-S06 / BUGFIX-166)
@@ -547,6 +548,7 @@ Selected events cause the pet to speak via a canvas-drawn speech bubble that fol
 | Pet wakes up | `woke_up` / `auto_woke_up` event | `[x]` | Clears the persistent sleep bubble |
 | Scold (attention call) | `scolded` + `attention_call_answered_misbehaviour` | `[x]` | Random pick from 4 scold texts |
 | Praise (attention call) | `praised` + `attention_call_answered_gift` or `_answered_unhappiness` | `[x]` | Random pick from 4 praise texts |
+| Break reminder | `attention_call_break` | `[x]` | "30 minutes already! Remember to take a break — praise <name> …"; drawn above the z's / hearts |
 
 Bubble behaviour:
 - Text reuses `humaniseEvent()` strings for most triggers; inline random-pick arrays for sleep/praise/scold

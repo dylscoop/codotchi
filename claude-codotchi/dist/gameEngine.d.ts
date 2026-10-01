@@ -74,6 +74,14 @@ export declare const ATTENTION_EXPIRY_STAT_PENALTY: number;
 /** Happiness boost applied when a gift attention call is answered via praise(). */
 export declare const GIFT_PRAISE_HAPPINESS_BOOST: number;
 /**
+ * Active (non-idle, awake) ticks between "take a break" calls: 600 × 3 s = 30 min.
+ * The timer restarts when the call fires and whenever the user goes deep-idle
+ * (they have taken a break on their own).
+ */
+export declare const BREAK_CALL_INTERVAL_TICKS: number;
+/** Happiness boost when a break call is answered via praise() — same as a gift. */
+export declare const BREAK_PRAISE_HAPPINESS_BOOST: number;
+/**
  * Number of care mistakes in a single stage that are tolerated before the
  * evolution tier begins to be penalised.  0–CARE_MISTAKE_BEST_MAX = "best"
  * tier is still achievable (subject to careScore); above this the tier is
@@ -233,7 +241,7 @@ export declare const STAGE_ORDER: readonly string[];
  * All valid attention call type identifiers.
  * A call of each type can be active at most once at any given time.
  */
-export type AttentionCallType = "hunger" | "unhappiness" | "poop" | "sick" | "low_energy" | "misbehaviour" | "gift" | "critical_health" | "play" | "pat" | "craving";
+export type AttentionCallType = "hunger" | "unhappiness" | "poop" | "sick" | "low_energy" | "misbehaviour" | "gift" | "critical_health" | "play" | "pat" | "craving" | "break";
 /** Every AttentionCallType, for code that needs to list them at runtime. */
 export declare const ATTENTION_CALL_TYPES: readonly AttentionCallType[];
 /** What a craving attention call asks for. */
@@ -337,6 +345,8 @@ export interface PetState {
     readonly ticksSinceLastPatCall: number;
     /** Ticks since the last craving attention call fired; used for log-chance formula. */
     readonly ticksSinceLastCraving: number;
+    /** Active, awake ticks since the last "take a break" call (BREAK_CALL_INTERVAL_TICKS). */
+    readonly ticksSinceLastBreakCall: number;
     /** What the active craving call asks for; null when no craving call is active. */
     readonly cravingFood: CravingFood | null;
 }
@@ -651,6 +661,8 @@ export declare function scold(state: PetState): PetState;
  * Praise the pet to raise discipline.
  * If a "gift" attention call is active, it is answered and a happiness bonus
  * (GIFT_PRAISE_HAPPINESS_BOOST) is applied on top of the discipline boost.
+ * If a "break" call is active, it is answered with the same happiness bonus
+ * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet goes to sleep while you rest.
  * If an "unhappiness" attention call is active, it is answered instead.
  *
  * @param state - The current pet state.

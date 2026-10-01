@@ -43,7 +43,7 @@ Animals assigned at random when a new pet hatches. All entries have equal probab
 | `dog` | also a zodiac animal |
 | `snake` | also a zodiac animal |
 | `sheep` | also a zodiac animal |
-| `classic` | original procedural humanoid shape |
+| `classic` | original procedural humanoid shape — drawn at a 24 px base; its bounding box is its real size (`window.spriteClassicBox`), not a 32 × 48 grid |
 | `kangaroo` | |
 | `dragon` | also a zodiac animal |
 
