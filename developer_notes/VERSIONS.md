@@ -1,6 +1,28 @@
 # Version History
 
-## v2.24.3 — current
+## v2.25.1 — current
+
+**Updated constants (backgroundArt.js):** `RAIN_MS` 3 min · `RAIN_CHANCE` 0.18 · `RAINBOW_MS` 75 s · `SNOW_MS` 4 min · `SNOW_CHANCE` 0.4 · `CRITTERS` bird / butterfly / bee / fireflies (window 90–150 s, chance 0.2–0.35); `VEIL` [day, night] subtle 0.45 / 0.15 · medium 0.10 / 0.05 · vivid 0 / 0; `getTimeOfDay()` buckets now dawn 06–08 · morning 08–12 · afternoon 12–16 · sunset 16–19 · dusk 19–21 · night 21–06 (was 07–10 · 10–13 · 13–16 · 16–19 · 19–22 · 22–07)
+
+### Changes from v2.24.3 (seasonal pixel-art backgrounds and a brighter, blended sky — branch feat/background-art-polish)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/backgroundArt.js` (new) | `window.backgroundArt`: `getActiveSeason(mode, date)`, `getTimeOfDay(date)`, `skyColours(date)` (8 opaque bands blended between hourly keyframes; soft pastel morning, gentle daytime gradient, golden hour from 16:00 and sunset at 17:30; sun crosses 06:00–18:30), `darkness`, `lightsOn`, `weather` (spring showers + rainbow, winter snow spells), `critter` (rare bird / butterflies / bee / fireflies), seeded cached `layout`, `drawBackground(ctx, W, H, mode, date)`. fillRect-only grids for sun, moon, clouds, blossom / leafy / autumn / bare trees, snowy pine with fairy lights, snowman, flowers, sunflowers, pumpkins, toadstools, picnic blanket, beach ball, icicles and drifts |
+| `vscode/media/sidebar.js` | old `getActiveSeason` / `getTimeOfDay` / `drawBackground` removed (~270 lines); `drawEnvironment` fills the pet colour then calls `backgroundArt.drawBackground`; the `#243444` daytime base override is gone |
+| `vscode/media/sidebar.html`, `vscode/src/sidebarProvider.ts`, `pycharm/build.gradle.kts`, `pycharm/.../CodotchiBrowserPanel.kt` | load / inline `backgroundArt.js` after `minigameArt.js` |
+| `vscode/media/sprite_preview.html`, `vscode/src/spritePreviewPanel.ts`, `pycharm/.../SpritePreviewBrowserPanel.kt` | background preview canvas with season, hour, size and event pickers |
+| `vscode/tests/unit/backgroundArt.test.ts` (new), `vscode/package.json` | season / bucket / sky-continuity / bright-morning / lights / weather / critter / drawing / wiring tests; added to `npm test` |
+| `vscode/package.json` | `codotchi.background` enum descriptions describe the new scenes |
+| `vscode/package.json`, `sidebarProvider.ts`, `sidebar.html`, `sidebar.js`, `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `CodotchiBrowserPanel.kt` | new `codotchi.backgroundOpacity` (subtle / medium / vivid, default medium) and `codotchi.backgroundAnimations` (default on; reduced motion forces off) settings, passed to `drawBackground` as `{ opacity, backdrop, animate }`; VS Code setting orders renumbered 1..n |
+| `vscode/media/backgroundArt.js` | `VEIL` / `veilAlpha`: backdrop veil over the scene before the particles; `animate: false` draws one fixed frame with no weather, particles or critters |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | "Seasons and time of day" feature; 2.25.1 notes |
+| `developer_notes/vscode/FEATURES.md`, `FEATURES_2.md`, `FEATURES_SEPTEMBER_2026.md` | background art polish ticked off; day / night cycle notes |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.24.3 → 2.25.1 |
+
+---
+
+## v2.24.3
 
 **Updated constants:** `attentionCallRateDivisor` fast 3.0 · medium 4.5 · slow 6.0 (was 1.5 · 2.25 · 3.0); `REACTION_DURATIONS.fed_meal` 1000 ms (was 500); `DEVICE_GAP` 3 prop-pixels (was 1); `PAT_HAND_SCALE` 0.5
 

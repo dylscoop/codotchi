@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.codotchi"
-version = "2.24.3"
+version = "2.25.1"
 
 repositories {
     mavenCentral()
@@ -43,7 +43,7 @@ tasks {
             include(
                 "sidebar.js", "sidebar.css", "sidebar.html",
                 "customCharacters.js", "spriteConstants.js", "sprites.generated.js", "sprites.js", "minigameArt.js",
-                "sprite_preview.html"
+                "backgroundArt.js", "sprite_preview.html"
             )
             into("webview")
         }

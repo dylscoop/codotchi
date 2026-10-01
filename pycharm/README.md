@@ -57,6 +57,13 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 - **Safe while you are away** — when you step away from the IDE your pet gets
   hungry and bored more slowly and never loses health, so it is waiting for you
   when you come back
+- **Seasons and time of day** — your pet lives in a pixel-art scene that follows
+  the real month and clock: blossom trees and spring showers with a rainbow,
+  sunflowers and fireflies in summer, falling leaves and pumpkins in autumn, and a
+  snowman, fairy lights and snowfall in winter. The sky moves from dawn through a
+  bright morning to sunset and starry night. Pick a fixed season or a plain
+  background in Settings, soften the scene so your pet stands out, or keep it
+  still
 - **Little whims** — now and then your pet just wants to play a game, get a
   pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in
   time and it's happy; ignore it and its health suffers

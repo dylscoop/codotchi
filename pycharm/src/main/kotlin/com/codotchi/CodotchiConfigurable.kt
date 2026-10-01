@@ -53,6 +53,8 @@ class CodotchiConfigurable : Configurable {
     private var idleResetOnWindowFocusCheck:    JCheckBox?          = null
     private var idleResetOnMouseMovementCheck:  JCheckBox?          = null
     private var backgroundCombo:               JComboBox<String>?  = null
+    private var backgroundOpacityCombo:        JComboBox<String>?  = null
+    private var backgroundAnimationsCheck:     JCheckBox?          = null
     private var perWorkspacePetCheck:          JCheckBox?          = null
     private var tokenCostIncludeClaudeCodeCheck: JCheckBox?        = null
     private var tokenCostIncludeOpenCodeCheck:   JCheckBox?        = null
@@ -87,6 +89,8 @@ class CodotchiConfigurable : Configurable {
         val idleResetFocusCheckbox = JCheckBox("Reset idle timer on window focus")
         val idleResetMouseCheckbox = JCheckBox("Reset idle timer on mouse movement (sidebar)")
         val bgCombo = JComboBox(arrayOf("Plain", "Ordered (auto)", "Spring", "Summer", "Autumn", "Winter"))
+        val bgOpacityCombo = JComboBox(arrayOf("Subtle", "Medium", "Vivid"))
+        val bgAnimationsCheckbox = JCheckBox("Animate the background (clouds, stars, lights, weather, critters)")
         val perWorkspacePetCheckbox = JCheckBox("Per-project pet (each project gets its own independent pet)")
         val tokenCostClaudeCodeCheckbox = JCheckBox("Today's Token Cost: include Claude Code")
         val tokenCostOpenCodeCheckbox = JCheckBox("Today's Token Cost: include OpenCode")
@@ -134,6 +138,8 @@ class CodotchiConfigurable : Configurable {
         idleResetOnWindowFocusCheck    = idleResetFocusCheckbox
         idleResetOnMouseMovementCheck  = idleResetMouseCheckbox
         backgroundCombo                = bgCombo
+        backgroundOpacityCombo         = bgOpacityCombo
+        backgroundAnimationsCheck      = bgAnimationsCheckbox
         perWorkspacePetCheck           = perWorkspacePetCheckbox
         tokenCostIncludeClaudeCodeCheck = tokenCostClaudeCodeCheckbox
         tokenCostIncludeOpenCodeCheck   = tokenCostOpenCodeCheckbox
@@ -184,6 +190,8 @@ class CodotchiConfigurable : Configurable {
         addFull(panel, tokenCostOpenCodeCheckbox)
         addFull(panel, tokenCostCopilotCheckbox)
         addLabeled(panel, "Background:", bgCombo)
+        addLabeled(panel, "Background opacity:", bgOpacityCombo)
+        addFull(panel, bgAnimationsCheckbox)
         addLabeled(panel, "Font size:", combo)
         addLabeled(panel, "Text colour:", cp)
 
@@ -255,6 +263,8 @@ class CodotchiConfigurable : Configurable {
         val uiIdleResetFocus = idleResetOnWindowFocusCheck?.isSelected ?: true
         val uiIdleResetMouse = idleResetOnMouseMovementCheck?.isSelected ?: true
         val uiBg = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
+        val uiBgOpacity = bgOpacityIndexToKey(backgroundOpacityCombo?.selectedIndex ?: 1)
+        val uiBgAnimations = backgroundAnimationsCheck?.isSelected ?: true
         val uiPerWorkspacePet = perWorkspacePetCheck?.isSelected ?: false
         val uiTokenCostClaudeCode = tokenCostIncludeClaudeCodeCheck?.isSelected ?: true
         val uiTokenCostOpenCode = tokenCostIncludeOpenCodeCheck?.isSelected ?: true
@@ -282,6 +292,8 @@ class CodotchiConfigurable : Configurable {
             || uiIdleResetFocus != settings.idleResetOnWindowFocus
             || uiIdleResetMouse != settings.idleResetOnMouseMovement
             || uiBg != settings.background
+            || uiBgOpacity != settings.backgroundOpacity
+            || uiBgAnimations != settings.backgroundAnimations
             || uiPerWorkspacePet != settings.perWorkspacePet
             || uiTokenCostClaudeCode != settings.tokenCostIncludeClaudeCode
             || uiTokenCostOpenCode != settings.tokenCostIncludeOpenCode
@@ -313,6 +325,8 @@ class CodotchiConfigurable : Configurable {
         settings.idleResetOnWindowFocus    = idleResetOnWindowFocusCheck?.isSelected ?: true
         settings.idleResetOnMouseMovement  = idleResetOnMouseMovementCheck?.isSelected ?: true
         settings.background                = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
+        settings.backgroundOpacity         = bgOpacityIndexToKey(backgroundOpacityCombo?.selectedIndex ?: 1)
+        settings.backgroundAnimations      = backgroundAnimationsCheck?.isSelected ?: true
         settings.tokenCostIncludeClaudeCode = tokenCostIncludeClaudeCodeCheck?.isSelected ?: true
         settings.tokenCostIncludeOpenCode   = tokenCostIncludeOpenCodeCheck?.isSelected ?: true
         settings.tokenCostIncludeCopilot    = tokenCostIncludeCopilotCheck?.isSelected ?: false
@@ -357,6 +371,8 @@ class CodotchiConfigurable : Configurable {
         idleResetOnWindowFocusCheck?.isSelected    = settings.idleResetOnWindowFocus
         idleResetOnMouseMovementCheck?.isSelected  = settings.idleResetOnMouseMovement
         backgroundCombo?.selectedIndex             = bgKeyToIndex(settings.background)
+        backgroundOpacityCombo?.selectedIndex      = bgOpacityKeyToIndex(settings.backgroundOpacity)
+        backgroundAnimationsCheck?.isSelected      = settings.backgroundAnimations
         perWorkspacePetCheck?.isSelected           = settings.perWorkspacePet
         tokenCostIncludeClaudeCodeCheck?.isSelected = settings.tokenCostIncludeClaudeCode
         tokenCostIncludeOpenCodeCheck?.isSelected   = settings.tokenCostIncludeOpenCode
@@ -375,6 +391,8 @@ class CodotchiConfigurable : Configurable {
     private fun stageHeightKeyToIndex(key: String) = when (key) { "compact" -> 0; "tall" -> 2; "extraTall" -> 3; else -> 1 }
     private fun bgIndexToKey(index: Int) = when (index) { 0 -> "plain"; 2 -> "spring"; 3 -> "summer"; 4 -> "autumn"; 5 -> "winter"; else -> "ordered" }
     private fun bgKeyToIndex(key: String) = when (key) { "plain" -> 0; "spring" -> 2; "summer" -> 3; "autumn" -> 4; "winter" -> 5; else -> 1 }
+    private fun bgOpacityIndexToKey(index: Int) = when (index) { 0 -> "subtle"; 2 -> "vivid"; else -> "medium" }
+    private fun bgOpacityKeyToIndex(key: String) = when (key) { "subtle" -> 0; "vivid" -> 2; else -> 1 }
 
     private fun refreshSignInStatus(label: JBLabel, signInBtn: JButton, signOutBtn: JButton) {
         val pat = PasswordSafe.instance.getPassword(CredentialAttributes("Codotchi", "github-pat"))

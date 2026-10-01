@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.25.1] — 2026-10-01
+
+### Added
+
+- **Seasonal scenes** — the background is redrawn as pixel art with trees and props for each season: blossom trees, tulips and daisies in spring; leafy trees, sunflowers, a picnic blanket and a beach ball in summer; orange and half-bare trees, falling leaves, pumpkins and toadstools in autumn; and a snowman, a snowy pine with fairy lights and icicles in winter.
+- **Weather and visitors** — now and then a spring shower passes (followed by a rainbow), snow falls in winter, and birds, butterflies, bees or fireflies drift by.
+- **Background opacity** — `codotchi.backgroundOpacity`: Subtle, Medium (default, lightly softened) or Vivid, so your pet stands out against the scene. Vivid is full strength.
+- **Background animations** — `codotchi.backgroundAnimations`: turn off the moving clouds, lights, weather and critters for a still scene (reduced motion does this too).
+- **Background preview (developer mode)** — the Sprite Preview panel can show any season at any hour and canvas size.
+
+### Changed
+
+- **Brighter mornings** — mornings are a soft pastel sky instead of a dusky blue, and the sky now blends smoothly through the day, with a gentle gradient so your pet stays easy to see. From 4 pm the sky warms into golden hour and sunset. The sun climbs and sets in an arc, and stars twinkle at night.
+
 ## [2.24.3] — 2026-10-01
 
 ### Fixed

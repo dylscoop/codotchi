@@ -270,6 +270,8 @@ export class SidebarProvider
       if (
         e.affectsConfiguration("codotchi.fontSize") ||
         e.affectsConfiguration("codotchi.background") ||
+        e.affectsConfiguration("codotchi.backgroundOpacity") ||
+        e.affectsConfiguration("codotchi.backgroundAnimations") ||
         e.affectsConfiguration("codotchi.petSize") ||
         e.affectsConfiguration("codotchi.stageHeight") ||
         e.affectsConfiguration("codotchi.reducedMotion") ||
@@ -310,6 +312,9 @@ export class SidebarProvider
     const minigameArtUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "minigameArt.js"))
     );
+    const backgroundArtUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "backgroundArt.js"))
+    );
     const spriteConstantsUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "spriteConstants.js"))
     );
@@ -321,6 +326,7 @@ export class SidebarProvider
     html = html.replace("{{spritesGeneratedUri}}", spritesGeneratedUri.toString());
     html = html.replace("{{spritesUri}}", spritesUri.toString());
     html = html.replace("{{minigameArtUri}}", minigameArtUri.toString());
+    html = html.replace("{{backgroundArtUri}}", backgroundArtUri.toString());
     html = html.replace("{{spriteConstantsUri}}", spriteConstantsUri.toString());
     html = html.replace("{{customCharactersUri}}", customCharactersUri.toString());
     html = html.replace("{{jsUri}}", jsUri.toString());
@@ -350,6 +356,12 @@ export class SidebarProvider
 
     const background = cfg.get<string>("background", "ordered");
     html = html.replace("{{background}}", background);
+
+    const backgroundOpacity = cfg.get<string>("backgroundOpacity", "medium");
+    html = html.replace("{{backgroundOpacity}}", backgroundOpacity);
+
+    const backgroundAnimations = cfg.get<boolean>("backgroundAnimations", true);
+    html = html.replace("{{backgroundAnimations}}", backgroundAnimations ? "true" : "false");
 
     const idleResetOnMouseMovement = cfg.get<boolean>("idleResetOnMouseMovement", true);
     html = html.replace("{{idleResetOnMouseMovement}}", idleResetOnMouseMovement ? "true" : "false");
