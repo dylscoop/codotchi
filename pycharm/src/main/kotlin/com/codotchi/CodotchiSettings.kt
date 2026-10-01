@@ -30,6 +30,7 @@ import com.intellij.openapi.components.*
  *  - [idleResetOnWindowFocus]     : reset idle timer when IDE window gains focus (default true)
  *  - [idleResetOnMouseMovement]   : reset idle timer on mouse movement in the sidebar (default true)
  *  - [background]                 : "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter" (default "ordered")
+ *  - [backgroundStyle]            : "scenic" | "legacy" — pixel-art scenery or the pre-2.25 look (default "scenic")
  *  - [backgroundOpacity]          : "subtle" | "medium" | "vivid" — how strongly the scene shows (default "medium")
  *  - [backgroundAnimations]       : animate clouds, stars, lights, weather and critters (default true)
  *  - [perWorkspacePet]            : each project gets its own independent pet state file (default false)
@@ -69,6 +70,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var idleResetOnWindowFocus: Boolean = true
         var idleResetOnMouseMovement: Boolean = true
         var background: String = "ordered"  // "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter"
+        var backgroundStyle: String = "scenic"  // "scenic" | "legacy"
         var backgroundOpacity: String = "medium"  // "subtle" | "medium" | "vivid"
         var backgroundAnimations: Boolean = true
         var perWorkspacePet: Boolean = false
@@ -176,6 +178,10 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var background: String
         get() = _state.background
         set(v) { _state.background = v }
+
+    var backgroundStyle: String
+        get() = _state.backgroundStyle
+        set(v) { _state.backgroundStyle = v }
 
     var backgroundOpacity: String
         get() = _state.backgroundOpacity

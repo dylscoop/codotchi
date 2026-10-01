@@ -213,6 +213,17 @@
             "description": "Background theme for the pet canvas.",
             "order": 12
           },
+          "codotchi.backgroundStyle": {
+            "type": "string",
+            "enum": ["scenic", "legacy"],
+            "enumDescriptions": [
+              "Pixel-art scenery: trees, props, a blended sky, weather and visitors. Default.",
+              "The pre-2.25 look: a flat time-of-day tint, a ground strip and a few seasonal props. Background opacity and animations do not apply."
+            ],
+            "default": "scenic",
+            "description": "Drawing style for the background. Both styles follow the Background season choice.",
+            "order": 13
+          },
           "codotchi.backgroundOpacity": {
             "type": "string",
             "enum": ["subtle", "medium", "vivid"],
@@ -223,76 +234,76 @@
             ],
             "default": "medium",
             "description": "How strongly the background scene shows behind your pet. Lower settings fade it toward the pet's backdrop colour, mostly by day; the plain background is unaffected.",
-            "order": 13
+            "order": 14
           },
           "codotchi.backgroundAnimations": {
             "type": "boolean",
             "default": true,
             "description": "Animate the background: drifting clouds, twinkling stars, fairy lights, falling petals and leaves, showers, snowfall and passing critters. Turn off for a still scene. Reduced motion also turns these off.",
-            "order": 14
+            "order": 15
           },
           "codotchi.fontSize": {
             "type": "string",
             "enum": ["small", "normal", "large"],
             "default": "normal",
             "description": "Font size used in the Codotchi sidebar panel.",
-            "order": 15
+            "order": 16
           },
           "codotchi.idleThresholdSeconds": {
             "type": "integer",
             "default": 60,
             "minimum": 10,
             "description": "Seconds of no IDE activity before the pet is considered idle (stats decay at 5% of the normal rate and the pet cannot lose health). Default: 60 seconds.",
-            "order": 16
+            "order": 17
           },
           "codotchi.idleDeepThresholdSeconds": {
             "type": "integer",
             "default": 600,
             "minimum": 30,
             "description": "Seconds of sustained idle before entering deep idle (aging stops; as in regular idle, the pet cannot lose health). Default: 600 seconds (10 minutes).",
-            "order": 17
+            "order": 18
           },
           "codotchi.idleResetOnDocumentChange": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when any document is changed (keystrokes, AI agent edits, etc.). Suppressed automatically when codotchi.aiMode is enabled.",
-            "order": 18
+            "order": 19
           },
           "codotchi.idleResetOnCursorMovement": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the text editor cursor moves or the selection changes. Suppressed automatically when codotchi.aiMode is enabled.",
-            "order": 19
+            "order": 20
           },
           "codotchi.idleResetOnTabSwitch": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the active editor tab changes. Suppressed automatically when codotchi.aiMode is enabled.",
-            "order": 20
+            "order": 21
           },
           "codotchi.idleResetOnWindowFocus": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the VS Code window gains focus (e.g. you switch back to VS Code from another app). Never suppressed by aiMode.",
-            "order": 21
+            "order": 22
           },
           "codotchi.idleResetOnMouseMovement": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the mouse moves inside the Codotchi sidebar panel (throttled to once per 30 seconds). Never suppressed by aiMode.",
-            "order": 22
+            "order": 23
           },
           "codotchi.leaderboard.autoRefresh": {
             "type": "boolean",
             "default": true,
             "description": "Show a one-time notification about the leaderboard when your pet first dies. The leaderboard page also auto-refreshes every hour when left open in a browser — this can be disabled directly on the leaderboard page.",
-            "order": 23
+            "order": 24
           },
           "codotchi.leaderboard.livePush": {
             "type": "boolean",
             "default": false,
             "description": "When enabled via the sidebar toggle button, pushes your pet's current age to the leaderboard hourly while it is alive. Requires a GitHub sign-in (prompted on first push).",
-            "order": 24
+            "order": 25
           }
         }
       },

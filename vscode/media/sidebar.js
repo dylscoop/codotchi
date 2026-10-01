@@ -146,6 +146,8 @@
   const BG_MODE = (document.body && document.body.dataset && document.body.dataset.background) || "ordered";
   // codotchi.backgroundOpacity — how strongly the scene shows behind the pet (subtle / medium / vivid)
   const BG_OPACITY = (document.body && document.body.dataset && document.body.dataset.backgroundOpacity) || "medium";
+  // codotchi.backgroundStyle — "scenic" (pixel-art scenery) or "legacy" (the pre-2.25 tint and props)
+  const BG_STYLE = (document.body && document.body.dataset && document.body.dataset.backgroundStyle) || "scenic";
   // codotchi.backgroundAnimations — false (or reduced motion) draws a still background
   const BG_ANIMATE = !REDUCED_MOTION &&
     !(document.body && document.body.dataset && document.body.dataset.backgroundAnimations === "false");
@@ -2045,7 +2047,9 @@
     spriteCtx.fillRect(0, 0, W, H);
 
     // Sky, scenery, ground and weather (backgroundArt.js)
-    if (window.backgroundArt) {
+    if (window.backgroundArt && BG_STYLE === "legacy") {
+      window.backgroundArt.drawLegacyBackground(spriteCtx, W, H, BG_MODE, new Date(), background);
+    } else if (window.backgroundArt) {
       window.backgroundArt.drawBackground(spriteCtx, W, H, BG_MODE, new Date(),
                                           { opacity: BG_OPACITY, backdrop: background, animate: BG_ANIMATE });
     }
