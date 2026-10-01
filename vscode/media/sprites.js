@@ -2052,21 +2052,31 @@
   /** How far the hand is pressed onto the head (0..1); two pats per reaction. */
   function patDrop(t) { return Math.sin(((t * 2) % 1) * Math.PI); }
 
+  /** Scale of the pat hand relative to the mood prop-pixel size. */
+  var PAT_HAND_SCALE = 0.5;
+
   /** A sleeved hand above the head that pats down twice. */
   function drawPatHand(ctx, t, box, facingLeft, px) {
-    var hx = Math.round(patHeadX(box, facingLeft) - 3.5 * px);
-    var tipY = Math.round(box.y + px - (1 - patDrop(t)) * 5 * px);   // fingertips
+    var hp = px * PAT_HAND_SCALE;                    // hand pixel — half a prop-pixel
+    var hx = patHeadX(box, facingLeft) - 3.5 * hp;
+    var tipY = box.y + hp - (1 - patDrop(t)) * 5 * hp;   // fingertips
+    // Cells in hand-pixel units, snapped to whole canvas pixels
+    function cell(cx, cy, cw, ch) {
+      var x0 = Math.round(hx + cx * hp), y0 = Math.round(tipY + cy * hp);
+      ctx.fillRect(x0, y0, Math.max(1, Math.round(hx + (cx + cw) * hp) - x0),
+                           Math.max(1, Math.round(tipY + (cy + ch) * hp) - y0));
+    }
     ctx.save();
     ctx.globalAlpha = Math.min(1, Math.min(t, 1 - t) * 10);
     ctx.fillStyle = "#4a90d9";                       // sleeve cuff
-    ctx.fillRect(hx, tipY - 7 * px, 7 * px, 2 * px);
+    cell(0, -7, 7, 2);
     ctx.fillStyle = "#f5c5a3";                       // palm
-    ctx.fillRect(hx, tipY - 5 * px, 7 * px, 3 * px);
+    cell(0, -5, 7, 3);
     for (var f = 0; f < 4; f++) {                    // fingers
-      ctx.fillRect(hx + f * 2 * px, tipY - 2 * px, px, 2 * px);
+      cell(f * 2, -2, 1, 2);
     }
     ctx.fillStyle = "#d9a07c";                       // palm shading
-    ctx.fillRect(hx, tipY - 3 * px, 7 * px, px);
+    cell(0, -3, 7, 1);
     ctx.restore();
   }
 
@@ -2138,6 +2148,9 @@
    * Draw the device next to the pet. slideT (0..1) animates it coming out;
    * alpha follows the speech bubble so both fade together.
    */
+  // Prop-pixels of clear space between the pet and its device
+  var DEVICE_GAP = 3;
+
   function drawUsageDevice(ctx, device, box, facingLeft, px, slideT, alpha, animTick) {
     if (alpha <= 0) { return; }
     var s = Math.max(0, Math.min(1, slideT));
@@ -2147,20 +2160,20 @@
     if (device === "laptop") {
       // Open laptop on the floor in front; the lid swings up as it comes out
       var lw = 9;
-      var lx = facingLeft ? box.x - (lw + 1) * px : box.x + box.w + px;
+      var lx = facingLeft ? box.x - (lw + DEVICE_GAP) * px : box.x + box.w + DEVICE_GAP * px;
       ctx.fillStyle = "#8a8f98";
       ctx.fillRect(lx, feetY - px, lw * px, px);
       var lidH = Math.max(1, Math.round(6 * s));
       drawDeviceScreen(ctx, lx + px, feetY - (1 + lidH) * px, 7, lidH, px, animTick);
     } else if (device === "tablet") {
       // Held up at chest height
-      var tx = facingLeft ? box.x - 8 * px : box.x + box.w + px;
+      var tx = facingLeft ? box.x - (7 + DEVICE_GAP) * px : box.x + box.w + DEVICE_GAP * px;
       var ty = Math.round(box.y + box.h * 0.4 + (1 - s) * 4 * px);
       drawDeviceScreen(ctx, tx, ty, 7, 5, px, animTick);
     } else {
       // Phone held by the head
       var head = box.h > box.w ? 0.25 : 0.15;
-      var phx = facingLeft ? box.x - 4 * px : box.x + box.w + px;
+      var phx = facingLeft ? box.x - (3 + DEVICE_GAP) * px : box.x + box.w + DEVICE_GAP * px;
       var phy = Math.round(box.y + box.h * head + (1 - s) * 4 * px);
       drawDeviceScreen(ctx, phx, phy, 3, 5, px, animTick);
     }
@@ -2190,6 +2203,7 @@
     drawDevice:  drawUsageDevice,
     MOTION:      PAT_MOTION,
     DEVICES:     USAGE_DEVICE,
+    DEVICE_GAP:  DEVICE_GAP,
   };
   window.SPRITES          = SPRITES;
   window.renderSpriteGrid = renderSpriteGrid;

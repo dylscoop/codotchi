@@ -63,6 +63,13 @@ describe("webview reactions (vscode/media/sidebar.js)", () => {
     }
   });
 
+  it("eats a meal for twice as long as a snack, bobbing twice", () => {
+    const dur = (k: string) => Number(new RegExp(`^\\s*${k}:\\s*(\\d+)`, "m").exec(sidebarSource)![1]);
+    assert.equal(dur("fed_meal"), 1000);
+    assert.equal(dur("fed_meal"), 2 * dur("fed_snack"));
+    assert.match(sidebarSource, /var bobs = reaction\.type === "fed_meal" \? 2 : 1;/);
+  });
+
   it("queues died on death and hatched on egg -> baby", () => {
     assert.match(sidebarSource, /pushReaction\("died"/);
     assert.match(sidebarSource, /"evolved_to_baby"\) \{ pushReaction\("hatched"/);
@@ -308,6 +315,22 @@ describe("pat reaction (vscode/media/sprites.js window.spritePat)", () => {
     assert.equal(none.calls.fillRect ?? 0, 0);
   });
 
+  it("draws the patting hand at half a prop-pixel per hand pixel", () => {
+    for (const px of [2, 4, 5, 8]) {
+      const rects: number[][] = [];
+      const ctx = new Proxy({} as any, {
+        get(t, k: string) { return k in t ? t[k] : k === "fillRect" ? (...a: number[]) => { rects.push(a); } : () => undefined; },
+        set(t, k: string, v) { t[k] = v; return true; },
+      });
+      pat.drawHand(ctx, 0.25, box, false, px);
+      const w = Math.max(...rects.map((r) => r[0] + r[2])) - Math.min(...rects.map((r) => r[0]));
+      const h = Math.max(...rects.map((r) => r[1] + r[3])) - Math.min(...rects.map((r) => r[1]));
+      assert.ok(Math.abs(w - 3.5 * px) <= 1, `width at px=${px}: ${w}`);    // was 7 * px
+      assert.ok(Math.abs(h - 3.5 * px) <= 1, `height at px=${px}: ${h}`);   // was 7 * px
+      for (const r of rects) { assert.ok(r[2] >= 1 && r[3] >= 1 && Number.isInteger(r[0]) && Number.isInteger(r[1])); }
+    }
+  });
+
   it("spawns hearts for every pet, prr for the cat and smoke for the dragon, within the cap", () => {
     const particles: any[] = [];
     pat.spawn(particles, "dog", box, false, 1, () => 0);
@@ -350,6 +373,25 @@ describe("AI-usage device (vscode/media/sprites.js window.spritePat)", () => {
     const gone = mockCtx();
     pat.drawDevice(gone.ctx, "laptop", box, false, 2, 1, 0, 40);
     assert.equal(gone.calls.fillRect ?? 0, 0);
+  });
+
+  it("keeps every device a few prop-pixels clear of the pet on either side", () => {
+    const px = 2;
+    assert.ok(pat.DEVICE_GAP >= 3);
+    for (const device of ["phone", "tablet", "laptop"]) {
+      for (const facingLeft of [false, true]) {
+        const rects: number[][] = [];
+        const ctx = new Proxy({} as any, {
+          get(t, k: string) { return k in t ? t[k] : k === "fillRect" ? (...a: number[]) => { rects.push(a); } : () => undefined; },
+          set(t, k: string, v) { t[k] = v; return true; },
+        });
+        pat.drawDevice(ctx, device, box, facingLeft, px, 1, 1, 40);
+        const left  = Math.min(...rects.map((r) => r[0]));
+        const right = Math.max(...rects.map((r) => r[0] + r[2]));
+        if (facingLeft) { assert.equal(box.x - right, pat.DEVICE_GAP * px, device + " (left)"); }
+        else            { assert.equal(left - (box.x + box.w), pat.DEVICE_GAP * px, device + " (right)"); }
+      }
+    }
   });
 });
 
@@ -431,6 +473,15 @@ describe("classic creature box (vscode/media/sprites.js)", () => {
     assert.equal(w.spriteDrawsAsClassic("classic", "adult"), true);
     assert.equal(w.spriteDrawsAsClassic("dog", "adult"), false);
     assert.equal(w.spriteDrawsAsClassic("no_such_pet", "adult"), true);
+  });
+});
+
+describe("head gap above every pet (vscode/media/sidebar.js)", () => {
+  it("lifts the status indicator and speech bubble a little above the head", () => {
+    assert.match(sidebarSource, /function headGap\(state\) \{\s*return Math\.max\(2, Math\.round\(petPropWidth\(state\) \/ 16\)\);/);
+    assert.match(sidebarSource, /var _petTopY  = Math\.round\(petY\) \+ walkBob - headGap\(lastState\);/);
+    assert.match(sidebarSource, /var indicatorY = bodyY - 3 - headGap\(state\);/);
+    assert.match(sidebarSource, /drawSpeechBubble\(staticX \+ Math\.round\(bWidth \/ 2\), staticY - headGap\(state\),/);
   });
 });
 

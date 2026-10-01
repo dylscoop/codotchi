@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.24.3] — 2026-10-01
+
+### Fixed
+
+- **Patting hand** — the hand that pats your pet is half the size, so it no longer towers over small pets.
+- **Room above the head** — every pet now has a little space between its head and the sleep / sick indicator and speech bubble above it.
+- **AI usage device** — the phone, tablet or laptop sits a little further from your pet so it no longer overlaps it.
+
+### Changed
+
+- **Meals** — your pet takes twice as long to eat a meal, staying at its bowl for a second bite.
+- **Fewer attention calls** — the random calls (cleaning, misbehaviour, gifts, play, pats and cravings) come about half as often at every Attention Call Rate setting. Calls for real needs like hunger or sickness are unchanged.
+
 ## [2.24.2] — 2026-10-01
 
 ### Added

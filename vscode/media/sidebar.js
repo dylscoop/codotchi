@@ -59,7 +59,7 @@
 
   /** Reaction animation durations in ms. */
   const REACTION_DURATIONS = {
-    fed_meal:      500,
+    fed_meal:      1000,   // twice the snack — the pet lingers at its bowl
     fed_snack:     500,
     played:        700,
     fell_asleep:   600,
@@ -1299,7 +1299,7 @@
     var _bSz      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType) * _bScale);
     var _bW       = effectiveBWidth(lastState, _bSz);
     var _petCx    = Math.round(petX) + Math.round(_bW / 2);
-    var _petTopY  = Math.round(petY) + walkBob;
+    var _petTopY  = Math.round(petY) + walkBob - headGap(lastState);
     drawSpeechBubble(_petCx, _petTopY, nowMs,
                      emojiClearance(lastState.sleeping || patting, moodPxSize));
   }
@@ -1307,7 +1307,7 @@
   /**
    * Height (canvas px) of the band above the head used by the floating z's,
    * the pat hearts and the patting hand, so the speech bubble sits above them.
-   * z's and hearts rise ~20px; the hand reaches ~12 prop-pixels above the head.
+   * z's and hearts rise ~20px; the (half-size) hand reaches ~6 prop-pixels above the head.
    * @param {boolean} active — the pet is asleep or being patted
    * @param {number}  px     — mood / pat prop pixel size
    * @returns {number}
@@ -1318,7 +1318,7 @@
     for (var i = 0; i < all.length; i++) {
       if (all[i].kind === "z" || all[i].kind === "heart") { lingering = true; break; }
     }
-    return (active || lingering) ? Math.max(24, 12 * px + 4) : 0;
+    return (active || lingering) ? Math.max(24, 6 * px + 4) : 0;
   }
 
   if (!REDUCED_MOTION) {
@@ -2559,8 +2559,10 @@
 
       case "fed_meal":
       case "fed_snack": {
-        // Bob up then down: yOff = -sin(t*π)*10
-        var yOff = -Math.sin(t * Math.PI) * 10;
+        // Bob up then down: yOff = -|sin(t*π*bobs)|*10 — a meal lasts twice as
+        // long as a snack, so it bobs twice at the same pace
+        var bobs = reaction.type === "fed_meal" ? 2 : 1;
+        var yOff = -Math.abs(Math.sin(t * Math.PI * bobs)) * 10;
         drawBody(state, x, bodyY + yOff, facingLeft, legFrame);
         break;
       }
@@ -2763,7 +2765,7 @@
     var secondary = palette.secondary;
 
     var indicatorX = x + Math.round(bWidth / 2) - 4;
-    var indicatorY = bodyY - 3;
+    var indicatorY = bodyY - 3 - headGap(state);
     if (state.sleeping) {
       spriteCtx.fillStyle = secondary;
       spriteCtx.font = "bold 10px monospace";
@@ -2800,7 +2802,7 @@
 
     drawBody(state, staticX, staticY, false, 0);
     drawStatusIndicators(state, staticX, staticY);
-    drawSpeechBubble(staticX + Math.round(bWidth / 2), staticY, performance.now());
+    drawSpeechBubble(staticX + Math.round(bWidth / 2), staticY - headGap(state), performance.now());
   }
 
   // ── Static look-up tables ────────────────────────────────────────────────
@@ -2912,6 +2914,16 @@
    */
   function petPropWidth(state) {
     return Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * (STAGE_SCALES[state.stage] || 0.5));
+  }
+
+  /**
+   * Small empty band (canvas px) kept between the top of every pet and the
+   * status indicator / speech bubble above it — one mood prop-pixel, min 2px.
+   * @param {object} state
+   * @returns {number}
+   */
+  function headGap(state) {
+    return Math.max(2, Math.round(petPropWidth(state) / 16));
   }
 
   // ── Initial view ─────────────────────────────────────────────────────────

@@ -539,10 +539,10 @@ class GameEngineTest {
     }
 
     @Test
-    fun `rate settings map to divisors 1_5, 2_25 and 3_0`() {
+    fun `rate settings map to divisors 3_0, 4_5 and 6_0`() {
         val source = javaClass.getResourceAsStream("/source/CodotchiPlugin.kt")!!.bufferedReader().readText()
-        assertTrue(source.contains("""mapOf("fast" to 1.5, "medium" to 2.25, "slow" to 3.0)"""))
-        assertEquals(1.5, DEFAULT_GAME_CONFIG.attentionCallRateDivisor)
+        assertTrue(source.contains("""mapOf("fast" to 3.0, "medium" to 4.5, "slow" to 6.0)"""))
+        assertEquals(3.0, DEFAULT_GAME_CONFIG.attentionCallRateDivisor)
     }
 
     @Test

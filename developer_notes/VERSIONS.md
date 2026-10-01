@@ -1,6 +1,26 @@
 # Version History
 
-## v2.24.2 — current
+## v2.24.3 — current
+
+**Updated constants:** `attentionCallRateDivisor` fast 3.0 · medium 4.5 · slow 6.0 (was 1.5 · 2.25 · 3.0); `REACTION_DURATIONS.fed_meal` 1000 ms (was 500); `DEVICE_GAP` 3 prop-pixels (was 1); `PAT_HAND_SCALE` 0.5
+
+### Changes from v2.24.2 (half-size pat hand; head gap above every pet; usage device further out; meals take twice as long; random attention calls half as often — branch v2.24.3-pat-comb)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sprites.js` | `drawPatHand` draws at `PAT_HAND_SCALE = 0.5` of a prop-pixel per cell, snapped to whole canvas pixels; `drawUsageDevice` keeps `DEVICE_GAP = 3` prop-pixels (was 1) between pet and device, exported as `spritePat.DEVICE_GAP` (BUGFIX-182, BUGFIX-184) |
+| `vscode/media/sidebar.js` | new `headGap(state)` (one prop-pixel, min 2 px) lifts the z / + indicator and speech bubble (animated and reduced-motion) above every pet; `emojiClearance` hand band 12 → 6 prop-pixels (BUGFIX-182, BUGFIX-183); `REACTION_DURATIONS.fed_meal` 500 → 1000 ms with two bobs instead of one |
+| `vscode/tests/unit/webviewAnimations.test.ts` | pat hand size, device gap, head gap and meal duration tests |
+| `developer_notes/vscode/FEATURES.md` | `fed_meal` / `fed_snack` reaction row |
+| `packages/core/src/gameEngine.ts` (+ synced copies, `claude-codotchi/dist`), `pycharm/.../engine/Constants.kt` | `DEFAULT_GAME_CONFIG.attentionCallRateDivisor` 1.5 → 3.0 |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | `attentionCallRate` map fast / medium / slow 1.5 / 2.25 / 3.0 → 3.0 / 4.5 / 6.0, which halves every random call's chance |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/.../GameEngineTest.kt`, `developer_notes/DEV_NOTES.md` | new divisor values |
+| `vscode/CHANGELOG.md`, `plugin.xml`, `developer_notes/BUGFIXES.md` | 2.24.3 notes, BUGFIX-182 / 183 / 184 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.24.2 → 2.24.3 |
+
+---
+
+## v2.24.2
 
 ### Changes from v2.24.1 (classic sprite box; speech bubble clears the z's / hearts; "take a break" call every 30 active minutes — branch v2.24.2-classic-centre)
 

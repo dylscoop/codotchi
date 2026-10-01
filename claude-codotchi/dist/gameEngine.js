@@ -322,7 +322,7 @@ export const TICKS_PER_GAME_DAY_SLEEPING = Math.round(5 * TICKS_PER_MINUTE * 0.8
 export const DEFAULT_GAME_CONFIG = {
     attentionCallsEnabled: true,
     attentionCallExpiryTicks: 200, // "standard" = 10 min
-    attentionCallRateDivisor: 1.5, // "fast"
+    attentionCallRateDivisor: 3.0, // "fast"
     devMode: false,
     devModeAgingMultiplier: 10,
     devModeHealthFloor: 1,

@@ -601,9 +601,9 @@ describe("tick — whim attention calls (play / pat / craving)", () => {
     assert.equal(ATTENTION_EXPIRY_COOLDOWN_TICKS, 100);
   });
 
-  it("defaults to the standard 10-minute expiry and the fast (1.5) rate divisor", () => {
+  it("defaults to the standard 10-minute expiry and the fast (3.0) rate divisor", () => {
     assert.equal(DEFAULT_GAME_CONFIG.attentionCallExpiryTicks, 200);
-    assert.equal(DEFAULT_GAME_CONFIG.attentionCallRateDivisor, 1.5);
+    assert.equal(DEFAULT_GAME_CONFIG.attentionCallRateDivisor, 3.0);
   });
 
   it("a craving fires at any hunger level and records the food", () => {

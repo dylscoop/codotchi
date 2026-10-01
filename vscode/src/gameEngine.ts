@@ -397,7 +397,7 @@ export interface GameConfig {
   /**
    * Divisor applied to the base and max logChance probabilities for all
    * probabilistic call spawns (poop, misbehaviour, gift).
-   * fast=1.5, medium=2.25, slow=3.0.
+   * fast=3.0, medium=4.5, slow=6.0 (doubled in v2.24.3 to halve call frequency).
    */
   attentionCallRateDivisor: number;
   /**
@@ -432,7 +432,7 @@ export interface GameConfig {
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   attentionCallsEnabled:    true,
   attentionCallExpiryTicks: 200,  // "standard" = 10 min
-  attentionCallRateDivisor: 1.5,  // "fast"
+  attentionCallRateDivisor: 3.0,  // "fast"
   devMode:                  false,
   devModeAgingMultiplier:   10,
   devModeHealthFloor:       1,
