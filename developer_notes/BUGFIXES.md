@@ -2139,3 +2139,14 @@ Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an
 **Fix:** When a state carries `snack_placed`, `renderState` takes the answered-call events out of the batch and holds them in `heldSnackAnswers`. When the pet reaches a floor snack, `releaseSnackAnswers()` moves them to `releasedSnackAnswers`, and they're added to the next state's events (the `fed_snack` reply), so the bubble and log line appear with "had a snack". The engine is unchanged: the call is still answered at placement, so it can't expire while the pet walks over. With reduced motion the pet doesn't walk to snacks, so the text shows straight away as before.
 
 **Tests:** `vscode/tests/unit/webviewAnimations.test.ts` checks that the answers are held on `snack_placed`, that every `snack_consumed` path releases them, and that the log uses the filtered events.
+
+## BUGFIX-176 — Left / Right door colours ignored (CSS variables on the canvas)
+
+**Status:** Fixed (branch `feat/minigame-pixel-art`)
+**File:** `vscode/media/sidebar.js` (PyCharm copies it at build time)
+
+**Problem:** `drawLRDoors` set `fillStyle` / `strokeStyle` to strings like `"var(--vscode-foreground, #cccccc)"`. Canvas 2D doesn't resolve CSS variables, so those assignments were dropped and the door frame, knob, "?" and the pet face behind the door were drawn in whatever colour was set before (black by default), which was barely visible on dark themes.
+
+**Fix:** The doors are now drawn by `minigameArt.drawDoors`, which uses plain hex colours with a dark outline, so they read on light and dark themes.
+
+**Tests:** `vscode/tests/unit/minigameArt.test.ts` checks that every canvas colour the art sets is a hex value and that `sidebar.js` assigns no `var(--…)` to a canvas style.

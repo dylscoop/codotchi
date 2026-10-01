@@ -148,11 +148,14 @@ which minigame to play (or cancel).
 
 *The closest port of the original Tamagotchi direction game.*
 
-- Two doors are drawn on the canvas (or as styled `<div>` blocks).
+- Two pixel-art wooden doors are drawn on the `#mg-canvas` overlay (`minigameArt.drawDoors`, v2.22.2).
 - The pet hides behind one. A "ready" animation plays for 0.5 s.
 - A 3-second countdown is shown.
 - Player clicks **Left** or **Right** before time runs out.
 - The door opens to reveal the pet (correct door) or nothing (wrong door).
+  v2.22.2: the pet's door shows ajar for 150 ms, then opens on a pixel face in
+  the pet's palette; the other door fades and the chosen label turns green / red.
+  The countdown and ✓ / ✗ are bitmap glyphs above the doors.
  - **Win**: Happiness +5–15 (delta; net +20–30 including play baseline).
  - **Lose / timeout**: Happiness −5 (delta; net +10 including play baseline).
 - Rounds: 3 per session; best-of-3 determines overall win/lose sent to engine.
@@ -202,6 +205,9 @@ Status: `[ ]`
 - Player clicks **Higher** or **Lower** to predict whether the next number is
   greater or smaller.
 - 5 rounds per session.
+- v2.22.2: the number sits on a pixel-art scoreboard card (bitmap digits, fixed
+  width for 1–100). After a guess the border turns green / red, with an arrow
+  for the way the number went and a ✓ / ✗.
  - **Win** (≥ 4 correct): Happiness +10–20 (delta; net +25–35 including play baseline).
  - **Lose** (≤ 3 correct): Happiness −5 (delta; net +10 including play baseline).
 
@@ -233,6 +239,9 @@ Status: `[ ]`
 - **Win**: Happiness +0 (`MINIGAME_COIN_FLIP_WIN = 0`; net +15 including play baseline).
 - **Lose**: Happiness −10 (`MINIGAME_COIN_FLIP_LOSE = −10`; net +5 including play baseline).
 - Single round per play session.
+- v2.22.2: a pixel-art coin (crown for heads, "T" for tails) tosses and spins
+  for about 0.8 s before landing on the result; reduced motion shows the result
+  straight away.
 
 Status: `[x]`
 
@@ -771,7 +780,7 @@ These are lower-priority ideas that require design work before implementation. A
 | Gotchi Points currency | `[ ]` | Earned from minigame wins; spent in an in-game shop. Persisted in `PetState`. |
 | In-game shop | `[ ]` | Buy accessories, background skins, or extra colour palettes using Gotchi Points. |
 | Sprite animation frames | `[x]` | 2-frame leg walk cycle with bob. v2.22.1: happy, sad, sleeping and eating get a 2–3 frame flip-book mood layer (props, squash/stretch, particles) drawn around the unchanged sprite; see FEATURES_2.md §3.1 |
-| Redesign minigame art | `[ ]` | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style. |
+| Redesign minigame art | `[x]` | v2.22.2: `vscode/media/minigameArt.js` draws the Left / Right doors, the Higher or Lower number card, a spinning Coin Flip coin and a 3×5 bitmap font on the `#mg-canvas` overlay (was `#lr-canvas`), whole-pixel `fillRect` like the mood layer. See §4.1, §4.4, §4.6 |
 | Egg-hatch animation | `[x]` | Wiggle → crack → burst sequence before baby stage (v2.22.0; see §2.2). |
 | Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |
 | Kangaroo character | `[x]` | Web-image-derived pixel-art sprite type (baby through senior stages) in the existing `sprites.js` pipeline; included in random hatch rotation and unlockable with character passcode `straya`. |

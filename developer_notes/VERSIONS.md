@@ -1,6 +1,23 @@
 # Version History
 
-## v2.22.1 — current
+## v2.22.2 — current
+
+### Changes from v2.22.1 (pixel-art mini-game visuals; snack text waits for the pet to eat — branch feat/minigame-pixel-art)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/minigameArt.js` | new `window.minigameArt`: 3×5 bitmap font (`GLYPHS`, `drawText`, `textWidth`), wooden doors (`drawDoor` / `drawDoors`, closed / ajar / open with the pet's face), `drawCountdown`, `drawNumberCard` (fixed-width scoreboard, green / red flash with arrow and ✓ / ✗), `drawCoin` + `coinFrames` (6-frame spin, crown / "T" faces). Hardcoded hex colours only |
+| `vscode/media/sidebar.js` | the three games draw through `minigameArt` on `#mg-canvas` (`mgBegin` sizes it to the sprite canvas, `mgClear` on every game end / close); Left / Right doors open ajar → open (150 ms); Coin Flip spins for ~0.8 s via requestAnimationFrame before the result; reduced motion skips both. BUGFIX-176: no more CSS variables as canvas colours. BUGFIX-175: snack answered-call events are held until the pet eats the snack |
+| `vscode/media/sidebar.html`, `vscode/media/sidebar.css` | `#lr-canvas` → `#mg-canvas` (`image-rendering: pixelated`); new `minigameArt.js` script tag; the countdown and H/L number are screen-reader-only text (`.sr-only`); `.mg-countdown` / `.mg-big-num` removed |
+| `vscode/src/sidebarProvider.ts` | `{{minigameArtUri}}` substitution |
+| `pycharm/build.gradle.kts`, `pycharm/.../CodotchiBrowserPanel.kt` | copy and inline `minigameArt.js` |
+| `vscode/tests/unit/minigameArt.test.ts` (new, added to `npm test`), `vscode/tests/unit/webviewAnimations.test.ts`, `pycharm/.../BrowserPanelHtmlTest.kt` | art, overlay, snack-text and PyCharm inlining tests |
+| `developer_notes/*`, `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | mini-game art docs; FEATURES / September backlog statuses; BUGFIX-175, BUGFIX-176 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.22.1 → 2.22.2 |
+
+---
+
+## v2.22.1
 
 ### Changes from v2.22.0 (mood layer: props, body squash and particles for happy, sad, sleeping and eating — branch feat/mood-frames)
 
