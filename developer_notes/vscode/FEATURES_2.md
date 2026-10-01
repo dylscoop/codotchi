@@ -237,8 +237,8 @@ Already tracked in `FEATURES.md §14` — listed here for parity gap visibility.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Canvas background shifts with system clock hour | `[x]` | `getTimeOfDay()` picks one of 6 buckets for the sky tint; it steps between them rather than blending |
-| Night hours (e.g. 22:00–06:00) use darker palette | `[x]` | Night tint plus moon and stars |
+| Canvas background shifts with system clock hour | `[x]` | `backgroundArt.js` blends the sky minute by minute between hourly keyframes (v2.25.0; it used to step between 6 tint buckets) |
+| Night hours (e.g. 22:00–06:00) use darker palette | `[x]` | Night sky keyframes, pixel moon, twinkling stars, scenery shaded toward night ink |
 | Optionally affects stat decay rates at night | `[ ]` | Hunger decays slightly slower at night, matching real sleep patterns |
 
 ---
