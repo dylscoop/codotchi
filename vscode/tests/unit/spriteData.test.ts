@@ -17,7 +17,7 @@ interface Meta { cols: number; rows: number; legRowStart: number }
 function loadSprites(): { sprites: Record<string, Record<string, Grid>>; meta: Record<string, Meta> } {
   const window: Record<string, unknown> = {};
   const context = vm.createContext({ window });
-  for (const file of ["spriteConstants.js", "sprites.js"]) {
+  for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js"]) {
     const source = fs.readFileSync(path.join(media, file), "utf8").replace(/^﻿/, "");
     vm.runInContext(source, context, { filename: file });
   }

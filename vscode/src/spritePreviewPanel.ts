@@ -65,6 +65,9 @@ export class SpritePreviewPanel {
     const spriteConstantsUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "spriteConstants.js"))
     );
+    const spritesGeneratedUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "sprites.generated.js"))
+    );
     const spritesUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "sprites.js"))
     );
@@ -79,6 +82,7 @@ export class SpritePreviewPanel {
     html = html.replace("{{csp}}", cspTag);
     // Replace relative script src paths with webview URIs
     html = html.replace(`src="spriteConstants.js"`,   `src="${spriteConstantsUri}"`);
+    html = html.replace(`src="sprites.generated.js"`,  `src="${spritesGeneratedUri}"`);
     html = html.replace(`src="sprites.js"`,            `src="${spritesUri}"`);
     html = html.replace(`src="customCharacters.js"`,   `src="${customCharactersUri}"`);
     // Add nonce to the inline script tag (the one with no src attribute).

@@ -5751,6 +5751,12 @@ DEFS["roo"] = DEFS["roo"] || {};
     "0000000000000000000000000000000033333333333333333330000000003333333333333333333000000000000000000000000000000000000000000000000000000000" //127
   ];
 
+  // -- Generated sprites ----------------------------------------------------
+  // sprites.generated.js (built by scripts/import_sprites_bulk.js from
+  // sprites/<species>/) loads before this file; its grids join DEFS here.
+  var GENERATED = window.GENERATED_SPRITE_DEFS || {};
+  Object.keys(GENERATED).forEach(function (type) { DEFS[type] = GENERATED[type]; });
+
   var SPRITES = {};
   var spriteTypes = Object.keys(DEFS);
   for (var si = 0; si < spriteTypes.length; si++) {
