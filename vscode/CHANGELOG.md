@@ -10,6 +10,7 @@
 
 - **Snack messages** — "You satisfied … craving" and the pet's thank-you bubble now appear once the pet has eaten the snack, not when you drop it.
 - **Left / Right doors** — the door outlines and the face behind the door now show in the right colours.
+- **Stepping away** — a pet that is starving, miserable or exhausted now holds steady while you're away, instead of sliding further and losing health the moment you come back.
 
 ## [2.22.1] — 2026-10-01
 

@@ -10,6 +10,8 @@
 | `vscode/media/sidebar.js` | the three games draw through `minigameArt` on `#mg-canvas` (`mgBegin` sizes it to the sprite canvas, `mgClear` on every game end / close); Left / Right doors open ajar → open (150 ms); Coin Flip spins for ~0.8 s via requestAnimationFrame before the result; reduced motion skips both. BUGFIX-176: no more CSS variables as canvas colours. BUGFIX-175: snack answered-call events are held until the pet eats the snack |
 | `vscode/media/sidebar.html`, `vscode/media/sidebar.css` | `#lr-canvas` → `#mg-canvas` (`image-rendering: pixelated`); new `minigameArt.js` script tag; the countdown and H/L number are screen-reader-only text (`.sr-only`); `.mg-countdown` / `.mg-big-num` removed |
 | `vscode/src/sidebarProvider.ts` | `{{minigameArtUri}}` substitution |
+| `packages/core/src/gameEngine.ts` (+ synced copies, `claude-codotchi/dist/`), `pycharm/.../engine/GameEngine.kt` | BUGFIX-177: the idle stat floor keys off `inDamageState` (starving / miserable / exhausted / sick) instead of damage taken, which is always none while idle |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/.../GameEngineTest.kt` | idle-floor tests for a starving and a miserable pet |
 | `pycharm/build.gradle.kts`, `pycharm/.../CodotchiBrowserPanel.kt` | copy and inline `minigameArt.js` |
 | `vscode/tests/unit/minigameArt.test.ts` (new, added to `npm test`), `vscode/tests/unit/webviewAnimations.test.ts`, `pycharm/.../BrowserPanelHtmlTest.kt` | art, overlay, snack-text and PyCharm inlining tests |
 | `developer_notes/*`, `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | mini-game art docs; FEATURES / September backlog statuses; BUGFIX-175, BUGFIX-176 |

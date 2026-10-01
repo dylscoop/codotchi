@@ -309,6 +309,31 @@ class GameEngineTest {
         assertTrue(next.health >= IDLE_STAT_FLOOR, "health should never drop below the idle floor (got ${next.health})")
     }
 
+    // BUGFIX-177: damage is skipped while idle, so the floor must key off the
+    // damage *state*, not damage taken — otherwise only sick pets were floored.
+    @Test
+    fun `floors happiness and energy for a starving (not sick) pet while idle and deep idle`() {
+        for ((idle, deep) in listOf(true to false, true to true)) {
+            var pet = makePet().copy(hunger = 0, hungerZeroTicks = 99, happiness = 30, energy = 30, health = 50, sick = false)
+            repeat(3000) { pet = tick(pet, isIdle = idle, isDeepIdle = deep) }
+            assertTrue(pet.alive)
+            assertTrue(pet.happiness >= IDLE_STAT_FLOOR, "happiness slid below the idle floor (got ${pet.happiness}, deep=$deep)")
+            assertTrue(pet.energy >= IDLE_STAT_FLOOR, "energy slid below the idle floor (got ${pet.energy}, deep=$deep)")
+            assertTrue(pet.health >= 50, "health dropped while idle (got ${pet.health}, deep=$deep)")
+        }
+    }
+
+    @Test
+    fun `floors hunger and energy for a miserable (happiness 0) pet while idle and deep idle`() {
+        for ((idle, deep) in listOf(true to false, true to true)) {
+            var pet = makePet().copy(happiness = 0, hunger = 30, energy = 30, health = 50, sick = false, sleeping = false)
+            repeat(3000) { pet = tick(pet, isIdle = idle, isDeepIdle = deep) }
+            assertTrue(pet.alive)
+            assertTrue(pet.hunger >= IDLE_STAT_FLOOR, "hunger slid below the idle floor (got ${pet.hunger}, deep=$deep)")
+            assertTrue(pet.energy >= IDLE_STAT_FLOOR, "energy slid below the idle floor (got ${pet.energy}, deep=$deep)")
+        }
+    }
+
     @Test
     fun `does not log a health-loss event when the idle floor fully absorbs the damage`() {
         val pet  = makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 5)

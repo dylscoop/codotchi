@@ -2150,3 +2150,14 @@ Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an
 **Fix:** The doors are now drawn by `minigameArt.drawDoors`, which uses plain hex colours with a dark outline, so they read on light and dark themes.
 
 **Tests:** `vscode/tests/unit/minigameArt.test.ts` checks that every canvas colour the art sets is a hex value and that `sidebar.js` assigns no `var(--…)` to a canvas style.
+
+## BUGFIX-177 — Idle stat floor never applied to a starving, miserable or exhausted pet
+
+**Status:** Fixed (branch `feat/minigame-pixel-art`)
+**Files:** `packages/core/src/gameEngine.ts` (+ generated copies), `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
+
+**Problem:** While idle, hunger, happiness and energy are meant to stop decaying at `IDLE_STAT_FLOOR` (20) when the pet is sick or losing health. The floor checked `sick || tookDamageThisTick`, but since BUG-S02 the damage blocks are skipped while idle, so `tookDamageThisTick` is always false there. Only sick pets were floored. A starving or exhausted pet kept sliding to 0 happiness while the user was away, then came back miserable and lost health straight away.
+
+**Fix:** `tick` now computes `inDamageState` (starving past `HUNGER_ZERO_TICKS_BEFORE_RISK`, happiness 0 awake, energy 0 awake, or sick) before the damage blocks. The idle floor uses `inDamageState || tookDamageThisTick`. Health is still never lost while idle, and a stat already below the floor is still never raised.
+
+**Tests:** `vscode/tests/unit/gameEngine.test.ts` and `pycharm/.../GameEngineTest.kt` tick a starving pet and a miserable pet 3000 times while idle and deep idle, and check that the other stats stay ≥ 20. The TS tests fail on the old engine.

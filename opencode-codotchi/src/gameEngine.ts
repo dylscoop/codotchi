@@ -1393,6 +1393,16 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     hungerZeroTicks = 0;
   }
 
+  // True while any health-damage source below is live (starving, miserable,
+  // exhausted or sick). The damage itself is skipped while idle, but the idle
+  // stat floor further down still keys off this, so a pet in trouble stops
+  // sliding further while the user is away (BUGFIX-177).
+  const inDamageState =
+    hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK ||
+    (happiness === STAT_MIN && !sleeping) ||
+    (energy === STAT_MIN && !sleeping) ||
+    sick;
+
   // Health damage only applies while the user is active (BUG-S02). While idle
   // or deep idle, hunger and happiness still decay slowly so there is something
   // to care for on return, but the pet never loses health. Existing sickness
@@ -1575,12 +1585,15 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   // above, so a same-tick damage source can never slip through.
   //  • Health never falls below its value entering this tick while idle
   //    (BUG-S02) — the damage blocks above are already gated, this is the net.
-  //  • When sick or damaged, hunger/happiness/energy stop decaying at
-  //    IDLE_STAT_FLOOR. The floor is capped at each stat's value entering this
-  //    tick, so a stat already below IDLE_STAT_FLOOR is never raised back up.
+  //  • When sick or in any other damage state (starving, miserable, exhausted),
+  //    hunger/happiness/energy stop decaying at IDLE_STAT_FLOOR. The damage
+  //    blocks are skipped while idle, so this keys off inDamageState rather
+  //    than damage actually taken. The floor is capped at each stat's value
+  //    entering this tick, so a stat already below IDLE_STAT_FLOOR is never
+  //    raised back up.
   if (isIdle || isDeepIdle) {
     health = Math.max(health, state.health);
-    if (sick || tookDamageThisTick) {
+    if (inDamageState || tookDamageThisTick) {
       hunger    = Math.max(hunger,    Math.min(state.hunger,    IDLE_STAT_FLOOR));
       happiness = Math.max(happiness, Math.min(state.happiness, IDLE_STAT_FLOOR));
       energy    = Math.max(energy,    Math.min(state.energy,    IDLE_STAT_FLOOR));
