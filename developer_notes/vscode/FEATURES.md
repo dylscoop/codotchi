@@ -129,6 +129,14 @@ same overlay. A non-game **Today's Token Cost** option is also available in the 
 it closes the overlay and fires a speech bubble above the pet showing today's cost, last-1h
 cost, and average tokens per message; applies the same energy/happiness cost as a Pat (−20
 energy, +10 happiness), but with no weight change and no `"patted"` event/reaction bubble.
+Since v2.24.0 both hosts send the bubble as `{type: "showBubble", text, kind: "usage"}`
+(`tokenCostBubbleMessage` in `vscode/src/tokenCostBubble.ts`, `tokenCostBubblePayload` in
+`TokenCostBubble.kt`). While that bubble shows, the pet holds a device from
+`window.spritePat.DEVICES`: a laptop for tim / stu / classic / dragon, a tablet for dog / sheep /
+kangaroo / roo, a phone for cat / snake and anything else. The screen shows three ticking bars. It slides
+out over `DEVICE_SLIDE_MS` (300 ms) and uses `bubbleAlpha()`, so it holds for `BUBBLE_HOLD_MS` (6 s)
+and fades over `BUBBLE_FADE_MS` (0.5 s) with the bubble. It is hidden while the pet sleeps.
+The overlay no longer has a "Play or Pat" title (the custom-character `mgTitle` field is gone).
 Which sources feed the bubble is controlled by `codotchi.tokenCostSources`
 (VS Code) / three checkboxes in Settings > Tools > Codotchi (PyCharm): any
 combination of `claudeCode`, `openCode` (both dollar-cost, from local usage
@@ -370,6 +378,7 @@ hands control back.
 | `became_sick` | Fast shake: ±4 px random horizontal jitter | 600 ms |
 | `healed` | Brief green colour overlay fading out | 500 ms |
 | `died` | Floats up 40 px and fades out under a gold halo; the dead screen appears when it ends (skipped with reduced motion) | 1200 ms |
+| `patted` | Per-pet motion from `window.spritePat.MOTION` (`sprites.js`), anchored at the feet: dog wag + two hops, cat arch, sheep fleece puff, snake coil + sway, kangaroo/roo two hops, dragon loop, tim/stu lean + cheek blush, classic double squish (unknown types use classic). A sleeved hand pats the head twice; hearts for every pet, "prr" for the cat, smoke for the dragon (`patParticles`, cap 24). Added v2.24.0 | 1400 ms |
 
 Reactions are stored in a simple queue; if a new one arrives while one is
 playing, it is appended and plays immediately after.

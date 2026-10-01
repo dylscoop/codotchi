@@ -1,6 +1,23 @@
 # Version History
 
-## v2.23.0 — current
+## v2.24.0 — current
+
+### Changes from v2.23.0 (per-pet pat animations; the pet holds a device for the AI-usage bubble; "Play or Pat" heading removed — branch feat/pat-anims-usage-device)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sprites.js` | new `window.spritePat`: `PAT_MOTION` per pet (dog, cat, sheep, snake, kangaroo/roo, dragon, tim/stu, classic fallback), `drawPatHand`, `drawPatBlush` (tim / stu), `spawnPatParticles` (hearts, cat "prr", dragon smoke; `PAT_PARTICLE_MAX` 24), `USAGE_DEVICE` + `drawUsageDevice` (phone / tablet / laptop with a ticking bar chart); `drawMoodParticles` draws the `heart`, `prr` and `puff` kinds |
+| `vscode/media/sidebar.js` | `patted` reaction (1400 ms) with a `case "patted"` transform; `patParticles`; `BUBBLE_HOLD_MS` / `BUBBLE_FADE_MS` / `DEVICE_SLIDE_MS` and `bubbleAlpha()` shared by the bubble and the device; `showBubble(text, kind)` and the `showBubble` message pass `kind`; the `mgTitle` overlay heading code is removed |
+| `vscode/media/sidebar.html` | "Play or Pat" heading removed from `#mg-select` |
+| `vscode/media/customCharacters.js`, `vscode/src/customCharacters.ts`, `pycharm/.../CustomCharacters.kt` | `mgTitle` field removed |
+| `vscode/src/tokenCostBubble.ts` (new), `vscode/src/sidebarProvider.ts`, `pycharm/.../TokenCostBubble.kt` (new), `CodotchiPlugin.kt` | token-cost bubble sent with `kind: "usage"` |
+| `vscode/tests/unit/webviewAnimations.test.ts`, `tokenCostBubble.test.ts` (new), `pycharm/.../TokenCostBubbleTest.kt` (new), `vscode/package.json` | pat motion / hand / particles, device, `bubbleAlpha` timing, banner-removed and `kind: "usage"` tests |
+| `developer_notes/vscode/FEATURES.md`, `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | pat animation, AI-usage device, banner removal |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.23.0 → 2.24.0 |
+
+---
+
+## v2.23.0
 
 ### Changes from v2.22.2 (desktop alerts for critical stats; settings regrouped with a Developer section; sleeping blanket removed — branch feat/os-notifications-settings)
 

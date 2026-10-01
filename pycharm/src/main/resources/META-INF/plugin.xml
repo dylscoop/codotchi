@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.23.0</version>
+    <version>2.24.0</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -96,7 +96,7 @@ pre-built releases, and the OpenCode integration download.</p>
   <tr><td><b>Feed</b></td><td>Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect.</td></tr>
   <tr><td><b>Snack</b></td><td>Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick.</td></tr>
   <tr><td><b>Play</b></td><td>Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted.</td></tr>
-  <tr><td><b>Pat</b></td><td>Gives your pet a gentle pat. Boosts happiness. Costs energy. Accessed via the Play menu. Cannot be used while your pet is sleeping or exhausted.</td></tr>
+  <tr><td><b>Pat</b></td><td>Gives your pet a gentle pat. A hand pats its head, hearts float up and each pet reacts in its own way. Boosts happiness. Costs energy. Accessed via the Play menu. Cannot be used while your pet is sleeping or exhausted.</td></tr>
   <tr><td><b>Sleep</b></td><td>Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy.</td></tr>
   <tr><td><b>Clean</b></td><td>Clears all droppings from the screen. Leaving too many uncleaned for too long will make your pet sick.</td></tr>
   <tr><td><b>Medicine</b></td><td>Treats sickness. Three doses cure it; medicine does not restore health. Use it as soon as your pet falls ill, because sickness drains health until it is cured.</td></tr>

@@ -72,7 +72,14 @@
     became_sick:   600,
     healed:        500,
     died:          1200,
+    patted:        1400,
   };
+
+  /** Speech bubbles stay up for BUBBLE_HOLD_MS, then fade over BUBBLE_FADE_MS. */
+  const BUBBLE_HOLD_MS = 6000;
+  const BUBBLE_FADE_MS = 500;
+  /** How long the AI-usage device takes to come out. */
+  const DEVICE_SLIDE_MS = 300;
 
   // ── Element references ──────────────────────────────────────────────────
 
@@ -154,6 +161,7 @@
   let idleTimer     = 0;      // seconds until next wander direction/pause change
   let reactionQueue = [];     // [{ type, startMs, durationMs, startX, startY }]
   let moodParticles = [];     // sparkles / tears / crumbs / z's (window.spriteMood)
+  let patParticles  = [];     // hearts / prr / smoke during a pat (window.spritePat)
   let lastMood      = null;   // mood drawn last frame — particles reset when it changes
   let lastMoodFrame = -1;     // flip-book frame drawn last frame
   let chompUntilMs  = 0;      // performance.now() until which a floor-snack chomp plays
@@ -169,7 +177,7 @@
   let snackItems = [];       // floor items: [{ x, type: "candy"|"bone" }]
   let heldSnackAnswers     = []; // answered-call events waiting for the pet to eat a floor snack
   let releasedSnackAnswers = []; // ...and once eaten, shown with the next state update
-  let activeBubble = null;   // speech bubble: { text, startMs, fadeOutMs, fadeDurMs } or null
+  let activeBubble = null;   // speech bubble: { text, kind, startMs, fadeOutMs, fadeDurMs } or null
   let bubbleQueue  = [];     // pending attention-call text; at most 1 entry
   let pendingDeathTimer = null; // setTimeout id while the "died" reaction plays before the dead screen
   let petIsSleeping = false; // true while fell_asleep is active; suppresses all other bubbles
@@ -821,15 +829,31 @@
    * Calling this while a bubble is already showing replaces it immediately.
    * The bubble stays visible for 6 s then fades out over 0.5 s.
    * @param {string} text
+   * @param {string} [kind] - "usage" for the AI-usage report (the pet holds a device)
    */
-  function showBubble(text) {
+  function showBubble(text, kind) {
     var now = performance.now();
     activeBubble = {
       text:       text,
+      kind:       kind || null,
       startMs:    now,
-      fadeOutMs:  now + 6000,   // begin fade after 6 s
-      fadeDurMs:  500,          // fade-out duration in ms
+      fadeOutMs:  now + BUBBLE_HOLD_MS,   // begin fade after 6 s
+      fadeDurMs:  BUBBLE_FADE_MS,         // fade-out duration in ms
     };
+  }
+
+  /**
+   * Opacity of a bubble at nowMs: 1 while held, falling to 0 over the fade,
+   * 0 once it has gone. Persistent bubbles (fadeOutMs = Infinity) stay at 1.
+   */
+  function bubbleAlpha(bubble, nowMs) {
+    if (!bubble) { return 0; }
+    if (bubble.fadeOutMs === Infinity) { return 1; }
+    var elapsed   = nowMs - bubble.startMs;
+    var fadeStart = bubble.fadeOutMs - bubble.startMs;
+    if (elapsed >= fadeStart + bubble.fadeDurMs) { return 0; }
+    if (elapsed > fadeStart) { return 1 - (elapsed - fadeStart) / bubble.fadeDurMs; }
+    return 1;
   }
 
   // Queue an attention-call bubble instead of overriding the current one.
@@ -880,24 +904,13 @@
   function drawSpeechBubble(petCx, petTopY, nowMs) {
     if (!activeBubble) { return; }
 
-    var alpha = 1.0;
-
-    if (activeBubble.fadeOutMs === Infinity) {
-      // Persistent bubble (e.g. sleep) — always full alpha, never cleared here
-      alpha = 1.0;
-    } else {
-      var elapsed = nowMs - activeBubble.startMs;
-      var fadeStart = activeBubble.fadeOutMs - activeBubble.startMs; // = 6000 ms
-
-      if (elapsed >= fadeStart + activeBubble.fadeDurMs) {
-        // Fully faded — clear and show any queued attention-call bubble
-        activeBubble = null;
-        if (bubbleQueue.length > 0) { showBubble(bubbleQueue.shift()); }
-        return;
-      } else if (elapsed > fadeStart) {
-        // Fading out
-        alpha = 1.0 - (elapsed - fadeStart) / activeBubble.fadeDurMs;
-      }
+    // Persistent bubbles (e.g. sleep) stay at full alpha and are never cleared here
+    var alpha = bubbleAlpha(activeBubble, nowMs);
+    if (alpha <= 0) {
+      // Fully faded — clear and show any queued attention-call bubble
+      activeBubble = null;
+      if (bubbleQueue.length > 0) { showBubble(bubbleQueue.shift()); }
+      return;
     }
 
     var PAD_X    = 8;
@@ -1246,6 +1259,11 @@
     window.spriteMood.step(moodParticles, dt, floorY + bHeight);
     lastMoodFrame = moodFrame;
     var moodProps = mood && !isDragon;   // the dragon hovers, so no floor props
+    var patting   = activeReaction && activeReaction.type === "patted";
+    if (patting) {
+      window.spritePat.spawn(patParticles, lastState.spriteType, moodBox, petFacingLeft, dt);
+    }
+    window.spriteMood.step(patParticles, dt, floorY + bHeight);
 
     // ── Draw ──────────────────────────────────────────────────────────────
     drawEnvironment(lastState);
@@ -1254,7 +1272,19 @@
     }
     drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                          window.spriteMood.scaleY(mood, moodFrame));
-    window.spriteMood.drawParticles(spriteCtx, moodParticles, window.spriteMood.px(moodBox));
+    var moodPxSize = window.spriteMood.px(moodBox);
+    if (patting) {
+      var patT = Math.min(1, (nowMs - activeReaction.startMs) / activeReaction.durationMs);
+      window.spritePat.drawHand(spriteCtx, patT, moodBox, petFacingLeft, moodPxSize);
+    }
+    window.spriteMood.drawParticles(spriteCtx, moodParticles, moodPxSize);
+    window.spriteMood.drawParticles(spriteCtx, patParticles, moodPxSize);
+    // AI-usage report: the pet holds a phone / tablet / laptop for as long as the bubble shows
+    if (activeBubble && activeBubble.kind === "usage" && !lastState.sleeping) {
+      window.spritePat.drawDevice(spriteCtx, window.spritePat.device(lastState.spriteType), moodBox, petFacingLeft,
+                                  moodPxSize, (nowMs - activeBubble.startMs) / DEVICE_SLIDE_MS,
+                                  bubbleAlpha(activeBubble, nowMs), animTick);
+    }
     drawStatusIndicators(lastState, Math.round(petX), Math.round(petY) + walkBob);
 
     // ── Speech bubble ──────────────────────────────────────────────────────
@@ -1381,11 +1411,9 @@
       snackBtn.disabled = snacksLeft <= 0;
     }
 
-    // Custom character button and minigame label overrides
+    // Custom character Pat button label
     var _customChar = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
-    var mgTitle  = document.querySelector("#mg-select .mg-title");
     var mgPatBtn = document.getElementById("btn-mg-pat");
-    if (mgTitle)  { mgTitle.textContent  = _customChar ? _customChar.mgTitle  : "Play or Pat"; }
     if (mgPatBtn) { mgPatBtn.textContent = _customChar ? _customChar.patLabel : "Pat"; }
 
     // Reset position when a brand-new or just-loaded pet first appears
@@ -1413,6 +1441,7 @@
       idleTimer     = 0;
       reactionQueue = [];
       moodParticles = [];
+      patParticles  = [];
       lastMood      = null;
       chompUntilMs  = 0;
       giftBoxX      = null;
@@ -1451,6 +1480,7 @@
     if (events.indexOf("fed_meal")      !== -1) { pushReaction("fed_meal",      nowMs); }
     if (events.indexOf("fed_snack")     !== -1) { pushReaction("fed_snack",     nowMs); }
     if (events.indexOf("played")        !== -1) { pushReaction("played",        nowMs); }
+    if (events.indexOf("patted")        !== -1) { pushReaction("patted",        nowMs); }
     if (events.indexOf("fell_asleep")   !== -1) {
       pushReaction("fell_asleep",   nowMs);
       // Persist the X position so it survives a webview reload while sleeping
@@ -2654,6 +2684,23 @@
         break;
       }
 
+      case "patted": {
+        // Per-pet motion (window.spritePat), anchored at the feet, plus blush for the humans
+        var pm   = window.spritePat.motion(state.spriteType, t);
+        var pCx  = x + bWidth / 2 + pm.dx;
+        var pFy  = feetY + pm.dy;
+        var pPx  = Math.max(1, Math.round(bWidth / 16));
+        spriteCtx.save();
+        spriteCtx.translate(pCx, pFy);
+        spriteCtx.rotate(pm.rot * (facingLeft ? -1 : 1));
+        spriteCtx.scale(pm.sx, pm.sy);
+        spriteCtx.translate(-(x + bWidth / 2), -feetY);
+        drawBody(state, x, bodyY, facingLeft, legFrame);
+        window.spritePat.drawBlush(spriteCtx, state.spriteType, t, { x: x, y: bodyY, w: bWidth, h: bHeight }, pPx);
+        spriteCtx.restore();
+        break;
+      }
+
       case "died": {
         // Float up and fade out, with a halo above the head
         var yOff4 = -t * 40;
@@ -2826,7 +2873,7 @@
     const message = event.data;
     if (!message) { return; }
     if (message.type === "showBubble") {
-      showBubble(message.text);
+      showBubble(message.text, message.kind);
       return;
     }
     if (message.type === "leaderboard_submit_result") {

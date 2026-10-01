@@ -28,8 +28,6 @@ data class CustomCharacter(
     val defaultName: String,
     /** Label for the Pat button in the minigame overlay. */
     val patLabel: String,
-    /** Minigame overlay title — replaces the default "Play or Pat". */
-    val mgTitle: String,
     /** attention_call_gift notification message (null = use default). */
     val giftMessage: String? = null,
     /** Toast notification strings for pat-related events. */
@@ -58,7 +56,6 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         passcode    = "teawtim",
         defaultName  = "Timagotchi",
         patLabel    = "Go for a Run",
-        mgTitle     = "Play or Go for a Run",
         giftMessage = "Tim wants a tea break!",
         patToasts   = CustomCharacterToasts(
             patted     = "Tim went for a run!",
@@ -76,7 +73,6 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         passcode    = "straya",
         defaultName  = "Skippy",
         patLabel    = "Bounce",
-        mgTitle     = "Play or Bounce",
         giftMessage = "Skippy found a souvenir!",
         patToasts   = CustomCharacterToasts(
             patted     = "Skippy had a bounce!",
@@ -94,7 +90,6 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         passcode    = "shiba",
         defaultName  = "Codotchi",
         patLabel    = "Pat",
-        mgTitle     = "Play or Pat",
         giftMessage = "__Name__ found a tiny tennis ball!",
         patToasts   = CustomCharacterToasts(
             patted     = "__Name__ enjoyed the attention!",
@@ -108,7 +103,6 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         passcode     = "blackcat",
         defaultName  = "Codotchi",
         patLabel     = "Pat",
-        mgTitle      = "Play or Pat",
         giftMessage  = "__Name__ found a toy mouse!",
         patToasts    = CustomCharacterToasts(
             patted     = "__Name__ purred!",
@@ -126,7 +120,6 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         passcode     = "bounce",
         defaultName  = "Roogotchi",
         patLabel     = "Bounce",
-        mgTitle      = "Play or Bounce",
         giftMessage  = "Roogotchi found something in its pouch!",
         patToasts    = CustomCharacterToasts(
             patted     = "Roogotchi had a bounce!",
@@ -144,7 +137,6 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         passcode     = "rubylovessalmon",
         defaultName  = "Stugotchi",
         patLabel     = "Collect Stickers",
-        mgTitle      = "Play or Collect Stickers",
         giftMessage  = "Stu wants a pint!",
         patToasts    = CustomCharacterToasts(
             patted     = "Stu collected some stickers!",
@@ -184,7 +176,6 @@ fun getCustomCharacterByPasscode(passcode: String): CustomCharacter? {
             passcode    = passcode,
             defaultName = "Codotchi",
             patLabel    = "Pat",
-            mgTitle     = "Play or Pat",
             patToasts   = CustomCharacterToasts(
                 patted     = "__Name__ was patted!",
                 patRefused = "__Name__ doesn't have enough energy to be patted!",
