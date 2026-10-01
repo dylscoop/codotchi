@@ -1195,6 +1195,55 @@
    *
    * Called exclusively from renderSpriteGrid when spriteType === "classic".
    */
+  // v0.11.2 constants (kept exactly as shipped)
+  var CLASSIC_HEIGHT_MULTS = {
+    egg: 1.3, baby: 1.0, child: 1.0, teen: 1.35, adult: 1.5, senior: 1.4
+  };
+
+  /** Classic is an upright type — the same petSize multipliers as the upright grids. */
+  function classicSizeMultiplier() {
+    var ps = (typeof document !== "undefined" && document.body && document.body.dataset)
+           ? (document.body.dataset.petSize || "medium") : "medium";
+    return ps === "small" ? 0.5625 : ps === "large" ? 1.0 : 0.75;
+  }
+
+  /**
+   * True when renderSpriteGrid draws this pet as the procedural classic creature:
+   * classic itself, or a species with no grid for this stage or its adult (BUG-S03).
+   */
+  function drawsAsClassic(spriteType, stage) {
+    spriteType = spriteType || "classic";
+    if (spriteType === "classic") { return true; }
+    var g = SPRITES[spriteType];
+    return !(g && (g[stage || "baby"] || g["adult"]));
+  }
+
+  /**
+   * The classic creature's real drawn size: { w, h } with the feet at y + h.
+   * The sidebar uses this as classic's bounding box, so the (x, bodyY) passed to
+   * renderSpriteGrid is the top-left of the creature itself, not of a 32×48 grid.
+   */
+  function classicBox(state, STAGE_SCALES, weightWidthMultiplier, sizeMultiplier) {
+    STAGE_SCALES          = STAGE_SCALES || window.SPRITE_STAGE_SCALES;
+    weightWidthMultiplier = weightWidthMultiplier || window.spriteWeightWidthMult;
+    if (sizeMultiplier === undefined) { sizeMultiplier = classicSizeMultiplier(); }
+    var stage      = state.stage || "baby";
+    // Classic keeps the original v0.11.2 base size of 24 — this is the authentic
+    // legacy look. Do not change to 96 (that applies to grid-based upright sprites).
+    var bodySize   = Math.round(24 * (STAGE_SCALES[stage] || 0.5) * sizeMultiplier);
+    var bodyWidth  = Math.round(bodySize * weightWidthMultiplier(state.weight || 50));
+    var bodyHeight = Math.round(bodySize * (CLASSIC_HEIGHT_MULTS[stage] || 1.0));
+    var legH       = Math.max(2, Math.round(bodySize * 0.22));
+    // Longest leg drawn for the stage (the other leg is 1px shorter on alternate frames)
+    var groundLegH = stage === "egg"    ? 0
+                   : stage === "baby"   ? Math.max(1, Math.round(bodySize * 0.12))
+                   : stage === "senior" ? Math.max(2, Math.round(bodySize * 0.25))
+                   : stage === "child"  ? legH
+                   : Math.max(2, Math.round(bodySize * 0.30)); // teen / adult
+    return { w: bodyWidth, h: bodyHeight + groundLegH,
+             bodySize: bodySize, bodyWidth: bodyWidth, bodyHeight: bodyHeight, legH: legH };
+  }
+
   function drawClassicProcedural(ctx, state, x, bodyY, facingLeft, legFrame,
                                  breathPhase, STAGE_SCALES, weightWidthMultiplier,
                                  sizeMultiplier) {
@@ -1203,30 +1252,12 @@
 
     var stage = state.stage || "baby";
 
-    // v0.11.2 constants (kept exactly as shipped)
-    var CLASSIC_HEIGHT_MULTS = {
-      egg: 1.3, baby: 1.0, child: 1.0, teen: 1.35, adult: 1.5, senior: 1.4
-    };
-
-    var stageScale   = STAGE_SCALES[stage] || 0.5;
-    // Classic keeps the original v0.11.2 base size of 24 — this is the authentic
-    // legacy look. Do not change to 96 (that applies to grid-based upright sprites).
-    var bodySize     = Math.round(24 * stageScale * sizeMultiplier);
-    var wt           = state.weight || 50;
-    var bodyWidth    = Math.round(bodySize * weightWidthMultiplier(wt));
-    var heightMult   = CLASSIC_HEIGHT_MULTS[stage] || 1.0;
-    var bodyHeight   = Math.round(bodySize * heightMult);
-    var legH         = Math.max(2, Math.round(bodySize * 0.22));
-
-    // Ground-anchor: classic uses a 24px base; floorY was computed from the 96px
-    // grid base. Shift bodyY down so the feet align with the grid ground line.
-    var groundLegH = stage === "egg"    ? 0
-                   : stage === "baby"   ? Math.max(1, Math.round(bodySize * 0.12))
-                   : stage === "senior" ? Math.max(2, Math.round(bodySize * 0.25))
-                   : stage === "child"  ? legH
-                   : Math.max(2, Math.round(bodySize * 0.30)); // teen / adult
-    var gridBHeight = Math.round(Math.round(96 * stageScale * sizeMultiplier) * 1.5);
-    bodyY = bodyY + (gridBHeight - bodyHeight - groundLegH);
+    // (x, bodyY) is the top-left of classicBox — the creature's own bounding box
+    var box        = classicBox(state, STAGE_SCALES, weightWidthMultiplier, sizeMultiplier);
+    var bodySize   = box.bodySize;
+    var bodyWidth  = box.bodyWidth;
+    var bodyHeight = box.bodyHeight;
+    var legH       = box.legH;
 
     // Sleeping breath bob
     var bobY = bodyY;
@@ -1472,19 +1503,14 @@
     // uses its adult grid (see the grid lookup below); a species with no adult
     // grid either (e.g. the archived zodiac animals) is drawn as the procedural
     // classic creature, so a pet is never invisible.
-    if (spriteType !== "classic" &&
-        !(SPRITES[spriteType] && (SPRITES[spriteType][stage] || SPRITES[spriteType]["adult"]))) {
+    if (drawsAsClassic(spriteType, stage)) {
       spriteType = "classic";
     }
 
     // -- Classic: legacy procedural renderer (v0.11.2 style, fixed neon green)
     if (spriteType === "classic") {
-      var petSizeValC = (typeof document !== "undefined" && document.body && document.body.dataset)
-                      ? (document.body.dataset.petSize || "medium") : "medium";
-      // Classic is an upright type — use the same upright-specific multipliers as the grid renderer.
-      var sizeMulC = petSizeValC === "small" ? 0.5625 : petSizeValC === "large" ? 1.0 : 0.75;
       drawClassicProcedural(ctx, state, x, bodyY, facingLeft, legFrame, breathPhase,
-                            STAGE_SCALES, weightWidthMultiplier, sizeMulC);
+                            STAGE_SCALES, weightWidthMultiplier, classicSizeMultiplier());
       return;
     }
 
@@ -1836,7 +1862,9 @@
   }
 
   /** Pixel size for mood props and particles, scaled with the pet. */
-  function moodPx(box) { return Math.max(1, Math.round(box.w / 16)); }
+  // box.pxW (optional) overrides the width used for sizing — the classic creature
+  // is narrower than its grid peers but keeps grid-sized props and particles.
+  function moodPx(box) { return Math.max(1, Math.round((box.pxW || box.w) / 16)); }
 
   /**
    * Food bowl for a meal, drawn behind the pet. Snacks and other moods have no
@@ -2165,6 +2193,8 @@
   };
   window.SPRITES          = SPRITES;
   window.renderSpriteGrid = renderSpriteGrid;
+  window.spriteClassicBox     = classicBox;
+  window.spriteDrawsAsClassic = drawsAsClassic;
   // Exposed for testing and palette-change invalidation.
   window.invalidateSpriteRasterCache = function() {
     _rasterCache.length = 0;

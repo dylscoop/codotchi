@@ -380,3 +380,70 @@ describe("Play or Pat banner (sidebar.html)", () => {
     assert.ok(!sidebarSource.includes("mgTitle"));
   });
 });
+
+describe("classic creature box (vscode/media/sprites.js)", () => {
+  /** Draw classic at (x, y) and return every fillRect as [x, y, w, h]. */
+  function classicRects(w: Record<string, any>, state: Record<string, unknown>, x: number, y: number, legFrame: number) {
+    const rects: number[][] = [];
+    const ctx = new Proxy({} as Record<string, unknown>, {
+      get(target, key: string) {
+        if (key in target) { return target[key]; }
+        if (key === "fillRect") { return (...a: number[]) => { rects.push(a); }; }
+        return () => undefined;
+      },
+      set(target, key: string, value) { target[key] = value; return true; },
+    });
+    w.renderSpriteGrid(ctx, state, x, y, false, legFrame, 0,
+      w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
+      w.spriteHeightRatio, w.spriteQuadBellySag);
+    return rects;
+  }
+
+  for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
+    it(`${stage}: draws inside its box, centred, with its feet on the box floor`, () => {
+      const w = loadSpriteWindow();
+      const state = { spriteType: "classic", stage, weight: 50, mood: "neutral", alive: true };
+      const box = w.spriteClassicBox(state);
+      const x = 100, y = 50;
+      for (const legFrame of [0, 1]) {
+        const rects = classicRects(w, state, x, y, legFrame);
+        assert.ok(rects.length > 0);
+        const top    = Math.min(...rects.map((r) => r[1]));
+        const bottom = Math.max(...rects.map((r) => r[1] + r[3]));
+        assert.equal(top, y, "the head sits at the top of the box — no empty band above");
+        assert.equal(bottom, y + box.h, "the longest leg reaches the box floor");
+        // Body (not the adult's 2px shoulder stubs) spans exactly the box width
+        const body = rects.filter((r) => r[2] === box.w);
+        assert.ok(body.length > 0);
+        for (const r of body) { assert.equal(r[0], x); }
+      }
+    });
+  }
+
+  it("is a small box, not the 32×48 grid box", () => {
+    const w = loadSpriteWindow();
+    const box = w.spriteClassicBox({ spriteType: "classic", stage: "adult", weight: 50 });
+    assert.deepEqual([box.w, box.h], [18, 27 + 5]);   // medium petSize: 24 × 1.0 × 0.75
+  });
+
+  it("treats species with no sprite art as classic", () => {
+    const w = loadSpriteWindow();
+    assert.equal(w.spriteDrawsAsClassic("classic", "adult"), true);
+    assert.equal(w.spriteDrawsAsClassic("dog", "adult"), false);
+    assert.equal(w.spriteDrawsAsClassic("no_such_pet", "adult"), true);
+  });
+});
+
+describe("speech bubble vs emojis above the head (vscode/media/sidebar.js)", () => {
+  it("lifts the bubble above the z's / hearts while sleeping or patted", () => {
+    assert.match(sidebarSource, /drawSpeechBubble\(_petCx, _petTopY, nowMs,\s*emojiClearance\(lastState\.sleeping \|\| patting, moodPxSize\)\)/);
+    assert.match(sidebarSource, /var boxBottomY = petTopY - \(clearance \|\| 0\) - TAIL_H - 2;/);
+  });
+
+  it("keeps grid-sized props for the narrow classic creature", () => {
+    assert.match(sidebarSource, /pxW: petPropWidth\(lastState\)/);
+    const w = loadSpriteWindow();
+    assert.equal(w.spriteMood.px({ x: 0, y: 0, w: 18, h: 32, pxW: 72 }), 5);
+    assert.equal(w.spriteMood.px({ x: 0, y: 0, w: 72, h: 108 }), 5);
+  });
+});

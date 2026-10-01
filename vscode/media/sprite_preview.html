@@ -282,6 +282,12 @@
     var wwm        = window.spriteWeightWidthMult(globalWeight);
     var bodyWidth  = Math.round(bodySize * wwm);
     var bodyHeight = Math.round(bodyWidth * window.spriteHeightRatio(animal));
+    // The procedural classic creature is drawn at its own (smaller) box
+    if (window.spriteDrawsAsClassic(animal, stage)) {
+      var cBox = window.spriteClassicBox(state);
+      bodyWidth  = cBox.w;
+      bodyHeight = cBox.h;
+    }
 
     // Centre horizontally, bottom-align vertically (in raw sprite units)
     // Ensure at least 8px top clearance so tall upright sprites aren't clipped.
