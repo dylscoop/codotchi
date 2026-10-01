@@ -1,6 +1,6 @@
 # Version History
 
-## v2.25.0 — current
+## v2.25.1 — current
 
 **Updated constants (backgroundArt.js):** `RAIN_MS` 3 min · `RAIN_CHANCE` 0.18 · `RAINBOW_MS` 75 s · `SNOW_MS` 4 min · `SNOW_CHANCE` 0.4 · `CRITTERS` bird / butterfly / bee / fireflies (window 90–150 s, chance 0.2–0.35); `VEIL` [day, night] subtle 0.45 / 0.15 · medium 0.10 / 0.05 · vivid 0 / 0; `getTimeOfDay()` buckets now dawn 06–08 · morning 08–12 · afternoon 12–16 · sunset 16–19 · dusk 19–21 · night 21–06 (was 07–10 · 10–13 · 13–16 · 16–19 · 19–22 · 22–07)
 
@@ -16,9 +16,9 @@
 | `vscode/package.json` | `codotchi.background` enum descriptions describe the new scenes |
 | `vscode/package.json`, `sidebarProvider.ts`, `sidebar.html`, `sidebar.js`, `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `CodotchiBrowserPanel.kt` | new `codotchi.backgroundOpacity` (subtle / medium / vivid, default medium) and `codotchi.backgroundAnimations` (default on; reduced motion forces off) settings, passed to `drawBackground` as `{ opacity, backdrop, animate }`; VS Code setting orders renumbered 1..n |
 | `vscode/media/backgroundArt.js` | `VEIL` / `veilAlpha`: backdrop veil over the scene before the particles; `animate: false` draws one fixed frame with no weather, particles or critters |
-| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | "Seasons and time of day" feature; 2.25.0 notes |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | "Seasons and time of day" feature; 2.25.1 notes |
 | `developer_notes/vscode/FEATURES.md`, `FEATURES_2.md`, `FEATURES_SEPTEMBER_2026.md` | background art polish ticked off; day / night cycle notes |
-| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.24.3 → 2.25.0 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.24.3 → 2.25.1 |
 
 ---
 
