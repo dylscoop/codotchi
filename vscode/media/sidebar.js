@@ -167,6 +167,8 @@
   let setupDefaultName = "Codotchi"; // default name for the setup screen name input; updated from stateUpdate
   let giftBoxX   = null;     // floor X of gift box while a "gift" attention call is active
   let snackItems = [];       // floor items: [{ x, type: "candy"|"bone" }]
+  let heldSnackAnswers     = []; // answered-call events waiting for the pet to eat a floor snack
+  let releasedSnackAnswers = []; // ...and once eaten, shown with the next state update
   let activeBubble = null;   // speech bubble: { text, startMs, fadeOutMs, fadeDurMs } or null
   let bubbleQueue  = [];     // pending attention-call text; at most 1 entry
   let pendingDeathTimer = null; // setTimeout id while the "died" reaction plays before the dead screen
@@ -1080,6 +1082,7 @@
         }
         if (closestDist < bWidth / 2 + 4) {
           snackItems.splice(snackItems.indexOf(closestSnack), 1);
+          releaseSnackAnswers();
           idleTimer = 0.6;  // chomp pause (mood layer "eating")
           chompUntilMs = nowMs + 600;
           petVx     = 0;
@@ -1148,6 +1151,7 @@
         if (closestDist < bWidth / 2 + 4) {
           // Pet reached the snack
           snackItems.splice(snackItems.indexOf(closestSnack), 1);
+          releaseSnackAnswers();
           idleTimer = 0.6;  // chomp pause (mood layer "eating")
           chompUntilMs = nowMs + 600;
           petVx     = 0;
@@ -1398,6 +1402,8 @@
       chompUntilMs  = 0;
       giftBoxX      = null;
       snackItems    = [];
+      heldSnackAnswers     = [];
+      releasedSnackAnswers = [];
     }
 
     // Reset position when the pet evolves to a new stage
@@ -1412,6 +1418,20 @@
     // ── Map incoming events to reactions ──────────────────────────────────
     var nowMs = performance.now();
     var events = state.events || [];
+
+    // A snack answers the hunger / craving call as soon as it's placed, but the
+    // "answered" bubble and log line wait until the pet has eaten it, then come
+    // through with the fed_snack state. Reduced motion has no walking pet to
+    // eat the snack, so there they show straight away.
+    var snackPlaced = events.indexOf("snack_placed") !== -1 && snackItems.length < 3;
+    if (snackPlaced && !REDUCED_MOTION) {
+      heldSnackAnswers = heldSnackAnswers.concat(events.filter(isAnsweredCall));
+      events = events.filter(function (e) { return !isAnsweredCall(e); });
+    }
+    if (releasedSnackAnswers.length > 0) {
+      events = events.concat(releasedSnackAnswers);
+      releasedSnackAnswers = [];
+    }
 
     if (events.indexOf("fed_meal")      !== -1) { pushReaction("fed_meal",      nowMs); }
     if (events.indexOf("fed_snack")     !== -1) { pushReaction("fed_snack",     nowMs); }
@@ -1528,13 +1548,13 @@
     // Hand off to animation loop — it owns all drawing
     lastState = state;
 
-    appendEvents(state.events || [], state.name, state);
+    appendEvents(events, state.name, state);
 
     // Spawn poo overlay animation
     if ((state.events || []).indexOf("pooped") !== -1) { spawnPooAnim(); }
 
     // Snack items — spawn a floor item when snack_placed fires
-    if ((state.events || []).indexOf("snack_placed") !== -1 && snackItems.length < 3) {
+    if (snackPlaced) {
       var siW = spriteCanvas.width;
       // Compute the pet's reachable X range so the snack is always within reach.
       var siScale  = STAGE_SCALES[(state.stage || lastState && lastState.stage) || "baby"] || 0.5;
@@ -1723,6 +1743,16 @@
   // medicine, …) collapse into one updating line with a (×N) counter instead of
   // flooding the log with identical entries.  The first label is kept so
   // events with randomised wording don't change text on every repeat.
+  function isAnsweredCall(code) {
+    return code.indexOf("attention_call_answered_") === 0;
+  }
+
+  /** The pet ate a floor snack: let the held "answered" text through with the next state. */
+  function releaseSnackAnswers() {
+    releasedSnackAnswers = releasedSnackAnswers.concat(heldSnackAnswers);
+    heldSnackAnswers = [];
+  }
+
   function appendEvents(events, petName, state) {
     if (!events.length) { return; }
     events.forEach(function (text) {

@@ -2128,3 +2128,14 @@ Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an
 **Problem:** PyCharm showed a much higher Claude "Today's Token Cost" than VS Code for the same transcripts. The PyCharm `pricingForModel` had two substring fallbacks that `claudeUsage.ts` and `state.mjs` don't have: `"opus" in model` priced at $15/$75 and `"haiku" in model` at $0.80/$4. No table prefix matches a model like `claude-opus-5-5`, so VS Code priced it at the sonnet default ($3/$15) while PyCharm used $15/$75, five times as much.
 
 **Fix:** Removed the two substring fallbacks, so unmatched models now get the sonnet default in all three copies. (None of the three tables has an Opus 5.x entry yet.)
+
+## BUGFIX-175 — Snack "answered" text showed before the pet ate the snack
+
+**Status:** Fixed (branch `feat/minigame-pixel-art`)
+**File:** `vscode/media/sidebar.js` (PyCharm copies it at build time)
+
+**Problem:** A snack answers the hunger or craving call when it's placed (`startSnack`), so the `attention_call_answered_*` event arrived with `snack_placed`. The log line ("You satisfied Skippy's craving.") and the whim bubble appeared the moment Snack was clicked, while the pet was still walking to the snack. "Had a snack." only followed once it ate.
+
+**Fix:** When a state carries `snack_placed`, `renderState` takes the answered-call events out of the batch and holds them in `heldSnackAnswers`. When the pet reaches a floor snack, `releaseSnackAnswers()` moves them to `releasedSnackAnswers`, and they're added to the next state's events (the `fed_snack` reply), so the bubble and log line appear with "had a snack". The engine is unchanged: the call is still answered at placement, so it can't expire while the pet walks over. With reduced motion the pet doesn't walk to snacks, so the text shows straight away as before.
+
+**Tests:** `vscode/tests/unit/webviewAnimations.test.ts` checks that the answers are held on `snack_placed`, that every `snack_consumed` path releases them, and that the log uses the filtered events.

@@ -234,3 +234,18 @@ describe("per-mood sprite grids (renderSpriteGrid hook)", () => {
     }
   });
 });
+
+describe("snack answer text waits for the pet to eat (sidebar.js)", () => {
+  it("holds answered-call events when a snack is placed and releases them on every eat path", () => {
+    assert.match(sidebarSource, /if \(snackPlaced && !REDUCED_MOTION\) \{\s*heldSnackAnswers = heldSnackAnswers\.concat\(events\.filter\(isAnsweredCall\)\);\s*events = events\.filter/);
+    const eats = sidebarSource.split("releaseSnackAnswers();").length - 1;
+    const consumed = sidebarSource.split('vscode.postMessage({ command: "snack_consumed" });').length - 1;
+    assert.ok(consumed > 0);
+    assert.equal(eats, consumed, "every snack_consumed path must release the held text");
+  });
+
+  it("logs the filtered events, not the raw state.events", () => {
+    assert.ok(sidebarSource.includes("appendEvents(events, state.name, state);"));
+    assert.ok(!sidebarSource.includes("appendEvents(state.events"));
+  });
+});
