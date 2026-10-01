@@ -33,10 +33,10 @@
     "username": "dylscoop",
     "petName": "Codotchi",
     "petRunId": "someValue.machineId",
-    "spawnedAt": 1790868175923,
-    "ageDays": 0,
-    "stage": "baby",
+    "spawnedAt": 1790868209500,
+    "ageDays": 24,
+    "stage": "teen",
     "petType": "shellscript",
-    "updatedAt": 1790868185664
+    "updatedAt": 1790868481615
   }
 ]
