@@ -68,7 +68,7 @@ class CodotchiConfigurable : Configurable {
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
         val expiryCombo     = JComboBox(arrayOf("Needy (4 min)", "Standard (10 min)", "Chilled (20 min)"))
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
-        val stageHeightDropdown = JComboBox(arrayOf("Compact (180 px)", "Normal (240 px)", "Tall (320 px)", "Extra tall (400 px)"))
+        val stageHeightDropdown = JComboBox(arrayOf("Compact (150 px)", "Normal (180 px)", "Tall (210 px)", "Extra tall (240 px)"))
         val reducedMotionCheckbox = JCheckBox("Reduced motion (disable animation)")
         val petSizeDropdown = JComboBox(arrayOf("Small", "Medium", "Large"))
         val devModeEnabledCheckbox = JCheckBox("Enable developer mode")

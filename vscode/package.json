@@ -174,10 +174,10 @@
           "type": "string",
           "enum": ["compact", "normal", "tall", "extraTall"],
           "enumDescriptions": [
-            "Compact (180 px) — a shorter stage that leaves more room for the rest of the panel.",
-            "Normal (240 px) — the default stage height.",
-            "Tall (320 px) — more room for the pet to jump and play.",
-            "Extra tall (400 px) — the biggest stage."
+            "Compact (150 px) — a shorter stage that leaves more room for the rest of the panel.",
+            "Normal (180 px) — the default stage height.",
+            "Tall (210 px) — more room for the pet to jump and play.",
+            "Extra tall (240 px) — the biggest stage."
           ],
           "default": "normal",
           "description": "Height of the pet stage (the area your pet walks around in). The stage scales with the sidebar width, so the on-screen height is proportional to these sizes."

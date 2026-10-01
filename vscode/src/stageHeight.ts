@@ -1,12 +1,12 @@
 /**
  * Pet stage height presets (codotchi.stageHeight) → canvas pixel height.
- * Compact stays above ~160 px so an upright Large pet (144 px + 12 px floor) still fits.
+ * Compact (150 px) is a little short for an upright Large pet (144 px + 12 px floor): its head can touch the top.
  */
 export const STAGE_HEIGHT_PX: Record<string, number> = {
-  compact: 180,
-  normal: 240,
-  tall: 320,
-  extraTall: 400,
+  compact: 150,
+  normal: 180,
+  tall: 210,
+  extraTall: 240,
 };
 
 /** Canvas height for a stageHeight setting value; unknown values fall back to Normal. */

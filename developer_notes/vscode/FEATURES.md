@@ -281,7 +281,7 @@ footprint to make movement readable.
 | Change | Detail | Status |
 |--------|--------|--------|
 | Expand canvas to full sidebar width | Read `canvas.parentElement.clientWidth` on load and on window resize; set `canvas.width` dynamically | `[x]` |
-| Stage height setting | `stageHeight` preset: Compact 180 / Normal 240 / Tall 320 / Extra tall 400 px (`stageHeightPx` in `vscode/src/stageHeight.ts`, `pycharm/.../StageHeight.kt`); canvas CSS height is dynamic (`height: auto`) so pixel buffer and display always match | `[S]` |
+| Stage height setting | `stageHeight` preset: Compact 150 / Normal 180 / Tall 210 / Extra tall 240 px (v2.22.1; was 180 / 240 / 320 / 400) (`stageHeightPx` in `vscode/src/stageHeight.ts`, `pycharm/.../StageHeight.kt`); canvas CSS height is dynamic (`height: auto`) so pixel buffer and display always match | `[S]` |
 | Sprite size unchanged | The drawn body size is still driven by stage scale; the extra space is used for movement | `[x]` |
 | Smooth sprite rendering (experimental) | `image-rendering: auto` on `#sprite-canvas` and `.sprite-container` — browser bilinear-interpolates on upscale instead of nearest-neighbour; reduces pixelation at larger sidebar widths | `[x]` |
 
