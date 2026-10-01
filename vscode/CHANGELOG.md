@@ -11,6 +11,7 @@
 ### Changed
 
 - **Meals** — your pet takes twice as long to eat a meal, staying at its bowl for a second bite.
+- **Fewer attention calls** — the random calls (cleaning, misbehaviour, gifts, play, pats and cravings) come about half as often at every Attention Call Rate setting. Calls for real needs like hunger or sickness are unchanged.
 
 ## [2.24.2] — 2026-10-01
 

@@ -341,9 +341,9 @@ data class GameConfig(
     /**
      * Divisor applied to the base and max logChance probabilities for all
      * probabilistic call spawns (poop, misbehaviour, gift).
-     * fast=1.5, medium=2.25, slow=3.0.
+     * fast=3.0, medium=4.5, slow=6.0 (doubled in v2.24.3 to halve call frequency).
      */
-    val attentionCallRateDivisor: Double = 1.5,
+    val attentionCallRateDivisor: Double = 3.0,
     /**
      * When true, developer mode is active:
      *   - Health is floored at devModeHealthFloor (default 1; set to 0 to allow death).

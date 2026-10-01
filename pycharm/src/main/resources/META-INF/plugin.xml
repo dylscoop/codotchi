@@ -157,6 +157,7 @@ automatically and retries the submission once.</p>
   <li><b>Room above the head</b> — every pet now has a little space between its head and the sleep / sick indicator and speech bubble above it.</li>
   <li><b>AI usage device</b> — the phone, tablet or laptop sits a little further from your pet so it no longer overlaps it.</li>
   <li><b>Meals</b> — your pet takes twice as long to eat a meal, staying at its bowl for a second bite.</li>
+  <li><b>Fewer attention calls</b> — the random calls (cleaning, misbehaviour, gifts, play, pats and cravings) come about half as often at every Attention Call Rate setting. Calls for real needs like hunger or sickness are unchanged.</li>
 </ul>
 <h3>2.24.2</h3>
 <ul>

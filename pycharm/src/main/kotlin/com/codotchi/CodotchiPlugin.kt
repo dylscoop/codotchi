@@ -362,8 +362,8 @@ class CodotchiPlugin : Disposable {
             val attentionCallExpiryTicks = expiryMap[settings.attentionCallExpiry] ?: 200
 
             // Map attentionCallRate setting to rate divisor.
-            val rateMap = mapOf("fast" to 1.5, "medium" to 2.25, "slow" to 3.0)
-            val attentionCallRateDivisor = rateMap[settings.attentionCallRate] ?: 1.5
+            val rateMap = mapOf("fast" to 3.0, "medium" to 4.5, "slow" to 6.0)
+            val attentionCallRateDivisor = rateMap[settings.attentionCallRate] ?: 3.0
 
             val gameConfig = com.codotchi.engine.GameConfig(
                 attentionCallsEnabled    = settings.enableAttentionCalls,

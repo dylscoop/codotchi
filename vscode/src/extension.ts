@@ -379,9 +379,9 @@ export function activate(context: vscode.ExtensionContext): void {
     const attentionCallExpiryTicks = expiryMap[expiryKey] ?? 200;
 
     // Map the attentionCallRate setting to a rate divisor.
-    const rateMap: Record<string, number> = { fast: 1.5, medium: 2.25, slow: 3.0 };
+    const rateMap: Record<string, number> = { fast: 3.0, medium: 4.5, slow: 6.0 };
     const rateKey = cfg.get<string>("attentionCallRate", "fast");
-    const attentionCallRateDivisor = rateMap[rateKey] ?? 1.5;
+    const attentionCallRateDivisor = rateMap[rateKey] ?? 3.0;
 
     const gameConfig: GameConfig = {
       attentionCallsEnabled:    cfg.get<boolean>("enableAttentionCalls", true),
