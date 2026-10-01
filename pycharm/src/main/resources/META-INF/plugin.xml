@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.25.1</version>
+    <version>2.25.4</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -22,7 +22,7 @@ at random when you start a new game.</p>
 
 <h2>Preview</h2>
 
-<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/example_skippy.png" width="400" alt="Skippy the kangaroo — Codotchi in action"/>
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/Cat_example.png" width="400" alt="A cat Codotchi in a winter scene — Codotchi in action"/>
 
 <h3>Sponsor this project</h3>
 
@@ -49,7 +49,7 @@ Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotch
   <li><b>Safe while you are away</b> — when you step away from the IDE your pet gets hungry and bored more slowly and never loses health, so it is waiting for you when you come back</li>
   <li><b>Seasons and time of day</b> — your pet lives in a pixel-art scene that follows the real month and clock: blossom trees and spring showers with a rainbow, sunflowers and fireflies in summer, falling leaves and pumpkins in autumn, and a snowman, fairy lights and snowfall in winter. The sky moves from dawn through a bright morning to sunset and starry night. Pick a fixed season or a plain background in Settings, soften the scene so your pet stands out, or keep it still</li>
   <li><b>Little whims</b> — now and then your pet just wants to play a game, get a pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in time and it's happy; ignore it and its health suffers</li>
-  <li><b>Break reminders</b> — after 30 minutes of coding, your pet reminds you to take a break. Praise it to answer: it's happier for it and naps while you rest. Skipping it does no harm, and stepping away from the IDE counts as a break</li>
+  <li><b>Break reminders</b> — after 30 minutes of coding, your pet reminds you to take a break. Praise it to answer: it's happier for it and naps for 3 minutes while you rest (stats frozen, still aging), then wakes up on its own. Skipping it does no harm, and stepping away from the IDE counts as a break</li>
   <li><b>Terminal &amp; Claude integrations</b> — your pet lives in Claude Code, OpenCode and Claude Desktop too, with shared state across every host</li>
   <li><b>Today's Token Cost</b> — see how much Claude Code / OpenCode has cost you today, plus your GitHub Copilot premium quota</li>
   <li><b>Public leaderboard</b> — sign in with GitHub to submit your pet when it dies, or push live progress while it's still going</li>
@@ -152,6 +152,11 @@ automatically and retries the submission once.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+<h3>2.25.4</h3>
+<ul>
+  <li><b>Break naps</b> — when you praise your pet to answer a break reminder, it naps for 3 minutes. During the nap its stats are frozen but it keeps aging, and it wakes up on its own when the time is up. Waking it yourself ends the nap early.</li>
+  <li><b>Meals</b> — a meal now fills 15 hunger instead of 20.</li>
+</ul>
 <h3>2.25.1</h3>
 <ul>
   <li><b>Seasonal scenes</b> — the background is redrawn as pixel art with trees and props for each season: blossom trees, tulips and daisies in spring; leafy trees, sunflowers, a picnic blanket and a beach ball in summer; orange and half-bare trees, falling leaves, pumpkins and toadstools in autumn; and a snowman, a snowy pine with fairy lights and icicles in winter.</li>

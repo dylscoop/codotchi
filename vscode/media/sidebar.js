@@ -1523,8 +1523,9 @@
       })();
       petIsSleeping = true;
     }
-    if (events.indexOf("woke_up")       !== -1 ||
-        events.indexOf("auto_woke_up")  !== -1) {
+    if (events.indexOf("woke_up")        !== -1 ||
+        events.indexOf("auto_woke_up")   !== -1 ||
+        events.indexOf("break_nap_over") !== -1) {
       petIsSleeping = false;
       activeBubble = null; // clear the persistent sleep bubble
       pushReaction("woke_up",       nowMs);
@@ -1705,6 +1706,7 @@
     var _cc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
     var labels = {
       "auto_woke_up":           n + " woke up after a full nap.",
+      "break_nap_over":         "Break's over! " + n + " woke up from their nap.",
       "pooped":                  n + " pooped!",
       "became_sick":             n + " got sick!",
       "sickness_damage":         n + " is losing health from being sick!",
@@ -1759,7 +1761,7 @@
       "attention_call_pat":             n + " wants a pat!",
       "attention_call_craving_meal":    n + " is craving a proper meal!",
       "attention_call_craving_snack":   n + " is craving a snack!",
-      "attention_call_break":           "30 minutes already! Remember to take a break — praise " + n + " and they'll nap while you rest.",
+      "attention_call_break":           "30 minutes already! Remember to take a break — praise " + n + " and they'll nap for 3 minutes while you rest.",
       // Attention calls — answered
       "attention_call_answered_hunger":          "You answered " + n + "'s hunger call.",
       "attention_call_answered_unhappiness":     "You answered " + n + "'s sadness call.",
@@ -1772,7 +1774,7 @@
       "attention_call_answered_play":            "You played with " + n + " when they asked.",
       "attention_call_answered_pat":             "You gave " + n + " the pat they wanted.",
       "attention_call_answered_craving":         "You satisfied " + n + "'s craving.",
-      "attention_call_answered_break":           "You're taking a break — " + n + " is napping too.",
+      "attention_call_answered_break":           "You're taking a break — " + n + " is napping too (3 min).",
       // Attention calls — expired
       "attention_call_expired_hunger":          n + "'s hunger call went unanswered!",
       "attention_call_expired_unhappiness":     n + "'s sadness call went unanswered!",

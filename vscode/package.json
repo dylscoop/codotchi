@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.25.1",
+  "version": "2.25.4",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -99,7 +99,7 @@
     },
     "configuration": [
       {
-        "title": "Codotchi",
+        "title": "General",
         "order": 1,
         "properties": {
           "codotchi.enableAttentionCalls": {
@@ -303,20 +303,20 @@
           "codotchi.devModeEnabled": {
             "type": "boolean",
             "default": false,
-            "description": "Check to enable developer mode. Requires the developer passcode to also be set correctly. In developer mode the pet cannot die (health is floored at 1), it ages faster, and high scores are not recorded.",
+            "description": "(Developer) Check to enable developer mode. Requires the developer passcode to also be set correctly. In developer mode the pet cannot die (health is floored at 1), it ages faster, and high scores are not recorded.",
             "order": 1
           },
           "codotchi.developerPasscode": {
             "type": "string",
             "default": "",
-            "description": "Developer passcode. Also requires 'Developer Mode Enabled' (codotchi.devModeEnabled) to be checked to activate dev mode.",
+            "description": "(Developer) Developer passcode. Also requires 'Developer Mode Enabled' (codotchi.devModeEnabled) to be checked to activate dev mode.",
             "order": 2
           },
           "codotchi.devModeAgingMultiplier": {
             "type": "integer",
             "default": 10,
             "minimum": 1,
-            "description": "Aging speed multiplier applied when developer mode is active. Default: 10 (10× faster than normal).",
+            "description": "(Developer) Aging speed multiplier applied when developer mode is active. Default: 10 (10× faster than normal).",
             "order": 3
           },
           "codotchi.devModeHealthFloor": {
@@ -324,7 +324,7 @@
             "default": 1,
             "minimum": 0,
             "maximum": 100,
-            "description": "Minimum health value enforced when developer mode is active. Default: 1 (pet cannot die). Set to 0 to allow the pet to die normally even in dev mode — useful for testing the death flow.",
+            "description": "(Developer) Minimum health value enforced when developer mode is active. Default: 1 (pet cannot die). Set to 0 to allow the pet to die normally even in dev mode — useful for testing the death flow.",
             "order": 4
           }
         }

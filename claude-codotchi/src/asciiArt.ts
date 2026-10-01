@@ -1041,7 +1041,7 @@ export const ATTENTION_CALL_TEXT: Record<string, AttentionCallText> = {
     mood: "happy", label: "praise (gift)", command: "",
   },
   break: {
-    phrases: ["You've been at it for 30 minutes — remember to take a break! Praise me in the IDE and I'll nap while you rest.", "Time for a break! Stretch, grab some water. (Praise me in the IDE.)", "Half an hour already! Take a break — praise me in the IDE and we'll both rest."],
+    phrases: ["You've been at it for 30 minutes — remember to take a break! Praise me in the IDE and I'll nap for 3 minutes while you rest.", "Time for a break! Stretch, grab some water. (Praise me in the IDE.)", "Half an hour already! Take a break — praise me in the IDE and we'll both rest."],
     mood: "neutral", label: "praise (take a break)", command: "",
   },
   misbehaviour: {
