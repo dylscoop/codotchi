@@ -63,7 +63,7 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   snowman, fairy lights and snowfall in winter. The sky moves from dawn through a
   bright morning to sunset and starry night. Pick a fixed season or a plain
   background in Settings, soften the scene so your pet stands out, or keep it
-  still
+  still. Prefer the original look? Set Background style to Legacy
 - **Little whims** — now and then your pet just wants to play a game, get a
   pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in
   time and it's happy; ignore it and its health suffers

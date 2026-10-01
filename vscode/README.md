@@ -64,7 +64,8 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   bright morning to sunset and starry night. Pick a fixed season or a plain
   background with `codotchi.background`, soften the scene so your pet stands out
   with `codotchi.backgroundOpacity`, or keep it still with
-  `codotchi.backgroundAnimations`
+  `codotchi.backgroundAnimations`. Prefer the original look? Set
+  `codotchi.backgroundStyle` to Legacy
 - **Little whims** — now and then your pet just wants to play a game, get a
   pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in
   time and it's happy; ignore it and its health suffers

@@ -4,7 +4,7 @@
 
 **New constants (gameEngine):** `BREAK_NAP_TICKS` 60 (3 min) · **Changed:** `FEED_MEAL_HUNGER_BOOST` 20 → 15
 
-### Changes from v2.25.1 (break nap, smaller meals, developer settings group — branch feat/v2.25.4-break-nap)
+### Changes from v2.25.1 (break nap, smaller meals, developer settings group, legacy background style — branch feat/v2.25.4-break-nap)
 
 | File | What changed |
 |------|-------------|
@@ -13,6 +13,10 @@
 | `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt`, `vscode/media/sidebar.js`, `opencode-codotchi/src/index.ts`, `packages/core/src/asciiArt.ts` | `break_nap_over` notification / log text; break-call text mentions the 3-minute nap; sidebar treats `break_nap_over` as waking |
 | `vscode/package.json` | main settings category renamed "Codotchi" → "General" so "Developer" is a separate child in the Settings tree; dev descriptions prefixed "(Developer)" |
 | `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `Cat_example.png` (new) | Preview screenshot is now the cat example (`example_skippy.png` stays at the root for older published listings) |
+| `vscode/media/backgroundArt.js` | `drawLegacyBackground(ctx, W, H, mode, date, backdrop)` and `legacyTimeOfDay(date)`: the pre-2.25 tint-and-props background ported verbatim from the old `sidebar.js` (base fill included) |
+| `vscode/media/sidebar.js`, `sidebar.html`, `vscode/src/sidebarProvider.ts`, `vscode/package.json`, `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `CodotchiBrowserPanel.kt` | new `codotchi.backgroundStyle` setting (`scenic` default / `legacy`), "Background style:" combo in PyCharm; main-section setting orders renumbered |
+| `vscode/media/sprite_preview.html` | Style picker (Scenic / Legacy) in the background preview |
+| `vscode/tests/unit/backgroundArt.test.ts` | legacy buckets, base fill, seasonal colours, plain strip, static frame, wiring |
 | all manifests, `README.md` | version 2.25.1 → 2.25.4 |
 
 ---

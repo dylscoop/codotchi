@@ -47,7 +47,7 @@ Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotch
   <li><b>Desktop alerts</b> — when hunger, happiness or energy hits 0, or health drops below 25, you get a desktop notification, even with the IDE minimised. It repeats every 15 minutes while the stat stays low; turn it off in Settings</li>
   <li><b>Sickness &amp; death</b> — neglect your pet and it gets sick; leave it untreated and it dies</li>
   <li><b>Safe while you are away</b> — when you step away from the IDE your pet gets hungry and bored more slowly and never loses health, so it is waiting for you when you come back</li>
-  <li><b>Seasons and time of day</b> — your pet lives in a pixel-art scene that follows the real month and clock: blossom trees and spring showers with a rainbow, sunflowers and fireflies in summer, falling leaves and pumpkins in autumn, and a snowman, fairy lights and snowfall in winter. The sky moves from dawn through a bright morning to sunset and starry night. Pick a fixed season or a plain background in Settings, soften the scene so your pet stands out, or keep it still</li>
+  <li><b>Seasons and time of day</b> — your pet lives in a pixel-art scene that follows the real month and clock: blossom trees and spring showers with a rainbow, sunflowers and fireflies in summer, falling leaves and pumpkins in autumn, and a snowman, fairy lights and snowfall in winter. The sky moves from dawn through a bright morning to sunset and starry night. Pick a fixed season or a plain background in Settings, soften the scene so your pet stands out, or keep it still. Prefer the original look? Set Background style to Legacy</li>
   <li><b>Little whims</b> — now and then your pet just wants to play a game, get a pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in time and it's happy; ignore it and its health suffers</li>
   <li><b>Break reminders</b> — after 30 minutes of coding, your pet reminds you to take a break. Praise it to answer: it's happier for it and naps for 3 minutes while you rest (stats frozen, still aging), then wakes up on its own. Skipping it does no harm, and stepping away from the IDE counts as a break</li>
   <li><b>Terminal &amp; Claude integrations</b> — your pet lives in Claude Code, OpenCode and Claude Desktop too, with shared state across every host</li>
@@ -156,6 +156,7 @@ automatically and retries the submission once.</p>
 <ul>
   <li><b>Break naps</b> — when you praise your pet to answer a break reminder, it naps for 3 minutes. During the nap its stats are frozen but it keeps aging, and it wakes up on its own when the time is up. Waking it yourself ends the nap early.</li>
   <li><b>Meals</b> — a meal now fills 15 hunger instead of 20.</li>
+  <li><b>Legacy background</b> — a new Background style setting brings back the original look from before 2.25: a flat time-of-day tint, a ground strip and a few seasonal props. Scenic stays the default.</li>
 </ul>
 <h3>2.25.1</h3>
 <ul>
