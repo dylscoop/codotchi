@@ -678,8 +678,7 @@ class CodotchiPlugin : Disposable {
             }
 
             val text = if (segments.isNotEmpty()) segments.joinToString(" | ") else "Today's Token Cost: no sources selected"
-            val escaped = text.replace("\\", "\\\\").replace("\"", "\\\"")
-            val payload = """{"type":"showBubble","text":"$escaped"}"""
+            val payload = tokenCostBubblePayload(text)
             ApplicationManager.getApplication().invokeLater {
                 browserPanels.forEach { it.postMessage(payload) }
             }

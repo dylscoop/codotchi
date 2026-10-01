@@ -6581,6 +6581,20 @@ DEFS["roo"] = DEFS["roo"] || {};
         ctx.fillStyle = "#c8c8ff";
         ctx.font = "bold 8px monospace";
         ctx.fillText("z", x, y);
+      } else if (p.kind === "heart") {
+        ctx.fillStyle = "#ff5c8a";
+        ctx.fillRect(x - px, y, px, px);
+        ctx.fillRect(x + px, y, px, px);
+        ctx.fillRect(x - px, y + px, 3 * px, px);
+        ctx.fillRect(x, y + 2 * px, px, px);
+      } else if (p.kind === "prr") {
+        ctx.fillStyle = "#ffd59a";
+        ctx.font = "bold 7px monospace";
+        ctx.fillText("prr", x, y);
+      } else if (p.kind === "puff") {
+        var grow = 1 + Math.floor(2 * p.age / p.life);
+        ctx.fillStyle = "#b8b8b8";
+        ctx.fillRect(x, y, grow * px, grow * px);
       }
     }
     ctx.restore();
@@ -6591,6 +6605,189 @@ DEFS["roo"] = DEFS["roo"] || {};
     if (!typeGrids || !mood) { return null; }
     var key = stage + "_" + mood;
     return typeGrids[key] ? key : null;
+  }
+
+  // =========================================================================
+  // Pat reaction — per-pet body motion, a patting hand and floating hearts
+  // =========================================================================
+
+  var PAT_PARTICLE_MAX = 24;
+
+  // Body motion for t in [0, 1]: {dx, dy, sx, sy, rot}, anchored at the feet.
+  // Every motion is the identity at t = 0 and t = 1.
+  function patEnv(t) { return Math.sin(t * Math.PI); }
+  var PAT_MOTION = {
+    // Tail-wag wiggle with two small hops
+    dog: function (t) {
+      var w = Math.sin(t * Math.PI * 8) * patEnv(t);
+      return { dx: w * 2, dy: -Math.abs(Math.sin(t * Math.PI * 2)) * 6, sx: 1, sy: 1, rot: w * 0.06 };
+    },
+    // Arch up (stretch) then settle (squash)
+    cat: function (t) {
+      var a = Math.sin(t * Math.PI * 2);
+      return { dx: 0, dy: 0, sx: 1 - a * 0.04, sy: 1 + a * 0.08, rot: 0 };
+    },
+    // Fleece puffs out
+    sheep: function (t) {
+      var e = patEnv(t);
+      return { dx: 0, dy: 0, sx: 1 + e * 0.12, sy: 1 + e * 0.06, rot: 0 };
+    },
+    // Coils down and sways side to side
+    snake: function (t) {
+      var e = patEnv(t);
+      return { dx: Math.sin(t * Math.PI * 6) * 4 * e, dy: 0, sx: 1 + e * 0.05, sy: 1 - e * 0.1, rot: 0 };
+    },
+    // Two little hops
+    kangaroo: function (t) {
+      return { dx: 0, dy: -Math.abs(Math.sin(t * Math.PI * 2)) * 10, sx: 1, sy: 1, rot: 0 };
+    },
+    // Happy loop in the air
+    dragon: function (t) {
+      var a = t * Math.PI * 2;
+      return { dx: Math.sin(a) * 6, dy: (Math.cos(a) - 1) * 5, sx: 1, sy: 1, rot: Math.sin(a) * 0.15 };
+    },
+    // Leans into the hand
+    tim: function (t) {
+      var e = patEnv(t);
+      return { dx: 0, dy: e, sx: 1, sy: 1 - e * 0.04, rot: e * 0.12 };
+    },
+    // Squish twice
+    classic: function (t) {
+      var q = Math.abs(Math.sin(t * Math.PI * 2));
+      return { dx: 0, dy: 0, sx: 1 + q * 0.08, sy: 1 - q * 0.15, rot: 0 };
+    },
+  };
+  PAT_MOTION.roo = PAT_MOTION.kangaroo;
+  PAT_MOTION.stu = PAT_MOTION.tim;
+
+  function patMotion(spriteType, t) {
+    var fn = PAT_MOTION[spriteType] || PAT_MOTION.classic;
+    return fn(Math.max(0, Math.min(1, t)));
+  }
+
+  // Head position of the drawn pet: upright pets have it in the middle,
+  // four-legged pets on the side they face.
+  function patHeadX(box, facingLeft) {
+    if (box.h > box.w) { return box.x + box.w * 0.5; }
+    return facingLeft ? box.x + box.w * 0.2 : box.x + box.w * 0.8;
+  }
+
+  /** How far the hand is pressed onto the head (0..1); two pats per reaction. */
+  function patDrop(t) { return Math.sin(((t * 2) % 1) * Math.PI); }
+
+  /** A sleeved hand above the head that pats down twice. */
+  function drawPatHand(ctx, t, box, facingLeft, px) {
+    var hx = Math.round(patHeadX(box, facingLeft) - 3.5 * px);
+    var tipY = Math.round(box.y + px - (1 - patDrop(t)) * 5 * px);   // fingertips
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, Math.min(t, 1 - t) * 10);
+    ctx.fillStyle = "#4a90d9";                       // sleeve cuff
+    ctx.fillRect(hx, tipY - 7 * px, 7 * px, 2 * px);
+    ctx.fillStyle = "#f5c5a3";                       // palm
+    ctx.fillRect(hx, tipY - 5 * px, 7 * px, 3 * px);
+    for (var f = 0; f < 4; f++) {                    // fingers
+      ctx.fillRect(hx + f * 2 * px, tipY - 2 * px, px, 2 * px);
+    }
+    ctx.fillStyle = "#d9a07c";                       // palm shading
+    ctx.fillRect(hx, tipY - 3 * px, 7 * px, px);
+    ctx.restore();
+  }
+
+  /** Cheek blush for the human characters, drawn inside the body transform. */
+  function drawPatBlush(ctx, spriteType, t, box, px) {
+    if (spriteType !== "tim" && spriteType !== "stu") { return; }
+    var cx = box.x + box.w / 2, cy = Math.round(box.y + box.h * 0.22);
+    ctx.save();
+    ctx.globalAlpha = 0.7 * patEnv(t);
+    ctx.fillStyle = "#ff8fa3";
+    ctx.fillRect(Math.round(cx - box.w * 0.22) - px, cy, 2 * px, px);
+    ctx.fillRect(Math.round(cx + box.w * 0.22) - px, cy, 2 * px, px);
+    ctx.restore();
+  }
+
+  /** Hearts for every pet, plus "prr" for the cat and smoke for the dragon. */
+  function spawnPatParticles(particles, spriteType, box, facingLeft, dt, rand) {
+    rand = rand || Math.random;
+    var headX = patHeadX(box, facingLeft);
+    var add = [];
+    if (rand() < dt * 4) {
+      add.push({ kind: "heart", x: headX + (rand() - 0.5) * box.w * 0.6, y: box.y,
+                 vx: (rand() - 0.5) * 8, vy: -18, life: 1.1 });
+    }
+    if (spriteType === "cat" && rand() < dt * 1.5) {
+      add.push({ kind: "prr", x: headX + (facingLeft ? -12 : 4), y: box.y + box.h * 0.3,
+                 vx: facingLeft ? -6 : 6, vy: -6, life: 1 });
+    }
+    if (spriteType === "dragon" && rand() < dt * 3) {
+      add.push({ kind: "puff", x: facingLeft ? box.x : box.x + box.w, y: box.y + box.h * 0.3,
+                 vx: (facingLeft ? -1 : 1) * (10 + rand() * 8), vy: -6, life: 0.9 });
+    }
+    for (var j = 0; j < add.length && particles.length < PAT_PARTICLE_MAX; j++) {
+      add[j].age = 0;
+      particles.push(add[j]);
+    }
+  }
+
+  // =========================================================================
+  // AI-usage device — the pet pulls out a phone, tablet or laptop while the
+  // token-cost bubble is showing
+  // =========================================================================
+
+  var USAGE_DEVICE = {
+    tim: "laptop", stu: "laptop", classic: "laptop", dragon: "laptop",
+    dog: "tablet", sheep: "tablet", kangaroo: "tablet", roo: "tablet",
+    cat: "phone", snake: "phone",
+  };
+
+  function usageDevice(spriteType) { return USAGE_DEVICE[spriteType] || "phone"; }
+
+  // Screen with three bars that tick up and down like a live usage chart
+  function drawDeviceScreen(ctx, x, y, w, h, px, animTick) {
+    ctx.fillStyle = "#2b2b2b";
+    ctx.fillRect(x, y, w * px, h * px);
+    if (w < 3 || h < 3) { return; }
+    ctx.fillStyle = "#9fe6ff";
+    ctx.fillRect(x + px, y + px, (w - 2) * px, (h - 2) * px);
+    var maxH = h - 2;
+    var step = Math.floor((animTick || 0) / 20);
+    ctx.fillStyle = "#3d6bb0";
+    for (var i = 0; i < 3 && 1 + i * 2 < w - 1; i++) {
+      var bh = 1 + ((step + i * 2) % maxH);
+      ctx.fillRect(x + (1 + i * 2) * px, y + (h - 1 - bh) * px, px, bh * px);
+    }
+  }
+
+  /**
+   * Draw the device next to the pet. slideT (0..1) animates it coming out;
+   * alpha follows the speech bubble so both fade together.
+   */
+  function drawUsageDevice(ctx, device, box, facingLeft, px, slideT, alpha, animTick) {
+    if (alpha <= 0) { return; }
+    var s = Math.max(0, Math.min(1, slideT));
+    var feetY = box.y + box.h;
+    ctx.save();
+    ctx.globalAlpha = alpha * Math.min(1, s * 2);
+    if (device === "laptop") {
+      // Open laptop on the floor in front; the lid swings up as it comes out
+      var lw = 9;
+      var lx = facingLeft ? box.x - (lw + 1) * px : box.x + box.w + px;
+      ctx.fillStyle = "#8a8f98";
+      ctx.fillRect(lx, feetY - px, lw * px, px);
+      var lidH = Math.max(1, Math.round(6 * s));
+      drawDeviceScreen(ctx, lx + px, feetY - (1 + lidH) * px, 7, lidH, px, animTick);
+    } else if (device === "tablet") {
+      // Held up at chest height
+      var tx = facingLeft ? box.x - 8 * px : box.x + box.w + px;
+      var ty = Math.round(box.y + box.h * 0.4 + (1 - s) * 4 * px);
+      drawDeviceScreen(ctx, tx, ty, 7, 5, px, animTick);
+    } else {
+      // Phone held by the head
+      var head = box.h > box.w ? 0.25 : 0.15;
+      var phx = facingLeft ? box.x - 4 * px : box.x + box.w + px;
+      var phy = Math.round(box.y + box.h * head + (1 - s) * 4 * px);
+      drawDeviceScreen(ctx, phx, phy, 3, 5, px, animTick);
+    }
+    ctx.restore();
   }
 
   // =========================================================================
@@ -6606,6 +6803,16 @@ DEFS["roo"] = DEFS["roo"] || {};
     spawn:         spawnMoodParticles,
     step:          stepMoodParticles,
     drawParticles: drawMoodParticles,
+  };
+  window.spritePat = {
+    motion:      patMotion,
+    drawHand:    drawPatHand,
+    drawBlush:   drawPatBlush,
+    spawn:       spawnPatParticles,
+    device:      usageDevice,
+    drawDevice:  drawUsageDevice,
+    MOTION:      PAT_MOTION,
+    DEVICES:     USAGE_DEVICE,
   };
   window.SPRITES          = SPRITES;
   window.renderSpriteGrid = renderSpriteGrid;

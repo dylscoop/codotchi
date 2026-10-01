@@ -261,3 +261,122 @@ describe("snack answer text waits for the pet to eat (sidebar.js)", () => {
     assert.ok(!sidebarSource.includes("appendEvents(state.events"));
   });
 });
+
+describe("pat reaction (vscode/media/sprites.js window.spritePat)", () => {
+  const w = loadSpriteWindow();
+  const pat = w.spritePat;
+  const spriteTypes = Object.keys(w.SPRITE_ANIMAL_PALETTES ?? {}).length > 0
+    ? Object.keys(w.SPRITE_ANIMAL_PALETTES)
+    : ["classic", "sheep", "snake", "tim", "stu", "kangaroo", "roo", "dog", "cat", "dragon"];
+  const box = { x: 40, y: 20, w: 32, h: 32 };
+
+  it("has its own motion for every built-in pet", () => {
+    for (const type of ["classic", "sheep", "snake", "tim", "stu", "kangaroo", "roo", "dog", "cat", "dragon"]) {
+      assert.equal(typeof pat.MOTION[type], "function", type);
+    }
+  });
+
+  it("starts and ends every motion at rest, with finite values in between", () => {
+    for (const type of [...spriteTypes, "unknown"]) {
+      for (const t of [0, 1]) {
+        const m = pat.motion(type, t);
+        assert.ok(Math.abs(m.dx) < 1e-6 && Math.abs(m.dy) < 1e-6 && Math.abs(m.rot) < 1e-6, `${type} t=${t}`);
+        assert.ok(Math.abs(m.sx - 1) < 1e-6 && Math.abs(m.sy - 1) < 1e-6, `${type} t=${t}`);
+      }
+      const mid = pat.motion(type, 0.3);
+      for (const v of [mid.dx, mid.dy, mid.sx, mid.sy, mid.rot]) { assert.ok(Number.isFinite(v), type); }
+    }
+  });
+
+  it("moves each pet mid-pat", () => {
+    for (const type of ["classic", "sheep", "snake", "tim", "kangaroo", "dog", "cat", "dragon"]) {
+      const m = pat.motion(type, 0.3);
+      const moved = Math.abs(m.dx) + Math.abs(m.dy) + Math.abs(m.sx - 1) + Math.abs(m.sy - 1) + Math.abs(m.rot);
+      assert.ok(moved > 0.01, type);
+    }
+  });
+
+  it("draws the patting hand and the human blush", () => {
+    const { ctx, calls } = mockCtx();
+    pat.drawHand(ctx, 0.25, box, false, 2);
+    assert.ok((calls.fillRect ?? 0) >= 6);
+    const blush = mockCtx();
+    pat.drawBlush(blush.ctx, "tim", 0.5, box, 2);
+    assert.equal(blush.calls.fillRect, 2);
+    const none = mockCtx();
+    pat.drawBlush(none.ctx, "dog", 0.5, box, 2);
+    assert.equal(none.calls.fillRect ?? 0, 0);
+  });
+
+  it("spawns hearts for every pet, prr for the cat and smoke for the dragon, within the cap", () => {
+    const particles: any[] = [];
+    pat.spawn(particles, "dog", box, false, 1, () => 0);
+    assert.deepEqual(particles.map((p) => p.kind), ["heart"]);
+    const cat: any[] = [];
+    pat.spawn(cat, "cat", box, false, 1, () => 0);
+    assert.ok(cat.some((p) => p.kind === "prr"));
+    const dragon: any[] = [];
+    pat.spawn(dragon, "dragon", box, true, 1, () => 0);
+    assert.ok(dragon.some((p) => p.kind === "puff"));
+    const many: any[] = [];
+    for (let i = 0; i < 100; i++) { pat.spawn(many, "cat", box, false, 1, () => 0); }
+    assert.ok(many.length <= 24);
+    const { ctx, calls } = mockCtx();
+    w.spriteMood.drawParticles(ctx, [...cat, ...dragon], 2);
+    assert.ok((calls.fillRect ?? 0) + (calls.fillText ?? 0) >= 3);
+  });
+});
+
+describe("AI-usage device (vscode/media/sprites.js window.spritePat)", () => {
+  const w = loadSpriteWindow();
+  const pat = w.spritePat;
+  const box = { x: 40, y: 20, w: 32, h: 32 };
+
+  it("gives every pet a phone, tablet or laptop", () => {
+    for (const type of ["classic", "sheep", "snake", "tim", "stu", "kangaroo", "roo", "dog", "cat", "dragon", "unknown"]) {
+      assert.ok(["phone", "tablet", "laptop"].includes(pat.device(type)), type);
+    }
+    assert.equal(pat.device("tim"), "laptop");
+    assert.equal(pat.device("dog"), "tablet");
+    assert.equal(pat.device("cat"), "phone");
+  });
+
+  it("draws each device, and nothing once faded out", () => {
+    for (const device of ["phone", "tablet", "laptop"]) {
+      const { ctx, calls } = mockCtx();
+      pat.drawDevice(ctx, device, box, false, 2, 1, 1, 40);
+      assert.ok((calls.fillRect ?? 0) >= 3, device);
+    }
+    const gone = mockCtx();
+    pat.drawDevice(gone.ctx, "laptop", box, false, 2, 1, 0, 40);
+    assert.equal(gone.calls.fillRect ?? 0, 0);
+  });
+});
+
+describe("AI-usage bubble timing (sidebar.js)", () => {
+  it("passes the bubble kind through and fades the device with the bubble", () => {
+    assert.match(sidebarSource, /showBubble\(message\.text, message\.kind\)/);
+    assert.match(sidebarSource, /activeBubble\.kind === "usage"[\s\S]{0,400}bubbleAlpha\(activeBubble, nowMs\)/);
+    assert.match(sidebarSource, /var alpha = bubbleAlpha\(activeBubble, nowMs\);/);
+  });
+
+  it("bubbleAlpha holds for 6 s and fades over 0.5 s", () => {
+    const fn = /function bubbleAlpha\(bubble, nowMs\) \{[\s\S]*?\n  \}/.exec(sidebarSource);
+    assert.ok(fn, "bubbleAlpha not found");
+    const bubbleAlpha = new Function(`${fn[0]}; return bubbleAlpha;`)();
+    const b = { startMs: 0, fadeOutMs: 6000, fadeDurMs: 500 };
+    assert.equal(bubbleAlpha(b, 5999), 1);
+    assert.ok(Math.abs(bubbleAlpha(b, 6250) - 0.5) < 1e-9);
+    assert.equal(bubbleAlpha(b, 6500), 0);
+    assert.equal(bubbleAlpha({ startMs: 0, fadeOutMs: Infinity, fadeDurMs: 500 }, 1e9), 1);
+    assert.equal(bubbleAlpha(null, 0), 0);
+  });
+});
+
+describe("Play or Pat banner (sidebar.html)", () => {
+  it("is gone from the play overlay", () => {
+    const html = fs.readFileSync(path.join(media, "sidebar.html"), "utf8");
+    assert.ok(!html.includes("Play or Pat"));
+    assert.ok(!sidebarSource.includes("mgTitle"));
+  });
+});

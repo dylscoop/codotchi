@@ -38,6 +38,7 @@ import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./
 import { StatusBarManager } from "./statusBar";
 import { stageHeightPx } from "./stageHeight";
 import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
+import { tokenCostBubbleMessage } from "./tokenCostBubble";
 import {
   resolveGithubUser,
   describeGithubUserFailure,
@@ -655,7 +656,7 @@ export class SidebarProvider
 
     const text = segments.length > 0 ? segments.join(" | ") : "Today's Token Cost: no sources selected";
     if (this.webviewView) {
-      void this.webviewView.webview.postMessage({ type: "showBubble", text });
+      void this.webviewView.webview.postMessage(tokenCostBubbleMessage(text));
     }
   }
 
