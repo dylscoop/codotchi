@@ -2122,7 +2122,7 @@ Poop sickness was also harsh: the pet got sick the moment it had 3 poops, and an
 
 ## BUGFIX-174 — PyCharm Claude daily cost too high for Opus 5.x
 
-**Status:** Fixed (branch `feat/hatch-death-statusline-calls`)
+**Status:** Fixed (branch `fix/pycharm-opus-pricing`)
 **File:** `pycharm/src/main/kotlin/com/codotchi/ClaudeUsageScanner.kt`
 
 **Problem:** PyCharm showed a much higher Claude "Today's Token Cost" than VS Code for the same transcripts. The PyCharm `pricingForModel` had two substring fallbacks that `claudeUsage.ts` and `state.mjs` don't have: `"opus" in model` priced at $15/$75 and `"haiku" in model` at $0.80/$4. No table prefix matches a model like `claude-opus-5-5`, so VS Code priced it at the sonnet default ($3/$15) while PyCharm used $15/$75, five times as much.
