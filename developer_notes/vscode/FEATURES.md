@@ -367,6 +367,19 @@ playing, it is appended and plays immediately after.
 
 Status: `[x]` — `died` added in v2.22.0 (BUG-S05, BUGFIX-173)
 
+**Mood layer (v2.22.1).** Between reactions the pet shows its mood with
+props, a squash/stretch and particles drawn around the unchanged sprite
+(`window.spriteMood` in `sprites.js`). A reaction overrides the squash.
+
+| Mood | Shown when | Layer |
+|------|-----------|-------|
+| eating | `fed_meal` / `fed_snack` reaction, or a 0.6 s floor-snack chomp | Bowl (meal) or plate (snack) that empties over a 3-frame chomp; crumbs |
+| sleeping | `state.sleeping` | Blanket over the lower body, pillow under the head; squashed to 88 %; drifting z's |
+| happy | `state.mood === "happy"` | Bouncy 4 % stretch; sparkles |
+| sad | `state.mood === "sad"` | Squashed to 95 %; tear drips from the head side |
+
+Neutral and sick have no layer. The dragon hovers, so it gets no bowl or blanket.
+
 ### 5.7 Direction Flip (Sprite Mirroring)
 
 The procedural `drawSprite` function currently always draws the pet facing
@@ -757,7 +770,7 @@ These are lower-priority ideas that require design work before implementation. A
 | **— Cosmetics & economy —** | | |
 | Gotchi Points currency | `[ ]` | Earned from minigame wins; spent in an in-game shop. Persisted in `PetState`. |
 | In-game shop | `[ ]` | Buy accessories, background skins, or extra colour palettes using Gotchi Points. |
-| Sprite animation frames | `[~]` | 2-frame leg walk cycle with bob is done. Happy, sad, sleeping and eating frames (2–4 frame flip-book per mood using the existing `renderSpriteGrid` pipeline) are not |
+| Sprite animation frames | `[x]` | 2-frame leg walk cycle with bob. v2.22.1: happy, sad, sleeping and eating get a 2–3 frame flip-book mood layer (props, squash/stretch, particles) drawn around the unchanged sprite; see FEATURES_2.md §3.1 |
 | Redesign minigame art | `[ ]` | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style. |
 | Egg-hatch animation | `[x]` | Wiggle → crack → burst sequence before baby stage (v2.22.0; see §2.2). |
 | Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |

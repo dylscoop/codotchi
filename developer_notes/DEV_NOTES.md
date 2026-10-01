@@ -675,6 +675,27 @@ STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette)`
 5. The egg stage is still drawn as an ellipse directly in `drawBody()` — the
    grid system only applies to non-egg stages.
 
+### Mood layer (v2.22.1)
+
+`sprites.js` exports `window.spriteMood`. Each frame, `animationLoop` in
+`sidebar.js` does the following:
+
+1. `current(state, reactionType, chomping)` picks the mood: `eating`,
+   `sleeping`, `happy` or `sad`. It returns `null` for neutral, sick and egg.
+2. `frame(mood, animTick)` gives the flip-book frame.
+3. `spawn` / `step` update the particle pool (at most 20), and `drawParticles`
+   draws it.
+4. `drawProps` draws the bowl or plate before the body and the blanket after
+   it.
+5. `scaleY(mood, frame)` is passed to `drawBodyWithReaction`, which squashes
+   the body around the feet when no reaction is playing.
+
+The sprite pixels are never changed. For real art,
+`DEFS[type][stage + "_" + mood]` (e.g. `adult_sleeping`) replaces the stage
+grid when it exists. The mood comes from `state.displayMood`, which the
+sidebar sets, or else from `state.mood`. The variant name is also part of the
+raster and sparse cache keys.
+
 ### spriteType assignment
 
 `spriteType` is assigned once by `randomSpriteType()` in `gameEngine.ts` at new-game time from the `ROTATION_ANIMALS` pool. All 8 entries have equal probability (12.5% each).

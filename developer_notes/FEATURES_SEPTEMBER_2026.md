@@ -46,7 +46,7 @@ in the older docs as part of this review:
 | FEATURES.md §6.4 | Sick animation | `[x]` |
 | FEATURES.md §10 | Attention ⚠ indicator (tooltip only, when sick) | `[~]` |
 | FEATURES.md §11 / §14 | State schema migration (defaults fill-in, no `schemaVersion`) | `[~]` |
-| FEATURES.md §14 | Sprite animation frames (2-frame walk only) | `[~]` |
+| FEATURES.md §14 | Sprite animation frames (2-frame walk only; mood layer added in v2.22.1) | `[~]` → `[x]` |
 | FEATURES_2.md §1.5 | Pause command, `paused` field, offline-decay exclusion | `[x]` |
 | FEATURES_2.md §1.5 | Paused UI indicator (title-bar icon, no canvas banner) | `[~]` |
 | FEATURES_2.md §1.7 | Egg wiggle phase (whole egg stage) | `[~]` |
@@ -624,7 +624,7 @@ Implementation Order" lists.
 
 1. BUG-S05: `died` float-up reaction animation — **done in v2.22.0**
 2. Full egg-hatch sequence: wiggle, crack, burst (FEATURES.md §2.2, FEATURES_2.md §1.7) — **done in v2.22.0**
-3. Mood animation frames: happy, sad, sleeping, eating (FEATURES_2.md §3.1)
+3. Mood animation frames: happy, sad, sleeping, eating (FEATURES_2.md §3.1) — **done in v2.22.1** (props, body squash and particles around the unchanged sprite; per-mood art hook for later)
 4. Show active attention calls in the Claude Code status line (§2.6) — **done in v2.22.0**
 5. Pixel-art redesign of the minigame visuals (FEATURES.md §14)
 6. Bulk sprite upload pipeline (§2.2)
