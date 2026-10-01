@@ -62,7 +62,7 @@ const val MAX_FLOOR_SNACKS: Int = 3
 const val RECENT_EVENT_LOG_MAX: Int = 20
 const val POOP_TICKS_INTERVAL: Int = 20 * TICKS_PER_MINUTE
 
-const val FEED_MEAL_HUNGER_BOOST: Int = 20
+const val FEED_MEAL_HUNGER_BOOST: Int = 15
 const val FEED_MEAL_WEIGHT_GAIN: Int = 2
 const val FEED_MEAL_MAX_PER_CYCLE: Int = 3
 
@@ -401,6 +401,12 @@ const val GIFT_PRAISE_HAPPINESS_BOOST: Int = 15
 const val BREAK_CALL_INTERVAL_TICKS: Int = 600
 /** Happiness boost when a break call is answered via praise() — same as a gift. */
 const val BREAK_PRAISE_HAPPINESS_BOOST: Int = GIFT_PRAISE_HAPPINESS_BOOST
+/**
+ * Length of the nap the pet takes when a break call is answered: 60 × 3 s = 3 min.
+ * While napping every stat is frozen but the pet keeps aging; it wakes on its own
+ * when the timer runs out.
+ */
+const val BREAK_NAP_TICKS: Int = 60
 
 /** neglectCount decrements by 1 every this many ticks (600 × 3 s = 30 min). */
 const val NEGLECT_DECAY_TICK_INTERVAL: Int = 600

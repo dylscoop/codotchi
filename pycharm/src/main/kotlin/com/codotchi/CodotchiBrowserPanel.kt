@@ -143,6 +143,7 @@ class CodotchiBrowserPanel(
         val reducedMotion    = settings?.reducedMotion ?: false
         val petSize          = settings?.petSize ?: "medium"
         val background       = settings?.background ?: "ordered"
+        val backgroundStyle      = settings?.backgroundStyle ?: "scenic"
         val backgroundOpacity    = settings?.backgroundOpacity ?: "medium"
         val backgroundAnimations = settings?.backgroundAnimations ?: true
 
@@ -164,6 +165,7 @@ class CodotchiBrowserPanel(
         html = html.replace("{{reducedMotion}}", reducedMotion.toString())
         html = html.replace("{{petSize}}", petSize)
         html = html.replace("{{background}}", background)
+        html = html.replace("{{backgroundStyle}}", backgroundStyle)
         html = html.replace("{{backgroundOpacity}}", backgroundOpacity)
         html = html.replace("{{backgroundAnimations}}", backgroundAnimations.toString())
         html = html.replace("{{idleResetOnMouseMovement}}", "true")

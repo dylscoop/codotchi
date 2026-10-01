@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.25.4] — 2026-10-01
+
+### Changed
+
+- **Break naps** — when you praise your pet to answer a break reminder, it naps for 3 minutes. During the nap its stats are frozen (no hunger, happiness or energy changes) but it keeps aging, and it wakes up on its own when the time is up. Waking it yourself ends the nap early.
+- **Meals** — a meal now fills 15 hunger instead of 20.
+- **Legacy background** — `codotchi.backgroundStyle`: set it to Legacy to bring back the original look from before 2.25 (a flat time-of-day tint, a ground strip and a few seasonal props). Scenic stays the default, and both follow your Background season choice.
+- **Settings** — the main settings are now under **Codotchi › General**, and the developer-mode settings are in their own **Codotchi › Developer** group instead of the main list.
+- **Preview screenshot** — the README and marketplace listing now show a cat Codotchi in the winter scene.
+
 ## [2.25.1] — 2026-10-01
 
 ### Added

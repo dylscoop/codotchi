@@ -53,6 +53,7 @@ class CodotchiConfigurable : Configurable {
     private var idleResetOnWindowFocusCheck:    JCheckBox?          = null
     private var idleResetOnMouseMovementCheck:  JCheckBox?          = null
     private var backgroundCombo:               JComboBox<String>?  = null
+    private var backgroundStyleCombo:          JComboBox<String>?  = null
     private var backgroundOpacityCombo:        JComboBox<String>?  = null
     private var backgroundAnimationsCheck:     JCheckBox?          = null
     private var perWorkspacePetCheck:          JCheckBox?          = null
@@ -89,6 +90,7 @@ class CodotchiConfigurable : Configurable {
         val idleResetFocusCheckbox = JCheckBox("Reset idle timer on window focus")
         val idleResetMouseCheckbox = JCheckBox("Reset idle timer on mouse movement (sidebar)")
         val bgCombo = JComboBox(arrayOf("Plain", "Ordered (auto)", "Spring", "Summer", "Autumn", "Winter"))
+        val bgStyleCombo = JComboBox(arrayOf("Scenic", "Legacy"))
         val bgOpacityCombo = JComboBox(arrayOf("Subtle", "Medium", "Vivid"))
         val bgAnimationsCheckbox = JCheckBox("Animate the background (clouds, stars, lights, weather, critters)")
         val perWorkspacePetCheckbox = JCheckBox("Per-project pet (each project gets its own independent pet)")
@@ -138,6 +140,7 @@ class CodotchiConfigurable : Configurable {
         idleResetOnWindowFocusCheck    = idleResetFocusCheckbox
         idleResetOnMouseMovementCheck  = idleResetMouseCheckbox
         backgroundCombo                = bgCombo
+        backgroundStyleCombo           = bgStyleCombo
         backgroundOpacityCombo         = bgOpacityCombo
         backgroundAnimationsCheck      = bgAnimationsCheckbox
         perWorkspacePetCheck           = perWorkspacePetCheckbox
@@ -190,6 +193,7 @@ class CodotchiConfigurable : Configurable {
         addFull(panel, tokenCostOpenCodeCheckbox)
         addFull(panel, tokenCostCopilotCheckbox)
         addLabeled(panel, "Background:", bgCombo)
+        addLabeled(panel, "Background style:", bgStyleCombo)
         addLabeled(panel, "Background opacity:", bgOpacityCombo)
         addFull(panel, bgAnimationsCheckbox)
         addLabeled(panel, "Font size:", combo)
@@ -263,6 +267,7 @@ class CodotchiConfigurable : Configurable {
         val uiIdleResetFocus = idleResetOnWindowFocusCheck?.isSelected ?: true
         val uiIdleResetMouse = idleResetOnMouseMovementCheck?.isSelected ?: true
         val uiBg = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
+        val uiBgStyle = bgStyleIndexToKey(backgroundStyleCombo?.selectedIndex ?: 0)
         val uiBgOpacity = bgOpacityIndexToKey(backgroundOpacityCombo?.selectedIndex ?: 1)
         val uiBgAnimations = backgroundAnimationsCheck?.isSelected ?: true
         val uiPerWorkspacePet = perWorkspacePetCheck?.isSelected ?: false
@@ -292,6 +297,7 @@ class CodotchiConfigurable : Configurable {
             || uiIdleResetFocus != settings.idleResetOnWindowFocus
             || uiIdleResetMouse != settings.idleResetOnMouseMovement
             || uiBg != settings.background
+            || uiBgStyle != settings.backgroundStyle
             || uiBgOpacity != settings.backgroundOpacity
             || uiBgAnimations != settings.backgroundAnimations
             || uiPerWorkspacePet != settings.perWorkspacePet
@@ -325,6 +331,7 @@ class CodotchiConfigurable : Configurable {
         settings.idleResetOnWindowFocus    = idleResetOnWindowFocusCheck?.isSelected ?: true
         settings.idleResetOnMouseMovement  = idleResetOnMouseMovementCheck?.isSelected ?: true
         settings.background                = bgIndexToKey(backgroundCombo?.selectedIndex ?: 1)
+        settings.backgroundStyle           = bgStyleIndexToKey(backgroundStyleCombo?.selectedIndex ?: 0)
         settings.backgroundOpacity         = bgOpacityIndexToKey(backgroundOpacityCombo?.selectedIndex ?: 1)
         settings.backgroundAnimations      = backgroundAnimationsCheck?.isSelected ?: true
         settings.tokenCostIncludeClaudeCode = tokenCostIncludeClaudeCodeCheck?.isSelected ?: true
@@ -371,6 +378,7 @@ class CodotchiConfigurable : Configurable {
         idleResetOnWindowFocusCheck?.isSelected    = settings.idleResetOnWindowFocus
         idleResetOnMouseMovementCheck?.isSelected  = settings.idleResetOnMouseMovement
         backgroundCombo?.selectedIndex             = bgKeyToIndex(settings.background)
+        backgroundStyleCombo?.selectedIndex        = bgStyleKeyToIndex(settings.backgroundStyle)
         backgroundOpacityCombo?.selectedIndex      = bgOpacityKeyToIndex(settings.backgroundOpacity)
         backgroundAnimationsCheck?.isSelected      = settings.backgroundAnimations
         perWorkspacePetCheck?.isSelected           = settings.perWorkspacePet
@@ -391,6 +399,8 @@ class CodotchiConfigurable : Configurable {
     private fun stageHeightKeyToIndex(key: String) = when (key) { "compact" -> 0; "tall" -> 2; "extraTall" -> 3; else -> 1 }
     private fun bgIndexToKey(index: Int) = when (index) { 0 -> "plain"; 2 -> "spring"; 3 -> "summer"; 4 -> "autumn"; 5 -> "winter"; else -> "ordered" }
     private fun bgKeyToIndex(key: String) = when (key) { "plain" -> 0; "spring" -> 2; "summer" -> 3; "autumn" -> 4; "winter" -> 5; else -> 1 }
+    private fun bgStyleIndexToKey(index: Int) = if (index == 1) "legacy" else "scenic"
+    private fun bgStyleKeyToIndex(key: String) = if (key == "legacy") 1 else 0
     private fun bgOpacityIndexToKey(index: Int) = when (index) { 0 -> "subtle"; 2 -> "vivid"; else -> "medium" }
     private fun bgOpacityKeyToIndex(key: String) = when (key) { "subtle" -> 0; "vivid" -> 2; else -> 1 }
 

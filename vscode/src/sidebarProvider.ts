@@ -270,6 +270,7 @@ export class SidebarProvider
       if (
         e.affectsConfiguration("codotchi.fontSize") ||
         e.affectsConfiguration("codotchi.background") ||
+        e.affectsConfiguration("codotchi.backgroundStyle") ||
         e.affectsConfiguration("codotchi.backgroundOpacity") ||
         e.affectsConfiguration("codotchi.backgroundAnimations") ||
         e.affectsConfiguration("codotchi.petSize") ||
@@ -356,6 +357,9 @@ export class SidebarProvider
 
     const background = cfg.get<string>("background", "ordered");
     html = html.replace("{{background}}", background);
+
+    const backgroundStyle = cfg.get<string>("backgroundStyle", "scenic");
+    html = html.replace("{{backgroundStyle}}", backgroundStyle);
 
     const backgroundOpacity = cfg.get<string>("backgroundOpacity", "medium");
     html = html.replace("{{backgroundOpacity}}", backgroundOpacity);

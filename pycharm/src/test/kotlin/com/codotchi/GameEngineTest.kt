@@ -708,4 +708,91 @@ class GameEngineTest {
         assertEquals(0.0, next.careMistakes)
         assertEquals(100, next.health)
     }
+
+    // ── break nap ────────────────────────────────────────────────────────────
+
+    private fun napping(): PetState = praise(
+        makePet(energy = 20, happiness = 30, weight = 25).copy(
+            activeAttentionCall = "break", sleeping = false, hunger = 40, health = 70,
+            poops = 2, nextPoopIntervalTicks = 1,
+        )
+    )
+
+    @Test
+    fun `praising a break call starts a 3-minute nap`() {
+        assertEquals(3 * 60, BREAK_NAP_TICKS * TICK_INTERVAL_SECONDS)
+        val pet = napping()
+        assertTrue(pet.sleeping)
+        assertEquals(BREAK_NAP_TICKS, pet.breakNapTicksRemaining)
+        assertTrue("break_nap_started" in pet.events)
+        val alreadyAsleep = praise(makePet().copy(activeAttentionCall = "break", sleeping = true))
+        assertEquals(BREAK_NAP_TICKS, alreadyAsleep.breakNapTicksRemaining)
+    }
+
+    @Test
+    fun `break nap freezes stats but keeps aging through idle and wakes on its own`() {
+        val start = napping()
+        var pet = start
+        for (i in 0 until BREAK_NAP_TICKS - 1) {
+            pet = tick(pet, isIdle = i > 20, isDeepIdle = i > 40)
+            assertTrue(pet.sleeping, "still asleep at tick ${i + 1}")
+        }
+        assertEquals(start.hunger, pet.hunger)
+        assertEquals(start.happiness, pet.happiness)
+        assertEquals(start.energy, pet.energy)
+        assertEquals(start.health, pet.health)
+        assertEquals(start.weight, pet.weight)
+        assertEquals(start.poops, pet.poops)
+        assertEquals(start.ticksSinceLastPoop, pet.ticksSinceLastPoop)
+        assertEquals(start.careMistakes, pet.careMistakes)
+        assertTrue(pet.dayTimer > start.dayTimer, "keeps aging")
+        assertEquals(1, pet.breakNapTicksRemaining)
+        val awake = tick(pet, isIdle = true, isDeepIdle = true)
+        assertFalse(awake.sleeping)
+        assertEquals(0, awake.breakNapTicksRemaining)
+        assertTrue("break_nap_over" in awake.events)
+    }
+
+    @Test
+    fun `break nap ages at the sleeping rate even while deep idle and never auto-wakes`() {
+        val start = napping()
+        var deepIdle = start
+        var active = start
+        repeat(30) { deepIdle = tick(deepIdle, isIdle = true, isDeepIdle = true); active = tick(active) }
+        assertEquals(active.dayTimer, deepIdle.dayTimer, 1e-10)
+        assertTrue(deepIdle.dayTimer > start.dayTimer)
+        val full = tick(start.copy(energy = 100))
+        assertTrue(full.sleeping)
+        assertEquals(100, full.energy)
+    }
+
+    @Test
+    fun `waking the pet ends the break nap early`() {
+        val pet = wake(napping())
+        assertFalse(pet.sleeping)
+        assertEquals(0, pet.breakNapTicksRemaining)
+    }
+
+    @Test
+    fun `offline time during a break nap does not decay stats and wakes the pet when it ran out`() {
+        val start = makePet(happiness = 80).copy(sleeping = true, breakNapTicksRemaining = 40, hunger = 80)
+        val short = applyOfflineDecay(start, 30 * 3)
+        assertEquals(80, short.hunger)
+        assertEquals(80, short.happiness)
+        assertTrue(short.sleeping)
+        assertEquals(10, short.breakNapTicksRemaining)
+        val long = applyOfflineDecay(start, 50 * 3)
+        assertFalse(long.sleeping)
+        assertEquals(0, long.breakNapTicksRemaining)
+        assertTrue(long.hunger < 80)
+        val noNap = applyOfflineDecay(start.copy(breakNapTicksRemaining = 0), 50 * 3)
+        assertTrue(long.hunger > noNap.hunger, "the nap portion was not counted")
+    }
+
+    @Test
+    fun `a meal fills 15 hunger`() {
+        assertEquals(45, feedMeal(makePet().copy(hunger = 30), 0).hunger)
+        assertEquals(4, feedMeal(makePet().copy(hunger = 30), 0, feedHungerMult = 0.25).hunger - 30,
+            "rounds like the TS engine")
+    }
 }

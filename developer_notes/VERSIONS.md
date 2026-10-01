@@ -1,6 +1,27 @@
 # Version History
 
-## v2.25.1 — current
+## v2.25.4 — current
+
+**New constants (gameEngine):** `BREAK_NAP_TICKS` 60 (3 min) · **Changed:** `FEED_MEAL_HUNGER_BOOST` 20 → 15
+
+### Changes from v2.25.1 (break nap, smaller meals, developer settings group, legacy background style — branch feat/v2.25.4-break-nap)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt`, `PetState.kt`, `CodotchiPersistence.kt` | new `breakNapTicksRemaining` state field; `praise()` answering a break call starts a 60-tick nap; `tick()` short-circuits to `tickBreakNap` (stats, counters and attention timers frozen, aging continues at the sleeping rate ignoring idle, wakes with `break_nap_over`); `wake()` clears it; `applyOfflineDecay` skips decay for the remaining nap and wakes if it ran out |
+| same engine files | `FEED_MEAL_HUNGER_BOOST` 20 → 15; Kotlin feed boosts use `roundToInt()` to match TS `Math.round` |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt`, `vscode/media/sidebar.js`, `opencode-codotchi/src/index.ts`, `packages/core/src/asciiArt.ts` | `break_nap_over` notification / log text; break-call text mentions the 3-minute nap; sidebar treats `break_nap_over` as waking |
+| `vscode/package.json` | main settings category renamed "Codotchi" → "General" so "Developer" is a separate child in the Settings tree; dev descriptions prefixed "(Developer)" |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `Cat_example.png` (new) | Preview screenshot is now the cat example (`example_skippy.png` stays at the root for older published listings) |
+| `vscode/media/backgroundArt.js` | `drawLegacyBackground(ctx, W, H, mode, date, backdrop)` and `legacyTimeOfDay(date)`: the pre-2.25 tint-and-props background ported verbatim from the old `sidebar.js` (base fill included) |
+| `vscode/media/sidebar.js`, `sidebar.html`, `vscode/src/sidebarProvider.ts`, `vscode/package.json`, `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `CodotchiBrowserPanel.kt` | new `codotchi.backgroundStyle` setting (`scenic` default / `legacy`), "Background style:" combo in PyCharm; main-section setting orders renumbered |
+| `vscode/media/sprite_preview.html` | Style picker (Scenic / Legacy) in the background preview |
+| `vscode/tests/unit/backgroundArt.test.ts` | legacy buckets, base fill, seasonal colours, plain strip, static frame, wiring |
+| all manifests, `README.md` | version 2.25.1 → 2.25.4 |
+
+---
+
+## v2.25.1
 
 **Updated constants (backgroundArt.js):** `RAIN_MS` 3 min · `RAIN_CHANCE` 0.18 · `RAINBOW_MS` 75 s · `SNOW_MS` 4 min · `SNOW_CHANCE` 0.4 · `CRITTERS` bird / butterfly / bee / fireflies (window 90–150 s, chance 0.2–0.35); `VEIL` [day, night] subtle 0.45 / 0.15 · medium 0.10 / 0.05 · vivid 0 / 0; `getTimeOfDay()` buckets now dawn 06–08 · morning 08–12 · afternoon 12–16 · sunset 16–19 · dusk 19–21 · night 21–06 (was 07–10 · 10–13 · 13–16 · 16–19 · 19–22 · 22–07)
 

@@ -67,6 +67,7 @@ import {
   ATTENTION_ANSWER_COOLDOWN_TICKS,
   ATTENTION_EXPIRY_COOLDOWN_TICKS,
   BREAK_CALL_INTERVAL_TICKS,
+  BREAK_NAP_TICKS,
   GIFT_PRAISE_HAPPINESS_BOOST,
   PetState,
   GameConfig,
@@ -1186,10 +1187,10 @@ describe("tick — stage progression", () => {
 // ---------------------------------------------------------------------------
 
 describe("feedMeal", () => {
-  it("increases hunger by 20", () => {
+  it("increases hunger by 15", () => {
     const pet = makePet({ hunger: 30 });
     const next = feedMeal(pet, 0);
-    assert.equal(next.hunger, 50);
+    assert.equal(next.hunger, 45);
   });
 
   it("increases weight by 2 (FEED_MEAL_WEIGHT_GAIN)", () => {
@@ -2913,7 +2914,86 @@ describe("break reminder attention call", () => {
   });
 
   it("survives serialise / deserialise", () => {
-    const back = deserialiseState(serialiseState(makePet({ ticksSinceLastBreakCall: 321 })));
+    const back = deserialiseState(serialiseState(makePet({ ticksSinceLastBreakCall: 321, breakNapTicksRemaining: 17 })));
     assert.equal(back.ticksSinceLastBreakCall, 321);
+    assert.equal(back.breakNapTicksRemaining, 17);
+  });
+});
+
+describe("break nap", () => {
+  const napping = (): PetState => praise(makePet({
+    activeAttentionCall: "break", sleeping: false, hunger: 40, happiness: 30, energy: 20,
+    health: 70, weight: 25, poops: 2, sick: false, nextPoopIntervalTicks: 1,
+  }));
+
+  it("praising a break call starts a 3-minute nap", () => {
+    assert.equal(BREAK_NAP_TICKS * 3, 3 * 60, "60 ticks × 3 s = 3 min");
+    const pet = napping();
+    assert.equal(pet.sleeping, true);
+    assert.equal(pet.breakNapTicksRemaining, BREAK_NAP_TICKS);
+    assert.ok(pet.events.includes("break_nap_started"));
+  });
+
+  it("starts the nap even if the pet was already asleep", () => {
+    const pet = praise(makePet({ activeAttentionCall: "break", sleeping: true }));
+    assert.equal(pet.breakNapTicksRemaining, BREAK_NAP_TICKS);
+  });
+
+  it("freezes every stat but keeps aging — idle and deep idle included — then wakes on its own", () => {
+    const start = napping();
+    let pet = start;
+    for (let i = 0; i < BREAK_NAP_TICKS - 1; i++) {
+      pet = withRandom(0.0, () => tick(pet, i > 20, i > 40));
+      assert.equal(pet.sleeping, true, `still asleep at tick ${i + 1}`);
+    }
+    for (const k of ["hunger", "happiness", "energy", "health", "weight", "poops", "sick",
+                     "ticksSinceLastPoop", "careMistakes", "ticksSinceLastBreakCall"] as const) {
+      assert.equal(pet[k], start[k], `${k} is frozen`);
+    }
+    assert.ok(pet.dayTimer > start.dayTimer, "keeps aging");
+    assert.equal(pet.breakNapTicksRemaining, 1);
+    const awake = withRandom(0.0, () => tick(pet, true, true));
+    assert.equal(awake.sleeping, false);
+    assert.equal(awake.breakNapTicksRemaining, 0);
+    assert.ok(awake.events.includes("break_nap_over"));
+  });
+
+  it("ages at the normal sleeping rate even while deep idle", () => {
+    const start = napping();
+    let deepIdle = start;
+    for (let i = 0; i < 30; i++) { deepIdle = tick(deepIdle, true, true); }
+    let active = start;
+    for (let i = 0; i < 30; i++) { active = tick(active); }
+    assert.ok(Math.abs(deepIdle.dayTimer - active.dayTimer) < 1e-10);
+    assert.ok(deepIdle.dayTimer > start.dayTimer);
+  });
+
+  it("does not auto-wake on full energy", () => {
+    let pet = { ...napping(), energy: 100 };
+    pet = tick(pet);
+    assert.equal(pet.sleeping, true);
+    assert.equal(pet.energy, 100);
+  });
+
+  it("waking the pet yourself ends the nap early", () => {
+    const pet = wake(napping());
+    assert.equal(pet.sleeping, false);
+    assert.equal(pet.breakNapTicksRemaining, 0);
+    assert.equal(tick(pet).breakNapTicksRemaining, 0);
+  });
+
+  it("offline time during the nap doesn't decay stats; the pet wakes if the nap ran out", () => {
+    const start = makePet({ sleeping: true, breakNapTicksRemaining: 40, hunger: 80, happiness: 80 });
+    const short = applyOfflineDecay(start, 30 * 3);
+    assert.equal(short.hunger, 80);
+    assert.equal(short.happiness, 80);
+    assert.equal(short.sleeping, true);
+    assert.equal(short.breakNapTicksRemaining, 10);
+    const long = applyOfflineDecay(start, 50 * 3);
+    assert.equal(long.sleeping, false);
+    assert.equal(long.breakNapTicksRemaining, 0);
+    assert.ok(long.hunger < 80, "time after the nap still decays");
+    const noNap = applyOfflineDecay({ ...start, breakNapTicksRemaining: 0 }, 50 * 3);
+    assert.ok(long.hunger > noNap.hunger, "the nap portion was not counted");
   });
 });

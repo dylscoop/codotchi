@@ -123,6 +123,8 @@ data class PetState(
 
     /** Active, awake ticks since the last "take a break" call (BREAK_CALL_INTERVAL_TICKS). */
     val ticksSinceLastBreakCall: Int = 0,
+    /** Ticks left in the break nap (BREAK_NAP_TICKS); 0 when not on a break nap. */
+    val breakNapTicksRemaining: Int = 0,
 
     /** What the active craving call asks for ("meal" or "snack"); null when no craving call is active. */
     val cravingFood: String? = null,

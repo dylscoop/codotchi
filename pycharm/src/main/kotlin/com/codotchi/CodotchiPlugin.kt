@@ -1514,7 +1514,8 @@ class CodotchiPlugin : Disposable {
             "attention_call_pat"             -> "$petName wants a pat!"
             "attention_call_craving_meal"    -> "$petName is craving a meal!"
             "attention_call_craving_snack"   -> "$petName is craving a snack!"
-            "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes — praise $petName to rest together."
+            "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes — praise $petName and they'll nap for 3 minutes while you rest."
+            "break_nap_over"                 -> "Break's over! $petName is awake and ready to code."
             else                             -> null
         }
     }

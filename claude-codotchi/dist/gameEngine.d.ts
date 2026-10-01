@@ -82,6 +82,12 @@ export declare const BREAK_CALL_INTERVAL_TICKS: number;
 /** Happiness boost when a break call is answered via praise() — same as a gift. */
 export declare const BREAK_PRAISE_HAPPINESS_BOOST: number;
 /**
+ * Length of the nap the pet takes when a break call is answered: 60 × 3 s = 3 min.
+ * While napping every stat is frozen but the pet keeps aging; it wakes on its own
+ * when the timer runs out.
+ */
+export declare const BREAK_NAP_TICKS: number;
+/**
  * Number of care mistakes in a single stage that are tolerated before the
  * evolution tier begins to be penalised.  0–CARE_MISTAKE_BEST_MAX = "best"
  * tier is still achievable (subject to careScore); above this the tier is
@@ -347,6 +353,8 @@ export interface PetState {
     readonly ticksSinceLastCraving: number;
     /** Active, awake ticks since the last "take a break" call (BREAK_CALL_INTERVAL_TICKS). */
     readonly ticksSinceLastBreakCall: number;
+    /** Ticks left in the break nap (BREAK_NAP_TICKS); 0 when not on a break nap. */
+    readonly breakNapTicksRemaining: number;
     /** What the active craving call asks for; null when no craving call is active. */
     readonly cravingFood: CravingFood | null;
 }
@@ -662,7 +670,8 @@ export declare function scold(state: PetState): PetState;
  * If a "gift" attention call is active, it is answered and a happiness bonus
  * (GIFT_PRAISE_HAPPINESS_BOOST) is applied on top of the discipline boost.
  * If a "break" call is active, it is answered with the same happiness bonus
- * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet goes to sleep while you rest.
+ * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet takes a BREAK_NAP_TICKS (3-minute)
+ * nap while you rest: stats are frozen, aging continues, and it wakes on its own.
  * If an "unhappiness" attention call is active, it is answered instead.
  *
  * @param state - The current pet state.

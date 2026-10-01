@@ -751,6 +751,7 @@ Since v2.23.0 `contributes.configuration` is an array of two categories, each wi
 | `gotchi.idleResetOnTabSwitch` | boolean | `true` | Reset idle timer when the active editor tab changes. Suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnWindowFocus` | boolean | `true` | Reset idle timer when the VS Code window gains focus. Never suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnMouseMovement` | boolean | `true` | Reset idle timer on mouse movement in the sidebar panel (throttled to once/30 s). Never suppressed by `aiMode`. | `[x]` |
+| `codotchi.backgroundStyle` | enum | `scenic` | `scenic` / `legacy`: legacy draws the pre-2.25 look via `backgroundArt.drawLegacyBackground` (`#243444` day base, flat tint, old buckets dawn 7–10 · morning 10–13 · afternoon 13–16 · sunset 16–19 · dusk 19–22 · night 22–7, ground strip and props); ignores opacity and animations (v2.25.4) | `[x]` |
 | `codotchi.backgroundOpacity` | enum | `medium` | `subtle` / `medium` / `vivid`: veil of the pet backdrop colour over the scene, [day, night] alpha `subtle` [0.45, 0.15] · `medium` [0.10, 0.05] · `vivid` none; small moving bits draw above it (v2.25.1) | `[x]` |
 | `codotchi.backgroundAnimations` | boolean | `true` | Off (or reduced motion) draws one still frame: no drifting clouds, twinkle, light cycling, petals / leaves, weather or critters (v2.25.1) | `[x]` |
 | `codotchi.background` | enum | `ordered` | Canvas background mode: `plain` (pet colour + dark ground strip), `ordered` (auto season+time), `spring`, `summer`, `autumn`, `winter` | `[x]` |

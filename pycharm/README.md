@@ -19,7 +19,7 @@ assigned to you at random when you start a new game.
 
 ## Preview
 
-<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/example_skippy.png" width="400" alt="Skippy the kangaroo — Codotchi in action" />
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/Cat_example.png" width="400" alt="A cat Codotchi in a winter scene — Codotchi in action" />
 
 ### Sponsor this project
 
@@ -63,13 +63,14 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   snowman, fairy lights and snowfall in winter. The sky moves from dawn through a
   bright morning to sunset and starry night. Pick a fixed season or a plain
   background in Settings, soften the scene so your pet stands out, or keep it
-  still
+  still. Prefer the original look? Set Background style to Legacy
 - **Little whims** — now and then your pet just wants to play a game, get a
   pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in
   time and it's happy; ignore it and its health suffers
 - **Break reminders** — after 30 minutes of coding, your pet reminds you to
-  take a break. Praise it to answer: it's happier for it and naps while you
-  rest. Skipping it does no harm, and stepping away from the IDE counts as a break
+  take a break. Praise it to answer: it's happier for it and naps for 3
+  minutes while you rest (stats frozen, still aging), then wakes up on its own.
+  Skipping it does no harm, and stepping away from the IDE counts as a break
 - **Terminal & Claude integrations** — your pet lives in Claude Code, OpenCode
   and Claude Desktop too, with shared state across every host
 - **Today's Token Cost** — see how much Claude Code / OpenCode has cost you

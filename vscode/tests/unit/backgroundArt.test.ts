@@ -213,8 +213,10 @@ describe("background drawing (backgroundArt.js)", () => {
     assert.ok(has("autumn", "#e87a20"), "pumpkin");
     assert.ok(has("autumn", "#d03028"), "toadstool");
     assert.ok(has("winter", "#f08a24"), "snowman carrot");
-    assert.ok(has("winter", "#ff5050", 9), "fairy lights on in the morning");
-    assert.ok(!has("winter", "#ff5050", 14), "fairy lights off in the afternoon");
+    // Light colours rotate with the epoch time, so look for any of them (time-zone independent).
+    const lit = (h: number) => ["#ff5050", "#ffd040", "#50a0ff", "#60e070"].some((c) => has("winter", c, h));
+    assert.ok(lit(9), "fairy lights on in the morning");
+    assert.ok(!lit(14), "fairy lights off in the afternoon");
   });
 
   it("keeps trees at the edges and only one on narrow canvases", () => {
@@ -296,31 +298,86 @@ describe("background opacity and still mode (backgroundArt.js)", () => {
   });
 });
 
+describe("legacy background style (backgroundArt.js)", () => {
+  it("uses the pre-2.25 clock buckets", () => {
+    const cases: Array<[number, string]> = [
+      [6, "night"], [7, "dawn"], [9, "dawn"], [10, "morning"], [12, "morning"], [13, "afternoon"],
+      [16, "sunset"], [18, "sunset"], [19, "dusk"], [21, "dusk"], [22, "night"], [2, "night"],
+    ];
+    for (const [h, tod] of cases) { assert.equal(art.legacyTimeOfDay(at(h)), tod, `${h}:00`); }
+  });
+
+  it("fills its own base: #243444 by day, the pet backdrop otherwise", () => {
+    const day = mockCtx(), night = mockCtx();
+    art.drawLegacyBackground(day.ctx, 200, 150, "summer", at(11), "#123456");
+    art.drawLegacyBackground(night.ctx, 200, 150, "summer", at(23), "#123456");
+    assert.equal(day.styles[0], "#243444");
+    assert.equal(night.styles[0], "#123456");
+  });
+
+  it("keeps the old seasonal ground colours and props", () => {
+    const ground: Record<string, string> = { spring: "#5ec44a", summer: "#4caf30", autumn: "#c86820", winter: "#d8e8f0" };
+    const prop: Record<string, string> = { spring: "#e87898", summer: "#f8d020", autumn: "#e88020", winter: "#e8f0f8" };
+    for (const season of SEASONS) {
+      const m = mockCtx();
+      art.drawLegacyBackground(m.ctx, 200, 150, season, at(11), "#1a1a1a");
+      assert.ok(m.styles.includes(ground[season]), season + " ground");
+      assert.ok(m.styles.includes(prop[season]), season + " props");
+      assert.ok(!m.styles.includes("#a9cdea"), season + ": no scenic sky");
+    }
+  });
+
+  it("ordered follows the month, and plain draws only the ground strip", () => {
+    const m = mockCtx();
+    art.drawLegacyBackground(m.ctx, 200, 150, "ordered", at(11, 0, 0), "#1a1a1a");
+    assert.ok(m.styles.includes("#d8e8f0"), "January is winter");
+    const plain = mockCtx();
+    art.drawLegacyBackground(plain.ctx, 200, 150, "plain", at(23), "#1a1a1a");
+    assert.deepEqual(plain.styles, ["#1a1a1a", "#2a2a3a", "#3a3a4e"]);
+  });
+
+  it("draws one static frame: the same calls at any second of the hour", () => {
+    const frame = (ms: number) => {
+      const m = mockCtx();
+      art.drawLegacyBackground(m.ctx, 200, 150, "autumn", new Date(at(17).getTime() + ms), "#1a1a1a");
+      return m.styles.join(",") + JSON.stringify(m.calls);
+    };
+    assert.equal(frame(0), frame(59 * 60 * 1000));
+  });
+});
+
 describe("background wiring", () => {
   it("sidebar.js draws through backgroundArt and has no old background code", () => {
     assert.match(sidebarSource, /window\.backgroundArt\.drawBackground\(spriteCtx, W, H, BG_MODE, new Date\(\),/);
     assert.doesNotMatch(sidebarSource, /function drawBackground|function getTimeOfDay|#243444/);
+    assert.match(sidebarSource, /BG_STYLE === "legacy"[\s\S]{0,120}drawLegacyBackground\(spriteCtx, W, H, BG_MODE, new Date\(\), background\)/);
   });
 
   it("passes the opacity and animation settings through in both IDEs", () => {
     assert.match(sidebarSource, /{ opacity: BG_OPACITY, backdrop: background, animate: BG_ANIMATE }/);
     assert.match(sidebarSource, /const BG_ANIMATE = !REDUCED_MOTION/);
     const html = fs.readFileSync(path.join(media, "sidebar.html"), "utf8");
+    assert.match(html, /data-background-style="{{backgroundStyle}}"/);
     assert.match(html, /data-background-opacity="{{backgroundOpacity}}"/);
     assert.match(html, /data-background-animations="{{backgroundAnimations}}"/);
     const pkg = JSON.parse(fs.readFileSync(path.join(root, "vscode/package.json"), "utf8"));
     const main = pkg.contributes.configuration[0].properties;
     assert.deepEqual(main["codotchi.backgroundOpacity"].enum, ["subtle", "medium", "vivid"]);
     assert.equal(main["codotchi.backgroundOpacity"].default, "medium");
+    assert.deepEqual(main["codotchi.backgroundStyle"].enum, ["scenic", "legacy"]);
+    assert.equal(main["codotchi.backgroundStyle"].default, "scenic");
     assert.equal(main["codotchi.backgroundAnimations"].type, "boolean");
     assert.equal(main["codotchi.backgroundAnimations"].default, true);
     const provider = fs.readFileSync(path.join(root, "vscode/src/sidebarProvider.ts"), "utf8");
+    assert.match(provider, /{{backgroundStyle}}/);
     assert.match(provider, /{{backgroundOpacity}}/);
     assert.match(provider, /{{backgroundAnimations}}/);
     const panel = fs.readFileSync(path.join(root, "pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt"), "utf8");
+    assert.match(panel, /{{backgroundStyle}}/);
     assert.match(panel, /{{backgroundOpacity}}/);
     assert.match(panel, /{{backgroundAnimations}}/);
     const settings = fs.readFileSync(path.join(root, "pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt"), "utf8");
+    assert.match(settings, /var backgroundStyle: String = "scenic"/);
     assert.match(settings, /var backgroundOpacity: String = "medium"/);
     assert.match(settings, /var backgroundAnimations: Boolean = true/);
   });
@@ -340,6 +397,8 @@ describe("background wiring", () => {
     const preview = fs.readFileSync(path.join(media, "sprite_preview.html"), "utf8");
     assert.match(preview, /<script src="backgroundArt\.js"><\/script>/);
     assert.match(preview, /id="bg-canvas"/);
+    assert.match(preview, /id="bg-style"/);
+    assert.match(preview, /drawLegacyBackground/);
     const vsPanel = fs.readFileSync(path.join(root, "vscode/src/spritePreviewPanel.ts"), "utf8");
     assert.match(vsPanel, /backgroundArt\.js/);
     const pyPanel = fs.readFileSync(path.join(root, "pycharm/src/main/kotlin/com/codotchi/SpritePreviewBrowserPanel.kt"), "utf8");

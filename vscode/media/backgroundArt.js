@@ -922,6 +922,272 @@
   }
 
   // =========================================================================
+  // Legacy background (codotchi.backgroundStyle = "legacy")
+  // The pre-2.25 look, kept exactly: a flat time-of-day tint over a base
+  // fill, a two-layer ground strip and a few seasonal props. Opacity and
+  // animation settings do not apply; it is a single static frame.
+  // =========================================================================
+
+  /**
+   * Pre-2.25 clock-hour bucket:
+   * "dawn" 7–10h | "morning" 10–13h | "afternoon" 13–16h | "sunset" 16–19h | "dusk" 19–22h | "night" 22–7h
+   */
+  function legacyTimeOfDay(date) {
+    var h = date.getHours();
+    if (h >= 7  && h < 10) { return "dawn";      }
+    if (h >= 10 && h < 13) { return "morning";   }
+    if (h >= 13 && h < 16) { return "afternoon"; }
+    if (h >= 16 && h < 19) { return "sunset";    }
+    if (h >= 19 && h < 22) { return "dusk";      }
+    return "night";
+  }
+
+  /**
+   * Draws the legacy background, base fill included.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} W
+   * @param {number} H
+   * @param {string} mode     - codotchi.background value
+   * @param {Date}   date
+   * @param {string} backdrop - pet palette background colour
+   */
+  function drawLegacyBackground(ctx, W, H, mode, date, backdrop) {
+    var season = getActiveSeason(mode, date);
+    var tod = legacyTimeOfDay(date);
+
+    // Base — a lighter daytime base during morning/afternoon so sky tints read clearly
+    ctx.fillStyle = (tod === "morning" || tod === "afternoon") ? "#243444" : (backdrop || "#1a1a1a");
+    ctx.fillRect(0, 0, W, H);
+
+    if (season === "plain") {
+      // Plain mode: draw a neutral dark ground strip so the pet stands on something
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = "#2a2a3a";
+      ctx.fillRect(0, H - 12, W, 8);
+      ctx.fillStyle = "#3a3a4e";
+      ctx.fillRect(0, H - 12, W, 3);
+      ctx.restore();
+      return;
+    }
+
+    // ── Sky overlay: time-of-day tint ─────────────────────────────────────
+    var skyColour = "#000000";
+    var skyAlpha  = 0.25;
+    if (tod === "dawn")      { skyColour = "#e8844a"; skyAlpha = 0.22; }
+    if (tod === "morning")   { skyColour = "#78b8e8"; skyAlpha = 0.50; }
+    if (tod === "afternoon") { skyColour = "#5aaad4"; skyAlpha = 0.45; }
+    if (tod === "sunset")    { skyColour = "#1a4060"; skyAlpha = 0.45; }
+    if (tod === "dusk")      { skyColour = "#7a3a6e"; skyAlpha = 0.25; }
+    if (tod === "night")     { skyColour = "#0a0a2a"; skyAlpha = 0.40; }
+
+    ctx.save();
+    ctx.globalAlpha = skyAlpha;
+    ctx.fillStyle = skyColour;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+
+    // ── Sky overlay: season tint (C) ──────────────────────────────────────
+    var seasonSkyColour = null;
+    var seasonSkyAlpha  = 0.0;
+    if (season === "spring") { seasonSkyColour = "#90e060"; seasonSkyAlpha = 0.02; }
+    if (season === "summer") { seasonSkyColour = "#f5e050"; seasonSkyAlpha = 0.025; }
+    if (season === "autumn") { seasonSkyColour = "#e07030"; seasonSkyAlpha = 0.025; }
+    if (season === "winter") { seasonSkyColour = "#6080c0"; seasonSkyAlpha = 0.03; }
+
+    if (seasonSkyColour) {
+      ctx.save();
+      ctx.globalAlpha = seasonSkyAlpha;
+      ctx.fillStyle = seasonSkyColour;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    // ── Sky accent (sun or stars) ──────────────────────────────────────────
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    if (tod === "morning" || tod === "afternoon") {
+      // High sun — circle r=7, moves right→left across the top
+      ctx.fillStyle = "#f5d84a";
+      var sunCx = tod === "morning" ? Math.floor(W * 0.65) + 3 : Math.floor(W * 0.35) + 3;
+      ctx.beginPath();
+      ctx.arc(sunCx, 11, 7, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (tod === "dawn" || tod === "sunset") {
+      // Low sun near horizon — circle r=6
+      ctx.fillStyle = "#f5a030";
+      var lowCx = tod === "dawn" ? W - 12 : 16;
+      ctx.beginPath();
+      ctx.arc(lowCx, Math.floor(H * 0.55) + 2, 6, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (tod === "dusk") {
+      // Barely-visible sun just off the left edge — circle r=6
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = "#f5a030";
+      ctx.beginPath();
+      ctx.arc(8, Math.floor(H * 0.55) + 2, 6, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Night: crescent moon (right-facing ☽) + 5 stars as 2×2 dots
+      var moonColour = season === "winter" ? "#d8e8ff" : "#e8dfc0";
+      var moonCx = W - 12, moonCy = 8, moonR = 4;
+      // Step 1: draw full moon circle
+      ctx.fillStyle = moonColour;
+      ctx.beginPath();
+      ctx.arc(moonCx, moonCy, moonR, 0, Math.PI * 2);
+      ctx.fill();
+      // Step 2: punch crescent bite (destination-out erases pixels → sky shows through)
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = "rgba(0,0,0,1)";
+      ctx.beginPath();
+      ctx.arc(moonCx + moonR * 0.55, moonCy - moonR * 0.1, moonR * 0.85, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
+      // Stars
+      ctx.fillStyle = "#e8e8d8";
+      var starPositions = [
+        [Math.floor(W * 0.15), 7],
+        [Math.floor(W * 0.38), 12],
+        [Math.floor(W * 0.60), 5],
+        [Math.floor(W * 0.80), 14],
+        [Math.floor(W * 0.50), 20],
+      ];
+      for (var si = 0; si < starPositions.length; si++) {
+        ctx.fillRect(starPositions[si][0], starPositions[si][1], 2, 2);
+      }
+    }
+    ctx.restore();
+
+    // ── Sunset orange→blue gradient band (top third, 16 strips) ──────────
+    if (tod === "sunset") {
+      ctx.save();
+      var gradH = Math.floor(H * 0.33);
+      var strips = 16;
+      var stripH = gradH / strips;
+      // Orange top #f07020 → blue bottom #1a4060
+      var r0 = 240, g0 = 112, b0 = 32;
+      var r1 = 26,  g1 = 64,  b1 = 96;
+      for (var gi = 0; gi < strips; gi++) {
+        var t = gi / (strips - 1);
+        var r = Math.round(r0 + (r1 - r0) * t);
+        var g = Math.round(g0 + (g1 - g0) * t);
+        var b = Math.round(b0 + (b1 - b0) * t);
+        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+        ctx.fillRect(0, Math.round(gi * stripH), W, Math.ceil(stripH));
+      }
+      ctx.restore();
+    }
+
+    // ── Ground strip: 8px, two-layer (A) ──────────────────────────────────
+    // Layer 1: base colour (darker), 8px tall
+    // Layer 2: lighter highlight, 3px tall at top of strip
+    var groundBase    = "#3a6b30";
+    var groundHighlight = "#5ec44a";
+    if (season === "spring") { groundBase = "#3a6b30"; groundHighlight = "#5ec44a"; }
+    if (season === "summer") { groundBase = "#2d6620"; groundHighlight = "#4caf30"; }
+    if (season === "autumn") { groundBase = "#7a4a20"; groundHighlight = "#c86820"; }
+    if (season === "winter") { groundBase = "#8090a8"; groundHighlight = "#d8e8f0"; }
+
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = groundBase;
+    ctx.fillRect(0, H - 12, W, 8);
+    ctx.fillStyle = groundHighlight;
+    ctx.fillRect(0, H - 12, W, 3);
+    ctx.restore();
+
+    // ── Seasonal accents (B) ───────────────────────────────────────────────
+    ctx.save();
+    ctx.globalAlpha = 0.90;
+
+    if (season === "spring") {
+      // Three flowers (5×5 petals, 2×2 centre) + grass blades
+      // Flower 1 (left) — pink
+      ctx.fillStyle = "#e87898";
+      ctx.fillRect(4,  H - 21, 5, 5);
+      ctx.fillStyle = "#f8f060";
+      ctx.fillRect(6,  H - 19, 2, 2);
+      // Flower 2 (centre-left) — purple-pink
+      ctx.fillStyle = "#d060a8";
+      ctx.fillRect(15, H - 20, 5, 5);
+      ctx.fillStyle = "#f8f060";
+      ctx.fillRect(17, H - 18, 2, 2);
+      // Flower 3 (right) — pink
+      ctx.fillStyle = "#e87898";
+      ctx.fillRect(W - 14, H - 21, 5, 5);
+      ctx.fillStyle = "#f8f060";
+      ctx.fillRect(W - 12, H - 19, 2, 2);
+      // Grass blades: 1×5 vertical strips
+      ctx.fillStyle = "#70d840";
+      ctx.fillRect(11, H - 18, 1, 5);
+      ctx.fillRect(23, H - 17, 1, 4);
+      ctx.fillRect(W - 20, H - 17, 1, 4);
+
+    } else if (season === "summer") {
+      // Tall grass blades + two sunflowers with stems
+      // Tall grass: 1×7 dark-green blades
+      ctx.fillStyle = "#28882a";
+      ctx.fillRect(4,  H - 19, 1, 7);
+      ctx.fillRect(9,  H - 18, 1, 6);
+      ctx.fillRect(14, H - 20, 1, 8);
+      ctx.fillRect(W - 10, H - 18, 1, 6);
+      ctx.fillRect(W - 6,  H - 19, 1, 7);
+      // Sunflower 1 stem
+      ctx.fillStyle = "#4a8020";
+      ctx.fillRect(22, H - 17, 1, 5);
+      // Sunflower 1 head — 5×5 petals
+      ctx.fillStyle = "#f8d020";
+      ctx.fillRect(20, H - 22, 5, 5);
+      ctx.fillStyle = "#8a5010";
+      ctx.fillRect(22, H - 20, 2, 2);
+      // Sunflower 2 stem
+      ctx.fillStyle = "#4a8020";
+      ctx.fillRect(W - 18, H - 17, 1, 5);
+      // Sunflower 2 head — 5×5 petals
+      ctx.fillStyle = "#f8d020";
+      ctx.fillRect(W - 20, H - 22, 5, 5);
+      ctx.fillStyle = "#8a5010";
+      ctx.fillRect(W - 18, H - 20, 2, 2);
+
+    } else if (season === "autumn") {
+      // 5 falling leaves at varied heights — two colours
+      ctx.fillStyle = "#e88020";  // amber
+      ctx.fillRect(5,  H - 24, 3, 3);
+      ctx.fillRect(W - 8, H - 17, 2, 2);
+      ctx.fillStyle = "#d8682a";  // orange
+      ctx.fillRect(W - 14, H - 22, 3, 3);
+      ctx.fillStyle = "#c84010";  // dark orange-red
+      ctx.fillRect(13, H - 19, 2, 2);
+      ctx.fillRect(8,  H - 15, 2, 2);
+      // Wider leaf pile
+      ctx.fillStyle = "#a03810";
+      ctx.fillRect(3,  H - 14, 6, 1);
+      ctx.fillStyle = "#c85020";
+      ctx.fillRect(4,  H - 15, 5, 1);
+      ctx.fillStyle = "#d8682a";
+      ctx.fillRect(5,  H - 16, 4, 1);
+
+    } else if (season === "winter") {
+      // Large snowflake (7×7 cross, left) + small snowflake (5×5 cross, right)
+      ctx.fillStyle = "#e8f0f8";
+      // Large snowflake
+      ctx.fillRect(8,  H - 28, 1, 7); // vertical arm
+      ctx.fillRect(5,  H - 25, 7, 1); // horizontal arm
+      // Small snowflake
+      ctx.fillRect(W - 10, H - 25, 1, 5); // vertical arm
+      ctx.fillRect(W - 12, H - 23, 5, 1); // horizontal arm
+      // Snow blanket on ground (three thicker segments)
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(2,  H - 14, 8, 2);
+      ctx.fillRect(14, H - 13, 6, 2);
+      ctx.fillRect(W - 12, H - 14, 8, 2);
+    }
+
+    ctx.restore();
+  }
+
+  // =========================================================================
   // Exports
   // =========================================================================
 
@@ -945,5 +1211,7 @@
     critter:         critter,
     layout:          layout,
     drawBackground:  drawBackground,
+    legacyTimeOfDay: legacyTimeOfDay,
+    drawLegacyBackground: drawLegacyBackground,
   };
 }());
