@@ -6228,6 +6228,10 @@ DEFS["roo"] = DEFS["roo"] || {};
 
     // -- Grid lookup ---------------------------------------------------------
     var grid = SPRITES[spriteType][stage] || SPRITES[spriteType]["adult"];
+    // Optional per-mood art (e.g. DEFS.dog.adult_sleeping) replaces the stage
+    // grid; its key also keeps the raster and sparse caches apart.
+    var gridKey = moodGridKey(SPRITES[spriteType], stage, state.displayMood || state.mood) || stage;
+    if (gridKey !== stage) { grid = SPRITES[spriteType][gridKey]; }
 
     if (!grid) { return; }
 
@@ -6347,7 +6351,7 @@ DEFS["roo"] = DEFS["roo"] || {};
       // only — no loops, no allocations.
 
       var ofcH = ROWS + sagRows;
-      var rasterKey = spriteType + "|" + stage + "|" + legFrame + "|" + sagRows +
+      var rasterKey = spriteType + "|" + gridKey + "|" + legFrame + "|" + sagRows +
                       "|" + primary + "|" + secondary + "|" + accent;
       var ofc = null;
       var cachedCanvas = _getRaster(rasterKey, COLS, ofcH);
@@ -6362,7 +6366,7 @@ DEFS["roo"] = DEFS["roo"] || {};
         ofcCtx.clearRect(0, 0, COLS, ofcH);
 
         // Use sparse pixel list to avoid scanning all ROWS*COLS every paint.
-        var sparse = _getSparse(spriteType, stage, grid, ROWS, COLS);
+        var sparse = _getSparse(spriteType, gridKey, grid, ROWS, COLS);
         var oHalfCols = COLS / 2;
         for (var si = 0, slen = sparse.length; si < slen; si += 3) {
           var oRow  = sparse[si];
@@ -6392,7 +6396,7 @@ DEFS["roo"] = DEFS["roo"] || {};
           var oSilLeft  = COLS;
           var oSilRight = -1;
           // Use sparse scan of just the bottom body row.
-          var sagSparse = _getSparse(spriteType, stage, grid, ROWS, COLS);
+          var sagSparse = _getSparse(spriteType, gridKey, grid, ROWS, COLS);
           for (var ss = 0, sslen = sagSparse.length; ss < sslen; ss += 3) {
             if (sagSparse[ss] === legRowStart - 1) {
               var bc = sagSparse[ss + 1];
@@ -6430,9 +6434,188 @@ DEFS["roo"] = DEFS["roo"] || {};
   }
 
   // =========================================================================
+  // Mood layer — props, body motion and particles drawn around the pet
+  // (FEATURES_2.md §3.1). The sprite pixels themselves are never changed;
+  // real per-mood art can be added as DEFS[type][stage + "_" + mood] and is
+  // picked up by the grid lookup in renderSpriteGrid.
+  // =========================================================================
+
+  var MOOD_FRAMES = {        // flip-book length and ticks per frame (60 ticks ≈ 1 s)
+    happy:    { n: 2, ticks: 20 },   // bouncy stretch (the physics hop already exists)
+    sad:      { n: 2, ticks: 30 },
+    sleeping: { n: 2, ticks: 45 },
+    eating:   { n: 3, ticks: 8 },    // fast chomp
+  };
+  var MOOD_PARTICLE_MAX = 20;
+  var MOOD_GRAVITY      = 120;       // px/s² for tears and crumbs
+
+  /**
+   * Mood shown by the webview: "eating" while a feed reaction or a floor-snack
+   * chomp is playing, else happy / sad / sleeping from state.mood. Neutral and
+   * sick have no mood layer (sick keeps its own crawl and "+" indicator).
+   */
+  function currentMood(state, reactionType, chomping) {
+    if (!state || !state.alive || state.stage === "egg") { return null; }
+    if (state.sleeping) { return "sleeping"; }
+    if (chomping || reactionType === "fed_meal" || reactionType === "fed_snack") { return "eating"; }
+    if (state.sick) { return null; }
+    return (state.mood === "happy" || state.mood === "sad") ? state.mood : null;
+  }
+
+  function moodFrame(mood, animTick) {
+    var f = MOOD_FRAMES[mood];
+    return f ? Math.floor(animTick / f.ticks) % f.n : 0;
+  }
+
+  /** Vertical body squash / stretch for a mood frame, anchored at the feet (1 = none). */
+  function moodScaleY(mood, frame) {
+    if (mood === "happy")    { return frame === 0 ? 1.04 : 1; }
+    if (mood === "sad")      { return 0.95; }
+    if (mood === "sleeping") { return 0.88; }
+    if (mood === "eating")   { return [1, 0.92, 1.04][frame] || 1; }
+    return 1;
+  }
+
+  /** Pixel size for mood props and particles, scaled with the pet. */
+  function moodPx(box) { return Math.max(1, Math.round(box.w / 16)); }
+
+  /**
+   * Food bowl (eating) or blanket and pillow (sleeping). box = {x, y, w, h}
+   * of the drawn pet, with y + h at the feet.
+   */
+  function drawMoodProps(ctx, mood, frame, box, facingLeft, snack) {
+    var px = moodPx(box);
+    var feetY = box.y + box.h;
+    ctx.save();
+    if (mood === "eating") {
+      var bw = 6 * px;
+      var bx = facingLeft ? box.x - bw - px : box.x + box.w + px;
+      if (snack) {
+        // Plate with one treat that shrinks each chomp
+        ctx.fillStyle = "#d9d9d9";
+        ctx.fillRect(bx, feetY - px, bw, px);
+        var treat = 2 - frame;
+        if (treat > 0) {
+          ctx.fillStyle = "#e8c547";
+          ctx.fillRect(bx + 2 * px, feetY - (1 + treat) * px, 2 * px, treat * px);
+        }
+      } else {
+        // Bowl, food level 2 → 1 → 0 across the chomp
+        var fill = 2 - frame;
+        if (fill > 0) {
+          ctx.fillStyle = "#c8843c";
+          ctx.fillRect(bx + px, feetY - (3 + fill) * px + px, bw - 2 * px, fill * px);
+        }
+        ctx.fillStyle = "#5b8fd9";
+        ctx.fillRect(bx, feetY - 3 * px, bw, px);
+        ctx.fillRect(bx + px, feetY - 2 * px, bw - 2 * px, px);
+        ctx.fillStyle = "#3d6bb0";
+        ctx.fillRect(bx + px, feetY - px, bw - 2 * px, px);
+      }
+    } else if (mood === "sleeping") {
+      // Pillow under the head, blanket over the lower part of the body
+      var pw = Math.max(3 * px, Math.round(box.w * 0.3));
+      var pillowX = facingLeft ? box.x - px : box.x + box.w - pw + px;
+      ctx.fillStyle = "#e6e6f0";
+      ctx.fillRect(pillowX, feetY - 2 * px, pw, 2 * px);
+      var blanketH = Math.round(box.h * 0.4);
+      ctx.globalAlpha = 0.92;
+      ctx.fillStyle = "#6a5acd";
+      ctx.fillRect(box.x - px, feetY - blanketH, box.w + 2 * px, blanketH);
+      ctx.fillStyle = "#483d8b";
+      ctx.fillRect(box.x - px, feetY - blanketH, box.w + 2 * px, px);
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Add new particles for this frame. rand is injectable for tests.
+   * frameChanged is true on the first tick of a new flip-book frame.
+   */
+  function spawnMoodParticles(particles, mood, frame, frameChanged, box, facingLeft, dt, rand) {
+    rand = rand || Math.random;
+    var headX = facingLeft ? box.x + box.w * 0.2 : box.x + box.w * 0.8;
+    var add = [];
+    if (mood === "happy" && rand() < dt / 1.5) {
+      add.push({ kind: "sparkle", x: box.x + rand() * box.w, y: box.y + rand() * box.h * 0.3,
+                 vx: 0, vy: -10, life: 0.6 });
+    } else if (mood === "sad" && rand() < dt / 2) {
+      add.push({ kind: "tear", x: headX, y: box.y + box.h * 0.35, vx: 0, vy: 0, life: 2 });
+    } else if (mood === "eating" && frameChanged && frame === 1) {
+      var mouthX = facingLeft ? box.x : box.x + box.w;
+      var count = 2 + (rand() < 0.5 ? 1 : 0);
+      for (var i = 0; i < count; i++) {
+        add.push({ kind: "crumb", x: mouthX, y: box.y + box.h * 0.45,
+                   vx: (rand() - 0.5) * 40, vy: -20, life: 1.5 });
+      }
+    } else if (mood === "sleeping" && rand() < dt / 1.8) {
+      add.push({ kind: "z", x: box.x + box.w * 0.6, y: box.y - 4, vx: 6, vy: -8, life: 2 });
+    }
+    for (var j = 0; j < add.length && particles.length < MOOD_PARTICLE_MAX; j++) {
+      add[j].age = 0;
+      particles.push(add[j]);
+    }
+  }
+
+  /** Move particles and drop the ones that have faded or hit the floor. */
+  function stepMoodParticles(particles, dt, floorY) {
+    for (var i = particles.length - 1; i >= 0; i--) {
+      var p = particles[i];
+      p.age += dt;
+      if (p.kind === "tear" || p.kind === "crumb") { p.vy += MOOD_GRAVITY * dt; }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      var falls = (p.kind === "tear" || p.kind === "crumb");
+      if (p.age >= p.life || (falls && p.y >= floorY)) { particles.splice(i, 1); }
+    }
+  }
+
+  function drawMoodParticles(ctx, particles, px) {
+    ctx.save();
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      var x = Math.round(p.x), y = Math.round(p.y);
+      ctx.globalAlpha = Math.max(0, 1 - p.age / p.life);
+      if (p.kind === "sparkle") {
+        ctx.fillStyle = "#fff4a3";
+        ctx.fillRect(x - px, y, 3 * px, px);
+        ctx.fillRect(x, y - px, px, 3 * px);
+      } else if (p.kind === "tear") {
+        ctx.fillStyle = "#7fb8ff";
+        ctx.fillRect(x, y, px, 2 * px);
+      } else if (p.kind === "crumb") {
+        ctx.fillStyle = "#a0662a";
+        ctx.fillRect(x, y, px, px);
+      } else if (p.kind === "z") {
+        ctx.fillStyle = "#c8c8ff";
+        ctx.font = "bold 8px monospace";
+        ctx.fillText("z", x, y);
+      }
+    }
+    ctx.restore();
+  }
+
+  /** Name of an optional per-mood grid for this stage, or null. */
+  function moodGridKey(typeGrids, stage, mood) {
+    if (!typeGrids || !mood) { return null; }
+    var key = stage + "_" + mood;
+    return typeGrids[key] ? key : null;
+  }
+
+  // =========================================================================
   // Exports
   // =========================================================================
 
+  window.spriteMood = {
+    current:       currentMood,
+    frame:         moodFrame,
+    scaleY:        moodScaleY,
+    px:            moodPx,
+    drawProps:     drawMoodProps,
+    spawn:         spawnMoodParticles,
+    step:          stepMoodParticles,
+    drawParticles: drawMoodParticles,
+  };
   window.SPRITES          = SPRITES;
   window.renderSpriteGrid = renderSpriteGrid;
   // Exposed for testing and palette-change invalidation.
