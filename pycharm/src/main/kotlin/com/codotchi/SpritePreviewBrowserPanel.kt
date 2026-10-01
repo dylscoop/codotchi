@@ -34,6 +34,7 @@ class SpritePreviewBrowserPanel(parentDisposable: Disposable) : Disposable {
         val spritesGeneratedText = loadResource("/webview/sprites.generated.js")
         val spritesText         = loadResource("/webview/sprites.js")
         val customCharactersText = loadResource("/webview/customCharacters.js")
+        val backgroundArtText   = loadResource("/webview/backgroundArt.js")
         var html                = loadResource("/webview/sprite_preview.html")
 
         // Inline spriteConstants.js
@@ -52,6 +53,12 @@ class SpritePreviewBrowserPanel(parentDisposable: Disposable) : Disposable {
         html = html.replace(
             """<script src="sprites.js"></script>""",
             "<script>\n$spritesText\n</script>"
+        )
+
+        // Inline backgroundArt.js (background preview canvas)
+        html = html.replace(
+            """<script src="backgroundArt.js"></script>""",
+            "<script>\n$backgroundArtText\n</script>"
         )
 
         // Inline customCharacters.js

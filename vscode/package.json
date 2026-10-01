@@ -202,12 +202,12 @@
             "type": "string",
             "enum": ["plain", "ordered", "spring", "summer", "autumn", "winter"],
             "enumDescriptions": [
-              "Solid colour only — no pixel-art elements.",
-              "Season from real calendar + time of day from real clock.",
-              "Spring season (green ground, flower) + real time of day.",
-              "Summer season (bright green ground) + real time of day.",
-              "Autumn season (orange-brown ground, leaves) + real time of day.",
-              "Winter season (pale ground, snowflake) + real time of day."
+              "Pet colour with a plain dark ground strip — no sky or scenery.",
+              "Season from the real month, sky from the real clock (blends through dawn, a pastel morning, sunset and night).",
+              "Spring: blossom trees, tulips and daisies, the odd shower and rainbow, birds and butterflies.",
+              "Summer: leafy trees, sunflowers and tall grass, a picnic blanket and beach ball, fluffy clouds, bees and fireflies.",
+              "Autumn: orange and half-bare trees, falling leaves on leafy grass, pumpkins and toadstools.",
+              "Winter: a snowman, snowy trees and a pine with fairy lights, icicles, drifts and the odd snowfall."
             ],
             "default": "ordered",
             "description": "Background theme for the pet canvas.",
@@ -319,7 +319,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "node ../scripts/sync-core.mjs",
-    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/backgroundArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

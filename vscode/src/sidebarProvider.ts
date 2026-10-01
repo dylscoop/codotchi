@@ -310,6 +310,9 @@ export class SidebarProvider
     const minigameArtUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "minigameArt.js"))
     );
+    const backgroundArtUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "backgroundArt.js"))
+    );
     const spriteConstantsUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "spriteConstants.js"))
     );
@@ -321,6 +324,7 @@ export class SidebarProvider
     html = html.replace("{{spritesGeneratedUri}}", spritesGeneratedUri.toString());
     html = html.replace("{{spritesUri}}", spritesUri.toString());
     html = html.replace("{{minigameArtUri}}", minigameArtUri.toString());
+    html = html.replace("{{backgroundArtUri}}", backgroundArtUri.toString());
     html = html.replace("{{spriteConstantsUri}}", spriteConstantsUri.toString());
     html = html.replace("{{customCharactersUri}}", customCharactersUri.toString());
     html = html.replace("{{jsUri}}", jsUri.toString());
