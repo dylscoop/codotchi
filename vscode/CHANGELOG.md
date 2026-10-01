@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.24.0] — 2026-10-01
+
+### Added
+
+- **Pat animations** — patting your pet now shows a hand patting its head and floating hearts, and every pet reacts its own way: the dog wags and hops, the cat arches and purrs, the sheep puffs up its fleece, the snake coils and sways, the kangaroos hop, the dragon loops with puffs of smoke, Tim and Stu lean in and blush, and the classic pet squishes.
+- **AI usage on a device** — when you ask for Today's Token Cost, your pet pulls out a phone, tablet or laptop (depending on the pet) with a little live chart. It fades away together with the speech bubble.
+
+### Changed
+
+- **Play menu** — the "Play or Pat" heading at the top of the menu is gone.
+
 ## [2.23.0] — 2026-10-01
 
 ### Added
