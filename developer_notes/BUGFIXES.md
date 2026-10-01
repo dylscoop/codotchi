@@ -2210,3 +2210,36 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** `emojiClearance` lifts the bubble about 24 px (or 12 prop-pixels) higher while the pet sleeps, is patted, or still has z / heart particles in the air. If that would push the bubble off the canvas, it is pinned to the top edge instead of flipping below the head.
 
 **Tests:** `vscode/tests/unit/webviewAnimations.test.ts`.
+
+## BUGFIX-182 — Patting hand far too big
+
+**Status:** Fixed (branch `v2.24.3-pat-comb`)
+**Files:** `vscode/media/sprites.js`, `vscode/media/sidebar.js` (PyCharm copies the media files at build time)
+
+**Problem:** `drawPatHand` drew the sleeved hand (palm plus four comb-like fingers) at one full mood prop-pixel per cell, 7 × 7 prop-pixels in all, so it towered over the pet it was patting.
+
+**Fix:** The hand draws at `PAT_HAND_SCALE = 0.5` prop-pixels per cell, with each cell snapped to whole canvas pixels. The speech-bubble clearance kept for it in `emojiClearance` drops from 12 to 6 prop-pixels (still at least 24 px for the rising z's and hearts).
+
+**Tests:** `vscode/tests/unit/webviewAnimations.test.ts` checks that the hand is 3.5 prop-pixels square at several prop sizes and uses whole-pixel rects.
+
+## BUGFIX-183 — Indicator and speech bubble flush against the pet's head
+
+**Status:** Fixed (branch `v2.24.3-pat-comb`)
+**File:** `vscode/media/sidebar.js`
+
+**Problem:** After BUGFIX-180 the classic box hugged the creature, so the z / + indicator and speech bubble sat right on its head, with no room left. Other pets whose art fills the top of their grid had the same problem.
+
+**Fix:** A shared `headGap(state)` (one prop-pixel, at least 2 px) lifts the indicator and speech bubble above every pet, in both the animated and reduced-motion views. The pat hand still touches the head.
+
+**Tests:** `vscode/tests/unit/webviewAnimations.test.ts`.
+
+## BUGFIX-184 — AI usage device overlapped the pet
+
+**Status:** Fixed (branch `v2.24.3-pat-comb`)
+**File:** `vscode/media/sprites.js`
+
+**Problem:** `drawUsageDevice` put the phone, tablet or laptop only one prop-pixel from the pet's box, so it overlapped the sprite.
+
+**Fix:** The device keeps `DEVICE_GAP = 3` prop-pixels from the pet on whichever side it faces.
+
+**Tests:** `vscode/tests/unit/webviewAnimations.test.ts` checks the gap for every device, facing either way.

@@ -367,7 +367,7 @@ hands control back.
 
 | Event string | Animation | Duration |
 |--------------|-----------|----------|
-| `fed_meal` / `fed_snack` | Quick hop: vy impulse upward, lands with a small squash | 500 ms |
+| `fed_meal` / `fed_snack` | Bob at the bowl: one bob for a snack, two for a meal | meal 1000 ms (v2.24.3), snack 500 ms |
 | `played` | Jump with 360° spin (canvas rotate transform) | 700 ms |
 | `fell_asleep` | Slow drift downward to bottom-centre, then stop | 600 ms |
 | `woke_up` | Stretch scale from 0.8→1.0 upward | 400 ms |
