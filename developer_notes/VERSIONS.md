@@ -6,7 +6,7 @@
 
 | File | What changed |
 |------|-------------|
-| `vscode/media/sprites.js` | new `window.spriteMood` (`current`, `frame`, `scaleY`, `drawProps`, `spawn`, `step`, `drawParticles`): food bowl / snack plate while eating, blanket and pillow while sleeping, squash/stretch, sparkles / tears / crumbs / drifting z's. Sprite pixels unchanged. `renderSpriteGrid` uses an optional `DEFS[type][stage + "_" + mood]` grid when one exists (none shipped yet) and keys its caches on it |
+| `vscode/media/sprites.js` | new `window.spriteMood` (`current`, `frame`, `scaleY`, `drawProps`, `spawn`, `step`, `drawParticles`): food bowl / snack plate while eating, blanket and pillow while sleeping, squash/stretch, sparkles / tears / crumbs / drifting z's. Happy (stretch + sparkles) and sad tears play only in short bursts about every 30 s (`MOOD_BURSTS`); sad keeps a steady droop. Sprite pixels unchanged. `renderSpriteGrid` uses an optional `DEFS[type][stage + "_" + mood]` grid when one exists (none shipped yet) and keys its caches on it |
 | `vscode/media/sidebar.js` | draws the mood layer each frame (reactions override the squash; the dragon gets no floor props); a floor-snack chomp lasts 0.6 s (was 0.2 s) and counts as "eating"; sets `lastState.displayMood` for the per-mood grid hook |
 | `vscode/tests/unit/webviewAnimations.test.ts` | new mood-layer and per-mood-grid tests |
 | `developer_notes/*`, `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | mood-frame docs; FEATURES / FEATURES_2 / September backlog statuses |

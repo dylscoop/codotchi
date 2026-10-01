@@ -150,7 +150,7 @@ describe("mood layer (vscode/media/sprites.js window.spriteMood)", () => {
     assert.ok(particles.length >= 2 && particles.every((p) => p.kind === "crumb"));
 
     const tears: any[] = [];
-    mood.spawn(tears, "sad", 0, false, box, false, 1, () => 0);
+    mood.spawn(tears, "sad", 1, true, box, false, 1 / 60, () => 0);
     assert.equal(tears[0].kind, "tear");
     for (let i = 0; i < 120 && tears.length; i++) { mood.step(tears, 1 / 60, box.y + box.h); }
     assert.equal(tears.length, 0, "tear should land on the floor and vanish");
@@ -158,8 +158,44 @@ describe("mood layer (vscode/media/sprites.js window.spriteMood)", () => {
 
   it("caps the particle pool", () => {
     const particles: any[] = [];
-    for (let i = 0; i < 100; i++) { mood.spawn(particles, "happy", 0, false, box, false, 10, () => 0); }
+    for (let i = 0; i < 100; i++) { mood.spawn(particles, "sleeping", 0, false, box, false, 10, () => 0); }
     assert.ok(particles.length <= 20);
+  });
+
+  /** Run a mood over `ticks` frames from animTick 0 and count what it does. */
+  function runMood(m: string, ticks: number) {
+    const particles: any[] = [];
+    let spawned = 0, burstTicks = 0, stretched = 0, lastFrame = -1;
+    for (let t = 0; t < ticks; t++) {
+      const f = mood.frame(m, t);
+      const before = particles.length;
+      mood.spawn(particles, m, f, f !== lastFrame, box, false, 1 / 60, Math.random);
+      spawned += particles.length - before;
+      particles.length = 0;
+      if (f > 0) { burstTicks++; }
+      if (mood.scaleY(m, f) > 1) { stretched++; }
+      lastFrame = f;
+    }
+    return { spawned, burstTicks, stretched };
+  }
+
+  it("plays happy as a short burst about every 30 s, still in between", () => {
+    assert.equal(mood.frame("happy", 0), 0);
+    assert.equal(mood.frame("happy", 900), 0);
+    assert.equal(mood.scaleY("happy", 0), 1);
+    // First burst ~20 s in: frames 1, 2, 1, 2 then idle
+    assert.deepEqual([1200, 1215, 1230, 1245, 1260].map((t) => mood.frame("happy", t)), [1, 2, 1, 2, 0]);
+    const oneMinute = runMood("happy", 3600);
+    assert.equal(oneMinute.burstTicks, 120, "two 1-second bursts per minute");
+    assert.equal(oneMinute.stretched, 60, "stretch only on the pulse frames");
+    assert.ok(oneMinute.spawned >= 4 && oneMinute.spawned <= 8, `sparkles: ${oneMinute.spawned}`);
+  });
+
+  it("keeps sad drooped but only cries in bursts", () => {
+    assert.equal(mood.scaleY("sad", 0), 0.95);
+    assert.equal(mood.scaleY("sad", 1), 0.95);
+    assert.equal(runMood("sad", 500).spawned, 0, "no tears before the first burst");
+    assert.equal(runMood("sad", 1800).spawned, 3, "one burst of three tears");
   });
 
   it("never spawns particles for a neutral pet", () => {

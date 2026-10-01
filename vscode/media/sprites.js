@@ -6441,10 +6441,15 @@ DEFS["roo"] = DEFS["roo"] || {};
   // =========================================================================
 
   var MOOD_FRAMES = {        // flip-book length and ticks per frame (60 ticks ≈ 1 s)
-    happy:    { n: 2, ticks: 20 },   // bouncy stretch (the physics hop already exists)
-    sad:      { n: 2, ticks: 30 },
     sleeping: { n: 2, ticks: 45 },
     eating:   { n: 3, ticks: 8 },    // fast chomp
+  };
+  // Happy and sad play only in short bursts: frame 0 (nothing) most of the
+  // time, then frames 1, 2, 1, … for `len` ticks once every `every` ticks.
+  // `offset` sets when the first burst comes after the pet is first drawn.
+  var MOOD_BURSTS = {
+    happy: { every: 1800, len: 60, ticks: 15, offset: 600 },   // ~1 s every ~30 s, first after ~20 s
+    sad:   { every: 1800, len: 90, ticks: 30, offset: 1200 },  // ~1.5 s every ~30 s, first after ~10 s
   };
   var MOOD_PARTICLE_MAX = 20;
   var MOOD_GRAVITY      = 120;       // px/s² for tears and crumbs
@@ -6463,13 +6468,18 @@ DEFS["roo"] = DEFS["roo"] || {};
   }
 
   function moodFrame(mood, animTick) {
+    var b = MOOD_BURSTS[mood];
+    if (b) {
+      var t = (animTick + b.offset) % b.every;
+      return t < b.len ? 1 + Math.floor(t / b.ticks) % 2 : 0;
+    }
     var f = MOOD_FRAMES[mood];
     return f ? Math.floor(animTick / f.ticks) % f.n : 0;
   }
 
   /** Vertical body squash / stretch for a mood frame, anchored at the feet (1 = none). */
   function moodScaleY(mood, frame) {
-    if (mood === "happy")    { return frame === 0 ? 1.04 : 1; }
+    if (mood === "happy")    { return frame === 1 ? 1.04 : 1; }   // two pulses per burst
     if (mood === "sad")      { return 0.95; }
     if (mood === "sleeping") { return 0.88; }
     if (mood === "eating")   { return [1, 0.92, 1.04][frame] || 1; }
@@ -6536,10 +6546,15 @@ DEFS["roo"] = DEFS["roo"] || {};
     rand = rand || Math.random;
     var headX = facingLeft ? box.x + box.w * 0.2 : box.x + box.w * 0.8;
     var add = [];
-    if (mood === "happy" && rand() < dt / 1.5) {
-      add.push({ kind: "sparkle", x: box.x + rand() * box.w, y: box.y + rand() * box.h * 0.3,
-                 vx: 0, vy: -10, life: 0.6 });
-    } else if (mood === "sad" && rand() < dt / 2) {
+    if (mood === "happy" && frameChanged && frame === 1) {
+      // 1–2 sparkles per stretch pulse → 2–4 per burst
+      var sparkles = 1 + (rand() < 0.5 ? 1 : 0);
+      for (var s = 0; s < sparkles; s++) {
+        add.push({ kind: "sparkle", x: box.x + rand() * box.w, y: box.y + rand() * box.h * 0.3,
+                   vx: 0, vy: -10, life: 0.6 });
+      }
+    } else if (mood === "sad" && frameChanged && frame > 0) {
+      // One tear per burst frame → 3 per burst
       add.push({ kind: "tear", x: headX, y: box.y + box.h * 0.35, vx: 0, vy: 0, life: 2 });
     } else if (mood === "eating" && frameChanged && frame === 1) {
       var mouthX = facingLeft ? box.x : box.x + box.w;
