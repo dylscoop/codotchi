@@ -213,8 +213,10 @@ describe("background drawing (backgroundArt.js)", () => {
     assert.ok(has("autumn", "#e87a20"), "pumpkin");
     assert.ok(has("autumn", "#d03028"), "toadstool");
     assert.ok(has("winter", "#f08a24"), "snowman carrot");
-    assert.ok(has("winter", "#ff5050", 9), "fairy lights on in the morning");
-    assert.ok(!has("winter", "#ff5050", 14), "fairy lights off in the afternoon");
+    // Light colours rotate with the epoch time, so look for any of them (time-zone independent).
+    const lit = (h: number) => ["#ff5050", "#ffd040", "#50a0ff", "#60e070"].some((c) => has("winter", c, h));
+    assert.ok(lit(9), "fairy lights on in the morning");
+    assert.ok(!lit(14), "fairy lights off in the afternoon");
   });
 
   it("keeps trees at the edges and only one on narrow canvases", () => {
