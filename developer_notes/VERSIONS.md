@@ -1,6 +1,28 @@
 # Version History
 
-## v2.24.0 — current
+## v2.24.1 — current
+
+### Changes from v2.24.0 (bulk sprite pipeline: sprites/<species>/ → sprites.generated.js; dog, cat, dragon and roo moved over — branch feat/bulk-sprite-pipeline)
+
+| File | What changed |
+|------|-------------|
+| `scripts/lib/spriteImport.js` (new) | decode (PNG / .pixil / JPEG / WebP), background removal, crop, `capScale`, `resample`, `buildColourMapper` over several images (one palette per species), `mapGrid`, `flipGrid`, `padGrid` (bottom-aligned, centre or left), `buildDefsEntry`, `encodePng` |
+| `scripts/import_sprite.js`, `scripts/import_sprite.ps1` | thin CLI that prints a DEFS entry, meta and palette; `--inject` removed (BUGFIX-179) |
+| `scripts/import_sprites_bulk.js` (new) | every `sprites/<species>/` (stage images, `<stage>_<mood>` art, optional `sprite.json`) → `vscode/media/sprites.generated.js`; shared cap scale and grid, missing-stage report, registration warnings, `--check` |
+| `scripts/export_sprite_pngs.js` (new) | writes existing grids out as a `sprites/<species>/` folder |
+| `sprites/dog`, `sprites/cat`, `sprites/dragon`, `sprites/roo` (new) | source PNGs + `sprite.json`; roo scaled from 644×531 to 155×128 (`legRowStart` 380 → 92) |
+| `vscode/media/sprites.generated.js` (new) | generated grids, `SPRITE_GRID_META` and palette entries for the four species |
+| `vscode/media/sprites.js`, `vscode/media/spriteConstants.js` | dog / cat / dragon / roo `DEFS`, meta and palettes removed (2.16 MB → 114 KB); `sprites.js` merges `window.GENERATED_SPRITE_DEFS` into `DEFS` |
+| `vscode/media/sidebar.html`, `sprite_preview.html`, `vscode/src/sidebarProvider.ts`, `spritePreviewPanel.ts`, `pycharm/build.gradle.kts`, `CodotchiBrowserPanel.kt`, `SpritePreviewBrowserPanel.kt` | load `sprites.generated.js` between `spriteConstants.js` and `sprites.js` |
+| `scripts/validate_sprites.js`, `.github/workflows/tests.yml` | validator checks the real webview data; new `sprites` CI job |
+| `vscode/tests/unit/spriteImportBulk.test.ts` (new), `spriteData.test.ts`, `webviewAnimations.test.ts`, `vscode/package.json`, `pycharm/.../BrowserPanelHtmlTest.kt` | pipeline tests; exact meta match, cap and `legRowStart` checks; load-order checks |
+| `vscode/media/customCharacters.js`, `vscode/src/customCharacters.ts`, `pycharm/.../CustomCharacters.kt` | "add a character" steps point at `sprites/` |
+| `developer_notes/SPRITE_IMPORT.md`, `SPRITES.md`, `FEATURES_SEPTEMBER_2026.md`, `BUGFIXES.md`, `vscode/CHANGELOG.md`, `plugin.xml` | bulk pipeline docs, §2.2 ticked off, BUGFIX-179 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.24.0 → 2.24.1 |
+
+---
+
+## v2.24.0
 
 ### Changes from v2.23.0 (per-pet pat animations; the pet holds a device for the AI-usage bubble; "Play or Pat" heading removed — branch feat/pat-anims-usage-device)
 

@@ -2,9 +2,9 @@
  * customCharacters.js — registry of hidden/unlockable custom characters.
  *
  * To add a new custom character:
- *   1. Add DEFS["<spriteType>"] to sprites.js. PyCharm copies vscode/media at build time.
- *   2. Add a palette entry to spriteConstants.js.
- *   3. Add "<spriteType>" to UPRIGHT_TYPES in spriteConstants.js if it uses a 32×48 grid.
+ *   1-3. Add the art: images in sprites/<spriteType>/ (+ sprite.json with the
+ *        palette, "upright" if needed), then node scripts/import_sprites_bulk.js
+ *        (see developer_notes/SPRITE_IMPORT.md). PyCharm copies vscode/media at build time.
  *   4. Add an entry to CUSTOM_CHARACTERS below — no other file changes needed.
  *
  * Exposes on `window`:

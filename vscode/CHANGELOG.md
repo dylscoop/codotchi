@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.24.1] — 2026-10-01
+
+### Changed
+
+- **Lighter download** — the pet art is stored more compactly, so the extension is smaller and the roo is quicker to draw. The roo is drawn from a smaller grid, so its outline may look very slightly different.
+- **New sprite pipeline (for contributors)** — sprites are now built from images in `sprites/<species>/` with one command (`node scripts/import_sprites_bulk.js`), which opens the door to the remaining zodiac animals and new species.
+
 ## [2.24.0] — 2026-10-01
 
 ### Added

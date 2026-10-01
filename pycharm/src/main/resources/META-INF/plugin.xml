@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.24.0</version>
+    <version>2.24.1</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -150,6 +150,11 @@ automatically and retries the submission once.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+<h3>2.24.1</h3>
+<ul>
+  <li><b>Lighter download</b> — the pet art is stored more compactly, so the plugin is smaller and the roo is quicker to draw.</li>
+  <li><b>New sprite pipeline (for contributors)</b> — sprites are now built from images in <code>sprites/&lt;species&gt;/</code> with one command, which opens the door to the remaining zodiac animals and new species.</li>
+</ul>
 <h3>2.24.0</h3>
 <ul>
   <li><b>Pat animations</b> — patting your pet shows a hand patting its head and floating hearts, and every pet reacts its own way: the dog wags and hops, the cat arches and purrs, the sheep puffs up its fleece, the snake coils and sways, the kangaroos hop, the dragon loops with puffs of smoke, Tim and Stu lean in and blush, and the classic pet squishes.</li>

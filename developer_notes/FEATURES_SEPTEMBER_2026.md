@@ -342,19 +342,21 @@ Goal: drop in images for every animal at once, instead of running
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Folder convention `sprites/<species>/{baby,child,teen,adult,senior}.png` | `[ ]` | Source images live in git, and these files are the source of truth |
-| Optional `sprites/<species>/sprite.json` | `[ ]` | `palette {primary, secondary, accent}`, `transparent`, `legRowStart`, `upright`, `flip`, `inRotation`, `passcode`, `defaultName` |
-| `scripts/import_sprites_bulk.js` | `[ ]` | Imports every species folder in one run |
-| Refactor `import_sprite.js` into a reusable module | `[ ]` | Export `decode`, `quantize`, `buildDefsEntry`; keep the CLI as a thin wrapper |
-| One grid shared by all stages of a species | `[ ]` | Fixes the clash where `SPRITE_GRID_META` is overwritten by the last stage imported; stages are padded bottom-centre onto the largest cropped size (≤ 192×128) |
-| One palette per species | `[ ]` | Quantize all stages against the same 3 colours |
-| Generated `media/sprites.generated.js` | `[ ]` | DEFS + META + PALETTES written from scratch each run, instead of regex-splicing into the hand-maintained `sprites.js`; loaded by `sidebar.html`, `sprite_preview.html` and the PyCharm loaders |
-| Copy generated output into PyCharm `webview/` | `[ ]` | Or have Gradle copy it from `vscode/media` at build time, so the two can't drift |
-| Missing-stage report | `[ ]` | Lists species/stage pairs with no image |
-| Rewrite `validate_sprites.js` against the real data | `[ ]` | Row width == cols, row count == rows, all 5 stages present, palette present, allowed digits only; run it in the test suites |
-| Renderer fallback: adult → classic | `[ ]` | Fixes BUG-S03 |
+| Folder convention `sprites/<species>/{baby,child,teen,adult,senior}.png` | `[x]` | Source images live in git, and these files are the source of truth |
+| Optional `sprites/<species>/sprite.json` | `[x]` | `palette {primary, secondary, accent}`, `background`, `transparent`, `transparentDistance`, `threshold`, `crop`, `anchor`, `legRowStart`, `upright`, `flip`, `inRotation`, `passcode`, `defaultName`. `<stage>_<mood>.png` adds mood art |
+| `scripts/import_sprites_bulk.js` | `[x]` | Imports every species folder in one run; `--check` for CI |
+| Refactor `import_sprite.js` into a reusable module | `[x]` | `scripts/lib/spriteImport.js`; the CLI is a thin wrapper that only prints, and `--inject` is removed (BUGFIX-179) |
+| One grid shared by all stages of a species | `[x]` | Fixes the clash where `SPRITE_GRID_META` is overwritten by the last stage imported; stages are padded bottom-centre onto the largest cropped size (≤ 192×128) |
+| One palette per species | `[x]` | Quantize all stages against the same 3 colours |
+| Generated `media/sprites.generated.js` | `[x]` | DEFS + META + PALETTES written from scratch each run, instead of regex-splicing into the hand-maintained `sprites.js`; loaded by `sidebar.html`, `sprite_preview.html` and the PyCharm loaders |
+| Copy generated output into PyCharm `webview/` | `[x]` | Gradle copies it from `vscode/media` at build time |
+| Missing-stage report | `[x]` | Lists species/stage pairs with no image |
+| Rewrite `validate_sprites.js` against the real data | `[x]` | Row width == cols, row count == rows, cap, `legRowStart`, all 5 stages present, palette present, allowed digits only; runs in CI, and `spriteData.test.ts` checks the same |
+| Renderer fallback: adult → classic | `[x]` | Fixes BUG-S03 (v2.21.3) |
 | Terminal plugin support | `[ ]` | Add a `SPRITE_HEAD` (asciiArt.ts ×3) and an emoji (`emoji.mjs`) for each new species |
 | In-IDE "Import sprites from folder…" (dev mode) | `[ ]` | Phase 2: button in the Sprite Preview panel (VS Code `showOpenDialog`, PyCharm `FileChooser`); writes a user sprite pack to globalStorage, because installed extension media is read-only; needs CSP and loader changes |
+
+**Done in v2.24.1** (branch `feat/bulk-sprite-pipeline`). dog, cat, dragon and roo moved to `sprites/` (roo is scaled to the cap, 155×128). `sprites.js` dropped from 2.16 MB to 114 KB. See `developer_notes/SPRITE_IMPORT.md`. Registration is still by hand; `sprite.json` mismatches print warnings.
 
 **Design notes:**
 
@@ -627,7 +629,7 @@ Implementation Order" lists.
 3. Mood animation frames: happy, sad, sleeping, eating (FEATURES_2.md §3.1) — **done in v2.22.1** (props, body squash and particles around the unchanged sprite; per-mood art hook for later)
 4. Show active attention calls in the Claude Code status line (§2.6) — **done in v2.22.0**
 5. Pixel-art redesign of the minigame visuals (FEATURES.md §14) — **done in v2.22.2** (doors, number card, spinning coin and a bitmap font in `minigameArt.js`)
-6. Bulk sprite upload pipeline (§2.2)
+6. Bulk sprite upload pipeline (§2.2) — **done in v2.24.1** (terminal heads / emoji and the in-IDE import button are still open)
 7. Shared core package (§3 #1) — **done in v2.21.3**
 8. Copy the PyCharm webview assets at build time (§3 #2) — **done in v2.21.3**
 9. Move release binaries out of git (§3 #3) — **done in v2.21.3**
