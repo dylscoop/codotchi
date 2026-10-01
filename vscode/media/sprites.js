@@ -1222,8 +1222,6 @@
    * The classic creature's real drawn size: { w, h } with the feet at y + h.
    * The sidebar uses this as classic's bounding box, so the (x, bodyY) passed to
    * renderSpriteGrid is the top-left of the creature itself, not of a 32×48 grid.
-   * The box includes a small topPad band above the head so the indicator, bubble
-   * and z's (anchored to the box top) don't sit flush against it.
    */
   function classicBox(state, STAGE_SCALES, weightWidthMultiplier, sizeMultiplier) {
     STAGE_SCALES          = STAGE_SCALES || window.SPRITE_STAGE_SCALES;
@@ -1242,8 +1240,7 @@
                    : stage === "senior" ? Math.max(2, Math.round(bodySize * 0.25))
                    : stage === "child"  ? legH
                    : Math.max(2, Math.round(bodySize * 0.30)); // teen / adult
-    var topPad     = Math.max(2, Math.round(bodySize * 0.25));
-    return { w: bodyWidth, h: topPad + bodyHeight + groundLegH, topPad: topPad,
+    return { w: bodyWidth, h: bodyHeight + groundLegH,
              bodySize: bodySize, bodyWidth: bodyWidth, bodyHeight: bodyHeight, legH: legH };
   }
 
@@ -1255,10 +1252,8 @@
 
     var stage = state.stage || "baby";
 
-    // (x, bodyY) is the top-left of classicBox — the creature's own bounding box;
-    // the head starts topPad below it
+    // (x, bodyY) is the top-left of classicBox — the creature's own bounding box
     var box        = classicBox(state, STAGE_SCALES, weightWidthMultiplier, sizeMultiplier);
-    bodyY         += box.topPad;
     var bodySize   = box.bodySize;
     var bodyWidth  = box.bodyWidth;
     var bodyHeight = box.bodyHeight;
@@ -2143,6 +2138,9 @@
    * Draw the device next to the pet. slideT (0..1) animates it coming out;
    * alpha follows the speech bubble so both fade together.
    */
+  // Prop-pixels of clear space between the pet and its device
+  var DEVICE_GAP = 3;
+
   function drawUsageDevice(ctx, device, box, facingLeft, px, slideT, alpha, animTick) {
     if (alpha <= 0) { return; }
     var s = Math.max(0, Math.min(1, slideT));
@@ -2152,20 +2150,20 @@
     if (device === "laptop") {
       // Open laptop on the floor in front; the lid swings up as it comes out
       var lw = 9;
-      var lx = facingLeft ? box.x - (lw + 1) * px : box.x + box.w + px;
+      var lx = facingLeft ? box.x - (lw + DEVICE_GAP) * px : box.x + box.w + DEVICE_GAP * px;
       ctx.fillStyle = "#8a8f98";
       ctx.fillRect(lx, feetY - px, lw * px, px);
       var lidH = Math.max(1, Math.round(6 * s));
       drawDeviceScreen(ctx, lx + px, feetY - (1 + lidH) * px, 7, lidH, px, animTick);
     } else if (device === "tablet") {
       // Held up at chest height
-      var tx = facingLeft ? box.x - 8 * px : box.x + box.w + px;
+      var tx = facingLeft ? box.x - (7 + DEVICE_GAP) * px : box.x + box.w + DEVICE_GAP * px;
       var ty = Math.round(box.y + box.h * 0.4 + (1 - s) * 4 * px);
       drawDeviceScreen(ctx, tx, ty, 7, 5, px, animTick);
     } else {
       // Phone held by the head
       var head = box.h > box.w ? 0.25 : 0.15;
-      var phx = facingLeft ? box.x - 4 * px : box.x + box.w + px;
+      var phx = facingLeft ? box.x - (3 + DEVICE_GAP) * px : box.x + box.w + DEVICE_GAP * px;
       var phy = Math.round(box.y + box.h * head + (1 - s) * 4 * px);
       drawDeviceScreen(ctx, phx, phy, 3, 5, px, animTick);
     }
@@ -2195,6 +2193,7 @@
     drawDevice:  drawUsageDevice,
     MOTION:      PAT_MOTION,
     DEVICES:     USAGE_DEVICE,
+    DEVICE_GAP:  DEVICE_GAP,
   };
   window.SPRITES          = SPRITES;
   window.renderSpriteGrid = renderSpriteGrid;

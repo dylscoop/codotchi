@@ -351,6 +351,25 @@ describe("AI-usage device (vscode/media/sprites.js window.spritePat)", () => {
     pat.drawDevice(gone.ctx, "laptop", box, false, 2, 1, 0, 40);
     assert.equal(gone.calls.fillRect ?? 0, 0);
   });
+
+  it("keeps every device a few prop-pixels clear of the pet on either side", () => {
+    const px = 2;
+    assert.ok(pat.DEVICE_GAP >= 3);
+    for (const device of ["phone", "tablet", "laptop"]) {
+      for (const facingLeft of [false, true]) {
+        const rects: number[][] = [];
+        const ctx = new Proxy({} as any, {
+          get(t, k: string) { return k in t ? t[k] : k === "fillRect" ? (...a: number[]) => { rects.push(a); } : () => undefined; },
+          set(t, k: string, v) { t[k] = v; return true; },
+        });
+        pat.drawDevice(ctx, device, box, facingLeft, px, 1, 1, 40);
+        const left  = Math.min(...rects.map((r) => r[0]));
+        const right = Math.max(...rects.map((r) => r[0] + r[2]));
+        if (facingLeft) { assert.equal(box.x - right, pat.DEVICE_GAP * px, device + " (left)"); }
+        else            { assert.equal(left - (box.x + box.w), pat.DEVICE_GAP * px, device + " (right)"); }
+      }
+    }
+  });
 });
 
 describe("AI-usage bubble timing (sidebar.js)", () => {
@@ -410,8 +429,7 @@ describe("classic creature box (vscode/media/sprites.js)", () => {
         assert.ok(rects.length > 0);
         const top    = Math.min(...rects.map((r) => r[1]));
         const bottom = Math.max(...rects.map((r) => r[1] + r[3]));
-        assert.equal(top, y + box.topPad, "the head sits just below a small gap at the top of the box");
-        assert.ok(box.topPad >= 2 && box.topPad <= Math.ceil(box.h / 4), "the gap is small");
+        assert.equal(top, y, "the head sits at the top of the box — no empty band above");
         assert.equal(bottom, y + box.h, "the longest leg reaches the box floor");
         // Body (not the adult's 2px shoulder stubs) spans exactly the box width
         const body = rects.filter((r) => r[2] === box.w);
@@ -424,7 +442,7 @@ describe("classic creature box (vscode/media/sprites.js)", () => {
   it("is a small box, not the 32×48 grid box", () => {
     const w = loadSpriteWindow();
     const box = w.spriteClassicBox({ spriteType: "classic", stage: "adult", weight: 50 });
-    assert.deepEqual([box.w, box.h, box.topPad], [18, 5 + 27 + 5, 5]);   // medium petSize: 24 × 1.0 × 0.75
+    assert.deepEqual([box.w, box.h], [18, 27 + 5]);   // medium petSize: 24 × 1.0 × 0.75
   });
 
   it("treats species with no sprite art as classic", () => {
@@ -432,6 +450,15 @@ describe("classic creature box (vscode/media/sprites.js)", () => {
     assert.equal(w.spriteDrawsAsClassic("classic", "adult"), true);
     assert.equal(w.spriteDrawsAsClassic("dog", "adult"), false);
     assert.equal(w.spriteDrawsAsClassic("no_such_pet", "adult"), true);
+  });
+});
+
+describe("head gap above every pet (vscode/media/sidebar.js)", () => {
+  it("lifts the status indicator and speech bubble a little above the head", () => {
+    assert.match(sidebarSource, /function headGap\(state\) \{\s*return Math\.max\(2, Math\.round\(petPropWidth\(state\) \/ 16\)\);/);
+    assert.match(sidebarSource, /var _petTopY  = Math\.round\(petY\) \+ walkBob - headGap\(lastState\);/);
+    assert.match(sidebarSource, /var indicatorY = bodyY - 3 - headGap\(state\);/);
+    assert.match(sidebarSource, /drawSpeechBubble\(staticX \+ Math\.round\(bWidth \/ 2\), staticY - headGap\(state\),/);
   });
 });
 

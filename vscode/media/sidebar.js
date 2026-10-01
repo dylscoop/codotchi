@@ -1299,7 +1299,7 @@
     var _bSz      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType) * _bScale);
     var _bW       = effectiveBWidth(lastState, _bSz);
     var _petCx    = Math.round(petX) + Math.round(_bW / 2);
-    var _petTopY  = Math.round(petY) + walkBob;
+    var _petTopY  = Math.round(petY) + walkBob - headGap(lastState);
     drawSpeechBubble(_petCx, _petTopY, nowMs,
                      emojiClearance(lastState.sleeping || patting, moodPxSize));
   }
@@ -2763,7 +2763,7 @@
     var secondary = palette.secondary;
 
     var indicatorX = x + Math.round(bWidth / 2) - 4;
-    var indicatorY = bodyY - 3;
+    var indicatorY = bodyY - 3 - headGap(state);
     if (state.sleeping) {
       spriteCtx.fillStyle = secondary;
       spriteCtx.font = "bold 10px monospace";
@@ -2800,7 +2800,7 @@
 
     drawBody(state, staticX, staticY, false, 0);
     drawStatusIndicators(state, staticX, staticY);
-    drawSpeechBubble(staticX + Math.round(bWidth / 2), staticY, performance.now());
+    drawSpeechBubble(staticX + Math.round(bWidth / 2), staticY - headGap(state), performance.now());
   }
 
   // ── Static look-up tables ────────────────────────────────────────────────
@@ -2912,6 +2912,16 @@
    */
   function petPropWidth(state) {
     return Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * (STAGE_SCALES[state.stage] || 0.5));
+  }
+
+  /**
+   * Small empty band (canvas px) kept between the top of every pet and the
+   * status indicator / speech bubble above it — one mood prop-pixel, min 2px.
+   * @param {object} state
+   * @returns {number}
+   */
+  function headGap(state) {
+    return Math.max(2, Math.round(petPropWidth(state) / 16));
   }
 
   // ── Initial view ─────────────────────────────────────────────────────────
