@@ -28,5 +28,15 @@
     "stage": "baby",
     "petType": "codeling",
     "updatedAt": 1790852753132
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Mind Goblin",
+    "petRunId": "0",
+    "spawnedAt": 1790852905443,
+    "ageDays": 0,
+    "stage": "baby",
+    "petType": "bytebug",
+    "updatedAt": 1790853237930
   }
 ]
