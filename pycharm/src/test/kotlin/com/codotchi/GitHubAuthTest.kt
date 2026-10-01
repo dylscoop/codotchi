@@ -68,5 +68,19 @@ class GitHubAuthTest {
         val flow = pluginSource.substringAfter("private fun startDeviceFlowAsync").substringBefore("private fun resolveAndCacheLeaderboardUsername")
         assertFalse(flow.contains("network failure — silent"))
         assertTrue(flow.contains("fail(describeDeviceFlowError("))
+        assertTrue(flow.contains("fail(describeDeviceCodeFailure("), "device-code failure must surface GitHub's error body")
+        assertTrue(flow.contains("tokConn.readBodyText()"), "token poll must read the error stream on non-2xx")
+    }
+
+    @Test
+    fun `device code failure surfaces GitHub's error description`() {
+        val body = """{"error":"device_flow_disabled","error_description":"Device Flow must be explicitly enabled for this App"}"""
+        assertEquals(
+            "Could not start GitHub sign-in (HTTP 400: Device Flow must be explicitly enabled for this App).",
+            describeDeviceCodeFailure(400, body),
+        )
+        assertEquals("Could not start GitHub sign-in (HTTP 400: bad_client).", describeDeviceCodeFailure(400, """{"error":"bad_client"}"""))
+        assertEquals("Could not start GitHub sign-in (HTTP 502).", describeDeviceCodeFailure(502, "<html>oops</html>"))
+        assertEquals("Could not start GitHub sign-in (HTTP 500).", describeDeviceCodeFailure(500, null))
     }
 }
