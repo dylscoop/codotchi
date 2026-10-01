@@ -124,12 +124,17 @@ describe("mood layer (vscode/media/sprites.js window.spriteMood)", () => {
     assert.ok(mood.scaleY("sleeping", 0) < 1);
   });
 
-  it("draws a bowl while eating and a blanket while sleeping, nothing otherwise", () => {
-    for (const m of ["eating", "sleeping"]) {
-      const { ctx, calls } = mockCtx();
-      mood.drawProps(ctx, m, 0, box, false, false);
-      assert.ok((calls["fillRect"] ?? 0) >= 3, `${m}: no props drawn`);
-    }
+  it("draws a bowl while eating and only a pillow while sleeping, nothing otherwise", () => {
+    const eating = mockCtx();
+    mood.drawProps(eating.ctx, "eating", 0, box, false, false);
+    assert.ok((eating.calls["fillRect"] ?? 0) >= 3, "eating: no bowl drawn");
+
+    // No blanket: the old 40 %-height purple rect read as a blue box over the pet
+    const sleeping = mockCtx();
+    mood.drawProps(sleeping.ctx, "sleeping", 0, box, false, false);
+    assert.equal(sleeping.calls["fillRect"], 1, "sleeping should draw just the pillow");
+    assert.equal(sleeping.ctx.fillStyle, "#e6e6f0");
+
     const { ctx, calls } = mockCtx();
     mood.drawProps(ctx, "happy", 0, box, false, false);
     assert.equal(calls["fillRect"] ?? 0, 0);

@@ -47,7 +47,7 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 - **Life cycle & evolution** — egg → baby → child → teen → adult → senior, with
   the final character determined by how well you cared for your pet
 - **Moods you can see** — a happy pet sparkles, a sad pet sheds a tear, a
-  sleeping pet tucks in under a blanket, and an eating pet chomps from a bowl
+  sleeping pet rests on a pillow, and an eating pet chomps from a bowl
 - **Pet customization** — name your pet and choose a pet type on first launch
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
   and it dies

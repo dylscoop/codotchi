@@ -6490,7 +6490,7 @@ DEFS["roo"] = DEFS["roo"] || {};
   function moodPx(box) { return Math.max(1, Math.round(box.w / 16)); }
 
   /**
-   * Food bowl (eating) or blanket and pillow (sleeping). box = {x, y, w, h}
+   * Food bowl (eating) or pillow (sleeping), drawn behind the pet. box = {x, y, w, h}
    * of the drawn pet, with y + h at the feet.
    */
   function drawMoodProps(ctx, mood, frame, box, facingLeft, snack) {
@@ -6523,17 +6523,11 @@ DEFS["roo"] = DEFS["roo"] || {};
         ctx.fillRect(bx + px, feetY - px, bw - 2 * px, px);
       }
     } else if (mood === "sleeping") {
-      // Pillow under the head, blanket over the lower part of the body
+      // Pillow under the head
       var pw = Math.max(3 * px, Math.round(box.w * 0.3));
       var pillowX = facingLeft ? box.x - px : box.x + box.w - pw + px;
       ctx.fillStyle = "#e6e6f0";
       ctx.fillRect(pillowX, feetY - 2 * px, pw, 2 * px);
-      var blanketH = Math.round(box.h * 0.4);
-      ctx.globalAlpha = 0.92;
-      ctx.fillStyle = "#6a5acd";
-      ctx.fillRect(box.x - px, feetY - blanketH, box.w + 2 * px, blanketH);
-      ctx.fillStyle = "#483d8b";
-      ctx.fillRect(box.x - px, feetY - blanketH, box.w + 2 * px, px);
     }
     ctx.restore();
   }

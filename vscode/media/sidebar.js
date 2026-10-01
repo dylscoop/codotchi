@@ -1243,14 +1243,11 @@
 
     // ── Draw ──────────────────────────────────────────────────────────────
     drawEnvironment(lastState);
-    if (moodProps && mood === "eating") {
+    if (moodProps) {
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
     drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                          window.spriteMood.scaleY(mood, moodFrame));
-    if (moodProps && mood === "sleeping") {
-      window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, false);
-    }
     window.spriteMood.drawParticles(spriteCtx, moodParticles, window.spriteMood.px(moodBox));
     drawStatusIndicators(lastState, Math.round(petX), Math.round(petY) + walkBob);
 

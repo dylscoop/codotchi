@@ -383,11 +383,11 @@ props, a squash/stretch and particles drawn around the unchanged sprite
 | Mood | Shown when | Layer |
 |------|-----------|-------|
 | eating | `fed_meal` / `fed_snack` reaction, or a 0.6 s floor-snack chomp | Bowl (meal) or plate (snack) that empties over a 3-frame chomp; crumbs |
-| sleeping | `state.sleeping` | Blanket over the lower body, pillow under the head; squashed to 88 %; drifting z's |
+| sleeping | `state.sleeping` | Pillow under the head (no blanket since v2.23.0, BUGFIX-178); squashed to 88 %; drifting z's |
 | happy | `state.mood === "happy"` | Nothing most of the time; a ~1 s burst every ~30 s (first after ~20 s): two 4 % stretch pulses and 2–4 sparkles |
 | sad | `state.mood === "sad"` | Steady 95 % droop; a ~1.5 s burst of 3 tears from the head side every ~30 s (first after ~10 s) |
 
-Neutral and sick have no layer. The dragon hovers, so it gets no bowl or blanket.
+Neutral and sick have no layer. The dragon hovers, so it gets no bowl or pillow.
 
 ### 5.7 Direction Flip (Sprite Mirroring)
 
