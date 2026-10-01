@@ -5,6 +5,10 @@ license: MIT
 compatibility: opencode
 ---
 
+> **`main` changes only through a PR (since 2026-09-30).** The GitHub rulesets require a PR and linear history, and block force pushes. Never `git merge` into `main` locally or push `main`: push the branch, `gh pr create`, then `gh pr merge --rebase` (or `--squash`). Where this file says otherwise, this note wins; see `.claude/skills/git-workflow/SKILL.md`.
+
+> **Artifacts are local only (since v2.21.3).** `releases/`, every `*/archive/` folder and all `*.vsix`, `*.zip` and `*.mcpb` files are gitignored. Use plain `mv`, never `git mv` / `git add`, and never commit them — they are only uploaded to GitHub Releases. Where this file says otherwise, this note wins; see `.claude/skills/` for the current rules.
+
 ## MANDATORY — do these two things before anything else
 
 > **STOP. Before reading a single file or running a single command:**

@@ -27,7 +27,6 @@ describe("answered whim-call speech", () => {
 
   it("is identical in every host", () => {
     for (const p of [
-      "pycharm/src/main/resources/webview/sidebar.js",
       "opencode-codotchi/src/index.ts",
       "claude-codotchi/scripts/whimSpeech.mjs",
     ]) {
@@ -35,8 +34,9 @@ describe("answered whim-call speech", () => {
     }
   });
 
-  it("outranks the minigame result bubble in both IDE sidebars", () => {
-    for (const p of ["vscode/media/sidebar.js", "pycharm/src/main/resources/webview/sidebar.js"]) {
+  // PyCharm copies vscode/media/sidebar.js at build time, so one file covers both IDEs.
+  it("outranks the minigame result bubble in the IDE sidebar", () => {
+    for (const p of ["vscode/media/sidebar.js"]) {
       const src = read(p);
       const whim = src.indexOf("// 1b. Answered whim calls");
       assert.ok(whim > 0, p);

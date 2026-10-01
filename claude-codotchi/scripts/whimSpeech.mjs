@@ -1,7 +1,7 @@
 /**
  * Speech when a whim attention call is answered — one line picked at random.
- * Mirrored in vscode/media/sidebar.js, pycharm/src/main/resources/webview/sidebar.js
- * and opencode-codotchi/src/index.ts.
+ * Mirrored in vscode/media/sidebar.js (shared by both IDEs) and
+ * opencode-codotchi/src/index.ts.
  */
 export const WHIM_ANSWER_SPEECH = {
   play:    ["Yay, you played with me!", "That's just what I wanted!", "Again! Again!", "Best game ever!"],

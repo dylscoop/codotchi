@@ -5764,6 +5764,79 @@ DEFS["roo"] = DEFS["roo"] || {};
   }
 
   // =========================================================================
+  // drawHatchingEgg — procedural egg shared by every sprite type
+  // =========================================================================
+  /**
+   * Hatch progress 0–1 for an egg: dayTimer over the egg's evolution threshold
+   * (window.SPRITE_EGG_HATCH_DAYS, set in spriteConstants.js).
+   * @param {object} state
+   * @returns {number}
+   */
+  function eggHatchProgress(state) {
+    var hatchDays = window.SPRITE_EGG_HATCH_DAYS || 0.267;
+    return Math.max(0, Math.min(1, (state.dayTimer || 0) / hatchDays));
+  }
+
+  /**
+   * Draw the egg oval with two eye dots. The rocking gets wider as the egg
+   * nears hatching, with shake bursts from 80%; cracks appear at 50% and 80%.
+   */
+  function drawHatchingEgg(ctx, state, x, top, w, h, bodySize, primary, secondary) {
+    var p   = eggHatchProgress(state);
+    var now = Date.now();
+    var deg = Math.PI / 180;
+
+    // Slow rock (5° → 12°), a faster wobble once half-way, and a short shake
+    // at the start of every 1.5 s from 80%.
+    var rockAngle = Math.sin(now / 600) * (5 + 7 * p) * deg;
+    if (p >= 0.5) { rockAngle += Math.sin(now / 150) * 3 * (p - 0.5) * 2 * deg; }
+    if (p >= 0.8 && (now % 1500) < 400) { rockAngle += Math.sin(now / 40) * 4 * deg; }
+
+    var cx = x + w / 2;
+    var cy = top + h / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rockAngle);
+    ctx.translate(-cx, -cy);
+
+    ctx.fillStyle = primary;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    var dotSize   = Math.max(1, Math.round(bodySize * 0.10));
+    var dotY      = top + Math.round(h * 0.38);
+    var dotLeftX  = x + Math.round(w * 0.28);
+    var dotRightX = x + Math.round(w * 0.62);
+    ctx.fillStyle = secondary;
+    ctx.fillRect(dotLeftX,  dotY, dotSize, dotSize);
+    ctx.fillRect(dotRightX, dotY, dotSize, dotSize);
+
+    if (p >= 0.5) {
+      ctx.strokeStyle = secondary;
+      ctx.lineWidth   = Math.max(1, Math.round(bodySize * 0.05));
+      ctx.beginPath();
+      // Zig-zag across the middle
+      var crackY = top + h * 0.58;
+      var zig    = h * 0.06;
+      ctx.moveTo(x + w * 0.15, crackY);
+      ctx.lineTo(x + w * 0.30, crackY - zig);
+      ctx.lineTo(x + w * 0.45, crackY + zig);
+      ctx.lineTo(x + w * 0.60, crackY - zig);
+      ctx.lineTo(x + w * 0.75, crackY + zig);
+      ctx.lineTo(x + w * 0.85, crackY);
+      if (p >= 0.8) {
+        // Second crack running down from the first
+        ctx.moveTo(x + w * 0.45, crackY + zig);
+        ctx.lineTo(x + w * 0.38, crackY + zig * 3);
+        ctx.lineTo(x + w * 0.50, crackY + zig * 5);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // =========================================================================
   // drawClassicProcedural — legacy v0.11.2 procedural renderer for "classic"
   // =========================================================================
   /**
@@ -5820,27 +5893,7 @@ DEFS["roo"] = DEFS["roo"] || {};
     }
 
     if (stage === "egg") {
-      ctx.save();
-      var rockAngle = Math.sin(Date.now() / 600) * (5 * Math.PI / 180);
-      var cx = x + bodyWidth / 2;
-      var cy = bobY + bodyHeight / 2;
-      ctx.translate(cx, cy);
-      ctx.rotate(rockAngle);
-      ctx.translate(-cx, -cy);
-
-      ctx.fillStyle = primary;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, bodyWidth / 2, bodyHeight / 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      var dotSize   = Math.max(1, Math.round(bodySize * 0.10));
-      var dotY      = bobY + Math.round(bodyHeight * 0.38);
-      var dotLeftX  = x + Math.round(bodyWidth * 0.28);
-      var dotRightX = x + Math.round(bodyWidth * 0.62);
-      ctx.fillStyle = secondary;
-      ctx.fillRect(dotLeftX,  dotY, dotSize, dotSize);
-      ctx.fillRect(dotRightX, dotY, dotSize, dotSize);
-      ctx.restore();
+      drawHatchingEgg(ctx, state, x, bobY, bodyWidth, bodyHeight, bodySize, primary, secondary);
 
     } else if (stage === "baby") {
       var babyLegH = Math.max(1, Math.round(bodySize * 0.12));
@@ -6066,6 +6119,15 @@ DEFS["roo"] = DEFS["roo"] || {};
     var spriteType = state.spriteType || "classic";
     var stage      = state.stage      || "baby";
 
+    // -- Missing sprite data (BUG-S03): a species with no grid for this stage
+    // uses its adult grid (see the grid lookup below); a species with no adult
+    // grid either (e.g. the archived zodiac animals) is drawn as the procedural
+    // classic creature, so a pet is never invisible.
+    if (spriteType !== "classic" &&
+        !(SPRITES[spriteType] && (SPRITES[spriteType][stage] || SPRITES[spriteType]["adult"]))) {
+      spriteType = "classic";
+    }
+
     // -- Classic: legacy procedural renderer (v0.11.2 style, fixed neon green)
     if (spriteType === "classic") {
       var petSizeValC = (typeof document !== "undefined" && document.body && document.body.dataset)
@@ -6106,8 +6168,8 @@ DEFS["roo"] = DEFS["roo"] || {};
     var sizeMultiplier;
 
     // -- Determine grid type -------------------------------------------------
-    var UPRIGHT_TYPES = { classic: 1, monkey: 1, rooster: 1, tim: 1, stu: 1 };
-    var isUpright = !!UPRIGHT_TYPES[spriteType];
+    // UPRIGHT_TYPES is authoritative in spriteConstants.js (loaded first).
+    var isUpright = !!(window.UPRIGHT_TYPES && window.UPRIGHT_TYPES[spriteType]);
 
     // Upright animals render at smaller sizes than quadrupeds.
     // small=0.5625 / medium=0.75 / large=1.0 for upright;
@@ -6160,31 +6222,12 @@ DEFS["roo"] = DEFS["roo"] || {};
     if (stage === "egg") {
       // Always a portrait oval (taller than wide), ignoring pet weight
       bodyWidth = bodySize;
-      ctx.save();
-      var rockAngle = Math.sin(Date.now() / 600) * (5 * Math.PI / 180);
-      var cx = x + bodyWidth / 2;
-      var cy = bobY + bodyHeight / 2;
-      ctx.translate(cx, cy);
-      ctx.rotate(rockAngle);
-      ctx.translate(-cx, -cy);
-      ctx.fillStyle = primary;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, bodyWidth / 2, bodyHeight / 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      var dotSize   = Math.max(1, Math.round(bodySize * 0.10));
-      var dotY      = bobY + Math.round(bodyHeight * 0.38);
-      var dotLeftX  = x + Math.round(bodyWidth * 0.28);
-      var dotRightX = x + Math.round(bodyWidth * 0.62);
-      ctx.fillStyle = secondary;
-      ctx.fillRect(dotLeftX,  dotY, dotSize, dotSize);
-      ctx.fillRect(dotRightX, dotY, dotSize, dotSize);
-      ctx.restore();
+      drawHatchingEgg(ctx, state, x, bobY, bodyWidth, bodyHeight, bodySize, primary, secondary);
       return;
     }
 
     // -- Grid lookup ---------------------------------------------------------
-    var grid = (SPRITES[spriteType] && SPRITES[spriteType][stage])
-             || (SPRITES["monkey"]  && SPRITES["monkey"][stage]);
+    var grid = SPRITES[spriteType][stage] || SPRITES[spriteType]["adult"];
 
     if (!grid) { return; }
 

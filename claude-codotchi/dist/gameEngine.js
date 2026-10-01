@@ -1,3 +1,5 @@
+// GENERATED from packages/core/src/gameEngine.ts by scripts/sync-core.mjs — do not edit here.
+// Edit packages/core/src/gameEngine.ts, then run: node scripts/sync-core.mjs
 /**
  * gameEngine.ts
  *
@@ -431,6 +433,11 @@ const EVOLUTION_CHARACTERS = {
         },
     },
 };
+/** Every AttentionCallType, for code that needs to list them at runtime. */
+export const ATTENTION_CALL_TYPES = [
+    "hunger", "unhappiness", "poop", "sick", "low_energy", "misbehaviour",
+    "gift", "critical_health", "play", "pat", "craving",
+];
 // ---------------------------------------------------------------------------
 // Helper — pure stat math
 // ---------------------------------------------------------------------------
@@ -662,23 +669,14 @@ export function careTierLabel(careScore) {
 // Sprite type — randomly assigned at hatch
 // ---------------------------------------------------------------------------
 /**
- * All 12 Chinese zodiac animals. Accessible via character code only —
- * not part of the random rotation pool.
- */
-const ZODIAC_ANIMALS = [
-    "rat", "ox", "tiger", "rabbit", "dragon", "snake",
-    "horse", "sheep", "monkey", "rooster", "dog", "pig",
-];
-/**
  * Animals in the random rotation pool at pet creation.
  * All entries have equal probability (1 / ROTATION_ANIMALS.length each).
- * Note: some rotation animals (dog, snake, sheep, rooster, tiger) are also
- * zodiac animals — they remain accessible via zodiac character codes too.
- * More animals will be added to this set in the future.
+ * Note: some rotation animals (dog, snake, sheep) are also zodiac animals —
+ * they remain accessible via zodiac character codes too.
  */
-const ROTATION_ANIMALS = [
+export const ROTATION_ANIMALS = [
     "cat", "dog", "snake", "sheep", "classic",
-    "rooster", "tiger", "kangaroo", "dragon",
+    "kangaroo", "dragon",
 ];
 /**
  * Sample a random sprite type at pet creation.
@@ -1630,6 +1628,23 @@ export function pat(state) {
         consecutiveSnacks: 0,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
+    });
+}
+/**
+ * Apply the stat cost of viewing the token cost overlay: same energy/happiness
+ * change as a pat, but no weight, events, or attention-call side effects — the
+ * cost bubble is shown separately, so this must not emit a "patted" event that
+ * would race it with a reaction bubble (BUGFIX-140).
+ *
+ * @param state - The current pet state.
+ * @returns A new PetState after the action.
+ */
+export function applyTokenCostView(state) {
+    return withDerivedFields({
+        ...state,
+        happiness: clampStat(state.happiness + PAT_HAPPINESS_BOOST),
+        energy: clampStat(state.energy - PAT_ENERGY_COST),
+        events: [],
     });
 }
 /**

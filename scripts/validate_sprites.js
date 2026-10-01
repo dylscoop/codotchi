@@ -42,7 +42,7 @@ function expectedColsForType(spriteType) {
   return legacyUprightTypes[spriteType] ? 32 : 48;
 }
 
-var lines = child_process.execSync('node scripts/gen_sprites.js', {cwd: __dirname + '/..'}).toString().split('\n');
+var lines = child_process.execSync('node scripts/legacy/gen_sprites.js', {cwd: __dirname + '/..'}).toString().split('\n');
 var currentType = null;
 var errors = [];
 

@@ -5,6 +5,10 @@ license: MIT
 compatibility: opencode
 ---
 
+> **Shared webview (since v2.21.3).** `pycharm/src/main/resources/webview/` no longer exists in git: PyCharm copies `vscode/media/` at build time. Edit `vscode/media/` only. Where this file says otherwise, this note wins.
+
+> **Shared core (since v2.21.3).** `gameEngine.ts` and `asciiArt.ts` are generated from `packages/core/src/`. Edit them there and run `node scripts/sync-core.mjs`; never edit the plugin copies by hand. Where this file says otherwise, this note wins; see `.claude/skills/` for the current rules.
+
 ## Rule
 
 Any time a feature or functional change is requested for one IDE, apply the equivalent change to the other IDE as well — unless the user **explicitly** says to change only one (e.g. "VS Code only", "just PyCharm", "don't touch the other plugin").

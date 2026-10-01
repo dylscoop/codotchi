@@ -28,7 +28,7 @@ The converter runs a five-stage pipeline:
 
 1. **Decode** — reads the source image into an in-memory RGBA pixel grid.
 2. **Downscale** (if needed) — nearest-neighbour resampling to fit within the
-   700 × 550 maximum, preserving the aspect ratio.
+   192 × 128 maximum, preserving the aspect ratio.
 3. **Quantize** — maps every pixel to one of four colour indices:
    `0` transparent, `1` primary, `2` secondary, `3` accent.
 4. **Generate** — converts the quantized grid into `DEFS` row-strings (one
@@ -115,8 +115,9 @@ node scripts/import_sprite.js <file> <spriteType> <stage> [options]
 | `--transparent <#hex>` | off | Source colour to key out as transparent before quantization (useful for JPEGs with white backgrounds). |
 | `--transparent-distance <N>` | `2500` | Squared RGB-distance tolerance for `--transparent`; larger values remove more near-background pixels. |
 | `--crop-transparent` | off | Trim the transparent border after applying alpha / `--transparent`, before max-size scaling. |
+| `--flip` | off | Mirror the grid horizontally (reverse each row). Use when the source faces right but the sprite should face left in-game, like the other quadrupeds. |
 | `--preview` | off | Print an ASCII art preview of the quantized grid to stderr. |
-| `--inject` | off | Splice the output directly into both IDEs' `sprites.js` and `spriteConstants.js`. |
+| `--inject` | off | Splice the output directly into `vscode/media/sprites.js` and `spriteConstants.js` (PyCharm copies them at build time). |
 
 ---
 
@@ -198,9 +199,8 @@ the existing `DEFS` block for that stage.
 
 ## What `--inject` writes
 
-For each target file (`vscode/media/sprites.js`,
-`pycharm/src/main/resources/webview/sprites.js`, and both matching
-`spriteConstants.js` files):
+For `vscode/media/sprites.js` and `vscode/media/spriteConstants.js`
+(PyCharm copies both at build time):
 
 | What is written | Where |
 |-----------------|-------|
@@ -251,7 +251,7 @@ palette table in [`SPRITES.md`](SPRITES.md) for examples.
 
 | Limitation | Detail |
 |------------|--------|
-| Maximum grid size | 700 columns × 550 rows. Larger images are scaled down (aspect preserved). |
+| Maximum grid size | 192 columns × 128 rows (`MAX_COLS` / `MAX_ROWS` in `import_sprite.js`, kept small for runtime performance). Larger images are scaled down (aspect preserved). |
 | JPEG backgrounds | JPEGs are fully opaque. Use `--transparent "#ffffff" --transparent-distance N --crop-transparent` for flat white backgrounds before importing. |
 | WebP requires a converter | PowerShell `System.Drawing` does not support WebP unless the Windows WebP codec is installed. Install ImageMagick v7+, `dwebp`, ffmpeg, or Python + Pillow for reliable WebP support. |
 | Interlaced PNGs unsupported | The PNG decoder rejects interlaced files. Re-export as non-interlaced (progressive) PNG. |
@@ -265,7 +265,6 @@ palette table in [`SPRITES.md`](SPRITES.md) for examples.
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/gen_sprites.js` | Procedurally generates the built-in animal `DEFS` (not file import). |
-| `scripts/inject_sprites.js` | Splices `gen_sprites.js` output into `sprites.js`. |
-| `scripts/validate_sprites.js` | Verifies that every row string in `sprites.js` has the correct width for its `spriteType` per `SPRITE_GRID_META`. |
+| `scripts/legacy/gen_sprites.js` | Legacy: the old procedural `DEFS` generator, kept for reference. Nothing calls it except `validate_sprites.js`. |
+| `scripts/validate_sprites.js` | Checks row widths of the legacy `gen_sprites.js` output against `SPRITE_GRID_META`. It does not yet check `sprites.js` itself (rewrite tracked in `FEATURES_SEPTEMBER_2026.md` §2.2). |
 | `vscode/media/sprite_preview.html` | Standalone browser gallery for all sprites. |

@@ -7,8 +7,8 @@
  *
  * Files written:
  *   codotchi-state.json   — pet state (PetState + metadata)
- *   codotchi-daily.json   — legacy daily accumulator (no longer written; usage is re-scanned from transcripts)
  *   codotchi-config.json  — user config (cost thresholds, terminalEnabled)
+ *   (usage is re-scanned from Claude Code transcripts; the old codotchi-daily.json is no longer read or written)
  */
 
 import fs from "fs";
@@ -148,31 +148,6 @@ export function saveStateFile(obj) {
   } catch {
     // Best-effort write-back — swallow errors, matching persistence.ts / CodotchiPersistence.kt.
   }
-}
-
-// ---------------------------------------------------------------------------
-// Daily cost/token tracking
-// ---------------------------------------------------------------------------
-
-export function dailyPath() {
-  return path.join(dataDir(), "codotchi-daily.json");
-}
-
-/** Returns { [utcDate]: { costUsd, sessions: { [sessionId]: lastCostUsd } } } */
-export function loadDaily() {
-  const p = dailyPath();
-  if (!fs.existsSync(p)) return {};
-  try {
-    return JSON.parse(fs.readFileSync(p, "utf8"));
-  } catch {
-    return {};
-  }
-}
-
-export function saveDaily(data) {
-  const dir = dataDir();
-  ensureDir(dir);
-  fs.writeFileSync(dailyPath(), JSON.stringify(data, null, 2), "utf8");
 }
 
 // Pricing per million tokens (USD) by model prefix. Ordered most-specific

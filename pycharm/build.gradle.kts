@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.codotchi"
-version = "2.21.2"
+version = "2.22.0"
 
 repositories {
     mavenCentral()
@@ -33,6 +33,20 @@ kotlin {
 tasks {
     buildSearchableOptions {
         enabled = false
+    }
+
+    // The webview (sidebar + sprite preview) is shared with the VS Code
+    // extension. vscode/media is the source of truth: copy it into the plugin's
+    // webview/ resources at build time instead of keeping a hand-made copy.
+    processResources {
+        from("../vscode/media") {
+            include(
+                "sidebar.js", "sidebar.css", "sidebar.html",
+                "customCharacters.js", "spriteConstants.js", "sprites.js",
+                "sprite_preview.html"
+            )
+            into("webview")
+        }
     }
 
     // The org.jetbrains.intellij plugin hooks into ALL tasks of type `Test`
@@ -77,7 +91,9 @@ tasks {
         val mainResourcesDir = sourceSets["main"].output.resourcesDir!!.absolutePath
         val extraResources   = layout.buildDirectory.dir("resources/test").get().asFile.absolutePath
 
-        val fullCp = "$testClassesDir;$mainClassesDir;$testRuntimeCp;$mainResourcesDir;$extraResources"
+        // File.pathSeparator (";" on Windows, ":" elsewhere) so CI on Linux works too.
+        val fullCp = listOf(testClassesDir, mainClassesDir, testRuntimeCp, mainResourcesDir, extraResources)
+            .joinToString(File.pathSeparator)
 
         classpath(launcherJar)
         mainClass.set("org.junit.platform.console.ConsoleLauncher")

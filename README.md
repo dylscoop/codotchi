@@ -38,8 +38,8 @@ You can also appear on the leaderboard **while your pet is still alive**. Your e
 
 | IDE | Package | Install |
 | --- | ------- | ------- |
-| VS Code | `vscode/` | `.vsix` from [Releases](https://github.com/dylscoop/vscode_gotchi/releases) |
-| JetBrains (PyCharm, IntelliJ, etc.) | `pycharm/` | `.zip` from [Releases](https://github.com/dylscoop/vscode_gotchi/releases) |
+| VS Code | `vscode/` | [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=dylscoop.codotchi) (or `.vsix` from [Releases](https://github.com/dylscoop/codotchi/releases)) |
+| JetBrains (PyCharm, IntelliJ, etc.) | `pycharm/` | [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/33203-codotchi) (or `.zip` from [Releases](https://github.com/dylscoop/codotchi/releases)) |
 | OpenCode | `.opencode/` + `opencode-codotchi/` | In-repo plugin (auto-loaded) or npm package (global install) |
 | Claude Desktop | `claude-desktop-codotchi/` | `.mcpb` one-click install (the pet renders as ASCII art inline in chat) |
 
@@ -52,19 +52,30 @@ PyCharm via a cross-platform JSON file.
 
 ### VS Code
 
-1. Download `codotchi-2.21.2.vsix` from the Releases page.
-2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
-3. Select the file and reload.
+Install **[Codotchi from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=dylscoop.codotchi)**,
+or search for **Codotchi** in the Extensions view (`Ctrl+Shift+X`).
 
 Or from the terminal:
 
 ```bash
-code --install-extension codotchi-2.21.2.vsix
+code --install-extension dylscoop.codotchi
 ```
+
+#### Manual install (VSIX)
+
+1. Download `codotchi-2.22.0.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
+3. Select the file and reload.
 
 ### JetBrains
 
-1. Download `pycharm-codotchi-2.21.2.zip` from the Releases page.
+Install **[Codotchi from the JetBrains Marketplace](https://plugins.jetbrains.com/plugin/33203-codotchi)**,
+or in your IDE go to **Settings → Plugins → Marketplace**, search for
+**Codotchi**, and click **Install**.
+
+#### Manual install (ZIP)
+
+1. Download `pycharm-codotchi-2.22.0.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -92,19 +103,19 @@ page — no repository clone required:
 
 #### From Zip
 
-1. Download `opencode-codotchi-2.21.2.zip` from the
+1. Download `opencode-codotchi-2.22.0.zip` from the
    [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. Extract it and run the installer:
 
    ```bash
    # macOS / Linux
-   unzip opencode-codotchi-2.21.2.zip && cd opencode-codotchi-2.21.2
+   unzip opencode-codotchi-2.22.0.zip && cd opencode-codotchi-2.22.0
    node bin/install.js --install
    ```
 
    ```powershell
    # Windows (PowerShell)
-   Expand-Archive opencode-codotchi-2.21.2.zip; cd opencode-codotchi-2.21.2
+   Expand-Archive opencode-codotchi-2.22.0.zip; cd opencode-codotchi-2.22.0
    node bin/install.js --install
    ```
 
@@ -190,7 +201,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.21.2.vsix
+# produces codotchi-2.22.0.vsix
 ```
 
 ### JetBrains plugin
@@ -206,14 +217,14 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.21.2.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.22.0.zip
 ```
 
 ## Version history
 
 See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
-Current release: **v2.21.2** — built by [dylscoop](https://github.com/dylscoop)
+Current release: **v2.22.0** — built by [dylscoop](https://github.com/dylscoop)
 
 > "Grow your best pet by writing your best code."
 

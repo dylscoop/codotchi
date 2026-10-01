@@ -4,6 +4,7 @@
  * Exposes on `window`:
  *   SPRITE_ANIMAL_PALETTES      — realistic colour palette keyed by spriteType
  *   SPRITE_STAGE_SCALES         — per-stage size multiplier
+ *   SPRITE_EGG_HATCH_DAYS       — dayTimer at which the egg hatches (drives the hatch animation)
  *   spriteGetPalette(spriteType) — returns the palette object for a given spriteType
  *   spriteWeightWidthMult(w)    — returns width multiplier for a given weight (upright/snake only)
  *   spriteHeightRatio(type)     — returns height/width ratio for a given spriteType
@@ -60,6 +61,11 @@
     adult:  1.00,
     senior: 1.00,
   };
+
+  // ── Egg hatch progress ────────────────────────────────────────────────────
+  /** dayTimer at which the egg hatches. Must match EVOLUTION_DAY_THRESHOLDS.egg
+   *  in packages/core/src/gameEngine.ts (and Constants.kt); a test checks this. */
+  var EGG_HATCH_DAYS = 0.267;
 
   // ── Sprite orientation ────────────────────────────────────────────────────
   /** Sprite types that use a portrait (32 cols × 48 rows) grid. */
@@ -143,6 +149,7 @@
   // ── Exports ───────────────────────────────────────────────────────────────
   window.SPRITE_ANIMAL_PALETTES   = ANIMAL_PALETTES;
   window.SPRITE_STAGE_SCALES      = STAGE_SCALES;
+  window.SPRITE_EGG_HATCH_DAYS    = EGG_HATCH_DAYS;
   window.UPRIGHT_TYPES            = UPRIGHT_TYPES;
   window.SPRITE_GRID_META         = SPRITE_GRID_META;
   window.spriteGetPalette         = getPalette;

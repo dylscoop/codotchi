@@ -13,6 +13,8 @@ Status legend:
 - `[ ]` Not yet implemented
 - `[S]` Controlled by a setting
 
+Priorities: see §4 Triage (2026-09-30).
+
 ---
 
 ## 0. Current State
@@ -167,7 +169,7 @@ through the IDE's idle flag, or skip damage.
 
 ### BUG-S03 — Zodiac species draw nothing in VS Code
 
-**Status:** Open
+**Status:** Fixed (v2.21.3, branch `chore/repo-cleanup`, BUGFIX-170). Missing stage → adult grid; no grid → procedural classic; `ROTATION_ANIMALS` aligned in every engine
 **File:** `vscode/media/sprites.js` (~6186)
 
 **Problem:** When a `spriteType` has no grid, the renderer falls back to
@@ -199,7 +201,7 @@ engine and grey out the buttons, or correct the docs.
 
 ### BUG-S05 — `died` reaction animation never implemented
 
-**Status:** Open
+**Status:** Fixed (v2.22.0, branch `feat/hatch-death-statusline-calls`, BUGFIX-173)
 **File:** `vscode/media/sidebar.js`
 
 **Problem:** FEATURES.md §5.6 listed a `died` float-up reaction (1200 ms) as
@@ -228,7 +230,7 @@ attention half as often.
 
 ### BUG-S07 — Sprite tooling broken or out of step
 
-**Status:** Open
+**Status:** Won't do (triage 2026-09-30; replaced by §2.2)
 **Files:** `scripts/inject_sprites.js`, `scripts/validate_sprites.js`,
 `pycharm/src/main/resources/webview/sprites.js`
 
@@ -537,7 +539,7 @@ with a stat penalty.
 | Unanswered → health loss | `[x]` | On expiry: `health -= ATTENTION_EXPIRY_STAT_PENALTY` (10) and `careMistakes += 1`, for all three. The expiry window is the `codotchi.attentionCallExpiry` setting |
 | Wrong answer | `[x]` | Feeding a meal to a snack craving (or the reverse) feeds the pet but doesn't answer the call |
 | Speech / toast text | `[~]` | Webview labels / bubbles, IDE toasts and OpenCode speech are done. Moving them into `en.json` waits for §2.3 |
-| Terminal plugins | `[x]` | New `/codotchi play` and `/codotchi snack` (claude-codotchi, OpenCode) and `codotchi_play` / `codotchi_snack` (Claude Desktop). OpenCode announces the calls; the Claude Code status line doesn't show any calls yet (true for the older calls too) |
+| Terminal plugins | `[x]` | New `/codotchi play` and `/codotchi snack` (claude-codotchi, OpenCode) and `codotchi_play` / `codotchi_snack` (Claude Desktop). OpenCode announces the calls. Since v2.22.0 the Claude Code status line shows the active call (every call type) in bubble, emoji and plain modes |
 | Mirror to all four TypeScript engines + Kotlin | `[x]` | ide-parity / opencode-claude-parity |
 
 **Design notes:**
@@ -569,19 +571,19 @@ Most valuable first.
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 1 | Shared core package | `[ ]` | `gameEngine.ts` is copied 4 times (~2,500 lines each, drifting by 29-55 lines) and `asciiArt.ts` 3 times (the claude-desktop copy uses an old `buildContextualSpeech` signature). Create `packages/core` and build it into each plugin; move plugin-specific behaviour (immortal pets, rotation list) into config |
-| 2 | Generate PyCharm webview assets | `[ ]` | `sidebar.js/.css/.html`, `customCharacters.js`, `spriteConstants.js` and `sprites.js` are hand-copied into `pycharm/src/main/resources/webview/`; copy them at build time instead |
-| 3 | Move release binaries out of git | `[ ]` | ~564 MB of tracked zip/vsix/mcpb files under `archive/` and `releases/` (`.git` is 185 MB). Use GitHub Releases, which the release skill already publishes to |
-| 4 | Stop shipping archived sprites | `[ ]` | `vscode/media/archived_sprites/` is packaged into the vsix; add it and `archive/` to `vscode/.vscodeignore` |
-| 5 | Remove stray tracked files | `[ ]` | stale `vscode/tests/unit/gameEngine.test.js` (+ `.map`), `.idea/`, `pycharm/build/test-results/`, old `claude-codotchi/claude-codotchi-2.17.0.zip` |
-| 6 | Tidy repo root | `[ ]` | Move `dog_adult_1x.png`, `dragon_adult_1x.png`, `kangaroo_adult_1x.png`, `example_skippy.png`, `bmc_qr.png` to `docs/images/` and update the README URLs that point at them; delete the local `downloaded_sprites/` folder (gitignored) |
-| 7 | Prune `scripts/` | `[ ]` | Delete `inject_sprites.js` (broken) and `mirror_roo.js` (replaced by `--flip`); archive `gen_sprites.js`; rewrite `validate_sprites.js` (§2.2) |
+| 1 | Shared core package | `[x]` | Done in v2.21.3. `gameEngine.ts` is copied 4 times (~2,500 lines each, drifting by 29-55 lines) and `asciiArt.ts` 3 times (the claude-desktop copy uses an old `buildContextualSpeech` signature). Create `packages/core` and build it into each plugin; move plugin-specific behaviour (immortal pets, rotation list) into config |
+| 2 | Generate PyCharm webview assets | `[x]` | Done in v2.21.3. `sidebar.js/.css/.html`, `customCharacters.js`, `spriteConstants.js` and `sprites.js` are hand-copied into `pycharm/src/main/resources/webview/`; copy them at build time instead |
+| 3 | Move release binaries out of git | `[x]` | Done in v2.21.3. ~564 MB of tracked zip/vsix/mcpb files under `archive/` and `releases/` (`.git` is 185 MB). Use GitHub Releases, which the release skill already publishes to |
+| 4 | Stop shipping archived sprites | `[x]` | Done in v2.21.3. `vscode/media/archived_sprites/` is packaged into the vsix; add it and `archive/` to `vscode/.vscodeignore` |
+| 5 | Remove stray tracked files | `[x]` | Done in v2.21.3. stale `vscode/tests/unit/gameEngine.test.js` (+ `.map`), `.idea/`, `pycharm/build/test-results/`, old `claude-codotchi/claude-codotchi-2.17.0.zip` |
+| 6 | Tidy repo root | `[~]` | v2.21.3: the PNGs stay at the root on purpose (published marketplace listings link to them); the rest is done or local-only. Move `dog_adult_1x.png`, `dragon_adult_1x.png`, `kangaroo_adult_1x.png`, `example_skippy.png`, `bmc_qr.png` to `docs/images/` and update the README URLs that point at them; delete the local `downloaded_sprites/` folder (gitignored) |
+| 7 | Prune `scripts/` | `[x]` | Done in v2.21.3. Delete `inject_sprites.js` (broken) and `mirror_roo.js` (replaced by `--flip`); archive `gen_sprites.js`; rewrite `validate_sprites.js` (§2.2) |
 | 8 | One usage scanner + pricing table | `[ ]` | `MODEL_PRICING` and the transcript scan exist in `state.mjs`, `sidebarProvider.ts` and `CodotchiPlugin.kt` (BUG-S01) |
 | 9 | Split `sidebarProvider.ts` | `[ ]` | Move usage parsing into `usageScanner.ts`; break the ~215-line `handleWebviewMessage` switch into handlers |
-| 10 | Dead code | `[ ]` | `ZODIAC_ANIMALS` (union-only); unused `readSessionUsage` and leftover `codotchi-daily.json` load/save in `state.mjs`; local `UPRIGHT_TYPES` in `sprites.js` shadowing `spriteConstants.js`; duplicate `DEFS["cat"]` in the PyCharm copy |
-| 11 | Name mismatch | `[ ]` | `asciiArt.ts` `SPRITE_HEAD` uses `goat` but the engine calls it `sheep`; no heads for kangaroo, roo, tim, stu |
-| 12 | Tests and CI | `[ ]` | `usageBackfill.test.ts` isn't in opencode's `test` script; claude-desktop has no tests; no sprite-data test; add a GitHub Actions workflow that runs every suite |
-| 13 | Doc drift | `[ ]` | See the list below |
+| 10 | Dead code | `[x]` | Done in v2.21.3. `ZODIAC_ANIMALS` (union-only); unused `readSessionUsage` and leftover `codotchi-daily.json` load/save in `state.mjs`; local `UPRIGHT_TYPES` in `sprites.js` shadowing `spriteConstants.js`; duplicate `DEFS["cat"]` in the PyCharm copy |
+| 11 | Name mismatch | `[x]` | Done in v2.21.3. `asciiArt.ts` `SPRITE_HEAD` uses `goat` but the engine calls it `sheep`; no heads for kangaroo, roo, tim, stu |
+| 12 | Tests and CI | `[x]` | Done in v2.21.3. `usageBackfill.test.ts` isn't in opencode's `test` script; claude-desktop has no tests; no sprite-data test; add a GitHub Actions workflow that runs every suite |
+| 13 | Doc drift | `[x]` | Done in v2.21.3. See the list below |
 
 **Doc drift to fix (item 13):**
 
@@ -611,14 +613,83 @@ Most valuable first.
 
 ---
 
-## 4. Marketing Drafts
+## 4. Triage (2026-09-30)
+
+Every open item in this doc, `vscode/FEATURES.md` and `vscode/FEATURES_2.md`
+was triaged, with items that appear in more than one doc merged. This section
+is the single place for priorities. It replaces the older "Suggested
+Implementation Order" lists.
+
+### Important (do first)
+
+1. BUG-S05: `died` float-up reaction animation — **done in v2.22.0**
+2. Full egg-hatch sequence: wiggle, crack, burst (FEATURES.md §2.2, FEATURES_2.md §1.7) — **done in v2.22.0**
+3. Mood animation frames: happy, sad, sleeping, eating (FEATURES_2.md §3.1)
+4. Show active attention calls in the Claude Code status line (§2.6) — **done in v2.22.0**
+5. Pixel-art redesign of the minigame visuals (FEATURES.md §14)
+6. Bulk sprite upload pipeline (§2.2)
+7. Shared core package (§3 #1) — **done in v2.21.3**
+8. Copy the PyCharm webview assets at build time (§3 #2) — **done in v2.21.3**
+9. Move release binaries out of git (§3 #3) — **done in v2.21.3**
+10. Repo tidy-up: stop shipping archived sprites, remove stray files, tidy the root, prune `scripts/` (§3 #4–7) — **done in v2.21.3**
+11. Dead code and naming mismatches (§3 #10–11) — **done in v2.21.3**
+12. Tests and CI (§3 #12) — **done in v2.21.3**
+13. Doc drift (§3 #13) — **done in v2.21.3**
+14. Better-looking seasonal backgrounds and morning sky (`codotchi.background`; FEATURES.md §14 "Background art polish")
+
+### Yes (do)
+
+- Sickness UX (BUG-S04): block Feed/Play while sick, grey out the buttons, add a medicine dose badge
+- Sound effects, mute toggle and `soundEnabled` (FEATURES_2.md §1.6)
+- Dedicated art for the secret characters, hidden from the evolution preview (FEATURES_2.md §1.3)
+- Sleep polish: night-mode canvas while sleeping, `autoWake` setting, cooldown before sleeping again (FEATURES.md §6.2)
+- ⚠ in the status bar during attention calls, plus `statusBarEnabled` (FEATURES.md §10)
+- Catch the Bug minigame (FEATURES.md §4.3)
+- Save streaks (FEATURES.md §8)
+- Test-pass reward (FEATURES.md §8)
+- Settings wiring: coding rewards on/off, reward throttle, offline decay cap, tick interval, minigame timings; fix the FEATURES.md §12 table
+- `schemaVersion` on `PetState` (FEATURES.md §11)
+- Multiple pets, Phase A (§2.4)
+- Visiting and emotes, Phase B (§2.4)
+- Friendship meter, gift exchange, marriage and offspring with the generation counter, matchmaker NPC (FEATURES_2.md §2.1–2.4, §3.3)
+- New species: dinosaurs and mythical creatures (§2.5)
+- Crow / magpie thief (§2.5)
+- Seasonal and holiday characters (FEATURES.md §14)
+- Language packs: `en.json`, `en-SCO`, `en-AU`, the setting and `/codotchi lang` (§2.3)
+- `moo` novelty pack (§2.3)
+- Community language packs (§2.3)
+
+### Backlog
+
+- ~~BUG-S03: zodiac sprite fallback~~ — done in v2.21.3 (pulled into the clean-up)
+- Visible `careMistakes` count (FEATURES_2.md §1.2)
+- PAUSED banner on the canvas (FEATURES_2.md §1.5)
+- Slower stat decay at night (FEATURES_2.md §3.2)
+- Pattern Memory / Simon (FEATURES.md §4.2)
+- Type Sprint (FEATURES.md §4.5)
+- Export / import a pet as JSON (FEATURES.md §11)
+- Gotchi Points and the shop (FEATURES_2.md §2.5)
+- Extension-pack pet types (FEATURES.md §14)
+- One usage scanner and the `sidebarProvider.ts` split (§3 #8–9)
+
+### Won't do
+
+Marked `[-]` in the older docs.
+
+- BUG-S07: sprite tooling. The bulk sprite upload replaces most of it
+- Potty training (FEATURES_2.md §1.1, FEATURES.md §14)
+- Counting a snack fed while hungry as a care mistake (FEATURES_2.md §1.2)
+
+---
+
+## 5. Marketing Drafts
 
 Suggested visuals: `dragon_adult_1x.png`, `dog_adult_1x.png`,
 `kangaroo_adult_1x.png` and `example_skippy.png` from the repo root, plus a
 short screen recording of the pet reacting to a save or commit and the
 "Today's Token Cost" readout.
 
-### 4.1 LinkedIn
+### 5.1 LinkedIn
 
 > I built a Tamagotchi that lives in my IDE. 🥚➡️🐉
 >
@@ -649,7 +720,7 @@ short screen recording of the pet reacting to a save or commit and the
 >
 > #DeveloperTools #VSCode #JetBrains #ClaudeCode #AI #OpenSource #IndieDev #PixelArt
 
-### 4.2 Instagram — launch post
+### 5.2 Instagram — launch post
 
 > Meet your new coding buddy 🐣💻
 >
@@ -669,7 +740,7 @@ short screen recording of the pet reacting to a save or commit and the
 **Suggested carousel:** 1) egg → 2) baby → 3) adult dragon → 4) the sidebar
 mid-mini-game → 5) the leaderboard page.
 
-### 4.3 Instagram — feature teaser (language packs)
+### 5.3 Instagram — feature teaser (language packs)
 
 > Your codotchi's picking up an accent 🏴󠁧󠁢󠁳󠁣󠁴󠁿🇦🇺
 >
@@ -681,7 +752,7 @@ mid-mini-game → 5) the leaderboard page.
 >
 > #codotchi #pixelart #developer #scotland #australia #codinghumour #indiedev
 
-### 4.4 X / Threads (short)
+### 5.4 X / Threads (short)
 
 > I made a Tamagotchi for your IDE 🥚 It evolves when you code, gets sick if
 > you ignore it, and tells you how much Claude has cost you today 💸

@@ -56,7 +56,7 @@ async function main() {
   file.totalMessages = (file.totalMessages ?? 0) + 1;
 
   const speech = aa.buildContextualSpeech
-    ? aa.buildContextualSpeech(state, 0, 0, 0, file.totalMessages, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, 0, messageCount)
+    ? aa.buildContextualSpeech(state, 0, 0, 0, file.totalMessages, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, 0, 0, messageCount, { costStyle: "hourlyRate" })
     : { message: `See you later! ${state.name ?? "Codotchi"} waves goodbye.` };
 
   const rawBubble = aa.buildSpeechBubble

@@ -331,7 +331,7 @@ async function main() {
     state, 0, 0, 0, file.totalMessages ?? 0, false,
     dailyCostUsd, dailyTokens,
     cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50,
-    hourlyCostUsd, messageCount
+    hourlyCostUsd, /*lastHourTokens*/ 0, messageCount, { costStyle: "hourlyRate" }
   );
   const { bubbleColor, tierEmoji } = contextSpeech;
 
@@ -355,7 +355,7 @@ async function main() {
     for (const { ide, state: ideState } of livePets) {
       const ideContext = aa.buildContextualSpeech(
         ideState, 0, 0, 0, 0, false,
-        0, 0, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, 0, 0
+        0, 0, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, 0, 0, 0, { costStyle: "hourlyRate" }
       );
       const ideBubble = aa.buildSpeechBubble(
         ideState.stage, ideState.mood, ideContext.message,

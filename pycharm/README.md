@@ -1,8 +1,8 @@
 # codotchi — JetBrains plugin
 
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/dog_adult_1x.png" height="64" alt="Dog sprite" />
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/dragon_adult_1x.png" height="64" alt="Dragon sprite" />
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/kangaroo_adult_1x.png" height="64" alt="Kangaroo sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/dog_adult_1x.png" height="64" alt="Dog sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/dragon_adult_1x.png" height="64" alt="Dragon sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/kangaroo_adult_1x.png" height="64" alt="Kangaroo sprite" />
 
 Grow and raise your personal virtual pet as a JetBrains plugin while you code.
 
@@ -23,7 +23,7 @@ assigned to you at random when you start a new game.
 
 ### Sponsor this project
 
-<a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
+<a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"></a>
 
 [buymeacoffee.com/dylscoop](https://buymeacoffee.com/dylscoop)
 
@@ -81,9 +81,11 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 
 ## Installation
 
-See the [GitHub repository](https://github.com/dylscoop/codotchi) for full
-installation instructions, pre-built releases, and the OpenCode integration
-download.
+Install **[Codotchi from the JetBrains Marketplace](https://plugins.jetbrains.com/plugin/33203-codotchi)**,
+or go to **Settings → Plugins → Marketplace** and search for **Codotchi**.
+
+See the [GitHub repository](https://github.com/dylscoop/codotchi) for manual
+installation, pre-built releases, and the OpenCode integration download.
 
 ## Using the plugin
 
@@ -118,7 +120,7 @@ Once installed and the IDE has restarted:
 | **Pat** | Gives your pet a gentle pat. Boosts happiness. Costs energy. Accessed via the Play menu (same overlay as the mini-games). Cannot be used while your pet is sleeping or exhausted. |
 | **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. |
 | **Clean** | Clears all droppings from the screen. Leaving too many uncleaned for too long will make your pet sick. |
-| **Medicine** | Treats sickness. Requires multiple doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss. |
+| **Medicine** | Treats sickness. Three doses cure it; medicine does not restore health. Use it as soon as your pet falls ill, because sickness drains health until it is cured. |
 | **Praise** | Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution. |
 | **Scold** | Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline. |
 

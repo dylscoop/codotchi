@@ -38,7 +38,7 @@
  *                         but the sprite should face left in-game
  *   --preview             Print an ASCII art preview of the mapped grid to stdout
  *   --inject              Splice the DEFS entry and SPRITE_GRID_META registration into
- *                         vscode/media/sprites.js and pycharm/.../sprites.js
+ *                         vscode/media/sprites.js (PyCharm copies vscode/media at build time)
  *
  * Resolution:
  *   The output grid is capped at 192×128 for runtime performance.
@@ -871,18 +871,15 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
   console.log("// SPRITE_GRID_META entry to add to spriteConstants.js:");
   console.log("//   " + spriteType + ": { cols: " + cols + ", rows: " + rows + ", legRowStart: " + legRowStart + " },");
 
-  // 10. Inject into both sprites.js files
+  // 10. Inject into vscode/media (PyCharm copies it at build time)
   if (doInject) {
     var vscodeSprites  = path.join(repoRoot, "vscode",   "media",                               "sprites.js");
-    var pycharmSprites = path.join(repoRoot, "pycharm",  "src", "main", "resources", "webview", "sprites.js");
     var vscodeConst    = path.join(repoRoot, "vscode",   "media",                               "spriteConstants.js");
-    var pycharmConst   = path.join(repoRoot, "pycharm",  "src", "main", "resources", "webview", "spriteConstants.js");
 
     injectIntoSpritesJs(vscodeSprites,  spriteType, stage, grid, cols, rows, legRowStart);
-    injectIntoSpritesJs(pycharmSprites, spriteType, stage, grid, cols, rows, legRowStart);
 
-    // Also register/update the SPRITE_GRID_META entry in both spriteConstants.js files
-    [vscodeConst, pycharmConst].forEach(function(constFile) {
+    // Also register/update the SPRITE_GRID_META entry in spriteConstants.js
+    [vscodeConst].forEach(function(constFile) {
       var constContent = fs.readFileSync(constFile, "utf8").replace(/\r\n/g, "\n");
       var metaLine = '    ' + spriteType.padEnd(10) + ': { cols: ' + cols + ', rows: ' + rows + ', legRowStart: ' + legRowStart + ' },';
       var metaExistsPattern = new RegExp('^\\s*' + spriteType + '\\s*:\\s*\\{\\s*cols\\s*:', "m");
@@ -905,7 +902,7 @@ function injectIntoSpritesJs(filePath, spriteType, stage, grid, cols, rows, legR
     });
 
     // Also register/update in ANIMAL_PALETTES with the resolved display colours
-    [vscodeConst, pycharmConst].forEach(function(constFile) {
+    [vscodeConst].forEach(function(constFile) {
       var constContent = fs.readFileSync(constFile, "utf8").replace(/\r\n/g, "\n");
       var paletteLine = '    ' + spriteType.padEnd(10) +
         ': { primary: "' + displayPalette.primary +

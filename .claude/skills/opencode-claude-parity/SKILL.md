@@ -11,14 +11,14 @@ When in doubt, always do all three.
 
 ---
 
-## Shared files — literal copies (must be identical)
+## Shared files — generated from `packages/core` (never edit the copies)
 
-| Concern | OpenCode | Claude Code | Claude Desktop |
-|---------|----------|-------------|----------------|
-| Game engine | `opencode-codotchi/src/gameEngine.ts` | `claude-codotchi/src/gameEngine.ts` | `claude-desktop-codotchi/src/gameEngine.ts` |
-| ASCII art renderer | `opencode-codotchi/src/asciiArt.ts` | `claude-codotchi/src/asciiArt.ts` | `claude-desktop-codotchi/src/asciiArt.ts` |
+| Concern | Source of truth | Generated copies |
+|---------|-----------------|------------------|
+| Game engine | `packages/core/src/gameEngine.ts` | `vscode/src/`, `opencode-codotchi/src/`, `claude-codotchi/src/`, `claude-desktop-codotchi/src/` |
+| ASCII art renderer | `packages/core/src/asciiArt.ts` | `opencode-codotchi/src/`, `claude-codotchi/src/`, `claude-desktop-codotchi/src/` |
 
-**When any shared file changes:** copy the updated file to all other plugins in the same commit. Never let these files diverge.
+**When a shared file changes:** edit `packages/core/src/`, then run `node scripts/sync-core.mjs` (each plugin's build/test also runs it) and commit the core file and the regenerated copies together. `node scripts/sync-core.mjs --check` (run in CI) fails if a copy was edited by hand. Plugin-specific behaviour goes behind config or options — e.g. `GameConfig.immortal` / `LOCAL_PET_GAME_CONFIG` for the Claude Code pet, and `buildContextualSpeech(..., { costStyle: "hourlyRate" })` for Claude Code's cost wording.
 
 ---
 
@@ -36,7 +36,7 @@ When in doubt, always do all three.
 
 **New action added:** update both `commands/codotchi.md` files and both action handlers (`index.ts` + `action.mjs`).
 
-**Game mechanic changed:** lives in `gameEngine.ts` (shared) — copy to both plugins.
+**Game mechanic changed:** lives in `packages/core/src/gameEngine.ts` — edit there and run `node scripts/sync-core.mjs`.
 
 ---
 
@@ -62,11 +62,11 @@ When in doubt, always do all three.
 
 ## After any change
 
-1. Shared file changed → copy to all other plugins immediately.
+1. Shared file changed → edit `packages/core/src/`, run `node scripts/sync-core.mjs`.
 2. New action → all `commands/codotchi.md` files + all action handlers.
 3. Mechanic changed → verify consistent behaviour in all plugins.
 4. Rebuild all:
    - OpenCode: `node scripts/package.js` (from `opencode-codotchi/`)
-   - Claude Code: `node scripts/build.js` then `node scripts/package.js` (from `claude-codotchi/`)
+   - Claude Code: `npm run build` (commit the rebuilt `dist/`) then `node scripts/package.js` (from `claude-codotchi/`)
    - Claude Desktop: `npm run build` then `npm run bundle` (from `claude-desktop-codotchi/`)
 5. Commit all sets of changes together.

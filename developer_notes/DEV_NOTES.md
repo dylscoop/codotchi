@@ -14,8 +14,7 @@ Custom characters are unlocked by entering a passcode in **Settings → Characte
 
 Defined in `vscode/src/customCharacters.ts` (`CUSTOM_CHARACTERS` array). Mirrored to:
 - `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt`
-- `vscode/media/customCharacters.js` (webview runtime)
-- `pycharm/src/main/resources/webview/customCharacters.js` (webview runtime)
+- `vscode/media/customCharacters.js` (webview runtime, also used by PyCharm — copied at build time)
 
 ---
 
@@ -403,8 +402,8 @@ Capped at **`OFFLINE_DECAY_MAX_FRACTION = 0.60`** of the current value —
 regardless of how long the IDE was closed, no stat can lose more than 60%.
 
 **Aging does not advance while the IDE is closed.** `applyOfflineDecay()`
-preserves `dayTimer` and `ageDays` exactly as saved. Only hunger, happiness,
-energy, and health are subject to offline decay.
+preserves `dayTimer` and `ageDays` exactly as saved. Only hunger and
+happiness are subject to offline decay; energy and health are left as saved.
 
 ### Sleep decay
 
@@ -614,8 +613,7 @@ pixel-art grid to render. It is assigned once at new-game time via
 (`ZODIAC_ANIMALS`) are accessible only via character code. Old saves without a
 `spriteType` field default to `"classic"`.
 
-The 15 sprite grids live in `vscode/media/sprites.js` (mirrored to
-`pycharm/src/main/resources/webview/sprites.js`). Each grid is a 12-column ×
+The 15 sprite grids live in `vscode/media/sprites.js` (copied into the PyCharm plugin at build time). Each grid is a 12-column ×
 16-row pixel array per non-egg stage (baby, child, teen, adult, senior). The
 renderer is `window.renderSpriteGrid()`, called from `drawBody()` in
 `sidebar.js`.
@@ -1028,6 +1026,15 @@ Queued by the tick loop and prepended to the next command output.
 | `attention_call_pat` | `"I want a pat! (/codotchi pat)"` |
 | `attention_call_craving_meal` | `"I'm craving a proper meal! (/codotchi feed)"` |
 | `attention_call_craving_snack` | `"I'm craving a snack! (/codotchi snack)"` |
+
+The attention-call phrases, moods and short labels live in `ATTENTION_CALL_TEXT`
+in `packages/core/src/asciiArt.ts` (`attentionCallSpeech` / `attentionCallKey`).
+OpenCode uses them for these notifications, and the Claude Code status line
+uses them to show the active call (v2.22.0). In bubble mode the call phrase
+replaces the usual speech and the header gets a ⚠. In emoji mode the line
+reads `<name> ⚠ wants <label>`. In plain mode (`/codotchi off`) a
+`⚠ <name> wants <label> (<command>)` line is added. The status line changes
+phrase once a minute, not on every refresh.
 
 ### Toast notifications (brief, one-line)
 

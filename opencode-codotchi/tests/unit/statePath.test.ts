@@ -28,6 +28,11 @@ function writeStateFile(filePath: string, mtimeMs: number): void {
 }
 
 let tmpDir: string;
+
+/** Where getIDEBase() points once setTmpAsBase() ran: APPDATA on Windows, ~/.config elsewhere. */
+function ideBase(): string {
+  return process.platform === "win32" ? tmpDir : path.join(tmpDir, ".config");
+}
 let origAppData: string | undefined;
 let origHome:    string | undefined;
 
@@ -72,20 +77,20 @@ describe("resolveVSCodeStatePath", () => {
   it("returns global path when vscode dir does not exist", () => {
     // No directory created — resolveVSCodeStatePath should fall back cleanly
     const result = resolveVSCodeStatePath();
-    const expected = path.join(tmpDir, "codotchi", "vscode", "state.json");
+    const expected = path.join(ideBase(), "codotchi", "vscode", "state.json");
     assert.equal(result, expected, "should return global state.json path when dir is absent");
   });
 
   it("returns global path when vscode dir exists but has no state files", () => {
     // Create the base dir but write no state.json anywhere
-    fs.mkdirSync(path.join(tmpDir, "codotchi", "vscode"), { recursive: true });
+    fs.mkdirSync(path.join(ideBase(), "codotchi", "vscode"), { recursive: true });
     const result = resolveVSCodeStatePath();
-    const expected = path.join(tmpDir, "codotchi", "vscode", "state.json");
+    const expected = path.join(ideBase(), "codotchi", "vscode", "state.json");
     assert.equal(result, expected, "should return global path as fallback when no state files found");
   });
 
   it("returns per-workspace path when its state.json is newer than global", () => {
-    const vscodeBase  = path.join(tmpDir, "codotchi", "vscode");
+    const vscodeBase  = path.join(ideBase(), "codotchi", "vscode");
     const globalPath  = path.join(vscodeBase, "state.json");
     const hashDir     = "a3f9c1b02d47"; // valid 12-hex-char hash
     const workspacePath = path.join(vscodeBase, hashDir, "state.json");
@@ -101,7 +106,7 @@ describe("resolveVSCodeStatePath", () => {
   });
 
   it("returns global path when global state.json is newer than per-workspace", () => {
-    const vscodeBase  = path.join(tmpDir, "codotchi", "vscode");
+    const vscodeBase  = path.join(ideBase(), "codotchi", "vscode");
     const globalPath  = path.join(vscodeBase, "state.json");
     const hashDir     = "b1e2f3a4c5d6";
     const workspacePath = path.join(vscodeBase, hashDir, "state.json");
@@ -117,7 +122,7 @@ describe("resolveVSCodeStatePath", () => {
   });
 
   it("ignores subdirectories whose names are not 12 hex chars", () => {
-    const vscodeBase = path.join(tmpDir, "codotchi", "vscode");
+    const vscodeBase = path.join(ideBase(), "codotchi", "vscode");
     const globalPath = path.join(vscodeBase, "state.json");
 
     // Write a global file (older)
@@ -134,7 +139,7 @@ describe("resolveVSCodeStatePath", () => {
   });
 
   it("caches the result — filesystem is not re-scanned on subsequent calls", () => {
-    const vscodeBase = path.join(tmpDir, "codotchi", "vscode");
+    const vscodeBase = path.join(ideBase(), "codotchi", "vscode");
     const globalPath = path.join(vscodeBase, "state.json");
     writeStateFile(globalPath, Date.now() - 5_000);
 

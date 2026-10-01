@@ -5,6 +5,7 @@ Status legend:
 - `[x]` Implemented
 - `[~]` Partially implemented
 - `[ ]` Not yet implemented
+- `[-]` Won't do (triage 2026-09-30)
 - `[S]` Controlled by a VS Code setting (toggle on/off)
 
 ---
@@ -57,7 +58,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Tamagotchi-style sprite redesign | `[x]` | Redesigned (v1.4.0): rabbit, pig, sheep, dog — Redesigned (v1.6.0): monkey — Redesigned (v1.7.0): rooster — Redesigned (v1.8.0): dragon (Chinese imperial, floating, 5-coil serpentine body, gold pearl) — Redesigned (v1.9.0): cat (Tamagotchi-style generic house cat, pointy ears, whiskers, upward-curling tail, tabby stripes teen+) — Redesigned (v1.10.0): rat (low-slung elongated body, small round ears none on baby, pointed snout, whiskers teen+, long thin diagonal tail) — Redesigned (v1.11.0): horse (arched neck, diagonal mane cascade, long muzzle, flowing tail, tapered body, colour-3 hooves) — Tiger redesigned later; ox never redesigned. Ox, tiger and the other zodiac sprites have since been archived (`media/archived_sprites/`). New art for them is tracked under bulk sprite upload (see `developer_notes/FEATURES_SEPTEMBER_2026.md` §2.2) |
 | In-IDE sprite preview gallery | `[x]` | `codotchi.openSpritePreview` (dev mode) — uses real `renderSpriteGrid()` with mood/color/weight/facing/animate controls |
 | Evolution notification in event log | `[x]` | `evolved_to_*` event queues the `evolved` reaction (scale 1.0→1.3→1.0 with gold flash, 900 ms); no sound |
-| Egg-hatch animation | `[~]` | The egg rocks ±5° for its whole life; no separate pre-hatch wiggle, crack or burst |
+| Egg-hatch animation | `[x]` | v2.22.0: the rocking widens 5°→12° as `dayTimer` nears the hatch threshold, with a faster wobble from 50% and shake bursts from 80%; cracks at 50% and 80%; `hatched` burst reaction on `evolved_to_baby` |
 
 ### 2.3 Pet Types
 
@@ -159,6 +160,8 @@ which minigame to play (or cancel).
   accessibility.
 
 Status: `[x]`
+
+### 4.2 Pattern Memory (Simon)
 
 *Tests attention and short-term memory.*
 
@@ -353,15 +356,16 @@ hands control back.
 | `scolded` | Recoil: dart left or right ~10 px, then return | 500 ms |
 | `praised` | Jump + brief yellow flash behind sprite | 600 ms |
 | `evolved` | Scale up from 1.0→1.3→1.0 with colour flash | 900 ms |
+| `hatched` (`evolved_to_baby`) | Baby grows 0.5→1.0 out of the egg; shell halves fly apart; gold sparkles | 900 ms |
 | `poop_appeared` | Pet briefly faces the poop position, then looks away | 700 ms |
 | `became_sick` | Fast shake: ±4 px random horizontal jitter | 600 ms |
 | `healed` | Brief green colour overlay fading out | 500 ms |
-| `died` | Slow float upward off the top of the canvas | 1200 ms |
+| `died` | Floats up 40 px and fades out under a gold halo; the dead screen appears when it ends (skipped with reduced motion) | 1200 ms |
 
 Reactions are stored in a simple queue; if a new one arrives while one is
 playing, it is appended and plays immediately after.
 
-Status: `[~]` — every reaction except `died` is implemented; `REACTION_DURATIONS` has no `died` entry and nothing queues it (see `developer_notes/FEATURES_SEPTEMBER_2026.md` BUG-S05)
+Status: `[x]` — `died` added in v2.22.0 (BUG-S05, BUGFIX-173)
 
 ### 5.7 Direction Flip (Sprite Mirroring)
 
@@ -622,7 +626,7 @@ Status: `[x]`
 | Death screen with age/stage stats | `[x]` | |
 | Senior natural death (age-scaled chance after age ≥ 365d) | `[x]` | Roll fires once per day boundary; chance ramps from 0.1%–1.0%/day at day 365 (best/worst care) to 5%–10%/day at day 1825 (5 in-game years), capped at peak; `ageFactor = clamp((ageDays−365)/(1825−365),0,1)`; `minChance = lerp(0.001, 0.05, ageFactor)`; `maxChance = lerp(0.010, 0.10, ageFactor)`; `chance = lerp(minChance, maxChance, riskScore)`; riskScore = avg of happiness, weight, and discipline factors; fires `died_of_old_age` event with message "passed away of unforeseen natural causes due to old age." and IDE popup notification |
 | Senior age-related random sickness (after age ≥ 365d) | `[x]` | Fires `became_sick_old_age` event once per day boundary; chance = `3 × computeOldAgeDeathChance(state)` (`OLD_AGE_SICK_CHANCE_MULTIPLIER = 3`); skipped if already sick; message: "came down with an age-related illness." |
-| Peaceful death animation | `[ ]` | Covered by `died` reaction in section 5.6 |
+| Peaceful death animation | `[x]` | Covered by `died` reaction in section 5.6 (v2.22.0) |
 | `[S]` `gotchi.offlineDecayMaxFraction` (default 0.60) | `[ ]` | Cap offline stat loss; value hardcoded, expose as setting |
 
 ---
@@ -737,7 +741,7 @@ These are lower-priority ideas that require design work before implementation. A
 | Feature | Status | Notes |
 |---------|--------|-------|
 | **— Tamagotchi parity gaps —** | | |
-| Potty training | `[ ]` | If player presses Clean during the pre-poop warning animation, pet uses a toilet instead of making a mess. Repeating this trains the pet to go automatically. Original Tamagotchi P1/P2 feature. |
+| Potty training | `[-]` | If player presses Clean during the pre-poop warning animation, pet uses a toilet instead of making a mess. Repeating this trains the pet to go automatically. Original Tamagotchi P1/P2 feature. |
 | Care mistakes counter | `[x]` | `careMistakes` (per-stage, resets on evolution) + `lifetimeCareMistakes` (never resets). Incremented on every expired attention call. Caps the achievable evolution tier; delays evolution threshold; feeds old-age risk factor. |
 | Secret / rare characters | `[x]` | `secret_best` (careMistakes=0 + careScore ≥ 0.95) and `secret_worst` (lifetimeCareMistakes ≥ 10) evolution tiers implemented; sprite assets alias existing `_a`/`_c` sprites as placeholders until dedicated art is drawn. |
 | Matchmaker NPC | `[ ]` | If the pet reaches senior age without marrying, a Matchmaker character arrives and automatically pairs it with a CPU partner. Prevents the marriage mechanic from being permanently skipped. Original Tamagotchi Connection feature. |
@@ -748,13 +752,14 @@ These are lower-priority ideas that require design work before implementation. A
 | Sound effects & mute toggle | `[ ]` | Short 8-bit jingles on key events: hatch, evolve, death, sleep, wake, feed, play win/lose. A mute toggle (VS Code command + sidebar button) to silence all sounds. Respect `gotchi.reducedMotion` and the OS system mute. |
 | Visual night-mode on canvas | `[ ]` | Darken canvas background when pet is sleeping (already tracked in §6.2). |
 | Day / night cycle | `[x]` | Seasonal + time-of-day pixel-art backgrounds drawn on canvas via `codotchi.background` setting (`plain` / `ordered` / `spring` / `summer` / `autumn` / `winter`). `ordered` uses real calendar month + clock hour automatically. 6 time buckets: dawn 07–10, morning 10–13, afternoon 13–16, sunset 16–19, dusk 19–22, night 22–07. Sun moves right→left across the sky; sunset has an orange glow band; moon drawn for all seasons at night. |
+| Background art polish | `[ ]` | Make the spring / summer / autumn / winter backgrounds and the morning sky better looking. Important in the 2026-09-30 triage |
 | Generation counter display | `[ ]` | Display current generation number in the info line (requires generation stat from §1). |
 | **— Cosmetics & economy —** | | |
 | Gotchi Points currency | `[ ]` | Earned from minigame wins; spent in an in-game shop. Persisted in `PetState`. |
 | In-game shop | `[ ]` | Buy accessories, background skins, or extra colour palettes using Gotchi Points. |
 | Sprite animation frames | `[~]` | 2-frame leg walk cycle with bob is done. Happy, sad, sleeping and eating frames (2–4 frame flip-book per mood using the existing `renderSpriteGrid` pipeline) are not |
 | Redesign minigame art | `[ ]` | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style. |
-| Egg-hatch animation | `[ ]` | Wiggle → crack → burst sequence before baby stage; fits naturally into the reaction queue (already in §2.2). |
+| Egg-hatch animation | `[x]` | Wiggle → crack → burst sequence before baby stage (v2.22.0; see §2.2). |
 | Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |
 | Kangaroo character | `[x]` | Web-image-derived pixel-art sprite type (baby through senior stages) in the existing `sprites.js` pipeline; included in random hatch rotation and unlockable with character passcode `straya`. |
 | **— Platform & social —** | | |
@@ -769,27 +774,11 @@ These are lower-priority ideas that require design work before implementation. A
 
 ## 15. Suggested Implementation Order
 
-1. **Stage area resize** — widen canvas to sidebar width; sets up room for movement (section 5.1)
-2. **Animation loop** — replace one-shot draw with rAF loop; reduced-motion fallback (section 5.2)
-3. **Idle wandering** — random drift + boundary bounce + direction flip (sections 5.3, 5.5, 5.7)
-4. **Mood locomotion** — speed and pattern vary by mood/state (section 5.4)
-5. **Reaction animations** — event-driven one-shots; queue architecture (section 5.6)
-6. **Weight in UI** — low effort; value already in state (`weight` field)
-7. **Overfeeding feedback** — disable Feed Meal at max; snack warning text
-8. **Minigame overlay architecture** — generic overlay + game-select screen
-9. **Left / Right minigame** — simplest interactive game; validates overlay pattern
-10. **Higher or Lower minigame** — pure JS, no canvas required
-11. **Pattern Memory (Simon)** — button flash timing; most polished feel
-12. **Catch the Bug** — canvas animation; most visually engaging
-13. **Type Sprint** — keyboard-focused; unique to a code editor context
-14. **Attention calls** — poll state each tick; surface in status bar + event log
-15. **Sleep/wake UX polish** — Lights Off button, auto-wake, visual night mode
-16. **Settings wiring** — expose remaining `gotchi.*` settings in `package.json`
-17. **Coding activity streaks** — build on existing file-save listener
+Superseded by the 2026-09-30 triage: see `developer_notes/FEATURES_SEPTEMBER_2026.md` §4.
 
 ---
 
-## 12. Custom Characters
+## 16. Custom Characters
 
 Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharacters.ts` / `customCharacters.js` / `CustomCharacters.kt`.
 
@@ -805,7 +794,7 @@ Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharac
 | `feedSnackMaxPerCycle` | `number?` | `3` | Absolute snack cap per wake cycle |
 | `feedHungerMult` | `number?` | `1.0` | Hunger gain multiplier per feed event |
 
-### 12.1 Registered custom characters
+### 16.1 Registered custom characters
 
 | Name | Passcode | spriteType | Feed cap | Notes |
 |------|----------|------------|----------|-------|

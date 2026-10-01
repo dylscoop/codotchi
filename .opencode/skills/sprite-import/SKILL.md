@@ -83,16 +83,15 @@ node scripts/import_sprite.js downloaded_sprites/shiba-masked.png dog senior --c
 Importer `--inject` updates:
 
 - `vscode/media/sprites.js`
-- `pycharm/src/main/resources/webview/sprites.js`
 - `vscode/media/spriteConstants.js`
-- `pycharm/src/main/resources/webview/spriteConstants.js`
+
+(PyCharm copies `vscode/media` at build time.)
 
 If adding a passcode, update all registries:
 
 - `vscode/src/customCharacters.ts`
 - `vscode/media/customCharacters.js`
 - `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt`
-- `pycharm/src/main/resources/webview/customCharacters.js`
 
 If adding a new non-existing sprite type that the host state may store, update:
 

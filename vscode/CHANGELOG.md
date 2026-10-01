@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.22.0] — 2026-09-30
+
+### Added
+
+- **Hatching egg** — as it gets close to hatching, the egg rocks harder, cracks, and then bursts open to reveal your baby pet.
+- **Farewell animation** — when a pet dies it floats gently upwards under a halo before the game-over screen appears.
+- **Claude Code status line** — when your pet needs something (food, medicine, a pat, a game…), the Claude Code status line now shows it with a ⚠ and the command that answers it.
+
+## [2.21.3] — 2026-09-30
+
+### Fixed
+
+- **No more invisible pets** — a pet whose creature has no artwork yet (rat, ox, tiger, rabbit, horse, monkey, rooster, pig) is now drawn as the classic Codotchi instead of nothing. New pets no longer hatch as rooster or tiger in Claude Code, OpenCode or Claude Desktop.
+- **Medicine description** — the help text now says three doses cure sickness and that medicine doesn't restore health.
+- **Claude Code / OpenCode sheep** — sheep pets get their own face and emoji; kangaroo, Roo, Tim and Stu get one too.
+
+### Changed
+
+- **Smaller download** — archived sprite files are no longer packaged into the extension.
+
 ## [2.21.2] — 2026-09-30
 
 ### Added

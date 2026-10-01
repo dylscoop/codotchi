@@ -23,6 +23,11 @@ import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Where state.mjs looks for IDE pets under the test HOME / APPDATA: APPDATA on Windows, ~/.config elsewhere. */
+function ideBase(tmpBase) {
+  return process.platform === "win32" ? tmpBase : path.join(tmpBase, ".config");
+}
 const scriptsDir = path.join(__dirname, "..", "..", "scripts");
 const distDir = path.join(__dirname, "..", "..", "dist");
 const actionScript = path.join(scriptsDir, "action.mjs");
@@ -44,7 +49,7 @@ async function withRunFixture(fn) {
 }
 
 function vsStatePath(tmpBase) {
-  return path.join(tmpBase, "codotchi", "vscode", "state.json");
+  return path.join(ideBase(tmpBase), "codotchi", "vscode", "state.json");
 }
 
 function writeVSCodeState(tmpBase, state) {

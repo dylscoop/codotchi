@@ -213,8 +213,9 @@ export interface GameConfig {
      * When true, the pet can never die — the stat-decay death check and the
      * senior old-age death roll are both skipped, independent of devMode
      * (which also speeds up aging and is meant for testing, not permanent play).
+     * Optional so existing config literals don't need it; absent means false.
      */
-    immortal: boolean;
+    immortal?: boolean;
 }
 /** Sensible defaults used when no explicit config is provided. */
 export declare const DEFAULT_GAME_CONFIG: GameConfig;
@@ -233,6 +234,8 @@ export declare const STAGE_ORDER: readonly string[];
  * A call of each type can be active at most once at any given time.
  */
 export type AttentionCallType = "hunger" | "unhappiness" | "poop" | "sick" | "low_energy" | "misbehaviour" | "gift" | "critical_health" | "play" | "pat" | "craving";
+/** Every AttentionCallType, for code that needs to list them at runtime. */
+export declare const ATTENTION_CALL_TYPES: readonly AttentionCallType[];
 /** What a craving attention call asks for. */
 export type CravingFood = "meal" | "snack";
 /**
@@ -435,22 +438,17 @@ export declare function computeCareScore(state: PetState): number;
  */
 export declare function careTierLabel(careScore: number): string;
 /**
- * All 12 Chinese zodiac animals. Accessible via character code only —
- * not part of the random rotation pool.
- */
-declare const ZODIAC_ANIMALS: readonly ["rat", "ox", "tiger", "rabbit", "dragon", "snake", "horse", "sheep", "monkey", "rooster", "dog", "pig"];
-/**
  * Animals in the random rotation pool at pet creation.
  * All entries have equal probability (1 / ROTATION_ANIMALS.length each).
- * Note: some rotation animals (dog, snake, sheep, rooster, tiger) are also
- * zodiac animals — they remain accessible via zodiac character codes too.
- * More animals will be added to this set in the future.
+ * Note: some rotation animals (dog, snake, sheep) are also zodiac animals —
+ * they remain accessible via zodiac character codes too.
  */
-declare const ROTATION_ANIMALS: readonly ["cat", "dog", "snake", "sheep", "classic", "rooster", "tiger", "kangaroo", "dragon"];
+export declare const ROTATION_ANIMALS: readonly ["cat", "dog", "snake", "sheep", "classic", "kangaroo", "dragon"];
 /**
- * All valid sprite type keys.
+ * All valid sprite type keys: the 12 Chinese zodiac animals (reachable via
+ * character code only), the rotation pool, and the custom characters.
  */
-export type SpriteType = typeof ZODIAC_ANIMALS[number] | typeof ROTATION_ANIMALS[number] | "tim" | "testsprite" | "roo" | "stu";
+export type SpriteType = "rat" | "ox" | "tiger" | "rabbit" | "dragon" | "snake" | "horse" | "sheep" | "monkey" | "rooster" | "dog" | "pig" | typeof ROTATION_ANIMALS[number] | "tim" | "testsprite" | "roo" | "stu";
 /**
  * Sample a random sprite type at pet creation.
  * Each entry in ROTATION_ANIMALS has equal probability.
@@ -572,6 +570,16 @@ export declare function play(state: PetState, opts?: {
  * @returns A new PetState after the action.
  */
 export declare function pat(state: PetState): PetState;
+/**
+ * Apply the stat cost of viewing the token cost overlay: same energy/happiness
+ * change as a pat, but no weight, events, or attention-call side effects — the
+ * cost bubble is shown separately, so this must not emit a "patted" event that
+ * would race it with a reaction bubble (BUGFIX-140).
+ *
+ * @param state - The current pet state.
+ * @returns A new PetState after the action.
+ */
+export declare function applyTokenCostView(state: PetState): PetState;
 /**
  * Return the happiness delta for a mini-game outcome.
  *
@@ -756,5 +764,4 @@ export declare function serialiseState(state: PetState): Record<string, unknown>
  * @returns A fully typed PetState.
  */
 export declare function deserialiseState(data: Record<string, unknown>): PetState;
-export {};
 //# sourceMappingURL=gameEngine.d.ts.map
