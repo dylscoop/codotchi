@@ -26,12 +26,8 @@
   // accent    = stripes, comb, ridges (pixel index 3)
   // background = canvas background behind the pet
   var ANIMAL_PALETTES = {
-      dragon    : { primary: "#ffac30", secondary: "#d50219", accent: "#d5011d", background: "#1a1a1a" },
-    roo:      { primary: "#d9bb7b", secondary: "#663300", accent: "#8c5a24", background: "#1a1a1a" },
     classic:  { primary: "#39ff14", secondary: "#ff00ff", accent: "#1aad00", background: "#0d0d0d" },
-    cat:      { primary: "#222222", secondary: "#ffffffff", accent: "#333333ff", background: "#1a1a1a" },
     sheep:    { primary: "#eceff1", secondary: "#5d4037", accent: "#b0bec5", background: "#1a1a1a" },
-      dog       : { primary: "#eee1d9", secondary: "#eea062", accent: "#ed9d5e", background: "#1a1a1a" },
     snake:    { primary: "#558b2f", secondary: "#ffeb3b", accent: "#33691e", background: "#0d1a0d" },
     kangaroo: { primary: "#d9bb7b", secondary: "#663300", accent: "#8c5a24", background: "#1a1a1a" },
     tim:      { primary: "#f5c5a3", secondary: "#4a90d9", accent: "#2c3e50", background: "#1a1a2e" },
@@ -74,9 +70,9 @@
   // ── Sprite grid metadata (v2) ─────────────────────────────────────────────
   /**
    * Per-spriteType grid dimensions and leg row boundary.
-   * Existing sprites declare their fixed sizes here.
-   * Custom imported sprites (v2) will have entries added dynamically by
-   * scripts/import_sprite.js when --inject is used.
+   * Hand-drawn sprites declare their fixed sizes here. Species built from
+   * sprites/<species>/ get their entries (and palettes) from
+   * sprites.generated.js, which loads next and extends both objects.
    *
    * cols        — number of columns in the sprite grid
    * rows        — number of rows in the sprite grid
@@ -88,14 +84,10 @@
     classic:  { cols: 32, rows: 48, legRowStart: 37 },
     tim:      { cols: 32, rows: 48, legRowStart: 37 },
     stu:      { cols: 64, rows: 48, legRowStart: 37 },
-    // Quadruped sprites (48 × 32)
-    cat       : { cols: 142, rows: 128, legRowStart: 99 },
+    // Quadruped sprites (48 × 32; bulk-imported ones are in sprites.generated.js)
     sheep:    { cols: 48, rows: 32, legRowStart: 25 },
-    dog       : { cols: 136, rows: 128, legRowStart: 99 },
     snake:    { cols: 48, rows: 32, legRowStart: 25 },
     kangaroo: { cols: 48, rows: 32, legRowStart: 25 },
-    roo       : { cols: 644, rows: 531, legRowStart: 380 },
-    dragon    : { cols: 180, rows: 128, legRowStart: 99 },
   };
 
   /**

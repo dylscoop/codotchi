@@ -6,8 +6,8 @@ import * as vm from "vm";
 import { ROTATION_ANIMALS } from "../../src/gameEngine";
 
 // Data checks for the webview sprite grids in vscode/media (PyCharm copies
-// the same files at build time). Loads spriteConstants.js and sprites.js the
-// way the webview does, in a sandbox with a bare `window`, then checks every
+// the same files at build time). Loads spriteConstants.js, sprites.generated.js
+// and sprites.js the way the webview does, in a sandbox with a bare `window`, then checks every
 // grid against SPRITE_GRID_META.
 const media = path.join(__dirname, "../../../media");
 
@@ -30,7 +30,7 @@ function loadSprites(): { sprites: Record<string, Record<string, Grid>>; meta: R
 const { sprites, meta } = loadSprites();
 const STAGES = ["baby", "child", "teen", "adult", "senior"];
 
-describe("sprite data (vscode/media/sprites.js)", () => {
+describe("sprite data (vscode/media/sprites.generated.js + sprites.js)", () => {
   it("defines at least one sprite", () => {
     assert.ok(Object.keys(sprites).length > 0);
   });
@@ -57,19 +57,29 @@ describe("sprite data (vscode/media/sprites.js)", () => {
     }
   });
 
-  // SPRITE_GRID_META holds one size per species. Image-imported species can
-  // have narrower stages than the meta width (dragon: 112–180 cols against
-  // 180), so only the row count must match exactly and no stage may be wider.
-  // One shared grid per species is part of the bulk sprite pipeline
-  // (FEATURES_SEPTEMBER_2026.md §2.2); tighten this to an exact match then.
-  it("fits SPRITE_GRID_META for every species that has an entry", () => {
+  // SPRITE_GRID_META holds one size per species, and every stage uses it: the
+  // bulk pipeline (scripts/import_sprites_bulk.js) pads all stages of a
+  // species onto one shared grid.
+  it("matches SPRITE_GRID_META exactly for every species that has an entry", () => {
     for (const [type, stages] of Object.entries(sprites)) {
       const m = meta[type];
       if (!m) { continue; }
       for (const [stage, grid] of Object.entries(stages)) {
         assert.equal(grid.length, m.rows, `${type}/${stage}: ${grid.length} rows, meta says ${m.rows}`);
-        assert.ok(grid[0].length <= m.cols, `${type}/${stage}: ${grid[0].length} cols is wider than meta ${m.cols}`);
+        assert.equal(grid[0].length, m.cols, `${type}/${stage}: ${grid[0].length} cols, meta says ${m.cols}`);
       }
+    }
+  });
+
+  it("keeps every grid within the 192×128 runtime cap", () => {
+    for (const [type, m] of Object.entries(meta)) {
+      assert.ok(m.cols <= 192 && m.rows <= 128, `${type}: ${m.cols}×${m.rows} is over the 192×128 cap`);
+    }
+  });
+
+  it("puts legRowStart inside the grid", () => {
+    for (const [type, m] of Object.entries(meta)) {
+      assert.ok(m.legRowStart >= 0 && m.legRowStart < m.rows, `${type}: legRowStart ${m.legRowStart} outside ${m.rows} rows`);
     }
   });
 
