@@ -990,7 +990,7 @@ class CodotchiPlugin : Disposable {
                 dcConn.setRequestProperty("Accept", "application/json")
                 dcConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
                 dcConn.outputStream.writer().use { it.write("client_id=$clientId&scope=public_repo") }
-                if (dcConn.responseCode != 200) { fail("Could not start GitHub sign-in (HTTP ${dcConn.responseCode})."); return@execute }
+                if (dcConn.responseCode != 200) { fail(describeDeviceCodeFailure(dcConn.responseCode, dcConn.readBodyText())); return@execute }
 
                 @Suppress("UNCHECKED_CAST")
                 val dcResp = Gson().fromJson(dcConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
@@ -1030,7 +1030,7 @@ class CodotchiPlugin : Disposable {
                     }
 
                     @Suppress("UNCHECKED_CAST")
-                    val tokResp = Gson().fromJson(tokConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                    val tokResp = Gson().fromJson(tokConn.readBodyText(), Map::class.java) as Map<String, Any>
                     val accessToken = tokResp["access_token"] as? String
                     if (!accessToken.isNullOrBlank()) {
                         PasswordSafe.instance.setPassword(CredentialAttributes("Codotchi", "github-pat"), accessToken)
