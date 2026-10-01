@@ -121,6 +121,9 @@ data class PetState(
     /** Ticks since the last craving attention call fired; used for log-chance formula. */
     val ticksSinceLastCraving: Int = 0,
 
+    /** Active, awake ticks since the last "take a break" call (BREAK_CALL_INTERVAL_TICKS). */
+    val ticksSinceLastBreakCall: Int = 0,
+
     /** What the active craving call asks for ("meal" or "snack"); null when no craving call is active. */
     val cravingFood: String? = null,
 )

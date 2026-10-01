@@ -338,6 +338,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     var ticksSinceLastPlayCall: Int        = state.ticksSinceLastPlayCall
     var ticksSinceLastPatCall: Int         = state.ticksSinceLastPatCall
     var ticksSinceLastCraving: Int         = state.ticksSinceLastCraving
+    var ticksSinceLastBreakCall: Int       = state.ticksSinceLastBreakCall
     var cravingFood: String?               = state.cravingFood
 
     // Capture sleeping state at tick entry so day-timer uses it even if auto-wake fires mid-tick
@@ -392,7 +393,10 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         ticksSinceLastPlayCall += 1
         ticksSinceLastPatCall += 1
         ticksSinceLastCraving += 1
+        if (!sleeping) ticksSinceLastBreakCall += 1
     }
+    // Away from the keyboard counts as a break
+    if (isDeepIdle) ticksSinceLastBreakCall = 0
 
     } // end Step 0
 
@@ -541,7 +545,8 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
                               activeAttentionCall == "gift" ||
                               activeAttentionCall == "play" ||
                               activeAttentionCall == "pat" ||
-                              activeAttentionCall == "craving")
+                              activeAttentionCall == "craving" ||
+                              activeAttentionCall == "break")
             config.attentionCallExpiryTicks
         else
             ATTENTION_CALL_RESPONSE_TICKS
@@ -561,9 +566,11 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
                 "gift"            -> { happiness = clampStat(happiness - 5); careMistakes += 1; lifetimeCareMistakes += 1 }
                 "play", "pat"     -> health    = clampStat(health    - ATTENTION_EXPIRY_STAT_PENALTY)
                 "craving"         -> { health  = clampStat(health    - ATTENTION_EXPIRY_STAT_PENALTY); cravingFood = null }
+                "break"           -> {}   // just a reminder — no penalty for skipping it
             }
-            // General care mistake increment (except misbehaviour and gift which have their own above)
-            if (expiredType != "misbehaviour" && expiredType != "gift") {
+            // General care mistake increment (except misbehaviour and gift which have their own
+            // above, and break, which is never a care mistake)
+            if (expiredType != "misbehaviour" && expiredType != "gift" && expiredType != "break") {
                 careMistakes += 1
                 lifetimeCareMistakes += 1
             }
@@ -624,6 +631,13 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
             activeAttentionCall = "low_energy"
             attentionCallActiveTicks = 0
             events.add("attention_call_low_energy")
+        // Break reminder — every 30 active minutes, after the real needs but before the whims
+        } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("break") &&
+            ticksSinceLastBreakCall >= BREAK_CALL_INTERVAL_TICKS) {
+            activeAttentionCall = "break"
+            attentionCallActiveTicks = 0
+            ticksSinceLastBreakCall = 0
+            events.add("attention_call_break")
         // Whim calls — random, at any stat level, after every need-based call so a
         // real need always wins. Not while idle: nobody is there to answer them.
         } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("craving") &&
@@ -717,6 +731,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
                 ticksSinceLastPlayCall   = ticksSinceLastPlayCall,
                 ticksSinceLastPatCall    = ticksSinceLastPatCall,
                 ticksSinceLastCraving    = ticksSinceLastCraving,
+                ticksSinceLastBreakCall  = ticksSinceLastBreakCall,
                 cravingFood              = cravingFood,
             )
         )
@@ -756,6 +771,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         ticksSinceLastPlayCall   = ticksSinceLastPlayCall,
         ticksSinceLastPatCall    = ticksSinceLastPatCall,
         ticksSinceLastCraving    = ticksSinceLastCraving,
+        ticksSinceLastBreakCall  = ticksSinceLastBreakCall,
         cravingFood              = cravingFood,
     )
 
@@ -1131,16 +1147,32 @@ fun scold(state: PetState): PetState {
     )
 }
 
+/**
+ * Praise the pet. Answers a gift call (+GIFT_PRAISE_HAPPINESS_BOOST), a break call
+ * (+BREAK_PRAISE_HAPPINESS_BOOST, and the pet goes to sleep while you rest), or an
+ * unhappiness call, in that order.
+ */
 fun praise(state: PetState): PetState {
     val answeredGift        = answerAttentionCall(state, "gift")
-    val answeredUnhappiness = if (answeredGift == null) answerAttentionCall(state, "unhappiness") else null
-    val answered            = answeredGift ?: answeredUnhappiness
+    val answeredBreak       = if (answeredGift == null) answerAttentionCall(state, "break") else null
+    val answeredUnhappiness = if (answeredGift == null && answeredBreak == null) answerAttentionCall(state, "unhappiness") else null
+    val answered            = answeredGift ?: answeredBreak ?: answeredUnhappiness
     val events = mutableListOf("praised")
     if (answeredGift        != null) events.add("attention_call_answered_gift")
+    if (answeredBreak       != null) events.add("attention_call_answered_break")
     if (answeredUnhappiness != null) events.add("attention_call_answered_unhappiness")
-    val happinessBonus = if (answeredGift != null) GIFT_PRAISE_HAPPINESS_BOOST else 0
+    val happinessBonus = when {
+        answeredGift  != null -> GIFT_PRAISE_HAPPINESS_BOOST
+        answeredBreak != null -> BREAK_PRAISE_HAPPINESS_BOOST
+        else                  -> 0
+    }
+    // Answering a break call sends the pet to sleep while you take your break
+    val goesToSleep = answeredBreak != null && !state.sleeping
+    if (goesToSleep) events.add("fell_asleep")
     return withDerivedFields(
         state.copy(
+            sleeping    = state.sleeping || goesToSleep,
+            consecutiveSnacks = if (goesToSleep) 0 else state.consecutiveSnacks,
             discipline  = clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
             happiness   = clampStat(state.happiness  + happinessBonus),
             careMistakes = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),

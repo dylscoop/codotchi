@@ -1754,6 +1754,7 @@
       "attention_call_pat":             n + " wants a pat!",
       "attention_call_craving_meal":    n + " is craving a proper meal!",
       "attention_call_craving_snack":   n + " is craving a snack!",
+      "attention_call_break":           "30 minutes already! Remember to take a break — praise " + n + " and they'll nap while you rest.",
       // Attention calls — answered
       "attention_call_answered_hunger":          "You answered " + n + "'s hunger call.",
       "attention_call_answered_unhappiness":     "You answered " + n + "'s sadness call.",
@@ -1766,6 +1767,7 @@
       "attention_call_answered_play":            "You played with " + n + " when they asked.",
       "attention_call_answered_pat":             "You gave " + n + " the pat they wanted.",
       "attention_call_answered_craving":         "You satisfied " + n + "'s craving.",
+      "attention_call_answered_break":           "You're taking a break — " + n + " is napping too.",
       // Attention calls — expired
       "attention_call_expired_hunger":          n + "'s hunger call went unanswered!",
       "attention_call_expired_unhappiness":     n + "'s sadness call went unanswered!",
@@ -1778,6 +1780,7 @@
       "attention_call_expired_play":            n + " wanted to play and was ignored.",
       "attention_call_expired_pat":             n + " wanted a pat and was ignored.",
       "attention_call_expired_craving":         n + "'s craving went unanswered.",
+      "attention_call_expired_break":           n + "'s break reminder was skipped.",
       // Mini-game results
       "minigame_left_right_win":    n + " won Left / Right!",
       "minigame_left_right_lose":   n + " lost Left / Right.",
