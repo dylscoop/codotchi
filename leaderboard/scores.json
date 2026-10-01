@@ -14,6 +14,17 @@
     {
       "schemaVersion": 1,
       "githubUsername": "dylscoop",
+      "petName": "Mike Hunt Jr",
+      "ageDays": 157,
+      "stage": "adult",
+      "petType": "bytebug",
+      "spawnedAt": 1790167921398,
+      "diedAt": 1790852793359,
+      "submittedAt": 1790852851715
+    },
+    {
+      "schemaVersion": 1,
+      "githubUsername": "dylscoop",
       "petName": "Supak",
       "ageDays": 57,
       "stage": "teen",
