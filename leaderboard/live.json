@@ -1,16 +1,6 @@
 [
   {
     "username": "dylscoop",
-    "petName": "Codotchi",
-    "petRunId": "someValue.machineId",
-    "spawnedAt": 1785863514210,
-    "ageDays": 1,
-    "stage": "baby",
-    "petType": "codeling",
-    "updatedAt": 1786466541011
-  },
-  {
-    "username": "dylscoop",
     "petName": "Drongo",
     "petRunId": "aaa0bea407ecd34efe70485ac42886c0de3e2ca473687917ba1b6de5e28de6de",
     "spawnedAt": 1786805967058,
@@ -38,5 +28,15 @@
     "stage": "baby",
     "petType": "codeling",
     "updatedAt": 1790867619124
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Codotchi",
+    "petRunId": "someValue.machineId",
+    "spawnedAt": 1790868175923,
+    "ageDays": 0,
+    "stage": "baby",
+    "petType": "shellscript",
+    "updatedAt": 1790868185664
   }
 ]
