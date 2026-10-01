@@ -75,7 +75,7 @@ export const MAX_FLOOR_SNACKS = 3;
 const RECENT_EVENT_LOG_MAX = 20;
 /** Ticks between droppings (≈ 20 real minutes). */
 const POOP_TICKS_INTERVAL = 20 * TICKS_PER_MINUTE;
-const FEED_MEAL_HUNGER_BOOST = 20;
+const FEED_MEAL_HUNGER_BOOST = 15;
 const FEED_MEAL_WEIGHT_GAIN = 2;
 const FEED_MEAL_MAX_PER_CYCLE = 3;
 const FEED_SNACK_HAPPINESS_BOOST = 5;
@@ -212,6 +212,12 @@ export const GIFT_PRAISE_HAPPINESS_BOOST = 15;
 export const BREAK_CALL_INTERVAL_TICKS = 600;
 /** Happiness boost when a break call is answered via praise() — same as a gift. */
 export const BREAK_PRAISE_HAPPINESS_BOOST = GIFT_PRAISE_HAPPINESS_BOOST;
+/**
+ * Length of the nap the pet takes when a break call is answered: 60 × 3 s = 3 min.
+ * While napping every stat is frozen but the pet keeps aging; it wakes on its own
+ * when the timer runs out.
+ */
+export const BREAK_NAP_TICKS = 60;
 // ---------------------------------------------------------------------------
 // Care Mistakes constants
 // ---------------------------------------------------------------------------
@@ -759,6 +765,7 @@ export function createPet(name, petType, unlockedCharacter = null) {
         ticksSinceLastPatCall: 0,
         ticksSinceLastCraving: 0,
         ticksSinceLastBreakCall: 0,
+        breakNapTicksRemaining: 0,
         cravingFood: null,
     };
     return withDerivedFields(partial);
@@ -858,6 +865,9 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
         return state.events.length > 0 ? { ...state, events: [] } : state;
     }
     const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
+    if (state.breakNapTicksRemaining > 0) {
+        return tickBreakNap(state, isIdle, isDeepIdle, config, modifiers);
+    }
     const events = [];
     let hunger = state.hunger;
     let happiness = state.happiness;
@@ -1356,6 +1366,37 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
     }
     return afterStage;
 }
+/**
+ * One tick of a break nap: every stat, counter and attention-call timer is frozen,
+ * but the pet keeps aging at the sleeping rate — even while the user is idle,
+ * since they are away on their break. Wakes the pet when the timer runs out.
+ */
+function tickBreakNap(state, isIdle, isDeepIdle, config, modifiers) {
+    const events = [];
+    const ticksAlive = state.ticksAlive + 1;
+    const devAgingMult = config.devMode ? config.devModeAgingMultiplier : 1.0;
+    const ageIncrement = ticksAlive % AGING_TICK_INTERVAL === 0
+        ? (1 / TICKS_PER_GAME_DAY_SLEEPING) * modifiers.agingMultiplier * devAgingMult
+        : 0;
+    const dayTimer = state.dayTimer + ageIncrement;
+    const careMistakes = Math.floor(dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS) >
+        Math.floor(state.dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS)
+        ? Math.max(0, state.careMistakes - 1) : state.careMistakes;
+    const breakNapTicksRemaining = Math.max(0, state.breakNapTicksRemaining - 1);
+    const napOver = breakNapTicksRemaining === 0;
+    if (napOver) {
+        events.push("break_nap_over");
+    }
+    return withDerivedFields({
+        ...state,
+        ticksAlive, dayTimer, ageDays: Math.floor(dayTimer), careMistakes,
+        breakNapTicksRemaining,
+        ...(napOver ? { sleeping: false, snacksGivenThisCycle: 0 } : {}),
+        wasIdle: isIdle,
+        wasDeepIdle: isDeepIdle,
+        events,
+    });
+}
 // ---------------------------------------------------------------------------
 // Stage progression (internal)
 // ---------------------------------------------------------------------------
@@ -1791,6 +1832,7 @@ export function wake(state) {
     return withDerivedFields({
         ...state,
         sleeping: false,
+        breakNapTicksRemaining: 0,
         events: ["woke_up"],
     });
 }
@@ -1884,7 +1926,8 @@ export function scold(state) {
  * If a "gift" attention call is active, it is answered and a happiness bonus
  * (GIFT_PRAISE_HAPPINESS_BOOST) is applied on top of the discipline boost.
  * If a "break" call is active, it is answered with the same happiness bonus
- * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet goes to sleep while you rest.
+ * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet takes a BREAK_NAP_TICKS (3-minute)
+ * nap while you rest: stats are frozen, aging continues, and it wakes on its own.
  * If an "unhappiness" attention call is active, it is answered instead.
  *
  * @param state - The current pet state.
@@ -1907,10 +1950,13 @@ export function praise(state) {
     }
     const happinessBonus = answeredGift ? GIFT_PRAISE_HAPPINESS_BOOST
         : answeredBreak ? BREAK_PRAISE_HAPPINESS_BOOST : 0;
-    // Answering a break call sends the pet to sleep while you take your break
+    // Answering a break call sends the pet for a timed nap while you take your break
     const goesToSleep = answeredBreak !== null && !state.sleeping;
     if (goesToSleep) {
         events.push("fell_asleep");
+    }
+    if (answeredBreak) {
+        events.push("break_nap_started");
     }
     return withDerivedFields({
         ...state,
@@ -1919,6 +1965,7 @@ export function praise(state) {
         happiness: clampStat(state.happiness + happinessBonus),
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         ...(goesToSleep ? { sleeping: true, consecutiveSnacks: 0 } : {}),
+        ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS } : {}),
         events,
     });
 }
@@ -2147,7 +2194,13 @@ export function applyOfflineDecay(state, elapsedSeconds) {
         return state;
     }
     const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
-    const elapsedTicks = elapsedSeconds / TICK_INTERVAL_SECONDS;
+    // A break nap in progress keeps stats frozen for its remaining time; only
+    // the time after the nap ends counts towards decay, and the pet wakes if
+    // the nap ran out while the IDE was closed.
+    const napTicksUsed = Math.min(state.breakNapTicksRemaining, Math.floor(elapsedSeconds / TICK_INTERVAL_SECONDS));
+    const breakNapTicksRemaining = state.breakNapTicksRemaining - napTicksUsed;
+    const napEnded = state.breakNapTicksRemaining > 0 && breakNapTicksRemaining === 0;
+    const elapsedTicks = Math.max(0, elapsedSeconds / TICK_INTERVAL_SECONDS - napTicksUsed);
     const hungerDecayTotal = elapsedTicks * HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier;
     const happinessDecayTotal = elapsedTicks * HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier;
     const maxHungerLoss = Math.floor(state.hunger * OFFLINE_DECAY_MAX_FRACTION);
@@ -2170,6 +2223,8 @@ export function applyOfflineDecay(state, elapsedSeconds) {
         // Treat offline time as awake for stat decay; aging does NOT advance while the IDE is closed.
         dayTimer: state.dayTimer,
         ageDays: state.ageDays,
+        breakNapTicksRemaining,
+        ...(napEnded ? { sleeping: false } : {}),
         events: [],
     });
 }
@@ -2238,6 +2293,7 @@ export function serialiseState(state) {
         ticksSinceLastPatCall: state.ticksSinceLastPatCall,
         ticksSinceLastCraving: state.ticksSinceLastCraving,
         ticksSinceLastBreakCall: state.ticksSinceLastBreakCall,
+        breakNapTicksRemaining: state.breakNapTicksRemaining,
         cravingFood: state.cravingFood,
     };
 }
@@ -2321,6 +2377,7 @@ export function deserialiseState(data) {
         ticksSinceLastPatCall: getNumber("ticksSinceLastPatCall", 0),
         ticksSinceLastCraving: getNumber("ticksSinceLastCraving", 0),
         ticksSinceLastBreakCall: getNumber("ticksSinceLastBreakCall", 0),
+        breakNapTicksRemaining: getNumber("breakNapTicksRemaining", 0),
         cravingFood: data["cravingFood"] === "meal" || data["cravingFood"] === "snack" ? data["cravingFood"] : null,
     };
     return withDerivedFields(partial);
