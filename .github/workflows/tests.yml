@@ -24,6 +24,17 @@ jobs:
           node-version: 22
       - run: node scripts/sync-core.mjs --check
 
+  sprites:
+    name: generated sprites in sync and valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/import_sprites_bulk.js --check
+      - run: node scripts/validate_sprites.js
+
   node:
     name: ${{ matrix.package }}
     runs-on: ubuntu-latest
