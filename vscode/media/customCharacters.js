@@ -22,7 +22,6 @@
    *   passcode      {string}   — exact string the user must enter in settings
    *   defaultName   {string}   — default name pre-filled on setup screen; for Tim, overrides "Codotchi" (case-insensitive)
    *   patLabel      {string}   — label for the Pat button in the minigame overlay
-   *   mgTitle       {string}   — minigame overlay title (replaces "Play or Pat")
    *   giftMessage   {string}   — attention_call_gift toast message (optional)
    *   patToasts     {object}   — toast strings keyed by event name:
    *     patted        {string}  — shown when pat succeeds
@@ -34,7 +33,6 @@
       passcode:     "teawtim",
       defaultName:  "Timagotchi",
       patLabel:     "Go for a Run",
-      mgTitle:      "Play or Go for a Run",
       giftMessage:  "Tim wants a tea break!",
       patToasts: {
         patted:      "Tim went for a run!",
@@ -51,7 +49,6 @@
       passcode:     "straya",
       defaultName:  "Skippy",
       patLabel:     "Bounce",
-      mgTitle:      "Play or Bounce",
       giftMessage:  "Skippy found a souvenir!",
       patToasts: {
         patted:      "Skippy had a bounce!",
@@ -68,7 +65,6 @@
       passcode:     "shiba",
       defaultName:  "Codotchi",
       patLabel:     "Pat",
-      mgTitle:      "Play or Pat",
       giftMessage:  "__Name__ found a tiny tennis ball!",
       patToasts: {
         patted:      "__Name__ enjoyed the attention!",
@@ -79,7 +75,6 @@
       passcode:     "blackcat",
       defaultName:  "Codotchi",
       patLabel:     "Pat",
-      mgTitle:      "Play or Pat",
       giftMessage:  "__Name__ found a toy mouse!",
       patToasts: {
         patted:      "__Name__ purred!",
@@ -97,7 +92,6 @@
       passcode:     "bounce",
       defaultName:  "Roogotchi",
       patLabel:     "Bounce",
-      mgTitle:      "Play or Bounce",
       giftMessage:  "Roogotchi found something in its pouch!",
       patToasts: {
         patted:      "Roogotchi had a bounce!",
@@ -114,7 +108,6 @@
       passcode:     "rubylovessalmon",
       defaultName:  "Stugotchi",
       patLabel:     "Collect Stickers",
-      mgTitle:      "Play or Collect Stickers",
       giftMessage:  "Stu wants a pint!",
       patToasts: {
         patted:      "Stu collected some stickers!",

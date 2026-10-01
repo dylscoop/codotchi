@@ -1381,11 +1381,9 @@
       snackBtn.disabled = snacksLeft <= 0;
     }
 
-    // Custom character button and minigame label overrides
+    // Custom character Pat button label
     var _customChar = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
-    var mgTitle  = document.querySelector("#mg-select .mg-title");
     var mgPatBtn = document.getElementById("btn-mg-pat");
-    if (mgTitle)  { mgTitle.textContent  = _customChar ? _customChar.mgTitle  : "Play or Pat"; }
     if (mgPatBtn) { mgPatBtn.textContent = _customChar ? _customChar.patLabel : "Pat"; }
 
     // Reset position when a brand-new or just-loaded pet first appears

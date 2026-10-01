@@ -26,8 +26,6 @@ export interface CustomCharacter {
   defaultName:  string;
   /** Label for the Pat button in the minigame overlay. */
   patLabel:    string;
-  /** Minigame overlay title — replaces the default "Play or Pat". */
-  mgTitle:     string;
   /** attention_call_gift toast message (optional — uses default if absent). */
   giftMessage?: string;
   /** Toast notification strings for pat-related events. */
@@ -56,7 +54,6 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     passcode:    "teawtim",
     defaultName:  "Timagotchi",
     patLabel:    "Go for a Run",
-    mgTitle:     "Play or Go for a Run",
     giftMessage: "Tim wants a tea break!",
     patToasts: {
       patted:      "Tim went for a run!",
@@ -74,7 +71,6 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     passcode:    "straya",
     defaultName:  "Skippy",
     patLabel:    "Bounce",
-    mgTitle:     "Play or Bounce",
     giftMessage: "Skippy found a souvenir!",
     patToasts: {
       patted:      "Skippy had a bounce!",
@@ -92,7 +88,6 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     passcode:    "shiba",
     defaultName:  "Codotchi",
     patLabel:    "Pat",
-    mgTitle:     "Play or Pat",
     giftMessage: "__Name__ found a tiny tennis ball!",
     patToasts: {
       patted:      "__Name__ enjoyed the attention!",
@@ -106,7 +101,6 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     passcode:    "blackcat",
     defaultName:  "Codotchi",
     patLabel:    "Pat",
-    mgTitle:     "Play or Pat",
     giftMessage: "__Name__ found a toy mouse!",
     patToasts: {
       patted:      "__Name__ purred!",
@@ -124,7 +118,6 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     passcode:    "bounce",
     defaultName: "Roogotchi",
     patLabel:    "Bounce",
-    mgTitle:     "Play or Bounce",
     giftMessage: "Roogotchi found something in its pouch!",
     patToasts: {
       patted:      "Roogotchi had a bounce!",
@@ -142,7 +135,6 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     passcode:    "rubylovessalmon",
     defaultName: "Stugotchi",
     patLabel:    "Collect Stickers",
-    mgTitle:     "Play or Collect Stickers",
     giftMessage: "Stu wants a pint!",
     patToasts: {
       patted:      "Stu collected some stickers!",
@@ -182,7 +174,6 @@ export function getCustomCharacterByPasscode(passcode: string): CustomCharacter 
       passcode,
       defaultName: "Codotchi",
       patLabel:    "Pat",
-      mgTitle:     "Play or Pat",
       patToasts: {
         patted:      "__Name__ was patted!",
         pat_refused: "__Name__ doesn't have enough energy to be patted!",
