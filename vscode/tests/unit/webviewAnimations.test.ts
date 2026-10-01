@@ -410,7 +410,8 @@ describe("classic creature box (vscode/media/sprites.js)", () => {
         assert.ok(rects.length > 0);
         const top    = Math.min(...rects.map((r) => r[1]));
         const bottom = Math.max(...rects.map((r) => r[1] + r[3]));
-        assert.equal(top, y, "the head sits at the top of the box — no empty band above");
+        assert.equal(top, y + box.topPad, "the head sits just below a small gap at the top of the box");
+        assert.ok(box.topPad >= 2 && box.topPad <= Math.ceil(box.h / 4), "the gap is small");
         assert.equal(bottom, y + box.h, "the longest leg reaches the box floor");
         // Body (not the adult's 2px shoulder stubs) spans exactly the box width
         const body = rects.filter((r) => r[2] === box.w);
@@ -423,7 +424,7 @@ describe("classic creature box (vscode/media/sprites.js)", () => {
   it("is a small box, not the 32×48 grid box", () => {
     const w = loadSpriteWindow();
     const box = w.spriteClassicBox({ spriteType: "classic", stage: "adult", weight: 50 });
-    assert.deepEqual([box.w, box.h], [18, 27 + 5]);   // medium petSize: 24 × 1.0 × 0.75
+    assert.deepEqual([box.w, box.h, box.topPad], [18, 5 + 27 + 5, 5]);   // medium petSize: 24 × 1.0 × 0.75
   });
 
   it("treats species with no sprite art as classic", () => {

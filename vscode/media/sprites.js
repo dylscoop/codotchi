@@ -1222,6 +1222,8 @@
    * The classic creature's real drawn size: { w, h } with the feet at y + h.
    * The sidebar uses this as classic's bounding box, so the (x, bodyY) passed to
    * renderSpriteGrid is the top-left of the creature itself, not of a 32×48 grid.
+   * The box includes a small topPad band above the head so the indicator, bubble
+   * and z's (anchored to the box top) don't sit flush against it.
    */
   function classicBox(state, STAGE_SCALES, weightWidthMultiplier, sizeMultiplier) {
     STAGE_SCALES          = STAGE_SCALES || window.SPRITE_STAGE_SCALES;
@@ -1240,7 +1242,8 @@
                    : stage === "senior" ? Math.max(2, Math.round(bodySize * 0.25))
                    : stage === "child"  ? legH
                    : Math.max(2, Math.round(bodySize * 0.30)); // teen / adult
-    return { w: bodyWidth, h: bodyHeight + groundLegH,
+    var topPad     = Math.max(2, Math.round(bodySize * 0.25));
+    return { w: bodyWidth, h: topPad + bodyHeight + groundLegH, topPad: topPad,
              bodySize: bodySize, bodyWidth: bodyWidth, bodyHeight: bodyHeight, legH: legH };
   }
 
@@ -1252,8 +1255,10 @@
 
     var stage = state.stage || "baby";
 
-    // (x, bodyY) is the top-left of classicBox — the creature's own bounding box
+    // (x, bodyY) is the top-left of classicBox — the creature's own bounding box;
+    // the head starts topPad below it
     var box        = classicBox(state, STAGE_SCALES, weightWidthMultiplier, sizeMultiplier);
+    bodyY         += box.topPad;
     var bodySize   = box.bodySize;
     var bodyWidth  = box.bodyWidth;
     var bodyHeight = box.bodyHeight;
