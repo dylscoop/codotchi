@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.22.0] — 2026-09-30
+
+### Added
+
+- **Hatching egg** — as it gets close to hatching, the egg rocks harder, cracks, and then bursts open to reveal your baby pet.
+- **Farewell animation** — when a pet dies it floats gently upwards under a halo before the game-over screen appears.
+- **Claude Code status line** — when your pet needs something (food, medicine, a pat, a game…), the Claude Code status line now shows it with a ⚠ and the command that answers it.
+
 ## [2.21.3] — 2026-09-30
 
 ### Fixed

@@ -1,6 +1,25 @@
 # Version History
 
-## v2.21.3 — current
+## v2.22.0 — current
+
+### Changes from v2.21.3 (died reaction, egg-hatch sequence, attention calls in the Claude Code status line — branch feat/hatch-death-statusline-calls)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | BUGFIX-173 / BUG-S05: new `died` reaction (1200 ms float-up + fade under a halo); the dead screen waits for it (`pendingDeathTimer`), and reduced motion skips it. New `hatched` reaction (900 ms) on `evolved_to_baby`: shell halves, sparkles, baby grows 0.5→1.0 |
+| `vscode/media/sprites.js` | new `drawHatchingEgg` / `eggHatchProgress`, shared by the grid and classic renderers: rocking widens 5°→12° with `dayTimer`, faster wobble from 50%, shake bursts from 80%, cracks at 50% / 80% |
+| `vscode/media/spriteConstants.js` | new `SPRITE_EGG_HATCH_DAYS` (0.267, matches `EVOLUTION_DAY_THRESHOLDS.egg`) |
+| `packages/core/src/asciiArt.ts` | new `ATTENTION_CALL_TEXT`, `attentionCallKey`, `attentionCallSpeech` (phrases, mood, label, answering command, bubble colour) |
+| `packages/core/src/gameEngine.ts` | new exported `ATTENTION_CALL_TYPES` list |
+| `opencode-codotchi/src/index.ts` | attention-call notifications use `attentionCallSpeech` (same phrases as before) |
+| `claude-codotchi/scripts/statusline.mjs`, `claude-codotchi/dist/` | shows the active attention call: bubble mode swaps in the call phrase with a ⚠ header; emoji mode adds `⚠ wants <label>`; plain mode adds a `⚠ … (<command>)` line. Phrase changes once a minute |
+| `vscode/tests/unit/webviewAnimations.test.ts`, `claude-codotchi/tests/integration/statuslineCalls.test.mjs`, `claude-codotchi/tests/unit/asciiArt.test.mjs` | new tests |
+| `claude-codotchi/USER_GUIDE.md`, `developer_notes/*` | attention-call docs; FEATURES / FEATURES_2 / September backlog statuses; BUGFIX-173 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.21.3 → 2.22.0 |
+
+---
+
+## v2.21.3
 
 ### Changes from v2.21.2 (repo clean-up: shared core, generated PyCharm webview, binaries out of git, CI — branch chore/repo-cleanup)
 
