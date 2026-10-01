@@ -2,9 +2,9 @@
  * customCharacters.ts — registry of hidden/unlockable custom characters.
  *
  * To add a new custom character:
- *   1. Add DEFS["<spriteType>"] to sprites.js (and pycharm mirror).
- *   2. Add palette entry to spriteConstants.js (and pycharm mirror).
- *   3. Add "<spriteType>" to UPRIGHT_TYPES in sprites.js if upright grid.
+ *   1-3. Add the art: images in sprites/<spriteType>/ (+ sprite.json with the
+ *        palette, "upright" if needed), then node scripts/import_sprites_bulk.js
+ *        (see developer_notes/SPRITE_IMPORT.md). PyCharm copies the output.
  *   4. Add entry to CUSTOM_CHARACTERS below — no other TS/Kotlin changes needed.
  *   5. Add "<spriteType>" to SpriteType union in gameEngine.ts.
  *   6. Add entry to CustomCharacters.kt (pycharm mirror).

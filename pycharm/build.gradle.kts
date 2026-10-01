@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.codotchi"
-version = "2.24.0"
+version = "2.24.1"
 
 repositories {
     mavenCentral()
@@ -42,7 +42,7 @@ tasks {
         from("../vscode/media") {
             include(
                 "sidebar.js", "sidebar.css", "sidebar.html",
-                "customCharacters.js", "spriteConstants.js", "sprites.js", "minigameArt.js",
+                "customCharacters.js", "spriteConstants.js", "sprites.generated.js", "sprites.js", "minigameArt.js",
                 "sprite_preview.html"
             )
             into("webview")

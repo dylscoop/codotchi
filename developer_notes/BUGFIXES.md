@@ -2174,3 +2174,17 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** The blanket and the pillow are gone; `drawMoodProps` draws nothing for sleeping. The meal bowl is now the only prop, drawn before the body.
 
 **Tests:** `vscode/tests/unit/webviewAnimations.test.ts` checks that sleeping (and a snack) draw no rects.
+
+## BUGFIX-179 — Re-importing a sprite with `--inject` corrupted sprites.js
+
+**Status:** Fixed (branch `feat/bulk-sprite-pipeline`)
+**Files:** `scripts/import_sprite.js`, `scripts/lib/spriteImport.js` (new), `scripts/import_sprites_bulk.js` (new)
+
+**Problem:** `import_sprite.js --inject` also tried to write a `SPRITE_GRID_META` line into `sprites.js`. That file has no such block, and its `'    <type>:'` pattern matched the `PAT_MOTION` entries added in v2.24.0 (`dog:`, `cat:`, `sheep:`, `kangaroo:`, `dragon:`, `tim:`). Re-importing any of those species replaced a `PAT_MOTION` line with `{ cols … }` and broke the JS. Other problems:
+
+- roo's `DEFS` blocks started at column 0, so the 2-space-anchored "replace existing" regex missed them, and a re-import would have added a duplicate.
+- Grid meta and palette were per species but written per stage, so the last stage imported decided them.
+
+**Fix:** `--inject` is removed. `import_sprite.js` only prints, and species are built by `import_sprites_bulk.js` from `sprites/<species>/` into a generated `sprites.generated.js`. That file is rewritten from scratch, with one grid size and one palette per species, so nothing is spliced into hand-maintained files.
+
+**Tests:** `vscode/tests/unit/spriteImportBulk.test.ts`; `spriteData.test.ts` now requires every stage to match `SPRITE_GRID_META` exactly; CI runs `import_sprites_bulk.js --check` and `validate_sprites.js`.

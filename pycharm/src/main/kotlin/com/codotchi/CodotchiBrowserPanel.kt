@@ -147,6 +147,7 @@ class CodotchiBrowserPanel(
         val cssText                  = loadResource("/webview/sidebar.css")
         val spriteConstantsText      = loadResource("/webview/spriteConstants.js")
         val customCharactersText     = loadResource("/webview/customCharacters.js")
+        val spritesGeneratedText     = loadResource("/webview/sprites.generated.js")
         val spritesText              = loadResource("/webview/sprites.js")
         val minigameArtText          = loadResource("/webview/minigameArt.js")
         val jsText              = loadResource("/webview/sidebar.js")
@@ -197,12 +198,17 @@ class CodotchiBrowserPanel(
             $jsText
         """.trimIndent()
 
-        // Replace <script src="{{spriteConstantsUri}}"></script>, <script src="{{spritesUri}}"></script>,
+        // Replace <script src="{{spriteConstantsUri}}"></script>, <script src="{{spritesGeneratedUri}}"></script>,
+        // <script src="{{spritesUri}}"></script>,
         // and <script src="{{customCharactersUri}}"></script> with inlined scripts in the correct order.
         // constants must be defined before renderSpriteGrid is called.
         html = html.replace(
             """<script src="{{spriteConstantsUri}}"></script>""",
             "<script>\n$spriteConstantsText\n</script>"
+        )
+        html = html.replace(
+            """<script src="{{spritesGeneratedUri}}"></script>""",
+            "<script>\n$spritesGeneratedText\n</script>"
         )
         html = html.replace(
             """<script src="{{spritesUri}}"></script>""",

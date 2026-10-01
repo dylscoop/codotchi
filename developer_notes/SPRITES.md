@@ -6,21 +6,26 @@ Complete visual design guide for all pixel-art sprites in the Codotchi extension
 
 ## Overview
 
-All sprites are defined in `vscode/media/sprites.js` (copied into the PyCharm plugin at build time).
+Sprite grids come from two files in `vscode/media` (both copied into the PyCharm plugin at build time):
+
+- `sprites.generated.js`: species imported from source images in `sprites/<species>/` by `scripts/import_sprites_bulk.js` (dog, cat, dragon, roo). Don't edit it by hand.
+- `sprites.js`: hand-drawn grids (sheep, snake, kangaroo, tim, stu), the procedural classic pet, and the renderer.
 
 To preview all sprites interactively in-IDE, enable developer mode then open the Command Palette (VS Code) or Tools menu (PyCharm) and run **Codotchi: Open Sprite Preview (Dev)**. The preview uses the real `renderSpriteGrid()` function for pixel-accurate output including leg animation, mood-based colour overrides, stage scaling, and weight proportions. The standalone browser version (`vscode/media/sprite_preview.html`) still works via `file://` but the in-IDE panel is the recommended workflow.
 
-To import a new sprite from a PNG or Pixilart `.pixil` file, see
+To add a species from PNG, JPEG, WebP or Pixilart `.pixil` images, see
 [`SPRITE_IMPORT.md`](SPRITE_IMPORT.md).
 
-One grid size per animal type:
+One grid size per species (`SPRITE_GRID_META`); every stage of a species uses it:
 
 | Type | Grid (cols × rows) | Animals |
 |------|--------------------|---------|
-| Quadruped | 48 × 32 | cat, rat, ox, tiger, rabbit, horse, sheep, pig, kangaroo |
-| Imported | 573 × 550 | dog |
+| Quadruped (hand-drawn) | 48 × 32 | sheep, kangaroo |
 | Snake | 48 × 32 | snake |
-| Upright | 32 × 48 | classic, monkey, rooster, dragon |
+| Upright (hand-drawn) | 32 × 48 (stu 64 × 48) | classic (procedural), tim, stu |
+| Imported (`sprites/<species>/`) | up to 192 × 128 | dog 136 × 128, cat 142 × 128, dragon 180 × 128, roo 155 × 128 |
+
+The zodiac animals still waiting for art (rat, ox, tiger, rabbit, horse, monkey, rooster, pig) have no grid and are drawn as the classic pet. Their old 48 × 32 designs below are kept for reference (`vscode/media/archived_sprites/`).
 
 Each animal has five life stages: `baby`, `child`, `teen`, `adult`, `senior`.
 
@@ -104,7 +109,10 @@ Special render-time overrides:
 ## Animal Colour Palettes
 
 Each animal has a fixed realistic colour palette. Colours are keyed by `spriteType`
-in `ANIMAL_PALETTES` inside `spriteConstants.js` (mirrored to both IDEs).
+in `ANIMAL_PALETTES` inside `spriteConstants.js`. Imported species get theirs from
+`sprites.generated.js` (the `palette` in `sprites/<species>/sprite.json`, or the
+colours detected from the images). Some rows below are the original design
+colours, not the colours of the current art.
 The `color` field on `PetState` is deprecated as of v1.17.0.
 
 | Animal  | Primary (body)               | Secondary (eyes/snout)        | Accent (markings)              | Background  |
