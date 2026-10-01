@@ -368,6 +368,35 @@
   var mgPanels = document.getElementById("game-panels");
   var btnGrid  = document.querySelector(".btn-grid");
 
+  // Pixel-art overlay for the games (doors, number card, coin), drawn by
+  // minigameArt.js on #mg-canvas above the pet. Without it the games still
+  // work from the panel text alone.
+  var mgCanvas = document.getElementById("mg-canvas");
+  var mgCtx    = mgCanvas ? mgCanvas.getContext("2d") : null;
+  var mgArt    = window.minigameArt;
+  var cfAnimId = null;   // requestAnimationFrame id while the coin spins
+
+  /**
+   * Show and clear the overlay, sized to the sprite canvas so the art keeps
+   * square pixels. Returns false if the canvas or art module is missing.
+   */
+  function mgBegin() {
+    if (!mgCtx || !mgArt) { return false; }
+    if (mgCanvas.width  !== spriteCanvas.width)  { mgCanvas.width  = spriteCanvas.width; }
+    if (mgCanvas.height !== spriteCanvas.height) { mgCanvas.height = spriteCanvas.height; }
+    mgCtx.imageSmoothingEnabled = false;
+    mgCtx.clearRect(0, 0, mgCanvas.width, mgCanvas.height);
+    mgCanvas.classList.remove("hidden");
+    return true;
+  }
+
+  function mgClear() {
+    if (cfAnimId !== null) { cancelAnimationFrame(cfAnimId); cfAnimId = null; }
+    lrReveal = null;
+    if (mgCtx) { mgCtx.clearRect(0, 0, mgCanvas.width, mgCanvas.height); }
+    if (mgCanvas) { mgCanvas.classList.add("hidden"); }
+  }
+
   function showMgOverlay() {
     btnGrid.classList.add("hidden");
     mgPanels.classList.remove("hidden");
@@ -375,7 +404,7 @@
   function hideMgOverlay() {
     mgPanels.classList.add("hidden");
     btnGrid.classList.remove("hidden");
-    if (lrCanvas) { lrCanvas.classList.add("hidden"); }
+    mgClear();
   }
 
   function showMgPanel(id) {
@@ -417,8 +446,8 @@
   // ── Left / Right game ─────────────────────────────────────────────────────
 
   var lrRound, lrScore, lrPetSide, lrAnswered, lrTimerId, lrCountdown;
-  var lrCanvas  = document.getElementById("lr-canvas");
-  var lrCtx     = lrCanvas ? lrCanvas.getContext("2d") : null;
+  var lrReveal = null;   // null while guessing, else { petSide, choice, won, open: "ajar"|"open" }
+  var LR_AJAR_MS = 150;  // the pet's door shows ajar this long before swinging fully open
 
   document.getElementById("btn-lr-left").addEventListener("click",  function () { handleLRChoice("left"); });
   document.getElementById("btn-lr-right").addEventListener("click", function () { handleLRChoice("right"); });
@@ -427,22 +456,23 @@
     lrRound    = 0;
     lrScore    = 0;
     lrAnswered = false;
-    if (lrCanvas) { lrCanvas.classList.remove("hidden"); }
     showMgPanel("mg-left-right");
     startLRRound();
   }
 
   function startLRRound() {
     lrAnswered  = false;
+    lrReveal    = null;
     lrPetSide   = Math.random() < 0.5 ? "left" : "right";
     lrCountdown = 3;
-    drawLRDoors(null);
+    drawLRDoors();
     updateLRScore();
     document.getElementById("lr-countdown").textContent = lrCountdown;
     if (lrTimerId) { clearInterval(lrTimerId); }
     lrTimerId = setInterval(function () {
       lrCountdown -= 1;
       document.getElementById("lr-countdown").textContent = lrCountdown;
+      if (lrCountdown > 0) { drawLRDoors(); }
       if (lrCountdown <= 0) {
         clearInterval(lrTimerId);
         resolveLRRound(null); // timeout — treat as wrong
@@ -451,100 +481,17 @@
   }
 
   /**
-   * Draw the two pixel-art doors on the LR canvas.
-   * revealState: null = closed, "correct" = player picked right side, "wrong" = player picked wrong side
-   * On reveal the chosen door opens; the unchosen door stays closed (or dim on wrong).
-   * @param {string|null} revealState
-   * @param {string|null} playerChoice  "left" or "right" (only used when revealState != null)
+   * Draw the doors and the countdown (or ✓ / ✗ once the round is decided).
+   * While lrReveal is set the pet's door is open and the other is faded.
    */
-  function drawLRDoors(revealState, playerChoice) {
-    if (!lrCtx) { return; }
-    var W = lrCanvas.width;
-    var H = lrCanvas.height;
-    lrCtx.clearRect(0, 0, W, H);
-
-    // Door geometry — two doors side by side, each ~30% wide, centred vertically in lower 3/4 of canvas
-    var dw = Math.floor(W * 0.30);
-    var dh = Math.floor(H * 0.68);
-    var dy = Math.floor(H * 0.20);
-    var gap = Math.floor(W * 0.05);
-    var totalDoorsW = dw * 2 + gap;
-    var startX = Math.floor((W - totalDoorsW) / 2);
-    var leftDoor  = { x: startX,           y: dy, w: dw, h: dh };
-    var rightDoor = { x: startX + dw + gap, y: dy, w: dw, h: dh };
-
-    [leftDoor, rightDoor].forEach(function (door, idx) {
-      var side = idx === 0 ? "left" : "right";
-      var fg  = "var(--vscode-foreground, #cccccc)";
-      var bg  = "var(--vscode-sideBar-background, #1e1e1e)";
-
-      var open = false;
-      var dim  = false;
-
-      if (revealState !== null) {
-        if (side === lrPetSide) {
-          open = true;
-        } else {
-          dim = true;
-        }
-      }
-
-      // Door frame
-      lrCtx.strokeStyle = dim ? "rgba(150,150,150,0.35)" : fg;
-      lrCtx.lineWidth = 2;
-      lrCtx.strokeRect(door.x, door.y, door.w, door.h);
-
-      // Door fill
-      lrCtx.fillStyle = dim
-        ? "rgba(60,60,60,0.4)"
-        : "var(--vscode-editor-background, #252526)";
-      lrCtx.fillRect(door.x + 2, door.y + 2, door.w - 4, door.h - 4);
-
-      if (!open) {
-        // Door knob
-        lrCtx.fillStyle = dim ? "rgba(150,150,150,0.4)" : fg;
-        var knobX = (side === "left") ? door.x + door.w - 10 : door.x + 8;
-        lrCtx.fillRect(knobX, door.y + Math.floor(door.h / 2) - 3, 4, 6);
-        // "?" question mark
-        lrCtx.fillStyle = dim ? "rgba(150,150,150,0.4)" : fg;
-        lrCtx.font = "bold " + Math.floor(door.h * 0.35) + "px monospace";
-        lrCtx.textAlign = "center";
-        lrCtx.textBaseline = "middle";
-        lrCtx.fillText("?", door.x + door.w / 2, door.y + door.h / 2);
-      } else {
-        // Open door — draw simple pet face
-        var cx = door.x + door.w / 2;
-        var cy = door.y + door.h / 2 - 4;
-        var r  = Math.floor(door.w * 0.22);
-        // Head
-        lrCtx.beginPath();
-        lrCtx.arc(cx, cy, r, 0, Math.PI * 2);
-        lrCtx.fillStyle = "var(--vscode-foreground, #cccccc)";
-        lrCtx.fill();
-        // Eyes
-        lrCtx.fillStyle = bg;
-        var ew = Math.max(2, Math.floor(r * 0.3));
-        var eh = Math.max(3, Math.floor(r * 0.4));
-        lrCtx.fillRect(cx - r * 0.5 - ew / 2, cy - r * 0.35, ew, eh);
-        lrCtx.fillRect(cx + r * 0.5 - ew / 2, cy - r * 0.35, ew, eh);
-        // Smile
-        lrCtx.beginPath();
-        lrCtx.arc(cx, cy + r * 0.15, r * 0.45, 0, Math.PI);
-        lrCtx.strokeStyle = bg;
-        lrCtx.lineWidth = 2;
-        lrCtx.stroke();
-      }
-    });
-
-    // Label "LEFT" / "RIGHT" below doors
-    lrCtx.fillStyle = "var(--vscode-foreground, #aaaaaa)";
-    lrCtx.font = "9px monospace";
-    lrCtx.textAlign = "center";
-    lrCtx.textBaseline = "top";
-    lrCtx.globalAlpha = 0.55;
-    lrCtx.fillText("LEFT",  leftDoor.x  + leftDoor.w  / 2, leftDoor.y  + leftDoor.h  + 3);
-    lrCtx.fillText("RIGHT", rightDoor.x + rightDoor.w / 2, rightDoor.y + rightDoor.h + 3);
-    lrCtx.globalAlpha = 1.0;
+  function drawLRDoors() {
+    if (!mgBegin()) { return; }
+    var W = mgCanvas.width;
+    var H = mgCanvas.height;
+    var palette = lastState ? window.spriteGetPalette(lastState.spriteType) : null;
+    mgArt.drawDoors(mgCtx, W, H, lrReveal, palette);
+    mgArt.drawCountdown(mgCtx, W, H,
+      lrReveal ? (lrReveal.won ? "✓" : "✗") : lrCountdown);
   }
 
   function updateLRScore() {
@@ -569,7 +516,16 @@
     lrAnswered = true;
     var won = side !== null && side === lrPetSide;
     if (won) { lrScore++; }
-    drawLRDoors(won ? "correct" : "wrong", side);
+    var reveal = { petSide: lrPetSide, choice: side, won: won, open: REDUCED_MOTION ? "open" : "ajar" };
+    lrReveal = reveal;
+    drawLRDoors();
+    if (!REDUCED_MOTION) {
+      setTimeout(function () {
+        if (lrReveal !== reveal) { return; }   // next round started or game closed
+        reveal.open = "open";
+        drawLRDoors();
+      }, LR_AJAR_MS);
+    }
     document.getElementById("lr-countdown").textContent = won ? "✓" : "✗";
     setTimeout(function () {
       lrRound++;
@@ -583,9 +539,7 @@
 
   function endLeftRightGame() {
     var result = lrScore >= 2 ? "win" : "lose";
-    // Hide the door canvas once the game ends (result panel shows no doors)
-    if (lrCtx) { lrCtx.clearRect(0, 0, lrCanvas.width, lrCanvas.height); }
-    if (lrCanvas) { lrCanvas.classList.add("hidden"); }
+    mgClear();   // the result panel shows no doors
     showMgPanel("mg-result");
     document.getElementById("mg-result-text").textContent =
       result === "win"
@@ -597,6 +551,12 @@
   // ── Higher or Lower game ──────────────────────────────────────────────────
 
   var hlRound, hlCorrect, hlCurrentNum;
+
+  /** Number card on the overlay; flash = null or { correct, dir: "up"|"down" }. */
+  function drawHLCard(n, flash) {
+    if (!mgBegin()) { return; }
+    mgArt.drawNumberCard(mgCtx, mgCanvas.width, mgCanvas.height, n, flash);
+  }
 
   document.getElementById("btn-hl-higher").addEventListener("click", function () { handleHLChoice("higher"); });
   document.getElementById("btn-hl-lower").addEventListener("click",  function () { handleHLChoice("lower"); });
@@ -615,6 +575,7 @@
 
   function showHLRound() {
     document.getElementById("hl-current").textContent = hlCurrentNum;
+    drawHLCard(hlCurrentNum, null);
     document.getElementById("hl-score").textContent   =
       "Round " + (hlRound + 1) + " / 5   Correct: " + hlCorrect;
     document.getElementById("hl-feedback").textContent = "";
@@ -638,6 +599,7 @@
 
     document.getElementById("hl-feedback").textContent = correct ? "✓ Correct!" : "✗ Wrong";
     document.getElementById("hl-current").textContent  = nextNum;
+    drawHLCard(nextNum, { correct: correct, dir: nextNum > hlCurrentNum ? "up" : "down" });
 
     // Animate the pet: jump with joy on a correct answer
     if (correct) {
@@ -661,6 +623,7 @@
 
   function endHigherLowerGame() {
     var result = hlCorrect >= 4 ? "win" : "lose";
+    mgClear();
     showMgPanel("mg-result");
     document.getElementById("mg-result-text").textContent =
       result === "win"
@@ -679,6 +642,50 @@
     document.getElementById("btn-cf-heads").disabled = false;
     document.getElementById("btn-cf-tails").disabled = false;
     showMgPanel("mg-coin-flip");
+    drawCoinAt(0, "heads", 0);
+  }
+
+  var CF_SPIN_MS = 800;
+
+  /**
+   * Coin on the overlay. lift 0..1 raises it along the toss arc; face is
+   * "heads", "tails" or null (only drawn on face-on frames anyway).
+   */
+  function drawCoinAt(frame, face, lift) {
+    if (!mgBegin()) { return; }
+    var H  = mgCanvas.height;
+    var px = mgArt.coinPx(H);
+    var half = mgArt.COIN_SIZE * px / 2;
+    var cy = Math.round(half + H * 0.22 - lift * H * 0.18);
+    mgArt.drawCoin(mgCtx, Math.round(mgCanvas.width / 2), cy, px, frame, face);
+  }
+
+  /** Toss and spin the coin, landing on outcome, then call done(). */
+  function playCoinSpin(outcome, done) {
+    if (REDUCED_MOTION || !mgCtx || !mgArt) {
+      drawCoinAt(0, outcome, 0);
+      done();
+      return;
+    }
+    var frames = mgArt.coinFrames(CF_SPIN_MS);
+    var cycle  = mgArt.COIN_WIDTHS.length;
+    var total  = frames.length * mgArt.COIN_FRAME_MS;
+    var start  = null;
+    function step(now) {
+      if (start === null) { start = now; }
+      var t = Math.min(1, (now - start) / total);
+      var i = Math.min(frames.length - 1, Math.floor(t * frames.length));
+      // Faces alternate each turn while spinning; the last frame shows the outcome
+      var face = t >= 1 ? outcome : (Math.floor(i / cycle) % 2 === 0 ? "heads" : "tails");
+      drawCoinAt(t >= 1 ? 0 : frames[i], face, Math.sin(Math.PI * t));
+      if (t < 1) {
+        cfAnimId = requestAnimationFrame(step);
+      } else {
+        cfAnimId = null;
+        done();
+      }
+    }
+    cfAnimId = requestAnimationFrame(step);
   }
 
   function handleCFChoice(choice) {
@@ -687,6 +694,10 @@
 
     var outcome = Math.random() < 0.5 ? "heads" : "tails";
     var won = outcome === choice;
+    playCoinSpin(outcome, function () { showCFResult(outcome, won); });
+  }
+
+  function showCFResult(outcome, won) {
     document.getElementById("cf-feedback").textContent = won
       ? "\u2713 It's " + outcome + "! You win!"
       : "\u2717 It's " + outcome + ". Better luck next time.";
@@ -705,6 +716,7 @@
   }
 
   function endCoinFlipGame(result) {
+    mgClear();
     showMgPanel("mg-result");
     document.getElementById("mg-result-text").textContent =
       result === "win"

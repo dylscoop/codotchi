@@ -61,7 +61,7 @@
     <div class="pet-stage">
       <div id="sprite-container" class="sprite-container" aria-label="Pet sprite">
         <canvas id="sprite-canvas" width="200" height="{{stageHeight}}"></canvas>
-        <canvas id="lr-canvas" width="200" height="{{stageHeight}}" class="hidden"></canvas>
+        <canvas id="mg-canvas" width="200" height="{{stageHeight}}" class="hidden"></canvas>
       </div>
       <div id="pet-name-display" class="pet-name"></div>
       <div id="mood-label" class="mood-label">…</div>
@@ -131,11 +131,11 @@
           <button class="link-btn mg-cancel-btn" id="btn-mg-cancel">Cancel</button>
         </div>
 
-        <!-- Panel 1: Left / Right game (doors drawn on #lr-canvas in #sprite-container) -->
+        <!-- Panel 1: Left / Right game (doors drawn on #mg-canvas in #sprite-container) -->
         <div id="mg-left-right" class="mg-panel hidden">
           <p class="mg-title">Left / Right</p>
           <p class="mg-subtitle">Which door is the Codotchi behind?</p>
-          <p id="lr-countdown" class="mg-countdown">3</p>
+          <p id="lr-countdown" class="sr-only" aria-live="polite">3</p>
           <div class="mg-btn-row">
             <button class="action-btn mg-dir-btn" id="btn-lr-left">Left</button>
             <button class="action-btn mg-dir-btn" id="btn-lr-right">Right</button>
@@ -147,7 +147,7 @@
         <div id="mg-hl" class="mg-panel hidden">
           <p class="mg-title">Higher or Lower?</p>
           <p class="mg-subtitle">Will the next number be higher or lower?</p>
-          <p id="hl-current" class="mg-big-num">—</p>
+          <p id="hl-current" class="sr-only" aria-live="polite">—</p>
           <div class="mg-btn-row">
             <button class="action-btn mg-dir-btn" id="btn-hl-higher">Higher</button>
             <button class="action-btn mg-dir-btn" id="btn-hl-lower">Lower</button>
@@ -214,6 +214,7 @@
 
   <script src="{{spriteConstantsUri}}"></script>
   <script src="{{spritesUri}}"></script>
+  <script src="{{minigameArtUri}}"></script>
   <script src="{{customCharactersUri}}"></script>
   <script src="{{jsUri}}"></script>
 </body>

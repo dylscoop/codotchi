@@ -42,7 +42,7 @@ tasks {
         from("../vscode/media") {
             include(
                 "sidebar.js", "sidebar.css", "sidebar.html",
-                "customCharacters.js", "spriteConstants.js", "sprites.js",
+                "customCharacters.js", "spriteConstants.js", "sprites.js", "minigameArt.js",
                 "sprite_preview.html"
             )
             into("webview")

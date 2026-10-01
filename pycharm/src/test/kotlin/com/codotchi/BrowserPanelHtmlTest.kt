@@ -187,4 +187,22 @@ class BrowserPanelHtmlTest {
             "that would be the spurious brace that truncates renderSpriteGrid (BUGFIX-091)"
         )
     }
+
+    @Test
+    fun `minigameArt resource exists and loads before sidebar js`() {
+        val content = loadResource("/webview/minigameArt.js")
+        assertTrue(content.contains("window.minigameArt"), "minigameArt.js must export window.minigameArt")
+        val html = loadResource("/webview/sidebar.html")
+        val art = html.indexOf("""<script src="{{minigameArtUri}}"></script>""")
+        val js  = html.indexOf("""<script src="{{jsUri}}"></script>""")
+        assertTrue(art >= 0, "sidebar.html must contain the {{minigameArtUri}} script placeholder")
+        assertTrue(art < js, "minigameArt.js must load before sidebar.js")
+    }
+
+    @Test
+    fun `browser panel inlines minigameArt`() {
+        val src = java.io.File("src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt").readText()
+        assertTrue(src.contains("loadResource(\"/webview/minigameArt.js\")"), "CodotchiBrowserPanel must load minigameArt.js")
+        assertTrue(src.contains("{{minigameArtUri}}"), "CodotchiBrowserPanel must replace the {{minigameArtUri}} placeholder")
+    }
 }
