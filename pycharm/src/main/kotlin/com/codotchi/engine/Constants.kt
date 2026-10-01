@@ -393,6 +393,15 @@ const val ATTENTION_EXPIRY_STAT_PENALTY: Int = 10
 /** Happiness boost applied when a gift attention call is answered via praise(). */
 const val GIFT_PRAISE_HAPPINESS_BOOST: Int = 15
 
+/**
+ * Active (non-idle, awake) ticks between "take a break" calls: 600 × 3 s = 30 min.
+ * The timer restarts when the call fires and whenever the user goes deep-idle
+ * (they have taken a break on their own).
+ */
+const val BREAK_CALL_INTERVAL_TICKS: Int = 600
+/** Happiness boost when a break call is answered via praise() — same as a gift. */
+const val BREAK_PRAISE_HAPPINESS_BOOST: Int = GIFT_PRAISE_HAPPINESS_BOOST
+
 /** neglectCount decrements by 1 every this many ticks (600 × 3 s = 30 min). */
 const val NEGLECT_DECAY_TICK_INTERVAL: Int = 600
 

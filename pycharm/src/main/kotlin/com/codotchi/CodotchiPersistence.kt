@@ -349,6 +349,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val ticksSinceLastPlayCall: Int? = null,
         val ticksSinceLastPatCall: Int? = null,
         val ticksSinceLastCraving: Int? = null,
+        val ticksSinceLastBreakCall: Int? = null,
         val cravingFood: String? = null,
     )
 
@@ -413,6 +414,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             ticksSinceLastPlayCall     = r.ticksSinceLastPlayCall     ?: 0,
             ticksSinceLastPatCall      = r.ticksSinceLastPatCall      ?: 0,
             ticksSinceLastCraving      = r.ticksSinceLastCraving      ?: 0,
+            ticksSinceLastBreakCall    = r.ticksSinceLastBreakCall    ?: 0,
             cravingFood                = r.cravingFood?.takeIf { it == "meal" || it == "snack" },
         )
         return partial
@@ -471,6 +473,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         ticksSinceLastPlayCall     = s.ticksSinceLastPlayCall,
         ticksSinceLastPatCall      = s.ticksSinceLastPatCall,
         ticksSinceLastCraving      = s.ticksSinceLastCraving,
+        ticksSinceLastBreakCall    = s.ticksSinceLastBreakCall,
         cravingFood                = s.cravingFood,
     )
 }

@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.24.2] — 2026-10-01
+
+### Added
+
+- **Break reminders** — after 30 minutes of coding, your pet reminds you to take a break. Praise it to answer: it's happier for it and naps while you rest. Skipping it does no harm, and stepping away from the IDE counts as a break.
+
+### Fixed
+
+- **Classic pet** — now centred where it stands, with no empty space above it. It walks right up to both walls, and its speech bubble, z's and hearts sit right above its head.
+- **Speech bubble** — while your pet sleeps or is being patted, the bubble sits above the floating z's and hearts so you can see both.
+
 ## [2.24.1] — 2026-10-01
 
 ### Changed

@@ -654,4 +654,58 @@ class GameEngineTest {
             assertEquals(99, expired.attentionCallCooldowns[type], "$type: expiry cooldown set, then counted down once")
         }
     }
+
+    // ── Break reminder attention call ────────────────────────────────────────
+
+    /** Every random call on cooldown, so only the break call can fire. */
+    private fun breakPet(ticks: Int) =
+        contentPet("craving", "play", "pat", "gift", "poop").copy(ticksSinceLastBreakCall = ticks)
+
+    @Test
+    fun `break call fires after 30 active awake minutes and restarts its timer`() {
+        assertEquals(30 * 60, BREAK_CALL_INTERVAL_TICKS * 3)
+        val almost = tick(breakPet(BREAK_CALL_INTERVAL_TICKS - 2))
+        assertNull(almost.activeAttentionCall)
+        val due = tick(almost)
+        assertEquals("break", due.activeAttentionCall)
+        assertTrue("attention_call_break" in due.events)
+        assertEquals(0, due.ticksSinceLastBreakCall)
+    }
+
+    @Test
+    fun `break timer only counts active awake time and deep idle restarts it`() {
+        assertEquals(100, tick(breakPet(100), isIdle = true).ticksSinceLastBreakCall)
+        assertEquals(100, tick(breakPet(100).copy(sleeping = true)).ticksSinceLastBreakCall)
+        assertEquals(0, tick(breakPet(100), isDeepIdle = true).ticksSinceLastBreakCall)
+    }
+
+    @Test
+    fun `break call does not fire asleep or idle and a real need wins`() {
+        val due = breakPet(BREAK_CALL_INTERVAL_TICKS)
+        assertNotEquals("break", tick(due.copy(sleeping = true, energy = 50)).activeAttentionCall)
+        assertNotEquals("break", tick(due, isIdle = true).activeAttentionCall)
+        assertEquals("hunger", tick(due.copy(hunger = 10)).activeAttentionCall)
+    }
+
+    @Test
+    fun `praise answers a break call with the gift happiness boost and puts the pet to sleep`() {
+        val calling = makePet(happiness = 50).copy(activeAttentionCall = "break", consecutiveSnacks = 2)
+        val next = praise(calling)
+        assertNull(next.activeAttentionCall)
+        assertEquals(50 + GIFT_PRAISE_HAPPINESS_BOOST, next.happiness)
+        assertTrue(next.sleeping)
+        assertEquals(0, next.consecutiveSnacks)
+        assertTrue("attention_call_answered_break" in next.events)
+        assertTrue("fell_asleep" in next.events)
+        assertFalse(praise(makePet()).sleeping, "praise without a break call keeps the pet awake")
+    }
+
+    @Test
+    fun `a skipped break call is no care mistake`() {
+        val pet = breakPet(0).copy(activeAttentionCall = "break", attentionCallActiveTicks = 10_000, careMistakes = 0.0)
+        val next = tick(pet)
+        assertTrue("attention_call_expired_break" in next.events)
+        assertEquals(0.0, next.careMistakes)
+        assertEquals(100, next.health)
+    }
 }

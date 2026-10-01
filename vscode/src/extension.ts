@@ -126,6 +126,7 @@ export function activate(context: vscode.ExtensionContext): void {
         "attention_call_pat":            `${state.name} wants a pat!`,
         "attention_call_craving_meal":   `${state.name} is craving a meal!`,
         "attention_call_craving_snack":  `${state.name} is craving a snack!`,
+        "attention_call_break":          `Time for a break! You've been coding for 30 minutes — praise ${state.name} to rest together.`,
       };
       for (const event of state.events) {
         const msg = notificationMessages[event];

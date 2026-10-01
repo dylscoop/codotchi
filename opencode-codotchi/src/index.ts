@@ -1128,6 +1128,7 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
       case "attention_call_low_energy":
       case "attention_call_poop":
       case "attention_call_gift":
+      case "attention_call_break":
       case "attention_call_misbehaviour":
       case "attention_call_play":
       case "attention_call_pat":

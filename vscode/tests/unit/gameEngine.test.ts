@@ -66,6 +66,8 @@ import {
   DEFAULT_GAME_CONFIG,
   ATTENTION_ANSWER_COOLDOWN_TICKS,
   ATTENTION_EXPIRY_COOLDOWN_TICKS,
+  BREAK_CALL_INTERVAL_TICKS,
+  GIFT_PRAISE_HAPPINESS_BOOST,
   PetState,
   GameConfig,
   AttentionCallType,
@@ -2853,5 +2855,65 @@ describe("developer mode — aging multiplier", () => {
       Math.abs(afterNodev.dayTimer - afterDev1.dayTimer) < 1e-10,
       "multiplier of 1 should produce identical dayTimer to devMode=false"
     );
+  });
+});
+
+describe("break reminder attention call", () => {
+  // Every random call (whims, gift, misbehaviour) on cooldown so only the break can fire
+  const RANDOM_CALLS: AttentionCallType[] = ["craving", "play", "pat", "gift", "misbehaviour", "poop"];
+
+  it("fires after 30 active, awake minutes and restarts its timer", () => {
+    assert.equal(BREAK_CALL_INTERVAL_TICKS * 3, 30 * 60, "600 ticks × 3 s = 30 min");
+    const almost = withRandom(0.99, () => tick(contentPet(RANDOM_CALLS, { ticksSinceLastBreakCall: BREAK_CALL_INTERVAL_TICKS - 2 })));
+    assert.equal(almost.activeAttentionCall, null);
+    const due = withRandom(0.99, () => tick(almost));
+    assert.equal(due.activeAttentionCall, "break");
+    assert.ok(due.events.includes("attention_call_break"));
+    assert.equal(due.ticksSinceLastBreakCall, 0);
+  });
+
+  it("only counts active, awake time; deep idle (the user is away) restarts it", () => {
+    const start = contentPet(RANDOM_CALLS, { ticksSinceLastBreakCall: 100 });
+    assert.equal(withRandom(0.99, () => tick(start, true, false)).ticksSinceLastBreakCall, 100, "idle doesn't count");
+    assert.equal(withRandom(0.99, () => tick({ ...start, sleeping: true })).ticksSinceLastBreakCall, 100, "asleep doesn't count");
+    assert.equal(withRandom(0.99, () => tick(start, false, true)).ticksSinceLastBreakCall, 0, "deep idle is a break");
+  });
+
+  it("doesn't fire while asleep or idle, and a real need wins", () => {
+    const due = contentPet(RANDOM_CALLS, { ticksSinceLastBreakCall: BREAK_CALL_INTERVAL_TICKS });
+    assert.notEqual(withRandom(0.99, () => tick({ ...due, sleeping: true, energy: 50 })).activeAttentionCall, "break");
+    assert.notEqual(withRandom(0.99, () => tick(due, true, false)).activeAttentionCall, "break");
+    assert.equal(withRandom(0.99, () => tick({ ...due, hunger: 10 })).activeAttentionCall, "hunger");
+  });
+
+  it("praise answers it: happiness up by the gift amount, and the pet goes to sleep", () => {
+    const calling = makePet({ activeAttentionCall: "break", happiness: 50, sleeping: false, consecutiveSnacks: 2 });
+    const next = praise(calling);
+    assert.equal(next.activeAttentionCall, null);
+    assert.equal(next.happiness, 50 + GIFT_PRAISE_HAPPINESS_BOOST);
+    assert.equal(next.sleeping, true);
+    assert.equal(next.consecutiveSnacks, 0);
+    assert.ok(next.events.includes("attention_call_answered_break"));
+    assert.ok(next.events.includes("fell_asleep"));
+  });
+
+  it("praise with no break call doesn't put the pet to sleep", () => {
+    const next = praise(makePet({ sleeping: false }));
+    assert.equal(next.sleeping, false);
+    assert.ok(!next.events.includes("fell_asleep"));
+  });
+
+  it("skipping it is no care mistake and costs no stats", () => {
+    const pet = makePet({ activeAttentionCall: "break", attentionCallActiveTicks: 10_000,
+                          careMistakes: 0, happiness: 80, health: 100, hunger: 70, energy: 80, nextPoopIntervalTicks: 99999 });
+    const next = withRandom(0.99, () => tick(pet));
+    assert.ok(next.events.includes("attention_call_expired_break"));
+    assert.equal(next.careMistakes, 0);
+    assert.equal(next.health, 100);
+  });
+
+  it("survives serialise / deserialise", () => {
+    const back = deserialiseState(serialiseState(makePet({ ticksSinceLastBreakCall: 321 })));
+    assert.equal(back.ticksSinceLastBreakCall, 321);
   });
 });

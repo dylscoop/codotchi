@@ -790,7 +790,7 @@
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType) * scale);
     var bWidth     = effectiveBWidth(lastState, bSize);
-    var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
+    var bHeight    = petBoxHeight(lastState, bWidth);
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
     var _gsType = lastState.spriteType || "classic";
     // Use SPRITE_GRID_META to detect non-quadruped types (v2 variable-grid aware).
@@ -800,7 +800,7 @@
     var _gsIsQuad = _gsMeta
       ? (_gsMeta.rows <= _gsMeta.cols)   // quadrupeds are wider-than-tall grids
       : !(_gsType === "snake" || _gsType === "classic" || _gsType === "dragon" || _gsType === "tim" || _gsType === "stu");
-    if (_gsIsQuad && _gsType !== "snake") {
+    if (_gsIsQuad && _gsType !== "snake" && !window.spriteDrawsAsClassic(_gsType, lastState.stage)) {
       var sagCellH = Math.max(1, Math.round(bHeight / _gsRows));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
     }
@@ -900,8 +900,9 @@
    * @param {number} petCx   — horizontal centre of the pet sprite (canvas px)
    * @param {number} petTopY — top edge of the pet sprite (canvas px)
    * @param {number} nowMs   — performance.now()
+   * @param {number} [clearance] — extra gap above the head for z's / hearts (emojiClearance)
    */
-  function drawSpeechBubble(petCx, petTopY, nowMs) {
+  function drawSpeechBubble(petCx, petTopY, nowMs, clearance) {
     if (!activeBubble) { return; }
 
     // Persistent bubbles (e.g. sleep) stay at full alpha and are never cleared here
@@ -940,11 +941,16 @@
     // Clamp to canvas edges
     boxX = Math.max(4, Math.min(spriteCanvas.width - boxW - 4, boxX));
 
-    var boxBottomY = petTopY - TAIL_H - 2;
+    // Lift above the z / heart band (clearance) so the emojis stay visible
+    var boxBottomY = petTopY - (clearance || 0) - TAIL_H - 2;
     var boxY = boxBottomY - boxH;
-    // If there's no room above, flip below (pet near top edge — rare)
     var flipped = false;
-    if (boxY < 2) {
+    if (boxY < 2 && petTopY - TAIL_H - 2 - boxH >= 2) {
+      // Fits above the head but not above the emojis — pin to the top edge
+      boxY = 2;
+      boxBottomY = boxY + boxH;
+    } else if (boxY < 2) {
+      // If there's no room above, flip below (pet near top edge — rare)
       boxY = petTopY + 2 + TAIL_H;   // place below pet top instead
       boxBottomY = boxY + boxH;
       flipped = true;
@@ -1021,11 +1027,11 @@
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
     var bSize      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType) * scale);
     var bWidth     = effectiveBWidth(lastState, bSize);
-    var bHeight    = Math.round(bWidth * spriteHeightRatio(lastState.spriteType || "classic"));
+    var bHeight    = petBoxHeight(lastState, bWidth);
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
     var _sType = lastState.spriteType || "classic";
     var _isUprightOrSnake = (_sType === "snake" || _sType === "classic" || _sType === "dragon" || _sType === "tim" || _sType === "stu");
-    if (!_isUprightOrSnake) {
+    if (!_isUprightOrSnake && !window.spriteDrawsAsClassic(_sType, lastState.stage)) {
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
     }
@@ -1254,7 +1260,8 @@
     lastMood = mood;
     lastState.displayMood = mood;   // lets renderSpriteGrid pick optional per-mood grids
     var moodFrame = window.spriteMood.frame(mood, animTick);
-    var moodBox   = { x: Math.round(petX), y: Math.round(petY) + walkBob, w: bWidth, h: bHeight };
+    var moodBox   = { x: Math.round(petX), y: Math.round(petY) + walkBob, w: bWidth, h: bHeight,
+                      pxW: petPropWidth(lastState) };
     window.spriteMood.spawn(moodParticles, mood, moodFrame, moodFrame !== lastMoodFrame, moodBox, petFacingLeft, dt);
     window.spriteMood.step(moodParticles, dt, floorY + bHeight);
     lastMoodFrame = moodFrame;
@@ -1293,7 +1300,25 @@
     var _bW       = effectiveBWidth(lastState, _bSz);
     var _petCx    = Math.round(petX) + Math.round(_bW / 2);
     var _petTopY  = Math.round(petY) + walkBob;
-    drawSpeechBubble(_petCx, _petTopY, nowMs);
+    drawSpeechBubble(_petCx, _petTopY, nowMs,
+                     emojiClearance(lastState.sleeping || patting, moodPxSize));
+  }
+
+  /**
+   * Height (canvas px) of the band above the head used by the floating z's,
+   * the pat hearts and the patting hand, so the speech bubble sits above them.
+   * z's and hearts rise ~20px; the hand reaches ~12 prop-pixels above the head.
+   * @param {boolean} active — the pet is asleep or being patted
+   * @param {number}  px     — mood / pat prop pixel size
+   * @returns {number}
+   */
+  function emojiClearance(active, px) {
+    var lingering = false;
+    var all = moodParticles.concat(patParticles);
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].kind === "z" || all[i].kind === "heart") { lingering = true; break; }
+    }
+    return (active || lingering) ? Math.max(24, 12 * px + 4) : 0;
   }
 
   if (!REDUCED_MOTION) {
@@ -1729,6 +1754,7 @@
       "attention_call_pat":             n + " wants a pat!",
       "attention_call_craving_meal":    n + " is craving a proper meal!",
       "attention_call_craving_snack":   n + " is craving a snack!",
+      "attention_call_break":           "30 minutes already! Remember to take a break — praise " + n + " and they'll nap while you rest.",
       // Attention calls — answered
       "attention_call_answered_hunger":          "You answered " + n + "'s hunger call.",
       "attention_call_answered_unhappiness":     "You answered " + n + "'s sadness call.",
@@ -1741,6 +1767,7 @@
       "attention_call_answered_play":            "You played with " + n + " when they asked.",
       "attention_call_answered_pat":             "You gave " + n + " the pat they wanted.",
       "attention_call_answered_craving":         "You satisfied " + n + "'s craving.",
+      "attention_call_answered_break":           "You're taking a break — " + n + " is napping too.",
       // Attention calls — expired
       "attention_call_expired_hunger":          n + "'s hunger call went unanswered!",
       "attention_call_expired_unhappiness":     n + "'s sadness call went unanswered!",
@@ -1753,6 +1780,7 @@
       "attention_call_expired_play":            n + " wanted to play and was ignored.",
       "attention_call_expired_pat":             n + " wanted a pat and was ignored.",
       "attention_call_expired_craving":         n + "'s craving went unanswered.",
+      "attention_call_expired_break":           n + "'s break reminder was skipped.",
       // Mini-game results
       "minigame_left_right_win":    n + " won Left / Right!",
       "minigame_left_right_lose":   n + " lost Left / Right.",
@@ -2504,7 +2532,7 @@
         // Squash/stretch anchored at the feet, widened slightly to keep the volume
         var mScale = STAGE_SCALES[state.stage] || 0.5;
         var mW     = effectiveBWidth(state, Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * mScale));
-        var mH     = Math.round(mW * spriteHeightRatio(state.spriteType || "classic"));
+        var mH     = petBoxHeight(state, mW);
         var mCx    = x + mW / 2;
         var mFeet  = bodyY + mH;
         spriteCtx.save();
@@ -2524,7 +2552,7 @@
     var stageScale = STAGE_SCALES[state.stage] || 0.5;
     var bSize     = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * stageScale);
     var bWidth    = effectiveBWidth(state, bSize);
-    var bHeight   = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
+    var bHeight   = petBoxHeight(state, bWidth);
     var feetY     = bodyY + bHeight;              // canvas Y of the bottom of the feet
 
     switch (reaction.type) {
@@ -2758,11 +2786,11 @@
     var scale    = STAGE_SCALES[state.stage] || 0.5;
     var bSize    = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * scale);
     var bWidth   = effectiveBWidth(state, bSize);
-    var bHeight  = Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
+    var bHeight  = petBoxHeight(state, bWidth);
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
     var _dsType = state.spriteType || "classic";
     var _dsUOS = (_dsType === "snake" || _dsType === "classic" || _dsType === "dragon" || _dsType === "tim" || _dsType === "stu");
-    if (!_dsUOS) {
+    if (!_dsUOS && !window.spriteDrawsAsClassic(_dsType, state.stage)) {
       var sagCellH2 = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(state.weight || 50) * sagCellH2;
     }
@@ -2858,7 +2886,32 @@
     * @returns {number}
     */
    function effectiveBWidth(state, bSize) {
+     if (state && window.spriteDrawsAsClassic(state.spriteType, state.stage)) {
+       return window.spriteClassicBox(state).w;   // the classic creature's own width, not a 32×48 grid
+     }
      return Math.round(bSize);
+  }
+
+  /**
+   * Return the rendered height (canvas px, before belly sag) for a pet of width bWidth.
+   * The classic creature uses its real height, so nothing floats above its head.
+   * @param {object} state
+   * @param {number} bWidth — from effectiveBWidth
+   * @returns {number}
+   */
+  function petBoxHeight(state, bWidth) {
+    if (state && window.spriteDrawsAsClassic(state.spriteType, state.stage)) {
+      return window.spriteClassicBox(state).h;
+    }
+    return Math.round(bWidth * spriteHeightRatio(state.spriteType || "classic"));
+  }
+
+  /**
+   * Width used to size mood / pat props and particles: the grid width the pet
+   * would have, so the narrow classic creature keeps normal-sized hearts and hand.
+   */
+  function petPropWidth(state) {
+    return Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * (STAGE_SCALES[state.stage] || 0.5));
   }
 
   // ── Initial view ─────────────────────────────────────────────────────────
