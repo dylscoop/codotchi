@@ -475,6 +475,16 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     // Starvation counter
     if (hunger == STAT_MIN) hungerZeroTicks += 1 else hungerZeroTicks = 0
 
+    // True while any health-damage source below is live (starving, miserable,
+    // exhausted or sick). The damage itself is skipped while idle, but the idle
+    // stat floor further down still keys off this, so a pet in trouble stops
+    // sliding further while the user is away (BUGFIX-177).
+    val inDamageState =
+        hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK ||
+        (happiness == STAT_MIN && !sleeping) ||
+        (energy == STAT_MIN && !sleeping) ||
+        sick
+
     // Health damage only applies while the user is active (BUG-S02). While idle
     // or deep idle, hunger and happiness still decay slowly so there is something
     // to care for on return, but the pet never loses health. Existing sickness
@@ -656,12 +666,15 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
     // above, so a same-tick damage source can never slip through.
     //  • Health never falls below its value entering this tick while idle
     //    (BUG-S02) — the damage blocks above are already gated, this is the net.
-    //  • When sick or damaged, hunger/happiness/energy stop decaying at
-    //    IDLE_STAT_FLOOR. The floor is capped at each stat's value entering this
-    //    tick, so a stat already below IDLE_STAT_FLOOR is never raised back up.
+    //  • When sick or in any other damage state (starving, miserable, exhausted),
+    //    hunger/happiness/energy stop decaying at IDLE_STAT_FLOOR. The damage
+    //    blocks are skipped while idle, so this keys off inDamageState rather
+    //    than damage actually taken. The floor is capped at each stat's value
+    //    entering this tick, so a stat already below IDLE_STAT_FLOOR is never
+    //    raised back up.
     if (isIdle || isDeepIdle) {
         health = maxOf(health, state.health)
-        if (sick || tookDamageThisTick) {
+        if (inDamageState || tookDamageThisTick) {
             hunger    = maxOf(hunger,    minOf(state.hunger,    IDLE_STAT_FLOOR))
             happiness = maxOf(happiness, minOf(state.happiness, IDLE_STAT_FLOOR))
             energy    = maxOf(energy,    minOf(state.energy,    IDLE_STAT_FLOOR))

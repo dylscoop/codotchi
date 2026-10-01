@@ -148,6 +148,7 @@ class CodotchiBrowserPanel(
         val spriteConstantsText      = loadResource("/webview/spriteConstants.js")
         val customCharactersText     = loadResource("/webview/customCharacters.js")
         val spritesText              = loadResource("/webview/sprites.js")
+        val minigameArtText          = loadResource("/webview/minigameArt.js")
         val jsText              = loadResource("/webview/sidebar.js")
         var html        = loadResource("/webview/sidebar.html")
 
@@ -206,6 +207,10 @@ class CodotchiBrowserPanel(
         html = html.replace(
             """<script src="{{spritesUri}}"></script>""",
             "<script>\n$spritesText\n</script>"
+        )
+        html = html.replace(
+            """<script src="{{minigameArtUri}}"></script>""",
+            "<script>\n$minigameArtText\n</script>"
         )
 
         // Replace {{customCharactersUri}} placeholder (VS Code uses a URI; PyCharm inlines it here)

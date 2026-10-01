@@ -176,7 +176,7 @@ available:
 |------|-----------|
 | **Left / Right** | The pet hides behind one of two doors. Pick the correct door each round to win. |
 | **Higher or Lower** | A number is shown. Guess whether the next number will be higher or lower. Get enough correct to win. |
-| **Coin Flip** | Call Heads or Tails. A single coin flip decides the outcome. |
+| **Coin Flip** | Call Heads or Tails, then watch the coin spin. A single flip decides the outcome. |
 
 ## Pet Types
 

@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.22.1</version>
+    <version>2.22.2</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -122,7 +122,7 @@ automatically and retries the submission once.</p>
   <tr><th>Game</th><th>How to win</th></tr>
   <tr><td><b>Left / Right</b></td><td>The pet hides behind one of two doors. Pick the correct door each round to win.</td></tr>
   <tr><td><b>Higher or Lower</b></td><td>A number is shown. Guess whether the next number will be higher or lower. Get enough correct to win.</td></tr>
-  <tr><td><b>Coin Flip</b></td><td>Call Heads or Tails. A single coin flip decides the outcome.</td></tr>
+  <tr><td><b>Coin Flip</b></td><td>Call Heads or Tails, then watch the coin spin. A single flip decides the outcome.</td></tr>
 </table>
 
 <h2>Pet Types</h2>

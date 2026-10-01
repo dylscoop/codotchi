@@ -1036,6 +1036,28 @@ describe("tick — idle safety floor for sick/losing-health pets", () => {
     const next = tick(pet, true, false);
     assert.ok(next.health >= 20, `health should never drop below the idle floor (got ${next.health})`);
   });
+
+  // BUGFIX-177: damage is skipped while idle, so the floor must key off the
+  // damage *state*, not damage taken — otherwise only sick pets were floored.
+  for (const [label, isIdle, isDeepIdle] of [["idle", true, false], ["deep idle", true, true]] as const) {
+    it(`floors happiness and energy for a starving (not sick) pet during ${label}`, () => {
+      let pet = makePet({ hunger: 0, hungerZeroTicks: 99, happiness: 30, energy: 30, health: 50, sick: false });
+      for (let i = 0; i < 3000; i++) { pet = tick(pet, isIdle, isDeepIdle); }
+      assert.ok(pet.alive);
+      assert.ok(pet.happiness >= 20, `happiness slid below the idle floor (got ${pet.happiness})`);
+      assert.ok(pet.energy >= 20, `energy slid below the idle floor (got ${pet.energy})`);
+      assert.ok(pet.health >= 50, `health dropped while idle (got ${pet.health})`);
+    });
+
+    it(`floors hunger and energy for a miserable (happiness 0) pet during ${label}`, () => {
+      let pet = makePet({ happiness: 0, hunger: 30, energy: 30, health: 50, sick: false, sleeping: false });
+      for (let i = 0; i < 3000; i++) { pet = tick(pet, isIdle, isDeepIdle); }
+      assert.ok(pet.alive);
+      assert.ok(pet.hunger >= 20, `hunger slid below the idle floor (got ${pet.hunger})`);
+      assert.ok(pet.energy >= 20, `energy slid below the idle floor (got ${pet.energy})`);
+      assert.ok(!pet.events.includes("unhappiness_damage"));
+    });
+  }
 });
 
 // ---------------------------------------------------------------------------

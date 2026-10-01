@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.22.1",
+  "version": "2.22.2",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -279,7 +279,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "node ../scripts/sync-core.mjs",
-    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/webviewAnimations.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
