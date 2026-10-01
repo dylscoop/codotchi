@@ -30,6 +30,8 @@ import com.intellij.openapi.components.*
  *  - [idleResetOnWindowFocus]     : reset idle timer when IDE window gains focus (default true)
  *  - [idleResetOnMouseMovement]   : reset idle timer on mouse movement in the sidebar (default true)
  *  - [background]                 : "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter" (default "ordered")
+ *  - [backgroundOpacity]          : "subtle" | "medium" | "vivid" — how strongly the scene shows (default "medium")
+ *  - [backgroundAnimations]       : animate clouds, stars, lights, weather and critters (default true)
  *  - [perWorkspacePet]            : each project gets its own independent pet state file (default false)
  *  - [tokenCostIncludeClaudeCode] : include Claude Code dollar-cost usage in Today's Token Cost (default true)
  *  - [tokenCostIncludeOpenCode]   : include OpenCode dollar-cost usage in Today's Token Cost (default true)
@@ -67,6 +69,8 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var idleResetOnWindowFocus: Boolean = true
         var idleResetOnMouseMovement: Boolean = true
         var background: String = "ordered"  // "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter"
+        var backgroundOpacity: String = "medium"  // "subtle" | "medium" | "vivid"
+        var backgroundAnimations: Boolean = true
         var perWorkspacePet: Boolean = false
         var tokenCostIncludeClaudeCode: Boolean = true
         var tokenCostIncludeOpenCode: Boolean = true
@@ -172,6 +176,14 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var background: String
         get() = _state.background
         set(v) { _state.background = v }
+
+    var backgroundOpacity: String
+        get() = _state.backgroundOpacity
+        set(v) { _state.backgroundOpacity = v }
+
+    var backgroundAnimations: Boolean
+        get() = _state.backgroundAnimations
+        set(v) { _state.backgroundAnimations = v }
 
     var perWorkspacePet: Boolean
         get() = _state.perWorkspacePet

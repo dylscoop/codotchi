@@ -27,6 +27,15 @@
   var NIGHT_INK     = "#0c1230";       // scenery is blended toward this at night
   var NIGHT_SHADE   = 0.55;            // how far scenery is blended at full darkness
 
+  // codotchi.backgroundOpacity: how much of the pet's backdrop colour is laid
+  // over the finished scene, as [full daylight, full night]. Night is already
+  // dark, so it gets a lighter veil. Vivid is the scene at full strength.
+  var VEIL = {
+    vivid:  [0, 0],
+    medium: [0.30, 0.10],
+    subtle: [0.45, 0.15],
+  };
+
   // Rare critters: one fly-past at most per window, only in a few windows.
   var CRITTERS = {
     bird:      { salt: 1, windowMs: 120000, chance: 0.20, durMs: 10000 },
@@ -353,6 +362,13 @@
   function darkness(date) {
     var s = segment(DARK_KEYS, hourOf(date));
     return s.a[1] + (s.b[1] - s.a[1]) * s.t;
+  }
+
+  /** Veil strength for a codotchi.backgroundOpacity value; unknown values act like medium. */
+  function veilAlpha(opacity, date) {
+    var v = VEIL[opacity] || VEIL.medium;
+    var d = darkness(date);
+    return v[0] + (v[1] - v[0]) * d;
   }
 
   /** Winter fairy lights: lit at dawn, morning, dusk and night; off in the afternoon. */
@@ -829,8 +845,14 @@
    * @param {number} H    - canvas height
    * @param {string} mode - codotchi.background value
    * @param {Date}   date - current time; drives the season, sky and animation
+   * @param {{opacity?: string, backdrop?: string}} [opts]
+   *   opacity  - codotchi.backgroundOpacity (subtle / medium / vivid; default medium)
+   *   backdrop - colour the scene fades toward (the pet palette background)
+   *   animate  - false (codotchi.backgroundAnimations off, or reduced motion)
+   *              draws a still scene: no drifting clouds, twinkling stars,
+   *              cycling lights, falling petals / leaves, weather or critters
    */
-  function drawBackground(ctx, W, H, mode, date) {
+  function drawBackground(ctx, W, H, mode, date, opts) {
     var season = getActiveSeason(mode, date);
     var gTop = groundTop(H);
 
@@ -846,11 +868,12 @@
       return;
     }
 
-    var t = date.getTime();
+    var animate = !(opts && opts.animate === false);
+    var t = animate ? date.getTime() : 0;   // a still scene uses one fixed frame
     var h = hourOf(date);
     var d = darkness(date);
     var L = layout(season, W, H);
-    var wx = weather(season, date);
+    var wx = animate ? weather(season, date) : { raining: false, rainbow: false, snowing: false };
 
     drawSky(ctx, W, gTop, skyColours(date));
     if (wx.raining) {
@@ -877,6 +900,17 @@
     if (season === "spring" && (wx.raining || wx.rainbow)) { drawPuddles(ctx, W, L, d); }
     if (season === "winter") { drawIcicles(ctx, L, d); }
 
+    // Soften the scene so the pet stands out; small moving bits stay crisp.
+    var veil = veilAlpha(opts && opts.opacity, date);
+    if (veil > 0) {
+      ctx.save();
+      ctx.globalAlpha = veil;
+      ctx.fillStyle = (opts && opts.backdrop) || "#1a1a1a";
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    if (!animate) { return; }
     if (season === "spring") { drawFalling(ctx, L, t, d, ["#fde2ec", "#f2b6cb"], 7000, 2); }
     if (season === "autumn") { drawFalling(ctx, L, t, d, AUTUMN_LEAVES, 9000, 3); }
     if (wx.snowing) { drawSnow(ctx, W, L, t); }
@@ -895,6 +929,8 @@
     SNOW_MS:         SNOW_MS,
     SNOW_CHANCE:     SNOW_CHANCE,
     CRITTERS:        CRITTERS,
+    VEIL:            VEIL,
+    veilAlpha:       veilAlpha,
     px:              px,
     groundTop:       groundTop,
     getActiveSeason: getActiveSeason,

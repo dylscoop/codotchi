@@ -167,6 +167,19 @@
     <option value="480x240">480 &times; 240</option>
   </select>
 
+  <label style="margin-left:12px">Opacity</label>
+  <select id="bg-opacity">
+    <option value="subtle">Subtle</option>
+    <option value="medium" selected>Medium</option>
+    <option value="vivid">Vivid</option>
+  </select>
+
+  <label style="margin-left:12px">Animate</label>
+  <select id="bg-animate">
+    <option value="yes" selected>Yes</option>
+    <option value="no">No</option>
+  </select>
+
   <label style="margin-left:12px">Event</label>
   <select id="bg-event">
     <option value="none" selected>Clock only</option>
@@ -577,14 +590,15 @@
     var ctx = bgCanvas.getContext("2d");
     ctx.fillStyle = "#1a1a1a";
     ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-    bgArt.drawBackground(ctx, bgCanvas.width, bgCanvas.height, bgValue("bg-season"), bgDate);
+    bgArt.drawBackground(ctx, bgCanvas.width, bgCanvas.height, bgValue("bg-season"), bgDate,
+                         { opacity: bgValue("bg-opacity"), backdrop: "#1a1a1a", animate: bgValue("bg-animate") === "yes" });
     ctx.fillStyle = "rgba(255,255,255,0.08)";
     ctx.fillRect(0, bgCanvas.height - 5, bgCanvas.width, 1);
     requestAnimationFrame(bgFrame);
   }
 
   if (bgArt) {
-    ["bg-season", "bg-hour", "bg-size", "bg-event"].forEach(function (id) {
+    ["bg-season", "bg-hour", "bg-size", "bg-opacity", "bg-animate", "bg-event"].forEach(function (id) {
       document.getElementById(id).addEventListener("input", bgReset);
     });
     bgReset();

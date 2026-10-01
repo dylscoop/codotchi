@@ -213,68 +213,86 @@
             "description": "Background theme for the pet canvas.",
             "order": 12
           },
+          "codotchi.backgroundOpacity": {
+            "type": "string",
+            "enum": ["subtle", "medium", "vivid"],
+            "enumDescriptions": [
+              "Soft scene (about 55% by day) so the pet stands out most.",
+              "Softened scene (about 70% by day). Default.",
+              "Full-strength scene colours."
+            ],
+            "default": "medium",
+            "description": "How strongly the background scene shows behind your pet. Lower settings fade it toward the pet's backdrop colour, mostly by day; the plain background is unaffected.",
+            "order": 13
+          },
+          "codotchi.backgroundAnimations": {
+            "type": "boolean",
+            "default": true,
+            "description": "Animate the background: drifting clouds, twinkling stars, fairy lights, falling petals and leaves, showers, snowfall and passing critters. Turn off for a still scene. Reduced motion also turns these off.",
+            "order": 14
+          },
           "codotchi.fontSize": {
             "type": "string",
             "enum": ["small", "normal", "large"],
             "default": "normal",
             "description": "Font size used in the Codotchi sidebar panel.",
-            "order": 13
+            "order": 15
           },
           "codotchi.idleThresholdSeconds": {
             "type": "integer",
             "default": 60,
             "minimum": 10,
             "description": "Seconds of no IDE activity before the pet is considered idle (stats decay at 5% of the normal rate and the pet cannot lose health). Default: 60 seconds.",
-            "order": 14
+            "order": 16
           },
           "codotchi.idleDeepThresholdSeconds": {
             "type": "integer",
             "default": 600,
             "minimum": 30,
             "description": "Seconds of sustained idle before entering deep idle (aging stops; as in regular idle, the pet cannot lose health). Default: 600 seconds (10 minutes).",
-            "order": 15
+            "order": 17
           },
           "codotchi.idleResetOnDocumentChange": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when any document is changed (keystrokes, AI agent edits, etc.). Suppressed automatically when codotchi.aiMode is enabled.",
-            "order": 16
+            "order": 18
           },
           "codotchi.idleResetOnCursorMovement": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the text editor cursor moves or the selection changes. Suppressed automatically when codotchi.aiMode is enabled.",
-            "order": 17
+            "order": 19
           },
           "codotchi.idleResetOnTabSwitch": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the active editor tab changes. Suppressed automatically when codotchi.aiMode is enabled.",
-            "order": 18
+            "order": 20
           },
           "codotchi.idleResetOnWindowFocus": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the VS Code window gains focus (e.g. you switch back to VS Code from another app). Never suppressed by aiMode.",
-            "order": 19
+            "order": 21
           },
           "codotchi.idleResetOnMouseMovement": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the mouse moves inside the Codotchi sidebar panel (throttled to once per 30 seconds). Never suppressed by aiMode.",
-            "order": 20
+            "order": 22
           },
           "codotchi.leaderboard.autoRefresh": {
             "type": "boolean",
             "default": true,
             "description": "Show a one-time notification about the leaderboard when your pet first dies. The leaderboard page also auto-refreshes every hour when left open in a browser — this can be disabled directly on the leaderboard page.",
-            "order": 21
+            "order": 23
           },
           "codotchi.leaderboard.livePush": {
             "type": "boolean",
             "default": false,
             "description": "When enabled via the sidebar toggle button, pushes your pet's current age to the leaderboard hourly while it is alive. Requires a GitHub sign-in (prompted on first push).",
-            "order": 22
+            "order": 24
           }
         }
       },

@@ -270,6 +270,8 @@ export class SidebarProvider
       if (
         e.affectsConfiguration("codotchi.fontSize") ||
         e.affectsConfiguration("codotchi.background") ||
+        e.affectsConfiguration("codotchi.backgroundOpacity") ||
+        e.affectsConfiguration("codotchi.backgroundAnimations") ||
         e.affectsConfiguration("codotchi.petSize") ||
         e.affectsConfiguration("codotchi.stageHeight") ||
         e.affectsConfiguration("codotchi.reducedMotion") ||
@@ -354,6 +356,12 @@ export class SidebarProvider
 
     const background = cfg.get<string>("background", "ordered");
     html = html.replace("{{background}}", background);
+
+    const backgroundOpacity = cfg.get<string>("backgroundOpacity", "medium");
+    html = html.replace("{{backgroundOpacity}}", backgroundOpacity);
+
+    const backgroundAnimations = cfg.get<boolean>("backgroundAnimations", true);
+    html = html.replace("{{backgroundAnimations}}", backgroundAnimations ? "true" : "false");
 
     const idleResetOnMouseMovement = cfg.get<boolean>("idleResetOnMouseMovement", true);
     html = html.replace("{{idleResetOnMouseMovement}}", idleResetOnMouseMovement ? "true" : "false");

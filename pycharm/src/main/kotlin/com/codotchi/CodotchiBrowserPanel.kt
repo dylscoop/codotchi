@@ -143,6 +143,8 @@ class CodotchiBrowserPanel(
         val reducedMotion    = settings?.reducedMotion ?: false
         val petSize          = settings?.petSize ?: "medium"
         val background       = settings?.background ?: "ordered"
+        val backgroundOpacity    = settings?.backgroundOpacity ?: "medium"
+        val backgroundAnimations = settings?.backgroundAnimations ?: true
 
         val cssText                  = loadResource("/webview/sidebar.css")
         val spriteConstantsText      = loadResource("/webview/spriteConstants.js")
@@ -162,6 +164,8 @@ class CodotchiBrowserPanel(
         html = html.replace("{{reducedMotion}}", reducedMotion.toString())
         html = html.replace("{{petSize}}", petSize)
         html = html.replace("{{background}}", background)
+        html = html.replace("{{backgroundOpacity}}", backgroundOpacity)
+        html = html.replace("{{backgroundAnimations}}", backgroundAnimations.toString())
         html = html.replace("{{idleResetOnMouseMovement}}", "true")
 
         // Remove the VS Code Content-Security-Policy meta tag — PyCharm uses a native

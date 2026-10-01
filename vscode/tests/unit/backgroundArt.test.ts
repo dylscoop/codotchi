@@ -217,10 +217,97 @@ describe("background drawing (backgroundArt.js)", () => {
   });
 });
 
+describe("background opacity and still mode (backgroundArt.js)", () => {
+  /** Full-canvas fills in draw order, as [fillStyle, globalAlpha]. */
+  function fullFills(opts: Record<string, unknown> | undefined, date = at(12)) {
+    const fills: Array<[string, number]> = [];
+    const props: Record<string, any> = { globalAlpha: 1 };
+    const stack: number[] = [];
+    const ctx = new Proxy(props, {
+      get(target, key: string) {
+        if (key === "save") { return () => stack.push(target.globalAlpha); }
+        if (key === "restore") { return () => { target.globalAlpha = stack.pop(); }; }
+        if (key === "fillRect") {
+          return (x: number, y: number, w: number, h: number) => {
+            if (x === 0 && y === 0 && w === 320 && h === 180) { fills.push([target.fillStyle, target.globalAlpha]); }
+          };
+        }
+        if (key in target) { return target[key]; }
+        return () => {};
+      },
+      set(target, key: string, value) { target[key] = value; return true; },
+    });
+    art.drawBackground(ctx, 320, 180, "summer", date, opts);
+    return fills;
+  }
+
+  it("veil strength: vivid none, medium default, subtle strongest; lighter at night", () => {
+    assert.equal(art.veilAlpha("vivid", at(12)), 0);
+    assert.equal(art.veilAlpha("vivid", at(2)), 0);
+    assert.ok(Math.abs(art.veilAlpha("medium", at(12)) - 0.30) < 1e-9);
+    assert.ok(Math.abs(art.veilAlpha("medium", at(2)) - 0.10) < 1e-9);
+    assert.ok(art.veilAlpha("subtle", at(12)) > art.veilAlpha("medium", at(12)));
+    assert.equal(art.veilAlpha(undefined, at(12)), art.veilAlpha("medium", at(12)));
+    assert.equal(art.veilAlpha("bogus", at(12)), art.veilAlpha("medium", at(12)));
+  });
+
+  it("lays the pet backdrop over the scene, except in vivid", () => {
+    assert.deepEqual(fullFills({ opacity: "medium", backdrop: "#123456" }), [["#123456", 0.3]]);
+    assert.deepEqual(fullFills({ opacity: "vivid", backdrop: "#123456" }), []);
+    assert.equal(fullFills(undefined).length, 1, "no options means medium");
+  });
+
+  it("vivid draws exactly the unveiled scene", () => {
+    const a = mockCtx(), b = mockCtx();
+    art.drawBackground(a.ctx, 320, 180, "autumn", at(12), { opacity: "vivid" });
+    art.drawBackground(b.ctx, 320, 180, "autumn", at(12), { opacity: "medium", backdrop: "#1a1a1a" });
+    assert.equal((b.calls.fillRect ?? 0) - (a.calls.fillRect ?? 0), 1, "medium adds only the veil");
+  });
+
+  it("still mode draws the same frame whatever the time, with no weather or critters", () => {
+    const frame = (ms: number) => {
+      const m = mockCtx();
+      art.drawBackground(m.ctx, 320, 180, "winter", new Date(at(9).getTime() + ms), { animate: false });
+      return m.styles.join(",");
+    };
+    assert.equal(frame(0), frame(1234), "clouds, stars and lights don't move");
+    // Find a snowy, animated frame, then check the still frame has no snowflakes.
+    let snowy = at(9);
+    for (let w = 0; w < 200 && !art.weather("winter", snowy).snowing; w++) { snowy = new Date(snowy.getTime() + art.SNOW_MS); }
+    const anim = mockCtx(), still = mockCtx();
+    art.drawBackground(anim.ctx, 320, 180, "winter", snowy, { animate: true });
+    art.drawBackground(still.ctx, 320, 180, "winter", snowy, { animate: false });
+    assert.ok((anim.calls.fillRect ?? 0) > (still.calls.fillRect ?? 0));
+  });
+});
+
 describe("background wiring", () => {
   it("sidebar.js draws through backgroundArt and has no old background code", () => {
-    assert.match(sidebarSource, /window\.backgroundArt\.drawBackground\(spriteCtx, W, H, BG_MODE, new Date\(\)\)/);
+    assert.match(sidebarSource, /window\.backgroundArt\.drawBackground\(spriteCtx, W, H, BG_MODE, new Date\(\),/);
     assert.doesNotMatch(sidebarSource, /function drawBackground|function getTimeOfDay|#243444/);
+  });
+
+  it("passes the opacity and animation settings through in both IDEs", () => {
+    assert.match(sidebarSource, /{ opacity: BG_OPACITY, backdrop: background, animate: BG_ANIMATE }/);
+    assert.match(sidebarSource, /const BG_ANIMATE = !REDUCED_MOTION/);
+    const html = fs.readFileSync(path.join(media, "sidebar.html"), "utf8");
+    assert.match(html, /data-background-opacity="{{backgroundOpacity}}"/);
+    assert.match(html, /data-background-animations="{{backgroundAnimations}}"/);
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, "vscode/package.json"), "utf8"));
+    const main = pkg.contributes.configuration[0].properties;
+    assert.deepEqual(main["codotchi.backgroundOpacity"].enum, ["subtle", "medium", "vivid"]);
+    assert.equal(main["codotchi.backgroundOpacity"].default, "medium");
+    assert.equal(main["codotchi.backgroundAnimations"].type, "boolean");
+    assert.equal(main["codotchi.backgroundAnimations"].default, true);
+    const provider = fs.readFileSync(path.join(root, "vscode/src/sidebarProvider.ts"), "utf8");
+    assert.match(provider, /{{backgroundOpacity}}/);
+    assert.match(provider, /{{backgroundAnimations}}/);
+    const panel = fs.readFileSync(path.join(root, "pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt"), "utf8");
+    assert.match(panel, /{{backgroundOpacity}}/);
+    assert.match(panel, /{{backgroundAnimations}}/);
+    const settings = fs.readFileSync(path.join(root, "pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt"), "utf8");
+    assert.match(settings, /var backgroundOpacity: String = "medium"/);
+    assert.match(settings, /var backgroundAnimations: Boolean = true/);
   });
 
   it("both IDEs load backgroundArt.js", () => {
