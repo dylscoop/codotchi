@@ -2052,21 +2052,31 @@
   /** How far the hand is pressed onto the head (0..1); two pats per reaction. */
   function patDrop(t) { return Math.sin(((t * 2) % 1) * Math.PI); }
 
+  /** Scale of the pat hand relative to the mood prop-pixel size. */
+  var PAT_HAND_SCALE = 0.5;
+
   /** A sleeved hand above the head that pats down twice. */
   function drawPatHand(ctx, t, box, facingLeft, px) {
-    var hx = Math.round(patHeadX(box, facingLeft) - 3.5 * px);
-    var tipY = Math.round(box.y + px - (1 - patDrop(t)) * 5 * px);   // fingertips
+    var hp = px * PAT_HAND_SCALE;                    // hand pixel — half a prop-pixel
+    var hx = patHeadX(box, facingLeft) - 3.5 * hp;
+    var tipY = box.y + hp - (1 - patDrop(t)) * 5 * hp;   // fingertips
+    // Cells in hand-pixel units, snapped to whole canvas pixels
+    function cell(cx, cy, cw, ch) {
+      var x0 = Math.round(hx + cx * hp), y0 = Math.round(tipY + cy * hp);
+      ctx.fillRect(x0, y0, Math.max(1, Math.round(hx + (cx + cw) * hp) - x0),
+                           Math.max(1, Math.round(tipY + (cy + ch) * hp) - y0));
+    }
     ctx.save();
     ctx.globalAlpha = Math.min(1, Math.min(t, 1 - t) * 10);
     ctx.fillStyle = "#4a90d9";                       // sleeve cuff
-    ctx.fillRect(hx, tipY - 7 * px, 7 * px, 2 * px);
+    cell(0, -7, 7, 2);
     ctx.fillStyle = "#f5c5a3";                       // palm
-    ctx.fillRect(hx, tipY - 5 * px, 7 * px, 3 * px);
+    cell(0, -5, 7, 3);
     for (var f = 0; f < 4; f++) {                    // fingers
-      ctx.fillRect(hx + f * 2 * px, tipY - 2 * px, px, 2 * px);
+      cell(f * 2, -2, 1, 2);
     }
     ctx.fillStyle = "#d9a07c";                       // palm shading
-    ctx.fillRect(hx, tipY - 3 * px, 7 * px, px);
+    cell(0, -3, 7, 1);
     ctx.restore();
   }
 

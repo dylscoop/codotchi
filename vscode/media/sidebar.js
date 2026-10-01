@@ -1307,7 +1307,7 @@
   /**
    * Height (canvas px) of the band above the head used by the floating z's,
    * the pat hearts and the patting hand, so the speech bubble sits above them.
-   * z's and hearts rise ~20px; the hand reaches ~12 prop-pixels above the head.
+   * z's and hearts rise ~20px; the (half-size) hand reaches ~6 prop-pixels above the head.
    * @param {boolean} active — the pet is asleep or being patted
    * @param {number}  px     — mood / pat prop pixel size
    * @returns {number}
@@ -1318,7 +1318,7 @@
     for (var i = 0; i < all.length; i++) {
       if (all[i].kind === "z" || all[i].kind === "heart") { lingering = true; break; }
     }
-    return (active || lingering) ? Math.max(24, 12 * px + 4) : 0;
+    return (active || lingering) ? Math.max(24, 6 * px + 4) : 0;
   }
 
   if (!REDUCED_MOTION) {

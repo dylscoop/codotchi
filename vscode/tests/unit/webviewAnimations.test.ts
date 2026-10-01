@@ -308,6 +308,22 @@ describe("pat reaction (vscode/media/sprites.js window.spritePat)", () => {
     assert.equal(none.calls.fillRect ?? 0, 0);
   });
 
+  it("draws the patting hand at half a prop-pixel per hand pixel", () => {
+    for (const px of [2, 4, 5, 8]) {
+      const rects: number[][] = [];
+      const ctx = new Proxy({} as any, {
+        get(t, k: string) { return k in t ? t[k] : k === "fillRect" ? (...a: number[]) => { rects.push(a); } : () => undefined; },
+        set(t, k: string, v) { t[k] = v; return true; },
+      });
+      pat.drawHand(ctx, 0.25, box, false, px);
+      const w = Math.max(...rects.map((r) => r[0] + r[2])) - Math.min(...rects.map((r) => r[0]));
+      const h = Math.max(...rects.map((r) => r[1] + r[3])) - Math.min(...rects.map((r) => r[1]));
+      assert.ok(Math.abs(w - 3.5 * px) <= 1, `width at px=${px}: ${w}`);    // was 7 * px
+      assert.ok(Math.abs(h - 3.5 * px) <= 1, `height at px=${px}: ${h}`);   // was 7 * px
+      for (const r of rects) { assert.ok(r[2] >= 1 && r[3] >= 1 && Number.isInteger(r[0]) && Number.isInteger(r[1])); }
+    }
+  });
+
   it("spawns hearts for every pet, prr for the cat and smoke for the dragon, within the cap", () => {
     const particles: any[] = [];
     pat.spawn(particles, "dog", box, false, 1, () => 0);
