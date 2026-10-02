@@ -2243,3 +2243,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** The device keeps `DEVICE_GAP = 3` prop-pixels from the pet on whichever side it faces.
 
 **Tests:** `vscode/tests/unit/webviewAnimations.test.ts` checks the gap for every device, facing either way.
+
+## BUGFIX-185 — PyCharm GitHub sign-in failed with a bare "HTTP 400"
+
+**Status:** Fixed (branch `fix/v2.25.6-pycharm-signin-help`)
+**File:** `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `CodotchiConfigurable.kt`
+
+**Problem:** Leaderboard sign-in in PyCharm (from the panel or from Settings) showed "Could not start GitHub sign-in (HTTP 400)". The real cause was that Device Flow had been turned off on the Codotchi OAuth app (`device_flow_disabled`), which broke sign-in for every PyCharm user. The plugin threw away GitHub's explanation, and there was nothing to tell users what to do.
+
+**Fix:** The setting was turned back on for the OAuth app, which fixed sign-in for all users without an update. The plugin now includes GitHub's `error_description` in the error. The failure notification and the Settings page link to a new "GitHub sign-in help" section in `pycharm/README.md` / `plugin.xml`, and the Settings status label shows the failure.

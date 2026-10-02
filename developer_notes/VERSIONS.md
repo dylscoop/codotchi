@@ -1,6 +1,21 @@
 # Version History
 
-## v2.25.5 — current
+## v2.25.6 — current
+
+### Changes from v2.25.5 (PyCharm GitHub sign-in help — branch fix/v2.25.6-pycharm-signin-help)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/.../CodotchiPlugin.kt` | device-code request failures now include GitHub's `error_description` (e.g. "Device Flow must be explicitly enabled") instead of a bare HTTP code; token polling reads `errorStream` on a 4xx, so GitHub's error is shown instead of being lost to an exception; the sign-in failed notification gains a **Sign-in help** action; `startLeaderboardSignIn()` takes an optional failure callback |
+| `pycharm/.../LeaderboardSubmitter.kt` | new `GITHUB_SIGN_IN_HELP_URL` (pycharm/README.md#github-sign-in-help) |
+| `pycharm/.../CodotchiConfigurable.kt` | **Sign-in help** link under the Leaderboard sign-in buttons; the status label shows the failure instead of staying on "Opening browser…" |
+| `pycharm/README.md`, `plugin.xml` | new "GitHub sign-in help" section: what users do, plus troubleshooting; 2.25.6 change notes |
+| `developer_notes/BUGFIXES.md` | BUGFIX-185 |
+| all manifests, `README.md` | version 2.25.5 → 2.25.6 |
+
+---
+
+## v2.25.5
 
 **Updated constants (backgroundArt.js):** `SKY_KEYS` gain a mirrored sunrise (07:00 first light · 08:00 sunrise · 09:00 golden morning · 10:00 pastel), dusk now fades to night at 22:00 · `DARK_KEYS` [0,1] [6.5,1] [9,0] [16.5,0] [21.5,1] · `SUNRISE`/`SUNSET` 7 / 19 (was 6 / 18.5) · `getTimeOfDay()` uses the legacy buckets dawn 07–10 · morning 10–13 · afternoon 13–16 · sunset 16–19 · dusk 19–22 · night 22–07. **New constants (sidebar.js):** `SNACK_SCALE` 3 (was 2) · `SNACK_HALF_W` 8 · `POO_SCALE` 3 (was 2)
 

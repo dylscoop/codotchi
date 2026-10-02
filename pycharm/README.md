@@ -182,6 +182,38 @@ shows **Sign in to GitHub again** in the panel, and a notification with a
 **Sign in** action if live push was running in the background. Submitting a
 score starts a fresh sign-in automatically and retries the submission once.
 
+### GitHub sign-in help
+
+You sign in once. You don't need a personal access token, your own GitHub app,
+or any changes to your GitHub settings.
+
+1. Click **Sign in to GitHub (Leaderboard)**, either in the pet panel or in
+   **Settings → Tools → Codotchi**.
+2. A browser opens at github.com/login/device, and a PyCharm notification shows
+   an 8-character code.
+3. Enter the code, sign in to GitHub if asked, and click **Authorize**. Codotchi
+   only asks for the `public_repo` permission, which it needs to submit
+   leaderboard entries.
+4. Go back to PyCharm. It picks up the sign-in on its own within a few seconds.
+
+If it doesn't work:
+
+- **The browser didn't open:** go to https://github.com/login/device yourself
+  and enter the code from the notification.
+- **The code expired:** codes last about 15 minutes. Click **Try again** on the
+  notification, or click the sign-in button again.
+- **You cancelled the GitHub page:** sign in again and click **Authorize** this
+  time.
+- **"Could not start GitHub sign-in (HTTP 4xx…)":** the problem is on Codotchi's
+  side, not yours.
+  [Open an issue](https://github.com/dylscoop/codotchi/issues/new) and include
+  the full error text.
+- **"Network error during GitHub sign-in":** PyCharm needs to reach github.com.
+  If you're behind a corporate proxy, set it up under
+  **Settings → Appearance & Behavior → System Settings → HTTP Proxy**.
+- **You were signed out unexpectedly:** you probably revoked Codotchi at
+  github.com/settings/applications. Sign in again.
+
 ## Mini-games
 
 Clicking **Play** opens the game picker (requires energy). Three games are

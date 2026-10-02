@@ -11,7 +11,8 @@ import java.net.URLEncoder
 private const val LEADERBOARD_REPO_OWNER = "dylscoop"
 private const val LEADERBOARD_REPO_NAME  = "codotchi"
 const val LEADERBOARD_PAGES_URL = "https://$LEADERBOARD_REPO_OWNER.github.io/$LEADERBOARD_REPO_NAME/leaderboard/"
-private const val LEADERBOARD_ISSUE_URL  = "https://github.com/$LEADERBOARD_REPO_OWNER/$LEADERBOARD_REPO_NAME/issues/new"
+const val GITHUB_SIGN_IN_HELP_URL = "https://github.com/$LEADERBOARD_REPO_OWNER/$LEADERBOARD_REPO_NAME/blob/main/pycharm/README.md#github-sign-in-help"
+private const val LEADERBOARD_ISSUE_URL  ="https://github.com/$LEADERBOARD_REPO_OWNER/$LEADERBOARD_REPO_NAME/issues/new"
 
 /**
  * Builds a GitHub issue-creation URL pre-filled with the leaderboard score data.

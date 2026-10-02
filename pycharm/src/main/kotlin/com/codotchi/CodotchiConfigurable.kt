@@ -109,7 +109,11 @@ class CodotchiConfigurable : Configurable {
 
         signInBtn.addActionListener {
             val plugin = ApplicationManager.getApplication().service<CodotchiPlugin>()
-            plugin.startLeaderboardSignIn()
+            plugin.startLeaderboardSignIn { error ->
+                ApplicationManager.getApplication().invokeLater {
+                    signInStatusLabel.text = "$error See Sign-in help below."
+                }
+            }
             signInStatusLabel.text = "Opening browser for sign-in…"
         }
         signOutBtn.addActionListener {
@@ -217,6 +221,9 @@ class CodotchiConfigurable : Configurable {
         gbc.gridx = 1
         panel.add(signOutBtn, gbc)
         row++
+        addFull(panel, com.intellij.ui.components.ActionLink("Sign-in help") {
+            com.intellij.ide.BrowserUtil.browse(GITHUB_SIGN_IN_HELP_URL)
+        })
 
         // Developer settings — collapsed by default to keep the page uncluttered
         val devContent = JPanel(GridBagLayout())
