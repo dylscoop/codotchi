@@ -86,10 +86,10 @@ async function main() {
       break;
 
     case "feed": {
-      const result = ge.feedMeal(state, gameConfig);
-      state = result.state ?? result;
-      const ev = (result.events ?? []).find((e) => e.type === "meal_refused");
-      message = ev ? "Not hungry right now."
+      // The terminal doesn't track a per-cycle meal count, so the cap never applies here.
+      state = ge.feedMeal(state, 0);
+      message = state.events.includes("meal_refused_sick") ? "Too sick to eat — give medicine first."
+        : state.events.includes("meal_refused") ? "Not hungry right now."
         : state.events?.includes("attention_call_answered_craving") ? whimSpeech("craving")
         : "Nom nom! Hunger restored.";
       break;
@@ -106,7 +106,9 @@ async function main() {
       // No mini-game in the terminal — play() applies the stat changes and
       // answers a "play" (or "unhappiness") attention call.
       const next = ge.play(state);
-      if (next.events.includes("play_refused_no_energy")) {
+      if (next.events.includes("play_refused_sick")) {
+        message = "Too sick to play — give medicine first.";
+      } else if (next.events.includes("play_refused_no_energy")) {
         message = "Too tired to play right now.";
       } else {
         const answered = next.events.includes("attention_call_answered_play");
@@ -120,7 +122,9 @@ async function main() {
       // The IDE drops a snack on the floor and the pet walks to it; in the
       // terminal it's eaten straight away. startSnack answers a snack craving.
       const placed = ge.startSnack(state);
-      if (placed.events.includes("snack_refused")) {
+      if (placed.events.includes("snack_refused_sick")) {
+        message = "Too sick for a snack — give medicine first.";
+      } else if (placed.events.includes("snack_refused")) {
         message = "No more snacks right now.";
       } else {
         const answered = placed.events.includes("attention_call_answered_craving");
@@ -148,10 +152,10 @@ async function main() {
       if (!state.sleeping) {
         message = "Already awake!";
       } else {
-        // wake = toggle sleep off; use sleep function if it toggles
-        const result = ge.sleep(state, gameConfig);
-        state = result.state ?? result;
-        message = "Wakey wakey!";
+        state = ge.wake(state);
+        message = state.events.includes("break_nap_no_wake")
+          ? `Shh — on a break nap. Wakes up on their own in about ${Math.max(1, Math.ceil(state.breakNapTicksRemaining * 3 / 60))} min.`
+          : "Wakey wakey!";
       }
       break;
     }
@@ -164,12 +168,12 @@ async function main() {
     }
 
     case "medicine": {
-      const result = ge.giveMedicine(state, gameConfig);
-      state = result.state ?? result;
-      const ev = (result.events ?? []).find((e) => e.type === "medicine_refused");
-      message = ev
+      state = ge.giveMedicine(state);
+      message = state.events.includes("medicine_not_needed")
         ? "Not sick — medicine refused."
-        : `Medicine given. ${state.sick ? "Still recovering..." : "Feeling better!"}`;
+        : state.sick
+          ? `Medicine given. Still recovering... (${ge.MEDICINE_DOSES_TO_CURE - state.medicineDosesGiven} more dose${ge.MEDICINE_DOSES_TO_CURE - state.medicineDosesGiven === 1 ? "" : "s"} to go)`
+          : "Medicine given. Feeling better!";
       break;
     }
 
