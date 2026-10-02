@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.26.1] — 2026-10-02
+
+### Fixed
+
+- **Sunrise** — the scenic sunrise now lasts the whole dawn stage: the sky turns orange by 7:30, stays that way until 9:00, then turns golden and finishes at 10:00, just like the legacy background.
+
 ## [2.26.0] — 2026-10-02
 
 ### Changed

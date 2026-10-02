@@ -48,15 +48,16 @@
   // Sky keyframes: [hour, top colour, horizon colour]
   // =========================================================================
 
-  // The sunrise mirrors the sunset, and the stages line up with the legacy
-  // buckets: dawn 7–10 | morning 10–13 | afternoon 13–16 | sunset 16–19 | dusk 19–22 | night 22–7.
+  // The sunrise uses the sunset colours and lasts the whole legacy dawn bucket (ends at 10:00).
+  // Buckets: dawn 7–10 | morning 10–13 | afternoon 13–16 | sunset 16–19 | dusk 19–22 | night 22–7.
   var SKY_KEYS = [
     [0,    "#0b1030", "#1e2a58"],   // night
     [6,    "#0b1030", "#1e2a58"],
     [7,    "#26204e", "#8a4a78"],   // first light (mirrors dusk): the dawn bucket starts here
-    [8,    "#4a4a8c", "#f08a48"],   // sunrise (mirrors sunset)
-    [9,    "#6a86c4", "#e8a87a"],   // golden morning (mirrors golden hour)
-    [10,   "#a9cdea", "#c4d4de"],   // soft pastel morning (horizon kept off-white so the pet reads)
+    [7.5,  "#4a4a8c", "#f08a48"],   // sunrise (mirrors sunset)
+    [9,    "#4a4a8c", "#f08a48"],   // sunrise held
+    [9.5,  "#6a86c4", "#e8a87a"],   // golden morning (mirrors golden hour)
+    [10,   "#a9cdea", "#c4d4de"],   // soft pastel morning: the sunrise is over (horizon kept off-white so the pet reads)
     [12.5, "#8cc4ee", "#abd4f2"],   // midday
     [14.5, "#7ab4e6", "#9ac7eb"],   // afternoon
     [16,   "#6a86c4", "#e8a87a"],   // golden hour: the sunset bucket starts here
@@ -67,7 +68,7 @@
   ];
 
   // How dark the scene is (0 day … 1 night): brightens through the sunrise, darkens through dusk.
-  var DARK_KEYS = [[0, 1], [6.5, 1], [9, 0], [16.5, 0], [21.5, 1], [24, 1]];
+  var DARK_KEYS = [[0, 1], [6, 1], [8.5, 0], [16.5, 0], [21.5, 1], [24, 1]];
 
   var SKY_BANDS = 8;
 

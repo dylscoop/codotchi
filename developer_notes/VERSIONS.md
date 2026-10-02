@@ -1,6 +1,22 @@
 # Version History
 
-## v2.26.0 — current
+## v2.26.1 — current
+
+**Updated constants (backgroundArt.js):** `SKY_KEYS` dawn: 07:00 first light · 07:30 sunrise · 09:00 sunrise held · 09:30 golden morning · 10:00 pastel (was 07:00 / 08:00 / 09:00 / 10:00) · `DARK_KEYS` [0,1] [6,1] [8.5,0] [16.5,0] [21.5,1] (was [6.5,1] [9,0])
+
+### Changes from v2.26.0 (sunrise lasts until 10:00 — branch fix/v2.26.1-longer-sunrise)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/backgroundArt.js` | BUGFIX-188: the scenic sunrise is held from 07:30 to 09:00 and ends at 10:00, the same as the legacy dawn stage; the darkness ramp ends at 08:30 |
+| `vscode/tests/unit/backgroundArt.test.ts` | full sunrise at 07:30, 08:00 and 09:00; warm at 09:45; blue from 10:00; fully light by 09:00 |
+| `vscode/CHANGELOG.md`, `plugin.xml` | 2.26.1 notes |
+| `developer_notes/BUGFIXES.md` | BUGFIX-188 |
+| all manifests, `README.md` | version 2.26.0 → 2.26.1 |
+
+---
+
+## v2.26.0
 
 **Changed constants (gameEngine):** `BREAK_NAP_TICKS` 60 → 100 (5 min) · `MEDICINE_DOSES_TO_CURE` (3) now exported. **New events:** `meal_refused_sick`, `snack_refused_sick`, `play_refused_sick`, `break_nap_no_wake`. **New setting:** `codotchi.statusBarEnabled` (default true).
 
