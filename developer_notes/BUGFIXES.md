@@ -2274,3 +2274,14 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** `wake` calls `wake()` and reports a break nap; `feed` passes 0 (the terminal keeps no meal count) and checks string events; `medicine` checks `medicine_not_needed` and shows the doses left.
 
 **Tests:** `claude-codotchi/tests/integration/sickAndNap.test.mjs`.
+
+## BUGFIX-188 — The scenic sunrise was too short to notice
+
+**Status:** Fixed (branch `fix/v2.26.1-longer-sunrise`)
+**File:** `vscode/media/backgroundArt.js`
+
+**Problem:** the scenic sky only looked like a sunrise from about 07:30 to 08:45. At 07:00 it was still the purple dusk colour with the moon out, and by 09:00 it had turned golden and was fading to blue. The legacy background shows its dawn tint and low sun for the whole 07–10 dawn stage, so the scenic sunrise was easy to miss.
+
+**Fix:** `SKY_KEYS` now go first light 07:00 → full sunrise 07:30, held until 09:00 → golden 09:30 → pastel 10:00, so the sunrise ends at 10:00 like the legacy dawn stage. `DARK_KEYS` ramp 06:00 → 08:30 (was 06:30 → 09:00), so the moon and stars are gone by the time the sky turns orange.
+
+**Tests:** `vscode/tests/unit/backgroundArt.test.ts`.
