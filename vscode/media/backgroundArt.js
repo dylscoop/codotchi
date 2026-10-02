@@ -48,23 +48,26 @@
   // Sky keyframes: [hour, top colour, horizon colour]
   // =========================================================================
 
+  // The sunrise mirrors the sunset, and the stages line up with the legacy
+  // buckets: dawn 7–10 | morning 10–13 | afternoon 13–16 | sunset 16–19 | dusk 19–22 | night 22–7.
   var SKY_KEYS = [
     [0,    "#0b1030", "#1e2a58"],   // night
-    [5,    "#0b1030", "#1e2a58"],
-    [6.5,  "#5c6aa8", "#f2a878"],   // dawn
-    [8,    "#a9cdea", "#c4d4de"],   // soft pastel morning (horizon kept off-white so the pet reads)
-    [10.5, "#a9cdea", "#c4d4de"],
+    [6,    "#0b1030", "#1e2a58"],
+    [7,    "#26204e", "#8a4a78"],   // first light (mirrors dusk): the dawn bucket starts here
+    [8,    "#4a4a8c", "#f08a48"],   // sunrise (mirrors sunset)
+    [9,    "#6a86c4", "#e8a87a"],   // golden morning (mirrors golden hour)
+    [10,   "#a9cdea", "#c4d4de"],   // soft pastel morning (horizon kept off-white so the pet reads)
     [12.5, "#8cc4ee", "#abd4f2"],   // midday
     [14.5, "#7ab4e6", "#9ac7eb"],   // afternoon
     [16,   "#6a86c4", "#e8a87a"],   // golden hour: the sunset bucket starts here
     [17.5, "#4a4a8c", "#f08a48"],   // sunset
     [19,   "#26204e", "#8a4a78"],   // dusk
-    [20.5, "#0b1030", "#1e2a58"],   // night
+    [22,   "#0b1030", "#1e2a58"],   // night
     [24,   "#0b1030", "#1e2a58"],
   ];
 
-  // How dark the scene is (0 day … 1 night).
-  var DARK_KEYS = [[0, 1], [5, 1], [7.5, 0], [16, 0], [20, 1], [24, 1]];
+  // How dark the scene is (0 day … 1 night): brightens through the sunrise, darkens through dusk.
+  var DARK_KEYS = [[0, 1], [6.5, 1], [9, 0], [16.5, 0], [21.5, 1], [24, 1]];
 
   var SKY_BANDS = 8;
 
@@ -340,16 +343,16 @@
   }
 
   /**
-   * Clock-hour bucket:
-   * dawn 6–8 | morning 8–12 | afternoon 12–16 | sunset 16–19 | dusk 19–21 | night 21–6
+   * Clock-hour bucket, shared with the legacy background:
+   * dawn 7–10 | morning 10–13 | afternoon 13–16 | sunset 16–19 | dusk 19–22 | night 22–7
    */
   function getTimeOfDay(date) {
     var h = date.getHours();
-    if (h >= 6  && h < 8)  { return "dawn"; }
-    if (h >= 8  && h < 12) { return "morning"; }
-    if (h >= 12 && h < 16) { return "afternoon"; }
-    if (h >= 16 && h < 19) { return "sunset"; }
-    if (h >= 19 && h < 21) { return "dusk"; }
+    if (h >= 7  && h < 10) { return "dawn";      }
+    if (h >= 10 && h < 13) { return "morning";   }
+    if (h >= 13 && h < 16) { return "afternoon"; }
+    if (h >= 16 && h < 19) { return "sunset";    }
+    if (h >= 19 && h < 22) { return "dusk";      }
     return "night";
   }
 
@@ -476,8 +479,11 @@
       n = Math.max(2, Math.floor(W / 40));
       for (k = 0; k < n; k++) { L.bits.push({ x: Math.floor(rand() * W / p) * p, w: 3 + Math.floor(rand() * 5) }); }
     } else if (season === "autumn") {
-      L.props.push({ kind: "pumpkin", x: Math.round(W * (wide ? 0.28 : 0.35)) });
-      if (wide) { L.props.push({ kind: "pumpkin", x: Math.round(W * 0.58) }); }
+      // One pumpkin, kept at the side so snacks and poos in the middle stay easy to see:
+      // just inside the right-hand tree when wide, at the far left when narrow (the
+      // leaf pile sits by the single tree on the right).
+      var edgeTree = L.trees[L.trees.length - 1];
+      L.props.push({ kind: "pumpkin", x: wide ? edgeTree.x - PUMPKIN[0].length * p - p : margin });
       for (k = 0; k < 3; k++) { L.props.push({ kind: "toadstool", x: Math.floor(rand() * (W - 3 * pp)) }); }
       var pileTree = L.trees[0];
       L.props.push({ kind: "pile", x: Math.max(0, pileTree.x + (wide ? pileTree.w : -8 * pp)) });
@@ -537,7 +543,7 @@
     ctx.restore();
   }
 
-  var SUNRISE = 6, SUNSET = 18.5;   // the sun crosses the sky between these hours
+  var SUNRISE = 7, SUNSET = 19;     // the sun crosses the sky between these hours (low and warm at both ends)
 
   function drawSun(ctx, W, L, h) {
     var t = (h - SUNRISE) / (SUNSET - SUNRISE);
@@ -928,18 +934,9 @@
   // animation settings do not apply; it is a single static frame.
   // =========================================================================
 
-  /**
-   * Pre-2.25 clock-hour bucket:
-   * "dawn" 7–10h | "morning" 10–13h | "afternoon" 13–16h | "sunset" 16–19h | "dusk" 19–22h | "night" 22–7h
-   */
+  /** Pre-2.25 clock-hour bucket — the scenic sky now uses the same stages (getTimeOfDay). */
   function legacyTimeOfDay(date) {
-    var h = date.getHours();
-    if (h >= 7  && h < 10) { return "dawn";      }
-    if (h >= 10 && h < 13) { return "morning";   }
-    if (h >= 13 && h < 16) { return "afternoon"; }
-    if (h >= 16 && h < 19) { return "sunset";    }
-    if (h >= 19 && h < 22) { return "dusk";      }
-    return "night";
+    return getTimeOfDay(date);
   }
 
   /**

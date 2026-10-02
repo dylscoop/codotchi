@@ -28,6 +28,12 @@
 
   /** Energy cost of the pat action — must match PAT_ENERGY_COST in gameEngine.ts. */
   var PAT_ENERGY_COST = 20;
+  /** Pixel size of floor snacks (each grid cell is SNACK_SCALE × SNACK_SCALE px). */
+  var SNACK_SCALE = 3;
+  /** Half the width of a typical 5–6-column snack at SNACK_SCALE — the pet aims at item.x + this. */
+  var SNACK_HALF_W = 8;
+  /** Pixel size of poos on the floor. */
+  var POO_SCALE = 3;
 
   /** Base movement speed in px/s per life stage (horizontal). */
   const STAGE_BASE_SPEED_PPS = {
@@ -1119,9 +1125,9 @@
       var speed = getSpeedPPS(lastState);
       if (snackItems.length > 0 && speed > 0) {
         var closestSnack = snackItems[0];
-        var closestDist  = Math.abs((petX + bWidth / 2) - (snackItems[0].x + 4));
+        var closestDist  = Math.abs((petX + bWidth / 2) - (snackItems[0].x + SNACK_HALF_W));
         for (var si = 1; si < snackItems.length; si++) {
-          var sd = Math.abs((petX + bWidth / 2) - (snackItems[si].x + 4));
+          var sd = Math.abs((petX + bWidth / 2) - (snackItems[si].x + SNACK_HALF_W));
           if (sd < closestDist) { closestDist = sd; closestSnack = snackItems[si]; }
         }
         if (closestDist < bWidth / 2 + 4) {
@@ -1132,7 +1138,7 @@
           petVx     = 0;
           vscode.postMessage({ command: "snack_consumed" });
         } else {
-          petVx         = (closestSnack.x + 4) > (petX + bWidth / 2) ? speed : -speed;
+          petVx         = (closestSnack.x + SNACK_HALF_W) > (petX + bWidth / 2) ? speed : -speed;
           petFacingLeft = petVx < 0;
           petX         += petVx * dt;
         }
@@ -1187,9 +1193,9 @@
       if (snackItems.length > 0 && speed > 0) {
         // Snack targeting — use center-to-center distance (pet center vs snack center)
         var closestSnack = snackItems[0];
-        var closestDist  = Math.abs((petX + bWidth / 2) - (snackItems[0].x + 4));
+        var closestDist  = Math.abs((petX + bWidth / 2) - (snackItems[0].x + SNACK_HALF_W));
         for (var si = 1; si < snackItems.length; si++) {
-          var sd = Math.abs((petX + bWidth / 2) - (snackItems[si].x + 4));
+          var sd = Math.abs((petX + bWidth / 2) - (snackItems[si].x + SNACK_HALF_W));
           if (sd < closestDist) { closestDist = sd; closestSnack = snackItems[si]; }
         }
         if (closestDist < bWidth / 2 + 4) {
@@ -1201,7 +1207,7 @@
           petVx     = 0;
           vscode.postMessage({ command: "snack_consumed" });
         } else {
-          petVx         = (closestSnack.x + 4) > (petX + bWidth / 2) ? speed : -speed;
+          petVx         = (closestSnack.x + SNACK_HALF_W) > (petX + bWidth / 2) ? speed : -speed;
           petFacingLeft = petVx < 0;
           petX         += petVx * dt;
         }
@@ -1640,7 +1646,7 @@
       var siBWidth = effectiveBWidth(state.alive ? state : lastState, siBSize);
       var siMinX   = 4;
       var siMaxX   = siW - siBWidth - 4;
-      var siRawX   = 4 + Math.floor(Math.random() * Math.max(1, siW - 20));
+      var siRawX   = 4 + Math.floor(Math.random() * Math.max(1, siW - 24));
       snackItems.push({
         x:    Math.max(siMinX, Math.min(siMaxX, siRawX)),
         type: (_cc && state.spriteType === "tim") ? "tea"
@@ -2030,6 +2036,25 @@
   // ── Sprite drawing ───────────────────────────────────────────────────────
 
   /**
+   * Draw a 1-px outline around every set cell of a pixel grid, so the coloured
+   * cells drawn on top of it stand out against a busy background.
+   *
+   * @param {number[][]} grid  - Rows of cells; 0 = empty
+   * @param {number}     x     - Left edge in canvas pixels
+   * @param {number}     y     - Top edge in canvas pixels
+   * @param {number}     scale - Canvas pixels per cell
+   * @param {string}     colour
+   */
+  function drawGridOutline(grid, x, y, scale, colour) {
+    spriteCtx.fillStyle = colour;
+    grid.forEach(function (row, ry) {
+      row.forEach(function (cell, rx) {
+        if (cell) { spriteCtx.fillRect(x + rx * scale - 1, y + ry * scale - 1, scale + 2, scale + 2); }
+      });
+    });
+  }
+
+  /**
    * Draw background, ground line, poos, gift box, snack items.
    * @param {object} state
    */
@@ -2068,7 +2093,7 @@
       [0,1,1,1,1,0],
       [1,1,1,1,1,1],
     ];
-    var PS = 2;
+    var PS = POO_SCALE;
     var pW = POO_PIXELS[0].length * PS;
     var pH = POO_PIXELS.length    * PS;
     var pooGroundY = H - 12 - pH;
@@ -2080,6 +2105,8 @@
     var numPoos = Math.min(state.poops || 0, 3);
     for (var pi = 0; pi < numPoos; pi++) {
       var pooX = pooXPositions[pi];
+      // Light outline so the dark poo stands out on brown and green ground
+      drawGridOutline(POO_PIXELS, pooX, pooGroundY, PS, "rgba(255,255,255,0.6)");
       POO_PIXELS.forEach(function (row, ry) {
         row.forEach(function (cell, rx) {
           if (!cell) { return; }
@@ -2134,6 +2161,7 @@
         var GS = 2;
         var gbH = GIFT_PIXELS.length * GS;
         var gbY = H - 12 - gbH;
+        drawGridOutline(GIFT_PIXELS, gbX, gbY, GS, "rgba(0,0,0,0.55)");
         GIFT_PIXELS.forEach(function (row, ry) {
           row.forEach(function (cell, rx) {
             if (!cell) { return; }
@@ -2196,7 +2224,7 @@
         [1,1,1,2,1],
         [0,1,1,1,0],
       ];
-      var SS = 2;
+      var SS = SNACK_SCALE;
       snackItems.forEach(function (item) {
         var spx = item.type === "tea"      ? TEA_MUG_PIXELS
                 : item.type === "guinness" ? GUINNESS_PIXELS
@@ -2206,6 +2234,8 @@
         var spH = spx.length * SS;
         var sY  = H - 12 - spH;
         var sX  = Math.round(item.x);
+        // Dark outline so the snack stands out on any background
+        drawGridOutline(spx, sX, sY, SS, "rgba(0,0,0,0.55)");
         spx.forEach(function (row, ry) {
           row.forEach(function (cell, rx) {
             if (!cell) { return; }

@@ -1,6 +1,22 @@
 # Version History
 
-## v2.25.4 — current
+## v2.25.5 — current
+
+**Updated constants (backgroundArt.js):** `SKY_KEYS` gain a mirrored sunrise (07:00 first light · 08:00 sunrise · 09:00 golden morning · 10:00 pastel), dusk now fades to night at 22:00 · `DARK_KEYS` [0,1] [6.5,1] [9,0] [16.5,0] [21.5,1] · `SUNRISE`/`SUNSET` 7 / 19 (was 6 / 18.5) · `getTimeOfDay()` uses the legacy buckets dawn 07–10 · morning 10–13 · afternoon 13–16 · sunset 16–19 · dusk 19–22 · night 22–07. **New constants (sidebar.js):** `SNACK_SCALE` 3 (was 2) · `SNACK_HALF_W` 8 · `POO_SCALE` 3 (was 2)
+
+### Changes from v2.25.4 (snack/poo visibility, one autumn pumpkin, sunrise — branch feat/v2.25.5-snack-visibility)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | snacks and poos drawn at scale 3; new `drawGridOutline` puts a 1-px outline round snacks, the gift box (dark) and poos (light); the snack chase / eat checks aim at `item.x + SNACK_HALF_W`; snack spawn range keeps 24 px clear of the right edge |
+| `vscode/media/backgroundArt.js` | autumn `layout()` places one pumpkin — just inside the right-hand tree when wide, at the left margin when narrow; mirrored sunrise keyframes, new darkness ramp and sun hours; `getTimeOfDay` uses the legacy buckets and `legacyTimeOfDay` delegates to it |
+| `vscode/tests/unit/backgroundArt.test.ts` | legacy-aligned buckets, sunrise mirrors sunset, morning checks moved to 10–14, fairy lights off from 13; one side pumpkin; snack/poo scale, outline and centre-aim checks |
+| `vscode/package.json`, `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | sunrise in the time-of-day prose; 2.25.5 notes |
+| all manifests, `README.md` | version 2.25.4 → 2.25.5 |
+
+---
+
+## v2.25.4
 
 **New constants (gameEngine):** `BREAK_NAP_TICKS` 60 (3 min) · **Changed:** `FEED_MEAL_HUNGER_BOOST` 20 → 15
 

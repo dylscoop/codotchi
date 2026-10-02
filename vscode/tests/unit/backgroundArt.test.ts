@@ -70,16 +70,17 @@ describe("background seasons and time of day (backgroundArt.js)", () => {
     }
   });
 
-  it("buckets the clock hour", () => {
+  it("buckets the clock hour the same way as the legacy background", () => {
     const cases: Array<[number, string]> = [
-      [5, "night"], [6, "dawn"], [7, "dawn"], [8, "morning"], [11, "morning"], [12, "afternoon"],
-      [15, "afternoon"], [16, "sunset"], [18, "sunset"], [19, "dusk"], [20, "dusk"], [21, "night"], [0, "night"],
+      [6, "night"], [7, "dawn"], [9, "dawn"], [10, "morning"], [12, "morning"], [13, "afternoon"],
+      [15, "afternoon"], [16, "sunset"], [18, "sunset"], [19, "dusk"], [21, "dusk"], [22, "night"], [0, "night"],
     ];
     for (const [h, tod] of cases) { assert.equal(art.getTimeOfDay(at(h)), tod, `hour ${h}`); }
+    for (let h = 0; h < 24; h++) { assert.equal(art.getTimeOfDay(at(h)), art.legacyTimeOfDay(at(h)), `hour ${h}`); }
   });
 
   it("morning sky is light, not dusky", () => {
-    for (const h of [8, 9, 10, 11]) {
+    for (const h of [10, 11, 12]) {
       const sky = art.skyColours(at(h, 30));
       assert.ok(luminance(sky.top) > 0.45, `top at ${h}:30 is ${sky.top}`);
       assert.ok(luminance(sky.bottom) > 0.5, `horizon at ${h}:30 is ${sky.bottom}`);
@@ -88,7 +89,7 @@ describe("background seasons and time of day (backgroundArt.js)", () => {
   });
 
   it("daytime sky has a gentle gradient, not a near-white horizon", () => {
-    for (let h = 8; h <= 14; h++) {
+    for (let h = 10; h <= 14; h++) {
       const sky = art.skyColours(at(h, 30));
       assert.ok(luminance(sky.bottom) < 0.7, `horizon at ${h}:30 is too white: ${sky.bottom}`);
       assert.ok(luminance(sky.bottom) - luminance(sky.top) < 0.15, `gradient at ${h}:30 is too strong`);
@@ -115,6 +116,16 @@ describe("background seasons and time of day (backgroundArt.js)", () => {
     assert.ok(warm(art.skyColours(at(17, 30)).bottom) > 120, "full sunset at 17:30");
   });
 
+  it("the dawn bucket has a sunrise that mirrors the sunset", () => {
+    const warm = (hex: string) => { const [r, , b] = rgb(hex); return r - b; };
+    assert.ok(warm(art.skyColours(at(8)).bottom) > 120, "full sunrise at 08:00");
+    assert.ok(warm(art.skyColours(at(9, 15)).bottom) > 40, "still warm at 09:15");
+    assert.ok(warm(art.skyColours(at(11)).bottom) < 0, "blue by 11:00");
+    assert.deepEqual(art.skyColours(at(8)), art.skyColours(at(17, 30)), "sunrise uses the sunset colours");
+    const d = art.darkness(at(8));
+    assert.ok(d > 0 && d < 1, "the scene brightens through the sunrise");
+  });
+
   it("darkness is 0 by day and 1 at night", () => {
     assert.equal(art.darkness(at(12)), 0);
     assert.equal(art.darkness(at(2)), 1);
@@ -124,7 +135,7 @@ describe("background seasons and time of day (backgroundArt.js)", () => {
 
   it("winter fairy lights are lit at dawn, morning, dusk and night only", () => {
     for (const h of [7, 9, 20, 23, 3]) { assert.equal(art.lightsOn(at(h)), true, `hour ${h}`); }
-    for (const h of [12, 15, 17]) { assert.equal(art.lightsOn(at(h)), false, `hour ${h}`); }
+    for (const h of [13, 15, 17]) { assert.equal(art.lightsOn(at(h)), false, `hour ${h}`); }
   });
 });
 
@@ -343,6 +354,31 @@ describe("legacy background style (backgroundArt.js)", () => {
       return m.styles.join(",") + JSON.stringify(m.calls);
     };
     assert.equal(frame(0), frame(59 * 60 * 1000));
+  });
+});
+
+describe("autumn pumpkin, snacks and poos stand out", () => {
+  it("autumn has a single pumpkin, at the side of the stage", () => {
+    for (const W of [320, 160]) {
+      const pumpkins = art.layout("autumn", W, 180).props.filter((p: { kind: string }) => p.kind === "pumpkin");
+      assert.equal(pumpkins.length, 1, `one pumpkin at width ${W}`);
+      const x = pumpkins[0].x;
+      assert.ok(x < 0.3 * W || x > 0.7 * W, `pumpkin at x=${x} is in the middle of a ${W}px stage`);
+    }
+  });
+
+  it("snacks and poos are drawn at scale 3 with an outline", () => {
+    assert.match(sidebarSource, /var SNACK_SCALE = 3;/);
+    assert.match(sidebarSource, /var POO_SCALE = 3;/);
+    assert.match(sidebarSource, /var SS = SNACK_SCALE;/);
+    assert.match(sidebarSource, /var PS = POO_SCALE;/);
+    assert.match(sidebarSource, /drawGridOutline\(spx, sX, sY, SS,/);
+    assert.match(sidebarSource, /drawGridOutline\(POO_PIXELS, pooX, pooGroundY, PS,/);
+  });
+
+  it("the pet aims at the centre of the bigger snack", () => {
+    assert.doesNotMatch(sidebarSource, /\.x \+ 4\)/);
+    assert.equal((sidebarSource.match(/\.x \+ SNACK_HALF_W\)/g) || []).length, 6);
   });
 });
 

@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.25.4",
+  "version": "2.25.5",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -203,7 +203,7 @@
             "enum": ["plain", "ordered", "spring", "summer", "autumn", "winter"],
             "enumDescriptions": [
               "Pet colour with a plain dark ground strip — no sky or scenery.",
-              "Season from the real month, sky from the real clock (blends through dawn, a pastel morning, sunset and night).",
+              "Season from the real month, sky from the real clock (blends through sunrise, a pastel morning, sunset and night).",
               "Spring: blossom trees, tulips and daisies, the odd shower and rainbow, birds and butterflies.",
               "Summer: leafy trees, sunflowers and tall grass, a picnic blanket and beach ball, fluffy clouds, bees and fireflies.",
               "Autumn: orange and half-bare trees, falling leaves on leafy grass, pumpkins and toadstools.",
