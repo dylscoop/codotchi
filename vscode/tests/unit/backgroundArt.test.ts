@@ -116,14 +116,18 @@ describe("background seasons and time of day (backgroundArt.js)", () => {
     assert.ok(warm(art.skyColours(at(17, 30)).bottom) > 120, "full sunset at 17:30");
   });
 
-  it("the dawn bucket has a sunrise that mirrors the sunset", () => {
+  it("the dawn bucket has a sunrise that uses the sunset colours and ends at 10:00", () => {
     const warm = (hex: string) => { const [r, , b] = rgb(hex); return r - b; };
-    assert.ok(warm(art.skyColours(at(8)).bottom) > 120, "full sunrise at 08:00");
-    assert.ok(warm(art.skyColours(at(9, 15)).bottom) > 40, "still warm at 09:15");
-    assert.ok(warm(art.skyColours(at(11)).bottom) < 0, "blue by 11:00");
+    for (const [h, m] of [[7, 30], [8, 0], [9, 0]]) {
+      assert.ok(warm(art.skyColours(at(h, m)).bottom) > 120, `full sunrise at ${h}:${m}`);
+    }
+    assert.ok(warm(art.skyColours(at(9, 45)).bottom) > 0, "still warm at 09:45");
+    assert.ok(warm(art.skyColours(at(10)).bottom) < 0, "blue at 10:00");
+    assert.ok(warm(art.skyColours(at(11)).bottom) < 0, "blue at 11:00");
     assert.deepEqual(art.skyColours(at(8)), art.skyColours(at(17, 30)), "sunrise uses the sunset colours");
     const d = art.darkness(at(8));
     assert.ok(d > 0 && d < 1, "the scene brightens through the sunrise");
+    assert.equal(art.darkness(at(9)), 0, "fully light by 09:00");
   });
 
   it("darkness is 0 by day and 1 at night", () => {
