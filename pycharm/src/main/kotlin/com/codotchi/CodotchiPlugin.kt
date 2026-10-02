@@ -499,7 +499,8 @@ class CodotchiPlugin : Disposable {
                     var ns = play(state, playWeightLoss = getCustomCharacterBySpriteType(state.spriteType)?.playWeightLoss)
                     val game   = message["game"]   as? String
                     val result = message["result"] as? String
-                    if (game != null && result != null && "play_refused_no_energy" !in ns.events) {
+                    if (game != null && result != null &&
+                        "play_refused_no_energy" !in ns.events && "play_refused_sick" !in ns.events) {
                         ns = applyMinigameResult(ns, game, result)
                     }
                     nextState = ns
@@ -976,6 +977,9 @@ class CodotchiPlugin : Disposable {
                         .addAction(com.intellij.notification.NotificationAction.createSimpleExpiring("Try again") {
                             startDeviceFlowAsync(state, onAuthSuccess, onAuthFailure)
                         })
+                        .addAction(com.intellij.notification.NotificationAction.createSimpleExpiring("Sign-in help") {
+                            BrowserUtil.browse(GITHUB_SIGN_IN_HELP_URL)
+                        })
                         .notify(null)
                 }
             }
@@ -990,7 +994,11 @@ class CodotchiPlugin : Disposable {
                 dcConn.setRequestProperty("Accept", "application/json")
                 dcConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
                 dcConn.outputStream.writer().use { it.write("client_id=$clientId&scope=public_repo") }
-                if (dcConn.responseCode != 200) { fail("Could not start GitHub sign-in (HTTP ${dcConn.responseCode})."); return@execute }
+                if (dcConn.responseCode != 200) {
+                    val detail = githubErrorDescription(dcConn)
+                    fail("Could not start GitHub sign-in (HTTP ${dcConn.responseCode}${if (detail != null) ": $detail" else ""}).")
+                    return@execute
+                }
 
                 @Suppress("UNCHECKED_CAST")
                 val dcResp = Gson().fromJson(dcConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
@@ -1029,8 +1037,11 @@ class CodotchiPlugin : Disposable {
                         it.write("client_id=$clientId&device_code=$deviceCode&grant_type=urn:ietf:params:oauth:grant-type:device_code")
                     }
 
+                    // A 4xx response has its JSON on errorStream; inputStream would throw.
+                    val tokStream = if (tokConn.responseCode >= 400) tokConn.errorStream else tokConn.inputStream
                     @Suppress("UNCHECKED_CAST")
-                    val tokResp = Gson().fromJson(tokConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                    val tokResp = (tokStream?.bufferedReader()?.readText()
+                        ?.let { Gson().fromJson(it, Map::class.java) } as? Map<String, Any>) ?: emptyMap()
                     val accessToken = tokResp["access_token"] as? String
                     if (!accessToken.isNullOrBlank()) {
                         PasswordSafe.instance.setPassword(CredentialAttributes("Codotchi", "github-pat"), accessToken)
@@ -1055,6 +1066,14 @@ class CodotchiPlugin : Disposable {
             }
         }
     }
+
+    /** GitHub's `error_description` (or `error`) from a failed OAuth response, if any. */
+    private fun githubErrorDescription(conn: java.net.HttpURLConnection): String? = try {
+        @Suppress("UNCHECKED_CAST")
+        val body = conn.errorStream?.bufferedReader()?.readText()
+            ?.let { Gson().fromJson(it, Map::class.java) } as? Map<String, Any>
+        (body?.get("error_description") as? String) ?: (body?.get("error") as? String)
+    } catch (_: Exception) { null }
 
     private fun resolveAndCacheLeaderboardUsername(pat: String) {
         AppExecutorUtil.getAppExecutorService().execute {
@@ -1082,8 +1101,8 @@ class CodotchiPlugin : Disposable {
         }
     }
 
-    fun startLeaderboardSignIn() {
-        startDeviceFlowAsync(stateLock.withLock { currentState?.takeIf { it.alive } })
+    fun startLeaderboardSignIn(onFailure: ((String) -> Unit)? = null) {
+        startDeviceFlowAsync(stateLock.withLock { currentState?.takeIf { it.alive } }, onAuthFailure = onFailure)
     }
 
     fun getLeaderboardUsername(): String? = leaderboardGithubUsername
@@ -1514,7 +1533,7 @@ class CodotchiPlugin : Disposable {
             "attention_call_pat"             -> "$petName wants a pat!"
             "attention_call_craving_meal"    -> "$petName is craving a meal!"
             "attention_call_craving_snack"   -> "$petName is craving a snack!"
-            "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes — praise $petName and they'll nap for 3 minutes while you rest."
+            "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes — praise $petName and they'll nap for 5 minutes while you rest."
             "break_nap_over"                 -> "Break's over! $petName is awake and ready to code."
             else                             -> null
         }

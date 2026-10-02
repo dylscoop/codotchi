@@ -1224,6 +1224,14 @@ describe("feedMeal", () => {
     assert.ok(next.events.includes("meal_refused"));
   });
 
+  it("refuses while sick (BUG-S04)", () => {
+    const pet = makePet({ hunger: 30, sick: true, activeAttentionCall: "hunger" });
+    const next = feedMeal(pet, 0);
+    assert.equal(next.hunger, 30);
+    assert.deepEqual(next.events, ["meal_refused_sick"]);
+    assert.equal(next.activeAttentionCall, "hunger", "the call is not answered");
+  });
+
   it("allows exactly 3 meals per cycle (indices 0–2)", () => {
     let pet = makePet({ hunger: 0 });
     for (let i = 0; i < 3; i++) {
@@ -1248,6 +1256,14 @@ describe("feedMeal", () => {
 // ---------------------------------------------------------------------------
 
 describe("startSnack", () => {
+  it("refuses while sick (BUG-S04)", () => {
+    const pet = makePet({ sick: true, snacksOnFloor: 0, snacksGivenThisCycle: 0 });
+    const next = startSnack(pet);
+    assert.deepEqual(next.events, ["snack_refused_sick"]);
+    assert.equal(next.snacksOnFloor, 0);
+    assert.equal(next.snacksGivenThisCycle, 0);
+  });
+
   it("does not change consecutiveSnacks", () => {
     const pet = makePet({ consecutiveSnacks: 0 });
     const next = startSnack(pet);
@@ -1538,6 +1554,13 @@ describe("play", () => {
     const next = play(pet);
     assert.equal(next.happiness, 50);
     assert.ok(next.events.includes("play_refused_no_energy"));
+  });
+
+  it("refuses while sick, before the energy check (BUG-S04)", () => {
+    const pet = makePet({ energy: 0, happiness: 50, sick: true });
+    const next = play(pet);
+    assert.equal(next.happiness, 50);
+    assert.deepEqual(next.events, ["play_refused_sick"]);
   });
 
   it("clamps happiness at 100", () => {
@@ -2926,8 +2949,8 @@ describe("break nap", () => {
     health: 70, weight: 25, poops: 2, sick: false, nextPoopIntervalTicks: 1,
   }));
 
-  it("praising a break call starts a 3-minute nap", () => {
-    assert.equal(BREAK_NAP_TICKS * 3, 3 * 60, "60 ticks × 3 s = 3 min");
+  it("praising a break call starts a 5-minute nap", () => {
+    assert.equal(BREAK_NAP_TICKS * 3, 5 * 60, "100 ticks × 3 s = 5 min");
     const pet = napping();
     assert.equal(pet.sleeping, true);
     assert.equal(pet.breakNapTicksRemaining, BREAK_NAP_TICKS);
@@ -2939,18 +2962,19 @@ describe("break nap", () => {
     assert.equal(pet.breakNapTicksRemaining, BREAK_NAP_TICKS);
   });
 
-  it("freezes every stat but keeps aging — idle and deep idle included — then wakes on its own", () => {
+  it("freezes every stat except energy but keeps aging — idle and deep idle included — then wakes on its own", () => {
     const start = napping();
     let pet = start;
     for (let i = 0; i < BREAK_NAP_TICKS - 1; i++) {
       pet = withRandom(0.0, () => tick(pet, i > 20, i > 40));
       assert.equal(pet.sleeping, true, `still asleep at tick ${i + 1}`);
     }
-    for (const k of ["hunger", "happiness", "energy", "health", "weight", "poops", "sick",
+    for (const k of ["hunger", "happiness", "health", "weight", "poops", "sick",
                      "ticksSinceLastPoop", "careMistakes", "ticksSinceLastBreakCall"] as const) {
       assert.equal(pet[k], start[k], `${k} is frozen`);
     }
     assert.ok(pet.dayTimer > start.dayTimer, "keeps aging");
+    assert.equal(pet.energy, 100, "energy regenerates while napping");
     assert.equal(pet.breakNapTicksRemaining, 1);
     const awake = withRandom(0.0, () => tick(pet, true, true));
     assert.equal(awake.sleeping, false);
@@ -2975,11 +2999,33 @@ describe("break nap", () => {
     assert.equal(pet.energy, 100);
   });
 
-  it("waking the pet yourself ends the nap early", () => {
-    const pet = wake(napping());
+  it("regenerates energy at the sleeping rate", () => {
+    const start = napping();
+    const pet = tick(start);
+    assert.ok(pet.energy > start.energy);
+  });
+
+  it("never loses health, even when starving and sick", () => {
+    const start = { ...napping(), hunger: 0, happiness: 0, sick: true, health: 50 };
+    let pet = start;
+    for (let i = 0; i < BREAK_NAP_TICKS - 1; i++) { pet = withRandom(0.0, () => tick(pet)); }
+    assert.equal(pet.health, 50);
+    assert.equal(pet.alive, true);
+  });
+
+  it("can't be woken manually — the nap carries on", () => {
+    const start = napping();
+    const pet = wake(start);
+    assert.equal(pet.sleeping, true);
+    assert.equal(pet.breakNapTicksRemaining, BREAK_NAP_TICKS);
+    assert.deepEqual(pet.events, ["break_nap_no_wake"]);
+    assert.equal(tick(pet).breakNapTicksRemaining, BREAK_NAP_TICKS - 1);
+  });
+
+  it("can be woken normally once the nap is over", () => {
+    const pet = wake(makePet({ sleeping: true, breakNapTicksRemaining: 0 }));
     assert.equal(pet.sleeping, false);
-    assert.equal(pet.breakNapTicksRemaining, 0);
-    assert.equal(tick(pet).breakNapTicksRemaining, 0);
+    assert.ok(pet.events.includes("woke_up"));
   });
 
   it("offline time during the nap doesn't decay stats; the pet wakes if the nap ran out", () => {

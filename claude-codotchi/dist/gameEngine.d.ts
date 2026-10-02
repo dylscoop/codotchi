@@ -33,6 +33,8 @@ export declare const MAX_FLOOR_SNACKS: number;
 export declare const WEIGHT_SLIGHTLY_FAT_THRESHOLD: number;
 /** Weight above which the sprite is drawn 1.5× wider. */
 export declare const WEIGHT_OVERWEIGHT_THRESHOLD: number;
+/** Medicine doses needed to cure sickness. Feed, Snack and Play are refused until then. */
+export declare const MEDICINE_DOSES_TO_CURE: number;
 /** Minimum seconds between code-activity happiness boosts. */
 export declare const CODE_ACTIVITY_THROTTLE_SECONDS: number;
 /** Minimum seconds between commit happiness boosts (prevents rapid --amend abuse). */
@@ -82,9 +84,9 @@ export declare const BREAK_CALL_INTERVAL_TICKS: number;
 /** Happiness boost when a break call is answered via praise() — same as a gift. */
 export declare const BREAK_PRAISE_HAPPINESS_BOOST: number;
 /**
- * Length of the nap the pet takes when a break call is answered: 60 × 3 s = 3 min.
- * While napping every stat is frozen but the pet keeps aging; it wakes on its own
- * when the timer runs out.
+ * Length of the nap the pet takes when a break call is answered: 100 × 3 s = 5 min.
+ * While napping every stat except energy is frozen (energy regenerates), the pet
+ * keeps aging, and it can't be woken early — it wakes on its own when the timer runs out.
  */
 export declare const BREAK_NAP_TICKS: number;
 /**
@@ -670,8 +672,9 @@ export declare function scold(state: PetState): PetState;
  * If a "gift" attention call is active, it is answered and a happiness bonus
  * (GIFT_PRAISE_HAPPINESS_BOOST) is applied on top of the discipline boost.
  * If a "break" call is active, it is answered with the same happiness bonus
- * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet takes a BREAK_NAP_TICKS (3-minute)
- * nap while you rest: stats are frozen, aging continues, and it wakes on its own.
+ * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet takes a BREAK_NAP_TICKS (5-minute)
+ * nap while you rest: stats are frozen except energy, aging continues, and it
+ * can't be woken early — it wakes on its own.
  * If an "unhappiness" attention call is active, it is answered instead.
  *
  * @param state - The current pet state.

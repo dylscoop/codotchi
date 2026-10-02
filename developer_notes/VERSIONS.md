@@ -1,6 +1,45 @@
 # Version History
 
-## v2.25.5 — current
+## v2.26.0 — current
+
+**Changed constants (gameEngine):** `BREAK_NAP_TICKS` 60 → 100 (5 min) · `MEDICINE_DOSES_TO_CURE` (3) now exported. **New events:** `meal_refused_sick`, `snack_refused_sick`, `play_refused_sick`, `break_nap_no_wake`. **New setting:** `codotchi.statusBarEnabled` (default true).
+
+### Changes from v2.25.6 (sickness UX, status bar ⚠, locked 5-minute break nap — branch feat/v2.26.0-sick-statusbar-nap)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt` | BUGFIX-186: `feedMeal` / `startSnack` / `play` refuse while sick; `wake()` refuses during a break nap (`break_nap_no_wake`) instead of ending it; `tickBreakNap` regenerates energy at the sleeping rate (no auto-wake); nap 3 → 5 min |
+| `packages/core/src/asciiArt.ts` (+ synced copies), `vscode/src/extension.ts`, `CodotchiPlugin.kt` | break-call text says 5 minutes |
+| `vscode/media/sidebar.js`, `sidebar.html` | Feed / Snack / Play greyed out while sick; `#medicine-left` doses badge; Sleep/Wake shows "Napping Nm" and is disabled during a break nap; text for the new events |
+| `vscode/src/sidebarProvider.ts`, `CodotchiPlugin.kt` | minigame result skipped on `play_refused_sick` |
+| `vscode/src/statusBarText.ts` (new), `statusBar.ts`, `extension.ts`, `package.json` | ⚠ prefix + call line in the tooltip during attention calls; `codotchi.statusBarEnabled` (General, order 5; later General orders shifted by 1) hides the item, re-applied on config change |
+| `pycharm/.../StatusBarText.kt` (new), `CodotchiStatusWidget.kt`, `CodotchiSettings.kt`, `CodotchiConfigurable.kt` | same ⚠ / tooltip (plus the "⚠ Sick!" line PyCharm lacked); `statusBarEnabled` checkbox in General |
+| `claude-codotchi/scripts/action.mjs` | BUGFIX-187: wake calls `wake()` and reports the nap; too-sick messages; medicine doses left; string event checks |
+| `claude-desktop-codotchi/src/tools.ts` | refusal speech for sick feed / snack / play and the nap; meal counter and snack eat keyed off the success events |
+| `opencode-codotchi/src/index.ts` | too-sick early-outs for feed / snack / play |
+| tests | `vscode/tests/unit/gameEngine.test.ts`, `statusBarText.test.ts` (new), `criticalStatNotifier.test.ts`; `pycharm/.../GameEngineTest.kt`, `StatusBarTextTest.kt` (new); `claude-codotchi/tests/integration/sickAndNap.test.mjs` (new); `claude-desktop-codotchi/tests/tools.test.mjs` |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | sick actions, 5-minute nap, status bar ⚠; 2.26.0 notes |
+| `developer_notes/vscode/FEATURES.md`, `FEATURES_SEPTEMBER_2026.md`, `BUGFIXES.md` | §6.4 / §10 / §12 ticked; BUG-S04 fixed; BUGFIX-186, BUGFIX-187 |
+| all manifests, `README.md` | version 2.25.6 → 2.26.0 |
+
+---
+
+## v2.25.6
+
+### Changes from v2.25.5 (PyCharm GitHub sign-in help — branch fix/v2.25.6-pycharm-signin-help)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/.../CodotchiPlugin.kt` | device-code request failures now include GitHub's `error_description` (e.g. "Device Flow must be explicitly enabled") instead of a bare HTTP code; token polling reads `errorStream` on a 4xx, so GitHub's error is shown instead of being lost to an exception; the sign-in failed notification gains a **Sign-in help** action; `startLeaderboardSignIn()` takes an optional failure callback |
+| `pycharm/.../LeaderboardSubmitter.kt` | new `GITHUB_SIGN_IN_HELP_URL` (pycharm/README.md#github-sign-in-help) |
+| `pycharm/.../CodotchiConfigurable.kt` | **Sign-in help** link under the Leaderboard sign-in buttons; the status label shows the failure instead of staying on "Opening browser…" |
+| `pycharm/README.md`, `plugin.xml` | new "GitHub sign-in help" section: what users do, plus troubleshooting; 2.25.6 change notes |
+| `developer_notes/BUGFIXES.md` | BUGFIX-185 |
+| all manifests, `README.md` | version 2.25.5 → 2.25.6 |
+
+---
+
+## v2.25.5
 
 **Updated constants (backgroundArt.js):** `SKY_KEYS` gain a mirrored sunrise (07:00 first light · 08:00 sunrise · 09:00 golden morning · 10:00 pastel), dusk now fades to night at 22:00 · `DARK_KEYS` [0,1] [6.5,1] [9,0] [16.5,0] [21.5,1] · `SUNRISE`/`SUNSET` 7 / 19 (was 6 / 18.5) · `getTimeOfDay()` uses the legacy buckets dawn 07–10 · morning 10–13 · afternoon 13–16 · sunset 16–19 · dusk 19–22 · night 22–07. **New constants (sidebar.js):** `SNACK_SCALE` 3 (was 2) · `SNACK_HALF_W` 8 · `POO_SCALE` 3 (was 2)
 

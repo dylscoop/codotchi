@@ -456,7 +456,7 @@ export class SidebarProvider
         });
         if (message.game !== undefined && message.result !== undefined) {
           // Only apply minigame happiness delta if play wasn't refused
-          if (!nextState.events.includes("play_refused_no_energy")) {
+          if (!nextState.events.some((e) => e === "play_refused_no_energy" || e === "play_refused_sick")) {
             nextState = applyMinigameResult(nextState, message.game, message.result);
           }
         }

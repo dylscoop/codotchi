@@ -74,6 +74,24 @@ describe("claude-desktop tools", () => {
     assert.equal(stored.state.hunger, out.state.hunger);
   });
 
+  it("feed(), snack() and play() are refused while sick (BUG-S04)", () => {
+    for (const [fn, phrase] of [["feed", "Too sick to eat"], ["snack", "Too sick for a snack"], ["playAction", "Too sick to play"]]) {
+      writeState(["vscode", "state.json"], adultPet({ sick: true, hunger: 20, happiness: 40 }));
+      const out = tools[fn](readConfig());
+      assert.equal(Math.round(out.state.hunger), 20, fn);
+      assert.equal(Math.round(out.state.happiness), 40, fn);
+      assert.ok(out.asciiArt.replace(/[\s\\/]+/g, " ").includes(phrase), `${fn}: ${out.asciiArt}`);
+    }
+  });
+
+  it("sleepToggle() can't wake the pet during a break nap", () => {
+    writeState(["vscode", "state.json"], adultPet({ sleeping: true, breakNapTicksRemaining: 50 }));
+    const out = tools.sleepToggle(readConfig());
+    assert.equal(out.state.sleeping, true);
+    assert.equal(out.state.breakNapTicksRemaining, 50);
+    assert.ok(out.asciiArt.replace(/[\s\\/]+/g, " ").includes("break nap"), out.asciiArt);
+  });
+
   it("clean() removes droppings", () => {
     writeState(["vscode", "state.json"], adultPet({ poops: 3 }));
     assert.equal(tools.clean(readConfig()).state.poops, 0);

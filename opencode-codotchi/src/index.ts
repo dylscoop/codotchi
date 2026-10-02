@@ -1504,6 +1504,11 @@ export const plugin: Plugin = async (ctx) => {
                feedLines.push(`[${pLabel}] ${s.name} is sleeping and can't eat right now.`);
                continue;
              }
+             // BUG-S04: a sick pet won't eat until it's had its medicine.
+             if (s.sick) {
+               feedLines.push(`[${pLabel}] ${s.name} is too sick to eat — give medicine first (/codotchi medicine).`);
+               continue;
+             }
              const next = feedMeal(s, meals);
              const refused = next.events.includes("meal_refused");
              if (!refused) { setMeals(p.ide, meals + 1); }
@@ -1533,6 +1538,11 @@ export const plugin: Plugin = async (ctx) => {
              const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
              if (s.sleeping) {
                snackLines.push(`[${pLabel}] ${s.name} is sleeping and can't eat right now.`);
+               continue;
+             }
+             // BUG-S04: a sick pet won't have a snack until it's had its medicine.
+             if (s.sick) {
+               snackLines.push(`[${pLabel}] ${s.name} is too sick to have a snack — give medicine first (/codotchi medicine).`);
                continue;
              }
              // The IDE drops the snack on the floor and the pet walks to it; here it's eaten straight away.
@@ -1596,6 +1606,11 @@ export const plugin: Plugin = async (ctx) => {
              const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
              if (s.sleeping) {
                playLines.push(`[${pLabel}] ${s.name} is sleeping.`);
+               continue;
+             }
+             // BUG-S04: a sick pet won't play until it's had its medicine.
+             if (s.sick) {
+               playLines.push(`[${pLabel}] ${s.name} is too sick to play — give medicine first (/codotchi medicine).`);
                continue;
              }
              // No mini-game in the terminal — play() applies the stat changes and answers a play call.

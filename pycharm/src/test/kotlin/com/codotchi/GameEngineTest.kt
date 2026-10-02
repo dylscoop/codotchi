@@ -719,8 +719,8 @@ class GameEngineTest {
     )
 
     @Test
-    fun `praising a break call starts a 3-minute nap`() {
-        assertEquals(3 * 60, BREAK_NAP_TICKS * TICK_INTERVAL_SECONDS)
+    fun `praising a break call starts a 5-minute nap`() {
+        assertEquals(5 * 60, BREAK_NAP_TICKS * TICK_INTERVAL_SECONDS)
         val pet = napping()
         assertTrue(pet.sleeping)
         assertEquals(BREAK_NAP_TICKS, pet.breakNapTicksRemaining)
@@ -730,7 +730,7 @@ class GameEngineTest {
     }
 
     @Test
-    fun `break nap freezes stats but keeps aging through idle and wakes on its own`() {
+    fun `break nap freezes stats except energy but keeps aging through idle and wakes on its own`() {
         val start = napping()
         var pet = start
         for (i in 0 until BREAK_NAP_TICKS - 1) {
@@ -739,7 +739,7 @@ class GameEngineTest {
         }
         assertEquals(start.hunger, pet.hunger)
         assertEquals(start.happiness, pet.happiness)
-        assertEquals(start.energy, pet.energy)
+        assertEquals(100, pet.energy, "energy regenerates while napping")
         assertEquals(start.health, pet.health)
         assertEquals(start.weight, pet.weight)
         assertEquals(start.poops, pet.poops)
@@ -767,10 +767,42 @@ class GameEngineTest {
     }
 
     @Test
-    fun `waking the pet ends the break nap early`() {
+    fun `break nap regenerates energy and never loses health`() {
+        val start = napping()
+        assertTrue(tick(start).energy > start.energy)
+        var pet = start.copy(hunger = 0, happiness = 0, sick = true, health = 50)
+        repeat(BREAK_NAP_TICKS - 1) { pet = tick(pet) }
+        assertEquals(50, pet.health)
+        assertTrue(pet.alive)
+    }
+
+    @Test
+    fun `a break nap can't be woken manually`() {
         val pet = wake(napping())
-        assertFalse(pet.sleeping)
-        assertEquals(0, pet.breakNapTicksRemaining)
+        assertTrue(pet.sleeping)
+        assertEquals(BREAK_NAP_TICKS, pet.breakNapTicksRemaining)
+        assertEquals(listOf("break_nap_no_wake"), pet.events)
+        assertEquals(BREAK_NAP_TICKS - 1, tick(pet).breakNapTicksRemaining)
+        val after = wake(makePet().copy(sleeping = true, breakNapTicksRemaining = 0))
+        assertFalse(after.sleeping)
+        assertTrue("woke_up" in after.events)
+    }
+
+    // ── Sickness blocks Feed / Snack / Play (BUG-S04) ───────────────────────
+
+    @Test
+    fun `feed, snack and play are refused while sick`() {
+        val sick = makePet(energy = 0).copy(sick = true, hunger = 30, activeAttentionCall = "hunger")
+        val meal = feedMeal(sick, 0)
+        assertEquals(30, meal.hunger)
+        assertEquals(listOf("meal_refused_sick"), meal.events)
+        assertEquals("hunger", meal.activeAttentionCall)
+        val snack = startSnack(sick)
+        assertEquals(listOf("snack_refused_sick"), snack.events)
+        assertEquals(0, snack.snacksOnFloor)
+        val played = play(sick)
+        assertEquals(listOf("play_refused_sick"), played.events)
+        assertEquals(sick.happiness, played.happiness)
     }
 
     @Test

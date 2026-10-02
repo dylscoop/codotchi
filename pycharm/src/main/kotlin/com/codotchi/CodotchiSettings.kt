@@ -11,6 +11,7 @@ import com.intellij.openapi.components.*
  *  - [textColor]              : CSS hex colour string           — injected as body colour override
  *  - [enableAttentionCalls]   : whether to show balloon notifications for attention calls
  *  - [osNotifications]        : desktop (OS) notification when hunger, happiness or energy hits 0, or health < 25 (default true)
+ *  - [statusBarEnabled]       : show the pet in the status bar, with ⚠ during attention calls (default true)
  *  - [idleThresholdSeconds]   : seconds of no IDE activity before idle mode (default 60)
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
  *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift/play/pat/craving
@@ -51,6 +52,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var textColor: String  = "#cccccc"   // any CSS hex colour
         var enableAttentionCalls: Boolean = true
         var osNotifications: Boolean = true
+        var statusBarEnabled: Boolean = true
         var idleThresholdSeconds: Int = 60
         var idleDeepThresholdSeconds: Int = 600
         var attentionCallExpiry: String = "standard"  // "needy" | "standard" | "chilled"
@@ -102,6 +104,10 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var osNotifications: Boolean
         get() = _state.osNotifications
         set(v) { _state.osNotifications = v }
+
+    var statusBarEnabled: Boolean
+        get() = _state.statusBarEnabled
+        set(v) { _state.statusBarEnabled = v }
 
     var idleThresholdSeconds: Int
         get() = _state.idleThresholdSeconds

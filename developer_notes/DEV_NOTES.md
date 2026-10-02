@@ -486,6 +486,7 @@ is registered in `initialize()` at `GotchiPlugin.kt:60-63` and sets
 |-----------|---------|-----------|-------|
 | Auto-wake | `energy >= STAT_MAX (100)` on any tick | `"auto_woke_up"` | `gameEngine.ts:726-729` / `GameEngine.kt:194-197` |
 | Manual wake | User clicks "Wake" button → `"wake"` command | `"woke_up"` | `sidebarProvider.ts:223-228` / `GotchiPlugin.kt:158-161` |
+| Break nap over | `breakNapTicksRemaining` reaches 0 in `tickBreakNap` (manual wake is refused with `"break_nap_no_wake"` until then) | `"break_nap_over"` | `gameEngine.ts` / `GameEngine.kt` `tickBreakNap`, `wake` |
 
 On auto-wake, `snacksGivenThisCycle` is reset to 0. On manual wake it is not.
 `mealsGivenThisCycle` is reset when the pet *falls* asleep, not on wake.

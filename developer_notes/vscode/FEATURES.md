@@ -106,7 +106,7 @@ The pet fires IDE notifications demanding care, with a **1-minute active
 | Random craving (log-chance, any hunger; not while idle/asleep/sick/full) | `craving` | The craved food: meal (Feed) or snack (Snack) | Health −10 | `[x]`  |
 | Random "play with me" (log-chance; energy ≥ 25, not sick) | `play`    | Play (any mini-game)    | Health −10                             | `[x]`  |
 | Random "pat me" (log-chance; energy ≥ 20)         | `pat`             | Pat                     | Health −10                             | `[x]`  |
-| Every 30 active, awake minutes (`BREAK_CALL_INTERVAL_TICKS = 600`; deep idle restarts the timer; after need calls, before whims) | `break` | Praise (+happiness +15, pet falls asleep) | None — no stat penalty, no care mistake | `[x]`  |
+| Every 30 active, awake minutes (`BREAK_CALL_INTERVAL_TICKS = 600`; deep idle restarts the timer; after need calls, before whims) | `break` | Praise (+happiness +15, pet takes a 5-minute break nap — `BREAK_NAP_TICKS = 100`; can't be woken early, every stat but energy frozen, still ages) | None — no stat penalty, no care mistake | `[x]`  |
 
 Notes:
 - Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (1 min) for need-based calls; poop, misbehaviour, gift, play, pat, craving and break use `config.attentionCallExpiryTicks` (Needy 80 / Standard 200 / Chilled 400 ticks = 4 / 10 / 20 min; v2.21.1). The chance counters for random calls only advance on active ticks, and misbehaviour / gift never fire while idle (BUGFIX-169)
@@ -493,8 +493,8 @@ Features that deepen the existing care actions.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Medicine doses remaining shown on button | `[ ]` | |
-| Disable Feed/Play while sick | `[ ]` | The engine does **not** enforce this: `feedMeal`/`play` never check `sick` (see `developer_notes/FEATURES_SEPTEMBER_2026.md` BUG-S04) |
+| Medicine doses remaining shown on button | `[x]` | `#medicine-left` badge on the Medicine button, shown only while sick (3 − `medicineDosesGiven`) — v2.26.0 |
+| Disable Feed/Play while sick | `[x]` | v2.26.0 (BUG-S04): `feedMeal` / `startSnack` / `play` return `meal_refused_sick` / `snack_refused_sick` / `play_refused_sick`; Feed, Snack and Play are greyed out in the webview (so Pat and Token Cost in the Play menu wait too); terminal hosts print a "too sick" message |
 | Sick animation (canvas shake or flicker) | `[x]` | `became_sick` reaction, constant tremor at 0.05× speed, red "+" indicator |
 
 ---
@@ -669,10 +669,10 @@ Status: `[x]`
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Mood emoji + name displayed | `[x]` | |
-| Click to focus sidebar | `[x]` | Uses `gotchiView.focus` command |
+| Click to focus sidebar | `[x]` | Uses `codotchi.openPanel` command |
 | Sprite name in status bar tooltip | `[x]` | `Sprite: <name>` shown for non-classic spriteTypes |
-| Attention-needed indicator (⚠) | `[~]` | Tooltip shows "⚠ Sick!" when sick; nothing reacts to `activeAttentionCall` and the bar text never changes |
-| `[S]` `gotchi.statusBarEnabled` (default true) | `[ ]` | |
+| Attention-needed indicator (⚠) | `[x]` | v2.26.0: text gets a "⚠ " prefix while `activeAttentionCall` is set and the tooltip leads with what the pet wants; "⚠ Sick!" tooltip line kept. Formatting in `vscode/src/statusBarText.ts` / `pycharm/.../StatusBarText.kt` |
+| `[S]` `codotchi.statusBarEnabled` (default true) | `[x]` | v2.26.0: hides the VS Code item; blanks the PyCharm widget |
 
 ---
 
@@ -738,7 +738,7 @@ Since v2.23.0 `contributes.configuration` is an array of two categories, each wi
 | `gotchi.typeSprintWordLength` | enum | `normal` | `short` (3–5 chars) / `normal` (3–8 chars) | `[ ]` |
 | `gotchi.typeSprintTimeoutMs` | number | `5000` | Milliseconds to type word in Type Sprint | `[ ]` |
 | `gotchi.offlineDecayMaxFraction` | number | `0.60` | Maximum fraction of stats lost while extension is off | `[ ]` |
-| `gotchi.statusBarEnabled` | boolean | `true` | Show pet in VS Code status bar | `[ ]` |
+| `codotchi.statusBarEnabled` | boolean | `true` | Show pet in the status bar (⚠ during attention calls) | `[x]` |
 | `gotchi.tickIntervalSeconds` | number | `6` | Game tick rate (lower = faster game time; min 1) | `[ ]` |
 | `gotchi.developerPasscode` | string | `""` | Developer passcode — also requires `gotchi.devModeEnabled = true` to activate dev mode | `[x]` |
 | `codotchi.characterPasscode` | string | `""` | Character passcode — enter the secret passcode to unlock a hidden character on new game | `[x]` |

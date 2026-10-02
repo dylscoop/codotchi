@@ -111,6 +111,7 @@ const val SLEEP_SICK_RECOVERY_CHANCE: Double = 0.03
 /** While sleeping, hunger and happiness decay once every this many ticks (very slow drain). */
 const val SLEEP_DECAY_TICK_INTERVAL: Int = 5
 
+/** Medicine doses needed to cure sickness. Feed, Snack and Play are refused until then. */
 const val MEDICINE_DOSES_TO_CURE: Int = 3
 
 /** Ticks between passive health regen pulses while awake (1 hp per interval). */
@@ -402,11 +403,11 @@ const val BREAK_CALL_INTERVAL_TICKS: Int = 600
 /** Happiness boost when a break call is answered via praise() — same as a gift. */
 const val BREAK_PRAISE_HAPPINESS_BOOST: Int = GIFT_PRAISE_HAPPINESS_BOOST
 /**
- * Length of the nap the pet takes when a break call is answered: 60 × 3 s = 3 min.
- * While napping every stat is frozen but the pet keeps aging; it wakes on its own
- * when the timer runs out.
+ * Length of the nap the pet takes when a break call is answered: 100 × 3 s = 5 min.
+ * While napping every stat except energy is frozen (energy regenerates), the pet
+ * keeps aging, and it can't be woken early — it wakes on its own when the timer runs out.
  */
-const val BREAK_NAP_TICKS: Int = 60
+const val BREAK_NAP_TICKS: Int = 100
 
 /** neglectCount decrements by 1 every this many ticks (600 × 3 s = 30 min). */
 const val NEGLECT_DECAY_TICK_INTERVAL: Int = 600

@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.26.0] — 2026-10-02
+
+### Changed
+
+- **Sickness** — a sick pet won't eat, snack or play: Feed, Snack and Play are greyed out until it's cured, and the Medicine button counts the doses left.
+- **Break naps** — the nap now lasts 5 minutes and can't be cut short; the Sleep button shows the minutes left. Energy recharges during the nap while every other stat stays frozen, and your pet keeps aging.
+
+### Added
+
+- **Status bar ⚠** — a ⚠ appears next to your pet in the status bar while it has an attention call, and the tooltip says what it wants. `codotchi.statusBarEnabled` hides the status bar item.
+
 ## [2.25.5] — 2026-10-02
 
 ### Changed

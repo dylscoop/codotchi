@@ -112,7 +112,8 @@ const EXHAUSTION_HEALTH_DAMAGE_PER_TICK = 2;
 const SLEEP_SICK_RECOVERY_CHANCE = 0.03;
 /** While sleeping, hunger and happiness decay once every this many ticks (very slow drain). */
 const SLEEP_DECAY_TICK_INTERVAL = 5;
-const MEDICINE_DOSES_TO_CURE = 3;
+/** Medicine doses needed to cure sickness. Feed, Snack and Play are refused until then. */
+export const MEDICINE_DOSES_TO_CURE = 3;
 /** Ticks between passive health regen pulses while awake (1 hp per interval). */
 const HEALTH_REGEN_AWAKE_TICK_INTERVAL = 5;
 const DISCIPLINE_BOOST_PER_ACTION = 10;
@@ -213,11 +214,11 @@ export const BREAK_CALL_INTERVAL_TICKS = 600;
 /** Happiness boost when a break call is answered via praise() — same as a gift. */
 export const BREAK_PRAISE_HAPPINESS_BOOST = GIFT_PRAISE_HAPPINESS_BOOST;
 /**
- * Length of the nap the pet takes when a break call is answered: 60 × 3 s = 3 min.
- * While napping every stat is frozen but the pet keeps aging; it wakes on its own
- * when the timer runs out.
+ * Length of the nap the pet takes when a break call is answered: 100 × 3 s = 5 min.
+ * While napping every stat except energy is frozen (energy regenerates), the pet
+ * keeps aging, and it can't be woken early — it wakes on its own when the timer runs out.
  */
-export const BREAK_NAP_TICKS = 60;
+export const BREAK_NAP_TICKS = 100;
 // ---------------------------------------------------------------------------
 // Care Mistakes constants
 // ---------------------------------------------------------------------------
@@ -1367,9 +1368,10 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
     return afterStage;
 }
 /**
- * One tick of a break nap: every stat, counter and attention-call timer is frozen,
- * but the pet keeps aging at the sleeping rate — even while the user is idle,
- * since they are away on their break. Wakes the pet when the timer runs out.
+ * One tick of a break nap: every stat, counter and attention-call timer is frozen
+ * except energy, which regenerates at the sleeping rate (no auto-wake at full energy).
+ * The pet keeps aging at the sleeping rate — even while the user is idle, since they
+ * are away on their break. Wakes the pet when the timer runs out.
  */
 function tickBreakNap(state, isIdle, isDeepIdle, config, modifiers) {
     const events = [];
@@ -1382,6 +1384,7 @@ function tickBreakNap(state, isIdle, isDeepIdle, config, modifiers) {
     const careMistakes = Math.floor(dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS) >
         Math.floor(state.dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS)
         ? Math.max(0, state.careMistakes - 1) : state.careMistakes;
+    const energy = clampStat(state.energy + ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier);
     const breakNapTicksRemaining = Math.max(0, state.breakNapTicksRemaining - 1);
     const napOver = breakNapTicksRemaining === 0;
     if (napOver) {
@@ -1390,7 +1393,7 @@ function tickBreakNap(state, isIdle, isDeepIdle, config, modifiers) {
     return withDerivedFields({
         ...state,
         ticksAlive, dayTimer, ageDays: Math.floor(dayTimer), careMistakes,
-        breakNapTicksRemaining,
+        energy, breakNapTicksRemaining,
         ...(napOver ? { sleeping: false, snacksGivenThisCycle: 0 } : {}),
         wasIdle: isIdle,
         wasDeepIdle: isDeepIdle,
@@ -1533,6 +1536,9 @@ function answerCraving(state, food) {
 export function feedMeal(state, mealsGivenThisCycle, opts) {
     const cap = opts?.maxPerCycle ?? FEED_MEAL_MAX_PER_CYCLE;
     const hungerBoost = Math.round(FEED_MEAL_HUNGER_BOOST * (opts?.hungerMult ?? 1));
+    if (state.sick) {
+        return withDerivedFields({ ...state, events: ["meal_refused_sick"] });
+    }
     if (mealsGivenThisCycle >= cap) {
         return withDerivedFields({ ...state, events: ["meal_refused"] });
     }
@@ -1573,6 +1579,9 @@ export function feedMeal(state, mealsGivenThisCycle, opts) {
  * @returns A new PetState after the action.
  */
 export function startSnack(state, opts) {
+    if (state.sick) {
+        return withDerivedFields({ ...state, events: ["snack_refused_sick"] });
+    }
     if (state.snacksOnFloor >= MAX_FLOOR_SNACKS) {
         return withDerivedFields({ ...state, events: ["snack_refused"] });
     }
@@ -1661,6 +1670,9 @@ export function resetFloorSnacks(state) {
  * @returns A new PetState after the action.
  */
 export function play(state, opts) {
+    if (state.sick) {
+        return withDerivedFields({ ...state, events: ["play_refused_sick"] });
+    }
     if (state.energy < PLAY_ENERGY_COST) {
         return withDerivedFields({ ...state, events: ["play_refused_no_energy"] });
     }
@@ -1829,10 +1841,13 @@ export function wake(state) {
     if (!state.sleeping) {
         return withDerivedFields({ ...state, events: ["already_awake"] });
     }
+    // A break nap can't be cut short — the pet wakes on its own after BREAK_NAP_TICKS.
+    if (state.breakNapTicksRemaining > 0) {
+        return withDerivedFields({ ...state, events: ["break_nap_no_wake"] });
+    }
     return withDerivedFields({
         ...state,
         sleeping: false,
-        breakNapTicksRemaining: 0,
         events: ["woke_up"],
     });
 }
@@ -1926,8 +1941,9 @@ export function scold(state) {
  * If a "gift" attention call is active, it is answered and a happiness bonus
  * (GIFT_PRAISE_HAPPINESS_BOOST) is applied on top of the discipline boost.
  * If a "break" call is active, it is answered with the same happiness bonus
- * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet takes a BREAK_NAP_TICKS (3-minute)
- * nap while you rest: stats are frozen, aging continues, and it wakes on its own.
+ * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet takes a BREAK_NAP_TICKS (5-minute)
+ * nap while you rest: stats are frozen except energy, aging continues, and it
+ * can't be woken early — it wakes on its own.
  * If an "unhappiness" attention call is active, it is answered instead.
  *
  * @param state - The current pet state.

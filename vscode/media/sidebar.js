@@ -131,6 +131,7 @@
   const btnResetHsYes    = document.getElementById("btn-reset-hs-yes");
   const btnResetHsCancel = document.getElementById("btn-reset-hs-cancel");
   const snacksLeftEl   = document.getElementById("snacks-left");
+  const medicineLeftEl = document.getElementById("medicine-left");
 
   const barHunger    = document.getElementById("bar-hunger");
   const barHappiness = document.getElementById("bar-happiness");
@@ -242,6 +243,7 @@
   });
 
   document.getElementById("btn-play").addEventListener("click", function () {
+    if (lastState && lastState.sick) { return; }   // BUG-S04: no games while sick
     if (!lastState || lastState.energy < PAT_ENERGY_COST) {
       // Let the server handle the refusal gracefully
       vscode.postMessage({ command: "play" });
@@ -1416,19 +1418,41 @@
 
     // Update sleep/wake button label to match current state
     const sleepWakeBtn = document.getElementById("btn-sleep-wake");
-    sleepWakeBtn.textContent = state.sleeping ? "Wake" : "Sleep";
+    // A break nap can't be cut short — show the minutes left instead of "Wake"
+    const napTicks = state.breakNapTicksRemaining || 0;
+    sleepWakeBtn.textContent = napTicks > 0
+      ? "Napping " + Math.max(1, Math.ceil(napTicks * 3 / 60)) + "m"
+      : (state.sleeping ? "Wake" : "Sleep");
+    sleepWakeBtn.title = napTicks > 0 ? "Taking a break nap — it wakes up on its own" : "";
     sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
 
     // BUGFIX-002: disable care buttons while pet is sleeping; also disable while paused
     const isSleeping = state.sleeping;
     const isPaused   = !!state.paused;
+    const isSick     = !!state.sick;
     ["btn-feed-meal", "btn-feed-snack", "btn-play",
      "btn-clean", "btn-medicine", "btn-praise", "btn-scold"].forEach(function (id) {
       const btn = document.getElementById(id);
       if (btn) { btn.disabled = isSleeping || isPaused; }
     });
-    // Sleep/Wake button: only disabled while paused (must remain clickable to Wake while sleeping)
-    if (sleepWakeBtn) { sleepWakeBtn.disabled = isPaused; }
+    // BUG-S04: Feed, Snack and Play are refused while sick — grey them out
+    if (isSick) {
+      ["btn-feed-meal", "btn-feed-snack", "btn-play"].forEach(function (id) {
+        const btn = document.getElementById(id);
+        if (btn) { btn.disabled = true; }
+      });
+    }
+    // Sleep/Wake button: disabled while paused or during a break nap
+    // (otherwise it must remain clickable to Wake while sleeping)
+    if (sleepWakeBtn) { sleepWakeBtn.disabled = isPaused || napTicks > 0; }
+
+    // Medicine doses-left badge, shown only while sick
+    var MEDICINE_DOSES = 3;
+    if (medicineLeftEl) {
+      medicineLeftEl.textContent = isSick
+        ? Math.max(0, MEDICINE_DOSES - (state.medicineDosesGiven || 0)) + ""
+        : "";
+    }
 
     // Meals-left badge on Feed button
     var _feedCC = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
@@ -1445,7 +1469,7 @@
       snacksLeftEl.textContent = snacksLeft > 0 ? snacksLeft + "" : "";
     }
     var snackBtn = document.getElementById("btn-feed-snack");
-    if (snackBtn && !isSleeping && !isPaused) {
+    if (snackBtn && !isSleeping && !isPaused && !isSick) {
       snackBtn.disabled = snacksLeft <= 0;
     }
 
@@ -1728,6 +1752,10 @@
       "game_resumed":            "",   // silent
       "cured":                   n + " recovered!",
       "meal_refused":            n + " refused the meal.",
+      "meal_refused_sick":       n + " is too sick to eat — give medicine first!",
+      "snack_refused_sick":      n + " is too sick for a snack — give medicine first!",
+      "play_refused_sick":       n + " is too sick to play — give medicine first!",
+      "break_nap_no_wake":       n + " is on a break nap and will wake up on their own.",
       "fed_meal":                n + " ate a meal.",
       "snack_refused":           n + " threw the snack away.",
       "play_refused_no_energy":  n + " doesn't have enough energy to play!",
@@ -1769,7 +1797,7 @@
       "attention_call_pat":             n + " wants a pat!",
       "attention_call_craving_meal":    n + " is craving a proper meal!",
       "attention_call_craving_snack":   n + " is craving a snack!",
-      "attention_call_break":           "30 minutes already! Remember to take a break — praise " + n + " and they'll nap for 3 minutes while you rest.",
+      "attention_call_break":           "30 minutes already! Remember to take a break — praise " + n + " and they'll nap for 5 minutes while you rest.",
       // Attention calls — answered
       "attention_call_answered_hunger":          "You answered " + n + "'s hunger call.",
       "attention_call_answered_unhappiness":     "You answered " + n + "'s sadness call.",
@@ -1782,7 +1810,7 @@
       "attention_call_answered_play":            "You played with " + n + " when they asked.",
       "attention_call_answered_pat":             "You gave " + n + " the pat they wanted.",
       "attention_call_answered_craving":         "You satisfied " + n + "'s craving.",
-      "attention_call_answered_break":           "You're taking a break — " + n + " is napping too (3 min).",
+      "attention_call_answered_break":           "You're taking a break — " + n + " is napping too (5 min).",
       // Attention calls — expired
       "attention_call_expired_hunger":          n + "'s hunger call went unanswered!",
       "attention_call_expired_unhappiness":     n + "'s sadness call went unanswered!",
