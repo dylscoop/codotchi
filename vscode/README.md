@@ -53,7 +53,8 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   below 25, you get a desktop notification, even with VS Code minimised. It repeats every
   15 minutes while the stat stays low; turn it off with `codotchi.osNotifications`
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
-  and it dies
+  and it dies. A sick pet won't eat, snack or play until it's had its
+  medicine — the Medicine button counts the doses left
 - **Safe while you are away** — when you step away from the IDE your pet gets
   hungry and bored more slowly and never loses health, so it is waiting for you
   when you come back
@@ -70,13 +71,15 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in
   time and it's happy; ignore it and its health suffers
 - **Break reminders** — after 30 minutes of coding, your pet reminds you to
-  take a break. Praise it to answer: it's happier for it and naps for 3
-  minutes while you rest (stats frozen, still aging), then wakes up on its own.
+  take a break. Praise it to answer: it's happier for it and naps for 5
+  minutes while you rest (stats frozen except energy, which recharges, and it
+  keeps aging). You can't wake it early — it wakes up on its own.
   Skipping it does no harm, and stepping away from the IDE counts as a break
 - **OpenCode integration** — your pet lives in the terminal too, with shared
   state across VS Code, PyCharm, and OpenCode
 - **Status bar integration** — pet name and mood always visible in the VS Code
-  status bar; click to open the sidebar
+  status bar, with a ⚠ while your pet wants something (hover to see what);
+  click to open the sidebar. Hide it with `codotchi.statusBarEnabled`
 - **Persistent state** — pet survives VS Code restarts; offline time is
   accounted for with capped stat decay
 - **Configurable** — customise font size, pet size, stage height, colours, idle thresholds,
@@ -119,13 +122,13 @@ Once installed and VS Code has reloaded:
 
 | Action | What it does |
 | ------ | ----------- |
-| **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect. |
-| **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick. |
-| **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted. Also contains **Today's Token Cost** — see below. |
+| **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect. Not available while your pet is sick. |
+| **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick. Not available while your pet is sick. |
+| **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted or sick. Also contains **Today's Token Cost** — see below. |
 | **Pat** | Gives your pet a gentle pat. A hand pats its head, hearts float up and each pet reacts in its own way. Boosts happiness. Costs energy. Accessed via the Play menu (same overlay as the mini-games). Cannot be used while your pet is sleeping or exhausted. |
-| **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. |
+| **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. During a break nap the button shows the minutes left and your pet wakes on its own. |
 | **Clean** | Clears all droppings from the screen. Leaving too many uncleaned for too long will make your pet sick. |
-| **Medicine** | Treats sickness. Three doses cure it; medicine does not restore health. Use it as soon as your pet falls ill, because sickness drains health until it is cured. |
+| **Medicine** | Treats sickness. Three doses cure it (the button shows how many are left); medicine does not restore health. Use it as soon as your pet falls ill, because sickness drains health until it is cured. |
 | **Praise** | Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution. |
 | **Scold** | Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline. |
 

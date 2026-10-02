@@ -2252,3 +2252,25 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** Leaderboard sign-in in PyCharm (from the panel or from Settings) showed "Could not start GitHub sign-in (HTTP 400)". The real cause was that Device Flow had been turned off on the Codotchi OAuth app (`device_flow_disabled`), which broke sign-in for every PyCharm user. The plugin threw away GitHub's explanation, and there was nothing to tell users what to do.
 
 **Fix:** The setting was turned back on for the OAuth app, which fixed sign-in for all users without an update. The plugin now includes GitHub's `error_description` in the error. The failure notification and the Settings page link to a new "GitHub sign-in help" section in `pycharm/README.md` / `plugin.xml`, and the Settings status label shows the failure.
+
+## BUGFIX-186 — Feed, Snack and Play worked while the pet was sick (BUG-S04)
+
+**Status:** Fixed (branch `feat/v2.26.0-sick-statusbar-nap`)
+**File:** `packages/core/src/gameEngine.ts`, `pycharm/.../engine/GameEngine.kt`, `vscode/media/sidebar.js`
+
+**Problem:** FEATURES.md §6.4 said Feed and Play were blocked while sick, but `feedMeal` and `play` never checked `sick`, and the sidebar only disabled the buttons while sleeping or paused.
+
+**Fix:** `feedMeal`, `startSnack` and `play` refuse while sick (`meal_refused_sick` / `snack_refused_sick` / `play_refused_sick`). The webview greys out Feed, Snack and Play and shows the medicine doses left; both IDE hosts skip the minigame result on a sick refusal; the terminal hosts print a "too sick" message.
+
+**Tests:** `vscode/tests/unit/gameEngine.test.ts`, `pycharm/.../GameEngineTest.kt`, `claude-codotchi/tests/integration/sickAndNap.test.mjs`, `claude-desktop-codotchi/tests/tools.test.mjs`.
+
+## BUGFIX-187 — `/codotchi wake`, feed and medicine misread the engine in Claude Code
+
+**Status:** Fixed (branch `feat/v2.26.0-sick-statusbar-nap`)
+**File:** `claude-codotchi/scripts/action.mjs`
+
+**Problem:** `wake` called `sleep()` (a no-op on a sleeping pet) while printing "Wakey wakey!", so the pet never woke. `feed` passed the game config as the meal count, and `feed` / `medicine` looked for refusal events as objects (`e.type === …`) when events are strings, so refusals were never reported.
+
+**Fix:** `wake` calls `wake()` and reports a break nap; `feed` passes 0 (the terminal keeps no meal count) and checks string events; `medicine` checks `medicine_not_needed` and shows the doses left.
+
+**Tests:** `claude-codotchi/tests/integration/sickAndNap.test.mjs`.

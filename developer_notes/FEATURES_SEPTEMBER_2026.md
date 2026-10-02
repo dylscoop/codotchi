@@ -187,7 +187,7 @@ fix is §2.2 (bulk sprites).
 
 ### BUG-S04 — Feed and Play are not blocked while sick
 
-**Status:** Open
+**Status:** Fixed (v2.26.0, branch `feat/v2.26.0-sick-statusbar-nap`, BUGFIX-186)
 **Files:** `vscode/src/gameEngine.ts` (`feedMeal`, `play`), `vscode/media/sidebar.js`
 
 **Problem:** FEATURES.md §6.4 says the engine blocks Feed/Play while the pet
@@ -641,11 +641,11 @@ Implementation Order" lists.
 
 ### Yes (do)
 
-- Sickness UX (BUG-S04): block Feed/Play while sick, grey out the buttons, add a medicine dose badge
+- Sickness UX (BUG-S04): block Feed/Play while sick, grey out the buttons, add a medicine dose badge — **done in v2.26.0** (Snack blocked too)
 - Sound effects, mute toggle and `soundEnabled` (FEATURES_2.md §1.6)
 - Dedicated art for the secret characters, hidden from the evolution preview (FEATURES_2.md §1.3)
 - Sleep polish: night-mode canvas while sleeping, `autoWake` setting, cooldown before sleeping again (FEATURES.md §6.2)
-- ⚠ in the status bar during attention calls, plus `statusBarEnabled` (FEATURES.md §10)
+- ⚠ in the status bar during attention calls, plus `statusBarEnabled` (FEATURES.md §10) — **done in v2.26.0**
 - Catch the Bug minigame (FEATURES.md §4.3)
 - Save streaks (FEATURES.md §8)
 - Test-pass reward (FEATURES.md §8)
