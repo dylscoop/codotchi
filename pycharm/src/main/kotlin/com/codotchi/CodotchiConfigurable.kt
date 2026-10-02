@@ -34,6 +34,7 @@ class CodotchiConfigurable : Configurable {
     private var colorPanel:                ColorPanel?         = null
     private var enableAttentionCallsCheck: JCheckBox?          = null
     private var osNotificationsCheck:      JCheckBox?          = null
+    private var statusBarEnabledCheck:     JCheckBox?          = null
     private var idleThresholdSpinner:      JSpinner?           = null
     private var idleDeepThresholdSpinner:  JSpinner?           = null
     private var attentionCallExpiryCombo:  JComboBox<String>?  = null
@@ -71,6 +72,7 @@ class CodotchiConfigurable : Configurable {
         val cp      = ColorPanel()
         val attentionCheck  = JCheckBox("Enable attention calls")
         val osNotificationsCheckbox = JCheckBox("Desktop notification when hunger, happiness or energy hits 0, or health drops below 25")
+        val statusBarEnabledCheckbox = JCheckBox("Show the pet in the status bar (⚠ while it has an attention call)")
         val idleSpinner     = JSpinner(SpinnerNumberModel(60, 10, 3600, 10))
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
         val expiryCombo     = JComboBox(arrayOf("Needy (4 min)", "Standard (10 min)", "Chilled (20 min)"))
@@ -125,6 +127,7 @@ class CodotchiConfigurable : Configurable {
         colorPanel               = cp
         enableAttentionCallsCheck = attentionCheck
         osNotificationsCheck     = osNotificationsCheckbox
+        statusBarEnabledCheck    = statusBarEnabledCheckbox
         idleThresholdSpinner     = idleSpinner
         idleDeepThresholdSpinner = deepIdleSpinner
         attentionCallExpiryCombo = expiryCombo
@@ -183,6 +186,7 @@ class CodotchiConfigurable : Configurable {
         addLabeled(panel, "Attention call expiry:", expiryCombo)
         addLabeled(panel, "Attention call rate:", rateCombo)
         addFull(panel, osNotificationsCheckbox)
+        addFull(panel, statusBarEnabledCheckbox)
         addLabeled(panel, "Pet size:", petSizeDropdown)
         addFull(panel, reducedMotionCheckbox)
         addFull(panel, perWorkspacePetCheckbox)
@@ -255,6 +259,7 @@ class CodotchiConfigurable : Configurable {
         val uiColor      = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
         val uiAttention  = enableAttentionCallsCheck?.isSelected ?: true
         val uiOsNotifications = osNotificationsCheck?.isSelected ?: true
+        val uiStatusBarEnabled = statusBarEnabledCheck?.isSelected ?: true
         val uiIdle       = (idleThresholdSpinner?.value as? Int) ?: 60
         val uiDeepIdle   = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         val uiExpiry     = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
@@ -285,6 +290,7 @@ class CodotchiConfigurable : Configurable {
             || uiColor != settings.textColor
             || uiAttention != settings.enableAttentionCalls
             || uiOsNotifications != settings.osNotifications
+            || uiStatusBarEnabled != settings.statusBarEnabled
             || uiIdle != settings.idleThresholdSeconds
             || uiDeepIdle != settings.idleDeepThresholdSeconds
             || uiExpiry != settings.attentionCallExpiry
@@ -319,6 +325,7 @@ class CodotchiConfigurable : Configurable {
         settings.textColor              = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
         settings.enableAttentionCalls   = enableAttentionCallsCheck?.isSelected ?: true
         settings.osNotifications        = osNotificationsCheck?.isSelected ?: true
+        settings.statusBarEnabled       = statusBarEnabledCheck?.isSelected ?: true
         settings.idleThresholdSeconds   = (idleThresholdSpinner?.value as? Int) ?: 60
         settings.idleDeepThresholdSeconds = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         settings.attentionCallExpiry    = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
@@ -366,6 +373,7 @@ class CodotchiConfigurable : Configurable {
         colorPanel?.selectedColor          = hexToColor(settings.textColor)
         enableAttentionCallsCheck?.isSelected = settings.enableAttentionCalls
         osNotificationsCheck?.isSelected      = settings.osNotifications
+        statusBarEnabledCheck?.isSelected     = settings.statusBarEnabled
         idleThresholdSpinner?.value        = settings.idleThresholdSeconds
         idleDeepThresholdSpinner?.value    = settings.idleDeepThresholdSeconds
         attentionCallExpiryCombo?.selectedIndex = expiryKeyToIndex(settings.attentionCallExpiry)
