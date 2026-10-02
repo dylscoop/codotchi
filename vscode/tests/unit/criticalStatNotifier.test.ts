@@ -98,6 +98,11 @@ describe("settings layout (package.json)", () => {
     assert.equal(main.properties["codotchi.osNotifications"].default, true);
   });
 
+  it("declares codotchi.statusBarEnabled in General, on by default", () => {
+    assert.equal(main.properties["codotchi.statusBarEnabled"].type, "boolean");
+    assert.equal(main.properties["codotchi.statusBarEnabled"].default, true);
+  });
+
   it("keeps the developer settings in their own Developer section", () => {
     assert.equal(dev.title, "Developer");
     assert.deepEqual(Object.keys(dev.properties), [

@@ -126,7 +126,7 @@ export function activate(context: vscode.ExtensionContext): void {
         "attention_call_pat":            `${state.name} wants a pat!`,
         "attention_call_craving_meal":   `${state.name} is craving a meal!`,
         "attention_call_craving_snack":  `${state.name} is craving a snack!`,
-        "attention_call_break":          `Time for a break! You've been coding for 30 minutes — praise ${state.name} and they'll nap for 3 minutes while you rest.`,
+        "attention_call_break":          `Time for a break! You've been coding for 30 minutes — praise ${state.name} and they'll nap for 5 minutes while you rest.`,
         "break_nap_over":                `Break's over! ${state.name} is awake and ready to code.`,
       };
       for (const event of state.events) {
@@ -536,6 +536,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // Try immediately; if the file doesn't exist yet, retry every 10 s.
     startWatcherWithPolling();
+
+    // Show or hide the status bar item when codotchi.statusBarEnabled changes.
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration("codotchi.statusBarEnabled")) { statusBar?.refresh(); }
+      })
+    );
 
     // React to perWorkspacePet setting changes.
     context.subscriptions.push(

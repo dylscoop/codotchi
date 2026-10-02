@@ -138,6 +138,12 @@
             "description": "Send a desktop (OS) notification when hunger, happiness or energy hits 0, or health drops below 25, so you see it even when VS Code is minimised. Repeats every 15 minutes while the stat stays that low. Works independently of attention calls.",
             "order": 4
           },
+          "codotchi.statusBarEnabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show your pet in the status bar (mood, name and stage). While your pet has an attention call active, the item shows a ⚠ and the tooltip says what it wants.",
+            "order": 5
+          },
           "codotchi.petSize": {
             "type": "string",
             "enum": ["small", "medium", "large"],
@@ -148,32 +154,32 @@
             ],
             "default": "medium",
             "description": "Display size of the pet sprite on the stage.",
-            "order": 5
+            "order": 6
           },
           "codotchi.reducedMotion": {
             "type": "boolean",
             "default": false,
             "description": "Disable all pet animations (walking, jumping, reaction effects). The pet is drawn statically at the centre of the stage. Also respects the OS-level prefers-reduced-motion setting.",
-            "order": 6
+            "order": 7
           },
           "codotchi.perWorkspacePet": {
             "type": "boolean",
             "default": false,
             "scope": "window",
             "description": "Give each workspace its own independent pet. When enabled, state is stored in a workspace-specific file derived from the workspace path. On first enable the current shared pet is copied to the workspace file as the starting point. When disabled, all workspaces share one global pet.",
-            "order": 7
+            "order": 8
           },
           "codotchi.characterPasscode": {
             "type": "string",
             "default": "",
             "description": "Hidden character passcode. Enter the correct passcode to unlock a secret character on the next hatch.",
-            "order": 8
+            "order": 9
           },
           "codotchi.aiMode": {
             "type": "boolean",
             "default": true,
             "description": "AI mode: suppress idle-timer resets from document changes, cursor movement, and tab switches — the three events an AI coding agent fires. Window focus and mouse movement still reset the timer normally. Enable this when you are using an AI agent to avoid the agent's edits keeping your pet perpetually active.",
-            "order": 9
+            "order": 10
           },
           "codotchi.stageHeight": {
             "type": "string",
@@ -186,7 +192,7 @@
             ],
             "default": "normal",
             "description": "Height of the pet stage (the area your pet walks around in). The stage scales with the sidebar width, so the on-screen height is proportional to these sizes.",
-            "order": 10
+            "order": 11
           },
           "codotchi.tokenCostSources": {
             "type": "array",
@@ -196,7 +202,7 @@
             },
             "default": ["claudeCode", "openCode"],
             "description": "Which sources contribute to the 'Today's Token Cost' bubble. 'claudeCode' and 'openCode' report a dollar cost from local usage logs. 'copilot' reports a GitHub Copilot premium-request quota percentage (no API key needed — you'll be prompted to sign in to GitHub via VS Code's built-in authentication the first time). Select any combination, e.g. just ['copilot'], or all three to show everything at once.",
-            "order": 11
+            "order": 12
           },
           "codotchi.background": {
             "type": "string",
@@ -211,7 +217,7 @@
             ],
             "default": "ordered",
             "description": "Background theme for the pet canvas.",
-            "order": 12
+            "order": 13
           },
           "codotchi.backgroundStyle": {
             "type": "string",
@@ -222,7 +228,7 @@
             ],
             "default": "scenic",
             "description": "Drawing style for the background. Both styles follow the Background season choice.",
-            "order": 13
+            "order": 14
           },
           "codotchi.backgroundOpacity": {
             "type": "string",
@@ -234,76 +240,76 @@
             ],
             "default": "medium",
             "description": "How strongly the background scene shows behind your pet. Lower settings fade it toward the pet's backdrop colour, mostly by day; the plain background is unaffected.",
-            "order": 14
+            "order": 15
           },
           "codotchi.backgroundAnimations": {
             "type": "boolean",
             "default": true,
             "description": "Animate the background: drifting clouds, twinkling stars, fairy lights, falling petals and leaves, showers, snowfall and passing critters. Turn off for a still scene. Reduced motion also turns these off.",
-            "order": 15
+            "order": 16
           },
           "codotchi.fontSize": {
             "type": "string",
             "enum": ["small", "normal", "large"],
             "default": "normal",
             "description": "Font size used in the Codotchi sidebar panel.",
-            "order": 16
+            "order": 17
           },
           "codotchi.idleThresholdSeconds": {
             "type": "integer",
             "default": 60,
             "minimum": 10,
             "description": "Seconds of no IDE activity before the pet is considered idle (stats decay at 5% of the normal rate and the pet cannot lose health). Default: 60 seconds.",
-            "order": 17
+            "order": 18
           },
           "codotchi.idleDeepThresholdSeconds": {
             "type": "integer",
             "default": 600,
             "minimum": 30,
             "description": "Seconds of sustained idle before entering deep idle (aging stops; as in regular idle, the pet cannot lose health). Default: 600 seconds (10 minutes).",
-            "order": 18
+            "order": 19
           },
           "codotchi.idleResetOnDocumentChange": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when any document is changed (keystrokes, AI agent edits, etc.). Suppressed automatically when codotchi.aiMode is enabled.",
-            "order": 19
+            "order": 20
           },
           "codotchi.idleResetOnCursorMovement": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the text editor cursor moves or the selection changes. Suppressed automatically when codotchi.aiMode is enabled.",
-            "order": 20
+            "order": 21
           },
           "codotchi.idleResetOnTabSwitch": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the active editor tab changes. Suppressed automatically when codotchi.aiMode is enabled.",
-            "order": 21
+            "order": 22
           },
           "codotchi.idleResetOnWindowFocus": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the VS Code window gains focus (e.g. you switch back to VS Code from another app). Never suppressed by aiMode.",
-            "order": 22
+            "order": 23
           },
           "codotchi.idleResetOnMouseMovement": {
             "type": "boolean",
             "default": true,
             "description": "Reset the idle timer when the mouse moves inside the Codotchi sidebar panel (throttled to once per 30 seconds). Never suppressed by aiMode.",
-            "order": 23
+            "order": 24
           },
           "codotchi.leaderboard.autoRefresh": {
             "type": "boolean",
             "default": true,
             "description": "Show a one-time notification about the leaderboard when your pet first dies. The leaderboard page also auto-refreshes every hour when left open in a browser — this can be disabled directly on the leaderboard page.",
-            "order": 24
+            "order": 25
           },
           "codotchi.leaderboard.livePush": {
             "type": "boolean",
             "default": false,
             "description": "When enabled via the sidebar toggle button, pushes your pet's current age to the leaderboard hourly while it is alive. Requires a GitHub sign-in (prompted on first push).",
-            "order": 25
+            "order": 26
           }
         }
       },
@@ -348,7 +354,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "node ../scripts/sync-core.mjs",
-    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/backgroundArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/backgroundArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js out-test/tests/unit/statusBarText.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

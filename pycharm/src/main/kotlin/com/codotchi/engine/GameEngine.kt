@@ -832,6 +832,8 @@ private fun evolveTo(state: PetState, nextStage: String): PetState {
 fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int? = null, feedHungerMult: Double? = null, feedMealWeightGain: Int? = null): PetState {
     val cap = feedMealMaxPerCycle ?: FEED_MEAL_MAX_PER_CYCLE
     val hungerBoost = (FEED_MEAL_HUNGER_BOOST * (feedHungerMult ?: 1.0)).roundToInt()
+    if (state.sick)
+        return withDerivedFields(state.copy(events = listOf("meal_refused_sick")))
     if (mealsGivenThisCycle >= cap)
         return withDerivedFields(state.copy(events = listOf("meal_refused")))
     val newWeight = clampWeight(state.weight + (feedMealWeightGain ?: FEED_MEAL_WEIGHT_GAIN))
@@ -871,6 +873,8 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int
  * `snack_refused` if the cap has been reached.
  */
 fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
+    if (state.sick)
+        return withDerivedFields(state.copy(events = listOf("snack_refused_sick")))
     if (state.snacksOnFloor >= MAX_FLOOR_SNACKS)
         return withDerivedFields(state.copy(events = listOf("snack_refused")))
     val cap = feedSnackMaxPerCycle ?: SNACK_MAX_PER_CYCLE
@@ -941,6 +945,8 @@ fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThres
 }
 
 fun play(state: PetState, playWeightLoss: Int? = null): PetState {
+    if (state.sick)
+        return withDerivedFields(state.copy(events = listOf("play_refused_sick")))
     if (state.energy < PLAY_ENERGY_COST)
         return withDerivedFields(state.copy(events = listOf("play_refused_no_energy")))
     val newWeight = clampWeight(state.weight - (playWeightLoss ?: PLAY_WEIGHT_LOSS))
@@ -1071,9 +1077,10 @@ fun sleep(state: PetState): PetState {
 }
 
 /**
- * One tick of a break nap: every stat, counter and attention-call timer is frozen,
- * but the pet keeps aging at the sleeping rate — even while the user is idle,
- * since they are away on their break. Wakes the pet when the timer runs out.
+ * One tick of a break nap: every stat, counter and attention-call timer is frozen
+ * except energy, which regenerates at the sleeping rate (no auto-wake at full energy).
+ * The pet keeps aging at the sleeping rate — even while the user is idle, since they
+ * are away on their break. Wakes the pet when the timer runs out.
  */
 private fun tickBreakNap(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, config: GameConfig,
                          modifiers: PetTypeModifiers): PetState {
@@ -1087,6 +1094,7 @@ private fun tickBreakNap(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, 
     val careMistakes = if (floor(dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS) >
                            floor(state.dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS))
         max(0.0, state.careMistakes - 1.0) else state.careMistakes
+    val energy = clampStat(state.energy + ceil(ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier).toInt())
     val breakNapTicksRemaining = max(0, state.breakNapTicksRemaining - 1)
     val napOver = breakNapTicksRemaining == 0
     if (napOver) events.add("break_nap_over")
@@ -1096,6 +1104,7 @@ private fun tickBreakNap(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, 
             dayTimer               = dayTimer,
             ageDays                = dayTimer.toInt(),
             careMistakes           = careMistakes,
+            energy                 = energy,
             breakNapTicksRemaining = breakNapTicksRemaining,
             sleeping               = if (napOver) false else state.sleeping,
             snacksGivenThisCycle   = if (napOver) 0 else state.snacksGivenThisCycle,
@@ -1108,10 +1117,12 @@ private fun tickBreakNap(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, 
 
 fun wake(state: PetState): PetState {
     if (!state.sleeping) return withDerivedFields(state.copy(events = listOf("already_awake")))
+    // A break nap can't be cut short — the pet wakes on its own after BREAK_NAP_TICKS.
+    if (state.breakNapTicksRemaining > 0)
+        return withDerivedFields(state.copy(events = listOf("break_nap_no_wake")))
     return withDerivedFields(
         state.copy(
             sleeping             = false,
-            breakNapTicksRemaining = 0,
             events               = listOf("woke_up"),
         )
     )
@@ -1188,8 +1199,8 @@ fun scold(state: PetState): PetState {
 
 /**
  * Praise the pet. Answers a gift call (+GIFT_PRAISE_HAPPINESS_BOOST), a break call
- * (+BREAK_PRAISE_HAPPINESS_BOOST, and the pet takes a BREAK_NAP_TICKS (3-minute) nap
- * while you rest: stats frozen, aging continues, wakes on its own), or an
+ * (+BREAK_PRAISE_HAPPINESS_BOOST, and the pet takes a BREAK_NAP_TICKS (5-minute) nap
+ * while you rest: stats frozen except energy, aging continues, can't be woken early), or an
  * unhappiness call, in that order.
  */
 fun praise(state: PetState): PetState {
