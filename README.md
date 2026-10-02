@@ -63,7 +63,7 @@ code --install-extension dylscoop.codotchi
 
 #### Manual install (VSIX)
 
-1. Download `codotchi-2.25.4.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download `codotchi-2.25.5.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
@@ -75,7 +75,7 @@ or in your IDE go to **Settings → Plugins → Marketplace**, search for
 
 #### Manual install (ZIP)
 
-1. Download `pycharm-codotchi-2.25.4.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download `pycharm-codotchi-2.25.5.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -103,19 +103,19 @@ page — no repository clone required:
 
 #### From Zip
 
-1. Download `opencode-codotchi-2.25.4.zip` from the
+1. Download `opencode-codotchi-2.25.5.zip` from the
    [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. Extract it and run the installer:
 
    ```bash
    # macOS / Linux
-   unzip opencode-codotchi-2.25.4.zip && cd opencode-codotchi-2.25.4
+   unzip opencode-codotchi-2.25.5.zip && cd opencode-codotchi-2.25.5
    node bin/install.js --install
    ```
 
    ```powershell
    # Windows (PowerShell)
-   Expand-Archive opencode-codotchi-2.25.4.zip; cd opencode-codotchi-2.25.4
+   Expand-Archive opencode-codotchi-2.25.5.zip; cd opencode-codotchi-2.25.5
    node bin/install.js --install
    ```
 
@@ -201,7 +201,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.25.4.vsix
+# produces codotchi-2.25.5.vsix
 ```
 
 ### JetBrains plugin
@@ -217,14 +217,14 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.25.4.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.25.5.zip
 ```
 
 ## Version history
 
 See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
-Current release: **v2.25.4** — built by [dylscoop](https://github.com/dylscoop)
+Current release: **v2.25.5** — built by [dylscoop](https://github.com/dylscoop)
 
 > "Grow your best pet by writing your best code."
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.25.5] — 2026-10-02
+
+### Changed
+
+- **Sunrise** — mornings now start with a warm sunrise that mirrors the sunset, and the scenic sky follows the same times of day as the legacy background: dawn 7–10, morning 10–13, afternoon 13–16, sunset 16–19, dusk 19–22 and night from 22. The sun rises at 7 and sets at 7 pm.
+- **Snacks and poos** — bigger and outlined, so they stand out on every background.
+- **Autumn** — a single pumpkin, off to the side, so the middle of the stage stays clear.
+
 ## [2.25.4] — 2026-10-01
 
 ### Changed
