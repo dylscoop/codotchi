@@ -21,16 +21,6 @@
   },
   {
     "username": "dylscoop",
-    "petName": "Codotchi",
-    "petRunId": "someValue.machineId",
-    "spawnedAt": 1790868209500,
-    "ageDays": 27,
-    "stage": "teen",
-    "petType": "shellscript",
-    "updatedAt": 1790868789769
-  },
-  {
-    "username": "dylscoop",
     "petName": "Wee Stu",
     "petRunId": "b68ca4c6f25d5c541f9eb73d12e36859b0333c31516adffe676bd4e6e703fd1f",
     "spawnedAt": 1788440785354,
@@ -38,5 +28,15 @@
     "stage": "baby",
     "petType": "codeling",
     "updatedAt": 1790869419183
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Codotchi",
+    "petRunId": "someValue.machineId",
+    "spawnedAt": 1790868209500,
+    "ageDays": 27,
+    "stage": "teen",
+    "petType": "shellscript",
+    "updatedAt": 1790929571922
   }
 ]
