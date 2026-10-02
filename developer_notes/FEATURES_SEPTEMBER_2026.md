@@ -567,6 +567,138 @@ with a stat penalty.
 
 ---
 
+> **Competitor research (2026-10-02).** §2.7–2.10 come from a survey of about
+> 20 pet extensions on the VS Code Marketplace, Open VSX and GitHub.
+>
+> - **vscode-pets:** pets only, no coding reactions.
+> - **Codachi:** typing XP and evolution.
+> - **Coding Pet:** XP for saves and opening files.
+> - **PetCode:** mood follows the error count; hides during debugging.
+> - **VS Code Pet:** reacts to test and build results.
+> - **Tamago Pet:** dungeon with a dragon boss, quests and achievements.
+> - **DevGotchi:** a Bug Boss whose HP is the live error count, plus classes,
+>   a shop, streaks, prestige and a "Wrapped" recap.
+> - **Dev Legend:** RPG skills, and XP for fixed errors and commits.
+> - **NoCodeQuest:** diagnostics become monsters; TODO comments become quests.
+> - **Agent Quest:** XP from AI-agent sessions.
+> - **Code Tamagotchi:** commits feed the pet; deleting lines gives XP.
+> - **Coding Achievements:** achievements only, no pet.
+>
+> Ideas noted but not taken this round:
+>
+> - mood that follows the error count (§2.8 covers it lightly)
+> - test and build pass/fail reactions (already in triage as "Test-pass reward")
+> - XP for deleting lines when refactoring
+> - Pomodoro focus sprints with an XP multiplier
+> - prestige resets
+> - shareable stats card and a yearly "Wrapped"
+> - TODO/FIXME comments as quests
+> - a burnout state
+
+### 2.7 Debug-Session Reactions
+
+PetCode hides during debugging and Coding Achievements counts debug sessions.
+Today codotchi reacts only to saves and commits.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Reaction when a debug session starts | `[ ]` | Detective-hat or magnifying-glass prop, plus a "Let's find it!" bubble. New event `debug_started` |
+| Reaction when a breakpoint is hit | `[ ]` | "Found something?" bubble and a peek animation. Event `debug_paused`, throttled |
+| Reaction when the session ends | `[ ]` | Relieved / celebrate reaction. Event `debug_ended` |
+| XP for a debug session | `[ ]` | Only for sessions of at least 30 s (§2.10) |
+| VS Code hooks | `[ ]` | `debug.onDidStartDebugSession`, `onDidTerminateDebugSession`, and a `DebugAdapterTracker` for `stopped` events |
+| PyCharm hooks | `[ ]` | `XDebuggerManager.TOPIC` → `XDebuggerManagerListener`, and `XDebugSessionListener.sessionPaused` |
+| Webview | `[ ]` | New `REACTION_DURATIONS` entries in `sidebar.js` and `humaniseEvent` text |
+| Mirror to the TypeScript engines + Kotlin | `[ ]` | ide-parity. Terminal plugins have no debugger, so they only need the new events not to break |
+
+**Design notes:**
+
+- Throttle `debug_paused`, because stepping through code fires many stops.
+- Count debug activity as non-idle, so the pet doesn't doze off mid-session.
+- Don't draw the detective prop while the pet is sleeping. Defer it until the
+  pet wakes.
+
+---
+
+### 2.8 Live Bug Boss
+
+Based on DevGotchi's Bug Boss. NoCodeQuest also turns diagnostics into
+monsters. The editor's own error count becomes a boss fight.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Spawn on errors | `[ ]` | Spawns when the error-severity count reaches `codotchi.bugBoss.threshold` (default 3) |
+| HP = live error count | `[ ]` | Each fixed error plays a hit animation; new errors heal the boss |
+| Tiers by HP | `[ ]` | Syntax Wraith → NullPointer Demon → StackOverflow Behemoth; bigger sprite and angrier speech at each tier |
+| Defeat | `[ ]` | When the count reaches 0: event `boss_defeated`, happiness boost, XP (§2.10), kill count +1 |
+| Boss art + HP bar beside the pet | `[ ]` | New `bossArt.js`, pixel grids like `minigameArt.js`; shared with §2.9 |
+| VS Code error source | `[ ]` | `languages.onDidChangeDiagnostics`, debounced, counting `DiagnosticSeverity.Error` |
+| PyCharm error source | `[ ]` | Highlighting / problems API (`WolfTheProblemSolver` or a `DaemonCodeAnalyzer` listener). PyCharm only analyses open files, so both IDEs count open files only, for parity |
+| `[S]` `codotchi.bugBoss.enabled` / `codotchi.bugBoss.threshold` | `[ ]` | VS Code `package.json` + PyCharm settings page |
+| Merge Conflict Kraken (later) | `[ ]` | HP = number of files with unresolved conflicts |
+
+**Design notes:**
+
+- **Anti-farming.** Pay out only if the boss lived at least N seconds. Add a
+  cooldown between spawns and cap the HP that counts towards the reward.
+  Closing a file makes its errors disappear; that must not count as a kill.
+- **Where the boss state lives.** Recommendation: keep the live boss on the
+  host and out of the save file. Persist only kill counts and XP. A boss can
+  then never be stale after a restart.
+- The pet's mood can follow the boss tier (worried → scared). That covers
+  the "mood follows the error count" idea from PetCode in a light form.
+
+---
+
+### 2.9 Boss Battle Mini-game
+
+Inspired by Tamago Pet's dungeon boss. Unlike the Bug Boss, this is a game in
+the mini-game picker and isn't tied to the code.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Add to the mini-game picker | `[ ]` | `sidebar.js` mini-games and buttons in `sidebar.html` |
+| Turn-based fight | `[ ]` | Pet vs a coding-themed boss. Actions: Attack, Defend, Debug (heal). About 3–6 turns, random damage |
+| Rewards | `[ ]` | Result goes through `applyMinigameResult` / `happinessDeltaForMinigame`; a win also gives XP (§2.10) |
+| Energy cost | `[ ]` | Same check as the other mini-games; also answers the `play` call (§2.6) |
+| Art | `[ ]` | Reuse the §2.8 boss sprites in `bossArt.js`, plus HP bars and hit flashes in `minigameArt.js` style |
+| Terminal variant | `[ ]` | Maybe later: `/codotchi battle` |
+
+**Design notes:**
+
+- Pet stats could scale the fight: low energy means weaker attacks, and high
+  discipline means better Defend.
+- Keep a fight under a minute, like the other games.
+
+---
+
+### 2.10 XP, Levels and Achievements
+
+Seen in Codachi, Coding Pet, DevGotchi, Dev Legend and Coding Achievements.
+Codotchi has no progression layer apart from life stages.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| XP sources | `[ ]` | Save (same throttle as `applyCodeActivity`), commit, debug session (§2.7), Bug Boss kill (§2.8), Boss Battle win (§2.9), small amounts for care actions |
+| Level curve + level badge | `[ ]` | Badge in the sidebar header; `level_up` event and reaction |
+| Achievements (~15–20) | `[ ]` | e.g. First Blood (first boss kill), Exterminator (10 kills), Detective (10 debug sessions), Committed (100 commits), Survivor (pet reaches senior), Night Owl (commit after midnight), Snack Fiend |
+| Unlock feedback | `[ ]` | IDE toast + speech bubble on unlock; achievements view in the webview |
+| Persistence + migration | `[ ]` | Old saves start with defaults; ties in with the `schemaVersion` triage item |
+| Kotlin mirror | `[ ]` | ide-parity |
+| Terminal plugins | `[ ]` | Show level and recent unlocks in `/codotchi status`; AI edits earn XP through the existing code-activity path |
+| Level on the leaderboard (optional) | `[ ]` | Extra field in the leaderboard submission |
+
+**Design notes:**
+
+- **Lifetime "trainer" progression.** XP, level and achievements belong to
+  the player and survive pet death. Life stage and care stay per pet. Losing a
+  pet then doesn't wipe progress, which fits the death → new egg loop.
+- **Anti-farming.** Cap the XP per day or per save (as Dev Legend does) so
+  repeated saves can't be farmed.
+- Build this first: §2.7–2.9 all pay out XP.
+
+---
+
 ## 3. Clean-up Opportunities
 
 Most valuable first.
@@ -660,6 +792,10 @@ Implementation Order" lists.
 - Language packs: `en.json`, `en-SCO`, `en-AU`, the setting and `/codotchi lang` (§2.3)
 - `moo` novelty pack (§2.3)
 - Community language packs (§2.3)
+- XP, levels and achievements (§2.10). Build first, because the items below pay out XP
+- Debug-session reactions (§2.7)
+- Live Bug Boss (§2.8)
+- Boss Battle mini-game (§2.9)
 
 ### Backlog
 
