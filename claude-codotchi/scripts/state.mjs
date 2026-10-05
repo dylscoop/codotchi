@@ -346,6 +346,31 @@ export function saveRankCache(data) {
   fs.writeFileSync(rankCachePath(), JSON.stringify(data, null, 2), "utf8");
 }
 
+/** Live entries older than this are hidden on the leaderboard page. */
+export const LIVE_STALE_MS = 48 * 60 * 60 * 1000;
+const STAGE_ORDER = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
+
+/**
+ * Rank `me` against scores.json + live.json exactly as leaderboard/index.html
+ * orders them: live entries only if pushed within 48h, sorted by stage then
+ * stored ageDays (no extrapolation). The pet's own live entry (matched by
+ * spawnedAt) is dropped so the trailing +1 doesn't count it twice.
+ */
+export function computeLiveRank(scores, live, me, now) {
+  const myStage = STAGE_ORDER[me.stage] ?? 0;
+  const myAge = me.ageDays ?? 0;
+  const others = (Array.isArray(scores) ? scores : []).concat(
+    (Array.isArray(live) ? live : [])
+      .filter(e => e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS)
+      .filter(e => !(me.spawnedAt && e.spawnedAt === me.spawnedAt))
+  );
+  const rank = others.filter(s => {
+    const st = STAGE_ORDER[s.stage ?? ""] ?? 0;
+    return st !== myStage ? st > myStage : (s.ageDays ?? 0) > myAge;
+  }).length + 1;
+  return { rank, total: others.length + 1 };
+}
+
 // ---------------------------------------------------------------------------
 // Config (cost thresholds, display toggle)
 // ---------------------------------------------------------------------------

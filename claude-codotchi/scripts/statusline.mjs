@@ -24,6 +24,7 @@ import {
   saveUsageCache,
   loadRankCache,
   saveRankCache,
+  computeLiveRank,
   idleFlagsForFile,
 } from "./state.mjs";
 import { pickPetEmoji, renderMovingEmojiLine, currentFrameIndex } from "./emoji.mjs";
@@ -178,13 +179,8 @@ async function main() {
         const rankJson = await scoresRes.json();
         const scores = Array.isArray(rankJson) ? rankJson : (rankJson.scores ?? []);
         const liveJson = liveRes?.ok ? await liveRes.json().catch(() => []) : [];
-        const staleMs = 30 * 24 * 60 * 60 * 1000;
-        const freshLive = Array.isArray(liveJson)
-          ? liveJson.filter(e => !e.updatedAt || (now - e.updatedAt) < staleMs) : [];
-        const combined = scores.concat(freshLive);
-        const ageDays = activePetState.ageDays ?? 0;
-        const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
-        rankData = { at: now, rank, total: combined.length + 1 };
+        const { rank, total } = computeLiveRank(scores, liveJson, activePetState, now);
+        rankData = { at: now, rank, total };
         saveRankCache(rankData);
       }
     } catch { /* network failure — keep stale cache */ }

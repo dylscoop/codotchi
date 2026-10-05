@@ -724,7 +724,7 @@ class CodotchiPlugin : Disposable {
     fun isPaused(): Boolean = stateLock.withLock { currentState?.paused ?: false }
 
     /** Fetch live rank in the background; result stored in [rankCache]. */
-    private fun fetchLiveRankAsync(ageDays: Int, stage: String) {
+    private fun fetchLiveRankAsync(ageDays: Int, stage: String, spawnedAt: Long) {
         val now = System.currentTimeMillis()
         val cached = rankCache
         if (cached != null && now - cached.at < RANK_CACHE_TTL_MS) return
@@ -751,27 +751,23 @@ class CodotchiPlugin : Disposable {
                     else -> emptyList()
                 }
 
-                val staleMs = 30L * 24 * 60 * 60 * 1000L
-                val msPerGameDayApprox = 5 * 60 * 1000L // 5 real min ≈ 1 game day (awake rate)
+                // Match leaderboard/index.html: live entries hidden after 48h,
+                // stored ageDays used as-is (no extrapolation).
+                val staleMs = 48L * 60 * 60 * 1000L
                 val selfRunId = com.intellij.openapi.application.PermanentInstallationID.get()
                 @Suppress("UNCHECKED_CAST")
                 val freshLive: List<Map<String, Any>> = if (liveText != null) {
                     val liveParsed = Gson().fromJson(liveText, Any::class.java)
                     val liveList = if (liveParsed is List<*>) liveParsed as List<Map<String, Any>> else emptyList()
-                    liveList
-                        .filter { entry ->
-                            val updatedAt = (entry["updatedAt"] as? Number)?.toLong() ?: 0L
-                            val entryRunId = entry["petRunId"] as? String
-                            // Exclude own entry by petRunId only — username exclusion was too broad.
-                            (updatedAt <= 0L || (now - updatedAt) < staleMs)
-                                && entryRunId != selfRunId
-                        }
-                        .map { entry ->
-                            val storedAge = (entry["ageDays"] as? Number)?.toDouble() ?: 0.0
-                            val updatedAt = (entry["updatedAt"] as? Number)?.toLong() ?: now
-                            val extrapolated = storedAge + (now - updatedAt).toDouble() / msPerGameDayApprox
-                            entry + mapOf("ageDays" to extrapolated)
-                        }
+                    liveList.filter { entry ->
+                        val updatedAt = (entry["updatedAt"] as? Number)?.toLong() ?: 0L
+                        val entryRunId = entry["petRunId"] as? String
+                        val entrySpawnedAt = (entry["spawnedAt"] as? Number)?.toLong()
+                        // Exclude own entry (by petRunId or spawnedAt) — the +1 below counts it.
+                        updatedAt > 0L && (now - updatedAt) < staleMs
+                            && entryRunId != selfRunId
+                            && entrySpawnedAt != spawnedAt
+                    }
                 } else emptyList()
 
                 val combined = scoresList + freshLive
@@ -1503,7 +1499,7 @@ class CodotchiPlugin : Disposable {
 
         // Kick off a background rank refresh when subscribed and alive.
         if (liveSubscribed && state != null && state.alive) {
-            fetchLiveRankAsync(state.ageDays, state.stage)
+            fetchLiveRankAsync(state.ageDays, state.stage, state.spawnedAt)
             // Hourly live push — optimistically update timestamp to prevent duplicate launches.
             val now = System.currentTimeMillis()
             if (now - liveLastPushedAtMs >= LIVE_PUSH_INTERVAL_MS) {
