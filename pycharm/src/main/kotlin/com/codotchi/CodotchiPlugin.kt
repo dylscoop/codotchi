@@ -139,7 +139,8 @@ class CodotchiPlugin : Disposable {
         System.currentTimeMillis() - lastActivityTime > service<CodotchiSettings>().idleDeepThresholdSeconds * 1000L
 
     private val browserPanels: MutableList<CodotchiBrowserPanel> = mutableListOf()
-    private var statusWidget:  CodotchiStatusWidget?  = null
+    /** One widget per project window's status bar; every one gets each update. */
+    private val statusWidgets = java.util.concurrent.CopyOnWriteArrayList<CodotchiStatusWidget>()
 
     private var tickFuture: ScheduledFuture<*>? = null
     private var messageBusConnection: MessageBusConnection? = null
@@ -1139,9 +1140,17 @@ class CodotchiPlugin : Disposable {
         browserPanels.remove(panel)
     }
 
-    fun setStatusWidget(widget: CodotchiStatusWidget) {
-        statusWidget = widget
+    /**
+     * Each project window creates its own widget. Keeping only the newest one left
+     * the others frozen on their last text, so a ⚠ never cleared there.
+     */
+    fun registerStatusWidget(widget: CodotchiStatusWidget) {
+        statusWidgets.addIfAbsent(widget)
         broadcastState()
+    }
+
+    fun unregisterStatusWidget(widget: CodotchiStatusWidget) {
+        statusWidgets.remove(widget)
     }
 
     /**
@@ -1218,7 +1227,7 @@ class CodotchiPlugin : Disposable {
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
                 browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2, liveLastPushed2) }
-                statusWidget?.update(state)
+                statusWidgets.forEach { it.update(state) }
             }
         }
     }
@@ -1511,7 +1520,7 @@ class CodotchiPlugin : Disposable {
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
                 browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveLastPushed, leaderboardGithubUsername, leaderboardAuthExpired) }
-                statusWidget?.update(state)
+                statusWidgets.forEach { it.update(state) }
             }
         }
     }

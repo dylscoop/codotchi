@@ -25,6 +25,7 @@ import {
 } from "./gameEngine";
 import { SidebarProvider } from "./sidebarProvider";
 import { StatusBarManager } from "./statusBar";
+import { anotherWindowOwnsTick } from "./tickLease";
 import { EventsManager } from "./events";
 import { SpritePreviewPanel } from "./spritePreviewPanel";
 import { getCustomCharacterByPasscode } from "./customCharacters";
@@ -40,6 +41,8 @@ import {
   getActiveStatePath,
   copySharedToWorkspace,
   migrateStateFolder,
+  readStateFileStamp,
+  WRITER_ID,
 } from "./persistence";
 
 const TICK_INTERVAL_MS: number = TICK_INTERVAL_SECONDS * 1_000;
@@ -355,6 +358,13 @@ export function activate(context: vscode.ExtensionContext): void {
   function runOneTick(): void {
     if (currentState === null) { return; }
     const cfg = vscode.workspace.getConfiguration("codotchi");
+    // AI mode keeps every window ticking. If another window saved the pet
+    // within the lease, follow its file instead of ticking a stale copy.
+    if (cfg.get<boolean>("aiMode", false) &&
+        anotherWindowOwnsTick(readStateFileStamp(), WRITER_ID, Date.now())) {
+      reloadAndRefreshUI(false);
+      return;
+    }
     const idleThresholdMs = cfg.get<number>("idleThresholdSeconds", 60) * 1_000;
     const idleDeepThresholdMs = cfg.get<number>("idleDeepThresholdSeconds", 600) * 1_000;
     const idleMs = Date.now() - lastActivityMs;
@@ -426,7 +436,7 @@ export function activate(context: vscode.ExtensionContext): void {
    * writer. In AI mode this function is never called (guarded in the
    * onDidChangeWindowState handler), so AI mode is unaffected.
    */
-  function reloadAndRefreshUI(): void {
+  function reloadAndRefreshUI(resetMeals: boolean = true): void {
     const fresh = loadState(context);
     if (fresh === null) { return; }
     const elapsed = elapsedSecondsSinceLastSave(context);
@@ -436,7 +446,8 @@ export function activate(context: vscode.ExtensionContext): void {
     currentState = state;
     // Reset the meal cycle counter — we cannot know how many meals were given
     // by the other window, so reset to 0 (conservative; allows full quota here).
-    sidebar?.resetMealCycle();
+    // Skipped when following another window's ticks, which happens every tick.
+    if (resetMeals) { sidebar?.resetMealCycle(); }
     const cfg = vscode.workspace.getConfiguration("codotchi");
     const devModeActive =
       cfg.get<boolean>("devModeEnabled", false) &&

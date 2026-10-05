@@ -2,6 +2,7 @@ package com.codotchi
 
 import com.codotchi.engine.PetState
 import com.intellij.openapi.components.service
+import com.intellij.openapi.components.serviceIfCreated
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
@@ -41,6 +42,7 @@ class CodotchiStatusWidget(private val project: Project) : StatusBarWidget, Text
 
     override fun dispose() {
         statusBar = null
+        serviceIfCreated<CodotchiPlugin>()?.unregisterStatusWidget(this)
     }
 
     // ── TextPresentation ───────────────────────────────────────────────────
