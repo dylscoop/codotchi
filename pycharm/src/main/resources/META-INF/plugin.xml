@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.26.2</version>
+    <version>2.26.3</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -176,6 +176,10 @@ settings.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+<h3>2.26.3</h3>
+<ul>
+  <li><b>Leaderboard rank</b> — the sidebar rank now matches the leaderboard page. It was counting live pets that hadn't pushed for up to 30 days and was guessing how much older they had grown since their last push, so it could show you lower down and with more pets than the page.</li>
+</ul>
 <h3>2.26.2</h3>
 <ul>
   <li><b>Status bar</b> — the ⚠ now clears when you answer the call, in every project window. Before, only the most recently opened window's status bar was updated, and the others stayed stuck on their last text.</li>

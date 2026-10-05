@@ -2307,3 +2307,14 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** a `statusWidgets` list replaces the single field. Widgets register on create and unregister on dispose, and every broadcast updates all of them.
 
 **Tests:** `vscode/tests/unit/statusBarText.test.ts` (PyCharm wiring).
+
+## BUGFIX-191 — Live rank and pet count didn't match the leaderboard page
+
+**Status:** Fixed (branch `fix/v2.26.3-leaderboard-rank`)
+**File:** `claude-codotchi/scripts/state.mjs`, `claude-codotchi/scripts/statusline.mjs`, `pycharm/.../CodotchiPlugin.kt`, `opencode-codotchi/src/index.ts`, `vscode/src/sidebarProvider.ts`
+
+**Problem:** the leaderboard page showed 12 pets with the user's pet in 3rd place. The Claude Code status line said "#3 of 14" and PyCharm said "4 of 13". Both counted live entries as fresh for 30 days, while the page hides them after 48 h, so a pet last pushed 73 h earlier was still counted. The Claude status line never removed the pet's own live entry, so the trailing +1 counted it twice, and it ranked by age alone, ignoring stage. PyCharm and OpenCode also projected each live entry's age forward at 1 game day per 5 real minutes, which turned that 73 h-old 27-day teen into a ~900-day teen ranked above the user.
+
+**Fix:** every client now ranks the way `leaderboard/index.html` orders rows: live entries only if pushed within 48 h, sorted by stage then the stored `ageDays` with no projection. Each client also drops the pet's own live entry, matched by `spawnedAt`, before adding 1. Matching by `spawnedAt` works even when the pet was pushed from another IDE. PyCharm and VS Code still check `petRunId` too.
+
+**Tests:** `claude-codotchi/tests/integration/liveRank.test.mjs`.

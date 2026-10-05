@@ -1,6 +1,26 @@
 # Version History
 
-## v2.26.2 — current
+## v2.26.3 — current
+
+**Updated constants:** live-entry stale window 30 days → 48 h (`LIVE_STALE_MS` in `claude-codotchi/scripts/state.mjs`, `LIVE_STALE_MS_OC` in OpenCode, `staleMs` in PyCharm), matching `leaderboard/index.html`.
+
+### Changes from v2.26.2 (leaderboard rank/total — branch fix/v2.26.3-leaderboard-rank)
+
+| File | What changed |
+|------|-------------|
+| `claude-codotchi/scripts/state.mjs` | BUGFIX-191: `computeLiveRank(scores, live, me, now)` — 48 h live window, stage-then-ageDays order, own entry excluded by `spawnedAt` |
+| `claude-codotchi/scripts/statusline.mjs` | rank line uses `computeLiveRank` |
+| `pycharm/.../CodotchiPlugin.kt` | `fetchLiveRankAsync` — 48 h window, no age extrapolation, own entry also excluded by `spawnedAt` |
+| `opencode-codotchi/src/index.ts` | `refreshLiveRank(me)` — same rules as Claude, plus stage ordering |
+| `vscode/src/sidebarProvider.ts` | `fetchLiveRank` also excludes own entry by `spawnedAt` |
+| `claude-codotchi/tests/integration/liveRank.test.mjs` (new), `claude-codotchi/package.json` | rank 3 of 12 on the bug-report snapshot; stale, self and stage cases |
+| `vscode/CHANGELOG.md`, `plugin.xml` | 2.26.3 notes |
+| `developer_notes/BUGFIXES.md` | BUGFIX-191 |
+| all manifests, `README.md` | version 2.26.2 → 2.26.3 |
+
+---
+
+## v2.26.2
 
 **New constants (tickLease.ts):** `TICK_LEASE_MS` 7 500 (2.5 ticks). **State file:** VS Code's `state.json` gains a top-level `writerId` (`<pid>-<8 hex>` per window).
 
