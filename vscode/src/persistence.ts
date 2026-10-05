@@ -25,6 +25,7 @@ import * as path from "path";
 import * as os from "os";
 import * as vscode from "vscode";
 import { PetState, HighScore, deserialiseState, serialiseState } from "./gameEngine";
+import { StateFileStamp } from "./tickLease";
 
 const STATE_KEY = "codotchi.petState";
 const TIMESTAMP_KEY = "codotchi.lastSaveTimestamp";
@@ -131,6 +132,25 @@ interface SharedStateFile {
   state: Record<string, unknown>;
   /** Unix epoch milliseconds when this file was written. */
   savedAt: number;
+  /** The window that wrote it (see tickLease.ts). Absent in files from older builds. */
+  writerId?: string;
+}
+
+/** Identifies this window's writes to the state file. */
+export const WRITER_ID = `${process.pid}-${crypto.randomBytes(4).toString("hex")}`;
+
+/**
+ * Who last wrote the active state file, and when. Returns null if the file is
+ * missing or unreadable.
+ */
+export function readStateFileStamp(): StateFileStamp | null {
+  try {
+    const raw = JSON.parse(fs.readFileSync(getActiveStatePath(), "utf8")) as Partial<SharedStateFile>;
+    if (typeof raw.savedAt !== "number") { return null; }
+    return { writerId: typeof raw.writerId === "string" ? raw.writerId : undefined, savedAt: raw.savedAt };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -148,6 +168,7 @@ function saveSharedState(state: PetState): void {
     const payload: SharedStateFile = {
       state: serialiseState(state) as Record<string, unknown>,
       savedAt: Date.now(),
+      writerId: WRITER_ID,
     };
     fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
   } catch {

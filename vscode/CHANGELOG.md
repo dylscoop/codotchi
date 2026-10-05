@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.26.3] — 2026-10-05
+
+### Fixed
+
+- **Leaderboard rank** — the Claude Code status line, PyCharm and OpenCode now show the same rank and pet count as the leaderboard page. They were counting live pets that hadn't pushed for up to 30 days (the page hides them after 48 hours), guessing how much older those pets had grown, and sometimes counting your own pet twice. VS Code already matched the page; it now also recognises your own pet when another IDE pushed it.
+
+## [2.26.2] — 2026-10-05
+
+### Fixed
+
+- **Status bar ⚠** — the warning now clears when you answer the call. In AI mode, two open windows (for example VS Code and VSCodium) each kept their own copy of the pet, and the copy that hadn't been answered came back. Now only one window keeps the pet going and the others follow it. Whichever window you use takes over.
+
 ## [2.26.1] — 2026-10-02
 
 ### Fixed

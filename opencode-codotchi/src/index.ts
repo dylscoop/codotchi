@@ -869,7 +869,15 @@ const RANK_CACHE_TTL_MS_OC = 5 * 60 * 1000;
 const SCORES_JSON_URL_OC = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/scores.json";
 const LIVE_JSON_URL_OC   = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/live.json";
 
-async function refreshLiveRank(ageDays: number): Promise<void> {
+const STAGE_ORDER_OC: Record<string, number> = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
+const LIVE_STALE_MS_OC = 48 * 60 * 60 * 1000; // matches leaderboard/index.html
+
+type RankEntry = { ageDays?: number; stage?: string; spawnedAt?: number; updatedAt?: number };
+
+/** Rank the pet the way leaderboard/index.html orders rows: live entries only if
+ *  pushed within 48h, stage then stored ageDays (no extrapolation), and the pet's
+ *  own live entry (by spawnedAt) excluded so the +1 counts it once. */
+async function refreshLiveRank(me: { ageDays?: number; stage?: string; spawnedAt?: number }): Promise<void> {
   const now = Date.now();
   if (liveRankCache && now - liveRankCache.at < RANK_CACHE_TTL_MS_OC) { return; }
   try {
@@ -879,22 +887,21 @@ async function refreshLiveRank(ageDays: number): Promise<void> {
     ]);
     if (!scoresRes.ok) { return; }
     const json = await scoresRes.json() as Record<string, unknown> | Array<unknown>;
-    const scores: Array<{ ageDays?: number }> = Array.isArray(json)
-      ? (json as Array<{ ageDays?: number }>)
-      : ((json as Record<string, unknown>).scores as Array<{ ageDays?: number }> ?? []);
-    const liveJson: Array<{ ageDays?: number; updatedAt?: number }> = liveRes?.ok
+    const scores: RankEntry[] = Array.isArray(json)
+      ? (json as RankEntry[])
+      : ((json as Record<string, unknown>).scores as RankEntry[] ?? []);
+    const liveJson: RankEntry[] = liveRes?.ok
       ? await liveRes.json().catch(() => []) : [];
-    const staleMs = 30 * 24 * 60 * 60 * 1000;
-    const msPerGameDayApprox = 5 * 60 * 1000; // 5 real min ≈ 1 game day (awake rate)
-    const freshLive = liveJson
-      .filter(e => typeof e.updatedAt !== "number" || now - e.updatedAt < staleMs)
-      .map(e => ({
-        ageDays: typeof e.updatedAt === "number"
-          ? (e.ageDays ?? 0) + (now - e.updatedAt) / msPerGameDayApprox
-          : (e.ageDays ?? 0),
-      }));
-    const combined = (scores as Array<{ ageDays?: number }>).concat(freshLive);
-    const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
+    const freshLive = (Array.isArray(liveJson) ? liveJson : [])
+      .filter(e => typeof e.updatedAt === "number" && now - e.updatedAt < LIVE_STALE_MS_OC)
+      .filter(e => !(me.spawnedAt && e.spawnedAt === me.spawnedAt));
+    const combined = scores.concat(freshLive);
+    const myStage = STAGE_ORDER_OC[me.stage ?? ""] ?? 0;
+    const myAge = me.ageDays ?? 0;
+    const rank = combined.filter(s => {
+      const st = STAGE_ORDER_OC[s.stage ?? ""] ?? 0;
+      return st !== myStage ? st > myStage : (s.ageDays ?? 0) > myAge;
+    }).length + 1;
     liveRankCache = { rank, total: combined.length + 1, at: now };
   } catch { /* network failure — keep stale */ }
 }
@@ -931,7 +938,7 @@ function artHeader(): string {
 
   // Trigger a background rank refresh (fire-and-forget) on each artHeader call.
   const firstAlive = alivePets[0];
-  void refreshLiveRank(firstAlive.state.ageDays ?? 0);
+  void refreshLiveRank(firstAlive.state);
 
   const bubbles = alivePets
     .map(p => {
