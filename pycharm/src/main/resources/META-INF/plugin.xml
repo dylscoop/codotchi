@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.26.1</version>
+    <version>2.26.2</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -176,6 +176,10 @@ settings.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+<h3>2.26.2</h3>
+<ul>
+  <li><b>Status bar</b> — the ⚠ now clears when you answer the call, in every project window. Before, only the most recently opened window's status bar was updated, and the others stayed stuck on their last text.</li>
+</ul>
 <h3>2.26.1</h3>
 <ul>
   <li><b>Sunrise</b> — the scenic sunrise now lasts the whole dawn stage: the sky turns orange by 7:30, stays that way until 9:00, then turns golden and finishes at 10:00, just like the legacy background.</li>

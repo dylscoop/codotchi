@@ -2285,3 +2285,25 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** `SKY_KEYS` now go first light 07:00 → full sunrise 07:30, held until 09:00 → golden 09:30 → pastel 10:00, so the sunrise ends at 10:00 like the legacy dawn stage. `DARK_KEYS` ramp 06:00 → 08:30 (was 06:30 → 09:00), so the moon and stars are gone by the time the sky turns orange.
 
 **Tests:** `vscode/tests/unit/backgroundArt.test.ts`.
+
+## BUGFIX-189 — Status bar ⚠ came back after answering a call (VS Code, AI mode)
+
+**Status:** Fixed (branch `fix/v2.26.2-ai-mode-ticker`)
+**File:** `vscode/src/tickLease.ts`, `vscode/src/persistence.ts`, `vscode/src/extension.ts`
+
+**Problem:** in AI mode every window keeps ticking, and a ticking window ignores changes to the state file. With two windows open on the same pet (seen with VS Code and VSCodium), each ticked its own copy and overwrote the other's save every 3 s. A call answered in one window was written back by the other, so the status bar ⚠ never cleared, and calls flipped between expired and active in the file.
+
+**Fix:** each window stamps its saves with a `writerId`. Before an AI-mode tick, a window that sees another window's save from the last `TICK_LEASE_MS` (7.5 s) follows the file instead of ticking. Acting on the pet saves it, so the window in use takes over. Writes with no writerId (terminal plugins, older builds) never take the tick.
+
+**Tests:** `vscode/tests/unit/tickLease.test.ts`.
+
+## BUGFIX-190 — Status bar ⚠ stuck in other PyCharm project windows
+
+**Status:** Fixed (branch `fix/v2.26.2-ai-mode-ticker`)
+**File:** `pycharm/.../CodotchiPlugin.kt`, `CodotchiStatusWidget.kt`, `CodotchiStatusWidgetFactory.kt`
+
+**Problem:** PyCharm creates one status bar widget per project window, but `CodotchiPlugin` kept only the most recently created one. Every other window's widget stayed frozen on its last text, and after that project closed, no widget was updated at all. With the v2.26.0 ⚠ prefix, the frozen warning stayed after the call was answered.
+
+**Fix:** a `statusWidgets` list replaces the single field. Widgets register on create and unregister on dispose, and every broadcast updates all of them.
+
+**Tests:** `vscode/tests/unit/statusBarText.test.ts` (PyCharm wiring).

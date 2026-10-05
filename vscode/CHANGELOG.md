@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.26.2] — 2026-10-05
+
+### Fixed
+
+- **Status bar ⚠** — the warning now clears when you answer the call. In AI mode, two open windows (for example VS Code and VSCodium) each kept their own copy of the pet, and the copy that hadn't been answered came back. Now only one window keeps the pet going and the others follow it. Whichever window you use takes over.
+
 ## [2.26.1] — 2026-10-02
 
 ### Fixed

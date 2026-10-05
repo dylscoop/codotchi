@@ -1,6 +1,25 @@
 # Version History
 
-## v2.26.1 — current
+## v2.26.2 — current
+
+**New constants (tickLease.ts):** `TICK_LEASE_MS` 7 500 (2.5 ticks). **State file:** VS Code's `state.json` gains a top-level `writerId` (`<pid>-<8 hex>` per window).
+
+### Changes from v2.26.1 (status bar ⚠ stuck after answering — branch fix/v2.26.2-ai-mode-ticker)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/tickLease.ts` (new) | BUGFIX-189: `anotherWindowOwnsTick(stamp, myWriterId, now)` — true while a different window (with a writerId) saved the state file within `TICK_LEASE_MS`; terminal-plugin write-backs and older builds have no writerId and never take the tick |
+| `vscode/src/persistence.ts` | `WRITER_ID` per window, written as `writerId` on every save; `readStateFileStamp()` |
+| `vscode/src/extension.ts` | `runOneTick` in AI mode follows the file (`reloadAndRefreshUI(false)`) instead of ticking while another window owns the tick; `reloadAndRefreshUI(resetMeals)` keeps the meal count when following |
+| `pycharm/.../CodotchiPlugin.kt`, `CodotchiStatusWidget.kt`, `CodotchiStatusWidgetFactory.kt` | BUGFIX-190: `statusWidgets` list (one widget per project window) replaces the single `statusWidget`; `registerStatusWidget` / `unregisterStatusWidget` (on dispose); every broadcast updates all widgets |
+| `vscode/tests/unit/tickLease.test.ts` (new), `statusBarText.test.ts`, `vscode/package.json` | lease rules and wiring; PyCharm updates every widget and drops closed ones |
+| `vscode/CHANGELOG.md`, `plugin.xml` | 2.26.2 notes |
+| `developer_notes/BUGFIXES.md` | BUGFIX-189, BUGFIX-190 |
+| all manifests, `README.md` | version 2.26.1 → 2.26.2 |
+
+---
+
+## v2.26.1
 
 **Updated constants (backgroundArt.js):** `SKY_KEYS` dawn: 07:00 first light · 07:30 sunrise · 09:00 sunrise held · 09:30 golden morning · 10:00 pastel (was 07:00 / 08:00 / 09:00 / 10:00) · `DARK_KEYS` [0,1] [6,1] [8.5,0] [16.5,0] [21.5,1] (was [6.5,1] [9,0])
 
