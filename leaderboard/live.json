@@ -30,16 +30,6 @@
     "updatedAt": 1791282513985
   },
   {
-    "username": "dylscoop",
-    "petName": "Mind Goblin",
-    "petRunId": "0",
-    "spawnedAt": 1790852905443,
-    "ageDays": 103,
-    "stage": "adult",
-    "petType": "bytebug",
-    "updatedAt": 1791288461854
-  },
-  {
     "username": "Stuart-Mac",
     "petName": "Tserinac",
     "petRunId": "6e62d552218d1b2c647d5272a2d3c97dfbb546826ca8c0c665b944eed1ecfc29",
@@ -48,5 +38,15 @@
     "stage": "child",
     "petType": "bytebug",
     "updatedAt": 1791299785802
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Mind Goblin",
+    "petRunId": "0",
+    "spawnedAt": 1790852905443,
+    "ageDays": 103,
+    "stage": "adult",
+    "petType": "bytebug",
+    "updatedAt": 1791300629817
   }
 ]
