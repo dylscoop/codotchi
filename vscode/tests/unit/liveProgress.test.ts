@@ -77,6 +77,22 @@ describe("live progress host handlers", () => {
     assert.match(handler, /pushLiveScoreAsync\(stateSnap, promptIfNoToken = true\)/);
   });
 
+  // Toggling and each live push re-broadcast the current state with the last
+  // tick's events still on it — those must not fire the same toasts again.
+  it("VS Code only fires toasts for an events array it hasn't seen", () => {
+    const src = read("vscode/src/extension.ts");
+    assert.match(src, /const freshEvents = state\.events !== lastNotifiedEvents;\n\s*lastNotifiedEvents = state\.events;/);
+    assert.match(src, /if \(attentionCallsEnabled && freshEvents\) \{/);
+    assert.match(src, /if \(freshEvents && state\.events\.includes\("died_of_old_age"\)\)/);
+  });
+
+  it("PyCharm only fires notifications for an events list it hasn't seen", () => {
+    const src = read("pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt");
+    assert.match(src, /state\.events !== lastNotifiedEvents/);
+    assert.match(src, /if \(state != null && freshEvents && service<CodotchiSettings>\(\)\.enableAttentionCalls\)/);
+    assert.match(src, /if \(state != null && freshEvents && state\.events\.contains\("died_of_old_age"\)\)/);
+  });
+
   it("PyCharm posts a signed leaderboard-live issue and records the sync", () => {
     const src = read("pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt");
     const push = src.slice(src.indexOf("private fun pushLiveScoreAsync"), src.indexOf("private fun submitLeaderboardAsync"));

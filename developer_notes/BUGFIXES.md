@@ -2351,3 +2351,14 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** "unverified" no longer blocks live progress or submission (tampered and dev-mode pets still do). When a pet is blocked, the button reads "Live progress unavailable", looks disabled, and the reason shows under it.
 
 **Tests:** `vscode/tests/unit/liveProgress.test.ts`, `pycharm/.../LiveProgressTest.kt`.
+
+## BUGFIX-195 — Attention-call notifications showed up more than once
+
+**Status:** Fixed (branch `feature/stugotchi-name`, v2.27.2)
+**File:** `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** the IDE re-broadcasts the current state after some actions: toggling live progress, a successful live push, and signing in or out. The last tick's events were still on that state, so every re-broadcast fired the same toasts again. A snack craving could pop up three times: once on the tick, once on the toggle and once after the push. This affected every pet, not just Stugotchi.
+
+**Fix:** each host remembers which events list it last notified for. Toasts and the old-age death notification fire only for a list it hasn't seen yet. State, the status bar and the sidebar still update on every broadcast.
+
+**Tests:** `vscode/tests/unit/liveProgress.test.ts`, `pycharm/.../LiveProgressTest.kt`.

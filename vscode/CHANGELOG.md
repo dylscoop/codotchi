@@ -9,6 +9,7 @@
 ### Fixed
 
 - **Push live progress** — pets hatched before 2.27 can push live progress and go on the leaderboard again. When a pet can't (dev mode, an edited save), the button now says why instead of doing nothing.
+- **Notifications** — a pet's call (a craving, a pat, a poop) no longer pops up two or three times when you toggle or push live progress.
 
 ## [2.27.1] — 2026-10-07
 

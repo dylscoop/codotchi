@@ -108,6 +108,13 @@ class CodotchiPlugin : Disposable {
     /** Epoch-ms of the last "pet needs rescue while idle" notification, so it can repeat. */
     @Volatile private var lastRescueNotifyMs: Long = 0L
 
+    /**
+     * The events list we last fired notifications for. broadcastState() runs after
+     * commands too (live-progress toggle, live push, sign-in) with the last tick's
+     * events still on the state, so notifications only fire for a list not seen yet.
+     */
+    @Volatile private var lastNotifiedEvents: List<String>? = null
+
     /** Per-stat epoch-ms of the last desktop notification for a critical stat (see [CriticalStatNotifier]). */
     @Volatile private var criticalStatTracker: Map<String, Long> = emptyMap()
 
@@ -1471,8 +1478,14 @@ class CodotchiPlugin : Disposable {
         }
         persistence.lastSaveTimestamp = System.currentTimeMillis()
 
+        val freshEvents = synchronized(this) {
+            val fresh = state != null && state.events !== lastNotifiedEvents
+            if (state != null) lastNotifiedEvents = state.events
+            fresh
+        }
+
         // Fire IDE notifications for attention_call_* events (only when mechanic is enabled)
-        if (state != null && service<CodotchiSettings>().enableAttentionCalls) {
+        if (state != null && freshEvents && service<CodotchiSettings>().enableAttentionCalls) {
             for (event in state.events) {
                 val msg = attentionCallMessage(state.name, event, state.spriteType, cravingItemFor(state)) ?: continue
                 fireAttentionNotification(msg)
@@ -1480,7 +1493,7 @@ class CodotchiPlugin : Disposable {
         }
 
         // Fire notification on old-age natural-causes death
-        if (state != null && state.events.contains("died_of_old_age")) {
+        if (state != null && freshEvents && state.events.contains("died_of_old_age")) {
             fireAttentionNotification(
                 "${state.name} has passed away of unforeseen natural causes due to old age."
             )

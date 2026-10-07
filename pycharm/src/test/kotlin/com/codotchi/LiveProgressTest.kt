@@ -44,6 +44,14 @@ class LiveProgressTest {
     }
 
     @Test
+    fun `re-broadcasting the same state doesn't repeat attention-call notifications`() {
+        val src = pluginSource()
+        assertTrue(src.contains("state.events !== lastNotifiedEvents"))
+        assertTrue(src.contains("if (state != null && freshEvents && service<CodotchiSettings>().enableAttentionCalls)"))
+        assertTrue(src.contains("if (state != null && freshEvents && state.events.contains(\"died_of_old_age\"))"))
+    }
+
+    @Test
     fun `pushLiveScoreAsync posts a signed leaderboard-live issue and records the sync`() {
         val src = pluginSource()
         val push = src.substringAfter("private fun pushLiveScoreAsync").substringBefore("private fun submitLeaderboardAsync")
