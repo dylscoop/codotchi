@@ -97,7 +97,7 @@ describe("leaderboardBlockedReason", () => {
   });
   it("blocks tampered and unverified pets", () => {
     assert.match(leaderboardBlockedReason({ ...pet, leaderboardIneligible: "tampered" }, false, KEY)!, /edited/);
-    assert.match(leaderboardBlockedReason({ ...pet, leaderboardIneligible: "unverified" }, false, KEY)!, /before/);
+    assert.equal(leaderboardBlockedReason({ ...pet, leaderboardIneligible: "unverified" }, false, KEY), null);
   });
 });
 

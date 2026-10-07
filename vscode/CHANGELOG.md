@@ -10,6 +10,7 @@
 ### Fixed
 
 - **Tim and Stu off-centre** — both were drawn left of centre and jumped sideways every time they turned around.
+- **Push live progress** — pets hatched before 2.27 can push live progress and go on the leaderboard again. When a pet can't (dev mode, an edited save), the button now says why instead of doing nothing.
 - **Stu's snacks** — with three snacks already on the floor, a fourth was silently lost instead of being thrown away with a message in the log.
 
 ## [2.27.0] — 2026-10-07

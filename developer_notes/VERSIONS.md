@@ -19,6 +19,9 @@
 | `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt` | BUGFIX-192: `startSnack` uses the webview's floor count |
 | `vscode/tests/unit/customCharacterText.test.ts` (new), `minigameArt.test.ts`, `webviewAnimations.test.ts`, `spriteData.test.ts`, `gameEngine.test.ts`, `pycharm/.../StatusBarTextTest.kt`, `GameEngineTest.kt` | tests |
 | `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | gift message and run/sticker toasts say "Timagotchi" / "Stugotchi" instead of "Tim" / "Stu" |
+| `packages/core/src/integrity.ts` (+ synced copies), `pycharm/.../Integrity.kt` | BUGFIX-194: "unverified" (pre-2.27) pets are no longer blocked from live progress or submission |
+| `vscode/media/sidebar.js`, `sidebar.css` | a blocked pet's live button reads "Live progress unavailable" with the reason underneath, and looks disabled |
+| `vscode/tests/unit/liveProgress.test.ts` (new), `pycharm/.../LiveProgressTest.kt` (new), `integrity.test.ts`, `IntegrityTest.kt` | live progress always works for an eligible pet in both IDEs |
 | all manifests, `README.md` | version 2.27.0 → 2.27.1 |
 
 ---

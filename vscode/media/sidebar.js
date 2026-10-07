@@ -3067,11 +3067,15 @@
     // Live subscribe button — always shown when alive.
     if (btnLiveSubscribe) {
       if (state && state.alive) {
+        // Ineligible pets can't push live progress (unsubscribing is always allowed).
+        // The reason is shown under the button too, so a disabled click never looks broken.
+        var liveBlocked = leaderboardBlocked !== null && !message.liveSubscribed;
         btnLiveSubscribe.textContent = message.liveSubscribed
           ? "Unsubscribe live progress"
-          : "Push live progress";
-        // Ineligible pets can't push live progress (unsubscribing is always allowed).
-        btnLiveSubscribe.disabled = leaderboardBlocked !== null && !message.liveSubscribed;
+          : liveBlocked
+            ? "Live progress unavailable"
+            : "Push live progress";
+        btnLiveSubscribe.disabled = liveBlocked;
         btnLiveSubscribe.title = leaderboardBlocked || "";
         btnLiveSubscribe.classList.remove("hidden");
       } else {
@@ -3081,7 +3085,10 @@
 
     // "Last synced" line — shown when subscribed and at least one push has happened.
     if (livePushStatus) {
-      if (state && state.alive && message.liveSubscribed && message.liveLastPushedAt) {
+      if (state && state.alive && leaderboardBlocked !== null && !message.liveSubscribed) {
+        livePushStatus.textContent = leaderboardBlocked;
+        livePushStatus.classList.remove("hidden");
+      } else if (state && state.alive && message.liveSubscribed && message.liveLastPushedAt) {
         var diffMs = Date.now() - message.liveLastPushedAt;
         var diffMins = Math.floor(diffMs / 60000);
         var syncedText = diffMins < 1

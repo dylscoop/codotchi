@@ -160,8 +160,8 @@ class IntegrityTest {
             Integrity.leaderboardBlockedReason(p.copy(devModeEverUsed = true), false, key))
         assertEquals("This pet's save file was edited outside Codotchi, so it can't go on the leaderboard.",
             Integrity.leaderboardBlockedReason(p.copy(leaderboardIneligible = "tampered"), false, key))
-        assertEquals("This pet was hatched before leaderboard verification, so it can't go on the leaderboard. Your next pet can.",
-            Integrity.leaderboardBlockedReason(p.copy(leaderboardIneligible = "unverified"), false, key))
+        // Pets hatched before seals existed can still push live and submit.
+        assertNull(Integrity.leaderboardBlockedReason(p.copy(leaderboardIneligible = "unverified"), false, key))
     }
 
     // ── Payload builders ────────────────────────────────────────────────────

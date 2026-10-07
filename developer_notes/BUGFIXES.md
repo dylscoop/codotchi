@@ -2340,3 +2340,14 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** every stage of both grids is shifted to sit centred (within one column), and `renderSpriteGrid` splits the rounding leftover evenly on both sides.
 
 **Tests:** `vscode/tests/unit/spriteData.test.ts`.
+
+## BUGFIX-194 — Push live progress did nothing in VS Code and PyCharm
+
+**Status:** Fixed (branch `feature/stugotchi-name`)
+**File:** `packages/core/src/integrity.ts`, `pycharm/.../Integrity.kt`, `vscode/media/sidebar.js`, `vscode/media/sidebar.css`
+
+**Problem:** every pet alive when 2.27.0 installed loads as "unverified" (its save has no seal), and `leaderboardBlockedReason` blocked those pets, so the live button was disabled. A disabled link button looked the same as an enabled one and the reason was only a hover tooltip, so clicking it seemed to do nothing.
+
+**Fix:** "unverified" no longer blocks live progress or submission (tampered and dev-mode pets still do). When a pet is blocked, the button reads "Live progress unavailable", looks disabled, and the reason shows under it.
+
+**Tests:** `vscode/tests/unit/liveProgress.test.ts`, `pycharm/.../LiveProgressTest.kt`.

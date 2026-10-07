@@ -64,6 +64,9 @@ TypeScript, Kotlin and workflow implementations can't drift apart.
   is blocked.
 - Someone who extracts the key from a built artifact can still forge entries
   within the physics floor. Admins remove those by hand.
-- Pets alive when 2.27.0 installs are "unverified" and can't be submitted. Their
-  owner's next pet can.
+- Pets alive when 2.27.0 installs are "unverified". Since v2.27.1 they can still
+  push live and be submitted (signed, no legacy tag): they were hatched by a real
+  client, and blocking them broke live progress for every existing pet. The
+  trade-off: a save with its seal deleted also loads as "unverified", so an edited
+  save without a seal is not caught. Tampered and dev-mode pets stay blocked.
 - Older clients (schemaVersion 1) are rejected with a hint to update.

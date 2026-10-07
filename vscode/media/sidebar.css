@@ -291,6 +291,12 @@ body.font-large  { font-size: 16px; }
   text-decoration: underline;
 }
 
+.link-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  text-decoration: none;
+}
+
 /* ── Dead screen ── */
 .dead-title {
   font-size: 1.17em;
