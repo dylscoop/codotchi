@@ -188,6 +188,16 @@ describe("leaderboard-validate.mjs (GitHub workflow)", () => {
     assert.match((await run(scoreBody({ ...signedScore(), sig: "0".repeat(64) }))).reason!, /Codotchi client/);
   });
 
+  // BUGFIX-198: older clients re-submitted a dead pet on every IDE reopen with a later diedAt.
+  it("keeps a run's earliest death: later resubmissions are rejected, earlier ones replace", async () => {
+    const stored = (diedAt: number) => [{ githubUsername: author, petName: sub.petName, spawnedAt: sub.spawnedAt, diedAt }];
+    const runWith = async (existing: unknown[]) => (await load()).runValidation("score",
+      { ISSUE_BODY: scoreBody(legacyScore()), ISSUE_AUTHOR: author, LEADERBOARD_HMAC_KEY: KEY }, () => existing);
+    assert.match((await runWith(stored(sub.at - 60_000))).reason!, /already been submitted/);
+    assert.match((await runWith(stored(sub.at))).reason!, /already been submitted/);
+    assert.equal((await runWith(stored(sub.at + 60_000))).valid, true);
+  });
+
   it("fails closed for signed submissions when the server key isn't configured", async () => {
     assert.match((await run(scoreBody(signedScore()), author, "")).reason!, /server key/);
   });

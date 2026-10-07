@@ -179,7 +179,6 @@ export class SidebarProvider
     private readonly markActivity: () => void,
     private readonly onResetHighScore: () => void,
     private readonly markDeepIdle: () => void,
-    private readonly getLastRunDiedAt: () => number | null = () => null
   ) {
     this.leaderboardGithubUsername = context.globalState.get<string>("leaderboardGithubUsername") ?? null;
   }
@@ -773,7 +772,7 @@ export class SidebarProvider
    * any issue whose signature doesn't match, so hand-written issues never land.
    */
   private buildScoreIssue(state: PetState, username: string): { title: string; body: string } {
-    const diedAt = this.getLastRunDiedAt() ?? Date.now();
+    const diedAt = state.diedAt || Date.now();
     const clientVersion = this.clientVersion();
     const scoreData = {
       schemaVersion: 2,

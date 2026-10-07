@@ -722,7 +722,7 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
                 ticksSinceLastPoop = ticksSinceLastPoop,
                 nextPoopIntervalTicks = nextPoopIntervalTicks,
                 hungerZeroTicks = hungerZeroTicks, sick = sick,
-                alive = alive, ticksAlive = ticksAlive,
+                alive = alive, diedAt = System.currentTimeMillis(), ticksAlive = ticksAlive,
                 sleeping = sleeping, ageDays = ageDays, dayTimer = dayTimer,
                 events = events,
                 activeAttentionCall      = activeAttentionCall,
@@ -1358,7 +1358,7 @@ fun rollOldAgeDeath(state: PetState): PetState {
     if (state.ageDays < SENIOR_NATURAL_DEATH_AGE_DAYS) return state
     val chance = computeOldAgeDeathChance(state)
     if (Math.random() >= chance) return state
-    return withDerivedFields(state.copy(alive = false, events = listOf("died_of_old_age")))
+    return withDerivedFields(state.copy(alive = false, diedAt = System.currentTimeMillis(), events = listOf("died_of_old_age")))
 }
 
 /**

@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.27.3] — 2026-10-07
+
+### Fixed
+
+- **Leaderboard death time** — a pet's death time is now saved when it dies. Reopening the IDE no longer re-submits a dead pet with a later death time, which made it look like it had lived for weeks.
+
 ## [2.27.2] — 2026-10-07
 
 ### Changed

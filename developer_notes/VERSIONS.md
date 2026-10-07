@@ -1,6 +1,24 @@
 # Version History
 
-## v2.27.2 — current
+## v2.27.3 — current
+
+**New state field:** `diedAt` (Unix ms of the death tick, 0 while alive; not part of the seal). **Leaderboard:** a re-submitted death only replaces the stored row if it is *earlier*.
+
+### Changes from v2.27.2 (real death times — branch fix/leaderboard-no-legacy-badge)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `PetState.kt` | BUGFIX-198: `diedAt` set on the death tick (health or old age), serialised; a dead save without it gets the load time once |
+| `vscode/src/extension.ts`, `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt`, `CodotchiPersistence.kt` | in-memory `lastRunDiedAt` removed; high score and submissions use `state.diedAt`; VS Code auto-submit fires only on the death tick, not on every reload |
+| `.github/scripts/leaderboard-validate.mjs` | same run keeps its earliest `diedAt`; later resubmissions rejected |
+| `leaderboard/index.html` | *legacy* badge removed |
+| `leaderboard/scores.json` (leaderboard branch) | Scrambled Shmegg and Yharooer's Codotchi restored to their real death times |
+| `vscode/tests/unit/gameEngine.test.ts`, `integrity.test.ts`, `pycharm/.../GameEngineTest.kt`, `PersistenceIntegrityTest.kt` | tests |
+| all manifests, `README.md`, `vscode/CHANGELOG.md`, `plugin.xml` change-notes | version 2.27.2 → 2.27.3 |
+
+---
+
+## v2.27.2
 
 ### Changes from v2.27.1 (Timagotchi / Stugotchi names, push live progress — branch feature/stugotchi-name)
 
@@ -21,7 +39,7 @@
 | repo secret | BUGFIX-196: `LEADERBOARD_HMAC_KEY` set; every submission had been rejected with "server key not configured" |
 | `.github/scripts/leaderboard-validate.mjs` | BUGFIX-197: unsigned v1 bodies from pre-2.27.2 clients accepted as legacy (`verified: false, legacy: true`), still age/timing-checked; signed bodies unchanged |
 | `.github/workflows/process-leaderboard-live.yml`, `process-leaderboard.yml` | keep legacy live entries in `live.json`; comments |
-| `leaderboard/index.html` | legacy live pets shown on both tables with the *legacy* badge |
+| `leaderboard/index.html` | legacy live pets shown on both tables; *legacy* badge and its explainer removed (old scores no longer tagged either) |
 | `vscode/tests/unit/integrity.test.ts` | legacy acceptance, key, bad-sig and username tests |
 | `developer_notes/adr/2026-10-07-leaderboard-integrity.md`, `developer_notes/leaderboard/ADMIN.md` | amendment; how a missing key shows up |
 

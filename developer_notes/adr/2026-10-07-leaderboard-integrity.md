@@ -81,11 +81,12 @@ failed closed.)
 
 Unsigned bodies (no `schemaVersion` or `1`, and no `sig`) are now accepted as
 **legacy**. They are stored with `verified: false, legacy: true` and no
-`clientVersion`, and the page shows a *legacy* badge on both tables. They still
+`clientVersion`. The page shows them like any other entry, with no badge
+(the flag stays in the data so admins can find them). They still
 go through every field, timestamp, physics-floor and stage-bound check, and a
 live update's `username` must still match the issue author. Signed bodies are
 unchanged: they need the key and a matching `sig`. A body that claims a signed
 format but has a bad sig never falls back to legacy. The cost is that anyone can
-hand-write a legacy entry within the physics floor. The badge makes that
-visible, and admins remove those by hand. This can be dropped once old clients
-are gone.
+hand-write a legacy entry within the physics floor, and the page doesn't mark
+it. Admins find those by `legacy: true` in `live.json` / `scores.json` and
+remove them by hand. This can be dropped once old clients are gone.

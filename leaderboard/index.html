@@ -110,17 +110,6 @@
     .elapsed { color: var(--muted); font-size: 0.82rem; }
     .submitted { color: var(--muted); font-size: 0.8rem; }
     .empty { text-align: center; padding: 3rem; color: var(--muted); }
-    .legacy-badge {
-      display: inline-block;
-      padding: 0.1rem 0.35rem;
-      margin-left: 0.4rem;
-      border-radius: 4px;
-      font-size: 0.7rem;
-      color: var(--muted);
-      border: 1px solid rgba(139,148,158,0.35);
-      vertical-align: middle;
-      cursor: help;
-    }
     .badge {
       display: inline-block;
       padding: 0.15rem 0.45rem;
@@ -204,7 +193,6 @@
       After your pet passes away, click <em>Submit to Leaderboard</em> on the game over screen.
       Your GitHub account is used to authenticate the submission.
       Scores are only accepted from the Codotchi plugin itself (each one is signed), and pets that ever ran in dev mode or whose save file was edited can't be submitted.
-      Entries marked <em>legacy</em> came from an older Codotchi version that doesn't sign submissions; they still pass the age and timing checks.
       To appear on <em>Currently Alive</em>, click <em>Push live progress</em> in the sidebar while your pet is alive. Entries expire after 48 hours.
     </div>
 
@@ -360,8 +348,6 @@
       el.textContent = mins === 0 ? "Just updated" : "Updated " + mins + "m ago";
     }
 
-    var LEGACY_BADGE = "<span class=\"legacy-badge\" title=\"From an older Codotchi version, not signed\">legacy</span>";
-
     /** Fresh live entries that are signed (verified) or from an older client (legacy). */
     function isLiveShown(e, now) {
       return (e.verified === true || e.legacy === true) && e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS;
@@ -378,8 +364,7 @@
           var scores = (results[0].scores || []).map(function(s) {
             return { alive: false, githubUsername: s.githubUsername, petName: s.petName,
                      ageDays: s.ageDays || 0, petType: s.petType, stage: s.stage,
-                     spawnedAt: s.spawnedAt, diedAt: s.diedAt, submittedAt: s.submittedAt,
-                     legacy: s.verified !== true };
+                     spawnedAt: s.spawnedAt, diedAt: s.diedAt, submittedAt: s.submittedAt };
           });
           var now = Date.now();
           var live = (Array.isArray(results[1]) ? results[1] : [])
@@ -387,7 +372,7 @@
             .map(function(e) {
               return { alive: true, githubUsername: e.username, petName: e.petName,
                        ageDays: e.ageDays || 0, petType: e.petType, stage: e.stage,
-                       spawnedAt: e.spawnedAt, updatedAt: e.updatedAt, legacy: e.legacy === true };
+                       spawnedAt: e.spawnedAt, updatedAt: e.updatedAt };
             });
           var combined = scores.concat(live);
           combined.sort(function(a, b) {
@@ -400,8 +385,7 @@
             return;
           }
           tbody.innerHTML = combined.map(function(s, i) {
-            var namePart = escHtml(s.petName || "—") + (s.alive ? "<span class=\"live-badge\">live</span>" : "") +
-              (s.legacy ? LEGACY_BADGE : "");
+            var namePart = escHtml(s.petName || "—") + (s.alive ? "<span class=\"live-badge\">live</span>" : "");
             var elapsedPart = s.spawnedAt ? formatElapsed(s.spawnedAt, s.alive ? Date.now() : s.diedAt) : formatAgeDays(s.ageDays);
             var submittedPart = s.alive ? formatRelativeTime(s.updatedAt) : formatDate(s.submittedAt);
             return "<tr>" +
@@ -458,7 +442,7 @@
       tbody.innerHTML = sorted.map(function(s, i) {
         return "<tr>" +
           "<td class=\"" + rankClass(i) + "\">" + rankIcon(i) + "</td>" +
-          "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "<span class=\"live-badge\">live</span>" + (s.legacy ? LEGACY_BADGE : "") + "</td>" +
+          "<td class=\"pet-name\">" + escHtml(s.petName || "—") + "<span class=\"live-badge\">live</span></td>" +
           "<td><a class=\"github-link\" href=\"https://github.com/" + escHtml(s.username) + "\" target=\"_blank\">@" + escHtml(s.username || "—") + "</a></td>" +
           "<td class=\"age\">" + formatAge(s.ageDays || 0) + "</td>" +
           "<td><span class=\"badge\">" + escHtml(capStr(s.petType)) + "</span></td>" +
