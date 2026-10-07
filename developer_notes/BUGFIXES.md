@@ -2343,7 +2343,7 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 
 ## BUGFIX-194 — Push live progress did nothing in VS Code and PyCharm
 
-**Status:** Fixed (branch `feature/stugotchi-name`)
+**Status:** Fixed (branch `feature/stugotchi-name`, v2.27.2)
 **File:** `packages/core/src/integrity.ts`, `pycharm/.../Integrity.kt`, `vscode/media/sidebar.js`, `vscode/media/sidebar.css`
 
 **Problem:** every pet alive when 2.27.0 installed loads as "unverified" (its save has no seal), and `leaderboardBlockedReason` blocked those pets, so the live button was disabled. A disabled link button looked the same as an enabled one and the reason was only a hover tooltip, so clicking it seemed to do nothing.
