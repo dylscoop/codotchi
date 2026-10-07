@@ -765,7 +765,22 @@ export interface PetState {
 
   /** What the active craving call asks for; null when no craving call is active. */
   readonly cravingFood: CravingFood | null;
+
+  // ── Leaderboard integrity (sticky: never cleared once set) ───────────────
+
+  /** True once any tick has run with dev mode on — the pet can never go on the leaderboard. */
+  readonly devModeEverUsed: boolean;
+
+  /**
+   * Why this pet can't go on the leaderboard, apart from dev mode: "tampered" (the saved
+   * state failed its integrity seal) or "unverified" (loaded from a save written before
+   * seals existed). "" when eligible.
+   */
+  readonly leaderboardIneligible: LeaderboardIneligibleReason;
 }
+
+/** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
+export type LeaderboardIneligibleReason = "" | "tampered" | "unverified";
 
 // ---------------------------------------------------------------------------
 // HighScore — persisted record of the best run
@@ -1147,6 +1162,8 @@ export function createPet(name: string, petType: string, unlockedCharacter: stri
     ticksSinceLastBreakCall: 0,
     breakNapTicksRemaining: 0,
     cravingFood: null,
+    devModeEverUsed: false,
+    leaderboardIneligible: "",
   };
 
   return withDerivedFields(partial);
@@ -1235,6 +1252,10 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   }
   if (state.paused) {
     return state.events.length > 0 ? { ...state, events: [] } : state;
+  }
+  // Any tick in dev mode (faster aging, health floor) bars this pet from the leaderboard for life.
+  if (config.devMode && !state.devModeEverUsed) {
+    state = { ...state, devModeEverUsed: true };
   }
   const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
   if (state.breakNapTicksRemaining > 0) {
@@ -2708,6 +2729,8 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     ticksSinceLastBreakCall: state.ticksSinceLastBreakCall,
     breakNapTicksRemaining: state.breakNapTicksRemaining,
     cravingFood: state.cravingFood,
+    devModeEverUsed: state.devModeEverUsed,
+    leaderboardIneligible: state.leaderboardIneligible,
   };
 }
 
@@ -2802,6 +2825,9 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     ticksSinceLastBreakCall: getNumber("ticksSinceLastBreakCall", 0),
     breakNapTicksRemaining: getNumber("breakNapTicksRemaining", 0),
     cravingFood: data["cravingFood"] === "meal" || data["cravingFood"] === "snack" ? data["cravingFood"] : null,
+    devModeEverUsed: getBool("devModeEverUsed", false),
+    leaderboardIneligible: data["leaderboardIneligible"] === "tampered" || data["leaderboardIneligible"] === "unverified"
+      ? data["leaderboardIneligible"] : "",
   };
 
   return withDerivedFields(partial);

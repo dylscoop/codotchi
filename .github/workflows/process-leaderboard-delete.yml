@@ -37,7 +37,8 @@ jobs:
           def fail(reason):
               with open(os.environ["GITHUB_OUTPUT"], "a") as f:
                   f.write("deleted=false\n")
-                  f.write(f"reason={reason}\n")
+                  # One line only: a newline in issue text could forge other outputs.
+                  f.write("reason=" + " ".join(str(reason).split())[:300] + "\n")
               sys.exit(0)
 
           body   = os.environ.get("ISSUE_BODY", "")
@@ -141,9 +142,12 @@ jobs:
       - name: Comment and close (failure)
         if: steps.delete.outputs.deleted == 'false'
         uses: actions/github-script@v7
+        env:
+          REASON: ${{ steps.delete.outputs.reason }}
         with:
           script: |
-            const reason = `${{ steps.delete.outputs.reason }}`;
+            // Read via env, never ${{ }} inside the script: the reason echoes issue text.
+            const reason = process.env.REASON;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo:  context.repo.repo,

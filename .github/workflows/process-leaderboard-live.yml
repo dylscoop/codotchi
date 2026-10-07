@@ -21,77 +21,46 @@ jobs:
         with:
           ref: leaderboard
 
-      - name: Update live.json
+      - name: Checkout validator (default branch)
+        uses: actions/checkout@v4
+        with:
+          path: tools
+          sparse-checkout: .github/scripts
+
+      # Only signed updates from a Codotchi client pass, and only whitelisted
+      # fields are stored (see .github/scripts/leaderboard-validate.mjs).
+      - name: Validate update
+        id: validate
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          LEADERBOARD_HMAC_KEY: ${{ secrets.LEADERBOARD_HMAC_KEY }}
+        run: node tools/.github/scripts/leaderboard-validate.mjs live
+
+      - name: Update live.json
+        if: steps.validate.outputs.valid == 'true'
         run: |
-          python3 - <<'PYEOF'
-          import json, os, sys, time
-
-          FIVE_MIN_MS = 5 * 60 * 1000
-
-          body   = os.environ["ISSUE_BODY"]
-          author = os.environ["ISSUE_AUTHOR"].lower()
-
-          try:
-              data = json.loads(body)
-          except Exception as e:
-              print(f"Invalid JSON body: {e}")
-              sys.exit(1)
-
-          if data.get("username", "").lower() != author:
-              print(f"Username mismatch: body says '{data.get('username')}', issue author is '{author}'")
-              sys.exit(1)
-
-          # Timestamp sanity — updatedAt must not be more than 5 minutes in the future
-          updated_at = data.get("updatedAt")
-          if updated_at is not None:
-              now_ms = int(time.time() * 1000)
-              if int(updated_at) > now_ms + FIVE_MIN_MS:
-                  print(f"updatedAt is in the future: {updated_at}")
-                  sys.exit(1)
-
-          path = "leaderboard/live.json"
-          try:
-              with open(path) as f:
-                  entries = json.load(f)
-              if not isinstance(entries, list):
-                  entries = []
-          except Exception:
-              entries = []
-
-          # Upsert: remove old entry for this (user, petRunId) pair, append fresh one.
-          # Using (username, petRunId) as the key so multiple simultaneous pets
-          # from the same user (e.g. VS Code + PyCharm) are tracked independently.
-          new_run_id = str(data.get("petRunId", ""))
-          entries = [
-              e for e in entries
-              if not (e.get("username", "").lower() == author and
-                      str(e.get("petRunId", "")) == new_run_id)
-          ]
-
-          # Also remove any legacy entries where petRunId == spawnedAt (old format
-          # before stable machineId was adopted). Without this, old entries persist
-          # alongside the new machineId-keyed entry and inflate the live count.
-          new_spawned_at = data.get("spawnedAt")
-          if new_spawned_at is not None:
-              entries = [
-                  e for e in entries
-                  if not (e.get("username", "").lower() == author and
-                          e.get("spawnedAt") == new_spawned_at and
-                          str(e.get("petRunId", "")) != new_run_id)
-              ]
-
-          entries.append(data)
-
-          with open(path, "w") as f:
-              json.dump(entries, f, indent=2)
-
-          print(f"live.json updated — {len(entries)} active entries")
-          PYEOF
+          node - <<'JSEOF'
+          const fs = require("fs");
+          const entry = JSON.parse(fs.readFileSync("/tmp/leaderboard-result.json", "utf8")).entry;
+          const path = "leaderboard/live.json";
+          let entries = [];
+          try { entries = JSON.parse(fs.readFileSync(path, "utf8")); } catch { entries = []; }
+          if (!Array.isArray(entries)) { entries = []; }
+          const author = entry.username.toLowerCase();
+          // Drop unverified entries from older clients, then upsert on (username, petRunId)
+          // so one user's pets in different IDEs are tracked independently. Also drop any
+          // other entry for this same run (same user + spawnedAt).
+          entries = entries.filter(e => e && e.verified === true &&
+            !(String(e.username).toLowerCase() === author &&
+              (String(e.petRunId) === entry.petRunId || e.spawnedAt === entry.spawnedAt)));
+          entries.push(entry);
+          fs.writeFileSync(path, JSON.stringify(entries, null, 2) + "\n");
+          console.log(`live.json updated — ${entries.length} active entries`);
+          JSEOF
 
       - name: Commit and push
+        if: steps.validate.outputs.valid == 'true'
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"

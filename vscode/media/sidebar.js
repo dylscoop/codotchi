@@ -183,6 +183,7 @@
   let latestHighScore = null; // cached high score from last stateUpdate
   let leaderboardAvailable = false; // true when host supports leaderboard submission
   let leaderboardSubmitted = false; // true once user successfully submitted this death
+  let leaderboardBlocked = null;    // why this pet can't go on the leaderboard (dev mode, edited save…), or null
   let currentScreen = "game"; // tracks which screen is visible
   let hasActiveGame = false;  // true once a real (non-needs_new_game) state is received
   let pendingNewGame = false; // set when Hatch! is clicked; bypasses setup-screen suppression
@@ -2036,10 +2037,18 @@
         leaderboardSection.classList.remove("hidden");
         // Reset button state for a fresh death (unless already submitted this run)
         if (btnSubmitLB && !leaderboardSubmitted) {
-          btnSubmitLB.disabled = false;
-          btnSubmitLB.textContent = "Submit to Leaderboard";
+          btnSubmitLB.disabled = leaderboardBlocked !== null;
+          btnSubmitLB.textContent = leaderboardBlocked !== null ? "Not eligible for the leaderboard" : "Submit to Leaderboard";
+          btnSubmitLB.title = leaderboardBlocked || "";
         }
-        if (leaderboardStatus) { leaderboardStatus.classList.add("hidden"); }
+        if (leaderboardStatus) {
+          if (leaderboardBlocked !== null && !leaderboardSubmitted) {
+            leaderboardStatus.textContent = leaderboardBlocked;
+            leaderboardStatus.classList.remove("hidden");
+          } else {
+            leaderboardStatus.classList.add("hidden");
+          }
+        }
       } else {
         leaderboardSection.classList.add("hidden");
       }
@@ -2745,11 +2754,6 @@
         btnSubmitLB.textContent = "Submitted ✓";
         btnSubmitLB.disabled = true;
         leaderboardSubmitted = true;
-      } else if (message.status === "browser_opened") {
-        // PyCharm: issue creation page opened in browser — let user complete it
-        btnSubmitLB.textContent = "Opened in browser ✓";
-        btnSubmitLB.disabled = true;
-        leaderboardSubmitted = true;
       } else if (message.status === "cancelled") {
         btnSubmitLB.disabled = false;
         btnSubmitLB.textContent = "Submit to Leaderboard";
@@ -2817,6 +2821,7 @@
 
     // Track whether the host supports leaderboard submission
     if (message.leaderboardAvailable) { leaderboardAvailable = true; }
+    leaderboardBlocked = message.leaderboardBlockedReason || null;
 
     // Update the setup screen default name whenever the host sends one.
     if (message.defaultPetName) {
@@ -2888,6 +2893,9 @@
         btnLiveSubscribe.textContent = message.liveSubscribed
           ? "Unsubscribe live progress"
           : "Push live progress";
+        // Ineligible pets can't push live progress (unsubscribing is always allowed).
+        btnLiveSubscribe.disabled = leaderboardBlocked !== null && !message.liveSubscribed;
+        btnLiveSubscribe.title = leaderboardBlocked || "";
         btnLiveSubscribe.classList.remove("hidden");
       } else {
         btnLiveSubscribe.classList.add("hidden");

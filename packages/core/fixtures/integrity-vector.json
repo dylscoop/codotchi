@@ -1,0 +1,39 @@
+{
+  "_comment": "Pins the leaderboard seal/signature format across integrity.ts, pycharm Integrity.kt and .github/scripts/leaderboard-validate.mjs. Regenerate only when SEAL_VERSION / SIGNATURE_VERSION change.",
+  "key": "test-key-not-the-real-one",
+  "state": {
+    "name": "Bïg Gördon ✓",
+    "petType": "bytebug",
+    "stage": "adult",
+    "alive": true,
+    "spawnedAt": 1790167921398,
+    "ticksAlive": 123457,
+    "dayTimer": 157.123456789,
+    "hunger": 47.25,
+    "happiness": 88.0005,
+    "energy": 3.14159,
+    "health": 100,
+    "weight": 41.5,
+    "sick": false,
+    "careMistakes": 2,
+    "lifetimeCareMistakes": 9,
+    "devModeEverUsed": false,
+    "leaderboardIneligible": ""
+  },
+  "sealPayload": "codotchi-seal-v1\n1790167921398\nBïg Gördon ✓\nbytebug\nadult\n1\n123457\n157123457\n47250\n88001\n3142\n100000\n41500\n0\n2\n9\n0\n",
+  "seal": "8963b4cb20409239e5da86f762082d47a28fb9c87a784979dfa33fdb0826a65f",
+  "submission": {
+    "kind": "score",
+    "githubUsername": "Stuart-Mac",
+    "petName": "Bïg Gördon ✓",
+    "ageDays": 157,
+    "stage": "adult",
+    "petType": "bytebug",
+    "spawnedAt": 1790167921398,
+    "at": 1790852793359,
+    "petRunId": "",
+    "clientVersion": "2.27.0"
+  },
+  "submissionPayload": "codotchi-lb-v2\nscore\nstuart-mac\nBïg Gördon ✓\n157\nadult\nbytebug\n1790167921398\n1790852793359\n\n2.27.0",
+  "signature": "886bb765949d13bf2dd8a7010c16e3eacaceae4e954ee815d73aa1f9536748b1"
+}

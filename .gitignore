@@ -49,3 +49,8 @@ downloaded_sprites/
 
 # Generated from vscode/media by pycharm/build.gradle.kts (processResources)
 pycharm/src/main/resources/webview/
+
+# Leaderboard HMAC key — never commit (see developer_notes/leaderboard/ADMIN.md)
+.leaderboard-key
+**/src/leaderboardKey.ts
+pycharm/src/main/kotlin/com/codotchi/generated/
