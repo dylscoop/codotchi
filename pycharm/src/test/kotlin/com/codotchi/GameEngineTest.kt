@@ -620,6 +620,18 @@ class GameEngineTest {
     }
 
     @Test
+    fun `blackjack win, push and lose give +10, 0 and -10 with no weight change`() {
+        assertEquals(10, happinessDeltaForMinigame("blackjack", "win"))
+        assertEquals(0, happinessDeltaForMinigame("blackjack", "push"))
+        assertEquals(-10, happinessDeltaForMinigame("blackjack", "lose"))
+        val pet = makePet().copy(happiness = 50, weight = 40)
+        val pushed = applyMinigameResult(pet, "blackjack", "push")
+        assertEquals(50, pushed.happiness)
+        assertEquals(40, pushed.weight)
+        assertTrue(pushed.events.contains("minigame_blackjack_push"))
+    }
+
+    @Test
     fun `only the craved food answers a craving`() {
         val wantsMeal = makePet().copy(activeAttentionCall = "craving", cravingFood = "meal")
         assertEquals("craving", startSnack(wantsMeal).activeAttentionCall)

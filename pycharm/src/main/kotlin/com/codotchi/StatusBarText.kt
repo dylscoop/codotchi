@@ -38,7 +38,14 @@ private val CALL_WANTS = mapOf(
 fun attentionCallLine(state: PetState): String {
     val call = state.activeAttentionCall ?: return ""
     val key = if (call == "craving" && state.cravingFood != null) "craving_${state.cravingFood}" else call
-    val wants = CALL_WANTS[key] ?: "wants your attention!"
+    // Custom characters (Tim, Stu) ask for a run / stickers and name their snack
+    val patCall = getCustomCharacterBySpriteType(state.spriteType)?.patCall
+    val cravingItem = cravingItemFor(state)
+    val wants = when {
+        call == "pat" && patCall != null -> patCall.status
+        cravingItem != null             -> "is craving $cravingItem!"
+        else                            -> CALL_WANTS[key] ?: "wants your attention!"
+    }
     return "⚠ ${state.name}${if (wants.startsWith("'")) "" else " "}$wants"
 }
 

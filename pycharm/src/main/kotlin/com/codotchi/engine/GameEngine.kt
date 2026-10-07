@@ -1023,8 +1023,8 @@ fun applyTokenCostView(state: PetState): PetState {
 /**
  * Return the happiness delta for a mini-game outcome.
  *
- * @param game   "left_right", "higher_lower", "coin_flip", "guess", or "memory"
- * @param result "win" or "lose"
+ * @param game   "left_right", "higher_lower", "coin_flip", "blackjack", "guess", or "memory"
+ * @param result "win" or "lose" ("push" too for blackjack)
  * @return An integer delta applied on top of the play baseline (+15); net totals: LR win 20–30, LR lose 10, HL win 25–35, HL lose 10, coin_flip win 15, coin_flip lose 5.
  */
 fun happinessDeltaForMinigame(game: String, result: String): Int {
@@ -1037,6 +1037,11 @@ fun happinessDeltaForMinigame(game: String, result: String): Int {
         return MINIGAME_HL_LOSE_DELTA // −5
     }
     if (game == "coin_flip") return if (result == "win") MINIGAME_COIN_FLIP_WIN else MINIGAME_COIN_FLIP_LOSE // 0 win, −10 lose
+    if (game == "blackjack") return when (result) {
+        "win"  -> MINIGAME_BLACKJACK_WIN   // +10
+        "push" -> MINIGAME_BLACKJACK_PUSH  // 0
+        else   -> MINIGAME_BLACKJACK_LOSE  // −10
+    }
     if (game == "memory" && result == "win") return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST
     if (result == "win") return MINIGAME_WIN_HAPPINESS_BOOST
     return MINIGAME_LOSE_HAPPINESS_BOOST
@@ -1045,7 +1050,7 @@ fun happinessDeltaForMinigame(game: String, result: String): Int {
 fun applyMinigameResult(state: PetState, game: String, result: String): PetState {
     val delta = happinessDeltaForMinigame(game, result)
     // BUGFIX-034: left_right and higher_lower lose an extra 3 weight on top of the
-    // 3 already lost in play(). coin_flip keeps total weight loss at 3 (no bonus here).
+    // 3 already lost in play(). coin_flip and blackjack keep total weight loss at 3 (no bonus here).
     val weightBonus = if (game == "left_right" || game == "higher_lower") PLAY_WEIGHT_LOSS_BONUS else 0
     val newWeight = clampWeight(state.weight - weightBonus)
     // Hosts call this straight after play(): carry over any attention call that

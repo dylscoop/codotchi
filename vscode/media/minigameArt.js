@@ -2,7 +2,7 @@
  * minigameArt.js - pixel-art drawing for the sidebar mini-games
  *
  * Doors (Left / Right), the number card (Higher or Lower), the coin (Coin
- * Flip), a countdown and a small bitmap font. Everything is drawn with
+ * Flip), playing cards (Stu's Blackjack), a countdown and a small bitmap font. Everything is drawn with
  * fillRect on a whole-pixel unit, the same style as the mood layer in
  * sprites.js. No DOM access and no CSS variables (canvas ignores them), so
  * the functions can be unit-tested against a mock context.
@@ -37,6 +37,8 @@
     goldLight: "#fff1a0",
     goldDark:  "#a07a1a",
     eye:       "#1a1a1a",
+    cardBack:  "#2f5fa8",
+    cardBackHi:"#5b8bd6",
   };
 
   // =========================================================================
@@ -64,11 +66,19 @@
     "L": ["100", "100", "100", "100", "111"],
     "R": ["110", "101", "110", "101", "101"],
     "T": ["111", "010", "010", "010", "010"],
+    "A": ["010", "101", "111", "101", "101"],
+    "J": ["001", "001", "001", "101", "111"],
+    "Q": ["010", "101", "101", "110", "011"],
+    "K": ["101", "101", "110", "101", "101"],
     " ": ["000", "000", "000", "000", "000"],
     "✓": ["00001", "00011", "10110", "11100", "01000"],   // ✓
     "✗": ["10001", "01010", "00100", "01010", "10001"],   // ✗
     "^":      ["00100", "01110", "11111", "01110", "01110"],   // up arrow
     "v":      ["01110", "01110", "11111", "01110", "00100"],   // down arrow
+    "♥": ["01010", "11111", "11111", "01110", "00100"],
+    "♦": ["00100", "01110", "11111", "01110", "00100"],
+    "♠": ["00100", "01110", "11111", "11111", "00100"],
+    "♣": ["01110", "01110", "11111", "11111", "00100"],
   };
 
   var GLYPH_H = 5;
@@ -391,6 +401,97 @@
   function coinPx(H) { return Math.max(2, Math.floor(H / 40)); }
 
   // =========================================================================
+  // Playing cards (Blackjack — replaces Coin Flip for Stu)
+  // =========================================================================
+
+  var CARD_W = 11;
+  var CARD_H = 15;
+
+  /** Blackjack value of a hand of {rank, suit} cards; aces count 11 unless that busts. */
+  function blackjackTotal(cards) {
+    var total = 0, aces = 0;
+    for (var i = 0; i < cards.length; i++) {
+      var r = cards[i].rank;
+      if (r === "A") { total += 11; aces++; }
+      else if (r === "J" || r === "Q" || r === "K") { total += 10; }
+      else { total += parseInt(r, 10); }
+    }
+    while (total > 21 && aces > 0) { total -= 10; aces--; }
+    return total;
+  }
+
+  /** "win" | "lose" | "push" for the player against the dealer, once both hands are final. */
+  function blackjackOutcome(player, dealer) {
+    var p = blackjackTotal(player), d = blackjackTotal(dealer);
+    if (p > 21) { return "lose"; }
+    if (d > 21) { return "win"; }
+    var pNatural = p === 21 && player.length === 2, dNatural = d === 21 && dealer.length === 2;
+    if (pNatural !== dNatural) { return pNatural ? "win" : "lose"; }
+    return p > d ? "win" : p < d ? "lose" : "push";
+  }
+
+  /** Pixel unit for the blackjack table on a canvas of height H (two rows of cards). */
+  function cardPx(H) { return Math.max(1, Math.floor(H / 52)); }
+
+  /**
+   * One card with its top-left at (x, y). card = {rank, suit}; faceDown draws
+   * the back. Hearts and diamonds are red, spades and clubs ink.
+   */
+  function drawPlayingCard(ctx, x, y, px, card, faceDown) {
+    ctx.save();
+    ctx.fillStyle = C.shadow;
+    ctx.fillRect(x + px, y + px, CARD_W * px, CARD_H * px);
+    ctx.fillStyle = C.cardEdge;
+    ctx.fillRect(x, y, CARD_W * px, CARD_H * px);
+    if (faceDown) {
+      ctx.fillStyle = C.cardBack;
+      ctx.fillRect(x + px, y + px, (CARD_W - 2) * px, (CARD_H - 2) * px);
+      ctx.fillStyle = C.cardBackHi;                       // diagonal lattice
+      for (var r = 2; r < CARD_H - 2; r++) {
+        for (var c = 2; c < CARD_W - 2; c++) {
+          if ((r + c) % 3 === 0) { ctx.fillRect(x + c * px, y + r * px, px, px); }
+        }
+      }
+    } else {
+      ctx.fillStyle = C.card;
+      ctx.fillRect(x + px, y + px, (CARD_W - 2) * px, (CARD_H - 2) * px);
+      var ink = card.suit === "♥" || card.suit === "♦" ? C.bad : C.ink;
+      drawText(ctx, card.rank, x + 2 * px, y + 2 * px, px, ink);
+      drawText(ctx, card.suit, x + 3 * px, y + 8 * px, px, ink);
+    }
+    ctx.restore();
+    return { x: x, y: y, w: CARD_W * px, h: CARD_H * px };
+  }
+
+  /**
+   * Dealer's hand on top, the player's below, centred on a W × H canvas, each
+   * row labelled with its total. hideHole keeps the dealer's second card face
+   * down (and its total as "?").
+   */
+  function drawBlackjackTable(ctx, W, H, dealer, player, hideHole) {
+    var px = cardPx(H);
+    var gap = 3 * px;
+    var rows = [
+      { cards: dealer, hide: hideHole, y: Math.max(px, Math.floor(H * 0.03)) },
+      { cards: player, hide: false,    y: Math.max(px, Math.floor(H * 0.03)) + CARD_H * px + gap },
+    ];
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var n = Math.max(1, row.cards.length);
+      // Cards overlap when the hand gets long, so up to ~6 cards fit
+      var step = Math.min((CARD_W + 1) * px, Math.floor((W * 0.6 - CARD_W * px) / Math.max(1, n - 1)));
+      var rowW = CARD_W * px + step * (n - 1);
+      var x0 = Math.round((W - rowW) / 2);
+      for (var k = 0; k < row.cards.length; k++) {
+        drawPlayingCard(ctx, x0 + k * step, row.y, px, row.cards[k], row.hide && k === 1);
+      }
+      var label = row.hide ? "?" : String(blackjackTotal(row.cards));
+      drawTextShadow(ctx, label, x0 + rowW + 3 * px, row.y + Math.round((CARD_H - GLYPH_H) * px / 2), px, C.cream);
+    }
+    return { px: px };
+  }
+
+  // =========================================================================
   // Exports
   // =========================================================================
 
@@ -409,5 +510,12 @@
     coinFrames:     coinFrames,
     coinPx:         coinPx,
     drawCoin:       drawCoin,
+    CARD_W:         CARD_W,
+    CARD_H:         CARD_H,
+    cardPx:         cardPx,
+    blackjackTotal:   blackjackTotal,
+    blackjackOutcome: blackjackOutcome,
+    drawPlayingCard:    drawPlayingCard,
+    drawBlackjackTable: drawBlackjackTable,
   };
 }());

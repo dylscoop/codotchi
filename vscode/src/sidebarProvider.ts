@@ -36,6 +36,7 @@ import {
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
 import { leaderboardBlockedReason, signSubmission } from "./integrity";
+import { cravingItemFor } from "./cravingItem";
 import { StatusBarManager } from "./statusBar";
 import { stageHeightPx } from "./stageHeight";
 import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
@@ -708,6 +709,7 @@ export class SidebarProvider
       devMode,
       unlockedCharacter,
       defaultPetName,
+      cravingItem: cravingItemFor(state),
       leaderboardAvailable: true,
       leaderboardBlockedReason: leaderboardBlockedReason(state, devMode),
       liveRank: (liveSubscribed && state.alive && cached) ? cached.rank : null,

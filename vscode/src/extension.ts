@@ -28,7 +28,8 @@ import { StatusBarManager } from "./statusBar";
 import { anotherWindowOwnsTick } from "./tickLease";
 import { EventsManager } from "./events";
 import { SpritePreviewPanel } from "./spritePreviewPanel";
-import { getCustomCharacterByPasscode } from "./customCharacters";
+import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
+import { cravingItemFor } from "./cravingItem";
 import { CriticalStatTracker, evaluateCriticalStats, sendOsNotification } from "./criticalStatNotifier";
 import {
   saveState,
@@ -116,6 +117,8 @@ export function activate(context: vscode.ExtensionContext): void {
       .getConfiguration("codotchi")
       .get<boolean>("enableAttentionCalls", true);
     if (attentionCallsEnabled) {
+      const patCall = getCustomCharacterBySpriteType(state.spriteType)?.patCall;
+      const cravingItem = cravingItemFor(state);
       const notificationMessages: Record<string, string> = {
         "attention_call_hunger":         `${state.name} is hungry!`,
         "attention_call_unhappiness":    `${state.name} is feeling sad!`,
@@ -126,9 +129,9 @@ export function activate(context: vscode.ExtensionContext): void {
         "attention_call_gift":           (getCustomCharacterByPasscode(vscode.workspace.getConfiguration("codotchi").get<string>("characterPasscode", ""))?.giftMessage ?? `${state.name} brought you a gift!`).replace("__Name__", state.name),
         "attention_call_critical_health":`${state.name}'s health is critical!`,
         "attention_call_play":           `${state.name} wants to play a game!`,
-        "attention_call_pat":            `${state.name} wants a pat!`,
+        "attention_call_pat":            patCall ? patCall.call.replace("__Name__", state.name) : `${state.name} wants a pat!`,
         "attention_call_craving_meal":   `${state.name} is craving a meal!`,
-        "attention_call_craving_snack":  `${state.name} is craving a snack!`,
+        "attention_call_craving_snack":  `${state.name} is craving ${cravingItem ?? "a snack"}!`,
         "attention_call_break":          `Time for a break! You've been coding for 30 minutes — praise ${state.name} and they'll nap for 5 minutes while you rest.`,
         "break_nap_over":                `Break's over! ${state.name} is awake and ready to code.`,
       };
