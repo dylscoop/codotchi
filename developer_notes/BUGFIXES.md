@@ -2382,3 +2382,14 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** unsigned v1 bodies are accepted as legacy (`verified: false, legacy: true`). They still go through every age, timing and stage check, and live updates must still come from the pet's owner. `live.json` keeps them, and the page shows them like any other entry (no badge). Signed bodies are unchanged, and a signed-format body with a bad signature is still rejected.
 
 **Tests:** `vscode/tests/unit/integrity.test.ts`.
+
+## BUGFIX-198 — Dead pets were re-submitted with a later death time on every IDE reopen
+
+**Status:** Fixed (branch `fix/leaderboard-no-legacy-badge`, v2.27.3)
+**File:** `packages/core/src/gameEngine.ts`, `vscode/src/extension.ts`, `vscode/src/sidebarProvider.ts`, `pycharm/.../engine/GameEngine.kt`, `pycharm/.../CodotchiPlugin.kt`, `pycharm/.../CodotchiPersistence.kt`, `.github/scripts/leaderboard-validate.mjs`
+
+**Problem:** the death time was kept only in memory (`lastRunDiedAt`). After an IDE restart, the first tick of a dead pet set it to "now", and VS Code's auto-submit sent the death again. The server only accepted a *later* death for the same run and replaced the row, so the date kept moving forward. Scrambled Shmegg died on 2026-08-18 after about 6 hours, but was submitted 109 times and ended up listed as dying on 2026-10-07, after "50 days".
+
+**Fix:** the engine records `diedAt` on the death tick and it is saved with the pet. Hosts submit that value, and auto-submit fires only on the death tick itself. The validator keeps a run's earliest death. The two affected rows in `scores.json` were restored from their first submissions (#1071, #224).
+
+**Tests:** `vscode/tests/unit/gameEngine.test.ts`, `vscode/tests/unit/integrity.test.ts`, `pycharm/.../GameEngineTest.kt`, `pycharm/.../PersistenceIntegrityTest.kt`.

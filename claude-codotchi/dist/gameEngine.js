@@ -753,6 +753,7 @@ export function createPet(name, petType, unlockedCharacter = null) {
         wasIdle: false,
         wasDeepIdle: false,
         spawnedAt: Date.now(),
+        diedAt: 0,
         snacksGivenThisCycle: 0,
         snacksOnFloor: 0,
         paused: false,
@@ -1326,7 +1327,7 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
             ...state,
             hunger, happiness, energy, health, poops, ticksSinceLastPoop,
             nextPoopIntervalTicks,
-            hungerZeroTicks, sick, alive: alive, ticksAlive, events,
+            hungerZeroTicks, sick, alive: alive, diedAt: Date.now(), ticksAlive, events,
             sleeping, ageDays, dayTimer, weight,
             activeAttentionCall, attentionCallActiveTicks, attentionCallCooldowns,
             careMistakes, lifetimeCareMistakes, ticksWithUncleanedPoop, poopOverLimitTicks, ticksSinceLastMisbehaviour, ticksSinceLastGift,
@@ -2156,6 +2157,7 @@ export function rollOldAgeDeath(state, random) {
     return withDerivedFields({
         ...state,
         alive: false,
+        diedAt: Date.now(),
         events: ["died_of_old_age"],
     });
 }
@@ -2311,6 +2313,7 @@ export function serialiseState(state) {
         wasIdle: state.wasIdle,
         wasDeepIdle: state.wasDeepIdle,
         spawnedAt: state.spawnedAt,
+        diedAt: state.diedAt,
         snacksGivenThisCycle: state.snacksGivenThisCycle,
         snacksOnFloor: state.snacksOnFloor,
         paused: state.paused,
@@ -2395,6 +2398,9 @@ export function deserialiseState(data) {
         wasIdle: false, // back-compat: old saves default to not idle
         wasDeepIdle: false, // back-compat: old saves default to not deep idle
         spawnedAt: getNumber("spawnedAt", Date.now()),
+        // Back-compat: a pet saved dead before diedAt existed gets "now". Its real
+        // death time is lost, but from here on it stays fixed.
+        diedAt: getNumber("diedAt", getBool("alive", true) ? 0 : Date.now()),
         snacksGivenThisCycle: getNumber("snacksGivenThisCycle", 0),
         snacksOnFloor: getNumber("snacksOnFloor", 0),
         paused: getBool("paused", false),

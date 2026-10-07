@@ -74,6 +74,13 @@ data class PetState(
     /** Unix ms timestamp when this pet was first created. */
     val spawnedAt: Long,
 
+    /**
+     * Unix ms timestamp of the tick on which the pet died; 0 while alive.
+     * Persisted so a leaderboard submission made after an IDE restart still
+     * reports the real death time, not the time the IDE was reopened.
+     */
+    val diedAt: Long = 0L,
+
     /** Snacks given in the current wake cycle (resets on wake/createPet). */
     val snacksGivenThisCycle: Int,
 
