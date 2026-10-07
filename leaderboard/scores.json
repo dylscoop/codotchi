@@ -25,6 +25,17 @@
     {
       "schemaVersion": 1,
       "githubUsername": "dylscoop",
+      "petName": "Mind Goblin",
+      "ageDays": 103,
+      "stage": "adult",
+      "petType": "bytebug",
+      "spawnedAt": 1790852905443,
+      "diedAt": 1791300851672,
+      "submittedAt": 1791359316169
+    },
+    {
+      "schemaVersion": 1,
+      "githubUsername": "dylscoop",
       "petName": "Supak",
       "ageDays": 57,
       "stage": "teen",
