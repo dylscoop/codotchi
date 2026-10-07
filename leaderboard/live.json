@@ -20,16 +20,6 @@
     "updatedAt": 1790929571936
   },
   {
-    "username": "Stuart-Mac",
-    "petName": "Tserinac",
-    "petRunId": "6e62d552218d1b2c647d5272a2d3c97dfbb546826ca8c0c665b944eed1ecfc29",
-    "spawnedAt": 1790951299663,
-    "ageDays": 16,
-    "stage": "child",
-    "petType": "bytebug",
-    "updatedAt": 1791306085753
-  },
-  {
     "username": "dylscoop",
     "petName": "Mind Goblin Jr",
     "petRunId": "0",
@@ -48,5 +38,15 @@
     "stage": "baby",
     "petType": "codeling",
     "updatedAt": 1791362798010
+  },
+  {
+    "username": "Stuart-Mac",
+    "petName": "Tserinac",
+    "petRunId": "6e62d552218d1b2c647d5272a2d3c97dfbb546826ca8c0c665b944eed1ecfc29",
+    "spawnedAt": 1790951299663,
+    "ageDays": 16,
+    "stage": "child",
+    "petType": "bytebug",
+    "updatedAt": 1791363301027
   }
 ]
