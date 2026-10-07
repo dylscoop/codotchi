@@ -38,5 +38,15 @@
     "stage": "baby",
     "petType": "codeling",
     "updatedAt": 1791359230270
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Mind Goblin Jr",
+    "petRunId": "0",
+    "spawnedAt": 1791359581258,
+    "ageDays": 0,
+    "stage": "egg",
+    "petType": "codeling",
+    "updatedAt": 1791359581554
   }
 ]
