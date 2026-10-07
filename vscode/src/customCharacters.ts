@@ -36,6 +36,8 @@ export interface CustomCharacter {
   passcode:    string;
   /** Default name pre-filled on the setup screen. For Tim, also overrides "Codotchi" (case-insensitive). */
   defaultName:  string;
+  /** Name shown for the character type in the info line and status bar tooltip (default: the capitalised spriteType). */
+  characterLabel?: string;
   /** Label for the Pat button in the minigame overlay. */
   patLabel:    string;
   /** attention_call_gift toast message (optional — uses default if absent). */
@@ -69,6 +71,7 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     spriteType:  "tim",
     passcode:    "teawtim",
     defaultName:  "Timagotchi",
+    characterLabel: "Timagotchi",
     patLabel:    "Go for a Run",
     giftMessage: "Timagotchi wants a tea break!",
     patToasts: {
@@ -157,6 +160,7 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     spriteType:  "stu",
     passcode:    "rubylovessalmon",
     defaultName: "Stugotchi",
+    characterLabel: "Stugotchi",
     patLabel:    "Collect Stickers",
     giftMessage: "Stugotchi wants a pint!",
     patToasts: {

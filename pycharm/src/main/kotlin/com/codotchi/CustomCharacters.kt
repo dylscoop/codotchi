@@ -39,6 +39,8 @@ data class CustomCharacter(
     val passcode: String,
     /** Default name pre-filled on the setup screen. For Tim, also overrides "Codotchi" (case-insensitive). */
     val defaultName: String,
+    /** Name shown for the character type in the info line (null = capitalised spriteType). */
+    val characterLabel: String? = null,
     /** Label for the Pat button in the minigame overlay. */
     val patLabel: String,
     /** attention_call_gift notification message (null = use default). */
@@ -72,6 +74,7 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         spriteType  = "tim",
         passcode    = "teawtim",
         defaultName  = "Timagotchi",
+        characterLabel = "Timagotchi",
         patLabel    = "Go for a Run",
         giftMessage = "Timagotchi wants a tea break!",
         patToasts   = CustomCharacterToasts(
@@ -160,6 +163,7 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         spriteType   = "stu",
         passcode     = "rubylovessalmon",
         defaultName  = "Stugotchi",
+        characterLabel = "Stugotchi",
         patLabel     = "Collect Stickers",
         giftMessage  = "Stugotchi wants a pint!",
         patToasts    = CustomCharacterToasts(

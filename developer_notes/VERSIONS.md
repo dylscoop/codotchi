@@ -7,6 +7,7 @@
 | File | What changed |
 |------|-------------|
 | `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | gift message and run/sticker toasts say "Timagotchi" / "Stugotchi" instead of "Tim" / "Stu" |
+| `customCharacters.ts`, `customCharacters.js`, `CustomCharacters.kt`, `vscode/media/sidebar.js`, `vscode/src/statusBarText.ts` | new optional `characterLabel`: the info line and status bar tooltip show "Timagotchi" / "Stugotchi" instead of the sprite keys "Tim" / "Stu" |
 | `packages/core/src/integrity.ts` (+ synced copies), `pycharm/.../Integrity.kt` | BUGFIX-194: "unverified" (pre-2.27) pets are no longer blocked from live progress or submission |
 | `vscode/media/sidebar.js`, `sidebar.css` | a blocked pet's live button reads "Live progress unavailable" with the reason underneath, and looks disabled |
 | `vscode/tests/unit/liveProgress.test.ts` (new), `pycharm/.../LiveProgressTest.kt` (new), `integrity.test.ts`, `IntegrityTest.kt` | live progress always works for an eligible pet in both IDEs |

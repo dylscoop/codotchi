@@ -4,7 +4,7 @@
 
 ### Changed
 
-- **Tim and Stu** — toasts and gift messages now call them Timagotchi and Stugotchi.
+- **Tim and Stu** — toasts, gift messages, the info line under the pet and the status bar tooltip now call them Timagotchi and Stugotchi.
 
 ### Fixed
 

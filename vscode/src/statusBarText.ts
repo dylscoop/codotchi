@@ -65,9 +65,10 @@ export function formatStatusBar(state: PetState): { text: string; tooltip: strin
 
   const emoji = MOOD_EMOJI[state.mood] ?? FALLBACK_EMOJI;
   const stageLabel = state.stage.charAt(0).toUpperCase() + state.stage.slice(1);
-  const spriteLabel = state.spriteType && state.spriteType !== "classic"
-    ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
-    : "";
+  const spriteLabel = getCustomCharacterBySpriteType(state.spriteType)?.characterLabel
+    ?? (state.spriteType && state.spriteType !== "classic"
+      ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
+      : "");
   const callLine = attentionCallLine(state);
   const text = `${callLine ? "⚠ " : ""}${emoji} ${state.name} (${stageLabel})`;
   const tooltip = [

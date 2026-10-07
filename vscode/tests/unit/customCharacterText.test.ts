@@ -3,7 +3,7 @@ import * as assert from "node:assert/strict";
 import * as fs from "fs";
 import * as path from "path";
 import { createPet, PetState } from "../../src/gameEngine";
-import { attentionCallLine } from "../../src/statusBarText";
+import { attentionCallLine, formatStatusBar } from "../../src/statusBarText";
 import { cravingItemFor } from "../../src/cravingItem";
 import { CUSTOM_CHARACTERS } from "../../src/customCharacters";
 
@@ -62,6 +62,25 @@ describe("cravingItemFor", () => {
     assert.equal(cravingItemFor(craving("stu"), () => 0.99), "a pint");
     cravingItemFor(makePet("stu"));  // craving answered
     assert.equal(cravingItemFor(craving("stu"), () => 0.99), "some salmon");
+  });
+});
+
+describe("character label (info line and status bar tooltip)", () => {
+  it("Tim and Stu are shown as Timagotchi and Stugotchi, not their sprite keys", () => {
+    assert.ok(formatStatusBar(makePet("tim")).tooltip.includes("Sprite: Timagotchi"));
+    assert.ok(formatStatusBar(makePet("stu")).tooltip.includes("Sprite: Stugotchi"));
+  });
+
+  it("other sprites keep the capitalised sprite key", () => {
+    assert.ok(formatStatusBar(makePet("cat")).tooltip.includes("Sprite: Cat"));
+  });
+
+  it("the webview info line uses characterLabel, and every registry has it", () => {
+    assert.match(read("vscode/media/sidebar.js"), /const spriteLabel = \(_infoCC && _infoCC\.characterLabel\) \? _infoCC\.characterLabel/);
+    for (const label of ["Timagotchi", "Stugotchi"]) {
+      assert.match(read("vscode/media/customCharacters.js"), new RegExp(`characterLabel: "${label}"`));
+      assert.match(read("pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt"), new RegExp(`characterLabel = "${label}"`));
+    }
   });
 });
 

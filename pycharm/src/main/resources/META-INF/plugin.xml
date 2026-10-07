@@ -182,7 +182,7 @@ settings.</p>
 <ul>
   <li><b>Push live progress</b> — pets hatched before 2.27 can push live progress and go on the leaderboard again. When a pet can't (dev mode, an edited save), the button now says why instead of doing nothing.</li>
   <li><b>Notifications</b> — a pet's call (a craving, a pat, a poop) no longer pops up two or three times when you toggle or push live progress.</li>
-  <li><b>Tim and Stu</b> — toasts and gift messages now call them Timagotchi and Stugotchi.</li>
+  <li><b>Tim and Stu</b> — toasts, gift messages and the info line under the pet now call them Timagotchi and Stugotchi.</li>
 </ul>
 <h3>2.27.1</h3>
 <ul>

@@ -21,6 +21,7 @@
    * Each entry shape:
    *   passcode      {string}   — exact string the user must enter in settings
    *   defaultName   {string}   — default name pre-filled on setup screen; for Tim, overrides "Codotchi" (case-insensitive)
+   *   characterLabel {string}  — optional: name shown for the character type in the info line (default: capitalised spriteType)
    *   patLabel      {string}   — label for the Pat button in the minigame overlay
    *   giftMessage   {string}   — attention_call_gift toast message (optional)
    *   patToasts     {object}   — toast strings keyed by event name:
@@ -36,6 +37,7 @@
     tim: {
       passcode:     "teawtim",
       defaultName:  "Timagotchi",
+      characterLabel: "Timagotchi",
       patLabel:     "Go for a Run",
       giftMessage:  "Timagotchi wants a tea break!",
       patToasts: {
@@ -118,6 +120,7 @@
     stu: {
       passcode:     "rubylovessalmon",
       defaultName:  "Stugotchi",
+      characterLabel: "Stugotchi",
       patLabel:     "Collect Stickers",
       giftMessage:  "Stugotchi wants a pint!",
       patToasts: {

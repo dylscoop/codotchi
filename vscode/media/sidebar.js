@@ -1552,7 +1552,8 @@
     const typeLabel = (state.petType || "codeling");
     const _infoCC = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
     const typeLabelCap = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
-    const spriteLabel = (state.spriteType && state.spriteType !== "classic")
+    const spriteLabel = (_infoCC && _infoCC.characterLabel) ? _infoCC.characterLabel
+      : (state.spriteType && state.spriteType !== "classic")
       ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
       : "";
     infoLine.textContent =
