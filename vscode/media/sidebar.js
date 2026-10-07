@@ -949,9 +949,10 @@
    * Push a reaction onto the queue.
    * @param {string} type
    * @param {number} nowMs  - performance.now() value
+   * @param {number} [durationMs] - overrides REACTION_DURATIONS[type]
    */
-  function pushReaction(type, nowMs) {
-    var dur = REACTION_DURATIONS[type];
+  function pushReaction(type, nowMs, durationMs) {
+    var dur = durationMs || REACTION_DURATIONS[type];
     if (!dur) { return; }
     reactionQueue.push({
       type:       type,
@@ -1218,6 +1219,22 @@
       petVx = 0;
       petVy = 0;
 
+    } else if (activeReaction && activeReaction.type === "patted" && window.spritePat.runLap(lastState.spriteType, 0) !== null) {
+      // Tim's "Go for a Run": jog a lap towards the roomier side and back
+      if (activeReaction.runFromX === undefined) {
+        var runDir  = (petX + bWidth / 2 < spriteCanvas.width / 2) ? 1 : -1;
+        var runRoom = runDir > 0 ? maxX - petX : petX - minX;
+        activeReaction.runFromX = petX;
+        activeReaction.runDist  = runDir * Math.max(0, Math.min(runRoom, Math.max(bWidth * 1.5, spriteCanvas.width * 0.5)));
+      }
+      var runLap = window.spritePat.runLap(lastState.spriteType, (nowMs - activeReaction.startMs) / activeReaction.durationMs);
+      var runX   = Math.max(minX, Math.min(maxX, activeReaction.runFromX + activeReaction.runDist * runLap));
+      petVx = dt > 0 ? (runX - petX) / dt : 0;
+      if (Math.abs(petVx) > 0.5) { petFacingLeft = petVx < 0; }
+      petX  = runX;
+      petY  = isDragon ? floorY - Math.round(bHeight * 0.12) : floorY;
+      petVy = 0;
+
     } else if (activeReaction && activeReaction.type === "fed_meal") {
       // Eating a meal: stand still at the bowl (wander resumes once the reaction ends)
       petVx = 0;
@@ -1386,7 +1403,8 @@
     // ── Leg frame ────────────────────────────────────────────────────────
     // Dragon floats — it has no legs, so always pass legFrame -1 (upright/neutral).
     var walking  = !isDragon && !lastState.sleeping && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
-    var legFrame = isDragon ? -1 : (walking ? Math.floor(animTick / 10) % 2 : 0);
+    var running  = activeReaction && activeReaction.type === "patted" && window.spritePat.runLap(lastState.spriteType, 0) !== null;
+    var legFrame = isDragon ? -1 : (walking ? Math.floor(animTick / (running ? 4 : 10)) % 2 : 0);
     var walkBob  = (walking && legFrame === 1) ? -1 : 0;
 
     // ── Mood layer: props, body squash, particles (window.spriteMood) ─────
@@ -1405,8 +1423,11 @@
     lastMoodFrame = moodFrame;
     var moodProps = mood && !isDragon;   // the dragon hovers, so no floor props
     var patting   = activeReaction && activeReaction.type === "patted";
+    var patT      = patting ? Math.min(1, (nowMs - activeReaction.startMs) / activeReaction.durationMs) : 0;
     if (patting) {
-      window.spritePat.spawn(patParticles, lastState.spriteType, moodBox, petFacingLeft, dt);
+      // Stu opens a sticker binder or a pack — picked once per action
+      if (activeReaction.prop === undefined) { activeReaction.prop = window.spritePat.pickProp(lastState.spriteType); }
+      window.spritePat.spawn(patParticles, lastState.spriteType, moodBox, petFacingLeft, dt, Math.random, patT);
     }
     window.spriteMood.step(patParticles, dt, floorY + bHeight);
 
@@ -1418,9 +1439,10 @@
     drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                          window.spriteMood.scaleY(mood, moodFrame));
     var moodPxSize = window.spriteMood.px(moodBox);
-    if (patting) {
-      var patT = Math.min(1, (nowMs - activeReaction.startMs) / activeReaction.durationMs);
+    if (patting && window.spritePat.usesHand(lastState.spriteType)) {
       window.spritePat.drawHand(spriteCtx, patT, moodBox, petFacingLeft, moodPxSize);
+    } else if (patting && activeReaction.prop) {
+      window.spritePat.drawProp(spriteCtx, activeReaction.prop, patT, moodBox, moodPxSize);
     }
     window.spriteMood.drawParticles(spriteCtx, moodParticles, moodPxSize);
     window.spriteMood.drawParticles(spriteCtx, patParticles, moodPxSize);
@@ -1667,7 +1689,10 @@
     if (events.indexOf("fed_meal")      !== -1) { pushReaction("fed_meal",      nowMs); }
     if (events.indexOf("fed_snack")     !== -1) { pushReaction("fed_snack",     nowMs); }
     if (events.indexOf("played")        !== -1) { pushReaction("played",        nowMs); }
-    if (events.indexOf("patted")        !== -1) { pushReaction("patted",        nowMs); }
+    if (events.indexOf("patted")        !== -1) {
+      // Tim's run and Stu's stickers take longer than a pat
+      pushReaction("patted", nowMs, window.spritePat.durationMs(state.spriteType, REACTION_DURATIONS.patted));
+    }
     if (events.indexOf("fell_asleep")   !== -1) {
       pushReaction("fell_asleep",   nowMs);
       // Persist the X position so it survives a webview reload while sleeping

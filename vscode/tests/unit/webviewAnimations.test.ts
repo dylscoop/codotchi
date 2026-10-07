@@ -498,3 +498,62 @@ describe("speech bubble vs emojis above the head (vscode/media/sidebar.js)", () 
     assert.equal(w.spriteMood.px({ x: 0, y: 0, w: 72, h: 108 }), 5);
   });
 });
+
+describe("Tim's run and Stu's stickers replace the pat (sprites.js + sidebar.js)", () => {
+  const w = loadSpriteWindow();
+  const pat = w.spritePat;
+  const box = { x: 40, y: 20, w: 32, h: 48 };
+
+  it("Tim and Stu get no hand and no hearts; other pets keep both", () => {
+    assert.equal(pat.usesHand("tim"), false);
+    assert.equal(pat.usesHand("stu"), false);
+    assert.equal(pat.usesHand("dog"), true);
+    for (const type of ["tim", "stu"]) {
+      const particles: any[] = [];
+      for (let i = 0; i < 20; i++) { pat.spawn(particles, type, box, false, 0.05, Math.random, 0.6); }
+      assert.ok(!particles.some((p) => p.kind === "heart"), type);
+    }
+  });
+
+  it("Tim jogs a lap: out to the far end at half time and back, kicking up dust", () => {
+    assert.equal(pat.runLap("tim", 0), 0);
+    assert.ok(Math.abs(pat.runLap("tim", 0.5) - 1) < 1e-9);
+    assert.ok(Math.abs(pat.runLap("tim", 1)) < 1e-9);
+    assert.equal(pat.runLap("stu", 0.5), null);
+    assert.ok(pat.durationMs("tim", 1400) > 1400);
+    const dust: any[] = [];
+    pat.spawn(dust, "tim", box, false, 1, () => 0, 0.3);
+    assert.deepEqual(dust.map((p) => p.kind), ["dust"]);
+    assert.ok(dust[0].x < box.x + box.w / 2, "dust trails behind a right-facing runner");
+  });
+
+  it("Stu opens a binder or a pack, and stickers burst out after the reveal", () => {
+    assert.equal(pat.pickProp("stu", () => 0), "binder");
+    assert.equal(pat.pickProp("stu", () => 0.99), "pack");
+    assert.equal(pat.pickProp("tim", () => 0), null);
+    const early: any[] = [];
+    pat.spawn(early, "stu", box, false, 1, () => 0, 0.2);
+    assert.equal(early.length, 0, "nothing before the binder opens / pack tears");
+    const burst: any[] = [];
+    pat.spawn(burst, "stu", box, false, 1, () => 0, 0.6);
+    assert.deepEqual(burst.map((p) => p.kind), ["sticker"]);
+    for (const variant of ["binder", "pack"]) {
+      for (const t of [0.1, 0.5, 0.9]) {
+        const { ctx, calls } = mockCtx();
+        pat.drawProp(ctx, variant, t, box, 2);
+        assert.ok((calls.fillRect ?? 0) >= 3, `${variant} t=${t}`);
+      }
+    }
+    const { ctx, calls } = mockCtx();
+    w.spriteMood.drawParticles(ctx, [...burst, { kind: "dust", x: 1, y: 1, age: 0, life: 1 }], 2);
+    assert.ok((calls.fillRect ?? 0) >= 3);
+  });
+
+  it("sidebar.js runs Tim round the stage and draws Stu's prop instead of the hand", () => {
+    assert.match(sidebarSource, /window\.spritePat\.runLap\(lastState\.spriteType, 0\) !== null/);
+    assert.match(sidebarSource, /activeReaction\.runFromX = petX;/);
+    assert.match(sidebarSource, /patting && window\.spritePat\.usesHand\(lastState\.spriteType\)/);
+    assert.match(sidebarSource, /window\.spritePat\.drawProp\(spriteCtx, activeReaction\.prop/);
+    assert.match(sidebarSource, /pushReaction\("patted", nowMs, window\.spritePat\.durationMs\(state\.spriteType/);
+  });
+});

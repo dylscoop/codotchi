@@ -1971,10 +1971,15 @@
         ctx.fillStyle = "#ffd59a";
         ctx.font = "bold 7px monospace";
         ctx.fillText("prr", x, y);
-      } else if (p.kind === "puff") {
+      } else if (p.kind === "puff" || p.kind === "dust") {
         var grow = 1 + Math.floor(2 * p.age / p.life);
-        ctx.fillStyle = "#b8b8b8";
+        ctx.fillStyle = p.kind === "dust" ? "#c8b090" : "#b8b8b8";
         ctx.fillRect(x, y, grow * px, grow * px);
+      } else if (p.kind === "sticker") {
+        ctx.fillStyle = p.colour || "#ffd54a";
+        ctx.fillRect(x, y, 2 * px, 2 * px);
+        ctx.fillStyle = "#ffffff";                    // peel-corner shine
+        ctx.fillRect(x, y, px, px);
       }
     }
     ctx.restore();
@@ -2026,10 +2031,17 @@
       var a = t * Math.PI * 2;
       return { dx: Math.sin(a) * 6, dy: (Math.cos(a) - 1) * 5, sx: 1, sy: 1, rot: Math.sin(a) * 0.15 };
     },
-    // Leans into the hand
+    // Tim's "Go for a Run": sidebar.js moves him round a lap (patRunLap);
+    // here just a quick stride bob and a forward lean
     tim: function (t) {
       var e = patEnv(t);
-      return { dx: 0, dy: e, sx: 1, sy: 1 - e * 0.04, rot: e * 0.12 };
+      return { dx: 0, dy: -Math.abs(Math.sin(t * Math.PI * 14)) * 2 * e, sx: 1, sy: 1, rot: 0.06 * e };
+    },
+    // Stu's stickers: settles in over the binder / pack, small hop at the reveal
+    stu: function (t) {
+      var e = patEnv(t);
+      var hop = (t > 0.4 && t < 0.6) ? Math.sin((t - 0.4) / 0.2 * Math.PI) : 0;
+      return { dx: 0, dy: -hop * 6, sx: 1, sy: 1 - e * 0.03, rot: 0 };
     },
     // Squish twice
     classic: function (t) {
@@ -2038,7 +2050,80 @@
     },
   };
   PAT_MOTION.roo = PAT_MOTION.kangaroo;
-  PAT_MOTION.stu = PAT_MOTION.tim;
+
+  // Custom characters whose "pat" is something else: Tim jogs a lap, Stu opens
+  // a sticker binder or a pack of stickers. Neither gets the hand or hearts.
+  var PAT_RUN   = { tim: 1 };
+  var PAT_PROPS = { stu: ["binder", "pack"] };
+  /** Reaction length (ms) for pets whose action needs longer than a pat. */
+  var PAT_DURATION_MS = { tim: 2600, stu: 2200 };
+
+  function patDurationMs(spriteType, fallback) { return PAT_DURATION_MS[spriteType] || fallback; }
+  function patUsesHand(spriteType) { return !PAT_RUN[spriteType] && !PAT_PROPS[spriteType]; }
+
+  /**
+   * Lap position for a jogging pet: 0 at the start, 1 at the far end, back to 0;
+   * null for pets that don't run. Eased so the turn-around slows down.
+   */
+  function patRunLap(spriteType, t) {
+    if (!PAT_RUN[spriteType]) { return null; }
+    return 0.5 - 0.5 * Math.cos(2 * Math.PI * Math.max(0, Math.min(1, t)));
+  }
+
+  /** Which prop this pet's action uses ("binder" / "pack"), picked at random; null if none. */
+  function patPickProp(spriteType, rand) {
+    var props = PAT_PROPS[spriteType];
+    if (!props) { return null; }
+    return props[Math.floor((rand || Math.random)() * props.length)];
+  }
+
+  var STICKER_COLOURS = ["#ff5c8a", "#4fc3f7", "#ffd54a", "#7ed957", "#b388ff", "#ff9e40"];
+  /** Where a prop is held: in front of the torso, as {cx, cy}. */
+  function patPropAnchor(box) {
+    return { cx: box.x + box.w / 2, cy: box.y + box.h * 0.6 };
+  }
+
+  /**
+   * Stu's sticker prop, held in front of the torso. "binder": a red ring binder
+   * that opens onto pages of stickers. "pack": a foil pack whose top tears off.
+   */
+  function drawPatProp(ctx, variant, t, box, px) {
+    if (!variant) { return; }
+    var a = patPropAnchor(box);
+    var u = Math.max(1, Math.round(px * 0.75));        // prop pixel
+    function cell(cx, cy, cw, ch, colour) {
+      ctx.fillStyle = colour;
+      ctx.fillRect(Math.round(a.cx + cx * u), Math.round(a.cy + cy * u), cw * u, ch * u);
+    }
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, Math.min(t, 1 - t) * 10);
+    if (variant === "binder") {
+      var open = Math.max(0, Math.min(1, (t - 0.15) / 0.3));   // 0 closed → 1 open
+      if (open < 0.5) {
+        cell(-3, -4, 6, 8, "#8b1e3f");                 // closed cover
+        cell(-3, -4, 1, 8, "#5c1229");                 // spine
+        cell(-1, -1, 3, 2, "#ffd54a");                 // label
+      } else {
+        cell(-6, -4, 12, 8, "#8b1e3f");                // open covers
+        cell(-5, -3, 10, 6, "#f2efe6");                // pages
+        cell(0, -4, 1, 8, "#5c1229");                  // rings / spine
+        for (var s = 0; s < 6; s++) {                  // sticker slots
+          var sx = s < 3 ? -5 + s * 2 : 1 + (s - 3) * 2;
+          cell(sx, -2, 1, 1, STICKER_COLOURS[s]);
+          cell(sx, 1, 1, 1, STICKER_COLOURS[(s + 3) % STICKER_COLOURS.length]);
+        }
+      }
+    } else {
+      var torn = Math.max(0, Math.min(1, (t - 0.25) / 0.2));   // 0 sealed → 1 torn
+      cell(-3, -2, 6, 7, "#c0c0d0");                   // foil body
+      cell(-3, 0, 6, 1, "#e05252");                    // stripe
+      cell(-1, 2, 2, 2, "#ffd54a");                    // star logo
+      var lift = Math.round(torn * 4);                 // torn-off top flies up
+      cell(-3 + (torn > 0 ? 1 : 0), -4 - lift, 6, 2, "#9a9ab0");
+      if (torn >= 1) { cell(-2, -3, 4, 1, STICKER_COLOURS[0]); }   // stickers peeking out
+    }
+    ctx.restore();
+  }
 
   function patMotion(spriteType, t) {
     var fn = PAT_MOTION[spriteType] || PAT_MOTION.classic;
@@ -2095,12 +2180,26 @@
     ctx.restore();
   }
 
-  /** Hearts for every pet, plus "prr" for the cat and smoke for the dragon. */
-  function spawnPatParticles(particles, spriteType, box, facingLeft, dt, rand) {
+  /**
+   * Hearts for every pet, plus "prr" for the cat and smoke for the dragon.
+   * Tim kicks up dust behind his feet; Stu's stickers burst out of the opened
+   * binder / pack (t = reaction progress 0..1).
+   */
+  function spawnPatParticles(particles, spriteType, box, facingLeft, dt, rand, t) {
     rand = rand || Math.random;
     var headX = patHeadX(box, facingLeft);
     var add = [];
-    if (rand() < dt * 4) {
+    if (PAT_RUN[spriteType] && rand() < dt * 10) {
+      add.push({ kind: "dust", x: facingLeft ? box.x + box.w * 0.7 : box.x + box.w * 0.3, y: box.y + box.h - 2,
+                 vx: (facingLeft ? 1 : -1) * (8 + rand() * 6), vy: -4, life: 0.5 });
+    }
+    if (PAT_PROPS[spriteType] && t !== undefined && t > 0.45 && t < 0.85 && rand() < dt * 12) {
+      var a = patPropAnchor(box);
+      add.push({ kind: "sticker", x: a.cx + (rand() - 0.5) * box.w * 0.3, y: a.cy - box.h * 0.1,
+                 vx: (rand() - 0.5) * 30, vy: -22 - rand() * 10, life: 1,
+                 colour: STICKER_COLOURS[Math.floor(rand() * STICKER_COLOURS.length)] });
+    }
+    if (patUsesHand(spriteType) && rand() < dt * 4) {
       add.push({ kind: "heart", x: headX + (rand() - 0.5) * box.w * 0.6, y: box.y,
                  vx: (rand() - 0.5) * 8, vy: -18, life: 1.1 });
     }
@@ -2200,6 +2299,11 @@
   window.spritePat = {
     motion:      patMotion,
     drawHand:    drawPatHand,
+    usesHand:    patUsesHand,
+    runLap:      patRunLap,
+    durationMs:  patDurationMs,
+    pickProp:    patPickProp,
+    drawProp:    drawPatProp,
     drawBlush:   drawPatBlush,
     spawn:       spawnPatParticles,
     device:      usageDevice,
