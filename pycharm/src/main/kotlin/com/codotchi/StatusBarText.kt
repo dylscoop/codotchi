@@ -31,7 +31,7 @@ private val CALL_WANTS = mapOf(
     "pat"             to "wants a pat!",
     "craving_meal"    to "is craving a meal!",
     "craving_snack"   to "is craving a snack!",
-    "break"           to "says it's time for a break — praise them!",
+    "break"           to "says it's time for a break!",
 )
 
 /** Tooltip line for the active attention call, or "" when there is none. */

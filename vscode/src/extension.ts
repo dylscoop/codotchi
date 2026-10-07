@@ -132,7 +132,7 @@ export function activate(context: vscode.ExtensionContext): void {
         "attention_call_pat":            patCall ? patCall.call.replace("__Name__", state.name) : `${state.name} wants a pat!`,
         "attention_call_craving_meal":   `${state.name} is craving a meal!`,
         "attention_call_craving_snack":  `${state.name} is craving ${cravingItem ?? "a snack"}!`,
-        "attention_call_break":          `Time for a break! You've been coding for 30 minutes — praise ${state.name} and they'll nap for 5 minutes while you rest.`,
+        "attention_call_break":          "Time for a break! You've been coding for 30 minutes.",
         "break_nap_over":                `Break's over! ${state.name} is awake and ready to code.`,
       };
       for (const event of state.events) {

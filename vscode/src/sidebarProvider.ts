@@ -84,6 +84,8 @@ export type StateUpdateCallback = (state: PetState) => void;
 interface WebviewMessage {
   command: string;
   feedType?: "meal" | "snack";
+  /** Snacks on the webview's floor when Snack was pressed (the truth for the floor cap). */
+  floorSnacks?: number;
   game?: string;
   result?: string;
   name?: string;
@@ -424,7 +426,10 @@ export class SidebarProvider
         }
         if (message.feedType === "snack") {
           const _cc = getCustomCharacterBySpriteType(state.spriteType);
-          nextState = startSnack(state, { maxPerCycle: _cc?.feedSnackMaxPerCycle });
+          // The webview reports the snacks really on its floor, so a stale counter
+          // can't let a 4th snack through (Stu's cycle cap is 10, so only the floor cap stops him).
+          const floor = typeof message.floorSnacks === "number" ? message.floorSnacks : state.snacksOnFloor;
+          nextState = startSnack({ ...state, snacksOnFloor: floor }, { maxPerCycle: _cc?.feedSnackMaxPerCycle });
         } else {
           const _cc = getCustomCharacterBySpriteType(state.spriteType);
           nextState = feedMeal(state, this.mealsGivenThisCycle, {

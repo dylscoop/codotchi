@@ -37,7 +37,7 @@ const CALL_WANTS: Record<string, string> = {
   pat:             "wants a pat!",
   craving_meal:    "is craving a meal!",
   craving_snack:   "is craving a snack!",
-  break:           "says it's time for a break — praise them!",
+  break:           "says it's time for a break!",
 };
 
 /** Tooltip line for the active attention call, or "" when there is none. */

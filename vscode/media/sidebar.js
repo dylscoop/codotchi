@@ -241,7 +241,8 @@
   });
 
   document.getElementById("btn-feed-snack").addEventListener("click", function () {
-    vscode.postMessage({ command: "feed", feedType: "snack" });
+    // Report the snacks really on the floor so the host refuses a 4th ("threw the snack away")
+    vscode.postMessage({ command: "feed", feedType: "snack", floorSnacks: snackItems.length });
   });
 
   document.getElementById("btn-play").addEventListener("click", function () {
@@ -1934,7 +1935,7 @@
       "attention_call_pat":             n + " wants a pat!",
       "attention_call_craving_meal":    n + " is craving a proper meal!",
       "attention_call_craving_snack":   n + " is craving a snack!",
-      "attention_call_break":           "30 minutes already! Remember to take a break — praise " + n + " and they'll nap for 5 minutes while you rest.",
+      "attention_call_break":           "Time for a break! You've been coding for 30 minutes.",
       // Attention calls — answered
       "attention_call_answered_hunger":          "You answered " + n + "'s hunger call.",
       "attention_call_answered_unhappiness":     "You answered " + n + "'s sadness call.",

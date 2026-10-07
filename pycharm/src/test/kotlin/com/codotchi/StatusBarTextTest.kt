@@ -47,6 +47,11 @@ class StatusBarTextTest {
     }
 
     @Test
+    fun `the break line has no praise instructions`() {
+        assertEquals("⚠ Pixel says it's time for a break!", attentionCallLine(pet.copy(activeAttentionCall = "break")))
+    }
+
+    @Test
     fun `Tim craves a tea`() {
         assertEquals("⚠ Pixel is craving a tea!",
             attentionCallLine(pet.copy(spriteType = "tim", activeAttentionCall = "craving", cravingFood = "snack")))

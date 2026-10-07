@@ -100,3 +100,28 @@ describe("custom character text parity", () => {
     assert.match(read("vscode/media/sidebar.js"), /_wk === "pat" && _whimChar && _whimChar\.patCall\) \{ continue; \}/);
   });
 });
+
+describe("floor snack cap (Stu's cycle cap is 10, so only the floor cap stops him)", () => {
+  it("the engine refuses a 4th floor snack even under a 10-snack cycle cap", async () => {
+    const { startSnack } = await import("../../src/gameEngine");
+    const pet = { ...makePet("stu"), snacksOnFloor: 3, snacksGivenThisCycle: 3 };
+    assert.deepEqual(startSnack(pet, { maxPerCycle: 10 }).events, ["snack_refused"]);
+  });
+
+  it("every host takes the floor count from the webview, so a stale counter can't let one through", () => {
+    assert.match(read("vscode/media/sidebar.js"), /feedType: "snack", floorSnacks: snackItems\.length/);
+    assert.match(read("vscode/src/sidebarProvider.ts"), /startSnack\(\{ \.\.\.state, snacksOnFloor: floor \}/);
+    assert.match(read("pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt"), /startSnack\(state\.copy\(snacksOnFloor = floor\)/);
+  });
+});
+
+describe("break reminder text", () => {
+  it("just says it's time for a break — no praise instructions", () => {
+    for (const p of ["vscode/src/extension.ts", "vscode/media/sidebar.js", "pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt"]) {
+      const src = read(p);
+      assert.ok(src.includes("Time for a break! You've been coding for 30 minutes."), p);
+      assert.ok(!/praise[^\n]*nap for 5 minutes/.test(src), p);
+    }
+    assert.equal(attentionCallLine(makePet("dog", { activeAttentionCall: "break" })), "⚠ Pixel says it's time for a break!");
+  });
+});

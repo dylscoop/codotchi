@@ -491,7 +491,10 @@ class CodotchiPlugin : Disposable {
                     val feedType = message["feedType"] as? String
                     val _cc = getCustomCharacterBySpriteType(state.spriteType)
                     nextState = if (feedType == "snack") {
-                        startSnack(state, feedSnackMaxPerCycle = _cc?.feedSnackMaxPerCycle)
+                        // The webview reports the snacks really on its floor, so a stale
+                        // counter can't let a 4th snack through (Stu's cycle cap is 10).
+                        val floor = (message["floorSnacks"] as? Number)?.toInt() ?: state.snacksOnFloor
+                        startSnack(state.copy(snacksOnFloor = floor), feedSnackMaxPerCycle = _cc?.feedSnackMaxPerCycle)
                     } else {
                         val ns = feedMeal(state, mealsGivenThisCycle,
                             feedMealMaxPerCycle = _cc?.feedMealMaxPerCycle,
@@ -1558,7 +1561,7 @@ class CodotchiPlugin : Disposable {
             "attention_call_pat"             -> customChar?.patCall?.call?.replace("__Name__", petName) ?: "$petName wants a pat!"
             "attention_call_craving_meal"    -> "$petName is craving a meal!"
             "attention_call_craving_snack"   -> "$petName is craving ${cravingItem ?: "a snack"}!"
-            "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes — praise $petName and they'll nap for 5 minutes while you rest."
+            "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes."
             "break_nap_over"                 -> "Break's over! $petName is awake and ready to code."
             else                             -> null
         }
