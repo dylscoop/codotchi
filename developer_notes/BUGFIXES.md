@@ -2379,6 +2379,6 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 
 **Problem:** since 2.27.0 the workflows rejected unsigned (schemaVersion 1) bodies. Most players were still on older builds, so their live pushes were closed silently and the *Currently Alive* table emptied.
 
-**Fix:** unsigned v1 bodies are accepted as legacy (`verified: false, legacy: true`). They still go through every age, timing and stage check, and live updates must still come from the pet's owner. `live.json` keeps them, and the page shows them with a *legacy* badge. Signed bodies are unchanged, and a signed-format body with a bad signature is still rejected.
+**Fix:** unsigned v1 bodies are accepted as legacy (`verified: false, legacy: true`). They still go through every age, timing and stage check, and live updates must still come from the pet's owner. `live.json` keeps them, and the page shows them like any other entry (no badge). Signed bodies are unchanged, and a signed-format body with a bad signature is still rejected.
 
 **Tests:** `vscode/tests/unit/integrity.test.ts`.
