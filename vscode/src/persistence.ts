@@ -25,7 +25,7 @@ import * as path from "path";
 import * as os from "os";
 import * as vscode from "vscode";
 import { PetState, HighScore, deserialiseState, serialiseState } from "./gameEngine";
-import { sealState, verifySeal } from "./integrity";
+import { sealSerialisedState, verifySeal } from "./integrity";
 import { StateFileStamp } from "./tickLease";
 
 const STATE_KEY = "codotchi.petState";
@@ -174,7 +174,7 @@ function saveSharedState(state: PetState): void {
       state: serialised,
       savedAt: Date.now(),
       writerId: WRITER_ID,
-      seal: sealSerialised(serialised),
+      seal: sealSerialisedState(serialised),
     };
     fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
   } catch {
@@ -207,14 +207,6 @@ function loadSharedState(): LoadedSharedState | null {
   }
 }
 
-/**
- * Seal a serialised state exactly as a reader will see it after
- * deserialising, so load-time defaults and migrations never break the seal.
- */
-function sealSerialised(serialised: Record<string, unknown>): string {
-  return sealState(deserialiseState(serialised));
-}
-
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -229,7 +221,7 @@ function sealSerialised(serialised: Record<string, unknown>): string {
 export function saveState(context: vscode.ExtensionContext, state: PetState): void {
   const serialised = serialiseState(state) as Record<string, unknown>;
   void context.globalState.update(STATE_KEY, serialised);
-  void context.globalState.update(STATE_SEAL_KEY, sealSerialised(serialised));
+  void context.globalState.update(STATE_SEAL_KEY, sealSerialisedState(serialised));
   void context.globalState.update(TIMESTAMP_KEY, Date.now());
   saveSharedState(state);
 }
@@ -255,7 +247,7 @@ export function loadState(context: vscode.ExtensionContext): PetState | null {
   if (shared !== null && shared.savedAt > localTimestamp && shared.state.alive) {
     const serialised = serialiseState(shared.state) as Record<string, unknown>;
     void context.globalState.update(STATE_KEY, serialised);
-    void context.globalState.update(STATE_SEAL_KEY, sealSerialised(serialised));
+    void context.globalState.update(STATE_SEAL_KEY, sealSerialisedState(serialised));
     void context.globalState.update(TIMESTAMP_KEY, shared.savedAt);
     return shared.state;
   }

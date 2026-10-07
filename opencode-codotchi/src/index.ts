@@ -67,6 +67,7 @@ import {
   TICK_INTERVAL_SECONDS,
   CODE_ACTIVITY_THROTTLE_SECONDS,
 } from "./gameEngine.js";
+import { sealSerialisedState, verifySeal } from "./integrity.js";
 
 import {
   buildSpeechBubble,
@@ -153,6 +154,8 @@ interface IDEStateFile {
   state: Record<string, unknown>;
   savedAt: number;
   terminalEnabled?: boolean;
+  /** Leaderboard integrity seal (see integrity.ts); absent in files from older builds. */
+  seal?: string;
 }
 
 interface LocalStateFile {
@@ -168,7 +171,7 @@ function loadFromIDEFile(filePath: string): { state: PetState; savedAt: number; 
     const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as IDEStateFile;
     if (!raw.state || typeof raw.savedAt !== "number") { return null; }
     return {
-      state: deserialiseState(raw.state),
+      state: verifySeal(deserialiseState(raw.state), raw.seal),
       savedAt: raw.savedAt,
       terminalEnabled: raw.terminalEnabled ?? true,
     };
@@ -181,9 +184,11 @@ function saveToIDEFile(filePath: string, state: PetState): void {
   try {
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
+    const serialised = serialiseState(state) as Record<string, unknown>;
     const payload: IDEStateFile = {
-      state: serialiseState(state) as Record<string, unknown>,
+      state: serialised,
       savedAt: Date.now(),
+      seal: sealSerialisedState(serialised),
     };
     fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
   } catch {

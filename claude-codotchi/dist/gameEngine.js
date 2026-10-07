@@ -768,6 +768,8 @@ export function createPet(name, petType, unlockedCharacter = null) {
         ticksSinceLastBreakCall: 0,
         breakNapTicksRemaining: 0,
         cravingFood: null,
+        devModeEverUsed: false,
+        leaderboardIneligible: "",
     };
     return withDerivedFields(partial);
 }
@@ -864,6 +866,10 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
     }
     if (state.paused) {
         return state.events.length > 0 ? { ...state, events: [] } : state;
+    }
+    // Any tick in dev mode (faster aging, health floor) bars this pet from the leaderboard for life.
+    if (config.devMode && !state.devModeEverUsed) {
+        state = { ...state, devModeEverUsed: true };
     }
     const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
     if (state.breakNapTicksRemaining > 0) {
@@ -2311,6 +2317,8 @@ export function serialiseState(state) {
         ticksSinceLastBreakCall: state.ticksSinceLastBreakCall,
         breakNapTicksRemaining: state.breakNapTicksRemaining,
         cravingFood: state.cravingFood,
+        devModeEverUsed: state.devModeEverUsed,
+        leaderboardIneligible: state.leaderboardIneligible,
     };
 }
 /**
@@ -2395,6 +2403,9 @@ export function deserialiseState(data) {
         ticksSinceLastBreakCall: getNumber("ticksSinceLastBreakCall", 0),
         breakNapTicksRemaining: getNumber("breakNapTicksRemaining", 0),
         cravingFood: data["cravingFood"] === "meal" || data["cravingFood"] === "snack" ? data["cravingFood"] : null,
+        devModeEverUsed: getBool("devModeEverUsed", false),
+        leaderboardIneligible: data["leaderboardIneligible"] === "tampered" || data["leaderboardIneligible"] === "unverified"
+            ? data["leaderboardIneligible"] : "",
     };
     return withDerivedFields(partial);
 }

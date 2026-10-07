@@ -18,8 +18,8 @@
  */
 
 import { createHmac, timingSafeEqual } from "crypto";
-import type { PetState } from "./gameEngine";
-import { LEADERBOARD_KEY } from "./leaderboardKey";
+import { deserialiseState, type PetState } from "./gameEngine.js";
+import { LEADERBOARD_KEY } from "./leaderboardKey.js";
 
 /** Bumped whenever the sealed field list changes. */
 export const SEAL_VERSION = "codotchi-seal-v1";
@@ -76,6 +76,15 @@ export function sealState(state: PetState, key: string = LEADERBOARD_KEY): strin
 function hexEquals(a: string, b: string): boolean {
   if (a.length !== b.length) { return false; }
   return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+}
+
+/**
+ * Seal a serialised state exactly as a reader will see it after
+ * deserialising, so load-time defaults and migrations never break the seal.
+ * Every writer of the shared state file stores this as the top-level `seal`.
+ */
+export function sealSerialisedState(serialised: Record<string, unknown>, key: string = LEADERBOARD_KEY): string {
+  return sealState(deserialiseState(serialised), key);
 }
 
 /**

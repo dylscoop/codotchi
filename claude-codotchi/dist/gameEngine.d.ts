@@ -359,7 +359,17 @@ export interface PetState {
     readonly breakNapTicksRemaining: number;
     /** What the active craving call asks for; null when no craving call is active. */
     readonly cravingFood: CravingFood | null;
+    /** True once any tick has run with dev mode on — the pet can never go on the leaderboard. */
+    readonly devModeEverUsed: boolean;
+    /**
+     * Why this pet can't go on the leaderboard, apart from dev mode: "tampered" (the saved
+     * state failed its integrity seal) or "unverified" (loaded from a save written before
+     * seals existed). "" when eligible.
+     */
+    readonly leaderboardIneligible: LeaderboardIneligibleReason;
 }
+/** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
+export type LeaderboardIneligibleReason = "" | "tampered" | "unverified";
 /**
  * Summary of the best run ever recorded for this installation.
  * Compared by ageDays; ties broken by real-world elapsed time (longer wins).
