@@ -18,6 +18,7 @@
 | `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt` | `blackjack` minigame (win / push / lose) |
 | `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt` | BUGFIX-192: `startSnack` uses the webview's floor count |
 | `vscode/tests/unit/customCharacterText.test.ts` (new), `minigameArt.test.ts`, `webviewAnimations.test.ts`, `spriteData.test.ts`, `gameEngine.test.ts`, `pycharm/.../StatusBarTextTest.kt`, `GameEngineTest.kt` | tests |
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | gift message and run/sticker toasts say "Timagotchi" / "Stugotchi" instead of "Tim" / "Stu" |
 | all manifests, `README.md` | version 2.27.0 → 2.27.1 |
 
 ---

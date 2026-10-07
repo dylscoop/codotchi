@@ -4,7 +4,7 @@
 
 ### Changed
 
-- **Tim and Stu** — Tim now asks to go for a run instead of a pat, and actually jogs a lap of the stage. Stu asks to collect stickers and opens a sticker binder or a fresh pack. When they crave a snack they say what they want: a tea for Tim, a pint or some salmon for Stu. Stu also plays a round of Blackjack instead of Coin Flip.
+- **Tim and Stu** — Tim now asks to go for a run instead of a pat, and actually jogs a lap of the stage. Stu asks to collect stickers and opens a sticker binder or a fresh pack. When they crave a snack they say what they want: a tea for Tim, a pint or some salmon for Stu. Stu also plays a round of Blackjack instead of Coin Flip. Their toasts and gift messages now call them Timagotchi and Stugotchi.
 - **Break reminder** — the reminder now just says it's time for a break.
 
 ### Fixed

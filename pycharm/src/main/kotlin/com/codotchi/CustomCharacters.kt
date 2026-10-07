@@ -73,10 +73,10 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         passcode    = "teawtim",
         defaultName  = "Timagotchi",
         patLabel    = "Go for a Run",
-        giftMessage = "Tim wants a tea break!",
+        giftMessage = "Timagotchi wants a tea break!",
         patToasts   = CustomCharacterToasts(
-            patted     = "Tim went for a run!",
-            patRefused = "Tim doesn't have enough energy for a run!",
+            patted     = "Timagotchi went for a run!",
+            patRefused = "Timagotchi doesn't have enough energy for a run!",
         ),
         patBubbles  = listOf(
             "That was a great run!",
@@ -161,10 +161,10 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         passcode     = "rubylovessalmon",
         defaultName  = "Stugotchi",
         patLabel     = "Collect Stickers",
-        giftMessage  = "Stu wants a pint!",
+        giftMessage  = "Stugotchi wants a pint!",
         patToasts    = CustomCharacterToasts(
-            patted     = "Stu collected some stickers!",
-            patRefused = "Stu doesn't have enough energy to collect stickers!",
+            patted     = "Stugotchi collected some stickers!",
+            patRefused = "Stugotchi doesn't have enough energy to collect stickers!",
         ),
         patBubbles   = listOf(
             "That's going in the binder.",

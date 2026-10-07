@@ -37,10 +37,10 @@
       passcode:     "teawtim",
       defaultName:  "Timagotchi",
       patLabel:     "Go for a Run",
-      giftMessage:  "Tim wants a tea break!",
+      giftMessage:  "Timagotchi wants a tea break!",
       patToasts: {
-        patted:      "Tim went for a run!",
-        pat_refused: "Tim doesn't have enough energy for a run!",
+        patted:      "Timagotchi went for a run!",
+        pat_refused: "Timagotchi doesn't have enough energy for a run!",
       },
       patBubbles: [
         "That was a great run!",
@@ -119,10 +119,10 @@
       passcode:     "rubylovessalmon",
       defaultName:  "Stugotchi",
       patLabel:     "Collect Stickers",
-      giftMessage:  "Stu wants a pint!",
+      giftMessage:  "Stugotchi wants a pint!",
       patToasts: {
-        patted:      "Stu collected some stickers!",
-        pat_refused: "Stu doesn't have enough energy to collect stickers!",
+        patted:      "Stugotchi collected some stickers!",
+        pat_refused: "Stugotchi doesn't have enough energy to collect stickers!",
       },
       patBubbles: [
         "That's going in the binder.",

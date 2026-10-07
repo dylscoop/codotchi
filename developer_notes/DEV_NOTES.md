@@ -6,7 +6,7 @@ Custom characters are unlocked by entering a passcode in **Settings → Characte
 
 | spriteType | Passcode | Default name | Pat action | Special behaviour |
 |------------|----------|--------------|------------|-------------------|
-| `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message ("Tim wants a tea break!"); "Codotchi" (case-insensitive) name auto-replaces with "Timagotchi" |
+| `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message ("Timagotchi wants a tea break!"); "Codotchi" (case-insensitive) name auto-replaces with "Timagotchi" |
 | `kangaroo` | `straya` | Skippy | Bounce | Also in the random rotation pool |
 | `dog` | `shiba` | Shibagotchi | Pat | Imported Shiba dog sprite; passcode maps to the built-in dog sprite type |
 | `testsprite` | `pixel` | Pixel | Pat | Dev/test sprite; 700-column grid; single adult stage only |
