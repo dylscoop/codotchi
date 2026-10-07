@@ -21,22 +21,28 @@
    * Each entry shape:
    *   passcode      {string}   — exact string the user must enter in settings
    *   defaultName   {string}   — default name pre-filled on setup screen; for Tim, overrides "Codotchi" (case-insensitive)
+   *   characterLabel {string}  — optional: name shown for the character type in the info line (default: capitalised spriteType)
    *   patLabel      {string}   — label for the Pat button in the minigame overlay
    *   giftMessage   {string}   — attention_call_gift toast message (optional)
    *   patToasts     {object}   — toast strings keyed by event name:
    *     patted        {string}  — shown when pat succeeds
    *     pat_refused   {string}  — shown when not enough energy
    *   patBubbles    {string[]} — speech bubbles shown at random after a successful pat
+   *   patCall       {object}   — optional replacement text for the "wants a pat" call:
+   *     call, answered, expired, status {string} (__Name__ = pet name)
+   *   snackCravings {object[]} — optional: what a snack craving asks for, as
+   *     { label, item } — label is the text ("a tea"), item the floor snack type
    */
   var CUSTOM_CHARACTERS = {
     tim: {
       passcode:     "teawtim",
       defaultName:  "Timagotchi",
+      characterLabel: "Timagotchi",
       patLabel:     "Go for a Run",
-      giftMessage:  "Tim wants a tea break!",
+      giftMessage:  "Timagotchi wants a tea break!",
       patToasts: {
-        patted:      "Tim went for a run!",
-        pat_refused: "Tim doesn't have enough energy for a run!",
+        patted:      "Timagotchi went for a run!",
+        pat_refused: "Timagotchi doesn't have enough energy for a run!",
       },
       patBubbles: [
         "That was a great run!",
@@ -44,6 +50,13 @@
         "Legs are burning but the mind is clear.",
         "That counts as cardio.",
       ],
+      patCall: {
+        call:     "__Name__ wants to go for a run!",
+        answered: "You took __Name__ for a run.",
+        expired:  "__Name__ wanted a run and was ignored.",
+        status:   "wants to go for a run!",
+      },
+      snackCravings: [{ label: "a tea", item: "tea" }],
     },
     kangaroo: {
       passcode:     "straya",
@@ -107,17 +120,28 @@
     stu: {
       passcode:     "rubylovessalmon",
       defaultName:  "Stugotchi",
+      characterLabel: "Stugotchi",
       patLabel:     "Collect Stickers",
-      giftMessage:  "Stu wants a pint!",
+      giftMessage:  "Stugotchi wants a pint!",
       patToasts: {
-        patted:      "Stu collected some stickers!",
-        pat_refused: "Stu doesn't have enough energy to collect stickers!",
+        patted:      "Stugotchi collected some stickers!",
+        pat_refused: "Stugotchi doesn't have enough energy to collect stickers!",
       },
       patBubbles: [
         "That's going in the binder.",
         "No, you cannot have that one.",
         "Scotland sticker. Rarest of them all.",
         "Thanks for fuelling the addiction.",
+      ],
+      patCall: {
+        call:     "__Name__ wants to collect stickers!",
+        answered: "You helped __Name__ collect stickers.",
+        expired:  "__Name__ wanted stickers and was ignored.",
+        status:   "wants to collect stickers!",
+      },
+      snackCravings: [
+        { label: "a pint",      item: "guinness" },
+        { label: "some salmon", item: "salmon" },
       ],
       feedMealMaxPerCycle:  10,
       feedSnackMaxPerCycle: 10,

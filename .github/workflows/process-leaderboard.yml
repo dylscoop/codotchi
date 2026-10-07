@@ -25,139 +25,25 @@ jobs:
           ref: leaderboard
           fetch-depth: 1
 
-      - name: Validate and append score
+      - name: Checkout validator (default branch)
+        uses: actions/checkout@v4
+        with:
+          path: tools
+          sparse-checkout: .github/scripts
+
+      # Only issues generated (and HMAC-signed) by a Codotchi client pass — see
+      # .github/scripts/leaderboard-validate.mjs. Issue text never reaches a shell
+      # or a ${{ }} expression; the outcome travels via /tmp/leaderboard-result.json.
+      - name: Validate submission
         id: validate
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          LEADERBOARD_HMAC_KEY: ${{ secrets.LEADERBOARD_HMAC_KEY }}
+          SCORES_PATH: leaderboard/scores.json
         run: |
-          python3 - <<'PYEOF'
-          import json, os, re, sys, time
-
-          VALID_STAGES   = {"egg", "baby", "child", "teen", "adult", "senior"}
-          VALID_PET_TYPES = {"codeling", "bytebug", "pixelpup", "shellscript"}
-          # Minimum real ms per game day: 80 ticks × 3 s/tick = 240 s = 240 000 ms
-          MIN_MS_PER_GAME_DAY = 240_000
-          # Stage-age bounds: (min_ageDays, max_ageDays or None)
-          # Based on EVOLUTION_DAY_THRESHOLDS from gameEngine.ts + max 9 care-mistake delay days
-          STAGE_AGE_BOUNDS = {
-              "egg":    (0,   9),
-              "baby":   (0,  14),
-              "child":  (5,  32),
-              "teen":   (23, 104),
-              "adult":  (95, 296),
-              "senior": (287, None),
-          }
-          FIVE_MIN_MS = 5 * 60 * 1000
-          THREE_YR_MS = 3 * 365 * 24 * 60 * 60 * 1000
-
-          def fail(reason):
-              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-                  f.write(f"valid=false\n")
-                  f.write(f"reason={reason}\n")
-              sys.exit(0)
-
-          def succeed(entry):
-              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-                  f.write(f"valid=true\n")
-              # Write sanitised entry to a temp file so the commit step can read it
-              with open("/tmp/new_entry.json", "w") as f:
-                  json.dump(entry, f)
-              sys.exit(0)
-
-          body   = os.environ.get("ISSUE_BODY", "")
-          # The issue author is the authoritative GitHub username — always use this
-          author = os.environ.get("ISSUE_AUTHOR", "")
-
-          # Extract the JSON block from the issue body
-          match = re.search(r"```json\s*(.*?)\s*```", body, re.DOTALL)
-          if not match:
-              fail("No JSON code block found in issue body.")
-
-          try:
-              data = json.loads(match.group(1))
-          except json.JSONDecodeError as e:
-              fail(f"Invalid JSON: {e}")
-
-          # Required fields (githubUsername is derived from issue author, not required in body)
-          required = ["schemaVersion", "petName", "ageDays", "stage", "petType", "spawnedAt", "diedAt"]
-          for field in required:
-              if field not in data:
-                  fail(f"Missing required field: {field}")
-
-          # Schema version
-          if data["schemaVersion"] != 1:
-              fail(f"Unsupported schemaVersion: {data['schemaVersion']}")
-
-          # ageDays range
-          age = int(data["ageDays"])
-          if age < 0 or age > 10000:
-              fail(f"ageDays out of range: {age}")
-
-          # stage
-          stage = str(data["stage"])
-          if stage not in VALID_STAGES:
-              fail(f"Invalid stage: {stage}")
-
-          # petType
-          pet_type = str(data["petType"])
-          if pet_type not in VALID_PET_TYPES:
-              fail(f"Invalid petType: {pet_type}")
-
-          # timestamps
-          spawned_at = int(data["spawnedAt"])
-          died_at    = int(data["diedAt"])
-          if died_at <= spawned_at:
-              fail("diedAt must be after spawnedAt.")
-
-          # Timestamp sanity
-          now_ms = int(time.time() * 1000)
-          if spawned_at > now_ms + FIVE_MIN_MS:
-              fail("spawnedAt is in the future.")
-          if spawned_at < now_ms - THREE_YR_MS:
-              fail("spawnedAt is implausibly old.")
-          if died_at > now_ms + FIVE_MIN_MS:
-              fail("diedAt is in the future.")
-
-          # Physics floor anti-cheat
-          elapsed_ms = died_at - spawned_at
-          if elapsed_ms < age * MIN_MS_PER_GAME_DAY:
-              fail(f"Real elapsed time ({elapsed_ms} ms) is less than the minimum for {age} game days ({age * MIN_MS_PER_GAME_DAY} ms). Submission rejected.")
-
-          # Stage-age consistency check
-          min_age, max_age = STAGE_AGE_BOUNDS[stage]
-          if age < min_age or (max_age is not None and age > max_age):
-              fail(f"ageDays {age} is inconsistent with stage '{stage}' (expected {min_age}–{max_age if max_age else '∞'}).")
-
-          # Duplicate / resubmission check.
-          # A run is uniquely identified by (githubUsername, petName, spawnedAt), not diedAt —
-          # diedAt can vary across resubmissions of the same run. If a matching run already
-          # exists, only accept the resubmission if it reports a longer survival time (larger
-          # diedAt); the append step will then replace the old entry rather than add a new row.
-          pet_name = str(data["petName"])[:64]
-          with open("leaderboard/scores.json") as f:
-              existing = json.load(f)
-          for s in existing.get("scores", []):
-              if (s.get("githubUsername") == author and
-                      s.get("petName") == pet_name and
-                      int(s.get("spawnedAt", 0)) == spawned_at):
-                  if died_at <= int(s.get("diedAt", 0)):
-                      fail("This run has already been submitted.")
-                  break
-
-          entry = {
-              "schemaVersion":  1,
-              "githubUsername": author,  # always use the authenticated issue author
-              "petName":        pet_name,
-              "ageDays":        age,
-              "stage":          str(data["stage"]),
-              "petType":        str(data["petType"]),
-              "spawnedAt":      spawned_at,
-              "diedAt":         died_at,
-              "submittedAt":    int(time.time() * 1000),
-          }
-          succeed(entry)
-          PYEOF
+          node tools/.github/scripts/leaderboard-validate.mjs score
+          node -e "const r=require('/tmp/leaderboard-result.json'); if (r.valid) require('fs').writeFileSync('/tmp/new_entry.json', JSON.stringify(r.entry))"
 
       - name: Append and commit (on success)
         if: steps.validate.outputs.valid == 'true'
@@ -252,7 +138,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const reason = `${{ steps.validate.outputs.reason }}`;
+            const reason = JSON.parse(require('fs').readFileSync('/tmp/leaderboard-result.json', 'utf8')).reason;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo:  context.repo.repo,

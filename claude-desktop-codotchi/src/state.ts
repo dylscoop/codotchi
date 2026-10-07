@@ -28,6 +28,7 @@ import {
   applyOfflineDecay,
   VALID_PET_TYPES,
 } from "./gameEngine.js";
+import { sealSerialisedState, verifySeal } from "./integrity.js";
 
 export const SOURCE = "claude-desktop" as const;
 
@@ -124,6 +125,8 @@ export function readConfig(): DesktopConfig {
 interface IDEStateFile {
   state: Record<string, unknown>;
   savedAt: number;
+  /** Leaderboard integrity seal (see integrity.ts); absent in files from older builds. */
+  seal?: string;
 }
 
 export interface LoadedPet {
@@ -150,7 +153,7 @@ export function loadPet(cfg: DesktopConfig): LoadedPet {
     return { state: fresh, mealsGivenThisCycle: 0 };
   }
 
-  let state = deserialiseState(stored.state);
+  let state = verifySeal(deserialiseState(stored.state), stored.seal);
   const savedAt = typeof stored.savedAt === "number" ? stored.savedAt : Date.now();
   const elapsedSeconds = Math.max(0, (Date.now() - savedAt) / 1000);
   if (elapsedSeconds > 0) {
@@ -164,9 +167,11 @@ export function savePet(state: PetState, _mealsGivenThisCycle: number): void {
   const statePath = resolveIDEStatePath();
   const dir = path.dirname(statePath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const serialised = serialiseState(state);
   const file: IDEStateFile = {
-    state: serialiseState(state),
+    state: serialised,
     savedAt: Date.now(),
+    seal: sealSerialisedState(serialised),
   };
   fs.writeFileSync(statePath, JSON.stringify(file), "utf8");
 }

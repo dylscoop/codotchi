@@ -98,3 +98,27 @@ describe("sprite data (vscode/media/sprites.generated.js + sprites.js)", () => {
     }
   });
 });
+
+describe("hand-drawn human sprites (tim, stu) are centred", () => {
+  // They used to hug the left edge of their grid, so they drew off-centre and,
+  // because upright sprites mirror around the box centre, jumped on every turn.
+  for (const type of ["tim", "stu"]) {
+    it(`${type}: every stage is centred in its grid within one column`, () => {
+      for (const stage of STAGES) {
+        const grid = sprites[type][stage];
+        let lo = Infinity, hi = -Infinity;
+        for (const row of grid) {
+          row.forEach((v, c) => { if (v) { lo = Math.min(lo, c); hi = Math.max(hi, c); } });
+        }
+        const leftPad = lo, rightPad = grid[0].length - 1 - hi;
+        assert.ok(Math.abs(leftPad - rightPad) <= 1, `${type}/${stage}: ${leftPad} empty columns left, ${rightPad} right`);
+      }
+    });
+  }
+
+  it("renderSpriteGrid centres the drawn grid inside the pet box", () => {
+    const src = fs.readFileSync(path.join(media, "sprites.js"), "utf8");
+    assert.match(src, /var gx = x \+ Math\.round\(\(bodyWidth - COLS \* cellW\) \/ 2\);/);
+    assert.match(src, /gx \+ col \* cellW,/);
+  });
+});

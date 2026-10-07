@@ -20,6 +20,18 @@ data class CustomCharacterToasts(
     val patRefused: String,
 )
 
+/** Replacement text for the "wants a pat" attention call (__Name__ = pet name). */
+data class CustomCharacterPatCall(
+    /** Notification / bubble when the call fires. */
+    val call: String,
+    /** Log line when the call is answered. */
+    val answered: String,
+    /** Log line when the call expires. */
+    val expired: String,
+    /** Status bar wording, phrased to follow "<name> ". */
+    val status: String,
+)
+
 data class CustomCharacter(
     /** Sprite type key — must match a DEFS key in sprites.js. */
     val spriteType: String,
@@ -27,6 +39,8 @@ data class CustomCharacter(
     val passcode: String,
     /** Default name pre-filled on the setup screen. For Tim, also overrides "Codotchi" (case-insensitive). */
     val defaultName: String,
+    /** Name shown for the character type in the info line (null = capitalised spriteType). */
+    val characterLabel: String? = null,
     /** Label for the Pat button in the minigame overlay. */
     val patLabel: String,
     /** attention_call_gift notification message (null = use default). */
@@ -35,6 +49,10 @@ data class CustomCharacter(
     val patToasts: CustomCharacterToasts,
     /** Speech bubbles shown at random after a successful pat. */
     val patBubbles: List<String>,
+    /** Replacement text for the pat attention call (null = "wants a pat!"). */
+    val patCall: CustomCharacterPatCall? = null,
+    /** What a snack craving asks for, e.g. "a tea"; one is picked at random per craving. */
+    val snackCravings: List<String> = listOf(),
     /** Maximum meals allowed per wake cycle (null = use global default of 3). */
     val feedMealMaxPerCycle: Int? = null,
     /** Maximum snacks allowed per wake cycle (null = use global default of 3). */
@@ -56,11 +74,12 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         spriteType  = "tim",
         passcode    = "teawtim",
         defaultName  = "Timagotchi",
+        characterLabel = "Timagotchi",
         patLabel    = "Go for a Run",
-        giftMessage = "Tim wants a tea break!",
+        giftMessage = "Timagotchi wants a tea break!",
         patToasts   = CustomCharacterToasts(
-            patted     = "Tim went for a run!",
-            patRefused = "Tim doesn't have enough energy for a run!",
+            patted     = "Timagotchi went for a run!",
+            patRefused = "Timagotchi doesn't have enough energy for a run!",
         ),
         patBubbles  = listOf(
             "That was a great run!",
@@ -68,6 +87,13 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
             "Legs are burning but the mind is clear.",
             "That counts as cardio.",
         ),
+        patCall     = CustomCharacterPatCall(
+            call     = "__Name__ wants to go for a run!",
+            answered = "You took __Name__ for a run.",
+            expired  = "__Name__ wanted a run and was ignored.",
+            status   = "wants to go for a run!",
+        ),
+        snackCravings = listOf("a tea"),
     ),
     CustomCharacter(
         spriteType  = "kangaroo",
@@ -137,11 +163,12 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         spriteType   = "stu",
         passcode     = "rubylovessalmon",
         defaultName  = "Stugotchi",
+        characterLabel = "Stugotchi",
         patLabel     = "Collect Stickers",
-        giftMessage  = "Stu wants a pint!",
+        giftMessage  = "Stugotchi wants a pint!",
         patToasts    = CustomCharacterToasts(
-            patted     = "Stu collected some stickers!",
-            patRefused = "Stu doesn't have enough energy to collect stickers!",
+            patted     = "Stugotchi collected some stickers!",
+            patRefused = "Stugotchi doesn't have enough energy to collect stickers!",
         ),
         patBubbles   = listOf(
             "That's going in the binder.",
@@ -149,6 +176,13 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
             "Scotland sticker. Rarest of them all.",
             "Thanks for fuelling the addiction.",
         ),
+        patCall      = CustomCharacterPatCall(
+            call     = "__Name__ wants to collect stickers!",
+            answered = "You helped __Name__ collect stickers.",
+            expired  = "__Name__ wanted stickers and was ignored.",
+            status   = "wants to collect stickers!",
+        ),
+        snackCravings = listOf("a pint", "some salmon"),
         feedMealMaxPerCycle  = 10,
         feedSnackMaxPerCycle = 10,
         feedHungerMult       = 0.25,

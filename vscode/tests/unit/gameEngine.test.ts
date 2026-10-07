@@ -1797,6 +1797,16 @@ describe("applyMinigameResult", () => {
     assert.equal(next.weight, 40);
   });
 
+  it("blackjack win / push / lose → happiness +10 / 0 / −10, no weight change", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    for (const [result, happiness] of [["win", 60], ["push", 50], ["lose", 40]] as const) {
+      const next = applyMinigameResult(pet, "blackjack", result);
+      assert.equal(next.happiness, happiness, result);
+      assert.equal(next.weight, 40, result);
+      assert.ok(next.events.includes(`minigame_blackjack_${result}`), result);
+    }
+  });
+
   it("left_right clamps weight at WEIGHT_MIN (1) (BUGFIX-034)", () => {
     const pet = makePet({ happiness: 50, weight: 1 });
     const next = applyMinigameResult(pet, "left_right", "win");
@@ -1873,6 +1883,14 @@ describe("happinessDeltaForMinigame", () => {
 
   it("coin_flip lose → exactly −10", () => {
     assert.equal(happinessDeltaForMinigame("coin_flip", "lose"), -10);
+  });
+
+  // ── blackjack (Stu) ────────────────────────────────────────────────────────
+
+  it("blackjack win → +10, push → 0, lose → −10", () => {
+    assert.equal(happinessDeltaForMinigame("blackjack", "win"), 10);
+    assert.equal(happinessDeltaForMinigame("blackjack", "push"), 0);
+    assert.equal(happinessDeltaForMinigame("blackjack", "lose"), -10);
   });
 });
 

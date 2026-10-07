@@ -35,6 +35,8 @@ import {
 } from "./gameEngine";
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
+import { leaderboardBlockedReason, signSubmission } from "./integrity";
+import { cravingItemFor } from "./cravingItem";
 import { StatusBarManager } from "./statusBar";
 import { stageHeightPx } from "./stageHeight";
 import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
@@ -82,6 +84,8 @@ export type StateUpdateCallback = (state: PetState) => void;
 interface WebviewMessage {
   command: string;
   feedType?: "meal" | "snack";
+  /** Snacks on the webview's floor when Snack was pressed (the truth for the floor cap). */
+  floorSnacks?: number;
   game?: string;
   result?: string;
   name?: string;
@@ -422,7 +426,10 @@ export class SidebarProvider
         }
         if (message.feedType === "snack") {
           const _cc = getCustomCharacterBySpriteType(state.spriteType);
-          nextState = startSnack(state, { maxPerCycle: _cc?.feedSnackMaxPerCycle });
+          // The webview reports the snacks really on its floor, so a stale counter
+          // can't let a 4th snack through (Stu's cycle cap is 10, so only the floor cap stops him).
+          const floor = typeof message.floorSnacks === "number" ? message.floorSnacks : state.snacksOnFloor;
+          nextState = startSnack({ ...state, snacksOnFloor: floor }, { maxPerCycle: _cc?.feedSnackMaxPerCycle });
         } else {
           const _cc = getCustomCharacterBySpriteType(state.spriteType);
           nextState = feedMeal(state, this.mealsGivenThisCycle, {
@@ -707,7 +714,9 @@ export class SidebarProvider
       devMode,
       unlockedCharacter,
       defaultPetName,
+      cravingItem: cravingItemFor(state),
       leaderboardAvailable: true,
+      leaderboardBlockedReason: leaderboardBlockedReason(state, devMode),
       liveRank: (liveSubscribed && state.alive && cached) ? cached.rank : null,
       liveTotalScores: (liveSubscribed && state.alive && cached) ? cached.total : null,
       liveSubscribed,
@@ -748,6 +757,46 @@ export class SidebarProvider
     }
   }
 
+  /** True when dev mode is on right now (enabled + correct passcode). */
+  private isDevModeActive(): boolean {
+    const cfg = vscode.workspace.getConfiguration("codotchi");
+    return cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234";
+  }
+
+  /** This extension's version, signed into every leaderboard submission. */
+  private clientVersion(): string {
+    return String(this.context.extension.packageJSON.version ?? "0.0.0");
+  }
+
+  /**
+   * Build the signed [Leaderboard] issue for a dead pet. The workflow rejects
+   * any issue whose signature doesn't match, so hand-written issues never land.
+   */
+  private buildScoreIssue(state: PetState, username: string): { title: string; body: string } {
+    const diedAt = this.getLastRunDiedAt() ?? Date.now();
+    const clientVersion = this.clientVersion();
+    const scoreData = {
+      schemaVersion: 2,
+      githubUsername: username,
+      petName:        state.name,
+      ageDays:        state.ageDays,
+      stage:          state.stage,
+      petType:        state.petType,
+      spawnedAt:      state.spawnedAt,
+      diedAt,
+      clientVersion,
+      sig: signSubmission({
+        kind: "score", githubUsername: username, petName: state.name, ageDays: state.ageDays,
+        stage: state.stage, petType: state.petType, spawnedAt: state.spawnedAt, at: diedAt,
+        petRunId: "", clientVersion,
+      }),
+    };
+    return {
+      title: `[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @${username}`,
+      body:  `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``,
+    };
+  }
+
   /** Submit the current dead pet's score to the public GitHub leaderboard. */
   private async handleLeaderboardSubmit(): Promise<void> {
     const postResult = (status: string, message?: string): void => {
@@ -760,6 +809,11 @@ export class SidebarProvider
       const state = this.getCurrentState();
       if (state === null || state.alive) {
         postResult("error", "No dead pet state available.");
+        return;
+      }
+      const blocked = leaderboardBlockedReason(state, this.isDevModeActive());
+      if (blocked !== null) {
+        postResult("error", blocked);
         return;
       }
 
@@ -786,21 +840,7 @@ export class SidebarProvider
         return;
       }
 
-      const diedAt = this.getLastRunDiedAt() ?? Date.now();
-      const scoreData = {
-        schemaVersion: 1,
-        githubUsername: username,
-        petName:        state.name,
-        ageDays:        state.ageDays,
-        stage:          state.stage,
-        petType:        state.petType,
-        spawnedAt:      state.spawnedAt,
-        diedAt,
-      };
-      const issueBody =
-        `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``;
-      const issueTitle =
-        `[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @${username}`;
+      const { title: issueTitle, body: issueBody } = this.buildScoreIssue(state, username);
 
       try {
         const issueRes = await fetch(
@@ -840,6 +880,7 @@ export class SidebarProvider
     try {
       const state = this.getCurrentState();
       if (state === null || state.alive) { return; }
+      if (leaderboardBlockedReason(state, this.isDevModeActive()) !== null) { return; }
 
       const user = await this.resolveLeaderboardUser(false).catch(() => null);
       if (!user) { return; }
@@ -851,19 +892,7 @@ export class SidebarProvider
       this.setLeaderboardUsername(username);
       this.clearLeaderboardAuthExpired();
 
-      const diedAt = this.getLastRunDiedAt() ?? Date.now();
-      const scoreData = {
-        schemaVersion: 1,
-        githubUsername: username,
-        petName:        state.name,
-        ageDays:        state.ageDays,
-        stage:          state.stage,
-        petType:        state.petType,
-        spawnedAt:      state.spawnedAt,
-        diedAt,
-      };
-      const issueBody  = `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``;
-      const issueTitle = `[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @${username}`;
+      const { title: issueTitle, body: issueBody } = this.buildScoreIssue(state, username);
 
       const issueRes = await fetch(
         `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
@@ -961,6 +990,7 @@ export class SidebarProvider
    *  VS Code shows the GitHub OAuth popup. Keep false for background hourly pushes. */
   async pushLiveScore(state: PetState, promptAuth = false): Promise<void> {
     if (!state.alive) { return; }
+    if (leaderboardBlockedReason(state, this.isDevModeActive()) !== null) { return; }
     try {
       const user = await this.resolveLeaderboardUser(promptAuth);
       if (!user.ok) {
@@ -977,7 +1007,10 @@ export class SidebarProvider
         "User-Agent": "Codotchi-VSCode",
       };
 
+      const updatedAt = Date.now();
+      const clientVersion = this.clientVersion();
       const entry = {
+        schemaVersion: 2,
         username,
         petName:   state.name,
         petRunId:  vscode.env.machineId,
@@ -985,7 +1018,13 @@ export class SidebarProvider
         ageDays:   state.ageDays,
         stage:     state.stage,
         petType:   state.petType,
-        updatedAt: Date.now(),
+        updatedAt,
+        clientVersion,
+        sig: signSubmission({
+          kind: "live", githubUsername: username, petName: state.name, ageDays: state.ageDays,
+          stage: state.stage, petType: state.petType, spawnedAt: state.spawnedAt, at: updatedAt,
+          petRunId: vscode.env.machineId, clientVersion,
+        }),
       };
 
       const issueRes = await fetch(

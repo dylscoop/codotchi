@@ -359,7 +359,17 @@ export interface PetState {
     readonly breakNapTicksRemaining: number;
     /** What the active craving call asks for; null when no craving call is active. */
     readonly cravingFood: CravingFood | null;
+    /** True once any tick has run with dev mode on — the pet can never go on the leaderboard. */
+    readonly devModeEverUsed: boolean;
+    /**
+     * Why this pet can't go on the leaderboard, apart from dev mode: "tampered" (the saved
+     * state failed its integrity seal) or "unverified" (loaded from a save written before
+     * seals existed). "" when eligible.
+     */
+    readonly leaderboardIneligible: LeaderboardIneligibleReason;
 }
+/** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
+export type LeaderboardIneligibleReason = "" | "tampered" | "unverified";
 /**
  * Summary of the best run ever recorded for this installation.
  * Compared by ageDays; ties broken by real-world elapsed time (longer wins).
@@ -605,8 +615,8 @@ export declare function applyTokenCostView(state: PetState): PetState;
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
  *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
- *               or "coin_flip" (Coin Flip).
- * @param result - "win" or "lose".
+ *               "coin_flip" (Coin Flip), or "blackjack" (Stu's one-round Blackjack).
+ * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
 export declare function happinessDeltaForMinigame(game: string, result: string): number;
@@ -615,11 +625,11 @@ export declare function happinessDeltaForMinigame(game: string, result: string):
  *
  * Also applies an additional weight loss for vigorous mini-games (BUGFIX-034):
  *   - left_right and higher_lower: −3 extra weight (total −6 with play() baseline)
- *   - coin_flip: no extra weight loss (total −3 from play() only)
+ *   - coin_flip and blackjack: no extra weight loss (total −3 from play() only)
  *
  * @param state - The current pet state.
- * @param game - "left_right", "higher_lower", "guess", or "memory".
- * @param result - "win" or "lose".
+ * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "guess", or "memory".
+ * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A new PetState after the happiness delta is applied.
  */
 export declare function applyMinigameResult(state: PetState, game: string, result: string): PetState;

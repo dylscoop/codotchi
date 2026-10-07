@@ -32,6 +32,16 @@ You can also appear on the leaderboard **while your pet is still alive**. Your e
 
 **PyCharm:** Click the same **Push live progress** toggle. On first use a GitHub sign-in page opens in your browser, and a notification shows the code to enter. The token is stored securely in the IDE keychain.
 
+### Fair play
+
+Only scores sent by the Codotchi plugin itself are accepted. Each one is signed, and hand-written GitHub issues are rejected. A pet can't be submitted (or pushed live) if:
+
+- it **ever** ran with dev mode on, even if you turn dev mode off later
+- its save file was edited outside Codotchi
+- it hatched before this check existed (v2.27.0). Your next pet can be submitted.
+
+The sidebar greys out **Submit to Leaderboard** and **Push live progress** and says why. Scores from before v2.27.0 stay on the board with a *legacy* tag.
+
 **If your GitHub sign-in expires or is revoked**, both IDEs notice the next time they talk to GitHub. The sidebar shows **Sign in to GitHub again**, and a background live push shows a notification with a **Sign in** action. Submitting or deleting an entry asks you to sign in again and retries once.
 
 ## Platforms
@@ -63,7 +73,7 @@ code --install-extension dylscoop.codotchi
 
 #### Manual install (VSIX)
 
-1. Download `codotchi-2.26.3.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download `codotchi-2.27.2.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
@@ -75,7 +85,7 @@ or in your IDE go to **Settings → Plugins → Marketplace**, search for
 
 #### Manual install (ZIP)
 
-1. Download `pycharm-codotchi-2.26.3.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download `pycharm-codotchi-2.27.2.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -103,19 +113,19 @@ page — no repository clone required:
 
 #### From Zip
 
-1. Download `opencode-codotchi-2.26.3.zip` from the
+1. Download `opencode-codotchi-2.27.2.zip` from the
    [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. Extract it and run the installer:
 
    ```bash
    # macOS / Linux
-   unzip opencode-codotchi-2.26.3.zip && cd opencode-codotchi-2.26.3
+   unzip opencode-codotchi-2.27.2.zip && cd opencode-codotchi-2.27.2
    node bin/install.js --install
    ```
 
    ```powershell
    # Windows (PowerShell)
-   Expand-Archive opencode-codotchi-2.26.3.zip; cd opencode-codotchi-2.26.3
+   Expand-Archive opencode-codotchi-2.27.2.zip; cd opencode-codotchi-2.27.2
    node bin/install.js --install
    ```
 
@@ -201,7 +211,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.26.3.vsix
+# produces codotchi-2.27.2.vsix
 ```
 
 ### JetBrains plugin
@@ -217,14 +227,14 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.26.3.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.27.2.zip
 ```
 
 ## Version history
 
 See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
-Current release: **v2.26.3** — built by [dylscoop](https://github.com/dylscoop)
+Current release: **v2.27.2** — built by [dylscoop](https://github.com/dylscoop)
 
 > "Grow your best pet by writing your best code."
 

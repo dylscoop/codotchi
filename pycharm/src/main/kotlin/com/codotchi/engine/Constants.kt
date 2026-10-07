@@ -188,6 +188,10 @@ const val MINIGAME_HL_LOSE_DELTA: Int = -5
 /** Coin Flip: play baseline +15; delta win 0, lose −10 → totals: win 15, lose 5. */
 const val MINIGAME_COIN_FLIP_WIN: Int = 0
 const val MINIGAME_COIN_FLIP_LOSE: Int = -10
+// Blackjack (Stu's Coin Flip): delta win +10, push 0, lose −10 → totals: 25 / 15 / 5
+const val MINIGAME_BLACKJACK_WIN: Int = 10
+const val MINIGAME_BLACKJACK_PUSH: Int = 0
+const val MINIGAME_BLACKJACK_LOSE: Int = -10
 
 const val CARE_SCORE_HUNGER_WEIGHT: Double = 0.30
 const val CARE_SCORE_HAPPINESS_WEIGHT: Double = 0.25

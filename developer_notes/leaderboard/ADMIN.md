@@ -66,3 +66,53 @@ The file format is an array:
   }
 ]
 ```
+
+---
+
+## Leaderboard signing key (required since v2.27.0)
+
+Every leaderboard issue (`[Leaderboard]` scores and `[Live]` updates) carries an
+HMAC-SHA256 signature. The workflows reject issues without a valid signature,
+so hand-written issues never reach `scores.json` / `live.json`. The plugins also
+seal their state file with the same key, so a hand-edited save marks the pet
+"tampered" and it can't be submitted. See
+`developer_notes/adr/2026-10-07-leaderboard-integrity.md`.
+
+The key is **never committed**. One key is shared by the workflows and every
+build:
+
+1. Generate a key once:
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" > .leaderboard-key
+   ```
+
+   `.leaderboard-key` sits in the repo root and is gitignored. Keep a copy in a
+   password manager; losing it means every in-progress pet becomes "tampered"
+   when builds switch to a new key.
+
+2. Give it to the workflows:
+
+   ```bash
+   gh secret set LEADERBOARD_HMAC_KEY < .leaderboard-key
+   ```
+
+3. Build as usual. `scripts/sync-core.mjs` (run by every plugin's
+   prebuild/pretest) reads `CODOTCHI_LEADERBOARD_KEY` or `.leaderboard-key` and
+   writes the gitignored `src/leaderboardKey.ts` in VS Code, OpenCode and Claude
+   Desktop. PyCharm's Gradle build generates
+   `pycharm/src/main/kotlin/com/codotchi/generated/LeaderboardKey.kt` the same way.
+
+**Check before releasing:** the sync-core output says
+`(with leaderboard key)`. A build made without the key still plays normally,
+but its Submit / Push live progress buttons are disabled ("This build of
+Codotchi can't submit to the leaderboard").
+
+If `LEADERBOARD_HMAC_KEY` is missing, the workflows fail closed: every
+submission is rejected with "server key not configured".
+
+**Limits:** the plugins are open source and the key ships inside the built
+artifacts, so someone who extracts it from a `.vsix` or `.zip` could still forge
+a signed entry. The physics floor (fastest real aging rate per pet type) and the
+stage-age bounds still apply to those. Remove forged entries with the admin
+delete workflow above.

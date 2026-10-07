@@ -205,6 +205,10 @@ const MINIGAME_HL_LOSE_DELTA: number = -5;
 // Coin Flip: play baseline +15; delta win 0, lose −10 → totals: win 15, lose 5
 const MINIGAME_COIN_FLIP_WIN: number = 0;
 const MINIGAME_COIN_FLIP_LOSE: number = -10;
+// Blackjack (Stu's Coin Flip): play baseline +15; delta win +10, push 0, lose −10 → totals: 25 / 15 / 5
+const MINIGAME_BLACKJACK_WIN: number = 10;
+const MINIGAME_BLACKJACK_PUSH: number = 0;
+const MINIGAME_BLACKJACK_LOSE: number = -10;
 
 const CARE_SCORE_HUNGER_WEIGHT: number = 0.30;
 const CARE_SCORE_HAPPINESS_WEIGHT: number = 0.25;
@@ -763,7 +767,22 @@ export interface PetState {
 
   /** What the active craving call asks for; null when no craving call is active. */
   readonly cravingFood: CravingFood | null;
+
+  // ── Leaderboard integrity (sticky: never cleared once set) ───────────────
+
+  /** True once any tick has run with dev mode on — the pet can never go on the leaderboard. */
+  readonly devModeEverUsed: boolean;
+
+  /**
+   * Why this pet can't go on the leaderboard, apart from dev mode: "tampered" (the saved
+   * state failed its integrity seal) or "unverified" (loaded from a save written before
+   * seals existed). "" when eligible.
+   */
+  readonly leaderboardIneligible: LeaderboardIneligibleReason;
 }
+
+/** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
+export type LeaderboardIneligibleReason = "" | "tampered" | "unverified";
 
 // ---------------------------------------------------------------------------
 // HighScore — persisted record of the best run
@@ -1145,6 +1164,8 @@ export function createPet(name: string, petType: string, unlockedCharacter: stri
     ticksSinceLastBreakCall: 0,
     breakNapTicksRemaining: 0,
     cravingFood: null,
+    devModeEverUsed: false,
+    leaderboardIneligible: "",
   };
 
   return withDerivedFields(partial);
@@ -1233,6 +1254,10 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   }
   if (state.paused) {
     return state.events.length > 0 ? { ...state, events: [] } : state;
+  }
+  // Any tick in dev mode (faster aging, health floor) bars this pet from the leaderboard for life.
+  if (config.devMode && !state.devModeEverUsed) {
+    state = { ...state, devModeEverUsed: true };
   }
   const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
   if (state.breakNapTicksRemaining > 0) {
@@ -2127,8 +2152,8 @@ export function applyTokenCostView(state: PetState): PetState {
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
  *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
- *               or "coin_flip" (Coin Flip).
- * @param result - "win" or "lose".
+ *               "coin_flip" (Coin Flip), or "blackjack" (Stu's one-round Blackjack).
+ * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
 export function happinessDeltaForMinigame(game: string, result: string): number {
@@ -2147,6 +2172,11 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
   if (game === "coin_flip") {
     return result === "win" ? MINIGAME_COIN_FLIP_WIN : MINIGAME_COIN_FLIP_LOSE; // 0 win, −10 lose
   }
+  if (game === "blackjack") {
+    if (result === "win")  { return MINIGAME_BLACKJACK_WIN; }   // +10
+    if (result === "push") { return MINIGAME_BLACKJACK_PUSH; }  // 0
+    return MINIGAME_BLACKJACK_LOSE;                             // −10
+  }
   if (game === "memory" && result === "win") {
     return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST;
   }
@@ -2161,11 +2191,11 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
  *
  * Also applies an additional weight loss for vigorous mini-games (BUGFIX-034):
  *   - left_right and higher_lower: −3 extra weight (total −6 with play() baseline)
- *   - coin_flip: no extra weight loss (total −3 from play() only)
+ *   - coin_flip and blackjack: no extra weight loss (total −3 from play() only)
  *
  * @param state - The current pet state.
- * @param game - "left_right", "higher_lower", "guess", or "memory".
- * @param result - "win" or "lose".
+ * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "guess", or "memory".
+ * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A new PetState after the happiness delta is applied.
  */
 export function applyMinigameResult(
@@ -2706,6 +2736,8 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     ticksSinceLastBreakCall: state.ticksSinceLastBreakCall,
     breakNapTicksRemaining: state.breakNapTicksRemaining,
     cravingFood: state.cravingFood,
+    devModeEverUsed: state.devModeEverUsed,
+    leaderboardIneligible: state.leaderboardIneligible,
   };
 }
 
@@ -2800,6 +2832,9 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     ticksSinceLastBreakCall: getNumber("ticksSinceLastBreakCall", 0),
     breakNapTicksRemaining: getNumber("breakNapTicksRemaining", 0),
     cravingFood: data["cravingFood"] === "meal" || data["cravingFood"] === "snack" ? data["cravingFood"] : null,
+    devModeEverUsed: getBool("devModeEverUsed", false),
+    leaderboardIneligible: data["leaderboardIneligible"] === "tampered" || data["leaderboardIneligible"] === "unverified"
+      ? data["leaderboardIneligible"] : "",
   };
 
   return withDerivedFields(partial);

@@ -41,7 +41,7 @@ const PALETTE = { primary: "#88cc66", secondary: "#557744" };
 describe("mini-game bitmap font (minigameArt.js)", () => {
   it("has a glyph for every digit and the symbols the games use", () => {
     const art = loadArt();
-    for (const ch of "0123456789?!✓✗^vLEFTRIGH") {
+    for (const ch of "0123456789?!✓✗^vLEFTRIGHAJQK♥♦♠♣") {
       const g = art.GLYPHS[ch];
       assert.ok(g, `missing glyph ${ch}`);
       assert.equal(g.length, 5, `${ch} should be 5 rows`);
@@ -147,8 +147,46 @@ describe("mini-game art pieces (minigameArt.js)", () => {
     art.drawCountdown(ctx, 260, 180, 3);
     art.drawNumberCard(ctx, 260, 180, 55, { correct: true, dir: "up" });
     art.drawCoin(ctx, 100, 50, 4, 0, "heads");
+    art.drawBlackjackTable(ctx, 260, 180, [{ rank: "K", suit: "♥" }, { rank: "7", suit: "♣" }], [{ rank: "10", suit: "♦" }, { rank: "A", suit: "♠" }], true);
     assert.ok(styles.length > 0);
     for (const s of styles) { assert.match(s, /^#[0-9a-f]{6}$/i, `bad canvas colour ${s}`); }
+  });
+});
+
+describe("blackjack (minigameArt.js)", () => {
+  const card = (rank: string) => ({ rank, suit: "♠" });
+  const hand = (...ranks: string[]) => ranks.map(card);
+
+  it("counts face cards as 10 and aces as 11 or 1", () => {
+    const art = loadArt();
+    assert.equal(art.blackjackTotal(hand("K", "Q")), 20);
+    assert.equal(art.blackjackTotal(hand("A", "K")), 21);
+    assert.equal(art.blackjackTotal(hand("A", "A")), 12);
+    assert.equal(art.blackjackTotal(hand("A", "9", "5")), 15);
+    assert.equal(art.blackjackTotal(hand("10", "9", "5")), 24);
+  });
+
+  it("decides win, lose and push", () => {
+    const art = loadArt();
+    assert.equal(art.blackjackOutcome(hand("10", "9"), hand("10", "8")), "win");
+    assert.equal(art.blackjackOutcome(hand("10", "7"), hand("10", "8")), "lose");
+    assert.equal(art.blackjackOutcome(hand("10", "8"), hand("9", "9")), "push");
+    assert.equal(art.blackjackOutcome(hand("10", "8", "5"), hand("10", "6", "9")), "lose", "player bust loses first");
+    assert.equal(art.blackjackOutcome(hand("10", "8"), hand("10", "6", "9")), "win", "dealer bust");
+    assert.equal(art.blackjackOutcome(hand("A", "K"), hand("7", "7", "7")), "win", "natural beats a three-card 21");
+    assert.equal(art.blackjackOutcome(hand("A", "K"), hand("A", "Q")), "push");
+  });
+
+  it("draws face-up and face-down cards the same size, red for hearts and diamonds", () => {
+    const art = loadArt();
+    const up = mockCtx(); const a = art.drawPlayingCard(up.ctx, 0, 0, 2, { rank: "Q", suit: "♥" }, false);
+    const down = mockCtx(); const b = art.drawPlayingCard(down.ctx, 0, 0, 2, { rank: "Q", suit: "♥" }, true);
+    assert.deepEqual([a.w, a.h], [b.w, b.h]);
+    assert.deepEqual([a.w, a.h], [art.CARD_W * 2, art.CARD_H * 2]);
+    assert.ok(up.styles.includes(art.COLOURS.bad));
+    assert.ok(!down.styles.includes(art.COLOURS.bad), "the hole card gives nothing away");
+    const spade = mockCtx(); art.drawPlayingCard(spade.ctx, 0, 0, 2, { rank: "10", suit: "♠" }, false);
+    assert.ok(!spade.styles.includes(art.COLOURS.bad));
   });
 });
 
@@ -159,16 +197,27 @@ describe("mini-game overlay in sidebar.js", () => {
 
   it("draws every game through minigameArt on #mg-canvas", () => {
     assert.ok(sidebarSource.includes('document.getElementById("mg-canvas")'));
-    for (const call of ["mgArt.drawDoors(", "mgArt.drawCountdown(", "mgArt.drawNumberCard(", "mgArt.drawCoin("]) {
+    for (const call of ["mgArt.drawDoors(", "mgArt.drawCountdown(", "mgArt.drawNumberCard(", "mgArt.drawCoin(", "mgArt.drawBlackjackTable("]) {
       assert.ok(sidebarSource.includes(call), `${call} not used`);
     }
   });
 
   it("clears the overlay whenever a game ends or the panel closes", () => {
-    for (const fn of ["hideMgOverlay", "endLeftRightGame", "endHigherLowerGame", "endCoinFlipGame"]) {
+    for (const fn of ["hideMgOverlay", "endLeftRightGame", "endHigherLowerGame", "endCoinFlipGame", "endBlackjackGame"]) {
       const body = new RegExp(`function ${fn}\\([^)]*\\) \\{([\\s\\S]*?)\\n  \\}`).exec(sidebarSource);
       assert.ok(body, `${fn} not found`);
       assert.ok(body[1].includes("mgClear()"), `${fn} does not clear the overlay`);
+    }
+  });
+
+  it("plays Blackjack instead of Coin Flip for Stu only", () => {
+    assert.ok(sidebarSource.includes("if (playsBlackjack(lastState)) { startBlackjackGame(); } else { startCoinFlipGame(); }"));
+    assert.ok(sidebarSource.includes('state.spriteType === "stu"'));
+    assert.ok(sidebarSource.includes('sendPlayResult("blackjack", result)'));
+    assert.match(sidebarSource, /function mgClear\(\) \{\r?\n(?:.*\r?\n){0,3}.*clearTimeout\(bjTimer\)/);
+    const html = fs.readFileSync(path.join(media, "sidebar.html"), "utf8");
+    for (const id of ["mg-blackjack", "btn-bj-hit", "btn-bj-stand", "bj-feedback", "bj-hands"]) {
+      assert.ok(html.includes(`id="${id}"`), `sidebar.html lacks #${id}`);
     }
   });
 

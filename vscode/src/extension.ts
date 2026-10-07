@@ -28,7 +28,8 @@ import { StatusBarManager } from "./statusBar";
 import { anotherWindowOwnsTick } from "./tickLease";
 import { EventsManager } from "./events";
 import { SpritePreviewPanel } from "./spritePreviewPanel";
-import { getCustomCharacterByPasscode } from "./customCharacters";
+import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
+import { cravingItemFor } from "./cravingItem";
 import { CriticalStatTracker, evaluateCriticalStats, sendOsNotification } from "./criticalStatNotifier";
 import {
   saveState,
@@ -86,6 +87,13 @@ const DEEP_IDLE_REENTRY_GRACE_MS = 60_000;
 /** Timestamp of the last "pet needs rescue while idle" notification, so it can repeat. */
 let lastRescueNotifyMs = 0;
 
+/**
+ * The events array we last fired toasts for. The sidebar re-broadcasts the
+ * current state (live-progress toggle, live push, sign-in) with the last
+ * tick's events still on it, so toasts only fire for an events array not seen yet.
+ */
+let lastNotifiedEvents: readonly string[] | null = null;
+
 /** How often to re-fire the rescue notification while the sick/losing-health-while-idle condition persists. */
 const RESCUE_NOTIFY_REPEAT_MS = 5 * 60_000;
 
@@ -110,12 +118,16 @@ export function activate(context: vscode.ExtensionContext): void {
    */
   function handleStateUpdate(state: PetState, isIdle: boolean = false): void {
     currentState = state;
+    const freshEvents = state.events !== lastNotifiedEvents;
+    lastNotifiedEvents = state.events;
 
     // Fire IDE notifications for attention call events (only when mechanic is enabled)
     const attentionCallsEnabled = vscode.workspace
       .getConfiguration("codotchi")
       .get<boolean>("enableAttentionCalls", true);
-    if (attentionCallsEnabled) {
+    if (attentionCallsEnabled && freshEvents) {
+      const patCall = getCustomCharacterBySpriteType(state.spriteType)?.patCall;
+      const cravingItem = cravingItemFor(state);
       const notificationMessages: Record<string, string> = {
         "attention_call_hunger":         `${state.name} is hungry!`,
         "attention_call_unhappiness":    `${state.name} is feeling sad!`,
@@ -126,10 +138,10 @@ export function activate(context: vscode.ExtensionContext): void {
         "attention_call_gift":           (getCustomCharacterByPasscode(vscode.workspace.getConfiguration("codotchi").get<string>("characterPasscode", ""))?.giftMessage ?? `${state.name} brought you a gift!`).replace("__Name__", state.name),
         "attention_call_critical_health":`${state.name}'s health is critical!`,
         "attention_call_play":           `${state.name} wants to play a game!`,
-        "attention_call_pat":            `${state.name} wants a pat!`,
+        "attention_call_pat":            patCall ? patCall.call.replace("__Name__", state.name) : `${state.name} wants a pat!`,
         "attention_call_craving_meal":   `${state.name} is craving a meal!`,
-        "attention_call_craving_snack":  `${state.name} is craving a snack!`,
-        "attention_call_break":          `Time for a break! You've been coding for 30 minutes — praise ${state.name} and they'll nap for 5 minutes while you rest.`,
+        "attention_call_craving_snack":  `${state.name} is craving ${cravingItem ?? "a snack"}!`,
+        "attention_call_break":          "Time for a break! You've been coding for 30 minutes.",
         "break_nap_over":                `Break's over! ${state.name} is awake and ready to code.`,
       };
       for (const event of state.events) {
@@ -145,7 +157,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     // Fire old-age natural-causes death notification
-    if (state.events.includes("died_of_old_age")) {
+    if (freshEvents && state.events.includes("died_of_old_age")) {
       void vscode.window.showWarningMessage(
         `${state.name} has passed away of unforeseen natural causes due to old age.`
       );

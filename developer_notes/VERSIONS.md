@@ -1,6 +1,70 @@
 # Version History
 
-## v2.26.3 — current
+## v2.27.2 — current
+
+### Changes from v2.27.1 (Timagotchi / Stugotchi names, push live progress — branch feature/stugotchi-name)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | gift message and run/sticker toasts say "Timagotchi" / "Stugotchi" instead of "Tim" / "Stu" |
+| `customCharacters.ts`, `customCharacters.js`, `CustomCharacters.kt`, `vscode/media/sidebar.js`, `vscode/src/statusBarText.ts` | new optional `characterLabel`: the info line and status bar tooltip show "Timagotchi" / "Stugotchi" instead of the sprite keys "Tim" / "Stu" |
+| `packages/core/src/integrity.ts` (+ synced copies), `pycharm/.../Integrity.kt` | BUGFIX-194: "unverified" (pre-2.27) pets are no longer blocked from live progress or submission |
+| `vscode/media/sidebar.js`, `sidebar.css` | a blocked pet's live button reads "Live progress unavailable" with the reason underneath, and looks disabled |
+| `vscode/tests/unit/liveProgress.test.ts` (new), `pycharm/.../LiveProgressTest.kt` (new), `integrity.test.ts`, `IntegrityTest.kt` | live progress always works for an eligible pet in both IDEs |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | BUGFIX-195: attention-call toasts fire once per tick, not again on every re-broadcast (live toggle, live push, sign-in) |
+| all manifests, `README.md` | version 2.27.1 → 2.27.2 |
+
+---
+
+## v2.27.1
+
+**New constants:** `MINIGAME_BLACKJACK_WIN = 10`, `MINIGAME_BLACKJACK_PUSH = 0`, `MINIGAME_BLACKJACK_LOSE = -10`. **New minigame result:** `"push"` (blackjack only). **New webview message fields:** `floorSnacks` on `feed` (snack), `cravingItem` on `stateUpdate`.
+
+### Changes from v2.27.0 (Tim & Stu actions — branch feature/tim-stu-actions)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | `patCall` (call / answered / expired / status text) and `snackCravings`: Tim wants a run and craves a tea; Stu wants stickers and craves a pint or some salmon |
+| `vscode/src/cravingItem.ts` (new), `pycharm/.../CravingItem.kt` (new) | random craved item, memoised per craving so toast, status bar and webview agree |
+| `vscode/src/extension.ts`, `statusBarText.ts`, `sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt`, `StatusBarText.kt`, `CodotchiBrowserPanel.kt` | pat-call / craving text overrides; `cravingItem` sent to the webview; break reminder text no longer tells you to praise the pet |
+| `vscode/media/sidebar.js` | run / sticker call text, craving item text and matching floor snack; Tim and Stu answer with their own bubbles; Stu's Coin Flip button plays Blackjack; Tim's run lap; Stu's sticker prop; snack presses report `floorSnacks` |
+| `vscode/media/sidebar.html` | `#mg-blackjack` panel (Hit / Stand) |
+| `vscode/media/minigameArt.js` | `A J Q K` glyphs, suit pips, `drawPlayingCard`, `drawBlackjackTable`, `blackjackTotal`, `blackjackOutcome` |
+| `vscode/media/sprites.js` | tim / stu grids centred (BUGFIX-193); `renderSpriteGrid` centres the rounded grid in the box; `spritePat.runLap / usesHand / durationMs / pickProp / drawProp`, `dust` and `sticker` particles; Tim and Stu get no hand or hearts |
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt` | `blackjack` minigame (win / push / lose) |
+| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt` | BUGFIX-192: `startSnack` uses the webview's floor count |
+| `vscode/tests/unit/customCharacterText.test.ts` (new), `minigameArt.test.ts`, `webviewAnimations.test.ts`, `spriteData.test.ts`, `gameEngine.test.ts`, `pycharm/.../StatusBarTextTest.kt`, `GameEngineTest.kt` | tests |
+| all manifests, `README.md` | version 2.27.0 → 2.27.1 |
+
+---
+
+## v2.27.0
+
+**New state fields:** `devModeEverUsed` (sticky), `leaderboardIneligible` (`""` / `"tampered"` / `"unverified"`). **State file:** top-level `seal` (VS Code / OpenCode / Claude Desktop `state.json`, PyCharm `state.json` + `petStateSeal` in `codotchi.xml`). **Leaderboard issues:** `schemaVersion` 2 with `clientVersion` + `sig`; v1 is rejected. **Physics floor:** 240 s/day → 720 s ÷ agingMultiplier per pet type, 10% slack. **New secret:** `LEADERBOARD_HMAC_KEY` (see `developer_notes/leaderboard/ADMIN.md`). ADR: `developer_notes/adr/2026-10-07-leaderboard-integrity.md`.
+
+### Changes from v2.26.3 (leaderboard integrity — branch feature/leaderboard-integrity)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` | `devModeEverUsed` set by any dev-mode tick (incl. break naps), never cleared; `leaderboardIneligible`; both serialised |
+| `packages/core/src/integrity.ts` (new) | `sealPayload` / `sealState` / `sealSerialisedState` / `verifySeal`, `leaderboardBlockedReason`, `submissionPayload` / `signSubmission` (HMAC-SHA256) |
+| `packages/core/fixtures/integrity-vector.json` (new) | shared test vector pinning the seal and signature text across TS, Kotlin and the workflow |
+| `scripts/sync-core.mjs`, `.gitignore` | copies `integrity.ts`; writes gitignored `src/leaderboardKey.ts` from `CODOTCHI_LEADERBOARD_KEY` / `.leaderboard-key` |
+| `vscode/src/persistence.ts` | seal on save (file + globalState), verify on load |
+| `vscode/src/sidebarProvider.ts` | submit / auto-submit / live push refuse ineligible pets; signed v2 payloads; `leaderboardBlockedReason` to the webview |
+| `vscode/media/sidebar.js` | Submit and Push live progress greyed out with the reason; dead PyCharm `browser_opened` path removed |
+| `opencode-codotchi/src/index.ts`, `claude-desktop-codotchi/src/state.ts` | verify the seal on load, re-seal on save |
+| `pycharm/.../Integrity.kt` (new), `PetState.kt`, `GameEngine.kt`, `CodotchiPersistence.kt`, `CodotchiPlugin.kt`, `CodotchiBrowserPanel.kt`, `LeaderboardSubmitter.kt`, `build.gradle.kts` | PyCharm parity; Gradle `generateLeaderboardKey` task; dead `buildLeaderboardIssueUrl` removed |
+| `.github/scripts/leaderboard-validate.mjs` (new) | signature check (fails closed without the secret), per-type physics floor, stage bounds, whitelisted entries |
+| `.github/workflows/process-leaderboard*.yml` | use the validator; `verified: true`; unverified live entries pruned; issue text no longer inside `${{ }}` in github-script (script-injection fix) |
+| `leaderboard/index.html` | *legacy* badge for pre-2.27.0 scores; only verified live entries; fair-play text |
+| `vscode/tests/unit/integrity.test.ts` (new), `pycharm/.../IntegrityTest.kt`, `PersistenceIntegrityTest.kt` (new), `GameEngineTest.kt` | vector, tamper / unverified / sticky, dev-mode flag, validator cases |
+| `README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md`, `developer_notes/leaderboard/ADMIN.md`, ADR | docs |
+| all manifests, `README.md` | version 2.26.3 → 2.27.0 |
+
+---
+
+## v2.26.3
 
 **Updated constants:** live-entry stale window 30 days → 48 h (`LIVE_STALE_MS` in `claude-codotchi/scripts/state.mjs`, `LIVE_STALE_MS_OC` in OpenCode, `staleMs` in PyCharm), matching `leaderboard/index.html`.
 

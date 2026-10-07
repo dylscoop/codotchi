@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.27.2] — 2026-10-07
+
+### Changed
+
+- **Tim and Stu** — toasts, gift messages, the info line under the pet and the status bar tooltip now call them Timagotchi and Stugotchi.
+
+### Fixed
+
+- **Push live progress** — pets hatched before 2.27 can push live progress and go on the leaderboard again. When a pet can't (dev mode, an edited save), the button now says why instead of doing nothing.
+- **Notifications** — a pet's call (a craving, a pat, a poop) no longer pops up two or three times when you toggle or push live progress.
+
+## [2.27.1] — 2026-10-07
+
+### Changed
+
+- **Tim and Stu** — Tim now asks to go for a run instead of a pat, and actually jogs a lap of the stage. Stu asks to collect stickers and opens a sticker binder or a fresh pack. When they crave a snack they say what they want: a tea for Tim, a pint or some salmon for Stu. Stu also plays a round of Blackjack instead of Coin Flip.
+- **Break reminder** — the reminder now just says it's time for a break.
+
+### Fixed
+
+- **Tim and Stu off-centre** — both were drawn left of centre and jumped sideways every time they turned around.
+- **Stu's snacks** — with three snacks already on the floor, a fourth was silently lost instead of being thrown away with a message in the log.
+
+## [2.27.0] — 2026-10-07
+
+### Changed
+
+- **Fair leaderboard** — only scores sent by the Codotchi plugin are accepted now; hand-written GitHub issues are turned away. A pet that ever ran in dev mode, or whose save file was edited outside Codotchi, can't be submitted or pushed live, even after dev mode is turned off. The sidebar greys out the buttons and says why. Pets hatched before this version can't be submitted either, but your next one can. Older scores stay on the board marked *legacy*.
+
 ## [2.26.3] — 2026-10-05
 
 ### Fixed

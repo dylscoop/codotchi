@@ -2318,3 +2318,47 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** every client now ranks the way `leaderboard/index.html` orders rows: live entries only if pushed within 48 h, sorted by stage then the stored `ageDays` with no projection. Each client also drops the pet's own live entry, matched by `spawnedAt`, before adding 1. Matching by `spawnedAt` works even when the pet was pushed from another IDE. PyCharm and VS Code still check `petRunId` too.
 
 **Tests:** `claude-codotchi/tests/integration/liveRank.test.mjs`.
+
+## BUGFIX-192 — Stu's 4th floor snack lost silently instead of thrown away
+
+**Status:** Fixed (branch `feature/tim-stu-actions`)
+**File:** `vscode/media/sidebar.js`, `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt`
+
+**Problem:** with three snacks already on the stage, Stu took a 4th snack without "threw the snack away" in the log, and the snack never appeared. Other pets hit the 3-snack per-cycle cap first, but Stu's is 10, so only the engine's `snacksOnFloor` counter stopped him. That counter can fall behind the webview's real floor (for example another window resetting it when its sidebar loads), so `startSnack` placed the snack and the webview, already at 3, dropped it silently.
+
+**Fix:** the Snack button sends the webview's real floor count (`floorSnacks`), and both hosts use it for the floor cap in `startSnack`, which then refuses with `snack_refused` and logs "threw the snack away".
+
+**Tests:** `vscode/tests/unit/customCharacterText.test.ts`.
+
+## BUGFIX-193 — Tim and Stu drawn off-centre and jumping on every turn
+
+**Status:** Fixed (branch `feature/tim-stu-actions`)
+**File:** `vscode/media/sprites.js`
+
+**Problem:** the hand-drawn tim and stu grids hugged the left edge (tim baby: 4 empty columns left, 12 right; stu baby: 8 and 24), and `renderSpriteGrid` left all the cell-rounding leftover on the right. They drew left of the box centre, and because upright sprites mirror around the box centre, they jumped sideways each time they turned. Both legs of the babies also sat left of `COLS/2`, so they didn't alternate when walking.
+
+**Fix:** every stage of both grids is shifted to sit centred (within one column), and `renderSpriteGrid` splits the rounding leftover evenly on both sides.
+
+**Tests:** `vscode/tests/unit/spriteData.test.ts`.
+
+## BUGFIX-194 — Push live progress did nothing in VS Code and PyCharm
+
+**Status:** Fixed (branch `feature/stugotchi-name`, v2.27.2)
+**File:** `packages/core/src/integrity.ts`, `pycharm/.../Integrity.kt`, `vscode/media/sidebar.js`, `vscode/media/sidebar.css`
+
+**Problem:** every pet alive when 2.27.0 installed loads as "unverified" (its save has no seal), and `leaderboardBlockedReason` blocked those pets, so the live button was disabled. A disabled link button looked the same as an enabled one and the reason was only a hover tooltip, so clicking it seemed to do nothing.
+
+**Fix:** "unverified" no longer blocks live progress or submission (tampered and dev-mode pets still do). When a pet is blocked, the button reads "Live progress unavailable", looks disabled, and the reason shows under it.
+
+**Tests:** `vscode/tests/unit/liveProgress.test.ts`, `pycharm/.../LiveProgressTest.kt`.
+
+## BUGFIX-195 — Attention-call notifications showed up more than once
+
+**Status:** Fixed (branch `feature/stugotchi-name`, v2.27.2)
+**File:** `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** the IDE re-broadcasts the current state after some actions: toggling live progress, a successful live push, and signing in or out. The last tick's events were still on that state, so every re-broadcast fired the same toasts again. A snack craving could pop up three times: once on the tick, once on the toggle and once after the push. This affected every pet, not just Stugotchi.
+
+**Fix:** each host remembers which events list it last notified for. Toasts and the old-age death notification fire only for a list it hasn't seen yet. State, the status bar and the sidebar still update on every broadcast.
+
+**Tests:** `vscode/tests/unit/liveProgress.test.ts`, `pycharm/.../LiveProgressTest.kt`.

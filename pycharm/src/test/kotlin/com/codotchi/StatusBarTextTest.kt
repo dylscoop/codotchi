@@ -39,4 +39,32 @@ class StatusBarTextTest {
     fun `is blank when the status bar setting is off`() {
         assertEquals("" to "", formatStatusWidget(pet.copy(activeAttentionCall = "pat"), enabled = false))
     }
+
+    @Test
+    fun `Tim wants a run and Stu wants stickers instead of a pat`() {
+        assertEquals("⚠ Pixel wants to go for a run!", attentionCallLine(pet.copy(spriteType = "tim", activeAttentionCall = "pat")))
+        assertEquals("⚠ Pixel wants to collect stickers!", attentionCallLine(pet.copy(spriteType = "stu", activeAttentionCall = "pat")))
+    }
+
+    @Test
+    fun `the break line has no praise instructions`() {
+        assertEquals("⚠ Pixel says it's time for a break!", attentionCallLine(pet.copy(activeAttentionCall = "break")))
+    }
+
+    @Test
+    fun `Tim craves a tea`() {
+        assertEquals("⚠ Pixel is craving a tea!",
+            attentionCallLine(pet.copy(spriteType = "tim", activeAttentionCall = "craving", cravingFood = "snack")))
+    }
+
+    @Test
+    fun `Stu craves a pint or salmon, kept for the whole craving`() {
+        val craving = pet.copy(spriteType = "stu", activeAttentionCall = "craving", cravingFood = "snack")
+        cravingItemFor(pet.copy(spriteType = "stu"))
+        assertEquals("a pint", cravingItemFor(craving) { 0.0 })
+        assertEquals("a pint", cravingItemFor(craving) { 0.99 })
+        cravingItemFor(pet.copy(spriteType = "stu"))
+        assertEquals("some salmon", cravingItemFor(craving) { 0.99 })
+        assertNull(cravingItemFor(pet.copy(spriteType = "dog", activeAttentionCall = "craving", cravingFood = "snack")))
+    }
 }

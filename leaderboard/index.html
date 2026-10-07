@@ -110,6 +110,17 @@
     .elapsed { color: var(--muted); font-size: 0.82rem; }
     .submitted { color: var(--muted); font-size: 0.8rem; }
     .empty { text-align: center; padding: 3rem; color: var(--muted); }
+    .legacy-badge {
+      display: inline-block;
+      padding: 0.1rem 0.35rem;
+      margin-left: 0.4rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      color: var(--muted);
+      border: 1px solid rgba(139,148,158,0.35);
+      vertical-align: middle;
+      cursor: help;
+    }
     .badge {
       display: inline-block;
       padding: 0.15rem 0.45rem;
@@ -192,6 +203,8 @@
       <strong>How to submit:</strong> Play Codotchi in VS Code or PyCharm.
       After your pet passes away, click <em>Submit to Leaderboard</em> on the game over screen.
       Your GitHub account is used to authenticate the submission.
+      Scores are only accepted from the Codotchi plugin itself (each one is signed), and pets that ever ran in dev mode or whose save file was edited can't be submitted.
+      Entries marked <em>legacy</em> were submitted before these checks existed.
       To appear on <em>Currently Alive</em>, click <em>Push live progress</em> in the sidebar while your pet is alive. Entries expire after 48 hours.
     </div>
 
@@ -358,11 +371,12 @@
           var scores = (results[0].scores || []).map(function(s) {
             return { alive: false, githubUsername: s.githubUsername, petName: s.petName,
                      ageDays: s.ageDays || 0, petType: s.petType, stage: s.stage,
-                     spawnedAt: s.spawnedAt, diedAt: s.diedAt, submittedAt: s.submittedAt };
+                     spawnedAt: s.spawnedAt, diedAt: s.diedAt, submittedAt: s.submittedAt,
+                     legacy: s.verified !== true };
           });
           var now = Date.now();
           var live = (Array.isArray(results[1]) ? results[1] : [])
-            .filter(function(e) { return e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS; })
+            .filter(function(e) { return e.verified === true && e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS; })
             .map(function(e) {
               return { alive: true, githubUsername: e.username, petName: e.petName,
                        ageDays: e.ageDays || 0, petType: e.petType, stage: e.stage,
@@ -379,7 +393,8 @@
             return;
           }
           tbody.innerHTML = combined.map(function(s, i) {
-            var namePart = escHtml(s.petName || "—") + (s.alive ? "<span class=\"live-badge\">live</span>" : "");
+            var namePart = escHtml(s.petName || "—") + (s.alive ? "<span class=\"live-badge\">live</span>" : "") +
+              (s.legacy ? "<span class=\"legacy-badge\" title=\"Submitted before scores were signed and checked\">legacy</span>" : "");
             var elapsedPart = s.spawnedAt ? formatElapsed(s.spawnedAt, s.alive ? Date.now() : s.diedAt) : formatAgeDays(s.ageDays);
             var submittedPart = s.alive ? formatRelativeTime(s.updatedAt) : formatDate(s.submittedAt);
             return "<tr>" +
@@ -409,7 +424,7 @@
           var entries = Array.isArray(data) ? data : [];
           var now = Date.now();
           var fresh = entries.filter(function(e) {
-            return e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS;
+            return e.verified === true && e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS;
           });
           var tbody = document.getElementById("alive-body");
           if (fresh.length === 0) {

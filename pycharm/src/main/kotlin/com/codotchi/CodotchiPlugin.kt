@@ -108,6 +108,13 @@ class CodotchiPlugin : Disposable {
     /** Epoch-ms of the last "pet needs rescue while idle" notification, so it can repeat. */
     @Volatile private var lastRescueNotifyMs: Long = 0L
 
+    /**
+     * The events list we last fired notifications for. broadcastState() runs after
+     * commands too (live-progress toggle, live push, sign-in) with the last tick's
+     * events still on the state, so notifications only fire for a list not seen yet.
+     */
+    @Volatile private var lastNotifiedEvents: List<String>? = null
+
     /** Per-stat epoch-ms of the last desktop notification for a critical stat (see [CriticalStatNotifier]). */
     @Volatile private var criticalStatTracker: Map<String, Long> = emptyMap()
 
@@ -158,6 +165,22 @@ class CodotchiPlugin : Disposable {
     @Volatile private var leaderboardGithubUsername: String? = null
     /** True once the stored GitHub token was rejected (401/403); cleared on the next success (BUG-S08). */
     @Volatile private var leaderboardAuthExpired: Boolean = false
+
+    /** True when dev mode is on right now (enabled + correct passcode). */
+    private fun isDevModeActive(): Boolean {
+        val settings = service<CodotchiSettings>()
+        return settings.devModeEnabled && settings.developerPasscode == "1234"
+    }
+
+    /** Why [state] can't go on the leaderboard right now, or null when it can (see Integrity.kt). */
+    private fun leaderboardBlockedReason(state: PetState): String? =
+        Integrity.leaderboardBlockedReason(state, isDevModeActive())
+
+    /** This plugin's version, signed into every leaderboard submission. */
+    private fun clientVersion(): String =
+        com.intellij.ide.plugins.PluginManagerCore
+            .getPlugin(com.intellij.openapi.extensions.PluginId.getId("com.codotchi.pycharm-codotchi"))
+            ?.version ?: "0.0.0"
 
     /** Background thread running the JVM WatchService for cross-window file sync. */
     @Volatile private var fileWatcherThread: Thread? = null
@@ -475,7 +498,10 @@ class CodotchiPlugin : Disposable {
                     val feedType = message["feedType"] as? String
                     val _cc = getCustomCharacterBySpriteType(state.spriteType)
                     nextState = if (feedType == "snack") {
-                        startSnack(state, feedSnackMaxPerCycle = _cc?.feedSnackMaxPerCycle)
+                        // The webview reports the snacks really on its floor, so a stale
+                        // counter can't let a 4th snack through (Stu's cycle cap is 10).
+                        val floor = (message["floorSnacks"] as? Number)?.toInt() ?: state.snacksOnFloor
+                        startSnack(state.copy(snacksOnFloor = floor), feedSnackMaxPerCycle = _cc?.feedSnackMaxPerCycle)
                     } else {
                         val ns = feedMeal(state, mealsGivenThisCycle,
                             feedMealMaxPerCycle = _cc?.feedMealMaxPerCycle,
@@ -785,6 +811,8 @@ class CodotchiPlugin : Disposable {
     }
 
     private fun pushLiveScoreAsync(state: PetState, promptIfNoToken: Boolean) {
+        if (!state.alive) return
+        if (leaderboardBlockedReason(state) != null) return
         AppExecutorUtil.getAppExecutorService().execute {
             try {
                 val credAttrs = CredentialAttributes("Codotchi", "github-pat")
@@ -813,19 +841,15 @@ class CodotchiPlugin : Disposable {
                 val username = userMap["login"] as? String ?: return@execute
                 setLeaderboardUsername(username)
 
-                val entry = mapOf(
-                    "username" to username,
-                    "petName" to state.name,
-                    "petRunId" to com.intellij.openapi.application.PermanentInstallationID.get(),
-                    "spawnedAt" to state.spawnedAt,
-                    "ageDays" to state.ageDays,
-                    "stage" to state.stage,
-                    "petType" to state.petType,
-                    "updatedAt" to System.currentTimeMillis()
+                val entryJson = buildLiveEntryJson(
+                    state, username,
+                    petRunId = com.intellij.openapi.application.PermanentInstallationID.get(),
+                    updatedAt = System.currentTimeMillis(),
+                    clientVersion = clientVersion(),
                 )
                 val issueBody = mapOf(
                     "title" to "[Live] $username — ${state.name} (${state.ageDays}d ${state.stage})",
-                    "body" to Gson().toJson(entry),
+                    "body" to entryJson,
                     "labels" to listOf("leaderboard-live")
                 )
 
@@ -860,13 +884,18 @@ class CodotchiPlugin : Disposable {
     private fun submitLeaderboardAsync(state: PetState, diedAt: Long, retried: Boolean = false) {
         AppExecutorUtil.getAppExecutorService().execute {
             fun postResult(status: String, message: String? = null) {
-                val msgPart = if (message != null) ""","message":"${message.replace("\"", "\\\"")}"""" else ""
+                val msgPart = if (message != null) ""","message":${jsonStringOrNull(message)}""" else ""
                 val payload = """{"type":"leaderboard_submit_result","status":"$status"$msgPart}"""
                 ApplicationManager.getApplication().invokeLater {
                     browserPanels.forEach { it.postMessage(payload) }
                 }
             }
             try {
+                val blocked = leaderboardBlockedReason(state)
+                if (blocked != null) {
+                    postResult("error", blocked)
+                    return@execute
+                }
                 val credAttrs = CredentialAttributes("Codotchi", "github-pat")
                 val pat = PasswordSafe.instance.getPassword(credAttrs)
                 if (pat.isNullOrBlank()) {
@@ -918,8 +947,7 @@ class CodotchiPlugin : Disposable {
                     return@execute
                 }
 
-                val scoreJson = """{"schemaVersion":1,"petName":"${state.name.replace("\"","\\\"")}","ageDays":${state.ageDays},"stage":"${state.stage}","petType":"${state.petType}","spawnedAt":${state.spawnedAt},"diedAt":$diedAt}"""
-                val issueBody = "Leaderboard submission.\n\n```json\n$scoreJson\n```"
+                val issueBody = buildScoreIssueBody(state, username, diedAt, clientVersion())
                 val issueTitle = "[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @$username"
                 val issuePayload = mapOf(
                     "title" to issueTitle,
@@ -1220,9 +1248,10 @@ class CodotchiPlugin : Disposable {
         val liveRank2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.rank else null
         val liveTotalScores2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.total else null
         val liveLastPushed2 = liveLastPushedAtMs.takeIf { it > 0L }
+        val blockedReason2 = state?.let { leaderboardBlockedReason(it) }
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2, liveLastPushed2) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2, liveLastPushed2, leaderboardBlockedReason = blockedReason2) }
                 statusWidgets.forEach { it.update(state) }
             }
         }
@@ -1449,16 +1478,22 @@ class CodotchiPlugin : Disposable {
         }
         persistence.lastSaveTimestamp = System.currentTimeMillis()
 
+        val freshEvents = synchronized(this) {
+            val fresh = state != null && state.events !== lastNotifiedEvents
+            if (state != null) lastNotifiedEvents = state.events
+            fresh
+        }
+
         // Fire IDE notifications for attention_call_* events (only when mechanic is enabled)
-        if (state != null && service<CodotchiSettings>().enableAttentionCalls) {
+        if (state != null && freshEvents && service<CodotchiSettings>().enableAttentionCalls) {
             for (event in state.events) {
-                val msg = attentionCallMessage(state.name, event, state.spriteType) ?: continue
+                val msg = attentionCallMessage(state.name, event, state.spriteType, cravingItemFor(state)) ?: continue
                 fireAttentionNotification(msg)
             }
         }
 
         // Fire notification on old-age natural-causes death
-        if (state != null && state.events.contains("died_of_old_age")) {
+        if (state != null && freshEvents && state.events.contains("died_of_old_age")) {
             fireAttentionNotification(
                 "${state.name} has passed away of unforeseen natural causes due to old age."
             )
@@ -1512,10 +1547,11 @@ class CodotchiPlugin : Disposable {
         val liveRank = if (liveSubscribed && state != null && state.alive && cached != null) cached.rank else null
         val liveTotalScores = if (liveSubscribed && state != null && state.alive && cached != null) cached.total else null
         val liveLastPushed = liveLastPushedAtMs.takeIf { it > 0L }
+        val blockedReason = state?.let { leaderboardBlockedReason(it) }
 
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveLastPushed, leaderboardGithubUsername, leaderboardAuthExpired) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveLastPushed, leaderboardGithubUsername, leaderboardAuthExpired, blockedReason) }
                 statusWidgets.forEach { it.update(state) }
             }
         }
@@ -1523,7 +1559,7 @@ class CodotchiPlugin : Disposable {
 
     // ── Attention-call notifications ───────────────────────────────────────
 
-    private fun attentionCallMessage(petName: String, event: String, spriteType: String? = null): String? {
+    private fun attentionCallMessage(petName: String, event: String, spriteType: String? = null, cravingItem: String? = null): String? {
         val customChar = spriteType?.let { getCustomCharacterBySpriteType(it) }
         return when (event) {
             "attention_call_hunger"          -> "$petName is hungry!"
@@ -1535,10 +1571,10 @@ class CodotchiPlugin : Disposable {
             "attention_call_gift"            -> (customChar?.giftMessage ?: "$petName brought you a gift!").replace("__Name__", petName)
             "attention_call_critical_health" -> "$petName's health is critical!"
             "attention_call_play"            -> "$petName wants to play a game!"
-            "attention_call_pat"             -> "$petName wants a pat!"
+            "attention_call_pat"             -> customChar?.patCall?.call?.replace("__Name__", petName) ?: "$petName wants a pat!"
             "attention_call_craving_meal"    -> "$petName is craving a meal!"
-            "attention_call_craving_snack"   -> "$petName is craving a snack!"
-            "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes — praise $petName and they'll nap for 5 minutes while you rest."
+            "attention_call_craving_snack"   -> "$petName is craving ${cravingItem ?: "a snack"}!"
+            "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes."
             "break_nap_over"                 -> "Break's over! $petName is awake and ready to code."
             else                             -> null
         }
