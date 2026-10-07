@@ -827,4 +827,41 @@ class GameEngineTest {
         assertEquals(4, feedMeal(makePet().copy(hunger = 30), 0, feedHungerMult = 0.25).hunger - 30,
             "rounds like the TS engine")
     }
+
+    // ── Leaderboard integrity: sticky devModeEverUsed ───────────────────────
+
+    @Test
+    fun `new pet has not used dev mode and is leaderboard eligible`() {
+        val pet = makePet()
+        assertFalse(pet.devModeEverUsed)
+        assertEquals("", pet.leaderboardIneligible)
+    }
+
+    @Test
+    fun `tick in dev mode sets devModeEverUsed and it stays set after dev mode is off`() {
+        val devTicked = tick(makePet(), config = GameConfig(devMode = true))
+        assertTrue(devTicked.devModeEverUsed)
+        var s = devTicked
+        repeat(5) { s = tick(s, config = GameConfig(devMode = false)) }
+        assertTrue(s.devModeEverUsed, "devModeEverUsed must be sticky")
+    }
+
+    @Test
+    fun `tick without dev mode leaves devModeEverUsed false`() {
+        var s = makePet()
+        repeat(5) { s = tick(s) }
+        assertFalse(s.devModeEverUsed)
+    }
+
+    @Test
+    fun `paused pet ticked in dev mode is not marked`() {
+        val s = tick(makePet(paused = true), config = GameConfig(devMode = true))
+        assertFalse(s.devModeEverUsed)
+    }
+
+    @Test
+    fun `dev mode tick during a break nap still marks the pet`() {
+        val s = tick(makePet().copy(breakNapTicksRemaining = 3), config = GameConfig(devMode = true))
+        assertTrue(s.devModeEverUsed)
+    }
 }

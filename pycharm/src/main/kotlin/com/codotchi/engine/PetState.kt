@@ -128,4 +128,16 @@ data class PetState(
 
     /** What the active craving call asks for ("meal" or "snack"); null when no craving call is active. */
     val cravingFood: String? = null,
+
+    // ── Leaderboard integrity (sticky: never cleared once set) ───────────────
+
+    /** True once any tick has run with dev mode on — the pet can never go on the leaderboard. */
+    val devModeEverUsed: Boolean = false,
+
+    /**
+     * Why this pet can't go on the leaderboard, apart from dev mode: "tampered" (the saved
+     * state failed its integrity seal) or "unverified" (loaded from a save written before
+     * seals existed). "" when eligible.
+     */
+    val leaderboardIneligible: String = "",
 )

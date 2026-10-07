@@ -37,6 +37,12 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
     /** Raw JSON string of the last saved PetState, or null if none. */
     var petStateJson: String? = null
 
+    /**
+     * Integrity seal over [petStateJson] (see Integrity.kt), or null for saves
+     * written before seals existed (those load as "unverified").
+     */
+    var petStateSeal: String? = null
+
     /** Epoch-millis timestamp of the last save (used for offline decay). */
     var lastSaveTimestamp: Long = 0L
 
@@ -65,6 +71,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
     override fun getState(): Element {
         val el = Element("CodotchiPersistence")
         petStateJson?.let { el.setAttribute("petStateJson", it) }
+        petStateSeal?.let { el.setAttribute("petStateSeal", it) }
         el.setAttribute("lastSaveTimestamp", lastSaveTimestamp.toString())
         el.setAttribute("lastDeepIdleTickMs", lastDeepIdleTickMs.toString())
         el.setAttribute("mealsGivenThisCycle", mealsGivenThisCycle.toString())
@@ -74,6 +81,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
 
     override fun loadState(state: Element) {
         petStateJson        = state.getAttributeValue("petStateJson")
+        petStateSeal        = state.getAttributeValue("petStateSeal")
         lastSaveTimestamp   = state.getAttributeValue("lastSaveTimestamp")?.toLongOrNull()  ?: 0L
         lastDeepIdleTickMs  = state.getAttributeValue("lastDeepIdleTickMs")?.toLongOrNull() ?: 0L
         mealsGivenThisCycle = state.getAttributeValue("mealsGivenThisCycle")?.toIntOrNull() ?: 0
@@ -84,7 +92,9 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
 
     /** Serialise [state] into [petStateJson] and write to the cross-IDE shared file. */
     fun savePetState(state: PetState) {
-        petStateJson = gson.toJson(toRaw(state))
+        val raw = toRaw(state)
+        petStateJson = gson.toJson(raw)
+        petStateSeal = sealRaw(raw)
         lastSaveTimestamp = System.currentTimeMillis()
         saveToSharedFile(state)
     }
@@ -103,7 +113,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val localState: PetState? = petStateJson?.let { json ->
             try {
                 val raw = gson.fromJson(json, RawPetState::class.java) ?: return@let null
-                sanitise(raw)
+                Integrity.verifySeal(sanitise(raw), petStateSeal)
             } catch (_: JsonSyntaxException) {
                 null
             }
@@ -114,7 +124,9 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         // PyCharm only reads its own file — no cross-IDE promotion.
         val shared = loadFromSharedFile()
         if (shared != null && shared.second > lastSaveTimestamp && shared.first.alive) {
-            petStateJson      = gson.toJson(toRaw(shared.first))
+            val raw = toRaw(shared.first)
+            petStateJson      = gson.toJson(raw)
+            petStateSeal      = sealRaw(raw)
             lastSaveTimestamp = shared.second
             return shared.first
         }
@@ -151,7 +163,15 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
     private data class SharedStateFile(
         val state: RawPetState?,
         val savedAt: Long?,
+        /** Integrity seal over [state] (see Integrity.kt). Absent in files from older builds. */
+        val seal: String? = null,
     )
+
+    /**
+     * Seal a serialised state exactly as a reader will see it after
+     * deserialising, so load-time defaults and migrations never break the seal.
+     */
+    private fun sealRaw(raw: RawPetState): String = Integrity.sealState(sanitise(raw))
 
     /** Returns the base directory for all codotchi PyCharm state files. */
     private fun getBaseDir(): File {
@@ -250,7 +270,8 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         try {
             val file = getActiveStatePath(currentProjectBasePath)
             file.parentFile?.mkdirs()
-            val payload = SharedStateFile(state = toRaw(state), savedAt = System.currentTimeMillis())
+            val raw = toRaw(state)
+            val payload = SharedStateFile(state = raw, savedAt = System.currentTimeMillis(), seal = sealRaw(raw))
             file.writeText(gson.toJson(payload))
         } catch (_: Exception) {
             // Best-effort — never crash the plugin if the shared file is unavailable.
@@ -268,7 +289,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             val raw = gson.fromJson(file.readText(), SharedStateFile::class.java) ?: return null
             val rawState = raw.state ?: return null
             val savedAt  = raw.savedAt ?: return null
-            Pair(sanitise(rawState), savedAt)
+            Pair(Integrity.verifySeal(sanitise(rawState), raw.seal), savedAt)
         } catch (_: Exception) {
             null
         }
@@ -352,6 +373,8 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val ticksSinceLastBreakCall: Int? = null,
         val breakNapTicksRemaining: Int? = null,
         val cravingFood: String? = null,
+        val devModeEverUsed: Boolean? = null,        // absent in saves before leaderboard integrity
+        val leaderboardIneligible: String? = null,   // absent in saves before leaderboard integrity
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -418,6 +441,8 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             ticksSinceLastBreakCall    = r.ticksSinceLastBreakCall    ?: 0,
             breakNapTicksRemaining     = r.breakNapTicksRemaining     ?: 0,
             cravingFood                = r.cravingFood?.takeIf { it == "meal" || it == "snack" },
+            devModeEverUsed            = r.devModeEverUsed            ?: false,
+            leaderboardIneligible      = r.leaderboardIneligible?.takeIf { it == "tampered" || it == "unverified" } ?: "",
         )
         return partial
     }
@@ -478,6 +503,8 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         ticksSinceLastBreakCall    = s.ticksSinceLastBreakCall,
         breakNapTicksRemaining     = s.breakNapTicksRemaining,
         cravingFood                = s.cravingFood,
+        devModeEverUsed            = s.devModeEverUsed,
+        leaderboardIneligible      = s.leaderboardIneligible,
     )
 }
 

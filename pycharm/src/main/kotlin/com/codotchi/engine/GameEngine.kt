@@ -306,6 +306,10 @@ fun createPet(name: String, petType: String, color: String, unlockedCharacter: S
 fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG): PetState {
     if (!state.alive) return state
     if (state.paused) return if (state.events.isNotEmpty()) state.copy(events = emptyList()) else state
+    // Any tick in dev mode (faster aging, health floor) bars this pet from the leaderboard for life.
+    if (config.devMode && !state.devModeEverUsed) {
+        return tick(state.copy(devModeEverUsed = true), isIdle, isDeepIdle, config)
+    }
 
     val modifiers = PET_TYPE_MODIFIERS[state.petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
     if (state.breakNapTicksRemaining > 0) return tickBreakNap(state, isIdle, isDeepIdle, config, modifiers)

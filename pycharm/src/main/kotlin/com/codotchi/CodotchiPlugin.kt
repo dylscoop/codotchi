@@ -159,6 +159,22 @@ class CodotchiPlugin : Disposable {
     /** True once the stored GitHub token was rejected (401/403); cleared on the next success (BUG-S08). */
     @Volatile private var leaderboardAuthExpired: Boolean = false
 
+    /** True when dev mode is on right now (enabled + correct passcode). */
+    private fun isDevModeActive(): Boolean {
+        val settings = service<CodotchiSettings>()
+        return settings.devModeEnabled && settings.developerPasscode == "1234"
+    }
+
+    /** Why [state] can't go on the leaderboard right now, or null when it can (see Integrity.kt). */
+    private fun leaderboardBlockedReason(state: PetState): String? =
+        Integrity.leaderboardBlockedReason(state, isDevModeActive())
+
+    /** This plugin's version, signed into every leaderboard submission. */
+    private fun clientVersion(): String =
+        com.intellij.ide.plugins.PluginManagerCore
+            .getPlugin(com.intellij.openapi.extensions.PluginId.getId("com.codotchi.pycharm-codotchi"))
+            ?.version ?: "0.0.0"
+
     /** Background thread running the JVM WatchService for cross-window file sync. */
     @Volatile private var fileWatcherThread: Thread? = null
     /** Background thread watching .git/COMMIT_EDITMSG for commit events. */
@@ -785,6 +801,8 @@ class CodotchiPlugin : Disposable {
     }
 
     private fun pushLiveScoreAsync(state: PetState, promptIfNoToken: Boolean) {
+        if (!state.alive) return
+        if (leaderboardBlockedReason(state) != null) return
         AppExecutorUtil.getAppExecutorService().execute {
             try {
                 val credAttrs = CredentialAttributes("Codotchi", "github-pat")
@@ -813,19 +831,15 @@ class CodotchiPlugin : Disposable {
                 val username = userMap["login"] as? String ?: return@execute
                 setLeaderboardUsername(username)
 
-                val entry = mapOf(
-                    "username" to username,
-                    "petName" to state.name,
-                    "petRunId" to com.intellij.openapi.application.PermanentInstallationID.get(),
-                    "spawnedAt" to state.spawnedAt,
-                    "ageDays" to state.ageDays,
-                    "stage" to state.stage,
-                    "petType" to state.petType,
-                    "updatedAt" to System.currentTimeMillis()
+                val entryJson = buildLiveEntryJson(
+                    state, username,
+                    petRunId = com.intellij.openapi.application.PermanentInstallationID.get(),
+                    updatedAt = System.currentTimeMillis(),
+                    clientVersion = clientVersion(),
                 )
                 val issueBody = mapOf(
                     "title" to "[Live] $username — ${state.name} (${state.ageDays}d ${state.stage})",
-                    "body" to Gson().toJson(entry),
+                    "body" to entryJson,
                     "labels" to listOf("leaderboard-live")
                 )
 
@@ -860,13 +874,18 @@ class CodotchiPlugin : Disposable {
     private fun submitLeaderboardAsync(state: PetState, diedAt: Long, retried: Boolean = false) {
         AppExecutorUtil.getAppExecutorService().execute {
             fun postResult(status: String, message: String? = null) {
-                val msgPart = if (message != null) ""","message":"${message.replace("\"", "\\\"")}"""" else ""
+                val msgPart = if (message != null) ""","message":${jsonStringOrNull(message)}""" else ""
                 val payload = """{"type":"leaderboard_submit_result","status":"$status"$msgPart}"""
                 ApplicationManager.getApplication().invokeLater {
                     browserPanels.forEach { it.postMessage(payload) }
                 }
             }
             try {
+                val blocked = leaderboardBlockedReason(state)
+                if (blocked != null) {
+                    postResult("error", blocked)
+                    return@execute
+                }
                 val credAttrs = CredentialAttributes("Codotchi", "github-pat")
                 val pat = PasswordSafe.instance.getPassword(credAttrs)
                 if (pat.isNullOrBlank()) {
@@ -918,8 +937,7 @@ class CodotchiPlugin : Disposable {
                     return@execute
                 }
 
-                val scoreJson = """{"schemaVersion":1,"petName":"${state.name.replace("\"","\\\"")}","ageDays":${state.ageDays},"stage":"${state.stage}","petType":"${state.petType}","spawnedAt":${state.spawnedAt},"diedAt":$diedAt}"""
-                val issueBody = "Leaderboard submission.\n\n```json\n$scoreJson\n```"
+                val issueBody = buildScoreIssueBody(state, username, diedAt, clientVersion())
                 val issueTitle = "[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @$username"
                 val issuePayload = mapOf(
                     "title" to issueTitle,
@@ -1220,9 +1238,10 @@ class CodotchiPlugin : Disposable {
         val liveRank2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.rank else null
         val liveTotalScores2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.total else null
         val liveLastPushed2 = liveLastPushedAtMs.takeIf { it > 0L }
+        val blockedReason2 = state?.let { leaderboardBlockedReason(it) }
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2, liveLastPushed2) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2, liveLastPushed2, leaderboardBlockedReason = blockedReason2) }
                 statusWidgets.forEach { it.update(state) }
             }
         }
@@ -1512,10 +1531,11 @@ class CodotchiPlugin : Disposable {
         val liveRank = if (liveSubscribed && state != null && state.alive && cached != null) cached.rank else null
         val liveTotalScores = if (liveSubscribed && state != null && state.alive && cached != null) cached.total else null
         val liveLastPushed = liveLastPushedAtMs.takeIf { it > 0L }
+        val blockedReason = state?.let { leaderboardBlockedReason(it) }
 
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveLastPushed, leaderboardGithubUsername, leaderboardAuthExpired) }
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveLastPushed, leaderboardGithubUsername, leaderboardAuthExpired, blockedReason) }
                 statusWidgets.forEach { it.update(state) }
             }
         }
