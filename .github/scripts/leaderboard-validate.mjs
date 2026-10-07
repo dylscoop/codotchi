@@ -173,11 +173,13 @@ export function validateScore(body, author, key, existingScores, nowMs = Date.no
 
   const v = validateCommon(data, "score", author, key, nowMs);
 
-  // A run is (githubUsername, petName, spawnedAt). Only accept a resubmission
-  // that reports a later death; the commit step then replaces the old row.
+  // A run is (githubUsername, petName, spawnedAt). Keep its earliest death:
+  // clients before 2.27.3 re-submitted a dead pet each time the IDE reopened,
+  // stamped with the reopen time. Only an earlier diedAt may replace the stored
+  // row (the commit step does the replacing).
   for (const s of existingScores) {
     if (s.githubUsername === author && s.petName === v.petName && Number(s.spawnedAt) === v.spawnedAt) {
-      if (v.at <= Number(s.diedAt ?? 0)) { reject("This run has already been submitted."); }
+      if (v.at >= Number(s.diedAt)) { reject("This run has already been submitted."); }
       break;
     }
   }

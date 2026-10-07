@@ -116,7 +116,8 @@ secret.
 
 Unsigned submissions from pre-2.27.2 clients are accepted as **legacy**
 (`verified: false, legacy: true`). They pass the same age and timing checks
-and get a *legacy* badge on the page (see the ADR amendment in
+and show on the page like any other entry. Find them by `legacy: true` (or
+`verified: false`) in `live.json` / `scores.json` (see the ADR amendment in
 `developer_notes/adr/2026-10-07-leaderboard-integrity.md`).
 
 **Limits:** the plugins are open source and the key ships inside the built

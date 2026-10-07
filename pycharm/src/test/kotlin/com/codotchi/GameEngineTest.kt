@@ -293,6 +293,16 @@ class GameEngineTest {
         assertFalse(next.alive)
     }
 
+    // BUGFIX-198: the death time is recorded once, on the death tick.
+    @Test
+    fun `records diedAt on the death tick and never moves it afterwards`() {
+        assertEquals(0L, makePet().diedAt)
+        val before = System.currentTimeMillis()
+        val dead = tick(makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 5))
+        assertTrue(dead.diedAt in before..System.currentTimeMillis())
+        assertEquals(dead.diedAt, tick(dead).diedAt)
+    }
+
     @Test
     fun `does not raise hunger happiness and energy already below IDLE_STAT_FLOOR for a sick pet while idle`() {
         val pet  = makePet().copy(sick = true, hunger = 5, happiness = 5, energy = 5, health = 50)

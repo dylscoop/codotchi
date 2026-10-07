@@ -25,6 +25,16 @@ class PersistenceIntegrityTest {
         assertEquals("", loaded.leaderboardIneligible)
     }
 
+    // BUGFIX-198: the death time survives a reload, and isn't part of the seal.
+    @Test
+    fun `diedAt round-trips without breaking the seal`() {
+        val p = CodotchiPersistence()
+        p.savePetState(pet().copy(alive = false, diedAt = 1_790_000_000_000L))
+        val loaded = p.loadPetState()!!
+        assertEquals(1_790_000_000_000L, loaded.diedAt)
+        assertEquals("", loaded.leaderboardIneligible)
+    }
+
     @Test
     fun `seal survives an XML getState-loadState round trip`() {
         val a = CodotchiPersistence()

@@ -950,6 +950,25 @@ describe("tick — sickness health drain and death", () => {
     assert.ok(next.events.includes("died"));
   });
 
+  // BUGFIX-198: the death time is recorded once, on the death tick, and persisted.
+  it("records diedAt on the death tick and never moves it afterwards", () => {
+    const before = Date.now();
+    const dead = tick(makePet({ sick: true, health: 5 }));
+    assert.ok(dead.diedAt >= before && dead.diedAt <= Date.now());
+    assert.equal(tick(dead).diedAt, dead.diedAt);
+    assert.equal(deserialiseState(serialiseState(dead)).diedAt, dead.diedAt);
+  });
+
+  it("diedAt is 0 while alive, and a dead pre-diedAt save gets a fixed time on load", () => {
+    assert.equal(makePet().diedAt, 0);
+    const legacyAlive = serialiseState(makePet()) as Record<string, unknown>;
+    delete legacyAlive.diedAt;
+    assert.equal(deserialiseState(legacyAlive).diedAt, 0);
+    const legacyDead = serialiseState(makePet({ alive: false })) as Record<string, unknown>;
+    delete legacyDead.diedAt;
+    assert.ok(deserialiseState(legacyDead).diedAt > 0);
+  });
+
   // BUGFIX-040: sickness damage suppressed during deep idle (lock screen / sleep)
   it("sick pet takes no sickness damage during deep idle (BUGFIX-040)", () => {
     const pet = makePet({ sick: true, health: 50 });

@@ -68,7 +68,6 @@ let sidebar: SidebarProvider | undefined;
 let statusBar: StatusBarManager | undefined;
 let eventsManager: EventsManager | undefined;
 let tickTimer: ReturnType<typeof setInterval> | undefined;
-let lastRunDiedAt: number | null = null;
 
 /** Timestamp of the last detected IDE activity (keystroke, cursor, focus). */
 let lastActivityMs: number = Date.now();
@@ -203,10 +202,11 @@ export function activate(context: vscode.ExtensionContext): void {
     const devModeActive =
       cfg2.get<boolean>("devModeEnabled", false) &&
       cfg2.get<string>("developerPasscode", "") === "1234";
-    if (state.alive) {
-      lastRunDiedAt = null; // reset so the next death gets a fresh timestamp
-    } else if (!devModeActive) {
-      const elapsed = state.spawnedAt > 0 ? Date.now() - state.spawnedAt : 0;
+    if (!state.alive && !devModeActive) {
+      // The engine records the death tick in state.diedAt and persists it, so
+      // reloading the IDE doesn't move the death time forward.
+      const diedAt = state.diedAt || Date.now();
+      const elapsed = state.spawnedAt > 0 ? diedAt - state.spawnedAt : 0;
       const prevElapsed = currentHighScore
         ? currentHighScore.diedAt - currentHighScore.spawnedAt
         : -1;
@@ -223,17 +223,14 @@ export function activate(context: vscode.ExtensionContext): void {
           petType:   state.petType,
           color:     state.color,
           spawnedAt: state.spawnedAt,
-          diedAt:    Date.now(),
+          diedAt,
         };
         saveHighScore(context, currentHighScore);
       }
-      // Capture actual death time of THIS run on the first dead tick only.
-      // Using currentHighScore.diedAt would be wrong when the current run isn't
-      // a new record — it would reference the previous run's death time.
-      if (lastRunDiedAt === null) {
-        lastRunDiedAt = Date.now();
-
-        // Auto-submit to leaderboard on first death tick if the user was subscribed.
+      // Only on the tick the pet actually died, never on a later reload or
+      // re-broadcast of an already-dead pet (each reload used to re-submit it).
+      if (freshEvents && (state.events.includes("died") || state.events.includes("died_of_old_age"))) {
+        // Auto-submit to leaderboard on the death tick if the user was subscribed.
         const wasSubscribed = context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
         if (wasSubscribed) { void sidebar?.autoSubmitLeaderboard(); }
 
@@ -295,7 +292,7 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   // Sidebar provider
-  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore, markActivity, onResetHighScore, markDeepIdle, () => lastRunDiedAt);
+  sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore, markActivity, onResetHighScore, markDeepIdle);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(SidebarProvider.VIEW_ID, sidebar)
   );

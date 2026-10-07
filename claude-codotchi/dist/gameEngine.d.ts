@@ -316,6 +316,12 @@ export interface PetState {
     readonly wasDeepIdle: boolean;
     /** Unix ms timestamp when this pet was first created (spawnedAt). */
     readonly spawnedAt: number;
+    /**
+     * Unix ms timestamp of the tick on which the pet died; 0 while alive.
+     * Persisted so a leaderboard submission made after an IDE restart still
+     * reports the real death time, not the time the IDE was reopened.
+     */
+    readonly diedAt: number;
     /** Snacks given in the current wake cycle (resets on wake/createPet). */
     readonly snacksGivenThisCycle: number;
     /** Snacks currently placed on the floor but not yet consumed. Resets to 0 when the webview reloads. */

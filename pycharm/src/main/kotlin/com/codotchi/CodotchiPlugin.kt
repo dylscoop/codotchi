@@ -86,7 +86,6 @@ class CodotchiPlugin : Disposable {
     private var currentState: PetState? = null
     private var currentHighScore: HighScore? = null
     private var mealsGivenThisCycle: Int = 0
-    @Volatile private var lastRunDiedAt: Long = 0L
     @Volatile private var lastCodeActivityTime: Long = 0L
     @Volatile private var lastCommitActivityTime: Long = 0L
     /** True when the last tick ran with dev mode active; used to suppress high score updates. */
@@ -582,7 +581,6 @@ class CodotchiPlugin : Disposable {
                 }
 
                 "new_game" -> {
-                    lastRunDiedAt = 0L   // reset so the next death gets a fresh timestamp
                     val rawName = (message["name"]    as? String)?.trim() ?: ""
                     val petType = (message["petType"] as? String) ?: "codeling"
                     val color   = (message["color"]   as? String) ?: "neon"
@@ -605,7 +603,7 @@ class CodotchiPlugin : Disposable {
 
                 "submit_leaderboard" -> {
                     val deadState  = currentState?.takeIf { !it.alive }
-                    val diedAtSnap = lastRunDiedAt.takeIf { it > 0L } ?: System.currentTimeMillis()
+                    val diedAtSnap = deadState?.diedAt?.takeIf { it > 0L } ?: System.currentTimeMillis()
                     shouldBroadcast = false
                     if (deadState != null) {
                         submitLeaderboardAsync(deadState, diedAtSnap)
@@ -1428,7 +1426,9 @@ class CodotchiPlugin : Disposable {
 
             // Update high score when pet dies (suppressed in dev mode — scores don't count)
             if (!state.alive && !lastDevMode) {
-                val diedAt    = System.currentTimeMillis()
+                // The engine records the death tick in state.diedAt and persists it,
+                // so reloading the IDE doesn't move the death time forward.
+                val diedAt    = state.diedAt.takeIf { it > 0L } ?: System.currentTimeMillis()
                 val elapsed   = if (state.spawnedAt > 0L) diedAt - state.spawnedAt else 0L
                 val prevElapsed = if (prevHighScore != null) prevHighScore.diedAt - prevHighScore.spawnedAt else -1L
                 val isNewRecord = prevHighScore == null ||
@@ -1448,12 +1448,6 @@ class CodotchiPlugin : Disposable {
                     highScore = newScore
                     persistence.saveHighScore(newScore)
                 }
-                // Capture death time of THIS run on the first dead tick only.
-                // Never use highScore.diedAt — when the current run is not a new record,
-                // highScore still points to the previous run, whose diedAt predates this
-                // run's spawnedAt and causes leaderboard validation to reject the submission.
-                if (lastRunDiedAt == 0L) { lastRunDiedAt = diedAt }
-
                 // One-time leaderboard notification on first death
                 val props = com.intellij.ide.util.PropertiesComponent.getInstance()
                 if (!props.getBoolean("codotchi.leaderboardDeathNotifShown", false)) {
