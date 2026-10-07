@@ -8,6 +8,8 @@
  */
 
 import { PetState } from "./gameEngine";
+import { getCustomCharacterBySpriteType } from "./customCharacters";
+import { cravingItemFor } from "./cravingItem";
 
 /** Emoji map from mood → Unicode character. */
 const MOOD_EMOJI: Record<string, string> = {
@@ -35,7 +37,7 @@ const CALL_WANTS: Record<string, string> = {
   pat:             "wants a pat!",
   craving_meal:    "is craving a meal!",
   craving_snack:   "is craving a snack!",
-  break:           "says it's time for a break — praise them!",
+  break:           "says it's time for a break!",
 };
 
 /** Tooltip line for the active attention call, or "" when there is none. */
@@ -43,7 +45,12 @@ export function attentionCallLine(state: PetState): string {
   const call = state.activeAttentionCall;
   if (!call) { return ""; }
   const key = call === "craving" && state.cravingFood ? `craving_${state.cravingFood}` : call;
-  const wants = CALL_WANTS[key] ?? "wants your attention!";
+  // Custom characters (Tim, Stu) ask for a run / stickers and name their snack
+  const patCall = getCustomCharacterBySpriteType(state.spriteType)?.patCall;
+  const cravingItem = cravingItemFor(state);
+  const wants = (call === "pat" && patCall) ? patCall.status
+    : cravingItem ? `is craving ${cravingItem}!`
+    : CALL_WANTS[key] ?? "wants your attention!";
   return `⚠ ${state.name}${wants.startsWith("'") ? "" : " "}${wants}`;
 }
 

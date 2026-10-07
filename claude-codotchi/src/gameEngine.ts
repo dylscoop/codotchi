@@ -207,6 +207,10 @@ const MINIGAME_HL_LOSE_DELTA: number = -5;
 // Coin Flip: play baseline +15; delta win 0, lose −10 → totals: win 15, lose 5
 const MINIGAME_COIN_FLIP_WIN: number = 0;
 const MINIGAME_COIN_FLIP_LOSE: number = -10;
+// Blackjack (Stu's Coin Flip): play baseline +15; delta win +10, push 0, lose −10 → totals: 25 / 15 / 5
+const MINIGAME_BLACKJACK_WIN: number = 10;
+const MINIGAME_BLACKJACK_PUSH: number = 0;
+const MINIGAME_BLACKJACK_LOSE: number = -10;
 
 const CARE_SCORE_HUNGER_WEIGHT: number = 0.30;
 const CARE_SCORE_HAPPINESS_WEIGHT: number = 0.25;
@@ -2150,8 +2154,8 @@ export function applyTokenCostView(state: PetState): PetState {
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
  *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
- *               or "coin_flip" (Coin Flip).
- * @param result - "win" or "lose".
+ *               "coin_flip" (Coin Flip), or "blackjack" (Stu's one-round Blackjack).
+ * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
 export function happinessDeltaForMinigame(game: string, result: string): number {
@@ -2170,6 +2174,11 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
   if (game === "coin_flip") {
     return result === "win" ? MINIGAME_COIN_FLIP_WIN : MINIGAME_COIN_FLIP_LOSE; // 0 win, −10 lose
   }
+  if (game === "blackjack") {
+    if (result === "win")  { return MINIGAME_BLACKJACK_WIN; }   // +10
+    if (result === "push") { return MINIGAME_BLACKJACK_PUSH; }  // 0
+    return MINIGAME_BLACKJACK_LOSE;                             // −10
+  }
   if (game === "memory" && result === "win") {
     return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST;
   }
@@ -2184,11 +2193,11 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
  *
  * Also applies an additional weight loss for vigorous mini-games (BUGFIX-034):
  *   - left_right and higher_lower: −3 extra weight (total −6 with play() baseline)
- *   - coin_flip: no extra weight loss (total −3 from play() only)
+ *   - coin_flip and blackjack: no extra weight loss (total −3 from play() only)
  *
  * @param state - The current pet state.
- * @param game - "left_right", "higher_lower", "guess", or "memory".
- * @param result - "win" or "lose".
+ * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "guess", or "memory".
+ * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A new PetState after the happiness delta is applied.
  */
 export function applyMinigameResult(

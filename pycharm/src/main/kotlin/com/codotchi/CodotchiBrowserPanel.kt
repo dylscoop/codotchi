@@ -114,7 +114,7 @@ class CodotchiBrowserPanel(
         val liveTotalJson = if (liveTotalScores != null) liveTotalScores.toString() else "null"
         val liveLastPushedJson = if (liveLastPushedAt != null) liveLastPushedAt.toString() else "null"
         val lbUsernameJson = if (leaderboardGithubUsername != null) "\"${leaderboardGithubUsername.replace("\"", "\\\"")}\"" else "null"
-        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","leaderboardAvailable":true,"leaderboardBlockedReason":${jsonStringOrNull(leaderboardBlockedReason)},"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson,"leaderboardGithubUsername":$lbUsernameJson,"leaderboardAuthExpired":$leaderboardAuthExpired}"""
+        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","cravingItem":${jsonStringOrNull(cravingItemFor(state))},"leaderboardAvailable":true,"leaderboardBlockedReason":${jsonStringOrNull(leaderboardBlockedReason)},"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson,"leaderboardGithubUsername":$lbUsernameJson,"leaderboardAuthExpired":$leaderboardAuthExpired}"""
         val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
     }

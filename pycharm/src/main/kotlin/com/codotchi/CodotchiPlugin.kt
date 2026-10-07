@@ -491,7 +491,10 @@ class CodotchiPlugin : Disposable {
                     val feedType = message["feedType"] as? String
                     val _cc = getCustomCharacterBySpriteType(state.spriteType)
                     nextState = if (feedType == "snack") {
-                        startSnack(state, feedSnackMaxPerCycle = _cc?.feedSnackMaxPerCycle)
+                        // The webview reports the snacks really on its floor, so a stale
+                        // counter can't let a 4th snack through (Stu's cycle cap is 10).
+                        val floor = (message["floorSnacks"] as? Number)?.toInt() ?: state.snacksOnFloor
+                        startSnack(state.copy(snacksOnFloor = floor), feedSnackMaxPerCycle = _cc?.feedSnackMaxPerCycle)
                     } else {
                         val ns = feedMeal(state, mealsGivenThisCycle,
                             feedMealMaxPerCycle = _cc?.feedMealMaxPerCycle,
@@ -1471,7 +1474,7 @@ class CodotchiPlugin : Disposable {
         // Fire IDE notifications for attention_call_* events (only when mechanic is enabled)
         if (state != null && service<CodotchiSettings>().enableAttentionCalls) {
             for (event in state.events) {
-                val msg = attentionCallMessage(state.name, event, state.spriteType) ?: continue
+                val msg = attentionCallMessage(state.name, event, state.spriteType, cravingItemFor(state)) ?: continue
                 fireAttentionNotification(msg)
             }
         }
@@ -1543,7 +1546,7 @@ class CodotchiPlugin : Disposable {
 
     // ── Attention-call notifications ───────────────────────────────────────
 
-    private fun attentionCallMessage(petName: String, event: String, spriteType: String? = null): String? {
+    private fun attentionCallMessage(petName: String, event: String, spriteType: String? = null, cravingItem: String? = null): String? {
         val customChar = spriteType?.let { getCustomCharacterBySpriteType(it) }
         return when (event) {
             "attention_call_hunger"          -> "$petName is hungry!"
@@ -1555,10 +1558,10 @@ class CodotchiPlugin : Disposable {
             "attention_call_gift"            -> (customChar?.giftMessage ?: "$petName brought you a gift!").replace("__Name__", petName)
             "attention_call_critical_health" -> "$petName's health is critical!"
             "attention_call_play"            -> "$petName wants to play a game!"
-            "attention_call_pat"             -> "$petName wants a pat!"
+            "attention_call_pat"             -> customChar?.patCall?.call?.replace("__Name__", petName) ?: "$petName wants a pat!"
             "attention_call_craving_meal"    -> "$petName is craving a meal!"
-            "attention_call_craving_snack"   -> "$petName is craving a snack!"
-            "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes — praise $petName and they'll nap for 5 minutes while you rest."
+            "attention_call_craving_snack"   -> "$petName is craving ${cravingItem ?: "a snack"}!"
+            "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes."
             "break_nap_over"                 -> "Break's over! $petName is awake and ready to code."
             else                             -> null
         }

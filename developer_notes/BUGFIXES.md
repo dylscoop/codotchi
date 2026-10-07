@@ -2318,3 +2318,25 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** every client now ranks the way `leaderboard/index.html` orders rows: live entries only if pushed within 48 h, sorted by stage then the stored `ageDays` with no projection. Each client also drops the pet's own live entry, matched by `spawnedAt`, before adding 1. Matching by `spawnedAt` works even when the pet was pushed from another IDE. PyCharm and VS Code still check `petRunId` too.
 
 **Tests:** `claude-codotchi/tests/integration/liveRank.test.mjs`.
+
+## BUGFIX-192 — Stu's 4th floor snack lost silently instead of thrown away
+
+**Status:** Fixed (branch `feature/tim-stu-actions`)
+**File:** `vscode/media/sidebar.js`, `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt`
+
+**Problem:** with three snacks already on the stage, Stu took a 4th snack without "threw the snack away" in the log, and the snack never appeared. Other pets hit the 3-snack per-cycle cap first, but Stu's is 10, so only the engine's `snacksOnFloor` counter stopped him. That counter can fall behind the webview's real floor (for example another window resetting it when its sidebar loads), so `startSnack` placed the snack and the webview, already at 3, dropped it silently.
+
+**Fix:** the Snack button sends the webview's real floor count (`floorSnacks`), and both hosts use it for the floor cap in `startSnack`, which then refuses with `snack_refused` and logs "threw the snack away".
+
+**Tests:** `vscode/tests/unit/customCharacterText.test.ts`.
+
+## BUGFIX-193 — Tim and Stu drawn off-centre and jumping on every turn
+
+**Status:** Fixed (branch `feature/tim-stu-actions`)
+**File:** `vscode/media/sprites.js`
+
+**Problem:** the hand-drawn tim and stu grids hugged the left edge (tim baby: 4 empty columns left, 12 right; stu baby: 8 and 24), and `renderSpriteGrid` left all the cell-rounding leftover on the right. They drew left of the box centre, and because upright sprites mirror around the box centre, they jumped sideways each time they turned. Both legs of the babies also sat left of `COLS/2`, so they didn't alternate when walking.
+
+**Fix:** every stage of both grids is shifted to sit centred (within one column), and `renderSpriteGrid` splits the rounding leftover evenly on both sides.
+
+**Tests:** `vscode/tests/unit/spriteData.test.ts`.

@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.27.0",
+  "version": "2.27.1",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -354,7 +354,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "node ../scripts/sync-core.mjs",
-    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/backgroundArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js out-test/tests/unit/statusBarText.test.js out-test/tests/unit/tickLease.test.js out-test/tests/unit/integrity.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/backgroundArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js out-test/tests/unit/statusBarText.test.js out-test/tests/unit/tickLease.test.js out-test/tests/unit/integrity.test.js out-test/tests/unit/customCharacterText.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

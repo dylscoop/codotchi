@@ -190,6 +190,7 @@
   let setupDefaultName = "Codotchi"; // default name for the setup screen name input; updated from stateUpdate
   let giftBoxX   = null;     // floor X of gift box while a "gift" attention call is active
   let snackItems = [];       // floor items: [{ x, type: "candy"|"bone" }]
+  let currentCravingItem = null; // custom character's craved snack label ("a pint"), from the host
   let heldSnackAnswers     = []; // answered-call events waiting for the pet to eat a floor snack
   let releasedSnackAnswers = []; // ...and once eaten, shown with the next state update
   let activeBubble = null;   // speech bubble: { text, kind, startMs, fadeOutMs, fadeDurMs } or null
@@ -240,7 +241,8 @@
   });
 
   document.getElementById("btn-feed-snack").addEventListener("click", function () {
-    vscode.postMessage({ command: "feed", feedType: "snack" });
+    // Report the snacks really on the floor so the host refuses a 4th ("threw the snack away")
+    vscode.postMessage({ command: "feed", feedType: "snack", floorSnacks: snackItems.length });
   });
 
   document.getElementById("btn-play").addEventListener("click", function () {
@@ -399,6 +401,7 @@
   var mgCtx    = mgCanvas ? mgCanvas.getContext("2d") : null;
   var mgArt    = window.minigameArt;
   var cfAnimId = null;   // requestAnimationFrame id while the coin spins
+  var bjTimer  = null;   // setTimeout id while the blackjack dealer plays
 
   /**
    * Show and clear the overlay, sized to the sprite canvas so the art keeps
@@ -416,6 +419,7 @@
 
   function mgClear() {
     if (cfAnimId !== null) { cancelAnimationFrame(cfAnimId); cfAnimId = null; }
+    if (bjTimer !== null) { clearTimeout(bjTimer); bjTimer = null; }
     lrReveal = null;
     if (mgCtx) { mgCtx.clearRect(0, 0, mgCanvas.width, mgCanvas.height); }
     if (mgCanvas) { mgCanvas.classList.add("hidden"); }
@@ -450,7 +454,8 @@
     startHigherLowerGame();
   });
   document.getElementById("btn-mg-cf").addEventListener("click", function () {
-    startCoinFlipGame();
+    // Stu plays one round of Blackjack instead of Coin Flip
+    if (playsBlackjack(lastState)) { startBlackjackGame(); } else { startCoinFlipGame(); }
   });
   document.getElementById("btn-mg-pat").addEventListener("click", function () {
     hideMgOverlay();
@@ -749,6 +754,123 @@
     sendPlayResult("coin_flip", result);
   }
 
+  // ── Blackjack (replaces Coin Flip for Stu) ────────────────────────────────
+
+  var BJ_RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+  var BJ_SUITS = ["♠", "♥", "♦", "♣"];
+  var BJ_DEALER_STEP_MS = 600;
+  var bjDeck = [], bjPlayer = [], bjDealer = [], bjHideHole = true;
+
+  /** Whether this pet's Coin Flip button plays Blackjack instead. */
+  function playsBlackjack(state) {
+    return !!(state && state.spriteType === "stu" && customCharBySpriteType && customCharBySpriteType("stu"));
+  }
+
+  document.getElementById("btn-bj-hit").addEventListener("click", function () { handleBJHit(); });
+  document.getElementById("btn-bj-stand").addEventListener("click", function () { handleBJStand(); });
+
+  function bjButtons(enabled) {
+    document.getElementById("btn-bj-hit").disabled = !enabled;
+    document.getElementById("btn-bj-stand").disabled = !enabled;
+  }
+
+  /** Redraw the table and the screen-reader / text summary of both hands. */
+  function drawBJ() {
+    var you = mgArt ? mgArt.blackjackTotal(bjPlayer) : 0;
+    var dealer = bjHideHole ? "?" : (mgArt ? mgArt.blackjackTotal(bjDealer) : 0);
+    document.getElementById("bj-hands").textContent = "You " + you + " · Dealer " + dealer;
+    if (!mgBegin()) { return; }
+    mgArt.drawBlackjackTable(mgCtx, mgCanvas.width, mgCanvas.height, bjDealer, bjPlayer, bjHideHole);
+  }
+
+  function startBlackjackGame() {
+    if (!mgArt) { startCoinFlipGame(); return; }
+    bjDeck = [];
+    for (var s = 0; s < BJ_SUITS.length; s++) {
+      for (var r = 0; r < BJ_RANKS.length; r++) { bjDeck.push({ rank: BJ_RANKS[r], suit: BJ_SUITS[s] }); }
+    }
+    for (var i = bjDeck.length - 1; i > 0; i--) {             // Fisher–Yates shuffle
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = bjDeck[i]; bjDeck[i] = bjDeck[j]; bjDeck[j] = tmp;
+    }
+    bjPlayer = [bjDeck.pop(), bjDeck.pop()];
+    bjDealer = [bjDeck.pop(), bjDeck.pop()];
+    bjHideHole = true;
+    document.getElementById("bj-feedback").textContent = "";
+    showMgPanel("mg-blackjack");
+    drawBJ();
+    // A natural on either side ends the round straight away
+    if (mgArt.blackjackTotal(bjPlayer) === 21 || mgArt.blackjackTotal(bjDealer) === 21) {
+      bjButtons(false);
+      bjHideHole = false;
+      bjTimer = setTimeout(function () { bjTimer = null; drawBJ(); finishBlackjack(); }, BJ_DEALER_STEP_MS);
+      return;
+    }
+    bjButtons(true);
+  }
+
+  function handleBJHit() {
+    bjPlayer.push(bjDeck.pop());
+    drawBJ();
+    var total = mgArt.blackjackTotal(bjPlayer);
+    if (total > 21) {
+      bjButtons(false);
+      bjHideHole = false;
+      drawBJ();
+      finishBlackjack();
+    } else if (total === 21) {
+      handleBJStand();
+    }
+  }
+
+  /** Dealer reveals the hole card and draws to 17, one card per step. */
+  function handleBJStand() {
+    bjButtons(false);
+    bjHideHole = false;
+    drawBJ();
+    function dealerStep() {
+      bjTimer = null;
+      if (mgArt.blackjackTotal(bjDealer) < 17) {
+        bjDealer.push(bjDeck.pop());
+        drawBJ();
+        if (REDUCED_MOTION) { dealerStep(); } else { bjTimer = setTimeout(dealerStep, BJ_DEALER_STEP_MS); }
+        return;
+      }
+      finishBlackjack();
+    }
+    if (REDUCED_MOTION) { dealerStep(); } else { bjTimer = setTimeout(dealerStep, BJ_DEALER_STEP_MS); }
+  }
+
+  function finishBlackjack() {
+    var result = mgArt.blackjackOutcome(bjPlayer, bjDealer);
+    var you = mgArt.blackjackTotal(bjPlayer), dealer = mgArt.blackjackTotal(bjDealer);
+    document.getElementById("bj-feedback").textContent =
+        result === "win"  ? "✓ " + (dealer > 21 ? "Dealer busts!" : you + " beats " + dealer + "!") + " You win!"
+      : result === "push" ? "Push — " + you + " each."
+      : "✗ " + (you > 21 ? "Bust!" : dealer + " beats " + you + ".") + " Dealer wins.";
+    if (result === "win") {
+      spriteCanvas.classList.add("anim-jump");
+      spriteCanvas.addEventListener("animationend", function onAnimEnd() {
+        spriteCanvas.classList.remove("anim-jump");
+        spriteCanvas.removeEventListener("animationend", onAnimEnd);
+      });
+    }
+    bjTimer = setTimeout(function () {
+      bjTimer = null;
+      endBlackjackGame(result);
+    }, 1400);
+  }
+
+  function endBlackjackGame(result) {
+    mgClear();
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+        result === "win"  ? "You won at Blackjack!"
+      : result === "push" ? "Blackjack was a push."
+      : "You lost at Blackjack.";
+    sendPlayResult("blackjack", result);
+  }
+
   // ── Canvas sizing ─────────────────────────────────────────────────────────
 
   // BASE_SIZE must match the value used in sprites.js renderSpriteGrid (96).
@@ -827,9 +949,10 @@
    * Push a reaction onto the queue.
    * @param {string} type
    * @param {number} nowMs  - performance.now() value
+   * @param {number} [durationMs] - overrides REACTION_DURATIONS[type]
    */
-  function pushReaction(type, nowMs) {
-    var dur = REACTION_DURATIONS[type];
+  function pushReaction(type, nowMs, durationMs) {
+    var dur = durationMs || REACTION_DURATIONS[type];
     if (!dur) { return; }
     reactionQueue.push({
       type:       type,
@@ -1096,6 +1219,22 @@
       petVx = 0;
       petVy = 0;
 
+    } else if (activeReaction && activeReaction.type === "patted" && window.spritePat.runLap(lastState.spriteType, 0) !== null) {
+      // Tim's "Go for a Run": jog a lap towards the roomier side and back
+      if (activeReaction.runFromX === undefined) {
+        var runDir  = (petX + bWidth / 2 < spriteCanvas.width / 2) ? 1 : -1;
+        var runRoom = runDir > 0 ? maxX - petX : petX - minX;
+        activeReaction.runFromX = petX;
+        activeReaction.runDist  = runDir * Math.max(0, Math.min(runRoom, Math.max(bWidth * 1.5, spriteCanvas.width * 0.5)));
+      }
+      var runLap = window.spritePat.runLap(lastState.spriteType, (nowMs - activeReaction.startMs) / activeReaction.durationMs);
+      var runX   = Math.max(minX, Math.min(maxX, activeReaction.runFromX + activeReaction.runDist * runLap));
+      petVx = dt > 0 ? (runX - petX) / dt : 0;
+      if (Math.abs(petVx) > 0.5) { petFacingLeft = petVx < 0; }
+      petX  = runX;
+      petY  = isDragon ? floorY - Math.round(bHeight * 0.12) : floorY;
+      petVy = 0;
+
     } else if (activeReaction && activeReaction.type === "fed_meal") {
       // Eating a meal: stand still at the bowl (wander resumes once the reaction ends)
       petVx = 0;
@@ -1264,7 +1403,8 @@
     // ── Leg frame ────────────────────────────────────────────────────────
     // Dragon floats — it has no legs, so always pass legFrame -1 (upright/neutral).
     var walking  = !isDragon && !lastState.sleeping && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
-    var legFrame = isDragon ? -1 : (walking ? Math.floor(animTick / 10) % 2 : 0);
+    var running  = activeReaction && activeReaction.type === "patted" && window.spritePat.runLap(lastState.spriteType, 0) !== null;
+    var legFrame = isDragon ? -1 : (walking ? Math.floor(animTick / (running ? 4 : 10)) % 2 : 0);
     var walkBob  = (walking && legFrame === 1) ? -1 : 0;
 
     // ── Mood layer: props, body squash, particles (window.spriteMood) ─────
@@ -1283,8 +1423,11 @@
     lastMoodFrame = moodFrame;
     var moodProps = mood && !isDragon;   // the dragon hovers, so no floor props
     var patting   = activeReaction && activeReaction.type === "patted";
+    var patT      = patting ? Math.min(1, (nowMs - activeReaction.startMs) / activeReaction.durationMs) : 0;
     if (patting) {
-      window.spritePat.spawn(patParticles, lastState.spriteType, moodBox, petFacingLeft, dt);
+      // Stu opens a sticker binder or a pack — picked once per action
+      if (activeReaction.prop === undefined) { activeReaction.prop = window.spritePat.pickProp(lastState.spriteType); }
+      window.spritePat.spawn(patParticles, lastState.spriteType, moodBox, petFacingLeft, dt, Math.random, patT);
     }
     window.spriteMood.step(patParticles, dt, floorY + bHeight);
 
@@ -1296,9 +1439,10 @@
     drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                          window.spriteMood.scaleY(mood, moodFrame));
     var moodPxSize = window.spriteMood.px(moodBox);
-    if (patting) {
-      var patT = Math.min(1, (nowMs - activeReaction.startMs) / activeReaction.durationMs);
+    if (patting && window.spritePat.usesHand(lastState.spriteType)) {
       window.spritePat.drawHand(spriteCtx, patT, moodBox, petFacingLeft, moodPxSize);
+    } else if (patting && activeReaction.prop) {
+      window.spritePat.drawProp(spriteCtx, activeReaction.prop, patT, moodBox, moodPxSize);
     }
     window.spriteMood.drawParticles(spriteCtx, moodParticles, moodPxSize);
     window.spriteMood.drawParticles(spriteCtx, patParticles, moodPxSize);
@@ -1478,6 +1622,8 @@
     var _customChar = (customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
     var mgPatBtn = document.getElementById("btn-mg-pat");
     if (mgPatBtn) { mgPatBtn.textContent = _customChar ? _customChar.patLabel : "Pat"; }
+    var mgCfBtn = document.getElementById("btn-mg-cf");
+    if (mgCfBtn) { mgCfBtn.textContent = playsBlackjack(state) ? "Blackjack" : "Coin Flip"; }
 
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
@@ -1543,7 +1689,10 @@
     if (events.indexOf("fed_meal")      !== -1) { pushReaction("fed_meal",      nowMs); }
     if (events.indexOf("fed_snack")     !== -1) { pushReaction("fed_snack",     nowMs); }
     if (events.indexOf("played")        !== -1) { pushReaction("played",        nowMs); }
-    if (events.indexOf("patted")        !== -1) { pushReaction("patted",        nowMs); }
+    if (events.indexOf("patted")        !== -1) {
+      // Tim's run and Stu's stickers take longer than a pat
+      pushReaction("patted", nowMs, window.spritePat.durationMs(state.spriteType, REACTION_DURATIONS.patted));
+    }
     if (events.indexOf("fell_asleep")   !== -1) {
       pushReaction("fell_asleep",   nowMs);
       // Persist the X position so it survives a webview reload while sleeping
@@ -1590,7 +1739,10 @@
         }
       }
       // 1b. Answered whim calls (play / pat / craving) — outranks the minigame result
+      var _whimChar = customCharBySpriteType ? customCharBySpriteType(state.spriteType) : null;
       for (var _wk in WHIM_ANSWER_SPEECH) {
+        // Tim / Stu answer a run / sticker call with their own patBubbles (step 5)
+        if (_wk === "pat" && _whimChar && _whimChar.patCall) { continue; }
         if (events.indexOf("attention_call_answered_" + _wk) !== -1) {
           var _wl = WHIM_ANSWER_SPEECH[_wk];
           showBubble(_wl[Math.floor(Math.random() * _wl.length)]);
@@ -1674,9 +1826,10 @@
       var siRawX   = 4 + Math.floor(Math.random() * Math.max(1, siW - 24));
       snackItems.push({
         x:    Math.max(siMinX, Math.min(siMaxX, siRawX)),
-        type: (_cc && state.spriteType === "tim") ? "tea"
+        type: cravedSnackType(_cc)
+            || ((_cc && state.spriteType === "tim") ? "tea"
             : (_cc && state.spriteType === "stu") ? (Math.random() < 0.5 ? "guinness" : "salmon")
-            : (["candy", "bone", "cookie"][Math.floor(Math.random() * 3)]),
+            : (["candy", "bone", "cookie"][Math.floor(Math.random() * 3)])),
       });
       idleTimer = 0;  // pet walks toward it immediately
     }
@@ -1731,6 +1884,15 @@
       return years + "y " + days + "d";
     }
     return days + "d";
+  }
+
+  /** Floor snack type matching the active snack craving (e.g. Stu's pint → "guinness"), or null. */
+  function cravedSnackType(cc) {
+    if (!cc || !cc.snackCravings || !currentCravingItem) { return null; }
+    for (var i = 0; i < cc.snackCravings.length; i++) {
+      if (cc.snackCravings[i].label === currentCravingItem) { return cc.snackCravings[i].item; }
+    }
+    return null;
   }
 
   /** Append new event strings to the scrollable event log. */
@@ -1798,7 +1960,7 @@
       "attention_call_pat":             n + " wants a pat!",
       "attention_call_craving_meal":    n + " is craving a proper meal!",
       "attention_call_craving_snack":   n + " is craving a snack!",
-      "attention_call_break":           "30 minutes already! Remember to take a break — praise " + n + " and they'll nap for 5 minutes while you rest.",
+      "attention_call_break":           "Time for a break! You've been coding for 30 minutes.",
       // Attention calls — answered
       "attention_call_answered_hunger":          "You answered " + n + "'s hunger call.",
       "attention_call_answered_unhappiness":     "You answered " + n + "'s sadness call.",
@@ -1832,7 +1994,20 @@
       "minigame_higher_lower_lose": n + " lost Higher or Lower.",
       "minigame_coin_flip_win":     n + " won Coin Flip!",
       "minigame_coin_flip_lose":    n + " lost Coin Flip.",
+      "minigame_blackjack_win":     n + " won at Blackjack!",
+      "minigame_blackjack_lose":    n + " lost at Blackjack.",
+      "minigame_blackjack_push":    n + " pushed at Blackjack.",
     };
+    // Custom characters ask for a run / stickers instead of a pat, and name their snack
+    var _pc = _cc && _cc.patCall;
+    if (_pc) {
+      labels["attention_call_pat"]          = _pc.call.replace("__Name__", n);
+      labels["attention_call_answered_pat"] = _pc.answered.replace("__Name__", n);
+      labels["attention_call_expired_pat"]  = _pc.expired.replace("__Name__", n);
+    }
+    if (_cc && _cc.snackCravings && currentCravingItem) {
+      labels["attention_call_craving_snack"] = n + " is craving " + currentCravingItem + "!";
+    }
     var val = labels[code];
     if (val) {
       // Tim-specific event message overrides
@@ -2815,6 +2990,8 @@
     if (message.type !== "stateUpdate") { return; }
 
     const state = message.state;
+
+    currentCravingItem = message.cravingItem || null;
 
     if (message.highScore) { latestHighScore = message.highScore; }
     if (message.highScore === null) { latestHighScore = null; }
