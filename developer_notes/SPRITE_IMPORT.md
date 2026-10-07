@@ -1,41 +1,121 @@
-# Sprite Image Converter
+# Sprite Import Pipeline
 
-Reference and usage guide for `scripts/import_sprite.js` — the tool that
-converts a pixel-art image into a Codotchi `DEFS` grid entry.
+Reference and usage guide for the bulk sprite pipeline: source images in
+`sprites/<species>/` become `vscode/media/sprites.generated.js`, which both
+IDEs load.
 
 ---
 
 ## Overview
 
-`scripts/import_sprite.js` is a zero-dependency Node.js CLI that takes a
-source image, converts it into the indexed-colour row-string format used by
-`DEFS` in `sprites.js`, and optionally splices the result directly into the
-codebase.
+| Script | Purpose |
+|--------|---------|
+| `scripts/import_sprites_bulk.js` | Imports **every** `sprites/<species>/` folder and rewrites `vscode/media/sprites.generated.js` from scratch. `--check` fails if the file is out of date (CI runs it). |
+| `scripts/import_sprite.js` | Converts **one** image and prints a `DEFS` entry, grid size and palette for review. It doesn't edit any file. |
+| `scripts/lib/spriteImport.js` | Shared decode / background removal / crop / resample / quantise / pad code, plus a PNG encoder. |
+| `scripts/validate_sprites.js` | Loads the real webview data (`spriteConstants.js` → `sprites.generated.js` → `sprites.js`) and checks every species. CI runs it. |
+| `scripts/export_sprite_pngs.js` | One-off: writes grids that already exist in the webview data out as a `sprites/<species>/` folder (used to move dog, cat, dragon and roo out of `sprites.js`). |
 
-It is a **build-time developer tool only** — it is not shipped in either the
-VS Code extension or the PyCharm plugin. Both IDEs share the same
-`sprites.js` and `spriteConstants.js` files, so running `--inject` once
-updates both IDEs simultaneously.
+These are **build-time developer tools only**. They don't ship in the VS Code
+extension or the PyCharm plugin. Both IDEs load the same files from
+`vscode/media` (PyCharm copies them at build time), so one run updates both.
 
-See [`SPRITES.md`](SPRITES.md) for the full sprite grid reference and colour
-legend.
+The source images in `sprites/` are the source of truth. Never edit
+`sprites.generated.js` by hand.
+
+See [`SPRITES.md`](SPRITES.md) for the grid format and colour legend.
 
 ---
 
-## What it does
+## Adding or updating a species
 
-The converter runs a five-stage pipeline:
+1. Create `sprites/<species>/`. The folder name is the `spriteType`: lower-case
+   letters, digits or `_`.
+2. Add one image per stage: `baby.png`, `child.png`, `teen.png`, `adult.png`,
+   `senior.png`. You can use `.jpg`, `.webp` or `.pixil` instead of `.png`.
+   - Quadrupeds must face **left**. Set `"flip": true` if the art faces right.
+   - Optional mood art uses the name `<stage>_<mood>`, e.g. `adult_sleeping.png`.
+3. Optionally add a `sprite.json` (see below), for example to pin the palette.
+4. Run:
 
-1. **Decode** — reads the source image into an in-memory RGBA pixel grid.
-2. **Downscale** (if needed) — nearest-neighbour resampling to fit within the
-   700 × 550 maximum, preserving the aspect ratio.
-3. **Quantize** — maps every pixel to one of four colour indices:
-   `0` transparent, `1` primary, `2` secondary, `3` accent.
-4. **Generate** — converts the quantized grid into `DEFS` row-strings (one
-   string per row, one character per pixel) and emits them to stdout.
-5. **Inject** (optional, `--inject`) — splices the `DEFS` block, a
-   `SPRITE_GRID_META` entry, and a default `ANIMAL_PALETTES` entry into both
-   IDEs' `sprites.js` and `spriteConstants.js`.
+   ```sh
+   node scripts/import_sprites_bulk.js
+   node scripts/validate_sprites.js
+   ```
+
+   The import prints each species' grid size and palette, and warns about any
+   missing stage. A species with missing stages uses its adult grid at those
+   stages; with no adult grid it is drawn as the classic pet.
+5. Register a new species by hand (the generator only warns about mismatches
+   between these files and `sprite.json`):
+   - Rotation pool: add it to `ROTATION_ANIMALS` in `packages/core/src/gameEngine.ts`
+     (run `node scripts/sync-core.mjs`) and `pycharm/.../engine/GameEngine.kt`.
+   - Unlockable character: add it to `vscode/media/customCharacters.js`,
+     `vscode/src/customCharacters.ts` and
+     `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt`.
+   - Terminal plugins: add a `SPRITE_HEAD` entry in `packages/core/src/asciiArt.ts`
+     and an emoji in `claude-codotchi/scripts/emoji.mjs`.
+6. Check the **Sprite Preview** in developer mode: open the Command Palette
+   (VS Code) or the Tools menu (PyCharm) and run **Codotchi: Open Sprite
+   Preview (Dev)**.
+7. Commit the source images, `sprite.json` and the regenerated
+   `sprites.generated.js` together.
+
+### `sprite.json`
+
+Every field is optional.
+
+| Field | Default | Meaning |
+|-------|---------|---------|
+| `palette` | auto | `{ primary, secondary, accent }`: exact source colours for indices 1 / 2 / 3. Each pixel maps to the nearest one. |
+| `background` | `#1a1a1a` | Canvas background behind the pet. |
+| `transparent` | auto | Source colour to treat as transparent. When this is unset, a fully-opaque image with four matching corners has that corner colour removed. |
+| `transparentDistance` | `2500` | Squared-RGB tolerance for `transparent`. |
+| `threshold` | `128` | Alpha below which a pixel is transparent. |
+| `crop` | `true` | Trim each stage's transparent border before sizing. |
+| `anchor` | `"centre"` | Where narrower stages sit on the shared grid: `"centre"` or `"left"`. They are always bottom-aligned. |
+| `flip` | `false` | Mirror every stage. |
+| `legRowStart` | `floor(rows × 0.78)` | First leg-zone row **of the output grid** (used for the walk animation and belly sag). |
+| `upright` | `false` | Portrait species; added to `UPRIGHT_TYPES`. |
+| `inRotation`, `passcode`, `defaultName` | — | Checked against `ROTATION_ANIMALS` and `customCharacters.js`; a mismatch prints a warning. |
+
+---
+
+## What the bulk import does
+
+For each species folder:
+
+1. **Decode** every stage into RGBA (formats below).
+2. **Remove the background**: the `transparent` colour, or the automatic
+   corner check. Then **crop** the transparent border unless `crop` is
+   `false`.
+3. **Size** the stages together:
+   - One scale factor is applied to every stage, so the largest stage fits the
+     192 × 128 cap and the stages keep their relative sizes.
+   - The species' grid is the size of its largest scaled stage.
+   - The renderer draws every species at a fixed body width, so a smaller stage
+     image draws smaller inside that width.
+4. **Quantise** every stage against **one palette**. The palette comes from
+   `sprite.json`, or from the three most frequent colours across all stages,
+   ranked by luminance: brightest → 1 primary, mid → 2 secondary, darkest → 3
+   accent.
+5. **Flip** if asked, then **pad** each stage onto the shared grid with
+   transparent cells (bottom-aligned, horizontal position from `anchor`).
+6. **Write** `sprites.generated.js`. Species are in name order and the output
+   is deterministic. The file contains:
+   - `window.GENERATED_SPRITE_DEFS`: `sprites.js` merges it into `DEFS` before
+     building `window.SPRITES`.
+   - `SPRITE_GRID_META` and palette entries, merged into the objects from
+     `spriteConstants.js` with `Object.assign`.
+   - `UPRIGHT_TYPES` entries for upright species.
+
+Load order (sidebar and sprite preview, both IDEs):
+`spriteConstants.js` → `sprites.generated.js` → `sprites.js`.
+
+Hand-drawn species (classic, sheep, snake, kangaroo, tim, stu) still live in
+`sprites.js` and `spriteConstants.js`. To move one over, run
+`node scripts/export_sprite_pngs.js <species>` and then delete its `DEFS`,
+meta and palette entries.
 
 ---
 
@@ -43,207 +123,56 @@ The converter runs a five-stage pipeline:
 
 | Extension | Format | Decoding method |
 |-----------|--------|-----------------|
-| `.png` | PNG | Pure-JS decoder — 8-bit RGBA, RGB, greyscale, and indexed (paletted). Non-interlaced only. |
-| `.pixil` | Pixilart JSON | Pure-JS decoder. Multi-layer files are supported; layers are flattened bottom-to-top. Use `--frame` to select a frame other than 0. |
-| `.jpg` / `.jpeg` | JPEG | Transcoded to PNG via an external converter (see Prerequisites). |
-| `.webp` | WebP | Transcoded to PNG via an external converter (see Prerequisites). |
+| `.png` | PNG | Pure-JS decoder: 8-bit RGBA, RGB, greyscale, and indexed (paletted). Non-interlaced only. |
+| `.pixil` | Pixilart JSON | Pure-JS decoder. Layers are flattened bottom-to-top. The single-image CLI's `--frame` picks a frame other than 0. |
+| `.jpg` / `.jpeg` | JPEG | Transcoded to PNG with an external converter. |
+| `.webp` | WebP | Transcoded to PNG with an external converter. |
 
-Format is detected from **file content (magic bytes)**, not just the file extension. If a
-JPEG is mistakenly named `.png`, the tool detects it, prints a warning, and processes
-it correctly as JPEG. Unsupported formats receive a clear error.
+The format is detected from the **file content (magic bytes)**. A JPEG named
+`.png` is handled as JPEG, with a warning.
 
-### External converter — JPEG and WebP
+### External converter (JPEG and WebP)
 
-JPEG and WebP files are transcoded to a temporary PNG in-memory before decoding. The
-tool tries the following converters in order, using the first one that works:
+The tools try these in order and use the first that works:
 
-1. **ImageMagick v7+** (`magick`) — supports all formats including WebP.
-   Install from <https://imagemagick.org>.
-2. **PowerShell `System.Drawing`** — built into Windows, no install needed.
-   Supports JPEG reliably; WebP requires the optional Windows WebP codec.
-3. **ImageMagick legacy** (`convert`) — used only when the found binary is not
-   `C:\Windows\System32\convert.exe` (the Windows disk utility, not ImageMagick).
-3b. **`dwebp`** (Google libwebp) — **WebP only.** Tiny standalone tool from
-   <https://developers.google.com/speed/webp/download>. Skipped for JPEG.
-4. **ffmpeg** — install from <https://ffmpeg.org>.
-5. **Python + Pillow** — tried via `py` (Windows Launcher) then `python`.
-   Requires Pillow: `pip install Pillow`. Works for both JPEG and WebP.
+1. **ImageMagick v7+** (`magick`)
+2. **PowerShell `System.Drawing`**: built into Windows. Reliable for JPEG; WebP
+   needs the Windows WebP codec.
+3. **ImageMagick legacy** (`convert`), but not `C:\Windows\System32\convert.exe`
+4. **`dwebp`**: WebP only
+5. **ffmpeg**
+6. **Python + Pillow** (`py`, then `python`)
 
-If no converter can handle the format, the tool exits with a clear error listing
-install options. On Windows, JPEG works out of the box via PowerShell. For WebP,
-install any of: ImageMagick v7+, `dwebp`, ffmpeg, or Python + Pillow.
-
-The temporary PNG is deleted immediately after decoding; no files are left behind.
+The converter lookup uses `where.exe`, so JPEG/WebP import only works on
+Windows. On Linux or macOS, convert to PNG first. PNG and `.pixil` work
+everywhere.
 
 ---
 
-## Prerequisites
-
-- **Node.js 18 or later** (uses the built-in `node:test` runner in the test
-  suite; the importer itself works on Node 16+ but 18 is the project standard).
-- No `npm install` step — the script uses only Node built-ins (`fs`, `path`,
-  `zlib`, `os`, `child_process`).
-- **For JPEG/WebP:** an external converter must be available. On Windows,
-  JPEG works without any install (PowerShell `System.Drawing` is built in).
-  For WebP, install any of: ImageMagick v7+, `dwebp`, ffmpeg, or Python + Pillow
-  (see Supported formats above).
-
----
-
-## Usage
+## Single-image CLI
 
 ```sh
 node scripts/import_sprite.js <file> <spriteType> <stage> [options]
 ```
 
-| Argument | Description |
-|----------|-------------|
-| `<file>` | Path to the source image (`.png` or `.pixil`). |
-| `<spriteType>` | Identifier for the sprite type, e.g. `kangaroo`. Must match the key used in `DEFS`, `SPRITE_GRID_META`, and `ANIMAL_PALETTES`. |
-| `<stage>` | Life stage: `baby`, `child`, `teen`, `adult`, or `senior`. |
-
-### Options
+It prints the `DEFS` entry, grid size and palette to stdout. Use it to try out
+options before putting an image in `sprites/`. The old `--inject` option has
+been removed (BUGFIX-179).
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--frame <N>` | `0` | `.pixil` only — which frame to decode. |
-| `--leg-row <N>` | `floor(rows × 0.78)` | Row index where the leg zone begins. Used for walk animation and belly-sag. |
-| `--primary <#hex>` | auto | Source colour to map to index 1 (body fill). |
-| `--secondary <#hex>` | auto | Source colour to map to index 2 (eyes / markings). |
-| `--accent <#hex>` | auto | Source colour to map to index 3 (stripes / accent). |
-| `--threshold <0–255>` | `128` | Alpha value below which a pixel is treated as transparent. |
-| `--transparent <#hex>` | off | Source colour to key out as transparent before quantization (useful for JPEGs with white backgrounds). |
-| `--transparent-distance <N>` | `2500` | Squared RGB-distance tolerance for `--transparent`; larger values remove more near-background pixels. |
-| `--crop-transparent` | off | Trim the transparent border after applying alpha / `--transparent`, before max-size scaling. |
-| `--preview` | off | Print an ASCII art preview of the quantized grid to stderr. |
-| `--inject` | off | Splice the output directly into both IDEs' `sprites.js` and `spriteConstants.js`. |
+| `--frame <N>` | `0` | `.pixil` only: which frame to decode. |
+| `--leg-row <N>` | `floor(rows × 0.78)` | Leg-zone start row. |
+| `--primary` / `--secondary` / `--accent <#hex>` | auto | Exact source colours for indices 1 / 2 / 3. |
+| `--threshold <0–255>` | `128` | Alpha below which a pixel is transparent. |
+| `--transparent <#hex>` | auto | Source colour to treat as transparent. |
+| `--transparent-distance <N>` | `2500` | Squared-RGB tolerance for `--transparent`. |
+| `--crop-transparent` | off | Trim the transparent border. |
+| `--flip` | off | Mirror the grid. |
+| `--preview` | off | Print an ASCII preview. |
 
----
-
-## Colour mapping
-
-### Auto-detect (no palette flags)
-
-When no `--primary/--secondary/--accent` flags are given, the converter counts
-the frequency of every non-transparent colour, takes the **three most
-frequent**, and ranks them by luminance:
-
-- Highest luminance → index 1 (primary / body fill)
-- Mid luminance → index 2 (secondary / eyes)
-- Lowest luminance → index 3 (accent / markings)
-
-Auto-detected colours are printed to stderr so you can verify or override them.
-
-### Explicit palette
-
-When one or more palette flags are given, each visible pixel is mapped to the
-**nearest provided colour** by Euclidean RGB distance. Any pixel with no
-close match defaults to index 1. Omitting a flag simply means no pixel will
-ever be quantized to that index.
-
----
-
-## Worked examples
-
-### Preview before committing
-
-Check how the quantization looks without writing anything:
-
-```sh
-node scripts/import_sprite.js downloaded_sprites/pixilart-drawing.png mysprite adult --preview
-```
-
-### Explicit palette, single stage
-
-```sh
-node scripts/import_sprite.js source.png mysprite adult \
-  --primary "#8b6914" --secondary "#4a3728" --accent "#5c4a1e"
-```
-
-The `DEFS` entry is printed to stdout. Redirect to a file or pipe to a
-reviewer before injecting.
-
-### JPEG with white background removal
-
-JPEGs do not have alpha, so a flat white background imports as opaque pixels
-unless you key it out first:
-
-```sh
-node scripts/import_sprite.js downloaded_sprites/kangaroo.jpg roo adult \
-  --transparent "#ffffff" --transparent-distance 2500 --crop-transparent --preview
-```
-
-`--transparent` runs before colour auto-detection, so the background will not
-be counted as the most frequent colour. `--crop-transparent` then trims the
-empty border so the grid metadata matches the visible sprite rather than the
-original canvas size.
-
-### Full inject flow (all stages)
-
-Run once per life stage, using `--inject` each time:
-
-```sh
-node scripts/import_sprite.js source.png mysprite baby   --inject
-node scripts/import_sprite.js source.png mysprite child  --inject
-node scripts/import_sprite.js source.png mysprite teen   --inject
-node scripts/import_sprite.js source.png mysprite adult  --inject
-node scripts/import_sprite.js source.png mysprite senior --inject
-```
-
-`--inject` is idempotent for `SPRITE_GRID_META` and `ANIMAL_PALETTES` — it
-skips re-adding entries that already exist. Re-running it for a stage replaces
-the existing `DEFS` block for that stage.
-
----
-
-## What `--inject` writes
-
-For each target file (`vscode/media/sprites.js`,
-`pycharm/src/main/resources/webview/sprites.js`, and both matching
-`spriteConstants.js` files):
-
-| What is written | Where |
-|-----------------|-------|
-| `DEFS["spriteType"]["stage"] = [...]` | Before the `window.SPRITES` exports section in `sprites.js` |
-| `spriteType: { cols, rows, legRowStart }` | Inside the `SPRITE_GRID_META` object in `spriteConstants.js` |
-| `spriteType: { primary, secondary, accent, background }` | At the top of `ANIMAL_PALETTES` in `spriteConstants.js` (default neutral greys — **update manually**) |
-
-The `ANIMAL_PALETTES` entry uses placeholder grey values. Always replace them
-with the correct hex colours for the new sprite after injecting. See the
-palette table in [`SPRITES.md`](SPRITES.md) for examples.
-
----
-
-## After injecting: verification checklist
-
-1. **Validate row widths:**
-
-   ```sh
-   node scripts/validate_sprites.js
-   ```
-
-   All rows must be valid (exit 0) before committing.
-
-2. **Update `ANIMAL_PALETTES`** — replace the default grey placeholder with
-   the real primary, secondary, accent, and background colours in both
-   `spriteConstants.js` files.
-
-3. **Register for unlock** — add the new `spriteType` to:
-   - `vscode/media/customCharacters.js`
-   - `vscode/src/customCharacters.ts`
-   - `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt`
-
-   See the comment at the top of `customCharacters.js` for the required
-   format.
-
-4. **Add all five stages** — `--inject` only writes the stage you specify.
-   Import and inject `baby`, `child`, `teen`, `adult`, and `senior`
-   separately. A sprite type with missing stages will fall back to `adult` at
-   runtime but will look wrong at other ages.
-
-5. **Check the Sprite Preview** — enable developer mode, open the Command
-   Palette (VS Code) or Tools menu (PyCharm), run **Codotchi: Open Sprite
-   Preview (Dev)**, and verify all five stages render correctly.
+`scripts/import_sprite.ps1` (or double-click `import_sprite.bat`) prompts for
+each option and runs the CLI once per stage.
 
 ---
 
@@ -251,21 +180,9 @@ palette table in [`SPRITES.md`](SPRITES.md) for examples.
 
 | Limitation | Detail |
 |------------|--------|
-| Maximum grid size | 700 columns × 550 rows. Larger images are scaled down (aspect preserved). |
-| JPEG backgrounds | JPEGs are fully opaque. Use `--transparent "#ffffff" --transparent-distance N --crop-transparent` for flat white backgrounds before importing. |
-| WebP requires a converter | PowerShell `System.Drawing` does not support WebP unless the Windows WebP codec is installed. Install ImageMagick v7+, `dwebp`, ffmpeg, or Python + Pillow for reliable WebP support. |
-| Interlaced PNGs unsupported | The PNG decoder rejects interlaced files. Re-export as non-interlaced (progressive) PNG. |
-| Brittle injection markers | `--inject` finds insertion points by searching for exact string patterns in `sprites.js` and `spriteConstants.js`. Reformatting those files can break injection. |
-| High-density grids | When a grid is denser than the on-screen bounding box (`cellWExact < 1`), the renderer switches to an offscreen canvas path. This is expected behaviour for very large imported grids. See `sprites.js` line 4141 for the v2 offscreen path. |
-| Colour quantization accuracy | The auto-detect and nearest-RGB approaches work well for flat pixel art with 3–4 colours. Photographic or gradient-heavy images will produce poor results. |
-
----
-
-## Related tools
-
-| Script | Purpose |
-|--------|---------|
-| `scripts/gen_sprites.js` | Procedurally generates the built-in animal `DEFS` (not file import). |
-| `scripts/inject_sprites.js` | Splices `gen_sprites.js` output into `sprites.js`. |
-| `scripts/validate_sprites.js` | Verifies that every row string in `sprites.js` has the correct width for its `spriteType` per `SPRITE_GRID_META`. |
-| `vscode/media/sprite_preview.html` | Standalone browser gallery for all sprites. |
+| Maximum grid size | 192 columns × 128 rows (`MAX_COLS` / `MAX_ROWS` in `scripts/lib/spriteImport.js`). Larger stages are scaled down with nearest-neighbour sampling. |
+| Single-colour images | A fully-opaque image with matching corners loses that colour as "background". Give the art a transparent background, or set `transparent` to a colour that isn't used. |
+| Interlaced PNGs unsupported | Re-export as non-interlaced PNG. |
+| Gold cells | Indices 4 / 5 (gold) can't come from an image, because the palette has 3 colours. |
+| High-density grids | When a grid is denser than its on-screen box (`cellWExact < 1`), the renderer draws through an offscreen canvas. This is expected for large imported grids. |
+| Colour quantisation | Works well for flat pixel art with 3–4 colours. Photos and gradients give poor results. |

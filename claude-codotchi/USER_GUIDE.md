@@ -64,6 +64,7 @@ activates the statusline script, registers the event hooks, and makes the
 | **Session hooks** | Pet greets you on session start and says farewell when the session stops |
 | **Slash command** | `/codotchi <action>` for all care actions |
 | **Daily cost tracking** | Pet speech bubble colour reflects today's Claude API spend, with hourly rate |
+| **Attention calls** | When the pet needs something (food, medicine, a pat, a game…) the statusline shows it with a ⚠ |
 
 ---
 
@@ -73,7 +74,9 @@ activates the statusline script, registers the event hooks, and makes the
 |--------|-------------|
 | `/codotchi` or `/codotchi status` | Show the pet's ASCII art and speech bubble |
 | `/codotchi feed` | Give a meal — restores hunger (max 3 meals per wake cycle) |
+| `/codotchi snack` | Give a snack — too many in a row makes the pet sick |
 | `/codotchi pat` | Pat the pet — gentle happiness boost |
+| `/codotchi play` | Play with the pet — answers its "play with me" calls |
 | `/codotchi sleep` | Put the pet to sleep — energy regenerates 3× faster while sleeping |
 | `/codotchi wake` | Wake the pet up |
 | `/codotchi clean` | Remove droppings — improves mood and cleanliness |
@@ -116,10 +119,28 @@ automatically with `refreshInterval: 1` so the shuffle is visible.
 
 ---
 
+## Attention calls
+
+Now and then your pet asks for something: food, medicine, sleep, a clean-up,
+a pat, a game, or a meal or snack it's craving. While a call is active, the
+statusline shows it in every mode:
+
+| Mode | What you see |
+|------|--------------|
+| Full ASCII (default) | The speech bubble shows the request (e.g. "I want a pat! (/codotchi pat)"), with ⚠ before the pet's name |
+| Emoji | `Pixel ⚠ wants a pat  🐶` |
+| Plain (`/codotchi off`) | An extra line: `⚠ Pixel wants a pat (/codotchi pat)` |
+
+Run the command shown to answer the call. Gifts and misbehaviour can only be
+answered in the IDE (Praise / Scold). A call that isn't answered in time
+counts as a care mistake.
+
+---
+
 ## Daily cost tracking
 
 The pet's speech bubble colour reflects how much you've spent on Claude API
-calls today (UTC day):
+calls today (your local calendar day, from midnight):
 
 | Spend | Bubble colour | Tone |
 |-------|--------------|------|
@@ -149,7 +170,7 @@ State is stored in a persistent data directory that survives plugin updates:
 | Outside Claude Code (testing) | `~/.codotchi/claude/codotchi-state.json` |
 
 Additional files in the same directory:
-- `codotchi-daily.json` — daily cost accumulator (UTC-date keyed)
+- `codotchi-daily.json` — legacy daily cost accumulator (no longer written; today's usage is re-read from your Claude Code transcripts)
 - `codotchi-config.json` — thresholds and display toggle
 
 ---

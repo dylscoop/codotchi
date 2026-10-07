@@ -11,7 +11,7 @@
 import { fileURLToPath, pathToFileURL } from "url";
 import path from "path";
 import fs from "fs";
-import { loadStateFile, saveStateFile, loadConfig, accumulateDailyUsage } from "./state.mjs";
+import { loadStateFile, saveStateFile, loadConfig, accumulateDailyUsage, idleFlagsForFile } from "./state.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, "..", "dist");
@@ -45,8 +45,10 @@ async function main() {
     Math.floor(elapsedMs / ((ge.TICK_INTERVAL_SECONDS ?? 3) * 1000)),
     20 // cap to avoid runaway decay on long sessions
   );
+  // Honour the IDE's idle flag for an IDE-anchored pet (BUG-S02).
+  const { isIdle, isDeepIdle } = idleFlagsForFile(file);
   for (let i = 0; i < elapsedTicks; i++) {
-    const result = ge.tick(state, false, false, gameConfig);
+    const result = ge.tick(state, isIdle, isDeepIdle, gameConfig);
     state = result.state ?? result;
   }
 
@@ -54,7 +56,7 @@ async function main() {
   file.totalMessages = (file.totalMessages ?? 0) + 1;
 
   const speech = aa.buildContextualSpeech
-    ? aa.buildContextualSpeech(state, 0, 0, 0, file.totalMessages, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, 0, messageCount)
+    ? aa.buildContextualSpeech(state, 0, 0, 0, file.totalMessages, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, 0, 0, messageCount, { costStyle: "hourlyRate" })
     : { message: `See you later! ${state.name ?? "Codotchi"} waves goodbye.` };
 
   const rawBubble = aa.buildSpeechBubble

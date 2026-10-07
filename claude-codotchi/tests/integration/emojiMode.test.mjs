@@ -25,6 +25,11 @@ import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Where state.mjs looks for IDE pets under the test HOME / APPDATA: APPDATA on Windows, ~/.config elsewhere. */
+function ideBase(tmpBase) {
+  return process.platform === "win32" ? tmpBase : path.join(tmpBase, ".config");
+}
 const scriptsDir = path.join(__dirname, "..", "..", "scripts");
 const distDir = path.join(__dirname, "..", "..", "dist");
 const actionScript = path.join(scriptsDir, "action.mjs");
@@ -47,6 +52,8 @@ function baseEnv(tmpBase, extra = {}) {
     USERPROFILE: tmpBase,
     CLAUDE_PLUGIN_DATA: path.join(tmpBase, "claude-plugin-data"),
     CLAUDE_CODE_SESSION_ID: "",
+    // Keep output independent of the live leaderboard (no network rank line).
+    CODOTCHI_NO_RANK: "1",
     ...extra,
   };
 }
@@ -69,7 +76,7 @@ function configPath(tmpBase) {
 
 /** Writes an IDE state.json for `ide` ("vscode" | "pycharm"), with a controllable mtime. */
 function writeIDEState(tmpBase, ide, state, { mtimeMs } = {}) {
-  const dir = path.join(tmpBase, "codotchi", ide);
+  const dir = path.join(ideBase(tmpBase), "codotchi", ide);
   fs.mkdirSync(dir, { recursive: true });
   const filePath = path.join(dir, "state.json");
   fs.writeFileSync(filePath, JSON.stringify({ state, savedAt: Date.now() }), "utf8");

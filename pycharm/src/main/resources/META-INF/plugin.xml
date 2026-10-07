@@ -1,14 +1,13 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.20.11</version>
+    <version>2.27.2</version>
     <vendor>codotchi</vendor>
-    <icon>META-INF/icon_128.png</icon>
 
     <description><![CDATA[
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/dog_adult_1x.png" height="64" alt="Dog sprite" />
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/dragon_adult_1x.png" height="64" alt="Dragon sprite" />
-<img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/kangaroo_adult_1x.png" height="64" alt="Kangaroo sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/dog_adult_1x.png" height="64" alt="Dog sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/dragon_adult_1x.png" height="64" alt="Dragon sprite" />
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/kangaroo_adult_1x.png" height="64" alt="Kangaroo sprite" />
 
 <p>Grow and raise your personal virtual pet as a JetBrains plugin while you code.</p>
 
@@ -16,18 +15,18 @@
 
 <p>codotchi is a JetBrains plugin that lets you raise a digital pet inspired by the original Tamagotchi. Your pet
 lives in a tool window panel, reacts to your coding activity, and needs regular care to survive and evolve into
-its final form. Any support and feedback is much appreciated ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â see the Support section below!</p>
+its final form. Any support and feedback is much appreciated — see the Support section below!</p>
 
 <p>Your pet is drawn from one of <b>7 sprite sets</b>, with more to be added in the future, assigned to you
 at random when you start a new game.</p>
 
 <h2>Preview</h2>
 
-<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/example_skippy.png" width="400" alt="Skippy the kangaroo ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Codotchi in action"/>
+<img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/Cat_example.png" width="400" alt="A cat Codotchi in a winter scene — Codotchi in action"/>
 
 <h3>Sponsor this project</h3>
 
-<p><a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/vscode_gotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"/></a></p>
+<p><a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"/></a></p>
 <p><a href="https://buymeacoffee.com/dylscoop">buymeacoffee.com/dylscoop</a></p>
 
 <p><a href="https://liberapay.com/dylscoop">liberapay.com/dylscoop</a></p>
@@ -35,20 +34,28 @@ at random when you start a new game.</p>
 <h2>Integrations</h2>
 
 <p>Looking for the <b>Claude Code</b> or <b>OpenCode</b> terminal integrations?
-Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotchi</a> to download the plugins ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â your pet's state is shared across VS Code, PyCharm, and the terminal.</p>
+Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotchi</a> to download the plugins — your pet's state is shared across VS Code, PyCharm, and the terminal.</p>
 
 <h2>Features</h2>
 <ul>
-  <li><b>Tool window pet panel</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â pixel art pet with animated sprites, stat bars, and action buttons rendered in a JCEF webview</li>
-  <li><b>Classic Tamagotchi mechanics</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â hunger, happiness, discipline, energy, health, weight, and age stats, all decaying in real time</li>
-  <li><b>Full care system</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â feed meals and snacks, play mini-games, put pet to sleep, clean droppings, give medicine, scold and praise</li>
-  <li><b>Life cycle &amp; evolution</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â egg ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ baby ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ child ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ teen ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ adult ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ senior, with the final character determined by how well you cared for your pet</li>
-  <li><b>Pet customisation</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â name your pet and choose a pet type on first launch</li>
-  <li><b>Sickness &amp; death</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â neglect your pet and it gets sick; leave it untreated and it dies</li>
-  <li><b>OpenCode integration</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â your pet lives in the terminal too, with shared state across VS Code, PyCharm, and OpenCode</li>
-  <li><b>Status bar integration</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â pet name and stage always visible in the IDE status bar</li>
-  <li><b>Persistent state</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â pet survives IDE restarts; offline time is accounted for with capped stat decay</li>
-  <li><b>Configurable</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â customise font size, pet size, colours, idle thresholds, attention call behaviour, and more via <b>Settings ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Tools ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Codotchi</b></li>
+  <li><b>Tool window pet panel</b> — pixel art pet with animated sprites, stat bars, and action buttons rendered in a JCEF webview</li>
+  <li><b>Classic Tamagotchi mechanics</b> — hunger, happiness, discipline, energy, health, weight, and age stats, all decaying in real time</li>
+  <li><b>Full care system</b> — feed meals and snacks, play mini-games, put pet to sleep, clean droppings, give medicine, scold and praise</li>
+  <li><b>Life cycle &amp; evolution</b> — egg → baby → child → teen → adult → senior, with the final character determined by how well you cared for your pet</li>
+  <li><b>Moods you can see</b> — a happy pet sparkles, a sad pet sheds a tear, a sleeping pet dozes with drifting z's, and a pet stops to eat its meal from a bowl</li>
+  <li><b>Pet customisation</b> — name your pet and choose a pet type on first launch</li>
+  <li><b>Desktop alerts</b> — when hunger, happiness or energy hits 0, or health drops below 25, you get a desktop notification, even with the IDE minimised. It repeats every 15 minutes while the stat stays low; turn it off in Settings</li>
+  <li><b>Sickness &amp; death</b> — neglect your pet and it gets sick; leave it untreated and it dies. A sick pet won't eat, snack or play until it's had its medicine — the Medicine button counts the doses left</li>
+  <li><b>Safe while you are away</b> — when you step away from the IDE your pet gets hungry and bored more slowly and never loses health, so it is waiting for you when you come back</li>
+  <li><b>Seasons and time of day</b> — your pet lives in a pixel-art scene that follows the real month and clock: blossom trees and spring showers with a rainbow, sunflowers and fireflies in summer, falling leaves and pumpkins in autumn, and a snowman, fairy lights and snowfall in winter. The sky moves from a warm sunrise through a bright morning to sunset and starry night. Pick a fixed season or a plain background in Settings, soften the scene so your pet stands out, or keep it still. Prefer the original look? Set Background style to Legacy</li>
+  <li><b>Little whims</b> — now and then your pet just wants to play a game, get a pat, or have a meal or a snack, even when it isn't hungry or sad. Answer in time and it's happy; ignore it and its health suffers</li>
+  <li><b>Break reminders</b> — after 30 minutes of coding, your pet reminds you to take a break. Praise it to answer: it's happier for it and naps for 5 minutes while you rest (stats frozen except energy, which recharges, and it keeps aging). You can't wake it early — it wakes up on its own. Skipping it does no harm, and stepping away from the IDE counts as a break</li>
+  <li><b>Terminal &amp; Claude integrations</b> — your pet lives in Claude Code, OpenCode and Claude Desktop too, with shared state across every host</li>
+  <li><b>Today's Token Cost</b> — see how much Claude Code / OpenCode has cost you today, plus your GitHub Copilot premium quota</li>
+  <li><b>Public leaderboard</b> — sign in with GitHub to submit your pet when it dies, or push live progress while it's still going</li>
+  <li><b>Status bar integration</b> — pet name and stage always visible in the IDE status bar, with a ⚠ while your pet wants something (hover to see what). Turn it off in Settings</li>
+  <li><b>Persistent state</b> — pet survives IDE restarts; offline time is accounted for with capped stat decay</li>
+  <li><b>Configurable</b> — customise font size, pet size, stage height, colours, idle thresholds, attention call behaviour, and more via <b>Settings → Tools → Codotchi</b>. Developer-mode settings sit in a collapsed <b>Developer settings</b> section</li>
 </ul>
 
 <h2>Requirements</h2>
@@ -57,21 +64,23 @@ Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotch
   <li>JCEF must be enabled in your IDE (it is on by default in 2024.1+)</li>
 </ul>
 <p><b>If the Codotchi panel appears blank:</b> your IDE may be running on a JetBrains Runtime without JCEF.
-Open <b>Help ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Find Action</b> (Shift+Ctrl+A / ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬â„¢Ãƒâ€¹Ã…â€œA), search for <b>"Choose Boot Java Runtime for the IDE"</b>,
+Open <b>Help → Find Action</b> (Shift+Ctrl+A / ⇧⌘A), search for <b>"Choose Boot Java Runtime for the IDE"</b>,
 select a runtime with <b>JCEF</b> in its name, and restart the IDE.</p>
 
 <h2>Installation</h2>
-<p>See the <a href="https://github.com/dylscoop/codotchi">GitHub repository</a> for full installation instructions,
+<p>Install <b><a href="https://plugins.jetbrains.com/plugin/33203-codotchi">Codotchi from the JetBrains Marketplace</a></b>,
+or go to <b>Settings → Plugins → Marketplace</b> and search for <b>Codotchi</b>.</p>
+<p>See the <a href="https://github.com/dylscoop/codotchi">GitHub repository</a> for manual installation,
 pre-built releases, and the OpenCode integration download.</p>
 
 <h2>Using the plugin</h2>
 <p>Once installed and the IDE has restarted:</p>
 <ol>
-  <li>Click <b>Codotchi</b> in the right-hand tool window bar, or go to <b>View ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Tool Windows ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Codotchi</b>.</li>
+  <li>Click <b>Codotchi</b> in the right-hand tool window bar, or go to <b>View → Tool Windows → Codotchi</b>.</li>
   <li>On first launch the <b>New Codotchi</b> setup screen appears:
     <ul>
       <li>Enter a name (up to 16 characters).</li>
-      <li>Choose a <b>pet type</b> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â each has different stat decay rates.</li>
+      <li>Choose a <b>pet type</b> — each has different stat decay rates.</li>
       <li>Click <b>Hatch!</b></li>
     </ul>
   </li>
@@ -86,13 +95,13 @@ pre-built releases, and the OpenCode integration download.</p>
 <h2>Actions</h2>
 <table>
   <tr><th>Action</th><th>What it does</th></tr>
-  <tr><td><b>Feed</b></td><td>Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect.</td></tr>
-  <tr><td><b>Snack</b></td><td>Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick.</td></tr>
-  <tr><td><b>Play</b></td><td>Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â your pet can't play if exhausted.</td></tr>
-  <tr><td><b>Pat</b></td><td>Gives your pet a gentle pat. Boosts happiness. Costs energy. Accessed via the Play menu. Cannot be used while your pet is sleeping or exhausted.</td></tr>
-  <tr><td><b>Sleep</b></td><td>Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy.</td></tr>
-  <tr><td><b>Clean</b></td><td>Clears all droppings from the screen. Leaving too many uncleaned will make your pet sick.</td></tr>
-  <tr><td><b>Medicine</b></td><td>Treats sickness. Requires multiple doses to fully cure. Restores a small amount of health per dose. Use it as soon as your pet falls ill to prevent health loss.</td></tr>
+  <tr><td><b>Feed</b></td><td>Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect. Not available while your pet is sick.</td></tr>
+  <tr><td><b>Snack</b></td><td>Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick. Not available while your pet is sick.</td></tr>
+  <tr><td><b>Play</b></td><td>Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted or sick.</td></tr>
+  <tr><td><b>Pat</b></td><td>Gives your pet a gentle pat. A hand pats its head, hearts float up and each pet reacts in its own way. Boosts happiness. Costs energy. Accessed via the Play menu. Cannot be used while your pet is sleeping or exhausted.</td></tr>
+  <tr><td><b>Sleep</b></td><td>Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. During a break nap the button shows the minutes left and your pet wakes on its own.</td></tr>
+  <tr><td><b>Clean</b></td><td>Clears all droppings from the screen. Leaving too many uncleaned for too long will make your pet sick.</td></tr>
+  <tr><td><b>Medicine</b></td><td>Treats sickness. Three doses cure it (the button shows how many are left); medicine does not restore health. Use it as soon as your pet falls ill, because sickness drains health until it is cured.</td></tr>
   <tr><td><b>Praise</b></td><td>Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution.</td></tr>
   <tr><td><b>Scold</b></td><td>Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline.</td></tr>
 </table>
@@ -100,13 +109,49 @@ pre-built releases, and the OpenCode integration download.</p>
 <p><b>Tip:</b> keep all four stat bars (Hunger, Happy, Energy, Health) out of the red to maximise your care score,
 which determines which character your pet evolves into at each life stage.</p>
 
+<h2>Leaderboard</h2>
+<p>Click <b>Sign in to GitHub (Leaderboard)</b> in the pet panel to link your GitHub account. The plugin uses GitHub's
+device-code sign-in: a browser page opens and a notification shows the code to enter. With <b>live push</b> turned
+on, your pet's progress is synced to the public <a href="https://dylscoop.github.io/codotchi/leaderboard/">leaderboard</a>
+while it's alive. When it dies, click <b>Submit to Leaderboard</b> on the game over screen.</p>
+<p>Only scores sent by the plugin itself are accepted. A pet that ever ran in dev mode, or whose save file was
+edited outside Codotchi, can't be submitted or pushed live, and the panel says why.</p>
+<p>If GitHub rejects the saved sign-in (for example, because you revoked the app at github.com/settings/applications),
+the plugin forgets the old token. It then shows <b>Sign in to GitHub again</b> in the panel, and a notification with a
+<b>Sign in</b> action if live push was running in the background. Submitting a score starts a fresh sign-in
+automatically and retries the submission once.</p>
+<h3>GitHub sign-in help</h3>
+<p>You sign in once. You don't need a personal access token, your own GitHub app, or any changes to your GitHub
+settings.</p>
+<ol>
+  <li>Click <b>Sign in to GitHub (Leaderboard)</b>, either in the pet panel or in <b>Settings → Tools → Codotchi</b>.</li>
+  <li>A browser opens at github.com/login/device, and a PyCharm notification shows an 8-character code.</li>
+  <li>Enter the code, sign in to GitHub if asked, and click <b>Authorize</b>. Codotchi only asks for the
+  <code>public_repo</code> permission, which it needs to submit leaderboard entries.</li>
+  <li>Go back to PyCharm. It picks up the sign-in on its own within a few seconds.</li>
+</ol>
+<p>If it doesn't work:</p>
+<ul>
+  <li><b>The browser didn't open:</b> go to https://github.com/login/device yourself and enter the code from the
+  notification.</li>
+  <li><b>The code expired:</b> codes last about 15 minutes. Click <b>Try again</b> on the notification, or click the
+  sign-in button again.</li>
+  <li><b>You cancelled the GitHub page:</b> sign in again and click <b>Authorize</b> this time.</li>
+  <li><b>"Could not start GitHub sign-in (HTTP 4xx…)":</b> the problem is on Codotchi's side, not yours.
+  <a href="https://github.com/dylscoop/codotchi/issues/new">Open an issue</a> and include the full error text.</li>
+  <li><b>"Network error during GitHub sign-in":</b> PyCharm needs to reach github.com. If you're behind a corporate
+  proxy, set it up under <b>Settings → Appearance &amp; Behavior → System Settings → HTTP Proxy</b>.</li>
+  <li><b>You were signed out unexpectedly:</b> you probably revoked Codotchi at github.com/settings/applications.
+  Sign in again.</li>
+</ul>
+
 <h2>Mini-games</h2>
 <p>Clicking <b>Play</b> opens the game picker (requires energy). Three games are available:</p>
 <table>
   <tr><th>Game</th><th>How to win</th></tr>
   <tr><td><b>Left / Right</b></td><td>The pet hides behind one of two doors. Pick the correct door each round to win.</td></tr>
   <tr><td><b>Higher or Lower</b></td><td>A number is shown. Guess whether the next number will be higher or lower. Get enough correct to win.</td></tr>
-  <tr><td><b>Coin Flip</b></td><td>Call Heads or Tails. A single coin flip decides the outcome.</td></tr>
+  <tr><td><b>Coin Flip</b></td><td>Call Heads or Tails, then watch the coin spin. A single flip decides the outcome.</td></tr>
 </table>
 
 <h2>Pet Types</h2>
@@ -128,9 +173,102 @@ which determines which character your pet evolves into at each life stage.</p>
 
 <h3>Codotchi Sprites</h3>
 
-<p>Want to see a new sprite in the game? Send a drawn sprite or request one to be added ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â a passcode will be given every time one gets implemented.</p>
+<p>Want to see a new sprite in the game? Send a drawn sprite or request one to be added — a passcode will be given every time one gets implemented.</p>
 <p><a href="https://github.com/dylscoop/codotchi/issues">Open a sprite request on GitHub Issues</a></p>
     ]]></description>
+
+    <change-notes><![CDATA[
+<h3>2.27.2</h3>
+<ul>
+  <li><b>Push live progress</b> — pets hatched before 2.27 can push live progress and go on the leaderboard again. When a pet can't (dev mode, an edited save), the button now says why instead of doing nothing.</li>
+  <li><b>Notifications</b> — a pet's call (a craving, a pat, a poop) no longer pops up two or three times when you toggle or push live progress.</li>
+  <li><b>Tim and Stu</b> — toasts, gift messages and the info line under the pet now call them Timagotchi and Stugotchi.</li>
+</ul>
+<h3>2.27.1</h3>
+<ul>
+  <li><b>Tim and Stu</b> — Tim now asks to go for a run instead of a pat, and actually jogs a lap of the stage. Stu asks to collect stickers and opens a sticker binder or a fresh pack. When they crave a snack they say what they want: a tea for Tim, a pint or some salmon for Stu. Stu also plays a round of Blackjack instead of Coin Flip.</li>
+  <li><b>Break reminder</b> — the reminder now just says it's time for a break.</li>
+  <li><b>Fixed</b> — Tim and Stu are drawn centred and no longer jump sideways when they turn; with three snacks already on the floor, Stu's fourth is now thrown away with a message in the log instead of silently lost.</li>
+</ul>
+<h3>2.27.0</h3>
+<ul>
+  <li><b>Fair leaderboard</b> — only scores sent by the Codotchi plugin are accepted now; hand-written GitHub issues are turned away. A pet that ever ran in dev mode, or whose save file was edited outside Codotchi, can't be submitted or pushed live, even after dev mode is turned off. The panel greys out the buttons and says why. Pets hatched before this version can't be submitted either, but your next one can. Older scores stay on the board marked <i>legacy</i>.</li>
+</ul>
+<h3>2.26.3</h3>
+<ul>
+  <li><b>Leaderboard rank</b> — the sidebar rank now matches the leaderboard page. It was counting live pets that hadn't pushed for up to 30 days and was guessing how much older they had grown since their last push, so it could show you lower down and with more pets than the page.</li>
+</ul>
+<h3>2.26.2</h3>
+<ul>
+  <li><b>Status bar</b> — the ⚠ now clears when you answer the call, in every project window. Before, only the most recently opened window's status bar was updated, and the others stayed stuck on their last text.</li>
+</ul>
+<h3>2.26.1</h3>
+<ul>
+  <li><b>Sunrise</b> — the scenic sunrise now lasts the whole dawn stage: the sky turns orange by 7:30, stays that way until 9:00, then turns golden and finishes at 10:00, just like the legacy background.</li>
+</ul>
+<h3>2.26.0</h3>
+<ul>
+  <li><b>Sickness</b> — a sick pet won't eat, snack or play: Feed, Snack and Play are greyed out until it's cured, and the Medicine button counts the doses left.</li>
+  <li><b>Break naps</b> — the nap now lasts 5 minutes and can't be cut short; the Sleep button shows the minutes left. Energy recharges during the nap while every other stat stays frozen, and your pet keeps aging.</li>
+  <li><b>Status bar</b> — a ⚠ appears next to your pet while it has an attention call, and the tooltip says what it wants. A new setting turns the status bar item off.</li>
+</ul>
+<h3>2.25.6</h3>
+<ul>
+  <li><b>GitHub sign-in help</b> — if leaderboard sign-in fails, the error now shows GitHub's reason, and both the notification and Settings link to a step-by-step sign-in guide.</li>
+</ul>
+<h3>2.25.5</h3>
+<ul>
+  <li><b>Sunrise</b> — mornings now start with a warm sunrise that mirrors the sunset, and the scenic sky follows the same times of day as the legacy background: dawn 7–10, morning 10–13, afternoon 13–16, sunset 16–19, dusk 19–22 and night from 22. The sun rises at 7 and sets at 7 pm.</li>
+  <li><b>Snacks and poos</b> — bigger and outlined, so they stand out on every background.</li>
+  <li><b>Autumn</b> — a single pumpkin, off to the side, so the middle of the stage stays clear.</li>
+</ul>
+<h3>2.25.4</h3>
+<ul>
+  <li><b>Break naps</b> — when you praise your pet to answer a break reminder, it naps for 3 minutes. During the nap its stats are frozen but it keeps aging, and it wakes up on its own when the time is up. Waking it yourself ends the nap early.</li>
+  <li><b>Meals</b> — a meal now fills 15 hunger instead of 20.</li>
+  <li><b>Legacy background</b> — a new Background style setting brings back the original look from before 2.25: a flat time-of-day tint, a ground strip and a few seasonal props. Scenic stays the default.</li>
+</ul>
+<h3>2.25.1</h3>
+<ul>
+  <li><b>Seasonal scenes</b> — the background is redrawn as pixel art with trees and props for each season: blossom trees, tulips and daisies in spring; leafy trees, sunflowers, a picnic blanket and a beach ball in summer; orange and half-bare trees, falling leaves, pumpkins and toadstools in autumn; and a snowman, a snowy pine with fairy lights and icicles in winter.</li>
+  <li><b>Brighter mornings</b> — mornings are a soft pastel sky instead of a dusky blue, and the sky now blends smoothly through the day, with a gentle gradient so your pet stays easy to see. From 4 pm the sky warms into golden hour and sunset. The sun climbs and sets in an arc, and stars twinkle at night.</li>
+  <li><b>Weather and visitors</b> — now and then a spring shower passes (followed by a rainbow), snow falls in winter, and birds, butterflies, bees or fireflies drift by.</li>
+  <li><b>Background opacity</b> — Subtle, Medium (default, lightly softened) or Vivid, so your pet stands out against the scene. Vivid is full strength.</li>
+  <li><b>Background animations</b> — turn off the moving clouds, lights, weather and critters for a still scene (reduced motion does this too).</li>
+</ul>
+<h3>2.24.3</h3>
+<ul>
+  <li><b>Patting hand</b> — the hand that pats your pet is half the size, so it no longer towers over small pets.</li>
+  <li><b>Room above the head</b> — every pet now has a little space between its head and the sleep / sick indicator and speech bubble above it.</li>
+  <li><b>AI usage device</b> — the phone, tablet or laptop sits a little further from your pet so it no longer overlaps it.</li>
+  <li><b>Meals</b> — your pet takes twice as long to eat a meal, staying at its bowl for a second bite.</li>
+  <li><b>Fewer attention calls</b> — the random calls (cleaning, misbehaviour, gifts, play, pats and cravings) come about half as often at every Attention Call Rate setting. Calls for real needs like hunger or sickness are unchanged.</li>
+</ul>
+<h3>2.24.2</h3>
+<ul>
+  <li><b>Break reminders</b> — after 30 minutes of coding, your pet reminds you to take a break. Praise it to answer: it's happier for it and naps while you rest.</li>
+  <li><b>Classic pet</b> — now centred where it stands, with no empty space above it; its speech bubble, z's and hearts sit right above its head.</li>
+  <li><b>Speech bubble</b> — while your pet sleeps or is being patted, the bubble sits above the floating z's and hearts so you can see both.</li>
+</ul>
+<h3>2.24.1</h3>
+<ul>
+  <li><b>Lighter download</b> — the pet art is stored more compactly, so the plugin is smaller and the roo is quicker to draw.</li>
+  <li><b>New sprite pipeline (for contributors)</b> — sprites are now built from images in <code>sprites/&lt;species&gt;/</code> with one command, which opens the door to the remaining zodiac animals and new species.</li>
+</ul>
+<h3>2.24.0</h3>
+<ul>
+  <li><b>Pat animations</b> — patting your pet shows a hand patting its head and floating hearts, and every pet reacts its own way: the dog wags and hops, the cat arches and purrs, the sheep puffs up its fleece, the snake coils and sways, the kangaroos hop, the dragon loops with puffs of smoke, Tim and Stu lean in and blush, and the classic pet squishes.</li>
+  <li><b>AI usage on a device</b> — when you ask for Today's Token Cost, your pet pulls out a phone, tablet or laptop (depending on the pet) with a little live chart. It fades away together with the speech bubble.</li>
+  <li><b>Play menu</b> — the "Play or Pat" heading at the top of the menu is gone.</li>
+</ul>
+<h3>2.23.0</h3>
+<ul>
+  <li><b>Desktop alerts</b> — when hunger, happiness or energy hits 0, or health drops below 25, you get a desktop notification, even with the IDE minimised. It repeats every 15 minutes while the stat stays low.</li>
+  <li><b>Tidier settings</b> — settings are grouped, with the developer-mode settings in their own collapsed section.</li>
+  <li><b>Fixes</b> — no more blue box over a sleeping pet; your pet stops to eat its meal; notification buttons read "Open Codotchi".</li>
+</ul>
+<p>Full history: <a href="https://github.com/dylscoop/codotchi/blob/main/vscode/CHANGELOG.md">CHANGELOG</a></p>
+    ]]></change-notes>
 
     <idea-version since-build="241"/>
 
@@ -140,7 +278,7 @@ which determines which character your pet evolves into at each life stage.</p>
          classes (com.intellij.ui.jcef.*) are invisible to the Codotchi classloader,
          causing a NoClassDefFoundError on the JBCefApp.isSupported() guard in
          CodotchiToolWindow.kt.  The dependency is marked optional so the plugin still
-         loads on runtimes where JCEF is absent (non-JCEF JBR, Linux headless, etc.) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+         loads on runtimes where JCEF is absent (non-JCEF JBR, Linux headless, etc.) —
          in that case the existing fallback panel with instructions is shown instead. -->
     <depends optional="true" config-file="codotchi-jcef.xml">com.intellij.modules.jcef</depends>
 
@@ -184,6 +322,12 @@ which determines which character your pet evolves into at each life stage.</p>
             displayType="BALLOON"
             isLogByDefault="true"/>
 
+        <!-- Notification group for critical stats (hunger/happiness/energy at 0, health < 25); also sent as an OS notification -->
+        <notificationGroup
+            id="Codotchi Critical Stats"
+            displayType="BALLOON"
+            isLogByDefault="true"/>
+
         <!-- Notification group for Copilot quota sign-in/sign-out -->
         <notificationGroup
             id="Codotchi Copilot Quota"
@@ -202,7 +346,7 @@ which determines which character your pet evolves into at each life stage.</p>
     </extensions>
 
     <actions>
-        <!-- Dev-only sprite preview gallery ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â visible only when developer mode is active -->
+        <!-- Dev-only sprite preview gallery — visible only when developer mode is active -->
         <action id="com.codotchi.OpenSpritePreview"
                 class="com.codotchi.OpenSpritePreviewAction"
                 text="Codotchi: Open Sprite Preview (Dev)"
@@ -218,7 +362,7 @@ which determines which character your pet evolves into at each life stage.</p>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
 
-        <!-- GitHub Copilot quota sign-in / sign-out (OAuth device flow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â no PAT required) -->
+        <!-- GitHub Copilot quota sign-in / sign-out (OAuth device flow — no PAT required) -->
         <action id="com.codotchi.CopilotSignIn"
                 class="com.codotchi.CopilotSignInAction"
                 text="Codotchi: Sign in to GitHub (Copilot Quota)"
@@ -234,7 +378,7 @@ which determines which character your pet evolves into at each life stage.</p>
 
         <!-- Refresh button in the Codotchi tool window title bar -->
         <!-- Note: added to the title bar programmatically via ToolWindow.setTitleActions()
-             in CodotchiToolWindow.kt ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â no add-to-group needed here. The action is kept
+             in CodotchiToolWindow.kt — no add-to-group needed here. The action is kept
              registered so it remains invokable via Find Action. -->
         <action id="com.codotchi.Refresh"
                 class="com.codotchi.CodotchiRefreshAction"

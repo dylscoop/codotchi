@@ -29,6 +29,8 @@
     { "name": "codotchi", "description": "Show your codotchi pet as ASCII art" },
     { "name": "codotchi_feed", "description": "Feed your codotchi a meal" },
     { "name": "codotchi_pat", "description": "Pat your codotchi" },
+    { "name": "codotchi_play", "description": "Play with your codotchi" },
+    { "name": "codotchi_snack", "description": "Give your codotchi a snack" },
     { "name": "codotchi_sleep", "description": "Put your codotchi to sleep (or wake it)" },
     { "name": "codotchi_clean", "description": "Clean up after your codotchi" },
     { "name": "codotchi_medicine", "description": "Give your codotchi medicine when it is sick" },

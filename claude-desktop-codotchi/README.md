@@ -23,7 +23,7 @@ rendered as an ASCII text block.
 | Tool | What it does |
 |------|--------------|
 | `codotchi` | Show the pet |
-| `codotchi_feed` / `codotchi_pat` / `codotchi_sleep` / `codotchi_clean` / `codotchi_medicine` | Care actions |
+| `codotchi_feed` / `codotchi_snack` / `codotchi_pat` / `codotchi_play` / `codotchi_sleep` / `codotchi_clean` / `codotchi_medicine` | Care actions |
 | `codotchi_activity` | Registers chat activity → a small reward. Claude is asked (via the server's instructions) to call this ~once per turn as it works |
 
 Ask Claude in chat (e.g. "feed my codotchi") to trigger these tools — there

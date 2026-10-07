@@ -26,6 +26,9 @@ import os from "os";
 import path from "path";
 import {
   accumulateDailyUsage,
+  scanClaudeUsage,
+  localDayStartMs,
+  localDateKey,
   getIDEBase,
   resolveVSCodeStatePath,
   resolvePyCharmStatePath,
@@ -40,18 +43,18 @@ import {
 // Fixture helpers
 // ---------------------------------------------------------------------------
 
-/** Today's date as an ISO instant (UTC), used to build timestamps scanAllDailyUsage will count. */
+/** An ISO instant at the given local hour today — "today" is the user's local calendar day. */
 function todayIso(hour = 12) {
   const d = new Date();
-  d.setUTCHours(hour, 0, 0, 0);
+  d.setHours(hour, 0, 0, 0);
   return d.toISOString();
 }
 
 /** Yesterday's date as an ISO instant — used to build timestamps that must be excluded. */
 function yesterdayIso(hour = 12) {
   const d = new Date();
-  d.setUTCDate(d.getUTCDate() - 1);
-  d.setUTCHours(hour, 0, 0, 0);
+  d.setDate(d.getDate() - 1);
+  d.setHours(hour, 0, 0, 0);
   return d.toISOString();
 }
 
@@ -464,6 +467,105 @@ function writeIDEState(ide, { hash, state, savedAt, mtimeMs, raw } = {}) {
   }
   return filePath;
 }
+
+// ---------------------------------------------------------------------------
+// Suite 5b — scanClaudeUsage: local-day boundary, dedupe, subagents (BUGFIX-161)
+// ---------------------------------------------------------------------------
+
+/** Local-time instant helper: new Date(y, m, d, h, min) as ISO. */
+function localIso(y, m, d, h, min = 0) {
+  return new Date(y, m, d, h, min).toISOString();
+}
+
+/** Write a transcript tree under a fresh temp projects dir; returns its path. */
+function makeProjsDir(files) {
+  const projsDir = fs.mkdtempSync(path.join(os.tmpdir(), "codotchi-scan-test-"));
+  for (const [rel, lines] of Object.entries(files)) {
+    const fp = path.join(projsDir, rel);
+    fs.mkdirSync(path.dirname(fp), { recursive: true });
+    fs.writeFileSync(fp, lines.map((l) => JSON.stringify(l)).join("\n") + "\n", "utf8");
+  }
+  return projsDir;
+}
+
+function idLine(id, requestId, timestamp, outputTokens = 50) {
+  const l = assistantLine({ timestamp, inputTokens: 100, outputTokens });
+  l.message.id = id;
+  l.requestId = requestId;
+  return l;
+}
+
+describe("scanClaudeUsage — local day boundary, dedupe and subagents", () => {
+  // 00:30 local on 2026-09-24 — just after the user's midnight.
+  const nowMs = new Date(2026, 8, 24, 0, 30).getTime();
+
+  it("localDayStartMs / localDateKey use the local calendar day", () => {
+    assert.equal(localDayStartMs(nowMs), new Date(2026, 8, 24).getTime());
+    assert.equal(localDateKey(nowMs), "2026-09-24");
+  });
+
+  it("splits a session that crosses midnight at local midnight", () => {
+    const projsDir = makeProjsDir({
+      "proj/sess.jsonl": [
+        idLine("m1", "r1", localIso(2026, 8, 23, 23, 59)),
+        idLine("m2", "r2", localIso(2026, 8, 24, 0, 1)),
+      ],
+    });
+    try {
+      const r = scanClaudeUsage({ projsDir, nowMs });
+      assert.equal(r.messageCount, 1);
+      assert.equal(r.tokens, 150);
+    } finally { fs.rmSync(projsDir, { recursive: true, force: true }); }
+  });
+
+  it("counts repeated content-block lines once, keeping the last line's usage", () => {
+    const ts = localIso(2026, 8, 24, 0, 10);
+    const projsDir = makeProjsDir({
+      "proj/sess.jsonl": [
+        idLine("m1", "r1", ts, 5),     // partial output on the first content block
+        idLine("m1", "r1", ts, 50),    // final usage on the last content block
+        idLine("m2", "r2", ts, 50),
+      ],
+    });
+    try {
+      const r = scanClaudeUsage({ projsDir, nowMs });
+      assert.equal(r.messageCount, 2);
+      assert.equal(r.tokens, 300);
+    } finally { fs.rmSync(projsDir, { recursive: true, force: true }); }
+  });
+
+  it("includes subagent transcripts under <session>/subagents/", () => {
+    const ts = localIso(2026, 8, 24, 0, 10);
+    const projsDir = makeProjsDir({
+      "proj/sess.jsonl": [idLine("m1", "r1", ts)],
+      "proj/sess/subagents/agent-a.jsonl": [idLine("s1", "rs1", ts), idLine("s2", "rs2", ts)],
+    });
+    try {
+      const r = scanClaudeUsage({ projsDir, nowMs });
+      assert.equal(r.messageCount, 3);
+    } finally { fs.rmSync(projsDir, { recursive: true, force: true }); }
+  });
+
+  it("hourly cost covers only the last hour", () => {
+    const projsDir = makeProjsDir({
+      "proj/sess.jsonl": [
+        idLine("old", "r1", localIso(2026, 8, 23, 23, 0)),   // yesterday — excluded entirely
+        idLine("new", "r2", localIso(2026, 8, 24, 0, 20)),   // within the last hour
+      ],
+    });
+    try {
+      const r = scanClaudeUsage({ projsDir, nowMs });
+      assert.equal(r.messageCount, 1);
+      assert.ok(r.hourlyCostUsd > 0);
+      assert.equal(r.hourlyCostUsd, r.costUsd);
+    } finally { fs.rmSync(projsDir, { recursive: true, force: true }); }
+  });
+
+  it("returns zeros when the projects dir does not exist", () => {
+    const r = scanClaudeUsage({ projsDir: path.join(os.tmpdir(), "codotchi-missing-dir-xyz"), nowMs });
+    assert.deepEqual(r, { costUsd: 0, tokens: 0, hourlyCostUsd: 0, messageCount: 0 });
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Suite 6 — resolveCanonicalPetPath: mtime-based selection across both IDEs

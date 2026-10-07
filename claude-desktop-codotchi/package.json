@@ -1,11 +1,14 @@
 {
   "name": "claude-desktop-codotchi",
-  "version": "2.20.11",
-  "description": "Codotchi for Claude Desktop ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â a Tamagotchi-style virtual pet that lives in your chats, rendered as an interactive MCP App and packaged as a one-click .mcpb bundle.",
+  "version": "2.27.2",
+  "description": "Codotchi for Claude Desktop — a Tamagotchi-style virtual pet that lives in your chats, rendered as an interactive MCP App and packaged as a one-click .mcpb bundle.",
   "type": "module",
   "private": true,
   "scripts": {
+    "prebuild": "node ../scripts/sync-core.mjs",
     "build": "node scripts/build.mjs",
+    "pretest": "node ../scripts/sync-core.mjs",
+    "test": "tsc -p tsconfig.test.json && node --test tests/tools.test.mjs",
     "bundle": "node scripts/bundle-mcpb.mjs",
     "start": "node dist/server.mjs"
   },

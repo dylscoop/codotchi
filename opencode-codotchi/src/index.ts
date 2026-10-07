@@ -53,7 +53,10 @@ import {
   applyOfflineDecay,
   applyCodeActivity,
   feedMeal,
+  startSnack,
+  consumeSnack,
   pat,
+  play,
   sleep,
   clean,
   giveMedicine,
@@ -64,6 +67,7 @@ import {
   TICK_INTERVAL_SECONDS,
   CODE_ACTIVITY_THROTTLE_SECONDS,
 } from "./gameEngine.js";
+import { sealSerialisedState, verifySeal } from "./integrity.js";
 
 import {
   buildSpeechBubble,
@@ -74,6 +78,7 @@ import {
   formatCost,
   stripAnsi,
   pickRandom,
+  attentionCallSpeech,
   TODO_COMPLETE_PHRASES,
   SESSION_DIFF_PHRASES,
 } from "./asciiArt.js";
@@ -84,6 +89,19 @@ import {
 
 /** How recently (ms) a state file must have been saved to count as "active". */
 const ACTIVE_IDE_THRESHOLD_MS = 60_000;
+
+// Speech when a whim attention call is answered — one line picked at random.
+// Mirrored in vscode/media/sidebar.js (shared by both IDEs) and claude-codotchi/scripts/whimSpeech.mjs.
+const WHIM_ANSWER_SPEECH = {
+  play:    ["Yay, you played with me!", "That's just what I wanted!", "Again! Again!", "Best game ever!"],
+  pat:     ["Ahh, that's the spot.", "I needed that, thank you!", "More pats, please!", "You always know what I need."],
+  craving: ["Mmm, just what I was craving!", "You read my mind!", "That hit the spot!", "Exactly what I wanted, yum!"],
+};
+
+function whimSpeech(call: keyof typeof WHIM_ANSWER_SPEECH): string {
+  const lines = WHIM_ANSWER_SPEECH[call];
+  return lines[Math.floor(Math.random() * lines.length)];
+}
 
 // ---------------------------------------------------------------------------
 // OpenCode-local pet config — unkillable from neglect, normal aging speed
@@ -136,12 +154,14 @@ interface IDEStateFile {
   state: Record<string, unknown>;
   savedAt: number;
   terminalEnabled?: boolean;
+  /** Leaderboard integrity seal (see integrity.ts); absent in files from older builds. */
+  seal?: string;
 }
 
 interface LocalStateFile {
   state: Record<string, unknown>;
   savedAt: number;
-  createdDate?: string; // UTC date string "YYYY-MM-DD"
+  createdDate?: string; // local date string "YYYY-MM-DD"
   totalMessages?: number; // Cumulative message count across days
 }
 
@@ -151,7 +171,7 @@ function loadFromIDEFile(filePath: string): { state: PetState; savedAt: number; 
     const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as IDEStateFile;
     if (!raw.state || typeof raw.savedAt !== "number") { return null; }
     return {
-      state: deserialiseState(raw.state),
+      state: verifySeal(deserialiseState(raw.state), raw.seal),
       savedAt: raw.savedAt,
       terminalEnabled: raw.terminalEnabled ?? true,
     };
@@ -164,9 +184,11 @@ function saveToIDEFile(filePath: string, state: PetState): void {
   try {
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
+    const serialised = serialiseState(state) as Record<string, unknown>;
     const payload: IDEStateFile = {
-      state: serialiseState(state) as Record<string, unknown>,
+      state: serialised,
       savedAt: Date.now(),
+      seal: sealSerialisedState(serialised),
     };
     fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
   } catch {
@@ -199,8 +221,17 @@ function getDailyUsagePath(): string {
   return path.join(os.homedir(), ".config", "opencode", "codotchi-daily.json");
 }
 
-function todayUTC(): string {
-  return new Date().toISOString().slice(0, 10);
+/** Local calendar date ("YYYY-MM-DD") — "today" for daily usage and the local pet. */
+function todayLocal(nowMs: number = Date.now()): string {
+  const d = new Date(nowMs);
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Epoch ms of local midnight at the start of today. */
+function todayStartLocalMs(nowMs: number = Date.now()): number {
+  const d = new Date(nowMs);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
 function loadDailyUsage(): void {
@@ -208,7 +239,7 @@ function loadDailyUsage(): void {
     const filePath = getDailyUsagePath();
     if (!fs.existsSync(filePath)) { return; }
     const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number; messages?: number };
-    const today = todayUTC();
+    const today = todayLocal();
     if (raw.date === today) {
       // Store into sidecar vars only — do NOT pre-seed dailyCostUSD.
       // backfillDailyUsage() will set dailyCostUSD from the authoritative SQLite
@@ -232,7 +263,7 @@ function saveDailyUsage(): void {
 }
 
 function checkDayRollover(): void {
-  const today = todayUTC();
+  const today = todayLocal();
   if (dailyDate !== today) {
     dailyCostUSD    = 0;
     dailyTokens     = 0;
@@ -312,8 +343,8 @@ function findOpencodeCli(): string | null {
  */
 async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> {
   try {
-    const today = todayUTC();
-    const todayStartMs = new Date(today + "T00:00:00.000Z").getTime();
+    const today = todayLocal();
+    const todayStartMs = todayStartLocalMs();
 
     // ------------------------------------------------------------------
     // Track A — cross-project daily totals via SQLite
@@ -407,7 +438,9 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
         const messages = msgResult.data ?? [];
         if (!trackASucceeded) {
           // Track A failed — use API totals as fallback for cost/token totals
-          const totals = sumCompletedAssistantUsage(messages);
+          // Only messages completed today — a session updated today may also
+          // hold earlier days' messages, which must not inflate today's total.
+          const totals = sumCompletedAssistantUsage(messages, todayStartMs);
           backfilledCost     += totals.costUSD;
           backfilledTokens   += totals.tokens;
           backfilledMessages += totals.messages;
@@ -451,7 +484,7 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     //     message timestamp) as before.
     const dedupeTs = trackASucceeded ? trackASnapshotTime : latestBackfillTsAll;
     for (const ev of pendingLiveEvents) {
-      if (ev.completedAt > dedupeTs) {
+      if (ev.completedAt > dedupeTs && ev.completedAt >= todayStartMs) {
         dailyCostUSD  += ev.cost;
         dailyTokens   += ev.tokens;
         dailyMessages += 1;
@@ -593,7 +626,7 @@ function loadLocalState(): void {
     
     // Check if the pet was created on a different day — if so, respawn
     const createdDate = raw.createdDate ?? null;
-    const today = todayUTC();
+    const today = todayLocal();
     if (createdDate !== today) {
       // New day — respawn the pet and set its stage based on message count
       createLocalPet();
@@ -624,7 +657,7 @@ function saveLocalState(): void {
     const payload: LocalStateFile = {
       state: serialiseState(localPetState) as Record<string, unknown>,
       savedAt: Date.now(),
-      createdDate: todayUTC(),
+      createdDate: todayLocal(),
       totalMessages: localPetTotalMessages,
     };
     fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
@@ -695,7 +728,7 @@ let hasOfferedHelp = false;
 
 // ---------------------------------------------------------------------------
 // Daily usage tracking (persisted to codotchi-daily.json sidecar)
-// Accumulates cost + token spend across all OpenCode sessions today (UTC).
+// Accumulates cost + token spend across all OpenCode sessions today (local calendar day).
 // ---------------------------------------------------------------------------
 
 /** Session-level cost accumulator (reset on session.created). */
@@ -705,19 +738,19 @@ let sessionTokens  = 0;
 /** How many assistant messages this session (drives local-pet evolution). */
 let localPetSessionMessages = 0;
 
-/** Running daily USD cost (set by backfillDailyUsage on startup, reset at UTC midnight). */
+/** Running daily USD cost (set by backfillDailyUsage on startup, reset at local midnight). */
 let dailyCostUSD = 0;
-/** Running daily token count (set by backfillDailyUsage on startup, reset at UTC midnight). */
+/** Running daily token count (set by backfillDailyUsage on startup, reset at local midnight). */
 let dailyTokens  = 0;
 /**
  * Count of completed assistant messages today (set by backfillDailyUsage on
- * startup, reset at UTC midnight). Used as the denominator for the
+ * startup, reset at local midnight). Used as the denominator for the
  * tokens-per-message average shown in the speech bubble — dailyTokens /
  * dailyMessages. Incremented at the exact same point dailyTokens is, so the
  * two values are always in sync (no separate filtering needed).
  */
 let dailyMessages = 0;
-/** UTC date string "YYYY-MM-DD" for the currently stored daily totals. */
+/** Local date string "YYYY-MM-DD" for the currently stored daily totals. */
 let dailyDate    = "";
 
 /**
@@ -734,7 +767,7 @@ let sidecarMessages = 0;
  * Set of message IDs already counted toward dailyCostUSD/dailyTokens this day.
  * Prevents double-counting when message.updated fires multiple times for the
  * same message (e.g. once per streaming chunk before the final completion).
- * Cleared on UTC day rollover in checkDayRollover().
+ * Cleared on local day rollover in checkDayRollover().
  */
 const countedMessageIds = new Set<string>();
 
@@ -781,14 +814,14 @@ let costWarnThreshold  = 30;
 let costShoutThreshold = 50;
 
 // ---------------------------------------------------------------------------
-// Todo tracking â€” detect status transitions for celebratory notifications
+// Todo tracking — detect status transitions for celebratory notifications
 // ---------------------------------------------------------------------------
 
-/** Map of todo id â†’ last known status, used to detect transitions. */
+/** Map of todo id → last known status, used to detect transitions. */
 let prevTodos: Map<string, string> = new Map();
 
 // ---------------------------------------------------------------------------
-// Diff tracking â€” flag when AI has shipped changes since last idle
+// Diff tracking — flag when AI has shipped changes since last idle
 // ---------------------------------------------------------------------------
 
 /** True when at least one session.diff with non-empty diff arrived since the
@@ -841,7 +874,15 @@ const RANK_CACHE_TTL_MS_OC = 5 * 60 * 1000;
 const SCORES_JSON_URL_OC = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/scores.json";
 const LIVE_JSON_URL_OC   = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/live.json";
 
-async function refreshLiveRank(ageDays: number): Promise<void> {
+const STAGE_ORDER_OC: Record<string, number> = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
+const LIVE_STALE_MS_OC = 48 * 60 * 60 * 1000; // matches leaderboard/index.html
+
+type RankEntry = { ageDays?: number; stage?: string; spawnedAt?: number; updatedAt?: number };
+
+/** Rank the pet the way leaderboard/index.html orders rows: live entries only if
+ *  pushed within 48h, stage then stored ageDays (no extrapolation), and the pet's
+ *  own live entry (by spawnedAt) excluded so the +1 counts it once. */
+async function refreshLiveRank(me: { ageDays?: number; stage?: string; spawnedAt?: number }): Promise<void> {
   const now = Date.now();
   if (liveRankCache && now - liveRankCache.at < RANK_CACHE_TTL_MS_OC) { return; }
   try {
@@ -851,22 +892,21 @@ async function refreshLiveRank(ageDays: number): Promise<void> {
     ]);
     if (!scoresRes.ok) { return; }
     const json = await scoresRes.json() as Record<string, unknown> | Array<unknown>;
-    const scores: Array<{ ageDays?: number }> = Array.isArray(json)
-      ? (json as Array<{ ageDays?: number }>)
-      : ((json as Record<string, unknown>).scores as Array<{ ageDays?: number }> ?? []);
-    const liveJson: Array<{ ageDays?: number; updatedAt?: number }> = liveRes?.ok
+    const scores: RankEntry[] = Array.isArray(json)
+      ? (json as RankEntry[])
+      : ((json as Record<string, unknown>).scores as RankEntry[] ?? []);
+    const liveJson: RankEntry[] = liveRes?.ok
       ? await liveRes.json().catch(() => []) : [];
-    const staleMs = 30 * 24 * 60 * 60 * 1000;
-    const msPerGameDayApprox = 5 * 60 * 1000; // 5 real min ≈ 1 game day (awake rate)
-    const freshLive = liveJson
-      .filter(e => typeof e.updatedAt !== "number" || now - e.updatedAt < staleMs)
-      .map(e => ({
-        ageDays: typeof e.updatedAt === "number"
-          ? (e.ageDays ?? 0) + (now - e.updatedAt) / msPerGameDayApprox
-          : (e.ageDays ?? 0),
-      }));
-    const combined = (scores as Array<{ ageDays?: number }>).concat(freshLive);
-    const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
+    const freshLive = (Array.isArray(liveJson) ? liveJson : [])
+      .filter(e => typeof e.updatedAt === "number" && now - e.updatedAt < LIVE_STALE_MS_OC)
+      .filter(e => !(me.spawnedAt && e.spawnedAt === me.spawnedAt));
+    const combined = scores.concat(freshLive);
+    const myStage = STAGE_ORDER_OC[me.stage ?? ""] ?? 0;
+    const myAge = me.ageDays ?? 0;
+    const rank = combined.filter(s => {
+      const st = STAGE_ORDER_OC[s.stage ?? ""] ?? 0;
+      return st !== myStage ? st > myStage : (s.ageDays ?? 0) > myAge;
+    }).length + 1;
     liveRankCache = { rank, total: combined.length + 1, at: now };
   } catch { /* network failure — keep stale */ }
 }
@@ -903,7 +943,7 @@ function artHeader(): string {
 
   // Trigger a background rank refresh (fire-and-forget) on each artHeader call.
   const firstAlive = alivePets[0];
-  void refreshLiveRank(firstAlive.state.ageDays ?? 0);
+  void refreshLiveRank(firstAlive.state);
 
   const bubbles = alivePets
     .map(p => {
@@ -1072,6 +1112,12 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
           ? buildSpeechBubble(next.stage, next.mood, pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."]), next.name, next.spriteType, ideLabel)
           : `${ideLabel} ${next.name}: ${pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."])}`);
         break;
+      case "break_nap_over":
+        setMeals(ide, 0);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(next.stage, next.mood, "Break's over! Ready to code.", next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: Break's over! Ready to code.`);
+        break;
       case "died":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "sad", pickRandom(["Goodbye... take care of the next one.", "It was good while it lasted. See you next time.", "Farewell. Start fresh when you're ready."]), next.name, next.spriteType, ideLabel)
@@ -1094,50 +1140,32 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
         break;
       }
       case "attention_call_hunger":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sad", pickRandom(["I'm so hungry... please feed me!", "Running on empty. Feed me soon!", "Really need food right now."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I'm so hungry... please feed me!", "Running on empty. Feed me soon!", "Really need food right now."])}`);
-        break;
       case "attention_call_unhappiness":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sad", pickRandom(["I want to play", "Getting lonely over here.", "Need some attention."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I want to play", "Getting lonely over here.", "Need some attention."])}`);
-        break;
       case "attention_call_sick":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sick", pickRandom(["I don't feel well. I need medicine!", "Feeling sick... please give me medicine.", "Medicine please!"]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I don't feel well. I need medicine!", "Feeling sick... please give me medicine.", "Medicine please!"])}`);
-        break;
       case "attention_call_critical_health":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sick", pickRandom(["My health is critical! Please help me!", "I'm in rough shape. Need help!", "Critical health — please help."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["My health is critical! Please help me!", "I'm in rough shape. Need help!", "Critical health — please help."])}`);
-        break;
       case "attention_call_low_energy":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sad", pickRandom(["I'm exhausted... let me sleep!", "Nearly out of energy. Need to rest.", "So tired... let me sleep."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I'm exhausted... let me sleep!", "Nearly out of energy. Need to rest.", "So tired... let me sleep."])}`);
+      case "attention_call_poop":
+      case "attention_call_gift":
+      case "attention_call_break":
+      case "attention_call_misbehaviour":
+      case "attention_call_play":
+      case "attention_call_pat":
+      case "attention_call_craving_meal":
+      case "attention_call_craving_snack":
+      {
+        const call = attentionCallSpeech(event.replace("attention_call_", ""));
+        if (call) {
+          queueNotification(terminalEnabled
+            ? buildSpeechBubble(next.stage, call.mood, call.message, next.name, next.spriteType, ideLabel)
+            : `${ideLabel} ${next.name}: ${call.message}`);
+        }
         break;
+      }
       case "became_sick":
         queueNotification(buildToast(next.stage, `${ideLabel} ${next.name} has fallen sick.`));
         break;
       case "pooped":
         queueNotification(buildToast(next.stage, `${ideLabel} ${next.name} made a mess! (use /codotchi clean)`));
-        break;
-      case "attention_call_poop":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "sad", pickRandom(["There is a mess here! Can you clean it up?", "It's getting messy. Please clean!", "Could use a clean-up in here."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["There is a mess here! Can you clean it up?", "It's getting messy. Please clean!", "Could use a clean-up in here."])}`);
-        break;
-      case "attention_call_gift":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "happy", pickRandom(["I brought you a gift! Use /codotchi pat to accept it.", "I have a surprise for you! (/codotchi pat)", "Got something for you — /codotchi pat to collect."]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I brought you a gift! Use /codotchi pat to accept it.", "I have a surprise for you! (/codotchi pat)", "Got something for you — /codotchi pat to collect."])}`);
-        break;
-      case "attention_call_misbehaviour":
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, "neutral", pickRandom(["I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", "I need some discipline. (/codotchi pat)", "Being difficult. (/codotchi pat or /codotchi feed)"]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom(["I'm acting up! Use /codotchi pat or /codotchi feed to discipline me.", "I need some discipline. (/codotchi pat)", "Being difficult. (/codotchi pat or /codotchi feed)"])}`);
         break;
     }
   }
@@ -1283,10 +1311,11 @@ export const plugin: Plugin = async (ctx) => {
       if (!backfillComplete) { return; } // don't interfere while backfill is running
       try {
         if (!fs.existsSync(dailyFilePath)) { return; }
-        const raw = JSON.parse(fs.readFileSync(dailyFilePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number };
-        if (raw.date !== todayUTC()) { return; }
-        const fileCost   = typeof raw.costUSD === "number" ? raw.costUSD : 0;
-        const fileTokens = typeof raw.tokens  === "number" ? raw.tokens  : 0;
+        const raw = JSON.parse(fs.readFileSync(dailyFilePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number; messages?: number };
+        if (raw.date !== todayLocal()) { return; }
+        const fileCost     = typeof raw.costUSD  === "number" ? raw.costUSD  : 0;
+        const fileTokens   = typeof raw.tokens   === "number" ? raw.tokens   : 0;
+        const fileMessages = typeof raw.messages === "number" ? raw.messages : dailyMessages;
         // Adopt the file value if it differs meaningfully from what we hold.
         // We no longer use Math.max here — since Track A (SQLite) now immediately
         // overwrites the sidecar with the authoritative DB value on every startup,
@@ -1297,8 +1326,9 @@ export const plugin: Plugin = async (ctx) => {
         // is meaningfully *lower* (another window corrected the total via Track A).
         // The threshold avoids thrashing on floating-point noise.
         if (Math.abs(fileCost - dailyCostUSD) > 0.0001 || Math.abs(fileTokens - dailyTokens) > 10) {
-          dailyCostUSD = fileCost;
-          dailyTokens  = fileTokens;
+          dailyCostUSD  = fileCost;
+          dailyTokens   = fileTokens;
+          dailyMessages = fileMessages;   // keep the tok/msg average consistent with the adopted totals
         }
       } catch { /* best-effort */ }
     };
@@ -1338,7 +1368,7 @@ export const plugin: Plugin = async (ctx) => {
       "This tool reads state from VS Code, PyCharm, and the local OpenCode pet — do NOT use any other codotchi tool.",
     args: {
       action: tool.schema
-        .enum(["status", "feed", "pat", "sleep", "clean", "medicine", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
+        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
         .describe("The action to perform"),
       value: tool.schema
         .number()
@@ -1486,6 +1516,11 @@ export const plugin: Plugin = async (ctx) => {
                feedLines.push(`[${pLabel}] ${s.name} is sleeping and can't eat right now.`);
                continue;
              }
+             // BUG-S04: a sick pet won't eat until it's had its medicine.
+             if (s.sick) {
+               feedLines.push(`[${pLabel}] ${s.name} is too sick to eat — give medicine first (/codotchi medicine).`);
+               continue;
+             }
              const next = feedMeal(s, meals);
              const refused = next.events.includes("meal_refused");
              if (!refused) { setMeals(p.ide, meals + 1); }
@@ -1495,12 +1530,50 @@ export const plugin: Plugin = async (ctx) => {
                ? `${next.name} is too full for another meal.`
                : `${next.name} enjoyed the meal! (hunger: ${next.hunger})`);
              feedLines.push((terminalEnabled
-               ? buildSpeechBubble(next.stage, next.mood, refused ? "I'm too full!" : "Yum!", next.name, next.spriteType) + "\n"
+               ? buildSpeechBubble(next.stage, next.mood, refused ? "I'm too full!" : next.events.includes("attention_call_answered_craving") ? whimSpeech("craving") : "Yum!", next.name, next.spriteType) + "\n"
                : "") + toast + "\n" + (refused
                ? `[${pLabel}] Meal refused — ${next.name} has already had ${getMeals(p.ide)} meals this wake cycle.`
                : `[${pLabel}] Fed ${next.name}. Hunger: ${next.hunger}/100, Weight: ${next.weight}.`));
            }
            return ret(notification + feedLines.join("\n\n"));
+         }
+
+         case "snack": {
+           const snackLines: string[] = [];
+           for (const p of alivePets) {
+             // Skip OpenCode-local pet
+             if (p.ide === "opencode") {
+               snackLines.push(`[OpenCode] I'm just a companion — I don't need snacks.`);
+               continue;
+             }
+             const s = p.state;
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             if (s.sleeping) {
+               snackLines.push(`[${pLabel}] ${s.name} is sleeping and can't eat right now.`);
+               continue;
+             }
+             // BUG-S04: a sick pet won't have a snack until it's had its medicine.
+             if (s.sick) {
+               snackLines.push(`[${pLabel}] ${s.name} is too sick to have a snack — give medicine first (/codotchi medicine).`);
+               continue;
+             }
+             // The IDE drops the snack on the floor and the pet walks to it; here it's eaten straight away.
+             const placed = startSnack(s);
+             if (placed.events.includes("snack_refused")) {
+               snackLines.push(`[${pLabel}] Snack refused — no more snacks for ${s.name} right now.`);
+               continue;
+             }
+             const answered = placed.events.includes("attention_call_answered_craving");
+             const next = consumeSnack(placed);
+             setPetState(p.ide, next);
+             saveIDEState(p.ide);
+             const gotSick = next.events.includes("became_sick");
+             snackLines.push((terminalEnabled
+               ? buildSpeechBubble(next.stage, next.mood, gotSick ? "Ugh, too many snacks..." : answered ? whimSpeech("craving") : "Crunch!", next.name, next.spriteType) + "\n"
+               : "") + `[${pLabel}] Gave ${next.name} a snack. Hunger: ${next.hunger}/100, Happiness: ${next.happiness}.` +
+               (gotSick ? ` ${next.name} ate too many snacks in a row and feels sick.` : ""));
+           }
+           return ret(notification + snackLines.join("\n\n"));
          }
 
          case "pat": {
@@ -1525,12 +1598,48 @@ export const plugin: Plugin = async (ctx) => {
                ? `${next.name} is too tired even for a pat.`
                : `${next.name} enjoyed the pat!`);
              patLines.push((terminalEnabled
-               ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired..." : "Yay!", next.name, next.spriteType) + "\n"
+               ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired..." : next.events.includes("attention_call_answered_pat") ? whimSpeech("pat") : "Yay!", next.name, next.spriteType) + "\n"
                : "") + toast + "\n" + (refused
                ? `[${pLabel}] Pat refused — ${next.name} is too exhausted.`
                : `[${pLabel}] Patted ${next.name}. Happiness: ${next.happiness}.`));
            }
            return ret(notification + patLines.join("\n\n"));
+         }
+
+         case "play": {
+           const playLines: string[] = [];
+           for (const p of alivePets) {
+             // Skip OpenCode-local pet
+             if (p.ide === "opencode") {
+               playLines.push(`[OpenCode] I'm just a companion — I don't need games.`);
+               continue;
+             }
+             const s = p.state;
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             if (s.sleeping) {
+               playLines.push(`[${pLabel}] ${s.name} is sleeping.`);
+               continue;
+             }
+             // BUG-S04: a sick pet won't play until it's had its medicine.
+             if (s.sick) {
+               playLines.push(`[${pLabel}] ${s.name} is too sick to play — give medicine first (/codotchi medicine).`);
+               continue;
+             }
+             // No mini-game in the terminal — play() applies the stat changes and answers a play call.
+             const next = play(s);
+             const refused = next.events.includes("play_refused_no_energy");
+             if (!refused) {
+               setPetState(p.ide, next);
+               saveIDEState(p.ide);
+             }
+             const answered = next.events.includes("attention_call_answered_play");
+             playLines.push((terminalEnabled
+               ? buildSpeechBubble(next.stage, next.mood, refused ? "Too tired to play..." : answered ? whimSpeech("play") : "That was fun!", next.name, next.spriteType) + "\n"
+               : "") + (refused
+               ? `[${pLabel}] Play refused — ${next.name} is too tired.`
+               : `[${pLabel}] Played with ${next.name}. Happiness: ${next.happiness}, Energy: ${next.energy}.`));
+           }
+           return ret(notification + playLines.join("\n\n"));
          }
 
          case "sleep": {
@@ -1611,7 +1720,7 @@ export const plugin: Plugin = async (ctx) => {
          }
 
         default:
-          return ret(notification + artHeader() + "Unknown action. Use one of: status, feed, pat, sleep, clean, medicine, on, off, warnthreshold, shoutthreshold.");
+          return ret(notification + artHeader() + "Unknown action. Use one of: status, feed, snack, pat, play, sleep, clean, medicine, on, off, warnthreshold, shoutthreshold.");
       }
     },
   });
@@ -1837,6 +1946,10 @@ export const plugin: Plugin = async (ctx) => {
 
             // Deduplicate by message ID: message.updated can fire multiple times
             // for the same message ID even after completion (e.g. metadata updates).
+            // Roll the day over *before* the dedupe check: checkDayRollover()
+            // clears countedMessageIds, so running it afterwards would forget
+            // the message that triggered the rollover.
+            if (backfillComplete) { checkDayRollover(); }
             const msgId: string = typeof info.id === "string" ? info.id : "";
             if (msgId && countedMessageIds.has(msgId)) { return; }
             if (msgId) { countedMessageIds.add(msgId); }
@@ -1851,12 +1964,14 @@ export const plugin: Plugin = async (ctx) => {
               // It will be replayed (or discarded if already captured by backfill) once
               // backfillDailyUsage() finishes.
               pendingLiveEvents.push({ cost: info.cost, tokens: t, completedAt });
-            } else {
-              checkDayRollover();
+            } else if (completedAt >= todayStartLocalMs()) {
+              // Bucket by completion time, not arrival time: a reply that
+              // finished before midnight but whose event arrives after it
+              // belongs to yesterday, not today.
               dailyCostUSD   += info.cost;
               dailyTokens    += t;
               dailyMessages  += 1;
-              dailyDate = todayUTC();
+              dailyDate = todayLocal();
               saveDailyUsage();
               // Push to rolling last-1h buffer
               costEvents.push({ completedAt, costUSD: info.cost, tokens: t });

@@ -25,9 +25,12 @@ import {
 } from "./gameEngine";
 import { SidebarProvider } from "./sidebarProvider";
 import { StatusBarManager } from "./statusBar";
+import { anotherWindowOwnsTick } from "./tickLease";
 import { EventsManager } from "./events";
 import { SpritePreviewPanel } from "./spritePreviewPanel";
-import { getCustomCharacterByPasscode } from "./customCharacters";
+import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
+import { cravingItemFor } from "./cravingItem";
+import { CriticalStatTracker, evaluateCriticalStats, sendOsNotification } from "./criticalStatNotifier";
 import {
   saveState,
   loadState,
@@ -39,6 +42,8 @@ import {
   getActiveStatePath,
   copySharedToWorkspace,
   migrateStateFolder,
+  readStateFileStamp,
+  WRITER_ID,
 } from "./persistence";
 
 const TICK_INTERVAL_MS: number = TICK_INTERVAL_SECONDS * 1_000;
@@ -82,8 +87,18 @@ const DEEP_IDLE_REENTRY_GRACE_MS = 60_000;
 /** Timestamp of the last "pet needs rescue while idle" notification, so it can repeat. */
 let lastRescueNotifyMs = 0;
 
+/**
+ * The events array we last fired toasts for. The sidebar re-broadcasts the
+ * current state (live-progress toggle, live push, sign-in) with the last
+ * tick's events still on it, so toasts only fire for an events array not seen yet.
+ */
+let lastNotifiedEvents: readonly string[] | null = null;
+
 /** How often to re-fire the rescue notification while the sick/losing-health-while-idle condition persists. */
 const RESCUE_NOTIFY_REPEAT_MS = 5 * 60_000;
+
+/** Per-stat timestamps of the last desktop notification for a critical stat. */
+let criticalStatTracker: CriticalStatTracker = {};
 
 /**
  * Activate the extension.
@@ -103,12 +118,16 @@ export function activate(context: vscode.ExtensionContext): void {
    */
   function handleStateUpdate(state: PetState, isIdle: boolean = false): void {
     currentState = state;
+    const freshEvents = state.events !== lastNotifiedEvents;
+    lastNotifiedEvents = state.events;
 
     // Fire IDE notifications for attention call events (only when mechanic is enabled)
     const attentionCallsEnabled = vscode.workspace
       .getConfiguration("codotchi")
       .get<boolean>("enableAttentionCalls", true);
-    if (attentionCallsEnabled) {
+    if (attentionCallsEnabled && freshEvents) {
+      const patCall = getCustomCharacterBySpriteType(state.spriteType)?.patCall;
+      const cravingItem = cravingItemFor(state);
       const notificationMessages: Record<string, string> = {
         "attention_call_hunger":         `${state.name} is hungry!`,
         "attention_call_unhappiness":    `${state.name} is feeling sad!`,
@@ -118,6 +137,12 @@ export function activate(context: vscode.ExtensionContext): void {
         "attention_call_misbehaviour":   `${state.name} is misbehaving!`,
         "attention_call_gift":           (getCustomCharacterByPasscode(vscode.workspace.getConfiguration("codotchi").get<string>("characterPasscode", ""))?.giftMessage ?? `${state.name} brought you a gift!`).replace("__Name__", state.name),
         "attention_call_critical_health":`${state.name}'s health is critical!`,
+        "attention_call_play":           `${state.name} wants to play a game!`,
+        "attention_call_pat":            patCall ? patCall.call.replace("__Name__", state.name) : `${state.name} wants a pat!`,
+        "attention_call_craving_meal":   `${state.name} is craving a meal!`,
+        "attention_call_craving_snack":  `${state.name} is craving ${cravingItem ?? "a snack"}!`,
+        "attention_call_break":          "Time for a break! You've been coding for 30 minutes.",
+        "break_nap_over":                `Break's over! ${state.name} is awake and ready to code.`,
       };
       for (const event of state.events) {
         const msg = notificationMessages[event];
@@ -132,7 +157,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     // Fire old-age natural-causes death notification
-    if (state.events.includes("died_of_old_age")) {
+    if (freshEvents && state.events.includes("died_of_old_age")) {
       void vscode.window.showWarningMessage(
         `${state.name} has passed away of unforeseen natural causes due to old age.`
       );
@@ -158,6 +183,19 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     } else {
       lastRescueNotifyMs = 0;
+    }
+
+    // Desktop (OS) notification when hunger, happiness or energy hits 0 or health
+    // drops below 25, so a minimised IDE doesn't hide it. Independent of the
+    // attention-call mechanic.
+    if (vscode.workspace.getConfiguration("codotchi").get<boolean>("osNotifications", true)) {
+      const result = evaluateCriticalStats(state, criticalStatTracker, Date.now());
+      criticalStatTracker = result.tracker;
+      if (result.message) {
+        sendOsNotification("Codotchi", result.message);
+      }
+    } else {
+      criticalStatTracker = {};
     }
 
     // Update high score when pet dies (suppressed in dev mode — scores don't count)
@@ -332,6 +370,13 @@ export function activate(context: vscode.ExtensionContext): void {
   function runOneTick(): void {
     if (currentState === null) { return; }
     const cfg = vscode.workspace.getConfiguration("codotchi");
+    // AI mode keeps every window ticking. If another window saved the pet
+    // within the lease, follow its file instead of ticking a stale copy.
+    if (cfg.get<boolean>("aiMode", false) &&
+        anotherWindowOwnsTick(readStateFileStamp(), WRITER_ID, Date.now())) {
+      reloadAndRefreshUI(false);
+      return;
+    }
     const idleThresholdMs = cfg.get<number>("idleThresholdSeconds", 60) * 1_000;
     const idleDeepThresholdMs = cfg.get<number>("idleDeepThresholdSeconds", 600) * 1_000;
     const idleMs = Date.now() - lastActivityMs;
@@ -351,15 +396,15 @@ export function activate(context: vscode.ExtensionContext): void {
       Date.now() - lastDeepIdleTickMs < DEEP_IDLE_REENTRY_GRACE_MS;
     const deepIdle = rawDeepIdle || inGracePeriod;
 
-    // Map the attentionCallExpiry setting to a tick count.
-    const expiryMap: Record<string, number> = { needy: 20, standard: 50, chilled: 100 };
+    // Map the attentionCallExpiry setting to a tick count (3 s/tick: needy 4 min, standard 10 min, chilled 20 min).
+    const expiryMap: Record<string, number> = { needy: 80, standard: 200, chilled: 400 };
     const expiryKey = cfg.get<string>("attentionCallExpiry", "standard");
-    const attentionCallExpiryTicks = expiryMap[expiryKey] ?? 50;
+    const attentionCallExpiryTicks = expiryMap[expiryKey] ?? 200;
 
     // Map the attentionCallRate setting to a rate divisor.
-    const rateMap: Record<string, number> = { fast: 1.0, medium: 1.5, slow: 2.0 };
+    const rateMap: Record<string, number> = { fast: 3.0, medium: 4.5, slow: 6.0 };
     const rateKey = cfg.get<string>("attentionCallRate", "fast");
-    const attentionCallRateDivisor = rateMap[rateKey] ?? 1.0;
+    const attentionCallRateDivisor = rateMap[rateKey] ?? 3.0;
 
     const gameConfig: GameConfig = {
       attentionCallsEnabled:    cfg.get<boolean>("enableAttentionCalls", true),
@@ -403,7 +448,7 @@ export function activate(context: vscode.ExtensionContext): void {
    * writer. In AI mode this function is never called (guarded in the
    * onDidChangeWindowState handler), so AI mode is unaffected.
    */
-  function reloadAndRefreshUI(): void {
+  function reloadAndRefreshUI(resetMeals: boolean = true): void {
     const fresh = loadState(context);
     if (fresh === null) { return; }
     const elapsed = elapsedSecondsSinceLastSave(context);
@@ -413,7 +458,8 @@ export function activate(context: vscode.ExtensionContext): void {
     currentState = state;
     // Reset the meal cycle counter — we cannot know how many meals were given
     // by the other window, so reset to 0 (conservative; allows full quota here).
-    sidebar?.resetMealCycle();
+    // Skipped when following another window's ticks, which happens every tick.
+    if (resetMeals) { sidebar?.resetMealCycle(); }
     const cfg = vscode.workspace.getConfiguration("codotchi");
     const devModeActive =
       cfg.get<boolean>("devModeEnabled", false) &&
@@ -513,6 +559,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // Try immediately; if the file doesn't exist yet, retry every 10 s.
     startWatcherWithPolling();
+
+    // Show or hide the status bar item when codotchi.statusBarEnabled changes.
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration("codotchi.statusBarEnabled")) { statusBar?.refresh(); }
+      })
+    );
 
     // React to perWorkspacePet setting changes.
     context.subscriptions.push(

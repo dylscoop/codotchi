@@ -5,6 +5,8 @@ license: MIT
 compatibility: opencode
 ---
 
+> **Shared core (since v2.21.3).** `gameEngine.ts` and `asciiArt.ts` are generated from `packages/core/src/`. Edit them there and run `node scripts/sync-core.mjs`; never edit the plugin copies by hand. Where this file says otherwise, this note wins; see `.claude/skills/` for the current rules.
+
 ## Rule
 
 Any time a feature or functional change is made to either plugin, apply the equivalent change to the other as well — unless the user **explicitly** says to change only one (e.g. "OpenCode only", "just Claude Code", "don't touch the other plugin").

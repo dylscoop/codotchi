@@ -1,0 +1,12 @@
+{
+  "palette": {
+    "primary": "#ffac30",
+    "secondary": "#d50219",
+    "accent": "#d5011d"
+  },
+  "background": "#1a1a1a",
+  "crop": false,
+  "anchor": "left",
+  "legRowStart": 99,
+  "inRotation": true
+}

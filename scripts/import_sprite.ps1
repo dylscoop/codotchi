@@ -210,15 +210,6 @@ Write-Host "  -- Output options ----------------------------------------" -Foreg
 $preview = Prompt-YN -Label "--preview (show ASCII art preview in console)?" -Default $true
 
 # ---------------------------------------------------------------------------
-# Inject
-# ---------------------------------------------------------------------------
-
-Write-Host ""
-Write-Host "  -- Inject -----------------------------------------------" -ForegroundColor DarkGray
-Write-Host "  WARNING: --inject writes directly to sprites.js and spriteConstants.js" -ForegroundColor Yellow
-$inject = Prompt-YN -Label "--inject (splice output into source files)?" -Default $false
-
-# ---------------------------------------------------------------------------
 # Pixil frame (only for .pixil files)
 # ---------------------------------------------------------------------------
 
@@ -250,7 +241,6 @@ try {
         if ($cropTransparent)            { $nodeArgs += "--crop-transparent" }
         if ($flip)                       { $nodeArgs += "--flip" }
         if ($preview)                    { $nodeArgs += "--preview" }
-        if ($inject)                     { $nodeArgs += "--inject" }
         if ($null -ne $frame)            { $nodeArgs += "--frame";                $nodeArgs += "$frame" }
 
         $fullCmd = "node " + ($nodeArgs -join " ")

@@ -51,8 +51,11 @@ export interface TimestampedUsageEntry {
  *  - token fields default to 0 if missing.
  *  - `messages` counts how many entries were included in the totals above —
  *    used by callers to compute a tokens-per-message average.
+ *  - When `sinceMs` is given, only messages with time.completed >= sinceMs are
+ *    counted — so a session that spans midnight contributes only today's
+ *    messages to today's total.
  */
-export function sumCompletedAssistantUsage(messages: RawMessageEntry[]): UsageTotals {
+export function sumCompletedAssistantUsage(messages: RawMessageEntry[], sinceMs?: number): UsageTotals {
   let costUSD  = 0;
   let tokens   = 0;
   let msgCount = 0;
@@ -61,6 +64,7 @@ export function sumCompletedAssistantUsage(messages: RawMessageEntry[]): UsageTo
     const info = m.info;
     if (info.role !== "assistant")  { continue; }
     if (!info.time?.completed)      { continue; }
+    if (sinceMs !== undefined && info.time.completed < sinceMs) { continue; }
 
     const cost = typeof info.cost === "number" && !isNaN(info.cost) ? info.cost : 0;
     const t    = (info.tokens?.input          ?? 0)

@@ -1,6 +1,588 @@
 # Version History
 
-## v2.20.11 — current
+## v2.27.2 — current
+
+### Changes from v2.27.1 (Timagotchi / Stugotchi names, push live progress — branch feature/stugotchi-name)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | gift message and run/sticker toasts say "Timagotchi" / "Stugotchi" instead of "Tim" / "Stu" |
+| `customCharacters.ts`, `customCharacters.js`, `CustomCharacters.kt`, `vscode/media/sidebar.js`, `vscode/src/statusBarText.ts` | new optional `characterLabel`: the info line and status bar tooltip show "Timagotchi" / "Stugotchi" instead of the sprite keys "Tim" / "Stu" |
+| `packages/core/src/integrity.ts` (+ synced copies), `pycharm/.../Integrity.kt` | BUGFIX-194: "unverified" (pre-2.27) pets are no longer blocked from live progress or submission |
+| `vscode/media/sidebar.js`, `sidebar.css` | a blocked pet's live button reads "Live progress unavailable" with the reason underneath, and looks disabled |
+| `vscode/tests/unit/liveProgress.test.ts` (new), `pycharm/.../LiveProgressTest.kt` (new), `integrity.test.ts`, `IntegrityTest.kt` | live progress always works for an eligible pet in both IDEs |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | BUGFIX-195: attention-call toasts fire once per tick, not again on every re-broadcast (live toggle, live push, sign-in) |
+| all manifests, `README.md` | version 2.27.1 → 2.27.2 |
+
+### Server-side follow-up (no plugin change — branch fix/leaderboard-accept-legacy)
+
+| File | What changed |
+|------|-------------|
+| repo secret | BUGFIX-196: `LEADERBOARD_HMAC_KEY` set; every submission had been rejected with "server key not configured" |
+| `.github/scripts/leaderboard-validate.mjs` | BUGFIX-197: unsigned v1 bodies from pre-2.27.2 clients accepted as legacy (`verified: false, legacy: true`), still age/timing-checked; signed bodies unchanged |
+| `.github/workflows/process-leaderboard-live.yml`, `process-leaderboard.yml` | keep legacy live entries in `live.json`; comments |
+| `leaderboard/index.html` | legacy live pets shown on both tables with the *legacy* badge |
+| `vscode/tests/unit/integrity.test.ts` | legacy acceptance, key, bad-sig and username tests |
+| `developer_notes/adr/2026-10-07-leaderboard-integrity.md`, `developer_notes/leaderboard/ADMIN.md` | amendment; how a missing key shows up |
+
+---
+
+## v2.27.1
+
+**New constants:** `MINIGAME_BLACKJACK_WIN = 10`, `MINIGAME_BLACKJACK_PUSH = 0`, `MINIGAME_BLACKJACK_LOSE = -10`. **New minigame result:** `"push"` (blackjack only). **New webview message fields:** `floorSnacks` on `feed` (snack), `cravingItem` on `stateUpdate`.
+
+### Changes from v2.27.0 (Tim & Stu actions — branch feature/tim-stu-actions)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | `patCall` (call / answered / expired / status text) and `snackCravings`: Tim wants a run and craves a tea; Stu wants stickers and craves a pint or some salmon |
+| `vscode/src/cravingItem.ts` (new), `pycharm/.../CravingItem.kt` (new) | random craved item, memoised per craving so toast, status bar and webview agree |
+| `vscode/src/extension.ts`, `statusBarText.ts`, `sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt`, `StatusBarText.kt`, `CodotchiBrowserPanel.kt` | pat-call / craving text overrides; `cravingItem` sent to the webview; break reminder text no longer tells you to praise the pet |
+| `vscode/media/sidebar.js` | run / sticker call text, craving item text and matching floor snack; Tim and Stu answer with their own bubbles; Stu's Coin Flip button plays Blackjack; Tim's run lap; Stu's sticker prop; snack presses report `floorSnacks` |
+| `vscode/media/sidebar.html` | `#mg-blackjack` panel (Hit / Stand) |
+| `vscode/media/minigameArt.js` | `A J Q K` glyphs, suit pips, `drawPlayingCard`, `drawBlackjackTable`, `blackjackTotal`, `blackjackOutcome` |
+| `vscode/media/sprites.js` | tim / stu grids centred (BUGFIX-193); `renderSpriteGrid` centres the rounded grid in the box; `spritePat.runLap / usesHand / durationMs / pickProp / drawProp`, `dust` and `sticker` particles; Tim and Stu get no hand or hearts |
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt` | `blackjack` minigame (win / push / lose) |
+| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt` | BUGFIX-192: `startSnack` uses the webview's floor count |
+| `vscode/tests/unit/customCharacterText.test.ts` (new), `minigameArt.test.ts`, `webviewAnimations.test.ts`, `spriteData.test.ts`, `gameEngine.test.ts`, `pycharm/.../StatusBarTextTest.kt`, `GameEngineTest.kt` | tests |
+| all manifests, `README.md` | version 2.27.0 → 2.27.1 |
+
+---
+
+## v2.27.0
+
+**New state fields:** `devModeEverUsed` (sticky), `leaderboardIneligible` (`""` / `"tampered"` / `"unverified"`). **State file:** top-level `seal` (VS Code / OpenCode / Claude Desktop `state.json`, PyCharm `state.json` + `petStateSeal` in `codotchi.xml`). **Leaderboard issues:** `schemaVersion` 2 with `clientVersion` + `sig`; v1 is rejected. **Physics floor:** 240 s/day → 720 s ÷ agingMultiplier per pet type, 10% slack. **New secret:** `LEADERBOARD_HMAC_KEY` (see `developer_notes/leaderboard/ADMIN.md`). ADR: `developer_notes/adr/2026-10-07-leaderboard-integrity.md`.
+
+### Changes from v2.26.3 (leaderboard integrity — branch feature/leaderboard-integrity)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` | `devModeEverUsed` set by any dev-mode tick (incl. break naps), never cleared; `leaderboardIneligible`; both serialised |
+| `packages/core/src/integrity.ts` (new) | `sealPayload` / `sealState` / `sealSerialisedState` / `verifySeal`, `leaderboardBlockedReason`, `submissionPayload` / `signSubmission` (HMAC-SHA256) |
+| `packages/core/fixtures/integrity-vector.json` (new) | shared test vector pinning the seal and signature text across TS, Kotlin and the workflow |
+| `scripts/sync-core.mjs`, `.gitignore` | copies `integrity.ts`; writes gitignored `src/leaderboardKey.ts` from `CODOTCHI_LEADERBOARD_KEY` / `.leaderboard-key` |
+| `vscode/src/persistence.ts` | seal on save (file + globalState), verify on load |
+| `vscode/src/sidebarProvider.ts` | submit / auto-submit / live push refuse ineligible pets; signed v2 payloads; `leaderboardBlockedReason` to the webview |
+| `vscode/media/sidebar.js` | Submit and Push live progress greyed out with the reason; dead PyCharm `browser_opened` path removed |
+| `opencode-codotchi/src/index.ts`, `claude-desktop-codotchi/src/state.ts` | verify the seal on load, re-seal on save |
+| `pycharm/.../Integrity.kt` (new), `PetState.kt`, `GameEngine.kt`, `CodotchiPersistence.kt`, `CodotchiPlugin.kt`, `CodotchiBrowserPanel.kt`, `LeaderboardSubmitter.kt`, `build.gradle.kts` | PyCharm parity; Gradle `generateLeaderboardKey` task; dead `buildLeaderboardIssueUrl` removed |
+| `.github/scripts/leaderboard-validate.mjs` (new) | signature check (fails closed without the secret), per-type physics floor, stage bounds, whitelisted entries |
+| `.github/workflows/process-leaderboard*.yml` | use the validator; `verified: true`; unverified live entries pruned; issue text no longer inside `${{ }}` in github-script (script-injection fix) |
+| `leaderboard/index.html` | *legacy* badge for pre-2.27.0 scores; only verified live entries; fair-play text |
+| `vscode/tests/unit/integrity.test.ts` (new), `pycharm/.../IntegrityTest.kt`, `PersistenceIntegrityTest.kt` (new), `GameEngineTest.kt` | vector, tamper / unverified / sticky, dev-mode flag, validator cases |
+| `README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md`, `developer_notes/leaderboard/ADMIN.md`, ADR | docs |
+| all manifests, `README.md` | version 2.26.3 → 2.27.0 |
+
+---
+
+## v2.26.3
+
+**Updated constants:** live-entry stale window 30 days → 48 h (`LIVE_STALE_MS` in `claude-codotchi/scripts/state.mjs`, `LIVE_STALE_MS_OC` in OpenCode, `staleMs` in PyCharm), matching `leaderboard/index.html`.
+
+### Changes from v2.26.2 (leaderboard rank/total — branch fix/v2.26.3-leaderboard-rank)
+
+| File | What changed |
+|------|-------------|
+| `claude-codotchi/scripts/state.mjs` | BUGFIX-191: `computeLiveRank(scores, live, me, now)` — 48 h live window, stage-then-ageDays order, own entry excluded by `spawnedAt` |
+| `claude-codotchi/scripts/statusline.mjs` | rank line uses `computeLiveRank` |
+| `pycharm/.../CodotchiPlugin.kt` | `fetchLiveRankAsync` — 48 h window, no age extrapolation, own entry also excluded by `spawnedAt` |
+| `opencode-codotchi/src/index.ts` | `refreshLiveRank(me)` — same rules as Claude, plus stage ordering |
+| `vscode/src/sidebarProvider.ts` | `fetchLiveRank` also excludes own entry by `spawnedAt` |
+| `claude-codotchi/tests/integration/liveRank.test.mjs` (new), `claude-codotchi/package.json` | rank 3 of 12 on the bug-report snapshot; stale, self and stage cases |
+| `vscode/CHANGELOG.md`, `plugin.xml` | 2.26.3 notes |
+| `developer_notes/BUGFIXES.md` | BUGFIX-191 |
+| all manifests, `README.md` | version 2.26.2 → 2.26.3 |
+
+---
+
+## v2.26.2
+
+**New constants (tickLease.ts):** `TICK_LEASE_MS` 7 500 (2.5 ticks). **State file:** VS Code's `state.json` gains a top-level `writerId` (`<pid>-<8 hex>` per window).
+
+### Changes from v2.26.1 (status bar ⚠ stuck after answering — branch fix/v2.26.2-ai-mode-ticker)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/tickLease.ts` (new) | BUGFIX-189: `anotherWindowOwnsTick(stamp, myWriterId, now)` — true while a different window (with a writerId) saved the state file within `TICK_LEASE_MS`; terminal-plugin write-backs and older builds have no writerId and never take the tick |
+| `vscode/src/persistence.ts` | `WRITER_ID` per window, written as `writerId` on every save; `readStateFileStamp()` |
+| `vscode/src/extension.ts` | `runOneTick` in AI mode follows the file (`reloadAndRefreshUI(false)`) instead of ticking while another window owns the tick; `reloadAndRefreshUI(resetMeals)` keeps the meal count when following |
+| `pycharm/.../CodotchiPlugin.kt`, `CodotchiStatusWidget.kt`, `CodotchiStatusWidgetFactory.kt` | BUGFIX-190: `statusWidgets` list (one widget per project window) replaces the single `statusWidget`; `registerStatusWidget` / `unregisterStatusWidget` (on dispose); every broadcast updates all widgets |
+| `vscode/tests/unit/tickLease.test.ts` (new), `statusBarText.test.ts`, `vscode/package.json` | lease rules and wiring; PyCharm updates every widget and drops closed ones |
+| `vscode/CHANGELOG.md`, `plugin.xml` | 2.26.2 notes |
+| `developer_notes/BUGFIXES.md` | BUGFIX-189, BUGFIX-190 |
+| all manifests, `README.md` | version 2.26.1 → 2.26.2 |
+
+---
+
+## v2.26.1
+
+**Updated constants (backgroundArt.js):** `SKY_KEYS` dawn: 07:00 first light · 07:30 sunrise · 09:00 sunrise held · 09:30 golden morning · 10:00 pastel (was 07:00 / 08:00 / 09:00 / 10:00) · `DARK_KEYS` [0,1] [6,1] [8.5,0] [16.5,0] [21.5,1] (was [6.5,1] [9,0])
+
+### Changes from v2.26.0 (sunrise lasts until 10:00 — branch fix/v2.26.1-longer-sunrise)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/backgroundArt.js` | BUGFIX-188: the scenic sunrise is held from 07:30 to 09:00 and ends at 10:00, the same as the legacy dawn stage; the darkness ramp ends at 08:30 |
+| `vscode/tests/unit/backgroundArt.test.ts` | full sunrise at 07:30, 08:00 and 09:00; warm at 09:45; blue from 10:00; fully light by 09:00 |
+| `vscode/CHANGELOG.md`, `plugin.xml` | 2.26.1 notes |
+| `developer_notes/BUGFIXES.md` | BUGFIX-188 |
+| all manifests, `README.md` | version 2.26.0 → 2.26.1 |
+
+---
+
+## v2.26.0
+
+**Changed constants (gameEngine):** `BREAK_NAP_TICKS` 60 → 100 (5 min) · `MEDICINE_DOSES_TO_CURE` (3) now exported. **New events:** `meal_refused_sick`, `snack_refused_sick`, `play_refused_sick`, `break_nap_no_wake`. **New setting:** `codotchi.statusBarEnabled` (default true).
+
+### Changes from v2.25.6 (sickness UX, status bar ⚠, locked 5-minute break nap — branch feat/v2.26.0-sick-statusbar-nap)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt` | BUGFIX-186: `feedMeal` / `startSnack` / `play` refuse while sick; `wake()` refuses during a break nap (`break_nap_no_wake`) instead of ending it; `tickBreakNap` regenerates energy at the sleeping rate (no auto-wake); nap 3 → 5 min |
+| `packages/core/src/asciiArt.ts` (+ synced copies), `vscode/src/extension.ts`, `CodotchiPlugin.kt` | break-call text says 5 minutes |
+| `vscode/media/sidebar.js`, `sidebar.html` | Feed / Snack / Play greyed out while sick; `#medicine-left` doses badge; Sleep/Wake shows "Napping Nm" and is disabled during a break nap; text for the new events |
+| `vscode/src/sidebarProvider.ts`, `CodotchiPlugin.kt` | minigame result skipped on `play_refused_sick` |
+| `vscode/src/statusBarText.ts` (new), `statusBar.ts`, `extension.ts`, `package.json` | ⚠ prefix + call line in the tooltip during attention calls; `codotchi.statusBarEnabled` (General, order 5; later General orders shifted by 1) hides the item, re-applied on config change |
+| `pycharm/.../StatusBarText.kt` (new), `CodotchiStatusWidget.kt`, `CodotchiSettings.kt`, `CodotchiConfigurable.kt` | same ⚠ / tooltip (plus the "⚠ Sick!" line PyCharm lacked); `statusBarEnabled` checkbox in General |
+| `claude-codotchi/scripts/action.mjs` | BUGFIX-187: wake calls `wake()` and reports the nap; too-sick messages; medicine doses left; string event checks |
+| `claude-desktop-codotchi/src/tools.ts` | refusal speech for sick feed / snack / play and the nap; meal counter and snack eat keyed off the success events |
+| `opencode-codotchi/src/index.ts` | too-sick early-outs for feed / snack / play |
+| tests | `vscode/tests/unit/gameEngine.test.ts`, `statusBarText.test.ts` (new), `criticalStatNotifier.test.ts`; `pycharm/.../GameEngineTest.kt`, `StatusBarTextTest.kt` (new); `claude-codotchi/tests/integration/sickAndNap.test.mjs` (new); `claude-desktop-codotchi/tests/tools.test.mjs` |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | sick actions, 5-minute nap, status bar ⚠; 2.26.0 notes |
+| `developer_notes/vscode/FEATURES.md`, `FEATURES_SEPTEMBER_2026.md`, `BUGFIXES.md` | §6.4 / §10 / §12 ticked; BUG-S04 fixed; BUGFIX-186, BUGFIX-187 |
+| all manifests, `README.md` | version 2.25.6 → 2.26.0 |
+
+---
+
+## v2.25.6
+
+### Changes from v2.25.5 (PyCharm GitHub sign-in help — branch fix/v2.25.6-pycharm-signin-help)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/.../CodotchiPlugin.kt` | device-code request failures now include GitHub's `error_description` (e.g. "Device Flow must be explicitly enabled") instead of a bare HTTP code; token polling reads `errorStream` on a 4xx, so GitHub's error is shown instead of being lost to an exception; the sign-in failed notification gains a **Sign-in help** action; `startLeaderboardSignIn()` takes an optional failure callback |
+| `pycharm/.../LeaderboardSubmitter.kt` | new `GITHUB_SIGN_IN_HELP_URL` (pycharm/README.md#github-sign-in-help) |
+| `pycharm/.../CodotchiConfigurable.kt` | **Sign-in help** link under the Leaderboard sign-in buttons; the status label shows the failure instead of staying on "Opening browser…" |
+| `pycharm/README.md`, `plugin.xml` | new "GitHub sign-in help" section: what users do, plus troubleshooting; 2.25.6 change notes |
+| `developer_notes/BUGFIXES.md` | BUGFIX-185 |
+| all manifests, `README.md` | version 2.25.5 → 2.25.6 |
+
+---
+
+## v2.25.5
+
+**Updated constants (backgroundArt.js):** `SKY_KEYS` gain a mirrored sunrise (07:00 first light · 08:00 sunrise · 09:00 golden morning · 10:00 pastel), dusk now fades to night at 22:00 · `DARK_KEYS` [0,1] [6.5,1] [9,0] [16.5,0] [21.5,1] · `SUNRISE`/`SUNSET` 7 / 19 (was 6 / 18.5) · `getTimeOfDay()` uses the legacy buckets dawn 07–10 · morning 10–13 · afternoon 13–16 · sunset 16–19 · dusk 19–22 · night 22–07. **New constants (sidebar.js):** `SNACK_SCALE` 3 (was 2) · `SNACK_HALF_W` 8 · `POO_SCALE` 3 (was 2)
+
+### Changes from v2.25.4 (snack/poo visibility, one autumn pumpkin, sunrise — branch feat/v2.25.5-snack-visibility)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | snacks and poos drawn at scale 3; new `drawGridOutline` puts a 1-px outline round snacks, the gift box (dark) and poos (light); the snack chase / eat checks aim at `item.x + SNACK_HALF_W`; snack spawn range keeps 24 px clear of the right edge |
+| `vscode/media/backgroundArt.js` | autumn `layout()` places one pumpkin — just inside the right-hand tree when wide, at the left margin when narrow; mirrored sunrise keyframes, new darkness ramp and sun hours; `getTimeOfDay` uses the legacy buckets and `legacyTimeOfDay` delegates to it |
+| `vscode/tests/unit/backgroundArt.test.ts` | legacy-aligned buckets, sunrise mirrors sunset, morning checks moved to 10–14, fairy lights off from 13; one side pumpkin; snack/poo scale, outline and centre-aim checks |
+| `vscode/package.json`, `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | sunrise in the time-of-day prose; 2.25.5 notes |
+| all manifests, `README.md` | version 2.25.4 → 2.25.5 |
+
+---
+
+## v2.25.4
+
+**New constants (gameEngine):** `BREAK_NAP_TICKS` 60 (3 min) · **Changed:** `FEED_MEAL_HUNGER_BOOST` 20 → 15
+
+### Changes from v2.25.1 (break nap, smaller meals, developer settings group, legacy background style — branch feat/v2.25.4-break-nap)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt`, `PetState.kt`, `CodotchiPersistence.kt` | new `breakNapTicksRemaining` state field; `praise()` answering a break call starts a 60-tick nap; `tick()` short-circuits to `tickBreakNap` (stats, counters and attention timers frozen, aging continues at the sleeping rate ignoring idle, wakes with `break_nap_over`); `wake()` clears it; `applyOfflineDecay` skips decay for the remaining nap and wakes if it ran out |
+| same engine files | `FEED_MEAL_HUNGER_BOOST` 20 → 15; Kotlin feed boosts use `roundToInt()` to match TS `Math.round` |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt`, `vscode/media/sidebar.js`, `opencode-codotchi/src/index.ts`, `packages/core/src/asciiArt.ts` | `break_nap_over` notification / log text; break-call text mentions the 3-minute nap; sidebar treats `break_nap_over` as waking |
+| `vscode/package.json` | main settings category renamed "Codotchi" → "General" so "Developer" is a separate child in the Settings tree; dev descriptions prefixed "(Developer)" |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `Cat_example.png` (new) | Preview screenshot is now the cat example (`example_skippy.png` stays at the root for older published listings) |
+| `vscode/media/backgroundArt.js` | `drawLegacyBackground(ctx, W, H, mode, date, backdrop)` and `legacyTimeOfDay(date)`: the pre-2.25 tint-and-props background ported verbatim from the old `sidebar.js` (base fill included) |
+| `vscode/media/sidebar.js`, `sidebar.html`, `vscode/src/sidebarProvider.ts`, `vscode/package.json`, `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `CodotchiBrowserPanel.kt` | new `codotchi.backgroundStyle` setting (`scenic` default / `legacy`), "Background style:" combo in PyCharm; main-section setting orders renumbered |
+| `vscode/media/sprite_preview.html` | Style picker (Scenic / Legacy) in the background preview |
+| `vscode/tests/unit/backgroundArt.test.ts` | legacy buckets, base fill, seasonal colours, plain strip, static frame, wiring |
+| all manifests, `README.md` | version 2.25.1 → 2.25.4 |
+
+---
+
+## v2.25.1
+
+**Updated constants (backgroundArt.js):** `RAIN_MS` 3 min · `RAIN_CHANCE` 0.18 · `RAINBOW_MS` 75 s · `SNOW_MS` 4 min · `SNOW_CHANCE` 0.4 · `CRITTERS` bird / butterfly / bee / fireflies (window 90–150 s, chance 0.2–0.35); `VEIL` [day, night] subtle 0.45 / 0.15 · medium 0.10 / 0.05 · vivid 0 / 0; `getTimeOfDay()` buckets now dawn 06–08 · morning 08–12 · afternoon 12–16 · sunset 16–19 · dusk 19–21 · night 21–06 (was 07–10 · 10–13 · 13–16 · 16–19 · 19–22 · 22–07)
+
+### Changes from v2.24.3 (seasonal pixel-art backgrounds and a brighter, blended sky — branch feat/background-art-polish)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/backgroundArt.js` (new) | `window.backgroundArt`: `getActiveSeason(mode, date)`, `getTimeOfDay(date)`, `skyColours(date)` (8 opaque bands blended between hourly keyframes; soft pastel morning, gentle daytime gradient, golden hour from 16:00 and sunset at 17:30; sun crosses 06:00–18:30), `darkness`, `lightsOn`, `weather` (spring showers + rainbow, winter snow spells), `critter` (rare bird / butterflies / bee / fireflies), seeded cached `layout`, `drawBackground(ctx, W, H, mode, date)`. fillRect-only grids for sun, moon, clouds, blossom / leafy / autumn / bare trees, snowy pine with fairy lights, snowman, flowers, sunflowers, pumpkins, toadstools, picnic blanket, beach ball, icicles and drifts |
+| `vscode/media/sidebar.js` | old `getActiveSeason` / `getTimeOfDay` / `drawBackground` removed (~270 lines); `drawEnvironment` fills the pet colour then calls `backgroundArt.drawBackground`; the `#243444` daytime base override is gone |
+| `vscode/media/sidebar.html`, `vscode/src/sidebarProvider.ts`, `pycharm/build.gradle.kts`, `pycharm/.../CodotchiBrowserPanel.kt` | load / inline `backgroundArt.js` after `minigameArt.js` |
+| `vscode/media/sprite_preview.html`, `vscode/src/spritePreviewPanel.ts`, `pycharm/.../SpritePreviewBrowserPanel.kt` | background preview canvas with season, hour, size and event pickers |
+| `vscode/tests/unit/backgroundArt.test.ts` (new), `vscode/package.json` | season / bucket / sky-continuity / bright-morning / lights / weather / critter / drawing / wiring tests; added to `npm test` |
+| `vscode/package.json` | `codotchi.background` enum descriptions describe the new scenes |
+| `vscode/package.json`, `sidebarProvider.ts`, `sidebar.html`, `sidebar.js`, `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `CodotchiBrowserPanel.kt` | new `codotchi.backgroundOpacity` (subtle / medium / vivid, default medium) and `codotchi.backgroundAnimations` (default on; reduced motion forces off) settings, passed to `drawBackground` as `{ opacity, backdrop, animate }`; VS Code setting orders renumbered 1..n |
+| `vscode/media/backgroundArt.js` | `VEIL` / `veilAlpha`: backdrop veil over the scene before the particles; `animate: false` draws one fixed frame with no weather, particles or critters |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | "Seasons and time of day" feature; 2.25.1 notes |
+| `developer_notes/vscode/FEATURES.md`, `FEATURES_2.md`, `FEATURES_SEPTEMBER_2026.md` | background art polish ticked off; day / night cycle notes |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.24.3 → 2.25.1 |
+
+---
+
+## v2.24.3
+
+**Updated constants:** `attentionCallRateDivisor` fast 3.0 · medium 4.5 · slow 6.0 (was 1.5 · 2.25 · 3.0); `REACTION_DURATIONS.fed_meal` 1000 ms (was 500); `DEVICE_GAP` 3 prop-pixels (was 1); `PAT_HAND_SCALE` 0.5
+
+### Changes from v2.24.2 (half-size pat hand; head gap above every pet; usage device further out; meals take twice as long; random attention calls half as often — branch v2.24.3-pat-comb)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sprites.js` | `drawPatHand` draws at `PAT_HAND_SCALE = 0.5` of a prop-pixel per cell, snapped to whole canvas pixels; `drawUsageDevice` keeps `DEVICE_GAP = 3` prop-pixels (was 1) between pet and device, exported as `spritePat.DEVICE_GAP` (BUGFIX-182, BUGFIX-184) |
+| `vscode/media/sidebar.js` | new `headGap(state)` (one prop-pixel, min 2 px) lifts the z / + indicator and speech bubble (animated and reduced-motion) above every pet; `emojiClearance` hand band 12 → 6 prop-pixels (BUGFIX-182, BUGFIX-183); `REACTION_DURATIONS.fed_meal` 500 → 1000 ms with two bobs instead of one |
+| `vscode/tests/unit/webviewAnimations.test.ts` | pat hand size, device gap, head gap and meal duration tests |
+| `developer_notes/vscode/FEATURES.md` | `fed_meal` / `fed_snack` reaction row |
+| `packages/core/src/gameEngine.ts` (+ synced copies, `claude-codotchi/dist`), `pycharm/.../engine/Constants.kt` | `DEFAULT_GAME_CONFIG.attentionCallRateDivisor` 1.5 → 3.0 |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | `attentionCallRate` map fast / medium / slow 1.5 / 2.25 / 3.0 → 3.0 / 4.5 / 6.0, which halves every random call's chance |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/.../GameEngineTest.kt`, `developer_notes/DEV_NOTES.md` | new divisor values |
+| `vscode/CHANGELOG.md`, `plugin.xml`, `developer_notes/BUGFIXES.md` | 2.24.3 notes, BUGFIX-182 / 183 / 184 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.24.2 → 2.24.3 |
+
+---
+
+## v2.24.2
+
+### Changes from v2.24.1 (classic sprite box; speech bubble clears the z's / hearts; "take a break" call every 30 active minutes — branch v2.24.2-classic-centre)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sprites.js` | `classicBox` (`window.spriteClassicBox`) gives the classic creature's real size, and `drawClassicProcedural` draws at the box's top-left (no grid ground-anchor shift); `drawsAsClassic` (`window.spriteDrawsAsClassic`) shared with the sidebar; `moodPx` prefers `box.pxW` (BUGFIX-180) |
+| `vscode/media/sidebar.js` | `effectiveBWidth` / new `petBoxHeight` use classic's own box; no belly sag for pets drawn as classic; `moodBox.pxW` keeps grid-sized props; `emojiClearance` lifts the speech bubble above the z / heart band (pinned to the top edge if needed); break call bubble / log text (BUGFIX-180, BUGFIX-181) |
+| `vscode/media/sprite_preview.html` | classic cells sized with `spriteClassicBox` |
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt`, `PetState.kt`, `CodotchiPersistence.kt` | new `break` attention call: `BREAK_CALL_INTERVAL_TICKS = 600` (30 active, awake min; deep idle restarts it), `ticksSinceLastBreakCall` (persisted), configurable expiry window, no expiry penalty or care mistake; `praise()` answers it with `BREAK_PRAISE_HAPPINESS_BOOST` (= gift's 15) and puts the pet to sleep |
+| `packages/core/src/asciiArt.ts` (+ synced copies), `opencode-codotchi/src/index.ts` | break call text ("praise (take a break)") for the terminal plugins |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | break call IDE notification |
+| `vscode/tests/unit/webviewAnimations.test.ts`, `vscode/tests/unit/gameEngine.test.ts`, `pycharm/.../GameEngineTest.kt` | classic box / bubble clearance tests; break call tests |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `BUGFIXES.md`, `SPRITES.md` | break reminders, classic box, BUGFIX-180 / 181 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.24.1 → 2.24.2 |
+
+---
+
+## v2.24.1
+
+### Changes from v2.24.0 (bulk sprite pipeline: sprites/<species>/ → sprites.generated.js; dog, cat, dragon and roo moved over — branch feat/bulk-sprite-pipeline)
+
+| File | What changed |
+|------|-------------|
+| `scripts/lib/spriteImport.js` (new) | decode (PNG / .pixil / JPEG / WebP), background removal, crop, `capScale`, `resample`, `buildColourMapper` over several images (one palette per species), `mapGrid`, `flipGrid`, `padGrid` (bottom-aligned, centre or left), `buildDefsEntry`, `encodePng` |
+| `scripts/import_sprite.js`, `scripts/import_sprite.ps1` | thin CLI that prints a DEFS entry, meta and palette; `--inject` removed (BUGFIX-179) |
+| `scripts/import_sprites_bulk.js` (new) | every `sprites/<species>/` (stage images, `<stage>_<mood>` art, optional `sprite.json`) → `vscode/media/sprites.generated.js`; shared cap scale and grid, missing-stage report, registration warnings, `--check` |
+| `scripts/export_sprite_pngs.js` (new) | writes existing grids out as a `sprites/<species>/` folder |
+| `sprites/dog`, `sprites/cat`, `sprites/dragon`, `sprites/roo` (new) | source PNGs + `sprite.json`; roo scaled from 644×531 to 155×128 (`legRowStart` 380 → 92) |
+| `vscode/media/sprites.generated.js` (new) | generated grids, `SPRITE_GRID_META` and palette entries for the four species |
+| `vscode/media/sprites.js`, `vscode/media/spriteConstants.js` | dog / cat / dragon / roo `DEFS`, meta and palettes removed (2.16 MB → 114 KB); `sprites.js` merges `window.GENERATED_SPRITE_DEFS` into `DEFS` |
+| `vscode/media/sidebar.html`, `sprite_preview.html`, `vscode/src/sidebarProvider.ts`, `spritePreviewPanel.ts`, `pycharm/build.gradle.kts`, `CodotchiBrowserPanel.kt`, `SpritePreviewBrowserPanel.kt` | load `sprites.generated.js` between `spriteConstants.js` and `sprites.js` |
+| `scripts/validate_sprites.js`, `.github/workflows/tests.yml` | validator checks the real webview data; new `sprites` CI job |
+| `vscode/tests/unit/spriteImportBulk.test.ts` (new), `spriteData.test.ts`, `webviewAnimations.test.ts`, `vscode/package.json`, `pycharm/.../BrowserPanelHtmlTest.kt` | pipeline tests; exact meta match, cap and `legRowStart` checks; load-order checks |
+| `vscode/media/customCharacters.js`, `vscode/src/customCharacters.ts`, `pycharm/.../CustomCharacters.kt` | "add a character" steps point at `sprites/` |
+| `developer_notes/SPRITE_IMPORT.md`, `SPRITES.md`, `FEATURES_SEPTEMBER_2026.md`, `BUGFIXES.md`, `vscode/CHANGELOG.md`, `plugin.xml` | bulk pipeline docs, §2.2 ticked off, BUGFIX-179 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.24.0 → 2.24.1 |
+
+---
+
+## v2.24.0
+
+### Changes from v2.23.0 (per-pet pat animations; the pet holds a device for the AI-usage bubble; "Play or Pat" heading removed — branch feat/pat-anims-usage-device)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sprites.js` | new `window.spritePat`: `PAT_MOTION` per pet (dog, cat, sheep, snake, kangaroo/roo, dragon, tim/stu, classic fallback), `drawPatHand`, `drawPatBlush` (tim / stu), `spawnPatParticles` (hearts, cat "prr", dragon smoke; `PAT_PARTICLE_MAX` 24), `USAGE_DEVICE` + `drawUsageDevice` (phone / tablet / laptop with a ticking bar chart); `drawMoodParticles` draws the `heart`, `prr` and `puff` kinds |
+| `vscode/media/sidebar.js` | `patted` reaction (1400 ms) with a `case "patted"` transform; `patParticles`; `BUBBLE_HOLD_MS` / `BUBBLE_FADE_MS` / `DEVICE_SLIDE_MS` and `bubbleAlpha()` shared by the bubble and the device; `showBubble(text, kind)` and the `showBubble` message pass `kind`; the `mgTitle` overlay heading code is removed |
+| `vscode/media/sidebar.html` | "Play or Pat" heading removed from `#mg-select` |
+| `vscode/media/customCharacters.js`, `vscode/src/customCharacters.ts`, `pycharm/.../CustomCharacters.kt` | `mgTitle` field removed |
+| `vscode/src/tokenCostBubble.ts` (new), `vscode/src/sidebarProvider.ts`, `pycharm/.../TokenCostBubble.kt` (new), `CodotchiPlugin.kt` | token-cost bubble sent with `kind: "usage"` |
+| `vscode/tests/unit/webviewAnimations.test.ts`, `tokenCostBubble.test.ts` (new), `pycharm/.../TokenCostBubbleTest.kt` (new), `vscode/package.json` | pat motion / hand / particles, device, `bubbleAlpha` timing, banner-removed and `kind: "usage"` tests |
+| `developer_notes/vscode/FEATURES.md`, `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | pat animation, AI-usage device, banner removal |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.23.0 → 2.24.0 |
+
+---
+
+## v2.23.0
+
+### Changes from v2.22.2 (desktop alerts for critical stats; settings regrouped with a Developer section; sleeping blanket removed — branch feat/os-notifications-settings)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/criticalStatNotifier.ts` (new) | `evaluateCriticalStats` (hunger / happiness / energy at 0 via `ZERO_ALERT_STATS`, or health < `HEALTH_ALERT_THRESHOLD` 25; re-notify every `CRITICAL_STAT_NOTIFY_REPEAT_MS` 15 min; one message for all critical stats) and `sendOsNotification` (PowerShell WinRT toast / osascript / notify-send via `execFile`, text passed in env vars) |
+| `vscode/src/extension.ts` | `handleStateUpdate` sends the desktop notification when `codotchi.osNotifications` is on |
+| `vscode/package.json` | new `codotchi.osNotifications` (default true); `contributes.configuration` split into **Codotchi** and **Developer** categories with an `order` on every setting; new test in `npm test` |
+| `pycharm/.../CriticalStatNotifier.kt` (new), `CodotchiPlugin.kt`, `plugin.xml` | same rules; OS notification via the same PowerShell toast / osascript / notify-send as VS Code (`ProcessBuilder`), plus a "Codotchi Critical Stats" balloon; every IDE notification action renamed "Open Gotchi" → "Open Codotchi" |
+| `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt` | `osNotifications` setting and checkbox; layout rebuilt with a running row counter in the new order; developer settings in a collapsed `HideableDecorator` section |
+| `vscode/media/sprites.js`, `vscode/media/sidebar.js` | BUGFIX-178: sleeping blanket and pillow removed; snack plate removed, so the meal bowl is the only prop (drawn before the body); the pet stands still during `fed_meal` so the bowl doesn't slide |
+| `vscode/tests/unit/criticalStatNotifier.test.ts` (new), `webviewAnimations.test.ts`, `stageHeight.test.ts`, `pycharm/.../CriticalStatNotifierTest.kt` (new) | notifier (hits 0 / health < 25), command, settings-layout, no-sleep-props and meal-lock tests; `stageHeight` test reads the category array |
+| `developer_notes/*`, `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | desktop alerts, settings layout, BUGFIX-178 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.22.2 → 2.23.0 |
+
+---
+
+## v2.22.2
+
+### Changes from v2.22.1 (pixel-art mini-game visuals; snack text waits for the pet to eat — branch feat/minigame-pixel-art)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/minigameArt.js` | new `window.minigameArt`: 3×5 bitmap font (`GLYPHS`, `drawText`, `textWidth`), wooden doors (`drawDoor` / `drawDoors`, closed / ajar / open with the pet's face), `drawCountdown`, `drawNumberCard` (fixed-width scoreboard, green / red flash with arrow and ✓ / ✗), `drawCoin` + `coinFrames` (6-frame spin, crown / "T" faces). Hardcoded hex colours only |
+| `vscode/media/sidebar.js` | the three games draw through `minigameArt` on `#mg-canvas` (`mgBegin` sizes it to the sprite canvas, `mgClear` on every game end / close); Left / Right doors open ajar → open (150 ms); Coin Flip spins for ~0.8 s via requestAnimationFrame before the result; reduced motion skips both. BUGFIX-176: no more CSS variables as canvas colours. BUGFIX-175: snack answered-call events are held until the pet eats the snack |
+| `vscode/media/sidebar.html`, `vscode/media/sidebar.css` | `#lr-canvas` → `#mg-canvas` (`image-rendering: pixelated`); new `minigameArt.js` script tag; the countdown and H/L number are screen-reader-only text (`.sr-only`); `.mg-countdown` / `.mg-big-num` removed |
+| `vscode/src/sidebarProvider.ts` | `{{minigameArtUri}}` substitution |
+| `packages/core/src/gameEngine.ts` (+ synced copies, `claude-codotchi/dist/`), `pycharm/.../engine/GameEngine.kt` | BUGFIX-177: the idle stat floor keys off `inDamageState` (starving / miserable / exhausted / sick) instead of damage taken, which is always none while idle |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/.../GameEngineTest.kt` | idle-floor tests for a starving and a miserable pet |
+| `pycharm/build.gradle.kts`, `pycharm/.../CodotchiBrowserPanel.kt` | copy and inline `minigameArt.js` |
+| `vscode/tests/unit/minigameArt.test.ts` (new, added to `npm test`), `vscode/tests/unit/webviewAnimations.test.ts`, `pycharm/.../BrowserPanelHtmlTest.kt` | art, overlay, snack-text and PyCharm inlining tests |
+| `developer_notes/*`, `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | mini-game art docs; FEATURES / September backlog statuses; BUGFIX-175, BUGFIX-176 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.22.1 → 2.22.2 |
+
+---
+
+## v2.22.1
+
+### Changes from v2.22.0 (mood layer: props, body squash and particles for happy, sad, sleeping and eating — branch feat/mood-frames)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sprites.js` | new `window.spriteMood` (`current`, `frame`, `scaleY`, `drawProps`, `spawn`, `step`, `drawParticles`): food bowl / snack plate while eating, blanket and pillow while sleeping, squash/stretch, sparkles / tears / crumbs / drifting z's. Happy (stretch + sparkles) and sad tears play only in short bursts about every 30 s (`MOOD_BURSTS`); sad keeps a steady droop. Sprite pixels unchanged. `renderSpriteGrid` uses an optional `DEFS[type][stage + "_" + mood]` grid when one exists (none shipped yet) and keys its caches on it |
+| `vscode/media/sidebar.js` | draws the mood layer each frame (reactions override the squash; the dragon gets no floor props); a floor-snack chomp lasts 0.6 s (was 0.2 s) and counts as "eating"; sets `lastState.displayMood` for the per-mood grid hook |
+| `vscode/tests/unit/webviewAnimations.test.ts` | new mood-layer and per-mood-grid tests |
+| `vscode/src/stageHeight.ts`, `pycharm/.../StageHeight.kt`, `CodotchiConfigurable.kt`, `vscode/package.json` (+ both `stageHeight` tests) | stage height presets 180 / 240 / 320 / 400 → 150 / 180 / 210 / 240 px (compact / normal / tall / extraTall); keys unchanged so saved settings carry over |
+| `developer_notes/*`, `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md` | mood-frame docs; FEATURES / FEATURES_2 / September backlog statuses |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.22.0 → 2.22.1 |
+
+---
+
+## v2.22.0
+
+### Changes from v2.21.3 (died reaction, egg-hatch sequence, attention calls in the Claude Code status line — branch feat/hatch-death-statusline-calls)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | BUGFIX-173 / BUG-S05: new `died` reaction (1200 ms float-up + fade under a halo); the dead screen waits for it (`pendingDeathTimer`), and reduced motion skips it. New `hatched` reaction (900 ms) on `evolved_to_baby`: shell halves, sparkles, baby grows 0.5→1.0 |
+| `vscode/media/sprites.js` | new `drawHatchingEgg` / `eggHatchProgress`, shared by the grid and classic renderers: rocking widens 5°→12° with `dayTimer`, faster wobble from 50%, shake bursts from 80%, cracks at 50% / 80% |
+| `vscode/media/spriteConstants.js` | new `SPRITE_EGG_HATCH_DAYS` (0.267, matches `EVOLUTION_DAY_THRESHOLDS.egg`) |
+| `packages/core/src/asciiArt.ts` | new `ATTENTION_CALL_TEXT`, `attentionCallKey`, `attentionCallSpeech` (phrases, mood, label, answering command, bubble colour) |
+| `packages/core/src/gameEngine.ts` | new exported `ATTENTION_CALL_TYPES` list |
+| `opencode-codotchi/src/index.ts` | attention-call notifications use `attentionCallSpeech` (same phrases as before) |
+| `claude-codotchi/scripts/statusline.mjs`, `claude-codotchi/dist/` | shows the active attention call: bubble mode swaps in the call phrase with a ⚠ header; emoji mode adds `⚠ wants <label>`; plain mode adds a `⚠ … (<command>)` line. Phrase changes once a minute |
+| `vscode/tests/unit/webviewAnimations.test.ts`, `claude-codotchi/tests/integration/statuslineCalls.test.mjs`, `claude-codotchi/tests/unit/asciiArt.test.mjs` | new tests |
+| `claude-codotchi/USER_GUIDE.md`, `developer_notes/*` | attention-call docs; FEATURES / FEATURES_2 / September backlog statuses; BUGFIX-173 |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.21.3 → 2.22.0 |
+
+---
+
+## v2.21.3
+
+### Changes from v2.21.2 (repo clean-up: shared core, generated PyCharm webview, binaries out of git, CI — branch chore/repo-cleanup)
+
+| File | What changed |
+|------|-------------|
+| `.gitignore`, `releases/`, `*/archive/`, `*.vsix` / `*.zip` / `*.mcpb` | release binaries untracked (~564 MB); kept on disk and uploaded to GitHub Releases only |
+| `.claude/skills/release-management`, `release-checklist`, `git-workflow` (+ `.opencode/skills/` notes) | artifacts are moved locally and never committed |
+| `vscode/.vscodeignore` | archived sprites, `archive/` and old vsix files are no longer packaged |
+| `.idea/`, `pycharm/build/test-results/`, `vscode/tests/unit/gameEngine.test.js(.map)` | untracked / deleted stray files |
+| `scripts/inject_sprites.js`, `scripts/mirror_roo.js`, `scripts/legacy/gen_sprites.js` | broken injector and one-off mirror script deleted; old generator moved to `scripts/legacy/` |
+| `packages/core/src/gameEngine.ts`, `packages/core/src/asciiArt.ts`, `scripts/sync-core.mjs` | new shared core; the 4 engine and 3 asciiArt copies are generated from it (`--check` fails on drift) |
+| `vscode`, `opencode-codotchi`, `claude-codotchi`, `claude-desktop-codotchi` `package.json` | build/test scripts run `sync-core.mjs` first; opencode `test:plugin` uses a 30 s bun timeout |
+| `packages/core/src/gameEngine.ts` | optional `GameConfig.immortal` + `LOCAL_PET_GAME_CONFIG`; `ROTATION_ANIMALS` exported and the same 7 animals everywhere (no rooster / tiger); `ZODIAC_ANIMALS` inlined into `SpriteType` |
+| `packages/core/src/asciiArt.ts` | `buildContextualSpeech` `opts.costStyle` ("lastHour" / "hourlyRate"); `SPRITE_HEAD` goat → sheep, new kangaroo / roo / tim / stu heads; header leading space everywhere |
+| `claude-codotchi/scripts/*.mjs`, `claude-codotchi/dist/` | callers pass `{ costStyle: "hourlyRate" }`; dist rebuilt |
+| `claude-codotchi/scripts/emoji.mjs` | goat → sheep 🐑; kangaroo / roo 🦘, tim ☕, stu 🐟 |
+| `claude-codotchi/scripts/state.mjs` | removed unused `dailyPath` / `loadDaily` / `saveDaily` |
+| `claude-codotchi/scripts/statusline.mjs` | `CODOTCHI_NO_RANK=1` skips the live leaderboard rank (used by tests) |
+| `vscode/media/sprites.js` | BUGFIX-170: missing stage → adult grid, no grid → procedural classic; reads `UPRIGHT_TYPES` from `spriteConstants.js` |
+| `pycharm/build.gradle.kts` | `processResources` copies the webview from `vscode/media`; `unitTest` classpath uses `File.pathSeparator` |
+| `pycharm/src/main/resources/webview/` | removed (generated at build time; gitignored) |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | removed unused `ZODIAC_ANIMALS`; rotation comment updated |
+| `scripts/import_sprite.js` | `--inject` writes `vscode/media` only |
+| `.github/workflows/tests.yml` | new CI: sync-core check, every npm suite, claude-codotchi stale-dist check, pycharm `unitTest` |
+| `vscode/tests/unit/spriteData.test.ts`, `claude-desktop-codotchi/tests/tools.test.mjs` | new sprite-data and Claude Desktop smoke tests |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml` | medicine: three doses cure it, no health restored |
+| `developer_notes/*` | doc drift fixes (VERSIONS, FEATURES, SPRITE_IMPORT, SPRITES, DEV_NOTES, BUGFIXES renumbering) |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `README.md` | version 2.21.2 → 2.21.3 |
+
+---
+
+## v2.21.2
+
+### Changes from v2.21.1 (stage height setting, settings text fixes, answered whim-call speech — branch feat/stage-height)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/stageHeight.ts`, `pycharm/src/main/kotlin/com/codotchi/StageHeight.kt` | new `stageHeightPx` preset map: compact 180 / normal 240 / tall 320 / extraTall 400 px |
+| `vscode/package.json` | new `codotchi.stageHeight` setting; idle threshold description 10% → 5%; pet size descriptions drop stale grid sizes |
+| `vscode/src/sidebarProvider.ts` | stage canvas height reads `codotchi.stageHeight` (was hardcoded 240); webview reloads when it changes |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `CodotchiBrowserPanel.kt` | `petStageHeight: Int` spinner replaced by `stageHeight: String` preset dropdown |
+| `vscode/tests/unit/stageHeight.test.ts`, `pycharm/src/test/kotlin/com/codotchi/StageHeightTest.kt` | preset mapping, fallback and package.json parity tests |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml` | "Configurable" bullet mentions stage height |
+| `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js` | new `WHIM_ANSWER_SPEECH` pools; answering a play / pat / craving call shows a random line (bubble step 1b, ahead of the minigame result) |
+| `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/whimSpeech.mjs`, `claude-codotchi/scripts/action.mjs` | same pools; answered pat and meal-craving now get speech too (before, only play and snack craving had a fixed line) |
+| `vscode/tests/unit/whimSpeech.test.ts`, `claude-codotchi/tests/integration/whimCalls.test.mjs` | pools identical across all four hosts; bubble priority; pat / meal-craving speech in the terminal |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | version bump to 2.21.2 |
+
+**Updated constants:**
+
+- New `STAGE_HEIGHT_PX`: compact 180, normal 240 (unchanged default), tall 320, extraTall 400.
+- PyCharm: a custom `petStageHeight` pixel value is no longer read; every user starts on Normal (240 px, the old default).
+
+---
+
+## v2.21.1
+
+### Changes from v2.21.0 (longer attention-call expiry and slower call rates — branch feat/longer-call-timers)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | expiry setting maps to 80 / 200 / 400 ticks (4 / 10 / 20 min); rate setting maps to divisors 1.5 / 2.25 / 3.0 |
+| `vscode/src/gameEngine.ts`, `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt` | `DEFAULT_GAME_CONFIG` expiry 100 → 200 ticks and rate divisor 1.0 → 1.5 (used as-is by the OpenCode and Claude plugins) |
+| `vscode/package.json`, `pycharm/src/main/kotlin/com/codotchi/CodotchiConfigurable.kt` | expiry labels now say 4 / 10 / 20 minutes; rate descriptions are relative to Fast |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | tests for the new maps and defaults |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | version bump to 2.21.1 |
+
+**Updated constants:**
+
+- Expiry setting ticks: needy 40 → 80, standard 100 → 200, chilled 200 → 400 (both IDEs).
+- Rate setting divisors: fast 1.0 → 1.5, medium 1.5 → 2.25, slow 2.0 → 3.0 (both IDEs).
+- `DEFAULT_GAME_CONFIG.attentionCallExpiryTicks`: 100 → 200; `attentionCallRateDivisor`: 1.0 → 1.5.
+- Unchanged: 1-minute window for need-based calls, 5-minute answer / expiry cooldowns.
+
+---
+
+## v2.21.0
+
+### Changes from v2.20.18 (silent duplicate snack consume, idle-proof attention calls, expiry matches its labels — branch feat/play-pat-craving-calls, BUGFIX-167 / 168 / 169)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | fix: `consumeSnack()` ignores a duplicate report with no events (BUGFIX-167); call-chance counters only advance on active ticks, and misbehaviour / gift don't fire while idle (BUGFIX-169); `DEFAULT_GAME_CONFIG.attentionCallExpiryTicks` 50 → 100 and expiry comment corrected (BUGFIX-168) |
+| `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts` | mirrored the engine change |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | mirrored the engine change in Kotlin |
+| `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: expiry setting maps to 40 / 100 / 200 ticks (2 / 5 / 10 min) instead of 20 / 50 / 100 (BUGFIX-168) |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | tests for all of the above, plus a seeded craving-rate simulation |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | version bump to 2.21.0 |
+
+**Updated constants:**
+
+- Expiry setting ticks: needy 20 → 40, standard 50 → 100, chilled 100 → 200 (both IDEs).
+- `DEFAULT_GAME_CONFIG.attentionCallExpiryTicks` (TS): 50 → 100 (Kotlin already 100).
+
+---
+
+## v2.20.18
+
+### Changes from v2.20.17 (play / pat / craving attention calls; BUG-S06 cooldown fix — branch feat/play-pat-craving-calls, BUGFIX-166)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | feat: new `play`, `pat` and `craving` attention calls:<br>• they fire at random at any stat level, after every need-based call, and never while asleep or idle<br>• they use the rate and expiry settings<br>• unanswered costs health −10 plus a care mistake<br>• `pickCravingFood` chooses meal or snack and `answerCraving` only accepts that food<br>• new fields `ticksSinceLastPlayCall` / `ticksSinceLastPatCall` / `ticksSinceLastCraving` / `cravingFood`<br>fix: cooldowns are 100/100 and only count down on active ticks; `applyMinigameResult` keeps answered events |
+| `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts` | mirrored the engine change |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `Constants.kt`, `PetState.kt`, `CodotchiPersistence.kt` | mirrored in Kotlin; new fields persisted with safe fallbacks |
+| `vscode/media/sidebar.js`, `pycharm/src/main/resources/webview/sidebar.js` | fired / answered / expired labels (and so speech bubbles) for the new calls |
+| `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | IDE notifications for the new calls |
+| `claude-codotchi/scripts/action.mjs`, `commands/codotchi.md` | new `/codotchi play` and `/codotchi snack` |
+| `opencode-codotchi/src/index.ts` | new `play` / `snack` actions; speech for the new calls; gift / misbehaviour hints point at the IDE's praise / scold instead of `/codotchi pat` |
+| `claude-desktop-codotchi/src/tools.ts`, `server.ts`, `manifest.json` | new `codotchi_play` / `codotchi_snack` tools |
+| `vscode/package.json`, `pycharm/.../CodotchiSettings.kt` | attention call expiry / rate descriptions cover the new calls; fixed window is 1 minute |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt`, `claude-codotchi/tests/integration/whimCalls.test.mjs` | tests for all of the above |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml`, `claude-codotchi/USER_GUIDE.md`, `claude-desktop-codotchi/README.md` | "Little whims" feature bullet; new commands / tools |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | version bump to 2.20.18; claude-codotchi plugin 2.18.7 → 2.20.18 so it matches the other hosts |
+
+**Updated constants:**
+
+- `ATTENTION_ANSWER_COOLDOWN_TICKS`: 50 → 100 in TS (Kotlin already 100).
+- `ATTENTION_EXPIRY_COOLDOWN_TICKS`: TS 20 → 100, Kotlin 40 → 100.
+- New: `PLAY_CALL_BASE_CHANCE` / `MAX` 0.003 / 0.04, `PAT_CALL_BASE_CHANCE` / `MAX` 0.004 / 0.05, `CRAVING_CALL_BASE_CHANCE` / `MAX` 0.003 / 0.04, `CRAVING_MEAL_MAX_HUNGER = 90`.
+
+---
+
+## v2.20.17
+
+### Changes from v2.20.16 (no health loss while idle, forgiving poop sickness — branch feat/forgiving-idle-poop, BUGFIX-165 / BUG-S02)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts` | feat: health damage skipped while idle/deep idle; health can't drop on an idle tick; old-age rolls and the poop call skipped while idle; poop limit 3 → 5 with a 20-tick grace period (`poopOverLimitTicks`); an expired poop call only causes sickness at the limit |
+| `claude-codotchi/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts` | mirrored the `vscode/src/gameEngine.ts` change (claude-codotchi keeps its `immortal` guard) |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `Constants.kt`, `PetState.kt`, `CodotchiPersistence.kt` | mirrored in Kotlin; `poopOverLimitTicks` persisted with a 0 fallback |
+| `claude-codotchi/scripts/state.mjs`, `statusline.mjs`, `hook-stop.mjs` | fix: tick replays on an IDE-anchored pet pass through the IDE's `wasIdle` / `wasDeepIdle` (`idleFlagsForFile`) |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt`, `claude-codotchi/tests/integration/idleReplay.test.mjs` | tests for all of the above |
+| `vscode/package.json` | idle / deep-idle setting descriptions say the pet can't lose health |
+| `vscode/README.md`, `pycharm/README.md`, `plugin.xml` | "Safe while you are away" feature bullet; the Clean row says "for too long" |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json` | version bump to 2.20.17 |
+
+**Updated constants:** `MAX_UNCLEANED_POOPS_BEFORE_SICK` 3 → 5; new `POOP_SICK_GRACE_TICKS = 20`; removed `IDLE_SICK_DAMAGE_PER_TICK`.
+
+---
+
+## v2.20.16
+
+### Changes from v2.20.15 (pet stuck walking right after the sidebar is narrowed — branch fix/unreachable-snack, BUGFIX-164)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | fix: `animationLoop()` clamps floor snacks into the current reachable range each frame so a snack left off-canvas by a narrower sidebar can’t pin the pet against the right wall |
+| `pycharm/src/main/resources/webview/sidebar.js` | mirrored the `vscode/media/sidebar.js` change |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json` | version bump to 2.20.16 |
+
+---
+
+## v2.20.15
+
+### Changes from v2.20.14 (GitHub leaderboard sign-in re-prompts when the token dies — branch fix/github-reauth, BUGFIX-163 / BUG-S08; PyCharm plugin icon and description encoding)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/githubAuth.ts` | new: `resolveGithubUser()` treats 401 / non-rate-limit 403 from `/user` as session invalid; one `forceNewSession` retry for user actions, `auth_expired` for background callers |
+| `vscode/src/sidebarProvider.ts` | fix: submit / delete / sign-in / live push / auto-submit use `resolveGithubUser`; 401/403 on issue POST handled; clears cached username, sets `leaderboardAuthExpired`, one-off **Sign in** warning for background expiry; sign-in errors posted instead of swallowed; Copilot bubble reports unauthorized |
+| `vscode/media/sidebar.js` | fix: shows sign-in error with **Retry GitHub sign-in**, **Sign in to GitHub again** when `leaderboardAuthExpired`; stateUpdates no longer reset the button mid-sign-in |
+| `vscode/tests/unit/githubAuth.test.ts` | new: 14 tests for auth-failure classification and re-auth flow |
+| `pycharm/src/main/kotlin/com/codotchi/GitHubAuth.kt` | new: `isGithubAuthFailure()` + `describeDeviceFlowError()` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | fix: dead token clears the `github-pat` credential and username; user actions restart the device flow (submit retries once), background pushes flag + notify once; device flow and username lookup report failures with a **Try again** action; Copilot bubble reports unauthorized |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | `postState` sends `leaderboardAuthExpired` |
+| `pycharm/src/main/resources/webview/sidebar.js` | mirrored the `vscode/media/sidebar.js` change |
+| `pycharm/src/test/kotlin/com/codotchi/GitHubAuthTest.kt` | new: classification tests + source guards |
+| `pycharm/src/main/resources/META-INF/pluginIcon.svg`, `pluginIcon_dark.svg` | new: 40×40 codotchi egg plugin icon (replaces the default icon in Settings → Plugins / Marketplace); removed the unsupported `<icon>` element |
+| `pycharm/src/main/resources/META-INF/plugin.xml`, `pycharm/README.md` | fix: repaired mojibake (`—`/`→` shown as `ÃƒÂ¢Ã¢â€šÂ¬`); refreshed feature list; new Leaderboard section |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json`, `opencode-codotchi/src/index.ts` | fix: repaired the same mojibake; version bump to 2.20.15 |
+| `.claude/skills/release-checklist/SKILL.md`, `.opencode/skills/release-checklist/SKILL.md` | encoding rule for version bumps |
+
+---
+
+## v2.20.14
+
+### Changes from v2.20.13 (repeated log messages grouped with (×N), including on the death screen — branch fix/collapse-repeated-log-events, BUGFIX-162)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | fix: live event log groups any consecutive repeated event (not just health-loss ticks) and keeps the first label; death-screen log groups consecutive repeats with `(×N)` |
+| `pycharm/src/main/resources/webview/sidebar.js` | mirrored the `vscode/media/sidebar.js` change |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-desktop-codotchi/package.json` | version bump to 2.20.14 (desktop was behind at 2.20.11) |
+
+---
+
+## v2.20.13
+
+### Changes from v2.20.12 (today's token cost fixed across midnight, double counting and subagents — branch fix/daily-token-cost, BUGFIX-161)
+
+| File | What changed |
+|------|-------------|
+| `claude-codotchi/scripts/state.mjs` | fix: `scanClaudeUsage()` counts by local day, dedupes replies by `message.id:requestId` (last line wins), includes `<session>/subagents/*.jsonl`; removed unused `readSessionUsage` |
+| `claude-codotchi/scripts/statusline.mjs` | fix: usage cache is keyed by local date so it can't show yesterday's total after midnight |
+| `vscode/src/claudeUsage.ts` | new: Claude transcript scanner moved out of `sidebarProvider.ts` with the same local-day, dedupe and subagent rules |
+| `vscode/src/sidebarProvider.ts` | uses `claudeUsage.ts`; reads the OpenCode sidecar by local date |
+| `pycharm/src/main/kotlin/com/codotchi/ClaudeUsageScanner.kt` | new: Kotlin mirror of `claudeUsage.ts` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | delegates to `ClaudeUsageScanner`; reads the OpenCode sidecar by local date |
+| `opencode-codotchi/src/index.ts` | fix: local-midnight day key and backfill window; rollover before message dedupe; live/replayed events bucketed by completion time; fallback only sums today's messages; cross-window reload adopts message count |
+| `opencode-codotchi/src/usageBackfill.ts` | `sumCompletedAssistantUsage(messages, sinceMs?)` optional day filter |
+
+---
+
+## v2.20.11
 
 ### Changes from v2.20.10 (leaderboard total under-count — branch fix/leaderboard-total-count)
 
@@ -12,7 +594,7 @@
 
 ---
 
-## v2.20.10 — current
+## v2.20.10
 
 ### Changes from v2.20.9 (real-time elapsed for live pets on leaderboard — branch fix/leaderboard-live-realtime)
 
@@ -36,7 +618,7 @@
 
 ---
 
-## v2.20.8 — current
+## v2.20.8
 
 ### Changes from v2.20.7 (leaderboard rank pool username over-exclusion — branch fix/pycharm-leaderboard-rank)
 
@@ -58,7 +640,7 @@
 
 ---
 
-## v2.20.6 — current
+## v2.20.6
 
 ### Changes from v2.20.5 (PyCharm leaderboard rank self-exclusion fix — branch fix/pycharm-leaderboard-rank)
 
@@ -71,7 +653,7 @@
 
 ---
 
-## v2.20.5 — current
+## v2.20.5
 
 ### Changes from v2.20.4 (leaderboard fixes — branch fix/pycharm-direct-submit)
 
@@ -100,7 +682,7 @@
 | `claude-desktop-codotchi/package.json` | chore: bump version to 2.20.3 |
 
 ---
-## v2.20.2 — current
+## v2.20.2
 
 ### Changes from v2.20.1 (PyCharm live push, 48h threshold, all-time includes live pets — branch main)
 
@@ -888,8 +1470,8 @@ correct).
 | `pycharm/build.gradle.kts` | chore: bump version to 2.7.0 |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | chore: bump version to 2.7.0 |
 | `opencode-codotchi/package.json` | chore: bump version to 2.7.0 |
-| `vscode/media/sprites.js` | fix: horizontally mirror all five roo sprite stages so Roogotchi faces left in raw data and walks correctly (BUGFIX-119) |
-| `pycharm/src/main/resources/webview/sprites.js` | fix: mirror roo sprite stages (BUGFIX-119) |
+| `vscode/media/sprites.js` | fix: horizontally mirror all five roo sprite stages so Roogotchi faces left in raw data and walks correctly (BUGFIX-171) |
+| `pycharm/src/main/resources/webview/sprites.js` | fix: mirror roo sprite stages (BUGFIX-171) |
 | `scripts/mirror_roo.js` | chore: add helper script used to mirror roo pixel rows |
 | `vscode/media/sidebar.js` | fix: spriteLabel now derived from spriteType, not defaultName — shiba passcode shows "Dog" not "Codotchi" (BUGFIX-120) |
 | `pycharm/src/main/resources/webview/sidebar.js` | fix: same spriteLabel fix as VS Code (BUGFIX-120) |
@@ -1075,7 +1657,7 @@ ZODIAC_ANIMALS:   string[] = ["rat","ox","tiger","rabbit","dragon","snake","hors
 | `opencode-codotchi/scripts/bundle-plugin.js` | new: Bun bundler script producing `dist-plugin/codotchi.js` — single self-contained ESM plugin (BUGFIX-119B) |
 | `opencode-codotchi/scripts/package.js` | fix: builds bundle before zipping; ships `dist-plugin/codotchi.js` instead of loose helper `.ts` files (BUGFIX-119B) |
 | `opencode-codotchi/.gitignore` | chore: added `dist-plugin/` and `out-test/` to gitignore |
-| `opencode-codotchi/tests/unit/pluginContract.test.ts` | new: 45 Bun-based loader-contract regression tests (BUGFIX-119) |
+| `opencode-codotchi/tests/unit/pluginContract.test.ts` | new: 45 Bun-based loader-contract regression tests (BUGFIX-171) |
 | `opencode-codotchi/package.json` | test: added `bundle`, `test:node`, `test:plugin` scripts; `npm test` now runs both node:test and bun:test suites |
 | `opencode-codotchi/tsconfig.test.json` | chore: exclude `pluginContract.test.ts` from Node/CJS test compile pass |
 | `developer_notes/BUGFIXES.md` | docs: added BUGFIX-119 entry |
@@ -2097,7 +2679,7 @@ CARE_MISTAKE_OLD_AGE_SATURATE: number/Int = 20 // new — lifetime mistakes at w
 // removed: NEGLECT_DECAY_TICK_INTERVAL (was 300)
 ```
 
-## v1.17.0 — current
+## v1.17.0
 
 ### Changes from v1.16.0
 
@@ -2140,7 +2722,7 @@ CARE_MISTAKE_OLD_AGE_SATURATE: number/Int = 20 // new — lifetime mistakes at w
 | `vscode/media/sidebar.css` | Experimental: replaced `image-rendering: pixelated/crisp-edges` with `image-rendering: auto` on `.sprite-container`, `#sprite-canvas`, and `#lr-canvas` — enables browser bilinear smoothing on sprite canvas upscale |
 | `pycharm/src/main/resources/webview/sidebar.css` | Mirror of above CSS change |
 
-## v1.15.2 — current
+## v1.15.2
 
 ### Changes from v1.15.1
 

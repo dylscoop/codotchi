@@ -1,7 +1,11 @@
 ---
 name: release-management
-description: Governs artifact archiving and releases/ folder hygiene — archive old artifacts before rebuilding, copy current artifacts to releases/ before merging to main, and enforce the 3-version retention rule.
+description: Governs local artifact archiving and releases/ folder hygiene — archive old artifacts before rebuilding, copy current artifacts to releases/ for the GitHub Release upload, and enforce the 3-version retention rule. Artifacts are never committed to git.
 ---
+
+> **Artifacts are local only.** `releases/`, every `*/archive/` folder and all
+> `*.vsix`, `*.zip` and `*.mcpb` files are gitignored (since v2.21.3). Use plain
+> `mv` / `Move-Item`, never `git mv` or `git add`, and never commit them.
 
 ## When to apply this skill
 
@@ -40,7 +44,7 @@ This skill is referenced by `release-checklist` (Step 2a) and `git-workflow` (St
 ### VS Code
 
 ```
-git mv vscode/codotchi-OLD.vsix vscode/archive/vsix/
+mv vscode/codotchi-OLD.vsix vscode/archive/vsix/
 ```
 
 Then rebuild: `npx @vscode/vsce package` (from `vscode/`)
@@ -48,7 +52,7 @@ Then rebuild: `npx @vscode/vsce package` (from `vscode/`)
 ### PyCharm
 
 ```
-git mv "pycharm/build/distributions/pycharm-codotchi-OLD.zip" pycharm/archive/
+mv "pycharm/build/distributions/pycharm-codotchi-OLD.zip" pycharm/archive/
 ```
 
 Then rebuild (from `pycharm/`):
@@ -59,7 +63,7 @@ $env:JAVA_HOME = "C:\Users\DylanSiow-Lee\.gradle\caches\modules-2\files-2.1\com.
 ### OpenCode
 
 ```
-git mv opencode-codotchi/opencode-codotchi-OLD.zip opencode-codotchi/archive/
+mv opencode-codotchi/opencode-codotchi-OLD.zip opencode-codotchi/archive/
 ```
 
 Then rebuild: `node scripts/package.js` (from `opencode-codotchi/`)
@@ -67,7 +71,7 @@ Then rebuild: `node scripts/package.js` (from `opencode-codotchi/`)
 ### Claude Desktop
 
 ```
-git mv claude-desktop-codotchi/codotchi-desktop.mcpb "claude-desktop-codotchi/archive/codotchi-desktop-OLD.mcpb"
+mv claude-desktop-codotchi/codotchi-desktop.mcpb "claude-desktop-codotchi/archive/codotchi-desktop-OLD.mcpb"
 ```
 
 Then rebuild: `npm run build && npm run bundle` (from `claude-desktop-codotchi/`)
@@ -85,11 +89,8 @@ copy "opencode-codotchi\opencode-codotchi-X.Y.Z.zip" releases\
 copy "claude-desktop-codotchi\codotchi-desktop.mcpb" "releases\codotchi-desktop-X.Y.Z.mcpb"
 ```
 
-After copying, apply the 3-version rule (Step 3), then commit as:
-
-```
-chore: publish vX.Y.Z artifacts to releases/
-```
+After copying, apply the 3-version rule (Step 3). Nothing is committed: the files
+are gitignored and only uploaded to the GitHub Release (see `git-workflow`).
 
 ---
 
@@ -108,10 +109,10 @@ Example — vsix files for `0.2.2`, `0.3.2`, `0.4.2`, `0.5.2`:
 Apply the same rule independently to `.vsix`, `pycharm-codotchi-*.zip`, `opencode-codotchi-*.zip`, and `codotchi-desktop-*.mcpb` files.
 
 ```
-git mv releases/codotchi-OLD.vsix releases/old_releases/
-git mv releases/pycharm-codotchi-OLD.zip releases/old_releases/
-git mv releases/opencode-codotchi-OLD.zip releases/old_releases/
-git mv releases/codotchi-desktop-OLD.mcpb releases/old_releases/
+mv releases/codotchi-OLD.vsix releases/old_releases/
+mv releases/pycharm-codotchi-OLD.zip releases/old_releases/
+mv releases/opencode-codotchi-OLD.zip releases/old_releases/
+mv releases/codotchi-desktop-OLD.mcpb releases/old_releases/
 ```
 
 ---
@@ -119,5 +120,5 @@ git mv releases/codotchi-desktop-OLD.mcpb releases/old_releases/
 ## Quick checklist
 
 - [ ] Version bumped? → Archive old VS Code vsix, old PyCharm zip, old OpenCode zip, and old Desktop mcpb before rebuilding
-- [ ] Merging to main? → Copy current vsix, PyCharm zip, OpenCode zip, and Desktop mcpb (renamed with version) to `releases/`, apply 3-version rule, commit as `chore: publish vX.Y.Z artifacts to releases/`
+- [ ] Merging to main? → Copy current vsix, PyCharm zip, OpenCode zip, and Desktop mcpb (renamed with version) to `releases/`, apply 3-version rule
 - [ ] After writing to `releases/`? → Confirm latest version is in root; confirm only 3 vsix, 3 pycharm zip, 3 opencode zip, and 3 desktop mcpb remain in root; move excess to `releases/old_releases/`

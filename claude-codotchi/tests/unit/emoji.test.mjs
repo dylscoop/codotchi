@@ -44,8 +44,9 @@ describe("pickPetEmoji", () => {
   it("maps each known spriteType to its own emoji", () => {
     const cases = {
       classic: "🐣", cat: "🐱", rat: "🐀", ox: "🐂", tiger: "🐯", rabbit: "🐰",
-      dragon: "🐉", snake: "🐍", horse: "🐴", goat: "🐐", monkey: "🐵",
-      rooster: "🐓", dog: "🐶", pig: "🐷",
+      dragon: "🐉", snake: "🐍", horse: "🐴", sheep: "🐑", monkey: "🐵",
+      rooster: "🐓", dog: "🐶", pig: "🐷", kangaroo: "🦘", roo: "🦘",
+      tim: "☕", stu: "🐟",
     };
     for (const [spriteType, expected] of Object.entries(cases)) {
       assert.equal(pickPetEmoji(petState({ spriteType })), expected, `spriteType=${spriteType}`);

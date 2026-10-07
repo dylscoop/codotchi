@@ -7,8 +7,8 @@
  *
  * Files written:
  *   codotchi-state.json   — pet state (PetState + metadata)
- *   codotchi-daily.json   — daily cost/token accumulator (UTC-date keyed)
  *   codotchi-config.json  — user config (cost thresholds, terminalEnabled)
+ *   (usage is re-scanned from Claude Code transcripts; the old codotchi-daily.json is no longer read or written)
  */
 
 import fs from "fs";
@@ -76,6 +76,22 @@ export function loadStateFile() {
 }
 
 /**
+ * Idle flags to pass to tick() when replaying elapsed ticks for a loaded file.
+ *
+ * When the pet comes from an IDE anchor, the IDE's own last-known idle state
+ * (the raw `wasIdle` / `wasDeepIdle` it serialised) is passed through, so a
+ * Claude Code replay can't bypass the IDE's idle protection and damage a pet
+ * whose owner is away (BUG-S02). deserialiseState() resets wasIdle on load,
+ * so this must read the raw file state. The local pet is always "active".
+ *
+ * @returns {{ isIdle: boolean, isDeepIdle: boolean }}
+ */
+export function idleFlagsForFile(file) {
+  if (!file?._anchor || !file.state) return { isIdle: false, isDeepIdle: false };
+  return { isIdle: file.state.wasIdle === true, isDeepIdle: file.state.wasDeepIdle === true };
+}
+
+/**
  * Save the file object (must include { state, savedAt, terminalEnabled, createdDate, totalMessages }).
  *
  * Always writes the full object to the local wrapper file first — an
@@ -134,31 +150,6 @@ export function saveStateFile(obj) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Daily cost/token tracking
-// ---------------------------------------------------------------------------
-
-export function dailyPath() {
-  return path.join(dataDir(), "codotchi-daily.json");
-}
-
-/** Returns { [utcDate]: { costUsd, sessions: { [sessionId]: lastCostUsd } } } */
-export function loadDaily() {
-  const p = dailyPath();
-  if (!fs.existsSync(p)) return {};
-  try {
-    return JSON.parse(fs.readFileSync(p, "utf8"));
-  } catch {
-    return {};
-  }
-}
-
-export function saveDaily(data) {
-  const dir = dataDir();
-  ensureDir(dir);
-  fs.writeFileSync(dailyPath(), JSON.stringify(data, null, 2), "utf8");
-}
-
 // Pricing per million tokens (USD) by model prefix. Ordered most-specific
 // first — checked with startsWith(), so longer/pricier sub-prefixes (e.g.
 // claude-opus-4-8) must precede their shorter generic parent (claude-opus-4).
@@ -188,111 +179,115 @@ function pricingForModel(model = "") {
   return DEFAULT_PRICING;
 }
 
-/**
- * Read current session's cumulative token usage from its JSONL transcript.
- * Returns { costUsd, tokens } for the session so far.
- */
-export function readSessionUsage(sessionId, date = null) {
-  if (!sessionId) return { costUsd: 0, tokens: 0 };
-  const projsDir = path.join(os.homedir(), ".claude", "projects");
-  let jsonlPath = null;
-  try {
-    for (const proj of fs.readdirSync(projsDir)) {
-      const candidate = path.join(projsDir, proj, `${sessionId}.jsonl`);
-      if (fs.existsSync(candidate)) { jsonlPath = candidate; break; }
-    }
-  } catch { return { costUsd: 0, tokens: 0 }; }
-  if (!jsonlPath) return { costUsd: 0, tokens: 0 };
+/** Epoch ms of local midnight at the start of the day containing `nowMs`. */
+export function localDayStartMs(nowMs = Date.now()) {
+  const d = new Date(nowMs);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
 
-  let costUsd = 0, tokens = 0;
-  try {
-    const lines = fs.readFileSync(jsonlPath, "utf8").trim().split("\n");
-    for (const line of lines) {
+/** Local calendar date ("YYYY-MM-DD") for `nowMs` — the key "today" is measured by. */
+export function localDateKey(nowMs = Date.now()) {
+  const d = new Date(nowMs);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Transcript files under one project dir: top-level *.jsonl plus <session>/subagents/*.jsonl. */
+function listTranscripts(projPath) {
+  const out = [];
+  let entries;
+  try { entries = fs.readdirSync(projPath, { withFileTypes: true }); } catch { return out; }
+  for (const e of entries) {
+    const p = path.join(projPath, e.name);
+    if (e.isFile() && e.name.endsWith(".jsonl")) {
+      out.push(p);
+    } else if (e.isDirectory()) {
+      const subDir = path.join(p, "subagents");
       try {
-        const d = JSON.parse(line);
-        if (d.type !== "assistant" || !d.message?.usage) continue;
-        if (date && d.timestamp && !d.timestamp.startsWith(date)) continue;
-        const u = d.message.usage;
-        const p = pricingForModel(d.message.model ?? "");
-        const inp = u.input_tokens ?? 0;
-        const out = u.output_tokens ?? 0;
-        const cr  = u.cache_read_input_tokens ?? 0;
-        const cc  = u.cache_creation_input_tokens ?? 0;
-        costUsd += (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
-        tokens  += inp + out + cr + cc;
-      } catch { /* skip malformed lines */ }
+        for (const f of fs.readdirSync(subDir)) {
+          if (f.endsWith(".jsonl")) out.push(path.join(subDir, f));
+        }
+      } catch { /* no subagents dir */ }
     }
-  } catch { return { costUsd: 0, tokens: 0 }; }
-  return { costUsd, tokens };
+  }
+  return out;
 }
 
 /**
- * Scan all ~/.claude/projects/ JSONL files modified today and sum up usage.
- * Used as a fallback when no session ID is available (e.g. statusline plugin subprocess).
+ * Scan Claude Code transcripts and sum today's usage (local calendar day).
+ *
+ * - "Today" starts at local midnight, compared against each message's parsed
+ *   timestamp — so a session running across midnight is split at the user's
+ *   midnight, not UTC's.
+ * - Claude Code writes one JSONL line per content block, each repeating the
+ *   message's usage (earlier lines may carry partial output_tokens). Lines are
+ *   deduplicated by message.id + requestId; the last line seen wins.
+ * - Subagent (Task) transcripts under <session>/subagents/ are included.
+ *
+ * Returns { costUsd, tokens, hourlyCostUsd, messageCount }.
  */
-function scanAllDailyUsage() {
-  const projsDir = path.join(os.homedir(), ".claude", "projects");
-  const today = new Date().toISOString().slice(0, 10);
-  const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
-  let costUsd = 0, tokens = 0, hourlyCostUsd = 0, messageCount = 0;
-  try {
-    for (const proj of fs.readdirSync(projsDir)) {
-      const projPath = path.join(projsDir, proj);
-      let files;
-      try { files = fs.readdirSync(projPath); } catch { continue; }
-      for (const f of files) {
-        if (!f.endsWith(".jsonl")) continue;
-        const fp = path.join(projPath, f);
+export function scanClaudeUsage({
+  projsDir = path.join(os.homedir(), ".claude", "projects"),
+  nowMs = Date.now(),
+} = {}) {
+  const dayStartMs = localDayStartMs(nowMs);
+  const oneHourAgoMs = nowMs - 3_600_000;
+  const byId = new Map();   // "msgId:requestId" -> entry (last line wins)
+  const anonymous = [];     // lines without a message id — counted as-is
+  let projects;
+  try { projects = fs.readdirSync(projsDir); } catch { projects = []; }
+  for (const proj of projects) {
+    for (const fp of listTranscripts(path.join(projsDir, proj))) {
+      try {
+        if (fs.statSync(fp).mtimeMs < dayStartMs) continue;
+      } catch { continue; }
+      let lines;
+      try { lines = fs.readFileSync(fp, "utf8").trim().split("\n"); } catch { continue; }
+      for (const line of lines) {
         try {
-          if (fs.statSync(fp).mtime.toISOString().slice(0, 10) < today) continue;
-        } catch { continue; }
-        try {
-          const lines = fs.readFileSync(fp, "utf8").trim().split("\n");
-          for (const line of lines) {
-            try {
-              const d = JSON.parse(line);
-              if (d.type !== "assistant" || !d.message?.usage) continue;
-              if (d.timestamp && !d.timestamp.startsWith(today)) continue;
-              const u = d.message.usage;
-              const p = pricingForModel(d.message.model ?? "");
-              const inp = u.input_tokens ?? 0;
-              const out = u.output_tokens ?? 0;
-              const cr  = u.cache_read_input_tokens ?? 0;
-              const cc  = u.cache_creation_input_tokens ?? 0;
-              const entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
-              costUsd += entryCost;
-              tokens  += inp + out + cr + cc;
-              messageCount += 1;
-              if (d.timestamp && d.timestamp >= oneHourAgo) hourlyCostUsd += entryCost;
-            } catch { /* skip malformed lines */ }
+          const d = JSON.parse(line);
+          if (d.type !== "assistant" || !d.message?.usage) continue;
+          let tsMs = null;
+          if (d.timestamp) {
+            tsMs = Date.parse(d.timestamp);
+            if (Number.isNaN(tsMs) || tsMs < dayStartMs) continue;
           }
-        } catch {}
+          const entry = { usage: d.message.usage, model: d.message.model ?? "", tsMs };
+          if (d.message.id) byId.set(`${d.message.id}:${d.requestId ?? ""}`, entry);
+          else anonymous.push(entry);
+        } catch { /* skip malformed lines */ }
       }
     }
-  } catch {}
+  }
+  let costUsd = 0, tokens = 0, hourlyCostUsd = 0, messageCount = 0;
+  for (const { usage: u, model, tsMs } of [...byId.values(), ...anonymous]) {
+    const p = pricingForModel(model);
+    const inp = u.input_tokens ?? 0;
+    const out = u.output_tokens ?? 0;
+    const cr  = u.cache_read_input_tokens ?? 0;
+    const cc  = u.cache_creation_input_tokens ?? 0;
+    const entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
+    costUsd += entryCost;
+    tokens  += inp + out + cr + cc;
+    messageCount += 1;
+    if (tsMs !== null && tsMs >= oneHourAgoMs) hourlyCostUsd += entryCost;
+  }
   return { costUsd, tokens, hourlyCostUsd, messageCount };
 }
 
 /**
- * Accumulate today's cost and tokens from the current session's JSONL transcript.
- * sessionId defaults to CLAUDE_CODE_SESSION_ID env var.
- * Returns { costUsd, tokens, hourlyCostUsd, messageCount } — all accumulated across
- * all sessions today. messageCount is the number of completed assistant turns today
- * (including sub-agent/Task turns) — used to compute a tokens-per-message average
- * for display instead of the raw cumulative token total.
- *
- * Uses a read-modify-write-verify pattern to guard against the race condition
- * where two concurrent Claude Code windows both read the file, compute their
- * deltas, and write back — with the second write clobbering the first.
- * After writing, we re-read the file once and repair any clobbered entry.
+ * Today's Claude Code cost and tokens, summed across all sessions (local day).
+ * Returns { costUsd, tokens, hourlyCostUsd, messageCount }. messageCount is the
+ * number of unique completed assistant turns today (including sub-agent/Task
+ * turns) — used to compute a tokens-per-message average for display instead of
+ * the raw cumulative token total.
  */
 export function accumulateDailyUsage(sessionId) {
-  // Back-compat: callers may pass a stdinJson object — ignore it.
-  if (sessionId && typeof sessionId === "object") sessionId = undefined;
+  // Back-compat: callers may pass a session ID or stdinJson object — ignored.
   // Always read directly from today's JSONL files — bypasses the checkpoint/delta
   // accumulator in codotchi-daily.json which produced inflated values when
-  // sessions spanned UTC midnight or when the daily JSON had stale state.
-  return scanAllDailyUsage();
+  // sessions spanned midnight or when the daily JSON had stale state.
+  return scanClaudeUsage();
 }
 
 /** @deprecated Use accumulateDailyUsage instead. */
@@ -349,6 +344,31 @@ export function saveRankCache(data) {
   const dir = dataDir();
   ensureDir(dir);
   fs.writeFileSync(rankCachePath(), JSON.stringify(data, null, 2), "utf8");
+}
+
+/** Live entries older than this are hidden on the leaderboard page. */
+export const LIVE_STALE_MS = 48 * 60 * 60 * 1000;
+const STAGE_ORDER = { egg: 0, baby: 1, child: 2, teen: 3, adult: 4, senior: 5 };
+
+/**
+ * Rank `me` against scores.json + live.json exactly as leaderboard/index.html
+ * orders them: live entries only if pushed within 48h, sorted by stage then
+ * stored ageDays (no extrapolation). The pet's own live entry (matched by
+ * spawnedAt) is dropped so the trailing +1 doesn't count it twice.
+ */
+export function computeLiveRank(scores, live, me, now) {
+  const myStage = STAGE_ORDER[me.stage] ?? 0;
+  const myAge = me.ageDays ?? 0;
+  const others = (Array.isArray(scores) ? scores : []).concat(
+    (Array.isArray(live) ? live : [])
+      .filter(e => e.updatedAt && (now - e.updatedAt) < LIVE_STALE_MS)
+      .filter(e => !(me.spawnedAt && e.spawnedAt === me.spawnedAt))
+  );
+  const rank = others.filter(s => {
+    const st = STAGE_ORDER[s.stage ?? ""] ?? 0;
+    return st !== myStage ? st > myStage : (s.ageDays ?? 0) > myAge;
+  }).length + 1;
+  return { rank, total: others.length + 1 };
 }
 
 // ---------------------------------------------------------------------------

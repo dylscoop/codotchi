@@ -1,6 +1,8 @@
 package com.codotchi
 
 import com.codotchi.engine.PetState
+import com.intellij.openapi.components.service
+import com.intellij.openapi.components.serviceIfCreated
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
@@ -12,7 +14,9 @@ import java.awt.event.MouseEvent
 /**
  * CodotchiStatusWidget — displays a compact pet summary in the IDE status bar.
  *
- * Shows the pet's stage emoji and name, e.g. "🥚 Codotchi".
+ * Shows the pet's stage emoji and name, e.g. "🥚 Codotchi", with a "⚠ " prefix while an
+ * attention call is active (see [formatStatusWidget]). Blank when the
+ * statusBarEnabled setting is off.
  * [update] is called by [CodotchiPlugin.broadcastState] after every state change.
  */
 class CodotchiStatusWidget(private val project: Project) : StatusBarWidget, TextPresentation {
@@ -24,15 +28,6 @@ class CodotchiStatusWidget(private val project: Project) : StatusBarWidget, Text
 
     companion object {
         const val ID = "CodotchiStatusWidget"
-
-        private val STAGE_EMOJI = mapOf(
-            "egg"    to "🥚",
-            "baby"   to "🐣",
-            "child"  to "🐥",
-            "teen"   to "🐦",
-            "adult"  to "🦜",
-            "senior" to "🦅",
-        )
     }
 
     // ── StatusBarWidget ────────────────────────────────────────────────────
@@ -47,6 +42,7 @@ class CodotchiStatusWidget(private val project: Project) : StatusBarWidget, Text
 
     override fun dispose() {
         statusBar = null
+        serviceIfCreated<CodotchiPlugin>()?.unregisterStatusWidget(this)
     }
 
     // ── TextPresentation ───────────────────────────────────────────────────
@@ -64,9 +60,9 @@ class CodotchiStatusWidget(private val project: Project) : StatusBarWidget, Text
     // ── State update ───────────────────────────────────────────────────────
 
     fun update(state: PetState) {
-        val emoji = STAGE_EMOJI[state.stage] ?: "🥚"
-        text    = "$emoji ${state.name}"
-        tooltip = "${state.name} | ${state.stage} | mood: ${state.mood} | health: ${state.health} | weight: ${state.weight}"
+        val (t, tip) = formatStatusWidget(state, service<CodotchiSettings>().statusBarEnabled)
+        text    = t
+        tooltip = tip
         statusBar?.updateWidget(ID())
     }
 }

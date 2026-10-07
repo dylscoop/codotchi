@@ -15,16 +15,14 @@ When in doubt, always do both.
 
 | Concern | VS Code | PyCharm |
 |---------|---------|---------|
-| Game engine (logic) | `vscode/src/gameEngine.ts` | `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` |
+| Game engine (logic) | `packages/core/src/gameEngine.ts` (synced to `vscode/src/` by `scripts/sync-core.mjs`) | `pycharm/src/main/kotlin/com/gotchi/engine/GameEngine.kt` |
 | Pet state model | `vscode/src/gameEngine.ts` (`PetState` interface) | `pycharm/src/main/kotlin/com/gotchi/engine/PetState.kt` |
 | Constants / tuning | `vscode/src/gameEngine.ts` (top of file) | `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` |
 | Command handling / message routing | `vscode/src/sidebarProvider.ts` | `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` |
 | Persistence | `vscode/src/persistence.ts` | `pycharm/src/main/kotlin/com/gotchi/GotchiPersistence.kt` |
 | Status bar | `vscode/src/statusBar.ts` | `pycharm/src/main/kotlin/com/gotchi/GotchiStatusWidget.kt` |
 | Extension entry point | `vscode/src/extension.ts` | `pycharm/src/main/kotlin/com/gotchi/GotchiPlugin.kt` |
-| Webview HTML | `vscode/media/sidebar.html` | `pycharm/src/main/resources/webview/sidebar.html` |
-| Webview CSS | `vscode/media/sidebar.css` | `pycharm/src/main/resources/webview/sidebar.css` |
-| Webview JS | `vscode/media/sidebar.js` | `pycharm/src/main/resources/webview/sidebar.js` |
+| Webview (HTML / CSS / JS, sprites, sprite preview) | `vscode/media/` | same files — copied into `webview/` by `processResources` in `pycharm/build.gradle.kts` |
 | Plugin manifest | `vscode/package.json` | `pycharm/src/main/resources/META-INF/plugin.xml` |
 | Build config | `vscode/package.json` | `pycharm/build.gradle.kts` |
 
@@ -63,16 +61,16 @@ When in doubt, always do both.
 
 ---
 
-## Webview files are separate copies
+## Webview files are shared
 
-`vscode/media/sidebar.js` and `pycharm/src/main/resources/webview/sidebar.js` are **not shared** — they are manually kept in sync. Same applies to `sidebar.css` and `sidebar.html`. Always update both when any webview change is made.
+`vscode/media/` is the single source for the webview: `sidebar.{js,css,html}`, `customCharacters.js`, `spriteConstants.js`, `sprites.js` and `sprite_preview.html`. PyCharm's build copies them into the plugin's `webview/` resources (`pycharm/src/main/resources/webview/` is gitignored — never recreate it). Edit `vscode/media/` only; host-specific behaviour must branch at runtime (e.g. on `window.__vscodeSendMessage`), not in a separate copy.
 
 ---
 
 ## After any change
 
 1. If game logic changed: verify `GameEngine.kt` constants and function signatures still match `gameEngine.ts`.
-2. If webview changed: edit both copies of the affected file(s).
+2. If webview changed: edit `vscode/media/` only, then rebuild PyCharm (or run `gradlew processResources`) to pick it up.
 3. Run `npx tsc --noEmit` from `vscode/` to type-check the VS Code side.
 4. Run `gradlew.bat buildPlugin` from `pycharm/` (with `JAVA_HOME` set) to verify the PyCharm side compiles.
 5. Commit both sets of changes together.

@@ -291,6 +291,12 @@ body.font-large  { font-size: 16px; }
   text-decoration: underline;
 }
 
+.link-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  text-decoration: none;
+}
+
 /* ── Dead screen ── */
 .dead-title {
   font-size: 1.17em;
@@ -436,23 +442,31 @@ body.font-large  { font-size: 16px; }
   margin-top: 2px;
 }
 
-/* #lr-canvas lives inside #sprite-container as an absolute overlay.
-   Doors are drawn on top of the pet; z-index matches .poo-anim usage. */
-#lr-canvas {
+/* #mg-canvas lives inside #sprite-container as an absolute overlay: the
+   mini-game pixel art (doors, number card, coin) is drawn on top of the pet;
+   z-index matches .poo-anim usage. sidebar.js sizes its pixel buffer to the
+   sprite canvas, so the art isn't stretched. */
+#mg-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   z-index: 5;
-  image-rendering: auto;
+  image-rendering: pixelated;
   pointer-events: none;
 }
 
-.mg-countdown {
-  font-size: 1.5em;
-  font-weight: bold;
-  text-align: center;
-  letter-spacing: 1px;
+/* Text kept for screen readers while the canvas shows it visually. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .mg-btn-row {
@@ -469,13 +483,6 @@ body.font-large  { font-size: 16px; }
   opacity: 0.75;
   text-align: center;
   letter-spacing: 0.5px;
-}
-
-.mg-big-num {
-  font-size: 2.5em;
-  font-weight: bold;
-  text-align: center;
-  letter-spacing: 2px;
 }
 
 .mg-feedback {

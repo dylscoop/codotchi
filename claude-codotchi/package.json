@@ -1,12 +1,13 @@
 {
   "name": "claude-codotchi",
-  "version": "2.18.5",
+  "version": "2.27.2",
   "description": "Claude Code plugin — Tamagotchi-style virtual pet in the statusline, interactable via /codotchi",
   "type": "module",
   "scripts": {
+    "prebuild": "node ../scripts/sync-core.mjs",
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "test": "node --test tests/unit/state.test.mjs tests/unit/asciiArt.test.mjs tests/unit/emoji.test.mjs tests/integration/actionMerge.test.mjs tests/integration/emojiMode.test.mjs"
+    "test": "node --test tests/unit/state.test.mjs tests/unit/asciiArt.test.mjs tests/unit/emoji.test.mjs tests/integration/actionMerge.test.mjs tests/integration/emojiMode.test.mjs tests/integration/idleReplay.test.mjs tests/integration/whimCalls.test.mjs tests/integration/statuslineCalls.test.mjs tests/integration/sickAndNap.test.mjs tests/integration/liveRank.test.mjs"
   },
   "author": "dylscoop",
   "license": "MIT",

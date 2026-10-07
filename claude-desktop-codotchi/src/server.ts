@@ -47,6 +47,8 @@ function registerPetTool(
 registerPetTool("codotchi", "Show codotchi", "Show your codotchi pet as ASCII art.", () => tools.show(cfg));
 registerPetTool("codotchi_feed", "Feed codotchi", "Feed your codotchi a meal.", () => tools.feed(cfg));
 registerPetTool("codotchi_pat", "Pat codotchi", "Pat your codotchi to raise happiness and discipline.", () => tools.petAction(cfg));
+registerPetTool("codotchi_play", "Play with codotchi", "Play with your codotchi (answers its \"play with me\" calls).", () => tools.playAction(cfg));
+registerPetTool("codotchi_snack", "Give a snack", "Give your codotchi a snack (too many in a row make it sick).", () => tools.snack(cfg));
 registerPetTool("codotchi_sleep", "Toggle sleep", "Put your codotchi to sleep, or wake it if it is already sleeping.", () => tools.sleepToggle(cfg));
 registerPetTool("codotchi_clean", "Clean up", "Clean up after your codotchi.", () => tools.clean(cfg));
 registerPetTool("codotchi_medicine", "Give medicine", "Give your codotchi medicine when it is sick.", () => tools.medicine(cfg));

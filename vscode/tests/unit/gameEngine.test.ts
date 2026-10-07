@@ -63,9 +63,19 @@ import {
   MAX_FLOOR_SNACKS,
   VALID_PET_TYPES,
   STAGE_ORDER,
+  DEFAULT_GAME_CONFIG,
+  ATTENTION_ANSWER_COOLDOWN_TICKS,
+  ATTENTION_EXPIRY_COOLDOWN_TICKS,
+  BREAK_CALL_INTERVAL_TICKS,
+  BREAK_NAP_TICKS,
+  GIFT_PRAISE_HAPPINESS_BOOST,
   PetState,
   GameConfig,
+  AttentionCallType,
 } from "../../src/gameEngine";
+
+/** Config with attention calls off, so random calls don't perturb deterministic tick tests. */
+const NO_CALLS: GameConfig = { ...DEFAULT_GAME_CONFIG, attentionCallsEnabled: false };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -474,19 +484,358 @@ describe("tick — poop accumulation", () => {
 // ---------------------------------------------------------------------------
 
 describe("tick — sickness from dirty environment", () => {
-  it("becomes sick when poops reach MAX_UNCLEANED_POOPS_BEFORE_SICK (3)", () => {
-    // Already have 2 poops, one more poop during this tick triggers sickness
-    let state = makePet({ poops: 2, ticksSinceLastPoop: 399 });
-    state = tick(state);
+  it("becomes sick only after POOP_SICK_GRACE_TICKS (20) active ticks at MAX_UNCLEANED_POOPS_BEFORE_SICK (5)", () => {
+    let state = makePet({ poops: 5, nextPoopIntervalTicks: 99999 });
+    for (let i = 0; i < 19; i++) {
+      state = tick(state, false, false, NO_CALLS);
+      assert.equal(state.sick, false, `should not be sick after ${i + 1} ticks`);
+    }
+    assert.equal(state.poopOverLimitTicks, 19);
+    state = tick(state, false, false, NO_CALLS);
     assert.equal(state.sick, true);
     assert.ok(state.events.includes("became_sick"));
   });
 
+  it("never becomes sick with 4 poops", () => {
+    let state = makePet({ poops: 4, nextPoopIntervalTicks: 99999 });
+    for (let i = 0; i < 100; i++) state = tick(state, false, false, NO_CALLS);
+    assert.equal(state.sick, false);
+    assert.equal(state.poopOverLimitTicks, 0);
+  });
+
+  it("cleaning within the grace period prevents sickness and resets the counter", () => {
+    let state = makePet({ poops: 5, nextPoopIntervalTicks: 99999 });
+    for (let i = 0; i < 15; i++) state = tick(state, false, false, NO_CALLS);
+    state = clean(state);
+    assert.equal(state.poopOverLimitTicks, 0);
+    for (let i = 0; i < 30; i++) state = tick(state, false, false, NO_CALLS);
+    assert.equal(state.sick, false);
+  });
+
+  it("idle ticks freeze the grace counter (no increment, no reset)", () => {
+    let state = makePet({ poops: 5, poopOverLimitTicks: 10, nextPoopIntervalTicks: 99999 });
+    for (let i = 0; i < 50; i++) state = tick(state, true, false, NO_CALLS);
+    assert.equal(state.poopOverLimitTicks, 10);
+    for (let i = 0; i < 50; i++) state = tick(state, false, true, NO_CALLS);
+    assert.equal(state.poopOverLimitTicks, 10);
+    assert.equal(state.sick, false);
+  });
+
+  it("poopOverLimitTicks round-trips through serialise/deserialise and defaults to 0", () => {
+    const pet = makePet({ poops: 5, poopOverLimitTicks: 7 });
+    assert.equal(deserialiseState(serialiseState(pet)).poopOverLimitTicks, 7);
+    const legacy = serialiseState(pet) as Record<string, unknown>;
+    delete legacy.poopOverLimitTicks;
+    assert.equal(deserialiseState(legacy).poopOverLimitTicks, 0);
+  });
+
   it("does not trigger sickness again if already sick", () => {
-    let state = makePet({ poops: 3, sick: true });
+    let state = makePet({ poops: 5, poopOverLimitTicks: 99, sick: true });
     state = tick(state);
     const becameSickCount = state.events.filter((e) => e === "became_sick").length;
     assert.equal(becameSickCount, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// tick — poop attention call (expiry + idle suppression)
+// ---------------------------------------------------------------------------
+
+describe("tick — poop attention call", () => {
+  it("an expired poop call below the poop limit is a care mistake, not sickness", () => {
+    const pet = makePet({ poops: 2, activeAttentionCall: "poop", attentionCallActiveTicks: 999, careMistakes: 0, nextPoopIntervalTicks: 99999 });
+    const next = tick(pet);
+    assert.ok(next.events.includes("attention_call_expired_poop"));
+    assert.equal(next.sick, false);
+    assert.equal(next.careMistakes, 1);
+  });
+
+  it("an expired poop call at the poop limit makes the pet sick", () => {
+    const pet = makePet({ poops: 5, activeAttentionCall: "poop", attentionCallActiveTicks: 999, nextPoopIntervalTicks: 99999 });
+    const next = tick(pet);
+    assert.ok(next.events.includes("attention_call_expired_poop"));
+    assert.equal(next.sick, true);
+  });
+
+  it("no poop call fires while idle or deep idle", () => {
+    const originalRandom = Math.random;
+    Math.random = () => 0; // any chance-based call would fire
+    try {
+      const pet = makePet({ poops: 3, ticksWithUncleanedPoop: 500, nextPoopIntervalTicks: 99999 });
+      assert.ok(!tick(pet, true, false).events.includes("attention_call_poop"));
+      assert.ok(!tick(pet, false, true).events.includes("attention_call_poop"));
+      assert.ok(tick(pet).events.includes("attention_call_poop"), "control: fires when active");
+    } finally {
+      Math.random = originalRandom;
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// tick — no health loss while idle (BUG-S02)
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// tick — whim attention calls: play, pat, craving (§2.6)
+// ---------------------------------------------------------------------------
+
+/** Run fn with Math.random stubbed to a constant. */
+function withRandom<T>(value: number, fn: () => T): T {
+  const originalRandom = Math.random;
+  Math.random = () => value;
+  try { return fn(); } finally { Math.random = originalRandom; }
+}
+
+/** A content pet that no need-based call would fire for, with the given calls on cooldown. */
+function contentPet(blocked: AttentionCallType[], overrides: Partial<PetState> = {}): PetState {
+  const attentionCallCooldowns: Partial<Record<AttentionCallType, number>> = { misbehaviour: 999 };
+  for (const t of blocked) attentionCallCooldowns[t] = 999;
+  return makePet({
+    hunger: 70, happiness: 80, energy: 80, health: 100, nextPoopIntervalTicks: 99999,
+    attentionCallCooldowns, ...overrides,
+  });
+}
+
+describe("tick — whim attention calls (play / pat / craving)", () => {
+  it("cooldowns are 5 minutes (100 ticks) after an answer and after an expiry (BUG-S06)", () => {
+    assert.equal(ATTENTION_ANSWER_COOLDOWN_TICKS, 100);
+    assert.equal(ATTENTION_EXPIRY_COOLDOWN_TICKS, 100);
+  });
+
+  it("defaults to the standard 10-minute expiry and the fast (3.0) rate divisor", () => {
+    assert.equal(DEFAULT_GAME_CONFIG.attentionCallExpiryTicks, 200);
+    assert.equal(DEFAULT_GAME_CONFIG.attentionCallRateDivisor, 3.0);
+  });
+
+  it("a craving fires at any hunger level and records the food", () => {
+    const next = withRandom(0, () => tick(contentPet([])));
+    assert.equal(next.activeAttentionCall, "craving");
+    assert.equal(next.cravingFood, "snack");
+    assert.ok(next.events.includes("attention_call_craving_snack"));
+    assert.equal(next.ticksSinceLastCraving, 0);
+  });
+
+  it("idle ticks don't advance the call-chance counters", () => {
+    const pet = contentPet([], {
+      poops: 1, ticksWithUncleanedPoop: 5, ticksSinceLastMisbehaviour: 5, ticksSinceLastGift: 5,
+      ticksSinceLastPlayCall: 5, ticksSinceLastPatCall: 5, ticksSinceLastCraving: 5,
+    });
+    const quiet: GameConfig = { ...DEFAULT_GAME_CONFIG, attentionCallRateDivisor: 1e9 };
+    for (const [idle, deep] of [[true, false], [false, true]] as const) {
+      const next = tick(pet, idle, deep, quiet);
+      for (const k of ["ticksWithUncleanedPoop", "ticksSinceLastMisbehaviour", "ticksSinceLastGift",
+                       "ticksSinceLastPlayCall", "ticksSinceLastPatCall", "ticksSinceLastCraving"] as const) {
+        assert.equal(next[k], 5, `${k} (idle=${idle} deep=${deep})`);
+      }
+    }
+    const active = tick(pet, false, false, quiet);
+    assert.equal(active.ticksSinceLastCraving, 6, "control: counts on active ticks");
+    assert.equal(active.ticksWithUncleanedPoop, 6);
+  });
+
+  it("misbehaviour and gift calls don't fire while idle", () => {
+    const pet = makePet({
+      hunger: 70, happiness: 80, energy: 80, health: 100, nextPoopIntervalTicks: 99999,
+      attentionCallCooldowns: { craving: 999, play: 999, pat: 999 },
+    });
+    for (const [idle, deep] of [[true, false], [false, true]] as const) {
+      const next = withRandom(0, () => tick(pet, idle, deep));
+      assert.equal(next.activeAttentionCall, null, `idle=${idle} deep=${deep} fired ${next.activeAttentionCall}`);
+    }
+    assert.equal(withRandom(0, () => tick(pet)).activeAttentionCall, "misbehaviour", "control: fires when active");
+    const noMisbehaviour = { ...pet, attentionCallCooldowns: { ...pet.attentionCallCooldowns, misbehaviour: 999 } };
+    assert.equal(withRandom(0, () => tick(noMisbehaviour)).activeAttentionCall, "gift", "control: gift fires when active");
+  });
+
+  it("cravings fire regularly for a well-kept pet on active ticks", () => {
+    // Seeded LCG so the run is deterministic; every call is answered straight away.
+    let seed = 12345;
+    const originalRandom = Math.random;
+    Math.random = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+    let cravings = 0;
+    try {
+      let s = makePet({ nextPoopIntervalTicks: 99999 });
+      for (let i = 0; i < 20 * 60 * 2; i++) { // 2 hours active
+        s = tick(s);
+        if (s.events.some((e) => e.startsWith("attention_call_craving_"))) cravings++;
+        const cd = s.activeAttentionCall ? { ...s.attentionCallCooldowns, [s.activeAttentionCall]: 100 } : s.attentionCallCooldowns;
+        s = { ...s, activeAttentionCall: null, cravingFood: null, attentionCallCooldowns: cd,
+              hunger: 60, happiness: 80, energy: 90, health: 100, poops: 0, sleeping: false };
+      }
+    } finally {
+      Math.random = originalRandom;
+    }
+    assert.ok(cravings >= 5, `only ${cravings} cravings in 2 active hours`);
+  });
+
+  it("a craving asks for a meal after 2+ snacks in a row or when the snack cap is used up", () => {
+    const afterSnacks = withRandom(0, () => tick(contentPet([], { consecutiveSnacks: 2 })));
+    assert.equal(afterSnacks.cravingFood, "meal");
+    assert.ok(afterSnacks.events.includes("attention_call_craving_meal"));
+    const capped = withRandom(0, () => tick(contentPet([], { snacksGivenThisCycle: 3 })));
+    assert.equal(capped.cravingFood, "meal");
+  });
+
+  it("no craving when sick, full, or when only a pointless meal is left", () => {
+    const blockedOthers: AttentionCallType[] = ["play", "pat", "sick", "gift"];
+    for (const overrides of [{ sick: true }, { hunger: 100 }, { hunger: 95, consecutiveSnacks: 2 }] as Partial<PetState>[]) {
+      const next = withRandom(0, () => tick(contentPet(blockedOthers, overrides)));
+      assert.notEqual(next.activeAttentionCall, "craving", JSON.stringify(overrides));
+    }
+    // Nearly full but snacks are fine → it asks for a snack rather than a pointless meal
+    const nearlyFull = withRandom(0, () => tick(contentPet([], { hunger: 95 })));
+    assert.equal(nearlyFull.cravingFood, "snack");
+  });
+
+  it("play and pat calls fire when the earlier calls are on cooldown", () => {
+    const playNext = withRandom(0, () => tick(contentPet(["craving"])));
+    assert.equal(playNext.activeAttentionCall, "play");
+    assert.ok(playNext.events.includes("attention_call_play"));
+    const patNext = withRandom(0, () => tick(contentPet(["craving", "play"])));
+    assert.equal(patNext.activeAttentionCall, "pat");
+    assert.ok(patNext.events.includes("attention_call_pat"));
+  });
+
+  it("play doesn't fire at low energy or when sick; pat doesn't fire at low energy", () => {
+    const lowEnergy = withRandom(0, () => tick(contentPet(["craving", "low_energy"], { energy: 22 })));
+    assert.equal(lowEnergy.activeAttentionCall, "pat", "pat needs 20 energy, play needs 25");
+    const sickPet = withRandom(0, () => tick(contentPet(["craving", "sick", "critical_health"], { sick: true })));
+    assert.equal(sickPet.activeAttentionCall, "pat");
+    const drained = withRandom(0, () => tick(contentPet(["craving", "low_energy"], { energy: 10 })));
+    assert.ok(drained.activeAttentionCall !== "play" && drained.activeAttentionCall !== "pat");
+  });
+
+  it("no whim call fires while sleeping, idle or deep idle", () => {
+    for (const [idle, deep, sleeping] of [[true, false, false], [false, true, false], [false, false, true]] as const) {
+      const next = withRandom(0, () => tick(contentPet(["gift"], { sleeping, energy: 50 }), idle, deep));
+      assert.ok(!["play", "pat", "craving"].includes(next.activeAttentionCall ?? ""),
+        `fired ${next.activeAttentionCall} (idle=${idle} deep=${deep} sleeping=${sleeping})`);
+    }
+  });
+
+  it("need-based calls win over whims", () => {
+    const hungry = withRandom(0, () => tick(contentPet([], { hunger: 10 })));
+    assert.equal(hungry.activeAttentionCall, "hunger");
+  });
+
+  it("cooldowns only count down on active ticks", () => {
+    const pet = contentPet([], { attentionCallCooldowns: { play: 10 } });
+    let state = pet;
+    for (let i = 0; i < 20; i++) state = tick(state, true, false, { ...DEFAULT_GAME_CONFIG, attentionCallRateDivisor: 1e9 });
+    assert.equal(state.attentionCallCooldowns.play, 10);
+    state = tick(state, false, false, { ...DEFAULT_GAME_CONFIG, attentionCallRateDivisor: 1e9 });
+    assert.equal(state.attentionCallCooldowns.play, 9);
+  });
+
+  it("play() answers a play call and pat() answers a pat call", () => {
+    const played = play(makePet({ energy: 80, activeAttentionCall: "play", careMistakes: 1 }));
+    assert.equal(played.activeAttentionCall, null);
+    assert.ok(played.events.includes("attention_call_answered_play"));
+    assert.equal(played.attentionCallCooldowns.play, 100);
+    assert.equal(played.careMistakes, 0.5);
+    const patted = pat(makePet({ energy: 80, activeAttentionCall: "pat" }));
+    assert.equal(patted.activeAttentionCall, null);
+    assert.ok(patted.events.includes("attention_call_answered_pat"));
+  });
+
+  it("the answered event survives applyMinigameResult after play()", () => {
+    const afterPlay = play(makePet({ energy: 80, activeAttentionCall: "play" }));
+    const afterGame = applyMinigameResult(afterPlay, "coin_flip", "win");
+    assert.ok(afterGame.events.includes("attention_call_answered_play"), JSON.stringify(afterGame.events));
+    assert.ok(afterGame.events.includes("minigame_coin_flip_win"));
+    assert.ok(!afterGame.events.includes("played"), "only answered events are carried over");
+  });
+
+  it("only the craved food answers a craving", () => {
+    const wantsMeal = makePet({ activeAttentionCall: "craving", cravingFood: "meal" });
+    const snacked = startSnack(wantsMeal);
+    assert.equal(snacked.activeAttentionCall, "craving", "a snack doesn't answer a meal craving");
+    const fed = feedMeal(wantsMeal, 0);
+    assert.equal(fed.activeAttentionCall, null);
+    assert.equal(fed.cravingFood, null);
+    assert.ok(fed.events.includes("attention_call_answered_craving"));
+
+    const wantsSnack = makePet({ activeAttentionCall: "craving", cravingFood: "snack" });
+    assert.equal(feedMeal(wantsSnack, 0).activeAttentionCall, "craving", "a meal doesn't answer a snack craving");
+    const placed = startSnack(wantsSnack);
+    assert.equal(placed.activeAttentionCall, null);
+    assert.equal(placed.cravingFood, null);
+    assert.ok(placed.events.includes("attention_call_answered_craving"));
+  });
+
+  for (const type of ["play", "pat", "craving"] as const) {
+    it(`an ignored ${type} call costs 10 health and a care mistake, using the configurable expiry`, () => {
+      const cfg: GameConfig = { ...DEFAULT_GAME_CONFIG, attentionCallExpiryTicks: 50 };
+      const pet = makePet({
+        activeAttentionCall: type, cravingFood: type === "craving" ? "meal" : null,
+        attentionCallActiveTicks: 48, health: 100, careMistakes: 0, nextPoopIntervalTicks: 99999,
+      });
+      const stillOpen = tick(pet, false, false, cfg);
+      assert.equal(stillOpen.activeAttentionCall, type, "tick 49 of 50 — still open");
+      const expired = tick(stillOpen, false, false, cfg);
+      assert.ok(expired.events.includes(`attention_call_expired_${type}`));
+      assert.equal(expired.health, 90);
+      assert.equal(expired.careMistakes, 1);
+      assert.equal(expired.cravingFood, null);
+      assert.equal(expired.attentionCallCooldowns[type], 99, "expiry cooldown set, then counted down once");
+    });
+  }
+
+  it("new call fields round-trip and default for old saves", () => {
+    const pet = makePet({ ticksSinceLastPlayCall: 3, ticksSinceLastPatCall: 4, ticksSinceLastCraving: 5, cravingFood: "snack" });
+    const back = deserialiseState(serialiseState(pet));
+    assert.equal(back.ticksSinceLastPlayCall, 3);
+    assert.equal(back.ticksSinceLastPatCall, 4);
+    assert.equal(back.ticksSinceLastCraving, 5);
+    assert.equal(back.cravingFood, "snack");
+    const legacy = serialiseState(pet) as Record<string, unknown>;
+    for (const k of ["ticksSinceLastPlayCall", "ticksSinceLastPatCall", "ticksSinceLastCraving"]) delete legacy[k];
+    legacy.cravingFood = "pizza";
+    const old = deserialiseState(legacy);
+    assert.equal(old.ticksSinceLastPlayCall, 0);
+    assert.equal(old.cravingFood, null);
+  });
+});
+
+describe("tick — no health loss while idle (BUG-S02)", () => {
+  const cases: Array<[string, Partial<PetState>]> = [
+    ["starving",  { hunger: 0, hungerZeroTicks: 99 }],
+    ["unhappy",   { happiness: 0 }],
+    ["exhausted", { energy: 0 }],
+    ["sick",      { sick: true }],
+    ["all at once", { hunger: 0, hungerZeroTicks: 99, happiness: 0, energy: 0, sick: true }],
+  ];
+  for (const [label, overrides] of cases) {
+    for (const [mode, idle, deep] of [["idle", true, false], ["deep idle", false, true]] as const) {
+      it(`${label} pet keeps its health over 200 ${mode} ticks`, () => {
+        let state = makePet({ ...overrides, health: 80, nextPoopIntervalTicks: 99999 });
+        for (let i = 0; i < 200; i++) {
+          state = tick(state, idle, deep);
+          for (const e of ["starvation_damage", "unhappiness_damage", "exhaustion_damage", "sickness_damage"]) {
+            assert.ok(!state.events.includes(e), `unexpected ${e} on tick ${i}`);
+          }
+        }
+        assert.ok(state.health >= 80, `health dropped to ${state.health}`);
+        assert.equal(state.alive, true);
+      });
+    }
+  }
+
+  it("a senior crossing a day boundary while idle skips the old-age rolls", () => {
+    const originalRandom = Math.random;
+    Math.random = () => 0; // guarantees death if the roll happens
+    try {
+      // ticksAlive 59 → 60, divisible by AGING_TICK_INTERVAL (3) and IDLE_DECAY_TICK_DIVISOR (20),
+      // so aging advances even in regular idle and dayTimer crosses into the next whole day.
+      const age = SENIOR_NATURAL_DEATH_AGE_DAYS + 10;
+      const pet = makePet({ stage: "senior", ticksAlive: 59, ageDays: age, dayTimer: age + 0.99999 });
+      const idleNext = tick(pet, true, false, NO_CALLS);
+      assert.equal(idleNext.ageDays, age + 1, "precondition: day boundary crossed");
+      assert.equal(idleNext.alive, true);
+      assert.equal(tick(pet, false, false, NO_CALLS).alive, false, "control: active tick rolls old-age death");
+    } finally {
+      Math.random = originalRandom;
+    }
   });
 });
 
@@ -609,11 +958,12 @@ describe("tick — sickness health drain and death", () => {
     assert.ok(!next.events.includes("sickness_damage"));
   });
 
-  it("sick pet still takes sickness damage during regular idle (BUGFIX-040)", () => {
+  it("sick pet takes no sickness damage during regular idle and stays sick (BUG-S02)", () => {
     const pet = makePet({ sick: true, health: 50 });
     const next = tick(pet, true, false); // isIdle=true, isDeepIdle=false
-    assert.ok(next.health < 50);
-    assert.ok(next.events.includes("sickness_damage"));
+    assert.equal(next.health, 50);
+    assert.equal(next.sick, true);
+    assert.ok(!next.events.includes("sickness_damage"));
   });
 
   it("sick pet at 5 hp does not die when deep idle, and health is not raised (BUGFIX-040)", () => {
@@ -650,11 +1000,11 @@ describe("tick — idle safety floor for sick/losing-health pets", () => {
     assert.ok(!next.events.includes("starvation_damage"), `events should not include starvation_damage (got ${JSON.stringify(next.events)})`);
   });
 
-  it("still logs a health-loss event when the pet is idle but actually losing health", () => {
+  it("does not lose health while idle even when well above IDLE_STAT_FLOOR (BUG-S02)", () => {
     const pet = makePet({ hunger: 0, hungerZeroTicks: 99, health: 25 });
     const next = tick(pet, true, false); // isIdle=true, isDeepIdle=false
-    assert.ok(next.health < 25, `health should have actually decreased (got ${next.health})`);
-    assert.ok(next.events.includes("starvation_damage"), `events should include starvation_damage (got ${JSON.stringify(next.events)})`);
+    assert.equal(next.health, 25);
+    assert.ok(!next.events.includes("starvation_damage"), `events should not include starvation_damage (got ${JSON.stringify(next.events)})`);
   });
 
   it("floors health at IDLE_STAT_FLOOR when a healthy pet takes damage while idle", () => {
@@ -689,6 +1039,28 @@ describe("tick — idle safety floor for sick/losing-health pets", () => {
     const next = tick(pet, true, false);
     assert.ok(next.health >= 20, `health should never drop below the idle floor (got ${next.health})`);
   });
+
+  // BUGFIX-177: damage is skipped while idle, so the floor must key off the
+  // damage *state*, not damage taken — otherwise only sick pets were floored.
+  for (const [label, isIdle, isDeepIdle] of [["idle", true, false], ["deep idle", true, true]] as const) {
+    it(`floors happiness and energy for a starving (not sick) pet during ${label}`, () => {
+      let pet = makePet({ hunger: 0, hungerZeroTicks: 99, happiness: 30, energy: 30, health: 50, sick: false });
+      for (let i = 0; i < 3000; i++) { pet = tick(pet, isIdle, isDeepIdle); }
+      assert.ok(pet.alive);
+      assert.ok(pet.happiness >= 20, `happiness slid below the idle floor (got ${pet.happiness})`);
+      assert.ok(pet.energy >= 20, `energy slid below the idle floor (got ${pet.energy})`);
+      assert.ok(pet.health >= 50, `health dropped while idle (got ${pet.health})`);
+    });
+
+    it(`floors hunger and energy for a miserable (happiness 0) pet during ${label}`, () => {
+      let pet = makePet({ happiness: 0, hunger: 30, energy: 30, health: 50, sick: false, sleeping: false });
+      for (let i = 0; i < 3000; i++) { pet = tick(pet, isIdle, isDeepIdle); }
+      assert.ok(pet.alive);
+      assert.ok(pet.hunger >= 20, `hunger slid below the idle floor (got ${pet.hunger})`);
+      assert.ok(pet.energy >= 20, `energy slid below the idle floor (got ${pet.energy})`);
+      assert.ok(!pet.events.includes("unhappiness_damage"));
+    });
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -729,6 +1101,36 @@ describe("tick — stage progression", () => {
     const pet = makePet({ stage: "egg", ticksAlive: 38, dayTimer: 0.395 });
     const next = tick(pet);
     assert.equal(next.ticksAlive, 0);
+  });
+
+  it("does not evolve while idle even if dayTimer threshold is reached", () => {
+    const pet = makePet({ stage: "egg", ticksAlive: 38, dayTimer: 0.395 });
+    const next = tick(pet, true); // isIdle=true
+    assert.equal(next.stage, "egg");
+    assert.ok(!next.events.includes("evolved_to_baby"));
+  });
+
+  it("evolves on the first non-idle tick after threshold was reached while idle", () => {
+    // ticksAlive 59→60 hits the idle aging gate (60 % 3 === 0 && 60 % 20 === 0),
+    // so dayTimer actually crosses the threshold on this idle tick.
+    const pet = makePet({ stage: "egg", ticksAlive: 59, dayTimer: 0.395 });
+    const idled = tick(pet, true); // isIdle=true — threshold crossed but evolution deferred
+    assert.equal(idled.stage, "egg");
+    assert.ok(idled.dayTimer >= 0.396);
+    const next = tick(idled, false); // user returns — deferred evolution fires now
+    assert.equal(next.stage, "baby");
+    assert.ok(next.events.includes("evolved_to_baby"));
+  });
+
+  it("deep idle also blocks evolution", () => {
+    // Real callers always pass isIdle=true whenever isDeepIdle=true (deep idle
+    // is a stricter/longer threshold than regular idle) — the gate itself
+    // only checks isIdle, matching the house convention used for every other
+    // idle-suppressed mechanic (poop, sickness, attention calls).
+    const pet = makePet({ stage: "egg", ticksAlive: 38, dayTimer: 0.395 });
+    const next = tick(pet, true, true); // isIdle=true, isDeepIdle=true
+    assert.equal(next.stage, "egg");
+    assert.ok(!next.events.includes("evolved_to_baby"));
   });
 
   it("resets care accumulators on evolution", () => {
@@ -785,10 +1187,10 @@ describe("tick — stage progression", () => {
 // ---------------------------------------------------------------------------
 
 describe("feedMeal", () => {
-  it("increases hunger by 20", () => {
+  it("increases hunger by 15", () => {
     const pet = makePet({ hunger: 30 });
     const next = feedMeal(pet, 0);
-    assert.equal(next.hunger, 50);
+    assert.equal(next.hunger, 45);
   });
 
   it("increases weight by 2 (FEED_MEAL_WEIGHT_GAIN)", () => {
@@ -822,6 +1224,14 @@ describe("feedMeal", () => {
     assert.ok(next.events.includes("meal_refused"));
   });
 
+  it("refuses while sick (BUG-S04)", () => {
+    const pet = makePet({ hunger: 30, sick: true, activeAttentionCall: "hunger" });
+    const next = feedMeal(pet, 0);
+    assert.equal(next.hunger, 30);
+    assert.deepEqual(next.events, ["meal_refused_sick"]);
+    assert.equal(next.activeAttentionCall, "hunger", "the call is not answered");
+  });
+
   it("allows exactly 3 meals per cycle (indices 0–2)", () => {
     let pet = makePet({ hunger: 0 });
     for (let i = 0; i < 3; i++) {
@@ -846,6 +1256,14 @@ describe("feedMeal", () => {
 // ---------------------------------------------------------------------------
 
 describe("startSnack", () => {
+  it("refuses while sick (BUG-S04)", () => {
+    const pet = makePet({ sick: true, snacksOnFloor: 0, snacksGivenThisCycle: 0 });
+    const next = startSnack(pet);
+    assert.deepEqual(next.events, ["snack_refused_sick"]);
+    assert.equal(next.snacksOnFloor, 0);
+    assert.equal(next.snacksGivenThisCycle, 0);
+  });
+
   it("does not change consecutiveSnacks", () => {
     const pet = makePet({ consecutiveSnacks: 0 });
     const next = startSnack(pet);
@@ -941,7 +1359,7 @@ describe("consumeSnack", () => {
     assert.equal(next.weight, 12);
   });
 
-  it("is refused when snacksOnFloor is already 0 (duplicate/stale report)", () => {
+  it("is silently ignored when snacksOnFloor is already 0 (duplicate report from another window)", () => {
     const pet = makePet({ snacksOnFloor: 0, happiness: 40, weight: 10, consecutiveSnacks: 2 });
     const next = consumeSnack(pet);
     assert.equal(next.snacksOnFloor, 0);
@@ -949,7 +1367,7 @@ describe("consumeSnack", () => {
     assert.equal(next.weight, 10);
     assert.equal(next.consecutiveSnacks, 2);
     assert.equal(next.sick, false);
-    assert.deepEqual(next.events, ["snack_refused"]);
+    assert.deepEqual(next.events, [], "no snack_refused, so no 'threw the snack away' toast");
   });
 });
 
@@ -1136,6 +1554,13 @@ describe("play", () => {
     const next = play(pet);
     assert.equal(next.happiness, 50);
     assert.ok(next.events.includes("play_refused_no_energy"));
+  });
+
+  it("refuses while sick, before the energy check (BUG-S04)", () => {
+    const pet = makePet({ energy: 0, happiness: 50, sick: true });
+    const next = play(pet);
+    assert.equal(next.happiness, 50);
+    assert.deepEqual(next.events, ["play_refused_sick"]);
   });
 
   it("clamps happiness at 100", () => {
@@ -1372,6 +1797,16 @@ describe("applyMinigameResult", () => {
     assert.equal(next.weight, 40);
   });
 
+  it("blackjack win / push / lose → happiness +10 / 0 / −10, no weight change", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    for (const [result, happiness] of [["win", 60], ["push", 50], ["lose", 40]] as const) {
+      const next = applyMinigameResult(pet, "blackjack", result);
+      assert.equal(next.happiness, happiness, result);
+      assert.equal(next.weight, 40, result);
+      assert.ok(next.events.includes(`minigame_blackjack_${result}`), result);
+    }
+  });
+
   it("left_right clamps weight at WEIGHT_MIN (1) (BUGFIX-034)", () => {
     const pet = makePet({ happiness: 50, weight: 1 });
     const next = applyMinigameResult(pet, "left_right", "win");
@@ -1448,6 +1883,14 @@ describe("happinessDeltaForMinigame", () => {
 
   it("coin_flip lose → exactly −10", () => {
     assert.equal(happinessDeltaForMinigame("coin_flip", "lose"), -10);
+  });
+
+  // ── blackjack (Stu) ────────────────────────────────────────────────────────
+
+  it("blackjack win → +10, push → 0, lose → −10", () => {
+    assert.equal(happinessDeltaForMinigame("blackjack", "win"), 10);
+    assert.equal(happinessDeltaForMinigame("blackjack", "push"), 0);
+    assert.equal(happinessDeltaForMinigame("blackjack", "lose"), -10);
   });
 });
 
@@ -2454,5 +2897,167 @@ describe("developer mode — aging multiplier", () => {
       Math.abs(afterNodev.dayTimer - afterDev1.dayTimer) < 1e-10,
       "multiplier of 1 should produce identical dayTimer to devMode=false"
     );
+  });
+});
+
+describe("break reminder attention call", () => {
+  // Every random call (whims, gift, misbehaviour) on cooldown so only the break can fire
+  const RANDOM_CALLS: AttentionCallType[] = ["craving", "play", "pat", "gift", "misbehaviour", "poop"];
+
+  it("fires after 30 active, awake minutes and restarts its timer", () => {
+    assert.equal(BREAK_CALL_INTERVAL_TICKS * 3, 30 * 60, "600 ticks × 3 s = 30 min");
+    const almost = withRandom(0.99, () => tick(contentPet(RANDOM_CALLS, { ticksSinceLastBreakCall: BREAK_CALL_INTERVAL_TICKS - 2 })));
+    assert.equal(almost.activeAttentionCall, null);
+    const due = withRandom(0.99, () => tick(almost));
+    assert.equal(due.activeAttentionCall, "break");
+    assert.ok(due.events.includes("attention_call_break"));
+    assert.equal(due.ticksSinceLastBreakCall, 0);
+  });
+
+  it("only counts active, awake time; deep idle (the user is away) restarts it", () => {
+    const start = contentPet(RANDOM_CALLS, { ticksSinceLastBreakCall: 100 });
+    assert.equal(withRandom(0.99, () => tick(start, true, false)).ticksSinceLastBreakCall, 100, "idle doesn't count");
+    assert.equal(withRandom(0.99, () => tick({ ...start, sleeping: true })).ticksSinceLastBreakCall, 100, "asleep doesn't count");
+    assert.equal(withRandom(0.99, () => tick(start, false, true)).ticksSinceLastBreakCall, 0, "deep idle is a break");
+  });
+
+  it("doesn't fire while asleep or idle, and a real need wins", () => {
+    const due = contentPet(RANDOM_CALLS, { ticksSinceLastBreakCall: BREAK_CALL_INTERVAL_TICKS });
+    assert.notEqual(withRandom(0.99, () => tick({ ...due, sleeping: true, energy: 50 })).activeAttentionCall, "break");
+    assert.notEqual(withRandom(0.99, () => tick(due, true, false)).activeAttentionCall, "break");
+    assert.equal(withRandom(0.99, () => tick({ ...due, hunger: 10 })).activeAttentionCall, "hunger");
+  });
+
+  it("praise answers it: happiness up by the gift amount, and the pet goes to sleep", () => {
+    const calling = makePet({ activeAttentionCall: "break", happiness: 50, sleeping: false, consecutiveSnacks: 2 });
+    const next = praise(calling);
+    assert.equal(next.activeAttentionCall, null);
+    assert.equal(next.happiness, 50 + GIFT_PRAISE_HAPPINESS_BOOST);
+    assert.equal(next.sleeping, true);
+    assert.equal(next.consecutiveSnacks, 0);
+    assert.ok(next.events.includes("attention_call_answered_break"));
+    assert.ok(next.events.includes("fell_asleep"));
+  });
+
+  it("praise with no break call doesn't put the pet to sleep", () => {
+    const next = praise(makePet({ sleeping: false }));
+    assert.equal(next.sleeping, false);
+    assert.ok(!next.events.includes("fell_asleep"));
+  });
+
+  it("skipping it is no care mistake and costs no stats", () => {
+    const pet = makePet({ activeAttentionCall: "break", attentionCallActiveTicks: 10_000,
+                          careMistakes: 0, happiness: 80, health: 100, hunger: 70, energy: 80, nextPoopIntervalTicks: 99999 });
+    const next = withRandom(0.99, () => tick(pet));
+    assert.ok(next.events.includes("attention_call_expired_break"));
+    assert.equal(next.careMistakes, 0);
+    assert.equal(next.health, 100);
+  });
+
+  it("survives serialise / deserialise", () => {
+    const back = deserialiseState(serialiseState(makePet({ ticksSinceLastBreakCall: 321, breakNapTicksRemaining: 17 })));
+    assert.equal(back.ticksSinceLastBreakCall, 321);
+    assert.equal(back.breakNapTicksRemaining, 17);
+  });
+});
+
+describe("break nap", () => {
+  const napping = (): PetState => praise(makePet({
+    activeAttentionCall: "break", sleeping: false, hunger: 40, happiness: 30, energy: 20,
+    health: 70, weight: 25, poops: 2, sick: false, nextPoopIntervalTicks: 1,
+  }));
+
+  it("praising a break call starts a 5-minute nap", () => {
+    assert.equal(BREAK_NAP_TICKS * 3, 5 * 60, "100 ticks × 3 s = 5 min");
+    const pet = napping();
+    assert.equal(pet.sleeping, true);
+    assert.equal(pet.breakNapTicksRemaining, BREAK_NAP_TICKS);
+    assert.ok(pet.events.includes("break_nap_started"));
+  });
+
+  it("starts the nap even if the pet was already asleep", () => {
+    const pet = praise(makePet({ activeAttentionCall: "break", sleeping: true }));
+    assert.equal(pet.breakNapTicksRemaining, BREAK_NAP_TICKS);
+  });
+
+  it("freezes every stat except energy but keeps aging — idle and deep idle included — then wakes on its own", () => {
+    const start = napping();
+    let pet = start;
+    for (let i = 0; i < BREAK_NAP_TICKS - 1; i++) {
+      pet = withRandom(0.0, () => tick(pet, i > 20, i > 40));
+      assert.equal(pet.sleeping, true, `still asleep at tick ${i + 1}`);
+    }
+    for (const k of ["hunger", "happiness", "health", "weight", "poops", "sick",
+                     "ticksSinceLastPoop", "careMistakes", "ticksSinceLastBreakCall"] as const) {
+      assert.equal(pet[k], start[k], `${k} is frozen`);
+    }
+    assert.ok(pet.dayTimer > start.dayTimer, "keeps aging");
+    assert.equal(pet.energy, 100, "energy regenerates while napping");
+    assert.equal(pet.breakNapTicksRemaining, 1);
+    const awake = withRandom(0.0, () => tick(pet, true, true));
+    assert.equal(awake.sleeping, false);
+    assert.equal(awake.breakNapTicksRemaining, 0);
+    assert.ok(awake.events.includes("break_nap_over"));
+  });
+
+  it("ages at the normal sleeping rate even while deep idle", () => {
+    const start = napping();
+    let deepIdle = start;
+    for (let i = 0; i < 30; i++) { deepIdle = tick(deepIdle, true, true); }
+    let active = start;
+    for (let i = 0; i < 30; i++) { active = tick(active); }
+    assert.ok(Math.abs(deepIdle.dayTimer - active.dayTimer) < 1e-10);
+    assert.ok(deepIdle.dayTimer > start.dayTimer);
+  });
+
+  it("does not auto-wake on full energy", () => {
+    let pet = { ...napping(), energy: 100 };
+    pet = tick(pet);
+    assert.equal(pet.sleeping, true);
+    assert.equal(pet.energy, 100);
+  });
+
+  it("regenerates energy at the sleeping rate", () => {
+    const start = napping();
+    const pet = tick(start);
+    assert.ok(pet.energy > start.energy);
+  });
+
+  it("never loses health, even when starving and sick", () => {
+    const start = { ...napping(), hunger: 0, happiness: 0, sick: true, health: 50 };
+    let pet = start;
+    for (let i = 0; i < BREAK_NAP_TICKS - 1; i++) { pet = withRandom(0.0, () => tick(pet)); }
+    assert.equal(pet.health, 50);
+    assert.equal(pet.alive, true);
+  });
+
+  it("can't be woken manually — the nap carries on", () => {
+    const start = napping();
+    const pet = wake(start);
+    assert.equal(pet.sleeping, true);
+    assert.equal(pet.breakNapTicksRemaining, BREAK_NAP_TICKS);
+    assert.deepEqual(pet.events, ["break_nap_no_wake"]);
+    assert.equal(tick(pet).breakNapTicksRemaining, BREAK_NAP_TICKS - 1);
+  });
+
+  it("can be woken normally once the nap is over", () => {
+    const pet = wake(makePet({ sleeping: true, breakNapTicksRemaining: 0 }));
+    assert.equal(pet.sleeping, false);
+    assert.ok(pet.events.includes("woke_up"));
+  });
+
+  it("offline time during the nap doesn't decay stats; the pet wakes if the nap ran out", () => {
+    const start = makePet({ sleeping: true, breakNapTicksRemaining: 40, hunger: 80, happiness: 80 });
+    const short = applyOfflineDecay(start, 30 * 3);
+    assert.equal(short.hunger, 80);
+    assert.equal(short.happiness, 80);
+    assert.equal(short.sleeping, true);
+    assert.equal(short.breakNapTicksRemaining, 10);
+    const long = applyOfflineDecay(start, 50 * 3);
+    assert.equal(long.sleeping, false);
+    assert.equal(long.breakNapTicksRemaining, 0);
+    assert.ok(long.hunger < 80, "time after the nap still decays");
+    const noNap = applyOfflineDecay({ ...start, breakNapTicksRemaining: 0 }, 50 * 3);
+    assert.ok(long.hunger > noNap.hunger, "the nap portion was not counted");
   });
 });

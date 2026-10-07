@@ -25,9 +25,12 @@ import * as path from "path";
 import * as os from "os";
 import * as vscode from "vscode";
 import { PetState, HighScore, deserialiseState, serialiseState } from "./gameEngine";
+import { sealSerialisedState, verifySeal } from "./integrity";
+import { StateFileStamp } from "./tickLease";
 
 const STATE_KEY = "codotchi.petState";
 const TIMESTAMP_KEY = "codotchi.lastSaveTimestamp";
+const STATE_SEAL_KEY = "codotchi.petStateSeal";
 const HIGH_SCORE_KEY = "codotchi.highScore.v2"; // v2: ageDays now driven by dayTimer (agingMultiplier)
 
 // ---------------------------------------------------------------------------
@@ -131,6 +134,27 @@ interface SharedStateFile {
   state: Record<string, unknown>;
   /** Unix epoch milliseconds when this file was written. */
   savedAt: number;
+  /** The window that wrote it (see tickLease.ts). Absent in files from older builds. */
+  writerId?: string;
+  /** Integrity seal over the state (see integrity.ts). Absent in files from older builds. */
+  seal?: string;
+}
+
+/** Identifies this window's writes to the state file. */
+export const WRITER_ID = `${process.pid}-${crypto.randomBytes(4).toString("hex")}`;
+
+/**
+ * Who last wrote the active state file, and when. Returns null if the file is
+ * missing or unreadable.
+ */
+export function readStateFileStamp(): StateFileStamp | null {
+  try {
+    const raw = JSON.parse(fs.readFileSync(getActiveStatePath(), "utf8")) as Partial<SharedStateFile>;
+    if (typeof raw.savedAt !== "number") { return null; }
+    return { writerId: typeof raw.writerId === "string" ? raw.writerId : undefined, savedAt: raw.savedAt };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -145,9 +169,12 @@ function saveSharedState(state: PetState): void {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
+    const serialised = serialiseState(state) as Record<string, unknown>;
     const payload: SharedStateFile = {
-      state: serialiseState(state) as Record<string, unknown>,
+      state: serialised,
       savedAt: Date.now(),
+      writerId: WRITER_ID,
+      seal: sealSerialisedState(serialised),
     };
     fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
   } catch {
@@ -174,7 +201,7 @@ function loadSharedState(): LoadedSharedState | null {
     if (!raw.state || typeof raw.savedAt !== "number") {
       return null;
     }
-    return { state: deserialiseState(raw.state), savedAt: raw.savedAt };
+    return { state: verifySeal(deserialiseState(raw.state), raw.seal), savedAt: raw.savedAt };
   } catch {
     return null;
   }
@@ -192,7 +219,9 @@ function loadSharedState(): LoadedSharedState | null {
  * @param state - The pet state to persist.
  */
 export function saveState(context: vscode.ExtensionContext, state: PetState): void {
-  void context.globalState.update(STATE_KEY, serialiseState(state));
+  const serialised = serialiseState(state) as Record<string, unknown>;
+  void context.globalState.update(STATE_KEY, serialised);
+  void context.globalState.update(STATE_SEAL_KEY, sealSerialisedState(serialised));
   void context.globalState.update(TIMESTAMP_KEY, Date.now());
   saveSharedState(state);
 }
@@ -216,7 +245,9 @@ export function loadState(context: vscode.ExtensionContext): PetState | null {
   // uses the correct reference timestamp.
   const shared = loadSharedState();
   if (shared !== null && shared.savedAt > localTimestamp && shared.state.alive) {
-    void context.globalState.update(STATE_KEY, serialiseState(shared.state));
+    const serialised = serialiseState(shared.state) as Record<string, unknown>;
+    void context.globalState.update(STATE_KEY, serialised);
+    void context.globalState.update(STATE_SEAL_KEY, sealSerialisedState(serialised));
     void context.globalState.update(TIMESTAMP_KEY, shared.savedAt);
     return shared.state;
   }
@@ -224,7 +255,7 @@ export function loadState(context: vscode.ExtensionContext): PetState | null {
   if (raw === undefined || raw === null) {
     return null;
   }
-  return deserialiseState(raw);
+  return verifySeal(deserialiseState(raw), context.globalState.get<string>(STATE_SEAL_KEY));
 }
 
 /**
@@ -245,6 +276,7 @@ export function elapsedSecondsSinceLastSave(
 /** Erase all persisted data (used when the player starts a new game). */
 export function clearState(context: vscode.ExtensionContext): void {
   void context.globalState.update(STATE_KEY, undefined);
+  void context.globalState.update(STATE_SEAL_KEY, undefined);
   void context.globalState.update(TIMESTAMP_KEY, undefined);
 }
 

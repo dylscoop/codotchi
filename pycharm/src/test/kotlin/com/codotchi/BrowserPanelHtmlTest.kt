@@ -32,12 +32,17 @@ class BrowserPanelHtmlTest {
     // Mirrors the {{...Uri}} replacement logic in CodotchiBrowserPanel.buildHtml().
     private fun buildInlinedHtml(): String {
         val spriteConstantsText = loadResource("/webview/spriteConstants.js")
+        val spritesGeneratedText = loadResource("/webview/sprites.generated.js")
         val spritesText         = loadResource("/webview/sprites.js")
         var html                = loadResource("/webview/sidebar.html")
 
         html = html.replace(
             """<script src="{{spriteConstantsUri}}"></script>""",
             "<script>\n$spriteConstantsText\n</script>"
+        )
+        html = html.replace(
+            """<script src="{{spritesGeneratedUri}}"></script>""",
+            "<script>\n$spritesGeneratedText\n</script>"
         )
         html = html.replace(
             """<script src="{{spritesUri}}"></script>""",
@@ -148,6 +153,45 @@ class BrowserPanelHtmlTest {
     }
 
     @Test
+    fun `sprites generated resource exists on classpath`() {
+        val content = loadResource("/webview/sprites.generated.js")
+        assertTrue(
+            content.contains("GENERATED_SPRITE_DEFS"),
+            "sprites.generated.js (from scripts/import_sprites_bulk.js) must be copied into webview/"
+        )
+    }
+
+    @Test
+    fun `sprites generated content sits between spriteConstants and sprites in built html`() {
+        val html = buildInlinedHtml()
+        // The generated file extends SPRITE_GRID_META (spriteConstants.js) and
+        // sprites.js merges its GENERATED_SPRITE_DEFS, so it must sit between them.
+        val constantsIdx = html.indexOf("STAGE_SCALES")
+        val generatedIdx = html.indexOf("window.GENERATED_SPRITE_DEFS = DEFS")
+        val spritesIdx   = html.indexOf("renderSpriteGrid")
+        assertTrue(generatedIdx >= 0, "sprites.generated.js must be inlined into the built HTML")
+        assertTrue(
+            constantsIdx < generatedIdx && generatedIdx < spritesIdx,
+            "sprites.generated.js must be inlined after spriteConstants.js and before sprites.js"
+        )
+        assertFalse(
+            html.contains("""<script src="{{spritesGeneratedUri}}"></script>"""),
+            "Built HTML must not contain a literal <script src=\"{{spritesGeneratedUri}}\">"
+        )
+    }
+
+    @Test
+    fun `sprite preview html loads sprites generated before sprites`() {
+        val html = loadResource("/webview/sprite_preview.html")
+        val generatedIdx = html.indexOf("""<script src="sprites.generated.js"></script>""")
+        val spritesIdx   = html.indexOf("""<script src="sprites.js"></script>""")
+        assertTrue(
+            generatedIdx in 0 until spritesIdx,
+            "sprite_preview.html must load sprites.generated.js before sprites.js for SpritePreviewBrowserPanel to inline"
+        )
+    }
+
+    @Test
     fun `built html has no literal script src for spriteConstants js`() {
         val html = buildInlinedHtml()
         assertFalse(
@@ -186,5 +230,23 @@ class BrowserPanelHtmlTest {
             "There must not be a second immediate '};' after the colorMap close — " +
             "that would be the spurious brace that truncates renderSpriteGrid (BUGFIX-091)"
         )
+    }
+
+    @Test
+    fun `minigameArt resource exists and loads before sidebar js`() {
+        val content = loadResource("/webview/minigameArt.js")
+        assertTrue(content.contains("window.minigameArt"), "minigameArt.js must export window.minigameArt")
+        val html = loadResource("/webview/sidebar.html")
+        val art = html.indexOf("""<script src="{{minigameArtUri}}"></script>""")
+        val js  = html.indexOf("""<script src="{{jsUri}}"></script>""")
+        assertTrue(art >= 0, "sidebar.html must contain the {{minigameArtUri}} script placeholder")
+        assertTrue(art < js, "minigameArt.js must load before sidebar.js")
+    }
+
+    @Test
+    fun `browser panel inlines minigameArt`() {
+        val src = java.io.File("src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt").readText()
+        assertTrue(src.contains("loadResource(\"/webview/minigameArt.js\")"), "CodotchiBrowserPanel must load minigameArt.js")
+        assertTrue(src.contains("{{minigameArtUri}}"), "CodotchiBrowserPanel must replace the {{minigameArtUri}} placeholder")
     }
 }

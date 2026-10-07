@@ -1,18 +1,21 @@
 {
   "name": "opencode-codotchi",
-  "version": "2.20.11",
-  "description": "A virtual Tamagotchi-style pet that lives inside OpenCode ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â globally installable via npm",
+  "version": "2.27.2",
+  "description": "A virtual Tamagotchi-style pet that lives inside OpenCode — globally installable via npm",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
     "opencode-codotchi": "bin/install.js"
   },
   "scripts": {
+    "prebuild": "node ../scripts/sync-core.mjs",
     "build": "tsc",
+    "prebundle": "node ../scripts/sync-core.mjs",
     "bundle": "node scripts/bundle-plugin.js",
     "prepublishOnly": "npm run build",
-    "test:node": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/asciiArt.test.js out-test/tests/unit/statePath.test.js",
-    "test:plugin": "node scripts/bundle-plugin.js && bun test tests/unit/pluginContract.test.ts",
+    "pretest:node": "node ../scripts/sync-core.mjs",
+    "test:node": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/asciiArt.test.js out-test/tests/unit/statePath.test.js out-test/tests/unit/usageBackfill.test.js",
+    "test:plugin": "node scripts/bundle-plugin.js && bun test --timeout 30000 tests/unit/pluginContract.test.ts",
     "test": "npm run test:node && npm run test:plugin"
   },
   "keywords": ["opencode", "plugin", "tamagotchi", "virtual-pet", "codotchi"],

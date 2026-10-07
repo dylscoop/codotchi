@@ -2,9 +2,9 @@
  * customCharacters.ts — registry of hidden/unlockable custom characters.
  *
  * To add a new custom character:
- *   1. Add DEFS["<spriteType>"] to sprites.js (and pycharm mirror).
- *   2. Add palette entry to spriteConstants.js (and pycharm mirror).
- *   3. Add "<spriteType>" to UPRIGHT_TYPES in sprites.js if upright grid.
+ *   1-3. Add the art: images in sprites/<spriteType>/ (+ sprite.json with the
+ *        palette, "upright" if needed), then node scripts/import_sprites_bulk.js
+ *        (see developer_notes/SPRITE_IMPORT.md). PyCharm copies the output.
  *   4. Add entry to CUSTOM_CHARACTERS below — no other TS/Kotlin changes needed.
  *   5. Add "<spriteType>" to SpriteType union in gameEngine.ts.
  *   6. Add entry to CustomCharacters.kt (pycharm mirror).
@@ -17,6 +17,18 @@ export interface CustomCharacterToasts {
   pat_refused: string;
 }
 
+/** Replacement text for the "wants a pat" attention call (__Name__ = pet name). */
+export interface CustomCharacterPatCall {
+  /** Toast / bubble when the call fires. */
+  call:     string;
+  /** Log line when the call is answered. */
+  answered: string;
+  /** Log line when the call expires. */
+  expired:  string;
+  /** Status bar wording, phrased to follow "<name> ". */
+  status:   string;
+}
+
 export interface CustomCharacter {
   /** Sprite type key — must match a DEFS key in sprites.js. */
   spriteType:  string;
@@ -24,16 +36,20 @@ export interface CustomCharacter {
   passcode:    string;
   /** Default name pre-filled on the setup screen. For Tim, also overrides "Codotchi" (case-insensitive). */
   defaultName:  string;
+  /** Name shown for the character type in the info line and status bar tooltip (default: the capitalised spriteType). */
+  characterLabel?: string;
   /** Label for the Pat button in the minigame overlay. */
   patLabel:    string;
-  /** Minigame overlay title — replaces the default "Play or Pat". */
-  mgTitle:     string;
   /** attention_call_gift toast message (optional — uses default if absent). */
   giftMessage?: string;
   /** Toast notification strings for pat-related events. */
   patToasts:   CustomCharacterToasts;
   /** Speech bubbles shown at random after a successful pat. */
   patBubbles:  string[];
+  /** Replacement text for the pat attention call (optional — uses "wants a pat!" if absent). */
+  patCall?: CustomCharacterPatCall;
+  /** What a snack craving asks for, e.g. "a tea"; one is picked at random per craving. */
+  snackCravings?: string[];
   /** Maximum meals allowed per wake cycle (default: FEED_MEAL_MAX_PER_CYCLE = 3). */
   feedMealMaxPerCycle?: number;
   /** Maximum snacks allowed per wake cycle (default: SNACK_MAX_PER_CYCLE = 3). */
@@ -55,12 +71,12 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     spriteType:  "tim",
     passcode:    "teawtim",
     defaultName:  "Timagotchi",
+    characterLabel: "Timagotchi",
     patLabel:    "Go for a Run",
-    mgTitle:     "Play or Go for a Run",
-    giftMessage: "Tim wants a tea break!",
+    giftMessage: "Timagotchi wants a tea break!",
     patToasts: {
-      patted:      "Tim went for a run!",
-      pat_refused: "Tim doesn't have enough energy for a run!",
+      patted:      "Timagotchi went for a run!",
+      pat_refused: "Timagotchi doesn't have enough energy for a run!",
     },
     patBubbles: [
       "That was a great run!",
@@ -68,13 +84,19 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
       "Legs are burning but the mind is clear.",
       "That counts as cardio.",
     ],
+    patCall: {
+      call:     "__Name__ wants to go for a run!",
+      answered: "You took __Name__ for a run.",
+      expired:  "__Name__ wanted a run and was ignored.",
+      status:   "wants to go for a run!",
+    },
+    snackCravings: ["a tea"],
   },
   {
     spriteType:  "kangaroo",
     passcode:    "straya",
     defaultName:  "Skippy",
     patLabel:    "Bounce",
-    mgTitle:     "Play or Bounce",
     giftMessage: "Skippy found a souvenir!",
     patToasts: {
       patted:      "Skippy had a bounce!",
@@ -92,7 +114,6 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     passcode:    "shiba",
     defaultName:  "Codotchi",
     patLabel:    "Pat",
-    mgTitle:     "Play or Pat",
     giftMessage: "__Name__ found a tiny tennis ball!",
     patToasts: {
       patted:      "__Name__ enjoyed the attention!",
@@ -106,7 +127,6 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     passcode:    "blackcat",
     defaultName:  "Codotchi",
     patLabel:    "Pat",
-    mgTitle:     "Play or Pat",
     giftMessage: "__Name__ found a toy mouse!",
     patToasts: {
       patted:      "__Name__ purred!",
@@ -124,7 +144,6 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     passcode:    "bounce",
     defaultName: "Roogotchi",
     patLabel:    "Bounce",
-    mgTitle:     "Play or Bounce",
     giftMessage: "Roogotchi found something in its pouch!",
     patToasts: {
       patted:      "Roogotchi had a bounce!",
@@ -141,12 +160,12 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     spriteType:  "stu",
     passcode:    "rubylovessalmon",
     defaultName: "Stugotchi",
+    characterLabel: "Stugotchi",
     patLabel:    "Collect Stickers",
-    mgTitle:     "Play or Collect Stickers",
-    giftMessage: "Stu wants a pint!",
+    giftMessage: "Stugotchi wants a pint!",
     patToasts: {
-      patted:      "Stu collected some stickers!",
-      pat_refused: "Stu doesn't have enough energy to collect stickers!",
+      patted:      "Stugotchi collected some stickers!",
+      pat_refused: "Stugotchi doesn't have enough energy to collect stickers!",
     },
     patBubbles: [
       "That's going in the binder.",
@@ -154,6 +173,13 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
       "Scotland sticker. Rarest of them all.",
       "Thanks for fuelling the addiction.",
     ],
+    patCall: {
+      call:     "__Name__ wants to collect stickers!",
+      answered: "You helped __Name__ collect stickers.",
+      expired:  "__Name__ wanted stickers and was ignored.",
+      status:   "wants to collect stickers!",
+    },
+    snackCravings: ["a pint", "some salmon"],
     feedMealMaxPerCycle:  10,
     feedSnackMaxPerCycle: 10,
     feedHungerMult:       0.25,
@@ -182,7 +208,6 @@ export function getCustomCharacterByPasscode(passcode: string): CustomCharacter 
       passcode,
       defaultName: "Codotchi",
       patLabel:    "Pat",
-      mgTitle:     "Play or Pat",
       patToasts: {
         patted:      "__Name__ was patted!",
         pat_refused: "__Name__ doesn't have enough energy to be patted!",

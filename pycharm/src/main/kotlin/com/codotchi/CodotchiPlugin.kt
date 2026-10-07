@@ -108,6 +108,16 @@ class CodotchiPlugin : Disposable {
     /** Epoch-ms of the last "pet needs rescue while idle" notification, so it can repeat. */
     @Volatile private var lastRescueNotifyMs: Long = 0L
 
+    /**
+     * The events list we last fired notifications for. broadcastState() runs after
+     * commands too (live-progress toggle, live push, sign-in) with the last tick's
+     * events still on the state, so notifications only fire for a list not seen yet.
+     */
+    @Volatile private var lastNotifiedEvents: List<String>? = null
+
+    /** Per-stat epoch-ms of the last desktop notification for a critical stat (see [CriticalStatNotifier]). */
+    @Volatile private var criticalStatTracker: Map<String, Long> = emptyMap()
+
     /** AWT listener that updates [lastActivityTime] on any key press or mouse event. */
     private val awtActivityListener = AWTEventListener { event ->
         val id = event?.id ?: return@AWTEventListener
@@ -136,7 +146,8 @@ class CodotchiPlugin : Disposable {
         System.currentTimeMillis() - lastActivityTime > service<CodotchiSettings>().idleDeepThresholdSeconds * 1000L
 
     private val browserPanels: MutableList<CodotchiBrowserPanel> = mutableListOf()
-    private var statusWidget:  CodotchiStatusWidget?  = null
+    /** One widget per project window's status bar; every one gets each update. */
+    private val statusWidgets = java.util.concurrent.CopyOnWriteArrayList<CodotchiStatusWidget>()
 
     private var tickFuture: ScheduledFuture<*>? = null
     private var messageBusConnection: MessageBusConnection? = null
@@ -152,6 +163,24 @@ class CodotchiPlugin : Disposable {
     private val LIVE_PUSH_INTERVAL_MS = 15 * 60_000L
     @Volatile private var liveLastPushedAtMs: Long = 0L
     @Volatile private var leaderboardGithubUsername: String? = null
+    /** True once the stored GitHub token was rejected (401/403); cleared on the next success (BUG-S08). */
+    @Volatile private var leaderboardAuthExpired: Boolean = false
+
+    /** True when dev mode is on right now (enabled + correct passcode). */
+    private fun isDevModeActive(): Boolean {
+        val settings = service<CodotchiSettings>()
+        return settings.devModeEnabled && settings.developerPasscode == "1234"
+    }
+
+    /** Why [state] can't go on the leaderboard right now, or null when it can (see Integrity.kt). */
+    private fun leaderboardBlockedReason(state: PetState): String? =
+        Integrity.leaderboardBlockedReason(state, isDevModeActive())
+
+    /** This plugin's version, signed into every leaderboard submission. */
+    private fun clientVersion(): String =
+        com.intellij.ide.plugins.PluginManagerCore
+            .getPlugin(com.intellij.openapi.extensions.PluginId.getId("com.codotchi.pycharm-codotchi"))
+            ?.version ?: "0.0.0"
 
     /** Background thread running the JVM WatchService for cross-window file sync. */
     @Volatile private var fileWatcherThread: Thread? = null
@@ -184,11 +213,62 @@ class CodotchiPlugin : Disposable {
         else props.unsetValue("codotchi.leaderboardGithubUsername")
     }
 
+    private fun setLeaderboardAuthExpired(expired: Boolean) {
+        if (leaderboardAuthExpired == expired) return
+        leaderboardAuthExpired = expired
+        com.intellij.ide.util.PropertiesComponent.getInstance()
+            .setValue("codotchi.leaderboardAuthExpired", expired)
+        broadcastState()
+    }
+
+    private fun postSignInResult(username: String?, error: String? = null) {
+        val userJson = if (username != null) "\"${username.replace("\"", "\\\"")}\"" else "null"
+        val errJson = if (error != null) "\"${error.replace("\"", "\\\"")}\"" else "null"
+        val payload = """{"type":"leaderboard_sign_in_result","username":$userJson,"error":$errJson}"""
+        ApplicationManager.getApplication().invokeLater {
+            browserPanels.forEach { it.postMessage(payload) }
+        }
+    }
+
+    /**
+     * The stored GitHub token was rejected (BUG-S08). Forget it and the cached
+     * username so the sidebar shows the Sign-in button again, then either
+     * restart the device flow (user-initiated action, with [retry] run once
+     * after re-auth) or, for background pushes, flag it and show a one-off
+     * notification with a Sign in action.
+     */
+    private fun handleLeaderboardAuthFailure(interactive: Boolean, state: PetState?, retry: (() -> Unit)? = null) {
+        val alreadyFlagged = leaderboardAuthExpired
+        PasswordSafe.instance.setPassword(CredentialAttributes("Codotchi", "github-pat"), null)
+        setLeaderboardUsername(null)
+        setLeaderboardAuthExpired(true)
+        if (interactive) {
+            startDeviceFlowAsync(state, retry)
+            return
+        }
+        if (alreadyFlagged) return
+        ApplicationManager.getApplication().invokeLater {
+            NotificationGroupManager.getInstance()
+                .getNotificationGroup("Codotchi Leaderboard")
+                .createNotification(
+                    "Codotchi: GitHub sign-in expired",
+                    "Live leaderboard sync is paused until you sign in again.",
+                    NotificationType.WARNING
+                )
+                .addAction(com.intellij.notification.NotificationAction.createSimpleExpiring("Sign in") {
+                    startLeaderboardSignIn()
+                })
+                .notify(null)
+        }
+    }
+
     fun initialize() {
         liveLastPushedAtMs = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getValue("codotchi.liveLastPushedAt")?.toLongOrNull() ?: 0L
         leaderboardGithubUsername = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getValue("codotchi.leaderboardGithubUsername")
+        leaderboardAuthExpired = com.intellij.ide.util.PropertiesComponent.getInstance()
+            .getBoolean("codotchi.leaderboardAuthExpired", false)
 
         // Register AWT event listener to track keyboard/mouse activity for idle detection
         val activityMask = AWTEvent.KEY_EVENT_MASK or
@@ -301,12 +381,13 @@ class CodotchiPlugin : Disposable {
             val settings = service<CodotchiSettings>()
 
             // Map attentionCallExpiry setting to tick count.
-            val expiryMap = mapOf("needy" to 20, "standard" to 50, "chilled" to 100)
-            val attentionCallExpiryTicks = expiryMap[settings.attentionCallExpiry] ?: 50
+            // 3 s/tick: needy 4 min, standard 10 min, chilled 20 min.
+            val expiryMap = mapOf("needy" to 80, "standard" to 200, "chilled" to 400)
+            val attentionCallExpiryTicks = expiryMap[settings.attentionCallExpiry] ?: 200
 
             // Map attentionCallRate setting to rate divisor.
-            val rateMap = mapOf("fast" to 1.0, "medium" to 1.5, "slow" to 2.0)
-            val attentionCallRateDivisor = rateMap[settings.attentionCallRate] ?: 1.0
+            val rateMap = mapOf("fast" to 3.0, "medium" to 4.5, "slow" to 6.0)
+            val attentionCallRateDivisor = rateMap[settings.attentionCallRate] ?: 3.0
 
             val gameConfig = com.codotchi.engine.GameConfig(
                 attentionCallsEnabled    = settings.enableAttentionCalls,
@@ -333,93 +414,13 @@ class CodotchiPlugin : Disposable {
 
     // ── Daily token cost scanning ──────────────────────────────────────────
 
-    private data class DailyUsage(
-        val costUsd: Double,
-        val hourlyCostUsd: Double,
-        val tokens: Long,
-        val messageCount: Int,
-    )
-
-    // Mirrors state.mjs / sidebarProvider.ts MODEL_PRICING — most-specific
-    // prefix first, since e.g. claude-opus-4-8 must be checked before the
-    // generic claude-opus-4 / bare "opus" fallback.
-    private data class Pricing(val input: Double, val output: Double, val cacheRead: Double, val cacheWrite: Double)
-    private fun pricingForModel(model: String): Pricing = when {
-        model.startsWith("claude-opus-4-8")   -> Pricing(5.0, 25.0, 0.50, 6.25)
-        model.startsWith("claude-opus-4-1")   -> Pricing(15.0, 75.0, 1.50, 18.75)
-        model.startsWith("claude-3-5-sonnet") -> Pricing(3.0, 15.0, 0.30, 3.75)
-        model.startsWith("claude-3-5-haiku")  -> Pricing(0.80, 4.0, 0.08, 1.00)
-        model.startsWith("claude-3-opus")     -> Pricing(15.0, 75.0, 1.50, 18.75)
-        model.startsWith("claude-3-sonnet")   -> Pricing(3.0, 15.0, 0.30, 3.75)
-        model.startsWith("claude-3-haiku")    -> Pricing(0.25, 1.25, 0.03, 0.30)
-        model.startsWith("claude-opus-4")     -> Pricing(15.0, 75.0, 1.50, 18.75)
-        model.startsWith("claude-sonnet-5")   -> Pricing(3.0, 15.0, 0.30, 3.75)
-        model.startsWith("claude-sonnet-4")   -> Pricing(3.0, 15.0, 0.30, 3.75)
-        model.startsWith("claude-haiku-4-5")  -> Pricing(1.0, 5.0, 0.10, 1.25)
-        model.startsWith("claude-fable-5")    -> Pricing(10.0, 50.0, 1.00, 12.50)
-        "opus" in model    -> Pricing(15.0, 75.0, 1.5, 18.75)
-        "haiku" in model   -> Pricing(0.80, 4.0, 0.08, 1.0)
-        else               -> Pricing(3.0, 15.0, 0.30, 3.75) // sonnet default
-    }
-
-    /** Scan ~/.claude/projects (all .jsonl transcripts) and return today's Claude Code usage totals. */
-    private fun scanClaudeCodeDailyUsage(): DailyUsage {
-        val home = System.getProperty("user.home") ?: ""
-        val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString() // "YYYY-MM-DD"
-        val oneHourAgoMs = System.currentTimeMillis() - 3_600_000L
-        val oneHourAgoIso = java.time.Instant.ofEpochMilli(oneHourAgoMs).toString().substring(0, 19)
-        var costUsd = 0.0; var hourlyCostUsd = 0.0; var tokens = 0L; var messageCount = 0
-        val gson = Gson()
-
-        try {
-            val projsDir = File(home, ".claude/projects")
-            if (projsDir.isDirectory) {
-                for (proj in projsDir.listFiles() ?: emptyArray()) {
-                    if (!proj.isDirectory) continue
-                    for (f in proj.listFiles() ?: emptyArray()) {
-                        if (!f.name.endsWith(".jsonl")) continue
-                        try {
-                            val modified = java.time.Instant.ofEpochMilli(f.lastModified())
-                                .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
-                            if (modified < today) continue
-                        } catch (_: Exception) { continue }
-                        try {
-                            for (line in f.readLines()) {
-                                try {
-                                    @Suppress("UNCHECKED_CAST")
-                                    val d = gson.fromJson(line, Map::class.java) as? Map<*, *> ?: continue
-                                    if (d["type"] != "assistant") continue
-                                    @Suppress("UNCHECKED_CAST")
-                                    val msg = d["message"] as? Map<*, *> ?: continue
-                                    @Suppress("UNCHECKED_CAST")
-                                    val u = msg["usage"] as? Map<*, *> ?: continue
-                                    val ts = d["timestamp"] as? String ?: ""
-                                    if (ts.isNotEmpty() && !ts.startsWith(today)) continue
-                                    val p = pricingForModel(msg["model"] as? String ?: "")
-                                    val inp = (u["input_tokens"] as? Number)?.toLong() ?: 0L
-                                    val out = (u["output_tokens"] as? Number)?.toLong() ?: 0L
-                                    val cr  = (u["cache_read_input_tokens"] as? Number)?.toLong() ?: 0L
-                                    val cc  = (u["cache_creation_input_tokens"] as? Number)?.toLong() ?: 0L
-                                    val entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000.0
-                                    costUsd += entryCost
-                                    tokens += inp + out + cr + cc
-                                    messageCount++
-                                    if (ts.isNotEmpty() && ts >= oneHourAgoIso) hourlyCostUsd += entryCost
-                                } catch (_: Exception) { /* skip malformed line */ }
-                            }
-                        } catch (_: Exception) { /* skip unreadable file */ }
-                    }
-                }
-            }
-        } catch (_: Exception) { /* projsDir missing */ }
-
-        return DailyUsage(costUsd, hourlyCostUsd, tokens, messageCount)
-    }
+    /** Scan ~/.claude/projects and return today's Claude Code usage totals (local day). */
+    private fun scanClaudeCodeDailyUsage(): DailyUsage = ClaudeUsageScanner.scan()
 
     /** Read ~/.config/opencode/codotchi-daily.json and return today's OpenCode usage totals. */
     private fun scanOpenCodeDailyUsage(): DailyUsage {
         val home = System.getProperty("user.home") ?: ""
-        val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString() // "YYYY-MM-DD"
+        val today = ClaudeUsageScanner.localDateKey() // local "YYYY-MM-DD", matching the OpenCode plugin
         var costUsd = 0.0; var tokens = 0L; var messageCount = 0
         val gson = Gson()
 
@@ -497,7 +498,10 @@ class CodotchiPlugin : Disposable {
                     val feedType = message["feedType"] as? String
                     val _cc = getCustomCharacterBySpriteType(state.spriteType)
                     nextState = if (feedType == "snack") {
-                        startSnack(state, feedSnackMaxPerCycle = _cc?.feedSnackMaxPerCycle)
+                        // The webview reports the snacks really on its floor, so a stale
+                        // counter can't let a 4th snack through (Stu's cycle cap is 10).
+                        val floor = (message["floorSnacks"] as? Number)?.toInt() ?: state.snacksOnFloor
+                        startSnack(state.copy(snacksOnFloor = floor), feedSnackMaxPerCycle = _cc?.feedSnackMaxPerCycle)
                     } else {
                         val ns = feedMeal(state, mealsGivenThisCycle,
                             feedMealMaxPerCycle = _cc?.feedMealMaxPerCycle,
@@ -522,7 +526,8 @@ class CodotchiPlugin : Disposable {
                     var ns = play(state, playWeightLoss = getCustomCharacterBySpriteType(state.spriteType)?.playWeightLoss)
                     val game   = message["game"]   as? String
                     val result = message["result"] as? String
-                    if (game != null && result != null && "play_refused_no_energy" !in ns.events) {
+                    if (game != null && result != null &&
+                        "play_refused_no_energy" !in ns.events && "play_refused_sick" !in ns.events) {
                         ns = applyMinigameResult(ns, game, result)
                     }
                     nextState = ns
@@ -693,13 +698,15 @@ class CodotchiPlugin : Disposable {
                 is CopilotQuotaResult.NoToken -> segments.add(
                     "Copilot: run Tools > Codotchi: Sign in to GitHub (Copilot Quota) to include it"
                 )
-                // Unauthorized / NetworkError / ParseError / null -> silently omit; never break the base bubble
+                is CopilotQuotaResult.Unauthorized -> segments.add(
+                    "Copilot: GitHub sign-in expired — run Tools > Codotchi: Sign in to GitHub (Copilot Quota) again"
+                )
+                // NetworkError / ParseError / null -> silently omit; never break the base bubble
                 else -> {}
             }
 
             val text = if (segments.isNotEmpty()) segments.joinToString(" | ") else "Today's Token Cost: no sources selected"
-            val escaped = text.replace("\\", "\\\\").replace("\"", "\\\"")
-            val payload = """{"type":"showBubble","text":"$escaped"}"""
+            val payload = tokenCostBubblePayload(text)
             ApplicationManager.getApplication().invokeLater {
                 browserPanels.forEach { it.postMessage(payload) }
             }
@@ -743,7 +750,7 @@ class CodotchiPlugin : Disposable {
     fun isPaused(): Boolean = stateLock.withLock { currentState?.paused ?: false }
 
     /** Fetch live rank in the background; result stored in [rankCache]. */
-    private fun fetchLiveRankAsync(ageDays: Int, stage: String) {
+    private fun fetchLiveRankAsync(ageDays: Int, stage: String, spawnedAt: Long) {
         val now = System.currentTimeMillis()
         val cached = rankCache
         if (cached != null && now - cached.at < RANK_CACHE_TTL_MS) return
@@ -770,27 +777,23 @@ class CodotchiPlugin : Disposable {
                     else -> emptyList()
                 }
 
-                val staleMs = 30L * 24 * 60 * 60 * 1000L
-                val msPerGameDayApprox = 5 * 60 * 1000L // 5 real min ≈ 1 game day (awake rate)
+                // Match leaderboard/index.html: live entries hidden after 48h,
+                // stored ageDays used as-is (no extrapolation).
+                val staleMs = 48L * 60 * 60 * 1000L
                 val selfRunId = com.intellij.openapi.application.PermanentInstallationID.get()
                 @Suppress("UNCHECKED_CAST")
                 val freshLive: List<Map<String, Any>> = if (liveText != null) {
                     val liveParsed = Gson().fromJson(liveText, Any::class.java)
                     val liveList = if (liveParsed is List<*>) liveParsed as List<Map<String, Any>> else emptyList()
-                    liveList
-                        .filter { entry ->
-                            val updatedAt = (entry["updatedAt"] as? Number)?.toLong() ?: 0L
-                            val entryRunId = entry["petRunId"] as? String
-                            // Exclude own entry by petRunId only — username exclusion was too broad.
-                            (updatedAt <= 0L || (now - updatedAt) < staleMs)
-                                && entryRunId != selfRunId
-                        }
-                        .map { entry ->
-                            val storedAge = (entry["ageDays"] as? Number)?.toDouble() ?: 0.0
-                            val updatedAt = (entry["updatedAt"] as? Number)?.toLong() ?: now
-                            val extrapolated = storedAge + (now - updatedAt).toDouble() / msPerGameDayApprox
-                            entry + mapOf("ageDays" to extrapolated)
-                        }
+                    liveList.filter { entry ->
+                        val updatedAt = (entry["updatedAt"] as? Number)?.toLong() ?: 0L
+                        val entryRunId = entry["petRunId"] as? String
+                        val entrySpawnedAt = (entry["spawnedAt"] as? Number)?.toLong()
+                        // Exclude own entry (by petRunId or spawnedAt) — the +1 below counts it.
+                        updatedAt > 0L && (now - updatedAt) < staleMs
+                            && entryRunId != selfRunId
+                            && entrySpawnedAt != spawnedAt
+                    }
                 } else emptyList()
 
                 val combined = scoresList + freshLive
@@ -808,6 +811,8 @@ class CodotchiPlugin : Disposable {
     }
 
     private fun pushLiveScoreAsync(state: PetState, promptIfNoToken: Boolean) {
+        if (!state.alive) return
+        if (leaderboardBlockedReason(state) != null) return
         AppExecutorUtil.getAppExecutorService().execute {
             try {
                 val credAttrs = CredentialAttributes("Codotchi", "github-pat")
@@ -826,25 +831,25 @@ class CodotchiPlugin : Disposable {
                 userConn.setRequestProperty("Authorization", "token $pat")
                 userConn.setRequestProperty("Accept", "application/vnd.github+json")
                 userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                if (userConn.isGithubAuthFailure()) {
+                    handleLeaderboardAuthFailure(interactive = promptIfNoToken, state = state)
+                    return@execute
+                }
                 if (userConn.responseCode != 200) return@execute
                 @Suppress("UNCHECKED_CAST")
                 val userMap = Gson().fromJson(userConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
                 val username = userMap["login"] as? String ?: return@execute
                 setLeaderboardUsername(username)
 
-                val entry = mapOf(
-                    "username" to username,
-                    "petName" to state.name,
-                    "petRunId" to com.intellij.openapi.application.PermanentInstallationID.get(),
-                    "spawnedAt" to state.spawnedAt,
-                    "ageDays" to state.ageDays,
-                    "stage" to state.stage,
-                    "petType" to state.petType,
-                    "updatedAt" to System.currentTimeMillis()
+                val entryJson = buildLiveEntryJson(
+                    state, username,
+                    petRunId = com.intellij.openapi.application.PermanentInstallationID.get(),
+                    updatedAt = System.currentTimeMillis(),
+                    clientVersion = clientVersion(),
                 )
                 val issueBody = mapOf(
                     "title" to "[Live] $username — ${state.name} (${state.ageDays}d ${state.stage})",
-                    "body" to Gson().toJson(entry),
+                    "body" to entryJson,
                     "labels" to listOf("leaderboard-live")
                 )
 
@@ -859,7 +864,12 @@ class CodotchiPlugin : Disposable {
                 issueConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
                 issueConn.outputStream.writer().use { it.write(Gson().toJson(issueBody)) }
 
+                if (issueConn.isGithubAuthFailure()) {
+                    handleLeaderboardAuthFailure(interactive = promptIfNoToken, state = state)
+                    return@execute
+                }
                 if (issueConn.responseCode == 201) {
+                    setLeaderboardAuthExpired(false)
                     val now = System.currentTimeMillis()
                     liveLastPushedAtMs = now
                     com.intellij.ide.util.PropertiesComponent.getInstance()
@@ -870,21 +880,41 @@ class CodotchiPlugin : Disposable {
         }
     }
 
-    private fun submitLeaderboardAsync(state: PetState, diedAt: Long) {
+    /** @param retried true when this is the one retry after a forced re-auth — never re-auth twice. */
+    private fun submitLeaderboardAsync(state: PetState, diedAt: Long, retried: Boolean = false) {
         AppExecutorUtil.getAppExecutorService().execute {
             fun postResult(status: String, message: String? = null) {
-                val msgPart = if (message != null) ""","message":"${message.replace("\"", "\\\"")}"""" else ""
+                val msgPart = if (message != null) ""","message":${jsonStringOrNull(message)}""" else ""
                 val payload = """{"type":"leaderboard_submit_result","status":"$status"$msgPart}"""
                 ApplicationManager.getApplication().invokeLater {
                     browserPanels.forEach { it.postMessage(payload) }
                 }
             }
             try {
+                val blocked = leaderboardBlockedReason(state)
+                if (blocked != null) {
+                    postResult("error", blocked)
+                    return@execute
+                }
                 val credAttrs = CredentialAttributes("Codotchi", "github-pat")
                 val pat = PasswordSafe.instance.getPassword(credAttrs)
                 if (pat.isNullOrBlank()) {
-                    startDeviceFlowAsync(null) { submitLeaderboardAsync(state, diedAt) }
+                    startDeviceFlowAsync(null, { submitLeaderboardAsync(state, diedAt, retried = true) }) { err ->
+                        postResult("error", err)
+                    }
                     return@execute
+                }
+                val reauthAndRetry: () -> Unit = {
+                    if (retried) {
+                        postResult("error", "GitHub rejected the new sign-in too — check the token has public_repo access.")
+                    } else {
+                        PasswordSafe.instance.setPassword(credAttrs, null)
+                        setLeaderboardUsername(null)
+                        setLeaderboardAuthExpired(true)
+                        startDeviceFlowAsync(null, { submitLeaderboardAsync(state, diedAt, retried = true) }) { err ->
+                            postResult("error", err)
+                        }
+                    }
                 }
 
                 val userConn = java.net.URL("https://api.github.com/user").openConnection() as java.net.HttpURLConnection
@@ -893,6 +923,7 @@ class CodotchiPlugin : Disposable {
                 userConn.setRequestProperty("Authorization", "token $pat")
                 userConn.setRequestProperty("Accept", "application/vnd.github+json")
                 userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+                if (userConn.isGithubAuthFailure()) { reauthAndRetry(); return@execute }
                 if (userConn.responseCode != 200) {
                     postResult("error", "GitHub API error: ${userConn.responseCode}")
                     return@execute
@@ -916,8 +947,7 @@ class CodotchiPlugin : Disposable {
                     return@execute
                 }
 
-                val scoreJson = """{"schemaVersion":1,"petName":"${state.name.replace("\"","\\\"")}","ageDays":${state.ageDays},"stage":"${state.stage}","petType":"${state.petType}","spawnedAt":${state.spawnedAt},"diedAt":$diedAt}"""
-                val issueBody = "Leaderboard submission.\n\n```json\n$scoreJson\n```"
+                val issueBody = buildScoreIssueBody(state, username, diedAt, clientVersion())
                 val issueTitle = "[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @$username"
                 val issuePayload = mapOf(
                     "title" to issueTitle,
@@ -937,7 +967,10 @@ class CodotchiPlugin : Disposable {
                 issueConn.outputStream.writer().use { it.write(Gson().toJson(issuePayload)) }
 
                 if (issueConn.responseCode == 201) {
+                    setLeaderboardAuthExpired(false)
                     postResult("success")
+                } else if (issueConn.isGithubAuthFailure()) {
+                    reauthAndRetry()
                 } else {
                     val errBody = issueConn.errorStream?.bufferedReader()?.readText()?.take(120) ?: ""
                     postResult("error", "Failed to submit (HTTP ${issueConn.responseCode}): $errBody")
@@ -948,8 +981,33 @@ class CodotchiPlugin : Disposable {
         }
     }
 
-    private fun startDeviceFlowAsync(state: PetState?, onAuthSuccess: (() -> Unit)? = null) {
+    /**
+     * GitHub OAuth device flow. Failures are reported (sign-in result + error
+     * notification + [onAuthFailure]) rather than swallowed, so the user always
+     * gets a way to retry (BUG-S08).
+     */
+    private fun startDeviceFlowAsync(
+        state: PetState?,
+        onAuthSuccess: (() -> Unit)? = null,
+        onAuthFailure: ((String) -> Unit)? = null,
+    ) {
         AppExecutorUtil.getAppExecutorService().execute {
+            fun fail(message: String) {
+                postSignInResult(null, message)
+                onAuthFailure?.invoke(message)
+                ApplicationManager.getApplication().invokeLater {
+                    NotificationGroupManager.getInstance()
+                        .getNotificationGroup("Codotchi Leaderboard")
+                        .createNotification("Codotchi: GitHub sign-in failed", message, NotificationType.WARNING)
+                        .addAction(com.intellij.notification.NotificationAction.createSimpleExpiring("Try again") {
+                            startDeviceFlowAsync(state, onAuthSuccess, onAuthFailure)
+                        })
+                        .addAction(com.intellij.notification.NotificationAction.createSimpleExpiring("Sign-in help") {
+                            BrowserUtil.browse(GITHUB_SIGN_IN_HELP_URL)
+                        })
+                        .notify(null)
+                }
+            }
             try {
                 val clientId = "Ov23lilG4ngpe3lHdC88"
 
@@ -961,12 +1019,16 @@ class CodotchiPlugin : Disposable {
                 dcConn.setRequestProperty("Accept", "application/json")
                 dcConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
                 dcConn.outputStream.writer().use { it.write("client_id=$clientId&scope=public_repo") }
-                if (dcConn.responseCode != 200) return@execute
+                if (dcConn.responseCode != 200) {
+                    val detail = githubErrorDescription(dcConn)
+                    fail("Could not start GitHub sign-in (HTTP ${dcConn.responseCode}${if (detail != null) ": $detail" else ""}).")
+                    return@execute
+                }
 
                 @Suppress("UNCHECKED_CAST")
                 val dcResp = Gson().fromJson(dcConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
-                val deviceCode     = dcResp["device_code"] as? String ?: return@execute
-                val userCode       = dcResp["user_code"]   as? String ?: return@execute
+                val deviceCode     = dcResp["device_code"] as? String ?: run { fail("GitHub sign-in returned no device code."); return@execute }
+                val userCode       = dcResp["user_code"]   as? String ?: run { fail("GitHub sign-in returned no user code."); return@execute }
                 val verifyUri      = (dcResp["verification_uri_complete"] as? String)
                     ?: dcResp["verification_uri"] as? String
                     ?: "https://github.com/login/device"
@@ -1000,11 +1062,15 @@ class CodotchiPlugin : Disposable {
                         it.write("client_id=$clientId&device_code=$deviceCode&grant_type=urn:ietf:params:oauth:grant-type:device_code")
                     }
 
+                    // A 4xx response has its JSON on errorStream; inputStream would throw.
+                    val tokStream = if (tokConn.responseCode >= 400) tokConn.errorStream else tokConn.inputStream
                     @Suppress("UNCHECKED_CAST")
-                    val tokResp = Gson().fromJson(tokConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+                    val tokResp = (tokStream?.bufferedReader()?.readText()
+                        ?.let { Gson().fromJson(it, Map::class.java) } as? Map<String, Any>) ?: emptyMap()
                     val accessToken = tokResp["access_token"] as? String
                     if (!accessToken.isNullOrBlank()) {
                         PasswordSafe.instance.setPassword(CredentialAttributes("Codotchi", "github-pat"), accessToken)
+                        setLeaderboardAuthExpired(false)
                         resolveAndCacheLeaderboardUsername(accessToken)
                         if (onAuthSuccess != null) {
                             onAuthSuccess()
@@ -1013,15 +1079,26 @@ class CodotchiPlugin : Disposable {
                         }
                         return@execute
                     }
-                    when (tokResp["error"] as? String) {
+                    when (val error = tokResp["error"] as? String) {
                         "slow_down"             -> pollInterval += 5
                         "authorization_pending" -> { /* continue polling */ }
-                        else                    -> return@execute
+                        else                    -> { fail(describeDeviceFlowError(error)); return@execute }
                     }
                 }
-            } catch (_: Exception) { /* network failure — silent */ }
+                fail(describeDeviceFlowError(null))
+            } catch (e: Exception) {
+                fail("Network error during GitHub sign-in: ${e.message?.take(80) ?: "unknown"}")
+            }
         }
     }
+
+    /** GitHub's `error_description` (or `error`) from a failed OAuth response, if any. */
+    private fun githubErrorDescription(conn: java.net.HttpURLConnection): String? = try {
+        @Suppress("UNCHECKED_CAST")
+        val body = conn.errorStream?.bufferedReader()?.readText()
+            ?.let { Gson().fromJson(it, Map::class.java) } as? Map<String, Any>
+        (body?.get("error_description") as? String) ?: (body?.get("error") as? String)
+    } catch (_: Exception) { null }
 
     private fun resolveAndCacheLeaderboardUsername(pat: String) {
         AppExecutorUtil.getAppExecutorService().execute {
@@ -1031,20 +1108,26 @@ class CodotchiPlugin : Disposable {
                 conn.setRequestProperty("Authorization", "token $pat")
                 conn.setRequestProperty("Accept", "application/vnd.github+json")
                 conn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
-                if (conn.responseCode != 200) return@execute
+                if (conn.responseCode != 200) {
+                    setLeaderboardUsername(null)
+                    postSignInResult(null, "Signed in, but GitHub returned HTTP ${conn.responseCode} for your profile — try again.")
+                    return@execute
+                }
                 @Suppress("UNCHECKED_CAST")
                 val map = Gson().fromJson(conn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
-                val username = map["login"] as? String ?: return@execute
+                val username = map["login"] as? String
+                    ?: run { postSignInResult(null, "Could not read your GitHub username — try again."); return@execute }
                 setLeaderboardUsername(username)
-                ApplicationManager.getApplication().invokeLater {
-                    browserPanels.forEach { it.postMessage("""{"type":"leaderboard_sign_in_result","username":"$username"}""") }
-                }
-            } catch (_: Exception) { /* silent */ }
+                postSignInResult(username)
+                broadcastState()
+            } catch (_: Exception) {
+                postSignInResult(null, "Network error reading your GitHub profile — try again.")
+            }
         }
     }
 
-    fun startLeaderboardSignIn() {
-        startDeviceFlowAsync(stateLock.withLock { currentState?.takeIf { it.alive } })
+    fun startLeaderboardSignIn(onFailure: ((String) -> Unit)? = null) {
+        startDeviceFlowAsync(stateLock.withLock { currentState?.takeIf { it.alive } }, onAuthFailure = onFailure)
     }
 
     fun getLeaderboardUsername(): String? = leaderboardGithubUsername
@@ -1081,9 +1164,17 @@ class CodotchiPlugin : Disposable {
         browserPanels.remove(panel)
     }
 
-    fun setStatusWidget(widget: CodotchiStatusWidget) {
-        statusWidget = widget
+    /**
+     * Each project window creates its own widget. Keeping only the newest one left
+     * the others frozen on their last text, so a ⚠ never cleared there.
+     */
+    fun registerStatusWidget(widget: CodotchiStatusWidget) {
+        statusWidgets.addIfAbsent(widget)
         broadcastState()
+    }
+
+    fun unregisterStatusWidget(widget: CodotchiStatusWidget) {
+        statusWidgets.remove(widget)
     }
 
     /**
@@ -1157,10 +1248,11 @@ class CodotchiPlugin : Disposable {
         val liveRank2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.rank else null
         val liveTotalScores2 = if (liveSubscribed2 && state != null && state.alive && cached2 != null) cached2.total else null
         val liveLastPushed2 = liveLastPushedAtMs.takeIf { it > 0L }
+        val blockedReason2 = state?.let { leaderboardBlockedReason(it) }
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2, liveLastPushed2) }
-                statusWidget?.update(state)
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter2, defaultPetName2, liveRank2, liveTotalScores2, liveSubscribed2, liveLastPushed2, leaderboardBlockedReason = blockedReason2) }
+                statusWidgets.forEach { it.update(state) }
             }
         }
     }
@@ -1386,16 +1478,22 @@ class CodotchiPlugin : Disposable {
         }
         persistence.lastSaveTimestamp = System.currentTimeMillis()
 
+        val freshEvents = synchronized(this) {
+            val fresh = state != null && state.events !== lastNotifiedEvents
+            if (state != null) lastNotifiedEvents = state.events
+            fresh
+        }
+
         // Fire IDE notifications for attention_call_* events (only when mechanic is enabled)
-        if (state != null && service<CodotchiSettings>().enableAttentionCalls) {
+        if (state != null && freshEvents && service<CodotchiSettings>().enableAttentionCalls) {
             for (event in state.events) {
-                val msg = attentionCallMessage(state.name, event, state.spriteType) ?: continue
+                val msg = attentionCallMessage(state.name, event, state.spriteType, cravingItemFor(state)) ?: continue
                 fireAttentionNotification(msg)
             }
         }
 
         // Fire notification on old-age natural-causes death
-        if (state != null && state.events.contains("died_of_old_age")) {
+        if (state != null && freshEvents && state.events.contains("died_of_old_age")) {
             fireAttentionNotification(
                 "${state.name} has passed away of unforeseen natural causes due to old age."
             )
@@ -1420,12 +1518,23 @@ class CodotchiPlugin : Disposable {
             lastRescueNotifyMs = 0L
         }
 
+        // Desktop (OS) notification when hunger, happiness or energy hits 0 or health
+        // drops below 25, so a minimised IDE doesn't hide it. Independent of the
+        // attention-call mechanic.
+        if (state != null && service<CodotchiSettings>().osNotifications) {
+            val result = CriticalStatNotifier.evaluate(state, criticalStatTracker, System.currentTimeMillis())
+            criticalStatTracker = result.tracker
+            result.message?.let { fireCriticalStatNotification(it) }
+        } else {
+            criticalStatTracker = emptyMap()
+        }
+
         val liveSubscribed = com.intellij.ide.util.PropertiesComponent.getInstance()
             .getBoolean("codotchi.liveSubscribed", false)
 
         // Kick off a background rank refresh when subscribed and alive.
         if (liveSubscribed && state != null && state.alive) {
-            fetchLiveRankAsync(state.ageDays, state.stage)
+            fetchLiveRankAsync(state.ageDays, state.stage, state.spawnedAt)
             // Hourly live push — optimistically update timestamp to prevent duplicate launches.
             val now = System.currentTimeMillis()
             if (now - liveLastPushedAtMs >= LIVE_PUSH_INTERVAL_MS) {
@@ -1438,18 +1547,19 @@ class CodotchiPlugin : Disposable {
         val liveRank = if (liveSubscribed && state != null && state.alive && cached != null) cached.rank else null
         val liveTotalScores = if (liveSubscribed && state != null && state.alive && cached != null) cached.total else null
         val liveLastPushed = liveLastPushedAtMs.takeIf { it > 0L }
+        val blockedReason = state?.let { leaderboardBlockedReason(it) }
 
         ApplicationManager.getApplication().invokeLater {
             if (state != null) {
-                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveLastPushed, leaderboardGithubUsername) }
-                statusWidget?.update(state)
+                browserPanels.forEach { it.postState(state, meals, highScore, devMode, unlockedCharacter, defaultPetName, liveRank, liveTotalScores, liveSubscribed, liveLastPushed, leaderboardGithubUsername, leaderboardAuthExpired, blockedReason) }
+                statusWidgets.forEach { it.update(state) }
             }
         }
     }
 
     // ── Attention-call notifications ───────────────────────────────────────
 
-    private fun attentionCallMessage(petName: String, event: String, spriteType: String? = null): String? {
+    private fun attentionCallMessage(petName: String, event: String, spriteType: String? = null, cravingItem: String? = null): String? {
         val customChar = spriteType?.let { getCustomCharacterBySpriteType(it) }
         return when (event) {
             "attention_call_hunger"          -> "$petName is hungry!"
@@ -1460,6 +1570,12 @@ class CodotchiPlugin : Disposable {
             "attention_call_misbehaviour"    -> "$petName is misbehaving!"
             "attention_call_gift"            -> (customChar?.giftMessage ?: "$petName brought you a gift!").replace("__Name__", petName)
             "attention_call_critical_health" -> "$petName's health is critical!"
+            "attention_call_play"            -> "$petName wants to play a game!"
+            "attention_call_pat"             -> customChar?.patCall?.call?.replace("__Name__", petName) ?: "$petName wants a pat!"
+            "attention_call_craving_meal"    -> "$petName is craving a meal!"
+            "attention_call_craving_snack"   -> "$petName is craving ${cravingItem ?: "a snack"}!"
+            "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes."
+            "break_nap_over"                 -> "Break's over! $petName is awake and ready to code."
             else                             -> null
         }
     }
@@ -1470,7 +1586,7 @@ class CodotchiPlugin : Disposable {
                 .getNotificationGroup("Codotchi Attention Calls")
                 ?: return@invokeLater
             val notification = group.createNotification(message, NotificationType.WARNING)
-            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
+            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Codotchi") {
                 override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
                     val project = e.project
                         ?: ProjectManager.getInstance().openProjects.firstOrNull()
@@ -1490,7 +1606,31 @@ class CodotchiPlugin : Disposable {
                 .getNotificationGroup("Codotchi Attention Calls")
                 ?: return@invokeLater
             val notification = group.createNotification(message, NotificationType.ERROR)
-            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Gotchi") {
+            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Codotchi") {
+                override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+                    val project = e.project
+                        ?: ProjectManager.getInstance().openProjects.firstOrNull()
+                        ?: return
+                    ToolWindowManager.getInstance(project).getToolWindow("Codotchi")?.show()
+                    notification.expire()
+                }
+            })
+            notification.notify(null)  // null = app-level notification visible in all projects
+        }
+    }
+
+    /**
+     * Critical-stat alert: a native OS notification via [CriticalStatNotifier.sendOsNotification]
+     * (visible when the IDE is minimised) plus an in-IDE balloon with an "Open Codotchi" action.
+     */
+    private fun fireCriticalStatNotification(message: String) {
+        CriticalStatNotifier.sendOsNotification("Codotchi", message)
+        ApplicationManager.getApplication().invokeLater {
+            val group = NotificationGroupManager.getInstance()
+                .getNotificationGroup("Codotchi Critical Stats")
+                ?: return@invokeLater
+            val notification = group.createNotification(message, NotificationType.WARNING)
+            notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Codotchi") {
                 override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
                     val project = e.project
                         ?: ProjectManager.getInstance().openProjects.firstOrNull()

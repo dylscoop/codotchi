@@ -1,3 +1,5 @@
+// GENERATED from packages/core/src/gameEngine.ts by scripts/sync-core.mjs — do not edit here.
+// Edit packages/core/src/gameEngine.ts, then run: node scripts/sync-core.mjs
 /**
  * gameEngine.ts
  *
@@ -68,7 +70,13 @@ const HUNGER_ZERO_TICKS_BEFORE_RISK: number = 3;
 const CRITICAL_HEALTH_DAMAGE_PER_TICK: number = 5;
 
 const MAX_CONSECUTIVE_SNACKS_BEFORE_SICK: number = 3;
-const MAX_UNCLEANED_POOPS_BEFORE_SICK: number = 3;
+const MAX_UNCLEANED_POOPS_BEFORE_SICK: number = 5;
+/**
+ * Consecutive active (awake, non-idle) ticks the pet must spend at or above
+ * MAX_UNCLEANED_POOPS_BEFORE_SICK before it becomes sick (≈ 1 real minute),
+ * so cleaning up in time prevents the sickness.
+ */
+const POOP_SICK_GRACE_TICKS: number = 20;
 
 /** Maximum snacks allowed per wake cycle before further snacks are refused. */
 export const SNACK_MAX_PER_CYCLE: number = 3;
@@ -81,7 +89,7 @@ const RECENT_EVENT_LOG_MAX: number = 20;
 /** Ticks between droppings (≈ 20 real minutes). */
 const POOP_TICKS_INTERVAL: number = 20 * TICKS_PER_MINUTE;
 
-const FEED_MEAL_HUNGER_BOOST: number = 20;
+const FEED_MEAL_HUNGER_BOOST: number = 15;
 const FEED_MEAL_WEIGHT_GAIN: number = 2;
 const FEED_MEAL_MAX_PER_CYCLE: number = 3;
 
@@ -123,16 +131,14 @@ const ENERGY_DECAY_PER_TICK: number = 1;
 /** Health lost per tick when the pet's energy is fully depleted while awake. Slower than other critical conditions. */
 const EXHAUSTION_HEALTH_DAMAGE_PER_TICK: number = 2;
 
-/** Health lost per tick from sickness while the user is idle (regular idle, not deep idle). Much slower than active rate. */
-const IDLE_SICK_DAMAGE_PER_TICK: number = 1;
-
 /** Per-tick probability that sickness clears naturally while the pet is sleeping. */
 const SLEEP_SICK_RECOVERY_CHANCE: number = 0.03;
 
 /** While sleeping, hunger and happiness decay once every this many ticks (very slow drain). */
 const SLEEP_DECAY_TICK_INTERVAL: number = 5;
 
-const MEDICINE_DOSES_TO_CURE: number = 3;
+/** Medicine doses needed to cure sickness. Feed, Snack and Play are refused until then. */
+export const MEDICINE_DOSES_TO_CURE: number = 3;
 
 /** Ticks between passive health regen pulses while awake (1 hp per interval). */
 const HEALTH_REGEN_AWAKE_TICK_INTERVAL: number = 5;
@@ -201,6 +207,10 @@ const MINIGAME_HL_LOSE_DELTA: number = -5;
 // Coin Flip: play baseline +15; delta win 0, lose −10 → totals: win 15, lose 5
 const MINIGAME_COIN_FLIP_WIN: number = 0;
 const MINIGAME_COIN_FLIP_LOSE: number = -10;
+// Blackjack (Stu's Coin Flip): play baseline +15; delta win +10, push 0, lose −10 → totals: 25 / 15 / 5
+const MINIGAME_BLACKJACK_WIN: number = 10;
+const MINIGAME_BLACKJACK_PUSH: number = 0;
+const MINIGAME_BLACKJACK_LOSE: number = -10;
 
 const CARE_SCORE_HUNGER_WEIGHT: number = 0.30;
 const CARE_SCORE_HAPPINESS_WEIGHT: number = 0.25;
@@ -230,15 +240,33 @@ export const ATTENTION_ENERGY_THRESHOLD: number = 20;
 /** Health stat at or below which a critical_health attention call fires. */
 export const ATTENTION_HEALTH_THRESHOLD: number = 50;
 
-/** Cooldown ticks (50 = 5 min) applied to a call type after it is answered. */
-export const ATTENTION_ANSWER_COOLDOWN_TICKS: number = 50;
-/** Cooldown ticks (20 = 2 min) applied to a call type after it expires unanswered. */
-export const ATTENTION_EXPIRY_COOLDOWN_TICKS: number = 20;
+/**
+ * Cooldown ticks (100 × 3 s = 5 min) applied to a call type after it is answered.
+ * Cooldowns only count down on active (non-idle) ticks. Must match Constants.kt (BUG-S06).
+ */
+export const ATTENTION_ANSWER_COOLDOWN_TICKS: number = 100;
+/** Cooldown ticks (100 × 3 s = 5 min) applied to a call type after it expires unanswered. */
+export const ATTENTION_EXPIRY_COOLDOWN_TICKS: number = 100;
 /** Stat penalty applied to the relevant stat when an attention call expires. */
 export const ATTENTION_EXPIRY_STAT_PENALTY: number = 10;
 
 /** Happiness boost applied when a gift attention call is answered via praise(). */
 export const GIFT_PRAISE_HAPPINESS_BOOST: number = 15;
+
+/**
+ * Active (non-idle, awake) ticks between "take a break" calls: 600 × 3 s = 30 min.
+ * The timer restarts when the call fires and whenever the user goes deep-idle
+ * (they have taken a break on their own).
+ */
+export const BREAK_CALL_INTERVAL_TICKS: number = 600;
+/** Happiness boost when a break call is answered via praise() — same as a gift. */
+export const BREAK_PRAISE_HAPPINESS_BOOST: number = GIFT_PRAISE_HAPPINESS_BOOST;
+/**
+ * Length of the nap the pet takes when a break call is answered: 100 × 3 s = 5 min.
+ * While napping every stat except energy is frozen (energy regenerates), the pet
+ * keeps aging, and it can't be woken early — it wakes on its own when the timer runs out.
+ */
+export const BREAK_NAP_TICKS: number = 100;
 
 // ---------------------------------------------------------------------------
 // Care Mistakes constants
@@ -316,6 +344,15 @@ export const MISBEHAVIOUR_BASE_CHANCE: number = 0.005;
 export const MISBEHAVIOUR_MAX_CHANCE: number = 0.08;
 export const GIFT_BASE_CHANCE: number = 0.002;
 export const GIFT_MAX_CHANCE: number = 0.05;
+// Whim calls — fire at any stat level, unlike the need-based calls.
+export const PLAY_CALL_BASE_CHANCE: number = 0.003;
+export const PLAY_CALL_MAX_CHANCE: number = 0.04;
+export const PAT_CALL_BASE_CHANCE: number = 0.004;
+export const PAT_CALL_MAX_CHANCE: number = 0.05;
+export const CRAVING_CALL_BASE_CHANCE: number = 0.003;
+export const CRAVING_CALL_MAX_CHANCE: number = 0.04;
+/** A craving never asks for a meal when hunger is already at or above this. */
+const CRAVING_MEAL_MAX_HUNGER: number = 90;
 
 /** Age in game days at which a senior pet may die of old age (365 game days = 1 in-game year). */
 export const SENIOR_NATURAL_DEATH_AGE_DAYS: number = 365;
@@ -365,13 +402,13 @@ export interface GameConfig {
   attentionCallsEnabled: boolean;
   /**
    * Response-window in ticks for poop, misbehaviour, and gift calls.
-   * needy=20 (2 min), standard=50 (5 min), chilled=100 (10 min).
+   * needy=80 (4 min), standard=200 (10 min), chilled=400 (20 min).
    */
   attentionCallExpiryTicks: number;
   /**
    * Divisor applied to the base and max logChance probabilities for all
    * probabilistic call spawns (poop, misbehaviour, gift).
-   * fast=1.0, medium=1.5, slow=2.0.
+   * fast=3.0, medium=4.5, slow=6.0 (doubled in v2.24.3 to halve call frequency).
    */
   attentionCallRateDivisor: number;
   /**
@@ -393,16 +430,34 @@ export interface GameConfig {
    * Set to 0 to allow the pet to die normally even in dev mode.
    */
   devModeHealthFloor: number;
+  /**
+   * When true, the pet can never die — the stat-decay death check and the
+   * senior old-age death roll are both skipped, independent of devMode
+   * (which also speeds up aging and is meant for testing, not permanent play).
+   * Optional so existing config literals don't need it; absent means false.
+   */
+  immortal?: boolean;
 }
 
 /** Sensible defaults used when no explicit config is provided. */
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   attentionCallsEnabled:    true,
-  attentionCallExpiryTicks: 50,   // "standard" = 5 min
-  attentionCallRateDivisor: 1.0,  // "fast"
+  attentionCallExpiryTicks: 200,  // "standard" = 10 min
+  attentionCallRateDivisor: 3.0,  // "fast"
   devMode:                  false,
   devModeAgingMultiplier:   10,
   devModeHealthFloor:       1,
+  immortal:                 false,
+};
+
+/**
+ * Config used by the claude-codotchi Claude Code plugin. Looked up by
+ * scripts/action.mjs, statusline.mjs, and the hooks via `LOCAL_PET_GAME_CONFIG
+ * ?? DEFAULT_GAME_CONFIG` — the pet living in Claude's own chat is immortal.
+ */
+export const LOCAL_PET_GAME_CONFIG: GameConfig = {
+  ...DEFAULT_GAME_CONFIG,
+  immortal: true,
 };
 
 /** Per-type stat multipliers applied on top of base config constants. */
@@ -556,7 +611,20 @@ export type AttentionCallType =
   | "low_energy"
   | "misbehaviour"
   | "gift"
-  | "critical_health";
+  | "critical_health"
+  | "play"
+  | "pat"
+  | "craving"
+  | "break";
+
+/** Every AttentionCallType, for code that needs to list them at runtime. */
+export const ATTENTION_CALL_TYPES: readonly AttentionCallType[] = [
+  "hunger", "unhappiness", "poop", "sick", "low_energy", "misbehaviour",
+  "gift", "critical_health", "play", "pat", "craving", "break",
+];
+
+/** What a craving attention call asks for. */
+export type CravingFood = "meal" | "snack";
 
 /**
  * Full serialisable snapshot of the pet's state.
@@ -676,12 +744,47 @@ export interface PetState {
   /** Ticks the current poop(s) have remained uncleaned; resets to 0 when poops === 0. */
   readonly ticksWithUncleanedPoop: number;
 
+  /** Consecutive active ticks spent at or above MAX_UNCLEANED_POOPS_BEFORE_SICK; frozen while idle or asleep, reset by clean(). */
+  readonly poopOverLimitTicks: number;
+
   /** Ticks since the last misbehaviour attention call fired; used for log-chance formula. */
   readonly ticksSinceLastMisbehaviour: number;
 
   /** Ticks since the last gift attention call fired; used for log-chance formula. */
   readonly ticksSinceLastGift: number;
+
+  /** Ticks since the last play attention call fired; used for log-chance formula. */
+  readonly ticksSinceLastPlayCall: number;
+
+  /** Ticks since the last pat attention call fired; used for log-chance formula. */
+  readonly ticksSinceLastPatCall: number;
+
+  /** Ticks since the last craving attention call fired; used for log-chance formula. */
+  readonly ticksSinceLastCraving: number;
+
+  /** Active, awake ticks since the last "take a break" call (BREAK_CALL_INTERVAL_TICKS). */
+  readonly ticksSinceLastBreakCall: number;
+  /** Ticks left in the break nap (BREAK_NAP_TICKS); 0 when not on a break nap. */
+  readonly breakNapTicksRemaining: number;
+
+  /** What the active craving call asks for; null when no craving call is active. */
+  readonly cravingFood: CravingFood | null;
+
+  // ── Leaderboard integrity (sticky: never cleared once set) ───────────────
+
+  /** True once any tick has run with dev mode on — the pet can never go on the leaderboard. */
+  readonly devModeEverUsed: boolean;
+
+  /**
+   * Why this pet can't go on the leaderboard, apart from dev mode: "tampered" (the saved
+   * state failed its integrity seal) or "unverified" (loaded from a save written before
+   * seals existed). "" when eligible.
+   */
+  readonly leaderboardIneligible: LeaderboardIneligibleReason;
 }
+
+/** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
+export type LeaderboardIneligibleReason = "" | "tampered" | "unverified";
 
 // ---------------------------------------------------------------------------
 // HighScore — persisted record of the best run
@@ -753,6 +856,31 @@ function clampWeight(value: number): number {
  */
 function logChance(ticksSinceLast: number, base: number, max: number): number {
   return Math.min(max, base * Math.log(ticksSinceLast + Math.E));
+}
+
+/**
+ * Decide what a craving call asks for, or null if the pet shouldn't crave now.
+ *
+ * Asks for a meal instead of a snack once another snack would be risky or
+ * impossible (2+ snacks in a row — the next one would count towards
+ * MAX_CONSECUTIVE_SNACKS_BEFORE_SICK — or the snack caps are used up), so a
+ * craving never asks for something that makes the pet sick. Otherwise it's a
+ * 50/50 pick.
+ *
+ * @param state - Pet state entering the tick (snack counters).
+ * @param hunger - Hunger after this tick's decay.
+ * @param sick - Sickness after this tick's updates.
+ * @returns The craved food, or null when no craving should fire.
+ */
+function pickCravingFood(state: PetState, hunger: number, sick: boolean): CravingFood | null {
+  if (sick || hunger >= STAT_MAX) return null;
+  const snackBlocked = state.consecutiveSnacks >= 2 ||
+    state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE ||
+    state.snacksOnFloor >= MAX_FLOOR_SNACKS;
+  const mealPointless = hunger >= CRAVING_MEAL_MAX_HUNGER;
+  if (snackBlocked) return mealPointless ? null : "meal";
+  if (mealPointless) return "snack";
+  return Math.random() < 0.5 ? "snack" : "meal";
 }
 
 /**
@@ -940,15 +1068,6 @@ export function careTierLabel(careScore: number): string {
 // ---------------------------------------------------------------------------
 
 /**
- * All 12 Chinese zodiac animals. Accessible via character code only —
- * not part of the random rotation pool.
- */
-const ZODIAC_ANIMALS = [
-  "rat", "ox", "tiger", "rabbit", "dragon", "snake",
-  "horse", "sheep", "monkey", "rooster", "dog", "pig",
-] as const;
-
-/**
  * Animals in the random rotation pool at pet creation.
  * All entries have equal probability (1 / ROTATION_ANIMALS.length each).
  * Note: some rotation animals (dog, snake, sheep) are also zodiac animals —
@@ -960,12 +1079,14 @@ export const ROTATION_ANIMALS = [
 ] as const;
 
 /**
- * All valid sprite type keys.
+ * All valid sprite type keys: the 12 Chinese zodiac animals (reachable via
+ * character code only), the rotation pool, and the custom characters.
  */
 export type SpriteType =
-  | typeof ZODIAC_ANIMALS[number]
+  | "rat" | "ox" | "tiger" | "rabbit" | "dragon" | "snake"
+  | "horse" | "sheep" | "monkey" | "rooster" | "dog" | "pig"
   | typeof ROTATION_ANIMALS[number]
-  | "tim" | "roo" | "stu" | "cat";
+  | "tim" | "testsprite" | "roo" | "stu";
 
 /**
  * Sample a random sprite type at pet creation.
@@ -1036,8 +1157,17 @@ export function createPet(name: string, petType: string, unlockedCharacter: stri
     careMistakes: 0,
     lifetimeCareMistakes: 0,
     ticksWithUncleanedPoop: 0,
+    poopOverLimitTicks: 0,
     ticksSinceLastMisbehaviour: 0,
     ticksSinceLastGift: 0,
+    ticksSinceLastPlayCall: 0,
+    ticksSinceLastPatCall: 0,
+    ticksSinceLastCraving: 0,
+    ticksSinceLastBreakCall: 0,
+    breakNapTicksRemaining: 0,
+    cravingFood: null,
+    devModeEverUsed: false,
+    leaderboardIneligible: "",
   };
 
   return withDerivedFields(partial);
@@ -1127,7 +1257,14 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   if (state.paused) {
     return state.events.length > 0 ? { ...state, events: [] } : state;
   }
+  // Any tick in dev mode (faster aging, health floor) bars this pet from the leaderboard for life.
+  if (config.devMode && !state.devModeEverUsed) {
+    state = { ...state, devModeEverUsed: true };
+  }
   const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
+  if (state.breakNapTicksRemaining > 0) {
+    return tickBreakNap(state, isIdle, isDeepIdle, config, modifiers);
+  }
   const events: string[] = [];
   let hunger: number = state.hunger;
   let happiness: number = state.happiness;
@@ -1152,8 +1289,14 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   let careMistakes: number = state.careMistakes;
   let lifetimeCareMistakes: number = state.lifetimeCareMistakes;
   let ticksWithUncleanedPoop: number = state.ticksWithUncleanedPoop;
+  let poopOverLimitTicks: number = state.poopOverLimitTicks;
   let ticksSinceLastMisbehaviour: number = state.ticksSinceLastMisbehaviour;
   let ticksSinceLastGift: number = state.ticksSinceLastGift;
+  let ticksSinceLastPlayCall: number = state.ticksSinceLastPlayCall;
+  let ticksSinceLastPatCall: number = state.ticksSinceLastPatCall;
+  let ticksSinceLastCraving: number = state.ticksSinceLastCraving;
+  let ticksSinceLastBreakCall: number = state.ticksSinceLastBreakCall;
+  let cravingFood: CravingFood | null = state.cravingFood;
 
   // Capture sleeping state at tick entry so day-timer uses it even if auto-wake fires mid-tick
   const sleepingAtTickStart = sleeping;
@@ -1193,14 +1336,25 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   }
 
   if (config.attentionCallsEnabled) {
-  // ── Step 0: Maintain log counters (every tick, even idle) ────────────────
-  if (poops > 0) {
-    ticksWithUncleanedPoop += 1;
-  } else {
+  // ── Step 0: Maintain log counters (active ticks only) ────────────────────
+  // Idle time doesn't raise the chance of a call, so the pet can't build up a
+  // burst of calls while the user is away.
+  const activeTick = !isIdle && !isDeepIdle;
+  if (poops === 0) {
     ticksWithUncleanedPoop = 0;
+  } else if (activeTick) {
+    ticksWithUncleanedPoop += 1;
   }
-  ticksSinceLastMisbehaviour += 1;
-  ticksSinceLastGift += 1;
+  if (activeTick) {
+    ticksSinceLastMisbehaviour += 1;
+    ticksSinceLastGift += 1;
+    ticksSinceLastPlayCall += 1;
+    ticksSinceLastPatCall += 1;
+    ticksSinceLastCraving += 1;
+    if (!sleeping) { ticksSinceLastBreakCall += 1; }
+  }
+  // Away from the keyboard counts as a break
+  if (isDeepIdle) { ticksSinceLastBreakCall = 0; }
   } // end Step 0
 
   if (!sleeping) {
@@ -1275,9 +1429,15 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     checkWeightTierEvents(prevWeight, weight, events);
   }
 
-  // Sickness from dirty environment — only fires when the IDE is active so the
-  // pet cannot be made sick by accumulated poop during idle or while closed.
-  if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK && !sick && !isIdle) {
+  // Sickness from dirty environment — the pet must sit at or above the poop
+  // limit for POOP_SICK_GRACE_TICKS consecutive active ticks first, so cleaning
+  // up in time prevents it. The counter is frozen (not reset) while idle or
+  // asleep, so the pet cannot be made sick by poop while the user is away.
+  if (!isIdle && !isDeepIdle && !sleeping) {
+    poopOverLimitTicks = poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK ? poopOverLimitTicks + 1 : 0;
+  }
+  if (poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK && poopOverLimitTicks >= POOP_SICK_GRACE_TICKS &&
+      !sick && !isIdle && !isDeepIdle) {
     sick = true;
     events.push("became_sick");
   }
@@ -1289,41 +1449,50 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     hungerZeroTicks = 0;
   }
 
-  // Starvation damage — no longer triggers sickness. Sickness is now only
-  // caused by a dirty environment (poop) or overfeeding (snacks), so a pet
-  // left hungry takes health damage but must not become "sick" from it.
-  if (hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK) {
-    health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
-    events.push("starvation_damage");
-    tookDamageThisTick = true;
-  }
+  // True while any health-damage source below is live (starving, miserable,
+  // exhausted or sick). The damage itself is skipped while idle, but the idle
+  // stat floor further down still keys off this, so a pet in trouble stops
+  // sliding further while the user is away (BUGFIX-177).
+  const inDamageState =
+    hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK ||
+    (happiness === STAT_MIN && !sleeping) ||
+    (energy === STAT_MIN && !sleeping) ||
+    sick;
 
-  // Happiness-critical health drain — does not cause sickness (see above).
-  if (happiness === STAT_MIN && !sleeping) {
-    health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
-    events.push("unhappiness_damage");
-    tookDamageThisTick = true;
-  }
+  // Health damage only applies while the user is active (BUG-S02). While idle
+  // or deep idle, hunger and happiness still decay slowly so there is something
+  // to care for on return, but the pet never loses health. Existing sickness
+  // stays (no auto-cure) but does no damage — matching applyOfflineDecay.
+  if (!isIdle && !isDeepIdle) {
+    // Starvation damage — no longer triggers sickness. Sickness is now only
+    // caused by a dirty environment (poop) or overfeeding (snacks), so a pet
+    // left hungry takes health damage but must not become "sick" from it.
+    if (hungerZeroTicks >= HUNGER_ZERO_TICKS_BEFORE_RISK) {
+      health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
+      events.push("starvation_damage");
+      tookDamageThisTick = true;
+    }
 
-  // Energy-exhaustion health drain (slower than hunger/happiness critical)
-  if (energy === STAT_MIN && !sleeping) {
-    health = clampStat(health - EXHAUSTION_HEALTH_DAMAGE_PER_TICK);
-    events.push("exhaustion_damage");
-    tookDamageThisTick = true;
-  }
+    // Happiness-critical health drain — does not cause sickness (see above).
+    if (happiness === STAT_MIN && !sleeping) {
+      health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
+      events.push("unhappiness_damage");
+      tookDamageThisTick = true;
+    }
 
-  // Sickness health drain — BUGFIX-040: suppressed during deep idle so a pet
-  // that is already sick when the user locks their screen or the computer
-  // sleeps cannot die while they are away. Matches applyOfflineDecay / closed
-  // behaviour which skips sickness damage entirely during offline periods.
-  // During regular idle (< 10 min inactivity) damage is slowed to
-  // IDLE_SICK_DAMAGE_PER_TICK (1/tick) rather than the full 5/tick, so brief
-  // absences with a sick pet still carry consequences but won't kill the pet.
-  if (sick && !isDeepIdle) {
-    const sickDmg = isIdle ? IDLE_SICK_DAMAGE_PER_TICK : CRITICAL_HEALTH_DAMAGE_PER_TICK;
-    health = clampStat(health - sickDmg);
-    events.push("sickness_damage");
-    tookDamageThisTick = true;
+    // Energy-exhaustion health drain (slower than hunger/happiness critical)
+    if (energy === STAT_MIN && !sleeping) {
+      health = clampStat(health - EXHAUSTION_HEALTH_DAMAGE_PER_TICK);
+      events.push("exhaustion_damage");
+      tookDamageThisTick = true;
+    }
+
+    // Sickness health drain.
+    if (sick) {
+      health = clampStat(health - CRITICAL_HEALTH_DAMAGE_PER_TICK);
+      events.push("sickness_damage");
+      tookDamageThisTick = true;
+    }
   }
 
   // BUGFIX-004: passive health regen — full rate while sleeping, much slower awake
@@ -1339,11 +1508,15 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   if (config.attentionCallsEnabled) {
   if (activeAttentionCall !== null && !isIdle) {
     attentionCallActiveTicks += 1;
-    // poop / misbehaviour / gift use the configurable expiry window;
-    // all other call types use the fixed 2-minute (20-tick) window.
+    // poop / misbehaviour / gift and the whim calls (play / pat / craving) use the
+    // configurable expiry window; all other call types use the fixed 1-minute (20-tick) window.
     const expiryTicks = (activeAttentionCall === "poop" ||
                          activeAttentionCall === "misbehaviour" ||
-                         activeAttentionCall === "gift")
+                         activeAttentionCall === "gift" ||
+                         activeAttentionCall === "play" ||
+                         activeAttentionCall === "pat" ||
+                         activeAttentionCall === "craving" ||
+                         activeAttentionCall === "break")
       ? config.attentionCallExpiryTicks
       : ATTENTION_CALL_RESPONSE_TICKS;
     if (attentionCallActiveTicks >= expiryTicks) {
@@ -1353,15 +1526,22 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       switch (expiredType) {
         case "critical_health": health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY); break;
         case "sick":            health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); break;
-        case "poop":            if (!sick) { sick = true; events.push("became_sick"); } break;
+        // An ignored poop call is a care mistake (counted below); it only makes
+        // the pet sick if the poop pile is already over the sickness limit.
+        case "poop":            if (!sick && poops >= MAX_UNCLEANED_POOPS_BEFORE_SICK) { sick = true; events.push("became_sick"); } break;
         case "hunger":          hunger = clampStat(hunger - ATTENTION_EXPIRY_STAT_PENALTY); break;
         case "unhappiness":     happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY); break;
         case "misbehaviour":    health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); careMistakes += 1; lifetimeCareMistakes += 1; break;
         case "low_energy":      happiness = clampStat(happiness - ATTENTION_EXPIRY_STAT_PENALTY); break;
         case "gift":            happiness = clampStat(happiness - 5); careMistakes += 1; lifetimeCareMistakes += 1; break;
+        case "play":
+        case "pat":             health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); break;
+        case "craving":         health = clampStat(health - ATTENTION_EXPIRY_STAT_PENALTY); cravingFood = null; break;
+        case "break":           break;   // just a reminder — no penalty for skipping it
       }
-      // General care mistake increment (except misbehaviour and gift which have their own above)
-      if (expiredType !== "misbehaviour" && expiredType !== "gift") {
+      // General care mistake increment (except misbehaviour and gift which have their own
+      // above, and break, which is never a care mistake)
+      if (expiredType !== "misbehaviour" && expiredType !== "gift" && expiredType !== "break") {
         careMistakes += 1;
         lifetimeCareMistakes += 1;
       }
@@ -1371,10 +1551,14 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     }
   }
 
-  // ── Step 2: Decrement all cooldowns ────────────────────────────────────────
-  for (const type of Object.keys(attentionCallCooldowns) as AttentionCallType[]) {
-    const remaining = (attentionCallCooldowns[type] ?? 0) - 1;
-    attentionCallCooldowns[type] = Math.max(0, remaining);
+  // ── Step 2: Decrement all cooldowns (non-idle ticks only) ──────────────────
+  // Idle time doesn't count towards a cooldown, so a pet can't save up calls
+  // while the user is away and fire them all the moment they return.
+  if (!isIdle && !isDeepIdle) {
+    for (const type of Object.keys(attentionCallCooldowns) as AttentionCallType[]) {
+      const remaining = (attentionCallCooldowns[type] ?? 0) - 1;
+      attentionCallCooldowns[type] = Math.max(0, remaining);
+    }
   }
 
   // ── Step 3: Fire new call if none active ────────────────────────────────────
@@ -1384,9 +1568,11 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   if (activeAttentionCall === null) {
     const cooldownClear = (t: AttentionCallType): boolean => !(attentionCallCooldowns[t] ?? 0);
     const rd = config.attentionCallRateDivisor;
-    // Poop call fires even while sleeping (poops accumulate regardless).
-    // All other calls are suppressed while the pet is asleep.
-    if (poops >= 1 && cooldownClear("poop") &&
+    let cravingPick: CravingFood | null = null;
+    // Poop call fires even while sleeping (poops accumulate regardless), but
+    // not while the user is idle — it could never expire and nobody is there
+    // to answer it. All other calls are suppressed while the pet is asleep.
+    if (poops >= 1 && !isIdle && !isDeepIdle && cooldownClear("poop") &&
                Math.random() < logChance(ticksWithUncleanedPoop, POOP_CALL_BASE_CHANCE / rd, POOP_CALL_MAX_CHANCE / rd)) {
       activeAttentionCall = "poop";
       attentionCallActiveTicks = 0;
@@ -1407,7 +1593,7 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       activeAttentionCall = "unhappiness";
       attentionCallActiveTicks = 0;
       events.push("attention_call_unhappiness");
-    } else if (!sleeping && cooldownClear("misbehaviour") &&
+    } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("misbehaviour") &&
                Math.random() < logChance(ticksSinceLastMisbehaviour, MISBEHAVIOUR_BASE_CHANCE / rd, MISBEHAVIOUR_MAX_CHANCE / rd)) {
       activeAttentionCall = "misbehaviour";
       attentionCallActiveTicks = 0;
@@ -1417,7 +1603,38 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       activeAttentionCall = "low_energy";
       attentionCallActiveTicks = 0;
       events.push("attention_call_low_energy");
-    } else if (!sleeping && cooldownClear("gift") &&
+    // Break reminder — every 30 active minutes, after the real needs but before the whims
+    } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("break") &&
+               ticksSinceLastBreakCall >= BREAK_CALL_INTERVAL_TICKS) {
+      activeAttentionCall = "break";
+      attentionCallActiveTicks = 0;
+      ticksSinceLastBreakCall = 0;
+      events.push("attention_call_break");
+    // Whim calls — random, at any stat level, after every need-based call so a
+    // real need always wins. Not while idle: nobody is there to answer them.
+    } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("craving") &&
+               Math.random() < logChance(ticksSinceLastCraving, CRAVING_CALL_BASE_CHANCE / rd, CRAVING_CALL_MAX_CHANCE / rd) &&
+               (cravingPick = pickCravingFood(state, hunger, sick)) !== null) {
+      activeAttentionCall = "craving";
+      attentionCallActiveTicks = 0;
+      ticksSinceLastCraving = 0;
+      cravingFood = cravingPick;
+      events.push(`attention_call_craving_${cravingPick}`);
+    } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("play") &&
+               energy >= PLAY_ENERGY_COST && !sick &&
+               Math.random() < logChance(ticksSinceLastPlayCall, PLAY_CALL_BASE_CHANCE / rd, PLAY_CALL_MAX_CHANCE / rd)) {
+      activeAttentionCall = "play";
+      attentionCallActiveTicks = 0;
+      ticksSinceLastPlayCall = 0;
+      events.push("attention_call_play");
+    } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("pat") &&
+               energy >= PAT_ENERGY_COST &&
+               Math.random() < logChance(ticksSinceLastPatCall, PAT_CALL_BASE_CHANCE / rd, PAT_CALL_MAX_CHANCE / rd)) {
+      activeAttentionCall = "pat";
+      attentionCallActiveTicks = 0;
+      ticksSinceLastPatCall = 0;
+      events.push("attention_call_pat");
+    } else if (!sleeping && !isIdle && !isDeepIdle && cooldownClear("gift") &&
                health > ATTENTION_HEALTH_THRESHOLD &&
                !sick &&
                (currentMood === "happy" || currentMood === "neutral") &&
@@ -1430,26 +1647,28 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
   }
   } // end if (config.attentionCallsEnabled)
 
-  // Idle safety floor — while idle (regular or deep) and the pet is sick or took
-  // damage this tick, prevent hunger/happiness/health/energy from decaying below
-  // IDLE_STAT_FLOOR this tick. Applied last, after every stat-decay and damage
-  // block above, so a same-tick damage source can never push a stat back below
-  // the floor. The floor is capped at each stat's value entering this tick, so a
-  // stat already below IDLE_STAT_FLOOR (e.g. from earlier exhaustion) is never
-  // raised back up — it only stops *this tick's* decay from crossing the floor.
-  if ((isIdle || isDeepIdle) && (sick || tookDamageThisTick)) {
-    hunger    = Math.max(hunger,    Math.min(state.hunger,    IDLE_STAT_FLOOR));
-    happiness = Math.max(happiness, Math.min(state.happiness, IDLE_STAT_FLOOR));
-    health    = Math.max(health,    Math.min(state.health,    IDLE_STAT_FLOOR));
-    energy    = Math.max(energy,    Math.min(state.energy,    IDLE_STAT_FLOOR));
+  // Idle safety floor — applied last, after every stat-decay and damage block
+  // above, so a same-tick damage source can never slip through.
+  //  • Health never falls below its value entering this tick while idle
+  //    (BUG-S02) — the damage blocks above are already gated, this is the net.
+  //  • When sick or in any other damage state (starving, miserable, exhausted),
+  //    hunger/happiness/energy stop decaying at IDLE_STAT_FLOOR. The damage
+  //    blocks are skipped while idle, so this keys off inDamageState rather
+  //    than damage actually taken. The floor is capped at each stat's value
+  //    entering this tick, so a stat already below IDLE_STAT_FLOOR is never
+  //    raised back up.
+  if (isIdle || isDeepIdle) {
+    health = Math.max(health, state.health);
+    if (inDamageState || tookDamageThisTick) {
+      hunger    = Math.max(hunger,    Math.min(state.hunger,    IDLE_STAT_FLOOR));
+      happiness = Math.max(happiness, Math.min(state.happiness, IDLE_STAT_FLOOR));
+      energy    = Math.max(energy,    Math.min(state.energy,    IDLE_STAT_FLOOR));
+    }
 
-    // If the floor above fully absorbed this tick's health loss (net health
-    // unchanged), drop the damage events pushed earlier this tick so idle
-    // logging/notifications don't claim the pet is losing health when it isn't.
-    if (health === state.health) {
-      for (let i = events.length - 1; i >= 0; i--) {
-        if (HEALTH_DAMAGE_EVENTS.has(events[i])) events.splice(i, 1);
-      }
+    // Drop any damage events pushed earlier this tick so idle logging /
+    // notifications don't claim the pet is losing health when it isn't.
+    for (let i = events.length - 1; i >= 0; i--) {
+      if (HEALTH_DAMAGE_EVENTS.has(events[i])) events.splice(i, 1);
     }
   }
 
@@ -1459,8 +1678,13 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     health = config.devModeHealthFloor;
   }
 
+  // Immortal pets never drop below 1 health, so the bar never reads "0" while alive.
+  if (config.immortal && health < 1) {
+    health = 1;
+  }
+
   // Death check
-  if (health <= HEALTH_DEATH_THRESHOLD) {
+  if (!config.immortal && health <= HEALTH_DEATH_THRESHOLD) {
     alive = false;
     events.push("died");
     return withDerivedFields({
@@ -1470,7 +1694,8 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
       hungerZeroTicks, sick, alive: alive as boolean, ticksAlive, events,
       sleeping, ageDays, dayTimer, weight,
       activeAttentionCall, attentionCallActiveTicks, attentionCallCooldowns,
-      careMistakes, lifetimeCareMistakes, ticksWithUncleanedPoop, ticksSinceLastMisbehaviour, ticksSinceLastGift,
+      careMistakes, lifetimeCareMistakes, ticksWithUncleanedPoop, poopOverLimitTicks, ticksSinceLastMisbehaviour, ticksSinceLastGift,
+      ticksSinceLastPlayCall, ticksSinceLastPatCall, ticksSinceLastCraving, ticksSinceLastBreakCall, cravingFood,
     });
   }
 
@@ -1497,18 +1722,61 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     careMistakes,
     lifetimeCareMistakes,
     ticksWithUncleanedPoop,
+    poopOverLimitTicks,
     ticksSinceLastMisbehaviour,
     ticksSinceLastGift,
+    ticksSinceLastPlayCall,
+    ticksSinceLastPatCall,
+    ticksSinceLastCraving,
+    ticksSinceLastBreakCall,
+    cravingFood,
   };
 
-  // Stage progression + old-age death/sickness rolls (once per day boundary for seniors)
-  const afterStage = checkStageProgression(afterDecay);
+  // Stage progression + old-age death/sickness rolls (once per day boundary for seniors).
+  // Evolution only fires on active (non-idle) ticks so the user is present to witness it;
+  // dayTimer keeps accumulating while idle (see aging above), so once the threshold is
+  // reached while idle the promotion is simply deferred — not lost — to the next active tick.
+  const afterStage = isIdle ? withDerivedFields(afterDecay) : checkStageProgression(afterDecay);
   // ageDays is Math.floor(new dayTimer), computed above; state.ageDays is pre-tick value.
-  if (ageDays > state.ageDays) {
+  // Skipped while idle so a senior can never die of old age while the user is away.
+  if (ageDays > state.ageDays && !config.immortal && !isIdle && !isDeepIdle) {
     const afterDeath = rollOldAgeDeath(afterStage, Math.random());
     return afterDeath.alive ? rollOldAgeSickness(afterDeath, Math.random()) : afterDeath;
   }
   return afterStage;
+}
+
+/**
+ * One tick of a break nap: every stat, counter and attention-call timer is frozen
+ * except energy, which regenerates at the sleeping rate (no auto-wake at full energy).
+ * The pet keeps aging at the sleeping rate — even while the user is idle, since they
+ * are away on their break. Wakes the pet when the timer runs out.
+ */
+function tickBreakNap(state: PetState, isIdle: boolean, isDeepIdle: boolean, config: GameConfig,
+                      modifiers: PetTypeModifiers): PetState {
+  const events: string[] = [];
+  const ticksAlive = state.ticksAlive + 1;
+  const devAgingMult = config.devMode ? config.devModeAgingMultiplier : 1.0;
+  const ageIncrement = ticksAlive % AGING_TICK_INTERVAL === 0
+    ? (1 / TICKS_PER_GAME_DAY_SLEEPING) * modifiers.agingMultiplier * devAgingMult
+    : 0;
+  const dayTimer = state.dayTimer + ageIncrement;
+  const careMistakes = Math.floor(dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS) >
+                       Math.floor(state.dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS)
+    ? Math.max(0, state.careMistakes - 1) : state.careMistakes;
+  const energy = clampStat(state.energy + ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier);
+  const breakNapTicksRemaining = Math.max(0, state.breakNapTicksRemaining - 1);
+  const napOver = breakNapTicksRemaining === 0;
+  if (napOver) { events.push("break_nap_over"); }
+  return withDerivedFields({
+    ...state,
+    ticksAlive, dayTimer, ageDays: Math.floor(dayTimer), careMistakes,
+    energy, breakNapTicksRemaining,
+    ...(napOver ? { sleeping: false, snacksGivenThisCycle: 0 } : {}),
+    wasIdle: isIdle,
+    wasDeepIdle: isDeepIdle,
+    events,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1635,6 +1903,23 @@ function answerAttentionCall(
 }
 
 /**
+ * Answer an active craving call, but only with the food it asked for — the
+ * wrong food still feeds the pet but leaves the call open.
+ *
+ * @param state - The current pet state.
+ * @param food - The food being given.
+ * @returns The fields to spread into the new state, or null if not answered.
+ */
+function answerCraving(
+  state: PetState,
+  food: CravingFood
+): Pick<PetState, "activeAttentionCall" | "attentionCallActiveTicks" | "attentionCallCooldowns" | "cravingFood"> | null {
+  if (state.cravingFood !== food) { return null; }
+  const answered = answerAttentionCall(state, "craving");
+  return answered ? { ...answered, cravingFood: null } : null;
+}
+
+/**
  * Give the pet a meal.
  *
  * If the cycle cap (opts.maxPerCycle ?? FEED_MEAL_MAX_PER_CYCLE) is exceeded
@@ -1655,24 +1940,27 @@ export function feedMeal(
 ): PetState {
   const cap = opts?.maxPerCycle ?? FEED_MEAL_MAX_PER_CYCLE;
   const hungerBoost = Math.round(FEED_MEAL_HUNGER_BOOST * (opts?.hungerMult ?? 1));
+  if (state.sick) {
+    return withDerivedFields({ ...state, events: ["meal_refused_sick"] });
+  }
   if (mealsGivenThisCycle >= cap) {
     return withDerivedFields({ ...state, events: ["meal_refused"] });
   }
   const newWeight = clampWeight(state.weight + (opts?.weightGain ?? FEED_MEAL_WEIGHT_GAIN));
   const events: string[] = ["fed_meal"];
   checkWeightTierEvents(state.weight, newWeight, events);
-  const answered = answerAttentionCall(state, "hunger");
-  if (answered) { events.push("attention_call_answered_hunger"); }
-  // Also answer critical_health if that's the active call
-  const answeredCritical = !answered ? answerAttentionCall(state, "critical_health") : null;
-  if (answeredCritical) { events.push("attention_call_answered_critical_health"); }
+  // Answers hunger, a meal craving, or critical_health — whichever is active.
+  const answered = answerAttentionCall(state, "hunger") ??
+    answerCraving(state, "meal") ??
+    answerAttentionCall(state, "critical_health");
+  if (answered) { events.push(`attention_call_answered_${state.activeAttentionCall}`); }
   return withDerivedFields({
     ...state,
-    ...(answered ?? answeredCritical ?? {}),
+    ...(answered ?? {}),
     hunger: clampStat(state.hunger + hungerBoost),
     weight: newWeight,
     consecutiveSnacks: 0,
-    careMistakes: Math.max(0, state.careMistakes - ((answered ?? answeredCritical) ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
+    careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
 }
@@ -1694,6 +1982,9 @@ export function feedMeal(
  * @returns A new PetState after the action.
  */
 export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): PetState {
+  if (state.sick) {
+    return withDerivedFields({ ...state, events: ["snack_refused_sick"] });
+  }
   if (state.snacksOnFloor >= MAX_FLOOR_SNACKS) {
     return withDerivedFields({ ...state, events: ["snack_refused"] });
   }
@@ -1705,11 +1996,10 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
   const snacksGivenThisCycle = state.snacksGivenThisCycle + 1;
   const events: string[] = ["snack_placed"];
 
-  const answered = answerAttentionCall(state, "hunger") ?? answerAttentionCall(state, "critical_health");
-  if (answered) {
-    const label = state.activeAttentionCall === "hunger" ? "hunger" : "critical_health";
-    events.push(`attention_call_answered_${label}`);
-  }
+  const answered = answerAttentionCall(state, "hunger") ??
+    answerCraving(state, "snack") ??
+    answerAttentionCall(state, "critical_health");
+  if (answered) { events.push(`attention_call_answered_${state.activeAttentionCall}`); }
 
   return withDerivedFields({
     ...state,
@@ -1726,7 +2016,7 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
  *
  * Called when the webview detects the pet touching the snack floor item.
  * Increments `consecutiveSnacks` and — if the new count reaches the maximum
- * — triggers sickness. Refused (no stat effects) if `snacksOnFloor` is
+ * — triggers sickness. Ignored (no stat effects, no events, so no toast) if `snacksOnFloor` is
  * already 0 — guards against a stale/duplicate `snack_consumed` report (e.g.
  * a second open editor window sharing the same pet independently simulating
  * the same floor item) applying the effect more than once.
@@ -1739,7 +2029,7 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
  */
 export function consumeSnack(state: PetState, opts?: { hungerMult?: number; sickThreshold?: number; weightGain?: number }): PetState {
   if (state.snacksOnFloor <= 0) {
-    return withDerivedFields({ ...state, events: ["snack_refused"] });
+    return withDerivedFields({ ...state, events: [] });
   }
   const hungerBoost = Math.round(FEED_SNACK_HUNGER_BOOST * (opts?.hungerMult ?? 1));
   const sickAt = opts?.sickThreshold ?? MAX_CONSECUTIVE_SNACKS_BEFORE_SICK;
@@ -1790,14 +2080,17 @@ export function resetFloorSnacks(state: PetState): PetState {
  * @returns A new PetState after the action.
  */
 export function play(state: PetState, opts?: { weightLoss?: number }): PetState {
+  if (state.sick) {
+    return withDerivedFields({ ...state, events: ["play_refused_sick"] });
+  }
   if (state.energy < PLAY_ENERGY_COST) {
     return withDerivedFields({ ...state, events: ["play_refused_no_energy"] });
   }
   const newWeight = clampWeight(state.weight - (opts?.weightLoss ?? PLAY_WEIGHT_LOSS));
   const events: string[] = ["played"];
   checkWeightTierEvents(state.weight, newWeight, events);
-  const answered = answerAttentionCall(state, "unhappiness");
-  if (answered) { events.push("attention_call_answered_unhappiness"); }
+  const answered = answerAttentionCall(state, "play") ?? answerAttentionCall(state, "unhappiness");
+  if (answered) { events.push(`attention_call_answered_${state.activeAttentionCall}`); }
   return withDerivedFields({
     ...state,
     ...(answered ?? {}),
@@ -1822,10 +2115,10 @@ export function pat(state: PetState): PetState {
     return withDerivedFields({ ...state, events: ["pat_refused_no_energy"] });
   }
   const newWeight = clampWeight(state.weight - PAT_WEIGHT_LOSS);
-  const answered = answerAttentionCall(state, "unhappiness");
+  const answered = answerAttentionCall(state, "pat") ?? answerAttentionCall(state, "unhappiness");
   const events: string[] = ["patted"];
   checkWeightTierEvents(state.weight, newWeight, events);
-  if (answered) { events.push("attention_call_answered_unhappiness"); }
+  if (answered) { events.push(`attention_call_answered_${state.activeAttentionCall}`); }
   return withDerivedFields({
     ...state,
     ...(answered ?? {}),
@@ -1861,8 +2154,8 @@ export function applyTokenCostView(state: PetState): PetState {
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
  *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
- *               or "coin_flip" (Coin Flip).
- * @param result - "win" or "lose".
+ *               "coin_flip" (Coin Flip), or "blackjack" (Stu's one-round Blackjack).
+ * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
 export function happinessDeltaForMinigame(game: string, result: string): number {
@@ -1881,6 +2174,11 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
   if (game === "coin_flip") {
     return result === "win" ? MINIGAME_COIN_FLIP_WIN : MINIGAME_COIN_FLIP_LOSE; // 0 win, −10 lose
   }
+  if (game === "blackjack") {
+    if (result === "win")  { return MINIGAME_BLACKJACK_WIN; }   // +10
+    if (result === "push") { return MINIGAME_BLACKJACK_PUSH; }  // 0
+    return MINIGAME_BLACKJACK_LOSE;                             // −10
+  }
   if (game === "memory" && result === "win") {
     return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST;
   }
@@ -1895,11 +2193,11 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
  *
  * Also applies an additional weight loss for vigorous mini-games (BUGFIX-034):
  *   - left_right and higher_lower: −3 extra weight (total −6 with play() baseline)
- *   - coin_flip: no extra weight loss (total −3 from play() only)
+ *   - coin_flip and blackjack: no extra weight loss (total −3 from play() only)
  *
  * @param state - The current pet state.
- * @param game - "left_right", "higher_lower", "guess", or "memory".
- * @param result - "win" or "lose".
+ * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "guess", or "memory".
+ * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A new PetState after the happiness delta is applied.
  */
 export function applyMinigameResult(
@@ -1912,7 +2210,12 @@ export function applyMinigameResult(
   const newWeight = isVigorousGame
     ? clampWeight(state.weight - PLAY_WEIGHT_LOSS_BONUS)
     : state.weight;
-  const events: string[] = [`minigame_${game}_${result}`];
+  // Hosts call this straight after play(): carry over any attention call that
+  // play() answered, otherwise its answered event (and toast / log line) is lost.
+  const events: string[] = [
+    ...state.events.filter((e) => e.startsWith("attention_call_answered_")),
+    `minigame_${game}_${result}`,
+  ];
   if (isVigorousGame) {
     checkWeightTierEvents(state.weight, newWeight, events);
   }
@@ -1957,6 +2260,10 @@ export function wake(state: PetState): PetState {
   if (!state.sleeping) {
     return withDerivedFields({ ...state, events: ["already_awake"] });
   }
+  // A break nap can't be cut short — the pet wakes on its own after BREAK_NAP_TICKS.
+  if (state.breakNapTicksRemaining > 0) {
+    return withDerivedFields({ ...state, events: ["break_nap_no_wake"] });
+  }
   return withDerivedFields({
     ...state,
     sleeping: false,
@@ -1985,6 +2292,7 @@ export function clean(state: PetState): PetState {
     poops: 0,
     ticksSinceLastPoop: 0,
     ticksWithUncleanedPoop: 0,
+    poopOverLimitTicks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
@@ -2052,6 +2360,10 @@ export function scold(state: PetState): PetState {
  * Praise the pet to raise discipline.
  * If a "gift" attention call is active, it is answered and a happiness bonus
  * (GIFT_PRAISE_HAPPINESS_BOOST) is applied on top of the discipline boost.
+ * If a "break" call is active, it is answered with the same happiness bonus
+ * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet takes a BREAK_NAP_TICKS (5-minute)
+ * nap while you rest: stats are frozen except energy, aging continues, and it
+ * can't be woken early — it wakes on its own.
  * If an "unhappiness" attention call is active, it is answered instead.
  *
  * @param state - The current pet state.
@@ -2059,18 +2371,27 @@ export function scold(state: PetState): PetState {
  */
 export function praise(state: PetState): PetState {
   const answeredGift        = answerAttentionCall(state, "gift");
-  const answeredUnhappiness = !answeredGift ? answerAttentionCall(state, "unhappiness") : null;
-  const answered = answeredGift ?? answeredUnhappiness;
+  const answeredBreak       = !answeredGift ? answerAttentionCall(state, "break") : null;
+  const answeredUnhappiness = !answeredGift && !answeredBreak ? answerAttentionCall(state, "unhappiness") : null;
+  const answered = answeredGift ?? answeredBreak ?? answeredUnhappiness;
   const events: string[] = ["praised"];
   if (answeredGift)        { events.push("attention_call_answered_gift"); }
+  if (answeredBreak)       { events.push("attention_call_answered_break"); }
   if (answeredUnhappiness) { events.push("attention_call_answered_unhappiness"); }
-  const happinessBonus = answeredGift ? GIFT_PRAISE_HAPPINESS_BOOST : 0;
+  const happinessBonus = answeredGift ? GIFT_PRAISE_HAPPINESS_BOOST
+                       : answeredBreak ? BREAK_PRAISE_HAPPINESS_BOOST : 0;
+  // Answering a break call sends the pet for a timed nap while you take your break
+  const goesToSleep = answeredBreak !== null && !state.sleeping;
+  if (goesToSleep) { events.push("fell_asleep"); }
+  if (answeredBreak) { events.push("break_nap_started"); }
   return withDerivedFields({
     ...state,
     ...(answered ?? {}),
     discipline: clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
     happiness:  clampStat(state.happiness + happinessBonus),
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
+    ...(goesToSleep ? { sleeping: true, consecutiveSnacks: 0 } : {}),
+    ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS } : {}),
     events,
   });
 }
@@ -2307,7 +2628,13 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
   }
 
   const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
-  const elapsedTicks = elapsedSeconds / TICK_INTERVAL_SECONDS;
+  // A break nap in progress keeps stats frozen for its remaining time; only
+  // the time after the nap ends counts towards decay, and the pet wakes if
+  // the nap ran out while the IDE was closed.
+  const napTicksUsed = Math.min(state.breakNapTicksRemaining, Math.floor(elapsedSeconds / TICK_INTERVAL_SECONDS));
+  const breakNapTicksRemaining = state.breakNapTicksRemaining - napTicksUsed;
+  const napEnded = state.breakNapTicksRemaining > 0 && breakNapTicksRemaining === 0;
+  const elapsedTicks = Math.max(0, elapsedSeconds / TICK_INTERVAL_SECONDS - napTicksUsed);
 
   const hungerDecayTotal =
     elapsedTicks * HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier;
@@ -2337,6 +2664,8 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
     // Treat offline time as awake for stat decay; aging does NOT advance while the IDE is closed.
     dayTimer: state.dayTimer,
     ageDays: state.ageDays,
+    breakNapTicksRemaining,
+    ...(napEnded ? { sleeping: false } : {}),
     events: [],
   });
 }
@@ -2400,8 +2729,17 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     careMistakes: state.careMistakes,
     lifetimeCareMistakes: state.lifetimeCareMistakes,
     ticksWithUncleanedPoop: state.ticksWithUncleanedPoop,
+    poopOverLimitTicks: state.poopOverLimitTicks,
     ticksSinceLastMisbehaviour: state.ticksSinceLastMisbehaviour,
     ticksSinceLastGift: state.ticksSinceLastGift,
+    ticksSinceLastPlayCall: state.ticksSinceLastPlayCall,
+    ticksSinceLastPatCall: state.ticksSinceLastPatCall,
+    ticksSinceLastCraving: state.ticksSinceLastCraving,
+    ticksSinceLastBreakCall: state.ticksSinceLastBreakCall,
+    breakNapTicksRemaining: state.breakNapTicksRemaining,
+    cravingFood: state.cravingFood,
+    devModeEverUsed: state.devModeEverUsed,
+    leaderboardIneligible: state.leaderboardIneligible,
   };
 }
 
@@ -2487,8 +2825,18 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     careMistakes: getNumber("careMistakes", getNumber("neglectCount", 0)),
     lifetimeCareMistakes: getNumber("lifetimeCareMistakes", getNumber("neglectCount", 0)),
     ticksWithUncleanedPoop: getNumber("ticksWithUncleanedPoop", 0),
+    poopOverLimitTicks: getNumber("poopOverLimitTicks", 0),
     ticksSinceLastMisbehaviour: getNumber("ticksSinceLastMisbehaviour", 0),
     ticksSinceLastGift: getNumber("ticksSinceLastGift", 0),
+    ticksSinceLastPlayCall: getNumber("ticksSinceLastPlayCall", 0),
+    ticksSinceLastPatCall: getNumber("ticksSinceLastPatCall", 0),
+    ticksSinceLastCraving: getNumber("ticksSinceLastCraving", 0),
+    ticksSinceLastBreakCall: getNumber("ticksSinceLastBreakCall", 0),
+    breakNapTicksRemaining: getNumber("breakNapTicksRemaining", 0),
+    cravingFood: data["cravingFood"] === "meal" || data["cravingFood"] === "snack" ? data["cravingFood"] : null,
+    devModeEverUsed: getBool("devModeEverUsed", false),
+    leaderboardIneligible: data["leaderboardIneligible"] === "tampered" || data["leaderboardIneligible"] === "unverified"
+      ? data["leaderboardIneligible"] : "",
   };
 
   return withDerivedFields(partial);

@@ -1,6 +1,6 @@
 ---
 name: sprite-import
-description: Use when importing downloaded pixel-art/image sprites into Codotchi with scripts/import_sprite.js, especially WebP/JPG/PNG sources, background removal, spriteConstants metadata, Sprite Preview, or custom character passcodes.
+description: Use when importing downloaded pixel-art/image sprites into Codotchi with the bulk pipeline (sprites/<species>/ + scripts/import_sprites_bulk.js), especially WebP/JPG/PNG sources, background removal, spriteConstants metadata, Sprite Preview, or custom character passcodes.
 ---
 
 # Sprite Import
@@ -9,6 +9,14 @@ Use this skill whenever a user asks to import a downloaded sprite image into
 Codotchi, including requests like "import this image", "add this sprite",
 "use this downloaded sprite", or "hide this behind a character code".
 
+> **Since v2.24.1 the importer workflow is the bulk pipeline.** Put the
+> prepared stage images in `sprites/<species>/` (plus an optional
+> `sprite.json`), run `node scripts/import_sprites_bulk.js`, then
+> `node scripts/validate_sprites.js`. `import_sprite.js` only prints a preview
+> now, and `--inject` is gone. Grids are capped at 192 × 128. The full guide
+> is `developer_notes/SPRITE_IMPORT.md`. The background-masking advice below
+> still applies to preparing the source PNGs; ignore the `--inject` steps.
+
 This skill complements `sprite-drawing`: use `sprite-drawing` for hand-authored
 pixel grids and rule checks, and this skill for the importer workflow.
 
@@ -16,10 +24,9 @@ pixel grids and rule checks, and this skill for the importer workflow.
 
 - Always try the exact user-specified source image first.
 - Do not force imported sprites into 48 x 32 unless the user explicitly asks for a fixed classic grid.
-- Imported image sprites may legitimately have large grids such as 550 x 550; preserve the real dimensions in `SPRITE_GRID_META`.
+- Imported image sprites are scaled to fit 192 x 128; the bulk import writes `SPRITE_GRID_META` and the palette into `sprites.generated.js` (never edit it by hand).
 - Never use broad global white background keying for animals with white or cream body areas.
 - Prefer edge-connected background masking when the subject has white/cream fur, feathers, wool, belly markings, or highlights.
-- Run imports sequentially when using `--inject`; parallel injection into the same files can lose stages or corrupt insertion points.
 - Verify all five stages exist after injection: `baby`, `child`, `teen`, `adult`, `senior`.
 - Keep VS Code and PyCharm mirrors in sync.
 - Update docs and version notes in the same change.
@@ -83,16 +90,15 @@ node scripts/import_sprite.js downloaded_sprites/shiba-masked.png dog senior --c
 Importer `--inject` updates:
 
 - `vscode/media/sprites.js`
-- `pycharm/src/main/resources/webview/sprites.js`
 - `vscode/media/spriteConstants.js`
-- `pycharm/src/main/resources/webview/spriteConstants.js`
+
+(PyCharm copies `vscode/media` at build time.)
 
 If adding a passcode, update all registries:
 
 - `vscode/src/customCharacters.ts`
 - `vscode/media/customCharacters.js`
 - `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt`
-- `pycharm/src/main/resources/webview/customCharacters.js`
 
 If adding a new non-existing sprite type that the host state may store, update:
 

@@ -27,18 +27,21 @@ If any of the five differs, fix them to agree before doing anything else.
 
 > **Version bump rule:** A bug fix or feature **always** requires a patch version bump (e.g. 1.19.1 → 1.19.2). Never build artifacts at the same version number as the previous release — the artifact filename will collide. Bump first, archive the old artifact, then build.
 
+> **Encoding rule:** Bump versions with the Edit tool (or `sed`), never Windows PowerShell `Get-Content`/`Set-Content` without `-Encoding utf8` — PowerShell 5.1 round-trips these files through the ANSI codepage and turns every `—` / `→` into mojibake like `ÃƒÂ¢Ã¢â€šÂ¬`. After bumping, `git grep -I -n -E "Ã|â€" -- vscode/package.json pycharm opencode-codotchi/package.json claude-desktop-codotchi/package.json` must print nothing.
+
 ---
 
 ## Step 2 — Rebuild both artifacts
 
-After any source change, **always** rebuild both distribution artifacts and
-include them in the commit. Use the exact commands below.
+After any source change, **always** rebuild both distribution artifacts. They
+are gitignored (local only, uploaded to GitHub Releases), so don't commit them.
+Use the exact commands below.
 
 ### Step 2a — Archive old artifacts first (version bump only)
 
 If the version number changed since the last build, **move the old artifacts
 to their archive locations before rebuilding**. See the `release-management`
-skill for the exact `git mv` commands and archive paths.
+skill for the exact `mv` commands and archive paths.
 
 Skip this sub-step if the version number is unchanged.
 
@@ -156,6 +159,16 @@ After copying, verify: `node bin/install.js --install` from `opencode-codotchi/`
 
 Rebuild zip: `node scripts/package.js` (from `opencode-codotchi/`). Always ask user before reinstalling: `node bin/install.js --install`.
 
+### 3g — Local IDE install for testing
+
+- **Never install the `.vsix` into VS Code** (`code --install-extension`). VS Code gets codotchi only from the
+  Marketplace, and the user uploads it there after testing.
+- **Test builds go into VSCodium.** From the repo root, run
+  `"/c/Program Files/VSCodium/bin/codium" --install-extension vscode/codotchi-X.Y.Z.vsix --force`.
+  Check the result with `codium --list-extensions --show-versions`. The user then reloads the VSCodium window to test it.
+- **PyCharm:** unzip `pycharm/build/distributions/pycharm-codotchi-X.Y.Z.zip` into
+  `%APPDATA%/JetBrains/PyCharm2026.2/plugins/` (replace the `pycharm-codotchi` folder). PyCharm needs a restart.
+
 ---
 
 ## Step 4 — Final checklist before committing
@@ -174,7 +187,7 @@ Rebuild zip: `node scripts/package.js` (from `opencode-codotchi/`). Always ask u
 11. [ ] `opencode-codotchi/` files updated to mirror any `.opencode/plugins/` changes
 12. [ ] `opencode-codotchi/package.json` version matches repo version
 13. [ ] `opencode-codotchi/opencode-codotchi-X.Y.Z.zip` rebuilt
-14. [ ] Local reinstall confirmed by user and done
+14. [ ] Local reinstall done: `.vsix` into **VSCodium** (never VS Code) and PyCharm zip into the plugins folder (see 3g)
 15. [ ] `claude-desktop-codotchi/package.json` version matches repo version
 16. [ ] `claude-desktop-codotchi/` rebuilt: `npm run build && npm run bundle`
-17. [ ] All artifacts staged alongside all source changes in the same commit
+17. [ ] Artifacts rebuilt locally and NOT staged (gitignored; only `claude-codotchi/dist/` is committed)

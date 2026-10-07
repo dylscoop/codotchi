@@ -5,12 +5,22 @@
  * token usage from raw OpenCode message arrays.
  *
  * Run with:
- *   bun test tests/unit/usageBackfill.test.ts
+ *   npm run test:node
  *   (from opencode-codotchi/)
  */
 
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { sumCompletedAssistantUsage, type RawMessageEntry } from "../../src/usageBackfill";
+
+/** Minimal bun-style expect() over node:assert, so the existing assertions run under node:test. */
+function expect(actual: number) {
+  return {
+    toBe: (expected: number) => assert.equal(actual, expected),
+    toBeCloseTo: (expected: number, digits = 2) =>
+      assert.ok(Math.abs(actual - expected) < Math.pow(10, -digits) / 2, `expected ${actual} to be close to ${expected}`),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -330,5 +340,35 @@ describe("sumCompletedAssistantUsage — backfill guard integration", () => {
     const result = sumCompletedAssistantUsage(messages);
     expect(result.costUSD).toBe(0);
     expect(result.tokens).toBe(3600); // 2000 + 1600
+  });
+});
+
+describe("sumCompletedAssistantUsage — sinceMs day filter (BUGFIX-161)", () => {
+  const midnight = new Date(2026, 8, 24).getTime();
+
+  it("counts every completed message when sinceMs is omitted", () => {
+    const messages = [
+      makeAssistant({ cost: 0.10, tokens: { input: 100 }, completed: midnight - 60_000 }),
+      makeAssistant({ cost: 0.20, tokens: { input: 200 }, completed: midnight + 60_000 }),
+    ];
+    const result = sumCompletedAssistantUsage(messages);
+    expect(result.messages).toBe(2);
+    expect(result.tokens).toBe(300);
+  });
+
+  it("excludes messages completed before sinceMs (session spanning midnight)", () => {
+    const messages = [
+      makeAssistant({ cost: 0.10, tokens: { input: 100 }, completed: midnight - 60_000 }),
+      makeAssistant({ cost: 0.20, tokens: { input: 200 }, completed: midnight + 60_000 }),
+    ];
+    const result = sumCompletedAssistantUsage(messages, midnight);
+    expect(result.messages).toBe(1);
+    expect(result.tokens).toBe(200);
+    expect(result.costUSD).toBeCloseTo(0.20, 6);
+  });
+
+  it("includes a message completed exactly at sinceMs", () => {
+    const result = sumCompletedAssistantUsage([makeAssistant({ tokens: { input: 50 }, completed: midnight })], midnight);
+    expect(result.messages).toBe(1);
   });
 });

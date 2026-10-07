@@ -35,102 +35,28 @@ import {
 } from "./gameEngine";
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
+import { leaderboardBlockedReason, signSubmission } from "./integrity";
+import { cravingItemFor } from "./cravingItem";
 import { StatusBarManager } from "./statusBar";
+import { stageHeightPx } from "./stageHeight";
 import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
+import { tokenCostBubbleMessage } from "./tokenCostBubble";
+import {
+  resolveGithubUser,
+  describeGithubUserFailure,
+  isAuthFailure,
+  type GithubUserOutcome,
+} from "./githubAuth";
+import { scanClaudeCodeDailyUsage, localDateKey, type DailyUsage } from "./claudeUsage";
 
 const LEADERBOARD_REPO_OWNER = "dylscoop";
 const LEADERBOARD_REPO_NAME  = "codotchi";
 const LEADERBOARD_PAGES_URL  = `https://${LEADERBOARD_REPO_OWNER}.github.io/${LEADERBOARD_REPO_NAME}/leaderboard/`;
 const LEADERBOARD_GITHUB_SCOPES = ["read:user", "public_repo"];
 
-// Pricing per million tokens (USD) — mirrors state.mjs MODEL_PRICING table.
-// Ordered most-specific first — checked with startsWith(), so longer/pricier
-// sub-prefixes (e.g. claude-opus-4-8) must precede their shorter generic
-// parent (claude-opus-4). Covers both real model-ID orderings: Claude 3.x
-// puts the generation digit before the family name (claude-3-opus-...),
-// while 4.x+ puts the family name first (claude-opus-4-...).
-const MODEL_PRICING: Array<[string, { input: number; output: number; cacheRead: number; cacheWrite: number }]> = [
-  ["claude-opus-4-8",   { input: 5,    output: 25,   cacheRead: 0.50,  cacheWrite: 6.25  }],
-  ["claude-opus-4-1",   { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
-  ["claude-3-5-sonnet", { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
-  ["claude-3-5-haiku",  { input: 0.80, output: 4,    cacheRead: 0.08,  cacheWrite: 1.00  }],
-  ["claude-3-opus",     { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
-  ["claude-3-sonnet",   { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
-  ["claude-3-haiku",    { input: 0.25, output: 1.25, cacheRead: 0.03,  cacheWrite: 0.30  }],
-  ["claude-opus-4",     { input: 15,   output: 75,   cacheRead: 1.50,  cacheWrite: 18.75 }],
-  ["claude-sonnet-5",   { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
-  ["claude-sonnet-4",   { input: 3,    output: 15,   cacheRead: 0.30,  cacheWrite: 3.75  }],
-  ["claude-haiku-4-5",  { input: 1,    output: 5,    cacheRead: 0.10,  cacheWrite: 1.25  }],
-  ["claude-fable-5",    { input: 10,   output: 50,   cacheRead: 1.00,  cacheWrite: 12.50 }],
-];
-const DEFAULT_PRICING = { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 };
-
-function pricingForModel(model: string = "") {
-  for (const [prefix, p] of MODEL_PRICING) {
-    if (model.startsWith(prefix)) { return p; }
-  }
-  return DEFAULT_PRICING;
-}
-
-/** Today's usage totals for a single source. */
-interface DailyUsage {
-  costUsd: number;
-  hourlyCostUsd: number;
-  tokens: number;
-  messageCount: number;
-}
-
-/** Scan ~/.claude/projects JSONL files and return today's Claude Code usage totals. */
-function scanClaudeCodeDailyUsage(): DailyUsage {
-  const projsDir = path.join(os.homedir(), ".claude", "projects");
-  const today = new Date().toISOString().slice(0, 10);
-  const oneHourAgoMs = Date.now() - 3_600_000;
-  const oneHourAgoIso = new Date(oneHourAgoMs).toISOString();
-  let costUsd = 0, hourlyCostUsd = 0, tokens = 0, messageCount = 0;
-
-  try {
-    for (const proj of fs.readdirSync(projsDir)) {
-      const projPath = path.join(projsDir, proj);
-      let files: string[];
-      try { files = fs.readdirSync(projPath); } catch { continue; }
-      for (const f of files) {
-        if (!f.endsWith(".jsonl")) { continue; }
-        const fp = path.join(projPath, f);
-        try {
-          const stat = fs.statSync(fp);
-          if (stat.mtime.toISOString().slice(0, 10) < today) { continue; }
-        } catch { continue; }
-        try {
-          const lines = fs.readFileSync(fp, "utf8").trim().split("\n");
-          for (const line of lines) {
-            try {
-              const d = JSON.parse(line);
-              if (d.type !== "assistant" || !d.message?.usage) { continue; }
-              if (d.timestamp && !d.timestamp.startsWith(today)) { continue; }
-              const u = d.message.usage;
-              const p = pricingForModel(d.message.model ?? "");
-              const inp = u.input_tokens ?? 0;
-              const out = u.output_tokens ?? 0;
-              const cr  = u.cache_read_input_tokens ?? 0;
-              const cc  = u.cache_creation_input_tokens ?? 0;
-              const entryCost = (inp * p.input + out * p.output + cr * p.cacheRead + cc * p.cacheWrite) / 1_000_000;
-              costUsd      += entryCost;
-              tokens       += inp + out + cr + cc;
-              messageCount += 1;
-              if (d.timestamp && d.timestamp >= oneHourAgoIso) { hourlyCostUsd += entryCost; }
-            } catch { /* skip malformed lines */ }
-          }
-        } catch { /* skip unreadable files */ }
-      }
-    }
-  } catch { /* projsDir missing */ }
-
-  return { costUsd, hourlyCostUsd, tokens, messageCount };
-}
-
 /** Read ~/.config/opencode/codotchi-daily.json and return today's OpenCode usage totals. */
 function scanOpenCodeDailyUsage(): DailyUsage {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
   let costUsd = 0, hourlyCostUsd = 0, tokens = 0, messageCount = 0;
 
   try {
@@ -138,7 +64,7 @@ function scanOpenCodeDailyUsage(): DailyUsage {
     const ocDailyPath = path.join(xdgConfig, "opencode", "codotchi-daily.json");
     if (fs.existsSync(ocDailyPath)) {
       const ocData = JSON.parse(fs.readFileSync(ocDailyPath, "utf8"));
-      // Only include if the file is for today (UTC)
+      // Only include if the file is for today (local calendar day, matching the OpenCode plugin)
       if ((ocData.date ?? ocData.createdDate ?? "") === today) {
         costUsd      = ocData.costUSD ?? 0;
         tokens       = ocData.tokens ?? 0;
@@ -158,6 +84,8 @@ export type StateUpdateCallback = (state: PetState) => void;
 interface WebviewMessage {
   command: string;
   feedType?: "meal" | "snack";
+  /** Snacks on the webview's floor when Snack was pressed (the truth for the floor cap). */
+  floorSnacks?: number;
   game?: string;
   result?: string;
   name?: string;
@@ -195,6 +123,45 @@ export class SidebarProvider
   private setLeaderboardUsername(username: string | null): void {
     this.leaderboardGithubUsername = username;
     void this.context.globalState.update("leaderboardGithubUsername", username ?? undefined);
+  }
+
+  /** Resolve the leaderboard GitHub user; forces a fresh session on 401/403
+   *  when interactive (BUG-S08). */
+  private resolveLeaderboardUser(interactive: boolean): Promise<GithubUserOutcome> {
+    return resolveGithubUser(
+      (opts) => Promise.resolve(vscode.authentication.getSession("github", LEADERBOARD_GITHUB_SCOPES, opts)),
+      fetch,
+      interactive
+    );
+  }
+
+  private isLeaderboardAuthExpired(): boolean {
+    return this.context.globalState.get<boolean>("leaderboardAuthExpired", false);
+  }
+
+  /** The GitHub token stopped working: forget the cached username so the
+   *  sidebar shows the Sign-in button again. Background callers also get a
+   *  one-off warning with a Sign in action (not repeated until the next success). */
+  private markLeaderboardAuthExpired(notify: boolean): void {
+    const alreadyFlagged = this.isLeaderboardAuthExpired();
+    this.setLeaderboardUsername(null);
+    void this.context.globalState.update("leaderboardAuthExpired", true);
+    const current = this.getCurrentState();
+    if (current !== null) { this.onStateUpdate(current); }
+    if (notify && !alreadyFlagged) {
+      void vscode.window.showWarningMessage(
+        "Codotchi: GitHub sign-in expired — live leaderboard sync is paused.",
+        "Sign in"
+      ).then((choice) => {
+        if (choice === "Sign in") { void this.handleSignInLeaderboard(); }
+      });
+    }
+  }
+
+  private clearLeaderboardAuthExpired(): void {
+    if (this.isLeaderboardAuthExpired()) {
+      void this.context.globalState.update("leaderboardAuthExpired", false);
+    }
   }
   // Approx ms per game day (awake rate: 5 real min = 1 game day) for live rank extrapolation.
   // URLs for fetching rank data from the leaderboard branch.
@@ -302,12 +269,16 @@ export class SidebarProvider
     this.disposables.push(visibilityListener);
 
     // BUGFIX-001: hot-reload the webview HTML when the font-size setting changes.
-    // Also reload on petStageHeight or reducedMotion changes.
+    // Also reload on stageHeight, petSize or reducedMotion changes.
     const configListener = vscode.workspace.onDidChangeConfiguration((e) => {
       if (
         e.affectsConfiguration("codotchi.fontSize") ||
         e.affectsConfiguration("codotchi.background") ||
+        e.affectsConfiguration("codotchi.backgroundStyle") ||
+        e.affectsConfiguration("codotchi.backgroundOpacity") ||
+        e.affectsConfiguration("codotchi.backgroundAnimations") ||
         e.affectsConfiguration("codotchi.petSize") ||
+        e.affectsConfiguration("codotchi.stageHeight") ||
         e.affectsConfiguration("codotchi.reducedMotion") ||
         e.affectsConfiguration("codotchi.idleResetOnMouseMovement")
       ) {
@@ -337,8 +308,17 @@ export class SidebarProvider
     const jsUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "sidebar.js"))
     );
+    const spritesGeneratedUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "sprites.generated.js"))
+    );
     const spritesUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "sprites.js"))
+    );
+    const minigameArtUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "minigameArt.js"))
+    );
+    const backgroundArtUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "backgroundArt.js"))
     );
     const spriteConstantsUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "spriteConstants.js"))
@@ -348,7 +328,10 @@ export class SidebarProvider
     );
 
     html = html.replace("{{cssUri}}", cssUri.toString());
+    html = html.replace("{{spritesGeneratedUri}}", spritesGeneratedUri.toString());
     html = html.replace("{{spritesUri}}", spritesUri.toString());
+    html = html.replace("{{minigameArtUri}}", minigameArtUri.toString());
+    html = html.replace("{{backgroundArtUri}}", backgroundArtUri.toString());
     html = html.replace("{{spriteConstantsUri}}", spriteConstantsUri.toString());
     html = html.replace("{{customCharactersUri}}", customCharactersUri.toString());
     html = html.replace("{{jsUri}}", jsUri.toString());
@@ -365,10 +348,9 @@ export class SidebarProvider
 
     const cfg = vscode.workspace.getConfiguration("codotchi");
 
-    // Stage height is fixed at 240 px — no longer a user setting.
     // The canvas CSS height is driven by the height attribute (height: auto in CSS)
     // so the pixel buffer and display size always match.
-    const petStageHeight = 240;
+    const petStageHeight = stageHeightPx(cfg.get<string>("stageHeight", "normal"));
     html = html.replace(/\{\{stageHeight\}\}/g, String(petStageHeight));
 
     const petSize = cfg.get<string>("petSize", "medium");
@@ -379,6 +361,15 @@ export class SidebarProvider
 
     const background = cfg.get<string>("background", "ordered");
     html = html.replace("{{background}}", background);
+
+    const backgroundStyle = cfg.get<string>("backgroundStyle", "scenic");
+    html = html.replace("{{backgroundStyle}}", backgroundStyle);
+
+    const backgroundOpacity = cfg.get<string>("backgroundOpacity", "medium");
+    html = html.replace("{{backgroundOpacity}}", backgroundOpacity);
+
+    const backgroundAnimations = cfg.get<boolean>("backgroundAnimations", true);
+    html = html.replace("{{backgroundAnimations}}", backgroundAnimations ? "true" : "false");
 
     const idleResetOnMouseMovement = cfg.get<boolean>("idleResetOnMouseMovement", true);
     html = html.replace("{{idleResetOnMouseMovement}}", idleResetOnMouseMovement ? "true" : "false");
@@ -435,7 +426,10 @@ export class SidebarProvider
         }
         if (message.feedType === "snack") {
           const _cc = getCustomCharacterBySpriteType(state.spriteType);
-          nextState = startSnack(state, { maxPerCycle: _cc?.feedSnackMaxPerCycle });
+          // The webview reports the snacks really on its floor, so a stale counter
+          // can't let a 4th snack through (Stu's cycle cap is 10, so only the floor cap stops him).
+          const floor = typeof message.floorSnacks === "number" ? message.floorSnacks : state.snacksOnFloor;
+          nextState = startSnack({ ...state, snacksOnFloor: floor }, { maxPerCycle: _cc?.feedSnackMaxPerCycle });
         } else {
           const _cc = getCustomCharacterBySpriteType(state.spriteType);
           nextState = feedMeal(state, this.mealsGivenThisCycle, {
@@ -469,7 +463,7 @@ export class SidebarProvider
         });
         if (message.game !== undefined && message.result !== undefined) {
           // Only apply minigame happiness delta if play wasn't refused
-          if (!nextState.events.includes("play_refused_no_energy")) {
+          if (!nextState.events.some((e) => e === "play_refused_no_energy" || e === "play_refused_sick")) {
             nextState = applyMinigameResult(nextState, message.game, message.result);
           }
         }
@@ -667,16 +661,21 @@ export class SidebarProvider
           true
         );
         if (outcome.ok) {
+          // Re-arm the hint so a later expiry is surfaced again (BUG-S08).
+          this.copilotNoSessionHintShown = false;
           segments.push(
             outcome.unlimited
               ? "Copilot: unlimited premium requests"
               : `Copilot: ${outcome.percentRemaining}% premium quota remaining`
           );
+        } else if (outcome.reason === "unauthorized") {
+          // Expired/revoked token — always say so, never silently drop it.
+          segments.push("Copilot: GitHub sign-in expired — sign in again to include quota");
         } else if (outcome.reason === "no_session" && !this.copilotNoSessionHintShown) {
           this.copilotNoSessionHintShown = true;
           segments.push("Copilot: sign in to GitHub when prompted to include quota");
         }
-        // network_error / unauthorized / parse_error -> silently omit; never break the base bubble
+        // network_error / parse_error -> silently omit; never break the base bubble
       } catch {
         /* swallow — never break the base bubble */
       }
@@ -684,7 +683,7 @@ export class SidebarProvider
 
     const text = segments.length > 0 ? segments.join(" | ") : "Today's Token Cost: no sources selected";
     if (this.webviewView) {
-      void this.webviewView.webview.postMessage({ type: "showBubble", text });
+      void this.webviewView.webview.postMessage(tokenCostBubbleMessage(text));
     }
   }
 
@@ -703,7 +702,7 @@ export class SidebarProvider
     const liveLastPushedAt = this.context.globalState.get<number>("leaderboardLastPushedAt", 0);
 
     // Fetch rank whenever subscribed and alive (showing rank = opt-in via subscribe button).
-    if (liveSubscribed && state.alive) { void this.fetchLiveRank(state.ageDays, state.stage, this.leaderboardGithubUsername); }
+    if (liveSubscribed && state.alive) { void this.fetchLiveRank(state.ageDays, state.stage, this.leaderboardGithubUsername, state.spawnedAt); }
 
     const cached = this.rankCache;
 
@@ -715,12 +714,15 @@ export class SidebarProvider
       devMode,
       unlockedCharacter,
       defaultPetName,
+      cravingItem: cravingItemFor(state),
       leaderboardAvailable: true,
+      leaderboardBlockedReason: leaderboardBlockedReason(state, devMode),
       liveRank: (liveSubscribed && state.alive && cached) ? cached.rank : null,
       liveTotalScores: (liveSubscribed && state.alive && cached) ? cached.total : null,
       liveSubscribed,
       liveLastPushedAt,
       leaderboardGithubUsername: this.leaderboardGithubUsername,
+      leaderboardAuthExpired: this.isLeaderboardAuthExpired(),
     });
   }
 
@@ -755,6 +757,46 @@ export class SidebarProvider
     }
   }
 
+  /** True when dev mode is on right now (enabled + correct passcode). */
+  private isDevModeActive(): boolean {
+    const cfg = vscode.workspace.getConfiguration("codotchi");
+    return cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234";
+  }
+
+  /** This extension's version, signed into every leaderboard submission. */
+  private clientVersion(): string {
+    return String(this.context.extension.packageJSON.version ?? "0.0.0");
+  }
+
+  /**
+   * Build the signed [Leaderboard] issue for a dead pet. The workflow rejects
+   * any issue whose signature doesn't match, so hand-written issues never land.
+   */
+  private buildScoreIssue(state: PetState, username: string): { title: string; body: string } {
+    const diedAt = this.getLastRunDiedAt() ?? Date.now();
+    const clientVersion = this.clientVersion();
+    const scoreData = {
+      schemaVersion: 2,
+      githubUsername: username,
+      petName:        state.name,
+      ageDays:        state.ageDays,
+      stage:          state.stage,
+      petType:        state.petType,
+      spawnedAt:      state.spawnedAt,
+      diedAt,
+      clientVersion,
+      sig: signSubmission({
+        kind: "score", githubUsername: username, petName: state.name, ageDays: state.ageDays,
+        stage: state.stage, petType: state.petType, spawnedAt: state.spawnedAt, at: diedAt,
+        petRunId: "", clientVersion,
+      }),
+    };
+    return {
+      title: `[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @${username}`,
+      body:  `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``,
+    };
+  }
+
   /** Submit the current dead pet's score to the public GitHub leaderboard. */
   private async handleLeaderboardSubmit(): Promise<void> {
     const postResult = (status: string, message?: string): void => {
@@ -769,41 +811,22 @@ export class SidebarProvider
         postResult("error", "No dead pet state available.");
         return;
       }
-
-      const session = await vscode.authentication.getSession(
-        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
-      );
-
-      if (!session) {
-        postResult("cancelled");
+      const blocked = leaderboardBlockedReason(state, this.isDevModeActive());
+      if (blocked !== null) {
+        postResult("error", blocked);
         return;
       }
 
-      // Fetch GitHub username
-      let username: string;
-      try {
-        const userRes = await fetch("https://api.github.com/user", {
-          headers: {
-            "Authorization": `token ${session.accessToken}`,
-            "Accept": "application/json",
-            "User-Agent": "Codotchi-VSCode",
-          },
-        });
-        if (!userRes.ok) {
-          postResult("error", `GitHub API error: ${userRes.status}`);
-          return;
-        }
-        const userBody = await userRes.json() as Record<string, unknown>;
-        username = String(userBody.login ?? "");
-        if (!username) {
-          postResult("error", "Could not read GitHub username.");
-          return;
-        }
-        this.setLeaderboardUsername(username);
-      } catch {
-        postResult("error", "Network error fetching GitHub username.");
+      const user = await this.resolveLeaderboardUser(true);
+      if (!user.ok) {
+        if (user.reason === "no_session") { postResult("cancelled"); return; }
+        if (user.reason === "auth_expired") { this.markLeaderboardAuthExpired(false); }
+        postResult("error", describeGithubUserFailure(user));
         return;
       }
+      const { session, username } = user;
+      this.setLeaderboardUsername(username);
+      this.clearLeaderboardAuthExpired();
 
       // Require the user to type their pet's name — blocks automated API submissions
       const confirmed = await vscode.window.showInputBox({
@@ -817,21 +840,7 @@ export class SidebarProvider
         return;
       }
 
-      const diedAt = this.getLastRunDiedAt() ?? Date.now();
-      const scoreData = {
-        schemaVersion: 1,
-        githubUsername: username,
-        petName:        state.name,
-        ageDays:        state.ageDays,
-        stage:          state.stage,
-        petType:        state.petType,
-        spawnedAt:      state.spawnedAt,
-        diedAt,
-      };
-      const issueBody =
-        `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``;
-      const issueTitle =
-        `[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @${username}`;
+      const { title: issueTitle, body: issueBody } = this.buildScoreIssue(state, username);
 
       try {
         const issueRes = await fetch(
@@ -849,6 +858,9 @@ export class SidebarProvider
         );
         if (issueRes.status === 201) {
           postResult("success");
+        } else if (isAuthFailure(issueRes)) {
+          this.markLeaderboardAuthExpired(false);
+          postResult("error", "GitHub sign-in expired or lacks access — try again and accept the GitHub sign-in prompt.");
         } else {
           const errBody = await issueRes.text().catch(() => "");
           postResult("error", `Failed to create issue (HTTP ${issueRes.status}): ${errBody.slice(0, 120)}`);
@@ -868,36 +880,21 @@ export class SidebarProvider
     try {
       const state = this.getCurrentState();
       if (state === null || state.alive) { return; }
+      if (leaderboardBlockedReason(state, this.isDevModeActive()) !== null) { return; }
 
-      const session = await Promise.resolve(
-        vscode.authentication.getSession("github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: false })
-      ).catch(() => null);
-      if (!session) { return; }
-
-      const userRes = await fetch("https://api.github.com/user", {
-        headers: { "Authorization": `token ${session.accessToken}`, "Accept": "application/json", "User-Agent": "Codotchi-VSCode" },
-      });
-      if (!userRes.ok) { return; }
-      const userBody = await userRes.json() as Record<string, unknown>;
-      const username = String(userBody.login ?? "");
-      if (!username) { return; }
+      const user = await this.resolveLeaderboardUser(false).catch(() => null);
+      if (!user) { return; }
+      if (!user.ok) {
+        if (user.reason === "auth_expired") { this.markLeaderboardAuthExpired(true); }
+        return;
+      }
+      const { session, username } = user;
       this.setLeaderboardUsername(username);
+      this.clearLeaderboardAuthExpired();
 
-      const diedAt = this.getLastRunDiedAt() ?? Date.now();
-      const scoreData = {
-        schemaVersion: 1,
-        githubUsername: username,
-        petName:        state.name,
-        ageDays:        state.ageDays,
-        stage:          state.stage,
-        petType:        state.petType,
-        spawnedAt:      state.spawnedAt,
-        diedAt,
-      };
-      const issueBody  = `Leaderboard submission.\n\n\`\`\`json\n${JSON.stringify(scoreData, null, 2)}\n\`\`\``;
-      const issueTitle = `[Leaderboard] ${state.name} (${state.petType}) lived ${state.ageDays}d — @${username}`;
+      const { title: issueTitle, body: issueBody } = this.buildScoreIssue(state, username);
 
-      await fetch(
+      const issueRes = await fetch(
         `https://api.github.com/repos/${LEADERBOARD_REPO_OWNER}/${LEADERBOARD_REPO_NAME}/issues`,
         {
           method: "POST",
@@ -910,8 +907,9 @@ export class SidebarProvider
           body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ["leaderboard-submission"] }),
         }
       );
+      if (isAuthFailure(issueRes)) { this.markLeaderboardAuthExpired(true); }
     } catch {
-      // Auto-submit is best-effort; never surface errors to the user
+      // Auto-submit is best-effort; only an expired sign-in is surfaced
     }
   }
 
@@ -920,7 +918,7 @@ export class SidebarProvider
   /** Fetch scores.json and compute current rank; result is cached for 5 minutes.
    *  Pass username so the user's own live entry is excluded from the pool —
    *  the unconditional +1 at the end already accounts for the current user. */
-  async fetchLiveRank(ageDays: number, stage: string, username: string | null = null): Promise<void> {
+  async fetchLiveRank(ageDays: number, stage: string, username: string | null = null, spawnedAt: number | null = null): Promise<void> {
     const now = Date.now();
     if (this.rankCache && (now - this.rankCache.at) < SidebarProvider.RANK_CACHE_TTL_MS) {
       return; // still fresh
@@ -935,14 +933,14 @@ export class SidebarProvider
       if (!scoresRes.ok) { return; }
       const scoresJson = await scoresRes.json() as { scores?: Array<{ ageDays: number; stage?: string }> } | Array<{ ageDays: number; stage?: string }>;
       const scores: Array<{ ageDays: number; stage?: string }> = Array.isArray(scoresJson) ? scoresJson : (scoresJson.scores ?? []);
-      const liveJson: Array<{ ageDays?: number; stage?: string; updatedAt?: number; username?: string; petRunId?: string }> = liveRes?.ok
-        ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; stage?: string; updatedAt?: number; username?: string; petRunId?: string }> : [];
+      const liveJson: Array<{ ageDays?: number; stage?: string; updatedAt?: number; username?: string; petRunId?: string; spawnedAt?: number }> = liveRes?.ok
+        ? await liveRes.json().catch(() => []) as Array<{ ageDays?: number; stage?: string; updatedAt?: number; username?: string; petRunId?: string; spawnedAt?: number }> : [];
       const staleMs = 48 * 60 * 60 * 1000;
       const selfRunId = vscode.env.machineId;
-      // Exclude own entry by petRunId only — username exclusion was too broad.
+      // Exclude own entry by petRunId or spawnedAt — username exclusion was too broad.
       const freshLive = liveJson
         .filter(e => e.updatedAt && (now - e.updatedAt) < staleMs)
-        .filter(e => e.petRunId !== selfRunId)
+        .filter(e => e.petRunId !== selfRunId && !(spawnedAt && e.spawnedAt === spawnedAt))
         .map(e => ({
           ageDays: e.ageDays ?? 0,
           stage: e.stage,
@@ -962,27 +960,26 @@ export class SidebarProvider
 
   /** Sign in to GitHub for the leaderboard and cache the resolved username. */
   async handleSignInLeaderboard(): Promise<void> {
+    const postResult = (username: string | null, error?: string): void => {
+      if (this.webviewView) {
+        void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username, error });
+      }
+    };
     try {
-      const session = await vscode.authentication.getSession(
-        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
-      );
-      if (!session) {
+      const user = await this.resolveLeaderboardUser(true);
+      if (!user.ok) {
         this.setLeaderboardUsername(null);
-        if (this.webviewView) {
-          void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username: null });
-        }
+        postResult(null, describeGithubUserFailure(user));
         return;
       }
-      const userRes = await fetch("https://api.github.com/user", {
-        headers: { "Authorization": `token ${session.accessToken}`, "Accept": "application/json", "User-Agent": "Codotchi-VSCode" },
-      });
-      const username = userRes.ok ? String((await userRes.json() as Record<string, unknown>).login ?? "") : "";
-      this.setLeaderboardUsername(username || null);
-      if (this.webviewView) {
-        void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username: this.leaderboardGithubUsername });
-      }
-    } catch {
-      // silent — sign-in is best-effort
+      this.setLeaderboardUsername(user.username);
+      this.clearLeaderboardAuthExpired();
+      postResult(user.username);
+      const current = this.getCurrentState();
+      if (current !== null) { this.onStateUpdate(current); }
+    } catch (err) {
+      // User dismissed the sign-in dialog or the auth provider failed.
+      postResult(null, err instanceof Error && err.message ? `Sign-in failed: ${err.message}` : "Sign-in failed — try again.");
     }
   }
 
@@ -993,11 +990,15 @@ export class SidebarProvider
    *  VS Code shows the GitHub OAuth popup. Keep false for background hourly pushes. */
   async pushLiveScore(state: PetState, promptAuth = false): Promise<void> {
     if (!state.alive) { return; }
+    if (leaderboardBlockedReason(state, this.isDevModeActive()) !== null) { return; }
     try {
-      const session = await vscode.authentication.getSession(
-        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: promptAuth }
-      );
-      if (!session) { return; }
+      const user = await this.resolveLeaderboardUser(promptAuth);
+      if (!user.ok) {
+        if (user.reason === "auth_expired") { this.markLeaderboardAuthExpired(!promptAuth); }
+        return;
+      }
+      const { session, username } = user;
+      this.setLeaderboardUsername(username);
 
       const authHeaders = {
         "Authorization": `token ${session.accessToken}`,
@@ -1006,17 +1007,10 @@ export class SidebarProvider
         "User-Agent": "Codotchi-VSCode",
       };
 
-      // Resolve GitHub username.
-      const userRes = await fetch("https://api.github.com/user", {
-        headers: { ...authHeaders, "Accept": "application/json" },
-      });
-      if (!userRes.ok) { return; }
-      const userBody = await userRes.json() as Record<string, unknown>;
-      const username = String(userBody.login ?? "");
-      if (!username) { return; }
-      this.setLeaderboardUsername(username);
-
+      const updatedAt = Date.now();
+      const clientVersion = this.clientVersion();
       const entry = {
+        schemaVersion: 2,
         username,
         petName:   state.name,
         petRunId:  vscode.env.machineId,
@@ -1024,7 +1018,13 @@ export class SidebarProvider
         ageDays:   state.ageDays,
         stage:     state.stage,
         petType:   state.petType,
-        updatedAt: Date.now(),
+        updatedAt,
+        clientVersion,
+        sig: signSubmission({
+          kind: "live", githubUsername: username, petName: state.name, ageDays: state.ageDays,
+          stage: state.stage, petType: state.petType, spawnedAt: state.spawnedAt, at: updatedAt,
+          petRunId: vscode.env.machineId, clientVersion,
+        }),
       };
 
       const issueRes = await fetch(
@@ -1040,7 +1040,12 @@ export class SidebarProvider
         }
       );
 
+      if (isAuthFailure(issueRes)) {
+        this.markLeaderboardAuthExpired(!promptAuth);
+        return;
+      }
       if (issueRes.status === 201) {
+        this.clearLeaderboardAuthExpired();
         await this.context.globalState.update("leaderboardLastPushedAt", Date.now());
         // Refresh sidebar so "last synced" timestamp updates immediately.
         const current = this.getCurrentState();
@@ -1066,22 +1071,16 @@ export class SidebarProvider
         return;
       }
 
-      const session = await vscode.authentication.getSession(
-        "github", LEADERBOARD_GITHUB_SCOPES, { createIfNone: true }
-      );
-      if (!session) { postResult("cancelled"); return; }
-
-      const userRes = await fetch("https://api.github.com/user", {
-        headers: {
-          "Authorization": `token ${session.accessToken}`,
-          "Accept": "application/json",
-          "User-Agent": "Codotchi-VSCode",
-        },
-      });
-      if (!userRes.ok) { postResult("error", `GitHub API error: ${userRes.status}`); return; }
-      const userBody = await userRes.json() as Record<string, unknown>;
-      const username = String(userBody.login ?? "");
-      if (!username) { postResult("error", "Could not read GitHub username."); return; }
+      const user = await this.resolveLeaderboardUser(true);
+      if (!user.ok) {
+        if (user.reason === "no_session") { postResult("cancelled"); return; }
+        if (user.reason === "auth_expired") { this.markLeaderboardAuthExpired(false); }
+        postResult("error", describeGithubUserFailure(user));
+        return;
+      }
+      const { session, username } = user;
+      this.setLeaderboardUsername(username);
+      this.clearLeaderboardAuthExpired();
 
       const deleteData = {
         schemaVersion: 1,
@@ -1108,6 +1107,9 @@ export class SidebarProvider
       );
       if (issueRes.status === 201) {
         postResult("success");
+      } else if (isAuthFailure(issueRes)) {
+        this.markLeaderboardAuthExpired(false);
+        postResult("error", "GitHub sign-in expired or lacks access — try again and accept the GitHub sign-in prompt.");
       } else {
         const errBody = await issueRes.text().catch(() => "");
         postResult("error", `Failed to create issue (HTTP ${issueRes.status}): ${errBody.slice(0, 120)}`);

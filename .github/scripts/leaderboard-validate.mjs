@@ -1,0 +1,254 @@
+#!/usr/bin/env node
+/**
+ * leaderboard-validate.mjs — server-side checks for leaderboard issues.
+ *
+ * Used by process-leaderboard.yml ("score") and process-leaderboard-live.yml
+ * ("live"). Signed issues from a Codotchi client carry an HMAC signature made
+ * with the leaderboard key (repo secret LEADERBOARD_HMAC_KEY), which the
+ * plugins get at build time and which never lives in git. Unsigned bodies from
+ * pre-2.27.2 clients are accepted as legacy (verified:false). The signed text must match packages/core/src/integrity.ts
+ * (submissionPayload) and pycharm's Integrity.kt byte for byte —
+ * tests/fixtures/integrity-vector.json pins all three.
+ *
+ * CLI: node leaderboard-validate.mjs score|live
+ *   env  ISSUE_BODY, ISSUE_AUTHOR, LEADERBOARD_HMAC_KEY
+ *        SCORES_PATH (score only, default leaderboard/scores.json)
+ *   out  /tmp/leaderboard-result.json  {valid, reason?, entry?}
+ *        GITHUB_OUTPUT                 valid=true|false (no user text, ever)
+ */
+
+import { createHmac, timingSafeEqual } from "crypto";
+import fs from "fs";
+import { pathToFileURL } from "url";
+
+export const SIGNATURE_VERSION = "codotchi-lb-v2";
+export const SCHEMA_VERSION = 2;
+export const VALID_STAGES = new Set(["egg", "baby", "child", "teen", "adult", "senior"]);
+
+/**
+ * Fastest real seconds per game day for each pet type: asleep (or on a break
+ * nap) a pet ages 1/80 day every 3 ticks of 3 s, times its agingMultiplier,
+ * so 720 s / multiplier. Awake and idle pets age slower.
+ */
+export const MIN_SECONDS_PER_GAME_DAY = {
+  codeling:    720 / 1.0,
+  bytebug:     720 / 1.5,
+  pixelpup:    720 / 1.25,
+  shellscript: 720 / 0.75,
+};
+/** Allow 10% for tick jitter and clock skew. */
+const FLOOR_SLACK = 0.9;
+
+/** Stage-age bounds (min, max or null), from EVOLUTION_DAY_THRESHOLDS + care-mistake delays. */
+export const STAGE_AGE_BOUNDS = {
+  egg:    [0, 9],
+  baby:   [0, 14],
+  child:  [5, 32],
+  teen:   [23, 104],
+  adult:  [95, 296],
+  senior: [287, null],
+};
+
+const FIVE_MIN_MS = 5 * 60 * 1000;
+const THREE_YR_MS = 3 * 365 * 24 * 60 * 60 * 1000;
+const MAX_NAME = 64;
+
+class Rejected extends Error {}
+function reject(reason) { throw new Rejected(reason); }
+
+/** Canonical signed text — see integrity.ts submissionPayload(). */
+export function submissionPayload(s) {
+  return [
+    SIGNATURE_VERSION,
+    s.kind,
+    s.githubUsername.toLowerCase(),
+    s.petName,
+    String(s.ageDays),
+    s.stage,
+    s.petType,
+    String(s.spawnedAt),
+    String(s.at),
+    s.petRunId,
+    s.clientVersion,
+  ].join("\n");
+}
+
+export function signSubmission(s, key) {
+  return createHmac("sha256", key).update(submissionPayload(s), "utf8").digest("hex");
+}
+
+function sigMatches(expected, actual) {
+  if (typeof actual !== "string" || actual.length !== expected.length) { return false; }
+  return timingSafeEqual(Buffer.from(expected, "utf8"), Buffer.from(actual, "utf8"));
+}
+
+function int(data, field, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {
+  const v = data[field];
+  if (typeof v !== "number" || !Number.isSafeInteger(v) || v < min || v > max) {
+    reject(`${field} must be a whole number.`);
+  }
+  return v;
+}
+
+function str(data, field) {
+  const v = data[field];
+  if (typeof v !== "string" || v.length === 0) { reject(`Missing ${field}.`); }
+  return v;
+}
+
+/**
+ * Shared checks for both kinds; returns the validated common fields.
+ *
+ * Signed (schemaVersion 2) bodies must carry a valid sig. Unsigned v1 bodies
+ * from pre-2.27.2 clients are accepted as legacy (stored verified:false) but
+ * still go through every sanity check below. A v2 body never falls back to
+ * legacy.
+ */
+function validateCommon(data, kind, author, key, nowMs) {
+  if (data === null || typeof data !== "object" || Array.isArray(data)) { reject("Submission is not a JSON object."); }
+  const legacy = (data.schemaVersion === undefined || data.schemaVersion === 1) && data.sig === undefined;
+  if (!legacy && data.schemaVersion !== SCHEMA_VERSION) {
+    reject("Unknown submission format. Update Codotchi, then submit from the plugin.");
+  }
+  if (!legacy && !key) { reject("The leaderboard isn't accepting submissions right now (server key not configured)."); }
+
+  const petName = str(data, "petName");
+  if (petName.length > MAX_NAME) { reject("Pet name is too long."); }
+  const stage = str(data, "stage");
+  if (!VALID_STAGES.has(stage)) { reject("Unknown stage."); }
+  const petType = str(data, "petType");
+  if (!(petType in MIN_SECONDS_PER_GAME_DAY)) { reject("Unknown pet type."); }
+  const ageDays = int(data, "ageDays", { max: 10000 });
+  const spawnedAt = int(data, "spawnedAt");
+  const at = int(data, kind === "score" ? "diedAt" : "updatedAt");
+  const petRunId = kind === "live" ? String(data.petRunId ?? "") : "";
+  let clientVersion;
+  if (!legacy) {
+    clientVersion = str(data, "clientVersion");
+    if (!/^\d+\.\d+\.\d+$/.test(clientVersion)) { reject("Invalid clientVersion."); }
+    const expected = signSubmission(
+      { kind, githubUsername: author, petName, ageDays, stage, petType, spawnedAt, at, petRunId, clientVersion },
+      key,
+    );
+    if (!sigMatches(expected, data.sig)) {
+      reject("Not generated by a Codotchi client (signature missing or invalid). Submissions only come from the plugin.");
+    }
+  }
+
+  // Timestamp sanity
+  if (spawnedAt > nowMs + FIVE_MIN_MS) { reject("spawnedAt is in the future."); }
+  if (spawnedAt < nowMs - THREE_YR_MS) { reject("spawnedAt is implausibly old."); }
+  if (at > nowMs + FIVE_MIN_MS) { reject("Timestamp is in the future."); }
+  if (at <= spawnedAt) { reject("Timestamp must be after spawnedAt."); }
+
+  // Physics floor: a pet can't age faster than its fastest real rate.
+  const minMs = ageDays * MIN_SECONDS_PER_GAME_DAY[petType] * 1000 * FLOOR_SLACK;
+  if (at - spawnedAt < minMs) {
+    reject(`${ageDays} game days is more than a ${petType} can live in that much real time.`);
+  }
+
+  const [minAge, maxAge] = STAGE_AGE_BOUNDS[stage];
+  if (ageDays < minAge || (maxAge !== null && ageDays > maxAge)) {
+    reject(`ageDays ${ageDays} doesn't match stage ${stage}.`);
+  }
+
+  return { petName, stage, petType, ageDays, spawnedAt, at, petRunId, clientVersion, legacy };
+}
+
+/** verified/legacy/clientVersion fields shared by stored score and live entries. */
+function provenance(v) {
+  return v.legacy ? { verified: false, legacy: true } : { clientVersion: v.clientVersion, verified: true };
+}
+
+/**
+ * Validate a [Leaderboard] death submission.
+ * @returns the entry to store in scores.json
+ * @throws Rejected with a user-facing reason
+ */
+export function validateScore(body, author, key, existingScores, nowMs = Date.now()) {
+  const match = /```json\s*([\s\S]*?)\s*```/.exec(body ?? "");
+  if (!match) { reject("No JSON code block found in the issue body."); }
+  let data;
+  try { data = JSON.parse(match[1]); } catch { reject("Invalid JSON."); }
+
+  const v = validateCommon(data, "score", author, key, nowMs);
+
+  // A run is (githubUsername, petName, spawnedAt). Only accept a resubmission
+  // that reports a later death; the commit step then replaces the old row.
+  for (const s of existingScores) {
+    if (s.githubUsername === author && s.petName === v.petName && Number(s.spawnedAt) === v.spawnedAt) {
+      if (v.at <= Number(s.diedAt ?? 0)) { reject("This run has already been submitted."); }
+      break;
+    }
+  }
+
+  return {
+    schemaVersion:  SCHEMA_VERSION,
+    githubUsername: author,  // always the authenticated issue author
+    petName:        v.petName,
+    ageDays:        v.ageDays,
+    stage:          v.stage,
+    petType:        v.petType,
+    spawnedAt:      v.spawnedAt,
+    diedAt:         v.at,
+    ...provenance(v),
+    submittedAt:    nowMs,
+  };
+}
+
+/**
+ * Validate a [Live] progress update (the whole issue body is the JSON).
+ * @returns the whitelisted entry to store in live.json
+ */
+export function validateLive(body, author, key, nowMs = Date.now()) {
+  let data;
+  try { data = JSON.parse(body ?? ""); } catch { reject("Invalid JSON."); }
+  const v = validateCommon(data, "live", author, key, nowMs);
+  if (typeof data.username !== "string" || data.username.toLowerCase() !== author.toLowerCase()) {
+    reject("Username doesn't match the issue author.");
+  }
+  return {
+    username:      author,
+    petName:       v.petName,
+    petRunId:      v.petRunId,
+    spawnedAt:     v.spawnedAt,
+    ageDays:       v.ageDays,
+    stage:         v.stage,
+    petType:       v.petType,
+    updatedAt:     v.at,
+    ...provenance(v),
+  };
+}
+
+/** Run validation and report the outcome; never throws. */
+export function runValidation(kind, env, readScores) {
+  const author = env.ISSUE_AUTHOR ?? "";
+  const key = env.LEADERBOARD_HMAC_KEY ?? "";
+  try {
+    const entry = kind === "score"
+      ? validateScore(env.ISSUE_BODY, author, key, readScores())
+      : validateLive(env.ISSUE_BODY, author, key);
+    return { valid: true, entry };
+  } catch (err) {
+    if (err instanceof Rejected) { return { valid: false, reason: err.message }; }
+    return { valid: false, reason: "Unexpected validation error." };
+  }
+}
+
+// ── CLI ─────────────────────────────────────────────────────────────────────
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const kind = process.argv[2];
+  if (kind !== "score" && kind !== "live") {
+    console.error("usage: leaderboard-validate.mjs score|live");
+    process.exit(2);
+  }
+  const scoresPath = process.env.SCORES_PATH ?? "leaderboard/scores.json";
+  const result = runValidation(kind, process.env, () => {
+    try { return JSON.parse(fs.readFileSync(scoresPath, "utf8")).scores ?? []; } catch { return []; }
+  });
+  fs.writeFileSync(process.env.RESULT_PATH ?? "/tmp/leaderboard-result.json", JSON.stringify(result));
+  if (process.env.GITHUB_OUTPUT) {
+    fs.appendFileSync(process.env.GITHUB_OUTPUT, `valid=${result.valid}\n`);
+  }
+  console.log(result.valid ? "valid" : `rejected: ${result.reason}`);
+}

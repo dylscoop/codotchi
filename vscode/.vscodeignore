@@ -45,3 +45,8 @@ node_modules/
 
 # Git
 .gitignore
+
+# Not packaged: archived sprites, local artifact archive, old packages
+media/archived_sprites/
+archive/
+*.vsix

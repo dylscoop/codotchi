@@ -20,9 +20,12 @@ import {
   accumulateDailyUsage,
   loadIDEStateFile,
   loadUsageCache,
+  localDateKey,
   saveUsageCache,
   loadRankCache,
   saveRankCache,
+  computeLiveRank,
+  idleFlagsForFile,
 } from "./state.mjs";
 import { pickPetEmoji, renderMovingEmojiLine, currentFrameIndex } from "./emoji.mjs";
 
@@ -39,6 +42,24 @@ async function loadEngine() {
   const ge = await import(pathToFileURL(path.join(distDir, "gameEngine.js")).href);
   const aa = await import(pathToFileURL(path.join(distDir, "asciiArt.js")).href);
   return { ge, aa };
+}
+
+/**
+ * Speech for the pet's active attention call, or null when there is none.
+ * The phrase changes once a minute rather than on every 1s refresh, so the
+ * status line doesn't flicker between phrases.
+ */
+function activeCallSpeech(aa, petState, now) {
+  const call = petState.activeAttentionCall;
+  if (!call || !aa.attentionCallSpeech) return null;
+  return aa.attentionCallSpeech(aa.attentionCallKey(call, petState.cravingFood), Math.floor(now / 60_000));
+}
+
+/** One-line "⚠ <name> wants <label> (<how>)" text for the plain status block. */
+function callLine(call, name, ideLabel) {
+  const how = ideLabel ? `answer in ${ideLabel.replace(/[[\]]/g, "")}`
+    : call.command || "answer in the IDE";
+  return `  ⚠ ${name} wants ${call.label} (${how})`;
 }
 
 async function main() {
@@ -61,8 +82,9 @@ async function main() {
   // Accumulate daily cost and tokens from the session's JSONL transcript.
   // Cached: a full scan on every 1s refresh would be too expensive.
   let usage = loadUsageCache();
-  if (!usage || (now - (usage.at ?? 0)) > USAGE_CACHE_TTL_MS) {
-    usage = { ...accumulateDailyUsage(stdinJson.session_id), at: now };
+  const todayKey = localDateKey(now);
+  if (!usage || usage.day !== todayKey || (now - (usage.at ?? 0)) > USAGE_CACHE_TTL_MS) {
+    usage = { ...accumulateDailyUsage(stdinJson.session_id), at: now, day: todayKey };
     saveUsageCache(usage);
   }
   const { costUsd: dailyCostUsd, tokens: dailyTokens, hourlyCostUsd, messageCount } = usage;
@@ -97,8 +119,10 @@ async function main() {
     if (elapsedTicks > 60) {
       state = ge.applyOfflineDecay(state, elapsedMs / 1000);
     } else {
+      // Honour the IDE's idle flag for an IDE-anchored pet (BUG-S02).
+      const { isIdle, isDeepIdle } = idleFlagsForFile(file);
       for (let i = 0; i < elapsedTicks; i++) {
-        const result = ge.tick(state, false, false, gameConfig);
+        const result = ge.tick(state, isIdle, isDeepIdle, gameConfig);
         state = result.state ?? result; // tick may return { state, events } or state directly
       }
     }
@@ -138,9 +162,13 @@ async function main() {
   const hasIDEPets = idePets.length > 0;
 
   // Fetch live rank from leaderboard/scores.json + live.json (cached 5 min).
-  let rankData = loadRankCache();
+  // CODOTCHI_NO_RANK=1 turns the rank line off entirely (no network, no cache)
+  // — used by the integration tests so their output doesn't depend on the
+  // live leaderboard.
+  const rankDisabled = process.env.CODOTCHI_NO_RANK === "1";
+  let rankData = rankDisabled ? null : loadRankCache();
   const activePetState = hasIDEPets ? idePets[0].state : state;
-  if (activePetState.alive && (!rankData || (now - (rankData.at ?? 0)) > RANK_CACHE_TTL_MS)) {
+  if (!rankDisabled && activePetState.alive && (!rankData || (now - (rankData.at ?? 0)) > RANK_CACHE_TTL_MS)) {
     try {
       const base = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/";
       const [scoresRes, liveRes] = await Promise.all([
@@ -151,13 +179,8 @@ async function main() {
         const rankJson = await scoresRes.json();
         const scores = Array.isArray(rankJson) ? rankJson : (rankJson.scores ?? []);
         const liveJson = liveRes?.ok ? await liveRes.json().catch(() => []) : [];
-        const staleMs = 30 * 24 * 60 * 60 * 1000;
-        const freshLive = Array.isArray(liveJson)
-          ? liveJson.filter(e => !e.updatedAt || (now - e.updatedAt) < staleMs) : [];
-        const combined = scores.concat(freshLive);
-        const ageDays = activePetState.ageDays ?? 0;
-        const rank = combined.filter(s => (s.ageDays ?? 0) > ageDays).length + 1;
-        rankData = { at: now, rank, total: combined.length + 1 };
+        const { rank, total } = computeLiveRank(scores, liveJson, activePetState, now);
+        rankData = { at: now, rank, total };
         saveRankCache(rankData);
       }
     } catch { /* network failure — keep stale cache */ }
@@ -170,20 +193,28 @@ async function main() {
     // (auto-matched to the pet's creature, or a user-pinned override).
     const frameIndex = currentFrameIndex(now);
     const columns = process.env.COLUMNS ? Number(process.env.COLUMNS) : undefined;
+    const callSuffix = (petState) => {
+      const call = activeCallSpeech(aa, petState, now);
+      return call ? `⚠ wants ${call.label} ` : "";
+    };
     if (!hasIDEPets) {
       const emoji = pickPetEmoji(state, cfg.statuslineEmoji);
-      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${state.name} `));
+      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${state.name} ${callSuffix(state)}`));
     }
     for (const { state: ideState, label } of idePets) {
       const emoji = pickPetEmoji(ideState, cfg.statuslineEmoji);
-      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${label} ${ideState.name} `));
+      outputs.push(renderMovingEmojiLine(emoji, frameIndex, columns, `${label} ${ideState.name} ${callSuffix(ideState)}`));
     }
   } else if (cfg.terminalEnabled === false) {
     if (!hasIDEPets) {
       outputs.push(aa.stripAnsi(aa.buildStatusBlock(state)));
+      const call = activeCallSpeech(aa, state, now);
+      if (call) outputs.push(callLine(call, state.name));
     }
-    for (const { state: ideState } of idePets) {
+    for (const { state: ideState, label } of idePets) {
       outputs.push(aa.stripAnsi(aa.buildStatusBlock(ideState)));
+      const call = activeCallSpeech(aa, ideState, now);
+      if (call) outputs.push(callLine(call, ideState.name, label));
     }
   } else {
     // Only show the local Claude Code pet when no IDE pet is active — it is a
@@ -200,34 +231,39 @@ async function main() {
         /*dailyTokens*/ dailyTokens,
         /*warnThresholdUSD*/ warnUsd,
         /*shoutThresholdUSD*/ shoutUsd,
-        /*hourlyCostUSD*/ hourlyCostUsd,
-        /*dailyMessages*/ messageCount
+        /*lastHourCostUSD (shown as $X/hr)*/ hourlyCostUsd,
+        /*lastHourTokens*/ 0,
+        /*dailyMessages*/ messageCount,
+        { costStyle: "hourlyRate" }
       );
+      // An active attention call takes over the bubble.
+      const call = activeCallSpeech(aa, state, now);
       outputs.push(aa.buildSpeechBubble(
         state.stage,
-        state.mood,
-        speech.message,
+        call ? call.mood : state.mood,
+        call ? call.message : speech.message,
         state.name,
         state.spriteType,
         undefined,
-        speech.bubbleColor ?? bubbleColor,
-        speech.tierEmoji
+        call ? call.bubbleColor : (speech.bubbleColor ?? bubbleColor),
+        call ? "⚠" : speech.tierEmoji
       ));
     }
     for (const { state: ideState, label } of idePets) {
       const ideSpeech = aa.buildContextualSpeech(
         ideState,
-        0, 0, 0, 0, false, 0, 0, warnUsd, shoutUsd
+        0, 0, 0, 0, false, 0, 0, warnUsd, shoutUsd, 0, 0, 0, { costStyle: "hourlyRate" }
       );
+      const call = activeCallSpeech(aa, ideState, now);
       outputs.push(aa.buildSpeechBubble(
         ideState.stage,
-        ideState.mood,
-        ideSpeech.message,
+        call ? call.mood : ideState.mood,
+        call ? call.message : ideSpeech.message,
         ideState.name,
         ideState.spriteType,
         label,
-        ideSpeech.bubbleColor ?? "green",
-        ideSpeech.tierEmoji
+        call ? call.bubbleColor : (ideSpeech.bubbleColor ?? "green"),
+        call ? "⚠" : ideSpeech.tierEmoji
       ));
     }
   }

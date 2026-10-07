@@ -1,0 +1,14 @@
+{
+  "palette": {
+    "primary": "#d9bb7b",
+    "secondary": "#663300",
+    "accent": "#8c5a24"
+  },
+  "background": "#1a1a1a",
+  "crop": false,
+  "anchor": "left",
+  "legRowStart": 92,
+  "inRotation": false,
+  "passcode": "bounce",
+  "defaultName": "Roogotchi"
+}

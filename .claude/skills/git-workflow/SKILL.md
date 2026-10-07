@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Enforces branch and commit discipline — never push directly to main, always work on a named feature branch, always ask the user for a branch name before touching any file, and commit after every completed todo item.
+description: Enforces branch and commit discipline — never push or merge directly to main (main only changes through a GitHub PR with linear history), always work on a named feature branch, always ask the user for a branch name before touching any file, and commit after every completed todo item.
 ---
 
 ## MANDATORY — do these two things before anything else
@@ -22,6 +22,7 @@ what is done before continuing.
 
 - **Never push directly to `main`.**
 - **Never commit directly to `main`.**
+- **Never merge into `main` locally** (`git merge` on `main`). `main` only changes through a GitHub pull request — see "`main` branch rules on GitHub" below.
 - **Never write, edit, or build any code until a feature branch is checked out.**
 - For every new feature or bug fix, ask the user what branch name to use. Suggest a name based on the feature (e.g. `feat/poo-animation`, `fix/health-bar-colour`).
 - Only skip asking if the user has already named the branch themselves in their message.
@@ -36,8 +37,8 @@ The following actions each require **explicit user instruction** before performi
 | Action | What "explicit" means |
 |--------|----------------------|
 | Push a branch to `origin` | User says "push the branch" or "push to origin" |
-| Merge into `main` | User says "merge to main" or "merge it" |
-| Push `main` to `origin` | User says "push main" |
+| Open a PR into `main` | User says "create the PR", "open a PR" or "merge to main" (merging means opening the PR) |
+| Merge the PR on GitHub | User says "merge the PR" or "merge it" once the PR exists |
 | Create a tag | User says "tag it" or "create a tag" |
 | Push a tag to `origin` | User says "push the tag" |
 | Create a GitHub release | User says "create a release" or "publish it" |
@@ -57,14 +58,14 @@ The following actions each require **explicit user instruction** before performi
    - What commits are on the branch
    - Which of the release steps still need to happen
 
-> **Do not apply step 5 between intermediate commits.** During an artifact rebuild sequence — IDE artifact build → commit → OpenCode zip rebuild → commit — each commit is an intermediate step, not "all work done". After each intermediate commit, immediately execute the next todo item's command without pausing, without reporting status, and without waiting for the user. Step 5 fires only once: after the final todo is marked complete and there are no more commands to run.
+> **Do not apply step 5 between intermediate steps.** During an artifact rebuild sequence — IDE artifact build → verify → OpenCode zip rebuild → verify — each build is an intermediate step, not "all work done". After each intermediate step, immediately execute the next todo item's command without pausing, without reporting status, and without waiting for the user. Step 5 fires only once: after the final todo is marked complete and there are no more commands to run.
 
 ---
 
 ## Commit style
 
 - **One commit per completed todo item.** Never batch multiple todos into a single commit.
-- Each commit must be self-contained: source change + its doc updates + rebuilt artifacts (if source changed) — but only for that one item.
+- Each commit must be self-contained: source change + its doc updates (and `claude-codotchi/dist/` if its source changed) — but only for that one item. Release artifacts are never committed.
 - **Commit immediately** when a todo item is marked done — do not continue to the next todo until the commit is made.
 - Message format: `<type>: <short description>` — types are `feat`, `fix`, `chore`, `refactor`, `docs`, `test`.
 
@@ -81,12 +82,11 @@ The following actions each require **explicit user instruction** before performi
 
 After any **artifact build** command completes (VS Code `vsce package`, PyCharm `buildPlugin`, or OpenCode `package.js`), you **must** do all four of the following before stopping or waiting:
 
-1. **Verify the artifact version** — immediately after the build command returns, run a directory listing to confirm the artifact file exists and its filename contains the correct version number (e.g. `Get-ChildItem vscode/codotchi-*.vsix` and `Get-ChildItem pycharm/build/distributions/*.zip`). If the filename does not match the expected version, stop and report the mismatch before committing anything.
+1. **Verify the artifact version** — immediately after the build command returns, run a directory listing to confirm the artifact file exists and its filename contains the correct version number (e.g. `Get-ChildItem vscode/codotchi-*.vsix` and `Get-ChildItem pycharm/build/distributions/*.zip`). If the filename does not match the expected version, stop and report the mismatch before going further.
 2. **List the artifact files produced** — state the exact filename and path of every artifact that was just built.
-3. **Commit the artifacts immediately** as `chore: rebuild artifacts for vX.Y.Z` — do not wait for the user to ask. The commit is already implied by the release flow. Stage and commit all three artifact files in a single commit.
-4. **Continue immediately** — after the commit succeeds, immediately execute the next todo item's command. Do not output a status summary. Do not stop and say "build succeeded" and wait. Do not ask "shall I continue?" or "keep going?" The next tool call must be the command for the next todo item — not a message to the user. Keep going until all todos are done or an explicit user decision is required (push, merge, tag, release, or reinstalling the OpenCode plugin via `node bin/install.js --install` — that step always requires explicit user confirmation before running; stop and ask, then wait for the answer).
+3. **Continue immediately** — after verifying, immediately execute the next todo item's command. Do not output a status summary. Do not stop and say "build succeeded" and wait. Do not ask "shall I continue?" or "keep going?" The next tool call must be the command for the next todo item — not a message to the user. Keep going until all todos are done or an explicit user decision is required (push, merge, tag, release, or reinstalling the OpenCode plugin via `node bin/install.js --install` — that step always requires explicit user confirmation before running; stop and ask, then wait for the answer).
 
-Never silently halt after a build. Never leave artifact files uncommitted. Never wait for the user to say "keep going" after a successful build.
+Never silently halt after a build. Never commit artifact files (they are gitignored). Never wait for the user to say "keep going" after a successful build.
 
 ### If the build tool call times out or is aborted by the user
 
@@ -94,10 +94,9 @@ The build may take longer than the tool timeout, causing the call to be aborted 
 
 1. **Immediately** run `Get-ChildItem` to verify the artifact exists at the expected path and version.
 2. List the artifact filename and path.
-3. Commit the artifact as `chore: rebuild artifacts for vX.Y.Z`.
-4. **Immediately execute the next todo item's command** — do not output a status summary, do not say "build succeeded", do not pause to report back to the user. The next command must be the very next thing you do after the commit succeeds. Treat pasted BUILD SUCCESSFUL exactly the same as a tool call that returned BUILD SUCCESSFUL: the session never paused, so neither should you.
+3. **Immediately execute the next todo item's command** — do not output a status summary, do not say "build succeeded", do not pause to report back to the user. Treat pasted BUILD SUCCESSFUL exactly the same as a tool call that returned BUILD SUCCESSFUL: the session never paused, so neither should you.
 
-**Do not wait to be told to continue. Do not ask "shall I proceed?". Do not write a summary message and wait. Receipt of BUILD SUCCESSFUL output — by any means — is the trigger to verify, commit, and immediately run the next command.**
+**Do not wait to be told to continue. Do not ask "shall I proceed?". Do not write a summary message and wait. Receipt of BUILD SUCCESSFUL output — by any means — is the trigger to verify and immediately run the next command.**
 
 > **Root cause of version mismatch:** If the version in `package.json` / `build.gradle.kts` was not bumped before building, the artifact will carry the old version number. Always bump versions in all four files (`vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`) and commit the bump **before** running any build.
 
@@ -105,15 +104,15 @@ The build may take longer than the tool timeout, causing the call to be aborted 
 
 ## Build artifacts — required before merging to main
 
-Do **not** rebuild on every individual commit. Rebuild once, as a dedicated
-`chore:` commit, immediately before the branch is ready to merge to `main`:
+Do **not** rebuild on every individual commit. Rebuild once, locally,
+immediately before the branch is ready to merge to `main` (artifacts are gitignored — do not commit them):
 
-| IDE | Command (run from the given directory) | Output artifact to commit |
+| IDE | Command (run from the given directory) | Output artifact (local only) |
 |-----|----------------------------------------|--------------------------|
 | VS Code | `npx @vscode/vsce package` (run from `vscode/`) | `vscode/codotchi-X.Y.Z.vsix` |
 | PyCharm | See PyCharm build procedure below | `pycharm/build/distributions/pycharm-codotchi-X.Y.Z.zip` |
 
-The build commit must come **after** all feature, fix, test, and doc commits on
+The build must come **after** all feature, fix, test, and doc commits on
 the branch — never rebuild mid-branch and then continue adding changes on top.
 
 Never merge to `main` without both artifacts present and up to date.
@@ -241,16 +240,31 @@ The release flow has multiple discrete steps. **Each step requires its own expli
 
 Typical release flow (each line needs separate approval):
 
-1. Rebuild both IDE artifacts and commit as `chore: rebuild artifacts for vX.Y.Z` — **this must be the last commit on the branch before merging**
-2. Rebuild the OpenCode zip: `node scripts/package.js` (run from `opencode-codotchi/`) and commit as `chore: rebuild opencode-codotchi zip for vX.Y.Z`
+1. Rebuild both IDE artifacts locally (they are gitignored, so there is nothing to commit; `claude-codotchi/dist/` is the exception and is still committed when it changes)
+2. Rebuild the OpenCode zip locally: `node scripts/package.js` (run from `opencode-codotchi/`)
 3. **Ask the user** to confirm before reinstalling the OpenCode plugin locally: `node bin/install.js --install` (run from `opencode-codotchi/`) — **never run without explicit user confirmation**
-4. `git push origin <branch>` — push the feature branch
-5. `git checkout main && git merge <branch>` — merge to main
-6. `git push origin main` — push main
-7. `git tag vX.Y.Z` — create the version tag locally on main
+4. `git push -u origin <branch>` — push the feature branch (rebase it onto `origin/main` first if `main` has moved: `git fetch && git rebase origin/main`)
+5. `gh pr create --base main --head <branch>` — open the PR (title `vX.Y.Z: <summary>`; body ends with the attribution line)
+6. `gh pr merge <n> --rebase` (or `--squash`) — merge on GitHub once CI (`tests` workflow) is green. **Never `--merge`**: merge commits are rejected
+7. `git checkout main && git pull --ff-only` — bring local `main` up to date, then `git tag vX.Y.Z` — create the version tag locally on main
 8. `git push origin vX.Y.Z` — push the tag (bypasses the rule with a "Bypassed rule violations" warning — this is expected and the tag is created successfully)
-9. Copy artifacts to `releases/`, apply the 3-version rule, move older releases to `releases/old_releases/` — see `release-management` skill — commit and push
+9. Copy artifacts to `releases/`, apply the 3-version rule, move older releases to `releases/old_releases/` — see `release-management` skill (local only, never committed)
 10. Create GitHub release — publish release notes
+
+## `main` branch rules on GitHub
+
+`main` has three active rulesets (Settings → Rules → Rulesets):
+
+| Ruleset | Rules | Bypass |
+|---------|-------|--------|
+| `main: require PR` | changes must come through a pull request (0 approvals needed) | repository admins |
+| `main: protections` / `main: hard protections` | no deletion, **no force push**, **linear history required** | nobody |
+
+Consequences:
+
+- A merge commit can never reach `main` — not by `git push`, not by the GitHub "Create a merge commit" button. Keep branches linear (`git rebase origin/main`, never `git merge main` into a branch) and merge PRs with **rebase** or **squash**.
+- Force-pushing `main` is blocked for everyone. It is never needed: if local `main` has diverged (e.g. an old local merge), put the work on a branch, rebase it onto `origin/main`, open a PR, and after it merges run `git checkout main && git reset --hard origin/main` (ask the user first — it discards local-only commits).
+- Force-pushing a **feature branch** after a rebase is fine: `git push --force-with-lease origin <branch>`.
 
 ## Pushing a tag
 

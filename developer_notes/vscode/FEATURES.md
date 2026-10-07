@@ -5,6 +5,7 @@ Status legend:
 - `[x]` Implemented
 - `[~]` Partially implemented
 - `[ ]` Not yet implemented
+- `[-]` Won't do (triage 2026-09-30)
 - `[S]` Controlled by a VS Code setting (toggle on/off)
 
 ---
@@ -21,7 +22,7 @@ Status legend:
 | Weight       | 1–99   | `[x]`  | Shown in info line; passive -1/min decay; overweight/skinny thresholds affect happiness rate; upright sprites (classic, monkey, rooster, dragon) and snake stretch wider when overweight; all other quadrupeds show a tapered belly-sag (extra rows below body, legs shift down) instead of width stretch |
 | Age (days)   | int    | `[x]`  | Displayed in info line |
 | Sprite type  | string | `[x]`  | Zodiac animal name shown in info line between stage and type (hidden for "classic") |
-| Care Score   | 0.0–1.0| `[~]`  | Computed continuously; drives evolution tier |
+| Care Score   | 0.0–1.0| `[x]`  | Computed continuously (`computeCareScore`, refreshed in `withDerivedFields`); drives evolution tier; not shown in the UI |
 | Generation   | int    | `[ ]`  | Increments each time offspring hatches; displayed in info line (original Tamagotchi feature) |
 
 ---
@@ -54,10 +55,10 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Care-score-based evolution tiers (best / mid / low) | `[x]` | |
 | Distinct character names per type × stage × tier | `[x]` | |
 | Visual difference between character variants | `[x]` | 14 zodiac pixel-art grids via sprites.js |
-| Tamagotchi-style sprite redesign | `[~]` | Redesigned (v1.4.0): rabbit, pig, sheep, dog — Redesigned (v1.6.0): monkey — Redesigned (v1.7.0): rooster — Redesigned (v1.8.0): dragon (Chinese imperial, floating, 5-coil serpentine body, gold pearl) — Redesigned (v1.9.0): cat (Tamagotchi-style generic house cat, pointy ears, whiskers, upward-curling tail, tabby stripes teen+) — Redesigned (v1.10.0): rat (low-slung elongated body, small round ears none on baby, pointed snout, whiskers teen+, long thin diagonal tail) — Redesigned (v1.11.0): horse (arched neck, diagonal mane cascade, long muzzle, flowing tail, tapered body, colour-3 hooves) — Remaining: ox, tiger |
+| Tamagotchi-style sprite redesign | `[x]` | Redesigned (v1.4.0): rabbit, pig, sheep, dog — Redesigned (v1.6.0): monkey — Redesigned (v1.7.0): rooster — Redesigned (v1.8.0): dragon (Chinese imperial, floating, 5-coil serpentine body, gold pearl) — Redesigned (v1.9.0): cat (Tamagotchi-style generic house cat, pointy ears, whiskers, upward-curling tail, tabby stripes teen+) — Redesigned (v1.10.0): rat (low-slung elongated body, small round ears none on baby, pointed snout, whiskers teen+, long thin diagonal tail) — Redesigned (v1.11.0): horse (arched neck, diagonal mane cascade, long muzzle, flowing tail, tapered body, colour-3 hooves) — Tiger redesigned later; ox never redesigned. Ox, tiger and the other zodiac sprites have since been archived (`media/archived_sprites/`). New art for them is tracked under bulk sprite upload (see `developer_notes/FEATURES_SEPTEMBER_2026.md` §2.2) |
 | In-IDE sprite preview gallery | `[x]` | `codotchi.openSpritePreview` (dev mode) — uses real `renderSpriteGrid()` with mood/color/weight/facing/animate controls |
-| Evolution notification in event log | `[~]` | Event flag exists; no fanfare animation |
-| Egg-hatch animation | `[ ]` | Wiggle before first evolution |
+| Evolution notification in event log | `[x]` | `evolved_to_*` event queues the `evolved` reaction (scale 1.0→1.3→1.0 with gold flash, 900 ms); no sound |
+| Egg-hatch animation | `[x]` | v2.22.0: the rocking widens 5°→12° as `dayTimer` nears the hatch threshold, with a faster wobble from 50% and shake bursts from 80%; cracks at 50% and 80%; `hatched` burst reaction on `evolved_to_baby` |
 
 ### 2.3 Pet Types
 
@@ -84,31 +85,38 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Medicine    | Cures sickness after 3 doses (no health boost)   | —                                        | `[x]`  |
 | Praise      | Discipline +10                                   | —                                        | `[x]`  |
 | Scold       | Discipline +10                                   | —                                        | `[x]`  |
-| Light off   | Force sleep early (manual bedtime)               | —                                        | `[ ]`  |
+| Light off   | Force sleep early (manual bedtime)               | —                                        | `[x]`  |
 
 ### 3.1 Attention Calls
 
-The pet fires IDE notifications demanding care, with a **2-minute active
-(non-idle) response window**. Idle time does NOT count toward the timer.
+The pet fires IDE notifications demanding care, with a **1-minute active
+(non-idle) response window** (the random calls use the configurable
+`codotchi.attentionCallExpiry` window instead). Idle time does NOT count toward the timer.
 
 | Trigger                                            | Attention Type    | Correct Response        | Expiry penalty                         | Status |
 |----------------------------------------------------|-------------------|-------------------------|----------------------------------------|--------|
 | Hunger < 25                                        | `hunger`          | Feed meal or snack      | Hunger −10                             | `[x]`  |
 | Happiness < 40                                     | `unhappiness`     | Play or praise          | Happiness −10                          | `[x]`  |
-| Poop present (log-chance, rises with uncleaned ticks)| `poop`          | Clean                   | Becomes sick                           | `[x]`  |
+| Poop present (log-chance, rises with uncleaned ticks; not while idle)| `poop`          | Clean                   | Care mistake; sick only if poops ≥ 5   | `[x]`  |
 | Sick                                               | `sick`            | Medicine                | Health −10                             | `[x]`  |
 | Energy < 20                                        | `low_energy`      | Sleep                   | Happiness −10                          | `[x]`  |
 | Health < 50                                        | `critical_health` | Feed meal or snack      | Health −10, Happiness −10              | `[x]`  |
 | Random misbehaviour (log-chance, child+)           | `misbehaviour`    | Scold                   | Health −10 + careMistakes/lifetimeCareMistakes +1 | `[x]`  |
 | Random gift (log-chance)                           | `gift`            | Praise (+happiness +15) | Happiness −5 + careMistakes/lifetimeCareMistakes +1 | `[x]`  |
+| Random craving (log-chance, any hunger; not while idle/asleep/sick/full) | `craving` | The craved food: meal (Feed) or snack (Snack). Characters with `snackCravings` name the snack (Tim: a tea; Stu: a pint or some salmon, picked per craving by `cravingItemFor`) | Health −10 | `[x]`  |
+| Random "play with me" (log-chance; energy ≥ 25, not sick) | `play`    | Play (any mini-game)    | Health −10                             | `[x]`  |
+| Random "pat me" (log-chance; energy ≥ 20)         | `pat`             | Pat                     | Health −10                             | `[x]`  |
+| Every 30 active, awake minutes (`BREAK_CALL_INTERVAL_TICKS = 600`; deep idle restarts the timer; after need calls, before whims) | `break` | Praise (+happiness +15, pet takes a 5-minute break nap — `BREAK_NAP_TICKS = 100`; can't be woken early, every stat but energy frozen, still ages) | None — no stat penalty, no care mistake | `[x]`  |
 
 Notes:
-- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (2 min)
-- Post-answer cooldown: `ATTENTION_ANSWER_COOLDOWN_TICKS = 50` ticks (5 min)
-- Post-expiry cooldown: `ATTENTION_EXPIRY_COOLDOWN_TICKS = 20` ticks (2 min)
+- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (1 min) for need-based calls; poop, misbehaviour, gift, play, pat, craving and break use `config.attentionCallExpiryTicks` (Needy 80 / Standard 200 / Chilled 400 ticks = 4 / 10 / 20 min; v2.21.1). The chance counters for random calls only advance on active ticks, and misbehaviour / gift never fire while idle (BUGFIX-169)
+- Post-answer cooldown: `ATTENTION_ANSWER_COOLDOWN_TICKS = 100` ticks (5 min)
+- Post-expiry cooldown: `ATTENTION_EXPIRY_COOLDOWN_TICKS = 100` ticks (5 min)
+- Cooldowns only count down on active (non-idle) ticks. TS and Kotlin share the same values (BUG-S06 / BUGFIX-166)
+- Whim calls (craving, play, pat) come after every need-based call in the fire order, so a real need always wins. A craving asks for a meal once the pet has had 2+ snacks in a row or the snack caps are used up, so it never asks for a snack that would make the pet sick
 - Only one call active at a time; `poop` call can fire while sleeping
 - IDE notifications fire via `showWarningMessage` (VS Code) / `NotificationType.WARNING` (PyCharm)
-- "Open Gotchi" button on notification focuses the sidebar/tool window
+- "Open Codotchi" button on notification focuses the sidebar/tool window
 - Exception: when the pet is sick or losing health *while idle*, a separate "come back and rescue them" notification escalates to `showErrorMessage` (VS Code) / `NotificationType.ERROR` (PyCharm) and re-fires every 5 minutes while the condition persists, instead of firing once at warning level
 
 ---
@@ -122,6 +130,14 @@ same overlay. A non-game **Today's Token Cost** option is also available in the 
 it closes the overlay and fires a speech bubble above the pet showing today's cost, last-1h
 cost, and average tokens per message; applies the same energy/happiness cost as a Pat (−20
 energy, +10 happiness), but with no weight change and no `"patted"` event/reaction bubble.
+Since v2.24.0 both hosts send the bubble as `{type: "showBubble", text, kind: "usage"}`
+(`tokenCostBubbleMessage` in `vscode/src/tokenCostBubble.ts`, `tokenCostBubblePayload` in
+`TokenCostBubble.kt`). While that bubble shows, the pet holds a device from
+`window.spritePat.DEVICES`: a laptop for tim / stu / classic / dragon, a tablet for dog / sheep /
+kangaroo / roo, a phone for cat / snake and anything else. The screen shows three ticking bars. It slides
+out over `DEVICE_SLIDE_MS` (300 ms) and uses `bubbleAlpha()`, so it holds for `BUBBLE_HOLD_MS` (6 s)
+and fades over `BUBBLE_FADE_MS` (0.5 s) with the bubble. It is hidden while the pet sleeps.
+The overlay no longer has a "Play or Pat" title (the custom-character `mgTitle` field is gone).
 Which sources feed the bubble is controlled by `codotchi.tokenCostSources`
 (VS Code) / three checkboxes in Settings > Tools > Codotchi (PyCharm): any
 combination of `claudeCode`, `openCode` (both dollar-cost, from local usage
@@ -141,11 +157,14 @@ which minigame to play (or cancel).
 
 *The closest port of the original Tamagotchi direction game.*
 
-- Two doors are drawn on the canvas (or as styled `<div>` blocks).
+- Two pixel-art wooden doors are drawn on the `#mg-canvas` overlay (`minigameArt.drawDoors`, v2.22.2).
 - The pet hides behind one. A "ready" animation plays for 0.5 s.
 - A 3-second countdown is shown.
 - Player clicks **Left** or **Right** before time runs out.
 - The door opens to reveal the pet (correct door) or nothing (wrong door).
+  v2.22.2: the pet's door shows ajar for 150 ms, then opens on a pixel face in
+  the pet's palette; the other door fades and the chosen label turns green / red.
+  The countdown and ✓ / ✗ are bitmap glyphs above the doors.
  - **Win**: Happiness +5–15 (delta; net +20–30 including play baseline).
  - **Lose / timeout**: Happiness −5 (delta; net +10 including play baseline).
 - Rounds: 3 per session; best-of-3 determines overall win/lose sent to engine.
@@ -153,6 +172,8 @@ which minigame to play (or cancel).
   accessibility.
 
 Status: `[x]`
+
+### 4.2 Pattern Memory (Simon)
 
 *Tests attention and short-term memory.*
 
@@ -193,6 +214,9 @@ Status: `[ ]`
 - Player clicks **Higher** or **Lower** to predict whether the next number is
   greater or smaller.
 - 5 rounds per session.
+- v2.22.2: the number sits on a pixel-art scoreboard card (bitmap digits, fixed
+  width for 1–100). After a guess the border turns green / red, with an arrow
+  for the way the number went and a ✓ / ✗.
  - **Win** (≥ 4 correct): Happiness +10–20 (delta; net +25–35 including play baseline).
  - **Lose** (≤ 3 correct): Happiness −5 (delta; net +10 including play baseline).
 
@@ -224,6 +248,14 @@ Status: `[ ]`
 - **Win**: Happiness +0 (`MINIGAME_COIN_FLIP_WIN = 0`; net +15 including play baseline).
 - **Lose**: Happiness −10 (`MINIGAME_COIN_FLIP_LOSE = −10`; net +5 including play baseline).
 - Single round per play session.
+- **Stu plays Blackjack instead** (v2.27.1): one round against the dealer from a
+  shuffled 52-card deck, Hit / Stand, dealer hits to 17, a natural beats a
+  three-card 21. Win +10 (`MINIGAME_BLACKJACK_WIN`), push 0, lose −10. Cards are
+  drawn by `minigameArt.drawBlackjackTable`; the game id is `blackjack` and the
+  result can be `"push"`.
+- v2.22.2: a pixel-art coin (crown for heads, "T" for tails) tosses and spins
+  for about 0.8 s before landing on the result; reduced motion shows the result
+  straight away.
 
 Status: `[x]`
 
@@ -253,6 +285,9 @@ that fires when Play is pressed. Net totals reflect delta + baseline.
 | Higher or Lower | Lose | −5 | +10 | `MINIGAME_HL_LOSE_DELTA = -5` |
 | Coin Flip | Win | 0 | +15 | `MINIGAME_COIN_FLIP_WIN = 0` |
 | Coin Flip | Lose | −10 | +5 | `MINIGAME_COIN_FLIP_LOSE = -10` |
+| Blackjack (Stu) | Win | +10 | +25 | `MINIGAME_BLACKJACK_WIN = 10` |
+| Blackjack (Stu) | Push | 0 | +15 | `MINIGAME_BLACKJACK_PUSH = 0` |
+| Blackjack (Stu) | Lose | −10 | +5 | `MINIGAME_BLACKJACK_LOSE = -10` |
 | Pat | — | +10 (flat total) | +10 | `PAT_HAPPINESS_BOOST = 10` (no play baseline) |
 
 ---
@@ -272,7 +307,7 @@ footprint to make movement readable.
 | Change | Detail | Status |
 |--------|--------|--------|
 | Expand canvas to full sidebar width | Read `canvas.parentElement.clientWidth` on load and on window resize; set `canvas.width` dynamically | `[x]` |
-| Fixed stage height | Fixed at 160 px; canvas CSS height is dynamic (`height: auto`) so pixel buffer and display always match | `[x]` |
+| Stage height setting | `stageHeight` preset: Compact 150 / Normal 180 / Tall 210 / Extra tall 240 px (v2.22.1; was 180 / 240 / 320 / 400) (`stageHeightPx` in `vscode/src/stageHeight.ts`, `pycharm/.../StageHeight.kt`); canvas CSS height is dynamic (`height: auto`) so pixel buffer and display always match | `[S]` |
 | Sprite size unchanged | The drawn body size is still driven by stage scale; the extra space is used for movement | `[x]` |
 | Smooth sprite rendering (experimental) | `image-rendering: auto` on `#sprite-canvas` and `.sprite-container` — browser bilinear-interpolates on upscale instead of nearest-neighbour; reduces pixelation at larger sidebar widths | `[x]` |
 
@@ -340,22 +375,37 @@ hands control back.
 
 | Event string | Animation | Duration |
 |--------------|-----------|----------|
-| `fed_meal` / `fed_snack` | Quick hop: vy impulse upward, lands with a small squash | 500 ms |
+| `fed_meal` / `fed_snack` | Bob at the bowl: one bob for a snack, two for a meal | meal 1000 ms (v2.24.3), snack 500 ms |
 | `played` | Jump with 360° spin (canvas rotate transform) | 700 ms |
 | `fell_asleep` | Slow drift downward to bottom-centre, then stop | 600 ms |
 | `woke_up` | Stretch scale from 0.8→1.0 upward | 400 ms |
 | `scolded` | Recoil: dart left or right ~10 px, then return | 500 ms |
 | `praised` | Jump + brief yellow flash behind sprite | 600 ms |
 | `evolved` | Scale up from 1.0→1.3→1.0 with colour flash | 900 ms |
+| `hatched` (`evolved_to_baby`) | Baby grows 0.5→1.0 out of the egg; shell halves fly apart; gold sparkles | 900 ms |
 | `poop_appeared` | Pet briefly faces the poop position, then looks away | 700 ms |
 | `became_sick` | Fast shake: ±4 px random horizontal jitter | 600 ms |
 | `healed` | Brief green colour overlay fading out | 500 ms |
-| `died` | Slow float upward off the top of the canvas | 1200 ms |
+| `died` | Floats up 40 px and fades out under a gold halo; the dead screen appears when it ends (skipped with reduced motion) | 1200 ms |
+| `patted` | Per-pet motion from `window.spritePat.MOTION` (`sprites.js`), anchored at the feet: dog wag + two hops, cat arch, sheep fleece puff, snake coil + sway, kangaroo/roo two hops, dragon loop, classic double squish (unknown types use classic). A sleeved hand pats the head twice; hearts for every pet, "prr" for the cat, smoke for the dragon (`patParticles`, cap 24). Added v2.24.0. v2.27.1: Tim jogs a lap of the stage (`spritePat.runLap`, dust behind his feet) and Stu opens a sticker binder or pack (`spritePat.drawProp`, sticker particles); neither gets the hand or hearts, both blush | 1400 ms (Tim 2600, Stu 2200) |
 
 Reactions are stored in a simple queue; if a new one arrives while one is
 playing, it is appended and plays immediately after.
 
-Status: `[x]`
+Status: `[x]` — `died` added in v2.22.0 (BUG-S05, BUGFIX-173)
+
+**Mood layer (v2.22.1).** Between reactions the pet shows its mood with
+props, a squash/stretch and particles drawn around the unchanged sprite
+(`window.spriteMood` in `sprites.js`). A reaction overrides the squash.
+
+| Mood | Shown when | Layer |
+|------|-----------|-------|
+| eating | `fed_meal` / `fed_snack` reaction, or a 0.6 s floor-snack chomp | Bowl for a meal (the pet stands still during `fed_meal`, v2.23.0) that empties over a 3-frame chomp; no plate for a snack; crumbs |
+| sleeping | `state.sleeping` | No props (blanket and pillow removed in v2.23.0, BUGFIX-178); squashed to 88 %; drifting z's |
+| happy | `state.mood === "happy"` | Nothing most of the time; a ~1 s burst every ~30 s (first after ~20 s): two 4 % stretch pulses and 2–4 sparkles |
+| sad | `state.mood === "sad"` | Steady 95 % droop; a ~1.5 s burst of 3 tears from the head side every ~30 s (first after ~10 s) |
+
+Neutral and sick have no layer. The dragon hovers, so it gets no bowl.
 
 ### 5.7 Direction Flip (Sprite Mirroring)
 
@@ -433,7 +483,7 @@ Features that deepen the existing care actions.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Manual "Lights Off" button to put pet to sleep early | `[ ]` | |
+| Manual "Lights Off" button to put pet to sleep early | `[x]` | Covered by the Sleep button: `sleep()` has no energy or time gate. A separate Lights Off control with canvas darkening is not built |
 | Auto-wake after energy reaches 100 | `[x]` | Implemented in BUGFIX-003; snack count resets on auto-wake |
 | `[S]` `gotchi.autoWake` (default true) — auto-wake when energy full | `[ ]` | |
 | Sleep schedule: pet refuses to sleep if recently slept | `[ ]` | |
@@ -451,9 +501,9 @@ Features that deepen the existing care actions.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Medicine doses remaining shown on button | `[ ]` | |
-| Disable Feed/Play while sick | `[ ]` | Engine enforces; no UI feedback |
-| Sick animation (canvas shake or flicker) | `[ ]` | Superseded by section 5.6 `became_sick` reaction |
+| Medicine doses remaining shown on button | `[x]` | `#medicine-left` badge on the Medicine button, shown only while sick (3 − `medicineDosesGiven`) — v2.26.0 |
+| Disable Feed/Play while sick | `[x]` | v2.26.0 (BUG-S04): `feedMeal` / `startSnack` / `play` return `meal_refused_sick` / `snack_refused_sick` / `play_refused_sick`; Feed, Snack and Play are greyed out in the webview (so Pat and Token Cost in the Play menu wait too); terminal hosts print a "too sick" message |
+| Sick animation (canvas shake or flicker) | `[x]` | `became_sick` reaction, constant tremor at 0.05× speed, red "+" indicator |
 
 ---
 
@@ -472,11 +522,12 @@ Features that deepen the existing care actions.
 
 All events are displayed using the pet's name and human-readable sentences instead of raw event codes.
 
-Health-loss events (`sickness_damage`, `starvation_damage`, `unhappiness_damage`,
-`exhaustion_damage`) fire every tick while the underlying condition persists.
-Instead of inserting a new log line each tick, a repeat of the same event
-updates the existing line in place with a `(×N)` counter, so the 20-entry log
-doesn't get flooded with identical entries.
+When the same event fires several times in a row (health-loss ticks like
+`sickness_damage`, and repeated actions like patting, snacks or medicine), the
+log shows it once with a `(×N)` counter instead of adding a new line each
+time, so the 20-entry log doesn't fill up with identical entries. The line
+keeps its first wording, so randomised messages don't change as the count
+goes up. The death-screen log groups repeats the same way.
 
 | Event | Log message | Status |
 |-------|-------------|--------|
@@ -505,6 +556,7 @@ Selected events cause the pet to speak via a canvas-drawn speech bubble that fol
 | Pet wakes up | `woke_up` / `auto_woke_up` event | `[x]` | Clears the persistent sleep bubble |
 | Scold (attention call) | `scolded` + `attention_call_answered_misbehaviour` | `[x]` | Random pick from 4 scold texts |
 | Praise (attention call) | `praised` + `attention_call_answered_gift` or `_answered_unhappiness` | `[x]` | Random pick from 4 praise texts |
+| Break reminder | `attention_call_break` | `[x]` | "30 minutes already! Remember to take a break — praise <name> …"; drawn above the z's / hearts |
 
 Bubble behaviour:
 - Text reuses `humaniseEvent()` strings for most triggers; inline random-pick arrays for sleep/praise/scold
@@ -540,20 +592,18 @@ is also slowed to 10% during idle.
 When the IDE has been idle for ≥ **10 minutes**, the pet enters **deep idle**.
 Aging stops entirely (`ageIncrement = 0`) during deep idle.
 
-**Idle safety floor:** whenever the pet is idle (regular *or* deep) and is
-either sick or actively taking health damage that tick, hunger, happiness,
-health, and energy are each prevented from decaying below `IDLE_STAT_FLOOR = 20`
-*for that tick*, applied after every other stat-decay/damage block in `tick()`
-so a same-tick damage source can never push a stat back below the floor. The
-floor is capped at the stat's value entering the tick (`min(previousStat, 20)`),
-so it only holds a stat that was already at/above 20 from decaying past it —
-a stat already below 20 (e.g. from earlier neglect) is left alone and never
-raised back up (BUGFIX-149). This guarantees a neglected pet survives long
-enough for the user to return and rescue it, rather than dying or bottoming
-out while nobody is there to respond. If the floor fully absorbs a tick's
-health loss (net health unchanged), that tick's `_damage` events are stripped
-so the sidebar/notification stop reporting "losing health" once health has
-flatlined at the floor (BUGFIX-150).
+**No health loss while idle (BUGFIX-165):** while the pet is idle (regular
+*or* deep), health never goes down. Starvation, unhappiness, exhaustion and
+sickness damage are skipped, and the senior old-age rolls don't run. A sick
+pet stays sick but takes no damage.
+
+**Idle safety floor:** applied after every other stat-decay/damage block in
+`tick()`. On every idle tick, health is clamped to its value entering the
+tick. When the pet is also sick or took damage, hunger, happiness and energy
+are held at `IDLE_STAT_FLOOR = 20`. That floor is capped at the stat's value
+entering the tick (`min(previousStat, 20)`), so a stat already below 20 is
+never raised back up (BUGFIX-149). `_damage` events are stripped from idle
+ticks (BUGFIX-150).
 
 Aging does **not** advance while the IDE is closed (`applyOfflineDecay`
 preserves `dayTimer`/`ageDays` exactly).
@@ -563,7 +613,7 @@ preserves `dayTimer`/`ageDays` exactly).
 | Idle after | `IDLE_THRESHOLD_SECONDS` | 60 s (1 min) |
 | Deep idle after | `IDLE_DEEP_THRESHOLD_SECONDS` | 600 s (10 min) |
 | Decay divisor | `IDLE_DECAY_TICK_DIVISOR` | 10 (1 pt/min vs 10 pt/min active) |
-| Stat floor (idle + sick/damage) | `IDLE_STAT_FLOOR` | 20 — hunger, happiness, health, energy |
+| Stat floor (idle + sick/damage) | `IDLE_STAT_FLOOR` | 20 — hunger, happiness, energy (health never drops while idle) |
 
 Activity is tracked via `onDidChangeTextEditorSelection`, `onDidChangeTextDocument`,
 `onDidChangeWindowState`, and `onDidChangeActiveTextEditor`. Any of these events
@@ -607,7 +657,7 @@ Status: `[x]`
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Sickness from overfeeding snacks (>3 consecutive) | `[x]` | |
-| Sickness from uncleaned poops (>3) | `[x]` | |
+| Sickness from uncleaned poops (≥ 5 for 20 active ticks) | `[x]` | `MAX_UNCLEANED_POOPS_BEFORE_SICK = 5`, `POOP_SICK_GRACE_TICKS = 20` (≈ 1 min); counter frozen while idle/asleep, reset by Clean (BUGFIX-165) |
 | Health reaches 0 → death | `[x]` | |
 | Hunger stays 0 for 3+ ticks → health damage | `[x]` | `starvation_damage` event; humanised in event log; does **not** trigger sickness — only poop/overfeeding do |
 | Unhappiness health drain | `[x]` | `unhappiness_damage` event; humanised in event log |
@@ -617,7 +667,7 @@ Status: `[x]`
 | Death screen with age/stage stats | `[x]` | |
 | Senior natural death (age-scaled chance after age ≥ 365d) | `[x]` | Roll fires once per day boundary; chance ramps from 0.1%–1.0%/day at day 365 (best/worst care) to 5%–10%/day at day 1825 (5 in-game years), capped at peak; `ageFactor = clamp((ageDays−365)/(1825−365),0,1)`; `minChance = lerp(0.001, 0.05, ageFactor)`; `maxChance = lerp(0.010, 0.10, ageFactor)`; `chance = lerp(minChance, maxChance, riskScore)`; riskScore = avg of happiness, weight, and discipline factors; fires `died_of_old_age` event with message "passed away of unforeseen natural causes due to old age." and IDE popup notification |
 | Senior age-related random sickness (after age ≥ 365d) | `[x]` | Fires `became_sick_old_age` event once per day boundary; chance = `3 × computeOldAgeDeathChance(state)` (`OLD_AGE_SICK_CHANCE_MULTIPLIER = 3`); skipped if already sick; message: "came down with an age-related illness." |
-| Peaceful death animation | `[ ]` | Covered by `died` reaction in section 5.6 |
+| Peaceful death animation | `[x]` | Covered by `died` reaction in section 5.6 (v2.22.0) |
 | `[S]` `gotchi.offlineDecayMaxFraction` (default 0.60) | `[ ]` | Cap offline stat loss; value hardcoded, expose as setting |
 
 ---
@@ -627,10 +677,10 @@ Status: `[x]`
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Mood emoji + name displayed | `[x]` | |
-| Click to focus sidebar | `[x]` | Uses `gotchiView.focus` command |
+| Click to focus sidebar | `[x]` | Uses `codotchi.openPanel` command |
 | Sprite name in status bar tooltip | `[x]` | `Sprite: <name>` shown for non-classic spriteTypes |
-| Attention-needed indicator (⚠) | `[ ]` | |
-| `[S]` `gotchi.statusBarEnabled` (default true) | `[ ]` | |
+| Attention-needed indicator (⚠) | `[x]` | v2.26.0: text gets a "⚠ " prefix while `activeAttentionCall` is set and the tooltip leads with what the pet wants; "⚠ Sick!" tooltip line kept. Formatting in `vscode/src/statusBarText.ts` / `pycharm/.../StatusBarText.kt` |
+| `[S]` `codotchi.statusBarEnabled` (default true) | `[x]` | v2.26.0: hides the VS Code item; blanks the PyCharm widget |
 
 ---
 
@@ -643,7 +693,7 @@ Status: `[x]`
 | Offline decay applied on load (capped at 60%) | `[x]` | |
 | Single-window ticker (multi-window isolation) | `[x]` | Only the focused window ticks; on focus-gain the window reloads globalState and resumes ticking; on focus-loss it saves and stops — **skipped when `aiMode` is on** (ticker always runs) |
 | Focus-gated ticker (PyCharm) | `[x]` | Ticker stops when IntelliJ loses focus (`applicationDeactivated`) and restarts on focus-gain (`applicationActivated`); state saved immediately on focus-loss — **skipped when `aiMode` is on** |
-| State migration when PetState schema changes | `[ ]` | Add a `schemaVersion` field |
+| State migration when PetState schema changes | `[~]` | `deserialiseState` fills in defaults so older saves load, and `migrateStateFolder` moves old save files; there is no `schemaVersion` field yet |
 | Export / import pet via JSON file | `[ ]` | For sharing or backup |
 | Cross-IDE shared state bridge | `[x]` | VS Code, PyCharm, and OpenCode plugin all read/write `~/.config/gotchi/state.json` (Windows: `%APPDATA%/gotchi/state.json`); on load the copy with the newer `savedAt` timestamp wins |
 | Manual refresh button (multi-window sync) | `[x]` | `$(refresh)` button in VS Code view/title bar and `AllIcons.Actions.Refresh` in PyCharm tool window title; calls `reloadFromDisk()` — reads shared file, applies offline decay, pushes to UI without saving (inactive window never overwrites active ticker) |
@@ -676,6 +726,8 @@ Status: `[x]`
 
 All settings live under the `gotchi.*` namespace in VS Code settings.
 
+Since v2.23.0 `contributes.configuration` is an array of two categories, each with an explicit `order` per setting: **Codotchi** (general → AI mode → display → idle → leaderboard) and **Developer** (`devModeEnabled`, `developerPasscode`, `devModeAgingMultiplier`, `devModeHealthFloor`), which shows as its own node in the Settings tree. PyCharm's settings page uses the same order and puts the four developer settings in a collapsed **Developer settings** section (`HideableDecorator`).
+
 | Setting | Type | Default | Description | Status |
 |---------|------|---------|-------------|--------|
 | `gotchi.fontSize` | enum | `normal` | Sidebar font size: `small` / `normal` / `large` | `[x]` |
@@ -684,6 +736,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.codingRewardThrottleSeconds` | number | `30` | Minimum seconds between coding rewards | `[ ]` |
 | `gotchi.autoWake` | boolean | `true` | Auto-wake pet when energy reaches 100 | `[ ]` |
 | `gotchi.enableAttentionCalls` | boolean | `true` | Enable/disable the entire attention-call mechanic | `[x]` |
+| `codotchi.osNotifications` | boolean | `true` | Desktop (OS) notification when hunger, happiness or energy hits 0 (`ZERO_ALERT_STATS`) or health < 25 (`HEALTH_ALERT_THRESHOLD`); repeats every 15 min (`CRITICAL_STAT_NOTIFY_REPEAT_MS`) while critical. VS Code: `src/criticalStatNotifier.ts` shells out to a PowerShell toast / osascript / notify-send. PyCharm: `CriticalStatNotifier.kt` runs the same commands via `ProcessBuilder`, plus a "Codotchi Critical Stats" balloon | `[x]` |
 | `gotchi.idleThresholdSeconds` | integer | `60` | Seconds of no activity before idle mode (min 10) | `[x]` |
 | `gotchi.idleDeepThresholdSeconds` | integer | `600` | Seconds of no activity before deep-idle mode (min 30) | `[x]` |
 | `gotchi.alwaysShowGamePicker` | boolean | `false` | Always show game select screen before playing | `[ ]` |
@@ -693,7 +746,7 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.typeSprintWordLength` | enum | `normal` | `short` (3–5 chars) / `normal` (3–8 chars) | `[ ]` |
 | `gotchi.typeSprintTimeoutMs` | number | `5000` | Milliseconds to type word in Type Sprint | `[ ]` |
 | `gotchi.offlineDecayMaxFraction` | number | `0.60` | Maximum fraction of stats lost while extension is off | `[ ]` |
-| `gotchi.statusBarEnabled` | boolean | `true` | Show pet in VS Code status bar | `[ ]` |
+| `codotchi.statusBarEnabled` | boolean | `true` | Show pet in the status bar (⚠ during attention calls) | `[x]` |
 | `gotchi.tickIntervalSeconds` | number | `6` | Game tick rate (lower = faster game time; min 1) | `[ ]` |
 | `gotchi.developerPasscode` | string | `""` | Developer passcode — also requires `gotchi.devModeEnabled = true` to activate dev mode | `[x]` |
 | `codotchi.characterPasscode` | string | `""` | Character passcode — enter the secret passcode to unlock a hidden character on new game | `[x]` |
@@ -706,7 +759,10 @@ All settings live under the `gotchi.*` namespace in VS Code settings.
 | `gotchi.idleResetOnTabSwitch` | boolean | `true` | Reset idle timer when the active editor tab changes. Suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnWindowFocus` | boolean | `true` | Reset idle timer when the VS Code window gains focus. Never suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnMouseMovement` | boolean | `true` | Reset idle timer on mouse movement in the sidebar panel (throttled to once/30 s). Never suppressed by `aiMode`. | `[x]` |
-| `codotchi.background` | enum | `ordered` | Canvas background mode: `plain` (none), `ordered` (auto season+time), `spring`, `summer`, `autumn`, `winter` | `[x]` |
+| `codotchi.backgroundStyle` | enum | `scenic` | `scenic` / `legacy`: legacy draws the pre-2.25 look via `backgroundArt.drawLegacyBackground` (`#243444` day base, flat tint, old buckets dawn 7–10 · morning 10–13 · afternoon 13–16 · sunset 16–19 · dusk 19–22 · night 22–7, ground strip and props); ignores opacity and animations (v2.25.4) | `[x]` |
+| `codotchi.backgroundOpacity` | enum | `medium` | `subtle` / `medium` / `vivid`: veil of the pet backdrop colour over the scene, [day, night] alpha `subtle` [0.45, 0.15] · `medium` [0.10, 0.05] · `vivid` none; small moving bits draw above it (v2.25.1) | `[x]` |
+| `codotchi.backgroundAnimations` | boolean | `true` | Off (or reduced motion) draws one still frame: no drifting clouds, twinkle, light cycling, petals / leaves, weather or critters (v2.25.1) | `[x]` |
+| `codotchi.background` | enum | `ordered` | Canvas background mode: `plain` (pet colour + dark ground strip), `ordered` (auto season+time), `spring`, `summer`, `autumn`, `winter` | `[x]` |
 | `codotchi.perWorkspacePet` | boolean | `false` | Give each workspace its own independent pet. State is stored in a workspace-specific file (`<hash12>/state.json`). On first enable the current shared pet is copied to the workspace file. | `[x]` |
 
 ---
@@ -732,7 +788,7 @@ These are lower-priority ideas that require design work before implementation. A
 | Feature | Status | Notes |
 |---------|--------|-------|
 | **— Tamagotchi parity gaps —** | | |
-| Potty training | `[ ]` | If player presses Clean during the pre-poop warning animation, pet uses a toilet instead of making a mess. Repeating this trains the pet to go automatically. Original Tamagotchi P1/P2 feature. |
+| Potty training | `[-]` | If player presses Clean during the pre-poop warning animation, pet uses a toilet instead of making a mess. Repeating this trains the pet to go automatically. Original Tamagotchi P1/P2 feature. |
 | Care mistakes counter | `[x]` | `careMistakes` (per-stage, resets on evolution) + `lifetimeCareMistakes` (never resets). Incremented on every expired attention call. Caps the achievable evolution tier; delays evolution threshold; feeds old-age risk factor. |
 | Secret / rare characters | `[x]` | `secret_best` (careMistakes=0 + careScore ≥ 0.95) and `secret_worst` (lifetimeCareMistakes ≥ 10) evolution tiers implemented; sprite assets alias existing `_a`/`_c` sprites as placeholders until dedicated art is drawn. |
 | Matchmaker NPC | `[ ]` | If the pet reaches senior age without marrying, a Matchmaker character arrives and automatically pairs it with a CPU partner. Prevents the marriage mechanic from being permanently skipped. Original Tamagotchi Connection feature. |
@@ -742,49 +798,34 @@ These are lower-priority ideas that require design work before implementation. A
 | Pause function | `[x]` | Explicitly suspend all game ticks (hunger/happiness/energy decay, aging) without closing the IDE. ⏸/▶ sidebar button; all care actions disabled while paused; offline decay and coding reward frozen; pause persisted in state.json. |
 | Sound effects & mute toggle | `[ ]` | Short 8-bit jingles on key events: hatch, evolve, death, sleep, wake, feed, play win/lose. A mute toggle (VS Code command + sidebar button) to silence all sounds. Respect `gotchi.reducedMotion` and the OS system mute. |
 | Visual night-mode on canvas | `[ ]` | Darken canvas background when pet is sleeping (already tracked in §6.2). |
-| Day / night cycle | `[x]` | Seasonal + time-of-day pixel-art backgrounds drawn on canvas via `codotchi.background` setting (`plain` / `ordered` / `spring` / `summer` / `autumn` / `winter`). `ordered` uses real calendar month + clock hour automatically. 6 time buckets: dawn 07–10, morning 10–13, afternoon 13–16, sunset 16–19, dusk 19–22, night 22–07. Sun moves right→left across the sky; sunset has an orange glow band; moon drawn for all seasons at night. |
+| Day / night cycle | `[x]` | Seasonal + time-of-day pixel-art backgrounds drawn on canvas by `vscode/media/backgroundArt.js` via the `codotchi.background` setting (`plain` / `ordered` / `spring` / `summer` / `autumn` / `winter`). `ordered` uses real calendar month + clock hour automatically. The sky is 8 opaque bands blended minute by minute between hourly keyframes (night → dawn 6:30 → pastel morning 8–10:30 → midday 12:30 → afternoon 14:30 → golden hour 16:00 → sunset 17:30 → dusk 19:00 → night 20:30; daytime horizons are kept off-white so the pet reads against them). `getTimeOfDay()` buckets: dawn 06–08, morning 08–12, afternoon 12–16, sunset 16–19, dusk 19–21, night 21–06. Pixel sun climbs and sets in an arc (right → left) between 06:00 and 18:30; pixel crescent moon and twinkling stars at night; scenery is shaded toward night ink as it gets dark (v2.25.1). |
+| Background art polish | `[x]` | v2.25.1. Trees at the canvas edges (one on canvases < 220 px wide). **Spring:** blossom trees with drifting petals, tulips / daisies, rare bird or butterflies, a shower 18% of 3-min windows then a 75 s rainbow, puddles. **Summer:** leafy apple trees, sunflowers, tall grass, picnic blanket, beach ball, fluffy clouds, rare bee by day / fireflies at dusk and night. **Autumn:** orange tree + half-bare tree, leaf-and-grass ground, falling leaves, pumpkins, toadstools, leaf pile. **Winter:** snowman, snowy bare tree, pine with fairy lights (on at dawn / morning / dusk / night, off 12–19), icicles, drifts, snow spells in 40% of 4-min windows. Morning is a soft pastel sky (`#a9cdea` → `#c4d4de`) instead of the old 50% tint over `#243444`. Sprite Preview has a background picker (season, hour, size, event) |
 | Generation counter display | `[ ]` | Display current generation number in the info line (requires generation stat from §1). |
 | **— Cosmetics & economy —** | | |
 | Gotchi Points currency | `[ ]` | Earned from minigame wins; spent in an in-game shop. Persisted in `PetState`. |
 | In-game shop | `[ ]` | Buy accessories, background skins, or extra colour palettes using Gotchi Points. |
-| Sprite animation frames | `[ ]` | Idle walk cycle, happy, sad, sleeping, eating — 2–4 frame flip-book per mood using the existing `renderSpriteGrid` pipeline. |
-| Redesign minigame art | `[ ]` | Replace placeholder minigame visuals (L/R doors, H/L number display) with pixel-art canvas graphics consistent with the pet sprite style. |
-| Egg-hatch animation | `[ ]` | Wiggle → crack → burst sequence before baby stage; fits naturally into the reaction queue (already in §2.2). |
+| Sprite animation frames | `[x]` | 2-frame leg walk cycle with bob. v2.22.1: happy, sad, sleeping and eating get a 2–3 frame flip-book mood layer (props, squash/stretch, particles) drawn around the unchanged sprite; see FEATURES_2.md §3.1 |
+| Redesign minigame art | `[x]` | v2.22.2: `vscode/media/minigameArt.js` draws the Left / Right doors, the Higher or Lower number card, a spinning Coin Flip coin and a 3×5 bitmap font on the `#mg-canvas` overlay (was `#lr-canvas`), whole-pixel `fillRect` like the mood layer. See §4.1, §4.4, §4.6 |
+| Egg-hatch animation | `[x]` | Wiggle → crack → burst sequence before baby stage (v2.22.0; see §2.2). |
 | Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |
 | Kangaroo character | `[x]` | Web-image-derived pixel-art sprite type (baby through senior stages) in the existing `sprites.js` pipeline; included in random hatch rotation and unlockable with character passcode `straya`. |
 | **— Platform & social —** | | |
-| Multiple simultaneous pets | `[ ]` | Tabbed or scrollable sidebar; pets can interact with each other. |
+| Multiple simultaneous pets | `[ ]` | Tabbed or scrollable sidebar; pets can interact with each other. Expanded (multi-pet, visiting and emoting with other people's pets): see `developer_notes/FEATURES_SEPTEMBER_2026.md` §2.4 |
 | New pet types via extension pack | `[ ]` | Contribution point so third-party packs can add sprite types. |
-| Leaderboard | `[x]` | GitHub Pages leaderboard at `https://dylscoop.github.io/codotchi/leaderboard/`. Submit via VS Code (GitHub OAuth → issue POST) or PyCharm (pre-filled issue URL). Auto-refreshes every hour in the browser (localStorage opt-out). One-time IDE death notification (VS Code setting `codotchi.leaderboard.autoRefresh`; PyCharm via `PropertiesComponent`). Admin delete via `workflow_dispatch` in `.github/workflows/delete-leaderboard-score.yml`. Live rank indicator: "Rank #X of Y" shown in VS Code sidebar, PyCharm tool window, Claude Code statusline, and OpenCode while pet is alive (5-min cache); rank pool combines `scores.json` + fresh `live.json` entries (<48h). "View Leaderboard" link on game screen while pet is alive. Subscribe toggle above Menu link pushes hourly live progress to `leaderboard/live.json` via `leaderboard-live` GitHub issue (VS Code and PyCharm via PasswordSafe PAT). All-time leaderboard tab shows live pets inline with "live" badge and "last seen" time; stale threshold 48h. Manual death submission requires typing the pet's name to confirm (blocks automated API submissions). Server validates: stage-age consistency (bounds from `EVOLUTION_DAY_THRESHOLDS` + 9-day care-mistake tolerance), timestamp sanity (future or >3yr-old timestamps rejected), physics floor. Ranked by stage descending (senior → egg) then ageDays descending; live ages shown as-submitted (no extrapolation). |
+| Leaderboard | `[x]` | GitHub Pages leaderboard at `https://dylscoop.github.io/codotchi/leaderboard/`. Submit via VS Code (GitHub OAuth → issue POST) or PyCharm (pre-filled issue URL). Auto-refreshes every hour in the browser (localStorage opt-out). One-time IDE death notification (VS Code setting `codotchi.leaderboard.autoRefresh`; PyCharm via `PropertiesComponent`). Admin delete via `workflow_dispatch` in `.github/workflows/delete-leaderboard-score.yml`. Live rank indicator: "Rank #X of Y" shown in VS Code sidebar, PyCharm tool window, Claude Code statusline, and OpenCode while pet is alive (5-min cache); rank pool combines `scores.json` + fresh `live.json` entries (<48h), ranked like the page (stage then stored ageDays) with the pet's own live entry excluded by `spawnedAt` (v2.26.3, BUGFIX-191). "View Leaderboard" link on game screen while pet is alive. Subscribe toggle above Menu link pushes hourly live progress to `leaderboard/live.json` via `leaderboard-live` GitHub issue (VS Code and PyCharm via PasswordSafe PAT). All-time leaderboard tab shows live pets inline with "live" badge and "last seen" time; stale threshold 48h. Manual death submission requires typing the pet's name to confirm (blocks automated API submissions). Server validates: stage-age consistency (bounds from `EVOLUTION_DAY_THRESHOLDS` + 9-day care-mistake tolerance), timestamp sanity (future or >3yr-old timestamps rejected), physics floor. Ranked by stage descending (senior → egg) then ageDays descending; live ages shown as-submitted (no extrapolation). |
 | Export / import pet via JSON | `[ ]` | Already tracked in §11; listed here for visibility. Allows sharing or backup of a pet. |
-| State schema versioning | `[ ]` | Already tracked in §11; listed here for visibility. Add `schemaVersion` field to `PetState` for safe migrations. |
-| Language packs | `[ ]` | Localise all UI strings into regional language variants; initial packs: Australian English, Scottish English. Community-contributed packs loadable at runtime. |
+| State schema versioning | `[~]` | Already tracked in §11; listed here for visibility. Defaults fill-in migration exists; still need a `schemaVersion` field on `PetState` for safe migrations. |
+| Language packs | `[ ]` | Localise all UI strings into regional language variants; initial packs: Australian English, Scottish English. Community-contributed packs loadable at runtime. Full design and sample phrases: see `developer_notes/FEATURES_SEPTEMBER_2026.md` §2.3 |
 
 ---
 
 ## 15. Suggested Implementation Order
 
-1. **Stage area resize** — widen canvas to sidebar width; sets up room for movement (section 5.1)
-2. **Animation loop** — replace one-shot draw with rAF loop; reduced-motion fallback (section 5.2)
-3. **Idle wandering** — random drift + boundary bounce + direction flip (sections 5.3, 5.5, 5.7)
-4. **Mood locomotion** — speed and pattern vary by mood/state (section 5.4)
-5. **Reaction animations** — event-driven one-shots; queue architecture (section 5.6)
-6. **Weight in UI** — low effort; value already in state (`weight` field)
-7. **Overfeeding feedback** — disable Feed Meal at max; snack warning text
-8. **Minigame overlay architecture** — generic overlay + game-select screen
-9. **Left / Right minigame** — simplest interactive game; validates overlay pattern
-10. **Higher or Lower minigame** — pure JS, no canvas required
-11. **Pattern Memory (Simon)** — button flash timing; most polished feel
-12. **Catch the Bug** — canvas animation; most visually engaging
-13. **Type Sprint** — keyboard-focused; unique to a code editor context
-14. **Attention calls** — poll state each tick; surface in status bar + event log
-15. **Sleep/wake UX polish** — Lights Off button, auto-wake, visual night mode
-16. **Settings wiring** — expose remaining `gotchi.*` settings in `package.json`
-17. **Coding activity streaks** — build on existing file-save listener
+Superseded by the 2026-09-30 triage: see `developer_notes/FEATURES_SEPTEMBER_2026.md` §4.
 
 ---
 
-## 12. Custom Characters
+## 16. Custom Characters
 
 Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharacters.ts` / `customCharacters.js` / `CustomCharacters.kt`.
 
@@ -795,14 +836,16 @@ Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharac
 | `defaultName` | `string` | — | Suggested name pre-filled on new-game screen |
 | `patActionLabel` | `string?` | `"Go for a Run"` | Label shown on the pat button |
 | `patBubbles` | `string[]?` | — | Bubble messages shown on pat |
+| `patCall` | `{call, answered, expired, status}?` | — | Replaces "wants a pat!" in the bubble, log, toast and status bar (Tim: a run; Stu: stickers) |
+| `snackCravings` | `string[]?` | — | What a snack craving asks for, picked at random per craving (webview entries are `{label, item}` so the floor snack matches) |
 | `snackType` | `string?` | `"candy"` | Controls snack pixel art drawn in sidebar |
 | `feedMealMaxPerCycle` | `number?` | `3` | Absolute meal cap per wake cycle |
 | `feedSnackMaxPerCycle` | `number?` | `3` | Absolute snack cap per wake cycle |
 | `feedHungerMult` | `number?` | `1.0` | Hunger gain multiplier per feed event |
 
-### 12.1 Registered custom characters
+### 16.1 Registered custom characters
 
 | Name | Passcode | spriteType | Feed cap | Notes |
 |------|----------|------------|----------|-------|
-| Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 10 snacks | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" pat |
+| Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 10 snacks | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" (sticker binder or pack) instead of a pat; craves a pint or salmon; Blackjack instead of Coin Flip |
 | Skippy | `straya` | `kangaroo` | default | Kangaroo sprite scraped from a web pixel-art reference; Bounce pat action |

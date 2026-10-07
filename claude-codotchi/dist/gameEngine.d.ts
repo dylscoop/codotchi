@@ -33,6 +33,8 @@ export declare const MAX_FLOOR_SNACKS: number;
 export declare const WEIGHT_SLIGHTLY_FAT_THRESHOLD: number;
 /** Weight above which the sprite is drawn 1.5× wider. */
 export declare const WEIGHT_OVERWEIGHT_THRESHOLD: number;
+/** Medicine doses needed to cure sickness. Feed, Snack and Play are refused until then. */
+export declare const MEDICINE_DOSES_TO_CURE: number;
 /** Minimum seconds between code-activity happiness boosts. */
 export declare const CODE_ACTIVITY_THROTTLE_SECONDS: number;
 /** Minimum seconds between commit happiness boosts (prevents rapid --amend abuse). */
@@ -62,14 +64,31 @@ export declare const ATTENTION_UNHAPPINESS_THRESHOLD: number;
 export declare const ATTENTION_ENERGY_THRESHOLD: number;
 /** Health stat at or below which a critical_health attention call fires. */
 export declare const ATTENTION_HEALTH_THRESHOLD: number;
-/** Cooldown ticks (50 = 5 min) applied to a call type after it is answered. */
+/**
+ * Cooldown ticks (100 × 3 s = 5 min) applied to a call type after it is answered.
+ * Cooldowns only count down on active (non-idle) ticks. Must match Constants.kt (BUG-S06).
+ */
 export declare const ATTENTION_ANSWER_COOLDOWN_TICKS: number;
-/** Cooldown ticks (20 = 2 min) applied to a call type after it expires unanswered. */
+/** Cooldown ticks (100 × 3 s = 5 min) applied to a call type after it expires unanswered. */
 export declare const ATTENTION_EXPIRY_COOLDOWN_TICKS: number;
 /** Stat penalty applied to the relevant stat when an attention call expires. */
 export declare const ATTENTION_EXPIRY_STAT_PENALTY: number;
 /** Happiness boost applied when a gift attention call is answered via praise(). */
 export declare const GIFT_PRAISE_HAPPINESS_BOOST: number;
+/**
+ * Active (non-idle, awake) ticks between "take a break" calls: 600 × 3 s = 30 min.
+ * The timer restarts when the call fires and whenever the user goes deep-idle
+ * (they have taken a break on their own).
+ */
+export declare const BREAK_CALL_INTERVAL_TICKS: number;
+/** Happiness boost when a break call is answered via praise() — same as a gift. */
+export declare const BREAK_PRAISE_HAPPINESS_BOOST: number;
+/**
+ * Length of the nap the pet takes when a break call is answered: 100 × 3 s = 5 min.
+ * While napping every stat except energy is frozen (energy regenerates), the pet
+ * keeps aging, and it can't be woken early — it wakes on its own when the timer runs out.
+ */
+export declare const BREAK_NAP_TICKS: number;
 /**
  * Number of care mistakes in a single stage that are tolerated before the
  * evolution tier begins to be penalised.  0–CARE_MISTAKE_BEST_MAX = "best"
@@ -131,6 +150,12 @@ export declare const MISBEHAVIOUR_BASE_CHANCE: number;
 export declare const MISBEHAVIOUR_MAX_CHANCE: number;
 export declare const GIFT_BASE_CHANCE: number;
 export declare const GIFT_MAX_CHANCE: number;
+export declare const PLAY_CALL_BASE_CHANCE: number;
+export declare const PLAY_CALL_MAX_CHANCE: number;
+export declare const PAT_CALL_BASE_CHANCE: number;
+export declare const PAT_CALL_MAX_CHANCE: number;
+export declare const CRAVING_CALL_BASE_CHANCE: number;
+export declare const CRAVING_CALL_MAX_CHANCE: number;
 /** Age in game days at which a senior pet may die of old age (365 game days = 1 in-game year). */
 export declare const SENIOR_NATURAL_DEATH_AGE_DAYS: number;
 /** Base per-day probability of a senior dying of old age when all stats are optimal. */
@@ -172,13 +197,13 @@ export interface GameConfig {
     attentionCallsEnabled: boolean;
     /**
      * Response-window in ticks for poop, misbehaviour, and gift calls.
-     * needy=20 (2 min), standard=50 (5 min), chilled=100 (10 min).
+     * needy=80 (4 min), standard=200 (10 min), chilled=400 (20 min).
      */
     attentionCallExpiryTicks: number;
     /**
      * Divisor applied to the base and max logChance probabilities for all
      * probabilistic call spawns (poop, misbehaviour, gift).
-     * fast=1.0, medium=1.5, slow=2.0.
+     * fast=3.0, medium=4.5, slow=6.0 (doubled in v2.24.3 to halve call frequency).
      */
     attentionCallRateDivisor: number;
     /**
@@ -204,8 +229,9 @@ export interface GameConfig {
      * When true, the pet can never die — the stat-decay death check and the
      * senior old-age death roll are both skipped, independent of devMode
      * (which also speeds up aging and is meant for testing, not permanent play).
+     * Optional so existing config literals don't need it; absent means false.
      */
-    immortal: boolean;
+    immortal?: boolean;
 }
 /** Sensible defaults used when no explicit config is provided. */
 export declare const DEFAULT_GAME_CONFIG: GameConfig;
@@ -223,7 +249,11 @@ export declare const STAGE_ORDER: readonly string[];
  * All valid attention call type identifiers.
  * A call of each type can be active at most once at any given time.
  */
-export type AttentionCallType = "hunger" | "unhappiness" | "poop" | "sick" | "low_energy" | "misbehaviour" | "gift" | "critical_health";
+export type AttentionCallType = "hunger" | "unhappiness" | "poop" | "sick" | "low_energy" | "misbehaviour" | "gift" | "critical_health" | "play" | "pat" | "craving" | "break";
+/** Every AttentionCallType, for code that needs to list them at runtime. */
+export declare const ATTENTION_CALL_TYPES: readonly AttentionCallType[];
+/** What a craving attention call asks for. */
+export type CravingFood = "meal" | "snack";
 /**
  * Full serialisable snapshot of the pet's state.
  *
@@ -311,11 +341,35 @@ export interface PetState {
     readonly lifetimeCareMistakes: number;
     /** Ticks the current poop(s) have remained uncleaned; resets to 0 when poops === 0. */
     readonly ticksWithUncleanedPoop: number;
+    /** Consecutive active ticks spent at or above MAX_UNCLEANED_POOPS_BEFORE_SICK; frozen while idle or asleep, reset by clean(). */
+    readonly poopOverLimitTicks: number;
     /** Ticks since the last misbehaviour attention call fired; used for log-chance formula. */
     readonly ticksSinceLastMisbehaviour: number;
     /** Ticks since the last gift attention call fired; used for log-chance formula. */
     readonly ticksSinceLastGift: number;
+    /** Ticks since the last play attention call fired; used for log-chance formula. */
+    readonly ticksSinceLastPlayCall: number;
+    /** Ticks since the last pat attention call fired; used for log-chance formula. */
+    readonly ticksSinceLastPatCall: number;
+    /** Ticks since the last craving attention call fired; used for log-chance formula. */
+    readonly ticksSinceLastCraving: number;
+    /** Active, awake ticks since the last "take a break" call (BREAK_CALL_INTERVAL_TICKS). */
+    readonly ticksSinceLastBreakCall: number;
+    /** Ticks left in the break nap (BREAK_NAP_TICKS); 0 when not on a break nap. */
+    readonly breakNapTicksRemaining: number;
+    /** What the active craving call asks for; null when no craving call is active. */
+    readonly cravingFood: CravingFood | null;
+    /** True once any tick has run with dev mode on — the pet can never go on the leaderboard. */
+    readonly devModeEverUsed: boolean;
+    /**
+     * Why this pet can't go on the leaderboard, apart from dev mode: "tampered" (the saved
+     * state failed its integrity seal) or "unverified" (loaded from a save written before
+     * seals existed). "" when eligible.
+     */
+    readonly leaderboardIneligible: LeaderboardIneligibleReason;
 }
+/** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
+export type LeaderboardIneligibleReason = "" | "tampered" | "unverified";
 /**
  * Summary of the best run ever recorded for this installation.
  * Compared by ageDays; ties broken by real-world elapsed time (longer wins).
@@ -414,22 +468,17 @@ export declare function computeCareScore(state: PetState): number;
  */
 export declare function careTierLabel(careScore: number): string;
 /**
- * All 12 Chinese zodiac animals. Accessible via character code only —
- * not part of the random rotation pool.
- */
-declare const ZODIAC_ANIMALS: readonly ["rat", "ox", "tiger", "rabbit", "dragon", "snake", "horse", "sheep", "monkey", "rooster", "dog", "pig"];
-/**
  * Animals in the random rotation pool at pet creation.
  * All entries have equal probability (1 / ROTATION_ANIMALS.length each).
- * Note: some rotation animals (dog, snake, sheep, rooster, tiger) are also
- * zodiac animals — they remain accessible via zodiac character codes too.
- * More animals will be added to this set in the future.
+ * Note: some rotation animals (dog, snake, sheep) are also zodiac animals —
+ * they remain accessible via zodiac character codes too.
  */
-declare const ROTATION_ANIMALS: readonly ["cat", "dog", "snake", "sheep", "classic", "rooster", "tiger", "kangaroo", "dragon"];
+export declare const ROTATION_ANIMALS: readonly ["cat", "dog", "snake", "sheep", "classic", "kangaroo", "dragon"];
 /**
- * All valid sprite type keys.
+ * All valid sprite type keys: the 12 Chinese zodiac animals (reachable via
+ * character code only), the rotation pool, and the custom characters.
  */
-export type SpriteType = typeof ZODIAC_ANIMALS[number] | typeof ROTATION_ANIMALS[number] | "tim" | "testsprite" | "roo" | "stu";
+export type SpriteType = "rat" | "ox" | "tiger" | "rabbit" | "dragon" | "snake" | "horse" | "sheep" | "monkey" | "rooster" | "dog" | "pig" | typeof ROTATION_ANIMALS[number] | "tim" | "testsprite" | "roo" | "stu";
 /**
  * Sample a random sprite type at pet creation.
  * Each entry in ROTATION_ANIMALS has equal probability.
@@ -506,7 +555,7 @@ export declare function startSnack(state: PetState, opts?: {
  *
  * Called when the webview detects the pet touching the snack floor item.
  * Increments `consecutiveSnacks` and — if the new count reaches the maximum
- * — triggers sickness. Refused (no stat effects) if `snacksOnFloor` is
+ * — triggers sickness. Ignored (no stat effects, no events, so no toast) if `snacksOnFloor` is
  * already 0 — guards against a stale/duplicate `snack_consumed` report (e.g.
  * a second open editor window sharing the same pet independently simulating
  * the same floor item) applying the effect more than once.
@@ -552,12 +601,22 @@ export declare function play(state: PetState, opts?: {
  */
 export declare function pat(state: PetState): PetState;
 /**
+ * Apply the stat cost of viewing the token cost overlay: same energy/happiness
+ * change as a pat, but no weight, events, or attention-call side effects — the
+ * cost bubble is shown separately, so this must not emit a "patted" event that
+ * would race it with a reaction bubble (BUGFIX-140).
+ *
+ * @param state - The current pet state.
+ * @returns A new PetState after the action.
+ */
+export declare function applyTokenCostView(state: PetState): PetState;
+/**
  * Return the happiness delta for a mini-game outcome.
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
  *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
- *               or "coin_flip" (Coin Flip).
- * @param result - "win" or "lose".
+ *               "coin_flip" (Coin Flip), or "blackjack" (Stu's one-round Blackjack).
+ * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
 export declare function happinessDeltaForMinigame(game: string, result: string): number;
@@ -566,11 +625,11 @@ export declare function happinessDeltaForMinigame(game: string, result: string):
  *
  * Also applies an additional weight loss for vigorous mini-games (BUGFIX-034):
  *   - left_right and higher_lower: −3 extra weight (total −6 with play() baseline)
- *   - coin_flip: no extra weight loss (total −3 from play() only)
+ *   - coin_flip and blackjack: no extra weight loss (total −3 from play() only)
  *
  * @param state - The current pet state.
- * @param game - "left_right", "higher_lower", "guess", or "memory".
- * @param result - "win" or "lose".
+ * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "guess", or "memory".
+ * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A new PetState after the happiness delta is applied.
  */
 export declare function applyMinigameResult(state: PetState, game: string, result: string): PetState;
@@ -622,6 +681,10 @@ export declare function scold(state: PetState): PetState;
  * Praise the pet to raise discipline.
  * If a "gift" attention call is active, it is answered and a happiness bonus
  * (GIFT_PRAISE_HAPPINESS_BOOST) is applied on top of the discipline boost.
+ * If a "break" call is active, it is answered with the same happiness bonus
+ * (BREAK_PRAISE_HAPPINESS_BOOST) and the pet takes a BREAK_NAP_TICKS (5-minute)
+ * nap while you rest: stats are frozen except energy, aging continues, and it
+ * can't be woken early — it wakes on its own.
  * If an "unhappiness" attention call is active, it is answered instead.
  *
  * @param state - The current pet state.
@@ -735,5 +798,4 @@ export declare function serialiseState(state: PetState): Record<string, unknown>
  * @returns A fully typed PetState.
  */
 export declare function deserialiseState(data: Record<string, unknown>): PetState;
-export {};
 //# sourceMappingURL=gameEngine.d.ts.map

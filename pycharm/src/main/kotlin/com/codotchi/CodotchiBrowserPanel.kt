@@ -106,7 +106,7 @@ class CodotchiBrowserPanel(
      * Push a full state snapshot + mealsGivenThisCycle + highScore + devMode to the webview.
      * Must be called on the EDT (JBCefBrowser.executeJavaScript is EDT-safe).
      */
-    fun postState(state: PetState, mealsGivenThisCycle: Int, highScore: HighScore?, devMode: Boolean, unlockedCharacter: String? = null, defaultPetName: String = "Codotchi", liveRank: Int? = null, liveTotalScores: Int? = null, liveSubscribed: Boolean = false, liveLastPushedAt: Long? = null, leaderboardGithubUsername: String? = null) {
+    fun postState(state: PetState, mealsGivenThisCycle: Int, highScore: HighScore?, devMode: Boolean, unlockedCharacter: String? = null, defaultPetName: String = "Codotchi", liveRank: Int? = null, liveTotalScores: Int? = null, liveSubscribed: Boolean = false, liveLastPushedAt: Long? = null, leaderboardGithubUsername: String? = null, leaderboardAuthExpired: Boolean = false, leaderboardBlockedReason: String? = null) {
         val stateJson     = gson.toJson(state)
         val highScoreJson = if (highScore != null) gson.toJson(highScore) else "null"
         val unlockedCharJson = if (unlockedCharacter != null) "\"$unlockedCharacter\"" else "null"
@@ -114,7 +114,7 @@ class CodotchiBrowserPanel(
         val liveTotalJson = if (liveTotalScores != null) liveTotalScores.toString() else "null"
         val liveLastPushedJson = if (liveLastPushedAt != null) liveLastPushedAt.toString() else "null"
         val lbUsernameJson = if (leaderboardGithubUsername != null) "\"${leaderboardGithubUsername.replace("\"", "\\\"")}\"" else "null"
-        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","leaderboardAvailable":true,"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson,"leaderboardGithubUsername":$lbUsernameJson}"""
+        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","cravingItem":${jsonStringOrNull(cravingItemFor(state))},"leaderboardAvailable":true,"leaderboardBlockedReason":${jsonStringOrNull(leaderboardBlockedReason)},"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson,"leaderboardGithubUsername":$lbUsernameJson,"leaderboardAuthExpired":$leaderboardAuthExpired}"""
         val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
     }
@@ -139,15 +139,21 @@ class CodotchiBrowserPanel(
         val settings      = ApplicationManager.getApplication().getService(CodotchiSettings::class.java)
         val fontSizeClass = "font-${settings?.fontSize ?: "normal"}"
         val textColor     = settings?.textColor ?: "#cccccc"
-        val stageHeight      = settings?.petStageHeight ?: 240
+        val stageHeight      = stageHeightPx(settings?.stageHeight)
         val reducedMotion    = settings?.reducedMotion ?: false
         val petSize          = settings?.petSize ?: "medium"
         val background       = settings?.background ?: "ordered"
+        val backgroundStyle      = settings?.backgroundStyle ?: "scenic"
+        val backgroundOpacity    = settings?.backgroundOpacity ?: "medium"
+        val backgroundAnimations = settings?.backgroundAnimations ?: true
 
         val cssText                  = loadResource("/webview/sidebar.css")
         val spriteConstantsText      = loadResource("/webview/spriteConstants.js")
         val customCharactersText     = loadResource("/webview/customCharacters.js")
+        val spritesGeneratedText     = loadResource("/webview/sprites.generated.js")
         val spritesText              = loadResource("/webview/sprites.js")
+        val minigameArtText          = loadResource("/webview/minigameArt.js")
+        val backgroundArtText        = loadResource("/webview/backgroundArt.js")
         val jsText              = loadResource("/webview/sidebar.js")
         var html        = loadResource("/webview/sidebar.html")
 
@@ -159,6 +165,9 @@ class CodotchiBrowserPanel(
         html = html.replace("{{reducedMotion}}", reducedMotion.toString())
         html = html.replace("{{petSize}}", petSize)
         html = html.replace("{{background}}", background)
+        html = html.replace("{{backgroundStyle}}", backgroundStyle)
+        html = html.replace("{{backgroundOpacity}}", backgroundOpacity)
+        html = html.replace("{{backgroundAnimations}}", backgroundAnimations.toString())
         html = html.replace("{{idleResetOnMouseMovement}}", "true")
 
         // Remove the VS Code Content-Security-Policy meta tag — PyCharm uses a native
@@ -196,7 +205,8 @@ class CodotchiBrowserPanel(
             $jsText
         """.trimIndent()
 
-        // Replace <script src="{{spriteConstantsUri}}"></script>, <script src="{{spritesUri}}"></script>,
+        // Replace <script src="{{spriteConstantsUri}}"></script>, <script src="{{spritesGeneratedUri}}"></script>,
+        // <script src="{{spritesUri}}"></script>,
         // and <script src="{{customCharactersUri}}"></script> with inlined scripts in the correct order.
         // constants must be defined before renderSpriteGrid is called.
         html = html.replace(
@@ -204,8 +214,20 @@ class CodotchiBrowserPanel(
             "<script>\n$spriteConstantsText\n</script>"
         )
         html = html.replace(
+            """<script src="{{spritesGeneratedUri}}"></script>""",
+            "<script>\n$spritesGeneratedText\n</script>"
+        )
+        html = html.replace(
             """<script src="{{spritesUri}}"></script>""",
             "<script>\n$spritesText\n</script>"
+        )
+        html = html.replace(
+            """<script src="{{minigameArtUri}}"></script>""",
+            "<script>\n$minigameArtText\n</script>"
+        )
+        html = html.replace(
+            """<script src="{{backgroundArtUri}}"></script>""",
+            "<script>\n$backgroundArtText\n</script>"
         )
 
         // Replace {{customCharactersUri}} placeholder (VS Code uses a URI; PyCharm inlines it here)

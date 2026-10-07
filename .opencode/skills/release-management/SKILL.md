@@ -5,6 +5,8 @@ license: MIT
 compatibility: opencode
 ---
 
+> **Artifacts are local only (since v2.21.3).** `releases/`, every `*/archive/` folder and all `*.vsix`, `*.zip` and `*.mcpb` files are gitignored. Use plain `mv`, never `git mv` / `git add`, and never commit them — they are only uploaded to GitHub Releases. Where this file says otherwise, this note wins; see `.claude/skills/` for the current rules.
+
 ## When to apply this skill
 
 Apply this skill at three specific moments:

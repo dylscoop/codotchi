@@ -53,7 +53,7 @@ async function main() {
   }
 
   const speech = aa.buildContextualSpeech
-    ? aa.buildContextualSpeech(state, 0, 0, 0, 0, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, hourlyCostUsd, messageCount)
+    ? aa.buildContextualSpeech(state, 0, 0, 0, 0, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, hourlyCostUsd, 0, messageCount, { costStyle: "hourlyRate" })
     : { message: `${state.name ?? "Codotchi"} is ready!` };
 
   const rawBubble = aa.buildSpeechBubble

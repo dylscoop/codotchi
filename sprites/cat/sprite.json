@@ -1,0 +1,14 @@
+{
+  "palette": {
+    "primary": "#222222",
+    "secondary": "#ffffff",
+    "accent": "#333333"
+  },
+  "background": "#1a1a1a",
+  "crop": false,
+  "anchor": "left",
+  "legRowStart": 99,
+  "inRotation": true,
+  "passcode": "blackcat",
+  "defaultName": "Codotchi"
+}

@@ -6,7 +6,7 @@ Custom characters are unlocked by entering a passcode in **Settings → Characte
 
 | spriteType | Passcode | Default name | Pat action | Special behaviour |
 |------------|----------|--------------|------------|-------------------|
-| `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message ("Tim wants a tea break!"); "Codotchi" (case-insensitive) name auto-replaces with "Timagotchi" |
+| `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message ("Timagotchi wants a tea break!"); "Codotchi" (case-insensitive) name auto-replaces with "Timagotchi" |
 | `kangaroo` | `straya` | Skippy | Bounce | Also in the random rotation pool |
 | `dog` | `shiba` | Shibagotchi | Pat | Imported Shiba dog sprite; passcode maps to the built-in dog sprite type |
 | `testsprite` | `pixel` | Pixel | Pat | Dev/test sprite; 700-column grid; single adult stage only |
@@ -14,8 +14,7 @@ Custom characters are unlocked by entering a passcode in **Settings → Characte
 
 Defined in `vscode/src/customCharacters.ts` (`CUSTOM_CHARACTERS` array). Mirrored to:
 - `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt`
-- `vscode/media/customCharacters.js` (webview runtime)
-- `pycharm/src/main/resources/webview/customCharacters.js` (webview runtime)
+- `vscode/media/customCharacters.js` (webview runtime, also used by PyCharm — copied at build time)
 
 ---
 
@@ -106,6 +105,14 @@ manual and does not require sleep/wake events to advance.
 Evolution is triggered in `checkStageProgression()` whenever
 `dayTimer >= EVOLUTION_DAY_THRESHOLDS[stage]`. The threshold is **cumulative**
 from birth, not relative to the start of the current stage.
+
+**Evolution requires an active (non-idle) tick.** `checkStageProgression()`
+is only invoked when `isIdle` is `false` — while idle or deep-idle, the
+pet's `dayTimer` keeps accumulating (slowed, per the Aging rates section
+below) but the stage-promotion check itself is skipped for that tick. A
+threshold reached while the user is away is never lost: the promotion
+fires on the next tick where the user is active again, so evolutions are
+always witnessed rather than happening silently in the background.
 
 ---
 
@@ -340,6 +347,8 @@ the codeling baseline. Per-type multipliers shorten the interval:
 Hunger, happiness, and **energy** are all skipped on 19 out of every 20 ticks
 (`ticksAlive % IDLE_DECAY_TICK_DIVISOR != 0`, `IDLE_DECAY_TICK_DIVISOR = 20`).
 Aging is also slowed by the same divisor.
+Stage evolution is also deferred (not skipped) during idle — see the
+Evolution System section above.
 A `"went_idle"` event is pushed once on the tick when the IDE transitions from
 active to idle, showing "IDE idle — decay and aging slowed." in the event log.
 
@@ -360,21 +369,31 @@ event log.
 In deep-idle mode:
 - `ageIncrement` is set to **0** — aging stops completely.
 
-**Idle safety floor (regular or deep idle):** whenever the pet is idle and is
-either sick or actively taking health damage that tick, hunger, happiness,
-health, *and* energy are each prevented from decaying below `IDLE_STAT_FLOOR = 20`
-for that tick. This is applied last in `tick()`, after every stat-decay and
-damage block, so a same-tick damage source can never push a stat back below
-the floor. The floor is capped at `min(previousStat, 20)` — the stat's value
-entering the tick — so a stat already below 20 from earlier neglect is never
-raised back up; it only stops that tick's decay from crossing below 20
-(BUGFIX-149). Unlike the earlier deep-idle-only floor, this now also engages
-during regular idle (≥ 1 minute) when the pet is sick/losing health, giving
-the user a real chance to return and rescue a neglected pet rather than
-finding it dead or bottomed out. When the floor fully absorbs a tick's health
-loss (net health unchanged), that tick's `_damage` events are stripped so idle
-logging/notifications stop reporting the pet as "losing health" once it has
-flatlined at the floor (BUGFIX-150).
+**No health loss while idle (regular or deep idle, BUG-S02 / BUGFIX-165):**
+starvation, unhappiness, exhaustion and sickness damage are all skipped while
+`isIdle || isDeepIdle`. Hunger and happiness still decay (slowed, see above)
+so there is something to care for on return, but health never falls below its
+value entering the tick. A pet that is already sick stays sick (no auto-cure)
+but takes no damage. The following are also suspended while idle:
+
+- the senior old-age death and sickness rolls — a day boundary crossed while
+  idle simply does not roll, so a senior can't die while the user is away
+- poop spawning, poop sickness and the poop attention call
+- attention-call expiry timers (they only advance on active ticks)
+
+**Idle safety floor:** applied last in `tick()`, after every stat-decay and
+damage block. Health is clamped to `max(health, previousHealth)`. When the pet
+is also sick or took damage that tick, hunger, happiness and energy are each
+prevented from decaying below `IDLE_STAT_FLOOR = 20`. That floor is capped at
+`min(previousStat, 20)`, so a stat already below 20 from earlier neglect is
+never raised back up (BUGFIX-149). Any `_damage` events are stripped from idle
+ticks so logging/notifications never report the pet as losing health while
+the user is away (BUGFIX-150).
+
+**Claude Code replays:** `statusline.mjs` and `hook-stop.mjs` replay elapsed
+ticks on the shared IDE pet. They pass the IDE's own last-known idle flags
+(the raw `wasIdle` / `wasDeepIdle` in the anchored state file, via
+`idleFlagsForFile()` in `state.mjs`) so a replay can't bypass idle protection.
 
 ### Offline decay (IDE fully closed)
 
@@ -383,8 +402,8 @@ Capped at **`OFFLINE_DECAY_MAX_FRACTION = 0.60`** of the current value —
 regardless of how long the IDE was closed, no stat can lose more than 60%.
 
 **Aging does not advance while the IDE is closed.** `applyOfflineDecay()`
-preserves `dayTimer` and `ageDays` exactly as saved. Only hunger, happiness,
-energy, and health are subject to offline decay.
+preserves `dayTimer` and `ageDays` exactly as saved. Only hunger and
+happiness are subject to offline decay; energy and health are left as saved.
 
 ### Sleep decay
 
@@ -467,6 +486,7 @@ is registered in `initialize()` at `GotchiPlugin.kt:60-63` and sets
 |-----------|---------|-----------|-------|
 | Auto-wake | `energy >= STAT_MAX (100)` on any tick | `"auto_woke_up"` | `gameEngine.ts:726-729` / `GameEngine.kt:194-197` |
 | Manual wake | User clicks "Wake" button → `"wake"` command | `"woke_up"` | `sidebarProvider.ts:223-228` / `GotchiPlugin.kt:158-161` |
+| Break nap over | `breakNapTicksRemaining` reaches 0 in `tickBreakNap` (manual wake is refused with `"break_nap_no_wake"` until then) | `"break_nap_over"` | `gameEngine.ts` / `GameEngine.kt` `tickBreakNap`, `wake` |
 
 On auto-wake, `snacksGivenThisCycle` is reset to 0. On manual wake it is not.
 `mealsGivenThisCycle` is reset when the pet *falls* asleep, not on wake.
@@ -497,6 +517,23 @@ rate). `nextPoopIntervalTicks` is stored in `PetState` so it is:
 
 Old save files that lack `nextPoopIntervalTicks` fall back to a fresh sample
 at load time (see `deserialiseState`).
+
+### Poop sickness
+
+- **Limit:** `MAX_UNCLEANED_POOPS_BEFORE_SICK = 5` (was 3 before v2.20.17).
+- **Grace period:** the pet only gets sick after spending
+  `POOP_SICK_GRACE_TICKS = 20` consecutive active ticks (≈ 1 minute) at or
+  above the limit. The count lives in `PetState.poopOverLimitTicks`:
+  - it goes up on every awake, non-idle tick at the limit, and resets to 0 on
+    any awake, non-idle tick below the limit
+  - it is frozen (not reset) while idle, deep idle or asleep
+  - `clean()` sets it back to 0
+  - saves without the field load as 0
+- **Ignored poop call:** an expired `poop` attention call is a care mistake
+  (like every other expired call). It only makes the pet sick if the poop
+  count is already at the limit.
+- **No poop while idle:** poops don't spawn and the poop call doesn't fire
+  while the user is idle.
 
 ### Per-type summary
 
@@ -577,8 +614,7 @@ pixel-art grid to render. It is assigned once at new-game time via
 (`ZODIAC_ANIMALS`) are accessible only via character code. Old saves without a
 `spriteType` field default to `"classic"`.
 
-The 15 sprite grids live in `vscode/media/sprites.js` (mirrored to
-`pycharm/src/main/resources/webview/sprites.js`). Each grid is a 12-column ×
+The 15 sprite grids live in `vscode/media/sprites.js` (copied into the PyCharm plugin at build time). Each grid is a 12-column ×
 16-row pixel array per non-egg stage (baby, child, teen, adult, senior). The
 renderer is `window.renderSpriteGrid()`, called from `drawBody()` in
 `sidebar.js`.
@@ -639,6 +675,28 @@ STAGE_SCALES, STAGE_BODY_HEIGHT_MULTS, weightWidthMultiplier, getPalette)`
    that the old procedural renderer used.
 5. The egg stage is still drawn as an ellipse directly in `drawBody()` — the
    grid system only applies to non-egg stages.
+
+### Mood layer (v2.22.1)
+
+`sprites.js` exports `window.spriteMood`. Each frame, `animationLoop` in
+`sidebar.js` does the following:
+
+1. `current(state, reactionType, chomping)` picks the mood: `eating`,
+   `sleeping`, `happy` or `sad`. It returns `null` for neutral, sick and egg.
+2. `frame(mood, animTick)` gives the flip-book frame.
+3. `spawn` / `step` update the particle pool (at most 20), and `drawParticles`
+   draws it.
+4. `drawProps` draws the meal bowl before the body, so it sits behind the pet.
+   Snacks and every other mood draw no props. During `fed_meal` the movement
+   chain locks the pet in place, so the bowl doesn't slide.
+5. `scaleY(mood, frame)` is passed to `drawBodyWithReaction`, which squashes
+   the body around the feet when no reaction is playing.
+
+The sprite pixels are never changed. For real art,
+`DEFS[type][stage + "_" + mood]` (e.g. `adult_sleeping`) replaces the stage
+grid when it exists. The mood comes from `state.displayMood`, which the
+sidebar sets, or else from `state.mood`. The variant name is also part of the
+raster and sparse cache keys.
 
 ### spriteType assignment
 
@@ -779,7 +837,8 @@ removed for JCEF compatibility.
 
 ## Attention-Call Probability Formula
 
-Probabilistic attention calls (poop, misbehaviour, gift) use a **logarithmic
+Probabilistic attention calls (poop, misbehaviour, gift, and the whim calls
+craving, play and pat) use a **logarithmic
 probability function** — not a flat random chance — so that the longer the
 event has not fired, the higher the chance it fires on the next tick.
 
@@ -791,7 +850,10 @@ logChance(ticksSinceLast, base, max) = min(max, base × ln(ticksSinceLast + e))
 
 - `ticksSinceLast` — ticks since the event last fired (or since the counter was
   last reset).  For poop calls this is `ticksWithUncleanedPoop`; for misbehaviour
-  it is `ticksSinceLastMisbehaviour`; for gifts it is `ticksSinceLastGift`.
+  it is `ticksSinceLastMisbehaviour`; for gifts it is `ticksSinceLastGift`; for
+  the whim calls it is `ticksSinceLastCraving` / `ticksSinceLastPlayCall` /
+  `ticksSinceLastPatCall`. These counters rise every tick and reset only when
+  the call fires.
 - `base` — scaling factor (slope of the log curve).
 - `max` — hard cap on the probability.
 - Returns a probability in `[0, max]`.  Each tick a `Math.random()` / `Random.nextDouble()`
@@ -804,10 +866,16 @@ logChance(ticksSinceLast, base, max) = min(max, base × ln(ticksSinceLast + e))
 | Poop          | `POOP_CALL_BASE_CHANCE`    | 0.03   | `POOP_CALL_MAX_CHANCE`    | 0.12   |
 | Misbehaviour  | `MISBEHAVIOUR_BASE_CHANCE` | 0.005  | `MISBEHAVIOUR_MAX_CHANCE` | 0.08   |
 | Gift          | `GIFT_BASE_CHANCE`         | 0.002  | `GIFT_MAX_CHANCE`         | 0.05   |
+| Craving       | `CRAVING_CALL_BASE_CHANCE` | 0.003  | `CRAVING_CALL_MAX_CHANCE` | 0.04   |
+| Play          | `PLAY_CALL_BASE_CHANCE`    | 0.003  | `PLAY_CALL_MAX_CHANCE`    | 0.04   |
+| Pat           | `PAT_CALL_BASE_CHANCE`     | 0.004  | `PAT_CALL_MAX_CHANCE`     | 0.05   |
 
-Constants are defined in:
-- TypeScript: `vscode/src/gameEngine.ts` lines 183–189
-- Kotlin: `pycharm/src/main/kotlin/com/gotchi/engine/Constants.kt` lines 256–262
+Both base and max are divided by `config.attentionCallRateDivisor` (the
+`codotchi.attentionCallRate` setting: Fast 3.0, Medium 4.5, Slow 6.0 — doubled in v2.24.3).
+
+Constants are defined next to each other in:
+- TypeScript: `vscode/src/gameEngine.ts` (search `POOP_CALL_BASE_CHANCE`)
+- Kotlin: `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt`
 
 ### How the curve behaves (poop example, base=0.03, max=0.12)
 
@@ -819,12 +887,36 @@ rare events that gradually become more likely the longer nothing has happened.
 
 ### Where it fires
 
-- `gameEngine.ts:1029` / `GameEngine.kt:418` — poop call gate
-- `gameEngine.ts:1050` / `GameEngine.kt:439` — misbehaviour call gate
-- `gameEngine.ts:1063` / `GameEngine.kt:452` — gift call gate
+All call sites are in **Step 3** (the fire chain) of the attention-call section
+of `tick()`, wrapped by the `attentionCallsEnabled` guard. Only one call can be
+active at a time, and the chain is an if/else in this order:
 
-All three call sites are inside **Steps 1–3** of the attention-call section
-of `tick()`, wrapped (from v0.4.0 onwards) by the `attentionCallsEnabled` guard.
+1. `poop` (can fire while asleep; not while idle)
+2. need-based calls: `critical_health`, `sick`, `hunger`, `unhappiness`
+3. `misbehaviour`, then `low_energy`
+4. whim calls: `craving`, `play`, `pat`. These need the pet awake and the user
+   active; `play` needs energy ≥ `PLAY_ENERGY_COST` and no sickness, and `pat`
+   needs energy ≥ `PAT_ENERGY_COST`
+5. `gift`
+
+**Craving food:** `pickCravingFood()` picks `meal` or `snack`:
+
+- It asks for a meal once another snack would be risky or impossible: 2+
+  snacks in a row, `SNACK_MAX_PER_CYCLE` used up, or `MAX_FLOOR_SNACKS` on the
+  floor.
+- It asks for a snack when the pet is nearly full (hunger ≥ 90), since a meal
+  would be pointless.
+- Otherwise it's 50/50.
+- It doesn't fire at all when the pet is sick or full.
+
+The choice is stored in `PetState.cravingFood`. The fired event is
+`attention_call_craving_meal` / `attention_call_craving_snack`. Only the
+matching food answers the call: `feedMeal` for a meal, `startSnack` for a snack.
+
+**Cooldowns:** after a call is answered or expires, that type waits
+`ATTENTION_ANSWER_COOLDOWN_TICKS` / `ATTENTION_EXPIRY_COOLDOWN_TICKS` (both
+100 ticks = 5 min). Cooldowns only count down on active (non-idle) ticks,
+and TS and Kotlin share the same values (BUGFIX-166).
 
 ---
 
@@ -946,13 +1038,26 @@ Queued by the tick loop and prepended to the next command output.
 | `died_of_old_age` | `"I lived a full life. Thank you for everything."` |
 | `evolved_to_baby` / `_child` / `_teen` / `_adult` / `_senior` | `"I evolved into a {stageName}!"` |
 | `attention_call_hunger` | `"I'm so hungry... please feed me!"` |
-| `attention_call_unhappiness` | `"Gotchi wants to play"` |
+| `attention_call_unhappiness` | `"I want to play"` |
 | `attention_call_sick` | `"I don't feel well. I need medicine!"` |
 | `attention_call_critical_health` | `"My health is critical! Please help me!"` |
 | `attention_call_low_energy` | `"I'm exhausted... let me sleep!"` |
 | `attention_call_poop` | `"There is a mess here! Can you clean it up?"` |
-| `attention_call_gift` | `"I brought you a gift! Use /codotchi pat to accept it."` |
-| `attention_call_misbehaviour` | `"I'm acting up! Use /codotchi pat or /codotchi feed to discipline me."` |
+| `attention_call_gift` | `"I brought you a gift! Praise me in the IDE to accept it."` |
+| `attention_call_misbehaviour` | `"I'm acting up! Scold me in the IDE to discipline me."` |
+| `attention_call_play` | `"Play a game with me! (/codotchi play)"` |
+| `attention_call_pat` | `"I want a pat! (/codotchi pat)"` |
+| `attention_call_craving_meal` | `"I'm craving a proper meal! (/codotchi feed)"` |
+| `attention_call_craving_snack` | `"I'm craving a snack! (/codotchi snack)"` |
+
+The attention-call phrases, moods and short labels live in `ATTENTION_CALL_TEXT`
+in `packages/core/src/asciiArt.ts` (`attentionCallSpeech` / `attentionCallKey`).
+OpenCode uses them for these notifications, and the Claude Code status line
+uses them to show the active call (v2.22.0). In bubble mode the call phrase
+replaces the usual speech and the header gets a ⚠. In emoji mode the line
+reads `<name> ⚠ wants <label>`. In plain mode (`/codotchi off`) a
+`⚠ <name> wants <label> (<command>)` line is added. The status line changes
+phrase once a minute, not on every refresh.
 
 ### Toast notifications (brief, one-line)
 
@@ -1043,7 +1148,7 @@ These map to `action: "on"` and `action: "off"` internally.
 
 ### VS Code IDE popup notifications
 
-Shown as VS Code warning popups with an "Open Gotchi" button. Defined in `vscode/src/extension.ts`.
+Shown as VS Code warning popups with an "Open Codotchi" button. Defined in `vscode/src/extension.ts`.
 
 | Event | Phrase |
 |-------|--------|
@@ -1055,6 +1160,10 @@ Shown as VS Code warning popups with an "Open Gotchi" button. Defined in `vscode
 | `attention_call_misbehaviour` | `"{name} is misbehaving!"` |
 | `attention_call_gift` | `"{name} brought you a gift!"` |
 | `attention_call_critical_health` | `"{name}'s health is critical!"` |
+| `attention_call_play` | `"{name} wants to play a game!"` |
+| `attention_call_pat` | `"{name} wants a pat!"` |
+| `attention_call_craving_meal` | `"{name} is craving a meal!"` |
+| `attention_call_craving_snack` | `"{name} is craving a snack!"` |
 | `died_of_old_age` | `"{name} has passed away of unforeseen natural causes due to old age."` |
 
 **Rescue notification (error-level, repeating):** when the pet is sick or

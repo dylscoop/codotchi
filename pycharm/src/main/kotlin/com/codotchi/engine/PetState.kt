@@ -108,4 +108,36 @@ data class PetState(
 
     /** Ticks since the last gift attention call fired; used for log-chance formula. */
     val ticksSinceLastGift: Int,
+
+    /** Consecutive active ticks spent at or above MAX_UNCLEANED_POOPS_BEFORE_SICK; frozen while idle or asleep, reset by clean(). */
+    val poopOverLimitTicks: Int = 0,
+
+    /** Ticks since the last play attention call fired; used for log-chance formula. */
+    val ticksSinceLastPlayCall: Int = 0,
+
+    /** Ticks since the last pat attention call fired; used for log-chance formula. */
+    val ticksSinceLastPatCall: Int = 0,
+
+    /** Ticks since the last craving attention call fired; used for log-chance formula. */
+    val ticksSinceLastCraving: Int = 0,
+
+    /** Active, awake ticks since the last "take a break" call (BREAK_CALL_INTERVAL_TICKS). */
+    val ticksSinceLastBreakCall: Int = 0,
+    /** Ticks left in the break nap (BREAK_NAP_TICKS); 0 when not on a break nap. */
+    val breakNapTicksRemaining: Int = 0,
+
+    /** What the active craving call asks for ("meal" or "snack"); null when no craving call is active. */
+    val cravingFood: String? = null,
+
+    // ── Leaderboard integrity (sticky: never cleared once set) ───────────────
+
+    /** True once any tick has run with dev mode on — the pet can never go on the leaderboard. */
+    val devModeEverUsed: Boolean = false,
+
+    /**
+     * Why this pet can't go on the leaderboard, apart from dev mode: "tampered" (the saved
+     * state failed its integrity seal) or "unverified" (loaded from a save written before
+     * seals existed). "" when eligible.
+     */
+    val leaderboardIneligible: String = "",
 )

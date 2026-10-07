@@ -10,11 +10,13 @@ import com.intellij.openapi.components.*
  *  - [fontSize]               : "small" | "normal" | "large"  — maps to CSS body class
  *  - [textColor]              : CSS hex colour string           — injected as body colour override
  *  - [enableAttentionCalls]   : whether to show balloon notifications for attention calls
+ *  - [osNotifications]        : desktop (OS) notification when hunger, happiness or energy hits 0, or health < 25 (default true)
+ *  - [statusBarEnabled]       : show the pet in the status bar, with ⚠ during attention calls (default true)
  *  - [idleThresholdSeconds]   : seconds of no IDE activity before idle mode (default 60)
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
- *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift
- *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls
- *  - [petStageHeight]         : canvas height in pixels (default 96)
+ *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift/play/pat/craving
+ *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls (poop/misbehaviour/gift/play/pat/craving)
+ *  - [stageHeight]            : "compact" | "normal" | "tall" | "extraTall" — pet stage height preset (default "normal")
  *  - [reducedMotion]          : disable rAF animation loop (default false)
  *  - [petSize]                : "small" | "medium" | "large" — sprite display size (default "medium")
  *  - [devModeEnabled]         : must be true (along with the correct passcode) to activate dev mode (default false)
@@ -29,6 +31,9 @@ import com.intellij.openapi.components.*
  *  - [idleResetOnWindowFocus]     : reset idle timer when IDE window gains focus (default true)
  *  - [idleResetOnMouseMovement]   : reset idle timer on mouse movement in the sidebar (default true)
  *  - [background]                 : "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter" (default "ordered")
+ *  - [backgroundStyle]            : "scenic" | "legacy" — pixel-art scenery or the pre-2.25 look (default "scenic")
+ *  - [backgroundOpacity]          : "subtle" | "medium" | "vivid" — how strongly the scene shows (default "medium")
+ *  - [backgroundAnimations]       : animate clouds, stars, lights, weather and critters (default true)
  *  - [perWorkspacePet]            : each project gets its own independent pet state file (default false)
  *  - [tokenCostIncludeClaudeCode] : include Claude Code dollar-cost usage in Today's Token Cost (default true)
  *  - [tokenCostIncludeOpenCode]   : include OpenCode dollar-cost usage in Today's Token Cost (default true)
@@ -46,11 +51,13 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var fontSize:  String  = "normal"    // "small" | "normal" | "large"
         var textColor: String  = "#cccccc"   // any CSS hex colour
         var enableAttentionCalls: Boolean = true
+        var osNotifications: Boolean = true
+        var statusBarEnabled: Boolean = true
         var idleThresholdSeconds: Int = 60
         var idleDeepThresholdSeconds: Int = 600
         var attentionCallExpiry: String = "standard"  // "needy" | "standard" | "chilled"
         var attentionCallRate:   String = "fast"      // "fast" | "medium" | "slow"
-        var petStageHeight: Int = 240
+        var stageHeight: String = "normal"  // "compact" | "normal" | "tall" | "extraTall"
         var reducedMotion: Boolean = false
         var petSize: String = "medium"   // "small" | "medium" | "large"
         var devModeEnabled: Boolean = false
@@ -65,6 +72,9 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var idleResetOnWindowFocus: Boolean = true
         var idleResetOnMouseMovement: Boolean = true
         var background: String = "ordered"  // "plain" | "ordered" | "spring" | "summer" | "autumn" | "winter"
+        var backgroundStyle: String = "scenic"  // "scenic" | "legacy"
+        var backgroundOpacity: String = "medium"  // "subtle" | "medium" | "vivid"
+        var backgroundAnimations: Boolean = true
         var perWorkspacePet: Boolean = false
         var tokenCostIncludeClaudeCode: Boolean = true
         var tokenCostIncludeOpenCode: Boolean = true
@@ -91,6 +101,14 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         get() = _state.enableAttentionCalls
         set(v) { _state.enableAttentionCalls = v }
 
+    var osNotifications: Boolean
+        get() = _state.osNotifications
+        set(v) { _state.osNotifications = v }
+
+    var statusBarEnabled: Boolean
+        get() = _state.statusBarEnabled
+        set(v) { _state.statusBarEnabled = v }
+
     var idleThresholdSeconds: Int
         get() = _state.idleThresholdSeconds
         set(v) { _state.idleThresholdSeconds = v }
@@ -107,9 +125,9 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         get() = _state.attentionCallRate
         set(v) { _state.attentionCallRate = v }
 
-    var petStageHeight: Int
-        get() = _state.petStageHeight
-        set(v) { _state.petStageHeight = v }
+    var stageHeight: String
+        get() = _state.stageHeight
+        set(v) { _state.stageHeight = v }
 
     var reducedMotion: Boolean
         get() = _state.reducedMotion
@@ -166,6 +184,18 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var background: String
         get() = _state.background
         set(v) { _state.background = v }
+
+    var backgroundStyle: String
+        get() = _state.backgroundStyle
+        set(v) { _state.backgroundStyle = v }
+
+    var backgroundOpacity: String
+        get() = _state.backgroundOpacity
+        set(v) { _state.backgroundOpacity = v }
+
+    var backgroundAnimations: Boolean
+        get() = _state.backgroundAnimations
+        set(v) { _state.backgroundAnimations = v }
 
     var perWorkspacePet: Boolean
         get() = _state.perWorkspacePet

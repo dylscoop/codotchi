@@ -6,22 +6,26 @@ Complete visual design guide for all pixel-art sprites in the Codotchi extension
 
 ## Overview
 
-All sprites are defined in `vscode/media/sprites.js` (mirrored verbatim to
-`pycharm/src/main/resources/webview/sprites.js`).
+Sprite grids come from two files in `vscode/media` (both copied into the PyCharm plugin at build time):
+
+- `sprites.generated.js`: species imported from source images in `sprites/<species>/` by `scripts/import_sprites_bulk.js` (dog, cat, dragon, roo). Don't edit it by hand.
+- `sprites.js`: hand-drawn grids (sheep, snake, kangaroo, tim, stu), the procedural classic pet, and the renderer.
 
 To preview all sprites interactively in-IDE, enable developer mode then open the Command Palette (VS Code) or Tools menu (PyCharm) and run **Codotchi: Open Sprite Preview (Dev)**. The preview uses the real `renderSpriteGrid()` function for pixel-accurate output including leg animation, mood-based colour overrides, stage scaling, and weight proportions. The standalone browser version (`vscode/media/sprite_preview.html`) still works via `file://` but the in-IDE panel is the recommended workflow.
 
-To import a new sprite from a PNG or Pixilart `.pixil` file, see
+To add a species from PNG, JPEG, WebP or Pixilart `.pixil` images, see
 [`SPRITE_IMPORT.md`](SPRITE_IMPORT.md).
 
-One grid size per animal type:
+One grid size per species (`SPRITE_GRID_META`); every stage of a species uses it:
 
 | Type | Grid (cols × rows) | Animals |
 |------|--------------------|---------|
-| Quadruped | 48 × 32 | cat, rat, ox, tiger, rabbit, horse, sheep, pig, kangaroo |
-| Imported | 573 × 550 | dog |
+| Quadruped (hand-drawn) | 48 × 32 | sheep, kangaroo |
 | Snake | 48 × 32 | snake |
-| Upright | 32 × 48 | classic, monkey, rooster, dragon |
+| Upright (hand-drawn) | 32 × 48 (stu 64 × 48) | classic (procedural), tim, stu |
+| Imported (`sprites/<species>/`) | up to 192 × 128 | dog 136 × 128, cat 142 × 128, dragon 180 × 128, roo 155 × 128 |
+
+The zodiac animals still waiting for art (rat, ox, tiger, rabbit, horse, monkey, rooster, pig) have no grid and are drawn as the classic pet. Their old 48 × 32 designs below are kept for reference (`vscode/media/archived_sprites/`).
 
 Each animal has five life stages: `baby`, `child`, `teen`, `adult`, `senior`.
 
@@ -31,7 +35,7 @@ Each animal has five life stages: `baby`, `child`, `teen`, `adult`, `senior`.
 
 ### Random rotation pool
 
-Animals assigned at random when a new pet hatches. All entries have equal probability (1/8 each = 12.5%).
+Animals assigned at random when a new pet hatches. All entries have equal probability (1/7 each ≈ 14.3%).
 
 | spriteType | Notes |
 |------------|-------|
@@ -39,12 +43,11 @@ Animals assigned at random when a new pet hatches. All entries have equal probab
 | `dog` | also a zodiac animal |
 | `snake` | also a zodiac animal |
 | `sheep` | also a zodiac animal |
-| `classic` | original procedural humanoid shape |
-| `rooster` | also a zodiac animal |
-| `tiger` | also a zodiac animal |
+| `classic` | original procedural humanoid shape — drawn at a 24 px base; its bounding box is its real size (`window.spriteClassicBox`), not a 32 × 48 grid |
 | `kangaroo` | |
+| `dragon` | also a zodiac animal |
 
-Defined as `ROTATION_ANIMALS` in `vscode/src/gameEngine.ts` (mirrored to PyCharm and OpenCode).
+Defined as `ROTATION_ANIMALS` in `packages/core/src/gameEngine.ts` (synced to every TypeScript plugin) and mirrored in PyCharm's `GameEngine.kt`.
 
 ### Zodiac animals (character code only)
 
@@ -65,9 +68,11 @@ The 12 Chinese zodiac animals. Not in the random rotation pool — accessible on
 | `dog` | Year of the Dog |
 | `pig` | Year of the Pig |
 
-> Note: `tiger`, `snake`, `sheep`, `rooster`, and `dog` appear in both pools — they can be obtained via random hatch **or** unlocked via character code.
+> Note: `dragon`, `snake`, `sheep` and `dog` appear in both pools — they can be obtained via random hatch **or** unlocked via character code.
+>
+> Only the rotation animals currently have sprite art. The other zodiac animals (rat, ox, tiger, rabbit, horse, monkey, rooster, pig) are drawn as the procedural classic creature until their new art lands (bulk sprite upload, `FEATURES_SEPTEMBER_2026.md` §2.2).
 
-Defined as `ZODIAC_ANIMALS` in `vscode/src/gameEngine.ts` (mirrored to PyCharm and OpenCode).
+The zodiac names are part of the `SpriteType` union in `packages/core/src/gameEngine.ts`.
 
 ---
 
@@ -104,7 +109,10 @@ Special render-time overrides:
 ## Animal Colour Palettes
 
 Each animal has a fixed realistic colour palette. Colours are keyed by `spriteType`
-in `ANIMAL_PALETTES` inside `spriteConstants.js` (mirrored to both IDEs).
+in `ANIMAL_PALETTES` inside `spriteConstants.js`. Imported species get theirs from
+`sprites.generated.js` (the `palette` in `sprites/<species>/sprite.json`, or the
+colours detected from the images). Some rows below are the original design
+colours, not the colours of the current art.
 The `color` field on `PetState` is deprecated as of v1.17.0.
 
 | Animal  | Primary (body)               | Secondary (eyes/snout)        | Accent (markings)              | Background  |
@@ -3422,7 +3430,6 @@ The following bugs exist in v1.0.2 `sprites.js` and must be fixed in this redesi
 # File Locations
 
 ```
-vscode/media/sprites.js                              ← source of truth (sprites + renderer)
-pycharm/src/main/resources/webview/sprites.js        ← exact copy (updated after every sprites.js change)
+vscode/media/sprites.js                              ← source of truth (sprites + renderer); PyCharm copies it at build time
 SPRITES.md                                           ← this file
 ```

@@ -5,6 +5,8 @@ license: MIT
 compatibility: opencode
 ---
 
+> **Artifacts are local only (since v2.21.3).** `releases/`, every `*/archive/` folder and all `*.vsix`, `*.zip` and `*.mcpb` files are gitignored. Use plain `mv`, never `git mv` / `git add`, and never commit them — they are only uploaded to GitHub Releases. Where this file says otherwise, this note wins; see `.claude/skills/` for the current rules.
+
 ## When to apply this skill
 
 Apply **every time** a feature is added or changed, or a bug is fixed, before
@@ -27,6 +29,8 @@ The current version must be identical in all **four** source-of-truth locations:
 If any of the four differs, fix them to agree before doing anything else.
 
 > **Version bump rule:** A bug fix or feature **always** requires a patch version bump (e.g. 1.19.1 → 1.19.2). Never build artifacts at the same version number as the previous release — the artifact filename will collide. Bump first, archive the old artifact, then build.
+
+> **Encoding rule:** Bump versions with the Edit tool (or `sed`), never Windows PowerShell `Get-Content`/`Set-Content` without `-Encoding utf8` — PowerShell 5.1 round-trips these files through the ANSI codepage and turns every `—` / `→` into mojibake like `ÃƒÂ¢Ã¢â€šÂ¬`. After bumping, `git grep -I -n -E "Ã|â€" -- vscode/package.json pycharm opencode-codotchi/package.json claude-desktop-codotchi/package.json` must print nothing.
 
 ---
 

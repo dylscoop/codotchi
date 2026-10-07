@@ -1,0 +1,78 @@
+# Runs every test suite on pushes and pull requests to main.
+# (The leaderboard-*.yml workflows serve the `leaderboard` branch and are
+# unrelated to this one.)
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-sync:
+    name: packages/core copies in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/sync-core.mjs --check
+
+  sprites:
+    name: generated sprites in sync and valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/import_sprites_bulk.js --check
+      - run: node scripts/validate_sprites.js
+
+  node:
+    name: ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [vscode, opencode-codotchi, claude-codotchi, claude-desktop-codotchi]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.package }}/package-lock.json
+      - uses: oven-sh/setup-bun@v2
+        if: matrix.package == 'opencode-codotchi'
+      - run: npm ci
+        working-directory: ${{ matrix.package }}
+      # claude-codotchi's compiled dist/ is committed (its .mjs scripts load it
+      # at runtime), so rebuild it and fail if the committed copy is stale.
+      - name: Check committed dist/ is up to date
+        if: matrix.package == 'claude-codotchi'
+        working-directory: claude-codotchi
+        run: |
+          npm run build
+          git diff --exit-code -- dist
+      - run: npm test
+        working-directory: ${{ matrix.package }}
+
+  pycharm:
+    name: pycharm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew unitTest --no-configuration-cache
+        working-directory: pycharm

@@ -47,7 +47,13 @@ const val HUNGER_ZERO_TICKS_BEFORE_RISK: Int = 3
 const val CRITICAL_HEALTH_DAMAGE_PER_TICK: Int = 5
 
 const val MAX_CONSECUTIVE_SNACKS_BEFORE_SICK: Int = 3
-const val MAX_UNCLEANED_POOPS_BEFORE_SICK: Int = 3
+const val MAX_UNCLEANED_POOPS_BEFORE_SICK: Int = 5
+/**
+ * Consecutive active (awake, non-idle) ticks the pet must spend at or above
+ * MAX_UNCLEANED_POOPS_BEFORE_SICK before it becomes sick (≈ 1 real minute),
+ * so cleaning up in time prevents the sickness.
+ */
+const val POOP_SICK_GRACE_TICKS: Int = 20
 /** Maximum snacks allowed per wake cycle before further snacks are refused. */
 const val SNACK_MAX_PER_CYCLE: Int = 3
 /** Maximum snacks allowed on the stage floor simultaneously before further snacks are refused. */
@@ -56,7 +62,7 @@ const val MAX_FLOOR_SNACKS: Int = 3
 const val RECENT_EVENT_LOG_MAX: Int = 20
 const val POOP_TICKS_INTERVAL: Int = 20 * TICKS_PER_MINUTE
 
-const val FEED_MEAL_HUNGER_BOOST: Int = 20
+const val FEED_MEAL_HUNGER_BOOST: Int = 15
 const val FEED_MEAL_WEIGHT_GAIN: Int = 2
 const val FEED_MEAL_MAX_PER_CYCLE: Int = 3
 
@@ -99,15 +105,13 @@ const val ENERGY_DECAY_PER_TICK: Int = 1
 /** Health lost per tick when the pet's energy is fully depleted while awake. */
 const val EXHAUSTION_HEALTH_DAMAGE_PER_TICK: Int = 2
 
-/** Health lost per tick from sickness while the user is idle (regular idle, not deep idle). Much slower than active rate. */
-const val IDLE_SICK_DAMAGE_PER_TICK: Int = 1
-
 /** Per-tick probability that sickness clears naturally while the pet is sleeping. */
 const val SLEEP_SICK_RECOVERY_CHANCE: Double = 0.03
 
 /** While sleeping, hunger and happiness decay once every this many ticks (very slow drain). */
 const val SLEEP_DECAY_TICK_INTERVAL: Int = 5
 
+/** Medicine doses needed to cure sickness. Feed, Snack and Play are refused until then. */
 const val MEDICINE_DOSES_TO_CURE: Int = 3
 
 /** Ticks between passive health regen pulses while awake (1 hp per interval). */
@@ -184,6 +188,10 @@ const val MINIGAME_HL_LOSE_DELTA: Int = -5
 /** Coin Flip: play baseline +15; delta win 0, lose −10 → totals: win 15, lose 5. */
 const val MINIGAME_COIN_FLIP_WIN: Int = 0
 const val MINIGAME_COIN_FLIP_LOSE: Int = -10
+// Blackjack (Stu's Coin Flip): delta win +10, push 0, lose −10 → totals: 25 / 15 / 5
+const val MINIGAME_BLACKJACK_WIN: Int = 10
+const val MINIGAME_BLACKJACK_PUSH: Int = 0
+const val MINIGAME_BLACKJACK_LOSE: Int = -10
 
 const val CARE_SCORE_HUNGER_WEIGHT: Double = 0.30
 const val CARE_SCORE_HAPPINESS_WEIGHT: Double = 0.25
@@ -332,15 +340,15 @@ data class GameConfig(
     val attentionCallsEnabled: Boolean = true,
     /**
      * Response-window in ticks for poop, misbehaviour, and gift calls.
-     * needy=40 (2 min), standard=100 (5 min), chilled=200 (10 min).
+     * needy=80 (4 min), standard=200 (10 min), chilled=400 (20 min).
      */
-    val attentionCallExpiryTicks: Int = 100,
+    val attentionCallExpiryTicks: Int = 200,
     /**
      * Divisor applied to the base and max logChance probabilities for all
      * probabilistic call spawns (poop, misbehaviour, gift).
-     * fast=1.0, medium=1.5, slow=2.0.
+     * fast=3.0, medium=4.5, slow=6.0 (doubled in v2.24.3 to halve call frequency).
      */
-    val attentionCallRateDivisor: Double = 1.0,
+    val attentionCallRateDivisor: Double = 3.0,
     /**
      * When true, developer mode is active:
      *   - Health is floored at devModeHealthFloor (default 1; set to 0 to allow death).
@@ -377,15 +385,33 @@ const val ATTENTION_ENERGY_THRESHOLD: Int = 20
 /** Health stat at or below which a critical_health attention call fires. */
 const val ATTENTION_HEALTH_THRESHOLD: Int = 50
 
-/** Cooldown ticks (100 = 5 min) applied to a call type after it is answered. */
+/**
+ * Cooldown ticks (100 × 3 s = 5 min) applied to a call type after it is answered.
+ * Cooldowns only count down on active (non-idle) ticks. Must match gameEngine.ts (BUG-S06).
+ */
 const val ATTENTION_ANSWER_COOLDOWN_TICKS: Int = 100
-/** Cooldown ticks (40 = 2 min) applied to a call type after it expires unanswered. */
-const val ATTENTION_EXPIRY_COOLDOWN_TICKS: Int = 40
+/** Cooldown ticks (100 × 3 s = 5 min) applied to a call type after it expires unanswered. */
+const val ATTENTION_EXPIRY_COOLDOWN_TICKS: Int = 100
 /** Stat penalty applied to the relevant stat when an attention call expires. */
 const val ATTENTION_EXPIRY_STAT_PENALTY: Int = 10
 
 /** Happiness boost applied when a gift attention call is answered via praise(). */
 const val GIFT_PRAISE_HAPPINESS_BOOST: Int = 15
+
+/**
+ * Active (non-idle, awake) ticks between "take a break" calls: 600 × 3 s = 30 min.
+ * The timer restarts when the call fires and whenever the user goes deep-idle
+ * (they have taken a break on their own).
+ */
+const val BREAK_CALL_INTERVAL_TICKS: Int = 600
+/** Happiness boost when a break call is answered via praise() — same as a gift. */
+const val BREAK_PRAISE_HAPPINESS_BOOST: Int = GIFT_PRAISE_HAPPINESS_BOOST
+/**
+ * Length of the nap the pet takes when a break call is answered: 100 × 3 s = 5 min.
+ * While napping every stat except energy is frozen (energy regenerates), the pet
+ * keeps aging, and it can't be woken early — it wakes on its own when the timer runs out.
+ */
+const val BREAK_NAP_TICKS: Int = 100
 
 /** neglectCount decrements by 1 every this many ticks (600 × 3 s = 30 min). */
 const val NEGLECT_DECAY_TICK_INTERVAL: Int = 600
@@ -419,3 +445,12 @@ const val MISBEHAVIOUR_BASE_CHANCE: Double = 0.005
 const val MISBEHAVIOUR_MAX_CHANCE: Double = 0.08
 const val GIFT_BASE_CHANCE: Double = 0.002
 const val GIFT_MAX_CHANCE: Double = 0.05
+// Whim calls — fire at any stat level, unlike the need-based calls.
+const val PLAY_CALL_BASE_CHANCE: Double = 0.003
+const val PLAY_CALL_MAX_CHANCE: Double = 0.04
+const val PAT_CALL_BASE_CHANCE: Double = 0.004
+const val PAT_CALL_MAX_CHANCE: Double = 0.05
+const val CRAVING_CALL_BASE_CHANCE: Double = 0.003
+const val CRAVING_CALL_MAX_CHANCE: Double = 0.04
+/** A craving never asks for a meal when hunger is already at or above this. */
+const val CRAVING_MEAL_MAX_HUNGER: Int = 90

@@ -20,7 +20,7 @@ class CodotchiStatusWidgetFactory : StatusBarWidgetFactory {
 
     override fun createWidget(project: Project): StatusBarWidget {
         val widget = CodotchiStatusWidget(project)
-        service<CodotchiPlugin>().setStatusWidget(widget)
+        service<CodotchiPlugin>().registerStatusWidget(widget)
         return widget
     }
 

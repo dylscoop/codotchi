@@ -144,12 +144,70 @@
   <button class="stage-tab" data-stage="senior">Senior</button>
 </div>
 
+<!-- ── Background preview (backgroundArt.js) ── -->
+<div class="controls" id="bg-controls">
+  <label>Background</label>
+  <select id="bg-season">
+    <option value="ordered">Ordered (this month)</option>
+    <option value="plain">Plain</option>
+    <option value="spring" selected>Spring</option>
+    <option value="summer">Summer</option>
+    <option value="autumn">Autumn</option>
+    <option value="winter">Winter</option>
+  </select>
+
+  <label style="margin-left:12px">Hour</label>
+  <input type="range" id="bg-hour" min="0" max="23.75" value="9" step="0.25" />
+  <span class="scale-val" id="bg-hour-val">09:00</span>
+
+  <label style="margin-left:12px">Size</label>
+  <select id="bg-size">
+    <option value="200x150">200 &times; 150</option>
+    <option value="320x180" selected>320 &times; 180</option>
+    <option value="480x240">480 &times; 240</option>
+  </select>
+
+  <label style="margin-left:12px">Style</label>
+  <select id="bg-style">
+    <option value="scenic" selected>Scenic</option>
+    <option value="legacy">Legacy</option>
+  </select>
+
+  <label style="margin-left:12px">Opacity</label>
+  <select id="bg-opacity">
+    <option value="subtle">Subtle</option>
+    <option value="medium" selected>Medium</option>
+    <option value="vivid">Vivid</option>
+  </select>
+
+  <label style="margin-left:12px">Animate</label>
+  <select id="bg-animate">
+    <option value="yes" selected>Yes</option>
+    <option value="no">No</option>
+  </select>
+
+  <label style="margin-left:12px">Event</label>
+  <select id="bg-event">
+    <option value="none" selected>Clock only</option>
+    <option value="shower">Spring shower</option>
+    <option value="rainbow">Rainbow</option>
+    <option value="snow">Snowfall</option>
+    <option value="bird">Bird</option>
+    <option value="butterfly">Butterflies</option>
+    <option value="bee">Bee</option>
+    <option value="fireflies">Fireflies (dusk / night)</option>
+  </select>
+</div>
+<canvas id="bg-canvas" width="320" height="180" style="display:block;margin:0 0 20px;image-rendering:pixelated"></canvas>
+
 <!-- ── Sprite grid (populated by JS) ── -->
 <div id="grid"></div>
 
-<!-- Load shared constants, then sprite data, then custom characters registry -->
+<!-- Load shared constants, then generated and hand-drawn sprite data, then custom characters registry -->
 <script src="spriteConstants.js"></script>
+<script src="sprites.generated.js"></script>
 <script src="sprites.js"></script>
+<script src="backgroundArt.js"></script>
 <script src="customCharacters.js"></script>
 
 <script>
@@ -281,6 +339,12 @@
     var wwm        = window.spriteWeightWidthMult(globalWeight);
     var bodyWidth  = Math.round(bodySize * wwm);
     var bodyHeight = Math.round(bodyWidth * window.spriteHeightRatio(animal));
+    // The procedural classic creature is drawn at its own (smaller) box
+    if (window.spriteDrawsAsClassic(animal, stage)) {
+      var cBox = window.spriteClassicBox(state);
+      bodyWidth  = cBox.w;
+      bodyHeight = cBox.h;
+    }
 
     // Centre horizontally, bottom-align vertically (in raw sprite units)
     // Ensure at least 8px top clearance so tall upright sprites aren't clipped.
@@ -481,6 +545,78 @@
     activeStage = btn.getAttribute("data-stage");
     buildGrid();
   });
+
+  // ── Background preview ────────────────────────────────────────────────────
+  // Draws backgroundArt.js at a chosen season, hour and canvas size. The
+  // simulated clock runs on from the chosen time so the animations play.
+  var bgArt    = window.backgroundArt;
+  var bgCanvas = document.getElementById("bg-canvas");
+  var bgDate   = null;
+  var bgLastMs = 0;
+
+  function bgValue(id) { return document.getElementById(id).value; }
+
+  function bgHappens(kind, date) {
+    if (kind === "shower")  { return bgArt.weather("spring", date).raining; }
+    if (kind === "rainbow") { return bgArt.weather("spring", date).rainbow; }
+    if (kind === "snow")    { return bgArt.weather("winter", date).snowing; }
+    return !!bgArt.critter(kind, date.getTime());
+  }
+
+  /** The chosen hour today; with an event picked, the first day it happens in that hour. */
+  function bgPickDate() {
+    var hour = parseFloat(bgValue("bg-hour"));
+    var kind = bgValue("bg-event");
+    var base = new Date();
+    base.setHours(Math.floor(hour), Math.round((hour % 1) * 60), 0, 0);
+    if (kind === "none") { return base; }
+    for (var day = 0; day < 120; day++) {
+      for (var sec = 0; sec < 900; sec += 2) {
+        var d = new Date(base.getTime() + day * 86400000 + sec * 1000);
+        if (bgHappens(kind, d)) { return d; }
+      }
+    }
+    return base;
+  }
+
+  function bgReset() {
+    var hour = parseFloat(bgValue("bg-hour"));
+    var hh = Math.floor(hour), mm = Math.round((hour % 1) * 60);
+    document.getElementById("bg-hour-val").textContent =
+      (hh < 10 ? "0" : "") + hh + ":" + (mm < 10 ? "0" : "") + mm;
+    var size = bgValue("bg-size").split("x");
+    bgCanvas.width  = parseInt(size[0], 10);
+    bgCanvas.height = parseInt(size[1], 10);
+    bgDate = bgPickDate();
+  }
+
+  function bgFrame(nowMs) {
+    if (bgLastMs) { bgDate = new Date(bgDate.getTime() + (nowMs - bgLastMs)); }
+    bgLastMs = nowMs;
+    var ctx = bgCanvas.getContext("2d");
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+    if (bgValue("bg-style") === "legacy") {
+      bgArt.drawLegacyBackground(ctx, bgCanvas.width, bgCanvas.height, bgValue("bg-season"), bgDate, "#1a1a1a");
+    } else {
+      bgArt.drawBackground(ctx, bgCanvas.width, bgCanvas.height, bgValue("bg-season"), bgDate,
+                           { opacity: bgValue("bg-opacity"), backdrop: "#1a1a1a", animate: bgValue("bg-animate") === "yes" });
+    }
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.fillRect(0, bgCanvas.height - 5, bgCanvas.width, 1);
+    requestAnimationFrame(bgFrame);
+  }
+
+  if (bgArt) {
+    ["bg-season", "bg-hour", "bg-size", "bg-style", "bg-opacity", "bg-animate", "bg-event"].forEach(function (id) {
+      document.getElementById(id).addEventListener("input", bgReset);
+    });
+    bgReset();
+    requestAnimationFrame(bgFrame);
+  } else {
+    document.getElementById("bg-controls").style.display = "none";
+    bgCanvas.style.display = "none";
+  }
 
   // ── Init ──────────────────────────────────────────────────────────────────
   buildGrid();

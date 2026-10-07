@@ -24,6 +24,11 @@ import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Where state.mjs looks for IDE pets under the test HOME / APPDATA: APPDATA on Windows, ~/.config elsewhere. */
+function ideBase(tmpBase) {
+  return process.platform === "win32" ? tmpBase : path.join(tmpBase, ".config");
+}
 const scriptsDir = path.join(__dirname, "..", "..", "scripts");
 const distDir = path.join(__dirname, "..", "..", "dist");
 const actionScript = path.join(scriptsDir, "action.mjs");
@@ -38,7 +43,7 @@ async function withRunFixture(fn) {
 }
 
 function writeVSCodeState(tmpBase, state) {
-  const dir = path.join(tmpBase, "codotchi", "vscode");
+  const dir = path.join(ideBase(tmpBase), "codotchi", "vscode");
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "state.json"), JSON.stringify({ state, savedAt: Date.now() }), "utf8");
 }
@@ -74,8 +79,8 @@ describe("action.mjs status — IDE identity merge (integration)", () => {
       assert.match(output, /Copilot/, "expected the default local pet name when there is no IDE anchor");
 
       // Confirm the fresh local pet was never written anywhere discoverable by other IDEs.
-      assert.equal(fs.existsSync(path.join(tmpBase, "codotchi", "vscode")), false);
-      assert.equal(fs.existsSync(path.join(tmpBase, "codotchi", "pycharm")), false);
+      assert.equal(fs.existsSync(path.join(ideBase(tmpBase), "codotchi", "vscode")), false);
+      assert.equal(fs.existsSync(path.join(ideBase(tmpBase), "codotchi", "pycharm")), false);
     });
   });
 });
