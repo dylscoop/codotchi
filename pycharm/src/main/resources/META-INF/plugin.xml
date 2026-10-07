@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.26.3</version>
+    <version>2.27.0</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -114,6 +114,8 @@ which determines which character your pet evolves into at each life stage.</p>
 device-code sign-in: a browser page opens and a notification shows the code to enter. With <b>live push</b> turned
 on, your pet's progress is synced to the public <a href="https://dylscoop.github.io/codotchi/leaderboard/">leaderboard</a>
 while it's alive. When it dies, click <b>Submit to Leaderboard</b> on the game over screen.</p>
+<p>Only scores sent by the plugin itself are accepted. A pet that ever ran in dev mode, or whose save file was
+edited outside Codotchi, can't be submitted or pushed live, and the panel says why.</p>
 <p>If GitHub rejects the saved sign-in (for example, because you revoked the app at github.com/settings/applications),
 the plugin forgets the old token. It then shows <b>Sign in to GitHub again</b> in the panel, and a notification with a
 <b>Sign in</b> action if live push was running in the background. Submitting a score starts a fresh sign-in
@@ -176,6 +178,10 @@ settings.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+<h3>2.27.0</h3>
+<ul>
+  <li><b>Fair leaderboard</b> — only scores sent by the Codotchi plugin are accepted now; hand-written GitHub issues are turned away. A pet that ever ran in dev mode, or whose save file was edited outside Codotchi, can't be submitted or pushed live, even after dev mode is turned off. The panel greys out the buttons and says why. Pets hatched before this version can't be submitted either, but your next one can. Older scores stay on the board marked <i>legacy</i>.</li>
+</ul>
 <h3>2.26.3</h3>
 <ul>
   <li><b>Leaderboard rank</b> — the sidebar rank now matches the leaderboard page. It was counting live pets that hadn't pushed for up to 30 days and was guessing how much older they had grown since their last push, so it could show you lower down and with more pets than the page.</li>

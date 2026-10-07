@@ -179,6 +179,10 @@ pet's progress is synced to the public
 [leaderboard](https://dylscoop.github.io/codotchi/leaderboard/) while it's
 alive. When it dies, click **Submit to Leaderboard** on the game over screen.
 
+Only scores sent by the plugin itself are accepted. A pet that ever ran in dev
+mode, or whose save file was edited outside Codotchi, can't be submitted or
+pushed live, and the panel says why.
+
 If GitHub rejects the saved sign-in (for example, because you revoked the app
 at github.com/settings/applications), the plugin forgets the old token. It then
 shows **Sign in to GitHub again** in the panel, and a notification with a

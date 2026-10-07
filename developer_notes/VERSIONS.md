@@ -1,6 +1,32 @@
 # Version History
 
-## v2.26.3 — current
+## v2.27.0 — current
+
+**New state fields:** `devModeEverUsed` (sticky), `leaderboardIneligible` (`""` / `"tampered"` / `"unverified"`). **State file:** top-level `seal` (VS Code / OpenCode / Claude Desktop `state.json`, PyCharm `state.json` + `petStateSeal` in `codotchi.xml`). **Leaderboard issues:** `schemaVersion` 2 with `clientVersion` + `sig`; v1 is rejected. **Physics floor:** 240 s/day → 720 s ÷ agingMultiplier per pet type, 10% slack. **New secret:** `LEADERBOARD_HMAC_KEY` (see `developer_notes/leaderboard/ADMIN.md`). ADR: `developer_notes/adr/2026-10-07-leaderboard-integrity.md`.
+
+### Changes from v2.26.3 (leaderboard integrity — branch feature/leaderboard-integrity)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` | `devModeEverUsed` set by any dev-mode tick (incl. break naps), never cleared; `leaderboardIneligible`; both serialised |
+| `packages/core/src/integrity.ts` (new) | `sealPayload` / `sealState` / `sealSerialisedState` / `verifySeal`, `leaderboardBlockedReason`, `submissionPayload` / `signSubmission` (HMAC-SHA256) |
+| `packages/core/fixtures/integrity-vector.json` (new) | shared test vector pinning the seal and signature text across TS, Kotlin and the workflow |
+| `scripts/sync-core.mjs`, `.gitignore` | copies `integrity.ts`; writes gitignored `src/leaderboardKey.ts` from `CODOTCHI_LEADERBOARD_KEY` / `.leaderboard-key` |
+| `vscode/src/persistence.ts` | seal on save (file + globalState), verify on load |
+| `vscode/src/sidebarProvider.ts` | submit / auto-submit / live push refuse ineligible pets; signed v2 payloads; `leaderboardBlockedReason` to the webview |
+| `vscode/media/sidebar.js` | Submit and Push live progress greyed out with the reason; dead PyCharm `browser_opened` path removed |
+| `opencode-codotchi/src/index.ts`, `claude-desktop-codotchi/src/state.ts` | verify the seal on load, re-seal on save |
+| `pycharm/.../Integrity.kt` (new), `PetState.kt`, `GameEngine.kt`, `CodotchiPersistence.kt`, `CodotchiPlugin.kt`, `CodotchiBrowserPanel.kt`, `LeaderboardSubmitter.kt`, `build.gradle.kts` | PyCharm parity; Gradle `generateLeaderboardKey` task; dead `buildLeaderboardIssueUrl` removed |
+| `.github/scripts/leaderboard-validate.mjs` (new) | signature check (fails closed without the secret), per-type physics floor, stage bounds, whitelisted entries |
+| `.github/workflows/process-leaderboard*.yml` | use the validator; `verified: true`; unverified live entries pruned; issue text no longer inside `${{ }}` in github-script (script-injection fix) |
+| `leaderboard/index.html` | *legacy* badge for pre-2.27.0 scores; only verified live entries; fair-play text |
+| `vscode/tests/unit/integrity.test.ts` (new), `pycharm/.../IntegrityTest.kt`, `PersistenceIntegrityTest.kt` (new), `GameEngineTest.kt` | vector, tamper / unverified / sticky, dev-mode flag, validator cases |
+| `README.md`, `pycharm/README.md`, `plugin.xml`, `vscode/CHANGELOG.md`, `developer_notes/leaderboard/ADMIN.md`, ADR | docs |
+| all manifests, `README.md` | version 2.26.3 → 2.27.0 |
+
+---
+
+## v2.26.3
 
 **Updated constants:** live-entry stale window 30 days → 48 h (`LIVE_STALE_MS` in `claude-codotchi/scripts/state.mjs`, `LIVE_STALE_MS_OC` in OpenCode, `staleMs` in PyCharm), matching `leaderboard/index.html`.
 
