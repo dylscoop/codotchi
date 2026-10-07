@@ -103,7 +103,7 @@ The pet fires IDE notifications demanding care, with a **1-minute active
 | Health < 50                                        | `critical_health` | Feed meal or snack      | Health −10, Happiness −10              | `[x]`  |
 | Random misbehaviour (log-chance, child+)           | `misbehaviour`    | Scold                   | Health −10 + careMistakes/lifetimeCareMistakes +1 | `[x]`  |
 | Random gift (log-chance)                           | `gift`            | Praise (+happiness +15) | Happiness −5 + careMistakes/lifetimeCareMistakes +1 | `[x]`  |
-| Random craving (log-chance, any hunger; not while idle/asleep/sick/full) | `craving` | The craved food: meal (Feed) or snack (Snack) | Health −10 | `[x]`  |
+| Random craving (log-chance, any hunger; not while idle/asleep/sick/full) | `craving` | The craved food: meal (Feed) or snack (Snack). Characters with `snackCravings` name the snack (Tim: a tea; Stu: a pint or some salmon, picked per craving by `cravingItemFor`) | Health −10 | `[x]`  |
 | Random "play with me" (log-chance; energy ≥ 25, not sick) | `play`    | Play (any mini-game)    | Health −10                             | `[x]`  |
 | Random "pat me" (log-chance; energy ≥ 20)         | `pat`             | Pat                     | Health −10                             | `[x]`  |
 | Every 30 active, awake minutes (`BREAK_CALL_INTERVAL_TICKS = 600`; deep idle restarts the timer; after need calls, before whims) | `break` | Praise (+happiness +15, pet takes a 5-minute break nap — `BREAK_NAP_TICKS = 100`; can't be woken early, every stat but energy frozen, still ages) | None — no stat penalty, no care mistake | `[x]`  |
@@ -248,6 +248,11 @@ Status: `[ ]`
 - **Win**: Happiness +0 (`MINIGAME_COIN_FLIP_WIN = 0`; net +15 including play baseline).
 - **Lose**: Happiness −10 (`MINIGAME_COIN_FLIP_LOSE = −10`; net +5 including play baseline).
 - Single round per play session.
+- **Stu plays Blackjack instead** (v2.27.1): one round against the dealer from a
+  shuffled 52-card deck, Hit / Stand, dealer hits to 17, a natural beats a
+  three-card 21. Win +10 (`MINIGAME_BLACKJACK_WIN`), push 0, lose −10. Cards are
+  drawn by `minigameArt.drawBlackjackTable`; the game id is `blackjack` and the
+  result can be `"push"`.
 - v2.22.2: a pixel-art coin (crown for heads, "T" for tails) tosses and spins
   for about 0.8 s before landing on the result; reduced motion shows the result
   straight away.
@@ -280,6 +285,9 @@ that fires when Play is pressed. Net totals reflect delta + baseline.
 | Higher or Lower | Lose | −5 | +10 | `MINIGAME_HL_LOSE_DELTA = -5` |
 | Coin Flip | Win | 0 | +15 | `MINIGAME_COIN_FLIP_WIN = 0` |
 | Coin Flip | Lose | −10 | +5 | `MINIGAME_COIN_FLIP_LOSE = -10` |
+| Blackjack (Stu) | Win | +10 | +25 | `MINIGAME_BLACKJACK_WIN = 10` |
+| Blackjack (Stu) | Push | 0 | +15 | `MINIGAME_BLACKJACK_PUSH = 0` |
+| Blackjack (Stu) | Lose | −10 | +5 | `MINIGAME_BLACKJACK_LOSE = -10` |
 | Pat | — | +10 (flat total) | +10 | `PAT_HAPPINESS_BOOST = 10` (no play baseline) |
 
 ---
@@ -379,7 +387,7 @@ hands control back.
 | `became_sick` | Fast shake: ±4 px random horizontal jitter | 600 ms |
 | `healed` | Brief green colour overlay fading out | 500 ms |
 | `died` | Floats up 40 px and fades out under a gold halo; the dead screen appears when it ends (skipped with reduced motion) | 1200 ms |
-| `patted` | Per-pet motion from `window.spritePat.MOTION` (`sprites.js`), anchored at the feet: dog wag + two hops, cat arch, sheep fleece puff, snake coil + sway, kangaroo/roo two hops, dragon loop, tim/stu lean + cheek blush, classic double squish (unknown types use classic). A sleeved hand pats the head twice; hearts for every pet, "prr" for the cat, smoke for the dragon (`patParticles`, cap 24). Added v2.24.0 | 1400 ms |
+| `patted` | Per-pet motion from `window.spritePat.MOTION` (`sprites.js`), anchored at the feet: dog wag + two hops, cat arch, sheep fleece puff, snake coil + sway, kangaroo/roo two hops, dragon loop, classic double squish (unknown types use classic). A sleeved hand pats the head twice; hearts for every pet, "prr" for the cat, smoke for the dragon (`patParticles`, cap 24). Added v2.24.0. v2.27.1: Tim jogs a lap of the stage (`spritePat.runLap`, dust behind his feet) and Stu opens a sticker binder or pack (`spritePat.drawProp`, sticker particles); neither gets the hand or hearts, both blush | 1400 ms (Tim 2600, Stu 2200) |
 
 Reactions are stored in a simple queue; if a new one arrives while one is
 playing, it is appended and plays immediately after.
@@ -828,6 +836,8 @@ Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharac
 | `defaultName` | `string` | — | Suggested name pre-filled on new-game screen |
 | `patActionLabel` | `string?` | `"Go for a Run"` | Label shown on the pat button |
 | `patBubbles` | `string[]?` | — | Bubble messages shown on pat |
+| `patCall` | `{call, answered, expired, status}?` | — | Replaces "wants a pat!" in the bubble, log, toast and status bar (Tim: a run; Stu: stickers) |
+| `snackCravings` | `string[]?` | — | What a snack craving asks for, picked at random per craving (webview entries are `{label, item}` so the floor snack matches) |
 | `snackType` | `string?` | `"candy"` | Controls snack pixel art drawn in sidebar |
 | `feedMealMaxPerCycle` | `number?` | `3` | Absolute meal cap per wake cycle |
 | `feedSnackMaxPerCycle` | `number?` | `3` | Absolute snack cap per wake cycle |
@@ -837,5 +847,5 @@ Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharac
 
 | Name | Passcode | spriteType | Feed cap | Notes |
 |------|----------|------------|----------|-------|
-| Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 10 snacks | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" pat |
+| Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 10 snacks | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" (sticker binder or pack) instead of a pat; craves a pint or salmon; Blackjack instead of Coin Flip |
 | Skippy | `straya` | `kangaroo` | default | Kangaroo sprite scraped from a web pixel-art reference; Bounce pat action |

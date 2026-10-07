@@ -1,6 +1,28 @@
 # Version History
 
-## v2.27.0 — current
+## v2.27.1 — current
+
+**New constants:** `MINIGAME_BLACKJACK_WIN = 10`, `MINIGAME_BLACKJACK_PUSH = 0`, `MINIGAME_BLACKJACK_LOSE = -10`. **New minigame result:** `"push"` (blackjack only). **New webview message fields:** `floorSnacks` on `feed` (snack), `cravingItem` on `stateUpdate`.
+
+### Changes from v2.27.0 (Tim & Stu actions — branch feature/tim-stu-actions)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | `patCall` (call / answered / expired / status text) and `snackCravings`: Tim wants a run and craves a tea; Stu wants stickers and craves a pint or some salmon |
+| `vscode/src/cravingItem.ts` (new), `pycharm/.../CravingItem.kt` (new) | random craved item, memoised per craving so toast, status bar and webview agree |
+| `vscode/src/extension.ts`, `statusBarText.ts`, `sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt`, `StatusBarText.kt`, `CodotchiBrowserPanel.kt` | pat-call / craving text overrides; `cravingItem` sent to the webview; break reminder text no longer tells you to praise the pet |
+| `vscode/media/sidebar.js` | run / sticker call text, craving item text and matching floor snack; Tim and Stu answer with their own bubbles; Stu's Coin Flip button plays Blackjack; Tim's run lap; Stu's sticker prop; snack presses report `floorSnacks` |
+| `vscode/media/sidebar.html` | `#mg-blackjack` panel (Hit / Stand) |
+| `vscode/media/minigameArt.js` | `A J Q K` glyphs, suit pips, `drawPlayingCard`, `drawBlackjackTable`, `blackjackTotal`, `blackjackOutcome` |
+| `vscode/media/sprites.js` | tim / stu grids centred (BUGFIX-193); `renderSpriteGrid` centres the rounded grid in the box; `spritePat.runLap / usesHand / durationMs / pickProp / drawProp`, `dust` and `sticker` particles; Tim and Stu get no hand or hearts |
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt` | `blackjack` minigame (win / push / lose) |
+| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt` | BUGFIX-192: `startSnack` uses the webview's floor count |
+| `vscode/tests/unit/customCharacterText.test.ts` (new), `minigameArt.test.ts`, `webviewAnimations.test.ts`, `spriteData.test.ts`, `gameEngine.test.ts`, `pycharm/.../StatusBarTextTest.kt`, `GameEngineTest.kt` | tests |
+| all manifests, `README.md` | version 2.27.0 → 2.27.1 |
+
+---
+
+## v2.27.0
 
 **New state fields:** `devModeEverUsed` (sticky), `leaderboardIneligible` (`""` / `"tampered"` / `"unverified"`). **State file:** top-level `seal` (VS Code / OpenCode / Claude Desktop `state.json`, PyCharm `state.json` + `petStateSeal` in `codotchi.xml`). **Leaderboard issues:** `schemaVersion` 2 with `clientVersion` + `sig`; v1 is rejected. **Physics floor:** 240 s/day → 720 s ÷ agingMultiplier per pet type, 10% slack. **New secret:** `LEADERBOARD_HMAC_KEY` (see `developer_notes/leaderboard/ADMIN.md`). ADR: `developer_notes/adr/2026-10-07-leaderboard-integrity.md`.
 

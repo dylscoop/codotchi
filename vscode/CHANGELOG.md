@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.27.1] — 2026-10-07
+
+### Changed
+
+- **Tim and Stu** — Tim now asks to go for a run instead of a pat, and actually jogs a lap of the stage. Stu asks to collect stickers and opens a sticker binder or a fresh pack. When they crave a snack they say what they want: a tea for Tim, a pint or some salmon for Stu. Stu also plays a round of Blackjack instead of Coin Flip.
+- **Break reminder** — the reminder now just says it's time for a break.
+
+### Fixed
+
+- **Tim and Stu off-centre** — both were drawn left of centre and jumped sideways every time they turned around.
+- **Stu's snacks** — with three snacks already on the floor, a fourth was silently lost instead of being thrown away with a message in the log.
+
 ## [2.27.0] — 2026-10-07
 
 ### Changed
