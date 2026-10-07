@@ -32,6 +32,16 @@ You can also appear on the leaderboard **while your pet is still alive**. Your e
 
 **PyCharm:** Click the same **Push live progress** toggle. On first use a GitHub sign-in page opens in your browser, and a notification shows the code to enter. The token is stored securely in the IDE keychain.
 
+### Fair play
+
+Only scores sent by the Codotchi plugin itself are accepted. Each one is signed, and hand-written GitHub issues are rejected. A pet can't be submitted (or pushed live) if:
+
+- it **ever** ran with dev mode on, even if you turn dev mode off later
+- its save file was edited outside Codotchi
+- it hatched before this check existed (v2.27.0). Your next pet can be submitted.
+
+The sidebar greys out **Submit to Leaderboard** and **Push live progress** and says why. Scores from before v2.27.0 stay on the board with a *legacy* tag.
+
 **If your GitHub sign-in expires or is revoked**, both IDEs notice the next time they talk to GitHub. The sidebar shows **Sign in to GitHub again**, and a background live push shows a notification with a **Sign in** action. Submitting or deleting an entry asks you to sign in again and retries once.
 
 ## Platforms

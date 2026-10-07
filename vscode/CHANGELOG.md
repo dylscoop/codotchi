@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.27.0] — 2026-10-07
+
+### Changed
+
+- **Fair leaderboard** — only scores sent by the Codotchi plugin are accepted now; hand-written GitHub issues are turned away. A pet that ever ran in dev mode, or whose save file was edited outside Codotchi, can't be submitted or pushed live, even after dev mode is turned off. The sidebar greys out the buttons and says why. Pets hatched before this version can't be submitted either, but your next one can. Older scores stay on the board marked *legacy*.
+
 ## [2.26.3] — 2026-10-05
 
 ### Fixed
