@@ -108,8 +108,16 @@ build:
 but its Submit / Push live progress buttons are disabled ("This build of
 Codotchi can't submit to the leaderboard").
 
-If `LEADERBOARD_HMAC_KEY` is missing, the workflows fail closed: every
-submission is rejected with "server key not configured".
+If `LEADERBOARD_HMAC_KEY` is missing, the workflows fail closed: every signed
+submission is rejected. The issue is still closed and the run still shows
+green, so check the *Validate* step log for
+`rejected: … (server key not configured)`. `gh secret list` should show the
+secret.
+
+Unsigned submissions from pre-2.27.2 clients are accepted as **legacy**
+(`verified: false, legacy: true`). They pass the same age and timing checks
+and get a *legacy* badge on the page (see the ADR amendment in
+`developer_notes/adr/2026-10-07-leaderboard-integrity.md`).
 
 **Limits:** the plugins are open source and the key ships inside the built
 artifacts, so someone who extracts it from a `.vsix` or `.zip` could still forge

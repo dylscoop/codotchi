@@ -31,7 +31,8 @@ jobs:
           path: tools
           sparse-checkout: .github/scripts
 
-      # Only issues generated (and HMAC-signed) by a Codotchi client pass — see
+      # HMAC-signed issues from a Codotchi client pass as verified; unsigned ones
+      # from pre-2.27.2 clients pass as legacy — see
       # .github/scripts/leaderboard-validate.mjs. Issue text never reaches a shell
       # or a ${{ }} expression; the outcome travels via /tmp/leaderboard-result.json.
       - name: Validate submission

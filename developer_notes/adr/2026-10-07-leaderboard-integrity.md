@@ -69,4 +69,23 @@ TypeScript, Kotlin and workflow implementations can't drift apart.
   client, and blocking them broke live progress for every existing pet. The
   trade-off: a save with its seal deleted also loads as "unverified", so an edited
   save without a seal is not caught. Tampered and dev-mode pets stay blocked.
-- Older clients (schemaVersion 1) are rejected with a hint to update.
+- ~~Older clients (schemaVersion 1) are rejected with a hint to update.~~
+  Superseded, see the amendment below.
+
+## Amendment (post-2.27.2): accept legacy clients
+
+Rejecting schemaVersion 1 emptied the board: most players were still on
+pre-2.27.2 builds, and every live push from them was closed silently. (The
+`LEADERBOARD_HMAC_KEY` secret had also not been set yet, so even signed pushes
+failed closed.)
+
+Unsigned bodies (no `schemaVersion` or `1`, and no `sig`) are now accepted as
+**legacy**. They are stored with `verified: false, legacy: true` and no
+`clientVersion`, and the page shows a *legacy* badge on both tables. They still
+go through every field, timestamp, physics-floor and stage-bound check, and a
+live update's `username` must still match the issue author. Signed bodies are
+unchanged: they need the key and a matching `sig`. A body that claims a signed
+format but has a bad sig never falls back to legacy. The cost is that anyone can
+hand-write a legacy entry within the physics floor. The badge makes that
+visible, and admins remove those by hand. This can be dropped once old clients
+are gone.
