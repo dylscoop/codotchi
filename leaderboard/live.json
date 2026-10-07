@@ -11,16 +11,6 @@
   },
   {
     "username": "dylscoop",
-    "petName": "Mind Goblin Jr",
-    "petRunId": "0",
-    "spawnedAt": 1791359581258,
-    "ageDays": 3,
-    "stage": "baby",
-    "petType": "codeling",
-    "updatedAt": 1791362287901
-  },
-  {
-    "username": "dylscoop",
     "petName": "Codotchi",
     "petRunId": "someValue.machineId",
     "spawnedAt": 1790868209500,
@@ -48,5 +38,18 @@
     "stage": "child",
     "petType": "bytebug",
     "updatedAt": 1791368610444
+  },
+  {
+    "schemaVersion": 2,
+    "username": "dylscoop",
+    "petName": "Mind Goblin Jr",
+    "petRunId": "0",
+    "spawnedAt": 1791359581258,
+    "ageDays": 9,
+    "stage": "child",
+    "petType": "codeling",
+    "updatedAt": 1791368623748,
+    "clientVersion": "2.27.2",
+    "sig": "d35b096a512e5275a0f14c49ab7e019cc0089ca2c2c8b17f1ec39bb5a6d31b48"
   }
 ]
