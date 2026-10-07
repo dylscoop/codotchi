@@ -2362,3 +2362,23 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** each host remembers which events list it last notified for. Toasts and the old-age death notification fire only for a list it hasn't seen yet. State, the status bar and the sidebar still update on every broadcast.
 
 **Tests:** `vscode/tests/unit/liveProgress.test.ts`, `pycharm/.../LiveProgressTest.kt`.
+
+## BUGFIX-196 — Leaderboard rejected every submission (secret not set)
+
+**Status:** Fixed (repo secret, after v2.27.2)
+**File:** repo secret `LEADERBOARD_HMAC_KEY`
+
+**Problem:** the 2.27.2 release was built with the leaderboard key, but the key was never added as a repo secret. The validator fails closed without it, so every `[Live]` and `[Leaderboard]` issue was closed with "server key not configured". The runs still showed green, so nothing looked wrong.
+
+**Fix:** `gh secret set LEADERBOARD_HMAC_KEY < .leaderboard-key`. `developer_notes/leaderboard/ADMIN.md` now says where the rejection shows up in the run log.
+
+## BUGFIX-197 — Live pets from older Codotchi versions vanished from the leaderboard
+
+**Status:** Fixed (branch `fix/leaderboard-accept-legacy`, server-side only)
+**File:** `.github/scripts/leaderboard-validate.mjs`, `.github/workflows/process-leaderboard-live.yml`, `leaderboard/index.html`
+
+**Problem:** since 2.27.0 the workflows rejected unsigned (schemaVersion 1) bodies. Most players were still on older builds, so their live pushes were closed silently and the *Currently Alive* table emptied.
+
+**Fix:** unsigned v1 bodies are accepted as legacy (`verified: false, legacy: true`). They still go through every age, timing and stage check, and live updates must still come from the pet's owner. `live.json` keeps them, and the page shows them with a *legacy* badge. Signed bodies are unchanged, and a signed-format body with a bad signature is still rejected.
+
+**Tests:** `vscode/tests/unit/integrity.test.ts`.

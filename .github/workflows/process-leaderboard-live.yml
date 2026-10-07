@@ -27,8 +27,9 @@ jobs:
           path: tools
           sparse-checkout: .github/scripts
 
-      # Only signed updates from a Codotchi client pass, and only whitelisted
-      # fields are stored (see .github/scripts/leaderboard-validate.mjs).
+      # Signed updates from a Codotchi client pass as verified; unsigned ones from
+      # pre-2.27.2 clients pass as legacy. Only whitelisted fields are stored
+      # (see .github/scripts/leaderboard-validate.mjs).
       - name: Validate update
         id: validate
         env:
@@ -48,10 +49,10 @@ jobs:
           try { entries = JSON.parse(fs.readFileSync(path, "utf8")); } catch { entries = []; }
           if (!Array.isArray(entries)) { entries = []; }
           const author = entry.username.toLowerCase();
-          // Drop unverified entries from older clients, then upsert on (username, petRunId)
+          // Drop pre-integrity entries (neither verified nor legacy), then upsert on (username, petRunId)
           // so one user's pets in different IDEs are tracked independently. Also drop any
           // other entry for this same run (same user + spawnedAt).
-          entries = entries.filter(e => e && e.verified === true &&
+          entries = entries.filter(e => e && (e.verified === true || e.legacy === true) &&
             !(String(e.username).toLowerCase() === author &&
               (String(e.petRunId) === entry.petRunId || e.spawnedAt === entry.spawnedAt)));
           entries.push(entry);

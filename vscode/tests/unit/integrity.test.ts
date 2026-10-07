@@ -143,12 +143,53 @@ describe("leaderboard-validate.mjs (GitHub workflow)", () => {
     assert.match((await run(scoreBody(signedScore()), "someone-else")).reason!, /Codotchi client/);
   });
 
-  it("rejects old-format (v1) submissions with an update hint", async () => {
-    assert.match((await run(scoreBody({ ...signedScore(), schemaVersion: 1 }))).reason!, /older Codotchi/);
+  // Unsigned body as sent by pre-2.27.2 clients.
+  const legacyScore = (): Record<string, unknown> => {
+    const { schemaVersion: _v, clientVersion: _c, sig: _s, ...rest } = signedScore();
+    return rest;
+  };
+  const legacyLive = (): Record<string, unknown> => ({
+    username: author, petName: sub.petName, petRunId: "run-1", spawnedAt: sub.spawnedAt, ageDays: sub.ageDays,
+    stage: sub.stage, petType: sub.petType, updatedAt: sub.at,
+  });
+  const runLive = async (data: Record<string, unknown>, issueAuthor = author, key = KEY) =>
+    (await load()).runValidation("live",
+      { ISSUE_BODY: JSON.stringify(data), ISSUE_AUTHOR: issueAuthor, LEADERBOARD_HMAC_KEY: key }, () => []);
+
+  it("accepts unsigned v1 scores from older clients as legacy", async () => {
+    for (const data of [legacyScore(), { ...legacyScore(), schemaVersion: 1 }]) {
+      const r = await run(scoreBody(data));
+      assert.equal(r.valid, true, r.reason);
+      assert.equal(r.entry!.verified, false);
+      assert.equal(r.entry!.legacy, true);
+      assert.equal(r.entry!.clientVersion, undefined);
+    }
   });
 
-  it("fails closed when the server key isn't configured", async () => {
-    assert.equal((await run(scoreBody(signedScore()), author, "")).valid, false);
+  it("accepts unsigned v1 live updates as legacy, even without the server key", async () => {
+    const r = await runLive(legacyLive(), author, "");
+    assert.equal(r.valid, true, r.reason);
+    assert.equal(r.entry!.verified, false);
+    assert.equal(r.entry!.legacy, true);
+  });
+
+  it("rejects a legacy live update posted by someone else", async () => {
+    assert.match((await runLive(legacyLive(), "someone-else")).reason!, /Username/);
+  });
+
+  it("still applies the age and timing checks to legacy submissions", async () => {
+    const tooFast = { ...legacyScore(), ageDays: 157, stage: "adult", petType: "bytebug", diedAt: sub.spawnedAt + 157 * 200_000 };
+    assert.match((await run(scoreBody(tooFast))).reason!, /real time/);
+    assert.match((await run(scoreBody({ ...legacyScore(), ageDays: 2, stage: "adult" }))).reason!, /doesn't match stage/);
+  });
+
+  it("never treats a signed-format body with a bad sig as legacy", async () => {
+    assert.match((await run(scoreBody({ ...legacyScore(), schemaVersion: 1, sig: "00" }))).reason!, /format/);
+    assert.match((await run(scoreBody({ ...signedScore(), sig: "0".repeat(64) }))).reason!, /Codotchi client/);
+  });
+
+  it("fails closed for signed submissions when the server key isn't configured", async () => {
+    assert.match((await run(scoreBody(signedScore()), author, "")).reason!, /server key/);
   });
 
   it("rejects an age faster than the pet type can physically live", async () => {

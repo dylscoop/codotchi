@@ -14,6 +14,17 @@
 | `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | BUGFIX-195: attention-call toasts fire once per tick, not again on every re-broadcast (live toggle, live push, sign-in) |
 | all manifests, `README.md` | version 2.27.1 → 2.27.2 |
 
+### Server-side follow-up (no plugin change — branch fix/leaderboard-accept-legacy)
+
+| File | What changed |
+|------|-------------|
+| repo secret | BUGFIX-196: `LEADERBOARD_HMAC_KEY` set; every submission had been rejected with "server key not configured" |
+| `.github/scripts/leaderboard-validate.mjs` | BUGFIX-197: unsigned v1 bodies from pre-2.27.2 clients accepted as legacy (`verified: false, legacy: true`), still age/timing-checked; signed bodies unchanged |
+| `.github/workflows/process-leaderboard-live.yml`, `process-leaderboard.yml` | keep legacy live entries in `live.json`; comments |
+| `leaderboard/index.html` | legacy live pets shown on both tables with the *legacy* badge |
+| `vscode/tests/unit/integrity.test.ts` | legacy acceptance, key, bad-sig and username tests |
+| `developer_notes/adr/2026-10-07-leaderboard-integrity.md`, `developer_notes/leaderboard/ADMIN.md` | amendment; how a missing key shows up |
+
 ---
 
 ## v2.27.1
