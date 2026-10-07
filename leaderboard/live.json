@@ -20,16 +20,6 @@
     "updatedAt": 1791367574814
   },
   {
-    "username": "dylscoop",
-    "petName": "Wee Stu",
-    "petRunId": "b68ca4c6f25d5c541f9eb73d12e36859b0333c31516adffe676bd4e6e703fd1f",
-    "spawnedAt": 1788440785354,
-    "ageDays": 8,
-    "stage": "baby",
-    "petType": "codeling",
-    "updatedAt": 1791368198182
-  },
-  {
     "username": "Stuart-Mac",
     "petName": "Tserinac",
     "petRunId": "6e62d552218d1b2c647d5272a2d3c97dfbb546826ca8c0c665b944eed1ecfc29",
@@ -51,5 +41,15 @@
     "updatedAt": 1791368623748,
     "clientVersion": "2.27.2",
     "sig": "d35b096a512e5275a0f14c49ab7e019cc0089ca2c2c8b17f1ec39bb5a6d31b48"
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Wee Stu",
+    "petRunId": "b68ca4c6f25d5c541f9eb73d12e36859b0333c31516adffe676bd4e6e703fd1f",
+    "spawnedAt": 1788440785354,
+    "ageDays": 8,
+    "stage": "baby",
+    "petType": "codeling",
+    "updatedAt": 1791369098139
   }
 ]
