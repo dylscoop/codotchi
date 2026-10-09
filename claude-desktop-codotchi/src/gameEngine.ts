@@ -255,8 +255,8 @@ export const GIFT_PRAISE_HAPPINESS_BOOST: number = 15;
 
 /**
  * Active (non-idle, awake) ticks between "take a break" calls: 600 × 3 s = 30 min.
- * The timer restarts when the call fires and whenever the user goes deep-idle
- * (they have taken a break on their own).
+ * The timer only restarts when the break is actually taken (call answered via
+ * praise()). Idle time pauses it; an ignored call re-fires after its expiry cooldown.
  */
 export const BREAK_CALL_INTERVAL_TICKS: number = 600;
 /** Happiness boost when a break call is answered via praise() — same as a gift. */
@@ -1361,8 +1361,6 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
     ticksSinceLastCraving += 1;
     if (!sleeping) { ticksSinceLastBreakCall += 1; }
   }
-  // Away from the keyboard counts as a break
-  if (isDeepIdle) { ticksSinceLastBreakCall = 0; }
   } // end Step 0
 
   if (!sleeping) {
@@ -1616,7 +1614,6 @@ export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boole
                ticksSinceLastBreakCall >= BREAK_CALL_INTERVAL_TICKS) {
       activeAttentionCall = "break";
       attentionCallActiveTicks = 0;
-      ticksSinceLastBreakCall = 0;
       events.push("attention_call_break");
     // Whim calls — random, at any stat level, after every need-based call so a
     // real need always wins. Not while idle: nobody is there to answer them.
@@ -2399,7 +2396,7 @@ export function praise(state: PetState): PetState {
     happiness:  clampStat(state.happiness + happinessBonus),
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     ...(goesToSleep ? { sleeping: true, consecutiveSnacks: 0 } : {}),
-    ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS } : {}),
+    ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS, ticksSinceLastBreakCall: 0 } : {}),
     events,
   });
 }

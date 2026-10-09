@@ -400,8 +400,8 @@ const val GIFT_PRAISE_HAPPINESS_BOOST: Int = 15
 
 /**
  * Active (non-idle, awake) ticks between "take a break" calls: 600 × 3 s = 30 min.
- * The timer restarts when the call fires and whenever the user goes deep-idle
- * (they have taken a break on their own).
+ * The timer only restarts when the break is actually taken (call answered via
+ * praise()). Idle time pauses it; an ignored call re-fires after its expiry cooldown.
  */
 const val BREAK_CALL_INTERVAL_TICKS: Int = 600
 /** Happiness boost when a break call is answered via praise() — same as a gift. */

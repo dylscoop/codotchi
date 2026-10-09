@@ -1,6 +1,19 @@
 # Version History
 
-## v2.27.3 — current
+## v2.27.4 — current
+
+### Changes from v2.27.3 (break timer no longer restarts — branch fix/break-timer-no-reset)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt` | BUGFIX-199: `ticksSinceLastBreakCall` no longer reset by deep idle or by the call firing; only `praise()` answering a break call resets it, so an ignored reminder re-fires after its expiry cooldown |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/.../GameEngineTest.kt` | tests |
+| `developer_notes/vscode/FEATURES.md`, READMEs, `plugin.xml` | docs |
+| all manifests, `README.md`, `vscode/CHANGELOG.md`, `plugin.xml` change-notes | version 2.27.3 → 2.27.4 |
+
+---
+
+## v2.27.3
 
 **New state field:** `diedAt` (Unix ms of the death tick, 0 while alive; not part of the seal). **Leaderboard:** a re-submitted death only replaces the stored row if it is *earlier*.
 

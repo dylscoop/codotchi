@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.27.4] — 2026-10-09
+
+### Fixed
+
+- **Break reminder** — the 30-minute timer no longer restarts when you go idle or ignore the reminder. It only restarts once you actually take the break (praise the call). An ignored reminder comes back every few minutes.
+
 ## [2.27.3] — 2026-10-07
 
 ### Fixed

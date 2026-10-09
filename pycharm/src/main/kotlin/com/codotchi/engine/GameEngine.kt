@@ -401,8 +401,6 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
         ticksSinceLastCraving += 1
         if (!sleeping) ticksSinceLastBreakCall += 1
     }
-    // Away from the keyboard counts as a break
-    if (isDeepIdle) ticksSinceLastBreakCall = 0
 
     } // end Step 0
 
@@ -642,7 +640,6 @@ fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, 
             ticksSinceLastBreakCall >= BREAK_CALL_INTERVAL_TICKS) {
             activeAttentionCall = "break"
             attentionCallActiveTicks = 0
-            ticksSinceLastBreakCall = 0
             events.add("attention_call_break")
         // Whim calls — random, at any stat level, after every need-based call so a
         // real need always wins. Not while idle: nobody is there to answer them.
@@ -1234,6 +1231,7 @@ fun praise(state: PetState): PetState {
         state.copy(
             sleeping    = state.sleeping || goesToSleep,
             breakNapTicksRemaining = if (answeredBreak != null) BREAK_NAP_TICKS else state.breakNapTicksRemaining,
+            ticksSinceLastBreakCall = if (answeredBreak != null) 0 else state.ticksSinceLastBreakCall,
             consecutiveSnacks = if (goesToSleep) 0 else state.consecutiveSnacks,
             discipline  = clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
             happiness   = clampStat(state.happiness  + happinessBonus),

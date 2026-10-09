@@ -684,21 +684,32 @@ class GameEngineTest {
         contentPet("craving", "play", "pat", "gift", "poop").copy(ticksSinceLastBreakCall = ticks)
 
     @Test
-    fun `break call fires after 30 active awake minutes and restarts its timer`() {
+    fun `break call fires after 30 active awake minutes and does not restart its timer by firing`() {
         assertEquals(30 * 60, BREAK_CALL_INTERVAL_TICKS * 3)
         val almost = tick(breakPet(BREAK_CALL_INTERVAL_TICKS - 2))
         assertNull(almost.activeAttentionCall)
         val due = tick(almost)
         assertEquals("break", due.activeAttentionCall)
         assertTrue("attention_call_break" in due.events)
-        assertEquals(0, due.ticksSinceLastBreakCall)
+        assertTrue(due.ticksSinceLastBreakCall >= BREAK_CALL_INTERVAL_TICKS)
     }
 
     @Test
-    fun `break timer only counts active awake time and deep idle restarts it`() {
+    fun `break timer only counts active awake time and idle or deep idle pause it`() {
         assertEquals(100, tick(breakPet(100), isIdle = true).ticksSinceLastBreakCall)
         assertEquals(100, tick(breakPet(100).copy(sleeping = true)).ticksSinceLastBreakCall)
-        assertEquals(0, tick(breakPet(100), isDeepIdle = true).ticksSinceLastBreakCall)
+        assertEquals(100, tick(breakPet(100), isDeepIdle = true).ticksSinceLastBreakCall)
+    }
+
+    @Test
+    fun `ignored break call fires again as soon as its cooldown clears`() {
+        assertEquals("break", tick(breakPet(BREAK_CALL_INTERVAL_TICKS + 50)).activeAttentionCall)
+    }
+
+    @Test
+    fun `praise on a break call restarts the break timer`() {
+        assertEquals(0, praise(makePet().copy(activeAttentionCall = "break", ticksSinceLastBreakCall = 900)).ticksSinceLastBreakCall)
+        assertEquals(900, praise(makePet().copy(ticksSinceLastBreakCall = 900)).ticksSinceLastBreakCall)
     }
 
     @Test

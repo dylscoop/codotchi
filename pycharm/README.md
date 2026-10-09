@@ -72,7 +72,7 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   take a break. Praise it to answer: it's happier for it and naps for 5
   minutes while you rest (stats frozen except energy, which recharges, and it
   keeps aging). You can't wake it early — it wakes up on its own.
-  Skipping it does no harm, and stepping away from the IDE counts as a break
+  Skipping it does no harm, but the reminder keeps coming back every few minutes until you actually take the break (idle time pauses the timer, it doesn't reset it)
 - **Terminal & Claude integrations** — your pet lives in Claude Code, OpenCode
   and Claude Desktop too, with shared state across every host
 - **Today's Token Cost** — see how much Claude Code / OpenCode has cost you

@@ -74,7 +74,7 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   take a break. Praise it to answer: it's happier for it and naps for 5
   minutes while you rest (stats frozen except energy, which recharges, and it
   keeps aging). You can't wake it early — it wakes up on its own.
-  Skipping it does no harm, and stepping away from the IDE counts as a break
+  Skipping it does no harm, but the reminder keeps coming back every few minutes until you actually take the break (idle time pauses the timer, it doesn't reset it)
 - **OpenCode integration** — your pet lives in the terminal too, with shared
   state across VS Code, PyCharm, and OpenCode
 - **Status bar integration** — pet name and mood always visible in the VS Code
