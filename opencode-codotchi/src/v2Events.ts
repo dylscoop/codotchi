@@ -58,3 +58,36 @@ export function translateV2Event(event: V2EventLike): LegacyEvent[] {
       return [];
   }
 }
+
+const ANSI = /\x1b\[[0-9;]*m/g;
+const PET_HEADER = /^\s*(?:[^\x00-\x7F]+\s)?(.+?) \[[a-z]+\] \[(VS Code|PyCharm|OpenCode)\]\s*$/;
+
+/**
+ * Reduce a queued V1 notification (speech-bubble art or a plain "[IDE] Name: text"
+ * line) to a short toast: the pet as title and the bubble text as message.
+ */
+export function summariseNotification(raw: string): { title?: string; message: string } {
+  const lines = raw.replace(ANSI, "").split(/\r?\n/);
+  let title: string | undefined;
+  const parts: string[] = [];
+  let col = -1;
+  for (const line of lines) {
+    const header = line.match(PET_HEADER);
+    if (header && title === undefined) { title = `${header[1].trim()} [${header[2]}]`; continue; }
+    if (col < 0) {
+      const top = line.search(/_{3,}\s*$/);
+      if (top >= 0) { col = top; }
+      continue;
+    }
+    if (line.includes("\u203e")) { col = -1; continue; }
+    const seg = line.slice(Math.max(0, col - 1)).trim();
+    const inner = seg.replace(/^[<\/|\\]\s?/, "").replace(/\s?[>\/|\\]$/, "").trim();
+    if (inner) { parts.push(inner); }
+  }
+  if (parts.length > 0) { return { title, message: parts.join(" ") }; }
+  const plain = lines.map(l => l.trim()).filter(Boolean);
+  const last = plain[plain.length - 1] ?? "";
+  const m = last.match(/^\[(VS Code|PyCharm|OpenCode)\] ([^:]+): (.+)$/);
+  if (m) { return { title: title ?? `${m[2]} [${m[1]}]`, message: m[3] }; }
+  return { title, message: last.replace(/^\[codotchi\]\s*/, "") };
+}

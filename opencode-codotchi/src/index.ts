@@ -68,7 +68,7 @@ import {
   CODE_ACTIVITY_THROTTLE_SECONDS,
 } from "./gameEngine.js";
 import { sealSerialisedState, verifySeal } from "./integrity.js";
-import { translateV2Event } from "./v2Events.js";
+import { translateV2Event, summariseNotification } from "./v2Events.js";
 
 import {
   buildSpeechBubble,
@@ -890,14 +890,19 @@ async function refreshLiveRank(me: { ageDays?: number; stage?: string; spawnedAt
   } catch { /* network failure — keep stale */ }
 }
 
+/** Set by the V2 entry point so queued notifications can also be pushed to the TUI as toasts. */
+let notificationListener: ((msg: string) => void) | null = null;
+
 function queueNotification(msg: string): void {
   // If a notification is already pending, append (newline-separated)
   pendingNotification = pendingNotification ? pendingNotification + "\n" + msg : msg;
+  notificationListener?.(msg);
 }
 
 /** Prepend msg to the front of the pending notification queue (so it appears before any already-queued messages). */
 function prependNotification(msg: string): void {
   pendingNotification = pendingNotification ? msg + "\n" + pendingNotification : msg;
+  notificationListener?.(msg);
 }
 
 /** Drain and return any pending notification, then clear it. */
@@ -1984,9 +1989,110 @@ const v2LegacyClient = {
   },
 } as unknown as PluginInput["client"];
 
+// Plain RPC definition (Rpc.define only validates and returns it), so the
+// bundle needs no runtime import from @opencode/plugin. tui.tsx mirrors it.
+const CODOTCHI_RPC = {
+  id: "codotchi",
+  methods: {
+    snapshot: { output: { type: "object" } },
+  },
+  events: {
+    updated: { schema: { type: "object" } },
+    alert: {
+      schema: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          message: { type: "string" },
+          variant: { type: "string" },
+        },
+        required: ["message"],
+      },
+    },
+  },
+};
+
+type SpeechEntry = { message: string; bubbleColor: string; tierEmoji: string };
+/** Last V1 speech per pet; refreshed when a reply finishes, like V1's after-reply bubble. */
+const speechCache = new Map<string, SpeechEntry>();
+let speechDirty = true;
+
+function costTier(): "green" | "yellow" | "red" {
+  if (dailyCostUSD >= costShoutThreshold) { return "red"; }
+  if (dailyCostUSD >= costWarnThreshold) { return "yellow"; }
+  return "green";
+}
+
+/** Everything the TUI needs: V1 speech bubbles (ANSI-coloured lines) plus cost totals. */
+function buildSnapshot(): Record<string, unknown> {
+  const hour = lastHourUsage();
+  const alive = getActivePets().filter(p => p.state.alive);
+  if (speechDirty) {
+    speechCache.clear();
+    speechDirty = false;
+  }
+  const pets = alive.map(p => {
+    const s = p.state;
+    let speech = speechCache.get(p.ide);
+    if (!speech) {
+      speech = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, hour.costUSD, hour.tokens, dailyMessages);
+      speechCache.set(p.ide, speech);
+    }
+    const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
+    return {
+      ide: p.ide,
+      name: s.name,
+      stage: s.stage,
+      message: speech.message,
+      emoji: speech.tierEmoji,
+      lines: buildSpeechBubble(s.stage, s.mood, speech.message, s.name, s.spriteType, ideLabel, speech.bubbleColor, speech.tierEmoji).split("\n"),
+    };
+  });
+  return {
+    enabled: terminalEnabled,
+    tier: costTier(),
+    pets,
+    today: { costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages },
+    lastHour: { costUSD: hour.costUSD, tokens: hour.tokens },
+    session: { costUSD: sessionCostUSD, tokens: sessionTokens },
+    thresholds: { warn: costWarnThreshold, shout: costShoutThreshold },
+    updatedAt: Date.now(),
+  };
+}
+
+function alertVariant(text: string): "info" | "success" | "warning" | "error" {
+  if (/goodbye|farewell|full life|lived|journey/i.test(text)) { return "error"; }
+  if (/evolved|now a |growing up/i.test(text)) { return "success"; }
+  if (/sick|mess|hungry|critical|medicine/i.test(text)) { return "warning"; }
+  return "info";
+}
+
+// V2 may run one plugin instance per location inside the same server process.
+// Game state is module-global, so one leader instance owns the timers, the
+// event subscription and the RPC; the others only register the tool.
+let v2Leader: { refs: number; stop: () => void } | null = null;
+let v2HooksPromise: Promise<Awaited<ReturnType<typeof plugin>>> | null = null;
+/** Set by the leader instance; pushes a fresh snapshot to the TUI. */
+let requestSidebarRefresh: () => void = () => { /* no leader yet */ };
+
 async function setupV2(ctx: any): Promise<() => void> {
-  const hooks = await plugin({ client: v2LegacyClient, directory: ctx.location?.directory } as unknown as PluginInput);
+  const isLeader = v2HooksPromise === null;
+  if (isLeader) {
+    v2HooksPromise = plugin({ client: v2LegacyClient, directory: ctx.location?.directory } as unknown as PluginInput);
+    v2Leader = { refs: 1, stop: () => { /* set once setup completes */ } };
+  }
+  const hooks = await v2HooksPromise!;
   const legacyTool = (hooks.tool as Record<string, any>).codotchi;
+
+  let rpcRegistration: any = null;
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  const emitUpdated = (): void => {
+    if (refreshTimer !== undefined) { return; }
+    refreshTimer = setTimeout(() => {
+      refreshTimer = undefined;
+      try { void rpcRegistration?.events.emit("updated", buildSnapshot()); } catch { /* best-effort */ }
+    }, 250);
+  };
 
   await ctx.tool.transform((editor: any) => {
     editor.add({
@@ -1998,26 +2104,69 @@ async function setupV2(ctx: any): Promise<() => void> {
           ...context,
           metadata: () => { /* V2 tool panel titles come from the tool name */ },
         });
+        speechDirty = true;
+        requestSidebarRefresh();
         return { content: stripAnsi(typeof out === "string" ? out : lastToolOutput) };
       },
     });
   });
 
+  if (!isLeader) {
+    let ownRpc: any = null;
+    try { ownRpc = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async () => buildSnapshot() }); } catch { /* already registered here */ }
+    v2Leader!.refs += 1;
+    return () => { void ownRpc?.dispose?.(); releaseV2(); };
+  }
+
+  try {
+    rpcRegistration = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async () => buildSnapshot() });
+  } catch { /* RPC unavailable — the TUI simply shows nothing */ }
+  requestSidebarRefresh = emitUpdated;
+
+  notificationListener = (msg: string): void => {
+    const alert = summariseNotification(msg);
+    if (!alert.message) { return; }
+    try {
+      void rpcRegistration?.events.emit("alert", { ...alert, variant: alertVariant(alert.message) });
+    } catch { /* best-effort */ }
+  };
+
   const controller = new AbortController();
   void (async () => {
     try {
       for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
-        for (const legacy of translateV2Event(event)) {
+        const translated = translateV2Event(event);
+        for (const legacy of translated) {
           try { await hooks.event?.({ event: legacy as any }); } catch { /* never break the stream */ }
+          if (legacy.type === "session.idle") { speechDirty = true; }
         }
+        if (translated.length > 0) { emitUpdated(); }
       }
     } catch { /* subscription closed */ }
   })();
 
-  return () => {
+  // Keep the sidebar's stats and costs fresh between replies (ticks).
+  const pulse = setInterval(emitUpdated, TICK_INTERVAL_SECONDS * 1_000);
+
+  v2Leader!.stop = () => {
     controller.abort();
+    clearInterval(pulse);
+    if (refreshTimer !== undefined) { clearTimeout(refreshTimer); }
+    notificationListener = null;
+    requestSidebarRefresh = () => { /* no leader */ };
+    void rpcRegistration?.dispose?.();
     disposeCodotchi();
   };
+  return () => { releaseV2(); };
+}
+
+function releaseV2(): void {
+  if (!v2Leader) { return; }
+  v2Leader.refs -= 1;
+  if (v2Leader.refs > 0) { return; }
+  v2Leader.stop();
+  v2Leader = null;
+  v2HooksPromise = null;
 }
 
 /** Stop timers and file watchers started by the plugin entry point. */

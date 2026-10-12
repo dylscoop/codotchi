@@ -275,7 +275,7 @@ describe("codotchi tool execute", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Suite 5 — OpenCode V2 loader contract (Plugin.define shape + setup)
+// Suite 5 ï¿½ OpenCode V2 loader contract (Plugin.define shape + setup)
 // ---------------------------------------------------------------------------
 
 type V2Tool = { name: string; input: unknown; execute: (input: unknown, ctx: unknown) => Promise<{ content: string }> };
@@ -283,10 +283,21 @@ type V2Tool = { name: string; input: unknown; execute: (input: unknown, ctx: unk
 function makeV2Context(events: unknown[]) {
   const tools: V2Tool[] = [];
   let subscribed = false;
+  const rpc: { handlers?: Record<string, () => Promise<any>>; emitted: Array<{ name: string; data: any }> } = { emitted: [] };
   const ctx = {
     app: { version: "2.0.0-test" },
     location: { directory: process.cwd(), project: { id: "test", directory: process.cwd(), canonical: process.cwd() } },
     options: {},
+    rpc: {
+      register: async (def: { id: string }, handlers: Record<string, () => Promise<any>>) => {
+        expect(def.id).toBe("codotchi");
+        rpc.handlers = handlers;
+        return {
+          events: { emit: async (name: string, data: any) => { rpc.emitted.push({ name, data }); } },
+          dispose: async () => {},
+        };
+      },
+    },
     tool: {
       transform: async (cb: (editor: { add: (t: V2Tool) => void }) => void) => {
         cb({ add: (t) => tools.push(t) });
@@ -305,10 +316,10 @@ function makeV2Context(events: unknown[]) {
       },
     },
   };
-  return { ctx, tools, isSubscribed: () => subscribed };
+  return { ctx, tools, rpc, isSubscribed: () => subscribed };
 }
 
-describe("bundled plugin — OpenCode V2 loader contract", () => {
+describe("bundled plugin ï¿½ OpenCode V2 loader contract", () => {
   it("default export is an object with id and setup (fixes 'Expected object at [\"default\"]')", () => {
     const def = bundleMod.default as { id?: unknown; setup?: unknown };
     expect(typeof def).toBe("object");
@@ -330,7 +341,7 @@ describe("bundled plugin — OpenCode V2 loader contract", () => {
       { type: "vcs.branch.updated", data: { branch: "feat/x" } },
       { type: "some.future.event", data: {} },
     ];
-    const { ctx, tools, isSubscribed } = makeV2Context(v2Events);
+    const { ctx, tools, rpc, isSubscribed } = makeV2Context(v2Events);
     const def = bundleMod.default as { setup: (ctx: unknown) => Promise<(() => void) | void> };
     const cleanup = await def.setup(ctx);
     expect(typeof cleanup).toBe("function");
@@ -342,7 +353,25 @@ describe("bundled plugin — OpenCode V2 loader contract", () => {
     expect(result.content.length).toBeGreaterThan(0);
     expect(result.content).not.toMatch(/\x1b\[/);
 
-    await new Promise(r => setTimeout(r, 50));
+    await new Promise(r => setTimeout(r, 400));
+
+    // Sidebar snapshot: V1 bubbles (ANSI lines) + cost totals
+    expect(typeof rpc.handlers?.snapshot).toBe("function");
+    const snap = await rpc.handlers!.snapshot();
+    expect(Array.isArray(snap.pets)).toBe(true);
+    for (const pet of snap.pets) {
+      expect(Array.isArray(pet.lines)).toBe(true);
+      expect(pet.lines.join("\n")).toContain(pet.name);
+      expect(typeof pet.message).toBe("string");
+    }
+    expect(["green", "yellow", "red"]).toContain(snap.tier);
+    expect(typeof snap.today.costUSD).toBe("number");
+    expect(typeof snap.lastHour.costUSD).toBe("number");
+    expect(typeof snap.session.costUSD).toBe("number");
+    expect(typeof snap.thresholds.warn).toBe("number");
+    // Events processed â†’ an "updated" push with the same shape
+    expect(rpc.emitted.some(e => e.name === "updated" && Array.isArray(e.data.pets))).toBe(true);
+
     (cleanup as () => void)();
   });
 });
@@ -383,5 +412,45 @@ describe("translateV2Event", () => {
     expect(translate({ type: "session.status", data: { status: { type: "idle" } } })).toEqual([]);
     expect(translate({ type: "session.status", data: { status: { type: "busy" } } })[0].type).toBe("session.status");
     expect(translate({ type: "nope", data: {} })).toEqual([]);
+  });
+});
+
+describe("summariseNotification (toasts)", () => {
+  let summarise: (raw: string) => { title?: string; message: string };
+  beforeAll(async () => {
+    summarise = (await import(path.resolve(import.meta.dir, "../../src/v2Events.ts"))).summariseNotification;
+  });
+
+  it("extracts pet and text from a single-line speech bubble", () => {
+    const raw = [
+      "",
+      " Mind Goblin Jr [teen] [PyCharm]",
+      "  #(-_-)#          ______________________________ ",
+      "  o-| |-o    -->  < I feel rested! Time to code! >",
+      "    | |            \u203e\u203e\u203e\u203e\u203e\u203e\u203e\u203e\u203e\u203e ",
+      "   /   \\          ",
+    ].join("\n");
+    expect(summarise(raw)).toEqual({ title: "Mind Goblin Jr [PyCharm]", message: "I feel rested! Time to code!" });
+  });
+
+  it("joins multi-line bubbles and ignores emoji prefixes", () => {
+    const raw = [
+      " \u{1F7E1} Copilot [senior] [OpenCode]",
+      " U(-_-)U           __________________________________________ ",
+      "  ~| | |~    -->  / Hi! I'm Copilot. I live in OpenCode \u2014 no \\",
+      " ~ | | | ~        \\ IDE needed.                              /",
+      "   |___|           \u203e\u203e\u203e\u203e\u203e ",
+    ].join("\n");
+    expect(summarise(raw)).toEqual({ title: "Copilot [OpenCode]", message: "Hi! I'm Copilot. I live in OpenCode \u2014 no IDE needed." });
+  });
+
+  it("handles plain-text notifications", () => {
+    expect(summarise("[VS Code] Wee Stu: Let's build something.")).toEqual({ title: "Wee Stu [VS Code]", message: "Let's build something." });
+    expect(summarise("[codotchi] [PyCharm] Mind Goblin Jr made a mess! (use /codotchi clean)").message)
+      .toBe("[PyCharm] Mind Goblin Jr made a mess! (use /codotchi clean)");
+  });
+
+  it("strips ANSI colour codes", () => {
+    expect(summarise("\x1b[33m[VS Code] Wee Stu: Hungry.\x1b[0m").message).toBe("Hungry.");
   });
 });
