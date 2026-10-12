@@ -43,6 +43,8 @@ export declare function buildBubble(message: string, maxWidth?: number, bubbleCo
  * @param name    - Pet's name (used as a label above the art).
  */
 export declare function buildSpeechBubble(stage: string, mood: string, message: string, name: string, spriteType?: string, ideLabel?: string, bubbleColor?: string, tierEmoji?: string): string;
+/** Human-readable sprite name, e.g. "stu" → "Stugotchi", "cat" → "Cat". */
+export declare function spriteLabel(spriteType: string): string;
 /**
  * Build a full status readout for the pet and return as a string.
  *
