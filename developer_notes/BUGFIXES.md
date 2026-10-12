@@ -2413,3 +2413,14 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** The TUI now draws one living pet in `session.composer.top` (full width, just above the prompt), with the shared cost line underneath. The ASCII art and colours are unchanged. The shown pet swaps (to a different pet when there is one) each time a message is sent or every 5 minutes. Its speech refreshes when a reply finishes, and leaves out cost and token figures because the cost line shows them; the bubble border keeps the cost tier colour. The tier emoji moved off the art onto the cost line, and blank padding rows are dropped. The TUI only re-renders when the pet's lines or the costs change. In V2, queued notifications go only to toasts. The Claude Code plugin is unaffected because it has no TUI.
 
 **Tests:** `opencode-codotchi/tests/unit/pluginContract.test.ts`.
+
+## BUGFIX-202 - OpenCode pet swapped too often; status printed raw decimals and each pet twice
+
+**Status:** Fixed (branch `feat/opencode-v2-plugin`)
+**Files:** `packages/core/src/asciiArt.ts` (synced to all plugins), `opencode-codotchi/src/index.ts`
+
+**Problem:** The pet above the prompt swapped several times per message, because OpenCode fires `message.updated` more than once for each user message and every event counted as a new message. It also swapped whenever the shown IDE pet briefly missed the 60-second "live" window between state saves. The `status` action printed stats such as `67.84166666666665`, showed the raw sprite ID (`stu` instead of `Stugotchi`), and printed each IDE pet twice (stat block plus a summary line).
+
+**Fix:** User messages are counted once per message ID, and the shown pet stays while it is alive, so it only swaps when a message is sent or after 5 minutes. Stat bars and the summary line round values to whole numbers. A new `spriteLabel()` shows the character name (`Stugotchi`) or a capitalised sprite ID. `status` prints each pet once: the stat block, or the summary line when ASCII art is off.
+
+**Tests:** `opencode-codotchi/tests/unit/asciiArt.test.ts`, `opencode-codotchi/tests/unit/pluginContract.test.ts`.

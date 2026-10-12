@@ -724,6 +724,8 @@ let sessionStartMs = Date.now();
 let lastFileEditMs = 0;
 /** Number of user messages sent this session; used for prompting-a-lot commentary. */
 let sessionUserMessages = 0;
+/** User message IDs already counted in sessionUserMessages. */
+const countedUserMessageIds = new Set<string>();
 /** True once the "can I help?" offer has been shown this session — fires only once. */
 let hasOfferedHelp = false;
 
@@ -1492,8 +1494,10 @@ const plugin: Plugin = async (ctx) => {
                   sleeping: s.sleeping, poops: s.poops, spriteType: s.spriteType,
                 })
               : "";
-            const textStats = `${ideLabel} ${s.name} | Stage: ${s.stage} | Hunger: ${s.hunger} | Happiness: ${s.happiness} | Energy: ${s.energy} | Health: ${s.health} | Weight: ${s.weight}`;
-            return (statusBlock ? statusBlock + "\n" : "") + textStats;
+            // Each pet prints once: the stat block, or a one-line summary when art is off.
+            if (statusBlock) { return `${ideLabel}\n${statusBlock}`; }
+            const r = Math.round;
+            return `${ideLabel} ${s.name} | Stage: ${s.stage} | Hunger: ${r(s.hunger)} | Happiness: ${r(s.happiness)} | Energy: ${r(s.energy)} | Health: ${r(s.health)} | Weight: ${r(s.weight)}`;
           });
           return ret(notification + blocks.join("\n\n──────────────────────\n\n"));
         }
@@ -1896,6 +1900,7 @@ const plugin: Plugin = async (ctx) => {
         sessionStartMs = Date.now();
         lastFileEditMs = 0;
         sessionUserMessages = 0;
+        countedUserMessageIds.clear();
         sessionCostUSD = 0;
         sessionTokens  = 0;
         localPetSessionMessages = 0;
@@ -1907,6 +1912,10 @@ const plugin: Plugin = async (ctx) => {
        if (event.type === "message.updated") {
          const info = event.properties?.info;
           if (info?.role === "user") {
+            // message.updated fires several times per user message; count each ID once.
+            const userMsgId: string = typeof info.id === "string" ? info.id : "";
+            if (userMsgId && countedUserMessageIds.has(userMsgId)) { return; }
+            if (userMsgId) { countedUserMessageIds.add(userMsgId); }
             sessionUserMessages += 1;
             return;
           }
@@ -2022,6 +2031,12 @@ let shownPickedAtMessages = -1;
 const PET_SWAP_MS = 5 * 60_000;
 const TIER_ANSI = { green: "\x1b[32m", yellow: "\x1b[33m", red: "\x1b[31m" } as const;
 
+/** The pet for `ide` if it still exists and is alive, regardless of the live window. */
+function stillAlivePet(ide: string): ActivePet | undefined {
+  const state = ide === "vscode" ? vscodePetState : ide === "pycharm" ? pycharmPetState : localPetState;
+  return state && state.alive ? { ide: ide as ActivePet["ide"], state, live: false } : undefined;
+}
+
 function costTier(): "green" | "yellow" | "red" {
   if (dailyCostUSD >= costShoutThreshold) { return "red"; }
   if (dailyCostUSD >= costWarnThreshold) { return "yellow"; }
@@ -2033,7 +2048,9 @@ function buildSnapshot(): Record<string, unknown> {
   const hour = lastHourUsage();
   const alive = getActivePets().filter(p => p.state.alive);
   const now = Date.now();
-  const current = shownSpeech ? alive.find(p => p.ide === shownSpeech!.ide) : undefined;
+  // Keep showing the current pet while it is alive, even if its IDE briefly
+  // drops out of the 60s "live" window — otherwise the display flickers.
+  const current = shownSpeech ? (alive.find(p => p.ide === shownSpeech!.ide) ?? stillAlivePet(shownSpeech.ide)) : undefined;
   const swapDue = !current || sessionUserMessages !== shownPickedAtMessages || now - shownPickedAt >= PET_SWAP_MS;
   let pick = current;
   if (swapDue && alive.length > 0) {

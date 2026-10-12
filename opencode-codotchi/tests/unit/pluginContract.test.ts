@@ -352,6 +352,8 @@ describe("bundled plugin � OpenCode V2 loader contract", () => {
     expect(typeof result.content).toBe("string");
     expect(result.content.length).toBeGreaterThan(0);
     expect(result.content).not.toMatch(/\x1b\[/);
+    // Each pet is printed once, with whole-number stats
+    expect(result.content).not.toMatch(/(Hunger|Happiness|Energy)\s*(\[[^\]]*\]\s*|:\s*)\d+\.\d/);
 
     await new Promise(r => setTimeout(r, 400));
 

@@ -19,7 +19,36 @@ import {
   colour,
   stripAnsi,
   formatTokens,
+  spriteLabel,
 } from "../../src/asciiArt";
+
+describe("buildStatusBlock display", () => {
+  const base = {
+    name: "Wee Stu", stage: "baby", mood: "happy",
+    hunger: 67.84166666666665, happiness: 81.84166666666665, energy: 74,
+    health: 100, discipline: 100, weight: 12, ageDays: 9,
+    alive: true, sick: false, sleeping: false, poops: 0,
+  };
+
+  it("rounds stat values to whole numbers", () => {
+    const out = stripAnsi(buildStatusBlock({ ...base, spriteType: "cat" }));
+    assert.match(out, /Hunger\s+\[[█░]+\] 68\b/);
+    assert.match(out, /Happiness\s+\[[█░]+\] 82\b/);
+    assert.doesNotMatch(out, /\d+\.\d+/);
+  });
+
+  it("shows the character name for the stu sprite", () => {
+    const out = stripAnsi(buildStatusBlock({ ...base, spriteType: "stu" }));
+    assert.match(out, /Sprite\s+: Stugotchi/);
+  });
+});
+
+describe("spriteLabel", () => {
+  it("maps stu to Stugotchi and capitalises other IDs", () => {
+    assert.equal(spriteLabel("stu"), "Stugotchi");
+    assert.equal(spriteLabel("cat"), "Cat");
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -653,13 +653,21 @@ export function buildSpeechBubble(
 // ---------------------------------------------------------------------------
 
 /** Render a single stat bar of the form:  Label [████░░░░] 72 */
+/** Display names for sprites whose ID differs from the character name. */
+const SPRITE_LABELS: Record<string, string> = { stu: "Stugotchi" };
+
+/** Human-readable sprite name, e.g. "stu" → "Stugotchi", "cat" → "Cat". */
+export function spriteLabel(spriteType: string): string {
+  return SPRITE_LABELS[spriteType] ?? spriteType.charAt(0).toUpperCase() + spriteType.slice(1);
+}
+
 function statBar(label: string, value: number, barWidth = 10): string {
   const filled = Math.round((value / 100) * barWidth);
   const empty  = barWidth - filled;
   const barColour = value >= 50 ? FG_GREEN : value >= 25 ? FG_YELLOW : FG_RED;
   const bar = colour("█".repeat(filled), barColour) + colour("░".repeat(empty), FG_GRAY);
   const labelPad = label.padEnd(12, " ");
-  return `  ${FG_CYAN}${labelPad}${RESET}[${bar}] ${value}`;
+  return `  ${FG_CYAN}${labelPad}${RESET}[${bar}] ${Math.round(value)}`;
 }
 
 /**
@@ -692,7 +700,7 @@ export function buildStatusBlock(state: {
     `${BOLD}${stageColour}${state.name}${RESET}`,
     `${FG_GRAY}Stage   : ${RESET}${state.stage}`,
     ...(state.spriteType && state.spriteType !== "classic"
-      ? [`${FG_GRAY}Sprite  : ${RESET}${state.spriteType}`]
+      ? [`${FG_GRAY}Sprite  : ${RESET}${spriteLabel(state.spriteType)}`]
       : []),
     `${FG_GRAY}Age     : ${RESET}${state.ageDays} day${state.ageDays !== 1 ? "s" : ""}`,
     `${FG_GRAY}Mood    : ${RESET}${state.mood}`,
