@@ -2393,3 +2393,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** the engine records `diedAt` on the death tick and it is saved with the pet. Hosts submit that value, and auto-submit fires only on the death tick itself. The validator keeps a run's earliest death. The two affected rows in `scores.json` were restored from their first submissions (#1071, #224).
 
 **Tests:** `vscode/tests/unit/gameEngine.test.ts`, `vscode/tests/unit/integrity.test.ts`, `pycharm/.../GameEngineTest.kt`, `pycharm/.../PersistenceIntegrityTest.kt`.
+
+## BUGFIX-200 - OpenCode 2.0 refused to load the plugin ("Plugin must export a default definition")
+
+**Status:** Fixed (branch `feat/opencode-v2-plugin`)
+**File:** `opencode-codotchi/src/index.ts`, `opencode-codotchi/src/v2Events.ts`
+
+**Problem:** OpenCode 2.0 requires the default export to be an object with an `id` and a `setup` function. The bundle exported a V1 plugin function, so loading failed with `SchemaError(Expected object at ["default"])` and the pet never started.
+
+**Fix:** The default export is now `{ id: "codotchi", setup, server }`. V1 (>= 1.18.29) still calls `server()`. V2's `setup()` registers the `codotchi` tool through `ctx.tool.transform`, translates V2 events (`session.step.ended`, `session.inbox.enqueued`, `filesystem.changed`, ...) into the existing V1 handler, and returns a cleanup function that stops timers and watchers. The `experimental.text.complete` speech bubbles were removed because V2 has no matching hook. `todo.updated` celebrations and current-project session backfill are V1-only.

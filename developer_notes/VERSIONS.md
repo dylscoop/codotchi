@@ -10,6 +10,9 @@
 | `vscode/tests/unit/gameEngine.test.ts`, `pycharm/.../GameEngineTest.kt` | tests |
 | `developer_notes/vscode/FEATURES.md`, READMEs, `plugin.xml` | docs |
 | all manifests, `README.md`, `vscode/CHANGELOG.md`, `plugin.xml` change-notes | version 2.27.3 → 2.27.4 |
+| `opencode-codotchi/src/index.ts`, `opencode-codotchi/src/v2Events.ts` | BUGFIX-200: OpenCode 2.0 support. Default export is now `{ id, setup, server }` (V2 calls `setup`, V1 ≥ 1.18.29 calls `server`); V2 events translated to the V1 handler; `experimental.text.complete` speech bubbles removed (no V2 hook); timers/watchers disposed on unload (branch feat/opencode-v2-plugin) |
+| `opencode-codotchi/tests/unit/pluginContract.test.ts` | V2 loader-contract, setup and event-translation tests |
+| `opencode-codotchi/opencode-codotchi-2.27.4.zip` | Rebuilt distributable zip for v2.27.4 (local artifact, not committed) |
 
 ---
 
