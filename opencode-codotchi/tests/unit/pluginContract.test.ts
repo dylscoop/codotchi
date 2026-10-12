@@ -126,7 +126,7 @@ describe("bundled plugin — loader contract (BUGFIX-119)", () => {
     expect(threw).toBe(false);
   });
 
-  it("exactly one hooks object is produced (plugin + default same-ref deduped)", () => {
+  it("exactly one hooks object is produced", () => {
     expect(hooksList.length).toBe(1);
   });
 
@@ -140,26 +140,17 @@ describe("bundled plugin — loader contract (BUGFIX-119)", () => {
 // ---------------------------------------------------------------------------
 
 describe("source index.ts — export safety guard (BUGFIX-119A)", () => {
-  it("every export is either a function or the same reference as another export", () => {
-    // This guard ensures that if someone accidentally adds
-    // `export { someHelper }` in the future, this test fails.
-    const seen = new Set<unknown>();
-    const nonFunctions: string[] = [];
-    for (const [name, value] of Object.entries(sourceMod)) {
-      if (seen.has(value)) continue; // deduped (e.g. default === plugin)
-      seen.add(value);
-      if (typeof value !== "function") {
-        nonFunctions.push(`${name}: ${typeof value}`);
-      }
-    }
-    expect(nonFunctions).toEqual([]);
+  it("exports only a default definition (no stray helper exports)", () => {
+    // V1 loaders treat every named export as a plugin, so helpers must stay private.
+    expect(Object.keys(sourceMod)).toEqual(["default"]);
   });
 
-  it("source module has at most 2 exports (plugin + default, same reference)", () => {
-    // "plugin" and "default" both point at the same function — 2 names, 1 unique value.
-    const uniqueValues = new Set(Object.values(sourceMod));
-    expect(uniqueValues.size).toBe(1);
-    expect(Object.keys(sourceMod).sort()).toEqual(["default", "plugin"]);
+  it("default export satisfies both the V1 and V2 loader contracts", () => {
+    const def = sourceMod.default as { id?: unknown; setup?: unknown; server?: unknown };
+    expect(typeof def).toBe("object");
+    expect(def.id).toBe("codotchi");
+    expect(typeof def.setup).toBe("function");
+    expect(typeof def.server).toBe("function");
   });
 });
 
@@ -229,25 +220,6 @@ describe("event hook — all OpenCode event types (BUGFIX-119)", () => {
 // Suite 4 — Hook-specific smoke tests
 // ---------------------------------------------------------------------------
 
-describe("experimental.text.complete hook", () => {
-  it("does not throw and appends to output.text when terminalEnabled is off", async () => {
-    const hook = hooksList[0];
-    const fn = hook?.["experimental.text.complete"] as
-      ((input: unknown, output: { text: string }) => Promise<void>) | undefined;
-    if (!fn) return;
-    const out = { text: "Hello world" };
-    let threw = false;
-    try {
-      await fn({ sessionID: "s", messageID: "m", partID: "p" }, out);
-    } catch {
-      threw = true;
-    }
-    expect(threw).toBe(false);
-    // text should still be a string
-    expect(typeof out.text).toBe("string");
-  });
-});
-
 describe("tool.execute.after hook", () => {
   it("does not throw for tool='codotchi'", async () => {
     const hook = hooksList[0];
@@ -299,5 +271,117 @@ describe("codotchi tool execute", () => {
     const result = await toolDef.execute({ action: "status" }, ctx);
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Suite 5 � OpenCode V2 loader contract (Plugin.define shape + setup)
+// ---------------------------------------------------------------------------
+
+type V2Tool = { name: string; input: unknown; execute: (input: unknown, ctx: unknown) => Promise<{ content: string }> };
+
+function makeV2Context(events: unknown[]) {
+  const tools: V2Tool[] = [];
+  let subscribed = false;
+  const ctx = {
+    app: { version: "2.0.0-test" },
+    location: { directory: process.cwd(), project: { id: "test", directory: process.cwd(), canonical: process.cwd() } },
+    options: {},
+    tool: {
+      transform: async (cb: (editor: { add: (t: V2Tool) => void }) => void) => {
+        cb({ add: (t) => tools.push(t) });
+        return { dispose: async () => {} };
+      },
+    },
+    event: {
+      subscribe: ({ signal }: { signal?: AbortSignal } = {}) => {
+        subscribed = true;
+        return (async function* () {
+          for (const e of events) {
+            if (signal?.aborted) return;
+            yield e;
+          }
+        })();
+      },
+    },
+  };
+  return { ctx, tools, isSubscribed: () => subscribed };
+}
+
+describe("bundled plugin � OpenCode V2 loader contract", () => {
+  it("default export is an object with id and setup (fixes 'Expected object at [\"default\"]')", () => {
+    const def = bundleMod.default as { id?: unknown; setup?: unknown };
+    expect(typeof def).toBe("object");
+    expect(def.id).toBe("codotchi");
+    expect(typeof def.setup).toBe("function");
+  });
+
+  it("setup registers the codotchi tool, consumes events, and returns cleanup", async () => {
+    const v2Events = [
+      { type: "server.connected", data: {} },
+      { type: "session.created", id: "e1", created: Date.now(), data: { sessionID: "s1" } },
+      { type: "session.inbox.enqueued", data: { sessionID: "s1", inboxID: "m1", item: { type: "user" } } },
+      { type: "filesystem.changed", data: { file: "src/foo.ts", event: "change" } },
+      { type: "session.step.ended", id: "e2", created: Date.now(), data: {
+          sessionID: "s1", assistantMessageID: "a1", finish: "stop", cost: 0,
+          tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } }, files: ["src/foo.ts"] } },
+      { type: "session.status", data: { sessionID: "s1", status: { type: "busy" } } },
+      { type: "session.idle", data: { sessionID: "s1" } },
+      { type: "vcs.branch.updated", data: { branch: "feat/x" } },
+      { type: "some.future.event", data: {} },
+    ];
+    const { ctx, tools, isSubscribed } = makeV2Context(v2Events);
+    const def = bundleMod.default as { setup: (ctx: unknown) => Promise<(() => void) | void> };
+    const cleanup = await def.setup(ctx);
+    expect(typeof cleanup).toBe("function");
+    expect(isSubscribed()).toBe(true);
+
+    expect(tools.map(t => t.name)).toEqual(["codotchi"]);
+    const result = await tools[0].execute({ action: "status" }, { signal: new AbortController().signal, progress: async () => {} });
+    expect(typeof result.content).toBe("string");
+    expect(result.content.length).toBeGreaterThan(0);
+    expect(result.content).not.toMatch(/\x1b\[/);
+
+    await new Promise(r => setTimeout(r, 50));
+    (cleanup as () => void)();
+  });
+});
+
+describe("translateV2Event", () => {
+  let translate: (e: unknown) => Array<{ type: string; properties: any }>;
+  beforeAll(async () => {
+    translate = (await import(path.resolve(import.meta.dir, "../../src/v2Events.ts"))).translateV2Event;
+  });
+
+  it("maps step.ended to an assistant message.updated with cost and tokens", () => {
+    const now = Date.now();
+    const out = translate({ type: "session.step.ended", id: "e9", created: now, data: {
+      assistantMessageID: "a", cost: 0.5, tokens: { input: 1, output: 2, reasoning: 0, cache: { read: 0, write: 0 } } } });
+    expect(out).toHaveLength(1);
+    expect(out[0].type).toBe("message.updated");
+    expect(out[0].properties.info).toMatchObject({ role: "assistant", id: "e9", cost: 0.5, time: { completed: now } });
+  });
+
+  it("emits session.diff when a step changed files", () => {
+    const out = translate({ type: "session.step.ended", data: { files: ["a.ts"], cost: 0, tokens: {} } });
+    expect(out.map(e => e.type)).toEqual(["session.diff", "message.updated"]);
+  });
+
+  it("maps user inbox items to user message.updated and ignores synthetic ones", () => {
+    expect(translate({ type: "session.inbox.enqueued", data: { item: { type: "user" } } })[0].properties.info.role).toBe("user");
+    expect(translate({ type: "session.inbox.enqueued", data: { item: { type: "synthetic" } } })).toEqual([]);
+  });
+
+  it("maps filesystem changes to file.edited but ignores .git, node_modules and deletions", () => {
+    expect(translate({ type: "filesystem.changed", data: { file: "src/a.ts", event: "change" } })[0].type).toBe("file.edited");
+    expect(translate({ type: "filesystem.changed", data: { file: ".git/HEAD", event: "change" } })).toEqual([]);
+    expect(translate({ type: "filesystem.changed", data: { file: "node_modules/x/y.js", event: "add" } })).toEqual([]);
+    expect(translate({ type: "filesystem.changed", data: { file: "src/a.ts", event: "unlink" } })).toEqual([]);
+  });
+
+  it("drops idle session.status and unknown events", () => {
+    expect(translate({ type: "session.status", data: { status: { type: "idle" } } })).toEqual([]);
+    expect(translate({ type: "session.status", data: { status: { type: "busy" } } })[0].type).toBe("session.status");
+    expect(translate({ type: "nope", data: {} })).toEqual([]);
   });
 });

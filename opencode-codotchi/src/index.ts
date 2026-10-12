@@ -68,6 +68,7 @@ import {
   CODE_ACTIVITY_THROTTLE_SECONDS,
 } from "./gameEngine.js";
 import { sealSerialisedState, verifySeal } from "./integrity.js";
+import { translateV2Event } from "./v2Events.js";
 
 import {
   buildSpeechBubble,
@@ -831,30 +832,8 @@ let pendingDiffSinceIdle = false;
 /** True when the current branch is main, master, release/x, or prod — triggers cautious diff commentary. */
 let isOnProdBranch = false;
 
-// ---------------------------------------------------------------------------
-// Suppress text.complete art for one cycle after a codotchi tool call.
-// When the user explicitly calls /codotchi <action>, the tool already shows
-// a coloured sprite in the tool output. We skip the plain-text sprite for
-// the immediately following LLM text response to avoid showing it twice.
-// ---------------------------------------------------------------------------
-
-let suppressNextTextArt = false;
-
-// ---------------------------------------------------------------------------
-// text.complete art cooldown — prevents duplicate pet bubbles within a single
-// agentic turn. An LLM response with N tool calls produces N+1 text segments,
-// each triggering text.complete independently. Without a cooldown, the pet
-// bubble appears once per segment (e.g. 4 identical bubbles in one turn).
-//
-// Cooldown: 30 s minimum between showings.
-// Reset:    cleared to 0 when a new user message arrives, so the pet always
-//           shows on the first text segment of the next response.
-// ---------------------------------------------------------------------------
-
-/** Unix ms timestamp of the last text.complete pet art render. */
-let lastTextArtMs: number = 0;
-/** Minimum gap (ms) between consecutive text.complete pet art renders. */
-const TEXT_ART_COOLDOWN_MS = 30_000;
+// Timers and watchers created by the plugin entry point, torn down on unload.
+const disposers: Array<() => void> = [];
 
 // ---------------------------------------------------------------------------
 // Pending notification queue
@@ -1215,7 +1194,7 @@ function applyTickForLocal(): void {
 // Plugin entry point
 // ---------------------------------------------------------------------------
 
-export const plugin: Plugin = async (ctx) => {
+const plugin: Plugin = async (ctx) => {
   // Migrate state files from old gotchi/ folder to codotchi/ on first run.
   migrateStateFolders();
   // Load daily usage + plugin config sidecars
@@ -1246,6 +1225,7 @@ export const plugin: Plugin = async (ctx) => {
   tickTimer = setInterval(() => {
     applyTick();
   }, TICK_INTERVAL_SECONDS * 1_000);
+  disposers.push(() => { clearInterval(tickTimer); tickTimer = undefined; });
 
   // ---------------------------------------------------------------------------
   // Live sync — watch both IDE state files for external writes.
@@ -1292,6 +1272,12 @@ export const plugin: Plugin = async (ctx) => {
       startWatcher();
       if (fsWatcher !== undefined) { clearInterval(watchBootstrap); }
     }, 10_000);
+    disposers.push(() => {
+      clearInterval(watchBootstrap);
+      if (syncDebounce !== undefined) { clearTimeout(syncDebounce); }
+      fsWatcher?.close();
+      fsWatcher = undefined;
+    });
   }
 
   makeIDEWatcher("vscode");
@@ -1352,6 +1338,12 @@ export const plugin: Plugin = async (ctx) => {
       startDailyWatcher();
       if (dailyFsWatcher !== undefined) { clearInterval(dailyWatchBootstrap); }
     }, 10_000);
+    disposers.push(() => {
+      clearInterval(dailyWatchBootstrap);
+      if (dailySyncDebounce !== undefined) { clearTimeout(dailySyncDebounce); }
+      dailyFsWatcher?.close();
+      dailyFsWatcher = undefined;
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -1383,7 +1375,6 @@ export const plugin: Plugin = async (ctx) => {
       // Drain any queued tick notifications to prepend to this result
       const notification = drainNotification();
       const ret = (s: string): string => { lastToolOutput = s; return s; };
-      suppressNextTextArt = true;
 
       const active = getActivePets();
 
@@ -1739,28 +1730,6 @@ export const plugin: Plugin = async (ctx) => {
       }
     },
 
-    async "experimental.text.complete"(_input, output) {
-      if (suppressNextTextArt) {
-        suppressNextTextArt = false;
-        return;
-      }
-      if (!terminalEnabled) return;
-      const now = Date.now();
-      if (now - lastTextArtMs < TEXT_ART_COOLDOWN_MS) return;
-      lastTextArtMs = now;
-      const livePets = getActivePets().filter(p => p.state.alive);
-      if (livePets.length === 0) return;
-
-      const bubbles = livePets.map(p => {
-        const s = p.state;
-        const _1h2 = lastHourUsage();
-        const { message: msg, bubbleColor, tierEmoji } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h2.costUSD, _1h2.tokens, dailyMessages);
-        const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
-        return buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType, ideLabel, bubbleColor, tierEmoji);
-      });
-      output.text = output.text + "\n\n```\n" + bubbles.map(stripAnsi).join("\n\n") + "\n```";
-    },
-
     async event({ event }) {
       // file.edited → code activity reward (throttled), applied to all alive pets
       if (event.type === "file.edited") {
@@ -1933,7 +1902,6 @@ export const plugin: Plugin = async (ctx) => {
          const info = event.properties?.info;
           if (info?.role === "user") {
             sessionUserMessages += 1;
-            lastTextArtMs = 0;   // reset cooldown so first response to this message always shows art
             return;
           }
          if (info?.role === "assistant" && typeof info.cost === "number") {
@@ -1986,4 +1954,84 @@ export const plugin: Plugin = async (ctx) => {
   };
 };
 
-export default plugin;
+// ---------------------------------------------------------------------------
+// OpenCode V2 entry point
+// ---------------------------------------------------------------------------
+// V2 runs the same V1 hook object: the tool is re-registered through
+// ctx.tool.transform and V2 events are translated into the V1 event shapes
+// the existing handler understands (see v2Events.ts).
+
+const CODOTCHI_TOOL_INPUT = {
+  type: "object",
+  properties: {
+    action: {
+      type: "string",
+      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
+      description: "The action to perform",
+    },
+    value: { type: "number", description: "Numeric USD value for warnthreshold or shoutthreshold actions" },
+    name: { type: "string", description: "New name for the OpenCode pet — used with the rename action only" },
+  },
+  required: ["action"],
+  additionalProperties: false,
+} as const;
+
+// V2 has no session list in the plugin context; backfill falls back to Track A only.
+const v2LegacyClient = {
+  session: {
+    list: async () => ({ data: [] }),
+    messages: async () => ({ data: [] }),
+  },
+} as unknown as PluginInput["client"];
+
+async function setupV2(ctx: any): Promise<() => void> {
+  const hooks = await plugin({ client: v2LegacyClient, directory: ctx.location?.directory } as unknown as PluginInput);
+  const legacyTool = (hooks.tool as Record<string, any>).codotchi;
+
+  await ctx.tool.transform((editor: any) => {
+    editor.add({
+      name: "codotchi",
+      description: legacyTool.description,
+      input: CODOTCHI_TOOL_INPUT,
+      async execute(input: any, context: any) {
+        const out = await legacyTool.execute(input, {
+          ...context,
+          metadata: () => { /* V2 tool panel titles come from the tool name */ },
+        });
+        return { content: stripAnsi(typeof out === "string" ? out : lastToolOutput) };
+      },
+    });
+  });
+
+  const controller = new AbortController();
+  void (async () => {
+    try {
+      for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+        for (const legacy of translateV2Event(event)) {
+          try { await hooks.event?.({ event: legacy as any }); } catch { /* never break the stream */ }
+        }
+      }
+    } catch { /* subscription closed */ }
+  })();
+
+  return () => {
+    controller.abort();
+    disposeCodotchi();
+  };
+}
+
+/** Stop timers and file watchers started by the plugin entry point. */
+function disposeCodotchi(): void {
+  while (disposers.length > 0) {
+    try { disposers.pop()!(); } catch { /* best-effort */ }
+  }
+}
+
+// Default export is readable by both loaders: V2 calls setup(), V1 (>= 1.18.29) calls server().
+const codotchi = {
+  id: "codotchi",
+  setup: setupV2,
+  server: plugin,
+};
+
+export default codotchi;
