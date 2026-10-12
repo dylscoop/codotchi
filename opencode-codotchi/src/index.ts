@@ -2014,9 +2014,13 @@ const CODOTCHI_RPC = {
 };
 
 type SpeechEntry = { message: string; bubbleColor: string; tierEmoji: string };
-/** Last V1 speech for the shown pet; refreshed when a reply finishes, like V1's after-reply bubble. */
+/** Pet shown above the prompt and its speech. The pet swaps on each user message or every 5 minutes. */
 let shownSpeech: { ide: string; speech: SpeechEntry } | null = null;
 let speechDirty = true;
+let shownPickedAt = 0;
+let shownPickedAtMessages = -1;
+const PET_SWAP_MS = 5 * 60_000;
+const TIER_ANSI = { green: "\x1b[32m", yellow: "\x1b[33m", red: "\x1b[31m" } as const;
 
 function costTier(): "green" | "yellow" | "red" {
   if (dailyCostUSD >= costShoutThreshold) { return "red"; }
@@ -2024,18 +2028,29 @@ function costTier(): "green" | "yellow" | "red" {
   return "green";
 }
 
-/** Everything the TUI needs: one randomly chosen pet's V1 speech bubble (ANSI lines) plus cost totals. */
+/** Everything the TUI needs: one pet's V1 speech bubble (ANSI lines) plus cost totals. */
 function buildSnapshot(): Record<string, unknown> {
   const hour = lastHourUsage();
   const alive = getActivePets().filter(p => p.state.alive);
-  if (speechDirty || !shownSpeech || !alive.some(p => p.ide === shownSpeech!.ide)) {
-    speechDirty = false;
-    const pick = alive[Math.floor(Math.random() * alive.length)];
-    shownSpeech = pick
-      ? { ide: pick.ide, speech: buildContextualSpeech(pick.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, hour.costUSD, hour.tokens, dailyMessages) }
-      : null;
+  const now = Date.now();
+  const current = shownSpeech ? alive.find(p => p.ide === shownSpeech!.ide) : undefined;
+  const swapDue = !current || sessionUserMessages !== shownPickedAtMessages || now - shownPickedAt >= PET_SWAP_MS;
+  let pick = current;
+  if (swapDue && alive.length > 0) {
+    // Prefer a different pet when swapping, so a swap is visible.
+    const others = alive.length > 1 && current ? alive.filter(p => p.ide !== current.ide) : alive;
+    pick = others[Math.floor(Math.random() * others.length)];
+    shownPickedAt = now;
+    shownPickedAtMessages = sessionUserMessages;
   }
-  const shown = shownSpeech ? alive.find(p => p.ide === shownSpeech!.ide) : undefined;
+  if (pick && (swapDue || speechDirty || !shownSpeech)) {
+    speechDirty = false;
+    // Costs are on the line under the pet, so the bubble text leaves them out (zero cost/tokens);
+    // the bubble border still uses the cost tier colour.
+    const s = buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, 0, 0, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages);
+    shownSpeech = { ide: pick.ide, speech: { ...s, bubbleColor: TIER_ANSI[costTier()] } };
+  }
+  const shown = pick;
   const pets = shown && shownSpeech ? [shown].map(p => {
     const s = p.state;
     const speech = shownSpeech!.speech;

@@ -367,6 +367,8 @@ describe("bundled plugin � OpenCode V2 loader contract", () => {
       // No blank padding rows, and the tier emoji lives on the cost line, not the art
       for (const line of pet.lines) { expect(line.replace(/\x1b\[[0-9;]*m/g, "").trim().length).toBeGreaterThan(0); }
       expect(pet.lines.join("\n")).not.toMatch(/🟢|🟡|🔴/);
+      // Costs live on the line under the pet, not in the bubble
+      expect(pet.message).not.toMatch(/\$\d|tokens per message/);
     }
     // The shown pet and its speech stay stable until a reply finishes
     const again = await rpc.handlers!.snapshot();
