@@ -355,15 +355,22 @@ describe("bundled plugin � OpenCode V2 loader contract", () => {
 
     await new Promise(r => setTimeout(r, 400));
 
-    // Sidebar snapshot: V1 bubbles (ANSI lines) + cost totals
+    // Composer snapshot: one pet's V1 bubble (ANSI lines) + cost totals
     expect(typeof rpc.handlers?.snapshot).toBe("function");
     const snap = await rpc.handlers!.snapshot();
     expect(Array.isArray(snap.pets)).toBe(true);
+    expect(snap.pets.length).toBeLessThanOrEqual(1);
     for (const pet of snap.pets) {
       expect(Array.isArray(pet.lines)).toBe(true);
       expect(pet.lines.join("\n")).toContain(pet.name);
       expect(typeof pet.message).toBe("string");
+      // No blank padding rows, and the tier emoji lives on the cost line, not the art
+      for (const line of pet.lines) { expect(line.replace(/\x1b\[[0-9;]*m/g, "").trim().length).toBeGreaterThan(0); }
+      expect(pet.lines.join("\n")).not.toMatch(/🟢|🟡|🔴/);
     }
+    // The shown pet and its speech stay stable until a reply finishes
+    const again = await rpc.handlers!.snapshot();
+    expect(JSON.stringify(again.pets)).toBe(JSON.stringify(snap.pets));
     expect(["green", "yellow", "red"]).toContain(snap.tier);
     expect(typeof snap.today.costUSD).toBe("number");
     expect(typeof snap.lastHour.costUSD).toBe("number");

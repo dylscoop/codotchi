@@ -5,8 +5,8 @@
  * @opencode/plugin/tui, @opentui/solid and solid-js at runtime. Installed next
  * to the server bundle as ~/.config/opencode/plugins/codotchi/tui.tsx.
  *
- * - sidebar.content       V1 speech bubbles (ASCII art + V1 text, V1 colours)
- * - session.composer.top  one-line cost summary
+ * - session.composer.top  one random pet's V1 speech bubble (ASCII art + V1
+ *                         text, V1 colours) above a one-line cost summary
  * - toasts                pet alerts (evolution, mess, sickness, ...)
  *
  * Data comes from the server plugin's "codotchi" RPC (see CODOTCHI_RPC in
@@ -86,16 +86,26 @@ export default Plugin.define({
     const rpc = context.client.rpc(CODOTCHI_RPC as any) as any
     const location = () => context.location ?? context.data.location.default()
 
+    // Only replace the snapshot when something visible changed, so the
+    // pet isn't re-rendered (flickering) on every server update.
+    let lastKey = ""
+    const apply = (next: Snapshot) => {
+      const key = JSON.stringify([next.enabled, next.tier, next.pets.map((p) => p.lines), next.today, next.lastHour, next.session, next.thresholds])
+      if (key === lastKey) return
+      lastKey = key
+      setSnap(next)
+    }
+
     const refresh = async () => {
       try {
-        setSnap((await rpc.snapshot(undefined, { location: location() })) as Snapshot)
+        apply((await rpc.snapshot(undefined, { location: location() })) as Snapshot)
       } catch {
         /* server plugin not ready yet; the next update or poll retries */
       }
     }
 
     const stopUpdated = rpc.events.on("updated", (event: any) => {
-      if (event?.data && Array.isArray(event.data.pets)) setSnap(event.data as Snapshot)
+      if (event?.data && Array.isArray(event.data.pets)) apply(event.data as Snapshot)
       else void refresh()
     })
     const stopAlert = rpc.events.on("alert", (event: any) => {
@@ -107,20 +117,14 @@ export default Plugin.define({
     const poll = setInterval(() => void refresh(), 60_000)
     void refresh()
 
-    const Bubbles = () => (
+    const Pet = () => (
       <Show when={snap()?.enabled && (snap()?.pets.length ?? 0) > 0}>
         <box flexDirection="column">
-          <For each={snap()!.pets}>
-            {(pet) => (
-              <box flexDirection="column" marginBottom={1}>
-                <For each={pet.lines}>
-                  {(line) => (
-                    <text>
-                      <For each={parseAnsi(line)}>{(seg) => <span style={{ fg: seg.fg }}>{seg.text}</span>}</For>
-                    </text>
-                  )}
-                </For>
-              </box>
+          <For each={snap()!.pets[0].lines}>
+            {(line) => (
+              <text>
+                <For each={parseAnsi(line)}>{(seg) => <span style={{ fg: seg.fg }}>{seg.text}</span>}</For>
+              </text>
             )}
           </For>
         </box>
@@ -142,11 +146,17 @@ export default Plugin.define({
       </Show>
     )
 
-    const unSidebar = context.ui.slot({ append: "sidebar.content", render: () => <Bubbles /> })
-    const unComposer = context.ui.slot({ append: "session.composer.top", render: () => <CostLine /> })
+    const unComposer = context.ui.slot({
+      append: "session.composer.top",
+      render: () => (
+        <box flexDirection="column">
+          <Pet />
+          <CostLine />
+        </box>
+      ),
+    })
 
     return () => {
-      unSidebar()
       unComposer()
       stopUpdated()
       stopAlert()

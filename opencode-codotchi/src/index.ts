@@ -894,15 +894,16 @@ async function refreshLiveRank(me: { ageDays?: number; stage?: string; spawnedAt
 let notificationListener: ((msg: string) => void) | null = null;
 
 function queueNotification(msg: string): void {
+  // V2 shows notifications as TUI toasts, so don't also replay them in tool output.
+  if (notificationListener) { notificationListener(msg); return; }
   // If a notification is already pending, append (newline-separated)
   pendingNotification = pendingNotification ? pendingNotification + "\n" + msg : msg;
-  notificationListener?.(msg);
 }
 
 /** Prepend msg to the front of the pending notification queue (so it appears before any already-queued messages). */
 function prependNotification(msg: string): void {
+  if (notificationListener) { notificationListener(msg); return; }
   pendingNotification = pendingNotification ? msg + "\n" + pendingNotification : msg;
-  notificationListener?.(msg);
 }
 
 /** Drain and return any pending notification, then clear it. */
@@ -2013,8 +2014,8 @@ const CODOTCHI_RPC = {
 };
 
 type SpeechEntry = { message: string; bubbleColor: string; tierEmoji: string };
-/** Last V1 speech per pet; refreshed when a reply finishes, like V1's after-reply bubble. */
-const speechCache = new Map<string, SpeechEntry>();
+/** Last V1 speech for the shown pet; refreshed when a reply finishes, like V1's after-reply bubble. */
+let shownSpeech: { ide: string; speech: SpeechEntry } | null = null;
 let speechDirty = true;
 
 function costTier(): "green" | "yellow" | "red" {
@@ -2023,31 +2024,28 @@ function costTier(): "green" | "yellow" | "red" {
   return "green";
 }
 
-/** Everything the TUI needs: V1 speech bubbles (ANSI-coloured lines) plus cost totals. */
+/** Everything the TUI needs: one randomly chosen pet's V1 speech bubble (ANSI lines) plus cost totals. */
 function buildSnapshot(): Record<string, unknown> {
   const hour = lastHourUsage();
   const alive = getActivePets().filter(p => p.state.alive);
-  if (speechDirty) {
-    speechCache.clear();
+  if (speechDirty || !shownSpeech || !alive.some(p => p.ide === shownSpeech!.ide)) {
     speechDirty = false;
+    const pick = alive[Math.floor(Math.random() * alive.length)];
+    shownSpeech = pick
+      ? { ide: pick.ide, speech: buildContextualSpeech(pick.state, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, hour.costUSD, hour.tokens, dailyMessages) }
+      : null;
   }
-  const pets = alive.map(p => {
+  const shown = shownSpeech ? alive.find(p => p.ide === shownSpeech!.ide) : undefined;
+  const pets = shown && shownSpeech ? [shown].map(p => {
     const s = p.state;
-    let speech = speechCache.get(p.ide);
-    if (!speech) {
-      speech = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, hour.costUSD, hour.tokens, dailyMessages);
-      speechCache.set(p.ide, speech);
-    }
+    const speech = shownSpeech!.speech;
     const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
-    return {
-      ide: p.ide,
-      name: s.name,
-      stage: s.stage,
-      message: speech.message,
-      emoji: speech.tierEmoji,
-      lines: buildSpeechBubble(s.stage, s.mood, speech.message, s.name, s.spriteType, ideLabel, speech.bubbleColor, speech.tierEmoji).split("\n"),
-    };
-  });
+    // No tier emoji in the art header: the cost line under the pet carries it.
+    const lines = buildSpeechBubble(s.stage, s.mood, speech.message, s.name, s.spriteType, ideLabel, speech.bubbleColor)
+      .split("\n")
+      .filter(l => stripAnsi(l).trim().length > 0);
+    return { ide: p.ide, name: s.name, stage: s.stage, message: speech.message, emoji: speech.tierEmoji, lines };
+  }) : [];
   return {
     enabled: terminalEnabled,
     tier: costTier(),

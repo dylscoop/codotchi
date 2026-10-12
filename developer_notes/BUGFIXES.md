@@ -2402,3 +2402,14 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** OpenCode 2.0 requires the default export to be an object with an `id` and a `setup` function. The bundle exported a V1 plugin function, so loading failed with `SchemaError(Expected object at ["default"])` and the pet never started.
 
 **Fix:** The default export is now `{ id: "codotchi", setup, server }`. V1 (>= 1.18.29) still calls `server()`. V2's `setup()` registers the `codotchi` tool through `ctx.tool.transform`, translates V2 events (`session.step.ended`, `session.inbox.enqueued`, `filesystem.changed`, ...) into the existing V1 handler, and returns a cleanup function that stops timers and watchers. The `experimental.text.complete` speech bubbles were removed because V2 has no matching hook. `todo.updated` celebrations and current-project session backfill are V1-only.
+
+## BUGFIX-201 - OpenCode 2 TUI pet wrapped in the sidebar and kept refreshing
+
+**Status:** Fixed (branch `feat/opencode-v2-plugin`)
+**Files:** `opencode-codotchi/tui/tui.tsx`, `opencode-codotchi/src/index.ts`
+
+**Problem:** The V2 TUI drew every pet's ASCII art and speech bubble in `sidebar.content`. The sidebar is about 40 columns wide and a bubble is about 60, so lines wrapped and the art fell apart. Every server update replaced the whole snapshot, so the bubbles re-rendered (flickered). Queued notifications were shown as toasts and also replayed at the top of the next `codotchi` tool result.
+
+**Fix:** The TUI now draws one living pet, chosen at random, in `session.composer.top` (full width, just above the prompt), with the shared cost line underneath. The ASCII art and colours are unchanged. The pet and its speech stay the same until a reply finishes or the tool runs. The tier emoji moved off the art onto the cost line, and blank padding rows are dropped. The TUI only re-renders when the pet's lines or the costs change. In V2, queued notifications go only to toasts. The Claude Code plugin is unaffected because it has no TUI.
+
+**Tests:** `opencode-codotchi/tests/unit/pluginContract.test.ts`.
