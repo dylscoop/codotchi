@@ -22,4 +22,8 @@ describe("commandTemplate", () => {
     assert.equal(CODOTCHI_COMMAND_DESCRIPTION, desc);
     assert.equal(CODOTCHI_COMMAND_TEMPLATE, body);
   });
+
+  it("contains no $<digit> sequences (OpenCode substitutes them as positional arguments)", () => {
+    assert.doesNotMatch(CODOTCHI_COMMAND_TEMPLATE, /\$\d/);
+  });
 });
