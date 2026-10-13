@@ -2435,3 +2435,11 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** `queryDailyUsageFromDb()` opens `opencode.db` read-only with `bun:sqlite` (OpenCode's runtime), falling back to `node:sqlite`. It resolves the path from `XDG_DATA_HOME` or `~/.local/share/opencode/opencode.db`, and keeps the old CLI as a last resort. The queries prefilter on the indexed `time_created` column (from a day before midnight), so the read takes about 36 ms on a 7 GB database, and a v2-only query handles databases without the old `message` table. The total is re-synced from the database on `session.idle` (at most every 30 s). Database writes to the file are tagged `"source": "db"`, and other windows only accept a lower total when it carries that tag; live writes can only raise it.
 
 **Tests:** `opencode-codotchi/tests/unit/usageBackfill.test.ts` (query shape, real SQLite totals for v2-only and v1+v2 schemas, missing file, DB path).
+
+## BUGFIX-204 - IDEs show $0 OpenCode spend when XDG_CONFIG_HOME is set
+
+**Files:** `opencode-codotchi/src/statePathResolver.ts`, `opencode-codotchi/src/index.ts`, `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** The OpenCode plugin always wrote `codotchi-daily.json`, `codotchi-config.json` and `codotchi-local.json` under `~/.config/opencode/`, ignoring `XDG_CONFIG_HOME`. The VS Code and PyCharm readers (and `bin/install.js`) honour `XDG_CONFIG_HOME`, so with it set the IDEs looked in a different folder and showed no OpenCode spend.
+
+**Fix:** Added `getOpenCodeConfigDir()` (honours `XDG_CONFIG_HOME`, treats empty as unset) and used it for all three files. VS Code and PyCharm now also treat an empty `XDG_CONFIG_HOME` as unset. Unit tests added in `tests/unit/statePath.test.ts`.

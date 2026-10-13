@@ -11,79 +11,56 @@ Raises your codotchi in the terminal alongside your coding session.
 - **ASCII art renderer** — 30 frames (6 stages × 5 moods), ANSI-coloured speech bubbles, status bars, toasts
 - **Cross-IDE shared state** — auto-detects and links to the correct VS Code state file, including per-workspace state (`codotchi.perWorkspacePet`). Picks whichever `state.json` under `…/codotchi/vscode/` was written most recently at startup.
 
-## Global install
+## Install
 
-Run the installer once per machine to make your pet available in every OpenCode
-project. Choose the path that matches how you have the package:
+Pick **one** option. Full guide (update, uninstall, troubleshooting, IDE cost
+sync): [main README](https://github.com/dylscoop/codotchi#opencode).
 
-### Option A — From zip (recommended)
+### Option A — npm (recommended)
 
-Download `opencode-codotchi-2.18.0.zip` from the
-[Releases page](https://github.com/dylscoop/codotchi/releases), extract it,
-then run the installer:
+Add the package to `~/.config/opencode/opencode.json`
+(`$XDG_CONFIG_HOME/opencode/opencode.json` if set):
 
-```bash
-# macOS / Linux
-unzip opencode-codotchi-2.18.0.zip
-cd opencode-codotchi-2.18.0
-node bin/install.js --install
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-codotchi"]
+}
 ```
 
-```powershell
-# Windows (PowerShell)
-Expand-Archive opencode-codotchi-2.18.0.zip
-cd opencode-codotchi-2.18.0
-node bin/install.js --install
-```
+Restart OpenCode. The plugin registers the `codotchi` tool and the
+`/codotchi` slash command itself, so no files need copying.
 
-No npm publish or repository clone required. Node.js is the only prerequisite.
+### Option B — Release zip
 
-### Option B — From source (local clone)
+Download the latest `opencode-codotchi-<version>.zip` from the
+[Releases page](https://github.com/dylscoop/codotchi/releases/latest), extract
+it, then run `node bin/install.js --install` inside the extracted folder.
+(`npx opencode-codotchi --install` does the same straight from npm.)
 
-Use this if you have already cloned the repository.
+### Option C — From source
 
 ```bash
 cd opencode-codotchi
+npm install
 node bin/install.js --install
 ```
 
-### Option C — From npm (once published)
+### What the installer does (options B and C)
 
-> **Note:** `opencode-codotchi` has not yet been published to the npm registry.
-> This path will not work until `npm publish` has been run from `opencode-codotchi/`.
+1. Copies `commands/codotchi.md` → `~/.config/opencode/commands/codotchi.md`.
+2. Copies the single bundled plugin `dist-plugin/codotchi.js` →
+   `~/.config/opencode/plugins/codotchi.js`, and removes leftover `.ts` files
+   from older versions.
+3. Adds `@opencode-ai/plugin` to `~/.config/opencode/package.json`; OpenCode
+   installs it via bun on next startup.
 
-```bash
-npx opencode-codotchi --install
-```
-
----
-
-### What the installer does
-
-All three paths run the same script. It does three things:
-
-1. **Copies the slash command** — `commands/codotchi.md` →
-   `~/.config/opencode/commands/codotchi.md`
-   (`XDG_CONFIG_HOME/opencode/commands/codotchi.md` if `XDG_CONFIG_HOME` is set;
-   on Windows this is `C:\Users\<you>\.config\opencode\commands\codotchi.md`)
-
-2. **Copies the plugin source files** into the global plugin directory:
-   - `src/index.ts` → `~/.config/opencode/plugins/codotchi.ts`
-   - `src/gameEngine.ts` → `~/.config/opencode/plugins/gameEngine.ts`
-   - `src/asciiArt.ts` → `~/.config/opencode/plugins/asciiArt.ts`
-
-   OpenCode loads all files in `~/.config/opencode/plugins/` automatically on
-   every startup — no `"plugin"` config entry needed.
-
-3. **Adds `@opencode-ai/plugin` to `~/.config/opencode/package.json`** (creates
-   the file if it does not exist). OpenCode runs `bun install` on startup to
-   resolve the dependency automatically.
+`~/.config` means `$XDG_CONFIG_HOME` when that variable is set. Don't combine
+option A with B/C, or the plugin loads twice.
 
 ### Open OpenCode
 
-After running the installer, open any project in OpenCode. On first startup,
-OpenCode installs the plugin dependency via bun, then loads the pet — your
-codotchi will greet you in a speech bubble.
+Open any project in OpenCode and run `/codotchi` — your pet's stats appear.
 
 ## Usage
 
