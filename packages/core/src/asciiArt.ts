@@ -766,6 +766,43 @@ export interface ContextualSpeechOptions {
   costStyle?: "lastHour" | "hourlyRate";
   /** Keep the cost-tier remarks and colours but leave out the $ / token figures (shown elsewhere). */
   remarksOnly?: boolean;
+  /** Clock used for time-of-day lines (remarksOnly only). Defaults to now. */
+  now?: Date;
+}
+
+/** Extra situational bubble lines used when remarksOnly is set. */
+export const SITUATION_LINES = {
+  chat10: ["We're deep in the weeds now.", "Still with you. Mostly."],
+  chat25: ["Is this still the same task?", "I've lost count. Kidding. Mostly."],
+  files15: ["That's a lot of files. Commit soon?", "Big diff energy."],
+  files30: ["Are we rewriting everything?", "The reviewer is going to need a coffee."],
+  session1h: ["An hour in. Stretch?"],
+  session3h: ["Three hours. Water break?"],
+  session5h: ["I'm tired and I'm just a pixel."],
+  quiet: ["Thinking or snacking?", "Planning the next move?"],
+  prod: ["Main branch. Tread lightly.", "Careful, this one ships."],
+  morning: ["Coffee first?"],
+  midday: ["Lunch break yet?", "Post-lunch slump? Push through."],
+  evening: ["Clocking off soon?", "Overtime? Bold.", "Dinner first, bugs later."],
+  general: ["I believe in this code.", "Ship it? Maybe after a test.", "Have you tried turning it off and on?", "I'm just here for moral support."],
+} as const;
+
+/** Spend remarks (no figures) per cost tier, used when remarksOnly is set. */
+export const SPEND_REMARKS = {
+  green: ["Running a tab.", "Ticking along.", "Tokens well spent so far.", "Meter's running, but we're fine.", "Spending like a sensible adult.", "The wallet barely noticed.", "Still in snack money territory."],
+  yellow: ["Getting spendy.", "The tab's adding up.", "Easy on the tokens.", "The meter's spinning a bit fast.", "Is this worth the tokens? Probably. Maybe.", "Your wallet just sighed."],
+  red: ["CHECK YOUR USAGE!", "THIS IS GETTING EXPENSIVE!", "WHO'S PAYING FOR ALL THIS?!", "THE METER IS ON FIRE!", "I CAN HEAR THE CREDIT CARD CRYING!", "THIS COSTS MORE THAN MY FOOD!", "ARE WE BUILDING A ROCKET?!"],
+} as const;
+
+/** Lines that fit the current files / session length / time of day, plus the any-time lines. */
+export function situationalLines(filesEdited: number, sessionMs: number, now: Date): string[] {
+  const out: string[] = [...SITUATION_LINES.general];
+  if (filesEdited >= 30) { out.push(...SITUATION_LINES.files30); } else if (filesEdited >= 15) { out.push(...SITUATION_LINES.files15); }
+  const hours = sessionMs / 3_600_000;
+  if (hours >= 5) { out.push(...SITUATION_LINES.session5h); } else if (hours >= 3) { out.push(...SITUATION_LINES.session3h); } else if (hours >= 1) { out.push(...SITUATION_LINES.session1h); }
+  const h = now.getHours();
+  if (h < 9) { out.push(...SITUATION_LINES.morning); } else if (h >= 12 && h < 14) { out.push(...SITUATION_LINES.midday); } else if (h >= 17) { out.push(...SITUATION_LINES.evening); }
+  return out;
 }
 
 /**
@@ -838,38 +875,41 @@ export function buildContextualSpeech(
 
   const idleMins = timeSinceLastEditMs > 0 ? Math.floor(timeSinceLastEditMs / 60_000) : 0;
 
+  // remarksOnly callers (the OpenCode bubble) get extra situational lines mixed in.
+  const more = (base: string[], extra: readonly string[]): string[] => (opts.remarksOnly ? [...base, ...extra] : base);
+
   // --- Build the contextual phrase (no early returns — cost suffix always appended below) ---
   let phrase: string;
 
   if (isOnProdBranch && filesEdited > 0) {
     // Contextual override: prod branch
-    phrase = pickRandom([
+    phrase = pickRandom(more([
       `${filesEdited} files on main. Make sure these are clean.`,
       `Shipping to prod. Double-check everything.`,
       `Production branch. No pressure... okay, some pressure.`,
-    ]);
+    ], SITUATION_LINES.prod));
   } else if (idleMins >= 60) {
     // Contextual override: long idle
-    phrase = pickRandom([
+    phrase = pickRandom(more([
       `No files touched in over an hour. Thinking things through?`,
       `Long pause. Still here if you need me.`,
-    ]);
+    ], SITUATION_LINES.quiet));
   } else if (idleMins >= 30) {
-    phrase = pickRandom([
+    phrase = pickRandom(more([
       `It's been ${idleMins} minutes since the last edit. Taking a break?`,
       `Quiet spell. Ready when you are.`,
-    ]);
+    ], SITUATION_LINES.quiet));
   } else if (sessionUserMessages >= 20) {
     // Contextual override: lots of prompting
-    phrase = pickRandom([
+    phrase = pickRandom(more([
       `${sessionUserMessages} messages deep. You're really working through something.`,
       `Long conversation. I'm keeping up.`,
-    ]);
+    ], sessionUserMessages >= 25 ? SITUATION_LINES.chat25 : SITUATION_LINES.chat10));
   } else if (sessionUserMessages >= 10) {
-    phrase = pickRandom([
+    phrase = pickRandom(more([
       `${sessionUserMessages} messages in. Good back-and-forth.`,
       `We're getting somewhere. Keep going.`,
-    ]);
+    ], SITUATION_LINES.chat10));
   } else if (sessionUserMessages >= 5) {
     phrase = pickRandom([
       `${sessionUserMessages} prompts sent. Getting into it.`,
@@ -903,7 +943,7 @@ export function buildContextualSpeech(
     } else {
       moodPhrase = "Doing okay. Let's see what you build.";
     }
-    phrase = `${moodPhrase} ${activityPhrase}`;
+    phrase = `${moodPhrase} ${opts.remarksOnly ? pickRandom([activityPhrase, ...situationalLines(filesEdited, sessionMs, opts.now ?? new Date())]) : activityPhrase}`;
   }
 
   // --- Daily cost / token suffix — always appended regardless of which phrase was chosen ---
@@ -918,12 +958,12 @@ export function buildContextualSpeech(
 
   if (opts.remarksOnly) {
     if (dailyCostUSD >= costShoutThreshold) {
-      return { message: colour(`${phrase} ${pickRandom(["CHECK YOUR USAGE!", "THIS IS GETTING EXPENSIVE!", "WHO'S PAYING FOR ALL THIS?!"])}`.toUpperCase(), FG_RED), bubbleColor: FG_RED, tierEmoji: "🔴" };
+      return { message: colour(`${phrase} ${pickRandom([...SPEND_REMARKS.red])}`.toUpperCase(), FG_RED), bubbleColor: FG_RED, tierEmoji: "🔴" };
     }
     if (dailyCostUSD >= costWarnThreshold) {
-      return { message: `${phrase} ${colour(pickRandom(["Getting spendy.", "The tab's adding up.", "Easy on the tokens."]), FG_YELLOW)}`, bubbleColor: FG_YELLOW, tierEmoji: "🟡" };
+      return { message: `${phrase} ${colour(pickRandom([...SPEND_REMARKS.yellow]), FG_YELLOW)}`, bubbleColor: FG_YELLOW, tierEmoji: "🟡" };
     }
-    const casual = dailyCostUSD > 0 || dailyTokens > 0 ? pickRandom(["Running a tab.", "Ticking along.", "Tokens well spent so far."]) : "";
+    const casual = dailyCostUSD > 0 || dailyTokens > 0 ? pickRandom([...SPEND_REMARKS.green]) : "";
     return { message: casual ? `${phrase} ${casual}` : phrase, bubbleColor: FG_GREEN, tierEmoji: "🟢" };
   }
 

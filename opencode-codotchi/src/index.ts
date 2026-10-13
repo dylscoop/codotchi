@@ -2019,6 +2019,12 @@ let replyBusy = false;
 let shownSlot = -1;
 /** Fixed order the pets take turns in. */
 const PET_ORDER = ["vscode", "pycharm", "opencode"];
+/**
+ * Random per OpenCode window (process). Stored on globalThis so every plugin
+ * copy inside one process shares it (no flicker), while separate windows get
+ * different pets and phrases.
+ */
+const WINDOW_SALT: number = ((globalThis as any).__codotchiWindowSalt ??= Math.floor(Math.random() * 1_000_000));
 
 /** Run fn with Math.random replaced by a PRNG seeded from `seed`, so every instance picks the same phrase. */
 function withSeededRandom<T>(seed: string, fn: () => T): T {
@@ -2071,14 +2077,14 @@ function buildSnapshot(): Record<string, unknown> {
     let pick: ActivePet;
     if (swapDue) {
       const ordered = [...alive].sort((a, b) => PET_ORDER.indexOf(a.ide) - PET_ORDER.indexOf(b.ide));
-      pick = ordered[slot % ordered.length];
+      pick = ordered[(slot + WINDOW_SALT) % ordered.length];
       shownSlot = slot;
     } else {
       pick = current!;
     }
     // Cost figures are on the line under the pet, so the bubble only makes cost-tier remarks.
     const contextual = () => buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages, { remarksOnly: true });
-    const speech = withSeededRandom(`${slot}|${pick.ide}|${dailyMessages}`, contextual);
+    const speech = withSeededRandom(`${WINDOW_SALT}|${slot}|${pick.ide}|${dailyMessages}`, contextual);
     const s = pick.state;
     const ideLabel = pick.ide === "vscode" ? "[VS Code]" : pick.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
     // No tier emoji in the art header: the cost line under the pet carries it.
