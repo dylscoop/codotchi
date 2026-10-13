@@ -2206,6 +2206,30 @@ async function setupV2(ctx: any): Promise<() => void> {
     });
   });
 
+  // npm installs (opencode.json "plugins": [...]) have no commands/codotchi.md;
+  // register /codotchi here unless a file-based command already exists.
+  try {
+    const existing: any = await ctx.command?.list?.();
+    const list: any[] = Array.isArray(existing) ? existing : (existing?.data ?? []);
+    if (ctx.command?.transform && !list.some((c: any) => c?.name === "codotchi")) {
+      await ctx.command.transform((editor: any) => {
+        editor.add({
+          name: "codotchi",
+          description: CODOTCHI_COMMAND_DESCRIPTION,
+          execute: async ({ sessionID, prompt, delivery }: any) => {
+            const args = (prompt?.text ?? "").trim();
+            await ctx.session.prompt({
+              ...prompt,
+              sessionID,
+              text: `${CODOTCHI_COMMAND_TEMPLATE}\n\nshow: ${args}`,
+              delivery,
+            });
+          },
+        });
+      });
+    }
+  } catch { /* command API unavailable — tool still works */ }
+
   if (!isLeader) {
     let ownRpc: any = null;
     try { ownRpc = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async () => buildSnapshot() }); } catch { /* already registered here */ }

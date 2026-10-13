@@ -116,9 +116,11 @@ Add the plugin to your global OpenCode config,
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-codotchi"]
+  "plugins": ["opencode-codotchi"]
 }
 ```
+
+On OpenCode 1.x the key is `"plugin"` (singular) instead of `"plugins"`.
 
 Restart OpenCode. It downloads the package on startup, and the plugin
 registers both the `codotchi` tool and the `/codotchi` slash command, so
@@ -177,7 +179,7 @@ stats. If nothing happens, see Troubleshooting below.
 #### Update / uninstall
 
 - **npm:** OpenCode refreshes the package on startup; pin or bump the version
-  in `opencode.json`. Remove the entry from `"plugin"` to uninstall.
+  in `opencode.json`. Remove the entry from `"plugins"` to uninstall.
 - **Zip / source:** re-run `node bin/install.js --install` from the new
   version. To uninstall, delete `plugins/codotchi.js` and
   `commands/codotchi.md` from `~/.config/opencode/`.

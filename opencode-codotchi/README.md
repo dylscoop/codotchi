@@ -24,9 +24,11 @@ Add the package to `~/.config/opencode/opencode.json`
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-codotchi"]
+  "plugins": ["opencode-codotchi"]
 }
 ```
+
+On OpenCode 1.x the key is `"plugin"` (singular) instead of `"plugins"`.
 
 Restart OpenCode. The plugin registers the `codotchi` tool and the
 `/codotchi` slash command itself, so no files need copying.
