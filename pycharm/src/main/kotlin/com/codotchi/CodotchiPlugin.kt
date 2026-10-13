@@ -424,7 +424,7 @@ class CodotchiPlugin : Disposable {
         val gson = Gson()
 
         try {
-            val xdgConfig = System.getenv("XDG_CONFIG_HOME")
+            val xdgConfig = System.getenv("XDG_CONFIG_HOME")?.takeIf { it.isNotBlank() }
                 ?: File(home, ".config").absolutePath
             val ocFile = File(xdgConfig, "opencode/codotchi-daily.json")
             if (ocFile.exists()) {

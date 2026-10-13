@@ -60,7 +60,7 @@ function scanOpenCodeDailyUsage(): DailyUsage {
   let costUsd = 0, hourlyCostUsd = 0, tokens = 0, messageCount = 0;
 
   try {
-    const xdgConfig = process.env["XDG_CONFIG_HOME"] ?? path.join(os.homedir(), ".config");
+    const xdgConfig = process.env["XDG_CONFIG_HOME"] || path.join(os.homedir(), ".config");
     const ocDailyPath = path.join(xdgConfig, "opencode", "codotchi-daily.json");
     if (fs.existsSync(ocDailyPath)) {
       const ocData = JSON.parse(fs.readFileSync(ocDailyPath, "utf8"));

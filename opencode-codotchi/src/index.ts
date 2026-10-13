@@ -43,7 +43,7 @@ import * as os   from "os";
 import { spawnSync } from "child_process";
 import { tool }  from "@opencode-ai/plugin";
 import type { Plugin, PluginInput } from "@opencode-ai/plugin";
-import { getIDEBase as _getIDEBase, resolveVSCodeStatePath } from "./statePathResolver.js";
+import { getIDEBase as _getIDEBase, resolveVSCodeStatePath, getOpenCodeConfigDir } from "./statePathResolver.js";
 import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry, buildDailyUsageQueries, defaultOpencodeDbPath, queryDailyUsageFromDb, UsageTotals } from "./usageBackfill.js";
 
 import {
@@ -219,7 +219,7 @@ function saveTerminalEnabled(): void {
 // ---------------------------------------------------------------------------
 
 function getDailyUsagePath(): string {
-  return path.join(os.homedir(), ".config", "opencode", "codotchi-daily.json");
+  return path.join(getOpenCodeConfigDir(), "codotchi-daily.json");
 }
 
 /** Local calendar date ("YYYY-MM-DD") — "today" for daily usage and the local pet. */
@@ -555,7 +555,7 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
 // ---------------------------------------------------------------------------
 
 function getPluginConfigPath(): string {
-  return path.join(os.homedir(), ".config", "opencode", "codotchi-config.json");
+  return path.join(getOpenCodeConfigDir(), "codotchi-config.json");
 }
 
 function loadPluginConfig(): void {
@@ -582,7 +582,7 @@ function savePluginConfig(): void {
 // ---------------------------------------------------------------------------
 
 function getLocalStatePath(): string {
-  return path.join(os.homedir(), ".config", "opencode", "codotchi-local.json");
+  return path.join(getOpenCodeConfigDir(), "codotchi-local.json");
 }
 
 /** Total messages (persisted across daily resets) for message-based aging. */
