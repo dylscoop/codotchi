@@ -2424,3 +2424,14 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** User messages are counted once per message ID, and the shown pet stays while it is alive, so it only swaps when a message is sent or after 5 minutes. Stat bars and the summary line round values to whole numbers. A new `spriteLabel()` shows the character name (`Stugotchi`) or a capitalised sprite ID. `status` prints each pet once: the stat block, or the summary line when ASCII art is off.
 
 **Tests:** `opencode-codotchi/tests/unit/asciiArt.test.ts`, `opencode-codotchi/tests/unit/pluginContract.test.ts`.
+
+## BUGFIX-203 - OpenCode daily cost far below the real total (e.g. $2.18 shown vs $9.51 spent)
+
+**Status:** Fixed (branch `fix/opencode-daily-cost`)
+**Files:** `opencode-codotchi/src/index.ts`, `opencode-codotchi/src/usageBackfill.ts`
+
+**Problem:** Track A fetched today's cross-project total by running `opencode db path` and `opencode db --format json <sql>`. OpenCode 2 removed the `db` subcommand, so Track A always failed silently. The plugin fell back to Track B, which only covers the current project's sessions plus replies seen live in this window. Because VS Code and PyCharm read the same `codotchi-daily.json`, all three showed the undercount. Two smaller issues made it worse: the total was only read from the database at startup, and the cross-window sync adopted any differing value from the file, so a window that had seen fewer replies could overwrite a higher total.
+
+**Fix:** `queryDailyUsageFromDb()` opens `opencode.db` read-only with `bun:sqlite` (OpenCode's runtime), falling back to `node:sqlite`. It resolves the path from `XDG_DATA_HOME` or `~/.local/share/opencode/opencode.db`, and keeps the old CLI as a last resort. The queries prefilter on the indexed `time_created` column (from a day before midnight), so the read takes about 36 ms on a 7 GB database, and a v2-only query handles databases without the old `message` table. The total is re-synced from the database on `session.idle` (at most every 30 s). Database writes to the file are tagged `"source": "db"`, and other windows only accept a lower total when it carries that tag; live writes can only raise it.
+
+**Tests:** `opencode-codotchi/tests/unit/usageBackfill.test.ts` (query shape, real SQLite totals for v2-only and v1+v2 schemas, missing file, DB path).

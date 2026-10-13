@@ -1,5 +1,24 @@
 # Version History
 
+## OpenCode plugin v2.27.5 — current (OpenCode only; other plugins stay at 2.27.4)
+
+### Changes from v2.27.4 (OpenCode daily cost — branch fix/opencode-daily-cost)
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/usageBackfill.ts` | BUGFIX-203: new `queryDailyUsageFromDb()` reads `opencode.db` directly (`bun:sqlite`, then `node:sqlite`); `defaultOpencodeDbPath()`; queries prefilter on indexed `time_created` and add a v2-only fallback |
+| `opencode-codotchi/src/index.ts` | BUGFIX-203: Track A uses the direct read (`opencode db` was removed in OpenCode 2); `refreshDailyFromDb()` re-syncs on `session.idle`; DB writes tagged `source: "db"`; cross-window sync only accepts a lower total from a DB write |
+| `opencode-codotchi/tests/unit/usageBackfill.test.ts` | query shape, real SQLite totals, missing DB, path tests |
+| `opencode-codotchi/package.json`, `README.md` | version 2.27.4 → 2.27.5 (OpenCode only) |
+
+Updated constants:
+
+```
+DB_REFRESH_MIN_INTERVAL_MS: number = 30_000   // min gap between idle DB re-syncs
+```
+
+---
+
 ## v2.27.4 — current
 
 ### Changes from v2.27.3 (break timer no longer restarts — branch fix/break-timer-no-reset)

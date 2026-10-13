@@ -113,19 +113,19 @@ page — no repository clone required:
 
 #### From Zip
 
-1. Download `opencode-codotchi-2.27.4.zip` from the
+1. Download `opencode-codotchi-2.27.5.zip` from the
    [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. Extract it and run the installer:
 
    ```bash
    # macOS / Linux
-   unzip opencode-codotchi-2.27.4.zip && cd opencode-codotchi-2.27.4
+   unzip opencode-codotchi-2.27.5.zip && cd opencode-codotchi-2.27.5
    node bin/install.js --install
    ```
 
    ```powershell
    # Windows (PowerShell)
-   Expand-Archive opencode-codotchi-2.27.4.zip; cd opencode-codotchi-2.27.4
+   Expand-Archive opencode-codotchi-2.27.5.zip; cd opencode-codotchi-2.27.5
    node bin/install.js --install
    ```
 
