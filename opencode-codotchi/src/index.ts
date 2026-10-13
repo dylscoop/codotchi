@@ -2029,7 +2029,25 @@ let shownPet: ShownPet | null = null;
 let speechDirty = true;
 /** True while a reply is running; the bubble refreshes once when it goes idle. */
 let replyBusy = false;
-let shownPickedAt = 0;
+let shownSlot = -1;
+/** Fixed order the pets take turns in. */
+const PET_ORDER = ["vscode", "pycharm", "opencode"];
+
+/** Run fn with Math.random replaced by a PRNG seeded from `seed`, so every instance picks the same phrase. */
+function withSeededRandom<T>(seed: string, fn: () => T): T {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h = Math.imul(h ^ seed.charCodeAt(i), 16777619); }
+  let a = h >>> 0;
+  const original = Math.random;
+  Math.random = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  try { return fn(); } finally { Math.random = original; }
+}
 /** How often (in minutes) the pet above the prompt switches to another pet. */
 const PET_SWAP_MINUTES = 2;
 const PET_SWAP_MS = PET_SWAP_MINUTES * 60_000;
@@ -2057,24 +2075,23 @@ function buildSnapshot(): Record<string, unknown> {
   const current = shownPet ? (alive.find(p => p.ide === shownPet!.ide) ?? stillAlivePet(shownPet.ide)) : undefined;
   // The pet (art + speech) is frozen between refreshes: the speech changes once
   // at the end of each reply, and the pet switches every PET_SWAP_MINUTES
-  // (or when the current pet is gone).
-  const swapDue = !current || now - shownPickedAt >= PET_SWAP_MS;
+  // (or when the current pet is gone). Both the pet and the phrase are chosen
+  // deterministically, so every plugin instance shows the same thing.
+  const slot = Math.floor(now / PET_SWAP_MS);
+  const swapDue = !current || slot !== shownSlot;
   if ((swapDue || speechDirty) && alive.length > 0) {
     speechDirty = false;
     let pick: ActivePet;
     if (swapDue) {
-      // Prefer a different pet when swapping, so a swap is visible.
-      const others = alive.length > 1 && current ? alive.filter(p => p.ide !== current.ide) : alive;
-      pick = others[Math.floor(Math.random() * others.length)];
-      shownPickedAt = now;
+      const ordered = [...alive].sort((a, b) => PET_ORDER.indexOf(a.ide) - PET_ORDER.indexOf(b.ide));
+      pick = ordered[slot % ordered.length];
+      shownSlot = slot;
     } else {
       pick = current!;
     }
     // Cost figures are on the line under the pet, so the bubble only makes cost-tier remarks.
     const contextual = () => buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages, { remarksOnly: true });
-    let speech = contextual();
-    // Avoid repeating the line already on screen when other phrasings exist.
-    for (let i = 0; i < 5 && shownPet && speech.message === shownPet.message; i++) { speech = contextual(); }
+    const speech = withSeededRandom(`${slot}|${pick.ide}|${dailyMessages}`, contextual);
     const s = pick.state;
     const ideLabel = pick.ide === "vscode" ? "[VS Code]" : pick.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
     // No tier emoji in the art header: the cost line under the pet carries it.
@@ -2090,6 +2107,7 @@ function buildSnapshot(): Record<string, unknown> {
     enabled: terminalEnabled,
     tier: costTier(),
     pets,
+    petSlot: shownSlot,
     today: { costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages },
     lastHour: { costUSD: hour.costUSD, tokens: hour.tokens },
     session: { costUSD: sessionCostUSD, tokens: sessionTokens },
