@@ -308,7 +308,7 @@ function findOpencodeCli(): string | null {
   for (const c of candidates) {
     try {
       if (c !== "opencode" && !fs.existsSync(c)) { continue; }
-      const result = spawnSync(c, ["--version"], { timeout: 2000, encoding: "utf8" });
+      const result = spawnSync(c, ["--version"], { timeout: 2000, encoding: "utf8", windowsHide: true });
       if (result.status === 0) { return c; }
     } catch { /* try next */ }
   }
@@ -359,7 +359,7 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
       const cli = findOpencodeCli();
       if (cli) {
         // Get DB path
-        const pathResult = spawnSync(cli, ["db", "path"], { timeout: 3000, encoding: "utf8" });
+        const pathResult = spawnSync(cli, ["db", "path"], { timeout: 3000, encoding: "utf8", windowsHide: true });
         const dbPath = pathResult.stdout?.trim();
 
         if (dbPath && fs.existsSync(dbPath)) {
@@ -385,6 +385,7 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
           const queryResult = spawnSync(cli, ["db", "--format", "json", sql], {
             timeout: 3000,
             encoding: "utf8",
+            windowsHide: true,
           });
 
           if (queryResult.status === 0 && queryResult.stdout) {
@@ -2022,13 +2023,14 @@ const CODOTCHI_RPC = {
   },
 };
 
-type SpeechEntry = { message: string; bubbleColor: string; tierEmoji: string };
-/** Pet shown above the prompt and its speech. The pet swaps on each user message or every 5 minutes. */
-let shownSpeech: { ide: string; speech: SpeechEntry } | null = null;
+type ShownPet = { ide: string; name: string; stage: string; message: string; emoji: string; lines: string[] };
+/** Pet shown above the prompt. Refreshed at the end of each reply or every 5 minutes. */
+let shownPet: ShownPet | null = null;
 let speechDirty = true;
 let shownPickedAt = 0;
-let shownPickedAtMessages = -1;
-const PET_SWAP_MS = 5 * 60_000;
+/** How often (in minutes) the pet above the prompt switches to another pet. */
+const PET_SWAP_MINUTES = 5;
+const PET_SWAP_MS = PET_SWAP_MINUTES * 60_000;
 const TIER_ANSI = { green: "\x1b[32m", yellow: "\x1b[33m", red: "\x1b[31m" } as const;
 
 /** The pet for `ide` if it still exists and is alive, regardless of the live window. */
@@ -2050,34 +2052,37 @@ function buildSnapshot(): Record<string, unknown> {
   const now = Date.now();
   // Keep showing the current pet while it is alive, even if its IDE briefly
   // drops out of the 60s "live" window — otherwise the display flickers.
-  const current = shownSpeech ? (alive.find(p => p.ide === shownSpeech!.ide) ?? stillAlivePet(shownSpeech.ide)) : undefined;
-  const swapDue = !current || sessionUserMessages !== shownPickedAtMessages || now - shownPickedAt >= PET_SWAP_MS;
-  let pick = current;
-  if (swapDue && alive.length > 0) {
-    // Prefer a different pet when swapping, so a swap is visible.
-    const others = alive.length > 1 && current ? alive.filter(p => p.ide !== current.ide) : alive;
-    pick = others[Math.floor(Math.random() * others.length)];
-    shownPickedAt = now;
-    shownPickedAtMessages = sessionUserMessages;
-  }
-  if (pick && (swapDue || speechDirty || !shownSpeech)) {
+  const current = shownPet ? (alive.find(p => p.ide === shownPet!.ide) ?? stillAlivePet(shownPet.ide)) : undefined;
+  // The pet (art + speech) is frozen between refreshes: it only changes at the
+  // end of a reply (session.idle sets speechDirty) or every 5 minutes.
+  // A reply only refreshes the current pet's speech; switching pets happens
+  // only every PET_SWAP_MS (or when the current pet is gone).
+  const swapDue = !current || now - shownPickedAt >= PET_SWAP_MS;
+  if ((swapDue || speechDirty) && alive.length > 0) {
     speechDirty = false;
+    let pick: ActivePet;
+    if (swapDue) {
+      // Prefer a different pet when swapping, so a swap is visible.
+      const others = alive.length > 1 && current ? alive.filter(p => p.ide !== current.ide) : alive;
+      pick = others[Math.floor(Math.random() * others.length)];
+      shownPickedAt = now;
+    } else {
+      pick = current!;
+    }
     // Costs are on the line under the pet, so the bubble text leaves them out (zero cost/tokens);
     // the bubble border still uses the cost tier colour.
-    const s = buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, 0, 0, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages);
-    shownSpeech = { ide: pick.ide, speech: { ...s, bubbleColor: TIER_ANSI[costTier()] } };
-  }
-  const shown = pick;
-  const pets = shown && shownSpeech ? [shown].map(p => {
-    const s = p.state;
-    const speech = shownSpeech!.speech;
-    const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
+    const speech = buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, 0, 0, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages);
+    const s = pick.state;
+    const ideLabel = pick.ide === "vscode" ? "[VS Code]" : pick.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
     // No tier emoji in the art header: the cost line under the pet carries it.
-    const lines = buildSpeechBubble(s.stage, s.mood, speech.message, s.name, s.spriteType, ideLabel, speech.bubbleColor)
+    const lines = buildSpeechBubble(s.stage, s.mood, speech.message, s.name, s.spriteType, ideLabel, TIER_ANSI[costTier()])
       .split("\n")
       .filter(l => stripAnsi(l).trim().length > 0);
-    return { ide: p.ide, name: s.name, stage: s.stage, message: speech.message, emoji: speech.tierEmoji, lines };
-  }) : [];
+    shownPet = { ide: pick.ide, name: s.name, stage: s.stage, message: speech.message, emoji: speech.tierEmoji, lines };
+  } else if (shownPet && !current) {
+    shownPet = null;
+  }
+  const pets = shownPet ? [shownPet] : [];
   return {
     enabled: terminalEnabled,
     tier: costTier(),
@@ -2134,7 +2139,6 @@ async function setupV2(ctx: any): Promise<() => void> {
           ...context,
           metadata: () => { /* V2 tool panel titles come from the tool name */ },
         });
-        speechDirty = true;
         requestSidebarRefresh();
         return { content: stripAnsi(typeof out === "string" ? out : lastToolOutput) };
       },
