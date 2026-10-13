@@ -11,7 +11,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { sumCompletedAssistantUsage, buildDailyUsageQueries, type RawMessageEntry } from "../../src/usageBackfill";
+import { sumCompletedAssistantUsage, buildDailyUsageQueries, queryDailyUsageFromDb, defaultOpencodeDbPath, type RawMessageEntry } from "../../src/usageBackfill";
 
 /** Minimal bun-style expect() over node:assert, so the existing assertions run under node:test. */
 function expect(actual: number) {
@@ -375,12 +375,67 @@ describe("sumCompletedAssistantUsage — sinceMs day filter (BUGFIX-161)", () =>
 
 describe("buildDailyUsageQueries � OpenCode 2 database", () => {
   it("first query sums both OpenCode 1 `message` and OpenCode 2 `session_message`", () => {
-    const [both, v1Only] = buildDailyUsageQueries(1_700_000_000_000);
+    const [both, v2Only, v1Only] = buildDailyUsageQueries(1_700_000_000_000);
     assert.match(both, /FROM message\b/);
     assert.match(both, /FROM session_message\b/);
     assert.match(both, /UNION ALL/);
     assert.match(both, /type = 'assistant'/);
     assert.match(both, />= 1700000000000/);
+    assert.doesNotMatch(v2Only, /FROM message\b/);
     assert.doesNotMatch(v1Only, /session_message/);
+  });
+
+  it("prefilters on the indexed time_created column (one day before midnight)", () => {
+    const [both] = buildDailyUsageQueries(1_700_000_000_000);
+    assert.match(both, /time_created >= 1699913600000/);
+  });
+});
+
+describe("queryDailyUsageFromDb — direct SQLite read", () => {
+  const midnight = new Date(2026, 9, 13).getTime();
+
+  function makeDb(withV1: boolean): string {
+    const { DatabaseSync } = require("node:sqlite");
+    const fs = require("fs"), os = require("os"), path = require("path");
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "codotchi-db-")), "opencode.db");
+    const db = new DatabaseSync(file);
+    db.exec("CREATE TABLE session_message (id TEXT, session_id TEXT, type TEXT, seq INT, time_created INT, time_updated INT, data TEXT)");
+    const add = (type: string, created: number, completed: number | null, cost: number) =>
+      db.prepare("INSERT INTO session_message VALUES (?, 's', ?, 0, ?, ?, ?)").run(String(Math.random()), type, created, created,
+        JSON.stringify({ cost, tokens: { input: 10, output: 5 }, time: completed === null ? { created } : { created, completed } }));
+    add("assistant", midnight + 1000, midnight + 2000, 1.5);
+    add("assistant", midnight + 3000, midnight + 4000, 2.25);
+    add("assistant", midnight - 5000, midnight + 100, 0.25);      // crosses midnight — counts
+    add("assistant", midnight - 9000, midnight - 1000, 9);        // yesterday — excluded
+    add("assistant", midnight + 6000, null, 7);                   // still streaming — excluded
+    add("user", midnight + 500, null, 0);
+    if (withV1) {
+      db.exec("CREATE TABLE message (id TEXT, session_id TEXT, time_created INT, time_updated INT, data TEXT)");
+      db.prepare("INSERT INTO message VALUES ('m', 's', ?, ?, ?)").run(midnight + 10, midnight + 10,
+        JSON.stringify({ role: "assistant", cost: 1, tokens: { input: 1 }, time: { completed: midnight + 20 } }));
+    }
+    db.close();
+    return file;
+  }
+
+  it("sums today's completed assistant messages from an OpenCode 2-only database", async () => {
+    const totals = await queryDailyUsageFromDb(makeDb(false), midnight);
+    assert.deepEqual(totals, { costUSD: 4, tokens: 45, messages: 3 });
+  });
+
+  it("includes OpenCode 1 `message` rows when that table exists", async () => {
+    const totals = await queryDailyUsageFromDb(makeDb(true), midnight);
+    assert.deepEqual(totals, { costUSD: 5, tokens: 46, messages: 4 });
+  });
+
+  it("returns undefined for a missing database file", async () => {
+    assert.equal(await queryDailyUsageFromDb("/no/such/dir/opencode.db", midnight), undefined);
+  });
+});
+
+describe("defaultOpencodeDbPath", () => {
+  it("uses XDG_DATA_HOME when set, else ~/.local/share", () => {
+    assert.equal(defaultOpencodeDbPath({ XDG_DATA_HOME: "/x" }, "/h"), "/x/opencode/opencode.db");
+    assert.equal(defaultOpencodeDbPath({}, "/h"), "/h/.local/share/opencode/opencode.db");
   });
 });

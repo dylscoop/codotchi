@@ -128,9 +128,56 @@ const USAGE_COLUMNS = `
 export function buildDailyUsageQueries(todayStartMs: number): string[] {
   const done = `json_extract(data,'$.time.completed') IS NOT NULL
       AND CAST(json_extract(data,'$.time.completed') AS INTEGER) >= ${Math.floor(todayStartMs)}`;
-  const v1 = `SELECT ${USAGE_COLUMNS} FROM message WHERE json_extract(data,'$.role') = 'assistant' AND ${done}`;
-  const v2 = `SELECT ${USAGE_COLUMNS} FROM session_message WHERE type = 'assistant' AND ${done}`;
+  // time_created is indexed; a message completed today was created no earlier than
+  // a day before midnight, so this prefilter keeps the scan off the full table.
+  const createdFloor = Math.floor(todayStartMs) - 86_400_000;
+  const v1 = `SELECT ${USAGE_COLUMNS} FROM message WHERE time_created >= ${createdFloor} AND json_extract(data,'$.role') = 'assistant' AND ${done}`;
+  const v2 = `SELECT ${USAGE_COLUMNS} FROM session_message WHERE time_created >= ${createdFloor} AND type = 'assistant' AND ${done}`;
   const total = (rows: string) =>
     `SELECT ROUND(SUM(cost), 6) AS costUSD, SUM(tokens) AS tokens, COUNT(*) AS messages FROM (${rows})`;
-  return [total(`${v1} UNION ALL ${v2}`), total(v1)];
+  return [total(`${v1} UNION ALL ${v2}`), total(v2), total(v1)];
+}
+
+/** Default OpenCode database location (honours XDG_DATA_HOME, like OpenCode itself). */
+export function defaultOpencodeDbPath(env: NodeJS.ProcessEnv, homeDir: string): string {
+  const dataHome = env["XDG_DATA_HOME"] || `${homeDir}/.local/share`;
+  return `${dataHome}/opencode/opencode.db`;
+}
+
+type SqlRow = { costUSD?: number | null; tokens?: number | null; messages?: number | null };
+
+/**
+ * Run the daily usage queries directly against the SQLite file, read-only.
+ * Uses bun:sqlite (OpenCode's runtime) and falls back to node:sqlite.
+ * Returns undefined if no driver is available or every query fails.
+ */
+export async function queryDailyUsageFromDb(dbPath: string, todayStartMs: number): Promise<UsageTotals | undefined> {
+  let open: ((p: string) => { prepare(sql: string): { all(): unknown[] }; close(): void }) | undefined;
+  // Module names held in variables so the bundler leaves these imports alone.
+  const bunMod = "bun:sqlite";
+  const nodeMod = "node:sqlite";
+  try {
+    const m: any = await import(bunMod);
+    open = (p) => new m.Database(p, { readonly: true });
+  } catch {
+    try {
+      const m: any = await import(nodeMod);
+      open = (p) => new m.DatabaseSync(p, { readOnly: true });
+    } catch { return undefined; }
+  }
+  let db: ReturnType<NonNullable<typeof open>> | undefined;
+  try {
+    db = open(dbPath);
+    for (const sql of buildDailyUsageQueries(todayStartMs)) {
+      try {
+        const row = (db.prepare(sql).all()[0] ?? {}) as SqlRow;
+        return { costUSD: row.costUSD ?? 0, tokens: row.tokens ?? 0, messages: row.messages ?? 0 };
+      } catch { /* table missing in this schema version — try the next query */ }
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  } finally {
+    try { db?.close(); } catch { /* ignore */ }
+  }
 }

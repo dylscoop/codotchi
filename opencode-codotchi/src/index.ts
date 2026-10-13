@@ -44,7 +44,7 @@ import { spawnSync } from "child_process";
 import { tool }  from "@opencode-ai/plugin";
 import type { Plugin, PluginInput } from "@opencode-ai/plugin";
 import { getIDEBase as _getIDEBase, resolveVSCodeStatePath } from "./statePathResolver.js";
-import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry, buildDailyUsageQueries } from "./usageBackfill.js";
+import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry, buildDailyUsageQueries, defaultOpencodeDbPath, queryDailyUsageFromDb, UsageTotals } from "./usageBackfill.js";
 
 import {
   PetState,
@@ -254,13 +254,77 @@ function loadDailyUsage(): void {
   } catch { /* best-effort */ }
 }
 
-function saveDailyUsage(): void {
+function saveDailyUsage(fromDb: boolean = false): void {
   try {
     const filePath = getDailyUsagePath();
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
-    fs.writeFileSync(filePath, JSON.stringify({ date: dailyDate, costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages }), "utf8");
+    const data: Record<string, unknown> = { date: dailyDate, costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages };
+    if (fromDb) { data.source = "db"; }
+    fs.writeFileSync(filePath, JSON.stringify(data), "utf8");
   } catch { /* best-effort */ }
+}
+
+/** Resolve the OpenCode SQLite path: default location first, then the legacy `opencode db path` CLI. */
+function resolveOpencodeDbPath(): string | undefined {
+  const def = defaultOpencodeDbPath(process.env, os.homedir());
+  if (fs.existsSync(def)) { return def; }
+  try {
+    const cli = findOpencodeCli();
+    if (!cli) { return undefined; }
+    const out = spawnSync(cli, ["db", "path"], { timeout: 5000, encoding: "utf8", windowsHide: true });
+    const p = out.status === 0 ? out.stdout?.trim() : "";
+    return p && fs.existsSync(p) ? p : undefined;
+  } catch { return undefined; }
+}
+
+/** Today's cross-project totals from the OpenCode database, or undefined if unavailable. */
+async function fetchDbDailyTotals(todayStartMs: number): Promise<UsageTotals | undefined> {
+  const dbPath = resolveOpencodeDbPath();
+  if (!dbPath) { return undefined; }
+  const direct = await queryDailyUsageFromDb(dbPath, todayStartMs);
+  if (direct) { return direct; }
+  // Legacy fallback: OpenCode 1 shipped a `db` subcommand that can run SQL.
+  try {
+    const cli = findOpencodeCli();
+    if (!cli) { return undefined; }
+    for (const sql of buildDailyUsageQueries(todayStartMs)) {
+      const r = spawnSync(cli, ["db", "--format", "json", sql], { timeout: 10000, encoding: "utf8", windowsHide: true });
+      if (r.status === 0 && r.stdout) {
+        const row = (JSON.parse(String(r.stdout).trim()) as Array<{ costUSD?: number; tokens?: number; messages?: number }>)[0] ?? {};
+        return { costUSD: row.costUSD ?? 0, tokens: row.tokens ?? 0, messages: row.messages ?? 0 };
+      }
+    }
+  } catch { /* fall through */ }
+  return undefined;
+}
+
+const DB_REFRESH_MIN_INTERVAL_MS = 30_000;
+let lastDbRefreshMs = 0;
+let dbRefreshInFlight = false;
+
+/**
+ * Re-sync today's totals from the database (throttled). Live events only see
+ * this window's replies, so without this the total drifts below the truth when
+ * several OpenCode windows run at once.
+ */
+async function refreshDailyFromDb(): Promise<void> {
+  if (!backfillComplete || dbRefreshInFlight) { return; }
+  if (Date.now() - lastDbRefreshMs < DB_REFRESH_MIN_INTERVAL_MS) { return; }
+  dbRefreshInFlight = true;
+  lastDbRefreshMs = Date.now();
+  try {
+    const totals = await fetchDbDailyTotals(todayStartLocalMs());
+    if (!totals) { return; }
+    checkDayRollover();
+    dailyCostUSD  = totals.costUSD;
+    dailyTokens   = totals.tokens;
+    dailyMessages = totals.messages;
+    dailyDate = todayLocal();
+    saveDailyUsage(true);
+  } catch { /* best-effort */ } finally {
+    dbRefreshInFlight = false;
+  }
 }
 
 function checkDayRollover(): void {
@@ -356,48 +420,20 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     // time.completed <= trackASnapshotTime is in the DB snapshot already.
     let trackASnapshotTime = 0;
     try {
-      const cli = findOpencodeCli();
-      if (cli) {
-        // Get DB path
-        const pathResult = spawnSync(cli, ["db", "path"], { timeout: 3000, encoding: "utf8", windowsHide: true });
-        const dbPath = pathResult.stdout?.trim();
-
-        if (dbPath && fs.existsSync(dbPath)) {
-          trackASnapshotTime = Date.now();
-          // Try the OpenCode 2 + 1 query first, then the OpenCode 1-only fallback.
-          let queryResult: ReturnType<typeof spawnSync> | undefined;
-          for (const sql of buildDailyUsageQueries(todayStartMs)) {
-            queryResult = spawnSync(cli, ["db", "--format", "json", sql], {
-              timeout: 3000,
-              encoding: "utf8",
-              windowsHide: true,
-            });
-            if (queryResult.status === 0 && queryResult.stdout) { break; }
-          }
-
-          if (queryResult && queryResult.status === 0 && queryResult.stdout) {
-            const rows = JSON.parse(String(queryResult.stdout).trim()) as Array<{ costUSD?: number; tokens?: number; messages?: number }>;
-            const dbCostUSD   = typeof rows[0]?.costUSD  === "number" ? rows[0].costUSD  : 0;
-            const dbTokens    = typeof rows[0]?.tokens   === "number" ? rows[0].tokens   : 0;
-            const dbMessages  = typeof rows[0]?.messages === "number" ? rows[0].messages : 0;
-            checkDayRollover();
-            // DB is the single source of truth — assign directly, never Math.max.
-            // The sidecar value loaded at startup is discarded; the DB value wins.
-            // Math.max is intentionally NOT used here: the sidecar can hold an
-            // inflated value (e.g. accumulated by a bugged previous plugin run)
-            // and Math.max would preserve the poison. The DB always has the
-            // authoritative cross-project total.
-            dailyCostUSD  = dbCostUSD;
-            dailyTokens   = dbTokens;
-            dailyMessages = dbMessages;
-            trackASucceeded = true;
-            // Immediately persist the correct DB value to the sidecar so that
-            // any other OpenCode window watching the file via fs.watch will pick
-            // up the authoritative total (instead of a stale inflated value).
-            dailyDate = today;
-            saveDailyUsage();
-          }
-        }
+      trackASnapshotTime = Date.now();
+      const totals = await fetchDbDailyTotals(todayStartMs);
+      if (totals) {
+        checkDayRollover();
+        // DB is the single source of truth — assign directly, never Math.max,
+        // so an inflated sidecar from a bugged earlier run can't survive.
+        dailyCostUSD  = totals.costUSD;
+        dailyTokens   = totals.tokens;
+        dailyMessages = totals.messages;
+        trackASucceeded = true;
+        lastDbRefreshMs = Date.now();
+        // Persist immediately so other windows watching the file adopt it.
+        dailyDate = today;
+        saveDailyUsage(true);
       }
     } catch { /* Track A failed — fall through to Track B for cost totals */ }
 
@@ -1293,21 +1329,17 @@ const plugin: Plugin = async (ctx) => {
       if (!backfillComplete) { return; } // don't interfere while backfill is running
       try {
         if (!fs.existsSync(dailyFilePath)) { return; }
-        const raw = JSON.parse(fs.readFileSync(dailyFilePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number; messages?: number };
+        const raw = JSON.parse(fs.readFileSync(dailyFilePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number; messages?: number; source?: string };
         if (raw.date !== todayLocal()) { return; }
         const fileCost     = typeof raw.costUSD  === "number" ? raw.costUSD  : 0;
         const fileTokens   = typeof raw.tokens   === "number" ? raw.tokens   : 0;
         const fileMessages = typeof raw.messages === "number" ? raw.messages : dailyMessages;
-        // Adopt the file value if it differs meaningfully from what we hold.
-        // We no longer use Math.max here — since Track A (SQLite) now immediately
-        // overwrites the sidecar with the authoritative DB value on every startup,
-        // the file always reflects the most accurate known total. Math.max would
-        // permanently lock in any inflated value that a previous bugged run wrote.
-        // Instead: accept the file value if it is larger than our current total
-        // (another window counted more messages than us), but also accept it if it
-        // is meaningfully *lower* (another window corrected the total via Track A).
-        // The threshold avoids thrashing on floating-point noise.
-        if (Math.abs(fileCost - dailyCostUSD) > 0.0001 || Math.abs(fileTokens - dailyTokens) > 10) {
+        // A DB-sourced write is authoritative (it may correct an inflated total).
+        // A live write from another window only knows that window's replies, so
+        // it may only raise our total — adopting a lower one loses cost.
+        const fromDb = raw.source === "db";
+        const differs = Math.abs(fileCost - dailyCostUSD) > 0.0001 || Math.abs(fileTokens - dailyTokens) > 10;
+        if (differs && (fromDb || fileCost > dailyCostUSD)) {
           dailyCostUSD  = fileCost;
           dailyTokens   = fileTokens;
           dailyMessages = fileMessages;   // keep the tok/msg average consistent with the adopted totals
@@ -1756,6 +1788,7 @@ const plugin: Plugin = async (ctx) => {
       // session.idle → flag idle; fire diff notification if pending; offer help if prompting a lot
       if (event.type === "session.idle") {
         isIdle = true;
+        void refreshDailyFromDb();
         saveIDEState("vscode");
         saveIDEState("pycharm");
         saveIDEState("opencode");
