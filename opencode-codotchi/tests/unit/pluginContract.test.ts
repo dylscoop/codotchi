@@ -280,14 +280,24 @@ describe("codotchi tool execute", () => {
 
 type V2Tool = { name: string; input: unknown; execute: (input: unknown, ctx: unknown) => Promise<{ content: string }> };
 
-function makeV2Context(events: unknown[]) {
+function makeV2Context(events: unknown[], existingCommands: string[] = []) {
   const tools: V2Tool[] = [];
+  const commands: Array<{ name: string; description?: string; execute: (i: any) => Promise<void> }> = [];
+  const prompts: any[] = [];
   let subscribed = false;
   const rpc: { handlers?: Record<string, () => Promise<any>>; emitted: Array<{ name: string; data: any }> } = { emitted: [] };
   const ctx = {
     app: { version: "2.0.0-test" },
     location: { directory: process.cwd(), project: { id: "test", directory: process.cwd(), canonical: process.cwd() } },
     options: {},
+    command: {
+      list: async () => existingCommands.map(name => ({ name })),
+      transform: async (cb: (editor: { add: (c: any) => void }) => void) => {
+        cb({ add: (c) => commands.push(c) });
+        return { dispose: async () => {} };
+      },
+    },
+    session: { prompt: async (p: any) => { prompts.push(p); return {}; } },
     rpc: {
       register: async (def: { id: string }, handlers: Record<string, () => Promise<any>>) => {
         expect(def.id).toBe("codotchi");
@@ -316,7 +326,7 @@ function makeV2Context(events: unknown[]) {
       },
     },
   };
-  return { ctx, tools, rpc, isSubscribed: () => subscribed };
+  return { ctx, tools, commands, prompts, rpc, isSubscribed: () => subscribed };
 }
 
 describe("bundled plugin � OpenCode V2 loader contract", () => {
@@ -386,6 +396,27 @@ describe("bundled plugin � OpenCode V2 loader contract", () => {
     expect(rpc.emitted.some(e => e.name === "updated" && Array.isArray(e.data.pets))).toBe(true);
 
     (cleanup as () => void)();
+  });
+
+  it("registers /codotchi via ctx.command when no file-based command exists (npm install)", async () => {
+    const { ctx, commands, prompts } = makeV2Context([]);
+    const def = bundleMod.default as { setup: (ctx: unknown) => Promise<(() => void) | void> };
+    const cleanup = await def.setup(ctx);
+    expect(commands.map(c => c.name)).toEqual(["codotchi"]);
+    await commands[0].execute({ sessionID: "s1", prompt: { text: "feed" }, delivery: "steer" });
+    expect(prompts.length).toBe(1);
+    expect(prompts[0].sessionID).toBe("s1");
+    expect(prompts[0].text).toContain("`codotchi` tool action");
+    expect(prompts[0].text).toMatch(/show: feed$/);
+    if (typeof cleanup === "function") { cleanup(); }
+  });
+
+  it("does not register /codotchi when commands/codotchi.md already provides it", async () => {
+    const { ctx, commands } = makeV2Context([], ["codotchi"]);
+    const def = bundleMod.default as { setup: (ctx: unknown) => Promise<(() => void) | void> };
+    const cleanup = await def.setup(ctx);
+    expect(commands.length).toBe(0);
+    if (typeof cleanup === "function") { cleanup(); }
   });
 });
 
