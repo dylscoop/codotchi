@@ -124,7 +124,7 @@ On OpenCode 1.x the key is `"plugin"` (singular) instead of `"plugins"`.
 
 Restart OpenCode. It downloads the package on startup, and the plugin
 registers both the `codotchi` tool and the `/codotchi` slash command, so
-there's nothing else to copy. To pin a version use `"opencode-codotchi@2.27.5"`.
+there's nothing else to copy. To pin a version use `"opencode-codotchi@2.28.0"`.
 
 > If you prefer files on disk, `npx opencode-codotchi --install` runs the same
 > installer as Option 2 straight from npm.
