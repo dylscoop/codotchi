@@ -44,6 +44,7 @@ import { spawnSync } from "child_process";
 import { tool }  from "@opencode-ai/plugin";
 import type { Plugin, PluginInput } from "@opencode-ai/plugin";
 import { getIDEBase as _getIDEBase, resolveVSCodeStatePath, getOpenCodeConfigDir } from "./statePathResolver.js";
+import { CODOTCHI_COMMAND_DESCRIPTION, CODOTCHI_COMMAND_TEMPLATE } from "./commandTemplate.js";
 import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry, buildDailyUsageQueries, defaultOpencodeDbPath, queryDailyUsageFromDb, UsageTotals } from "./usageBackfill.js";
 
 import {
@@ -1750,6 +1751,14 @@ const plugin: Plugin = async (ctx) => {
   // Event hooks
   // ---------------------------------------------------------------------------
   return {
+    // Registers /codotchi when loaded as an npm plugin via opencode.json
+    // "plugin": [...]; a user/installer-provided commands/codotchi.md wins.
+    config: async (cfg: { command?: Record<string, { template: string; description?: string }> }) => {
+      cfg.command = cfg.command ?? {};
+      if (!cfg.command["codotchi"]) {
+        cfg.command["codotchi"] = { description: CODOTCHI_COMMAND_DESCRIPTION, template: CODOTCHI_COMMAND_TEMPLATE };
+      }
+    },
     tool: {
       codotchi: codotchiTool,
     },
