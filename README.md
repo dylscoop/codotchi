@@ -164,7 +164,8 @@ in OpenCode. Run `cd .opencode && npm install` once first.
 
 | Writes | Purpose |
 |---|---|
-| `~/.config/opencode/plugins/codotchi.js` | Single bundled plugin file (OpenCode loads every file in this folder) |
+| `~/.config/opencode/plugins/codotchi/index.js` + `tui.tsx` | OpenCode 2 plugin (server bundle + sidebar/TUI) |
+| `~/.config/opencode/plugins/codotchi.js` | OpenCode 1.x single-file plugin (removed automatically on OpenCode 2) |
 | `~/.config/opencode/commands/codotchi.md` | The `/codotchi` slash command |
 | `~/.config/opencode/package.json` | Adds the `@opencode-ai/plugin` dependency, installed by OpenCode via bun on next start |
 
@@ -181,8 +182,9 @@ stats. If nothing happens, see Troubleshooting below.
 - **npm:** OpenCode refreshes the package on startup; pin or bump the version
   in `opencode.json`. Remove the entry from `"plugins"` to uninstall.
 - **Zip / source:** re-run `node bin/install.js --install` from the new
-  version. To uninstall, delete `plugins/codotchi.js` and
-  `commands/codotchi.md` from `~/.config/opencode/`.
+  version. To uninstall, delete the `plugins/codotchi/` folder (or
+  `plugins/codotchi.js` on 1.x) and `commands/codotchi.md` from
+  `~/.config/opencode/`.
 
 Don't combine options 1 and 2 — you'd load the plugin twice.
 
@@ -204,7 +206,8 @@ way for OpenCode and your IDE.
 
 - **`/codotchi` does nothing / tool not found:** make sure only one install
   method is active, then restart OpenCode. Check that
-  `~/.config/opencode/plugins/` contains only `codotchi.js` (no leftover
+  `~/.config/opencode/plugins/` contains only the `codotchi/` folder (or
+  `codotchi.js` on 1.x), with no leftover
   `gameEngine.ts`, `asciiArt.ts`, `statePathResolver.ts`); re-running the
   installer cleans these up.
 - **"Plugin export is not a function":** the same leftover `.ts` files are the

@@ -52,7 +52,8 @@ node bin/install.js --install
 
 1. Copies `commands/codotchi.md` → `~/.config/opencode/commands/codotchi.md`.
 2. Copies the single bundled plugin `dist-plugin/codotchi.js` →
-   `~/.config/opencode/plugins/codotchi.js`, and removes leftover `.ts` files
+   `~/.config/opencode/plugins/codotchi/index.js` (plus `tui.tsx` for the
+   sidebar) on OpenCode 2, or `plugins/codotchi.js` on 1.x, and removes leftover `.ts` files
    from older versions.
 3. Adds `@opencode-ai/plugin` to `~/.config/opencode/package.json`; OpenCode
    installs it via bun on next startup.

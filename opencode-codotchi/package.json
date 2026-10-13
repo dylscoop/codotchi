@@ -4,7 +4,8 @@
   "description": "A virtual Tamagotchi-style pet that lives inside OpenCode and reacts to your daily AI spend",
   "main": "dist-plugin/codotchi.js",
   "exports": {
-    ".": "./dist-plugin/codotchi.js"
+    ".": "./dist-plugin/codotchi.js",
+    "./tui": "./tui/tui.tsx"
   },
   "bin": {
     "opencode-codotchi": "bin/install.js"
@@ -44,6 +45,7 @@
   },
   "files": [
     "dist-plugin/",
+    "tui/",
     "commands/",
     "bin/",
     "config/",
