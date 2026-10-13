@@ -57,6 +57,7 @@ const includes = [
   "bin",
   "commands",
   "dist-plugin",
+  "tui",
   "scripts/bundle-plugin.js",
   "src",
   "package.json",

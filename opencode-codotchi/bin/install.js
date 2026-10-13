@@ -137,13 +137,43 @@ for (const stale of staleFiles) {
   }
 }
 
-// ── Step 3: Install the single bundled plugin file ────────────────────────────
+// ── Step 3: Install the plugin ────────────────────────────────────────────────
+// OpenCode 2 discovers plugins/<name>/index.js (server) + tui.tsx (CLI/TUI).
+// OpenCode 1 only loads single files directly inside plugins/.
+
+function detectOpencodeMajor() {
+  try {
+    const out = execSync("opencode --version", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 15000 });
+    const m = out.match(/(\d+)\.\d+\.\d+/);
+    return m ? Number(m[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+const major = process.argv.includes("--v1") ? 1 : process.argv.includes("--v2") ? 2 : (detectOpencodeMajor() ?? 2);
+const v2Dir     = path.join(pluginsDir, "codotchi");
+const tuiSrc    = path.join(__dirname, "..", "tui", "tui.tsx");
+const probeDir  = path.join(pluginsDir, "codotchi-probe");
 
 try {
-  fs.copyFileSync(bundleSrc, bundleDest);
-  console.log(`Installed plugin bundle:  ${bundleDest}`);
+  if (fs.existsSync(probeDir)) {
+    fs.rmSync(probeDir, { recursive: true, force: true });
+    console.log(`Removed test plugin:     ${probeDir}`);
+  }
+  if (major >= 2) {
+    fs.mkdirSync(v2Dir, { recursive: true });
+    fs.copyFileSync(bundleSrc, path.join(v2Dir, "index.js"));
+    fs.copyFileSync(tuiSrc, path.join(v2Dir, "tui.tsx"));
+    if (fs.existsSync(bundleDest)) { fs.rmSync(bundleDest); }
+    console.log(`Installed OpenCode 2 plugin: ${v2Dir}${path.sep}{index.js,tui.tsx}`);
+  } else {
+    fs.copyFileSync(bundleSrc, bundleDest);
+    if (fs.existsSync(v2Dir)) { fs.rmSync(v2Dir, { recursive: true, force: true }); }
+    console.log(`Installed plugin bundle:  ${bundleDest}`);
+  }
 } catch (err) {
-  console.error(`Failed to install plugin bundle: ${err.message}`);
+  console.error(`Failed to install plugin: ${err.message}`);
   anyError = true;
 }
 

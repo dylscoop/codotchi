@@ -2923,21 +2923,33 @@ describe("break reminder attention call", () => {
   // Every random call (whims, gift, misbehaviour) on cooldown so only the break can fire
   const RANDOM_CALLS: AttentionCallType[] = ["craving", "play", "pat", "gift", "misbehaviour", "poop"];
 
-  it("fires after 30 active, awake minutes and restarts its timer", () => {
+  it("fires after 30 active, awake minutes and doesn't restart its timer just by firing", () => {
     assert.equal(BREAK_CALL_INTERVAL_TICKS * 3, 30 * 60, "600 ticks × 3 s = 30 min");
     const almost = withRandom(0.99, () => tick(contentPet(RANDOM_CALLS, { ticksSinceLastBreakCall: BREAK_CALL_INTERVAL_TICKS - 2 })));
     assert.equal(almost.activeAttentionCall, null);
     const due = withRandom(0.99, () => tick(almost));
     assert.equal(due.activeAttentionCall, "break");
     assert.ok(due.events.includes("attention_call_break"));
-    assert.equal(due.ticksSinceLastBreakCall, 0);
+    assert.ok(due.ticksSinceLastBreakCall >= BREAK_CALL_INTERVAL_TICKS, "timer keeps running until the break is taken");
   });
 
-  it("only counts active, awake time; deep idle (the user is away) restarts it", () => {
+  it("only counts active, awake time; idle and deep idle pause it without restarting", () => {
     const start = contentPet(RANDOM_CALLS, { ticksSinceLastBreakCall: 100 });
     assert.equal(withRandom(0.99, () => tick(start, true, false)).ticksSinceLastBreakCall, 100, "idle doesn't count");
     assert.equal(withRandom(0.99, () => tick({ ...start, sleeping: true })).ticksSinceLastBreakCall, 100, "asleep doesn't count");
-    assert.equal(withRandom(0.99, () => tick(start, false, true)).ticksSinceLastBreakCall, 0, "deep idle is a break");
+    assert.equal(withRandom(0.99, () => tick(start, false, true)).ticksSinceLastBreakCall, 100, "deep idle is not a break");
+  });
+
+  it("an ignored break call fires again as soon as its expiry cooldown clears", () => {
+    const ignored = contentPet(RANDOM_CALLS, { ticksSinceLastBreakCall: BREAK_CALL_INTERVAL_TICKS + 50 });
+    const next = withRandom(0.99, () => tick(ignored));
+    assert.equal(next.activeAttentionCall, "break");
+  });
+
+  it("praise on a break call restarts the break timer", () => {
+    const calling = makePet({ activeAttentionCall: "break", ticksSinceLastBreakCall: 900 });
+    assert.equal(praise(calling).ticksSinceLastBreakCall, 0);
+    assert.equal(praise(makePet({ ticksSinceLastBreakCall: 900 })).ticksSinceLastBreakCall, 900, "praise without a break call doesn't reset it");
   });
 
   it("doesn't fire while asleep or idle, and a real need wins", () => {

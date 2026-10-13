@@ -2393,3 +2393,45 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** the engine records `diedAt` on the death tick and it is saved with the pet. Hosts submit that value, and auto-submit fires only on the death tick itself. The validator keeps a run's earliest death. The two affected rows in `scores.json` were restored from their first submissions (#1071, #224).
 
 **Tests:** `vscode/tests/unit/gameEngine.test.ts`, `vscode/tests/unit/integrity.test.ts`, `pycharm/.../GameEngineTest.kt`, `pycharm/.../PersistenceIntegrityTest.kt`.
+
+## BUGFIX-200 - OpenCode 2.0 refused to load the plugin ("Plugin must export a default definition")
+
+**Status:** Fixed (branch `feat/opencode-v2-plugin`)
+**File:** `opencode-codotchi/src/index.ts`, `opencode-codotchi/src/v2Events.ts`
+
+**Problem:** OpenCode 2.0 requires the default export to be an object with an `id` and a `setup` function. The bundle exported a V1 plugin function, so loading failed with `SchemaError(Expected object at ["default"])` and the pet never started.
+
+**Fix:** The default export is now `{ id: "codotchi", setup, server }`. V1 (>= 1.18.29) still calls `server()`. V2's `setup()` registers the `codotchi` tool through `ctx.tool.transform`, translates V2 events (`session.step.ended`, `session.inbox.enqueued`, `filesystem.changed`, ...) into the existing V1 handler, and returns a cleanup function that stops timers and watchers. The `experimental.text.complete` speech bubbles were removed because V2 has no matching hook. `todo.updated` celebrations and current-project session backfill are V1-only.
+
+## BUGFIX-201 - OpenCode 2 TUI pet wrapped in the sidebar and kept refreshing
+
+**Status:** Fixed (branch `feat/opencode-v2-plugin`)
+**Files:** `opencode-codotchi/tui/tui.tsx`, `opencode-codotchi/src/index.ts`
+
+**Problem:** The V2 TUI drew every pet's ASCII art and speech bubble in `sidebar.content`. The sidebar is about 40 columns wide and a bubble is about 60, so lines wrapped and the art fell apart. Every server update replaced the whole snapshot, so the bubbles re-rendered (flickered). Queued notifications were shown as toasts and also replayed at the top of the next `codotchi` tool result.
+
+**Fix:** The TUI now draws one living pet in `session.composer.top` (full width, just above the prompt), with the shared cost line underneath. The ASCII art and colours are unchanged. The shown pet swaps (to a different pet when there is one) each time a message is sent or every 5 minutes. Its speech refreshes when a reply finishes, and leaves out cost and token figures because the cost line shows them; the bubble border keeps the cost tier colour. The tier emoji moved off the art onto the cost line, and blank padding rows are dropped. The TUI only re-renders when the pet's lines or the costs change. In V2, queued notifications go only to toasts. The Claude Code plugin is unaffected because it has no TUI.
+
+**Tests:** `opencode-codotchi/tests/unit/pluginContract.test.ts`.
+
+## BUGFIX-202 - OpenCode pet swapped too often; status printed raw decimals and each pet twice
+
+**Status:** Fixed (branch `feat/opencode-v2-plugin`)
+**Files:** `packages/core/src/asciiArt.ts` (synced to all plugins), `opencode-codotchi/src/index.ts`
+
+**Problem:** The pet above the prompt swapped several times per message, because OpenCode fires `message.updated` more than once for each user message and every event counted as a new message. It also swapped whenever the shown IDE pet briefly missed the 60-second "live" window between state saves. The `status` action printed stats such as `67.84166666666665`, showed the raw sprite ID (`stu` instead of `Stugotchi`), and printed each IDE pet twice (stat block plus a summary line).
+
+**Fix:** User messages are counted once per message ID, and the shown pet stays while it is alive, so it only swaps when a message is sent or after 5 minutes. Stat bars and the summary line round values to whole numbers. A new `spriteLabel()` shows the character name (`Stugotchi`) or a capitalised sprite ID. `status` prints each pet once: the stat block, or the summary line when ASCII art is off.
+
+**Tests:** `opencode-codotchi/tests/unit/asciiArt.test.ts`, `opencode-codotchi/tests/unit/pluginContract.test.ts`.
+
+## BUGFIX-203 - OpenCode daily cost far below the real total (e.g. $2.18 shown vs $9.51 spent)
+
+**Status:** Fixed (branch `fix/opencode-daily-cost`)
+**Files:** `opencode-codotchi/src/index.ts`, `opencode-codotchi/src/usageBackfill.ts`
+
+**Problem:** Track A fetched today's cross-project total by running `opencode db path` and `opencode db --format json <sql>`. OpenCode 2 removed the `db` subcommand, so Track A always failed silently. The plugin fell back to Track B, which only covers the current project's sessions plus replies seen live in this window. Because VS Code and PyCharm read the same `codotchi-daily.json`, all three showed the undercount. Two smaller issues made it worse: the total was only read from the database at startup, and the cross-window sync adopted any differing value from the file, so a window that had seen fewer replies could overwrite a higher total.
+
+**Fix:** `queryDailyUsageFromDb()` opens `opencode.db` read-only with `bun:sqlite` (OpenCode's runtime), falling back to `node:sqlite`. It resolves the path from `XDG_DATA_HOME` or `~/.local/share/opencode/opencode.db`, and keeps the old CLI as a last resort. The queries prefilter on the indexed `time_created` column (from a day before midnight), so the read takes about 36 ms on a 7 GB database, and a v2-only query handles databases without the old `message` table. The total is re-synced from the database on `session.idle` (at most every 30 s). Database writes to the file are tagged `"source": "db"`, and other windows only accept a lower total when it carries that tag; live writes can only raise it.
+
+**Tests:** `opencode-codotchi/tests/unit/usageBackfill.test.ts` (query shape, real SQLite totals for v2-only and v1+v2 schemas, missing file, DB path).

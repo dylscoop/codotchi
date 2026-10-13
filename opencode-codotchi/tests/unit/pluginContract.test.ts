@@ -126,7 +126,7 @@ describe("bundled plugin — loader contract (BUGFIX-119)", () => {
     expect(threw).toBe(false);
   });
 
-  it("exactly one hooks object is produced (plugin + default same-ref deduped)", () => {
+  it("exactly one hooks object is produced", () => {
     expect(hooksList.length).toBe(1);
   });
 
@@ -140,26 +140,17 @@ describe("bundled plugin — loader contract (BUGFIX-119)", () => {
 // ---------------------------------------------------------------------------
 
 describe("source index.ts — export safety guard (BUGFIX-119A)", () => {
-  it("every export is either a function or the same reference as another export", () => {
-    // This guard ensures that if someone accidentally adds
-    // `export { someHelper }` in the future, this test fails.
-    const seen = new Set<unknown>();
-    const nonFunctions: string[] = [];
-    for (const [name, value] of Object.entries(sourceMod)) {
-      if (seen.has(value)) continue; // deduped (e.g. default === plugin)
-      seen.add(value);
-      if (typeof value !== "function") {
-        nonFunctions.push(`${name}: ${typeof value}`);
-      }
-    }
-    expect(nonFunctions).toEqual([]);
+  it("exports only a default definition (no stray helper exports)", () => {
+    // V1 loaders treat every named export as a plugin, so helpers must stay private.
+    expect(Object.keys(sourceMod)).toEqual(["default"]);
   });
 
-  it("source module has at most 2 exports (plugin + default, same reference)", () => {
-    // "plugin" and "default" both point at the same function — 2 names, 1 unique value.
-    const uniqueValues = new Set(Object.values(sourceMod));
-    expect(uniqueValues.size).toBe(1);
-    expect(Object.keys(sourceMod).sort()).toEqual(["default", "plugin"]);
+  it("default export satisfies both the V1 and V2 loader contracts", () => {
+    const def = sourceMod.default as { id?: unknown; setup?: unknown; server?: unknown };
+    expect(typeof def).toBe("object");
+    expect(def.id).toBe("codotchi");
+    expect(typeof def.setup).toBe("function");
+    expect(typeof def.server).toBe("function");
   });
 });
 
@@ -229,25 +220,6 @@ describe("event hook — all OpenCode event types (BUGFIX-119)", () => {
 // Suite 4 — Hook-specific smoke tests
 // ---------------------------------------------------------------------------
 
-describe("experimental.text.complete hook", () => {
-  it("does not throw and appends to output.text when terminalEnabled is off", async () => {
-    const hook = hooksList[0];
-    const fn = hook?.["experimental.text.complete"] as
-      ((input: unknown, output: { text: string }) => Promise<void>) | undefined;
-    if (!fn) return;
-    const out = { text: "Hello world" };
-    let threw = false;
-    try {
-      await fn({ sessionID: "s", messageID: "m", partID: "p" }, out);
-    } catch {
-      threw = true;
-    }
-    expect(threw).toBe(false);
-    // text should still be a string
-    expect(typeof out.text).toBe("string");
-  });
-});
-
 describe("tool.execute.after hook", () => {
   it("does not throw for tool='codotchi'", async () => {
     const hook = hooksList[0];
@@ -299,5 +271,199 @@ describe("codotchi tool execute", () => {
     const result = await toolDef.execute({ action: "status" }, ctx);
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Suite 5 � OpenCode V2 loader contract (Plugin.define shape + setup)
+// ---------------------------------------------------------------------------
+
+type V2Tool = { name: string; input: unknown; execute: (input: unknown, ctx: unknown) => Promise<{ content: string }> };
+
+function makeV2Context(events: unknown[]) {
+  const tools: V2Tool[] = [];
+  let subscribed = false;
+  const rpc: { handlers?: Record<string, () => Promise<any>>; emitted: Array<{ name: string; data: any }> } = { emitted: [] };
+  const ctx = {
+    app: { version: "2.0.0-test" },
+    location: { directory: process.cwd(), project: { id: "test", directory: process.cwd(), canonical: process.cwd() } },
+    options: {},
+    rpc: {
+      register: async (def: { id: string }, handlers: Record<string, () => Promise<any>>) => {
+        expect(def.id).toBe("codotchi");
+        rpc.handlers = handlers;
+        return {
+          events: { emit: async (name: string, data: any) => { rpc.emitted.push({ name, data }); } },
+          dispose: async () => {},
+        };
+      },
+    },
+    tool: {
+      transform: async (cb: (editor: { add: (t: V2Tool) => void }) => void) => {
+        cb({ add: (t) => tools.push(t) });
+        return { dispose: async () => {} };
+      },
+    },
+    event: {
+      subscribe: ({ signal }: { signal?: AbortSignal } = {}) => {
+        subscribed = true;
+        return (async function* () {
+          for (const e of events) {
+            if (signal?.aborted) return;
+            yield e;
+          }
+        })();
+      },
+    },
+  };
+  return { ctx, tools, rpc, isSubscribed: () => subscribed };
+}
+
+describe("bundled plugin � OpenCode V2 loader contract", () => {
+  it("default export is an object with id and setup (fixes 'Expected object at [\"default\"]')", () => {
+    const def = bundleMod.default as { id?: unknown; setup?: unknown };
+    expect(typeof def).toBe("object");
+    expect(def.id).toBe("codotchi");
+    expect(typeof def.setup).toBe("function");
+  });
+
+  it("setup registers the codotchi tool, consumes events, and returns cleanup", async () => {
+    const v2Events = [
+      { type: "server.connected", data: {} },
+      { type: "session.created", id: "e1", created: Date.now(), data: { sessionID: "s1" } },
+      { type: "session.inbox.enqueued", data: { sessionID: "s1", inboxID: "m1", item: { type: "user" } } },
+      { type: "filesystem.changed", data: { file: "src/foo.ts", event: "change" } },
+      { type: "session.step.ended", id: "e2", created: Date.now(), data: {
+          sessionID: "s1", assistantMessageID: "a1", finish: "stop", cost: 0,
+          tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } }, files: ["src/foo.ts"] } },
+      { type: "session.status", data: { sessionID: "s1", status: { type: "busy" } } },
+      { type: "session.idle", data: { sessionID: "s1" } },
+      { type: "vcs.branch.updated", data: { branch: "feat/x" } },
+      { type: "some.future.event", data: {} },
+    ];
+    const { ctx, tools, rpc, isSubscribed } = makeV2Context(v2Events);
+    const def = bundleMod.default as { setup: (ctx: unknown) => Promise<(() => void) | void> };
+    const cleanup = await def.setup(ctx);
+    expect(typeof cleanup).toBe("function");
+    expect(isSubscribed()).toBe(true);
+
+    expect(tools.map(t => t.name)).toEqual(["codotchi"]);
+    const result = await tools[0].execute({ action: "status" }, { signal: new AbortController().signal, progress: async () => {} });
+    expect(typeof result.content).toBe("string");
+    expect(result.content.length).toBeGreaterThan(0);
+    expect(result.content).not.toMatch(/\x1b\[/);
+    // Each pet is printed once, with whole-number stats
+    expect(result.content).not.toMatch(/(Hunger|Happiness|Energy)\s*(\[[^\]]*\]\s*|:\s*)\d+\.\d/);
+
+    await new Promise(r => setTimeout(r, 400));
+
+    // Composer snapshot: one pet's V1 bubble (ANSI lines) + cost totals
+    expect(typeof rpc.handlers?.snapshot).toBe("function");
+    const snap = await rpc.handlers!.snapshot();
+    expect(Array.isArray(snap.pets)).toBe(true);
+    expect(snap.pets.length).toBeLessThanOrEqual(1);
+    for (const pet of snap.pets) {
+      expect(Array.isArray(pet.lines)).toBe(true);
+      expect(pet.lines.join("\n")).toContain(pet.name);
+      expect(typeof pet.message).toBe("string");
+      // No blank padding rows, and the tier emoji lives on the cost line, not the art
+      for (const line of pet.lines) { expect(line.replace(/\x1b\[[0-9;]*m/g, "").trim().length).toBeGreaterThan(0); }
+      expect(pet.lines.join("\n")).not.toMatch(/🟢|🟡|🔴/);
+      // Costs live on the line under the pet, not in the bubble
+      expect(pet.message).not.toMatch(/\$\d|tokens per message/);
+    }
+    // The shown pet and its speech stay stable until a reply finishes
+    const again = await rpc.handlers!.snapshot();
+    expect(JSON.stringify(again.pets)).toBe(JSON.stringify(snap.pets));
+    // The bubble sticks to session / usage remarks, not event messages
+    if (snap.pets.length > 0) { expect(snap.pets[0].message).not.toContain("feat/x"); }
+    expect(["green", "yellow", "red"]).toContain(snap.tier);
+    expect(typeof snap.today.costUSD).toBe("number");
+    expect(typeof snap.lastHour.costUSD).toBe("number");
+    expect(typeof snap.session.costUSD).toBe("number");
+    expect(typeof snap.thresholds.warn).toBe("number");
+    // Events processed → an "updated" push with the same shape
+    expect(rpc.emitted.some(e => e.name === "updated" && Array.isArray(e.data.pets))).toBe(true);
+
+    (cleanup as () => void)();
+  });
+});
+
+describe("translateV2Event", () => {
+  let translate: (e: unknown) => Array<{ type: string; properties: any }>;
+  beforeAll(async () => {
+    translate = (await import(path.resolve(import.meta.dir, "../../src/v2Events.ts"))).translateV2Event;
+  });
+
+  it("maps step.ended to an assistant message.updated with cost and tokens", () => {
+    const now = Date.now();
+    const out = translate({ type: "session.step.ended", id: "e9", created: now, data: {
+      assistantMessageID: "a", cost: 0.5, tokens: { input: 1, output: 2, reasoning: 0, cache: { read: 0, write: 0 } } } });
+    expect(out).toHaveLength(1);
+    expect(out[0].type).toBe("message.updated");
+    expect(out[0].properties.info).toMatchObject({ role: "assistant", id: "e9", cost: 0.5, time: { completed: now } });
+  });
+
+  it("emits session.diff when a step changed files", () => {
+    const out = translate({ type: "session.step.ended", data: { files: ["a.ts"], cost: 0, tokens: {} } });
+    expect(out.map(e => e.type)).toEqual(["session.diff", "message.updated"]);
+  });
+
+  it("maps user inbox items to user message.updated and ignores synthetic ones", () => {
+    expect(translate({ type: "session.inbox.enqueued", data: { item: { type: "user" } } })[0].properties.info.role).toBe("user");
+    expect(translate({ type: "session.inbox.enqueued", data: { item: { type: "synthetic" } } })).toEqual([]);
+  });
+
+  it("maps filesystem changes to file.edited but ignores .git, node_modules and deletions", () => {
+    expect(translate({ type: "filesystem.changed", data: { file: "src/a.ts", event: "change" } })[0].type).toBe("file.edited");
+    expect(translate({ type: "filesystem.changed", data: { file: ".git/HEAD", event: "change" } })).toEqual([]);
+    expect(translate({ type: "filesystem.changed", data: { file: "node_modules/x/y.js", event: "add" } })).toEqual([]);
+    expect(translate({ type: "filesystem.changed", data: { file: "src/a.ts", event: "unlink" } })).toEqual([]);
+  });
+
+  it("drops idle session.status and unknown events", () => {
+    expect(translate({ type: "session.status", data: { status: { type: "idle" } } })).toEqual([]);
+    expect(translate({ type: "session.status", data: { status: { type: "busy" } } })[0].type).toBe("session.status");
+    expect(translate({ type: "nope", data: {} })).toEqual([]);
+  });
+});
+
+describe("summariseNotification (toasts)", () => {
+  let summarise: (raw: string) => { title?: string; message: string };
+  beforeAll(async () => {
+    summarise = (await import(path.resolve(import.meta.dir, "../../src/v2Events.ts"))).summariseNotification;
+  });
+
+  it("extracts pet and text from a single-line speech bubble", () => {
+    const raw = [
+      "",
+      " Mind Goblin Jr [teen] [PyCharm]",
+      "  #(-_-)#          ______________________________ ",
+      "  o-| |-o    -->  < I feel rested! Time to code! >",
+      "    | |            \u203e\u203e\u203e\u203e\u203e\u203e\u203e\u203e\u203e\u203e ",
+      "   /   \\          ",
+    ].join("\n");
+    expect(summarise(raw)).toEqual({ title: "Mind Goblin Jr [PyCharm]", message: "I feel rested! Time to code!" });
+  });
+
+  it("joins multi-line bubbles and ignores emoji prefixes", () => {
+    const raw = [
+      " \u{1F7E1} Copilot [senior] [OpenCode]",
+      " U(-_-)U           __________________________________________ ",
+      "  ~| | |~    -->  / Hi! I'm Copilot. I live in OpenCode \u2014 no \\",
+      " ~ | | | ~        \\ IDE needed.                              /",
+      "   |___|           \u203e\u203e\u203e\u203e\u203e ",
+    ].join("\n");
+    expect(summarise(raw)).toEqual({ title: "Copilot [OpenCode]", message: "Hi! I'm Copilot. I live in OpenCode \u2014 no IDE needed." });
+  });
+
+  it("handles plain-text notifications", () => {
+    expect(summarise("[VS Code] Wee Stu: Let's build something.")).toEqual({ title: "Wee Stu [VS Code]", message: "Let's build something." });
+    expect(summarise("[codotchi] [PyCharm] Mind Goblin Jr made a mess! (use /codotchi clean)").message)
+      .toBe("[PyCharm] Mind Goblin Jr made a mess! (use /codotchi clean)");
+  });
+
+  it("strips ANSI colour codes", () => {
+    expect(summarise("\x1b[33m[VS Code] Wee Stu: Hungry.\x1b[0m").message).toBe("Hungry.");
   });
 });

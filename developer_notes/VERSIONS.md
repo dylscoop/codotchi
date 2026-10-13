@@ -1,6 +1,43 @@
 # Version History
 
-## v2.27.3 — current
+## OpenCode plugin v2.27.5 — current (OpenCode only; other plugins stay at 2.27.4)
+
+### Changes from v2.27.4 (OpenCode daily cost — branch fix/opencode-daily-cost)
+
+| File | What changed |
+|------|-------------|
+| `opencode-codotchi/src/usageBackfill.ts` | BUGFIX-203: new `queryDailyUsageFromDb()` reads `opencode.db` directly (`bun:sqlite`, then `node:sqlite`); `defaultOpencodeDbPath()`; queries prefilter on indexed `time_created` and add a v2-only fallback |
+| `opencode-codotchi/src/index.ts` | BUGFIX-203: Track A uses the direct read (`opencode db` was removed in OpenCode 2); `refreshDailyFromDb()` re-syncs on `session.idle`; DB writes tagged `source: "db"`; cross-window sync only accepts a lower total from a DB write |
+| `opencode-codotchi/tests/unit/usageBackfill.test.ts` | query shape, real SQLite totals, missing DB, path tests |
+| `opencode-codotchi/package.json`, `README.md` | version 2.27.4 → 2.27.5 (OpenCode only) |
+
+Updated constants:
+
+```
+DB_REFRESH_MIN_INTERVAL_MS: number = 30_000   // min gap between idle DB re-syncs
+```
+
+---
+
+## v2.27.4 — current
+
+### Changes from v2.27.3 (break timer no longer restarts — branch fix/break-timer-no-reset)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt` | BUGFIX-199: `ticksSinceLastBreakCall` no longer reset by deep idle or by the call firing; only `praise()` answering a break call resets it, so an ignored reminder re-fires after its expiry cooldown |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/.../GameEngineTest.kt` | tests |
+| `developer_notes/vscode/FEATURES.md`, READMEs, `plugin.xml` | docs |
+| all manifests, `README.md`, `vscode/CHANGELOG.md`, `plugin.xml` change-notes | version 2.27.3 → 2.27.4 |
+| `opencode-codotchi/src/index.ts`, `opencode-codotchi/src/v2Events.ts` | BUGFIX-200: OpenCode 2.0 support. Default export is now `{ id, setup, server }` (V2 calls `setup`, V1 ≥ 1.18.29 calls `server`); V2 events translated to the V1 handler; `experimental.text.complete` speech bubbles removed (no V2 hook); timers/watchers disposed on unload (branch feat/opencode-v2-plugin) |
+| `opencode-codotchi/tests/unit/pluginContract.test.ts` | V2 loader-contract, setup and event-translation tests |
+| `packages/core/src/asciiArt.ts` (+ synced copies), `opencode-codotchi/src/index.ts` | BUGFIX-202: pet swaps only per sent message (deduped by message ID) or every 5 min; status rounds stats, shows `Stugotchi` not `stu`, prints each pet once |
+| `opencode-codotchi/tests/unit/asciiArt.test.ts` | rounding, sprite label and status tests |
+| `opencode-codotchi/opencode-codotchi-2.27.4.zip` | Rebuilt distributable zip for v2.27.4 (local artifact, not committed) |
+
+---
+
+## v2.27.3
 
 **New state field:** `diedAt` (Unix ms of the death tick, 0 while alive; not part of the seal). **Leaderboard:** a re-submitted death only replaces the stored row if it is *earlier*.
 

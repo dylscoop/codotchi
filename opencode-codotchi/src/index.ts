@@ -44,7 +44,7 @@ import { spawnSync } from "child_process";
 import { tool }  from "@opencode-ai/plugin";
 import type { Plugin, PluginInput } from "@opencode-ai/plugin";
 import { getIDEBase as _getIDEBase, resolveVSCodeStatePath } from "./statePathResolver.js";
-import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry } from "./usageBackfill.js";
+import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry, buildDailyUsageQueries, defaultOpencodeDbPath, queryDailyUsageFromDb, UsageTotals } from "./usageBackfill.js";
 
 import {
   PetState,
@@ -68,6 +68,7 @@ import {
   CODE_ACTIVITY_THROTTLE_SECONDS,
 } from "./gameEngine.js";
 import { sealSerialisedState, verifySeal } from "./integrity.js";
+import { translateV2Event, summariseNotification } from "./v2Events.js";
 
 import {
   buildSpeechBubble,
@@ -253,13 +254,77 @@ function loadDailyUsage(): void {
   } catch { /* best-effort */ }
 }
 
-function saveDailyUsage(): void {
+function saveDailyUsage(fromDb: boolean = false): void {
   try {
     const filePath = getDailyUsagePath();
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
-    fs.writeFileSync(filePath, JSON.stringify({ date: dailyDate, costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages }), "utf8");
+    const data: Record<string, unknown> = { date: dailyDate, costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages };
+    if (fromDb) { data.source = "db"; }
+    fs.writeFileSync(filePath, JSON.stringify(data), "utf8");
   } catch { /* best-effort */ }
+}
+
+/** Resolve the OpenCode SQLite path: default location first, then the legacy `opencode db path` CLI. */
+function resolveOpencodeDbPath(): string | undefined {
+  const def = defaultOpencodeDbPath(process.env, os.homedir());
+  if (fs.existsSync(def)) { return def; }
+  try {
+    const cli = findOpencodeCli();
+    if (!cli) { return undefined; }
+    const out = spawnSync(cli, ["db", "path"], { timeout: 5000, encoding: "utf8", windowsHide: true });
+    const p = out.status === 0 ? out.stdout?.trim() : "";
+    return p && fs.existsSync(p) ? p : undefined;
+  } catch { return undefined; }
+}
+
+/** Today's cross-project totals from the OpenCode database, or undefined if unavailable. */
+async function fetchDbDailyTotals(todayStartMs: number): Promise<UsageTotals | undefined> {
+  const dbPath = resolveOpencodeDbPath();
+  if (!dbPath) { return undefined; }
+  const direct = await queryDailyUsageFromDb(dbPath, todayStartMs);
+  if (direct) { return direct; }
+  // Legacy fallback: OpenCode 1 shipped a `db` subcommand that can run SQL.
+  try {
+    const cli = findOpencodeCli();
+    if (!cli) { return undefined; }
+    for (const sql of buildDailyUsageQueries(todayStartMs)) {
+      const r = spawnSync(cli, ["db", "--format", "json", sql], { timeout: 10000, encoding: "utf8", windowsHide: true });
+      if (r.status === 0 && r.stdout) {
+        const row = (JSON.parse(String(r.stdout).trim()) as Array<{ costUSD?: number; tokens?: number; messages?: number }>)[0] ?? {};
+        return { costUSD: row.costUSD ?? 0, tokens: row.tokens ?? 0, messages: row.messages ?? 0 };
+      }
+    }
+  } catch { /* fall through */ }
+  return undefined;
+}
+
+const DB_REFRESH_MIN_INTERVAL_MS = 30_000;
+let lastDbRefreshMs = 0;
+let dbRefreshInFlight = false;
+
+/**
+ * Re-sync today's totals from the database (throttled). Live events only see
+ * this window's replies, so without this the total drifts below the truth when
+ * several OpenCode windows run at once.
+ */
+async function refreshDailyFromDb(): Promise<void> {
+  if (!backfillComplete || dbRefreshInFlight) { return; }
+  if (Date.now() - lastDbRefreshMs < DB_REFRESH_MIN_INTERVAL_MS) { return; }
+  dbRefreshInFlight = true;
+  lastDbRefreshMs = Date.now();
+  try {
+    const totals = await fetchDbDailyTotals(todayStartLocalMs());
+    if (!totals) { return; }
+    checkDayRollover();
+    dailyCostUSD  = totals.costUSD;
+    dailyTokens   = totals.tokens;
+    dailyMessages = totals.messages;
+    dailyDate = todayLocal();
+    saveDailyUsage(true);
+  } catch { /* best-effort */ } finally {
+    dbRefreshInFlight = false;
+  }
 }
 
 function checkDayRollover(): void {
@@ -307,7 +372,7 @@ function findOpencodeCli(): string | null {
   for (const c of candidates) {
     try {
       if (c !== "opencode" && !fs.existsSync(c)) { continue; }
-      const result = spawnSync(c, ["--version"], { timeout: 2000, encoding: "utf8" });
+      const result = spawnSync(c, ["--version"], { timeout: 2000, encoding: "utf8", windowsHide: true });
       if (result.status === 0) { return c; }
     } catch { /* try next */ }
   }
@@ -355,60 +420,20 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     // time.completed <= trackASnapshotTime is in the DB snapshot already.
     let trackASnapshotTime = 0;
     try {
-      const cli = findOpencodeCli();
-      if (cli) {
-        // Get DB path
-        const pathResult = spawnSync(cli, ["db", "path"], { timeout: 3000, encoding: "utf8" });
-        const dbPath = pathResult.stdout?.trim();
-
-        if (dbPath && fs.existsSync(dbPath)) {
-          // Filter on message-level time.completed (not session.time_updated) so that
-          // cross-day sessions contribute only their today-messages to the daily total.
-          const sql = `
-            SELECT
-              ROUND(SUM(CAST(json_extract(data,'$.cost') AS REAL)), 6) AS costUSD,
-              SUM(
-                COALESCE(json_extract(data,'$.tokens.input'),0) +
-                COALESCE(json_extract(data,'$.tokens.output'),0) +
-                COALESCE(json_extract(data,'$.tokens.reasoning'),0) +
-                COALESCE(json_extract(data,'$.tokens.cache.read'),0) +
-                COALESCE(json_extract(data,'$.tokens.cache.write'),0)
-              ) AS tokens,
-              COUNT(*) AS messages
-            FROM message
-            WHERE json_extract(data,'$.role') = 'assistant'
-              AND json_extract(data,'$.time.completed') IS NOT NULL
-              AND CAST(json_extract(data,'$.time.completed') AS INTEGER) >= ${todayStartMs}
-          `;
-          trackASnapshotTime = Date.now();
-          const queryResult = spawnSync(cli, ["db", "--format", "json", sql], {
-            timeout: 3000,
-            encoding: "utf8",
-          });
-
-          if (queryResult.status === 0 && queryResult.stdout) {
-            const rows = JSON.parse(queryResult.stdout.trim()) as Array<{ costUSD?: number; tokens?: number; messages?: number }>;
-            const dbCostUSD   = typeof rows[0]?.costUSD  === "number" ? rows[0].costUSD  : 0;
-            const dbTokens    = typeof rows[0]?.tokens   === "number" ? rows[0].tokens   : 0;
-            const dbMessages  = typeof rows[0]?.messages === "number" ? rows[0].messages : 0;
-            checkDayRollover();
-            // DB is the single source of truth — assign directly, never Math.max.
-            // The sidecar value loaded at startup is discarded; the DB value wins.
-            // Math.max is intentionally NOT used here: the sidecar can hold an
-            // inflated value (e.g. accumulated by a bugged previous plugin run)
-            // and Math.max would preserve the poison. The DB always has the
-            // authoritative cross-project total.
-            dailyCostUSD  = dbCostUSD;
-            dailyTokens   = dbTokens;
-            dailyMessages = dbMessages;
-            trackASucceeded = true;
-            // Immediately persist the correct DB value to the sidecar so that
-            // any other OpenCode window watching the file via fs.watch will pick
-            // up the authoritative total (instead of a stale inflated value).
-            dailyDate = today;
-            saveDailyUsage();
-          }
-        }
+      trackASnapshotTime = Date.now();
+      const totals = await fetchDbDailyTotals(todayStartMs);
+      if (totals) {
+        checkDayRollover();
+        // DB is the single source of truth — assign directly, never Math.max,
+        // so an inflated sidecar from a bugged earlier run can't survive.
+        dailyCostUSD  = totals.costUSD;
+        dailyTokens   = totals.tokens;
+        dailyMessages = totals.messages;
+        trackASucceeded = true;
+        lastDbRefreshMs = Date.now();
+        // Persist immediately so other windows watching the file adopt it.
+        dailyDate = today;
+        saveDailyUsage(true);
       }
     } catch { /* Track A failed — fall through to Track B for cost totals */ }
 
@@ -723,6 +748,8 @@ let sessionStartMs = Date.now();
 let lastFileEditMs = 0;
 /** Number of user messages sent this session; used for prompting-a-lot commentary. */
 let sessionUserMessages = 0;
+/** User message IDs already counted in sessionUserMessages. */
+const countedUserMessageIds = new Set<string>();
 /** True once the "can I help?" offer has been shown this session — fires only once. */
 let hasOfferedHelp = false;
 
@@ -831,30 +858,8 @@ let pendingDiffSinceIdle = false;
 /** True when the current branch is main, master, release/x, or prod — triggers cautious diff commentary. */
 let isOnProdBranch = false;
 
-// ---------------------------------------------------------------------------
-// Suppress text.complete art for one cycle after a codotchi tool call.
-// When the user explicitly calls /codotchi <action>, the tool already shows
-// a coloured sprite in the tool output. We skip the plain-text sprite for
-// the immediately following LLM text response to avoid showing it twice.
-// ---------------------------------------------------------------------------
-
-let suppressNextTextArt = false;
-
-// ---------------------------------------------------------------------------
-// text.complete art cooldown — prevents duplicate pet bubbles within a single
-// agentic turn. An LLM response with N tool calls produces N+1 text segments,
-// each triggering text.complete independently. Without a cooldown, the pet
-// bubble appears once per segment (e.g. 4 identical bubbles in one turn).
-//
-// Cooldown: 30 s minimum between showings.
-// Reset:    cleared to 0 when a new user message arrives, so the pet always
-//           shows on the first text segment of the next response.
-// ---------------------------------------------------------------------------
-
-/** Unix ms timestamp of the last text.complete pet art render. */
-let lastTextArtMs: number = 0;
-/** Minimum gap (ms) between consecutive text.complete pet art renders. */
-const TEXT_ART_COOLDOWN_MS = 30_000;
+// Timers and watchers created by the plugin entry point, torn down on unload.
+const disposers: Array<() => void> = [];
 
 // ---------------------------------------------------------------------------
 // Pending notification queue
@@ -911,13 +916,19 @@ async function refreshLiveRank(me: { ageDays?: number; stage?: string; spawnedAt
   } catch { /* network failure — keep stale */ }
 }
 
+/** Set by the V2 entry point so queued notifications can also be pushed to the TUI as toasts. */
+let notificationListener: ((msg: string) => void) | null = null;
+
 function queueNotification(msg: string): void {
+  // V2 shows notifications as TUI toasts, so don't also replay them in tool output.
+  if (notificationListener) { notificationListener(msg); return; }
   // If a notification is already pending, append (newline-separated)
   pendingNotification = pendingNotification ? pendingNotification + "\n" + msg : msg;
 }
 
 /** Prepend msg to the front of the pending notification queue (so it appears before any already-queued messages). */
 function prependNotification(msg: string): void {
+  if (notificationListener) { notificationListener(msg); return; }
   pendingNotification = pendingNotification ? msg + "\n" + pendingNotification : msg;
 }
 
@@ -1215,7 +1226,7 @@ function applyTickForLocal(): void {
 // Plugin entry point
 // ---------------------------------------------------------------------------
 
-export const plugin: Plugin = async (ctx) => {
+const plugin: Plugin = async (ctx) => {
   // Migrate state files from old gotchi/ folder to codotchi/ on first run.
   migrateStateFolders();
   // Load daily usage + plugin config sidecars
@@ -1246,6 +1257,7 @@ export const plugin: Plugin = async (ctx) => {
   tickTimer = setInterval(() => {
     applyTick();
   }, TICK_INTERVAL_SECONDS * 1_000);
+  disposers.push(() => { clearInterval(tickTimer); tickTimer = undefined; });
 
   // ---------------------------------------------------------------------------
   // Live sync — watch both IDE state files for external writes.
@@ -1292,6 +1304,12 @@ export const plugin: Plugin = async (ctx) => {
       startWatcher();
       if (fsWatcher !== undefined) { clearInterval(watchBootstrap); }
     }, 10_000);
+    disposers.push(() => {
+      clearInterval(watchBootstrap);
+      if (syncDebounce !== undefined) { clearTimeout(syncDebounce); }
+      fsWatcher?.close();
+      fsWatcher = undefined;
+    });
   }
 
   makeIDEWatcher("vscode");
@@ -1311,21 +1329,17 @@ export const plugin: Plugin = async (ctx) => {
       if (!backfillComplete) { return; } // don't interfere while backfill is running
       try {
         if (!fs.existsSync(dailyFilePath)) { return; }
-        const raw = JSON.parse(fs.readFileSync(dailyFilePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number; messages?: number };
+        const raw = JSON.parse(fs.readFileSync(dailyFilePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number; messages?: number; source?: string };
         if (raw.date !== todayLocal()) { return; }
         const fileCost     = typeof raw.costUSD  === "number" ? raw.costUSD  : 0;
         const fileTokens   = typeof raw.tokens   === "number" ? raw.tokens   : 0;
         const fileMessages = typeof raw.messages === "number" ? raw.messages : dailyMessages;
-        // Adopt the file value if it differs meaningfully from what we hold.
-        // We no longer use Math.max here — since Track A (SQLite) now immediately
-        // overwrites the sidecar with the authoritative DB value on every startup,
-        // the file always reflects the most accurate known total. Math.max would
-        // permanently lock in any inflated value that a previous bugged run wrote.
-        // Instead: accept the file value if it is larger than our current total
-        // (another window counted more messages than us), but also accept it if it
-        // is meaningfully *lower* (another window corrected the total via Track A).
-        // The threshold avoids thrashing on floating-point noise.
-        if (Math.abs(fileCost - dailyCostUSD) > 0.0001 || Math.abs(fileTokens - dailyTokens) > 10) {
+        // A DB-sourced write is authoritative (it may correct an inflated total).
+        // A live write from another window only knows that window's replies, so
+        // it may only raise our total — adopting a lower one loses cost.
+        const fromDb = raw.source === "db";
+        const differs = Math.abs(fileCost - dailyCostUSD) > 0.0001 || Math.abs(fileTokens - dailyTokens) > 10;
+        if (differs && (fromDb || fileCost > dailyCostUSD)) {
           dailyCostUSD  = fileCost;
           dailyTokens   = fileTokens;
           dailyMessages = fileMessages;   // keep the tok/msg average consistent with the adopted totals
@@ -1352,6 +1366,12 @@ export const plugin: Plugin = async (ctx) => {
       startDailyWatcher();
       if (dailyFsWatcher !== undefined) { clearInterval(dailyWatchBootstrap); }
     }, 10_000);
+    disposers.push(() => {
+      clearInterval(dailyWatchBootstrap);
+      if (dailySyncDebounce !== undefined) { clearTimeout(dailySyncDebounce); }
+      dailyFsWatcher?.close();
+      dailyFsWatcher = undefined;
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -1383,7 +1403,6 @@ export const plugin: Plugin = async (ctx) => {
       // Drain any queued tick notifications to prepend to this result
       const notification = drainNotification();
       const ret = (s: string): string => { lastToolOutput = s; return s; };
-      suppressNextTextArt = true;
 
       const active = getActivePets();
 
@@ -1495,8 +1514,10 @@ export const plugin: Plugin = async (ctx) => {
                   sleeping: s.sleeping, poops: s.poops, spriteType: s.spriteType,
                 })
               : "";
-            const textStats = `${ideLabel} ${s.name} | Stage: ${s.stage} | Hunger: ${s.hunger} | Happiness: ${s.happiness} | Energy: ${s.energy} | Health: ${s.health} | Weight: ${s.weight}`;
-            return (statusBlock ? statusBlock + "\n" : "") + textStats;
+            // Each pet prints once: the stat block, or a one-line summary when art is off.
+            if (statusBlock) { return `${ideLabel}\n${statusBlock}`; }
+            const r = Math.round;
+            return `${ideLabel} ${s.name} | Stage: ${s.stage} | Hunger: ${r(s.hunger)} | Happiness: ${r(s.happiness)} | Energy: ${r(s.energy)} | Health: ${r(s.health)} | Weight: ${r(s.weight)}`;
           });
           return ret(notification + blocks.join("\n\n──────────────────────\n\n"));
         }
@@ -1739,28 +1760,6 @@ export const plugin: Plugin = async (ctx) => {
       }
     },
 
-    async "experimental.text.complete"(_input, output) {
-      if (suppressNextTextArt) {
-        suppressNextTextArt = false;
-        return;
-      }
-      if (!terminalEnabled) return;
-      const now = Date.now();
-      if (now - lastTextArtMs < TEXT_ART_COOLDOWN_MS) return;
-      lastTextArtMs = now;
-      const livePets = getActivePets().filter(p => p.state.alive);
-      if (livePets.length === 0) return;
-
-      const bubbles = livePets.map(p => {
-        const s = p.state;
-        const _1h2 = lastHourUsage();
-        const { message: msg, bubbleColor, tierEmoji } = buildContextualSpeech(s, sessionFilesEdited, Date.now() - sessionStartMs, lastFileEditMs > 0 ? Date.now() - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, _1h2.costUSD, _1h2.tokens, dailyMessages);
-        const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
-        return buildSpeechBubble(s.stage, s.mood, msg, s.name, s.spriteType, ideLabel, bubbleColor, tierEmoji);
-      });
-      output.text = output.text + "\n\n```\n" + bubbles.map(stripAnsi).join("\n\n") + "\n```";
-    },
-
     async event({ event }) {
       // file.edited → code activity reward (throttled), applied to all alive pets
       if (event.type === "file.edited") {
@@ -1789,6 +1788,7 @@ export const plugin: Plugin = async (ctx) => {
       // session.idle → flag idle; fire diff notification if pending; offer help if prompting a lot
       if (event.type === "session.idle") {
         isIdle = true;
+        void refreshDailyFromDb();
         saveIDEState("vscode");
         saveIDEState("pycharm");
         saveIDEState("opencode");
@@ -1921,6 +1921,7 @@ export const plugin: Plugin = async (ctx) => {
         sessionStartMs = Date.now();
         lastFileEditMs = 0;
         sessionUserMessages = 0;
+        countedUserMessageIds.clear();
         sessionCostUSD = 0;
         sessionTokens  = 0;
         localPetSessionMessages = 0;
@@ -1932,8 +1933,11 @@ export const plugin: Plugin = async (ctx) => {
        if (event.type === "message.updated") {
          const info = event.properties?.info;
           if (info?.role === "user") {
+            // message.updated fires several times per user message; count each ID once.
+            const userMsgId: string = typeof info.id === "string" ? info.id : "";
+            if (userMsgId && countedUserMessageIds.has(userMsgId)) { return; }
+            if (userMsgId) { countedUserMessageIds.add(userMsgId); }
             sessionUserMessages += 1;
-            lastTextArtMs = 0;   // reset cooldown so first response to this message always shows art
             return;
           }
          if (info?.role === "assistant" && typeof info.cost === "number") {
@@ -1986,4 +1990,289 @@ export const plugin: Plugin = async (ctx) => {
   };
 };
 
-export default plugin;
+// ---------------------------------------------------------------------------
+// OpenCode V2 entry point
+// ---------------------------------------------------------------------------
+// V2 runs the same V1 hook object: the tool is re-registered through
+// ctx.tool.transform and V2 events are translated into the V1 event shapes
+// the existing handler understands (see v2Events.ts).
+
+const CODOTCHI_TOOL_INPUT = {
+  type: "object",
+  properties: {
+    action: {
+      type: "string",
+      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
+      description: "The action to perform",
+    },
+    value: { type: "number", description: "Numeric USD value for warnthreshold or shoutthreshold actions" },
+    name: { type: "string", description: "New name for the OpenCode pet — used with the rename action only" },
+  },
+  required: ["action"],
+  additionalProperties: false,
+} as const;
+
+// V2 has no session list in the plugin context; backfill falls back to Track A only.
+const v2LegacyClient = {
+  session: {
+    list: async () => ({ data: [] }),
+    messages: async () => ({ data: [] }),
+  },
+} as unknown as PluginInput["client"];
+
+// Plain RPC definition (Rpc.define only validates and returns it), so the
+// bundle needs no runtime import from @opencode/plugin. tui.tsx mirrors it.
+const CODOTCHI_RPC = {
+  id: "codotchi",
+  methods: {
+    snapshot: { output: { type: "object" } },
+  },
+  events: {
+    updated: { schema: { type: "object" } },
+    alert: {
+      schema: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          message: { type: "string" },
+          variant: { type: "string" },
+        },
+        required: ["message"],
+      },
+    },
+  },
+};
+
+type ShownPet = { ide: string; name: string; stage: string; message: string; emoji: string; lines: string[] };
+/** Pet shown above the prompt. Refreshed at the end of each reply or every 5 minutes. */
+let shownPet: ShownPet | null = null;
+let speechDirty = true;
+/** True while a reply is running; the bubble refreshes once when it goes idle. */
+let replyBusy = false;
+let shownSlot = -1;
+/** Fixed order the pets take turns in. */
+const PET_ORDER = ["vscode", "pycharm", "opencode"];
+/**
+ * Random per OpenCode window (process). Stored on globalThis so every plugin
+ * copy inside one process shares it (no flicker), while separate windows get
+ * different pets and phrases.
+ */
+const WINDOW_SALT: number = ((globalThis as any).__codotchiWindowSalt ??= Math.floor(Math.random() * 1_000_000));
+
+/** Run fn with Math.random replaced by a PRNG seeded from `seed`, so every instance picks the same phrase. */
+function withSeededRandom<T>(seed: string, fn: () => T): T {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h = Math.imul(h ^ seed.charCodeAt(i), 16777619); }
+  let a = h >>> 0;
+  const original = Math.random;
+  Math.random = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  try { return fn(); } finally { Math.random = original; }
+}
+/** How often (in minutes) the pet above the prompt switches to another pet. */
+const PET_SWAP_MINUTES = 2;
+const PET_SWAP_MS = PET_SWAP_MINUTES * 60_000;
+const TIER_ANSI = { green: "\x1b[32m", yellow: "\x1b[33m", red: "\x1b[31m" } as const;
+
+/** The pet for `ide` if it still exists and is alive, regardless of the live window. */
+function stillAlivePet(ide: string): ActivePet | undefined {
+  const state = ide === "vscode" ? vscodePetState : ide === "pycharm" ? pycharmPetState : localPetState;
+  return state && state.alive ? { ide: ide as ActivePet["ide"], state, live: false } : undefined;
+}
+
+function costTier(): "green" | "yellow" | "red" {
+  if (dailyCostUSD >= costShoutThreshold) { return "red"; }
+  if (dailyCostUSD >= costWarnThreshold) { return "yellow"; }
+  return "green";
+}
+
+/** Everything the TUI needs: one pet's V1 speech bubble (ANSI lines) plus cost totals. */
+function buildSnapshot(): Record<string, unknown> {
+  const hour = lastHourUsage();
+  const alive = getActivePets().filter(p => p.state.alive);
+  const now = Date.now();
+  // Keep showing the current pet while it is alive, even if its IDE briefly
+  // drops out of the 60s "live" window — otherwise the display flickers.
+  const current = shownPet ? (alive.find(p => p.ide === shownPet!.ide) ?? stillAlivePet(shownPet.ide)) : undefined;
+  // The pet (art + speech) is frozen between refreshes: the speech changes once
+  // at the end of each reply, and the pet switches every PET_SWAP_MINUTES
+  // (or when the current pet is gone). Both the pet and the phrase are chosen
+  // deterministically, so every plugin instance shows the same thing.
+  const slot = Math.floor(now / PET_SWAP_MS);
+  const swapDue = !current || slot !== shownSlot;
+  if ((swapDue || speechDirty) && alive.length > 0) {
+    speechDirty = false;
+    let pick: ActivePet;
+    if (swapDue) {
+      const ordered = [...alive].sort((a, b) => PET_ORDER.indexOf(a.ide) - PET_ORDER.indexOf(b.ide));
+      pick = ordered[(slot + WINDOW_SALT) % ordered.length];
+      shownSlot = slot;
+    } else {
+      pick = current!;
+    }
+    // Cost figures are on the line under the pet, so the bubble only makes cost-tier remarks.
+    const contextual = () => buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages, { remarksOnly: true });
+    const speech = withSeededRandom(`${WINDOW_SALT}|${slot}|${pick.ide}|${dailyMessages}`, contextual);
+    const s = pick.state;
+    const ideLabel = pick.ide === "vscode" ? "[VS Code]" : pick.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
+    // No tier emoji in the art header: the cost line under the pet carries it.
+    const lines = buildSpeechBubble(s.stage, s.mood, speech.message, s.name, s.spriteType, ideLabel, TIER_ANSI[costTier()])
+      .split("\n")
+      .filter(l => stripAnsi(l).trim().length > 0);
+    shownPet = { ide: pick.ide, name: s.name, stage: s.stage, message: speech.message, emoji: speech.tierEmoji, lines };
+  } else if (shownPet && !current) {
+    shownPet = null;
+  }
+  const pets = shownPet ? [shownPet] : [];
+  return {
+    enabled: terminalEnabled,
+    tier: costTier(),
+    pets,
+    petSlot: shownSlot,
+    today: { costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages },
+    lastHour: { costUSD: hour.costUSD, tokens: hour.tokens },
+    session: { costUSD: sessionCostUSD, tokens: sessionTokens },
+    thresholds: { warn: costWarnThreshold, shout: costShoutThreshold },
+    updatedAt: Date.now(),
+  };
+}
+
+/** Only evolution, death and sickness are shown as toasts; other pet messages are dropped in V2. */
+function isBigMoment(text: string): boolean {
+  return /goodbye|farewell|full life|lived|journey|evolved|now a |growing up|sick|medicine/i.test(text);
+}
+
+function alertVariant(text: string): "info" | "success" | "warning" | "error" {
+  if (/goodbye|farewell|full life|lived|journey/i.test(text)) { return "error"; }
+  if (/evolved|now a |growing up/i.test(text)) { return "success"; }
+  if (/sick|mess|hungry|critical|medicine/i.test(text)) { return "warning"; }
+  return "info";
+}
+
+// V2 may run one plugin instance per location inside the same server process.
+// Game state is module-global, so one leader instance owns the timers, the
+// event subscription and the RPC; the others only register the tool.
+let v2Leader: { refs: number; stop: () => void } | null = null;
+let v2HooksPromise: Promise<Awaited<ReturnType<typeof plugin>>> | null = null;
+/** Set by the leader instance; pushes a fresh snapshot to the TUI. */
+let requestSidebarRefresh: () => void = () => { /* no leader yet */ };
+
+async function setupV2(ctx: any): Promise<() => void> {
+  const isLeader = v2HooksPromise === null;
+  if (isLeader) {
+    v2HooksPromise = plugin({ client: v2LegacyClient, directory: ctx.location?.directory } as unknown as PluginInput);
+    v2Leader = { refs: 1, stop: () => { /* set once setup completes */ } };
+  }
+  const hooks = await v2HooksPromise!;
+  const legacyTool = (hooks.tool as Record<string, any>).codotchi;
+
+  let rpcRegistration: any = null;
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  const emitUpdated = (): void => {
+    if (refreshTimer !== undefined) { return; }
+    refreshTimer = setTimeout(() => {
+      refreshTimer = undefined;
+      try { void rpcRegistration?.events.emit("updated", buildSnapshot()); } catch { /* best-effort */ }
+    }, 250);
+  };
+
+  await ctx.tool.transform((editor: any) => {
+    editor.add({
+      name: "codotchi",
+      description: legacyTool.description,
+      input: CODOTCHI_TOOL_INPUT,
+      async execute(input: any, context: any) {
+        const out = await legacyTool.execute(input, {
+          ...context,
+          metadata: () => { /* V2 tool panel titles come from the tool name */ },
+        });
+        requestSidebarRefresh();
+        return { content: stripAnsi(typeof out === "string" ? out : lastToolOutput) };
+      },
+    });
+  });
+
+  if (!isLeader) {
+    let ownRpc: any = null;
+    try { ownRpc = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async () => buildSnapshot() }); } catch { /* already registered here */ }
+    v2Leader!.refs += 1;
+    return () => { void ownRpc?.dispose?.(); releaseV2(); };
+  }
+
+  try {
+    rpcRegistration = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async () => buildSnapshot() });
+  } catch { /* RPC unavailable — the TUI simply shows nothing */ }
+  requestSidebarRefresh = emitUpdated;
+
+  notificationListener = (msg: string): void => {
+    const alert = summariseNotification(msg);
+    if (!alert.message) { return; }
+    // Only big moments get a toast; the bubble sticks to session / usage remarks.
+    if (!isBigMoment(alert.message)) { return; }
+    try {
+      void rpcRegistration?.events.emit("alert", { ...alert, variant: alertVariant(alert.message) });
+    } catch { /* best-effort */ }
+  };
+
+  const controller = new AbortController();
+  void (async () => {
+    try {
+      for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+        const translated = translateV2Event(event);
+        for (const legacy of translated) {
+          try { await hooks.event?.({ event: legacy as any }); } catch { /* never break the stream */ }
+          if (legacy.type === "session.status" || legacy.type === "message.updated") { replyBusy = true; }
+        }
+        // End of a reply: V2 may send session.idle and/or session.status → idle.
+        // Refresh the speech once per reply, not once per idle signal.
+        const endOfReply = event?.type === "session.idle" || (event?.type === "session.status" && event.data?.status?.type === "idle");
+        if (endOfReply && replyBusy) { replyBusy = false; speechDirty = true; emitUpdated(); }
+        if (translated.length > 0) { emitUpdated(); }
+      }
+    } catch { /* subscription closed */ }
+  })();
+
+  // Keep the sidebar's stats and costs fresh between replies (ticks).
+  const pulse = setInterval(emitUpdated, TICK_INTERVAL_SECONDS * 1_000);
+
+  v2Leader!.stop = () => {
+    controller.abort();
+    clearInterval(pulse);
+    if (refreshTimer !== undefined) { clearTimeout(refreshTimer); }
+    notificationListener = null;
+    requestSidebarRefresh = () => { /* no leader */ };
+    void rpcRegistration?.dispose?.();
+    disposeCodotchi();
+  };
+  return () => { releaseV2(); };
+}
+
+function releaseV2(): void {
+  if (!v2Leader) { return; }
+  v2Leader.refs -= 1;
+  if (v2Leader.refs > 0) { return; }
+  v2Leader.stop();
+  v2Leader = null;
+  v2HooksPromise = null;
+}
+
+/** Stop timers and file watchers started by the plugin entry point. */
+function disposeCodotchi(): void {
+  while (disposers.length > 0) {
+    try { disposers.pop()!(); } catch { /* best-effort */ }
+  }
+}
+
+// Default export is readable by both loaders: V2 calls setup(), V1 (>= 1.18.29) calls server().
+const codotchi = {
+  id: "codotchi",
+  setup: setupV2,
+  server: plugin,
+};
+
+export default codotchi;

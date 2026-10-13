@@ -211,8 +211,8 @@ export const ATTENTION_EXPIRY_STAT_PENALTY = 10;
 export const GIFT_PRAISE_HAPPINESS_BOOST = 15;
 /**
  * Active (non-idle, awake) ticks between "take a break" calls: 600 × 3 s = 30 min.
- * The timer restarts when the call fires and whenever the user goes deep-idle
- * (they have taken a break on their own).
+ * The timer only restarts when the break is actually taken (call answered via
+ * praise()). Idle time pauses it; an ignored call re-fires after its expiry cooldown.
  */
 export const BREAK_CALL_INTERVAL_TICKS = 600;
 /** Happiness boost when a break call is answered via praise() — same as a gift. */
@@ -964,10 +964,6 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
                 ticksSinceLastBreakCall += 1;
             }
         }
-        // Away from the keyboard counts as a break
-        if (isDeepIdle) {
-            ticksSinceLastBreakCall = 0;
-        }
     } // end Step 0
     if (!sleeping) {
         if (hungerDecayTick)
@@ -1244,7 +1240,6 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
                 ticksSinceLastBreakCall >= BREAK_CALL_INTERVAL_TICKS) {
                 activeAttentionCall = "break";
                 attentionCallActiveTicks = 0;
-                ticksSinceLastBreakCall = 0;
                 events.push("attention_call_break");
                 // Whim calls — random, at any stat level, after every need-based call so a
                 // real need always wins. Not while idle: nobody is there to answer them.
@@ -2001,7 +1996,7 @@ export function praise(state) {
         happiness: clampStat(state.happiness + happinessBonus),
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         ...(goesToSleep ? { sleeping: true, consecutiveSnacks: 0 } : {}),
-        ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS } : {}),
+        ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS, ticksSinceLastBreakCall: 0 } : {}),
         events,
     });
 }
