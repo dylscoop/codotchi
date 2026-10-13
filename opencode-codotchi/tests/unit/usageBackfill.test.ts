@@ -11,7 +11,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { sumCompletedAssistantUsage, type RawMessageEntry } from "../../src/usageBackfill";
+import { sumCompletedAssistantUsage, buildDailyUsageQueries, type RawMessageEntry } from "../../src/usageBackfill";
 
 /** Minimal bun-style expect() over node:assert, so the existing assertions run under node:test. */
 function expect(actual: number) {
@@ -370,5 +370,17 @@ describe("sumCompletedAssistantUsage — sinceMs day filter (BUGFIX-161)", () =>
   it("includes a message completed exactly at sinceMs", () => {
     const result = sumCompletedAssistantUsage([makeAssistant({ tokens: { input: 50 }, completed: midnight })], midnight);
     expect(result.messages).toBe(1);
+  });
+});
+
+describe("buildDailyUsageQueries � OpenCode 2 database", () => {
+  it("first query sums both OpenCode 1 `message` and OpenCode 2 `session_message`", () => {
+    const [both, v1Only] = buildDailyUsageQueries(1_700_000_000_000);
+    assert.match(both, /FROM message\b/);
+    assert.match(both, /FROM session_message\b/);
+    assert.match(both, /UNION ALL/);
+    assert.match(both, /type = 'assistant'/);
+    assert.match(both, />= 1700000000000/);
+    assert.doesNotMatch(v1Only, /session_message/);
   });
 });

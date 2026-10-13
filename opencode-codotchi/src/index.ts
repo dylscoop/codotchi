@@ -44,7 +44,7 @@ import { spawnSync } from "child_process";
 import { tool }  from "@opencode-ai/plugin";
 import type { Plugin, PluginInput } from "@opencode-ai/plugin";
 import { getIDEBase as _getIDEBase, resolveVSCodeStatePath } from "./statePathResolver.js";
-import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry } from "./usageBackfill.js";
+import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry, buildDailyUsageQueries } from "./usageBackfill.js";
 
 import {
   PetState,
@@ -363,33 +363,20 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
         const dbPath = pathResult.stdout?.trim();
 
         if (dbPath && fs.existsSync(dbPath)) {
-          // Filter on message-level time.completed (not session.time_updated) so that
-          // cross-day sessions contribute only their today-messages to the daily total.
-          const sql = `
-            SELECT
-              ROUND(SUM(CAST(json_extract(data,'$.cost') AS REAL)), 6) AS costUSD,
-              SUM(
-                COALESCE(json_extract(data,'$.tokens.input'),0) +
-                COALESCE(json_extract(data,'$.tokens.output'),0) +
-                COALESCE(json_extract(data,'$.tokens.reasoning'),0) +
-                COALESCE(json_extract(data,'$.tokens.cache.read'),0) +
-                COALESCE(json_extract(data,'$.tokens.cache.write'),0)
-              ) AS tokens,
-              COUNT(*) AS messages
-            FROM message
-            WHERE json_extract(data,'$.role') = 'assistant'
-              AND json_extract(data,'$.time.completed') IS NOT NULL
-              AND CAST(json_extract(data,'$.time.completed') AS INTEGER) >= ${todayStartMs}
-          `;
           trackASnapshotTime = Date.now();
-          const queryResult = spawnSync(cli, ["db", "--format", "json", sql], {
-            timeout: 3000,
-            encoding: "utf8",
-            windowsHide: true,
-          });
+          // Try the OpenCode 2 + 1 query first, then the OpenCode 1-only fallback.
+          let queryResult: ReturnType<typeof spawnSync> | undefined;
+          for (const sql of buildDailyUsageQueries(todayStartMs)) {
+            queryResult = spawnSync(cli, ["db", "--format", "json", sql], {
+              timeout: 3000,
+              encoding: "utf8",
+              windowsHide: true,
+            });
+            if (queryResult.status === 0 && queryResult.stdout) { break; }
+          }
 
-          if (queryResult.status === 0 && queryResult.stdout) {
-            const rows = JSON.parse(queryResult.stdout.trim()) as Array<{ costUSD?: number; tokens?: number; messages?: number }>;
+          if (queryResult && queryResult.status === 0 && queryResult.stdout) {
+            const rows = JSON.parse(String(queryResult.stdout).trim()) as Array<{ costUSD?: number; tokens?: number; messages?: number }>;
             const dbCostUSD   = typeof rows[0]?.costUSD  === "number" ? rows[0].costUSD  : 0;
             const dbTokens    = typeof rows[0]?.tokens   === "number" ? rows[0].tokens   : 0;
             const dbMessages  = typeof rows[0]?.messages === "number" ? rows[0].messages : 0;

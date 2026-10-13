@@ -107,3 +107,30 @@ export function extractTimestampedUsage(messages: RawMessageEntry[]): Timestampe
 
   return entries;
 }
+
+/** SQL columns summing today's assistant usage from a row set exposing `data` JSON. */
+const USAGE_COLUMNS = `
+    CAST(json_extract(data,'$.cost') AS REAL) AS cost,
+    COALESCE(json_extract(data,'$.tokens.input'),0) +
+    COALESCE(json_extract(data,'$.tokens.output'),0) +
+    COALESCE(json_extract(data,'$.tokens.reasoning'),0) +
+    COALESCE(json_extract(data,'$.tokens.cache.read'),0) +
+    COALESCE(json_extract(data,'$.tokens.cache.write'),0) AS tokens`;
+
+/**
+ * Queries for today's cross-project assistant usage, most complete first.
+ * OpenCode 2 stores messages in `session_message` (type column, no role in data);
+ * OpenCode 1 used `message`. The first query sums both; the second is the
+ * fallback for databases that have no `session_message` table yet.
+ * Filters on message-level time.completed so cross-day sessions only count
+ * their today-messages.
+ */
+export function buildDailyUsageQueries(todayStartMs: number): string[] {
+  const done = `json_extract(data,'$.time.completed') IS NOT NULL
+      AND CAST(json_extract(data,'$.time.completed') AS INTEGER) >= ${Math.floor(todayStartMs)}`;
+  const v1 = `SELECT ${USAGE_COLUMNS} FROM message WHERE json_extract(data,'$.role') = 'assistant' AND ${done}`;
+  const v2 = `SELECT ${USAGE_COLUMNS} FROM session_message WHERE type = 'assistant' AND ${done}`;
+  const total = (rows: string) =>
+    `SELECT ROUND(SUM(cost), 6) AS costUSD, SUM(tokens) AS tokens, COUNT(*) AS messages FROM (${rows})`;
+  return [total(`${v1} UNION ALL ${v2}`), total(v1)];
+}
