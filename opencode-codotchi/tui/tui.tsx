@@ -42,6 +42,7 @@ type Snapshot = {
   enabled: boolean
   tier: Tier
   pets: Pet[]
+  petSlot?: number
   today: { costUSD: number; tokens: number; messages: number }
   lastHour: { costUSD: number; tokens: number }
   session: { costUSD: number; tokens: number }
@@ -89,7 +90,19 @@ export default Plugin.define({
     // Only replace the snapshot when something visible changed, so the
     // pet isn't re-rendered (flickering) on every server update.
     let lastKey = ""
-    const apply = (next: Snapshot) => {
+    // The bubble only changes when the pet's time slot moves on or a reply
+    // finishes; snapshots in between keep the bubble and update costs only.
+    let heldPets: Pet[] = []
+    let heldSlot: number | undefined
+    let replyEnded = true
+    const apply = (raw: Snapshot) => {
+      const canChange = replyEnded || heldPets.length === 0 || raw.pets.length === 0 || raw.petSlot !== heldSlot
+      if (canChange) {
+        heldPets = raw.pets
+        heldSlot = raw.petSlot
+        replyEnded = false
+      }
+      const next = { ...raw, pets: heldPets }
       const key = JSON.stringify([next.enabled, next.tier, next.pets.map((p) => p.lines), next.today, next.lastHour, next.session, next.thresholds])
       if (key === lastKey) return
       lastKey = key
@@ -113,7 +126,10 @@ export default Plugin.define({
       if (!d?.message) return
       context.ui.toast.show({ title: d.title ?? "codotchi", message: d.message, variant: d.variant ?? "info", duration: 6000 })
     })
-    const stopIdle = context.data.on("session.idle", () => void refresh())
+    const stopIdle = context.data.on("session.idle", () => {
+      // Give the server a moment to refresh the speech for this reply.
+      setTimeout(() => { replyEnded = true; void refresh() }, 500)
+    })
     const poll = setInterval(() => void refresh(), 60_000)
     void refresh()
 

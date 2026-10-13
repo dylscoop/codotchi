@@ -44,7 +44,7 @@ import { spawnSync } from "child_process";
 import { tool }  from "@opencode-ai/plugin";
 import type { Plugin, PluginInput } from "@opencode-ai/plugin";
 import { getIDEBase as _getIDEBase, resolveVSCodeStatePath } from "./statePathResolver.js";
-import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry } from "./usageBackfill.js";
+import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry, buildDailyUsageQueries, defaultOpencodeDbPath, queryDailyUsageFromDb, UsageTotals } from "./usageBackfill.js";
 
 import {
   PetState,
@@ -254,13 +254,77 @@ function loadDailyUsage(): void {
   } catch { /* best-effort */ }
 }
 
-function saveDailyUsage(): void {
+function saveDailyUsage(fromDb: boolean = false): void {
   try {
     const filePath = getDailyUsagePath();
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
-    fs.writeFileSync(filePath, JSON.stringify({ date: dailyDate, costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages }), "utf8");
+    const data: Record<string, unknown> = { date: dailyDate, costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages };
+    if (fromDb) { data.source = "db"; }
+    fs.writeFileSync(filePath, JSON.stringify(data), "utf8");
   } catch { /* best-effort */ }
+}
+
+/** Resolve the OpenCode SQLite path: default location first, then the legacy `opencode db path` CLI. */
+function resolveOpencodeDbPath(): string | undefined {
+  const def = defaultOpencodeDbPath(process.env, os.homedir());
+  if (fs.existsSync(def)) { return def; }
+  try {
+    const cli = findOpencodeCli();
+    if (!cli) { return undefined; }
+    const out = spawnSync(cli, ["db", "path"], { timeout: 5000, encoding: "utf8", windowsHide: true });
+    const p = out.status === 0 ? out.stdout?.trim() : "";
+    return p && fs.existsSync(p) ? p : undefined;
+  } catch { return undefined; }
+}
+
+/** Today's cross-project totals from the OpenCode database, or undefined if unavailable. */
+async function fetchDbDailyTotals(todayStartMs: number): Promise<UsageTotals | undefined> {
+  const dbPath = resolveOpencodeDbPath();
+  if (!dbPath) { return undefined; }
+  const direct = await queryDailyUsageFromDb(dbPath, todayStartMs);
+  if (direct) { return direct; }
+  // Legacy fallback: OpenCode 1 shipped a `db` subcommand that can run SQL.
+  try {
+    const cli = findOpencodeCli();
+    if (!cli) { return undefined; }
+    for (const sql of buildDailyUsageQueries(todayStartMs)) {
+      const r = spawnSync(cli, ["db", "--format", "json", sql], { timeout: 10000, encoding: "utf8", windowsHide: true });
+      if (r.status === 0 && r.stdout) {
+        const row = (JSON.parse(String(r.stdout).trim()) as Array<{ costUSD?: number; tokens?: number; messages?: number }>)[0] ?? {};
+        return { costUSD: row.costUSD ?? 0, tokens: row.tokens ?? 0, messages: row.messages ?? 0 };
+      }
+    }
+  } catch { /* fall through */ }
+  return undefined;
+}
+
+const DB_REFRESH_MIN_INTERVAL_MS = 30_000;
+let lastDbRefreshMs = 0;
+let dbRefreshInFlight = false;
+
+/**
+ * Re-sync today's totals from the database (throttled). Live events only see
+ * this window's replies, so without this the total drifts below the truth when
+ * several OpenCode windows run at once.
+ */
+async function refreshDailyFromDb(): Promise<void> {
+  if (!backfillComplete || dbRefreshInFlight) { return; }
+  if (Date.now() - lastDbRefreshMs < DB_REFRESH_MIN_INTERVAL_MS) { return; }
+  dbRefreshInFlight = true;
+  lastDbRefreshMs = Date.now();
+  try {
+    const totals = await fetchDbDailyTotals(todayStartLocalMs());
+    if (!totals) { return; }
+    checkDayRollover();
+    dailyCostUSD  = totals.costUSD;
+    dailyTokens   = totals.tokens;
+    dailyMessages = totals.messages;
+    dailyDate = todayLocal();
+    saveDailyUsage(true);
+  } catch { /* best-effort */ } finally {
+    dbRefreshInFlight = false;
+  }
 }
 
 function checkDayRollover(): void {
@@ -308,7 +372,7 @@ function findOpencodeCli(): string | null {
   for (const c of candidates) {
     try {
       if (c !== "opencode" && !fs.existsSync(c)) { continue; }
-      const result = spawnSync(c, ["--version"], { timeout: 2000, encoding: "utf8" });
+      const result = spawnSync(c, ["--version"], { timeout: 2000, encoding: "utf8", windowsHide: true });
       if (result.status === 0) { return c; }
     } catch { /* try next */ }
   }
@@ -356,60 +420,20 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
     // time.completed <= trackASnapshotTime is in the DB snapshot already.
     let trackASnapshotTime = 0;
     try {
-      const cli = findOpencodeCli();
-      if (cli) {
-        // Get DB path
-        const pathResult = spawnSync(cli, ["db", "path"], { timeout: 3000, encoding: "utf8" });
-        const dbPath = pathResult.stdout?.trim();
-
-        if (dbPath && fs.existsSync(dbPath)) {
-          // Filter on message-level time.completed (not session.time_updated) so that
-          // cross-day sessions contribute only their today-messages to the daily total.
-          const sql = `
-            SELECT
-              ROUND(SUM(CAST(json_extract(data,'$.cost') AS REAL)), 6) AS costUSD,
-              SUM(
-                COALESCE(json_extract(data,'$.tokens.input'),0) +
-                COALESCE(json_extract(data,'$.tokens.output'),0) +
-                COALESCE(json_extract(data,'$.tokens.reasoning'),0) +
-                COALESCE(json_extract(data,'$.tokens.cache.read'),0) +
-                COALESCE(json_extract(data,'$.tokens.cache.write'),0)
-              ) AS tokens,
-              COUNT(*) AS messages
-            FROM message
-            WHERE json_extract(data,'$.role') = 'assistant'
-              AND json_extract(data,'$.time.completed') IS NOT NULL
-              AND CAST(json_extract(data,'$.time.completed') AS INTEGER) >= ${todayStartMs}
-          `;
-          trackASnapshotTime = Date.now();
-          const queryResult = spawnSync(cli, ["db", "--format", "json", sql], {
-            timeout: 3000,
-            encoding: "utf8",
-          });
-
-          if (queryResult.status === 0 && queryResult.stdout) {
-            const rows = JSON.parse(queryResult.stdout.trim()) as Array<{ costUSD?: number; tokens?: number; messages?: number }>;
-            const dbCostUSD   = typeof rows[0]?.costUSD  === "number" ? rows[0].costUSD  : 0;
-            const dbTokens    = typeof rows[0]?.tokens   === "number" ? rows[0].tokens   : 0;
-            const dbMessages  = typeof rows[0]?.messages === "number" ? rows[0].messages : 0;
-            checkDayRollover();
-            // DB is the single source of truth — assign directly, never Math.max.
-            // The sidecar value loaded at startup is discarded; the DB value wins.
-            // Math.max is intentionally NOT used here: the sidecar can hold an
-            // inflated value (e.g. accumulated by a bugged previous plugin run)
-            // and Math.max would preserve the poison. The DB always has the
-            // authoritative cross-project total.
-            dailyCostUSD  = dbCostUSD;
-            dailyTokens   = dbTokens;
-            dailyMessages = dbMessages;
-            trackASucceeded = true;
-            // Immediately persist the correct DB value to the sidecar so that
-            // any other OpenCode window watching the file via fs.watch will pick
-            // up the authoritative total (instead of a stale inflated value).
-            dailyDate = today;
-            saveDailyUsage();
-          }
-        }
+      trackASnapshotTime = Date.now();
+      const totals = await fetchDbDailyTotals(todayStartMs);
+      if (totals) {
+        checkDayRollover();
+        // DB is the single source of truth — assign directly, never Math.max,
+        // so an inflated sidecar from a bugged earlier run can't survive.
+        dailyCostUSD  = totals.costUSD;
+        dailyTokens   = totals.tokens;
+        dailyMessages = totals.messages;
+        trackASucceeded = true;
+        lastDbRefreshMs = Date.now();
+        // Persist immediately so other windows watching the file adopt it.
+        dailyDate = today;
+        saveDailyUsage(true);
       }
     } catch { /* Track A failed — fall through to Track B for cost totals */ }
 
@@ -1305,21 +1329,17 @@ const plugin: Plugin = async (ctx) => {
       if (!backfillComplete) { return; } // don't interfere while backfill is running
       try {
         if (!fs.existsSync(dailyFilePath)) { return; }
-        const raw = JSON.parse(fs.readFileSync(dailyFilePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number; messages?: number };
+        const raw = JSON.parse(fs.readFileSync(dailyFilePath, "utf8")) as { date?: string; costUSD?: number; tokens?: number; messages?: number; source?: string };
         if (raw.date !== todayLocal()) { return; }
         const fileCost     = typeof raw.costUSD  === "number" ? raw.costUSD  : 0;
         const fileTokens   = typeof raw.tokens   === "number" ? raw.tokens   : 0;
         const fileMessages = typeof raw.messages === "number" ? raw.messages : dailyMessages;
-        // Adopt the file value if it differs meaningfully from what we hold.
-        // We no longer use Math.max here — since Track A (SQLite) now immediately
-        // overwrites the sidecar with the authoritative DB value on every startup,
-        // the file always reflects the most accurate known total. Math.max would
-        // permanently lock in any inflated value that a previous bugged run wrote.
-        // Instead: accept the file value if it is larger than our current total
-        // (another window counted more messages than us), but also accept it if it
-        // is meaningfully *lower* (another window corrected the total via Track A).
-        // The threshold avoids thrashing on floating-point noise.
-        if (Math.abs(fileCost - dailyCostUSD) > 0.0001 || Math.abs(fileTokens - dailyTokens) > 10) {
+        // A DB-sourced write is authoritative (it may correct an inflated total).
+        // A live write from another window only knows that window's replies, so
+        // it may only raise our total — adopting a lower one loses cost.
+        const fromDb = raw.source === "db";
+        const differs = Math.abs(fileCost - dailyCostUSD) > 0.0001 || Math.abs(fileTokens - dailyTokens) > 10;
+        if (differs && (fromDb || fileCost > dailyCostUSD)) {
           dailyCostUSD  = fileCost;
           dailyTokens   = fileTokens;
           dailyMessages = fileMessages;   // keep the tok/msg average consistent with the adopted totals
@@ -1768,6 +1788,7 @@ const plugin: Plugin = async (ctx) => {
       // session.idle → flag idle; fire diff notification if pending; offer help if prompting a lot
       if (event.type === "session.idle") {
         isIdle = true;
+        void refreshDailyFromDb();
         saveIDEState("vscode");
         saveIDEState("pycharm");
         saveIDEState("opencode");
@@ -2022,13 +2043,40 @@ const CODOTCHI_RPC = {
   },
 };
 
-type SpeechEntry = { message: string; bubbleColor: string; tierEmoji: string };
-/** Pet shown above the prompt and its speech. The pet swaps on each user message or every 5 minutes. */
-let shownSpeech: { ide: string; speech: SpeechEntry } | null = null;
+type ShownPet = { ide: string; name: string; stage: string; message: string; emoji: string; lines: string[] };
+/** Pet shown above the prompt. Refreshed at the end of each reply or every 5 minutes. */
+let shownPet: ShownPet | null = null;
 let speechDirty = true;
-let shownPickedAt = 0;
-let shownPickedAtMessages = -1;
-const PET_SWAP_MS = 5 * 60_000;
+/** True while a reply is running; the bubble refreshes once when it goes idle. */
+let replyBusy = false;
+let shownSlot = -1;
+/** Fixed order the pets take turns in. */
+const PET_ORDER = ["vscode", "pycharm", "opencode"];
+/**
+ * Random per OpenCode window (process). Stored on globalThis so every plugin
+ * copy inside one process shares it (no flicker), while separate windows get
+ * different pets and phrases.
+ */
+const WINDOW_SALT: number = ((globalThis as any).__codotchiWindowSalt ??= Math.floor(Math.random() * 1_000_000));
+
+/** Run fn with Math.random replaced by a PRNG seeded from `seed`, so every instance picks the same phrase. */
+function withSeededRandom<T>(seed: string, fn: () => T): T {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h = Math.imul(h ^ seed.charCodeAt(i), 16777619); }
+  let a = h >>> 0;
+  const original = Math.random;
+  Math.random = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  try { return fn(); } finally { Math.random = original; }
+}
+/** How often (in minutes) the pet above the prompt switches to another pet. */
+const PET_SWAP_MINUTES = 2;
+const PET_SWAP_MS = PET_SWAP_MINUTES * 60_000;
 const TIER_ANSI = { green: "\x1b[32m", yellow: "\x1b[33m", red: "\x1b[31m" } as const;
 
 /** The pet for `ide` if it still exists and is alive, regardless of the live window. */
@@ -2050,44 +2098,53 @@ function buildSnapshot(): Record<string, unknown> {
   const now = Date.now();
   // Keep showing the current pet while it is alive, even if its IDE briefly
   // drops out of the 60s "live" window — otherwise the display flickers.
-  const current = shownSpeech ? (alive.find(p => p.ide === shownSpeech!.ide) ?? stillAlivePet(shownSpeech.ide)) : undefined;
-  const swapDue = !current || sessionUserMessages !== shownPickedAtMessages || now - shownPickedAt >= PET_SWAP_MS;
-  let pick = current;
-  if (swapDue && alive.length > 0) {
-    // Prefer a different pet when swapping, so a swap is visible.
-    const others = alive.length > 1 && current ? alive.filter(p => p.ide !== current.ide) : alive;
-    pick = others[Math.floor(Math.random() * others.length)];
-    shownPickedAt = now;
-    shownPickedAtMessages = sessionUserMessages;
-  }
-  if (pick && (swapDue || speechDirty || !shownSpeech)) {
+  const current = shownPet ? (alive.find(p => p.ide === shownPet!.ide) ?? stillAlivePet(shownPet.ide)) : undefined;
+  // The pet (art + speech) is frozen between refreshes: the speech changes once
+  // at the end of each reply, and the pet switches every PET_SWAP_MINUTES
+  // (or when the current pet is gone). Both the pet and the phrase are chosen
+  // deterministically, so every plugin instance shows the same thing.
+  const slot = Math.floor(now / PET_SWAP_MS);
+  const swapDue = !current || slot !== shownSlot;
+  if ((swapDue || speechDirty) && alive.length > 0) {
     speechDirty = false;
-    // Costs are on the line under the pet, so the bubble text leaves them out (zero cost/tokens);
-    // the bubble border still uses the cost tier colour.
-    const s = buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, 0, 0, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages);
-    shownSpeech = { ide: pick.ide, speech: { ...s, bubbleColor: TIER_ANSI[costTier()] } };
-  }
-  const shown = pick;
-  const pets = shown && shownSpeech ? [shown].map(p => {
-    const s = p.state;
-    const speech = shownSpeech!.speech;
-    const ideLabel = p.ide === "vscode" ? "[VS Code]" : p.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
+    let pick: ActivePet;
+    if (swapDue) {
+      const ordered = [...alive].sort((a, b) => PET_ORDER.indexOf(a.ide) - PET_ORDER.indexOf(b.ide));
+      pick = ordered[(slot + WINDOW_SALT) % ordered.length];
+      shownSlot = slot;
+    } else {
+      pick = current!;
+    }
+    // Cost figures are on the line under the pet, so the bubble only makes cost-tier remarks.
+    const contextual = () => buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages, { remarksOnly: true });
+    const speech = withSeededRandom(`${WINDOW_SALT}|${slot}|${pick.ide}|${dailyMessages}`, contextual);
+    const s = pick.state;
+    const ideLabel = pick.ide === "vscode" ? "[VS Code]" : pick.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
     // No tier emoji in the art header: the cost line under the pet carries it.
-    const lines = buildSpeechBubble(s.stage, s.mood, speech.message, s.name, s.spriteType, ideLabel, speech.bubbleColor)
+    const lines = buildSpeechBubble(s.stage, s.mood, speech.message, s.name, s.spriteType, ideLabel, TIER_ANSI[costTier()])
       .split("\n")
       .filter(l => stripAnsi(l).trim().length > 0);
-    return { ide: p.ide, name: s.name, stage: s.stage, message: speech.message, emoji: speech.tierEmoji, lines };
-  }) : [];
+    shownPet = { ide: pick.ide, name: s.name, stage: s.stage, message: speech.message, emoji: speech.tierEmoji, lines };
+  } else if (shownPet && !current) {
+    shownPet = null;
+  }
+  const pets = shownPet ? [shownPet] : [];
   return {
     enabled: terminalEnabled,
     tier: costTier(),
     pets,
+    petSlot: shownSlot,
     today: { costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages },
     lastHour: { costUSD: hour.costUSD, tokens: hour.tokens },
     session: { costUSD: sessionCostUSD, tokens: sessionTokens },
     thresholds: { warn: costWarnThreshold, shout: costShoutThreshold },
     updatedAt: Date.now(),
   };
+}
+
+/** Only evolution, death and sickness are shown as toasts; other pet messages are dropped in V2. */
+function isBigMoment(text: string): boolean {
+  return /goodbye|farewell|full life|lived|journey|evolved|now a |growing up|sick|medicine/i.test(text);
 }
 
 function alertVariant(text: string): "info" | "success" | "warning" | "error" {
@@ -2134,7 +2191,6 @@ async function setupV2(ctx: any): Promise<() => void> {
           ...context,
           metadata: () => { /* V2 tool panel titles come from the tool name */ },
         });
-        speechDirty = true;
         requestSidebarRefresh();
         return { content: stripAnsi(typeof out === "string" ? out : lastToolOutput) };
       },
@@ -2156,6 +2212,8 @@ async function setupV2(ctx: any): Promise<() => void> {
   notificationListener = (msg: string): void => {
     const alert = summariseNotification(msg);
     if (!alert.message) { return; }
+    // Only big moments get a toast; the bubble sticks to session / usage remarks.
+    if (!isBigMoment(alert.message)) { return; }
     try {
       void rpcRegistration?.events.emit("alert", { ...alert, variant: alertVariant(alert.message) });
     } catch { /* best-effort */ }
@@ -2168,8 +2226,12 @@ async function setupV2(ctx: any): Promise<() => void> {
         const translated = translateV2Event(event);
         for (const legacy of translated) {
           try { await hooks.event?.({ event: legacy as any }); } catch { /* never break the stream */ }
-          if (legacy.type === "session.idle") { speechDirty = true; }
+          if (legacy.type === "session.status" || legacy.type === "message.updated") { replyBusy = true; }
         }
+        // End of a reply: V2 may send session.idle and/or session.status → idle.
+        // Refresh the speech once per reply, not once per idle signal.
+        const endOfReply = event?.type === "session.idle" || (event?.type === "session.status" && event.data?.status?.type === "idle");
+        if (endOfReply && replyBusy) { replyBusy = false; speechDirty = true; emitUpdated(); }
         if (translated.length > 0) { emitUpdated(); }
       }
     } catch { /* subscription closed */ }

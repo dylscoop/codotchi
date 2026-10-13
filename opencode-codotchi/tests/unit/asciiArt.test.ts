@@ -20,6 +20,9 @@ import {
   stripAnsi,
   formatTokens,
   spriteLabel,
+  situationalLines,
+  SITUATION_LINES,
+  SPEND_REMARKS,
 } from "../../src/asciiArt";
 
 describe("buildStatusBlock display", () => {
@@ -368,6 +371,20 @@ describe("buildContextualSpeech", () => {
     assert.equal(plain, plain.toUpperCase(), "expected ALL CAPS even on message-count override branch");
   });
 
+  it("remarksOnly keeps tier remarks but drops $ / token figures", () => {
+    const green = buildContextualSpeech(basePet, 3, 0, 0, 0, false, 5, 10_000, 30, 50, 1, 0, 2, { remarksOnly: true });
+    const yellow = buildContextualSpeech(basePet, 3, 0, 0, 0, false, 35, 10_000, 30, 50, 1, 0, 2, { remarksOnly: true });
+    const red = buildContextualSpeech(basePet, 3, 0, 0, 0, false, 60, 10_000, 30, 50, 1, 0, 2, { remarksOnly: true });
+    for (const s of [green, yellow, red]) {
+      assert.ok(!/\$|tokens per message|last 1h/.test(s.message), `unexpected figures in: ${s.message}`);
+    }
+    assert.equal(green.tierEmoji, "🟢");
+    assert.equal(yellow.tierEmoji, "🟡");
+    assert.equal(red.tierEmoji, "🔴");
+    const redText = red.message.replace(/\x1b\[[0-9;]*m/g, "");
+    assert.equal(redText, redText.toUpperCase());
+  });
+
   it("appends cost suffix on prod branch override", () => {
     const { message } = buildContextualSpeech(basePet, 3, 0, 0, 0, true, 5, 10_000, 30, 50);
     assert.ok(message.includes("$"), `expected "$" in: ${message}`);
@@ -490,5 +507,33 @@ describe("buildContextualSpeech — tokens-per-message averaging", () => {
     assert.doesNotThrow(() => buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 0));
     assert.doesNotThrow(() => buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 1));
     assert.doesNotThrow(() => buildContextualSpeech(basePet, 0, 0, 0, 0, false, 5, 10_000, 30, 50, 0, 0, 1_000));
+  });
+});
+
+describe("situationalLines � remarksOnly extra lines", () => {
+  const at = (h: number) => new Date(2026, 9, 13, h, 0, 0);
+  it("always includes the any-time lines", () => {
+    const lines = situationalLines(0, 0, at(10));
+    for (const l of SITUATION_LINES.general) { assert.ok(lines.includes(l)); }
+  });
+  it("adds file-count lines at 15+ and 30+", () => {
+    assert.ok(situationalLines(15, 0, at(10)).includes(SITUATION_LINES.files15[0]));
+    const big = situationalLines(30, 0, at(10));
+    assert.ok(big.includes(SITUATION_LINES.files30[0]));
+    assert.ok(!big.includes(SITUATION_LINES.files15[0]));
+  });
+  it("adds session-length lines at 1h / 3h / 5h", () => {
+    assert.ok(situationalLines(0, 3_600_000, at(10)).includes(SITUATION_LINES.session1h[0]));
+    assert.ok(situationalLines(0, 3 * 3_600_000, at(10)).includes(SITUATION_LINES.session3h[0]));
+    assert.ok(situationalLines(0, 5 * 3_600_000, at(10)).includes(SITUATION_LINES.session5h[0]));
+  });
+  it("adds time-of-day lines: before 9am, 12�2pm, after 5pm, none mid-morning", () => {
+    assert.ok(situationalLines(0, 0, at(8)).includes(SITUATION_LINES.morning[0]));
+    assert.ok(situationalLines(0, 0, at(13)).includes(SITUATION_LINES.midday[0]));
+    assert.ok(situationalLines(0, 0, at(18)).includes(SITUATION_LINES.evening[0]));
+    assert.equal(situationalLines(0, 0, at(10)).length, SITUATION_LINES.general.length);
+  });
+  it("spend remarks contain no figures", () => {
+    for (const l of [...SPEND_REMARKS.green, ...SPEND_REMARKS.yellow, ...SPEND_REMARKS.red]) { assert.doesNotMatch(l, /\$|\d/); }
   });
 });

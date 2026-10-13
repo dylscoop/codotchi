@@ -375,6 +375,8 @@ describe("bundled plugin � OpenCode V2 loader contract", () => {
     // The shown pet and its speech stay stable until a reply finishes
     const again = await rpc.handlers!.snapshot();
     expect(JSON.stringify(again.pets)).toBe(JSON.stringify(snap.pets));
+    // The bubble sticks to session / usage remarks, not event messages
+    if (snap.pets.length > 0) { expect(snap.pets[0].message).not.toContain("feat/x"); }
     expect(["green", "yellow", "red"]).toContain(snap.tier);
     expect(typeof snap.today.costUSD).toBe("number");
     expect(typeof snap.lastHour.costUSD).toBe("number");
