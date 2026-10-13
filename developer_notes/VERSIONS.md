@@ -1,6 +1,20 @@
 # Version History
 
-## OpenCode plugin v2.27.5 — current (OpenCode only; other plugins stay at 2.27.4)
+## v2.28.0 — current (artifacts not rebuilt; pending next release)
+
+### Changes from v2.27.4 / OpenCode v2.27.5 (remove sponsor section — branch chore/remove-sponsor-section)
+
+| File | What changed |
+|------|-------------|
+| `vscode/README.md`, `pycharm/README.md`, `opencode-codotchi/README.md` | docs: removed "Sponsor this project" section (Buy Me a Coffee + Liberapay); content remains in `developer_notes/SPONSOR.md` |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | removed sponsor block from `<description>`; version → 2.28.0 |
+| all manifests (`vscode`, `pycharm`, `claude-codotchi`, `claude-desktop-codotchi`, `opencode-codotchi`) | version → 2.28.0 |
+
+Artifacts (VSIX, PyCharm zip, plugin zips) and root README download links not yet updated — will be done at the next release.
+
+---
+
+## OpenCode plugin v2.27.5 (OpenCode only; other plugins stay at 2.27.4)
 
 ### Changes from v2.27.4 (OpenCode daily cost — branch fix/opencode-daily-cost)
 
@@ -19,7 +33,7 @@ DB_REFRESH_MIN_INTERVAL_MS: number = 30_000   // min gap between idle DB re-sync
 
 ---
 
-## v2.27.4 — current
+## v2.27.4
 
 ### Changes from v2.27.3 (break timer no longer restarts — branch fix/break-timer-no-reset)
 

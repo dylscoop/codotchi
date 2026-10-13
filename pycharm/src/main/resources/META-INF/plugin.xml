@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.27.4</version>
+    <version>2.28.0</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -23,13 +23,6 @@ at random when you start a new game.</p>
 <h2>Preview</h2>
 
 <img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/Cat_example.png" width="400" alt="A cat Codotchi in a winter scene — Codotchi in action"/>
-
-<h3>Sponsor this project</h3>
-
-<p><a href="https://buymeacoffee.com/dylscoop"><img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/bmc_qr.png" width="120" alt="Buy Me a Coffee QR code"/></a></p>
-<p><a href="https://buymeacoffee.com/dylscoop">buymeacoffee.com/dylscoop</a></p>
-
-<p><a href="https://liberapay.com/dylscoop">liberapay.com/dylscoop</a></p>
 
 <h2>Integrations</h2>
 

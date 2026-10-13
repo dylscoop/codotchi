@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.28.0] — 2026-10-13
+
+- Removed the sponsor section from the extension page.
+
 ## [2.27.4] — 2026-10-09
 
 ### Fixed
