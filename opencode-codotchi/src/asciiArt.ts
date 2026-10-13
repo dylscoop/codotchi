@@ -766,6 +766,8 @@ export function formatCost(usd: number): string {
 export interface ContextualSpeechOptions {
   /** "lastHour" (default, OpenCode wording) or "hourlyRate" (Claude Code wording). */
   costStyle?: "lastHour" | "hourlyRate";
+  /** Keep the cost-tier remarks and colours but leave out the $ / token figures (shown elsewhere). */
+  remarksOnly?: boolean;
 }
 
 /**
@@ -915,6 +917,17 @@ export function buildContextualSpeech(
   const hourlyRate = opts.costStyle === "hourlyRate";
   // hourlyRate style prefixes every usage line with its tier light.
   const light = (emoji: string): string => (hourlyRate ? `${emoji} ` : "");
+
+  if (opts.remarksOnly) {
+    if (dailyCostUSD >= costShoutThreshold) {
+      return { message: colour(`${phrase} ${pickRandom(["CHECK YOUR USAGE!", "THIS IS GETTING EXPENSIVE!", "WHO'S PAYING FOR ALL THIS?!"])}`.toUpperCase(), FG_RED), bubbleColor: FG_RED, tierEmoji: "🔴" };
+    }
+    if (dailyCostUSD >= costWarnThreshold) {
+      return { message: `${phrase} ${colour(pickRandom(["Getting spendy.", "The tab's adding up.", "Easy on the tokens."]), FG_YELLOW)}`, bubbleColor: FG_YELLOW, tierEmoji: "🟡" };
+    }
+    const casual = dailyCostUSD > 0 || dailyTokens > 0 ? pickRandom(["Running a tab.", "Ticking along.", "Tokens well spent so far."]) : "";
+    return { message: casual ? `${phrase} ${casual}` : phrase, bubbleColor: FG_GREEN, tierEmoji: "🟢" };
+  }
 
   if (dailyCostUSD > 0) {
     const costStr   = formatCost(dailyCostUSD);

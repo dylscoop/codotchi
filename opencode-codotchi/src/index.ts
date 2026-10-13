@@ -2027,11 +2027,11 @@ type ShownPet = { ide: string; name: string; stage: string; message: string; emo
 /** Pet shown above the prompt. Refreshed at the end of each reply or every 5 minutes. */
 let shownPet: ShownPet | null = null;
 let speechDirty = true;
-/** Latest event message (work shipped, todo done…) for the shown pet to say on the next refresh. */
-let eventSpeech: string | null = null;
+/** True while a reply is running; the bubble refreshes once when it goes idle. */
+let replyBusy = false;
 let shownPickedAt = 0;
 /** How often (in minutes) the pet above the prompt switches to another pet. */
-const PET_SWAP_MINUTES = 5;
+const PET_SWAP_MINUTES = 2;
 const PET_SWAP_MS = PET_SWAP_MINUTES * 60_000;
 const TIER_ANSI = { green: "\x1b[32m", yellow: "\x1b[33m", red: "\x1b[31m" } as const;
 
@@ -2055,12 +2055,11 @@ function buildSnapshot(): Record<string, unknown> {
   // Keep showing the current pet while it is alive, even if its IDE briefly
   // drops out of the 60s "live" window — otherwise the display flickers.
   const current = shownPet ? (alive.find(p => p.ide === shownPet!.ide) ?? stillAlivePet(shownPet.ide)) : undefined;
-  // The pet (art + speech) is frozen between refreshes: it only changes at the
-  // end of a reply (session.idle sets speechDirty) or every 5 minutes.
-  // A reply only refreshes the current pet's speech; switching pets happens
-  // only every PET_SWAP_MS (or when the current pet is gone).
+  // The pet (art + speech) is frozen between refreshes: the speech changes once
+  // at the end of each reply, and the pet switches every PET_SWAP_MINUTES
+  // (or when the current pet is gone).
   const swapDue = !current || now - shownPickedAt >= PET_SWAP_MS;
-  if ((swapDue || speechDirty || eventSpeech !== null) && alive.length > 0) {
+  if ((swapDue || speechDirty) && alive.length > 0) {
     speechDirty = false;
     let pick: ActivePet;
     if (swapDue) {
@@ -2071,18 +2070,11 @@ function buildSnapshot(): Record<string, unknown> {
     } else {
       pick = current!;
     }
-    // Costs are on the line under the pet, so the bubble text leaves them out (zero cost/tokens);
-    // the bubble border still uses the cost tier colour.
-    const contextual = () => buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, 0, 0, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages);
+    // Cost figures are on the line under the pet, so the bubble only makes cost-tier remarks.
+    const contextual = () => buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages, { remarksOnly: true });
     let speech = contextual();
-    if (eventSpeech !== null) {
-      // Something just happened (work shipped, todo done, branch switch…): say that instead.
-      speech = { ...speech, message: eventSpeech };
-      eventSpeech = null;
-    } else {
-      // Avoid repeating the line already on screen when other phrasings exist.
-      for (let i = 0; i < 5 && shownPet && speech.message === shownPet.message; i++) { speech = contextual(); }
-    }
+    // Avoid repeating the line already on screen when other phrasings exist.
+    for (let i = 0; i < 5 && shownPet && speech.message === shownPet.message; i++) { speech = contextual(); }
     const s = pick.state;
     const ideLabel = pick.ide === "vscode" ? "[VS Code]" : pick.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
     // No tier emoji in the art header: the cost line under the pet carries it.
@@ -2106,7 +2098,7 @@ function buildSnapshot(): Record<string, unknown> {
   };
 }
 
-/** Evolution, death and sickness are still shown as toasts as well as in the bubble. */
+/** Only evolution, death and sickness are shown as toasts; other pet messages are dropped in V2. */
 function isBigMoment(text: string): boolean {
   return /goodbye|farewell|full life|lived|journey|evolved|now a |growing up|sick|medicine/i.test(text);
 }
@@ -2176,9 +2168,7 @@ async function setupV2(ctx: any): Promise<() => void> {
   notificationListener = (msg: string): void => {
     const alert = summariseNotification(msg);
     if (!alert.message) { return; }
-    eventSpeech = alert.message;
-    emitUpdated();
-    // Only big moments also get a toast; everything else is said in the bubble.
+    // Only big moments get a toast; the bubble sticks to session / usage remarks.
     if (!isBigMoment(alert.message)) { return; }
     try {
       void rpcRegistration?.events.emit("alert", { ...alert, variant: alertVariant(alert.message) });
@@ -2192,10 +2182,12 @@ async function setupV2(ctx: any): Promise<() => void> {
         const translated = translateV2Event(event);
         for (const legacy of translated) {
           try { await hooks.event?.({ event: legacy as any }); } catch { /* never break the stream */ }
-          if (legacy.type === "session.idle") { speechDirty = true; }
+          if (legacy.type === "session.status" || legacy.type === "message.updated") { replyBusy = true; }
         }
-        // V2 may report the end of a reply only as session.status → idle.
-        if (event?.type === "session.status" && event.data?.status?.type === "idle") { speechDirty = true; emitUpdated(); }
+        // End of a reply: V2 may send session.idle and/or session.status → idle.
+        // Refresh the speech once per reply, not once per idle signal.
+        const endOfReply = event?.type === "session.idle" || (event?.type === "session.status" && event.data?.status?.type === "idle");
+        if (endOfReply && replyBusy) { replyBusy = false; speechDirty = true; emitUpdated(); }
         if (translated.length > 0) { emitUpdated(); }
       }
     } catch { /* subscription closed */ }

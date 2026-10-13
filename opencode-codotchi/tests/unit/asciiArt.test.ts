@@ -368,6 +368,20 @@ describe("buildContextualSpeech", () => {
     assert.equal(plain, plain.toUpperCase(), "expected ALL CAPS even on message-count override branch");
   });
 
+  it("remarksOnly keeps tier remarks but drops $ / token figures", () => {
+    const green = buildContextualSpeech(basePet, 3, 0, 0, 0, false, 5, 10_000, 30, 50, 1, 0, 2, { remarksOnly: true });
+    const yellow = buildContextualSpeech(basePet, 3, 0, 0, 0, false, 35, 10_000, 30, 50, 1, 0, 2, { remarksOnly: true });
+    const red = buildContextualSpeech(basePet, 3, 0, 0, 0, false, 60, 10_000, 30, 50, 1, 0, 2, { remarksOnly: true });
+    for (const s of [green, yellow, red]) {
+      assert.ok(!/\$|tokens per message|last 1h/.test(s.message), `unexpected figures in: ${s.message}`);
+    }
+    assert.equal(green.tierEmoji, "🟢");
+    assert.equal(yellow.tierEmoji, "🟡");
+    assert.equal(red.tierEmoji, "🔴");
+    const redText = red.message.replace(/\x1b\[[0-9;]*m/g, "");
+    assert.equal(redText, redText.toUpperCase());
+  });
+
   it("appends cost suffix on prod branch override", () => {
     const { message } = buildContextualSpeech(basePet, 3, 0, 0, 0, true, 5, 10_000, 30, 50);
     assert.ok(message.includes("$"), `expected "$" in: ${message}`);
