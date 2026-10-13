@@ -49,6 +49,7 @@ The sidebar greys out **Submit to Leaderboard** and **Push live progress** and s
 | IDE | Package | Install |
 | --- | ------- | ------- |
 | VS Code | `vscode/` | [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=dylscoop.codotchi) (or `.vsix` from [Releases](https://github.com/dylscoop/codotchi/releases)) |
+| Cursor / VSCodium / Windsurf | `vscode/` | [Open VSX](https://open-vsx.org/extension/dylscoop/codotchi) (or `.vsix` from [Releases](https://github.com/dylscoop/codotchi/releases)) |
 | JetBrains (PyCharm, IntelliJ, etc.) | `pycharm/` | [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/33203-codotchi) (or `.zip` from [Releases](https://github.com/dylscoop/codotchi/releases)) |
 | OpenCode | `.opencode/` + `opencode-codotchi/` | In-repo plugin (auto-loaded) or npm package (global install) |
 | Claude Desktop | `claude-desktop-codotchi/` | `.mcpb` one-click install (the pet renders as ASCII art inline in chat) |
@@ -76,6 +77,18 @@ code --install-extension dylscoop.codotchi
 1. Download `codotchi-2.27.4.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
+
+### Cursor (and other Open VSX editors)
+
+Codotchi is published on **[Open VSX](https://open-vsx.org/extension/dylscoop/codotchi)**,
+so it can be installed directly in Cursor, VSCodium, Windsurf and other VS Code–compatible
+editors. Search for **Codotchi** in the Extensions view (`Ctrl+Shift+X`), or from the terminal:
+
+```bash
+cursor --install-extension dylscoop.codotchi
+```
+
+> The Copilot quota bubble only shows data if you're signed in with a GitHub account that has Copilot.
 
 ### JetBrains
 
