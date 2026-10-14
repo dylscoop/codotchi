@@ -2910,6 +2910,22 @@ export function achievementById(id: string): Achievement | undefined {
   return ACHIEVEMENTS.find((a) => a.id === id);
 }
 
+/**
+ * Notification text for a progression event (achievement unlock or trainer
+ * level-up), or null for any other event. Pet level-ups only show in the pet's
+ * speech bubble, so they return null too.
+ */
+export function progressionMessage(event: string, state: PetState): string | null {
+  if (event === "trainer_level_up") {
+    return `Level up! You're now trainer level ${state.trainer.level}.`;
+  }
+  if (event.startsWith("achievement_unlocked_")) {
+    const a = achievementById(event.slice("achievement_unlocked_".length));
+    return a ? `Achievement unlocked: ${a.emoji} ${a.name} — ${a.description}` : null;
+  }
+  return null;
+}
+
 /** Parse a TrainerProgress from saved JSON, filling in defaults for anything missing. */
 export function deserialiseTrainer(raw: unknown): TrainerProgress {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) { return createTrainer(); }

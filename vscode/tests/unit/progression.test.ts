@@ -18,6 +18,7 @@ import {
   levelProgress,
   localDayKey,
   praise,
+  progressionMessage,
   serialiseState,
   xpToNextLevel,
   PetState,
@@ -156,6 +157,16 @@ describe("persistence", () => {
   });
 });
 
+describe("progressionMessage", () => {
+  it("describes unlocks and trainer level-ups only", () => {
+    const s = awardXp(makePet(), "commit", NOON);
+    assert.equal(progressionMessage("achievement_unlocked_first_commit", s), "Achievement unlocked: 📌 First Commit — Make a commit");
+    assert.equal(progressionMessage("trainer_level_up", s), `Level up! You're now trainer level ${s.trainer.level}.`);
+    assert.equal(progressionMessage("pet_level_up", s), null);
+    assert.equal(progressionMessage("fed_meal", s), null);
+  });
+});
+
 describe("ACHIEVEMENTS", () => {
   it("has unique ids", () => {
     assert.equal(new Set(ACHIEVEMENTS.map((a) => a.id)).size, ACHIEVEMENTS.length);
@@ -167,5 +178,12 @@ describe("ACHIEVEMENTS", () => {
     const rows = [...block.matchAll(/^\s+(\w+):\s+\["([^"]+)",\s*"([^"]+)",\s*"([^"]+)"\]/gm)]
       .map((m) => ({ id: m[1], emoji: m[2], name: m[3], description: m[4] }));
     assert.deepEqual(rows, ACHIEVEMENTS.map(({ id, emoji, name, description }) => ({ id, emoji, name, description })));
+  });
+
+  it("matches ACHIEVEMENTS in the Kotlin engine", () => {
+    const kt = fs.readFileSync(path.join(__dirname, "../../../../pycharm/src/main/kotlin/com/codotchi/engine/Progression.kt"), "utf8");
+    const rows = [...kt.matchAll(/Achievement\("(\w+)",\s*"([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*"(\w+)",\s*(\d+)\)/g)]
+      .map((m) => ({ id: m[1], name: m[2], description: m[3], emoji: m[4], counter: m[5], threshold: Number(m[6]) }));
+    assert.deepEqual(rows, ACHIEVEMENTS.map((a) => ({ ...a })));
   });
 });

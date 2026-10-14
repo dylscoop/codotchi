@@ -92,6 +92,19 @@ val ACHIEVEMENTS: List<Achievement> = listOf(
 
 fun achievementById(id: String): Achievement? = ACHIEVEMENTS.firstOrNull { it.id == id }
 
+/**
+ * Notification text for a progression event (achievement unlock or trainer
+ * level-up), or null for any other event. Mirrors progressionMessage in gameEngine.ts.
+ */
+fun progressionMessage(event: String, state: PetState): String? {
+    if (event == "trainer_level_up") return "Level up! You're now trainer level ${state.trainer.level}."
+    if (event.startsWith("achievement_unlocked_")) {
+        val a = achievementById(event.removePrefix("achievement_unlocked_")) ?: return null
+        return "Achievement unlocked: ${a.emoji} ${a.name} — ${a.description}"
+    }
+    return null
+}
+
 /** XP needed to go from [level] to level + 1. */
 fun xpToNextLevel(level: Int): Int = (100.0 * max(1, level).toDouble().pow(1.5)).roundToInt()
 

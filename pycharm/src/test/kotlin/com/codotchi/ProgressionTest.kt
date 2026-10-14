@@ -106,6 +106,14 @@ class ProgressionTest {
     }
 
     @Test
+    fun `progression messages match TypeScript`() {
+        val s = awardXp(pet(), "commit", noon)
+        assertEquals("Achievement unlocked: 📌 First Commit — Make a commit", progressionMessage("achievement_unlocked_first_commit", s))
+        assertEquals("Level up! You're now trainer level ${s.trainer.level}.", progressionMessage("trainer_level_up", s))
+        assertNull(progressionMessage("pet_level_up", s))
+    }
+
+    @Test
     fun `achievement ids are unique`() {
         assertEquals(ACHIEVEMENTS.size, ACHIEVEMENTS.map { it.id }.toSet().size)
     }
