@@ -19,12 +19,23 @@ class ProgressionTest {
 
     @Test
     fun `level curve matches TypeScript`() {
-        assertEquals(100, xpToNextLevel(1))
-        assertEquals(283, xpToNextLevel(2))
-        assertEquals(800, xpToNextLevel(4))
-        assertEquals(LevelProgress(1, 99, 100), levelProgress(99))
-        assertEquals(LevelProgress(2, 0, 283), levelProgress(100))
-        assertEquals(3, levelProgress(100 + 283 + 1).level)
+        assertEquals(50, xpToNextLevel(1))
+        assertEquals(141, xpToNextLevel(2))
+        assertEquals(400, xpToNextLevel(4))
+        assertEquals(LevelProgress(1, 49, 50), levelProgress(49))
+        assertEquals(LevelProgress(2, 0, 141), levelProgress(50))
+        assertEquals(3, levelProgress(50 + 141 + 1).level)
+    }
+
+    @Test
+    fun `XP amounts and caps match TypeScript`() {
+        assertEquals(10, XP_AMOUNTS["call"])
+        assertEquals(10, XP_AMOUNTS["minigame"])
+        assertEquals(2, XP_AMOUNTS["code"])
+        assertEquals(15, XP_AMOUNTS["commit"])
+        listOf("care", "snack", "clean", "cure").forEach { assertEquals(0, XP_AMOUNTS[it]) }
+        assertEquals(mapOf("code" to 10, "commit" to 30, "minigame" to 20), XP_HOURLY_CAPS)
+        assertEquals(mapOf("code" to 40, "commit" to 90, "call" to 100, "minigame" to 50), XP_DAILY_CAPS)
     }
 
     @Test
@@ -38,21 +49,24 @@ class ProgressionTest {
 
     @Test
     fun `level ups emit events`() {
-        val s = awardXp(pet().copy(petXp = 99), "care", noon)
+        val s = awardXp(pet().copy(petXp = 49), "call", noon)
         assertEquals(2, s.petLevel)
         assertTrue("pet_level_up" in s.events)
-        val t = awardXp(pet().copy(trainer = TrainerProgress(xp = 99)), "care", noon)
+        val t = awardXp(pet().copy(trainer = TrainerProgress(xp = 49)), "call", noon)
         assertEquals(2, t.trainer.level)
         assertTrue("trainer_level_up" in t.events)
     }
 
     @Test
-    fun `code XP is capped per day but still counted`() {
+    fun `code XP is capped per hour and per day but still counted`() {
         var s = pet()
-        repeat(200) { s = awardXp(s, "code", noon) }
+        repeat(20) { s = awardXp(s, "code", noon) }
+        assertEquals(XP_HOURLY_CAPS["code"], s.trainer.xpThisHour["code"])
+        assertEquals(XP_HOURLY_CAPS["code"], s.petXp)
+        assertEquals(20, s.trainer.counters["codeActivity"])
+        for (h in 6 until 16) repeat(10) { s = awardXp(s, "code", at(h)) }
         assertEquals(XP_DAILY_CAPS["code"], s.trainer.xpToday["code"])
         assertEquals(XP_DAILY_CAPS["code"], s.petXp)
-        assertEquals(200, s.trainer.counters["codeActivity"])
         val tomorrow = noon + 24L * 3600 * 1000
         s = awardXp(s, "code", tomorrow)
         assertEquals(localDayKey(tomorrow), s.trainer.xpDay)
@@ -73,7 +87,41 @@ class ProgressionTest {
         assertEquals(XP_AMOUNTS["minigame"], applyMinigameResult(pet(), "left_right", "win").petXp)
         assertEquals(0, applyMinigameResult(pet(), "left_right", "lose").petXp)
         assertEquals(0, praise(pet()).petXp)
-        assertEquals(XP_AMOUNTS["care"], praise(pet().copy(activeAttentionCall = "gift")).petXp)
+        assertEquals(XP_AMOUNTS["call"], praise(pet().copy(activeAttentionCall = "gift")).petXp)
+        assertEquals(XP_AMOUNTS["call"], praise(pet().copy(activeAttentionCall = "break")).petXp)
+    }
+
+    @Test
+    fun `care actions earn XP only when they answer a call`() {
+        assertEquals(0, feedMeal(pet(), 0).petXp)
+        val fed = feedMeal(pet().copy(activeAttentionCall = "hunger"), 0)
+        assertEquals(XP_AMOUNTS["call"], fed.petXp)
+        assertEquals(1, fed.trainer.counters["callsAnswered"])
+        assertEquals(1, fed.trainer.counters["care"])
+        assertEquals(0, clean(pet().copy(poops = 1)).petXp)
+        assertEquals(XP_AMOUNTS["call"], clean(pet().copy(poops = 1, activeAttentionCall = "poop")).petXp)
+        assertEquals(0, startSnack(pet()).petXp)
+        assertEquals(XP_AMOUNTS["call"], startSnack(pet().copy(activeAttentionCall = "hunger")).petXp)
+        assertEquals(0, sleep(pet()).petXp)
+        assertEquals(XP_AMOUNTS["call"], sleep(pet().copy(activeAttentionCall = "low_energy")).petXp)
+    }
+
+    @Test
+    fun `answered calls are capped per day only`() {
+        var s = pet()
+        repeat(15) { s = awardXp(s, "call", noon) }
+        assertEquals(XP_DAILY_CAPS["call"], s.trainer.xpToday["call"])
+        assertEquals(15, s.trainer.counters["callsAnswered"])
+    }
+
+    @Test
+    fun `coming-soon achievements never unlock and progress is capped`() {
+        val s = awardXp(pet().copy(trainer = TrainerProgress(counters = mapOf("bossKills" to 99))), "code", noon)
+        assertFalse("first_blood" in s.trainer.achievements)
+        assertEquals(listOf("detective", "first_blood", "exterminator", "champion"), ACHIEVEMENTS.filter { it.comingSoon }.map { it.id })
+        val onCall = achievementById("on_call")!!
+        assertEquals(42 to 100, achievementProgress(onCall, TrainerProgress(counters = mapOf("callsAnswered" to 42))))
+        assertEquals(100 to 100, achievementProgress(onCall, TrainerProgress(counters = mapOf("callsAnswered" to 420))))
     }
 
     @Test

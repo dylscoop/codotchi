@@ -173,6 +173,10 @@ data class TrainerProgress(
     val counters: Map<String, Int> = emptyMap(),
     /** Local date (YYYY-MM-DD) the daily XP buckets belong to. */
     val xpDay: String = "",
-    /** XP earned today per capped bucket ("code", "care"). */
+    /** XP earned today per daily-capped source (see XP_DAILY_CAPS). */
     val xpToday: Map<String, Int> = emptyMap(),
+    /** Local clock hour (YYYY-MM-DDTHH) the hourly XP buckets belong to. */
+    val xpHour: String = "",
+    /** XP earned this hour per hourly-capped source (see XP_HOURLY_CAPS). */
+    val xpThisHour: Map<String, Int> = emptyMap(),
 )

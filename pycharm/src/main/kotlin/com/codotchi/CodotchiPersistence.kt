@@ -529,6 +529,8 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             "counters" to s.trainer.counters,
             "xpDay" to s.trainer.xpDay,
             "xpToday" to s.trainer.xpToday,
+            "xpHour" to s.trainer.xpHour,
+            "xpThisHour" to s.trainer.xpThisHour,
         ),
     )
 }

@@ -865,7 +865,7 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int
             attentionCallCooldowns   = pick?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
             cravingFood              = if (pick != null && state.activeAttentionCall == "craving") null else state.cravingFood,
         )
-    ).let { awardXp(it, "care") }
+    ).let { awardXp(it, "care", answeredCall = pick != null) }
 }
 
 /**
@@ -907,7 +907,7 @@ fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
             cravingFood              = if (answered != null && state.activeAttentionCall == "craving") null else state.cravingFood,
         )
-    )
+    ).let { if (answered != null) awardXp(it, "call") else it }
 }
 
 /**
@@ -975,7 +975,7 @@ fun play(state: PetState, playWeightLoss: Int? = null): PetState {
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
-    ).let { awardXp(it, "care") }
+    ).let { awardXp(it, "care", answeredCall = answered != null) }
 }
 
 /**
@@ -1004,7 +1004,7 @@ fun pat(state: PetState): PetState {
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
-    ).let { awardXp(it, "care") }
+    ).let { awardXp(it, "care", answeredCall = answered != null) }
 }
 
 /**
@@ -1085,7 +1085,7 @@ fun sleep(state: PetState): PetState {
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
-    )
+    ).let { if (answered != null) awardXp(it, "call") else it }
 }
 
 /**
@@ -1157,7 +1157,7 @@ fun clean(state: PetState): PetState {
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
-    ).let { awardXp(it, "clean") }
+    ).let { awardXp(it, "clean", answeredCall = answered != null) }
 }
 
 fun giveMedicine(state: PetState): PetState {
@@ -1178,7 +1178,7 @@ fun giveMedicine(state: PetState): PetState {
                 attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
                 attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
             )
-        ).let { awardXp(it, "cure") }
+        ).let { awardXp(it, "cure", answeredCall = answered != null) }
     } else {
         withDerivedFields(
             state.copy(
@@ -1189,7 +1189,7 @@ fun giveMedicine(state: PetState): PetState {
                 attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
                 attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
             )
-        ).let { awardXp(it, "care") }
+        ).let { awardXp(it, "care", answeredCall = answered != null) }
     }
 }
 
@@ -1207,7 +1207,7 @@ fun scold(state: PetState): PetState {
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
     // Scold / praise cost nothing, so they only earn XP when they answer a call.
-    ).let { if (answered != null) awardXp(it, "care") else it }
+    ).let { if (answered != null) awardXp(it, "care", answeredCall = true) else it }
 }
 
 /**
@@ -1248,7 +1248,7 @@ fun praise(state: PetState): PetState {
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
-    ).let { if (answered != null) awardXp(it, "care") else it }
+    ).let { if (answered != null) awardXp(it, "care", answeredCall = true) else it }
 }
 
 fun applyCodeActivity(state: PetState): PetState {
