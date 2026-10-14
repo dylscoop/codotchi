@@ -149,3 +149,34 @@ describe("resolveVSCodeStatePath", () => {
     assert.strictEqual(first, second);
   });
 });
+
+// ---------------------------------------------------------------------------
+// getOpenCodeConfigDir — must match where VS Code / PyCharm read codotchi-daily.json
+// ---------------------------------------------------------------------------
+
+import { getOpenCodeConfigDir } from "../../src/statePathResolver";
+
+describe("getOpenCodeConfigDir", () => {
+  let saved: string | undefined;
+  beforeEach(() => { saved = process.env["XDG_CONFIG_HOME"]; });
+  afterEach(() => {
+    if (saved === undefined) { delete process.env["XDG_CONFIG_HOME"]; }
+    else { process.env["XDG_CONFIG_HOME"] = saved; }
+  });
+
+  it("honours XDG_CONFIG_HOME when set", () => {
+    const xdg = path.join(os.tmpdir(), "xdg-test");
+    process.env["XDG_CONFIG_HOME"] = xdg;
+    assert.equal(getOpenCodeConfigDir(), path.join(xdg, "opencode"));
+  });
+
+  it("falls back to ~/.config/opencode when XDG_CONFIG_HOME is unset", () => {
+    delete process.env["XDG_CONFIG_HOME"];
+    assert.equal(getOpenCodeConfigDir(), path.join(os.homedir(), ".config", "opencode"));
+  });
+
+  it("treats an empty XDG_CONFIG_HOME as unset", () => {
+    process.env["XDG_CONFIG_HOME"] = "";
+    assert.equal(getOpenCodeConfigDir(), path.join(os.homedir(), ".config", "opencode"));
+  });
+});

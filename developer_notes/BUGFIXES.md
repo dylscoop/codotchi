@@ -2435,3 +2435,27 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** `queryDailyUsageFromDb()` opens `opencode.db` read-only with `bun:sqlite` (OpenCode's runtime), falling back to `node:sqlite`. It resolves the path from `XDG_DATA_HOME` or `~/.local/share/opencode/opencode.db`, and keeps the old CLI as a last resort. The queries prefilter on the indexed `time_created` column (from a day before midnight), so the read takes about 36 ms on a 7 GB database, and a v2-only query handles databases without the old `message` table. The total is re-synced from the database on `session.idle` (at most every 30 s). Database writes to the file are tagged `"source": "db"`, and other windows only accept a lower total when it carries that tag; live writes can only raise it.
 
 **Tests:** `opencode-codotchi/tests/unit/usageBackfill.test.ts` (query shape, real SQLite totals for v2-only and v1+v2 schemas, missing file, DB path).
+
+## BUGFIX-204 - IDEs show $0 OpenCode spend when XDG_CONFIG_HOME is set
+
+**Files:** `opencode-codotchi/src/statePathResolver.ts`, `opencode-codotchi/src/index.ts`, `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** The OpenCode plugin always wrote `codotchi-daily.json`, `codotchi-config.json` and `codotchi-local.json` under `~/.config/opencode/`, ignoring `XDG_CONFIG_HOME`. The VS Code and PyCharm readers (and `bin/install.js`) honour `XDG_CONFIG_HOME`, so with it set the IDEs looked in a different folder and showed no OpenCode spend.
+
+**Fix:** Added `getOpenCodeConfigDir()` (honours `XDG_CONFIG_HOME`, treats empty as unset) and used it for all three files. VS Code and PyCharm now also treat an empty `XDG_CONFIG_HOME` as unset. Unit tests added in `tests/unit/statePath.test.ts`.
+
+## BUGFIX-205 - /codotchi care actions changed VS Code / PyCharm pets from OpenCode
+
+**Files:** `opencode-codotchi/src/index.ts`, `opencode-codotchi/commands/codotchi.md`, `opencode-codotchi/src/commandTemplate.ts`, `README.md`, `opencode-codotchi/README.md`
+
+**Problem:** `feed`, `snack`, `pat`, `play`, `sleep`, `clean` and `medicine` acted on whichever IDE pets were live and wrote their state files, so OpenCode could feed or put to sleep a pet owned by VS Code or PyCharm.
+
+**Fix:** Care actions now target only the OpenCode-local pet. Each live IDE pet gets a "has no effect" line instead, and its state is never written. `/codotchi help`, the tool description and both READMEs say these actions (plus `rename` and `new_game`) are OpenCode-pet only. Test: `tests/unit/pluginContract.test.ts` ("care actions never act on VS Code / PyCharm pets").
+
+## BUGFIX-206 - Every OpenCode window showed the same pet speech
+
+**Files:** `opencode-codotchi/src/index.ts`, `opencode-codotchi/tui/tui.tsx`, `opencode-codotchi/tests/unit/pluginContract.test.ts`
+
+**Problem:** In OpenCode V2 every window talks to one shared server process. The per-window `WINDOW_SALT` lived on `globalThis`, so it was the same for all windows, and the server cached one bubble and broadcast that snapshot in the `updated` event. Every window across every repo showed the same pet and phrase.
+
+**Fix:** Each TUI makes a random window key and sends it as the `snapshot` RPC input (`{ window }`). The server keeps one bubble per key (`windowViews`, capped at 32, oldest evicted) and seeds the pet rotation and phrase from a hash of the key. The `updated` event now carries no snapshot (`{ refresh: true }`), so each window pulls its own. Cost totals are still shared. Test: `pluginContract.test.ts` checks that different window keys get different pets or phrases and that each key stays stable.

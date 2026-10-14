@@ -18,7 +18,7 @@ import { createSignal, For, Show } from "solid-js"
 const CODOTCHI_RPC = {
   id: "codotchi",
   methods: {
-    snapshot: { output: { type: "object" } },
+    snapshot: { input: { type: "object" }, output: { type: "object" } },
   },
   events: {
     updated: { schema: { type: "object" } },
@@ -86,6 +86,9 @@ export default Plugin.define({
     const [snap, setSnap] = createSignal<Snapshot | undefined>()
     const rpc = context.client.rpc(CODOTCHI_RPC as any) as any
     const location = () => context.location ?? context.data.location.default()
+    // All windows share one server, so each window sends its own random key
+    // to get its own seed (pet order and phrases).
+    const windowKey = `win-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 
     // Only replace the snapshot when something visible changed, so the
     // pet isn't re-rendered (flickering) on every server update.
@@ -111,16 +114,14 @@ export default Plugin.define({
 
     const refresh = async () => {
       try {
-        apply((await rpc.snapshot(undefined, { location: location() })) as Snapshot)
+        apply((await rpc.snapshot({ window: windowKey }, { location: location() })) as Snapshot)
       } catch {
         /* server plugin not ready yet; the next update or poll retries */
       }
     }
 
-    const stopUpdated = rpc.events.on("updated", (event: any) => {
-      if (event?.data && Array.isArray(event.data.pets)) apply(event.data as Snapshot)
-      else void refresh()
-    })
+    // "updated" is only a signal; every window pulls its own snapshot.
+    const stopUpdated = rpc.events.on("updated", () => void refresh())
     const stopAlert = rpc.events.on("alert", (event: any) => {
       const d = event?.data
       if (!d?.message) return

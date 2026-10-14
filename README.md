@@ -105,75 +105,130 @@ or in your IDE go to **Settings → Plugins → Marketplace**, search for
 
 ### OpenCode
 
-#### Option A — In-repo (this repository only)
+Install once, and your pet follows you into **every project** you open in
+OpenCode. Pick **one** of the options below.
 
-The plugin lives in `.opencode/plugins/codotchi.ts` and is loaded automatically
-by OpenCode when you open this repository.
+#### Option 1 — npm (recommended)
 
-1. Make sure `@opencode-ai/plugin` is installed:
+Add the plugin to your global OpenCode config,
+`~/.config/opencode/opencode.json` (or `$XDG_CONFIG_HOME/opencode/opencode.json`):
 
-   ```bash
-   cd .opencode && npm install
-   ```
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["opencode-codotchi"]
+}
+```
 
-2. Open the repo in OpenCode — the pet plugin loads on startup.
+On OpenCode 1.x the key is `"plugin"` (singular) instead of `"plugins"`.
 
-#### Option B — Global install (`opencode-codotchi`)
+Restart OpenCode. It downloads the package on startup, and the plugin
+registers both the `codotchi` tool and the `/codotchi` slash command, so
+there's nothing else to copy. To pin a version use `"opencode-codotchi@2.28.0"`.
 
-Make your pet available in **every project** you open in OpenCode by installing
-it once per machine. The easiest path is downloading the zip from the Releases
-page — no repository clone required:
+> If you prefer files on disk, `npx opencode-codotchi --install` runs the same
+> installer as Option 2 straight from npm.
 
-#### From Zip
+#### Option 2 — Release zip (no Node package manager needed)
 
-1. Download `opencode-codotchi-2.27.5.zip` from the
-   [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download the latest `opencode-codotchi-<version>.zip` from the
+   [Releases page](https://github.com/dylscoop/codotchi/releases/latest).
 2. Extract it and run the installer:
 
    ```bash
    # macOS / Linux
-   unzip opencode-codotchi-2.27.5.zip && cd opencode-codotchi-2.27.5
+   unzip opencode-codotchi-<version>.zip && cd opencode-codotchi-<version>
    node bin/install.js --install
    ```
 
    ```powershell
    # Windows (PowerShell)
-   Expand-Archive opencode-codotchi-2.27.5.zip; cd opencode-codotchi-2.27.5
+   Expand-Archive opencode-codotchi-<version>.zip; cd opencode-codotchi-<version>
    node bin/install.js --install
    ```
 
-#### From Source
+#### Option 3 — From source
 
 ```bash
 cd opencode-codotchi
+npm install
 node bin/install.js --install
 ```
 
-#### From NPM
+#### Option 4 — In-repo (this repository only)
 
-> **Note:** `opencode-codotchi` has not yet been published to the npm registry.
+The plugin in `.opencode/` loads automatically when you open this repository
+in OpenCode. Run `cd .opencode && npm install` once first.
 
-```bash
-npx opencode-codotchi --install
-```
+#### What the installer does (options 2 and 3)
 
-The installer copies the `/codotchi` slash command and the plugin TypeScript
-source files into `~/.config/opencode/commands/` and
-`~/.config/opencode/plugins/` respectively, and adds the `@opencode-ai/plugin`
-dependency to `~/.config/opencode/package.json`. OpenCode loads all files in
-the plugins directory automatically on startup.
+| Writes | Purpose |
+|---|---|
+| `~/.config/opencode/plugins/codotchi/index.js` + `tui.tsx` | OpenCode 2 plugin (server bundle + sidebar/TUI) |
+| `~/.config/opencode/plugins/codotchi.js` | OpenCode 1.x single-file plugin (removed automatically on OpenCode 2) |
+| `~/.config/opencode/commands/codotchi.md` | The `/codotchi` slash command |
+| `~/.config/opencode/package.json` | Adds the `@opencode-ai/plugin` dependency, installed by OpenCode via bun on next start |
 
-After running the installer, open any project in OpenCode — on first startup
-the plugin dependency is installed via bun and the pet loads automatically.
+`~/.config` is replaced by `$XDG_CONFIG_HOME` when that variable is set. Old
+loose `.ts` files from earlier versions are removed automatically.
 
-Either way, use `/codotchi` to interact with your pet:
+#### Check it works
+
+Open any project in OpenCode and run `/codotchi`. You should see your pet's
+stats. If nothing happens, see Troubleshooting below.
+
+#### Update / uninstall
+
+- **npm:** OpenCode refreshes the package on startup; pin or bump the version
+  in `opencode.json`. Remove the entry from `"plugins"` to uninstall.
+- **Zip / source:** re-run `node bin/install.js --install` from the new
+  version. To uninstall, delete the `plugins/codotchi/` folder (or
+  `plugins/codotchi.js` on 1.x) and `commands/codotchi.md` from
+  `~/.config/opencode/`.
+
+Don't combine options 1 and 2 — you'd load the plugin twice.
+
+#### Cost sync with VS Code / PyCharm
+
+The OpenCode plugin writes today's spend (cost, tokens, messages) to
+`~/.config/opencode/codotchi-daily.json`. The VS Code and PyCharm pets read
+this file and show it as an **OpenCode** line next to their own usage, so you
+see your OpenCode spend from the IDE too. The file resets each local
+calendar day, and the IDEs ignore it if it's from an earlier day.
+
+The `warnthreshold` / `shoutthreshold` cost alerts are OpenCode-only and are
+stored in `~/.config/opencode/codotchi-config.json`.
+
+Both sides honour `XDG_CONFIG_HOME`, so set it (or leave it unset) the same
+way for OpenCode and your IDE.
+
+#### Troubleshooting
+
+- **`/codotchi` does nothing / tool not found:** make sure only one install
+  method is active, then restart OpenCode. Check that
+  `~/.config/opencode/plugins/` contains only the `codotchi/` folder (or
+  `codotchi.js` on 1.x), with no leftover
+  `gameEngine.ts`, `asciiArt.ts`, `statePathResolver.ts`); re-running the
+  installer cleans these up.
+- **"Plugin export is not a function":** the same leftover `.ts` files are the
+  cause; re-run the installer.
+- **IDE shows $0 for OpenCode:** send at least one message in OpenCode today,
+  then confirm `codotchi-daily.json` exists in the folder above and that
+  OpenCode and the IDE agree on `XDG_CONFIG_HOME`.
+
+#### Using your pet
 
 - `/codotchi` — show status
 - `/codotchi feed` / `snack` / `play` / `pat` — care actions
 - `/codotchi sleep` / `wake` — sleep cycle
 - `/codotchi clean` / `medicine` — hygiene and health
 - `/codotchi show` / `hide` — toggle ASCII art display
+- `/codotchi warnthreshold <usd>` / `shoutthreshold <usd>` — daily cost alerts
 - `/codotchi new_game name=<name> petType=<type>` — start a fresh pet
+
+Care actions (`feed`, `snack`, `play`, `pat`, `sleep`/`wake`, `clean`,
+`medicine`), `rename` and `new_game` act on the OpenCode pet only. They have no
+effect on VS Code or PyCharm pets — look after those in the IDE sidebar.
 
 For full usage instructions see the individual READMEs:
 

@@ -43,7 +43,8 @@ import * as os   from "os";
 import { spawnSync } from "child_process";
 import { tool }  from "@opencode-ai/plugin";
 import type { Plugin, PluginInput } from "@opencode-ai/plugin";
-import { getIDEBase as _getIDEBase, resolveVSCodeStatePath } from "./statePathResolver.js";
+import { getIDEBase as _getIDEBase, resolveVSCodeStatePath, getOpenCodeConfigDir } from "./statePathResolver.js";
+import { CODOTCHI_COMMAND_DESCRIPTION, CODOTCHI_COMMAND_TEMPLATE } from "./commandTemplate.js";
 import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry, buildDailyUsageQueries, defaultOpencodeDbPath, queryDailyUsageFromDb, UsageTotals } from "./usageBackfill.js";
 
 import {
@@ -90,6 +91,9 @@ import {
 
 /** How recently (ms) a state file must have been saved to count as "active". */
 const ACTIVE_IDE_THRESHOLD_MS = 60_000;
+
+/** Pet-care actions; from OpenCode these only ever act on the OpenCode-local pet. */
+const CARE_ACTIONS: ReadonlySet<string> = new Set(["feed", "snack", "pat", "play", "sleep", "clean", "medicine"]);
 
 // Speech when a whim attention call is answered — one line picked at random.
 // Mirrored in vscode/media/sidebar.js (shared by both IDEs) and claude-codotchi/scripts/whimSpeech.mjs.
@@ -219,7 +223,7 @@ function saveTerminalEnabled(): void {
 // ---------------------------------------------------------------------------
 
 function getDailyUsagePath(): string {
-  return path.join(os.homedir(), ".config", "opencode", "codotchi-daily.json");
+  return path.join(getOpenCodeConfigDir(), "codotchi-daily.json");
 }
 
 /** Local calendar date ("YYYY-MM-DD") — "today" for daily usage and the local pet. */
@@ -555,7 +559,7 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
 // ---------------------------------------------------------------------------
 
 function getPluginConfigPath(): string {
-  return path.join(os.homedir(), ".config", "opencode", "codotchi-config.json");
+  return path.join(getOpenCodeConfigDir(), "codotchi-config.json");
 }
 
 function loadPluginConfig(): void {
@@ -582,7 +586,7 @@ function savePluginConfig(): void {
 // ---------------------------------------------------------------------------
 
 function getLocalStatePath(): string {
-  return path.join(os.homedir(), ".config", "opencode", "codotchi-local.json");
+  return path.join(getOpenCodeConfigDir(), "codotchi-local.json");
 }
 
 /** Total messages (persisted across daily resets) for message-based aging. */
@@ -1380,7 +1384,7 @@ const plugin: Plugin = async (ctx) => {
   const codotchiTool = tool({
     description:
       "Interact with your codotchi virtual pet. Use action='status' to see current stats, " +
-      "or one of: feed, pat, sleep, clean, medicine, on, off. " +
+      "or one of: feed, snack, pat, play, sleep, clean, medicine (these act on the OpenCode pet only and have no effect on VS Code or PyCharm pets), on, off. " +
       "Use warnthreshold <value> or shoutthreshold <value> to set the daily USD cost thresholds " +
       "at which the pet's speech changes tone (defaults: warn=$30, shout=$50). " +
       "Use rename <new-name> to rename the built-in OpenCode pet only (does not affect VS Code or PyCharm pets). " +
@@ -1401,7 +1405,7 @@ const plugin: Plugin = async (ctx) => {
     },
     async execute({ action, value, name }, context) {
       // Drain any queued tick notifications to prepend to this result
-      const notification = drainNotification();
+      let notification = drainNotification();
       const ret = (s: string): string => { lastToolOutput = s; return s; };
 
       const active = getActivePets();
@@ -1484,7 +1488,25 @@ const plugin: Plugin = async (ctx) => {
       }
 
       // Only operate on alive pets
-      const alivePets = active.filter(p => p.state.alive);
+      let alivePets = active.filter(p => p.state.alive);
+
+      // Care actions only ever act on the OpenCode-local pet. IDE pets are cared
+      // for in their own IDE; from OpenCode these actions have no effect on them.
+      if (CARE_ACTIONS.has(action)) {
+        const ideNotes = alivePets
+          .filter(p => p.ide !== "opencode")
+          .map(p => {
+            const label = p.ide === "vscode" ? "VS Code" : "PyCharm";
+            return `[${label}] /codotchi ${action} has no effect on ${p.state.name} — look after IDE pets in the ${label} sidebar.`;
+          });
+        alivePets = localPetState !== null && localPetState.alive
+          ? [{ ide: "opencode", state: localPetState, live: true }]
+          : [];
+        if (alivePets.length === 0) {
+          return ret(notification + (ideNotes.join("\n") || "No OpenCode pet to look after."));
+        }
+        if (ideNotes.length > 0) { notification += ideNotes.join("\n") + "\n\n"; }
+      }
 
       switch (action) {
         case "status": {
@@ -1750,6 +1772,14 @@ const plugin: Plugin = async (ctx) => {
   // Event hooks
   // ---------------------------------------------------------------------------
   return {
+    // Registers /codotchi when loaded as an npm plugin via opencode.json
+    // "plugin": [...]; a user/installer-provided commands/codotchi.md wins.
+    config: async (cfg: { command?: Record<string, { template: string; description?: string }> }) => {
+      cfg.command = cfg.command ?? {};
+      if (!cfg.command["codotchi"]) {
+        cfg.command["codotchi"] = { description: CODOTCHI_COMMAND_DESCRIPTION, template: CODOTCHI_COMMAND_TEMPLATE };
+      }
+    },
     tool: {
       codotchi: codotchiTool,
     },
@@ -2025,7 +2055,7 @@ const v2LegacyClient = {
 const CODOTCHI_RPC = {
   id: "codotchi",
   methods: {
-    snapshot: { output: { type: "object" } },
+    snapshot: { input: { type: "object" }, output: { type: "object" } },
   },
   events: {
     updated: { schema: { type: "object" } },
@@ -2044,20 +2074,45 @@ const CODOTCHI_RPC = {
 };
 
 type ShownPet = { ide: string; name: string; stage: string; message: string; emoji: string; lines: string[] };
-/** Pet shown above the prompt. Refreshed at the end of each reply or every 5 minutes. */
-let shownPet: ShownPet | null = null;
-let speechDirty = true;
+/**
+ * Bubble state for one OpenCode window. All windows share one server process,
+ * so each TUI sends its own window key and gets its own seed, pet and phrase.
+ */
+type WindowView = { seed: number; shownPet: ShownPet | null; shownSlot: number; dirty: boolean; lastSeen: number };
+const windowViews = new Map<string, WindowView>();
+const MAX_WINDOW_VIEWS = 32;
 /** True while a reply is running; the bubble refreshes once when it goes idle. */
 let replyBusy = false;
-let shownSlot = -1;
 /** Fixed order the pets take turns in. */
 const PET_ORDER = ["vscode", "pycharm", "opencode"];
-/**
- * Random per OpenCode window (process). Stored on globalThis so every plugin
- * copy inside one process shares it (no flicker), while separate windows get
- * different pets and phrases.
- */
-const WINDOW_SALT: number = ((globalThis as any).__codotchiWindowSalt ??= Math.floor(Math.random() * 1_000_000));
+
+/** Stable 32-bit seed for a window key (FNV-1a). */
+function windowSeed(key: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) { h = Math.imul(h ^ key.charCodeAt(i), 16777619); }
+  return (h >>> 0) % 1_000_000;
+}
+
+/** Window key from the RPC input, falling back to the request's directory. */
+function windowKeyFrom(input: any, meta: any): string {
+  const k = input?.window ?? input?.sessionID ?? input?.directory ?? meta?.location?.directory ?? meta?.directory;
+  return typeof k === "string" && k.length > 0 ? k : "default";
+}
+
+function viewFor(key: string): WindowView {
+  let v = windowViews.get(key);
+  if (!v) {
+    if (windowViews.size >= MAX_WINDOW_VIEWS) {
+      let oldest: string | undefined;
+      for (const [k, w] of windowViews) { if (!oldest || w.lastSeen < windowViews.get(oldest)!.lastSeen) { oldest = k; } }
+      if (oldest !== undefined) { windowViews.delete(oldest); }
+    }
+    v = { seed: windowSeed(key), shownPet: null, shownSlot: -1, dirty: true, lastSeen: 0 };
+    windowViews.set(key, v);
+  }
+  v.lastSeen = Date.now();
+  return v;
+}
 
 /** Run fn with Math.random replaced by a PRNG seeded from `seed`, so every instance picks the same phrase. */
 function withSeededRandom<T>(seed: string, fn: () => T): T {
@@ -2092,48 +2147,50 @@ function costTier(): "green" | "yellow" | "red" {
 }
 
 /** Everything the TUI needs: one pet's V1 speech bubble (ANSI lines) plus cost totals. */
-function buildSnapshot(): Record<string, unknown> {
+function buildSnapshot(windowKey = "default"): Record<string, unknown> {
+  const view = viewFor(windowKey);
   const hour = lastHourUsage();
   const alive = getActivePets().filter(p => p.state.alive);
   const now = Date.now();
   // Keep showing the current pet while it is alive, even if its IDE briefly
   // drops out of the 60s "live" window — otherwise the display flickers.
-  const current = shownPet ? (alive.find(p => p.ide === shownPet!.ide) ?? stillAlivePet(shownPet.ide)) : undefined;
+  const shown = view.shownPet;
+  const current = shown ? (alive.find(p => p.ide === shown.ide) ?? stillAlivePet(shown.ide)) : undefined;
   // The pet (art + speech) is frozen between refreshes: the speech changes once
   // at the end of each reply, and the pet switches every PET_SWAP_MINUTES
-  // (or when the current pet is gone). Both the pet and the phrase are chosen
-  // deterministically, so every plugin instance shows the same thing.
+  // (or when the current pet is gone). Both are seeded by the window key, so
+  // a window is stable while different windows show different pets/phrases.
   const slot = Math.floor(now / PET_SWAP_MS);
-  const swapDue = !current || slot !== shownSlot;
-  if ((swapDue || speechDirty) && alive.length > 0) {
-    speechDirty = false;
+  const swapDue = !current || slot !== view.shownSlot;
+  if ((swapDue || view.dirty) && alive.length > 0) {
+    view.dirty = false;
     let pick: ActivePet;
     if (swapDue) {
       const ordered = [...alive].sort((a, b) => PET_ORDER.indexOf(a.ide) - PET_ORDER.indexOf(b.ide));
-      pick = ordered[(slot + WINDOW_SALT) % ordered.length];
-      shownSlot = slot;
+      pick = ordered[(slot + view.seed) % ordered.length];
+      view.shownSlot = slot;
     } else {
       pick = current!;
     }
     // Cost figures are on the line under the pet, so the bubble only makes cost-tier remarks.
     const contextual = () => buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages, { remarksOnly: true });
-    const speech = withSeededRandom(`${WINDOW_SALT}|${slot}|${pick.ide}|${dailyMessages}`, contextual);
+    const speech = withSeededRandom(`${view.seed}|${slot}|${pick.ide}|${dailyMessages}`, contextual);
     const s = pick.state;
     const ideLabel = pick.ide === "vscode" ? "[VS Code]" : pick.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
     // No tier emoji in the art header: the cost line under the pet carries it.
     const lines = buildSpeechBubble(s.stage, s.mood, speech.message, s.name, s.spriteType, ideLabel, TIER_ANSI[costTier()])
       .split("\n")
       .filter(l => stripAnsi(l).trim().length > 0);
-    shownPet = { ide: pick.ide, name: s.name, stage: s.stage, message: speech.message, emoji: speech.tierEmoji, lines };
-  } else if (shownPet && !current) {
-    shownPet = null;
+    view.shownPet = { ide: pick.ide, name: s.name, stage: s.stage, message: speech.message, emoji: speech.tierEmoji, lines };
+  } else if (view.shownPet && !current) {
+    view.shownPet = null;
   }
-  const pets = shownPet ? [shownPet] : [];
+  const pets = view.shownPet ? [view.shownPet] : [];
   return {
     enabled: terminalEnabled,
     tier: costTier(),
     pets,
-    petSlot: shownSlot,
+    petSlot: view.shownSlot,
     today: { costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages },
     lastHour: { costUSD: hour.costUSD, tokens: hour.tokens },
     session: { costUSD: sessionCostUSD, tokens: sessionTokens },
@@ -2177,7 +2234,8 @@ async function setupV2(ctx: any): Promise<() => void> {
     if (refreshTimer !== undefined) { return; }
     refreshTimer = setTimeout(() => {
       refreshTimer = undefined;
-      try { void rpcRegistration?.events.emit("updated", buildSnapshot()); } catch { /* best-effort */ }
+      // No payload: each window pulls its own snapshot (own seed and phrase).
+      try { void rpcRegistration?.events.emit("updated", { refresh: true }); } catch { /* best-effort */ }
     }, 250);
   };
 
@@ -2197,15 +2255,39 @@ async function setupV2(ctx: any): Promise<() => void> {
     });
   });
 
+  // npm installs (opencode.json "plugins": [...]) have no commands/codotchi.md;
+  // register /codotchi here unless a file-based command already exists.
+  try {
+    const existing: any = await ctx.command?.list?.();
+    const list: any[] = Array.isArray(existing) ? existing : (existing?.data ?? []);
+    if (ctx.command?.transform && !list.some((c: any) => c?.name === "codotchi")) {
+      await ctx.command.transform((editor: any) => {
+        editor.add({
+          name: "codotchi",
+          description: CODOTCHI_COMMAND_DESCRIPTION,
+          execute: async ({ sessionID, prompt, delivery }: any) => {
+            const args = (prompt?.text ?? "").trim();
+            await ctx.session.prompt({
+              ...prompt,
+              sessionID,
+              text: `${CODOTCHI_COMMAND_TEMPLATE}\n\nshow: ${args}`,
+              delivery,
+            });
+          },
+        });
+      });
+    }
+  } catch { /* command API unavailable — tool still works */ }
+
   if (!isLeader) {
     let ownRpc: any = null;
-    try { ownRpc = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async () => buildSnapshot() }); } catch { /* already registered here */ }
+    try { ownRpc = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async (input: any, meta: any) => buildSnapshot(windowKeyFrom(input, meta)) }); } catch { /* already registered here */ }
     v2Leader!.refs += 1;
     return () => { void ownRpc?.dispose?.(); releaseV2(); };
   }
 
   try {
-    rpcRegistration = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async () => buildSnapshot() });
+    rpcRegistration = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async (input: any, meta: any) => buildSnapshot(windowKeyFrom(input, meta)) });
   } catch { /* RPC unavailable — the TUI simply shows nothing */ }
   requestSidebarRefresh = emitUpdated;
 
@@ -2231,7 +2313,7 @@ async function setupV2(ctx: any): Promise<() => void> {
         // End of a reply: V2 may send session.idle and/or session.status → idle.
         // Refresh the speech once per reply, not once per idle signal.
         const endOfReply = event?.type === "session.idle" || (event?.type === "session.status" && event.data?.status?.type === "idle");
-        if (endOfReply && replyBusy) { replyBusy = false; speechDirty = true; emitUpdated(); }
+        if (endOfReply && replyBusy) { replyBusy = false; for (const v of windowViews.values()) { v.dirty = true; } emitUpdated(); }
         if (translated.length > 0) { emitUpdated(); }
       }
     } catch { /* subscription closed */ }

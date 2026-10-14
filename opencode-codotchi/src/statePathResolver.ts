@@ -26,6 +26,15 @@ export function _resetVSCodePathCache(): void {
   _resolvedVSCodeStatePath = null;
 }
 
+/**
+ * OpenCode's config directory. Honours XDG_CONFIG_HOME (as OpenCode, the
+ * installer, and the VS Code / PyCharm readers of codotchi-daily.json do).
+ */
+export function getOpenCodeConfigDir(): string {
+  const base = process.env["XDG_CONFIG_HOME"] || path.join(os.homedir(), ".config");
+  return path.join(base, "opencode");
+}
+
 /** Platform-specific base directory for all codotchi state files. */
 export function getIDEBase(): string {
   return process.platform === "win32"

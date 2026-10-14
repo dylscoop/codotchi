@@ -1,29 +1,40 @@
 {
   "name": "opencode-codotchi",
   "version": "2.28.0",
-  "description": "A virtual Tamagotchi-style pet that lives inside OpenCode — globally installable via npm",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "description": "A virtual Tamagotchi-style pet that lives inside OpenCode and reacts to your daily AI spend",
+  "main": "dist-plugin/codotchi.js",
+  "exports": {
+    ".": "./dist-plugin/codotchi.js",
+    "./tui": "./tui/tui.tsx"
+  },
   "bin": {
     "opencode-codotchi": "bin/install.js"
   },
   "scripts": {
     "prebuild": "node ../scripts/sync-core.mjs",
     "build": "tsc",
-    "prebundle": "node ../scripts/sync-core.mjs",
+    "prebundle": "node ../scripts/sync-core.mjs && node scripts/gen-command-template.js",
     "bundle": "node scripts/bundle-plugin.js",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run bundle",
     "pretest:node": "node ../scripts/sync-core.mjs",
-    "test:node": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/asciiArt.test.js out-test/tests/unit/statePath.test.js out-test/tests/unit/usageBackfill.test.js",
+    "test:node": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/asciiArt.test.js out-test/tests/unit/statePath.test.js out-test/tests/unit/usageBackfill.test.js out-test/tests/unit/commandTemplate.test.js",
     "test:plugin": "node scripts/bundle-plugin.js && bun test --timeout 30000 tests/unit/pluginContract.test.ts",
     "test": "npm run test:node && npm run test:plugin"
   },
-  "keywords": ["opencode", "plugin", "tamagotchi", "virtual-pet", "codotchi"],
+  "keywords": ["opencode", "opencode-plugin", "plugin", "tamagotchi", "virtual-pet", "codotchi", "ai-cost", "usage-tracking"],
   "author": "dylscoop",
   "license": "MIT",
+  "homepage": "https://github.com/dylscoop/codotchi#opencode",
+  "bugs": {
+    "url": "https://github.com/dylscoop/codotchi/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dylscoop/codotchi.git"
+    "url": "git+https://github.com/dylscoop/codotchi.git",
+    "directory": "opencode-codotchi"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "@opencode-ai/plugin": "1.2.27"
@@ -33,12 +44,12 @@
     "@types/node": "^20.0.0"
   },
   "files": [
-    "dist/",
+    "dist-plugin/",
+    "tui/",
     "commands/",
     "bin/",
-    "config/"
+    "config/",
+    "scripts/bundle-plugin.js",
+    "README.md"
   ]
 }
-
-
-

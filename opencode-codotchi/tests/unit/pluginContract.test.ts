@@ -272,6 +272,30 @@ describe("codotchi tool execute", () => {
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
   });
+
+  it("care actions never act on VS Code / PyCharm pets", async () => {
+    const hook = hooksList[0];
+    const toolDef = (hook?.["tool"] as Record<string, unknown>)?.["codotchi"] as
+      { execute: (args: { action: string }, ctx: unknown) => Promise<string> } | undefined;
+    if (!toolDef) return;
+    const ctx = {
+      sessionID: "s", messageID: "m", agent: "a",
+      directory: process.cwd(), worktree: process.cwd(),
+      abort: new AbortController().signal,
+      metadata: () => {},
+      ask: async () => {},
+    };
+    for (const action of ["feed", "snack", "pat", "play", "sleep", "clean", "medicine"]) {
+      const result = await toolDef.execute({ action }, ctx);
+      // No IDE pet was fed / played with / put to sleep etc.
+      expect(result).not.toMatch(/\[(VS Code|PyCharm)\] (Fed|Gave|Patted|Played|Cleaned|Meal refused|Snack refused|Pat refused|Play refused|Nothing to clean)/);
+      expect(result).not.toMatch(/\[(VS Code|PyCharm)\] .* is now sleeping/);
+      // Any IDE pet mentioned is told the action has no effect
+      for (const m of result.matchAll(/^\[(VS Code|PyCharm)\] (.*)$/gm)) {
+        expect(m[2]).toContain("has no effect");
+      }
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -280,14 +304,24 @@ describe("codotchi tool execute", () => {
 
 type V2Tool = { name: string; input: unknown; execute: (input: unknown, ctx: unknown) => Promise<{ content: string }> };
 
-function makeV2Context(events: unknown[]) {
+function makeV2Context(events: unknown[], existingCommands: string[] = []) {
   const tools: V2Tool[] = [];
+  const commands: Array<{ name: string; description?: string; execute: (i: any) => Promise<void> }> = [];
+  const prompts: any[] = [];
   let subscribed = false;
-  const rpc: { handlers?: Record<string, () => Promise<any>>; emitted: Array<{ name: string; data: any }> } = { emitted: [] };
+  const rpc: { handlers?: Record<string, (input?: any, meta?: any) => Promise<any>>; emitted: Array<{ name: string; data: any }> } = { emitted: [] };
   const ctx = {
     app: { version: "2.0.0-test" },
     location: { directory: process.cwd(), project: { id: "test", directory: process.cwd(), canonical: process.cwd() } },
     options: {},
+    command: {
+      list: async () => existingCommands.map(name => ({ name })),
+      transform: async (cb: (editor: { add: (c: any) => void }) => void) => {
+        cb({ add: (c) => commands.push(c) });
+        return { dispose: async () => {} };
+      },
+    },
+    session: { prompt: async (p: any) => { prompts.push(p); return {}; } },
     rpc: {
       register: async (def: { id: string }, handlers: Record<string, () => Promise<any>>) => {
         expect(def.id).toBe("codotchi");
@@ -316,7 +350,7 @@ function makeV2Context(events: unknown[]) {
       },
     },
   };
-  return { ctx, tools, rpc, isSubscribed: () => subscribed };
+  return { ctx, tools, commands, prompts, rpc, isSubscribed: () => subscribed };
 }
 
 describe("bundled plugin � OpenCode V2 loader contract", () => {
@@ -382,10 +416,41 @@ describe("bundled plugin � OpenCode V2 loader contract", () => {
     expect(typeof snap.lastHour.costUSD).toBe("number");
     expect(typeof snap.session.costUSD).toBe("number");
     expect(typeof snap.thresholds.warn).toBe("number");
-    // Events processed → an "updated" push with the same shape
-    expect(rpc.emitted.some(e => e.name === "updated" && Array.isArray(e.data.pets))).toBe(true);
+    // Events processed → a payload-free "updated" signal; each window pulls its own snapshot
+    expect(rpc.emitted.some(e => e.name === "updated" && e.data?.refresh === true)).toBe(true);
+
+    // Windows share one server: each window key gets its own seed, and each is stable
+    const seen = new Set<string>();
+    for (let i = 0; i < 12; i++) {
+      const w = await rpc.handlers!.snapshot({ window: `win-${i}` });
+      const w2 = await rpc.handlers!.snapshot({ window: `win-${i}` });
+      expect(JSON.stringify(w2.pets)).toBe(JSON.stringify(w.pets));
+      if (w.pets.length > 0) { seen.add(`${w.pets[0].ide}|${w.pets[0].message}`); }
+    }
+    if (snap.pets.length > 0) { expect(seen.size).toBeGreaterThan(1); }
 
     (cleanup as () => void)();
+  });
+
+  it("registers /codotchi via ctx.command when no file-based command exists (npm install)", async () => {
+    const { ctx, commands, prompts } = makeV2Context([]);
+    const def = bundleMod.default as { setup: (ctx: unknown) => Promise<(() => void) | void> };
+    const cleanup = await def.setup(ctx);
+    expect(commands.map(c => c.name)).toEqual(["codotchi"]);
+    await commands[0].execute({ sessionID: "s1", prompt: { text: "feed" }, delivery: "steer" });
+    expect(prompts.length).toBe(1);
+    expect(prompts[0].sessionID).toBe("s1");
+    expect(prompts[0].text).toContain("`codotchi` tool action");
+    expect(prompts[0].text).toMatch(/show: feed$/);
+    if (typeof cleanup === "function") { cleanup(); }
+  });
+
+  it("does not register /codotchi when commands/codotchi.md already provides it", async () => {
+    const { ctx, commands } = makeV2Context([], ["codotchi"]);
+    const def = bundleMod.default as { setup: (ctx: unknown) => Promise<(() => void) | void> };
+    const cleanup = await def.setup(ctx);
+    expect(commands.length).toBe(0);
+    if (typeof cleanup === "function") { cleanup(); }
   });
 });
 
