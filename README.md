@@ -74,7 +74,7 @@ code --install-extension dylscoop.codotchi
 
 #### Manual install (VSIX)
 
-1. Download `codotchi-2.28.0.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download `codotchi-2.29.0.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
@@ -98,7 +98,7 @@ or in your IDE go to **Settings → Plugins → Marketplace**, search for
 
 #### Manual install (ZIP)
 
-1. Download `pycharm-codotchi-2.28.0.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download `pycharm-codotchi-2.29.0.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -124,7 +124,7 @@ On OpenCode 1.x the key is `"plugin"` (singular) instead of `"plugins"`.
 
 Restart OpenCode. It downloads the package on startup, and the plugin
 registers both the `codotchi` tool and the `/codotchi` slash command, so
-there's nothing else to copy. To pin a version use `"opencode-codotchi@2.28.0"`.
+there's nothing else to copy. To pin a version use `"opencode-codotchi@2.29.0"`.
 
 > If you prefer files on disk, `npx opencode-codotchi --install` runs the same
 > installer as Option 2 straight from npm.
@@ -198,6 +198,18 @@ calendar day, and the IDEs ignore it if it's from an earlier day.
 
 The `warnthreshold` / `shoutthreshold` cost alerts are OpenCode-only and are
 stored in `~/.config/opencode/codotchi-config.json`.
+
+OpenCode's own price table charges $0 for GitHub Copilot cache writes, so the
+plugin recomputes each reply's cost from its tokens using
+[GitHub's published Copilot rates](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing)
+for Claude models (e.g. Opus 5.5: $4 input, $0.20 cached input, $5 cache
+write, $20 output per 1M tokens). Other models use OpenCode's figure. To
+change a rate or price another model, add a `pricing` entry (USD per 1M
+tokens, any field optional) to `codotchi-config.json`:
+
+```json
+{ "pricing": { "github-copilot/claude-opus-5.5": { "cacheWrite": 5 } } }
+```
 
 Both sides honour `XDG_CONFIG_HOME`, so set it (or leave it unset) the same
 way for OpenCode and your IDE.
@@ -279,7 +291,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.28.0.vsix
+# produces codotchi-2.29.0.vsix
 ```
 
 ### JetBrains plugin
@@ -295,14 +307,14 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.28.0.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.29.0.zip
 ```
 
 ## Version history
 
 See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
-Current release: **v2.28.0** — built by [dylscoop](https://github.com/dylscoop)
+Current release: **v2.29.0** — built by [dylscoop](https://github.com/dylscoop)
 
 > "Grow your best pet by writing your best code."
 

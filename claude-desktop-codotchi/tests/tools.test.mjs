@@ -23,7 +23,7 @@ let tmp;
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), "codotchi-desktop-test-"));
-  for (const k of ["APPDATA", "HOME", "USERPROFILE", "CODOTCHI_PET_NAME", "CODOTCHI_PET_TYPE", "CODOTCHI_DEV_MODE"]) {
+  for (const k of ["APPDATA", "HOME", "USERPROFILE", "CODOTCHI_PET_NAME", "CODOTCHI_PET_TYPE", "CODOTCHI_DEV_MODE", "CODOTCHI_LEVELS"]) {
     saved[k] = process.env[k];
   }
   process.env.APPDATA = tmp;
@@ -32,6 +32,7 @@ beforeEach(() => {
   process.env.CODOTCHI_PET_NAME = "Desky";
   delete process.env.CODOTCHI_PET_TYPE;
   delete process.env.CODOTCHI_DEV_MODE;
+  delete process.env.CODOTCHI_LEVELS;
 });
 
 afterEach(() => {
@@ -95,6 +96,26 @@ describe("claude-desktop tools", () => {
   it("clean() removes droppings", () => {
     writeState(["vscode", "state.json"], adultPet({ poops: 3 }));
     assert.equal(tools.clean(readConfig()).state.poops, 0);
+  });
+
+  it("hides levels unless CODOTCHI_LEVELS is set", () => {
+    writeState(["vscode", "state.json"], adultPet());
+    const out = tools.activity(readConfig());
+    assert.equal(out.state.petXp, ge.XP_AMOUNTS.code);
+    assert.ok(!out.asciiArt.includes("Trainer Lv"), out.asciiArt);
+    assert.ok(!out.asciiArt.includes("Achievement unlocked"), out.asciiArt);
+  });
+
+  it("shows levels and announces achievement unlocks", () => {
+    process.env.CODOTCHI_LEVELS = "true";
+    writeState(["vscode", "state.json"], adultPet());
+    const out = tools.activity(readConfig());
+    assert.equal(out.state.petXp, ge.XP_AMOUNTS.code);
+    assert.ok(out.asciiArt.includes("Pet Lv 1 · Trainer Lv 2 · 🏆 1/16"), out.asciiArt);
+    assert.equal(out.asciiArt.split("\n").filter((l) => /^(⬜|✅) /.test(l)).length, 3, out.asciiArt);
+    assert.ok(out.asciiArt.includes("Achievement unlocked: 👋 Hello World"), out.asciiArt);
+    const stored = JSON.parse(fs.readFileSync(resolveIDEStatePath(), "utf8"));
+    assert.deepEqual(stored.state.trainer.achievements, ["hello_world"]);
   });
 
   it("uses the most recently saved pet across VS Code and PyCharm", () => {

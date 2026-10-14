@@ -1,6 +1,45 @@
 # Version History
 
-## v2.28.0 — current (artifacts not rebuilt; pending next release)
+## v2.29.0 - current
+
+### Changes from v2.28.0 (XP, levels, achievements and daily challenges - branch feat/xp-levels-bosses)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies) | `PetState` gains `schemaVersion`, `petXp`, `petLevel`, `trainer` (`TrainerProgress`, with daily and hourly XP buckets) and `dailies` (`DailyChallenges`); `awardXp(state, source, now, answeredCall)`, `levelProgress()`, `xpToNextLevel()`, `ACHIEVEMENTS` (20, each with a `path` and optional `comingSoon`), `achievementProgress()`, `progressionMessage()`, `deserialiseTrainer()`; care actions pay XP only when they answer a call (`"call"` source, `callsAnswered` counter); `DAILY_CHALLENGES`, `pickDailyChallenges()` (FNV-1a seeded from date + pet), `dailiesView()`, `currentStreak()` (weekdays only), `deserialiseDailies()`; `createPet(..., trainer)` carries trainer progress to the next pet and starts fresh dailies; old saves migrate to schema 1 |
+| `packages/core/src/asciiArt.ts` (+ synced copies) | `buildStatusBlock()` shows pet / trainer level, trainer XP bar, latest achievements and (with `dailies` + `spawnedAt`) today's challenges and the streak |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Progression.kt` | new: Kotlin mirror of the progression and daily-challenge code |
+| `pycharm/src/main/kotlin/com/codotchi/engine/PetState.kt`, `GameEngine.kt`, `CodotchiPersistence.kt` | progression and daily-challenge fields, call-only care XP, save/load |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | new game keeps trainer progress; notification on achievement unlock / trainer level-up / daily challenge |
+| `vscode/src/extension.ts`, `sidebarProvider.ts`, `persistence.ts` | notification on unlock / level-up; trainer also saved under `codotchi.trainer` so New Game keeps it |
+| `vscode/media/sidebar.html`, `sidebar.css`, `sidebar.js` | level line (with streak), trainer XP bar, Today section, Coder / Keeper achievement tabs with progress bars and greyed coming-soon entries, `level_up` reaction, level / achievement / challenge bubbles and log lines |
+| `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | `stateUpdate` carries `dailies` (`dailiesView()`) |
+| `claude-desktop-codotchi/src/tools.ts` | level line (with streak), today's challenges and unlock messages under the pet |
+| `opencode-codotchi/src/index.ts` | passes progression and dailies to the status block |
+| `vscode/tests/unit/progression.test.ts`, `pycharm/src/test/kotlin/com/codotchi/ProgressionTest.kt`, `opencode-codotchi/tests/unit/asciiArt.test.ts`, `claude-desktop-codotchi/tests/tools.test.mjs` | new tests: caps, call-only XP, level curve, challenge picks / resets, weekday streak, old saves, TS / Kotlin / webview parity |
+| `vscode/package.json`, `CodotchiSettings.kt`, `CodotchiConfigurable.kt` | beta toggle `codotchi.enableLevels` / "Levels, achievements and daily challenges (beta)", default off; `stateUpdate` carries `levelsEnabled`; IDE progression toasts gated on it. XP keeps being tracked while off |
+| `packages/core/src/asciiArt.ts`, `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/*.mjs`, `claude-desktop-codotchi/src/state.ts`, `tools.ts` | progression output only with `levels: true` (`"levelsEnabled": true` in `codotchi-config.json`, `CODOTCHI_LEVELS=true` for Claude Desktop) |
+| `vscode/media/sidebar.js` | `UNLOCK_HINTS` / `DAILY_HINTS` "How:" lines; progression UI, bubbles, log lines and hop hidden unless `levelsEnabled` |
+| `deserialiseTrainer()` / `trainerFromRaw()` | drop retired achievement ids (`caretaker`) and XP buckets that are uncapped or over the new caps |
+| all manifests, `README.md` | version 2.29.0 |
+
+Updated constants:
+
+```text
+SCHEMA_VERSION: number = 1
+XP_AMOUNTS = { code: 2, commit: 15, call: 10, care: 0, snack: 0, clean: 0, cure: 0, minigame: 10, evolve: 30, debug: 10, boss_kill: 50, boss_battle: 40 }
+XP_ACHIEVEMENT_BONUS: number = 50
+XP_HOURLY_CAPS = { code: 10, commit: 30, minigame: 20 }              // per local clock hour
+XP_DAILY_CAPS  = { code: 40, commit: 90, call: 100, minigame: 50 }   // per local day
+NIGHT_OWL_END_HOUR: number = 5
+xpToNextLevel(level) = round(50 × level^1.5)
+DAILY_CHALLENGE_XP: number = 25
+DAILY_ALL_DONE_BONUS: number = 25
+```
+
+---
+
+## v2.28.0
 
 ### Changes from v2.27.4 / OpenCode v2.27.5 (remove sponsor section — branch chore/remove-sponsor-section)
 

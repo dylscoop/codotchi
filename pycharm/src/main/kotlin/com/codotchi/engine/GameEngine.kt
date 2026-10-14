@@ -243,7 +243,7 @@ private fun answerCraving(state: PetState, food: String): AnsweredCall? =
 // Factory
 // ---------------------------------------------------------------------------
 
-fun createPet(name: String, petType: String, color: String, unlockedCharacter: String? = null): PetState {
+fun createPet(name: String, petType: String, color: String, unlockedCharacter: String? = null, trainer: TrainerProgress? = null): PetState {
     val modifiers = PET_TYPE_MODIFIERS[petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
     val resolvedSprite = unlockedCharacter ?: randomSpriteType()
     return withDerivedFields(
@@ -295,6 +295,7 @@ fun createPet(name: String, petType: String, color: String, unlockedCharacter: S
             ticksWithUncleanedPoop    = 0,
             ticksSinceLastMisbehaviour = 0,
             ticksSinceLastGift        = 0,
+            trainer                   = trainer ?: TrainerProgress(),
         )
     )
 }
@@ -304,6 +305,11 @@ fun createPet(name: String, petType: String, color: String, unlockedCharacter: S
 // ---------------------------------------------------------------------------
 
 fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG): PetState {
+    val next = tickCore(state, isIdle, isDeepIdle, config)
+    return if (next.events.any { it.startsWith("evolved_to_") }) awardXp(next, "evolve") else next
+}
+
+private fun tickCore(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, config: GameConfig): PetState {
     if (!state.alive) return state
     if (state.paused) return if (state.events.isNotEmpty()) state.copy(events = emptyList()) else state
     // Any tick in dev mode (faster aging, health floor) bars this pet from the leaderboard for life.
@@ -859,7 +865,7 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int
             attentionCallCooldowns   = pick?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
             cravingFood              = if (pick != null && state.activeAttentionCall == "craving") null else state.cravingFood,
         )
-    )
+    ).let { awardXp(it, "care", answeredCall = pick != null) }
 }
 
 /**
@@ -901,7 +907,7 @@ fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
             cravingFood              = if (answered != null && state.activeAttentionCall == "craving") null else state.cravingFood,
         )
-    )
+    ).let { if (answered != null) awardXp(it, "call") else it }
 }
 
 /**
@@ -942,7 +948,7 @@ fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThres
             sick              = sick,
             events            = events,
         )
-    )
+    ).let { awardXp(it, "snack") }
 }
 
 fun play(state: PetState, playWeightLoss: Int? = null): PetState {
@@ -969,7 +975,7 @@ fun play(state: PetState, playWeightLoss: Int? = null): PetState {
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
-    )
+    ).let { awardXp(it, "care", answeredCall = answered != null) }
 }
 
 /**
@@ -998,7 +1004,7 @@ fun pat(state: PetState): PetState {
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
-    )
+    ).let { awardXp(it, "care", answeredCall = answered != null) }
 }
 
 /**
@@ -1061,7 +1067,7 @@ fun applyMinigameResult(state: PetState, game: String, result: String): PetState
             weight    = newWeight,
             events    = events,
         )
-    )
+    ).let { if (result == "win") awardXp(it, "minigame") else it }
 }
 
 fun sleep(state: PetState): PetState {
@@ -1079,7 +1085,7 @@ fun sleep(state: PetState): PetState {
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
-    )
+    ).let { if (answered != null) awardXp(it, "call") else it }
 }
 
 /**
@@ -1151,7 +1157,7 @@ fun clean(state: PetState): PetState {
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
-    )
+    ).let { awardXp(it, "clean", answeredCall = answered != null) }
 }
 
 fun giveMedicine(state: PetState): PetState {
@@ -1172,7 +1178,7 @@ fun giveMedicine(state: PetState): PetState {
                 attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
                 attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
             )
-        )
+        ).let { awardXp(it, "cure", answeredCall = answered != null) }
     } else {
         withDerivedFields(
             state.copy(
@@ -1183,7 +1189,7 @@ fun giveMedicine(state: PetState): PetState {
                 attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
                 attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
             )
-        )
+        ).let { awardXp(it, "care", answeredCall = answered != null) }
     }
 }
 
@@ -1200,7 +1206,8 @@ fun scold(state: PetState): PetState {
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
-    )
+    // Scold / praise cost nothing, so they only earn XP when they answer a call.
+    ).let { if (answered != null) awardXp(it, "care", answeredCall = true) else it }
 }
 
 /**
@@ -1241,7 +1248,7 @@ fun praise(state: PetState): PetState {
             attentionCallActiveTicks = answered?.attentionCallActiveTicks ?: state.attentionCallActiveTicks,
             attentionCallCooldowns   = answered?.attentionCallCooldowns   ?: state.attentionCallCooldowns,
         )
-    )
+    ).let { if (answered != null) awardXp(it, "care", answeredCall = true) else it }
 }
 
 fun applyCodeActivity(state: PetState): PetState {
@@ -1252,7 +1259,7 @@ fun applyCodeActivity(state: PetState): PetState {
             discipline = clampStat(state.discipline + CODE_ACTIVITY_DISCIPLINE_BOOST),
             events     = listOf("code_activity_rewarded"),
         )
-    )
+    ).let { awardXp(it, "code") }
 }
 
 /** Freeze all tick-based progression (decay, aging, code activity). */
@@ -1271,7 +1278,7 @@ fun applyCommitActivity(state: PetState): PetState {
             discipline = clampStat(state.discipline + COMMIT_DISCIPLINE_BOOST),
             events     = listOf("commit_activity_rewarded"),
         )
-    )
+    ).let { awardXp(it, "commit") }
 }
 
 // ---------------------------------------------------------------------------
@@ -1294,7 +1301,7 @@ fun promoteToSenior(state: PetState): PetState {
             // lifetimeCareMistakes intentionally preserved
             events                = listOf("evolved_to_senior"),
         )
-    )
+    ).let { awardXp(it, "evolve") }
 }
 
 /**

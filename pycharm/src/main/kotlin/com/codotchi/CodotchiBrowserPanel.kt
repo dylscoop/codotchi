@@ -2,6 +2,7 @@ package com.codotchi
 
 import com.google.gson.Gson
 import com.codotchi.engine.PetState
+import com.codotchi.engine.dailiesView
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
@@ -108,13 +109,14 @@ class CodotchiBrowserPanel(
      */
     fun postState(state: PetState, mealsGivenThisCycle: Int, highScore: HighScore?, devMode: Boolean, unlockedCharacter: String? = null, defaultPetName: String = "Codotchi", liveRank: Int? = null, liveTotalScores: Int? = null, liveSubscribed: Boolean = false, liveLastPushedAt: Long? = null, leaderboardGithubUsername: String? = null, leaderboardAuthExpired: Boolean = false, leaderboardBlockedReason: String? = null) {
         val stateJson     = gson.toJson(state)
+        val dailiesJson   = gson.toJson(dailiesView(state))
         val highScoreJson = if (highScore != null) gson.toJson(highScore) else "null"
         val unlockedCharJson = if (unlockedCharacter != null) "\"$unlockedCharacter\"" else "null"
         val liveRankJson = if (liveRank != null) liveRank.toString() else "null"
         val liveTotalJson = if (liveTotalScores != null) liveTotalScores.toString() else "null"
         val liveLastPushedJson = if (liveLastPushedAt != null) liveLastPushedAt.toString() else "null"
         val lbUsernameJson = if (leaderboardGithubUsername != null) "\"${leaderboardGithubUsername.replace("\"", "\\\"")}\"" else "null"
-        val payload = """{"type":"stateUpdate","state":$stateJson,"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","cravingItem":${jsonStringOrNull(cravingItemFor(state))},"leaderboardAvailable":true,"leaderboardBlockedReason":${jsonStringOrNull(leaderboardBlockedReason)},"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson,"leaderboardGithubUsername":$lbUsernameJson,"leaderboardAuthExpired":$leaderboardAuthExpired}"""
+        val payload = """{"type":"stateUpdate","state":$stateJson,"dailies":$dailiesJson,"levelsEnabled":${service<CodotchiSettings>().enableLevels},"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","cravingItem":${jsonStringOrNull(cravingItemFor(state))},"leaderboardAvailable":true,"leaderboardBlockedReason":${jsonStringOrNull(leaderboardBlockedReason)},"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson,"leaderboardGithubUsername":$lbUsernameJson,"leaderboardAuthExpired":$leaderboardAuthExpired}"""
         val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
     }

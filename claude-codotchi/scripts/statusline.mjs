@@ -207,12 +207,12 @@ async function main() {
     }
   } else if (cfg.terminalEnabled === false) {
     if (!hasIDEPets) {
-      outputs.push(aa.stripAnsi(aa.buildStatusBlock(state)));
+      outputs.push(aa.stripAnsi(aa.buildStatusBlock({ ...state, levels: cfg.levelsEnabled === true })));
       const call = activeCallSpeech(aa, state, now);
       if (call) outputs.push(callLine(call, state.name));
     }
     for (const { state: ideState, label } of idePets) {
-      outputs.push(aa.stripAnsi(aa.buildStatusBlock(ideState)));
+      outputs.push(aa.stripAnsi(aa.buildStatusBlock({ ...ideState, levels: cfg.levelsEnabled === true })));
       const call = activeCallSpeech(aa, ideState, now);
       if (call) outputs.push(callLine(call, ideState.name, label));
     }

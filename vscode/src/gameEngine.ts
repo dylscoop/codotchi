@@ -788,6 +788,56 @@ export interface PetState {
    * seals existed). "" when eligible.
    */
   readonly leaderboardIneligible: LeaderboardIneligibleReason;
+
+  // ── Progression ──────────────────────────────────────────────────────────
+
+  /** Save-format version (SCHEMA_VERSION). Old saves without it load as version 0 and are migrated. */
+  readonly schemaVersion: number;
+  /** XP earned by this pet; resets with each new egg. */
+  readonly petXp: number;
+  /** This pet's level (derived from petXp, stored for display). */
+  readonly petLevel: number;
+  /** The player's lifetime progression; carried over to the next pet by createPet(). */
+  readonly trainer: TrainerProgress;
+  /** This pet's daily challenges and streak; a new pet starts afresh. */
+  readonly dailies: DailyChallenges;
+}
+
+/**
+ * The player's lifetime progression. Survives pet death: hosts pass the old
+ * pet's `trainer` into createPet() when a new egg starts.
+ */
+export interface TrainerProgress {
+  readonly xp: number;
+  readonly level: number;
+  /** Ids of unlocked achievements (see ACHIEVEMENTS), in unlock order. */
+  readonly achievements: readonly string[];
+  /** Lifetime counters that drive the achievements (keys: AchievementCounter). */
+  readonly counters: Readonly<Record<string, number>>;
+  /** Local date (YYYY-MM-DD) the daily XP buckets belong to. */
+  readonly xpDay: string;
+  /** XP earned today per daily-capped source (see XP_DAILY_CAPS). */
+  readonly xpToday: Readonly<Record<string, number>>;
+  /** Local clock hour (YYYY-MM-DDTHH) the hourly XP buckets belong to. */
+  readonly xpHour: string;
+  /** XP earned this hour per hourly-capped source (see XP_HOURLY_CAPS). */
+  readonly xpThisHour: Readonly<Record<string, number>>;
+}
+
+/** A pet's daily challenges (see DAILY_CHALLENGES) and its streak. */
+export interface DailyChallenges {
+  /** Local date (YYYY-MM-DD) the picks belong to; "" before the first roll. */
+  readonly day: string;
+  /** Today's challenge ids: one coder, one keeper, one wildcard. */
+  readonly picks: readonly string[];
+  /** Trainer counters when the day started; progress is measured from these. */
+  readonly baseline: Readonly<Record<string, number>>;
+  /** Ids of today's completed challenges. */
+  readonly done: readonly string[];
+  /** Weekdays in a row with all three done (weekends neither break nor extend it). */
+  readonly streak: number;
+  /** Last day (YYYY-MM-DD) the streak was extended. */
+  readonly streakDay: string;
 }
 
 /** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
@@ -1114,9 +1164,10 @@ export function randomSpriteType(): string {
  * @param petType - One of the valid pet type identifiers.
  * @param unlockedCharacter - spriteType of a custom character to force (e.g. "tim"), or null for random.
  *   When provided, the forced name must be resolved by the caller or registry before passing `name`.
+ * @param trainer - The previous pet's trainer progress, so XP and achievements carry over; null starts fresh.
  * @returns A freshly initialised PetState.
  */
-export function createPet(name: string, petType: string, unlockedCharacter: string | null = null): PetState {
+export function createPet(name: string, petType: string, unlockedCharacter: string | null = null, trainer: TrainerProgress | null = null): PetState {
   const modifiers = PET_TYPE_MODIFIERS[petType] ?? PET_TYPE_MODIFIERS.codeling;
   const baseHealth = modifiers.baseHealth;
   const resolvedName   = name;
@@ -1176,6 +1227,11 @@ export function createPet(name: string, petType: string, unlockedCharacter: stri
     cravingFood: null,
     devModeEverUsed: false,
     leaderboardIneligible: "",
+    schemaVersion: SCHEMA_VERSION,
+    petXp: 0,
+    petLevel: 1,
+    trainer: trainer ?? createTrainer(),
+    dailies: createDailies(),
   };
 
   return withDerivedFields(partial);
@@ -1259,6 +1315,11 @@ function checkWeightTierEvents(prev: number, next: number, events: string[]): vo
  * @returns A new PetState after one tick.
  */
 export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG): PetState {
+  const next = tickCore(state, isIdle, isDeepIdle, config);
+  return next.events.some((e) => e.startsWith("evolved_to_")) ? awardXp(next, "evolve") : next;
+}
+
+function tickCore(state: PetState, isIdle: boolean, isDeepIdle: boolean, config: GameConfig): PetState {
   if (!state.alive) {
     return state;
   }
@@ -1959,7 +2020,7 @@ export function feedMeal(
     answerCraving(state, "meal") ??
     answerAttentionCall(state, "critical_health");
   if (answered) { events.push(`attention_call_answered_${state.activeAttentionCall}`); }
-  return withDerivedFields({
+  return awardXp(withDerivedFields({
     ...state,
     ...(answered ?? {}),
     hunger: clampStat(state.hunger + hungerBoost),
@@ -1967,7 +2028,7 @@ export function feedMeal(
     consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
-  });
+  }), "care", Date.now(), answered !== null);
 }
 
 /**
@@ -2006,7 +2067,7 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
     answerAttentionCall(state, "critical_health");
   if (answered) { events.push(`attention_call_answered_${state.activeAttentionCall}`); }
 
-  return withDerivedFields({
+  const next = withDerivedFields({
     ...state,
     ...(answered ?? {}),
     snacksGivenThisCycle,
@@ -2014,6 +2075,7 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
+  return answered ? awardXp(next, "call") : next;
 }
 
 /**
@@ -2051,7 +2113,7 @@ export function consumeSnack(state: PetState, opts?: { hungerMult?: number; sick
   const newWeight = clampWeight(state.weight + (opts?.weightGain ?? FEED_SNACK_WEIGHT_GAIN));
   checkWeightTierEvents(state.weight, newWeight, events);
 
-  return withDerivedFields({
+  return awardXp(withDerivedFields({
     ...state,
     hunger: clampStat(state.hunger + hungerBoost),
     happiness: clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
@@ -2060,7 +2122,7 @@ export function consumeSnack(state: PetState, opts?: { hungerMult?: number; sick
     snacksOnFloor: Math.max(0, state.snacksOnFloor - 1),
     sick,
     events,
-  });
+  }), "snack");
 }
 
 /**
@@ -2096,7 +2158,7 @@ export function play(state: PetState, opts?: { weightLoss?: number }): PetState 
   checkWeightTierEvents(state.weight, newWeight, events);
   const answered = answerAttentionCall(state, "play") ?? answerAttentionCall(state, "unhappiness");
   if (answered) { events.push(`attention_call_answered_${state.activeAttentionCall}`); }
-  return withDerivedFields({
+  return awardXp(withDerivedFields({
     ...state,
     ...(answered ?? {}),
     happiness: clampStat(state.happiness + PLAY_HAPPINESS_BOOST),
@@ -2105,7 +2167,7 @@ export function play(state: PetState, opts?: { weightLoss?: number }): PetState 
     consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
-  });
+  }), "care", Date.now(), answered !== null);
 }
 
 /**
@@ -2124,7 +2186,7 @@ export function pat(state: PetState): PetState {
   const events: string[] = ["patted"];
   checkWeightTierEvents(state.weight, newWeight, events);
   if (answered) { events.push(`attention_call_answered_${state.activeAttentionCall}`); }
-  return withDerivedFields({
+  return awardXp(withDerivedFields({
     ...state,
     ...(answered ?? {}),
     happiness:        clampStat(state.happiness + PAT_HAPPINESS_BOOST),
@@ -2133,7 +2195,7 @@ export function pat(state: PetState): PetState {
     consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
-  });
+  }), "care", Date.now(), answered !== null);
 }
 
 /**
@@ -2224,12 +2286,13 @@ export function applyMinigameResult(
   if (isVigorousGame) {
     checkWeightTierEvents(state.weight, newWeight, events);
   }
-  return withDerivedFields({
+  const next = withDerivedFields({
     ...state,
     happiness: clampStat(state.happiness + delta),
     weight: newWeight,
     events,
   });
+  return result === "win" ? awardXp(next, "minigame") : next;
 }
 
 /**
@@ -2247,10 +2310,11 @@ export function sleep(state: PetState): PetState {
   const answered = answerAttentionCall(state, "low_energy");
   const events: string[] = ["fell_asleep"];
   if (answered) { events.push("attention_call_answered_low_energy"); }
-  return withDerivedFields({ ...state, ...(answered ?? {}), sleeping: true,
+  const next = withDerivedFields({ ...state, ...(answered ?? {}), sleeping: true,
     consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events });
+  return answered ? awardXp(next, "call") : next;
 }
 
 /**
@@ -2291,7 +2355,7 @@ export function clean(state: PetState): PetState {
   const answered = answerAttentionCall(state, "poop");
   const events: string[] = ["cleaned"];
   if (answered) { events.push("attention_call_answered_poop"); }
-  return withDerivedFields({
+  return awardXp(withDerivedFields({
     ...state,
     ...(answered ?? {}),
     poops: 0,
@@ -2300,7 +2364,7 @@ export function clean(state: PetState): PetState {
     poopOverLimitTicks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
-  });
+  }), "clean", Date.now(), answered !== null);
 }
 
 /**
@@ -2326,7 +2390,7 @@ export function giveMedicine(state: PetState): PetState {
   if (medicineDosesGiven >= MEDICINE_DOSES_TO_CURE) {
     sick = false;
     events.push("cured");
-    return withDerivedFields({
+    return awardXp(withDerivedFields({
       ...state,
       ...(answered ?? {}),
       sick: sick as boolean,
@@ -2334,12 +2398,12 @@ export function giveMedicine(state: PetState): PetState {
       consecutiveSnacks: 0,
       careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
       events,
-    });
+    }), "cure", Date.now(), answered !== null);
   }
 
-  return withDerivedFields({ ...state, ...(answered ?? {}), medicineDosesGiven,
+  return awardXp(withDerivedFields({ ...state, ...(answered ?? {}), medicineDosesGiven,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
-    events });
+    events }), "care", Date.now(), answered !== null);
 }
 
 /**
@@ -2352,13 +2416,15 @@ export function scold(state: PetState): PetState {
   const answered = answerAttentionCall(state, "misbehaviour");
   const events: string[] = ["scolded"];
   if (answered) { events.push("attention_call_answered_misbehaviour"); }
-  return withDerivedFields({
+  const next = withDerivedFields({
     ...state,
     ...(answered ?? {}),
     discipline: clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
+  // Scold / praise only count as care when they answer a call.
+  return answered ? awardXp(next, "care", Date.now(), true) : next;
 }
 
 /**
@@ -2389,7 +2455,7 @@ export function praise(state: PetState): PetState {
   const goesToSleep = answeredBreak !== null && !state.sleeping;
   if (goesToSleep) { events.push("fell_asleep"); }
   if (answeredBreak) { events.push("break_nap_started"); }
-  return withDerivedFields({
+  const next = withDerivedFields({
     ...state,
     ...(answered ?? {}),
     discipline: clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
@@ -2399,6 +2465,7 @@ export function praise(state: PetState): PetState {
     ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS, ticksSinceLastBreakCall: 0 } : {}),
     events,
   });
+  return answered ? awardXp(next, "care", Date.now(), true) : next;
 }
 
 /**
@@ -2414,12 +2481,12 @@ export function applyCodeActivity(state: PetState): PetState {
   if (state.paused) {
     return state;
   }
-  return withDerivedFields({
+  return awardXp(withDerivedFields({
     ...state,
     happiness: clampStat(state.happiness + CODE_ACTIVITY_HAPPINESS_BOOST),
     discipline: clampStat(state.discipline + CODE_ACTIVITY_DISCIPLINE_BOOST),
     events: ["code_activity_rewarded"],
-  });
+  }), "code");
 }
 
 /**
@@ -2433,12 +2500,12 @@ export function applyCodeActivity(state: PetState): PetState {
  */
 export function applyCommitActivity(state: PetState): PetState {
   if (state.paused) { return state; }
-  return withDerivedFields({
+  return awardXp(withDerivedFields({
     ...state,
     happiness: clampStat(state.happiness + COMMIT_HAPPINESS_BOOST),
     discipline: clampStat(state.discipline + COMMIT_DISCIPLINE_BOOST),
     events: ["commit_activity_rewarded"],
-  });
+  }), "commit");
 }
 
 // ---------------------------------------------------------------------------
@@ -2462,7 +2529,7 @@ export function promoteToSenior(state: PetState): PetState {
     );
   }
   const character = characterForStage(state.petType, "senior", state.careScore, state.careMistakes, state.lifetimeCareMistakes);
-  return withDerivedFields({
+  return awardXp(withDerivedFields({
     ...state,
     stage: "senior",
     character,
@@ -2473,7 +2540,7 @@ export function promoteToSenior(state: PetState): PetState {
     careScoreTicks: 0,
     careMistakes: 0,
     events: ["evolved_to_senior"],
-  });
+  }), "evolve");
 }
 
 /**
@@ -2677,6 +2744,507 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
 }
 
 // ---------------------------------------------------------------------------
+// Progression — XP, levels and achievements
+// ---------------------------------------------------------------------------
+
+/** Current save-format version. Bump when a migration step is added to deserialiseState(). */
+export const SCHEMA_VERSION: number = 1;
+
+/** What earned the XP. Each source maps to an amount, optional hourly / daily caps and counters. */
+export type XpSource =
+  | "code" | "commit" | "call" | "care" | "snack" | "clean" | "cure" | "minigame" | "evolve"
+  | "debug" | "boss_kill" | "boss_battle";
+
+/**
+ * XP per source. Care actions (care / snack / clean / cure) pay nothing on
+ * their own: they only earn the "call" XP when they answer an attention call.
+ */
+export const XP_AMOUNTS: Readonly<Record<XpSource, number>> = {
+  code: 2,
+  commit: 15,
+  call: 10,
+  care: 0,
+  snack: 0,
+  clean: 0,
+  cure: 0,
+  minigame: 10,
+  evolve: 30,
+  debug: 10,
+  boss_kill: 50,
+  boss_battle: 40,
+};
+
+/** Bonus XP for unlocking an achievement. */
+export const XP_ACHIEVEMENT_BONUS: number = 50;
+
+/** Hourly XP caps per source (local clock hour). Sources not listed have no hourly cap. */
+export const XP_HOURLY_CAPS: Readonly<Partial<Record<XpSource, number>>> = {
+  code: 10,
+  commit: 30,
+  minigame: 20,
+};
+
+/** Daily XP caps per source (local day). Sources not listed are uncapped. */
+export const XP_DAILY_CAPS: Readonly<Partial<Record<XpSource, number>>> = {
+  code: 40,
+  commit: 90,
+  call: 100,
+  minigame: 50,
+};
+
+/** Commits made from midnight up to this hour (local time) count as late-night commits. */
+export const NIGHT_OWL_END_HOUR: number = 5;
+
+const XP_COUNTERS: Readonly<Record<XpSource, readonly string[]>> = {
+  code: ["codeActivity"],
+  commit: ["commits"],
+  call: ["callsAnswered"],
+  care: ["care"],
+  snack: ["care", "snacks"],
+  clean: ["care", "cleans"],
+  cure: ["care", "cures"],
+  minigame: ["minigameWins"],
+  evolve: ["evolutions"],
+  debug: ["debugSessions"],
+  boss_kill: ["bossKills"],
+  boss_battle: ["bossBattleWins"],
+};
+
+/** Which tab an achievement sits under: the two paths, or shared trainer milestones. */
+export type AchievementPath = "coder" | "keeper" | "trainer";
+
+/** An unlockable achievement: reached when `counter` (or the trainer level, for "level") hits `threshold`. */
+export interface Achievement {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly emoji: string;
+  readonly counter: string;
+  readonly threshold: number;
+  readonly path: AchievementPath;
+  /** Shown greyed out; can't be unlocked yet because its feature hasn't shipped. */
+  readonly comingSoon?: boolean;
+}
+
+/** Every achievement, in display order. */
+export const ACHIEVEMENTS: readonly Achievement[] = [
+  { id: "hello_world",  name: "Hello World",   description: "Write some code with your pet watching",   emoji: "👋", counter: "codeActivity",   threshold: 1,    path: "coder" },
+  { id: "save_100",     name: "Busy Fingers",  description: "Get 100 code-activity rewards",            emoji: "⌨️", counter: "codeActivity",   threshold: 100,  path: "coder" },
+  { id: "save_1000",    name: "Ctrl+S Master", description: "Get 1,000 code-activity rewards",          emoji: "💾", counter: "codeActivity",   threshold: 1000, path: "coder" },
+  { id: "first_commit", name: "First Commit",  description: "Make a commit",                            emoji: "📌", counter: "commits",        threshold: 1,    path: "coder" },
+  { id: "committed",    name: "Committed",     description: "Make 100 commits",                         emoji: "📚", counter: "commits",        threshold: 100,  path: "coder" },
+  { id: "night_owl",    name: "Night Owl",     description: "Commit between midnight and 5 am",         emoji: "🦉", counter: "nightCommits",   threshold: 1,    path: "coder" },
+  { id: "detective",    name: "Detective",     description: "Finish 10 debug sessions",                 emoji: "🔍", counter: "debugSessions",  threshold: 10,   path: "coder", comingSoon: true },
+  { id: "first_blood",  name: "First Blood",   description: "Defeat a Bug Boss",                        emoji: "⚔️", counter: "bossKills",      threshold: 1,    path: "coder", comingSoon: true },
+  { id: "exterminator", name: "Exterminator",  description: "Defeat 10 Bug Bosses",                     emoji: "🐛", counter: "bossKills",      threshold: 10,   path: "coder", comingSoon: true },
+  { id: "on_call",      name: "On Call",       description: "Answer 100 calls from your pet",           emoji: "🤲", counter: "callsAnswered",  threshold: 100,  path: "keeper" },
+  { id: "snack_fiend",  name: "Snack Fiend",   description: "Hand out 50 snacks",                       emoji: "🍪", counter: "snacks",         threshold: 50,   path: "keeper" },
+  { id: "clean_freak",  name: "Clean Freak",   description: "Clean up 50 times",                        emoji: "🧹", counter: "cleans",         threshold: 50,   path: "keeper" },
+  { id: "nurse",        name: "Nurse",         description: "Cure your pet 10 times",                   emoji: "💊", counter: "cures",          threshold: 10,   path: "keeper" },
+  { id: "gamer",        name: "Gamer",         description: "Win 10 mini-games",                        emoji: "🎮", counter: "minigameWins",   threshold: 10,   path: "keeper" },
+  { id: "growing_up",   name: "Growing Up",    description: "See your pets evolve 3 times",             emoji: "🌱", counter: "evolutions",     threshold: 3,    path: "keeper" },
+  { id: "survivor",     name: "Survivor",      description: "Raise a pet to senior",                    emoji: "🧓", counter: "seniors",        threshold: 1,    path: "keeper" },
+  { id: "champion",     name: "Champion",      description: "Win a Boss Battle",                        emoji: "🥊", counter: "bossBattleWins", threshold: 1,    path: "keeper", comingSoon: true },
+  { id: "level_5",      name: "Rising Star",   description: "Reach trainer level 5",                    emoji: "⭐", counter: "level",          threshold: 5,    path: "trainer" },
+  { id: "level_10",     name: "Veteran",       description: "Reach trainer level 10",                   emoji: "🌟", counter: "level",          threshold: 10,   path: "trainer" },
+  { id: "level_25",     name: "Legend",        description: "Reach trainer level 25",                   emoji: "🏆", counter: "level",          threshold: 25,   path: "trainer" },
+];
+
+/** A fresh trainer with no XP. */
+export function createTrainer(): TrainerProgress {
+  return { xp: 0, level: 1, achievements: [], counters: {}, xpDay: "", xpToday: {}, xpHour: "", xpThisHour: {} };
+}
+
+/** XP needed to go from `level` to `level + 1`. */
+export function xpToNextLevel(level: number): number {
+  return Math.round(50 * Math.pow(Math.max(1, level), 1.5));
+}
+
+/** Level reached with `xp` total XP, plus the progress into that level. */
+export function levelProgress(xp: number): { level: number; intoLevel: number; needed: number } {
+  let level = 1;
+  let remaining = Math.max(0, Math.floor(xp));
+  while (remaining >= xpToNextLevel(level)) {
+    remaining -= xpToNextLevel(level);
+    level++;
+  }
+  return { level, intoLevel: remaining, needed: xpToNextLevel(level) };
+}
+
+/** Local calendar date as YYYY-MM-DD. */
+export function localDayKey(now: number): string {
+  const d = new Date(now);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+/** Local clock hour as YYYY-MM-DDTHH. */
+export function localHourKey(now: number): string {
+  return `${localDayKey(now)}T${String(new Date(now).getHours()).padStart(2, "0")}`;
+}
+
+/** Progress towards an achievement: current value (capped at the threshold) and the threshold. */
+export function achievementProgress(a: Achievement, trainer: TrainerProgress): { value: number; threshold: number } {
+  const raw = a.counter === "level" ? trainer.level : trainer.counters[a.counter] ?? 0;
+  return { value: Math.min(raw, a.threshold), threshold: a.threshold };
+}
+
+function bump(counters: Record<string, number>, key: string): void {
+  counters[key] = (counters[key] ?? 0) + 1;
+}
+
+/**
+ * Award XP to both the trainer and the current pet, update the achievement
+ * counters, and unlock any achievements now reached.
+ *
+ * Capped sources stop paying XP once this hour's or today's cap is full, but
+ * their counters still go up. With `answeredCall`, the action also answered
+ * an attention call and earns the "call" XP on top. Also advances the pet's
+ * daily challenges. Emits `trainer_level_up`, `pet_level_up`,
+ * `achievement_unlocked_<id>`, `daily_challenge_done_<id>` and
+ * `daily_challenges_all_done` events (appended to `events` and the event log).
+ *
+ * @param state - Pet state after the action that earned the XP.
+ * @param source - What earned it.
+ * @param now - Wall-clock ms, for the caps and time-of-day achievements.
+ * @param answeredCall - The action answered an attention call.
+ * @returns The state with progression applied.
+ */
+export function awardXp(state: PetState, source: XpSource, now: number = Date.now(), answeredCall: boolean = false): PetState {
+  const t = state.trainer;
+  const day = localDayKey(now);
+  const hour = localHourKey(now);
+  const xpToday: Record<string, number> = t.xpDay === day ? { ...t.xpToday } : {};
+  const xpThisHour: Record<string, number> = t.xpHour === hour ? { ...t.xpThisHour } : {};
+  const counters: Record<string, number> = { ...t.counters };
+  if (source === "commit" && new Date(now).getHours() < NIGHT_OWL_END_HOUR) { bump(counters, "nightCommits"); }
+  if (source === "evolve" && state.stage === "senior") { bump(counters, "seniors"); }
+
+  let amount = 0;
+  const sources: XpSource[] = answeredCall && source !== "call" ? [source, "call"] : [source];
+  for (const src of sources) {
+    for (const key of XP_COUNTERS[src]) { bump(counters, key); }
+    let earned = XP_AMOUNTS[src];
+    const hourCap = XP_HOURLY_CAPS[src];
+    const dayCap = XP_DAILY_CAPS[src];
+    if (hourCap !== undefined) { earned = Math.min(earned, Math.max(0, hourCap - (xpThisHour[src] ?? 0))); }
+    if (dayCap !== undefined) { earned = Math.min(earned, Math.max(0, dayCap - (xpToday[src] ?? 0))); }
+    if (hourCap !== undefined) { xpThisHour[src] = (xpThisHour[src] ?? 0) + earned; }
+    if (dayCap !== undefined) { xpToday[src] = (xpToday[src] ?? 0) + earned; }
+    amount += earned;
+  }
+  const daily = advanceDailies(state.dailies, state, t.counters, counters, day);
+  amount += daily.xp;
+
+  const events: string[] = [...daily.events];
+  let xp = t.xp + amount;
+  let level = levelProgress(xp).level;
+  const achievements = [...t.achievements];
+  // Unlock bonuses can raise the level, which can unlock a level achievement.
+  for (;;) {
+    const fresh = ACHIEVEMENTS.filter((a) =>
+      !a.comingSoon &&
+      !achievements.includes(a.id) &&
+      (a.counter === "level" ? level : counters[a.counter] ?? 0) >= a.threshold);
+    if (fresh.length === 0) { break; }
+    for (const a of fresh) {
+      achievements.push(a.id);
+      events.push(`achievement_unlocked_${a.id}`);
+      xp += XP_ACHIEVEMENT_BONUS;
+    }
+    level = levelProgress(xp).level;
+  }
+  if (level > t.level) { events.unshift("trainer_level_up"); }
+
+  const petXp = state.petXp + amount;
+  const petLevel = levelProgress(petXp).level;
+  if (petLevel > state.petLevel) { events.unshift("pet_level_up"); }
+
+  return {
+    ...state,
+    petXp,
+    petLevel,
+    trainer: { xp, level, achievements, counters, xpDay: day, xpToday, xpHour: hour, xpThisHour },
+    dailies: daily.dailies,
+    events: [...state.events, ...events],
+    recentEventLog: events.length > 0
+      ? [...state.recentEventLog, ...events].slice(-RECENT_EVENT_LOG_MAX)
+      : state.recentEventLog,
+  };
+}
+
+/** Look up an achievement by id. */
+export function achievementById(id: string): Achievement | undefined {
+  return ACHIEVEMENTS.find((a) => a.id === id);
+}
+
+/**
+ * Notification text for a progression event (achievement unlock or trainer
+ * level-up), or null for any other event. Pet level-ups only show in the pet's
+ * speech bubble, so they return null too.
+ */
+export function progressionMessage(event: string, state: PetState): string | null {
+  if (event === "trainer_level_up") {
+    return `Level up! You're now trainer level ${state.trainer.level}.`;
+  }
+  if (event.startsWith("achievement_unlocked_")) {
+    const a = achievementById(event.slice("achievement_unlocked_".length));
+    return a ? `Achievement unlocked: ${a.emoji} ${a.name} — ${a.description}` : null;
+  }
+  if (event.startsWith("daily_challenge_done_")) {
+    const c = dailyChallengeById(event.slice("daily_challenge_done_".length));
+    return c ? `Daily challenge done: ${c.text} (+${DAILY_CHALLENGE_XP} XP)` : null;
+  }
+  if (event === "daily_challenges_all_done") {
+    const d = state.dailies;
+    const streak = d.streakDay === d.day && d.streak > 0 ? ` Streak: ${d.streak} day${d.streak === 1 ? "" : "s"}.` : "";
+    return `All of today's challenges done! +${DAILY_ALL_DONE_BONUS} bonus XP.${streak}`;
+  }
+  return null;
+}
+
+/** Keep only buckets for capped sources that are within their cap. */
+function validBuckets(buckets: Record<string, number>, caps: Readonly<Partial<Record<string, number>>>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(buckets)) {
+    const cap = caps[k];
+    if (cap !== undefined && v <= cap) { out[k] = v; }
+  }
+  return out;
+}
+
+/** Parse a TrainerProgress from saved JSON, filling in defaults for anything missing. */
+export function deserialiseTrainer(raw: unknown): TrainerProgress {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) { return createTrainer(); }
+  const r = raw as Record<string, unknown>;
+  const numRecord = (v: unknown): Record<string, number> => {
+    const out: Record<string, number> = {};
+    if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+      for (const [k, n] of Object.entries(v as Record<string, unknown>)) {
+        if (typeof n === "number" && Number.isFinite(n)) { out[k] = n; }
+      }
+    }
+    return out;
+  };
+  const xp = typeof r.xp === "number" && Number.isFinite(r.xp) ? Math.max(0, r.xp) : 0;
+  return {
+    xp,
+    level: levelProgress(xp).level,
+    // Unknown ids (e.g. the retired "caretaker") are dropped.
+    achievements: Array.isArray(r.achievements)
+      ? r.achievements.filter((a): a is string => typeof a === "string" && ACHIEVEMENTS.some((x) => x.id === a))
+      : [],
+    counters: numRecord(r.counters),
+    xpDay: typeof r.xpDay === "string" ? r.xpDay : "",
+    // Buckets for uncapped sources, or over today's cap, come from the old rules: start them afresh.
+    xpToday: validBuckets(numRecord(r.xpToday), XP_DAILY_CAPS),
+    xpHour: typeof r.xpHour === "string" ? r.xpHour : "",
+    xpThisHour: validBuckets(numRecord(r.xpThisHour), XP_HOURLY_CAPS),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Daily challenges
+// ---------------------------------------------------------------------------
+
+/** Which pool a daily challenge comes from. Each day picks one from each. */
+export type DailyChallengePath = "coder" | "keeper" | "wild";
+
+/** A daily challenge: done once every counter in `reqs` has gone up by its target since the day started. */
+export interface DailyChallenge {
+  readonly id: string;
+  readonly path: DailyChallengePath;
+  readonly text: string;
+  readonly reqs: readonly (readonly [counter: string, target: number])[];
+}
+
+/** XP for each completed daily challenge. Uncapped, but each pays once a day. */
+export const DAILY_CHALLENGE_XP: number = 25;
+
+/** Extra XP for completing all three of the day's challenges. */
+export const DAILY_ALL_DONE_BONUS: number = 25;
+
+/** Every daily challenge, grouped by pool. */
+export const DAILY_CHALLENGES: readonly DailyChallenge[] = [
+  { id: "code_10",          path: "coder",  text: "Get 10 code-activity rewards",                    reqs: [["codeActivity", 10]] },
+  { id: "code_25",          path: "coder",  text: "Get 25 code-activity rewards",                    reqs: [["codeActivity", 25]] },
+  { id: "commit_1",         path: "coder",  text: "Make a commit",                                   reqs: [["commits", 1]] },
+  { id: "commit_3",         path: "coder",  text: "Make 3 commits",                                  reqs: [["commits", 3]] },
+  { id: "commit_5",         path: "coder",  text: "Make 5 commits",                                  reqs: [["commits", 5]] },
+  { id: "calls_3",          path: "keeper", text: "Answer 3 calls from your pet",                    reqs: [["callsAnswered", 3]] },
+  { id: "calls_6",          path: "keeper", text: "Answer 6 calls from your pet",                    reqs: [["callsAnswered", 6]] },
+  { id: "snacks_3",         path: "keeper", text: "Hand out 3 snacks",                               reqs: [["snacks", 3]] },
+  { id: "clean_2",          path: "keeper", text: "Clean up twice",                                  reqs: [["cleans", 2]] },
+  { id: "care_10",          path: "keeper", text: "Look after your pet 10 times",                    reqs: [["care", 10]] },
+  { id: "win_1",            path: "wild",   text: "Win a mini-game",                                 reqs: [["minigameWins", 1]] },
+  { id: "win_3",            path: "wild",   text: "Win 3 mini-games",                                reqs: [["minigameWins", 3]] },
+  { id: "commit_and_call",  path: "wild",   text: "Make a commit and answer a call",                 reqs: [["commits", 1], ["callsAnswered", 1]] },
+  { id: "code_and_win",     path: "wild",   text: "Get 5 code-activity rewards and win a mini-game", reqs: [["codeActivity", 5], ["minigameWins", 1]] },
+  { id: "snack_and_commit", path: "wild",   text: "Hand out a snack and make a commit",              reqs: [["snacks", 1], ["commits", 1]] },
+];
+
+const DAILY_PATHS: readonly DailyChallengePath[] = ["coder", "keeper", "wild"];
+
+/** Empty daily-challenge state for a new pet. */
+export function createDailies(): DailyChallenges {
+  return { day: "", picks: [], baseline: {}, done: [], streak: 0, streakDay: "" };
+}
+
+/** Look up a daily challenge by id. */
+export function dailyChallengeById(id: string): DailyChallenge | undefined {
+  return DAILY_CHALLENGES.find((c) => c.id === id);
+}
+
+/** 32-bit FNV-1a over UTF-16 code units. Kotlin mirrors this exactly. */
+function seedHash(s: string): number {
+  let h = 0x811c9dc5 | 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/** The day's three challenge ids (coder, keeper, wild), seeded from the date and the pet. */
+export function pickDailyChallenges(day: string, pet: Pick<PetState, "name" | "spawnedAt">): string[] {
+  const seed = `${day}|${pet.name}|${pet.spawnedAt}`;
+  return DAILY_PATHS.map((path) => {
+    const pool = DAILY_CHALLENGES.filter((c) => c.path === path);
+    return pool[seedHash(`${seed}|${path}`) % pool.length].id;
+  });
+}
+
+function parseDay(day: string): Date {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y, m - 1, d, 12);
+}
+
+/** Saturday or Sunday. */
+export function isWeekendDay(day: string): boolean {
+  const w = parseDay(day).getDay();
+  return w === 0 || w === 6;
+}
+
+/** The most recent weekday before `day`. */
+export function previousWeekday(day: string): string {
+  const d = parseDay(day);
+  do { d.setDate(d.getDate() - 1); } while (d.getDay() === 0 || d.getDay() === 6);
+  return localDayKey(d.getTime());
+}
+
+/**
+ * The streak as of `now`: weekdays in a row with all three challenges done.
+ * Weekends neither break nor extend it.
+ */
+export function currentStreak(dailies: DailyChallenges, now: number = Date.now()): number {
+  const today = localDayKey(now);
+  if (dailies.streak <= 0 || dailies.streakDay === "") { return 0; }
+  return dailies.streakDay === today || dailies.streakDay === previousWeekday(today) ? dailies.streak : 0;
+}
+
+/** Start a new day's picks if `day` has moved on, measuring progress from the trainer's current counters. */
+function rollDailies(dailies: DailyChallenges, pet: Pick<PetState, "name" | "spawnedAt">, counters: Readonly<Record<string, number>>, day: string): DailyChallenges {
+  if (dailies.day === day) { return dailies; }
+  return { ...dailies, day, picks: pickDailyChallenges(day, pet), baseline: { ...counters }, done: [] };
+}
+
+/** Progress on each requirement of `c`, capped at its target. */
+export function dailyChallengeProgress(
+  c: DailyChallenge, baseline: Readonly<Record<string, number>>, counters: Readonly<Record<string, number>>,
+): { counter: string; value: number; target: number }[] {
+  return c.reqs.map(([counter, target]) => ({
+    counter,
+    value: Math.min(target, Math.max(0, (counters[counter] ?? 0) - (baseline[counter] ?? 0))),
+    target,
+  }));
+}
+
+/** One of today's challenges, ready to display. */
+export interface DailyChallengeView {
+  readonly id: string;
+  readonly path: DailyChallengePath;
+  readonly text: string;
+  readonly value: number;
+  readonly target: number;
+  readonly done: boolean;
+}
+
+/** Today's challenges with progress, and the streak as of `now`. Works before the day's first roll too. */
+export function dailiesView(
+  state: Pick<PetState, "dailies" | "name" | "spawnedAt"> & { readonly trainer: Pick<TrainerProgress, "counters"> },
+  now: number = Date.now(),
+): { challenges: DailyChallengeView[]; streak: number; allDone: boolean } {
+  const d = rollDailies(state.dailies, state, state.trainer.counters, localDayKey(now));
+  const challenges = d.picks.flatMap((id) => {
+    const c = dailyChallengeById(id);
+    if (!c) { return []; }
+    const p = dailyChallengeProgress(c, d.baseline, state.trainer.counters);
+    return [{
+      id, path: c.path, text: c.text,
+      value: p.reduce((s, r) => s + r.value, 0),
+      target: p.reduce((s, r) => s + r.target, 0),
+      done: d.done.includes(id),
+    }];
+  });
+  return { challenges, streak: currentStreak(d, now), allDone: challenges.length > 0 && challenges.every((c) => c.done) };
+}
+
+/**
+ * Roll the day if needed, then mark any challenges now complete.
+ * Returns the new dailies, the XP they earned and their events.
+ */
+function advanceDailies(
+  dailies: DailyChallenges, pet: Pick<PetState, "name" | "spawnedAt">,
+  before: Readonly<Record<string, number>>, after: Readonly<Record<string, number>>, day: string,
+): { dailies: DailyChallenges; xp: number; events: string[] } {
+  const d = rollDailies(dailies, pet, before, day);
+  const done = [...d.done];
+  const events: string[] = [];
+  let xp = 0;
+  for (const id of d.picks) {
+    const c = dailyChallengeById(id);
+    if (!c || done.includes(id)) { continue; }
+    if (dailyChallengeProgress(c, d.baseline, after).every((r) => r.value >= r.target)) {
+      done.push(id);
+      events.push(`daily_challenge_done_${id}`);
+      xp += DAILY_CHALLENGE_XP;
+    }
+  }
+  let { streak, streakDay } = d;
+  if (events.length > 0 && d.picks.length > 0 && done.length === d.picks.length) {
+    events.push("daily_challenges_all_done");
+    xp += DAILY_ALL_DONE_BONUS;
+    if (!isWeekendDay(day) && streakDay !== day) {
+      streak = (streakDay === previousWeekday(day) ? streak : 0) + 1;
+      streakDay = day;
+    }
+  }
+  return { dailies: { ...d, done, streak, streakDay }, xp, events };
+}
+
+/** Parse DailyChallenges from saved JSON, filling in defaults for anything missing. */
+export function deserialiseDailies(raw: unknown): DailyChallenges {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) { return createDailies(); }
+  const r = raw as Record<string, unknown>;
+  const strings = (v: unknown): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  const baseline: Record<string, number> = {};
+  if (r.baseline !== null && typeof r.baseline === "object" && !Array.isArray(r.baseline)) {
+    for (const [k, n] of Object.entries(r.baseline as Record<string, unknown>)) {
+      if (typeof n === "number" && Number.isFinite(n)) { baseline[k] = n; }
+    }
+  }
+  return {
+    day: typeof r.day === "string" ? r.day : "",
+    picks: strings(r.picks),
+    baseline,
+    done: strings(r.done),
+    streak: typeof r.streak === "number" && Number.isFinite(r.streak) ? Math.max(0, Math.floor(r.streak)) : 0,
+    streakDay: typeof r.streakDay === "string" ? r.streakDay : "",
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Serialisation helpers
 // ---------------------------------------------------------------------------
 
@@ -2747,6 +3315,11 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     cravingFood: state.cravingFood,
     devModeEverUsed: state.devModeEverUsed,
     leaderboardIneligible: state.leaderboardIneligible,
+    schemaVersion: state.schemaVersion,
+    petXp: state.petXp,
+    petLevel: state.petLevel,
+    trainer: state.trainer,
+    dailies: state.dailies,
   };
 }
 
@@ -2847,6 +3420,12 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     devModeEverUsed: getBool("devModeEverUsed", false),
     leaderboardIneligible: data["leaderboardIneligible"] === "tampered" || data["leaderboardIneligible"] === "unverified"
       ? data["leaderboardIneligible"] : "",
+    // Version 0 (no schemaVersion) → 1: progression fields start empty.
+    schemaVersion: SCHEMA_VERSION,
+    petXp: Math.max(0, getNumber("petXp", 0)),
+    petLevel: levelProgress(getNumber("petXp", 0)).level,
+    trainer: deserialiseTrainer(data["trainer"]),
+    dailies: deserialiseDailies(data["dailies"]),
   };
 
   return withDerivedFields(partial);

@@ -594,7 +594,7 @@ class CodotchiPlugin : Disposable {
                         else -> defaultName
                     }
                     val unlockedCharacter = customChar?.spriteType
-                    nextState = createPet(resolvedName, petType, color, unlockedCharacter)
+                    nextState = createPet(resolvedName, petType, color, unlockedCharacter, state?.trainer)
                     mealsGivenThisCycle = 0
                 }
 
@@ -1486,6 +1486,14 @@ class CodotchiPlugin : Disposable {
             }
         }
 
+        // Toast achievement unlocks and trainer level-ups
+        if (state != null && freshEvents && service<CodotchiSettings>().enableLevels) {
+            for (event in state.events) {
+                val msg = progressionMessage(event, state) ?: continue
+                fireProgressionNotification(msg)
+            }
+        }
+
         // Fire notification on old-age natural-causes death
         if (state != null && freshEvents && state.events.contains("died_of_old_age")) {
             fireAttentionNotification(
@@ -1590,6 +1598,16 @@ class CodotchiPlugin : Disposable {
                 }
             })
             notification.notify(null)  // null = app-level notification visible in all projects
+        }
+    }
+
+    /** Information-level notification for achievement unlocks and trainer level-ups. */
+    private fun fireProgressionNotification(message: String) {
+        ApplicationManager.getApplication().invokeLater {
+            val group = NotificationGroupManager.getInstance()
+                .getNotificationGroup("Codotchi Attention Calls")
+                ?: return@invokeLater
+            group.createNotification(message, NotificationType.INFORMATION).notify(null)
         }
     }
 

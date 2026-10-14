@@ -147,6 +147,40 @@ any combination (e.g. just Copilot, just Claude + OpenCode, or all three).
 
 Costs energy and boosts happiness, same as a Pat.
 
+## Levels & Achievements (beta)
+
+**Off by default while in beta.** Turn it on with the `codotchi.enableLevels`
+setting. Your progress is tracked even while it's off, so turning it on later
+shows everything you've earned.
+
+Coding, committing, answering your pet's calls and winning mini-games all earn
+XP. Feeding, playing, cleaning and the other care buttons only earn XP when
+they answer a call from your pet. You have a **trainer level** that stays with
+you when a pet dies, and each pet has its own **pet level**. Both show under
+the pet with an XP bar.
+
+| Source | XP | Cap per hour | Cap per day |
+|--------|----|--------------|-------------|
+| Answering a call | 10 | - | 100 |
+| Mini-game win | 10 | 20 | 50 |
+| Code activity | 2 | 10 | 40 |
+| Commit | 15 | 30 | 90 |
+| Evolution | 30 | - | - |
+| Achievement unlock | 50 | - | - |
+
+Click the level line to open the achievements panel. Achievements are split
+into two paths, **🧑‍💻 Coder** and **🐾 Keeper**, with trainer-level milestones
+shared by both. Each one shows a progress bar and a "How:" line explaining what
+counts towards it. A few (Detective, First
+Blood, Exterminator, Champion) are greyed out as *Coming soon*.
+
+### Daily challenges
+
+Each pet gets three challenges a day: one Coder, one Keeper and one wildcard.
+They reset at local midnight. Each pays 25 XP, plus 25 more for finishing all
+three. Finishing all three on consecutive weekdays builds a 🔥 streak; weekends
+don't break it (or add to it), and the streak is lost when the pet dies.
+
 ## Mini-games
 
 Clicking **Play** opens the game picker (requires energy). Three games are

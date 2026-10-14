@@ -19,11 +19,15 @@ import {
   clean as engineClean,
   giveMedicine,
   applyCodeActivity,
+  progressionMessage,
+  ACHIEVEMENTS,
+  dailiesView,
 } from "./gameEngine.js";
 import { buildSpeechBubble, stripAnsi } from "./asciiArt.js";
 import {
   type DesktopConfig,
   SOURCE,
+  readConfig,
   loadPet,
   savePet,
   loadSession,
@@ -67,7 +71,15 @@ function renderText(state: PetState, _session: { interactionsToday: number; trea
   }
   const refusal = state.events.find((e) => REFUSAL_MESSAGES[e]);
   const message = refusal ? REFUSAL_MESSAGES[refusal] : (MOOD_MESSAGES[state.mood] ?? "Hello!");
-  return stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop"));
+  const bubble = stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop"));
+  if (!readConfig().levels) { return bubble; }
+  const unlocks = state.events.map((e) => progressionMessage(e, state)).filter((m): m is string => m !== null);
+  const unlockable = ACHIEVEMENTS.filter((a) => !a.comingSoon).length;
+  const daily = dailiesView(state);
+  const levels = `Pet Lv ${state.petLevel} · Trainer Lv ${state.trainer.level} · 🏆 ${state.trainer.achievements.length}/${unlockable}` +
+    (daily.streak > 0 ? ` · 🔥 ${daily.streak}` : "");
+  const today = daily.challenges.map((c) => `${c.done ? "✅" : "⬜"} ${c.text} (${c.value}/${c.target})`);
+  return [bubble, levels, ...today, ...unlocks].join("\n");
 }
 
 function payload(state: PetState, session: { interactionsToday: number; treatsToday: number }): ToolPayload {

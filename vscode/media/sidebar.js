@@ -79,7 +79,95 @@
     healed:        500,
     died:          1200,
     patted:        1400,
+    level_up:      1000,
   };
+
+  /**
+   * Achievement names for the webview. Must match ACHIEVEMENTS in
+   * packages/core/src/gameEngine.ts (progression.test.ts checks this).
+   * id: [emoji, name, description, counter, threshold, path, comingSoon?]
+   */
+  const ACHIEVEMENT_INFO = {
+    hello_world:  ["👋", "Hello World",   "Write some code with your pet watching", "codeActivity",   1,    "coder"],
+    save_100:     ["⌨️", "Busy Fingers",  "Get 100 code-activity rewards",          "codeActivity",   100,  "coder"],
+    save_1000:    ["💾", "Ctrl+S Master", "Get 1,000 code-activity rewards",        "codeActivity",   1000, "coder"],
+    first_commit: ["📌", "First Commit",  "Make a commit",                          "commits",        1,    "coder"],
+    committed:    ["📚", "Committed",     "Make 100 commits",                       "commits",        100,  "coder"],
+    night_owl:    ["🦉", "Night Owl",     "Commit between midnight and 5 am",       "nightCommits",   1,    "coder"],
+    detective:    ["🔍", "Detective",     "Finish 10 debug sessions",               "debugSessions",  10,   "coder", true],
+    first_blood:  ["⚔️", "First Blood",   "Defeat a Bug Boss",                      "bossKills",      1,    "coder", true],
+    exterminator: ["🐛", "Exterminator",  "Defeat 10 Bug Bosses",                   "bossKills",      10,   "coder", true],
+    on_call:      ["🤲", "On Call",       "Answer 100 calls from your pet",         "callsAnswered",  100,  "keeper"],
+    snack_fiend:  ["🍪", "Snack Fiend",   "Hand out 50 snacks",                     "snacks",         50,   "keeper"],
+    clean_freak:  ["🧹", "Clean Freak",   "Clean up 50 times",                      "cleans",         50,   "keeper"],
+    nurse:        ["💊", "Nurse",         "Cure your pet 10 times",                 "cures",          10,   "keeper"],
+    gamer:        ["🎮", "Gamer",         "Win 10 mini-games",                      "minigameWins",   10,   "keeper"],
+    growing_up:   ["🌱", "Growing Up",    "See your pets evolve 3 times",           "evolutions",     3,    "keeper"],
+    survivor:     ["🧓", "Survivor",      "Raise a pet to senior",                  "seniors",        1,    "keeper"],
+    champion:     ["🥊", "Champion",      "Win a Boss Battle",                      "bossBattleWins", 1,    "keeper", true],
+    level_5:      ["⭐", "Rising Star",   "Reach trainer level 5",                  "level",          5,    "trainer"],
+    level_10:     ["🌟", "Veteran",       "Reach trainer level 10",                 "level",          10,   "trainer"],
+    level_25:     ["🏆", "Legend",        "Reach trainer level 25",                 "level",          25,   "trainer"],
+  };
+
+  /**
+   * How each achievement counter goes up, shown under every achievement.
+   * Keys are the counters used in ACHIEVEMENT_INFO (progression.test.ts checks this).
+   */
+  const UNLOCK_HINTS = {
+    codeActivity:   "Edit and save code with your pet open (one reward every few seconds at most)",
+    commits:        "Make git commits in this workspace",
+    nightCommits:   "Make a commit between midnight and 5 am (local time)",
+    callsAnswered:  "When your pet calls (hungry, bored, poop, sick, break...), answer with the matching button",
+    snacks:         "Hand out snacks and let your pet eat them",
+    cleans:         "Clean up your pet's mess",
+    cures:          "Give medicine until your sick pet is cured",
+    minigameWins:   "Press Play and win a mini-game",
+    evolutions:     "Keep a pet healthy until it evolves to its next stage",
+    seniors:        "Keep a pet alive until it reaches the senior stage",
+    level:          "Earn XP from coding, commits, answered calls and mini-games",
+    debugSessions:  "Unlocks with debug-session tracking (coming soon)",
+    bossKills:      "Unlocks with Bug Bosses (coming soon)",
+    bossBattleWins: "Unlocks with Boss Battles (coming soon)",
+  };
+
+  /** How to complete each daily challenge. Keys must match DAILY_CHALLENGES ids (progression.test.ts checks this). */
+  const DAILY_HINTS = {
+    code_10:          "Edit and save code with your pet open",
+    code_25:          "Edit and save code with your pet open",
+    commit_1:         "Make a git commit",
+    commit_3:         "Make git commits",
+    commit_5:         "Make git commits",
+    calls_3:          "Answer your pet's calls with the matching button",
+    calls_6:          "Answer your pet's calls with the matching button",
+    snacks_3:         "Hand out snacks and let your pet eat them",
+    clean_2:          "Clean up your pet's mess",
+    care_10:          "Feed, play, pat, clean or give medicine",
+    win_1:            "Press Play and win a mini-game",
+    win_3:            "Press Play and win mini-games",
+    commit_and_call:  "Make a git commit, and answer one of your pet's calls",
+    code_and_win:     "Save code with your pet open, and win a mini-game",
+    snack_and_commit: "Give a snack your pet eats, and make a git commit",
+  };
+
+  /** Levels, achievements and daily challenges are a beta feature, off unless the host enables them. */
+  var levelsEnabled = false;
+
+  /** Events that only make sense when levels are enabled. */
+  function isProgressionEvent(code) {
+    return code === "trainer_level_up" || code === "pet_level_up" ||
+      code === "daily_challenges_all_done" ||
+      code.indexOf("achievement_unlocked_") === 0 || code.indexOf("daily_challenge_done_") === 0;
+  }
+
+  /** Level reached with `xp` total XP — same curve as levelProgress() in gameEngine.ts. */
+  function levelProgress(xp) {
+    var level = 1;
+    var remaining = Math.max(0, Math.floor(xp || 0));
+    var need = function (l) { return Math.round(50 * Math.pow(l, 1.5)); };
+    while (remaining >= need(level)) { remaining -= need(level); level++; }
+    return { level: level, intoLevel: remaining, needed: need(level) };
+  }
 
   /** Speech bubbles stay up for BUBBLE_HOLD_MS, then fade over BUBBLE_FADE_MS. */
   const BUBBLE_HOLD_MS = 6000;
@@ -162,6 +250,7 @@
   // ── Animation state ──────────────────────────────────────────────────────
 
   let lastState     = null;   // most recent PetState snapshot
+let lastDailies   = null;   // today's challenges + streak (dailiesView() from the host)
   let petX          = null;   // horizontal position (canvas pixels, left edge of body) — null = init on first frame
   let petY          = null;   // vertical position (null = init on first frame)
   let petVx         = 0;      // horizontal velocity px/s
@@ -278,6 +367,23 @@
   document.getElementById("btn-scold").addEventListener("click", function () {
     vscode.postMessage({ command: "scold" });
   });
+
+  (function () {
+    var levelLine = document.getElementById("level-line");
+    var panel     = document.getElementById("achievements-panel");
+    if (!levelLine || !panel) { return; }
+    levelLine.addEventListener("click", function () {
+      var open = panel.classList.toggle("hidden") === false;
+      levelLine.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open && lastState) { renderProgression(lastState); }
+    });
+    document.querySelectorAll(".ach-tab").forEach(function (b) {
+      b.addEventListener("click", function () {
+        achievementsTab = b.getAttribute("data-tab") || "coder";
+        if (lastState) { renderProgression(lastState); }
+      });
+    });
+  })();
 
   btnNewGame.addEventListener("click", function () {
     showScreen("setup");
@@ -1562,6 +1668,8 @@
       (spriteLabel ? spriteLabel + "  |  " : "") +
       typeLabelCap;
 
+    renderProgression(state);
+
     // Update sleep/wake button label to match current state
     const sleepWakeBtn = document.getElementById("btn-sleep-wake");
     // A break nap can't be cut short — show the minutes left instead of "Wake"
@@ -1723,6 +1831,9 @@
       if (events[ei] === "evolved_to_baby") { pushReaction("hatched", nowMs); break; }
       if (events[ei].indexOf("evolved_to_") === 0) { pushReaction("evolved", nowMs); break; }
     }
+    if (levelsEnabled && (events.indexOf("trainer_level_up") !== -1 || events.indexOf("pet_level_up") !== -1)) {
+      pushReaction("level_up", nowMs);
+    }
 
     // ── Speech bubble triggers ─────────────────────────────────────────────
     // Suppressed entirely while pet is sleeping (sleep bubble persists until wake).
@@ -1749,6 +1860,27 @@
           showBubble(_wl[Math.floor(Math.random() * _wl.length)]);
           return;
         }
+      }
+      // 1c. Achievements, daily challenges and level-ups — rare, so they outrank everyday bubbles
+      for (var _pi = 0; levelsEnabled && _pi < events.length; _pi++) {
+        if (events[_pi].indexOf("achievement_unlocked_") === 0) {
+          queueBubble(humaniseEvent(events[_pi], _n, state));
+          return;
+        }
+      }
+      if (levelsEnabled && events.indexOf("daily_challenges_all_done") !== -1) {
+        queueBubble(humaniseEvent("daily_challenges_all_done", _n, state));
+        return;
+      }
+      for (var _di = 0; levelsEnabled && _di < events.length; _di++) {
+        if (events[_di].indexOf("daily_challenge_done_") === 0) {
+          queueBubble(humaniseEvent(events[_di], _n, state));
+          return;
+        }
+      }
+      if (levelsEnabled && (events.indexOf("trainer_level_up") !== -1 || events.indexOf("pet_level_up") !== -1)) {
+        queueBubble(humaniseEvent(events.indexOf("trainer_level_up") !== -1 ? "trainer_level_up" : "pet_level_up", _n, state));
+        return;
       }
       // 2. Minigame results (play, not pat)
       for (var _mi = 0; _mi < events.length; _mi++) {
@@ -1896,8 +2028,127 @@
     return null;
   }
 
+  /** Path icons for the achievement tabs and daily challenges. */
+  const PATH_ICON = { coder: "🧑‍💻", keeper: "🐾", wild: "🎲", trainer: "⭐" };
+
+  /** Which achievements tab is showing: "coder" or "keeper". */
+  var achievementsTab = "coder";
+
+  /** A small "How: ..." line explaining how to make progress. */
+  function howLine(text) {
+    var how = document.createElement("span");
+    how.className = "ach-how";
+    how.textContent = "How: " + text;
+    return how;
+  }
+
+  /** A small progress bar with a "value/target" label. */
+  function progressRow(value, target) {
+    var wrap = document.createElement("span");
+    wrap.className = "ach-progress";
+    var track = document.createElement("span");
+    track.className = "ach-track";
+    var fill = document.createElement("span");
+    fill.className = "ach-fill";
+    fill.style.width = Math.round(100 * Math.min(value, target) / Math.max(1, target)) + "%";
+    track.appendChild(fill);
+    wrap.appendChild(track);
+    var label = document.createElement("span");
+    label.className = "ach-count";
+    label.textContent = Math.min(value, target) + "/" + target;
+    wrap.appendChild(label);
+    return wrap;
+  }
+
+  /** Level line, XP bar and (when open) today's challenges and the achievements list. */
+  function renderProgression(state) {
+    var levelLine = document.getElementById("level-line");
+    var barXp     = document.getElementById("bar-xp");
+    if (!levelLine) { return; }
+    var xpTrack = barXp ? barXp.parentElement : null;
+    var achPanel = document.getElementById("achievements-panel");
+    levelLine.classList.toggle("hidden", !levelsEnabled);
+    if (xpTrack) { xpTrack.classList.toggle("hidden", !levelsEnabled); }
+    if (!levelsEnabled) {
+      if (achPanel) { achPanel.classList.add("hidden"); }
+      levelLine.setAttribute("aria-expanded", "false");
+      return;
+    }
+    var dailies = lastDailies;
+    var trainer = state.trainer || { xp: 0, achievements: [], counters: {} };
+    var counters = trainer.counters || {};
+    var tp = levelProgress(trainer.xp);
+    var petLevel = state.petLevel || levelProgress(state.petXp).level;
+    var unlocked = trainer.achievements || [];
+    var ids = Object.keys(ACHIEVEMENT_INFO);
+    var unlockable = ids.filter(function (id) { return !ACHIEVEMENT_INFO[id][6]; }).length;
+    var streak = dailies && dailies.streak ? dailies.streak : 0;
+    levelLine.textContent = "Trainer Lv " + tp.level + "  ·  Pet Lv " + petLevel +
+      "  ·  🏆 " + unlocked.length + "/" + unlockable + (streak > 0 ? "  ·  🔥 " + streak : "");
+    levelLine.title = tp.intoLevel + " / " + tp.needed + " XP to trainer level " + (tp.level + 1) +
+      (streak > 0 ? " — daily streak " + streak : "") + " — click for achievements";
+    if (barXp) { barXp.style.width = Math.round(100 * tp.intoLevel / tp.needed) + "%"; }
+
+    var panel = document.getElementById("achievements-panel");
+    var list  = document.getElementById("achievements-list");
+    var today = document.getElementById("daily-list");
+    var summary = document.getElementById("achievements-summary");
+    if (!panel || !list || panel.classList.contains("hidden")) { return; }
+    var key = [achievementsTab, unlocked.join(","), JSON.stringify(counters), tp.level, JSON.stringify(dailies || null)].join("|");
+    if (list.dataset["rendered"] === key) { return; }
+    list.dataset["rendered"] = key;
+    if (summary) {
+      summary.textContent = unlocked.length + " of " + unlockable +
+        " unlocked  ·  " + trainer.xp + " XP total";
+    }
+    document.querySelectorAll(".ach-tab").forEach(function (b) {
+      var on = b.getAttribute("data-tab") === achievementsTab;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+
+    if (today) {
+      today.textContent = "";
+      ((dailies && dailies.challenges) || []).forEach(function (c) {
+        var li = document.createElement("li");
+        li.className = c.done ? "unlocked" : "pending";
+        li.textContent = (c.done ? "✅" : PATH_ICON[c.path] || "") + " " + c.text + " ";
+        li.appendChild(progressRow(c.value, c.target));
+        if (!c.done && DAILY_HINTS[c.id]) { li.appendChild(howLine(DAILY_HINTS[c.id])); }
+        today.appendChild(li);
+      });
+      var heading = document.getElementById("daily-heading");
+      if (heading) {
+        heading.textContent = "Today" + (streak > 0 ? "  ·  🔥 " + streak + "-day streak" : "") +
+          (dailies && dailies.allDone ? "  ·  all done!" : "");
+      }
+    }
+
+    list.textContent = "";
+    ids.forEach(function (id) {
+      var info = ACHIEVEMENT_INFO[id];
+      if (info[5] !== achievementsTab && info[5] !== "trainer") { return; }
+      var got  = unlocked.indexOf(id) !== -1;
+      var soon = !!info[6];
+      var li   = document.createElement("li");
+      li.className = got ? "unlocked" : soon ? "locked coming-soon" : "locked";
+      li.textContent = (got ? info[0] : "🔒") + " " + info[1] + " ";
+      var desc = document.createElement("span");
+      desc.className = "ach-desc";
+      desc.textContent = "— " + info[2] + (soon ? " (Coming soon)" : "");
+      li.appendChild(desc);
+      if (!soon) {
+        var raw = info[3] === "level" ? tp.level : counters[info[3]] || 0;
+        li.appendChild(progressRow(got ? info[4] : raw, info[4]));
+      }
+      if (!got && UNLOCK_HINTS[info[3]]) { li.appendChild(howLine(UNLOCK_HINTS[info[3]])); }
+      list.appendChild(li);
+    });
+  }
+
   /** Append new event strings to the scrollable event log. */
   function humaniseEvent(code, name, state) {
+    if (!levelsEnabled && isProgressionEvent(code)) { return null; }
     var n = name || "Codotchi";
     var _cc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
     var labels = {
@@ -2025,6 +2276,22 @@
     if (code.indexOf("evolved_to_") === 0) {
       var stage = code.slice("evolved_to_".length);
       return n + " evolved into " + stage + "!";
+    }
+    if (code === "trainer_level_up") {
+      return "Level up! You're now trainer level " + levelProgress(state && state.trainer ? state.trainer.xp : 0).level + ".";
+    }
+    if (code === "pet_level_up") {
+      return n + " reached level " + ((state && state.petLevel) || 1) + "!";
+    }
+    if (code.indexOf("achievement_unlocked_") === 0) {
+      var ach = ACHIEVEMENT_INFO[code.slice("achievement_unlocked_".length)];
+      return ach ? "Achievement unlocked: " + ach[0] + " " + ach[1] + "!" : "Achievement unlocked!";
+    }
+    if (code.indexOf("daily_challenge_done_") === 0) {
+      return "Daily challenge done! +25 XP";
+    }
+    if (code === "daily_challenges_all_done") {
+      return "All of today's challenges done! +25 bonus XP";
     }
     if (code.indexOf("minigame_") === 0) {
       return n + " played a mini-game.";
@@ -2680,6 +2947,22 @@
         break;
       }
 
+      case "level_up": {
+        // Little hop with gold sparkles rising past the pet
+        var hop = -Math.sin(t * Math.PI) * 6;
+        drawBody(state, x, bodyY + hop, facingLeft, legFrame);
+        spriteCtx.save();
+        spriteCtx.globalAlpha = 1 - t;
+        spriteCtx.fillStyle = "#FFD600";
+        for (var lu = 0; lu < 5; lu++) {
+          var lx = x + (bWidth * (lu + 0.5)) / 5;
+          var ly = bodyY + bHeight - t * (bHeight + 16) - (lu % 2) * 6;
+          spriteCtx.fillRect(Math.round(lx) - 1, Math.round(ly) - 1, 2, 2);
+        }
+        spriteCtx.restore();
+        break;
+      }
+
       case "healed": {
         // Green overlay fading out
         drawBody(state, x, bodyY, facingLeft, legFrame);
@@ -2991,6 +3274,8 @@
     if (message.type !== "stateUpdate") { return; }
 
     const state = message.state;
+    lastDailies = message.dailies || null;
+    levelsEnabled = message.levelsEnabled === true;
 
     currentCravingItem = message.cravingItem || null;
 

@@ -47,6 +47,8 @@ export function translateV2Event(event: V2EventLike): LegacyEvent[] {
             role: "assistant",
             id: event.id ?? `${data.assistantMessageID}:${event.created}`,
             cost: data.cost,
+            providerID: data.model?.providerID ?? data.providerID,
+            modelID: data.model?.id ?? data.modelID,
             tokens: data.tokens,
             time: { completed: typeof event.created === "number" && event.created > 1e12 ? event.created : Date.now() },
           },

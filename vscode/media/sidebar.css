@@ -250,6 +250,58 @@ body.font-large  { font-size: 16px; }
   margin-top: 2px;
 }
 
+/* ── Levels, XP bar and achievements ── */
+.level-line {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.83em;
+  text-align: center;
+  cursor: pointer;
+  padding: 2px 0 0;
+}
+.level-line:hover { text-decoration: underline; }
+.xp-track { flex: none; height: 3px; margin: 2px 0 4px; }
+.bar-fill.xp { background: #b388ff; }
+.achievements-panel {
+  font-size: 0.83em;
+  margin-bottom: 6px;
+}
+.achievements-summary { text-align: center; opacity: 0.7; margin: 2px 0; }
+.achievements-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.achievements-list li { padding: 1px 0; }
+.achievements-list li.locked { opacity: 0.85; }
+.achievements-list .ach-desc { opacity: 0.7; }
+.achievements-list li.coming-soon { opacity: 0.35; font-style: italic; }
+.daily-heading { font-weight: bold; opacity: 0.9; }
+.daily-list { max-height: none; margin-bottom: 4px; }
+.ach-tabs { display: flex; gap: 4px; justify-content: center; margin: 4px 0 2px; }
+.ach-tab {
+  background: none;
+  border: 1px solid var(--vscode-panel-border, #555);
+  border-radius: 3px;
+  color: inherit;
+  font: inherit;
+  padding: 1px 8px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+.ach-tab.active { opacity: 1; border-color: #b388ff; }
+.ach-progress { display: flex; align-items: center; gap: 4px; margin: 1px 0 2px 1.6em; }
+.ach-track { flex: 1; height: 3px; background: rgba(128, 128, 128, 0.3); border-radius: 2px; overflow: hidden; }
+.ach-fill { display: block; height: 100%; background: #b388ff; }
+.ach-how { display: block; margin-left: 1.6em; opacity: 0.6; font-size: 0.9em; }
+.ach-count { opacity: 0.6; font-size: 0.9em; min-width: 3.5em; text-align: right; }
+
 /* ── Button grid ── */
 .btn-grid {
   display: grid;

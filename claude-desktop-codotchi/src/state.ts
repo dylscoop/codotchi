@@ -104,6 +104,8 @@ export interface DesktopConfig {
   petName: string;
   petType: string;
   devMode: boolean;
+  /** Beta: show levels, achievements and daily challenges (CODOTCHI_LEVELS=true). */
+  levels: boolean;
 }
 
 export function readConfig(): DesktopConfig {
@@ -111,10 +113,12 @@ export function readConfig(): DesktopConfig {
   const petType = VALID_PET_TYPES.includes(rawType) ? rawType : "codeling";
   const name = (process.env["CODOTCHI_PET_NAME"] ?? "").trim();
   const rawDev = (process.env["CODOTCHI_DEV_MODE"] ?? "").trim().toLowerCase();
+  const rawLevels = (process.env["CODOTCHI_LEVELS"] ?? "").trim().toLowerCase();
   return {
     petName: name.length > 0 ? name : "Codotchi",
     petType,
     devMode: rawDev === "true" || rawDev === "1",
+    levels: rawLevels === "true" || rawLevels === "1",
   };
 }
 

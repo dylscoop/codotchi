@@ -12,6 +12,7 @@
  *   - buildStatusBlock() — compact stat bar for the /codotchi status command, returned as string
  *   - buildToast()       — one-line notification string
  */
+import { DailyChallenges } from "./gameEngine.js";
 /** Wrap text in an ANSI colour code and reset. */
 export declare function colour(text: string, ansiCode: string): string;
 /**
@@ -66,6 +67,17 @@ export declare function buildStatusBlock(state: {
     sleeping: boolean;
     poops: number;
     spriteType?: string;
+    petLevel?: number;
+    trainer?: {
+        xp: number;
+        achievements: readonly string[];
+        counters?: Readonly<Record<string, number>>;
+    };
+    /** With dailies and spawnedAt, today's challenges and the streak are listed too. */
+    spawnedAt?: number;
+    dailies?: DailyChallenges;
+    /** Levels, achievements and daily challenges are a beta feature: shown only when true. */
+    levels?: boolean;
 }): string;
 /**
  * Format a token count as a human-readable string.

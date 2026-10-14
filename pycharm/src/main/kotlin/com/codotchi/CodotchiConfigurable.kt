@@ -41,6 +41,7 @@ class CodotchiConfigurable : Configurable {
     private var attentionCallRateCombo:    JComboBox<String>?  = null
     private var stageHeightCombo:          JComboBox<String>?  = null
     private var reducedMotionCheck:        JCheckBox?          = null
+    private var enableLevelsCheck:         JCheckBox?          = null
     private var petSizeCombo:              JComboBox<String>?  = null
     private var devModeEnabledCheck:        JCheckBox?          = null
     private var developerPasscodeField:    JTextField?         = null
@@ -79,6 +80,8 @@ class CodotchiConfigurable : Configurable {
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
         val stageHeightDropdown = JComboBox(arrayOf("Compact (150 px)", "Normal (180 px)", "Tall (210 px)", "Extra tall (240 px)"))
         val reducedMotionCheckbox = JCheckBox("Reduced motion (disable animation)")
+        val enableLevelsCheckbox = JCheckBox("Levels, achievements and daily challenges (beta)")
+        enableLevelsCheckbox.toolTipText = "Progress is tracked even while this is off."
         val petSizeDropdown = JComboBox(arrayOf("Small", "Medium", "Large"))
         val devModeEnabledCheckbox = JCheckBox("Enable developer mode")
         val devPasscodeField = JTextField(10)
@@ -134,6 +137,7 @@ class CodotchiConfigurable : Configurable {
         attentionCallRateCombo   = rateCombo
         stageHeightCombo         = stageHeightDropdown
         reducedMotionCheck       = reducedMotionCheckbox
+        enableLevelsCheck        = enableLevelsCheckbox
         petSizeCombo             = petSizeDropdown
         devModeEnabledCheck      = devModeEnabledCheckbox
         developerPasscodeField   = devPasscodeField
@@ -189,6 +193,7 @@ class CodotchiConfigurable : Configurable {
         addFull(panel, statusBarEnabledCheckbox)
         addLabeled(panel, "Pet size:", petSizeDropdown)
         addFull(panel, reducedMotionCheckbox)
+        addFull(panel, enableLevelsCheckbox)
         addFull(panel, perWorkspacePetCheckbox)
         addLabeled(panel, "Character passcode:", charPasscodeField)
 
@@ -266,6 +271,7 @@ class CodotchiConfigurable : Configurable {
         val uiRate       = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         val uiStageHeight = stageHeightIndexToKey(stageHeightCombo?.selectedIndex ?: 1)
         val uiReducedMotion = reducedMotionCheck?.isSelected ?: false
+        val uiEnableLevels = enableLevelsCheck?.isSelected ?: false
         val uiPetSize = petSizeIndexToKey(petSizeCombo?.selectedIndex ?: 1)
         val uiDevModeEnabled = devModeEnabledCheck?.isSelected ?: false
         val uiDevPasscode = developerPasscodeField?.text ?: ""
@@ -297,6 +303,7 @@ class CodotchiConfigurable : Configurable {
             || uiRate != settings.attentionCallRate
             || uiStageHeight != settings.stageHeight
             || uiReducedMotion != settings.reducedMotion
+            || uiEnableLevels != settings.enableLevels
             || uiPetSize != settings.petSize
             || uiDevModeEnabled != settings.devModeEnabled
             || uiDevPasscode != settings.developerPasscode
@@ -332,6 +339,7 @@ class CodotchiConfigurable : Configurable {
         settings.attentionCallRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         settings.stageHeight            = stageHeightIndexToKey(stageHeightCombo?.selectedIndex ?: 1)
         settings.reducedMotion          = reducedMotionCheck?.isSelected ?: false
+        settings.enableLevels           = enableLevelsCheck?.isSelected ?: false
         settings.petSize                = petSizeIndexToKey(petSizeCombo?.selectedIndex ?: 1)
         settings.devModeEnabled         = devModeEnabledCheck?.isSelected ?: false
         settings.developerPasscode      = developerPasscodeField?.text ?: ""
@@ -380,6 +388,7 @@ class CodotchiConfigurable : Configurable {
         attentionCallRateCombo?.selectedIndex   = rateKeyToIndex(settings.attentionCallRate)
         stageHeightCombo?.selectedIndex         = stageHeightKeyToIndex(settings.stageHeight)
         reducedMotionCheck?.isSelected          = settings.reducedMotion
+        enableLevelsCheck?.isSelected           = settings.enableLevels
         petSizeCombo?.selectedIndex             = petSizeKeyToIndex(settings.petSize)
         devModeEnabledCheck?.isSelected         = settings.devModeEnabled
         developerPasscodeField?.text            = settings.developerPasscode

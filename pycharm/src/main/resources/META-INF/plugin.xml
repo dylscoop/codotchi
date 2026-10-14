@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.28.0</version>
+    <version>2.29.0</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -137,6 +137,20 @@ settings.</p>
   <li><b>You were signed out unexpectedly:</b> you probably revoked Codotchi at github.com/settings/applications.
   Sign in again.</li>
 </ul>
+
+<h2>Levels &amp; Achievements (beta)</h2>
+<p><b>Off by default while in beta.</b> Turn it on in <b>Settings → Tools → Codotchi →
+Levels, achievements and daily challenges (beta)</b>. Your progress is tracked even while
+it's off, so turning it on later shows everything you've earned.</p>
+<p>Coding, committing, answering your pet's calls and winning mini-games all earn
+XP; care buttons only earn XP when they answer a call. You have a <b>trainer level</b>
+that stays with you when a pet dies, and each pet has its own <b>pet level</b>. Both
+show under the pet with an XP bar. Code activity, commits, calls and mini-game wins
+are capped per hour and per day.</p>
+<p>Click the level line to see your achievements, split into <b>Coder</b> and
+<b>Keeper</b> paths with a progress bar and a "How:" hint for each, and today's three
+<b>daily challenges</b> (one Coder, one Keeper, one wildcard; 25 XP each plus 25 for
+all three). Finishing all three on consecutive weekdays builds a streak.</p>
 
 <h2>Mini-games</h2>
 <p>Clicking <b>Play</b> opens the game picker (requires energy). Three games are available:</p>

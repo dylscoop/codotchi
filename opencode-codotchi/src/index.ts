@@ -45,7 +45,8 @@ import { tool }  from "@opencode-ai/plugin";
 import type { Plugin, PluginInput } from "@opencode-ai/plugin";
 import { getIDEBase as _getIDEBase, resolveVSCodeStatePath, getOpenCodeConfigDir } from "./statePathResolver.js";
 import { CODOTCHI_COMMAND_DESCRIPTION, CODOTCHI_COMMAND_TEMPLATE } from "./commandTemplate.js";
-import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry, buildDailyUsageQueries, defaultOpencodeDbPath, queryDailyUsageFromDb, UsageTotals } from "./usageBackfill.js";
+import { sumCompletedAssistantUsage, extractTimestampedUsage, TimestampedUsageEntry, buildDailyUsageQueries, defaultOpencodeDbPath, queryDailyUsageFromDb, UsageTotals, totalsFromModelRows, ModelUsageRow } from "./usageBackfill.js";
+import { DEFAULT_PRICING, PricingTable, buildPricingTable, messageCost } from "./pricing.js";
 
 import {
   PetState,
@@ -286,7 +287,7 @@ function resolveOpencodeDbPath(): string | undefined {
 async function fetchDbDailyTotals(todayStartMs: number): Promise<UsageTotals | undefined> {
   const dbPath = resolveOpencodeDbPath();
   if (!dbPath) { return undefined; }
-  const direct = await queryDailyUsageFromDb(dbPath, todayStartMs);
+  const direct = await queryDailyUsageFromDb(dbPath, todayStartMs, pricingTable);
   if (direct) { return direct; }
   // Legacy fallback: OpenCode 1 shipped a `db` subcommand that can run SQL.
   try {
@@ -295,8 +296,7 @@ async function fetchDbDailyTotals(todayStartMs: number): Promise<UsageTotals | u
     for (const sql of buildDailyUsageQueries(todayStartMs)) {
       const r = spawnSync(cli, ["db", "--format", "json", sql], { timeout: 10000, encoding: "utf8", windowsHide: true });
       if (r.status === 0 && r.stdout) {
-        const row = (JSON.parse(String(r.stdout).trim()) as Array<{ costUSD?: number; tokens?: number; messages?: number }>)[0] ?? {};
-        return { costUSD: row.costUSD ?? 0, tokens: row.tokens ?? 0, messages: row.messages ?? 0 };
+        return totalsFromModelRows(JSON.parse(String(r.stdout).trim()) as ModelUsageRow[], pricingTable);
       }
     }
   } catch { /* fall through */ }
@@ -469,13 +469,13 @@ async function backfillDailyUsage(client: PluginInput["client"]): Promise<void> 
           // Track A failed — use API totals as fallback for cost/token totals
           // Only messages completed today — a session updated today may also
           // hold earlier days' messages, which must not inflate today's total.
-          const totals = sumCompletedAssistantUsage(messages, todayStartMs);
+          const totals = sumCompletedAssistantUsage(messages, todayStartMs, pricingTable);
           backfilledCost     += totals.costUSD;
           backfilledTokens   += totals.tokens;
           backfilledMessages += totals.messages;
         }
         // Always collect timestamped entries for the last-1h rolling buffer.
-        const timestamped = extractTimestampedUsage(messages);
+        const timestamped = extractTimestampedUsage(messages, pricingTable);
         for (const e of timestamped) {
           if (e.completedAt > latestBackfillTsAll) { latestBackfillTsAll = e.completedAt; }
           if (e.completedAt >= oneHourAgo) {
@@ -566,7 +566,9 @@ function loadPluginConfig(): void {
   try {
     const filePath = getPluginConfigPath();
     if (!fs.existsSync(filePath)) { return; }
-    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as { costWarnThreshold?: number; costShoutThreshold?: number };
+    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as { costWarnThreshold?: number; costShoutThreshold?: number; levelsEnabled?: boolean; pricing?: unknown };
+    levelsEnabled = raw.levelsEnabled === true;
+    pricingTable = buildPricingTable(raw.pricing);
     if (typeof raw.costWarnThreshold  === "number" && raw.costWarnThreshold  > 0) { costWarnThreshold  = raw.costWarnThreshold; }
     if (typeof raw.costShoutThreshold === "number" && raw.costShoutThreshold > 0) { costShoutThreshold = raw.costShoutThreshold; }
   } catch { /* best-effort */ }
@@ -577,7 +579,10 @@ function savePluginConfig(): void {
     const filePath = getPluginConfigPath();
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
-    fs.writeFileSync(filePath, JSON.stringify({ costWarnThreshold, costShoutThreshold }), "utf8");
+    // Keep hand-edited keys (levelsEnabled, pricing) when saving the thresholds.
+    let existing: Record<string, unknown> = {};
+    try { existing = JSON.parse(fs.readFileSync(filePath, "utf8")) as Record<string, unknown>; } catch { /* new file */ }
+    fs.writeFileSync(filePath, JSON.stringify({ ...existing, costWarnThreshold, costShoutThreshold }), "utf8");
   } catch { /* best-effort */ }
 }
 
@@ -839,6 +844,10 @@ function lastHourUsage(): { costUSD: number; tokens: number } {
 // Configurable cost speech thresholds (persisted to codotchi-config.json)
 // ---------------------------------------------------------------------------
 
+/** Beta: show levels, achievements and daily challenges ("levelsEnabled": true in codotchi-config.json). */
+let levelsEnabled = false;
+/** Per-model token prices; defaults merged with "pricing" overrides from codotchi-config.json. */
+let pricingTable: PricingTable = DEFAULT_PRICING;
 /** Daily cost (USD) at which the pet switches to a warning tone. */
 let costWarnThreshold  = 30;
 /** Daily cost (USD) at which the pet switches to ALL CAPS shouting. */
@@ -1534,6 +1543,8 @@ const plugin: Plugin = async (ctx) => {
                   health: s.health, discipline: s.discipline, weight: s.weight,
                   ageDays: s.ageDays, alive: s.alive, sick: s.sick,
                   sleeping: s.sleeping, poops: s.poops, spriteType: s.spriteType,
+                  petLevel: s.petLevel, trainer: s.trainer,
+                  spawnedAt: s.spawnedAt, dailies: s.dailies, levels: levelsEnabled,
                 })
               : "";
             // Each pet prints once: the stat block, or a one-line summary when art is off.
@@ -1991,24 +2002,25 @@ const plugin: Plugin = async (ctx) => {
             const t = (info.tokens?.input ?? 0) + (info.tokens?.output ?? 0)
                     + (info.tokens?.reasoning ?? 0)
                     + (info.tokens?.cache?.read ?? 0) + (info.tokens?.cache?.write ?? 0);
-            sessionCostUSD += info.cost;
+            const cost = messageCost(pricingTable, info);
+            sessionCostUSD += cost;
             sessionTokens  += t;
             if (!backfillComplete) {
               // Backfill is still in-flight — hold this event to avoid double-counting.
               // It will be replayed (or discarded if already captured by backfill) once
               // backfillDailyUsage() finishes.
-              pendingLiveEvents.push({ cost: info.cost, tokens: t, completedAt });
+              pendingLiveEvents.push({ cost, tokens: t, completedAt });
             } else if (completedAt >= todayStartLocalMs()) {
               // Bucket by completion time, not arrival time: a reply that
               // finished before midnight but whose event arrives after it
               // belongs to yesterday, not today.
-              dailyCostUSD   += info.cost;
+              dailyCostUSD   += cost;
               dailyTokens    += t;
               dailyMessages  += 1;
               dailyDate = todayLocal();
               saveDailyUsage();
               // Push to rolling last-1h buffer
-              costEvents.push({ completedAt, costUSD: info.cost, tokens: t });
+              costEvents.push({ completedAt, costUSD: cost, tokens: t });
             }
             // Message-based aging: increment total message count and advance stage if needed
             localPetTotalMessages += 1;

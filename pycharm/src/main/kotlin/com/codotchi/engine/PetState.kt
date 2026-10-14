@@ -147,4 +147,54 @@ data class PetState(
      * seals existed). "" when eligible.
      */
     val leaderboardIneligible: String = "",
+
+    // ── Progression ──────────────────────────────────────────────────────────
+
+    /** Save-format version (SCHEMA_VERSION). Old saves without it load as version 0 and are migrated. */
+    val schemaVersion: Int = SCHEMA_VERSION,
+    /** XP earned by this pet; resets with each new egg. */
+    val petXp: Int = 0,
+    /** This pet's level (derived from petXp, stored for display). */
+    val petLevel: Int = 1,
+    /** The player's lifetime progression; carried over to the next pet by createPet(). */
+    val trainer: TrainerProgress = TrainerProgress(),
+    /** This pet's daily challenges and streak; a new pet starts afresh. */
+    val dailies: DailyChallenges = DailyChallenges(),
+)
+
+/** A pet's daily challenges (see DAILY_CHALLENGES) and its streak. Mirrors DailyChallenges in gameEngine.ts. */
+data class DailyChallenges(
+    /** Local date (YYYY-MM-DD) the picks belong to; "" before the first roll. */
+    val day: String = "",
+    /** Today's challenge ids: one coder, one keeper, one wildcard. */
+    val picks: List<String> = emptyList(),
+    /** Trainer counters when the day started; progress is measured from these. */
+    val baseline: Map<String, Int> = emptyMap(),
+    /** Ids of today's completed challenges. */
+    val done: List<String> = emptyList(),
+    /** Weekdays in a row with all three done (weekends neither break nor extend it). */
+    val streak: Int = 0,
+    /** Last day (YYYY-MM-DD) the streak was extended. */
+    val streakDay: String = "",
+)
+
+/**
+ * The player's lifetime progression. Survives pet death: hosts pass the old
+ * pet's [PetState.trainer] into createPet() when a new egg starts.
+ */
+data class TrainerProgress(
+    val xp: Int = 0,
+    val level: Int = 1,
+    /** Ids of unlocked achievements (see ACHIEVEMENTS), in unlock order. */
+    val achievements: List<String> = emptyList(),
+    /** Lifetime counters that drive the achievements. */
+    val counters: Map<String, Int> = emptyMap(),
+    /** Local date (YYYY-MM-DD) the daily XP buckets belong to. */
+    val xpDay: String = "",
+    /** XP earned today per daily-capped source (see XP_DAILY_CAPS). */
+    val xpToday: Map<String, Int> = emptyMap(),
+    /** Local clock hour (YYYY-MM-DDTHH) the hourly XP buckets belong to. */
+    val xpHour: String = "",
+    /** XP earned this hour per hourly-capped source (see XP_HOURLY_CAPS). */
+    val xpThisHour: Map<String, Int> = emptyMap(),
 )
