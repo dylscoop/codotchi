@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.29.0] — 2026-10-14
+
+### Added
+
+- **XP, levels and achievements** — saving code, committing, caring for your pet, winning mini-games and evolving all earn XP. You have a **trainer level** that you keep when a pet dies, and each pet has its own **pet level**. Both show under the pet with an XP bar. Click the level line to see 20 achievements (Night Owl, Snack Fiend, Survivor, …). Unlocks and level-ups get a notification, a speech bubble and a little hop. Code-activity XP is capped at 500 a day and free care actions at 100, so XP can't be farmed.
+
 ## [2.28.0] — 2026-10-13
 
 - Removed the sponsor section from the extension page.

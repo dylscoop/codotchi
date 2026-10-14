@@ -1,6 +1,37 @@
 # Version History
 
-## v2.28.0 — current (artifacts not rebuilt; pending next release)
+## v2.29.0 - current
+
+### Changes from v2.28.0 (XP, levels and achievements - branch feat/xp-levels-bosses)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies) | `PetState` gains `schemaVersion`, `petXp`, `petLevel`, `trainer` (`TrainerProgress`); `awardXp()`, `levelProgress()`, `xpToNextLevel()`, `ACHIEVEMENTS` (20), `progressionMessage()`, `deserialiseTrainer()`; care actions, code activity, commits, mini-game wins and evolutions pay XP; `createPet(..., trainer)` carries trainer progress to the next pet; old saves migrate to schema 1 |
+| `packages/core/src/asciiArt.ts` (+ synced copies) | `buildStatusBlock()` shows pet / trainer level, trainer XP bar and latest achievements |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Progression.kt` | new: Kotlin mirror of the progression code |
+| `pycharm/src/main/kotlin/com/codotchi/engine/PetState.kt`, `GameEngine.kt`, `CodotchiPersistence.kt` | progression fields, XP from actions, save/load |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | new game keeps trainer progress; notification on achievement unlock / trainer level-up |
+| `vscode/src/extension.ts`, `sidebarProvider.ts`, `persistence.ts` | notification on unlock / level-up; trainer also saved under `codotchi.trainer` so New Game keeps it |
+| `vscode/media/sidebar.html`, `sidebar.css`, `sidebar.js` | level line, trainer XP bar, achievements list, `level_up` reaction, level / achievement bubbles and log lines |
+| `claude-desktop-codotchi/src/tools.ts` | level line and unlock messages under the pet |
+| `opencode-codotchi/src/index.ts` | passes progression to the status block |
+| `vscode/tests/unit/progression.test.ts`, `pycharm/src/test/kotlin/com/codotchi/ProgressionTest.kt`, `opencode-codotchi/tests/unit/asciiArt.test.ts`, `claude-desktop-codotchi/tests/tools.test.mjs` | new tests, including TS / Kotlin / webview achievement-table parity |
+| all manifests, `README.md` | version 2.29.0 |
+
+Updated constants:
+
+```text
+SCHEMA_VERSION: number = 1
+XP_AMOUNTS = { code: 5, commit: 25, care: 2, snack: 2, clean: 2, cure: 10, minigame: 15, evolve: 30, debug: 10, boss_kill: 50, boss_battle: 40 }
+XP_ACHIEVEMENT_BONUS: number = 50
+XP_DAILY_CAPS = { code: 500, care: 100 }   // per local day
+NIGHT_OWL_END_HOUR: number = 5
+xpToNextLevel(level) = round(100 × level^1.5)
+```
+
+---
+
+## v2.28.0
 
 ### Changes from v2.27.4 / OpenCode v2.27.5 (remove sponsor section — branch chore/remove-sponsor-section)
 

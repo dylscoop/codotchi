@@ -679,14 +679,14 @@ Codotchi has no progression layer apart from life stages.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| XP sources | `[ ]` | Save (same throttle as `applyCodeActivity`), commit, debug session (§2.7), Bug Boss kill (§2.8), Boss Battle win (§2.9), small amounts for care actions |
-| Level curve + level badge | `[ ]` | Badge in the sidebar header; `level_up` event and reaction |
-| Achievements (~15–20) | `[ ]` | e.g. First Blood (first boss kill), Exterminator (10 kills), Detective (10 debug sessions), Committed (100 commits), Survivor (pet reaches senior), Night Owl (commit after midnight), Snack Fiend |
-| Unlock feedback | `[ ]` | IDE toast + speech bubble on unlock; achievements view in the webview |
-| Persistence + migration | `[ ]` | Old saves start with defaults; ties in with the `schemaVersion` triage item |
-| Kotlin mirror | `[ ]` | ide-parity |
-| Terminal plugins | `[ ]` | Show level and recent unlocks in `/codotchi status`; AI edits earn XP through the existing code-activity path |
-| Level on the leaderboard (optional) | `[ ]` | Extra field in the leaderboard submission |
+| XP sources | `[~]` | v2.29.0: code activity 5 (500/day cap), commit 25, care 2 / cure 10 (100/day cap; scold / praise only when answering a call), mini-game win 15, evolution 30. `debug` / `boss_kill` / `boss_battle` sources exist in `awardXp` for §2.7–2.9 but nothing calls them yet |
+| Level curve + level badge | `[x]` | v2.29.0: `round(100 × level^1.5)` XP per level. Level line ("Trainer Lv · Pet Lv · 🏆 n/20") and XP bar under the info line; `trainer_level_up` / `pet_level_up` events and a `level_up` hop reaction |
+| Achievements (~15–20) | `[x]` | v2.29.0: 20 in `ACHIEVEMENTS`. The boss / debug ones (First Blood, Exterminator, Detective, Champion) can't unlock until §2.7–2.9 ship |
+| Unlock feedback | `[x]` | v2.29.0: IDE notification, speech bubble and log line; click the level line for the achievements list |
+| Persistence + migration | `[x]` | v2.29.0: `schemaVersion: 1`. Trainer progress lives in `PetState.trainer` and carries into the next pet via `createPet(..., trainer)`; VS Code also keeps it under `codotchi.trainer` because New Game clears the state |
+| Kotlin mirror | `[x]` | v2.29.0: `engine/Progression.kt`; a TS test checks the Kotlin and webview achievement tables match |
+| Terminal plugins | `[x]` | v2.29.0: `/codotchi status` shows levels, trainer XP and the latest 3 unlocks; Claude Desktop shows a level line and unlock messages |
+| Level on the leaderboard (optional) | `[ ]` | Not in v2.29.0 |
 
 **Design notes:**
 
@@ -782,7 +782,7 @@ Implementation Order" lists.
 - Save streaks (FEATURES.md §8)
 - Test-pass reward (FEATURES.md §8)
 - Settings wiring: coding rewards on/off, reward throttle, offline decay cap, tick interval, minigame timings; fix the FEATURES.md §12 table
-- `schemaVersion` on `PetState` (FEATURES.md §11)
+- `schemaVersion` on `PetState` (FEATURES.md §11) — **done in v2.29.0** (`SCHEMA_VERSION = 1`)
 - Multiple pets, Phase A (§2.4)
 - Visiting and emotes, Phase B (§2.4)
 - Friendship meter, gift exchange, marriage and offspring with the generation counter, matchmaker NPC (FEATURES_2.md §2.1–2.4, §3.3)
@@ -792,7 +792,7 @@ Implementation Order" lists.
 - Language packs: `en.json`, `en-SCO`, `en-AU`, the setting and `/codotchi lang` (§2.3)
 - `moo` novelty pack (§2.3)
 - Community language packs (§2.3)
-- XP, levels and achievements (§2.10). Build first, because the items below pay out XP
+- XP, levels and achievements (§2.10). Build first, because the items below pay out XP — **done in v2.29.0** (leaderboard level field still open)
 - Debug-session reactions (§2.7)
 - Live Bug Boss (§2.8)
 - Boss Battle mini-game (§2.9)

@@ -211,6 +211,14 @@ If it doesn't work:
 - **You were signed out unexpectedly:** you probably revoked Codotchi at
   github.com/settings/applications. Sign in again.
 
+## Levels & Achievements
+
+Coding, committing, looking after your pet, winning mini-games and evolving
+all earn XP. You have a **trainer level** that stays with you when a pet dies,
+and each pet has its own **pet level**. Both show under the pet with an XP
+bar. Click the level line to see the 20 achievements. Code-activity XP is
+capped at 500 a day and free care actions at 100.
+
 ## Mini-games
 
 Clicking **Play** opens the game picker (requires energy). Three games are
