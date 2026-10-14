@@ -381,6 +381,8 @@ export interface PetState {
     readonly petLevel: number;
     /** The player's lifetime progression; carried over to the next pet by createPet(). */
     readonly trainer: TrainerProgress;
+    /** This pet's daily challenges and streak; a new pet starts afresh. */
+    readonly dailies: DailyChallenges;
 }
 /**
  * The player's lifetime progression. Survives pet death: hosts pass the old
@@ -395,8 +397,27 @@ export interface TrainerProgress {
     readonly counters: Readonly<Record<string, number>>;
     /** Local date (YYYY-MM-DD) the daily XP buckets belong to. */
     readonly xpDay: string;
-    /** XP earned today per capped bucket ("code", "care"). */
+    /** XP earned today per daily-capped source (see XP_DAILY_CAPS). */
     readonly xpToday: Readonly<Record<string, number>>;
+    /** Local clock hour (YYYY-MM-DDTHH) the hourly XP buckets belong to. */
+    readonly xpHour: string;
+    /** XP earned this hour per hourly-capped source (see XP_HOURLY_CAPS). */
+    readonly xpThisHour: Readonly<Record<string, number>>;
+}
+/** A pet's daily challenges (see DAILY_CHALLENGES) and its streak. */
+export interface DailyChallenges {
+    /** Local date (YYYY-MM-DD) the picks belong to; "" before the first roll. */
+    readonly day: string;
+    /** Today's challenge ids: one coder, one keeper, one wildcard. */
+    readonly picks: readonly string[];
+    /** Trainer counters when the day started; progress is measured from these. */
+    readonly baseline: Readonly<Record<string, number>>;
+    /** Ids of today's completed challenges. */
+    readonly done: readonly string[];
+    /** Weekdays in a row with all three done (weekends neither break nor extend it). */
+    readonly streak: number;
+    /** Last day (YYYY-MM-DD) the streak was extended. */
+    readonly streakDay: string;
 }
 /** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
 export type LeaderboardIneligibleReason = "" | "tampered" | "unverified";
@@ -812,16 +833,23 @@ export declare function resume(state: PetState): PetState;
 export declare function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetState;
 /** Current save-format version. Bump when a migration step is added to deserialiseState(). */
 export declare const SCHEMA_VERSION: number;
-/** What earned the XP. Each source maps to an amount, an optional daily bucket and counters. */
-export type XpSource = "code" | "commit" | "care" | "snack" | "clean" | "cure" | "minigame" | "evolve" | "debug" | "boss_kill" | "boss_battle";
-/** XP per source. */
+/** What earned the XP. Each source maps to an amount, optional hourly / daily caps and counters. */
+export type XpSource = "code" | "commit" | "call" | "care" | "snack" | "clean" | "cure" | "minigame" | "evolve" | "debug" | "boss_kill" | "boss_battle";
+/**
+ * XP per source. Care actions (care / snack / clean / cure) pay nothing on
+ * their own: they only earn the "call" XP when they answer an attention call.
+ */
 export declare const XP_AMOUNTS: Readonly<Record<XpSource, number>>;
 /** Bonus XP for unlocking an achievement. */
 export declare const XP_ACHIEVEMENT_BONUS: number;
-/** Daily XP caps per bucket, so repeated saves or free care actions can't be farmed. */
-export declare const XP_DAILY_CAPS: Readonly<Record<string, number>>;
+/** Hourly XP caps per source (local clock hour). Sources not listed have no hourly cap. */
+export declare const XP_HOURLY_CAPS: Readonly<Partial<Record<XpSource, number>>>;
+/** Daily XP caps per source (local day). Sources not listed are uncapped. */
+export declare const XP_DAILY_CAPS: Readonly<Partial<Record<XpSource, number>>>;
 /** Commits made from midnight up to this hour (local time) count as late-night commits. */
 export declare const NIGHT_OWL_END_HOUR: number;
+/** Which tab an achievement sits under: the two paths, or shared trainer milestones. */
+export type AchievementPath = "coder" | "keeper" | "trainer";
 /** An unlockable achievement: reached when `counter` (or the trainer level, for "level") hits `threshold`. */
 export interface Achievement {
     readonly id: string;
@@ -830,6 +858,9 @@ export interface Achievement {
     readonly emoji: string;
     readonly counter: string;
     readonly threshold: number;
+    readonly path: AchievementPath;
+    /** Shown greyed out; can't be unlocked yet because its feature hasn't shipped. */
+    readonly comingSoon?: boolean;
 }
 /** Every achievement, in display order. */
 export declare const ACHIEVEMENTS: readonly Achievement[];
@@ -845,20 +876,31 @@ export declare function levelProgress(xp: number): {
 };
 /** Local calendar date as YYYY-MM-DD. */
 export declare function localDayKey(now: number): string;
+/** Local clock hour as YYYY-MM-DDTHH. */
+export declare function localHourKey(now: number): string;
+/** Progress towards an achievement: current value (capped at the threshold) and the threshold. */
+export declare function achievementProgress(a: Achievement, trainer: TrainerProgress): {
+    value: number;
+    threshold: number;
+};
 /**
  * Award XP to both the trainer and the current pet, update the achievement
  * counters, and unlock any achievements now reached.
  *
- * Capped sources stop paying XP once today's bucket is full, but their
- * counters still go up. Emits `trainer_level_up`, `pet_level_up` and
- * `achievement_unlocked_<id>` events (appended to `events` and the event log).
+ * Capped sources stop paying XP once this hour's or today's cap is full, but
+ * their counters still go up. With `answeredCall`, the action also answered
+ * an attention call and earns the "call" XP on top. Also advances the pet's
+ * daily challenges. Emits `trainer_level_up`, `pet_level_up`,
+ * `achievement_unlocked_<id>`, `daily_challenge_done_<id>` and
+ * `daily_challenges_all_done` events (appended to `events` and the event log).
  *
  * @param state - Pet state after the action that earned the XP.
  * @param source - What earned it.
- * @param now - Wall-clock ms, for the daily cap and time-of-day achievements.
+ * @param now - Wall-clock ms, for the caps and time-of-day achievements.
+ * @param answeredCall - The action answered an attention call.
  * @returns The state with progression applied.
  */
-export declare function awardXp(state: PetState, source: XpSource, now?: number): PetState;
+export declare function awardXp(state: PetState, source: XpSource, now?: number, answeredCall?: boolean): PetState;
 /** Look up an achievement by id. */
 export declare function achievementById(id: string): Achievement | undefined;
 /**
@@ -869,6 +911,61 @@ export declare function achievementById(id: string): Achievement | undefined;
 export declare function progressionMessage(event: string, state: PetState): string | null;
 /** Parse a TrainerProgress from saved JSON, filling in defaults for anything missing. */
 export declare function deserialiseTrainer(raw: unknown): TrainerProgress;
+/** Which pool a daily challenge comes from. Each day picks one from each. */
+export type DailyChallengePath = "coder" | "keeper" | "wild";
+/** A daily challenge: done once every counter in `reqs` has gone up by its target since the day started. */
+export interface DailyChallenge {
+    readonly id: string;
+    readonly path: DailyChallengePath;
+    readonly text: string;
+    readonly reqs: readonly (readonly [counter: string, target: number])[];
+}
+/** XP for each completed daily challenge. Uncapped, but each pays once a day. */
+export declare const DAILY_CHALLENGE_XP: number;
+/** Extra XP for completing all three of the day's challenges. */
+export declare const DAILY_ALL_DONE_BONUS: number;
+/** Every daily challenge, grouped by pool. */
+export declare const DAILY_CHALLENGES: readonly DailyChallenge[];
+/** Empty daily-challenge state for a new pet. */
+export declare function createDailies(): DailyChallenges;
+/** Look up a daily challenge by id. */
+export declare function dailyChallengeById(id: string): DailyChallenge | undefined;
+/** The day's three challenge ids (coder, keeper, wild), seeded from the date and the pet. */
+export declare function pickDailyChallenges(day: string, pet: Pick<PetState, "name" | "spawnedAt">): string[];
+/** Saturday or Sunday. */
+export declare function isWeekendDay(day: string): boolean;
+/** The most recent weekday before `day`. */
+export declare function previousWeekday(day: string): string;
+/**
+ * The streak as of `now`: weekdays in a row with all three challenges done.
+ * Weekends neither break nor extend it.
+ */
+export declare function currentStreak(dailies: DailyChallenges, now?: number): number;
+/** Progress on each requirement of `c`, capped at its target. */
+export declare function dailyChallengeProgress(c: DailyChallenge, baseline: Readonly<Record<string, number>>, counters: Readonly<Record<string, number>>): {
+    counter: string;
+    value: number;
+    target: number;
+}[];
+/** One of today's challenges, ready to display. */
+export interface DailyChallengeView {
+    readonly id: string;
+    readonly path: DailyChallengePath;
+    readonly text: string;
+    readonly value: number;
+    readonly target: number;
+    readonly done: boolean;
+}
+/** Today's challenges with progress, and the streak as of `now`. Works before the day's first roll too. */
+export declare function dailiesView(state: Pick<PetState, "dailies" | "name" | "spawnedAt"> & {
+    readonly trainer: Pick<TrainerProgress, "counters">;
+}, now?: number): {
+    challenges: DailyChallengeView[];
+    streak: number;
+    allDone: boolean;
+};
+/** Parse DailyChallenges from saved JSON, filling in defaults for anything missing. */
+export declare function deserialiseDailies(raw: unknown): DailyChallenges;
 /**
  * Serialise a PetState to a plain JSON-compatible object.
  *

@@ -14,7 +14,7 @@
  *   - buildStatusBlock() — compact stat bar for the /codotchi status command, returned as string
  *   - buildToast()       — one-line notification string
  */
-import { ACHIEVEMENTS, levelProgress } from "./gameEngine.js";
+import { ACHIEVEMENTS, dailiesView, levelProgress } from "./gameEngine.js";
 // ---------------------------------------------------------------------------
 // ANSI helpers
 // ---------------------------------------------------------------------------
@@ -684,8 +684,18 @@ export function buildStatusBlock(state) {
             .map((id) => ACHIEVEMENTS.find((a) => a.id === id))
             .filter((a) => a !== undefined)
             .map((a) => `${a.emoji} ${a.name}`);
-        lines.push(`  ${FG_CYAN}Achievements${RESET}  ${unlocked.length}/${ACHIEVEMENTS.length}` +
+        const unlockable = ACHIEVEMENTS.filter((a) => !a.comingSoon).length;
+        lines.push(`  ${FG_CYAN}Achievements${RESET}  ${unlocked.length}/${unlockable}` +
             (recent.length > 0 ? `  ${FG_GRAY}latest:${RESET} ${recent.join(", ")}` : ""));
+        if (state.dailies && state.spawnedAt !== undefined) {
+            const view = dailiesView({ name: state.name, spawnedAt: state.spawnedAt, dailies: state.dailies,
+                trainer: { counters: state.trainer.counters ?? {} } });
+            lines.push(`  ${FG_CYAN}Today${RESET}` + (view.streak > 0 ? `         ${FG_YELLOW}streak ${view.streak}${RESET}` : ""));
+            for (const c of view.challenges) {
+                const mark = c.done ? colour("✓", FG_GREEN) : colour("·", FG_GRAY);
+                lines.push(`    ${mark} ${c.text} ${FG_GRAY}${c.value}/${c.target}${RESET}`);
+            }
+        }
     }
     lines.push("");
     return lines.join("\n");

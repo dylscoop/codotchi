@@ -780,6 +780,7 @@ export function createPet(name, petType, unlockedCharacter = null, trainer = nul
         petXp: 0,
         petLevel: 1,
         trainer: trainer ?? createTrainer(),
+        dailies: createDailies(),
     };
     return withDerivedFields(partial);
 }
@@ -1575,7 +1576,7 @@ export function feedMeal(state, mealsGivenThisCycle, opts) {
         consecutiveSnacks: 0,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
-    }), "care");
+    }), "care", Date.now(), answered !== null);
 }
 /**
  * Register a snack being given to the pet (button-press phase).
@@ -1612,7 +1613,7 @@ export function startSnack(state, opts) {
     if (answered) {
         events.push(`attention_call_answered_${state.activeAttentionCall}`);
     }
-    return withDerivedFields({
+    const next = withDerivedFields({
         ...state,
         ...(answered ?? {}),
         snacksGivenThisCycle,
@@ -1620,6 +1621,7 @@ export function startSnack(state, opts) {
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
     });
+    return answered ? awardXp(next, "call") : next;
 }
 /**
  * Apply the stat effects of a snack once the pet reaches it on the stage.
@@ -1707,7 +1709,7 @@ export function play(state, opts) {
         consecutiveSnacks: 0,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
-    }), "care");
+    }), "care", Date.now(), answered !== null);
 }
 /**
  * Pat the pet — a gentle interaction that gives a modest happiness boost at a
@@ -1736,7 +1738,7 @@ export function pat(state) {
         consecutiveSnacks: 0,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
-    }), "care");
+    }), "care", Date.now(), answered !== null);
 }
 /**
  * Apply the stat cost of viewing the token cost overlay: same energy/happiness
@@ -1849,10 +1851,11 @@ export function sleep(state) {
     if (answered) {
         events.push("attention_call_answered_low_energy");
     }
-    return withDerivedFields({ ...state, ...(answered ?? {}), sleeping: true,
+    const next = withDerivedFields({ ...state, ...(answered ?? {}), sleeping: true,
         consecutiveSnacks: 0,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events });
+    return answered ? awardXp(next, "call") : next;
 }
 /**
  * Wake the pet up.
@@ -1902,7 +1905,7 @@ export function clean(state) {
         poopOverLimitTicks: 0,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
-    }), "clean");
+    }), "clean", Date.now(), answered !== null);
 }
 /**
  * Administer one dose of medicine.
@@ -1935,11 +1938,11 @@ export function giveMedicine(state) {
             consecutiveSnacks: 0,
             careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
             events,
-        }), "cure");
+        }), "cure", Date.now(), answered !== null);
     }
     return awardXp(withDerivedFields({ ...state, ...(answered ?? {}), medicineDosesGiven,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
-        events }), "care");
+        events }), "care", Date.now(), answered !== null);
 }
 /**
  * Scold the pet to raise discipline.
@@ -1960,8 +1963,8 @@ export function scold(state) {
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
     });
-    // Scold / praise cost nothing, so they only earn XP when they answer a call.
-    return answered ? awardXp(next, "care") : next;
+    // Scold / praise only count as care when they answer a call.
+    return answered ? awardXp(next, "care", Date.now(), true) : next;
 }
 /**
  * Praise the pet to raise discipline.
@@ -2011,7 +2014,7 @@ export function praise(state) {
         ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS, ticksSinceLastBreakCall: 0 } : {}),
         events,
     });
-    return answered ? awardXp(next, "care") : next;
+    return answered ? awardXp(next, "care", Date.now(), true) : next;
 }
 /**
  * Apply the code-activity happiness and discipline boost.
@@ -2278,15 +2281,19 @@ export function applyOfflineDecay(state, elapsedSeconds) {
 // ---------------------------------------------------------------------------
 /** Current save-format version. Bump when a migration step is added to deserialiseState(). */
 export const SCHEMA_VERSION = 1;
-/** XP per source. */
+/**
+ * XP per source. Care actions (care / snack / clean / cure) pay nothing on
+ * their own: they only earn the "call" XP when they answer an attention call.
+ */
 export const XP_AMOUNTS = {
-    code: 5,
-    commit: 25,
-    care: 2,
-    snack: 2,
-    clean: 2,
-    cure: 10,
-    minigame: 15,
+    code: 2,
+    commit: 15,
+    call: 10,
+    care: 0,
+    snack: 0,
+    clean: 0,
+    cure: 0,
+    minigame: 10,
     evolve: 30,
     debug: 10,
     boss_kill: 50,
@@ -2294,19 +2301,25 @@ export const XP_AMOUNTS = {
 };
 /** Bonus XP for unlocking an achievement. */
 export const XP_ACHIEVEMENT_BONUS = 50;
-/** Daily XP caps per bucket, so repeated saves or free care actions can't be farmed. */
+/** Hourly XP caps per source (local clock hour). Sources not listed have no hourly cap. */
+export const XP_HOURLY_CAPS = {
+    code: 10,
+    commit: 30,
+    minigame: 20,
+};
+/** Daily XP caps per source (local day). Sources not listed are uncapped. */
 export const XP_DAILY_CAPS = {
-    code: 500,
-    care: 100,
+    code: 40,
+    commit: 90,
+    call: 100,
+    minigame: 50,
 };
 /** Commits made from midnight up to this hour (local time) count as late-night commits. */
 export const NIGHT_OWL_END_HOUR = 5;
-const XP_BUCKETS = {
-    code: "code", care: "care", snack: "care", clean: "care", cure: "care",
-};
 const XP_COUNTERS = {
     code: ["codeActivity"],
     commit: ["commits"],
+    call: ["callsAnswered"],
     care: ["care"],
     snack: ["care", "snacks"],
     clean: ["care", "cleans"],
@@ -2319,34 +2332,34 @@ const XP_COUNTERS = {
 };
 /** Every achievement, in display order. */
 export const ACHIEVEMENTS = [
-    { id: "hello_world", name: "Hello World", description: "Write some code with your pet watching", emoji: "👋", counter: "codeActivity", threshold: 1 },
-    { id: "save_100", name: "Busy Fingers", description: "Get 100 code-activity rewards", emoji: "⌨️", counter: "codeActivity", threshold: 100 },
-    { id: "save_1000", name: "Ctrl+S Master", description: "Get 1,000 code-activity rewards", emoji: "💾", counter: "codeActivity", threshold: 1000 },
-    { id: "first_commit", name: "First Commit", description: "Make a commit", emoji: "📌", counter: "commits", threshold: 1 },
-    { id: "committed", name: "Committed", description: "Make 100 commits", emoji: "📚", counter: "commits", threshold: 100 },
-    { id: "night_owl", name: "Night Owl", description: "Commit between midnight and 5 am", emoji: "🦉", counter: "nightCommits", threshold: 1 },
-    { id: "caretaker", name: "Caretaker", description: "Look after your pet 100 times", emoji: "🤲", counter: "care", threshold: 100 },
-    { id: "snack_fiend", name: "Snack Fiend", description: "Hand out 50 snacks", emoji: "🍪", counter: "snacks", threshold: 50 },
-    { id: "clean_freak", name: "Clean Freak", description: "Clean up 50 times", emoji: "🧹", counter: "cleans", threshold: 50 },
-    { id: "nurse", name: "Nurse", description: "Cure your pet 10 times", emoji: "💊", counter: "cures", threshold: 10 },
-    { id: "gamer", name: "Gamer", description: "Win 10 mini-games", emoji: "🎮", counter: "minigameWins", threshold: 10 },
-    { id: "growing_up", name: "Growing Up", description: "See your pets evolve 3 times", emoji: "🌱", counter: "evolutions", threshold: 3 },
-    { id: "survivor", name: "Survivor", description: "Raise a pet to senior", emoji: "🧓", counter: "seniors", threshold: 1 },
-    { id: "level_5", name: "Rising Star", description: "Reach trainer level 5", emoji: "⭐", counter: "level", threshold: 5 },
-    { id: "level_10", name: "Veteran", description: "Reach trainer level 10", emoji: "🌟", counter: "level", threshold: 10 },
-    { id: "level_25", name: "Legend", description: "Reach trainer level 25", emoji: "🏆", counter: "level", threshold: 25 },
-    { id: "detective", name: "Detective", description: "Finish 10 debug sessions", emoji: "🔍", counter: "debugSessions", threshold: 10 },
-    { id: "first_blood", name: "First Blood", description: "Defeat a Bug Boss", emoji: "⚔️", counter: "bossKills", threshold: 1 },
-    { id: "exterminator", name: "Exterminator", description: "Defeat 10 Bug Bosses", emoji: "🐛", counter: "bossKills", threshold: 10 },
-    { id: "champion", name: "Champion", description: "Win a Boss Battle", emoji: "🥊", counter: "bossBattleWins", threshold: 1 },
+    { id: "hello_world", name: "Hello World", description: "Write some code with your pet watching", emoji: "👋", counter: "codeActivity", threshold: 1, path: "coder" },
+    { id: "save_100", name: "Busy Fingers", description: "Get 100 code-activity rewards", emoji: "⌨️", counter: "codeActivity", threshold: 100, path: "coder" },
+    { id: "save_1000", name: "Ctrl+S Master", description: "Get 1,000 code-activity rewards", emoji: "💾", counter: "codeActivity", threshold: 1000, path: "coder" },
+    { id: "first_commit", name: "First Commit", description: "Make a commit", emoji: "📌", counter: "commits", threshold: 1, path: "coder" },
+    { id: "committed", name: "Committed", description: "Make 100 commits", emoji: "📚", counter: "commits", threshold: 100, path: "coder" },
+    { id: "night_owl", name: "Night Owl", description: "Commit between midnight and 5 am", emoji: "🦉", counter: "nightCommits", threshold: 1, path: "coder" },
+    { id: "detective", name: "Detective", description: "Finish 10 debug sessions", emoji: "🔍", counter: "debugSessions", threshold: 10, path: "coder", comingSoon: true },
+    { id: "first_blood", name: "First Blood", description: "Defeat a Bug Boss", emoji: "⚔️", counter: "bossKills", threshold: 1, path: "coder", comingSoon: true },
+    { id: "exterminator", name: "Exterminator", description: "Defeat 10 Bug Bosses", emoji: "🐛", counter: "bossKills", threshold: 10, path: "coder", comingSoon: true },
+    { id: "on_call", name: "On Call", description: "Answer 100 calls from your pet", emoji: "🤲", counter: "callsAnswered", threshold: 100, path: "keeper" },
+    { id: "snack_fiend", name: "Snack Fiend", description: "Hand out 50 snacks", emoji: "🍪", counter: "snacks", threshold: 50, path: "keeper" },
+    { id: "clean_freak", name: "Clean Freak", description: "Clean up 50 times", emoji: "🧹", counter: "cleans", threshold: 50, path: "keeper" },
+    { id: "nurse", name: "Nurse", description: "Cure your pet 10 times", emoji: "💊", counter: "cures", threshold: 10, path: "keeper" },
+    { id: "gamer", name: "Gamer", description: "Win 10 mini-games", emoji: "🎮", counter: "minigameWins", threshold: 10, path: "keeper" },
+    { id: "growing_up", name: "Growing Up", description: "See your pets evolve 3 times", emoji: "🌱", counter: "evolutions", threshold: 3, path: "keeper" },
+    { id: "survivor", name: "Survivor", description: "Raise a pet to senior", emoji: "🧓", counter: "seniors", threshold: 1, path: "keeper" },
+    { id: "champion", name: "Champion", description: "Win a Boss Battle", emoji: "🥊", counter: "bossBattleWins", threshold: 1, path: "keeper", comingSoon: true },
+    { id: "level_5", name: "Rising Star", description: "Reach trainer level 5", emoji: "⭐", counter: "level", threshold: 5, path: "trainer" },
+    { id: "level_10", name: "Veteran", description: "Reach trainer level 10", emoji: "🌟", counter: "level", threshold: 10, path: "trainer" },
+    { id: "level_25", name: "Legend", description: "Reach trainer level 25", emoji: "🏆", counter: "level", threshold: 25, path: "trainer" },
 ];
 /** A fresh trainer with no XP. */
 export function createTrainer() {
-    return { xp: 0, level: 1, achievements: [], counters: {}, xpDay: "", xpToday: {} };
+    return { xp: 0, level: 1, achievements: [], counters: {}, xpDay: "", xpToday: {}, xpHour: "", xpThisHour: {} };
 }
 /** XP needed to go from `level` to `level + 1`. */
 export function xpToNextLevel(level) {
-    return Math.round(100 * Math.pow(Math.max(1, level), 1.5));
+    return Math.round(50 * Math.pow(Math.max(1, level), 1.5));
 }
 /** Level reached with `xp` total XP, plus the progress into that level. */
 export function levelProgress(xp) {
@@ -2365,6 +2378,15 @@ export function localDayKey(now) {
     const dd = String(d.getDate()).padStart(2, "0");
     return `${d.getFullYear()}-${mm}-${dd}`;
 }
+/** Local clock hour as YYYY-MM-DDTHH. */
+export function localHourKey(now) {
+    return `${localDayKey(now)}T${String(new Date(now).getHours()).padStart(2, "0")}`;
+}
+/** Progress towards an achievement: current value (capped at the threshold) and the threshold. */
+export function achievementProgress(a, trainer) {
+    const raw = a.counter === "level" ? trainer.level : trainer.counters[a.counter] ?? 0;
+    return { value: Math.min(raw, a.threshold), threshold: a.threshold };
+}
 function bump(counters, key) {
     counters[key] = (counters[key] ?? 0) + 1;
 }
@@ -2372,43 +2394,65 @@ function bump(counters, key) {
  * Award XP to both the trainer and the current pet, update the achievement
  * counters, and unlock any achievements now reached.
  *
- * Capped sources stop paying XP once today's bucket is full, but their
- * counters still go up. Emits `trainer_level_up`, `pet_level_up` and
- * `achievement_unlocked_<id>` events (appended to `events` and the event log).
+ * Capped sources stop paying XP once this hour's or today's cap is full, but
+ * their counters still go up. With `answeredCall`, the action also answered
+ * an attention call and earns the "call" XP on top. Also advances the pet's
+ * daily challenges. Emits `trainer_level_up`, `pet_level_up`,
+ * `achievement_unlocked_<id>`, `daily_challenge_done_<id>` and
+ * `daily_challenges_all_done` events (appended to `events` and the event log).
  *
  * @param state - Pet state after the action that earned the XP.
  * @param source - What earned it.
- * @param now - Wall-clock ms, for the daily cap and time-of-day achievements.
+ * @param now - Wall-clock ms, for the caps and time-of-day achievements.
+ * @param answeredCall - The action answered an attention call.
  * @returns The state with progression applied.
  */
-export function awardXp(state, source, now = Date.now()) {
+export function awardXp(state, source, now = Date.now(), answeredCall = false) {
     const t = state.trainer;
     const day = localDayKey(now);
+    const hour = localHourKey(now);
     const xpToday = t.xpDay === day ? { ...t.xpToday } : {};
+    const xpThisHour = t.xpHour === hour ? { ...t.xpThisHour } : {};
     const counters = { ...t.counters };
-    for (const key of XP_COUNTERS[source]) {
-        bump(counters, key);
-    }
     if (source === "commit" && new Date(now).getHours() < NIGHT_OWL_END_HOUR) {
         bump(counters, "nightCommits");
     }
     if (source === "evolve" && state.stage === "senior") {
         bump(counters, "seniors");
     }
-    let amount = XP_AMOUNTS[source];
-    const bucket = XP_BUCKETS[source];
-    if (bucket !== undefined) {
-        const used = xpToday[bucket] ?? 0;
-        amount = Math.max(0, Math.min(amount, XP_DAILY_CAPS[bucket] - used));
-        xpToday[bucket] = used + amount;
+    let amount = 0;
+    const sources = answeredCall && source !== "call" ? [source, "call"] : [source];
+    for (const src of sources) {
+        for (const key of XP_COUNTERS[src]) {
+            bump(counters, key);
+        }
+        let earned = XP_AMOUNTS[src];
+        const hourCap = XP_HOURLY_CAPS[src];
+        const dayCap = XP_DAILY_CAPS[src];
+        if (hourCap !== undefined) {
+            earned = Math.min(earned, Math.max(0, hourCap - (xpThisHour[src] ?? 0)));
+        }
+        if (dayCap !== undefined) {
+            earned = Math.min(earned, Math.max(0, dayCap - (xpToday[src] ?? 0)));
+        }
+        if (hourCap !== undefined) {
+            xpThisHour[src] = (xpThisHour[src] ?? 0) + earned;
+        }
+        if (dayCap !== undefined) {
+            xpToday[src] = (xpToday[src] ?? 0) + earned;
+        }
+        amount += earned;
     }
-    const events = [];
+    const daily = advanceDailies(state.dailies, state, t.counters, counters, day);
+    amount += daily.xp;
+    const events = [...daily.events];
     let xp = t.xp + amount;
     let level = levelProgress(xp).level;
     const achievements = [...t.achievements];
     // Unlock bonuses can raise the level, which can unlock a level achievement.
     for (;;) {
-        const fresh = ACHIEVEMENTS.filter((a) => !achievements.includes(a.id) &&
+        const fresh = ACHIEVEMENTS.filter((a) => !a.comingSoon &&
+            !achievements.includes(a.id) &&
             (a.counter === "level" ? level : counters[a.counter] ?? 0) >= a.threshold);
         if (fresh.length === 0) {
             break;
@@ -2432,7 +2476,8 @@ export function awardXp(state, source, now = Date.now()) {
         ...state,
         petXp,
         petLevel,
-        trainer: { xp, level, achievements, counters, xpDay: day, xpToday },
+        trainer: { xp, level, achievements, counters, xpDay: day, xpToday, xpHour: hour, xpThisHour },
+        dailies: daily.dailies,
         events: [...state.events, ...events],
         recentEventLog: events.length > 0
             ? [...state.recentEventLog, ...events].slice(-RECENT_EVENT_LOG_MAX)
@@ -2455,6 +2500,15 @@ export function progressionMessage(event, state) {
     if (event.startsWith("achievement_unlocked_")) {
         const a = achievementById(event.slice("achievement_unlocked_".length));
         return a ? `Achievement unlocked: ${a.emoji} ${a.name} — ${a.description}` : null;
+    }
+    if (event.startsWith("daily_challenge_done_")) {
+        const c = dailyChallengeById(event.slice("daily_challenge_done_".length));
+        return c ? `Daily challenge done: ${c.text} (+${DAILY_CHALLENGE_XP} XP)` : null;
+    }
+    if (event === "daily_challenges_all_done") {
+        const d = state.dailies;
+        const streak = d.streakDay === d.day && d.streak > 0 ? ` Streak: ${d.streak} day${d.streak === 1 ? "" : "s"}.` : "";
+        return `All of today's challenges done! +${DAILY_ALL_DONE_BONUS} bonus XP.${streak}`;
     }
     return null;
 }
@@ -2483,6 +2537,172 @@ export function deserialiseTrainer(raw) {
         counters: numRecord(r.counters),
         xpDay: typeof r.xpDay === "string" ? r.xpDay : "",
         xpToday: numRecord(r.xpToday),
+        xpHour: typeof r.xpHour === "string" ? r.xpHour : "",
+        xpThisHour: numRecord(r.xpThisHour),
+    };
+}
+/** XP for each completed daily challenge. Uncapped, but each pays once a day. */
+export const DAILY_CHALLENGE_XP = 25;
+/** Extra XP for completing all three of the day's challenges. */
+export const DAILY_ALL_DONE_BONUS = 25;
+/** Every daily challenge, grouped by pool. */
+export const DAILY_CHALLENGES = [
+    { id: "code_10", path: "coder", text: "Get 10 code-activity rewards", reqs: [["codeActivity", 10]] },
+    { id: "code_25", path: "coder", text: "Get 25 code-activity rewards", reqs: [["codeActivity", 25]] },
+    { id: "commit_1", path: "coder", text: "Make a commit", reqs: [["commits", 1]] },
+    { id: "commit_3", path: "coder", text: "Make 3 commits", reqs: [["commits", 3]] },
+    { id: "commit_5", path: "coder", text: "Make 5 commits", reqs: [["commits", 5]] },
+    { id: "calls_3", path: "keeper", text: "Answer 3 calls from your pet", reqs: [["callsAnswered", 3]] },
+    { id: "calls_6", path: "keeper", text: "Answer 6 calls from your pet", reqs: [["callsAnswered", 6]] },
+    { id: "snacks_3", path: "keeper", text: "Hand out 3 snacks", reqs: [["snacks", 3]] },
+    { id: "clean_2", path: "keeper", text: "Clean up twice", reqs: [["cleans", 2]] },
+    { id: "care_10", path: "keeper", text: "Look after your pet 10 times", reqs: [["care", 10]] },
+    { id: "win_1", path: "wild", text: "Win a mini-game", reqs: [["minigameWins", 1]] },
+    { id: "win_3", path: "wild", text: "Win 3 mini-games", reqs: [["minigameWins", 3]] },
+    { id: "commit_and_call", path: "wild", text: "Make a commit and answer a call", reqs: [["commits", 1], ["callsAnswered", 1]] },
+    { id: "code_and_win", path: "wild", text: "Get 5 code-activity rewards and win a mini-game", reqs: [["codeActivity", 5], ["minigameWins", 1]] },
+    { id: "snack_and_commit", path: "wild", text: "Hand out a snack and make a commit", reqs: [["snacks", 1], ["commits", 1]] },
+];
+const DAILY_PATHS = ["coder", "keeper", "wild"];
+/** Empty daily-challenge state for a new pet. */
+export function createDailies() {
+    return { day: "", picks: [], baseline: {}, done: [], streak: 0, streakDay: "" };
+}
+/** Look up a daily challenge by id. */
+export function dailyChallengeById(id) {
+    return DAILY_CHALLENGES.find((c) => c.id === id);
+}
+/** 32-bit FNV-1a over UTF-16 code units. Kotlin mirrors this exactly. */
+function seedHash(s) {
+    let h = 0x811c9dc5 | 0;
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+}
+/** The day's three challenge ids (coder, keeper, wild), seeded from the date and the pet. */
+export function pickDailyChallenges(day, pet) {
+    const seed = `${day}|${pet.name}|${pet.spawnedAt}`;
+    return DAILY_PATHS.map((path) => {
+        const pool = DAILY_CHALLENGES.filter((c) => c.path === path);
+        return pool[seedHash(`${seed}|${path}`) % pool.length].id;
+    });
+}
+function parseDay(day) {
+    const [y, m, d] = day.split("-").map(Number);
+    return new Date(y, m - 1, d, 12);
+}
+/** Saturday or Sunday. */
+export function isWeekendDay(day) {
+    const w = parseDay(day).getDay();
+    return w === 0 || w === 6;
+}
+/** The most recent weekday before `day`. */
+export function previousWeekday(day) {
+    const d = parseDay(day);
+    do {
+        d.setDate(d.getDate() - 1);
+    } while (d.getDay() === 0 || d.getDay() === 6);
+    return localDayKey(d.getTime());
+}
+/**
+ * The streak as of `now`: weekdays in a row with all three challenges done.
+ * Weekends neither break nor extend it.
+ */
+export function currentStreak(dailies, now = Date.now()) {
+    const today = localDayKey(now);
+    if (dailies.streak <= 0 || dailies.streakDay === "") {
+        return 0;
+    }
+    return dailies.streakDay === today || dailies.streakDay === previousWeekday(today) ? dailies.streak : 0;
+}
+/** Start a new day's picks if `day` has moved on, measuring progress from the trainer's current counters. */
+function rollDailies(dailies, pet, counters, day) {
+    if (dailies.day === day) {
+        return dailies;
+    }
+    return { ...dailies, day, picks: pickDailyChallenges(day, pet), baseline: { ...counters }, done: [] };
+}
+/** Progress on each requirement of `c`, capped at its target. */
+export function dailyChallengeProgress(c, baseline, counters) {
+    return c.reqs.map(([counter, target]) => ({
+        counter,
+        value: Math.min(target, Math.max(0, (counters[counter] ?? 0) - (baseline[counter] ?? 0))),
+        target,
+    }));
+}
+/** Today's challenges with progress, and the streak as of `now`. Works before the day's first roll too. */
+export function dailiesView(state, now = Date.now()) {
+    const d = rollDailies(state.dailies, state, state.trainer.counters, localDayKey(now));
+    const challenges = d.picks.flatMap((id) => {
+        const c = dailyChallengeById(id);
+        if (!c) {
+            return [];
+        }
+        const p = dailyChallengeProgress(c, d.baseline, state.trainer.counters);
+        return [{
+                id, path: c.path, text: c.text,
+                value: p.reduce((s, r) => s + r.value, 0),
+                target: p.reduce((s, r) => s + r.target, 0),
+                done: d.done.includes(id),
+            }];
+    });
+    return { challenges, streak: currentStreak(d, now), allDone: challenges.length > 0 && challenges.every((c) => c.done) };
+}
+/**
+ * Roll the day if needed, then mark any challenges now complete.
+ * Returns the new dailies, the XP they earned and their events.
+ */
+function advanceDailies(dailies, pet, before, after, day) {
+    const d = rollDailies(dailies, pet, before, day);
+    const done = [...d.done];
+    const events = [];
+    let xp = 0;
+    for (const id of d.picks) {
+        const c = dailyChallengeById(id);
+        if (!c || done.includes(id)) {
+            continue;
+        }
+        if (dailyChallengeProgress(c, d.baseline, after).every((r) => r.value >= r.target)) {
+            done.push(id);
+            events.push(`daily_challenge_done_${id}`);
+            xp += DAILY_CHALLENGE_XP;
+        }
+    }
+    let { streak, streakDay } = d;
+    if (events.length > 0 && d.picks.length > 0 && done.length === d.picks.length) {
+        events.push("daily_challenges_all_done");
+        xp += DAILY_ALL_DONE_BONUS;
+        if (!isWeekendDay(day) && streakDay !== day) {
+            streak = (streakDay === previousWeekday(day) ? streak : 0) + 1;
+            streakDay = day;
+        }
+    }
+    return { dailies: { ...d, done, streak, streakDay }, xp, events };
+}
+/** Parse DailyChallenges from saved JSON, filling in defaults for anything missing. */
+export function deserialiseDailies(raw) {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+        return createDailies();
+    }
+    const r = raw;
+    const strings = (v) => Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+    const baseline = {};
+    if (r.baseline !== null && typeof r.baseline === "object" && !Array.isArray(r.baseline)) {
+        for (const [k, n] of Object.entries(r.baseline)) {
+            if (typeof n === "number" && Number.isFinite(n)) {
+                baseline[k] = n;
+            }
+        }
+    }
+    return {
+        day: typeof r.day === "string" ? r.day : "",
+        picks: strings(r.picks),
+        baseline,
+        done: strings(r.done),
+        streak: typeof r.streak === "number" && Number.isFinite(r.streak) ? Math.max(0, Math.floor(r.streak)) : 0,
+        streakDay: typeof r.streakDay === "string" ? r.streakDay : "",
     };
 }
 // ---------------------------------------------------------------------------
@@ -2559,6 +2779,7 @@ export function serialiseState(state) {
         petXp: state.petXp,
         petLevel: state.petLevel,
         trainer: state.trainer,
+        dailies: state.dailies,
     };
 }
 /**
@@ -2654,6 +2875,7 @@ export function deserialiseState(data) {
         petXp: Math.max(0, getNumber("petXp", 0)),
         petLevel: levelProgress(getNumber("petXp", 0)).level,
         trainer: deserialiseTrainer(data["trainer"]),
+        dailies: deserialiseDailies(data["dailies"]),
     };
     return withDerivedFields(partial);
 }
