@@ -87,7 +87,35 @@ export declare function formatCost(usd: number): string;
 export interface ContextualSpeechOptions {
     /** "lastHour" (default, OpenCode wording) or "hourlyRate" (Claude Code wording). */
     costStyle?: "lastHour" | "hourlyRate";
+    /** Keep the cost-tier remarks and colours but leave out the $ / token figures (shown elsewhere). */
+    remarksOnly?: boolean;
+    /** Clock used for time-of-day lines (remarksOnly only). Defaults to now. */
+    now?: Date;
 }
+/** Extra situational bubble lines used when remarksOnly is set. */
+export declare const SITUATION_LINES: {
+    readonly chat10: readonly ["We're deep in the weeds now.", "Still with you. Mostly."];
+    readonly chat25: readonly ["Is this still the same task?", "I've lost count. Kidding. Mostly."];
+    readonly files15: readonly ["That's a lot of files. Commit soon?", "Big diff energy."];
+    readonly files30: readonly ["Are we rewriting everything?", "The reviewer is going to need a coffee."];
+    readonly session1h: readonly ["An hour in. Stretch?"];
+    readonly session3h: readonly ["Three hours. Water break?"];
+    readonly session5h: readonly ["I'm tired and I'm just a pixel."];
+    readonly quiet: readonly ["Thinking or snacking?", "Planning the next move?"];
+    readonly prod: readonly ["Main branch. Tread lightly.", "Careful, this one ships."];
+    readonly morning: readonly ["Coffee first?"];
+    readonly midday: readonly ["Lunch break yet?", "Post-lunch slump? Push through."];
+    readonly evening: readonly ["Clocking off soon?", "Overtime? Bold.", "Dinner first, bugs later."];
+    readonly general: readonly ["I believe in this code.", "Ship it? Maybe after a test.", "Have you tried turning it off and on?", "I'm just here for moral support."];
+};
+/** Spend remarks (no figures) per cost tier, used when remarksOnly is set. */
+export declare const SPEND_REMARKS: {
+    readonly green: readonly ["Running a tab.", "Ticking along.", "Tokens well spent so far.", "Meter's running, but we're fine.", "Spending like a sensible adult.", "The wallet barely noticed.", "Still in snack money territory."];
+    readonly yellow: readonly ["Getting spendy.", "The tab's adding up.", "Easy on the tokens.", "The meter's spinning a bit fast.", "Is this worth the tokens? Probably. Maybe.", "Your wallet just sighed."];
+    readonly red: readonly ["CHECK YOUR USAGE!", "THIS IS GETTING EXPENSIVE!", "WHO'S PAYING FOR ALL THIS?!", "THE METER IS ON FIRE!", "I CAN HEAR THE CREDIT CARD CRYING!", "THIS COSTS MORE THAN MY FOOD!", "ARE WE BUILDING A ROCKET?!"];
+};
+/** Lines that fit the current files / session length / time of day, plus the any-time lines. */
+export declare function situationalLines(filesEdited: number, sessionMs: number, now: Date): string[];
 /**
  * Build a contextual speech line combining pet mood and coding session activity.
  *
