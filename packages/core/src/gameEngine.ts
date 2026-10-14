@@ -2898,9 +2898,10 @@ function bump(counters: Record<string, number>, key: string): void {
  *
  * Capped sources stop paying XP once this hour's or today's cap is full, but
  * their counters still go up. With `answeredCall`, the action also answered
- * an attention call and earns the "call" XP on top. Emits `trainer_level_up`,
- * `pet_level_up` and `achievement_unlocked_<id>` events (appended to `events`
- * and the event log).
+ * an attention call and earns the "call" XP on top. Also advances the pet's
+ * daily challenges. Emits `trainer_level_up`, `pet_level_up`,
+ * `achievement_unlocked_<id>`, `daily_challenge_done_<id>` and
+ * `daily_challenges_all_done` events (appended to `events` and the event log).
  *
  * @param state - Pet state after the action that earned the XP.
  * @param source - What earned it.
@@ -3154,7 +3155,10 @@ export interface DailyChallengeView {
 }
 
 /** Today's challenges with progress, and the streak as of `now`. Works before the day's first roll too. */
-export function dailiesView(state: PetState, now: number = Date.now()): { challenges: DailyChallengeView[]; streak: number; allDone: boolean } {
+export function dailiesView(
+  state: Pick<PetState, "dailies" | "name" | "spawnedAt"> & { readonly trainer: Pick<TrainerProgress, "counters"> },
+  now: number = Date.now(),
+): { challenges: DailyChallengeView[]; streak: number; allDone: boolean } {
   const d = rollDailies(state.dailies, state, state.trainer.counters, localDayKey(now));
   const challenges = d.picks.flatMap((id) => {
     const c = dailyChallengeById(id);

@@ -101,7 +101,8 @@ describe("claude-desktop tools", () => {
     writeState(["vscode", "state.json"], adultPet());
     const out = tools.activity(readConfig());
     assert.equal(out.state.petXp, ge.XP_AMOUNTS.code);
-    assert.ok(out.asciiArt.includes("Pet Lv 1 · Trainer Lv 1 · 🏆 1/20"), out.asciiArt);
+    assert.ok(out.asciiArt.includes("Pet Lv 1 · Trainer Lv 2 · 🏆 1/16"), out.asciiArt);
+    assert.equal(out.asciiArt.split("\n").filter((l) => /^(⬜|✅) /.test(l)).length, 3, out.asciiArt);
     assert.ok(out.asciiArt.includes("Achievement unlocked: 👋 Hello World"), out.asciiArt);
     const stored = JSON.parse(fs.readFileSync(resolveIDEStatePath(), "utf8"));
     assert.deepEqual(stored.state.trainer.achievements, ["hello_world"]);

@@ -268,9 +268,23 @@ describe("buildStatusBlock", () => {
       ...baseState, petLevel: 3, trainer: { xp: 150, achievements: ["hello_world", "first_commit"] },
     }));
     assert.ok(result.includes("Level   : Pet 3 · Trainer 2"));
-    assert.ok(result.includes("50/283"));
-    assert.ok(result.includes("Achievements  2/20"));
+    assert.ok(result.includes("100/141"));
+    assert.ok(result.includes("Achievements  2/16"));
     assert.ok(result.includes("📌 First Commit, 👋 Hello World"));
+  });
+
+  it("lists today's challenges and the streak when given dailies", () => {
+    const now = new Date();
+    const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const result = stripAnsi(buildStatusBlock({
+      ...baseState,
+      spawnedAt: 1,
+      trainer: { xp: 0, achievements: [], counters: { commits: 2 } },
+      dailies: { day, picks: ["commit_3", "calls_3", "win_1"], baseline: { commits: 1 }, done: [], streak: 4, streakDay: day },
+    }));
+    assert.ok(result.includes("streak 4"));
+    assert.ok(result.includes("· Make 3 commits 1/3"));
+    assert.ok(result.includes("Win a mini-game 0/1"));
   });
 
   it("leaves progression out for states without it", () => {
