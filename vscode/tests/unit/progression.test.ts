@@ -4,6 +4,16 @@ import * as fs from "fs";
 import * as path from "path";
 import {
   ACHIEVEMENTS,
+  DAILY_ALL_DONE_BONUS,
+  DAILY_CHALLENGES,
+  DAILY_CHALLENGE_XP,
+  DailyChallenges,
+  createDailies,
+  currentStreak,
+  dailiesView,
+  isWeekendDay,
+  pickDailyChallenges,
+  previousWeekday,
   SCHEMA_VERSION,
   XP_ACHIEVEMENT_BONUS,
   XP_AMOUNTS,
@@ -31,11 +41,15 @@ import {
   PetState,
 } from "../../src/gameEngine";
 
-const NOON = new Date(2026, 9, 14, 12, 0, 0).getTime();
-const ONE_AM = new Date(2026, 9, 14, 1, 0, 0).getTime();
+// Today, so the pinned (empty) dailies in makePet() don't roll and pay out.
+const TODAY = new Date();
+const NOON = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 12, 0, 0).getTime();
+const ONE_AM = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 1, 0, 0).getTime();
 
+/** A pet with no daily challenges today, so XP amounts are exact. */
 function makePet(overrides: Partial<PetState> = {}): PetState {
-  return { ...createPet("Pixel", "codeling"), ...overrides };
+  const dailies = { ...createDailies(), day: localDayKey(NOON) };
+  return { ...createPet("Pixel", "codeling"), dailies, ...overrides };
 }
 
 describe("level curve", () => {
@@ -278,5 +292,149 @@ describe("ACHIEVEMENTS", () => {
     const rows = [...kt.matchAll(/Achievement\("(\w+)",\s*"([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*"(\w+)",\s*(\d+),\s*"(\w+)"(,\s*comingSoon = true)?\)/g)]
       .map((m) => ({ id: m[1], name: m[2], description: m[3], emoji: m[4], counter: m[5], threshold: Number(m[6]), path: m[7], comingSoon: !!m[8] }));
     assert.deepEqual(rows, ACHIEVEMENTS.map((a) => ({ ...a, comingSoon: !!a.comingSoon })));
+  });
+});
+
+/** Seeded picks for 2026-10-14 / "Pixel" / spawnedAt 1760000000000 (shared with ProgressionTest.kt). */
+const PICKS_FIXTURE = ["code_10", "care_10", "snack_and_commit"];
+
+/** Local noon on 2026-10-<day> (the 12th is a Monday). */
+const oct = (day: number, hour = 12): number => new Date(2026, 9, day, hour, 0, 0).getTime();
+
+/** A pet whose dailies for `day` are all set up and nearly done: one more award of each kind finishes them. */
+function petWithPicks(now: number, dailies: Partial<DailyChallenges> = {}): PetState {
+  const pet = makePet({ spawnedAt: 1 });
+  const day = localDayKey(now);
+  return { ...pet, dailies: { ...createDailies(), ...dailies, day, picks: ["commit_1", "calls_3", "win_1"], baseline: {}, done: [] } };
+}
+
+function finishAll(s: PetState, now: number): PetState {
+  s = awardXp(s, "commit", now);
+  for (let i = 0; i < 3; i++) { s = awardXp(s, "call", now); }
+  return awardXp(s, "minigame", now);
+}
+
+describe("daily challenges", () => {
+  it("picks one coder, one keeper and one wildcard", () => {
+    const picks = pickDailyChallenges("2026-10-14", { name: "Pixel", spawnedAt: 123 });
+    assert.deepEqual(picks.map((id) => DAILY_CHALLENGES.find((c) => c.id === id)!.path), ["coder", "keeper", "wild"]);
+  });
+
+  it("is seeded from the date and the pet", () => {
+    const pet = { name: "Pixel", spawnedAt: 123 };
+    assert.deepEqual(pickDailyChallenges("2026-10-14", pet), pickDailyChallenges("2026-10-14", pet));
+    const days = new Set(Array.from({ length: 20 }, (_, i) => pickDailyChallenges(`2026-10-${String(i + 1).padStart(2, "0")}`, pet).join()));
+    assert.ok(days.size > 1);
+  });
+
+  it("matches the Kotlin seeded picks", () => {
+    // Same fixture as ProgressionTest.kt.
+    assert.deepEqual(pickDailyChallenges("2026-10-14", { name: "Pixel", spawnedAt: 1760000000000 }), PICKS_FIXTURE);
+  });
+
+  it("rolls the day on the first award and measures progress from then", () => {
+    const pet = makePet({ dailies: createDailies(), trainer: { ...createTrainer(), counters: { commits: 50 } } });
+    const s = awardXp(pet, "code", NOON);
+    assert.equal(s.dailies.day, localDayKey(NOON));
+    assert.equal(s.dailies.picks.length, 3);
+    assert.equal(s.dailies.baseline.commits, 50);
+  });
+
+  it("pays 25 XP per challenge and 25 more for all three, once", () => {
+    let s = petWithPicks(NOON);
+    s = finishAll(s, NOON);
+    assert.deepEqual([...s.dailies.done].sort(), ["calls_3", "commit_1", "win_1"]);
+    assert.ok(s.recentEventLog.includes("daily_challenges_all_done"));
+    const plain = finishAll(makePet({ dailies: { ...createDailies(), day: localDayKey(NOON), picks: [], baseline: {}, done: [] } }), NOON);
+    assert.equal(s.petXp - plain.petXp, 3 * DAILY_CHALLENGE_XP + DAILY_ALL_DONE_BONUS);
+    const again = finishAll(s, NOON);
+    assert.equal(again.petXp - s.petXp, plain.petXp);
+  });
+
+  it("resets at local midnight", () => {
+    let s = finishAll(petWithPicks(NOON), NOON);
+    const tomorrow = NOON + 24 * 3600_000;
+    s = awardXp(s, "code", tomorrow);
+    assert.equal(s.dailies.day, localDayKey(tomorrow));
+    assert.ok(s.dailies.done.length < 3);
+  });
+
+  it("shows today's challenges before the first award", () => {
+    const v = dailiesView(makePet({ dailies: createDailies() }), NOON);
+    assert.equal(v.challenges.length, 3);
+    assert.ok(v.challenges.every((c) => c.value === 0 && !c.done));
+    assert.equal(v.streak, 0);
+  });
+
+  it("starts afresh for a new pet", () => {
+    const s = finishAll(petWithPicks(NOON), NOON);
+    const next = createPet("Egg", "codeling", null, s.trainer);
+    assert.deepEqual(next.dailies, createDailies());
+  });
+
+  it("round-trips through a save", () => {
+    const s = finishAll(petWithPicks(NOON), NOON);
+    assert.deepEqual(deserialiseState(JSON.parse(JSON.stringify(serialiseState(s)))).dailies, s.dailies);
+    const old = serialiseState(makePet()) as Record<string, unknown>;
+    delete old.dailies;
+    assert.equal(old.dailies, undefined);
+    assert.deepEqual(deserialiseState(old).dailies, createDailies());
+  });
+});
+
+describe("streak", () => {
+  it("knows weekends and the previous weekday", () => {
+    assert.ok(isWeekendDay("2026-10-17"));
+    assert.ok(isWeekendDay("2026-10-18"));
+    assert.ok(!isWeekendDay("2026-10-19"));
+    assert.equal(previousWeekday("2026-10-19"), "2026-10-16");
+    assert.equal(previousWeekday("2026-10-14"), "2026-10-13");
+  });
+
+  it("grows on consecutive weekdays", () => {
+    const tue = finishAll(petWithPicks(oct(13), { streak: 1, streakDay: "2026-10-12" }), oct(13));
+    assert.equal(tue.dailies.streak, 2);
+    assert.equal(tue.dailies.streakDay, "2026-10-13");
+  });
+
+  it("restarts after a missed weekday", () => {
+    const thu = finishAll(petWithPicks(oct(15), { streak: 4, streakDay: "2026-10-13" }), oct(15));
+    assert.equal(thu.dailies.streak, 1);
+    assert.equal(currentStreak({ ...createDailies(), streak: 4, streakDay: "2026-10-13" }, oct(15)), 0);
+  });
+
+  it("isn't broken by a skipped weekend", () => {
+    const mon = finishAll(petWithPicks(oct(19), { streak: 5, streakDay: "2026-10-16" }), oct(19));
+    assert.equal(mon.dailies.streak, 6);
+    assert.equal(currentStreak({ ...createDailies(), streak: 5, streakDay: "2026-10-16" }, oct(18)), 5);
+  });
+
+  it("isn't extended by finishing on a weekend", () => {
+    const sat = finishAll(petWithPicks(oct(17), { streak: 5, streakDay: "2026-10-16" }), oct(17));
+    assert.equal(sat.dailies.streak, 5);
+    assert.equal(sat.dailies.streakDay, "2026-10-16");
+    assert.ok(sat.recentEventLog.includes("daily_challenges_all_done"));
+  });
+
+  it("is lost when the pet dies", () => {
+    const s = finishAll(petWithPicks(oct(13), { streak: 1, streakDay: "2026-10-12" }), oct(13));
+    assert.equal(createPet("Egg", "codeling", null, s.trainer).dailies.streak, 0);
+  });
+});
+
+describe("daily challenge messages", () => {
+  it("describes completions", () => {
+    const s = finishAll(petWithPicks(oct(13), { streak: 1, streakDay: "2026-10-12" }), oct(13));
+    assert.equal(progressionMessage("daily_challenge_done_commit_1", s), `Daily challenge done: Make a commit (+${DAILY_CHALLENGE_XP} XP)`);
+    assert.equal(progressionMessage("daily_challenges_all_done", s), `All of today's challenges done! +${DAILY_ALL_DONE_BONUS} bonus XP. Streak: 2 days.`);
+  });
+
+  it("match the Kotlin daily challenges", () => {
+    const kt = fs.readFileSync(path.join(__dirname, "../../../../pycharm/src/main/kotlin/com/codotchi/engine/Progression.kt"), "utf8");
+    const rows = [...kt.matchAll(/DailyChallenge\("(\w+)",\s*"(\w+)",\s*"([^"]+)",\s*listOf\(([^)]*)\)\)/g)].map((m) => ({
+      id: m[1], path: m[2], text: m[3],
+      reqs: [...m[4].matchAll(/"(\w+)" to (\d+)/g)].map((r) => [r[1], Number(r[2])]),
+    }));
+    assert.deepEqual(rows, DAILY_CHALLENGES.map((c) => ({ ...c, reqs: c.reqs.map(([k, n]) => [k, n]) })));
   });
 });

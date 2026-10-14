@@ -797,6 +797,8 @@ export interface PetState {
   readonly petLevel: number;
   /** The player's lifetime progression; carried over to the next pet by createPet(). */
   readonly trainer: TrainerProgress;
+  /** This pet's daily challenges and streak; a new pet starts afresh. */
+  readonly dailies: DailyChallenges;
 }
 
 /**
@@ -818,6 +820,22 @@ export interface TrainerProgress {
   readonly xpHour: string;
   /** XP earned this hour per hourly-capped source (see XP_HOURLY_CAPS). */
   readonly xpThisHour: Readonly<Record<string, number>>;
+}
+
+/** A pet's daily challenges (see DAILY_CHALLENGES) and its streak. */
+export interface DailyChallenges {
+  /** Local date (YYYY-MM-DD) the picks belong to; "" before the first roll. */
+  readonly day: string;
+  /** Today's challenge ids: one coder, one keeper, one wildcard. */
+  readonly picks: readonly string[];
+  /** Trainer counters when the day started; progress is measured from these. */
+  readonly baseline: Readonly<Record<string, number>>;
+  /** Ids of today's completed challenges. */
+  readonly done: readonly string[];
+  /** Weekdays in a row with all three done (weekends neither break nor extend it). */
+  readonly streak: number;
+  /** Last day (YYYY-MM-DD) the streak was extended. */
+  readonly streakDay: string;
 }
 
 /** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
@@ -1211,6 +1229,7 @@ export function createPet(name: string, petType: string, unlockedCharacter: stri
     petXp: 0,
     petLevel: 1,
     trainer: trainer ?? createTrainer(),
+    dailies: createDailies(),
   };
 
   return withDerivedFields(partial);
@@ -2912,8 +2931,10 @@ export function awardXp(state: PetState, source: XpSource, now: number = Date.no
     if (dayCap !== undefined) { xpToday[src] = (xpToday[src] ?? 0) + earned; }
     amount += earned;
   }
+  const daily = advanceDailies(state.dailies, state, t.counters, counters, day);
+  amount += daily.xp;
 
-  const events: string[] = [];
+  const events: string[] = [...daily.events];
   let xp = t.xp + amount;
   let level = levelProgress(xp).level;
   const achievements = [...t.achievements];
@@ -2942,6 +2963,7 @@ export function awardXp(state: PetState, source: XpSource, now: number = Date.no
     petXp,
     petLevel,
     trainer: { xp, level, achievements, counters, xpDay: day, xpToday, xpHour: hour, xpThisHour },
+    dailies: daily.dailies,
     events: [...state.events, ...events],
     recentEventLog: events.length > 0
       ? [...state.recentEventLog, ...events].slice(-RECENT_EVENT_LOG_MAX)
@@ -2966,6 +2988,15 @@ export function progressionMessage(event: string, state: PetState): string | nul
   if (event.startsWith("achievement_unlocked_")) {
     const a = achievementById(event.slice("achievement_unlocked_".length));
     return a ? `Achievement unlocked: ${a.emoji} ${a.name} — ${a.description}` : null;
+  }
+  if (event.startsWith("daily_challenge_done_")) {
+    const c = dailyChallengeById(event.slice("daily_challenge_done_".length));
+    return c ? `Daily challenge done: ${c.text} (+${DAILY_CHALLENGE_XP} XP)` : null;
+  }
+  if (event === "daily_challenges_all_done") {
+    const d = state.dailies;
+    const streak = d.streakDay === d.day && d.streak > 0 ? ` Streak: ${d.streak} day${d.streak === 1 ? "" : "s"}.` : "";
+    return `All of today's challenges done! +${DAILY_ALL_DONE_BONUS} bonus XP.${streak}`;
   }
   return null;
 }
@@ -2993,6 +3024,203 @@ export function deserialiseTrainer(raw: unknown): TrainerProgress {
     xpToday: numRecord(r.xpToday),
     xpHour: typeof r.xpHour === "string" ? r.xpHour : "",
     xpThisHour: numRecord(r.xpThisHour),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Daily challenges
+// ---------------------------------------------------------------------------
+
+/** Which pool a daily challenge comes from. Each day picks one from each. */
+export type DailyChallengePath = "coder" | "keeper" | "wild";
+
+/** A daily challenge: done once every counter in `reqs` has gone up by its target since the day started. */
+export interface DailyChallenge {
+  readonly id: string;
+  readonly path: DailyChallengePath;
+  readonly text: string;
+  readonly reqs: readonly (readonly [counter: string, target: number])[];
+}
+
+/** XP for each completed daily challenge. Uncapped, but each pays once a day. */
+export const DAILY_CHALLENGE_XP: number = 25;
+
+/** Extra XP for completing all three of the day's challenges. */
+export const DAILY_ALL_DONE_BONUS: number = 25;
+
+/** Every daily challenge, grouped by pool. */
+export const DAILY_CHALLENGES: readonly DailyChallenge[] = [
+  { id: "code_10",          path: "coder",  text: "Get 10 code-activity rewards",                    reqs: [["codeActivity", 10]] },
+  { id: "code_25",          path: "coder",  text: "Get 25 code-activity rewards",                    reqs: [["codeActivity", 25]] },
+  { id: "commit_1",         path: "coder",  text: "Make a commit",                                   reqs: [["commits", 1]] },
+  { id: "commit_3",         path: "coder",  text: "Make 3 commits",                                  reqs: [["commits", 3]] },
+  { id: "commit_5",         path: "coder",  text: "Make 5 commits",                                  reqs: [["commits", 5]] },
+  { id: "calls_3",          path: "keeper", text: "Answer 3 calls from your pet",                    reqs: [["callsAnswered", 3]] },
+  { id: "calls_6",          path: "keeper", text: "Answer 6 calls from your pet",                    reqs: [["callsAnswered", 6]] },
+  { id: "snacks_3",         path: "keeper", text: "Hand out 3 snacks",                               reqs: [["snacks", 3]] },
+  { id: "clean_2",          path: "keeper", text: "Clean up twice",                                  reqs: [["cleans", 2]] },
+  { id: "care_10",          path: "keeper", text: "Look after your pet 10 times",                    reqs: [["care", 10]] },
+  { id: "win_1",            path: "wild",   text: "Win a mini-game",                                 reqs: [["minigameWins", 1]] },
+  { id: "win_3",            path: "wild",   text: "Win 3 mini-games",                                reqs: [["minigameWins", 3]] },
+  { id: "commit_and_call",  path: "wild",   text: "Make a commit and answer a call",                 reqs: [["commits", 1], ["callsAnswered", 1]] },
+  { id: "code_and_win",     path: "wild",   text: "Get 5 code-activity rewards and win a mini-game", reqs: [["codeActivity", 5], ["minigameWins", 1]] },
+  { id: "snack_and_commit", path: "wild",   text: "Hand out a snack and make a commit",              reqs: [["snacks", 1], ["commits", 1]] },
+];
+
+const DAILY_PATHS: readonly DailyChallengePath[] = ["coder", "keeper", "wild"];
+
+/** Empty daily-challenge state for a new pet. */
+export function createDailies(): DailyChallenges {
+  return { day: "", picks: [], baseline: {}, done: [], streak: 0, streakDay: "" };
+}
+
+/** Look up a daily challenge by id. */
+export function dailyChallengeById(id: string): DailyChallenge | undefined {
+  return DAILY_CHALLENGES.find((c) => c.id === id);
+}
+
+/** 32-bit FNV-1a over UTF-16 code units. Kotlin mirrors this exactly. */
+function seedHash(s: string): number {
+  let h = 0x811c9dc5 | 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/** The day's three challenge ids (coder, keeper, wild), seeded from the date and the pet. */
+export function pickDailyChallenges(day: string, pet: Pick<PetState, "name" | "spawnedAt">): string[] {
+  const seed = `${day}|${pet.name}|${pet.spawnedAt}`;
+  return DAILY_PATHS.map((path) => {
+    const pool = DAILY_CHALLENGES.filter((c) => c.path === path);
+    return pool[seedHash(`${seed}|${path}`) % pool.length].id;
+  });
+}
+
+function parseDay(day: string): Date {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y, m - 1, d, 12);
+}
+
+/** Saturday or Sunday. */
+export function isWeekendDay(day: string): boolean {
+  const w = parseDay(day).getDay();
+  return w === 0 || w === 6;
+}
+
+/** The most recent weekday before `day`. */
+export function previousWeekday(day: string): string {
+  const d = parseDay(day);
+  do { d.setDate(d.getDate() - 1); } while (d.getDay() === 0 || d.getDay() === 6);
+  return localDayKey(d.getTime());
+}
+
+/**
+ * The streak as of `now`: weekdays in a row with all three challenges done.
+ * Weekends neither break nor extend it.
+ */
+export function currentStreak(dailies: DailyChallenges, now: number = Date.now()): number {
+  const today = localDayKey(now);
+  if (dailies.streak <= 0 || dailies.streakDay === "") { return 0; }
+  return dailies.streakDay === today || dailies.streakDay === previousWeekday(today) ? dailies.streak : 0;
+}
+
+/** Start a new day's picks if `day` has moved on, measuring progress from the trainer's current counters. */
+function rollDailies(dailies: DailyChallenges, pet: Pick<PetState, "name" | "spawnedAt">, counters: Readonly<Record<string, number>>, day: string): DailyChallenges {
+  if (dailies.day === day) { return dailies; }
+  return { ...dailies, day, picks: pickDailyChallenges(day, pet), baseline: { ...counters }, done: [] };
+}
+
+/** Progress on each requirement of `c`, capped at its target. */
+export function dailyChallengeProgress(
+  c: DailyChallenge, baseline: Readonly<Record<string, number>>, counters: Readonly<Record<string, number>>,
+): { counter: string; value: number; target: number }[] {
+  return c.reqs.map(([counter, target]) => ({
+    counter,
+    value: Math.min(target, Math.max(0, (counters[counter] ?? 0) - (baseline[counter] ?? 0))),
+    target,
+  }));
+}
+
+/** One of today's challenges, ready to display. */
+export interface DailyChallengeView {
+  readonly id: string;
+  readonly path: DailyChallengePath;
+  readonly text: string;
+  readonly value: number;
+  readonly target: number;
+  readonly done: boolean;
+}
+
+/** Today's challenges with progress, and the streak as of `now`. Works before the day's first roll too. */
+export function dailiesView(state: PetState, now: number = Date.now()): { challenges: DailyChallengeView[]; streak: number; allDone: boolean } {
+  const d = rollDailies(state.dailies, state, state.trainer.counters, localDayKey(now));
+  const challenges = d.picks.flatMap((id) => {
+    const c = dailyChallengeById(id);
+    if (!c) { return []; }
+    const p = dailyChallengeProgress(c, d.baseline, state.trainer.counters);
+    return [{
+      id, path: c.path, text: c.text,
+      value: p.reduce((s, r) => s + r.value, 0),
+      target: p.reduce((s, r) => s + r.target, 0),
+      done: d.done.includes(id),
+    }];
+  });
+  return { challenges, streak: currentStreak(d, now), allDone: challenges.length > 0 && challenges.every((c) => c.done) };
+}
+
+/**
+ * Roll the day if needed, then mark any challenges now complete.
+ * Returns the new dailies, the XP they earned and their events.
+ */
+function advanceDailies(
+  dailies: DailyChallenges, pet: Pick<PetState, "name" | "spawnedAt">,
+  before: Readonly<Record<string, number>>, after: Readonly<Record<string, number>>, day: string,
+): { dailies: DailyChallenges; xp: number; events: string[] } {
+  const d = rollDailies(dailies, pet, before, day);
+  const done = [...d.done];
+  const events: string[] = [];
+  let xp = 0;
+  for (const id of d.picks) {
+    const c = dailyChallengeById(id);
+    if (!c || done.includes(id)) { continue; }
+    if (dailyChallengeProgress(c, d.baseline, after).every((r) => r.value >= r.target)) {
+      done.push(id);
+      events.push(`daily_challenge_done_${id}`);
+      xp += DAILY_CHALLENGE_XP;
+    }
+  }
+  let { streak, streakDay } = d;
+  if (events.length > 0 && d.picks.length > 0 && done.length === d.picks.length) {
+    events.push("daily_challenges_all_done");
+    xp += DAILY_ALL_DONE_BONUS;
+    if (!isWeekendDay(day) && streakDay !== day) {
+      streak = (streakDay === previousWeekday(day) ? streak : 0) + 1;
+      streakDay = day;
+    }
+  }
+  return { dailies: { ...d, done, streak, streakDay }, xp, events };
+}
+
+/** Parse DailyChallenges from saved JSON, filling in defaults for anything missing. */
+export function deserialiseDailies(raw: unknown): DailyChallenges {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) { return createDailies(); }
+  const r = raw as Record<string, unknown>;
+  const strings = (v: unknown): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  const baseline: Record<string, number> = {};
+  if (r.baseline !== null && typeof r.baseline === "object" && !Array.isArray(r.baseline)) {
+    for (const [k, n] of Object.entries(r.baseline as Record<string, unknown>)) {
+      if (typeof n === "number" && Number.isFinite(n)) { baseline[k] = n; }
+    }
+  }
+  return {
+    day: typeof r.day === "string" ? r.day : "",
+    picks: strings(r.picks),
+    baseline,
+    done: strings(r.done),
+    streak: typeof r.streak === "number" && Number.isFinite(r.streak) ? Math.max(0, Math.floor(r.streak)) : 0,
+    streakDay: typeof r.streakDay === "string" ? r.streakDay : "",
   };
 }
 
@@ -3071,6 +3299,7 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     petXp: state.petXp,
     petLevel: state.petLevel,
     trainer: state.trainer,
+    dailies: state.dailies,
   };
 }
 
@@ -3176,6 +3405,7 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     petXp: Math.max(0, getNumber("petXp", 0)),
     petLevel: levelProgress(getNumber("petXp", 0)).level,
     trainer: deserialiseTrainer(data["trainer"]),
+    dailies: deserialiseDailies(data["dailies"]),
   };
 
   return withDerivedFields(partial);
