@@ -714,9 +714,10 @@ export function randomSpriteType() {
  * @param petType - One of the valid pet type identifiers.
  * @param unlockedCharacter - spriteType of a custom character to force (e.g. "tim"), or null for random.
  *   When provided, the forced name must be resolved by the caller or registry before passing `name`.
+ * @param trainer - The previous pet's trainer progress, so XP and achievements carry over; null starts fresh.
  * @returns A freshly initialised PetState.
  */
-export function createPet(name, petType, unlockedCharacter = null) {
+export function createPet(name, petType, unlockedCharacter = null, trainer = null) {
     const modifiers = PET_TYPE_MODIFIERS[petType] ?? PET_TYPE_MODIFIERS.codeling;
     const baseHealth = modifiers.baseHealth;
     const resolvedName = name;
@@ -775,6 +776,10 @@ export function createPet(name, petType, unlockedCharacter = null) {
         cravingFood: null,
         devModeEverUsed: false,
         leaderboardIneligible: "",
+        schemaVersion: SCHEMA_VERSION,
+        petXp: 0,
+        petLevel: 1,
+        trainer: trainer ?? createTrainer(),
     };
     return withDerivedFields(partial);
 }
@@ -866,6 +871,10 @@ function checkWeightTierEvents(prev, next, events) {
  * @returns A new PetState after one tick.
  */
 export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT_GAME_CONFIG) {
+    const next = tickCore(state, isIdle, isDeepIdle, config);
+    return next.events.some((e) => e.startsWith("evolved_to_")) ? awardXp(next, "evolve") : next;
+}
+function tickCore(state, isIdle, isDeepIdle, config) {
     if (!state.alive) {
         return state;
     }
@@ -1558,7 +1567,7 @@ export function feedMeal(state, mealsGivenThisCycle, opts) {
     if (answered) {
         events.push(`attention_call_answered_${state.activeAttentionCall}`);
     }
-    return withDerivedFields({
+    return awardXp(withDerivedFields({
         ...state,
         ...(answered ?? {}),
         hunger: clampStat(state.hunger + hungerBoost),
@@ -1566,7 +1575,7 @@ export function feedMeal(state, mealsGivenThisCycle, opts) {
         consecutiveSnacks: 0,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
-    });
+    }), "care");
 }
 /**
  * Register a snack being given to the pet (button-press phase).
@@ -1644,7 +1653,7 @@ export function consumeSnack(state, opts) {
     events.push("fed_snack");
     const newWeight = clampWeight(state.weight + (opts?.weightGain ?? FEED_SNACK_WEIGHT_GAIN));
     checkWeightTierEvents(state.weight, newWeight, events);
-    return withDerivedFields({
+    return awardXp(withDerivedFields({
         ...state,
         hunger: clampStat(state.hunger + hungerBoost),
         happiness: clampStat(state.happiness + FEED_SNACK_HAPPINESS_BOOST),
@@ -1653,7 +1662,7 @@ export function consumeSnack(state, opts) {
         snacksOnFloor: Math.max(0, state.snacksOnFloor - 1),
         sick,
         events,
-    });
+    }), "snack");
 }
 /**
  * Zero out the in-flight floor snack counter.
@@ -1689,7 +1698,7 @@ export function play(state, opts) {
     if (answered) {
         events.push(`attention_call_answered_${state.activeAttentionCall}`);
     }
-    return withDerivedFields({
+    return awardXp(withDerivedFields({
         ...state,
         ...(answered ?? {}),
         happiness: clampStat(state.happiness + PLAY_HAPPINESS_BOOST),
@@ -1698,7 +1707,7 @@ export function play(state, opts) {
         consecutiveSnacks: 0,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
-    });
+    }), "care");
 }
 /**
  * Pat the pet — a gentle interaction that gives a modest happiness boost at a
@@ -1718,7 +1727,7 @@ export function pat(state) {
     if (answered) {
         events.push(`attention_call_answered_${state.activeAttentionCall}`);
     }
-    return withDerivedFields({
+    return awardXp(withDerivedFields({
         ...state,
         ...(answered ?? {}),
         happiness: clampStat(state.happiness + PAT_HAPPINESS_BOOST),
@@ -1727,7 +1736,7 @@ export function pat(state) {
         consecutiveSnacks: 0,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
-    });
+    }), "care");
 }
 /**
  * Apply the stat cost of viewing the token cost overlay: same energy/happiness
@@ -1815,12 +1824,13 @@ export function applyMinigameResult(state, game, result) {
     if (isVigorousGame) {
         checkWeightTierEvents(state.weight, newWeight, events);
     }
-    return withDerivedFields({
+    const next = withDerivedFields({
         ...state,
         happiness: clampStat(state.happiness + delta),
         weight: newWeight,
         events,
     });
+    return result === "win" ? awardXp(next, "minigame") : next;
 }
 /**
  * Put the pet to sleep.
@@ -1883,7 +1893,7 @@ export function clean(state) {
     if (answered) {
         events.push("attention_call_answered_poop");
     }
-    return withDerivedFields({
+    return awardXp(withDerivedFields({
         ...state,
         ...(answered ?? {}),
         poops: 0,
@@ -1892,7 +1902,7 @@ export function clean(state) {
         poopOverLimitTicks: 0,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
-    });
+    }), "clean");
 }
 /**
  * Administer one dose of medicine.
@@ -1917,7 +1927,7 @@ export function giveMedicine(state) {
     if (medicineDosesGiven >= MEDICINE_DOSES_TO_CURE) {
         sick = false;
         events.push("cured");
-        return withDerivedFields({
+        return awardXp(withDerivedFields({
             ...state,
             ...(answered ?? {}),
             sick: sick,
@@ -1925,11 +1935,11 @@ export function giveMedicine(state) {
             consecutiveSnacks: 0,
             careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
             events,
-        });
+        }), "cure");
     }
-    return withDerivedFields({ ...state, ...(answered ?? {}), medicineDosesGiven,
+    return awardXp(withDerivedFields({ ...state, ...(answered ?? {}), medicineDosesGiven,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
-        events });
+        events }), "care");
 }
 /**
  * Scold the pet to raise discipline.
@@ -1943,13 +1953,15 @@ export function scold(state) {
     if (answered) {
         events.push("attention_call_answered_misbehaviour");
     }
-    return withDerivedFields({
+    const next = withDerivedFields({
         ...state,
         ...(answered ?? {}),
         discipline: clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
     });
+    // Scold / praise cost nothing, so they only earn XP when they answer a call.
+    return answered ? awardXp(next, "care") : next;
 }
 /**
  * Praise the pet to raise discipline.
@@ -1989,7 +2001,7 @@ export function praise(state) {
     if (answeredBreak) {
         events.push("break_nap_started");
     }
-    return withDerivedFields({
+    const next = withDerivedFields({
         ...state,
         ...(answered ?? {}),
         discipline: clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
@@ -1999,6 +2011,7 @@ export function praise(state) {
         ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS, ticksSinceLastBreakCall: 0 } : {}),
         events,
     });
+    return answered ? awardXp(next, "care") : next;
 }
 /**
  * Apply the code-activity happiness and discipline boost.
@@ -2013,12 +2026,12 @@ export function applyCodeActivity(state) {
     if (state.paused) {
         return state;
     }
-    return withDerivedFields({
+    return awardXp(withDerivedFields({
         ...state,
         happiness: clampStat(state.happiness + CODE_ACTIVITY_HAPPINESS_BOOST),
         discipline: clampStat(state.discipline + CODE_ACTIVITY_DISCIPLINE_BOOST),
         events: ["code_activity_rewarded"],
-    });
+    }), "code");
 }
 /**
  * Apply the commit happiness and discipline boost.
@@ -2033,12 +2046,12 @@ export function applyCommitActivity(state) {
     if (state.paused) {
         return state;
     }
-    return withDerivedFields({
+    return awardXp(withDerivedFields({
         ...state,
         happiness: clampStat(state.happiness + COMMIT_HAPPINESS_BOOST),
         discipline: clampStat(state.discipline + COMMIT_DISCIPLINE_BOOST),
         events: ["commit_activity_rewarded"],
-    });
+    }), "commit");
 }
 // ---------------------------------------------------------------------------
 // Senior promotion (ported from python/evolution.py)
@@ -2058,7 +2071,7 @@ export function promoteToSenior(state) {
         throw new Error(`promoteToSenior called on a pet in stage '${state.stage}'; expected 'adult'.`);
     }
     const character = characterForStage(state.petType, "senior", state.careScore, state.careMistakes, state.lifetimeCareMistakes);
-    return withDerivedFields({
+    return awardXp(withDerivedFields({
         ...state,
         stage: "senior",
         character,
@@ -2069,7 +2082,7 @@ export function promoteToSenior(state) {
         careScoreTicks: 0,
         careMistakes: 0,
         events: ["evolved_to_senior"],
-    });
+    }), "evolve");
 }
 /**
  * Compute the per-day probability of old-age death for a senior pet.
@@ -2261,6 +2274,218 @@ export function applyOfflineDecay(state, elapsedSeconds) {
     });
 }
 // ---------------------------------------------------------------------------
+// Progression — XP, levels and achievements
+// ---------------------------------------------------------------------------
+/** Current save-format version. Bump when a migration step is added to deserialiseState(). */
+export const SCHEMA_VERSION = 1;
+/** XP per source. */
+export const XP_AMOUNTS = {
+    code: 5,
+    commit: 25,
+    care: 2,
+    snack: 2,
+    clean: 2,
+    cure: 10,
+    minigame: 15,
+    evolve: 30,
+    debug: 10,
+    boss_kill: 50,
+    boss_battle: 40,
+};
+/** Bonus XP for unlocking an achievement. */
+export const XP_ACHIEVEMENT_BONUS = 50;
+/** Daily XP caps per bucket, so repeated saves or free care actions can't be farmed. */
+export const XP_DAILY_CAPS = {
+    code: 500,
+    care: 100,
+};
+/** Commits made from midnight up to this hour (local time) count as late-night commits. */
+export const NIGHT_OWL_END_HOUR = 5;
+const XP_BUCKETS = {
+    code: "code", care: "care", snack: "care", clean: "care", cure: "care",
+};
+const XP_COUNTERS = {
+    code: ["codeActivity"],
+    commit: ["commits"],
+    care: ["care"],
+    snack: ["care", "snacks"],
+    clean: ["care", "cleans"],
+    cure: ["care", "cures"],
+    minigame: ["minigameWins"],
+    evolve: ["evolutions"],
+    debug: ["debugSessions"],
+    boss_kill: ["bossKills"],
+    boss_battle: ["bossBattleWins"],
+};
+/** Every achievement, in display order. */
+export const ACHIEVEMENTS = [
+    { id: "hello_world", name: "Hello World", description: "Write some code with your pet watching", emoji: "👋", counter: "codeActivity", threshold: 1 },
+    { id: "save_100", name: "Busy Fingers", description: "Get 100 code-activity rewards", emoji: "⌨️", counter: "codeActivity", threshold: 100 },
+    { id: "save_1000", name: "Ctrl+S Master", description: "Get 1,000 code-activity rewards", emoji: "💾", counter: "codeActivity", threshold: 1000 },
+    { id: "first_commit", name: "First Commit", description: "Make a commit", emoji: "📌", counter: "commits", threshold: 1 },
+    { id: "committed", name: "Committed", description: "Make 100 commits", emoji: "📚", counter: "commits", threshold: 100 },
+    { id: "night_owl", name: "Night Owl", description: "Commit between midnight and 5 am", emoji: "🦉", counter: "nightCommits", threshold: 1 },
+    { id: "caretaker", name: "Caretaker", description: "Look after your pet 100 times", emoji: "🤲", counter: "care", threshold: 100 },
+    { id: "snack_fiend", name: "Snack Fiend", description: "Hand out 50 snacks", emoji: "🍪", counter: "snacks", threshold: 50 },
+    { id: "clean_freak", name: "Clean Freak", description: "Clean up 50 times", emoji: "🧹", counter: "cleans", threshold: 50 },
+    { id: "nurse", name: "Nurse", description: "Cure your pet 10 times", emoji: "💊", counter: "cures", threshold: 10 },
+    { id: "gamer", name: "Gamer", description: "Win 10 mini-games", emoji: "🎮", counter: "minigameWins", threshold: 10 },
+    { id: "growing_up", name: "Growing Up", description: "See your pets evolve 3 times", emoji: "🌱", counter: "evolutions", threshold: 3 },
+    { id: "survivor", name: "Survivor", description: "Raise a pet to senior", emoji: "🧓", counter: "seniors", threshold: 1 },
+    { id: "level_5", name: "Rising Star", description: "Reach trainer level 5", emoji: "⭐", counter: "level", threshold: 5 },
+    { id: "level_10", name: "Veteran", description: "Reach trainer level 10", emoji: "🌟", counter: "level", threshold: 10 },
+    { id: "level_25", name: "Legend", description: "Reach trainer level 25", emoji: "🏆", counter: "level", threshold: 25 },
+    { id: "detective", name: "Detective", description: "Finish 10 debug sessions", emoji: "🔍", counter: "debugSessions", threshold: 10 },
+    { id: "first_blood", name: "First Blood", description: "Defeat a Bug Boss", emoji: "⚔️", counter: "bossKills", threshold: 1 },
+    { id: "exterminator", name: "Exterminator", description: "Defeat 10 Bug Bosses", emoji: "🐛", counter: "bossKills", threshold: 10 },
+    { id: "champion", name: "Champion", description: "Win a Boss Battle", emoji: "🥊", counter: "bossBattleWins", threshold: 1 },
+];
+/** A fresh trainer with no XP. */
+export function createTrainer() {
+    return { xp: 0, level: 1, achievements: [], counters: {}, xpDay: "", xpToday: {} };
+}
+/** XP needed to go from `level` to `level + 1`. */
+export function xpToNextLevel(level) {
+    return Math.round(100 * Math.pow(Math.max(1, level), 1.5));
+}
+/** Level reached with `xp` total XP, plus the progress into that level. */
+export function levelProgress(xp) {
+    let level = 1;
+    let remaining = Math.max(0, Math.floor(xp));
+    while (remaining >= xpToNextLevel(level)) {
+        remaining -= xpToNextLevel(level);
+        level++;
+    }
+    return { level, intoLevel: remaining, needed: xpToNextLevel(level) };
+}
+/** Local calendar date as YYYY-MM-DD. */
+export function localDayKey(now) {
+    const d = new Date(now);
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${mm}-${dd}`;
+}
+function bump(counters, key) {
+    counters[key] = (counters[key] ?? 0) + 1;
+}
+/**
+ * Award XP to both the trainer and the current pet, update the achievement
+ * counters, and unlock any achievements now reached.
+ *
+ * Capped sources stop paying XP once today's bucket is full, but their
+ * counters still go up. Emits `trainer_level_up`, `pet_level_up` and
+ * `achievement_unlocked_<id>` events (appended to `events` and the event log).
+ *
+ * @param state - Pet state after the action that earned the XP.
+ * @param source - What earned it.
+ * @param now - Wall-clock ms, for the daily cap and time-of-day achievements.
+ * @returns The state with progression applied.
+ */
+export function awardXp(state, source, now = Date.now()) {
+    const t = state.trainer;
+    const day = localDayKey(now);
+    const xpToday = t.xpDay === day ? { ...t.xpToday } : {};
+    const counters = { ...t.counters };
+    for (const key of XP_COUNTERS[source]) {
+        bump(counters, key);
+    }
+    if (source === "commit" && new Date(now).getHours() < NIGHT_OWL_END_HOUR) {
+        bump(counters, "nightCommits");
+    }
+    if (source === "evolve" && state.stage === "senior") {
+        bump(counters, "seniors");
+    }
+    let amount = XP_AMOUNTS[source];
+    const bucket = XP_BUCKETS[source];
+    if (bucket !== undefined) {
+        const used = xpToday[bucket] ?? 0;
+        amount = Math.max(0, Math.min(amount, XP_DAILY_CAPS[bucket] - used));
+        xpToday[bucket] = used + amount;
+    }
+    const events = [];
+    let xp = t.xp + amount;
+    let level = levelProgress(xp).level;
+    const achievements = [...t.achievements];
+    // Unlock bonuses can raise the level, which can unlock a level achievement.
+    for (;;) {
+        const fresh = ACHIEVEMENTS.filter((a) => !achievements.includes(a.id) &&
+            (a.counter === "level" ? level : counters[a.counter] ?? 0) >= a.threshold);
+        if (fresh.length === 0) {
+            break;
+        }
+        for (const a of fresh) {
+            achievements.push(a.id);
+            events.push(`achievement_unlocked_${a.id}`);
+            xp += XP_ACHIEVEMENT_BONUS;
+        }
+        level = levelProgress(xp).level;
+    }
+    if (level > t.level) {
+        events.unshift("trainer_level_up");
+    }
+    const petXp = state.petXp + amount;
+    const petLevel = levelProgress(petXp).level;
+    if (petLevel > state.petLevel) {
+        events.unshift("pet_level_up");
+    }
+    return {
+        ...state,
+        petXp,
+        petLevel,
+        trainer: { xp, level, achievements, counters, xpDay: day, xpToday },
+        events: [...state.events, ...events],
+        recentEventLog: events.length > 0
+            ? [...state.recentEventLog, ...events].slice(-RECENT_EVENT_LOG_MAX)
+            : state.recentEventLog,
+    };
+}
+/** Look up an achievement by id. */
+export function achievementById(id) {
+    return ACHIEVEMENTS.find((a) => a.id === id);
+}
+/**
+ * Notification text for a progression event (achievement unlock or trainer
+ * level-up), or null for any other event. Pet level-ups only show in the pet's
+ * speech bubble, so they return null too.
+ */
+export function progressionMessage(event, state) {
+    if (event === "trainer_level_up") {
+        return `Level up! You're now trainer level ${state.trainer.level}.`;
+    }
+    if (event.startsWith("achievement_unlocked_")) {
+        const a = achievementById(event.slice("achievement_unlocked_".length));
+        return a ? `Achievement unlocked: ${a.emoji} ${a.name} — ${a.description}` : null;
+    }
+    return null;
+}
+/** Parse a TrainerProgress from saved JSON, filling in defaults for anything missing. */
+export function deserialiseTrainer(raw) {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+        return createTrainer();
+    }
+    const r = raw;
+    const numRecord = (v) => {
+        const out = {};
+        if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+            for (const [k, n] of Object.entries(v)) {
+                if (typeof n === "number" && Number.isFinite(n)) {
+                    out[k] = n;
+                }
+            }
+        }
+        return out;
+    };
+    const xp = typeof r.xp === "number" && Number.isFinite(r.xp) ? Math.max(0, r.xp) : 0;
+    return {
+        xp,
+        level: levelProgress(xp).level,
+        achievements: Array.isArray(r.achievements) ? r.achievements.filter((a) => typeof a === "string") : [],
+        counters: numRecord(r.counters),
+        xpDay: typeof r.xpDay === "string" ? r.xpDay : "",
+        xpToday: numRecord(r.xpToday),
+    };
+}
+// ---------------------------------------------------------------------------
 // Serialisation helpers
 // ---------------------------------------------------------------------------
 /**
@@ -2330,6 +2555,10 @@ export function serialiseState(state) {
         cravingFood: state.cravingFood,
         devModeEverUsed: state.devModeEverUsed,
         leaderboardIneligible: state.leaderboardIneligible,
+        schemaVersion: state.schemaVersion,
+        petXp: state.petXp,
+        petLevel: state.petLevel,
+        trainer: state.trainer,
     };
 }
 /**
@@ -2420,6 +2649,11 @@ export function deserialiseState(data) {
         devModeEverUsed: getBool("devModeEverUsed", false),
         leaderboardIneligible: data["leaderboardIneligible"] === "tampered" || data["leaderboardIneligible"] === "unverified"
             ? data["leaderboardIneligible"] : "",
+        // Version 0 (no schemaVersion) → 1: progression fields start empty.
+        schemaVersion: SCHEMA_VERSION,
+        petXp: Math.max(0, getNumber("petXp", 0)),
+        petLevel: levelProgress(getNumber("petXp", 0)).level,
+        trainer: deserialiseTrainer(data["trainer"]),
     };
     return withDerivedFields(partial);
 }

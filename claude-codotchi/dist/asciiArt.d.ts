@@ -66,6 +66,11 @@ export declare function buildStatusBlock(state: {
     sleeping: boolean;
     poops: number;
     spriteType?: string;
+    petLevel?: number;
+    trainer?: {
+        xp: number;
+        achievements: readonly string[];
+    };
 }): string;
 /**
  * Format a token count as a human-readable string.

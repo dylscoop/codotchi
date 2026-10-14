@@ -373,6 +373,30 @@ export interface PetState {
      * seals existed). "" when eligible.
      */
     readonly leaderboardIneligible: LeaderboardIneligibleReason;
+    /** Save-format version (SCHEMA_VERSION). Old saves without it load as version 0 and are migrated. */
+    readonly schemaVersion: number;
+    /** XP earned by this pet; resets with each new egg. */
+    readonly petXp: number;
+    /** This pet's level (derived from petXp, stored for display). */
+    readonly petLevel: number;
+    /** The player's lifetime progression; carried over to the next pet by createPet(). */
+    readonly trainer: TrainerProgress;
+}
+/**
+ * The player's lifetime progression. Survives pet death: hosts pass the old
+ * pet's `trainer` into createPet() when a new egg starts.
+ */
+export interface TrainerProgress {
+    readonly xp: number;
+    readonly level: number;
+    /** Ids of unlocked achievements (see ACHIEVEMENTS), in unlock order. */
+    readonly achievements: readonly string[];
+    /** Lifetime counters that drive the achievements (keys: AchievementCounter). */
+    readonly counters: Readonly<Record<string, number>>;
+    /** Local date (YYYY-MM-DD) the daily XP buckets belong to. */
+    readonly xpDay: string;
+    /** XP earned today per capped bucket ("code", "care"). */
+    readonly xpToday: Readonly<Record<string, number>>;
 }
 /** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
 export type LeaderboardIneligibleReason = "" | "tampered" | "unverified";
@@ -497,9 +521,10 @@ export declare function randomSpriteType(): string;
  * @param petType - One of the valid pet type identifiers.
  * @param unlockedCharacter - spriteType of a custom character to force (e.g. "tim"), or null for random.
  *   When provided, the forced name must be resolved by the caller or registry before passing `name`.
+ * @param trainer - The previous pet's trainer progress, so XP and achievements carry over; null starts fresh.
  * @returns A freshly initialised PetState.
  */
-export declare function createPet(name: string, petType: string, unlockedCharacter?: string | null): PetState;
+export declare function createPet(name: string, petType: string, unlockedCharacter?: string | null, trainer?: TrainerProgress | null): PetState;
 /**
  * Advance the pet's game state by one tick (TICK_INTERVAL_SECONDS real seconds).
  *
@@ -785,6 +810,65 @@ export declare function resume(state: PetState): PetState;
  * @returns A new PetState after offline decay is applied.
  */
 export declare function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetState;
+/** Current save-format version. Bump when a migration step is added to deserialiseState(). */
+export declare const SCHEMA_VERSION: number;
+/** What earned the XP. Each source maps to an amount, an optional daily bucket and counters. */
+export type XpSource = "code" | "commit" | "care" | "snack" | "clean" | "cure" | "minigame" | "evolve" | "debug" | "boss_kill" | "boss_battle";
+/** XP per source. */
+export declare const XP_AMOUNTS: Readonly<Record<XpSource, number>>;
+/** Bonus XP for unlocking an achievement. */
+export declare const XP_ACHIEVEMENT_BONUS: number;
+/** Daily XP caps per bucket, so repeated saves or free care actions can't be farmed. */
+export declare const XP_DAILY_CAPS: Readonly<Record<string, number>>;
+/** Commits made from midnight up to this hour (local time) count as late-night commits. */
+export declare const NIGHT_OWL_END_HOUR: number;
+/** An unlockable achievement: reached when `counter` (or the trainer level, for "level") hits `threshold`. */
+export interface Achievement {
+    readonly id: string;
+    readonly name: string;
+    readonly description: string;
+    readonly emoji: string;
+    readonly counter: string;
+    readonly threshold: number;
+}
+/** Every achievement, in display order. */
+export declare const ACHIEVEMENTS: readonly Achievement[];
+/** A fresh trainer with no XP. */
+export declare function createTrainer(): TrainerProgress;
+/** XP needed to go from `level` to `level + 1`. */
+export declare function xpToNextLevel(level: number): number;
+/** Level reached with `xp` total XP, plus the progress into that level. */
+export declare function levelProgress(xp: number): {
+    level: number;
+    intoLevel: number;
+    needed: number;
+};
+/** Local calendar date as YYYY-MM-DD. */
+export declare function localDayKey(now: number): string;
+/**
+ * Award XP to both the trainer and the current pet, update the achievement
+ * counters, and unlock any achievements now reached.
+ *
+ * Capped sources stop paying XP once today's bucket is full, but their
+ * counters still go up. Emits `trainer_level_up`, `pet_level_up` and
+ * `achievement_unlocked_<id>` events (appended to `events` and the event log).
+ *
+ * @param state - Pet state after the action that earned the XP.
+ * @param source - What earned it.
+ * @param now - Wall-clock ms, for the daily cap and time-of-day achievements.
+ * @returns The state with progression applied.
+ */
+export declare function awardXp(state: PetState, source: XpSource, now?: number): PetState;
+/** Look up an achievement by id. */
+export declare function achievementById(id: string): Achievement | undefined;
+/**
+ * Notification text for a progression event (achievement unlock or trainer
+ * level-up), or null for any other event. Pet level-ups only show in the pet's
+ * speech bubble, so they return null too.
+ */
+export declare function progressionMessage(event: string, state: PetState): string | null;
+/** Parse a TrainerProgress from saved JSON, filling in defaults for anything missing. */
+export declare function deserialiseTrainer(raw: unknown): TrainerProgress;
 /**
  * Serialise a PetState to a plain JSON-compatible object.
  *
