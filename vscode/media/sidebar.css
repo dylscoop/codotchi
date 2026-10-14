@@ -279,9 +279,9 @@ body.font-large  { font-size: 16px; }
   overflow-y: auto;
 }
 .achievements-list li { padding: 1px 0; }
-.achievements-list li.locked { opacity: 0.4; }
+.achievements-list li.locked { opacity: 0.85; }
 .achievements-list .ach-desc { opacity: 0.7; }
-.achievements-list li.coming-soon { opacity: 0.3; font-style: italic; }
+.achievements-list li.coming-soon { opacity: 0.35; font-style: italic; }
 .daily-heading { font-weight: bold; opacity: 0.9; }
 .daily-list { max-height: none; margin-bottom: 4px; }
 .ach-tabs { display: flex; gap: 4px; justify-content: center; margin: 4px 0 2px; }

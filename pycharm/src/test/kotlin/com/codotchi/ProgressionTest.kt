@@ -151,6 +151,15 @@ class ProgressionTest {
     }
 
     @Test
+    fun `trainer drops retired ids and old-rules daily buckets`() {
+        val old = trainerFromRaw(mapOf("achievements" to listOf("hello_world", "caretaker"), "xpToday" to mapOf("code" to 200.0)))
+        assertEquals(listOf("hello_world"), old.achievements)
+        assertEquals(emptyMap<String, Int>(), old.xpToday)
+        val cur = trainerFromRaw(mapOf("xpToday" to mapOf("code" to 20.0), "xpHour" to "2026-10-14T12"))
+        assertEquals(mapOf("code" to 20), cur.xpToday)
+    }
+
+    @Test
     fun `trainer parses junk safely`() {
         val t = trainerFromRaw(mapOf("xp" to "lots", "achievements" to listOf(1.0, "gamer"), "counters" to mapOf("commits" to 3.0, "bad" to "x")))
         assertEquals(0, t.xp)

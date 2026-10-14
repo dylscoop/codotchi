@@ -3021,10 +3021,14 @@ export function deserialiseTrainer(raw: unknown): TrainerProgress {
   return {
     xp,
     level: levelProgress(xp).level,
-    achievements: Array.isArray(r.achievements) ? r.achievements.filter((a): a is string => typeof a === "string") : [],
+    // Unknown ids (e.g. the retired "caretaker") are dropped.
+    achievements: Array.isArray(r.achievements)
+      ? r.achievements.filter((a): a is string => typeof a === "string" && ACHIEVEMENTS.some((x) => x.id === a))
+      : [],
     counters: numRecord(r.counters),
     xpDay: typeof r.xpDay === "string" ? r.xpDay : "",
-    xpToday: numRecord(r.xpToday),
+    // Saves without hourly buckets used the old caps; start today's buckets afresh.
+    xpToday: typeof r.xpHour === "string" ? numRecord(r.xpToday) : {},
     xpHour: typeof r.xpHour === "string" ? r.xpHour : "",
     xpThisHour: numRecord(r.xpThisHour),
   };

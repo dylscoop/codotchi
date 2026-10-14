@@ -234,10 +234,12 @@ fun trainerFromRaw(raw: Map<*, *>?): TrainerProgress {
     return TrainerProgress(
         xp = xp,
         level = levelProgress(xp).level,
-        achievements = (raw["achievements"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+        // Unknown ids (e.g. the retired "caretaker") are dropped.
+        achievements = (raw["achievements"] as? List<*>)?.filterIsInstance<String>()?.filter { achievementById(it) != null } ?: emptyList(),
         counters = numMap(raw["counters"]),
         xpDay = raw["xpDay"] as? String ?: "",
-        xpToday = numMap(raw["xpToday"]),
+        // Saves without hourly buckets used the old caps; start today's buckets afresh.
+        xpToday = if (raw["xpHour"] is String) numMap(raw["xpToday"]) else emptyMap(),
         xpHour = raw["xpHour"] as? String ?: "",
         xpThisHour = numMap(raw["xpThisHour"]),
     )

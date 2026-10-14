@@ -233,6 +233,16 @@ describe("persistence", () => {
     assert.deepEqual(loaded.trainer, createTrainer());
   });
 
+  it("drops retired achievement ids and old-rules daily buckets", () => {
+    const raw = serialiseState(makePet()) as Record<string, unknown>;
+    raw.trainer = { xp: 10, achievements: ["hello_world", "caretaker"], xpDay: "2026-10-14", xpToday: { code: 200, care: 100 } };
+    const t = deserialiseState(raw).trainer;
+    assert.deepEqual(t.achievements, ["hello_world"]);
+    assert.deepEqual(t.xpToday, {});
+    raw.trainer = { xp: 10, xpDay: "2026-10-14", xpToday: { code: 20 }, xpHour: "2026-10-14T12", xpThisHour: {} };
+    assert.deepEqual(deserialiseState(raw).trainer.xpToday, { code: 20 });
+  });
+
   it("ignores junk in the saved trainer", () => {
     const raw = serialiseState(makePet()) as Record<string, unknown>;
     raw.trainer = { xp: "lots", achievements: [1, "gamer"], counters: { commits: 3, bad: "x" } };
