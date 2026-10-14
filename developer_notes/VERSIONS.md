@@ -2,31 +2,35 @@
 
 ## v2.29.0 - current
 
-### Changes from v2.28.0 (XP, levels and achievements - branch feat/xp-levels-bosses)
+### Changes from v2.28.0 (XP, levels, achievements and daily challenges - branch feat/xp-levels-bosses)
 
 | File | What changed |
 |------|-------------|
-| `packages/core/src/gameEngine.ts` (+ synced copies) | `PetState` gains `schemaVersion`, `petXp`, `petLevel`, `trainer` (`TrainerProgress`); `awardXp()`, `levelProgress()`, `xpToNextLevel()`, `ACHIEVEMENTS` (20), `progressionMessage()`, `deserialiseTrainer()`; care actions, code activity, commits, mini-game wins and evolutions pay XP; `createPet(..., trainer)` carries trainer progress to the next pet; old saves migrate to schema 1 |
-| `packages/core/src/asciiArt.ts` (+ synced copies) | `buildStatusBlock()` shows pet / trainer level, trainer XP bar and latest achievements |
-| `pycharm/src/main/kotlin/com/codotchi/engine/Progression.kt` | new: Kotlin mirror of the progression code |
-| `pycharm/src/main/kotlin/com/codotchi/engine/PetState.kt`, `GameEngine.kt`, `CodotchiPersistence.kt` | progression fields, XP from actions, save/load |
-| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | new game keeps trainer progress; notification on achievement unlock / trainer level-up |
+| `packages/core/src/gameEngine.ts` (+ synced copies) | `PetState` gains `schemaVersion`, `petXp`, `petLevel`, `trainer` (`TrainerProgress`, with daily and hourly XP buckets) and `dailies` (`DailyChallenges`); `awardXp(state, source, now, answeredCall)`, `levelProgress()`, `xpToNextLevel()`, `ACHIEVEMENTS` (20, each with a `path` and optional `comingSoon`), `achievementProgress()`, `progressionMessage()`, `deserialiseTrainer()`; care actions pay XP only when they answer a call (`"call"` source, `callsAnswered` counter); `DAILY_CHALLENGES`, `pickDailyChallenges()` (FNV-1a seeded from date + pet), `dailiesView()`, `currentStreak()` (weekdays only), `deserialiseDailies()`; `createPet(..., trainer)` carries trainer progress to the next pet and starts fresh dailies; old saves migrate to schema 1 |
+| `packages/core/src/asciiArt.ts` (+ synced copies) | `buildStatusBlock()` shows pet / trainer level, trainer XP bar, latest achievements and (with `dailies` + `spawnedAt`) today's challenges and the streak |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Progression.kt` | new: Kotlin mirror of the progression and daily-challenge code |
+| `pycharm/src/main/kotlin/com/codotchi/engine/PetState.kt`, `GameEngine.kt`, `CodotchiPersistence.kt` | progression and daily-challenge fields, call-only care XP, save/load |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | new game keeps trainer progress; notification on achievement unlock / trainer level-up / daily challenge |
 | `vscode/src/extension.ts`, `sidebarProvider.ts`, `persistence.ts` | notification on unlock / level-up; trainer also saved under `codotchi.trainer` so New Game keeps it |
-| `vscode/media/sidebar.html`, `sidebar.css`, `sidebar.js` | level line, trainer XP bar, achievements list, `level_up` reaction, level / achievement bubbles and log lines |
-| `claude-desktop-codotchi/src/tools.ts` | level line and unlock messages under the pet |
-| `opencode-codotchi/src/index.ts` | passes progression to the status block |
-| `vscode/tests/unit/progression.test.ts`, `pycharm/src/test/kotlin/com/codotchi/ProgressionTest.kt`, `opencode-codotchi/tests/unit/asciiArt.test.ts`, `claude-desktop-codotchi/tests/tools.test.mjs` | new tests, including TS / Kotlin / webview achievement-table parity |
+| `vscode/media/sidebar.html`, `sidebar.css`, `sidebar.js` | level line (with streak), trainer XP bar, Today section, Coder / Keeper achievement tabs with progress bars and greyed coming-soon entries, `level_up` reaction, level / achievement / challenge bubbles and log lines |
+| `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | `stateUpdate` carries `dailies` (`dailiesView()`) |
+| `claude-desktop-codotchi/src/tools.ts` | level line (with streak), today's challenges and unlock messages under the pet |
+| `opencode-codotchi/src/index.ts` | passes progression and dailies to the status block |
+| `vscode/tests/unit/progression.test.ts`, `pycharm/src/test/kotlin/com/codotchi/ProgressionTest.kt`, `opencode-codotchi/tests/unit/asciiArt.test.ts`, `claude-desktop-codotchi/tests/tools.test.mjs` | new tests: caps, call-only XP, level curve, challenge picks / resets, weekday streak, old saves, TS / Kotlin / webview parity |
 | all manifests, `README.md` | version 2.29.0 |
 
 Updated constants:
 
 ```text
 SCHEMA_VERSION: number = 1
-XP_AMOUNTS = { code: 5, commit: 25, care: 2, snack: 2, clean: 2, cure: 10, minigame: 15, evolve: 30, debug: 10, boss_kill: 50, boss_battle: 40 }
+XP_AMOUNTS = { code: 2, commit: 15, call: 10, care: 0, snack: 0, clean: 0, cure: 0, minigame: 10, evolve: 30, debug: 10, boss_kill: 50, boss_battle: 40 }
 XP_ACHIEVEMENT_BONUS: number = 50
-XP_DAILY_CAPS = { code: 500, care: 100 }   // per local day
+XP_HOURLY_CAPS = { code: 10, commit: 30, minigame: 20 }              // per local clock hour
+XP_DAILY_CAPS  = { code: 40, commit: 90, call: 100, minigame: 50 }   // per local day
 NIGHT_OWL_END_HOUR: number = 5
-xpToNextLevel(level) = round(100 × level^1.5)
+xpToNextLevel(level) = round(50 × level^1.5)
+DAILY_CHALLENGE_XP: number = 25
+DAILY_ALL_DONE_BONUS: number = 25
 ```
 
 ---

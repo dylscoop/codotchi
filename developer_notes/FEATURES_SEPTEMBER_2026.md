@@ -679,13 +679,14 @@ Codotchi has no progression layer apart from life stages.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| XP sources | `[~]` | v2.29.0: code activity 5 (500/day cap), commit 25, care 2 / cure 10 (100/day cap; scold / praise only when answering a call), mini-game win 15, evolution 30. `debug` / `boss_kill` / `boss_battle` sources exist in `awardXp` for §2.7–2.9 but nothing calls them yet |
-| Level curve + level badge | `[x]` | v2.29.0: `round(100 × level^1.5)` XP per level. Level line ("Trainer Lv · Pet Lv · 🏆 n/20") and XP bar under the info line; `trainer_level_up` / `pet_level_up` events and a `level_up` hop reaction |
-| Achievements (~15–20) | `[x]` | v2.29.0: 20 in `ACHIEVEMENTS`. The boss / debug ones (First Blood, Exterminator, Detective, Champion) can't unlock until §2.7–2.9 ship |
-| Unlock feedback | `[x]` | v2.29.0: IDE notification, speech bubble and log line; click the level line for the achievements list |
-| Persistence + migration | `[x]` | v2.29.0: `schemaVersion: 1`. Trainer progress lives in `PetState.trainer` and carries into the next pet via `createPet(..., trainer)`; VS Code also keeps it under `codotchi.trainer` because New Game clears the state |
-| Kotlin mirror | `[x]` | v2.29.0: `engine/Progression.kt`; a TS test checks the Kotlin and webview achievement tables match |
-| Terminal plugins | `[x]` | v2.29.0: `/codotchi status` shows levels, trainer XP and the latest 3 unlocks; Claude Desktop shows a level line and unlock messages |
+| XP sources | `[~]` | v2.29.0: call answered 10 (100/day), mini-game win 10 (20/h, 50/day), code activity 2 (10/h, 40/day), commit 15 (30/h, 90/day), evolution 30 and achievement unlock 50 (uncapped). Feed / snack / play / pat / clean / medicine / sleep / scold / praise pay nothing unless they answer a call; every call type (break and misbehaviour included) pays the same. `debug` / `boss_kill` / `boss_battle` sources exist in `awardXp` for §2.7–2.9 but nothing calls them yet |
+| Level curve + level badge | `[x]` | v2.29.0: `round(50 × level^1.5)` XP per level. Level line ("Trainer Lv · Pet Lv · 🏆 n/16 · 🔥 streak") and XP bar under the info line; `trainer_level_up` / `pet_level_up` events and a `level_up` hop reaction |
+| Achievements (~15–20) | `[x]` | v2.29.0: 20 in `ACHIEVEMENTS`, split into 🧑‍💻 Coder and 🐾 Keeper tabs with shared trainer-level milestones and a progress bar each. Caretaker became **On Call** (answer 100 calls). Detective, First Blood, Exterminator and Champion are greyed out as "Coming soon" (`comingSoon`) until §2.7–2.9 ship |
+| Daily challenges + streak | `[x]` | v2.29.0: per pet (`PetState.dailies`). 3 a day from `DAILY_CHALLENGES`: one Coder, one Keeper, one from a separate wildcard pool; picks seeded (FNV-1a) from the local date + pet name + `spawnedAt`, reset at local midnight. 25 XP each + 25 for all three, outside the caps, once a day. Streak = consecutive weekdays with all three done; weekends neither break nor extend it (assumption, to confirm); lost when the pet dies. Shown in a Today section in the achievements panel, the terminal status block and Claude Desktop |
+| Unlock feedback | `[x]` | v2.29.0: IDE notification, speech bubble and log line for unlocks, level-ups and finished challenges; click the level line for the panel |
+| Persistence + migration | `[x]` | v2.29.0: `schemaVersion: 1`. Trainer progress lives in `PetState.trainer` and carries into the next pet via `createPet(..., trainer)`; VS Code also keeps it under `codotchi.trainer` because New Game clears the state. Missing `dailies` / hourly buckets load as defaults |
+| Kotlin mirror | `[x]` | v2.29.0: `engine/Progression.kt`; TS tests check the Kotlin and webview achievement tables, the Kotlin challenge table and a shared seeded-pick fixture |
+| Terminal plugins | `[x]` | v2.29.0: `/codotchi status` shows levels, trainer XP, the latest 3 unlocks and today's challenges; Claude Desktop shows a level line, today's challenges and unlock messages |
 | Level on the leaderboard (optional) | `[ ]` | Not in v2.29.0 |
 
 **Design notes:**
@@ -696,6 +697,22 @@ Codotchi has no progression layer apart from life stages.
 - **Anti-farming.** Cap the XP per day or per save (as Dev Legend does) so
   repeated saves can't be farmed.
 - Build this first: §2.7–2.9 all pay out XP.
+
+### 2.10.1 Achievement extension
+
+Docs only for now: follow-ups to §2.10, not scheduled.
+
+| Achievement | Path | Unlock | Notes |
+|-------------|------|--------|-------|
+| Pair Programmer | Coder | Get code-activity rewards from both AI-written and hand-written code | Needs a `source: "ai" \| "manual"` flag on code activity (the AI plugins report "ai", IDE saves "manual") and per-source counters |
+| Frugal | Coder | Finish a day under your token-cost budget | Builds on the token-cost view; needs a daily cost snapshot |
+| Streak 7 | Trainer | Reach a 7-day daily-challenge streak | Reads `dailies.streak`; the streak is per pet, the achievement is per trainer |
+| Streak 30 | Trainer | Reach a 30-day daily-challenge streak | As above |
+| Dedicated | Trainer | Finish all three daily challenges on 50 days | New lifetime counter bumped on `daily_challenges_all_done` |
+| Quick Response | Keeper | Answer a call within 30 seconds of it appearing | Needs the call's start time (or `attentionCallActiveTicks`) at answer time |
+| Spotless | Keeper | Keep zero poops on the floor for a whole day | Needs a per-day "poop seen" flag |
+| Clean Record | Keeper | Raise a pet to adult with no care mistakes | Reads `lifetimeCareMistakes` on evolution |
+| Arcade | Keeper | Win every mini-game at least once | Needs per-game win counters (`minigameWins_<game>`) |
 
 ---
 
