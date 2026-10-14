@@ -85,36 +85,36 @@
   /**
    * Achievement names for the webview. Must match ACHIEVEMENTS in
    * packages/core/src/gameEngine.ts (progression.test.ts checks this).
-   * id: [emoji, name, description]
+   * id: [emoji, name, description, counter, threshold, path, comingSoon?]
    */
   const ACHIEVEMENT_INFO = {
-    hello_world:  ["👋", "Hello World",   "Write some code with your pet watching"],
-    save_100:     ["⌨️", "Busy Fingers",  "Get 100 code-activity rewards"],
-    save_1000:    ["💾", "Ctrl+S Master", "Get 1,000 code-activity rewards"],
-    first_commit: ["📌", "First Commit",  "Make a commit"],
-    committed:    ["📚", "Committed",     "Make 100 commits"],
-    night_owl:    ["🦉", "Night Owl",     "Commit between midnight and 5 am"],
-    caretaker:    ["🤲", "Caretaker",     "Look after your pet 100 times"],
-    snack_fiend:  ["🍪", "Snack Fiend",   "Hand out 50 snacks"],
-    clean_freak:  ["🧹", "Clean Freak",   "Clean up 50 times"],
-    nurse:        ["💊", "Nurse",         "Cure your pet 10 times"],
-    gamer:        ["🎮", "Gamer",         "Win 10 mini-games"],
-    growing_up:   ["🌱", "Growing Up",    "See your pets evolve 3 times"],
-    survivor:     ["🧓", "Survivor",      "Raise a pet to senior"],
-    level_5:      ["⭐", "Rising Star",   "Reach trainer level 5"],
-    level_10:     ["🌟", "Veteran",       "Reach trainer level 10"],
-    level_25:     ["🏆", "Legend",        "Reach trainer level 25"],
-    detective:    ["🔍", "Detective",     "Finish 10 debug sessions"],
-    first_blood:  ["⚔️", "First Blood",   "Defeat a Bug Boss"],
-    exterminator: ["🐛", "Exterminator",  "Defeat 10 Bug Bosses"],
-    champion:     ["🥊", "Champion",      "Win a Boss Battle"],
+    hello_world:  ["👋", "Hello World",   "Write some code with your pet watching", "codeActivity",   1,    "coder"],
+    save_100:     ["⌨️", "Busy Fingers",  "Get 100 code-activity rewards",          "codeActivity",   100,  "coder"],
+    save_1000:    ["💾", "Ctrl+S Master", "Get 1,000 code-activity rewards",        "codeActivity",   1000, "coder"],
+    first_commit: ["📌", "First Commit",  "Make a commit",                          "commits",        1,    "coder"],
+    committed:    ["📚", "Committed",     "Make 100 commits",                       "commits",        100,  "coder"],
+    night_owl:    ["🦉", "Night Owl",     "Commit between midnight and 5 am",       "nightCommits",   1,    "coder"],
+    detective:    ["🔍", "Detective",     "Finish 10 debug sessions",               "debugSessions",  10,   "coder", true],
+    first_blood:  ["⚔️", "First Blood",   "Defeat a Bug Boss",                      "bossKills",      1,    "coder", true],
+    exterminator: ["🐛", "Exterminator",  "Defeat 10 Bug Bosses",                   "bossKills",      10,   "coder", true],
+    on_call:      ["🤲", "On Call",       "Answer 100 calls from your pet",         "callsAnswered",  100,  "keeper"],
+    snack_fiend:  ["🍪", "Snack Fiend",   "Hand out 50 snacks",                     "snacks",         50,   "keeper"],
+    clean_freak:  ["🧹", "Clean Freak",   "Clean up 50 times",                      "cleans",         50,   "keeper"],
+    nurse:        ["💊", "Nurse",         "Cure your pet 10 times",                 "cures",          10,   "keeper"],
+    gamer:        ["🎮", "Gamer",         "Win 10 mini-games",                      "minigameWins",   10,   "keeper"],
+    growing_up:   ["🌱", "Growing Up",    "See your pets evolve 3 times",           "evolutions",     3,    "keeper"],
+    survivor:     ["🧓", "Survivor",      "Raise a pet to senior",                  "seniors",        1,    "keeper"],
+    champion:     ["🥊", "Champion",      "Win a Boss Battle",                      "bossBattleWins", 1,    "keeper", true],
+    level_5:      ["⭐", "Rising Star",   "Reach trainer level 5",                  "level",          5,    "trainer"],
+    level_10:     ["🌟", "Veteran",       "Reach trainer level 10",                 "level",          10,   "trainer"],
+    level_25:     ["🏆", "Legend",        "Reach trainer level 25",                 "level",          25,   "trainer"],
   };
 
   /** Level reached with `xp` total XP — same curve as levelProgress() in gameEngine.ts. */
   function levelProgress(xp) {
     var level = 1;
     var remaining = Math.max(0, Math.floor(xp || 0));
-    var need = function (l) { return Math.round(100 * Math.pow(l, 1.5)); };
+    var need = function (l) { return Math.round(50 * Math.pow(l, 1.5)); };
     while (remaining >= need(level)) { remaining -= need(level); level++; }
     return { level: level, intoLevel: remaining, needed: need(level) };
   }

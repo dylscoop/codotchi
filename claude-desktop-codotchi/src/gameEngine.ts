@@ -814,8 +814,12 @@ export interface TrainerProgress {
   readonly counters: Readonly<Record<string, number>>;
   /** Local date (YYYY-MM-DD) the daily XP buckets belong to. */
   readonly xpDay: string;
-  /** XP earned today per capped bucket ("code", "care"). */
+  /** XP earned today per daily-capped source (see XP_DAILY_CAPS). */
   readonly xpToday: Readonly<Record<string, number>>;
+  /** Local clock hour (YYYY-MM-DDTHH) the hourly XP buckets belong to. */
+  readonly xpHour: string;
+  /** XP earned this hour per hourly-capped source (see XP_HOURLY_CAPS). */
+  readonly xpThisHour: Readonly<Record<string, number>>;
 }
 
 /** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
@@ -2005,7 +2009,7 @@ export function feedMeal(
     consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
-  }), "care");
+  }), "care", Date.now(), answered !== null);
 }
 
 /**
@@ -2044,7 +2048,7 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
     answerAttentionCall(state, "critical_health");
   if (answered) { events.push(`attention_call_answered_${state.activeAttentionCall}`); }
 
-  return withDerivedFields({
+  const next = withDerivedFields({
     ...state,
     ...(answered ?? {}),
     snacksGivenThisCycle,
@@ -2052,6 +2056,7 @@ export function startSnack(state: PetState, opts?: { maxPerCycle?: number }): Pe
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
+  return answered ? awardXp(next, "call") : next;
 }
 
 /**
@@ -2143,7 +2148,7 @@ export function play(state: PetState, opts?: { weightLoss?: number }): PetState 
     consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
-  }), "care");
+  }), "care", Date.now(), answered !== null);
 }
 
 /**
@@ -2171,7 +2176,7 @@ export function pat(state: PetState): PetState {
     consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
-  }), "care");
+  }), "care", Date.now(), answered !== null);
 }
 
 /**
@@ -2286,10 +2291,11 @@ export function sleep(state: PetState): PetState {
   const answered = answerAttentionCall(state, "low_energy");
   const events: string[] = ["fell_asleep"];
   if (answered) { events.push("attention_call_answered_low_energy"); }
-  return withDerivedFields({ ...state, ...(answered ?? {}), sleeping: true,
+  const next = withDerivedFields({ ...state, ...(answered ?? {}), sleeping: true,
     consecutiveSnacks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events });
+  return answered ? awardXp(next, "call") : next;
 }
 
 /**
@@ -2339,7 +2345,7 @@ export function clean(state: PetState): PetState {
     poopOverLimitTicks: 0,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
-  }), "clean");
+  }), "clean", Date.now(), answered !== null);
 }
 
 /**
@@ -2373,12 +2379,12 @@ export function giveMedicine(state: PetState): PetState {
       consecutiveSnacks: 0,
       careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
       events,
-    }), "cure");
+    }), "cure", Date.now(), answered !== null);
   }
 
   return awardXp(withDerivedFields({ ...state, ...(answered ?? {}), medicineDosesGiven,
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
-    events }), "care");
+    events }), "care", Date.now(), answered !== null);
 }
 
 /**
@@ -2398,8 +2404,8 @@ export function scold(state: PetState): PetState {
     careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
     events,
   });
-  // Scold / praise cost nothing, so they only earn XP when they answer a call.
-  return answered ? awardXp(next, "care") : next;
+  // Scold / praise only count as care when they answer a call.
+  return answered ? awardXp(next, "care", Date.now(), true) : next;
 }
 
 /**
@@ -2440,7 +2446,7 @@ export function praise(state: PetState): PetState {
     ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS, ticksSinceLastBreakCall: 0 } : {}),
     events,
   });
-  return answered ? awardXp(next, "care") : next;
+  return answered ? awardXp(next, "care", Date.now(), true) : next;
 }
 
 /**
@@ -2725,20 +2731,24 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
 /** Current save-format version. Bump when a migration step is added to deserialiseState(). */
 export const SCHEMA_VERSION: number = 1;
 
-/** What earned the XP. Each source maps to an amount, an optional daily bucket and counters. */
+/** What earned the XP. Each source maps to an amount, optional hourly / daily caps and counters. */
 export type XpSource =
-  | "code" | "commit" | "care" | "snack" | "clean" | "cure" | "minigame" | "evolve"
+  | "code" | "commit" | "call" | "care" | "snack" | "clean" | "cure" | "minigame" | "evolve"
   | "debug" | "boss_kill" | "boss_battle";
 
-/** XP per source. */
+/**
+ * XP per source. Care actions (care / snack / clean / cure) pay nothing on
+ * their own: they only earn the "call" XP when they answer an attention call.
+ */
 export const XP_AMOUNTS: Readonly<Record<XpSource, number>> = {
-  code: 5,
-  commit: 25,
-  care: 2,
-  snack: 2,
-  clean: 2,
-  cure: 10,
-  minigame: 15,
+  code: 2,
+  commit: 15,
+  call: 10,
+  care: 0,
+  snack: 0,
+  clean: 0,
+  cure: 0,
+  minigame: 10,
   evolve: 30,
   debug: 10,
   boss_kill: 50,
@@ -2748,22 +2758,28 @@ export const XP_AMOUNTS: Readonly<Record<XpSource, number>> = {
 /** Bonus XP for unlocking an achievement. */
 export const XP_ACHIEVEMENT_BONUS: number = 50;
 
-/** Daily XP caps per bucket, so repeated saves or free care actions can't be farmed. */
-export const XP_DAILY_CAPS: Readonly<Record<string, number>> = {
-  code: 500,
-  care: 100,
+/** Hourly XP caps per source (local clock hour). Sources not listed have no hourly cap. */
+export const XP_HOURLY_CAPS: Readonly<Partial<Record<XpSource, number>>> = {
+  code: 10,
+  commit: 30,
+  minigame: 20,
+};
+
+/** Daily XP caps per source (local day). Sources not listed are uncapped. */
+export const XP_DAILY_CAPS: Readonly<Partial<Record<XpSource, number>>> = {
+  code: 40,
+  commit: 90,
+  call: 100,
+  minigame: 50,
 };
 
 /** Commits made from midnight up to this hour (local time) count as late-night commits. */
 export const NIGHT_OWL_END_HOUR: number = 5;
 
-const XP_BUCKETS: Readonly<Partial<Record<XpSource, string>>> = {
-  code: "code", care: "care", snack: "care", clean: "care", cure: "care",
-};
-
 const XP_COUNTERS: Readonly<Record<XpSource, readonly string[]>> = {
   code: ["codeActivity"],
   commit: ["commits"],
+  call: ["callsAnswered"],
   care: ["care"],
   snack: ["care", "snacks"],
   clean: ["care", "cleans"],
@@ -2775,6 +2791,9 @@ const XP_COUNTERS: Readonly<Record<XpSource, readonly string[]>> = {
   boss_battle: ["bossBattleWins"],
 };
 
+/** Which tab an achievement sits under: the two paths, or shared trainer milestones. */
+export type AchievementPath = "coder" | "keeper" | "trainer";
+
 /** An unlockable achievement: reached when `counter` (or the trainer level, for "level") hits `threshold`. */
 export interface Achievement {
   readonly id: string;
@@ -2783,40 +2802,43 @@ export interface Achievement {
   readonly emoji: string;
   readonly counter: string;
   readonly threshold: number;
+  readonly path: AchievementPath;
+  /** Shown greyed out; can't be unlocked yet because its feature hasn't shipped. */
+  readonly comingSoon?: boolean;
 }
 
 /** Every achievement, in display order. */
 export const ACHIEVEMENTS: readonly Achievement[] = [
-  { id: "hello_world",  name: "Hello World",   description: "Write some code with your pet watching",   emoji: "👋", counter: "codeActivity",   threshold: 1 },
-  { id: "save_100",     name: "Busy Fingers",  description: "Get 100 code-activity rewards",            emoji: "⌨️", counter: "codeActivity",   threshold: 100 },
-  { id: "save_1000",    name: "Ctrl+S Master", description: "Get 1,000 code-activity rewards",          emoji: "💾", counter: "codeActivity",   threshold: 1000 },
-  { id: "first_commit", name: "First Commit",  description: "Make a commit",                            emoji: "📌", counter: "commits",        threshold: 1 },
-  { id: "committed",    name: "Committed",     description: "Make 100 commits",                         emoji: "📚", counter: "commits",        threshold: 100 },
-  { id: "night_owl",    name: "Night Owl",     description: "Commit between midnight and 5 am",         emoji: "🦉", counter: "nightCommits",   threshold: 1 },
-  { id: "caretaker",    name: "Caretaker",     description: "Look after your pet 100 times",            emoji: "🤲", counter: "care",           threshold: 100 },
-  { id: "snack_fiend",  name: "Snack Fiend",   description: "Hand out 50 snacks",                       emoji: "🍪", counter: "snacks",         threshold: 50 },
-  { id: "clean_freak",  name: "Clean Freak",   description: "Clean up 50 times",                        emoji: "🧹", counter: "cleans",         threshold: 50 },
-  { id: "nurse",        name: "Nurse",         description: "Cure your pet 10 times",                   emoji: "💊", counter: "cures",          threshold: 10 },
-  { id: "gamer",        name: "Gamer",         description: "Win 10 mini-games",                        emoji: "🎮", counter: "minigameWins",   threshold: 10 },
-  { id: "growing_up",   name: "Growing Up",    description: "See your pets evolve 3 times",             emoji: "🌱", counter: "evolutions",     threshold: 3 },
-  { id: "survivor",     name: "Survivor",      description: "Raise a pet to senior",                    emoji: "🧓", counter: "seniors",        threshold: 1 },
-  { id: "level_5",      name: "Rising Star",   description: "Reach trainer level 5",                    emoji: "⭐", counter: "level",          threshold: 5 },
-  { id: "level_10",     name: "Veteran",       description: "Reach trainer level 10",                   emoji: "🌟", counter: "level",          threshold: 10 },
-  { id: "level_25",     name: "Legend",        description: "Reach trainer level 25",                   emoji: "🏆", counter: "level",          threshold: 25 },
-  { id: "detective",    name: "Detective",     description: "Finish 10 debug sessions",                 emoji: "🔍", counter: "debugSessions",  threshold: 10 },
-  { id: "first_blood",  name: "First Blood",   description: "Defeat a Bug Boss",                        emoji: "⚔️", counter: "bossKills",      threshold: 1 },
-  { id: "exterminator", name: "Exterminator",  description: "Defeat 10 Bug Bosses",                     emoji: "🐛", counter: "bossKills",      threshold: 10 },
-  { id: "champion",     name: "Champion",      description: "Win a Boss Battle",                        emoji: "🥊", counter: "bossBattleWins", threshold: 1 },
+  { id: "hello_world",  name: "Hello World",   description: "Write some code with your pet watching",   emoji: "👋", counter: "codeActivity",   threshold: 1,    path: "coder" },
+  { id: "save_100",     name: "Busy Fingers",  description: "Get 100 code-activity rewards",            emoji: "⌨️", counter: "codeActivity",   threshold: 100,  path: "coder" },
+  { id: "save_1000",    name: "Ctrl+S Master", description: "Get 1,000 code-activity rewards",          emoji: "💾", counter: "codeActivity",   threshold: 1000, path: "coder" },
+  { id: "first_commit", name: "First Commit",  description: "Make a commit",                            emoji: "📌", counter: "commits",        threshold: 1,    path: "coder" },
+  { id: "committed",    name: "Committed",     description: "Make 100 commits",                         emoji: "📚", counter: "commits",        threshold: 100,  path: "coder" },
+  { id: "night_owl",    name: "Night Owl",     description: "Commit between midnight and 5 am",         emoji: "🦉", counter: "nightCommits",   threshold: 1,    path: "coder" },
+  { id: "detective",    name: "Detective",     description: "Finish 10 debug sessions",                 emoji: "🔍", counter: "debugSessions",  threshold: 10,   path: "coder", comingSoon: true },
+  { id: "first_blood",  name: "First Blood",   description: "Defeat a Bug Boss",                        emoji: "⚔️", counter: "bossKills",      threshold: 1,    path: "coder", comingSoon: true },
+  { id: "exterminator", name: "Exterminator",  description: "Defeat 10 Bug Bosses",                     emoji: "🐛", counter: "bossKills",      threshold: 10,   path: "coder", comingSoon: true },
+  { id: "on_call",      name: "On Call",       description: "Answer 100 calls from your pet",           emoji: "🤲", counter: "callsAnswered",  threshold: 100,  path: "keeper" },
+  { id: "snack_fiend",  name: "Snack Fiend",   description: "Hand out 50 snacks",                       emoji: "🍪", counter: "snacks",         threshold: 50,   path: "keeper" },
+  { id: "clean_freak",  name: "Clean Freak",   description: "Clean up 50 times",                        emoji: "🧹", counter: "cleans",         threshold: 50,   path: "keeper" },
+  { id: "nurse",        name: "Nurse",         description: "Cure your pet 10 times",                   emoji: "💊", counter: "cures",          threshold: 10,   path: "keeper" },
+  { id: "gamer",        name: "Gamer",         description: "Win 10 mini-games",                        emoji: "🎮", counter: "minigameWins",   threshold: 10,   path: "keeper" },
+  { id: "growing_up",   name: "Growing Up",    description: "See your pets evolve 3 times",             emoji: "🌱", counter: "evolutions",     threshold: 3,    path: "keeper" },
+  { id: "survivor",     name: "Survivor",      description: "Raise a pet to senior",                    emoji: "🧓", counter: "seniors",        threshold: 1,    path: "keeper" },
+  { id: "champion",     name: "Champion",      description: "Win a Boss Battle",                        emoji: "🥊", counter: "bossBattleWins", threshold: 1,    path: "keeper", comingSoon: true },
+  { id: "level_5",      name: "Rising Star",   description: "Reach trainer level 5",                    emoji: "⭐", counter: "level",          threshold: 5,    path: "trainer" },
+  { id: "level_10",     name: "Veteran",       description: "Reach trainer level 10",                   emoji: "🌟", counter: "level",          threshold: 10,   path: "trainer" },
+  { id: "level_25",     name: "Legend",        description: "Reach trainer level 25",                   emoji: "🏆", counter: "level",          threshold: 25,   path: "trainer" },
 ];
 
 /** A fresh trainer with no XP. */
 export function createTrainer(): TrainerProgress {
-  return { xp: 0, level: 1, achievements: [], counters: {}, xpDay: "", xpToday: {} };
+  return { xp: 0, level: 1, achievements: [], counters: {}, xpDay: "", xpToday: {}, xpHour: "", xpThisHour: {} };
 }
 
 /** XP needed to go from `level` to `level + 1`. */
 export function xpToNextLevel(level: number): number {
-  return Math.round(100 * Math.pow(Math.max(1, level), 1.5));
+  return Math.round(50 * Math.pow(Math.max(1, level), 1.5));
 }
 
 /** Level reached with `xp` total XP, plus the progress into that level. */
@@ -2838,6 +2860,17 @@ export function localDayKey(now: number): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
+/** Local clock hour as YYYY-MM-DDTHH. */
+export function localHourKey(now: number): string {
+  return `${localDayKey(now)}T${String(new Date(now).getHours()).padStart(2, "0")}`;
+}
+
+/** Progress towards an achievement: current value (capped at the threshold) and the threshold. */
+export function achievementProgress(a: Achievement, trainer: TrainerProgress): { value: number; threshold: number } {
+  const raw = a.counter === "level" ? trainer.level : trainer.counters[a.counter] ?? 0;
+  return { value: Math.min(raw, a.threshold), threshold: a.threshold };
+}
+
 function bump(counters: Record<string, number>, key: string): void {
   counters[key] = (counters[key] ?? 0) + 1;
 }
@@ -2846,30 +2879,40 @@ function bump(counters: Record<string, number>, key: string): void {
  * Award XP to both the trainer and the current pet, update the achievement
  * counters, and unlock any achievements now reached.
  *
- * Capped sources stop paying XP once today's bucket is full, but their
- * counters still go up. Emits `trainer_level_up`, `pet_level_up` and
- * `achievement_unlocked_<id>` events (appended to `events` and the event log).
+ * Capped sources stop paying XP once this hour's or today's cap is full, but
+ * their counters still go up. With `answeredCall`, the action also answered
+ * an attention call and earns the "call" XP on top. Emits `trainer_level_up`,
+ * `pet_level_up` and `achievement_unlocked_<id>` events (appended to `events`
+ * and the event log).
  *
  * @param state - Pet state after the action that earned the XP.
  * @param source - What earned it.
- * @param now - Wall-clock ms, for the daily cap and time-of-day achievements.
+ * @param now - Wall-clock ms, for the caps and time-of-day achievements.
+ * @param answeredCall - The action answered an attention call.
  * @returns The state with progression applied.
  */
-export function awardXp(state: PetState, source: XpSource, now: number = Date.now()): PetState {
+export function awardXp(state: PetState, source: XpSource, now: number = Date.now(), answeredCall: boolean = false): PetState {
   const t = state.trainer;
   const day = localDayKey(now);
+  const hour = localHourKey(now);
   const xpToday: Record<string, number> = t.xpDay === day ? { ...t.xpToday } : {};
+  const xpThisHour: Record<string, number> = t.xpHour === hour ? { ...t.xpThisHour } : {};
   const counters: Record<string, number> = { ...t.counters };
-  for (const key of XP_COUNTERS[source]) { bump(counters, key); }
   if (source === "commit" && new Date(now).getHours() < NIGHT_OWL_END_HOUR) { bump(counters, "nightCommits"); }
   if (source === "evolve" && state.stage === "senior") { bump(counters, "seniors"); }
 
-  let amount = XP_AMOUNTS[source];
-  const bucket = XP_BUCKETS[source];
-  if (bucket !== undefined) {
-    const used = xpToday[bucket] ?? 0;
-    amount = Math.max(0, Math.min(amount, XP_DAILY_CAPS[bucket] - used));
-    xpToday[bucket] = used + amount;
+  let amount = 0;
+  const sources: XpSource[] = answeredCall && source !== "call" ? [source, "call"] : [source];
+  for (const src of sources) {
+    for (const key of XP_COUNTERS[src]) { bump(counters, key); }
+    let earned = XP_AMOUNTS[src];
+    const hourCap = XP_HOURLY_CAPS[src];
+    const dayCap = XP_DAILY_CAPS[src];
+    if (hourCap !== undefined) { earned = Math.min(earned, Math.max(0, hourCap - (xpThisHour[src] ?? 0))); }
+    if (dayCap !== undefined) { earned = Math.min(earned, Math.max(0, dayCap - (xpToday[src] ?? 0))); }
+    if (hourCap !== undefined) { xpThisHour[src] = (xpThisHour[src] ?? 0) + earned; }
+    if (dayCap !== undefined) { xpToday[src] = (xpToday[src] ?? 0) + earned; }
+    amount += earned;
   }
 
   const events: string[] = [];
@@ -2879,6 +2922,7 @@ export function awardXp(state: PetState, source: XpSource, now: number = Date.no
   // Unlock bonuses can raise the level, which can unlock a level achievement.
   for (;;) {
     const fresh = ACHIEVEMENTS.filter((a) =>
+      !a.comingSoon &&
       !achievements.includes(a.id) &&
       (a.counter === "level" ? level : counters[a.counter] ?? 0) >= a.threshold);
     if (fresh.length === 0) { break; }
@@ -2899,7 +2943,7 @@ export function awardXp(state: PetState, source: XpSource, now: number = Date.no
     ...state,
     petXp,
     petLevel,
-    trainer: { xp, level, achievements, counters, xpDay: day, xpToday },
+    trainer: { xp, level, achievements, counters, xpDay: day, xpToday, xpHour: hour, xpThisHour },
     events: [...state.events, ...events],
     recentEventLog: events.length > 0
       ? [...state.recentEventLog, ...events].slice(-RECENT_EVENT_LOG_MAX)
@@ -2949,6 +2993,8 @@ export function deserialiseTrainer(raw: unknown): TrainerProgress {
     counters: numRecord(r.counters),
     xpDay: typeof r.xpDay === "string" ? r.xpDay : "",
     xpToday: numRecord(r.xpToday),
+    xpHour: typeof r.xpHour === "string" ? r.xpHour : "",
+    xpThisHour: numRecord(r.xpThisHour),
   };
 }
 
