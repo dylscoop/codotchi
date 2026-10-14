@@ -566,7 +566,8 @@ function loadPluginConfig(): void {
   try {
     const filePath = getPluginConfigPath();
     if (!fs.existsSync(filePath)) { return; }
-    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as { costWarnThreshold?: number; costShoutThreshold?: number };
+    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as { costWarnThreshold?: number; costShoutThreshold?: number; levelsEnabled?: boolean };
+    levelsEnabled = raw.levelsEnabled === true;
     if (typeof raw.costWarnThreshold  === "number" && raw.costWarnThreshold  > 0) { costWarnThreshold  = raw.costWarnThreshold; }
     if (typeof raw.costShoutThreshold === "number" && raw.costShoutThreshold > 0) { costShoutThreshold = raw.costShoutThreshold; }
   } catch { /* best-effort */ }
@@ -839,6 +840,8 @@ function lastHourUsage(): { costUSD: number; tokens: number } {
 // Configurable cost speech thresholds (persisted to codotchi-config.json)
 // ---------------------------------------------------------------------------
 
+/** Beta: show levels, achievements and daily challenges ("levelsEnabled": true in codotchi-config.json). */
+let levelsEnabled = false;
 /** Daily cost (USD) at which the pet switches to a warning tone. */
 let costWarnThreshold  = 30;
 /** Daily cost (USD) at which the pet switches to ALL CAPS shouting. */
@@ -1535,7 +1538,7 @@ const plugin: Plugin = async (ctx) => {
                   ageDays: s.ageDays, alive: s.alive, sick: s.sick,
                   sleeping: s.sleeping, poops: s.poops, spriteType: s.spriteType,
                   petLevel: s.petLevel, trainer: s.trainer,
-                  spawnedAt: s.spawnedAt, dailies: s.dailies,
+                  spawnedAt: s.spawnedAt, dailies: s.dailies, levels: levelsEnabled,
                 })
               : "";
             // Each pet prints once: the stat block, or a one-line summary when art is off.

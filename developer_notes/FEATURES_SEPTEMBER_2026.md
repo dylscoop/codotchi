@@ -687,6 +687,7 @@ Codotchi has no progression layer apart from life stages.
 | Persistence + migration | `[x]` | v2.29.0: `schemaVersion: 1`. Trainer progress lives in `PetState.trainer` and carries into the next pet via `createPet(..., trainer)`; VS Code also keeps it under `codotchi.trainer` because New Game clears the state. Missing `dailies` / hourly buckets load as defaults |
 | Kotlin mirror | `[x]` | v2.29.0: `engine/Progression.kt`; TS tests check the Kotlin and webview achievement tables, the Kotlin challenge table and a shared seeded-pick fixture |
 | Terminal plugins | `[x]` | v2.29.0: `/codotchi status` shows levels, trainer XP, the latest 3 unlocks and today's challenges; Claude Desktop shows a level line, today's challenges and unlock messages |
+| Beta toggle | `[x]` | v2.29.0: off by default everywhere (`codotchi.enableLevels`, PyCharm settings checkbox, `levelsEnabled` in the terminal plugins' `codotchi-config.json`, `CODOTCHI_LEVELS` for Claude Desktop). XP, counters and dailies keep being tracked while off |
 | Level on the leaderboard (optional) | `[ ]` | Not in v2.29.0 |
 
 **Design notes:**

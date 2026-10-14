@@ -265,7 +265,7 @@ describe("buildStatusBlock", () => {
 
   it("shows levels, trainer XP and the latest achievements when given progression", () => {
     const result = stripAnsi(buildStatusBlock({
-      ...baseState, petLevel: 3, trainer: { xp: 150, achievements: ["hello_world", "first_commit"] },
+      ...baseState, levels: true, petLevel: 3, trainer: { xp: 150, achievements: ["hello_world", "first_commit"] },
     }));
     assert.ok(result.includes("Level   : Pet 3 · Trainer 2"));
     assert.ok(result.includes("100/141"));
@@ -279,12 +279,19 @@ describe("buildStatusBlock", () => {
     const result = stripAnsi(buildStatusBlock({
       ...baseState,
       spawnedAt: 1,
+      levels: true,
       trainer: { xp: 0, achievements: [], counters: { commits: 2 } },
       dailies: { day, picks: ["commit_3", "calls_3", "win_1"], baseline: { commits: 1 }, done: [], streak: 4, streakDay: day },
     }));
     assert.ok(result.includes("streak 4"));
     assert.ok(result.includes("· Make 3 commits 1/3"));
     assert.ok(result.includes("Win a mini-game 0/1"));
+  });
+
+  it("leaves progression out unless levels are enabled", () => {
+    const result = stripAnsi(buildStatusBlock({ ...baseState, petLevel: 3, trainer: { xp: 150, achievements: ["hello_world"] } }));
+    assert.ok(!result.includes("Trainer"));
+    assert.ok(!result.includes("Achievements"));
   });
 
   it("leaves progression out for states without it", () => {

@@ -155,8 +155,9 @@ class ProgressionTest {
         val old = trainerFromRaw(mapOf("achievements" to listOf("hello_world", "caretaker"), "xpToday" to mapOf("code" to 200.0)))
         assertEquals(listOf("hello_world"), old.achievements)
         assertEquals(emptyMap<String, Int>(), old.xpToday)
-        val cur = trainerFromRaw(mapOf("xpToday" to mapOf("code" to 20.0), "xpHour" to "2026-10-14T12"))
-        assertEquals(mapOf("code" to 20), cur.xpToday)
+        val cur = trainerFromRaw(mapOf("xpToday" to mapOf("code" to 200.0, "care" to 100.0, "commit" to 15.0), "xpHour" to "2026-10-14T12", "xpThisHour" to mapOf("code" to 4.0)))
+        assertEquals(mapOf("commit" to 15), cur.xpToday)
+        assertEquals(mapOf("code" to 4), cur.xpThisHour)
     }
 
     @Test

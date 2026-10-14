@@ -138,14 +138,17 @@ settings.</p>
   Sign in again.</li>
 </ul>
 
-<h2>Levels &amp; Achievements</h2>
+<h2>Levels &amp; Achievements (beta)</h2>
+<p><b>Off by default while in beta.</b> Turn it on in <b>Settings → Tools → Codotchi →
+Levels, achievements and daily challenges (beta)</b>. Your progress is tracked even while
+it's off, so turning it on later shows everything you've earned.</p>
 <p>Coding, committing, answering your pet's calls and winning mini-games all earn
 XP; care buttons only earn XP when they answer a call. You have a <b>trainer level</b>
 that stays with you when a pet dies, and each pet has its own <b>pet level</b>. Both
 show under the pet with an XP bar. Code activity, commits, calls and mini-game wins
 are capped per hour and per day.</p>
 <p>Click the level line to see your achievements, split into <b>Coder</b> and
-<b>Keeper</b> paths with a progress bar for each, and today's three
+<b>Keeper</b> paths with a progress bar and a "How:" hint for each, and today's three
 <b>daily challenges</b> (one Coder, one Keeper, one wildcard; 25 XP each plus 25 for
 all three). Finishing all three on consecutive weekdays builds a streak.</p>
 

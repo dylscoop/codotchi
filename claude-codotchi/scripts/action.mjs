@@ -370,7 +370,7 @@ async function main() {
     }
   } else {
     if (message) process.stdout.write(message + "\n");
-    else process.stdout.write(aa.stripAnsi(aa.buildStatusBlock(state)) + "\n");
+    else process.stdout.write(aa.stripAnsi(aa.buildStatusBlock({ ...state, levels: cfg.levelsEnabled === true })) + "\n");
   }
 }
 

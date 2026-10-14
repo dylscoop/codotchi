@@ -76,6 +76,8 @@ export declare function buildStatusBlock(state: {
     /** With dailies and spawnedAt, today's challenges and the streak are listed too. */
     spawnedAt?: number;
     dailies?: DailyChallenges;
+    /** Levels, achievements and daily challenges are a beta feature: shown only when true. */
+    levels?: boolean;
 }): string;
 /**
  * Format a token count as a human-readable string.

@@ -696,10 +696,12 @@ export function buildStatusBlock(state: {
   /** With dailies and spawnedAt, today's challenges and the streak are listed too. */
   spawnedAt?: number;
   dailies?: DailyChallenges;
+  /** Levels, achievements and daily challenges are a beta feature: shown only when true. */
+  levels?: boolean;
 }): string {
   const stageColour = STAGE_COLOURS[state.stage] ?? FG_WHITE;
   const art = getArt(state.stage, state.mood, state.spriteType ?? "classic");
-  const trainerLevel = state.trainer ? levelProgress(state.trainer.xp) : null;
+  const trainerLevel = state.levels === true && state.trainer ? levelProgress(state.trainer.xp) : null;
 
   // Art + header side by side
   const headerLines = [

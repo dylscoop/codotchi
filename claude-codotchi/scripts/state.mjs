@@ -381,6 +381,8 @@ export function configPath() {
 
 const DEFAULT_CONFIG = {
   terminalEnabled: true,
+  // Beta: show levels, achievements and daily challenges in the status block.
+  levelsEnabled: false,
   warnThresholdUsd: 30,
   shoutThresholdUsd: 50,
   petSpeechIntervalMs: 300000,

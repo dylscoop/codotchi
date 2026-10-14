@@ -1487,7 +1487,7 @@ class CodotchiPlugin : Disposable {
         }
 
         // Toast achievement unlocks and trainer level-ups
-        if (state != null && freshEvents) {
+        if (state != null && freshEvents && service<CodotchiSettings>().enableLevels) {
             for (event in state.events) {
                 val msg = progressionMessage(event, state) ?: continue
                 fireProgressionNotification(msg)

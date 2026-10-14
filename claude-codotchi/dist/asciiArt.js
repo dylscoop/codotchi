@@ -642,7 +642,7 @@ function statBar(label, value, barWidth = 10) {
 export function buildStatusBlock(state) {
     const stageColour = STAGE_COLOURS[state.stage] ?? FG_WHITE;
     const art = getArt(state.stage, state.mood, state.spriteType ?? "classic");
-    const trainerLevel = state.trainer ? levelProgress(state.trainer.xp) : null;
+    const trainerLevel = state.levels === true && state.trainer ? levelProgress(state.trainer.xp) : null;
     // Art + header side by side
     const headerLines = [
         `${BOLD}${stageColour}${state.name}${RESET}`,

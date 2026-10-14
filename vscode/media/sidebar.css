@@ -299,6 +299,7 @@ body.font-large  { font-size: 16px; }
 .ach-progress { display: flex; align-items: center; gap: 4px; margin: 1px 0 2px 1.6em; }
 .ach-track { flex: 1; height: 3px; background: rgba(128, 128, 128, 0.3); border-radius: 2px; overflow: hidden; }
 .ach-fill { display: block; height: 100%; background: #b388ff; }
+.ach-how { display: block; margin-left: 1.6em; opacity: 0.6; font-size: 0.9em; }
 .ach-count { opacity: 0.6; font-size: 0.9em; min-width: 3.5em; text-align: right; }
 
 /* ── Button grid ── */

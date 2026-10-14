@@ -711,6 +711,7 @@ export class SidebarProvider
       type: "stateUpdate",
       state,
       dailies: dailiesView(state),
+      levelsEnabled: vscode.workspace.getConfiguration("codotchi").get<boolean>("enableLevels", false),
       mealsGivenThisCycle: this.mealsGivenThisCycle,
       highScore,
       devMode,

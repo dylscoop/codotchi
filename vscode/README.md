@@ -147,7 +147,11 @@ any combination (e.g. just Copilot, just Claude + OpenCode, or all three).
 
 Costs energy and boosts happiness, same as a Pat.
 
-## Levels & Achievements
+## Levels & Achievements (beta)
+
+**Off by default while in beta.** Turn it on with the `codotchi.enableLevels`
+setting. Your progress is tracked even while it's off, so turning it on later
+shows everything you've earned.
 
 Coding, committing, answering your pet's calls and winning mini-games all earn
 XP. Feeding, playing, cleaning and the other care buttons only earn XP when
@@ -166,7 +170,8 @@ the pet with an XP bar.
 
 Click the level line to open the achievements panel. Achievements are split
 into two paths, **🧑‍💻 Coder** and **🐾 Keeper**, with trainer-level milestones
-shared by both, and each one shows a progress bar. A few (Detective, First
+shared by both. Each one shows a progress bar and a "How:" line explaining what
+counts towards it. A few (Detective, First
 Blood, Exterminator, Champion) are greyed out as *Coming soon*.
 
 ### Daily challenges

@@ -239,8 +239,10 @@ describe("persistence", () => {
     const t = deserialiseState(raw).trainer;
     assert.deepEqual(t.achievements, ["hello_world"]);
     assert.deepEqual(t.xpToday, {});
-    raw.trainer = { xp: 10, xpDay: "2026-10-14", xpToday: { code: 20 }, xpHour: "2026-10-14T12", xpThisHour: {} };
-    assert.deepEqual(deserialiseState(raw).trainer.xpToday, { code: 20 });
+    raw.trainer = { xp: 10, xpDay: "2026-10-14", xpToday: { code: 200, care: 100, commit: 15 }, xpHour: "2026-10-14T12", xpThisHour: { code: 4 } };
+    const t2 = deserialiseState(raw).trainer;
+    assert.deepEqual(t2.xpToday, { commit: 15 });
+    assert.deepEqual(t2.xpThisHour, { code: 4 });
   });
 
   it("ignores junk in the saved trainer", () => {
@@ -295,6 +297,17 @@ describe("ACHIEVEMENTS", () => {
       .map((m) => ({ id: m[1], emoji: m[2], name: m[3], description: m[4], counter: m[5], threshold: Number(m[6]), path: m[7], comingSoon: !!m[8] }));
     assert.deepEqual(rows, ACHIEVEMENTS.map(({ id, emoji, name, description, counter, threshold, path, comingSoon }) =>
       ({ id, emoji, name, description, counter, threshold, path, comingSoon: !!comingSoon })));
+  });
+
+  it("has an unlock hint for every achievement counter and daily challenge in the webview", () => {
+    const js = fs.readFileSync(path.join(__dirname, "..", "..", "..", "media", "sidebar.js"), "utf8");
+    const keys = (name: string): string[] => {
+      const start = js.indexOf(`const ${name} = {`);
+      const block = js.slice(start, js.indexOf("};", start));
+      return [...block.matchAll(/^\s+(\w+):\s+"/gm)].map((m) => m[1]).sort();
+    };
+    assert.deepEqual(keys("UNLOCK_HINTS"), [...new Set(ACHIEVEMENTS.map((a) => a.counter))].sort());
+    assert.deepEqual(keys("DAILY_HINTS"), DAILY_CHALLENGES.map((c) => c.id).sort());
   });
 
   it("matches ACHIEVEMENTS in the Kotlin engine", () => {

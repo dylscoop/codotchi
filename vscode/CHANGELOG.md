@@ -4,8 +4,9 @@
 
 ### Added
 
+- **Levels are in beta and off by default** - turn them on with `codotchi.enableLevels` (PyCharm: Settings → Tools → Codotchi; OpenCode / Claude Code: `"levelsEnabled": true` in `codotchi-config.json`; Claude Desktop: `CODOTCHI_LEVELS=true`). Progress is tracked while they're off.
 - **XP, levels and achievements** - coding, committing, answering your pet's calls and winning mini-games earn XP. Care buttons only earn XP when they answer a call. You have a **trainer level** that you keep when a pet dies, and each pet has its own **pet level**. Both show under the pet with an XP bar. Code activity, commits, calls and mini-game wins are capped per hour and per day, so XP can't be farmed.
-- **Achievement paths** - click the level line to see achievements split into 🧑‍💻 Coder and 🐾 Keeper tabs (trainer-level milestones in both), each with a progress bar. Detective, First Blood, Exterminator and Champion are shown as *Coming soon*. Caretaker is now **On Call** (answer 100 calls).
+- **Achievement paths** - click the level line to see achievements split into 🧑‍💻 Coder and 🐾 Keeper tabs (trainer-level milestones in both), each with a progress bar and a "How:" hint. Detective, First Blood, Exterminator and Champion are shown as *Coming soon*. Caretaker is now **On Call** (answer 100 calls).
 - **Daily challenges** - three a day per pet (one Coder, one Keeper, one wildcard), reset at local midnight. 25 XP each plus 25 for all three. Finishing all three on consecutive weekdays builds a 🔥 streak; weekends don't break it, and it's lost when the pet dies.
 - Unlocks, level-ups and finished challenges get a notification, a speech bubble and (for level-ups) a little hop.
 

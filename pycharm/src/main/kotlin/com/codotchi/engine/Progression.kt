@@ -238,10 +238,10 @@ fun trainerFromRaw(raw: Map<*, *>?): TrainerProgress {
         achievements = (raw["achievements"] as? List<*>)?.filterIsInstance<String>()?.filter { achievementById(it) != null } ?: emptyList(),
         counters = numMap(raw["counters"]),
         xpDay = raw["xpDay"] as? String ?: "",
-        // Saves without hourly buckets used the old caps; start today's buckets afresh.
-        xpToday = if (raw["xpHour"] is String) numMap(raw["xpToday"]) else emptyMap(),
+        // Buckets for uncapped sources, or over today's cap, come from the old rules: start them afresh.
+        xpToday = numMap(raw["xpToday"]).filter { (k, v) -> XP_DAILY_CAPS[k]?.let { v <= it } ?: false },
         xpHour = raw["xpHour"] as? String ?: "",
-        xpThisHour = numMap(raw["xpThisHour"]),
+        xpThisHour = numMap(raw["xpThisHour"]).filter { (k, v) -> XP_HOURLY_CAPS[k]?.let { v <= it } ?: false },
     )
 }
 

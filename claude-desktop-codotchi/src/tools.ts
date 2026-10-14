@@ -27,6 +27,7 @@ import { buildSpeechBubble, stripAnsi } from "./asciiArt.js";
 import {
   type DesktopConfig,
   SOURCE,
+  readConfig,
   loadPet,
   savePet,
   loadSession,
@@ -71,6 +72,7 @@ function renderText(state: PetState, _session: { interactionsToday: number; trea
   const refusal = state.events.find((e) => REFUSAL_MESSAGES[e]);
   const message = refusal ? REFUSAL_MESSAGES[refusal] : (MOOD_MESSAGES[state.mood] ?? "Hello!");
   const bubble = stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop"));
+  if (!readConfig().levels) { return bubble; }
   const unlocks = state.events.map((e) => progressionMessage(e, state)).filter((m): m is string => m !== null);
   const unlockable = ACHIEVEMENTS.filter((a) => !a.comingSoon).length;
   const daily = dailiesView(state);

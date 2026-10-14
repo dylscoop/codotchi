@@ -157,7 +157,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     // Toast achievement unlocks and trainer level-ups
-    if (freshEvents) {
+    if (freshEvents && vscode.workspace.getConfiguration("codotchi").get<boolean>("enableLevels", false)) {
       for (const event of state.events) {
         const msg = progressionMessage(event, state);
         if (msg) { void vscode.window.showInformationMessage(msg); }

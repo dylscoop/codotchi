@@ -18,6 +18,7 @@ import com.intellij.openapi.components.*
  *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls (poop/misbehaviour/gift/play/pat/craving)
  *  - [stageHeight]            : "compact" | "normal" | "tall" | "extraTall" — pet stage height preset (default "normal")
  *  - [reducedMotion]          : disable rAF animation loop (default false)
+ *  - [enableLevels]           : beta - show levels, achievements and daily challenges (default false)
  *  - [petSize]                : "small" | "medium" | "large" — sprite display size (default "medium")
  *  - [devModeEnabled]         : must be true (along with the correct passcode) to activate dev mode (default false)
  *  - [developerPasscode]      : developer passcode (combined with devModeEnabled) to activate developer mode (default "")
@@ -59,6 +60,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var attentionCallRate:   String = "fast"      // "fast" | "medium" | "slow"
         var stageHeight: String = "normal"  // "compact" | "normal" | "tall" | "extraTall"
         var reducedMotion: Boolean = false
+        var enableLevels: Boolean = false
         var petSize: String = "medium"   // "small" | "medium" | "large"
         var devModeEnabled: Boolean = false
         var developerPasscode: String = ""
@@ -132,6 +134,10 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var reducedMotion: Boolean
         get() = _state.reducedMotion
         set(v) { _state.reducedMotion = v }
+
+    var enableLevels: Boolean
+        get() = _state.enableLevels
+        set(v) { _state.enableLevels = v }
 
     var petSize: String
         get() = _state.petSize

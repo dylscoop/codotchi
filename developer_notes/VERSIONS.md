@@ -17,6 +17,10 @@
 | `claude-desktop-codotchi/src/tools.ts` | level line (with streak), today's challenges and unlock messages under the pet |
 | `opencode-codotchi/src/index.ts` | passes progression and dailies to the status block |
 | `vscode/tests/unit/progression.test.ts`, `pycharm/src/test/kotlin/com/codotchi/ProgressionTest.kt`, `opencode-codotchi/tests/unit/asciiArt.test.ts`, `claude-desktop-codotchi/tests/tools.test.mjs` | new tests: caps, call-only XP, level curve, challenge picks / resets, weekday streak, old saves, TS / Kotlin / webview parity |
+| `vscode/package.json`, `CodotchiSettings.kt`, `CodotchiConfigurable.kt` | beta toggle `codotchi.enableLevels` / "Levels, achievements and daily challenges (beta)", default off; `stateUpdate` carries `levelsEnabled`; IDE progression toasts gated on it. XP keeps being tracked while off |
+| `packages/core/src/asciiArt.ts`, `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/*.mjs`, `claude-desktop-codotchi/src/state.ts`, `tools.ts` | progression output only with `levels: true` (`"levelsEnabled": true` in `codotchi-config.json`, `CODOTCHI_LEVELS=true` for Claude Desktop) |
+| `vscode/media/sidebar.js` | `UNLOCK_HINTS` / `DAILY_HINTS` "How:" lines; progression UI, bubbles, log lines and hop hidden unless `levelsEnabled` |
+| `deserialiseTrainer()` / `trainerFromRaw()` | drop retired achievement ids (`caretaker`) and XP buckets that are uncapped or over the new caps |
 | all manifests, `README.md` | version 2.29.0 |
 
 Updated constants:

@@ -2512,6 +2512,17 @@ export function progressionMessage(event, state) {
     }
     return null;
 }
+/** Keep only buckets for capped sources that are within their cap. */
+function validBuckets(buckets, caps) {
+    const out = {};
+    for (const [k, v] of Object.entries(buckets)) {
+        const cap = caps[k];
+        if (cap !== undefined && v <= cap) {
+            out[k] = v;
+        }
+    }
+    return out;
+}
 /** Parse a TrainerProgress from saved JSON, filling in defaults for anything missing. */
 export function deserialiseTrainer(raw) {
     if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
@@ -2539,10 +2550,10 @@ export function deserialiseTrainer(raw) {
             : [],
         counters: numRecord(r.counters),
         xpDay: typeof r.xpDay === "string" ? r.xpDay : "",
-        // Saves without hourly buckets used the old caps; start today's buckets afresh.
-        xpToday: typeof r.xpHour === "string" ? numRecord(r.xpToday) : {},
+        // Buckets for uncapped sources, or over today's cap, come from the old rules: start them afresh.
+        xpToday: validBuckets(numRecord(r.xpToday), XP_DAILY_CAPS),
         xpHour: typeof r.xpHour === "string" ? r.xpHour : "",
-        xpThisHour: numRecord(r.xpThisHour),
+        xpThisHour: validBuckets(numRecord(r.xpThisHour), XP_HOURLY_CAPS),
     };
 }
 /** XP for each completed daily challenge. Uncapped, but each pays once a day. */

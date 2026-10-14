@@ -3004,6 +3004,16 @@ export function progressionMessage(event: string, state: PetState): string | nul
   return null;
 }
 
+/** Keep only buckets for capped sources that are within their cap. */
+function validBuckets(buckets: Record<string, number>, caps: Readonly<Partial<Record<string, number>>>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(buckets)) {
+    const cap = caps[k];
+    if (cap !== undefined && v <= cap) { out[k] = v; }
+  }
+  return out;
+}
+
 /** Parse a TrainerProgress from saved JSON, filling in defaults for anything missing. */
 export function deserialiseTrainer(raw: unknown): TrainerProgress {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) { return createTrainer(); }
@@ -3027,10 +3037,10 @@ export function deserialiseTrainer(raw: unknown): TrainerProgress {
       : [],
     counters: numRecord(r.counters),
     xpDay: typeof r.xpDay === "string" ? r.xpDay : "",
-    // Saves without hourly buckets used the old caps; start today's buckets afresh.
-    xpToday: typeof r.xpHour === "string" ? numRecord(r.xpToday) : {},
+    // Buckets for uncapped sources, or over today's cap, come from the old rules: start them afresh.
+    xpToday: validBuckets(numRecord(r.xpToday), XP_DAILY_CAPS),
     xpHour: typeof r.xpHour === "string" ? r.xpHour : "",
-    xpThisHour: numRecord(r.xpThisHour),
+    xpThisHour: validBuckets(numRecord(r.xpThisHour), XP_HOURLY_CAPS),
   };
 }
 
