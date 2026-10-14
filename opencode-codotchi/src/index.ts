@@ -2055,7 +2055,7 @@ const v2LegacyClient = {
 const CODOTCHI_RPC = {
   id: "codotchi",
   methods: {
-    snapshot: { output: { type: "object" } },
+    snapshot: { input: { type: "object" }, output: { type: "object" } },
   },
   events: {
     updated: { schema: { type: "object" } },
@@ -2074,20 +2074,45 @@ const CODOTCHI_RPC = {
 };
 
 type ShownPet = { ide: string; name: string; stage: string; message: string; emoji: string; lines: string[] };
-/** Pet shown above the prompt. Refreshed at the end of each reply or every 5 minutes. */
-let shownPet: ShownPet | null = null;
-let speechDirty = true;
+/**
+ * Bubble state for one OpenCode window. All windows share one server process,
+ * so each TUI sends its own window key and gets its own seed, pet and phrase.
+ */
+type WindowView = { seed: number; shownPet: ShownPet | null; shownSlot: number; dirty: boolean; lastSeen: number };
+const windowViews = new Map<string, WindowView>();
+const MAX_WINDOW_VIEWS = 32;
 /** True while a reply is running; the bubble refreshes once when it goes idle. */
 let replyBusy = false;
-let shownSlot = -1;
 /** Fixed order the pets take turns in. */
 const PET_ORDER = ["vscode", "pycharm", "opencode"];
-/**
- * Random per OpenCode window (process). Stored on globalThis so every plugin
- * copy inside one process shares it (no flicker), while separate windows get
- * different pets and phrases.
- */
-const WINDOW_SALT: number = ((globalThis as any).__codotchiWindowSalt ??= Math.floor(Math.random() * 1_000_000));
+
+/** Stable 32-bit seed for a window key (FNV-1a). */
+function windowSeed(key: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) { h = Math.imul(h ^ key.charCodeAt(i), 16777619); }
+  return (h >>> 0) % 1_000_000;
+}
+
+/** Window key from the RPC input, falling back to the request's directory. */
+function windowKeyFrom(input: any, meta: any): string {
+  const k = input?.window ?? input?.sessionID ?? input?.directory ?? meta?.location?.directory ?? meta?.directory;
+  return typeof k === "string" && k.length > 0 ? k : "default";
+}
+
+function viewFor(key: string): WindowView {
+  let v = windowViews.get(key);
+  if (!v) {
+    if (windowViews.size >= MAX_WINDOW_VIEWS) {
+      let oldest: string | undefined;
+      for (const [k, w] of windowViews) { if (!oldest || w.lastSeen < windowViews.get(oldest)!.lastSeen) { oldest = k; } }
+      if (oldest !== undefined) { windowViews.delete(oldest); }
+    }
+    v = { seed: windowSeed(key), shownPet: null, shownSlot: -1, dirty: true, lastSeen: 0 };
+    windowViews.set(key, v);
+  }
+  v.lastSeen = Date.now();
+  return v;
+}
 
 /** Run fn with Math.random replaced by a PRNG seeded from `seed`, so every instance picks the same phrase. */
 function withSeededRandom<T>(seed: string, fn: () => T): T {
@@ -2122,48 +2147,50 @@ function costTier(): "green" | "yellow" | "red" {
 }
 
 /** Everything the TUI needs: one pet's V1 speech bubble (ANSI lines) plus cost totals. */
-function buildSnapshot(): Record<string, unknown> {
+function buildSnapshot(windowKey = "default"): Record<string, unknown> {
+  const view = viewFor(windowKey);
   const hour = lastHourUsage();
   const alive = getActivePets().filter(p => p.state.alive);
   const now = Date.now();
   // Keep showing the current pet while it is alive, even if its IDE briefly
   // drops out of the 60s "live" window — otherwise the display flickers.
-  const current = shownPet ? (alive.find(p => p.ide === shownPet!.ide) ?? stillAlivePet(shownPet.ide)) : undefined;
+  const shown = view.shownPet;
+  const current = shown ? (alive.find(p => p.ide === shown.ide) ?? stillAlivePet(shown.ide)) : undefined;
   // The pet (art + speech) is frozen between refreshes: the speech changes once
   // at the end of each reply, and the pet switches every PET_SWAP_MINUTES
-  // (or when the current pet is gone). Both the pet and the phrase are chosen
-  // deterministically, so every plugin instance shows the same thing.
+  // (or when the current pet is gone). Both are seeded by the window key, so
+  // a window is stable while different windows show different pets/phrases.
   const slot = Math.floor(now / PET_SWAP_MS);
-  const swapDue = !current || slot !== shownSlot;
-  if ((swapDue || speechDirty) && alive.length > 0) {
-    speechDirty = false;
+  const swapDue = !current || slot !== view.shownSlot;
+  if ((swapDue || view.dirty) && alive.length > 0) {
+    view.dirty = false;
     let pick: ActivePet;
     if (swapDue) {
       const ordered = [...alive].sort((a, b) => PET_ORDER.indexOf(a.ide) - PET_ORDER.indexOf(b.ide));
-      pick = ordered[(slot + WINDOW_SALT) % ordered.length];
-      shownSlot = slot;
+      pick = ordered[(slot + view.seed) % ordered.length];
+      view.shownSlot = slot;
     } else {
       pick = current!;
     }
     // Cost figures are on the line under the pet, so the bubble only makes cost-tier remarks.
     const contextual = () => buildContextualSpeech(pick.state, sessionFilesEdited, now - sessionStartMs, lastFileEditMs > 0 ? now - lastFileEditMs : 0, sessionUserMessages, isOnProdBranch, dailyCostUSD, dailyTokens, costWarnThreshold, costShoutThreshold, 0, 0, dailyMessages, { remarksOnly: true });
-    const speech = withSeededRandom(`${WINDOW_SALT}|${slot}|${pick.ide}|${dailyMessages}`, contextual);
+    const speech = withSeededRandom(`${view.seed}|${slot}|${pick.ide}|${dailyMessages}`, contextual);
     const s = pick.state;
     const ideLabel = pick.ide === "vscode" ? "[VS Code]" : pick.ide === "pycharm" ? "[PyCharm]" : "[OpenCode]";
     // No tier emoji in the art header: the cost line under the pet carries it.
     const lines = buildSpeechBubble(s.stage, s.mood, speech.message, s.name, s.spriteType, ideLabel, TIER_ANSI[costTier()])
       .split("\n")
       .filter(l => stripAnsi(l).trim().length > 0);
-    shownPet = { ide: pick.ide, name: s.name, stage: s.stage, message: speech.message, emoji: speech.tierEmoji, lines };
-  } else if (shownPet && !current) {
-    shownPet = null;
+    view.shownPet = { ide: pick.ide, name: s.name, stage: s.stage, message: speech.message, emoji: speech.tierEmoji, lines };
+  } else if (view.shownPet && !current) {
+    view.shownPet = null;
   }
-  const pets = shownPet ? [shownPet] : [];
+  const pets = view.shownPet ? [view.shownPet] : [];
   return {
     enabled: terminalEnabled,
     tier: costTier(),
     pets,
-    petSlot: shownSlot,
+    petSlot: view.shownSlot,
     today: { costUSD: dailyCostUSD, tokens: dailyTokens, messages: dailyMessages },
     lastHour: { costUSD: hour.costUSD, tokens: hour.tokens },
     session: { costUSD: sessionCostUSD, tokens: sessionTokens },
@@ -2207,7 +2234,8 @@ async function setupV2(ctx: any): Promise<() => void> {
     if (refreshTimer !== undefined) { return; }
     refreshTimer = setTimeout(() => {
       refreshTimer = undefined;
-      try { void rpcRegistration?.events.emit("updated", buildSnapshot()); } catch { /* best-effort */ }
+      // No payload: each window pulls its own snapshot (own seed and phrase).
+      try { void rpcRegistration?.events.emit("updated", { refresh: true }); } catch { /* best-effort */ }
     }, 250);
   };
 
@@ -2253,13 +2281,13 @@ async function setupV2(ctx: any): Promise<() => void> {
 
   if (!isLeader) {
     let ownRpc: any = null;
-    try { ownRpc = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async () => buildSnapshot() }); } catch { /* already registered here */ }
+    try { ownRpc = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async (input: any, meta: any) => buildSnapshot(windowKeyFrom(input, meta)) }); } catch { /* already registered here */ }
     v2Leader!.refs += 1;
     return () => { void ownRpc?.dispose?.(); releaseV2(); };
   }
 
   try {
-    rpcRegistration = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async () => buildSnapshot() });
+    rpcRegistration = await ctx.rpc.register(CODOTCHI_RPC, { snapshot: async (input: any, meta: any) => buildSnapshot(windowKeyFrom(input, meta)) });
   } catch { /* RPC unavailable — the TUI simply shows nothing */ }
   requestSidebarRefresh = emitUpdated;
 
@@ -2285,7 +2313,7 @@ async function setupV2(ctx: any): Promise<() => void> {
         // End of a reply: V2 may send session.idle and/or session.status → idle.
         // Refresh the speech once per reply, not once per idle signal.
         const endOfReply = event?.type === "session.idle" || (event?.type === "session.status" && event.data?.status?.type === "idle");
-        if (endOfReply && replyBusy) { replyBusy = false; speechDirty = true; emitUpdated(); }
+        if (endOfReply && replyBusy) { replyBusy = false; for (const v of windowViews.values()) { v.dirty = true; } emitUpdated(); }
         if (translated.length > 0) { emitUpdated(); }
       }
     } catch { /* subscription closed */ }

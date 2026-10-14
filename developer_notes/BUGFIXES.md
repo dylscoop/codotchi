@@ -2451,3 +2451,11 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** `feed`, `snack`, `pat`, `play`, `sleep`, `clean` and `medicine` acted on whichever IDE pets were live and wrote their state files, so OpenCode could feed or put to sleep a pet owned by VS Code or PyCharm.
 
 **Fix:** Care actions now target only the OpenCode-local pet. Each live IDE pet gets a "has no effect" line instead, and its state is never written. `/codotchi help`, the tool description and both READMEs say these actions (plus `rename` and `new_game`) are OpenCode-pet only. Test: `tests/unit/pluginContract.test.ts` ("care actions never act on VS Code / PyCharm pets").
+
+## BUGFIX-206 - Every OpenCode window showed the same pet speech
+
+**Files:** `opencode-codotchi/src/index.ts`, `opencode-codotchi/tui/tui.tsx`, `opencode-codotchi/tests/unit/pluginContract.test.ts`
+
+**Problem:** In OpenCode V2 every window talks to one shared server process. The per-window `WINDOW_SALT` lived on `globalThis`, so it was the same for all windows, and the server cached one bubble and broadcast that snapshot in the `updated` event. Every window across every repo showed the same pet and phrase.
+
+**Fix:** Each TUI makes a random window key and sends it as the `snapshot` RPC input (`{ window }`). The server keeps one bubble per key (`windowViews`, capped at 32, oldest evicted) and seeds the pet rotation and phrase from a hash of the key. The `updated` event now carries no snapshot (`{ refresh: true }`), so each window pulls its own. Cost totals are still shared. Test: `pluginContract.test.ts` checks that different window keys get different pets or phrases and that each key stays stable.

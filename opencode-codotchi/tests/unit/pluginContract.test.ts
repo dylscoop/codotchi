@@ -309,7 +309,7 @@ function makeV2Context(events: unknown[], existingCommands: string[] = []) {
   const commands: Array<{ name: string; description?: string; execute: (i: any) => Promise<void> }> = [];
   const prompts: any[] = [];
   let subscribed = false;
-  const rpc: { handlers?: Record<string, () => Promise<any>>; emitted: Array<{ name: string; data: any }> } = { emitted: [] };
+  const rpc: { handlers?: Record<string, (input?: any, meta?: any) => Promise<any>>; emitted: Array<{ name: string; data: any }> } = { emitted: [] };
   const ctx = {
     app: { version: "2.0.0-test" },
     location: { directory: process.cwd(), project: { id: "test", directory: process.cwd(), canonical: process.cwd() } },
@@ -416,8 +416,18 @@ describe("bundled plugin � OpenCode V2 loader contract", () => {
     expect(typeof snap.lastHour.costUSD).toBe("number");
     expect(typeof snap.session.costUSD).toBe("number");
     expect(typeof snap.thresholds.warn).toBe("number");
-    // Events processed → an "updated" push with the same shape
-    expect(rpc.emitted.some(e => e.name === "updated" && Array.isArray(e.data.pets))).toBe(true);
+    // Events processed → a payload-free "updated" signal; each window pulls its own snapshot
+    expect(rpc.emitted.some(e => e.name === "updated" && e.data?.refresh === true)).toBe(true);
+
+    // Windows share one server: each window key gets its own seed, and each is stable
+    const seen = new Set<string>();
+    for (let i = 0; i < 12; i++) {
+      const w = await rpc.handlers!.snapshot({ window: `win-${i}` });
+      const w2 = await rpc.handlers!.snapshot({ window: `win-${i}` });
+      expect(JSON.stringify(w2.pets)).toBe(JSON.stringify(w.pets));
+      if (w.pets.length > 0) { seen.add(`${w.pets[0].ide}|${w.pets[0].message}`); }
+    }
+    if (snap.pets.length > 0) { expect(seen.size).toBeGreaterThan(1); }
 
     (cleanup as () => void)();
   });
