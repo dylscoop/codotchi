@@ -2443,3 +2443,11 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** The OpenCode plugin always wrote `codotchi-daily.json`, `codotchi-config.json` and `codotchi-local.json` under `~/.config/opencode/`, ignoring `XDG_CONFIG_HOME`. The VS Code and PyCharm readers (and `bin/install.js`) honour `XDG_CONFIG_HOME`, so with it set the IDEs looked in a different folder and showed no OpenCode spend.
 
 **Fix:** Added `getOpenCodeConfigDir()` (honours `XDG_CONFIG_HOME`, treats empty as unset) and used it for all three files. VS Code and PyCharm now also treat an empty `XDG_CONFIG_HOME` as unset. Unit tests added in `tests/unit/statePath.test.ts`.
+
+## BUGFIX-205 - /codotchi care actions changed VS Code / PyCharm pets from OpenCode
+
+**Files:** `opencode-codotchi/src/index.ts`, `opencode-codotchi/commands/codotchi.md`, `opencode-codotchi/src/commandTemplate.ts`, `README.md`, `opencode-codotchi/README.md`
+
+**Problem:** `feed`, `snack`, `pat`, `play`, `sleep`, `clean` and `medicine` acted on whichever IDE pets were live and wrote their state files, so OpenCode could feed or put to sleep a pet owned by VS Code or PyCharm.
+
+**Fix:** Care actions now target only the OpenCode-local pet. Each live IDE pet gets a "has no effect" line instead, and its state is never written. `/codotchi help`, the tool description and both READMEs say these actions (plus `rename` and `new_game`) are OpenCode-pet only. Test: `tests/unit/pluginContract.test.ts` ("care actions never act on VS Code / PyCharm pets").

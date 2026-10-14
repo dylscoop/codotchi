@@ -92,6 +92,9 @@ import {
 /** How recently (ms) a state file must have been saved to count as "active". */
 const ACTIVE_IDE_THRESHOLD_MS = 60_000;
 
+/** Pet-care actions; from OpenCode these only ever act on the OpenCode-local pet. */
+const CARE_ACTIONS: ReadonlySet<string> = new Set(["feed", "snack", "pat", "play", "sleep", "clean", "medicine"]);
+
 // Speech when a whim attention call is answered — one line picked at random.
 // Mirrored in vscode/media/sidebar.js (shared by both IDEs) and claude-codotchi/scripts/whimSpeech.mjs.
 const WHIM_ANSWER_SPEECH = {
@@ -1381,7 +1384,7 @@ const plugin: Plugin = async (ctx) => {
   const codotchiTool = tool({
     description:
       "Interact with your codotchi virtual pet. Use action='status' to see current stats, " +
-      "or one of: feed, pat, sleep, clean, medicine, on, off. " +
+      "or one of: feed, snack, pat, play, sleep, clean, medicine (these act on the OpenCode pet only and have no effect on VS Code or PyCharm pets), on, off. " +
       "Use warnthreshold <value> or shoutthreshold <value> to set the daily USD cost thresholds " +
       "at which the pet's speech changes tone (defaults: warn=$30, shout=$50). " +
       "Use rename <new-name> to rename the built-in OpenCode pet only (does not affect VS Code or PyCharm pets). " +
@@ -1402,7 +1405,7 @@ const plugin: Plugin = async (ctx) => {
     },
     async execute({ action, value, name }, context) {
       // Drain any queued tick notifications to prepend to this result
-      const notification = drainNotification();
+      let notification = drainNotification();
       const ret = (s: string): string => { lastToolOutput = s; return s; };
 
       const active = getActivePets();
@@ -1485,7 +1488,25 @@ const plugin: Plugin = async (ctx) => {
       }
 
       // Only operate on alive pets
-      const alivePets = active.filter(p => p.state.alive);
+      let alivePets = active.filter(p => p.state.alive);
+
+      // Care actions only ever act on the OpenCode-local pet. IDE pets are cared
+      // for in their own IDE; from OpenCode these actions have no effect on them.
+      if (CARE_ACTIONS.has(action)) {
+        const ideNotes = alivePets
+          .filter(p => p.ide !== "opencode")
+          .map(p => {
+            const label = p.ide === "vscode" ? "VS Code" : "PyCharm";
+            return `[${label}] /codotchi ${action} has no effect on ${p.state.name} — look after IDE pets in the ${label} sidebar.`;
+          });
+        alivePets = localPetState !== null && localPetState.alive
+          ? [{ ide: "opencode", state: localPetState, live: true }]
+          : [];
+        if (alivePets.length === 0) {
+          return ret(notification + (ideNotes.join("\n") || "No OpenCode pet to look after."));
+        }
+        if (ideNotes.length > 0) { notification += ideNotes.join("\n") + "\n\n"; }
+      }
 
       switch (action) {
         case "status": {

@@ -82,6 +82,10 @@ Open any project in OpenCode and run `/codotchi` — your pet's stats appear.
 /codotchi new_game name=<name> petType=<type>  — start a fresh pet
 ```
 
+Care actions (`feed`, `snack`, `play`, `pat`, `sleep`/`wake`, `clean`,
+`medicine`), `rename` and `new_game` act on the OpenCode pet only. They have no
+effect on VS Code or PyCharm pets — look after those in the IDE sidebar.
+
 Pet types: `codeling` (default), `bytebug`, `pixelpup`, `shellscript`
 
 ## Cross-IDE compatibility

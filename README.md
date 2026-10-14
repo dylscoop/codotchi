@@ -226,6 +226,10 @@ way for OpenCode and your IDE.
 - `/codotchi warnthreshold <usd>` / `shoutthreshold <usd>` — daily cost alerts
 - `/codotchi new_game name=<name> petType=<type>` — start a fresh pet
 
+Care actions (`feed`, `snack`, `play`, `pat`, `sleep`/`wake`, `clean`,
+`medicine`), `rename` and `new_game` act on the OpenCode pet only. They have no
+effect on VS Code or PyCharm pets — look after those in the IDE sidebar.
+
 For full usage instructions see the individual READMEs:
 
 - [vscode/README.md](vscode/README.md)

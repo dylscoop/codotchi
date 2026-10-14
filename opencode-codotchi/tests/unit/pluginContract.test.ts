@@ -272,6 +272,30 @@ describe("codotchi tool execute", () => {
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
   });
+
+  it("care actions never act on VS Code / PyCharm pets", async () => {
+    const hook = hooksList[0];
+    const toolDef = (hook?.["tool"] as Record<string, unknown>)?.["codotchi"] as
+      { execute: (args: { action: string }, ctx: unknown) => Promise<string> } | undefined;
+    if (!toolDef) return;
+    const ctx = {
+      sessionID: "s", messageID: "m", agent: "a",
+      directory: process.cwd(), worktree: process.cwd(),
+      abort: new AbortController().signal,
+      metadata: () => {},
+      ask: async () => {},
+    };
+    for (const action of ["feed", "snack", "pat", "play", "sleep", "clean", "medicine"]) {
+      const result = await toolDef.execute({ action }, ctx);
+      // No IDE pet was fed / played with / put to sleep etc.
+      expect(result).not.toMatch(/\[(VS Code|PyCharm)\] (Fed|Gave|Patted|Played|Cleaned|Meal refused|Snack refused|Pat refused|Play refused|Nothing to clean)/);
+      expect(result).not.toMatch(/\[(VS Code|PyCharm)\] .* is now sleeping/);
+      // Any IDE pet mentioned is told the action has no effect
+      for (const m of result.matchAll(/^\[(VS Code|PyCharm)\] (.*)$/gm)) {
+        expect(m[2]).toContain("has no effect");
+      }
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
