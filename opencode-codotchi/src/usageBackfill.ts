@@ -6,11 +6,16 @@
  * unit-tested without mocking the full plugin client.
  */
 
+import { DEFAULT_PRICING, PricingTable, messageCost } from "./pricing.js";
+
 /** Minimal shape of a message entry as returned by client.session.messages() */
 export interface RawMessageEntry {
   info: {
     role: string;
     cost?: number;
+    providerID?: string;
+    modelID?: string;
+    model?: { providerID?: string; id?: string };
     tokens?: {
       input?: number;
       output?: number;
@@ -55,7 +60,7 @@ export interface TimestampedUsageEntry {
  *    counted — so a session that spans midnight contributes only today's
  *    messages to today's total.
  */
-export function sumCompletedAssistantUsage(messages: RawMessageEntry[], sinceMs?: number): UsageTotals {
+export function sumCompletedAssistantUsage(messages: RawMessageEntry[], sinceMs?: number, pricing: PricingTable = DEFAULT_PRICING): UsageTotals {
   let costUSD  = 0;
   let tokens   = 0;
   let msgCount = 0;
@@ -66,7 +71,7 @@ export function sumCompletedAssistantUsage(messages: RawMessageEntry[], sinceMs?
     if (!info.time?.completed)      { continue; }
     if (sinceMs !== undefined && info.time.completed < sinceMs) { continue; }
 
-    const cost = typeof info.cost === "number" && !isNaN(info.cost) ? info.cost : 0;
+    const cost = messageCost(pricing, info);
     const t    = (info.tokens?.input          ?? 0)
                + (info.tokens?.output         ?? 0)
                + (info.tokens?.reasoning      ?? 0)
@@ -87,7 +92,7 @@ export function sumCompletedAssistantUsage(messages: RawMessageEntry[], sinceMs?
  * Returns one entry per completed assistant message, carrying its `completedAt`
  * Unix-ms timestamp. Used to populate the rolling last-1h cost buffer.
  */
-export function extractTimestampedUsage(messages: RawMessageEntry[]): TimestampedUsageEntry[] {
+export function extractTimestampedUsage(messages: RawMessageEntry[], pricing: PricingTable = DEFAULT_PRICING): TimestampedUsageEntry[] {
   const entries: TimestampedUsageEntry[] = [];
 
   for (const m of messages) {
@@ -95,7 +100,7 @@ export function extractTimestampedUsage(messages: RawMessageEntry[]): Timestampe
     if (info.role !== "assistant")  { continue; }
     if (!info.time?.completed)      { continue; }
 
-    const cost = typeof info.cost === "number" && !isNaN(info.cost) ? info.cost : 0;
+    const cost = messageCost(pricing, info);
     const t    = (info.tokens?.input          ?? 0)
                + (info.tokens?.output         ?? 0)
                + (info.tokens?.reasoning      ?? 0)
@@ -108,22 +113,24 @@ export function extractTimestampedUsage(messages: RawMessageEntry[]): Timestampe
   return entries;
 }
 
-/** SQL columns summing today's assistant usage from a row set exposing `data` JSON. */
+/** SQL columns extracting one assistant message's model and token usage from a row set exposing `data` JSON. */
 const USAGE_COLUMNS = `
-    CAST(json_extract(data,'$.cost') AS REAL) AS cost,
-    COALESCE(json_extract(data,'$.tokens.input'),0) +
-    COALESCE(json_extract(data,'$.tokens.output'),0) +
-    COALESCE(json_extract(data,'$.tokens.reasoning'),0) +
-    COALESCE(json_extract(data,'$.tokens.cache.read'),0) +
-    COALESCE(json_extract(data,'$.tokens.cache.write'),0) AS tokens`;
+    COALESCE(json_extract(data,'$.providerID'), json_extract(data,'$.model.providerID'), '') AS provider,
+    COALESCE(json_extract(data,'$.modelID'),    json_extract(data,'$.model.id'),         '') AS model,
+    COALESCE(CAST(json_extract(data,'$.cost') AS REAL),0) AS cost,
+    COALESCE(json_extract(data,'$.tokens.input'),0)       AS input,
+    COALESCE(json_extract(data,'$.tokens.output'),0)      AS output,
+    COALESCE(json_extract(data,'$.tokens.reasoning'),0)   AS reasoning,
+    COALESCE(json_extract(data,'$.tokens.cache.read'),0)  AS cacheRead,
+    COALESCE(json_extract(data,'$.tokens.cache.write'),0) AS cacheWrite`;
 
 /**
- * Queries for today's cross-project assistant usage, most complete first.
+ * Queries for today's cross-project assistant usage grouped by model, most complete first.
  * OpenCode 2 stores messages in `session_message` (type column, no role in data);
  * OpenCode 1 used `message`. The first query sums both; the second is the
  * fallback for databases that have no `session_message` table yet.
  * Filters on message-level time.completed so cross-day sessions only count
- * their today-messages.
+ * their today-messages. Rows are priced by totalsFromModelRows().
  */
 export function buildDailyUsageQueries(todayStartMs: number): string[] {
   const done = `json_extract(data,'$.time.completed') IS NOT NULL
@@ -134,8 +141,32 @@ export function buildDailyUsageQueries(todayStartMs: number): string[] {
   const v1 = `SELECT ${USAGE_COLUMNS} FROM message WHERE time_created >= ${createdFloor} AND json_extract(data,'$.role') = 'assistant' AND ${done}`;
   const v2 = `SELECT ${USAGE_COLUMNS} FROM session_message WHERE time_created >= ${createdFloor} AND type = 'assistant' AND ${done}`;
   const total = (rows: string) =>
-    `SELECT ROUND(SUM(cost), 6) AS costUSD, SUM(tokens) AS tokens, COUNT(*) AS messages FROM (${rows})`;
+    `SELECT provider, model, SUM(cost) AS cost, SUM(input) AS input, SUM(output) AS output, SUM(reasoning) AS reasoning,
+       SUM(cacheRead) AS cacheRead, SUM(cacheWrite) AS cacheWrite, COUNT(*) AS messages
+     FROM (${rows}) GROUP BY provider, model`;
   return [total(`${v1} UNION ALL ${v2}`), total(v2), total(v1)];
+}
+
+/** One per-model row produced by buildDailyUsageQueries(). */
+export interface ModelUsageRow {
+  provider?: string | null; model?: string | null; cost?: number | null;
+  input?: number | null; output?: number | null; reasoning?: number | null;
+  cacheRead?: number | null; cacheWrite?: number | null; messages?: number | null;
+}
+
+/** Price per-model token sums; unpriced models keep OpenCode's stored cost. */
+export function totalsFromModelRows(rows: ModelUsageRow[], pricing: PricingTable = DEFAULT_PRICING): UsageTotals {
+  let costUSD = 0, tokens = 0, messages = 0;
+  for (const r of rows) {
+    const t = {
+      input: r.input ?? 0, output: r.output ?? 0, reasoning: r.reasoning ?? 0,
+      cache: { read: r.cacheRead ?? 0, write: r.cacheWrite ?? 0 },
+    };
+    costUSD  += messageCost(pricing, { cost: r.cost ?? 0, tokens: t, providerID: r.provider ?? undefined, modelID: r.model ?? undefined });
+    tokens   += t.input + t.output + t.reasoning + t.cache.read + t.cache.write;
+    messages += r.messages ?? 0;
+  }
+  return { costUSD: Math.round(costUSD * 1e6) / 1e6, tokens, messages };
 }
 
 /** Default OpenCode database location (honours XDG_DATA_HOME, like OpenCode itself). */
@@ -144,14 +175,12 @@ export function defaultOpencodeDbPath(env: NodeJS.ProcessEnv, homeDir: string): 
   return `${dataHome}/opencode/opencode.db`;
 }
 
-type SqlRow = { costUSD?: number | null; tokens?: number | null; messages?: number | null };
-
 /**
  * Run the daily usage queries directly against the SQLite file, read-only.
  * Uses bun:sqlite (OpenCode's runtime) and falls back to node:sqlite.
  * Returns undefined if no driver is available or every query fails.
  */
-export async function queryDailyUsageFromDb(dbPath: string, todayStartMs: number): Promise<UsageTotals | undefined> {
+export async function queryDailyUsageFromDb(dbPath: string, todayStartMs: number, pricing: PricingTable = DEFAULT_PRICING): Promise<UsageTotals | undefined> {
   let open: ((p: string) => { prepare(sql: string): { all(): unknown[] }; close(): void }) | undefined;
   // Module names held in variables so the bundler leaves these imports alone.
   const bunMod = "bun:sqlite";
@@ -170,8 +199,7 @@ export async function queryDailyUsageFromDb(dbPath: string, todayStartMs: number
     db = open(dbPath);
     for (const sql of buildDailyUsageQueries(todayStartMs)) {
       try {
-        const row = (db.prepare(sql).all()[0] ?? {}) as SqlRow;
-        return { costUSD: row.costUSD ?? 0, tokens: row.tokens ?? 0, messages: row.messages ?? 0 };
+        return totalsFromModelRows(db.prepare(sql).all() as ModelUsageRow[], pricing);
       } catch { /* table missing in this schema version — try the next query */ }
     }
     return undefined;

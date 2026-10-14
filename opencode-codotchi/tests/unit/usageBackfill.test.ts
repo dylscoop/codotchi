@@ -431,6 +431,23 @@ describe("queryDailyUsageFromDb — direct SQLite read", () => {
   it("returns undefined for a missing database file", async () => {
     assert.equal(await queryDailyUsageFromDb("/no/such/dir/opencode.db", midnight), undefined);
   });
+
+  it("recomputes priced models from tokens, including cache writes", async () => {
+    const { DatabaseSync } = require("node:sqlite");
+    const fs = require("fs"), os = require("os"), path = require("path");
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "codotchi-db-")), "opencode.db");
+    const db = new DatabaseSync(file);
+    db.exec("CREATE TABLE session_message (id TEXT, session_id TEXT, type TEXT, seq INT, time_created INT, time_updated INT, data TEXT)");
+    const add = (model: object, cost: number, tokens: object) =>
+      db.prepare("INSERT INTO session_message VALUES (?, 's', 'assistant', 0, ?, ?, ?)").run(String(Math.random()), midnight + 1, midnight + 1,
+        JSON.stringify({ model, cost, tokens, time: { created: midnight + 1, completed: midnight + 2 } }));
+    const opus = { id: "claude-opus-5.5", providerID: "github-copilot" };
+    add(opus, 0.2, { input: 0, output: 0, cache: { read: 1_000_000, write: 1_000_000 } });  // 0.2 + 5
+    add(opus, 20,  { output: 1_000_000 });                                                  // 20
+    add({ id: "other", providerID: "x" }, 1.25, { input: 7 });                              // stored cost kept
+    db.close();
+    assert.deepEqual(await queryDailyUsageFromDb(file, midnight), { costUSD: 26.45, tokens: 3_000_007, messages: 3 });
+  });
 });
 
 describe("defaultOpencodeDbPath", () => {

@@ -469,6 +469,11 @@ describe("translateV2Event", () => {
     expect(out[0].properties.info).toMatchObject({ role: "assistant", id: "e9", cost: 0.5, time: { completed: now } });
   });
 
+  it("passes the step's model through so cost can be recomputed", () => {
+    const out = translate({ type: "session.step.ended", data: { cost: 0, tokens: {}, model: { providerID: "github-copilot", id: "claude-opus-5.5" } } });
+    expect(out[0].properties.info).toMatchObject({ providerID: "github-copilot", modelID: "claude-opus-5.5" });
+  });
+
   it("emits session.diff when a step changed files", () => {
     const out = translate({ type: "session.step.ended", data: { files: ["a.ts"], cost: 0, tokens: {} } });
     expect(out.map(e => e.type)).toEqual(["session.diff", "message.updated"]);
