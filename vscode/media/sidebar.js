@@ -200,6 +200,7 @@
   // ── Animation state ──────────────────────────────────────────────────────
 
   let lastState     = null;   // most recent PetState snapshot
+let lastDailies   = null;   // today's challenges + streak (dailiesView() from the host)
   let petX          = null;   // horizontal position (canvas pixels, left edge of body) — null = init on first frame
   let petY          = null;   // vertical position (null = init on first frame)
   let petVx         = 0;      // horizontal velocity px/s
@@ -325,6 +326,12 @@
       var open = panel.classList.toggle("hidden") === false;
       levelLine.setAttribute("aria-expanded", open ? "true" : "false");
       if (open && lastState) { renderProgression(lastState); }
+    });
+    document.querySelectorAll(".ach-tab").forEach(function (b) {
+      b.addEventListener("click", function () {
+        achievementsTab = b.getAttribute("data-tab") || "coder";
+        if (lastState) { renderProgression(lastState); }
+      });
     });
   })();
 
@@ -1804,10 +1811,20 @@
           return;
         }
       }
-      // 1c. Achievements and level-ups — rare, so they outrank everyday bubbles
+      // 1c. Achievements, daily challenges and level-ups — rare, so they outrank everyday bubbles
       for (var _pi = 0; _pi < events.length; _pi++) {
         if (events[_pi].indexOf("achievement_unlocked_") === 0) {
           queueBubble(humaniseEvent(events[_pi], _n, state));
+          return;
+        }
+      }
+      if (events.indexOf("daily_challenges_all_done") !== -1) {
+        queueBubble(humaniseEvent("daily_challenges_all_done", _n, state));
+        return;
+      }
+      for (var _di = 0; _di < events.length; _di++) {
+        if (events[_di].indexOf("daily_challenge_done_") === 0) {
+          queueBubble(humaniseEvent(events[_di], _n, state));
           return;
         }
       }
@@ -1961,43 +1978,101 @@
     return null;
   }
 
-  /** Level line, XP bar and (when open) the achievements list. */
+  /** Path icons for the achievement tabs and daily challenges. */
+  const PATH_ICON = { coder: "🧑‍💻", keeper: "🐾", wild: "🎲", trainer: "⭐" };
+
+  /** Which achievements tab is showing: "coder" or "keeper". */
+  var achievementsTab = "coder";
+
+  /** A small progress bar with a "value/target" label. */
+  function progressRow(value, target) {
+    var wrap = document.createElement("span");
+    wrap.className = "ach-progress";
+    var track = document.createElement("span");
+    track.className = "ach-track";
+    var fill = document.createElement("span");
+    fill.className = "ach-fill";
+    fill.style.width = Math.round(100 * Math.min(value, target) / Math.max(1, target)) + "%";
+    track.appendChild(fill);
+    wrap.appendChild(track);
+    var label = document.createElement("span");
+    label.className = "ach-count";
+    label.textContent = Math.min(value, target) + "/" + target;
+    wrap.appendChild(label);
+    return wrap;
+  }
+
+  /** Level line, XP bar and (when open) today's challenges and the achievements list. */
   function renderProgression(state) {
     var levelLine = document.getElementById("level-line");
     var barXp     = document.getElementById("bar-xp");
     if (!levelLine) { return; }
-    var trainer = state.trainer || { xp: 0, achievements: [] };
+    var dailies = lastDailies;
+    var trainer = state.trainer || { xp: 0, achievements: [], counters: {} };
+    var counters = trainer.counters || {};
     var tp = levelProgress(trainer.xp);
     var petLevel = state.petLevel || levelProgress(state.petXp).level;
     var unlocked = trainer.achievements || [];
+    var ids = Object.keys(ACHIEVEMENT_INFO);
+    var unlockable = ids.filter(function (id) { return !ACHIEVEMENT_INFO[id][6]; }).length;
+    var streak = dailies && dailies.streak ? dailies.streak : 0;
     levelLine.textContent = "Trainer Lv " + tp.level + "  ·  Pet Lv " + petLevel +
-      "  ·  🏆 " + unlocked.length + "/" + Object.keys(ACHIEVEMENT_INFO).length;
+      "  ·  🏆 " + unlocked.length + "/" + unlockable + (streak > 0 ? "  ·  🔥 " + streak : "");
     levelLine.title = tp.intoLevel + " / " + tp.needed + " XP to trainer level " + (tp.level + 1) +
-      " — click for achievements";
+      (streak > 0 ? " — daily streak " + streak : "") + " — click for achievements";
     if (barXp) { barXp.style.width = Math.round(100 * tp.intoLevel / tp.needed) + "%"; }
 
     var panel = document.getElementById("achievements-panel");
     var list  = document.getElementById("achievements-list");
+    var today = document.getElementById("daily-list");
     var summary = document.getElementById("achievements-summary");
     if (!panel || !list || panel.classList.contains("hidden")) { return; }
-    var key = unlocked.join(",");
+    var key = [achievementsTab, unlocked.join(","), JSON.stringify(counters), tp.level, JSON.stringify(dailies || null)].join("|");
     if (list.dataset["rendered"] === key) { return; }
     list.dataset["rendered"] = key;
     if (summary) {
-      summary.textContent = unlocked.length + " of " + Object.keys(ACHIEVEMENT_INFO).length +
+      summary.textContent = unlocked.length + " of " + unlockable +
         " unlocked  ·  " + trainer.xp + " XP total";
     }
+    document.querySelectorAll(".ach-tab").forEach(function (b) {
+      var on = b.getAttribute("data-tab") === achievementsTab;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+
+    if (today) {
+      today.textContent = "";
+      ((dailies && dailies.challenges) || []).forEach(function (c) {
+        var li = document.createElement("li");
+        li.className = c.done ? "unlocked" : "pending";
+        li.textContent = (c.done ? "✅" : PATH_ICON[c.path] || "") + " " + c.text + " ";
+        li.appendChild(progressRow(c.value, c.target));
+        today.appendChild(li);
+      });
+      var heading = document.getElementById("daily-heading");
+      if (heading) {
+        heading.textContent = "Today" + (streak > 0 ? "  ·  🔥 " + streak + "-day streak" : "") +
+          (dailies && dailies.allDone ? "  ·  all done!" : "");
+      }
+    }
+
     list.textContent = "";
-    Object.keys(ACHIEVEMENT_INFO).forEach(function (id) {
+    ids.forEach(function (id) {
       var info = ACHIEVEMENT_INFO[id];
+      if (info[5] !== achievementsTab && info[5] !== "trainer") { return; }
       var got  = unlocked.indexOf(id) !== -1;
+      var soon = !!info[6];
       var li   = document.createElement("li");
-      li.className = got ? "unlocked" : "locked";
+      li.className = got ? "unlocked" : soon ? "locked coming-soon" : "locked";
       li.textContent = (got ? info[0] : "🔒") + " " + info[1] + " ";
       var desc = document.createElement("span");
       desc.className = "ach-desc";
-      desc.textContent = "— " + info[2];
+      desc.textContent = "— " + info[2] + (soon ? " (Coming soon)" : "");
       li.appendChild(desc);
+      if (!soon) {
+        var raw = info[3] === "level" ? tp.level : counters[info[3]] || 0;
+        li.appendChild(progressRow(got ? info[4] : raw, info[4]));
+      }
       list.appendChild(li);
     });
   }
@@ -2141,6 +2216,12 @@
     if (code.indexOf("achievement_unlocked_") === 0) {
       var ach = ACHIEVEMENT_INFO[code.slice("achievement_unlocked_".length)];
       return ach ? "Achievement unlocked: " + ach[0] + " " + ach[1] + "!" : "Achievement unlocked!";
+    }
+    if (code.indexOf("daily_challenge_done_") === 0) {
+      return "Daily challenge done! +25 XP";
+    }
+    if (code === "daily_challenges_all_done") {
+      return "All of today's challenges done! +25 bonus XP";
     }
     if (code.indexOf("minigame_") === 0) {
       return n + " played a mini-game.";
@@ -3123,6 +3204,7 @@
     if (message.type !== "stateUpdate") { return; }
 
     const state = message.state;
+    lastDailies = message.dailies || null;
 
     currentCravingItem = message.cravingItem || null;
 

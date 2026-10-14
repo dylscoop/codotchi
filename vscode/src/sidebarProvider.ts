@@ -32,6 +32,7 @@ import {
   pause,
   resume,
   resetFloorSnacks,
+  dailiesView,
 } from "./gameEngine";
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
@@ -709,6 +710,7 @@ export class SidebarProvider
     void this.webviewView.webview.postMessage({
       type: "stateUpdate",
       state,
+      dailies: dailiesView(state),
       mealsGivenThisCycle: this.mealsGivenThisCycle,
       highScore,
       devMode,
