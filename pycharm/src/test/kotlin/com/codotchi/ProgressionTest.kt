@@ -3,19 +3,36 @@ package com.codotchi
 import com.codotchi.engine.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
 /** Mirrors vscode/tests/unit/progression.test.ts. */
 class ProgressionTest {
 
+    // Today, so the pinned (empty) dailies in pet() don't roll and pay out.
     private fun at(hour: Int): Long =
-        LocalDateTime.of(2026, 10, 14, hour, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        LocalDate.now().atTime(hour, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    private fun oct(day: Int, hour: Int = 12): Long =
+        LocalDateTime.of(2026, 10, day, hour, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
     private val noon = at(12)
     private val oneAm = at(1)
 
-    private fun pet(): PetState = createPet("Pixel", "codeling", "neon")
+    /** A pet with no daily challenges today, so XP amounts are exact. */
+    private fun pet(): PetState = createPet("Pixel", "codeling", "neon").copy(dailies = DailyChallenges(day = localDayKey(noon)))
+
+    private fun petWithPicks(now: Long, streak: Int = 0, streakDay: String = ""): PetState =
+        createPet("Pixel", "codeling", "neon").copy(
+            dailies = DailyChallenges(localDayKey(now), listOf("commit_1", "calls_3", "win_1"), emptyMap(), emptyList(), streak, streakDay),
+        )
+
+    private fun finishAll(start: PetState, now: Long): PetState {
+        var s = awardXp(start, "commit", now)
+        repeat(3) { s = awardXp(s, "call", now) }
+        return awardXp(s, "minigame", now)
+    }
 
     @Test
     fun `level curve matches TypeScript`() {
@@ -164,5 +181,66 @@ class ProgressionTest {
     @Test
     fun `achievement ids are unique`() {
         assertEquals(ACHIEVEMENTS.size, ACHIEVEMENTS.map { it.id }.toSet().size)
+    }
+
+    @Test
+    fun `daily picks match TypeScript`() {
+        assertEquals(listOf("code_10", "care_10", "snack_and_commit"), pickDailyChallenges("2026-10-14", "Pixel", 1760000000000L))
+        val picks = pickDailyChallenges("2026-10-14", "Pixel", 123L)
+        assertEquals(listOf("coder", "keeper", "wild"), picks.map { dailyChallengeById(it)!!.path })
+    }
+
+    @Test
+    fun `daily challenges pay once and reset at midnight`() {
+        val s = finishAll(petWithPicks(noon), noon)
+        assertEquals(setOf("commit_1", "calls_3", "win_1"), s.dailies.done.toSet())
+        assertTrue("daily_challenges_all_done" in s.recentEventLog)
+        val plain = finishAll(pet(), noon)
+        assertEquals(3 * DAILY_CHALLENGE_XP + DAILY_ALL_DONE_BONUS, s.petXp - plain.petXp)
+        assertEquals(plain.petXp, finishAll(s, noon).petXp - s.petXp)
+        val tomorrow = awardXp(s, "code", noon + 24L * 3600 * 1000)
+        assertTrue(tomorrow.dailies.done.size < 3)
+    }
+
+    @Test
+    fun `dailies roll on first award and show before it`() {
+        val fresh = createPet("Pixel", "codeling", "neon").copy(trainer = TrainerProgress(counters = mapOf("commits" to 50)))
+        val s = awardXp(fresh, "code", noon)
+        assertEquals(localDayKey(noon), s.dailies.day)
+        assertEquals(50, s.dailies.baseline["commits"])
+        val v = dailiesView(createPet("Pixel", "codeling", "neon"), noon)
+        assertEquals(3, v.challenges.size)
+        assertTrue(v.challenges.all { it.value == 0 && !it.done })
+    }
+
+    @Test
+    fun `streak skips weekends and is lost with the pet`() {
+        assertTrue(isWeekendDay("2026-10-17"))
+        assertEquals("2026-10-16", previousWeekday("2026-10-19"))
+        assertEquals(2, finishAll(petWithPicks(oct(13), 1, "2026-10-12"), oct(13)).dailies.streak)
+        assertEquals(1, finishAll(petWithPicks(oct(15), 4, "2026-10-13"), oct(15)).dailies.streak)
+        assertEquals(6, finishAll(petWithPicks(oct(19), 5, "2026-10-16"), oct(19)).dailies.streak)
+        assertEquals(5, currentStreak(DailyChallenges(streak = 5, streakDay = "2026-10-16"), oct(18)))
+        assertEquals(0, currentStreak(DailyChallenges(streak = 4, streakDay = "2026-10-13"), oct(15)))
+        val sat = finishAll(petWithPicks(oct(17), 5, "2026-10-16"), oct(17))
+        assertEquals(5, sat.dailies.streak)
+        assertEquals("2026-10-16", sat.dailies.streakDay)
+        assertEquals(0, createPet("Egg", "codeling", "neon", null, sat.trainer).dailies.streak)
+    }
+
+    @Test
+    fun `daily challenge messages match TypeScript`() {
+        val s = finishAll(petWithPicks(oct(13), 1, "2026-10-12"), oct(13))
+        assertEquals("Daily challenge done: Make a commit (+25 XP)", progressionMessage("daily_challenge_done_commit_1", s))
+        assertEquals("All of today's challenges done! +25 bonus XP. Streak: 2 days.", progressionMessage("daily_challenges_all_done", s))
+    }
+
+    @Test
+    fun `dailies round-trip through persistence`() {
+        val p = CodotchiPersistence()
+        val s = finishAll(petWithPicks(noon), noon)
+        p.savePetState(s)
+        assertEquals(s.dailies, p.loadPetState()!!.dailies)
+        assertEquals(DailyChallenges(), dailiesFromRaw(null))
     }
 }

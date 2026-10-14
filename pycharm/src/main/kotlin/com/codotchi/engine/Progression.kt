@@ -1,6 +1,8 @@
 package com.codotchi.engine
 
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.math.max
@@ -117,6 +119,15 @@ fun progressionMessage(event: String, state: PetState): String? {
         val a = achievementById(event.removePrefix("achievement_unlocked_")) ?: return null
         return "Achievement unlocked: ${a.emoji} ${a.name} — ${a.description}"
     }
+    if (event.startsWith("daily_challenge_done_")) {
+        val c = dailyChallengeById(event.removePrefix("daily_challenge_done_")) ?: return null
+        return "Daily challenge done: ${c.text} (+$DAILY_CHALLENGE_XP XP)"
+    }
+    if (event == "daily_challenges_all_done") {
+        val d = state.dailies
+        val streak = if (d.streakDay == d.day && d.streak > 0) " Streak: ${d.streak} day${if (d.streak == 1) "" else "s"}." else ""
+        return "All of today's challenges done! +$DAILY_ALL_DONE_BONUS bonus XP.$streak"
+    }
     return null
 }
 
@@ -175,8 +186,10 @@ fun awardXp(state: PetState, source: String, now: Long = System.currentTimeMilli
         if (dayCap != null) xpToday[src] = (xpToday[src] ?: 0) + earned
         amount += earned
     }
+    val daily = advanceDailies(state, t.counters, counters, day)
+    amount += daily.xp
 
-    val events = mutableListOf<String>()
+    val events = daily.events.toMutableList()
     var xp = t.xp + amount
     var level = levelProgress(xp).level
     val achievements = t.achievements.toMutableList()
@@ -204,6 +217,7 @@ fun awardXp(state: PetState, source: String, now: Long = System.currentTimeMilli
         petXp = petXp,
         petLevel = petLevel,
         trainer = TrainerProgress(xp, level, achievements, counters, day, xpToday, hour, xpThisHour),
+        dailies = daily.dailies,
         events = state.events + events,
         recentEventLog = if (events.isNotEmpty()) (state.recentEventLog + events).takeLast(RECENT_EVENT_LOG_MAX) else state.recentEventLog,
     )
@@ -226,5 +240,160 @@ fun trainerFromRaw(raw: Map<*, *>?): TrainerProgress {
         xpToday = numMap(raw["xpToday"]),
         xpHour = raw["xpHour"] as? String ?: "",
         xpThisHour = numMap(raw["xpThisHour"]),
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Daily challenges (mirrors the Daily challenges section of gameEngine.ts)
+// ---------------------------------------------------------------------------
+
+/**
+ * A daily challenge from the "coder", "keeper" or "wild" pool: done once every
+ * counter in [reqs] has gone up by its target since the day started.
+ */
+data class DailyChallenge(
+    val id: String,
+    val path: String,
+    val text: String,
+    val reqs: List<Pair<String, Int>>,
+)
+
+/** XP for each completed daily challenge. Uncapped, but each pays once a day. */
+const val DAILY_CHALLENGE_XP: Int = 25
+
+/** Extra XP for completing all three of the day's challenges. */
+const val DAILY_ALL_DONE_BONUS: Int = 25
+
+/** Every daily challenge, grouped by pool. Keep identical to DAILY_CHALLENGES in gameEngine.ts. */
+val DAILY_CHALLENGES: List<DailyChallenge> = listOf(
+    DailyChallenge("code_10",          "coder",  "Get 10 code-activity rewards",                    listOf("codeActivity" to 10)),
+    DailyChallenge("code_25",          "coder",  "Get 25 code-activity rewards",                    listOf("codeActivity" to 25)),
+    DailyChallenge("commit_1",         "coder",  "Make a commit",                                   listOf("commits" to 1)),
+    DailyChallenge("commit_3",         "coder",  "Make 3 commits",                                  listOf("commits" to 3)),
+    DailyChallenge("commit_5",         "coder",  "Make 5 commits",                                  listOf("commits" to 5)),
+    DailyChallenge("calls_3",          "keeper", "Answer 3 calls from your pet",                    listOf("callsAnswered" to 3)),
+    DailyChallenge("calls_6",          "keeper", "Answer 6 calls from your pet",                    listOf("callsAnswered" to 6)),
+    DailyChallenge("snacks_3",         "keeper", "Hand out 3 snacks",                               listOf("snacks" to 3)),
+    DailyChallenge("clean_2",          "keeper", "Clean up twice",                                  listOf("cleans" to 2)),
+    DailyChallenge("care_10",          "keeper", "Look after your pet 10 times",                    listOf("care" to 10)),
+    DailyChallenge("win_1",            "wild",   "Win a mini-game",                                 listOf("minigameWins" to 1)),
+    DailyChallenge("win_3",            "wild",   "Win 3 mini-games",                                listOf("minigameWins" to 3)),
+    DailyChallenge("commit_and_call",  "wild",   "Make a commit and answer a call",                 listOf("commits" to 1, "callsAnswered" to 1)),
+    DailyChallenge("code_and_win",     "wild",   "Get 5 code-activity rewards and win a mini-game", listOf("codeActivity" to 5, "minigameWins" to 1)),
+    DailyChallenge("snack_and_commit", "wild",   "Hand out a snack and make a commit",              listOf("snacks" to 1, "commits" to 1)),
+)
+
+private val DAILY_PATHS = listOf("coder", "keeper", "wild")
+
+fun dailyChallengeById(id: String): DailyChallenge? = DAILY_CHALLENGES.firstOrNull { it.id == id }
+
+/** 32-bit FNV-1a over UTF-16 code units, identical to seedHash in gameEngine.ts. */
+private fun seedHash(s: String): Long {
+    var h = 0x811c9dc5.toInt()
+    for (c in s) {
+        h = h xor c.code
+        h *= 16777619
+    }
+    return h.toLong() and 0xFFFFFFFFL
+}
+
+/** The day's three challenge ids (coder, keeper, wild), seeded from the date and the pet. */
+fun pickDailyChallenges(day: String, name: String, spawnedAt: Long): List<String> {
+    val seed = "$day|$name|$spawnedAt"
+    return DAILY_PATHS.map { path ->
+        val pool = DAILY_CHALLENGES.filter { it.path == path }
+        pool[(seedHash("$seed|$path") % pool.size).toInt()].id
+    }
+}
+
+/** Saturday or Sunday. */
+fun isWeekendDay(day: String): Boolean =
+    LocalDate.parse(day).dayOfWeek.let { it == DayOfWeek.SATURDAY || it == DayOfWeek.SUNDAY }
+
+/** The most recent weekday before [day]. */
+fun previousWeekday(day: String): String {
+    var d = LocalDate.parse(day).minusDays(1)
+    while (d.dayOfWeek == DayOfWeek.SATURDAY || d.dayOfWeek == DayOfWeek.SUNDAY) d = d.minusDays(1)
+    return d.toString()
+}
+
+/** The streak as of [now]: weekdays in a row with all three done. Weekends neither break nor extend it. */
+fun currentStreak(dailies: DailyChallenges, now: Long = System.currentTimeMillis()): Int {
+    val today = localDayKey(now)
+    if (dailies.streak <= 0 || dailies.streakDay.isEmpty()) return 0
+    return if (dailies.streakDay == today || dailies.streakDay == previousWeekday(today)) dailies.streak else 0
+}
+
+private fun rollDailies(dailies: DailyChallenges, state: PetState, counters: Map<String, Int>, day: String): DailyChallenges =
+    if (dailies.day == day) dailies
+    else dailies.copy(day = day, picks = pickDailyChallenges(day, state.name, state.spawnedAt), baseline = counters, done = emptyList())
+
+data class DailyRequirementProgress(val counter: String, val value: Int, val target: Int)
+
+/** Progress on each requirement of [c], capped at its target. */
+fun dailyChallengeProgress(c: DailyChallenge, baseline: Map<String, Int>, counters: Map<String, Int>): List<DailyRequirementProgress> =
+    c.reqs.map { (counter, target) ->
+        DailyRequirementProgress(counter, minOf(target, max(0, (counters[counter] ?: 0) - (baseline[counter] ?: 0))), target)
+    }
+
+data class DailyChallengeView(val id: String, val path: String, val text: String, val value: Int, val target: Int, val done: Boolean)
+
+data class DailiesView(val challenges: List<DailyChallengeView>, val streak: Int, val allDone: Boolean)
+
+/** Today's challenges with progress, and the streak as of [now]. Works before the day's first roll too. */
+fun dailiesView(state: PetState, now: Long = System.currentTimeMillis()): DailiesView {
+    val d = rollDailies(state.dailies, state, state.trainer.counters, localDayKey(now))
+    val challenges = d.picks.mapNotNull { id ->
+        val c = dailyChallengeById(id) ?: return@mapNotNull null
+        val p = dailyChallengeProgress(c, d.baseline, state.trainer.counters)
+        DailyChallengeView(id, c.path, c.text, p.sumOf { it.value }, p.sumOf { it.target }, id in d.done)
+    }
+    return DailiesView(challenges, currentStreak(d, now), challenges.isNotEmpty() && challenges.all { it.done })
+}
+
+internal data class DailyAdvance(val dailies: DailyChallenges, val xp: Int, val events: List<String>)
+
+/** Roll the day if needed, then mark any challenges now complete. */
+internal fun advanceDailies(state: PetState, before: Map<String, Int>, after: Map<String, Int>, day: String): DailyAdvance {
+    val d = rollDailies(state.dailies, state, before, day)
+    val done = d.done.toMutableList()
+    val events = mutableListOf<String>()
+    var xp = 0
+    for (id in d.picks) {
+        val c = dailyChallengeById(id) ?: continue
+        if (id in done) continue
+        if (dailyChallengeProgress(c, d.baseline, after).all { it.value >= it.target }) {
+            done.add(id)
+            events.add("daily_challenge_done_$id")
+            xp += DAILY_CHALLENGE_XP
+        }
+    }
+    var streak = d.streak
+    var streakDay = d.streakDay
+    if (events.isNotEmpty() && d.picks.isNotEmpty() && done.size == d.picks.size) {
+        events.add("daily_challenges_all_done")
+        xp += DAILY_ALL_DONE_BONUS
+        if (!isWeekendDay(day) && streakDay != day) {
+            streak = (if (streakDay == previousWeekday(day)) streak else 0) + 1
+            streakDay = day
+        }
+    }
+    return DailyAdvance(d.copy(done = done, streak = streak, streakDay = streakDay), xp, events)
+}
+
+/** Parse DailyChallenges from a Gson-decoded map, filling in defaults for anything missing. */
+fun dailiesFromRaw(raw: Map<*, *>?): DailyChallenges {
+    if (raw == null) return DailyChallenges()
+    fun strings(v: Any?): List<String> = (v as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+    val baseline = (raw["baseline"] as? Map<*, *>)?.entries
+        ?.mapNotNull { (k, n) -> if (k is String && n is Number && n.toDouble().isFinite()) k to n.toInt() else null }
+        ?.toMap() ?: emptyMap()
+    return DailyChallenges(
+        day = raw["day"] as? String ?: "",
+        picks = strings(raw["picks"]),
+        baseline = baseline,
+        done = strings(raw["done"]),
+        streak = max(0, (raw["streak"] as? Number)?.toInt() ?: 0),
+        streakDay = raw["streakDay"] as? String ?: "",
     )
 }

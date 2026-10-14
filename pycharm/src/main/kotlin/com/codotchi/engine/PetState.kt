@@ -158,6 +158,24 @@ data class PetState(
     val petLevel: Int = 1,
     /** The player's lifetime progression; carried over to the next pet by createPet(). */
     val trainer: TrainerProgress = TrainerProgress(),
+    /** This pet's daily challenges and streak; a new pet starts afresh. */
+    val dailies: DailyChallenges = DailyChallenges(),
+)
+
+/** A pet's daily challenges (see DAILY_CHALLENGES) and its streak. Mirrors DailyChallenges in gameEngine.ts. */
+data class DailyChallenges(
+    /** Local date (YYYY-MM-DD) the picks belong to; "" before the first roll. */
+    val day: String = "",
+    /** Today's challenge ids: one coder, one keeper, one wildcard. */
+    val picks: List<String> = emptyList(),
+    /** Trainer counters when the day started; progress is measured from these. */
+    val baseline: Map<String, Int> = emptyMap(),
+    /** Ids of today's completed challenges. */
+    val done: List<String> = emptyList(),
+    /** Weekdays in a row with all three done (weekends neither break nor extend it). */
+    val streak: Int = 0,
+    /** Last day (YYYY-MM-DD) the streak was extended. */
+    val streakDay: String = "",
 )
 
 /**
