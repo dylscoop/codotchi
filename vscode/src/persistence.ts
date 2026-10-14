@@ -24,7 +24,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import * as vscode from "vscode";
-import { PetState, HighScore, deserialiseState, serialiseState } from "./gameEngine";
+import { PetState, HighScore, TrainerProgress, deserialiseState, deserialiseTrainer, serialiseState } from "./gameEngine";
 import { sealSerialisedState, verifySeal } from "./integrity";
 import { StateFileStamp } from "./tickLease";
 
@@ -32,6 +32,7 @@ const STATE_KEY = "codotchi.petState";
 const TIMESTAMP_KEY = "codotchi.lastSaveTimestamp";
 const STATE_SEAL_KEY = "codotchi.petStateSeal";
 const HIGH_SCORE_KEY = "codotchi.highScore.v2"; // v2: ageDays now driven by dayTimer (agingMultiplier)
+const TRAINER_KEY = "codotchi.trainer";
 
 // ---------------------------------------------------------------------------
 // Shared cross-IDE file helpers
@@ -223,7 +224,15 @@ export function saveState(context: vscode.ExtensionContext, state: PetState): vo
   void context.globalState.update(STATE_KEY, serialised);
   void context.globalState.update(STATE_SEAL_KEY, sealSerialisedState(serialised));
   void context.globalState.update(TIMESTAMP_KEY, Date.now());
+  // Kept outside the pet state too, so "New Game" (which clears it) doesn't lose trainer progress.
+  void context.globalState.update(TRAINER_KEY, state.trainer);
   saveSharedState(state);
+}
+
+/** The last saved trainer progress, or null if none has been saved. */
+export function loadTrainer(context: vscode.ExtensionContext): TrainerProgress | null {
+  const raw = context.globalState.get<unknown>(TRAINER_KEY);
+  return raw === undefined || raw === null ? null : deserialiseTrainer(raw);
 }
 
 /**

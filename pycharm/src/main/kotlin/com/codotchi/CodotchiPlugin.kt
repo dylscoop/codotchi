@@ -594,7 +594,7 @@ class CodotchiPlugin : Disposable {
                         else -> defaultName
                     }
                     val unlockedCharacter = customChar?.spriteType
-                    nextState = createPet(resolvedName, petType, color, unlockedCharacter)
+                    nextState = createPet(resolvedName, petType, color, unlockedCharacter, state?.trainer)
                     mealsGivenThisCycle = 0
                 }
 

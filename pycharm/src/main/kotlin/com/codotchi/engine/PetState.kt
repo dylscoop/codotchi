@@ -147,4 +147,32 @@ data class PetState(
      * seals existed). "" when eligible.
      */
     val leaderboardIneligible: String = "",
+
+    // ── Progression ──────────────────────────────────────────────────────────
+
+    /** Save-format version (SCHEMA_VERSION). Old saves without it load as version 0 and are migrated. */
+    val schemaVersion: Int = SCHEMA_VERSION,
+    /** XP earned by this pet; resets with each new egg. */
+    val petXp: Int = 0,
+    /** This pet's level (derived from petXp, stored for display). */
+    val petLevel: Int = 1,
+    /** The player's lifetime progression; carried over to the next pet by createPet(). */
+    val trainer: TrainerProgress = TrainerProgress(),
+)
+
+/**
+ * The player's lifetime progression. Survives pet death: hosts pass the old
+ * pet's [PetState.trainer] into createPet() when a new egg starts.
+ */
+data class TrainerProgress(
+    val xp: Int = 0,
+    val level: Int = 1,
+    /** Ids of unlocked achievements (see ACHIEVEMENTS), in unlock order. */
+    val achievements: List<String> = emptyList(),
+    /** Lifetime counters that drive the achievements. */
+    val counters: Map<String, Int> = emptyMap(),
+    /** Local date (YYYY-MM-DD) the daily XP buckets belong to. */
+    val xpDay: String = "",
+    /** XP earned today per capped bucket ("code", "care"). */
+    val xpToday: Map<String, Int> = emptyMap(),
 )

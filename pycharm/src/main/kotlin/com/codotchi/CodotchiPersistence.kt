@@ -376,6 +376,10 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val cravingFood: String? = null,
         val devModeEverUsed: Boolean? = null,        // absent in saves before leaderboard integrity
         val leaderboardIneligible: String? = null,   // absent in saves before leaderboard integrity
+        val schemaVersion: Int? = null,              // absent in saves before v2.29.0
+        val petXp: Int? = null,
+        val petLevel: Int? = null,
+        val trainer: Map<String, Any?>? = null,
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -447,6 +451,11 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             cravingFood                = r.cravingFood?.takeIf { it == "meal" || it == "snack" },
             devModeEverUsed            = r.devModeEverUsed            ?: false,
             leaderboardIneligible      = r.leaderboardIneligible?.takeIf { it == "tampered" || it == "unverified" } ?: "",
+            // Version 0 (no schemaVersion) → 1: progression fields start empty.
+            schemaVersion              = SCHEMA_VERSION,
+            petXp                      = maxOf(0, r.petXp ?: 0),
+            petLevel                   = levelProgress(r.petXp ?: 0).level,
+            trainer                    = trainerFromRaw(r.trainer),
         )
         return partial
     }
@@ -510,6 +519,17 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         cravingFood                = s.cravingFood,
         devModeEverUsed            = s.devModeEverUsed,
         leaderboardIneligible      = s.leaderboardIneligible,
+        schemaVersion              = s.schemaVersion,
+        petXp                      = s.petXp,
+        petLevel                   = s.petLevel,
+        trainer                    = mapOf(
+            "xp" to s.trainer.xp,
+            "level" to s.trainer.level,
+            "achievements" to s.trainer.achievements,
+            "counters" to s.trainer.counters,
+            "xpDay" to s.trainer.xpDay,
+            "xpToday" to s.trainer.xpToday,
+        ),
     )
 }
 

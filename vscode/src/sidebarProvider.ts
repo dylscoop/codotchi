@@ -35,6 +35,7 @@ import {
 } from "./gameEngine";
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
+import { loadTrainer } from "./persistence";
 import { leaderboardBlockedReason, signSubmission } from "./integrity";
 import { cravingItemFor } from "./cravingItem";
 import { StatusBarManager } from "./statusBar";
@@ -539,7 +540,7 @@ export class SidebarProvider
                             : (userTyped || defaultName);
         const petType = message.petType ?? "codeling";
         const unlockedCharacter = customChar?.spriteType ?? null;
-        nextState = createPet(petName, petType, unlockedCharacter);
+        nextState = createPet(petName, petType, unlockedCharacter, state?.trainer ?? loadTrainer(this.context));
         this.mealsGivenThisCycle = 0;
         break;
       }
