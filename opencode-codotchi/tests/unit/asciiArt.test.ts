@@ -263,6 +263,21 @@ describe("buildStatusBlock", () => {
     assert.ok(result.includes("SICK"));
   });
 
+  it("shows levels, trainer XP and the latest achievements when given progression", () => {
+    const result = stripAnsi(buildStatusBlock({
+      ...baseState, petLevel: 3, trainer: { xp: 150, achievements: ["hello_world", "first_commit"] },
+    }));
+    assert.ok(result.includes("Level   : Pet 3 · Trainer 2"));
+    assert.ok(result.includes("50/283"));
+    assert.ok(result.includes("Achievements  2/20"));
+    assert.ok(result.includes("📌 First Commit, 👋 Hello World"));
+  });
+
+  it("leaves progression out for states without it", () => {
+    const result = stripAnsi(buildStatusBlock(baseState));
+    assert.ok(!result.includes("Trainer"));
+  });
+
   it("shows sleeping when sleeping=true", () => {
     const result = stripAnsi(buildStatusBlock({ ...baseState, sleeping: true }));
     assert.ok(result.includes("sleeping"));

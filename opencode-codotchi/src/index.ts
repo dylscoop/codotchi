@@ -1534,6 +1534,7 @@ const plugin: Plugin = async (ctx) => {
                   health: s.health, discipline: s.discipline, weight: s.weight,
                   ageDays: s.ageDays, alive: s.alive, sick: s.sick,
                   sleeping: s.sleeping, poops: s.poops, spriteType: s.spriteType,
+                  petLevel: s.petLevel, trainer: s.trainer,
                 })
               : "";
             // Each pet prints once: the stat block, or a one-line summary when art is off.

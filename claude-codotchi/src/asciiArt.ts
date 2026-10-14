@@ -15,6 +15,8 @@
  *   - buildToast()       — one-line notification string
  */
 
+import { ACHIEVEMENTS, levelProgress } from "./gameEngine.js";
+
 // ---------------------------------------------------------------------------
 // ANSI helpers
 // ---------------------------------------------------------------------------
@@ -691,9 +693,12 @@ export function buildStatusBlock(state: {
   sleeping: boolean;
   poops: number;
   spriteType?: string;
+  petLevel?: number;
+  trainer?: { xp: number; achievements: readonly string[] };
 }): string {
   const stageColour = STAGE_COLOURS[state.stage] ?? FG_WHITE;
   const art = getArt(state.stage, state.mood, state.spriteType ?? "classic");
+  const trainerLevel = state.trainer ? levelProgress(state.trainer.xp) : null;
 
   // Art + header side by side
   const headerLines = [
@@ -706,6 +711,9 @@ export function buildStatusBlock(state: {
     `${FG_GRAY}Mood    : ${RESET}${state.mood}`,
     `${FG_GRAY}Status  : ${RESET}${state.sick ? colour("SICK", FG_RED) : state.sleeping ? colour("sleeping", FG_BLUE) : colour("healthy", FG_GREEN)}`,
     `${FG_GRAY}Poops   : ${RESET}${state.poops > 0 ? colour(String(state.poops), FG_YELLOW) : "0"}`,
+    ...(trainerLevel
+      ? [`${FG_GRAY}Level   : ${RESET}Pet ${state.petLevel ?? 1} · Trainer ${trainerLevel.level}`]
+      : []),
   ];
 
   const maxH   = Math.max(art.length, headerLines.length);
@@ -726,6 +734,19 @@ export function buildStatusBlock(state: {
   lines.push(statBar("Discipline", state.discipline));
   lines.push("");
   lines.push(`  ${FG_CYAN}Weight${RESET}        ${state.weight} / 99`);
+  if (state.trainer && trainerLevel) {
+    const xpPct = (100 * trainerLevel.intoLevel) / trainerLevel.needed;
+    const filled = Math.round(xpPct / 10);
+    const bar = colour("█".repeat(filled), FG_BLUE) + colour("░".repeat(10 - filled), FG_GRAY);
+    lines.push(`  ${FG_CYAN}${"Trainer XP".padEnd(12, " ")}${RESET}[${bar}] ${trainerLevel.intoLevel}/${trainerLevel.needed}`);
+    const unlocked = state.trainer.achievements;
+    const recent = unlocked.slice(-3).reverse()
+      .map((id) => ACHIEVEMENTS.find((a) => a.id === id))
+      .filter((a) => a !== undefined)
+      .map((a) => `${a.emoji} ${a.name}`);
+    lines.push(`  ${FG_CYAN}Achievements${RESET}  ${unlocked.length}/${ACHIEVEMENTS.length}` +
+      (recent.length > 0 ? `  ${FG_GRAY}latest:${RESET} ${recent.join(", ")}` : ""));
+  }
   lines.push("");
   return lines.join("\n");
 }

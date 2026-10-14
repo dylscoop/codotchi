@@ -19,6 +19,8 @@ import {
   clean as engineClean,
   giveMedicine,
   applyCodeActivity,
+  progressionMessage,
+  ACHIEVEMENTS,
 } from "./gameEngine.js";
 import { buildSpeechBubble, stripAnsi } from "./asciiArt.js";
 import {
@@ -67,7 +69,10 @@ function renderText(state: PetState, _session: { interactionsToday: number; trea
   }
   const refusal = state.events.find((e) => REFUSAL_MESSAGES[e]);
   const message = refusal ? REFUSAL_MESSAGES[refusal] : (MOOD_MESSAGES[state.mood] ?? "Hello!");
-  return stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop"));
+  const bubble = stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop"));
+  const unlocks = state.events.map((e) => progressionMessage(e, state)).filter((m): m is string => m !== null);
+  const levels = `Pet Lv ${state.petLevel} · Trainer Lv ${state.trainer.level} · 🏆 ${state.trainer.achievements.length}/${ACHIEVEMENTS.length}`;
+  return [bubble, levels, ...unlocks].join("\n");
 }
 
 function payload(state: PetState, session: { interactionsToday: number; treatsToday: number }): ToolPayload {
