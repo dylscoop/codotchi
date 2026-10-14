@@ -79,7 +79,45 @@
     healed:        500,
     died:          1200,
     patted:        1400,
+    level_up:      1000,
   };
+
+  /**
+   * Achievement names for the webview. Must match ACHIEVEMENTS in
+   * packages/core/src/gameEngine.ts (progression.test.ts checks this).
+   * id: [emoji, name, description]
+   */
+  const ACHIEVEMENT_INFO = {
+    hello_world:  ["👋", "Hello World",   "Write some code with your pet watching"],
+    save_100:     ["⌨️", "Busy Fingers",  "Get 100 code-activity rewards"],
+    save_1000:    ["💾", "Ctrl+S Master", "Get 1,000 code-activity rewards"],
+    first_commit: ["📌", "First Commit",  "Make a commit"],
+    committed:    ["📚", "Committed",     "Make 100 commits"],
+    night_owl:    ["🦉", "Night Owl",     "Commit between midnight and 5 am"],
+    caretaker:    ["🤲", "Caretaker",     "Look after your pet 100 times"],
+    snack_fiend:  ["🍪", "Snack Fiend",   "Hand out 50 snacks"],
+    clean_freak:  ["🧹", "Clean Freak",   "Clean up 50 times"],
+    nurse:        ["💊", "Nurse",         "Cure your pet 10 times"],
+    gamer:        ["🎮", "Gamer",         "Win 10 mini-games"],
+    growing_up:   ["🌱", "Growing Up",    "See your pets evolve 3 times"],
+    survivor:     ["🧓", "Survivor",      "Raise a pet to senior"],
+    level_5:      ["⭐", "Rising Star",   "Reach trainer level 5"],
+    level_10:     ["🌟", "Veteran",       "Reach trainer level 10"],
+    level_25:     ["🏆", "Legend",        "Reach trainer level 25"],
+    detective:    ["🔍", "Detective",     "Finish 10 debug sessions"],
+    first_blood:  ["⚔️", "First Blood",   "Defeat a Bug Boss"],
+    exterminator: ["🐛", "Exterminator",  "Defeat 10 Bug Bosses"],
+    champion:     ["🥊", "Champion",      "Win a Boss Battle"],
+  };
+
+  /** Level reached with `xp` total XP — same curve as levelProgress() in gameEngine.ts. */
+  function levelProgress(xp) {
+    var level = 1;
+    var remaining = Math.max(0, Math.floor(xp || 0));
+    var need = function (l) { return Math.round(100 * Math.pow(l, 1.5)); };
+    while (remaining >= need(level)) { remaining -= need(level); level++; }
+    return { level: level, intoLevel: remaining, needed: need(level) };
+  }
 
   /** Speech bubbles stay up for BUBBLE_HOLD_MS, then fade over BUBBLE_FADE_MS. */
   const BUBBLE_HOLD_MS = 6000;
@@ -278,6 +316,17 @@
   document.getElementById("btn-scold").addEventListener("click", function () {
     vscode.postMessage({ command: "scold" });
   });
+
+  (function () {
+    var levelLine = document.getElementById("level-line");
+    var panel     = document.getElementById("achievements-panel");
+    if (!levelLine || !panel) { return; }
+    levelLine.addEventListener("click", function () {
+      var open = panel.classList.toggle("hidden") === false;
+      levelLine.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open && lastState) { renderProgression(lastState); }
+    });
+  })();
 
   btnNewGame.addEventListener("click", function () {
     showScreen("setup");
@@ -1562,6 +1611,8 @@
       (spriteLabel ? spriteLabel + "  |  " : "") +
       typeLabelCap;
 
+    renderProgression(state);
+
     // Update sleep/wake button label to match current state
     const sleepWakeBtn = document.getElementById("btn-sleep-wake");
     // A break nap can't be cut short — show the minutes left instead of "Wake"
@@ -1723,6 +1774,9 @@
       if (events[ei] === "evolved_to_baby") { pushReaction("hatched", nowMs); break; }
       if (events[ei].indexOf("evolved_to_") === 0) { pushReaction("evolved", nowMs); break; }
     }
+    if (events.indexOf("trainer_level_up") !== -1 || events.indexOf("pet_level_up") !== -1) {
+      pushReaction("level_up", nowMs);
+    }
 
     // ── Speech bubble triggers ─────────────────────────────────────────────
     // Suppressed entirely while pet is sleeping (sleep bubble persists until wake).
@@ -1749,6 +1803,17 @@
           showBubble(_wl[Math.floor(Math.random() * _wl.length)]);
           return;
         }
+      }
+      // 1c. Achievements and level-ups — rare, so they outrank everyday bubbles
+      for (var _pi = 0; _pi < events.length; _pi++) {
+        if (events[_pi].indexOf("achievement_unlocked_") === 0) {
+          queueBubble(humaniseEvent(events[_pi], _n, state));
+          return;
+        }
+      }
+      if (events.indexOf("trainer_level_up") !== -1 || events.indexOf("pet_level_up") !== -1) {
+        queueBubble(humaniseEvent(events.indexOf("trainer_level_up") !== -1 ? "trainer_level_up" : "pet_level_up", _n, state));
+        return;
       }
       // 2. Minigame results (play, not pat)
       for (var _mi = 0; _mi < events.length; _mi++) {
@@ -1896,6 +1961,47 @@
     return null;
   }
 
+  /** Level line, XP bar and (when open) the achievements list. */
+  function renderProgression(state) {
+    var levelLine = document.getElementById("level-line");
+    var barXp     = document.getElementById("bar-xp");
+    if (!levelLine) { return; }
+    var trainer = state.trainer || { xp: 0, achievements: [] };
+    var tp = levelProgress(trainer.xp);
+    var petLevel = state.petLevel || levelProgress(state.petXp).level;
+    var unlocked = trainer.achievements || [];
+    levelLine.textContent = "Trainer Lv " + tp.level + "  ·  Pet Lv " + petLevel +
+      "  ·  🏆 " + unlocked.length + "/" + Object.keys(ACHIEVEMENT_INFO).length;
+    levelLine.title = tp.intoLevel + " / " + tp.needed + " XP to trainer level " + (tp.level + 1) +
+      " — click for achievements";
+    if (barXp) { barXp.style.width = Math.round(100 * tp.intoLevel / tp.needed) + "%"; }
+
+    var panel = document.getElementById("achievements-panel");
+    var list  = document.getElementById("achievements-list");
+    var summary = document.getElementById("achievements-summary");
+    if (!panel || !list || panel.classList.contains("hidden")) { return; }
+    var key = unlocked.join(",");
+    if (list.dataset["rendered"] === key) { return; }
+    list.dataset["rendered"] = key;
+    if (summary) {
+      summary.textContent = unlocked.length + " of " + Object.keys(ACHIEVEMENT_INFO).length +
+        " unlocked  ·  " + trainer.xp + " XP total";
+    }
+    list.textContent = "";
+    Object.keys(ACHIEVEMENT_INFO).forEach(function (id) {
+      var info = ACHIEVEMENT_INFO[id];
+      var got  = unlocked.indexOf(id) !== -1;
+      var li   = document.createElement("li");
+      li.className = got ? "unlocked" : "locked";
+      li.textContent = (got ? info[0] : "🔒") + " " + info[1] + " ";
+      var desc = document.createElement("span");
+      desc.className = "ach-desc";
+      desc.textContent = "— " + info[2];
+      li.appendChild(desc);
+      list.appendChild(li);
+    });
+  }
+
   /** Append new event strings to the scrollable event log. */
   function humaniseEvent(code, name, state) {
     var n = name || "Codotchi";
@@ -2025,6 +2131,16 @@
     if (code.indexOf("evolved_to_") === 0) {
       var stage = code.slice("evolved_to_".length);
       return n + " evolved into " + stage + "!";
+    }
+    if (code === "trainer_level_up") {
+      return "Level up! You're now trainer level " + levelProgress(state && state.trainer ? state.trainer.xp : 0).level + ".";
+    }
+    if (code === "pet_level_up") {
+      return n + " reached level " + ((state && state.petLevel) || 1) + "!";
+    }
+    if (code.indexOf("achievement_unlocked_") === 0) {
+      var ach = ACHIEVEMENT_INFO[code.slice("achievement_unlocked_".length)];
+      return ach ? "Achievement unlocked: " + ach[0] + " " + ach[1] + "!" : "Achievement unlocked!";
     }
     if (code.indexOf("minigame_") === 0) {
       return n + " played a mini-game.";
@@ -2677,6 +2793,22 @@
       case "became_sick": {
         // Random jitter per frame — handled in movement; just draw normally here
         drawBody(state, x, bodyY, facingLeft, legFrame);
+        break;
+      }
+
+      case "level_up": {
+        // Little hop with gold sparkles rising past the pet
+        var hop = -Math.sin(t * Math.PI) * 6;
+        drawBody(state, x, bodyY + hop, facingLeft, legFrame);
+        spriteCtx.save();
+        spriteCtx.globalAlpha = 1 - t;
+        spriteCtx.fillStyle = "#FFD600";
+        for (var lu = 0; lu < 5; lu++) {
+          var lx = x + (bWidth * (lu + 0.5)) / 5;
+          var ly = bodyY + bHeight - t * (bHeight + 16) - (lu % 2) * 6;
+          spriteCtx.fillRect(Math.round(lx) - 1, Math.round(ly) - 1, 2, 2);
+        }
+        spriteCtx.restore();
         break;
       }
 

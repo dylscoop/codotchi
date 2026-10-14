@@ -1,5 +1,7 @@
 import { describe, it } from "node:test";
 import * as assert from "node:assert/strict";
+import * as fs from "fs";
+import * as path from "path";
 import {
   ACHIEVEMENTS,
   SCHEMA_VERSION,
@@ -157,5 +159,13 @@ describe("persistence", () => {
 describe("ACHIEVEMENTS", () => {
   it("has unique ids", () => {
     assert.equal(new Set(ACHIEVEMENTS.map((a) => a.id)).size, ACHIEVEMENTS.length);
+  });
+
+  it("matches ACHIEVEMENT_INFO in the webview", () => {
+    const js = fs.readFileSync(path.join(__dirname, "..", "..", "..", "media", "sidebar.js"), "utf8");
+    const block = js.slice(js.indexOf("const ACHIEVEMENT_INFO = {"), js.indexOf("};", js.indexOf("const ACHIEVEMENT_INFO = {")));
+    const rows = [...block.matchAll(/^\s+(\w+):\s+\["([^"]+)",\s*"([^"]+)",\s*"([^"]+)"\]/gm)]
+      .map((m) => ({ id: m[1], emoji: m[2], name: m[3], description: m[4] }));
+    assert.deepEqual(rows, ACHIEVEMENTS.map(({ id, emoji, name, description }) => ({ id, emoji, name, description })));
   });
 });

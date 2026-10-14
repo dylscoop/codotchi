@@ -250,6 +250,38 @@ body.font-large  { font-size: 16px; }
   margin-top: 2px;
 }
 
+/* ── Levels, XP bar and achievements ── */
+.level-line {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.83em;
+  text-align: center;
+  cursor: pointer;
+  padding: 2px 0 0;
+}
+.level-line:hover { text-decoration: underline; }
+.xp-track { flex: none; height: 3px; margin: 2px 0 4px; }
+.bar-fill.xp { background: #b388ff; }
+.achievements-panel {
+  font-size: 0.83em;
+  margin-bottom: 6px;
+}
+.achievements-summary { text-align: center; opacity: 0.7; margin: 2px 0; }
+.achievements-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.achievements-list li { padding: 1px 0; }
+.achievements-list li.locked { opacity: 0.4; }
+.achievements-list .ach-desc { opacity: 0.7; }
+
 /* ── Button grid ── */
 .btn-grid {
   display: grid;
