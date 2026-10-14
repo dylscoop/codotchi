@@ -199,6 +199,18 @@ calendar day, and the IDEs ignore it if it's from an earlier day.
 The `warnthreshold` / `shoutthreshold` cost alerts are OpenCode-only and are
 stored in `~/.config/opencode/codotchi-config.json`.
 
+OpenCode's own price table charges $0 for GitHub Copilot cache writes, so the
+plugin recomputes each reply's cost from its tokens using
+[GitHub's published Copilot rates](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing)
+for Claude models (e.g. Opus 5.5: $4 input, $0.20 cached input, $5 cache
+write, $20 output per 1M tokens). Other models use OpenCode's figure. To
+change a rate or price another model, add a `pricing` entry (USD per 1M
+tokens, any field optional) to `codotchi-config.json`:
+
+```json
+{ "pricing": { "github-copilot/claude-opus-5.5": { "cacheWrite": 5 } } }
+```
+
 Both sides honour `XDG_CONFIG_HOME`, so set it (or leave it unset) the same
 way for OpenCode and your IDE.
 

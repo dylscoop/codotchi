@@ -10,6 +10,10 @@
 - **Daily challenges** - three a day per pet (one Coder, one Keeper, one wildcard), reset at local midnight. 25 XP each plus 25 for all three. Finishing all three on consecutive weekdays builds a 🔥 streak; weekends don't break it, and it's lost when the pet dies.
 - Unlocks, level-ups and finished challenges get a notification, a speech bubble and (for level-ups) a little hop.
 
+### Fixed
+
+- **OpenCode spend was under-reported for GitHub Copilot Claude models** - OpenCode prices Copilot cache writes at $0, so a heavy day could show ~$34 instead of ~$80. The OpenCode plugin now works out each reply's cost from its tokens at [GitHub's published Copilot rates](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing). Rates can be overridden with `"pricing"` in `codotchi-config.json`.
+
 ## [2.28.0] — 2026-10-13
 
 - Removed the sponsor section from the extension page.

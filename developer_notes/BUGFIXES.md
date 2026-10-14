@@ -2459,3 +2459,11 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** In OpenCode V2 every window talks to one shared server process. The per-window `WINDOW_SALT` lived on `globalThis`, so it was the same for all windows, and the server cached one bubble and broadcast that snapshot in the `updated` event. Every window across every repo showed the same pet and phrase.
 
 **Fix:** Each TUI makes a random window key and sends it as the `snapshot` RPC input (`{ window }`). The server keeps one bubble per key (`windowViews`, capped at 32, oldest evicted) and seeds the pet rotation and phrase from a hash of the key. The `updated` event now carries no snapshot (`{ refresh: true }`), so each window pulls its own. Cost totals are still shared. Test: `pluginContract.test.ts` checks that different window keys get different pets or phrases and that each key stays stable.
+
+## BUGFIX-207 - OpenCode daily cost under-reported for GitHub Copilot Claude models
+
+**Files:** `opencode-codotchi/src/pricing.ts` (new), `opencode-codotchi/src/usageBackfill.ts`, `opencode-codotchi/src/index.ts`, `opencode-codotchi/src/v2Events.ts`
+
+**Problem:** The plugin summed OpenCode's stored per-message `cost`. OpenCode's models.dev price table gives `github-copilot/claude-opus-5.5` a cache-write rate of $0, but GitHub bills Anthropic cache writes ($5/M for Opus 5.5). On 2026-10-14 the plugin showed $33.52 while the true Copilot cost was ~$80 (8.98M cache-write tokens unpriced).
+
+**Fix:** New `pricing.ts` holds GitHub's published Copilot rates for Claude models and `computeCost()`. The DB query now groups token sums by provider/model and `totalsFromModelRows()` prices them; live `message.updated` events and the API backfill use `messageCost()`. Unpriced models fall back to OpenCode's stored cost. Users can override or add rates with `"pricing"` in `codotchi-config.json`; `savePluginConfig()` now keeps existing keys instead of overwriting the file. Tests: `tests/unit/pricing.test.ts`, `usageBackfill.test.ts` ("recomputes priced models from tokens"), `pluginContract.test.ts` (V2 step model passthrough).
