@@ -2772,6 +2772,29 @@ describe("integration — play + coin_flip minigame", () => {
   });
 });
 
+describe("integration — play + boss_battle minigame", () => {
+  it("play then boss_battle win: +25 happiness, boss XP, a mini-game win and Champion", () => {
+    const pet = makePet({ happiness: 50, energy: 80 });
+    const afterGame = applyMinigameResult(play(pet), "boss_battle", "win");
+    assert.equal(afterGame.happiness, 75);
+    assert.equal(afterGame.energy, 55);
+    assert.equal(afterGame.weight, play(pet).weight, "no extra weight loss on top of play()");
+    assert.ok(afterGame.events.includes("minigame_boss_battle_win"));
+    assert.equal(afterGame.trainer.counters.bossBattleWins, 1);
+    assert.equal(afterGame.trainer.counters.minigameWins, 1);
+    assert.ok(afterGame.trainer.achievements.includes("champion"));
+  });
+
+  it("play then boss_battle lose: +10 happiness and no boss win", () => {
+    const pet = makePet({ happiness: 50, energy: 80 });
+    const afterGame = applyMinigameResult(play(pet), "boss_battle", "lose");
+    assert.equal(afterGame.happiness, 60);
+    assert.ok(afterGame.events.includes("minigame_boss_battle_lose"));
+    assert.equal(afterGame.trainer.counters.bossBattleWins, undefined);
+    assert.ok(!afterGame.trainer.achievements.includes("champion"));
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Developer mode
 // ---------------------------------------------------------------------------

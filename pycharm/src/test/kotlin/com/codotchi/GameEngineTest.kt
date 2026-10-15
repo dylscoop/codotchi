@@ -630,6 +630,16 @@ class GameEngineTest {
     }
 
     @Test
+    fun `boss_battle win and lose give +10 and -5 and answer the play call`() {
+        assertEquals(10, happinessDeltaForMinigame("boss_battle", "win"))
+        assertEquals(-5, happinessDeltaForMinigame("boss_battle", "lose"))
+        val afterGame = applyMinigameResult(play(makePet(energy = 80).copy(activeAttentionCall = "play")), "boss_battle", "win")
+        assertTrue(afterGame.events.contains("attention_call_answered_play"), afterGame.events.toString())
+        assertTrue(afterGame.events.contains("minigame_boss_battle_win"))
+        assertEquals(1, afterGame.trainer.counters["bossBattleWins"])
+    }
+
+    @Test
     fun `blackjack win, push and lose give +10, 0 and -10 with no weight change`() {
         assertEquals(10, happinessDeltaForMinigame("blackjack", "win"))
         assertEquals(0, happinessDeltaForMinigame("blackjack", "push"))
