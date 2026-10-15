@@ -658,8 +658,8 @@ the mini-game picker and isn't tied to the code.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Add to the mini-game picker | `[x]` | v2.30.0: "Boss Battle" button in `sidebar.html`, wired in `sidebar.js` |
-| Turn-based fight | `[x]` | v2.30.0: Attack / Defend (blocks ~50%) / Debug (heals 30% max HP, 2-turn cooldown), 15% crits, at most 10 turns (about 4–6 in practice). Rules in `bossArt.js`, seeded RNG for tests |
-| Boss by level | `[x]` | Syntax Wraith (1+), NullPointer Demon (5+), StackOverflow Behemoth (10+); bosses gain HP and attack per pet level |
+| Turn-based fight | `[x]` | v2.30.0: Attack / Defend / Debug against a boss that shows its next move (Strike, Charge, Corrupt, Shield). Defend builds Focus (×2 next Attack, breaks Shield); Debug heals and clears bugs and shields. At most 11 turns; attack-only rarely wins. Rules in `bossArt.js`, seeded RNG for tests |
+| Boss by level | `[x]` | Unlocked at pet levels 3 (Syntax Wraith), 5 (NullPointer Demon), 10 (StackOverflow Behemoth), then every 5; queued in `PetState.pendingBosses` (host-checked), a loss keeps the boss; bosses gain HP and attack per pet level |
 | Pet stats scale the fight | `[x]` | Level sets the base; health → HP, energy → attack, discipline → Defend, happiness → Debug, each ×0.8–×1.2 |
 | Rewards | `[x]` | `applyMinigameResult(…, "boss_battle", …)`: happiness +10 win / −5 lose on top of play(); a win awards `boss_battle` XP (40, capped 40/h and 80/day), counts as a mini-game win and unlocks Champion |
 | Energy cost | `[x]` | Same `play()` check as the other mini-games; answers the `play` call |

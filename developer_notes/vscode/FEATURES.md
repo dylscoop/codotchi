@@ -265,18 +265,30 @@ Status: `[x]`
 
 - Rules and art live in `vscode/media/bossArt.js` (`window.bossArt`), loaded after
   `minigameArt.js`; PyCharm copies and inlines it like the other webview scripts.
-- The boss depends on the pet's level (`bossForLevel`): **Syntax Wraith** (1+),
-  **NullPointer Demon** (5+), **StackOverflow Behemoth** (10+). Bosses gain 2.5 HP
-  and 0.4 attack per pet level.
+- **Unlocks** (core `PetState.pendingBosses`): `awardXp` queues one boss per pet-level
+  milestone passed (`isBossMilestone`: 3, 5, 10, then every 5; tier from
+  `bossIdForLevel`; at most `BOSS_QUEUE_MAX` = 3) and emits `boss_unlocked` (bubble +
+  log line, shown even with levels off). The picker button shows the count, or is
+  disabled with "next at Lv X". A win pops the queue; a loss keeps the boss. The
+  host ignores a `boss_battle` result with nothing queued (`boss_battle_no_boss`).
+  Old saves at level 3+ start with one boss of their tier.
+- The battle uses the queued boss (`createBattle(pet, rng, bossId)`); its HP (+4/level)
+  and attack (+0.2/level) scale with the pet's level.
 - Pet stats (`petBattleStats`): level sets base HP (30 + 2/level) and attack
   (6–10 + 0.5/level). Health scales HP, energy attack, discipline Defend and
   happiness Debug, each ×0.8–×1.2 (`careMod`).
-- Each turn: **Attack** (15% crit ×1.5), **Defend** (blocks ~50% of the next hit)
-  or **Debug** (heals 30% of max HP, then a 2-turn cooldown). The boss strikes
-  back unless it was defeated. The boss wins after 10 turns.
-- Placeholder 16×16 sprites with a 1-pixel bob, a white hit flash and pixel HP
-  bars on `#mg-canvas`; reduced motion skips the flashes. Imported art will
-  replace the sprites later.
+- **Telegraphed moves**: before each turn the boss shows its next move (`intent`,
+  weighted per boss): **Strike**; **Charge** (×2 hit; Defend blocks an extra 35%);
+  **Corrupt** (half hit + a bug draining 3 + 0.2/level HP for 3 turns); **Shield**
+  (attacks deal half until broken).
+- Player actions: **Attack** (15% crit ×1.5); **Defend** (blocks ~50%; blocking a hit
+  gives **Focus**: the next Attack does ×2 and breaks the Shield); **Debug** (heals 30%
+  of max HP, clears the bug and the Shield, 2-turn cooldown). The boss wins after 11
+  turns. Tuned so attack-only wins ≤ ~20% and reading the moves ~75–90% for an
+  average-care pet (`bossArt.test.ts` checks this at each milestone).
+- Placeholder 16×16 sprites with a 1-pixel bob, a white hit flash, pixel HP bars,
+  a next-move icon, a shield ring and bug / focus markers on `#mg-canvas`; reduced
+  motion skips the flashes. Imported art will replace the sprites later.
 - Sends `{ command: "play", game: "boss_battle", result: "win"|"lose" }`.
   **Win**: +10 (net +25), `boss_battle` XP (40, capped 40/h and 80/day),
   `bossBattleWins` and `minigameWins` +1, unlocks Champion. **Lose**: −5 (net +10).

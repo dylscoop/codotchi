@@ -6,10 +6,10 @@
 
 | File | What changed |
 |------|-------------|
-| `packages/core/src/gameEngine.ts` (+ synced copies, `claude-codotchi/dist`) | `happinessDeltaForMinigame("boss_battle")` (+10 win / −5 lose); `applyMinigameResult` awards `"boss_battle"` XP on a Boss Battle win; `boss_battle` counts `bossBattleWins` and `minigameWins` and is capped (40/h, 80/day); `champion` no longer `comingSoon` |
-| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `Constants.kt`, `Progression.kt` | Kotlin mirror of the above |
-| `vscode/media/bossArt.js` | new: Boss Battle rules (`createBattle`, `battleTurn`, `petBattleStats`, `bossForLevel`, seeded `makeRng`) and placeholder art for the three bosses, HP bars and hit flash |
-| `vscode/media/sidebar.html`, `sidebar.js` | Boss Battle picker button and panel (Attack / Defend / Debug, HP line, battle log); sends `play` with `game: "boss_battle"`; log lines; Champion hint |
+| `packages/core/src/gameEngine.ts` (+ synced copies, `claude-codotchi/dist`) | `happinessDeltaForMinigame("boss_battle")` (+10 win / −5 lose); `applyMinigameResult` awards `"boss_battle"` XP on a Boss Battle win; `boss_battle` counts `bossBattleWins` and `minigameWins` and is capped (40/h, 80/day); `champion` no longer `comingSoon`. `PetState.pendingBosses` (unbeaten bosses, oldest first, max `BOSS_QUEUE_MAX`); `awardXp` queues a boss per milestone passed (`isBossMilestone`: 3, 5, 10, then every 5; `bossIdForLevel`) and emits `boss_unlocked`; a Boss Battle win pops the queue, and a result with nothing queued is ignored (`boss_battle_no_boss`); `deserialisePendingBosses` gives old saves at level 3+ one boss of their tier |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `Constants.kt`, `Progression.kt`, `PetState.kt`, `CodotchiPersistence.kt` | Kotlin mirror of the above |
+| `vscode/media/bossArt.js` | new: Boss Battle rules (`createBattle(pet, rng, bossId)`, `battleTurn`, `petBattleStats`, `bossForLevel`, seeded `makeRng`); telegraphed boss moves (`MOVES`, weighted per boss in `moves`, `pickIntent`, `describeIntent`): Strike, Charge, Corrupt (bug drain), Shield; Focus after a blocked hit; placeholder art for the three bosses, HP bars, hit flash, next-move icon, shield ring and bug / focus markers |
+| `vscode/media/sidebar.html`, `sidebar.js` | Boss Battle picker button (locked with "next at Lv X" until a boss is waiting, shows the count) and panel (Attack / Defend / Debug, HP and status line, next-move line, battle log); starts the battle with `pendingBosses[0]`; sends `play` with `game: "boss_battle"`; `boss_unlocked` bubble and log lines; Champion hint |
 | `vscode/src/sidebarProvider.ts`, `pycharm/build.gradle.kts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | load / copy / inline `bossArt.js` |
 | `vscode/tests/unit/bossArt.test.ts` (new), `gameEngine.test.ts`, `progression.test.ts`, `pycharm/src/test/kotlin/com/codotchi/*Test.kt`, `opencode-codotchi/tests/unit/asciiArt.test.ts`, `claude-desktop-codotchi/tests/tools.test.mjs` | battle rules and balance, rewards, caps, Champion unlock, wiring; unlockable achievement count 16 → 17 |
 | `vscode/README.md`, `pycharm/README.md`, `vscode/CHANGELOG.md`, `developer_notes/FEATURES_SEPTEMBER_2026.md` | Boss Battle docs |
@@ -23,13 +23,19 @@ MINIGAME_BOSS_BATTLE_LOSE: number = -5   // totals with play(): lose +10
 XP_HOURLY_CAPS = { code: 10, commit: 30, minigame: 20, boss_battle: 40 }
 XP_DAILY_CAPS  = { code: 40, commit: 90, call: 100, minigame: 50, boss_battle: 80 }
 XP_COUNTERS.boss_battle = ["bossBattleWins", "minigameWins"]
+BOSS_IDS = ["syntax_wraith", "nullpointer_demon", "stackoverflow_behemoth"]
+BOSS_QUEUE_MAX: number = 3
+isBossMilestone(level) = level 3, 5, 10, 15, 20, ...
 // bossArt.js
 Pet: HP 30 + 2/level (× health mod), attack 6–10 + 0.5/level (× energy mod), crit 15% ×1.5,
-     Defend blocks 50% (× discipline mod), Debug heals 30% max HP (× happiness mod), cooldown 2
+     Defend blocks 50% (× discipline mod, +35% against a Charge), Debug heals 30% max HP (× happiness mod)
+     and clears Corrupt and Shield, cooldown 2; a Defend that blocks a hit gives Focus (next Attack ×2, breaks Shield)
 Care mod: 0.8 + 0.4 × stat/100
-Bosses (min level, HP, attack): Syntax Wraith (1, 36, 5–9), NullPointer Demon (5, 36, 5–10),
-     StackOverflow Behemoth (10, 38, 5–10); +2.5 HP and +0.4 attack per pet level above 1
-MAX_TURNS = 10
+Boss moves: Strike; Charge ×2; Corrupt ×0.5 hit + bug draining 3 (+0.2/level) HP for 3 turns; Shield halves attacks
+Bosses (min level, HP, attack, move weights strike/charge/corrupt/shield):
+     Syntax Wraith (1, 42, 5–9, 4/1/3/1), NullPointer Demon (5, 46, 5–9, 4/2/1/1),
+     StackOverflow Behemoth (10, 54, 5–9, 4/1/1/2); +4 HP and +0.2 attack per pet level above 1
+MAX_TURNS = 11
 ```
 
 ---
