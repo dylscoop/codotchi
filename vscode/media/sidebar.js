@@ -872,6 +872,36 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   var bossBattle = null;
   var bossRng = Math.random;
 
+  /** Pet levels that unlock a boss — same rule as isBossMilestone() in gameEngine.ts. */
+  function isBossMilestone(level) {
+    return level === 3 || level === 5 || (level >= 10 && level % 5 === 0);
+  }
+
+  function nextBossLevel(level) {
+    var l = Math.max(1, level || 1) + 1;
+    while (!isBossMilestone(l)) { l++; }
+    return l;
+  }
+
+  function pendingBossesOf(state) {
+    return (state && Array.isArray(state.pendingBosses)) ? state.pendingBosses : [];
+  }
+
+  /** Lock the picker button unless a boss is waiting; show how many are. */
+  function updateBossButton(state) {
+    var btn = document.getElementById("btn-mg-boss");
+    if (!btn || !bossArt) { return; }
+    var pending = pendingBossesOf(state).length;
+    var level = (state && state.petLevel) || 1;
+    btn.disabled = pending === 0;
+    btn.textContent = pending > 0
+      ? "Boss Battle \u2694 " + pending
+      : "Boss Battle (next at Lv " + nextBossLevel(level) + ")";
+    btn.title = pending > 0
+      ? pending + " boss" + (pending === 1 ? "" : "es") + " waiting. Beat one to clear it; a loss keeps it for a retry."
+      : "A boss appears when your pet reaches level 3, 5, 10 and every 5 levels after that.";
+  }
+
   document.getElementById("btn-boss-attack").addEventListener("click", function () { handleBossAction("attack"); });
   document.getElementById("btn-boss-defend").addEventListener("click", function () { handleBossAction("defend"); });
   document.getElementById("btn-boss-debug").addEventListener("click", function () { handleBossAction("debug"); });
@@ -882,20 +912,28 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     document.getElementById("btn-boss-debug").disabled = !enabled || !bossArt.canDebug(bossBattle);
   }
 
-  /** Redraw the scene and the HP text. flash is "boss", "pet" or null. */
+  /** Redraw the scene, the HP / status line and the boss's next move. flash is "boss", "pet" or null. */
   function drawBossScene(flash, frame) {
     var b = bossBattle;
+    var status = [];
+    if (b.focus) { status.push("Focused"); }
+    if (b.corrupt > 0) { status.push("Bugged (" + b.corrupt + ")"); }
+    if (b.shield) { status.push("Boss shielded"); }
     document.getElementById("boss-title").textContent = b.bossName;
     document.getElementById("boss-hp").textContent =
       "Boss " + b.bossHp + "/" + b.bossMaxHp + " HP  \u00b7  " +
       ((lastState && lastState.name) || "Pet") + " " + b.petHp + "/" + b.pet.maxHp + " HP" +
-      "  \u00b7  Turn " + b.turn + "/" + bossArt.MAX_TURNS;
+      "  \u00b7  Turn " + b.turn + "/" + bossArt.MAX_TURNS +
+      (status.length ? "  \u00b7  " + status.join(", ") : "");
+    document.getElementById("boss-intent").textContent = b.result ? "" : bossArt.describeIntent(b);
     if (!mgBegin()) { return; }
     bossArt.drawBattleScene(mgCtx, mgCanvas.width, mgCanvas.height, b, { flash: flash || null, frame: frame || 0 });
   }
 
   function startBossBattle() {
-    bossBattle = bossArt.createBattle(lastState);
+    var pending = pendingBossesOf(lastState);
+    if (pending.length === 0) { return; }
+    bossBattle = bossArt.createBattle(lastState, bossRng, pending[0]);
     document.getElementById("boss-log").textContent = "A wild " + bossBattle.bossName + " appears!";
     showMgPanel("mg-boss");
     bossButtons(true);
@@ -910,7 +948,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     document.getElementById("boss-log").textContent =
       bossArt.describeTurn(bossBattle, lastState && lastState.name);
     var hitBoss = bossBattle.bossHp < before.bossHp;
-    var hitPet = !!(bossBattle.lastBoss && bossBattle.lastBoss.damage > 0);
+    var hitPet = !!((bossBattle.lastBoss && bossBattle.lastBoss.damage > 0) || bossBattle.lastBug > 0);
     var steps = [];
     if (hitBoss) { steps.push("boss"); }
     if (hitPet) { steps.push("pet"); }
@@ -1821,6 +1859,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (mgPatBtn) { mgPatBtn.textContent = _customChar ? _customChar.patLabel : "Pat"; }
     var mgCfBtn = document.getElementById("btn-mg-cf");
     if (mgCfBtn) { mgCfBtn.textContent = playsBlackjack(state) ? "Blackjack" : "Coin Flip"; }
+    updateBossButton(state);
 
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
@@ -1968,6 +2007,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       }
       if (levelsEnabled && (events.indexOf("trainer_level_up") !== -1 || events.indexOf("pet_level_up") !== -1)) {
         queueBubble(humaniseEvent(events.indexOf("trainer_level_up") !== -1 ? "trainer_level_up" : "pet_level_up", _n, state));
+        return;
+      }
+      // 1d. A boss unlocked at a level milestone (Boss Battles work with levels off too)
+      if (events.indexOf("boss_unlocked") !== -1) {
+        queueBubble(humaniseEvent("boss_unlocked", _n, state));
         return;
       }
       // 2. Minigame results (play, not pat)
@@ -2339,6 +2383,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "minigame_blackjack_push":    n + " pushed at Blackjack.",
       "minigame_boss_battle_win":   n + " defeated the boss!",
       "minigame_boss_battle_lose":  n + " was beaten by the boss.",
+      "boss_unlocked":              "A boss appeared! Press Play \u2192 Boss Battle to fight it.",
+      "boss_battle_no_boss":        "There's no boss to fight yet.",
     };
     // Custom characters ask for a run / stickers instead of a pat, and name their snack
     var _pc = _cc && _cc.patCall;

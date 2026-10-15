@@ -45,7 +45,8 @@ const pet = (over: Record<string, unknown> = {}) =>
 /** Plays a whole battle with a fixed strategy; returns the final battle. */
 function playOut(p: Record<string, unknown>, seed: number, pick: (b: any) => string): any {
   const rng = art.makeRng(seed);
-  let b = art.createBattle(p);
+  const level = typeof p.petLevel === "number" ? p.petLevel : 1;
+  let b = art.createBattle(p, rng, art.bossForLevel(level).id);
   while (!b.result) { b = art.battleTurn(b, pick(b), rng); }
   return b;
 }
@@ -112,33 +113,94 @@ describe("battle stats (bossArt.js)", () => {
 
   it("treats a missing level as level 1", () => {
     assert.equal(art.petBattleStats({}).level, 1);
-    assert.equal(art.createBattle(null).bossId, "syntax_wraith");
+    assert.equal(art.createBattle(null, art.makeRng(1)).bossId, "syntax_wraith");
   });
 });
 
 describe("battle turns (bossArt.js)", () => {
+  /** A fresh battle with the boss's next move fixed. */
+  const battle = (intent: string, over: Record<string, unknown> = {}, p = pet()) =>
+    ({ ...art.createBattle(p, art.makeRng(0)), intent, ...over });
+
   it("the seeded RNG is repeatable", () => {
     const a = art.makeRng(42), b = art.makeRng(42);
     for (let i = 0; i < 5; i++) { assert.equal(a(), b()); }
   });
 
-  it("Attack damages the boss and the boss hits back", () => {
-    const b0 = art.createBattle(pet());
+  it("fights the unlocked boss, scaled to the pet's level", () => {
+    const b = art.createBattle(pet({ petLevel: 12 }), art.makeRng(1), "syntax_wraith");
+    assert.equal(b.bossId, "syntax_wraith");
+    assert.equal(b.bossMaxHp, art.bossMaxHp(art.BOSSES[0], 12));
+    assert.equal(art.createBattle(pet({ petLevel: 12 }), art.makeRng(1)).bossId, "stackoverflow_behemoth");
+    assert.ok(art.MOVES[b.intent], "a battle starts with a shown move");
+  });
+
+  it("Attack damages the boss and a Strike hits back", () => {
+    const b0 = battle("strike");
     const b1 = art.battleTurn(b0, "attack", art.makeRng(1));
     assert.ok(b1.bossHp < b0.bossHp);
     assert.ok(b1.petHp < b0.petHp);
+    assert.equal(b1.lastBoss.move, "strike");
     assert.equal(b1.turn, 1);
     assert.equal(b0.turn, 0, "the old battle object is not changed");
+    assert.ok(art.MOVES[b1.intent], "the boss shows its next move");
   });
 
-  it("Defend blocks part of the boss's hit", () => {
-    const b = art.battleTurn(art.createBattle(pet()), "defend", art.makeRng(3));
+  it("Defend blocks part of a Strike and builds Focus", () => {
+    const b = art.battleTurn(battle("strike"), "defend", art.makeRng(3));
     assert.ok(b.lastBoss.blocked > 0);
     assert.equal(b.bossHp, b.bossMaxHp);
+    assert.equal(b.focus, true);
+  });
+
+  it("a Focus attack does double damage and breaks the Shield", () => {
+    const plain = art.battleTurn(battle("strike"), "attack", art.makeRng(9));
+    const focused = art.battleTurn(battle("strike", { focus: true, shield: true }), "attack", art.makeRng(9));
+    assert.equal(focused.lastPet.damage, plain.lastPet.damage * 2);
+    assert.equal(focused.shield, false);
+    assert.equal(focused.focus, false);
+    assert.ok(focused.lastPet.brokeShield);
+  });
+
+  it("a Shield halves normal attacks; Debug strips it", () => {
+    const raised = art.battleTurn(battle("shield"), "defend", art.makeRng(2));
+    assert.equal(raised.shield, true);
+    assert.equal(raised.focus, false, "nothing to block, so no Focus");
+    const plain = art.battleTurn(battle("strike"), "attack", art.makeRng(9));
+    const shielded = art.battleTurn(battle("strike", { shield: true }), "attack", art.makeRng(9));
+    assert.equal(shielded.lastPet.damage, Math.round(plain.lastPet.damage / 2));
+    const stripped = art.battleTurn(battle("strike", { shield: true }), "debug", art.makeRng(4));
+    assert.equal(stripped.shield, false);
+  });
+
+  it("Defend blocks most of a Charge; ignoring it hurts", () => {
+    const guarded = art.battleTurn(battle("charge"), "defend", art.makeRng(5));
+    const hit = art.battleTurn(battle("charge"), "attack", art.makeRng(5));
+    assert.ok(guarded.lastBoss.blocked > guarded.lastBoss.damage);
+    assert.ok(hit.lastBoss.damage > 2 * guarded.lastBoss.damage);
+  });
+
+  it("Corrupt plants a bug that drains HP for a few turns; Debug clears it", () => {
+    let b = art.battleTurn(battle("corrupt"), "attack", art.makeRng(6));
+    assert.equal(b.corrupt, art.CORRUPT_TURNS);
+    assert.equal(b.lastBug, 0, "no drain on the turn it lands");
+    b = art.battleTurn({ ...b, intent: "shield" }, "defend", art.makeRng(7));
+    assert.ok(b.lastBug > 0);
+    assert.equal(b.corrupt, art.CORRUPT_TURNS - 1);
+    const cleaned = art.battleTurn({ ...b, intent: "shield" }, "debug", art.makeRng(8));
+    assert.equal(cleaned.corrupt, 0);
+    assert.equal(cleaned.lastBug, 0);
+    assert.ok(cleaned.lastPet.cleansed);
+  });
+
+  it("the bug wears off", () => {
+    let b = battle("shield", { corrupt: 1 });
+    b = art.battleTurn(b, "defend", art.makeRng(1));
+    assert.equal(b.corrupt, 0);
   });
 
   it("Debug heals and then cools down", () => {
-    const hurt = { ...art.createBattle(pet()), petHp: 5 };
+    const hurt = battle("shield", { petHp: 5 });
     const b = art.battleTurn(hurt, "debug", art.makeRng(4));
     assert.equal(b.lastPet.action, "debug");
     assert.ok(b.lastPet.heal > 0);
@@ -149,7 +211,7 @@ describe("battle turns (bossArt.js)", () => {
   });
 
   it("the boss does not strike once it is defeated", () => {
-    const nearlyDead = { ...art.createBattle(pet()), bossHp: 1 };
+    const nearlyDead = battle("charge", { bossHp: 1 });
     const b = art.battleTurn(nearlyDead, "attack", art.makeRng(6));
     assert.equal(b.result, "win");
     assert.equal(b.lastBoss, null);
@@ -157,8 +219,13 @@ describe("battle turns (bossArt.js)", () => {
   });
 
   it("finished battles ignore further turns", () => {
-    const done = { ...art.createBattle(pet()), result: "lose" };
+    const done = { ...battle("strike"), result: "lose" };
     assert.equal(art.battleTurn(done, "attack", art.makeRng(7)), done);
+  });
+
+  it("a shielded boss never shields again", () => {
+    const rng = art.makeRng(3);
+    for (let i = 0; i < 200; i++) { assert.notEqual(art.pickIntent(art.BOSSES[2], true, rng), "shield"); }
   });
 
   it("every battle ends within the turn limit", () => {
@@ -169,45 +236,43 @@ describe("battle turns (bossArt.js)", () => {
     }
   });
 
-  it("is winnable but not a sure thing for an average level-1 pet", () => {
-    let wins = 0, turns = 0;
-    const smart = (b: any) => (b.petHp < b.pet.maxHp * 0.35 && art.canDebug(b) ? "debug" : "attack");
-    for (let seed = 0; seed < 200; seed++) {
-      const b = playOut(pet(), seed, smart);
-      if (b.result === "win") { wins++; }
-      turns += b.turn;
+  /** Reads the boss's shown move. */
+  const smart = (b: any) => {
+    if (b.intent === "charge") { return "defend"; }
+    if ((b.corrupt > 0 || b.shield) && art.canDebug(b) && !b.focus) { return "debug"; }
+    if (b.petHp < b.pet.maxHp * 0.35 && art.canDebug(b)) { return "debug"; }
+    if (b.focus) { return "attack"; }
+    if (b.intent === "strike" || b.intent === "corrupt") { return "defend"; }
+    return "attack";
+  };
+  const winsAt = (level: number, pick: (b: any) => string, p: Record<string, unknown> = {}) => {
+    let w = 0;
+    for (let seed = 0; seed < 300; seed++) { if (playOut(pet({ petLevel: level, ...p }), seed, pick).result === "win") { w++; } }
+    return w / 300;
+  };
+
+  it("reading the boss's moves beats spamming Attack at every milestone", () => {
+    for (const level of [3, 5, 10, 15, 25]) {
+      const spam = winsAt(level, () => "attack");
+      const read = winsAt(level, smart);
+      assert.ok(spam <= 0.3, `level ${level}: attack-only won ${spam}`);
+      assert.ok(read >= 0.65 && read <= 0.95, `level ${level}: smart play won ${read}`);
+      assert.ok(read - spam >= 0.45, `level ${level}: gap ${read - spam}`);
     }
-    assert.ok(wins > 100 && wins < 200, `won ${wins}/200`);
-    const avg = turns / 200;
-    assert.ok(avg >= 3 && avg <= 7, `average ${avg} turns`);
   });
 
   it("a well cared-for pet wins more often than a neglected one", () => {
-    const smart = (b: any) => (b.petHp < b.pet.maxHp * 0.35 && art.canDebug(b) ? "debug" : "attack");
-    const winsFor = (p: Record<string, unknown>) => {
-      let w = 0;
-      for (let seed = 0; seed < 200; seed++) { if (playOut(p, seed, smart).result === "win") { w++; } }
-      return w;
-    };
-    const cared = winsFor(pet({ health: 100, energy: 100, discipline: 100, happiness: 100 }));
-    const neglected = winsFor(pet({ health: 10, energy: 30, discipline: 10, happiness: 10 }));
+    const cared = winsAt(5, smart, { health: 100, energy: 100, discipline: 100, happiness: 100 });
+    const neglected = winsAt(5, smart, { health: 10, energy: 30, discipline: 10, happiness: 10 });
     assert.ok(cared > neglected, `cared ${cared} vs neglected ${neglected}`);
   });
 
-  it("higher tiers stay winnable for pets at that level", () => {
-    const smart = (b: any) => (b.petHp < b.pet.maxHp * 0.35 && art.canDebug(b) ? "debug" : "attack");
-    for (const level of [5, 10, 20]) {
-      let wins = 0;
-      for (let seed = 0; seed < 200; seed++) { if (playOut(pet({ petLevel: level }), seed, smart).result === "win") { wins++; } }
-      assert.ok(wins > 60 && wins < 200, `level ${level}: won ${wins}/200`);
-    }
-  });
-
-  it("describes each turn in plain text", () => {
-    const b = art.battleTurn(art.createBattle(pet()), "attack", art.makeRng(8));
+  it("describes each turn and the next move in plain text", () => {
+    const b = art.battleTurn(battle("strike"), "attack", art.makeRng(8));
     const text = art.describeTurn(b, "Pixel");
     assert.match(text, /^Pixel hits for \d+/);
     assert.match(text, /Syntax Wraith strikes for \d+/);
+    assert.match(art.describeIntent(battle("charge")), /^Next: Charge - .*Defend/);
   });
 });
 
@@ -219,6 +284,15 @@ describe("boss drawing (bossArt.js)", () => {
     assert.ok(calls.fillRect > 50);
     assert.ok(styles.includes(art.BOSSES[0].colours[1]));
     assert.ok(styles.every((s) => !s.includes("var(")));
+  });
+
+  it("draws the shield ring, the next-move icon and the bug / focus markers", () => {
+    const base = art.createBattle(pet(), art.makeRng(1), "syntax_wraith");
+    const { ctx, styles } = mockCtx();
+    art.drawBattleScene(ctx, 200, 240, { ...base, intent: "charge", shield: true, corrupt: 2, focus: true }, {});
+    assert.ok(styles.includes(art.INTENT_ICONS.charge.colour));
+    assert.ok(styles.includes(art.INTENT_ICONS.shield.colour));
+    assert.ok(styles.includes(art.INTENT_ICONS.corrupt.colour));
   });
 
   it("paints the boss white when it is hit", () => {
@@ -244,7 +318,7 @@ describe("boss drawing (bossArt.js)", () => {
 
 describe("Boss Battle wiring", () => {
   it("sidebar.html has the picker button, panel and script after minigameArt", () => {
-    for (const id of ["btn-mg-boss", "mg-boss", "boss-title", "boss-hp", "boss-log", "btn-boss-attack", "btn-boss-defend", "btn-boss-debug"]) {
+    for (const id of ["btn-mg-boss", "mg-boss", "boss-title", "boss-hp", "boss-intent", "boss-log", "btn-boss-attack", "btn-boss-defend", "btn-boss-debug"]) {
       assert.ok(html.includes(`id="${id}"`), `sidebar.html lacks #${id}`);
     }
     const mg = html.indexOf("{{minigameArtUri}}"), boss = html.indexOf("{{bossArtUri}}"), js = html.indexOf("{{jsUri}}");
@@ -259,6 +333,16 @@ describe("Boss Battle wiring", () => {
     assert.ok(end && end[1].includes("mgClear()"));
     assert.match(sidebarSource, /function mgClear\(\) \{[\s\S]*?clearTimeout\(bossTimer\)/);
     assert.match(sidebarSource, /function playBossSteps[\s\S]*?if \(REDUCED_MOTION/);
+  });
+
+  it("only starts a battle against an unlocked boss and locks the button otherwise", () => {
+    assert.ok(sidebarSource.includes("bossArt.createBattle(lastState, bossRng, pending[0])"));
+    assert.match(sidebarSource, /function startBossBattle\(\) \{[\s\S]*?if \(pending\.length === 0\) \{ return; \}/);
+    assert.match(sidebarSource, /function updateBossButton[\s\S]*?btn\.disabled = pending === 0/);
+    // The webview's milestone rule must match isBossMilestone() in gameEngine.ts
+    const core = fs.readFileSync(path.join(repo, "packages/core/src/gameEngine.ts"), "utf8");
+    const rule = "level === 3 || level === 5 || (level >= 10 && level % 5 === 0)";
+    assert.ok(core.includes(rule) && sidebarSource.includes(rule));
   });
 
   it("both hosts load bossArt.js", () => {
