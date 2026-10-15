@@ -126,7 +126,7 @@ Once installed and the IDE has restarted:
 | ------ | ------------ |
 | **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect. Not available while your pet is sick. |
 | **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick. Not available while your pet is sick. |
-| **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted or sick. Also contains **Today's Token Cost** — see below. |
+| **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, Coin Flip or Boss Battle. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted or sick. Also contains **Today's Token Cost** — see below. |
 | **Pat** | Gives your pet a gentle pat. A hand pats its head, hearts float up and each pet reacts in its own way. Boosts happiness. Costs energy. Accessed via the Play menu (same overlay as the mini-games). Cannot be used while your pet is sleeping or exhausted. |
 | **Sleep** | Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. During a break nap the button shows the minutes left and your pet wakes on its own. |
 | **Clean** | Clears all droppings from the screen. Leaving too many uncleaned for too long will make your pet sick. |
@@ -236,7 +236,7 @@ Click the level line to open the achievements panel. Achievements are split
 into two paths, **🧑‍💻 Coder** and **🐾 Keeper**, with trainer-level milestones
 shared by both. Each one shows a progress bar and a "How:" line explaining what
 counts towards it. A few (Detective, First
-Blood, Exterminator, Champion) are greyed out as *Coming soon*.
+Blood, Exterminator) are greyed out as *Coming soon*.
 
 ### Daily challenges
 
@@ -255,6 +255,7 @@ available:
 | **Left / Right** | The pet hides behind one of two doors. Pick the correct door each round to win. |
 | **Higher or Lower** | A number is shown. Guess whether the next number will be higher or lower. Get enough correct to win. |
 | **Coin Flip** | Call Heads or Tails, then watch the coin spin. A single flip decides the outcome. |
+| **Boss Battle** | A turn-based fight against a coding boss: Syntax Wraith, then NullPointer Demon from pet level 5, then StackOverflow Behemoth from level 10. Each turn pick **Attack**, **Defend** (blocks about half the next hit) or **Debug** (heals, then rests for 2 turns). Beat the boss within 10 turns to win. Your pet's level sets its strength; health, energy, discipline and happiness each add or remove up to 20% of its HP, attack, block or healing. A win gives 40 XP (capped at 40 an hour and 80 a day), counts as a mini-game win and unlocks **Champion**. |
 
 ## Pet Types
 

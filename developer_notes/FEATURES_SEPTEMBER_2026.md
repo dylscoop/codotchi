@@ -657,11 +657,13 @@ the mini-game picker and isn't tied to the code.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Add to the mini-game picker | `[ ]` | `sidebar.js` mini-games and buttons in `sidebar.html` |
-| Turn-based fight | `[ ]` | Pet vs a coding-themed boss. Actions: Attack, Defend, Debug (heal). About 3–6 turns, random damage |
-| Rewards | `[ ]` | Result goes through `applyMinigameResult` / `happinessDeltaForMinigame`; a win also gives XP (§2.10) |
-| Energy cost | `[ ]` | Same check as the other mini-games; also answers the `play` call (§2.6) |
-| Art | `[ ]` | Reuse the §2.8 boss sprites in `bossArt.js`, plus HP bars and hit flashes in `minigameArt.js` style |
+| Add to the mini-game picker | `[x]` | v2.30.0: "Boss Battle" button in `sidebar.html`, wired in `sidebar.js` |
+| Turn-based fight | `[x]` | v2.30.0: Attack / Defend (blocks ~50%) / Debug (heals 30% max HP, 2-turn cooldown), 15% crits, at most 10 turns (about 4–6 in practice). Rules in `bossArt.js`, seeded RNG for tests |
+| Boss by level | `[x]` | Syntax Wraith (1+), NullPointer Demon (5+), StackOverflow Behemoth (10+); bosses gain HP and attack per pet level |
+| Pet stats scale the fight | `[x]` | Level sets the base; health → HP, energy → attack, discipline → Defend, happiness → Debug, each ×0.8–×1.2 |
+| Rewards | `[x]` | `applyMinigameResult(…, "boss_battle", …)`: happiness +10 win / −5 lose on top of play(); a win awards `boss_battle` XP (40, capped 40/h and 80/day), counts as a mini-game win and unlocks Champion |
+| Energy cost | `[x]` | Same `play()` check as the other mini-games; answers the `play` call |
+| Art | `[~]` | Placeholder 16×16 pixel sprites, HP bars and hit flash in `bossArt.js`; imported art to follow, shared with §2.8 |
 | Terminal variant | `[ ]` | Maybe later: `/codotchi battle` |
 
 **Design notes:**

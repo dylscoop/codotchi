@@ -1,6 +1,40 @@
 # Version History
 
-## v2.29.0 - current
+## v2.30.0 - current
+
+### Changes from v2.29.0 (Boss Battle mini-game - branch feat/boss-battle)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies, `claude-codotchi/dist`) | `happinessDeltaForMinigame("boss_battle")` (+10 win / −5 lose); `applyMinigameResult` awards `"boss_battle"` XP on a Boss Battle win; `boss_battle` counts `bossBattleWins` and `minigameWins` and is capped (40/h, 80/day); `champion` no longer `comingSoon` |
+| `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `Constants.kt`, `Progression.kt` | Kotlin mirror of the above |
+| `vscode/media/bossArt.js` | new: Boss Battle rules (`createBattle`, `battleTurn`, `petBattleStats`, `bossForLevel`, seeded `makeRng`) and placeholder art for the three bosses, HP bars and hit flash |
+| `vscode/media/sidebar.html`, `sidebar.js` | Boss Battle picker button and panel (Attack / Defend / Debug, HP line, battle log); sends `play` with `game: "boss_battle"`; log lines; Champion hint |
+| `vscode/src/sidebarProvider.ts`, `pycharm/build.gradle.kts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt` | load / copy / inline `bossArt.js` |
+| `vscode/tests/unit/bossArt.test.ts` (new), `gameEngine.test.ts`, `progression.test.ts`, `pycharm/src/test/kotlin/com/codotchi/*Test.kt`, `opencode-codotchi/tests/unit/asciiArt.test.ts`, `claude-desktop-codotchi/tests/tools.test.mjs` | battle rules and balance, rewards, caps, Champion unlock, wiring; unlockable achievement count 16 → 17 |
+| `vscode/README.md`, `pycharm/README.md`, `vscode/CHANGELOG.md`, `developer_notes/FEATURES_SEPTEMBER_2026.md` | Boss Battle docs |
+| all manifests, `README.md` | version 2.30.0 |
+
+Updated constants:
+
+```text
+MINIGAME_BOSS_BATTLE_WIN: number = 10    // totals with play(): win +25
+MINIGAME_BOSS_BATTLE_LOSE: number = -5   // totals with play(): lose +10
+XP_HOURLY_CAPS = { code: 10, commit: 30, minigame: 20, boss_battle: 40 }
+XP_DAILY_CAPS  = { code: 40, commit: 90, call: 100, minigame: 50, boss_battle: 80 }
+XP_COUNTERS.boss_battle = ["bossBattleWins", "minigameWins"]
+// bossArt.js
+Pet: HP 30 + 2/level (× health mod), attack 6–10 + 0.5/level (× energy mod), crit 15% ×1.5,
+     Defend blocks 50% (× discipline mod), Debug heals 30% max HP (× happiness mod), cooldown 2
+Care mod: 0.8 + 0.4 × stat/100
+Bosses (min level, HP, attack): Syntax Wraith (1, 36, 5–9), NullPointer Demon (5, 36, 5–10),
+     StackOverflow Behemoth (10, 38, 5–10); +2.5 HP and +0.4 attack per pet level above 1
+MAX_TURNS = 10
+```
+
+---
+
+## v2.29.0
 
 ### Changes from v2.28.0 (XP, levels, achievements and daily challenges - branch feat/xp-levels-bosses)
 

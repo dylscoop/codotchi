@@ -123,8 +123,8 @@ Notes:
 
 ## 4. Minigames
 
-Three interactive minigames are implemented: **Left / Right**, **Higher or
-Lower**, and **Coin Flip**. All are launched via a game-select overlay that appears when the
+Four interactive minigames are implemented: **Left / Right**, **Higher or
+Lower**, **Coin Flip** and **Boss Battle**. All are launched via a game-select overlay that appears when the
 player presses the Play button. The **Pat** action is also accessible from this
 same overlay. A non-game **Today's Token Cost** option is also available in the overlay —
 it closes the overlay and fires a speech bubble above the pet showing today's cost, last-1h
@@ -259,6 +259,30 @@ Status: `[ ]`
 
 Status: `[x]`
 
+### 4.7 Boss Battle
+
+*A short turn-based fight against a coding boss (v2.30.0).*
+
+- Rules and art live in `vscode/media/bossArt.js` (`window.bossArt`), loaded after
+  `minigameArt.js`; PyCharm copies and inlines it like the other webview scripts.
+- The boss depends on the pet's level (`bossForLevel`): **Syntax Wraith** (1+),
+  **NullPointer Demon** (5+), **StackOverflow Behemoth** (10+). Bosses gain 2.5 HP
+  and 0.4 attack per pet level.
+- Pet stats (`petBattleStats`): level sets base HP (30 + 2/level) and attack
+  (6–10 + 0.5/level). Health scales HP, energy attack, discipline Defend and
+  happiness Debug, each ×0.8–×1.2 (`careMod`).
+- Each turn: **Attack** (15% crit ×1.5), **Defend** (blocks ~50% of the next hit)
+  or **Debug** (heals 30% of max HP, then a 2-turn cooldown). The boss strikes
+  back unless it was defeated. The boss wins after 10 turns.
+- Placeholder 16×16 sprites with a 1-pixel bob, a white hit flash and pixel HP
+  bars on `#mg-canvas`; reduced motion skips the flashes. Imported art will
+  replace the sprites later.
+- Sends `{ command: "play", game: "boss_battle", result: "win"|"lose" }`.
+  **Win**: +10 (net +25), `boss_battle` XP (40, capped 40/h and 80/day),
+  `bossBattleWins` and `minigameWins` +1, unlocks Champion. **Lose**: −5 (net +10).
+
+Status: `[x]`
+
 ### Minigame Architecture Notes
 
 - All game logic (timers, scoring, animations) runs entirely in `sidebar.js`.
@@ -288,6 +312,8 @@ that fires when Play is pressed. Net totals reflect delta + baseline.
 | Blackjack (Stu) | Win | +10 | +25 | `MINIGAME_BLACKJACK_WIN = 10` |
 | Blackjack (Stu) | Push | 0 | +15 | `MINIGAME_BLACKJACK_PUSH = 0` |
 | Blackjack (Stu) | Lose | −10 | +5 | `MINIGAME_BLACKJACK_LOSE = -10` |
+| Boss Battle | Win | +10 | +25 | `MINIGAME_BOSS_BATTLE_WIN = 10` |
+| Boss Battle | Lose | −5 | +10 | `MINIGAME_BOSS_BATTLE_LOSE = -5` |
 | Pat | — | +10 (flat total) | +10 | `PAT_HAPPINESS_BOOST = 10` (no play baseline) |
 
 ---

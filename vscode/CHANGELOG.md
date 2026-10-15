@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.30.0] — 2026-10-15
+
+### Added
+
+- **Boss Battle mini-game** - a new choice under Play. Fight a coding boss turn by turn with **Attack**, **Defend** or **Debug** (heal). The boss depends on your pet's level: Syntax Wraith, then NullPointer Demon from level 5, then StackOverflow Behemoth from level 10. Your pet's level sets its strength, and a well cared-for pet (health, energy, discipline, happiness) hits harder, blocks more and heals more. A fight takes at most 10 turns.
+- A Boss Battle win gives 40 XP (capped at 40 an hour and 80 a day), counts as a mini-game win and unlocks the **Champion** achievement, which is no longer *Coming soon*.
+
 ## [2.29.0] — 2026-10-14
 
 ### Added
