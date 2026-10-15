@@ -90,7 +90,7 @@ pre-built releases, and the OpenCode integration download.</p>
   <tr><th>Action</th><th>What it does</th></tr>
   <tr><td><b>Feed</b></td><td>Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect. Not available while your pet is sick.</td></tr>
   <tr><td><b>Snack</b></td><td>Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick. Not available while your pet is sick.</td></tr>
-  <tr><td><b>Play</b></td><td>Opens the mini-game picker. Choose Left / Right, Higher or Lower, or Coin Flip. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted or sick.</td></tr>
+  <tr><td><b>Play</b></td><td>Opens the mini-game picker. Choose Left / Right, Higher or Lower, Coin Flip or Boss Battle. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted or sick.</td></tr>
   <tr><td><b>Pat</b></td><td>Gives your pet a gentle pat. A hand pats its head, hearts float up and each pet reacts in its own way. Boosts happiness. Costs energy. Accessed via the Play menu. Cannot be used while your pet is sleeping or exhausted.</td></tr>
   <tr><td><b>Sleep</b></td><td>Puts your pet to sleep. Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. During a break nap the button shows the minutes left and your pet wakes on its own.</td></tr>
   <tr><td><b>Clean</b></td><td>Clears all droppings from the screen. Leaving too many uncleaned for too long will make your pet sick.</td></tr>
@@ -159,6 +159,7 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
   <tr><td><b>Left / Right</b></td><td>The pet hides behind one of two doors. Pick the correct door each round to win.</td></tr>
   <tr><td><b>Higher or Lower</b></td><td>A number is shown. Guess whether the next number will be higher or lower. Get enough correct to win.</td></tr>
   <tr><td><b>Coin Flip</b></td><td>Call Heads or Tails, then watch the coin spin. A single flip decides the outcome.</td></tr>
+  <tr><td><b>Boss Battle</b></td><td>A turn-based fight against a coding boss: Syntax Wraith, then NullPointer Demon from pet level 5, then StackOverflow Behemoth from level 10. Each turn pick <b>Attack</b>, <b>Defend</b> (blocks about half the next hit) or <b>Debug</b> (heals, then rests for 2 turns). Beat the boss within 10 turns to win. Your pet's level sets its strength; health, energy, discipline and happiness each add or remove up to 20% of its HP, attack, block or healing. A win gives 40 XP (capped at 40 an hour and 80 a day), counts as a mini-game win and unlocks <b>Champion</b>.</td></tr>
 </table>
 
 <h2>Pet Types</h2>
