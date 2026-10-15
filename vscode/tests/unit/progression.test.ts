@@ -79,8 +79,8 @@ describe("XP amounts and caps", () => {
   });
 
   it("has the agreed hourly and daily caps", () => {
-    assert.deepEqual(XP_HOURLY_CAPS, { code: 10, commit: 30, minigame: 20 });
-    assert.deepEqual(XP_DAILY_CAPS, { code: 40, commit: 90, call: 100, minigame: 50 });
+    assert.deepEqual(XP_HOURLY_CAPS, { code: 10, commit: 30, minigame: 20, boss_battle: 40 });
+    assert.deepEqual(XP_DAILY_CAPS, { code: 40, commit: 90, call: 100, minigame: 50, boss_battle: 80 });
   });
 });
 
@@ -206,6 +206,26 @@ describe("XP from actions", () => {
     assert.equal(applyMinigameResult(makePet(), "left_right", "lose").petXp, 0);
   });
 
+  it("a Boss Battle win earns boss_battle XP, counts as a mini-game win and unlocks Champion", () => {
+    const won = applyMinigameResult(makePet(), "boss_battle", "win");
+    assert.equal(won.trainer.counters.bossBattleWins, 1);
+    assert.equal(won.trainer.counters.minigameWins, 1);
+    assert.ok(won.trainer.achievements.includes("champion"));
+    assert.ok(won.events.includes("achievement_unlocked_champion"));
+    const lost = applyMinigameResult(makePet(), "boss_battle", "lose");
+    assert.equal(lost.petXp, 0);
+    assert.equal(lost.trainer.counters.bossBattleWins, undefined);
+  });
+
+  it("boss_battle XP is capped per hour and per day", () => {
+    let s = makePet();
+    for (let i = 0; i < 3; i++) { s = awardXp(s, "boss_battle", NOON); }
+    assert.equal(s.trainer.xpThisHour.boss_battle, XP_HOURLY_CAPS.boss_battle);
+    assert.equal(s.trainer.counters.bossBattleWins, 3);
+    for (let h = 1; h <= 4; h++) { s = awardXp(s, "boss_battle", NOON + h * 3_600_000); }
+    assert.equal(s.trainer.xpToday.boss_battle, XP_DAILY_CAPS.boss_battle);
+  });
+
   it("praise without a call to answer earns nothing", () => {
     assert.equal(praise(makePet()).petXp, 0);
     assert.equal(praise(makePet({ activeAttentionCall: "gift" })).petXp, XP_AMOUNTS.call);
@@ -276,7 +296,7 @@ describe("ACHIEVEMENTS", () => {
     assert.ok(ids("keeper").includes("on_call"));
     assert.deepEqual(ids("trainer"), ["level_5", "level_10", "level_25"]);
     assert.deepEqual(ACHIEVEMENTS.filter((a) => a.comingSoon).map((a) => a.id),
-      ["detective", "first_blood", "exterminator", "champion"]);
+      ["detective", "first_blood", "exterminator"]);
   });
 
   it("never unlocks coming-soon achievements", () => {

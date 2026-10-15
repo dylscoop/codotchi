@@ -667,7 +667,8 @@ export declare function applyTokenCostView(state: PetState): PetState;
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
  *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
- *               "coin_flip" (Coin Flip), or "blackjack" (Stu's one-round Blackjack).
+ *               "coin_flip" (Coin Flip), "blackjack" (Stu's one-round Blackjack) or
+ *               "boss_battle" (turn-based Boss Battle).
  * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
@@ -680,9 +681,10 @@ export declare function happinessDeltaForMinigame(game: string, result: string):
  *   - coin_flip and blackjack: no extra weight loss (total −3 from play() only)
  *
  * @param state - The current pet state.
- * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "guess", or "memory".
+ * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "boss_battle", "guess", or "memory".
  * @param result - "win" or "lose" ("push" too for blackjack).
- * @returns A new PetState after the happiness delta is applied.
+ * @returns A new PetState after the happiness delta is applied. A win awards
+ *          "minigame" XP, or "boss_battle" XP for the Boss Battle.
  */
 export declare function applyMinigameResult(state: PetState, game: string, result: string): PetState;
 /**

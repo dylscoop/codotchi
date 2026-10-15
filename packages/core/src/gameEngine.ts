@@ -209,6 +209,9 @@ const MINIGAME_COIN_FLIP_LOSE: number = -10;
 const MINIGAME_BLACKJACK_WIN: number = 10;
 const MINIGAME_BLACKJACK_PUSH: number = 0;
 const MINIGAME_BLACKJACK_LOSE: number = -10;
+// Boss Battle: play baseline +15; delta win +10, lose −5 → totals: win 25, lose 10
+const MINIGAME_BOSS_BATTLE_WIN: number = 10;
+const MINIGAME_BOSS_BATTLE_LOSE: number = -5;
 
 const CARE_SCORE_HUNGER_WEIGHT: number = 0.30;
 const CARE_SCORE_HAPPINESS_WEIGHT: number = 0.25;
@@ -2219,7 +2222,8 @@ export function applyTokenCostView(state: PetState): PetState {
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
  *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
- *               "coin_flip" (Coin Flip), or "blackjack" (Stu's one-round Blackjack).
+ *               "coin_flip" (Coin Flip), "blackjack" (Stu's one-round Blackjack) or
+ *               "boss_battle" (turn-based Boss Battle).
  * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
@@ -2244,6 +2248,9 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
     if (result === "push") { return MINIGAME_BLACKJACK_PUSH; }  // 0
     return MINIGAME_BLACKJACK_LOSE;                             // −10
   }
+  if (game === "boss_battle") {
+    return result === "win" ? MINIGAME_BOSS_BATTLE_WIN : MINIGAME_BOSS_BATTLE_LOSE; // +10 win, −5 lose
+  }
   if (game === "memory" && result === "win") {
     return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST;
   }
@@ -2261,9 +2268,10 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
  *   - coin_flip and blackjack: no extra weight loss (total −3 from play() only)
  *
  * @param state - The current pet state.
- * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "guess", or "memory".
+ * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "boss_battle", "guess", or "memory".
  * @param result - "win" or "lose" ("push" too for blackjack).
- * @returns A new PetState after the happiness delta is applied.
+ * @returns A new PetState after the happiness delta is applied. A win awards
+ *          "minigame" XP, or "boss_battle" XP for the Boss Battle.
  */
 export function applyMinigameResult(
   state: PetState,
@@ -2290,7 +2298,8 @@ export function applyMinigameResult(
     weight: newWeight,
     events,
   });
-  return result === "win" ? awardXp(next, "minigame") : next;
+  if (result !== "win") { return next; }
+  return awardXp(next, game === "boss_battle" ? "boss_battle" : "minigame");
 }
 
 /**
@@ -2780,6 +2789,7 @@ export const XP_HOURLY_CAPS: Readonly<Partial<Record<XpSource, number>>> = {
   code: 10,
   commit: 30,
   minigame: 20,
+  boss_battle: 40,
 };
 
 /** Daily XP caps per source (local day). Sources not listed are uncapped. */
@@ -2788,6 +2798,7 @@ export const XP_DAILY_CAPS: Readonly<Partial<Record<XpSource, number>>> = {
   commit: 90,
   call: 100,
   minigame: 50,
+  boss_battle: 80,
 };
 
 /** Commits made from midnight up to this hour (local time) count as late-night commits. */
@@ -2805,7 +2816,7 @@ const XP_COUNTERS: Readonly<Record<XpSource, readonly string[]>> = {
   evolve: ["evolutions"],
   debug: ["debugSessions"],
   boss_kill: ["bossKills"],
-  boss_battle: ["bossBattleWins"],
+  boss_battle: ["bossBattleWins", "minigameWins"],
 };
 
 /** Which tab an achievement sits under: the two paths, or shared trainer milestones. */
@@ -2842,7 +2853,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: "gamer",        name: "Gamer",         description: "Win 10 mini-games",                        emoji: "🎮", counter: "minigameWins",   threshold: 10,   path: "keeper" },
   { id: "growing_up",   name: "Growing Up",    description: "See your pets evolve 3 times",             emoji: "🌱", counter: "evolutions",     threshold: 3,    path: "keeper" },
   { id: "survivor",     name: "Survivor",      description: "Raise a pet to senior",                    emoji: "🧓", counter: "seniors",        threshold: 1,    path: "keeper" },
-  { id: "champion",     name: "Champion",      description: "Win a Boss Battle",                        emoji: "🥊", counter: "bossBattleWins", threshold: 1,    path: "keeper", comingSoon: true },
+  { id: "champion",     name: "Champion",      description: "Win a Boss Battle",                        emoji: "🥊", counter: "bossBattleWins", threshold: 1,    path: "keeper" },
   { id: "level_5",      name: "Rising Star",   description: "Reach trainer level 5",                    emoji: "⭐", counter: "level",          threshold: 5,    path: "trainer" },
   { id: "level_10",     name: "Veteran",       description: "Reach trainer level 10",                   emoji: "🌟", counter: "level",          threshold: 10,   path: "trainer" },
   { id: "level_25",     name: "Legend",        description: "Reach trainer level 25",                   emoji: "🏆", counter: "level",          threshold: 25,   path: "trainer" },

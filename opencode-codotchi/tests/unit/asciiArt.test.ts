@@ -269,7 +269,7 @@ describe("buildStatusBlock", () => {
     }));
     assert.ok(result.includes("Level   : Pet 3 · Trainer 2"));
     assert.ok(result.includes("100/141"));
-    assert.ok(result.includes("Achievements  2/16"));
+    assert.ok(result.includes("Achievements  2/17"));
     assert.ok(result.includes("📌 First Commit, 👋 Hello World"));
   });
 

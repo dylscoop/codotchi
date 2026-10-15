@@ -192,6 +192,9 @@ const val MINIGAME_COIN_FLIP_LOSE: Int = -10
 const val MINIGAME_BLACKJACK_WIN: Int = 10
 const val MINIGAME_BLACKJACK_PUSH: Int = 0
 const val MINIGAME_BLACKJACK_LOSE: Int = -10
+/** Boss Battle: play baseline +15; delta win +10, lose −5 → totals: win 25, lose 10. */
+const val MINIGAME_BOSS_BATTLE_WIN: Int = 10
+const val MINIGAME_BOSS_BATTLE_LOSE: Int = -5
 
 const val CARE_SCORE_HUNGER_WEIGHT: Double = 0.30
 const val CARE_SCORE_HAPPINESS_WEIGHT: Double = 0.25

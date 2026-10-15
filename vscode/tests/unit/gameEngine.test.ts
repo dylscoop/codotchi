@@ -1911,6 +1911,11 @@ describe("happinessDeltaForMinigame", () => {
     assert.equal(happinessDeltaForMinigame("blackjack", "push"), 0);
     assert.equal(happinessDeltaForMinigame("blackjack", "lose"), -10);
   });
+
+  it("boss_battle win → +10, lose → −5", () => {
+    assert.equal(happinessDeltaForMinigame("boss_battle", "win"), 10);
+    assert.equal(happinessDeltaForMinigame("boss_battle", "lose"), -5);
+  });
 });
 
 // ---------------------------------------------------------------------------

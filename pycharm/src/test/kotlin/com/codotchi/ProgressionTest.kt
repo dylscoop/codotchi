@@ -51,8 +51,19 @@ class ProgressionTest {
         assertEquals(2, XP_AMOUNTS["code"])
         assertEquals(15, XP_AMOUNTS["commit"])
         listOf("care", "snack", "clean", "cure").forEach { assertEquals(0, XP_AMOUNTS[it]) }
-        assertEquals(mapOf("code" to 10, "commit" to 30, "minigame" to 20), XP_HOURLY_CAPS)
-        assertEquals(mapOf("code" to 40, "commit" to 90, "call" to 100, "minigame" to 50), XP_DAILY_CAPS)
+        assertEquals(mapOf("code" to 10, "commit" to 30, "minigame" to 20, "boss_battle" to 40), XP_HOURLY_CAPS)
+        assertEquals(mapOf("code" to 40, "commit" to 90, "call" to 100, "minigame" to 50, "boss_battle" to 80), XP_DAILY_CAPS)
+    }
+
+    @Test
+    fun `a Boss Battle win counts as a mini-game win and unlocks Champion`() {
+        val won = applyMinigameResult(pet(), "boss_battle", "win")
+        assertEquals(1, won.trainer.counters["bossBattleWins"])
+        assertEquals(1, won.trainer.counters["minigameWins"])
+        assertTrue("champion" in won.trainer.achievements)
+        val lost = applyMinigameResult(pet(), "boss_battle", "lose")
+        assertEquals(0, lost.petXp)
+        assertNull(lost.trainer.counters["bossBattleWins"])
     }
 
     @Test
@@ -135,7 +146,7 @@ class ProgressionTest {
     fun `coming-soon achievements never unlock and progress is capped`() {
         val s = awardXp(pet().copy(trainer = TrainerProgress(counters = mapOf("bossKills" to 99))), "code", noon)
         assertFalse("first_blood" in s.trainer.achievements)
-        assertEquals(listOf("detective", "first_blood", "exterminator", "champion"), ACHIEVEMENTS.filter { it.comingSoon }.map { it.id })
+        assertEquals(listOf("detective", "first_blood", "exterminator"), ACHIEVEMENTS.filter { it.comingSoon }.map { it.id })
         val onCall = achievementById("on_call")!!
         assertEquals(42 to 100, achievementProgress(onCall, TrainerProgress(counters = mapOf("callsAnswered" to 42))))
         assertEquals(100 to 100, achievementProgress(onCall, TrainerProgress(counters = mapOf("callsAnswered" to 420))))

@@ -1045,6 +1045,7 @@ fun happinessDeltaForMinigame(game: String, result: String): Int {
         "push" -> MINIGAME_BLACKJACK_PUSH  // 0
         else   -> MINIGAME_BLACKJACK_LOSE  // −10
     }
+    if (game == "boss_battle") return if (result == "win") MINIGAME_BOSS_BATTLE_WIN else MINIGAME_BOSS_BATTLE_LOSE // +10 win, −5 lose
     if (game == "memory" && result == "win") return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST
     if (result == "win") return MINIGAME_WIN_HAPPINESS_BOOST
     return MINIGAME_LOSE_HAPPINESS_BOOST
@@ -1067,7 +1068,7 @@ fun applyMinigameResult(state: PetState, game: String, result: String): PetState
             weight    = newWeight,
             events    = events,
         )
-    ).let { if (result == "win") awardXp(it, "minigame") else it }
+    ).let { if (result == "win") awardXp(it, if (game == "boss_battle") "boss_battle" else "minigame") else it }
 }
 
 fun sleep(state: PetState): PetState {

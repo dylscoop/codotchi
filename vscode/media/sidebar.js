@@ -104,7 +104,7 @@
     gamer:        ["🎮", "Gamer",         "Win 10 mini-games",                      "minigameWins",   10,   "keeper"],
     growing_up:   ["🌱", "Growing Up",    "See your pets evolve 3 times",           "evolutions",     3,    "keeper"],
     survivor:     ["🧓", "Survivor",      "Raise a pet to senior",                  "seniors",        1,    "keeper"],
-    champion:     ["🥊", "Champion",      "Win a Boss Battle",                      "bossBattleWins", 1,    "keeper", true],
+    champion:     ["🥊", "Champion",      "Win a Boss Battle",                      "bossBattleWins", 1,    "keeper"],
     level_5:      ["⭐", "Rising Star",   "Reach trainer level 5",                  "level",          5,    "trainer"],
     level_10:     ["🌟", "Veteran",       "Reach trainer level 10",                 "level",          10,   "trainer"],
     level_25:     ["🏆", "Legend",        "Reach trainer level 25",                 "level",          25,   "trainer"],
@@ -128,7 +128,7 @@
     level:          "Earn XP from coding, commits, answered calls and mini-games",
     debugSessions:  "Unlocks with debug-session tracking (coming soon)",
     bossKills:      "Unlocks with Bug Bosses (coming soon)",
-    bossBattleWins: "Unlocks with Boss Battles (coming soon)",
+    bossBattleWins: "Press Play and beat the boss in a Boss Battle",
   };
 
   /** How to complete each daily challenge. Keys must match DAILY_CHALLENGES ids (progression.test.ts checks this). */
@@ -2249,6 +2249,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "minigame_blackjack_win":     n + " won at Blackjack!",
       "minigame_blackjack_lose":    n + " lost at Blackjack.",
       "minigame_blackjack_push":    n + " pushed at Blackjack.",
+      "minigame_boss_battle_win":   n + " defeated the boss!",
+      "minigame_boss_battle_lose":  n + " was beaten by the boss.",
     };
     // Custom characters ask for a run / stickers instead of a pat, and name their snack
     var _pc = _cc && _cc.patCall;
