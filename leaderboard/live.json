@@ -12,18 +12,6 @@
     "verified": true
   },
   {
-    "username": "dylscoop",
-    "petName": "Mind Goblin Jr",
-    "petRunId": "0",
-    "spawnedAt": 1791359581258,
-    "ageDays": 111,
-    "stage": "adult",
-    "petType": "codeling",
-    "updatedAt": 1792067713820,
-    "clientVersion": "2.29.0",
-    "verified": true
-  },
-  {
     "username": "dsiowlee",
     "petName": "Wee Stu",
     "petRunId": "b68ca4c6f25d5c541f9eb73d12e36859b0333c31516adffe676bd4e6e703fd1f",
@@ -45,6 +33,18 @@
     "petType": "bytebug",
     "updatedAt": 1792068614237,
     "clientVersion": "2.27.2",
+    "verified": true
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Mind Goblin Jr",
+    "petRunId": "0",
+    "spawnedAt": 1791359581258,
+    "ageDays": 111,
+    "stage": "adult",
+    "petType": "codeling",
+    "updatedAt": 1792068616968,
+    "clientVersion": "2.29.0",
     "verified": true
   }
 ]
