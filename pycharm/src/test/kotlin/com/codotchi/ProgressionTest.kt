@@ -57,13 +57,31 @@ class ProgressionTest {
 
     @Test
     fun `a Boss Battle win counts as a mini-game win and unlocks Champion`() {
-        val won = applyMinigameResult(pet(), "boss_battle", "win")
+        val won = applyMinigameResult(pet().copy(pendingBosses = listOf("syntax_wraith")), "boss_battle", "win")
         assertEquals(1, won.trainer.counters["bossBattleWins"])
         assertEquals(1, won.trainer.counters["minigameWins"])
         assertTrue("champion" in won.trainer.achievements)
-        val lost = applyMinigameResult(pet(), "boss_battle", "lose")
+        assertTrue(won.pendingBosses.isEmpty())
+        val lost = applyMinigameResult(pet().copy(pendingBosses = listOf("syntax_wraith")), "boss_battle", "lose")
         assertEquals(0, lost.petXp)
         assertNull(lost.trainer.counters["bossBattleWins"])
+        assertEquals(listOf("syntax_wraith"), lost.pendingBosses)
+        val none = applyMinigameResult(pet(), "boss_battle", "win")
+        assertTrue("boss_battle_no_boss" in none.events)
+        assertNull(none.trainer.counters["bossBattleWins"])
+    }
+
+    @Test
+    fun `boss milestones, unlocks and old saves match TypeScript`() {
+        assertEquals(listOf(3, 5, 10, 15, 20, 25, 30), (1..30).filter { isBossMilestone(it) })
+        assertEquals(listOf("syntax_wraith", "nullpointer_demon", "stackoverflow_behemoth"), bossesUnlockedBetween(2, 10))
+        val s = awardXp(pet().copy(petXp = 190, petLevel = 2), "commit", noon)
+        assertEquals(3, s.petLevel)
+        assertEquals(listOf("syntax_wraith"), s.pendingBosses)
+        assertTrue("boss_unlocked" in s.events)
+        assertEquals(emptyList<String>(), pendingBossesFromRaw(null, 2))
+        assertEquals(listOf("nullpointer_demon"), pendingBossesFromRaw(null, 7))
+        assertEquals(listOf("syntax_wraith"), pendingBossesFromRaw(listOf("syntax_wraith", "bogus", 3.0), 12))
     }
 
     @Test

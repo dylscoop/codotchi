@@ -383,6 +383,8 @@ export interface PetState {
     readonly trainer: TrainerProgress;
     /** This pet's daily challenges and streak; a new pet starts afresh. */
     readonly dailies: DailyChallenges;
+    /** Boss Battles unlocked at level milestones and not yet beaten (boss ids, oldest first). */
+    readonly pendingBosses: readonly string[];
 }
 /**
  * The player's lifetime progression. Survives pet death: hosts pass the old
@@ -844,6 +846,21 @@ export type XpSource = "code" | "commit" | "call" | "care" | "snack" | "clean" |
 export declare const XP_AMOUNTS: Readonly<Record<XpSource, number>>;
 /** Bonus XP for unlocking an achievement. */
 export declare const XP_ACHIEVEMENT_BONUS: number;
+/** Boss ids, weakest first. Their art and battle rules live in the webview's bossArt.js. */
+export declare const BOSS_IDS: readonly string[];
+/** Most unbeaten bosses a pet can hold at once. */
+export declare const BOSS_QUEUE_MAX: number;
+/** Pet levels that unlock a Boss Battle: 3, 5, 10, then every 5. */
+export declare function isBossMilestone(level: number): boolean;
+/** The boss tier for a pet level: Syntax Wraith, NullPointer Demon from 5, StackOverflow Behemoth from 10. */
+export declare function bossIdForLevel(level: number): string;
+/** Bosses unlocked by levelling from `from` up to `to` (one per milestone passed). */
+export declare function bossesUnlockedBetween(from: number, to: number): string[];
+/**
+ * Load the pending bosses. Saves from before boss unlocks get one boss of
+ * their tier if the pet is already past the first milestone.
+ */
+export declare function deserialisePendingBosses(raw: unknown, petLevel: number): string[];
 /** Hourly XP caps per source (local clock hour). Sources not listed have no hourly cap. */
 export declare const XP_HOURLY_CAPS: Readonly<Partial<Record<XpSource, number>>>;
 /** Daily XP caps per source (local day). Sources not listed are uncapped. */

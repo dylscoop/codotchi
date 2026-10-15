@@ -4,6 +4,12 @@ import * as fs from "fs";
 import * as path from "path";
 import {
   ACHIEVEMENTS,
+  BOSS_IDS,
+  BOSS_QUEUE_MAX,
+  bossIdForLevel,
+  bossesUnlockedBetween,
+  deserialisePendingBosses,
+  isBossMilestone,
   DAILY_ALL_DONE_BONUS,
   DAILY_CHALLENGES,
   DAILY_CHALLENGE_XP,
@@ -207,12 +213,12 @@ describe("XP from actions", () => {
   });
 
   it("a Boss Battle win earns boss_battle XP, counts as a mini-game win and unlocks Champion", () => {
-    const won = applyMinigameResult(makePet(), "boss_battle", "win");
+    const won = applyMinigameResult(makePet({ pendingBosses: ["syntax_wraith"] }), "boss_battle", "win");
     assert.equal(won.trainer.counters.bossBattleWins, 1);
     assert.equal(won.trainer.counters.minigameWins, 1);
     assert.ok(won.trainer.achievements.includes("champion"));
     assert.ok(won.events.includes("achievement_unlocked_champion"));
-    const lost = applyMinigameResult(makePet(), "boss_battle", "lose");
+    const lost = applyMinigameResult(makePet({ pendingBosses: ["syntax_wraith"] }), "boss_battle", "lose");
     assert.equal(lost.petXp, 0);
     assert.equal(lost.trainer.counters.bossBattleWins, undefined);
   });
@@ -229,6 +235,48 @@ describe("XP from actions", () => {
   it("praise without a call to answer earns nothing", () => {
     assert.equal(praise(makePet()).petXp, 0);
     assert.equal(praise(makePet({ activeAttentionCall: "gift" })).petXp, XP_AMOUNTS.call);
+  });
+});
+
+describe("boss unlocks", () => {
+  it("milestones are levels 3, 5, 10 and then every 5", () => {
+    const hits = Array.from({ length: 30 }, (_, i) => i + 1).filter(isBossMilestone);
+    assert.deepEqual(hits, [3, 5, 10, 15, 20, 25, 30]);
+    assert.equal(bossIdForLevel(3), "syntax_wraith");
+    assert.equal(bossIdForLevel(5), "nullpointer_demon");
+    assert.equal(bossIdForLevel(15), "stackoverflow_behemoth");
+    assert.deepEqual(bossesUnlockedBetween(2, 10), ["syntax_wraith", "nullpointer_demon", "stackoverflow_behemoth"]);
+    assert.deepEqual(bossesUnlockedBetween(5, 9), []);
+  });
+
+  it("levelling past a milestone queues a boss and emits boss_unlocked", () => {
+    const s = awardXp(makePet({ petXp: 190, petLevel: 2, pendingBosses: [] }), "commit", NOON);
+    assert.equal(s.petLevel, 3);
+    assert.deepEqual(s.pendingBosses, ["syntax_wraith"]);
+    assert.ok(s.events.includes("boss_unlocked"));
+    const again = awardXp(s, "commit", NOON);
+    assert.deepEqual(again.pendingBosses, ["syntax_wraith"], "no new boss without a new milestone");
+  });
+
+  it("the queue holds at most BOSS_QUEUE_MAX bosses", () => {
+    const s = awardXp(makePet({ petXp: 0, petLevel: 1, pendingBosses: ["syntax_wraith", "syntax_wraith"] }), "evolve", NOON);
+    const big = awardXp({ ...s, petXp: 100_000 - XP_AMOUNTS.evolve, petLevel: 1 }, "evolve", NOON);
+    assert.equal(big.pendingBosses.length, BOSS_QUEUE_MAX);
+  });
+
+  it("old saves past level 3 get one boss of their tier; new saves keep their queue", () => {
+    assert.deepEqual(deserialisePendingBosses(undefined, 2), []);
+    assert.deepEqual(deserialisePendingBosses(undefined, 7), ["nullpointer_demon"]);
+    assert.deepEqual(deserialisePendingBosses([], 12), []);
+    assert.deepEqual(deserialisePendingBosses(["syntax_wraith", "bogus", 3], 12), ["syntax_wraith"]);
+    const s = makePet({ pendingBosses: ["nullpointer_demon"] });
+    assert.deepEqual(deserialiseState(JSON.parse(JSON.stringify(serialiseState(s)))).pendingBosses, ["nullpointer_demon"]);
+  });
+
+  it("matches the Kotlin boss ids and queue size", () => {
+    const kt = fs.readFileSync(path.join(__dirname, "../../../../pycharm/src/main/kotlin/com/codotchi/engine/Progression.kt"), "utf8");
+    assert.ok(kt.includes(`val BOSS_IDS: List<String> = listOf(${BOSS_IDS.map((id) => `"${id}"`).join(", ")})`));
+    assert.ok(kt.includes(`const val BOSS_QUEUE_MAX: Int = ${BOSS_QUEUE_MAX}`));
   });
 });
 

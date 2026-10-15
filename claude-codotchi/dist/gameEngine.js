@@ -784,6 +784,7 @@ export function createPet(name, petType, unlockedCharacter = null, trainer = nul
         petLevel: 1,
         trainer: trainer ?? createTrainer(),
         dailies: createDailies(),
+        pendingBosses: [],
     };
     return withDerivedFields(partial);
 }
@@ -1822,25 +1823,33 @@ export function happinessDeltaForMinigame(game, result) {
 export function applyMinigameResult(state, game, result) {
     const delta = happinessDeltaForMinigame(game, result);
     const isVigorousGame = game === "left_right" || game === "higher_lower";
+    // Hosts call this straight after play(): carry over any attention call that
+    // play() answered, otherwise its answered event (and toast / log line) is lost.
+    const answered = state.events.filter((e) => e.startsWith("attention_call_answered_"));
+    const pending = state.pendingBosses ?? [];
+    if (game === "boss_battle" && pending.length === 0) {
+        // No boss unlocked: ignore the result so the webview can't farm boss XP.
+        return withDerivedFields({ ...state, events: [...answered, "boss_battle_no_boss"] });
+    }
     const newWeight = isVigorousGame
         ? clampWeight(state.weight - PLAY_WEIGHT_LOSS_BONUS)
         : state.weight;
-    // Hosts call this straight after play(): carry over any attention call that
-    // play() answered, otherwise its answered event (and toast / log line) is lost.
     const events = [
-        ...state.events.filter((e) => e.startsWith("attention_call_answered_")),
+        ...answered,
         `minigame_${game}_${result}`,
     ];
     if (isVigorousGame) {
         checkWeightTierEvents(state.weight, newWeight, events);
     }
+    const won = result === "win";
     const next = withDerivedFields({
         ...state,
         happiness: clampStat(state.happiness + delta),
         weight: newWeight,
         events,
+        pendingBosses: game === "boss_battle" && won ? pending.slice(1) : pending,
     });
-    if (result !== "win") {
+    if (!won) {
         return next;
     }
     return awardXp(next, game === "boss_battle" ? "boss_battle" : "minigame");
@@ -2312,6 +2321,38 @@ export const XP_AMOUNTS = {
 };
 /** Bonus XP for unlocking an achievement. */
 export const XP_ACHIEVEMENT_BONUS = 50;
+/** Boss ids, weakest first. Their art and battle rules live in the webview's bossArt.js. */
+export const BOSS_IDS = ["syntax_wraith", "nullpointer_demon", "stackoverflow_behemoth"];
+/** Most unbeaten bosses a pet can hold at once. */
+export const BOSS_QUEUE_MAX = 3;
+/** Pet levels that unlock a Boss Battle: 3, 5, 10, then every 5. */
+export function isBossMilestone(level) {
+    return level === 3 || level === 5 || (level >= 10 && level % 5 === 0);
+}
+/** The boss tier for a pet level: Syntax Wraith, NullPointer Demon from 5, StackOverflow Behemoth from 10. */
+export function bossIdForLevel(level) {
+    return level >= 10 ? BOSS_IDS[2] : level >= 5 ? BOSS_IDS[1] : BOSS_IDS[0];
+}
+/** Bosses unlocked by levelling from `from` up to `to` (one per milestone passed). */
+export function bossesUnlockedBetween(from, to) {
+    const out = [];
+    for (let level = from + 1; level <= to; level++) {
+        if (isBossMilestone(level)) {
+            out.push(bossIdForLevel(level));
+        }
+    }
+    return out;
+}
+/**
+ * Load the pending bosses. Saves from before boss unlocks get one boss of
+ * their tier if the pet is already past the first milestone.
+ */
+export function deserialisePendingBosses(raw, petLevel) {
+    if (Array.isArray(raw)) {
+        return raw.filter((id) => typeof id === "string" && BOSS_IDS.includes(id)).slice(0, BOSS_QUEUE_MAX);
+    }
+    return petLevel >= 3 ? [bossIdForLevel(petLevel)] : [];
+}
 /** Hourly XP caps per source (local clock hour). Sources not listed have no hourly cap. */
 export const XP_HOURLY_CAPS = {
     code: 10,
@@ -2485,10 +2526,16 @@ export function awardXp(state, source, now = Date.now(), answeredCall = false) {
     if (petLevel > state.petLevel) {
         events.unshift("pet_level_up");
     }
+    const pending = state.pendingBosses ?? [];
+    const unlocked = bossesUnlockedBetween(state.petLevel, petLevel);
+    if (unlocked.length > 0) {
+        events.push("boss_unlocked");
+    }
     return {
         ...state,
         petXp,
         petLevel,
+        pendingBosses: unlocked.length > 0 ? [...pending, ...unlocked].slice(0, BOSS_QUEUE_MAX) : pending,
         trainer: { xp, level, achievements, counters, xpDay: day, xpToday, xpHour: hour, xpThisHour },
         dailies: daily.dailies,
         events: [...state.events, ...events],
@@ -2808,6 +2855,7 @@ export function serialiseState(state) {
         petLevel: state.petLevel,
         trainer: state.trainer,
         dailies: state.dailies,
+        pendingBosses: state.pendingBosses,
     };
 }
 /**
@@ -2904,6 +2952,7 @@ export function deserialiseState(data) {
         petLevel: levelProgress(getNumber("petXp", 0)).level,
         trainer: deserialiseTrainer(data["trainer"]),
         dailies: deserialiseDailies(data["dailies"]),
+        pendingBosses: deserialisePendingBosses(data["pendingBosses"], levelProgress(getNumber("petXp", 0)).level),
     };
     return withDerivedFields(partial);
 }
