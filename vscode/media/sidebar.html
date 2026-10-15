@@ -140,6 +140,7 @@
           <button class="action-btn mg-game-btn" id="btn-mg-lr">Left / Right</button>
           <button class="action-btn mg-game-btn" id="btn-mg-hl">Higher or Lower</button>
           <button class="action-btn mg-game-btn" id="btn-mg-cf">Coin Flip</button>
+          <button class="action-btn mg-game-btn" id="btn-mg-boss">Boss Battle</button>
           <button class="action-btn mg-game-btn" id="btn-mg-pat">Pat</button>
           <button class="action-btn mg-game-btn" id="btn-mg-cost">Today's Token Cost</button>
           <button class="link-btn mg-cancel-btn" id="btn-mg-cancel">Cancel</button>
@@ -192,6 +193,18 @@
           <p id="bj-feedback" class="mg-feedback"></p>
         </div>
 
+        <!-- Panel 3c: Boss Battle (scene drawn on #mg-canvas by bossArt.js) -->
+        <div id="mg-boss" class="mg-panel hidden">
+          <p id="boss-title" class="mg-title">Boss Battle</p>
+          <p id="boss-hp" class="mg-subtitle"></p>
+          <div class="mg-btn-row">
+            <button class="action-btn mg-dir-btn" id="btn-boss-attack">Attack</button>
+            <button class="action-btn mg-dir-btn" id="btn-boss-defend">Defend</button>
+            <button class="action-btn mg-dir-btn" id="btn-boss-debug">Debug</button>
+          </div>
+          <p id="boss-log" class="mg-feedback" aria-live="polite"></p>
+        </div>
+
         <!-- Panel 4: Result (stays open until player taps OK) -->
         <div id="mg-result" class="mg-panel hidden">
           <p id="mg-result-text" class="mg-result-text"></p>
@@ -241,6 +254,7 @@
   <script src="{{spritesGeneratedUri}}"></script>
   <script src="{{spritesUri}}"></script>
   <script src="{{minigameArtUri}}"></script>
+  <script src="{{bossArtUri}}"></script>
   <script src="{{backgroundArtUri}}"></script>
   <script src="{{customCharactersUri}}"></script>
   <script src="{{jsUri}}"></script>

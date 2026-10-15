@@ -249,4 +249,18 @@ class BrowserPanelHtmlTest {
         assertTrue(src.contains("loadResource(\"/webview/minigameArt.js\")"), "CodotchiBrowserPanel must load minigameArt.js")
         assertTrue(src.contains("{{minigameArtUri}}"), "CodotchiBrowserPanel must replace the {{minigameArtUri}} placeholder")
     }
+
+    @Test
+    fun `bossArt resource exists, loads before sidebar js and is inlined`() {
+        val content = loadResource("/webview/bossArt.js")
+        assertTrue(content.contains("window.bossArt"), "bossArt.js must export window.bossArt")
+        val html = loadResource("/webview/sidebar.html")
+        val art = html.indexOf("""<script src="{{bossArtUri}}"></script>""")
+        val js  = html.indexOf("""<script src="{{jsUri}}"></script>""")
+        assertTrue(art >= 0, "sidebar.html must contain the {{bossArtUri}} script placeholder")
+        assertTrue(art < js, "bossArt.js must load before sidebar.js")
+        val src = java.io.File("src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt").readText()
+        assertTrue(src.contains("loadResource(\"/webview/bossArt.js\")"), "CodotchiBrowserPanel must load bossArt.js")
+        assertTrue(src.contains("{{bossArtUri}}"), "CodotchiBrowserPanel must replace the {{bossArtUri}} placeholder")
+    }
 }

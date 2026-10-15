@@ -508,6 +508,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   var mgArt    = window.minigameArt;
   var cfAnimId = null;   // requestAnimationFrame id while the coin spins
   var bjTimer  = null;   // setTimeout id while the blackjack dealer plays
+  var bossTimer = null;  // setTimeout id while a Boss Battle hit plays
 
   /**
    * Show and clear the overlay, sized to the sprite canvas so the art keeps
@@ -526,6 +527,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   function mgClear() {
     if (cfAnimId !== null) { cancelAnimationFrame(cfAnimId); cfAnimId = null; }
     if (bjTimer !== null) { clearTimeout(bjTimer); bjTimer = null; }
+    if (bossTimer !== null) { clearTimeout(bossTimer); bossTimer = null; }
     lrReveal = null;
     if (mgCtx) { mgCtx.clearRect(0, 0, mgCanvas.width, mgCanvas.height); }
     if (mgCanvas) { mgCanvas.classList.add("hidden"); }
@@ -562,6 +564,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   document.getElementById("btn-mg-cf").addEventListener("click", function () {
     // Stu plays one round of Blackjack instead of Coin Flip
     if (playsBlackjack(lastState)) { startBlackjackGame(); } else { startCoinFlipGame(); }
+  });
+  document.getElementById("btn-mg-boss").addEventListener("click", function () {
+    if (window.bossArt) { startBossBattle(); }
   });
   document.getElementById("btn-mg-pat").addEventListener("click", function () {
     hideMgOverlay();
@@ -859,6 +864,89 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         : "You lost Coin Flip.";
     sendPlayResult("coin_flip", result);
   }
+
+  // ── Boss Battle ───────────────────────────────────────────────────────────
+
+  var BOSS_HIT_MS = 450;
+  var bossArt = window.bossArt;
+  var bossBattle = null;
+  var bossRng = Math.random;
+
+  document.getElementById("btn-boss-attack").addEventListener("click", function () { handleBossAction("attack"); });
+  document.getElementById("btn-boss-defend").addEventListener("click", function () { handleBossAction("defend"); });
+  document.getElementById("btn-boss-debug").addEventListener("click", function () { handleBossAction("debug"); });
+
+  function bossButtons(enabled) {
+    document.getElementById("btn-boss-attack").disabled = !enabled;
+    document.getElementById("btn-boss-defend").disabled = !enabled;
+    document.getElementById("btn-boss-debug").disabled = !enabled || !bossArt.canDebug(bossBattle);
+  }
+
+  /** Redraw the scene and the HP text. flash is "boss", "pet" or null. */
+  function drawBossScene(flash, frame) {
+    var b = bossBattle;
+    document.getElementById("boss-title").textContent = b.bossName;
+    document.getElementById("boss-hp").textContent =
+      "Boss " + b.bossHp + "/" + b.bossMaxHp + " HP  \u00b7  " +
+      ((lastState && lastState.name) || "Pet") + " " + b.petHp + "/" + b.pet.maxHp + " HP" +
+      "  \u00b7  Turn " + b.turn + "/" + bossArt.MAX_TURNS;
+    if (!mgBegin()) { return; }
+    bossArt.drawBattleScene(mgCtx, mgCanvas.width, mgCanvas.height, b, { flash: flash || null, frame: frame || 0 });
+  }
+
+  function startBossBattle() {
+    bossBattle = bossArt.createBattle(lastState);
+    document.getElementById("boss-log").textContent = "A wild " + bossBattle.bossName + " appears!";
+    showMgPanel("mg-boss");
+    bossButtons(true);
+    drawBossScene(null, 0);
+  }
+
+  function handleBossAction(action) {
+    if (!bossBattle || bossBattle.result) { return; }
+    bossButtons(false);
+    var before = bossBattle;
+    bossBattle = bossArt.battleTurn(bossBattle, action, bossRng);
+    document.getElementById("boss-log").textContent =
+      bossArt.describeTurn(bossBattle, lastState && lastState.name);
+    var hitBoss = bossBattle.bossHp < before.bossHp;
+    var hitPet = !!(bossBattle.lastBoss && bossBattle.lastBoss.damage > 0);
+    var steps = [];
+    if (hitBoss) { steps.push("boss"); }
+    if (hitPet) { steps.push("pet"); }
+    playBossSteps(steps, function () {
+      if (bossBattle.result) {
+        bossTimer = setTimeout(function () { bossTimer = null; endBossBattle(bossBattle.result); }, 900);
+      } else {
+        bossButtons(true);
+      }
+    });
+  }
+
+  /** Flash each hit in turn (boss first, then pet), then call done(). */
+  function playBossSteps(steps, done) {
+    if (REDUCED_MOTION || steps.length === 0) { drawBossScene(null, 0); done(); return; }
+    var i = 0;
+    function next() {
+      if (i >= steps.length) { drawBossScene(null, 0); bossTimer = null; done(); return; }
+      drawBossScene(steps[i], i % 2);
+      i++;
+      bossTimer = setTimeout(next, BOSS_HIT_MS);
+    }
+    next();
+  }
+
+  function endBossBattle(result) {
+    var name = bossBattle ? bossBattle.bossName : "the boss";
+    mgClear();
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win" ? "You defeated " + name + "!" : name + " won this time.";
+    bossBattle = null;
+    sendPlayResult("boss_battle", result);
+  }
+
+  if (!bossArt) { document.getElementById("btn-mg-boss").classList.add("hidden"); }
 
   // ── Blackjack (replaces Coin Flip for Stu) ────────────────────────────────
 

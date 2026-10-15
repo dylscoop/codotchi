@@ -155,6 +155,7 @@ class CodotchiBrowserPanel(
         val spritesGeneratedText     = loadResource("/webview/sprites.generated.js")
         val spritesText              = loadResource("/webview/sprites.js")
         val minigameArtText          = loadResource("/webview/minigameArt.js")
+        val bossArtText              = loadResource("/webview/bossArt.js")
         val backgroundArtText        = loadResource("/webview/backgroundArt.js")
         val jsText              = loadResource("/webview/sidebar.js")
         var html        = loadResource("/webview/sidebar.html")
@@ -226,6 +227,10 @@ class CodotchiBrowserPanel(
         html = html.replace(
             """<script src="{{minigameArtUri}}"></script>""",
             "<script>\n$minigameArtText\n</script>"
+        )
+        html = html.replace(
+            """<script src="{{bossArtUri}}"></script>""",
+            "<script>\n$bossArtText\n</script>"
         )
         html = html.replace(
             """<script src="{{backgroundArtUri}}"></script>""",
