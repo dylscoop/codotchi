@@ -38,11 +38,36 @@ val XP_AMOUNTS: Map<String, Int> = mapOf(
 /** Bonus XP for unlocking an achievement. */
 const val XP_ACHIEVEMENT_BONUS: Int = 50
 
+/** Boss ids, weakest first. Keep identical to BOSS_IDS in gameEngine.ts. */
+val BOSS_IDS: List<String> = listOf("syntax_wraith", "nullpointer_demon", "stackoverflow_behemoth")
+
+/** Most unbeaten bosses a pet can hold at once. */
+const val BOSS_QUEUE_MAX: Int = 3
+
+/** Pet levels that unlock a Boss Battle: 3, 5, 10, then every 5. */
+fun isBossMilestone(level: Int): Boolean = level == 3 || level == 5 || (level >= 10 && level % 5 == 0)
+
+/** The boss tier for a pet level. */
+fun bossIdForLevel(level: Int): String = when {
+    level >= 10 -> BOSS_IDS[2]
+    level >= 5  -> BOSS_IDS[1]
+    else        -> BOSS_IDS[0]
+}
+
+/** Bosses unlocked by levelling from [from] up to [to] (one per milestone passed). */
+fun bossesUnlockedBetween(from: Int, to: Int): List<String> =
+    ((from + 1)..to).filter { isBossMilestone(it) }.map { bossIdForLevel(it) }
+
+/** Load the pending bosses; saves from before boss unlocks get one boss of their tier from level 3. */
+fun pendingBossesFromRaw(raw: List<*>?, petLevel: Int): List<String> =
+    raw?.filterIsInstance<String>()?.filter { it in BOSS_IDS }?.take(BOSS_QUEUE_MAX)
+        ?: if (petLevel >= 3) listOf(bossIdForLevel(petLevel)) else emptyList()
+
 /** Hourly XP caps per source (local clock hour). Sources not listed have no hourly cap. */
-val XP_HOURLY_CAPS: Map<String, Int> = mapOf("code" to 10, "commit" to 30, "minigame" to 20)
+val XP_HOURLY_CAPS: Map<String, Int> = mapOf("code" to 10, "commit" to 30, "minigame" to 20, "boss_battle" to 40)
 
 /** Daily XP caps per source (local day). Sources not listed are uncapped. */
-val XP_DAILY_CAPS: Map<String, Int> = mapOf("code" to 40, "commit" to 90, "call" to 100, "minigame" to 50)
+val XP_DAILY_CAPS: Map<String, Int> = mapOf("code" to 40, "commit" to 90, "call" to 100, "minigame" to 50, "boss_battle" to 80)
 
 /** Commits made from midnight up to this hour (local time) count as late-night commits. */
 const val NIGHT_OWL_END_HOUR: Int = 5
@@ -59,7 +84,7 @@ private val XP_COUNTERS: Map<String, List<String>> = mapOf(
     "evolve" to listOf("evolutions"),
     "debug" to listOf("debugSessions"),
     "boss_kill" to listOf("bossKills"),
-    "boss_battle" to listOf("bossBattleWins"),
+    "boss_battle" to listOf("bossBattleWins", "minigameWins"),
 )
 
 /**
@@ -95,7 +120,7 @@ val ACHIEVEMENTS: List<Achievement> = listOf(
     Achievement("gamer",        "Gamer",         "Win 10 mini-games",                      "🎮", "minigameWins",   10,   "keeper"),
     Achievement("growing_up",   "Growing Up",    "See your pets evolve 3 times",           "🌱", "evolutions",     3,    "keeper"),
     Achievement("survivor",     "Survivor",      "Raise a pet to senior",                  "🧓", "seniors",        1,    "keeper"),
-    Achievement("champion",     "Champion",      "Win a Boss Battle",                      "🥊", "bossBattleWins", 1,    "keeper", comingSoon = true),
+    Achievement("champion",     "Champion",      "Win a Boss Battle",                      "🥊", "bossBattleWins", 1,    "keeper"),
     Achievement("level_5",      "Rising Star",   "Reach trainer level 5",                  "⭐", "level",          5,    "trainer"),
     Achievement("level_10",     "Veteran",       "Reach trainer level 10",                 "🌟", "level",          10,   "trainer"),
     Achievement("level_25",     "Legend",        "Reach trainer level 25",                 "🏆", "level",          25,   "trainer"),
@@ -212,10 +237,13 @@ fun awardXp(state: PetState, source: String, now: Long = System.currentTimeMilli
     val petXp = state.petXp + amount
     val petLevel = levelProgress(petXp).level
     if (petLevel > state.petLevel) events.add(0, "pet_level_up")
+    val unlocked = bossesUnlockedBetween(state.petLevel, petLevel)
+    if (unlocked.isNotEmpty()) events.add("boss_unlocked")
 
     return state.copy(
         petXp = petXp,
         petLevel = petLevel,
+        pendingBosses = if (unlocked.isNotEmpty()) (state.pendingBosses + unlocked).take(BOSS_QUEUE_MAX) else state.pendingBosses,
         trainer = TrainerProgress(xp, level, achievements, counters, day, xpToday, hour, xpThisHour),
         dailies = daily.dailies,
         events = state.events + events,

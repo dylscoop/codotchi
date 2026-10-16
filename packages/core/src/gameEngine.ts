@@ -209,6 +209,9 @@ const MINIGAME_COIN_FLIP_LOSE: number = -10;
 const MINIGAME_BLACKJACK_WIN: number = 10;
 const MINIGAME_BLACKJACK_PUSH: number = 0;
 const MINIGAME_BLACKJACK_LOSE: number = -10;
+// Boss Battle: play baseline +15; delta win +10, lose −5 → totals: win 25, lose 10
+const MINIGAME_BOSS_BATTLE_WIN: number = 10;
+const MINIGAME_BOSS_BATTLE_LOSE: number = -5;
 
 const CARE_SCORE_HUNGER_WEIGHT: number = 0.30;
 const CARE_SCORE_HAPPINESS_WEIGHT: number = 0.25;
@@ -799,6 +802,8 @@ export interface PetState {
   readonly trainer: TrainerProgress;
   /** This pet's daily challenges and streak; a new pet starts afresh. */
   readonly dailies: DailyChallenges;
+  /** Boss Battles unlocked at level milestones and not yet beaten (boss ids, oldest first). */
+  readonly pendingBosses: readonly string[];
 }
 
 /**
@@ -1230,6 +1235,7 @@ export function createPet(name: string, petType: string, unlockedCharacter: stri
     petLevel: 1,
     trainer: trainer ?? createTrainer(),
     dailies: createDailies(),
+    pendingBosses: [],
   };
 
   return withDerivedFields(partial);
@@ -2219,7 +2225,8 @@ export function applyTokenCostView(state: PetState): PetState {
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
  *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
- *               "coin_flip" (Coin Flip), or "blackjack" (Stu's one-round Blackjack).
+ *               "coin_flip" (Coin Flip), "blackjack" (Stu's one-round Blackjack) or
+ *               "boss_battle" (turn-based Boss Battle).
  * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
@@ -2244,6 +2251,9 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
     if (result === "push") { return MINIGAME_BLACKJACK_PUSH; }  // 0
     return MINIGAME_BLACKJACK_LOSE;                             // −10
   }
+  if (game === "boss_battle") {
+    return result === "win" ? MINIGAME_BOSS_BATTLE_WIN : MINIGAME_BOSS_BATTLE_LOSE; // +10 win, −5 lose
+  }
   if (game === "memory" && result === "win") {
     return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST;
   }
@@ -2261,9 +2271,10 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
  *   - coin_flip and blackjack: no extra weight loss (total −3 from play() only)
  *
  * @param state - The current pet state.
- * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "guess", or "memory".
+ * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "boss_battle", "guess", or "memory".
  * @param result - "win" or "lose" ("push" too for blackjack).
- * @returns A new PetState after the happiness delta is applied.
+ * @returns A new PetState after the happiness delta is applied. A win awards
+ *          "minigame" XP, or "boss_battle" XP for the Boss Battle.
  */
 export function applyMinigameResult(
   state: PetState,
@@ -2272,25 +2283,34 @@ export function applyMinigameResult(
 ): PetState {
   const delta = happinessDeltaForMinigame(game, result);
   const isVigorousGame = game === "left_right" || game === "higher_lower";
+  // Hosts call this straight after play(): carry over any attention call that
+  // play() answered, otherwise its answered event (and toast / log line) is lost.
+  const answered = state.events.filter((e) => e.startsWith("attention_call_answered_"));
+  const pending = state.pendingBosses ?? [];
+  if (game === "boss_battle" && pending.length === 0) {
+    // No boss unlocked: ignore the result so the webview can't farm boss XP.
+    return withDerivedFields({ ...state, events: [...answered, "boss_battle_no_boss"] });
+  }
   const newWeight = isVigorousGame
     ? clampWeight(state.weight - PLAY_WEIGHT_LOSS_BONUS)
     : state.weight;
-  // Hosts call this straight after play(): carry over any attention call that
-  // play() answered, otherwise its answered event (and toast / log line) is lost.
   const events: string[] = [
-    ...state.events.filter((e) => e.startsWith("attention_call_answered_")),
+    ...answered,
     `minigame_${game}_${result}`,
   ];
   if (isVigorousGame) {
     checkWeightTierEvents(state.weight, newWeight, events);
   }
+  const won = result === "win";
   const next = withDerivedFields({
     ...state,
     happiness: clampStat(state.happiness + delta),
     weight: newWeight,
     events,
+    pendingBosses: game === "boss_battle" && won ? pending.slice(1) : pending,
   });
-  return result === "win" ? awardXp(next, "minigame") : next;
+  if (!won) { return next; }
+  return awardXp(next, game === "boss_battle" ? "boss_battle" : "minigame");
 }
 
 /**
@@ -2775,11 +2795,48 @@ export const XP_AMOUNTS: Readonly<Record<XpSource, number>> = {
 /** Bonus XP for unlocking an achievement. */
 export const XP_ACHIEVEMENT_BONUS: number = 50;
 
+/** Boss ids, weakest first. Their art and battle rules live in the webview's bossArt.js. */
+export const BOSS_IDS: readonly string[] = ["syntax_wraith", "nullpointer_demon", "stackoverflow_behemoth"];
+
+/** Most unbeaten bosses a pet can hold at once. */
+export const BOSS_QUEUE_MAX: number = 3;
+
+/** Pet levels that unlock a Boss Battle: 3, 5, 10, then every 5. */
+export function isBossMilestone(level: number): boolean {
+  return level === 3 || level === 5 || (level >= 10 && level % 5 === 0);
+}
+
+/** The boss tier for a pet level: Syntax Wraith, NullPointer Demon from 5, StackOverflow Behemoth from 10. */
+export function bossIdForLevel(level: number): string {
+  return level >= 10 ? BOSS_IDS[2] : level >= 5 ? BOSS_IDS[1] : BOSS_IDS[0];
+}
+
+/** Bosses unlocked by levelling from `from` up to `to` (one per milestone passed). */
+export function bossesUnlockedBetween(from: number, to: number): string[] {
+  const out: string[] = [];
+  for (let level = from + 1; level <= to; level++) {
+    if (isBossMilestone(level)) { out.push(bossIdForLevel(level)); }
+  }
+  return out;
+}
+
+/**
+ * Load the pending bosses. Saves from before boss unlocks get one boss of
+ * their tier if the pet is already past the first milestone.
+ */
+export function deserialisePendingBosses(raw: unknown, petLevel: number): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((id): id is string => typeof id === "string" && BOSS_IDS.includes(id)).slice(0, BOSS_QUEUE_MAX);
+  }
+  return petLevel >= 3 ? [bossIdForLevel(petLevel)] : [];
+}
+
 /** Hourly XP caps per source (local clock hour). Sources not listed have no hourly cap. */
 export const XP_HOURLY_CAPS: Readonly<Partial<Record<XpSource, number>>> = {
   code: 10,
   commit: 30,
   minigame: 20,
+  boss_battle: 40,
 };
 
 /** Daily XP caps per source (local day). Sources not listed are uncapped. */
@@ -2788,6 +2845,7 @@ export const XP_DAILY_CAPS: Readonly<Partial<Record<XpSource, number>>> = {
   commit: 90,
   call: 100,
   minigame: 50,
+  boss_battle: 80,
 };
 
 /** Commits made from midnight up to this hour (local time) count as late-night commits. */
@@ -2805,7 +2863,7 @@ const XP_COUNTERS: Readonly<Record<XpSource, readonly string[]>> = {
   evolve: ["evolutions"],
   debug: ["debugSessions"],
   boss_kill: ["bossKills"],
-  boss_battle: ["bossBattleWins"],
+  boss_battle: ["bossBattleWins", "minigameWins"],
 };
 
 /** Which tab an achievement sits under: the two paths, or shared trainer milestones. */
@@ -2842,7 +2900,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: "gamer",        name: "Gamer",         description: "Win 10 mini-games",                        emoji: "🎮", counter: "minigameWins",   threshold: 10,   path: "keeper" },
   { id: "growing_up",   name: "Growing Up",    description: "See your pets evolve 3 times",             emoji: "🌱", counter: "evolutions",     threshold: 3,    path: "keeper" },
   { id: "survivor",     name: "Survivor",      description: "Raise a pet to senior",                    emoji: "🧓", counter: "seniors",        threshold: 1,    path: "keeper" },
-  { id: "champion",     name: "Champion",      description: "Win a Boss Battle",                        emoji: "🥊", counter: "bossBattleWins", threshold: 1,    path: "keeper", comingSoon: true },
+  { id: "champion",     name: "Champion",      description: "Win a Boss Battle",                        emoji: "🥊", counter: "bossBattleWins", threshold: 1,    path: "keeper" },
   { id: "level_5",      name: "Rising Star",   description: "Reach trainer level 5",                    emoji: "⭐", counter: "level",          threshold: 5,    path: "trainer" },
   { id: "level_10",     name: "Veteran",       description: "Reach trainer level 10",                   emoji: "🌟", counter: "level",          threshold: 10,   path: "trainer" },
   { id: "level_25",     name: "Legend",        description: "Reach trainer level 25",                   emoji: "🏆", counter: "level",          threshold: 25,   path: "trainer" },
@@ -2958,11 +3016,15 @@ export function awardXp(state: PetState, source: XpSource, now: number = Date.no
   const petXp = state.petXp + amount;
   const petLevel = levelProgress(petXp).level;
   if (petLevel > state.petLevel) { events.unshift("pet_level_up"); }
+  const pending = state.pendingBosses ?? [];
+  const unlocked = bossesUnlockedBetween(state.petLevel, petLevel);
+  if (unlocked.length > 0) { events.push("boss_unlocked"); }
 
   return {
     ...state,
     petXp,
     petLevel,
+    pendingBosses: unlocked.length > 0 ? [...pending, ...unlocked].slice(0, BOSS_QUEUE_MAX) : pending,
     trainer: { xp, level, achievements, counters, xpDay: day, xpToday, xpHour: hour, xpThisHour },
     dailies: daily.dailies,
     events: [...state.events, ...events],
@@ -3318,6 +3380,7 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     petLevel: state.petLevel,
     trainer: state.trainer,
     dailies: state.dailies,
+    pendingBosses: state.pendingBosses,
   };
 }
 
@@ -3424,6 +3487,7 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     petLevel: levelProgress(getNumber("petXp", 0)).level,
     trainer: deserialiseTrainer(data["trainer"]),
     dailies: deserialiseDailies(data["dailies"]),
+    pendingBosses: deserialisePendingBosses(data["pendingBosses"], levelProgress(getNumber("petXp", 0)).level),
   };
 
   return withDerivedFields(partial);

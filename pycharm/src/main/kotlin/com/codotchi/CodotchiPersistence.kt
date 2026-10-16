@@ -381,6 +381,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val petLevel: Int? = null,
         val trainer: Map<String, Any?>? = null,
         val dailies: Map<String, Any?>? = null,    // absent in saves before daily challenges
+        val pendingBosses: List<*>? = null,        // absent in saves before boss unlocks (v2.30.0)
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -458,6 +459,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             petLevel                   = levelProgress(r.petXp ?: 0).level,
             trainer                    = trainerFromRaw(r.trainer),
             dailies                    = dailiesFromRaw(r.dailies),
+            pendingBosses              = pendingBossesFromRaw(r.pendingBosses, levelProgress(r.petXp ?: 0).level),
         )
         return partial
     }
@@ -542,6 +544,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             "streak" to s.dailies.streak,
             "streakDay" to s.dailies.streakDay,
         ),
+        pendingBosses              = s.pendingBosses,
     )
 }
 

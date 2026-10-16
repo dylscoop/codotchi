@@ -1045,29 +1045,37 @@ fun happinessDeltaForMinigame(game: String, result: String): Int {
         "push" -> MINIGAME_BLACKJACK_PUSH  // 0
         else   -> MINIGAME_BLACKJACK_LOSE  // −10
     }
+    if (game == "boss_battle") return if (result == "win") MINIGAME_BOSS_BATTLE_WIN else MINIGAME_BOSS_BATTLE_LOSE // +10 win, −5 lose
     if (game == "memory" && result == "win") return MINIGAME_MEMORY_WIN_HAPPINESS_BOOST
     if (result == "win") return MINIGAME_WIN_HAPPINESS_BOOST
     return MINIGAME_LOSE_HAPPINESS_BOOST
 }
 
 fun applyMinigameResult(state: PetState, game: String, result: String): PetState {
+    // Hosts call this straight after play(): carry over any attention call that
+    // play() answered, otherwise its answered event (and notification / log line) is lost.
+    val answered = state.events.filter { it.startsWith("attention_call_answered_") }
+    if (game == "boss_battle" && state.pendingBosses.isEmpty()) {
+        // No boss unlocked: ignore the result so the webview can't farm boss XP.
+        return withDerivedFields(state.copy(events = answered + "boss_battle_no_boss"))
+    }
     val delta = happinessDeltaForMinigame(game, result)
     // BUGFIX-034: left_right and higher_lower lose an extra 3 weight on top of the
     // 3 already lost in play(). coin_flip and blackjack keep total weight loss at 3 (no bonus here).
     val weightBonus = if (game == "left_right" || game == "higher_lower") PLAY_WEIGHT_LOSS_BONUS else 0
     val newWeight = clampWeight(state.weight - weightBonus)
-    // Hosts call this straight after play(): carry over any attention call that
-    // play() answered, otherwise its answered event (and notification / log line) is lost.
-    val events = state.events.filter { it.startsWith("attention_call_answered_") }.toMutableList()
+    val events = answered.toMutableList()
     events.add("minigame_${game}_${result}")
     if (weightBonus > 0) checkWeightTierEvents(state.weight, newWeight, events)
+    val won = result == "win"
     return withDerivedFields(
         state.copy(
             happiness = clampStat(state.happiness + delta),
             weight    = newWeight,
             events    = events,
+            pendingBosses = if (game == "boss_battle" && won) state.pendingBosses.drop(1) else state.pendingBosses,
         )
-    ).let { if (result == "win") awardXp(it, "minigame") else it }
+    ).let { if (won) awardXp(it, if (game == "boss_battle") "boss_battle" else "minigame") else it }
 }
 
 fun sleep(state: PetState): PetState {

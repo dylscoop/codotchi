@@ -1911,6 +1911,11 @@ describe("happinessDeltaForMinigame", () => {
     assert.equal(happinessDeltaForMinigame("blackjack", "push"), 0);
     assert.equal(happinessDeltaForMinigame("blackjack", "lose"), -10);
   });
+
+  it("boss_battle win → +10, lose → −5", () => {
+    assert.equal(happinessDeltaForMinigame("boss_battle", "win"), 10);
+    assert.equal(happinessDeltaForMinigame("boss_battle", "lose"), -5);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -2764,6 +2769,42 @@ describe("integration — play + coin_flip minigame", () => {
     // Net from initial: +15 play + (−10) lose = +5 total.
     assert.ok(afterGame.happiness > pet.happiness,
       "coin_flip lose net delta must still be positive");
+  });
+});
+
+describe("integration — play + boss_battle minigame", () => {
+  it("play then boss_battle win: +25 happiness, boss XP, a mini-game win and Champion", () => {
+    const pet = makePet({ happiness: 50, energy: 80, pendingBosses: ["syntax_wraith", "nullpointer_demon"] });
+    const afterGame = applyMinigameResult(play(pet), "boss_battle", "win");
+    assert.deepEqual(afterGame.pendingBosses, ["nullpointer_demon"], "the beaten boss leaves the queue");
+    assert.equal(afterGame.happiness, 75);
+    assert.equal(afterGame.energy, 55);
+    assert.equal(afterGame.weight, play(pet).weight, "no extra weight loss on top of play()");
+    assert.ok(afterGame.events.includes("minigame_boss_battle_win"));
+    assert.equal(afterGame.trainer.counters.bossBattleWins, 1);
+    assert.equal(afterGame.trainer.counters.minigameWins, 1);
+    assert.ok(afterGame.trainer.achievements.includes("champion"));
+  });
+
+  it("play then boss_battle lose: +10 happiness, no boss win, the boss stays for a retry", () => {
+    const pet = makePet({ happiness: 50, energy: 80, pendingBosses: ["syntax_wraith"] });
+    const afterGame = applyMinigameResult(play(pet), "boss_battle", "lose");
+    assert.deepEqual(afterGame.pendingBosses, ["syntax_wraith"]);
+    assert.equal(afterGame.happiness, 60);
+    assert.ok(afterGame.events.includes("minigame_boss_battle_lose"));
+    assert.equal(afterGame.trainer.counters.bossBattleWins, undefined);
+    assert.ok(!afterGame.trainer.achievements.includes("champion"));
+  });
+
+  it("ignores a boss_battle result when no boss is unlocked", () => {
+    const pet = makePet({ happiness: 50, energy: 80, pendingBosses: [], activeAttentionCall: "play" });
+    const afterPlay = play(pet);
+    const afterGame = applyMinigameResult(afterPlay, "boss_battle", "win");
+    assert.equal(afterGame.happiness, afterPlay.happiness);
+    assert.equal(afterGame.petXp, afterPlay.petXp);
+    assert.equal(afterGame.trainer.counters.bossBattleWins, undefined);
+    assert.ok(afterGame.events.includes("boss_battle_no_boss"));
+    assert.ok(afterGame.events.includes("attention_call_answered_play"));
   });
 });
 

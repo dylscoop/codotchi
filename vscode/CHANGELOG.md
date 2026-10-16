@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.30.0] — 2026-10-15
+
+### Added
+
+- **Boss Battle mini-game** - a new choice under Play. Bosses are earned by levelling: one appears when your pet reaches level 3 (Syntax Wraith), 5 (NullPointer Demon), 10 (StackOverflow Behemoth) and every 5 levels after that. The button only shows while a boss is waiting; a loss keeps the boss for a retry. Pets already past level 3 start with one boss.
+- **Outguess the boss** - each round you and the boss secretly pick Attack, Guard or Patch, then both are revealed: Attack beats Patch, Patch beats Guard, Guard beats Attack. Each boss has its own habits (and new ones when enraged), shown only through its last 5 stances, and it punishes spamming one stance. Win streaks power up, Patches tire, and overtime from round 12 makes every fight end. Your pet's level and care (health, energy, discipline, happiness) shape the numbers.
+- A Boss Battle win gives 40 XP (capped at 40 an hour and 80 a day), counts as a mini-game win and unlocks the **Champion** achievement, which is no longer *Coming soon*.
+
 ## [2.29.0] — 2026-10-14
 
 ### Added

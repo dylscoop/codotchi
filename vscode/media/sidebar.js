@@ -104,7 +104,7 @@
     gamer:        ["🎮", "Gamer",         "Win 10 mini-games",                      "minigameWins",   10,   "keeper"],
     growing_up:   ["🌱", "Growing Up",    "See your pets evolve 3 times",           "evolutions",     3,    "keeper"],
     survivor:     ["🧓", "Survivor",      "Raise a pet to senior",                  "seniors",        1,    "keeper"],
-    champion:     ["🥊", "Champion",      "Win a Boss Battle",                      "bossBattleWins", 1,    "keeper", true],
+    champion:     ["🥊", "Champion",      "Win a Boss Battle",                      "bossBattleWins", 1,    "keeper"],
     level_5:      ["⭐", "Rising Star",   "Reach trainer level 5",                  "level",          5,    "trainer"],
     level_10:     ["🌟", "Veteran",       "Reach trainer level 10",                 "level",          10,   "trainer"],
     level_25:     ["🏆", "Legend",        "Reach trainer level 25",                 "level",          25,   "trainer"],
@@ -128,7 +128,7 @@
     level:          "Earn XP from coding, commits, answered calls and mini-games",
     debugSessions:  "Unlocks with debug-session tracking (coming soon)",
     bossKills:      "Unlocks with Bug Bosses (coming soon)",
-    bossBattleWins: "Unlocks with Boss Battles (coming soon)",
+    bossBattleWins: "Press Play and beat the boss in a Boss Battle",
   };
 
   /** How to complete each daily challenge. Keys must match DAILY_CHALLENGES ids (progression.test.ts checks this). */
@@ -508,6 +508,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   var mgArt    = window.minigameArt;
   var cfAnimId = null;   // requestAnimationFrame id while the coin spins
   var bjTimer  = null;   // setTimeout id while the blackjack dealer plays
+  var bossTimer = null;  // setTimeout id while a Boss Battle hit plays
 
   /**
    * Show and clear the overlay, sized to the sprite canvas so the art keeps
@@ -526,6 +527,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   function mgClear() {
     if (cfAnimId !== null) { cancelAnimationFrame(cfAnimId); cfAnimId = null; }
     if (bjTimer !== null) { clearTimeout(bjTimer); bjTimer = null; }
+    if (bossTimer !== null) { clearTimeout(bossTimer); bossTimer = null; }
     lrReveal = null;
     if (mgCtx) { mgCtx.clearRect(0, 0, mgCanvas.width, mgCanvas.height); }
     if (mgCanvas) { mgCanvas.classList.add("hidden"); }
@@ -562,6 +564,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   document.getElementById("btn-mg-cf").addEventListener("click", function () {
     // Stu plays one round of Blackjack instead of Coin Flip
     if (playsBlackjack(lastState)) { startBlackjackGame(); } else { startCoinFlipGame(); }
+  });
+  document.getElementById("btn-mg-boss").addEventListener("click", function () {
+    if (window.bossArt) { startBossBattle(); }
   });
   document.getElementById("btn-mg-pat").addEventListener("click", function () {
     hideMgOverlay();
@@ -859,6 +864,118 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         : "You lost Coin Flip.";
     sendPlayResult("coin_flip", result);
   }
+
+  // ── Boss Battle ───────────────────────────────────────────────────────────
+
+  var BOSS_HIT_MS = 450;
+  var bossArt = window.bossArt;
+  var bossBattle = null;
+  var bossRng = Math.random;
+
+  function pendingBossesOf(state) {
+    return (state && Array.isArray(state.pendingBosses)) ? state.pendingBosses : [];
+  }
+
+  /** Show the picker button only while a boss is waiting, with how many are. */
+  function updateBossButton(state) {
+    var btn = document.getElementById("btn-mg-boss");
+    if (!btn || !bossArt) { return; }
+    var pending = pendingBossesOf(state).length;
+    btn.classList.toggle("hidden", pending === 0);
+    btn.textContent = "Boss Battle \u2694 " + pending;
+    btn.title = pending + " boss" + (pending === 1 ? "" : "es") + " waiting. Beat one to clear it; a loss keeps it for a retry.";
+  }
+
+  var BOSS_STANCE_GLYPHS = { attack: "\u2694", guard: "\u26e8", patch: "\u271a" };
+
+  document.getElementById("btn-boss-attack").addEventListener("click", function () { handleBossAction("attack"); });
+  document.getElementById("btn-boss-guard").addEventListener("click", function () { handleBossAction("guard"); });
+  document.getElementById("btn-boss-patch").addEventListener("click", function () { handleBossAction("patch"); });
+
+  function bossButtons(enabled) {
+    document.getElementById("btn-boss-attack").disabled = !enabled;
+    document.getElementById("btn-boss-guard").disabled = !enabled;
+    document.getElementById("btn-boss-patch").disabled = !enabled;
+  }
+
+  /** Redraw the scene, the status line and the boss's stance history. */
+  function drawBossScene(opts) {
+    var b = bossBattle;
+    var status = [];
+    if (b.petStreak >= bossArt.COMBO_AT) { status.push("Combo \u00d7" + b.petStreak); }
+    if (b.enraged) { status.push("Enraged"); }
+    if (b.round >= bossArt.OVERTIME_ROUND) { status.push("Overtime"); }
+    document.getElementById("boss-title").textContent = b.bossName;
+    document.getElementById("boss-hp").textContent =
+      "Boss " + b.bossHp + "/" + b.bossMaxHp + "  \u00b7  " +
+      ((lastState && lastState.name) || "Pet") + " " + b.petHp + "/" + b.pet.maxHp +
+      "  \u00b7  Round " + b.round +
+      (status.length ? "  \u00b7  " + status.join("  \u00b7  ") : "");
+    var hist = bossArt.bossHistory(b);
+    document.getElementById("boss-history").textContent = hist.length
+      ? "Boss's last stances: " + hist.map(function (s) { return BOSS_STANCE_GLYPHS[s] + " " + bossArt.STANCE_LABELS[s]; }).join(", ")
+      : "Attack beats Patch, Patch beats Guard, Guard beats Attack.";
+    if (!mgBegin()) { return; }
+    bossArt.drawBattleScene(mgCtx, mgCanvas.width, mgCanvas.height, b, opts || {});
+  }
+
+  function startBossBattle() {
+    var pending = pendingBossesOf(lastState);
+    if (pending.length === 0) { return; }
+    bossBattle = bossArt.createBattle(lastState, bossRng, pending[0]);
+    document.getElementById("boss-log").textContent = "A wild " + bossBattle.bossName + " appears! Pick a stance.";
+    showMgPanel("mg-boss");
+    bossButtons(true);
+    drawBossScene({});
+  }
+
+  function handleBossAction(stance) {
+    if (!bossBattle || bossBattle.result) { return; }
+    bossButtons(false);
+    bossBattle = bossArt.battleTurn(bossBattle, stance, bossRng);
+    document.getElementById("boss-log").textContent =
+      bossArt.describeTurn(bossBattle, lastState && lastState.name);
+    var c = bossBattle.last;
+    var steps = [{ reveal: true }];
+    if (c.toBoss > 0) { steps.push({ reveal: true, flash: "boss" }); }
+    if (c.toPet > 0) { steps.push({ reveal: true, flash: "pet" }); }
+    if (c.petHeal > 0) { steps.push({ reveal: true, sparkle: "pet" }); }
+    if (c.bossHeal > 0) { steps.push({ reveal: true, sparkle: "boss" }); }
+    if (c.overtime > 0) { steps.push({ reveal: true, flash: "pet" }); }
+    playBossSteps(steps, function () {
+      if (bossBattle.result) {
+        bossTimer = setTimeout(function () { bossTimer = null; endBossBattle(bossBattle.result); }, 900);
+      } else {
+        bossButtons(true);
+      }
+    });
+  }
+
+  /** Show the reveal, then each hit or heal in turn, then call done(). */
+  function playBossSteps(steps, done) {
+    if (REDUCED_MOTION) { drawBossScene({ reveal: true }); done(); return; }
+    var i = 0;
+    function next() {
+      if (i >= steps.length) { drawBossScene({ reveal: true }); bossTimer = null; done(); return; }
+      var s = steps[i];
+      drawBossScene({ reveal: s.reveal, flash: s.flash || null, sparkle: s.sparkle || null, frame: i % 2 });
+      i++;
+      bossTimer = setTimeout(next, BOSS_HIT_MS);
+    }
+    next();
+  }
+
+  function endBossBattle(result) {
+    var name = bossBattle ? bossBattle.bossName : "the boss";
+    mgClear();
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win" ? "You defeated " + name + "!" : name + " won this time - it'll be waiting.";
+    bossBattle = null;
+    sendPlayResult("boss_battle", result);
+  }
+
+  if (!bossArt) { document.getElementById("btn-mg-boss").classList.add("hidden"); }
 
   // ── Blackjack (replaces Coin Flip for Stu) ────────────────────────────────
 
@@ -1733,6 +1850,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (mgPatBtn) { mgPatBtn.textContent = _customChar ? _customChar.patLabel : "Pat"; }
     var mgCfBtn = document.getElementById("btn-mg-cf");
     if (mgCfBtn) { mgCfBtn.textContent = playsBlackjack(state) ? "Blackjack" : "Coin Flip"; }
+    updateBossButton(state);
 
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
@@ -1880,6 +1998,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       }
       if (levelsEnabled && (events.indexOf("trainer_level_up") !== -1 || events.indexOf("pet_level_up") !== -1)) {
         queueBubble(humaniseEvent(events.indexOf("trainer_level_up") !== -1 ? "trainer_level_up" : "pet_level_up", _n, state));
+        return;
+      }
+      // 1d. A boss unlocked at a level milestone (Boss Battles work with levels off too)
+      if (events.indexOf("boss_unlocked") !== -1) {
+        queueBubble(humaniseEvent("boss_unlocked", _n, state));
         return;
       }
       // 2. Minigame results (play, not pat)
@@ -2249,6 +2372,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "minigame_blackjack_win":     n + " won at Blackjack!",
       "minigame_blackjack_lose":    n + " lost at Blackjack.",
       "minigame_blackjack_push":    n + " pushed at Blackjack.",
+      "minigame_boss_battle_win":   n + " defeated the boss!",
+      "minigame_boss_battle_lose":  n + " was beaten by the boss.",
+      "boss_unlocked":              "A boss appeared! Press Play \u2192 Boss Battle to fight it.",
+      "boss_battle_no_boss":        "There's no boss to fight yet.",
     };
     // Custom characters ask for a run / stickers instead of a pat, and name their snack
     var _pc = _cc && _cc.patCall;
