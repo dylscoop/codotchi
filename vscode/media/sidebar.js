@@ -872,86 +872,76 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   var bossBattle = null;
   var bossRng = Math.random;
 
-  /** Pet levels that unlock a boss — same rule as isBossMilestone() in gameEngine.ts. */
-  function isBossMilestone(level) {
-    return level === 3 || level === 5 || (level >= 10 && level % 5 === 0);
-  }
-
-  function nextBossLevel(level) {
-    var l = Math.max(1, level || 1) + 1;
-    while (!isBossMilestone(l)) { l++; }
-    return l;
-  }
-
   function pendingBossesOf(state) {
     return (state && Array.isArray(state.pendingBosses)) ? state.pendingBosses : [];
   }
 
-  /** Lock the picker button unless a boss is waiting; show how many are. */
+  /** Show the picker button only while a boss is waiting, with how many are. */
   function updateBossButton(state) {
     var btn = document.getElementById("btn-mg-boss");
     if (!btn || !bossArt) { return; }
     var pending = pendingBossesOf(state).length;
-    var level = (state && state.petLevel) || 1;
-    btn.disabled = pending === 0;
-    btn.textContent = pending > 0
-      ? "Boss Battle \u2694 " + pending
-      : "Boss Battle (next at Lv " + nextBossLevel(level) + ")";
-    btn.title = pending > 0
-      ? pending + " boss" + (pending === 1 ? "" : "es") + " waiting. Beat one to clear it; a loss keeps it for a retry."
-      : "A boss appears when your pet reaches level 3, 5, 10 and every 5 levels after that.";
+    btn.classList.toggle("hidden", pending === 0);
+    btn.textContent = "Boss Battle \u2694 " + pending;
+    btn.title = pending + " boss" + (pending === 1 ? "" : "es") + " waiting. Beat one to clear it; a loss keeps it for a retry.";
   }
 
+  var BOSS_STANCE_GLYPHS = { attack: "\u2694", guard: "\u26e8", patch: "\u271a" };
+
   document.getElementById("btn-boss-attack").addEventListener("click", function () { handleBossAction("attack"); });
-  document.getElementById("btn-boss-defend").addEventListener("click", function () { handleBossAction("defend"); });
-  document.getElementById("btn-boss-debug").addEventListener("click", function () { handleBossAction("debug"); });
+  document.getElementById("btn-boss-guard").addEventListener("click", function () { handleBossAction("guard"); });
+  document.getElementById("btn-boss-patch").addEventListener("click", function () { handleBossAction("patch"); });
 
   function bossButtons(enabled) {
     document.getElementById("btn-boss-attack").disabled = !enabled;
-    document.getElementById("btn-boss-defend").disabled = !enabled;
-    document.getElementById("btn-boss-debug").disabled = !enabled || !bossArt.canDebug(bossBattle);
+    document.getElementById("btn-boss-guard").disabled = !enabled;
+    document.getElementById("btn-boss-patch").disabled = !enabled;
   }
 
-  /** Redraw the scene, the HP / status line and the boss's next move. flash is "boss", "pet" or null. */
-  function drawBossScene(flash, frame) {
+  /** Redraw the scene, the status line and the boss's stance history. */
+  function drawBossScene(opts) {
     var b = bossBattle;
     var status = [];
-    if (b.focus) { status.push("Focused"); }
-    if (b.corrupt > 0) { status.push("Bugged (" + b.corrupt + ")"); }
-    if (b.shield) { status.push("Boss shielded"); }
+    if (b.petStreak >= bossArt.COMBO_AT) { status.push("Combo \u00d7" + b.petStreak); }
+    if (b.enraged) { status.push("Enraged"); }
+    if (b.round >= bossArt.OVERTIME_ROUND) { status.push("Overtime"); }
     document.getElementById("boss-title").textContent = b.bossName;
     document.getElementById("boss-hp").textContent =
-      "Boss " + b.bossHp + "/" + b.bossMaxHp + " HP  \u00b7  " +
-      ((lastState && lastState.name) || "Pet") + " " + b.petHp + "/" + b.pet.maxHp + " HP" +
-      "  \u00b7  Turn " + b.turn + "/" + bossArt.MAX_TURNS +
-      (status.length ? "  \u00b7  " + status.join(", ") : "");
-    document.getElementById("boss-intent").textContent = b.result ? "" : bossArt.describeIntent(b);
+      "Boss " + b.bossHp + "/" + b.bossMaxHp + "  \u00b7  " +
+      ((lastState && lastState.name) || "Pet") + " " + b.petHp + "/" + b.pet.maxHp +
+      "  \u00b7  Round " + b.round +
+      (status.length ? "  \u00b7  " + status.join("  \u00b7  ") : "");
+    var hist = bossArt.bossHistory(b);
+    document.getElementById("boss-history").textContent = hist.length
+      ? "Boss's last stances: " + hist.map(function (s) { return BOSS_STANCE_GLYPHS[s] + " " + bossArt.STANCE_LABELS[s]; }).join(", ")
+      : "Attack beats Patch, Patch beats Guard, Guard beats Attack.";
     if (!mgBegin()) { return; }
-    bossArt.drawBattleScene(mgCtx, mgCanvas.width, mgCanvas.height, b, { flash: flash || null, frame: frame || 0 });
+    bossArt.drawBattleScene(mgCtx, mgCanvas.width, mgCanvas.height, b, opts || {});
   }
 
   function startBossBattle() {
     var pending = pendingBossesOf(lastState);
     if (pending.length === 0) { return; }
     bossBattle = bossArt.createBattle(lastState, bossRng, pending[0]);
-    document.getElementById("boss-log").textContent = "A wild " + bossBattle.bossName + " appears!";
+    document.getElementById("boss-log").textContent = "A wild " + bossBattle.bossName + " appears! Pick a stance.";
     showMgPanel("mg-boss");
     bossButtons(true);
-    drawBossScene(null, 0);
+    drawBossScene({});
   }
 
-  function handleBossAction(action) {
+  function handleBossAction(stance) {
     if (!bossBattle || bossBattle.result) { return; }
     bossButtons(false);
-    var before = bossBattle;
-    bossBattle = bossArt.battleTurn(bossBattle, action, bossRng);
+    bossBattle = bossArt.battleTurn(bossBattle, stance, bossRng);
     document.getElementById("boss-log").textContent =
       bossArt.describeTurn(bossBattle, lastState && lastState.name);
-    var hitBoss = bossBattle.bossHp < before.bossHp;
-    var hitPet = !!((bossBattle.lastBoss && bossBattle.lastBoss.damage > 0) || bossBattle.lastBug > 0);
-    var steps = [];
-    if (hitBoss) { steps.push("boss"); }
-    if (hitPet) { steps.push("pet"); }
+    var c = bossBattle.last;
+    var steps = [{ reveal: true }];
+    if (c.toBoss > 0) { steps.push({ reveal: true, flash: "boss" }); }
+    if (c.toPet > 0) { steps.push({ reveal: true, flash: "pet" }); }
+    if (c.petHeal > 0) { steps.push({ reveal: true, sparkle: "pet" }); }
+    if (c.bossHeal > 0) { steps.push({ reveal: true, sparkle: "boss" }); }
+    if (c.overtime > 0) { steps.push({ reveal: true, flash: "pet" }); }
     playBossSteps(steps, function () {
       if (bossBattle.result) {
         bossTimer = setTimeout(function () { bossTimer = null; endBossBattle(bossBattle.result); }, 900);
@@ -961,13 +951,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     });
   }
 
-  /** Flash each hit in turn (boss first, then pet), then call done(). */
+  /** Show the reveal, then each hit or heal in turn, then call done(). */
   function playBossSteps(steps, done) {
-    if (REDUCED_MOTION || steps.length === 0) { drawBossScene(null, 0); done(); return; }
+    if (REDUCED_MOTION) { drawBossScene({ reveal: true }); done(); return; }
     var i = 0;
     function next() {
-      if (i >= steps.length) { drawBossScene(null, 0); bossTimer = null; done(); return; }
-      drawBossScene(steps[i], i % 2);
+      if (i >= steps.length) { drawBossScene({ reveal: true }); bossTimer = null; done(); return; }
+      var s = steps[i];
+      drawBossScene({ reveal: s.reveal, flash: s.flash || null, sparkle: s.sparkle || null, frame: i % 2 });
       i++;
       bossTimer = setTimeout(next, BOSS_HIT_MS);
     }
@@ -979,7 +970,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     mgClear();
     showMgPanel("mg-result");
     document.getElementById("mg-result-text").textContent =
-      result === "win" ? "You defeated " + name + "!" : name + " won this time.";
+      result === "win" ? "You defeated " + name + "!" : name + " won this time - it'll be waiting.";
     bossBattle = null;
     sendPlayResult("boss_battle", result);
   }

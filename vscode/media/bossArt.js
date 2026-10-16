@@ -1,9 +1,11 @@
 /**
  * bossArt.js - Boss Battle rules and boss pixel art
  *
- * The turn-based Boss Battle mini-game: the three coding bosses, how the
- * pet's level and care stats turn into battle stats, one battle turn, and
- * the pixel art (boss sprites, HP bars, hit flash). The rules are pure
+ * The Boss Battle mini-game, a mind-game of hidden clashes: each round the
+ * pet and the boss secretly pick Attack, Guard or Patch (Attack beats Patch,
+ * Patch beats Guard, Guard beats Attack). Each boss picks from its own habit
+ * table (and a rage table below 40% HP), never shown to the player. Also the
+ * pixel art (boss sprites, HP bars, hit flash, stance icons). The rules are pure
  * functions that take a random source, so they can be unit-tested with a
  * seeded RNG. No DOM access and no CSS variables (canvas ignores them).
  *
@@ -24,8 +26,15 @@
   var BOSSES = [
     {
       id: "syntax_wraith", name: "Syntax Wraith", minLevel: 1,
-      hp: 42, attack: [5, 9],
-      moves: { strike: 4, corrupt: 3, charge: 1, shield: 1 },
+      hp: 44, attack: [8, 12], reflect: 0.8,
+      // Sneaky healer: Patches after you Attack, Guards after two Attacks, repeats a stance that lost.
+      habits: function (c) {
+        var w = c.lastPet === "attack" && c.prevPet === "attack" ? { attack: 15, guard: 65, patch: 20 }
+          : c.lastPet === "attack" ? { attack: 20, guard: 30, patch: 50 } : { attack: 30, guard: 35, patch: 35 };
+        if (c.lastOutcome === "win" && c.lastBoss) { w[c.lastBoss] += 20; }
+        return w;
+      },
+      rage: function (c) { return c.lastPet === "attack" ? { attack: 15, guard: 45, patch: 40 } : { attack: 15, guard: 25, patch: 60 }; },
       colours: { 1: "#c9b8f0", 2: "#3a2a5e", 3: "#7fe0ff" },
       grid: [
         "................",
@@ -48,8 +57,12 @@
     },
     {
       id: "nullpointer_demon", name: "NullPointer Demon", minLevel: 5,
-      hp: 46, attack: [5, 9],
-      moves: { strike: 4, charge: 2, corrupt: 1, shield: 1 },
+      hp: 50, attack: [7, 11], reflect: 0.7,
+      // Aggressive: Attack-heavy, Patches after you Guard; never Patches when enraged.
+      habits: function (c) {
+        return c.lastPet === "guard" ? { attack: 30, guard: 20, patch: 50 } : { attack: 50, guard: 25, patch: 25 };
+      },
+      rage: function () { return { attack: 60, guard: 40, patch: 0 }; },
       colours: { 1: "#d9413c", 2: "#2b0f12", 3: "#ffd23f" },
       grid: [
         "..2..........2..",
@@ -72,8 +85,14 @@
     },
     {
       id: "stackoverflow_behemoth", name: "StackOverflow Behemoth", minLevel: 10,
-      hp: 54, attack: [5, 9],
-      moves: { strike: 4, shield: 2, charge: 1, corrupt: 1 },
+      hp: 48, attack: [7, 11], reflect: 0.8,
+      // Turtle: Guard-heavy, Attacks after it Guards; enraged it alternates Guard and Patch.
+      habits: function (c) {
+        return c.lastBoss === "guard" ? { attack: 45, guard: 30, patch: 25 } : { attack: 35, guard: 40, patch: 25 };
+      },
+      rage: function (c) {
+        return c.lastBoss === "guard" ? { attack: 15, guard: 15, patch: 70 } : { attack: 15, guard: 70, patch: 15 };
+      },
       colours: { 1: "#6f7d8c", 2: "#2a3138", 3: "#ff9a3c" },
       grid: [
         ".....111111.....",
@@ -98,34 +117,36 @@
 
   var BOSS_GRID = 16;
 
-  /** Battle tuning. */
-  var PET_BASE_HP = 30;
-  var PET_HP_PER_LEVEL = 2;
-  var PET_ATTACK = [6, 10];
-  var PET_ATTACK_PER_LEVEL = 0.5;
-  var CRIT_CHANCE = 0.15;
-  var CRIT_MULT = 1.5;
-  var DEFEND_BLOCK = 0.5;          // share of the next hit blocked, before discipline
-  var DEBUG_HEAL_SHARE = 0.3;      // share of max HP healed by Debug
-  var DEBUG_COOLDOWN = 2;          // turns before Debug can be used again
-  var MAX_TURNS = 11;              // the boss wins if it is still standing after this
-  var BOSS_HP_PER_LEVEL = 4;       // bosses grow with the pet so every tier stays a fight
-  var BOSS_ATTACK_PER_LEVEL = 0.2;
-  var CHARGE_MULT = 2;             // a Charge hit, telegraphed a turn ahead
-  var CHARGE_GUARD = 0.35;         // extra share Defend blocks against a Charge
-  var CORRUPT_HIT_SHARE = 0.5;     // Corrupt's own hit, as a share of a Strike
-  var CORRUPT_TURNS = 3;           // turns the Corrupt bug keeps draining HP
-  var CORRUPT_TICK = 3;            // HP drained per turn by the bug (+ 0.2 per pet level)
-  var SHIELD_SHARE = 0.5;          // share of attack damage that gets through a Shield
-  var FOCUS_MULT = 2;              // a Focus attack after a successful Defend
+  /** The three stances. Each beats the next one round: Attack > Patch > Guard > Attack. */
+  var STANCES = ["attack", "guard", "patch"];
+  var BEATS = { attack: "patch", patch: "guard", guard: "attack" };
+  /** The stance that beats s. */
+  function counterOf(s) { return s === "attack" ? "guard" : s === "guard" ? "patch" : "attack"; }
 
-  /** What each boss move does, for the intent hint shown before the player acts. */
-  var MOVES = {
-    strike:  { label: "Strike",  hint: "attacks normally" },
-    charge:  { label: "Charge",  hint: "winds up a huge hit (Defend!)" },
-    corrupt: { label: "Corrupt", hint: "plants a bug that drains HP (Debug clears it)" },
-    shield:  { label: "Shield",  hint: "raises a shield that halves your attacks (Debug or a Focus attack breaks it)" },
-  };
+  /** Battle tuning. */
+  var PET_BASE_HP = 32;
+  var PET_HP_PER_LEVEL = 2;
+  var PET_ATTACK = [8, 12];
+  var PET_ATTACK_PER_LEVEL = 0.5;
+  var REFLECT = 0.6;               // share of a blocked Attack a winning Guard sends back
+  var PATCH_SHARE = 0.25;          // share of max HP a Patch heals (pet), before fatigue
+  var BOSS_PATCH_SHARE = 0.12;     // share of max HP a Patch heals (boss), before fatigue
+  var WIN_ATTACK_MULT = 1.8;       // Attack that wins (or lands on a Patch)
+  var TIE_SHARE = 0.5;             // Attack/Attack and Patch/Patch ties
+  var COMBO_AT = 2;                // wins in a row before the combo bonus kicks in
+  var COMBO_MULT = 1.25;
+  var FATIGUE_STEP = 0.75;         // each Patch heals this share of the one before
+  var OVERTIME_ROUND = 12;         // from this round both sides take chip damage
+  var OVERTIME_BASE = 3;           // overtime chip, +1 each later round
+  var RAGE_SHARE = 0.4;            // a boss below this share of HP is enraged
+  var SPAM_BONUS = 35;             // extra weight on the counter to your most-used recent stance
+  var SPAM_WINDOW = 4;             // rounds looked back for that
+  var HISTORY_SHOWN = 5;           // boss stances shown in the history strip
+  var BOSS_HP_PER_LEVEL = 3;
+  var BOSS_ATTACK_PER_LEVEL = 0.2;
+
+  /** Stance labels for text. */
+  var STANCE_LABELS = { attack: "Attack", guard: "Guard", patch: "Patch" };
 
   // =========================================================================
   // Rules
@@ -169,6 +190,11 @@
     return pick;
   }
 
+  function bossById(id) {
+    for (var i = 0; i < BOSSES.length; i++) { if (BOSSES[i].id === id) { return BOSSES[i]; } }
+    return null;
+  }
+
   /** Boss max HP: the tier's base plus a share per pet level. */
   function bossMaxHp(boss, level) {
     return Math.round(boss.hp + (Math.max(1, level) - 1) * BOSS_HP_PER_LEVEL);
@@ -182,8 +208,8 @@
 
   /**
    * Pet battle stats. Level sets the base; health scales max HP, energy
-   * scales attack, discipline scales Defend and happiness scales Debug
-   * (each ×0.8 – ×1.2).
+   * scales Attack, discipline scales Guard's reflect and happiness scales
+   * Patch (each ×0.8 – ×1.2). Care never decides who wins a clash.
    */
   function petBattleStats(pet) {
     var level = petLevelOf(pet);
@@ -195,34 +221,12 @@
       level: level,
       maxHp: maxHp,
       attack: [Math.max(1, Math.round((PET_ATTACK[0] + bonus) * atkMod)), Math.max(1, Math.round((PET_ATTACK[1] + bonus) * atkMod))],
-      block: clamp(DEFEND_BLOCK * careMod(p.discipline), 0, 0.9),
-      heal: Math.max(1, Math.round(maxHp * DEBUG_HEAL_SHARE * careMod(p.happiness))),
+      reflect: clamp(REFLECT * careMod(p.discipline), 0, 0.9),
+      heal: Math.max(1, Math.round(maxHp * PATCH_SHARE * careMod(p.happiness))),
     };
   }
 
-  function bossById(id) {
-    for (var i = 0; i < BOSSES.length; i++) { if (BOSSES[i].id === id) { return BOSSES[i]; } }
-    return null;
-  }
-
-  /** Weighted pick of the boss's next move. A boss that is already shielded doesn't shield again. */
-  function pickIntent(boss, shielded, rng) {
-    var weights = boss.moves;
-    var total = 0, k;
-    for (k in weights) { if (!(shielded && k === "shield")) { total += weights[k]; } }
-    var r = rng() * total;
-    for (k in weights) {
-      if (shielded && k === "shield") { continue; }
-      r -= weights[k];
-      if (r < 0) { return k; }
-    }
-    return "strike";
-  }
-
-  /**
-   * A fresh battle for this pet. bossId picks the unlocked boss (defaults to
-   * the tier for the pet's level); its stats still scale with the pet's level.
-   */
+  /** A fresh battle against the unlocked boss (defaults to the pet's tier); its stats scale with the pet's level. */
   function createBattle(pet, rng, bossId) {
     var stats = petBattleStats(pet);
     var boss = bossById(bossId) || bossForLevel(stats.level);
@@ -233,125 +237,181 @@
       bossHp: bossHp,
       bossMaxHp: bossHp,
       bossAttack: bossAttack(boss, stats.level),
+      bossReflect: boss.reflect,
+      bossHeal: Math.max(1, Math.round(bossHp * BOSS_PATCH_SHARE)),
       pet: stats,
       petHp: stats.maxHp,
-      turn: 0,
-      debugCooldown: 0,
-      intent: pickIntent(boss, false, rng || Math.random),  // the boss's next move, shown to the player
-      focus: false,       // set by a Defend that blocked a hit; doubles the next Attack
-      shield: false,      // the boss's Shield is up
-      corrupt: 0,         // turns left on the Corrupt bug
+      round: 0,
+      petFatigue: 0,      // Patches used; each heals FATIGUE_STEP × the last
+      bossFatigue: 0,
+      petStreak: 0,       // clash wins in a row
+      bossStreak: 0,
+      petStances: [],     // every stance so far, oldest first
+      bossStances: [],
+      enraged: false,
       result: null,       // null while fighting, then "win" | "lose"
-      lastPet: null,      // { action, damage?, heal?, crit?, focus?, shielded?, cleansed? }
-      lastBoss: null,     // { move, damage, blocked }
-      lastBug: 0,         // HP the bug drained this turn
+      last: null,         // the last clash, see battleTurn
     };
   }
 
-  function canDebug(battle) { return !battle.result && battle.debugCooldown === 0; }
+  function isEnraged(b) { return b.bossHp < b.bossMaxHp * RAGE_SHARE; }
 
   /**
-   * Play one turn: the pet acts ("attack" | "defend" | "debug"), then the boss
-   * carries out the move it showed (if it is still standing), the Corrupt bug
-   * drains HP, and the boss picks its next move. Returns a new battle object.
+   * The boss's stance weights for the next clash, from its habit table, its
+   * rage table below 40% HP, and a nudge towards countering the stance the
+   * player has used most in the last few rounds. Never shown to the player.
    */
-  function battleTurn(battle, action, rng) {
+  function bossWeights(b) {
+    var boss = bossById(b.bossId) || BOSSES[0];
+    var ctx = {
+      round: b.round,
+      lastPet: b.petStances.length ? b.petStances[b.petStances.length - 1] : null,
+      prevPet: b.petStances.length > 1 ? b.petStances[b.petStances.length - 2] : null,
+      lastBoss: b.bossStances.length ? b.bossStances[b.bossStances.length - 1] : null,
+      lastOutcome: b.last ? b.last.outcome : null,   // from the pet's side
+    };
+    var raw = isEnraged(b) ? boss.rage(ctx) : boss.habits(ctx);
+    var w = {}, total = 0, i;
+    for (i = 0; i < STANCES.length; i++) { total += raw[STANCES[i]] || 0; }
+    for (i = 0; i < STANCES.length; i++) { w[STANCES[i]] = total > 0 ? 100 * (raw[STANCES[i]] || 0) / total : 100 / 3; }
+    var recent = b.petStances.slice(-SPAM_WINDOW);
+    if (recent.length >= 2) {
+      var counts = { attack: 0, guard: 0, patch: 0 }, top = null;
+      for (i = 0; i < recent.length; i++) { counts[recent[i]]++; }
+      for (i = 0; i < STANCES.length; i++) { if (!top || counts[STANCES[i]] > counts[top]) { top = STANCES[i]; } }
+      if (counts[top] >= 2) { w[counterOf(top)] += SPAM_BONUS * (counts[top] - 1); }
+    }
+    return w;
+  }
+
+  function pickStance(weights, rng) {
+    var total = 0, i;
+    for (i = 0; i < STANCES.length; i++) { total += weights[STANCES[i]]; }
+    var r = rng() * total;
+    for (i = 0; i < STANCES.length; i++) {
+      r -= weights[STANCES[i]];
+      if (r < 0) { return STANCES[i]; }
+    }
+    return STANCES[STANCES.length - 1];
+  }
+
+  /** "win" | "lose" | "tie", from the pet's side. */
+  function clashOutcome(pet, boss) {
+    return pet === boss ? "tie" : BEATS[pet] === boss ? "win" : "lose";
+  }
+
+  /**
+   * Play one clash: the pet's stance against the boss's secret stance, then
+   * overtime chip damage from round 12. Returns a new battle object; last
+   * holds { pet, boss, outcome, toBoss, toPet, petHeal, bossHeal, overtime, combo }.
+   */
+  function battleTurn(battle, stance, rng) {
     if (battle.result) { return battle; }
-    if (action === "debug" && !canDebug(battle)) { action = "defend"; }
-    var boss = bossById(battle.bossId) || BOSSES[0];
+    return resolveClash(battle, stance, pickStance(bossWeights(battle), rng), rng);
+  }
+
+  /** Resolve one clash with both stances known (battleTurn picks the boss's in secret). */
+  function resolveClash(battle, stance, bossStance, rng) {
+    if (battle.result) { return battle; }
+    if (!BEATS[stance]) { stance = "guard"; }
     var b = {};
     for (var k in battle) { b[k] = battle[k]; }
-    b.turn = battle.turn + 1;
-    b.debugCooldown = Math.max(0, battle.debugCooldown - 1);
-    b.lastBoss = null;
-    b.lastBug = 0;
+    var outcome = clashOutcome(stance, bossStance);
+    b.round = battle.round + 1;
+    b.petStances = battle.petStances.concat([stance]);
+    b.bossStances = battle.bossStances.concat([bossStance]);
 
-    var defending = false;
-    if (action === "attack") {
-      var dmg = randInt(rng, b.pet.attack[0], b.pet.attack[1]);
-      var crit = rng() < CRIT_CHANCE;
-      if (crit) { dmg = Math.round(dmg * CRIT_MULT); }
-      var focused = b.focus;
-      var shielded = b.shield && !focused;
-      if (focused) { dmg = Math.round(dmg * FOCUS_MULT); b.focus = false; b.shield = false; }
-      if (shielded) { dmg = Math.max(1, Math.round(dmg * SHIELD_SHARE)); }
-      b.bossHp = Math.max(0, b.bossHp - dmg);
-      b.lastPet = { action: "attack", damage: dmg, crit: crit, focus: focused, shielded: shielded, brokeShield: focused && battle.shield };
-    } else if (action === "debug") {
-      var healed = Math.min(b.pet.heal, b.pet.maxHp - b.petHp);
-      b.petHp += healed;
-      b.debugCooldown = DEBUG_COOLDOWN;
-      b.lastPet = { action: "debug", heal: healed, cleansed: b.corrupt > 0, unshielded: b.shield };
-      b.corrupt = 0;
-      b.shield = false;
+    var petCombo = outcome === "win" && battle.petStreak >= COMBO_AT;
+    var bossCombo = outcome === "lose" && battle.bossStreak >= COMBO_AT;
+    var pMult = petCombo ? COMBO_MULT : 1;
+    var bMult = bossCombo ? COMBO_MULT : 1;
+    var petRoll = function () { return randInt(rng, b.pet.attack[0], b.pet.attack[1]); };
+    var bossRoll = function () { return randInt(rng, b.bossAttack[0], b.bossAttack[1]); };
+    var petPatch = function () { return Math.max(1, Math.round(b.pet.heal * Math.pow(FATIGUE_STEP, b.petFatigue))); };
+    var bossPatch = function () { return Math.max(1, Math.round(b.bossHeal * Math.pow(FATIGUE_STEP, b.bossFatigue))); };
+    var toBoss = 0, toPet = 0, petHeal = 0, bossHeal = 0;
+
+    if (outcome === "tie") {
+      if (stance === "attack") {
+        toBoss = Math.round(petRoll() * TIE_SHARE);
+        toPet = Math.round(bossRoll() * TIE_SHARE);
+      } else if (stance === "patch") {
+        petHeal = Math.round(petPatch() * TIE_SHARE);
+        bossHeal = Math.round(bossPatch() * TIE_SHARE);
+        b.petFatigue++;
+        b.bossFatigue++;
+      }
+    } else if (outcome === "win") {
+      if (stance === "attack") { toBoss = Math.round(petRoll() * WIN_ATTACK_MULT * pMult); }       // vs Patch: its heal is cancelled
+      else if (stance === "guard") { toBoss = Math.round(bossRoll() * b.pet.reflect * pMult); }   // vs Attack: blocked and reflected
+      else { petHeal = Math.round(petPatch() * pMult); }                                          // vs Guard: a free heal, no fatigue
     } else {
-      defending = true;
-      b.lastPet = { action: "defend" };
+      if (bossStance === "attack") { toPet = Math.round(bossRoll() * WIN_ATTACK_MULT * bMult); }
+      else if (bossStance === "guard") { toPet = Math.round(petRoll() * b.bossReflect * bMult); }
+      else { bossHeal = Math.round(bossPatch() * bMult); }
     }
 
-    if (b.bossHp <= 0) { b.result = "win"; return b; }
+    b.petStreak = outcome === "win" ? battle.petStreak + 1 : 0;
+    b.bossStreak = outcome === "lose" ? battle.bossStreak + 1 : 0;
+    b.bossHp = clamp(b.bossHp - toBoss, 0, b.bossMaxHp);
+    b.petHp = clamp(b.petHp - toPet, 0, b.pet.maxHp);
+    petHeal = Math.min(petHeal, b.pet.maxHp - b.petHp);
+    bossHeal = Math.min(bossHeal, b.bossMaxHp - b.bossHp);
+    if (b.petHp > 0) { b.petHp += petHeal; } else { petHeal = 0; }
+    if (b.bossHp > 0) { b.bossHp += bossHeal; } else { bossHeal = 0; }
 
-    var move = b.intent;
-    var strike = randInt(rng, b.bossAttack[0], b.bossAttack[1]);
-    var hit = 0;
-    if (move === "strike") { hit = strike; }
-    else if (move === "charge") { hit = Math.round(strike * CHARGE_MULT); }
-    else if (move === "corrupt") { hit = Math.round(strike * CORRUPT_HIT_SHARE); b.corrupt = CORRUPT_TURNS; }
-    else if (move === "shield") { b.shield = true; }
-    var share = defending ? (move === "charge" ? Math.min(0.95, b.pet.block + CHARGE_GUARD) : b.pet.block) : 0;
-    var blocked = Math.round(hit * share);
-    if (defending && hit > 0) { b.focus = true; }
-    b.petHp = Math.max(0, b.petHp - (hit - blocked));
-    b.lastBoss = { move: move, damage: hit - blocked, blocked: blocked };
-
-    // The bug drains HP on the turns after it lands.
-    if (battle.corrupt > 0 && b.corrupt > 0 && b.petHp > 0) {
-      b.lastBug = Math.min(b.petHp, CORRUPT_TICK + Math.round(b.pet.level * 0.2));
-      b.petHp -= b.lastBug;
-      b.corrupt = move === "corrupt" ? CORRUPT_TURNS : battle.corrupt - 1;
+    var overtime = 0;
+    if (b.round >= OVERTIME_ROUND && b.petHp > 0 && b.bossHp > 0) {
+      overtime = OVERTIME_BASE + (b.round - OVERTIME_ROUND);
+      b.petHp = Math.max(0, b.petHp - overtime);
+      b.bossHp = Math.max(0, b.bossHp - overtime);
     }
 
-    if (b.petHp <= 0 || b.turn >= MAX_TURNS) { b.result = "lose"; return b; }
-    b.intent = pickIntent(boss, b.shield, rng);
+    b.enraged = isEnraged(b);
+    b.last = {
+      pet: stance, boss: bossStance, outcome: outcome,
+      toBoss: toBoss, toPet: toPet, petHeal: petHeal, bossHeal: bossHeal,
+      overtime: overtime, combo: petCombo || bossCombo,
+    };
+    // Both down at once counts as a loss.
+    if (b.petHp <= 0) { b.result = "lose"; }
+    else if (b.bossHp <= 0) { b.result = "win"; }
     return b;
   }
 
-  /** One line of battle text for the last turn. */
+  /** The boss's last few stances, oldest first, for the history strip. */
+  function bossHistory(battle) { return battle.bossStances.slice(-HISTORY_SHOWN); }
+
+  function shortName(battle) { return battle.bossName.split(" ").slice(-1)[0]; }
+
+  /** One line for the last clash, e.g. "Wraith Patched - your Attack broke through! (-14)". */
   function describeTurn(battle, petName) {
     var n = petName || "Your pet";
-    var parts = [];
-    var p = battle.lastPet;
-    if (p) {
-      if (p.action === "attack") {
-        parts.push(n + (p.focus ? " lands a focused hit for " : " hits for ") + p.damage +
-          (p.crit ? " (critical!)" : "") + (p.shielded ? " through the shield" : "") + "." +
-          (p.brokeShield ? " The shield shatters!" : ""));
-      } else if (p.action === "debug") {
-        parts.push(n + " debugs and heals " + p.heal + " HP" +
-          (p.cleansed ? ", clearing the bug" : "") + (p.unshielded ? ", and strips the shield" : "") + ".");
-      } else { parts.push(n + " braces for impact."); }
+    var c = battle.last;
+    if (!c) { return ""; }
+    var boss = shortName(battle);
+    var did = { attack: " Attacked", guard: " Guarded", patch: " Patched" }[c.boss];
+    var line;
+    if (c.outcome === "tie") {
+      line = c.pet === "attack" ? "Both Attacked - " + n + " -" + c.toPet + ", " + boss + " -" + c.toBoss + "."
+        : c.pet === "patch" ? "Both Patched - " + n + " +" + c.petHeal + ", " + boss + " +" + c.bossHeal + "."
+        : "Both Guarded - nothing happens.";
+    } else if (c.outcome === "win") {
+      line = boss + did + " - " + (
+        c.pet === "attack" ? "your Attack broke through! (-" + c.toBoss + ")"
+        : c.pet === "guard" ? n + " blocked and reflected it! (-" + c.toBoss + ")"
+        : n + " Patched behind its Guard! (+" + c.petHeal + ")");
+    } else {
+      line = boss + did + " - " + (
+        c.boss === "attack" ? "it smashed through " + n + "'s Patch! (-" + c.toPet + ")"
+        : c.boss === "guard" ? "it blocked and reflected " + n + "'s Attack! (-" + c.toPet + ")"
+        : "it Patched while " + n + " Guarded. (+" + c.bossHeal + ")");
     }
-    var h = battle.lastBoss;
-    if (h) {
-      if (h.move === "shield") { parts.push(battle.bossName + " raises a shield."); }
-      else {
-        parts.push(battle.bossName + (h.move === "charge" ? " unleashes a charged hit for " : h.move === "corrupt" ? " corrupts " + n + " for " : " strikes for ") +
-          h.damage + (h.blocked ? " (" + h.blocked + " blocked)" : "") + ".");
-      }
-      if (p && p.action === "defend" && battle.focus && h.damage + h.blocked > 0) { parts.push(n + " is focused!"); }
-    }
-    if (battle.lastBug) { parts.push("The bug drains " + battle.lastBug + " HP."); }
-    if (battle.result === "win") { parts.push(battle.bossName + " is defeated!"); }
-    else if (battle.result === "lose") {
-      parts.push(battle.petHp <= 0 ? n + " is knocked out." : battle.bossName + " outlasts " + n + ".");
-    }
-    return parts.join(" ");
-  }
-
-  /** The intent hint, e.g. "Next: Charge - winds up a huge hit (Defend!)". */
-  function describeIntent(battle) {
-    var m = MOVES[battle.intent];
-    return m ? "Next: " + m.label + " - " + m.hint : "";
+    if (c.combo) { line += " Combo!"; }
+    if (c.overtime) { line += " Overtime: both take " + c.overtime + "."; }
+    if (battle.result === "win") { line += " You defeated " + battle.bossName + "!"; }
+    else if (battle.result === "lose") { line += " " + battle.bossName + " won this time - it'll be waiting."; }
+    return line;
   }
 
   // =========================================================================
@@ -360,6 +420,7 @@
 
   var C = {
     bg:      "#1a1a2e",
+    rage:    "#3a1420",
     floor:   "#2e2e4a",
     barBack: "#2b2b3a",
     barEdge: "#0e0e18",
@@ -367,15 +428,13 @@
     warn:    "#e8c547",
     bad:     "#e05252",
     flash:   "#ffffff",
+    heal:    "#7dffa0",
   };
 
   /** Pixel unit for the boss sprite on a canvas of height H. */
   function bossPx(H) { return Math.max(1, Math.floor(H * 0.55 / BOSS_GRID)); }
 
-  /**
-   * Draw a boss sprite with its top-left at (x, y). flash paints every
-   * pixel white (the hit frame).
-   */
+  /** Draw a boss sprite with its top-left at (x, y). flash paints every pixel white (the hit frame). */
   function drawBoss(ctx, boss, x, y, px, flash) {
     ctx.save();
     for (var r = 0; r < boss.grid.length; r++) {
@@ -407,53 +466,11 @@
     return share;
   }
 
-  /**
-   * The battle scene on a W × H canvas: the boss centred above the floor,
-   * its HP bar on top and the pet's HP bar at the bottom. opts.frame (0/1)
-   * bobs the boss; opts.flash ("boss" | "pet") flashes whoever was just hit.
-   */
-  function drawBattleScene(ctx, W, H, battle, opts) {
-    var o = opts || {};
-    var boss = bossById(battle.bossId) || BOSSES[0];
-    var px = bossPx(H);
-    var barH = Math.max(4, Math.floor(H * 0.06));
-    var margin = Math.max(2, Math.floor(H * 0.04));
-    ctx.save();
-    ctx.fillStyle = o.flash === "pet" ? C.bad : C.bg;
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = C.floor;
-    ctx.fillRect(0, Math.floor(H * 0.78), W, H - Math.floor(H * 0.78));
-    ctx.restore();
-
-    drawHpBar(ctx, margin, margin, W - 2 * margin, barH, battle.bossHp, battle.bossMaxHp);
-    var size = BOSS_GRID * px;
-    var bx = Math.round((W - size) / 2);
-    var by = Math.floor(H * 0.78) - size + (o.frame ? -px : 0);
-    var sprite = battle.result === "win" ? null : drawBoss(ctx, boss, bx, by, px, o.flash === "boss");
-    if (sprite && battle.shield) { drawShieldRing(ctx, bx, by, size, px); }
-    if (sprite && !battle.result && INTENT_ICONS[battle.intent]) {
-      var ipx = Math.max(1, Math.floor(px * 0.75));
-      drawIcon(ctx, INTENT_ICONS[battle.intent], bx + size + px, by, ipx);
-    }
-    var petBarY = H - margin - barH;
-    drawHpBar(ctx, margin, petBarY, W - 2 * margin, barH, battle.petHp, battle.pet.maxHp);
-    var spx = Math.max(1, Math.floor(barH / 4));
-    var sx = margin;
-    if (battle.corrupt > 0) { drawIcon(ctx, STATUS_ICONS.bug, sx, petBarY - 6 * spx, spx); sx += 6 * spx; }
-    if (battle.focus) { drawIcon(ctx, STATUS_ICONS.focus, sx, petBarY - 6 * spx, spx); }
-    return { px: px, boss: sprite };
-  }
-
-  /** 5×5 icons: "1" = ink in the icon's colour. */
-  var INTENT_ICONS = {
-    strike:  { colour: "#e05252", rows: ["00011", "00110", "01100", "11000", "10000"] },   // blade
-    charge:  { colour: "#ff9a3c", rows: ["00110", "01100", "11111", "00110", "01100"] },   // bolt
-    corrupt: { colour: "#a0e060", rows: ["10101", "01110", "11111", "01110", "10101"] },   // bug
-    shield:  { colour: "#5b8bd6", rows: ["11111", "11111", "11111", "01110", "00100"] },   // shield
-  };
-  var STATUS_ICONS = {
-    bug:   INTENT_ICONS.corrupt,
-    focus: { colour: "#e8c547", rows: ["00100", "01110", "11111", "01110", "00100"] },
+  /** 5×5 stance icons: "1" = ink in the icon's colour. */
+  var STANCE_ICONS = {
+    attack: { colour: "#e05252", rows: ["00011", "00110", "01100", "11000", "10000"] },   // blade
+    guard:  { colour: "#5b8bd6", rows: ["11111", "11111", "11111", "01110", "00100"] },   // shield
+    patch:  { colour: "#7dffa0", rows: ["00100", "00100", "11111", "00100", "00100"] },   // plus
   };
 
   function drawIcon(ctx, icon, x, y, px) {
@@ -467,15 +484,61 @@
     ctx.restore();
   }
 
-  /** A pixel ring round the boss while its Shield is up. */
-  function drawShieldRing(ctx, x, y, size, px) {
+  /** A few green pixels round a point: the heal sparkle. */
+  function drawSparkle(ctx, x, y, px) {
     ctx.save();
-    ctx.fillStyle = INTENT_ICONS.shield.colour;
-    ctx.fillRect(x - px, y - px, size + 2 * px, px);
-    ctx.fillRect(x - px, y + size, size + 2 * px, px);
-    ctx.fillRect(x - px, y, px, size);
-    ctx.fillRect(x + size, y, px, size);
+    ctx.fillStyle = C.heal;
+    var dots = [[0, -3], [-3, 0], [3, 0], [0, 3], [-2, -2], [2, 2]];
+    for (var i = 0; i < dots.length; i++) { ctx.fillRect(x + dots[i][0] * px, y + dots[i][1] * px, px, px); }
     ctx.restore();
+  }
+
+  /**
+   * The battle scene on a W × H canvas: the boss centred above the floor
+   * (red-tinted while enraged), its HP bar and stance history on top, the
+   * pet's HP bar at the bottom, and after a clash both stances side by side
+   * (pet left, boss right). opts.frame (0/1) bobs the boss; opts.flash
+   * ("boss" | "pet") flashes whoever was just hit; opts.reveal shows the
+   * last clash's stances; opts.sparkle ("boss" | "pet") draws a heal sparkle.
+   */
+  function drawBattleScene(ctx, W, H, battle, opts) {
+    var o = opts || {};
+    var boss = bossById(battle.bossId) || BOSSES[0];
+    var px = bossPx(H);
+    var barH = Math.max(4, Math.floor(H * 0.06));
+    var margin = Math.max(2, Math.floor(H * 0.04));
+    var floorY = Math.floor(H * 0.78);
+    ctx.save();
+    ctx.fillStyle = o.flash === "pet" ? C.bad : battle.enraged ? C.rage : C.bg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = C.floor;
+    ctx.fillRect(0, floorY, W, H - floorY);
+    ctx.restore();
+
+    drawHpBar(ctx, margin, margin, W - 2 * margin, barH, battle.bossHp, battle.bossMaxHp);
+    var ipx = Math.max(1, Math.floor(barH / 3));
+    var hist = bossHistory(battle);
+    for (var i = 0; i < hist.length; i++) {
+      drawIcon(ctx, STANCE_ICONS[hist[i]], margin + i * 6 * ipx, margin + barH + ipx, ipx);
+    }
+
+    var size = BOSS_GRID * px;
+    var bx = Math.round((W - size) / 2);
+    var by = floorY - size + (o.frame ? -px : 0);
+    var sprite = battle.result === "win" ? null : drawBoss(ctx, boss, bx, by, px, o.flash === "boss");
+    if (o.sparkle === "boss" && sprite) { drawSparkle(ctx, bx + size, by + px * 3, px); }
+
+    var petBarY = H - margin - barH;
+    drawHpBar(ctx, margin, petBarY, W - 2 * margin, barH, battle.petHp, battle.pet.maxHp);
+    if (o.sparkle === "pet") { drawSparkle(ctx, margin + 4 * px, petBarY - 4 * px, px); }
+
+    if (o.reveal && battle.last) {
+      var rpx = Math.max(1, Math.floor(px * 0.9));
+      var ry = floorY - 6 * rpx;
+      drawIcon(ctx, STANCE_ICONS[battle.last.pet], margin, ry, rpx);
+      drawIcon(ctx, STANCE_ICONS[battle.last.boss], W - margin - 5 * rpx, ry, rpx);
+    }
+    return { px: px, boss: sprite };
   }
 
   // =========================================================================
@@ -485,24 +548,29 @@
   window.bossArt = {
     BOSSES:          BOSSES,
     BOSS_GRID:       BOSS_GRID,
-    MAX_TURNS:       MAX_TURNS,
-    DEBUG_COOLDOWN:  DEBUG_COOLDOWN,
-    CORRUPT_TURNS:   CORRUPT_TURNS,
-    MOVES:           MOVES,
-    INTENT_ICONS:    INTENT_ICONS,
-    bossById:        bossById,
-    pickIntent:      pickIntent,
-    describeIntent:  describeIntent,
+    STANCES:         STANCES,
+    STANCE_LABELS:   STANCE_LABELS,
+    STANCE_ICONS:    STANCE_ICONS,
+    OVERTIME_ROUND:  OVERTIME_ROUND,
+    RAGE_SHARE:      RAGE_SHARE,
+    COMBO_AT:        COMBO_AT,
+    COMBO_MULT:      COMBO_MULT,
+    FATIGUE_STEP:    FATIGUE_STEP,
     COLOURS:         C,
     makeRng:         makeRng,
     careMod:         careMod,
+    counterOf:       counterOf,
+    clashOutcome:    clashOutcome,
+    bossById:        bossById,
     bossForLevel:    bossForLevel,
     bossMaxHp:       bossMaxHp,
     bossAttack:      bossAttack,
     petBattleStats:  petBattleStats,
     createBattle:    createBattle,
-    canDebug:        canDebug,
+    bossWeights:     bossWeights,
     battleTurn:      battleTurn,
+    resolveClash:    resolveClash,
+    bossHistory:     bossHistory,
     describeTurn:    describeTurn,
     bossPx:          bossPx,
     drawBoss:        drawBoss,
