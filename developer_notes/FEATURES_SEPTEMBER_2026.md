@@ -658,9 +658,9 @@ the mini-game picker and isn't tied to the code.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Add to the mini-game picker | `[x]` | v2.30.0: "Boss Battle" button in `sidebar.html`, wired in `sidebar.js` |
-| Turn-based fight | `[x]` | v2.30.0: Attack / Defend / Debug against a boss that shows its next move (Strike, Charge, Corrupt, Shield). Defend builds Focus (×2 next Attack, breaks Shield); Debug heals and clears bugs and shields. At most 11 turns; attack-only rarely wins. Rules in `bossArt.js`, seeded RNG for tests |
-| Boss by level | `[x]` | Unlocked at pet levels 3 (Syntax Wraith), 5 (NullPointer Demon), 10 (StackOverflow Behemoth), then every 5; queued in `PetState.pendingBosses` (host-checked), a loss keeps the boss; bosses gain HP and attack per pet level |
-| Pet stats scale the fight | `[x]` | Level sets the base; health → HP, energy → attack, discipline → Defend, happiness → Debug, each ×0.8–×1.2 |
+| Turn-based fight | `[x]` | v2.30.0: a hidden-stance mind-game. Each round pet and boss secretly pick Attack / Guard / Patch (Attack > Patch > Guard > Attack), revealed together. Bosses follow learnable habit tables, change them when enraged below 40% HP and punish stance spamming; nothing is forecast. Combo, Patch fatigue and overtime from round 12 make every fight end. Rules in `bossArt.js`, seeded RNG for tests |
+| Boss by level | `[x]` | Unlocked at pet levels 3 (Syntax Wraith), 5 (NullPointer Demon), 10 (StackOverflow Behemoth), then every 5; queued in `PetState.pendingBosses` (host-checked), a loss keeps the boss; the picker button is hidden until one is waiting; bosses gain HP and attack per pet level |
+| Pet stats scale the fight | `[x]` | Level sets the base; health → HP, energy → Attack, discipline → Guard's reflect, happiness → Patch, each ×0.8–×1.2 |
 | Rewards | `[x]` | `applyMinigameResult(…, "boss_battle", …)`: happiness +10 win / −5 lose on top of play(); a win awards `boss_battle` XP (40, capped 40/h and 80/day), counts as a mini-game win and unlocks Champion |
 | Energy cost | `[x]` | Same `play()` check as the other mini-games; answers the `play` call |
 | Art | `[~]` | Placeholder 16×16 pixel sprites, HP bars and hit flash in `bossArt.js`; imported art to follow, shared with §2.8 |
@@ -668,8 +668,8 @@ the mini-game picker and isn't tied to the code.
 
 **Design notes:**
 
-- Pet stats could scale the fight: low energy means weaker attacks, and high
-  discipline means better Defend.
+- Pet stats scale the fight: low energy means weaker attacks, and high
+  discipline means a stronger Guard reflect.
 - Keep a fight under a minute, like the other games.
 
 ---
