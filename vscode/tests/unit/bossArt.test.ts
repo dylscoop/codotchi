@@ -358,6 +358,14 @@ describe("Boss Battle wiring", () => {
   });
 
   it("only starts a battle against an unlocked boss and hides the button otherwise", () => {
+    assert.match(sidebarSource, /function pendingBossesOf[\s\S]*?if \(bossAccess === "off"\) \{ return \[\]; \}/);
+    assert.ok(sidebarSource.includes('message.bossAccess === "queue" || message.bossAccess === "always"'));
+    const provider = fs.readFileSync(path.join(repo, "vscode/src/sidebarProvider.ts"), "utf8");
+    assert.ok(provider.includes("bossAccess: this.bossAccess()") && provider.includes("message.result, this.bossAccess())"));
+    const panel = fs.readFileSync(path.join(repo, "pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt"), "utf8");
+    assert.ok(panel.includes('"bossAccess":"${bossAccessFor(devMode'));
+    const plugin = fs.readFileSync(path.join(repo, "pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt"), "utf8");
+    assert.ok(plugin.includes("applyMinigameResult(ns, game, result, bossAccessFor(isDevModeActive()"));
     assert.ok(sidebarSource.includes("bossArt.createBattle(lastState, bossRng, pending[0])"));
     assert.match(sidebarSource, /function startBossBattle\(\) \{[\s\S]*?if \(pending\.length === 0\) \{ return; \}/);
     assert.match(sidebarSource, /function updateBossButton[\s\S]*?btn\.classList\.toggle\("hidden", pending === 0\)/);

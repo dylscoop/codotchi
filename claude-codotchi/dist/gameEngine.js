@@ -1817,17 +1817,23 @@ export function happinessDeltaForMinigame(game, result) {
  * @param state - The current pet state.
  * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "boss_battle", "guess", or "memory".
  * @param result - "win" or "lose" ("push" too for blackjack).
+ * @param bossAccess - Boss Battle access from the host's dev-mode settings:
+ *          "off" ignores every boss result, "queue" needs an unlocked boss,
+ *          "always" also lets a pet with no boss waiting fight its tier's boss.
  * @returns A new PetState after the happiness delta is applied. A win awards
  *          "minigame" XP, or "boss_battle" XP for the Boss Battle.
  */
-export function applyMinigameResult(state, game, result) {
+export function applyMinigameResult(state, game, result, bossAccess = "queue") {
     const delta = happinessDeltaForMinigame(game, result);
     const isVigorousGame = game === "left_right" || game === "higher_lower";
     // Hosts call this straight after play(): carry over any attention call that
     // play() answered, otherwise its answered event (and toast / log line) is lost.
     const answered = state.events.filter((e) => e.startsWith("attention_call_answered_"));
-    const pending = state.pendingBosses ?? [];
-    if (game === "boss_battle" && pending.length === 0) {
+    const queued = state.pendingBosses ?? [];
+    // "always" with nothing queued fights a stand-in boss that is never stored.
+    const pending = game === "boss_battle" && bossAccess === "always" && queued.length === 0
+        ? [bossIdForLevel(state.petLevel)] : queued;
+    if (game === "boss_battle" && (bossAccess === "off" || pending.length === 0)) {
         // No boss unlocked: ignore the result so the webview can't farm boss XP.
         return withDerivedFields({ ...state, events: [...answered, "boss_battle_no_boss"] });
     }
@@ -1847,7 +1853,7 @@ export function applyMinigameResult(state, game, result) {
         happiness: clampStat(state.happiness + delta),
         weight: newWeight,
         events,
-        pendingBosses: game === "boss_battle" && won ? pending.slice(1) : pending,
+        pendingBosses: game === "boss_battle" && won ? queued.slice(1) : queued,
     });
     if (!won) {
         return next;
@@ -2325,6 +2331,16 @@ export const XP_ACHIEVEMENT_BONUS = 50;
 export const BOSS_IDS = ["syntax_wraith", "nullpointer_demon", "stackoverflow_behemoth"];
 /** Most unbeaten bosses a pet can hold at once. */
 export const BOSS_QUEUE_MAX = 3;
+/**
+ * Boss Battle access for the host's settings. Boss Battles are a dev-mode
+ * preview: off unless dev mode is active and the Boss Battle setting is on.
+ */
+export function bossAccessFor(devMode, enabled, alwaysAvailable) {
+    if (!devMode || !enabled) {
+        return "off";
+    }
+    return alwaysAvailable ? "always" : "queue";
+}
 /** Pet levels that unlock a Boss Battle: 3, 5, 10, then every 5. */
 export function isBossMilestone(level) {
     return level === 3 || level === 5 || (level >= 10 && level % 5 === 0);

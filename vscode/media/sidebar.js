@@ -153,6 +153,9 @@
   /** Levels, achievements and daily challenges are a beta feature, off unless the host enables them. */
   var levelsEnabled = false;
 
+  /** Boss Battle is a dev-mode preview: "off", "queue" (needs an unlocked boss) or "always" (set by the host). */
+  var bossAccess = "off";
+
   /** Events that only make sense when levels are enabled. */
   function isProgressionEvent(code) {
     return code === "trainer_level_up" || code === "pet_level_up" ||
@@ -873,16 +876,22 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   var bossRng = Math.random;
 
   function pendingBossesOf(state) {
-    return (state && Array.isArray(state.pendingBosses)) ? state.pendingBosses : [];
+    var queued = (state && Array.isArray(state.pendingBosses)) ? state.pendingBosses : [];
+    if (bossAccess === "off") { return []; }
+    // Dev "always" setting: with nothing queued, fight the tier's boss (the host doesn't store it).
+    if (bossAccess === "always" && queued.length === 0 && bossArt) {
+      return [bossArt.bossForLevel((state && state.petLevel) || 1).id];
+    }
+    return queued;
   }
 
-  /** Show the picker button only while a boss is waiting, with how many are. */
+  /** Show the picker button only while a boss is waiting (and the dev setting is on), with how many are. */
   function updateBossButton(state) {
     var btn = document.getElementById("btn-mg-boss");
     if (!btn || !bossArt) { return; }
     var pending = pendingBossesOf(state).length;
     btn.classList.toggle("hidden", pending === 0);
-    btn.textContent = "Boss Battle \u2694 " + pending;
+    btn.textContent = bossAccess === "always" ? "Boss Battle \u2694" : "Boss Battle \u2694 " + pending;
     btn.title = pending + " boss" + (pending === 1 ? "" : "es") + " waiting. Beat one to clear it; a loss keeps it for a retry.";
   }
 
@@ -2001,7 +2010,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         return;
       }
       // 1d. A boss unlocked at a level milestone (Boss Battles work with levels off too)
-      if (events.indexOf("boss_unlocked") !== -1) {
+      if (bossAccess !== "off" && events.indexOf("boss_unlocked") !== -1) {
         queueBubble(humaniseEvent("boss_unlocked", _n, state));
         return;
       }
@@ -2272,6 +2281,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   /** Append new event strings to the scrollable event log. */
   function humaniseEvent(code, name, state) {
     if (!levelsEnabled && isProgressionEvent(code)) { return null; }
+    if (bossAccess === "off" && (code === "boss_unlocked" || code.indexOf("boss_battle") !== -1)) { return null; }
     var n = name || "Codotchi";
     var _cc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
     var labels = {
@@ -3403,6 +3413,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     const state = message.state;
     lastDailies = message.dailies || null;
     levelsEnabled = message.levelsEnabled === true;
+    bossAccess = message.bossAccess === "queue" || message.bossAccess === "always" ? message.bossAccess : "off";
 
     currentCravingItem = message.cravingItem || null;
 

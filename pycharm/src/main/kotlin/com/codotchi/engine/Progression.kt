@@ -44,6 +44,16 @@ val BOSS_IDS: List<String> = listOf("syntax_wraith", "nullpointer_demon", "stack
 /** Most unbeaten bosses a pet can hold at once. */
 const val BOSS_QUEUE_MAX: Int = 3
 
+/**
+ * Boss Battle access ("off" | "queue" | "always") for the host's settings. Boss
+ * Battles are a dev-mode preview: off unless dev mode and the setting are on.
+ */
+fun bossAccessFor(devMode: Boolean, enabled: Boolean, alwaysAvailable: Boolean): String = when {
+    !devMode || !enabled -> "off"
+    alwaysAvailable      -> "always"
+    else                 -> "queue"
+}
+
 /** Pet levels that unlock a Boss Battle: 3, 5, 10, then every 5. */
 fun isBossMilestone(level: Int): Boolean = level == 3 || level == 5 || (level >= 10 && level % 5 == 0)
 

@@ -69,6 +69,13 @@ class ProgressionTest {
         val none = applyMinigameResult(pet(), "boss_battle", "win")
         assertTrue("boss_battle_no_boss" in none.events)
         assertNull(none.trainer.counters["bossBattleWins"])
+        assertEquals("off", bossAccessFor(false, true, true))
+        assertEquals("queue", bossAccessFor(true, true, false))
+        assertEquals("always", bossAccessFor(true, true, true))
+        assertTrue("boss_battle_no_boss" in applyMinigameResult(pet().copy(pendingBosses = listOf("syntax_wraith")), "boss_battle", "win", "off").events)
+        val always = applyMinigameResult(pet(), "boss_battle", "win", "always")
+        assertEquals(1, always.trainer.counters["bossBattleWins"])
+        assertTrue(applyMinigameResult(pet(), "boss_battle", "lose", "always").pendingBosses.isEmpty())
     }
 
     @Test

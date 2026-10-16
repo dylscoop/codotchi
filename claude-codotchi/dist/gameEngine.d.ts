@@ -685,10 +685,13 @@ export declare function happinessDeltaForMinigame(game: string, result: string):
  * @param state - The current pet state.
  * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "boss_battle", "guess", or "memory".
  * @param result - "win" or "lose" ("push" too for blackjack).
+ * @param bossAccess - Boss Battle access from the host's dev-mode settings:
+ *          "off" ignores every boss result, "queue" needs an unlocked boss,
+ *          "always" also lets a pet with no boss waiting fight its tier's boss.
  * @returns A new PetState after the happiness delta is applied. A win awards
  *          "minigame" XP, or "boss_battle" XP for the Boss Battle.
  */
-export declare function applyMinigameResult(state: PetState, game: string, result: string): PetState;
+export declare function applyMinigameResult(state: PetState, game: string, result: string, bossAccess?: BossAccess): PetState;
 /**
  * Put the pet to sleep.
  *
@@ -850,6 +853,13 @@ export declare const XP_ACHIEVEMENT_BONUS: number;
 export declare const BOSS_IDS: readonly string[];
 /** Most unbeaten bosses a pet can hold at once. */
 export declare const BOSS_QUEUE_MAX: number;
+/** Boss Battle access, from the host's dev-mode settings (see applyMinigameResult). */
+export type BossAccess = "off" | "queue" | "always";
+/**
+ * Boss Battle access for the host's settings. Boss Battles are a dev-mode
+ * preview: off unless dev mode is active and the Boss Battle setting is on.
+ */
+export declare function bossAccessFor(devMode: boolean, enabled: boolean, alwaysAvailable: boolean): BossAccess;
 /** Pet levels that unlock a Boss Battle: 3, 5, 10, then every 5. */
 export declare function isBossMilestone(level: number): boolean;
 /** The boss tier for a pet level: Syntax Wraith, NullPointer Demon from 5, StackOverflow Behemoth from 10. */

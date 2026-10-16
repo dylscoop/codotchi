@@ -6,6 +6,7 @@ import {
   ACHIEVEMENTS,
   BOSS_IDS,
   BOSS_QUEUE_MAX,
+  bossAccessFor,
   bossIdForLevel,
   bossesUnlockedBetween,
   deserialisePendingBosses,
@@ -271,6 +272,23 @@ describe("boss unlocks", () => {
     assert.deepEqual(deserialisePendingBosses(["syntax_wraith", "bogus", 3], 12), ["syntax_wraith"]);
     const s = makePet({ pendingBosses: ["nullpointer_demon"] });
     assert.deepEqual(deserialiseState(JSON.parse(JSON.stringify(serialiseState(s)))).pendingBosses, ["nullpointer_demon"]);
+  });
+
+  it("Boss Battle is a dev-mode preview: off, queued, or always available", () => {
+    assert.equal(bossAccessFor(false, true, true), "off");
+    assert.equal(bossAccessFor(true, false, true), "off");
+    assert.equal(bossAccessFor(true, true, false), "queue");
+    assert.equal(bossAccessFor(true, true, true), "always");
+    const queued = makePet({ pendingBosses: ["syntax_wraith"] });
+    assert.ok(applyMinigameResult(queued, "boss_battle", "win", "off").events.includes("boss_battle_no_boss"));
+    const empty = makePet({ petLevel: 7, pendingBosses: [] });
+    assert.ok(applyMinigameResult(empty, "boss_battle", "win", "queue").events.includes("boss_battle_no_boss"));
+    const won = applyMinigameResult(empty, "boss_battle", "win", "always");
+    assert.equal(won.trainer.counters.bossBattleWins, 1);
+    assert.deepEqual([...won.pendingBosses], []);
+    assert.deepEqual([...applyMinigameResult(empty, "boss_battle", "lose", "always").pendingBosses], [], "the stand-in boss is never stored");
+    const real = applyMinigameResult({ ...queued, petLevel: 7 }, "boss_battle", "lose", "always");
+    assert.deepEqual([...real.pendingBosses], ["syntax_wraith"], "a queued boss is fought first");
   });
 
   it("matches the Kotlin boss ids and queue size", () => {

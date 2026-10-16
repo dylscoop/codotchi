@@ -261,7 +261,7 @@ Status: `[x]`
 
 ### 4.7 Boss Battle
 
-*A short turn-based fight against a coding boss (v2.30.0).*
+*A short mind-game against a coding boss (v2.30.0). A dev-mode preview: hidden unless dev mode and `codotchi.devModeBossBattle` are on; `devModeBossBattleAlways` makes it playable with no boss unlocked. Hosts pass `bossAccessFor(devMode, enabled, always)` ("off" | "queue" | "always") to `applyMinigameResult` and the webview.*
 
 - Rules and art live in `vscode/media/bossArt.js` (`window.bossArt`), loaded after
   `minigameArt.js`; PyCharm copies and inlines it like the other webview scripts.
@@ -772,7 +772,7 @@ Status: `[x]`
 
 All settings live under the `gotchi.*` namespace in VS Code settings.
 
-Since v2.23.0 `contributes.configuration` is an array of two categories, each with an explicit `order` per setting: **Codotchi** (general → AI mode → display → idle → leaderboard) and **Developer** (`devModeEnabled`, `developerPasscode`, `devModeAgingMultiplier`, `devModeHealthFloor`), which shows as its own node in the Settings tree. PyCharm's settings page uses the same order and puts the four developer settings in a collapsed **Developer settings** section (`HideableDecorator`).
+Since v2.23.0 `contributes.configuration` is an array of two categories, each with an explicit `order` per setting: **Codotchi** (general → AI mode → display → idle → leaderboard) and **Developer** (`devModeEnabled`, `developerPasscode`, `devModeAgingMultiplier`, `devModeHealthFloor`, `devModeBossBattle`, `devModeBossBattleAlways`), which shows as its own node in the Settings tree. PyCharm's settings page uses the same order and puts the six developer settings in a collapsed **Developer settings** section (`HideableDecorator`).
 
 | Setting | Type | Default | Description | Status |
 |---------|------|---------|-------------|--------|
@@ -799,6 +799,8 @@ Since v2.23.0 `contributes.configuration` is an array of two categories, each wi
 | `gotchi.devModeAgingMultiplier` | integer | `10` | Aging speed multiplier when developer mode is active | `[x]` |
 | `gotchi.devModeEnabled` | boolean | `false` | Must be `true` AND passcode must match to activate dev mode | `[x]` |
 | `gotchi.devModeHealthFloor` | integer | `1` | Minimum health in dev mode (0–100); set to 0 to allow pet death in dev mode | `[x]` |
+| `codotchi.devModeBossBattle` | boolean | `false` | Show the Boss Battle preview (dev mode only); off hides the button and boss bubbles, and hosts ignore boss results (`bossAccessFor`) | `[x]` |
+| `codotchi.devModeBossBattleAlways` | boolean | `false` | Boss Battle always available for testing: with no boss queued the pet fights its tier's boss, which is never stored | `[x]` |
 | `gotchi.aiMode` | boolean | `true` | Suppress doc-change / cursor / tab-switch idle resets (the three events AI agents fire). Window focus and mouse movement still work. | `[x]` |
 | `gotchi.idleResetOnDocumentChange` | boolean | `true` | Reset idle timer on text document changes (keystrokes, AI edits). Suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnCursorMovement` | boolean | `true` | Reset idle timer on cursor/selection changes. Suppressed by `aiMode`. | `[x]` |

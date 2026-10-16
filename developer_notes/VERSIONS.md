@@ -25,6 +25,7 @@ XP_DAILY_CAPS  = { code: 40, commit: 90, call: 100, minigame: 50, boss_battle: 8
 XP_COUNTERS.boss_battle = ["bossBattleWins", "minigameWins"]
 BOSS_IDS = ["syntax_wraith", "nullpointer_demon", "stackoverflow_behemoth"]
 BOSS_QUEUE_MAX: number = 3
+bossAccessFor(devMode, codotchi.devModeBossBattle, codotchi.devModeBossBattleAlways) = "off" | "queue" | "always"
 isBossMilestone(level) = level 3, 5, 10, 15, 20, ...
 // bossArt.js - a hidden-stance mind-game: Attack beats Patch, Patch beats Guard, Guard beats Attack
 Pet: HP 32 + 2/level (× health mod), attack 8–12 + 0.5/level (× energy mod),

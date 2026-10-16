@@ -1051,11 +1051,14 @@ fun happinessDeltaForMinigame(game: String, result: String): Int {
     return MINIGAME_LOSE_HAPPINESS_BOOST
 }
 
-fun applyMinigameResult(state: PetState, game: String, result: String): PetState {
+fun applyMinigameResult(state: PetState, game: String, result: String, bossAccess: String = "queue"): PetState {
     // Hosts call this straight after play(): carry over any attention call that
     // play() answered, otherwise its answered event (and notification / log line) is lost.
     val answered = state.events.filter { it.startsWith("attention_call_answered_") }
-    if (game == "boss_battle" && state.pendingBosses.isEmpty()) {
+    // bossAccess "always" with nothing queued fights a stand-in boss that is never stored.
+    val pending = if (game == "boss_battle" && bossAccess == "always" && state.pendingBosses.isEmpty())
+        listOf(bossIdForLevel(state.petLevel)) else state.pendingBosses
+    if (game == "boss_battle" && (bossAccess == "off" || pending.isEmpty())) {
         // No boss unlocked: ignore the result so the webview can't farm boss XP.
         return withDerivedFields(state.copy(events = answered + "boss_battle_no_boss"))
     }

@@ -657,7 +657,7 @@ the mini-game picker and isn't tied to the code.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Add to the mini-game picker | `[x]` | v2.30.0: "Boss Battle" button in `sidebar.html`, wired in `sidebar.js` |
+| Add to the mini-game picker | `[x]` | v2.30.0: "Boss Battle" button in `sidebar.html`, wired in `sidebar.js`; a dev-mode preview behind `codotchi.devModeBossBattle` (+ `devModeBossBattleAlways` for testing) |
 | Turn-based fight | `[x]` | v2.30.0: a hidden-stance mind-game. Each round pet and boss secretly pick Attack / Guard / Patch (Attack > Patch > Guard > Attack), revealed together. Bosses follow learnable habit tables, change them when enraged below 40% HP and punish stance spamming; nothing is forecast. Combo, Patch fatigue and overtime from round 12 make every fight end. Rules in `bossArt.js`, seeded RNG for tests |
 | Boss by level | `[x]` | Unlocked at pet levels 3 (Syntax Wraith), 5 (NullPointer Demon), 10 (StackOverflow Behemoth), then every 5; queued in `PetState.pendingBosses` (host-checked), a loss keeps the boss; the picker button is hidden until one is waiting; bosses gain HP and attack per pet level |
 | Pet stats scale the fight | `[x]` | Level sets the base; health → HP, energy → Attack, discipline → Guard's reflect, happiness → Patch, each ×0.8–×1.2 |
