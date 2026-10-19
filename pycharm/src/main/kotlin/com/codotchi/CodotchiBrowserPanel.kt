@@ -2,6 +2,7 @@ package com.codotchi
 
 import com.google.gson.Gson
 import com.codotchi.engine.PetState
+import com.codotchi.engine.bossAccessFor
 import com.codotchi.engine.dailiesView
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -116,7 +117,7 @@ class CodotchiBrowserPanel(
         val liveTotalJson = if (liveTotalScores != null) liveTotalScores.toString() else "null"
         val liveLastPushedJson = if (liveLastPushedAt != null) liveLastPushedAt.toString() else "null"
         val lbUsernameJson = if (leaderboardGithubUsername != null) "\"${leaderboardGithubUsername.replace("\"", "\\\"")}\"" else "null"
-        val payload = """{"type":"stateUpdate","state":$stateJson,"dailies":$dailiesJson,"levelsEnabled":${service<CodotchiSettings>().enableLevels},"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","cravingItem":${jsonStringOrNull(cravingItemFor(state))},"leaderboardAvailable":true,"leaderboardBlockedReason":${jsonStringOrNull(leaderboardBlockedReason)},"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson,"leaderboardGithubUsername":$lbUsernameJson,"leaderboardAuthExpired":$leaderboardAuthExpired}"""
+        val payload = """{"type":"stateUpdate","state":$stateJson,"dailies":$dailiesJson,"levelsEnabled":${service<CodotchiSettings>().enableLevels},"bossAccess":"${bossAccessFor(devMode, service<CodotchiSettings>().devModeBossBattle, service<CodotchiSettings>().devModeBossBattleAlways)}","mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","cravingItem":${jsonStringOrNull(cravingItemFor(state))},"leaderboardAvailable":true,"leaderboardBlockedReason":${jsonStringOrNull(leaderboardBlockedReason)},"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson,"leaderboardGithubUsername":$lbUsernameJson,"leaderboardAuthExpired":$leaderboardAuthExpired}"""
         val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
     }
@@ -155,6 +156,7 @@ class CodotchiBrowserPanel(
         val spritesGeneratedText     = loadResource("/webview/sprites.generated.js")
         val spritesText              = loadResource("/webview/sprites.js")
         val minigameArtText          = loadResource("/webview/minigameArt.js")
+        val bossArtText              = loadResource("/webview/bossArt.js")
         val backgroundArtText        = loadResource("/webview/backgroundArt.js")
         val jsText              = loadResource("/webview/sidebar.js")
         var html        = loadResource("/webview/sidebar.html")
@@ -226,6 +228,10 @@ class CodotchiBrowserPanel(
         html = html.replace(
             """<script src="{{minigameArtUri}}"></script>""",
             "<script>\n$minigameArtText\n</script>"
+        )
+        html = html.replace(
+            """<script src="{{bossArtUri}}"></script>""",
+            "<script>\n$bossArtText\n</script>"
         )
         html = html.replace(
             """<script src="{{backgroundArtUri}}"></script>""",

@@ -123,8 +123,8 @@ Notes:
 
 ## 4. Minigames
 
-Three interactive minigames are implemented: **Left / Right**, **Higher or
-Lower**, and **Coin Flip**. All are launched via a game-select overlay that appears when the
+Four interactive minigames are implemented: **Left / Right**, **Higher or
+Lower**, **Coin Flip** and **Boss Battle**. All are launched via a game-select overlay that appears when the
 player presses the Play button. The **Pat** action is also accessible from this
 same overlay. A non-game **Today's Token Cost** option is also available in the overlay —
 it closes the overlay and fires a speech bubble above the pet showing today's cost, last-1h
@@ -259,6 +259,50 @@ Status: `[ ]`
 
 Status: `[x]`
 
+### 4.7 Boss Battle
+
+*A short mind-game against a coding boss (v2.30.0). A dev-mode preview: hidden unless dev mode and `codotchi.devModeBossBattle` are on; `devModeBossBattleAlways` makes it playable with no boss unlocked. Hosts pass `bossAccessFor(devMode, enabled, always)` ("off" | "queue" | "always") to `applyMinigameResult` and the webview.*
+
+- Rules and art live in `vscode/media/bossArt.js` (`window.bossArt`), loaded after
+  `minigameArt.js`; PyCharm copies and inlines it like the other webview scripts.
+- **Unlocks** (core `PetState.pendingBosses`): `awardXp` queues one boss per pet-level
+  milestone passed (`isBossMilestone`: 3, 5, 10, then every 5; tier from
+  `bossIdForLevel`; at most `BOSS_QUEUE_MAX` = 3) and emits `boss_unlocked` (bubble +
+  log line, shown even with levels off). The picker button is hidden until a boss
+  is waiting, then shows the count. A win pops the queue; a loss keeps the boss. The
+  host ignores a `boss_battle` result with nothing queued (`boss_battle_no_boss`).
+  Old saves at level 3+ start with one boss of their tier.
+- The battle uses the queued boss (`createBattle(pet, rng, bossId)`); its HP (+3/level)
+  and attack (+0.2/level) scale with the pet's level.
+- Pet stats (`petBattleStats`): level sets base HP (32 + 2/level) and attack
+  (8–12 + 0.5/level). Health scales HP, energy Attack, discipline Guard's reflect
+  (60%) and happiness Patch (25% of max HP), each ×0.8–×1.2 (`careMod`). Care
+  never decides who wins a clash.
+- **Hidden clashes**: each round the pet and the boss secretly pick **Attack**,
+  **Guard** or **Patch**, revealed together. Attack beats Patch (×1.8 hit, cancels
+  the heal), Patch beats Guard (a free heal), Guard beats Attack (blocks and
+  reflects). Ties: Attack/Attack trade half hits, Guard/Guard nothing, Patch/Patch
+  both heal half. 2+ wins in a row make the next win ×1.25 (combo, both sides).
+- **Boss habits** (`bossWeights`, never shown): Syntax Wraith Patches after you
+  Attack, Guards after two Attacks and repeats a stance that lost; NullPointer
+  Demon is Attack-heavy and Patches after you Guard; StackOverflow Behemoth is
+  Guard-heavy and Attacks after it Guards. Below 40% HP each switches to a rage
+  table (Wraith heals, Demon never Patches, Behemoth alternates Guard/Patch).
+  Every boss leans towards countering the stance you used most in the last 4 rounds.
+- **Fights always end**: each Patch heals ×0.75 the last (fatigue; a winning Patch
+  adds none), and from round 12 both sides take 3 (+1 per round) overtime damage.
+  Both at 0 is a loss. Tuned (`bossArt.test.ts`, every milestone) so learning the
+  habits wins ~70–90%, random picks ~25–45% and spamming one stance ≤ ~30%.
+- Placeholder 16×16 sprites with a 1-pixel bob, a white hit flash, a red rage tint,
+  heal sparkles, pixel HP bars, the clash reveal (pet stance left, boss right) and
+  the boss's last 5 stances on `#mg-canvas`, plus a text history line; reduced
+  motion skips the flashes. Imported art will replace the sprites later.
+- Sends `{ command: "play", game: "boss_battle", result: "win"|"lose" }`.
+  **Win**: +10 (net +25), `boss_battle` XP (40, capped 40/h and 80/day),
+  `bossBattleWins` and `minigameWins` +1, unlocks Champion. **Lose**: −5 (net +10).
+
+Status: `[x]`
+
 ### Minigame Architecture Notes
 
 - All game logic (timers, scoring, animations) runs entirely in `sidebar.js`.
@@ -288,6 +332,8 @@ that fires when Play is pressed. Net totals reflect delta + baseline.
 | Blackjack (Stu) | Win | +10 | +25 | `MINIGAME_BLACKJACK_WIN = 10` |
 | Blackjack (Stu) | Push | 0 | +15 | `MINIGAME_BLACKJACK_PUSH = 0` |
 | Blackjack (Stu) | Lose | −10 | +5 | `MINIGAME_BLACKJACK_LOSE = -10` |
+| Boss Battle | Win | +10 | +25 | `MINIGAME_BOSS_BATTLE_WIN = 10` |
+| Boss Battle | Lose | −5 | +10 | `MINIGAME_BOSS_BATTLE_LOSE = -5` |
 | Pat | — | +10 (flat total) | +10 | `PAT_HAPPINESS_BOOST = 10` (no play baseline) |
 
 ---
@@ -726,7 +772,7 @@ Status: `[x]`
 
 All settings live under the `gotchi.*` namespace in VS Code settings.
 
-Since v2.23.0 `contributes.configuration` is an array of two categories, each with an explicit `order` per setting: **Codotchi** (general → AI mode → display → idle → leaderboard) and **Developer** (`devModeEnabled`, `developerPasscode`, `devModeAgingMultiplier`, `devModeHealthFloor`), which shows as its own node in the Settings tree. PyCharm's settings page uses the same order and puts the four developer settings in a collapsed **Developer settings** section (`HideableDecorator`).
+Since v2.23.0 `contributes.configuration` is an array of two categories, each with an explicit `order` per setting: **Codotchi** (general → AI mode → display → idle → leaderboard) and **Developer** (`devModeEnabled`, `developerPasscode`, `devModeAgingMultiplier`, `devModeHealthFloor`, `devModeBossBattle`, `devModeBossBattleAlways`), which shows as its own node in the Settings tree. PyCharm's settings page uses the same order and puts the six developer settings in a collapsed **Developer settings** section (`HideableDecorator`).
 
 | Setting | Type | Default | Description | Status |
 |---------|------|---------|-------------|--------|
@@ -753,6 +799,8 @@ Since v2.23.0 `contributes.configuration` is an array of two categories, each wi
 | `gotchi.devModeAgingMultiplier` | integer | `10` | Aging speed multiplier when developer mode is active | `[x]` |
 | `gotchi.devModeEnabled` | boolean | `false` | Must be `true` AND passcode must match to activate dev mode | `[x]` |
 | `gotchi.devModeHealthFloor` | integer | `1` | Minimum health in dev mode (0–100); set to 0 to allow pet death in dev mode | `[x]` |
+| `codotchi.devModeBossBattle` | boolean | `false` | Show the Boss Battle preview (dev mode only); off hides the button and boss bubbles, and hosts ignore boss results (`bossAccessFor`) | `[x]` |
+| `codotchi.devModeBossBattleAlways` | boolean | `false` | Boss Battle always available for testing: with no boss queued the pet fights its tier's boss, which is never stored | `[x]` |
 | `gotchi.aiMode` | boolean | `true` | Suppress doc-change / cursor / tab-switch idle resets (the three events AI agents fire). Window focus and mouse movement still work. | `[x]` |
 | `gotchi.idleResetOnDocumentChange` | boolean | `true` | Reset idle timer on text document changes (keystrokes, AI edits). Suppressed by `aiMode`. | `[x]` |
 | `gotchi.idleResetOnCursorMovement` | boolean | `true` | Reset idle timer on cursor/selection changes. Suppressed by `aiMode`. | `[x]` |

@@ -383,6 +383,8 @@ export interface PetState {
     readonly trainer: TrainerProgress;
     /** This pet's daily challenges and streak; a new pet starts afresh. */
     readonly dailies: DailyChallenges;
+    /** Boss Battles unlocked at level milestones and not yet beaten (boss ids, oldest first). */
+    readonly pendingBosses: readonly string[];
 }
 /**
  * The player's lifetime progression. Survives pet death: hosts pass the old
@@ -667,7 +669,8 @@ export declare function applyTokenCostView(state: PetState): PetState;
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
  *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
- *               "coin_flip" (Coin Flip), or "blackjack" (Stu's one-round Blackjack).
+ *               "coin_flip" (Coin Flip), "blackjack" (Stu's one-round Blackjack) or
+ *               "boss_battle" (turn-based Boss Battle).
  * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
@@ -680,11 +683,15 @@ export declare function happinessDeltaForMinigame(game: string, result: string):
  *   - coin_flip and blackjack: no extra weight loss (total −3 from play() only)
  *
  * @param state - The current pet state.
- * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "guess", or "memory".
+ * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "boss_battle", "guess", or "memory".
  * @param result - "win" or "lose" ("push" too for blackjack).
- * @returns A new PetState after the happiness delta is applied.
+ * @param bossAccess - Boss Battle access from the host's dev-mode settings:
+ *          "off" ignores every boss result, "queue" needs an unlocked boss,
+ *          "always" also lets a pet with no boss waiting fight its tier's boss.
+ * @returns A new PetState after the happiness delta is applied. A win awards
+ *          "minigame" XP, or "boss_battle" XP for the Boss Battle.
  */
-export declare function applyMinigameResult(state: PetState, game: string, result: string): PetState;
+export declare function applyMinigameResult(state: PetState, game: string, result: string, bossAccess?: BossAccess): PetState;
 /**
  * Put the pet to sleep.
  *
@@ -842,6 +849,28 @@ export type XpSource = "code" | "commit" | "call" | "care" | "snack" | "clean" |
 export declare const XP_AMOUNTS: Readonly<Record<XpSource, number>>;
 /** Bonus XP for unlocking an achievement. */
 export declare const XP_ACHIEVEMENT_BONUS: number;
+/** Boss ids, weakest first. Their art and battle rules live in the webview's bossArt.js. */
+export declare const BOSS_IDS: readonly string[];
+/** Most unbeaten bosses a pet can hold at once. */
+export declare const BOSS_QUEUE_MAX: number;
+/** Boss Battle access, from the host's dev-mode settings (see applyMinigameResult). */
+export type BossAccess = "off" | "queue" | "always";
+/**
+ * Boss Battle access for the host's settings. Boss Battles are a dev-mode
+ * preview: off unless dev mode is active and the Boss Battle setting is on.
+ */
+export declare function bossAccessFor(devMode: boolean, enabled: boolean, alwaysAvailable: boolean): BossAccess;
+/** Pet levels that unlock a Boss Battle: 3, 5, 10, then every 5. */
+export declare function isBossMilestone(level: number): boolean;
+/** The boss tier for a pet level: Syntax Wraith, NullPointer Demon from 5, StackOverflow Behemoth from 10. */
+export declare function bossIdForLevel(level: number): string;
+/** Bosses unlocked by levelling from `from` up to `to` (one per milestone passed). */
+export declare function bossesUnlockedBetween(from: number, to: number): string[];
+/**
+ * Load the pending bosses. Saves from before boss unlocks get one boss of
+ * their tier if the pet is already past the first milestone.
+ */
+export declare function deserialisePendingBosses(raw: unknown, petLevel: number): string[];
 /** Hourly XP caps per source (local clock hour). Sources not listed have no hourly cap. */
 export declare const XP_HOURLY_CAPS: Readonly<Partial<Record<XpSource, number>>>;
 /** Daily XP caps per source (local day). Sources not listed are uncapped. */

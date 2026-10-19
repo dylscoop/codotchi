@@ -48,6 +48,8 @@ class CodotchiConfigurable : Configurable {
     private var characterPasscodeField:    JTextField?         = null
     private var devModeAgingSpinner:       JSpinner?           = null
     private var devModeHealthFloorSpinner: JSpinner?           = null
+    private var devBossCheck:                   JCheckBox?          = null
+    private var devBossAlwaysCheck:             JCheckBox?          = null
     private var aiModeCheck:                    JCheckBox?          = null
     private var idleResetOnDocumentChangeCheck: JCheckBox?          = null
     private var idleResetOnCursorMovementCheck: JCheckBox?          = null
@@ -88,6 +90,8 @@ class CodotchiConfigurable : Configurable {
         val charPasscodeField = JTextField(10)
         val devAgingSpinner = JSpinner(SpinnerNumberModel(10, 1, 1000, 1))
         val devHealthFloorSpinner = JSpinner(SpinnerNumberModel(1, 0, 100, 1))
+        val devBossCheckbox = JCheckBox("Show Boss Battle (preview, dev mode only)")
+        val devBossAlwaysCheckbox = JCheckBox("Boss Battle always available (for testing)")
         val aiModeCheckbox = JCheckBox("AI mode (suppress doc-change / cursor / tab-switch idle resets)")
         val idleResetDocChangeCheckbox = JCheckBox("Reset idle timer on document changes")
         val idleResetCursorCheckbox = JCheckBox("Reset idle timer on cursor movement")
@@ -144,6 +148,8 @@ class CodotchiConfigurable : Configurable {
         characterPasscodeField   = charPasscodeField
         devModeAgingSpinner      = devAgingSpinner
         devModeHealthFloorSpinner = devHealthFloorSpinner
+        devBossCheck              = devBossCheckbox
+        devBossAlwaysCheck        = devBossAlwaysCheckbox
         aiModeCheck                    = aiModeCheckbox
         idleResetOnDocumentChangeCheck = idleResetDocChangeCheckbox
         idleResetOnCursorMovementCheck = idleResetCursorCheckbox
@@ -240,6 +246,8 @@ class CodotchiConfigurable : Configurable {
         addLabeled(devContent, "Developer passcode:", devPasscodeField)
         addLabeled(devContent, "Dev mode aging multiplier:", devAgingSpinner)
         addLabeled(devContent, "Dev mode health floor:", devHealthFloorSpinner)
+        addFull(devContent, devBossCheckbox)
+        addFull(devContent, devBossAlwaysCheckbox)
         val devSection = JPanel(BorderLayout())
         HideableDecorator(devSection, "Developer settings", false).apply {
             setContentComponent(devContent)
@@ -310,6 +318,8 @@ class CodotchiConfigurable : Configurable {
             || uiCharPasscode != settings.characterPasscode
             || uiDevAging != settings.devModeAgingMultiplier
             || uiDevHealthFloor != settings.devModeHealthFloor
+            || (devBossCheck?.isSelected ?: false) != settings.devModeBossBattle
+            || (devBossAlwaysCheck?.isSelected ?: false) != settings.devModeBossBattleAlways
             || uiAiMode != settings.aiMode
             || uiIdleResetDocChange != settings.idleResetOnDocumentChange
             || uiIdleResetCursor != settings.idleResetOnCursorMovement
@@ -346,6 +356,8 @@ class CodotchiConfigurable : Configurable {
         settings.characterPasscode      = characterPasscodeField?.text ?: ""
         settings.devModeAgingMultiplier = (devModeAgingSpinner?.value as? Int) ?: 10
         settings.devModeHealthFloor     = (devModeHealthFloorSpinner?.value as? Int) ?: 1
+        settings.devModeBossBattle       = devBossCheck?.isSelected ?: false
+        settings.devModeBossBattleAlways = devBossAlwaysCheck?.isSelected ?: false
         settings.aiMode                    = aiModeCheck?.isSelected ?: false
         settings.idleResetOnDocumentChange = idleResetOnDocumentChangeCheck?.isSelected ?: true
         settings.idleResetOnCursorMovement = idleResetOnCursorMovementCheck?.isSelected ?: true
@@ -395,6 +407,8 @@ class CodotchiConfigurable : Configurable {
         characterPasscodeField?.text            = settings.characterPasscode
         devModeAgingSpinner?.value              = settings.devModeAgingMultiplier
         devModeHealthFloorSpinner?.value        = settings.devModeHealthFloor
+        devBossCheck?.isSelected                = settings.devModeBossBattle
+        devBossAlwaysCheck?.isSelected          = settings.devModeBossBattleAlways
         aiModeCheck?.isSelected                    = settings.aiMode
         idleResetOnDocumentChangeCheck?.isSelected = settings.idleResetOnDocumentChange
         idleResetOnCursorMovementCheck?.isSelected = settings.idleResetOnCursorMovement

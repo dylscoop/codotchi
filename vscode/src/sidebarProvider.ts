@@ -21,6 +21,8 @@ import {
   consumeSnack,
   play,
   applyMinigameResult,
+  bossAccessFor,
+  type BossAccess,
   pat,
   applyTokenCostView,
   sleep,
@@ -318,6 +320,9 @@ export class SidebarProvider
     const minigameArtUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "minigameArt.js"))
     );
+    const bossArtUri = webview.asWebviewUri(
+      vscode.Uri.file(path.join(mediaPath, "bossArt.js"))
+    );
     const backgroundArtUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(mediaPath, "backgroundArt.js"))
     );
@@ -332,6 +337,7 @@ export class SidebarProvider
     html = html.replace("{{spritesGeneratedUri}}", spritesGeneratedUri.toString());
     html = html.replace("{{spritesUri}}", spritesUri.toString());
     html = html.replace("{{minigameArtUri}}", minigameArtUri.toString());
+    html = html.replace("{{bossArtUri}}", bossArtUri.toString());
     html = html.replace("{{backgroundArtUri}}", backgroundArtUri.toString());
     html = html.replace("{{spriteConstantsUri}}", spriteConstantsUri.toString());
     html = html.replace("{{customCharactersUri}}", customCharactersUri.toString());
@@ -465,7 +471,7 @@ export class SidebarProvider
         if (message.game !== undefined && message.result !== undefined) {
           // Only apply minigame happiness delta if play wasn't refused
           if (!nextState.events.some((e) => e === "play_refused_no_energy" || e === "play_refused_sick")) {
-            nextState = applyMinigameResult(nextState, message.game, message.result);
+            nextState = applyMinigameResult(nextState, message.game, message.result, this.bossAccess());
           }
         }
         break;
@@ -712,6 +718,7 @@ export class SidebarProvider
       state,
       dailies: dailiesView(state),
       levelsEnabled: vscode.workspace.getConfiguration("codotchi").get<boolean>("enableLevels", false),
+      bossAccess: this.bossAccess(),
       mealsGivenThisCycle: this.mealsGivenThisCycle,
       highScore,
       devMode,
@@ -764,6 +771,12 @@ export class SidebarProvider
   private isDevModeActive(): boolean {
     const cfg = vscode.workspace.getConfiguration("codotchi");
     return cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234";
+  }
+
+  /** Boss Battle access: a dev-mode preview behind codotchi.devModeBossBattle(Always). */
+  private bossAccess(): BossAccess {
+    const cfg = vscode.workspace.getConfiguration("codotchi");
+    return bossAccessFor(this.isDevModeActive(), cfg.get<boolean>("devModeBossBattle", false), cfg.get<boolean>("devModeBossBattleAlways", false));
   }
 
   /** This extension's version, signed into every leaderboard submission. */

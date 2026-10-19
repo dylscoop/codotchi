@@ -160,6 +160,8 @@ data class PetState(
     val trainer: TrainerProgress = TrainerProgress(),
     /** This pet's daily challenges and streak; a new pet starts afresh. */
     val dailies: DailyChallenges = DailyChallenges(),
+    /** Boss Battles unlocked at level milestones and not yet beaten (boss ids, oldest first). */
+    val pendingBosses: List<String> = emptyList(),
 )
 
 /** A pet's daily challenges (see DAILY_CHALLENGES) and its streak. Mirrors DailyChallenges in gameEngine.ts. */

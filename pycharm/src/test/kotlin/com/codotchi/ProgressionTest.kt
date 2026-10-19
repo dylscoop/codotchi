@@ -51,8 +51,44 @@ class ProgressionTest {
         assertEquals(2, XP_AMOUNTS["code"])
         assertEquals(15, XP_AMOUNTS["commit"])
         listOf("care", "snack", "clean", "cure").forEach { assertEquals(0, XP_AMOUNTS[it]) }
-        assertEquals(mapOf("code" to 10, "commit" to 30, "minigame" to 20), XP_HOURLY_CAPS)
-        assertEquals(mapOf("code" to 40, "commit" to 90, "call" to 100, "minigame" to 50), XP_DAILY_CAPS)
+        assertEquals(mapOf("code" to 10, "commit" to 30, "minigame" to 20, "boss_battle" to 40), XP_HOURLY_CAPS)
+        assertEquals(mapOf("code" to 40, "commit" to 90, "call" to 100, "minigame" to 50, "boss_battle" to 80), XP_DAILY_CAPS)
+    }
+
+    @Test
+    fun `a Boss Battle win counts as a mini-game win and unlocks Champion`() {
+        val won = applyMinigameResult(pet().copy(pendingBosses = listOf("syntax_wraith")), "boss_battle", "win")
+        assertEquals(1, won.trainer.counters["bossBattleWins"])
+        assertEquals(1, won.trainer.counters["minigameWins"])
+        assertTrue("champion" in won.trainer.achievements)
+        assertTrue(won.pendingBosses.isEmpty())
+        val lost = applyMinigameResult(pet().copy(pendingBosses = listOf("syntax_wraith")), "boss_battle", "lose")
+        assertEquals(0, lost.petXp)
+        assertNull(lost.trainer.counters["bossBattleWins"])
+        assertEquals(listOf("syntax_wraith"), lost.pendingBosses)
+        val none = applyMinigameResult(pet(), "boss_battle", "win")
+        assertTrue("boss_battle_no_boss" in none.events)
+        assertNull(none.trainer.counters["bossBattleWins"])
+        assertEquals("off", bossAccessFor(false, true, true))
+        assertEquals("queue", bossAccessFor(true, true, false))
+        assertEquals("always", bossAccessFor(true, true, true))
+        assertTrue("boss_battle_no_boss" in applyMinigameResult(pet().copy(pendingBosses = listOf("syntax_wraith")), "boss_battle", "win", "off").events)
+        val always = applyMinigameResult(pet(), "boss_battle", "win", "always")
+        assertEquals(1, always.trainer.counters["bossBattleWins"])
+        assertTrue(applyMinigameResult(pet(), "boss_battle", "lose", "always").pendingBosses.isEmpty())
+    }
+
+    @Test
+    fun `boss milestones, unlocks and old saves match TypeScript`() {
+        assertEquals(listOf(3, 5, 10, 15, 20, 25, 30), (1..30).filter { isBossMilestone(it) })
+        assertEquals(listOf("syntax_wraith", "nullpointer_demon", "stackoverflow_behemoth"), bossesUnlockedBetween(2, 10))
+        val s = awardXp(pet().copy(petXp = 190, petLevel = 2), "commit", noon)
+        assertEquals(3, s.petLevel)
+        assertEquals(listOf("syntax_wraith"), s.pendingBosses)
+        assertTrue("boss_unlocked" in s.events)
+        assertEquals(emptyList<String>(), pendingBossesFromRaw(null, 2))
+        assertEquals(listOf("nullpointer_demon"), pendingBossesFromRaw(null, 7))
+        assertEquals(listOf("syntax_wraith"), pendingBossesFromRaw(listOf("syntax_wraith", "bogus", 3.0), 12))
     }
 
     @Test
@@ -135,7 +171,7 @@ class ProgressionTest {
     fun `coming-soon achievements never unlock and progress is capped`() {
         val s = awardXp(pet().copy(trainer = TrainerProgress(counters = mapOf("bossKills" to 99))), "code", noon)
         assertFalse("first_blood" in s.trainer.achievements)
-        assertEquals(listOf("detective", "first_blood", "exterminator", "champion"), ACHIEVEMENTS.filter { it.comingSoon }.map { it.id })
+        assertEquals(listOf("detective", "first_blood", "exterminator"), ACHIEVEMENTS.filter { it.comingSoon }.map { it.id })
         val onCall = achievementById("on_call")!!
         assertEquals(42 to 100, achievementProgress(onCall, TrainerProgress(counters = mapOf("callsAnswered" to 42))))
         assertEquals(100 to 100, achievementProgress(onCall, TrainerProgress(counters = mapOf("callsAnswered" to 420))))

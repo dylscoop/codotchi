@@ -527,7 +527,7 @@ class CodotchiPlugin : Disposable {
                     val result = message["result"] as? String
                     if (game != null && result != null &&
                         "play_refused_no_energy" !in ns.events && "play_refused_sick" !in ns.events) {
-                        ns = applyMinigameResult(ns, game, result)
+                        ns = applyMinigameResult(ns, game, result, bossAccessFor(isDevModeActive(), service<CodotchiSettings>().devModeBossBattle, service<CodotchiSettings>().devModeBossBattleAlways))
                     }
                     nextState = ns
                 }

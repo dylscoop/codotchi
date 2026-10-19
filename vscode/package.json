@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -349,6 +349,18 @@
             "maximum": 100,
             "description": "(Developer) Minimum health value enforced when developer mode is active. Default: 1 (pet cannot die). Set to 0 to allow the pet to die normally even in dev mode — useful for testing the death flow.",
             "order": 4
+          },
+          "codotchi.devModeBossBattle": {
+            "type": "boolean",
+            "default": false,
+            "description": "(Developer) Show the Boss Battle mini-game (a preview). Only works while developer mode is active. A boss appears at pet levels 3, 5, 10 and every 5 after that.",
+            "order": 5
+          },
+          "codotchi.devModeBossBattleAlways": {
+            "type": "boolean",
+            "default": false,
+            "description": "(Developer) Boss Battle is always available, even with no boss unlocked, so it can be tested. Needs 'Dev Mode Boss Battle' and developer mode.",
+            "order": 6
           }
         }
       }
@@ -360,7 +372,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "node ../scripts/sync-core.mjs",
-    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/backgroundArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js out-test/tests/unit/statusBarText.test.js out-test/tests/unit/tickLease.test.js out-test/tests/unit/integrity.test.js out-test/tests/unit/customCharacterText.test.js out-test/tests/unit/liveProgress.test.js out-test/tests/unit/progression.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/bossArt.test.js out-test/tests/unit/backgroundArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js out-test/tests/unit/statusBarText.test.js out-test/tests/unit/tickLease.test.js out-test/tests/unit/integrity.test.js out-test/tests/unit/customCharacterText.test.js out-test/tests/unit/liveProgress.test.js out-test/tests/unit/progression.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
