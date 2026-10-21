@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.30.1] - 2026-10-21
+
+### Changed
+
+- **Lighter on your laptop** - the pet animation now runs at 30 fps (60 fps for a few seconds whenever you interact or the pet reacts) and stops completely while the Codotchi panel is hidden, on the menu screens or after the pet dies. Previously it redrew at your screen's refresh rate all the time.
+- **OpenCode** - idle windows write the companion pet's save file every 30 s instead of every 3 s, and only refresh the sidebar when something on it changes.
+
 ## [2.30.0] — 2026-10-15
 
 ### Added

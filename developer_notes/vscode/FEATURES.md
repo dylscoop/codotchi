@@ -362,7 +362,11 @@ footprint to make movement readable.
 Replace the current one-shot `drawSprite(state)` call (triggered only on
 `stateUpdate` messages) with a continuous `requestAnimationFrame` loop.
 
-- Loop runs at the display frame rate (~60 fps) and manages its own delta-time.
+- Loop runs at 30 fps when idle and at the display frame rate (~60 fps) for 3 s
+  after user input, reactions and speech bubbles (v2.30.1); it manages its own delta-time.
+- The loop stops entirely while the panel is hidden (`document.hidden` or the
+  host's `panelVisibility` message), off the game screen or once the pet is dead,
+  and restarts on the next state, screen or visibility change (v2.30.1).
 - On each frame: update position → update reaction queue → clear canvas → draw sprite at (x, y).
 - `stateUpdate` messages from the extension host update the stored state snapshot
   and push new reaction animations onto the queue; they do not themselves draw.
