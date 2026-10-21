@@ -261,6 +261,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   let petFacingLeft = false;
   let animTick      = 0;      // raw frame counter (drives leg animation period)
   let lastFrameMs   = 0;      // performance.now() of previous rAF frame
+  let animRunning   = false;  // a frame is scheduled (rAF or the 30 fps timeout)
+  let animBoostUntilMs = 0;   // performance.now() until which frames run at 60 fps
+  let panelVisible  = true;   // host-reported visibility (PyCharm tool window / VS Code view)
   let breathPhase   = 0;      // sleeping breath bob phase in radians
   let floatPhase    = 0;      // floating bob phase in radians (dragon only)
   let hopTimer      = HOP_INTERVAL; // seconds until next happy hop
@@ -489,7 +492,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     setupScreen.classList.toggle("hidden", name !== "setup");
     gameScreen.classList.toggle("hidden",  name !== "game");
     deadScreen.classList.toggle("hidden",  name !== "dead");
-    if (name === "game")  { resizeCanvas(); }
+    if (name === "game")  { resizeCanvas(); ensureAnimLoop(); }
     if (name === "setup") {
       renderSetupHighScore(latestHighScore);
       if (btnContinue) {
@@ -1191,6 +1194,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       startMs:    nowMs,
       durationMs: dur,
     });
+    boostAnim(nowMs + dur);
   }
 
   // ── Speech bubble ─────────────────────────────────────────────────────────
@@ -1211,6 +1215,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       fadeOutMs:  now + BUBBLE_HOLD_MS,   // begin fade after 6 s
       fadeDurMs:  BUBBLE_FADE_MS,         // fade-out duration in ms
     };
+    boostAnim();
   }
 
   /**
@@ -1386,10 +1391,61 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   // ── Animation loop ────────────────────────────────────────────────────────
 
-  function animationLoop(nowMs) {
-    requestAnimationFrame(animationLoop);
+  var ANIM_IDLE_FRAME_MS   = 1000 / 30; // idle cap: 30 fps
+  var ANIM_BOOST_DURATION_MS = 3000;    // 60 fps window after an interaction or reaction
 
-    if (!lastState || !lastState.alive || currentScreen !== "game") { return; }
+  /**
+   * Delay before the next frame: 0 = next vsync (60 fps while boosted),
+   * otherwise the wait needed to hold the idle cap.
+   * @param {number} nowMs        — performance.now() of the frame just drawn
+   * @param {number} boostUntilMs — end of the current 60 fps window
+   * @returns {number}
+   */
+  function animFrameDelayMs(nowMs, boostUntilMs) {
+    if (nowMs < boostUntilMs) { return 0; }
+    return ANIM_IDLE_FRAME_MS;
+  }
+
+  /**
+   * Whether the loop should keep scheduling frames. Hidden panels, non-game
+   * screens and dead pets draw nothing, so the loop stops instead of spinning.
+   */
+  function shouldAnimate(state, screen, docHidden, hostVisible) {
+    return !!state && !!state.alive && screen === "game" && !docHidden && hostVisible;
+  }
+
+  function animActive() {
+    return !REDUCED_MOTION && shouldAnimate(lastState, currentScreen, document.hidden, panelVisible);
+  }
+
+  function scheduleAnimFrame(delayMs) {
+    animRunning = true;
+    if (delayMs <= 0) {
+      requestAnimationFrame(animationLoop);
+    } else {
+      setTimeout(function () { requestAnimationFrame(animationLoop); }, delayMs);
+    }
+  }
+
+  /** Start the loop if it is stopped and there is something to draw. */
+  function ensureAnimLoop() {
+    if (animRunning || !animActive()) { return; }
+    lastFrameMs = 0; // no catch-up jump after a pause
+    scheduleAnimFrame(0);
+  }
+
+  /** Run at 60 fps for a few seconds (user input, reactions, bubbles). */
+  function boostAnim(untilMs) {
+    var until = performance.now() + ANIM_BOOST_DURATION_MS;
+    if (typeof untilMs === "number" && untilMs > until) { until = untilMs; }
+    if (until > animBoostUntilMs) { animBoostUntilMs = until; }
+    ensureAnimLoop();
+  }
+
+  function animationLoop(nowMs) {
+    animRunning = false;
+    if (!animActive()) { lastFrameMs = 0; return; }
+    scheduleAnimFrame(animFrameDelayMs(nowMs, animBoostUntilMs));
 
     var dt = lastFrameMs === 0 ? 0 : Math.min((nowMs - lastFrameMs) / 1000, 0.1);
     lastFrameMs = nowMs;
@@ -1406,7 +1462,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       var sagCellH = Math.max(1, Math.round(bHeight / 32));
       bHeight += quadrupedBellySagRows(lastState.weight || 50) * sagCellH;
     }
-    spriteCanvas.style.filter = "";
+    if (spriteCanvas.style.filter) { spriteCanvas.style.filter = ""; }
     var floorY     = spriteCanvas.height - bHeight - 12;
     var minX       = 4;
     var maxX       = spriteCanvas.width - bWidth - 4;
@@ -1714,7 +1770,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   if (!REDUCED_MOTION) {
-    requestAnimationFrame(animationLoop);
+    ensureAnimLoop();
+    document.addEventListener("visibilitychange", ensureAnimLoop);
+    ["pointerdown", "keydown", "wheel"].forEach(function (evt) {
+      document.addEventListener(evt, boostAnim, { passive: true });
+    });
   }
 
   // ── State rendering ──────────────────────────────────────────────────────
@@ -2073,6 +2133,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     // Hand off to animation loop — it owns all drawing
     lastState = state;
+    ensureAnimLoop();
 
     appendEvents(events, state.name, state);
 
@@ -3340,6 +3401,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   window.addEventListener("message", function (event) {
     const message = event.data;
     if (!message) { return; }
+    if (message.type === "panelVisibility") {
+      panelVisible = message.visible !== false;
+      ensureAnimLoop();
+      return;
+    }
     if (message.type === "showBubble") {
       showBubble(message.text, message.kind);
       return;

@@ -557,3 +557,79 @@ describe("Tim's run and Stu's stickers replace the pat (sprites.js + sidebar.js)
     assert.match(sidebarSource, /pushReaction\("patted", nowMs, window\.spritePat\.durationMs\(state\.spriteType/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Integration: animation frame budget (speedups)
+// ---------------------------------------------------------------------------
+/** Evaluate sidebar.js's pure frame-scheduling helpers in isolation. */
+function loadFrameHelpers(): { delay: (now: number, boost: number) => number; should: (...a: unknown[]) => boolean; idleMs: number; boostMs: number } {
+  const pick = (re: RegExp): string => {
+    const m = re.exec(sidebarSource);
+    assert.ok(m, `missing ${re}`);
+    return m![0];
+  };
+  const src = [
+    pick(/var ANIM_IDLE_FRAME_MS\s*=[^;]+;/),
+    pick(/var ANIM_BOOST_DURATION_MS\s*=[^;]+;/),
+    pick(/function animFrameDelayMs\([\s\S]*?\n  \}/),
+    pick(/function shouldAnimate\([\s\S]*?\n  \}/),
+    "result = { delay: animFrameDelayMs, should: shouldAnimate, idleMs: ANIM_IDLE_FRAME_MS, boostMs: ANIM_BOOST_DURATION_MS };",
+  ].join("\n");
+  const ctx: Record<string, any> = {};
+  vm.runInNewContext(src, ctx);
+  return ctx.result;
+}
+
+describe("integration — animation frame budget", () => {
+  const h = loadFrameHelpers();
+  const alive = { alive: true };
+
+  it("idles at 30 fps and runs at vsync (60 fps) while boosted", () => {
+    assert.ok(Math.abs(h.idleMs - 1000 / 30) < 0.01);
+    assert.equal(h.delay(1_000, 0), h.idleMs);
+    assert.equal(h.delay(1_000, 1_000 + h.boostMs), 0);
+  });
+
+  it("drops back to 30 fps once the boost window ends", () => {
+    const boostUntil = 1_000 + h.boostMs;
+    assert.equal(h.delay(boostUntil - 1, boostUntil), 0);
+    assert.equal(h.delay(boostUntil, boostUntil), h.idleMs);
+  });
+
+  it("boost window is a few seconds", () => {
+    assert.ok(h.boostMs >= 2_000 && h.boostMs <= 5_000);
+  });
+
+  it("animates only for a live pet on the game screen in a visible panel", () => {
+    assert.equal(h.should(alive, "game", false, true), true);
+    assert.equal(h.should(alive, "game", true, true), false, "document hidden");
+    assert.equal(h.should(alive, "game", false, false), false, "host panel hidden");
+    assert.equal(h.should(alive, "setup", false, true), false);
+    assert.equal(h.should(alive, "dead", false, true), false);
+    assert.equal(h.should({ alive: false }, "game", false, true), false);
+    assert.equal(h.should(null, "game", false, true), false);
+  });
+
+  it("loop reschedules itself only while active and restarts on state, screen and visibility changes", () => {
+    assert.match(sidebarSource, /function animationLoop\(nowMs\) \{\s*animRunning = false;\s*if \(!animActive\(\)\) \{ lastFrameMs = 0; return; \}\s*scheduleAnimFrame\(animFrameDelayMs\(nowMs, animBoostUntilMs\)\);/);
+    assert.ok(!/requestAnimationFrame\(animationLoop\);\s*\n\s*if \(!lastState/.test(sidebarSource), "old unconditional rAF loop is gone");
+    assert.match(sidebarSource, /lastState = state;\s*ensureAnimLoop\(\);/);
+    assert.match(sidebarSource, /if \(name === "game"\)\s*\{ resizeCanvas\(\); ensureAnimLoop\(\); \}/);
+    assert.match(sidebarSource, /document\.addEventListener\("visibilitychange", ensureAnimLoop\)/);
+    assert.match(sidebarSource, /message\.type === "panelVisibility"\) \{\s*panelVisible = message\.visible !== false;\s*ensureAnimLoop\(\);/);
+  });
+
+  it("reactions, bubbles and user input boost to 60 fps", () => {
+    assert.match(sidebarSource, /boostAnim\(nowMs \+ dur\);/);
+    assert.match(sidebarSource, /fadeDurMs:\s*BUBBLE_FADE_MS,[^\n]*\n\s*\};\s*boostAnim\(\);/);
+    assert.match(sidebarSource, /\["pointerdown", "keydown", "wheel"\]\.forEach/);
+  });
+
+  it("hosts tell the webview when the panel is hidden", () => {
+    const vscodeHost = fs.readFileSync(path.join(repoRoot, "vscode/src/sidebarProvider.ts"), "utf8");
+    assert.match(vscodeHost, /postMessage\(\{ type: "panelVisibility", visible: webviewView\.visible \}\)/);
+    const kt = (f: string) => fs.readFileSync(path.join(repoRoot, "pycharm/src/main/kotlin/com/codotchi", f), "utf8");
+    assert.match(kt("CodotchiToolWindow.kt"), /panel\.setPanelVisible\(tw\.isVisible\)/);
+    assert.match(kt("CodotchiBrowserPanel.kt"), /"type":"panelVisibility","visible":\$visible/);
+  });
+});

@@ -116,6 +116,7 @@ class CodotchiToolWindow : ToolWindowFactory {
                     } else {
                         plugin.markDeepIdle()
                     }
+                    panel.setPanelVisible(tw.isVisible)
                 }
             }
         )

@@ -74,6 +74,9 @@ class CodotchiBrowserPanel(
                     })();
                 """.trimIndent()
                 b.executeJavaScript(injectScript, b.url, 0)
+                // A reload starts the page as visible; tell it otherwise so a
+                // hidden panel does not animate.
+                if (!panelVisible) postMessage(panelVisibilityPayload(false))
                 // Notify the caller that the page is ready and the bridge is
                 // injected — safe to push state now.
                 onReady()
@@ -126,6 +129,18 @@ class CodotchiBrowserPanel(
     fun postMessage(payload: String) {
         val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
+    }
+
+    @Volatile private var panelVisible = true
+
+    /**
+     * Tell the webview whether the tool window is showing; sidebar.js stops its
+     * animation loop while hidden. Only posts on change.
+     */
+    fun setPanelVisible(visible: Boolean) {
+        if (visible == panelVisible) return
+        panelVisible = visible
+        postMessage(panelVisibilityPayload(visible))
     }
 
     /**
@@ -266,3 +281,7 @@ class CodotchiBrowserPanel(
         browser.dispose()
     }
 }
+
+/** Webview message that pauses (false) or resumes (true) the pet animation loop. */
+internal fun panelVisibilityPayload(visible: Boolean): String =
+    """{"type":"panelVisibility","visible":$visible}"""
