@@ -71,6 +71,7 @@ import {
 } from "./gameEngine.js";
 import { sealSerialisedState, verifySeal } from "./integrity.js";
 import { translateV2Event, summariseNotification } from "./v2Events.js";
+import { shouldPersistTick, PulseGate } from "./ioThrottle.js";
 
 import {
   buildSpeechBubble,
@@ -1220,7 +1221,10 @@ function applyTickForLocal(): void {
   const next = tick(localPetState, isIdle, false, LOCAL_PET_GAME_CONFIG);
   // Pin stats to healthy values for companion-only mode
   localPetState = pinnedCompanionStats(next);
-  saveLocalState();
+  // Throttled: every open OpenCode window ticks, so per-tick writes multiply.
+  // Evolutions save immediately.
+  const evolved = next.events.some(e => e.startsWith("evolved_to_"));
+  if (evolved || shouldPersistTick(localLastSavedAt, Date.now())) { saveLocalState(); }
 
   const ideLabel = "[OpenCode]";
 
@@ -1280,7 +1284,7 @@ const plugin: Plugin = async (ctx) => {
   tickTimer = setInterval(() => {
     applyTick();
   }, TICK_INTERVAL_SECONDS * 1_000);
-  disposers.push(() => { clearInterval(tickTimer); tickTimer = undefined; });
+  disposers.push(() => { clearInterval(tickTimer); tickTimer = undefined; saveLocalState(); });
 
   // ---------------------------------------------------------------------------
   // Live sync — watch both IDE state files for external writes.
@@ -2341,8 +2345,17 @@ async function setupV2(ctx: any): Promise<() => void> {
     } catch { /* subscription closed */ }
   })();
 
-  // Keep the sidebar's stats and costs fresh between replies (ticks).
-  const pulse = setInterval(emitUpdated, TICK_INTERVAL_SECONDS * 1_000);
+  // Keep the sidebar's stats and costs fresh between replies (ticks), but only
+  // ask the TUI to re-render when something it shows has changed.
+  const pulseGate = new PulseGate();
+  const pulse = setInterval(() => {
+    const hour = lastHourUsage();
+    const pets = getActivePets().filter(p => p.state.alive).map(p => [p.ide, p.state.name, p.state.stage, p.state.mood]);
+    const parts = [terminalEnabled, costTier(), Math.floor(Date.now() / PET_SWAP_MS), pets,
+      dailyCostUSD, dailyTokens, dailyMessages, hour.costUSD, hour.tokens, sessionCostUSD, sessionTokens,
+      costWarnThreshold, costShoutThreshold];
+    if (pulseGate.changed(parts)) { emitUpdated(); }
+  }, TICK_INTERVAL_SECONDS * 1_000);
 
   v2Leader!.stop = () => {
     controller.abort();
