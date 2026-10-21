@@ -263,4 +263,14 @@ class BrowserPanelHtmlTest {
         assertTrue(src.contains("loadResource(\"/webview/bossArt.js\")"), "CodotchiBrowserPanel must load bossArt.js")
         assertTrue(src.contains("{{bossArtUri}}"), "CodotchiBrowserPanel must replace the {{bossArtUri}} placeholder")
     }
+
+    @Test
+    fun `hidden tool window pauses the webview animation loop`() {
+        assertEquals("""{"type":"panelVisibility","visible":false}""", panelVisibilityPayload(false))
+        assertEquals("""{"type":"panelVisibility","visible":true}""", panelVisibilityPayload(true))
+        assertTrue(loadResource("/webview/sidebar.js").contains("message.type === \"panelVisibility\""),
+            "sidebar.js must handle the panelVisibility message")
+        val tw = java.io.File("src/main/kotlin/com/codotchi/CodotchiToolWindow.kt").readText()
+        assertTrue(tw.contains("panel.setPanelVisible(tw.isVisible)"), "tool window must forward visibility to the panel")
+    }
 }

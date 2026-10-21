@@ -263,6 +263,7 @@ export class SidebarProvider
     // state without waiting 10 minutes of inactivity.  When the panel is
     // re-opened, reset activity so the pet exits deep idle right away.
     const visibilityListener = webviewView.onDidChangeVisibility(() => {
+      void webviewView.webview.postMessage({ type: "panelVisibility", visible: webviewView.visible });
       if (webviewView.visible) {
         this.markActivity();
       } else {

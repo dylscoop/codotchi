@@ -1,4 +1,4 @@
-﻿/**
+/**
  * index.ts
  *
  * opencode-codotchi — npm-distributable OpenCode plugin.
@@ -71,6 +71,7 @@ import {
 } from "./gameEngine.js";
 import { sealSerialisedState, verifySeal } from "./integrity.js";
 import { translateV2Event, summariseNotification } from "./v2Events.js";
+import { shouldPersistTick, PulseGate } from "./ioThrottle.js";
 
 import {
   buildSpeechBubble,
@@ -1090,7 +1091,7 @@ function loadAllStates(): void {
   const vscodeFile  = loadFromIDEFile(getVSCodeStatePath());
   if (vscodeFile !== null) {
     const elapsed = (Date.now() - vscodeFile.savedAt) / 1_000;
-    vscodePetState    = applyOfflineDecay(vscodeFile.state, elapsed);
+    vscodePetState    = decayIDEState(vscodeFile.state, elapsed);
     vscodeLastSavedAt = vscodeFile.savedAt;
     vscodeMeals = 0;
     // Restore terminalEnabled from the VS Code state file (respects explicit off)
@@ -1099,7 +1100,7 @@ function loadAllStates(): void {
   const pycharmFile = loadFromIDEFile(getPyCharmStatePath());
   if (pycharmFile !== null) {
     const elapsed = (Date.now() - pycharmFile.savedAt) / 1_000;
-    pycharmPetState    = applyOfflineDecay(pycharmFile.state, elapsed);
+    pycharmPetState    = decayIDEState(pycharmFile.state, elapsed);
     pycharmLastSavedAt = pycharmFile.savedAt;
     pycharmMeals = 0;
   }
@@ -1119,12 +1120,22 @@ function saveIDEState(ide: "vscode" | "pycharm" | "opencode"): void {
   }
 }
 
+/** Offline decay for an IDE pet that never kills it: only the IDE decides death. */
+function decayIDEState(state: PetState, elapsedSeconds: number): PetState {
+  const decayed = applyOfflineDecay(state, elapsedSeconds);
+  return state.alive && !decayed.alive ? state : decayed;
+}
+
 function applyTickForPet(ide: "vscode" | "pycharm"): void {
   const state = ide === "vscode" ? vscodePetState : pycharmPetState;
   if (state === null || !state.alive) { return; }
   const next = tick(state, isIdle, false, DEFAULT_GAME_CONFIG);
+  // The IDE owns its pet's life and death. This tick only approximates the
+  // IDE's simulation (no deep idle, no IDE settings such as dev mode), so it
+  // must never declare the pet dead or write back to the IDE's state file —
+  // the file watcher picks up the IDE's authoritative state instead.
+  if (!next.alive) { return; }
   setPetState(ide, next);
-  saveIDEState(ide);
 
   const ideLabel = ide === "vscode" ? "[VS Code]" : "[PyCharm]";
 
@@ -1210,7 +1221,10 @@ function applyTickForLocal(): void {
   const next = tick(localPetState, isIdle, false, LOCAL_PET_GAME_CONFIG);
   // Pin stats to healthy values for companion-only mode
   localPetState = pinnedCompanionStats(next);
-  saveLocalState();
+  // Throttled: every open OpenCode window ticks, so per-tick writes multiply.
+  // Evolutions save immediately.
+  const evolved = next.events.some(e => e.startsWith("evolved_to_"));
+  if (evolved || shouldPersistTick(localLastSavedAt, Date.now())) { saveLocalState(); }
 
   const ideLabel = "[OpenCode]";
 
@@ -1270,7 +1284,7 @@ const plugin: Plugin = async (ctx) => {
   tickTimer = setInterval(() => {
     applyTick();
   }, TICK_INTERVAL_SECONDS * 1_000);
-  disposers.push(() => { clearInterval(tickTimer); tickTimer = undefined; });
+  disposers.push(() => { clearInterval(tickTimer); tickTimer = undefined; saveLocalState(); });
 
   // ---------------------------------------------------------------------------
   // Live sync — watch both IDE state files for external writes.
@@ -1293,7 +1307,7 @@ const plugin: Plugin = async (ctx) => {
       const nowAlive = loaded.state.alive;
       // New pet spawned: flush stale queued notifications from the dead pet
       if (wasDeadOrAbsent && nowAlive) { pendingNotification = null; }
-      setPetState(ide, applyOfflineDecay(loaded.state, elapsed));
+      setPetState(ide, decayIDEState(loaded.state, elapsed));
       setSavedAt(ide, loaded.savedAt);
       setMeals(ide, 0);
     };
@@ -2331,8 +2345,17 @@ async function setupV2(ctx: any): Promise<() => void> {
     } catch { /* subscription closed */ }
   })();
 
-  // Keep the sidebar's stats and costs fresh between replies (ticks).
-  const pulse = setInterval(emitUpdated, TICK_INTERVAL_SECONDS * 1_000);
+  // Keep the sidebar's stats and costs fresh between replies (ticks), but only
+  // ask the TUI to re-render when something it shows has changed.
+  const pulseGate = new PulseGate();
+  const pulse = setInterval(() => {
+    const hour = lastHourUsage();
+    const pets = getActivePets().filter(p => p.state.alive).map(p => [p.ide, p.state.name, p.state.stage, p.state.mood]);
+    const parts = [terminalEnabled, costTier(), Math.floor(Date.now() / PET_SWAP_MS), pets,
+      dailyCostUSD, dailyTokens, dailyMessages, hour.costUSD, hour.tokens, sessionCostUSD, sessionTokens,
+      costWarnThreshold, costShoutThreshold];
+    if (pulseGate.changed(parts)) { emitUpdated(); }
+  }, TICK_INTERVAL_SECONDS * 1_000);
 
   v2Leader!.stop = () => {
     controller.abort();

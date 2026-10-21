@@ -1,6 +1,27 @@
 # Version History
 
-## v2.30.0 - current
+## v2.30.1 - current
+
+### Changes from v2.30.0 (lighter on CPU and disk - branch speedups)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | Pet animation loop capped at 30 fps (`ANIM_IDLE_FRAME_MS`), 60 fps for 3 s after input, reactions and bubbles (`boostAnim`); the loop stops entirely when the panel is hidden (`document.hidden` or host `panelVisibility` message), off the game screen or the pet is dead, and restarts via `ensureAnimLoop` on state, screen and visibility changes. Previously it requested a frame at the display refresh rate forever |
+| `vscode/src/sidebarProvider.ts` | posts `panelVisibility` on `onDidChangeVisibility` |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt`, `CodotchiToolWindow.kt` | `setPanelVisible` forwards tool window visibility to the webview (only on change, re-sent after a reload); `panelVisibilityPayload` |
+| `opencode-codotchi/src/ioThrottle.ts` (new), `src/index.ts` | OpenCode-local pet tick saves throttled to every 30 s (`shouldPersistTick`; evolutions and shutdown still save at once); the 3 s sidebar pulse only emits when shown values change (`PulseGate`) |
+| `vscode/tests/unit/webviewAnimations.test.ts`, `opencode-codotchi/tests/unit/ioThrottle.test.ts` (new), `pycharm/src/test/kotlin/com/codotchi/BrowserPanelHtmlTest.kt` | frame budget, pause / resume wiring, save throttle and pulse gate |
+| all manifests, `README.md` | version 2.30.1 |
+
+Updated constants:
+
+```text
+ANIM_IDLE_FRAME_MS: number = 1000 / 30      // sidebar.js idle frame cap
+ANIM_BOOST_DURATION_MS: number = 3000       // 60 fps window after interaction
+LOCAL_TICK_SAVE_INTERVAL_MS: number = 30_000 // opencode local pet tick saves
+```
+
+## v2.30.0
 
 ### Changes from v2.29.0 (Boss Battle mini-game - branch feat/boss-battle)
 
