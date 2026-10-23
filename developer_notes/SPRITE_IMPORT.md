@@ -44,7 +44,10 @@ See [`SPRITES.md`](SPRITES.md) for the grid format and colour legend.
    ```
 
    On Windows you can double-click `scripts\import_sprites_bulk.bat`
-   instead; it runs both and waits so you can read the output.
+   instead. It asks for a folder of images and a pet name, lets you match
+   files to stages, asks for per-stage colours / flip / upright (saved in
+   `sprite.json`, other fields kept), copies the images into
+   `sprites\<pet>\`, then runs both commands.
 
    The import prints each species' grid size and palette, and warns about any
    missing stage. A species with missing stages uses its adult grid at those
