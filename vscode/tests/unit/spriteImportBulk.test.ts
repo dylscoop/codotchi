@@ -130,6 +130,41 @@ describe("bulk sprite import", () => {
     assert.deepEqual(Object.keys(bulk.generate(src).species[0].grids), ["adult", "adult_sleeping"]);
   });
 
+  it("peels a framed background layer by layer and keeps interior matches", () => {
+    const src = freshDir("frame");
+    // Red frame around a white background; the navy pet has a white eye.
+    writePng(path.join(src, "pup", "adult.png"), [
+      "RRRRRRR",
+      "RWWWWWR",
+      "RWWNWWR",
+      "RWNWNWR",
+      "RWNNNWR",
+      "RWWWWWR",
+      "RRRRRRR",
+    ]);
+    const pup = bulk.generate(src).species[0];
+    // Frame and white background go; the pet keeps its white eye.
+    assert.equal(pup.cols, 3);
+    assert.equal(pup.rows, 3);
+    const g = rowsOf(pup.grids.adult);
+    assert.equal(g[0][0], "0");
+    assert.equal(g[0][2], "0");
+    assert.ok(g[1][1] !== "0", "interior white eye is kept");
+  });
+
+  it("stops peeling once a layer leaves the sprite shape", () => {
+    const src = freshDir("frame2");
+    writePng(path.join(src, "pup", "adult.png"), [
+      "WWWWW",
+      "WNNNW",
+      "WNRNW",
+      "WN.NW",
+      "WWWWW",
+    ]);
+    // Has a transparent pixel, so it's not an opaque background: untouched apart from crop.
+    assert.equal(bulk.generate(src).species[0].cols, 5);
+  });
+
   it("rejects a species folder name that is not a valid spriteType", () => {
     const src = freshDir("badname");
     writePng(path.join(src, "Big Dog", "adult.png"), ["W"]);

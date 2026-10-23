@@ -520,27 +520,75 @@ function decodeImageFile(file, opts) {
 }
 
 /**
- * Remove a solid background from a fully-opaque image (e.g. RGB PNG, JPEG):
- * when every pixel is opaque and all four corners share one colour, that
- * colour is made transparent and the border cropped.
+ * Make transparent every opaque pixel within transparentDist of bg that is
+ * connected to the image edge through such pixels. Interior pixels of the same
+ * colour (eye whites, teeth) are kept.
  */
-function removeAutoBackground(img, alphaThresh, transparentDist) {
+function floodTransparentFromEdges(src, bg, transparentDist, alphaThresh) {
+  var W = src.width, H = src.height;
+  var pixels = src.pixels.map(function (row) {
+    return row.map(function (px) { return { r: px.r, g: px.g, b: px.b, a: px.a }; });
+  });
+  var seen = new Uint8Array(W * H);
+  var stack = [];
+  function push(x, y) {
+    var i = y * W + x;
+    if (seen[i]) { return; }
+    var px = pixels[y][x];
+    if (px.a < alphaThresh || rgbDist(px, bg) > transparentDist) { return; }
+    seen[i] = 1;
+    stack.push(i);
+  }
+  for (var x = 0; x < W; x++) { push(x, 0); push(x, H - 1); }
+  for (var y = 0; y < H; y++) { push(0, y); push(W - 1, y); }
+  var changed = 0;
+  while (stack.length) {
+    var i = stack.pop(), cx = i % W, cy = (i - cx) / W;
+    pixels[cy][cx].a = 0;
+    changed++;
+    if (cx > 0)     { push(cx - 1, cy); }
+    if (cx < W - 1) { push(cx + 1, cy); }
+    if (cy > 0)     { push(cx, cy - 1); }
+    if (cy < H - 1) { push(cx, cy + 1); }
+  }
+  log("Auto-background: removed " + changed + " edge-connected pixels of " + rgbToHex(bg));
+  return { width: W, height: H, pixels: pixels };
+}
+
+/**
+ * Remove a solid background from a fully-opaque image (e.g. RGB PNG, JPEG):
+ * when every pixel is opaque and all four corners share one colour, the
+ * pixels of that colour connected to the edge are made transparent and the
+ * border cropped. This repeats while the new corners are again one opaque
+ * colour, so a frame around a plain background (pink border, then white) is
+ * peeled off layer by layer.
+ */
+function isFullyOpaque(img, alphaThresh) {
   for (var r = 0; r < img.height; r++) {
     for (var c = 0; c < img.width; c++) {
-      if (img.pixels[r][c].a < alphaThresh) { return img; }
+      if (img.pixels[r][c].a < alphaThresh) { return false; }
     }
   }
-  var corners = [
-    img.pixels[0][0],
-    img.pixels[0][img.width - 1],
-    img.pixels[img.height - 1][0],
-    img.pixels[img.height - 1][img.width - 1]
-  ];
-  var bg = corners[0];
-  if (!corners.every(function (p) { return rgbDist(p, bg) <= transparentDist; })) { return img; }
-  var bgHex = rgbToHex(bg);
-  log("Auto-background: image is fully opaque with uniform corners (" + bgHex + ") — removing as background and cropping. Use --transparent to override.");
-  return cropTransparentBorder(applyTransparentColour(img, bgHex, transparentDist), alphaThresh);
+  return true;
+}
+
+function removeAutoBackground(img, alphaThresh, transparentDist) {
+  // Only peel while the image is still a solid rectangle: once a layer leaves
+  // transparent pixels behind, what remains is the sprite itself.
+  for (var layer = 0; layer < 4 && isFullyOpaque(img, alphaThresh); layer++) {
+    if (img.width < 2 || img.height < 2) { break; }
+    var corners = [
+      img.pixels[0][0],
+      img.pixels[0][img.width - 1],
+      img.pixels[img.height - 1][0],
+      img.pixels[img.height - 1][img.width - 1]
+    ];
+    var bg = corners[0];
+    if (!corners.every(function (p) { return p.a >= alphaThresh && rgbDist(p, bg) <= transparentDist; })) { break; }
+    log("Auto-background: uniform corners (" + rgbToHex(bg) + ") - removing as background and cropping. Use transparent to override.");
+    img = cropTransparentBorder(floodTransparentFromEdges(img, bg, transparentDist, alphaThresh), alphaThresh);
+  }
+  return img;
 }
 
 /**
