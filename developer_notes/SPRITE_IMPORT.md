@@ -43,6 +43,9 @@ See [`SPRITES.md`](SPRITES.md) for the grid format and colour legend.
    node scripts/validate_sprites.js
    ```
 
+   On Windows you can double-click `scripts\import_sprites_bulk.bat`
+   instead; it runs both and waits so you can read the output.
+
    The import prints each species' grid size and palette, and warns about any
    missing stage. A species with missing stages uses its adult grid at those
    stages; with no adult grid it is drawn as the classic pet.
