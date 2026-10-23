@@ -68,6 +68,8 @@ Every field is optional.
 | Field | Default | Meaning |
 |-------|---------|---------|
 | `palette` | auto | `{ primary, secondary, accent }`: exact source colours for indices 1 / 2 / 3. Each pixel maps to the nearest one. |
+| `perStagePalette` | `false` | `true`: each stage gets its own auto-detected palette from its own images (mood art like `adult_sleeping` counts towards `adult`). Stages whose colours differ from the species palette are written as `byStage`. Turn it on one species at a time; species without it are unchanged. |
+| `palettes` | — | `{ <stage>: { primary, secondary, accent } }`: exact colours for one stage. Overrides `palette` and `perStagePalette` for that stage. Unknown stage names are an error. |
 | `background` | `#1a1a1a` | Canvas background behind the pet. |
 | `transparent` | auto | Source colour to treat as transparent. When this is unset, a fully-opaque image with four matching corners has that corner colour removed. |
 | `transparentDistance` | `2500` | Squared-RGB tolerance for `transparent`. |
@@ -98,7 +100,11 @@ For each species folder:
 4. **Quantise** every stage against **one palette**. The palette comes from
    `sprite.json`, or from the three most frequent colours across all stages,
    ranked by luminance: brightest → 1 primary, mid → 2 secondary, darkest → 3
-   accent.
+   accent. With `perStagePalette` (or a `palettes.<stage>` entry) a stage is
+   quantised against its own palette instead, detected from that stage's
+   images only; the renderer picks it up through
+   `spriteGetPalette(spriteType, stage)`. The egg and the background always
+   use the species palette.
 5. **Flip** if asked, then **pad** each stage onto the shared grid with
    transparent cells (bottom-aligned, horizontal position from `anchor`).
 6. **Write** `sprites.generated.js`. Species are in name order and the output

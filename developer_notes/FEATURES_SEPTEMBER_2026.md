@@ -348,6 +348,7 @@ Goal: drop in images for every animal at once, instead of running
 | Refactor `import_sprite.js` into a reusable module | `[x]` | `scripts/lib/spriteImport.js`; the CLI is a thin wrapper that only prints, and `--inject` is removed (BUGFIX-179) |
 | One grid shared by all stages of a species | `[x]` | Fixes the clash where `SPRITE_GRID_META` is overwritten by the last stage imported; stages are padded bottom-centre onto the largest cropped size (≤ 192×128) |
 | One palette per species | `[x]` | Quantize all stages against the same 3 colours |
+| Opt-in palette per stage | `[x]` | `perStagePalette: true` auto-detects each stage's colours from its own images; `palettes.<stage>` sets exact ones. Emitted as `byStage`; `spriteGetPalette(type, stage)` applies it. Species without it are byte-identical |
 | Generated `media/sprites.generated.js` | `[x]` | DEFS + META + PALETTES written from scratch each run, instead of regex-splicing into the hand-maintained `sprites.js`; loaded by `sidebar.html`, `sprite_preview.html` and the PyCharm loaders |
 | Copy generated output into PyCharm `webview/` | `[x]` | Gradle copies it from `vscode/media` at build time |
 | Missing-stage report | `[x]` | Lists species/stage pairs with no image |
