@@ -18,6 +18,11 @@
  *     palette        { primary, secondary, accent }  exact colours → indices 1/2/3
  *                    (default: the 3 most frequent colours across all stages,
  *                    ranked by luminance)
+ *     perStagePalette  true: each stage gets its own auto-detected palette from
+ *                    its own images (mood art counts towards its stage);
+ *                    emitted as byStage on the species palette (default false)
+ *     palettes       { <stage>: { primary, secondary, accent } } exact colours
+ *                    for one stage; overrides palette / perStagePalette there
  *     background     canvas background colour (default "#1a1a1a")
  *     transparent    source colour to treat as transparent (default: automatic
  *                    for fully-opaque images with uniform corners)
@@ -33,7 +38,8 @@
  *                    checked against ROTATION_ANIMALS and customCharacters.js;
  *                    a mismatch is a warning (registration is still by hand)
  *
- * Every stage of a species shares one grid size and one palette: stages are
+ * Every stage of a species shares one grid size and, unless perStagePalette or
+ * palettes says otherwise, one palette: stages are
  * scaled by one factor so the largest fits the 192×128 cap (relative sizes are
  * kept), then padded onto the shared grid. The output is rebuilt from scratch
  * on every run and is deterministic, so --check can compare it byte for byte.
@@ -125,11 +131,32 @@ function importSpecies(species, dir) {
       Math.min(rows, Math.max(1, Math.round(img.height * scale))));
   });
 
-  // 3. One palette for every stage; quantise, mirror, pad onto the shared grid
-  var mapper = lib.buildColourMapper(resampled, alphaThresh, config.palette);
+  // 3. Build the palette(s); quantise, mirror, pad onto the shared grid.
+  //    The species palette always comes from every image. With perStagePalette
+  //    (or a palettes.<stage> entry) a stage gets its own mapper, built from
+  //    that stage's images only (mood art counts towards its stage).
+  var mapper   = lib.buildColourMapper(resampled, alphaThresh, config.palette);
+  var palettes = config.palettes || {};
+  Object.keys(palettes).forEach(function (s) {
+    if (STAGES.indexOf(s) === -1) { throw new Error(dir + ": palettes has unknown stage \"" + s + "\""); }
+  });
+  var stageMappers = {};
+  var byStage  = {};
+  STAGES.forEach(function (stage) {
+    var own = palettes[stage];
+    if (!own && !config.perStagePalette) { return; }
+    var imgs = resampled.filter(function (img, i) { return keys[i].split("_")[0] === stage; });
+    if (imgs.length === 0) { return; }
+    var m = lib.buildColourMapper(imgs, alphaThresh, own);
+    stageMappers[stage] = m;
+    var p = m.palette, sp = mapper.palette;
+    if (p.primary !== sp.primary || p.secondary !== sp.secondary || p.accent !== sp.accent) {
+      byStage[stage] = { primary: p.primary, secondary: p.secondary, accent: p.accent };
+    }
+  });
   var grids  = {};
   resampled.forEach(function (img, i) {
-    var grid = lib.mapGrid(img, mapper);
+    var grid = lib.mapGrid(img, stageMappers[keys[i].split("_")[0]] || mapper);
     if (config.flip) { grid = lib.flipGrid(grid); }
     grids[keys[i]] = lib.padGrid(grid, cols, rows, config.anchor === "left" ? "left" : "centre");
   });
@@ -150,6 +177,7 @@ function importSpecies(species, dir) {
       accent:     mapper.palette.accent,
       background: config.background ? lib.normaliseHex(config.background) : "#1a1a1a",
     },
+    byStage: byStage,
     upright: !!config.upright,
     grids:   grids,
     missing: STAGES.filter(function (s) { return !files[s]; }),
@@ -247,8 +275,13 @@ function renderOutput(all) {
   L.push("  Object.assign(window.SPRITE_ANIMAL_PALETTES, {");
   all.forEach(function (sp) {
     var p = sp.palette;
+    var stageKeys = Object.keys(sp.byStage || {}).sort(compareGridKeys);
+    var bs = stageKeys.length === 0 ? "" : ", byStage: { " + stageKeys.map(function (s) {
+      var c = sp.byStage[s];
+      return s + ": { primary: " + q(c.primary) + ", secondary: " + q(c.secondary) + ", accent: " + q(c.accent) + " }";
+    }).join(", ") + " }";
     L.push("    " + q(sp.species) + ": { primary: " + q(p.primary) + ", secondary: " + q(p.secondary) +
-           ", accent: " + q(p.accent) + ", background: " + q(p.background) + " },");
+           ", accent: " + q(p.accent) + ", background: " + q(p.background) + bs + " },");
   });
   L.push("  });");
   var upright = all.filter(function (sp) { return sp.upright; });

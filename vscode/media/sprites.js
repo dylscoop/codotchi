@@ -1514,7 +1514,7 @@
       return;
     }
 
-    var palette    = getPalette(state.spriteType);
+    var palette    = getPalette(state.spriteType, state.stage);
     var primary    = palette.primary;
     var secondary  = palette.secondary;
 

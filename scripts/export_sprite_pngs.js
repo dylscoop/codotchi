@@ -52,16 +52,20 @@ function exportSpecies(window, species, outDir, rotation) {
     throw new Error(species + ": needs grids, SPRITE_GRID_META and a palette");
   }
 
-  var colours = {
-    1: lib.hexToRgb(palette.primary),
-    2: lib.hexToRgb(palette.secondary),
-    3: lib.hexToRgb(palette.accent || palette.primary),
-  };
+  function coloursFor(p) {
+    return {
+      1: lib.hexToRgb(p.primary),
+      2: lib.hexToRgb(p.secondary),
+      3: lib.hexToRgb(p.accent || p.primary),
+    };
+  }
+  var byStage = palette.byStage || {};
   var dir = path.join(outDir, species);
   fs.mkdirSync(dir, { recursive: true });
 
   Object.keys(grids).forEach(function (key) {
     var grid = grids[key];
+    var colours = coloursFor(byStage[key.split("_")[0]] || palette);
     var png = lib.encodePng(meta.cols, meta.rows, function (x, y) {
       var v = grid[y] && grid[y][x];
       if (!v) { return { r: 0, g: 0, b: 0, a: 0 }; }
@@ -84,6 +88,17 @@ function exportSpecies(window, species, outDir, rotation) {
     anchor:      "left",
     legRowStart: Math.round(meta.legRowStart * scale),
   };
+  if (Object.keys(byStage).length) {
+    config.palettes = {};
+    Object.keys(byStage).forEach(function (s) {
+      var c = byStage[s];
+      config.palettes[s] = {
+        primary:   lib.normaliseHex(c.primary),
+        secondary: lib.normaliseHex(c.secondary),
+        accent:    lib.normaliseHex(c.accent || c.primary),
+      };
+    });
+  }
   if (window.UPRIGHT_TYPES && window.UPRIGHT_TYPES[species]) { config.upright = true; }
   config.inRotation = rotation.indexOf(species) !== -1;
   var ch = window.CUSTOM_CHARACTERS && window.CUSTOM_CHARACTERS[species];

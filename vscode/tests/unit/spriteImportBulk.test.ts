@@ -159,4 +159,67 @@ describe("bulk sprite import", () => {
     assert.equal(window.UPRIGHT_TYPES.pup, 1);
     assert.ok(window.SPRITE_GRID_META.classic, "existing entries are kept");
   });
+
+  it("keeps one palette and no byStage without perStagePalette", () => {
+    const src = freshDir("nostage");
+    writePng(path.join(src, "pup", "baby.png"), ["WR"]);
+    writePng(path.join(src, "pup", "adult.png"), ["WRN"]);
+    const { species, text } = bulk.generate(src);
+    assert.deepEqual(species[0].byStage, {});
+    assert.ok(!text.includes("byStage"));
+  });
+
+  it("auto-detects a palette per stage with perStagePalette:true", () => {
+    const src = freshDir("perstage");
+    // baby is red/navy only; adult is white/red/navy
+    writePng(path.join(src, "pup", "baby.png"), ["RN"]);
+    writePng(path.join(src, "pup", "adult.png"), ["WRN"]);
+    writePng(path.join(src, "pup", "adult_sleeping.png"), ["WWN"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ perStagePalette: true }));
+    const pup = bulk.generate(src).species[0];
+    // baby: red brightest → 1, navy → 2
+    assert.deepEqual(rowsOf(pup.grids.baby), ["120"]);
+    assert.deepEqual(pup.byStage.baby, { primary: "#c81414", secondary: "#0a0a3c", accent: "#222222" });
+    // adult + adult_sleeping share a palette identical to the species one → no byStage entry
+    assert.deepEqual(rowsOf(pup.grids.adult), ["123"]);
+    assert.deepEqual(rowsOf(pup.grids.adult_sleeping), ["113"]);
+    assert.equal(pup.byStage.adult, undefined);
+  });
+
+  it("uses palettes.<stage> exact colours over auto-detection", () => {
+    const src = freshDir("stageexplicit");
+    writePng(path.join(src, "pup", "baby.png"), ["WR"]);
+    writePng(path.join(src, "pup", "adult.png"), ["WR"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({
+      palettes: { baby: { primary: "#c81414", secondary: "#fafafa" } },
+    }));
+    const pup = bulk.generate(src).species[0];
+    assert.deepEqual(rowsOf(pup.grids.baby), ["21"]);
+    assert.deepEqual(rowsOf(pup.grids.adult), ["12"]);
+    assert.equal(pup.byStage.baby.primary, "#c81414");
+  });
+
+  it("rejects an unknown stage in palettes", () => {
+    const src = freshDir("badstage");
+    writePng(path.join(src, "pup", "adult.png"), ["W"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ palettes: { elder: { primary: "#fff" } } }));
+    assert.throws(() => bulk.generate(src), /unknown stage "elder"/);
+  });
+
+  it("spriteGetPalette returns stage colours from byStage", () => {
+    const src = freshDir("stageload");
+    writePng(path.join(src, "pup", "baby.png"), ["RN"]);
+    writePng(path.join(src, "pup", "adult.png"), ["WRN"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ perStagePalette: true, background: "#101010" }));
+    const window: Record<string, any> = {};
+    const context = vm.createContext({ window });
+    vm.runInContext(fs.readFileSync(path.join(media, "spriteConstants.js"), "utf8").replace(/^﻿/, ""), context);
+    vm.runInContext(bulk.generate(src).text, context);
+    assert.equal(window.spriteGetPalette("pup").primary, "#fafafa");
+    assert.equal(window.spriteGetPalette("pup", "adult").primary, "#fafafa");
+    const baby = window.spriteGetPalette("pup", "baby");
+    assert.equal(baby.primary, "#c81414");
+    assert.equal(baby.background, "#101010");
+    assert.equal(window.spriteGetPalette("nope", "baby"), window.spriteGetPalette("classic"));
+  });
 });
