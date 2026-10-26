@@ -199,6 +199,25 @@ describe("bulk sprite import", () => {
     assert.throws(() => bulk.generate(src), /unknown stage "elder"/);
   });
 
+  it("removes large enclosed background pockets but keeps small ones", () => {
+    const src = freshDir("pocket");
+    const big = 30;
+    const rows: string[] = [];
+    for (let y = 0; y < big; y++) {
+      let r = "";
+      for (let x = 0; x < big; x++) {
+        const ring = x >= 2 && x < 28 && y >= 2 && y < 28 && (x < 5 || x >= 25 || y < 5 || y >= 25);
+        const eye = x === 3 && y === 3;
+        r += eye ? "W" : ring ? "N" : "W";
+      }
+      rows.push(r);
+    }
+    writePng(path.join(src, "pup", "adult.png"), rows);
+    const g = rowsOf(bulk.generate(src).species[0].grids.adult);
+    assert.equal(g[12][12], "0", "20×20 enclosed white pocket is removed");
+    assert.notEqual(g[1][1], "0", "single enclosed white pixel (eye) is kept");
+  });
+
   it("rejects a species folder name that is not a valid spriteType", () => {
     const src = freshDir("badname");
     writePng(path.join(src, "Big Dog", "adult.png"), ["W"]);

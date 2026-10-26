@@ -552,6 +552,37 @@ function floodTransparentFromEdges(src, bg, transparentDist, alphaThresh) {
     if (cy < H - 1) { push(cx, cy + 1); }
   }
   log("Auto-background: removed " + changed + " edge-connected pixels of " + rgbToHex(bg));
+
+  // Enclosed pockets of background (e.g. between a tail and the body): any
+  // remaining bg-coloured region bigger than POCKET_SHARE of the image goes.
+  // Small ones (eye whites, teeth) stay.
+  var minPocket = Math.max(16, Math.round(W * H * POCKET_SHARE));
+  for (var py = 0; py < H; py++) {
+    for (var px0 = 0; px0 < W; px0++) {
+      var start = py * W + px0;
+      if (seen[start]) { continue; }
+      var sp = pixels[py][px0];
+      if (sp.a < alphaThresh || rgbDist(sp, bg) > transparentDist) { continue; }
+      var region = [start];
+      seen[start] = 1;
+      for (var ri = 0; ri < region.length; ri++) {
+        var j = region[ri], jx = j % W, jy = (j - jx) / W;
+        [[jx - 1, jy], [jx + 1, jy], [jx, jy - 1], [jx, jy + 1]].forEach(function (n) {
+          if (n[0] < 0 || n[1] < 0 || n[0] >= W || n[1] >= H) { return; }
+          var k = n[1] * W + n[0];
+          if (seen[k]) { return; }
+          var q = pixels[n[1]][n[0]];
+          if (q.a < alphaThresh || rgbDist(q, bg) > transparentDist) { return; }
+          seen[k] = 1;
+          region.push(k);
+        });
+      }
+      if (region.length >= minPocket) {
+        region.forEach(function (k) { pixels[(k - k % W) / W][k % W].a = 0; });
+      }
+    }
+  }
+
   return { width: W, height: H, pixels: pixels };
 }
 
@@ -610,6 +641,7 @@ function capScale(w, h, maxCols, maxRows) {
 // image passed in shares the result.
 
 var MERGE_DIST    = 1200;   // squared RGB distance: shades closer than this are one colour
+var POCKET_SHARE  = 0.002;  // enclosed background pockets at least this share of the image are removed
 var DISTINCT_DIST = 4800;   // picked colours must be at least this far apart
 var MIN_SHARE     = 0.01;   // ignore groups under 1% of pixels while picking distinct ones
 
