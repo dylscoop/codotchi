@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.32.0] - 2026-10-26
+
+### Added
+
+- **Dog actions** - every dog now has its own games and habits:
+  - **Fetch** replaces Coin Flip: throw the ball Short or Long and guess which bush the dog is waiting behind. Three throws, win with two catches. On a miss it runs over and fetches the ball anyway.
+  - **Tug-of-War** replaces Left / Right: Pull when it eases off, ease off when it pulls. Three rounds, win two. Higher or Lower stays the same.
+  - Snacks are biscuit bones and meals are a meaty bone.
+  - The dog's gift is a ball: "brought you a ball and wants to play fetch! 🎾". Accepting it (Praise) starts a game of Fetch.
+  - New pat bubbles ("*tail wags intensify*", "Much code. Very wow.", "Who's a good boy?") and a "*sad whimper*… fine." when a call goes unanswered.
+  - A happy dog wags its tail, and an energetic one sometimes chases it.
+  - The 5-minute break is a bone chew instead of a nap: the dog stays awake gnawing a big bone that gets smaller as the break runs down. Same timer and rules as the nap.
+
 ## [2.30.1] - 2026-10-21
 
 ### Changed

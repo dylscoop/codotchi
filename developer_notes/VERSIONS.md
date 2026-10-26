@@ -1,6 +1,22 @@
 # Version History
 
-## v2.31.0 - current
+## v2.32.0 - current
+
+### Changes from v2.31.0 (dog actions - branch feat/dog-actions)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt` | new `fetch` and `tug_of_war` mini-game results. `minigameStatsKey()` maps them to `coin_flip` and `left_right`, so they share those games' happiness, weight and XP; events are `minigame_fetch_*` / `minigame_tug_of_war_*` |
+| `vscode/media/sidebar.js`, `sidebar.html` | the dog plays **Fetch** (pick Short / Long, 3 throws, win on 2+ catches; on a miss it fetches the ball anyway) instead of Coin Flip, and **Tug-of-War** (Pull / Ease, 3 rounds, win on 2+) instead of Left / Right. Higher or Lower is unchanged |
+| `vscode/media/minigameArt.js` | `drawFetchScene` (ball arc, two bushes, the dog's face) and `drawTugScene` (rope, red marker, goal lines, "YOU" / "GRR"); glyphs Y, S, O, N, U |
+| `vscode/media/sidebar.js` | dog food: biscuit-bone floor snacks and a meaty bone at its feet for meals (no bowl). Accepting the dog's gift opens Fetch. A happy dog wags (body wiggle); an idle dog with energy ≥ 70 sometimes chases its tail. The break nap becomes a bone chew: the dog stays awake, chomping a big bone that shrinks through 4 sizes over the 5 minutes; the button reads "Chewing Nm" |
+| `vscode/media/customCharacters.js`, `vscode/src/customCharacters.ts`, `pycharm/.../CustomCharacters.kt` | dog: gift "brought you a ball and wants to play fetch! 🎾", pat bubbles, `ignoredBubble` ("*sad whimper*… fine.") and `breakNap` text (started / noWake / over / button) |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | the gift notification uses the pet's sprite type (so every dog gets the fetch text); the break-over notification uses `breakNap.over` |
+| `opencode-codotchi/src/index.ts` | the dog's break-over line is "Finished the bone. Back to work!" |
+| `vscode/tests/unit/*`, `pycharm/src/test/.../GameEngineTest.kt` | engine, art, registry and webview checks for the dog actions |
+| all manifests, `README.md` | version 2.32.0 |
+
+## v2.31.0
 
 ### Changes from v2.30.1 (per-stage sprite colours, better bulk import, new dog)
 
