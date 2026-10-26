@@ -40,10 +40,10 @@
     "petName": "Scout",
     "petRunId": "0",
     "spawnedAt": 1792771413881,
-    "ageDays": 2,
+    "ageDays": 3,
     "stage": "baby",
     "petType": "pixelpup",
-    "updatedAt": 1793011296747,
+    "updatedAt": 1793012197603,
     "clientVersion": "2.31.0",
     "verified": true
   }
