@@ -1,6 +1,6 @@
 # Version History
 
-## v2.30.2 - current
+## v2.31.0 - current
 
 ### Changes from v2.30.1 (per-stage sprite colours, better bulk import, new dog)
 
@@ -13,7 +13,7 @@
 | `scripts/import_sprites_bulk.bat`, `scripts/import_sprites_bulk.ps1` (new) | double-click bulk importer: multi-select file picker, pet name, stage matching, colour / flip / upright options |
 | `sprites/dog/*`, `vscode/media/sprites.generated.js` | new dog sprites with per-stage colours |
 | `vscode/tests/unit/spriteImportBulk.test.ts` | per-stage palettes, framed backgrounds, distinct colours |
-| all manifests, `README.md` | version 2.30.2 |
+| all manifests, `README.md` | version 2.31.0 |
 
 ## v2.30.1
 
