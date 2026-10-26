@@ -1121,8 +1121,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   // the dog with stageGamePose() and draws the ball or rope with drawStageGame().
   var stageGame = null;
 
-  var FETCH_THROWS = 3;
-  var fetchRound, fetchScore;
+  var fetchCaught;
 
   document.getElementById("btn-fetch-left").addEventListener("click",  function () { handleFetchThrow("left"); });
   document.getElementById("btn-fetch-right").addEventListener("click", function () { handleFetchThrow("right"); });
@@ -1132,42 +1131,24 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     document.getElementById("btn-fetch-right").disabled = !enabled;
   }
 
-  function updateFetchScore() {
-    document.getElementById("fetch-score").textContent =
-      "Throw " + Math.min(fetchRound + 1, FETCH_THROWS) + " / " + FETCH_THROWS + "   Caught: " + fetchScore;
-  }
-
   function startFetchGame() {
     if (!mgArt) { startCoinFlipGame(); return; }
     mgClear();
-    fetchRound = 0;
-    fetchScore = 0;
     showMgPanel("mg-fetch");
-    startFetchRound();
-  }
-
-  function startFetchRound() {
-    stageGame = null;
     document.getElementById("fetch-feedback").textContent = "";
-    updateFetchScore();
     fetchButtons(true);
   }
 
+  /** One throw: the dog guesses a side, and it's a win if it guessed right. */
   function handleFetchThrow(choice) {
     fetchButtons(false);
     var dogDir = Math.random() < 0.5 ? "left" : "right";
-    var caught = dogDir === choice;
-    if (caught) { fetchScore++; }
-    var feedback = caught
-      ? "\u2713 It ran the right way and caught it!"
-      : "\u2717 It ran the wrong way - it goes back for the ball anyway.";
+    fetchCaught = dogDir === choice;
     function finish() {
-      document.getElementById("fetch-feedback").textContent = feedback;
-      bjTimer = setTimeout(function () {
-        bjTimer = null;
-        fetchRound++;
-        if (fetchRound < FETCH_THROWS) { startFetchRound(); } else { endFetchGame(); }
-      }, REDUCED_MOTION ? 900 : 700);
+      document.getElementById("fetch-feedback").textContent = fetchCaught
+        ? "\u2713 It ran the right way and caught it!"
+        : "\u2717 It ran the wrong way - it fetched the ball anyway.";
+      bjTimer = setTimeout(function () { bjTimer = null; endFetchGame(); }, REDUCED_MOTION ? 900 : 800);
     }
     if (REDUCED_MOTION) { finish(); return; }
     document.getElementById("fetch-feedback").textContent = "Throwing " + choice + "...";
@@ -1177,13 +1158,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   function endFetchGame() {
-    var result = fetchScore >= 2 ? "win" : "lose";
+    var result = fetchCaught ? "win" : "lose";
     mgClear();
     showMgPanel("mg-result");
     document.getElementById("mg-result-text").textContent =
-      result === "win"
-        ? "You won Fetch! (" + fetchScore + "/" + FETCH_THROWS + " caught)"
-        : "You lost Fetch. (" + fetchScore + "/" + FETCH_THROWS + " caught)";
+      result === "win" ? "You won Fetch!" : "You lost Fetch.";
     sendPlayResult("fetch", result);
   }
 
@@ -1201,7 +1180,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   function updateTugScore() {
     document.getElementById("tug-score").textContent =
-      "Round " + Math.min(tugRound + 1, TUG_ROUNDS) + " / " + TUG_ROUNDS + "   Won: " + tugScore;
+      "Round " + Math.min(tugRound + 1, TUG_ROUNDS) + " / " + TUG_ROUNDS + "   You: " + tugScore + "   Dog: " + (tugRound - tugScore);
   }
 
   function startTugGame() {
@@ -1248,13 +1227,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   function endTugGame() {
-    var result = tugScore >= 2 ? "win" : "lose";
+    // Scored from the dog's side: the pet gets the winner's reward when it wins
+    var dogRounds = TUG_ROUNDS - tugScore;
+    var result = dogRounds >= 2 ? "win" : "lose";
+    var name = (lastState && lastState.name) || "Your dog";
     mgClear();
     showMgPanel("mg-result");
     document.getElementById("mg-result-text").textContent =
       result === "win"
-        ? "You won Tug-of-War! (" + tugScore + "/" + TUG_ROUNDS + " rounds)"
-        : "You lost Tug-of-War. (" + tugScore + "/" + TUG_ROUNDS + " rounds)";
+        ? name + " won Tug-of-War! \uD83D\uDC15 (" + dogRounds + "/" + TUG_ROUNDS + " rounds)"
+        : "You won Tug-of-War (" + tugScore + "/" + TUG_ROUNDS + " rounds). " + name + " wants a rematch.";
     sendPlayResult("tug_of_war", result);
   }
 

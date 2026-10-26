@@ -257,7 +257,8 @@ Status: `[ ]`
   Right. The ball arcs across the pet's own stage and off that edge while the dog
   picks a side and runs off it. The right side: it comes back with the ball. The
   wrong side: it comes back empty, looks around, runs off the other edge and
-  brings the ball back. 3 throws, win on 2+ (50/50, no hints). Game id `fetch`,
+  brings the ball back. One throw: a catch wins, a miss loses (50/50, no hints).
+  The dog trots (about 1.3 s per run across the stage). Game id `fetch`,
   with Coin Flip's rewards (`minigameStatsKey`). Moves come from
   `minigameArt.fetchPlan` / `planPose` / `fetchBallPose`, driven by the
   animation loop (`stageGame`, `stageGamePose`, `drawStageGame` in sidebar.js).
@@ -266,7 +267,9 @@ Status: `[ ]`
   v2.32.1): a rope runs from the dog's mouth to your (left) edge of the stage.
   Each round the dog secretly pulls or rests; **Hold** beats a pull and **Pull**
   beats a rest (`tugWon`). A win drags the dog one step towards you, a loss lets
-  it back one step. 3 rounds, win on 2+. Game id `tug_of_war`, with Left /
+  it back one step. 3 rounds. Scored from the dog's side: if the dog takes 2+
+  rounds the result is win (the pet gets the winner's reward); if you take 2+
+  it is lose. Game id `tug_of_war`, with Left /
   Right's rewards and extra weight loss. Rope drawn by `minigameArt.drawTugRope`.
 - v2.22.2: a pixel-art coin (crown for heads, "T" for tails) tosses and spins
   for about 0.8 s before landing on the result; reduced motion shows the result

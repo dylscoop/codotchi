@@ -237,7 +237,7 @@ describe("mini-game overlay in sidebar.js", () => {
       assert.ok(body && body[1].includes("mgClear()"), `${fn} does not clear the game`);
     }
     const html = fs.readFileSync(path.join(media, "sidebar.html"), "utf8");
-    for (const id of ["mg-fetch", "btn-fetch-left", "btn-fetch-right", "fetch-feedback", "fetch-score",
+    for (const id of ["mg-fetch", "btn-fetch-left", "btn-fetch-right", "fetch-feedback",
                       "mg-tug", "btn-tug-pull", "btn-tug-hold", "tug-feedback", "tug-score"]) {
       assert.ok(html.includes(`id="${id}"`), `sidebar.html lacks #${id}`);
     }
@@ -259,6 +259,19 @@ describe("mini-game overlay in sidebar.js", () => {
     assert.equal(tugWon("pull", "rest"), true);
     assert.equal(tugWon("pull", "pull"), false);
     assert.equal(tugWon("hold", "rest"), false);
+  });
+
+  it("Fetch is a single throw: a catch wins, a miss loses", () => {
+    assert.ok(!sidebarSource.includes("FETCH_THROWS"));
+    assert.ok(sidebarSource.includes('var result = fetchCaught ? "win" : "lose";'));
+  });
+
+  it("scores Tug-of-War from the dog's side, so the pet gets the reward when it wins", () => {
+    const body = /function endTugGame\(\) \{([\s\S]*?)\n  \}/.exec(sidebarSource);
+    assert.ok(body);
+    assert.ok(body[1].includes("var dogRounds = TUG_ROUNDS - tugScore;"));
+    assert.ok(body[1].includes('var result = dogRounds >= 2 ? "win" : "lose";'));
+    assert.ok(body[1].includes('sendPlayResult("tug_of_war", result)'));
   });
 });
 
@@ -297,6 +310,14 @@ describe("dog mini-game art (minigameArt.js)", () => {
     assert.equal(end.x, 100);
     assert.equal(end.ball, true);
     assert.ok(plan.totalMs > art.fetchPlan(100, -40, 300, "left", "left").totalMs);
+  });
+
+  it("trots rather than dashes across the stage", () => {
+    const art = loadArt();
+    const plan = art.fetchPlan(100, -40, 300, "right", "right");
+    const run = plan.legs.find((l: { to: number }) => l.to === 300);
+    assert.ok(run.ms >= 1200, `run leg is ${run.ms} ms`);
+    assert.ok(plan.totalMs >= 3500, `a catch takes ${plan.totalMs} ms`);
   });
 
   it("draws the tug rope with its red marker", () => {

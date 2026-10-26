@@ -525,6 +525,12 @@
   }
 
   var FETCH_FLIGHT_MS = 800;
+  /** How long the dog takes over each part of its run (a steady trot, not a dash). */
+  var FETCH_PAUSE_MS  = 400;
+  var FETCH_RUN_MS    = 1300;
+  var FETCH_GRAB_MS   = 600;
+  var FETCH_RETURN_MS = 1600;
+  var FETCH_LOOK_MS   = 500;
 
   /**
    * The thrown ball at `ms` after the throw: an arc from (x0, y0) to endX
@@ -547,22 +553,22 @@
     function off(dir) { return dir === "left" ? offLeft : offRight; }
     var dogLeft = dogDir === "left";
     var legs = [
-      { ms: 250, to: home,        ball: false, left: dogLeft },
-      { ms: 650, to: off(dogDir), ball: false, left: dogLeft },
-      { ms: 400, to: off(dogDir), ball: dogDir === throwDir, left: dogLeft },
+      { ms: FETCH_PAUSE_MS, to: home,        ball: false, left: dogLeft },
+      { ms: FETCH_RUN_MS, to: off(dogDir), ball: false, left: dogLeft },
+      { ms: FETCH_GRAB_MS, to: off(dogDir), ball: dogDir === throwDir, left: dogLeft },
     ];
     if (dogDir === throwDir) {
-      legs.push({ ms: 800, to: home, ball: true, left: !dogLeft });
+      legs.push({ ms: FETCH_RETURN_MS, to: home, ball: true, left: !dogLeft });
     } else {
       var ballLeft = throwDir === "left";
       legs.push(
-        { ms: 650, to: home,          ball: false, left: !dogLeft },
-        { ms: 300, to: home,          ball: false, left: dogLeft },
-        { ms: 300, to: home,          ball: false, left: !dogLeft },
-        { ms: 300, to: home,          ball: false, left: ballLeft },
-        { ms: 650, to: off(throwDir), ball: false, left: ballLeft },
-        { ms: 400, to: off(throwDir), ball: true,  left: ballLeft },
-        { ms: 800, to: home,          ball: true,  left: !ballLeft }
+        { ms: FETCH_RUN_MS, to: home,          ball: false, left: !dogLeft },
+        { ms: FETCH_LOOK_MS, to: home,          ball: false, left: dogLeft },
+        { ms: FETCH_LOOK_MS, to: home,          ball: false, left: !dogLeft },
+        { ms: FETCH_LOOK_MS, to: home,          ball: false, left: ballLeft },
+        { ms: FETCH_RUN_MS, to: off(throwDir), ball: false, left: ballLeft },
+        { ms: FETCH_GRAB_MS, to: off(throwDir), ball: true,  left: ballLeft },
+        { ms: FETCH_RETURN_MS, to: home,          ball: true,  left: !ballLeft }
       );
     }
     var total = 0;
