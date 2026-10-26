@@ -211,7 +211,7 @@ describe("mini-game overlay in sidebar.js", () => {
   });
 
   it("plays Blackjack instead of Coin Flip for Stu only", () => {
-    assert.ok(sidebarSource.includes("if (playsBlackjack(lastState)) { startBlackjackGame(); } else { startCoinFlipGame(); }"));
+    assert.ok(sidebarSource.includes("if (playsBlackjack(lastState)) { startBlackjackGame(); }"));
     assert.ok(sidebarSource.includes('state.spriteType === "stu"'));
     assert.ok(sidebarSource.includes('sendPlayResult("blackjack", result)'));
     assert.match(sidebarSource, /function mgClear\(\) \{\r?\n(?:.*\r?\n){0,3}.*clearTimeout\(bjTimer\)/);
@@ -224,5 +224,66 @@ describe("mini-game overlay in sidebar.js", () => {
   it("skips the coin spin and door swing under reduced motion", () => {
     assert.match(sidebarSource, /function playCoinSpin[\s\S]*?if \(REDUCED_MOTION/);
     assert.ok(sidebarSource.includes('open: REDUCED_MOTION ? "open" : "ajar"'));
+  });
+
+  it("plays Fetch and Tug-of-War instead of Coin Flip and Left / Right for the dog", () => {
+    assert.ok(sidebarSource.includes('state.spriteType === "dog"'));
+    assert.ok(sidebarSource.includes("else if (playsDogGames(lastState)) { startFetchGame(); }"));
+    assert.ok(sidebarSource.includes("if (playsDogGames(lastState)) { startTugGame(); } else { startLeftRightGame(); }"));
+    assert.ok(sidebarSource.includes('sendPlayResult("fetch", result)'));
+    assert.ok(sidebarSource.includes('sendPlayResult("tug_of_war", result)'));
+    for (const call of ["mgArt.drawFetchScene(", "mgArt.drawTugScene("]) {
+      assert.ok(sidebarSource.includes(call), `${call} not used`);
+    }
+    for (const fn of ["endFetchGame", "endTugGame"]) {
+      const body = new RegExp(`function ${fn}\\([^)]*\\) \\{([\\s\\S]*?)\\n  \\}`).exec(sidebarSource);
+      assert.ok(body && body[1].includes("mgClear()"), `${fn} does not clear the overlay`);
+    }
+    assert.match(sidebarSource, /function animateFor[\s\S]*?if \(REDUCED_MOTION\)/);
+    const html = fs.readFileSync(path.join(media, "sidebar.html"), "utf8");
+    for (const id of ["mg-fetch", "btn-fetch-short", "btn-fetch-long", "fetch-feedback", "fetch-score",
+                      "mg-tug", "btn-tug-pull", "btn-tug-ease", "tug-feedback", "tug-score"]) {
+      assert.ok(html.includes(`id="${id}"`), `sidebar.html lacks #${id}`);
+    }
+  });
+});
+
+describe("dog mini-game art (minigameArt.js)", () => {
+  it("has the glyphs for the SHORT / LONG / YOU / GRR labels", () => {
+    const art = loadArt();
+    for (const ch of "SHORTLONGYUGR") { assert.ok(art.GLYPHS[ch], `missing glyph ${ch}`); }
+  });
+
+  it("hides the dog in Fetch until the reveal", () => {
+    const art = loadArt();
+    const hidden = mockCtx();
+    art.drawFetchScene(hidden.ctx, 120, 120, { choice: "long", ballT: 0.5, dogSpot: "short", reveal: null }, PALETTE);
+    assert.ok(!hidden.styles.includes(PALETTE.primary), "dog shown before the throw lands");
+    assert.ok(hidden.styles.includes(art.COLOURS.ball), "ball not drawn in flight");
+    for (const caught of [true, false]) {
+      const shown = mockCtx();
+      art.drawFetchScene(shown.ctx, 120, 120, { choice: "short", ballT: null, dogSpot: caught ? "short" : "long",
+        reveal: { caught, carry: 0.75 } }, PALETTE);
+      assert.ok(shown.styles.includes(PALETTE.primary), `dog face missing (caught=${caught})`);
+      assert.ok(shown.styles.includes(art.COLOURS.ball), `ball missing (caught=${caught})`);
+    }
+  });
+
+  it("throws the ball in an arc that lands on the chosen bush", () => {
+    const art = loadArt();
+    const L = art.fetchLayout(200, 100);
+    assert.ok(L.spots.short < L.spots.long);
+    assert.ok(L.startX < L.spots.short);
+    assert.ok(L.groundY < 100);
+  });
+
+  it("moves the Tug-of-War marker towards YOU on a win and the dog on a loss", () => {
+    const art = loadArt();
+    const centre = art.drawTugScene(mockCtx().ctx, 200, 100, 0, { palette: PALETTE }).markerX;
+    const winning = art.drawTugScene(mockCtx().ctx, 200, 100, 2, { palette: PALETTE }).markerX;
+    const losing = art.drawTugScene(mockCtx().ctx, 200, 100, -2, { palette: PALETTE }).markerX;
+    assert.ok(winning < centre && centre < losing);
+    const clamped = art.drawTugScene(mockCtx().ctx, 200, 100, 99, {}).markerX;
+    assert.equal(clamped, art.drawTugScene(mockCtx().ctx, 200, 100, art.TUG_STEPS, {}).markerX);
   });
 });

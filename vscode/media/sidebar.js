@@ -562,14 +562,17 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   // Wire up game-select buttons
   document.getElementById("btn-mg-lr").addEventListener("click", function () {
-    startLeftRightGame();
+    // The dog plays Tug-of-War instead of Left / Right
+    if (playsDogGames(lastState)) { startTugGame(); } else { startLeftRightGame(); }
   });
   document.getElementById("btn-mg-hl").addEventListener("click", function () {
     startHigherLowerGame();
   });
   document.getElementById("btn-mg-cf").addEventListener("click", function () {
-    // Stu plays one round of Blackjack instead of Coin Flip
-    if (playsBlackjack(lastState)) { startBlackjackGame(); } else { startCoinFlipGame(); }
+    // Stu plays one round of Blackjack and the dog plays Fetch instead of Coin Flip
+    if (playsBlackjack(lastState)) { startBlackjackGame(); }
+    else if (playsDogGames(lastState)) { startFetchGame(); }
+    else { startCoinFlipGame(); }
   });
   document.getElementById("btn-mg-boss").addEventListener("click", function () {
     if (window.bossArt) { startBossBattle(); }
@@ -1104,6 +1107,184 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       : result === "push" ? "Blackjack was a push."
       : "You lost at Blackjack.";
     sendPlayResult("blackjack", result);
+  }
+
+  // ── Dog games: Fetch (replaces Coin Flip) and Tug-of-War (replaces Left / Right) ──
+
+  /** Whether this pet plays the dog's games instead of Coin Flip and Left / Right. */
+  function playsDogGames(state) {
+    return !!(state && state.spriteType === "dog");
+  }
+
+  function petPalette() {
+    return lastState && window.spriteGetPalette ? window.spriteGetPalette(lastState.spriteType, lastState.stage) : null;
+  }
+
+  function jumpForJoy() {
+    spriteCanvas.classList.add("anim-jump");
+    spriteCanvas.addEventListener("animationend", function onAnimEnd() {
+      spriteCanvas.classList.remove("anim-jump");
+      spriteCanvas.removeEventListener("animationend", onAnimEnd);
+    });
+  }
+
+  var FETCH_THROWS = 3;
+  var FETCH_FLIGHT_MS = 700;
+  var FETCH_CARRY_MS = 1100;
+  var fetchRound, fetchScore, fetchDogSpot, fetchScene;
+
+  document.getElementById("btn-fetch-short").addEventListener("click", function () { handleFetchThrow("short"); });
+  document.getElementById("btn-fetch-long").addEventListener("click",  function () { handleFetchThrow("long"); });
+
+  function fetchButtons(enabled) {
+    document.getElementById("btn-fetch-short").disabled = !enabled;
+    document.getElementById("btn-fetch-long").disabled  = !enabled;
+  }
+
+  function drawFetch() {
+    if (!mgBegin()) { return; }
+    mgArt.drawFetchScene(mgCtx, mgCanvas.width, mgCanvas.height, fetchScene, petPalette());
+  }
+
+  function updateFetchScore() {
+    document.getElementById("fetch-score").textContent =
+      "Throw " + Math.min(fetchRound + 1, FETCH_THROWS) + " / " + FETCH_THROWS + "   Caught: " + fetchScore;
+  }
+
+  function startFetchGame() {
+    if (!mgArt) { startCoinFlipGame(); return; }
+    fetchRound = 0;
+    fetchScore = 0;
+    showMgPanel("mg-fetch");
+    startFetchRound();
+  }
+
+  function startFetchRound() {
+    fetchDogSpot = Math.random() < 0.5 ? "short" : "long";
+    fetchScene = { choice: null, ballT: null, dogSpot: fetchDogSpot, reveal: null };
+    document.getElementById("fetch-feedback").textContent = "";
+    updateFetchScore();
+    fetchButtons(true);
+    drawFetch();
+  }
+
+  /** Run frame(t) for t in 0..1 over durationMs, then done(). */
+  function animateFor(durationMs, frame, done) {
+    if (REDUCED_MOTION) { frame(1); done(); return; }
+    var start = null;
+    function step(now) {
+      if (start === null) { start = now; }
+      var t = Math.min(1, (now - start) / durationMs);
+      frame(t);
+      if (t < 1) { cfAnimId = requestAnimationFrame(step); } else { cfAnimId = null; done(); }
+    }
+    cfAnimId = requestAnimationFrame(step);
+  }
+
+  function handleFetchThrow(choice) {
+    fetchButtons(false);
+    var caught = choice === fetchDogSpot;
+    if (caught) { fetchScore++; }
+    fetchScene.choice = choice;
+    animateFor(FETCH_FLIGHT_MS, function (t) { fetchScene.ballT = t; drawFetch(); }, function () {
+      fetchScene.ballT = null;
+      fetchScene.reveal = { caught: caught, carry: 0 };
+      document.getElementById("fetch-feedback").textContent = caught
+        ? "\u2713 Caught it!"
+        : "\u2717 Missed - it fetches it anyway.";
+      if (caught) { jumpForJoy(); }
+      animateFor(caught ? 400 : FETCH_CARRY_MS, function (t) { fetchScene.reveal.carry = t; drawFetch(); }, function () {
+        bjTimer = setTimeout(function () {
+          bjTimer = null;
+          fetchRound++;
+          if (fetchRound < FETCH_THROWS) { startFetchRound(); } else { endFetchGame(); }
+        }, 500);
+      });
+    });
+  }
+
+  function endFetchGame() {
+    var result = fetchScore >= 2 ? "win" : "lose";
+    mgClear();
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win"
+        ? "You won Fetch! (" + fetchScore + "/" + FETCH_THROWS + " caught)"
+        : "You lost Fetch. (" + fetchScore + "/" + FETCH_THROWS + " caught)";
+    sendPlayResult("fetch", result);
+  }
+
+  var TUG_ROUNDS = 3;
+  var tugRound, tugScore, tugMarker;
+
+  document.getElementById("btn-tug-pull").addEventListener("click", function () { handleTugChoice("pull"); });
+  document.getElementById("btn-tug-ease").addEventListener("click", function () { handleTugChoice("ease"); });
+
+  function tugButtons(enabled) {
+    document.getElementById("btn-tug-pull").disabled = !enabled;
+    document.getElementById("btn-tug-ease").disabled = !enabled;
+  }
+
+  function drawTug(growl) {
+    if (!mgBegin()) { return; }
+    mgArt.drawTugScene(mgCtx, mgCanvas.width, mgCanvas.height, tugMarker, { palette: petPalette(), growl: !!growl });
+  }
+
+  function updateTugScore() {
+    document.getElementById("tug-score").textContent =
+      "Round " + Math.min(tugRound + 1, TUG_ROUNDS) + " / " + TUG_ROUNDS + "   Won: " + tugScore;
+  }
+
+  function startTugGame() {
+    if (!mgArt) { startLeftRightGame(); return; }
+    tugRound  = 0;
+    tugScore  = 0;
+    tugMarker = 0;
+    document.getElementById("tug-feedback").textContent = "";
+    showMgPanel("mg-tug");
+    updateTugScore();
+    tugButtons(true);
+    drawTug(true);
+  }
+
+  function handleTugChoice(choice) {
+    tugButtons(false);
+    var dogMove = Math.random() < 0.5 ? "pull" : "ease";
+    var won = choice !== dogMove;
+    if (won) { tugScore++; }
+    var from = tugMarker;
+    var to = tugMarker + (won ? 1 : -1);
+    document.getElementById("tug-feedback").textContent = won
+      ? "\u2713 It " + (dogMove === "pull" ? "pulled" : "eased off") + " - you gained ground!"
+      : "\u2717 It " + (dogMove === "pull" ? "pulled" : "eased off") + " - grrr, it gained ground.";
+    if (won) { jumpForJoy(); }
+    animateFor(400, function (t) { tugMarker = from + (to - from) * t; drawTug(!won); }, function () {
+      tugMarker = to;
+      drawTug(!won);
+      bjTimer = setTimeout(function () {
+        bjTimer = null;
+        tugRound++;
+        if (tugRound < TUG_ROUNDS) {
+          document.getElementById("tug-feedback").textContent = "";
+          updateTugScore();
+          tugButtons(true);
+          drawTug(true);
+        } else {
+          endTugGame();
+        }
+      }, 900);
+    });
+  }
+
+  function endTugGame() {
+    var result = tugScore >= 2 ? "win" : "lose";
+    mgClear();
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win"
+        ? "You won Tug-of-War! (" + tugScore + "/" + TUG_ROUNDS + " rounds)"
+        : "You lost Tug-of-War. (" + tugScore + "/" + TUG_ROUNDS + " rounds)";
+    sendPlayResult("tug_of_war", result);
   }
 
   // ── Canvas sizing ─────────────────────────────────────────────────────────
@@ -1918,7 +2099,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var mgPatBtn = document.getElementById("btn-mg-pat");
     if (mgPatBtn) { mgPatBtn.textContent = _customChar ? _customChar.patLabel : "Pat"; }
     var mgCfBtn = document.getElementById("btn-mg-cf");
-    if (mgCfBtn) { mgCfBtn.textContent = playsBlackjack(state) ? "Blackjack" : "Coin Flip"; }
+    if (mgCfBtn) { mgCfBtn.textContent = playsBlackjack(state) ? "Blackjack" : playsDogGames(state) ? "Fetch" : "Coin Flip"; }
+    var mgLrBtn = document.getElementById("btn-mg-lr");
+    if (mgLrBtn) { mgLrBtn.textContent = playsDogGames(state) ? "Tug-of-War" : "Left / Right"; }
     updateBossButton(state);
 
     // Reset position when a brand-new or just-loaded pet first appears
@@ -2443,6 +2626,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "minigame_blackjack_win":     n + " won at Blackjack!",
       "minigame_blackjack_lose":    n + " lost at Blackjack.",
       "minigame_blackjack_push":    n + " pushed at Blackjack.",
+      "minigame_fetch_win":         n + " won Fetch!",
+      "minigame_fetch_lose":        n + " lost Fetch.",
+      "minigame_tug_of_war_win":    n + " won Tug-of-War!",
+      "minigame_tug_of_war_lose":   n + " lost Tug-of-War.",
       "minigame_boss_battle_win":   n + " defeated the boss!",
       "minigame_boss_battle_lose":  n + " was beaten by the boss.",
       "boss_unlocked":              "A boss appeared! Press Play \u2192 Boss Battle to fight it.",
