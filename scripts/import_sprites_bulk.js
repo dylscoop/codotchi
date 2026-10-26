@@ -35,6 +35,10 @@
  *                    image relative to the others (e.g. { "baby": 3 })
  *     flip           mirror every stage (source faces right; quadrupeds must face left)
  *     legRowStart    first leg-zone row of the output grid (default floor(rows * 0.78))
+ *     legs           { <gridKey>: [[startCol, endCol, group], ...] } hand-set
+ *                    leg columns (group 0 or 1 steps together) for one grid,
+ *                    e.g. "adult" or "adult_sleeping"; replaces the automatic
+ *                    leg detection there (quadrupeds only)
  *     upright        portrait species (added to UPRIGHT_TYPES)
  *     inRotation, passcode, defaultName
  *                    checked against ROTATION_ANIMALS and customCharacters.js;
@@ -175,11 +179,30 @@ function importSpecies(species, dir) {
     throw new Error(dir + ": legRowStart " + legRowStart + " is outside the " + rows + "-row grid");
   }
 
+  var legOverride = config.legs || {};
+  Object.keys(legOverride).forEach(function (k) {
+    if (!grids[k]) { throw new Error(dir + ": legs has unknown grid \"" + k + "\""); }
+    var spans = legOverride[k];
+    if (!Array.isArray(spans) || !spans.every(function (s) {
+      return Array.isArray(s) && s.length === 3 && s[0] >= 0 && s[1] >= s[0] && s[1] < cols && (s[2] === 0 || s[2] === 1);
+    })) {
+      throw new Error(dir + ": legs." + k + " must be a list of [startCol, endCol, group 0|1] within the grid");
+    }
+  });
+  var legs = {};
+  if (!config.upright) {
+    Object.keys(grids).forEach(function (k) {
+      var spans = legOverride[k] || detectLegs(grids[k], legRowStart);
+      if (spans.length) { legs[k] = spans; }
+    });
+  }
+
   return {
     species:     species,
     cols:        cols,
     rows:        rows,
     legRowStart: legRowStart,
+    legs:        legs,
     palette: {
       primary:    mapper.palette.primary,
       secondary:  mapper.palette.secondary,
@@ -277,7 +300,11 @@ function renderOutput(all) {
   L.push("");
   L.push("  Object.assign(window.SPRITE_GRID_META, {");
   all.forEach(function (sp) {
-    L.push("    " + q(sp.species) + ": { cols: " + sp.cols + ", rows: " + sp.rows + ", legRowStart: " + sp.legRowStart + " },");
+    var legKeys = Object.keys(sp.legs || {}).sort(compareGridKeys);
+    var lg = legKeys.length === 0 ? "" : ", legs: { " + legKeys.map(function (k) {
+      return q(k) + ": " + JSON.stringify(sp.legs[k]);
+    }).join(", ") + " }";
+    L.push("    " + q(sp.species) + ": { cols: " + sp.cols + ", rows: " + sp.rows + ", legRowStart: " + sp.legRowStart + lg + " },");
   });
   L.push("  });");
   L.push("");
@@ -301,6 +328,44 @@ function renderOutput(all) {
   L.push("}());");
   L.push("");
   return L.join("\n");
+}
+
+/**
+ * Find the separate legs near the feet: the bottom 40% of the leg zone (rows
+ * legRowStart..end), where legs part from the belly. A column is "leg" when
+ * at least a quarter of that band, and half as much as the fullest column, is
+ * filled in it (so a tail or shadow on the floor doesn't count); runs of leg columns (bridging 1-column gaps) narrower than 2
+ * or wider than 30% of the grid are dropped. Legs alternate between walk
+ * groups 0 and 1, front to back, so each group mixes front and back legs.
+ * @returns {Array<[number, number, number]>} [startCol, endCol, group]; empty
+ *          when fewer than 2 legs are found (renderer falls back to halves).
+ */
+function detectLegs(grid, legRowStart) {
+  var rows = grid.length, cols = rows ? grid[0].length : 0;
+  var bandStart = Math.max(legRowStart, rows - Math.max(2, Math.round((rows - legRowStart) * 0.4)));
+  var counts = [];
+  for (var c = 0; c < cols; c++) {
+    var n = 0;
+    for (var r = bandStart; r < rows; r++) { if (grid[r][c]) { n++; } }
+    counts.push(n);
+  }
+  // Half the fullest column, so a ground shadow or tail joining the feet
+  // doesn't merge every leg into one.
+  var need = Math.max(2, Math.ceil((rows - bandStart) / 4), Math.ceil(Math.max.apply(null, counts.concat(0)) / 2));
+  var filled = counts.map(function (n) { return n >= need; });
+  var runs = [];
+  var start = -1, lastOn = -2;
+  for (c = 0; c <= cols; c++) {
+    if (c < cols && filled[c]) {
+      if (start === -1) { start = c; } else if (c - lastOn > 2) { runs.push([start, lastOn]); start = c; }
+      lastOn = c;
+    }
+  }
+  if (start !== -1) { runs.push([start, lastOn]); }
+  var maxW = Math.max(2, Math.floor(cols * 0.3));
+  runs = runs.filter(function (s) { var w = s[1] - s[0] + 1; return w >= 2 && w <= maxW; });
+  if (runs.length < 2) { return []; }
+  return runs.map(function (s, i) { return [s[0], s[1], i % 2]; });
 }
 
 /**
@@ -352,6 +417,13 @@ function main(argv) {
       console.log(sp.species + ": " + sp.cols + "×" + sp.rows + ", legRowStart " + sp.legRowStart +
                   ", " + Object.keys(sp.grids).length + " grid(s), palette " +
                   [sp.palette.primary, sp.palette.secondary, sp.palette.accent].join(" "));
+      Object.keys(sp.grids).sort(compareGridKeys).forEach(function (k) {
+        var l = sp.legs[k];
+        console.log("  " + k + ": " + (l ? l.length + " legs [" + l.map(function (s) {
+          return s[0] + "-" + s[1] + "|" + s[2];
+        }).join(", ") + "]" + (sp.config.legs && sp.config.legs[k] ? " (sprite.json)" : "")
+          : "no legs found (walks by halves)"));
+      });
     }
   });
   result.warnings.forEach(function (w) { console.error("Warning: " + w); });
@@ -376,4 +448,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { generate: generate, importSpecies: importSpecies, renderOutput: renderOutput, STAGES: STAGES };
+module.exports = { generate: generate, importSpecies: importSpecies, renderOutput: renderOutput, detectLegs: detectLegs, STAGES: STAGES };

@@ -86,6 +86,7 @@ Every field is optional.
 | `stageScale` | — | `{ <stage>: number }`: size multiplier for one stage relative to the others, e.g. `{ "baby": 3 }` when the baby image was drawn much smaller than the adult. |
 | `flip` | `false` | Mirror every stage. |
 | `legRowStart` | `floor(rows × 0.78)` | First leg-zone row **of the output grid** (used for the walk animation and belly sag). |
+| `legs` | auto-detected | `{ <gridKey>: [[startCol, endCol, group], ...] }`: hand-set leg columns for one grid (`"adult"`, `"adult_sleeping"`, …), replacing auto-detection there. `group` is `0` or `1`; legs in the same group step together. Quadrupeds only. |
 | `upright` | `false` | Portrait species; added to `UPRIGHT_TYPES`. |
 | `inRotation`, `passcode`, `defaultName` | — | Checked against `ROTATION_ANIMALS` and `customCharacters.js`; a mismatch prints a warning. |
 
@@ -117,12 +118,28 @@ For each species folder:
    use the species palette.
 5. **Flip** if asked, then **pad** each stage onto the shared grid with
    transparent cells (bottom-aligned, horizontal position from `anchor`).
-6. **Write** `sprites.generated.js`. Species are in name order and the output
+6. **Find the legs** (quadrupeds) in every grid, unless `legs` sets them by
+   hand. The importer looks at the bottom 40% of the leg zone, where legs part
+   from the belly:
+   - A column counts as leg when at least a quarter of that band, and half as
+     much as the fullest column, is filled. A tail or shadow on the floor is
+     too thin to count.
+   - Runs of leg columns (bridging 1-column gaps) become legs. Runs narrower
+     than 2 columns or wider than 30% of the grid are dropped.
+   - Legs alternate between walk groups 0 and 1, front to back, so each group
+     mixes front and back legs.
+
+   The console prints each grid's legs (`adult: 3 legs [50-62|0, ...]`). The
+   walk raises one group per frame by 3% of the grid height: the leg loses its
+   top rows, so it stays joined to the body and the other group stays on the
+   floor. A grid with fewer than 2 legs walks the old way (left half against
+   right half, 1 row).
+7. **Write** `sprites.generated.js`. Species are in name order and the output
    is deterministic. The file contains:
    - `window.GENERATED_SPRITE_DEFS`: `sprites.js` merges it into `DEFS` before
      building `window.SPRITES`.
-   - `SPRITE_GRID_META` and palette entries, merged into the objects from
-     `spriteConstants.js` with `Object.assign`.
+   - `SPRITE_GRID_META` (including `legs`) and palette entries, merged into
+     the objects from `spriteConstants.js` with `Object.assign`.
    - `UPRIGHT_TYPES` entries for upright species.
 
 Load order (sidebar and sprite preview, both IDEs):

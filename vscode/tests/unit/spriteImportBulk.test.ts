@@ -41,6 +41,40 @@ before(() => { tmp = fs.mkdtempSync(path.join(os.tmpdir(), "codotchi-bulk-")); }
 after(() => { fs.rmSync(tmp, { recursive: true, force: true }); });
 
 describe("bulk sprite import", () => {
+  it("detects separate legs near the feet and alternates their walk groups", () => {
+    const g = (rows: string[]) => rows.map((r) => r.split("").map(Number));
+    const grid = g([
+      "1111111111111",
+      "1111111111111",
+      "1100110011000",
+      "1100110011000",
+      "1100110011003",   // a 1-row tail tip on the floor is not a leg
+    ]);
+    assert.deepEqual(bulk.detectLegs(grid, 2), [[0, 1, 0], [4, 5, 1], [8, 9, 0]]);
+    assert.deepEqual(bulk.detectLegs(g(["111", "111", "111"]), 1), []);
+  });
+
+  it("writes legs into SPRITE_GRID_META and lets sprite.json override them", () => {
+    const src = freshDir("legs");
+    const body = "WWWWWWWWWWWWWWWW";
+    const feet = "WW..WW..WW.W..WW";
+    writePng(path.join(src, "pup", "adult.png"), [body, body, feet, feet, feet, feet]);
+    writePng(path.join(src, "pup", "child.png"), [body, body, feet, feet, feet, feet]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"),
+      JSON.stringify({ legRowStart: 2, legs: { child: [[0, 3, 1], [8, 11, 0]] } }));
+    const out = bulk.generate(src);
+    const pup = out.species[0];
+    assert.deepEqual(pup.legs.adult, [[0, 1, 0], [4, 5, 1], [8, 11, 0], [14, 15, 1]]);
+    assert.deepEqual(pup.legs.child, [[0, 3, 1], [8, 11, 0]]);
+    assert.ok(out.text.includes('legs: { "child": [[0,3,1],[8,11,0]], "adult": [[0,1,0],[4,5,1],[8,11,0],[14,15,1]] }'));
+  });
+
+  it("rejects a malformed legs override", () => {
+    const src = freshDir("badlegs");
+    writePng(path.join(src, "pup", "adult.png"), ["WW", "WW"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ legs: { adult: [[0, 5, 2]] } }));
+    assert.throws(() => bulk.generate(src), /legs\.adult/);
+  });
   it("pads every stage bottom-centre onto one shared grid", () => {
     const src = freshDir("shared");
     writePng(path.join(src, "pup", "baby.png"), ["WR", "WW"]);

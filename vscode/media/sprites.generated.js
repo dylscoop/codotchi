@@ -2629,10 +2629,10 @@
   window.GENERATED_SPRITE_DEFS = DEFS;
 
   Object.assign(window.SPRITE_GRID_META, {
-    "cat": { cols: 142, rows: 128, legRowStart: 99 },
-    "dog": { cols: 159, rows: 128, legRowStart: 99 },
-    "dragon": { cols: 180, rows: 128, legRowStart: 99 },
-    "roo": { cols: 155, rows: 128, legRowStart: 92 },
+    "cat": { cols: 142, rows: 128, legRowStart: 99, legs: { "baby": [[18,45,0],[75,96,1],[108,130,0]], "child": [[18,45,0],[75,96,1],[108,130,0]], "teen": [[18,45,0],[75,96,1],[108,130,0]], "adult": [[18,45,0],[75,96,1],[108,130,0]], "senior": [[18,45,0],[75,96,1],[108,130,0]] } },
+    "dog": { cols: 159, rows: 128, legRowStart: 99, legs: { "baby": [[29,33,0],[47,51,1],[103,120,0]], "child": [[26,38,0],[77,87,1]], "teen": [[36,51,0],[100,111,1]], "adult": [[50,62,0],[137,142,1],[151,158,0]], "senior": [[31,49,0],[91,106,1]] } },
+    "dragon": { cols: 180, rows: 128, legRowStart: 99, legs: { "baby": [[43,67,0],[77,102,1],[107,128,0]], "child": [[36,54,0],[65,78,1],[94,117,0]], "teen": [[27,46,0],[53,99,1]], "adult": [[63,81,0],[88,114,1]] } },
+    "roo": { cols: 155, rows: 128, legRowStart: 92, legs: { "baby": [[39,83,0],[111,132,1]], "child": [[39,83,0],[111,132,1]], "teen": [[39,83,0],[111,132,1]], "adult": [[39,83,0],[111,132,1]], "senior": [[39,83,0],[111,132,1]] } },
   });
 
   Object.assign(window.SPRITE_ANIMAL_PALETTES, {
