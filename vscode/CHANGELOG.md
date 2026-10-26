@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.32.1] - 2026-10-26
+
+### Changed
+
+- **Fetch and Tug-of-War play out on the pet's stage** with your actual dog:
+  - **Fetch**: throw the ball Left or Right and it flies off that side of the stage. The dog picks a side and runs off after it. Right side, and it trots back with the ball; wrong side, and it comes back empty, looks around, then runs off the other way to fetch it.
+  - **Tug-of-War**: the dog holds a rope that runs to your side of the stage. Each round it either pulls or rests. **Hold** when it pulls and **Pull** when it rests to drag it towards you.
+
 ## [2.32.0] - 2026-10-26
 
 ### Added

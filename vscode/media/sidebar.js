@@ -535,6 +535,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (bjTimer !== null) { clearTimeout(bjTimer); bjTimer = null; }
     if (bossTimer !== null) { clearTimeout(bossTimer); bossTimer = null; }
     lrReveal = null;
+    stageGame = null;
     if (mgCtx) { mgCtx.clearRect(0, 0, mgCanvas.width, mgCanvas.height); }
     if (mgCanvas) { mgCanvas.classList.add("hidden"); }
   }
@@ -1116,34 +1117,19 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     return !!(state && state.spriteType === "dog");
   }
 
-  function petPalette() {
-    return lastState && window.spriteGetPalette ? window.spriteGetPalette(lastState.spriteType, lastState.stage) : null;
-  }
-
-  function jumpForJoy() {
-    spriteCanvas.classList.add("anim-jump");
-    spriteCanvas.addEventListener("animationend", function onAnimEnd() {
-      spriteCanvas.classList.remove("anim-jump");
-      spriteCanvas.removeEventListener("animationend", onAnimEnd);
-    });
-  }
+  // Both dog games play out on the pet's own stage: the animation loop moves
+  // the dog with stageGamePose() and draws the ball or rope with drawStageGame().
+  var stageGame = null;
 
   var FETCH_THROWS = 3;
-  var FETCH_FLIGHT_MS = 700;
-  var FETCH_CARRY_MS = 1100;
-  var fetchRound, fetchScore, fetchDogSpot, fetchScene;
+  var fetchRound, fetchScore;
 
-  document.getElementById("btn-fetch-short").addEventListener("click", function () { handleFetchThrow("short"); });
-  document.getElementById("btn-fetch-long").addEventListener("click",  function () { handleFetchThrow("long"); });
+  document.getElementById("btn-fetch-left").addEventListener("click",  function () { handleFetchThrow("left"); });
+  document.getElementById("btn-fetch-right").addEventListener("click", function () { handleFetchThrow("right"); });
 
   function fetchButtons(enabled) {
-    document.getElementById("btn-fetch-short").disabled = !enabled;
-    document.getElementById("btn-fetch-long").disabled  = !enabled;
-  }
-
-  function drawFetch() {
-    if (!mgBegin()) { return; }
-    mgArt.drawFetchScene(mgCtx, mgCanvas.width, mgCanvas.height, fetchScene, petPalette());
+    document.getElementById("btn-fetch-left").disabled  = !enabled;
+    document.getElementById("btn-fetch-right").disabled = !enabled;
   }
 
   function updateFetchScore() {
@@ -1153,6 +1139,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   function startFetchGame() {
     if (!mgArt) { startCoinFlipGame(); return; }
+    mgClear();
     fetchRound = 0;
     fetchScore = 0;
     showMgPanel("mg-fetch");
@@ -1160,47 +1147,33 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   function startFetchRound() {
-    fetchDogSpot = Math.random() < 0.5 ? "short" : "long";
-    fetchScene = { choice: null, ballT: null, dogSpot: fetchDogSpot, reveal: null };
+    stageGame = null;
     document.getElementById("fetch-feedback").textContent = "";
     updateFetchScore();
     fetchButtons(true);
-    drawFetch();
-  }
-
-  /** Run frame(t) for t in 0..1 over durationMs, then done(). */
-  function animateFor(durationMs, frame, done) {
-    if (REDUCED_MOTION) { frame(1); done(); return; }
-    var start = null;
-    function step(now) {
-      if (start === null) { start = now; }
-      var t = Math.min(1, (now - start) / durationMs);
-      frame(t);
-      if (t < 1) { cfAnimId = requestAnimationFrame(step); } else { cfAnimId = null; done(); }
-    }
-    cfAnimId = requestAnimationFrame(step);
   }
 
   function handleFetchThrow(choice) {
     fetchButtons(false);
-    var caught = choice === fetchDogSpot;
+    var dogDir = Math.random() < 0.5 ? "left" : "right";
+    var caught = dogDir === choice;
     if (caught) { fetchScore++; }
-    fetchScene.choice = choice;
-    animateFor(FETCH_FLIGHT_MS, function (t) { fetchScene.ballT = t; drawFetch(); }, function () {
-      fetchScene.ballT = null;
-      fetchScene.reveal = { caught: caught, carry: 0 };
-      document.getElementById("fetch-feedback").textContent = caught
-        ? "\u2713 Caught it!"
-        : "\u2717 Missed - it fetches it anyway.";
-      if (caught) { jumpForJoy(); }
-      animateFor(caught ? 400 : FETCH_CARRY_MS, function (t) { fetchScene.reveal.carry = t; drawFetch(); }, function () {
-        bjTimer = setTimeout(function () {
-          bjTimer = null;
-          fetchRound++;
-          if (fetchRound < FETCH_THROWS) { startFetchRound(); } else { endFetchGame(); }
-        }, 500);
-      });
-    });
+    var feedback = caught
+      ? "\u2713 It ran the right way and caught it!"
+      : "\u2717 It ran the wrong way - it goes back for the ball anyway.";
+    function finish() {
+      document.getElementById("fetch-feedback").textContent = feedback;
+      bjTimer = setTimeout(function () {
+        bjTimer = null;
+        fetchRound++;
+        if (fetchRound < FETCH_THROWS) { startFetchRound(); } else { endFetchGame(); }
+      }, REDUCED_MOTION ? 900 : 700);
+    }
+    if (REDUCED_MOTION) { finish(); return; }
+    document.getElementById("fetch-feedback").textContent = "Throwing " + choice + "...";
+    // The plan is built on the next frame, where the stage size is known
+    stageGame = { kind: "fetch", throwDir: choice, dogDir: dogDir, plan: null, startMs: 0, onDone: finish };
+    boostAnim();
   }
 
   function endFetchGame() {
@@ -1215,19 +1188,15 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   var TUG_ROUNDS = 3;
-  var tugRound, tugScore, tugMarker;
+  var TUG_MOVE_MS = 700;
+  var tugRound, tugScore;
 
   document.getElementById("btn-tug-pull").addEventListener("click", function () { handleTugChoice("pull"); });
-  document.getElementById("btn-tug-ease").addEventListener("click", function () { handleTugChoice("ease"); });
+  document.getElementById("btn-tug-hold").addEventListener("click", function () { handleTugChoice("hold"); });
 
   function tugButtons(enabled) {
     document.getElementById("btn-tug-pull").disabled = !enabled;
-    document.getElementById("btn-tug-ease").disabled = !enabled;
-  }
-
-  function drawTug(growl) {
-    if (!mgBegin()) { return; }
-    mgArt.drawTugScene(mgCtx, mgCanvas.width, mgCanvas.height, tugMarker, { palette: petPalette(), growl: !!growl });
+    document.getElementById("btn-tug-hold").disabled = !enabled;
   }
 
   function updateTugScore() {
@@ -1237,43 +1206,45 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   function startTugGame() {
     if (!mgArt) { startLeftRightGame(); return; }
-    tugRound  = 0;
-    tugScore  = 0;
-    tugMarker = 0;
+    mgClear();
+    tugRound = 0;
+    tugScore = 0;
+    stageGame = { kind: "tug", from: 0, to: 0, startMs: 0, dogPulls: false };
+    boostAnim();
     document.getElementById("tug-feedback").textContent = "";
     showMgPanel("mg-tug");
     updateTugScore();
     tugButtons(true);
-    drawTug(true);
+  }
+
+  /** Hold beats a pull and Pull beats a rest. */
+  function tugWon(choice, dogMove) {
+    return (choice === "hold") === (dogMove === "pull");
   }
 
   function handleTugChoice(choice) {
     tugButtons(false);
-    var dogMove = Math.random() < 0.5 ? "pull" : "ease";
-    var won = choice !== dogMove;
+    var dogMove = Math.random() < 0.5 ? "pull" : "rest";
+    var won = tugWon(choice, dogMove);
     if (won) { tugScore++; }
-    var from = tugMarker;
-    var to = tugMarker + (won ? 1 : -1);
-    document.getElementById("tug-feedback").textContent = won
-      ? "\u2713 It " + (dogMove === "pull" ? "pulled" : "eased off") + " - you gained ground!"
-      : "\u2717 It " + (dogMove === "pull" ? "pulled" : "eased off") + " - grrr, it gained ground.";
-    if (won) { jumpForJoy(); }
-    animateFor(400, function (t) { tugMarker = from + (to - from) * t; drawTug(!won); }, function () {
-      tugMarker = to;
-      drawTug(!won);
-      bjTimer = setTimeout(function () {
-        bjTimer = null;
-        tugRound++;
-        if (tugRound < TUG_ROUNDS) {
-          document.getElementById("tug-feedback").textContent = "";
-          updateTugScore();
-          tugButtons(true);
-          drawTug(true);
-        } else {
-          endTugGame();
-        }
-      }, 900);
-    });
+    var marker = stageGame ? stageGame.to : 0;
+    stageGame = { kind: "tug", from: marker, to: marker + (won ? 1 : -1),
+                  startMs: performance.now(), dogPulls: dogMove === "pull" };
+    boostAnim();
+    document.getElementById("tug-feedback").textContent = dogMove === "pull"
+      ? (won ? "\u2713 It pulled and you held on - you gained ground!" : "\u2717 It pulled too - it dragged the rope its way.")
+      : (won ? "\u2713 It rested and you pulled - you gained ground!" : "\u2717 It rested and the rope slid its way.");
+    bjTimer = setTimeout(function () {
+      bjTimer = null;
+      tugRound++;
+      if (tugRound < TUG_ROUNDS) {
+        document.getElementById("tug-feedback").textContent = "";
+        updateTugScore();
+        tugButtons(true);
+      } else {
+        endTugGame();
+      }
+    }, REDUCED_MOTION ? 900 : TUG_MOVE_MS + 900);
   }
 
   function endTugGame() {
@@ -1285,6 +1256,55 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         ? "You won Tug-of-War! (" + tugScore + "/" + TUG_ROUNDS + " rounds)"
         : "You lost Tug-of-War. (" + tugScore + "/" + TUG_ROUNDS + " rounds)";
     sendPlayResult("tug_of_war", result);
+  }
+
+  /**
+   * Where the dog stands during a stage game, for the animation loop.
+   * Returns null when no game is moving it.
+   */
+  function stageGamePose(game, nowMs, bWidth, minX, maxX) {
+    var W = spriteCanvas.width;
+    if (game.kind === "fetch") {
+      if (!game.plan) {
+        game.startMs = nowMs;
+        game.plan = mgArt.fetchPlan(Math.max(minX, Math.min(maxX, petX)), -bWidth - 8, W + 8,
+                                    game.throwDir, game.dogDir);
+      }
+      var p = mgArt.planPose(game.plan, nowMs - game.startMs);
+      if (p.done && game.onDone) { var cb = game.onDone; game.onDone = null; cb(); }
+      return p;
+    }
+    var home = Math.round((W - bWidth) / 2);
+    var step = Math.max(6, Math.round(W * 0.09));
+    var t = REDUCED_MOTION ? 1 : Math.min(1, (nowMs - game.startMs) / TUG_MOVE_MS);
+    var m = game.from + (game.to - game.from) * t;
+    // A pulling dog leans back first, then the rope gives one way or the other
+    var lean = (game.dogPulls && t < 1) ? Math.sin(t * Math.PI) * 3 : 0;
+    return { x: Math.max(minX, Math.min(maxX, home - m * step + lean)), left: true,
+             ball: false, moving: t < 1 && game.from !== game.to, done: false };
+  }
+
+  /** The thrown ball, the ball in the dog's mouth or the tug rope, drawn on the stage. */
+  function drawStageGame(game, box, facingLeft, nowMs, floorY) {
+    var px = Math.max(2, Math.round(box.w / 14));
+    var ballW = mgArt.BALL_SIZE * px;
+    var mouthY = Math.round(box.y + box.h * 0.45);
+    if (game.kind === "fetch" && game.plan) {
+      var ms = nowMs - game.startMs;
+      var startX = game.plan.home + box.w / 2;
+      var endX = game.throwDir === "left" ? -ballW - 4 : spriteCanvas.width + 4;
+      var flight = mgArt.fetchBallPose(ms, startX, mouthY, endX, Math.max(20, floorY * 0.7));
+      if (flight) { mgArt.drawBall(spriteCtx, Math.round(flight.x - ballW / 2), Math.round(flight.y), px); }
+      var pose = mgArt.planPose(game.plan, ms);
+      if (pose.ball) {
+        var bx = facingLeft ? box.x - Math.round(ballW / 2) : box.x + box.w - Math.round(ballW / 2);
+        mgArt.drawBall(spriteCtx, bx, mouthY, px);
+      }
+    } else if (game.kind === "tug") {
+      var t = REDUCED_MOTION ? 1 : Math.min(1, (nowMs - game.startMs) / TUG_MOVE_MS);
+      var m = game.from + (game.to - game.from) * t;
+      mgArt.drawTugRope(spriteCtx, 0, box.x + px, mouthY, px, m);
+    }
   }
 
   // ── Canvas sizing ─────────────────────────────────────────────────────────
@@ -1678,7 +1698,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var activeReaction = reactionQueue.length > 0 ? reactionQueue[0] : null;
 
     // An energetic dog sometimes chases its tail while it stands idle
-    if (!activeReaction && wantsToChaseTail(lastState) && idleTimer > 0 && Math.random() < dt / TAIL_CHASE_EVERY_S) {
+    if (!activeReaction && !stageGame && wantsToChaseTail(lastState) && idleTimer > 0 && Math.random() < dt / TAIL_CHASE_EVERY_S) {
       pushReaction("tail_chase", nowMs, TAIL_CHASE_MS);
       activeReaction = reactionQueue[0];
     }
@@ -1687,8 +1707,17 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     // ── Movement ──────────────────────────────────────────────────────────
     var isDragon = (lastState.spriteType === "dragon");
+    var sgPose = stageGame ? stageGamePose(stageGame, nowMs, bWidth, minX, maxX) : null;
 
-    if (activeReaction && (activeReaction.type === "fell_asleep" || activeReaction.type === "died")) {
+    if (sgPose) {
+      // Fetch or Tug-of-War: the game moves the dog, even off the edge of the stage
+      petVx = sgPose.moving ? (sgPose.x >= petX ? 60 : -60) : 0;
+      petX  = sgPose.x;
+      petFacingLeft = sgPose.left;
+      petY  = floorY;
+      petVy = 0;
+
+    } else if (activeReaction && (activeReaction.type === "fell_asleep" || activeReaction.type === "died")) {
       // Lock to floor in current position during the fell_asleep / died animation
       petY  = floorY;
       petVx = 0;
@@ -1917,6 +1946,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                          window.spriteMood.scaleY(mood, moodFrame));
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
+    if (stageGame) { drawStageGame(stageGame, moodBox, petFacingLeft, nowMs, floorY); }
     var moodPxSize = window.spriteMood.px(moodBox);
     if (patting && window.spritePat.usesHand(lastState.spriteType)) {
       window.spritePat.drawHand(spriteCtx, patT, moodBox, petFacingLeft, moodPxSize);

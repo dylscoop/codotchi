@@ -2,8 +2,8 @@
  * minigameArt.js - pixel-art drawing for the sidebar mini-games
  *
  * Doors (Left / Right), the number card (Higher or Lower), the coin (Coin
- * Flip), playing cards (Stu's Blackjack), the dog's Fetch field and
- * Tug-of-War rope, a countdown and a small bitmap font. Everything is drawn with
+ * Flip), playing cards (Stu's Blackjack), the dog's Fetch ball and
+ * Tug-of-War rope (drawn on the pet's stage), a countdown and a small bitmap font. Everything is drawn with
  * fillRect on a whole-pixel unit, the same style as the mood layer in
  * sprites.js. No DOM access and no CSS variables (canvas ignores them), so
  * the functions can be unit-tested against a mock context.
@@ -42,9 +42,6 @@
     cardBackHi:"#5b8bd6",
     ball:      "#c6e03a",
     ballDark:  "#7e9a12",
-    bush:      "#3f8f3a",
-    bushDark:  "#2a6427",
-    bushLight: "#6cbf5a",
     rope:      "#c8a36a",
     ropeDark:  "#8a6a3a",
   };
@@ -505,7 +502,7 @@
   }
 
   // =========================================================================
-  // Fetch (replaces Coin Flip for the dog)
+  // Fetch and Tug-of-War (the dog's games, played on the pet's own stage)
   // =========================================================================
 
   var BALL = [
@@ -514,169 +511,98 @@
     "1121",
     "0110",
   ];
+  var BALL_SIZE = BALL.length;
 
-  var BUSH = [
-    "0011101100",
-    "0111111110",
-    "1112111211",
-    "1111111111",
-    "1211121111",
-    "3333333333",
-  ];
-
-  function drawGrid(ctx, grid, x, y, px, colours) {
-    for (var r = 0; r < grid.length; r++) {
-      for (var c = 0; c < grid[r].length; c++) {
-        var k = grid[r][c];
+  function drawBall(ctx, x, y, px) {
+    for (var r = 0; r < BALL.length; r++) {
+      for (var c = 0; c < BALL[r].length; c++) {
+        var k = BALL[r][c];
         if (k === "0") { continue; }
-        ctx.fillStyle = colours[k];
+        ctx.fillStyle = k === "1" ? C.ball : C.ballDark;
         ctx.fillRect(x + c * px, y + r * px, px, px);
       }
     }
   }
 
-  /** Ball, bush and spot positions for Fetch on a W × H canvas. */
-  function fetchLayout(W, H) {
-    var px = Math.max(2, Math.floor(H / 40));
-    return {
-      px:      px,
-      groundY: Math.floor(H * 0.82),
-      startX:  Math.floor(W * 0.08),
-      spots:   { short: Math.floor(W * 0.42), long: Math.floor(W * 0.80) },
-      arcH:    Math.floor(H * 0.45),
-    };
-  }
+  var FETCH_FLIGHT_MS = 800;
 
-  function drawBall(ctx, x, y, px) {
-    drawGrid(ctx, BALL, x, y, px, { "1": C.ball, "2": C.ballDark });
+  /**
+   * The thrown ball at `ms` after the throw: an arc from (x0, y0) to endX
+   * (off the edge of the stage), peaking arcH above y0. Null once it has gone.
+   */
+  function fetchBallPose(ms, x0, y0, endX, arcH) {
+    if (ms < 0 || ms >= FETCH_FLIGHT_MS) { return null; }
+    var t = ms / FETCH_FLIGHT_MS;
+    return { x: x0 + (endX - x0) * t, y: y0 - Math.sin(Math.PI * t) * arcH };
   }
 
   /**
-   * The Fetch field: a ball, two bushes (SHORT / LONG) and the dog.
-   * scene.choice: null or "short" | "long" (the throw).
-   * scene.ballT:  null, or 0..1 while the ball is in the air.
-   * scene.dogSpot: "short" | "long" (where the dog waits; only shown on reveal).
-   * scene.reveal: null, or {caught, carry: 0..1}. On a miss the dog runs to
-   *   the ball (carry 0..0.5) and trots back with it (0.5..1).
-   * palette: the pet's {primary, secondary} for its face.
+   * The dog's run for one Fetch throw, as legs {ms, to, ball, left}; each leg
+   * runs (or stands, when `to` is unchanged) from the previous leg's end.
+   * It runs off the dogDir edge: the right way and it comes back with the
+   * ball; the wrong way and it comes back empty, looks around, runs off the
+   * other edge and then brings the ball back.
    */
-  function drawFetchScene(ctx, W, H, scene, palette) {
-    var L = fetchLayout(W, H);
-    var px = L.px;
-    var bushW = BUSH[0].length * px, bushH = BUSH.length * px;
-    var ballW = BALL[0].length * px;
-    var faceW = FACE[0].length * px, faceH = FACE.length * px;
-    ctx.save();
-    ctx.fillStyle = C.bushDark;
-    ctx.fillRect(0, L.groundY, W, px);
-
-    var names = ["short", "long"];
-    for (var i = 0; i < names.length; i++) {
-      var sx = L.spots[names[i]] - Math.round(bushW / 2);
-      drawGrid(ctx, BUSH, sx, L.groundY - bushH, px,
-        { "1": C.bush, "2": C.bushLight, "3": C.bushDark });
-      var colour = C.cream;
-      if (scene.reveal && scene.choice === names[i]) { colour = scene.reveal.caught ? C.good : C.bad; }
-      var labelPx = Math.max(1, Math.floor(px / 2));
-      drawTextCentred(ctx, names[i].toUpperCase(), L.spots[names[i]], L.groundY + 2 * px, labelPx, colour, true);
-    }
-
-    var restY = L.groundY - ballW;
-    if (scene.reveal) {
-      var dogX = L.spots[scene.dogSpot];
-      var faceTopY = L.groundY - bushH - faceH + px;
-      if (scene.reveal.caught) {
-        // Popped up from its bush with the ball in its mouth
-        if (palette) { drawFace(ctx, dogX - Math.round(faceW / 2), faceTopY, px, palette); }
-        drawBall(ctx, dogX + Math.round(faceW / 2) - 2 * px, faceTopY + faceH - 3 * px, px);
-      } else {
-        // Missed: it runs to where the ball landed, then trots back with it
-        var landX = L.spots[scene.choice];
-        var carry = Math.max(0, Math.min(1, scene.reveal.carry || 0));
-        var faceY = L.groundY - faceH;
-        var fx;
-        if (carry < 0.5) {
-          fx = dogX + (landX - dogX) * (carry / 0.5);
-          drawBall(ctx, landX - Math.round(ballW / 2), restY, px);
-        } else {
-          fx = landX + (L.startX + faceW - landX) * ((carry - 0.5) / 0.5);
-        }
-        if (palette) { drawFace(ctx, Math.round(fx - faceW / 2), faceY, px, palette); }
-        if (carry >= 0.5) { drawBall(ctx, Math.round(fx + faceW / 2) - 2 * px, faceY + faceH - 3 * px, px); }
-      }
-    } else if (scene.ballT !== null && scene.ballT !== undefined && scene.choice) {
-      var t = Math.max(0, Math.min(1, scene.ballT));
-      var bx = L.startX + (L.spots[scene.choice] - L.startX) * t;
-      var by = restY - Math.sin(Math.PI * t) * L.arcH;
-      drawBall(ctx, Math.round(bx - ballW / 2), Math.round(by), px);
+  function fetchPlan(home, offLeft, offRight, throwDir, dogDir) {
+    function off(dir) { return dir === "left" ? offLeft : offRight; }
+    var dogLeft = dogDir === "left";
+    var legs = [
+      { ms: 250, to: home,        ball: false, left: dogLeft },
+      { ms: 650, to: off(dogDir), ball: false, left: dogLeft },
+      { ms: 400, to: off(dogDir), ball: dogDir === throwDir, left: dogLeft },
+    ];
+    if (dogDir === throwDir) {
+      legs.push({ ms: 800, to: home, ball: true, left: !dogLeft });
     } else {
-      drawBall(ctx, L.startX - Math.round(ballW / 2), restY, px);
+      var ballLeft = throwDir === "left";
+      legs.push(
+        { ms: 650, to: home,          ball: false, left: !dogLeft },
+        { ms: 300, to: home,          ball: false, left: dogLeft },
+        { ms: 300, to: home,          ball: false, left: !dogLeft },
+        { ms: 300, to: home,          ball: false, left: ballLeft },
+        { ms: 650, to: off(throwDir), ball: false, left: ballLeft },
+        { ms: 400, to: off(throwDir), ball: true,  left: ballLeft },
+        { ms: 800, to: home,          ball: true,  left: !ballLeft }
+      );
     }
-    ctx.restore();
-    return L;
+    var total = 0;
+    for (var i = 0; i < legs.length; i++) { total += legs[i].ms; }
+    return { home: home, caught: dogDir === throwDir, legs: legs, totalMs: total };
   }
 
-  // =========================================================================
-  // Tug-of-War (replaces Left / Right for the dog)
-  // =========================================================================
-
-  var TUG_STEPS = 3;
-
-  /** Rope ends, centre and step size for Tug-of-War on a W × H canvas. */
-  function tugLayout(W, H) {
-    var px = Math.max(2, Math.floor(H / 40));
-    var x0 = Math.floor(W * 0.14), x1 = Math.floor(W * 0.86);
-    return {
-      px:    px,
-      ropeY: Math.floor(H * 0.55),
-      x0:    x0,
-      x1:    x1,
-      mid:   Math.floor(W / 2),
-      step:  Math.floor((x1 - x0) * 0.4 / TUG_STEPS),
-    };
+  /** Where the dog is `ms` into a fetchPlan: {x, left, ball, moving, done}. */
+  function planPose(plan, ms) {
+    var from = plan.home;
+    var t0 = 0;
+    for (var i = 0; i < plan.legs.length; i++) {
+      var leg = plan.legs[i];
+      if (ms < t0 + leg.ms) {
+        var f = Math.max(0, (ms - t0) / leg.ms);
+        return { x: from + (leg.to - from) * f, left: leg.left, ball: leg.ball,
+                 moving: leg.to !== from, done: false };
+      }
+      from = leg.to;
+      t0 += leg.ms;
+    }
+    var last = plan.legs[plan.legs.length - 1];
+    return { x: from, left: last.left, ball: last.ball, moving: false, done: true };
   }
 
   /**
-   * A rope across the canvas with a red marker on it. marker counts rounds
-   * won minus rounds lost (−3..3); a win pulls the marker towards YOU on the
-   * left, a loss towards the dog on the right.
-   * opts.palette: the pet's face colours; opts.growl: show "GRR" by the dog.
+   * The tug rope from x0 (your end, off the left of the stage) to the dog's
+   * mouth at x1, with a red marker in the middle. marker is rounds won minus
+   * rounds lost; the twist pattern shifts with it so the rope looks pulled.
    */
-  function drawTugScene(ctx, W, H, marker, opts) {
-    opts = opts || {};
-    var L = tugLayout(W, H);
-    var px = L.px;
-    var faceW = FACE[0].length * px, faceH = FACE.length * px;
-    var m = Math.max(-TUG_STEPS, Math.min(TUG_STEPS, marker || 0));
-    ctx.save();
-    // Centre line and the two goal lines
-    ctx.fillStyle = C.cardEdge;
-    ctx.fillRect(L.mid, L.ropeY - 4 * px, px, 8 * px);
-    ctx.fillStyle = C.good;
-    ctx.fillRect(L.mid - TUG_STEPS * L.step, L.ropeY - 3 * px, px, 6 * px);
+  function drawTugRope(ctx, x0, x1, y, px, marker) {
+    if (x1 <= x0) { return; }
+    var shift = Math.round((marker || 0) * 3 * px);
+    for (var x = x0; x < x1; x += 2 * px) {
+      ctx.fillStyle = Math.floor((x - x0 + shift) / (2 * px)) % 2 === 0 ? C.rope : C.ropeDark;
+      ctx.fillRect(x, y, Math.min(2 * px, x1 - x), px);
+    }
+    var mid = Math.round((x0 + x1) / 2);
     ctx.fillStyle = C.bad;
-    ctx.fillRect(L.mid + TUG_STEPS * L.step, L.ropeY - 3 * px, px, 6 * px);
-    // Twisted rope
-    var shift = -m * L.step;
-    for (var x = L.x0; x < L.x1; x += 2 * px) {
-      ctx.fillStyle = Math.floor((x - L.x0 + shift) / (2 * px)) % 2 === 0 ? C.rope : C.ropeDark;
-      ctx.fillRect(x, L.ropeY, Math.min(2 * px, L.x1 - x), px * 2);
-    }
-    // Marker hanging from the middle of the rope
-    var fx = L.mid - m * L.step;
-    ctx.fillStyle = C.bad;
-    ctx.fillRect(fx - px, L.ropeY + 2 * px, 3 * px, 4 * px);
-    // You on the left, the dog holding the far end on the right
-    var labelPx = Math.max(1, Math.floor(px / 2));
-    drawTextCentred(ctx, "YOU", L.x0, L.ropeY - 4 * px - GLYPH_H * labelPx, labelPx, C.cream, true);
-    if (opts.palette) {
-      drawFace(ctx, L.x1 - Math.round(faceW / 3), L.ropeY - faceH + 3 * px, px, opts.palette);
-    }
-    if (opts.growl) {
-      drawTextCentred(ctx, "GRR", L.x1, L.ropeY - faceH - GLYPH_H * labelPx, labelPx, C.cream, true);
-    }
-    ctx.restore();
-    return { px: px, markerX: fx, layout: L };
+    ctx.fillRect(mid - px, y + px, 2 * px, 3 * px);
   }
 
   // =========================================================================
@@ -705,10 +631,12 @@
     blackjackOutcome: blackjackOutcome,
     drawPlayingCard:    drawPlayingCard,
     drawBlackjackTable: drawBlackjackTable,
-    fetchLayout:    fetchLayout,
-    drawFetchScene: drawFetchScene,
-    TUG_STEPS:      TUG_STEPS,
-    tugLayout:      tugLayout,
-    drawTugScene:   drawTugScene,
+    BALL_SIZE:      BALL_SIZE,
+    drawBall:       drawBall,
+    FETCH_FLIGHT_MS: FETCH_FLIGHT_MS,
+    fetchBallPose:  fetchBallPose,
+    fetchPlan:      fetchPlan,
+    planPose:       planPose,
+    drawTugRope:    drawTugRope,
   };
 }());

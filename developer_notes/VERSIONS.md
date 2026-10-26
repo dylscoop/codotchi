@@ -1,6 +1,17 @@
 # Version History
 
-## v2.32.0 - current
+## v2.32.1 - current
+
+### Changes from v2.32.0 (dog games on the stage - branch feat/dog-actions)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js`, `sidebar.html` | Fetch and Tug-of-War now play on the pet's own stage with the real dog sprite (`stageGame`, `stageGamePose`, `drawStageGame`), not the `#mg-canvas` overlay. **Fetch**: throw Left / Right; the ball flies off that edge and the dog runs off a random side - the right side brings the ball straight back, the wrong side comes back empty, looks around, then runs off the other side for it. **Tug-of-War**: Pull / Hold - Hold beats a pull, Pull beats a rest (`tugWon`); the dog is dragged along the floor on a rope to your edge. Both stay 3 rounds, win on 2+, 50/50, no hints |
+| `vscode/media/minigameArt.js` | removed `drawFetchScene`, `fetchLayout`, `drawTugScene`, `tugLayout`, the bush art and colours; added `fetchPlan`, `planPose`, `fetchBallPose`, `drawBall`, `drawTugRope` |
+| `vscode/tests/unit/minigameArt.test.ts` | tests for the run plans, ball arc, rope and the Pull / Hold rule |
+| all manifests, `README.md` | version 2.32.1 |
+
+## v2.32.0
 
 ### Changes from v2.31.0 (dog actions - branch feat/dog-actions)
 
