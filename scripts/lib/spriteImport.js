@@ -604,9 +604,14 @@ function capScale(w, h, maxCols, maxRows) {
 // ── Colour quantisation ───────────────────────────────────────────────────────
 // Map each pixel to 0 (transparent), 1, 2, or 3.
 // With an explicit palette, each pixel maps to the nearest given colour.
-// Otherwise the 3 most frequent colours across ALL the given images are
-// ranked by luminance (brightest → 1 primary, mid → 2 secondary, darkest → 3
-// accent), so every stage of a species shares one palette.
+// Otherwise near-identical shades are merged into groups and three clearly
+// different groups are picked, most common first, then ranked by luminance
+// (brightest → 1 primary, mid → 2 secondary, darkest → 3 accent). Every
+// image passed in shares the result.
+
+var MERGE_DIST    = 1200;   // squared RGB distance: shades closer than this are one colour
+var DISTINCT_DIST = 4800;   // picked colours must be at least this far apart
+var MIN_SHARE     = 0.01;   // ignore groups under 1% of pixels while picking distinct ones
 
 function normaliseHex(hex) { return rgbToHex(hexToRgb(hex)); }
 
@@ -653,14 +658,46 @@ function buildColourMapper(images, alphaThresh, explicit) {
     }
   });
 
-  // Most frequent first; ties broken by key so the output is deterministic.
-  var sorted = Object.keys(freq).sort(function (a, b) {
-    return (freq[b] - freq[a]) || (a < b ? -1 : a > b ? 1 : 0);
-  });
-  var top3 = sorted.slice(0, 3).map(function (k) {
+  var total = 0;
+  var exact = Object.keys(freq).map(function (k) {
     var parts = k.split(",");
-    return { r: parseInt(parts[0], 10), g: parseInt(parts[1], 10), b: parseInt(parts[2], 10) };
+    total += freq[k];
+    return { key: k, n: freq[k], r: +parts[0], g: +parts[1], b: +parts[2] };
   });
+  // Most frequent first; ties broken by key so the output is deterministic.
+  exact.sort(function (a, b) { return (b.n - a.n) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0); });
+
+  // 1. Merge near-identical shades into groups (pixel art uses many of them).
+  var groups = [];
+  exact.forEach(function (c) {
+    for (var gi = 0; gi < groups.length; gi++) {
+      if (rgbDist(c, groups[gi].seed) <= MERGE_DIST) {
+        var g = groups[gi];
+        g.r += c.r * c.n; g.g += c.g * c.n; g.b += c.b * c.n; g.n += c.n;
+        return;
+      }
+    }
+    groups.push({ seed: c, r: c.r * c.n, g: c.g * c.n, b: c.b * c.n, n: c.n });
+  });
+  groups = groups.map(function (g) {
+    return { r: Math.round(g.r / g.n), g: Math.round(g.g / g.n), b: Math.round(g.b / g.n), n: g.n };
+  }).sort(function (a, b) { return b.n - a.n; });
+
+  // 2. Pick the most common group, then the most common groups that are
+  //    clearly different from those already picked; relax if there aren't 3.
+  function minDist(c, picked) {
+    return picked.reduce(function (m, p) { return Math.min(m, rgbDist(c, p)); }, Infinity);
+  }
+  var top3 = [];
+  var minCount = total * MIN_SHARE;
+  [DISTINCT_DIST, MERGE_DIST, 0].forEach(function (needed) {
+    groups.forEach(function (g) {
+      if (top3.length >= 3 || top3.indexOf(g) !== -1) { return; }
+      if (needed > 0 && g.n < minCount) { return; }
+      if (top3.length === 0 || minDist(g, top3) > needed) { top3.push(g); }
+    });
+  });
+  top3 = top3.map(function (g) { return { r: g.r, g: g.g, b: g.b }; });
 
   if (top3.length === 0) {
     log("Warning: no non-transparent pixels found in source image");

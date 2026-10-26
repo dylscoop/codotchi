@@ -165,6 +165,28 @@ describe("bulk sprite import", () => {
     assert.equal(bulk.generate(src).species[0].cols, 5);
   });
 
+  it("picks distinct colours, not near-identical shades", () => {
+    const src = freshDir("distinct");
+    // Lots of near-black shades and a smaller tan patch: the tan must survive.
+    const shades = [[10, 10, 10], [14, 12, 11], [18, 16, 14], [22, 20, 18]];
+    const rows: Rgba[][] = [];
+    for (let y = 0; y < 10; y++) {
+      const row: Rgba[] = [];
+      for (let x = 0; x < 10; x++) {
+        const [r, g, b] = y >= 8 ? [210, 160, 100] : shades[(x + y) % 4];
+        row.push({ r, g, b, a: 255 });
+      }
+      rows.push(row);
+    }
+    rows[0][0] = CLEAR;
+    fs.mkdirSync(path.join(src, "pup"), { recursive: true });
+    fs.writeFileSync(path.join(src, "pup", "adult.png"), lib.encodePng(10, 10, (x: number, y: number) => rows[y][x]));
+    const pup = bulk.generate(src).species[0];
+    const g = rowsOf(pup.grids.adult);
+    assert.notEqual(g[9][5], g[4][5], "tan and black map to different indices");
+    assert.equal(pup.palette.primary, "#d2a064");
+  });
+
   it("rejects a species folder name that is not a valid spriteType", () => {
     const src = freshDir("badname");
     writePng(path.join(src, "Big Dog", "adult.png"), ["W"]);
