@@ -256,8 +256,9 @@ Status: `[ ]`
 - **The dog plays Fetch instead** (v2.32.0, redesigned v2.32.1): throw Left or
   Right. The ball arcs across the pet's own stage and off that edge while the dog
   picks a side and runs off it. The right side: it comes back with the ball. The
-  wrong side: it comes back empty, looks around, runs off the other edge and
-  brings the ball back. One throw: a catch wins, a miss loses (50/50, no hints).
+  wrong side: it comes back empty-handed. Its side is random each throw, and it
+  keeps its current facing until it runs, so facing gives nothing away. One
+  throw: a catch wins, a miss loses (50/50, no hints).
   The dog trots (about 1.3 s per run across the stage). Game id `fetch`,
   with Coin Flip's rewards (`minigameStatsKey`). Moves come from
   `minigameArt.fetchPlan` / `planPose` / `fetchBallPose`, driven by the

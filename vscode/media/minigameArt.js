@@ -530,7 +530,6 @@
   var FETCH_RUN_MS    = 1300;
   var FETCH_GRAB_MS   = 600;
   var FETCH_RETURN_MS = 1600;
-  var FETCH_LOOK_MS   = 500;
 
   /**
    * The thrown ball at `ms` after the throw: an arc from (x0, y0) to endX
@@ -545,35 +544,23 @@
   /**
    * The dog's run for one Fetch throw, as legs {ms, to, ball, left}; each leg
    * runs (or stands, when `to` is unchanged) from the previous leg's end.
-   * It runs off the dogDir edge: the right way and it comes back with the
-   * ball; the wrong way and it comes back empty, looks around, runs off the
-   * other edge and then brings the ball back.
+   * It keeps facing the way it was (facingLeft) while the ball flies, so its
+   * facing gives nothing away, then runs off the dogDir edge: the right way
+   * and it comes back with the ball; the wrong way and it comes back empty.
    */
-  function fetchPlan(home, offLeft, offRight, throwDir, dogDir) {
-    function off(dir) { return dir === "left" ? offLeft : offRight; }
+  function fetchPlan(home, offLeft, offRight, throwDir, dogDir, facingLeft) {
     var dogLeft = dogDir === "left";
+    var away = dogLeft ? offLeft : offRight;
+    var caught = dogDir === throwDir;
     var legs = [
-      { ms: FETCH_PAUSE_MS, to: home,        ball: false, left: dogLeft },
-      { ms: FETCH_RUN_MS, to: off(dogDir), ball: false, left: dogLeft },
-      { ms: FETCH_GRAB_MS, to: off(dogDir), ball: dogDir === throwDir, left: dogLeft },
+      { ms: FETCH_PAUSE_MS,  to: home, ball: false,  left: !!facingLeft },
+      { ms: FETCH_RUN_MS,    to: away, ball: false,  left: dogLeft },
+      { ms: FETCH_GRAB_MS,   to: away, ball: caught, left: dogLeft },
+      { ms: FETCH_RETURN_MS, to: home, ball: caught, left: !dogLeft },
     ];
-    if (dogDir === throwDir) {
-      legs.push({ ms: FETCH_RETURN_MS, to: home, ball: true, left: !dogLeft });
-    } else {
-      var ballLeft = throwDir === "left";
-      legs.push(
-        { ms: FETCH_RUN_MS, to: home,          ball: false, left: !dogLeft },
-        { ms: FETCH_LOOK_MS, to: home,          ball: false, left: dogLeft },
-        { ms: FETCH_LOOK_MS, to: home,          ball: false, left: !dogLeft },
-        { ms: FETCH_LOOK_MS, to: home,          ball: false, left: ballLeft },
-        { ms: FETCH_RUN_MS, to: off(throwDir), ball: false, left: ballLeft },
-        { ms: FETCH_GRAB_MS, to: off(throwDir), ball: true,  left: ballLeft },
-        { ms: FETCH_RETURN_MS, to: home,          ball: true,  left: !ballLeft }
-      );
-    }
     var total = 0;
     for (var i = 0; i < legs.length; i++) { total += legs[i].ms; }
-    return { home: home, caught: dogDir === throwDir, legs: legs, totalMs: total };
+    return { home: home, caught: caught, legs: legs, totalMs: total };
   }
 
   /** Where the dog is `ms` into a fetchPlan: {x, left, ball, moving, done}. */

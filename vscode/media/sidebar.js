@@ -1147,7 +1147,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     function finish() {
       document.getElementById("fetch-feedback").textContent = fetchCaught
         ? "\u2713 It ran the right way and caught it!"
-        : "\u2717 It ran the wrong way - it fetched the ball anyway.";
+        : "\u2717 It ran the wrong way and came back empty-handed.";
       bjTimer = setTimeout(function () { bjTimer = null; endFetchGame(); }, REDUCED_MOTION ? 900 : 800);
     }
     if (REDUCED_MOTION) { finish(); return; }
@@ -1250,7 +1250,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       if (!game.plan) {
         game.startMs = nowMs;
         game.plan = mgArt.fetchPlan(Math.max(minX, Math.min(maxX, petX)), -bWidth - 8, W + 8,
-                                    game.throwDir, game.dogDir);
+                                    game.throwDir, game.dogDir, petFacingLeft);
       }
       var p = mgArt.planPose(game.plan, nowMs - game.startMs);
       if (p.done && game.onDone) { var cb = game.onDone; game.onDone = null; cb(); }

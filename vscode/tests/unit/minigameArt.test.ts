@@ -298,18 +298,28 @@ describe("dog mini-game art (minigameArt.js)", () => {
     assert.equal(art.planPose(plan, 0).ball, false);
   });
 
-  it("runs the wrong way first, then fetches the ball anyway", () => {
+  it("runs the wrong way and comes back empty-handed", () => {
     const art = loadArt();
     const plan = art.fetchPlan(100, -40, 300, "left", "right");
     assert.equal(plan.caught, false);
-    const offRight = plan.legs.findIndex((l: { to: number }) => l.to === 300);
-    const offLeft = plan.legs.findIndex((l: { to: number }) => l.to === -40);
-    assert.ok(offRight >= 0 && offLeft > offRight, "wrong edge first, then the ball's edge");
-    assert.ok(plan.legs.slice(0, offLeft).every((l: { ball: boolean }) => !l.ball), "no ball before it reaches it");
+    const xs = plan.legs.map((l: { to: number }) => l.to);
+    assert.ok(xs.includes(300) && !xs.includes(-40), "it should only run off the wrong (right) edge");
+    assert.ok(plan.legs.every((l: { ball: boolean }) => !l.ball), "no ball on a miss");
     const end = art.planPose(plan, plan.totalMs + 1);
     assert.equal(end.x, 100);
-    assert.equal(end.ball, true);
-    assert.ok(plan.totalMs > art.fetchPlan(100, -40, 300, "left", "left").totalMs);
+    assert.equal(end.ball, false);
+    assert.equal(plan.totalMs, art.fetchPlan(100, -40, 300, "left", "left").totalMs);
+  });
+
+  it("keeps its current facing until it runs, so facing gives nothing away", () => {
+    const art = loadArt();
+    for (const facingLeft of [true, false]) {
+      for (const dogDir of ["left", "right"]) {
+        const plan = art.fetchPlan(100, -40, 300, "left", dogDir, facingLeft);
+        assert.equal(art.planPose(plan, 0).left, facingLeft);
+        assert.equal(plan.legs[1].left, dogDir === "left");
+      }
+    }
   });
 
   it("trots rather than dashes across the stage", () => {
