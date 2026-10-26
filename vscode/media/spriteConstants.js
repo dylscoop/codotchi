@@ -5,7 +5,7 @@
  *   SPRITE_ANIMAL_PALETTES      — realistic colour palette keyed by spriteType
  *   SPRITE_STAGE_SCALES         — per-stage size multiplier
  *   SPRITE_EGG_HATCH_DAYS       — dayTimer at which the egg hatches (drives the hatch animation)
- *   spriteGetPalette(spriteType) — returns the palette object for a given spriteType
+ *   spriteGetPalette(spriteType, stage?) — returns the palette object for a given spriteType (and stage)
  *   spriteWeightWidthMult(w)    — returns width multiplier for a given weight (upright/snake only)
  *   spriteHeightRatio(type)     — returns height/width ratio for a given spriteType
  *   spriteQuadBellySag(w)       — returns extra belly-sag row count for overweight quadrupeds
@@ -40,11 +40,22 @@
   /**
    * Return the realistic colour palette for a given spriteType.
    * Falls back to the classic palette if the type is unknown.
+   * A species may carry a byStage map (from perStagePalette imports); when
+   * the given stage has an entry, its colours override the species palette.
    * @param {string} spriteType
+   * @param {string} [stage]
    * @returns {{ primary: string, secondary: string, accent: string, background: string }}
    */
-  function getPalette(spriteType) {
-    return ANIMAL_PALETTES[spriteType] || FALLBACK_PALETTE;
+  function getPalette(spriteType, stage) {
+    var base = ANIMAL_PALETTES[spriteType] || FALLBACK_PALETTE;
+    var over = stage && base.byStage && base.byStage[stage];
+    if (!over) { return base; }
+    return {
+      primary:    over.primary   || base.primary,
+      secondary:  over.secondary || base.secondary,
+      accent:     over.accent    || base.accent,
+      background: base.background,
+    };
   }
 
   // ── Stage scales ──────────────────────────────────────────────────────────

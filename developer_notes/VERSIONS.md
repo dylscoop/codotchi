@@ -1,6 +1,28 @@
 # Version History
 
-## v2.30.1 - current
+## v2.31.0 - current
+
+### Changes from v2.30.1 (per-stage sprite colours, better bulk import, new dog)
+
+| File | What changed |
+|------|-------------|
+| `scripts/import_sprites_bulk.js` | `sprite.json` gains `perStagePalette` (auto-detect a palette per stage from its own images) and `palettes.<stage>` (exact per-stage colours); written as `byStage` on the species palette. Species without them are byte-identical |
+| `vscode/media/spriteConstants.js`, `sprites.js`, `sidebar.js` | `spriteGetPalette(type, stage)` applies `byStage`; every pet palette lookup passes the stage |
+| `scripts/lib/spriteImport.js` | Auto background removal peels framed backgrounds layer by layer (frame, then plain background) and only clears edge-connected pixels, keeping interior whites. Auto palette merges near-identical shades and picks three clearly different colours |
+| `scripts/export_sprite_pngs.js`, `scripts/validate_sprites.js` | export per-stage colours as `palettes`; validate `byStage` |
+| `scripts/import_sprites_bulk.bat`, `scripts/import_sprites_bulk.ps1` (new) | double-click bulk importer: multi-select file picker, pet name, stage matching, colour / flip / upright options |
+| `sprites/dog/*`, `vscode/media/sprites.generated.js` | new dog sprites with per-stage colours; baby drawn 3× larger via `stageScale`; baby image cropped (watermark removed) and its white halo cleaned (`baby.webp` → `baby.png`) |
+| `scripts/lib/spriteImport.js` (pockets) | auto background removal also clears enclosed background pockets ≥ 0.2% of the image (`POCKET_SHARE`); small ones such as eye whites stay |
+| `scripts/import_sprites_bulk.js` (`stageScale`) | `sprite.json` `stageScale.<stage>` enlarges one stage relative to the others |
+| `scripts/import_sprites_bulk.js` (`legs`) | quadruped legs auto-detected per grid near the feet (shadows and floor tails ignored), alternated into two diagonal walk groups and written as `SPRITE_GRID_META.<species>.legs`; `sprite.json` `legs.<gridKey>` overrides; per-grid leg summary in the console |
+| `vscode/media/sprites.js` | walk animation uses the detected legs: one group per frame is raised by 3% of the grid height (top rows dropped, so feet stay planted and legs stay joined). Grids without legs keep the old half-and-half 1-row step; dragon (`legFrame -1`) unchanged |
+| `vscode/media/sprites.generated.js` | rebuilt with `legs` for cat, dog, dragon, roo |
+| `vscode/tests/unit/spriteImportBulk.test.ts`, `webviewAnimations.test.ts` | leg detection, `legs` override and validation; dog legs lift by group per frame |
+| `developer_notes/SPRITE_IMPORT.md`, `.opencode/skills/sprite-import/SKILL.md` | document leg detection and the `legs` option |
+| `vscode/tests/unit/spriteImportBulk.test.ts` | per-stage palettes, framed backgrounds, distinct colours |
+| all manifests, `README.md` | version 2.31.0 |
+
+## v2.30.1
 
 ### Changes from v2.30.0 (lighter on CPU and disk - branch speedups)
 

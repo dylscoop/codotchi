@@ -18,6 +18,11 @@
  *     palette        { primary, secondary, accent }  exact colours → indices 1/2/3
  *                    (default: the 3 most frequent colours across all stages,
  *                    ranked by luminance)
+ *     perStagePalette  true: each stage gets its own auto-detected palette from
+ *                    its own images (mood art counts towards its stage);
+ *                    emitted as byStage on the species palette (default false)
+ *     palettes       { <stage>: { primary, secondary, accent } } exact colours
+ *                    for one stage; overrides palette / perStagePalette there
  *     background     canvas background colour (default "#1a1a1a")
  *     transparent    source colour to treat as transparent (default: automatic
  *                    for fully-opaque images with uniform corners)
@@ -26,14 +31,21 @@
  *     crop           trim the transparent border of each stage (default true)
  *     anchor         "centre" (default) or "left": where narrower stages sit
  *                    on the shared grid (always bottom-aligned)
+ *     stageScale     { <stage>: number } size multiplier for one stage's
+ *                    image relative to the others (e.g. { "baby": 3 })
  *     flip           mirror every stage (source faces right; quadrupeds must face left)
  *     legRowStart    first leg-zone row of the output grid (default floor(rows * 0.78))
+ *     legs           { <gridKey>: [[startCol, endCol, group], ...] } hand-set
+ *                    leg columns (group 0 or 1 steps together) for one grid,
+ *                    e.g. "adult" or "adult_sleeping"; replaces the automatic
+ *                    leg detection there (quadrupeds only)
  *     upright        portrait species (added to UPRIGHT_TYPES)
  *     inRotation, passcode, defaultName
  *                    checked against ROTATION_ANIMALS and customCharacters.js;
  *                    a mismatch is a warning (registration is still by hand)
  *
- * Every stage of a species shares one grid size and one palette: stages are
+ * Every stage of a species shares one grid size and, unless perStagePalette or
+ * palettes says otherwise, one palette: stages are
  * scaled by one factor so the largest fits the 192×128 cap (relative sizes are
  * kept), then padded onto the shared grid. The output is rebuilt from scratch
  * on every run and is deterministic, so --check can compare it byte for byte.
@@ -113,23 +125,51 @@ function importSpecies(species, dir) {
     return img;
   });
 
-  // 2. One scale for every stage, so the largest fits the runtime cap
-  var maxW  = Math.max.apply(null, images.map(function (i) { return i.width; }));
-  var maxH  = Math.max.apply(null, images.map(function (i) { return i.height; }));
+  // 2. One scale for every stage, so the largest fits the runtime cap.
+  //    stageScale.<stage> enlarges (or shrinks) one stage relative to the rest.
+  var stageScale = config.stageScale || {};
+  Object.keys(stageScale).forEach(function (s) {
+    if (STAGES.indexOf(s) === -1) { throw new Error(dir + ": stageScale has unknown stage \"" + s + "\""); }
+    if (!(stageScale[s] > 0)) { throw new Error(dir + ": stageScale." + s + " must be a positive number"); }
+  });
+  var mults = keys.map(function (k) { return stageScale[k.split("_")[0]] || 1; });
+  var maxW  = Math.max.apply(null, images.map(function (i, n) { return i.width  * mults[n]; }));
+  var maxH  = Math.max.apply(null, images.map(function (i, n) { return i.height * mults[n]; }));
   var scale = lib.capScale(maxW, maxH);
   var cols  = Math.max(1, Math.round(maxW * scale));
   var rows  = Math.max(1, Math.round(maxH * scale));
-  var resampled = images.map(function (img) {
+  var resampled = images.map(function (img, n) {
     return lib.resample(img,
-      Math.min(cols, Math.max(1, Math.round(img.width  * scale))),
-      Math.min(rows, Math.max(1, Math.round(img.height * scale))));
+      Math.min(cols, Math.max(1, Math.round(img.width  * mults[n] * scale))),
+      Math.min(rows, Math.max(1, Math.round(img.height * mults[n] * scale))));
   });
 
-  // 3. One palette for every stage; quantise, mirror, pad onto the shared grid
-  var mapper = lib.buildColourMapper(resampled, alphaThresh, config.palette);
+  // 3. Build the palette(s); quantise, mirror, pad onto the shared grid.
+  //    The species palette always comes from every image. With perStagePalette
+  //    (or a palettes.<stage> entry) a stage gets its own mapper, built from
+  //    that stage's images only (mood art counts towards its stage).
+  var mapper   = lib.buildColourMapper(resampled, alphaThresh, config.palette);
+  var palettes = config.palettes || {};
+  Object.keys(palettes).forEach(function (s) {
+    if (STAGES.indexOf(s) === -1) { throw new Error(dir + ": palettes has unknown stage \"" + s + "\""); }
+  });
+  var stageMappers = {};
+  var byStage  = {};
+  STAGES.forEach(function (stage) {
+    var own = palettes[stage];
+    if (!own && !config.perStagePalette) { return; }
+    var imgs = resampled.filter(function (img, i) { return keys[i].split("_")[0] === stage; });
+    if (imgs.length === 0) { return; }
+    var m = lib.buildColourMapper(imgs, alphaThresh, own);
+    stageMappers[stage] = m;
+    var p = m.palette, sp = mapper.palette;
+    if (p.primary !== sp.primary || p.secondary !== sp.secondary || p.accent !== sp.accent) {
+      byStage[stage] = { primary: p.primary, secondary: p.secondary, accent: p.accent };
+    }
+  });
   var grids  = {};
   resampled.forEach(function (img, i) {
-    var grid = lib.mapGrid(img, mapper);
+    var grid = lib.mapGrid(img, stageMappers[keys[i].split("_")[0]] || mapper);
     if (config.flip) { grid = lib.flipGrid(grid); }
     grids[keys[i]] = lib.padGrid(grid, cols, rows, config.anchor === "left" ? "left" : "centre");
   });
@@ -139,17 +179,37 @@ function importSpecies(species, dir) {
     throw new Error(dir + ": legRowStart " + legRowStart + " is outside the " + rows + "-row grid");
   }
 
+  var legOverride = config.legs || {};
+  Object.keys(legOverride).forEach(function (k) {
+    if (!grids[k]) { throw new Error(dir + ": legs has unknown grid \"" + k + "\""); }
+    var spans = legOverride[k];
+    if (!Array.isArray(spans) || !spans.every(function (s) {
+      return Array.isArray(s) && s.length === 3 && s[0] >= 0 && s[1] >= s[0] && s[1] < cols && (s[2] === 0 || s[2] === 1);
+    })) {
+      throw new Error(dir + ": legs." + k + " must be a list of [startCol, endCol, group 0|1] within the grid");
+    }
+  });
+  var legs = {};
+  if (!config.upright) {
+    Object.keys(grids).forEach(function (k) {
+      var spans = legOverride[k] || detectLegs(grids[k], legRowStart);
+      if (spans.length) { legs[k] = spans; }
+    });
+  }
+
   return {
     species:     species,
     cols:        cols,
     rows:        rows,
     legRowStart: legRowStart,
+    legs:        legs,
     palette: {
       primary:    mapper.palette.primary,
       secondary:  mapper.palette.secondary,
       accent:     mapper.palette.accent,
       background: config.background ? lib.normaliseHex(config.background) : "#1a1a1a",
     },
+    byStage: byStage,
     upright: !!config.upright,
     grids:   grids,
     missing: STAGES.filter(function (s) { return !files[s]; }),
@@ -240,15 +300,24 @@ function renderOutput(all) {
   L.push("");
   L.push("  Object.assign(window.SPRITE_GRID_META, {");
   all.forEach(function (sp) {
-    L.push("    " + q(sp.species) + ": { cols: " + sp.cols + ", rows: " + sp.rows + ", legRowStart: " + sp.legRowStart + " },");
+    var legKeys = Object.keys(sp.legs || {}).sort(compareGridKeys);
+    var lg = legKeys.length === 0 ? "" : ", legs: { " + legKeys.map(function (k) {
+      return q(k) + ": " + JSON.stringify(sp.legs[k]);
+    }).join(", ") + " }";
+    L.push("    " + q(sp.species) + ": { cols: " + sp.cols + ", rows: " + sp.rows + ", legRowStart: " + sp.legRowStart + lg + " },");
   });
   L.push("  });");
   L.push("");
   L.push("  Object.assign(window.SPRITE_ANIMAL_PALETTES, {");
   all.forEach(function (sp) {
     var p = sp.palette;
+    var stageKeys = Object.keys(sp.byStage || {}).sort(compareGridKeys);
+    var bs = stageKeys.length === 0 ? "" : ", byStage: { " + stageKeys.map(function (s) {
+      var c = sp.byStage[s];
+      return s + ": { primary: " + q(c.primary) + ", secondary: " + q(c.secondary) + ", accent: " + q(c.accent) + " }";
+    }).join(", ") + " }";
     L.push("    " + q(sp.species) + ": { primary: " + q(p.primary) + ", secondary: " + q(p.secondary) +
-           ", accent: " + q(p.accent) + ", background: " + q(p.background) + " },");
+           ", accent: " + q(p.accent) + ", background: " + q(p.background) + bs + " },");
   });
   L.push("  });");
   var upright = all.filter(function (sp) { return sp.upright; });
@@ -259,6 +328,44 @@ function renderOutput(all) {
   L.push("}());");
   L.push("");
   return L.join("\n");
+}
+
+/**
+ * Find the separate legs near the feet: the bottom 40% of the leg zone (rows
+ * legRowStart..end), where legs part from the belly. A column is "leg" when
+ * at least a quarter of that band, and half as much as the fullest column, is
+ * filled in it (so a tail or shadow on the floor doesn't count); runs of leg columns (bridging 1-column gaps) narrower than 2
+ * or wider than 30% of the grid are dropped. Legs alternate between walk
+ * groups 0 and 1, front to back, so each group mixes front and back legs.
+ * @returns {Array<[number, number, number]>} [startCol, endCol, group]; empty
+ *          when fewer than 2 legs are found (renderer falls back to halves).
+ */
+function detectLegs(grid, legRowStart) {
+  var rows = grid.length, cols = rows ? grid[0].length : 0;
+  var bandStart = Math.max(legRowStart, rows - Math.max(2, Math.round((rows - legRowStart) * 0.4)));
+  var counts = [];
+  for (var c = 0; c < cols; c++) {
+    var n = 0;
+    for (var r = bandStart; r < rows; r++) { if (grid[r][c]) { n++; } }
+    counts.push(n);
+  }
+  // Half the fullest column, so a ground shadow or tail joining the feet
+  // doesn't merge every leg into one.
+  var need = Math.max(2, Math.ceil((rows - bandStart) / 4), Math.ceil(Math.max.apply(null, counts.concat(0)) / 2));
+  var filled = counts.map(function (n) { return n >= need; });
+  var runs = [];
+  var start = -1, lastOn = -2;
+  for (c = 0; c <= cols; c++) {
+    if (c < cols && filled[c]) {
+      if (start === -1) { start = c; } else if (c - lastOn > 2) { runs.push([start, lastOn]); start = c; }
+      lastOn = c;
+    }
+  }
+  if (start !== -1) { runs.push([start, lastOn]); }
+  var maxW = Math.max(2, Math.floor(cols * 0.3));
+  runs = runs.filter(function (s) { var w = s[1] - s[0] + 1; return w >= 2 && w <= maxW; });
+  if (runs.length < 2) { return []; }
+  return runs.map(function (s, i) { return [s[0], s[1], i % 2]; });
 }
 
 /**
@@ -310,6 +417,13 @@ function main(argv) {
       console.log(sp.species + ": " + sp.cols + "×" + sp.rows + ", legRowStart " + sp.legRowStart +
                   ", " + Object.keys(sp.grids).length + " grid(s), palette " +
                   [sp.palette.primary, sp.palette.secondary, sp.palette.accent].join(" "));
+      Object.keys(sp.grids).sort(compareGridKeys).forEach(function (k) {
+        var l = sp.legs[k];
+        console.log("  " + k + ": " + (l ? l.length + " legs [" + l.map(function (s) {
+          return s[0] + "-" + s[1] + "|" + s[2];
+        }).join(", ") + "]" + (sp.config.legs && sp.config.legs[k] ? " (sprite.json)" : "")
+          : "no legs found (walks by halves)"));
+      });
     }
   });
   result.warnings.forEach(function (w) { console.error("Warning: " + w); });
@@ -334,4 +448,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { generate: generate, importSpecies: importSpecies, renderOutput: renderOutput, STAGES: STAGES };
+module.exports = { generate: generate, importSpecies: importSpecies, renderOutput: renderOutput, detectLegs: detectLegs, STAGES: STAGES };

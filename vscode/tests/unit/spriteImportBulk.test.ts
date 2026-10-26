@@ -41,6 +41,40 @@ before(() => { tmp = fs.mkdtempSync(path.join(os.tmpdir(), "codotchi-bulk-")); }
 after(() => { fs.rmSync(tmp, { recursive: true, force: true }); });
 
 describe("bulk sprite import", () => {
+  it("detects separate legs near the feet and alternates their walk groups", () => {
+    const g = (rows: string[]) => rows.map((r) => r.split("").map(Number));
+    const grid = g([
+      "1111111111111",
+      "1111111111111",
+      "1100110011000",
+      "1100110011000",
+      "1100110011003",   // a 1-row tail tip on the floor is not a leg
+    ]);
+    assert.deepEqual(bulk.detectLegs(grid, 2), [[0, 1, 0], [4, 5, 1], [8, 9, 0]]);
+    assert.deepEqual(bulk.detectLegs(g(["111", "111", "111"]), 1), []);
+  });
+
+  it("writes legs into SPRITE_GRID_META and lets sprite.json override them", () => {
+    const src = freshDir("legs");
+    const body = "WWWWWWWWWWWWWWWW";
+    const feet = "WW..WW..WW.W..WW";
+    writePng(path.join(src, "pup", "adult.png"), [body, body, feet, feet, feet, feet]);
+    writePng(path.join(src, "pup", "child.png"), [body, body, feet, feet, feet, feet]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"),
+      JSON.stringify({ legRowStart: 2, legs: { child: [[0, 3, 1], [8, 11, 0]] } }));
+    const out = bulk.generate(src);
+    const pup = out.species[0];
+    assert.deepEqual(pup.legs.adult, [[0, 1, 0], [4, 5, 1], [8, 11, 0], [14, 15, 1]]);
+    assert.deepEqual(pup.legs.child, [[0, 3, 1], [8, 11, 0]]);
+    assert.ok(out.text.includes('legs: { "child": [[0,3,1],[8,11,0]], "adult": [[0,1,0],[4,5,1],[8,11,0],[14,15,1]] }'));
+  });
+
+  it("rejects a malformed legs override", () => {
+    const src = freshDir("badlegs");
+    writePng(path.join(src, "pup", "adult.png"), ["WW", "WW"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ legs: { adult: [[0, 5, 2]] } }));
+    assert.throws(() => bulk.generate(src), /legs\.adult/);
+  });
   it("pads every stage bottom-centre onto one shared grid", () => {
     const src = freshDir("shared");
     writePng(path.join(src, "pup", "baby.png"), ["WR", "WW"]);
@@ -130,6 +164,94 @@ describe("bulk sprite import", () => {
     assert.deepEqual(Object.keys(bulk.generate(src).species[0].grids), ["adult", "adult_sleeping"]);
   });
 
+  it("peels a framed background layer by layer and keeps interior matches", () => {
+    const src = freshDir("frame");
+    // Red frame around a white background; the navy pet has a white eye.
+    writePng(path.join(src, "pup", "adult.png"), [
+      "RRRRRRR",
+      "RWWWWWR",
+      "RWWNWWR",
+      "RWNWNWR",
+      "RWNNNWR",
+      "RWWWWWR",
+      "RRRRRRR",
+    ]);
+    const pup = bulk.generate(src).species[0];
+    // Frame and white background go; the pet keeps its white eye.
+    assert.equal(pup.cols, 3);
+    assert.equal(pup.rows, 3);
+    const g = rowsOf(pup.grids.adult);
+    assert.equal(g[0][0], "0");
+    assert.equal(g[0][2], "0");
+    assert.ok(g[1][1] !== "0", "interior white eye is kept");
+  });
+
+  it("stops peeling once a layer leaves the sprite shape", () => {
+    const src = freshDir("frame2");
+    writePng(path.join(src, "pup", "adult.png"), [
+      "WWWWW",
+      "WNNNW",
+      "WNRNW",
+      "WN.NW",
+      "WWWWW",
+    ]);
+    // Has a transparent pixel, so it's not an opaque background: untouched apart from crop.
+    assert.equal(bulk.generate(src).species[0].cols, 5);
+  });
+
+  it("picks distinct colours, not near-identical shades", () => {
+    const src = freshDir("distinct");
+    // Lots of near-black shades and a smaller tan patch: the tan must survive.
+    const shades = [[10, 10, 10], [14, 12, 11], [18, 16, 14], [22, 20, 18]];
+    const rows: Rgba[][] = [];
+    for (let y = 0; y < 10; y++) {
+      const row: Rgba[] = [];
+      for (let x = 0; x < 10; x++) {
+        const [r, g, b] = y >= 8 ? [210, 160, 100] : shades[(x + y) % 4];
+        row.push({ r, g, b, a: 255 });
+      }
+      rows.push(row);
+    }
+    rows[0][0] = CLEAR;
+    fs.mkdirSync(path.join(src, "pup"), { recursive: true });
+    fs.writeFileSync(path.join(src, "pup", "adult.png"), lib.encodePng(10, 10, (x: number, y: number) => rows[y][x]));
+    const pup = bulk.generate(src).species[0];
+    const g = rowsOf(pup.grids.adult);
+    assert.notEqual(g[9][5], g[4][5], "tan and black map to different indices");
+    assert.equal(pup.palette.primary, "#d2a064");
+  });
+
+  it("enlarges one stage with stageScale", () => {
+    const src = freshDir("stagescale");
+    writePng(path.join(src, "pup", "baby.png"), ["WR", "WW"]);
+    writePng(path.join(src, "pup", "adult.png"), ["WWWWWW", "WRRWWW", "NWWNWW", "WWWWWW", "WWWWWW", "WWWWWW"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ stageScale: { baby: 3 } }));
+    const pup = bulk.generate(src).species[0];
+    assert.equal(pup.cols, 6);
+    assert.equal(rowsOf(pup.grids.baby).filter((r) => r.includes("1")).length, 6);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ stageScale: { elder: 2 } }));
+    assert.throws(() => bulk.generate(src), /unknown stage "elder"/);
+  });
+
+  it("removes large enclosed background pockets but keeps small ones", () => {
+    const src = freshDir("pocket");
+    const big = 30;
+    const rows: string[] = [];
+    for (let y = 0; y < big; y++) {
+      let r = "";
+      for (let x = 0; x < big; x++) {
+        const ring = x >= 2 && x < 28 && y >= 2 && y < 28 && (x < 5 || x >= 25 || y < 5 || y >= 25);
+        const eye = x === 3 && y === 3;
+        r += eye ? "W" : ring ? "N" : "W";
+      }
+      rows.push(r);
+    }
+    writePng(path.join(src, "pup", "adult.png"), rows);
+    const g = rowsOf(bulk.generate(src).species[0].grids.adult);
+    assert.equal(g[12][12], "0", "20×20 enclosed white pocket is removed");
+    assert.notEqual(g[1][1], "0", "single enclosed white pixel (eye) is kept");
+  });
+
   it("rejects a species folder name that is not a valid spriteType", () => {
     const src = freshDir("badname");
     writePng(path.join(src, "Big Dog", "adult.png"), ["W"]);
@@ -158,5 +280,68 @@ describe("bulk sprite import", () => {
     assert.equal(window.spriteGetPalette("pup").primary, "#fafafa");
     assert.equal(window.UPRIGHT_TYPES.pup, 1);
     assert.ok(window.SPRITE_GRID_META.classic, "existing entries are kept");
+  });
+
+  it("keeps one palette and no byStage without perStagePalette", () => {
+    const src = freshDir("nostage");
+    writePng(path.join(src, "pup", "baby.png"), ["WR"]);
+    writePng(path.join(src, "pup", "adult.png"), ["WRN"]);
+    const { species, text } = bulk.generate(src);
+    assert.deepEqual(species[0].byStage, {});
+    assert.ok(!text.includes("byStage"));
+  });
+
+  it("auto-detects a palette per stage with perStagePalette:true", () => {
+    const src = freshDir("perstage");
+    // baby is red/navy only; adult is white/red/navy
+    writePng(path.join(src, "pup", "baby.png"), ["RN"]);
+    writePng(path.join(src, "pup", "adult.png"), ["WRN"]);
+    writePng(path.join(src, "pup", "adult_sleeping.png"), ["WWN"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ perStagePalette: true }));
+    const pup = bulk.generate(src).species[0];
+    // baby: red brightest → 1, navy → 2
+    assert.deepEqual(rowsOf(pup.grids.baby), ["120"]);
+    assert.deepEqual(pup.byStage.baby, { primary: "#c81414", secondary: "#0a0a3c", accent: "#222222" });
+    // adult + adult_sleeping share a palette identical to the species one → no byStage entry
+    assert.deepEqual(rowsOf(pup.grids.adult), ["123"]);
+    assert.deepEqual(rowsOf(pup.grids.adult_sleeping), ["113"]);
+    assert.equal(pup.byStage.adult, undefined);
+  });
+
+  it("uses palettes.<stage> exact colours over auto-detection", () => {
+    const src = freshDir("stageexplicit");
+    writePng(path.join(src, "pup", "baby.png"), ["WR"]);
+    writePng(path.join(src, "pup", "adult.png"), ["WR"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({
+      palettes: { baby: { primary: "#c81414", secondary: "#fafafa" } },
+    }));
+    const pup = bulk.generate(src).species[0];
+    assert.deepEqual(rowsOf(pup.grids.baby), ["21"]);
+    assert.deepEqual(rowsOf(pup.grids.adult), ["12"]);
+    assert.equal(pup.byStage.baby.primary, "#c81414");
+  });
+
+  it("rejects an unknown stage in palettes", () => {
+    const src = freshDir("badstage");
+    writePng(path.join(src, "pup", "adult.png"), ["W"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ palettes: { elder: { primary: "#fff" } } }));
+    assert.throws(() => bulk.generate(src), /unknown stage "elder"/);
+  });
+
+  it("spriteGetPalette returns stage colours from byStage", () => {
+    const src = freshDir("stageload");
+    writePng(path.join(src, "pup", "baby.png"), ["RN"]);
+    writePng(path.join(src, "pup", "adult.png"), ["WRN"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ perStagePalette: true, background: "#101010" }));
+    const window: Record<string, any> = {};
+    const context = vm.createContext({ window });
+    vm.runInContext(fs.readFileSync(path.join(media, "spriteConstants.js"), "utf8").replace(/^﻿/, ""), context);
+    vm.runInContext(bulk.generate(src).text, context);
+    assert.equal(window.spriteGetPalette("pup").primary, "#fafafa");
+    assert.equal(window.spriteGetPalette("pup", "adult").primary, "#fafafa");
+    const baby = window.spriteGetPalette("pup", "baby");
+    assert.equal(baby.primary, "#c81414");
+    assert.equal(baby.background, "#101010");
+    assert.equal(window.spriteGetPalette("nope", "baby"), window.spriteGetPalette("classic"));
   });
 });

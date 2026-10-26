@@ -1,14 +1,16 @@
 {
-  "palette": {
-    "primary": "#eee1d9",
-    "secondary": "#eea062",
-    "accent": "#ed9d5e"
-  },
-  "background": "#1a1a1a",
-  "crop": false,
-  "anchor": "left",
-  "legRowStart": 99,
-  "inRotation": true,
-  "passcode": "shiba",
-  "defaultName": "Codotchi"
+    "palette":  {
+                    "primary":  "#eee1d9",
+                    "secondary":  "#eea062",
+                    "accent":  "#ed9d5e"
+                },
+    "background":  "#1a1a1a",
+    "crop":  false,
+    "anchor":  "left",
+    "legRowStart":  99,
+    "inRotation":  true,
+    "passcode":  "shiba",
+    "defaultName":  "Codotchi",
+    "perStagePalette":  true,
+    "stageScale":  { "baby":  3 }
 }

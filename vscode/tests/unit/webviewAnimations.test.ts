@@ -423,6 +423,51 @@ describe("Play or Pat banner (sidebar.html)", () => {
   });
 });
 
+describe("detected leg walk (vscode/media/sprites.js)", () => {
+  /** Paint dog's adult grid on legFrame; returns the offscreen [col,row] cells. */
+  function dogCells(legFrame: number): number[][] {
+    const cells: number[][] = [];
+    const window: Record<string, unknown> = {};
+    const fakeCtx = new Proxy({} as Record<string, unknown>, {
+      get(target, key: string) {
+        if (key in target) { return target[key]; }
+        if (key === "fillRect") { return (x: number, y: number) => { cells.push([x, y]); }; }
+        return () => undefined;
+      },
+      set(target, key: string, value) { target[key] = value; return true; },
+    });
+    const document = { createElement: () => ({ getContext: () => fakeCtx }) };
+    const context = vm.createContext({ window, document });
+    for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js"]) {
+      vm.runInContext(fs.readFileSync(path.join(media, file), "utf8").replace(/^﻿/, ""), context);
+    }
+    const w = window as Record<string, any>;
+    const state = { spriteType: "dog", stage: "adult", weight: 50, mood: "neutral", alive: true };
+    const ctx = new Proxy({}, { get: () => () => undefined, set: () => true });
+    w.renderSpriteGrid(ctx, state, 0, 0, true, legFrame, 0,
+      w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
+      w.spriteHeightRatio, w.spriteQuadBellySag);
+    return cells;
+  }
+
+  it("raises one diagonal group per frame and keeps the other on the floor", () => {
+    const meta = loadSpriteWindow().SPRITE_GRID_META.dog;
+    const legs: number[][] = meta.legs.adult;
+    assert.ok(legs.length >= 2);
+    const lift = Math.max(1, Math.round(meta.rows * 0.03));
+    const bottoms = [0, 1].map((legFrame) => {
+      const cells = dogCells(legFrame);
+      return legs.map(([s, e]) => Math.max(...cells.filter(([c]) => c >= s && c <= e).map(([, r]) => r)));
+    });
+    legs.forEach(([start, end, group], i) => {
+      // group 1 is raised on frame 0, group 0 on frame 1
+      const planted = bottoms[group === 1 ? 1 : 0][i];
+      const raised  = bottoms[group === 1 ? 0 : 1][i];
+      assert.equal(raised, planted - lift, `leg ${start}-${end} (group ${group}) lifts by ${lift} rows`);
+    });
+  });
+});
+
 describe("classic creature box (vscode/media/sprites.js)", () => {
   /** Draw classic at (x, y) and return every fillRect as [x, y, w, h]. */
   function classicRects(w: Record<string, any>, state: Record<string, unknown>, x: number, y: number, legFrame: number) {

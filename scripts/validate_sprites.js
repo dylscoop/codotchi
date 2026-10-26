@@ -60,6 +60,13 @@ function validate(window) {
       ["primary", "secondary", "accent"].forEach(function (k) {
         if (!HEX_RE.test(p[k] || "")) { problems.push(type + ": palette " + k + " is " + JSON.stringify(p[k])); }
       });
+      Object.keys(p.byStage || {}).forEach(function (stage) {
+        if (STAGES.indexOf(stage) === -1) { problems.push(type + ": byStage has unknown stage " + JSON.stringify(stage)); }
+        ["primary", "secondary", "accent"].forEach(function (k) {
+          var v = p.byStage[stage][k];
+          if (!HEX_RE.test(v || "")) { problems.push(type + ": byStage." + stage + " " + k + " is " + JSON.stringify(v)); }
+        });
+      });
     }
 
     STAGES.forEach(function (stage) {

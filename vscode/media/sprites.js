@@ -1492,6 +1492,31 @@
     return null;  // null signals caller to paint the canvas
   }
 
+  // Per-column walk group (0, 1, or -1 for no leg) from the importer's
+  // SPRITE_GRID_META[type].legs[gridKey] spans; null when the grid has none.
+  var _legColCache = {};
+  function legColumnGroups(meta, spriteType, gridKey, COLS) {
+    var spans = meta && meta.legs && meta.legs[gridKey];
+    if (!spans || spans.length < 2) { return null; }
+    var key = spriteType + "|" + gridKey;
+    if (_legColCache[key]) { return _legColCache[key]; }
+    var groups = [];
+    for (var c = 0; c < COLS; c++) { groups.push(-1); }
+    for (var i = 0; i < spans.length; i++) {
+      for (var sc = spans[i][0]; sc <= spans[i][1] && sc < COLS; sc++) { groups[sc] = spans[i][2]; }
+    }
+    _legColCache[key] = groups;
+    return groups;
+  }
+
+  // Grid rows a leg in walk `group` is raised by on `legFrame`: frame 0 raises
+  // group 1, frame 1 raises group 0. Raising (not dropping) keeps the planted
+  // feet on the floor and the leg joined to the body.
+  function legLiftRows(group, legFrame, ROWS) {
+    if (group < 0 || legFrame === -1) { return 0; }
+    return (legFrame === 0 ? group === 1 : group === 0) ? Math.max(1, Math.round(ROWS * 0.03)) : 0;
+  }
+
   function renderSpriteGrid(ctx, state, x, bodyY, facingLeft, legFrame, breathPhase,
                             STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio,
                             quadrupedBellySagRows) {
@@ -1514,7 +1539,7 @@
       return;
     }
 
-    var palette    = getPalette(state.spriteType);
+    var palette    = getPalette(state.spriteType, state.stage);
     var primary    = palette.primary;
     var secondary  = palette.secondary;
 
@@ -1610,6 +1635,7 @@
 
     if (!grid) { return; }
 
+    var legCols = legColumnGroups(_gridMeta, spriteType, gridKey, COLS);
     // Map colour index to actual colour
     // Index 4 = gold pearl (used by dragon sprite for the flaming pearl)
     // Index 5 = gold (used by monkey sprite for banana) — same colour
@@ -1665,14 +1691,19 @@
           if (isLegRow) {
             // Leg rows shift down by sagPixels so the belly sag fills the gap above.
             colOffsetY = sagPixels;
-            var halfCols  = COLS / 2;
-            var isLeftLeg = col < halfCols;
-            if (legFrame === -1) {
-              // -1 = upright/neutral: both legs flush, no per-leg offset
-            } else if (legFrame === 0) {
-              colOffsetY += isLeftLeg ? 0 : cellH;
+            if (legCols) {
+              // Detected legs: the raised leg loses its top rows and moves up.
+              var lift = legLiftRows(legCols[col], legFrame, ROWS);
+              if (lift && row - lift < legRowStart) { continue; }
+              colOffsetY -= lift * cellH;
             } else {
-              colOffsetY += isLeftLeg ? cellH : 0;
+              var isLeftLeg = col < COLS / 2;
+              if (legFrame === 0) {
+                colOffsetY += isLeftLeg ? 0 : cellH;
+              } else if (legFrame === 1) {
+                colOffsetY += isLeftLeg ? cellH : 0;
+              }
+              // -1 = upright/neutral: both legs flush, no per-leg offset
             }
           }
 
@@ -1755,13 +1786,19 @@
           var oIsLegRow = (oRow >= legRowStart);
           if (oIsLegRow) {
             oDrawRow += sagRows;
-            var oIsLeftLeg = oCol < oHalfCols;
-            if (legFrame === 0) {
-              oDrawRow += oIsLeftLeg ? 0 : 1;
-            } else if (legFrame === 1) {
-              oDrawRow += oIsLeftLeg ? 1 : 0;
+            if (legCols) {
+              var oLift = legLiftRows(legCols[oCol], legFrame, ROWS);
+              if (oLift && oRow - oLift < legRowStart) { continue; }
+              oDrawRow -= oLift;
+            } else {
+              var oIsLeftLeg = oCol < oHalfCols;
+              if (legFrame === 0) {
+                oDrawRow += oIsLeftLeg ? 0 : 1;
+              } else if (legFrame === 1) {
+                oDrawRow += oIsLeftLeg ? 1 : 0;
+              }
+              // legFrame === -1: upright/neutral — no per-leg offset
             }
-            // legFrame === -1: upright/neutral — no per-leg offset
           }
 
           ofcCtx.fillStyle = colorMap[oCell] || primary;

@@ -343,11 +343,13 @@ Goal: drop in images for every animal at once, instead of running
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Folder convention `sprites/<species>/{baby,child,teen,adult,senior}.png` | `[x]` | Source images live in git, and these files are the source of truth |
-| Optional `sprites/<species>/sprite.json` | `[x]` | `palette {primary, secondary, accent}`, `background`, `transparent`, `transparentDistance`, `threshold`, `crop`, `anchor`, `legRowStart`, `upright`, `flip`, `inRotation`, `passcode`, `defaultName`. `<stage>_<mood>.png` adds mood art |
+| Optional `sprites/<species>/sprite.json` | `[x]` | `palette {primary, secondary, accent}`, `background`, `transparent`, `transparentDistance`, `threshold`, `crop`, `anchor`, `legRowStart`, `legs`, `upright`, `flip`, `inRotation`, `passcode`, `defaultName`. `<stage>_<mood>.png` adds mood art |
 | `scripts/import_sprites_bulk.js` | `[x]` | Imports every species folder in one run; `--check` for CI |
 | Refactor `import_sprite.js` into a reusable module | `[x]` | `scripts/lib/spriteImport.js`; the CLI is a thin wrapper that only prints, and `--inject` is removed (BUGFIX-179) |
 | One grid shared by all stages of a species | `[x]` | Fixes the clash where `SPRITE_GRID_META` is overwritten by the last stage imported; stages are padded bottom-centre onto the largest cropped size (≤ 192×128) |
 | One palette per species | `[x]` | Quantize all stages against the same 3 colours |
+| Opt-in palette per stage | `[x]` | `perStagePalette: true` auto-detects each stage's colours from its own images; `palettes.<stage>` sets exact ones. Emitted as `byStage`; `spriteGetPalette(type, stage)` applies it. Species without it are byte-identical |
+| Natural quadruped walk (detected legs) | `[x]` | Importer finds each leg near the feet and alternates them into two diagonal groups (`SPRITE_GRID_META.<species>.legs`; `sprite.json` `legs` overrides). The walk raises one group per frame by 3% of the grid height; feet stay planted. No legs found → old half-and-half step. Dragon hovers, unchanged |
 | Generated `media/sprites.generated.js` | `[x]` | DEFS + META + PALETTES written from scratch each run, instead of regex-splicing into the hand-maintained `sprites.js`; loaded by `sidebar.html`, `sprite_preview.html` and the PyCharm loaders |
 | Copy generated output into PyCharm `webview/` | `[x]` | Gradle copies it from `vscode/media` at build time |
 | Missing-stage report | `[x]` | Lists species/stage pairs with no image |

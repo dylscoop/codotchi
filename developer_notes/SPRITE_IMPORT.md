@@ -43,6 +43,13 @@ See [`SPRITES.md`](SPRITES.md) for the grid format and colour legend.
    node scripts/validate_sprites.js
    ```
 
+   On Windows you can double-click `scripts\import_sprites_bulk.bat`
+   instead. It opens the same file picker as the single-image importer
+   (select several images with Ctrl/Shift-click), asks for a pet name, lets
+   you match files to stages, asks for per-stage colours / flip / upright
+   (saved in `sprite.json`, other fields kept), copies the images into
+   `sprites\<pet>\`, then runs both commands.
+
    The import prints each species' grid size and palette, and warns about any
    missing stage. A species with missing stages uses its adult grid at those
    stages; with no adult grid it is drawn as the classic pet.
@@ -68,14 +75,18 @@ Every field is optional.
 | Field | Default | Meaning |
 |-------|---------|---------|
 | `palette` | auto | `{ primary, secondary, accent }`: exact source colours for indices 1 / 2 / 3. Each pixel maps to the nearest one. |
+| `perStagePalette` | `false` | `true`: each stage gets its own auto-detected palette from its own images (mood art like `adult_sleeping` counts towards `adult`). Stages whose colours differ from the species palette are written as `byStage`. Turn it on one species at a time; species without it are unchanged. |
+| `palettes` | — | `{ <stage>: { primary, secondary, accent } }`: exact colours for one stage. Overrides `palette` and `perStagePalette` for that stage. Unknown stage names are an error. |
 | `background` | `#1a1a1a` | Canvas background behind the pet. |
 | `transparent` | auto | Source colour to treat as transparent. When this is unset, a fully-opaque image with four matching corners has that corner colour removed. |
 | `transparentDistance` | `2500` | Squared-RGB tolerance for `transparent`. |
 | `threshold` | `128` | Alpha below which a pixel is transparent. |
 | `crop` | `true` | Trim each stage's transparent border before sizing. |
 | `anchor` | `"centre"` | Where narrower stages sit on the shared grid: `"centre"` or `"left"`. They are always bottom-aligned. |
+| `stageScale` | — | `{ <stage>: number }`: size multiplier for one stage relative to the others, e.g. `{ "baby": 3 }` when the baby image was drawn much smaller than the adult. |
 | `flip` | `false` | Mirror every stage. |
 | `legRowStart` | `floor(rows × 0.78)` | First leg-zone row **of the output grid** (used for the walk animation and belly sag). |
+| `legs` | auto-detected | `{ <gridKey>: [[startCol, endCol, group], ...] }`: hand-set leg columns for one grid (`"adult"`, `"adult_sleeping"`, …), replacing auto-detection there. `group` is `0` or `1`; legs in the same group step together. Quadrupeds only. |
 | `upright` | `false` | Portrait species; added to `UPRIGHT_TYPES`. |
 | `inRotation`, `passcode`, `defaultName` | — | Checked against `ROTATION_ANIMALS` and `customCharacters.js`; a mismatch prints a warning. |
 
@@ -96,17 +107,39 @@ For each species folder:
    - The renderer draws every species at a fixed body width, so a smaller stage
      image draws smaller inside that width.
 4. **Quantise** every stage against **one palette**. The palette comes from
-   `sprite.json`, or from the three most frequent colours across all stages,
-   ranked by luminance: brightest → 1 primary, mid → 2 secondary, darkest → 3
-   accent.
+   `sprite.json`, or is detected: near-identical shades are merged into
+   groups, then the three most common groups that are clearly different from
+   each other are picked (so a black-and-tan dog keeps its tan), ranked by
+   luminance: brightest → 1 primary, mid → 2 secondary, darkest → 3
+   accent. With `perStagePalette` (or a `palettes.<stage>` entry) a stage is
+   quantised against its own palette instead, detected from that stage's
+   images only; the renderer picks it up through
+   `spriteGetPalette(spriteType, stage)`. The egg and the background always
+   use the species palette.
 5. **Flip** if asked, then **pad** each stage onto the shared grid with
    transparent cells (bottom-aligned, horizontal position from `anchor`).
-6. **Write** `sprites.generated.js`. Species are in name order and the output
+6. **Find the legs** (quadrupeds) in every grid, unless `legs` sets them by
+   hand. The importer looks at the bottom 40% of the leg zone, where legs part
+   from the belly:
+   - A column counts as leg when at least a quarter of that band, and half as
+     much as the fullest column, is filled. A tail or shadow on the floor is
+     too thin to count.
+   - Runs of leg columns (bridging 1-column gaps) become legs. Runs narrower
+     than 2 columns or wider than 30% of the grid are dropped.
+   - Legs alternate between walk groups 0 and 1, front to back, so each group
+     mixes front and back legs.
+
+   The console prints each grid's legs (`adult: 3 legs [50-62|0, ...]`). The
+   walk raises one group per frame by 3% of the grid height: the leg loses its
+   top rows, so it stays joined to the body and the other group stays on the
+   floor. A grid with fewer than 2 legs walks the old way (left half against
+   right half, 1 row).
+7. **Write** `sprites.generated.js`. Species are in name order and the output
    is deterministic. The file contains:
    - `window.GENERATED_SPRITE_DEFS`: `sprites.js` merges it into `DEFS` before
      building `window.SPRITES`.
-   - `SPRITE_GRID_META` and palette entries, merged into the objects from
-     `spriteConstants.js` with `Object.assign`.
+   - `SPRITE_GRID_META` (including `legs`) and palette entries, merged into
+     the objects from `spriteConstants.js` with `Object.assign`.
    - `UPRIGHT_TYPES` entries for upright species.
 
 Load order (sidebar and sprite preview, both IDEs):

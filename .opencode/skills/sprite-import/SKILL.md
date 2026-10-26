@@ -24,7 +24,8 @@ pixel grids and rule checks, and this skill for the importer workflow.
 
 - Always try the exact user-specified source image first.
 - Do not force imported sprites into 48 x 32 unless the user explicitly asks for a fixed classic grid.
-- Imported image sprites are scaled to fit 192 x 128; the bulk import writes `SPRITE_GRID_META` and the palette into `sprites.generated.js` (never edit it by hand).
+- Imported image sprites are scaled to fit 192 x 128; the bulk import writes `SPRITE_GRID_META` and the palette into `sprites.generated.js` (never edit it by hand). Add `"perStagePalette": true` to `sprite.json` to give each stage its own auto-detected palette (written as `byStage`), or `palettes.<stage>` for exact per-stage colours.
+- Quadruped legs are auto-detected per grid for the walk animation and written as `SPRITE_GRID_META.<species>.legs`. Check the per-grid `legs` lines in the import output; if a grid's legs are wrong (e.g. a tail counted as a leg), set `"legs": { "<gridKey>": [[startCol, endCol, group 0|1], ...] }` in `sprite.json` (see `developer_notes/SPRITE_IMPORT.md`).
 - Never use broad global white background keying for animals with white or cream body areas.
 - Prefer edge-connected background masking when the subject has white/cream fur, feathers, wool, belly markings, or highlights.
 - Verify all five stages exist after injection: `baby`, `child`, `teen`, `adult`, `senior`.

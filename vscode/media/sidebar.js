@@ -634,7 +634,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (!mgBegin()) { return; }
     var W = mgCanvas.width;
     var H = mgCanvas.height;
-    var palette = lastState ? window.spriteGetPalette(lastState.spriteType) : null;
+    var palette = lastState ? window.spriteGetPalette(lastState.spriteType, lastState.stage) : null;
     mgArt.drawDoors(mgCtx, W, H, lrReveal, palette);
     mgArt.drawCountdown(mgCtx, W, H,
       lrReveal ? (lrReveal.won ? "✓" : "✗") : lrCountdown);
@@ -2737,7 +2737,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    * @param {object} state
    */
   function drawEnvironment(state) {
-    const palette    = getPalette(state.spriteType);
+    const palette    = getPalette(state.spriteType, state.stage);
     const background = palette.background;
 
     const W = spriteCanvas.width;
@@ -2996,7 +2996,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     }
 
     var t = Math.min(1, (nowMs - reaction.startMs) / reaction.durationMs);
-    var palette   = getPalette(state.spriteType);
+    var palette   = getPalette(state.spriteType, state.stage);
     var stageScale = STAGE_SCALES[state.stage] || 0.5;
     var bSize     = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * stageScale);
     var bWidth    = effectiveBWidth(state, bSize);
@@ -3225,7 +3225,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var scale    = STAGE_SCALES[state.stage] || 0.5;
     var bSize    = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * scale);
     var bWidth   = effectiveBWidth(state, bSize);
-    var palette  = getPalette(state.spriteType);
+    var palette  = getPalette(state.spriteType, state.stage);
     var secondary = palette.secondary;
 
     var indicatorX = x + Math.round(bWidth / 2) - 4;
@@ -3289,8 +3289,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    * Return the realistic colour palette for a given spriteType.
    * Delegates to spriteConstants.js.
    */
-  function getPalette(spriteType) {
-    return window.spriteGetPalette(spriteType);
+  function getPalette(spriteType, stage) {
+    return window.spriteGetPalette(spriteType, stage);
   }
 
   /**
