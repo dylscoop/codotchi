@@ -247,8 +247,8 @@ describe("per-mood sprite grids (renderSpriteGrid hook)", () => {
 describe("pet stands still while eating a meal (sidebar.js)", () => {
   it("locks movement during the fed_meal reaction so the bowl stays put", () => {
     assert.match(sidebarSource,
-      /\} else if \(activeReaction && activeReaction\.type === "fed_meal"\) \{[^}]*petVx = 0;/);
-    const lock = sidebarSource.indexOf('activeReaction.type === "fed_meal") {');
+      /\} else if \(activeReaction && \(activeReaction\.type === "fed_meal" \|\| activeReaction\.type === "tail_chase"\)\) \{[^}]*petVx = 0;/);
+    const lock = sidebarSource.indexOf('activeReaction.type === "tail_chase")) {');
     const wander = sidebarSource.indexOf("// ── Normal movement");
     assert.ok(lock > 0 && lock < wander, "fed_meal lock must come before the wander branch");
   });

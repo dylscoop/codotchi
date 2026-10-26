@@ -1677,6 +1677,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // Active reaction (first in queue, if any)
     var activeReaction = reactionQueue.length > 0 ? reactionQueue[0] : null;
 
+    // An energetic dog sometimes chases its tail while it stands idle
+    if (!activeReaction && wantsToChaseTail(lastState) && idleTimer > 0 && Math.random() < dt / TAIL_CHASE_EVERY_S) {
+      pushReaction("tail_chase", nowMs, TAIL_CHASE_MS);
+      activeReaction = reactionQueue[0];
+    }
+
     animTick++;
 
     // ── Movement ──────────────────────────────────────────────────────────
@@ -1704,8 +1710,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       petY  = isDragon ? floorY - Math.round(bHeight * 0.12) : floorY;
       petVy = 0;
 
-    } else if (activeReaction && activeReaction.type === "fed_meal") {
-      // Eating a meal: stand still at the bowl (wander resumes once the reaction ends)
+    } else if (activeReaction && (activeReaction.type === "fed_meal" || activeReaction.type === "tail_chase")) {
+      // Eating a meal or chasing its tail: stay put (wander resumes once the reaction ends)
       petVx = 0;
       petVy = 0;
       petY  = isDragon ? floorY - Math.round(bHeight * 0.12) : floorY;
@@ -3013,6 +3019,30 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   /** Length of a break nap in ticks — must match BREAK_NAP_TICKS in gameEngine.ts. */
   var BREAK_NAP_TICKS = 100;
 
+  /** A happy dog wags: the body wiggles from the tail this many times a second, by up to this many radians. */
+  var TAIL_WAG_HZ = 3;
+  var TAIL_WAG_ROT = 0.035;
+  /** Tail chase: about once every TAIL_CHASE_EVERY_S idle seconds, lasting TAIL_CHASE_MS. */
+  var TAIL_CHASE_EVERY_S = 40;
+  var TAIL_CHASE_MS = 1600;
+  /** Energy the dog needs before it will chase its tail. */
+  var TAIL_CHASE_MIN_ENERGY = 70;
+
+  function isAwakeDog(state) {
+    return !!(state && state.alive !== false && state.spriteType === "dog" && state.stage !== "egg" &&
+      !state.sleeping && !state.sick);
+  }
+
+  /** A happy dog wags its tail (a gentle body wiggle). */
+  function isWagging(state) {
+    return isAwakeDog(state) && state.mood === "happy" && !REDUCED_MOTION;
+  }
+
+  /** An energetic dog sometimes chases its tail while idle. */
+  function wantsToChaseTail(state) {
+    return isAwakeDog(state) && (state.energy || 0) >= TAIL_CHASE_MIN_ENERGY && !REDUCED_MOTION;
+  }
+
   /** The dog spends its break nap awake, chewing a big bone. */
   function isChewingBone(state) {
     return !!(state && state.spriteType === "dog" && state.sleeping && (state.breakNapTicksRemaining || 0) > 0);
@@ -3282,16 +3312,20 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    */
   function drawBodyWithReaction(state, x, bodyY, facingLeft, legFrame, reaction, nowMs, moodScaleY) {
     if (!reaction) {
-      if (moodScaleY && moodScaleY !== 1) {
-        // Squash/stretch anchored at the feet, widened slightly to keep the volume
+      var wag = isWagging(state) ? Math.sin(nowMs / 1000 * Math.PI * 2 * TAIL_WAG_HZ) * TAIL_WAG_ROT : 0;
+      if ((moodScaleY && moodScaleY !== 1) || wag !== 0) {
+        // Squash/stretch anchored at the feet, widened slightly to keep the volume;
+        // a happy dog also wiggles from the tail
         var mScale = STAGE_SCALES[state.stage] || 0.5;
         var mW     = effectiveBWidth(state, Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * mScale));
         var mH     = petBoxHeight(state, mW);
         var mCx    = x + mW / 2;
         var mFeet  = bodyY + mH;
+        var mSy    = moodScaleY || 1;
         spriteCtx.save();
         spriteCtx.translate(mCx, mFeet);
-        spriteCtx.scale(1 + (1 - moodScaleY) * 0.5, moodScaleY);
+        if (wag !== 0) { spriteCtx.rotate(wag); }
+        spriteCtx.scale(1 + (1 - mSy) * 0.5, mSy);
         spriteCtx.translate(-mCx, -mFeet);
         drawBody(state, x, bodyY, facingLeft, legFrame);
         spriteCtx.restore();
@@ -3310,6 +3344,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var feetY     = bodyY + bHeight;              // canvas Y of the bottom of the feet
 
     switch (reaction.type) {
+
+      case "tail_chase": {
+        // Spin round after its tail: flip back and forth in a small hopping circle
+        var spins  = 4;
+        var spinLeft = Math.floor(t * spins * 2) % 2 === 0 ? !facingLeft : facingLeft;
+        var tcDx = Math.sin(t * Math.PI * 2 * spins / 2) * 8;
+        var tcDy = -Math.abs(Math.sin(t * Math.PI * spins)) * 4;
+        drawBody(state, x + tcDx, bodyY + tcDy, spinLeft, legFrame);
+        break;
+      }
 
       case "fed_meal":
       case "fed_snack": {
