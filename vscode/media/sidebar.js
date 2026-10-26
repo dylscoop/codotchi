@@ -3139,7 +3139,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       });
     }
 
-    // Gift box (or big tea mug for Tim)
+    // Gift box (big tea mug for Tim, tennis ball for the dog)
     if (giftBoxX !== null) {
       var gbX = Math.round(giftBoxX);
       var _giftCc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
@@ -3169,6 +3169,28 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                                 : cell === 5 ? "#FFFFFF"
                                 :              "#8B5E3C";
             spriteCtx.fillRect(gbX + rx * BMS, bmY + ry * BMS, BMS, BMS);
+          });
+        });
+      } else if (state && state.spriteType === "dog") {
+        // The dog's gift is a tennis ball: 1 = felt, 2 = white seam, 3 = shade
+        var TENNIS_BALL_PIXELS = [
+          [0,0,1,1,1,1,0,0],
+          [0,2,1,1,1,1,2,0],
+          [1,1,2,1,1,2,1,1],
+          [1,1,1,2,2,1,1,1],
+          [1,1,1,2,2,1,1,3],
+          [1,1,2,1,1,2,1,3],
+          [0,2,1,1,1,1,2,0],
+          [0,0,3,3,3,3,0,0],
+        ];
+        var TBS = 2;
+        var tbY = H - 12 - TENNIS_BALL_PIXELS.length * TBS;
+        drawGridOutline(TENNIS_BALL_PIXELS, gbX, tbY, TBS, "rgba(0,0,0,0.55)");
+        TENNIS_BALL_PIXELS.forEach(function (row, ry) {
+          row.forEach(function (cell, rx) {
+            if (!cell) { return; }
+            spriteCtx.fillStyle = cell === 2 ? "#FFFFFF" : cell === 3 ? "#9DB51F" : "#D4ED31";
+            spriteCtx.fillRect(gbX + rx * TBS, tbY + ry * TBS, TBS, TBS);
           });
         });
       } else {

@@ -8,6 +8,8 @@
   - **Fetch**: throw the ball Left or Right and it flies off that side of the stage. The dog picks a side and runs off after it. Right side, and it trots back with the ball; wrong side, and it comes back empty, looks around, then runs off the other way to fetch it. One throw decides the game, and the dog trots instead of dashing.
   - **Tug-of-War**: the dog holds a rope that runs to your side of the stage. Each round it either pulls or rests. **Hold** when it pulls and **Pull** when it rests to drag it towards you. The game is scored for the dog: when it wins, your pet gets the winner's happiness.
 
+- The dog's gift on the floor is now a tennis ball instead of a gift box.
+
 ## [2.32.0] - 2026-10-26
 
 ### Added

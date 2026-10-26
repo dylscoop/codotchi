@@ -175,6 +175,7 @@ describe("dog voice, snacks and break bone", () => {
     assert.ok(sidebar.includes("drawBoneItem(MEATY_BONE_PIXELS"));
     assert.ok(sidebar.includes("if (chewing) { drawBreakBone("));
     assert.ok(sidebar.includes("_ignChar.ignoredBubble"));
+    assert.ok(sidebar.includes('} else if (state && state.spriteType === "dog") {\n        // The dog\'s gift is a tennis ball'));
     assert.ok(sidebar.includes('events.indexOf("attention_call_answered_gift") !== -1 && playsDogGames(state)'));
   });
 
