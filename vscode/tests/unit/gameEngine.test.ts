@@ -1826,6 +1826,35 @@ describe("applyMinigameResult", () => {
     }
   });
 
+  it("fetch (the dog's Coin Flip) uses Coin Flip's rewards and no weight change", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const won = applyMinigameResult(pet, "fetch", "win");
+    const lost = applyMinigameResult(pet, "fetch", "lose");
+    assert.equal(won.happiness, 50);
+    assert.equal(lost.happiness, 40);
+    assert.equal(won.weight, 40);
+    assert.equal(lost.weight, 40);
+    assert.ok(won.events.includes("minigame_fetch_win"));
+    assert.ok(lost.events.includes("minigame_fetch_lose"));
+  });
+
+  it("tug_of_war (the dog's Left / Right) uses Left / Right's rewards and weight loss", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const won = applyMinigameResult(pet, "tug_of_war", "win");
+    const lost = applyMinigameResult(pet, "tug_of_war", "lose");
+    assert.ok(won.happiness >= 55 && won.happiness <= 65, `got ${won.happiness}`);
+    assert.equal(lost.happiness, 45);
+    assert.equal(won.weight, 37);
+    assert.equal(lost.weight, 37);
+    assert.ok(won.events.includes("minigame_tug_of_war_win"));
+    assert.ok(lost.events.includes("minigame_tug_of_war_lose"));
+  });
+
+  it("fetch and tug_of_war wins award minigame XP", () => {
+    assert.ok(applyMinigameResult(makePet(), "fetch", "win").petXp > 0);
+    assert.ok(applyMinigameResult(makePet(), "tug_of_war", "win").petXp > 0);
+  });
+
   it("left_right clamps weight at WEIGHT_MIN (1) (BUGFIX-034)", () => {
     const pet = makePet({ happiness: 50, weight: 1 });
     const next = applyMinigameResult(pet, "left_right", "win");

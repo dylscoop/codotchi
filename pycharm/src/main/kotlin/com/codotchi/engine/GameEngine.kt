@@ -1026,11 +1026,12 @@ fun applyTokenCostView(state: PetState): PetState {
 /**
  * Return the happiness delta for a mini-game outcome.
  *
- * @param game   "left_right", "higher_lower", "coin_flip", "blackjack", "guess", or "memory"
+ * @param game   "left_right", "higher_lower", "coin_flip", "blackjack", "fetch", "tug_of_war", "guess", or "memory"
  * @param result "win" or "lose" ("push" too for blackjack)
  * @return An integer delta applied on top of the play baseline (+15); net totals: LR win 20–30, LR lose 10, HL win 25–35, HL lose 10, coin_flip win 15, coin_flip lose 5.
  */
 fun happinessDeltaForMinigame(game: String, result: String): Int {
+    val game = minigameStatsKey(game)
     if (game == "left_right") {
         if (result == "win") return Random.nextInt(MINIGAME_LR_WIN_MIN, MINIGAME_LR_WIN_MAX + 1) // +5–+15
         return MINIGAME_LR_LOSE_DELTA // −5
@@ -1051,6 +1052,16 @@ fun happinessDeltaForMinigame(game: String, result: String): Int {
     return MINIGAME_LOSE_HAPPINESS_BOOST
 }
 
+/**
+ * The game whose stats a mini-game uses. The dog's Fetch replaces Coin Flip and
+ * its Tug-of-War replaces Left / Right, so they share those games' rewards.
+ */
+fun minigameStatsKey(game: String): String = when (game) {
+    "fetch"      -> "coin_flip"
+    "tug_of_war" -> "left_right"
+    else         -> game
+}
+
 fun applyMinigameResult(state: PetState, game: String, result: String, bossAccess: String = "queue"): PetState {
     // Hosts call this straight after play(): carry over any attention call that
     // play() answered, otherwise its answered event (and notification / log line) is lost.
@@ -1065,7 +1076,9 @@ fun applyMinigameResult(state: PetState, game: String, result: String, bossAcces
     val delta = happinessDeltaForMinigame(game, result)
     // BUGFIX-034: left_right and higher_lower lose an extra 3 weight on top of the
     // 3 already lost in play(). coin_flip and blackjack keep total weight loss at 3 (no bonus here).
-    val weightBonus = if (game == "left_right" || game == "higher_lower") PLAY_WEIGHT_LOSS_BONUS else 0
+    // The dog's tug_of_war counts as left_right and its fetch as coin_flip.
+    val statsGame = minigameStatsKey(game)
+    val weightBonus = if (statsGame == "left_right" || statsGame == "higher_lower") PLAY_WEIGHT_LOSS_BONUS else 0
     val newWeight = clampWeight(state.weight - weightBonus)
     val events = answered.toMutableList()
     events.add("minigame_${game}_${result}")

@@ -2225,12 +2225,14 @@ export function applyTokenCostView(state: PetState): PetState {
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
  *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
- *               "coin_flip" (Coin Flip), "blackjack" (Stu's one-round Blackjack) or
+ *               "coin_flip" (Coin Flip), "blackjack" (Stu's one-round Blackjack),
+ *               "fetch" (the dog's Coin Flip), "tug_of_war" (the dog's Left / Right) or
  *               "boss_battle" (turn-based Boss Battle).
  * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
 export function happinessDeltaForMinigame(game: string, result: string): number {
+  game = minigameStatsKey(game);
   if (game === "left_right") {
     if (result === "win") {
       return Math.floor(Math.random() * (MINIGAME_LR_WIN_MAX - MINIGAME_LR_WIN_MIN + 1)) + MINIGAME_LR_WIN_MIN; // +5–+15
@@ -2264,14 +2266,24 @@ export function happinessDeltaForMinigame(game: string, result: string): number 
 }
 
 /**
+ * The game whose stats a mini-game uses. The dog's Fetch replaces Coin Flip and
+ * its Tug-of-War replaces Left / Right, so they share those games' rewards.
+ */
+export function minigameStatsKey(game: string): string {
+  if (game === "fetch") { return "coin_flip"; }
+  if (game === "tug_of_war") { return "left_right"; }
+  return game;
+}
+
+/**
  * Apply a mini-game result happiness delta to the pet state.
  *
  * Also applies an additional weight loss for vigorous mini-games (BUGFIX-034):
- *   - left_right and higher_lower: −3 extra weight (total −6 with play() baseline)
- *   - coin_flip and blackjack: no extra weight loss (total −3 from play() only)
+ *   - left_right, tug_of_war and higher_lower: −3 extra weight (total −6 with play() baseline)
+ *   - coin_flip, fetch and blackjack: no extra weight loss (total −3 from play() only)
  *
  * @param state - The current pet state.
- * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "boss_battle", "guess", or "memory".
+ * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "fetch", "tug_of_war", "boss_battle", "guess", or "memory".
  * @param result - "win" or "lose" ("push" too for blackjack).
  * @param bossAccess - Boss Battle access from the host's dev-mode settings:
  *          "off" ignores every boss result, "queue" needs an unlocked boss,
@@ -2286,7 +2298,8 @@ export function applyMinigameResult(
   bossAccess: BossAccess = "queue"
 ): PetState {
   const delta = happinessDeltaForMinigame(game, result);
-  const isVigorousGame = game === "left_right" || game === "higher_lower";
+  const statsGame = minigameStatsKey(game);
+  const isVigorousGame = statsGame === "left_right" || statsGame === "higher_lower";
   // Hosts call this straight after play(): carry over any attention call that
   // play() answered, otherwise its answered event (and toast / log line) is lost.
   const answered = state.events.filter((e) => e.startsWith("attention_call_answered_"));
