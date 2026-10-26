@@ -44,9 +44,10 @@ See [`SPRITES.md`](SPRITES.md) for the grid format and colour legend.
    ```
 
    On Windows you can double-click `scripts\import_sprites_bulk.bat`
-   instead. It asks for a folder of images and a pet name, lets you match
-   files to stages, asks for per-stage colours / flip / upright (saved in
-   `sprite.json`, other fields kept), copies the images into
+   instead. It opens the same file picker as the single-image importer
+   (select several images with Ctrl/Shift-click), asks for a pet name, lets
+   you match files to stages, asks for per-stage colours / flip / upright
+   (saved in `sprite.json`, other fields kept), copies the images into
    `sprites\<pet>\`, then runs both commands.
 
    The import prints each species' grid size and palette, and warns about any
@@ -104,8 +105,10 @@ For each species folder:
    - The renderer draws every species at a fixed body width, so a smaller stage
      image draws smaller inside that width.
 4. **Quantise** every stage against **one palette**. The palette comes from
-   `sprite.json`, or from the three most frequent colours across all stages,
-   ranked by luminance: brightest → 1 primary, mid → 2 secondary, darkest → 3
+   `sprite.json`, or is detected: near-identical shades are merged into
+   groups, then the three most common groups that are clearly different from
+   each other are picked (so a black-and-tan dog keeps its tan), ranked by
+   luminance: brightest → 1 primary, mid → 2 secondary, darkest → 3
    accent. With `perStagePalette` (or a `palettes.<stage>` entry) a stage is
    quantised against its own palette instead, detected from that stage's
    images only; the renderer picks it up through

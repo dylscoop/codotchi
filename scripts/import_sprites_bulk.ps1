@@ -1,7 +1,7 @@
 
 # import_sprites_bulk.ps1
 # Interactive launcher for scripts/import_sprites_bulk.js
-# Pick a folder of stage images, name the pet, choose options; the images are
+# Pick the pet's stage images, name the pet, choose options; the images are
 # copied into sprites\<pet>\, sprite.json is updated, and the bulk import runs.
 #
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\import_sprites_bulk.ps1
@@ -61,32 +61,34 @@ Write-Host "  Codotchi Bulk Sprite Importer" -ForegroundColor Cyan
 Write-Host "  -----------------------------" -ForegroundColor DarkGray
 
 # ---------------------------------------------------------------------------
-# Folder picker
+# Image picker (same window as import_sprite.ps1; select several images)
 # ---------------------------------------------------------------------------
 
 Add-Type -AssemblyName System.Windows.Forms | Out-Null
 
-$dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-$dlg.Description = "Select the folder with the pet's stage images (baby, child, teen, adult, senior)"
+$dlg = New-Object System.Windows.Forms.OpenFileDialog
+$dlg.Title       = "Select the pet's stage images (Ctrl/Shift-click to pick several)"
+$dlg.Filter      = "Image files (*.png;*.jpg;*.jpeg;*.webp;*.pixil)|*.png;*.jpg;*.jpeg;*.webp;*.pixil|All files (*.*)|*.*"
+$dlg.Multiselect = $true
 $candidateDir = Join-Path $RepoRoot "downloaded_sprites"
-$dlg.SelectedPath = if (Test-Path $candidateDir) { $candidateDir } else { $SpritesDir }
+$dlg.InitialDirectory = if (Test-Path $candidateDir) { $candidateDir } else { $SpritesDir }
 
 Write-Host ""
-Write-Host "  Opening folder picker..." -ForegroundColor DarkGray
+Write-Host "  Opening file picker..." -ForegroundColor DarkGray
 if ($dlg.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
     Write-Host "  Cancelled." -ForegroundColor DarkGray
     exit 0
 }
-$srcDir = [System.IO.Path]::GetFullPath($dlg.SelectedPath)
-Write-Host "  Folder : $srcDir" -ForegroundColor Green
 
-$images = @(Get-ChildItem -LiteralPath $srcDir -File |
+$images = @($dlg.FileNames | ForEach-Object { Get-Item -LiteralPath $_ } |
     Where-Object { $ImageExts -contains $_.Extension.ToLower() } |
     Sort-Object Name)
 if ($images.Count -eq 0) {
-    Write-Host "  No images (.png .jpg .jpeg .webp .pixil) in that folder." -ForegroundColor Yellow
+    Write-Host "  No images (.png .jpg .jpeg .webp .pixil) selected." -ForegroundColor Yellow
     exit 1
 }
+$srcDir = $images[0].DirectoryName
+Write-Host "  Selected $($images.Count) image(s) from $srcDir" -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
 # Pet name
@@ -94,7 +96,7 @@ if ($images.Count -eq 0) {
 
 Write-Section "Pet"
 $defaultName = (Split-Path $srcDir -Leaf).ToLower() -replace '[^a-z0-9_]', '_'
-if ($defaultName -notmatch '^[a-z]') { $defaultName = '' }
+if ($defaultName -notmatch '^[a-z]' -or $defaultName -eq 'downloaded_sprites') { $defaultName = '' }
 $pet = ''
 while ($pet -eq '') {
     $hint = if ($defaultName) { "blank = $defaultName" } else { "e.g. dog, cat, shiba" }
