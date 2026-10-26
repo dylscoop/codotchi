@@ -2019,9 +2019,11 @@ export function scold(state) {
  * If an "unhappiness" attention call is active, it is answered instead.
  *
  * @param state - The current pet state.
+ * @param opts - Optional per-character overrides.
+ * @param opts.breakWeightGain - Weight gained when a break call is answered (the dog's big bone; default 0).
  * @returns A new PetState after the action.
  */
-export function praise(state) {
+export function praise(state, opts = {}) {
     const answeredGift = answerAttentionCall(state, "gift");
     const answeredBreak = !answeredGift ? answerAttentionCall(state, "break") : null;
     const answeredUnhappiness = !answeredGift && !answeredBreak ? answerAttentionCall(state, "unhappiness") : null;
@@ -2053,7 +2055,8 @@ export function praise(state) {
         happiness: clampStat(state.happiness + happinessBonus),
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         ...(goesToSleep ? { sleeping: true, consecutiveSnacks: 0 } : {}),
-        ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS, ticksSinceLastBreakCall: 0 } : {}),
+        ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS, ticksSinceLastBreakCall: 0,
+            weight: clampWeight(state.weight + (opts.breakWeightGain ?? 0)) } : {}),
         events,
     });
     return answered ? awardXp(next, "care", Date.now(), true) : next;

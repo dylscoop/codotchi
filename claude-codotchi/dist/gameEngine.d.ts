@@ -753,9 +753,13 @@ export declare function scold(state: PetState): PetState;
  * If an "unhappiness" attention call is active, it is answered instead.
  *
  * @param state - The current pet state.
+ * @param opts - Optional per-character overrides.
+ * @param opts.breakWeightGain - Weight gained when a break call is answered (the dog's big bone; default 0).
  * @returns A new PetState after the action.
  */
-export declare function praise(state: PetState): PetState;
+export declare function praise(state: PetState, opts?: {
+    breakWeightGain?: number;
+}): PetState;
 /**
  * Apply the code-activity happiness and discipline boost.
  *

@@ -149,6 +149,7 @@ describe("dog voice, snacks and break bone", () => {
       noWake:  "__Name__ won't give up the bone yet!",
       over:    "__Name__ finished the bone. Back to work!",
       button:  "Chewing",
+      weightGain: 5,
     });
   });
 
@@ -165,6 +166,15 @@ describe("dog voice, snacks and break bone", () => {
   });
 
   it("shows the break bone text in the IDE notifications", () => {
+    assert.ok(read("vscode/src/sidebarProvider.ts").includes("praise(state, { breakWeightGain: getCustomCharacterBySpriteType(state.spriteType)?.breakNap?.weightGain })"));
+    assert.ok(read("pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt").includes("breakWeightGain = getCustomCharacterBySpriteType(state.spriteType)?.breakNap?.weightGain ?: 0"));
+    assert.ok(read("pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt").includes("weightGain = 5,"));
+    const sidebar = read("vscode/media/sidebar.js");
+    assert.ok(sidebar.includes('if (code === "fell_asleep" && (state.breakNapTicksRemaining || 0) > 0) { return null; }'),
+      "the log must not say the dog fell asleep on its break");
+    assert.ok(sidebar.includes("if (!state.activeAttentionCall) { bubbleQueue = []; }"), "stale call bubbles are dropped");
+    assert.match(sidebar, /function startFetchGame\(\) \{[\s\S]*?clearStageBubbles\(\);/);
+    assert.match(sidebar, /function startTugGame\(\) \{[\s\S]*?clearStageBubbles\(\);/);
     assert.ok(read("vscode/src/extension.ts").includes("customChar?.breakNap?.over"));
     assert.ok(read("pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt").includes("customChar?.breakNap?.over"));
   });

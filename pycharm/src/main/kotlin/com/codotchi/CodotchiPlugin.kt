@@ -561,7 +561,7 @@ class CodotchiPlugin : Disposable {
 
                 "praise" -> {
                     state ?: return@withLock
-                    nextState = praise(state)
+                    nextState = praise(state, breakWeightGain = getCustomCharacterBySpriteType(state.spriteType)?.breakNap?.weightGain ?: 0)
                 }
 
                 "pat" -> {

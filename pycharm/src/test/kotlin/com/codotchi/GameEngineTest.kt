@@ -652,6 +652,13 @@ class GameEngineTest {
     }
 
     @Test
+    fun `answering a break call adds breakWeightGain for the dog's bone`() {
+        assertEquals(30, praise(makePet().copy(activeAttentionCall = "break", weight = 25), breakWeightGain = 5).weight)
+        assertEquals(25, praise(makePet().copy(activeAttentionCall = "gift", weight = 25), breakWeightGain = 5).weight)
+        assertEquals(25, praise(makePet().copy(activeAttentionCall = "break", weight = 25)).weight)
+    }
+
+    @Test
     fun `fetch and tug of war share Coin Flip and Left Right rewards`() {
         assertEquals(0, happinessDeltaForMinigame("fetch", "win"))
         assertEquals(-10, happinessDeltaForMinigame("fetch", "lose"))

@@ -3063,6 +3063,11 @@ describe("break reminder attention call", () => {
 });
 
 describe("break nap", () => {
+  it("adds breakWeightGain only when a break call is answered (the dog's big bone)", () => {
+    assert.equal(praise(makePet({ activeAttentionCall: "break", weight: 25 }), { breakWeightGain: 5 }).weight, 30);
+    assert.equal(praise(makePet({ activeAttentionCall: "gift", weight: 25 }), { breakWeightGain: 5 }).weight, 25);
+    assert.equal(praise(makePet({ weight: 25 }), { breakWeightGain: 5 }).weight, 25);
+  });
   const napping = (): PetState => praise(makePet({
     activeAttentionCall: "break", sleeping: false, hunger: 40, happiness: 30, energy: 20,
     health: 70, weight: 25, poops: 2, sick: false, nextPoopIntervalTicks: 1,
@@ -3071,6 +3076,7 @@ describe("break nap", () => {
   it("praising a break call starts a 5-minute nap", () => {
     assert.equal(BREAK_NAP_TICKS * 3, 5 * 60, "100 ticks × 3 s = 5 min");
     const pet = napping();
+    assert.equal(pet.weight, 25, "no weight change by default");
     assert.equal(pet.sleeping, true);
     assert.equal(pet.breakNapTicksRemaining, BREAK_NAP_TICKS);
     assert.ok(pet.events.includes("break_nap_started"));

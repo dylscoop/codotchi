@@ -1238,9 +1238,10 @@ fun scold(state: PetState): PetState {
  * Praise the pet. Answers a gift call (+GIFT_PRAISE_HAPPINESS_BOOST), a break call
  * (+BREAK_PRAISE_HAPPINESS_BOOST, and the pet takes a BREAK_NAP_TICKS (5-minute) nap
  * while you rest: stats frozen except energy, aging continues, can't be woken early), or an
- * unhappiness call, in that order.
+ * unhappiness call, in that order. breakWeightGain is added to weight when a break
+ * call is answered (the dog's big bone).
  */
-fun praise(state: PetState): PetState {
+fun praise(state: PetState, breakWeightGain: Int = 0): PetState {
     val answeredGift        = answerAttentionCall(state, "gift")
     val answeredBreak       = if (answeredGift == null) answerAttentionCall(state, "break") else null
     val answeredUnhappiness = if (answeredGift == null && answeredBreak == null) answerAttentionCall(state, "unhappiness") else null
@@ -1264,6 +1265,7 @@ fun praise(state: PetState): PetState {
             breakNapTicksRemaining = if (answeredBreak != null) BREAK_NAP_TICKS else state.breakNapTicksRemaining,
             ticksSinceLastBreakCall = if (answeredBreak != null) 0 else state.ticksSinceLastBreakCall,
             consecutiveSnacks = if (goesToSleep) 0 else state.consecutiveSnacks,
+            weight      = if (answeredBreak != null) clampWeight(state.weight + breakWeightGain) else state.weight,
             discipline  = clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
             happiness   = clampStat(state.happiness  + happinessBonus),
             careMistakes = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),

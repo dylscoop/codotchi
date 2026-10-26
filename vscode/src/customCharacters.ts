@@ -80,6 +80,8 @@ export interface CustomCharacterBreakNap {
   over:    string;
   /** Sleep button label while the break runs ("Chewing 3m"). */
   button:  string;
+  /** Weight gained when the break starts (the dog's big bone). */
+  weightGain?: number;
 }
 
 export const CUSTOM_CHARACTERS: CustomCharacter[] = [
@@ -146,6 +148,7 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
       noWake:  "__Name__ won't give up the bone yet!",
       over:    "__Name__ finished the bone. Back to work!",
       button:  "Chewing",
+      weightGain: 5,
     },
   },
   // ── Add future custom characters here ──────────────────────────────────────

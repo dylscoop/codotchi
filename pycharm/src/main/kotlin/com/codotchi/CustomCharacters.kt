@@ -83,6 +83,8 @@ data class CustomCharacterBreakNap(
     val over: String,
     /** Sleep button label while the break runs ("Chewing 3m"). */
     val button: String,
+    /** Weight gained when the break starts (the dog's big bone). */
+    val weightGain: Int = 0,
 )
 
 val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
@@ -149,6 +151,7 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
             noWake  = "__Name__ won't give up the bone yet!",
             over    = "__Name__ finished the bone. Back to work!",
             button  = "Chewing",
+            weightGain = 5,
         ),
     ),
     // ── Add future custom characters here ────────────────────────────────────

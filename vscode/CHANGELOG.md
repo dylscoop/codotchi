@@ -9,6 +9,11 @@
   - **Tug-of-War**: the dog holds a rope that runs to your side of the stage. Each round it either pulls or rests. **Hold** when it pulls and **Pull** when it rests to drag it towards you. The game is scored for the dog: when it wins, your pet gets the winner's happiness.
 
 - The dog's gift on the floor is now a tennis ball instead of a gift box.
+- The dog's bone-chewing break adds 5 weight, and the log no longer says it "fell asleep" on its break.
+
+### Fixed
+
+- An old attention-call message could pop up in the pet's speech bubble partway through Fetch. Queued call bubbles are now dropped once the call is answered or has expired, and when a dog game starts.
 
 ## [2.32.0] - 2026-10-26
 

@@ -1131,9 +1131,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     document.getElementById("btn-fetch-right").disabled = !enabled;
   }
 
+  /** Drop old speech (an earlier attention call) so it doesn't pop up mid-game. */
+  function clearStageBubbles() {
+    bubbleQueue = [];
+    if (activeBubble && !petIsSleeping) { activeBubble = null; }
+  }
+
   function startFetchGame() {
     if (!mgArt) { startCoinFlipGame(); return; }
     mgClear();
+    clearStageBubbles();
     showMgPanel("mg-fetch");
     document.getElementById("fetch-feedback").textContent = "";
     fetchButtons(true);
@@ -1186,6 +1193,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   function startTugGame() {
     if (!mgArt) { startLeftRightGame(); return; }
     mgClear();
+    clearStageBubbles();
     tugRound = 0;
     tugScore = 0;
     stageGame = { kind: "tug", from: 0, to: 0, startMs: 0, dogPulls: false };
@@ -2177,6 +2185,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var nowMs = performance.now();
     var events = state.events || [];
 
+    // A queued attention-call bubble is stale once the call has been answered or has expired
+    if (!state.activeAttentionCall) { bubbleQueue = []; }
+
     // A snack answers the hunger / craving call as soon as it's placed, but the
     // "answered" bubble and log line wait until the pet has eaten it, then come
     // through with the fed_snack state. Reduced motion has no walking pet to
@@ -2699,6 +2710,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       labels["attention_call_answered_break"] = _bn.started.replace("__Name__", n) + " (5 min).";
       labels["break_nap_no_wake"]             = _bn.noWake.replace("__Name__", n);
       labels["break_nap_over"]                = _bn.over.replace("__Name__", n);
+      // It doesn't fall asleep on its break, it gets the bone
+      if (code === "fell_asleep" && (state.breakNapTicksRemaining || 0) > 0) { return null; }
     }
     var val = labels[code];
     if (val) {
