@@ -8,6 +8,7 @@
 |------|-------------|
 | `vscode/media/sidebar.js`, `sidebar.html` | Fetch and Tug-of-War now play on the pet's own stage with the real dog sprite (`stageGame`, `stageGamePose`, `drawStageGame`), not the `#mg-canvas` overlay. **Fetch**: throw Left / Right; the ball flies off that edge and the dog runs off a random side - the right side brings the ball straight back, the wrong side comes back empty, looks around, then runs off the other side for it. **Tug-of-War**: Pull / Hold - Hold beats a pull, Pull beats a rest (`tugWon`); the dog is dragged along the floor on a rope to your edge. Fetch is a single throw and the dog trots (runs about 1.3 s each). Tug-of-War is 3 rounds scored from the dog's side: the dog winning 2+ rounds sends win, so the pet gets the reward. Both 50/50, no hints |
 | `vscode/media/minigameArt.js` | removed `drawFetchScene`, `fetchLayout`, `drawTugScene`, `tugLayout`, the bush art and colours; added `fetchPlan`, `planPose`, `fetchBallPose`, `drawBall`, `drawTugRope` |
+| `vscode/media/sidebar.js` (`drawEnvironment`) | the dog's floor gift is a tennis ball (`TENNIS_BALL_PIXELS`) instead of the gift box |
 | `vscode/tests/unit/minigameArt.test.ts` | tests for the run plans, ball arc, rope and the Pull / Hold rule |
 | all manifests, `README.md` | version 2.32.1 |
 
