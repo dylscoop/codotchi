@@ -11,7 +11,8 @@
 | `scripts/lib/spriteImport.js` | Auto background removal peels framed backgrounds layer by layer (frame, then plain background) and only clears edge-connected pixels, keeping interior whites. Auto palette merges near-identical shades and picks three clearly different colours |
 | `scripts/export_sprite_pngs.js`, `scripts/validate_sprites.js` | export per-stage colours as `palettes`; validate `byStage` |
 | `scripts/import_sprites_bulk.bat`, `scripts/import_sprites_bulk.ps1` (new) | double-click bulk importer: multi-select file picker, pet name, stage matching, colour / flip / upright options |
-| `sprites/dog/*`, `vscode/media/sprites.generated.js` | new dog sprites with per-stage colours |
+| `sprites/dog/*`, `vscode/media/sprites.generated.js` | new dog sprites with per-stage colours; baby drawn 3× larger via `stageScale` |
+| `scripts/import_sprites_bulk.js` (`stageScale`) | `sprite.json` `stageScale.<stage>` enlarges one stage relative to the others |
 | `vscode/tests/unit/spriteImportBulk.test.ts` | per-stage palettes, framed backgrounds, distinct colours |
 | all manifests, `README.md` | version 2.31.0 |
 

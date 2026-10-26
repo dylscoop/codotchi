@@ -83,6 +83,7 @@ Every field is optional.
 | `threshold` | `128` | Alpha below which a pixel is transparent. |
 | `crop` | `true` | Trim each stage's transparent border before sizing. |
 | `anchor` | `"centre"` | Where narrower stages sit on the shared grid: `"centre"` or `"left"`. They are always bottom-aligned. |
+| `stageScale` | — | `{ <stage>: number }`: size multiplier for one stage relative to the others, e.g. `{ "baby": 3 }` when the baby image was drawn much smaller than the adult. |
 | `flip` | `false` | Mirror every stage. |
 | `legRowStart` | `floor(rows × 0.78)` | First leg-zone row **of the output grid** (used for the walk animation and belly sag). |
 | `upright` | `false` | Portrait species; added to `UPRIGHT_TYPES`. |

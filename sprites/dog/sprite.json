@@ -11,5 +11,6 @@
     "inRotation":  true,
     "passcode":  "shiba",
     "defaultName":  "Codotchi",
-    "perStagePalette":  true
+    "perStagePalette":  true,
+    "stageScale":  { "baby":  3 }
 }

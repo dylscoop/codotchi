@@ -187,6 +187,18 @@ describe("bulk sprite import", () => {
     assert.equal(pup.palette.primary, "#d2a064");
   });
 
+  it("enlarges one stage with stageScale", () => {
+    const src = freshDir("stagescale");
+    writePng(path.join(src, "pup", "baby.png"), ["WR", "WW"]);
+    writePng(path.join(src, "pup", "adult.png"), ["WWWWWW", "WRRWWW", "NWWNWW", "WWWWWW", "WWWWWW", "WWWWWW"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ stageScale: { baby: 3 } }));
+    const pup = bulk.generate(src).species[0];
+    assert.equal(pup.cols, 6);
+    assert.equal(rowsOf(pup.grids.baby).filter((r) => r.includes("1")).length, 6);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ stageScale: { elder: 2 } }));
+    assert.throws(() => bulk.generate(src), /unknown stage "elder"/);
+  });
+
   it("rejects a species folder name that is not a valid spriteType", () => {
     const src = freshDir("badname");
     writePng(path.join(src, "Big Dog", "adult.png"), ["W"]);

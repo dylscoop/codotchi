@@ -31,6 +31,8 @@
  *     crop           trim the transparent border of each stage (default true)
  *     anchor         "centre" (default) or "left": where narrower stages sit
  *                    on the shared grid (always bottom-aligned)
+ *     stageScale     { <stage>: number } size multiplier for one stage's
+ *                    image relative to the others (e.g. { "baby": 3 })
  *     flip           mirror every stage (source faces right; quadrupeds must face left)
  *     legRowStart    first leg-zone row of the output grid (default floor(rows * 0.78))
  *     upright        portrait species (added to UPRIGHT_TYPES)
@@ -119,16 +121,23 @@ function importSpecies(species, dir) {
     return img;
   });
 
-  // 2. One scale for every stage, so the largest fits the runtime cap
-  var maxW  = Math.max.apply(null, images.map(function (i) { return i.width; }));
-  var maxH  = Math.max.apply(null, images.map(function (i) { return i.height; }));
+  // 2. One scale for every stage, so the largest fits the runtime cap.
+  //    stageScale.<stage> enlarges (or shrinks) one stage relative to the rest.
+  var stageScale = config.stageScale || {};
+  Object.keys(stageScale).forEach(function (s) {
+    if (STAGES.indexOf(s) === -1) { throw new Error(dir + ": stageScale has unknown stage \"" + s + "\""); }
+    if (!(stageScale[s] > 0)) { throw new Error(dir + ": stageScale." + s + " must be a positive number"); }
+  });
+  var mults = keys.map(function (k) { return stageScale[k.split("_")[0]] || 1; });
+  var maxW  = Math.max.apply(null, images.map(function (i, n) { return i.width  * mults[n]; }));
+  var maxH  = Math.max.apply(null, images.map(function (i, n) { return i.height * mults[n]; }));
   var scale = lib.capScale(maxW, maxH);
   var cols  = Math.max(1, Math.round(maxW * scale));
   var rows  = Math.max(1, Math.round(maxH * scale));
-  var resampled = images.map(function (img) {
+  var resampled = images.map(function (img, n) {
     return lib.resample(img,
-      Math.min(cols, Math.max(1, Math.round(img.width  * scale))),
-      Math.min(rows, Math.max(1, Math.round(img.height * scale))));
+      Math.min(cols, Math.max(1, Math.round(img.width  * mults[n] * scale))),
+      Math.min(rows, Math.max(1, Math.round(img.height * mults[n] * scale))));
   });
 
   // 3. Build the palette(s); quantise, mirror, pad onto the shared grid.
