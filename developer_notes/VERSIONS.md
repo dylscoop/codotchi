@@ -1,6 +1,21 @@
 # Version History
 
-## v2.30.1 - current
+## v2.30.2 - current
+
+### Changes from v2.30.1 (per-stage sprite colours, better bulk import, new dog)
+
+| File | What changed |
+|------|-------------|
+| `scripts/import_sprites_bulk.js` | `sprite.json` gains `perStagePalette` (auto-detect a palette per stage from its own images) and `palettes.<stage>` (exact per-stage colours); written as `byStage` on the species palette. Species without them are byte-identical |
+| `vscode/media/spriteConstants.js`, `sprites.js`, `sidebar.js` | `spriteGetPalette(type, stage)` applies `byStage`; every pet palette lookup passes the stage |
+| `scripts/lib/spriteImport.js` | Auto background removal peels framed backgrounds layer by layer (frame, then plain background) and only clears edge-connected pixels, keeping interior whites. Auto palette merges near-identical shades and picks three clearly different colours |
+| `scripts/export_sprite_pngs.js`, `scripts/validate_sprites.js` | export per-stage colours as `palettes`; validate `byStage` |
+| `scripts/import_sprites_bulk.bat`, `scripts/import_sprites_bulk.ps1` (new) | double-click bulk importer: multi-select file picker, pet name, stage matching, colour / flip / upright options |
+| `sprites/dog/*`, `vscode/media/sprites.generated.js` | new dog sprites with per-stage colours |
+| `vscode/tests/unit/spriteImportBulk.test.ts` | per-stage palettes, framed backgrounds, distinct colours |
+| all manifests, `README.md` | version 2.30.2 |
+
+## v2.30.1
 
 ### Changes from v2.30.0 (lighter on CPU and disk - branch speedups)
 
