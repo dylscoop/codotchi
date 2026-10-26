@@ -669,21 +669,27 @@ export declare function applyTokenCostView(state: PetState): PetState;
  *
  * @param game - "guess" (legacy coin-flip), "memory" (Pattern Memory),
  *               "left_right" (Left / Right), "higher_lower" (Higher or Lower),
- *               "coin_flip" (Coin Flip), "blackjack" (Stu's one-round Blackjack) or
+ *               "coin_flip" (Coin Flip), "blackjack" (Stu's one-round Blackjack),
+ *               "fetch" (the dog's Coin Flip), "tug_of_war" (the dog's Left / Right) or
  *               "boss_battle" (turn-based Boss Battle).
  * @param result - "win" or "lose" ("push" too for blackjack).
  * @returns A positive integer to add to the pet's happiness stat (0 for coin_flip loss).
  */
 export declare function happinessDeltaForMinigame(game: string, result: string): number;
 /**
+ * The game whose stats a mini-game uses. The dog's Fetch replaces Coin Flip and
+ * its Tug-of-War replaces Left / Right, so they share those games' rewards.
+ */
+export declare function minigameStatsKey(game: string): string;
+/**
  * Apply a mini-game result happiness delta to the pet state.
  *
  * Also applies an additional weight loss for vigorous mini-games (BUGFIX-034):
- *   - left_right and higher_lower: −3 extra weight (total −6 with play() baseline)
- *   - coin_flip and blackjack: no extra weight loss (total −3 from play() only)
+ *   - left_right, tug_of_war and higher_lower: −3 extra weight (total −6 with play() baseline)
+ *   - coin_flip, fetch and blackjack: no extra weight loss (total −3 from play() only)
  *
  * @param state - The current pet state.
- * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "boss_battle", "guess", or "memory".
+ * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "fetch", "tug_of_war", "boss_battle", "guess", or "memory".
  * @param result - "win" or "lose" ("push" too for blackjack).
  * @param bossAccess - Boss Battle access from the host's dev-mode settings:
  *          "off" ignores every boss result, "queue" needs an unlocked boss,
