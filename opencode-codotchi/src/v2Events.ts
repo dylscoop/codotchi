@@ -23,8 +23,11 @@ export function translateV2Event(event: V2EventLike): LegacyEvent[] {
     case "session.created":
       return [{ type: "session.created", properties: { info: data } }];
     case "session.status":
-      // V1 only emitted session.status while work was running; V2 also reports idle.
-      return data.status?.type === "idle" ? [] : [{ type: "session.status", properties: data }];
+      // V1 only emitted session.status while work was running; V2 reports idle
+      // here too, which is V1's session.idle.
+      return data.status?.type === "idle"
+        ? [{ type: "session.idle", properties: { sessionID: data.sessionID } }]
+        : [{ type: "session.status", properties: data }];
     case "vcs.branch.updated":
       return [{ type: "vcs.branch.updated", properties: { branch: data.branch } }];
     case "filesystem.changed":

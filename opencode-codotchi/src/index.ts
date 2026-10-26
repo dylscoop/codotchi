@@ -1998,7 +1998,7 @@ const plugin: Plugin = async (ctx) => {
             sessionUserMessages += 1;
             return;
           }
-         if (info?.role === "assistant" && typeof info.cost === "number") {
+         if (info?.role === "assistant") {
             // Only count the final completion event — skip intermediate streaming
             // chunks (those have time.completed = 0 or unset). Without this guard,
             // every streaming update increments dailyCostUSD with a partial cost,
@@ -2352,6 +2352,9 @@ async function setupV2(ctx: any): Promise<() => void> {
   // ask the TUI to re-render when something it shows has changed.
   const pulseGate = new PulseGate();
   const pulse = setInterval(() => {
+    // Other OpenCode windows' replies never reach this event stream, so
+    // re-sync from the database (self-throttled to once per 30s).
+    void refreshDailyFromDb();
     const hour = lastHourUsage();
     const pets = getActivePets().filter(p => p.state.alive).map(p => [p.ide, p.state.name, p.state.stage, p.state.mood]);
     const parts = [terminalEnabled, costTier(), Math.floor(Date.now() / PET_SWAP_MS), pets,
