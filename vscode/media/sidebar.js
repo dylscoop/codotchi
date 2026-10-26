@@ -1878,9 +1878,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     // ── Mood layer: props, body squash, particles (window.spriteMood) ─────
     var feeding = activeReaction && (activeReaction.type === "fed_meal" || activeReaction.type === "fed_snack");
-    if (nowMs < chompUntilMs) { snackChomp = true; }
-    else if (feeding) { snackChomp = (activeReaction.type === "fed_snack"); }
-    var mood = window.spriteMood.current(lastState, activeReaction && activeReaction.type, nowMs < chompUntilMs);
+    // The dog spends its break nap awake, gnawing a big bone
+    var chewing = isChewingBone(lastState);
+    var drawState = chewing ? Object.assign({}, lastState, { sleeping: false }) : lastState;
+    if (nowMs < chompUntilMs || chewing) { snackChomp = true; }
+    else if (feeding) { snackChomp = (activeReaction.type === "fed_snack") || lastState.spriteType === "dog"; }
+    var mood = window.spriteMood.current(drawState, activeReaction && activeReaction.type, nowMs < chompUntilMs || chewing);
     if (mood !== lastMood) { moodParticles.length = 0; lastMoodFrame = -1; }
     lastMood = mood;
     lastState.displayMood = mood;   // lets renderSpriteGrid pick optional per-mood grids
@@ -1905,8 +1908,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (moodProps) {
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
-    drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
+    drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                          window.spriteMood.scaleY(mood, moodFrame));
+    if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
     var moodPxSize = window.spriteMood.px(moodBox);
     if (patting && window.spritePat.usesHand(lastState.spriteType)) {
       window.spritePat.drawHand(spriteCtx, patT, moodBox, petFacingLeft, moodPxSize);
@@ -1921,7 +1925,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                                   moodPxSize, (nowMs - activeBubble.startMs) / DEVICE_SLIDE_MS,
                                   bubbleAlpha(activeBubble, nowMs), animTick);
     }
-    drawStatusIndicators(lastState, Math.round(petX), Math.round(petY) + walkBob);
+    drawStatusIndicators(drawState, Math.round(petX), Math.round(petY) + walkBob);
 
     // ── Speech bubble ──────────────────────────────────────────────────────
     var _bScale   = STAGE_SCALES[lastState.stage] || 0.5;
@@ -1930,7 +1934,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _petCx    = Math.round(petX) + Math.round(_bW / 2);
     var _petTopY  = Math.round(petY) + walkBob - headGap(lastState);
     drawSpeechBubble(_petCx, _petTopY, nowMs,
-                     emojiClearance(lastState.sleeping || patting, moodPxSize));
+                     emojiClearance(drawState.sleeping || patting, moodPxSize));
   }
 
   /**
@@ -2041,10 +2045,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     const sleepWakeBtn = document.getElementById("btn-sleep-wake");
     // A break nap can't be cut short — show the minutes left instead of "Wake"
     const napTicks = state.breakNapTicksRemaining || 0;
+    const _napChar = customCharBySpriteType ? customCharBySpriteType(state.spriteType) : null;
+    const _napLabel = (_napChar && _napChar.breakNap) ? _napChar.breakNap.button : "Napping";
     sleepWakeBtn.textContent = napTicks > 0
-      ? "Napping " + Math.max(1, Math.ceil(napTicks * 3 / 60)) + "m"
+      ? _napLabel + " " + Math.max(1, Math.ceil(napTicks * 3 / 60)) + "m"
       : (state.sleeping ? "Wake" : "Sleep");
-    sleepWakeBtn.title = napTicks > 0 ? "Taking a break nap — it wakes up on its own" : "";
+    sleepWakeBtn.title = napTicks > 0
+      ? ((_napChar && _napChar.breakNap) ? "Chewing a bone on your break — it stops on its own" : "Taking a break nap — it wakes up on its own")
+      : "";
     sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
 
     // BUGFIX-002: disable care buttons while pet is sleeping; also disable while paused
@@ -2178,7 +2186,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       try { localStorage.setItem("codotchi_sleepX", String(Math.round(petX !== null ? petX : 0))); } catch (e) {}
       // Sleep bubble — picks one of 4 options at random, persists until wake
       (function () {
-        var _sleepTexts = ["Zzz...", "z z Z Z...", "*snoozing*", state.name + " is asleep. Zzz..."];
+        var _sleepTexts = isChewingBone(state)
+          ? ["*gnaw gnaw*", "*chomp chomp*", "Mine. All mine.", "Best. Break. Ever."]
+          : ["Zzz...", "z z Z Z...", "*snoozing*", state.name + " is asleep. Zzz..."];
         showBubble(_sleepTexts[Math.floor(Math.random() * _sleepTexts.length)]);
         if (activeBubble) { activeBubble.fadeOutMs = Infinity; }
       })();
@@ -2218,6 +2228,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
             events[_ai].indexOf("attention_call_expired_") !== 0) {
           queueBubble(humaniseEvent(events[_ai], _n, state));
           return;
+        }
+      }
+      // 1a. A character with its own reaction to being ignored (the dog's whimper)
+      var _ignChar = customCharBySpriteType ? customCharBySpriteType(state.spriteType) : null;
+      if (_ignChar && _ignChar.ignoredBubble) {
+        for (var _ei = 0; _ei < events.length; _ei++) {
+          if (events[_ei].indexOf("attention_call_expired_") === 0) {
+            queueBubble(_ignChar.ignoredBubble.replace("__Name__", _n));
+            return;
+          }
         }
       }
       // 1b. Answered whim calls (play / pat / craving) — outranks the minigame result
@@ -2318,6 +2338,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     lastState = state;
     ensureAnimLoop();
 
+    // The dog's gift is a ball: accepting it starts a game of Fetch
+    if (events.indexOf("attention_call_answered_gift") !== -1 && playsDogGames(state) &&
+        !state.sick && !state.sleeping && !state.paused && state.energy >= PLAY_ENERGY_COST &&
+        mgPanels.classList.contains("hidden")) {
+      showMgOverlay();
+      startFetchGame();
+    }
+
     appendEvents(events, state.name, state);
 
     // Spawn poo overlay animation
@@ -2338,6 +2366,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         type: cravedSnackType(_cc)
             || ((_cc && state.spriteType === "tim") ? "tea"
             : (_cc && state.spriteType === "stu") ? (Math.random() < 0.5 ? "guinness" : "salmon")
+            : state.spriteType === "dog" ? "biscuit"
             : (["candy", "bone", "cookie"][Math.floor(Math.random() * 3)])),
       });
       idleTimer = 0;  // pet walks toward it immediately
@@ -2374,6 +2403,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    * @returns {string}
    */
   function moodText(state) {
+    if (isChewingBone(state)) { return "Chewing a bone"; }
     if (state.sleeping && state.sick) { return "Zzz… (feeling sick)"; }
     if (state.sleeping) { return "Zzz…"; }
     if (state.sick)     { return "Feeling sick"; }
@@ -2644,6 +2674,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     }
     if (_cc && _cc.snackCravings && currentCravingItem) {
       labels["attention_call_craving_snack"] = n + " is craving " + currentCravingItem + "!";
+    }
+    // The dog chews a big bone through the break instead of napping
+    var _bn = _cc && _cc.breakNap;
+    if (_bn) {
+      labels["attention_call_answered_break"] = _bn.started.replace("__Name__", n) + " (5 min).";
+      labels["break_nap_no_wake"]             = _bn.noWake.replace("__Name__", n);
+      labels["break_nap_over"]                = _bn.over.replace("__Name__", n);
     }
     var val = labels[code];
     if (val) {
@@ -2919,6 +2956,85 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     });
   }
 
+  // Dog food: a biscuit bone snack, a meaty bone meal and the big bone it
+  // chews through on a break. 1 = bone, 2 = shade / speckle, 3 = meat, 4 = dark meat.
+  var BISCUIT_BONE_PIXELS = [
+    [1,1,0,0,1,1],
+    [1,1,1,1,2,1],
+    [0,1,2,1,1,0],
+    [1,2,1,1,1,1],
+    [1,1,0,0,1,1],
+  ];
+  var MEATY_BONE_PIXELS = [
+    [1,1,0,0,0,0,0,0,1,1],
+    [1,1,1,3,3,3,3,1,1,1],
+    [0,1,3,4,3,3,4,3,1,0],
+    [0,1,3,3,4,3,3,3,1,0],
+    [1,1,1,3,3,3,3,1,1,1],
+    [1,1,0,0,0,0,0,0,1,1],
+  ];
+  var BIG_BONE_PIXELS = [
+    [0,1,1,0,0,0,0,0,0,0,0,1,1,0],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [0,1,2,2,2,2,2,2,2,2,2,2,1,0],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [0,1,1,0,0,0,0,0,0,0,0,1,1,0],
+  ];
+  var BONE_COLOURS = { 1: "#F2E6C8", 2: "#CDBF9C", 3: "#B5452F", 4: "#7A2A1C" };
+  /** Number of sizes the break bone shrinks through as it's chewed. */
+  var BIG_BONE_STAGES = 4;
+
+  /**
+   * The break bone after `stage` (0 = whole … BIG_BONE_STAGES − 1 = nearly
+   * gone) bites: each bite takes three columns off the chewed (left) end.
+   */
+  function chewedBoneGrid(stage) {
+    var cut = Math.max(0, Math.min(BIG_BONE_STAGES - 1, stage)) * 3;
+    return BIG_BONE_PIXELS.map(function (row, r) {
+      var kept = row.slice(cut);
+      // A ragged bitten edge instead of the knob
+      if (cut > 0 && r === 1) { kept[0] = 0; }
+      return kept;
+    });
+  }
+
+  /** Draw a bone grid with its outline, top-left at (x, y). */
+  function drawBoneItem(grid, x, y, scale) {
+    drawGridOutline(grid, x, y, scale, "rgba(0,0,0,0.55)");
+    grid.forEach(function (row, ry) {
+      row.forEach(function (cell, rx) {
+        if (!cell) { return; }
+        spriteCtx.fillStyle = BONE_COLOURS[cell];
+        spriteCtx.fillRect(x + rx * scale, y + ry * scale, scale, scale);
+      });
+    });
+  }
+
+  /** Length of a break nap in ticks — must match BREAK_NAP_TICKS in gameEngine.ts. */
+  var BREAK_NAP_TICKS = 100;
+
+  /** The dog spends its break nap awake, chewing a big bone. */
+  function isChewingBone(state) {
+    return !!(state && state.spriteType === "dog" && state.sleeping && (state.breakNapTicksRemaining || 0) > 0);
+  }
+
+  /** Which of the BIG_BONE_STAGES sizes the bone is at with `ticksLeft` of the break to go. */
+  function breakBoneStage(ticksLeft) {
+    var done = 1 - Math.max(0, Math.min(BREAK_NAP_TICKS, ticksLeft)) / BREAK_NAP_TICKS;
+    return Math.min(BIG_BONE_STAGES - 1, Math.floor(done * BIG_BONE_STAGES));
+  }
+
+  /** The break bone on the floor, held at the dog's mouth with the chewed end towards it. */
+  function drawBreakBone(state, box, facingLeft) {
+    var grid = chewedBoneGrid(breakBoneStage(state.breakNapTicksRemaining || 0));
+    if (facingLeft) { grid = grid.map(function (row) { return row.slice().reverse(); }); }
+    var scale = Math.max(2, Math.round(box.w / 24));
+    var bw = grid[0].length * scale;
+    var bh = grid.length * scale;
+    var bx = facingLeft ? box.x - Math.round(bw * 0.6) : box.x + box.w - Math.round(bw * 0.4);
+    drawBoneItem(grid, Math.round(bx), Math.round(box.y + box.h - bh), scale);
+  }
+
   /**
    * Draw background, ground line, poos, gift box, snack items.
    * @param {object} state
@@ -3095,7 +3211,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                 : item.type === "guinness" ? GUINNESS_PIXELS
                 : item.type === "salmon"   ? SALMON_PIXELS
                 : item.type === "candy"    ? CANDY_PIXELS
-                : item.type === "cookie"   ? COOKIE_PIXELS : BONE_PIXELS;
+                : item.type === "cookie"   ? COOKIE_PIXELS
+                : item.type === "biscuit"  ? BISCUIT_BONE_PIXELS : BONE_PIXELS;
         var spH = spx.length * SS;
         var sY  = H - 12 - spH;
         var sX  = Math.round(item.x);
@@ -3121,6 +3238,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
               spriteCtx.fillStyle = cell === 2 ? "#FFE0E0" : "#FF6B9D";
             } else if (item.type === "cookie") {
               spriteCtx.fillStyle = cell === 2 ? "#4A2800" : "#D2961E";
+            } else if (item.type === "biscuit") {
+              spriteCtx.fillStyle = cell === 2 ? "#7A4A1C" : "#C8843C";
             } else {
               spriteCtx.fillStyle = cell === 2 ? "#F5DEB3" : "#DEB887";
             }
@@ -3199,6 +3318,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         var bobs = reaction.type === "fed_meal" ? 2 : 1;
         var yOff = -Math.abs(Math.sin(t * Math.PI * bobs)) * 10;
         drawBody(state, x, bodyY + yOff, facingLeft, legFrame);
+        if (reaction.type === "fed_meal" && state.spriteType === "dog") {
+          // The dog's meal is a meaty bone on the floor in front of it
+          var mbW = MEATY_BONE_PIXELS[0].length * SNACK_SCALE;
+          var mbH = MEATY_BONE_PIXELS.length * SNACK_SCALE;
+          var mbX = facingLeft ? x - Math.round(mbW / 2) : x + bWidth - Math.round(mbW / 2);
+          drawBoneItem(MEATY_BONE_PIXELS, Math.round(mbX), Math.round(feetY - mbH), SNACK_SCALE);
+        }
         break;
       }
 
@@ -3451,8 +3577,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var staticX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth / 2));
     var staticY  = H - bHeight - 12;
 
-    drawBody(state, staticX, staticY, false, 0);
-    drawStatusIndicators(state, staticX, staticY);
+    drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false, 0);
+    if (isChewingBone(state)) {
+      drawBreakBone(state, { x: staticX, y: staticY, w: bWidth, h: bHeight }, false);
+    } else {
+      drawStatusIndicators(state, staticX, staticY);
+    }
     drawSpeechBubble(staticX + Math.round(bWidth / 2), staticY - headGap(state), performance.now());
   }
 

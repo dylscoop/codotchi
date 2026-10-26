@@ -134,6 +134,51 @@ describe("floor snack cap (Stu's cycle cap is 10, so only the floor cap stops hi
   });
 });
 
+describe("dog voice, snacks and break bone", () => {
+  const dog = CUSTOM_CHARACTERS.find((c) => c.spriteType === "dog")!;
+
+  it("brings a ball for fetch, has pat bubbles and whimpers when ignored", () => {
+    assert.equal(dog.giftMessage, "__Name__ brought you a ball and wants to play fetch! 🎾");
+    assert.deepEqual(dog.patBubbles, ["*tail wags intensify*", "Much code. Very wow.", "Who's a good boy?"]);
+    assert.equal(dog.ignoredBubble, "*sad whimper*… fine.");
+  });
+
+  it("chews a bone through its break instead of napping", () => {
+    assert.deepEqual(dog.breakNap, {
+      started: "__Name__ is busy with a big bone 🦴",
+      noWake:  "__Name__ won't give up the bone yet!",
+      over:    "__Name__ finished the bone. Back to work!",
+      button:  "Chewing",
+    });
+  });
+
+  it("uses the same text in the webview and PyCharm registries", () => {
+    const js = read("vscode/media/customCharacters.js");
+    const kt = read("pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt");
+    for (const s of ["*tail wags intensify*", "Much code. Very wow.", "Who's a good boy?",
+                     "won't give up the bone yet!", "finished the bone. Back to work!", "Chewing"]) {
+      assert.ok(js.includes(s), `customCharacters.js lacks ${s}`);
+      assert.ok(kt.includes(s), `CustomCharacters.kt lacks ${s}`);
+    }
+    assert.ok(js.includes("brought you a ball and wants to play fetch!"));
+    assert.ok(kt.includes("brought you a ball and wants to play fetch!"));
+  });
+
+  it("shows the break bone text in the IDE notifications", () => {
+    assert.ok(read("vscode/src/extension.ts").includes("customChar?.breakNap?.over"));
+    assert.ok(read("pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt").includes("customChar?.breakNap?.over"));
+  });
+
+  it("draws biscuit bone snacks, a meaty bone meal and a shrinking break bone in the webview", () => {
+    const sidebar = read("vscode/media/sidebar.js");
+    assert.ok(sidebar.includes('state.spriteType === "dog" ? "biscuit"'));
+    assert.ok(sidebar.includes("drawBoneItem(MEATY_BONE_PIXELS"));
+    assert.ok(sidebar.includes("if (chewing) { drawBreakBone("));
+    assert.ok(sidebar.includes("_ignChar.ignoredBubble"));
+    assert.ok(sidebar.includes('events.indexOf("attention_call_answered_gift") !== -1 && playsDogGames(state)'));
+  });
+});
+
 describe("break reminder text", () => {
   it("just says it's time for a break — no praise instructions", () => {
     for (const p of ["vscode/src/extension.ts", "vscode/media/sidebar.js", "pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt"]) {

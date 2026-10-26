@@ -1147,12 +1147,15 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
           ? buildSpeechBubble(next.stage, next.mood, pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."]), next.name, next.spriteType, ideLabel)
           : `${ideLabel} ${next.name}: ${pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."])}`);
         break;
-      case "break_nap_over":
+      case "break_nap_over": {
         setMeals(ide, 0);
+        // The dog chews a bone through its break instead of napping
+        const overText = next.spriteType === "dog" ? "Finished the bone. Back to work!" : "Break's over! Ready to code.";
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, next.mood, "Break's over! Ready to code.", next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: Break's over! Ready to code.`);
+          ? buildSpeechBubble(next.stage, next.mood, overText, next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${overText}`);
         break;
+      }
       case "died":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "sad", pickRandom(["Goodbye... take care of the next one.", "It was good while it lasted. See you next time.", "Farewell. Start fresh when you're ready."]), next.name, next.spriteType, ideLabel)
