@@ -46,5 +46,17 @@
     "updatedAt": 1793124091966,
     "clientVersion": "2.27.2",
     "verified": true
+  },
+  {
+    "username": "saratanov",
+    "petName": "Codotchi",
+    "petRunId": "2281537494a15d4453b22666365ec0f2c49250a324170f15147af5198b24517f",
+    "spawnedAt": 1791907392247,
+    "ageDays": 0,
+    "stage": "baby",
+    "petType": "codeling",
+    "updatedAt": 1793124391329,
+    "clientVersion": "2.27.4",
+    "verified": true
   }
 ]
