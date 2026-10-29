@@ -58,4 +58,6 @@ The hand-drawn grid above is superseded by bulk-imported images, one per stage
 
 Without this, teen and adult kept their white background (the black footer meant
 the four corners didn't match, so auto background removal was skipped) and the
-padded canvases shrank every stage on the shared grid (now 148 × 128).
+padded canvases shrank every stage on the shared grid (now 146 × 128).
+`sprite.json` sets `"stageScale": { "baby": 2, "child": 2 }` because those two
+source images are drawn much smaller than the others.

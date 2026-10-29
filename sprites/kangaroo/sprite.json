@@ -1,5 +1,6 @@
 {
     "perStagePalette":  true,
     "flip":  true,
-    "upright":  true
+    "upright":  true,
+    "stageScale":  { "baby": 2, "child": 2 }
 }
