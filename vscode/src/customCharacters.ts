@@ -94,6 +94,8 @@ export interface CustomCharacterBreakNap {
   button:  string;
   /** Weight gained when the break starts (the dog's big bone). */
   weightGain?: number;
+  /** Speech bubble while away on the break, one picked at random (optional — the sleep lines if absent). */
+  bubbles?: string[];
 }
 
 export const CUSTOM_CHARACTERS: CustomCharacter[] = [
@@ -153,6 +155,7 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
       noWake:  "Oi! __Name__'s on smoko!",
       over:    "Smoko's over. Back to it, __Name__!",
       button:  "Smoko",
+      bubbles: ["Gone for smoko 🚬", "Off to Bunnings for a snag 🌭"],
     },
   },
   {

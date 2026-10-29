@@ -37,7 +37,8 @@
    *   ignoredBubble {string}   — optional: speech bubble when an attention call expires
    *   breakNap      {object}   — optional: replacement text for the 5-minute break nap:
    *     started, noWake, over {string} (__Name__ = pet name), button {string} ("Chewing 3m"),
-   *     call {string} (optional: the 30-minute break call)
+   *     call {string} (optional: the 30-minute break call),
+   *     bubbles {string[]} (optional: speech bubble while away on the break, one at random)
    */
   var CUSTOM_CHARACTERS = {
     tim: {
@@ -94,6 +95,7 @@
         noWake:  "Oi! __Name__'s on smoko!",
         over:    "Smoko's over. Back to it, __Name__!",
         button:  "Smoko",
+        bubbles: ["Gone for smoko \uD83D\uDEAC", "Off to Bunnings for a snag \uD83C\uDF2D"],
       },
     },
     dog: {

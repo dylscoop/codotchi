@@ -1,6 +1,17 @@
 # Version History
 
-## v2.33.1 - current
+## v2.33.2 - current
+
+### Changes from v2.33.1 (Skippy leaves the stage on smoko - branch fix/kangaroo-smoko)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | `isOnSmoko`: on its break the kangaroo hops off the nearer edge (`smokoSide`, `SMOKO_HOP_PPS`) instead of napping, and hops back in from the same edge when it ends; drawn awake (no z's), no `fell_asleep` lie-down, bubble lines from `breakNap.bubbles`, mood "On smoko"; the side is saved (`codotchi_smokoSide`) so a reload keeps it off stage; reduced motion shows an empty stage with the bubble |
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | new optional `breakNap.bubbles`; kangaroo: "Gone for smoko 🚬" / "Off to Bunnings for a snag 🌭" |
+| `vscode/tests/unit/customCharacterText.test.ts` | smoko bubbles, registry parity and the hop-off source checks |
+| all manifests, `README.md`, docs | version 2.33.2 |
+
+## v2.33.1
 
 ### Changes from v2.33.0 (kangaroo actions - branch feat/kangaroo-actions)
 
