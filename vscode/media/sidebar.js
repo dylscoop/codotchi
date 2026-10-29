@@ -293,6 +293,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   let bubbleQueue  = [];     // pending attention-call text; at most 1 entry
   let pendingDeathTimer = null; // setTimeout id while the "died" reaction plays before the dead screen
   let petIsSleeping = false; // true while fell_asleep is active; suppresses all other bubbles
+  let smokoSide     = 0;     // Skippy's smoko: -1 / 1 = the edge it hopped off by (0 = on stage)
+  let smokoHopPhase = 0;     // hop bob phase (radians) while hopping off or back
+  const SMOKO_HOP_PPS     = 90;    // hop speed (canvas px / s) off and back onto the stage
+  const SMOKO_HOP_BOOST_MS = 5000; // full frame rate while it hops
 
   // Speech when a whim attention call is answered — one line picked at random.
   // Mirrored in opencode-codotchi/src/index.ts and claude-codotchi/scripts/action.mjs.
@@ -1943,6 +1947,36 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       petVx = 0;
       petVy = 0;
 
+    } else if (isOnSmoko(lastState) || smokoSide !== 0) {
+      // Skippy's smoko: hop off the nearer edge for the break, then back in
+      // from the same edge once it's over (the normal clamp would snap it back)
+      var smokoAway = isOnSmoko(lastState);
+      if (smokoSide === 0) {
+        smokoSide = (petX + bWidth / 2 < spriteCanvas.width / 2) ? -1 : 1;
+        try { localStorage.setItem("codotchi_smokoSide", String(smokoSide)); } catch (e) {}
+        boostAnim(nowMs + SMOKO_HOP_BOOST_MS);
+      }
+      var smokoTarget = smokoAway
+        ? (smokoSide < 0 ? -bWidth - 8 : spriteCanvas.width + 8)
+        : (smokoSide < 0 ? minX : maxX);
+      var smokoStep = SMOKO_HOP_PPS * dt;
+      if (Math.abs(smokoTarget - petX) <= smokoStep) {
+        petX  = smokoTarget;
+        petVx = 0;
+        smokoHopPhase = 0;
+        if (!smokoAway) {
+          smokoSide = 0;
+          try { localStorage.removeItem("codotchi_smokoSide"); } catch (e) {}
+        }
+      } else {
+        petVx = smokoTarget > petX ? SMOKO_HOP_PPS : -SMOKO_HOP_PPS;
+        petX += petVx * dt;
+        petFacingLeft = petVx < 0;
+        smokoHopPhase += dt * 7;
+      }
+      petY  = floorY - Math.round(Math.abs(Math.sin(smokoHopPhase)) * bHeight * 0.15);
+      petVy = 0;
+
     } else if (lastState.sleeping) {
       // Sleeping: breath bob only — all movement frozen
       breathPhase += 1.8 * dt;
@@ -2106,7 +2140,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var feeding = activeReaction && (activeReaction.type === "fed_meal" || activeReaction.type === "fed_snack");
     // The dog spends its break nap awake, gnawing a big bone
     var chewing = isChewingBone(lastState);
-    var drawState = chewing ? Object.assign({}, lastState, { sleeping: false }) : lastState;
+    // ...and Skippy is awake, off on smoko (no z's)
+    var drawState = (chewing || isOnSmoko(lastState)) ? Object.assign({}, lastState, { sleeping: false }) : lastState;
     if (nowMs < chompUntilMs || chewing) { snackChomp = true; }
     else if (feeding) { snackChomp = (activeReaction.type === "fed_snack") || lastState.spriteType === "dog"; }
     var mood = window.spriteMood.current(drawState, activeReaction && activeReaction.type, nowMs < chompUntilMs || chewing);
@@ -2355,6 +2390,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       } else {
         petX = centreX;
       }
+      // Reloaded while Skippy is off on smoko: stay off stage on the same side
+      smokoSide = 0;
+      var storedSmokoSide = 0;
+      try { storedSmokoSide = parseInt(localStorage.getItem("codotchi_smokoSide") || "0", 10) || 0; } catch (e) {}
+      if (isOnSmoko(state) && storedSmokoSide !== 0) {
+        smokoSide = storedSmokoSide;
+        petX = smokoSide < 0 ? -bWidth2 - 8 : spriteCanvas.width + 8;
+      } else if (storedSmokoSide !== 0) {
+        try { localStorage.removeItem("codotchi_smokoSide"); } catch (e) {}
+      }
       petY          = null;   // will be initialised to floorY on first rAF frame
       petVx         = 0;
       petVy         = 0;
@@ -2413,12 +2458,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       pushReaction("patted", nowMs, window.spritePat.durationMs(state.spriteType, REACTION_DURATIONS.patted));
     }
     if (events.indexOf("fell_asleep")   !== -1) {
-      pushReaction("fell_asleep",   nowMs);
+      // Skippy doesn't lie down for smoko, it hops off the stage (animation loop)
+      if (!isOnSmoko(state)) { pushReaction("fell_asleep", nowMs); }
       // Persist the X position so it survives a webview reload while sleeping
       try { localStorage.setItem("codotchi_sleepX", String(Math.round(petX !== null ? petX : 0))); } catch (e) {}
-      // Sleep bubble — picks one of 4 options at random, persists until wake
+      // Sleep bubble — picks one of the options at random, persists until wake
       (function () {
-        var _sleepTexts = isChewingBone(state)
+        var _napCc = customCharBySpriteType ? customCharBySpriteType(state.spriteType) : null;
+        var _awayTexts = (state.breakNapTicksRemaining || 0) > 0 && _napCc && _napCc.breakNap && _napCc.breakNap.bubbles;
+        var _sleepTexts = (_awayTexts && _awayTexts.length > 0) ? _awayTexts
+          : isChewingBone(state)
           ? ["*gnaw gnaw*", "*chomp chomp*", "Mine. All mine.", "Best. Break. Ever."]
           : ["Zzz...", "z z Z Z...", "*snoozing*", state.name + " is asleep. Zzz..."];
         showBubble(_sleepTexts[Math.floor(Math.random() * _sleepTexts.length)]);
@@ -2432,6 +2481,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       petIsSleeping = false;
       activeBubble = null; // clear the persistent sleep bubble
       pushReaction("woke_up",       nowMs);
+      if (smokoSide !== 0) { boostAnim(nowMs + SMOKO_HOP_BOOST_MS); }   // Skippy hops back from smoko
     }
     if (events.indexOf("scolded")       !== -1) { pushReaction("scolded", nowMs); }
     if (events.indexOf("praised")       !== -1) { pushReaction("praised", nowMs); }
@@ -2641,6 +2691,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    */
   function moodText(state) {
     if (isChewingBone(state)) { return "Chewing a bone"; }
+    if (isOnSmoko(state))     { return "On smoko"; }
     if (state.sleeping && state.sick) { return "Zzz… (feeling sick)"; }
     if (state.sleeping) { return "Zzz…"; }
     if (state.sick)     { return "Feeling sick"; }
@@ -3280,6 +3331,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     return isAwakeDog(state) && (state.energy || 0) >= TAIL_CHASE_MIN_ENERGY && !REDUCED_MOTION;
   }
 
+  /** Skippy the kangaroo spends its break nap off the stage, on smoko. */
+  function isOnSmoko(state) {
+    return !!(state && state.spriteType === "kangaroo" && state.sleeping && (state.breakNapTicksRemaining || 0) > 0);
+  }
+
   /** The dog spends its break nap awake, chewing a big bone. */
   function isChewingBone(state) {
     return !!(state && state.spriteType === "dog" && state.sleeping && (state.breakNapTicksRemaining || 0) > 0);
@@ -3879,6 +3935,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var H        = spriteCanvas.height;
     var staticX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth / 2));
     var staticY  = H - bHeight - 12;
+
+    // Skippy is away on smoko: an empty stage with just its bubble
+    if (isOnSmoko(state)) {
+      drawSpeechBubble(staticX + Math.round(bWidth / 2), staticY - headGap(state), performance.now());
+      return;
+    }
 
     drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false, 0);
     if (isChewingBone(state)) {

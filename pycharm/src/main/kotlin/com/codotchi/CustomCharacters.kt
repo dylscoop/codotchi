@@ -97,6 +97,8 @@ data class CustomCharacterBreakNap(
     val weightGain: Int = 0,
     /** Notification / log line when the 30-minute break call fires (null = the default). */
     val call: String? = null,
+    /** Speech bubble while away on the break, one at random (webview only; empty = the sleep lines). */
+    val bubbles: List<String> = listOf(),
 )
 
 val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
@@ -156,6 +158,7 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
             noWake  = "Oi! __Name__'s on smoko!",
             over    = "Smoko's over. Back to it, __Name__!",
             button  = "Smoko",
+            bubbles = listOf("Gone for smoko 🚬", "Off to Bunnings for a snag 🌭"),
         ),
     ),
     CustomCharacter(

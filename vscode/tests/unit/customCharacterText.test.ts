@@ -151,7 +151,25 @@ describe("kangaroo (Skippy) Aussie voice", () => {
       noWake:  "Oi! __Name__'s on smoko!",
       over:    "Smoko's over. Back to it, __Name__!",
       button:  "Smoko",
+      bubbles: ["Gone for smoko 🚬", "Off to Bunnings for a snag 🌭"],
     });
+  });
+
+  it("hops off the stage for smoko, keeping its bubble, and hops back in", () => {
+    const js = read("vscode/media/customCharacters.js");
+    const kt = read("pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt");
+    assert.ok(js.includes('bubbles: ["Gone for smoko \\uD83D\\uDEAC", "Off to Bunnings for a snag \\uD83C\\uDF2D"]'));
+    assert.ok(kt.includes('bubbles = listOf("Gone for smoko 🚬", "Off to Bunnings for a snag 🌭")'));
+    const sidebar = read("vscode/media/sidebar.js");
+    assert.match(sidebar, /function isOnSmoko\(state\) \{\n\s*return !!\(state && state\.spriteType === "kangaroo" && state\.sleeping && \(state\.breakNapTicksRemaining \|\| 0\) > 0\);/);
+    assert.ok(sidebar.indexOf("} else if (isOnSmoko(lastState) || smokoSide !== 0) {") <
+              sidebar.indexOf("} else if (lastState.sleeping) {"), "the smoko hop runs before the frozen sleep branch");
+    assert.ok(sidebar.includes('if (!isOnSmoko(state)) { pushReaction("fell_asleep", nowMs); }'), "no lie-down before smoko");
+    assert.ok(sidebar.includes("_napCc.breakNap.bubbles"), "the bubble uses breakNap.bubbles");
+    assert.ok(sidebar.includes("(chewing || isOnSmoko(lastState)) ? Object.assign({}, lastState, { sleeping: false })"), "drawn awake, no z's");
+    assert.ok(sidebar.includes('if (isOnSmoko(state))     { return "On smoko"; }'));
+    assert.ok(sidebar.includes('localStorage.setItem("codotchi_smokoSide"'), "a reload keeps it off stage");
+    assert.match(sidebar, /function drawStaticPet[\s\S]*?if \(isOnSmoko\(state\)\) \{[\s\S]*?return;/, "reduced motion: empty stage");
   });
 
   it("uses the same text in the webview and PyCharm registries", () => {
