@@ -42,6 +42,8 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 - **Desktop alerts** — when hunger, happiness or energy hits 0, or health drops
   below 25, you get a desktop notification, even with VS Code minimised. It repeats every
   15 minutes while the stat stays low; turn it off with `codotchi.osNotifications`
+- **Calls tidy up after themselves** — when your pet calls for attention, the
+  notification closes by itself once you answer the call or it expires
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
   and it dies. A sick pet won't eat, snack or play until it's had its
   medicine — the Medicine button counts the doses left

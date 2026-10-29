@@ -93,6 +93,10 @@ The pet fires IDE notifications demanding care, with a **1-minute active
 (non-idle) response window** (the random calls use the configurable
 `codotchi.attentionCallExpiry` window instead). Idle time does NOT count toward the timer.
 
+The notification closes itself once the call is answered, expires or is replaced
+(`shouldDismissAttention`, since v2.32.2). VS Code shows it with `withProgress`
+so it can be closed from code; PyCharm calls `Notification.expire()`.
+
 | Trigger                                            | Attention Type    | Correct Response        | Expiry penalty                         | Status |
 |----------------------------------------------------|-------------------|-------------------------|----------------------------------------|--------|
 | Hunger < 25                                        | `hunger`          | Feed meal or snack      | Hunger −10                             | `[x]`  |
@@ -808,6 +812,7 @@ Since v2.23.0 `contributes.configuration` is an array of two categories, each wi
 | `gotchi.autoWake` | boolean | `true` | Auto-wake pet when energy reaches 100 | `[ ]` |
 | `gotchi.enableAttentionCalls` | boolean | `true` | Enable/disable the entire attention-call mechanic | `[x]` |
 | `codotchi.osNotifications` | boolean | `true` | Desktop (OS) notification when hunger, happiness or energy hits 0 (`ZERO_ALERT_STATS`) or health < 25 (`HEALTH_ALERT_THRESHOLD`); repeats every 15 min (`CRITICAL_STAT_NOTIFY_REPEAT_MS`) while critical. VS Code: `src/criticalStatNotifier.ts` shells out to a PowerShell toast / osascript / notify-send. PyCharm: `CriticalStatNotifier.kt` runs the same commands via `ProcessBuilder`, plus a "Codotchi Critical Stats" balloon | `[x]` |
+| `codotchi.leaderboard.emailNotifications` | boolean | `false` | Stay subscribed to the GitHub issues Codotchi opens for leaderboard updates. Off: the client unsubscribes right after creating each issue (GraphQL `updateSubscription`), so the workflow closing it sends no email. PyCharm: `leaderboardEmailNotifications` checkbox | `[x]` |
 | `gotchi.idleThresholdSeconds` | integer | `60` | Seconds of no activity before idle mode (min 10) | `[x]` |
 | `gotchi.idleDeepThresholdSeconds` | integer | `600` | Seconds of no activity before deep-idle mode (min 30) | `[x]` |
 | `gotchi.alwaysShowGamePicker` | boolean | `false` | Always show game select screen before playing | `[ ]` |

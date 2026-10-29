@@ -1,6 +1,20 @@
 # Version History
 
-## v2.32.1 - current
+## v2.32.2 - current
+
+### Changes from v2.32.1 (quieter notifications - branch fix/notifications-v2.32.2)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/githubAuth.ts`, `vscode/src/sidebarProvider.ts` | `unsubscribeFromIssue()`: after each leaderboard issue POST returns 201 (submit, auto-submit, live push, delete), unsubscribe the author via GraphQL `updateSubscription(state: UNSUBSCRIBED)` on the issue's `node_id`, unless `codotchi.leaderboard.emailNotifications` is on. Best effort (BUGFIX-209) |
+| `pycharm/.../CodotchiPlugin.kt`, `LeaderboardSubmitter.kt` (`unsubscribeMutation`), `CodotchiSettings.kt`, `CodotchiConfigurable.kt` | same for PyCharm's live push and submit; new `leaderboardEmailNotifications` setting (default false) with a checkbox under Leaderboard |
+| `vscode/package.json` | new setting `codotchi.leaderboard.emailNotifications` (default false, order 28); `attentionNotification.test.js` added to `npm test` |
+| `vscode/src/attentionNotification.ts` (new), `vscode/src/extension.ts` | attention calls show via `withProgress` (Notification location) and close when `activeAttentionCall` is cleared or changes (`shouldDismissAttention`) (BUGFIX-210) |
+| `pycharm/.../AttentionNotification.kt` (new), `CodotchiPlugin.kt` | PyCharm keeps the warning balloon and calls `expire()` on it under the same rule (EDT-only `shownAttention`) |
+| `vscode/tests/unit/attentionNotification.test.ts`, `githubAuth.test.ts`, `pycharm/src/test/.../AttentionNotificationTest.kt` | tests for the event mapping, dismiss rule and unsubscribe request |
+| all manifests, `README.md` | version 2.32.2 |
+
+## v2.32.1
 
 ### Changes from v2.32.0 (dog games on the stage - branch feat/dog-actions)
 
