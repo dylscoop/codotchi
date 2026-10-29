@@ -274,11 +274,11 @@ describe("pat reaction (vscode/media/sprites.js window.spritePat)", () => {
   const pat = w.spritePat;
   const spriteTypes = Object.keys(w.SPRITE_ANIMAL_PALETTES ?? {}).length > 0
     ? Object.keys(w.SPRITE_ANIMAL_PALETTES)
-    : ["classic", "sheep", "snake", "tim", "stu", "kangaroo", "roo", "dog", "cat", "dragon"];
+    : ["classic", "sheep", "snake", "tim", "stu", "kangaroo", "dog", "cat", "dragon"];
   const box = { x: 40, y: 20, w: 32, h: 32 };
 
   it("has its own motion for every built-in pet", () => {
-    for (const type of ["classic", "sheep", "snake", "tim", "stu", "kangaroo", "roo", "dog", "cat", "dragon"]) {
+    for (const type of ["classic", "sheep", "snake", "tim", "stu", "kangaroo", "dog", "cat", "dragon"]) {
       assert.equal(typeof pat.MOTION[type], "function", type);
     }
   });
@@ -356,7 +356,7 @@ describe("AI-usage device (vscode/media/sprites.js window.spritePat)", () => {
   const box = { x: 40, y: 20, w: 32, h: 32 };
 
   it("gives every pet a phone, tablet or laptop", () => {
-    for (const type of ["classic", "sheep", "snake", "tim", "stu", "kangaroo", "roo", "dog", "cat", "dragon", "unknown"]) {
+    for (const type of ["classic", "sheep", "snake", "tim", "stu", "kangaroo", "dog", "cat", "dragon", "unknown"]) {
       assert.ok(["phone", "tablet", "laptop"].includes(pat.device(type)), type);
     }
     assert.equal(pat.device("tim"), "laptop");

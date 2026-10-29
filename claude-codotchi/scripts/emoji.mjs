@@ -26,7 +26,6 @@ const EMOJI_BY_SPRITE = {
   dog: "🐶",
   pig: "🐷",
   kangaroo: "🦘",
-  roo: "🦘",
   tim: "☕",
   stu: "🐟",
 };

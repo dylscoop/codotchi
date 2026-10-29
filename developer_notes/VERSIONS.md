@@ -1,6 +1,29 @@
 # Version History
 
-## v2.32.3 - current
+## v2.33.0 - current
+
+### Changes from v2.32.3 (new kangaroo sprites - branch fix/kangaroo-sprites)
+
+| File | What changed |
+|------|-------------|
+| `sprites/kangaroo/*.png`, `sprites/kangaroo/sprite.json` | new imported kangaroo stages. Teen and adult had a white background and an Alamy watermark bar (corners didn't match, so auto background removal was skipped); backgrounds removed by edge flood fill, watermarks painted out, all stages trimmed. `stageScale` baby 2, child 1.667, adult 1.2, senior 1.2; `flip` false so the kangaroo faces the direction of travel |
+| `vscode/media/sprites.generated.js` | regenerated: kangaroo grid 178 × 128 with per-stage palettes |
+| `vscode/media/sprite_preview.html` | cells now centre the box `renderSpriteGrid` really draws (medium size: quadruped 1.0, upright 0.75) instead of assuming 1.5, so sprites no longer sit left/high; cells sized to fit with less blank space |
+| `developer_notes/sprites/kangaroo.md` | documents the image sources and preprocessing |
+| all manifests, `README.md` | version 2.33.0 |
+
+### Roo removed (branch remove-roo-sprite)
+
+| File | What changed |
+|------|-------------|
+| `sprites/roo/` | deleted; the new kangaroo replaces it. `sprites.generated.js` regenerated (4 imported species) |
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | Roogotchi (`bounce` passcode) removed; `dylscoop` pool is now the rotation + tim + stu (9) |
+| `vscode/media/sprites.js` | `roo` pat/usage-device aliases removed; saved pets with `spriteType: "roo"` render as kangaroo (sprite and palette) |
+| `packages/core/src/gameEngine.ts`, `asciiArt.ts` (+ synced copies) | `roo` dropped from `SpriteType` and the ASCII heads |
+| `claude-codotchi/scripts/emoji.mjs`, tests, `vscode/media/sprite_preview.html` | `roo` entries removed |
+| `developer_notes/SPRITES.md`, `developer_notes/vscode/FEATURES.md` | roo references updated |
+
+## v2.32.3
 
 ### Changes from v2.32.2 (PyCharm attention calls leave the Notifications sidebar - branch fix/pycharm-attention-sidebar)
 

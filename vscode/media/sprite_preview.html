@@ -222,7 +222,7 @@
   // appends keys discovered from loaded sprite data so new sprites cannot be
   // hidden by a stale hand-maintained list.
   var STANDARD_ANIMALS = [
-    "classic", "roo", "kangaroo", "dragon",
+    "classic", "kangaroo", "dragon",
     "cat", "dog", "sheep", "snake", "tim", "stu"
   ];
 
@@ -282,21 +282,23 @@
   }
 
   // ── Canvas size for a given animal at current scale ───────────────────────
-  // We want the canvas to be big enough to show the largest possible stage.
-  // The canvas pixel buffer is sized at physical pixels (raw sprite units × pixelScale).
+  // Sized for the largest box renderSpriteGrid draws at medium pet size
+  // (quadruped multiplier 1.0, adult stage scale 1.0), plus a little padding.
   function canvasSize() {
-    // largest stage scale is 1.0 (adult/senior), medium petSize = 1.5
-    var maxBodySize = Math.round(BASE_SIZE * 1.5 * 1.0);
-    var wwm = window.spriteWeightWidthMult(globalWeight);
-    // Pick the tallest height multiplier across all stages
-
-    var w = (Math.ceil(maxBodySize * wwm) + 4) * pixelScale;
-    // Max height ratio is 1.5 (upright 32×48 grid). Use that as the ceiling.
-    // Add 16px vertical padding so upright sprites (Tim, Stu, etc.) are
-    // not crammed against the top edge of the canvas.
-    var maxHRatio = 1.5;
-    var h = (Math.ceil(maxBodySize * maxHRatio) + 16) * pixelScale;
+    var maxBodySize = Math.round(BASE_SIZE * 1.0 * 1.0);
+    var w = (maxBodySize + 8) * pixelScale;
+    var maxH = BASE_SIZE * 0.75 * 1.5;
+    Object.keys(window.SPRITE_GRID_META || {}).forEach(function (t) {
+      maxH = Math.max(maxH, BASE_SIZE * sizeMultiplierFor(t) * window.spriteHeightRatio(t));
+    });
+    var h = (Math.ceil(maxH) + 12) * pixelScale;
     return { w: w, h: h };
+  }
+
+  // Must mirror renderSpriteGrid's medium-size multiplier so the box we centre
+  // is the box it actually draws.
+  function sizeMultiplierFor(animal) {
+    return (window.UPRIGHT_TYPES && window.UPRIGHT_TYPES[animal]) ? 0.75 : 1.0;
   }
 
   // ── Draw one cell ─────────────────────────────────────────────────────────
@@ -333,11 +335,10 @@
 
     // Determine body dimensions matching renderSpriteGrid exactly
     var stageScale = window.SPRITE_STAGE_SCALES[stage] || 0.65;
-    // petSize = medium = 1.5 (hard-coded for preview; sidebar reads from body dataset)
-    var sizeMultiplier = 1.5;
+    // Mirror renderSpriteGrid's box (medium pet size, no width stretch)
+    var sizeMultiplier = sizeMultiplierFor(animal);
     var bodySize   = Math.round(BASE_SIZE * sizeMultiplier * stageScale);
-    var wwm        = window.spriteWeightWidthMult(globalWeight);
-    var bodyWidth  = Math.round(bodySize * wwm);
+    var bodyWidth  = bodySize;
     var bodyHeight = Math.round(bodyWidth * window.spriteHeightRatio(animal));
     // The procedural classic creature is drawn at its own (smaller) box
     if (window.spriteDrawsAsClassic(animal, stage)) {

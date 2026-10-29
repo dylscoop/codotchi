@@ -173,23 +173,6 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         ),
     ),
     CustomCharacter(
-        spriteType   = "roo",
-        passcode     = "bounce",
-        defaultName  = "Roogotchi",
-        patLabel     = "Bounce",
-        giftMessage  = "Roogotchi found something in its pouch!",
-        patToasts    = CustomCharacterToasts(
-            patted     = "Roogotchi had a bounce!",
-            patRefused = "Roogotchi is too tired to bounce!",
-        ),
-        patBubbles   = listOf(
-            "Imported straight from a JPEG.",
-            "Pouch secured.",
-            "550 pixels tall and ready to hop.",
-            "Not bad for a photo.",
-        ),
-    ),
-    CustomCharacter(
         spriteType   = "stu",
         passcode     = "rubylovessalmon",
         defaultName  = "Stugotchi",
@@ -225,7 +208,7 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
 
 /** Passcodes that randomly select one spriteType from a pool instead of a fixed character. */
 val CUSTOM_CHARACTER_POOLS: Map<String, List<String>> = mapOf(
-    "dylscoop" to (ROTATION_ANIMALS + listOf("tim", "stu", "roo")),
+    "dylscoop" to (ROTATION_ANIMALS + listOf("tim", "stu")),
 )
 
 /** Look up a custom character by passcode. Returns null if not found. */

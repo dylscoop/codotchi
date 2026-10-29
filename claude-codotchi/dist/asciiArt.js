@@ -420,13 +420,6 @@ const SPRITE_HEAD = {
         adult: "  d(-_-)b    ",
         senior: "  d(-_-)b    ",
     },
-    roo: {
-        baby: "    d(^.^)b  ",
-        child: "  d(-_-)b    ",
-        teen: "  d(-_-)b    ",
-        adult: "  d(-_-)b    ",
-        senior: "  d(-_-)b    ",
-    },
     tim: {
         baby: "    [(^.^)]  ",
         child: "  [(-_-)]    ",
