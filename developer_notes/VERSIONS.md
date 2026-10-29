@@ -1,6 +1,16 @@
 # Version History
 
-## v2.32.2 - current
+## v2.32.3 - current
+
+### Changes from v2.32.2 (PyCharm attention calls leave the Notifications sidebar - branch fix/pycharm-attention-sidebar)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt` | attention-call notifications are flagged with `setRemoveWhenExpired(true)` (reflectively: the setter isn't in the 2024.1 API we compile against). On 2026.2, `expire()` alone only greyed the entry out in the Notifications tool window, so answered calls stayed listed (BUGFIX-210) |
+| `pycharm/src/test/kotlin/com/codotchi/LiveProgressTest.kt` | source guard for the flag |
+| all manifests, `README.md` | version 2.32.3 |
+
+## v2.32.2
 
 ### Changes from v2.32.1 (quieter notifications - branch fix/notifications-v2.32.2)
 

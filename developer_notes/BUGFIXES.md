@@ -2495,3 +2495,5 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** The notification for an attention call stayed on screen after the call was answered or expired.
 
 **Fix:** The shown notification remembers its call type and closes once `activeAttentionCall` is cleared or changes. VS Code can't close a `showWarningMessage` toast, so it uses a cancellable `withProgress` notification; PyCharm calls `Notification.expire()`.
+
+**Follow-up (v2.32.3, branch `fix/pycharm-attention-sidebar`):** on PyCharm 2026.2 the balloon closed but the entry stayed in the Notifications tool window: newer platforms only grey out an expired notification unless `setRemoveWhenExpired(true)` was set. Attention-call notifications now set it, reflectively, since the setter is missing from the 2024.1 API the plugin compiles against (where `expire()` already removes the entry).

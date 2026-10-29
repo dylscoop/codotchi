@@ -1604,6 +1604,7 @@ class CodotchiPlugin : Disposable {
                 ?: return@invokeLater
             val notification = group.createNotification(message, NotificationType.WARNING)
             if (callType != null) {
+                removeWhenExpired(notification)
                 shownAttention?.second?.expire()
                 shownAttention = callType to notification
             }
@@ -1618,6 +1619,19 @@ class CodotchiPlugin : Disposable {
             })
             notification.notify(null)  // null = app-level notification visible in all projects
         }
+    }
+
+    /**
+     * Newer platforms (2026.2 checked) only grey out an expired notification in the
+     * Notifications tool window unless it was flagged to be removed. The setter isn't
+     * in the 2024.1 API we compile against, so call it reflectively; on older
+     * platforms it's missing and expire() already removes the entry.
+     */
+    private fun removeWhenExpired(notification: com.intellij.notification.Notification) {
+        try {
+            notification.javaClass.getMethod("setRemoveWhenExpired", Boolean::class.javaPrimitiveType)
+                .invoke(notification, true)
+        } catch (_: ReflectiveOperationException) { /* older platform */ }
     }
 
     /** Information-level notification for achievement unlocks and trainer level-ups. */
