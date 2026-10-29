@@ -6,7 +6,7 @@
 
 | File | What changed |
 |------|-------------|
-| `sprites/kangaroo/*.png`, `sprites/kangaroo/sprite.json` | new imported kangaroo stages. Teen and adult had a white background and an Alamy watermark bar (corners didn't match, so auto background removal was skipped); backgrounds removed by edge flood fill, watermarks painted out, all stages trimmed. `stageScale` baby 2, child 1.667, adult 1.2, senior 1.2 |
+| `sprites/kangaroo/*.png`, `sprites/kangaroo/sprite.json` | new imported kangaroo stages. Teen and adult had a white background and an Alamy watermark bar (corners didn't match, so auto background removal was skipped); backgrounds removed by edge flood fill, watermarks painted out, all stages trimmed. `stageScale` baby 2, child 1.667, adult 1.2, senior 1.2; `flip` false so the kangaroo faces the direction of travel |
 | `vscode/media/sprites.generated.js` | regenerated: kangaroo grid 178 × 128 with per-stage palettes |
 | `vscode/media/sprite_preview.html` | cells now centre the box `renderSpriteGrid` really draws (medium size: quadruped 1.0, upright 0.75) instead of assuming 1.5, so sprites no longer sit left/high; cells sized to fit with less blank space |
 | `developer_notes/sprites/kangaroo.md` | documents the image sources and preprocessing |
