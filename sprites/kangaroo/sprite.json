@@ -2,5 +2,5 @@
     "perStagePalette":  true,
     "flip":  true,
     "upright":  true,
-    "stageScale":  { "baby": 2, "child": 2 }
+    "stageScale":  { "baby": 2, "child": 1.667, "adult": 1.2, "senior": 1.2 }
 }
