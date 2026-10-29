@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.33.1] - 2026-10-29
+
+### Added
+
+- **Skippy the kangaroo boxes.** Every kangaroo plays **Boxing** instead of Left / Right: another kangaroo hops onto the stage and the two square up. Each round pick **Jab** (lands half the time) or **Dodge** (wins if the other roo jabs). First to two rounds wins the bout. Rewards are the same as Left / Right.
+- **Bounce is a real bounce.** Patting the kangaroo no longer shows the patting hand and hearts: it does three big hops and kicks up dust on each landing.
+- **Skippy talks Aussie.** New Bounce lines ("Good on ya, mate!", "She'll be right."), a gift that's either a beer or some Tim Tams (praise the Tim Tams and it tells you they're better than Penguins), "Skippy's keen as for a bounce!" calls, and its 5-minute break is smoko: off to get a Bunnings snag.
+
 ## [2.32.2] - 2026-10-29
 
 ### Changed

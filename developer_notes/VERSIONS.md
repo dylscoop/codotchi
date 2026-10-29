@@ -1,6 +1,24 @@
 # Version History
 
-## v2.33.0 - current
+## v2.33.1 - current
+
+### Changes from v2.33.0 (kangaroo actions - branch feat/kangaroo-actions)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/gameEngine.ts`, `packages/core/src/gameEngine.ts` (+ claude, opencode, desktop copies), `pycharm/.../engine/GameEngine.kt` | `minigameStatsKey("boxing") = "left_right"`: Boxing has Left / Right's rewards and extra weight loss |
+| `vscode/media/sidebar.html` | new `mg-boxing` panel (Jab / Dodge, feedback, score) |
+| `vscode/media/sidebar.js` | the kangaroo plays Boxing instead of Left / Right (`playsBoxing`, `startBoxingGame`, `handleBoxingChoice`, `endBoxingGame`), on the pet stage via `stageGamePose` / `drawStageGame` / `drawBoxingStage`; `boxerBounds` measures where the kangaroo is drawn so the boxers stand nose to nose with gloves on their paws; `minigame_boxing_*` log lines; host-picked gift (`currentGift`) for the gift log and the gift's own praise bubble; `breakNap.call` for the break call; the break button tooltip only mentions a bone for the dog |
+| `vscode/media/minigameArt.js` | `boxingRoundWon`, `boxingPose`, `boxingOpponentPos`, `boxingPx`, `boxingHomes`, `boxingPaw`, `boxingNose`, `drawBoxingGlove`, `drawPow`; glove colours |
+| `vscode/media/sprites.js` | Bounce is three big hops with landing dust (`PAT_BOUNCE`, `bounceHop`); the kangaroo gets no hand or hearts; 1800 ms |
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | new `gifts` (`{ message, praiseBubble? }`) and `breakNap.call` fields; Skippy's Aussie voice (Bounce toasts and bubbles, beer / Tim Tams gifts, "keen as for a bounce" pat call, ignored bubble, smoko break) |
+| `vscode/src/giftItem.ts` (new), `pycharm/.../GiftItem.kt` (new) | `giftFor(state)`: one gift picked per gift call and kept through the update that answers it, like `cravingItemFor` |
+| `vscode/src/extension.ts`, `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt`, `pycharm/.../CodotchiBrowserPanel.kt` | gift notifications name the picked gift and send it to the webview (`gift`); the break call uses `breakNap.call` |
+| `vscode/tests/unit/*`, `pycharm/src/test/...` | Boxing rules, layout and rewards; Bounce; kangaroo voice parity and `giftFor`; `mg-boxing` panel. Status bar tests pin their pet to `classic` (a random hatch can now be the kangaroo, whose pat call has its own wording) |
+| `developer_notes/FEATURES_SEPTEMBER_2026.md` | proposed full `en-AU` language pack (§2.3) |
+| all manifests, `README.md`, docs | version 2.33.1; FEATURES, DEV_NOTES, CHANGELOG |
+
+## v2.33.0
 
 ### Changes from v2.32.3 (new kangaroo sprites - branch fix/kangaroo-sprites)
 
