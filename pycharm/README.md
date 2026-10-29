@@ -197,8 +197,10 @@ or any changes to your GitHub settings.
 2. A browser opens at github.com/login/device, and a PyCharm notification shows
    an 8-character code.
 3. Enter the code, sign in to GitHub if asked, and click **Authorize**. Codotchi
-   only asks for the `public_repo` permission, which it needs to submit
-   leaderboard entries.
+   asks for two permissions: `public_repo` to submit leaderboard entries, and
+   `notifications` to unsubscribe you from those entries so GitHub doesn't
+   email you about them. If you signed in before v2.32.2, Codotchi asks you to
+   sign in once more to add `notifications`.
 4. Go back to PyCharm. It picks up the sign-in on its own within a few seconds.
 
 If it doesn't work:

@@ -2485,6 +2485,8 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 
 **Fix:** After the issue is created, the client unsubscribes the user with the GraphQL `updateSubscription` mutation (REST has no issue-subscription endpoint). Opt back in with `codotchi.leaderboard.emailNotifications` / the PyCharm checkbox.
 
+**Follow-up:** The first version failed silently in real use: GitHub accepts `updateSubscription` only with the `notifications` scope (not `public_repo` or even `repo`), and sign-in asked for `read:user` + `public_repo`. The sign-in scopes now include `notifications`, and older sign-ins are treated as expired so users sign in once more.
+
 ## BUGFIX-210 - Attention-call notification stays after the call is answered
 
 **Status:** Fixed (branch `fix/notifications-v2.32.2`)

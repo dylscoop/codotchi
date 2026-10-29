@@ -833,7 +833,7 @@ class CodotchiPlugin : Disposable {
                 userConn.setRequestProperty("Authorization", "token $pat")
                 userConn.setRequestProperty("Accept", "application/vnd.github+json")
                 userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
-                if (userConn.isGithubAuthFailure()) {
+                if (userConn.isGithubAuthFailure() || userConn.lacksLeaderboardScopes()) {
                     handleLeaderboardAuthFailure(interactive = promptIfNoToken, state = state)
                     return@execute
                 }
@@ -935,7 +935,7 @@ class CodotchiPlugin : Disposable {
                 }
                 val reauthAndRetry: () -> Unit = {
                     if (retried) {
-                        postResult("error", "GitHub rejected the new sign-in too — check the token has public_repo access.")
+                        postResult("error", "GitHub rejected the new sign-in too — check the token has public_repo and notifications access.")
                     } else {
                         PasswordSafe.instance.setPassword(credAttrs, null)
                         setLeaderboardUsername(null)
@@ -952,7 +952,7 @@ class CodotchiPlugin : Disposable {
                 userConn.setRequestProperty("Authorization", "token $pat")
                 userConn.setRequestProperty("Accept", "application/vnd.github+json")
                 userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
-                if (userConn.isGithubAuthFailure()) { reauthAndRetry(); return@execute }
+                if (userConn.isGithubAuthFailure() || userConn.lacksLeaderboardScopes()) { reauthAndRetry(); return@execute }
                 if (userConn.responseCode != 200) {
                     postResult("error", "GitHub API error: ${userConn.responseCode}")
                     return@execute
@@ -1048,7 +1048,7 @@ class CodotchiPlugin : Disposable {
                 dcConn.readTimeout = 10000
                 dcConn.setRequestProperty("Accept", "application/json")
                 dcConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-                dcConn.outputStream.writer().use { it.write("client_id=$clientId&scope=public_repo") }
+                dcConn.outputStream.writer().use { it.write("client_id=$clientId&scope=${java.net.URLEncoder.encode(LEADERBOARD_OAUTH_SCOPE, "UTF-8")}") }
                 if (dcConn.responseCode != 200) {
                     val detail = githubErrorDescription(dcConn)
                     fail("Could not start GitHub sign-in (HTTP ${dcConn.responseCode}${if (detail != null) ": $detail" else ""}).")

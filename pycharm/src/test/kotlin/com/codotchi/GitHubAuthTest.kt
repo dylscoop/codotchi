@@ -64,6 +64,26 @@ class GitHubAuthTest {
     }
 
     @Test
+    fun `tokens without the notifications scope count as expired`() {
+        assertTrue(lacksLeaderboardScopes("public_repo"))
+        assertTrue(lacksLeaderboardScopes(""))
+        assertFalse(lacksLeaderboardScopes("notifications, public_repo"))
+        assertFalse(lacksLeaderboardScopes("public_repo,notifications"))
+        assertFalse(lacksLeaderboardScopes(null), "a missing header is not an OAuth token, so leave it alone")
+    }
+
+    @Test
+    fun `sign-in asks for the notifications scope and old tokens re-auth`() {
+        assertTrue("notifications" in LEADERBOARD_OAUTH_SCOPE.split(" "))
+        val flow = pluginSource.substringAfter("private fun startDeviceFlowAsync").substringBefore("private fun resolveAndCacheLeaderboardUsername")
+        assertTrue(flow.contains("LEADERBOARD_OAUTH_SCOPE"), "device flow must request LEADERBOARD_OAUTH_SCOPE")
+        val push = pluginSource.substringAfter("private fun pushLiveScoreAsync").substringBefore("private fun submitLeaderboardAsync")
+        assertTrue(push.contains("lacksLeaderboardScopes()"), "live push must re-auth tokens missing the notifications scope")
+        val submit = pluginSource.substringAfter("private fun submitLeaderboardAsync").substringBefore("private fun startDeviceFlowAsync")
+        assertTrue(submit.contains("lacksLeaderboardScopes()"), "submit must re-auth tokens missing the notifications scope")
+    }
+
+    @Test
     fun `device flow never fails silently`() {
         val flow = pluginSource.substringAfter("private fun startDeviceFlowAsync").substringBefore("private fun resolveAndCacheLeaderboardUsername")
         assertFalse(flow.contains("network failure — silent"))

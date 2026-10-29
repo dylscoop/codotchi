@@ -57,7 +57,9 @@ import { scanClaudeCodeDailyUsage, localDateKey, type DailyUsage } from "./claud
 const LEADERBOARD_REPO_OWNER = "dylscoop";
 const LEADERBOARD_REPO_NAME  = "codotchi";
 const LEADERBOARD_PAGES_URL  = `https://${LEADERBOARD_REPO_OWNER}.github.io/${LEADERBOARD_REPO_NAME}/leaderboard/`;
-const LEADERBOARD_GITHUB_SCOPES = ["read:user", "public_repo"];
+// `notifications` lets us unsubscribe from the issues we open (updateSubscription
+// accepts no other scope); sessions without it count as expired so users re-sign in.
+const LEADERBOARD_GITHUB_SCOPES = ["read:user", "public_repo", "notifications"];
 
 /** Read ~/.config/opencode/codotchi-daily.json and return today's OpenCode usage totals. */
 function scanOpenCodeDailyUsage(): DailyUsage {
@@ -132,12 +134,18 @@ export class SidebarProvider
 
   /** Resolve the leaderboard GitHub user; forces a fresh session on 401/403
    *  when interactive (BUG-S08). */
-  private resolveLeaderboardUser(interactive: boolean): Promise<GithubUserOutcome> {
-    return resolveGithubUser(
+  private async resolveLeaderboardUser(interactive: boolean): Promise<GithubUserOutcome> {
+    const outcome = await resolveGithubUser(
       (opts) => Promise.resolve(vscode.authentication.getSession("github", LEADERBOARD_GITHUB_SCOPES, opts)),
       fetch,
       interactive
     );
+    // A user who was signed in but has no session with the current scopes signed
+    // in before a scope was added: treat it as expired so they're asked to sign in again.
+    if (!outcome.ok && outcome.reason === "no_session" && !interactive && this.leaderboardGithubUsername) {
+      return { ok: false, reason: "auth_expired" };
+    }
+    return outcome;
   }
 
   private isLeaderboardAuthExpired(): boolean {

@@ -20,6 +20,28 @@ fun isGithubAuthFailure(status: Int, rateLimitRemaining: String?, retryAfter: St
 fun HttpURLConnection.isGithubAuthFailure(): Boolean =
     isGithubAuthFailure(responseCode, getHeaderField("X-RateLimit-Remaining"), getHeaderField("Retry-After"))
 
+/**
+ * OAuth scopes the leaderboard sign-in asks for. `notifications` lets us
+ * unsubscribe from the issues we open (GraphQL updateSubscription accepts no
+ * other scope). Mirrors LEADERBOARD_GITHUB_SCOPES in vscode/src/sidebarProvider.ts.
+ */
+const val LEADERBOARD_OAUTH_SCOPE = "public_repo notifications"
+
+/**
+ * True when GitHub's `X-OAuth-Scopes` header shows a token from before
+ * `notifications` was added; such tokens are treated as expired so the user
+ * signs in again. A missing header (not an OAuth token) is not flagged.
+ */
+fun lacksLeaderboardScopes(oauthScopesHeader: String?): Boolean {
+    if (oauthScopesHeader == null) return false
+    val granted = oauthScopesHeader.split(",").map { it.trim() }
+    return "notifications" !in granted
+}
+
+/** [lacksLeaderboardScopes] for an already-executed connection. */
+fun HttpURLConnection.lacksLeaderboardScopes(): Boolean =
+    lacksLeaderboardScopes(getHeaderField("X-OAuth-Scopes"))
+
 /** User-facing message for a failed OAuth device-flow token poll `error` code. */
 fun describeDeviceFlowError(error: String?): String = when (error) {
     "access_denied" -> "GitHub sign-in was cancelled."

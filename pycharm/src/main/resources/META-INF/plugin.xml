@@ -124,8 +124,10 @@ settings.</p>
 <ol>
   <li>Click <b>Sign in to GitHub (Leaderboard)</b>, either in the pet panel or in <b>Settings → Tools → Codotchi</b>.</li>
   <li>A browser opens at github.com/login/device, and a PyCharm notification shows an 8-character code.</li>
-  <li>Enter the code, sign in to GitHub if asked, and click <b>Authorize</b>. Codotchi only asks for the
-  <code>public_repo</code> permission, which it needs to submit leaderboard entries.</li>
+  <li>Enter the code, sign in to GitHub if asked, and click <b>Authorize</b>. Codotchi asks for two permissions:
+  <code>public_repo</code> to submit leaderboard entries, and <code>notifications</code> to unsubscribe you from those
+  entries so GitHub doesn't email you about them. If you signed in before v2.32.2, Codotchi asks you to sign in once
+  more to add <code>notifications</code>.</li>
   <li>Go back to PyCharm. It picks up the sign-in on its own within a few seconds.</li>
 </ol>
 <p>If it doesn't work:</p>
