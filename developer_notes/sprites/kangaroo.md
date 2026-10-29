@@ -40,3 +40,22 @@ are proportional nearest-neighbour shrinks of the sampled adult silhouette.
 - [x] Senior is adult plus index-3 age spots only.
 - [x] Tail is connected to the body in every stage.
 - [x] Baby and child are proportional shrinks of adult.
+
+---
+
+## Imported image sprites (`sprites/kangaroo/`)
+
+The hand-drawn grid above is superseded by bulk-imported images, one per stage
+(`baby.png` … `senior.png`). The originals live in the git-ignored
+`downloaded_sprites/kangaroo/`. Before import each image was preprocessed:
+
+- Teen and adult (Alamy stock JPGs): the black watermark footer bar was cut off,
+  and the "alamy" text marks on the body were painted over with the surrounding
+  fur colour.
+- All JPG stages: near-white background removed by an edge-connected flood fill
+  (keeps the cream belly), plus fully white enclosed pockets; then trimmed tightly
+  to the kangaroo so the importer can scale and centre it.
+
+Without this, teen and adult kept their white background (the black footer meant
+the four corners didn't match, so auto background removal was skipped) and the
+padded canvases shrank every stage on the shared grid (now 148 × 128).
