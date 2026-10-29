@@ -52,6 +52,15 @@ class LiveProgressTest {
     }
 
     @Test
+    fun `answered attention calls are removed from the Notifications tool window`() {
+        val src = pluginSource()
+        val fire = src.substringAfter("private fun fireAttentionNotification").substringBefore("private fun removeWhenExpired")
+        val guarded = fire.substringAfter("if (callType != null) {").substringBefore("}")
+        assertTrue(guarded.contains("removeWhenExpired(notification)"), "only expirable calls are flagged")
+        assertTrue(src.substringAfter("private fun removeWhenExpired").contains("getMethod(\"setRemoveWhenExpired\""))
+    }
+
+    @Test
     fun `pushLiveScoreAsync posts a signed Live issue without labels and records the sync`() {
         val src = pluginSource()
         val push = src.substringAfter("private fun pushLiveScoreAsync").substringBefore("private fun submitLeaderboardAsync")
