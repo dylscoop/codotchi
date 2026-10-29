@@ -8,6 +8,8 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import * as fs from "fs";
+import * as path from "path";
 import {
   resolveGithubUser,
   isAuthFailure,
@@ -164,4 +166,26 @@ describe("resolveGithubUser", () => {
     assert.match(describeGithubUserFailure({ ok: false, reason: "auth_expired" }), /expired/);
     assert.match(describeGithubUserFailure({ ok: false, reason: "api_error", status: 502 }), /502/);
   });
+});
+
+describe("leaderboard issue POSTs", () => {
+  // Labels are not needed: the workflows match on the issue title.
+  it("send no labels", () => {
+    const src = fs.readFileSync(path.join(__dirname, "../../../../vscode/src/sidebarProvider.ts"), "utf8");
+    assert.equal((src.match(/\/issues`/g) ?? []).length, 4, "expected the four issue POSTs");
+    assert.doesNotMatch(src, /labels\s*:/);
+  });
+});
+
+describe("leaderboard workflows", () => {
+  // GitHub emails an issue's author when it is closed, even after they unsubscribe,
+  // so the workflows delete processed issues (closing is only the fallback).
+  for (const name of ["process-leaderboard-live", "process-leaderboard", "process-leaderboard-delete"]) {
+    it(`${name}.yml deletes the issue with the admin token`, () => {
+      const yml = fs.readFileSync(path.join(__dirname, `../../../../.github/workflows/${name}.yml`), "utf8");
+      assert.match(yml, /deleteIssue\(input: \{issueId: \$id\}\)/);
+      assert.match(yml, /ADMIN_TOKEN: \$\{\{ secrets\.LEADERBOARD_ADMIN_TOKEN \}\}/);
+      assert.doesNotMatch(yml, /createComment/);
+    });
+  }
 });

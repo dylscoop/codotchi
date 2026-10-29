@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.32.2] - 2026-10-29
+
+### Changed
+
+- **No more leaderboard emails.** Codotchi updates the leaderboard by opening GitHub issues from your account, and GitHub emailed you every time one was closed (every live push). The leaderboard now deletes each issue after processing it instead of closing it, so there is nothing to email about.
+- **Attention-call notifications close themselves** once you answer the call, it expires or another call replaces it. They now appear as progress notifications (the only kind VS Code can close from code), so they no longer have an "Open Codotchi" button.
+
 ## [2.32.1] - 2026-10-26
 
 ### Changed

@@ -1,6 +1,20 @@
 # Version History
 
-## v2.32.1 - current
+## v2.32.2 - current
+
+### Changes from v2.32.1 (quieter notifications - branch fix/notifications-v2.32.2)
+
+| File | What changed |
+|------|-------------|
+| `.github/workflows/process-leaderboard-live.yml`, `process-leaderboard.yml`, `process-leaderboard-delete.yml` | processed issues are **deleted** (GraphQL `deleteIssue` with the `LEADERBOARD_ADMIN_TOKEN` repo secret) instead of closed, because GitHub emails the author when their issue is closed, even after they unsubscribe. Falls back to closing without the secret. Bot comments dropped; results go to the run log (`core.notice`). The delete workflow also matches the `[Leaderboard Delete]` title (BUGFIX-209) |
+| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt`, `developer_notes/leaderboard/ADMIN.md` | issue POSTs no longer send `labels`; every workflow matches on the title |
+| `vscode/package.json` | `attentionNotification.test.js` added to `npm test` |
+| `vscode/src/attentionNotification.ts` (new), `vscode/src/extension.ts` | attention calls show via `withProgress` (Notification location) and close when `activeAttentionCall` is cleared or changes (`shouldDismissAttention`) (BUGFIX-210) |
+| `pycharm/.../AttentionNotification.kt` (new), `CodotchiPlugin.kt` | PyCharm keeps the warning balloon and calls `expire()` on it under the same rule (EDT-only `shownAttention`) |
+| `vscode/tests/unit/attentionNotification.test.ts`, `githubAuth.test.ts`, `liveProgress.test.ts`, `pycharm/src/test/.../AttentionNotificationTest.kt`, `GitHubAuthTest.kt`, `LiveProgressTest.kt` | tests for the event mapping and dismiss rule; source guards that issue POSTs send no labels and that each leaderboard workflow deletes its issue with `LEADERBOARD_ADMIN_TOKEN` |
+| all manifests, `README.md` | version 2.32.2 |
+
+## v2.32.1
 
 ### Changes from v2.32.0 (dog games on the stage - branch feat/dog-actions)
 

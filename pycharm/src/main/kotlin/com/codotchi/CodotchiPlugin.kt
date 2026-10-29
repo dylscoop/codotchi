@@ -114,6 +114,9 @@ class CodotchiPlugin : Disposable {
      */
     @Volatile private var lastNotifiedEvents: List<String>? = null
 
+    /** The attention-call notification on screen and the call type it announced; EDT-only. */
+    private var shownAttention: Pair<String, com.intellij.notification.Notification>? = null
+
     /** Per-stat epoch-ms of the last desktop notification for a critical stat (see [CriticalStatNotifier]). */
     @Volatile private var criticalStatTracker: Map<String, Long> = emptyMap()
 
@@ -848,7 +851,6 @@ class CodotchiPlugin : Disposable {
                 val issueBody = mapOf(
                     "title" to "[Live] $username — ${state.name} (${state.ageDays}d ${state.stage})",
                     "body" to entryJson,
-                    "labels" to listOf("leaderboard-live")
                 )
 
                 val issueConn = java.net.URL(GITHUB_ISSUES_API).openConnection() as java.net.HttpURLConnection
@@ -950,7 +952,6 @@ class CodotchiPlugin : Disposable {
                 val issuePayload = mapOf(
                     "title" to issueTitle,
                     "body"  to issueBody,
-                    "labels" to listOf("leaderboard-submission")
                 )
 
                 val issueConn = java.net.URL(GITHUB_ISSUES_API).openConnection() as java.net.HttpURLConnection
@@ -1478,11 +1479,24 @@ class CodotchiPlugin : Disposable {
             fresh
         }
 
+        // Close the attention-call notification once its call is answered or expires
+        // (on the EDT, where fireAttentionNotification records what it shows).
+        if (state != null) {
+            val activeType = state.activeAttentionCall
+            ApplicationManager.getApplication().invokeLater {
+                val shown = shownAttention
+                if (shown != null && shouldDismissAttention(shown.first, activeType)) {
+                    shownAttention = null
+                    shown.second.expire()
+                }
+            }
+        }
+
         // Fire IDE notifications for attention_call_* events (only when mechanic is enabled)
         if (state != null && freshEvents && service<CodotchiSettings>().enableAttentionCalls) {
             for (event in state.events) {
                 val msg = attentionCallMessage(state.name, event, state.spriteType, cravingItemFor(state)) ?: continue
-                fireAttentionNotification(msg)
+                fireAttentionNotification(msg, attentionCallTypeForEvent(event))
             }
         }
 
@@ -1582,12 +1596,17 @@ class CodotchiPlugin : Disposable {
         }
     }
 
-    private fun fireAttentionNotification(message: String) {
+    /** @param callType the attention call this announces; when set, the notification closes itself once that call is answered or expires. */
+    private fun fireAttentionNotification(message: String, callType: String? = null) {
         ApplicationManager.getApplication().invokeLater {
             val group = NotificationGroupManager.getInstance()
                 .getNotificationGroup("Codotchi Attention Calls")
                 ?: return@invokeLater
             val notification = group.createNotification(message, NotificationType.WARNING)
+            if (callType != null) {
+                shownAttention?.second?.expire()
+                shownAttention = callType to notification
+            }
             notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Codotchi") {
                 override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
                     val project = e.project

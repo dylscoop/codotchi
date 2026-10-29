@@ -42,6 +42,8 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 - **Desktop alerts** — when hunger, happiness or energy hits 0, or health drops
   below 25, you get a desktop notification, even with the IDE minimised. It repeats every
   15 minutes while the stat stays low; turn it off in Settings
+- **Calls tidy up after themselves** — when your pet calls for attention, the
+  notification closes by itself once you answer the call or it expires
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
   and it dies. A sick pet won't eat, snack or play until it's had its
   medicine — the Medicine button counts the doses left
@@ -178,6 +180,10 @@ at github.com/settings/applications), the plugin forgets the old token. It then
 shows **Sign in to GitHub again** in the panel, and a notification with a
 **Sign in** action if live push was running in the background. Submitting a
 score starts a fresh sign-in automatically and retries the submission once.
+
+The plugin sends leaderboard updates by opening GitHub issues in the Codotchi
+repo. Once the leaderboard has processed an issue it deletes it instead of
+closing it, so GitHub doesn't email you about it.
 
 ### GitHub sign-in help
 

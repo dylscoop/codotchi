@@ -2475,3 +2475,23 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** With more than one OpenCode V2 window open, the daily total froze (e.g. at $0.07). Only the leader window subscribes to events, so replies in other windows never reached the counter, and the database re-sync only ran on `session.idle`, which V2 sends as `session.status` idle and the translator dropped. Live steps without a numeric `cost` were also skipped before their tokens could be priced.
 
 **Fix:** The V2 pulse timer now calls `refreshDailyFromDb()` (throttled to once per 30s), so the total converges on the database whatever events arrive. `session.status` idle is translated to `session.idle`. The assistant `message.updated` handler no longer requires `info.cost` to be a number; `messageCost()` prices tokens. Tests: `pluginContract.test.ts` ("counts a step with no cost field by pricing its tokens", idle status → `session.idle`).
+
+## BUGFIX-209 - Leaderboard updates email the user every time
+
+**Status:** Fixed (branch `fix/notifications-v2.32.2`)
+**Files:** `.github/workflows/process-leaderboard-live.yml`, `.github/workflows/process-leaderboard.yml`, `.github/workflows/process-leaderboard-delete.yml`
+
+**Problem:** Leaderboard updates are GitHub issues opened with the user's token. The workflows close every issue (live pushes every 15 min), and GitHub emails the author each time.
+
+**Fix:** The workflows delete the issue instead of closing it (GraphQL `deleteIssue`), which sends no notification and works for every client version. Deleting needs repo admin, which `GITHUB_TOKEN` never has, so it uses the `LEADERBOARD_ADMIN_TOKEN` repo secret (the owner's classic PAT with `public_repo`); without it the workflows fall back to closing. The bot no longer comments on issues; results are in the run log.
+
+**Why not mute from the client:** unsubscribing the author right after creation (GraphQL `updateSubscription`, which also needs the `notifications` OAuth scope) did not help. The user's notification list showed the close still arriving with reason `author` on issues the client had already unsubscribed from, so that approach and its forced re-sign-in were removed. Clients also stopped sending labels; the workflows match on the title.
+
+## BUGFIX-210 - Attention-call notification stays after the call is answered
+
+**Status:** Fixed (branch `fix/notifications-v2.32.2`)
+**Files:** `vscode/src/extension.ts`, `vscode/src/attentionNotification.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+
+**Problem:** The notification for an attention call stayed on screen after the call was answered or expired.
+
+**Fix:** The shown notification remembers its call type and closes once `activeAttentionCall` is cleared or changes. VS Code can't close a `showWarningMessage` toast, so it uses a cancellable `withProgress` notification; PyCharm calls `Notification.expire()`.

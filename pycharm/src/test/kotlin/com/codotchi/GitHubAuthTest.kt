@@ -64,6 +64,15 @@ class GitHubAuthTest {
     }
 
     @Test
+    fun `leaderboard issues are sent without labels`() {
+        // Labels are not needed: the workflows match on the issue title.
+        val push = pluginSource.substringAfter("private fun pushLiveScoreAsync").substringBefore("private fun submitLeaderboardAsync")
+        val submit = pluginSource.substringAfter("private fun submitLeaderboardAsync").substringBefore("private fun startDeviceFlowAsync")
+        assertFalse(push.contains("\"labels\""), "live push must not send labels")
+        assertFalse(submit.contains("\"labels\""), "submit must not send labels")
+    }
+
+    @Test
     fun `device flow never fails silently`() {
         val flow = pluginSource.substringAfter("private fun startDeviceFlowAsync").substringBefore("private fun resolveAndCacheLeaderboardUsername")
         assertFalse(flow.contains("network failure — silent"))

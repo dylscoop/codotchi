@@ -32,6 +32,8 @@ import { SpritePreviewPanel } from "./spritePreviewPanel";
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
 import { cravingItemFor } from "./cravingItem";
 import { CriticalStatTracker, evaluateCriticalStats, sendOsNotification } from "./criticalStatNotifier";
+import { attentionCallTypeForEvent, shouldDismissAttention } from "./attentionNotification";
+import type { AttentionCallType } from "./gameEngine";
 import {
   saveState,
   loadState,
@@ -101,6 +103,33 @@ const RESCUE_NOTIFY_REPEAT_MS = 5 * 60_000;
 let criticalStatTracker: CriticalStatTracker = {};
 
 /**
+ * The attention-call notification on screen, if any. It's a progress
+ * notification (plain toasts can't be closed from code), held open until
+ * `close` resolves — once the call is answered, expires or is replaced.
+ */
+let shownAttention: { type: AttentionCallType; close: () => void } | null = null;
+
+function closeAttentionNotification(): void {
+  shownAttention?.close();
+  shownAttention = null;
+}
+
+function showAttentionNotification(type: AttentionCallType, message: string): void {
+  closeAttentionNotification();
+  void vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title: message, cancellable: true },
+    (_progress, cancel) => new Promise<void>((resolve) => {
+      const entry = { type, close: resolve };
+      shownAttention = entry;
+      cancel.onCancellationRequested(() => {
+        if (shownAttention === entry) { shownAttention = null; }
+        resolve();
+      });
+    }),
+  );
+}
+
+/**
  * Activate the extension.
  *
  * @param context - The VS Code extension context.
@@ -120,6 +149,11 @@ export function activate(context: vscode.ExtensionContext): void {
     currentState = state;
     const freshEvents = state.events !== lastNotifiedEvents;
     lastNotifiedEvents = state.events;
+
+    // Close the attention-call notification once its call is answered or expires
+    if (shouldDismissAttention(shownAttention?.type ?? null, state.activeAttentionCall)) {
+      closeAttentionNotification();
+    }
 
     // Fire IDE notifications for attention call events (only when mechanic is enabled)
     const attentionCallsEnabled = vscode.workspace
@@ -147,7 +181,10 @@ export function activate(context: vscode.ExtensionContext): void {
       };
       for (const event of state.events) {
         const msg = notificationMessages[event];
-        if (msg) {
+        const callType = attentionCallTypeForEvent(event);
+        if (msg && callType) {
+          showAttentionNotification(callType, msg);
+        } else if (msg) {
           void vscode.window.showWarningMessage(msg, "Open Codotchi").then((selection) => {
             if (selection === "Open Codotchi") {
               void vscode.commands.executeCommand("codotchiView.focus");

@@ -44,6 +44,8 @@ The sidebar greys out **Submit to Leaderboard** and **Push live progress** and s
 
 **If your GitHub sign-in expires or is revoked**, both IDEs notice the next time they talk to GitHub. The sidebar shows **Sign in to GitHub again**, and a background live push shows a notification with a **Sign in** action. Submitting or deleting an entry asks you to sign in again and retries once.
 
+**No email for every update.** Leaderboard updates are GitHub issues opened from your account. Once the leaderboard has processed one, it deletes the issue instead of closing it, so GitHub doesn't email you about it.
+
 ## Platforms
 
 | IDE | Package | Install |
@@ -74,7 +76,7 @@ code --install-extension dylscoop.codotchi
 
 #### Manual install (VSIX)
 
-1. Download `codotchi-2.32.1.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download `codotchi-2.32.2.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
@@ -98,7 +100,7 @@ or in your IDE go to **Settings → Plugins → Marketplace**, search for
 
 #### Manual install (ZIP)
 
-1. Download `pycharm-codotchi-2.32.1.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download `pycharm-codotchi-2.32.2.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -124,7 +126,7 @@ On OpenCode 1.x the key is `"plugin"` (singular) instead of `"plugins"`.
 
 Restart OpenCode. It downloads the package on startup, and the plugin
 registers both the `codotchi` tool and the `/codotchi` slash command, so
-there's nothing else to copy. To pin a version use `"opencode-codotchi@2.32.1"`.
+there's nothing else to copy. To pin a version use `"opencode-codotchi@2.32.2"`.
 
 > If you prefer files on disk, `npx opencode-codotchi --install` runs the same
 > installer as Option 2 straight from npm.
@@ -291,7 +293,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.32.1.vsix
+# produces codotchi-2.32.2.vsix
 ```
 
 ### JetBrains plugin
@@ -307,14 +309,14 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.32.1.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.32.2.zip
 ```
 
 ## Version history
 
 See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
-Current release: **v2.32.1** — built by [dylscoop](https://github.com/dylscoop)
+Current release: **v2.32.2** — built by [dylscoop](https://github.com/dylscoop)
 
 > "Grow your best pet by writing your best code."
 

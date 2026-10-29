@@ -870,7 +870,7 @@ export class SidebarProvider
               "Content-Type": "application/json",
               "User-Agent": "Codotchi-VSCode",
             },
-            body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ["leaderboard-submission"] }),
+            body: JSON.stringify({ title: issueTitle, body: issueBody }),
           }
         );
         if (issueRes.status === 201) {
@@ -921,7 +921,7 @@ export class SidebarProvider
             "Content-Type": "application/json",
             "User-Agent": "Codotchi-VSCode",
           },
-          body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ["leaderboard-submission"] }),
+          body: JSON.stringify({ title: issueTitle, body: issueBody }),
         }
       );
       if (isAuthFailure(issueRes)) { this.markLeaderboardAuthExpired(true); }
@@ -1052,7 +1052,6 @@ export class SidebarProvider
           body: JSON.stringify({
             title: `[Live] ${username} — ${state.name} (${state.ageDays}d ${state.stage})`,
             body:  JSON.stringify(entry),
-            labels: ["leaderboard-live"],
           }),
         }
       );
@@ -1119,7 +1118,7 @@ export class SidebarProvider
             "Content-Type": "application/json",
             "User-Agent": "Codotchi-VSCode",
           },
-          body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ["leaderboard-delete"] }),
+          body: JSON.stringify({ title: issueTitle, body: issueBody }),
         }
       );
       if (issueRes.status === 201) {

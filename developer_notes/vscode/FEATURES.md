@@ -93,6 +93,10 @@ The pet fires IDE notifications demanding care, with a **1-minute active
 (non-idle) response window** (the random calls use the configurable
 `codotchi.attentionCallExpiry` window instead). Idle time does NOT count toward the timer.
 
+The notification closes itself once the call is answered, expires or is replaced
+(`shouldDismissAttention`, since v2.32.2). VS Code shows it with `withProgress`
+so it can be closed from code; PyCharm calls `Notification.expire()`.
+
 | Trigger                                            | Attention Type    | Correct Response        | Expiry penalty                         | Status |
 |----------------------------------------------------|-------------------|-------------------------|----------------------------------------|--------|
 | Hunger < 25                                        | `hunger`          | Feed meal or snack      | Hunger −10                             | `[x]`  |

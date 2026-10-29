@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.32.1</version>
+    <version>2.32.2</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -38,6 +38,7 @@ Visit <a href="https://github.com/dylscoop/codotchi">github.com/dylscoop/codotch
   <li><b>Moods you can see</b> — a happy pet sparkles, a sad pet sheds a tear, a sleeping pet dozes with drifting z's, and a pet stops to eat its meal from a bowl</li>
   <li><b>Pet customisation</b> — name your pet and choose a pet type on first launch</li>
   <li><b>Desktop alerts</b> — when hunger, happiness or energy hits 0, or health drops below 25, you get a desktop notification, even with the IDE minimised. It repeats every 15 minutes while the stat stays low; turn it off in Settings</li>
+  <li><b>Calls tidy up after themselves</b> — when your pet calls for attention, the notification closes by itself once you answer the call or it expires</li>
   <li><b>Sickness &amp; death</b> — neglect your pet and it gets sick; leave it untreated and it dies. A sick pet won't eat, snack or play until it's had its medicine — the Medicine button counts the doses left</li>
   <li><b>Safe while you are away</b> — when you step away from the IDE your pet gets hungry and bored more slowly and never loses health, so it is waiting for you when you come back</li>
   <li><b>Seasons and time of day</b> — your pet lives in a pixel-art scene that follows the real month and clock: blossom trees and spring showers with a rainbow, sunflowers and fireflies in summer, falling leaves and pumpkins in autumn, and a snowman, fairy lights and snowfall in winter. The sky moves from a warm sunrise through a bright morning to sunset and starry night. Pick a fixed season or a plain background in Settings, soften the scene so your pet stands out, or keep it still. Prefer the original look? Set Background style to Legacy</li>
@@ -113,6 +114,8 @@ edited outside Codotchi, can't be submitted or pushed live, and the panel says w
 the plugin forgets the old token. It then shows <b>Sign in to GitHub again</b> in the panel, and a notification with a
 <b>Sign in</b> action if live push was running in the background. Submitting a score starts a fresh sign-in
 automatically and retries the submission once.</p>
+<p>The plugin sends leaderboard updates by opening GitHub issues in the Codotchi repo. Once the leaderboard has
+processed an issue it deletes it instead of closing it, so GitHub doesn't email you about it.</p>
 <h3>GitHub sign-in help</h3>
 <p>You sign in once. You don't need a personal access token, your own GitHub app, or any changes to your GitHub
 settings.</p>
