@@ -5,6 +5,7 @@ import * as path from "path";
 import { createPet, PetState } from "../../src/gameEngine";
 import { attentionCallLine, formatStatusBar } from "../../src/statusBarText";
 import { cravingItemFor } from "../../src/cravingItem";
+import { giftFor } from "../../src/giftItem";
 import { CUSTOM_CHARACTERS } from "../../src/customCharacters";
 
 // Tim asks for a run and a tea; Stu asks for stickers and a pint or salmon.
@@ -117,6 +118,97 @@ describe("custom character text parity", () => {
 
   it("Tim and Stu answer their call with patBubbles, not the generic pat speech", () => {
     assert.match(read("vscode/media/sidebar.js"), /_wk === "pat" && _whimChar && _whimChar\.patCall\) \{ continue; \}/);
+  });
+});
+
+describe("kangaroo (Skippy) Aussie voice", () => {
+  const roo = CUSTOM_CHARACTERS.find((c) => c.spriteType === "kangaroo")!;
+
+  it("keeps Bounce and speaks in Aussie slang", () => {
+    assert.equal(roo.patLabel, "Bounce");
+    assert.deepEqual(roo.patToasts, { patted: "__Name__: Cya later!", pat_refused: "__Name__: I'm exhausted, mate." });
+    assert.deepEqual(roo.patBubbles, ["Good on ya, mate!", "She'll be right.", "Fair dinkum, what a bounce!"]);
+    assert.deepEqual(roo.patCall, {
+      call:     "__Name__'s keen as for a bounce!",
+      answered: "You took __Name__ for a bounce.",
+      expired:  "__Name__ wanted a bounce. Thanks for that, champ.",
+      status:   "is keen as for a bounce!",
+    });
+    assert.equal(roo.ignoredBubble, "Yeah, nah… fair enough.");
+  });
+
+  it("brings a beer or some Tim Tams, and only the Tim Tams get their own praise reply", () => {
+    assert.deepEqual(roo.gifts, [
+      { message: "__Name__ found a beer in its pouch!" },
+      { message: "__Name__ brought you some Tim Tams!", praiseBubble: "These are better than Penguins!" },
+    ]);
+  });
+
+  it("goes on smoko for its break", () => {
+    assert.deepEqual(roo.breakNap, {
+      call:    "__Name__ wants smoko! You've been coding for 30 minutes.",
+      started: "__Name__ needs to get a Bunnings snag 🌭",
+      noWake:  "Oi! __Name__'s on smoko!",
+      over:    "Smoko's over. Back to it, __Name__!",
+      button:  "Smoko",
+    });
+  });
+
+  it("uses the same text in the webview and PyCharm registries", () => {
+    const js = read("vscode/media/customCharacters.js");
+    const kt = read("pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt");
+    const strings = [...roo.patBubbles, ...Object.values(roo.patToasts), ...Object.values(roo.patCall!),
+                     ...roo.gifts!.flatMap((g) => [g.message, g.praiseBubble].filter((s): s is string => !!s)),
+                     roo.breakNap!.call!, roo.breakNap!.noWake, roo.breakNap!.over];
+    for (const s of strings) {
+      assert.ok(js.includes(`"${s}"`), `customCharacters.js lacks ${s}`);
+      assert.ok(kt.includes(`"${s}"`), `CustomCharacters.kt lacks ${s}`);
+    }
+    assert.ok(js.includes('"Yeah, nah\\u2026 fair enough."') && kt.includes('"Yeah, nah… fair enough."'));
+    assert.ok(js.includes('"__Name__ needs to get a Bunnings snag \\uD83C\\uDF2D"') && kt.includes('"__Name__ needs to get a Bunnings snag 🌭"'));
+    assert.ok(js.includes('button:  "Smoko"') && kt.includes('button  = "Smoko"'));
+  });
+
+  it("every host names the picked gift, replies to it on praise and uses the smoko call", () => {
+    const ext = read("vscode/src/extension.ts");
+    assert.ok(ext.includes("giftFor(state)?.message ?? customChar?.giftMessage"));
+    assert.ok(ext.includes('customChar?.breakNap?.call?.replace("__Name__", state.name)'));
+    assert.ok(read("vscode/src/sidebarProvider.ts").includes("gift: giftFor(state),"));
+    const plugin = read("pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt");
+    assert.ok(plugin.includes("giftFor(state)?.message"));
+    assert.ok(plugin.includes('customChar?.breakNap?.call?.replace("__Name__", petName)'));
+    assert.ok(read("pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt").includes('"gift":${giftJson(giftFor(state))}'));
+    const sidebar = read("vscode/media/sidebar.js");
+    assert.ok(sidebar.includes("currentGift = message.gift || null;"));
+    assert.ok(sidebar.includes("showBubble(currentGift.praiseBubble.replace"));
+    assert.ok(sidebar.includes('if (_bn.call) { labels["attention_call_break"] = _bn.call.replace("__Name__", n); }'));
+  });
+});
+
+describe("giftFor", () => {
+  const gift = (spriteType: string, overrides: Partial<PetState> = {}): PetState =>
+    makePet(spriteType, { activeAttentionCall: "gift", ...overrides });
+
+  it("is null for characters without gifts or when no gift call is active", () => {
+    assert.equal(giftFor(gift("dog")), null);
+    assert.equal(giftFor(makePet("kangaroo")), null);
+  });
+
+  it("picks the beer or the Tim Tams at random", () => {
+    giftFor(makePet("kangaroo"));
+    assert.equal(giftFor(gift("kangaroo"), () => 0)?.message, "__Name__ found a beer in its pouch!");
+    giftFor(makePet("kangaroo"));
+    assert.equal(giftFor(gift("kangaroo"), () => 0.99)?.praiseBubble, "These are better than Penguins!");
+  });
+
+  it("keeps the pick for the whole call and the update that answers it, then clears", () => {
+    giftFor(makePet("kangaroo"));
+    const picked = giftFor(gift("kangaroo"), () => 0.99);
+    assert.equal(giftFor(gift("kangaroo"), () => 0), picked);
+    const answered = makePet("kangaroo", { events: ["praised", "attention_call_answered_gift"] });
+    assert.equal(giftFor(answered), picked);
+    assert.equal(giftFor(makePet("kangaroo")), null);
+    assert.equal(giftFor(gift("kangaroo"), () => 0)?.message, "__Name__ found a beer in its pouch!");
   });
 });
 

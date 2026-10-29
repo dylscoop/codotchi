@@ -79,6 +79,14 @@ class BrowserPanelHtmlTest {
     }
 
     @Test
+    fun `sidebar html has the kangaroo Boxing panel`() {
+        val html = loadResource("/webview/sidebar.html")
+        for (id in listOf("mg-boxing", "btn-box-jab", "btn-box-dodge", "box-feedback", "box-score")) {
+            assertTrue(html.contains("id=\"$id\""), "sidebar.html must contain #$id for the kangaroo's Boxing game")
+        }
+    }
+
+    @Test
     fun `built html contains spriteConstants content inline`() {
         val html = buildInlinedHtml()
         // STAGE_SCALES is a unique identifier declared only in spriteConstants.js

@@ -45,6 +45,8 @@ data class CustomCharacter(
     val patLabel: String,
     /** attention_call_gift notification message (null = use default). */
     val giftMessage: String? = null,
+    /** Gifts picked at random per gift call, in place of giftMessage (see GiftItem.kt). */
+    val gifts: List<CustomCharacterGift> = listOf(),
     /** Toast notification strings for pat-related events. */
     val patToasts: CustomCharacterToasts,
     /** Speech bubbles shown at random after a successful pat. */
@@ -73,6 +75,14 @@ data class CustomCharacter(
     val breakNap: CustomCharacterBreakNap? = null,
 )
 
+/** One gift a gift call can bring (__Name__ = pet name). */
+data class CustomCharacterGift(
+    /** Notification / log line when the gift call fires. */
+    val message: String,
+    /** Speech bubble when you praise to accept this gift (null = the usual praise lines). */
+    val praiseBubble: String? = null,
+)
+
 /** Replacement text for the break nap (__Name__ = pet name). */
 data class CustomCharacterBreakNap(
     /** Log line when the break starts. */
@@ -85,6 +95,8 @@ data class CustomCharacterBreakNap(
     val button: String,
     /** Weight gained when the break starts (the dog's big bone). */
     val weightGain: Int = 0,
+    /** Notification / log line when the 30-minute break call fires (null = the default). */
+    val call: String? = null,
 )
 
 val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
@@ -118,16 +130,32 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         passcode    = "straya",
         defaultName  = "Skippy",
         patLabel    = "Bounce",
-        giftMessage = "Skippy found a souvenir!",
+        gifts       = listOf(
+            CustomCharacterGift("__Name__ found a beer in its pouch!"),
+            CustomCharacterGift("__Name__ brought you some Tim Tams!", praiseBubble = "These are better than Penguins!"),
+        ),
         patToasts   = CustomCharacterToasts(
-            patted     = "Skippy had a bounce!",
-            patRefused = "Skippy is too tired to bounce!",
+            patted     = "__Name__: Cya later!",
+            patRefused = "__Name__: I'm exhausted, mate.",
         ),
         patBubbles  = listOf(
-            "Straight from the pixel bush.",
-            "Pouch secured.",
-            "Big tail, bigger hops.",
-            "That's proper straya.",
+            "Good on ya, mate!",
+            "She'll be right.",
+            "Fair dinkum, what a bounce!",
+        ),
+        patCall     = CustomCharacterPatCall(
+            call     = "__Name__'s keen as for a bounce!",
+            answered = "You took __Name__ for a bounce.",
+            expired  = "__Name__ wanted a bounce. Thanks for that, champ.",
+            status   = "is keen as for a bounce!",
+        ),
+        ignoredBubble = "Yeah, nah… fair enough.",
+        breakNap    = CustomCharacterBreakNap(
+            call    = "__Name__ wants smoko! You've been coding for 30 minutes.",
+            started = "__Name__ needs to get a Bunnings snag 🌭",
+            noWake  = "Oi! __Name__'s on smoko!",
+            over    = "Smoko's over. Back to it, __Name__!",
+            button  = "Smoko",
         ),
     ),
     CustomCharacter(

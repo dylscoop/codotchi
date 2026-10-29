@@ -267,7 +267,7 @@ describe("mini-game overlay in sidebar.js", () => {
   });
 
   it("the kangaroos box instead of Left / Right, on the pet's own stage", () => {
-    assert.ok(sidebarSource.includes('state.spriteType === "kangaroo" || state.spriteType === "roo"'));
+    assert.ok(sidebarSource.includes('return !!(state && state.spriteType === "kangaroo");'));
     assert.ok(sidebarSource.includes("else if (playsBoxing(lastState)) { startBoxingGame(); }"));
     assert.ok(sidebarSource.includes('playsBoxing(state) ? "Boxing" : "Left / Right"'));
     assert.ok(sidebarSource.includes("mgArt.boxingRoundWon(choice, oppMove, Math.random)"));

@@ -286,6 +286,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   let giftBoxX   = null;     // floor X of gift box while a "gift" attention call is active
   let snackItems = [];       // floor items: [{ x, type: "candy"|"bone" }]
   let currentCravingItem = null; // custom character's craved snack label ("a pint"), from the host
+  let currentGift = null;        // custom character's gift for this gift call ({ message, praiseBubble }), from the host
   let heldSnackAnswers     = []; // answered-call events waiting for the pet to eat a floor snack
   let releasedSnackAnswers = []; // ...and once eaten, shown with the next state update
   let activeBubble = null;   // speech bubble: { text, kind, startMs, fadeOutMs, fadeDurMs } or null
@@ -1253,9 +1254,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   // ── Kangaroo game: Boxing (replaces Left / Right) ─────────────────────────
   // A second kangaroo hops onto the stage; first to two rounds wins the bout.
 
-  /** Whether this pet boxes instead of playing Left / Right (Skippy and Roogotchi). */
+  /** Whether this pet boxes instead of playing Left / Right (Skippy the kangaroo). */
   function playsBoxing(state) {
-    return !!(state && (state.spriteType === "kangaroo" || state.spriteType === "roo"));
+    return !!(state && state.spriteType === "kangaroo");
   }
 
   var BOX_WINS_NEEDED = 2;
@@ -2237,7 +2238,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       ? _napLabel + " " + Math.max(1, Math.ceil(napTicks * 3 / 60)) + "m"
       : (state.sleeping ? "Wake" : "Sleep");
     sleepWakeBtn.title = napTicks > 0
-      ? ((_napChar && _napChar.breakNap) ? "Chewing a bone on your break — it stops on its own" : "Taking a break nap — it wakes up on its own")
+      ? (state.spriteType === "dog" ? "Chewing a bone on your break — it stops on its own"
+         : (_napChar && _napChar.breakNap) ? "On " + _napLabel.toLowerCase() + " — it ends on its own"
+         : "Taking a break nap — it wakes up on its own")
       : "";
     sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
 
@@ -2477,6 +2480,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       if (events.indexOf("praised") !== -1 &&
           (events.indexOf("attention_call_answered_gift") !== -1 ||
            events.indexOf("attention_call_answered_unhappiness") !== -1)) {
+        // A custom character's gift can have its own reply (the kangaroos' Tim Tams)
+        if (events.indexOf("attention_call_answered_gift") !== -1 && currentGift && currentGift.praiseBubble) {
+          showBubble(currentGift.praiseBubble.replace("__Name__", _n));
+          return;
+        }
         var _praiseTexts = ["This makes me happy!", "I feel so loved.", "That means a lot to me.", "I'm happy you're here."];
         showBubble(_praiseTexts[Math.floor(Math.random() * _praiseTexts.length)]);
         return;
@@ -2802,7 +2810,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "attention_call_sick":            n + " is calling — they feel sick!",
       "attention_call_low_energy":      n + " is calling — they're exhausted!",
       "attention_call_misbehaviour":    n + " is misbehaving and needs discipline!",
-      "attention_call_gift":            (_cc && _cc.giftMessage) ? _cc.giftMessage.replace("__Name__", n) : n + " brought you a gift!",
+      "attention_call_gift":            currentGift ? currentGift.message.replace("__Name__", n)
+                                      : (_cc && _cc.giftMessage) ? _cc.giftMessage.replace("__Name__", n) : n + " brought you a gift!",
       "attention_call_critical_health": n + " is calling — health is critical!",
       "attention_call_play":            n + " wants to play a game with you!",
       "attention_call_pat":             n + " wants a pat!",
@@ -2872,6 +2881,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       labels["attention_call_answered_break"] = _bn.started.replace("__Name__", n) + " (5 min).";
       labels["break_nap_no_wake"]             = _bn.noWake.replace("__Name__", n);
       labels["break_nap_over"]                = _bn.over.replace("__Name__", n);
+      if (_bn.call) { labels["attention_call_break"] = _bn.call.replace("__Name__", n); }
       // It doesn't fall asleep on its break, it gets the bone
       if (code === "fell_asleep" && (state.breakNapTicksRemaining || 0) > 0) { return null; }
     }
@@ -4052,6 +4062,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     bossAccess = message.bossAccess === "queue" || message.bossAccess === "always" ? message.bossAccess : "off";
 
     currentCravingItem = message.cravingItem || null;
+    currentGift = message.gift || null;
 
     if (message.highScore) { latestHighScore = message.highScore; }
     if (message.highScore === null) { latestHighScore = null; }
