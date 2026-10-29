@@ -41,6 +41,7 @@ import com.intellij.openapi.components.*
  *  - [tokenCostIncludeClaudeCode] : include Claude Code dollar-cost usage in Today's Token Cost (default true)
  *  - [tokenCostIncludeOpenCode]   : include OpenCode dollar-cost usage in Today's Token Cost (default true)
  *  - [tokenCostIncludeCopilot]    : include GitHub Copilot premium-quota percentage in Today's Token Cost (default false); requires signing in via "Codotchi: Sign in to GitHub (Copilot Quota)"
+ *  - [leaderboardEmailNotifications]: stay subscribed to (and emailed about) the leaderboard issues Codotchi opens (default false)
  */
 @State(
     name = "CodotchiSettings",
@@ -85,6 +86,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var tokenCostIncludeClaudeCode: Boolean = true
         var tokenCostIncludeOpenCode: Boolean = true
         var tokenCostIncludeCopilot: Boolean = false
+        var leaderboardEmailNotifications: Boolean = false
     }
 
     private var _state = State()
@@ -110,6 +112,10 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var osNotifications: Boolean
         get() = _state.osNotifications
         set(v) { _state.osNotifications = v }
+
+    var leaderboardEmailNotifications: Boolean
+        get() = _state.leaderboardEmailNotifications
+        set(v) { _state.leaderboardEmailNotifications = v }
 
     var statusBarEnabled: Boolean
         get() = _state.statusBarEnabled

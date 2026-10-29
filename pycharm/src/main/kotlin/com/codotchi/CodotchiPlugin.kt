@@ -114,6 +114,9 @@ class CodotchiPlugin : Disposable {
      */
     @Volatile private var lastNotifiedEvents: List<String>? = null
 
+    /** The attention-call notification on screen and the call type it announced; EDT-only. */
+    private var shownAttention: Pair<String, com.intellij.notification.Notification>? = null
+
     /** Per-stat epoch-ms of the last desktop notification for a critical stat (see [CriticalStatNotifier]). */
     @Volatile private var criticalStatTracker: Map<String, Long> = emptyMap()
 
@@ -159,6 +162,7 @@ class CodotchiPlugin : Disposable {
     private val SCORES_JSON_URL = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/scores.json"
     private val LIVE_JSON_URL   = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/live.json"
     private val GITHUB_ISSUES_API = "https://api.github.com/repos/dylscoop/codotchi/issues"
+    private val GITHUB_GRAPHQL_API = "https://api.github.com/graphql"
     private val LIVE_PUSH_INTERVAL_MS = 15 * 60_000L
     @Volatile private var liveLastPushedAtMs: Long = 0L
     @Volatile private var leaderboardGithubUsername: String? = null
@@ -868,6 +872,7 @@ class CodotchiPlugin : Disposable {
                 }
                 if (issueConn.responseCode == 201) {
                     setLeaderboardAuthExpired(false)
+                    muteLeaderboardIssue(issueConn, pat)
                     val now = System.currentTimeMillis()
                     liveLastPushedAtMs = now
                     com.intellij.ide.util.PropertiesComponent.getInstance()
@@ -876,6 +881,32 @@ class CodotchiPlugin : Disposable {
                 }
             } catch (_: Exception) { /* network failure — silent */ }
         }
+    }
+
+    /**
+     * Unless the user opted in to leaderboard emails, unsubscribe them from the
+     * issue they just opened (read from [issueConn]'s 201 body) so the workflow
+     * closing it doesn't email them. GitHub auto-subscribes issue authors and REST
+     * has no issue-subscription endpoint, so this uses GraphQL updateSubscription.
+     * Best effort: failures are ignored.
+     */
+    private fun muteLeaderboardIssue(issueConn: java.net.HttpURLConnection, pat: String) {
+        if (service<CodotchiSettings>().leaderboardEmailNotifications) return
+        try {
+            @Suppress("UNCHECKED_CAST")
+            val issue = Gson().fromJson(issueConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
+            val nodeId = issue["node_id"] as? String ?: return
+            val conn = java.net.URL(GITHUB_GRAPHQL_API).openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.doOutput = true
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            conn.setRequestProperty("Authorization", "token $pat")
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
+            conn.outputStream.writer().use { it.write(Gson().toJson(unsubscribeMutation(nodeId))) }
+            conn.responseCode
+        } catch (_: Exception) { /* best effort */ }
     }
 
     /** @param retried true when this is the one retry after a forced re-auth — never re-auth twice. */
@@ -967,6 +998,7 @@ class CodotchiPlugin : Disposable {
                 if (issueConn.responseCode == 201) {
                     setLeaderboardAuthExpired(false)
                     postResult("success")
+                    muteLeaderboardIssue(issueConn, pat)
                 } else if (issueConn.isGithubAuthFailure()) {
                     reauthAndRetry()
                 } else {
@@ -1478,11 +1510,24 @@ class CodotchiPlugin : Disposable {
             fresh
         }
 
+        // Close the attention-call notification once its call is answered or expires
+        // (on the EDT, where fireAttentionNotification records what it shows).
+        if (state != null) {
+            val activeType = state.activeAttentionCall
+            ApplicationManager.getApplication().invokeLater {
+                val shown = shownAttention
+                if (shown != null && shouldDismissAttention(shown.first, activeType)) {
+                    shownAttention = null
+                    shown.second.expire()
+                }
+            }
+        }
+
         // Fire IDE notifications for attention_call_* events (only when mechanic is enabled)
         if (state != null && freshEvents && service<CodotchiSettings>().enableAttentionCalls) {
             for (event in state.events) {
                 val msg = attentionCallMessage(state.name, event, state.spriteType, cravingItemFor(state)) ?: continue
-                fireAttentionNotification(msg)
+                fireAttentionNotification(msg, attentionCallTypeForEvent(event))
             }
         }
 
@@ -1582,12 +1627,17 @@ class CodotchiPlugin : Disposable {
         }
     }
 
-    private fun fireAttentionNotification(message: String) {
+    /** @param callType the attention call this announces; when set, the notification closes itself once that call is answered or expires. */
+    private fun fireAttentionNotification(message: String, callType: String? = null) {
         ApplicationManager.getApplication().invokeLater {
             val group = NotificationGroupManager.getInstance()
                 .getNotificationGroup("Codotchi Attention Calls")
                 ?: return@invokeLater
             val notification = group.createNotification(message, NotificationType.WARNING)
+            if (callType != null) {
+                shownAttention?.second?.expire()
+                shownAttention = callType to notification
+            }
             notification.addAction(object : com.intellij.openapi.actionSystem.AnAction("Open Codotchi") {
                 override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
                     val project = e.project
