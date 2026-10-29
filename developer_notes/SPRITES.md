@@ -8,7 +8,7 @@ Complete visual design guide for all pixel-art sprites in the Codotchi extension
 
 Sprite grids come from two files in `vscode/media` (both copied into the PyCharm plugin at build time):
 
-- `sprites.generated.js`: species imported from source images in `sprites/<species>/` by `scripts/import_sprites_bulk.js` (dog, cat, dragon, roo). Don't edit it by hand.
+- `sprites.generated.js`: species imported from source images in `sprites/<species>/` by `scripts/import_sprites_bulk.js` (dog, cat, dragon, kangaroo). Don't edit it by hand.
 - `sprites.js`: hand-drawn grids (sheep, snake, kangaroo, tim, stu), the procedural classic pet, and the renderer.
 
 To preview all sprites interactively in-IDE, enable developer mode then open the Command Palette (VS Code) or Tools menu (PyCharm) and run **Codotchi: Open Sprite Preview (Dev)**. The preview uses the real `renderSpriteGrid()` function for pixel-accurate output including leg animation, mood-based colour overrides, stage scaling, and weight proportions. The standalone browser version (`vscode/media/sprite_preview.html`) still works via `file://` but the in-IDE panel is the recommended workflow.
@@ -23,7 +23,7 @@ One grid size per species (`SPRITE_GRID_META`); every stage of a species uses it
 | Quadruped (hand-drawn) | 48 × 32 | sheep, kangaroo |
 | Snake | 48 × 32 | snake |
 | Upright (hand-drawn) | 32 × 48 (stu 64 × 48) | classic (procedural), tim, stu |
-| Imported (`sprites/<species>/`) | up to 192 × 128 | dog 136 × 128, cat 142 × 128, dragon 180 × 128, roo 155 × 128 |
+| Imported (`sprites/<species>/`) | up to 192 × 128 | dog 136 × 128, cat 142 × 128, dragon 180 × 128, kangaroo 178 × 128 |
 
 The zodiac animals still waiting for art (rat, ox, tiger, rabbit, horse, monkey, rooster, pig) have no grid and are drawn as the classic pet. Their old 48 × 32 designs below are kept for reference (`vscode/media/archived_sprites/`).
 

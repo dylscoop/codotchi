@@ -1146,7 +1146,7 @@ export type SpriteType =
   | "rat" | "ox" | "tiger" | "rabbit" | "dragon" | "snake"
   | "horse" | "sheep" | "monkey" | "rooster" | "dog" | "pig"
   | typeof ROTATION_ANIMALS[number]
-  | "tim" | "testsprite" | "roo" | "stu";
+  | "tim" | "testsprite" | "stu";
 
 /**
  * Sample a random sprite type at pet creation.

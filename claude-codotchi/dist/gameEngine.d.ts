@@ -531,7 +531,7 @@ export declare const ROTATION_ANIMALS: readonly ["cat", "dog", "snake", "sheep",
  * All valid sprite type keys: the 12 Chinese zodiac animals (reachable via
  * character code only), the rotation pool, and the custom characters.
  */
-export type SpriteType = "rat" | "ox" | "tiger" | "rabbit" | "dragon" | "snake" | "horse" | "sheep" | "monkey" | "rooster" | "dog" | "pig" | typeof ROTATION_ANIMALS[number] | "tim" | "testsprite" | "roo" | "stu";
+export type SpriteType = "rat" | "ox" | "tiger" | "rabbit" | "dragon" | "snake" | "horse" | "sheep" | "monkey" | "rooster" | "dog" | "pig" | typeof ROTATION_ANIMALS[number] | "tim" | "testsprite" | "stu";
 /**
  * Sample a random sprite type at pet creation.
  * Each entry in ROTATION_ANIMALS has equal probability.

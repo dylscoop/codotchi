@@ -170,23 +170,6 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     ],
   },
   {
-    spriteType:  "roo",
-    passcode:    "bounce",
-    defaultName: "Roogotchi",
-    patLabel:    "Bounce",
-    giftMessage: "Roogotchi found something in its pouch!",
-    patToasts: {
-      patted:      "Roogotchi had a bounce!",
-      pat_refused: "Roogotchi is too tired to bounce!",
-    },
-    patBubbles: [
-      "Imported straight from a JPEG.",
-      "Pouch secured.",
-      "550 pixels tall and ready to hop.",
-      "Not bad for a photo.",
-    ],
-  },
-  {
     spriteType:  "stu",
     passcode:    "rubylovessalmon",
     defaultName: "Stugotchi",
@@ -222,7 +205,7 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
 
 /** Passcodes that randomly select one spriteType from a pool instead of a fixed character. */
 export const CUSTOM_CHARACTER_POOLS: Record<string, string[]> = {
-  "dylscoop": [...ROTATION_ANIMALS, "tim", "stu", "roo"],
+  "dylscoop": [...ROTATION_ANIMALS, "tim", "stu"],
 };
 
 /** Look up a custom character by passcode. Returns undefined if not found. */

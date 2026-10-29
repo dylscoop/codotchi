@@ -45,7 +45,7 @@ describe("pickPetEmoji", () => {
     const cases = {
       classic: "🐣", cat: "🐱", rat: "🐀", ox: "🐂", tiger: "🐯", rabbit: "🐰",
       dragon: "🐉", snake: "🐍", horse: "🐴", sheep: "🐑", monkey: "🐵",
-      rooster: "🐓", dog: "🐶", pig: "🐷", kangaroo: "🦘", roo: "🦘",
+      rooster: "🐓", dog: "🐶", pig: "🐷", kangaroo: "🦘",
       tim: "☕", stu: "🐟",
     };
     for (const [spriteType, expected] of Object.entries(cases)) {

@@ -1091,7 +1091,7 @@
   };
 
   
-  // dog, cat, dragon and roo are built from sprites/<species>/ into
+  // dog, cat, dragon and kangaroo are built from sprites/<species>/ into
   // sprites.generated.js by scripts/import_sprites_bulk.js.
 
   // -- Generated sprites ----------------------------------------------------
@@ -1522,6 +1522,8 @@
                             quadrupedBellySagRows) {
 
     var spriteType = state.spriteType || "classic";
+    // The old imported "roo" species was merged into kangaroo (v2.33.0).
+    if (spriteType === "roo") { spriteType = "kangaroo"; }
     var stage      = state.stage      || "baby";
 
     // -- Missing sprite data (BUG-S03): a species with no grid for this stage
@@ -1539,7 +1541,7 @@
       return;
     }
 
-    var palette    = getPalette(state.spriteType, state.stage);
+    var palette    = getPalette(state.spriteType === "roo" ? "kangaroo" : state.spriteType, state.stage);
     var primary    = palette.primary;
     var secondary  = palette.secondary;
 
@@ -2086,7 +2088,6 @@
       return { dx: 0, dy: 0, sx: 1 + q * 0.08, sy: 1 - q * 0.15, rot: 0 };
     },
   };
-  PAT_MOTION.roo = PAT_MOTION.kangaroo;
 
   // Custom characters whose "pat" is something else: Tim jogs a lap, Stu opens
   // a sticker binder or a pack of stickers. Neither gets the hand or hearts.
@@ -2261,7 +2262,7 @@
 
   var USAGE_DEVICE = {
     tim: "laptop", stu: "laptop", classic: "laptop", dragon: "laptop",
-    dog: "tablet", sheep: "tablet", kangaroo: "tablet", roo: "tablet",
+    dog: "tablet", sheep: "tablet", kangaroo: "tablet",
     cat: "phone", snake: "phone",
   };
 
