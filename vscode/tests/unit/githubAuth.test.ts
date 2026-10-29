@@ -13,6 +13,7 @@ import {
   isAuthFailure,
   describeGithubUserFailure,
   REAUTH_DETAIL,
+  unsubscribeFromIssue,
   type GetSessionOptions,
   type GetSessionWithOptions,
 } from "../../src/githubAuth";
@@ -163,5 +164,40 @@ describe("resolveGithubUser", () => {
   it("describes failures for the UI", () => {
     assert.match(describeGithubUserFailure({ ok: false, reason: "auth_expired" }), /expired/);
     assert.match(describeGithubUserFailure({ ok: false, reason: "api_error", status: 502 }), /502/);
+  });
+});
+
+describe("unsubscribeFromIssue", () => {
+  function graphqlFetch(status: number, body: unknown, calls: Array<{ url: string; init?: RequestInit }>): FetchLike {
+    return (async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return { status, ok: status >= 200 && status < 300, json: async () => body } as unknown as Response;
+    }) as FetchLike;
+  }
+
+  it("sends an UNSUBSCRIBED updateSubscription for the issue node id", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const ok = await unsubscribeFromIssue("I_abc", "tok", graphqlFetch(200, { data: {} }, calls));
+    assert.equal(ok, true);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "https://api.github.com/graphql");
+    const sent = JSON.parse(String(calls[0].init?.body));
+    assert.match(sent.query, /updateSubscription/);
+    assert.match(sent.query, /UNSUBSCRIBED/);
+    assert.deepEqual(sent.variables, { id: "I_abc" });
+    assert.equal((calls[0].init?.headers as Record<string, string>)["Authorization"], "token tok");
+  });
+
+  it("skips the request when there is no node id", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    assert.equal(await unsubscribeFromIssue(undefined, "tok", graphqlFetch(200, {}, calls)), false);
+    assert.equal(calls.length, 0);
+  });
+
+  it("returns false on HTTP or GraphQL errors and never throws", async () => {
+    assert.equal(await unsubscribeFromIssue("I_abc", "tok", graphqlFetch(401, {}, [])), false);
+    assert.equal(await unsubscribeFromIssue("I_abc", "tok", graphqlFetch(200, { errors: [{ message: "nope" }] }, [])), false);
+    const throwing = (async () => { throw new Error("offline"); }) as unknown as FetchLike;
+    assert.equal(await unsubscribeFromIssue("I_abc", "tok", throwing), false);
   });
 });

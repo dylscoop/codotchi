@@ -316,6 +316,12 @@
             "default": false,
             "description": "When enabled via the sidebar toggle button, pushes your pet's current age to the leaderboard hourly while it is alive. Requires a GitHub sign-in (prompted on first push).",
             "order": 27
+          },
+          "codotchi.leaderboard.emailNotifications": {
+            "type": "boolean",
+            "default": false,
+            "description": "Get GitHub emails about the issues Codotchi opens to update the leaderboard (live progress, submissions, deletions). Off by default: Codotchi unsubscribes you from each issue right after opening it, so you aren't emailed when it's processed and closed.",
+            "order": 28
           }
         }
       },
@@ -372,7 +378,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "node ../scripts/sync-core.mjs",
-    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/bossArt.test.js out-test/tests/unit/backgroundArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js out-test/tests/unit/statusBarText.test.js out-test/tests/unit/tickLease.test.js out-test/tests/unit/integrity.test.js out-test/tests/unit/customCharacterText.test.js out-test/tests/unit/liveProgress.test.js out-test/tests/unit/progression.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/bossArt.test.js out-test/tests/unit/backgroundArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js out-test/tests/unit/statusBarText.test.js out-test/tests/unit/tickLease.test.js out-test/tests/unit/integrity.test.js out-test/tests/unit/customCharacterText.test.js out-test/tests/unit/liveProgress.test.js out-test/tests/unit/progression.test.js out-test/tests/unit/attentionNotification.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

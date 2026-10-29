@@ -49,6 +49,7 @@ import {
   resolveGithubUser,
   describeGithubUserFailure,
   isAuthFailure,
+  unsubscribeFromIssue,
   type GithubUserOutcome,
 } from "./githubAuth";
 import { scanClaudeCodeDailyUsage, localDateKey, type DailyUsage } from "./claudeUsage";
@@ -785,6 +786,14 @@ export class SidebarProvider
     return String(this.context.extension.packageJSON.version ?? "0.0.0");
   }
 
+  /** Unless the user opted in to leaderboard emails, unsubscribe them from the
+   *  issue they just opened so the workflow closing it doesn't email them. */
+  private async muteLeaderboardIssue(issueRes: Response, token: string): Promise<void> {
+    if (vscode.workspace.getConfiguration("codotchi").get<boolean>("leaderboard.emailNotifications", false)) { return; }
+    const issue = await issueRes.json().catch(() => null) as { node_id?: string } | null;
+    await unsubscribeFromIssue(issue?.node_id, token, fetch);
+  }
+
   /**
    * Build the signed [Leaderboard] issue for a dead pet. The workflow rejects
    * any issue whose signature doesn't match, so hand-written issues never land.
@@ -875,6 +884,7 @@ export class SidebarProvider
         );
         if (issueRes.status === 201) {
           postResult("success");
+          await this.muteLeaderboardIssue(issueRes, session.accessToken);
         } else if (isAuthFailure(issueRes)) {
           this.markLeaderboardAuthExpired(false);
           postResult("error", "GitHub sign-in expired or lacks access — try again and accept the GitHub sign-in prompt.");
@@ -925,6 +935,7 @@ export class SidebarProvider
         }
       );
       if (isAuthFailure(issueRes)) { this.markLeaderboardAuthExpired(true); }
+      if (issueRes.status === 201) { await this.muteLeaderboardIssue(issueRes, session.accessToken); }
     } catch {
       // Auto-submit is best-effort; only an expired sign-in is surfaced
     }
@@ -1063,6 +1074,7 @@ export class SidebarProvider
       }
       if (issueRes.status === 201) {
         this.clearLeaderboardAuthExpired();
+        await this.muteLeaderboardIssue(issueRes, session.accessToken);
         await this.context.globalState.update("leaderboardLastPushedAt", Date.now());
         // Refresh sidebar so "last synced" timestamp updates immediately.
         const current = this.getCurrentState();
@@ -1124,6 +1136,7 @@ export class SidebarProvider
       );
       if (issueRes.status === 201) {
         postResult("success");
+        await this.muteLeaderboardIssue(issueRes, session.accessToken);
       } else if (isAuthFailure(issueRes)) {
         this.markLeaderboardAuthExpired(false);
         postResult("error", "GitHub sign-in expired or lacks access — try again and accept the GitHub sign-in prompt.");
