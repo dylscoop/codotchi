@@ -2479,13 +2479,15 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 ## BUGFIX-209 - Leaderboard updates email the user every time
 
 **Status:** Fixed (branch `fix/notifications-v2.32.2`)
-**Files:** `vscode/src/githubAuth.ts`, `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`
+**Files:** `vscode/src/githubAuth.ts`, `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `.github/workflows/process-leaderboard-delete.yml`
 
 **Problem:** Leaderboard updates are GitHub issues opened with the user's token, so GitHub subscribed the user to each one. The workflows close every issue (live pushes every 15 min), so users got an email for each push.
 
 **Fix:** After the issue is created, the client unsubscribes the user with the GraphQL `updateSubscription` mutation (REST has no issue-subscription endpoint). Opt back in with `codotchi.leaderboard.emailNotifications` / the PyCharm checkbox.
 
 **Follow-up:** The first version failed silently in real use: GitHub accepts `updateSubscription` only with the `notifications` scope (not `public_repo` or even `repo`), and sign-in asked for `read:user` + `public_repo`. The sign-in scopes now include `notifications`, and older sign-ins are treated as expired so users sign in once more.
+
+**Follow-up 2:** With the scope in place the unsubscribe succeeded but did not stick (issues #5138, #5140, #5142 show `unsubscribed` and then end up `SUBSCRIBED`). GitHub applies the labels sent in the create request a moment later, as a `labeled` event by the author, which subscribes them again before the workflow closes the issue. Clients no longer send labels: the live and submit workflows already match on the title, and `process-leaderboard-delete.yml` now matches the `[Leaderboard Delete]` title (the label still works for older clients).
 
 ## BUGFIX-210 - Attention-call notification stays after the call is answered
 

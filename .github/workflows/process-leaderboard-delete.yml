@@ -12,7 +12,9 @@ jobs:
   delete:
     name: Remove user's leaderboard entry
     runs-on: ubuntu-latest
-    if: contains(github.event.issue.labels.*.name, 'leaderboard-delete')
+    # Title prefix for current clients; the label for pre-2.32.2 clients (labels
+    # are no longer sent: GitHub re-subscribes the author when it applies them).
+    if: startsWith(github.event.issue.title, '[Leaderboard Delete]') || contains(github.event.issue.labels.*.name, 'leaderboard-delete')
 
     permissions:
       contents: write

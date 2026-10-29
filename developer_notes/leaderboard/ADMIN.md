@@ -42,7 +42,7 @@ Pass `1785773317734` as `spawned_at` to delete only that run.
 
 Users can delete their own entries without admin access via the VS Code plugin:
 - On the game over screen → click **Delete entry**
-- This creates a GitHub issue with label `leaderboard-delete`; the `process-leaderboard-delete.yml` workflow handles it and verifies the issue author matches the claimed username
+- This creates a GitHub issue titled `[Leaderboard Delete] …` (pre-2.32.2 clients also add the label `leaderboard-delete`); the `process-leaderboard-delete.yml` workflow handles it and verifies the issue author matches the claimed username
 
 ---
 

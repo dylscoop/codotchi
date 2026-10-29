@@ -8,6 +8,8 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import * as fs from "fs";
+import * as path from "path";
 import {
   resolveGithubUser,
   isAuthFailure,
@@ -199,5 +201,15 @@ describe("unsubscribeFromIssue", () => {
     assert.equal(await unsubscribeFromIssue("I_abc", "tok", graphqlFetch(200, { errors: [{ message: "nope" }] }, [])), false);
     const throwing = (async () => { throw new Error("offline"); }) as unknown as FetchLike;
     assert.equal(await unsubscribeFromIssue("I_abc", "tok", throwing), false);
+  });
+});
+
+describe("leaderboard issue POSTs", () => {
+  // GitHub applies labels asynchronously and counts that as the author acting on
+  // the issue, which re-subscribes them after unsubscribeFromIssue has run.
+  it("send no labels, so the unsubscribe sticks", () => {
+    const src = fs.readFileSync(path.join(__dirname, "../../../../vscode/src/sidebarProvider.ts"), "utf8");
+    assert.equal((src.match(/\/issues`/g) ?? []).length, 4, "expected the four issue POSTs");
+    assert.doesNotMatch(src, /labels\s*:/);
   });
 });

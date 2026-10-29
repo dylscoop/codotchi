@@ -852,7 +852,6 @@ class CodotchiPlugin : Disposable {
                 val issueBody = mapOf(
                     "title" to "[Live] $username — ${state.name} (${state.ageDays}d ${state.stage})",
                     "body" to entryJson,
-                    "labels" to listOf("leaderboard-live")
                 )
 
                 val issueConn = java.net.URL(GITHUB_ISSUES_API).openConnection() as java.net.HttpURLConnection
@@ -981,7 +980,6 @@ class CodotchiPlugin : Disposable {
                 val issuePayload = mapOf(
                     "title" to issueTitle,
                     "body"  to issueBody,
-                    "labels" to listOf("leaderboard-submission")
                 )
 
                 val issueConn = java.net.URL(GITHUB_ISSUES_API).openConnection() as java.net.HttpURLConnection

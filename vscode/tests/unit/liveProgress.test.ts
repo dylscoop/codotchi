@@ -93,11 +93,12 @@ describe("live progress host handlers", () => {
     assert.match(src, /if \(state != null && freshEvents && state\.events\.contains\("died_of_old_age"\)\)/);
   });
 
-  it("PyCharm posts a signed leaderboard-live issue and records the sync", () => {
+  it("PyCharm posts a signed [Live] issue (no labels) and records the sync", () => {
     const src = read("pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt");
     const push = src.slice(src.indexOf("private fun pushLiveScoreAsync"), src.indexOf("private fun submitLeaderboardAsync"));
     assert.match(push, /buildLiveEntryJson\(/);
-    assert.match(push, /"labels" to listOf\("leaderboard-live"\)/);
+    assert.match(push, /"title" to "\[Live\] /);
+    assert.doesNotMatch(push, /"labels"/);
     assert.match(push, /URL\(GITHUB_ISSUES_API\)/);
     assert.match(push, /responseCode == 201/);
     assert.match(push, /setValue\("codotchi\.liveLastPushedAt"/);

@@ -84,6 +84,17 @@ class GitHubAuthTest {
     }
 
     @Test
+    fun `leaderboard issues are sent without labels so the unsubscribe sticks`() {
+        // GitHub applies labels asynchronously and counts that as the author acting
+        // on the issue, which re-subscribes them after muteLeaderboardIssue has run.
+        val push = pluginSource.substringAfter("private fun pushLiveScoreAsync").substringBefore("private fun submitLeaderboardAsync")
+        val submit = pluginSource.substringAfter("private fun submitLeaderboardAsync").substringBefore("private fun startDeviceFlowAsync")
+        assertFalse(push.contains("\"labels\""), "live push must not send labels")
+        assertFalse(submit.contains("\"labels\""), "submit must not send labels")
+        assertTrue(push.contains("muteLeaderboardIssue(") && submit.contains("muteLeaderboardIssue("))
+    }
+
+    @Test
     fun `device flow never fails silently`() {
         val flow = pluginSource.substringAfter("private fun startDeviceFlowAsync").substringBefore("private fun resolveAndCacheLeaderboardUsername")
         assertFalse(flow.contains("network failure — silent"))

@@ -52,11 +52,12 @@ class LiveProgressTest {
     }
 
     @Test
-    fun `pushLiveScoreAsync posts a signed leaderboard-live issue and records the sync`() {
+    fun `pushLiveScoreAsync posts a signed Live issue without labels and records the sync`() {
         val src = pluginSource()
         val push = src.substringAfter("private fun pushLiveScoreAsync").substringBefore("private fun submitLeaderboardAsync")
         assertTrue(push.contains("buildLiveEntryJson("))
-        assertTrue(push.contains("\"labels\" to listOf(\"leaderboard-live\")"))
+        assertTrue(push.contains("\"title\" to \"[Live] "))
+        assertFalse(push.contains("\"labels\""))
         assertTrue(push.contains("URL(GITHUB_ISSUES_API)"))
         assertTrue(push.contains("responseCode == 201"))
         assertTrue(push.contains("setValue(\"codotchi.liveLastPushedAt\""))
