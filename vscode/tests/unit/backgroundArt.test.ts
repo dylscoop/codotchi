@@ -179,6 +179,60 @@ describe("background weather and critters (backgroundArt.js)", () => {
     assert.ok(seen > 0, "expected at least one rainbow");
   });
 
+  it("autumn thunderstorms are occasional and only in autumn", () => {
+    let storms = 0;
+    const n = 3000;
+    for (let w = 0; w < n; w++) {
+      const wx = art.weather("autumn", new Date(start + w * art.STORM_MS + 1000));
+      if (wx.thunderstorm) { storms++; assert.equal(wx.raining, true, "a storm rains"); }
+    }
+    assert.ok(Math.abs(storms / n - art.STORM_CHANCE) < 0.04, `storm share ${storms / n}`);
+    for (const season of ["spring", "summer", "winter"]) {
+      for (let w = 0; w < 200; w++) {
+        assert.equal(art.weather(season, new Date(start + w * art.STORM_MS + 1000)).thunderstorm, false);
+      }
+    }
+  });
+
+  it("lightning only flashes during a storm, a few times per window", () => {
+    let stormWindows = 0;
+    for (let w = 0; w < 400; w++) {
+      const base = start + w * art.STORM_MS;
+      const stormy = art.weather("autumn", new Date(base + 1000)).thunderstorm;
+      let flashes = 0, prev = false;
+      for (let s = 0; s < art.STORM_MS; s += 50) {
+        const f = art.lightning(base + s);
+        if (f) {
+          assert.ok(stormy, "lightning outside a storm");
+          assert.ok(f.alpha > 0 && f.alpha <= 1);
+          if (!prev) { flashes++; }
+        }
+        prev = !!f;
+      }
+      if (stormy) {
+        stormWindows++;
+        assert.ok(flashes >= 3 && flashes <= 10, `${flashes} flashes in a storm window`);
+      }
+    }
+    assert.ok(stormWindows > 0, "expected at least one storm");
+  });
+
+  it("autumn fog only at dawn or morning, never with a storm", () => {
+    let foggy = 0;
+    for (let i = 0; i < 20000; i++) {
+      const d = new Date(start + i * 61000);
+      const wx = art.weather("autumn", d);
+      if (wx.fog > 0) {
+        foggy++;
+        assert.ok(["dawn", "morning"].includes(art.getTimeOfDay(d)), `fog at ${d.getHours()}h`);
+        assert.equal(wx.thunderstorm, false);
+        assert.ok(wx.fog <= 1);
+      }
+      assert.equal(art.weather("spring", d).fog, 0);
+    }
+    assert.ok(foggy > 0, "expected some fog");
+  });
+
   it("critters are rare", () => {
     for (const kind of Object.keys(art.CRITTERS)) {
       const c = art.CRITTERS[kind];
@@ -246,6 +300,50 @@ describe("background drawing (backgroundArt.js)", () => {
     const a = JSON.stringify(art.layout("spring", 300, 180));
     art.layout("autumn", 300, 180);
     assert.equal(JSON.stringify(art.layout("spring", 300, 180)), a);
+  });
+
+  /** First time from `from`, stepping `step` ms, where `pred` holds. */
+  function findTime(from: number, step: number, pred: (t: number) => boolean): number {
+    for (let t = from; t < from + 400 * 24 * 3600 * 1000; t += step) { if (pred(t)) { return t; } }
+    throw new Error("no matching time found");
+  }
+
+  it("draws an autumn thunderstorm with a lightning bolt", () => {
+    const t = findTime(at(12).getTime(), 50, (x) => !!art.lightning(x));
+    const { ctx, styles } = mockCtx();
+    art.drawBackground(ctx, 320, 180, "autumn", new Date(t));
+    assert.ok(styles.includes("#3a3f52"), "storm sky");
+    assert.ok(styles.includes("#8aa8d0"), "heavy rain");
+    assert.ok(styles.includes("#fffbe0"), "lightning bolt");
+  });
+
+  it("draws autumn fog", () => {
+    const t = findTime(at(8).getTime(), 60000, (x) => art.weather("autumn", new Date(x)).fog >= 1);
+    const { ctx, styles } = mockCtx();
+    art.drawBackground(ctx, 320, 180, "autumn", new Date(t));
+    assert.ok(styles.includes("#dfe4ea"), "fog bands");
+  });
+
+  it("draws a V of geese in autumn daytime, not in a storm", () => {
+    const t = findTime(at(12).getTime(), 1000, (x) => {
+      const d = new Date(x);
+      return !!art.critter("geese", x) && art.darkness(d) < 0.5 && !art.weather("autumn", d).thunderstorm;
+    });
+    const { ctx, styles } = mockCtx();
+    art.drawBackground(ctx, 320, 180, "autumn", new Date(t));
+    assert.equal(styles.filter((s) => s === "#4a4038").length, 5, "five geese");
+    const other = mockCtx();
+    art.drawBackground(other.ctx, 320, 180, "spring", new Date(t));
+    assert.ok(!other.styles.includes("#4a4038"), "geese only in autumn");
+  });
+
+  it("still mode draws no storm, fog or geese", () => {
+    const t = findTime(at(12).getTime(), 50, (x) => !!art.lightning(x));
+    const { ctx, styles } = mockCtx();
+    art.drawBackground(ctx, 320, 180, "autumn", new Date(t), { animate: false });
+    for (const c of ["#3a3f52", "#8aa8d0", "#fffbe0", "#dfe4ea", "#4a4038"]) {
+      assert.ok(!styles.includes(c), `still mode drew ${c}`);
+    }
   });
 });
 

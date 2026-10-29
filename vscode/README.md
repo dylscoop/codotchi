@@ -52,7 +52,8 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   when you come back
 - **Seasons and time of day** — your pet lives in a pixel-art scene that follows
   the real month and clock: blossom trees and spring showers with a rainbow,
-  sunflowers and fireflies in summer, falling leaves and pumpkins in autumn, and a
+  sunflowers and fireflies in summer, falling leaves and pumpkins in autumn (with
+  the odd thunderstorm, morning fog and geese flying south), and a
   snowman, fairy lights and snowfall in winter. The sky moves from a warm sunrise through a
   bright morning to sunset and starry night. Pick a fixed season or a plain
   background with `codotchi.background`, soften the scene so your pet stands out

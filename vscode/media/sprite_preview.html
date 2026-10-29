@@ -196,6 +196,9 @@
     <option value="butterfly">Butterflies</option>
     <option value="bee">Bee</option>
     <option value="fireflies">Fireflies (dusk / night)</option>
+    <option value="storm">Autumn thunderstorm</option>
+    <option value="fog">Autumn fog (dawn / morning)</option>
+    <option value="geese">Geese (autumn day)</option>
   </select>
 </div>
 <canvas id="bg-canvas" width="320" height="180" style="display:block;margin:0 0 20px;image-rendering:pixelated"></canvas>
@@ -561,6 +564,8 @@
     if (kind === "shower")  { return bgArt.weather("spring", date).raining; }
     if (kind === "rainbow") { return bgArt.weather("spring", date).rainbow; }
     if (kind === "snow")    { return bgArt.weather("winter", date).snowing; }
+    if (kind === "storm")   { return bgArt.weather("autumn", date).thunderstorm; }
+    if (kind === "fog")     { return bgArt.weather("autumn", date).fog >= 1; }
     return !!bgArt.critter(kind, date.getTime());
   }
 
