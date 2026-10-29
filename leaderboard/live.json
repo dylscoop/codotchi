@@ -52,10 +52,10 @@
     "petName": "Wee Stu",
     "petRunId": "b68ca4c6f25d5c541f9eb73d12e36859b0333c31516adffe676bd4e6e703fd1f",
     "spawnedAt": 1788440785354,
-    "ageDays": 15,
+    "ageDays": 16,
     "stage": "child",
     "petType": "codeling",
-    "updatedAt": 1793265121366,
+    "updatedAt": 1793265980653,
     "clientVersion": "2.27.2",
     "verified": true
   }
