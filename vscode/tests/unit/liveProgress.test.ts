@@ -86,6 +86,14 @@ describe("live progress host handlers", () => {
     assert.match(src, /if \(freshEvents && state\.events\.includes\("died_of_old_age"\)\)/);
   });
 
+  it("VS Code attention popups hide themselves after 10 seconds", () => {
+    const src = read("vscode/src/extension.ts");
+    assert.match(src, /const ATTENTION_NOTIFY_HIDE_MS = 10_000;/);
+    const fn = src.slice(src.indexOf("function showAttentionNotification"), src.indexOf("export function activate"));
+    assert.match(fn, /setTimeout\([\s\S]*ATTENTION_NOTIFY_HIDE_MS\)/);
+    assert.match(fn, /clearTimeout\(hideTimer\)/);
+  });
+
   it("PyCharm only fires notifications for an events list it hasn't seen", () => {
     const src = read("pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt");
     assert.match(src, /state\.events !== lastNotifiedEvents/);

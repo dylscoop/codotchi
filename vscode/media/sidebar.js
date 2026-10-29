@@ -286,6 +286,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   let giftBoxX   = null;     // floor X of gift box while a "gift" attention call is active
   let snackItems = [];       // floor items: [{ x, type: "candy"|"bone" }]
   let currentCravingItem = null; // custom character's craved snack label ("a pint"), from the host
+  let currentGift = null;        // custom character's gift for this gift call ({ message, praiseBubble }), from the host
   let heldSnackAnswers     = []; // answered-call events waiting for the pet to eat a floor snack
   let releasedSnackAnswers = []; // ...and once eaten, shown with the next state update
   let activeBubble = null;   // speech bubble: { text, kind, startMs, fadeOutMs, fadeDurMs } or null
@@ -563,8 +564,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   // Wire up game-select buttons
   document.getElementById("btn-mg-lr").addEventListener("click", function () {
-    // The dog plays Tug-of-War instead of Left / Right
-    if (playsDogGames(lastState)) { startTugGame(); } else { startLeftRightGame(); }
+    // The dog plays Tug-of-War and the kangaroos box instead of Left / Right
+    if (playsDogGames(lastState)) { startTugGame(); }
+    else if (playsBoxing(lastState)) { startBoxingGame(); }
+    else { startLeftRightGame(); }
   });
   document.getElementById("btn-mg-hl").addEventListener("click", function () {
     startHigherLowerGame();
@@ -1248,12 +1251,178 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     sendPlayResult("tug_of_war", result);
   }
 
+  // ── Kangaroo game: Boxing (replaces Left / Right) ─────────────────────────
+  // A second kangaroo hops onto the stage; first to two rounds wins the bout.
+
+  /** Whether this pet boxes instead of playing Left / Right (Skippy the kangaroo). */
+  function playsBoxing(state) {
+    return !!(state && state.spriteType === "kangaroo");
+  }
+
+  var BOX_WINS_NEEDED = 2;
+  var BOX_ROUNDS = 3;
+  var boxRound, boxScore, boxOppScore;
+
+  document.getElementById("btn-box-jab").addEventListener("click",   function () { handleBoxingChoice("jab"); });
+  document.getElementById("btn-box-dodge").addEventListener("click", function () { handleBoxingChoice("dodge"); });
+
+  function boxButtons(enabled) {
+    document.getElementById("btn-box-jab").disabled   = !enabled;
+    document.getElementById("btn-box-dodge").disabled = !enabled;
+  }
+
+  function updateBoxScore() {
+    document.getElementById("box-score").textContent =
+      "Round " + Math.min(boxRound + 1, BOX_ROUNDS) + " / " + BOX_ROUNDS + "   You: " + boxScore + "   Them: " + boxOppScore;
+  }
+
+  function startBoxingGame() {
+    if (!mgArt) { startLeftRightGame(); return; }
+    mgClear();
+    clearStageBubbles();
+    boxRound = 0;
+    boxScore = 0;
+    boxOppScore = 0;
+    // The opponent is the same kind of kangaroo, awake and in its plain mood
+    stageGame = { kind: "boxing", phase: "enter", startMs: performance.now(),
+                  yourMove: null, oppMove: null, won: false,
+                  oppState: Object.assign({}, lastState, { sleeping: false, displayMood: null }) };
+    boostAnim(performance.now() + mgArt.BOX_ENTER_MS);
+    document.getElementById("box-feedback").textContent = "Righto, gloves up!";
+    showMgPanel("mg-boxing");
+    updateBoxScore();
+    boxButtons(false);
+    bjTimer = setTimeout(function () {
+      bjTimer = null;
+      if (stageGame) { stageGame.phase = "guard"; }
+      document.getElementById("box-feedback").textContent = "You wouldn't, would ya?";
+      boxButtons(true);
+    }, REDUCED_MOTION ? 0 : mgArt.BOX_ENTER_MS);
+  }
+
+  function boxingFeedback(choice, oppMove, won) {
+    if (choice === "dodge") {
+      return won ? "\u2713 You dodged their jab!"
+                 : "\u2717 You both dodged - they were quicker.";
+    }
+    if (oppMove === "jab") {
+      return won ? "\u2713 Your jab landed first."
+                 : "\u2717 Their jab landed first.";
+    }
+    return won ? "\u2713 They tried to dodge, but your jab landed."
+               : "\u2717 They dodged and countered.";
+  }
+
+  function handleBoxingChoice(choice) {
+    boxButtons(false);
+    var oppMove = Math.random() < 0.5 ? "jab" : "dodge";
+    var won = mgArt.boxingRoundWon(choice, oppMove, Math.random);
+    if (won) { boxScore++; } else { boxOppScore++; }
+    if (stageGame) {
+      stageGame.phase = "round";
+      stageGame.startMs = performance.now();
+      stageGame.yourMove = choice;
+      stageGame.oppMove = oppMove;
+      stageGame.won = won;
+    }
+    boostAnim(performance.now() + mgArt.BOX_MOVE_MS);
+    document.getElementById("box-feedback").textContent = boxingFeedback(choice, oppMove, won);
+    bjTimer = setTimeout(function () {
+      bjTimer = null;
+      boxRound++;
+      if (boxScore < BOX_WINS_NEEDED && boxOppScore < BOX_WINS_NEEDED) {
+        if (stageGame) { stageGame.phase = "guard"; }
+        document.getElementById("box-feedback").textContent = "";
+        updateBoxScore();
+        boxButtons(true);
+        return;
+      }
+      if (!stageGame || REDUCED_MOTION) { endBoxingGame(); return; }
+      // The bout's over: the opponent hops back off before the result
+      stageGame.phase = "exit";
+      stageGame.startMs = performance.now();
+      boostAnim(performance.now() + mgArt.BOX_EXIT_MS);
+      bjTimer = setTimeout(function () { bjTimer = null; endBoxingGame(); }, mgArt.BOX_EXIT_MS);
+    }, REDUCED_MOTION ? 900 : mgArt.BOX_MOVE_MS + 900);
+  }
+
+  function endBoxingGame() {
+    var result = boxScore >= BOX_WINS_NEEDED ? "win" : "lose";
+    var name = (lastState && lastState.name) || "Your kangaroo";
+    var tally = boxScore + "-" + boxOppScore;
+    mgClear();
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win"
+        ? name + " won the bout! \uD83E\uDD4A (" + tally + ")"
+        : name + " copped it (" + tally + ").";
+    sendPlayResult("boxing", result);
+  }
+
+  // Where the kangaroo is actually drawn inside its sprite box ({left, right,
+  // top, bottom}), so the boxers stand nose to nose and wear their gloves on
+  // their paws whatever the stage. Measured once per stage, size and facing
+  // from an offscreen render.
+  var boxerBoundsCache = {};
+
+  function boxerBounds(state, w, h, facingLeft) {
+    var key = state.spriteType + "|" + state.stage + "|" + w + "|" + h + "|" + facingLeft;
+    if (boxerBoundsCache[key]) { return boxerBoundsCache[key]; }
+    var bounds = { left: 0, right: w, top: 0, bottom: h };
+    var c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    var ctx = c.getContext && c.getContext("2d");
+    if (ctx && ctx.getImageData) {
+      window.renderSpriteGrid(ctx, Object.assign({}, state, { sleeping: false, displayMood: null }), 0, 0,
+        facingLeft, 0, 0, STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio, quadrupedBellySagRows);
+      var data = ctx.getImageData(0, 0, w, h).data;
+      var l = w, r = -1, tp = h, bt = -1;
+      for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+          if (data[(y * w + x) * 4 + 3] > 0) {
+            if (x < l) { l = x; }
+            if (x > r) { r = x; }
+            if (y < tp) { tp = y; }
+            if (y > bt) { bt = y; }
+          }
+        }
+      }
+      if (r >= l) { bounds = { left: l, right: r + 1, top: tp, bottom: bt + 1 }; }
+    }
+    boxerBoundsCache[key] = bounds;
+    return bounds;
+  }
+
+  /** Boxing layout for this stage: both boxers' drawn bounds, pixel unit and home x. */
+  function boxingLayout(W, w, h) {
+    var petB = boxerBounds(lastState, w, h, false);
+    var oppB = boxerBounds(lastState, w, h, true);
+    var px = mgArt.boxingPx(petB);
+    return { petB: petB, oppB: oppB, px: px, homes: mgArt.boxingHomes(W, petB, oppB, px) };
+  }
+
+  /** How far (0..1) the current Boxing phase has got. */
+  function boxingPhaseT(game, nowMs) {
+    if (REDUCED_MOTION || game.phase === "guard") { return 1; }
+    var ms = game.phase === "enter" ? mgArt.BOX_ENTER_MS : game.phase === "exit" ? mgArt.BOX_EXIT_MS : mgArt.BOX_MOVE_MS;
+    return Math.min(1, (nowMs - game.startMs) / ms);
+  }
+
   /**
    * Where the dog stands during a stage game, for the animation loop.
    * Returns null when no game is moving it.
    */
   function stageGamePose(game, nowMs, bWidth, minX, maxX) {
     var W = spriteCanvas.width;
+    if (game.kind === "boxing") {
+      // Your kangaroo squares up left of centre, nose to nose with the opponent
+      var bl = boxingLayout(W, bWidth, petBoxHeight(lastState, bWidth));
+      var bp = game.phase === "round" && !REDUCED_MOTION
+        ? mgArt.boxingPose(game.yourMove, !game.won, boxingPhaseT(game, nowMs))
+        : { dx: 0 };
+      return { x: bl.homes.pet + bp.dx * bl.px, left: false, ball: false, moving: false, done: false };
+    }
     if (game.kind === "fetch") {
       if (!game.plan) {
         game.startMs = nowMs;
@@ -1294,6 +1463,38 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       var t = REDUCED_MOTION ? 1 : Math.min(1, (nowMs - game.startMs) / TUG_MOVE_MS);
       var m = game.from + (game.to - game.from) * t;
       mgArt.drawTugRope(spriteCtx, 0, box.x + px, mouthY, px, m);
+    } else if (game.kind === "boxing") {
+      drawBoxingStage(game, box, nowMs, floorY);
+    }
+  }
+
+  /** The opponent kangaroo, both kangaroos' gloves and the POW on a landed punch. */
+  function drawBoxingStage(game, box, nowMs, floorY) {
+    var W = spriteCanvas.width;
+    var bl = boxingLayout(W, box.w, box.h);
+    var px = bl.px;
+    var t = boxingPhaseT(game, nowMs);
+    var inRound = game.phase === "round" && !REDUCED_MOTION;
+    var op = mgArt.boxingOpponentPos(game.phase, t, bl.homes.opp, W + 8);
+    var oppPose = inRound ? mgArt.boxingPose(game.oppMove, game.won, t) : { dx: 0, reach: 0 };
+    var yourPose = inRound ? mgArt.boxingPose(game.yourMove, !game.won, t) : { reach: 0 };
+    var oppX = Math.round(op.x - oppPose.dx * px);
+    var oppY = Math.round(floorY + op.dy);
+    drawBody(game.oppState, oppX, oppY, true, 0);
+
+    var half = Math.round(mgArt.GLOVE_SIZE * px / 2);
+    var yourPaw = mgArt.boxingPaw(bl.petB, false);
+    var oppPaw  = mgArt.boxingPaw(bl.oppB, true);
+    mgArt.drawBoxingGlove(spriteCtx, Math.round(box.x + yourPaw.x) - half + yourPose.reach * px,
+                          Math.round(box.y + yourPaw.y) - half, px, mgArt.COLOURS.gloveBlue);
+    mgArt.drawBoxingGlove(spriteCtx, Math.round(oppX + oppPaw.x) - half - oppPose.reach * px,
+                          Math.round(oppY + oppPaw.y) - half, px, mgArt.COLOURS.gloveRed);
+    // The round's loser takes the hit on the nose just after the exchange peaks
+    if (inRound && t > 0.35 && t < 0.75) {
+      var nose = game.won ? mgArt.boxingNose(bl.oppB, true) : mgArt.boxingNose(bl.petB, false);
+      var nx = game.won ? oppX : box.x;
+      var ny = game.won ? oppY : box.y;
+      mgArt.drawPow(spriteCtx, Math.round(nx + nose.x), Math.round(ny + nose.y), px);
     }
   }
 
@@ -1700,7 +1901,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var sgPose = stageGame ? stageGamePose(stageGame, nowMs, bWidth, minX, maxX) : null;
 
     if (sgPose) {
-      // Fetch or Tug-of-War: the game moves the dog, even off the edge of the stage
+      // Fetch, Tug-of-War or Boxing: the game moves the pet, even off the edge of the stage
       petVx = sgPose.moving ? (sgPose.x >= petX ? 60 : -60) : 0;
       petX  = sgPose.x;
       petFacingLeft = sgPose.left;
@@ -2077,7 +2278,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       ? _napLabel + " " + Math.max(1, Math.ceil(napTicks * 3 / 60)) + "m"
       : (state.sleeping ? "Wake" : "Sleep");
     sleepWakeBtn.title = napTicks > 0
-      ? ((_napChar && _napChar.breakNap) ? "Chewing a bone on your break — it stops on its own" : "Taking a break nap — it wakes up on its own")
+      ? (state.spriteType === "dog" ? "Chewing a bone on your break — it stops on its own"
+         : (_napChar && _napChar.breakNap) ? "On " + _napLabel.toLowerCase() + " — it ends on its own"
+         : "Taking a break nap — it wakes up on its own")
       : "";
     sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
 
@@ -2135,7 +2338,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var mgCfBtn = document.getElementById("btn-mg-cf");
     if (mgCfBtn) { mgCfBtn.textContent = playsBlackjack(state) ? "Blackjack" : playsDogGames(state) ? "Fetch" : "Coin Flip"; }
     var mgLrBtn = document.getElementById("btn-mg-lr");
-    if (mgLrBtn) { mgLrBtn.textContent = playsDogGames(state) ? "Tug-of-War" : "Left / Right"; }
+    if (mgLrBtn) { mgLrBtn.textContent = playsDogGames(state) ? "Tug-of-War" : playsBoxing(state) ? "Boxing" : "Left / Right"; }
     updateBossButton(state);
 
     // Reset position when a brand-new or just-loaded pet first appears
@@ -2317,6 +2520,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       if (events.indexOf("praised") !== -1 &&
           (events.indexOf("attention_call_answered_gift") !== -1 ||
            events.indexOf("attention_call_answered_unhappiness") !== -1)) {
+        // A custom character's gift can have its own reply (the kangaroos' Tim Tams)
+        if (events.indexOf("attention_call_answered_gift") !== -1 && currentGift && currentGift.praiseBubble) {
+          showBubble(currentGift.praiseBubble.replace("__Name__", _n));
+          return;
+        }
         var _praiseTexts = ["This makes me happy!", "I feel so loved.", "That means a lot to me.", "I'm happy you're here."];
         showBubble(_praiseTexts[Math.floor(Math.random() * _praiseTexts.length)]);
         return;
@@ -2642,7 +2850,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "attention_call_sick":            n + " is calling — they feel sick!",
       "attention_call_low_energy":      n + " is calling — they're exhausted!",
       "attention_call_misbehaviour":    n + " is misbehaving and needs discipline!",
-      "attention_call_gift":            (_cc && _cc.giftMessage) ? _cc.giftMessage.replace("__Name__", n) : n + " brought you a gift!",
+      "attention_call_gift":            currentGift ? currentGift.message.replace("__Name__", n)
+                                      : (_cc && _cc.giftMessage) ? _cc.giftMessage.replace("__Name__", n) : n + " brought you a gift!",
       "attention_call_critical_health": n + " is calling — health is critical!",
       "attention_call_play":            n + " wants to play a game with you!",
       "attention_call_pat":             n + " wants a pat!",
@@ -2689,6 +2898,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "minigame_fetch_lose":        n + " lost Fetch.",
       "minigame_tug_of_war_win":    n + " won Tug-of-War!",
       "minigame_tug_of_war_lose":   n + " lost Tug-of-War.",
+      "minigame_boxing_win":        n + " won the boxing match!",
+      "minigame_boxing_lose":       n + " lost the boxing match.",
       "minigame_boss_battle_win":   n + " defeated the boss!",
       "minigame_boss_battle_lose":  n + " was beaten by the boss.",
       "boss_unlocked":              "A boss appeared! Press Play \u2192 Boss Battle to fight it.",
@@ -2710,6 +2921,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       labels["attention_call_answered_break"] = _bn.started.replace("__Name__", n) + " (5 min).";
       labels["break_nap_no_wake"]             = _bn.noWake.replace("__Name__", n);
       labels["break_nap_over"]                = _bn.over.replace("__Name__", n);
+      if (_bn.call) { labels["attention_call_break"] = _bn.call.replace("__Name__", n); }
       // It doesn't fall asleep on its break, it gets the bone
       if (code === "fell_asleep" && (state.breakNapTicksRemaining || 0) > 0) { return null; }
     }
@@ -3890,6 +4102,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     bossAccess = message.bossAccess === "queue" || message.bossAccess === "always" ? message.bossAccess : "off";
 
     currentCravingItem = message.cravingItem || null;
+    currentGift = message.gift || null;
 
     if (message.highScore) { latestHighScore = message.highScore; }
     if (message.highScore === null) { latestHighScore = null; }

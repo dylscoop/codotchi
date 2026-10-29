@@ -675,6 +675,17 @@ class GameEngineTest {
     }
 
     @Test
+    fun `boxing shares Left Right rewards and weight loss`() {
+        assertEquals("left_right", minigameStatsKey("boxing"))
+        assertEquals(-5, happinessDeltaForMinigame("boxing", "lose"))
+        val pet = makePet().copy(happiness = 50, weight = 40)
+        val boxed = applyMinigameResult(pet, "boxing", "lose")
+        assertEquals(45, boxed.happiness)
+        assertEquals(37, boxed.weight)
+        assertTrue(boxed.events.contains("minigame_boxing_lose"))
+    }
+
+    @Test
     fun `only the craved food answers a craving`() {
         val wantsMeal = makePet().copy(activeAttentionCall = "craving", cravingFood = "meal")
         assertEquals("craving", startSnack(wantsMeal).activeAttentionCall)

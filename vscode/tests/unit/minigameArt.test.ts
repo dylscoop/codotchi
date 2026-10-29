@@ -229,7 +229,7 @@ describe("mini-game overlay in sidebar.js", () => {
   it("plays Fetch and Tug-of-War instead of Coin Flip and Left / Right for the dog", () => {
     assert.ok(sidebarSource.includes('state.spriteType === "dog"'));
     assert.ok(sidebarSource.includes("else if (playsDogGames(lastState)) { startFetchGame(); }"));
-    assert.ok(sidebarSource.includes("if (playsDogGames(lastState)) { startTugGame(); } else { startLeftRightGame(); }"));
+    assert.ok(sidebarSource.includes("if (playsDogGames(lastState)) { startTugGame(); }"));
     assert.ok(sidebarSource.includes('sendPlayResult("fetch", result)'));
     assert.ok(sidebarSource.includes('sendPlayResult("tug_of_war", result)'));
     for (const fn of ["endFetchGame", "endTugGame"]) {
@@ -264,6 +264,27 @@ describe("mini-game overlay in sidebar.js", () => {
   it("Fetch is a single throw: a catch wins, a miss loses", () => {
     assert.ok(!sidebarSource.includes("FETCH_THROWS"));
     assert.ok(sidebarSource.includes('var result = fetchCaught ? "win" : "lose";'));
+  });
+
+  it("the kangaroos box instead of Left / Right, on the pet's own stage", () => {
+    assert.ok(sidebarSource.includes('return !!(state && state.spriteType === "kangaroo");'));
+    assert.ok(sidebarSource.includes("else if (playsBoxing(lastState)) { startBoxingGame(); }"));
+    assert.ok(sidebarSource.includes('playsBoxing(state) ? "Boxing" : "Left / Right"'));
+    assert.ok(sidebarSource.includes("mgArt.boxingRoundWon(choice, oppMove, Math.random)"));
+    assert.ok(sidebarSource.includes('if (game.kind === "boxing") {'));
+    assert.ok(sidebarSource.includes("drawBoxingStage(game, box, nowMs, floorY);"));
+    assert.ok(sidebarSource.includes("function boxerBounds(state, w, h, facingLeft) {"), "gloves follow where the kangaroo is drawn");
+    assert.ok(sidebarSource.includes('"minigame_boxing_win":'));
+    assert.ok(sidebarSource.includes('"minigame_boxing_lose":'));
+    const body = /function endBoxingGame\(\) \{([\s\S]*?)\n  \}/.exec(sidebarSource);
+    assert.ok(body && body[1].includes("mgClear()"), "endBoxingGame does not clear the game");
+    assert.ok(body[1].includes('var result = boxScore >= BOX_WINS_NEEDED ? "win" : "lose";'));
+    assert.ok(body[1].includes('sendPlayResult("boxing", result)'));
+    assert.ok(sidebarSource.includes("var BOX_WINS_NEEDED = 2;"), "best of three: first to two");
+    const html = fs.readFileSync(path.join(media, "sidebar.html"), "utf8");
+    for (const id of ["mg-boxing", "btn-box-jab", "btn-box-dodge", "box-feedback", "box-score"]) {
+      assert.ok(html.includes(`id="${id}"`), `sidebar.html lacks #${id}`);
+    }
   });
 
   it("scores Tug-of-War from the dog's side, so the pet gets the reward when it wins", () => {
@@ -336,5 +357,99 @@ describe("dog mini-game art (minigameArt.js)", () => {
     art.drawTugRope(m.ctx, 0, 100, 50, 2, 1);
     assert.ok(m.styles.includes(art.COLOURS.rope));
     assert.ok(m.styles.includes(art.COLOURS.bad));
+  });
+});
+
+describe("minigameArt boxing (the kangaroos' Left / Right)", () => {
+  it("a jab is a coin toss whatever the opponent does", () => {
+    const art = loadArt();
+    for (const opp of ["jab", "dodge"]) {
+      assert.equal(art.boxingRoundWon("jab", opp, () => 0.49), true);
+      assert.equal(art.boxingRoundWon("jab", opp, () => 0.5), false);
+    }
+  });
+
+  it("a dodge wins only when the opponent jabs", () => {
+    const art = loadArt();
+    for (const r of [0, 0.99]) {
+      assert.equal(art.boxingRoundWon("dodge", "jab", () => r), true);
+      assert.equal(art.boxingRoundWon("dodge", "dodge", () => r), false);
+    }
+  });
+
+  it("jab and dodge each win half the time against a 50/50 opponent", () => {
+    const art = loadArt();
+    let jabs = 0, dodges = 0;
+    const rolls = [0.1, 0.9];
+    for (const opp of ["jab", "dodge"]) {
+      for (const r of rolls) {
+        if (art.boxingRoundWon("jab", opp, () => r)) { jabs++; }
+        if (art.boxingRoundWon("dodge", opp, () => r)) { dodges++; }
+      }
+    }
+    assert.equal(jabs, 2);
+    assert.equal(dodges, 2);
+  });
+
+  it("jab lunges in and punches, dodge leans back, and both settle back to zero", () => {
+    const art = loadArt();
+    for (const move of ["jab", "dodge"]) {
+      for (const lost of [true, false]) {
+        for (const t of [0, 1]) {
+          const p = art.boxingPose(move, lost, t);
+          assert.ok(Math.abs(p.dx) < 1e-9 && p.reach === 0, `${move} ${lost} t=${t}`);
+        }
+      }
+    }
+    const jab = art.boxingPose("jab", false, 0.5);
+    assert.ok(jab.dx > 0 && jab.reach > 0);
+    const dodge = art.boxingPose("dodge", false, 0.5);
+    assert.ok(dodge.dx < 0 && dodge.reach === 0);
+    assert.ok(art.boxingPose("jab", true, 0.75).dx < art.boxingPose("jab", false, 0.75).dx, "the loser is knocked back");
+    assert.equal(art.boxingPose("jab", true, 0.5).dx, art.boxingPose("jab", false, 0.5).dx, "not before the punch lands");
+  });
+
+  it("hops the opponent on from the right edge and back off again", () => {
+    const art = loadArt();
+    assert.equal(art.boxingOpponentPos("enter", 0, 100, 300).x, 300);
+    const landed = art.boxingOpponentPos("enter", 1, 100, 300);
+    assert.equal(landed.x, 100);
+    assert.equal(landed.dy, 0);
+    assert.ok(art.boxingOpponentPos("enter", 0.15, 100, 300).dy < 0, "it hops in");
+    assert.equal(art.boxingOpponentPos("exit", 0, 100, 300).x, 100);
+    assert.equal(art.boxingOpponentPos("exit", 1, 100, 300).x, 300);
+    const guard = art.boxingOpponentPos("guard", 0.5, 100, 300);
+    assert.equal(guard.x, 100);
+    assert.equal(guard.dy, 0);
+  });
+
+  it("stands the boxers nose to nose at the centre, gloves on their front paws", () => {
+    const art = loadArt();
+    // A kangaroo drawn from x 20 to 120 in a 140-wide box, facing right; mirrored facing left
+    const right = { left: 20, right: 120, top: 10, bottom: 90 };
+    const left  = { left: 20, right: 120, top: 10, bottom: 90 };
+    const px = art.boxingPx(right);
+    assert.equal(px, 4);
+    assert.equal(art.boxingPx({ left: 0, right: 10, top: 0, bottom: 10 }), 1, "never below one pixel");
+    const homes = art.boxingHomes(300, right, left, px);
+    assert.equal(homes.pet + right.right, 150 - 12, "your nose sits just left of centre");
+    assert.equal(homes.opp + left.left, 150 + 12, "their nose sits just right of centre");
+    const paw = art.boxingPaw(right, false);
+    assert.ok(paw.x > 70 && paw.x < 120 && paw.y > 10 && paw.y < 90, "front paw is ahead of the middle");
+    assert.ok(art.boxingPaw(left, true).x < 70, "a left-facing boxer's paw is on its left");
+    assert.equal(art.boxingNose(right, false).x, 120);
+    assert.equal(art.boxingNose(left, true).x, 20);
+  });
+
+  it("draws gloves in the given colour and a POW spark", () => {
+    const art = loadArt();
+    const m = mockCtx();
+    art.drawBoxingGlove(m.ctx, 10, 10, 2, art.COLOURS.gloveRed);
+    assert.ok(m.styles.includes(art.COLOURS.gloveRed));
+    assert.ok(m.styles.includes(art.COLOURS.card));
+    const p = mockCtx();
+    art.drawPow(p.ctx, 50, 50, 2);
+    assert.ok(p.styles.includes(art.COLOURS.gold));
+    assert.ok(p.styles.includes(art.COLOURS.bad));
   });
 });

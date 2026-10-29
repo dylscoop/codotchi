@@ -560,6 +560,33 @@ describe("Tim's run and Stu's stickers replace the pat (sprites.js + sidebar.js)
     }
   });
 
+  it("Skippy's Bounce has no hand or hearts: three big hops with dust on each landing", () => {
+    assert.equal(pat.usesHand("kangaroo"), false);
+    assert.equal(pat.durationMs("kangaroo", 1400), 1800);
+    let peak = 0;
+    let crouched = false;
+    for (let i = 0; i <= 300; i++) {
+      const m = pat.motion("kangaroo", i / 300);
+      peak = Math.max(peak, -m.dy);
+      if (m.sy < 0.9) { crouched = true; }
+    }
+    assert.ok(peak >= 15, `hops only ${peak} px high`);
+    assert.ok(crouched, "it should squash down before and after each hop");
+    let tops = 0;
+    for (let i = 1; i < 300; i++) {
+      const [a, b, c] = [i - 1, i, i + 1].map((k) => -pat.motion("kangaroo", k / 300).dy);
+      if (b > a && b >= c && b > 10) { tops++; }
+    }
+    assert.equal(tops, 3, "three hops");
+    const midAir: any[] = [];
+    for (let i = 0; i < 20; i++) { pat.spawn(midAir, "kangaroo", box, false, 0.05, Math.random, 0.5); }
+    assert.ok(!midAir.some((p) => p.kind === "heart"), "no hearts");
+    assert.ok(!midAir.some((p) => p.kind === "dust"), "no dust while in the air");
+    const landing: any[] = [];
+    pat.spawn(landing, "kangaroo", box, false, 1, () => 0, 0.3);
+    assert.deepEqual(landing.map((p) => p.kind), ["dust"]);
+  });
+
   it("Tim jogs a lap: out to the far end at half time and back, kicking up dust", () => {
     assert.equal(pat.runLap("tim", 0), 0);
     assert.ok(Math.abs(pat.runLap("tim", 0.5) - 1) < 1e-9);

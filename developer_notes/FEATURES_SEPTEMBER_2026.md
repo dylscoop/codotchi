@@ -414,10 +414,57 @@ Expands the FEATURES.md §14 "Language packs" row.
 | `poop` | `__Name__ made a mess.` | `__Name__'s made a right midden.` | `__Name__'s left a mess, fair dinkum.` |
 | `cost_high` | `That's a lot of tokens today.` | `Haud on, that's a lot o' tokens!` | `Strewth, that's heaps of tokens!` |
 
+#### Full `en-AU` pack (proposed, v2.33.1)
+
+Skippy the kangaroo already speaks this voice (v2.33.1: Boxing, Bounce, the
+beer / Tim Tams gift and smoko; see `customCharacters.ts`). The pack below
+gives every pet the same voice. It's pitched at Skippy's level, light slang that
+stays readable, and leaves mini-game rules and results plain. `__Name__` is the
+pet's name. Keys follow the event codes in `humaniseEvent()` and the
+attention-call notifications.
+
+| Group | Key | en-AU |
+|-------|-----|-------|
+| Care | `fed_meal` | `__Name__ smashed a feed.` |
+| Care | `fed_snack` | `__Name__ had a bikkie.` |
+| Care | `hungry` | `__Name__'s starvin', mate. Chuck us a snag?` |
+| Care | `happy` | `__Name__'s stoked!` |
+| Care | `sad` | `__Name__'s a bit flat.` |
+| Care | `sick` | `__Name__'s feelin' crook.` |
+| Care | `medicine` | `__Name__ took its medicine. Back on deck soon.` |
+| Care | `sleep` | `__Name__'s havin' a kip.` |
+| Care | `wake` | `__Name__'s up and at 'em.` |
+| Care | `poop` | `__Name__'s left a mess, fair dinkum.` |
+| Care | `clean` | `All cleaned up. Too easy.` |
+| Care | `praise` | `Good on ya!` |
+| Care | `scold` | `__Name__ copped an earful.` |
+| Care | `exhausted` | `__Name__'s absolutely knackered.` |
+| Care | `died` | `Hooroo, __Name__. Catch ya later.` |
+| Calls | `attention_call_hunger` | `__Name__ reckons it's time for a feed!` |
+| Calls | `attention_call_unhappiness` | `__Name__'s feelin' a bit flat. Give 'em a hand?` |
+| Calls | `attention_call_gift` | `__Name__ brought you a little something!` |
+| Calls | `attention_call_play` | `__Name__'s keen as for a game!` |
+| Calls | `attention_call_pat` | `__Name__ reckons it's time for a pat!` |
+| Calls | `attention_call_break` | `Smoko time! You've been coding for 30 minutes.` |
+| Calls | `attention_call_expired` (bubble) | `Yeah, nah… fair enough.` |
+| Break | `break_started` | `__Name__'s on smoko (5 min).` |
+| Break | `break_nap_no_wake` | `Oi! __Name__'s on smoko!` |
+| Break | `break_nap_over` | `Smoko's over. Back to it, __Name__!` |
+| Break | Sleep button | `Smoko 3m` |
+| Cost | `cost_low` | `Barely touched the tokens today. Too easy.` |
+| Cost | `cost_high` | `Strewth, that's heaps of tokens!` |
+| Coding | `todo_complete` | `Ripper! One off the list.` |
+| Coding | `session_diff` | `Crikey, that's a fair few changes.` |
+| Coding | `commit` | `Committed. She'll be right.` |
+| Mini-games | `minigame_*_win` | `__Name__ won! Good on ya.` |
+| Mini-games | `minigame_*_lose` | `__Name__ copped it. Have another crack?` |
+| Mini-games | Boxing (kangaroo) | Unchanged from Skippy: `Righto, gloves up!` / `You wouldn't, would ya?`; round results plain (`Your jab landed first.`) |
+
 **Design notes:**
 
-- The `stu` (Scottish) and `kangaroo`/`roo` (Australian) custom characters
-  already have voice overrides (`patBubbles`, `patToasts`, `giftMessage`).
+- The `stu` (Scottish) and `kangaroo` (Australian) custom characters already
+  have voice overrides (`patBubbles`, `patToasts`, `gifts` / `giftMessage`,
+  `patCall`, `breakNap`). A character's own lines win over the pack.
   Unlocking these characters could suggest the matching pack.
 - One `en.json` should be the source for all hosts. A build step copies it into
   each plugin, as with the shared core in §3.

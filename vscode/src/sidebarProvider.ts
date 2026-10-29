@@ -41,6 +41,7 @@ import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./
 import { loadTrainer } from "./persistence";
 import { leaderboardBlockedReason, signSubmission } from "./integrity";
 import { cravingItemFor } from "./cravingItem";
+import { giftFor } from "./giftItem";
 import { StatusBarManager } from "./statusBar";
 import { stageHeightPx } from "./stageHeight";
 import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
@@ -726,6 +727,7 @@ export class SidebarProvider
       unlockedCharacter,
       defaultPetName,
       cravingItem: cravingItemFor(state),
+      gift: giftFor(state),
       leaderboardAvailable: true,
       leaderboardBlockedReason: leaderboardBlockedReason(state, devMode),
       liveRank: (liveSubscribed && state.alive && cached) ? cached.rank : null,

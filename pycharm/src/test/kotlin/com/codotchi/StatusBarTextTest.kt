@@ -7,7 +7,8 @@ import org.junit.jupiter.api.Test
 /** Unit tests for StatusBarText.kt — mirrors vscode/tests/unit/statusBarText.test.ts. */
 class StatusBarTextTest {
 
-    private val pet = createPet("Pixel", "codeling", "neon")
+    // Pinned: a random hatch could be the kangaroo, whose pat call has its own wording
+    private val pet = createPet("Pixel", "codeling", "neon").copy(spriteType = "classic")
 
     @Test
     fun `has no warning when no attention call is active`() {

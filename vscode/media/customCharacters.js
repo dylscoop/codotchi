@@ -24,6 +24,8 @@
    *   characterLabel {string}  — optional: name shown for the character type in the info line (default: capitalised spriteType)
    *   patLabel      {string}   — label for the Pat button in the minigame overlay
    *   giftMessage   {string}   — attention_call_gift toast message (optional)
+   *   gifts         {object[]} — optional: gifts picked at random per gift call (by the host,
+   *     which sends the pick as message.gift): { message, praiseBubble? } (__Name__ = pet name)
    *   patToasts     {object}   — toast strings keyed by event name:
    *     patted        {string}  — shown when pat succeeds
    *     pat_refused   {string}  — shown when not enough energy
@@ -34,7 +36,8 @@
    *     { label, item } — label is the text ("a tea"), item the floor snack type
    *   ignoredBubble {string}   — optional: speech bubble when an attention call expires
    *   breakNap      {object}   — optional: replacement text for the 5-minute break nap:
-   *     started, noWake, over {string} (__Name__ = pet name), button {string} ("Chewing 3m")
+   *     started, noWake, over {string} (__Name__ = pet name), button {string} ("Chewing 3m"),
+   *     call {string} (optional: the 30-minute break call)
    */
   var CUSTOM_CHARACTERS = {
     tim: {
@@ -65,17 +68,33 @@
       passcode:     "straya",
       defaultName:  "Skippy",
       patLabel:     "Bounce",
-      giftMessage:  "Skippy found a souvenir!",
+      gifts: [
+        { message: "__Name__ found a beer in its pouch!" },
+        { message: "__Name__ brought you some Tim Tams!", praiseBubble: "These are better than Penguins!" },
+      ],
       patToasts: {
-        patted:      "Skippy had a bounce!",
-        pat_refused: "Skippy is too tired to bounce!",
+        patted:      "__Name__: Cya later!",
+        pat_refused: "__Name__: I'm exhausted, mate.",
       },
       patBubbles: [
-        "Straight from the pixel bush.",
-        "Pouch secured.",
-        "Big tail, bigger hops.",
-        "That's proper straya.",
+        "Good on ya, mate!",
+        "She'll be right.",
+        "Fair dinkum, what a bounce!",
       ],
+      patCall: {
+        call:     "__Name__'s keen as for a bounce!",
+        answered: "You took __Name__ for a bounce.",
+        expired:  "__Name__ wanted a bounce. Thanks for that, champ.",
+        status:   "is keen as for a bounce!",
+      },
+      ignoredBubble: "Yeah, nah\u2026 fair enough.",
+      breakNap: {
+        call:    "__Name__ wants smoko! You've been coding for 30 minutes.",
+        started: "__Name__ needs to get a Bunnings snag \uD83C\uDF2D",
+        noWake:  "Oi! __Name__'s on smoko!",
+        over:    "Smoko's over. Back to it, __Name__!",
+        button:  "Smoko",
+      },
     },
     dog: {
       passcode:     "shiba",

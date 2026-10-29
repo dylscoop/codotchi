@@ -31,6 +31,7 @@ import { EventsManager } from "./events";
 import { SpritePreviewPanel } from "./spritePreviewPanel";
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
 import { cravingItemFor } from "./cravingItem";
+import { giftFor } from "./giftItem";
 import { CriticalStatTracker, evaluateCriticalStats, sendOsNotification } from "./criticalStatNotifier";
 import { attentionCallTypeForEvent, shouldDismissAttention } from "./attentionNotification";
 import type { AttentionCallType } from "./gameEngine";
@@ -105,9 +106,13 @@ let criticalStatTracker: CriticalStatTracker = {};
 /**
  * The attention-call notification on screen, if any. It's a progress
  * notification (plain toasts can't be closed from code), held open until
- * `close` resolves — once the call is answered, expires or is replaced.
+ * `close` resolves — once the call is answered, expires, is replaced, or
+ * ATTENTION_NOTIFY_HIDE_MS passes.
  */
 let shownAttention: { type: AttentionCallType; close: () => void } | null = null;
+
+/** How long (ms) an attention-call popup stays on screen before hiding itself. */
+const ATTENTION_NOTIFY_HIDE_MS = 10_000;
 
 function closeAttentionNotification(): void {
   shownAttention?.close();
@@ -119,11 +124,21 @@ function showAttentionNotification(type: AttentionCallType, message: string): vo
   void vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: message, cancellable: true },
     (_progress, cancel) => new Promise<void>((resolve) => {
-      const entry = { type, close: resolve };
+      let hideTimer: ReturnType<typeof setTimeout> | undefined;
+      const finish = (): void => {
+        if (hideTimer !== undefined) { clearTimeout(hideTimer); hideTimer = undefined; }
+        resolve();
+      };
+      const entry = { type, close: finish };
       shownAttention = entry;
+      // Hide the popup after a short while; the call itself stays active.
+      hideTimer = setTimeout(() => {
+        if (shownAttention === entry) { shownAttention = null; }
+        finish();
+      }, ATTENTION_NOTIFY_HIDE_MS);
       cancel.onCancellationRequested(() => {
         if (shownAttention === entry) { shownAttention = null; }
-        resolve();
+        finish();
       });
     }),
   );
@@ -170,13 +185,13 @@ export function activate(context: vscode.ExtensionContext): void {
         "attention_call_sick":           `${state.name} is sick!`,
         "attention_call_low_energy":     `${state.name} is exhausted!`,
         "attention_call_misbehaviour":   `${state.name} is misbehaving!`,
-        "attention_call_gift":           (customChar?.giftMessage ?? getCustomCharacterByPasscode(vscode.workspace.getConfiguration("codotchi").get<string>("characterPasscode", ""))?.giftMessage ?? `${state.name} brought you a gift!`).replace("__Name__", state.name),
+        "attention_call_gift":           (giftFor(state)?.message ?? customChar?.giftMessage ?? getCustomCharacterByPasscode(vscode.workspace.getConfiguration("codotchi").get<string>("characterPasscode", ""))?.giftMessage ?? `${state.name} brought you a gift!`).replace("__Name__", state.name),
         "attention_call_critical_health":`${state.name}'s health is critical!`,
         "attention_call_play":           `${state.name} wants to play a game!`,
         "attention_call_pat":            patCall ? patCall.call.replace("__Name__", state.name) : `${state.name} wants a pat!`,
         "attention_call_craving_meal":   `${state.name} is craving a meal!`,
         "attention_call_craving_snack":  `${state.name} is craving ${cravingItem ?? "a snack"}!`,
-        "attention_call_break":          "Time for a break! You've been coding for 30 minutes.",
+        "attention_call_break":          customChar?.breakNap?.call?.replace("__Name__", state.name) ?? "Time for a break! You've been coding for 30 minutes.",
         "break_nap_over":                customChar?.breakNap?.over.replace("__Name__", state.name) ?? `Break's over! ${state.name} is awake and ready to code.`,
       };
       for (const event of state.events) {

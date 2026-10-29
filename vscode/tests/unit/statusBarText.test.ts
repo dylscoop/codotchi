@@ -6,7 +6,8 @@ import { createPet, PetState } from "../../src/gameEngine";
 import { attentionCallLine, formatStatusBar } from "../../src/statusBarText";
 
 function makePet(overrides: Partial<PetState> = {}): PetState {
-  return { ...createPet("Pixel", "codeling"), ...overrides };
+  // Pinned: a random hatch could be the kangaroo, whose pat call has its own wording
+  return { ...createPet("Pixel", "codeling"), spriteType: "classic", ...overrides };
 }
 
 describe("formatStatusBar", () => {

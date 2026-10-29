@@ -3,7 +3,8 @@
  *
  * Doors (Left / Right), the number card (Higher or Lower), the coin (Coin
  * Flip), playing cards (Stu's Blackjack), the dog's Fetch ball and
- * Tug-of-War rope (drawn on the pet's stage), a countdown and a small bitmap font. Everything is drawn with
+ * Tug-of-War rope and the kangaroos' boxing gloves (drawn on the pet's
+ * stage), a countdown and a small bitmap font. Everything is drawn with
  * fillRect on a whole-pixel unit, the same style as the mood layer in
  * sprites.js. No DOM access and no CSS variables (canvas ignores them), so
  * the functions can be unit-tested against a mock context.
@@ -44,6 +45,8 @@
     ballDark:  "#7e9a12",
     rope:      "#c8a36a",
     ropeDark:  "#8a6a3a",
+    gloveBlue: "#3d7be0",
+    gloveRed:  "#d83a3a",
   };
 
   // =========================================================================
@@ -599,6 +602,132 @@
   }
 
   // =========================================================================
+  // Boxing (the kangaroos' game, played on the pet's own stage)
+  // =========================================================================
+
+  /** How long the opponent takes to hop on, one round's exchange, and the hop off. */
+  var BOX_ENTER_MS = 900;
+  var BOX_MOVE_MS  = 800;
+  var BOX_EXIT_MS  = 900;
+
+  /**
+   * Whether your move wins the round. A jab is a coin toss whatever the
+   * opponent does; a dodge wins only if the opponent jabbed at you.
+   */
+  function boxingRoundWon(choice, oppMove, rand) {
+    if (choice === "jab") { return (rand || Math.random)() < 0.5; }
+    return oppMove === "jab";
+  }
+
+  /**
+   * A boxer's offset t (0..1) into a round, in boxing pixels (boxingPx):
+   * {dx (+ towards the other boxer), reach (glove punch-out)}. A jab lunges in
+   * and punches, a dodge leans back, and the round's loser is knocked back in
+   * the second half. Zero at t = 0 and t = 1.
+   */
+  function boxingPose(move, lost, t) {
+    t = Math.max(0, Math.min(1, t));
+    var e = Math.sin(t * Math.PI);
+    var dx = move === "jab" ? 4 * e : -4 * e;
+    var reach = move === "jab" ? Math.round(10 * e) : 0;
+    if (lost) {
+      var k = Math.max(0, Math.min(1, (t - 0.5) / 0.5));
+      dx -= 4 * Math.sin(k * Math.PI);
+    }
+    return { dx: dx, reach: reach };
+  }
+
+  /**
+   * Boxing's pixel unit, from where the kangaroo is actually drawn inside its
+   * sprite box (bounds = {left, right, top, bottom}): gloves, lunges and the
+   * POW all scale with it, so a baby throws small punches.
+   */
+  function boxingPx(bounds) {
+    return Math.max(1, Math.round((bounds.right - bounds.left) / 28));
+  }
+
+  /**
+   * Left edges of both boxers' sprite boxes so they stand nose to nose, 3px
+   * either side of the centre of a stage W wide. petBounds is drawn facing
+   * right, oppBounds facing left.
+   */
+  function boxingHomes(W, petBounds, oppBounds, px) {
+    var gap = 3 * px;
+    return { pet: Math.round(W / 2 - gap - petBounds.right),
+             opp: Math.round(W / 2 + gap - oppBounds.left) };
+  }
+
+  /** A boxer's front paw (where its glove goes) inside its sprite box. */
+  function boxingPaw(bounds, facingLeft) {
+    var dw = bounds.right - bounds.left;
+    var dh = bounds.bottom - bounds.top;
+    return { x: facingLeft ? bounds.right - dw * 0.73 : bounds.left + dw * 0.73,
+             y: bounds.top + dh * 0.5 };
+  }
+
+  /** A boxer's nose (where a landed punch shows its POW) inside its sprite box. */
+  function boxingNose(bounds, facingLeft) {
+    return { x: facingLeft ? bounds.left : bounds.right,
+             y: bounds.top + (bounds.bottom - bounds.top) * 0.2 };
+  }
+
+  /**
+   * The opponent hopping on from offRight to home ("enter") or back off
+   * ("exit"), t in 0..1: {x, dy} where dy is the hop height (negative = up).
+   * Any other phase stands at home.
+   */
+  function boxingOpponentPos(phase, t, home, offRight) {
+    t = Math.max(0, Math.min(1, t));
+    var hop = -Math.abs(Math.sin(t * Math.PI * 3)) * 8;
+    if (phase === "enter") { return { x: offRight + (home - offRight) * t, dy: t < 1 ? hop : 0 }; }
+    if (phase === "exit")  { return { x: home + (offRight - home) * t, dy: t < 1 ? hop : 0 }; }
+    return { x: home, dy: 0 };
+  }
+
+  var GLOVE = [
+    "0110",
+    "1111",
+    "1111",
+    "0220",
+  ];
+  var GLOVE_SIZE = GLOVE.length;
+
+  /** A boxing glove (4×4 art pixels) in colour, with a white cuff. */
+  function drawBoxingGlove(ctx, x, y, px, colour) {
+    for (var r = 0; r < GLOVE.length; r++) {
+      for (var c = 0; c < GLOVE[r].length; c++) {
+        var k = GLOVE[r][c];
+        if (k === "0") { continue; }
+        ctx.fillStyle = k === "1" ? colour : C.card;
+        ctx.fillRect(x + c * px, y + r * px, px, px);
+      }
+    }
+  }
+
+  var POW = [
+    "10101",
+    "01110",
+    "11211",
+    "01110",
+    "10101",
+  ];
+  var POW_SIZE = POW.length;
+
+  /** A landed-punch spark (5×5 art pixels), centred on (cx, cy). */
+  function drawPow(ctx, cx, cy, px) {
+    var x0 = Math.round(cx - POW_SIZE * px / 2);
+    var y0 = Math.round(cy - POW_SIZE * px / 2);
+    for (var r = 0; r < POW.length; r++) {
+      for (var c = 0; c < POW[r].length; c++) {
+        var k = POW[r][c];
+        if (k === "0") { continue; }
+        ctx.fillStyle = k === "1" ? C.gold : C.bad;
+        ctx.fillRect(x0 + c * px, y0 + r * px, px, px);
+      }
+    }
+  }
+
+  // =========================================================================
   // Exports
   // =========================================================================
 
@@ -631,5 +760,19 @@
     fetchPlan:      fetchPlan,
     planPose:       planPose,
     drawTugRope:    drawTugRope,
+    BOX_ENTER_MS:   BOX_ENTER_MS,
+    BOX_MOVE_MS:    BOX_MOVE_MS,
+    BOX_EXIT_MS:    BOX_EXIT_MS,
+    boxingRoundWon:    boxingRoundWon,
+    boxingPose:        boxingPose,
+    boxingOpponentPos: boxingOpponentPos,
+    boxingPx:          boxingPx,
+    boxingHomes:       boxingHomes,
+    boxingPaw:         boxingPaw,
+    boxingNose:        boxingNose,
+    GLOVE_SIZE:      GLOVE_SIZE,
+    drawBoxingGlove: drawBoxingGlove,
+    POW_SIZE:       POW_SIZE,
+    drawPow:        drawPow,
   };
 }());

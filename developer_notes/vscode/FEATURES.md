@@ -95,7 +95,9 @@ The pet fires IDE notifications demanding care, with a **1-minute active
 
 The notification closes itself once the call is answered, expires or is replaced
 (`shouldDismissAttention`, since v2.32.2). VS Code shows it with `withProgress`
-so it can be closed from code; PyCharm calls `Notification.expire()`.
+so it can be closed from code; PyCharm calls `Notification.expire()`. Since v2.33.1
+the VS Code popup also hides itself after 10 s (`ATTENTION_NOTIFY_HIDE_MS`) while the
+call stays active; PyCharm's `BALLOON` group already auto-hides.
 
 | Trigger                                            | Attention Type    | Correct Response        | Expiry penalty                         | Status |
 |----------------------------------------------------|-------------------|-------------------------|----------------------------------------|--------|
@@ -276,6 +278,18 @@ Status: `[ ]`
   rounds the result is win (the pet gets the winner's reward); if you take 2+
   it is lose. Game id `tug_of_war`, with Left /
   Right's rewards and extra weight loss. Rope drawn by `minigameArt.drawTugRope`.
+- **The kangaroo boxes instead of Left / Right** (v2.33.1): a second kangaroo
+  hops onto the pet's stage ("Righto, gloves up!") and the two square up nose to
+  nose ("You wouldn't, would ya?"). Each round you pick **Jab** or **Dodge** and
+  the other roo jabs or dodges at random. A jab lands half the time whatever the
+  other roo does; a dodge wins only if the other roo jabs
+  (`minigameArt.boxingRoundWon`). Best of 3: first to 2 round wins takes the
+  bout, then the opponent hops off. Game id `boxing`, with Left / Right's
+  rewards and extra weight loss. The boxers' positions come from where the
+  kangaroo is actually drawn in its sprite box (`boxerBounds`, measured once
+  per stage), so gloves sit on the paws and moves scale with the sprite
+  (`boxingPx`, `boxingHomes`, `boxingPaw`, `boxingPose`). Reduced motion
+  shows the bout without lunges or hops.
 - v2.22.2: a pixel-art coin (crown for heads, "T" for tails) tosses and spins
   for about 0.8 s before landing on the result; reduced motion shows the result
   straight away.
@@ -357,6 +371,7 @@ that fires when Play is pressed. Net totals reflect delta + baseline.
 | Blackjack (Stu) | Lose | −10 | +5 | `MINIGAME_BLACKJACK_LOSE = -10` |
 | Fetch (dog) | Win / Lose | as Coin Flip | +15 / +5 | `minigameStatsKey("fetch") = "coin_flip"` |
 | Tug-of-War (dog) | Win / Lose | as Left / Right | +20–+30 / +10 | `minigameStatsKey("tug_of_war") = "left_right"` |
+| Boxing (kangaroo) | Win / Lose | as Left / Right | +20–+30 / +10 | `minigameStatsKey("boxing") = "left_right"` |
 | Boss Battle | Win | +10 | +25 | `MINIGAME_BOSS_BATTLE_WIN = 10` |
 | Boss Battle | Lose | −5 | +10 | `MINIGAME_BOSS_BATTLE_LOSE = -5` |
 | Pat | — | +10 (flat total) | +10 | `PAT_HAPPINESS_BOOST = 10` (no play baseline) |
@@ -462,7 +477,7 @@ hands control back.
 | `became_sick` | Fast shake: ±4 px random horizontal jitter | 600 ms |
 | `healed` | Brief green colour overlay fading out | 500 ms |
 | `died` | Floats up 40 px and fades out under a gold halo; the dead screen appears when it ends (skipped with reduced motion) | 1200 ms |
-| `patted` | Per-pet motion from `window.spritePat.MOTION` (`sprites.js`), anchored at the feet: dog wag + two hops, cat arch, sheep fleece puff, snake coil + sway, kangaroo two hops, dragon loop, classic double squish (unknown types use classic). A sleeved hand pats the head twice; hearts for every pet, "prr" for the cat, smoke for the dragon (`patParticles`, cap 24). Added v2.24.0. v2.27.1: Tim jogs a lap of the stage (`spritePat.runLap`, dust behind his feet) and Stu opens a sticker binder or pack (`spritePat.drawProp`, sticker particles); neither gets the hand or hearts, both blush | 1400 ms (Tim 2600, Stu 2200) |
+| `patted` | Per-pet motion from `window.spritePat.MOTION` (`sprites.js`), anchored at the feet: dog wag + two hops, cat arch, sheep fleece puff, snake coil + sway, kangaroo two hops, dragon loop, classic double squish (unknown types use classic). A sleeved hand pats the head twice; hearts for every pet, "prr" for the cat, smoke for the dragon (`patParticles`, cap 24). Added v2.24.0. v2.27.1: Tim jogs a lap of the stage (`spritePat.runLap`, dust behind his feet) and Stu opens a sticker binder or pack (`spritePat.drawProp`, sticker particles); neither gets the hand or hearts, both blush. v2.33.1: the kangaroo's Bounce is three big hops (crouch, stretch, squash on landing) with dust puffs on each landing, and no hand or hearts | 1400 ms (Tim 2600, Stu 2200, kangaroo 1800) |
 
 Reactions are stored in a simple queue; if a new one arrives while one is
 playing, it is appended and plays immediately after.
@@ -885,7 +900,7 @@ These are lower-priority ideas that require design work before implementation. A
 | Redesign minigame art | `[x]` | v2.22.2: `vscode/media/minigameArt.js` draws the Left / Right doors, the Higher or Lower number card, a spinning Coin Flip coin and a 3×5 bitmap font on the `#mg-canvas` overlay (was `#lr-canvas`), whole-pixel `fillRect` like the mood layer. See §4.1, §4.4, §4.6 |
 | Egg-hatch animation | `[x]` | Wiggle → crack → burst sequence before baby stage (v2.22.0; see §2.2). |
 | Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |
-| Kangaroo character | `[x]` | Web-image-derived pixel-art sprite type (baby through senior stages) in the existing `sprites.js` pipeline; included in random hatch rotation and unlockable with character passcode `straya`. |
+| Kangaroo character | `[x]` | Web-image-derived pixel-art sprite type (baby through senior stages) in the existing `sprites.js` pipeline; included in random hatch rotation and unlockable with character passcode `straya`. v2.33.1: boxes instead of Left / Right, Bounce is three big hops, and it speaks Aussie (see §14 custom characters). |
 | **— Platform & social —** | | |
 | Multiple simultaneous pets | `[ ]` | Tabbed or scrollable sidebar; pets can interact with each other. Expanded (multi-pet, visiting and emoting with other people's pets): see `developer_notes/FEATURES_SEPTEMBER_2026.md` §2.4 |
 | New pet types via extension pack | `[ ]` | Contribution point so third-party packs can add sprite types. |
@@ -925,5 +940,5 @@ Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharac
 | Name | Passcode | spriteType | Feed cap | Notes |
 |------|----------|------------|----------|-------|
 | Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 10 snacks | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" (sticker binder or pack) instead of a pat; craves a pint or salmon; Blackjack instead of Coin Flip |
-| Skippy | `straya` | `kangaroo` | default | Kangaroo sprite scraped from a web pixel-art reference; Bounce pat action |
+| Skippy | `straya` | `kangaroo` | default | Applies to every kangaroo: Boxing instead of Left / Right; Bounce (three big hops, no hand or hearts) as its pat; Aussie voice: a beer or some Tim Tams as its gift (`gifts`, picked per call by `giftFor`; praising the Tim Tams gets "These are better than Penguins!"), "keen as for a bounce" pat call, "Yeah, nah… fair enough." when ignored, and smoko for its break (`breakNap` with a custom `call`, a Bunnings snag and a "Smoko" button) |
 | Shibagotchi / any dog | `shiba` | `dog` | default | Applies to every dog: Fetch and Tug-of-War instead of Coin Flip and Left / Right; biscuit-bone snacks and a meaty-bone meal; a ball as its gift (opens Fetch); pat bubbles; whimpers when ignored (`ignoredBubble`); wags when happy and chases its tail at energy ≥ 70; chews a shrinking big bone through the break nap (`breakNap`) |
