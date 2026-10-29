@@ -652,6 +652,29 @@ class GameEngineTest {
     }
 
     @Test
+    fun `answering a break call adds breakWeightGain for the dog's bone`() {
+        assertEquals(30, praise(makePet().copy(activeAttentionCall = "break", weight = 25), breakWeightGain = 5).weight)
+        assertEquals(25, praise(makePet().copy(activeAttentionCall = "gift", weight = 25), breakWeightGain = 5).weight)
+        assertEquals(25, praise(makePet().copy(activeAttentionCall = "break", weight = 25)).weight)
+    }
+
+    @Test
+    fun `fetch and tug of war share Coin Flip and Left Right rewards`() {
+        assertEquals(0, happinessDeltaForMinigame("fetch", "win"))
+        assertEquals(-10, happinessDeltaForMinigame("fetch", "lose"))
+        assertEquals(-5, happinessDeltaForMinigame("tug_of_war", "lose"))
+        val pet = makePet().copy(happiness = 50, weight = 40)
+        val fetched = applyMinigameResult(pet, "fetch", "lose")
+        assertEquals(40, fetched.happiness)
+        assertEquals(40, fetched.weight)
+        assertTrue(fetched.events.contains("minigame_fetch_lose"))
+        val tugged = applyMinigameResult(pet, "tug_of_war", "lose")
+        assertEquals(45, tugged.happiness)
+        assertEquals(37, tugged.weight)
+        assertTrue(tugged.events.contains("minigame_tug_of_war_lose"))
+    }
+
+    @Test
     fun `only the craved food answers a craving`() {
         val wantsMeal = makePet().copy(activeAttentionCall = "craving", cravingFood = "meal")
         assertEquals("craving", startSnack(wantsMeal).activeAttentionCall)

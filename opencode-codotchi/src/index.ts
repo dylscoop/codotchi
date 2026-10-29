@@ -1147,12 +1147,15 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
           ? buildSpeechBubble(next.stage, next.mood, pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."]), next.name, next.spriteType, ideLabel)
           : `${ideLabel} ${next.name}: ${pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."])}`);
         break;
-      case "break_nap_over":
+      case "break_nap_over": {
         setMeals(ide, 0);
+        // The dog chews a bone through its break instead of napping
+        const overText = next.spriteType === "dog" ? "Finished the bone. Back to work!" : "Break's over! Ready to code.";
         queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, next.mood, "Break's over! Ready to code.", next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: Break's over! Ready to code.`);
+          ? buildSpeechBubble(next.stage, next.mood, overText, next.name, next.spriteType, ideLabel)
+          : `${ideLabel} ${next.name}: ${overText}`);
         break;
+      }
       case "died":
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, "sad", pickRandom(["Goodbye... take care of the next one.", "It was good while it lasted. See you next time.", "Farewell. Start fresh when you're ready."]), next.name, next.spriteType, ideLabel)
@@ -1995,7 +1998,7 @@ const plugin: Plugin = async (ctx) => {
             sessionUserMessages += 1;
             return;
           }
-         if (info?.role === "assistant" && typeof info.cost === "number") {
+         if (info?.role === "assistant") {
             // Only count the final completion event — skip intermediate streaming
             // chunks (those have time.completed = 0 or unset). Without this guard,
             // every streaming update increments dailyCostUSD with a partial cost,
@@ -2349,6 +2352,9 @@ async function setupV2(ctx: any): Promise<() => void> {
   // ask the TUI to re-render when something it shows has changed.
   const pulseGate = new PulseGate();
   const pulse = setInterval(() => {
+    // Other OpenCode windows' replies never reach this event stream, so
+    // re-sync from the database (self-throttled to once per 30s).
+    void refreshDailyFromDb();
     const hour = lastHourUsage();
     const pets = getActivePets().filter(p => p.state.alive).map(p => [p.ide, p.state.name, p.state.stage, p.state.mood]);
     const parts = [terminalEnabled, costTier(), Math.floor(Date.now() / PET_SWAP_MS), pets,

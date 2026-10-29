@@ -1826,6 +1826,35 @@ describe("applyMinigameResult", () => {
     }
   });
 
+  it("fetch (the dog's Coin Flip) uses Coin Flip's rewards and no weight change", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const won = applyMinigameResult(pet, "fetch", "win");
+    const lost = applyMinigameResult(pet, "fetch", "lose");
+    assert.equal(won.happiness, 50);
+    assert.equal(lost.happiness, 40);
+    assert.equal(won.weight, 40);
+    assert.equal(lost.weight, 40);
+    assert.ok(won.events.includes("minigame_fetch_win"));
+    assert.ok(lost.events.includes("minigame_fetch_lose"));
+  });
+
+  it("tug_of_war (the dog's Left / Right) uses Left / Right's rewards and weight loss", () => {
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const won = applyMinigameResult(pet, "tug_of_war", "win");
+    const lost = applyMinigameResult(pet, "tug_of_war", "lose");
+    assert.ok(won.happiness >= 55 && won.happiness <= 65, `got ${won.happiness}`);
+    assert.equal(lost.happiness, 45);
+    assert.equal(won.weight, 37);
+    assert.equal(lost.weight, 37);
+    assert.ok(won.events.includes("minigame_tug_of_war_win"));
+    assert.ok(lost.events.includes("minigame_tug_of_war_lose"));
+  });
+
+  it("fetch and tug_of_war wins award minigame XP", () => {
+    assert.ok(applyMinigameResult(makePet(), "fetch", "win").petXp > 0);
+    assert.ok(applyMinigameResult(makePet(), "tug_of_war", "win").petXp > 0);
+  });
+
   it("left_right clamps weight at WEIGHT_MIN (1) (BUGFIX-034)", () => {
     const pet = makePet({ happiness: 50, weight: 1 });
     const next = applyMinigameResult(pet, "left_right", "win");
@@ -3034,6 +3063,11 @@ describe("break reminder attention call", () => {
 });
 
 describe("break nap", () => {
+  it("adds breakWeightGain only when a break call is answered (the dog's big bone)", () => {
+    assert.equal(praise(makePet({ activeAttentionCall: "break", weight: 25 }), { breakWeightGain: 5 }).weight, 30);
+    assert.equal(praise(makePet({ activeAttentionCall: "gift", weight: 25 }), { breakWeightGain: 5 }).weight, 25);
+    assert.equal(praise(makePet({ weight: 25 }), { breakWeightGain: 5 }).weight, 25);
+  });
   const napping = (): PetState => praise(makePet({
     activeAttentionCall: "break", sleeping: false, hunger: 40, happiness: 30, energy: 20,
     health: 70, weight: 25, poops: 2, sick: false, nextPoopIntervalTicks: 1,
@@ -3042,6 +3076,7 @@ describe("break nap", () => {
   it("praising a break call starts a 5-minute nap", () => {
     assert.equal(BREAK_NAP_TICKS * 3, 5 * 60, "100 ticks × 3 s = 5 min");
     const pet = napping();
+    assert.equal(pet.weight, 25, "no weight change by default");
     assert.equal(pet.sleeping, true);
     assert.equal(pet.breakNapTicksRemaining, BREAK_NAP_TICKS);
     assert.ok(pet.events.includes("break_nap_started"));

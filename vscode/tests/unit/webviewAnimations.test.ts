@@ -247,8 +247,8 @@ describe("per-mood sprite grids (renderSpriteGrid hook)", () => {
 describe("pet stands still while eating a meal (sidebar.js)", () => {
   it("locks movement during the fed_meal reaction so the bowl stays put", () => {
     assert.match(sidebarSource,
-      /\} else if \(activeReaction && activeReaction\.type === "fed_meal"\) \{[^}]*petVx = 0;/);
-    const lock = sidebarSource.indexOf('activeReaction.type === "fed_meal") {');
+      /\} else if \(activeReaction && \(activeReaction\.type === "fed_meal" \|\| activeReaction\.type === "tail_chase"\)\) \{[^}]*petVx = 0;/);
+    const lock = sidebarSource.indexOf('activeReaction.type === "tail_chase")) {');
     const wander = sidebarSource.indexOf("// ── Normal movement");
     assert.ok(lock > 0 && lock < wander, "fed_meal lock must come before the wander branch");
   });
@@ -532,7 +532,7 @@ describe("head gap above every pet (vscode/media/sidebar.js)", () => {
 
 describe("speech bubble vs emojis above the head (vscode/media/sidebar.js)", () => {
   it("lifts the bubble above the z's / hearts while sleeping or patted", () => {
-    assert.match(sidebarSource, /drawSpeechBubble\(_petCx, _petTopY, nowMs,\s*emojiClearance\(lastState\.sleeping \|\| patting, moodPxSize\)\)/);
+    assert.match(sidebarSource, /drawSpeechBubble\(_petCx, _petTopY, nowMs,\s*emojiClearance\(drawState\.sleeping \|\| patting, moodPxSize\)\)/);
     assert.match(sidebarSource, /var boxBottomY = petTopY - \(clearance \|\| 0\) - TAIL_H - 2;/);
   });
 

@@ -1,6 +1,36 @@
 # Version History
 
-## v2.31.0 - current
+## v2.32.1 - current
+
+### Changes from v2.32.0 (dog games on the stage - branch feat/dog-actions)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js`, `sidebar.html` | Fetch and Tug-of-War now play on the pet's own stage with the real dog sprite (`stageGame`, `stageGamePose`, `drawStageGame`), not the `#mg-canvas` overlay. **Fetch**: throw Left / Right; the ball flies off that edge and the dog runs off a random side - the right side brings the ball straight back, the wrong side comes back empty-handed. The dog keeps its current facing until it runs, so facing gives nothing away. **Tug-of-War**: Pull / Hold - Hold beats a pull, Pull beats a rest (`tugWon`); the dog is dragged along the floor on a rope to your edge. Fetch is a single throw and the dog trots (runs about 1.3 s each). Tug-of-War is 3 rounds scored from the dog's side: the dog winning 2+ rounds sends `win`, so the pet gets the reward. Both 50/50, no hints |
+| `vscode/media/minigameArt.js` | removed `drawFetchScene`, `fetchLayout`, `drawTugScene`, `tugLayout`, the bush art and colours; added `fetchPlan`, `planPose`, `fetchBallPose`, `drawBall`, `drawTugRope` |
+| `vscode/media/sidebar.js` (`drawEnvironment`) | the dog's floor gift is a tennis ball (`TENNIS_BALL_PIXELS`) instead of the gift box |
+| `packages/core/src/gameEngine.ts`, `GameEngine.kt`, `sidebarProvider.ts`, `CodotchiPlugin.kt`, both registries | `praise(state, { breakWeightGain })`: answering a break call adds `breakNap.weightGain` weight (dog: +5) |
+| `vscode/media/sidebar.js` | the dog's break no longer logs "fell asleep"; queued attention-call bubbles are dropped when no call is active and when a dog game starts (`clearStageBubbles`), so a stale call no longer shows mid-Fetch |
+| `vscode/tests/unit/minigameArt.test.ts` | tests for the run plans, ball arc, rope and the Pull / Hold rule |
+| all manifests, `README.md` | version 2.32.1 |
+
+## v2.32.0
+
+### Changes from v2.31.0 (dog actions - branch feat/dog-actions)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt` | new `fetch` and `tug_of_war` mini-game results. `minigameStatsKey()` maps them to `coin_flip` and `left_right`, so they share those games' happiness, weight and XP; events are `minigame_fetch_*` / `minigame_tug_of_war_*` |
+| `vscode/media/sidebar.js`, `sidebar.html` | the dog plays **Fetch** (pick Short / Long, 3 throws, win on 2+ catches; on a miss it fetches the ball anyway) instead of Coin Flip, and **Tug-of-War** (Pull / Ease, 3 rounds, win on 2+) instead of Left / Right. Higher or Lower is unchanged |
+| `vscode/media/minigameArt.js` | `drawFetchScene` (ball arc, two bushes, the dog's face) and `drawTugScene` (rope, red marker, goal lines, "YOU" / "GRR"); glyphs Y, S, O, N, U |
+| `vscode/media/sidebar.js` | dog food: biscuit-bone floor snacks and a meaty bone at its feet for meals (no bowl). Accepting the dog's gift opens Fetch. A happy dog wags (body wiggle); an idle dog with energy ≥ 70 sometimes chases its tail. The break nap becomes a bone chew: the dog stays awake, chomping a big bone that shrinks through 4 sizes over the 5 minutes; the button reads "Chewing Nm" |
+| `vscode/media/customCharacters.js`, `vscode/src/customCharacters.ts`, `pycharm/.../CustomCharacters.kt` | dog: gift "brought you a ball and wants to play fetch! 🎾", pat bubbles, `ignoredBubble` ("*sad whimper*… fine.") and `breakNap` text (started / noWake / over / button) |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | the gift notification uses the pet's sprite type (so every dog gets the fetch text); the break-over notification uses `breakNap.over` |
+| `opencode-codotchi/src/index.ts` | the dog's break-over line is "Finished the bone. Back to work!" |
+| `vscode/tests/unit/*`, `pycharm/src/test/.../GameEngineTest.kt` | engine, art, registry and webview checks for the dog actions |
+| all manifests, `README.md` | version 2.32.0 |
+
+## v2.31.0
 
 ### Changes from v2.30.1 (per-stage sprite colours, better bulk import, new dog)
 

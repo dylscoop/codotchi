@@ -2,7 +2,8 @@
  * minigameArt.js - pixel-art drawing for the sidebar mini-games
  *
  * Doors (Left / Right), the number card (Higher or Lower), the coin (Coin
- * Flip), playing cards (Stu's Blackjack), a countdown and a small bitmap font. Everything is drawn with
+ * Flip), playing cards (Stu's Blackjack), the dog's Fetch ball and
+ * Tug-of-War rope (drawn on the pet's stage), a countdown and a small bitmap font. Everything is drawn with
  * fillRect on a whole-pixel unit, the same style as the mood layer in
  * sprites.js. No DOM access and no CSS variables (canvas ignores them), so
  * the functions can be unit-tested against a mock context.
@@ -39,6 +40,10 @@
     eye:       "#1a1a1a",
     cardBack:  "#2f5fa8",
     cardBackHi:"#5b8bd6",
+    ball:      "#c6e03a",
+    ballDark:  "#7e9a12",
+    rope:      "#c8a36a",
+    ropeDark:  "#8a6a3a",
   };
 
   // =========================================================================
@@ -70,6 +75,11 @@
     "J": ["001", "001", "001", "101", "111"],
     "Q": ["010", "101", "101", "110", "011"],
     "K": ["101", "101", "110", "101", "101"],
+    "Y": ["101", "101", "010", "010", "010"],
+    "S": ["111", "100", "111", "001", "111"],
+    "O": ["111", "101", "101", "101", "111"],
+    "N": ["110", "101", "101", "101", "101"],
+    "U": ["101", "101", "101", "101", "111"],
     " ": ["000", "000", "000", "000", "000"],
     "✓": ["00001", "00011", "10110", "11100", "01000"],   // ✓
     "✗": ["10001", "01010", "00100", "01010", "10001"],   // ✗
@@ -492,6 +502,103 @@
   }
 
   // =========================================================================
+  // Fetch and Tug-of-War (the dog's games, played on the pet's own stage)
+  // =========================================================================
+
+  var BALL = [
+    "0110",
+    "1211",
+    "1121",
+    "0110",
+  ];
+  var BALL_SIZE = BALL.length;
+
+  function drawBall(ctx, x, y, px) {
+    for (var r = 0; r < BALL.length; r++) {
+      for (var c = 0; c < BALL[r].length; c++) {
+        var k = BALL[r][c];
+        if (k === "0") { continue; }
+        ctx.fillStyle = k === "1" ? C.ball : C.ballDark;
+        ctx.fillRect(x + c * px, y + r * px, px, px);
+      }
+    }
+  }
+
+  var FETCH_FLIGHT_MS = 800;
+  /** How long the dog takes over each part of its run (a steady trot, not a dash). */
+  var FETCH_PAUSE_MS  = 400;
+  var FETCH_RUN_MS    = 1300;
+  var FETCH_GRAB_MS   = 600;
+  var FETCH_RETURN_MS = 1600;
+
+  /**
+   * The thrown ball at `ms` after the throw: an arc from (x0, y0) to endX
+   * (off the edge of the stage), peaking arcH above y0. Null once it has gone.
+   */
+  function fetchBallPose(ms, x0, y0, endX, arcH) {
+    if (ms < 0 || ms >= FETCH_FLIGHT_MS) { return null; }
+    var t = ms / FETCH_FLIGHT_MS;
+    return { x: x0 + (endX - x0) * t, y: y0 - Math.sin(Math.PI * t) * arcH };
+  }
+
+  /**
+   * The dog's run for one Fetch throw, as legs {ms, to, ball, left}; each leg
+   * runs (or stands, when `to` is unchanged) from the previous leg's end.
+   * It keeps facing the way it was (facingLeft) while the ball flies, so its
+   * facing gives nothing away, then runs off the dogDir edge: the right way
+   * and it comes back with the ball; the wrong way and it comes back empty.
+   */
+  function fetchPlan(home, offLeft, offRight, throwDir, dogDir, facingLeft) {
+    var dogLeft = dogDir === "left";
+    var away = dogLeft ? offLeft : offRight;
+    var caught = dogDir === throwDir;
+    var legs = [
+      { ms: FETCH_PAUSE_MS,  to: home, ball: false,  left: !!facingLeft },
+      { ms: FETCH_RUN_MS,    to: away, ball: false,  left: dogLeft },
+      { ms: FETCH_GRAB_MS,   to: away, ball: caught, left: dogLeft },
+      { ms: FETCH_RETURN_MS, to: home, ball: caught, left: !dogLeft },
+    ];
+    var total = 0;
+    for (var i = 0; i < legs.length; i++) { total += legs[i].ms; }
+    return { home: home, caught: caught, legs: legs, totalMs: total };
+  }
+
+  /** Where the dog is `ms` into a fetchPlan: {x, left, ball, moving, done}. */
+  function planPose(plan, ms) {
+    var from = plan.home;
+    var t0 = 0;
+    for (var i = 0; i < plan.legs.length; i++) {
+      var leg = plan.legs[i];
+      if (ms < t0 + leg.ms) {
+        var f = Math.max(0, (ms - t0) / leg.ms);
+        return { x: from + (leg.to - from) * f, left: leg.left, ball: leg.ball,
+                 moving: leg.to !== from, done: false };
+      }
+      from = leg.to;
+      t0 += leg.ms;
+    }
+    var last = plan.legs[plan.legs.length - 1];
+    return { x: from, left: last.left, ball: last.ball, moving: false, done: true };
+  }
+
+  /**
+   * The tug rope from x0 (your end, off the left of the stage) to the dog's
+   * mouth at x1, with a red marker in the middle. marker is rounds won minus
+   * rounds lost; the twist pattern shifts with it so the rope looks pulled.
+   */
+  function drawTugRope(ctx, x0, x1, y, px, marker) {
+    if (x1 <= x0) { return; }
+    var shift = Math.round((marker || 0) * 3 * px);
+    for (var x = x0; x < x1; x += 2 * px) {
+      ctx.fillStyle = Math.floor((x - x0 + shift) / (2 * px)) % 2 === 0 ? C.rope : C.ropeDark;
+      ctx.fillRect(x, y, Math.min(2 * px, x1 - x), px);
+    }
+    var mid = Math.round((x0 + x1) / 2);
+    ctx.fillStyle = C.bad;
+    ctx.fillRect(mid - px, y + px, 2 * px, 3 * px);
+  }
+
+  // =========================================================================
   // Exports
   // =========================================================================
 
@@ -517,5 +624,12 @@
     blackjackOutcome: blackjackOutcome,
     drawPlayingCard:    drawPlayingCard,
     drawBlackjackTable: drawBlackjackTable,
+    BALL_SIZE:      BALL_SIZE,
+    drawBall:       drawBall,
+    FETCH_FLIGHT_MS: FETCH_FLIGHT_MS,
+    fetchBallPose:  fetchBallPose,
+    fetchPlan:      fetchPlan,
+    planPose:       planPose,
+    drawTugRope:    drawTugRope,
   };
 }());

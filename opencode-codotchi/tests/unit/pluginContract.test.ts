@@ -432,6 +432,21 @@ describe("bundled plugin � OpenCode V2 loader contract", () => {
     (cleanup as () => void)();
   });
 
+  it("counts a step with no cost field by pricing its tokens", async () => {
+    const v2Events = [
+      { type: "session.step.ended", id: "nocost-1", created: Date.now(), data: {
+          sessionID: "s2", assistantMessageID: "a2", model: { providerID: "github-copilot", id: "claude-opus-5.5" },
+          tokens: { input: 1_000_000, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } } },
+    ];
+    const { ctx, rpc } = makeV2Context(v2Events);
+    const def = bundleMod.default as { setup: (ctx: unknown) => Promise<(() => void) | void> };
+    const cleanup = await def.setup(ctx);
+    await new Promise(r => setTimeout(r, 400));
+    const snap = await rpc.handlers!.snapshot();
+    expect(snap.session.costUSD).toBeGreaterThanOrEqual(4);
+    (cleanup as () => void)();
+  });
+
   it("registers /codotchi via ctx.command when no file-based command exists (npm install)", async () => {
     const { ctx, commands, prompts } = makeV2Context([]);
     const def = bundleMod.default as { setup: (ctx: unknown) => Promise<(() => void) | void> };
@@ -491,8 +506,9 @@ describe("translateV2Event", () => {
     expect(translate({ type: "filesystem.changed", data: { file: "src/a.ts", event: "unlink" } })).toEqual([]);
   });
 
-  it("drops idle session.status and unknown events", () => {
-    expect(translate({ type: "session.status", data: { status: { type: "idle" } } })).toEqual([]);
+  it("drops unknown events; idle session.status becomes session.idle", () => {
+    expect(translate({ type: "session.status", data: { sessionID: "s1", status: { type: "idle" } } }))
+      .toEqual([{ type: "session.idle", properties: { sessionID: "s1" } }]);
     expect(translate({ type: "session.status", data: { status: { type: "busy" } } })[0].type).toBe("session.status");
     expect(translate({ type: "nope", data: {} })).toEqual([]);
   });

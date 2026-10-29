@@ -561,7 +561,7 @@ class CodotchiPlugin : Disposable {
 
                 "praise" -> {
                     state ?: return@withLock
-                    nextState = praise(state)
+                    nextState = praise(state, breakWeightGain = getCustomCharacterBySpriteType(state.spriteType)?.breakNap?.weightGain ?: 0)
                 }
 
                 "pat" -> {
@@ -1577,7 +1577,7 @@ class CodotchiPlugin : Disposable {
             "attention_call_craving_meal"    -> "$petName is craving a meal!"
             "attention_call_craving_snack"   -> "$petName is craving ${cravingItem ?: "a snack"}!"
             "attention_call_break"           -> "Time for a break! You've been coding for 30 minutes."
-            "break_nap_over"                 -> "Break's over! $petName is awake and ready to code."
+            "break_nap_over"                 -> customChar?.breakNap?.over?.replace("__Name__", petName) ?: "Break's over! $petName is awake and ready to code."
             else                             -> null
         }
     }

@@ -211,7 +211,7 @@ describe("mini-game overlay in sidebar.js", () => {
   });
 
   it("plays Blackjack instead of Coin Flip for Stu only", () => {
-    assert.ok(sidebarSource.includes("if (playsBlackjack(lastState)) { startBlackjackGame(); } else { startCoinFlipGame(); }"));
+    assert.ok(sidebarSource.includes("if (playsBlackjack(lastState)) { startBlackjackGame(); }"));
     assert.ok(sidebarSource.includes('state.spriteType === "stu"'));
     assert.ok(sidebarSource.includes('sendPlayResult("blackjack", result)'));
     assert.match(sidebarSource, /function mgClear\(\) \{\r?\n(?:.*\r?\n){0,3}.*clearTimeout\(bjTimer\)/);
@@ -224,5 +224,117 @@ describe("mini-game overlay in sidebar.js", () => {
   it("skips the coin spin and door swing under reduced motion", () => {
     assert.match(sidebarSource, /function playCoinSpin[\s\S]*?if \(REDUCED_MOTION/);
     assert.ok(sidebarSource.includes('open: REDUCED_MOTION ? "open" : "ajar"'));
+  });
+
+  it("plays Fetch and Tug-of-War instead of Coin Flip and Left / Right for the dog", () => {
+    assert.ok(sidebarSource.includes('state.spriteType === "dog"'));
+    assert.ok(sidebarSource.includes("else if (playsDogGames(lastState)) { startFetchGame(); }"));
+    assert.ok(sidebarSource.includes("if (playsDogGames(lastState)) { startTugGame(); } else { startLeftRightGame(); }"));
+    assert.ok(sidebarSource.includes('sendPlayResult("fetch", result)'));
+    assert.ok(sidebarSource.includes('sendPlayResult("tug_of_war", result)'));
+    for (const fn of ["endFetchGame", "endTugGame"]) {
+      const body = new RegExp(`function ${fn}\\([^)]*\\) \\{([\\s\\S]*?)\\n  \\}`).exec(sidebarSource);
+      assert.ok(body && body[1].includes("mgClear()"), `${fn} does not clear the game`);
+    }
+    const html = fs.readFileSync(path.join(media, "sidebar.html"), "utf8");
+    for (const id of ["mg-fetch", "btn-fetch-left", "btn-fetch-right", "fetch-feedback",
+                      "mg-tug", "btn-tug-pull", "btn-tug-hold", "tug-feedback", "tug-score"]) {
+      assert.ok(html.includes(`id="${id}"`), `sidebar.html lacks #${id}`);
+    }
+  });
+
+  it("plays the dog games on the pet's own stage, not the overlay", () => {
+    assert.ok(sidebarSource.includes("var sgPose = stageGame ? stageGamePose(stageGame, nowMs, bWidth, minX, maxX) : null;"));
+    assert.ok(sidebarSource.includes("if (stageGame) { drawStageGame(stageGame, moodBox, petFacingLeft, nowMs, floorY); }"));
+    assert.match(sidebarSource, /function mgClear\(\) \{[\s\S]*?stageGame = null;/);
+    assert.ok(!sidebarSource.includes("drawFetchScene") && !sidebarSource.includes("drawTugScene"));
+    assert.match(sidebarSource, /function handleFetchThrow[\s\S]*?if \(REDUCED_MOTION\) \{ finish\(\); return; \}/);
+  });
+
+  it("Tug-of-War: Hold beats a pull and Pull beats a rest", () => {
+    const body = /function tugWon\(choice, dogMove\) \{([\s\S]*?)\n  \}/.exec(sidebarSource);
+    assert.ok(body);
+    const tugWon = new Function("choice", "dogMove", body[1]) as (c: string, d: string) => boolean;
+    assert.equal(tugWon("hold", "pull"), true);
+    assert.equal(tugWon("pull", "rest"), true);
+    assert.equal(tugWon("pull", "pull"), false);
+    assert.equal(tugWon("hold", "rest"), false);
+  });
+
+  it("Fetch is a single throw: a catch wins, a miss loses", () => {
+    assert.ok(!sidebarSource.includes("FETCH_THROWS"));
+    assert.ok(sidebarSource.includes('var result = fetchCaught ? "win" : "lose";'));
+  });
+
+  it("scores Tug-of-War from the dog's side, so the pet gets the reward when it wins", () => {
+    const body = /function endTugGame\(\) \{([\s\S]*?)\n  \}/.exec(sidebarSource);
+    assert.ok(body);
+    assert.ok(body[1].includes("var dogRounds = TUG_ROUNDS - tugScore;"));
+    assert.ok(body[1].includes('var result = dogRounds >= 2 ? "win" : "lose";'));
+    assert.ok(body[1].includes('sendPlayResult("tug_of_war", result)'));
+  });
+});
+
+describe("dog mini-game art (minigameArt.js)", () => {
+  it("throws the ball in an arc off the chosen edge", () => {
+    const art = loadArt();
+    const start = art.fetchBallPose(0, 50, 80, -10, 40);
+    const mid = art.fetchBallPose(art.FETCH_FLIGHT_MS / 2, 50, 80, -10, 40);
+    assert.equal(start.x, 50);
+    assert.ok(mid.x < 50 && mid.y < 80 - 30, "ball should be high and heading left mid-flight");
+    assert.equal(art.fetchBallPose(art.FETCH_FLIGHT_MS, 50, 80, -10, 40), null);
+  });
+
+  it("brings the ball straight back when the dog runs the right way", () => {
+    const art = loadArt();
+    const plan = art.fetchPlan(100, -40, 300, "right", "right");
+    assert.equal(plan.caught, true);
+    const xs = plan.legs.map((l: { to: number }) => l.to);
+    assert.ok(xs.includes(300) && !xs.includes(-40), "it should only run off the right edge");
+    const end = art.planPose(plan, plan.totalMs);
+    assert.equal(end.done, true);
+    assert.equal(end.x, 100);
+    assert.equal(end.ball, true);
+    assert.equal(art.planPose(plan, 0).ball, false);
+  });
+
+  it("runs the wrong way and comes back empty-handed", () => {
+    const art = loadArt();
+    const plan = art.fetchPlan(100, -40, 300, "left", "right");
+    assert.equal(plan.caught, false);
+    const xs = plan.legs.map((l: { to: number }) => l.to);
+    assert.ok(xs.includes(300) && !xs.includes(-40), "it should only run off the wrong (right) edge");
+    assert.ok(plan.legs.every((l: { ball: boolean }) => !l.ball), "no ball on a miss");
+    const end = art.planPose(plan, plan.totalMs + 1);
+    assert.equal(end.x, 100);
+    assert.equal(end.ball, false);
+    assert.equal(plan.totalMs, art.fetchPlan(100, -40, 300, "left", "left").totalMs);
+  });
+
+  it("keeps its current facing until it runs, so facing gives nothing away", () => {
+    const art = loadArt();
+    for (const facingLeft of [true, false]) {
+      for (const dogDir of ["left", "right"]) {
+        const plan = art.fetchPlan(100, -40, 300, "left", dogDir, facingLeft);
+        assert.equal(art.planPose(plan, 0).left, facingLeft);
+        assert.equal(plan.legs[1].left, dogDir === "left");
+      }
+    }
+  });
+
+  it("trots rather than dashes across the stage", () => {
+    const art = loadArt();
+    const plan = art.fetchPlan(100, -40, 300, "right", "right");
+    const run = plan.legs.find((l: { to: number }) => l.to === 300);
+    assert.ok(run.ms >= 1200, `run leg is ${run.ms} ms`);
+    assert.ok(plan.totalMs >= 3500, `a catch takes ${plan.totalMs} ms`);
+  });
+
+  it("draws the tug rope with its red marker", () => {
+    const art = loadArt();
+    const m = mockCtx();
+    art.drawTugRope(m.ctx, 0, 100, 50, 2, 1);
+    assert.ok(m.styles.includes(art.COLOURS.rope));
+    assert.ok(m.styles.includes(art.COLOURS.bad));
   });
 });

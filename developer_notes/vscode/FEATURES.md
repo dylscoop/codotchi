@@ -253,6 +253,25 @@ Status: `[ ]`
   three-card 21. Win +10 (`MINIGAME_BLACKJACK_WIN`), push 0, lose −10. Cards are
   drawn by `minigameArt.drawBlackjackTable`; the game id is `blackjack` and the
   result can be `"push"`.
+- **The dog plays Fetch instead** (v2.32.0, redesigned v2.32.1): throw Left or
+  Right. The ball arcs across the pet's own stage and off that edge while the dog
+  picks a side and runs off it. The right side: it comes back with the ball. The
+  wrong side: it comes back empty-handed. Its side is random each throw, and it
+  keeps its current facing until it runs, so facing gives nothing away. One
+  throw: a catch wins, a miss loses (50/50, no hints).
+  The dog trots (about 1.3 s per run across the stage). Game id `fetch`,
+  with Coin Flip's rewards (`minigameStatsKey`). Moves come from
+  `minigameArt.fetchPlan` / `planPose` / `fetchBallPose`, driven by the
+  animation loop (`stageGame`, `stageGamePose`, `drawStageGame` in sidebar.js).
+  Accepting the dog's gift (Praise) opens Fetch straight away.
+- **The dog plays Tug-of-War instead of Left / Right** (v2.32.0, redesigned
+  v2.32.1): a rope runs from the dog's mouth to your (left) edge of the stage.
+  Each round the dog secretly pulls or rests; **Hold** beats a pull and **Pull**
+  beats a rest (`tugWon`). A win drags the dog one step towards you, a loss lets
+  it back one step. 3 rounds. Scored from the dog's side: if the dog takes 2+
+  rounds the result is win (the pet gets the winner's reward); if you take 2+
+  it is lose. Game id `tug_of_war`, with Left /
+  Right's rewards and extra weight loss. Rope drawn by `minigameArt.drawTugRope`.
 - v2.22.2: a pixel-art coin (crown for heads, "T" for tails) tosses and spins
   for about 0.8 s before landing on the result; reduced motion shows the result
   straight away.
@@ -332,6 +351,8 @@ that fires when Play is pressed. Net totals reflect delta + baseline.
 | Blackjack (Stu) | Win | +10 | +25 | `MINIGAME_BLACKJACK_WIN = 10` |
 | Blackjack (Stu) | Push | 0 | +15 | `MINIGAME_BLACKJACK_PUSH = 0` |
 | Blackjack (Stu) | Lose | −10 | +5 | `MINIGAME_BLACKJACK_LOSE = -10` |
+| Fetch (dog) | Win / Lose | as Coin Flip | +15 / +5 | `minigameStatsKey("fetch") = "coin_flip"` |
+| Tug-of-War (dog) | Win / Lose | as Left / Right | +20–+30 / +10 | `minigameStatsKey("tug_of_war") = "left_right"` |
 | Boss Battle | Win | +10 | +25 | `MINIGAME_BOSS_BATTLE_WIN = 10` |
 | Boss Battle | Lose | −5 | +10 | `MINIGAME_BOSS_BATTLE_LOSE = -5` |
 | Pat | — | +10 (flat total) | +10 | `PAT_HAPPINESS_BOOST = 10` (no play baseline) |
@@ -901,3 +922,4 @@ Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharac
 |------|----------|------------|----------|-------|
 | Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 10 snacks | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" (sticker binder or pack) instead of a pat; craves a pint or salmon; Blackjack instead of Coin Flip |
 | Skippy | `straya` | `kangaroo` | default | Kangaroo sprite scraped from a web pixel-art reference; Bounce pat action |
+| Shibagotchi / any dog | `shiba` | `dog` | default | Applies to every dog: Fetch and Tug-of-War instead of Coin Flip and Left / Right; biscuit-bone snacks and a meaty-bone meal; a ball as its gift (opens Fetch); pat bubbles; whimpers when ignored (`ignoredBubble`); wags when happy and chases its tail at energy ≥ 70; chews a shrinking big bone through the break nap (`breakNap`) |

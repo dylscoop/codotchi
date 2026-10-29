@@ -32,6 +32,9 @@
    *     call, answered, expired, status {string} (__Name__ = pet name)
    *   snackCravings {object[]} — optional: what a snack craving asks for, as
    *     { label, item } — label is the text ("a tea"), item the floor snack type
+   *   ignoredBubble {string}   — optional: speech bubble when an attention call expires
+   *   breakNap      {object}   — optional: replacement text for the 5-minute break nap:
+   *     started, noWake, over {string} (__Name__ = pet name), button {string} ("Chewing 3m")
    */
   var CUSTOM_CHARACTERS = {
     tim: {
@@ -78,10 +81,22 @@
       passcode:     "shiba",
       defaultName:  "Codotchi",
       patLabel:     "Pat",
-      giftMessage:  "__Name__ found a tiny tennis ball!",
+      giftMessage:  "__Name__ brought you a ball and wants to play fetch! \uD83C\uDFBE",
       patToasts: {
         patted:      "__Name__ enjoyed the attention!",
         pat_refused: "__Name__ is too tired for pats!",
+      },
+      patBubbles: [
+        "*tail wags intensify*",
+        "Much code. Very wow.",
+        "Who's a good boy?",
+      ],
+      ignoredBubble: "*sad whimper*\u2026 fine.",
+      breakNap: {
+        started: "__Name__ is busy with a big bone \uD83E\uDDB4",
+        noWake:  "__Name__ won't give up the bone yet!",
+        over:    "__Name__ finished the bone. Back to work!",
+        button:  "Chewing",
       },
     },
     cat: {

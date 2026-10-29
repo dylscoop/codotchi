@@ -519,7 +519,7 @@ export class SidebarProvider
         if (state === null) {
           return;
         }
-        nextState = praise(state);
+        nextState = praise(state, { breakWeightGain: getCustomCharacterBySpriteType(state.spriteType)?.breakNap?.weightGain });
         break;
 
       case "pat":

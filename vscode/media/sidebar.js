@@ -535,6 +535,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (bjTimer !== null) { clearTimeout(bjTimer); bjTimer = null; }
     if (bossTimer !== null) { clearTimeout(bossTimer); bossTimer = null; }
     lrReveal = null;
+    stageGame = null;
     if (mgCtx) { mgCtx.clearRect(0, 0, mgCanvas.width, mgCanvas.height); }
     if (mgCanvas) { mgCanvas.classList.add("hidden"); }
   }
@@ -562,14 +563,17 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   // Wire up game-select buttons
   document.getElementById("btn-mg-lr").addEventListener("click", function () {
-    startLeftRightGame();
+    // The dog plays Tug-of-War instead of Left / Right
+    if (playsDogGames(lastState)) { startTugGame(); } else { startLeftRightGame(); }
   });
   document.getElementById("btn-mg-hl").addEventListener("click", function () {
     startHigherLowerGame();
   });
   document.getElementById("btn-mg-cf").addEventListener("click", function () {
-    // Stu plays one round of Blackjack instead of Coin Flip
-    if (playsBlackjack(lastState)) { startBlackjackGame(); } else { startCoinFlipGame(); }
+    // Stu plays one round of Blackjack and the dog plays Fetch instead of Coin Flip
+    if (playsBlackjack(lastState)) { startBlackjackGame(); }
+    else if (playsDogGames(lastState)) { startFetchGame(); }
+    else { startCoinFlipGame(); }
   });
   document.getElementById("btn-mg-boss").addEventListener("click", function () {
     if (window.bossArt) { startBossBattle(); }
@@ -1106,6 +1110,193 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     sendPlayResult("blackjack", result);
   }
 
+  // ── Dog games: Fetch (replaces Coin Flip) and Tug-of-War (replaces Left / Right) ──
+
+  /** Whether this pet plays the dog's games instead of Coin Flip and Left / Right. */
+  function playsDogGames(state) {
+    return !!(state && state.spriteType === "dog");
+  }
+
+  // Both dog games play out on the pet's own stage: the animation loop moves
+  // the dog with stageGamePose() and draws the ball or rope with drawStageGame().
+  var stageGame = null;
+
+  var fetchCaught;
+
+  document.getElementById("btn-fetch-left").addEventListener("click",  function () { handleFetchThrow("left"); });
+  document.getElementById("btn-fetch-right").addEventListener("click", function () { handleFetchThrow("right"); });
+
+  function fetchButtons(enabled) {
+    document.getElementById("btn-fetch-left").disabled  = !enabled;
+    document.getElementById("btn-fetch-right").disabled = !enabled;
+  }
+
+  /** Drop old speech (an earlier attention call) so it doesn't pop up mid-game. */
+  function clearStageBubbles() {
+    bubbleQueue = [];
+    if (activeBubble && !petIsSleeping) { activeBubble = null; }
+  }
+
+  function startFetchGame() {
+    if (!mgArt) { startCoinFlipGame(); return; }
+    mgClear();
+    clearStageBubbles();
+    showMgPanel("mg-fetch");
+    document.getElementById("fetch-feedback").textContent = "";
+    fetchButtons(true);
+  }
+
+  /** One throw: the dog guesses a side, and it's a win if it guessed right. */
+  function handleFetchThrow(choice) {
+    fetchButtons(false);
+    var dogDir = Math.random() < 0.5 ? "left" : "right";
+    fetchCaught = dogDir === choice;
+    function finish() {
+      document.getElementById("fetch-feedback").textContent = fetchCaught
+        ? "\u2713 It ran the right way and caught it!"
+        : "\u2717 It ran the wrong way and came back empty-handed.";
+      bjTimer = setTimeout(function () { bjTimer = null; endFetchGame(); }, REDUCED_MOTION ? 900 : 800);
+    }
+    if (REDUCED_MOTION) { finish(); return; }
+    document.getElementById("fetch-feedback").textContent = "Throwing " + choice + "...";
+    // The plan is built on the next frame, where the stage size is known
+    stageGame = { kind: "fetch", throwDir: choice, dogDir: dogDir, plan: null, startMs: 0, onDone: finish };
+    boostAnim();
+  }
+
+  function endFetchGame() {
+    var result = fetchCaught ? "win" : "lose";
+    mgClear();
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win" ? "You won Fetch!" : "You lost Fetch.";
+    sendPlayResult("fetch", result);
+  }
+
+  var TUG_ROUNDS = 3;
+  var TUG_MOVE_MS = 700;
+  var tugRound, tugScore;
+
+  document.getElementById("btn-tug-pull").addEventListener("click", function () { handleTugChoice("pull"); });
+  document.getElementById("btn-tug-hold").addEventListener("click", function () { handleTugChoice("hold"); });
+
+  function tugButtons(enabled) {
+    document.getElementById("btn-tug-pull").disabled = !enabled;
+    document.getElementById("btn-tug-hold").disabled = !enabled;
+  }
+
+  function updateTugScore() {
+    document.getElementById("tug-score").textContent =
+      "Round " + Math.min(tugRound + 1, TUG_ROUNDS) + " / " + TUG_ROUNDS + "   You: " + tugScore + "   Dog: " + (tugRound - tugScore);
+  }
+
+  function startTugGame() {
+    if (!mgArt) { startLeftRightGame(); return; }
+    mgClear();
+    clearStageBubbles();
+    tugRound = 0;
+    tugScore = 0;
+    stageGame = { kind: "tug", from: 0, to: 0, startMs: 0, dogPulls: false };
+    boostAnim();
+    document.getElementById("tug-feedback").textContent = "";
+    showMgPanel("mg-tug");
+    updateTugScore();
+    tugButtons(true);
+  }
+
+  /** Hold beats a pull and Pull beats a rest. */
+  function tugWon(choice, dogMove) {
+    return (choice === "hold") === (dogMove === "pull");
+  }
+
+  function handleTugChoice(choice) {
+    tugButtons(false);
+    var dogMove = Math.random() < 0.5 ? "pull" : "rest";
+    var won = tugWon(choice, dogMove);
+    if (won) { tugScore++; }
+    var marker = stageGame ? stageGame.to : 0;
+    stageGame = { kind: "tug", from: marker, to: marker + (won ? 1 : -1),
+                  startMs: performance.now(), dogPulls: dogMove === "pull" };
+    boostAnim();
+    document.getElementById("tug-feedback").textContent = dogMove === "pull"
+      ? (won ? "\u2713 It pulled and you held on - you gained ground!" : "\u2717 It pulled too - it dragged the rope its way.")
+      : (won ? "\u2713 It rested and you pulled - you gained ground!" : "\u2717 It rested and the rope slid its way.");
+    bjTimer = setTimeout(function () {
+      bjTimer = null;
+      tugRound++;
+      if (tugRound < TUG_ROUNDS) {
+        document.getElementById("tug-feedback").textContent = "";
+        updateTugScore();
+        tugButtons(true);
+      } else {
+        endTugGame();
+      }
+    }, REDUCED_MOTION ? 900 : TUG_MOVE_MS + 900);
+  }
+
+  function endTugGame() {
+    // Scored from the dog's side: the pet gets the winner's reward when it wins
+    var dogRounds = TUG_ROUNDS - tugScore;
+    var result = dogRounds >= 2 ? "win" : "lose";
+    var name = (lastState && lastState.name) || "Your dog";
+    mgClear();
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win"
+        ? name + " won Tug-of-War! \uD83D\uDC15 (" + dogRounds + "/" + TUG_ROUNDS + " rounds)"
+        : "You won Tug-of-War (" + tugScore + "/" + TUG_ROUNDS + " rounds). " + name + " wants a rematch.";
+    sendPlayResult("tug_of_war", result);
+  }
+
+  /**
+   * Where the dog stands during a stage game, for the animation loop.
+   * Returns null when no game is moving it.
+   */
+  function stageGamePose(game, nowMs, bWidth, minX, maxX) {
+    var W = spriteCanvas.width;
+    if (game.kind === "fetch") {
+      if (!game.plan) {
+        game.startMs = nowMs;
+        game.plan = mgArt.fetchPlan(Math.max(minX, Math.min(maxX, petX)), -bWidth - 8, W + 8,
+                                    game.throwDir, game.dogDir, petFacingLeft);
+      }
+      var p = mgArt.planPose(game.plan, nowMs - game.startMs);
+      if (p.done && game.onDone) { var cb = game.onDone; game.onDone = null; cb(); }
+      return p;
+    }
+    var home = Math.round((W - bWidth) / 2);
+    var step = Math.max(6, Math.round(W * 0.09));
+    var t = REDUCED_MOTION ? 1 : Math.min(1, (nowMs - game.startMs) / TUG_MOVE_MS);
+    var m = game.from + (game.to - game.from) * t;
+    // A pulling dog leans back first, then the rope gives one way or the other
+    var lean = (game.dogPulls && t < 1) ? Math.sin(t * Math.PI) * 3 : 0;
+    return { x: Math.max(minX, Math.min(maxX, home - m * step + lean)), left: true,
+             ball: false, moving: t < 1 && game.from !== game.to, done: false };
+  }
+
+  /** The thrown ball, the ball in the dog's mouth or the tug rope, drawn on the stage. */
+  function drawStageGame(game, box, facingLeft, nowMs, floorY) {
+    var px = Math.max(2, Math.round(box.w / 14));
+    var ballW = mgArt.BALL_SIZE * px;
+    var mouthY = Math.round(box.y + box.h * 0.45);
+    if (game.kind === "fetch" && game.plan) {
+      var ms = nowMs - game.startMs;
+      var startX = game.plan.home + box.w / 2;
+      var endX = game.throwDir === "left" ? -ballW - 4 : spriteCanvas.width + 4;
+      var flight = mgArt.fetchBallPose(ms, startX, mouthY, endX, Math.max(20, floorY * 0.7));
+      if (flight) { mgArt.drawBall(spriteCtx, Math.round(flight.x - ballW / 2), Math.round(flight.y), px); }
+      var pose = mgArt.planPose(game.plan, ms);
+      if (pose.ball) {
+        var bx = facingLeft ? box.x - Math.round(ballW / 2) : box.x + box.w - Math.round(ballW / 2);
+        mgArt.drawBall(spriteCtx, bx, mouthY, px);
+      }
+    } else if (game.kind === "tug") {
+      var t = REDUCED_MOTION ? 1 : Math.min(1, (nowMs - game.startMs) / TUG_MOVE_MS);
+      var m = game.from + (game.to - game.from) * t;
+      mgArt.drawTugRope(spriteCtx, 0, box.x + px, mouthY, px, m);
+    }
+  }
+
   // ── Canvas sizing ─────────────────────────────────────────────────────────
 
   // BASE_SIZE must match the value used in sprites.js renderSpriteGrid (96).
@@ -1496,12 +1687,27 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // Active reaction (first in queue, if any)
     var activeReaction = reactionQueue.length > 0 ? reactionQueue[0] : null;
 
+    // An energetic dog sometimes chases its tail while it stands idle
+    if (!activeReaction && !stageGame && wantsToChaseTail(lastState) && idleTimer > 0 && Math.random() < dt / TAIL_CHASE_EVERY_S) {
+      pushReaction("tail_chase", nowMs, TAIL_CHASE_MS);
+      activeReaction = reactionQueue[0];
+    }
+
     animTick++;
 
     // ── Movement ──────────────────────────────────────────────────────────
     var isDragon = (lastState.spriteType === "dragon");
+    var sgPose = stageGame ? stageGamePose(stageGame, nowMs, bWidth, minX, maxX) : null;
 
-    if (activeReaction && (activeReaction.type === "fell_asleep" || activeReaction.type === "died")) {
+    if (sgPose) {
+      // Fetch or Tug-of-War: the game moves the dog, even off the edge of the stage
+      petVx = sgPose.moving ? (sgPose.x >= petX ? 60 : -60) : 0;
+      petX  = sgPose.x;
+      petFacingLeft = sgPose.left;
+      petY  = floorY;
+      petVy = 0;
+
+    } else if (activeReaction && (activeReaction.type === "fell_asleep" || activeReaction.type === "died")) {
       // Lock to floor in current position during the fell_asleep / died animation
       petY  = floorY;
       petVx = 0;
@@ -1523,8 +1729,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       petY  = isDragon ? floorY - Math.round(bHeight * 0.12) : floorY;
       petVy = 0;
 
-    } else if (activeReaction && activeReaction.type === "fed_meal") {
-      // Eating a meal: stand still at the bowl (wander resumes once the reaction ends)
+    } else if (activeReaction && (activeReaction.type === "fed_meal" || activeReaction.type === "tail_chase")) {
+      // Eating a meal or chasing its tail: stay put (wander resumes once the reaction ends)
       petVx = 0;
       petVy = 0;
       petY  = isDragon ? floorY - Math.round(bHeight * 0.12) : floorY;
@@ -1697,9 +1903,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     // ── Mood layer: props, body squash, particles (window.spriteMood) ─────
     var feeding = activeReaction && (activeReaction.type === "fed_meal" || activeReaction.type === "fed_snack");
-    if (nowMs < chompUntilMs) { snackChomp = true; }
-    else if (feeding) { snackChomp = (activeReaction.type === "fed_snack"); }
-    var mood = window.spriteMood.current(lastState, activeReaction && activeReaction.type, nowMs < chompUntilMs);
+    // The dog spends its break nap awake, gnawing a big bone
+    var chewing = isChewingBone(lastState);
+    var drawState = chewing ? Object.assign({}, lastState, { sleeping: false }) : lastState;
+    if (nowMs < chompUntilMs || chewing) { snackChomp = true; }
+    else if (feeding) { snackChomp = (activeReaction.type === "fed_snack") || lastState.spriteType === "dog"; }
+    var mood = window.spriteMood.current(drawState, activeReaction && activeReaction.type, nowMs < chompUntilMs || chewing);
     if (mood !== lastMood) { moodParticles.length = 0; lastMoodFrame = -1; }
     lastMood = mood;
     lastState.displayMood = mood;   // lets renderSpriteGrid pick optional per-mood grids
@@ -1724,8 +1933,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (moodProps) {
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
-    drawBodyWithReaction(lastState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
+    drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                          window.spriteMood.scaleY(mood, moodFrame));
+    if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
+    if (stageGame) { drawStageGame(stageGame, moodBox, petFacingLeft, nowMs, floorY); }
     var moodPxSize = window.spriteMood.px(moodBox);
     if (patting && window.spritePat.usesHand(lastState.spriteType)) {
       window.spritePat.drawHand(spriteCtx, patT, moodBox, petFacingLeft, moodPxSize);
@@ -1740,7 +1951,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                                   moodPxSize, (nowMs - activeBubble.startMs) / DEVICE_SLIDE_MS,
                                   bubbleAlpha(activeBubble, nowMs), animTick);
     }
-    drawStatusIndicators(lastState, Math.round(petX), Math.round(petY) + walkBob);
+    drawStatusIndicators(drawState, Math.round(petX), Math.round(petY) + walkBob);
 
     // ── Speech bubble ──────────────────────────────────────────────────────
     var _bScale   = STAGE_SCALES[lastState.stage] || 0.5;
@@ -1749,7 +1960,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _petCx    = Math.round(petX) + Math.round(_bW / 2);
     var _petTopY  = Math.round(petY) + walkBob - headGap(lastState);
     drawSpeechBubble(_petCx, _petTopY, nowMs,
-                     emojiClearance(lastState.sleeping || patting, moodPxSize));
+                     emojiClearance(drawState.sleeping || patting, moodPxSize));
   }
 
   /**
@@ -1860,10 +2071,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     const sleepWakeBtn = document.getElementById("btn-sleep-wake");
     // A break nap can't be cut short — show the minutes left instead of "Wake"
     const napTicks = state.breakNapTicksRemaining || 0;
+    const _napChar = customCharBySpriteType ? customCharBySpriteType(state.spriteType) : null;
+    const _napLabel = (_napChar && _napChar.breakNap) ? _napChar.breakNap.button : "Napping";
     sleepWakeBtn.textContent = napTicks > 0
-      ? "Napping " + Math.max(1, Math.ceil(napTicks * 3 / 60)) + "m"
+      ? _napLabel + " " + Math.max(1, Math.ceil(napTicks * 3 / 60)) + "m"
       : (state.sleeping ? "Wake" : "Sleep");
-    sleepWakeBtn.title = napTicks > 0 ? "Taking a break nap — it wakes up on its own" : "";
+    sleepWakeBtn.title = napTicks > 0
+      ? ((_napChar && _napChar.breakNap) ? "Chewing a bone on your break — it stops on its own" : "Taking a break nap — it wakes up on its own")
+      : "";
     sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
 
     // BUGFIX-002: disable care buttons while pet is sleeping; also disable while paused
@@ -1918,7 +2133,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var mgPatBtn = document.getElementById("btn-mg-pat");
     if (mgPatBtn) { mgPatBtn.textContent = _customChar ? _customChar.patLabel : "Pat"; }
     var mgCfBtn = document.getElementById("btn-mg-cf");
-    if (mgCfBtn) { mgCfBtn.textContent = playsBlackjack(state) ? "Blackjack" : "Coin Flip"; }
+    if (mgCfBtn) { mgCfBtn.textContent = playsBlackjack(state) ? "Blackjack" : playsDogGames(state) ? "Fetch" : "Coin Flip"; }
+    var mgLrBtn = document.getElementById("btn-mg-lr");
+    if (mgLrBtn) { mgLrBtn.textContent = playsDogGames(state) ? "Tug-of-War" : "Left / Right"; }
     updateBossButton(state);
 
     // Reset position when a brand-new or just-loaded pet first appears
@@ -1968,6 +2185,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var nowMs = performance.now();
     var events = state.events || [];
 
+    // A queued attention-call bubble is stale once the call has been answered or has expired
+    if (!state.activeAttentionCall) { bubbleQueue = []; }
+
     // A snack answers the hunger / craving call as soon as it's placed, but the
     // "answered" bubble and log line wait until the pet has eaten it, then come
     // through with the fed_snack state. Reduced motion has no walking pet to
@@ -1995,7 +2215,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       try { localStorage.setItem("codotchi_sleepX", String(Math.round(petX !== null ? petX : 0))); } catch (e) {}
       // Sleep bubble — picks one of 4 options at random, persists until wake
       (function () {
-        var _sleepTexts = ["Zzz...", "z z Z Z...", "*snoozing*", state.name + " is asleep. Zzz..."];
+        var _sleepTexts = isChewingBone(state)
+          ? ["*gnaw gnaw*", "*chomp chomp*", "Mine. All mine.", "Best. Break. Ever."]
+          : ["Zzz...", "z z Z Z...", "*snoozing*", state.name + " is asleep. Zzz..."];
         showBubble(_sleepTexts[Math.floor(Math.random() * _sleepTexts.length)]);
         if (activeBubble) { activeBubble.fadeOutMs = Infinity; }
       })();
@@ -2035,6 +2257,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
             events[_ai].indexOf("attention_call_expired_") !== 0) {
           queueBubble(humaniseEvent(events[_ai], _n, state));
           return;
+        }
+      }
+      // 1a. A character with its own reaction to being ignored (the dog's whimper)
+      var _ignChar = customCharBySpriteType ? customCharBySpriteType(state.spriteType) : null;
+      if (_ignChar && _ignChar.ignoredBubble) {
+        for (var _ei = 0; _ei < events.length; _ei++) {
+          if (events[_ei].indexOf("attention_call_expired_") === 0) {
+            queueBubble(_ignChar.ignoredBubble.replace("__Name__", _n));
+            return;
+          }
         }
       }
       // 1b. Answered whim calls (play / pat / craving) — outranks the minigame result
@@ -2135,6 +2367,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     lastState = state;
     ensureAnimLoop();
 
+    // The dog's gift is a ball: accepting it starts a game of Fetch
+    if (events.indexOf("attention_call_answered_gift") !== -1 && playsDogGames(state) &&
+        !state.sick && !state.sleeping && !state.paused && state.energy >= PLAY_ENERGY_COST &&
+        mgPanels.classList.contains("hidden")) {
+      showMgOverlay();
+      startFetchGame();
+    }
+
     appendEvents(events, state.name, state);
 
     // Spawn poo overlay animation
@@ -2155,6 +2395,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         type: cravedSnackType(_cc)
             || ((_cc && state.spriteType === "tim") ? "tea"
             : (_cc && state.spriteType === "stu") ? (Math.random() < 0.5 ? "guinness" : "salmon")
+            : state.spriteType === "dog" ? "biscuit"
             : (["candy", "bone", "cookie"][Math.floor(Math.random() * 3)])),
       });
       idleTimer = 0;  // pet walks toward it immediately
@@ -2191,6 +2432,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    * @returns {string}
    */
   function moodText(state) {
+    if (isChewingBone(state)) { return "Chewing a bone"; }
     if (state.sleeping && state.sick) { return "Zzz… (feeling sick)"; }
     if (state.sleeping) { return "Zzz…"; }
     if (state.sick)     { return "Feeling sick"; }
@@ -2443,6 +2685,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "minigame_blackjack_win":     n + " won at Blackjack!",
       "minigame_blackjack_lose":    n + " lost at Blackjack.",
       "minigame_blackjack_push":    n + " pushed at Blackjack.",
+      "minigame_fetch_win":         n + " won Fetch!",
+      "minigame_fetch_lose":        n + " lost Fetch.",
+      "minigame_tug_of_war_win":    n + " won Tug-of-War!",
+      "minigame_tug_of_war_lose":   n + " lost Tug-of-War.",
       "minigame_boss_battle_win":   n + " defeated the boss!",
       "minigame_boss_battle_lose":  n + " was beaten by the boss.",
       "boss_unlocked":              "A boss appeared! Press Play \u2192 Boss Battle to fight it.",
@@ -2457,6 +2703,15 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     }
     if (_cc && _cc.snackCravings && currentCravingItem) {
       labels["attention_call_craving_snack"] = n + " is craving " + currentCravingItem + "!";
+    }
+    // The dog chews a big bone through the break instead of napping
+    var _bn = _cc && _cc.breakNap;
+    if (_bn) {
+      labels["attention_call_answered_break"] = _bn.started.replace("__Name__", n) + " (5 min).";
+      labels["break_nap_no_wake"]             = _bn.noWake.replace("__Name__", n);
+      labels["break_nap_over"]                = _bn.over.replace("__Name__", n);
+      // It doesn't fall asleep on its break, it gets the bone
+      if (code === "fell_asleep" && (state.breakNapTicksRemaining || 0) > 0) { return null; }
     }
     var val = labels[code];
     if (val) {
@@ -2732,6 +2987,109 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     });
   }
 
+  // Dog food: a biscuit bone snack, a meaty bone meal and the big bone it
+  // chews through on a break. 1 = bone, 2 = shade / speckle, 3 = meat, 4 = dark meat.
+  var BISCUIT_BONE_PIXELS = [
+    [1,1,0,0,1,1],
+    [1,1,1,1,2,1],
+    [0,1,2,1,1,0],
+    [1,2,1,1,1,1],
+    [1,1,0,0,1,1],
+  ];
+  var MEATY_BONE_PIXELS = [
+    [1,1,0,0,0,0,0,0,1,1],
+    [1,1,1,3,3,3,3,1,1,1],
+    [0,1,3,4,3,3,4,3,1,0],
+    [0,1,3,3,4,3,3,3,1,0],
+    [1,1,1,3,3,3,3,1,1,1],
+    [1,1,0,0,0,0,0,0,1,1],
+  ];
+  var BIG_BONE_PIXELS = [
+    [0,1,1,0,0,0,0,0,0,0,0,1,1,0],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [0,1,2,2,2,2,2,2,2,2,2,2,1,0],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [0,1,1,0,0,0,0,0,0,0,0,1,1,0],
+  ];
+  var BONE_COLOURS = { 1: "#F2E6C8", 2: "#CDBF9C", 3: "#B5452F", 4: "#7A2A1C" };
+  /** Number of sizes the break bone shrinks through as it's chewed. */
+  var BIG_BONE_STAGES = 4;
+
+  /**
+   * The break bone after `stage` (0 = whole … BIG_BONE_STAGES − 1 = nearly
+   * gone) bites: each bite takes three columns off the chewed (left) end.
+   */
+  function chewedBoneGrid(stage) {
+    var cut = Math.max(0, Math.min(BIG_BONE_STAGES - 1, stage)) * 3;
+    return BIG_BONE_PIXELS.map(function (row, r) {
+      var kept = row.slice(cut);
+      // A ragged bitten edge instead of the knob
+      if (cut > 0 && r === 1) { kept[0] = 0; }
+      return kept;
+    });
+  }
+
+  /** Draw a bone grid with its outline, top-left at (x, y). */
+  function drawBoneItem(grid, x, y, scale) {
+    drawGridOutline(grid, x, y, scale, "rgba(0,0,0,0.55)");
+    grid.forEach(function (row, ry) {
+      row.forEach(function (cell, rx) {
+        if (!cell) { return; }
+        spriteCtx.fillStyle = BONE_COLOURS[cell];
+        spriteCtx.fillRect(x + rx * scale, y + ry * scale, scale, scale);
+      });
+    });
+  }
+
+  /** Length of a break nap in ticks — must match BREAK_NAP_TICKS in gameEngine.ts. */
+  var BREAK_NAP_TICKS = 100;
+
+  /** A happy dog wags: the body wiggles from the tail this many times a second, by up to this many radians. */
+  var TAIL_WAG_HZ = 3;
+  var TAIL_WAG_ROT = 0.035;
+  /** Tail chase: about once every TAIL_CHASE_EVERY_S idle seconds, lasting TAIL_CHASE_MS. */
+  var TAIL_CHASE_EVERY_S = 40;
+  var TAIL_CHASE_MS = 1600;
+  /** Energy the dog needs before it will chase its tail. */
+  var TAIL_CHASE_MIN_ENERGY = 70;
+
+  function isAwakeDog(state) {
+    return !!(state && state.alive !== false && state.spriteType === "dog" && state.stage !== "egg" &&
+      !state.sleeping && !state.sick);
+  }
+
+  /** A happy dog wags its tail (a gentle body wiggle). */
+  function isWagging(state) {
+    return isAwakeDog(state) && state.mood === "happy" && !REDUCED_MOTION;
+  }
+
+  /** An energetic dog sometimes chases its tail while idle. */
+  function wantsToChaseTail(state) {
+    return isAwakeDog(state) && (state.energy || 0) >= TAIL_CHASE_MIN_ENERGY && !REDUCED_MOTION;
+  }
+
+  /** The dog spends its break nap awake, chewing a big bone. */
+  function isChewingBone(state) {
+    return !!(state && state.spriteType === "dog" && state.sleeping && (state.breakNapTicksRemaining || 0) > 0);
+  }
+
+  /** Which of the BIG_BONE_STAGES sizes the bone is at with `ticksLeft` of the break to go. */
+  function breakBoneStage(ticksLeft) {
+    var done = 1 - Math.max(0, Math.min(BREAK_NAP_TICKS, ticksLeft)) / BREAK_NAP_TICKS;
+    return Math.min(BIG_BONE_STAGES - 1, Math.floor(done * BIG_BONE_STAGES));
+  }
+
+  /** The break bone on the floor, held at the dog's mouth with the chewed end towards it. */
+  function drawBreakBone(state, box, facingLeft) {
+    var grid = chewedBoneGrid(breakBoneStage(state.breakNapTicksRemaining || 0));
+    if (facingLeft) { grid = grid.map(function (row) { return row.slice().reverse(); }); }
+    var scale = Math.max(2, Math.round(box.w / 24));
+    var bw = grid[0].length * scale;
+    var bh = grid.length * scale;
+    var bx = facingLeft ? box.x - Math.round(bw * 0.6) : box.x + box.w - Math.round(bw * 0.4);
+    drawBoneItem(grid, Math.round(bx), Math.round(box.y + box.h - bh), scale);
+  }
+
   /**
    * Draw background, ground line, poos, gift box, snack items.
    * @param {object} state
@@ -2794,7 +3152,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       });
     }
 
-    // Gift box (or big tea mug for Tim)
+    // Gift box (big tea mug for Tim, tennis ball for the dog)
     if (giftBoxX !== null) {
       var gbX = Math.round(giftBoxX);
       var _giftCc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
@@ -2824,6 +3182,28 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                                 : cell === 5 ? "#FFFFFF"
                                 :              "#8B5E3C";
             spriteCtx.fillRect(gbX + rx * BMS, bmY + ry * BMS, BMS, BMS);
+          });
+        });
+      } else if (state && state.spriteType === "dog") {
+        // The dog's gift is a tennis ball: 1 = felt, 2 = white seam, 3 = shade
+        var TENNIS_BALL_PIXELS = [
+          [0,0,1,1,1,1,0,0],
+          [0,2,1,1,1,1,2,0],
+          [1,1,2,1,1,2,1,1],
+          [1,1,1,2,2,1,1,1],
+          [1,1,1,2,2,1,1,3],
+          [1,1,2,1,1,2,1,3],
+          [0,2,1,1,1,1,2,0],
+          [0,0,3,3,3,3,0,0],
+        ];
+        var TBS = 2;
+        var tbY = H - 12 - TENNIS_BALL_PIXELS.length * TBS;
+        drawGridOutline(TENNIS_BALL_PIXELS, gbX, tbY, TBS, "rgba(0,0,0,0.55)");
+        TENNIS_BALL_PIXELS.forEach(function (row, ry) {
+          row.forEach(function (cell, rx) {
+            if (!cell) { return; }
+            spriteCtx.fillStyle = cell === 2 ? "#FFFFFF" : cell === 3 ? "#9DB51F" : "#D4ED31";
+            spriteCtx.fillRect(gbX + rx * TBS, tbY + ry * TBS, TBS, TBS);
           });
         });
       } else {
@@ -2908,7 +3288,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                 : item.type === "guinness" ? GUINNESS_PIXELS
                 : item.type === "salmon"   ? SALMON_PIXELS
                 : item.type === "candy"    ? CANDY_PIXELS
-                : item.type === "cookie"   ? COOKIE_PIXELS : BONE_PIXELS;
+                : item.type === "cookie"   ? COOKIE_PIXELS
+                : item.type === "biscuit"  ? BISCUIT_BONE_PIXELS : BONE_PIXELS;
         var spH = spx.length * SS;
         var sY  = H - 12 - spH;
         var sX  = Math.round(item.x);
@@ -2934,6 +3315,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
               spriteCtx.fillStyle = cell === 2 ? "#FFE0E0" : "#FF6B9D";
             } else if (item.type === "cookie") {
               spriteCtx.fillStyle = cell === 2 ? "#4A2800" : "#D2961E";
+            } else if (item.type === "biscuit") {
+              spriteCtx.fillStyle = cell === 2 ? "#7A4A1C" : "#C8843C";
             } else {
               spriteCtx.fillStyle = cell === 2 ? "#F5DEB3" : "#DEB887";
             }
@@ -2976,16 +3359,20 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    */
   function drawBodyWithReaction(state, x, bodyY, facingLeft, legFrame, reaction, nowMs, moodScaleY) {
     if (!reaction) {
-      if (moodScaleY && moodScaleY !== 1) {
-        // Squash/stretch anchored at the feet, widened slightly to keep the volume
+      var wag = isWagging(state) ? Math.sin(nowMs / 1000 * Math.PI * 2 * TAIL_WAG_HZ) * TAIL_WAG_ROT : 0;
+      if ((moodScaleY && moodScaleY !== 1) || wag !== 0) {
+        // Squash/stretch anchored at the feet, widened slightly to keep the volume;
+        // a happy dog also wiggles from the tail
         var mScale = STAGE_SCALES[state.stage] || 0.5;
         var mW     = effectiveBWidth(state, Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * mScale));
         var mH     = petBoxHeight(state, mW);
         var mCx    = x + mW / 2;
         var mFeet  = bodyY + mH;
+        var mSy    = moodScaleY || 1;
         spriteCtx.save();
         spriteCtx.translate(mCx, mFeet);
-        spriteCtx.scale(1 + (1 - moodScaleY) * 0.5, moodScaleY);
+        if (wag !== 0) { spriteCtx.rotate(wag); }
+        spriteCtx.scale(1 + (1 - mSy) * 0.5, mSy);
         spriteCtx.translate(-mCx, -mFeet);
         drawBody(state, x, bodyY, facingLeft, legFrame);
         spriteCtx.restore();
@@ -3005,6 +3392,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     switch (reaction.type) {
 
+      case "tail_chase": {
+        // Spin round after its tail: flip back and forth in a small hopping circle
+        var spins  = 4;
+        var spinLeft = Math.floor(t * spins * 2) % 2 === 0 ? !facingLeft : facingLeft;
+        var tcDx = Math.sin(t * Math.PI * 2 * spins / 2) * 8;
+        var tcDy = -Math.abs(Math.sin(t * Math.PI * spins)) * 4;
+        drawBody(state, x + tcDx, bodyY + tcDy, spinLeft, legFrame);
+        break;
+      }
+
       case "fed_meal":
       case "fed_snack": {
         // Bob up then down: yOff = -|sin(t*π*bobs)|*10 — a meal lasts twice as
@@ -3012,6 +3409,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         var bobs = reaction.type === "fed_meal" ? 2 : 1;
         var yOff = -Math.abs(Math.sin(t * Math.PI * bobs)) * 10;
         drawBody(state, x, bodyY + yOff, facingLeft, legFrame);
+        if (reaction.type === "fed_meal" && state.spriteType === "dog") {
+          // The dog's meal is a meaty bone on the floor in front of it
+          var mbW = MEATY_BONE_PIXELS[0].length * SNACK_SCALE;
+          var mbH = MEATY_BONE_PIXELS.length * SNACK_SCALE;
+          var mbX = facingLeft ? x - Math.round(mbW / 2) : x + bWidth - Math.round(mbW / 2);
+          drawBoneItem(MEATY_BONE_PIXELS, Math.round(mbX), Math.round(feetY - mbH), SNACK_SCALE);
+        }
         break;
       }
 
@@ -3264,8 +3668,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var staticX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth / 2));
     var staticY  = H - bHeight - 12;
 
-    drawBody(state, staticX, staticY, false, 0);
-    drawStatusIndicators(state, staticX, staticY);
+    drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false, 0);
+    if (isChewingBone(state)) {
+      drawBreakBone(state, { x: staticX, y: staticY, w: bWidth, h: bHeight }, false);
+    } else {
+      drawStatusIndicators(state, staticX, staticY);
+    }
     drawSpeechBubble(staticX + Math.round(bWidth / 2), staticY - headGap(state), performance.now());
   }
 

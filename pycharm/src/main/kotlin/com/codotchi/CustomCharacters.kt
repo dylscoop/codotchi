@@ -67,6 +67,24 @@ data class CustomCharacter(
     val feedSnackWeightGain: Int? = null,
     /** Weight lost per play session (null = global default of 3). */
     val playWeightLoss: Int? = null,
+    /** Speech bubble when an attention call expires unanswered (null = none). */
+    val ignoredBubble: String? = null,
+    /** Replacement text for the 5-minute break nap (null = the normal nap). */
+    val breakNap: CustomCharacterBreakNap? = null,
+)
+
+/** Replacement text for the break nap (__Name__ = pet name). */
+data class CustomCharacterBreakNap(
+    /** Log line when the break starts. */
+    val started: String,
+    /** Log line when you try to wake it early. */
+    val noWake: String,
+    /** Notification / log line when the break ends. */
+    val over: String,
+    /** Sleep button label while the break runs ("Chewing 3m"). */
+    val button: String,
+    /** Weight gained when the break starts (the dog's big bone). */
+    val weightGain: Int = 0,
 )
 
 val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
@@ -117,12 +135,24 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         passcode    = "shiba",
         defaultName  = "Codotchi",
         patLabel    = "Pat",
-        giftMessage = "__Name__ found a tiny tennis ball!",
+        giftMessage = "__Name__ brought you a ball and wants to play fetch! 🎾",
         patToasts   = CustomCharacterToasts(
             patted     = "__Name__ enjoyed the attention!",
             patRefused = "__Name__ is too tired for pats!",
         ),
-        patBubbles  = listOf(),
+        patBubbles  = listOf(
+            "*tail wags intensify*",
+            "Much code. Very wow.",
+            "Who's a good boy?",
+        ),
+        ignoredBubble = "*sad whimper*… fine.",
+        breakNap    = CustomCharacterBreakNap(
+            started = "__Name__ is busy with a big bone 🦴",
+            noWake  = "__Name__ won't give up the bone yet!",
+            over    = "__Name__ finished the bone. Back to work!",
+            button  = "Chewing",
+            weightGain = 5,
+        ),
     ),
     // ── Add future custom characters here ────────────────────────────────────
     CustomCharacter(

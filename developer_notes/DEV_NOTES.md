@@ -8,7 +8,7 @@ Custom characters are unlocked by entering a passcode in **Settings → Characte
 |------------|----------|--------------|------------|-------------------|
 | `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message ("Timagotchi wants a tea break!"); "Codotchi" (case-insensitive) name auto-replaces with "Timagotchi" |
 | `kangaroo` | `straya` | Skippy | Bounce | Also in the random rotation pool |
-| `dog` | `shiba` | Shibagotchi | Pat | Imported Shiba dog sprite; passcode maps to the built-in dog sprite type |
+| `dog` | `shiba` | Shibagotchi | Pat | Imported Shiba dog sprite; passcode maps to the built-in dog sprite type. Every dog (passcode or rotation) plays Fetch instead of Coin Flip and Tug-of-War instead of Left / Right, eats biscuit-bone snacks and meaty-bone meals, brings a ball as its gift (accepting opens Fetch), whimpers when a call is ignored, wags when happy, chases its tail when energetic, and chews a shrinking big bone through its 5-minute break instead of napping |
 | `testsprite` | `pixel` | Pixel | Pat | Dev/test sprite; 700-column grid; single adult stage only |
 | `stu` | `rubylovessalmon` | Stugotchi | Collect Stickers | 10 meals/snacks per cycle; hunger mult 0.25×; meal weight gain 1; snack weight gain 2; play weight loss 5; snack-sick threshold 5 |
 

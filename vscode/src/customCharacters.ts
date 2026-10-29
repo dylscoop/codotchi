@@ -64,6 +64,24 @@ export interface CustomCharacter {
   feedSnackWeightGain?: number;
   /** Weight lost per play session (default: PLAY_WEIGHT_LOSS = 3). */
   playWeightLoss?: number;
+  /** Speech bubble when an attention call expires unanswered (optional). */
+  ignoredBubble?: string;
+  /** Replacement text for the 5-minute break nap (optional — the dog chews a bone instead). */
+  breakNap?: CustomCharacterBreakNap;
+}
+
+/** Replacement text for the break nap (__Name__ = pet name). */
+export interface CustomCharacterBreakNap {
+  /** Log line when the break starts. */
+  started: string;
+  /** Log line when you try to wake it early. */
+  noWake:  string;
+  /** Notification / log line when the break ends. */
+  over:    string;
+  /** Sleep button label while the break runs ("Chewing 3m"). */
+  button:  string;
+  /** Weight gained when the break starts (the dog's big bone). */
+  weightGain?: number;
 }
 
 export const CUSTOM_CHARACTERS: CustomCharacter[] = [
@@ -114,12 +132,24 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     passcode:    "shiba",
     defaultName:  "Codotchi",
     patLabel:    "Pat",
-    giftMessage: "__Name__ found a tiny tennis ball!",
+    giftMessage: "__Name__ brought you a ball and wants to play fetch! 🎾",
     patToasts: {
       patted:      "__Name__ enjoyed the attention!",
       pat_refused: "__Name__ is too tired for pats!",
     },
-    patBubbles:  [],
+    patBubbles: [
+      "*tail wags intensify*",
+      "Much code. Very wow.",
+      "Who's a good boy?",
+    ],
+    ignoredBubble: "*sad whimper*… fine.",
+    breakNap: {
+      started: "__Name__ is busy with a big bone 🦴",
+      noWake:  "__Name__ won't give up the bone yet!",
+      over:    "__Name__ finished the bone. Back to work!",
+      button:  "Chewing",
+      weightGain: 5,
+    },
   },
   // ── Add future custom characters here ──────────────────────────────────────
   {
