@@ -1359,9 +1359,47 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     sendPlayResult("boxing", result);
   }
 
-  /** Stage layout for Boxing: the gap either side of the centre line. */
-  function boxingGap(W) {
-    return Math.max(2, Math.round(W * 0.02));
+  // Where the kangaroo is actually drawn inside its sprite box ({left, right,
+  // top, bottom}), so the boxers stand nose to nose and wear their gloves on
+  // their paws whatever the stage. Measured once per stage, size and facing
+  // from an offscreen render.
+  var boxerBoundsCache = {};
+
+  function boxerBounds(state, w, h, facingLeft) {
+    var key = state.spriteType + "|" + state.stage + "|" + w + "|" + h + "|" + facingLeft;
+    if (boxerBoundsCache[key]) { return boxerBoundsCache[key]; }
+    var bounds = { left: 0, right: w, top: 0, bottom: h };
+    var c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    var ctx = c.getContext && c.getContext("2d");
+    if (ctx && ctx.getImageData) {
+      window.renderSpriteGrid(ctx, Object.assign({}, state, { sleeping: false, displayMood: null }), 0, 0,
+        facingLeft, 0, 0, STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio, quadrupedBellySagRows);
+      var data = ctx.getImageData(0, 0, w, h).data;
+      var l = w, r = -1, tp = h, bt = -1;
+      for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+          if (data[(y * w + x) * 4 + 3] > 0) {
+            if (x < l) { l = x; }
+            if (x > r) { r = x; }
+            if (y < tp) { tp = y; }
+            if (y > bt) { bt = y; }
+          }
+        }
+      }
+      if (r >= l) { bounds = { left: l, right: r + 1, top: tp, bottom: bt + 1 }; }
+    }
+    boxerBoundsCache[key] = bounds;
+    return bounds;
+  }
+
+  /** Boxing layout for this stage: both boxers' drawn bounds, pixel unit and home x. */
+  function boxingLayout(W, w, h) {
+    var petB = boxerBounds(lastState, w, h, false);
+    var oppB = boxerBounds(lastState, w, h, true);
+    var px = mgArt.boxingPx(petB);
+    return { petB: petB, oppB: oppB, px: px, homes: mgArt.boxingHomes(W, petB, oppB, px) };
   }
 
   /** How far (0..1) the current Boxing phase has got. */
@@ -1378,14 +1416,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   function stageGamePose(game, nowMs, bWidth, minX, maxX) {
     var W = spriteCanvas.width;
     if (game.kind === "boxing") {
-      // Your kangaroo squares up left of centre, facing the opponent
-      var bpx = Math.max(2, Math.round(bWidth / 14));
-      var bHome = Math.round(W / 2 - bWidth - boxingGap(W));
+      // Your kangaroo squares up left of centre, nose to nose with the opponent
+      var bl = boxingLayout(W, bWidth, petBoxHeight(lastState, bWidth));
       var bp = game.phase === "round" && !REDUCED_MOTION
         ? mgArt.boxingPose(game.yourMove, !game.won, boxingPhaseT(game, nowMs))
-        : { dx: 0, dy: 0 };
-      return { x: Math.max(minX, Math.min(maxX, bHome + bp.dx * bpx)), dy: Math.round(bp.dy * bpx),
-               left: false, ball: false, moving: false, done: false };
+        : { dx: 0 };
+      return { x: bl.homes.pet + bp.dx * bl.px, left: false, ball: false, moving: false, done: false };
     }
     if (game.kind === "fetch") {
       if (!game.plan) {
@@ -1428,33 +1464,37 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       var m = game.from + (game.to - game.from) * t;
       mgArt.drawTugRope(spriteCtx, 0, box.x + px, mouthY, px, m);
     } else if (game.kind === "boxing") {
-      drawBoxingStage(game, box, nowMs, floorY, px);
+      drawBoxingStage(game, box, nowMs, floorY);
     }
   }
 
   /** The opponent kangaroo, both kangaroos' gloves and the POW on a landed punch. */
-  function drawBoxingStage(game, box, nowMs, floorY, px) {
+  function drawBoxingStage(game, box, nowMs, floorY) {
     var W = spriteCanvas.width;
+    var bl = boxingLayout(W, box.w, box.h);
+    var px = bl.px;
     var t = boxingPhaseT(game, nowMs);
     var inRound = game.phase === "round" && !REDUCED_MOTION;
-    var op = mgArt.boxingOpponentPos(game.phase, t, Math.round(W / 2 + boxingGap(W)), W + 8);
-    var oppPose = inRound ? mgArt.boxingPose(game.oppMove, game.won, t) : { dx: 0, dy: 0, reach: 0 };
+    var op = mgArt.boxingOpponentPos(game.phase, t, bl.homes.opp, W + 8);
+    var oppPose = inRound ? mgArt.boxingPose(game.oppMove, game.won, t) : { dx: 0, reach: 0 };
     var yourPose = inRound ? mgArt.boxingPose(game.yourMove, !game.won, t) : { reach: 0 };
     var oppX = Math.round(op.x - oppPose.dx * px);
-    var oppY = Math.round(floorY + op.dy + oppPose.dy * px);
+    var oppY = Math.round(floorY + op.dy);
     drawBody(game.oppState, oppX, oppY, true, 0);
 
-    var gloveW = mgArt.GLOVE_SIZE * px;
-    var yourGloveY = Math.round(box.y + box.h * 0.35);
-    var oppGloveY  = Math.round(oppY + box.h * 0.35);
-    mgArt.drawBoxingGlove(spriteCtx, box.x + box.w - Math.round(gloveW / 2) + yourPose.reach * px,
-                          yourGloveY, px, mgArt.COLOURS.gloveBlue);
-    mgArt.drawBoxingGlove(spriteCtx, oppX - Math.round(gloveW / 2) - oppPose.reach * px,
-                          oppGloveY, px, mgArt.COLOURS.gloveRed);
-    // The round's loser takes the hit just after the exchange peaks
+    var half = Math.round(mgArt.GLOVE_SIZE * px / 2);
+    var yourPaw = mgArt.boxingPaw(bl.petB, false);
+    var oppPaw  = mgArt.boxingPaw(bl.oppB, true);
+    mgArt.drawBoxingGlove(spriteCtx, Math.round(box.x + yourPaw.x) - half + yourPose.reach * px,
+                          Math.round(box.y + yourPaw.y) - half, px, mgArt.COLOURS.gloveBlue);
+    mgArt.drawBoxingGlove(spriteCtx, Math.round(oppX + oppPaw.x) - half - oppPose.reach * px,
+                          Math.round(oppY + oppPaw.y) - half, px, mgArt.COLOURS.gloveRed);
+    // The round's loser takes the hit on the nose just after the exchange peaks
     if (inRound && t > 0.35 && t < 0.75) {
-      if (game.won) { mgArt.drawPow(spriteCtx, oppX + gloveW, oppGloveY, px); }
-      else          { mgArt.drawPow(spriteCtx, box.x + box.w - gloveW, yourGloveY, px); }
+      var nose = game.won ? mgArt.boxingNose(bl.oppB, true) : mgArt.boxingNose(bl.petB, false);
+      var nx = game.won ? oppX : box.x;
+      var ny = game.won ? oppY : box.y;
+      mgArt.drawPow(spriteCtx, Math.round(nx + nose.x), Math.round(ny + nose.y), px);
     }
   }
 
@@ -1865,7 +1905,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       petVx = sgPose.moving ? (sgPose.x >= petX ? 60 : -60) : 0;
       petX  = sgPose.x;
       petFacingLeft = sgPose.left;
-      petY  = floorY + (sgPose.dy || 0);
+      petY  = floorY;
       petVy = 0;
 
     } else if (activeReaction && (activeReaction.type === "fell_asleep" || activeReaction.type === "died")) {

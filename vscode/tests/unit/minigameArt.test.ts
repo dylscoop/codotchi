@@ -272,7 +272,8 @@ describe("mini-game overlay in sidebar.js", () => {
     assert.ok(sidebarSource.includes('playsBoxing(state) ? "Boxing" : "Left / Right"'));
     assert.ok(sidebarSource.includes("mgArt.boxingRoundWon(choice, oppMove, Math.random)"));
     assert.ok(sidebarSource.includes('if (game.kind === "boxing") {'));
-    assert.ok(sidebarSource.includes("drawBoxingStage(game, box, nowMs, floorY, px);"));
+    assert.ok(sidebarSource.includes("drawBoxingStage(game, box, nowMs, floorY);"));
+    assert.ok(sidebarSource.includes("function boxerBounds(state, w, h, facingLeft) {"), "gloves follow where the kangaroo is drawn");
     assert.ok(sidebarSource.includes('"minigame_boxing_win":'));
     assert.ok(sidebarSource.includes('"minigame_boxing_lose":'));
     const body = /function endBoxingGame\(\) \{([\s\S]*?)\n  \}/.exec(sidebarSource);
@@ -390,21 +391,22 @@ describe("minigameArt boxing (the kangaroos' Left / Right)", () => {
     assert.equal(dodges, 2);
   });
 
-  it("jab lunges in, dodge leans back and ducks, and both settle back to zero", () => {
+  it("jab lunges in and punches, dodge leans back, and both settle back to zero", () => {
     const art = loadArt();
     for (const move of ["jab", "dodge"]) {
       for (const lost of [true, false]) {
         for (const t of [0, 1]) {
           const p = art.boxingPose(move, lost, t);
-          assert.ok(Math.abs(p.dx) < 1e-9 && Math.abs(p.dy) < 1e-9 && p.reach === 0, `${move} ${lost} t=${t}`);
+          assert.ok(Math.abs(p.dx) < 1e-9 && p.reach === 0, `${move} ${lost} t=${t}`);
         }
       }
     }
     const jab = art.boxingPose("jab", false, 0.5);
     assert.ok(jab.dx > 0 && jab.reach > 0);
     const dodge = art.boxingPose("dodge", false, 0.5);
-    assert.ok(dodge.dx < 0 && dodge.dy > 0 && dodge.reach === 0);
-    assert.ok(art.boxingPose("jab", true, 0.7).dx < art.boxingPose("jab", false, 0.7).dx, "the loser is knocked back");
+    assert.ok(dodge.dx < 0 && dodge.reach === 0);
+    assert.ok(art.boxingPose("jab", true, 0.75).dx < art.boxingPose("jab", false, 0.75).dx, "the loser is knocked back");
+    assert.equal(art.boxingPose("jab", true, 0.5).dx, art.boxingPose("jab", false, 0.5).dx, "not before the punch lands");
   });
 
   it("hops the opponent on from the right edge and back off again", () => {
@@ -419,6 +421,24 @@ describe("minigameArt boxing (the kangaroos' Left / Right)", () => {
     const guard = art.boxingOpponentPos("guard", 0.5, 100, 300);
     assert.equal(guard.x, 100);
     assert.equal(guard.dy, 0);
+  });
+
+  it("stands the boxers nose to nose at the centre, gloves on their front paws", () => {
+    const art = loadArt();
+    // A kangaroo drawn from x 20 to 120 in a 140-wide box, facing right; mirrored facing left
+    const right = { left: 20, right: 120, top: 10, bottom: 90 };
+    const left  = { left: 20, right: 120, top: 10, bottom: 90 };
+    const px = art.boxingPx(right);
+    assert.equal(px, 4);
+    assert.equal(art.boxingPx({ left: 0, right: 10, top: 0, bottom: 10 }), 1, "never below one pixel");
+    const homes = art.boxingHomes(300, right, left, px);
+    assert.equal(homes.pet + right.right, 150 - 12, "your nose sits just left of centre");
+    assert.equal(homes.opp + left.left, 150 + 12, "their nose sits just right of centre");
+    const paw = art.boxingPaw(right, false);
+    assert.ok(paw.x > 70 && paw.x < 120 && paw.y > 10 && paw.y < 90, "front paw is ahead of the middle");
+    assert.ok(art.boxingPaw(left, true).x < 70, "a left-facing boxer's paw is on its left");
+    assert.equal(art.boxingNose(right, false).x, 120);
+    assert.equal(art.boxingNose(left, true).x, 20);
   });
 
   it("draws gloves in the given colour and a POW spark", () => {

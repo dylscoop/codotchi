@@ -620,22 +620,55 @@
   }
 
   /**
-   * A boxer's offset t (0..1) into a round, in sprite pixels:
-   * {dx (+ towards the other boxer), dy (+ down), reach (glove punch-out)}.
-   * A jab lunges in, a dodge leans back and ducks, and the round's loser is
-   * knocked back in the second half. Zero at t = 0 and t = 1.
+   * A boxer's offset t (0..1) into a round, in boxing pixels (boxingPx):
+   * {dx (+ towards the other boxer), reach (glove punch-out)}. A jab lunges in
+   * and punches, a dodge leans back, and the round's loser is knocked back in
+   * the second half. Zero at t = 0 and t = 1.
    */
   function boxingPose(move, lost, t) {
     t = Math.max(0, Math.min(1, t));
     var e = Math.sin(t * Math.PI);
-    var dx = move === "jab" ? 3 * e : -3 * e;
-    var dy = move === "jab" ? 0 : 2 * e;
-    var reach = move === "jab" ? Math.round(5 * e) : 0;
+    var dx = move === "jab" ? 4 * e : -4 * e;
+    var reach = move === "jab" ? Math.round(10 * e) : 0;
     if (lost) {
-      var k = Math.max(0, Math.min(1, (t - 0.4) / 0.6));
+      var k = Math.max(0, Math.min(1, (t - 0.5) / 0.5));
       dx -= 4 * Math.sin(k * Math.PI);
     }
-    return { dx: dx, dy: dy, reach: reach };
+    return { dx: dx, reach: reach };
+  }
+
+  /**
+   * Boxing's pixel unit, from where the kangaroo is actually drawn inside its
+   * sprite box (bounds = {left, right, top, bottom}): gloves, lunges and the
+   * POW all scale with it, so a baby throws small punches.
+   */
+  function boxingPx(bounds) {
+    return Math.max(1, Math.round((bounds.right - bounds.left) / 28));
+  }
+
+  /**
+   * Left edges of both boxers' sprite boxes so they stand nose to nose, 3px
+   * either side of the centre of a stage W wide. petBounds is drawn facing
+   * right, oppBounds facing left.
+   */
+  function boxingHomes(W, petBounds, oppBounds, px) {
+    var gap = 3 * px;
+    return { pet: Math.round(W / 2 - gap - petBounds.right),
+             opp: Math.round(W / 2 + gap - oppBounds.left) };
+  }
+
+  /** A boxer's front paw (where its glove goes) inside its sprite box. */
+  function boxingPaw(bounds, facingLeft) {
+    var dw = bounds.right - bounds.left;
+    var dh = bounds.bottom - bounds.top;
+    return { x: facingLeft ? bounds.right - dw * 0.73 : bounds.left + dw * 0.73,
+             y: bounds.top + dh * 0.5 };
+  }
+
+  /** A boxer's nose (where a landed punch shows its POW) inside its sprite box. */
+  function boxingNose(bounds, facingLeft) {
+    return { x: facingLeft ? bounds.left : bounds.right,
+             y: bounds.top + (bounds.bottom - bounds.top) * 0.2 };
   }
 
   /**
@@ -733,6 +766,10 @@
     boxingRoundWon:    boxingRoundWon,
     boxingPose:        boxingPose,
     boxingOpponentPos: boxingOpponentPos,
+    boxingPx:          boxingPx,
+    boxingHomes:       boxingHomes,
+    boxingPaw:         boxingPaw,
+    boxingNose:        boxingNose,
     GLOVE_SIZE:      GLOVE_SIZE,
     drawBoxingGlove: drawBoxingGlove,
     POW_SIZE:       POW_SIZE,
