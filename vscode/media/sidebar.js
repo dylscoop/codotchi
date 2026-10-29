@@ -563,8 +563,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   // Wire up game-select buttons
   document.getElementById("btn-mg-lr").addEventListener("click", function () {
-    // The dog plays Tug-of-War instead of Left / Right
-    if (playsDogGames(lastState)) { startTugGame(); } else { startLeftRightGame(); }
+    // The dog plays Tug-of-War and the kangaroos box instead of Left / Right
+    if (playsDogGames(lastState)) { startTugGame(); }
+    else if (playsBoxing(lastState)) { startBoxingGame(); }
+    else { startLeftRightGame(); }
   });
   document.getElementById("btn-mg-hl").addEventListener("click", function () {
     startHigherLowerGame();
@@ -1248,12 +1250,142 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     sendPlayResult("tug_of_war", result);
   }
 
+  // ── Kangaroo game: Boxing (replaces Left / Right) ─────────────────────────
+  // A second kangaroo hops onto the stage; first to two rounds wins the bout.
+
+  /** Whether this pet boxes instead of playing Left / Right (Skippy and Roogotchi). */
+  function playsBoxing(state) {
+    return !!(state && (state.spriteType === "kangaroo" || state.spriteType === "roo"));
+  }
+
+  var BOX_WINS_NEEDED = 2;
+  var BOX_ROUNDS = 3;
+  var boxRound, boxScore, boxOppScore;
+
+  document.getElementById("btn-box-jab").addEventListener("click",   function () { handleBoxingChoice("jab"); });
+  document.getElementById("btn-box-dodge").addEventListener("click", function () { handleBoxingChoice("dodge"); });
+
+  function boxButtons(enabled) {
+    document.getElementById("btn-box-jab").disabled   = !enabled;
+    document.getElementById("btn-box-dodge").disabled = !enabled;
+  }
+
+  function updateBoxScore() {
+    document.getElementById("box-score").textContent =
+      "Round " + Math.min(boxRound + 1, BOX_ROUNDS) + " / " + BOX_ROUNDS + "   You: " + boxScore + "   Them: " + boxOppScore;
+  }
+
+  function startBoxingGame() {
+    if (!mgArt) { startLeftRightGame(); return; }
+    mgClear();
+    clearStageBubbles();
+    boxRound = 0;
+    boxScore = 0;
+    boxOppScore = 0;
+    // The opponent is the same kind of kangaroo, awake and in its plain mood
+    stageGame = { kind: "boxing", phase: "enter", startMs: performance.now(),
+                  yourMove: null, oppMove: null, won: false,
+                  oppState: Object.assign({}, lastState, { sleeping: false, displayMood: null }) };
+    boostAnim(performance.now() + mgArt.BOX_ENTER_MS);
+    document.getElementById("box-feedback").textContent = "Righto, gloves up!";
+    showMgPanel("mg-boxing");
+    updateBoxScore();
+    boxButtons(false);
+    bjTimer = setTimeout(function () {
+      bjTimer = null;
+      if (stageGame) { stageGame.phase = "guard"; }
+      document.getElementById("box-feedback").textContent = "You wouldn't, would ya?";
+      boxButtons(true);
+    }, REDUCED_MOTION ? 0 : mgArt.BOX_ENTER_MS);
+  }
+
+  function boxingFeedback(choice, oppMove, won) {
+    if (choice === "dodge") {
+      return won ? "\u2713 You dodged their jab!"
+                 : "\u2717 You both dodged - they were quicker.";
+    }
+    if (oppMove === "jab") {
+      return won ? "\u2713 Your jab landed first."
+                 : "\u2717 Their jab landed first.";
+    }
+    return won ? "\u2713 They tried to dodge, but your jab landed."
+               : "\u2717 They dodged and countered.";
+  }
+
+  function handleBoxingChoice(choice) {
+    boxButtons(false);
+    var oppMove = Math.random() < 0.5 ? "jab" : "dodge";
+    var won = mgArt.boxingRoundWon(choice, oppMove, Math.random);
+    if (won) { boxScore++; } else { boxOppScore++; }
+    if (stageGame) {
+      stageGame.phase = "round";
+      stageGame.startMs = performance.now();
+      stageGame.yourMove = choice;
+      stageGame.oppMove = oppMove;
+      stageGame.won = won;
+    }
+    boostAnim(performance.now() + mgArt.BOX_MOVE_MS);
+    document.getElementById("box-feedback").textContent = boxingFeedback(choice, oppMove, won);
+    bjTimer = setTimeout(function () {
+      bjTimer = null;
+      boxRound++;
+      if (boxScore < BOX_WINS_NEEDED && boxOppScore < BOX_WINS_NEEDED) {
+        if (stageGame) { stageGame.phase = "guard"; }
+        document.getElementById("box-feedback").textContent = "";
+        updateBoxScore();
+        boxButtons(true);
+        return;
+      }
+      if (!stageGame || REDUCED_MOTION) { endBoxingGame(); return; }
+      // The bout's over: the opponent hops back off before the result
+      stageGame.phase = "exit";
+      stageGame.startMs = performance.now();
+      boostAnim(performance.now() + mgArt.BOX_EXIT_MS);
+      bjTimer = setTimeout(function () { bjTimer = null; endBoxingGame(); }, mgArt.BOX_EXIT_MS);
+    }, REDUCED_MOTION ? 900 : mgArt.BOX_MOVE_MS + 900);
+  }
+
+  function endBoxingGame() {
+    var result = boxScore >= BOX_WINS_NEEDED ? "win" : "lose";
+    var name = (lastState && lastState.name) || "Your kangaroo";
+    var tally = boxScore + "-" + boxOppScore;
+    mgClear();
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win"
+        ? name + " won the bout! \uD83E\uDD4A (" + tally + ")"
+        : name + " copped it (" + tally + ").";
+    sendPlayResult("boxing", result);
+  }
+
+  /** Stage layout for Boxing: the gap either side of the centre line. */
+  function boxingGap(W) {
+    return Math.max(2, Math.round(W * 0.02));
+  }
+
+  /** How far (0..1) the current Boxing phase has got. */
+  function boxingPhaseT(game, nowMs) {
+    if (REDUCED_MOTION || game.phase === "guard") { return 1; }
+    var ms = game.phase === "enter" ? mgArt.BOX_ENTER_MS : game.phase === "exit" ? mgArt.BOX_EXIT_MS : mgArt.BOX_MOVE_MS;
+    return Math.min(1, (nowMs - game.startMs) / ms);
+  }
+
   /**
    * Where the dog stands during a stage game, for the animation loop.
    * Returns null when no game is moving it.
    */
   function stageGamePose(game, nowMs, bWidth, minX, maxX) {
     var W = spriteCanvas.width;
+    if (game.kind === "boxing") {
+      // Your kangaroo squares up left of centre, facing the opponent
+      var bpx = Math.max(2, Math.round(bWidth / 14));
+      var bHome = Math.round(W / 2 - bWidth - boxingGap(W));
+      var bp = game.phase === "round" && !REDUCED_MOTION
+        ? mgArt.boxingPose(game.yourMove, !game.won, boxingPhaseT(game, nowMs))
+        : { dx: 0, dy: 0 };
+      return { x: Math.max(minX, Math.min(maxX, bHome + bp.dx * bpx)), dy: Math.round(bp.dy * bpx),
+               left: false, ball: false, moving: false, done: false };
+    }
     if (game.kind === "fetch") {
       if (!game.plan) {
         game.startMs = nowMs;
@@ -1294,6 +1426,34 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       var t = REDUCED_MOTION ? 1 : Math.min(1, (nowMs - game.startMs) / TUG_MOVE_MS);
       var m = game.from + (game.to - game.from) * t;
       mgArt.drawTugRope(spriteCtx, 0, box.x + px, mouthY, px, m);
+    } else if (game.kind === "boxing") {
+      drawBoxingStage(game, box, nowMs, floorY, px);
+    }
+  }
+
+  /** The opponent kangaroo, both kangaroos' gloves and the POW on a landed punch. */
+  function drawBoxingStage(game, box, nowMs, floorY, px) {
+    var W = spriteCanvas.width;
+    var t = boxingPhaseT(game, nowMs);
+    var inRound = game.phase === "round" && !REDUCED_MOTION;
+    var op = mgArt.boxingOpponentPos(game.phase, t, Math.round(W / 2 + boxingGap(W)), W + 8);
+    var oppPose = inRound ? mgArt.boxingPose(game.oppMove, game.won, t) : { dx: 0, dy: 0, reach: 0 };
+    var yourPose = inRound ? mgArt.boxingPose(game.yourMove, !game.won, t) : { reach: 0 };
+    var oppX = Math.round(op.x - oppPose.dx * px);
+    var oppY = Math.round(floorY + op.dy + oppPose.dy * px);
+    drawBody(game.oppState, oppX, oppY, true, 0);
+
+    var gloveW = mgArt.GLOVE_SIZE * px;
+    var yourGloveY = Math.round(box.y + box.h * 0.35);
+    var oppGloveY  = Math.round(oppY + box.h * 0.35);
+    mgArt.drawBoxingGlove(spriteCtx, box.x + box.w - Math.round(gloveW / 2) + yourPose.reach * px,
+                          yourGloveY, px, mgArt.COLOURS.gloveBlue);
+    mgArt.drawBoxingGlove(spriteCtx, oppX - Math.round(gloveW / 2) - oppPose.reach * px,
+                          oppGloveY, px, mgArt.COLOURS.gloveRed);
+    // The round's loser takes the hit just after the exchange peaks
+    if (inRound && t > 0.35 && t < 0.75) {
+      if (game.won) { mgArt.drawPow(spriteCtx, oppX + gloveW, oppGloveY, px); }
+      else          { mgArt.drawPow(spriteCtx, box.x + box.w - gloveW, yourGloveY, px); }
     }
   }
 
@@ -1700,11 +1860,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var sgPose = stageGame ? stageGamePose(stageGame, nowMs, bWidth, minX, maxX) : null;
 
     if (sgPose) {
-      // Fetch or Tug-of-War: the game moves the dog, even off the edge of the stage
+      // Fetch, Tug-of-War or Boxing: the game moves the pet, even off the edge of the stage
       petVx = sgPose.moving ? (sgPose.x >= petX ? 60 : -60) : 0;
       petX  = sgPose.x;
       petFacingLeft = sgPose.left;
-      petY  = floorY;
+      petY  = floorY + (sgPose.dy || 0);
       petVy = 0;
 
     } else if (activeReaction && (activeReaction.type === "fell_asleep" || activeReaction.type === "died")) {
@@ -2135,7 +2295,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var mgCfBtn = document.getElementById("btn-mg-cf");
     if (mgCfBtn) { mgCfBtn.textContent = playsBlackjack(state) ? "Blackjack" : playsDogGames(state) ? "Fetch" : "Coin Flip"; }
     var mgLrBtn = document.getElementById("btn-mg-lr");
-    if (mgLrBtn) { mgLrBtn.textContent = playsDogGames(state) ? "Tug-of-War" : "Left / Right"; }
+    if (mgLrBtn) { mgLrBtn.textContent = playsDogGames(state) ? "Tug-of-War" : playsBoxing(state) ? "Boxing" : "Left / Right"; }
     updateBossButton(state);
 
     // Reset position when a brand-new or just-loaded pet first appears
@@ -2689,6 +2849,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "minigame_fetch_lose":        n + " lost Fetch.",
       "minigame_tug_of_war_win":    n + " won Tug-of-War!",
       "minigame_tug_of_war_lose":   n + " lost Tug-of-War.",
+      "minigame_boxing_win":        n + " won the boxing match!",
+      "minigame_boxing_lose":       n + " lost the boxing match.",
       "minigame_boss_battle_win":   n + " defeated the boss!",
       "minigame_boss_battle_lose":  n + " was beaten by the boss.",
       "boss_unlocked":              "A boss appeared! Press Play \u2192 Boss Battle to fight it.",
