@@ -72,6 +72,7 @@ import {
   PetState,
   GameConfig,
   AttentionCallType,
+  minigameStatsKey,
 } from "../../src/gameEngine";
 
 /** Config with attention calls off, so random calls don't perturb deterministic tick tests. */
@@ -1848,6 +1849,20 @@ describe("applyMinigameResult", () => {
     assert.equal(lost.weight, 37);
     assert.ok(won.events.includes("minigame_tug_of_war_win"));
     assert.ok(lost.events.includes("minigame_tug_of_war_lose"));
+  });
+
+  it("boxing (the kangaroos' Left / Right) uses Left / Right's rewards and weight loss", () => {
+    assert.equal(minigameStatsKey("boxing"), "left_right");
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const won = applyMinigameResult(pet, "boxing", "win");
+    const lost = applyMinigameResult(pet, "boxing", "lose");
+    assert.ok(won.happiness >= 55 && won.happiness <= 65, `got ${won.happiness}`);
+    assert.equal(lost.happiness, 45);
+    assert.equal(won.weight, 37);
+    assert.equal(lost.weight, 37);
+    assert.ok(won.events.includes("minigame_boxing_win"));
+    assert.ok(lost.events.includes("minigame_boxing_lose"));
+    assert.ok(won.petXp > 0);
   });
 
   it("fetch and tug_of_war wins award minigame XP", () => {
