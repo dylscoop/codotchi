@@ -2061,9 +2061,12 @@
       var e = patEnv(t);
       return { dx: Math.sin(t * Math.PI * 6) * 4 * e, dy: 0, sx: 1 + e * 0.05, sy: 1 - e * 0.1, rot: 0 };
     },
-    // Two little hops
+    // Skippy's Bounce: three big hops, crouching before each one, stretching
+    // tall in the air and squashing on landing
     kangaroo: function (t) {
-      return { dx: 0, dy: -Math.abs(Math.sin(t * Math.PI * 2)) * 10, sx: 1, sy: 1, rot: 0 };
+      var hop = bounceHop(t);
+      return { dx: 0, dy: -hop.air * 18, sx: 1 + hop.squash * 0.08 - hop.air * 0.04,
+               sy: 1 - hop.squash * 0.15 + hop.air * 0.1, rot: 0 };
     },
     // Happy loop in the air
     dragon: function (t) {
@@ -2090,14 +2093,30 @@
   };
 
   // Custom characters whose "pat" is something else: Tim jogs a lap, Stu opens
-  // a sticker binder or a pack of stickers. Neither gets the hand or hearts.
-  var PAT_RUN   = { tim: 1 };
-  var PAT_PROPS = { stu: ["binder", "pack"] };
+  // a sticker binder or a pack of stickers, Skippy the kangaroo bounces.
+  // None of them gets the hand or hearts.
+  var PAT_RUN    = { tim: 1 };
+  var PAT_PROPS  = { stu: ["binder", "pack"] };
+  var PAT_BOUNCE = { kangaroo: 1 };
   /** Reaction length (ms) for pets whose action needs longer than a pat. */
-  var PAT_DURATION_MS = { tim: 2600, stu: 2200 };
+  var PAT_DURATION_MS = { tim: 2600, stu: 2200, kangaroo: 1800 };
+  var BOUNCE_HOPS = 3;
+
+  /**
+   * Where a bouncing pet is in its hops at t (0..1): air (0 on the ground, 1 at
+   * the top of a hop), squash (crouch before take-off and on landing, 0..1) and
+   * landing (true in the last part of each hop, for the dust puffs).
+   */
+  function bounceHop(t) {
+    var ph = (Math.max(0, Math.min(1, t)) * BOUNCE_HOPS) % 1;
+    var a = Math.max(0, Math.min(1, (ph - 0.15) / 0.7));
+    var squash = ph < 0.15 ? Math.sin(ph / 0.15 * Math.PI)
+               : ph > 0.85 ? Math.sin((ph - 0.85) / 0.15 * Math.PI) : 0;
+    return { air: Math.sin(a * Math.PI), squash: squash, landing: ph > 0.85 };
+  }
 
   function patDurationMs(spriteType, fallback) { return PAT_DURATION_MS[spriteType] || fallback; }
-  function patUsesHand(spriteType) { return !PAT_RUN[spriteType] && !PAT_PROPS[spriteType]; }
+  function patUsesHand(spriteType) { return !PAT_RUN[spriteType] && !PAT_PROPS[spriteType] && !PAT_BOUNCE[spriteType]; }
 
   /**
    * Lap position for a jogging pet: 0 at the start, 1 at the far end, back to 0;
@@ -2221,7 +2240,8 @@
   /**
    * Hearts for every pet, plus "prr" for the cat and smoke for the dragon.
    * Tim kicks up dust behind his feet; Stu's stickers burst out of the opened
-   * binder / pack (t = reaction progress 0..1).
+   * binder / pack; Skippy puffs dust either side as each hop lands
+   * (t = reaction progress 0..1).
    */
   function spawnPatParticles(particles, spriteType, box, facingLeft, dt, rand, t) {
     rand = rand || Math.random;
@@ -2230,6 +2250,11 @@
     if (PAT_RUN[spriteType] && rand() < dt * 10) {
       add.push({ kind: "dust", x: facingLeft ? box.x + box.w * 0.7 : box.x + box.w * 0.3, y: box.y + box.h - 2,
                  vx: (facingLeft ? 1 : -1) * (8 + rand() * 6), vy: -4, life: 0.5 });
+    }
+    if (PAT_BOUNCE[spriteType] && t !== undefined && bounceHop(t).landing && rand() < dt * 20) {
+      var side = rand() < 0.5 ? -1 : 1;
+      add.push({ kind: "dust", x: box.x + box.w * (side < 0 ? 0.25 : 0.75), y: box.y + box.h - 2,
+                 vx: side * (10 + rand() * 6), vy: -4, life: 0.45 });
     }
     if (PAT_PROPS[spriteType] && t !== undefined && t > 0.45 && t < 0.85 && rand() < dt * 12) {
       var a = patPropAnchor(box);
