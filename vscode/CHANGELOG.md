@@ -8,6 +8,10 @@
 - **Bounce is a real bounce.** Patting the kangaroo no longer shows the patting hand and hearts: it does three big hops and kicks up dust on each landing.
 - **Skippy talks Aussie.** New Bounce lines ("Good on ya, mate!", "She'll be right."), a gift that's either a beer or some Tim Tams (praise the Tim Tams and it tells you they're better than Penguins), "Skippy's keen as for a bounce!" calls, and its 5-minute break is smoko: off to get a Bunnings snag.
 
+### Changed
+
+- **Attention-call notifications hide after 10 seconds** instead of staying on screen until you answer. The call is still active: answer it from the sidebar or status bar.
+
 ## [2.32.2] - 2026-10-29
 
 ### Changed

@@ -106,9 +106,13 @@ let criticalStatTracker: CriticalStatTracker = {};
 /**
  * The attention-call notification on screen, if any. It's a progress
  * notification (plain toasts can't be closed from code), held open until
- * `close` resolves — once the call is answered, expires or is replaced.
+ * `close` resolves — once the call is answered, expires, is replaced, or
+ * ATTENTION_NOTIFY_HIDE_MS passes.
  */
 let shownAttention: { type: AttentionCallType; close: () => void } | null = null;
+
+/** How long (ms) an attention-call popup stays on screen before hiding itself. */
+const ATTENTION_NOTIFY_HIDE_MS = 10_000;
 
 function closeAttentionNotification(): void {
   shownAttention?.close();
@@ -120,11 +124,21 @@ function showAttentionNotification(type: AttentionCallType, message: string): vo
   void vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: message, cancellable: true },
     (_progress, cancel) => new Promise<void>((resolve) => {
-      const entry = { type, close: resolve };
+      let hideTimer: ReturnType<typeof setTimeout> | undefined;
+      const finish = (): void => {
+        if (hideTimer !== undefined) { clearTimeout(hideTimer); hideTimer = undefined; }
+        resolve();
+      };
+      const entry = { type, close: finish };
       shownAttention = entry;
+      // Hide the popup after a short while; the call itself stays active.
+      hideTimer = setTimeout(() => {
+        if (shownAttention === entry) { shownAttention = null; }
+        finish();
+      }, ATTENTION_NOTIFY_HIDE_MS);
       cancel.onCancellationRequested(() => {
         if (shownAttention === entry) { shownAttention = null; }
-        resolve();
+        finish();
       });
     }),
   );

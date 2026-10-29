@@ -95,7 +95,9 @@ The pet fires IDE notifications demanding care, with a **1-minute active
 
 The notification closes itself once the call is answered, expires or is replaced
 (`shouldDismissAttention`, since v2.32.2). VS Code shows it with `withProgress`
-so it can be closed from code; PyCharm calls `Notification.expire()`.
+so it can be closed from code; PyCharm calls `Notification.expire()`. Since v2.33.1
+the VS Code popup also hides itself after 10 s (`ATTENTION_NOTIFY_HIDE_MS`) while the
+call stays active; PyCharm's `BALLOON` group already auto-hides.
 
 | Trigger                                            | Attention Type    | Correct Response        | Expiry penalty                         | Status |
 |----------------------------------------------------|-------------------|-------------------------|----------------------------------------|--------|
