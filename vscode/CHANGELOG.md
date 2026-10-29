@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.33.2] - 2026-10-29
+
+### Changed
+
+- **Skippy actually goes on smoko.** On its 5-minute break the kangaroo hops off the stage instead of lying down for a nap, and hops back in when the break's over. Its speech bubble stays behind: "Gone for smoko 🚬" or "Off to Bunnings for a snag 🌭".
+
 ## [2.33.1] - 2026-10-29
 
 ### Added
