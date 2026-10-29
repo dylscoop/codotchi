@@ -64,7 +64,6 @@ class CodotchiConfigurable : Configurable {
     private var tokenCostIncludeClaudeCodeCheck: JCheckBox?        = null
     private var tokenCostIncludeOpenCodeCheck:   JCheckBox?        = null
     private var tokenCostIncludeCopilotCheck:    JCheckBox?        = null
-    private var lbEmailNotificationsCheck:       JCheckBox?        = null
     private var lbSignInButton:  JButton?  = null
     private var lbSignOutButton: JButton?  = null
     private var lbSignInStatus:  JBLabel?  = null
@@ -108,8 +107,6 @@ class CodotchiConfigurable : Configurable {
         val tokenCostOpenCodeCheckbox = JCheckBox("Today's Token Cost: include OpenCode")
         val tokenCostCopilotCheckbox = JCheckBox("Today's Token Cost: include GitHub Copilot quota % (Tools > Codotchi: Sign in to GitHub (Copilot Quota))")
 
-        val lbEmailNotificationsCheckbox = JCheckBox("Email me about the GitHub issues Codotchi opens to update the leaderboard")
-        lbEmailNotificationsCheckbox.toolTipText = "Off by default: Codotchi unsubscribes you from each issue it opens, so you aren't emailed when it's processed and closed."
         val signInBtn  = JButton("Sign in to GitHub (Leaderboard)")
         val signOutBtn = JButton("Sign out")
         val signInStatusLabel = JBLabel("")
@@ -167,7 +164,6 @@ class CodotchiConfigurable : Configurable {
         tokenCostIncludeClaudeCodeCheck = tokenCostClaudeCodeCheckbox
         tokenCostIncludeOpenCodeCheck   = tokenCostOpenCodeCheckbox
         tokenCostIncludeCopilotCheck    = tokenCostCopilotCheckbox
-        lbEmailNotificationsCheck       = lbEmailNotificationsCheckbox
 
         val panel = JPanel(GridBagLayout())
         val gbc   = GridBagConstraints()
@@ -243,7 +239,6 @@ class CodotchiConfigurable : Configurable {
         addFull(panel, com.intellij.ui.components.ActionLink("Sign-in help") {
             com.intellij.ide.BrowserUtil.browse(GITHUB_SIGN_IN_HELP_URL)
         })
-        addFull(panel, lbEmailNotificationsCheckbox)
 
         // Developer settings — collapsed by default to keep the page uncluttered
         val devContent = JPanel(GridBagLayout())
@@ -339,7 +334,6 @@ class CodotchiConfigurable : Configurable {
             || uiTokenCostClaudeCode != settings.tokenCostIncludeClaudeCode
             || uiTokenCostOpenCode != settings.tokenCostIncludeOpenCode
             || uiTokenCostCopilot != settings.tokenCostIncludeCopilot
-            || (lbEmailNotificationsCheck?.isSelected ?: false) != settings.leaderboardEmailNotifications
     }
 
     override fun apply() {
@@ -377,7 +371,6 @@ class CodotchiConfigurable : Configurable {
         settings.tokenCostIncludeClaudeCode = tokenCostIncludeClaudeCodeCheck?.isSelected ?: true
         settings.tokenCostIncludeOpenCode   = tokenCostIncludeOpenCodeCheck?.isSelected ?: true
         settings.tokenCostIncludeCopilot    = tokenCostIncludeCopilotCheck?.isSelected ?: false
-        settings.leaderboardEmailNotifications = lbEmailNotificationsCheck?.isSelected ?: false
         val newPerWorkspace = perWorkspacePetCheck?.isSelected ?: false
         val prevPerWorkspace = settings.perWorkspacePet
         settings.perWorkspacePet           = newPerWorkspace
@@ -430,7 +423,6 @@ class CodotchiConfigurable : Configurable {
         tokenCostIncludeClaudeCodeCheck?.isSelected = settings.tokenCostIncludeClaudeCode
         tokenCostIncludeOpenCodeCheck?.isSelected   = settings.tokenCostIncludeOpenCode
         tokenCostIncludeCopilotCheck?.isSelected    = settings.tokenCostIncludeCopilot
-        lbEmailNotificationsCheck?.isSelected       = settings.leaderboardEmailNotifications
     }
 
     // ── Enum helpers ───────────────────────────────────────────────────────

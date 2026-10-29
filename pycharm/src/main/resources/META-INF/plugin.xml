@@ -114,20 +114,16 @@ edited outside Codotchi, can't be submitted or pushed live, and the panel says w
 the plugin forgets the old token. It then shows <b>Sign in to GitHub again</b> in the panel, and a notification with a
 <b>Sign in</b> action if live push was running in the background. Submitting a score starts a fresh sign-in
 automatically and retries the submission once.</p>
-<p>The plugin sends leaderboard updates by opening GitHub issues in the Codotchi repo. By default it unsubscribes you
-from each issue as soon as it opens it, so you don't get an email when the issue is processed and closed. To get those
-emails, tick <b>Email me about the GitHub issues Codotchi opens to update the leaderboard</b> in
-<b>Settings → Tools → Codotchi</b>.</p>
+<p>The plugin sends leaderboard updates by opening GitHub issues in the Codotchi repo. Once the leaderboard has
+processed an issue it deletes it instead of closing it, so GitHub doesn't email you about it.</p>
 <h3>GitHub sign-in help</h3>
 <p>You sign in once. You don't need a personal access token, your own GitHub app, or any changes to your GitHub
 settings.</p>
 <ol>
   <li>Click <b>Sign in to GitHub (Leaderboard)</b>, either in the pet panel or in <b>Settings → Tools → Codotchi</b>.</li>
   <li>A browser opens at github.com/login/device, and a PyCharm notification shows an 8-character code.</li>
-  <li>Enter the code, sign in to GitHub if asked, and click <b>Authorize</b>. Codotchi asks for two permissions:
-  <code>public_repo</code> to submit leaderboard entries, and <code>notifications</code> to unsubscribe you from those
-  entries so GitHub doesn't email you about them. If you signed in before v2.32.2, Codotchi asks you to sign in once
-  more to add <code>notifications</code>.</li>
+  <li>Enter the code, sign in to GitHub if asked, and click <b>Authorize</b>. Codotchi only asks for the
+  <code>public_repo</code> permission, which it needs to submit leaderboard entries.</li>
   <li>Go back to PyCharm. It picks up the sign-in on its own within a few seconds.</li>
 </ol>
 <p>If it doesn't work:</p>

@@ -812,7 +812,6 @@ Since v2.23.0 `contributes.configuration` is an array of two categories, each wi
 | `gotchi.autoWake` | boolean | `true` | Auto-wake pet when energy reaches 100 | `[ ]` |
 | `gotchi.enableAttentionCalls` | boolean | `true` | Enable/disable the entire attention-call mechanic | `[x]` |
 | `codotchi.osNotifications` | boolean | `true` | Desktop (OS) notification when hunger, happiness or energy hits 0 (`ZERO_ALERT_STATS`) or health < 25 (`HEALTH_ALERT_THRESHOLD`); repeats every 15 min (`CRITICAL_STAT_NOTIFY_REPEAT_MS`) while critical. VS Code: `src/criticalStatNotifier.ts` shells out to a PowerShell toast / osascript / notify-send. PyCharm: `CriticalStatNotifier.kt` runs the same commands via `ProcessBuilder`, plus a "Codotchi Critical Stats" balloon | `[x]` |
-| `codotchi.leaderboard.emailNotifications` | boolean | `false` | Stay subscribed to the GitHub issues Codotchi opens for leaderboard updates. Off: the client unsubscribes right after creating each issue (GraphQL `updateSubscription`), so the workflow closing it sends no email. PyCharm: `leaderboardEmailNotifications` checkbox | `[x]` |
 | `gotchi.idleThresholdSeconds` | integer | `60` | Seconds of no activity before idle mode (min 10) | `[x]` |
 | `gotchi.idleDeepThresholdSeconds` | integer | `600` | Seconds of no activity before deep-idle mode (min 30) | `[x]` |
 | `gotchi.alwaysShowGamePicker` | boolean | `false` | Always show game select screen before playing | `[ ]` |

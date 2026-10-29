@@ -162,7 +162,6 @@ class CodotchiPlugin : Disposable {
     private val SCORES_JSON_URL = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/scores.json"
     private val LIVE_JSON_URL   = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/live.json"
     private val GITHUB_ISSUES_API = "https://api.github.com/repos/dylscoop/codotchi/issues"
-    private val GITHUB_GRAPHQL_API = "https://api.github.com/graphql"
     private val LIVE_PUSH_INTERVAL_MS = 15 * 60_000L
     @Volatile private var liveLastPushedAtMs: Long = 0L
     @Volatile private var leaderboardGithubUsername: String? = null
@@ -833,7 +832,7 @@ class CodotchiPlugin : Disposable {
                 userConn.setRequestProperty("Authorization", "token $pat")
                 userConn.setRequestProperty("Accept", "application/vnd.github+json")
                 userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
-                if (userConn.isGithubAuthFailure() || userConn.lacksLeaderboardScopes()) {
+                if (userConn.isGithubAuthFailure()) {
                     handleLeaderboardAuthFailure(interactive = promptIfNoToken, state = state)
                     return@execute
                 }
@@ -871,7 +870,6 @@ class CodotchiPlugin : Disposable {
                 }
                 if (issueConn.responseCode == 201) {
                     setLeaderboardAuthExpired(false)
-                    muteLeaderboardIssue(issueConn, pat)
                     val now = System.currentTimeMillis()
                     liveLastPushedAtMs = now
                     com.intellij.ide.util.PropertiesComponent.getInstance()
@@ -880,32 +878,6 @@ class CodotchiPlugin : Disposable {
                 }
             } catch (_: Exception) { /* network failure — silent */ }
         }
-    }
-
-    /**
-     * Unless the user opted in to leaderboard emails, unsubscribe them from the
-     * issue they just opened (read from [issueConn]'s 201 body) so the workflow
-     * closing it doesn't email them. GitHub auto-subscribes issue authors and REST
-     * has no issue-subscription endpoint, so this uses GraphQL updateSubscription.
-     * Best effort: failures are ignored.
-     */
-    private fun muteLeaderboardIssue(issueConn: java.net.HttpURLConnection, pat: String) {
-        if (service<CodotchiSettings>().leaderboardEmailNotifications) return
-        try {
-            @Suppress("UNCHECKED_CAST")
-            val issue = Gson().fromJson(issueConn.inputStream.bufferedReader().readText(), Map::class.java) as Map<String, Any>
-            val nodeId = issue["node_id"] as? String ?: return
-            val conn = java.net.URL(GITHUB_GRAPHQL_API).openConnection() as java.net.HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.doOutput = true
-            conn.connectTimeout = 10000
-            conn.readTimeout = 10000
-            conn.setRequestProperty("Authorization", "token $pat")
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
-            conn.outputStream.writer().use { it.write(Gson().toJson(unsubscribeMutation(nodeId))) }
-            conn.responseCode
-        } catch (_: Exception) { /* best effort */ }
     }
 
     /** @param retried true when this is the one retry after a forced re-auth — never re-auth twice. */
@@ -934,7 +906,7 @@ class CodotchiPlugin : Disposable {
                 }
                 val reauthAndRetry: () -> Unit = {
                     if (retried) {
-                        postResult("error", "GitHub rejected the new sign-in too — check the token has public_repo and notifications access.")
+                        postResult("error", "GitHub rejected the new sign-in too — check the token has public_repo access.")
                     } else {
                         PasswordSafe.instance.setPassword(credAttrs, null)
                         setLeaderboardUsername(null)
@@ -951,7 +923,7 @@ class CodotchiPlugin : Disposable {
                 userConn.setRequestProperty("Authorization", "token $pat")
                 userConn.setRequestProperty("Accept", "application/vnd.github+json")
                 userConn.setRequestProperty("User-Agent", "Codotchi-PyCharm")
-                if (userConn.isGithubAuthFailure() || userConn.lacksLeaderboardScopes()) { reauthAndRetry(); return@execute }
+                if (userConn.isGithubAuthFailure()) { reauthAndRetry(); return@execute }
                 if (userConn.responseCode != 200) {
                     postResult("error", "GitHub API error: ${userConn.responseCode}")
                     return@execute
@@ -996,7 +968,6 @@ class CodotchiPlugin : Disposable {
                 if (issueConn.responseCode == 201) {
                     setLeaderboardAuthExpired(false)
                     postResult("success")
-                    muteLeaderboardIssue(issueConn, pat)
                 } else if (issueConn.isGithubAuthFailure()) {
                     reauthAndRetry()
                 } else {
@@ -1046,7 +1017,7 @@ class CodotchiPlugin : Disposable {
                 dcConn.readTimeout = 10000
                 dcConn.setRequestProperty("Accept", "application/json")
                 dcConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-                dcConn.outputStream.writer().use { it.write("client_id=$clientId&scope=${java.net.URLEncoder.encode(LEADERBOARD_OAUTH_SCOPE, "UTF-8")}") }
+                dcConn.outputStream.writer().use { it.write("client_id=$clientId&scope=public_repo") }
                 if (dcConn.responseCode != 200) {
                     val detail = githubErrorDescription(dcConn)
                     fail("Could not start GitHub sign-in (HTTP ${dcConn.responseCode}${if (detail != null) ": $detail" else ""}).")

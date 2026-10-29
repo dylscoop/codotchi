@@ -73,12 +73,44 @@ jobs:
             git pull --rebase origin leaderboard
           done
 
-      - name: Close this and any other open live issues for this user
+      - name: Delete this and any other open live issues for this user
         if: always()
         uses: actions/github-script@v7
+        env:
+          ADMIN_TOKEN: ${{ secrets.LEADERBOARD_ADMIN_TOKEN }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            // Delete rather than close: GitHub emails the author when their issue is
+            // closed, even if they unsubscribed, but sends nothing for a deleted one.
+            // Deleting needs repo admin, which GITHUB_TOKEN never has; without the
+            // LEADERBOARD_ADMIN_TOKEN secret (or if the delete fails) fall back to closing.
+            async function removeIssue(issue) {
+              const token = process.env.ADMIN_TOKEN;
+              if (token) {
+                try {
+                  const res = await fetch('https://api.github.com/graphql', {
+                    method: 'POST',
+                    headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      query: 'mutation($id: ID!) { deleteIssue(input: {issueId: $id}) { clientMutationId } }',
+                      variables: { id: issue.node_id },
+                    }),
+                  });
+                  const json = await res.json().catch(() => ({}));
+                  if (res.ok && !json.errors) return;
+                  core.warning(`Could not delete issue ${issue.number}: ${JSON.stringify(json.errors ?? res.status)}`);
+                } catch (err) {
+                  core.warning(`Could not delete issue ${issue.number}: ${err}`);
+                }
+              }
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+              });
+            }
             const author = context.payload.issue.user.login;
             const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
@@ -88,11 +120,6 @@ jobs:
             });
             for (const issue of issues) {
               if (issue.title.startsWith('[Live]')) {
-                await github.rest.issues.update({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issue.number,
-                  state: 'closed',
-                });
+                await removeIssue(issue);
               }
             }

@@ -12,8 +12,8 @@ jobs:
   delete:
     name: Remove user's leaderboard entry
     runs-on: ubuntu-latest
-    # Title prefix for current clients; the label for pre-2.32.2 clients (labels
-    # are no longer sent: GitHub re-subscribes the author when it applies them).
+    # Title prefix for current clients; the label for pre-2.32.2 clients (they
+    # sent labels; current clients match on the title only).
     if: startsWith(github.event.issue.title, '[Leaderboard Delete]') || contains(github.event.issue.labels.*.name, 'leaderboard-delete')
 
     permissions:
@@ -123,42 +123,84 @@ jobs:
           git commit -m "leaderboard: remove ${{ github.event.issue.user.login }} ${ENTRY_DESC}"
           git push origin leaderboard
 
-      - name: Comment and close (success)
+      - name: Log and delete (success)
         if: steps.delete.outputs.deleted == 'true'
         uses: actions/github-script@v7
+        env:
+          ADMIN_TOKEN: ${{ secrets.LEADERBOARD_ADMIN_TOKEN }}
         with:
           script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              issue_number: context.issue.number,
-              body: `✅ **Entry removed.** Your leaderboard entry has been deleted.\n\n[View the leaderboard](https://dylscoop.github.io/codotchi/leaderboard/)`,
-            });
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              issue_number: context.issue.number,
-              state: 'closed',
-            });
+            // Delete rather than close: GitHub emails the author when their issue is
+            // closed, even if they unsubscribed, but sends nothing for a deleted one.
+            // Deleting needs repo admin, which GITHUB_TOKEN never has; without the
+            // LEADERBOARD_ADMIN_TOKEN secret (or if the delete fails) fall back to closing.
+            async function removeIssue(issue) {
+              const token = process.env.ADMIN_TOKEN;
+              if (token) {
+                try {
+                  const res = await fetch('https://api.github.com/graphql', {
+                    method: 'POST',
+                    headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      query: 'mutation($id: ID!) { deleteIssue(input: {issueId: $id}) { clientMutationId } }',
+                      variables: { id: issue.node_id },
+                    }),
+                  });
+                  const json = await res.json().catch(() => ({}));
+                  if (res.ok && !json.errors) return;
+                  core.warning(`Could not delete issue ${issue.number}: ${JSON.stringify(json.errors ?? res.status)}`);
+                } catch (err) {
+                  core.warning(`Could not delete issue ${issue.number}: ${err}`);
+                }
+              }
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+              });
+            }
+            core.notice('Entry removed.');
+            await removeIssue(context.payload.issue);
 
-      - name: Comment and close (failure)
+      - name: Log and delete (failure)
         if: steps.delete.outputs.deleted == 'false'
         uses: actions/github-script@v7
         env:
+          ADMIN_TOKEN: ${{ secrets.LEADERBOARD_ADMIN_TOKEN }}
           REASON: ${{ steps.delete.outputs.reason }}
         with:
           script: |
+            // Delete rather than close: GitHub emails the author when their issue is
+            // closed, even if they unsubscribed, but sends nothing for a deleted one.
+            // Deleting needs repo admin, which GITHUB_TOKEN never has; without the
+            // LEADERBOARD_ADMIN_TOKEN secret (or if the delete fails) fall back to closing.
+            async function removeIssue(issue) {
+              const token = process.env.ADMIN_TOKEN;
+              if (token) {
+                try {
+                  const res = await fetch('https://api.github.com/graphql', {
+                    method: 'POST',
+                    headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      query: 'mutation($id: ID!) { deleteIssue(input: {issueId: $id}) { clientMutationId } }',
+                      variables: { id: issue.node_id },
+                    }),
+                  });
+                  const json = await res.json().catch(() => ({}));
+                  if (res.ok && !json.errors) return;
+                  core.warning(`Could not delete issue ${issue.number}: ${JSON.stringify(json.errors ?? res.status)}`);
+                } catch (err) {
+                  core.warning(`Could not delete issue ${issue.number}: ${err}`);
+                }
+              }
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+              });
+            }
             // Read via env, never ${{ }} inside the script: the reason echoes issue text.
-            const reason = process.env.REASON;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              issue_number: context.issue.number,
-              body: `❌ Could not process deletion: **${reason}**\n\nIf this looks like a bug, please contact the repo owner.`,
-            });
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              issue_number: context.issue.number,
-              state: 'closed',
-            });
+            core.notice(`Could not process deletion: ${process.env.REASON}`);
+            await removeIssue(context.payload.issue);

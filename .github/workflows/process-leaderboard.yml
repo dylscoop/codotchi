@@ -110,45 +110,84 @@ jobs:
             git pull --rebase origin leaderboard
           done
 
-      - name: Comment and close (success)
+      - name: Log and delete (success)
         if: steps.validate.outputs.valid == 'true'
         uses: actions/github-script@v7
+        env:
+          ADMIN_TOKEN: ${{ secrets.LEADERBOARD_ADMIN_TOKEN }}
         with:
           script: |
-            const fs = require('fs');
-            const entry = JSON.parse(fs.readFileSync('/tmp/new_entry.json', 'utf8'));
-            const age = entry.ageDays;
-            const ageStr = age >= 365
-              ? `${Math.floor(age/365)}y ${age%365}d`
-              : `${age}d`;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              issue_number: context.issue.number,
-              body: `✅ **Submitted!** ${entry.petName} (${entry.petType}) lived **${ageStr}** game days.\n\n[View the leaderboard](https://dylscoop.github.io/codotchi/leaderboard/)`,
-            });
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              issue_number: context.issue.number,
-              state: 'closed',
-            });
+            // Delete rather than close: GitHub emails the author when their issue is
+            // closed, even if they unsubscribed, but sends nothing for a deleted one.
+            // Deleting needs repo admin, which GITHUB_TOKEN never has; without the
+            // LEADERBOARD_ADMIN_TOKEN secret (or if the delete fails) fall back to closing.
+            async function removeIssue(issue) {
+              const token = process.env.ADMIN_TOKEN;
+              if (token) {
+                try {
+                  const res = await fetch('https://api.github.com/graphql', {
+                    method: 'POST',
+                    headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      query: 'mutation($id: ID!) { deleteIssue(input: {issueId: $id}) { clientMutationId } }',
+                      variables: { id: issue.node_id },
+                    }),
+                  });
+                  const json = await res.json().catch(() => ({}));
+                  if (res.ok && !json.errors) return;
+                  core.warning(`Could not delete issue ${issue.number}: ${JSON.stringify(json.errors ?? res.status)}`);
+                } catch (err) {
+                  core.warning(`Could not delete issue ${issue.number}: ${err}`);
+                }
+              }
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+              });
+            }
+            const entry = JSON.parse(require('fs').readFileSync('/tmp/new_entry.json', 'utf8'));
+            core.notice(`Submitted: ${entry.petName} (${entry.petType}) lived ${entry.ageDays} game days.`);
+            await removeIssue(context.payload.issue);
 
-      - name: Comment and close (failure)
+      - name: Log and delete (failure)
         if: steps.validate.outputs.valid == 'false'
         uses: actions/github-script@v7
+        env:
+          ADMIN_TOKEN: ${{ secrets.LEADERBOARD_ADMIN_TOKEN }}
         with:
           script: |
+            // Delete rather than close: GitHub emails the author when their issue is
+            // closed, even if they unsubscribed, but sends nothing for a deleted one.
+            // Deleting needs repo admin, which GITHUB_TOKEN never has; without the
+            // LEADERBOARD_ADMIN_TOKEN secret (or if the delete fails) fall back to closing.
+            async function removeIssue(issue) {
+              const token = process.env.ADMIN_TOKEN;
+              if (token) {
+                try {
+                  const res = await fetch('https://api.github.com/graphql', {
+                    method: 'POST',
+                    headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      query: 'mutation($id: ID!) { deleteIssue(input: {issueId: $id}) { clientMutationId } }',
+                      variables: { id: issue.node_id },
+                    }),
+                  });
+                  const json = await res.json().catch(() => ({}));
+                  if (res.ok && !json.errors) return;
+                  core.warning(`Could not delete issue ${issue.number}: ${JSON.stringify(json.errors ?? res.status)}`);
+                } catch (err) {
+                  core.warning(`Could not delete issue ${issue.number}: ${err}`);
+                }
+              }
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+              });
+            }
             const reason = JSON.parse(require('fs').readFileSync('/tmp/leaderboard-result.json', 'utf8')).reason;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              issue_number: context.issue.number,
-              body: `❌ Could not process this submission: **${reason}**\n\nIf this looks like a bug, please open a separate issue.`,
-            });
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              issue_number: context.issue.number,
-              state: 'closed',
-            });
+            core.notice(`Could not process this submission: ${reason}`);
+            await removeIssue(context.payload.issue);

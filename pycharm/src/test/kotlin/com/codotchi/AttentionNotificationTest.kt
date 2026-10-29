@@ -3,7 +3,7 @@ package com.codotchi
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
-/** Unit tests for AttentionNotification.kt and unsubscribeMutation — mirrors vscode/tests/unit/attentionNotification.test.ts. */
+/** Unit tests for AttentionNotification.kt — mirrors vscode/tests/unit/attentionNotification.test.ts. */
 class AttentionNotificationTest {
 
     @Test
@@ -42,15 +42,5 @@ class AttentionNotificationTest {
     fun `does nothing when no notification is shown`() {
         assertFalse(shouldDismissAttention(null, null))
         assertFalse(shouldDismissAttention(null, "hunger"))
-    }
-
-    @Test
-    fun `unsubscribe mutation targets the issue node id`() {
-        val body = unsubscribeMutation("I_abc")
-        val query = body["query"] as String
-        assertTrue("updateSubscription" in query)
-        assertTrue("UNSUBSCRIBED" in query)
-        assertTrue("\$id" in query)
-        assertEquals(mapOf("id" to "I_abc"), body["variables"])
     }
 }

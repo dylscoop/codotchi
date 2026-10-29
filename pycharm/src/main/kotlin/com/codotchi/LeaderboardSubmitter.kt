@@ -81,16 +81,6 @@ fun buildLiveEntryJson(
 /** JSON string literal (quoted and escaped) for [value], or `null`. */
 fun jsonStringOrNull(value: String?): String = if (value == null) "null" else payloadGson.toJson(value)
 
-/**
- * GraphQL request body that unsubscribes the caller from the issue [issueNodeId],
- * so the workflow closing a leaderboard issue doesn't email its author.
- * Mirrors unsubscribeFromIssue in vscode/src/githubAuth.ts.
- */
-fun unsubscribeMutation(issueNodeId: String): Map<String, Any> = mapOf(
-    "query" to "mutation(\$id: ID!) { updateSubscription(input: {subscribableId: \$id, state: UNSUBSCRIBED}) { subscribable { id } } }",
-    "variables" to mapOf("id" to issueNodeId),
-)
-
 private fun notifyLeaderboard(message: String, type: NotificationType) {
     val group = NotificationGroupManager.getInstance().getNotificationGroup("Codotchi Leaderboard") ?: return
     group.createNotification(message, type).notify(null)

@@ -182,10 +182,8 @@ shows **Sign in to GitHub again** in the panel, and a notification with a
 score starts a fresh sign-in automatically and retries the submission once.
 
 The plugin sends leaderboard updates by opening GitHub issues in the Codotchi
-repo. By default it unsubscribes you from each issue as soon as it opens it, so
-you don't get an email when the issue is processed and closed. To get those
-emails, tick **Email me about the GitHub issues Codotchi opens to update the
-leaderboard** in **Settings → Tools → Codotchi**.
+repo. Once the leaderboard has processed an issue it deletes it instead of
+closing it, so GitHub doesn't email you about it.
 
 ### GitHub sign-in help
 
@@ -197,10 +195,8 @@ or any changes to your GitHub settings.
 2. A browser opens at github.com/login/device, and a PyCharm notification shows
    an 8-character code.
 3. Enter the code, sign in to GitHub if asked, and click **Authorize**. Codotchi
-   asks for two permissions: `public_repo` to submit leaderboard entries, and
-   `notifications` to unsubscribe you from those entries so GitHub doesn't
-   email you about them. If you signed in before v2.32.2, Codotchi asks you to
-   sign in once more to add `notifications`.
+   only asks for the `public_repo` permission, which it needs to submit
+   leaderboard entries.
 4. Go back to PyCharm. It picks up the sign-in on its own within a few seconds.
 
 If it doesn't work:

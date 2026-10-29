@@ -49,7 +49,6 @@ import {
   resolveGithubUser,
   describeGithubUserFailure,
   isAuthFailure,
-  unsubscribeFromIssue,
   type GithubUserOutcome,
 } from "./githubAuth";
 import { scanClaudeCodeDailyUsage, localDateKey, type DailyUsage } from "./claudeUsage";
@@ -57,9 +56,7 @@ import { scanClaudeCodeDailyUsage, localDateKey, type DailyUsage } from "./claud
 const LEADERBOARD_REPO_OWNER = "dylscoop";
 const LEADERBOARD_REPO_NAME  = "codotchi";
 const LEADERBOARD_PAGES_URL  = `https://${LEADERBOARD_REPO_OWNER}.github.io/${LEADERBOARD_REPO_NAME}/leaderboard/`;
-// `notifications` lets us unsubscribe from the issues we open (updateSubscription
-// accepts no other scope); sessions without it count as expired so users re-sign in.
-const LEADERBOARD_GITHUB_SCOPES = ["read:user", "public_repo", "notifications"];
+const LEADERBOARD_GITHUB_SCOPES = ["read:user", "public_repo"];
 
 /** Read ~/.config/opencode/codotchi-daily.json and return today's OpenCode usage totals. */
 function scanOpenCodeDailyUsage(): DailyUsage {
@@ -134,18 +131,12 @@ export class SidebarProvider
 
   /** Resolve the leaderboard GitHub user; forces a fresh session on 401/403
    *  when interactive (BUG-S08). */
-  private async resolveLeaderboardUser(interactive: boolean): Promise<GithubUserOutcome> {
-    const outcome = await resolveGithubUser(
+  private resolveLeaderboardUser(interactive: boolean): Promise<GithubUserOutcome> {
+    return resolveGithubUser(
       (opts) => Promise.resolve(vscode.authentication.getSession("github", LEADERBOARD_GITHUB_SCOPES, opts)),
       fetch,
       interactive
     );
-    // A user who was signed in but has no session with the current scopes signed
-    // in before a scope was added: treat it as expired so they're asked to sign in again.
-    if (!outcome.ok && outcome.reason === "no_session" && !interactive && this.leaderboardGithubUsername) {
-      return { ok: false, reason: "auth_expired" };
-    }
-    return outcome;
   }
 
   private isLeaderboardAuthExpired(): boolean {
@@ -794,14 +785,6 @@ export class SidebarProvider
     return String(this.context.extension.packageJSON.version ?? "0.0.0");
   }
 
-  /** Unless the user opted in to leaderboard emails, unsubscribe them from the
-   *  issue they just opened so the workflow closing it doesn't email them. */
-  private async muteLeaderboardIssue(issueRes: Response, token: string): Promise<void> {
-    if (vscode.workspace.getConfiguration("codotchi").get<boolean>("leaderboard.emailNotifications", false)) { return; }
-    const issue = await issueRes.json().catch(() => null) as { node_id?: string } | null;
-    await unsubscribeFromIssue(issue?.node_id, token, fetch);
-  }
-
   /**
    * Build the signed [Leaderboard] issue for a dead pet. The workflow rejects
    * any issue whose signature doesn't match, so hand-written issues never land.
@@ -892,7 +875,6 @@ export class SidebarProvider
         );
         if (issueRes.status === 201) {
           postResult("success");
-          await this.muteLeaderboardIssue(issueRes, session.accessToken);
         } else if (isAuthFailure(issueRes)) {
           this.markLeaderboardAuthExpired(false);
           postResult("error", "GitHub sign-in expired or lacks access — try again and accept the GitHub sign-in prompt.");
@@ -943,7 +925,6 @@ export class SidebarProvider
         }
       );
       if (isAuthFailure(issueRes)) { this.markLeaderboardAuthExpired(true); }
-      if (issueRes.status === 201) { await this.muteLeaderboardIssue(issueRes, session.accessToken); }
     } catch {
       // Auto-submit is best-effort; only an expired sign-in is surfaced
     }
@@ -1081,7 +1062,6 @@ export class SidebarProvider
       }
       if (issueRes.status === 201) {
         this.clearLeaderboardAuthExpired();
-        await this.muteLeaderboardIssue(issueRes, session.accessToken);
         await this.context.globalState.update("leaderboardLastPushedAt", Date.now());
         // Refresh sidebar so "last synced" timestamp updates immediately.
         const current = this.getCurrentState();
@@ -1143,7 +1123,6 @@ export class SidebarProvider
       );
       if (issueRes.status === 201) {
         postResult("success");
-        await this.muteLeaderboardIssue(issueRes, session.accessToken);
       } else if (isAuthFailure(issueRes)) {
         this.markLeaderboardAuthExpired(false);
         postResult("error", "GitHub sign-in expired or lacks access — try again and accept the GitHub sign-in prompt.");

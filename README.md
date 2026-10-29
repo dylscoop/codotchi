@@ -44,7 +44,7 @@ The sidebar greys out **Submit to Leaderboard** and **Push live progress** and s
 
 **If your GitHub sign-in expires or is revoked**, both IDEs notice the next time they talk to GitHub. The sidebar shows **Sign in to GitHub again**, and a background live push shows a notification with a **Sign in** action. Submitting or deleting an entry asks you to sign in again and retries once.
 
-**No email for every update.** Leaderboard updates are GitHub issues opened from your account, and GitHub normally emails you when one is closed. Both IDEs unsubscribe you from each issue as soon as they open it. That needs GitHub's `notifications` permission, so if you signed in before v2.32.2 you'll be asked to sign in to GitHub once more. To get the emails anyway, turn on `codotchi.leaderboard.emailNotifications` (VS Code) or tick **Email me about the GitHub issues Codotchi opens to update the leaderboard** in PyCharm's settings.
+**No email for every update.** Leaderboard updates are GitHub issues opened from your account. Once the leaderboard has processed one, it deletes the issue instead of closing it, so GitHub doesn't email you about it.
 
 ## Platforms
 

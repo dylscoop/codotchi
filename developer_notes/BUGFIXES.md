@@ -2479,15 +2479,13 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 ## BUGFIX-209 - Leaderboard updates email the user every time
 
 **Status:** Fixed (branch `fix/notifications-v2.32.2`)
-**Files:** `vscode/src/githubAuth.ts`, `vscode/src/sidebarProvider.ts`, `pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt`, `.github/workflows/process-leaderboard-delete.yml`
+**Files:** `.github/workflows/process-leaderboard-live.yml`, `.github/workflows/process-leaderboard.yml`, `.github/workflows/process-leaderboard-delete.yml`
 
-**Problem:** Leaderboard updates are GitHub issues opened with the user's token, so GitHub subscribed the user to each one. The workflows close every issue (live pushes every 15 min), so users got an email for each push.
+**Problem:** Leaderboard updates are GitHub issues opened with the user's token. The workflows close every issue (live pushes every 15 min), and GitHub emails the author each time.
 
-**Fix:** After the issue is created, the client unsubscribes the user with the GraphQL `updateSubscription` mutation (REST has no issue-subscription endpoint). Opt back in with `codotchi.leaderboard.emailNotifications` / the PyCharm checkbox.
+**Fix:** The workflows delete the issue instead of closing it (GraphQL `deleteIssue`), which sends no notification and works for every client version. Deleting needs repo admin, which `GITHUB_TOKEN` never has, so it uses the `LEADERBOARD_ADMIN_TOKEN` repo secret (the owner's classic PAT with `public_repo`); without it the workflows fall back to closing. The bot no longer comments on issues; results are in the run log.
 
-**Follow-up:** The first version failed silently in real use: GitHub accepts `updateSubscription` only with the `notifications` scope (not `public_repo` or even `repo`), and sign-in asked for `read:user` + `public_repo`. The sign-in scopes now include `notifications`, and older sign-ins are treated as expired so users sign in once more.
-
-**Follow-up 2:** With the scope in place the unsubscribe succeeded but did not stick (issues #5138, #5140, #5142 show `unsubscribed` and then end up `SUBSCRIBED`). GitHub applies the labels sent in the create request a moment later, as a `labeled` event by the author, which subscribes them again before the workflow closes the issue. Clients no longer send labels: the live and submit workflows already match on the title, and `process-leaderboard-delete.yml` now matches the `[Leaderboard Delete]` title (the label still works for older clients).
+**Why not mute from the client:** unsubscribing the author right after creation (GraphQL `updateSubscription`, which also needs the `notifications` OAuth scope) did not help. The user's notification list showed the close still arriving with reason `author` on issues the client had already unsubscribed from, so that approach and its forced re-sign-in were removed. Clients also stopped sending labels; the workflows match on the title.
 
 ## BUGFIX-210 - Attention-call notification stays after the call is answered
 

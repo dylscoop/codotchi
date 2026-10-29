@@ -124,39 +124,3 @@ export function describeGithubUserFailure(outcome: Extract<GithubUserOutcome, { 
     default:              return `GitHub API error: ${outcome.status ?? "unknown"}`;
   }
 }
-
-const GRAPHQL_ENDPOINT = "https://api.github.com/graphql";
-
-/**
- * Unsubscribe the token's user from a GitHub issue they just opened, so the
- * workflow closing (or commenting on) leaderboard issues doesn't email them.
- * GitHub auto-subscribes issue authors and REST has no issue-subscription
- * endpoint, so this uses GraphQL `updateSubscription` with the issue's
- * `node_id`. Best effort: returns false on any failure, never throws.
- */
-export async function unsubscribeFromIssue(
-  issueNodeId: string | undefined,
-  token: string,
-  fetchImpl: FetchLike
-): Promise<boolean> {
-  if (!issueNodeId) { return false; }
-  try {
-    const res = await fetchImpl(GRAPHQL_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Authorization": `token ${token}`,
-        "Content-Type": "application/json",
-        "User-Agent": "Codotchi-VSCode",
-      },
-      body: JSON.stringify({
-        query: "mutation($id: ID!) { updateSubscription(input: {subscribableId: $id, state: UNSUBSCRIBED}) { subscribable { id } } }",
-        variables: { id: issueNodeId },
-      }),
-    });
-    if (!res.ok) { return false; }
-    const json = await res.json() as { errors?: unknown[] };
-    return !json.errors?.length;
-  } catch {
-    return false;
-  }
-}

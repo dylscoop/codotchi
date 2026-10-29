@@ -15,7 +15,6 @@ import {
   isAuthFailure,
   describeGithubUserFailure,
   REAUTH_DETAIL,
-  unsubscribeFromIssue,
   type GetSessionOptions,
   type GetSessionWithOptions,
 } from "../../src/githubAuth";
@@ -169,47 +168,24 @@ describe("resolveGithubUser", () => {
   });
 });
 
-describe("unsubscribeFromIssue", () => {
-  function graphqlFetch(status: number, body: unknown, calls: Array<{ url: string; init?: RequestInit }>): FetchLike {
-    return (async (url: string, init?: RequestInit) => {
-      calls.push({ url, init });
-      return { status, ok: status >= 200 && status < 300, json: async () => body } as unknown as Response;
-    }) as FetchLike;
-  }
-
-  it("sends an UNSUBSCRIBED updateSubscription for the issue node id", async () => {
-    const calls: Array<{ url: string; init?: RequestInit }> = [];
-    const ok = await unsubscribeFromIssue("I_abc", "tok", graphqlFetch(200, { data: {} }, calls));
-    assert.equal(ok, true);
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].url, "https://api.github.com/graphql");
-    const sent = JSON.parse(String(calls[0].init?.body));
-    assert.match(sent.query, /updateSubscription/);
-    assert.match(sent.query, /UNSUBSCRIBED/);
-    assert.deepEqual(sent.variables, { id: "I_abc" });
-    assert.equal((calls[0].init?.headers as Record<string, string>)["Authorization"], "token tok");
-  });
-
-  it("skips the request when there is no node id", async () => {
-    const calls: Array<{ url: string; init?: RequestInit }> = [];
-    assert.equal(await unsubscribeFromIssue(undefined, "tok", graphqlFetch(200, {}, calls)), false);
-    assert.equal(calls.length, 0);
-  });
-
-  it("returns false on HTTP or GraphQL errors and never throws", async () => {
-    assert.equal(await unsubscribeFromIssue("I_abc", "tok", graphqlFetch(401, {}, [])), false);
-    assert.equal(await unsubscribeFromIssue("I_abc", "tok", graphqlFetch(200, { errors: [{ message: "nope" }] }, [])), false);
-    const throwing = (async () => { throw new Error("offline"); }) as unknown as FetchLike;
-    assert.equal(await unsubscribeFromIssue("I_abc", "tok", throwing), false);
-  });
-});
-
 describe("leaderboard issue POSTs", () => {
-  // GitHub applies labels asynchronously and counts that as the author acting on
-  // the issue, which re-subscribes them after unsubscribeFromIssue has run.
-  it("send no labels, so the unsubscribe sticks", () => {
+  // Labels are not needed: the workflows match on the issue title.
+  it("send no labels", () => {
     const src = fs.readFileSync(path.join(__dirname, "../../../../vscode/src/sidebarProvider.ts"), "utf8");
     assert.equal((src.match(/\/issues`/g) ?? []).length, 4, "expected the four issue POSTs");
     assert.doesNotMatch(src, /labels\s*:/);
   });
+});
+
+describe("leaderboard workflows", () => {
+  // GitHub emails an issue's author when it is closed, even after they unsubscribe,
+  // so the workflows delete processed issues (closing is only the fallback).
+  for (const name of ["process-leaderboard-live", "process-leaderboard", "process-leaderboard-delete"]) {
+    it(`${name}.yml deletes the issue with the admin token`, () => {
+      const yml = fs.readFileSync(path.join(__dirname, `../../../../.github/workflows/${name}.yml`), "utf8");
+      assert.match(yml, /deleteIssue\(input: \{issueId: \$id\}\)/);
+      assert.match(yml, /ADMIN_TOKEN: \$\{\{ secrets\.LEADERBOARD_ADMIN_TOKEN \}\}/);
+      assert.doesNotMatch(yml, /createComment/);
+    });
+  }
 });

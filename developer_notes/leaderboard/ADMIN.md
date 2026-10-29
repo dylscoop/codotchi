@@ -109,7 +109,7 @@ but its Submit / Push live progress buttons are disabled ("This build of
 Codotchi can't submit to the leaderboard").
 
 If `LEADERBOARD_HMAC_KEY` is missing, the workflows fail closed: every signed
-submission is rejected. The issue is still closed and the run still shows
+submission is rejected. The issue is still removed and the run still shows
 green, so check the *Validate* step log for
 `rejected: … (server key not configured)`. `gh secret list` should show the
 secret.
@@ -125,3 +125,23 @@ artifacts, so someone who extracts it from a `.vsix` or `.zip` could still forge
 a signed entry. The physics floor (fastest real aging rate per pet type) and the
 stage-age bounds still apply to those. Remove forged entries with the admin
 delete workflow above.
+
+## Issue clean-up token (since v2.32.2)
+
+The workflows **delete** each leaderboard issue once it is processed, instead of
+closing it. GitHub emails an issue's author whenever it is closed (even after
+they unsubscribe), so closing meant an email for every live push. A deleted
+issue sends nothing. Results that used to be bot comments are now in the run
+log (`core.notice`).
+
+Deleting an issue needs repo admin, which the workflow's `GITHUB_TOKEN` never
+has. Create a **classic** personal access token on the repo owner's account
+with the `public_repo` scope and no expiry (or set a reminder), then:
+
+```bash
+gh secret set LEADERBOARD_ADMIN_TOKEN -R dylscoop/codotchi
+```
+
+and paste the token. Without the secret, or if a delete fails, the workflows
+fall back to closing the issue (and the run log shows a warning), so nothing
+is left open, but users get the close emails again.
