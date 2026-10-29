@@ -9,8 +9,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Always runs so non-matching issues end as a success instead of an all-skipped
+  # run, which GitHub reports to the repo owner as "No jobs were run".
+  route:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - run: echo "Issue opened; routing by title."
+
   process:
     name: Validate and record score
+    needs: route
     runs-on: ubuntu-latest
     if: startsWith(github.event.issue.title, '[Leaderboard]')
 

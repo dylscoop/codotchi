@@ -9,8 +9,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Always runs so non-matching issues end as a success instead of an all-skipped
+  # run, which GitHub reports to the repo owner as "No jobs were run".
+  route:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - run: echo "Issue opened; routing by title."
+
   delete:
     name: Remove user's leaderboard entry
+    needs: route
     runs-on: ubuntu-latest
     # Title prefix for current clients; the label for pre-2.32.2 clients (they
     # sent labels; current clients match on the title only).

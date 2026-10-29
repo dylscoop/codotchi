@@ -2497,3 +2497,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Fix:** The shown notification remembers its call type and closes once `activeAttentionCall` is cleared or changes. VS Code can't close a `showWarningMessage` toast, so it uses a cancellable `withProgress` notification; PyCharm calls `Notification.expire()`.
 
 **Follow-up (v2.32.3, branch `fix/pycharm-attention-sidebar`):** on PyCharm 2026.2 the balloon closed but the entry stayed in the Notifications tool window: newer platforms only grey out an expired notification unless `setRemoveWhenExpired(true)` was set. Attention-call notifications now set it, reflectively, since the setter is missing from the 2024.1 API the plugin compiles against (where `expire()` already removes the entry).
+
+## BUGFIX-211 - Owner gets "No jobs were run" emails for leaderboard issues
+
+**Status:** Fixed (branch `bugfix/no-jobs-run-emails`)
+**Files:** `.github/workflows/process-leaderboard.yml`, `.github/workflows/process-leaderboard-live.yml`, `.github/workflows/process-leaderboard-delete.yml`
+
+**Problem:** All three workflows trigger on every `issues: opened` event and pick their issues by title in a job-level `if:`. Each issue skipped the only job in the two non-matching workflows, and GitHub emailed the repo owner "No jobs were run" for those runs.
+
+**Fix:** Each workflow has an always-running `route` job (no permissions, one echo step) and the real job `needs: route`. Non-matching runs now finish as a success, which sends no email when Actions notifications are set to failed workflows only. See `developer_notes/adr/2026-10-29-no-jobs-run-emails.md`.
