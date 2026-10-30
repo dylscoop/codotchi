@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.33.3] - 2026-10-29
+
+### Added
+
+- **Autumn weather.** Now and then a thunderstorm rolls in: the sky darkens, heavy rain blows sideways, leaves whip off the trees and lightning flashes across the scene. Some dawns and mornings bring drifting fog, and on a rare day a V of geese flies south.
+
 ## [2.33.2] - 2026-10-29
 
 ### Changed

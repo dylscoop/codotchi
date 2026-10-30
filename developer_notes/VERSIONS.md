@@ -1,6 +1,19 @@
 # Version History
 
-## v2.33.2 - current
+## v2.33.3 - current
+
+### Changes from v2.33.2 (autumn weather - branch feature/autumn-weather)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/backgroundArt.js` | `weather()` adds autumn `thunderstorm` (also sets `raining`) and `fog` (0…1, dawn / morning only, faded at the window edges, never with a storm); new `lightning(t)` (3–5 flashes per storm window, some double); `drawLightning` (full-scene flash + jagged bolt), `drawFog` (haze + drifting mist bands), heavy slanted storm rain (`drawRain(..., heavy)`), wind-blown leaves (`drawFalling(..., wind)`), storm sky veil, puddles; `geese` critter drawn as a V of five (`GOOSE`, `GOOSE_LEFT`) in autumn daytime, not in a storm |
+| `vscode/tests/unit/backgroundArt.test.ts` | storm odds and season, lightning only in storms, fog timing, storm / fog / geese drawing, still mode |
+| `vscode/media/sprite_preview.html` | background Event picker: Autumn thunderstorm, Autumn fog, Geese |
+| all manifests, `README.md`, docs | version 2.33.3; README seasons prose, FEATURES, CHANGELOG |
+
+**Updated constants (backgroundArt.js):** `STORM_MS` 4 min · `STORM_CHANCE` 0.10 · `FLASH_MS` 150 ms · `FOG_MS` 5 min · `FOG_CHANCE` 0.25 · `CRITTERS.geese` window 180 s, chance 0.05, 16 s
+
+## v2.33.2
 
 ### Changes from v2.33.1 (Skippy leaves the stage on smoko - branch fix/kangaroo-smoko)
 

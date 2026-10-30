@@ -4,7 +4,8 @@
  * Draws the codotchi.background modes: plain, ordered (real month) and the
  * four fixed seasons. The sky blends between hourly keyframes, the sun follows
  * an arc, and each season has its own trees, ground, props and rare events
- * (critters, spring showers with a rainbow, winter snow spells). Everything is
+ * (critters, spring showers with a rainbow, winter snow spells, autumn
+ * thunderstorms, morning fog and geese). Everything is
  * drawn with fillRect on a whole-pixel unit, the same style as minigameArt.js.
  * No DOM access, and every function takes the date as a parameter, so the
  * module can be unit-tested against a mock context.
@@ -24,6 +25,11 @@
   var RAINBOW_MS    = 75 * 1000;       // rainbow length after a shower ends
   var SNOW_MS       = 4 * 60 * 1000;   // winter weather window
   var SNOW_CHANCE   = 0.4;             // chance a winter window has snowfall
+  var STORM_MS      = 4 * 60 * 1000;   // autumn storm window
+  var STORM_CHANCE  = 0.10;            // chance an autumn window is a thunderstorm
+  var FLASH_MS      = 150;             // one lightning flash
+  var FOG_MS        = 5 * 60 * 1000;   // autumn fog window (dawn and morning only)
+  var FOG_CHANCE    = 0.25;            // chance a dawn/morning autumn window is foggy
   var NIGHT_INK     = "#0c1230";       // scenery is blended toward this at night
   var NIGHT_SHADE   = 0.55;            // how far scenery is blended at full darkness
 
@@ -42,6 +48,7 @@
     butterfly: { salt: 2, windowMs: 150000, chance: 0.20, durMs: 14000 },
     bee:       { salt: 3, windowMs: 120000, chance: 0.25, durMs: 12000 },
     fireflies: { salt: 4, windowMs:  90000, chance: 0.35, durMs: 30000 },
+    geese:     { salt: 5, windowMs: 180000, chance: 0.05, durMs: 16000 },
   };
 
   // =========================================================================
@@ -192,6 +199,9 @@
   var BIRD      = [["k...k", ".k.k.", "..k.."], [".....", "kk.kk", "..k.."]];
   var BUTTERFLY = [["aa.aa", "aabaa", ".a.a."], [".a.a.", ".aba.", "....."]];
   var BEE       = [[".ww.", "ykyk", "...."], ["....", "ykyk", ".ww."]];
+  // Goose facing right (mirrored when flying left): wings up, then wings down.
+  var GOOSE     = [["..w....", "..w..kk", "bbbbbk.", "......."], [".......", ".....kk", "bbbbbk.", "..w...."]];
+  var GOOSE_LEFT = GOOSE.map(function (f) { return f.map(function (r) { return r.split("").reverse().join(""); }); });
 
   // =========================================================================
   // Palettes
@@ -382,10 +392,10 @@
     return tod !== "afternoon" && tod !== "sunset";
   }
 
-  /** Spring showers (then a short rainbow) and winter snow spells. */
+  /** Spring showers (then a short rainbow), winter snow spells, autumn thunderstorms and morning fog. */
   function weather(season, date) {
     var t = date.getTime();
-    var out = { raining: false, rainbow: false, snowing: false };
+    var out = { raining: false, rainbow: false, snowing: false, thunderstorm: false, fog: 0 };
     if (season === "spring") {
       var w = Math.floor(t / RAIN_MS);
       out.raining = hash01(w * 31 + 2027) < RAIN_CHANCE;
@@ -393,8 +403,39 @@
       out.rainbow = !out.raining && wasRaining && (t - w * RAIN_MS) < RAINBOW_MS && darkness(date) < 0.3;
     } else if (season === "winter") {
       out.snowing = hash01(Math.floor(t / SNOW_MS) * 31 + 1013) < SNOW_CHANCE;
+    } else if (season === "autumn") {
+      out.thunderstorm = hash01(Math.floor(t / STORM_MS) * 31 + 3049) < STORM_CHANCE;
+      out.raining = out.thunderstorm;
+      var tod = getTimeOfDay(date);
+      var fw = Math.floor(t / FOG_MS);
+      if (!out.thunderstorm && (tod === "dawn" || tod === "morning") && hash01(fw * 31 + 4057) < FOG_CHANCE) {
+        var into = (t - fw * FOG_MS) / FOG_MS;
+        out.fog = Math.min(1, Math.min(into, 1 - into) * 8);   // fade in and out over the window edges
+      }
     }
     return out;
+  }
+
+  /**
+   * Lightning during an autumn storm. Returns null, or { alpha: 0…1, boltX01: 0…1 }.
+   * A few flashes per storm window; some flicker twice.
+   */
+  function lightning(t) {
+    var w = Math.floor(t / STORM_MS);
+    if (hash01(w * 31 + 3049) >= STORM_CHANCE) { return null; }
+    var n = 3 + Math.floor(hash01(w * 13 + 61) * 3);
+    for (var i = 0; i < n; i++) {
+      var start = w * STORM_MS + ((i + hash01(w * 17 + i * 7 + 5)) / n) * (STORM_MS - 2 * FLASH_MS);
+      var dt = t - start;
+      var twice = hash01(w * 19 + i * 3 + 9) < 0.4;
+      if (dt >= 0 && dt < FLASH_MS) {
+        return { alpha: 1 - dt / FLASH_MS, boltX01: hash01(w * 23 + i * 11) };
+      }
+      if (twice && dt >= FLASH_MS * 1.6 && dt < FLASH_MS * 2.6) {
+        return { alpha: 0.7 * (1 - (dt - FLASH_MS * 1.6) / FLASH_MS), boltX01: hash01(w * 23 + i * 11) };
+      }
+    }
+    return null;
   }
 
   /**
@@ -749,8 +790,9 @@
   }
 
   /** Petals (spring) or leaves (autumn) drifting down from the trees, then settling. */
-  function drawFalling(ctx, L, t, d, colours, cycleMs, count) {
+  function drawFalling(ctx, L, t, d, colours, cycleMs, count, wind) {
     var p = L.p;
+    var gust = wind || 0;
     for (var i = 0; i < count; i++) {
       var tree = L.trees[i % L.trees.length];
       if (!tree || tree.kind === "pine") { continue; }
@@ -758,7 +800,7 @@
       var fall = Math.min(1, q / 0.85);   // the last 15% of the cycle rests on the ground
       var startX = tree.x + tree.w * (0.25 + 0.5 * hash01(i * 17 + Math.floor(t / cycleMs + i / count)));
       var startY = tree.y + 4 * L.tp;
-      var x = Math.round(startX + Math.sin(fall * Math.PI * 3) * p * 3 + fall * p * 8 * (i % 2 ? -1 : 1));
+      var x = Math.round(startX + Math.sin(fall * Math.PI * 3) * p * 3 + fall * p * 8 * (i % 2 ? -1 : 1) + fall * p * 30 * gust);
       var y = Math.round(startY + fall * (L.gTop - p - startY));
       ctx.fillStyle = mix(colours[i % colours.length], NIGHT_INK, d * NIGHT_SHADE);
       ctx.fillRect(x, y, p, p);
@@ -779,14 +821,68 @@
     ctx.restore();
   }
 
-  function drawRain(ctx, W, L, t) {
+  function drawRain(ctx, W, L, t, heavy) {
     var p = L.p;
-    ctx.fillStyle = "#9cc0e8";
-    for (var i = 0; i < 9; i++) {
-      var y = Math.round(((t / 1000) * 120 + hash01(i * 71) * L.gTop) % L.gTop);
-      var x = Math.round(hash01(i * 43) * W);
-      ctx.fillRect(x, y, Math.max(1, p - 1), 3 * p);
+    var count = heavy ? 18 : 9;
+    var slant = heavy ? 0.35 : 0;     // horizontal drift per unit of fall, so storm rain blows sideways
+    ctx.fillStyle = heavy ? "#8aa8d0" : "#9cc0e8";
+    for (var i = 0; i < count; i++) {
+      var y = Math.round(((t / 1000) * (heavy ? 160 : 120) + hash01(i * 71) * L.gTop) % L.gTop);
+      var x = Math.round(((hash01(i * 43) * W + y * slant) % W + W) % W);
+      if (heavy) {
+        ctx.fillRect(x, y, Math.max(1, p - 1), 2 * p);
+        ctx.fillRect(x + p, y + 2 * p, Math.max(1, p - 1), 2 * p);
+      } else {
+        ctx.fillRect(x, y, Math.max(1, p - 1), 3 * p);
+      }
     }
+  }
+
+  /** A full-scene flash plus a jagged bolt from the clouds to the ground. */
+  function drawLightning(ctx, W, H, L, flash, t) {
+    var p = L.p;
+    ctx.save();
+    ctx.globalAlpha = 0.5 * flash.alpha;
+    ctx.fillStyle = "#f4f6ff";
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = Math.min(1, flash.alpha * 1.5);
+    ctx.fillStyle = "#fffbe0";
+    var x = Math.round((0.15 + 0.7 * flash.boltX01) * W / p) * p;
+    var y = Math.round(L.gTop * 0.15);
+    var seed = Math.floor(t / STORM_MS) * 41 + Math.round(flash.boltX01 * 1000);
+    var k = 0;
+    while (y < L.gTop) {
+      var seg = (2 + Math.floor(hash01(seed + k * 7) * 3)) * p;
+      ctx.fillRect(x, y, p, seg);
+      y += seg;
+      var step = (hash01(seed + k * 13 + 1) < 0.5 ? -1 : 1) * p * (1 + Math.floor(hash01(seed + k * 5 + 2) * 2));
+      ctx.fillRect(Math.min(x, x + step), y, Math.abs(step) + p, p);
+      x += step;
+      k++;
+    }
+    ctx.restore();
+  }
+
+  /** Drifting mist bands over the scenery; strength 0…1. */
+  function drawFog(ctx, W, L, t, strength) {
+    var p = L.p;
+    ctx.save();
+    ctx.globalAlpha = 0.18 * strength;    // overall haze softens the distant trees
+    ctx.fillStyle = "#dfe4ea";
+    ctx.fillRect(0, 0, W, L.gTop + p);
+    for (var i = 0; i < 4; i++) {
+      var bandW = Math.round(W * (0.5 + 0.3 * hash01(i * 37 + 3)));
+      var bandH = (3 + (i % 2)) * p;
+      var speed = 3 + i * 2;
+      var span = W + bandW;
+      var x = Math.round(((t / 1000) * speed * (i % 2 ? -1 : 1) + hash01(i * 23) * span) % span);
+      x = ((x % span) + span) % span - bandW;
+      var y = Math.round(L.gTop * (0.35 + 0.17 * i)) - bandH;
+      ctx.globalAlpha = (0.15 + 0.05 * i) * strength;
+      ctx.fillRect(x, y, bandW, bandH);
+      ctx.fillRect(x + p * 2, y - p, bandW - p * 4, p);   // soft rounded top
+    }
+    ctx.restore();
   }
 
   function drawPuddles(ctx, W, L, d) {
@@ -802,7 +898,7 @@
     return { x: Math.round(x), y: Math.round(y) };
   }
 
-  function drawCritters(ctx, W, L, season, t, d) {
+  function drawCritters(ctx, W, L, season, t, d, stormy) {
     var p = L.pp;
     var frame = Math.floor(t / 180) % 2;
     var ev, pos;
@@ -839,6 +935,24 @@
             ctx.fillRect(fx, fy, p, p);
           }
           ctx.restore();
+        }
+      }
+    }
+    if (season === "autumn" && d < 0.5 && !stormy) {
+      ev = critter("geese", t);
+      if (ev) {
+        // A V of five: the leader, then two trailing birds on each arm.
+        pos = flyPath(W, L, ev, 1);
+        var grids = ev.dir > 0 ? GOOSE : GOOSE_LEFT;
+        var gw = GOOSE[0][0].length * p;
+        var cy = pos.y - Math.round(L.gTop * 0.12);
+        for (var g = 0; g < 5; g++) {
+          var rank = Math.ceil(g / 2);
+          var side = g % 2 ? -1 : 1;
+          var gx = pos.x - ev.dir * rank * (gw + 2 * p);
+          var gy = cy + side * rank * 3 * p;
+          var flap = (frame + (g % 2)) % 2;
+          drawGrid(ctx, grids[flap], gx, gy, p, { b: "#4a4038", k: "#1e1e22", w: "#6a5a4a" });
         }
       }
     }
@@ -883,13 +997,13 @@
     var h = hourOf(date);
     var d = darkness(date);
     var L = layout(season, W, H);
-    var wx = animate ? weather(season, date) : { raining: false, rainbow: false, snowing: false };
+    var wx = animate ? weather(season, date) : { raining: false, rainbow: false, snowing: false, thunderstorm: false, fog: 0 };
 
     drawSky(ctx, W, gTop, skyColours(date));
     if (wx.raining) {
       ctx.save();
-      ctx.globalAlpha = 0.28;
-      ctx.fillStyle = "#5a6478";
+      ctx.globalAlpha = wx.thunderstorm ? 0.45 : 0.28;
+      ctx.fillStyle = wx.thunderstorm ? "#3a3f52" : "#5a6478";
       ctx.fillRect(0, 0, W, gTop);
       ctx.restore();
     }
@@ -908,7 +1022,9 @@
     drawGround(ctx, W, H, L, season, d);
     drawProps(ctx, W, L, season, d);
     if (season === "spring" && (wx.raining || wx.rainbow)) { drawPuddles(ctx, W, L, d); }
+    if (wx.thunderstorm) { drawPuddles(ctx, W, L, d); }
     if (season === "winter") { drawIcicles(ctx, L, d); }
+    if (wx.fog > 0) { drawFog(ctx, W, L, t, wx.fog); }
 
     // Soften the scene so the pet stands out; small moving bits stay crisp.
     var veil = veilAlpha(opts && opts.opacity, date);
@@ -922,10 +1038,14 @@
 
     if (!animate) { return; }
     if (season === "spring") { drawFalling(ctx, L, t, d, ["#fde2ec", "#f2b6cb"], 7000, 2); }
-    if (season === "autumn") { drawFalling(ctx, L, t, d, AUTUMN_LEAVES, 9000, 3); }
+    if (season === "autumn") { drawFalling(ctx, L, t, d, AUTUMN_LEAVES, wx.thunderstorm ? 5000 : 9000, wx.thunderstorm ? 5 : 3, wx.thunderstorm ? 1 : 0); }
     if (wx.snowing) { drawSnow(ctx, W, L, t); }
-    if (wx.raining) { drawRain(ctx, W, L, t); }
-    drawCritters(ctx, W, L, season, t, d);
+    if (wx.raining) { drawRain(ctx, W, L, t, wx.thunderstorm); }
+    drawCritters(ctx, W, L, season, t, d, wx.thunderstorm);
+    if (wx.thunderstorm) {
+      var flash = lightning(t);
+      if (flash) { drawLightning(ctx, W, H, L, flash, t); }
+    }
   }
 
   // =========================================================================
@@ -1195,6 +1315,11 @@
     RAINBOW_MS:      RAINBOW_MS,
     SNOW_MS:         SNOW_MS,
     SNOW_CHANCE:     SNOW_CHANCE,
+    STORM_MS:        STORM_MS,
+    STORM_CHANCE:    STORM_CHANCE,
+    FOG_MS:          FOG_MS,
+    FOG_CHANCE:      FOG_CHANCE,
+    lightning:       lightning,
     CRITTERS:        CRITTERS,
     VEIL:            VEIL,
     veilAlpha:       veilAlpha,
