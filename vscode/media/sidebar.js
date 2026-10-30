@@ -572,9 +572,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   // Wire up game-select buttons
   document.getElementById("btn-mg-lr").addEventListener("click", function () {
-    // The dog plays Tug-of-War and the kangaroos box instead of Left / Right
+    // The dog plays Tug-of-War, the kangaroos box and the cat chases a laser instead of Left / Right
     if (playsDogGames(lastState)) { startTugGame(); }
     else if (playsBoxing(lastState)) { startBoxingGame(); }
+    else if (playsLaser(lastState)) { startLaserGame(); }
     else { startLeftRightGame(); }
   });
   document.getElementById("btn-mg-hl").addEventListener("click", function () {
@@ -1367,6 +1368,100 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     sendPlayResult("boxing", result);
   }
 
+  // ── Laser Pointer (the cat's Left / Right, played on the pet stage) ──────
+  // A red dot sweeps along the floor; pounce when it's right under the cat.
+  // Three tries, first to two catches; each try is quicker and tighter.
+
+  function playsLaser(state) {
+    return !!(state && state.spriteType === "cat");
+  }
+
+  var laserTry, laserCatches, laserMisses;
+
+  document.getElementById("btn-laser-pounce").addEventListener("click", function () { handleLaserPounce(false); });
+
+  function updateLaserScore() {
+    document.getElementById("laser-score").textContent =
+      "Try " + Math.min(laserTry + 1, mgArt.LASER_ROUNDS) + " / " + mgArt.LASER_ROUNDS +
+      "   Caught: " + laserCatches + "   Missed: " + laserMisses;
+  }
+
+  function startLaserGame() {
+    // The dot has to move, so reduced motion keeps the plain Left / Right
+    if (!mgArt || REDUCED_MOTION) { startLeftRightGame(); return; }
+    mgClear();
+    clearStageBubbles();
+    laserTry = 0;
+    laserCatches = 0;
+    laserMisses = 0;
+    showMgPanel("mg-laser");
+    document.getElementById("laser-feedback").textContent = "Pounce when the dot's right under your nose!";
+    startLaserTry();
+  }
+
+  function startLaserTry() {
+    var diff = mgArt.laserRound(laserTry, Math.random);
+    stageGame = { kind: "laser", phase: "chase", startMs: performance.now(), speed: diff.speed, window: diff.window,
+                  offset: Math.random() * Math.PI * 2, pounceMs: 0, dotAt: 0, caught: false };
+    boostAnim(performance.now() + mgArt.LASER_ROUND_MS);
+    document.getElementById("btn-laser-pounce").disabled = false;
+    updateLaserScore();
+    // Wait too long and the dot gets away
+    bjTimer = setTimeout(function () { bjTimer = null; handleLaserPounce(true); }, mgArt.LASER_ROUND_MS);
+  }
+
+  function handleLaserPounce(tooSlow) {
+    if (!stageGame || stageGame.kind !== "laser" || stageGame.phase !== "chase") { return; }
+    if (bjTimer !== null) { clearTimeout(bjTimer); bjTimer = null; }
+    document.getElementById("btn-laser-pounce").disabled = true;
+    var now = performance.now();
+    var W = spriteCanvas.width;
+    var dotX = mgArt.laserDotX(now - stageGame.startMs, stageGame.speed, W, stageGame.offset);
+    var caught = !tooSlow && mgArt.laserCaught(dotX, W / 2, stageGame.window * W);
+    if (caught) { laserCatches++; } else { laserMisses++; }
+    stageGame.phase = "pounce";
+    stageGame.pounceMs = now;
+    stageGame.dotAt = dotX;
+    stageGame.caught = caught;
+    boostAnim(now + mgArt.LASER_POUNCE_MS + 1000);
+    document.getElementById("laser-feedback").textContent =
+      tooSlow ? "✗ The dot got bored and wandered off."
+      : caught ? "✓ Got it! Under the paw."
+      : "✗ Missed - it zipped away.";
+    updateLaserScore();
+    bjTimer = setTimeout(function () {
+      bjTimer = null;
+      laserTry++;
+      if (laserCatches < mgArt.LASER_WINS_NEEDED && laserMisses <= mgArt.LASER_ROUNDS - mgArt.LASER_WINS_NEEDED) {
+        document.getElementById("laser-feedback").textContent = "";
+        startLaserTry();
+        return;
+      }
+      endLaserGame();
+    }, mgArt.LASER_POUNCE_MS + 900);
+  }
+
+  function endLaserGame() {
+    var result = laserCatches >= mgArt.LASER_WINS_NEEDED ? "win" : "lose";
+    var name = (lastState && lastState.name) || "Your cat";
+    var tally = laserCatches + "-" + laserMisses;
+    mgClear();
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win"
+        ? name + " caught the red dot! (" + tally + ")"
+        : name + " lost the red dot (" + tally + "). It'll be back.";
+    sendPlayResult("laser", result);
+  }
+
+  /** Where the laser dot is now: sweeping, under the paw, or zipping off after a miss. */
+  function laserDotNow(game, nowMs) {
+    var W = spriteCanvas.width;
+    if (game.phase !== "pounce") { return mgArt.laserDotX(nowMs - game.startMs, game.speed, W, game.offset); }
+    if (game.caught) { return game.dotAt; }
+    return game.dotAt + (game.dotAt < W / 2 ? -1 : 1) * (nowMs - game.pounceMs) * 0.8;
+  }
+
   // Where the kangaroo is actually drawn inside its sprite box ({left, right,
   // top, bottom}), so the boxers stand nose to nose and wear their gloves on
   // their paws whatever the stage. Measured once per stage, size and facing
@@ -1423,6 +1518,18 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    */
   function stageGamePose(game, nowMs, bWidth, minX, maxX) {
     var W = spriteCanvas.width;
+    if (game.kind === "laser") {
+      // The cat crouches in the middle watching the dot, pounces, then pads back
+      var lHome = Math.round((W - bWidth) / 2);
+      var lLeft = laserDotNow(game, nowMs) < W / 2;
+      if (game.phase !== "pounce") { return { x: lHome, left: lLeft, ball: false, moving: false, done: false }; }
+      var lMs   = nowMs - game.pounceMs;
+      var arc   = mgArt.laserPounceArc(lMs / mgArt.LASER_POUNCE_MS);
+      var reach = (game.dotAt - W / 2) * (game.caught ? 1 : 0.6);
+      var back  = Math.max(0, Math.min(1, (lMs - mgArt.LASER_POUNCE_MS - 500) / 400));
+      return { x: Math.max(minX, Math.min(maxX, lHome + reach * arc.f * (1 - back))), left: game.dotAt < W / 2,
+               ball: false, moving: back > 0 && back < 1, done: false, dy: arc.dy * bWidth * 0.3 };
+    }
     if (game.kind === "boxing") {
       // Your kangaroo squares up left of centre, nose to nose with the opponent
       var bl = boxingLayout(W, bWidth, petBoxHeight(lastState, bWidth));
@@ -1473,6 +1580,15 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       mgArt.drawTugRope(spriteCtx, 0, box.x + px, mouthY, px, m);
     } else if (game.kind === "boxing") {
       drawBoxingStage(game, box, nowMs, floorY);
+    } else if (game.kind === "laser") {
+      // The dot on the floor (over the paw once caught), and a POW for a catch
+      var dpx  = Math.max(2, Math.round(box.w / 28));
+      var dotX = laserDotNow(game, nowMs);
+      var dotY = spriteCanvas.height - 12 - dpx;
+      mgArt.drawLaserDot(spriteCtx, dotX, dotY, dpx);
+      if (game.phase === "pounce" && game.caught && nowMs - game.pounceMs >= mgArt.LASER_POUNCE_MS) {
+        mgArt.drawPow(spriteCtx, dotX, dotY - 3 * dpx, dpx);
+      }
     }
   }
 
@@ -1930,11 +2046,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var sgPose = stageGame ? stageGamePose(stageGame, nowMs, bWidth, minX, maxX) : null;
 
     if (sgPose) {
-      // Fetch, Tug-of-War or Boxing: the game moves the pet, even off the edge of the stage
+      // Fetch, Tug-of-War, Boxing or Laser Pointer: the game moves the pet, even off the edge of the stage
       petVx = sgPose.moving ? (sgPose.x >= petX ? 60 : -60) : 0;
       petX  = sgPose.x;
       petFacingLeft = sgPose.left;
-      petY  = floorY;
+      petY  = floorY + Math.round(sgPose.dy || 0);   // the cat's pounce leaves the floor
       petVy = 0;
 
     } else if (activeReaction && (activeReaction.type === "fell_asleep" || activeReaction.type === "died")) {
@@ -2473,7 +2589,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var mgCfBtn = document.getElementById("btn-mg-cf");
     if (mgCfBtn) { mgCfBtn.textContent = playsBlackjack(state) ? "Blackjack" : playsDogGames(state) ? "Fetch" : "Coin Flip"; }
     var mgLrBtn = document.getElementById("btn-mg-lr");
-    if (mgLrBtn) { mgLrBtn.textContent = playsDogGames(state) ? "Tug-of-War" : playsBoxing(state) ? "Boxing" : "Left / Right"; }
+    if (mgLrBtn) { mgLrBtn.textContent = playsDogGames(state) ? "Tug-of-War" : playsBoxing(state) ? "Boxing"
+                                 : playsLaser(state) ? "Laser Pointer" : "Left / Right"; }
     updateBossButton(state);
 
     // Reset position when a brand-new or just-loaded pet first appears
@@ -3059,6 +3176,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "minigame_tug_of_war_lose":   n + " lost Tug-of-War.",
       "minigame_boxing_win":        n + " won the boxing match!",
       "minigame_boxing_lose":       n + " lost the boxing match.",
+      "minigame_laser_win":         n + " caught the laser dot!",
+      "minigame_laser_lose":        n + " couldn't catch the laser dot.",
       "minigame_boss_battle_win":   n + " defeated the boss!",
       "minigame_boss_battle_lose":  n + " was beaten by the boss.",
       "boss_unlocked":              "A boss appeared! Press Play \u2192 Boss Battle to fight it.",

@@ -3,8 +3,9 @@
  *
  * Doors (Left / Right), the number card (Higher or Lower), the coin (Coin
  * Flip), playing cards (Stu's Blackjack), the dog's Fetch ball and
- * Tug-of-War rope and the kangaroos' boxing gloves (drawn on the pet's
- * stage), a countdown and a small bitmap font. Everything is drawn with
+ * Tug-of-War rope, the kangaroos' boxing gloves and the cat's laser dot
+ * (drawn on the pet's stage), the cat's gift run and cat-tree climb, a
+ * countdown and a small bitmap font. Everything is drawn with
  * fillRect on a whole-pixel unit, the same style as the mood layer in
  * sprites.js. No DOM access and no CSS variables (canvas ignores them), so
  * the functions can be unit-tested against a mock context.
@@ -807,6 +808,57 @@
   }
 
   // =========================================================================
+  // Laser Pointer (the cat's game, played on the pet's own stage)
+  // =========================================================================
+
+  /** Three tries, first to two catches; a pounce takes LASER_POUNCE_MS; an untouched dot gets away. */
+  var LASER_ROUNDS      = 3;
+  var LASER_WINS_NEEDED = 2;
+  var LASER_POUNCE_MS   = 500;
+  var LASER_ROUND_MS    = 10000;
+
+  /**
+   * How hard try `round` (0-based) is: the dot's sweeps per second and the catch
+   * window either side of the cat, as a fraction of the stage width. Each try
+   * is quicker with a narrower window; rand nudges the speed.
+   */
+  function laserRound(round, rand) {
+    var r = rand ? rand() : 0.5;
+    return { speed: 0.35 + round * 0.1 + r * 0.05, window: Math.max(0.05, 0.12 - round * 0.02) };
+  }
+
+  /** The dot's x, ms into a try: it sweeps back and forth across the middle 80% of the stage. */
+  function laserDotX(ms, speed, W, offset) {
+    return W / 2 + W * 0.4 * Math.sin(2 * Math.PI * speed * ms / 1000 + (offset || 0));
+  }
+
+  /** A pounce catches the dot if it's within windowPx of the cat's middle. */
+  function laserCaught(dotX, catX, windowPx) {
+    return Math.abs(dotX - catX) <= windowPx;
+  }
+
+  /** A pounce t in 0..1: how far toward the dot (f) and the leap height (dy, 0..-1). */
+  function laserPounceArc(t) {
+    t = Math.max(0, Math.min(1, t));
+    return { f: t, dy: -Math.sin(t * Math.PI) };
+  }
+
+  /** The laser dot centred on (cx, cy): a soft red glow round a bright core. */
+  function drawLaserDot(ctx, cx, cy, px) {
+    var x = Math.round(cx - px), y = Math.round(cy - px);
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = C.bad;
+    ctx.fillRect(x - px, y, 4 * px, 2 * px);
+    ctx.fillRect(x, y - px, 2 * px, 4 * px);
+    ctx.restore();
+    ctx.fillStyle = "#ff2a2a";
+    ctx.fillRect(x, y, 2 * px, 2 * px);
+    ctx.fillStyle = "#ffd0d0";
+    ctx.fillRect(x, y, px, px);
+  }
+
+  // =========================================================================
   // Exports
   // =========================================================================
 
@@ -864,5 +916,14 @@
     catMouth:       catMouth,
     catGiftSize:    catGiftSize,
     drawCatGift:    drawCatGift,
+    LASER_ROUNDS:      LASER_ROUNDS,
+    LASER_WINS_NEEDED: LASER_WINS_NEEDED,
+    LASER_POUNCE_MS:   LASER_POUNCE_MS,
+    LASER_ROUND_MS:    LASER_ROUND_MS,
+    laserRound:        laserRound,
+    laserDotX:         laserDotX,
+    laserCaught:       laserCaught,
+    laserPounceArc:    laserPounceArc,
+    drawLaserDot:      drawLaserDot,
   };
 }());
