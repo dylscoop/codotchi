@@ -3,8 +3,9 @@
  *
  * Doors (Left / Right), the number card (Higher or Lower), the coin (Coin
  * Flip), playing cards (Stu's Blackjack), the dog's Fetch ball and
- * Tug-of-War rope and the kangaroos' boxing gloves (drawn on the pet's
- * stage), a countdown and a small bitmap font. Everything is drawn with
+ * Tug-of-War rope, the kangaroos' boxing gloves and the cat's laser dot
+ * (drawn on the pet's stage), the cat's gift run and cat-tree climb, a
+ * countdown and a small bitmap font. Everything is drawn with
  * fillRect on a whole-pixel unit, the same style as the mood layer in
  * sprites.js. No DOM access and no CSS variables (canvas ignores them), so
  * the functions can be unit-tested against a mock context.
@@ -728,6 +729,180 @@
   }
 
   // =========================================================================
+  // Cat errands (the cat's gift run and its cat-tree climb, on the pet's stage)
+  // =========================================================================
+
+  /** Trot speed off stage for a gift and back, the crouch to drop it, and the climb. */
+  var CAT_TROT_PPS  = 110;
+  var CAT_DROP_MS   = 600;
+  var CAT_CLIMB_PPS = 45;
+  /** Time spent sitting on the perch before jumping down. */
+  var CAT_PERCH_MS  = 6000;
+  /** An idle cat climbs about once every CAT_CLIMB_EVERY_S seconds when it has the energy. */
+  var CAT_CLIMB_EVERY_S    = 90;
+  var CAT_CLIMB_MIN_ENERGY = 60;
+
+  /**
+   * Gift run: trot "out" off the nearer edge, come "back" carrying the gift, then
+   * "drop" it. Climb: "walk" to the cat tree, climb "up", sit on the "perch".
+   * The phase after this one, or null when the errand is over.
+   */
+  var CAT_NEXT_PHASE = { out: "back", back: "drop", drop: null, walk: "up", up: "perch", perch: null };
+
+  function catNextPhase(phase) {
+    return Object.prototype.hasOwnProperty.call(CAT_NEXT_PHASE, phase) ? CAT_NEXT_PHASE[phase] : null;
+  }
+
+  /** Move x toward target by at most step: {x, arrived}. */
+  function stepToward(x, target, step) {
+    if (Math.abs(target - x) <= step) { return { x: target, arrived: true }; }
+    return { x: x + (target > x ? step : -step), arrived: false };
+  }
+
+  /** Where the cat holds a gift in its mouth: the front of its head, from its drawn bounds. */
+  function catMouth(bounds, facingLeft) {
+    return { x: facingLeft ? bounds.left : bounds.right,
+             y: bounds.top + (bounds.bottom - bounds.top) * 0.35 };
+  }
+
+  /** Canvas px per gift art pixel, on the floor and in the cat's mouth (the same as floor snacks). */
+  var CAT_GIFT_PX = 3;
+
+  // Gifts face left; 1 = body, 2 = nose / beak / tail, 3 = eye, 4 = breast, 5 = wing
+  var CAT_GIFTS = {
+    mouse: { grid: [
+      "001200000",
+      "011111000",
+      "213111110",
+      "011111122",
+    ], colours: { "1": "#9a9aa4", "2": "#f0a0b0", "3": "#1a1a1a" } },
+    bird: { grid: [
+      "00110000",
+      "01311000",
+      "21115550",
+      "00445511",
+    ], colours: { "1": "#8a5a3a", "2": "#f0a030", "3": "#1a1a1a", "4": "#e8b080", "5": "#5a3a22" } },
+  };
+
+  /** The art for a gift kind (anything unknown is a mouse). */
+  function catGiftArt(kind) {
+    return CAT_GIFTS[kind] || CAT_GIFTS.mouse;
+  }
+
+  /** A gift's size in art pixels: {w, h}. */
+  function catGiftSize(kind) {
+    var g = catGiftArt(kind).grid;
+    return { w: g[0].length, h: g.length };
+  }
+
+  /** A mouse or a bird with its top-left at (x, y), facing left unless facingRight. */
+  function drawCatGift(ctx, kind, x, y, px, facingRight) {
+    var art = catGiftArt(kind);
+    for (var r = 0; r < art.grid.length; r++) {
+      var row = art.grid[r];
+      for (var c = 0; c < row.length; c++) {
+        var k = row[c];
+        if (k === "0") { continue; }
+        ctx.fillStyle = art.colours[k];
+        var col = facingRight ? row.length - 1 - c : c;
+        ctx.fillRect(x + col * px, y + r * px, px, px);
+      }
+    }
+  }
+
+  // =========================================================================
+  // Laser Pointer (the cat's game, played on the pet's own stage)
+  // =========================================================================
+
+  /** Three tries, first to two catches; a pounce takes LASER_POUNCE_MS; an untouched dot gets away. */
+  var LASER_ROUNDS      = 3;
+  var LASER_WINS_NEEDED = 2;
+  var LASER_POUNCE_MS   = 500;
+  var LASER_ROUND_MS    = 10000;
+
+  /**
+   * How hard try `round` (0-based) is: the dot's sweeps per second and the catch
+   * window either side of the cat, as a fraction of the stage width. Each try
+   * is quicker with a narrower window; rand nudges the speed.
+   */
+  function laserRound(round, rand) {
+    var r = rand ? rand() : 0.5;
+    return { speed: 0.35 + round * 0.1 + r * 0.05, window: Math.max(0.05, 0.12 - round * 0.02) };
+  }
+
+  /** The dot's x, ms into a try: it sweeps back and forth across the middle 80% of the stage. */
+  function laserDotX(ms, speed, W, offset) {
+    return W / 2 + W * 0.4 * Math.sin(2 * Math.PI * speed * ms / 1000 + (offset || 0));
+  }
+
+  /** A pounce catches the dot if it's within windowPx of the cat's middle. */
+  function laserCaught(dotX, catX, windowPx) {
+    return Math.abs(dotX - catX) <= windowPx;
+  }
+
+  /** A pounce t in 0..1: how far toward the dot (f) and the leap height (dy, 0..-1). */
+  function laserPounceArc(t) {
+    t = Math.max(0, Math.min(1, t));
+    return { f: t, dy: -Math.sin(t * Math.PI) };
+  }
+
+  // The dot, 7×7 art pixels: g = glow, o = dark outline, r = red core, w = hot white centre
+  var LASER_DOT = [
+    "..ggg..",
+    ".gooog.",
+    "gorrrog",
+    "gorwrog",
+    "gorrrog",
+    ".gooog.",
+    "..ggg..",
+  ];
+  var LASER_DOT_SIZE = LASER_DOT.length;
+
+  /** How bright the glow is at t ms: a quick pulse between 0.35 and 0.75. */
+  function laserGlow(t) {
+    return 0.55 + 0.2 * Math.sin((t || 0) / 90);
+  }
+
+  /**
+   * The laser dot centred on (cx, cy): a pulsing glow, a dark outline so it
+   * shows on any sky or ground, a red core and a white-hot centre. With beamX,
+   * a faint beam runs to it from (beamX, 0), where you hold the pointer.
+   */
+  function drawLaserDot(ctx, cx, cy, px, t, beamX) {
+    var half = Math.floor(LASER_DOT_SIZE / 2);
+    var x0 = Math.round(cx - half * px - px / 2), y0 = Math.round(cy - half * px - px / 2);
+    if (typeof beamX === "number") {
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = "#ff3030";
+      ctx.lineWidth = Math.max(1, Math.round(px / 2));
+      ctx.beginPath();
+      ctx.moveTo(beamX, 0);
+      ctx.lineTo(cx, cy);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.globalAlpha = laserGlow(t);
+    ctx.fillStyle = "#ff4040";
+    for (var gr = 0; gr < LASER_DOT_SIZE; gr++) {
+      for (var gc = 0; gc < LASER_DOT_SIZE; gc++) {
+        if (LASER_DOT[gr][gc] === "g") { ctx.fillRect(x0 + gc * px, y0 + gr * px, px, px); }
+      }
+    }
+    ctx.restore();
+    var COLOURS = { o: "#4a0000", r: "#ff1a1a", w: "#ffffff" };
+    for (var r = 0; r < LASER_DOT_SIZE; r++) {
+      for (var c = 0; c < LASER_DOT_SIZE; c++) {
+        var col = COLOURS[LASER_DOT[r][c]];
+        if (!col) { continue; }
+        ctx.fillStyle = col;
+        ctx.fillRect(x0 + c * px, y0 + r * px, px, px);
+      }
+    }
+  }
+
+  // =========================================================================
   // Exports
   // =========================================================================
 
@@ -774,5 +949,28 @@
     drawBoxingGlove: drawBoxingGlove,
     POW_SIZE:       POW_SIZE,
     drawPow:        drawPow,
+    CAT_TROT_PPS:   CAT_TROT_PPS,
+    CAT_DROP_MS:    CAT_DROP_MS,
+    CAT_CLIMB_PPS:  CAT_CLIMB_PPS,
+    CAT_PERCH_MS:   CAT_PERCH_MS,
+    CAT_CLIMB_EVERY_S:    CAT_CLIMB_EVERY_S,
+    CAT_CLIMB_MIN_ENERGY: CAT_CLIMB_MIN_ENERGY,
+    catNextPhase:   catNextPhase,
+    stepToward:     stepToward,
+    catMouth:       catMouth,
+    CAT_GIFT_PX:    CAT_GIFT_PX,
+    catGiftSize:    catGiftSize,
+    drawCatGift:    drawCatGift,
+    LASER_ROUNDS:      LASER_ROUNDS,
+    LASER_WINS_NEEDED: LASER_WINS_NEEDED,
+    LASER_POUNCE_MS:   LASER_POUNCE_MS,
+    LASER_ROUND_MS:    LASER_ROUND_MS,
+    laserRound:        laserRound,
+    laserDotX:         laserDotX,
+    laserCaught:       laserCaught,
+    laserPounceArc:    laserPounceArc,
+    LASER_DOT_SIZE:    LASER_DOT_SIZE,
+    laserGlow:         laserGlow,
+    drawLaserDot:      drawLaserDot,
   };
 }());

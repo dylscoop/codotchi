@@ -74,6 +74,8 @@ export interface CustomCharacter {
 
 /** One gift a gift call can bring (__Name__ = pet name). */
 export interface CustomCharacterGift {
+  /** What the webview draws on the floor for this gift, e.g. "mouse" (optional — a gift box if absent). */
+  kind?:         string;
   /** Toast / log line when the gift call fires. */
   message:       string;
   /** Speech bubble when you praise to accept this gift (optional — the usual praise lines if absent). */
@@ -188,7 +190,12 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     passcode:    "blackcat",
     defaultName:  "Codotchi",
     patLabel:    "Pat",
-    giftMessage: "__Name__ found a toy mouse!",
+    gifts: [
+      { kind: "mouse", message: "__Name__ left a mouse at your feet. You're welcome.", praiseBubble: "Don't say I never get you anything." },
+      { kind: "mouse", message: "__Name__ caught a mouse for you!",                     praiseBubble: "I am a mighty hunter." },
+      { kind: "bird",  message: "__Name__ brought you a bird!",                         praiseBubble: "Took me all morning." },
+      { kind: "bird",  message: "__Name__ proudly presents a bird!",                    praiseBubble: "Fresh from the garden." },
+    ],
     patToasts: {
       patted:      "__Name__ purred!",
       pat_refused: "__Name__ is too tired for cuddles!",
@@ -199,6 +206,22 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
       "I will knock that off the desk.",
       "Fine. You may pet me.",
     ],
+    patCall: {
+      call:     "__Name__ demands chin scratches.",
+      answered: "You gave __Name__ chin scratches.",
+      expired:  "__Name__ demanded chin scratches and was ignored.",
+      status:   "demands chin scratches.",
+    },
+    snackCravings: ["some tuna", "a saucer of milk"],
+    ignoredBubble: "Hmph. Fine.",
+    breakNap: {
+      call:    "__Name__ wants a catnap! You've been coding for 30 minutes.",
+      started: "__Name__ curled up in a sunbeam for a catnap ☀️",
+      noWake:  "__Name__ is catnapping. Do not disturb.",
+      over:    "__Name__ stretched and woke from the catnap. Back to work!",
+      button:  "Catnap",
+      bubbles: ["Zzz… sunbeam…", "Do not disturb."],
+    },
   },
   {
     spriteType:  "stu",

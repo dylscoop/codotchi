@@ -297,6 +297,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   let smokoHopPhase = 0;     // hop bob phase (radians) while hopping off or back
   const SMOKO_HOP_PPS     = 90;    // hop speed (canvas px / s) off and back onto the stage
   const SMOKO_HOP_BOOST_MS = 5000; // full frame rate while it hops
+  // The cat's errand on the stage, or null: a gift run { kind: "gift", phase: "out"|"back"|"drop",
+  // side, startMs, cancelled } or a cat-tree climb { kind: "climb", phase: "walk"|"up"|"perch", startMs }
+  let catErrand = null;
+  let giftFacesRight = false;      // the cat's dropped gift keeps the way it was carried
 
   // Speech when a whim attention call is answered — one line picked at random.
   // Mirrored in opencode-codotchi/src/index.ts and claude-codotchi/scripts/action.mjs.
@@ -540,6 +544,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (bjTimer !== null) { clearTimeout(bjTimer); bjTimer = null; }
     if (bossTimer !== null) { clearTimeout(bossTimer); bossTimer = null; }
     lrReveal = null;
+    // A stage game's last step must not carry into the wander, or the pet
+    // walks on in that direction facing the way the game left it (backwards)
+    if (stageGame) { petVx = 0; }
     stageGame = null;
     if (mgCtx) { mgCtx.clearRect(0, 0, mgCanvas.width, mgCanvas.height); }
     if (mgCanvas) { mgCanvas.classList.add("hidden"); }
@@ -568,9 +575,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   // Wire up game-select buttons
   document.getElementById("btn-mg-lr").addEventListener("click", function () {
-    // The dog plays Tug-of-War and the kangaroos box instead of Left / Right
+    // The dog plays Tug-of-War, the kangaroos box and the cat chases a laser instead of Left / Right
     if (playsDogGames(lastState)) { startTugGame(); }
     else if (playsBoxing(lastState)) { startBoxingGame(); }
+    else if (playsLaser(lastState)) { startLaserGame(); }
     else { startLeftRightGame(); }
   });
   document.getElementById("btn-mg-hl").addEventListener("click", function () {
@@ -1363,6 +1371,103 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     sendPlayResult("boxing", result);
   }
 
+  // ── Laser Pointer (the cat's Left / Right, played on the pet stage) ──────
+  // A red dot sweeps along the floor; pounce when it's right under the cat.
+  // Three tries, first to two catches; each try is quicker and tighter.
+
+  function playsLaser(state) {
+    return !!(state && state.spriteType === "cat");
+  }
+
+  var laserTry, laserCatches, laserMisses;
+  // The cat plays from wherever it's standing: its x when the game starts, and its middle (set each frame)
+  var laserHomeX = null, laserCatX = 0;
+
+  document.getElementById("btn-laser-pounce").addEventListener("click", function () { handleLaserPounce(false); });
+
+  function updateLaserScore() {
+    document.getElementById("laser-score").textContent =
+      "Try " + Math.min(laserTry + 1, mgArt.LASER_ROUNDS) + " / " + mgArt.LASER_ROUNDS +
+      "   Caught: " + laserCatches + "   Missed: " + laserMisses;
+  }
+
+  function startLaserGame() {
+    // The dot has to move, so reduced motion keeps the plain Left / Right
+    if (!mgArt || REDUCED_MOTION) { startLeftRightGame(); return; }
+    mgClear();
+    clearStageBubbles();
+    laserTry = 0;
+    laserCatches = 0;
+    laserMisses = 0;
+    laserHomeX = petX;
+    showMgPanel("mg-laser");
+    document.getElementById("laser-feedback").textContent = "Pounce when the dot's right under your nose!";
+    startLaserTry();
+  }
+
+  function startLaserTry() {
+    var diff = mgArt.laserRound(laserTry, Math.random);
+    stageGame = { kind: "laser", phase: "chase", startMs: performance.now(), speed: diff.speed, window: diff.window,
+                  offset: Math.random() * Math.PI * 2, pounceMs: 0, dotAt: 0, caught: false };
+    boostAnim(performance.now() + mgArt.LASER_ROUND_MS);
+    document.getElementById("btn-laser-pounce").disabled = false;
+    updateLaserScore();
+    // Wait too long and the dot gets away
+    bjTimer = setTimeout(function () { bjTimer = null; handleLaserPounce(true); }, mgArt.LASER_ROUND_MS);
+  }
+
+  function handleLaserPounce(tooSlow) {
+    if (!stageGame || stageGame.kind !== "laser" || stageGame.phase !== "chase") { return; }
+    if (bjTimer !== null) { clearTimeout(bjTimer); bjTimer = null; }
+    document.getElementById("btn-laser-pounce").disabled = true;
+    var now = performance.now();
+    var W = spriteCanvas.width;
+    var dotX = mgArt.laserDotX(now - stageGame.startMs, stageGame.speed, W, stageGame.offset);
+    var caught = !tooSlow && mgArt.laserCaught(dotX, laserCatX, stageGame.window * W);
+    if (caught) { laserCatches++; } else { laserMisses++; }
+    stageGame.phase = "pounce";
+    stageGame.pounceMs = now;
+    stageGame.dotAt = dotX;
+    stageGame.caught = caught;
+    boostAnim(now + mgArt.LASER_POUNCE_MS + 1000);
+    document.getElementById("laser-feedback").textContent =
+      tooSlow ? "✗ The dot got bored and wandered off."
+      : caught ? "✓ Got it! Under the paw."
+      : "✗ Missed - it zipped away.";
+    updateLaserScore();
+    bjTimer = setTimeout(function () {
+      bjTimer = null;
+      laserTry++;
+      if (laserCatches < mgArt.LASER_WINS_NEEDED && laserMisses <= mgArt.LASER_ROUNDS - mgArt.LASER_WINS_NEEDED) {
+        document.getElementById("laser-feedback").textContent = "";
+        startLaserTry();
+        return;
+      }
+      endLaserGame();
+    }, mgArt.LASER_POUNCE_MS + 900);
+  }
+
+  function endLaserGame() {
+    var result = laserCatches >= mgArt.LASER_WINS_NEEDED ? "win" : "lose";
+    var name = (lastState && lastState.name) || "Your cat";
+    var tally = laserCatches + "-" + laserMisses;
+    mgClear();
+    showMgPanel("mg-result");
+    document.getElementById("mg-result-text").textContent =
+      result === "win"
+        ? name + " caught the red dot! (" + tally + ")"
+        : name + " lost the red dot (" + tally + "). It'll be back.";
+    sendPlayResult("laser", result);
+  }
+
+  /** Where the laser dot is now: sweeping, under the paw, or zipping off after a miss. */
+  function laserDotNow(game, nowMs) {
+    var W = spriteCanvas.width;
+    if (game.phase !== "pounce") { return mgArt.laserDotX(nowMs - game.startMs, game.speed, W, game.offset); }
+    if (game.caught) { return game.dotAt; }
+    return game.dotAt + (game.dotAt < laserCatX ? -1 : 1) * (nowMs - game.pounceMs) * 0.8;
+  }
+
   // Where the kangaroo is actually drawn inside its sprite box ({left, right,
   // top, bottom}), so the boxers stand nose to nose and wear their gloves on
   // their paws whatever the stage. Measured once per stage, size and facing
@@ -1419,6 +1524,22 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    */
   function stageGamePose(game, nowMs, bWidth, minX, maxX) {
     var W = spriteCanvas.width;
+    if (game.kind === "laser") {
+      // The cat crouches where it stands watching the dot, pounces, then pads back
+      var lHome = Math.max(minX, Math.min(maxX, laserHomeX === null ? Math.round((W - bWidth) / 2) : laserHomeX));
+      laserCatX = lHome + bWidth / 2;
+      var lLeft = laserDotNow(game, nowMs) < laserCatX;
+      if (game.phase !== "pounce") { return { x: lHome, left: lLeft, ball: false, moving: false, done: false }; }
+      var lMs   = nowMs - game.pounceMs;
+      var arc   = mgArt.laserPounceArc(lMs / mgArt.LASER_POUNCE_MS);
+      var reach = (game.dotAt - laserCatX) * (game.caught ? 1 : 0.6);
+      var back  = Math.max(0, Math.min(1, (lMs - mgArt.LASER_POUNCE_MS - 500) / 400));
+      // Faces the dot for the pounce, then turns round to pad back to where it was
+      var padBack = back > 0 && reach !== 0;
+      return { x: Math.max(minX, Math.min(maxX, lHome + reach * arc.f * (1 - back))),
+               left: padBack ? game.dotAt > laserCatX : game.dotAt < laserCatX,
+               ball: false, moving: back > 0 && back < 1, done: false, dy: arc.dy * bWidth * 0.3 };
+    }
     if (game.kind === "boxing") {
       // Your kangaroo squares up left of centre, nose to nose with the opponent
       var bl = boxingLayout(W, bWidth, petBoxHeight(lastState, bWidth));
@@ -1469,6 +1590,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       mgArt.drawTugRope(spriteCtx, 0, box.x + px, mouthY, px, m);
     } else if (game.kind === "boxing") {
       drawBoxingStage(game, box, nowMs, floorY);
+    } else if (game.kind === "laser") {
+      // The dot on the floor (over the paw once caught), with a faint beam from
+      // the pointer up at the top of the stage, and a POW for a catch
+      var dpx  = Math.max(2, Math.round(box.w / 28));
+      var dotX = laserDotNow(game, nowMs);
+      var dotY = spriteCanvas.height - 12 - Math.round(mgArt.LASER_DOT_SIZE * dpx / 2) + dpx;
+      mgArt.drawLaserDot(spriteCtx, dotX, dotY, dpx, nowMs, Math.round(spriteCanvas.width * 0.85));
+      if (game.phase === "pounce" && game.caught && nowMs - game.pounceMs >= mgArt.LASER_POUNCE_MS) {
+        mgArt.drawPow(spriteCtx, dotX, dotY - 5 * dpx, dpx);
+      }
     }
   }
 
@@ -1898,6 +2029,27 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       activeReaction = reactionQueue[0];
     }
 
+    // An energetic cat now and then climbs its cat tree and sits on the perch, if it fits under the sky
+    if (!catErrand && !activeReaction && !stageGame && snackItems.length === 0 && wantsToClimb(lastState) &&
+        Math.random() < dt / mgArt.CAT_CLIMB_EVERY_S) {
+      var climbTree = catTreeNow(lastState);
+      var climbB    = boxerBounds(lastState, bWidth, bHeight, false);
+      if (climbTree && climbTree.y - climbB.bottom + climbB.top >= 0) {
+        catErrand = { kind: "climb", phase: "walk", startMs: nowMs };
+      }
+    }
+    // ...and gets down for anything else: a pat, food, a game, sleep or its gift call
+    if (catErrand && catErrand.kind === "climb" &&
+        (!wantsToClimb(lastState) || !catTreeNow(lastState) || stageGame || snackItems.length > 0 ||
+         (activeReaction && activeReaction.type !== "tail_chase"))) {
+      catErrand = null;
+    }
+    // A gift run stops for sleep or a game, back on the stage
+    if (catErrand && catErrand.kind === "gift" && (lastState.sleeping || stageGame || lastState.spriteType !== "cat")) {
+      catErrand = null;
+      petX = Math.max(minX, Math.min(maxX, petX));
+    }
+
     animTick++;
 
     // ── Movement ──────────────────────────────────────────────────────────
@@ -1905,11 +2057,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var sgPose = stageGame ? stageGamePose(stageGame, nowMs, bWidth, minX, maxX) : null;
 
     if (sgPose) {
-      // Fetch, Tug-of-War or Boxing: the game moves the pet, even off the edge of the stage
+      // Fetch, Tug-of-War, Boxing or Laser Pointer: the game moves the pet, even off the edge of the stage
       petVx = sgPose.moving ? (sgPose.x >= petX ? 60 : -60) : 0;
       petX  = sgPose.x;
       petFacingLeft = sgPose.left;
-      petY  = floorY;
+      petY  = floorY + Math.round(sgPose.dy || 0);   // the cat's pounce leaves the floor
       petVy = 0;
 
     } else if (activeReaction && (activeReaction.type === "fell_asleep" || activeReaction.type === "died")) {
@@ -1946,6 +2098,75 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       petY  = floorY;
       petVx = 0;
       petVy = 0;
+
+    } else if (catErrand) {
+      // The cat's gift run or cat-tree climb, one phase after another (mgArt.catNextPhase)
+      boostAnim();
+      var ceB = boxerBounds(lastState, bWidth, bHeight, petFacingLeft);
+      var ceTarget, ceStep, ceDone = false;
+      if (catErrand.kind === "gift") {
+        if (catErrand.side === 0) { catErrand.side = (petX + bWidth / 2 < spriteCanvas.width / 2) ? -1 : 1; }
+        petY  = Math.min(floorY, petY + 240 * dt);   // off the perch first, if it was up there
+        petVy = 0;
+        if (catErrand.phase === "out") {
+          ceTarget = catErrand.side < 0 ? -bWidth - 8 : spriteCanvas.width + 8;
+        } else if (catErrand.phase === "back") {
+          // Bring the gift's middle to the spot picked for it (or just back on stage if it's gone)
+          var ceMouth = mgArt.catMouth(boxerBounds(lastState, bWidth, bHeight, catErrand.side > 0), catErrand.side > 0);
+          ceTarget = (catErrand.cancelled || giftBoxX === null)
+            ? (catErrand.side < 0 ? minX : maxX)
+            : giftBoxX + mgArt.catGiftSize(currentGift && currentGift.kind).w * mgArt.CAT_GIFT_PX / 2 - ceMouth.x;
+          ceTarget = Math.max(minX, Math.min(maxX, ceTarget));
+        }
+        if (catErrand.phase === "drop") {
+          petVx  = 0;
+          ceDone = nowMs - catErrand.startMs >= mgArt.CAT_DROP_MS;
+        } else {
+          ceStep = mgArt.stepToward(petX, ceTarget, mgArt.CAT_TROT_PPS * dt);
+          petVx  = ceStep.arrived ? 0 : (ceTarget > petX ? mgArt.CAT_TROT_PPS : -mgArt.CAT_TROT_PPS);
+          if (petVx !== 0) { petFacingLeft = petVx < 0; }
+          petX   = ceStep.x;
+          ceDone = ceStep.arrived;
+        }
+        if (ceDone && catErrand.phase === "drop") {
+          // Leave it on the floor exactly where it was dropped
+          giftBoxX = Math.max(0, carriedGiftBox(ceB, nowMs).x);
+          giftFacesRight = !petFacingLeft;
+        }
+      } else {
+        var ceTree = catTreeNow(lastState);
+        var ceTreeX = Math.max(minX, Math.min(maxX, ceTree.x + ceTree.w / 2 - (ceB.left + ceB.right) / 2));
+        petVy = 0;
+        if (catErrand.phase === "walk") {
+          var walkPps = Math.max(40, getSpeedPPS(lastState));
+          ceStep = mgArt.stepToward(petX, ceTreeX, walkPps * dt);
+          petVx  = ceStep.arrived ? 0 : (ceTreeX > petX ? walkPps : -walkPps);
+          if (petVx !== 0) { petFacingLeft = petVx < 0; }
+          petX   = ceStep.x;
+          petY   = floorY;
+          ceDone = ceStep.arrived;
+        } else if (catErrand.phase === "up") {
+          petVx  = 0;
+          petX   = ceTreeX;
+          ceStep = mgArt.stepToward(petY, ceTree.y - ceB.bottom, mgArt.CAT_CLIMB_PPS * dt);
+          petY   = ceStep.x;
+          ceDone = ceStep.arrived;
+          if (ceDone) { petFacingLeft = ceTree.x + ceTree.w / 2 > spriteCanvas.width / 2; }   // look out over the stage
+        } else {
+          petVx  = 0;
+          petX   = ceTreeX;
+          petY   = ceTree.y - ceB.bottom;
+          ceDone = nowMs - catErrand.startMs >= mgArt.CAT_PERCH_MS;
+          if (ceDone) { petVy = HOP_IMPULSE * 0.5; }   // hop down; gravity takes it from here
+        }
+      }
+      if (ceDone) {
+        var nextPhase = mgArt.catNextPhase(catErrand.phase);
+        // An unwanted gift run skips the drop once it's back on stage
+        if (nextPhase === "drop" && catErrand.cancelled) { nextPhase = null; }
+        if (nextPhase) { catErrand.phase = nextPhase; catErrand.startMs = nowMs; }
+        else { catErrand = null; }
+      }
 
     } else if (isOnSmoko(lastState) || smokoSide !== 0) {
       // Skippy's smoko: hop off the nearer edge for the break, then back in
@@ -2133,7 +2354,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // Dragon floats — it has no legs, so always pass legFrame -1 (upright/neutral).
     var walking  = !isDragon && !lastState.sleeping && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
     var running  = activeReaction && activeReaction.type === "patted" && window.spritePat.runLap(lastState.spriteType, 0) !== null;
-    var legFrame = isDragon ? -1 : (walking ? Math.floor(animTick / (running ? 4 : 10)) % 2 : 0);
+    var climbing = catErrand && catErrand.kind === "climb" && catErrand.phase === "up";
+    var legFrame = isDragon ? -1 : ((walking || climbing) ? Math.floor(animTick / (running ? 4 : climbing ? 6 : 10)) % 2 : 0);
     var walkBob  = (walking && legFrame === 1) ? -1 : 0;
 
     // ── Mood layer: props, body squash, particles (window.spriteMood) ─────
@@ -2172,6 +2394,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                          window.spriteMood.scaleY(mood, moodFrame));
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
+    // The cat's mouse or bird, in its mouth on the way back
+    if (catErrand && catErrand.kind === "gift" && !catErrand.cancelled && catErrand.phase !== "out") {
+      var cgBox = carriedGiftBox(boxerBounds(lastState, bWidth, bHeight, petFacingLeft), nowMs);
+      mgArt.drawCatGift(spriteCtx, cgBox.kind, cgBox.x, cgBox.y, mgArt.CAT_GIFT_PX, !petFacingLeft);
+    }
     if (stageGame) { drawStageGame(stageGame, moodBox, petFacingLeft, nowMs, floorY); }
     var moodPxSize = window.spriteMood.px(moodBox);
     if (patting && window.spritePat.usesHand(lastState.spriteType)) {
@@ -2373,7 +2600,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var mgCfBtn = document.getElementById("btn-mg-cf");
     if (mgCfBtn) { mgCfBtn.textContent = playsBlackjack(state) ? "Blackjack" : playsDogGames(state) ? "Fetch" : "Coin Flip"; }
     var mgLrBtn = document.getElementById("btn-mg-lr");
-    if (mgLrBtn) { mgLrBtn.textContent = playsDogGames(state) ? "Tug-of-War" : playsBoxing(state) ? "Boxing" : "Left / Right"; }
+    if (mgLrBtn) { mgLrBtn.textContent = playsDogGames(state) ? "Tug-of-War" : playsBoxing(state) ? "Boxing"
+                                 : playsLaser(state) ? "Laser Pointer" : "Left / Right"; }
     updateBossButton(state);
 
     // Reset position when a brand-new or just-loaded pet first appears
@@ -2617,8 +2845,15 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         if (gx < 4) { gx = 4; }
       }
       giftBoxX = gx;
+      // The cat trots off stage, comes back with its mouse or bird and drops it there
+      if (state.spriteType === "cat" && state.stage !== "egg" && !state.sleeping && !stageGame && !REDUCED_MOTION) {
+        catErrand = { kind: "gift", phase: "out", side: 0, startMs: performance.now(), cancelled: false };
+        giftFacesRight = false;
+      }
     } else if (prevGift && !currGift) {
       giftBoxX = null;
+      // Answered or gone before it got back: just come back empty-mouthed
+      if (catErrand && catErrand.kind === "gift") { catErrand.cancelled = true; }
     }
 
     // Hand off to animation loop — it owns all drawing
@@ -2653,6 +2888,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         type: cravedSnackType(_cc)
             || ((_cc && state.spriteType === "tim") ? "tea"
             : (_cc && state.spriteType === "stu") ? (Math.random() < 0.5 ? "guinness" : "salmon")
+            : state.spriteType === "cat" ? (Math.random() < 0.5 ? "tuna" : "milk")
             : state.spriteType === "dog" ? "biscuit"
             : (["candy", "bone", "cookie"][Math.floor(Math.random() * 3)])),
       });
@@ -2951,6 +3187,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "minigame_tug_of_war_lose":   n + " lost Tug-of-War.",
       "minigame_boxing_win":        n + " won the boxing match!",
       "minigame_boxing_lose":       n + " lost the boxing match.",
+      "minigame_laser_win":         n + " caught the laser dot!",
+      "minigame_laser_lose":        n + " couldn't catch the laser dot.",
       "minigame_boss_battle_win":   n + " defeated the boss!",
       "minigame_boss_battle_lose":  n + " was beaten by the boss.",
       "boss_unlocked":              "A boss appeared! Press Play \u2192 Boss Battle to fight it.",
@@ -3331,6 +3569,47 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     return isAwakeDog(state) && (state.energy || 0) >= TAIL_CHASE_MIN_ENERGY && !REDUCED_MOTION;
   }
 
+  /** The cat has a cat tree in place of the edge tree (scenic background only). */
+  function hasCatTree(state) {
+    return !!(state && state.spriteType === "cat" && state.stage !== "egg" && BG_STYLE !== "legacy");
+  }
+
+  /** The cat tree's box on the stage right now ({x, y, w, h, p}), or null when there is none. */
+  function catTreeNow(state) {
+    if (!hasCatTree(state) || !window.backgroundArt) { return null; }
+    return window.backgroundArt.catTreeBox(BG_MODE, new Date(), spriteCanvas.width, spriteCanvas.height);
+  }
+
+  /** An awake, well, energetic teen or adult cat climbs its cat tree now and then. */
+  function wantsToClimb(state) {
+    return !!(state && state.spriteType === "cat" && (state.stage === "teen" || state.stage === "adult") &&
+              !state.sleeping && !state.sick && (state.energy || 0) >= mgArt.CAT_CLIMB_MIN_ENERGY && !REDUCED_MOTION);
+  }
+
+  /**
+   * Where the cat's gift is drawn while it carries it: held in its mouth, then
+   * lowered to the floor through the drop. {x, y, kind}, CAT_GIFT_PX canvas px per art pixel.
+   */
+  function carriedGiftBox(bounds, nowMs) {
+    var kind  = currentGift && currentGift.kind;
+    var size  = mgArt.catGiftSize(kind);
+    var mouth = mgArt.catMouth(bounds, petFacingLeft);
+    var gpx   = mgArt.CAT_GIFT_PX;
+    var x = Math.round(petX + mouth.x - size.w * gpx / 2);
+    var y = Math.round(petY + mouth.y - size.h * gpx / 2);
+    if (catErrand && catErrand.phase === "drop") {
+      var floorTop = spriteCanvas.height - 12 - size.h * gpx;
+      var t = Math.min(1, (nowMs - catErrand.startMs) / mgArt.CAT_DROP_MS);
+      y = Math.round(y + (floorTop - y) * t);
+    }
+    return { x: x, y: y, kind: kind };
+  }
+
+  /** The cat is off fetching its gift or carrying it back, so it is not on the floor yet. */
+  function isCarryingGift() {
+    return !!(catErrand && catErrand.kind === "gift" && !catErrand.cancelled);
+  }
+
   /** Skippy the kangaroo spends its break nap off the stage, on smoko. */
   function isOnSmoko(state) {
     return !!(state && state.spriteType === "kangaroo" && state.sleeping && (state.breakNapTicksRemaining || 0) > 0);
@@ -3380,7 +3659,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       window.backgroundArt.drawLegacyBackground(spriteCtx, W, H, BG_MODE, new Date(), background);
     } else if (window.backgroundArt) {
       window.backgroundArt.drawBackground(spriteCtx, W, H, BG_MODE, new Date(),
-                                          { opacity: BG_OPACITY, backdrop: background, animate: BG_ANIMATE });
+                                          { opacity: BG_OPACITY, backdrop: background, animate: BG_ANIMATE,
+                                            catTree: hasCatTree(state) });
     }
 
     // Ground line
@@ -3420,7 +3700,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       });
     }
 
-    // Gift box (big tea mug for Tim, tennis ball for the dog)
+    // Gift box (big tea mug for Tim, tennis ball for the dog, mouse or bird for the cat)
     if (giftBoxX !== null) {
       var gbX = Math.round(giftBoxX);
       var _giftCc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
@@ -3474,6 +3754,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
             spriteCtx.fillRect(gbX + rx * TBS, tbY + ry * TBS, TBS, TBS);
           });
         });
+      } else if (state && state.spriteType === "cat") {
+        // The cat's mouse or bird, once it has trotted back and dropped it
+        if (!isCarryingGift()) {
+          var cgKind = currentGift && currentGift.kind;
+          mgArt.drawCatGift(spriteCtx, cgKind, gbX, H - 12 - mgArt.catGiftSize(cgKind).h * mgArt.CAT_GIFT_PX,
+                            mgArt.CAT_GIFT_PX, giftFacesRight);
+        }
       } else {
         var GIFT_PIXELS = [
           [0,0,2,0,0,2,0,0],
@@ -3498,7 +3785,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       }
     }
 
-    // Snack items — tea mug (Tim), guinness/salmon (Stu) or candy/bone/cookie (others)
+    // Snack items — tea mug (Tim), guinness/salmon (Stu), tuna/milk (cat) or candy/bone/cookie (others)
     if (snackItems.length > 0) {
       // Tea mug: 6 cols × 6 rows at scale 2 (12×12 px)
       // 1=dark brown body, 2=steam blue-white, 3=tea amber, 4=handle
@@ -3530,6 +3817,19 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         [3,2,1,2,1,3],
         [3,3,3,3,3,3],
       ];
+      // Tin of tuna: 6 cols × 4 rows (1=tin, 2=label, 3=pink tuna)
+      var TUNA_PIXELS = [
+        [0,3,3,3,3,0],
+        [1,1,1,1,1,1],
+        [1,2,2,2,2,1],
+        [1,1,1,1,1,1],
+      ];
+      // Saucer of milk: 7 cols × 3 rows (1=saucer, 2=milk)
+      var MILK_PIXELS = [
+        [0,2,2,2,2,2,0],
+        [1,1,1,1,1,1,1],
+        [0,1,1,1,1,1,0],
+      ];
       var CANDY_PIXELS = [
         [0,1,1,0],
         [1,2,1,1],
@@ -3555,6 +3855,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         var spx = item.type === "tea"      ? TEA_MUG_PIXELS
                 : item.type === "guinness" ? GUINNESS_PIXELS
                 : item.type === "salmon"   ? SALMON_PIXELS
+                : item.type === "tuna"     ? TUNA_PIXELS
+                : item.type === "milk"     ? MILK_PIXELS
                 : item.type === "candy"    ? CANDY_PIXELS
                 : item.type === "cookie"   ? COOKIE_PIXELS
                 : item.type === "biscuit"  ? BISCUIT_BONE_PIXELS : BONE_PIXELS;
@@ -3579,6 +3881,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
               spriteCtx.fillStyle = cell === 1 ? "#e07050"
                                   : cell === 2 ? "#f0c8a0"
                                   :              "#a03020";
+            } else if (item.type === "tuna") {
+              spriteCtx.fillStyle = cell === 1 ? "#A8B0B8"
+                                  : cell === 2 ? "#2F6FB5"
+                                  :              "#E8A0A0";
+            } else if (item.type === "milk") {
+              spriteCtx.fillStyle = cell === 2 ? "#FFFFFF" : "#7FA7C9";
             } else if (item.type === "candy") {
               spriteCtx.fillStyle = cell === 2 ? "#FFE0E0" : "#FF6B9D";
             } else if (item.type === "cookie") {

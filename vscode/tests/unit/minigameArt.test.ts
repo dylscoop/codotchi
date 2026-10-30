@@ -269,7 +269,7 @@ describe("mini-game overlay in sidebar.js", () => {
   it("the kangaroos box instead of Left / Right, on the pet's own stage", () => {
     assert.ok(sidebarSource.includes('return !!(state && state.spriteType === "kangaroo");'));
     assert.ok(sidebarSource.includes("else if (playsBoxing(lastState)) { startBoxingGame(); }"));
-    assert.ok(sidebarSource.includes('playsBoxing(state) ? "Boxing" : "Left / Right"'));
+    assert.ok(sidebarSource.includes('playsBoxing(state) ? "Boxing"'));
     assert.ok(sidebarSource.includes("mgArt.boxingRoundWon(choice, oppMove, Math.random)"));
     assert.ok(sidebarSource.includes('if (game.kind === "boxing") {'));
     assert.ok(sidebarSource.includes("drawBoxingStage(game, box, nowMs, floorY);"));
@@ -285,6 +285,77 @@ describe("mini-game overlay in sidebar.js", () => {
     for (const id of ["mg-boxing", "btn-box-jab", "btn-box-dodge", "box-feedback", "box-score"]) {
       assert.ok(html.includes(`id="${id}"`), `sidebar.html lacks #${id}`);
     }
+  });
+
+  it("the cat chases a laser dot instead of Left / Right, on the pet's own stage", () => {
+    assert.ok(sidebarSource.includes('return !!(state && state.spriteType === "cat");'));
+    assert.ok(sidebarSource.includes("else if (playsLaser(lastState)) { startLaserGame(); }"));
+    assert.ok(sidebarSource.includes('playsLaser(state) ? "Laser Pointer" : "Left / Right"'));
+    assert.ok(sidebarSource.includes("if (!mgArt || REDUCED_MOTION) { startLeftRightGame(); return; }"), "reduced motion keeps Left / Right");
+    assert.ok(sidebarSource.includes('if (game.kind === "laser") {'));
+    assert.ok(sidebarSource.includes("mgArt.drawLaserDot(spriteCtx, dotX, dotY, dpx, nowMs, Math.round(spriteCanvas.width * 0.85));"), "pulsing dot with a beam");
+    assert.ok(sidebarSource.includes("var caught = !tooSlow && mgArt.laserCaught(dotX, laserCatX, stageGame.window * W);"), "caught around the cat, not the stage middle");
+    assert.ok(sidebarSource.includes("laserHomeX = petX;"), "plays from where it stands");
+    assert.ok(sidebarSource.includes("laserCatX = lHome + bWidth / 2;"));
+    assert.ok(sidebarSource.includes("petY  = floorY + Math.round(sgPose.dy || 0);"), "the pounce leaves the floor");
+    assert.ok(sidebarSource.includes('"minigame_laser_win":'));
+    assert.ok(sidebarSource.includes('"minigame_laser_lose":'));
+    assert.ok(sidebarSource.includes("left: padBack ? game.dotAt > laserCatX : game.dotAt < laserCatX,"), "turns round to pad back");
+    assert.match(sidebarSource, /function mgClear\(\) \{[\s\S]*?if \(stageGame\) \{ petVx = 0; \}\s*stageGame = null;/,
+                 "a game's last step does not carry into the wander (no walking backwards)");
+    const body = /function endLaserGame\(\) \{([\s\S]*?)\n  \}/.exec(sidebarSource);
+    assert.ok(body && body[1].includes("mgClear()"), "endLaserGame does not clear the game");
+    assert.ok(body[1].includes('var result = laserCatches >= mgArt.LASER_WINS_NEEDED ? "win" : "lose";'));
+    assert.ok(body[1].includes('sendPlayResult("laser", result)'));
+    const html = fs.readFileSync(path.join(media, "sidebar.html"), "utf8");
+    for (const id of ["mg-laser", "btn-laser-pounce", "laser-feedback", "laser-score"]) {
+      assert.ok(html.includes(`id="${id}"`), `sidebar.html lacks #${id}`);
+    }
+  });
+
+  it("Laser Pointer: three tries, first to two, each quicker with a narrower window", () => {
+    const art = loadArt();
+    assert.equal(art.LASER_ROUNDS, 3);
+    assert.equal(art.LASER_WINS_NEEDED, 2);
+    const tries = [0, 1, 2].map((r) => art.laserRound(r, () => 0.5));
+    for (let r = 1; r < 3; r++) {
+      assert.ok(tries[r].speed > tries[r - 1].speed, "quicker");
+      assert.ok(tries[r].window < tries[r - 1].window, "narrower");
+    }
+    // Catchable by timing: the window spans a few frames even on the last try
+    const W = 300, last = tries[2];
+    const msInWindow = (2 * last.window * W) / (2 * Math.PI * last.speed * 0.4 * W) * 1000;
+    assert.ok(msInWindow > 80, `only ${msInWindow.toFixed(0)} ms to pounce`);
+  });
+
+  it("the dot sweeps across the middle of the stage and a pounce catches it near the cat", () => {
+    const art = loadArt();
+    const xs = Array.from({ length: 200 }, (_, i) => art.laserDotX(i * 25, 0.4, 300, 0));
+    assert.ok(Math.min(...xs) >= 30 - 1e-9 && Math.max(...xs) <= 270 + 1e-9);
+    assert.ok(Math.min(...xs) < 40 && Math.max(...xs) > 260, "reaches both sides");
+    assert.equal(art.laserDotX(0, 0.4, 300, 0), 150);
+    assert.ok(art.laserCaught(160, 150, 12));
+    assert.ok(!art.laserCaught(170, 150, 12));
+    assert.equal(art.laserPounceArc(0).dy, -0);
+    assert.ok(Math.abs(art.laserPounceArc(0.5).dy + 1) < 1e-9);
+    assert.equal(art.laserPounceArc(2).f, 1);
+  });
+
+  it("draws a big, outlined, pulsing laser dot, with a beam only when asked", () => {
+    const art = loadArt();
+    const p = mockCtx();
+    art.drawLaserDot(p.ctx, 50, 50, 3, 0);
+    assert.ok(p.styles.includes("#ff1a1a"), "red core");
+    assert.ok(p.styles.includes("#ffffff"), "white-hot centre");
+    assert.ok(p.styles.includes("#4a0000"), "dark outline shows on bright skies");
+    assert.ok(p.styles.includes("#ff4040"), "glow");
+    assert.ok(!p.calls.stroke, "no beam");
+    assert.ok(art.LASER_DOT_SIZE >= 7, "at least 7 art pixels across");
+    const beam = mockCtx();
+    art.drawLaserDot(beam.ctx, 50, 50, 3, 0, 200);
+    assert.equal(beam.calls.stroke, 1);
+    const glows = Array.from({ length: 100 }, (_, i) => art.laserGlow(i * 20));
+    assert.ok(Math.min(...glows) >= 0.3 && Math.max(...glows) <= 0.8 && Math.max(...glows) - Math.min(...glows) > 0.3, "pulses");
   });
 
   it("scores Tug-of-War from the dog's side, so the pet gets the reward when it wins", () => {
@@ -451,5 +522,67 @@ describe("minigameArt boxing (the kangaroos' Left / Right)", () => {
     art.drawPow(p.ctx, 50, 50, 2);
     assert.ok(p.styles.includes(art.COLOURS.gold));
     assert.ok(p.styles.includes(art.COLOURS.bad));
+  });
+});
+
+describe("the cat's gift run and cat-tree climb (minigameArt.js + sidebar.js)", () => {
+  const art = loadArt();
+  const src = sidebarSource.replace(/\r\n/g, "\n");
+
+  it("runs out, back and drops the gift; walks, climbs up and sits on the perch", () => {
+    const run = (p: string | null): string[] => (p ? [p, ...run(art.catNextPhase(p))] : []);
+    assert.deepEqual(run("out"), ["out", "back", "drop"]);
+    assert.deepEqual(run("walk"), ["walk", "up", "perch"]);
+    assert.equal(art.catNextPhase("toString"), null);
+  });
+
+  it("stepToward moves at most one step and says when it has arrived", () => {
+    const plain = (o: unknown): unknown => JSON.parse(JSON.stringify(o));
+    assert.deepEqual(plain(art.stepToward(0, 10, 4)), { x: 4, arrived: false });
+    assert.deepEqual(plain(art.stepToward(10, 0, 4)), { x: 6, arrived: false });
+    assert.deepEqual(plain(art.stepToward(8, 10, 4)), { x: 10, arrived: true });
+  });
+
+  it("holds the gift at the front of its head", () => {
+    const b = { left: 10, right: 70, top: 20, bottom: 80 };
+    assert.deepEqual(JSON.parse(JSON.stringify(art.catMouth(b, false))), { x: 70, y: 41 });
+    assert.equal(art.catMouth(b, true).x, 10);
+  });
+
+  it("draws a grey mouse or a brown bird, mirrored when facing right", () => {
+    const mouse = mockCtx();
+    art.drawCatGift(mouse.ctx, "mouse", 0, 0, 2, false);
+    assert.ok(mouse.styles.includes("#9a9aa4") && mouse.styles.includes("#f0a0b0"));
+    const bird = mockCtx();
+    art.drawCatGift(bird.ctx, "bird", 0, 0, 2, false);
+    assert.ok(bird.styles.includes("#8a5a3a") && bird.styles.includes("#f0a030"));
+    assert.deepEqual(art.catGiftSize("unknown"), art.catGiftSize("mouse"));
+    // The mouse's pink nose is at the far left facing left, the far right facing right
+    const rects = (right: boolean): Array<[string, number]> => {
+      const out: Array<[string, number]> = [];
+      let style = "";
+      const ctx = { set fillStyle(v: string) { style = v; }, fillRect: (x: number) => { out.push([style, x]); } };
+      art.drawCatGift(ctx, "mouse", 0, 0, 1, right);
+      return out;
+    };
+    const w = art.catGiftSize("mouse").w;
+    assert.ok(rects(false).some(([s, x]) => s === "#f0a0b0" && x === 0));
+    assert.ok(rects(true).some(([s, x]) => s === "#f0a0b0" && x === w - 1));
+  });
+
+  it("starts a gift run when a cat's gift call fires, unless it can't move", () => {
+    assert.ok(src.includes('if (state.spriteType === "cat" && state.stage !== "egg" && !state.sleeping && !stageGame && !REDUCED_MOTION) {\n        catErrand = { kind: "gift", phase: "out"'));
+    assert.ok(src.includes('if (catErrand && catErrand.kind === "gift") { catErrand.cancelled = true; }'), "answered early: back empty-mouthed");
+    assert.ok(src.includes("if (!isCarryingGift()) {"), "the floor gift waits for the drop");
+    assert.ok(src.includes("giftBoxX = Math.max(0, carriedGiftBox(ceB, nowMs).x);"), "left where it was dropped");
+  });
+
+  it("climbs only as an energetic, awake teen or adult cat and gets down for anything else", () => {
+    assert.match(src, /function wantsToClimb\(state\) \{\n\s*return !!\(state && state\.spriteType === "cat" && \(state\.stage === "teen" \|\| state\.stage === "adult"\) &&\n\s*!state\.sleeping && !state\.sick && \(state\.energy \|\| 0\) >= mgArt\.CAT_CLIMB_MIN_ENERGY && !REDUCED_MOTION\);/);
+    assert.ok(src.includes("Math.random() < dt / mgArt.CAT_CLIMB_EVERY_S"));
+    assert.ok(src.includes("climbTree.y - climbB.bottom + climbB.top >= 0"), "only if the cat fits under the top of the stage");
+    assert.ok(src.includes("(!wantsToClimb(lastState) || !catTreeNow(lastState) || stageGame || snackItems.length > 0 ||"));
+    assert.ok(src.indexOf("} else if (catErrand) {") < src.indexOf("} else if (lastState.sleeping) {"));
+    assert.ok(art.CAT_PERCH_MS >= 3000 && art.CAT_CLIMB_EVERY_S >= 30);
   });
 });

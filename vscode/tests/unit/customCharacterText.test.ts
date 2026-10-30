@@ -309,6 +309,51 @@ describe("dog voice, snacks and break bone", () => {
   });
 });
 
+describe("cat voice and gifts", () => {
+  const cat = CUSTOM_CHARACTERS.find((c) => c.spriteType === "cat")!;
+
+  it("brings a mouse or a bird, each with a smug and a proud-hunter line", () => {
+    assert.equal(cat.giftMessage, undefined);
+    assert.deepEqual([...new Set(cat.gifts!.map((g) => g.kind))], ["mouse", "bird"]);
+    assert.equal(cat.gifts!.length, 4);
+    assert.ok(cat.gifts!.every((g) => !!g.praiseBubble), "every gift has its own praise reply");
+  });
+
+  it("demands chin scratches, sulks when ignored, craves tuna or milk and takes a catnap", () => {
+    assert.equal(attentionCallLine(makePet("cat", { activeAttentionCall: "pat" })), "⚠ Pixel demands chin scratches.");
+    assert.equal(cat.ignoredBubble, "Hmph. Fine.");
+    assert.deepEqual(cat.snackCravings, ["some tuna", "a saucer of milk"]);
+    assert.equal(cat.breakNap!.button, "Catnap");
+    assert.equal(cat.breakNap!.call, "__Name__ wants a catnap! You've been coding for 30 minutes.");
+  });
+
+  it("picks one of its gifts per call and sends the kind to the webview", () => {
+    giftFor(makePet("cat"));
+    assert.equal(giftFor(makePet("cat", { activeAttentionCall: "gift" }), () => 0.99)?.kind, "bird");
+    giftFor(makePet("cat"));
+    assert.equal(giftFor(makePet("cat", { activeAttentionCall: "gift" }), () => 0)?.kind, "mouse");
+    assert.ok(read("pycharm/src/main/kotlin/com/codotchi/GiftItem.kt").includes('"kind":${jsonStringOrNull(gift.kind)}'));
+  });
+
+  it("uses the same text in the webview and PyCharm registries", () => {
+    const js = read("vscode/media/customCharacters.js");
+    const kt = read("pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt");
+    const strings = [...cat.patBubbles, ...Object.values(cat.patCall!), ...cat.snackCravings!,
+                     ...cat.gifts!.flatMap((g) => [g.message, g.praiseBubble!]),
+                     cat.ignoredBubble!, cat.breakNap!.call!, cat.breakNap!.noWake, cat.breakNap!.over];
+    for (const s of strings) {
+      assert.ok(js.includes(`"${s}"`), `customCharacters.js lacks ${s}`);
+      assert.ok(kt.includes(`"${s}"`), `CustomCharacters.kt lacks ${s}`);
+    }
+    for (const g of cat.gifts!) {
+      assert.ok(js.includes(`kind: "${g.kind}",`) && kt.includes(`kind = "${g.kind}"`));
+    }
+    assert.ok(js.includes('{ label: "some tuna",        item: "tuna" }'));
+    assert.ok(js.includes('{ label: "a saucer of milk", item: "milk" }'));
+    assert.ok(js.includes('button:  "Catnap"') && kt.includes('button  = "Catnap"'));
+  });
+});
+
 describe("break reminder text", () => {
   it("just says it's time for a break — no praise instructions", () => {
     for (const p of ["vscode/src/extension.ts", "vscode/media/sidebar.js", "pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt"]) {

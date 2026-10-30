@@ -1,6 +1,24 @@
 # Version History
 
-## v2.33.4 - current
+## v2.33.5 - current
+
+### Changes from v2.33.4 (cat actions - branch feat/cat-actions)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/.../CustomCharacters.kt` | cat: `gifts` (a mouse or a bird, each with a smug and a proud-hunter line and its own praise reply), "demands chin scratches" `patCall`, "Hmph. Fine." `ignoredBubble`, tuna / saucer-of-milk `snackCravings`, catnap `breakNap`; new optional gift `kind` (what the stage draws) |
+| `pycharm/.../GiftItem.kt` | `giftJson` sends `kind` |
+| `vscode/media/sidebar.js` | cat gift run (`catErrand` "out" → "back" → "drop": trots off the nearer edge, comes back with the gift in its mouth, drops it on the floor; back empty-mouthed if the call ends early); cat-tree climb (`wantsToClimb`, "walk" → "up" → "perch", gets down for anything else); Laser Pointer (`playsLaser`, `startLaserGame`, `handleLaserPounce`, `endLaserGame`, `laserDotNow`; stage-game poses can leave the floor via `dy`); tuna and milk floor snacks |
+| `vscode/media/minigameArt.js` | cat errand helpers (`catNextPhase`, `stepToward`, `catMouth`), mouse and bird art (`drawCatGift`), laser helpers (`laserRound`, `laserDotX`, `laserCaught`, `laserPounceArc`, `drawLaserDot`: a 7×7 dot with a dark outline, pulsing glow (`laserGlow`) and an optional beam from the top of the stage) |
+| `vscode/media/backgroundArt.js` | `catTreeBox` / `drawCatTree`: with `opts.catTree` the edge tree becomes a cat tree (no falling leaves from it) |
+| `vscode/media/sidebar.html` | `#mg-laser` panel |
+| every `gameEngine.ts` copy, `pycharm/.../engine/GameEngine.kt` | `minigameStatsKey("laser") = "left_right"` |
+| tests | cat text and registry parity, gift kinds, cat tree layout and drawing, errand and laser helpers and wiring, laser engine rewards (TS and Kotlin), `#mg-laser` in PyCharm |
+| all manifests, `README.md`, docs | version 2.33.5; FEATURES, DEV_NOTES, CHANGELOG |
+
+**New constants (minigameArt.js):** `CAT_TROT_PPS` 110 · `CAT_DROP_MS` 600 · `CAT_CLIMB_PPS` 45 · `CAT_PERCH_MS` 6000 · `CAT_CLIMB_EVERY_S` 90 · `CAT_CLIMB_MIN_ENERGY` 60 · `CAT_GIFT_PX` 3 · `LASER_ROUNDS` 3 · `LASER_WINS_NEEDED` 2 · `LASER_POUNCE_MS` 500 · `LASER_ROUND_MS` 10 000
+
+## v2.33.4
 
 ### Changes from v2.33.3 (PyCharm balloons auto-hide - branch fix/pycharm-notification-timeout)
 

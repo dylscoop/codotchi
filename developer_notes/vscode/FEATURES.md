@@ -290,6 +290,18 @@ Status: `[ ]`
   per stage), so gloves sit on the paws and moves scale with the sprite
   (`boxingPx`, `boxingHomes`, `boxingPaw`, `boxingPose`). Reduced motion
   shows the bout without lunges or hops.
+- **The cat plays Laser Pointer instead of Left / Right** (v2.33.5): a red dot
+  (7×7 art pixels: dark outline, pulsing glow, white-hot centre, with a faint
+  beam from the top of the stage, `drawLaserDot`) sweeps back and forth along
+  the floor of the pet's stage
+  (`minigameArt.laserDotX`) while the cat watches from wherever it was standing
+  (`laserHomeX`, no jump to the middle). **Pounce!**
+  catches it if the dot is within the try's window of the cat's middle
+  (`laserCaught`); a catch pins the dot under the paw with a POW, a miss sends
+  it zipping off. Three tries, first to 2 catches; each try is quicker with a
+  narrower window (`laserRound`), and an untouched dot wanders off after
+  `LASER_ROUND_MS` (10 s). Game id `laser`, with Left / Right's rewards and
+  extra weight loss. Reduced motion keeps the plain Left / Right.
 - v2.22.2: a pixel-art coin (crown for heads, "T" for tails) tosses and spins
   for about 0.8 s before landing on the result; reduced motion shows the result
   straight away.
@@ -372,6 +384,7 @@ that fires when Play is pressed. Net totals reflect delta + baseline.
 | Fetch (dog) | Win / Lose | as Coin Flip | +15 / +5 | `minigameStatsKey("fetch") = "coin_flip"` |
 | Tug-of-War (dog) | Win / Lose | as Left / Right | +20–+30 / +10 | `minigameStatsKey("tug_of_war") = "left_right"` |
 | Boxing (kangaroo) | Win / Lose | as Left / Right | +20–+30 / +10 | `minigameStatsKey("boxing") = "left_right"` |
+| Laser Pointer (cat) | Win / Lose | as Left / Right | +20–+30 / +10 | `minigameStatsKey("laser") = "left_right"` |
 | Boss Battle | Win | +10 | +25 | `MINIGAME_BOSS_BATTLE_WIN = 10` |
 | Boss Battle | Lose | −5 | +10 | `MINIGAME_BOSS_BATTLE_LOSE = -5` |
 | Pat | — | +10 (flat total) | +10 | `PAT_HAPPINESS_BOOST = 10` (no play baseline) |
@@ -941,4 +954,5 @@ Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharac
 |------|----------|------------|----------|-------|
 | Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 10 snacks | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" (sticker binder or pack) instead of a pat; craves a pint or salmon; Blackjack instead of Coin Flip |
 | Skippy | `straya` | `kangaroo` | default | Applies to every kangaroo: Boxing instead of Left / Right; Bounce (three big hops, no hand or hearts) as its pat; Aussie voice: a beer or some Tim Tams as its gift (`gifts`, picked per call by `giftFor`; praising the Tim Tams gets "These are better than Penguins!"), "keen as for a bounce" pat call, "Yeah, nah… fair enough." when ignored, and smoko for its break (`breakNap` with a custom `call`, a Bunnings snag and a "Smoko" button). v2.33.2: it hops off the stage for the break and back in after, leaving a "Gone for smoko 🚬" / "Off to Bunnings for a snag 🌭" bubble (`breakNap.bubbles`, `isOnSmoko`) |
+| Any cat | `blackcat` | `cat` | default | Applies to every cat (v2.33.5): Laser Pointer instead of Left / Right; a mouse or a bird as its gift (`gifts` with `kind`, a smug or proud-hunter line each), fetched on stage: it trots off, comes back with the gift in its mouth and drops it (`catErrand`); a cat tree in place of the edge tree on the scenic background, which an awake teen or adult cat at energy ≥ 60 climbs about every 90 s, perching for 6 s (only if it fits under the top of the stage); "demands chin scratches" pat call, "Hmph. Fine." when ignored, tuna / saucer-of-milk cravings and snacks, catnap break |
 | Shibagotchi / any dog | `shiba` | `dog` | default | Applies to every dog: Fetch and Tug-of-War instead of Coin Flip and Left / Right; biscuit-bone snacks and a meaty-bone meal; a ball as its gift (opens Fetch); pat bubbles; whimpers when ignored (`ignoredBubble`); wags when happy and chases its tail at energy ≥ 70; chews a shrinking big bone through the break nap (`breakNap`) |
