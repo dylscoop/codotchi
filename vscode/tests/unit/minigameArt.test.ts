@@ -298,6 +298,9 @@ describe("mini-game overlay in sidebar.js", () => {
     assert.ok(sidebarSource.includes("petY  = floorY + Math.round(sgPose.dy || 0);"), "the pounce leaves the floor");
     assert.ok(sidebarSource.includes('"minigame_laser_win":'));
     assert.ok(sidebarSource.includes('"minigame_laser_lose":'));
+    assert.ok(sidebarSource.includes("left: padBack ? game.dotAt > W / 2 : game.dotAt < W / 2,"), "turns round to pad back");
+    assert.match(sidebarSource, /function mgClear\(\) \{[\s\S]*?if \(stageGame\) \{ petVx = 0; \}\s*stageGame = null;/,
+                 "a game's last step does not carry into the wander (no walking backwards)");
     const body = /function endLaserGame\(\) \{([\s\S]*?)\n  \}/.exec(sidebarSource);
     assert.ok(body && body[1].includes("mgClear()"), "endLaserGame does not clear the game");
     assert.ok(body[1].includes('var result = laserCatches >= mgArt.LASER_WINS_NEEDED ? "win" : "lose";'));

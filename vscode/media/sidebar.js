@@ -544,6 +544,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (bjTimer !== null) { clearTimeout(bjTimer); bjTimer = null; }
     if (bossTimer !== null) { clearTimeout(bossTimer); bossTimer = null; }
     lrReveal = null;
+    // A stage game's last step must not carry into the wander, or the pet
+    // walks on in that direction facing the way the game left it (backwards)
+    if (stageGame) { petVx = 0; }
     stageGame = null;
     if (mgCtx) { mgCtx.clearRect(0, 0, mgCanvas.width, mgCanvas.height); }
     if (mgCanvas) { mgCanvas.classList.add("hidden"); }
@@ -1527,7 +1530,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       var arc   = mgArt.laserPounceArc(lMs / mgArt.LASER_POUNCE_MS);
       var reach = (game.dotAt - W / 2) * (game.caught ? 1 : 0.6);
       var back  = Math.max(0, Math.min(1, (lMs - mgArt.LASER_POUNCE_MS - 500) / 400));
-      return { x: Math.max(minX, Math.min(maxX, lHome + reach * arc.f * (1 - back))), left: game.dotAt < W / 2,
+      // Faces the dot for the pounce, then turns round to pad back to the middle
+      var padBack = back > 0 && reach !== 0;
+      return { x: Math.max(minX, Math.min(maxX, lHome + reach * arc.f * (1 - back))),
+               left: padBack ? game.dotAt > W / 2 : game.dotAt < W / 2,
                ball: false, moving: back > 0 && back < 1, done: false, dy: arc.dy * bWidth * 0.3 };
     }
     if (game.kind === "boxing") {
