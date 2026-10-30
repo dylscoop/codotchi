@@ -293,7 +293,7 @@ describe("mini-game overlay in sidebar.js", () => {
     assert.ok(sidebarSource.includes('playsLaser(state) ? "Laser Pointer" : "Left / Right"'));
     assert.ok(sidebarSource.includes("if (!mgArt || REDUCED_MOTION) { startLeftRightGame(); return; }"), "reduced motion keeps Left / Right");
     assert.ok(sidebarSource.includes('if (game.kind === "laser") {'));
-    assert.ok(sidebarSource.includes("mgArt.drawLaserDot(spriteCtx, dotX, dotY, dpx);"));
+    assert.ok(sidebarSource.includes("mgArt.drawLaserDot(spriteCtx, dotX, dotY, dpx, nowMs, Math.round(spriteCanvas.width * 0.85));"), "pulsing dot with a beam");
     assert.ok(sidebarSource.includes("var caught = !tooSlow && mgArt.laserCaught(dotX, W / 2, stageGame.window * W);"));
     assert.ok(sidebarSource.includes("petY  = floorY + Math.round(sgPose.dy || 0);"), "the pounce leaves the floor");
     assert.ok(sidebarSource.includes('"minigame_laser_win":'));
@@ -336,12 +336,21 @@ describe("mini-game overlay in sidebar.js", () => {
     assert.equal(art.laserPounceArc(2).f, 1);
   });
 
-  it("draws a red laser dot with a glow", () => {
+  it("draws a big, outlined, pulsing laser dot, with a beam only when asked", () => {
     const art = loadArt();
     const p = mockCtx();
-    art.drawLaserDot(p.ctx, 50, 50, 2);
-    assert.ok(p.styles.includes("#ff2a2a"));
-    assert.ok(p.styles.includes(art.COLOURS.bad));
+    art.drawLaserDot(p.ctx, 50, 50, 3, 0);
+    assert.ok(p.styles.includes("#ff1a1a"), "red core");
+    assert.ok(p.styles.includes("#ffffff"), "white-hot centre");
+    assert.ok(p.styles.includes("#4a0000"), "dark outline shows on bright skies");
+    assert.ok(p.styles.includes("#ff4040"), "glow");
+    assert.ok(!p.calls.stroke, "no beam");
+    assert.ok(art.LASER_DOT_SIZE >= 7, "at least 7 art pixels across");
+    const beam = mockCtx();
+    art.drawLaserDot(beam.ctx, 50, 50, 3, 0, 200);
+    assert.equal(beam.calls.stroke, 1);
+    const glows = Array.from({ length: 100 }, (_, i) => art.laserGlow(i * 20));
+    assert.ok(Math.min(...glows) >= 0.3 && Math.max(...glows) <= 0.8 && Math.max(...glows) - Math.min(...glows) > 0.3, "pulses");
   });
 
   it("scores Tug-of-War from the dog's side, so the pet gets the reward when it wins", () => {

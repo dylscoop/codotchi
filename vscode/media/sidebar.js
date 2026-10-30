@@ -1581,13 +1581,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     } else if (game.kind === "boxing") {
       drawBoxingStage(game, box, nowMs, floorY);
     } else if (game.kind === "laser") {
-      // The dot on the floor (over the paw once caught), and a POW for a catch
+      // The dot on the floor (over the paw once caught), with a faint beam from
+      // the pointer up at the top of the stage, and a POW for a catch
       var dpx  = Math.max(2, Math.round(box.w / 28));
       var dotX = laserDotNow(game, nowMs);
-      var dotY = spriteCanvas.height - 12 - dpx;
-      mgArt.drawLaserDot(spriteCtx, dotX, dotY, dpx);
+      var dotY = spriteCanvas.height - 12 - Math.round(mgArt.LASER_DOT_SIZE * dpx / 2) + dpx;
+      mgArt.drawLaserDot(spriteCtx, dotX, dotY, dpx, nowMs, Math.round(spriteCanvas.width * 0.85));
       if (game.phase === "pounce" && game.caught && nowMs - game.pounceMs >= mgArt.LASER_POUNCE_MS) {
-        mgArt.drawPow(spriteCtx, dotX, dotY - 3 * dpx, dpx);
+        mgArt.drawPow(spriteCtx, dotX, dotY - 5 * dpx, dpx);
       }
     }
   }

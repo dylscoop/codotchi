@@ -291,7 +291,9 @@ Status: `[ ]`
   (`boxingPx`, `boxingHomes`, `boxingPaw`, `boxingPose`). Reduced motion
   shows the bout without lunges or hops.
 - **The cat plays Laser Pointer instead of Left / Right** (v2.33.5): a red dot
-  sweeps back and forth along the floor of the pet's stage
+  (7×7 art pixels: dark outline, pulsing glow, white-hot centre, with a faint
+  beam from the top of the stage, `drawLaserDot`) sweeps back and forth along
+  the floor of the pet's stage
   (`minigameArt.laserDotX`) while the cat watches from the middle. **Pounce!**
   catches it if the dot is within the try's window of the cat's middle
   (`laserCaught`); a catch pins the dot under the paw with a POW, a miss sends

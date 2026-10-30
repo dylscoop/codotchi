@@ -846,19 +846,60 @@
     return { f: t, dy: -Math.sin(t * Math.PI) };
   }
 
-  /** The laser dot centred on (cx, cy): a soft red glow round a bright core. */
-  function drawLaserDot(ctx, cx, cy, px) {
-    var x = Math.round(cx - px), y = Math.round(cy - px);
+  // The dot, 7×7 art pixels: g = glow, o = dark outline, r = red core, w = hot white centre
+  var LASER_DOT = [
+    "..ggg..",
+    ".gooog.",
+    "gorrrog",
+    "gorwrog",
+    "gorrrog",
+    ".gooog.",
+    "..ggg..",
+  ];
+  var LASER_DOT_SIZE = LASER_DOT.length;
+
+  /** How bright the glow is at t ms: a quick pulse between 0.35 and 0.75. */
+  function laserGlow(t) {
+    return 0.55 + 0.2 * Math.sin((t || 0) / 90);
+  }
+
+  /**
+   * The laser dot centred on (cx, cy): a pulsing glow, a dark outline so it
+   * shows on any sky or ground, a red core and a white-hot centre. With beamX,
+   * a faint beam runs to it from (beamX, 0), where you hold the pointer.
+   */
+  function drawLaserDot(ctx, cx, cy, px, t, beamX) {
+    var half = Math.floor(LASER_DOT_SIZE / 2);
+    var x0 = Math.round(cx - half * px - px / 2), y0 = Math.round(cy - half * px - px / 2);
+    if (typeof beamX === "number") {
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = "#ff3030";
+      ctx.lineWidth = Math.max(1, Math.round(px / 2));
+      ctx.beginPath();
+      ctx.moveTo(beamX, 0);
+      ctx.lineTo(cx, cy);
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = C.bad;
-    ctx.fillRect(x - px, y, 4 * px, 2 * px);
-    ctx.fillRect(x, y - px, 2 * px, 4 * px);
+    ctx.globalAlpha = laserGlow(t);
+    ctx.fillStyle = "#ff4040";
+    for (var gr = 0; gr < LASER_DOT_SIZE; gr++) {
+      for (var gc = 0; gc < LASER_DOT_SIZE; gc++) {
+        if (LASER_DOT[gr][gc] === "g") { ctx.fillRect(x0 + gc * px, y0 + gr * px, px, px); }
+      }
+    }
     ctx.restore();
-    ctx.fillStyle = "#ff2a2a";
-    ctx.fillRect(x, y, 2 * px, 2 * px);
-    ctx.fillStyle = "#ffd0d0";
-    ctx.fillRect(x, y, px, px);
+    var COLOURS = { o: "#4a0000", r: "#ff1a1a", w: "#ffffff" };
+    for (var r = 0; r < LASER_DOT_SIZE; r++) {
+      for (var c = 0; c < LASER_DOT_SIZE; c++) {
+        var col = COLOURS[LASER_DOT[r][c]];
+        if (!col) { continue; }
+        ctx.fillStyle = col;
+        ctx.fillRect(x0 + c * px, y0 + r * px, px, px);
+      }
+    }
   }
 
   // =========================================================================
@@ -928,6 +969,8 @@
     laserDotX:         laserDotX,
     laserCaught:       laserCaught,
     laserPounceArc:    laserPounceArc,
+    LASER_DOT_SIZE:    LASER_DOT_SIZE,
+    laserGlow:         laserGlow,
     drawLaserDot:      drawLaserDot,
   };
 }());
