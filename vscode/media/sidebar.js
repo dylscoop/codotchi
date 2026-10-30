@@ -1380,6 +1380,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   var laserTry, laserCatches, laserMisses;
+  // The cat plays from wherever it's standing: its x when the game starts, and its middle (set each frame)
+  var laserHomeX = null, laserCatX = 0;
 
   document.getElementById("btn-laser-pounce").addEventListener("click", function () { handleLaserPounce(false); });
 
@@ -1397,6 +1399,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     laserTry = 0;
     laserCatches = 0;
     laserMisses = 0;
+    laserHomeX = petX;
     showMgPanel("mg-laser");
     document.getElementById("laser-feedback").textContent = "Pounce when the dot's right under your nose!";
     startLaserTry();
@@ -1420,7 +1423,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var now = performance.now();
     var W = spriteCanvas.width;
     var dotX = mgArt.laserDotX(now - stageGame.startMs, stageGame.speed, W, stageGame.offset);
-    var caught = !tooSlow && mgArt.laserCaught(dotX, W / 2, stageGame.window * W);
+    var caught = !tooSlow && mgArt.laserCaught(dotX, laserCatX, stageGame.window * W);
     if (caught) { laserCatches++; } else { laserMisses++; }
     stageGame.phase = "pounce";
     stageGame.pounceMs = now;
@@ -1462,7 +1465,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var W = spriteCanvas.width;
     if (game.phase !== "pounce") { return mgArt.laserDotX(nowMs - game.startMs, game.speed, W, game.offset); }
     if (game.caught) { return game.dotAt; }
-    return game.dotAt + (game.dotAt < W / 2 ? -1 : 1) * (nowMs - game.pounceMs) * 0.8;
+    return game.dotAt + (game.dotAt < laserCatX ? -1 : 1) * (nowMs - game.pounceMs) * 0.8;
   }
 
   // Where the kangaroo is actually drawn inside its sprite box ({left, right,
@@ -1522,18 +1525,19 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   function stageGamePose(game, nowMs, bWidth, minX, maxX) {
     var W = spriteCanvas.width;
     if (game.kind === "laser") {
-      // The cat crouches in the middle watching the dot, pounces, then pads back
-      var lHome = Math.round((W - bWidth) / 2);
-      var lLeft = laserDotNow(game, nowMs) < W / 2;
+      // The cat crouches where it stands watching the dot, pounces, then pads back
+      var lHome = Math.max(minX, Math.min(maxX, laserHomeX === null ? Math.round((W - bWidth) / 2) : laserHomeX));
+      laserCatX = lHome + bWidth / 2;
+      var lLeft = laserDotNow(game, nowMs) < laserCatX;
       if (game.phase !== "pounce") { return { x: lHome, left: lLeft, ball: false, moving: false, done: false }; }
       var lMs   = nowMs - game.pounceMs;
       var arc   = mgArt.laserPounceArc(lMs / mgArt.LASER_POUNCE_MS);
-      var reach = (game.dotAt - W / 2) * (game.caught ? 1 : 0.6);
+      var reach = (game.dotAt - laserCatX) * (game.caught ? 1 : 0.6);
       var back  = Math.max(0, Math.min(1, (lMs - mgArt.LASER_POUNCE_MS - 500) / 400));
-      // Faces the dot for the pounce, then turns round to pad back to the middle
+      // Faces the dot for the pounce, then turns round to pad back to where it was
       var padBack = back > 0 && reach !== 0;
       return { x: Math.max(minX, Math.min(maxX, lHome + reach * arc.f * (1 - back))),
-               left: padBack ? game.dotAt > W / 2 : game.dotAt < W / 2,
+               left: padBack ? game.dotAt > laserCatX : game.dotAt < laserCatX,
                ball: false, moving: back > 0 && back < 1, done: false, dy: arc.dy * bWidth * 0.3 };
     }
     if (game.kind === "boxing") {

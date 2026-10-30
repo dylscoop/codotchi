@@ -294,7 +294,8 @@ Status: `[ ]`
   (7×7 art pixels: dark outline, pulsing glow, white-hot centre, with a faint
   beam from the top of the stage, `drawLaserDot`) sweeps back and forth along
   the floor of the pet's stage
-  (`minigameArt.laserDotX`) while the cat watches from the middle. **Pounce!**
+  (`minigameArt.laserDotX`) while the cat watches from wherever it was standing
+  (`laserHomeX`, no jump to the middle). **Pounce!**
   catches it if the dot is within the try's window of the cat's middle
   (`laserCaught`); a catch pins the dot under the paw with a POW, a miss sends
   it zipping off. Three tries, first to 2 catches; each try is quicker with a

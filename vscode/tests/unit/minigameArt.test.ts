@@ -294,11 +294,13 @@ describe("mini-game overlay in sidebar.js", () => {
     assert.ok(sidebarSource.includes("if (!mgArt || REDUCED_MOTION) { startLeftRightGame(); return; }"), "reduced motion keeps Left / Right");
     assert.ok(sidebarSource.includes('if (game.kind === "laser") {'));
     assert.ok(sidebarSource.includes("mgArt.drawLaserDot(spriteCtx, dotX, dotY, dpx, nowMs, Math.round(spriteCanvas.width * 0.85));"), "pulsing dot with a beam");
-    assert.ok(sidebarSource.includes("var caught = !tooSlow && mgArt.laserCaught(dotX, W / 2, stageGame.window * W);"));
+    assert.ok(sidebarSource.includes("var caught = !tooSlow && mgArt.laserCaught(dotX, laserCatX, stageGame.window * W);"), "caught around the cat, not the stage middle");
+    assert.ok(sidebarSource.includes("laserHomeX = petX;"), "plays from where it stands");
+    assert.ok(sidebarSource.includes("laserCatX = lHome + bWidth / 2;"));
     assert.ok(sidebarSource.includes("petY  = floorY + Math.round(sgPose.dy || 0);"), "the pounce leaves the floor");
     assert.ok(sidebarSource.includes('"minigame_laser_win":'));
     assert.ok(sidebarSource.includes('"minigame_laser_lose":'));
-    assert.ok(sidebarSource.includes("left: padBack ? game.dotAt > W / 2 : game.dotAt < W / 2,"), "turns round to pad back");
+    assert.ok(sidebarSource.includes("left: padBack ? game.dotAt > laserCatX : game.dotAt < laserCatX,"), "turns round to pad back");
     assert.match(sidebarSource, /function mgClear\(\) \{[\s\S]*?if \(stageGame\) \{ petVx = 0; \}\s*stageGame = null;/,
                  "a game's last step does not carry into the wander (no walking backwards)");
     const body = /function endLaserGame\(\) \{([\s\S]*?)\n  \}/.exec(sidebarSource);
