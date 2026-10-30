@@ -81,6 +81,8 @@ data class CustomCharacterGift(
     val message: String,
     /** Speech bubble when you praise to accept this gift (null = the usual praise lines). */
     val praiseBubble: String? = null,
+    /** What the webview draws on the floor for this gift, e.g. "mouse" (null = a gift box). */
+    val kind: String? = null,
 )
 
 /** Replacement text for the break nap (__Name__ = pet name). */
