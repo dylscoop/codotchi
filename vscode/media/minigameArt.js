@@ -765,6 +765,9 @@
              y: bounds.top + (bounds.bottom - bounds.top) * 0.35 };
   }
 
+  /** Canvas px per gift art pixel, on the floor and in the cat's mouth (the same as floor snacks). */
+  var CAT_GIFT_PX = 3;
+
   // Gifts face left; 1 = body, 2 = nose / beak / tail, 3 = eye, 4 = breast, 5 = wing
   var CAT_GIFTS = {
     mouse: { grid: [
@@ -914,6 +917,7 @@
     catNextPhase:   catNextPhase,
     stepToward:     stepToward,
     catMouth:       catMouth,
+    CAT_GIFT_PX:    CAT_GIFT_PX,
     catGiftSize:    catGiftSize,
     drawCatGift:    drawCatGift,
     LASER_ROUNDS:      LASER_ROUNDS,

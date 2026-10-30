@@ -2104,7 +2104,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
           var ceMouth = mgArt.catMouth(boxerBounds(lastState, bWidth, bHeight, catErrand.side > 0), catErrand.side > 0);
           ceTarget = (catErrand.cancelled || giftBoxX === null)
             ? (catErrand.side < 0 ? minX : maxX)
-            : giftBoxX + mgArt.catGiftSize(currentGift && currentGift.kind).w - ceMouth.x;
+            : giftBoxX + mgArt.catGiftSize(currentGift && currentGift.kind).w * mgArt.CAT_GIFT_PX / 2 - ceMouth.x;
           ceTarget = Math.max(minX, Math.min(maxX, ceTarget));
         }
         if (catErrand.phase === "drop") {
@@ -2386,7 +2386,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // The cat's mouse or bird, in its mouth on the way back
     if (catErrand && catErrand.kind === "gift" && !catErrand.cancelled && catErrand.phase !== "out") {
       var cgBox = carriedGiftBox(boxerBounds(lastState, bWidth, bHeight, petFacingLeft), nowMs);
-      mgArt.drawCatGift(spriteCtx, cgBox.kind, cgBox.x, cgBox.y, 2, !petFacingLeft);
+      mgArt.drawCatGift(spriteCtx, cgBox.kind, cgBox.x, cgBox.y, mgArt.CAT_GIFT_PX, !petFacingLeft);
     }
     if (stageGame) { drawStageGame(stageGame, moodBox, petFacingLeft, nowMs, floorY); }
     var moodPxSize = window.spriteMood.px(moodBox);
@@ -3577,16 +3577,17 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   /**
    * Where the cat's gift is drawn while it carries it: held in its mouth, then
-   * lowered to the floor through the drop. {x, y, kind}, 2 canvas px per art pixel.
+   * lowered to the floor through the drop. {x, y, kind}, CAT_GIFT_PX canvas px per art pixel.
    */
   function carriedGiftBox(bounds, nowMs) {
     var kind  = currentGift && currentGift.kind;
     var size  = mgArt.catGiftSize(kind);
     var mouth = mgArt.catMouth(bounds, petFacingLeft);
-    var x = Math.round(petX + mouth.x - size.w);
-    var y = Math.round(petY + mouth.y - size.h);
+    var gpx   = mgArt.CAT_GIFT_PX;
+    var x = Math.round(petX + mouth.x - size.w * gpx / 2);
+    var y = Math.round(petY + mouth.y - size.h * gpx / 2);
     if (catErrand && catErrand.phase === "drop") {
-      var floorTop = spriteCanvas.height - 12 - size.h * 2;
+      var floorTop = spriteCanvas.height - 12 - size.h * gpx;
       var t = Math.min(1, (nowMs - catErrand.startMs) / mgArt.CAT_DROP_MS);
       y = Math.round(y + (floorTop - y) * t);
     }
@@ -3746,7 +3747,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         // The cat's mouse or bird, once it has trotted back and dropped it
         if (!isCarryingGift()) {
           var cgKind = currentGift && currentGift.kind;
-          mgArt.drawCatGift(spriteCtx, cgKind, gbX, H - 12 - mgArt.catGiftSize(cgKind).h * 2, 2, giftFacesRight);
+          mgArt.drawCatGift(spriteCtx, cgKind, gbX, H - 12 - mgArt.catGiftSize(cgKind).h * mgArt.CAT_GIFT_PX,
+                            mgArt.CAT_GIFT_PX, giftFacesRight);
         }
       } else {
         var GIFT_PIXELS = [

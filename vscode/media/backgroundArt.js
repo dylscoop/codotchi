@@ -704,7 +704,7 @@
     if (!tree) { return null; }
     var p = L.p;
     var h = Math.round(L.gTop * 0.5 / p) * p;
-    var w = Math.max(8 * p, Math.round(h * 0.45 / p) * p);
+    var w = Math.max(12 * p, Math.round(h * 0.75 / p) * p);   // wide enough for the cat to sit on
     return { x: tree.x + tree.w - w, y: L.gTop - h, w: w, h: h, p: p };
   }
 
@@ -712,7 +712,7 @@
   function drawCatTree(ctx, box, d) {
     var c = shade(CAT_TREE, d);
     var p = box.p, x = box.x, w = box.w, gTop = box.y + box.h;
-    var postW = 3 * p, postX = x + Math.round((w - postW) / 2 / p) * p;
+    var postW = 4 * p, postX = x + Math.round((w - postW) / 2 / p) * p;
     // Post, wrapped in rope every other cell
     ctx.fillStyle = c.post;
     ctx.fillRect(postX, box.y, postW, box.h);
