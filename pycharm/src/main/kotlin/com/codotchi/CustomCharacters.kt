@@ -191,7 +191,12 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         passcode     = "blackcat",
         defaultName  = "Codotchi",
         patLabel     = "Pat",
-        giftMessage  = "__Name__ found a toy mouse!",
+        gifts        = listOf(
+            CustomCharacterGift("__Name__ left a mouse at your feet. You're welcome.", praiseBubble = "Don't say I never get you anything.", kind = "mouse"),
+            CustomCharacterGift("__Name__ caught a mouse for you!",                     praiseBubble = "I am a mighty hunter.",               kind = "mouse"),
+            CustomCharacterGift("__Name__ brought you a bird!",                         praiseBubble = "Took me all morning.",                kind = "bird"),
+            CustomCharacterGift("__Name__ proudly presents a bird!",                    praiseBubble = "Fresh from the garden.",              kind = "bird"),
+        ),
         patToasts    = CustomCharacterToasts(
             patted     = "__Name__ purred!",
             patRefused = "__Name__ is too tired for cuddles!",
@@ -201,6 +206,22 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
             "Don't stop.",
             "I will knock that off the desk.",
             "Fine. You may pet me.",
+        ),
+        patCall      = CustomCharacterPatCall(
+            call     = "__Name__ demands chin scratches.",
+            answered = "You gave __Name__ chin scratches.",
+            expired  = "__Name__ demanded chin scratches and was ignored.",
+            status   = "demands chin scratches.",
+        ),
+        snackCravings = listOf("some tuna", "a saucer of milk"),
+        ignoredBubble = "Hmph. Fine.",
+        breakNap     = CustomCharacterBreakNap(
+            call    = "__Name__ wants a catnap! You've been coding for 30 minutes.",
+            started = "__Name__ curled up in a sunbeam for a catnap ☀️",
+            noWake  = "__Name__ is catnapping. Do not disturb.",
+            over    = "__Name__ stretched and woke from the catnap. Back to work!",
+            button  = "Catnap",
+            bubbles = listOf("Zzz… sunbeam…", "Do not disturb."),
         ),
     ),
     CustomCharacter(

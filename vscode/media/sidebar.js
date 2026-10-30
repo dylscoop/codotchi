@@ -2653,6 +2653,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         type: cravedSnackType(_cc)
             || ((_cc && state.spriteType === "tim") ? "tea"
             : (_cc && state.spriteType === "stu") ? (Math.random() < 0.5 ? "guinness" : "salmon")
+            : state.spriteType === "cat" ? (Math.random() < 0.5 ? "tuna" : "milk")
             : state.spriteType === "dog" ? "biscuit"
             : (["candy", "bone", "cookie"][Math.floor(Math.random() * 3)])),
       });
@@ -3498,7 +3499,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       }
     }
 
-    // Snack items — tea mug (Tim), guinness/salmon (Stu) or candy/bone/cookie (others)
+    // Snack items — tea mug (Tim), guinness/salmon (Stu), tuna/milk (cat) or candy/bone/cookie (others)
     if (snackItems.length > 0) {
       // Tea mug: 6 cols × 6 rows at scale 2 (12×12 px)
       // 1=dark brown body, 2=steam blue-white, 3=tea amber, 4=handle
@@ -3530,6 +3531,19 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         [3,2,1,2,1,3],
         [3,3,3,3,3,3],
       ];
+      // Tin of tuna: 6 cols × 4 rows (1=tin, 2=label, 3=pink tuna)
+      var TUNA_PIXELS = [
+        [0,3,3,3,3,0],
+        [1,1,1,1,1,1],
+        [1,2,2,2,2,1],
+        [1,1,1,1,1,1],
+      ];
+      // Saucer of milk: 7 cols × 3 rows (1=saucer, 2=milk)
+      var MILK_PIXELS = [
+        [0,2,2,2,2,2,0],
+        [1,1,1,1,1,1,1],
+        [0,1,1,1,1,1,0],
+      ];
       var CANDY_PIXELS = [
         [0,1,1,0],
         [1,2,1,1],
@@ -3555,6 +3569,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         var spx = item.type === "tea"      ? TEA_MUG_PIXELS
                 : item.type === "guinness" ? GUINNESS_PIXELS
                 : item.type === "salmon"   ? SALMON_PIXELS
+                : item.type === "tuna"     ? TUNA_PIXELS
+                : item.type === "milk"     ? MILK_PIXELS
                 : item.type === "candy"    ? CANDY_PIXELS
                 : item.type === "cookie"   ? COOKIE_PIXELS
                 : item.type === "biscuit"  ? BISCUIT_BONE_PIXELS : BONE_PIXELS;
@@ -3579,6 +3595,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
               spriteCtx.fillStyle = cell === 1 ? "#e07050"
                                   : cell === 2 ? "#f0c8a0"
                                   :              "#a03020";
+            } else if (item.type === "tuna") {
+              spriteCtx.fillStyle = cell === 1 ? "#A8B0B8"
+                                  : cell === 2 ? "#2F6FB5"
+                                  :              "#E8A0A0";
+            } else if (item.type === "milk") {
+              spriteCtx.fillStyle = cell === 2 ? "#FFFFFF" : "#7FA7C9";
             } else if (item.type === "candy") {
               spriteCtx.fillStyle = cell === 2 ? "#FFE0E0" : "#FF6B9D";
             } else if (item.type === "cookie") {
