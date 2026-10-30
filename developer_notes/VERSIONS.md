@@ -1,6 +1,18 @@
 # Version History
 
-## v2.33.3 - current
+## v2.33.4 - current
+
+### Changes from v2.33.3 (PyCharm balloons auto-hide - branch fix/pycharm-notification-timeout)
+
+| File | What changed |
+|------|-------------|
+| `pycharm/.../CodotchiPlugin.kt` | new `notifyAndAutoHide`: shows the notification app-wide, then `hideBalloon()` after `NOTIFY_HIDE_MS` (10 s) on a one-shot Swing timer; used for attention-call, progression, rescue, critical-stat and the first-death leaderboard notices. The sidebar entry stays until expired (answered / expired call) |
+| `pycharm/README.md`, `vscode/README.md`, `plugin.xml` | "Calls tidy up after themselves" mentions the 10 s popup |
+| all manifests, `README.md`, docs | version 2.33.4; CHANGELOG |
+
+**New constant (CodotchiPlugin.kt):** `NOTIFY_HIDE_MS` 10 000 ms (mirrors VS Code `ATTENTION_NOTIFY_HIDE_MS`)
+
+## v2.33.3
 
 ### Changes from v2.33.2 (autumn weather - branch feature/autumn-weather)
 
