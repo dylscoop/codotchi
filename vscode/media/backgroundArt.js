@@ -687,6 +687,56 @@
     drawGrid(ctx, CANOPY, tree.x, canopyY, tp, shade(TREE_COLOURS[tree.kind], d));
   }
 
+  /** Cat tree colours: sisal post, carpeted platforms and a dangling pom-pom. */
+  var CAT_TREE = { post: "#d8c49a", rope: "#b39a68", carpet: "#8a6fb0", edge: "#5e4a80", toy: "#e85d75" };
+
+  /**
+   * Where the cat's cat tree stands: in place of the edge tree (the rightmost,
+   * or the only one when narrow), right-aligned to it and half the stage tall.
+   * {x, y, w, h, p} with y the top of the perch platform, or null where the
+   * scene has no trees ("plain").
+   */
+  function catTreeBox(mode, date, W, H) {
+    var season = getActiveSeason(mode, date);
+    if (season === "plain") { return null; }
+    var L = layout(season, W, H);
+    var tree = L.trees[L.trees.length - 1];
+    if (!tree) { return null; }
+    var p = L.p;
+    var h = Math.round(L.gTop * 0.5 / p) * p;
+    var w = Math.max(8 * p, Math.round(h * 0.45 / p) * p);
+    return { x: tree.x + tree.w - w, y: L.gTop - h, w: w, h: h, p: p };
+  }
+
+  /** Base, roped post, a lower platform toward the stage and the perch on top. */
+  function drawCatTree(ctx, box, d) {
+    var c = shade(CAT_TREE, d);
+    var p = box.p, x = box.x, w = box.w, gTop = box.y + box.h;
+    var postW = 3 * p, postX = x + Math.round((w - postW) / 2 / p) * p;
+    // Post, wrapped in rope every other cell
+    ctx.fillStyle = c.post;
+    ctx.fillRect(postX, box.y, postW, box.h);
+    ctx.fillStyle = c.rope;
+    for (var ry = box.y + 2 * p; ry < gTop - 2 * p; ry += 2 * p) { ctx.fillRect(postX, ry, postW, p); }
+    // Lower platform, sticking out toward the middle of the stage, with a toy on a string
+    var midY = box.y + Math.round(box.h * 0.5 / p) * p;
+    var midW = Math.round(w * 0.7 / p) * p;
+    ctx.fillStyle = c.carpet;
+    ctx.fillRect(x, midY, midW, 2 * p);
+    ctx.fillStyle = c.edge;
+    ctx.fillRect(x, midY + 2 * p, midW, p);
+    ctx.fillStyle = c.rope;
+    ctx.fillRect(x + p, midY + 3 * p, Math.max(1, Math.round(p / 2)), 3 * p);
+    ctx.fillStyle = c.toy;
+    ctx.fillRect(x, midY + 6 * p, 2 * p, 2 * p);
+    // Perch on top and the base on the ground
+    ctx.fillStyle = c.carpet;
+    ctx.fillRect(x, box.y, w, 2 * p);
+    ctx.fillRect(x, gTop - 2 * p, w, 2 * p);
+    ctx.fillStyle = c.edge;
+    ctx.fillRect(x, box.y + 2 * p, w, p);
+  }
+
   function drawGround(ctx, W, H, L, season, d) {
     var g = shade(GROUND[season], d);
     var p = L.p, gTop = L.gTop;
@@ -1013,7 +1063,11 @@
     drawClouds(ctx, W, L, t, d, wx.raining);
 
     var lit = lightsOn(date);
-    for (var i = 0; i < L.trees.length; i++) { drawTree(ctx, L.trees[i], L.tp, d, t, lit); }
+    // A cat gets a cat tree in place of the edge tree (the only tree when narrow)
+    var catTree = opts && opts.catTree ? catTreeBox(mode, date, W, H) : null;
+    var trees = catTree ? L.trees.slice(0, -1) : L.trees;
+    for (var i = 0; i < trees.length; i++) { drawTree(ctx, trees[i], L.tp, d, t, lit); }
+    if (catTree) { drawCatTree(ctx, catTree, d); }
     if (L.snowman) {
       drawGrid(ctx, SNOWMAN, L.snowman.x, L.snowman.y, L.pp,
                shade({ w: "#f8fbff", s: "#c8d6ea", k: "#26262e", o: "#f08a24", r: "#d83a3a", b: TRUNK }, d));
@@ -1037,8 +1091,9 @@
     }
 
     if (!animate) { return; }
-    if (season === "spring") { drawFalling(ctx, L, t, d, ["#fde2ec", "#f2b6cb"], 7000, 2); }
-    if (season === "autumn") { drawFalling(ctx, L, t, d, AUTUMN_LEAVES, wx.thunderstorm ? 5000 : 9000, wx.thunderstorm ? 5 : 3, wx.thunderstorm ? 1 : 0); }
+    var leafL = catTree ? Object.assign({}, L, { trees: trees }) : L;   // no petals off the cat tree
+    if (season === "spring") { drawFalling(ctx, leafL, t, d, ["#fde2ec", "#f2b6cb"], 7000, 2); }
+    if (season === "autumn") { drawFalling(ctx, leafL, t, d, AUTUMN_LEAVES, wx.thunderstorm ? 5000 : 9000, wx.thunderstorm ? 5 : 3, wx.thunderstorm ? 1 : 0); }
     if (wx.snowing) { drawSnow(ctx, W, L, t); }
     if (wx.raining) { drawRain(ctx, W, L, t, wx.thunderstorm); }
     drawCritters(ctx, W, L, season, t, d, wx.thunderstorm);
@@ -1333,6 +1388,7 @@
     weather:         weather,
     critter:         critter,
     layout:          layout,
+    catTreeBox:      catTreeBox,
     drawBackground:  drawBackground,
     legacyTimeOfDay: legacyTimeOfDay,
     drawLegacyBackground: drawLegacyBackground,

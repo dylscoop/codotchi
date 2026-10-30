@@ -297,6 +297,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   let smokoHopPhase = 0;     // hop bob phase (radians) while hopping off or back
   const SMOKO_HOP_PPS     = 90;    // hop speed (canvas px / s) off and back onto the stage
   const SMOKO_HOP_BOOST_MS = 5000; // full frame rate while it hops
+  // The cat's errand on the stage, or null: a gift run { kind: "gift", phase: "out"|"back"|"drop",
+  // side, startMs, cancelled } or a cat-tree climb { kind: "climb", phase: "walk"|"up"|"perch", startMs }
+  let catErrand = null;
+  let giftFacesRight = false;      // the cat's dropped gift keeps the way it was carried
 
   // Speech when a whim attention call is answered — one line picked at random.
   // Mirrored in opencode-codotchi/src/index.ts and claude-codotchi/scripts/action.mjs.
@@ -1898,6 +1902,27 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       activeReaction = reactionQueue[0];
     }
 
+    // An energetic cat now and then climbs its cat tree and sits on the perch, if it fits under the sky
+    if (!catErrand && !activeReaction && !stageGame && snackItems.length === 0 && wantsToClimb(lastState) &&
+        Math.random() < dt / mgArt.CAT_CLIMB_EVERY_S) {
+      var climbTree = catTreeNow(lastState);
+      var climbB    = boxerBounds(lastState, bWidth, bHeight, false);
+      if (climbTree && climbTree.y - climbB.bottom + climbB.top >= 0) {
+        catErrand = { kind: "climb", phase: "walk", startMs: nowMs };
+      }
+    }
+    // ...and gets down for anything else: a pat, food, a game, sleep or its gift call
+    if (catErrand && catErrand.kind === "climb" &&
+        (!wantsToClimb(lastState) || !catTreeNow(lastState) || stageGame || snackItems.length > 0 ||
+         (activeReaction && activeReaction.type !== "tail_chase"))) {
+      catErrand = null;
+    }
+    // A gift run stops for sleep or a game, back on the stage
+    if (catErrand && catErrand.kind === "gift" && (lastState.sleeping || stageGame || lastState.spriteType !== "cat")) {
+      catErrand = null;
+      petX = Math.max(minX, Math.min(maxX, petX));
+    }
+
     animTick++;
 
     // ── Movement ──────────────────────────────────────────────────────────
@@ -1946,6 +1971,75 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       petY  = floorY;
       petVx = 0;
       petVy = 0;
+
+    } else if (catErrand) {
+      // The cat's gift run or cat-tree climb, one phase after another (mgArt.catNextPhase)
+      boostAnim();
+      var ceB = boxerBounds(lastState, bWidth, bHeight, petFacingLeft);
+      var ceTarget, ceStep, ceDone = false;
+      if (catErrand.kind === "gift") {
+        if (catErrand.side === 0) { catErrand.side = (petX + bWidth / 2 < spriteCanvas.width / 2) ? -1 : 1; }
+        petY  = Math.min(floorY, petY + 240 * dt);   // off the perch first, if it was up there
+        petVy = 0;
+        if (catErrand.phase === "out") {
+          ceTarget = catErrand.side < 0 ? -bWidth - 8 : spriteCanvas.width + 8;
+        } else if (catErrand.phase === "back") {
+          // Bring the gift's middle to the spot picked for it (or just back on stage if it's gone)
+          var ceMouth = mgArt.catMouth(boxerBounds(lastState, bWidth, bHeight, catErrand.side > 0), catErrand.side > 0);
+          ceTarget = (catErrand.cancelled || giftBoxX === null)
+            ? (catErrand.side < 0 ? minX : maxX)
+            : giftBoxX + mgArt.catGiftSize(currentGift && currentGift.kind).w - ceMouth.x;
+          ceTarget = Math.max(minX, Math.min(maxX, ceTarget));
+        }
+        if (catErrand.phase === "drop") {
+          petVx  = 0;
+          ceDone = nowMs - catErrand.startMs >= mgArt.CAT_DROP_MS;
+        } else {
+          ceStep = mgArt.stepToward(petX, ceTarget, mgArt.CAT_TROT_PPS * dt);
+          petVx  = ceStep.arrived ? 0 : (ceTarget > petX ? mgArt.CAT_TROT_PPS : -mgArt.CAT_TROT_PPS);
+          if (petVx !== 0) { petFacingLeft = petVx < 0; }
+          petX   = ceStep.x;
+          ceDone = ceStep.arrived;
+        }
+        if (ceDone && catErrand.phase === "drop") {
+          // Leave it on the floor exactly where it was dropped
+          giftBoxX = Math.max(0, carriedGiftBox(ceB, nowMs).x);
+          giftFacesRight = !petFacingLeft;
+        }
+      } else {
+        var ceTree = catTreeNow(lastState);
+        var ceTreeX = Math.max(minX, Math.min(maxX, ceTree.x + ceTree.w / 2 - (ceB.left + ceB.right) / 2));
+        petVy = 0;
+        if (catErrand.phase === "walk") {
+          var walkPps = Math.max(40, getSpeedPPS(lastState));
+          ceStep = mgArt.stepToward(petX, ceTreeX, walkPps * dt);
+          petVx  = ceStep.arrived ? 0 : (ceTreeX > petX ? walkPps : -walkPps);
+          if (petVx !== 0) { petFacingLeft = petVx < 0; }
+          petX   = ceStep.x;
+          petY   = floorY;
+          ceDone = ceStep.arrived;
+        } else if (catErrand.phase === "up") {
+          petVx  = 0;
+          petX   = ceTreeX;
+          ceStep = mgArt.stepToward(petY, ceTree.y - ceB.bottom, mgArt.CAT_CLIMB_PPS * dt);
+          petY   = ceStep.x;
+          ceDone = ceStep.arrived;
+          if (ceDone) { petFacingLeft = ceTree.x + ceTree.w / 2 > spriteCanvas.width / 2; }   // look out over the stage
+        } else {
+          petVx  = 0;
+          petX   = ceTreeX;
+          petY   = ceTree.y - ceB.bottom;
+          ceDone = nowMs - catErrand.startMs >= mgArt.CAT_PERCH_MS;
+          if (ceDone) { petVy = HOP_IMPULSE * 0.5; }   // hop down; gravity takes it from here
+        }
+      }
+      if (ceDone) {
+        var nextPhase = mgArt.catNextPhase(catErrand.phase);
+        // An unwanted gift run skips the drop once it's back on stage
+        if (nextPhase === "drop" && catErrand.cancelled) { nextPhase = null; }
+        if (nextPhase) { catErrand.phase = nextPhase; catErrand.startMs = nowMs; }
+        else { catErrand = null; }
+      }
 
     } else if (isOnSmoko(lastState) || smokoSide !== 0) {
       // Skippy's smoko: hop off the nearer edge for the break, then back in
@@ -2133,7 +2227,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // Dragon floats — it has no legs, so always pass legFrame -1 (upright/neutral).
     var walking  = !isDragon && !lastState.sleeping && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
     var running  = activeReaction && activeReaction.type === "patted" && window.spritePat.runLap(lastState.spriteType, 0) !== null;
-    var legFrame = isDragon ? -1 : (walking ? Math.floor(animTick / (running ? 4 : 10)) % 2 : 0);
+    var climbing = catErrand && catErrand.kind === "climb" && catErrand.phase === "up";
+    var legFrame = isDragon ? -1 : ((walking || climbing) ? Math.floor(animTick / (running ? 4 : climbing ? 6 : 10)) % 2 : 0);
     var walkBob  = (walking && legFrame === 1) ? -1 : 0;
 
     // ── Mood layer: props, body squash, particles (window.spriteMood) ─────
@@ -2172,6 +2267,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                          window.spriteMood.scaleY(mood, moodFrame));
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
+    // The cat's mouse or bird, in its mouth on the way back
+    if (catErrand && catErrand.kind === "gift" && !catErrand.cancelled && catErrand.phase !== "out") {
+      var cgBox = carriedGiftBox(boxerBounds(lastState, bWidth, bHeight, petFacingLeft), nowMs);
+      mgArt.drawCatGift(spriteCtx, cgBox.kind, cgBox.x, cgBox.y, 2, !petFacingLeft);
+    }
     if (stageGame) { drawStageGame(stageGame, moodBox, petFacingLeft, nowMs, floorY); }
     var moodPxSize = window.spriteMood.px(moodBox);
     if (patting && window.spritePat.usesHand(lastState.spriteType)) {
@@ -2617,8 +2717,15 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         if (gx < 4) { gx = 4; }
       }
       giftBoxX = gx;
+      // The cat trots off stage, comes back with its mouse or bird and drops it there
+      if (state.spriteType === "cat" && state.stage !== "egg" && !state.sleeping && !stageGame && !REDUCED_MOTION) {
+        catErrand = { kind: "gift", phase: "out", side: 0, startMs: performance.now(), cancelled: false };
+        giftFacesRight = false;
+      }
     } else if (prevGift && !currGift) {
       giftBoxX = null;
+      // Answered or gone before it got back: just come back empty-mouthed
+      if (catErrand && catErrand.kind === "gift") { catErrand.cancelled = true; }
     }
 
     // Hand off to animation loop — it owns all drawing
@@ -3332,6 +3439,46 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     return isAwakeDog(state) && (state.energy || 0) >= TAIL_CHASE_MIN_ENERGY && !REDUCED_MOTION;
   }
 
+  /** The cat has a cat tree in place of the edge tree (scenic background only). */
+  function hasCatTree(state) {
+    return !!(state && state.spriteType === "cat" && state.stage !== "egg" && BG_STYLE !== "legacy");
+  }
+
+  /** The cat tree's box on the stage right now ({x, y, w, h, p}), or null when there is none. */
+  function catTreeNow(state) {
+    if (!hasCatTree(state) || !window.backgroundArt) { return null; }
+    return window.backgroundArt.catTreeBox(BG_MODE, new Date(), spriteCanvas.width, spriteCanvas.height);
+  }
+
+  /** An awake, well, energetic teen or adult cat climbs its cat tree now and then. */
+  function wantsToClimb(state) {
+    return !!(state && state.spriteType === "cat" && (state.stage === "teen" || state.stage === "adult") &&
+              !state.sleeping && !state.sick && (state.energy || 0) >= mgArt.CAT_CLIMB_MIN_ENERGY && !REDUCED_MOTION);
+  }
+
+  /**
+   * Where the cat's gift is drawn while it carries it: held in its mouth, then
+   * lowered to the floor through the drop. {x, y, kind}, 2 canvas px per art pixel.
+   */
+  function carriedGiftBox(bounds, nowMs) {
+    var kind  = currentGift && currentGift.kind;
+    var size  = mgArt.catGiftSize(kind);
+    var mouth = mgArt.catMouth(bounds, petFacingLeft);
+    var x = Math.round(petX + mouth.x - size.w);
+    var y = Math.round(petY + mouth.y - size.h);
+    if (catErrand && catErrand.phase === "drop") {
+      var floorTop = spriteCanvas.height - 12 - size.h * 2;
+      var t = Math.min(1, (nowMs - catErrand.startMs) / mgArt.CAT_DROP_MS);
+      y = Math.round(y + (floorTop - y) * t);
+    }
+    return { x: x, y: y, kind: kind };
+  }
+
+  /** The cat is off fetching its gift or carrying it back, so it is not on the floor yet. */
+  function isCarryingGift() {
+    return !!(catErrand && catErrand.kind === "gift" && !catErrand.cancelled);
+  }
+
   /** Skippy the kangaroo spends its break nap off the stage, on smoko. */
   function isOnSmoko(state) {
     return !!(state && state.spriteType === "kangaroo" && state.sleeping && (state.breakNapTicksRemaining || 0) > 0);
@@ -3381,7 +3528,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       window.backgroundArt.drawLegacyBackground(spriteCtx, W, H, BG_MODE, new Date(), background);
     } else if (window.backgroundArt) {
       window.backgroundArt.drawBackground(spriteCtx, W, H, BG_MODE, new Date(),
-                                          { opacity: BG_OPACITY, backdrop: background, animate: BG_ANIMATE });
+                                          { opacity: BG_OPACITY, backdrop: background, animate: BG_ANIMATE,
+                                            catTree: hasCatTree(state) });
     }
 
     // Ground line
@@ -3421,7 +3569,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       });
     }
 
-    // Gift box (big tea mug for Tim, tennis ball for the dog)
+    // Gift box (big tea mug for Tim, tennis ball for the dog, mouse or bird for the cat)
     if (giftBoxX !== null) {
       var gbX = Math.round(giftBoxX);
       var _giftCc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
@@ -3475,6 +3623,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
             spriteCtx.fillRect(gbX + rx * TBS, tbY + ry * TBS, TBS, TBS);
           });
         });
+      } else if (state && state.spriteType === "cat") {
+        // The cat's mouse or bird, once it has trotted back and dropped it
+        if (!isCarryingGift()) {
+          var cgKind = currentGift && currentGift.kind;
+          mgArt.drawCatGift(spriteCtx, cgKind, gbX, H - 12 - mgArt.catGiftSize(cgKind).h * 2, 2, giftFacesRight);
+        }
       } else {
         var GIFT_PIXELS = [
           [0,0,2,0,0,2,0,0],

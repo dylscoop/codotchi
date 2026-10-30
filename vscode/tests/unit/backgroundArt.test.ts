@@ -492,7 +492,7 @@ describe("background wiring", () => {
   });
 
   it("passes the opacity and animation settings through in both IDEs", () => {
-    assert.match(sidebarSource, /{ opacity: BG_OPACITY, backdrop: background, animate: BG_ANIMATE }/);
+    assert.match(sidebarSource, /{ opacity: BG_OPACITY, backdrop: background, animate: BG_ANIMATE,\s*catTree: hasCatTree\(state\) }/);
     assert.match(sidebarSource, /const BG_ANIMATE = !REDUCED_MOTION/);
     const html = fs.readFileSync(path.join(media, "sidebar.html"), "utf8");
     assert.match(html, /data-background-style="{{backgroundStyle}}"/);
@@ -541,5 +541,38 @@ describe("background wiring", () => {
     assert.match(vsPanel, /backgroundArt\.js/);
     const pyPanel = fs.readFileSync(path.join(root, "pycharm/src/main/kotlin/com/codotchi/SpritePreviewBrowserPanel.kt"), "utf8");
     assert.match(pyPanel, /\/webview\/backgroundArt\.js/);
+  });
+});
+
+describe("the cat's cat tree (backgroundArt.js)", () => {
+  it("stands in place of the edge tree, right-aligned to it and half the stage tall", () => {
+    const date = at(12);
+    for (const [W, H] of [[320, 180], [200, 150], [400, 240]]) {
+      const tree = art.layout("autumn", W, H).trees.slice(-1)[0];
+      const box = art.catTreeBox("autumn", date, W, H);
+      assert.equal(box.x + box.w, tree.x + tree.w);
+      assert.equal(box.y + box.h, art.groundTop(H));
+      assert.ok(Math.abs(box.h - art.groundTop(H) / 2) <= box.p, `${W}x${H} height`);
+      assert.ok(box.w >= 8 * box.p);
+    }
+  });
+
+  it("is only there when the scene has trees", () => {
+    assert.equal(art.catTreeBox("plain", at(12), 320, 180), null);
+  });
+
+  it("draws the cat tree and drops the edge tree only when asked", () => {
+    const plain = mockCtx();
+    art.drawBackground(plain.ctx, 320, 180, "summer", at(12), { opacity: 0 });
+    const cat = mockCtx();
+    art.drawBackground(cat.ctx, 320, 180, "summer", at(12), { opacity: 0, catTree: true });
+    assert.ok(!plain.styles.includes("#8a6fb0"), "no carpet without a cat");
+    assert.ok(cat.styles.includes("#8a6fb0") && cat.styles.includes("#d8c49a"), "carpet and sisal post");
+    assert.ok((cat.calls.fillRect ?? 0) < (plain.calls.fillRect ?? 0), "one leafy tree fewer");
+  });
+
+  it("sidebar.js gives the cat its tree on the scenic background", () => {
+    assert.ok(sidebarSource.includes("catTree: hasCatTree(state) });"));
+    assert.match(sidebarSource.replace(/\r\n/g, "\n"), /function hasCatTree\(state\) \{\n\s*return !!\(state && state\.spriteType === "cat" && state\.stage !== "egg" && BG_STYLE !== "legacy"\);/);
   });
 });

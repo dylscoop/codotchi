@@ -728,6 +728,85 @@
   }
 
   // =========================================================================
+  // Cat errands (the cat's gift run and its cat-tree climb, on the pet's stage)
+  // =========================================================================
+
+  /** Trot speed off stage for a gift and back, the crouch to drop it, and the climb. */
+  var CAT_TROT_PPS  = 110;
+  var CAT_DROP_MS   = 600;
+  var CAT_CLIMB_PPS = 45;
+  /** Time spent sitting on the perch before jumping down. */
+  var CAT_PERCH_MS  = 6000;
+  /** An idle cat climbs about once every CAT_CLIMB_EVERY_S seconds when it has the energy. */
+  var CAT_CLIMB_EVERY_S    = 90;
+  var CAT_CLIMB_MIN_ENERGY = 60;
+
+  /**
+   * Gift run: trot "out" off the nearer edge, come "back" carrying the gift, then
+   * "drop" it. Climb: "walk" to the cat tree, climb "up", sit on the "perch".
+   * The phase after this one, or null when the errand is over.
+   */
+  var CAT_NEXT_PHASE = { out: "back", back: "drop", drop: null, walk: "up", up: "perch", perch: null };
+
+  function catNextPhase(phase) {
+    return Object.prototype.hasOwnProperty.call(CAT_NEXT_PHASE, phase) ? CAT_NEXT_PHASE[phase] : null;
+  }
+
+  /** Move x toward target by at most step: {x, arrived}. */
+  function stepToward(x, target, step) {
+    if (Math.abs(target - x) <= step) { return { x: target, arrived: true }; }
+    return { x: x + (target > x ? step : -step), arrived: false };
+  }
+
+  /** Where the cat holds a gift in its mouth: the front of its head, from its drawn bounds. */
+  function catMouth(bounds, facingLeft) {
+    return { x: facingLeft ? bounds.left : bounds.right,
+             y: bounds.top + (bounds.bottom - bounds.top) * 0.35 };
+  }
+
+  // Gifts face left; 1 = body, 2 = nose / beak / tail, 3 = eye, 4 = breast, 5 = wing
+  var CAT_GIFTS = {
+    mouse: { grid: [
+      "001200000",
+      "011111000",
+      "213111110",
+      "011111122",
+    ], colours: { "1": "#9a9aa4", "2": "#f0a0b0", "3": "#1a1a1a" } },
+    bird: { grid: [
+      "00110000",
+      "01311000",
+      "21115550",
+      "00445511",
+    ], colours: { "1": "#8a5a3a", "2": "#f0a030", "3": "#1a1a1a", "4": "#e8b080", "5": "#5a3a22" } },
+  };
+
+  /** The art for a gift kind (anything unknown is a mouse). */
+  function catGiftArt(kind) {
+    return CAT_GIFTS[kind] || CAT_GIFTS.mouse;
+  }
+
+  /** A gift's size in art pixels: {w, h}. */
+  function catGiftSize(kind) {
+    var g = catGiftArt(kind).grid;
+    return { w: g[0].length, h: g.length };
+  }
+
+  /** A mouse or a bird with its top-left at (x, y), facing left unless facingRight. */
+  function drawCatGift(ctx, kind, x, y, px, facingRight) {
+    var art = catGiftArt(kind);
+    for (var r = 0; r < art.grid.length; r++) {
+      var row = art.grid[r];
+      for (var c = 0; c < row.length; c++) {
+        var k = row[c];
+        if (k === "0") { continue; }
+        ctx.fillStyle = art.colours[k];
+        var col = facingRight ? row.length - 1 - c : c;
+        ctx.fillRect(x + col * px, y + r * px, px, px);
+      }
+    }
+  }
+
+  // =========================================================================
   // Exports
   // =========================================================================
 
@@ -774,5 +853,16 @@
     drawBoxingGlove: drawBoxingGlove,
     POW_SIZE:       POW_SIZE,
     drawPow:        drawPow,
+    CAT_TROT_PPS:   CAT_TROT_PPS,
+    CAT_DROP_MS:    CAT_DROP_MS,
+    CAT_CLIMB_PPS:  CAT_CLIMB_PPS,
+    CAT_PERCH_MS:   CAT_PERCH_MS,
+    CAT_CLIMB_EVERY_S:    CAT_CLIMB_EVERY_S,
+    CAT_CLIMB_MIN_ENERGY: CAT_CLIMB_MIN_ENERGY,
+    catNextPhase:   catNextPhase,
+    stepToward:     stepToward,
+    catMouth:       catMouth,
+    catGiftSize:    catGiftSize,
+    drawCatGift:    drawCatGift,
   };
 }());

@@ -453,3 +453,65 @@ describe("minigameArt boxing (the kangaroos' Left / Right)", () => {
     assert.ok(p.styles.includes(art.COLOURS.bad));
   });
 });
+
+describe("the cat's gift run and cat-tree climb (minigameArt.js + sidebar.js)", () => {
+  const art = loadArt();
+  const src = sidebarSource.replace(/\r\n/g, "\n");
+
+  it("runs out, back and drops the gift; walks, climbs up and sits on the perch", () => {
+    const run = (p: string | null): string[] => (p ? [p, ...run(art.catNextPhase(p))] : []);
+    assert.deepEqual(run("out"), ["out", "back", "drop"]);
+    assert.deepEqual(run("walk"), ["walk", "up", "perch"]);
+    assert.equal(art.catNextPhase("toString"), null);
+  });
+
+  it("stepToward moves at most one step and says when it has arrived", () => {
+    const plain = (o: unknown): unknown => JSON.parse(JSON.stringify(o));
+    assert.deepEqual(plain(art.stepToward(0, 10, 4)), { x: 4, arrived: false });
+    assert.deepEqual(plain(art.stepToward(10, 0, 4)), { x: 6, arrived: false });
+    assert.deepEqual(plain(art.stepToward(8, 10, 4)), { x: 10, arrived: true });
+  });
+
+  it("holds the gift at the front of its head", () => {
+    const b = { left: 10, right: 70, top: 20, bottom: 80 };
+    assert.deepEqual(JSON.parse(JSON.stringify(art.catMouth(b, false))), { x: 70, y: 41 });
+    assert.equal(art.catMouth(b, true).x, 10);
+  });
+
+  it("draws a grey mouse or a brown bird, mirrored when facing right", () => {
+    const mouse = mockCtx();
+    art.drawCatGift(mouse.ctx, "mouse", 0, 0, 2, false);
+    assert.ok(mouse.styles.includes("#9a9aa4") && mouse.styles.includes("#f0a0b0"));
+    const bird = mockCtx();
+    art.drawCatGift(bird.ctx, "bird", 0, 0, 2, false);
+    assert.ok(bird.styles.includes("#8a5a3a") && bird.styles.includes("#f0a030"));
+    assert.deepEqual(art.catGiftSize("unknown"), art.catGiftSize("mouse"));
+    // The mouse's pink nose is at the far left facing left, the far right facing right
+    const rects = (right: boolean): Array<[string, number]> => {
+      const out: Array<[string, number]> = [];
+      let style = "";
+      const ctx = { set fillStyle(v: string) { style = v; }, fillRect: (x: number) => { out.push([style, x]); } };
+      art.drawCatGift(ctx, "mouse", 0, 0, 1, right);
+      return out;
+    };
+    const w = art.catGiftSize("mouse").w;
+    assert.ok(rects(false).some(([s, x]) => s === "#f0a0b0" && x === 0));
+    assert.ok(rects(true).some(([s, x]) => s === "#f0a0b0" && x === w - 1));
+  });
+
+  it("starts a gift run when a cat's gift call fires, unless it can't move", () => {
+    assert.ok(src.includes('if (state.spriteType === "cat" && state.stage !== "egg" && !state.sleeping && !stageGame && !REDUCED_MOTION) {\n        catErrand = { kind: "gift", phase: "out"'));
+    assert.ok(src.includes('if (catErrand && catErrand.kind === "gift") { catErrand.cancelled = true; }'), "answered early: back empty-mouthed");
+    assert.ok(src.includes("if (!isCarryingGift()) {"), "the floor gift waits for the drop");
+    assert.ok(src.includes("giftBoxX = Math.max(0, carriedGiftBox(ceB, nowMs).x);"), "left where it was dropped");
+  });
+
+  it("climbs only as an energetic, awake teen or adult cat and gets down for anything else", () => {
+    assert.match(src, /function wantsToClimb\(state\) \{\n\s*return !!\(state && state\.spriteType === "cat" && \(state\.stage === "teen" \|\| state\.stage === "adult"\) &&\n\s*!state\.sleeping && !state\.sick && \(state\.energy \|\| 0\) >= mgArt\.CAT_CLIMB_MIN_ENERGY && !REDUCED_MOTION\);/);
+    assert.ok(src.includes("Math.random() < dt / mgArt.CAT_CLIMB_EVERY_S"));
+    assert.ok(src.includes("climbTree.y - climbB.bottom + climbB.top >= 0"), "only if the cat fits under the top of the stage");
+    assert.ok(src.includes("(!wantsToClimb(lastState) || !catTreeNow(lastState) || stageGame || snackItems.length > 0 ||"));
+    assert.ok(src.indexOf("} else if (catErrand) {") < src.indexOf("} else if (lastState.sleeping) {"));
+    assert.ok(art.CAT_PERCH_MS >= 3000 && art.CAT_CLIMB_EVERY_S >= 30);
+  });
+});
