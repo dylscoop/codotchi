@@ -163,6 +163,8 @@ class CodotchiPlugin : Disposable {
     private val LIVE_JSON_URL   = "https://raw.githubusercontent.com/dylscoop/codotchi/leaderboard/leaderboard/live.json"
     private val GITHUB_ISSUES_API = "https://api.github.com/repos/dylscoop/codotchi/issues"
     private val LIVE_PUSH_INTERVAL_MS = 15 * 60_000L
+    /** How long (ms) a Codotchi balloon stays on screen before hiding itself (matches VS Code). */
+    private val NOTIFY_HIDE_MS = 10_000
     @Volatile private var liveLastPushedAtMs: Long = 0L
     @Volatile private var leaderboardGithubUsername: String? = null
     /** True once the stored GitHub token was rejected (401/403); cleared on the next success (BUG-S08). */
@@ -1466,7 +1468,7 @@ class CodotchiPlugin : Disposable {
                                 com.intellij.ide.BrowserUtil.browse("https://dylscoop.github.io/codotchi/leaderboard/")
                             }
                         })
-                        notification.notify(null)
+                        notifyAndAutoHide(notification)
                     }
                 }
             }
@@ -1617,8 +1619,20 @@ class CodotchiPlugin : Disposable {
                     notification.expire()
                 }
             })
-            notification.notify(null)  // null = app-level notification visible in all projects
+            notifyAndAutoHide(notification)
         }
+    }
+
+    /**
+     * Show app-wide (visible in all projects), then hide the balloon after [NOTIFY_HIDE_MS].
+     * Hiding only closes the popup — the entry stays in the Notifications tool window
+     * until it's expired. Without this, balloons with actions linger on screen indefinitely.
+     */
+    private fun notifyAndAutoHide(notification: com.intellij.notification.Notification) {
+        notification.notify(null)
+        javax.swing.Timer(NOTIFY_HIDE_MS) { notification.hideBalloon() }
+            .apply { isRepeats = false }
+            .start()
     }
 
     /**
@@ -1640,7 +1654,7 @@ class CodotchiPlugin : Disposable {
             val group = NotificationGroupManager.getInstance()
                 .getNotificationGroup("Codotchi Attention Calls")
                 ?: return@invokeLater
-            group.createNotification(message, NotificationType.INFORMATION).notify(null)
+            notifyAndAutoHide(group.createNotification(message, NotificationType.INFORMATION))
         }
     }
 
@@ -1660,7 +1674,7 @@ class CodotchiPlugin : Disposable {
                     notification.expire()
                 }
             })
-            notification.notify(null)  // null = app-level notification visible in all projects
+            notifyAndAutoHide(notification)
         }
     }
 
@@ -1684,7 +1698,7 @@ class CodotchiPlugin : Disposable {
                     notification.expire()
                 }
             })
-            notification.notify(null)  // null = app-level notification visible in all projects
+            notifyAndAutoHide(notification)
         }
     }
 

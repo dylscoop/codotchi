@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.33.4] - 2026-10-30
+
+### Fixed
+
+- **PyCharm notifications hide after 10 seconds.** Attention calls, achievements, rescue and critical-stat popups used to stay on screen until you closed them. They now hide after 10 seconds, like in VS Code, and stay in the Notifications sidebar until the call is answered or expires.
+
 ## [2.33.3] - 2026-10-29
 
 ### Added
