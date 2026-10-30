@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.33.5] - 2026-10-30
+
+### Added
+
+- **The cat plays Laser Pointer.** Every cat plays **Laser Pointer** instead of Left / Right: a red dot darts back and forth across the stage and you press **Pounce!** when it's right under the cat. Three tries, first to two catches wins, and the dot gets quicker each try. Rewards are the same as Left / Right.
+- **The cat brings you presents.** When the cat has a gift for you it trots off the stage, comes back with a mouse or a bird in its mouth and drops it at your feet. Sometimes it's smug about it ("You're welcome."), sometimes proud ("I am a mighty hunter."), and praising it gets a reply.
+- **The cat has a cat tree.** With the scenic background, the cat's edge tree is replaced by a cat tree. An energetic cat climbs it now and then, sits on the top perch for a while and hops back down.
+- **Cat voice.** The cat demands chin scratches, says "Hmph. Fine." when ignored, craves tuna or a saucer of milk, and takes a catnap in a sunbeam for its break.
+
 ## [2.33.4] - 2026-10-30
 
 ### Fixed
