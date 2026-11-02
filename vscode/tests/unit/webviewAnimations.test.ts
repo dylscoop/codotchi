@@ -236,11 +236,54 @@ describe("per-mood sprite grids (renderSpriteGrid hook)", () => {
     assert.ok(asleep["fillRect"] < awake["fillRect"], `mood grid not used: ${asleep["fillRect"]} vs ${awake["fillRect"]}`);
   });
 
-  it("ignores mood grids in the five-stage sprite data", () => {
+  it("ships no per-mood grids, only the senior cat's lying pose", () => {
     const w = loadSpriteWindow();
-    for (const stages of Object.values(w.SPRITES as Record<string, Record<string, unknown>>)) {
-      assert.ok(!Object.keys(stages).some((k) => k.includes("_")), "no per-mood grids are shipped yet");
+    for (const [type, stages] of Object.entries(w.SPRITES as Record<string, Record<string, unknown>>)) {
+      const extra = Object.keys(stages).filter((k) => k.includes("_"));
+      assert.deepEqual(extra, type === "cat" ? ["senior_lying"] : [], `${type}: ${extra.join(", ")}`);
     }
+  });
+});
+
+describe("lying pose at rest (renderSpriteGrid hook)", () => {
+  function drawSheep(w: Record<string, any>, state: Record<string, unknown>): Record<string, number> {
+    const { ctx, calls } = mockCtx();
+    w.renderSpriteGrid(ctx, { spriteType: "sheep", stage: "adult", weight: 50, ...state },
+      10, 10, false, 0, 0,
+      w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
+      w.spriteHeightRatio, w.spriteQuadBellySag);
+    return calls;
+  }
+
+  it("uses DEFS[type][stage_lying] at rest and the stage grid when moving", () => {
+    const w = loadSpriteWindow();
+    // A single-pixel stand-in lying grid makes the difference easy to see
+    w.SPRITES.sheep.adult_lying = w.SPRITES.sheep.adult.map((row: number[], r: number) =>
+      row.map((_: number, c: number) => (r === 0 && c === 0 ? 1 : 0)));
+    w.invalidateSpriteRasterCache();
+    const resting = drawSheep(w, { resting: true });
+    const moving  = drawSheep(w, { resting: false });
+    assert.ok(resting["fillRect"] < moving["fillRect"], `lying grid not used: ${resting["fillRect"]} vs ${moving["fillRect"]}`);
+  });
+
+  it("walks the senior cat as the adult art", () => {
+    const w = loadSpriteWindow();
+    assert.ok(!w.SPRITES.cat.senior && w.SPRITES.cat.adult && w.SPRITES.cat.senior_lying);
+  });
+
+  it("only species with a lying grid have a lying pose", () => {
+    const w = loadSpriteWindow();
+    assert.equal(w.spriteHasLyingPose({ spriteType: "cat", stage: "senior" }), true);
+    assert.equal(w.spriteHasLyingPose({ spriteType: "cat", stage: "adult" }), false);
+    assert.equal(w.spriteHasLyingPose({ spriteType: "dog", stage: "senior" }), false);
+  });
+
+  it("rests when still on the floor, perched or asleep, and skips the sleep squash when lying", () => {
+    assert.ok(sidebarSource.includes(
+      'lastState.resting = !!lastState.sleeping || perching || (!catErrand && !walking && petY >= floorY - 0.5);'));
+    assert.ok(sidebarSource.includes('var perching = catErrand && catErrand.kind === "climb" && catErrand.phase === "perch";'));
+    assert.ok(sidebarSource.includes("lying ? 1 : window.spriteMood.scaleY(mood, moodFrame)"));
+    assert.ok(sidebarSource.includes("{ sleeping: false, displayMood: null, resting: false }"), "bounds are measured standing");
   });
 });
 

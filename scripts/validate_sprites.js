@@ -70,7 +70,9 @@ function validate(window) {
     }
 
     STAGES.forEach(function (stage) {
-      if (!sprites[type][stage]) { problems.push(type + ": no " + stage + " grid"); }
+      // A stage with only a lying pose walks as the adult on purpose (the senior cat)
+      var walksAsAdult = sprites[type][stage + "_lying"] && sprites[type].adult;
+      if (!sprites[type][stage] && !walksAsAdult) { problems.push(type + ": no " + stage + " grid"); }
     });
 
     Object.keys(sprites[type]).forEach(function (key) {

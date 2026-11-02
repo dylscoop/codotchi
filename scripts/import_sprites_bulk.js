@@ -14,6 +14,9 @@
  *
  *   sprites/<species>/baby.png, child.png, teen.png, adult.png, senior.png
  *   sprites/<species>/<stage>_<mood>.png   optional mood art (e.g. adult_sleeping.png)
+ *   sprites/<species>/<stage>_lying.png    optional lying-down pose, drawn whenever
+ *                    the pet rests (still, perched or asleep); with no <stage>.png
+ *                    the stage walks as the adult (e.g. cat senior_lying.png)
  *   sprites/<species>/sprite.json          optional settings, all fields optional:
  *     palette        { primary, secondary, accent }  exact colours → indices 1/2/3
  *                    (default: the 3 most frequent colours across all stages,
@@ -31,9 +34,12 @@
  *     crop           trim the transparent border of each stage (default true)
  *     anchor         "centre" (default) or "left": where narrower stages sit
  *                    on the shared grid (always bottom-aligned)
- *     stageScale     { <stage>: number } size multiplier for one stage's
- *                    image relative to the others (e.g. { "baby": 3 })
- *     flip           mirror every stage (source faces right; quadrupeds must face left)
+ *     stageScale     { <stage or gridKey>: number } size multiplier for one
+ *                    stage's (or one grid's) image relative to the others
+ *                    (e.g. { "baby": 3 } or { "senior_lying": 1.5 })
+ *     flip           true: mirror every stage; or a list of stages / grid keys
+ *                    to mirror, e.g. ["baby", "adult"] (for art that faces
+ *                    right; quadrupeds must face left)
  *     legRowStart    first leg-zone row of the output grid (default floor(rows * 0.78))
  *     legs           { <gridKey>: [[startCol, endCol, group], ...] } hand-set
  *                    leg columns (group 0 or 1 steps together) for one grid,
@@ -127,12 +133,24 @@ function importSpecies(species, dir) {
 
   // 2. One scale for every stage, so the largest fits the runtime cap.
   //    stageScale.<stage> enlarges (or shrinks) one stage relative to the rest.
+  //    A full grid key (e.g. "senior_lying") overrides its stage's multiplier.
   var stageScale = config.stageScale || {};
   Object.keys(stageScale).forEach(function (s) {
-    if (STAGES.indexOf(s) === -1) { throw new Error(dir + ": stageScale has unknown stage \"" + s + "\""); }
+    if (!GRID_KEY_RE.test(s)) { throw new Error(dir + ": stageScale has unknown stage \"" + s + "\""); }
     if (!(stageScale[s] > 0)) { throw new Error(dir + ": stageScale." + s + " must be a positive number"); }
   });
-  var mults = keys.map(function (k) { return stageScale[k.split("_")[0]] || 1; });
+  var mults = keys.map(function (k) { return stageScale[k] || stageScale[k.split("_")[0]] || 1; });
+
+  // flip: true mirrors every grid; a list mirrors only the named stages / grid keys.
+  var flip = config.flip;
+  if (Array.isArray(flip)) {
+    flip.forEach(function (s) {
+      if (!GRID_KEY_RE.test(s)) { throw new Error(dir + ": flip has unknown stage \"" + s + "\""); }
+    });
+  }
+  function flips(k) {
+    return flip === true || (Array.isArray(flip) && (flip.indexOf(k) !== -1 || flip.indexOf(k.split("_")[0]) !== -1));
+  }
   var maxW  = Math.max.apply(null, images.map(function (i, n) { return i.width  * mults[n]; }));
   var maxH  = Math.max.apply(null, images.map(function (i, n) { return i.height * mults[n]; }));
   var scale = lib.capScale(maxW, maxH);
@@ -170,7 +188,7 @@ function importSpecies(species, dir) {
   var grids  = {};
   resampled.forEach(function (img, i) {
     var grid = lib.mapGrid(img, stageMappers[keys[i].split("_")[0]] || mapper);
-    if (config.flip) { grid = lib.flipGrid(grid); }
+    if (flips(keys[i])) { grid = lib.flipGrid(grid); }
     grids[keys[i]] = lib.padGrid(grid, cols, rows, config.anchor === "left" ? "left" : "centre");
   });
 
@@ -212,7 +230,8 @@ function importSpecies(species, dir) {
     byStage: byStage,
     upright: !!config.upright,
     grids:   grids,
-    missing: STAGES.filter(function (s) { return !files[s]; }),
+    // A stage with only a lying pose walks as the adult on purpose (the senior cat)
+    missing: STAGES.filter(function (s) { return !files[s] && !(files[s + "_lying"] && files.adult); }),
     config:  config,
   };
 }

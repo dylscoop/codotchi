@@ -133,6 +133,20 @@ describe("bulk sprite import", () => {
     assert.deepEqual(rowsOf(bulk.generate(src).species[0].grids.adult), ["321"]);
   });
 
+  it("mirrors only the listed stages with a flip list", () => {
+    const src = freshDir("flip-list");
+    writePng(path.join(src, "pup", "adult.png"), ["WRN"]);
+    writePng(path.join(src, "pup", "child.png"), ["WRN"]);
+    writePng(path.join(src, "pup", "senior_lying.png"), ["WRN"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ flip: ["adult", "senior"] }));
+    const pup = bulk.generate(src).species[0];
+    assert.deepEqual(rowsOf(pup.grids.adult), ["321"]);
+    assert.deepEqual(rowsOf(pup.grids.child), ["123"]);
+    assert.deepEqual(rowsOf(pup.grids.senior_lying), ["321"], "a stage in the list mirrors its mood grids too");
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ flip: ["elder"] }));
+    assert.throws(() => bulk.generate(src), /flip has unknown stage "elder"/);
+  });
+
   it("scales all stages by one factor so the largest fits 192×128", () => {
     const src = freshDir("cap");
     // One clear pixel stops the auto-background removal (fully-opaque, uniform corners).
@@ -231,6 +245,16 @@ describe("bulk sprite import", () => {
     assert.equal(rowsOf(pup.grids.baby).filter((r) => r.includes("1")).length, 6);
     fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ stageScale: { elder: 2 } }));
     assert.throws(() => bulk.generate(src), /unknown stage "elder"/);
+  });
+
+  it("scales one grid key with stageScale, overriding its stage", () => {
+    const src = freshDir("stagescale-key");
+    writePng(path.join(src, "pup", "adult.png"), ["WWWWWW", "WRRWWW", "NWWNWW", "WWWWWW", "WWWWWW", "WWWWWW"]);
+    writePng(path.join(src, "pup", "senior_lying.png"), ["WR", "WW"]);
+    fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ stageScale: { senior: 2, senior_lying: 3 } }));
+    const pup = bulk.generate(src).species[0];
+    assert.equal(pup.cols, 6);
+    assert.equal(rowsOf(pup.grids.senior_lying).filter((r) => r.includes("1")).length, 6);
   });
 
   it("removes large enclosed background pockets but keeps small ones", () => {

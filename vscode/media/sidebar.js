@@ -1483,7 +1483,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     c.height = h;
     var ctx = c.getContext && c.getContext("2d");
     if (ctx && ctx.getImageData) {
-      window.renderSpriteGrid(ctx, Object.assign({}, state, { sleeping: false, displayMood: null }), 0, 0,
+      window.renderSpriteGrid(ctx, Object.assign({}, state, { sleeping: false, displayMood: null, resting: false }), 0, 0,
         facingLeft, 0, 0, STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio, quadrupedBellySagRows);
       var data = ctx.getImageData(0, 0, w, h).data;
       var l = w, r = -1, tp = h, bt = -1;
@@ -2357,6 +2357,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var climbing = catErrand && catErrand.kind === "climb" && catErrand.phase === "up";
     var legFrame = isDragon ? -1 : ((walking || climbing) ? Math.floor(animTick / (running ? 4 : climbing ? 6 : 10)) % 2 : 0);
     var walkBob  = (walking && legFrame === 1) ? -1 : 0;
+    // At rest (standing still on the floor, sitting on the cat tree's perch, or
+    // asleep) a pet with a lying pose (the senior cat) lies down
+    var perching = catErrand && catErrand.kind === "climb" && catErrand.phase === "perch";
+    lastState.resting = !!lastState.sleeping || perching || (!catErrand && !walking && petY >= floorY - 0.5);
 
     // ── Mood layer: props, body squash, particles (window.spriteMood) ─────
     var feeding = activeReaction && (activeReaction.type === "fed_meal" || activeReaction.type === "fed_snack");
@@ -2391,8 +2395,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (moodProps) {
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
+    // The lying pose is already flat, so it skips the mood squash
+    var lying = drawState.resting && window.spriteHasLyingPose(drawState);
     drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
-                         window.spriteMood.scaleY(mood, moodFrame), walking);
+                         lying ? 1 : window.spriteMood.scaleY(mood, moodFrame), walking);
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
     // The cat's mouse or bird, in its mouth on the way back
     if (catErrand && catErrand.kind === "gift" && !catErrand.cancelled && catErrand.phase !== "out") {
@@ -3584,7 +3590,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   /** An awake, well, energetic teen or adult cat climbs its cat tree now and then. */
   function wantsToClimb(state) {
-    return !!(state && state.spriteType === "cat" && (state.stage === "teen" || state.stage === "adult") &&
+    return !!(state && state.spriteType === "cat" && (state.stage === "teen" || state.stage === "adult" || state.stage === "senior") &&
               !state.sleeping && !state.sick && (state.energy || 0) >= mgArt.CAT_CLIMB_MIN_ENERGY && !REDUCED_MOTION);
   }
 
