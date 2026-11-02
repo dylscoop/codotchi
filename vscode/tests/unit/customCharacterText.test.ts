@@ -333,6 +333,11 @@ describe("cat voice and gifts", () => {
     assert.equal(cat.breakNap!.call, "__Name__ wants a catnap! You've been coding for 30 minutes.");
   });
 
+  it("takes its catnap on the cat tree, not in a sunbeam", () => {
+    assert.equal(cat.breakNap!.started, "__Name__ curled up on the cat tree for a catnap 🐾");
+    assert.deepEqual(cat.breakNap!.bubbles, ["Zzz… comfy perch…", "Do not disturb."]);
+  });
+
   it("picks one of its gifts per call and sends the kind to the webview", () => {
     giftFor(makePet("cat"));
     assert.equal(giftFor(makePet("cat", { activeAttentionCall: "gift" }), () => 0.99)?.kind, "bird");
@@ -346,7 +351,8 @@ describe("cat voice and gifts", () => {
     const kt = read("pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt");
     const strings = [...cat.patBubbles, ...Object.values(cat.patCall!), ...cat.snackCravings!,
                      ...cat.gifts!.flatMap((g) => [g.message, g.praiseBubble!]),
-                     cat.ignoredBubble!, cat.breakNap!.call!, cat.breakNap!.noWake, cat.breakNap!.over];
+                     cat.ignoredBubble!, cat.breakNap!.call!, cat.breakNap!.started, cat.breakNap!.noWake, cat.breakNap!.over,
+                     ...cat.breakNap!.bubbles!];
     for (const s of strings) {
       assert.ok(js.includes(`"${s}"`), `customCharacters.js lacks ${s}`);
       assert.ok(kt.includes(`"${s}"`), `CustomCharacters.kt lacks ${s}`);

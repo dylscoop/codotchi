@@ -216,11 +216,11 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     ignoredBubble: "Hmph. Fine.",
     breakNap: {
       call:    "__Name__ wants a catnap! You've been coding for 30 minutes.",
-      started: "__Name__ curled up in a sunbeam for a catnap ☀️",
+      started: "__Name__ curled up on the cat tree for a catnap 🐾",
       noWake:  "__Name__ is catnapping. Do not disturb.",
       over:    "__Name__ stretched and woke from the catnap. Back to work!",
       button:  "Catnap",
-      bubbles: ["Zzz… sunbeam…", "Do not disturb."],
+      bubbles: ["Zzz… comfy perch…", "Do not disturb."],
     },
   },
   {
