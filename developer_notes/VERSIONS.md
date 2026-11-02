@@ -12,8 +12,9 @@
 | `vscode/media/minigameArt.js` | cat errand helpers (`catNextPhase`, `stepToward`, `catMouth`), mouse and bird art (`drawCatGift`), laser helpers (`laserRound`, `laserDotX`, `laserCaught`, `laserPounceArc`, `drawLaserDot`: a 7×7 dot with a dark outline, pulsing glow (`laserGlow`) and an optional beam from the top of the stage) |
 | `vscode/media/backgroundArt.js` | `catTreeBox` / `drawCatTree`: with `opts.catTree` the edge tree becomes a cat tree (no falling leaves from it) |
 | `vscode/media/sidebar.html` | `#mg-laser` panel |
+| `sprites/dog/sprite.json`, `vscode/media/sprites.generated.js` | teen dog `legs` override `[[22,40,0],[41,57,1],[84,101,1],[102,116,0]]`: all four legs, stepped in diagonal pairs (auto-detection only found the near front paw and near back leg, so the walk rocked front against back) |
 | every `gameEngine.ts` copy, `pycharm/.../engine/GameEngine.kt` | `minigameStatsKey("laser") = "left_right"` |
-| tests | cat text and registry parity, gift kinds, cat tree layout and drawing, errand and laser helpers and wiring, laser engine rewards (TS and Kotlin), `#mg-laser` in PyCharm |
+| tests | teen dog diagonal leg walk; cat text and registry parity, gift kinds, cat tree layout and drawing, errand and laser helpers and wiring, laser engine rewards (TS and Kotlin), `#mg-laser` in PyCharm |
 | all manifests, `README.md`, docs | version 2.33.5; FEATURES, DEV_NOTES, CHANGELOG |
 
 **New constants (minigameArt.js):** `CAT_TROT_PPS` 110 · `CAT_DROP_MS` 600 · `CAT_CLIMB_PPS` 45 · `CAT_PERCH_MS` 6000 · `CAT_CLIMB_EVERY_S` 90 · `CAT_CLIMB_MIN_ENERGY` 60 · `CAT_GIFT_PX` 3 · `LASER_ROUNDS` 3 · `LASER_WINS_NEEDED` 2 · `LASER_POUNCE_MS` 500 · `LASER_ROUND_MS` 10 000

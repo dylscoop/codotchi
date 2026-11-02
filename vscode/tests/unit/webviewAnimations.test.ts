@@ -424,8 +424,8 @@ describe("Play or Pat banner (sidebar.html)", () => {
 });
 
 describe("detected leg walk (vscode/media/sprites.js)", () => {
-  /** Paint dog's adult grid on legFrame; returns the offscreen [col,row] cells. */
-  function dogCells(legFrame: number): number[][] {
+  /** Paint a dog stage's grid on legFrame; returns the offscreen [col,row] cells. */
+  function dogCells(legFrame: number, stage = "adult"): number[][] {
     const cells: number[][] = [];
     const window: Record<string, unknown> = {};
     const fakeCtx = new Proxy({} as Record<string, unknown>, {
@@ -442,7 +442,7 @@ describe("detected leg walk (vscode/media/sprites.js)", () => {
       vm.runInContext(fs.readFileSync(path.join(media, file), "utf8").replace(/^﻿/, ""), context);
     }
     const w = window as Record<string, any>;
-    const state = { spriteType: "dog", stage: "adult", weight: 50, mood: "neutral", alive: true };
+    const state = { spriteType: "dog", stage, weight: 50, mood: "neutral", alive: true };
     const ctx = new Proxy({}, { get: () => () => undefined, set: () => true });
     w.renderSpriteGrid(ctx, state, 0, 0, true, legFrame, 0,
       w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
@@ -450,21 +450,31 @@ describe("detected leg walk (vscode/media/sprites.js)", () => {
     return cells;
   }
 
-  it("raises one diagonal group per frame and keeps the other on the floor", () => {
-    const meta = loadSpriteWindow().SPRITE_GRID_META.dog;
-    const legs: number[][] = meta.legs.adult;
-    assert.ok(legs.length >= 2);
-    const lift = Math.max(1, Math.round(meta.rows * 0.03));
-    const bottoms = [0, 1].map((legFrame) => {
-      const cells = dogCells(legFrame);
-      return legs.map(([s, e]) => Math.max(...cells.filter(([c]) => c >= s && c <= e).map(([, r]) => r)));
+  for (const stage of ["adult", "teen"]) {
+    it(`raises one diagonal group per frame and keeps the other on the floor (${stage})`, () => {
+      const meta = loadSpriteWindow().SPRITE_GRID_META.dog;
+      const legs: number[][] = meta.legs[stage];
+      assert.ok(legs.length >= 2);
+      const lift = Math.max(1, Math.round(meta.rows * 0.03));
+      const bottoms = [0, 1].map((legFrame) => {
+        const cells = dogCells(legFrame, stage);
+        return legs.map(([s, e]) => Math.max(...cells.filter(([c]) => c >= s && c <= e).map(([, r]) => r)));
+      });
+      legs.forEach(([start, end, group], i) => {
+        // group 1 is raised on frame 0, group 0 on frame 1
+        const planted = bottoms[group === 1 ? 1 : 0][i];
+        const raised  = bottoms[group === 1 ? 0 : 1][i];
+        assert.equal(raised, planted - lift, `leg ${start}-${end} (group ${group}) lifts by ${lift} rows`);
+      });
     });
-    legs.forEach(([start, end, group], i) => {
-      // group 1 is raised on frame 0, group 0 on frame 1
-      const planted = bottoms[group === 1 ? 1 : 0][i];
-      const raised  = bottoms[group === 1 ? 0 : 1][i];
-      assert.equal(raised, planted - lift, `leg ${start}-${end} (group ${group}) lifts by ${lift} rows`);
-    });
+  }
+
+  it("steps the teen dog's legs in diagonal pairs, not front against back", () => {
+    const legs: number[][] = loadSpriteWindow().SPRITE_GRID_META.dog.legs.teen;
+    assert.equal(legs.length, 4);
+    // the front pair and the back pair each mix both walk groups
+    assert.notEqual(legs[0][2], legs[1][2]);
+    assert.notEqual(legs[2][2], legs[3][2]);
   });
 });
 
