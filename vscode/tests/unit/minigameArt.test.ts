@@ -629,4 +629,11 @@ describe("senior cat lying pose (minigameArt.catPoseStep / catLoungeStep)", () =
     assert.ok(sidebarSource.includes("if (onFloor && petVy >= 0 && speed > 0 && !canLie) {"));
     assert.ok(sidebarSource.includes("lastState.resting = lieBlend >= 0.5;"));
   });
+
+  it("crouches (lies down) at once watching the laser dot and springs up fast to pounce", () => {
+    assert.ok(sidebarSource.includes('var laserWatch = !!stageGame && stageGame.kind === "laser" && stageGame.phase !== "pounce";'));
+    assert.ok(sidebarSource.includes("((!!stageGame && !laserWatch) || !!catErrand"));
+    assert.ok(sidebarSource.includes("stillMs: laserWatch ? mgArt.CAT_LIE_DELAY_MS :"));
+    assert.ok(sidebarSource.includes('dt * 1000 * (stageGame && stageGame.kind === "laser" ? 3 : 1)'));
+  });
 });

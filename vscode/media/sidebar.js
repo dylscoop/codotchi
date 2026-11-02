@@ -2071,8 +2071,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var onPerch  = catErrand && catErrand.kind === "climb" && catErrand.phase === "perch";
     // Things that get it up: a game, an errand, a snack, or the end of a lounge
     // (a stroll waits for any reaction to finish first)
+    // Laser Pointer: it crouches (lies down) watching the dot, and springs up to pounce
+    var laserWatch = !!stageGame && stageGame.kind === "laser" && stageGame.phase !== "pounce";
     var mustStand = canLie && !lastState.sleeping && !onPerch &&
-      (!!stageGame || !!catErrand || snackItems.length > 0 ||
+      ((!!stageGame && !laserWatch) || !!catErrand || snackItems.length > 0 ||
        (!lounging && !activeReaction && !lastState.sick && getSpeedPPS(lastState) > 0));
     var pinned = canLie && (lounging || lieBlend > 0);
 
@@ -2393,8 +2395,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       else if (stillSinceMs < 0)  { stillSinceMs = nowMs; }
       lieBlend = mgArt.catPoseStep(lieBlend, {
         wantsLie: wantsLie, mustStand: mustStand, reacting: !!activeReaction,
-        stillMs: stillSinceMs < 0 ? 0 : nowMs - stillSinceMs,
-      }, dt * 1000);
+        stillMs: laserWatch ? mgArt.CAT_LIE_DELAY_MS : (stillSinceMs < 0 ? 0 : nowMs - stillSinceMs),
+      }, dt * 1000 * (stageGame && stageGame.kind === "laser" ? 3 : 1));
     } else {
       lieBlend = 0;
     }

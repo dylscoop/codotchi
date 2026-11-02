@@ -13,7 +13,7 @@
 | `pycharm/.../StatusBarText.kt`, `pycharm/.../CodotchiPlugin.kt` | same as VS Code |
 | `vscode/tests/unit/webviewAnimations.test.ts`, `statusBarText.test.ts`, `pycharm/.../StatusBarTextTest.kt` | size table, cat/dog drawn width = sidebar box, farewell text |
 | `vscode/media/minigameArt.js` | senior cat pose: `CAT_LOUNGE_S` [20, 40], `CAT_STROLL_S` [4, 8], `CAT_LIE_DELAY_MS` 1500, `CAT_POSE_MS` 450; `catLoungeStep`, `catPoseStep` (gets up at once when it must move; lies down only when still and not reacting; otherwise holds) |
-| `vscode/media/sidebar.js` (senior cat) | lounge/stroll spells; no hops for a pet with a lying pose; pinned while lying or getting up; `lieBlend` crossfade + sink/rise squash; `lastState.perching` |
+| `vscode/media/sidebar.js` (senior cat) | lounge/stroll spells; no hops for a pet with a lying pose; pinned while lying or getting up; `lieBlend` crossfade + sink/rise squash; Laser Pointer keeps the crouch (`laserWatch`: lies down at once watching the dot, gets up 3× faster for the pounce) |
 | `sprites/cat/sprite.json`, `scripts/import_sprites_bulk.js`, `vscode/media/sprites.generated.js`, `vscode/media/sprites.js` | `restRow` per grid (`senior_lying`: 113): the lying cat's front-paw row goes on the floor / perch line; the curled tail below it is drawn in front of the line (no clipping) |
 | all manifests, `README.md`, docs | version 2.34.1; READMEs / plugin.xml sickness prose, FEATURES, CHANGELOG, SPRITE_IMPORT, BUGFIXES (BUGFIX-214, BUGFIX-215) |
 
