@@ -2555,9 +2555,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       const btn = document.getElementById(id);
       if (btn) { btn.disabled = isSleeping || isPaused; }
     });
-    // BUG-S04: Feed, Snack and Play are refused while sick — grey them out
+    // BUG-S04: Feed, Snack, Play and Praise are refused while sick — grey them out
+    // (Praise would otherwise send a sick pet off on a break nap instead of medicine)
     if (isSick) {
-      ["btn-feed-meal", "btn-feed-snack", "btn-play"].forEach(function (id) {
+      ["btn-feed-meal", "btn-feed-snack", "btn-play", "btn-praise"].forEach(function (id) {
         const btn = document.getElementById(id);
         if (btn) { btn.disabled = true; }
       });
@@ -3101,6 +3102,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "meal_refused_sick":       n + " is too sick to eat — give medicine first!",
       "snack_refused_sick":      n + " is too sick for a snack — give medicine first!",
       "play_refused_sick":       n + " is too sick to play — give medicine first!",
+      "praise_refused_sick":     n + " is too sick for praise — give medicine first!",
       "break_nap_no_wake":       n + " is on a break nap and will wake up on their own.",
       "fed_meal":                n + " ate a meal.",
       "snack_refused":           n + " threw the snack away.",

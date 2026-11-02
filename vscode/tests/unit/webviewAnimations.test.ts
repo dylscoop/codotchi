@@ -254,6 +254,14 @@ describe("pet stands still while eating a meal (sidebar.js)", () => {
   });
 });
 
+describe("care buttons while sick (sidebar.js)", () => {
+  it("greys out Feed, Snack, Play and Praise and explains a refused praise", () => {
+    assert.match(sidebarSource,
+      /if \(isSick\) \{\s*\["btn-feed-meal", "btn-feed-snack", "btn-play", "btn-praise"\]/);
+    assert.match(sidebarSource, /"praise_refused_sick":\s+n \+ " is too sick for praise/);
+  });
+});
+
 describe("snack answer text waits for the pet to eat (sidebar.js)", () => {
   it("holds answered-call events when a snack is placed and releases them on every eat path", () => {
     assert.match(sidebarSource, /if \(snackPlaced && !REDUCED_MOTION\) \{\s*heldSnackAnswers = heldSnackAnswers\.concat\(events\.filter\(isAnsweredCall\)\);\s*events = events\.filter/);

@@ -1,6 +1,20 @@
 # Version History
 
-## v2.33.6 - current
+## v2.33.7 - current
+
+### Changes from v2.33.6 (rarer autumn weather, no break while sick - branch fix/rarer-autumn-weather)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/backgroundArt.js` | autumn thunderstorms, fog and geese are rarer |
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt` | `praise()` refuses while sick (`praise_refused_sick`), so a break call can't start a break nap for a sick pet |
+| `vscode/media/sidebar.js` | Praise greyed out while sick; `praise_refused_sick` text |
+| `vscode/tests/unit/gameEngine.test.ts`, `webviewAnimations.test.ts`, `pycharm/.../GameEngineTest.kt` | praise refused while sick; Praise greyed out |
+| all manifests, `README.md`, docs | version 2.33.7; README / plugin.xml sickness prose, FEATURES, CHANGELOG, BUGFIXES (BUGFIX-213) |
+
+**Updated constants (backgroundArt.js):** `STORM_CHANCE` 0.10 → 0.05 · `FOG_CHANCE` 0.25 → 0.075 · `CRITTERS.geese` chance 0.05 → 0.025. **New event:** `praise_refused_sick`
+
+## v2.33.6
 
 ### Changes from v2.33.5 (teen dog walk - branch feat/cat-actions)
 

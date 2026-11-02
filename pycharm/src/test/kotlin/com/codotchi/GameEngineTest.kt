@@ -894,6 +894,17 @@ class GameEngineTest {
     }
 
     @Test
+    fun `praise is refused while sick, so no break nap starts`() {
+        val sick = makePet().copy(sick = true, activeAttentionCall = "break")
+        val praised = praise(sick)
+        assertEquals(listOf("praise_refused_sick"), praised.events)
+        assertEquals(sick.discipline, praised.discipline)
+        assertEquals("break", praised.activeAttentionCall)
+        assertEquals(0, praised.breakNapTicksRemaining)
+        assertFalse(praised.sleeping)
+    }
+
+    @Test
     fun `offline time during a break nap does not decay stats and wakes the pet when it ran out`() {
         val start = makePet(happiness = 80).copy(sleeping = true, breakNapTicksRemaining = 40, hunger = 80)
         val short = applyOfflineDecay(start, 30 * 3)
