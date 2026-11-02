@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.33.6] - 2026-11-02
+
+### Fixed
+
+- **The teen dog walks properly.** It used to rock back and forth while walking instead of stepping. Its four legs now step in diagonal pairs like the other dogs.
+
 ## [2.33.5] - 2026-10-30
 
 ### Added
@@ -8,10 +14,6 @@
 - **The cat brings you presents.** When the cat has a gift for you it trots off the stage, comes back with a mouse or a bird in its mouth and drops it at your feet. Sometimes it's smug about it ("You're welcome."), sometimes proud ("I am a mighty hunter."), and praising it gets a reply.
 - **The cat has a cat tree.** With the scenic background, the cat's edge tree is replaced by a cat tree. An energetic cat climbs it now and then, sits on the top perch for a while and hops back down.
 - **Cat voice.** The cat demands chin scratches, says "Hmph. Fine." when ignored, craves tuna or a saucer of milk, and takes a catnap in a sunbeam for its break.
-
-### Fixed
-
-- **The teen dog walks properly.** It used to rock back and forth while walking instead of stepping. Its four legs now step in diagonal pairs like the other dogs.
 
 ## [2.33.4] - 2026-10-30
 
