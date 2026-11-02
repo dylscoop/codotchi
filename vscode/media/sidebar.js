@@ -3088,6 +3088,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (!levelsEnabled && isProgressionEvent(code)) { return null; }
     if (bossAccess === "off" && (code === "boss_unlocked" || code.indexOf("boss_battle") !== -1)) { return null; }
     var n = name || "Codotchi";
+    // A cat doesn't die — it moves on
+    if ((code === "died" || code === "died_of_old_age") && state && state.spriteType === "cat") {
+      return window.catFarewell(n, state.spawnedAt);
+    }
     var _cc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
     var labels = {
       "auto_woke_up":           n + " woke up after a full nap.",
@@ -3374,6 +3378,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   /** Show the dead screen with final stats. */
   function renderDeadScreen(state, highScore) {
+    var deadTitle = deadScreen && deadScreen.querySelector(".dead-title");
+    if (deadTitle) {
+      deadTitle.textContent = state.spriteType === "cat"
+        ? state.name + " has moved on."
+        : "Your Codotchi passed away.";
+    }
     deadStats.textContent =
       state.name + " lived " + formatAge(state.ageDays) + ".\n" +
       "Stage reached: " + state.stage + ".";
@@ -4185,6 +4195,15 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       }
 
       case "died": {
+        if (state.spriteType === "cat") {
+          // A cat moves on: trot off the way it faces and fade, no halo
+          var trotDx = (facingLeft ? -1 : 1) * t * Math.max(60, bWidth * 2);
+          spriteCtx.save();
+          spriteCtx.globalAlpha = 1 - t;
+          drawBody(state, x + trotDx, bodyY, facingLeft, Math.floor(t * 12) % 2);
+          spriteCtx.restore();
+          break;
+        }
         // Float up and fade out, with a halo above the head
         var yOff4 = -t * 40;
         spriteCtx.save();
@@ -4295,20 +4314,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   /**
    * Return the base-size multiplier driven by the codotchi.petSize setting.
    * The value is injected into document.body.dataset.petSize by sidebarProvider.ts.
-    *   small  = 0.75x (extra small)
-    *   medium = 1.0x  (default)
-    *   large  = 1.5x  (high-detail 24x32 sprites)
+    * The per-species table lives in spriteConstants.js and is the same one
+    * sprites.js draws with, so the layout box matches the drawn pet.
     */
    function petSizeMultiplier(spriteType) {
      var ps = (document.body && document.body.dataset && document.body.dataset.petSize) || "medium";
-     var isUp = !!(window.UPRIGHT_TYPES && window.UPRIGHT_TYPES[spriteType]);
-     if (isUp) {
-       return ps === "small" ? 0.5625 : ps === "large" ? 1.0 : 0.75;
-     }
-     if (spriteType === "cat" || spriteType === "dog") {
-       return ps === "small" ? 0.64 : ps === "large" ? 1.28 : 0.85;
-     }
-     return ps === "small" ? 0.75 : ps === "large" ? 1.5 : 1.0;
+     return window.spritePetSizeMult(spriteType, ps);
    }
 
   /**

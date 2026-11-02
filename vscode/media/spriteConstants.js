@@ -149,6 +149,45 @@
     return 0;
   }
 
+  // ── Pet size ──────────────────────────────────────────────────────────────
+  /**
+   * Base-size multiplier per codotchi.petSize setting. Upright sprites render
+   * smaller than quadrupeds; PET_SIZE_MULTS overrides species that read too big
+   * (each one step down: large = the old medium, medium = the old small).
+   */
+  var PET_SIZE_UPRIGHT   = { small: 0.5625, medium: 0.75, large: 1.0 };
+  var PET_SIZE_QUADRUPED = { small: 0.75,   medium: 1.0,  large: 1.5 };
+  var PET_SIZE_MULTS = {
+    tim: { small: 0.375, medium: 0.5625, large: 0.75 },
+    stu: { small: 0.375, medium: 0.5625, large: 0.75 },
+    cat: { small: 0.5,   medium: 0.75,   large: 1.0 },
+    dog: { small: 0.5,   medium: 0.75,   large: 1.0 },
+  };
+
+  /**
+   * Shared by sprites.js (drawing) and sidebar.js (layout box) so the two agree.
+   * @param {string} spriteType
+   * @param {string} petSize  "small" | "medium" | "large" (anything else = medium)
+   * @returns {number}
+   */
+  function petSizeMultiplier(spriteType, petSize) {
+    var table = PET_SIZE_MULTS[spriteType]
+             || (window.UPRIGHT_TYPES[spriteType] ? PET_SIZE_UPRIGHT : PET_SIZE_QUADRUPED);
+    return table[petSize] || table.medium;
+  }
+
+  // ── Cat farewell ──────────────────────────────────────────────────────────
+  /**
+   * A cat doesn't die — it moves on. The line is picked from spawnedAt so the
+   * bubble, event log, toast and game-over screen all tell the same story.
+   * Mirrored in vscode/src/statusBarText.ts and pycharm StatusBarText.kt.
+   */
+  function catFarewell(name, spawnedAt) {
+    return (Math.floor(spawnedAt || 0) % 2 === 0)
+      ? name + " has gone back to its original owners and moved on."
+      : name + " has gone off hunting and moved on.";
+  }
+
   // ── Exports ───────────────────────────────────────────────────────────────
   window.SPRITE_ANIMAL_PALETTES   = ANIMAL_PALETTES;
   window.SPRITE_STAGE_SCALES      = STAGE_SCALES;
@@ -159,5 +198,7 @@
   window.spriteWeightWidthMult    = weightWidthMultiplier;
   window.spriteHeightRatio        = spriteHeightRatio;
   window.spriteQuadBellySag       = quadrupedBellySagRows;
+  window.spritePetSizeMult        = petSizeMultiplier;
+  window.catFarewell              = catFarewell;
 
 }());

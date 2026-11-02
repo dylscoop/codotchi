@@ -766,3 +766,69 @@ describe("integration — animation frame budget", () => {
     assert.match(kt("CodotchiBrowserPanel.kt"), /"type":"panelVisibility","visible":\$visible/);
   });
 });
+
+describe("pet size multipliers (vscode/media/spriteConstants.js)", () => {
+  it("shrinks Tim, Stu, Cat and Dog one step and leaves the rest alone", () => {
+    const w = loadSpriteWindow();
+    const table = (t: string) => ["small", "medium", "large"].map((s) => w.spritePetSizeMult(t, s));
+    assert.deepEqual(table("tim"), [0.375, 0.5625, 0.75]);
+    assert.deepEqual(table("stu"), [0.375, 0.5625, 0.75]);
+    assert.deepEqual(table("cat"), [0.5, 0.75, 1.0]);
+    assert.deepEqual(table("dog"), [0.5, 0.75, 1.0]);
+    assert.deepEqual(table("classic"), [0.5625, 0.75, 1.0]);
+    assert.deepEqual(table("kangaroo"), [0.5625, 0.75, 1.0]);
+    assert.deepEqual(table("sheep"), [0.75, 1.0, 1.5]);
+    assert.equal(w.spritePetSizeMult("cat", "bogus"), 0.75, "an unknown size reads as medium");
+  });
+
+  it("the sidebar layout box uses the same table as the renderer", () => {
+    assert.ok(sidebarSource.includes("return window.spritePetSizeMult(spriteType, ps);"));
+    assert.ok(!sidebarSource.includes("1.28 : 0.85"), "no separate cat/dog multiplier left in sidebar.js");
+  });
+
+  for (const spriteType of ["cat", "dog"]) {
+    it(`a medium adult ${spriteType} is drawn exactly the sidebar's box width`, () => {
+      const window: Record<string, unknown> = {};
+      const offscreen = new Proxy({} as Record<string, unknown>, {
+        get: (target, key: string) => (key in target ? target[key] : () => undefined),
+        set(target, key: string, value) { target[key] = value; return true; },
+      });
+      const document = { createElement: () => ({ getContext: () => offscreen }) };
+      const context = vm.createContext({ window, document });
+      for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js"]) {
+        vm.runInContext(fs.readFileSync(path.join(media, file), "utf8").replace(/^﻿/, ""), context);
+      }
+      const w = window as Record<string, any>;
+      let drawnW = -1;
+      const ctx = new Proxy({} as Record<string, unknown>, {
+        get(target, key: string) {
+          if (key in target) { return target[key]; }
+          if (key === "drawImage") { return (_img: unknown, _x: number, _y: number, dw: number) => { drawnW = dw; }; }
+          return () => undefined;
+        },
+        set(target, key: string, value) { target[key] = value; return true; },
+      });
+      const state = { spriteType, stage: "adult", weight: 50, mood: "neutral", alive: true };
+      w.renderSpriteGrid(ctx, state, 0, 0, false, 0, 0,
+        w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
+        w.spriteHeightRatio, w.spriteQuadBellySag);
+      // sidebar.js: Math.round(BASE_SIZE (96) * petSizeMultiplier * stageScale)
+      assert.equal(drawnW, Math.round(96 * w.spritePetSizeMult(spriteType, "medium") * w.SPRITE_STAGE_SCALES.adult));
+    });
+  }
+});
+
+describe("cat farewell (a cat moves on instead of dying)", () => {
+  it("picks one of two lines from spawnedAt, the same every time", () => {
+    const w = loadSpriteWindow();
+    assert.equal(w.catFarewell("Mog", 1000), "Mog has gone back to its original owners and moved on.");
+    assert.equal(w.catFarewell("Mog", 1001), "Mog has gone off hunting and moved on.");
+    assert.equal(w.catFarewell("Mog", 1001), w.catFarewell("Mog", 1001));
+  });
+
+  it("the sidebar uses it for a cat's death bubble, log and game-over title", () => {
+    assert.ok(sidebarSource.includes('(code === "died" || code === "died_of_old_age") && state && state.spriteType === "cat"'));
+    assert.ok(sidebarSource.includes('state.name + " has moved on."'));
+    assert.ok(sidebarSource.includes("A cat moves on: trot off the way it faces and fade, no halo"));
+  });
+});
