@@ -26,10 +26,10 @@
   var SNOW_MS       = 4 * 60 * 1000;   // winter weather window
   var SNOW_CHANCE   = 0.4;             // chance a winter window has snowfall
   var STORM_MS      = 4 * 60 * 1000;   // autumn storm window
-  var STORM_CHANCE  = 0.10;            // chance an autumn window is a thunderstorm
+  var STORM_CHANCE  = 0.05;            // chance an autumn window is a thunderstorm
   var FLASH_MS      = 150;             // one lightning flash
   var FOG_MS        = 5 * 60 * 1000;   // autumn fog window (dawn and morning only)
-  var FOG_CHANCE    = 0.25;            // chance a dawn/morning autumn window is foggy
+  var FOG_CHANCE    = 0.075;           // chance a dawn/morning autumn window is foggy
   var NIGHT_INK     = "#0c1230";       // scenery is blended toward this at night
   var NIGHT_SHADE   = 0.55;            // how far scenery is blended at full darkness
 
@@ -48,7 +48,7 @@
     butterfly: { salt: 2, windowMs: 150000, chance: 0.20, durMs: 14000 },
     bee:       { salt: 3, windowMs: 120000, chance: 0.25, durMs: 12000 },
     fireflies: { salt: 4, windowMs:  90000, chance: 0.35, durMs: 30000 },
-    geese:     { salt: 5, windowMs: 180000, chance: 0.05, durMs: 16000 },
+    geese:     { salt: 5, windowMs: 180000, chance: 0.025, durMs: 16000 },
   };
 
   // =========================================================================
