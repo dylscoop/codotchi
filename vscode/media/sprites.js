@@ -1632,7 +1632,9 @@
     var grid = SPRITES[spriteType][stage] || SPRITES[spriteType]["adult"];
     // Optional per-mood art (e.g. DEFS.dog.adult_sleeping) replaces the stage
     // grid; its key also keeps the raster and sparse caches apart.
-    var gridKey = moodGridKey(SPRITES[spriteType], stage, state.displayMood || state.mood) || stage;
+    // A pet at rest with a lying pose (e.g. DEFS.cat.senior_lying) lies down instead.
+    var gridKey = lyingGridKey(SPRITES[spriteType], stage, state.resting) ||
+                  moodGridKey(SPRITES[spriteType], stage, state.displayMood || state.mood) || stage;
     if (gridKey !== stage) { grid = SPRITES[spriteType][gridKey]; }
 
     if (!grid) { return; }
@@ -2031,6 +2033,18 @@
     return typeGrids[key] ? key : null;
   }
 
+  /** Name of the stage's lying-down grid when the pet is resting, or null. */
+  function lyingGridKey(typeGrids, stage, resting) {
+    if (!typeGrids || !resting) { return null; }
+    var key = stage + "_lying";
+    return typeGrids[key] ? key : null;
+  }
+
+  /** True when this pet would be drawn lying down while it rests. */
+  function hasLyingPose(state) {
+    return !!(state && lyingGridKey(SPRITES[state.spriteType], state.stage, true));
+  }
+
   // =========================================================================
   // Pat reaction — per-pet body motion, a patting hand and floating hearts
   // =========================================================================
@@ -2379,6 +2393,7 @@
   window.renderSpriteGrid = renderSpriteGrid;
   window.spriteClassicBox     = classicBox;
   window.spriteDrawsAsClassic = drawsAsClassic;
+  window.spriteHasLyingPose   = hasLyingPose;
   // Exposed for testing and palette-change invalidation.
   window.invalidateSpriteRasterCache = function() {
     _rasterCache.length = 0;

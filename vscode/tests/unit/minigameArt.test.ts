@@ -577,8 +577,8 @@ describe("the cat's gift run and cat-tree climb (minigameArt.js + sidebar.js)", 
     assert.ok(src.includes("giftBoxX = Math.max(0, carriedGiftBox(ceB, nowMs).x);"), "left where it was dropped");
   });
 
-  it("climbs only as an energetic, awake teen or adult cat and gets down for anything else", () => {
-    assert.match(src, /function wantsToClimb\(state\) \{\n\s*return !!\(state && state\.spriteType === "cat" && \(state\.stage === "teen" \|\| state\.stage === "adult"\) &&\n\s*!state\.sleeping && !state\.sick && \(state\.energy \|\| 0\) >= mgArt\.CAT_CLIMB_MIN_ENERGY && !REDUCED_MOTION\);/);
+  it("climbs only as an energetic, awake teen, adult or senior cat and gets down for anything else", () => {
+    assert.match(src, /function wantsToClimb\(state\) \{\n\s*return !!\(state && state\.spriteType === "cat" && \(state\.stage === "teen" \|\| state\.stage === "adult" \|\| state\.stage === "senior"\) &&\n\s*!state\.sleeping && !state\.sick && \(state\.energy \|\| 0\) >= mgArt\.CAT_CLIMB_MIN_ENERGY && !REDUCED_MOTION\);/);
     assert.ok(src.includes("Math.random() < dt / mgArt.CAT_CLIMB_EVERY_S"));
     assert.ok(src.includes("climbTree.y - climbB.bottom + climbB.top >= 0"), "only if the cat fits under the top of the stage");
     assert.ok(src.includes("(!wantsToClimb(lastState) || !catTreeNow(lastState) || stageGame || snackItems.length > 0 ||"));

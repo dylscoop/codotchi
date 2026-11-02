@@ -1,6 +1,22 @@
 # Version History
 
-## v2.33.7 - current
+## v2.34.0 - current
+
+### Changes from v2.33.7 (cat sprite refresh - branch feat/cat-sprite-refresh)
+
+| File | What changed |
+|------|-------------|
+| `sprites/cat/*`, `sprites/cat/sprite.json`, `vscode/media/sprites.generated.js` | new cat art; baby / teen / adult mirrored to face left (`flip` list); cropped and centred (`crop` on, no `anchor: left`); `senior.png` → `senior_lying.png` (lying pose, `stageScale.senior_lying` 1.5 so it matches the adult, no legs); the walking senior falls back to the adult art |
+| `scripts/import_sprites_bulk.js` | `flip` accepts a list of stages / grid keys; `stageScale` accepts a grid key; a stage with only `<stage>_lying` art isn't reported missing |
+| `scripts/validate_sprites.js` | a stage with only a lying grid (walks as the adult) is valid |
+| `vscode/media/sprites.js` | `lyingGridKey`: a resting pet with a `<stage>_lying` grid is drawn lying down; `window.spriteHasLyingPose` |
+| `vscode/media/sidebar.js` | `lastState.resting` (still on the floor, perched on the cat tree, or asleep); no sleep squash on the lying pose; bounds measured standing; a senior cat climbs the cat tree too |
+| `packages/core/src/asciiArt.ts` (+ synced copies), asciiArt tests | terminal ASCII art centred |
+| `opencode-codotchi/src/index.ts` | IDE pet evolution is announced from the file watcher, once per IDE-confirmed stage (`vscodeAnnouncedStage` / `pycharmAnnouncedStage`), not from OpenCode's approximate tick, so it no longer repeats on every reload |
+| `vscode/tests/unit/*` | flip list, grid-key stageScale, lying pose at rest, senior climbs |
+| all manifests, `README.md`, docs | version 2.34.0; SPRITE_IMPORT, FEATURES, DEV_NOTES, CHANGELOG |
+
+## v2.33.7
 
 ### Changes from v2.33.6 (rarer autumn weather, no break while sick - branch fix/rarer-autumn-weather)
 

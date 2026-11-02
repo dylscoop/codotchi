@@ -93,6 +93,8 @@ describe("sprite data (vscode/media/sprites.generated.js + sprites.js)", () => {
     for (const type of ROTATION_ANIMALS) {
       if (type === "classic") { continue; } // drawn procedurally, no grid
       for (const stage of STAGES) {
+        // A stage with only a lying pose walks as the adult on purpose (the senior cat)
+        if (sprites[type]?.[stage + "_lying"] && sprites[type]?.adult) { continue; }
         assert.ok(sprites[type]?.[stage], `rotation animal ${type} has no ${stage} grid`);
       }
     }

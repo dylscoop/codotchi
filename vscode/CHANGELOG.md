@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.34.0] - 2026-11-02
+
+### Added
+
+- **The senior cat lies down.** A senior cat lies down whenever it rests: standing still, asleep, or up on the cat tree, which seniors can now climb too. It gets up and walks like the adult.
+
+### Changed
+
+- **New cat art.** The cat has new art for every stage, all facing the same way and centred on the stage. The terminal pets' ASCII art is centred too.
+
+### Fixed
+
+- **OpenCode announces an IDE pet's evolution once.** OpenCode used to repeat the "I evolved" toast for a VS Code or PyCharm pet on every reload. It now only announces it once the IDE has saved the new stage.
+
 ## [2.33.7] - 2026-11-02
 
 ### Changed

@@ -19,7 +19,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildContextualSpeech, formatTokens, attentionCallKey, attentionCallSpeech, ATTENTION_CALL_TEXT } from "../../dist/asciiArt.js";
+import { buildContextualSpeech, formatTokens, attentionCallKey, attentionCallSpeech, ATTENTION_CALL_TEXT, getArt } from "../../dist/asciiArt.js";
 import { ATTENTION_CALL_TYPES } from "../../dist/gameEngine.js";
 
 /** claude-codotchi always asks for the Claude Code cost wording. */
@@ -138,5 +138,28 @@ describe("attentionCallSpeech()", () => {
 
   it("returns null for an unknown key", () => {
     assert.equal(attentionCallSpeech("nope"), null);
+  });
+});
+
+describe("getArt species head alignment", () => {
+  const species = ["dog", "monkey", "rooster", "cat", "rabbit", "rat", "horse"];
+  const stages = ["baby", "child", "teen", "adult", "senior"];
+  const moods = ["happy", "neutral", "sad", "sleeping", "sick"];
+  for (const sp of species) {
+    it(`${sp}: head "(" stays in the same column as the classic sprite and keeps the mood face`, () => {
+      for (const st of stages) {
+        for (const m of moods) {
+          const base = getArt(st, m, "classic")[0];
+          const head = getArt(st, m, sp)[0];
+          assert.equal(head.indexOf("("), base.indexOf("("), `${sp} ${st} ${m}: ${head}`);
+          assert.equal(head.length, base.length, `${sp} ${st} ${m}: width`);
+          if (m === "sleeping") assert.ok(head.includes("z"), `${sp} ${st} sleeping keeps z`);
+        }
+      }
+    });
+  }
+
+  it("dog teen sleeping shows the sleeping face", () => {
+    assert.equal(getArt("teen", "sleeping", "dog")[0], "  U(-.-)U z  ");
   });
 });

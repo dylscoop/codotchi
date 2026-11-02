@@ -33,8 +33,13 @@ See [`SPRITES.md`](SPRITES.md) for the grid format and colour legend.
    letters, digits or `_`.
 2. Add one image per stage: `baby.png`, `child.png`, `teen.png`, `adult.png`,
    `senior.png`. You can use `.jpg`, `.webp` or `.pixil` instead of `.png`.
-   - Quadrupeds must face **left**. Set `"flip": true` if the art faces right.
+   - Quadrupeds must face **left**. Set `"flip": true` if the art faces right
+     (or list just the stages that do, e.g. `"flip": ["baby", "adult"]`).
    - Optional mood art uses the name `<stage>_<mood>`, e.g. `adult_sleeping.png`.
+   - Optional lying-down pose: `<stage>_lying.png`. The pet is drawn lying down
+     whenever it rests (standing still, on the cat tree's perch or asleep). With
+     no `<stage>.png` the stage walks as the adult, e.g. the cat's
+     `senior_lying.png`.
 3. Optionally add a `sprite.json` (see below), for example to pin the palette.
 4. Run:
 
@@ -83,8 +88,8 @@ Every field is optional.
 | `threshold` | `128` | Alpha below which a pixel is transparent. |
 | `crop` | `true` | Trim each stage's transparent border before sizing. |
 | `anchor` | `"centre"` | Where narrower stages sit on the shared grid: `"centre"` or `"left"`. They are always bottom-aligned. |
-| `stageScale` | — | `{ <stage>: number }`: size multiplier for one stage relative to the others, e.g. `{ "baby": 3 }` when the baby image was drawn much smaller than the adult. |
-| `flip` | `false` | Mirror every stage. |
+| `stageScale` | — | `{ <stage or gridKey>: number }`: size multiplier for one stage (or one grid, e.g. `"senior_lying"`) relative to the others, e.g. `{ "baby": 3 }` when the baby image was drawn much smaller than the adult. A grid key overrides its stage. |
+| `flip` | `false` | `true`: mirror every stage. A list (`["baby", "teen", "adult"]`) mirrors only those stages (and their mood / lying grids) or grid keys. |
 | `legRowStart` | `floor(rows × 0.78)` | First leg-zone row **of the output grid** (used for the walk animation and belly sag). |
 | `legs` | auto-detected | `{ <gridKey>: [[startCol, endCol, group], ...] }`: hand-set leg columns for one grid (`"adult"`, `"adult_sleeping"`, …), replacing auto-detection there. `group` is `0` or `1`; legs in the same group step together. Quadrupeds only. |
 | `upright` | `false` | Portrait species; added to `UPRIGHT_TYPES`. |
