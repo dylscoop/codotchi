@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.33.7] - 2026-11-02
+
+### Changed
+
+- **Autumn weather is calmer.** Thunderstorms and the V of geese now turn up half as often, and morning fog less than a third as often.
+
 ## [2.33.6] - 2026-11-02
 
 ### Fixed

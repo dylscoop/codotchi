@@ -1,6 +1,17 @@
 # Version History
 
-## v2.33.6 - current
+## v2.33.7 - current
+
+### Changes from v2.33.6 (rarer autumn weather - branch feat/cat-actions)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/backgroundArt.js` | autumn thunderstorms, fog and geese are rarer |
+| all manifests, `README.md`, docs | version 2.33.7; FEATURES, CHANGELOG |
+
+**Updated constants (backgroundArt.js):** `STORM_CHANCE` 0.10 → 0.05 · `FOG_CHANCE` 0.25 → 0.075 · `CRITTERS.geese` chance 0.05 → 0.025
+
+## v2.33.6
 
 ### Changes from v2.33.5 (teen dog walk - branch feat/cat-actions)
 
