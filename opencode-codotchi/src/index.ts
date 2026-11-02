@@ -1126,6 +1126,10 @@ function decayIDEState(state: PetState, elapsedSeconds: number): PetState {
   return state.alive && !decayed.alive ? state : decayed;
 }
 
+/** Last IDE-confirmed stage per IDE pet, so each evolution is announced once. */
+let vscodeAnnouncedStage: string | null = null;
+let pycharmAnnouncedStage: string | null = null;
+
 function applyTickForPet(ide: "vscode" | "pycharm"): void {
   const state = ide === "vscode" ? vscodePetState : pycharmPetState;
   if (state === null || !state.alive) { return; }
@@ -1166,17 +1170,9 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
           ? buildSpeechBubble(next.stage, "sleeping", pickRandom(["I lived a full life. Thank you for everything.", "What a journey. Thank you.", "A full life, well lived."]), next.name, next.spriteType, ideLabel)
           : `${ideLabel} ${next.name}: ${pickRandom(["I lived a full life. Thank you for everything.", "What a journey. Thank you.", "A full life, well lived."])}`);
         break;
-      case "evolved_to_baby":
-      case "evolved_to_child":
-      case "evolved_to_teen":
-      case "evolved_to_adult":
-      case "evolved_to_senior": {
-        const stageName = event.replace("evolved_to_", "");
-        queueNotification(terminalEnabled
-          ? buildSpeechBubble(next.stage, next.mood, pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`]), next.name, next.spriteType, ideLabel)
-          : `${ideLabel} ${next.name}: ${pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`])}`);
-        break;
-      }
+      // Evolution is not announced here: this tick only approximates the IDE's,
+      // and the IDE's next save reverts the stage, so it would re-fire on every
+      // reload. The file watcher announces it once the IDE confirms the new stage.
       case "attention_call_hunger":
       case "attention_call_unhappiness":
       case "attention_call_sick":
@@ -1310,6 +1306,17 @@ const plugin: Plugin = async (ctx) => {
       const nowAlive = loaded.state.alive;
       // New pet spawned: flush stale queued notifications from the dead pet
       if (wasDeadOrAbsent && nowAlive) { pendingNotification = null; }
+      const announcedStage = ide === "vscode" ? vscodeAnnouncedStage : pycharmAnnouncedStage;
+      const newStage = loaded.state.stage;
+      if (!wasDeadOrAbsent && nowAlive && prevState.spawnedAt === loaded.state.spawnedAt
+          && (STAGE_ORDER_OC[newStage] ?? 0) > (STAGE_ORDER_OC[announcedStage ?? prevState.stage] ?? 0)) {
+        const ideLabel = ide === "vscode" ? "[VS Code]" : "[PyCharm]";
+        const line = pickRandom([`I evolved into a ${newStage}!`, `I'm a ${newStage} now!`, `Growing up — now a ${newStage}.`]);
+        queueNotification(terminalEnabled
+          ? buildSpeechBubble(newStage, loaded.state.mood, line, loaded.state.name, loaded.state.spriteType, ideLabel)
+          : `${ideLabel} ${loaded.state.name}: ${line}`);
+      }
+      if (ide === "vscode") { vscodeAnnouncedStage = newStage; } else { pycharmAnnouncedStage = newStage; }
       setPetState(ide, decayIDEState(loaded.state, elapsed));
       setSavedAt(ide, loaded.savedAt);
       setMeals(ide, 0);
