@@ -2524,3 +2524,21 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** Praise answers a "take a break" call, which starts a 5-minute break nap. Feed, Snack and Play were blocked while sick (BUGFIX-186), but Praise wasn't, so a sick pet could go off on a nap instead of getting medicine. It couldn't die during the nap (every stat but energy is frozen), but the sickness was just put off.
 
 **Fix:** `praise()` returns `praise_refused_sick` while sick, leaving the call, discipline and stats unchanged. The webview greys out Praise while sick alongside Feed, Snack and Play.
+
+## BUGFIX-214 - Tim, Stu, the cat and the dog are too big; cat/dog box doesn't match the drawing
+
+**Status:** Fixed (branch `fix/pet-size-cat-farewell`)
+**Files:** `vscode/media/spriteConstants.js`, `vscode/media/sprites.js`, `vscode/media/sidebar.js`
+
+**Problem:** Tim, Stu, the cat and the dog filled too much of the stage at every pet size. On top of that, `sidebar.js` laid the cat and dog out at 0.85× (medium) while `sprites.js` drew them at 1.0×, so their layout box was about 15% smaller than the pet on screen.
+
+**Fix:** One pet-size table in `spriteConstants.js` (`spritePetSizeMult`) is read by both the renderer and the sidebar. Tim, Stu, cat and dog move one step down: large = old medium, medium = old small, small = old small ÷ 1.5.
+
+## BUGFIX-215 - Senior cat snaps between poses and floats when lying
+
+**Status:** Fixed (branch `fix/pet-size-cat-farewell`)
+**Files:** `vscode/media/sidebar.js`, `vscode/media/minigameArt.js`, `vscode/media/sprites.js`, `scripts/import_sprites_bulk.js`, `sprites/cat/sprite.json`
+
+**Problem:** The senior cat lay down whenever it stood still for a single frame, so a snack chomp, a reaction or landing from its 4-second hop flipped it to the lying art and back. Since it otherwise wandered nonstop, it was rarely lying. The lying art's legs and tail reach the bottom row, well below the body, and the bottom row was put on the floor, so the cat's body floated above the ground (and above the perch).
+
+**Fix:** `catPoseStep` only lies it down after 1.5 s still and never during a reaction, gets it up at once when it has to move, and eases between poses over 450 ms (crossfade plus squash). It lounges 20–40 s between 4–8 s strolls and doesn't hop. A new `restRow` sprite key (`senior_lying`: 78) puts the belly row on the floor / perch line; the legs and tail below it draw down through the stage or hang over the perch, uncut.

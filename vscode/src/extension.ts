@@ -26,6 +26,7 @@ import {
 } from "./gameEngine";
 import { SidebarProvider } from "./sidebarProvider";
 import { StatusBarManager } from "./statusBar";
+import { catFarewell } from "./statusBarText";
 import { anotherWindowOwnsTick } from "./tickLease";
 import { EventsManager } from "./events";
 import { SpritePreviewPanel } from "./spritePreviewPanel";
@@ -217,8 +218,12 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }
 
-    // Fire old-age natural-causes death notification
-    if (freshEvents && state.events.includes("died_of_old_age")) {
+    // Fire old-age natural-causes death notification; a cat moves on instead,
+    // whatever the cause
+    if (freshEvents && state.spriteType === "cat"
+        && (state.events.includes("died") || state.events.includes("died_of_old_age"))) {
+      void vscode.window.showWarningMessage(catFarewell(state.name, state.spawnedAt));
+    } else if (freshEvents && state.events.includes("died_of_old_age")) {
       void vscode.window.showWarningMessage(
         `${state.name} has passed away of unforeseen natural causes due to old age.`
       );

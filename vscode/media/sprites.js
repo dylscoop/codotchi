@@ -1573,12 +1573,8 @@
     // UPRIGHT_TYPES is authoritative in spriteConstants.js (loaded first).
     var isUpright = !!(window.UPRIGHT_TYPES && window.UPRIGHT_TYPES[spriteType]);
 
-    // Upright animals render at smaller sizes than quadrupeds.
-    // small=0.5625 / medium=0.75 / large=1.0 for upright;
-    // small=0.75  / medium=1.0  / large=1.5  for quadruped (unchanged).
-    sizeMultiplier = isUpright
-      ? (petSizeVal === "small" ? 0.5625 : petSizeVal === "large" ? 1.0  : 0.75)
-      : (petSizeVal === "small" ? 0.75   : petSizeVal === "large" ? 1.5  : 1.0);
+    // Per-species table in spriteConstants.js (shared with sidebar.js's layout box).
+    sizeMultiplier = window.spritePetSizeMult(spriteType, petSizeVal);
 
     // Bug fix #1: correct COLS/ROWS and legRowStart per grid type
     // v2: read from SPRITE_GRID_META for variable-grid support; fall back to
@@ -1657,6 +1653,13 @@
     var isSideUpright = !!SIDE_FACING_UPRIGHT[spriteType];
 
     ctx.save();
+    // A grid can declare the row that rests on the floor / perch line (the
+    // lying senior cat's belly); anything below it — its legs and tail — is
+    // drawn down through the stage, or hangs over the edge of the perch.
+    var restRow = _gridMeta.restRow ? _gridMeta.restRow[gridKey] : undefined;
+    if (restRow !== undefined) {
+      ctx.translate(0, Math.round((ROWS - 1 - restRow) * bodyHeight / ROWS));
+    }
     if (isSideUpright ? !facingLeft : (isUpright ? facingLeft : !facingLeft)) {
       ctx.translate(x + bodyWidth / 2, 0);
       ctx.scale(-1, 1);

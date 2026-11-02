@@ -54,8 +54,24 @@ export function attentionCallLine(state: PetState): string {
   return `⚠ ${state.name}${wants.startsWith("'") ? "" : " "}${wants}`;
 }
 
+/**
+ * A cat doesn't die — it moves on. Picked from spawnedAt so every surface
+ * tells the same story. Mirrors catFarewell in media/spriteConstants.js.
+ */
+export function catFarewell(name: string, spawnedAt: number): string {
+  return Math.floor(spawnedAt || 0) % 2 === 0
+    ? `${name} has gone back to its original owners and moved on.`
+    : `${name} has gone off hunting and moved on.`;
+}
+
 /** Status bar text and tooltip for a pet. */
 export function formatStatusBar(state: PetState): { text: string; tooltip: string } {
+  if (!state.alive && state.spriteType === "cat") {
+    return {
+      text: `$(heart-filled) ${state.name} 🐾`,
+      tooltip: `${catFarewell(state.name, state.spawnedAt)} Start a new game.`,
+    };
+  }
   if (!state.alive) {
     return {
       text: `$(heart-filled) ${state.name} ✝`,

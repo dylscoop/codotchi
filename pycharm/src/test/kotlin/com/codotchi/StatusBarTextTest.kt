@@ -68,4 +68,19 @@ class StatusBarTextTest {
         assertEquals("some salmon", cravingItemFor(craving) { 0.99 })
         assertNull(cravingItemFor(pet.copy(spriteType = "dog", activeAttentionCall = "craving", cravingFood = "snack")))
     }
+
+    @Test
+    fun `a dead cat has moved on instead of passing away`() {
+        val (text, tooltip) = formatStatusWidget(pet.copy(spriteType = "cat", alive = false, spawnedAt = 1001L), enabled = true)
+        assertEquals("🐾 Pixel", text)
+        assertEquals("Pixel has gone off hunting and moved on. Start a new game.", tooltip)
+        assertEquals("Mog has gone back to its original owners and moved on.", catFarewell("Mog", 1000L))
+    }
+
+    @Test
+    fun `a dead dog still passed away`() {
+        val (text, tooltip) = formatStatusWidget(pet.copy(spriteType = "dog", alive = false), enabled = true)
+        assertEquals("✝ Pixel", text)
+        assertTrue(tooltip.contains("has passed away"))
+    }
 }

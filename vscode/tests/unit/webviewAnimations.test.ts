@@ -280,8 +280,8 @@ describe("lying pose at rest (renderSpriteGrid hook)", () => {
 
   it("rests when still on the floor, perched or asleep, and skips the sleep squash when lying", () => {
     assert.ok(sidebarSource.includes(
-      'lastState.resting = !!lastState.sleeping || perching || (!catErrand && !walking && petY >= floorY - 0.5);'));
-    assert.ok(sidebarSource.includes('var perching = catErrand && catErrand.kind === "climb" && catErrand.phase === "perch";'));
+      '(!catErrand && !walking && petY >= floorY - 0.5);'));
+    assert.ok(sidebarSource.includes('var onPerch  = catErrand && catErrand.kind === "climb" && catErrand.phase === "perch";'));
     assert.ok(sidebarSource.includes("lying ? 1 : window.spriteMood.scaleY(mood, moodFrame)"));
     assert.ok(sidebarSource.includes("{ sleeping: false, displayMood: null, resting: false }"), "bounds are measured standing");
   });
@@ -764,5 +764,122 @@ describe("integration — animation frame budget", () => {
     const kt = (f: string) => fs.readFileSync(path.join(repoRoot, "pycharm/src/main/kotlin/com/codotchi", f), "utf8");
     assert.match(kt("CodotchiToolWindow.kt"), /panel\.setPanelVisible\(tw\.isVisible\)/);
     assert.match(kt("CodotchiBrowserPanel.kt"), /"type":"panelVisibility","visible":\$visible/);
+  });
+});
+
+describe("pet size multipliers (vscode/media/spriteConstants.js)", () => {
+  it("shrinks Tim, Stu, Cat and Dog one step and leaves the rest alone", () => {
+    const w = loadSpriteWindow();
+    const table = (t: string) => ["small", "medium", "large"].map((s) => w.spritePetSizeMult(t, s));
+    assert.deepEqual(table("tim"), [0.375, 0.5625, 0.75]);
+    assert.deepEqual(table("stu"), [0.375, 0.5625, 0.75]);
+    assert.deepEqual(table("cat"), [0.5, 0.75, 1.0]);
+    assert.deepEqual(table("dog"), [0.5, 0.75, 1.0]);
+    assert.deepEqual(table("classic"), [0.5625, 0.75, 1.0]);
+    assert.deepEqual(table("kangaroo"), [0.5625, 0.75, 1.0]);
+    assert.deepEqual(table("sheep"), [0.75, 1.0, 1.5]);
+    assert.equal(w.spritePetSizeMult("cat", "bogus"), 0.75, "an unknown size reads as medium");
+  });
+
+  it("the sidebar layout box uses the same table as the renderer", () => {
+    assert.ok(sidebarSource.includes("return window.spritePetSizeMult(spriteType, ps);"));
+    assert.ok(!sidebarSource.includes("1.28 : 0.85"), "no separate cat/dog multiplier left in sidebar.js");
+  });
+
+  for (const spriteType of ["cat", "dog"]) {
+    it(`a medium adult ${spriteType} is drawn exactly the sidebar's box width`, () => {
+      const window: Record<string, unknown> = {};
+      const offscreen = new Proxy({} as Record<string, unknown>, {
+        get: (target, key: string) => (key in target ? target[key] : () => undefined),
+        set(target, key: string, value) { target[key] = value; return true; },
+      });
+      const document = { createElement: () => ({ getContext: () => offscreen }) };
+      const context = vm.createContext({ window, document });
+      for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js"]) {
+        vm.runInContext(fs.readFileSync(path.join(media, file), "utf8").replace(/^﻿/, ""), context);
+      }
+      const w = window as Record<string, any>;
+      let drawnW = -1;
+      const ctx = new Proxy({} as Record<string, unknown>, {
+        get(target, key: string) {
+          if (key in target) { return target[key]; }
+          if (key === "drawImage") { return (_img: unknown, _x: number, _y: number, dw: number) => { drawnW = dw; }; }
+          return () => undefined;
+        },
+        set(target, key: string, value) { target[key] = value; return true; },
+      });
+      const state = { spriteType, stage: "adult", weight: 50, mood: "neutral", alive: true };
+      w.renderSpriteGrid(ctx, state, 0, 0, false, 0, 0,
+        w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
+        w.spriteHeightRatio, w.spriteQuadBellySag);
+      // sidebar.js: Math.round(BASE_SIZE (96) * petSizeMultiplier * stageScale)
+      assert.equal(drawnW, Math.round(96 * w.spritePetSizeMult(spriteType, "medium") * w.SPRITE_STAGE_SCALES.adult));
+    });
+  }
+});
+
+describe("cat farewell (a cat moves on instead of dying)", () => {
+  it("picks one of two lines from spawnedAt, the same every time", () => {
+    const w = loadSpriteWindow();
+    assert.equal(w.catFarewell("Mog", 1000), "Mog has gone back to its original owners and moved on.");
+    assert.equal(w.catFarewell("Mog", 1001), "Mog has gone off hunting and moved on.");
+    assert.equal(w.catFarewell("Mog", 1001), w.catFarewell("Mog", 1001));
+  });
+
+  it("the sidebar uses it for a cat's death bubble, log and game-over title", () => {
+    assert.ok(sidebarSource.includes('(code === "died" || code === "died_of_old_age") && state && state.spriteType === "cat"'));
+    assert.ok(sidebarSource.includes('state.name + " has moved on."'));
+    assert.ok(sidebarSource.includes("A cat moves on: trot off the way it faces and fade, no halo"));
+  });
+});
+
+describe("senior cat lying on the floor (restRow)", () => {
+  /** Draw a lying senior cat; returns the y translates, the clip count and the box height. */
+  function drawLying(): { translates: number[]; clips: number; bodyHeight: number } {
+    const window: Record<string, unknown> = {};
+    const offscreen = new Proxy({} as Record<string, unknown>, {
+      get: (target, key: string) => (key in target ? target[key] : () => undefined),
+      set(target, key: string, value) { target[key] = value; return true; },
+    });
+    const document = { createElement: () => ({ getContext: () => offscreen }) };
+    const context = vm.createContext({ window, document });
+    for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js"]) {
+      vm.runInContext(fs.readFileSync(path.join(media, file), "utf8").replace(/^﻿/, ""), context);
+    }
+    const w = window as Record<string, any>;
+    const translates: number[] = [];
+    let clips = 0, bodyHeight = 0;
+    const ctx = new Proxy({} as Record<string, unknown>, {
+      get(target, key: string) {
+        if (key in target) { return target[key]; }
+        if (key === "translate") { return (_x: number, y: number) => { translates.push(y); }; }
+        if (key === "clip") { return () => { clips++; }; }
+        if (key === "drawImage") { return (_i: unknown, _x: number, _y: number, _w: number, h: number) => { bodyHeight = h; }; }
+        return () => undefined;
+      },
+      set(target, key: string, value) { target[key] = value; return true; },
+    });
+    const state = { spriteType: "cat", stage: "senior", weight: 50, mood: "neutral", alive: true, resting: true };
+    w.renderSpriteGrid(ctx, state, 0, 0, false, 0, 0,
+      w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
+      w.spriteHeightRatio, w.spriteQuadBellySag);
+    return { translates, clips, bodyHeight };
+  }
+
+  it("rests on its belly (row 78): the last nearly full row, legs and tail below it", () => {
+    const w = loadSpriteWindow();
+    assert.equal(w.SPRITE_GRID_META.cat.restRow.senior_lying, 78);
+    const grid: string[] = w.GENERATED_SPRITE_DEFS.cat.senior_lying;
+    const filled = (r: number) => (grid[r].match(/[^0]/g) || []).length;
+    const widest = Math.max(...grid.map((_, r) => filled(r)));
+    assert.ok(filled(78) >= 0.9 * widest, "row 78 is still the body");
+    assert.ok(filled(86) < 0.6 * widest, "below it the body splits into legs and tail");
+  });
+
+  it("drops the belly onto the floor and draws the legs and tail through the stage (no clip)", () => {
+    const { translates, clips, bodyHeight } = drawLying();
+    assert.equal(clips, 0, "nothing is cut off");
+    assert.ok(bodyHeight > 0);
+    assert.ok(translates.includes(Math.round(49 * bodyHeight / 128)), "shifted down by the 49 rows below the belly");
   });
 });

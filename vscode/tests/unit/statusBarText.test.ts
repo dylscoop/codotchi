@@ -3,7 +3,7 @@ import * as assert from "node:assert/strict";
 import * as fs from "fs";
 import * as path from "path";
 import { createPet, PetState } from "../../src/gameEngine";
-import { attentionCallLine, formatStatusBar } from "../../src/statusBarText";
+import { attentionCallLine, catFarewell, formatStatusBar } from "../../src/statusBarText";
 
 function makePet(overrides: Partial<PetState> = {}): PetState {
   // Pinned: a random hatch could be the kangaroo, whose pat call has its own wording
@@ -56,5 +56,20 @@ describe("PyCharm status bar widgets", () => {
 
   it("drops a widget when its window closes", () => {
     assert.match(kt("CodotchiStatusWidget.kt"), /override fun dispose\(\)[\s\S]*unregisterStatusWidget\(this\)/);
+  });
+});
+
+describe("cat farewell in the status bar", () => {
+  it("a dead cat has moved on, with no cross", () => {
+    const { text, tooltip } = formatStatusBar(makePet({ alive: false, spriteType: "cat", spawnedAt: 1001 }));
+    assert.ok(text.includes("🐾") && !text.includes("✝"));
+    assert.ok(tooltip.startsWith(`${makePet().name} has gone off hunting and moved on.`));
+    assert.equal(catFarewell("Mog", 1000), "Mog has gone back to its original owners and moved on.");
+  });
+
+  it("a dead dog still passed away", () => {
+    const { text, tooltip } = formatStatusBar(makePet({ alive: false, spriteType: "dog" }));
+    assert.ok(text.includes("✝"));
+    assert.ok(tooltip.includes("has passed away"));
   });
 });

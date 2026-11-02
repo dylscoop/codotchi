@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.34.1] - 2026-11-02
+
+### Changed
+
+- **Cats take their break on the cat tree.** When a cat of any age goes on its 5-minute break nap, it walks over to its cat tree, climbs up and naps on the perch, then hops down when the break is over. Opened during the break, it's already up there. Without a cat tree (the legacy background) it naps on the floor as before. Normal sleep stays on the floor.
+- **The senior cat lounges.** It spends most of its time lying down, getting up now and then for a short stroll. It eases down and back up instead of switching pose in a single frame. Being fed, patted, praised or played with no longer flops it over: it stays in whatever pose it was in. In Laser Pointer it stands watching the dot, jumps for it, and lies down as it lands. A senior cat also climbs the cat tree more often and naps up there for a while.
+- **A cat moves on instead of dying.** When a cat runs out of health or reaches the end of its life, it has gone back to its original owners or gone off hunting. It trots off the stage instead of floating up under a halo, and the game over screen says it has moved on.
+
+### Fixed
+
+- **No more teleporting on Sleep.** A pet that falls asleep while it's up off the floor (on the cat tree, climbing or mid-hop) now settles down to the ground instead of jumping there.
+- **The lying senior cat no longer floats.** Its body lies on the ground, with its front legs and tail running down through the stage. On the cat tree it lies on the perch, with its legs and tail hanging over the edge.
+- **Tim, Stu, the cat and the dog are smaller.** They were too big for the stage. Each is now one size smaller at every pet size setting: Large is the old Medium, Medium is the old Small, and Small is smaller again. The cat and dog are also laid out at the size they are drawn, so their floor and reaction positions line up.
+
 ## [2.34.0] - 2026-11-02
 
 ### Added

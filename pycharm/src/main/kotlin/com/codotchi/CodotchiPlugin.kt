@@ -1510,8 +1510,12 @@ class CodotchiPlugin : Disposable {
             }
         }
 
-        // Fire notification on old-age natural-causes death
-        if (state != null && freshEvents && state.events.contains("died_of_old_age")) {
+        // Fire notification on old-age natural-causes death; a cat moves on
+        // instead, whatever the cause
+        if (state != null && freshEvents && state.spriteType == "cat"
+            && (state.events.contains("died") || state.events.contains("died_of_old_age"))) {
+            fireAttentionNotification(catFarewell(state.name, state.spawnedAt))
+        } else if (state != null && freshEvents && state.events.contains("died_of_old_age")) {
             fireAttentionNotification(
                 "${state.name} has passed away of unforeseen natural causes due to old age."
             )

@@ -49,9 +49,20 @@ fun attentionCallLine(state: PetState): String {
     return "⚠ ${state.name}${if (wants.startsWith("'")) "" else " "}$wants"
 }
 
+/**
+ * A cat doesn't die — it moves on. Picked from spawnedAt so every surface tells
+ * the same story. Mirrors catFarewell in vscode/media/spriteConstants.js.
+ */
+fun catFarewell(name: String, spawnedAt: Long): String =
+    if (spawnedAt % 2 == 0L) "$name has gone back to its original owners and moved on."
+    else "$name has gone off hunting and moved on."
+
 /** Status bar text and tooltip for a pet. Text is empty when [enabled] is false. */
 fun formatStatusWidget(state: PetState, enabled: Boolean): Pair<String, String> {
     if (!enabled) return "" to ""
+    if (!state.alive && state.spriteType == "cat") {
+        return "🐾 ${state.name}" to "${catFarewell(state.name, state.spawnedAt)} Start a new game."
+    }
     if (!state.alive) return "✝ ${state.name}" to "${state.name} has passed away. Start a new game."
     val emoji = STAGE_EMOJI[state.stage] ?: "🥚"
     val callLine = attentionCallLine(state)
