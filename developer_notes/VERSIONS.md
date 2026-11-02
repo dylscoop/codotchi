@@ -1,6 +1,15 @@
 # Version History
 
-## v2.34.1 - current
+## v2.34.2 - current
+
+### Changes from v2.34.1 (catnap text - branch fix/catnap-cat-tree-text)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/customCharacters.js`, `vscode/src/customCharacters.ts`, `pycharm/.../CustomCharacters.kt`, `vscode/tests/unit/customCharacterText.test.ts` | cat `breakNap.started` "curled up on the cat tree for a catnap 🐾" and bubble "Zzz… comfy perch…" (were the sunbeam lines) |
+| all manifests, `README.md`, CHANGELOG | version 2.34.2 |
+
+## v2.34.1
 
 ### Changes from v2.34.0 (pet sizes, cat farewell - branch fix/pet-size-cat-farewell)
 
@@ -16,7 +25,6 @@
 | `vscode/media/sidebar.js` (senior cat) | lounge/stroll spells; no hops for a pet with a lying pose; pinned while lying or getting up; `lieBlend` crossfade + sink/rise squash; Laser Pointer: stands watching the dot, stands for the leap and lies down as it lands (`laserPounce` from `LASER_LAND_LIE_MS` 150 before touchdown, 3× pose speed in the game); senior cat-tree naps (`catClimbTuning`, `perchNap` z's) |
 | `vscode/media/sidebar.js` (cat naps) | any cat (not the egg) on its 5-minute break nap (`breakNapTicksRemaining > 0`) naps on its cat tree, heading off at once (the `fell_asleep` hold skips a nap errand): `wantsNapClimb`, a `catErrand` climb with `nap: true` (walks and climbs awake via `napTrip`, sleeps on the perch until it wakes, then hops down); opened asleep (`napStartPerched`) or reduced motion: straight onto the perch; a lying senior stands before it sets off. Falling asleep off the floor no longer teleports: the `fell_asleep` hold, the reaction's end and the sleeping branch settle it down at `SLEEP_SETTLE_PPS` 90, drawn awake (`settling`) |
 | `sprites/cat/sprite.json`, `scripts/import_sprites_bulk.js`, `vscode/media/sprites.generated.js`, `vscode/media/sprites.js` | `restRow` per grid (`senior_lying`: 78): the lying cat's belly row goes on the floor / perch line; the legs and tail below it draw down through the stage or hang over the perch (no clipping) |
-| `vscode/media/customCharacters.js`, `vscode/src/customCharacters.ts`, `pycharm/.../CustomCharacters.kt`, `vscode/tests/unit/customCharacterText.test.ts` | cat `breakNap.started` "curled up on the cat tree for a catnap 🐾" and bubble "Zzz… comfy perch…" (were the sunbeam lines) |
 | all manifests, `README.md`, docs | version 2.34.1; READMEs / plugin.xml sickness prose, FEATURES, CHANGELOG, SPRITE_IMPORT, BUGFIXES (BUGFIX-214, BUGFIX-215) |
 
 **Updated constants (pet size multipliers small / medium / large):** tim, stu 0.5625 / 0.75 / 1.0 → 0.375 / 0.5625 / 0.75 · cat, dog (drawn) 0.75 / 1.0 / 1.5 → 0.5 / 0.75 / 1.0 (sidebar box was 0.64 / 0.85 / 1.28)
