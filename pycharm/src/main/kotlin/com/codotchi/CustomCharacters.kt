@@ -219,11 +219,11 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         ignoredBubble = "Hmph. Fine.",
         breakNap     = CustomCharacterBreakNap(
             call    = "__Name__ wants a catnap! You've been coding for 30 minutes.",
-            started = "__Name__ curled up in a sunbeam for a catnap ☀️",
+            started = "__Name__ curled up on the cat tree for a catnap 🐾",
             noWake  = "__Name__ is catnapping. Do not disturb.",
             over    = "__Name__ stretched and woke from the catnap. Back to work!",
             button  = "Catnap",
-            bubbles = listOf("Zzz… sunbeam…", "Do not disturb."),
+            bubbles = listOf("Zzz… comfy perch…", "Do not disturb."),
         ),
     ),
     CustomCharacter(
