@@ -578,8 +578,8 @@ describe("the cat's gift run and cat-tree climb (minigameArt.js + sidebar.js)", 
   });
 
   it("climbs only as an energetic, awake teen, adult or senior cat and gets down for anything else", () => {
-    assert.match(src, /function wantsToClimb\(state\) \{\n\s*return !!\(state && state\.spriteType === "cat" && \(state\.stage === "teen" \|\| state\.stage === "adult" \|\| state\.stage === "senior"\) &&\n\s*!state\.sleeping && !state\.sick && \(state\.energy \|\| 0\) >= mgArt\.CAT_CLIMB_MIN_ENERGY && !REDUCED_MOTION\);/);
-    assert.ok(src.includes("Math.random() < dt / mgArt.CAT_CLIMB_EVERY_S"));
+    assert.match(src, /function wantsToClimb\(state\) \{\n\s*return !!\(state && state\.spriteType === "cat" && \(state\.stage === "teen" \|\| state\.stage === "adult" \|\| state\.stage === "senior"\) &&\n\s*!state\.sleeping && !state\.sick && \(state\.energy \|\| 0\) >= mgArt\.catClimbTuning\(state\.stage\)\.minEnergy && !REDUCED_MOTION\);/);
+    assert.ok(src.includes("Math.random() < dt / mgArt.catClimbTuning(lastState.stage).everyS"));
     assert.ok(src.includes("climbTree.y - climbB.bottom + climbB.top >= 0"), "only if the cat fits under the top of the stage");
     assert.ok(src.includes("(!wantsToClimb(lastState) || !catTreeNow(lastState) || stageGame || snackItems.length > 0 ||"));
     assert.ok(src.indexOf("} else if (catErrand) {") < src.indexOf("} else if (lastState.sleeping) {"));
@@ -630,10 +630,22 @@ describe("senior cat lying pose (minigameArt.catPoseStep / catLoungeStep)", () =
     assert.ok(sidebarSource.includes("lastState.resting = lieBlend >= 0.5;"));
   });
 
-  it("crouches (lies down) at once watching the laser dot and springs up fast to pounce", () => {
-    assert.ok(sidebarSource.includes('var laserWatch = !!stageGame && stageGame.kind === "laser" && stageGame.phase !== "pounce";'));
-    assert.ok(sidebarSource.includes("((!!stageGame && !laserWatch) || !!catErrand"));
-    assert.ok(sidebarSource.includes("stillMs: laserWatch ? mgArt.CAT_LIE_DELAY_MS :"));
+  it("a senior climbs the cat tree more often, with less energy, and naps up there", () => {
+    const senior = art.catClimbTuning("senior"), adult = art.catClimbTuning("adult");
+    assert.equal(adult.everyS, art.CAT_CLIMB_EVERY_S);
+    assert.equal(adult.perchMs, art.CAT_PERCH_MS);
+    assert.ok(senior.everyS < adult.everyS && senior.minEnergy < adult.minEnergy);
+    assert.ok(senior.perchMs >= 30000, "a proper nap, not a 6 s sit");
+    assert.ok(sidebarSource.includes("mgArt.catClimbTuning(lastState.stage).perchMs"));
+    assert.ok(sidebarSource.includes("var perchNap = canLie && onPerch && lieBlend >= 1"));
+  });
+
+  it("stands watching the laser dot and goes flat at once for the pounce, then gets up", () => {
+    assert.ok(sidebarSource.includes('stageGame.kind === "laser" && stageGame.phase === "pounce" &&'));
+    assert.ok(sidebarSource.includes("nowMs - stageGame.pounceMs < mgArt.LASER_POUNCE_MS + 500;"));
+    assert.ok(sidebarSource.includes("((!!stageGame && !laserPounce) || !!catErrand"));
+    assert.ok(sidebarSource.includes("var wantsLie = !!lastState.sleeping || perching || laserPounce ||"));
+    assert.ok(sidebarSource.includes("stillMs: laserPounce ? mgArt.CAT_LIE_DELAY_MS :"));
     assert.ok(sidebarSource.includes('dt * 1000 * (stageGame && stageGame.kind === "laser" ? 3 : 1)'));
   });
 });

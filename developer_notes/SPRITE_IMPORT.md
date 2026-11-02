@@ -92,7 +92,7 @@ Every field is optional.
 | `flip` | `false` | `true`: mirror every stage. A list (`["baby", "teen", "adult"]`) mirrors only those stages (and their mood / lying grids) or grid keys. |
 | `legRowStart` | `floor(rows × 0.78)` | First leg-zone row **of the output grid** (used for the walk animation and belly sag). |
 | `legs` | auto-detected | `{ <gridKey>: [[startCol, endCol, group], ...] }`: hand-set leg columns for one grid (`"adult"`, `"adult_sleeping"`, …), replacing auto-detection there. `group` is `0` or `1`; legs in the same group step together. Quadrupeds only. |
-| `restRow` | none | `{ <gridKey>: row }`: the row that rests on the floor / perch line, e.g. the paws of a lying pose. Anything below it, like a curled tail, is drawn in front of the line instead of lifting the whole pet up. The cat's `senior_lying` uses `113`. |
+| `restRow` | none | `{ <gridKey>: row }`: the row that rests on the floor / perch line, e.g. the belly of a lying pose. Anything below it, like legs and a tail, is drawn down through the stage (or hangs over the edge of the cat-tree perch) instead of lifting the whole pet up. The cat's `senior_lying` uses `78`. |
 | `upright` | `false` | Portrait species; added to `UPRIGHT_TYPES`. |
 | `inRotation`, `passcode`, `defaultName` | — | Checked against `ROTATION_ANIMALS` and `customCharacters.js`; a mismatch prints a warning. |
 

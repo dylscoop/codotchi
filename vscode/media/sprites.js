@@ -1654,8 +1654,8 @@
 
     ctx.save();
     // A grid can declare the row that rests on the floor / perch line (the
-    // paws of the lying senior cat); anything below it — its curled tail — is
-    // drawn in front of that line instead of lifting the whole pet up.
+    // lying senior cat's belly); anything below it — its legs and tail — is
+    // drawn down through the stage, or hangs over the edge of the perch.
     var restRow = _gridMeta.restRow ? _gridMeta.restRow[gridKey] : undefined;
     if (restRow !== undefined) {
       ctx.translate(0, Math.round((ROWS - 1 - restRow) * bodyHeight / ROWS));

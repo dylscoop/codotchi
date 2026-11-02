@@ -280,7 +280,7 @@ describe("lying pose at rest (renderSpriteGrid hook)", () => {
 
   it("rests when still on the floor, perched or asleep, and skips the sleep squash when lying", () => {
     assert.ok(sidebarSource.includes(
-      'var wantsLie = !!lastState.sleeping || perching || (!catErrand && !walking && petY >= floorY - 0.5);'));
+      '(!catErrand && !walking && petY >= floorY - 0.5);'));
     assert.ok(sidebarSource.includes('var onPerch  = catErrand && catErrand.kind === "climb" && catErrand.phase === "perch";'));
     assert.ok(sidebarSource.includes("lying ? 1 : window.spriteMood.scaleY(mood, moodFrame)"));
     assert.ok(sidebarSource.includes("{ sleeping: false, displayMood: null, resting: false }"), "bounds are measured standing");
@@ -866,18 +866,20 @@ describe("senior cat lying on the floor (restRow)", () => {
     return { translates, clips, bodyHeight };
   }
 
-  it("rests on its front paws (row 113), the lowest row that isn't tail", () => {
+  it("rests on its belly (row 78): the last nearly full row, legs and tail below it", () => {
     const w = loadSpriteWindow();
-    assert.equal(w.SPRITE_GRID_META.cat.restRow.senior_lying, 113);
+    assert.equal(w.SPRITE_GRID_META.cat.restRow.senior_lying, 78);
     const grid: string[] = w.GENERATED_SPRITE_DEFS.cat.senior_lying;
-    const pawRows = grid.map((row, r) => (/[^0]/.test(row.slice(0, 70)) ? r : -1)).filter((r) => r >= 0);
-    assert.equal(Math.max(...pawRows), 113, "the front paws end on row 113");
+    const filled = (r: number) => (grid[r].match(/[^0]/g) || []).length;
+    const widest = Math.max(...grid.map((_, r) => filled(r)));
+    assert.ok(filled(78) >= 0.9 * widest, "row 78 is still the body");
+    assert.ok(filled(86) < 0.6 * widest, "below it the body splits into legs and tail");
   });
 
-  it("drops the paws onto the floor line and keeps the legs and tail (no clip)", () => {
+  it("drops the belly onto the floor and draws the legs and tail through the stage (no clip)", () => {
     const { translates, clips, bodyHeight } = drawLying();
     assert.equal(clips, 0, "nothing is cut off");
     assert.ok(bodyHeight > 0);
-    assert.ok(translates.includes(Math.round(14 * bodyHeight / 128)), "shifted down by the 14 tail-only rows");
+    assert.ok(translates.includes(Math.round(49 * bodyHeight / 128)), "shifted down by the 49 rows below the belly");
   });
 });

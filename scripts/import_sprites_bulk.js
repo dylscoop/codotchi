@@ -46,8 +46,9 @@
  *                    e.g. "adult" or "adult_sleeping"; replaces the automatic
  *                    leg detection there (quadrupeds only)
  *     restRow        { <gridKey>: row } the row that rests on the floor / perch
- *                    line (e.g. the paws of a lying pose); anything below it,
- *                    like a curled tail, is drawn in front of the line
+ *                    line (e.g. the belly of a lying pose); anything below it,
+ *                    like legs and a tail, draws down through the stage or
+ *                    hangs over the perch
  *     upright        portrait species (added to UPRIGHT_TYPES)
  *     inRotation, passcode, defaultName
  *                    checked against ROTATION_ANIMALS and customCharacters.js;

@@ -4,12 +4,12 @@
 
 ### Changed
 
-- **The senior cat lounges.** It spends most of its time lying down, getting up now and then for a short stroll. It eases down and back up instead of switching pose in a single frame. Being fed, patted, praised or played with no longer flops it over: it stays in whatever pose it was in. In Laser Pointer it still crouches low while watching the dot and springs up to pounce.
+- **The senior cat lounges.** It spends most of its time lying down, getting up now and then for a short stroll. It eases down and back up instead of switching pose in a single frame. Being fed, patted, praised or played with no longer flops it over: it stays in whatever pose it was in. In Laser Pointer it stands watching the dot and throws itself flat for the pounce. A senior cat also climbs the cat tree more often and naps up there for a while.
 - **A cat moves on instead of dying.** When a cat runs out of health or reaches the end of its life, it has gone back to its original owners or gone off hunting. It trots off the stage instead of floating up under a halo, and the game over screen says it has moved on.
 
 ### Fixed
 
-- **The lying senior cat no longer floats.** Its front paws rest on the ground (or on the cat tree's perch), and its tail curls down in front of it.
+- **The lying senior cat no longer floats.** Its body lies on the ground, with its front legs and tail running down through the stage. On the cat tree it lies on the perch, with its legs and tail hanging over the edge.
 - **Tim, Stu, the cat and the dog are smaller.** They were too big for the stage. Each is now one size smaller at every pet size setting: Large is the old Medium, Medium is the old Small, and Small is smaller again. The cat and dog are also laid out at the size they are drawn, so their floor and reaction positions line up.
 
 ## [2.34.0] - 2026-11-02

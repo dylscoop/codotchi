@@ -741,6 +741,19 @@
   /** An idle cat climbs about once every CAT_CLIMB_EVERY_S seconds when it has the energy. */
   var CAT_CLIMB_EVERY_S    = 90;
   var CAT_CLIMB_MIN_ENERGY = 60;
+  /** A senior cat naps up there: it climbs more often, with less energy, and stays a while. */
+  var CAT_SENIOR_CLIMB_EVERY_S    = 40;
+  var CAT_SENIOR_CLIMB_MIN_ENERGY = 30;
+  var CAT_SENIOR_PERCH_MS         = 45000;
+  /** Settled on the perch this long, a lying senior dozes off (z's). */
+  var CAT_PERCH_NAP_MS            = 3000;
+
+  /** Cat-tree tuning for a stage: {everyS, minEnergy, perchMs}. */
+  function catClimbTuning(stage) {
+    return stage === "senior"
+      ? { everyS: CAT_SENIOR_CLIMB_EVERY_S, minEnergy: CAT_SENIOR_CLIMB_MIN_ENERGY, perchMs: CAT_SENIOR_PERCH_MS }
+      : { everyS: CAT_CLIMB_EVERY_S, minEnergy: CAT_CLIMB_MIN_ENERGY, perchMs: CAT_PERCH_MS };
+  }
 
   /**
    * Gift run: trot "out" off the nearer edge, come "back" carrying the gift, then
@@ -995,6 +1008,11 @@
     CAT_PERCH_MS:   CAT_PERCH_MS,
     CAT_CLIMB_EVERY_S:    CAT_CLIMB_EVERY_S,
     CAT_CLIMB_MIN_ENERGY: CAT_CLIMB_MIN_ENERGY,
+    CAT_SENIOR_CLIMB_EVERY_S:    CAT_SENIOR_CLIMB_EVERY_S,
+    CAT_SENIOR_CLIMB_MIN_ENERGY: CAT_SENIOR_CLIMB_MIN_ENERGY,
+    CAT_SENIOR_PERCH_MS:         CAT_SENIOR_PERCH_MS,
+    CAT_PERCH_NAP_MS:            CAT_PERCH_NAP_MS,
+    catClimbTuning:       catClimbTuning,
     catNextPhase:   catNextPhase,
     CAT_LOUNGE_S:     CAT_LOUNGE_S,
     CAT_STROLL_S:     CAT_STROLL_S,

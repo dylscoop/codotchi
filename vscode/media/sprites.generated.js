@@ -2629,7 +2629,7 @@
   window.GENERATED_SPRITE_DEFS = DEFS;
 
   Object.assign(window.SPRITE_GRID_META, {
-    "cat": { cols: 185, rows: 128, legRowStart: 99, legs: { "baby": [[60,80,0],[95,106,1],[111,122,0]], "teen": [[25,53,0],[94,114,1]], "adult": [[29,47,0],[108,124,1]] }, restRow: { "senior_lying": 113 } },
+    "cat": { cols: 185, rows: 128, legRowStart: 99, legs: { "baby": [[60,80,0],[95,106,1],[111,122,0]], "teen": [[25,53,0],[94,114,1]], "adult": [[29,47,0],[108,124,1]] }, restRow: { "senior_lying": 78 } },
     "dog": { cols: 159, rows: 128, legRowStart: 99, legs: { "baby": [[29,33,0],[47,51,1],[103,120,0]], "child": [[26,38,0],[77,87,1]], "teen": [[22,40,0],[41,57,1],[84,101,1],[102,116,0]], "adult": [[50,62,0],[137,142,1],[151,158,0]], "senior": [[31,49,0],[91,106,1]] } },
     "dragon": { cols: 180, rows: 128, legRowStart: 99, legs: { "baby": [[43,67,0],[77,102,1],[107,128,0]], "child": [[36,54,0],[65,78,1],[94,117,0]], "teen": [[27,46,0],[53,99,1]], "adult": [[63,81,0],[88,114,1]] } },
     "kangaroo": { cols: 178, rows: 128, legRowStart: 99 },
