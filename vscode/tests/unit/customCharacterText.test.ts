@@ -166,7 +166,7 @@ describe("kangaroo (Skippy) Aussie voice", () => {
               sidebar.indexOf("} else if (lastState.sleeping) {"), "the smoko hop runs before the frozen sleep branch");
     assert.ok(sidebar.includes('if (!isOnSmoko(state)) { pushReaction("fell_asleep", nowMs); }'), "no lie-down before smoko");
     assert.ok(sidebar.includes("_napCc.breakNap.bubbles"), "the bubble uses breakNap.bubbles");
-    assert.ok(sidebar.includes("(chewing || isOnSmoko(lastState) || napTrip) ? Object.assign({}, lastState, { sleeping: false })"), "drawn awake, no z's");
+    assert.ok(sidebar.includes("(chewing || isOnSmoko(lastState) || napTrip || settling) ? Object.assign({}, lastState, { sleeping: false })"), "drawn awake, no z's");
     assert.ok(sidebar.includes('if (isOnSmoko(state))     { return "On smoko"; }'));
     assert.ok(sidebar.includes('localStorage.setItem("codotchi_smokoSide"'), "a reload keeps it off stage");
     assert.match(sidebar, /function drawStaticPet[\s\S]*?if \(isOnSmoko\(state\)\) \{[\s\S]*?return;/, "reduced motion: empty stage");

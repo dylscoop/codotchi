@@ -653,16 +653,19 @@ describe("senior cat lying pose (minigameArt.catPoseStep / catLoungeStep)", () =
   });
 });
 
-describe("a cat naps on its cat tree (sidebar.js)", () => {
-  it("any cat but the egg naps up there when the background has a cat tree", () => {
+describe("a cat takes its break nap on its cat tree (sidebar.js)", () => {
+  it("any cat but the egg, on its 5-minute break only, when the background has a cat tree", () => {
     assert.ok(sidebarSource.includes("function wantsNapClimb(state) {"));
-    assert.ok(sidebarSource.includes('return !!(state && state.spriteType === "cat" && state.stage !== "egg" && hasCatTree(state));'));
+    assert.ok(sidebarSource.includes('return !!(state && state.spriteType === "cat" && state.stage !== "egg" && hasCatTree(state) &&'));
+    assert.ok(sidebarSource.includes("state.sleeping && (state.breakNapTicksRemaining || 0) > 0);"));
   });
 
-  it("falling asleep sends it up the tree (or straight onto the perch when opened asleep)", () => {
-    assert.ok(sidebarSource.includes("if (lastState.sleeping && wantsNapClimb(lastState) && !(catErrand && catErrand.nap) &&"));
+  it("the break sends it straight up the tree (or onto the perch when opened on its break)", () => {
+    assert.ok(sidebarSource.includes("if (lastState.sleeping && wantsNapClimb(lastState) && !(catErrand && catErrand.nap)) {"));
     assert.ok(sidebarSource.includes('phase: (napStartPerched || REDUCED_MOTION) ? "perch" : "walk"'));
-    assert.ok(sidebarSource.includes("napStartPerched  = !!state.sleeping;"));
+    assert.ok(sidebarSource.includes("napStartPerched  = !!state.sleeping && (state.breakNapTicksRemaining || 0) > 0;"));
+    assert.ok(sidebarSource.includes("!(catErrand && catErrand.nap)) {\n") || sidebarSource.includes("!(catErrand && catErrand.nap)) {\r\n"),
+              "the fell_asleep hold doesn't stop it heading off");
     assert.ok(sidebarSource.includes("catErrand.nap = true;   // dozed off on its way up or on the perch"));
   });
 
@@ -673,8 +676,16 @@ describe("a cat naps on its cat tree (sidebar.js)", () => {
 
   it("walks and climbs awake on the way up, and a lying senior stands first", () => {
     assert.ok(sidebarSource.includes('var napTrip = !!(catErrand && catErrand.nap && catErrand.phase !== "perch");'));
-    assert.ok(sidebarSource.includes("(chewing || isOnSmoko(lastState) || napTrip) ? Object.assign({}, lastState, { sleeping: false })"));
+    assert.ok(sidebarSource.includes("(chewing || isOnSmoko(lastState) || napTrip || settling) ? Object.assign({}, lastState, { sleeping: false })"));
     assert.ok(sidebarSource.includes("var walking  = !isDragon && (!lastState.sleeping || napTrip)"));
     assert.ok(sidebarSource.includes("var ceRising = canLie && lieBlend > 0;"));
+  });
+
+  it("falling asleep off the floor settles down smoothly instead of teleporting", () => {
+    assert.ok(sidebarSource.includes("const SLEEP_SETTLE_PPS  = 90;"));
+    assert.ok(sidebarSource.includes("petY  = mgArt.stepToward(petY, floorY, SLEEP_SETTLE_PPS * dt).x;"));
+    assert.ok(sidebarSource.includes("floorY - Math.round(bHeight * 0.12) : floorY, SLEEP_SETTLE_PPS * dt).x;"));
+    assert.ok(!/rxn\.type === "fell_asleep"\) \{\s*petY  = floorY;/.test(sidebarSource), "no snap when the reaction ends");
+    assert.ok(sidebarSource.includes("var settling = !!lastState.sleeping && !catErrand && !isDragon && petY < floorY - 0.5;"));
   });
 });
