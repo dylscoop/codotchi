@@ -1865,6 +1865,19 @@ describe("applyMinigameResult", () => {
     assert.ok(won.petXp > 0);
   });
 
+  it("laser (the cat's Left / Right) uses Left / Right's rewards and weight loss", () => {
+    assert.equal(minigameStatsKey("laser"), "left_right");
+    const pet = makePet({ happiness: 50, weight: 40 });
+    const won = applyMinigameResult(pet, "laser", "win");
+    const lost = applyMinigameResult(pet, "laser", "lose");
+    assert.ok(won.happiness >= 55 && won.happiness <= 65, `got ${won.happiness}`);
+    assert.equal(lost.happiness, 45);
+    assert.equal(won.weight, 37);
+    assert.ok(won.events.includes("minigame_laser_win"));
+    assert.ok(lost.events.includes("minigame_laser_lose"));
+    assert.ok(won.petXp > 0);
+  });
+
   it("fetch and tug_of_war wins award minigame XP", () => {
     assert.ok(applyMinigameResult(makePet(), "fetch", "win").petXp > 0);
     assert.ok(applyMinigameResult(makePet(), "tug_of_war", "win").petXp > 0);

@@ -36,4 +36,4 @@ fun giftFor(state: PetState, rand: () -> Double = Math::random): CustomCharacter
 /** The gift as JSON for the webview's stateUpdate message ("null" when there is none). */
 fun giftJson(gift: CustomCharacterGift?): String =
     if (gift == null) "null"
-    else """{"message":${jsonStringOrNull(gift.message)},"praiseBubble":${jsonStringOrNull(gift.praiseBubble)}}"""
+    else """{"kind":${jsonStringOrNull(gift.kind)},"message":${jsonStringOrNull(gift.message)},"praiseBubble":${jsonStringOrNull(gift.praiseBubble)}}"""

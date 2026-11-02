@@ -25,7 +25,8 @@
    *   patLabel      {string}   — label for the Pat button in the minigame overlay
    *   giftMessage   {string}   — attention_call_gift toast message (optional)
    *   gifts         {object[]} — optional: gifts picked at random per gift call (by the host,
-   *     which sends the pick as message.gift): { message, praiseBubble? } (__Name__ = pet name)
+   *     which sends the pick as message.gift): { kind?, message, praiseBubble? } (__Name__ = pet name;
+   *     kind is what the stage draws, "mouse" or "bird" — a gift box if absent)
    *   patToasts     {object}   — toast strings keyed by event name:
    *     patted        {string}  — shown when pat succeeds
    *     pat_refused   {string}  — shown when not enough energy
@@ -124,7 +125,12 @@
       passcode:     "blackcat",
       defaultName:  "Codotchi",
       patLabel:     "Pat",
-      giftMessage:  "__Name__ found a toy mouse!",
+      gifts: [
+        { kind: "mouse", message: "__Name__ left a mouse at your feet. You're welcome.", praiseBubble: "Don't say I never get you anything." },
+        { kind: "mouse", message: "__Name__ caught a mouse for you!",                     praiseBubble: "I am a mighty hunter." },
+        { kind: "bird",  message: "__Name__ brought you a bird!",                         praiseBubble: "Took me all morning." },
+        { kind: "bird",  message: "__Name__ proudly presents a bird!",                    praiseBubble: "Fresh from the garden." },
+      ],
       patToasts: {
         patted:      "__Name__ purred!",
         pat_refused: "__Name__ is too tired for cuddles!",
@@ -135,6 +141,25 @@
         "I will knock that off the desk.",
         "Fine. You may pet me.",
       ],
+      patCall: {
+        call:     "__Name__ demands chin scratches.",
+        answered: "You gave __Name__ chin scratches.",
+        expired:  "__Name__ demanded chin scratches and was ignored.",
+        status:   "demands chin scratches.",
+      },
+      snackCravings: [
+        { label: "some tuna",        item: "tuna" },
+        { label: "a saucer of milk", item: "milk" },
+      ],
+      ignoredBubble: "Hmph. Fine.",
+      breakNap: {
+        call:    "__Name__ wants a catnap! You've been coding for 30 minutes.",
+        started: "__Name__ curled up in a sunbeam for a catnap ☀️",
+        noWake:  "__Name__ is catnapping. Do not disturb.",
+        over:    "__Name__ stretched and woke from the catnap. Back to work!",
+        button:  "Catnap",
+        bubbles: ["Zzz… sunbeam…", "Do not disturb."],
+      },
     },
     // ── Add future custom characters here ────────────────────────────────────
     stu: {

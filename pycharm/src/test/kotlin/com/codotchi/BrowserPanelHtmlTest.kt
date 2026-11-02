@@ -87,6 +87,14 @@ class BrowserPanelHtmlTest {
     }
 
     @Test
+    fun `sidebar html has the cat Laser Pointer panel`() {
+        val html = loadResource("/webview/sidebar.html")
+        for (id in listOf("mg-laser", "btn-laser-pounce", "laser-feedback", "laser-score")) {
+            assertTrue(html.contains("id=\"$id\""), "sidebar.html must contain #$id for the cat's Laser Pointer game")
+        }
+    }
+
+    @Test
     fun `built html contains spriteConstants content inline`() {
         val html = buildInlinedHtml()
         // STAGE_SCALES is a unique identifier declared only in spriteConstants.js

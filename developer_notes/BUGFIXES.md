@@ -2506,3 +2506,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** All three workflows trigger on every `issues: opened` event and pick their issues by title in a job-level `if:`. Each issue skipped the only job in the two non-matching workflows, and GitHub emailed the repo owner "No jobs were run" for those runs.
 
 **Fix:** Each workflow has an always-running `route` job (no permissions, one echo step) and the real job `needs: route`. Non-matching runs now finish as a success, which sends no email when Actions notifications are set to failed workflows only. See `developer_notes/adr/2026-10-29-no-jobs-run-emails.md`.
+
+## BUGFIX-212 - Dog rocks instead of walking
+
+**Status:** Fixed (branch `feat/cat-actions`)
+**Files:** `vscode/media/sidebar.js`, `sprites/dog/sprite.json`, `vscode/media/sprites.generated.js`
+
+**Problem:** A happy dog (for example after a pat) rocked back and forth while walking instead of stepping. The happy tail wag rotates the whole sprite around its feet at 3 Hz, and it ran while walking too. Separately, the teen dog's legs moved front against back: leg auto-detection (`detectLegs`) only found two legs, the near front paw and the near back leg, so the walk raised the whole front and then the whole back. Each of those spans also covered only part of a leg, so lifting cut the legs mid-way.
+
+**Fix:** `isWagging(state, walking)` is false while walking, so the dog only wags standing still. For the teen dog, `sprite.json` sets a `legs` override for the teen grid with all four legs, in diagonal pairs: far front + near back in one walk group, near front + far back in the other.
