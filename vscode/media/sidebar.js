@@ -280,6 +280,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   let catLoungeUntilMs = 0;
   let lieBlend         = 0;
   let stillSinceMs     = -1;
+  // Opened while asleep: a cat starts its nap already up on the cat tree
+  let napStartPerched  = false;
   let reactionQueue = [];     // [{ type, startMs, durationMs, startX, startY }]
   let moodParticles = [];     // sparkles / tears / crumbs / z's (window.spriteMood)
   let patParticles  = [];     // hearts / prr / smoke during a pat (window.spritePat)
@@ -2051,12 +2053,35 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         catErrand = { kind: "climb", phase: "walk", startMs: nowMs };
       }
     }
+    // A cat (any stage) that falls asleep naps on its cat tree: it walks over, climbs
+    // up and sleeps on the perch until it wakes. Already asleep when the panel
+    // opens (or reduced motion): it's simply up there.
+    if (lastState.sleeping && wantsNapClimb(lastState) && !(catErrand && catErrand.nap) &&
+        !(activeReaction && activeReaction.type === "fell_asleep")) {
+      if (catErrand && catErrand.kind === "climb") {
+        catErrand.nap = true;   // dozed off on its way up or on the perch: stays up there
+      } else {
+        var napTree = catTreeNow(lastState);
+        var napB    = boxerBounds(lastState, bWidth, bHeight, false);
+        if (napTree && napTree.y - napB.bottom + napB.top >= 0) {
+          catErrand = { kind: "climb", phase: (napStartPerched || REDUCED_MOTION) ? "perch" : "walk",
+                        nap: true, startMs: nowMs };
+        }
+      }
+    }
+    napStartPerched = false;
     // ...and gets down for anything else: a pat, food, a game, sleep or its gift call
-    if (catErrand && catErrand.kind === "climb" &&
+    // (a nap only ends when it wakes up — see the perch phase)
+    if (catErrand && catErrand.kind === "climb" && !catErrand.nap &&
         (!wantsToClimb(lastState) || !catTreeNow(lastState) || stageGame || snackItems.length > 0 ||
          (activeReaction && activeReaction.type !== "tail_chase"))) {
       catErrand = null;
     }
+    if (catErrand && catErrand.nap && (!catTreeNow(lastState) || stageGame)) {
+      catErrand = null;
+    }
+    // On its way up for a nap it's still awake (walking, no z's) until it settles on the perch
+    var napTrip = !!(catErrand && catErrand.nap && catErrand.phase !== "perch");
     // A gift run stops for sleep or a game, back on the stage
     if (catErrand && catErrand.kind === "gift" && (lastState.sleeping || stageGame || lastState.spriteType !== "cat")) {
       catErrand = null;
@@ -2085,7 +2110,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                       ? nowMs - stageGame.pounceMs : -1;
     var laserPounce = laserPounceMs >= mgArt.LASER_POUNCE_MS - LASER_LAND_LIE_MS &&
                       laserPounceMs < mgArt.LASER_POUNCE_MS + 500;
-    var mustStand = canLie && !lastState.sleeping && !onPerch &&
+    var mustStand = canLie && (napTrip || !lastState.sleeping) && !onPerch &&
       ((!!stageGame && !laserPounce) || !!catErrand || snackItems.length > 0 ||
        (!stageGame && !lounging && !activeReaction && !lastState.sick && getSpeedPPS(lastState) > 0));
     var pinned = canLie && (lounging || lieBlend > 0);
@@ -2177,8 +2202,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         petVy = 0;
         if (catErrand.phase === "walk") {
           var walkPps = Math.max(40, getSpeedPPS(lastState));
-          ceStep = mgArt.stepToward(petX, ceTreeX, walkPps * dt);
-          petVx  = ceStep.arrived ? 0 : (ceTreeX > petX ? walkPps : -walkPps);
+          // A lying senior gets to its feet before it sets off
+          var ceRising = canLie && lieBlend > 0;
+          ceStep = ceRising ? { x: petX, arrived: false } : mgArt.stepToward(petX, ceTreeX, walkPps * dt);
+          petVx  = (ceRising || ceStep.arrived) ? 0 : (ceTreeX > petX ? walkPps : -walkPps);
           if (petVx !== 0) { petFacingLeft = petVx < 0; }
           petX   = ceStep.x;
           petY   = floorY;
@@ -2194,7 +2221,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
           petVx  = 0;
           petX   = ceTreeX;
           petY   = ceTree.y - ceB.bottom;
-          ceDone = nowMs - catErrand.startMs >= mgArt.catClimbTuning(lastState.stage).perchMs;
+          if (catErrand.nap) {
+            // Napping up there: breathe, and hop down once it wakes
+            if (lastState.sleeping) { breathPhase += 1.8 * dt; }
+            ceDone = !lastState.sleeping;
+          } else {
+            ceDone = nowMs - catErrand.startMs >= mgArt.catClimbTuning(lastState.stage).perchMs;
+          }
           if (ceDone) { petVy = HOP_IMPULSE * 0.5; }   // hop down; gravity takes it from here
         }
       }
@@ -2392,7 +2425,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     // ── Leg frame ────────────────────────────────────────────────────────
     // Dragon floats — it has no legs, so always pass legFrame -1 (upright/neutral).
-    var walking  = !isDragon && !lastState.sleeping && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
+    var walking  = !isDragon && (!lastState.sleeping || napTrip) && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
     var running  = activeReaction && activeReaction.type === "patted" && window.spritePat.runLap(lastState.spriteType, 0) !== null;
     var climbing = catErrand && catErrand.kind === "climb" && catErrand.phase === "up";
     var legFrame = isDragon ? -1 : ((walking || climbing) ? Math.floor(animTick / (running ? 4 : climbing ? 6 : 10)) % 2 : 0);
@@ -2401,7 +2434,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // asleep) a pet with a lying pose (the senior cat) lies down — once it has
     // been still for a moment and no reaction is playing, easing over CAT_POSE_MS
     var perching = !!onPerch;
-    var wantsLie = !!lastState.sleeping || perching || laserPounce ||
+    var wantsLie = (!!lastState.sleeping && !napTrip) || perching || laserPounce ||
                    (!catErrand && !walking && petY >= floorY - 0.5);
     if (canLie) {
       if (!wantsLie || mustStand) { stillSinceMs = -1; }
@@ -2420,7 +2453,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // The dog spends its break nap awake, gnawing a big bone
     var chewing = isChewingBone(lastState);
     // ...and Skippy is awake, off on smoko (no z's)
-    var drawState = (chewing || isOnSmoko(lastState)) ? Object.assign({}, lastState, { sleeping: false }) : lastState;
+    var drawState = (chewing || isOnSmoko(lastState) || napTrip) ? Object.assign({}, lastState, { sleeping: false }) : lastState;
     if (nowMs < chompUntilMs || chewing) { snackChomp = true; }
     else if (feeding) { snackChomp = (activeReaction.type === "fed_snack") || lastState.spriteType === "dog"; }
     // A senior lying settled on the cat tree's perch dozes off: z's, same colours
@@ -2728,6 +2761,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       catLoungeUntilMs = _lounge.untilMs;
       lieBlend         = window.spriteHasLyingPose(state) ? 1 : 0;
       stillSinceMs     = -1;
+      napStartPerched  = !!state.sleeping;
+      catErrand        = null;
     }
 
     // Reset position when the pet evolves to a new stage
@@ -3673,6 +3708,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   function catTreeNow(state) {
     if (!hasCatTree(state) || !window.backgroundArt) { return null; }
     return window.backgroundArt.catTreeBox(BG_MODE, new Date(), spriteCanvas.width, spriteCanvas.height);
+  }
+
+  /** Any cat (not the egg) naps on its cat tree when the background has one. */
+  function wantsNapClimb(state) {
+    return !!(state && state.spriteType === "cat" && state.stage !== "egg" && hasCatTree(state));
   }
 
   /** An awake, well, energetic teen or adult cat climbs its cat tree now and then. */

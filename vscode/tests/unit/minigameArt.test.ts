@@ -647,8 +647,34 @@ describe("senior cat lying pose (minigameArt.catPoseStep / catLoungeStep)", () =
     assert.ok(sidebarSource.includes("((!!stageGame && !laserPounce) || !!catErrand"));
     // the end-of-lounge stroll mustn't stand it up during a game (it overrode the pounce)
     assert.ok(sidebarSource.includes("(!stageGame && !lounging && !activeReaction && !lastState.sick && getSpeedPPS(lastState) > 0)"));
-    assert.ok(sidebarSource.includes("var wantsLie = !!lastState.sleeping || perching || laserPounce ||"));
+    assert.ok(sidebarSource.includes("var wantsLie = (!!lastState.sleeping && !napTrip) || perching || laserPounce ||"));
     assert.ok(sidebarSource.includes("stillMs: laserPounce ? mgArt.CAT_LIE_DELAY_MS :"));
     assert.ok(sidebarSource.includes('dt * 1000 * (stageGame && stageGame.kind === "laser" ? 3 : 1)'));
+  });
+});
+
+describe("a cat naps on its cat tree (sidebar.js)", () => {
+  it("any cat but the egg naps up there when the background has a cat tree", () => {
+    assert.ok(sidebarSource.includes("function wantsNapClimb(state) {"));
+    assert.ok(sidebarSource.includes('return !!(state && state.spriteType === "cat" && state.stage !== "egg" && hasCatTree(state));'));
+  });
+
+  it("falling asleep sends it up the tree (or straight onto the perch when opened asleep)", () => {
+    assert.ok(sidebarSource.includes("if (lastState.sleeping && wantsNapClimb(lastState) && !(catErrand && catErrand.nap) &&"));
+    assert.ok(sidebarSource.includes('phase: (napStartPerched || REDUCED_MOTION) ? "perch" : "walk"'));
+    assert.ok(sidebarSource.includes("napStartPerched  = !!state.sleeping;"));
+    assert.ok(sidebarSource.includes("catErrand.nap = true;   // dozed off on its way up or on the perch"));
+  });
+
+  it("stays up there until it wakes, then hops down", () => {
+    assert.ok(sidebarSource.includes("ceDone = !lastState.sleeping;"));
+    assert.ok(sidebarSource.includes("if (catErrand && catErrand.kind === \"climb\" && !catErrand.nap &&"));
+  });
+
+  it("walks and climbs awake on the way up, and a lying senior stands first", () => {
+    assert.ok(sidebarSource.includes('var napTrip = !!(catErrand && catErrand.nap && catErrand.phase !== "perch");'));
+    assert.ok(sidebarSource.includes("(chewing || isOnSmoko(lastState) || napTrip) ? Object.assign({}, lastState, { sleeping: false })"));
+    assert.ok(sidebarSource.includes("var walking  = !isDragon && (!lastState.sleeping || napTrip)"));
+    assert.ok(sidebarSource.includes("var ceRising = canLie && lieBlend > 0;"));
   });
 });

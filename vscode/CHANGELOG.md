@@ -4,6 +4,7 @@
 
 ### Changed
 
+- **Cats nap on the cat tree.** Whenever a cat of any age falls asleep, including its break catnap, it walks over to its cat tree, climbs up and sleeps on the perch, then hops down when it wakes. Opened while it's asleep, it's already up there. Without a cat tree (the legacy background) it sleeps on the floor as before.
 - **The senior cat lounges.** It spends most of its time lying down, getting up now and then for a short stroll. It eases down and back up instead of switching pose in a single frame. Being fed, patted, praised or played with no longer flops it over: it stays in whatever pose it was in. In Laser Pointer it stands watching the dot, jumps for it, and lies down as it lands. A senior cat also climbs the cat tree more often and naps up there for a while.
 - **A cat moves on instead of dying.** When a cat runs out of health or reaches the end of its life, it has gone back to its original owners or gone off hunting. It trots off the stage instead of floating up under a halo, and the game over screen says it has moved on.
 
