@@ -46,8 +46,8 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   popup hides after 10 seconds, and the notification closes by itself once you
   answer the call or it expires
 - **Sickness & death** — neglect your pet and it gets sick; leave it untreated
-  and it dies. A sick pet won't eat, snack or play until it's had its
-  medicine — the Medicine button counts the doses left
+  and it dies. A sick pet won't eat, snack, play or take a break until it's
+  had its medicine — the Medicine button counts the doses left
 - **Safe while you are away** — when you step away from the IDE your pet gets
   hungry and bored more slowly and never loses health, so it is waiting for you
   when you come back

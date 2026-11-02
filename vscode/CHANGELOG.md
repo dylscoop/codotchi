@@ -6,6 +6,10 @@
 
 - **Autumn weather is calmer.** Thunderstorms and the V of geese now turn up half as often, and morning fog less than a third as often.
 
+### Fixed
+
+- **A sick pet can't go on a break.** Praise is greyed out while the pet is sick, like Feed, Snack and Play, so a "take a break" call can't send a sick pet off on its 5-minute nap instead of getting medicine.
+
 ## [2.33.6] - 2026-11-02
 
 ### Fixed

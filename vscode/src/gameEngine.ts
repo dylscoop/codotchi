@@ -2480,6 +2480,7 @@ export function scold(state: PetState): PetState {
  * nap while you rest: stats are frozen except energy, aging continues, and it
  * can't be woken early — it wakes on its own.
  * If an "unhappiness" attention call is active, it is answered instead.
+ * Refused while sick ("praise_refused_sick") — give medicine before a break.
  *
  * @param state - The current pet state.
  * @param opts - Optional per-character overrides.
@@ -2487,6 +2488,9 @@ export function scold(state: PetState): PetState {
  * @returns A new PetState after the action.
  */
 export function praise(state: PetState, opts: { breakWeightGain?: number } = {}): PetState {
+  if (state.sick) {
+    return withDerivedFields({ ...state, events: ["praise_refused_sick"] });
+  }
   const answeredGift        = answerAttentionCall(state, "gift");
   const answeredBreak       = !answeredGift ? answerAttentionCall(state, "break") : null;
   const answeredUnhappiness = !answeredGift && !answeredBreak ? answerAttentionCall(state, "unhappiness") : null;

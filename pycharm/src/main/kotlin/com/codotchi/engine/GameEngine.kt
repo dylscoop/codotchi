@@ -1242,9 +1242,12 @@ fun scold(state: PetState): PetState {
  * (+BREAK_PRAISE_HAPPINESS_BOOST, and the pet takes a BREAK_NAP_TICKS (5-minute) nap
  * while you rest: stats frozen except energy, aging continues, can't be woken early), or an
  * unhappiness call, in that order. breakWeightGain is added to weight when a break
- * call is answered (the dog's big bone).
+ * call is answered (the dog's big bone). Refused while sick ("praise_refused_sick").
  */
 fun praise(state: PetState, breakWeightGain: Int = 0): PetState {
+    if (state.sick) {
+        return withDerivedFields(state.copy(events = listOf("praise_refused_sick")))
+    }
     val answeredGift        = answerAttentionCall(state, "gift")
     val answeredBreak       = if (answeredGift == null) answerAttentionCall(state, "break") else null
     val answeredUnhappiness = if (answeredGift == null && answeredBreak == null) answerAttentionCall(state, "unhappiness") else null

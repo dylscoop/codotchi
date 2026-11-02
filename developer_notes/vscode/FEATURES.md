@@ -605,7 +605,7 @@ Features that deepen the existing care actions.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Medicine doses remaining shown on button | `[x]` | `#medicine-left` badge on the Medicine button, shown only while sick (3 − `medicineDosesGiven`) — v2.26.0 |
-| Disable Feed/Play while sick | `[x]` | v2.26.0 (BUG-S04): `feedMeal` / `startSnack` / `play` return `meal_refused_sick` / `snack_refused_sick` / `play_refused_sick`; Feed, Snack and Play are greyed out in the webview (so Pat and Token Cost in the Play menu wait too); terminal hosts print a "too sick" message |
+| Disable Feed/Play while sick | `[x]` | v2.26.0 (BUG-S04): `feedMeal` / `startSnack` / `play` return `meal_refused_sick` / `snack_refused_sick` / `play_refused_sick`; Feed, Snack and Play are greyed out in the webview (so Pat and Token Cost in the Play menu wait too); terminal hosts print a "too sick" message; v2.33.7: `praise` returns `praise_refused_sick` and Praise is greyed out too, so a sick pet can't start a break nap |
 | Sick animation (canvas shake or flicker) | `[x]` | `became_sick` reaction, constant tremor at 0.05× speed, red "+" indicator |
 
 ---

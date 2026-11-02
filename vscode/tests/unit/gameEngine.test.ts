@@ -2158,6 +2158,16 @@ describe("praise", () => {
     const next = praise(pet);
     assert.ok(next.events.includes("praised"));
   });
+
+  it("refuses while sick, so a sick pet can't start a break nap", () => {
+    const pet = makePet({ sick: true, discipline: 40, activeAttentionCall: "break" });
+    const next = praise(pet);
+    assert.deepEqual(next.events, ["praise_refused_sick"]);
+    assert.equal(next.discipline, 40);
+    assert.equal(next.activeAttentionCall, "break");
+    assert.equal(next.breakNapTicksRemaining, 0);
+    assert.equal(next.sleeping, false);
+  });
 });
 
 // ---------------------------------------------------------------------------

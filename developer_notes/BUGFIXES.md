@@ -2515,3 +2515,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** A happy dog (for example after a pat) rocked back and forth while walking instead of stepping. The happy tail wag rotates the whole sprite around its feet at 3 Hz, and it ran while walking too. Separately, the teen dog's legs moved front against back: leg auto-detection (`detectLegs`) only found two legs, the near front paw and the near back leg, so the walk raised the whole front and then the whole back. Each of those spans also covered only part of a leg, so lifting cut the legs mid-way.
 
 **Fix:** `isWagging(state, walking)` is false while walking, so the dog only wags standing still. For the teen dog, `sprite.json` sets a `legs` override for the teen grid with all four legs, in diagonal pairs: far front + near back in one walk group, near front + far back in the other.
+
+## BUGFIX-213 - A sick pet could be sent on a break nap
+
+**Status:** Fixed (branch `fix/rarer-autumn-weather`)
+**Files:** `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `vscode/media/sidebar.js`
+
+**Problem:** Praise answers a "take a break" call, which starts a 5-minute break nap. Feed, Snack and Play were blocked while sick (BUGFIX-186), but Praise wasn't, so a sick pet could go off on a nap instead of getting medicine. It couldn't die during the nap (every stat but energy is frozen), but the sickness was just put off.
+
+**Fix:** `praise()` returns `praise_refused_sick` while sick, leaving the call, discipline and stats unchanged. The webview greys out Praise while sick alongside Feed, Snack and Play.

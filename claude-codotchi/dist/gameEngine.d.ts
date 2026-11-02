@@ -753,6 +753,7 @@ export declare function scold(state: PetState): PetState;
  * nap while you rest: stats are frozen except energy, aging continues, and it
  * can't be woken early — it wakes on its own.
  * If an "unhappiness" attention call is active, it is answered instead.
+ * Refused while sick ("praise_refused_sick") — give medicine before a break.
  *
  * @param state - The current pet state.
  * @param opts - Optional per-character overrides.
