@@ -7,6 +7,8 @@
 | File | What changed |
 |------|-------------|
 | `sprites/dog/sprite.json`, `vscode/media/sprites.generated.js` | teen dog `legs` override `[[22,40,0],[41,57,1],[84,101,1],[102,116,0]]`: all four legs, stepped in diagonal pairs (auto-detection only found the near front paw and near back leg, so the walk rocked front against back) |
+| `vscode/media/sidebar.js` | a happy dog only wags (`isWagging(state, walking)`) while standing still: the wag rotated the whole sprite, so a walking dog rocked instead of stepping, e.g. after a pat |
+| `vscode/tests/unit/customCharacterText.test.ts` | no wag while walking |
 | `vscode/tests/unit/webviewAnimations.test.ts` | leg walk test also covers the teen dog; teen front and back pairs each mix both walk groups |
 | all manifests, `README.md`, docs | version 2.33.6; CHANGELOG, BUGFIXES (BUGFIX-212) |
 

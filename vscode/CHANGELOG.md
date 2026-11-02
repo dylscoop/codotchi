@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- **The teen dog walks properly.** It used to rock back and forth while walking instead of stepping. Its four legs now step in diagonal pairs like the other dogs.
+- **The dog walks properly.** A happy dog, for example after a pat, used to rock back and forth while walking instead of stepping. It now only wags its tail while standing still. The teen dog's four legs also step in diagonal pairs like the other dogs.
 
 ## [2.33.5] - 2026-10-30
 

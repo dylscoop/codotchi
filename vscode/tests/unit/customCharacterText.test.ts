@@ -301,11 +301,17 @@ describe("dog voice, snacks and break bone", () => {
 
   it("wags when happy and chases its tail when energetic, but not asleep, sick or with reduced motion", () => {
     const sidebar = read("vscode/media/sidebar.js");
-    assert.match(sidebar, /function isWagging\(state\) \{\n\s*return isAwakeDog\(state\) && state\.mood === "happy" && !REDUCED_MOTION;/);
+    assert.match(sidebar, /function isWagging\(state, walking\) \{\n\s*return isAwakeDog\(state\) && state\.mood === "happy" && !walking && !REDUCED_MOTION;/);
     assert.match(sidebar, /function wantsToChaseTail\(state\) \{\n\s*return isAwakeDog\(state\) && \(state\.energy \|\| 0\) >= TAIL_CHASE_MIN_ENERGY && !REDUCED_MOTION;/);
     assert.match(sidebar, /function isAwakeDog\(state\) \{[\s\S]*?!state\.sleeping && !state\.sick/);
     assert.ok(sidebar.includes('pushReaction("tail_chase", nowMs, TAIL_CHASE_MS)'));
     assert.ok(sidebar.includes('case "tail_chase": {'));
+  });
+
+  it("only wags standing still, so a walking dog steps instead of rocking", () => {
+    const sidebar = read("vscode/media/sidebar.js");
+    assert.ok(sidebar.includes("var wag = isWagging(state, walking) ?"));
+    assert.ok(sidebar.includes("window.spriteMood.scaleY(mood, moodFrame), walking);"));
   });
 });
 

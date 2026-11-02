@@ -2392,7 +2392,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
     drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
-                         window.spriteMood.scaleY(mood, moodFrame));
+                         window.spriteMood.scaleY(mood, moodFrame), walking);
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
     // The cat's mouse or bird, in its mouth on the way back
     if (catErrand && catErrand.kind === "gift" && !catErrand.cancelled && catErrand.phase !== "out") {
@@ -3559,9 +3559,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       !state.sleeping && !state.sick);
   }
 
-  /** A happy dog wags its tail (a gentle body wiggle). */
-  function isWagging(state) {
-    return isAwakeDog(state) && state.mood === "happy" && !REDUCED_MOTION;
+  /** A happy dog standing still wags its tail (a gentle body wiggle); walking, it just steps. */
+  function isWagging(state, walking) {
+    return isAwakeDog(state) && state.mood === "happy" && !walking && !REDUCED_MOTION;
   }
 
   /** An energetic dog sometimes chases its tail while idle. */
@@ -3932,10 +3932,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    * @param {object|null} reaction   - Active reaction object (or null)
    * @param {number}      nowMs      - performance.now()
    * @param {number}      [moodScaleY] - mood squash/stretch (1 = none); a reaction overrides it
+   * @param {boolean}     [walking]  - the pet is walking (no tail wag)
    */
-  function drawBodyWithReaction(state, x, bodyY, facingLeft, legFrame, reaction, nowMs, moodScaleY) {
+  function drawBodyWithReaction(state, x, bodyY, facingLeft, legFrame, reaction, nowMs, moodScaleY, walking) {
     if (!reaction) {
-      var wag = isWagging(state) ? Math.sin(nowMs / 1000 * Math.PI * 2 * TAIL_WAG_HZ) * TAIL_WAG_ROT : 0;
+      var wag = isWagging(state, walking) ? Math.sin(nowMs / 1000 * Math.PI * 2 * TAIL_WAG_HZ) * TAIL_WAG_ROT : 0;
       if ((moodScaleY && moodScaleY !== 1) || wag !== 0) {
         // Squash/stretch anchored at the feet, widened slightly to keep the volume;
         // a happy dog also wiggles from the tail
