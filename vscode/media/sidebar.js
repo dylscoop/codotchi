@@ -57,6 +57,12 @@
   /** Seconds between happy hops when the pet is on the floor. */
   const HOP_INTERVAL = 4.0;
 
+  /**
+   * The senior cat starts lying down this long before its laser pounce lands:
+   * the in-game pose change (CAT_POSE_MS at 3× speed), so it's flat on touchdown.
+   */
+  const LASER_LAND_LIE_MS = 150;
+
   /** Floor bounce coefficient (velocity damping on ground contact). */
   const BOUNCE_COEFF = 0.25;
 
@@ -2072,10 +2078,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var onPerch  = catErrand && catErrand.kind === "climb" && catErrand.phase === "perch";
     // Things that get it up: a game, an errand, a snack, or the end of a lounge
     // (a stroll waits for any reaction to finish first)
-    // Laser Pointer: it stands watching the dot and goes flat for the pounce
-    // (the leap and the landing), then gets up to pad back
-    var laserPounce = !!stageGame && stageGame.kind === "laser" && stageGame.phase === "pounce" &&
-                      nowMs - stageGame.pounceMs < mgArt.LASER_POUNCE_MS + 500;
+    // Laser Pointer: it stands watching the dot and for the leap, settles flat as
+    // it lands (starting LASER_LAND_LIE_MS early so it's down on touchdown), then
+    // gets up to pad back
+    var laserPounceMs = stageGame && stageGame.kind === "laser" && stageGame.phase === "pounce"
+                      ? nowMs - stageGame.pounceMs : -1;
+    var laserPounce = laserPounceMs >= mgArt.LASER_POUNCE_MS - LASER_LAND_LIE_MS &&
+                      laserPounceMs < mgArt.LASER_POUNCE_MS + 500;
     var mustStand = canLie && !lastState.sleeping && !onPerch &&
       ((!!stageGame && !laserPounce) || !!catErrand || snackItems.length > 0 ||
        (!stageGame && !lounging && !activeReaction && !lastState.sick && getSpeedPPS(lastState) > 0));

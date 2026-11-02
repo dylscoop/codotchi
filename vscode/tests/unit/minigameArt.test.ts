@@ -640,9 +640,10 @@ describe("senior cat lying pose (minigameArt.catPoseStep / catLoungeStep)", () =
     assert.ok(sidebarSource.includes("var perchNap = canLie && onPerch && lieBlend >= 1"));
   });
 
-  it("stands watching the laser dot and goes flat at once for the pounce, then gets up", () => {
-    assert.ok(sidebarSource.includes('stageGame.kind === "laser" && stageGame.phase === "pounce" &&'));
-    assert.ok(sidebarSource.includes("nowMs - stageGame.pounceMs < mgArt.LASER_POUNCE_MS + 500;"));
+  it("stands watching the laser dot and through the leap, lies down as it lands, then gets up", () => {
+    assert.ok(sidebarSource.includes("const LASER_LAND_LIE_MS = 150;"));
+    assert.ok(sidebarSource.includes("var laserPounce = laserPounceMs >= mgArt.LASER_POUNCE_MS - LASER_LAND_LIE_MS &&"));
+    assert.ok(sidebarSource.includes("laserPounceMs < mgArt.LASER_POUNCE_MS + 500;"));
     assert.ok(sidebarSource.includes("((!!stageGame && !laserPounce) || !!catErrand"));
     // the end-of-lounge stroll mustn't stand it up during a game (it overrode the pounce)
     assert.ok(sidebarSource.includes("(!stageGame && !lounging && !activeReaction && !lastState.sick && getSpeedPPS(lastState) > 0)"));
