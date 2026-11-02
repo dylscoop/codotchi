@@ -2078,7 +2078,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                       nowMs - stageGame.pounceMs < mgArt.LASER_POUNCE_MS + 500;
     var mustStand = canLie && !lastState.sleeping && !onPerch &&
       ((!!stageGame && !laserPounce) || !!catErrand || snackItems.length > 0 ||
-       (!lounging && !activeReaction && !lastState.sick && getSpeedPPS(lastState) > 0));
+       (!stageGame && !lounging && !activeReaction && !lastState.sick && getSpeedPPS(lastState) > 0));
     var pinned = canLie && (lounging || lieBlend > 0);
 
     // ── Movement ──────────────────────────────────────────────────────────
