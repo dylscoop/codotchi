@@ -9,6 +9,7 @@
     "flip":  ["baby", "teen", "adult"],
     "stageScale":  { "senior_lying":  1.5 },
     "legs":  { "senior_lying":  [] },
+    "restRow":  { "senior_lying":  78 },
     "inRotation":  true,
     "passcode":  "blackcat",
     "defaultName":  "Codotchi",

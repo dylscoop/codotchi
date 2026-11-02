@@ -753,6 +753,46 @@
     return Object.prototype.hasOwnProperty.call(CAT_NEXT_PHASE, phase) ? CAT_NEXT_PHASE[phase] : null;
   }
 
+  /**
+   * A pet with a lying pose (the senior cat) lounges most of the time:
+   * it lies for CAT_LOUNGE_S, then gets up for a CAT_STROLL_S stroll.
+   */
+  var CAT_LOUNGE_S     = [20, 40];
+  var CAT_STROLL_S     = [4, 8];
+  /** Still this long before it lies down, so a short pause never flops it over. */
+  var CAT_LIE_DELAY_MS = 1500;
+  /** The get-up / lie-down transition. */
+  var CAT_POSE_MS      = 450;
+
+  /** Flip between lounging and strolling when the current spell runs out: {lounging, untilMs}. */
+  function catLoungeStep(lounging, untilMs, nowMs, rand) {
+    if (nowMs < untilMs) { return { lounging: lounging, untilMs: untilMs }; }
+    var next  = !lounging;
+    var range = next ? CAT_LOUNGE_S : CAT_STROLL_S;
+    return { lounging: next, untilMs: nowMs + (range[0] + rand() * (range[1] - range[0])) * 1000 };
+  }
+
+  /**
+   * Advance the pose blend (0 standing, 1 lying) by dtMs. Getting up wins at
+   * once (it has to walk, climb or play); lying down waits until it has been
+   * still for CAT_LIE_DELAY_MS and no reaction is playing; otherwise the pose
+   * holds, so being fed or patted never flops it over.
+   * @param {number} pose
+   * @param {{wantsLie: boolean, mustStand: boolean, reacting: boolean, stillMs: number}} input
+   * @param {number} dtMs
+   */
+  function catPoseStep(pose, input, dtMs) {
+    var step = dtMs / CAT_POSE_MS;
+    if (input.mustStand || !input.wantsLie) {
+      // Not wanting to lie (e.g. mid-hop) only stands it up when nothing is playing
+      if (input.mustStand || !input.reacting) { return Math.max(0, pose - step); }
+      return pose;
+    }
+    if (pose > 0 && pose < 1) { return Math.min(1, pose + step); }   // finish lying down
+    if (!input.reacting && input.stillMs >= CAT_LIE_DELAY_MS) { return Math.min(1, pose + step); }
+    return pose;
+  }
+
   /** Move x toward target by at most step: {x, arrived}. */
   function stepToward(x, target, step) {
     if (Math.abs(target - x) <= step) { return { x: target, arrived: true }; }
@@ -956,6 +996,12 @@
     CAT_CLIMB_EVERY_S:    CAT_CLIMB_EVERY_S,
     CAT_CLIMB_MIN_ENERGY: CAT_CLIMB_MIN_ENERGY,
     catNextPhase:   catNextPhase,
+    CAT_LOUNGE_S:     CAT_LOUNGE_S,
+    CAT_STROLL_S:     CAT_STROLL_S,
+    CAT_LIE_DELAY_MS: CAT_LIE_DELAY_MS,
+    CAT_POSE_MS:      CAT_POSE_MS,
+    catLoungeStep:    catLoungeStep,
+    catPoseStep:      catPoseStep,
     stepToward:     stepToward,
     catMouth:       catMouth,
     CAT_GIFT_PX:    CAT_GIFT_PX,

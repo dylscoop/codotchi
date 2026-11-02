@@ -586,3 +586,47 @@ describe("the cat's gift run and cat-tree climb (minigameArt.js + sidebar.js)", 
     assert.ok(art.CAT_PERCH_MS >= 3000 && art.CAT_CLIMB_EVERY_S >= 30);
   });
 });
+
+describe("senior cat lying pose (minigameArt.catPoseStep / catLoungeStep)", () => {
+  const art = loadArt();
+  const still = { wantsLie: true, mustStand: false, reacting: false };
+
+  it("waits until it has been still for CAT_LIE_DELAY_MS before lying down", () => {
+    assert.equal(art.catPoseStep(0, { ...still, stillMs: art.CAT_LIE_DELAY_MS - 1 }, 16), 0);
+    assert.ok(art.catPoseStep(0, { ...still, stillMs: art.CAT_LIE_DELAY_MS }, 16) > 0);
+  });
+
+  it("never lies down while a reaction (fed, patted, …) is playing", () => {
+    assert.equal(art.catPoseStep(0, { ...still, reacting: true, stillMs: 99999 }, 16), 0);
+  });
+
+  it("keeps lying through a reaction, even one that doesn't want it lying", () => {
+    assert.equal(art.catPoseStep(1, { ...still, reacting: true, stillMs: 0 }, 16), 1);
+    assert.equal(art.catPoseStep(1, { wantsLie: false, mustStand: false, reacting: true, stillMs: 0 }, 16), 1);
+  });
+
+  it("gets up straight away when it has to move, reaction or not", () => {
+    assert.ok(art.catPoseStep(1, { wantsLie: true, mustStand: true, reacting: true, stillMs: 0 }, 16) < 1);
+  });
+
+  it("eases between poses over CAT_POSE_MS instead of snapping", () => {
+    let pose = 0, ms = 0;
+    while (pose < 1) { pose = art.catPoseStep(pose, { ...still, stillMs: 99999 }, 16); ms += 16; }
+    assert.ok(Math.abs(ms - art.CAT_POSE_MS) <= 16, `took ${ms} ms`);
+    // once it has started lying down it finishes, even if a reaction begins
+    assert.equal(art.catPoseStep(0.5, { ...still, reacting: true, stillMs: 0 }, art.CAT_POSE_MS / 2), 1);
+  });
+
+  it("lounges for 20–40 s, then strolls for 4–8 s, and back", () => {
+    const lounge = art.catLoungeStep(false, 0, 1000, () => 0.5);
+    assert.deepEqual({ ...lounge }, { lounging: true, untilMs: 1000 + 30000 });
+    assert.deepEqual({ ...art.catLoungeStep(true, 31000, 5000, () => 0.5) }, { lounging: true, untilMs: 31000 });
+    assert.deepEqual({ ...art.catLoungeStep(true, 31000, 31000, () => 0) }, { lounging: false, untilMs: 31000 + 4000 });
+  });
+
+  it("sidebar.js keeps the senior cat still while it lies, with no hops", () => {
+    assert.ok(sidebarSource.includes("var pinned = canLie && (lounging || lieBlend > 0);"));
+    assert.ok(sidebarSource.includes("if (onFloor && petVy >= 0 && speed > 0 && !canLie) {"));
+    assert.ok(sidebarSource.includes("lastState.resting  = lieBlend >= 0.5;"));
+  });
+});

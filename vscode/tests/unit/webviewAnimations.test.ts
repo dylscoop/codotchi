@@ -280,8 +280,8 @@ describe("lying pose at rest (renderSpriteGrid hook)", () => {
 
   it("rests when still on the floor, perched or asleep, and skips the sleep squash when lying", () => {
     assert.ok(sidebarSource.includes(
-      'lastState.resting = !!lastState.sleeping || perching || (!catErrand && !walking && petY >= floorY - 0.5);'));
-    assert.ok(sidebarSource.includes('var perching = catErrand && catErrand.kind === "climb" && catErrand.phase === "perch";'));
+      'var wantsLie = !!lastState.sleeping || perching || (!catErrand && !walking && petY >= floorY - 0.5);'));
+    assert.ok(sidebarSource.includes('var onPerch  = catErrand && catErrand.kind === "climb" && catErrand.phase === "perch";'));
     assert.ok(sidebarSource.includes("lying ? 1 : window.spriteMood.scaleY(mood, moodFrame)"));
     assert.ok(sidebarSource.includes("{ sleeping: false, displayMood: null, resting: false }"), "bounds are measured standing");
   });
@@ -830,5 +830,54 @@ describe("cat farewell (a cat moves on instead of dying)", () => {
     assert.ok(sidebarSource.includes('(code === "died" || code === "died_of_old_age") && state && state.spriteType === "cat"'));
     assert.ok(sidebarSource.includes('state.name + " has moved on."'));
     assert.ok(sidebarSource.includes("A cat moves on: trot off the way it faces and fade, no halo"));
+  });
+});
+
+describe("senior cat lying on the floor (restRow)", () => {
+  /** Draw a lying senior cat and record the transforms and the clip. */
+  function drawLying(perching: boolean): { translates: number[]; clips: number } {
+    const window: Record<string, unknown> = {};
+    const offscreen = new Proxy({} as Record<string, unknown>, {
+      get: (target, key: string) => (key in target ? target[key] : () => undefined),
+      set(target, key: string, value) { target[key] = value; return true; },
+    });
+    const document = { createElement: () => ({ getContext: () => offscreen }) };
+    const context = vm.createContext({ window, document });
+    for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js"]) {
+      vm.runInContext(fs.readFileSync(path.join(media, file), "utf8").replace(/^﻿/, ""), context);
+    }
+    const w = window as Record<string, any>;
+    const translates: number[] = [];
+    let clips = 0;
+    const ctx = new Proxy({} as Record<string, unknown>, {
+      get(target, key: string) {
+        if (key in target) { return target[key]; }
+        if (key === "translate") { return (_x: number, y: number) => { translates.push(y); }; }
+        if (key === "clip") { return () => { clips++; }; }
+        return () => undefined;
+      },
+      set(target, key: string, value) { target[key] = value; return true; },
+    });
+    const state = { spriteType: "cat", stage: "senior", weight: 50, mood: "neutral", alive: true, resting: true, perching };
+    w.renderSpriteGrid(ctx, state, 0, 0, false, 0, 0,
+      w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
+      w.spriteHeightRatio, w.spriteQuadBellySag);
+    return { translates, clips };
+  }
+
+  it("declares the belly row of the draped lying art", () => {
+    assert.equal(loadSpriteWindow().SPRITE_GRID_META.cat.restRow.senior_lying, 78);
+  });
+
+  it("drops the belly onto the floor and hides the hanging paws and tail in the ground", () => {
+    const { translates, clips } = drawLying(false);
+    assert.ok(translates.some((y) => y > 0), "shifted down");
+    assert.equal(clips, 1);
+  });
+
+  it("on the perch drops the belly onto the platform and lets the paws and tail drape", () => {
+    const { translates, clips } = drawLying(true);
+    assert.ok(translates.some((y) => y > 0), "shifted down");
+    assert.equal(clips, 0);
   });
 });

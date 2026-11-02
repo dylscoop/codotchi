@@ -45,6 +45,9 @@
  *                    leg columns (group 0 or 1 steps together) for one grid,
  *                    e.g. "adult" or "adult_sleeping"; replaces the automatic
  *                    leg detection there (quadrupeds only)
+ *     restRow        { <gridKey>: row } for art drawn draped over a ledge (e.g. a
+ *                    lying pose with paws and tail hanging): the row the belly
+ *                    rests on, which the renderer puts on the floor / perch line
  *     upright        portrait species (added to UPRIGHT_TYPES)
  *     inRotation, passcode, defaultName
  *                    checked against ROTATION_ANIMALS and customCharacters.js;
@@ -207,6 +210,13 @@ function importSpecies(species, dir) {
       throw new Error(dir + ": legs." + k + " must be a list of [startCol, endCol, group 0|1] within the grid");
     }
   });
+  var restRow = config.restRow || {};
+  Object.keys(restRow).forEach(function (k) {
+    if (!grids[k]) { throw new Error(dir + ": restRow has unknown grid \"" + k + "\""); }
+    if (!(Number.isInteger(restRow[k]) && restRow[k] >= 0 && restRow[k] < rows)) {
+      throw new Error(dir + ": restRow." + k + " must be a row of the " + rows + "-row grid");
+    }
+  });
   var legs = {};
   if (!config.upright) {
     Object.keys(grids).forEach(function (k) {
@@ -221,6 +231,7 @@ function importSpecies(species, dir) {
     rows:        rows,
     legRowStart: legRowStart,
     legs:        legs,
+    restRow:     restRow,
     palette: {
       primary:    mapper.palette.primary,
       secondary:  mapper.palette.secondary,
@@ -323,7 +334,11 @@ function renderOutput(all) {
     var lg = legKeys.length === 0 ? "" : ", legs: { " + legKeys.map(function (k) {
       return q(k) + ": " + JSON.stringify(sp.legs[k]);
     }).join(", ") + " }";
-    L.push("    " + q(sp.species) + ": { cols: " + sp.cols + ", rows: " + sp.rows + ", legRowStart: " + sp.legRowStart + lg + " },");
+    var restKeys = Object.keys(sp.restRow || {}).sort(compareGridKeys);
+    var rr = restKeys.length === 0 ? "" : ", restRow: { " + restKeys.map(function (k) {
+      return q(k) + ": " + sp.restRow[k];
+    }).join(", ") + " }";
+    L.push("    " + q(sp.species) + ": { cols: " + sp.cols + ", rows: " + sp.rows + ", legRowStart: " + sp.legRowStart + lg + rr + " },");
   });
   L.push("  });");
   L.push("");

@@ -268,6 +268,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   let floatPhase    = 0;      // floating bob phase in radians (dragon only)
   let hopTimer      = HOP_INTERVAL; // seconds until next happy hop
   let idleTimer     = 0;      // seconds until next wander direction/pause change
+  // A pet with a lying pose (the senior cat): lounge/stroll spell, pose blend
+  // (0 standing … 1 lying) and when it last came to a stop
+  let catLounge        = false;
+  let catLoungeUntilMs = 0;
+  let lieBlend         = 0;
+  let stillSinceMs     = -1;
   let reactionQueue = [];     // [{ type, startMs, durationMs, startX, startY }]
   let moodParticles = [];     // sparkles / tears / crumbs / z's (window.spriteMood)
   let patParticles  = [];     // hearts / prr / smoke during a pat (window.spritePat)
@@ -2052,6 +2058,24 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     animTick++;
 
+    // ── Lying pose (the senior cat) ───────────────────────────────────────
+    // It lounges most of the time between short strolls. It never hops, and
+    // while it's lying (or still getting up) it doesn't wander or chase snacks.
+    var canLie = window.spriteHasLyingPose(lastState);
+    if (canLie) {
+      var loungeNext   = mgArt.catLoungeStep(catLounge, catLoungeUntilMs, nowMs, Math.random);
+      catLounge        = loungeNext.lounging;
+      catLoungeUntilMs = loungeNext.untilMs;
+    }
+    var lounging = canLie && catLounge && !catErrand && !stageGame && snackItems.length === 0;
+    var onPerch  = catErrand && catErrand.kind === "climb" && catErrand.phase === "perch";
+    // Things that get it up: a game, an errand, a snack, or the end of a lounge
+    // (a stroll waits for any reaction to finish first)
+    var mustStand = canLie && !lastState.sleeping && !onPerch &&
+      (!!stageGame || !!catErrand || snackItems.length > 0 ||
+       (!lounging && !activeReaction && !lastState.sick && getSpeedPPS(lastState) > 0));
+    var pinned = canLie && (lounging || lieBlend > 0);
+
     // ── Movement ──────────────────────────────────────────────────────────
     var isDragon = (lastState.spriteType === "dragon");
     var sgPose = stageGame ? stageGamePose(stageGame, nowMs, bWidth, minX, maxX) : null;
@@ -2272,7 +2296,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
       // Occasional hop — only when pet is resting on the floor (petVy >= 0 prevents
       // firing during a bounce while onFloor is briefly true but velocity is still upward)
-      if (onFloor && petVy >= 0 && speed > 0) {
+      if (onFloor && petVy >= 0 && speed > 0 && !canLie) {
         hopTimer -= dt;
         if (hopTimer <= 0) {
           petVy    = HOP_IMPULSE;
@@ -2282,7 +2306,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       }
 
       // Horizontal movement: snack targeting OR wandering
-      if (snackItems.length > 0 && speed > 0) {
+      if (pinned) {
+        petVx = 0;   // lying down, lounging, or still getting up
+      } else if (snackItems.length > 0 && speed > 0) {
         // Snack targeting — use center-to-center distance (pet center vs snack center)
         var closestSnack = snackItems[0];
         var closestDist  = Math.abs((petX + bWidth / 2) - (snackItems[0].x + SNACK_HALF_W));
@@ -2358,9 +2384,22 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var legFrame = isDragon ? -1 : ((walking || climbing) ? Math.floor(animTick / (running ? 4 : climbing ? 6 : 10)) % 2 : 0);
     var walkBob  = (walking && legFrame === 1) ? -1 : 0;
     // At rest (standing still on the floor, sitting on the cat tree's perch, or
-    // asleep) a pet with a lying pose (the senior cat) lies down
-    var perching = catErrand && catErrand.kind === "climb" && catErrand.phase === "perch";
-    lastState.resting = !!lastState.sleeping || perching || (!catErrand && !walking && petY >= floorY - 0.5);
+    // asleep) a pet with a lying pose (the senior cat) lies down — once it has
+    // been still for a moment and no reaction is playing, easing over CAT_POSE_MS
+    var perching = !!onPerch;
+    var wantsLie = !!lastState.sleeping || perching || (!catErrand && !walking && petY >= floorY - 0.5);
+    if (canLie) {
+      if (!wantsLie || mustStand) { stillSinceMs = -1; }
+      else if (stillSinceMs < 0)  { stillSinceMs = nowMs; }
+      lieBlend = mgArt.catPoseStep(lieBlend, {
+        wantsLie: wantsLie, mustStand: mustStand, reacting: !!activeReaction,
+        stillMs: stillSinceMs < 0 ? 0 : nowMs - stillSinceMs,
+      }, dt * 1000);
+    } else {
+      lieBlend = 0;
+    }
+    lastState.resting  = lieBlend >= 0.5;
+    lastState.perching = perching;
 
     // ── Mood layer: props, body squash, particles (window.spriteMood) ─────
     var feeding = activeReaction && (activeReaction.type === "fed_meal" || activeReaction.type === "fed_snack");
@@ -2395,10 +2434,23 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (moodProps) {
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
-    // The lying pose is already flat, so it skips the mood squash
-    var lying = drawState.resting && window.spriteHasLyingPose(drawState);
-    drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
-                         lying ? 1 : window.spriteMood.scaleY(mood, moodFrame), walking);
+    if (canLie && lieBlend > 0 && lieBlend < 1) {
+      // Getting up / lying down: the standing pose sinks and fades as the lying
+      // pose rises into place (and the other way round)
+      spriteCtx.save();
+      spriteCtx.globalAlpha = 1 - lieBlend;
+      drawBodyWithReaction(Object.assign({}, drawState, { resting: false }), Math.round(petX), Math.round(petY),
+                           petFacingLeft, 0, activeReaction, nowMs, 1 - 0.35 * lieBlend, false);
+      spriteCtx.globalAlpha = lieBlend;
+      drawBodyWithReaction(Object.assign({}, drawState, { resting: true }), Math.round(petX), Math.round(petY),
+                           petFacingLeft, 0, activeReaction, nowMs, 0.8 + 0.2 * lieBlend, false);
+      spriteCtx.restore();
+    } else {
+      // The lying pose is already flat, so it skips the mood squash
+      var lying = drawState.resting && window.spriteHasLyingPose(drawState);
+      drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
+                           lying ? 1 : window.spriteMood.scaleY(mood, moodFrame), walking);
+    }
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
     // The cat's mouse or bird, in its mouth on the way back
     if (catErrand && catErrand.kind === "gift" && !catErrand.cancelled && catErrand.phase !== "out") {
@@ -2653,6 +2705,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       snackItems    = [];
       heldSnackAnswers     = [];
       releasedSnackAnswers = [];
+      // A senior cat opens lying down, at the start of a lounge
+      var _lounge      = mgArt.catLoungeStep(false, 0, performance.now(), Math.random);
+      catLounge        = _lounge.lounging;
+      catLoungeUntilMs = _lounge.untilMs;
+      lieBlend         = window.spriteHasLyingPose(state) ? 1 : 0;
+      stillSinceMs     = -1;
     }
 
     // Reset position when the pet evolves to a new stage
@@ -2662,6 +2720,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       petVx     = 0;
       petVy     = 0;
       lastFrameMs = 0;
+      lieBlend  = 0;
+      stillSinceMs = -1;
     }
 
     // ── Map incoming events to reactions ──────────────────────────────────
