@@ -12,6 +12,7 @@
 | `vscode/media/sprites.js` | `lyingGridKey`: a resting pet with a `<stage>_lying` grid is drawn lying down; `window.spriteHasLyingPose` |
 | `vscode/media/sidebar.js` | `lastState.resting` (still on the floor, perched on the cat tree, or asleep); no sleep squash on the lying pose; bounds measured standing; a senior cat climbs the cat tree too |
 | `packages/core/src/asciiArt.ts` (+ synced copies), asciiArt tests | terminal ASCII art centred |
+| `opencode-codotchi/src/index.ts` | IDE pet evolution is announced from the file watcher, once per IDE-confirmed stage (`vscodeAnnouncedStage` / `pycharmAnnouncedStage`), not from OpenCode's approximate tick, so it no longer repeats on every reload |
 | `vscode/tests/unit/*` | flip list, grid-key stageScale, lying pose at rest, senior climbs |
 | all manifests, `README.md`, docs | version 2.34.0; SPRITE_IMPORT, FEATURES, DEV_NOTES, CHANGELOG |
 
