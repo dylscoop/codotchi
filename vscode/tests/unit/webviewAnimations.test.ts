@@ -834,8 +834,8 @@ describe("cat farewell (a cat moves on instead of dying)", () => {
 });
 
 describe("senior cat lying on the floor (restRow)", () => {
-  /** Draw a lying senior cat and record the transforms and the clip. */
-  function drawLying(perching: boolean): { translates: number[]; clips: number } {
+  /** Draw a lying senior cat; returns the y translates, the clip count and the box height. */
+  function drawLying(): { translates: number[]; clips: number; bodyHeight: number } {
     const window: Record<string, unknown> = {};
     const offscreen = new Proxy({} as Record<string, unknown>, {
       get: (target, key: string) => (key in target ? target[key] : () => undefined),
@@ -848,36 +848,36 @@ describe("senior cat lying on the floor (restRow)", () => {
     }
     const w = window as Record<string, any>;
     const translates: number[] = [];
-    let clips = 0;
+    let clips = 0, bodyHeight = 0;
     const ctx = new Proxy({} as Record<string, unknown>, {
       get(target, key: string) {
         if (key in target) { return target[key]; }
         if (key === "translate") { return (_x: number, y: number) => { translates.push(y); }; }
         if (key === "clip") { return () => { clips++; }; }
+        if (key === "drawImage") { return (_i: unknown, _x: number, _y: number, _w: number, h: number) => { bodyHeight = h; }; }
         return () => undefined;
       },
       set(target, key: string, value) { target[key] = value; return true; },
     });
-    const state = { spriteType: "cat", stage: "senior", weight: 50, mood: "neutral", alive: true, resting: true, perching };
+    const state = { spriteType: "cat", stage: "senior", weight: 50, mood: "neutral", alive: true, resting: true };
     w.renderSpriteGrid(ctx, state, 0, 0, false, 0, 0,
       w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
       w.spriteHeightRatio, w.spriteQuadBellySag);
-    return { translates, clips };
+    return { translates, clips, bodyHeight };
   }
 
-  it("declares the belly row of the draped lying art", () => {
-    assert.equal(loadSpriteWindow().SPRITE_GRID_META.cat.restRow.senior_lying, 78);
+  it("rests on its front paws (row 113), the lowest row that isn't tail", () => {
+    const w = loadSpriteWindow();
+    assert.equal(w.SPRITE_GRID_META.cat.restRow.senior_lying, 113);
+    const grid: string[] = w.GENERATED_SPRITE_DEFS.cat.senior_lying;
+    const pawRows = grid.map((row, r) => (/[^0]/.test(row.slice(0, 70)) ? r : -1)).filter((r) => r >= 0);
+    assert.equal(Math.max(...pawRows), 113, "the front paws end on row 113");
   });
 
-  it("drops the belly onto the floor and hides the hanging paws and tail in the ground", () => {
-    const { translates, clips } = drawLying(false);
-    assert.ok(translates.some((y) => y > 0), "shifted down");
-    assert.equal(clips, 1);
-  });
-
-  it("on the perch drops the belly onto the platform and lets the paws and tail drape", () => {
-    const { translates, clips } = drawLying(true);
-    assert.ok(translates.some((y) => y > 0), "shifted down");
-    assert.equal(clips, 0);
+  it("drops the paws onto the floor line and keeps the legs and tail (no clip)", () => {
+    const { translates, clips, bodyHeight } = drawLying();
+    assert.equal(clips, 0, "nothing is cut off");
+    assert.ok(bodyHeight > 0);
+    assert.ok(translates.includes(Math.round(14 * bodyHeight / 128)), "shifted down by the 14 tail-only rows");
   });
 });

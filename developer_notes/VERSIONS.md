@@ -14,7 +14,7 @@
 | `vscode/tests/unit/webviewAnimations.test.ts`, `statusBarText.test.ts`, `pycharm/.../StatusBarTextTest.kt` | size table, cat/dog drawn width = sidebar box, farewell text |
 | `vscode/media/minigameArt.js` | senior cat pose: `CAT_LOUNGE_S` [20, 40], `CAT_STROLL_S` [4, 8], `CAT_LIE_DELAY_MS` 1500, `CAT_POSE_MS` 450; `catLoungeStep`, `catPoseStep` (gets up at once when it must move; lies down only when still and not reacting; otherwise holds) |
 | `vscode/media/sidebar.js` (senior cat) | lounge/stroll spells; no hops for a pet with a lying pose; pinned while lying or getting up; `lieBlend` crossfade + sink/rise squash; `lastState.perching` |
-| `sprites/cat/sprite.json`, `scripts/import_sprites_bulk.js`, `vscode/media/sprites.generated.js`, `vscode/media/sprites.js` | `restRow` per grid (`senior_lying`: 78): the draped lying art's belly row goes on the floor (hanging paws and tail clipped) or the perch (draping) |
+| `sprites/cat/sprite.json`, `scripts/import_sprites_bulk.js`, `vscode/media/sprites.generated.js`, `vscode/media/sprites.js` | `restRow` per grid (`senior_lying`: 113): the lying cat's front-paw row goes on the floor / perch line; the curled tail below it is drawn in front of the line (no clipping) |
 | all manifests, `README.md`, docs | version 2.34.1; READMEs / plugin.xml sickness prose, FEATURES, CHANGELOG, SPRITE_IMPORT, BUGFIXES (BUGFIX-214, BUGFIX-215) |
 
 **Updated constants (pet size multipliers small / medium / large):** tim, stu 0.5625 / 0.75 / 1.0 → 0.375 / 0.5625 / 0.75 · cat, dog (drawn) 0.75 / 1.0 / 1.5 → 0.5 / 0.75 / 1.0 (sidebar box was 0.64 / 0.85 / 1.28)

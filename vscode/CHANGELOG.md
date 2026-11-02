@@ -9,7 +9,7 @@
 
 ### Fixed
 
-- **The lying senior cat no longer floats.** It rests on the ground, and on the cat tree its paws and tail hang over the edge of the perch.
+- **The lying senior cat no longer floats.** Its front paws rest on the ground (or on the cat tree's perch), and its tail curls down in front of it.
 - **Tim, Stu, the cat and the dog are smaller.** They were too big for the stage. Each is now one size smaller at every pet size setting: Large is the old Medium, Medium is the old Small, and Small is smaller again. The cat and dog are also laid out at the size they are drawn, so their floor and reaction positions line up.
 
 ## [2.34.0] - 2026-11-02

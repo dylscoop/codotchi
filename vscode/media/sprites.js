@@ -1653,18 +1653,12 @@
     var isSideUpright = !!SIDE_FACING_UPRIGHT[spriteType];
 
     ctx.save();
-    // A lying pose drawn draped over a ledge (paws and tail hanging) declares the
-    // row its belly rests on: drop that row onto the floor / perch line. On the
-    // floor the hanging paws and tail go into the ground; on the perch they drape.
+    // A grid can declare the row that rests on the floor / perch line (the
+    // paws of the lying senior cat); anything below it — its curled tail — is
+    // drawn in front of that line instead of lifting the whole pet up.
     var restRow = _gridMeta.restRow ? _gridMeta.restRow[gridKey] : undefined;
     if (restRow !== undefined) {
-      var restShift = Math.round((ROWS - 1 - restRow) * bodyHeight / ROWS);
-      if (!state.perching) {
-        ctx.beginPath();
-        ctx.rect(x - bodyWidth, bobY - 2 * bodyHeight, 3 * bodyWidth, 3 * bodyHeight);
-        ctx.clip();
-      }
-      ctx.translate(0, restShift);
+      ctx.translate(0, Math.round((ROWS - 1 - restRow) * bodyHeight / ROWS));
     }
     if (isSideUpright ? !facingLeft : (isUpright ? facingLeft : !facingLeft)) {
       ctx.translate(x + bodyWidth / 2, 0);

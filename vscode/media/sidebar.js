@@ -2398,8 +2398,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     } else {
       lieBlend = 0;
     }
-    lastState.resting  = lieBlend >= 0.5;
-    lastState.perching = perching;
+    lastState.resting = lieBlend >= 0.5;
 
     // ── Mood layer: props, body squash, particles (window.spriteMood) ─────
     var feeding = activeReaction && (activeReaction.type === "fed_meal" || activeReaction.type === "fed_snack");

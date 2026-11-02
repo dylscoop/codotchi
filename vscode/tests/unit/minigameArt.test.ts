@@ -627,6 +627,6 @@ describe("senior cat lying pose (minigameArt.catPoseStep / catLoungeStep)", () =
   it("sidebar.js keeps the senior cat still while it lies, with no hops", () => {
     assert.ok(sidebarSource.includes("var pinned = canLie && (lounging || lieBlend > 0);"));
     assert.ok(sidebarSource.includes("if (onFloor && petVy >= 0 && speed > 0 && !canLie) {"));
-    assert.ok(sidebarSource.includes("lastState.resting  = lieBlend >= 0.5;"));
+    assert.ok(sidebarSource.includes("lastState.resting = lieBlend >= 0.5;"));
   });
 });

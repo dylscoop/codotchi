@@ -45,9 +45,9 @@
  *                    leg columns (group 0 or 1 steps together) for one grid,
  *                    e.g. "adult" or "adult_sleeping"; replaces the automatic
  *                    leg detection there (quadrupeds only)
- *     restRow        { <gridKey>: row } for art drawn draped over a ledge (e.g. a
- *                    lying pose with paws and tail hanging): the row the belly
- *                    rests on, which the renderer puts on the floor / perch line
+ *     restRow        { <gridKey>: row } the row that rests on the floor / perch
+ *                    line (e.g. the paws of a lying pose); anything below it,
+ *                    like a curled tail, is drawn in front of the line
  *     upright        portrait species (added to UPRIGHT_TYPES)
  *     inRotation, passcode, defaultName
  *                    checked against ROTATION_ANIMALS and customCharacters.js;
