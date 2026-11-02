@@ -180,11 +180,11 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
     ],
     sleeping: [
       "   (-.-) z   ",
-      "   --| |--   ",
-      "    |zzz|    ",
-      "   /~~~~~\\   ",
-      "  /       \\  ",
-      " J         L ",
+      "  --| |--    ",
+      "   |zzz|     ",
+      "  /~~~~~\\    ",
+      " /       \\   ",
+      "J         L  ",
     ],
     sick: [
       "   (@_@)     ",
@@ -222,7 +222,7 @@ const STAGE_ART: Record<string, Record<string, string[]>> = {
     ],
     sleeping: [
       "   (-.-)  z  ",
-      "  o-|zzz|-o  ",
+      " o-|zzz|-o   ",
       "    | |      ",
       "   /~~~\\     ",
       "  /     \\    ",
@@ -398,23 +398,23 @@ const SPRITE_HEAD: Record<string, Record<string, string>> = {
   },
   monkey: {
     baby:   "    o(^_^)o  ",
-    child:  " o(-_-)o     ",
-    teen:   " o(-_-)o     ",
-    adult:  " o(-_-)o     ",
+    child:  "  o(-_-)o    ",
+    teen:   "  o(-_-)o    ",
+    adult:  "  o(-_-)o    ",
     senior: " o(-_-)o     ",
   },
   rooster: {
     baby:   "    r(^.^)r  ",
-    child:  " r(-_-)r     ",
-    teen:   " r(-_-)r     ",
-    adult:  " r(-_-)r     ",
+    child:  "  r(-_-)r    ",
+    teen:   "  r(-_-)r    ",
+    adult:  "  r(-_-)r    ",
     senior: " r(-_-)r     ",
   },
   dog: {
     baby:   "    U(^_^)U  ",
-    child:  " U(-_-)U     ",
-    teen:   " U(-_-)U     ",
-    adult:  " U(-_-)U     ",
+    child:  "  U(-_-)U    ",
+    teen:   "  U(-_-)U    ",
+    adult:  "  U(-_-)U    ",
     senior: " U(-_-)U     ",
   },
   pig: {
@@ -480,10 +480,40 @@ export function getArt(stage: string, mood: string, spriteType = "classic"): str
   const headOverride = (SPRITE_HEAD[spriteType] ?? {})[stage];
   if (headOverride && baseArt.length > 0) {
     const result = [...baseArt];
-    result[0] = headOverride;
+    result[0] = applyHeadOverride(baseArt[0], headOverride);
     return result;
   }
   return baseArt;
+}
+
+/**
+ * Wrap the mood face of `baseHead` with the species side characters taken
+ * from `override`, so the face (and any sleeping "z") is kept and the head
+ * stays aligned with the body.
+ */
+function applyHeadOverride(baseHead: string, override: string): string {
+  const o = baseHead.indexOf("(");
+  const c = baseHead.indexOf(")", o);
+  const oo = override.indexOf("(");
+  const oc = override.indexOf(")", oo);
+  if (o < 0 || c < 0 || oo < 0 || oc < 0) return override;
+  const left = override.slice(0, oo).trim();
+  const right = override.slice(oc + 1).trimEnd();
+  let face = baseHead.slice(o, c + 1);
+  const ovFace = override.slice(oo, oc + 1);
+  // Keep a species-specific mouth (e.g. rat "(-o-)") with the mood's eyes.
+  if (face.length === 5 && ovFace.length === 5 && ovFace[2] !== "_" && ovFace[2] !== ".") {
+    face = face.slice(0, 2) + ovFace[2] + face.slice(3);
+  }
+  // The species side characters replace the base art's own (e.g. adult "\(...)/"),
+  // but never the sleeping "z".
+  let rest = baseHead.slice(c + 1);
+  for (let k = 0; k < right.length && rest.length > 0 && rest[0] !== "z"; k++) rest = rest.slice(1);
+  const line = baseHead.slice(0, Math.max(0, o - left.length)) + left + face + right + rest;
+  const width = baseHead.length;
+  return line.length > width && line.slice(width).trim() === ""
+    ? line.slice(0, width)
+    : line.padEnd(width);
 }
 
 // ---------------------------------------------------------------------------
