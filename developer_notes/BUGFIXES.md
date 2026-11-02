@@ -2533,3 +2533,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** Tim, Stu, the cat and the dog filled too much of the stage at every pet size. On top of that, `sidebar.js` laid the cat and dog out at 0.85× (medium) while `sprites.js` drew them at 1.0×, so their layout box was about 15% smaller than the pet on screen.
 
 **Fix:** One pet-size table in `spriteConstants.js` (`spritePetSizeMult`) is read by both the renderer and the sidebar. Tim, Stu, cat and dog move one step down: large = old medium, medium = old small, small = old small ÷ 1.5.
+
+## BUGFIX-215 - Senior cat snaps between poses and floats when lying
+
+**Status:** Fixed (branch `fix/pet-size-cat-farewell`)
+**Files:** `vscode/media/sidebar.js`, `vscode/media/minigameArt.js`, `vscode/media/sprites.js`, `scripts/import_sprites_bulk.js`, `sprites/cat/sprite.json`
+
+**Problem:** The senior cat lay down whenever it stood still for a single frame, so a snack chomp, a reaction or landing from its 4-second hop flipped it to the lying art and back. Since it otherwise wandered nonstop, it was rarely lying. The lying art is draped over a ledge (paws and tail hanging down to the bottom row), so on the floor its body floated about a third of its height above the ground, and on the perch above the platform.
+
+**Fix:** `catPoseStep` only lies it down after 1.5 s still and never during a reaction, gets it up at once when it has to move, and eases between poses over 450 ms (crossfade plus squash). It lounges 20–40 s between 4–8 s strolls and doesn't hop. A new `restRow` sprite key puts the belly row on the floor / perch line, clipping the hanging parts on the floor.

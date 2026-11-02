@@ -4,10 +4,12 @@
 
 ### Changed
 
+- **The senior cat lounges.** It spends most of its time lying down, getting up now and then for a short stroll. It eases down and back up instead of switching pose in a single frame. Being fed, patted, praised or played with no longer flops it over: it stays in whatever pose it was in.
 - **A cat moves on instead of dying.** When a cat runs out of health or reaches the end of its life, it has gone back to its original owners or gone off hunting. It trots off the stage instead of floating up under a halo, and the game over screen says it has moved on.
 
 ### Fixed
 
+- **The lying senior cat no longer floats.** It rests on the ground, and on the cat tree its paws and tail hang over the edge of the perch.
 - **Tim, Stu, the cat and the dog are smaller.** They were too big for the stage. Each is now one size smaller at every pet size setting: Large is the old Medium, Medium is the old Small, and Small is smaller again. The cat and dog are also laid out at the size they are drawn, so their floor and reaction positions line up.
 
 ## [2.34.0] - 2026-11-02
