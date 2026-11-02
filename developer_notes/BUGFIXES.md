@@ -2524,3 +2524,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** Praise answers a "take a break" call, which starts a 5-minute break nap. Feed, Snack and Play were blocked while sick (BUGFIX-186), but Praise wasn't, so a sick pet could go off on a nap instead of getting medicine. It couldn't die during the nap (every stat but energy is frozen), but the sickness was just put off.
 
 **Fix:** `praise()` returns `praise_refused_sick` while sick, leaving the call, discipline and stats unchanged. The webview greys out Praise while sick alongside Feed, Snack and Play.
+
+## BUGFIX-214 - Tim, Stu, the cat and the dog are too big; cat/dog box doesn't match the drawing
+
+**Status:** Fixed (branch `fix/pet-size-cat-farewell`)
+**Files:** `vscode/media/spriteConstants.js`, `vscode/media/sprites.js`, `vscode/media/sidebar.js`
+
+**Problem:** Tim, Stu, the cat and the dog filled too much of the stage at every pet size. On top of that, `sidebar.js` laid the cat and dog out at 0.85× (medium) while `sprites.js` drew them at 1.0×, so their layout box was about 15% smaller than the pet on screen.
+
+**Fix:** One pet-size table in `spriteConstants.js` (`spritePetSizeMult`) is read by both the renderer and the sidebar. Tim, Stu, cat and dog move one step down: large = old medium, medium = old small, small = old small ÷ 1.5.

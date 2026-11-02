@@ -768,6 +768,7 @@ Status: `[x]`
 | Sleep decay: hunger/happiness lose 1 every 5th sleeping tick | `[x]` | Prevents infinite stat preservation during extended sleep |
 | Sickness health drain message | `[x]` | `sickness_damage` event; humanised in event log |
 | Death screen with age/stage stats | `[x]` | |
+| Cat moves on instead of dying | `[x]` | v2.34.1: a cat's `died` / `died_of_old_age` reads "has gone back to its original owners" or "has gone off hunting" and moved on (picked from `spawnedAt`); trots off instead of the halo; game over title "<name> has moved on."; toast in both IDEs |
 | Senior natural death (age-scaled chance after age ≥ 365d) | `[x]` | Roll fires once per day boundary; chance ramps from 0.1%–1.0%/day at day 365 (best/worst care) to 5%–10%/day at day 1825 (5 in-game years), capped at peak; `ageFactor = clamp((ageDays−365)/(1825−365),0,1)`; `minChance = lerp(0.001, 0.05, ageFactor)`; `maxChance = lerp(0.010, 0.10, ageFactor)`; `chance = lerp(minChance, maxChance, riskScore)`; riskScore = avg of happiness, weight, and discipline factors; fires `died_of_old_age` event with message "passed away of unforeseen natural causes due to old age." and IDE popup notification |
 | Senior age-related random sickness (after age ≥ 365d) | `[x]` | Fires `became_sick_old_age` event once per day boundary; chance = `3 × computeOldAgeDeathChance(state)` (`OLD_AGE_SICK_CHANCE_MULTIPLIER = 3`); skipped if already sick; message: "came down with an age-related illness." |
 | Peaceful death animation | `[x]` | Covered by `died` reaction in section 5.6 (v2.22.0) |

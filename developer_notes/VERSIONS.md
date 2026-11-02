@@ -1,6 +1,22 @@
 # Version History
 
-## v2.34.0 - current
+## v2.34.1 - current
+
+### Changes from v2.34.0 (pet sizes, cat farewell - branch fix/pet-size-cat-farewell)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/spriteConstants.js` | `PET_SIZE_MULTS` + `petSizeMultiplier` (`window.spritePetSizeMult`): one pet-size table for the renderer and the sidebar; Tim, Stu, cat and dog one step smaller; `window.catFarewell` |
+| `vscode/media/sprites.js` | `renderSpriteGrid` reads the shared table (was an inline upright/quadruped ternary) |
+| `vscode/media/sidebar.js` | `petSizeMultiplier` reads the shared table (drops the cat/dog 0.85 that didn't match the drawn size); a cat's `died` / `died_of_old_age` text is the farewell line; a cat trots off instead of the halo float-up; dead-screen title "<name> has moved on." for a cat |
+| `vscode/src/statusBarText.ts`, `vscode/src/extension.ts` | `catFarewell`; dead-cat status bar 🐾 + farewell tooltip; farewell toast on a cat's death (any cause) |
+| `pycharm/.../StatusBarText.kt`, `pycharm/.../CodotchiPlugin.kt` | same as VS Code |
+| `vscode/tests/unit/webviewAnimations.test.ts`, `statusBarText.test.ts`, `pycharm/.../StatusBarTextTest.kt` | size table, cat/dog drawn width = sidebar box, farewell text |
+| all manifests, `README.md`, docs | version 2.34.1; READMEs / plugin.xml sickness prose, FEATURES, CHANGELOG, BUGFIXES (BUGFIX-214) |
+
+**Updated constants (pet size multipliers small / medium / large):** tim, stu 0.5625 / 0.75 / 1.0 → 0.375 / 0.5625 / 0.75 · cat, dog (drawn) 0.75 / 1.0 / 1.5 → 0.5 / 0.75 / 1.0 (sidebar box was 0.64 / 0.85 / 1.28)
+
+## v2.34.0
 
 ### Changes from v2.33.7 (cat sprite refresh - branch feat/cat-sprite-refresh)
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.34.1] - 2026-11-02
+
+### Changed
+
+- **A cat moves on instead of dying.** When a cat runs out of health or reaches the end of its life, it has gone back to its original owners or gone off hunting. It trots off the stage instead of floating up under a halo, and the game over screen says it has moved on.
+
+### Fixed
+
+- **Tim, Stu, the cat and the dog are smaller.** They were too big for the stage. Each is now one size smaller at every pet size setting: Large is the old Medium, Medium is the old Small, and Small is smaller again. The cat and dog are also laid out at the size they are drawn, so their floor and reaction positions line up.
+
 ## [2.34.0] - 2026-11-02
 
 ### Added
