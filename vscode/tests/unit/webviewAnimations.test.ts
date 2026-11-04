@@ -760,7 +760,7 @@ describe("integration — animation frame budget", () => {
 
   it("hosts tell the webview when the panel is hidden", () => {
     const vscodeHost = fs.readFileSync(path.join(repoRoot, "vscode/src/sidebarProvider.ts"), "utf8");
-    assert.match(vscodeHost, /postMessage\(\{ type: "panelVisibility", visible: webviewView\.visible \}\)/);
+    assert.match(vscodeHost, /postMessage\(\{ type: "panelVisibility", visible: host\.visible \}\)/);
     const kt = (f: string) => fs.readFileSync(path.join(repoRoot, "pycharm/src/main/kotlin/com/codotchi", f), "utf8");
     assert.match(kt("CodotchiToolWindow.kt"), /panel\.setPanelVisible\(tw\.isVisible\)/);
     assert.match(kt("CodotchiBrowserPanel.kt"), /"type":"panelVisibility","visible":\$visible/);

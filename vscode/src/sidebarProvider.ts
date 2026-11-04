@@ -44,6 +44,7 @@ import { cravingItemFor } from "./cravingItem";
 import { giftFor } from "./giftItem";
 import { StatusBarManager } from "./statusBar";
 import { stageHeightPx } from "./stageHeight";
+import { PetHost, PetHostSet } from "./petHosts";
 import { getCachedCopilotQuota, type CopilotQuotaOutcome } from "./copilotQuota";
 import { tokenCostBubbleMessage } from "./tokenCostBubble";
 import {
@@ -102,8 +103,12 @@ export class SidebarProvider
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
   public static readonly VIEW_ID = "codotchiView";
+  /** viewType of the editor-tab pet (codotchi.openInEditor). */
+  public static readonly EDITOR_PANEL_TYPE = "codotchi.pet";
 
-  private webviewView: vscode.WebviewView | undefined;
+  /** Every webview showing the pet: the sidebar view and/or the editor tab. */
+  private readonly hosts = new PetHostSet();
+  private editorPanel: vscode.WebviewPanel | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
   /**
@@ -194,16 +199,71 @@ export class SidebarProvider
     _resolveContext: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken
   ): void {
-    this.webviewView = webviewView;
+    this.attachHost(
+      webviewView.webview,
+      () => webviewView.visible,
+      webviewView.onDidChangeVisibility,
+      webviewView.onDidDispose
+    );
+  }
 
-    webviewView.webview.options = {
+  /**
+   * Open the pet in an editor tab beside the current editor, or reveal it if
+   * it is already open.  Cursor reserves its secondary sidebar for its own
+   * agent, so a tab dragged into a right-hand editor group is the best home
+   * there.
+   */
+  openInEditor(): void {
+    if (this.editorPanel) {
+      this.editorPanel.reveal();
+      return;
+    }
+    const panel = vscode.window.createWebviewPanel(
+      SidebarProvider.EDITOR_PANEL_TYPE,
+      "Codotchi",
+      vscode.ViewColumn.Beside,
+      { retainContextWhenHidden: true }
+    );
+    this.attachEditorPanel(panel);
+  }
+
+  /** Wire up an editor-tab pet — a fresh one, or one VS Code restored after a reload. */
+  attachEditorPanel(panel: vscode.WebviewPanel): void {
+    this.editorPanel = panel;
+    panel.iconPath = vscode.Uri.file(path.join(this.context.extensionPath, "media", "icon_128.png"));
+    panel.onDidDispose(() => {
+      if (this.editorPanel === panel) { this.editorPanel = undefined; }
+    });
+    this.attachHost(
+      panel.webview,
+      () => panel.visible,
+      panel.onDidChangeViewState,
+      panel.onDidDispose
+    );
+  }
+
+  /** Load the pet UI into a webview and route its messages, visibility and disposal. */
+  private attachHost(
+    webview: vscode.Webview,
+    isVisible: () => boolean,
+    onDidChangeVisibility: vscode.Event<unknown>,
+    onDidDispose: vscode.Event<void>
+  ): void {
+    const host: PetHost = {
+      postMessage: (message) => { void webview.postMessage(message); },
+      get visible() { return isVisible(); },
+    };
+    this.hosts.add(host);
+    const hostDisposables: vscode.Disposable[] = [];
+
+    webview.options = {
       enableScripts: true,
       localResourceRoots: [
         vscode.Uri.file(path.join(this.context.extensionPath, "media")),
       ],
     };
 
-    webviewView.webview.html = this.buildHtml(webviewView.webview);
+    webview.html = this.buildHtml(webview);
 
     // The webview starts with an empty snackItems[] — zero out the engine's
     // floor counter so it stays in sync (BUGFIX-NNN).
@@ -229,7 +289,7 @@ export class SidebarProvider
     } else if (bootstrapHs !== null) {
       // No active pet but we have a high score — push it so the setup screen
       // can display it.
-      void webviewView.webview.postMessage({
+      host.postMessage({
         type: "stateUpdate",
         state: { needs_new_game: true },
         mealsGivenThisCycle: 0,
@@ -241,7 +301,7 @@ export class SidebarProvider
     } else {
       // No pet and no high score — still push defaultPetName so setup screen
       // can pre-fill the name input correctly.
-      void webviewView.webview.postMessage({
+      host.postMessage({
         type: "stateUpdate",
         state: { needs_new_game: true },
         mealsGivenThisCycle: 0,
@@ -252,26 +312,26 @@ export class SidebarProvider
       });
     }
 
-    const messageListener = webviewView.webview.onDidReceiveMessage(
+    const messageListener = webview.onDidReceiveMessage(
       (message: WebviewMessage) => {
         this.handleWebviewMessage(message);
       }
     );
-    this.disposables.push(messageListener);
+    hostDisposables.push(messageListener);
 
-    // When the sidebar panel is hidden (collapsed, tab switched away, etc.)
-    // immediately force deep idle so the pet enters the protected low-decay
-    // state without waiting 10 minutes of inactivity.  When the panel is
-    // re-opened, reset activity so the pet exits deep idle right away.
-    const visibilityListener = webviewView.onDidChangeVisibility(() => {
-      void webviewView.webview.postMessage({ type: "panelVisibility", visible: webviewView.visible });
-      if (webviewView.visible) {
+    // When the pet is hidden everywhere (sidebar collapsed, tab switched away,
+    // etc.) immediately force deep idle so the pet enters the protected
+    // low-decay state without waiting 10 minutes of inactivity.  When any
+    // host is shown again, reset activity so the pet exits deep idle right away.
+    const visibilityListener = onDidChangeVisibility(() => {
+      host.postMessage({ type: "panelVisibility", visible: host.visible });
+      if (this.hosts.anyVisible()) {
         this.markActivity();
       } else {
         this.markDeepIdle();
       }
     });
-    this.disposables.push(visibilityListener);
+    hostDisposables.push(visibilityListener);
 
     // BUGFIX-001: hot-reload the webview HTML when the font-size setting changes.
     // Also reload on stageHeight, petSize or reducedMotion changes.
@@ -287,13 +347,22 @@ export class SidebarProvider
         e.affectsConfiguration("codotchi.reducedMotion") ||
         e.affectsConfiguration("codotchi.idleResetOnMouseMovement")
       ) {
-        webviewView.webview.html = this.buildHtml(webviewView.webview);
+        webview.html = this.buildHtml(webview);
         // Webview reloaded — snackItems[] reset to empty (BUGFIX-NNN).
         const s = this.getCurrentState();
         if (s !== null) { this.onStateUpdate(resetFloorSnacks(s)); }
       }
     });
-    this.disposables.push(configListener);
+    hostDisposables.push(configListener);
+
+    // Disposed webviews reject postMessage, so drop the host and its
+    // listeners.  Closing the last visible host puts the pet into deep idle.
+    hostDisposables.push(onDidDispose(() => {
+      this.hosts.remove(host);
+      for (const d of hostDisposables) { d.dispose(); }
+      if (!this.hosts.anyVisible()) { this.markDeepIdle(); }
+    }));
+    this.disposables.push(...hostDisposables);
   }
 
   /** Build the HTML content for the webview. */
@@ -691,9 +760,7 @@ export class SidebarProvider
     }
 
     const text = segments.length > 0 ? segments.join(" | ") : "Today's Token Cost: no sources selected";
-    if (this.webviewView) {
-      void this.webviewView.webview.postMessage(tokenCostBubbleMessage(text));
-    }
+    this.hosts.broadcast(tokenCostBubbleMessage(text));
   }
 
   /**
@@ -705,7 +772,7 @@ export class SidebarProvider
    * @param unlockedCharacter - spriteType of the unlocked custom character, or null.
    */
   postState(state: PetState, highScore: HighScore | null, devMode: boolean, unlockedCharacter: string | null = null, defaultPetName: string = "Codotchi"): void {
-    if (!this.webviewView) { return; }
+    if (this.hosts.size === 0) { return; }
 
     const liveSubscribed = this.context.globalState.get<boolean>("leaderboardLiveSubscribed", false);
     const liveLastPushedAt = this.context.globalState.get<number>("leaderboardLastPushedAt", 0);
@@ -715,7 +782,7 @@ export class SidebarProvider
 
     const cached = this.rankCache;
 
-    void this.webviewView.webview.postMessage({
+    this.hosts.broadcast({
       type: "stateUpdate",
       state,
       dailies: dailiesView(state),
@@ -759,15 +826,13 @@ export class SidebarProvider
    * @param highScore - The high score value to show (null to clear it).
    */
   postNoGame(highScore: HighScore | null): void {
-    if (this.webviewView) {
-      void this.webviewView.webview.postMessage({
-        type: "stateUpdate",
-        state: { needs_new_game: true },
-        mealsGivenThisCycle: 0,
-        highScore,
-        devMode: false,
-      });
-    }
+    this.hosts.broadcast({
+      type: "stateUpdate",
+      state: { needs_new_game: true },
+      mealsGivenThisCycle: 0,
+      highScore,
+      devMode: false,
+    });
   }
 
   /** True when dev mode is on right now (enabled + correct passcode). */
@@ -819,9 +884,7 @@ export class SidebarProvider
   /** Submit the current dead pet's score to the public GitHub leaderboard. */
   private async handleLeaderboardSubmit(): Promise<void> {
     const postResult = (status: string, message?: string): void => {
-      if (this.webviewView) {
-        void this.webviewView.webview.postMessage({ type: "leaderboard_submit_result", status, message });
-      }
+      this.hosts.broadcast({ type: "leaderboard_submit_result", status, message });
     };
 
     try {
@@ -980,9 +1043,7 @@ export class SidebarProvider
   /** Sign in to GitHub for the leaderboard and cache the resolved username. */
   async handleSignInLeaderboard(): Promise<void> {
     const postResult = (username: string | null, error?: string): void => {
-      if (this.webviewView) {
-        void this.webviewView.webview.postMessage({ type: "leaderboard_sign_in_result", username, error });
-      }
+      this.hosts.broadcast({ type: "leaderboard_sign_in_result", username, error });
     };
     try {
       const user = await this.resolveLeaderboardUser(true);
@@ -1077,9 +1138,7 @@ export class SidebarProvider
   /** Request deletion of the user's leaderboard entry via a GitHub issue. */
   private async handleLeaderboardDelete(): Promise<void> {
     const postResult = (status: string, message?: string): void => {
-      if (this.webviewView) {
-        void this.webviewView.webview.postMessage({ type: "leaderboard_delete_result", status, message });
-      }
+      this.hosts.broadcast({ type: "leaderboard_delete_result", status, message });
     };
 
     try {
