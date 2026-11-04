@@ -620,6 +620,7 @@ Features that deepen the existing care actions.
 | Menu button on game screen → setup/home | `[x]` | `btn-new-game` label changed to "Menu" |
 | Continue button on setup/home screen | `[x]` | Visible only when `hasActiveGame === true`; returns to game screen |
 | UI refresh fix: setup screen not bounced by tick | `[x]` | `currentScreen` tracking suppresses `renderState` while on setup with live pet |
+| Pet in an editor tab (VS Code only) | `[x]` | `codotchi.openInEditor` (palette + view/title ↗) opens a `WebviewPanel` (`codotchi.pet`) beside the editor; for Cursor, whose secondary sidebar is closed to extensions. `PetHostSet` (`vscode/src/petHosts.ts`) broadcasts to the sidebar and the tab; deep idle only when no host is visible; a serializer restores the tab after a reload (v2.34.3) |
 
 ### 7.2 Humanised Event Log
 

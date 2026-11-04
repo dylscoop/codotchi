@@ -30,6 +30,10 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
 
 - **Sidebar pet panel** — pixel art pet with animated sprites, stat bars, and
   action buttons, all rendered in a dedicated sidebar webview
+- **Pet in an editor tab** — **Codotchi: Open Pet in Editor Tab** (or the ↗
+  button on the pet panel) opens your pet in a tab beside your code. Drag it
+  into its own editor group to keep it on screen. The tab and the sidebar stay
+  in sync, and the tab comes back after a reload
 - **Classic Tamagotchi mechanics** — hunger, happiness, discipline, energy,
   health, weight, and age stats, all decaying in real time
 - **Full care system** — feed meals and snacks, play mini-games, put pet to
@@ -96,6 +100,12 @@ Once installed and VS Code has reloaded:
 1. Click the **icon** in the activity bar (left sidebar) to open the **Your
    Pet** panel. Alternatively, run **Codotchi: Open Pet Panel** from the command
    palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
+
+   **Using Cursor?** Cursor keeps its right-hand sidebar for its own agent, so
+   extensions can't sit there. Run **Codotchi: Open Pet in Editor Tab** and
+   drag the tab to the right edge of the window to give your pet its own
+   editor group beside your code. You can also drag the **Your Pet** view into
+   the Explorer so it stays under your file tree.
 
 2. On first launch the **New Codotchi** setup screen appears:
    - Enter a name (up to 16 characters).
