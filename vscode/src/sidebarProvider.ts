@@ -38,7 +38,8 @@ import {
 } from "./gameEngine";
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
-import { loadTrainer } from "./persistence";
+import { loadTrainer, loadAfterlife, saveAfterlife } from "./persistence";
+import { afterlifeView, decideAfterlife, settleBeforeNewPet } from "./afterlife";
 import { leaderboardBlockedReason, signSubmission } from "./integrity";
 import { cravingItemFor } from "./cravingItem";
 import { giftFor } from "./giftItem";
@@ -97,6 +98,8 @@ interface WebviewMessage {
   name?: string;
   petType?: string;
   color?: string;  // deprecated — ignored, kept for message back-compat only
+  /** afterlife_choice: what to do with the dead pet. */
+  choice?: string;
 }
 
 export class SidebarProvider
@@ -297,6 +300,7 @@ export class SidebarProvider
         devMode: false,
         unlockedCharacter: bootstrapUnlockedChar,
         defaultPetName: bootstrapDefaultPetName,
+        afterlife: this.afterlifeFor(null),
       });
     } else {
       // No pet and no high score — still push defaultPetName so setup screen
@@ -309,6 +313,7 @@ export class SidebarProvider
         devMode: false,
         unlockedCharacter: bootstrapUnlockedChar,
         defaultPetName: bootstrapDefaultPetName,
+        afterlife: this.afterlifeFor(null),
       });
     }
 
@@ -478,6 +483,21 @@ export class SidebarProvider
       return;
     }
 
+    // The in-game Deathless toggle writes the setting; the config listener in
+    // extension.ts marks the pet and refreshes the view.
+    if (message.command === "toggle_deathless") {
+      const cfg = vscode.workspace.getConfiguration("codotchi");
+      void cfg.update("deathless", !cfg.get<boolean>("deathless", false), vscode.ConfigurationTarget.Global);
+      return;
+    }
+
+    if (message.command === "afterlife_choice") {
+      if (state === null || (message.choice !== "bury" && message.choice !== "cremate")) { return; }
+      saveAfterlife(this.context, decideAfterlife(loadAfterlife(this.context), state, message.choice));
+      this.onStateUpdate({ ...state, events: [] });
+      return;
+    }
+
     if (state === null && message.command !== "new_game") {
       // No pet yet — nothing to do until a new game is started.
       return;
@@ -618,6 +638,7 @@ export class SidebarProvider
                             : (userTyped || defaultName);
         const petType = message.petType ?? "codeling";
         const unlockedCharacter = customChar?.spriteType ?? null;
+        saveAfterlife(this.context, settleBeforeNewPet(loadAfterlife(this.context), state));
         nextState = createPet(petName, petType, unlockedCharacter, state?.trainer ?? loadTrainer(this.context));
         this.mealsGivenThisCycle = 0;
         break;
@@ -675,6 +696,12 @@ export class SidebarProvider
     if (nextState !== null) {
       this.onStateUpdate(nextState);
     }
+  }
+
+  /** Afterlife slice for the webview, under the user's chosen name. */
+  private afterlifeFor(state: PetState | null): ReturnType<typeof afterlifeView> {
+    const name = vscode.workspace.getConfiguration("codotchi").get<string>("afterlifeName", "Afterlife");
+    return afterlifeView(loadAfterlife(this.context), state, name);
   }
 
   /**
@@ -803,6 +830,8 @@ export class SidebarProvider
       liveLastPushedAt,
       leaderboardGithubUsername: this.leaderboardGithubUsername,
       leaderboardAuthExpired: this.isLeaderboardAuthExpired(),
+      deathless: vscode.workspace.getConfiguration("codotchi").get<boolean>("deathless", false),
+      afterlife: this.afterlifeFor(state),
     });
   }
 
@@ -832,6 +861,7 @@ export class SidebarProvider
       mealsGivenThisCycle: 0,
       highScore,
       devMode: false,
+      afterlife: this.afterlifeFor(null),
     });
   }
 

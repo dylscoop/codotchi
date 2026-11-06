@@ -117,6 +117,9 @@ export function leaderboardBlockedReason(state: PetState, devModeActive: boolean
   if (state.leaderboardIneligible === "tampered") {
     return "This pet's save file was edited outside Codotchi, so it can't go on the leaderboard.";
   }
+  if (state.leaderboardIneligible === "deathless") {
+    return "This pet has lived in deathless mode, so it can't go on the leaderboard.";
+  }
   // "unverified" (a save from before seals existed) is still allowed: those pets
   // were hatched by a real client before 2.27, and every submission is signed.
   return null;

@@ -26,6 +26,7 @@ import * as os from "os";
 import * as vscode from "vscode";
 import { PetState, HighScore, TrainerProgress, deserialiseState, deserialiseTrainer, serialiseState } from "./gameEngine";
 import { sealSerialisedState, verifySeal } from "./integrity";
+import { Afterlife, parseAfterlife } from "./afterlife";
 import { StateFileStamp } from "./tickLease";
 
 const STATE_KEY = "codotchi.petState";
@@ -311,4 +312,16 @@ export function saveHighScore(context: vscode.ExtensionContext, score: HighScore
  */
 export function clearHighScore(context: vscode.ExtensionContext): void {
   void context.globalState.update(HIGH_SCORE_KEY, undefined);
+}
+
+const AFTERLIFE_KEY = "codotchi.afterlife.v1";
+
+/** Load the user's Afterlife (buried pets + urn count). */
+export function loadAfterlife(context: vscode.ExtensionContext): Afterlife {
+  return parseAfterlife(context.globalState.get<unknown>(AFTERLIFE_KEY));
+}
+
+/** Persist the user's Afterlife. */
+export function saveAfterlife(context: vscode.ExtensionContext, afterlife: Afterlife): void {
+  void context.globalState.update(AFTERLIFE_KEY, afterlife);
 }
