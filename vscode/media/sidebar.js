@@ -300,6 +300,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   let giftBoxX   = null;     // floor X of gift box while a "gift" attention call is active
   let snackItems = [];       // floor items: [{ x, type: "candy"|"bone" }]
   let currentCravingItem = null; // custom character's craved snack label ("a pint"), from the host
+  let praiseClickedAt = 0;       // when this window last sent praise; only it starts Fetch on the dog's gift
   let currentGift = null;        // custom character's gift for this gift call ({ message, praiseBubble }), from the host
   let heldSnackAnswers     = []; // answered-call events waiting for the pet to eat a floor snack
   let releasedSnackAnswers = []; // ...and once eaten, shown with the next state update
@@ -391,6 +392,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   });
 
   document.getElementById("btn-praise").addEventListener("click", function () {
+    praiseClickedAt = Date.now();
     vscode.postMessage({ command: "praise" });
   });
 
@@ -3013,7 +3015,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // The dog's gift is a ball: accepting it starts a game of Fetch
     if (events.indexOf("attention_call_answered_gift") !== -1 && playsDogGames(state) &&
         !state.sick && !state.sleeping && !state.paused && state.energy >= PLAY_ENERGY_COST &&
-        mgPanels.classList.contains("hidden")) {
+        mgPanels.classList.contains("hidden") && Date.now() - praiseClickedAt < 5000) {
+      praiseClickedAt = 0;
       showMgOverlay();
       startFetchGame();
     }
