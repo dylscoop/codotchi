@@ -1,6 +1,30 @@
 # Version History
 
-## v2.34.2 - current
+## v2.34.4 - current
+
+### Changes from v2.34.3 (speech bubble beside the pet - branch fix/bubble-cat-tree)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | `drawSpeechBubble` takes an optional `petHalfW`; with no room above the head it sits beside the pet (left first, the cat tree being at the right edge; else right) with a sideways tail at head height, instead of flipping below the head over the pet; below-the-head stays the last resort |
+| `vscode/tests/unit/webviewAnimations.test.ts` | updated call match; side-placement test |
+| CHANGELOG | entry |
+| all manifests, `README.md` | version 2.34.4 |
+
+## v2.34.3
+
+### Changes from v2.34.2 (pet in an editor tab - branch feat/cursor-editor-tab)
+
+| File | What changed |
+|------|-------------|
+| `vscode/src/petHosts.ts` | new `PetHostSet`: the webviews showing the pet; `broadcast`, `anyVisible` |
+| `vscode/src/sidebarProvider.ts` | `resolveWebviewView` body moved to `attachHost` (sidebar view or editor tab); every post goes to all hosts; deep idle only when no host is visible; per-host listeners disposed with the host (were kept forever); `openInEditor`, `attachEditorPanel`, `EDITOR_PANEL_TYPE` `codotchi.pet` |
+| `vscode/src/extension.ts`, `vscode/package.json` | `codotchi.openInEditor` command ("Codotchi: Open Pet in Editor Tab", view/title ↗); `registerWebviewPanelSerializer` + `onWebviewPanel:codotchi.pet` activation to restore the tab |
+| `vscode/tests/unit/petHosts.test.ts`, `webviewAnimations.test.ts` | host set + manifest tests; panelVisibility source match |
+| `vscode/README.md`, FEATURES, CHANGELOG | editor tab feature; "Using Cursor?" tip |
+| all manifests, `README.md` | version 2.34.3 |
+
+## v2.34.2
 
 ### Changes from v2.34.1 (catnap text - branch fix/catnap-cat-tree-text)
 

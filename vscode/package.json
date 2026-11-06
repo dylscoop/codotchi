@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.34.2",
+  "version": "2.34.4",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -27,7 +27,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onWebviewPanel:codotchi.pet"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -53,6 +54,11 @@
       {
         "command": "codotchi.openPanel",
           "title": "Codotchi: Open Pet Panel"
+        },
+        {
+          "command": "codotchi.openInEditor",
+          "title": "Codotchi: Open Pet in Editor Tab",
+          "icon": "$(link-external)"
         },
         {
           "command": "codotchi.newGame",
@@ -93,6 +99,11 @@
         {
           "command": "codotchi.resume",
           "when": "view == codotchiView && codotchi:paused",
+          "group": "navigation"
+        },
+        {
+          "command": "codotchi.openInEditor",
+          "when": "view == codotchiView",
           "group": "navigation"
         }
       ]
@@ -372,7 +383,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "node ../scripts/sync-core.mjs",
-    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/bossArt.test.js out-test/tests/unit/backgroundArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js out-test/tests/unit/statusBarText.test.js out-test/tests/unit/tickLease.test.js out-test/tests/unit/integrity.test.js out-test/tests/unit/customCharacterText.test.js out-test/tests/unit/liveProgress.test.js out-test/tests/unit/progression.test.js out-test/tests/unit/attentionNotification.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test out-test/tests/unit/gameEngine.test.js out-test/tests/unit/copilotQuota.test.js out-test/tests/unit/claudeUsage.test.js out-test/tests/unit/githubAuth.test.js out-test/tests/unit/stageHeight.test.js out-test/tests/unit/whimSpeech.test.js out-test/tests/unit/spriteData.test.js out-test/tests/unit/spriteImportBulk.test.js out-test/tests/unit/webviewAnimations.test.js out-test/tests/unit/minigameArt.test.js out-test/tests/unit/bossArt.test.js out-test/tests/unit/backgroundArt.test.js out-test/tests/unit/criticalStatNotifier.test.js out-test/tests/unit/tokenCostBubble.test.js out-test/tests/unit/statusBarText.test.js out-test/tests/unit/tickLease.test.js out-test/tests/unit/integrity.test.js out-test/tests/unit/customCharacterText.test.js out-test/tests/unit/liveProgress.test.js out-test/tests/unit/progression.test.js out-test/tests/unit/attentionNotification.test.js out-test/tests/unit/petHosts.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

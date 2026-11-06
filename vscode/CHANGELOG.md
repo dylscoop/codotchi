@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.34.4] - 2026-11-06
+
+### Fixed
+
+- **The speech bubble no longer covers the cat on its cat tree.** When there's no room above the pet's head, such as a cat up on the perch in a short panel, the bubble now sits beside the pet with its tail pointing at it, instead of on top of it.
+
+## [2.34.3] - 2026-11-04
+
+### Added
+
+- **Your pet in an editor tab.** Run **Codotchi: Open Pet in Editor Tab** (or click ↗ on the pet panel) to open your pet in a tab beside your code. Drag it into its own editor group to keep it on screen. The tab and the sidebar stay in sync, and the tab comes back after a reload. This is the best home for your pet in Cursor, which keeps its right-hand sidebar for its own agent.
+
 ## [2.34.2] - 2026-11-02
 
 ### Changed

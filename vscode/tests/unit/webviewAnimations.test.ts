@@ -593,8 +593,14 @@ describe("head gap above every pet (vscode/media/sidebar.js)", () => {
 
 describe("speech bubble vs emojis above the head (vscode/media/sidebar.js)", () => {
   it("lifts the bubble above the z's / hearts while sleeping or patted", () => {
-    assert.match(sidebarSource, /drawSpeechBubble\(_petCx, _petTopY, nowMs,\s*emojiClearance\(drawState\.sleeping \|\| patting, moodPxSize\)\)/);
+    assert.match(sidebarSource, /drawSpeechBubble\(_petCx, _petTopY, nowMs,\s*emojiClearance\(drawState\.sleeping \|\| patting, moodPxSize\), Math\.round\(_bW \/ 2\)\)/);
     assert.match(sidebarSource, /var boxBottomY = petTopY - \(clearance \|\| 0\) - TAIL_H - 2;/);
+  });
+
+  it("sits beside the pet, not over it, when there's no room above (cat on its cat tree)", () => {
+    assert.ok(sidebarSource.includes('} else if (boxY < 2 && petHalfW && (leftX >= 4 || rightX + boxW <= spriteCanvas.width - 4)) {'));
+    assert.ok(sidebarSource.includes('side = leftX >= 4 ? "left" : "right";'));
+    assert.ok(sidebarSource.includes("var leftX = Math.round(petCx - (petHalfW || 0) - TAIL_H - 2 - boxW);"));
   });
 
   it("keeps grid-sized props for the narrow classic creature", () => {
@@ -760,7 +766,7 @@ describe("integration — animation frame budget", () => {
 
   it("hosts tell the webview when the panel is hidden", () => {
     const vscodeHost = fs.readFileSync(path.join(repoRoot, "vscode/src/sidebarProvider.ts"), "utf8");
-    assert.match(vscodeHost, /postMessage\(\{ type: "panelVisibility", visible: webviewView\.visible \}\)/);
+    assert.match(vscodeHost, /postMessage\(\{ type: "panelVisibility", visible: host\.visible \}\)/);
     const kt = (f: string) => fs.readFileSync(path.join(repoRoot, "pycharm/src/main/kotlin/com/codotchi", f), "utf8");
     assert.match(kt("CodotchiToolWindow.kt"), /panel\.setPanelVisible\(tw\.isVisible\)/);
     assert.match(kt("CodotchiBrowserPanel.kt"), /"type":"panelVisibility","visible":\$visible/);

@@ -361,7 +361,11 @@ export function activate(context: vscode.ExtensionContext): void {
   // Sidebar provider
   sidebar = new SidebarProvider(context, statusBar, handleStateUpdate, () => currentState, () => currentHighScore, markActivity, onResetHighScore, markDeepIdle);
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(SidebarProvider.VIEW_ID, sidebar)
+    vscode.window.registerWebviewViewProvider(SidebarProvider.VIEW_ID, sidebar),
+    // Bring the editor-tab pet back after a window reload.
+    vscode.window.registerWebviewPanelSerializer(SidebarProvider.EDITOR_PANEL_TYPE, {
+      deserializeWebviewPanel: async (panel) => { sidebar?.attachEditorPanel(panel); },
+    })
   );
 
   // Events manager (file saves → code activity reward)
@@ -659,6 +663,12 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("codotchi.openPanel", () => {
       void vscode.commands.executeCommand("codotchiView.focus");
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("codotchi.openInEditor", () => {
+      sidebar?.openInEditor();
     })
   );
 

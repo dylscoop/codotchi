@@ -297,6 +297,9 @@ describe("dog voice, snacks and break bone", () => {
     assert.ok(sidebar.includes("_ignChar.ignoredBubble"));
     assert.ok(sidebar.includes('} else if (state && state.spriteType === "dog") {\n        // The dog\'s gift is a tennis ball'));
     assert.ok(sidebar.includes('events.indexOf("attention_call_answered_gift") !== -1 && playsDogGames(state)'));
+    // Only the window that sent the praise opens Fetch, so a second open window doesn't get stuck on it
+    assert.ok(sidebar.includes('praiseClickedAt = Date.now();\n    vscode.postMessage({ command: "praise" });'));
+    assert.ok(sidebar.includes('mgPanels.classList.contains("hidden") && Date.now() - praiseClickedAt < 5000'));
   });
 
   it("wags when happy and chases its tail when energetic, but not asleep, sick or with reduced motion", () => {
