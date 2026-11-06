@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.34.4] - 2026-11-06
+
+### Fixed
+
+- **The speech bubble no longer covers the cat on its cat tree.** When there's no room above the pet's head, such as a cat up on the perch in a short panel, the bubble now sits beside the pet with its tail pointing at it, instead of on top of it.
+
 ## [2.34.3] - 2026-11-04
 
 ### Added

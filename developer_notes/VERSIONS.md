@@ -1,6 +1,17 @@
 # Version History
 
-## v2.34.3 - current
+## v2.34.4 - current
+
+### Changes from v2.34.3 (speech bubble beside the pet - branch fix/bubble-cat-tree)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | `drawSpeechBubble` takes an optional `petHalfW`; with no room above the head it sits beside the pet (left first, the cat tree being at the right edge; else right) with a sideways tail at head height, instead of flipping below the head over the pet; below-the-head stays the last resort |
+| `vscode/tests/unit/webviewAnimations.test.ts` | updated call match; side-placement test |
+| CHANGELOG | entry |
+| all manifests, `README.md` | version 2.34.4 |
+
+## v2.34.3
 
 ### Changes from v2.34.2 (pet in an editor tab - branch feat/cursor-editor-tab)
 

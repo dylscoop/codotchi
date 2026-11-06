@@ -1819,8 +1819,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    * @param {number} petTopY — top edge of the pet sprite (canvas px)
    * @param {number} nowMs   — performance.now()
    * @param {number} [clearance] — extra gap above the head for z's / hearts (emojiClearance)
+   * @param {number} [petHalfW]  — half the pet's width; lets the bubble sit beside a pet with no room above
    */
-  function drawSpeechBubble(petCx, petTopY, nowMs, clearance) {
+  function drawSpeechBubble(petCx, petTopY, nowMs, clearance, petHalfW) {
     if (!activeBubble) { return; }
 
     // Persistent bubbles (e.g. sleep) stay at full alpha and are never cleared here
@@ -1863,9 +1864,21 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var boxBottomY = petTopY - (clearance || 0) - TAIL_H - 2;
     var boxY = boxBottomY - boxH;
     var flipped = false;
+    var side = null;   // "left" / "right": bubble beside the pet, tail pointing sideways
+    var headY = petTopY + 4;
+    var leftX = Math.round(petCx - (petHalfW || 0) - TAIL_H - 2 - boxW);
+    var rightX = Math.round(petCx + (petHalfW || 0) + TAIL_H + 2);
     if (boxY < 2 && petTopY - TAIL_H - 2 - boxH >= 2) {
       // Fits above the head but not above the emojis — pin to the top edge
       boxY = 2;
+      boxBottomY = boxY + boxH;
+    } else if (boxY < 2 && petHalfW && (leftX >= 4 || rightX + boxW <= spriteCanvas.width - 4)) {
+      // No room above (e.g. a cat on its cat tree in a short stage): sit beside the pet,
+      // preferring the left since the cat tree stands at the right edge
+      side = leftX >= 4 ? "left" : "right";
+      boxX = side === "left" ? leftX : rightX;
+      boxY = Math.round(headY - boxH / 2);
+      boxY = Math.max(2, Math.min(spriteCanvas.height - boxH - 2, boxY));
       boxBottomY = boxY + boxH;
     } else if (boxY < 2) {
       // If there's no room above, flip below (pet near top edge — rare)
@@ -1889,8 +1902,15 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     // Draw tail triangle
     spriteCtx.beginPath();
-    if (!flipped) {
-      // Tail points downward from the box bottom
+    if (side) {
+      // Tail points sideways from the box edge facing the pet, at head height
+      var edgeX = side === "left" ? boxX + boxW : boxX;
+      var dir = side === "left" ? 1 : -1;
+      var tailY = Math.max(boxY + TAIL_W + 2, Math.min(boxY + boxH - TAIL_W - 2, headY));
+      spriteCtx.moveTo(edgeX, tailY - TAIL_W);
+      spriteCtx.lineTo(edgeX, tailY + TAIL_W);
+      spriteCtx.lineTo(edgeX + dir * TAIL_H, tailY);
+    } else if (!flipped) {
       spriteCtx.moveTo(tailTipX - TAIL_W, boxBottomY);
       spriteCtx.lineTo(tailTipX + TAIL_W, boxBottomY);
       spriteCtx.lineTo(tailTipX, boxBottomY + TAIL_H);
@@ -1906,7 +1926,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // Stroke only the two outer edges of the tail (not the base shared with the box)
     spriteCtx.strokeStyle = "#888888";
     spriteCtx.lineWidth = 1;
-    if (!flipped) {
+    if (side) {
+      spriteCtx.beginPath();
+      spriteCtx.moveTo(edgeX, tailY - TAIL_W);
+      spriteCtx.lineTo(edgeX + dir * TAIL_H, tailY);
+      spriteCtx.lineTo(edgeX, tailY + TAIL_W);
+      spriteCtx.stroke();
+    } else if (!flipped) {
       spriteCtx.beginPath();
       spriteCtx.moveTo(tailTipX - TAIL_W, boxBottomY);
       spriteCtx.lineTo(tailTipX, boxBottomY + TAIL_H);
@@ -2536,7 +2562,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _petCx    = Math.round(petX) + Math.round(_bW / 2);
     var _petTopY  = Math.round(petY) + walkBob - headGap(lastState);
     drawSpeechBubble(_petCx, _petTopY, nowMs,
-                     emojiClearance(drawState.sleeping || patting, moodPxSize));
+                     emojiClearance(drawState.sleeping || patting, moodPxSize), Math.round(_bW / 2));
   }
 
   /**
