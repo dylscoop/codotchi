@@ -400,6 +400,7 @@ class CodotchiPlugin : Disposable {
                 devMode                  = settings.devModeEnabled && settings.developerPasscode == "1234",
                 devModeAgingMultiplier   = maxOf(1, settings.devModeAgingMultiplier).toDouble(),
                 devModeHealthFloor       = maxOf(0, minOf(100, settings.devModeHealthFloor)),
+                deathless                = settings.deathless,
             )
             lastDevMode = gameConfig.devMode
             // BUGFIX-097: compute deep idle with re-entry grace period so the pet
@@ -599,6 +600,7 @@ class CodotchiPlugin : Disposable {
                         else -> defaultName
                     }
                     val unlockedCharacter = customChar?.spriteType
+                    Afterlife.save(Afterlife.settleBeforeNewPet(Afterlife.load(), state))
                     nextState = createPet(resolvedName, petType, color, unlockedCharacter, state?.trainer)
                     mealsGivenThisCycle = 0
                 }
@@ -647,6 +649,26 @@ class CodotchiPlugin : Disposable {
                 "reset_high_score" -> {
                     currentHighScore = null
                     service<CodotchiPersistence>().clearHighScore()
+                    shouldBroadcast = true
+                    return@withLock
+                }
+
+                // In-game Deathless toggle: flip the setting and mark the pet right away.
+                "toggle_deathless" -> {
+                    val settings = service<CodotchiSettings>()
+                    settings.deathless = !settings.deathless
+                    if (settings.deathless && state != null && state.alive) {
+                        currentState = markDeathless(state)
+                    }
+                    shouldBroadcast = true
+                    return@withLock
+                }
+
+                "afterlife_choice" -> {
+                    val choice = message["choice"] as? String
+                    if (state != null && (choice == "bury" || choice == "cremate")) {
+                        Afterlife.save(Afterlife.decide(Afterlife.load(), state, choice))
+                    }
                     shouldBroadcast = true
                     return@withLock
                 }
@@ -1192,6 +1214,13 @@ class CodotchiPlugin : Disposable {
         }
     }
 
+    /** Deathless was switched on in Settings: mark the living pet right away. */
+    fun onDeathlessEnabled() {
+        stateLock.withLock {
+            currentState = currentState?.takeIf { it.alive }?.let { markDeathless(it) } ?: currentState
+        }
+    }
+
     /**
      * Zero out the in-flight floor snack counter.
      * Call whenever the webview reloads so the engine stays in sync with the
@@ -1427,8 +1456,8 @@ class CodotchiPlugin : Disposable {
             persistence.savePetState(state)
             persistence.mealsGivenThisCycle = meals
 
-            // Update high score when pet dies (suppressed in dev mode — scores don't count)
-            if (!state.alive && !lastDevMode) {
+            // Update high score when pet dies (suppressed in dev mode and for deathless pets — scores don't count)
+            if (!state.alive && !lastDevMode && !isDeathlessPet(state)) {
                 // The engine records the death tick in state.diedAt and persists it,
                 // so reloading the IDE doesn't move the death time forward.
                 val diedAt    = state.diedAt.takeIf { it > 0L } ?: System.currentTimeMillis()
