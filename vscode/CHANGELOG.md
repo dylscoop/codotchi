@@ -4,7 +4,7 @@
 
 ### Added
 
-- **Deathless mode.** Turn on **Deathless** at the top of the settings, or with **♾ Deathless** above the Menu button in the game. Your pet's health never drops below 1, so it can't die from neglect or sickness. It still gets sick and can still pass away of old age. A pet that has ever been deathless can't go on the leaderboard and doesn't count towards your high score, even if you turn deathless off later.
+- **Deathless mode.** Tick **♾ Deathless** when you hatch a new pet, or turn on **Deathless** at the top of the settings. Your pet's health never drops below 1, so it can't die from neglect or sickness. It still gets sick and can still pass away of old age. A pet that has ever been deathless can't go on the leaderboard and doesn't count towards your high score, even if you turn deathless off later.
 - **The Afterlife.** When a pet dies you can **Bury** it in your Afterlife or **Cremate** it. Buried pets are listed with their age, stage and cause of death; cremated pets add to an urn count. A pet you don't choose for is cremated when you hatch the next one. Open it with **View Afterlife** on the Menu screen, and give it your own name with the **Afterlife name** setting. It's kept locally in each IDE.
 
 ## [2.34.4] - 2026-11-06

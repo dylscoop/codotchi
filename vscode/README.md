@@ -53,8 +53,8 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   and it dies. A sick pet won't eat, snack, play or take a break until it's
   had its medicine — the Medicine button counts the doses left. A cat doesn't
   die: it goes back to its original owners or off hunting, and moves on
-- **Deathless mode** — turn on `codotchi.deathless` (top of the settings) or
-  **♾ Deathless** in the game and your pet can't die from neglect: health stays
+- **Deathless mode** — tick **♾ Deathless** when you hatch a pet (or turn on
+  `codotchi.deathless` at the top of the settings) and your pet can't die from neglect: health stays
   at 1 or above. It still gets sick and can still pass away of old age. A
   deathless pet can't go on the leaderboard and doesn't count towards your high score
 - **The Afterlife** — when a pet dies, **Bury** it in your Afterlife or

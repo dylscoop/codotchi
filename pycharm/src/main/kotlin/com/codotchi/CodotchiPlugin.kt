@@ -601,7 +601,10 @@ class CodotchiPlugin : Disposable {
                     }
                     val unlockedCharacter = customChar?.spriteType
                     Afterlife.save(Afterlife.settleBeforeNewPet(Afterlife.load(), state))
-                    nextState = createPet(resolvedName, petType, color, unlockedCharacter, state?.trainer)
+                    // The Deathless box on the hatch screen sets the setting for this pet.
+                    (message["deathless"] as? Boolean)?.let { settings.deathless = it }
+                    val hatched = createPet(resolvedName, petType, color, unlockedCharacter, state?.trainer)
+                    nextState = if (settings.deathless) markDeathless(hatched) else hatched
                     mealsGivenThisCycle = 0
                 }
 
@@ -649,17 +652,6 @@ class CodotchiPlugin : Disposable {
                 "reset_high_score" -> {
                     currentHighScore = null
                     service<CodotchiPersistence>().clearHighScore()
-                    shouldBroadcast = true
-                    return@withLock
-                }
-
-                // In-game Deathless toggle: flip the setting and mark the pet right away.
-                "toggle_deathless" -> {
-                    val settings = service<CodotchiSettings>()
-                    settings.deathless = !settings.deathless
-                    if (settings.deathless && state != null && state.alive) {
-                        currentState = markDeathless(state)
-                    }
                     shouldBroadcast = true
                     return@withLock
                 }

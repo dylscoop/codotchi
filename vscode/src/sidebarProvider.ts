@@ -35,6 +35,7 @@ import {
   resume,
   resetFloorSnacks,
   dailiesView,
+  markDeathless,
 } from "./gameEngine";
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
@@ -100,6 +101,8 @@ interface WebviewMessage {
   color?: string;  // deprecated — ignored, kept for message back-compat only
   /** afterlife_choice: what to do with the dead pet. */
   choice?: string;
+  /** new_game: hatch in deathless mode. */
+  deathless?: boolean;
 }
 
 export class SidebarProvider
@@ -483,14 +486,6 @@ export class SidebarProvider
       return;
     }
 
-    // The in-game Deathless toggle writes the setting; the config listener in
-    // extension.ts marks the pet and refreshes the view.
-    if (message.command === "toggle_deathless") {
-      const cfg = vscode.workspace.getConfiguration("codotchi");
-      void cfg.update("deathless", !cfg.get<boolean>("deathless", false), vscode.ConfigurationTarget.Global);
-      return;
-    }
-
     if (message.command === "afterlife_choice") {
       if (state === null || (message.choice !== "bury" && message.choice !== "cremate")) { return; }
       saveAfterlife(this.context, decideAfterlife(loadAfterlife(this.context), state, message.choice));
@@ -639,7 +634,13 @@ export class SidebarProvider
         const petType = message.petType ?? "codeling";
         const unlockedCharacter = customChar?.spriteType ?? null;
         saveAfterlife(this.context, settleBeforeNewPet(loadAfterlife(this.context), state));
-        nextState = createPet(petName, petType, unlockedCharacter, state?.trainer ?? loadTrainer(this.context));
+        // The Deathless box on the hatch screen sets the setting for this pet.
+        const deathless = typeof message.deathless === "boolean" ? message.deathless : cfg.get<boolean>("deathless", false);
+        if (deathless !== cfg.get<boolean>("deathless", false)) {
+          void cfg.update("deathless", deathless, vscode.ConfigurationTarget.Global);
+        }
+        const hatched = createPet(petName, petType, unlockedCharacter, state?.trainer ?? loadTrainer(this.context));
+        nextState = deathless ? markDeathless(hatched) : hatched;
         this.mealsGivenThisCycle = 0;
         break;
       }

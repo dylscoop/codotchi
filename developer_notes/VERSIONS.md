@@ -11,9 +11,9 @@
 | `vscode/src/afterlife.ts` (new), `pycharm/.../Afterlife.kt` (new) | Bury / Cremate logic: `decideAfterlife`, `settleBeforeNewPet` (undecided pet cremated), `afterlifeView` with the user's name |
 | `vscode/src/persistence.ts` | `loadAfterlife` / `saveAfterlife` (`codotchi.afterlife.v1` in globalState) |
 | `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | `deathless` passed to the engine; high score skipped for deathless pets; config change marks the pet; `codotchi.newGame` / `new_game` cremate an undecided pet |
-| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiBrowserPanel.kt` | `toggle_deathless` and `afterlife_choice` commands; `deathless` + `afterlife` in every stateUpdate |
+| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiBrowserPanel.kt` | `new_game` takes `deathless` (sets the setting, marks the new pet); `afterlife_choice` command; `deathless` + `afterlife` in every stateUpdate |
 | `vscode/package.json`, `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt` | `codotchi.deathless` and `codotchi.afterlifeName` first on the settings page |
-| `vscode/media/sidebar.html`, `sidebar.js`, `sidebar.css` | ♾ DEATHLESS badge; ♾ Deathless toggle above Menu; Bury / Cremate on the death screen; View Afterlife toggle + list + urn count on the Menu screen |
+| `vscode/media/sidebar.html`, `sidebar.js`, `sidebar.css` | ♾ DEATHLESS badge; ♾ Deathless checkbox on the hatch screen; Bury / Cremate on the death screen; View Afterlife toggle + list + urn count on the Menu screen |
 | `vscode/tests/unit/deathless.test.ts`, `pycharm/.../DeathlessTest.kt` | new |
 | `claude-codotchi/dist` | rebuilt for the synced engine |
 | README, FEATURES, CHANGELOG, all manifests | version 2.35.0 |

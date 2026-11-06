@@ -116,7 +116,7 @@
           "codotchi.deathless": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "**Deathless mode.** Health never drops below 1, so your pet can't die from neglect or sickness — it still gets sick and can still pass away of old age. A pet that has ever lived in deathless mode can't go on the leaderboard and doesn't count towards your high score. Also toggleable from the in-game menu.",
+            "markdownDescription": "**Deathless mode.** Health never drops below 1, so your pet can't die from neglect or sickness — it still gets sick and can still pass away of old age. A pet that has ever lived in deathless mode can't go on the leaderboard and doesn't count towards your high score. Also offered when you hatch a new pet.",
             "order": 1
           },
           "codotchi.afterlifeName": {

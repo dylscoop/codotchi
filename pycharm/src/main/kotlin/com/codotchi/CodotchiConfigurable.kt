@@ -74,7 +74,7 @@ class CodotchiConfigurable : Configurable {
 
     override fun createComponent(): JComponent {
         val deathlessCheckbox = JCheckBox("Deathless mode (pet can't die from neglect, only of old age; not eligible for the leaderboard or high score)")
-        deathlessCheckbox.toolTipText = "Health never drops below 1. The pet still gets sick. A pet that has ever been deathless stays off the leaderboard. Also toggleable from the in-game menu."
+        deathlessCheckbox.toolTipText = "Health never drops below 1. The pet still gets sick. A pet that has ever been deathless stays off the leaderboard. Also offered when you hatch a new pet."
         val afterlifeNameTextField = JTextField(16)
         deathlessCheck     = deathlessCheckbox
         afterlifeNameField = afterlifeNameTextField

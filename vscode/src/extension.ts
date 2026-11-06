@@ -641,7 +641,7 @@ export function activate(context: vscode.ExtensionContext): void {
       })
     );
 
-    // Deathless toggled (settings or the in-game menu): mark the pet right away
+    // Deathless toggled in settings: mark the pet right away
     // and refresh the sidebar so the badge and leaderboard state update.
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((e) => {

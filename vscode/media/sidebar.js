@@ -224,7 +224,7 @@
 
   const devModeBanner    = document.getElementById("dev-mode-banner");
   const deathlessBanner     = document.getElementById("deathless-banner");
-  const btnToggleDeathless  = document.getElementById("btn-toggle-deathless");
+  const setupDeathless      = document.getElementById("setup-deathless");
   const afterlifeChoice     = document.getElementById("afterlife-choice");
   const afterlifeChoiceDone = document.getElementById("afterlife-choice-done");
   const btnAfterlifeBury    = document.getElementById("btn-afterlife-bury");
@@ -365,6 +365,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       command: "new_game",
       name: name,
       petType: selectedPetType,
+      deathless: !!(setupDeathless && setupDeathless.checked),
     });
   });
 
@@ -518,12 +519,6 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   if (btnLiveSubscribe) {
     btnLiveSubscribe.addEventListener("click", function () {
       vscode.postMessage({ command: "toggle_live_subscribe" });
-    });
-  }
-
-  if (btnToggleDeathless) {
-    btnToggleDeathless.addEventListener("click", function () {
-      vscode.postMessage({ command: "toggle_deathless" });
     });
   }
 
@@ -4758,8 +4753,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (deathlessBanner) {
       deathlessBanner.classList.toggle("hidden", !(message.deathless && state && state.alive));
     }
-    if (btnToggleDeathless) {
-      btnToggleDeathless.textContent = "♾ Deathless: " + (message.deathless ? "On" : "Off");
+    // The setup screen's Deathless box follows the setting, except while the
+    // user is on the setup screen (so a tick doesn't undo their click).
+    if (setupDeathless && currentScreen !== "setup") {
+      setupDeathless.checked = !!message.deathless;
     }
 
     renderAfterlife(message.afterlife, state);
