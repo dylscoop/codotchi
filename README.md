@@ -37,6 +37,7 @@ You can also appear on the leaderboard **while your pet is still alive**. Your e
 Only scores sent by the Codotchi plugin itself are accepted. Each one is signed, and hand-written GitHub issues are rejected. A pet can't be submitted (or pushed live) if:
 
 - it **ever** ran with dev mode on, even if you turn dev mode off later
+- it **ever** lived in deathless mode, even if you turn deathless off later
 - its save file was edited outside Codotchi
 - it hatched before this check existed (v2.27.0). Your next pet can be submitted.
 
@@ -76,7 +77,7 @@ code --install-extension dylscoop.codotchi
 
 #### Manual install (VSIX)
 
-1. Download `codotchi-2.34.4.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download `codotchi-2.35.0.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
@@ -100,7 +101,7 @@ or in your IDE go to **Settings → Plugins → Marketplace**, search for
 
 #### Manual install (ZIP)
 
-1. Download `pycharm-codotchi-2.34.4.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download `pycharm-codotchi-2.35.0.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -126,7 +127,7 @@ On OpenCode 1.x the key is `"plugin"` (singular) instead of `"plugins"`.
 
 Restart OpenCode. It downloads the package on startup, and the plugin
 registers both the `codotchi` tool and the `/codotchi` slash command, so
-there's nothing else to copy. To pin a version use `"opencode-codotchi@2.34.4"`.
+there's nothing else to copy. To pin a version use `"opencode-codotchi@2.35.0"`.
 
 > If you prefer files on disk, `npx opencode-codotchi --install` runs the same
 > installer as Option 2 straight from npm.
@@ -293,7 +294,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.34.4.vsix
+# produces codotchi-2.35.0.vsix
 ```
 
 ### JetBrains plugin
@@ -309,14 +310,14 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.34.4.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.35.0.zip
 ```
 
 ## Version history
 
 See [developer_notes/VERSIONS.md](developer_notes/VERSIONS.md) for the full changelog.
 
-Current release: **v2.34.4** — built by [dylscoop](https://github.com/dylscoop)
+Current release: **v2.35.0** — built by [dylscoop](https://github.com/dylscoop)
 
 > "Grow your best pet by writing your best code."
 

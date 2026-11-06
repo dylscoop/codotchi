@@ -774,6 +774,8 @@ Status: `[x]`
 | Senior age-related random sickness (after age ≥ 365d) | `[x]` | Fires `became_sick_old_age` event once per day boundary; chance = `3 × computeOldAgeDeathChance(state)` (`OLD_AGE_SICK_CHANCE_MULTIPLIER = 3`); skipped if already sick; message: "came down with an age-related illness." |
 | Peaceful death animation | `[x]` | Covered by `died` reaction in section 5.6 (v2.22.0) |
 | `[S]` `gotchi.offlineDecayMaxFraction` (default 0.60) | `[ ]` | Cap offline stat loss; value hardcoded, expose as setting |
+| `[S]` Deathless mode (`codotchi.deathless`, default off) | `[x]` | v2.35.0: `GameConfig.deathless` floors health at 1 (no death from neglect or sickness); sickness, care mistakes and the old-age roll still apply. First setting on the settings page in both IDEs, and a "♾ Deathless: On/Off" toggle above Menu in the game screen; "♾ DEATHLESS" badge while on. Any tick with it on sets `leaderboardIneligible = "deathless"` (sealed, sticky — reuses the existing sealed field, so `SEAL_VERSION` is unchanged); `leaderboardBlockedReason` blocks submit and live push; the death never updates the high score |
+| Afterlife: Bury / Cremate on death | `[x]` | v2.35.0: the death screen asks to **Bury** (pet added to the user's local Afterlife: name, age, stage, cause, date, ♾ marker) or **Cremate** (urn count +1). A pet left undecided when a new one hatches is cremated. Stored per IDE (`codotchi.afterlife.v1` in VS Code globalState / PyCharm PropertiesComponent); newest 100 kept. "View Afterlife" toggle on the Menu (setup) screen; `codotchi.afterlifeName` renames it. Logic in `vscode/src/afterlife.ts` / `pycharm/.../Afterlife.kt` |
 
 ---
 
@@ -821,7 +823,7 @@ Status: `[x]`
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Record best-ever pet (by age) on death | `[x]` | Stored via `saveHighScore()` in `persistence.ts` |
+| Record best-ever pet (by age) on death | `[x]` | Stored via `saveHighScore()` in `persistence.ts`; skipped in dev mode and for deathless pets |
 | Display high score on dead screen | `[x]` | Shows name, age, stage, and real-time duration |
 | Display high score on new-game (setup) screen | `[x]` | `renderSetupHighScore()` called from `showScreen("setup")`; hidden when no record exists |
 

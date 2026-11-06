@@ -1,6 +1,24 @@
 # Version History
 
-## v2.34.4 - current
+## v2.35.0 - current
+
+### Changes from v2.34.4 (deathless mode and the Afterlife - branch feat/deathless-mode)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt` | `GameConfig.deathless`: health floored at 1, old-age roll still applies; any tick with it on calls `markDeathless` (`leaderboardIneligible = "deathless"`, sticky, a `"tampered"` mark wins); `isDeathlessPet`; `"deathless"` accepted on load |
+| `packages/core/src/integrity.ts` (+ synced copies), `pycharm/.../Integrity.kt` | `leaderboardBlockedReason` blocks deathless pets. Seal format unchanged (`leaderboardIneligible` was already sealed) |
+| `vscode/src/afterlife.ts` (new), `pycharm/.../Afterlife.kt` (new) | Bury / Cremate logic: `decideAfterlife`, `settleBeforeNewPet` (undecided pet cremated), `afterlifeView` with the user's name |
+| `vscode/src/persistence.ts` | `loadAfterlife` / `saveAfterlife` (`codotchi.afterlife.v1` in globalState) |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | `deathless` passed to the engine; high score skipped for deathless pets; config change marks the pet; `codotchi.newGame` / `new_game` cremate an undecided pet |
+| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiBrowserPanel.kt` | `toggle_deathless` and `afterlife_choice` commands; `deathless` + `afterlife` in every stateUpdate |
+| `vscode/package.json`, `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt` | `codotchi.deathless` and `codotchi.afterlifeName` first on the settings page |
+| `vscode/media/sidebar.html`, `sidebar.js`, `sidebar.css` | ♾ DEATHLESS badge; ♾ Deathless toggle above Menu; Bury / Cremate on the death screen; View Afterlife toggle + list + urn count on the Menu screen |
+| `vscode/tests/unit/deathless.test.ts`, `pycharm/.../DeathlessTest.kt` | new |
+| `claude-codotchi/dist` | rebuilt for the synced engine |
+| README, FEATURES, CHANGELOG, all manifests | version 2.35.0 |
+
+## v2.34.4
 
 ### Changes from v2.34.3 (speech bubble beside the pet - branch fix/bubble-cat-tree)
 
