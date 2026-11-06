@@ -341,6 +341,7 @@ export const DEFAULT_GAME_CONFIG = {
     devModeAgingMultiplier: 10,
     devModeHealthFloor: 1,
     immortal: false,
+    deathless: false,
 };
 /**
  * Config used by the claude-codotchi Claude Code plugin. Looked up by
@@ -460,6 +461,20 @@ export const ATTENTION_CALL_TYPES = [
     "hunger", "unhappiness", "poop", "sick", "low_energy", "misbehaviour",
     "gift", "critical_health", "play", "pat", "craving", "break",
 ];
+/** True once this pet has lived in deathless mode (it can't reach the leaderboard or high score). */
+export function isDeathlessPet(state) {
+    return state.leaderboardIneligible === "deathless";
+}
+/**
+ * Mark a pet as having used deathless mode. Sticky; a "tampered" mark wins since
+ * it is the stronger reason. Returns the same object when nothing changes.
+ */
+export function markDeathless(state) {
+    if (state.leaderboardIneligible === "deathless" || state.leaderboardIneligible === "tampered") {
+        return state;
+    }
+    return { ...state, leaderboardIneligible: "deathless" };
+}
 // ---------------------------------------------------------------------------
 // Helper — pure stat math
 // ---------------------------------------------------------------------------
@@ -889,6 +904,9 @@ function tickCore(state, isIdle, isDeepIdle, config) {
     // Any tick in dev mode (faster aging, health floor) bars this pet from the leaderboard for life.
     if (config.devMode && !state.devModeEverUsed) {
         state = { ...state, devModeEverUsed: true };
+    }
+    if (config.deathless) {
+        state = markDeathless(state);
     }
     const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
     if (state.breakNapTicksRemaining > 0) {
@@ -1326,6 +1344,10 @@ function tickCore(state, isIdle, isDeepIdle, config) {
     }
     // Immortal pets never drop below 1 health, so the bar never reads "0" while alive.
     if (config.immortal && health < 1) {
+        health = 1;
+    }
+    // Deathless: same floor, but the old-age roll below still applies.
+    if (config.deathless && health < 1) {
         health = 1;
     }
     // Death check
@@ -2992,6 +3014,7 @@ export function deserialiseState(data) {
         cravingFood: data["cravingFood"] === "meal" || data["cravingFood"] === "snack" ? data["cravingFood"] : null,
         devModeEverUsed: getBool("devModeEverUsed", false),
         leaderboardIneligible: data["leaderboardIneligible"] === "tampered" || data["leaderboardIneligible"] === "unverified"
+            || data["leaderboardIneligible"] === "deathless"
             ? data["leaderboardIneligible"] : "",
         // Version 0 (no schemaVersion) → 1: progression fields start empty.
         schemaVersion: SCHEMA_VERSION,
