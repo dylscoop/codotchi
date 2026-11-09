@@ -61,8 +61,17 @@
     <div id="afterlife-section" class="afterlife-section hidden">
       <p id="afterlife-title" class="high-score-title">Afterlife</p>
       <p id="afterlife-urns" class="afterlife-urns"></p>
-      <ul id="afterlife-list" class="afterlife-list" aria-label="Buried pets"></ul>
+      <ul id="afterlife-list" class="afterlife-list" aria-label="Cremated pets"></ul>
       <p id="afterlife-empty" class="afterlife-urns hidden">No pets here yet.</p>
+      <button id="btn-afterlife-edit" class="link-btn">Edit</button>
+      <div id="afterlife-edit-controls" class="hidden">
+        <button id="btn-afterlife-clear" class="link-btn delete-link">Clear Afterlife</button>
+        <div id="afterlife-clear-confirm" class="reset-hs-confirm hidden">
+          <span class="reset-hs-question">Are you sure?</span>
+          <button id="btn-afterlife-clear-yes" class="action-btn danger-btn">Yes, clear</button>
+          <button id="btn-afterlife-clear-cancel" class="link-btn">Cancel</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -298,10 +307,7 @@
     <ul id="dead-event-log" class="dead-event-log" aria-label="Final event log"></ul>
     <div id="afterlife-choice" class="afterlife-choice hidden" aria-label="Lay your pet to rest">
       <p id="afterlife-choice-title" class="high-score-title">Lay your pet to rest</p>
-      <div class="mg-btn-row">
-        <button id="btn-afterlife-bury" class="action-btn" title="Add this pet to your Afterlife">🪦 Bury</button>
-        <button id="btn-afterlife-cremate" class="action-btn" title="Add this pet to your urn count">🔥 Cremate</button>
-      </div>
+      <button id="btn-afterlife-cremate" class="action-btn" title="Cremate this pet into your Afterlife">⚱ Cremate</button>
     </div>
     <p id="afterlife-choice-done" class="leaderboard-status hidden"></p>
     <div id="high-score-section" class="high-score-section hidden">

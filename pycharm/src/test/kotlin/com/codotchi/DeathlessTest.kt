@@ -96,50 +96,57 @@ class DeathlessTest {
     }
 
     @Test
-    fun `bury adds an entry, newest first`() {
-        val a1 = Afterlife.decide(Afterlife.Data(), dead("One"), "bury")
-        val a2 = Afterlife.decide(a1, dead("Two", spawnedAt = 2000L), "bury")
-        assertEquals(listOf("Two", "One"), a2.buried.map { it.name })
-        assertEquals(0, a2.cremated)
-        assertEquals("neglect", a2.buried[0].cause)
+    fun `cremating records name, age and time alive, newest first`() {
+        val a1 = Afterlife.cremate(Afterlife.Data(), dead("One"))
+        val a2 = Afterlife.cremate(a1, dead("Two", spawnedAt = 2000L))
+        assertEquals(listOf("Two", "One"), a2.cremated.map { it.name })
+        assertEquals(12, a2.cremated[0].ageDays)
+        assertEquals(3000L, a2.cremated[0].diedAt - a2.cremated[0].spawnedAt)
+        assertEquals("neglect", a2.cremated[0].cause)
         assertFalse(Afterlife.pending(a2, dead(spawnedAt = 2000L)))
     }
 
     @Test
     fun `records old-age deaths and the deathless marker`() {
-        val a = Afterlife.decide(Afterlife.Data(), markDeathless(dead(log = listOf("died_of_old_age"))), "bury")
-        assertEquals("old_age", a.buried[0].cause)
-        assertTrue(a.buried[0].deathless)
+        val a = Afterlife.cremate(Afterlife.Data(), markDeathless(dead(log = listOf("died_of_old_age"))))
+        assertEquals("old_age", a.cremated[0].cause)
+        assertTrue(a.cremated[0].deathless)
     }
 
     @Test
-    fun `cremate only bumps the urn count`() {
-        val a = Afterlife.decide(Afterlife.Data(), dead(), "cremate")
-        assertTrue(a.buried.isEmpty())
-        assertEquals(1, a.cremated)
+    fun `a pet can't be cremated twice`() {
+        val a = Afterlife.cremate(Afterlife.Data(), dead())
+        assertSame(a, Afterlife.cremate(a, dead()))
     }
 
     @Test
-    fun `a second choice for the same pet is ignored`() {
-        val a = Afterlife.decide(Afterlife.Data(), dead(), "bury")
-        assertSame(a, Afterlife.decide(a, dead(), "cremate"))
-    }
-
-    @Test
-    fun `an undecided pet is cremated when a new pet hatches`() {
+    fun `an uncremated pet is cremated when a new pet hatches`() {
         val a = Afterlife.settleBeforeNewPet(Afterlife.Data(), dead())
-        assertEquals(1, a.cremated)
-        assertTrue(a.buried.isEmpty())
+        assertEquals(1, a.cremated.size)
         assertSame(a, Afterlife.settleBeforeNewPet(a, dead()))
         assertSame(a, Afterlife.settleBeforeNewPet(a, null))
     }
 
     @Test
-    fun `parse tolerates missing or corrupt data and round-trips`() {
+    fun `removes one entry by spawnedAt`() {
+        val a = Afterlife.cremate(Afterlife.cremate(Afterlife.Data(), dead("One")), dead("Two", spawnedAt = 2000L))
+        assertEquals(listOf("Two"), Afterlife.remove(a, 1000L).cremated.map { it.name })
+        assertSame(a, Afterlife.remove(a, 42L))
+    }
+
+    @Test
+    fun `clearing empties the list but the last pet still can't be cremated again`() {
+        val a = Afterlife.clear(Afterlife.cremate(Afterlife.Data(), dead()))
+        assertTrue(a.cremated.isEmpty())
+        assertSame(a, Afterlife.cremate(a, dead()))
+    }
+
+    @Test
+    fun `parse tolerates missing, corrupt or old (2_35_0) data and round-trips`() {
         assertEquals(Afterlife.Data(), Afterlife.parse(null))
         assertEquals(Afterlife.Data(), Afterlife.parse("not json"))
-        assertEquals(Afterlife.Data(), Afterlife.parse("""{"buried":"x","cremated":-3}"""))
-        val ok = Afterlife.decide(Afterlife.Data(), dead(), "bury")
+        assertEquals(Afterlife.Data(), Afterlife.parse("""{"buried":[],"cremated":3}"""))
+        val ok = Afterlife.cremate(Afterlife.Data(), dead())
         assertEquals(ok, Afterlife.parse(Afterlife.toJson(ok)))
     }
 

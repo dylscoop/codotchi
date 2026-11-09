@@ -6,10 +6,10 @@ import com.google.gson.Gson
 import com.google.gson.JsonParser
 
 /**
- * Afterlife — the user's local Afterlife: pets they chose to bury, plus a count
- * of cremated pets (an urn count). Stored in PropertiesComponent, so it is local
- * to this IDE. Every pet that dies gets a Bury / Cremate choice on the death
- * screen; a pet left undecided when a new one hatches is cremated.
+ * Afterlife — the user's local Afterlife: every pet they cremated, with its
+ * name, age and real time alive. Stored in PropertiesComponent, so it is local
+ * to this IDE. The death screen offers a Cremate button; a pet left uncremated
+ * when a new one hatches is cremated then. The user can remove entries or clear it.
  *
  * Mirrors vscode/src/afterlife.ts.
  */
@@ -29,32 +29,31 @@ object Afterlife {
     )
 
     data class Data(
-        /** Buried pets, newest first. */
-        val buried: List<Entry> = emptyList(),
-        val cremated: Int = 0,
-        /** spawnedAt of the last pet whose fate was decided (0 = none). */
+        /** Cremated pets, newest first. */
+        val cremated: List<Entry> = emptyList(),
+        /** spawnedAt of the last pet cremated (0 = none); stops a pet being cremated twice. */
         val lastDecidedSpawnedAt: Long = 0L,
     )
 
     /** The slice sent to the webview with every stateUpdate. */
-    data class View(val name: String, val buried: List<Entry>, val cremated: Int, val pending: Boolean)
+    data class View(val name: String, val cremated: List<Entry>, val pending: Boolean)
 
     const val MAX_ENTRIES = 100
     private const val PROPERTY_KEY = "codotchi.afterlife.v1"
     private val gson = Gson()
 
-    /** Normalise a stored JSON string (missing / partial / corrupt) into [Data]. */
+    /** Normalise a stored JSON string (missing / partial / corrupt / 2.35.0) into [Data]. */
     fun parse(json: String?): Data {
         if (json.isNullOrBlank()) return Data()
         return try {
             val o = JsonParser.parseString(json).asJsonObject
-            val buried = o.getAsJsonArray("buried")?.mapNotNull {
+            val raw = o.get("cremated")?.takeIf { it.isJsonArray }?.asJsonArray
+            val cremated = raw?.mapNotNull {
                 // Gson ignores Kotlin nullability, so a corrupt entry can carry a null name.
                 runCatching { gson.fromJson(it, Entry::class.java) }.getOrNull()?.takeIf { e -> (e.name as String?) != null }
             } ?: emptyList()
-            val cremated = o.get("cremated")?.takeIf { it.isJsonPrimitive }?.asInt?.coerceAtLeast(0) ?: 0
             val last = o.get("lastDecidedSpawnedAt")?.takeIf { it.isJsonPrimitive }?.asLong ?: 0L
-            Data(buried, cremated, last)
+            Data(cremated, last)
         } catch (_: Exception) {
             Data()
         }
@@ -62,7 +61,7 @@ object Afterlife {
 
     fun toJson(data: Data): String = gson.toJson(data)
 
-    /** True when this dead pet still needs a Bury / Cremate choice. */
+    /** True when this dead pet is still waiting to be cremated. */
     fun pending(data: Data, state: PetState?): Boolean =
         state != null && !state.alive && state.spawnedAt > 0L && state.spawnedAt != data.lastDecidedSpawnedAt
 
@@ -78,29 +77,30 @@ object Afterlife {
         diedAt     = state.diedAt.takeIf { it > 0L } ?: System.currentTimeMillis(),
     )
 
-    /** Apply the user's choice. No-op (same object) when the pet isn't awaiting one. */
-    fun decide(data: Data, state: PetState, choice: String): Data {
+    /** Cremate a dead pet. No-op (same object) when the pet isn't waiting. */
+    fun cremate(data: Data, state: PetState): Data {
         if (!pending(data, state)) return data
-        return when (choice) {
-            "bury" -> Data(
-                buried = (listOf(entryFor(state)) + data.buried).take(MAX_ENTRIES),
-                cremated = data.cremated,
-                lastDecidedSpawnedAt = state.spawnedAt,
-            )
-            "cremate" -> data.copy(cremated = data.cremated + 1, lastDecidedSpawnedAt = state.spawnedAt)
-            else -> data
-        }
+        return Data((listOf(entryFor(state)) + data.cremated).take(MAX_ENTRIES), state.spawnedAt)
     }
 
-    /** A new pet is hatching: an undecided dead pet is cremated. */
+    /** A new pet is hatching: an uncremated dead pet is cremated now. */
     fun settleBeforeNewPet(data: Data, previous: PetState?): Data =
-        if (previous == null) data else decide(data, previous, "cremate")
+        if (previous == null) data else cremate(data, previous)
+
+    /** Remove one entry (matched by spawnedAt). */
+    fun remove(data: Data, spawnedAt: Long): Data {
+        val kept = data.cremated.filter { it.spawnedAt != spawnedAt }
+        return if (kept.size == data.cremated.size) data else data.copy(cremated = kept)
+    }
+
+    /** Empty the Afterlife. The cremated marker stays, so the current dead pet can't be cremated again. */
+    fun clear(data: Data): Data = data.copy(cremated = emptyList())
 
     /** The user's name for their Afterlife, trimmed; blank falls back to "Afterlife". */
     fun displayName(raw: String?): String = raw?.trim()?.take(32)?.takeIf { it.isNotEmpty() } ?: "Afterlife"
 
     fun view(data: Data, state: PetState?, name: String?): View =
-        View(displayName(name), data.buried, data.cremated, pending(data, state))
+        View(displayName(name), data.cremated, pending(data, state))
 
     // ── Persistence (application-level, local to this IDE) ────────────────
 

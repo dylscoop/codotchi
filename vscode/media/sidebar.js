@@ -227,7 +227,12 @@
   const setupDeathless      = document.getElementById("setup-deathless");
   const afterlifeChoice     = document.getElementById("afterlife-choice");
   const afterlifeChoiceDone = document.getElementById("afterlife-choice-done");
-  const btnAfterlifeBury    = document.getElementById("btn-afterlife-bury");
+  const btnAfterlifeEdit        = document.getElementById("btn-afterlife-edit");
+  const afterlifeEditControls   = document.getElementById("afterlife-edit-controls");
+  const btnAfterlifeClear       = document.getElementById("btn-afterlife-clear");
+  const afterlifeClearConfirm   = document.getElementById("afterlife-clear-confirm");
+  const btnAfterlifeClearYes    = document.getElementById("btn-afterlife-clear-yes");
+  const btnAfterlifeClearCancel = document.getElementById("btn-afterlife-clear-cancel");
   const btnAfterlifeCremate = document.getElementById("btn-afterlife-cremate");
   const afterlifeSection    = document.getElementById("afterlife-section");
   const afterlifeUrns       = document.getElementById("afterlife-urns");
@@ -236,6 +241,7 @@
   const afterlifeEmpty      = document.getElementById("afterlife-empty");
   const btnViewAfterlife    = document.getElementById("btn-view-afterlife");
   let afterlifeOpen = false;
+  let afterlifeEditing = false;
   let afterlifeName = "Afterlife";
   const btnResetHs       = document.getElementById("btn-reset-hs");
   const resetHsConfirm   = document.getElementById("reset-hs-confirm");
@@ -522,20 +528,30 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     });
   }
 
-  /** Send the Bury / Cremate choice; buttons hide until the host confirms. */
-  function chooseAfterlife(choice) {
-    if (afterlifeChoice) { afterlifeChoice.classList.add("hidden"); }
-    vscode.postMessage({ command: "afterlife_choice", choice: choice });
+  /** Cremate the dead pet; the button hides until the host confirms. */
+  if (btnAfterlifeCremate) {
+    btnAfterlifeCremate.addEventListener("click", function () {
+      if (afterlifeChoice) { afterlifeChoice.classList.add("hidden"); }
+      vscode.postMessage({ command: "afterlife_cremate" });
+    });
   }
-  if (btnAfterlifeBury)    { btnAfterlifeBury.addEventListener("click",    function () { chooseAfterlife("bury"); }); }
-  if (btnAfterlifeCremate) { btnAfterlifeCremate.addEventListener("click", function () { chooseAfterlife("cremate"); }); }
 
-  /** Show or hide the Afterlife panel on the Menu screen. */
+  /** Show or hide the Afterlife panel (and its edit controls) on the Menu screen. */
   function syncAfterlifePanel() {
+    if (!afterlifeOpen) { afterlifeEditing = false; }
     if (afterlifeSection) { afterlifeSection.classList.toggle("hidden", !afterlifeOpen); }
     if (btnViewAfterlife) {
       btnViewAfterlife.textContent = (afterlifeOpen ? "Hide " : "View ") + afterlifeName;
       btnViewAfterlife.setAttribute("aria-expanded", afterlifeOpen ? "true" : "false");
+    }
+    if (btnAfterlifeEdit) { btnAfterlifeEdit.textContent = afterlifeEditing ? "Done" : "Edit"; }
+    if (afterlifeEditControls) { afterlifeEditControls.classList.toggle("hidden", !afterlifeEditing); }
+    if (!afterlifeEditing && afterlifeClearConfirm) { afterlifeClearConfirm.classList.add("hidden"); }
+    if (btnAfterlifeClear) { btnAfterlifeClear.classList.toggle("hidden", !!(afterlifeClearConfirm && !afterlifeClearConfirm.classList.contains("hidden"))); }
+    if (afterlifeList) {
+      afterlifeList.querySelectorAll(".afterlife-remove").forEach(function (b) {
+        b.classList.toggle("hidden", !afterlifeEditing);
+      });
     }
   }
   if (btnViewAfterlife) {
@@ -544,50 +560,91 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       syncAfterlifePanel();
     });
   }
+  if (btnAfterlifeEdit) {
+    btnAfterlifeEdit.addEventListener("click", function () {
+      afterlifeEditing = !afterlifeEditing;
+      syncAfterlifePanel();
+    });
+  }
+  if (btnAfterlifeClear) {
+    btnAfterlifeClear.addEventListener("click", function () {
+      if (afterlifeClearConfirm) { afterlifeClearConfirm.classList.remove("hidden"); }
+      syncAfterlifePanel();
+    });
+  }
+  if (btnAfterlifeClearCancel) {
+    btnAfterlifeClearCancel.addEventListener("click", function () {
+      if (afterlifeClearConfirm) { afterlifeClearConfirm.classList.add("hidden"); }
+      syncAfterlifePanel();
+    });
+  }
+  if (btnAfterlifeClearYes) {
+    btnAfterlifeClearYes.addEventListener("click", function () {
+      if (afterlifeClearConfirm) { afterlifeClearConfirm.classList.add("hidden"); }
+      afterlifeEditing = false;
+      syncAfterlifePanel();
+      vscode.postMessage({ command: "afterlife_clear" });
+    });
+  }
+
+  /** "3d 4h" style real time between two timestamps. */
+  function formatLived(ms) {
+    var totalSec = Math.max(0, Math.floor(ms / 1000));
+    var parts = [];
+    var d = Math.floor(totalSec / 86400), h = Math.floor((totalSec % 86400) / 3600), m = Math.floor((totalSec % 3600) / 60);
+    if (d > 0) { parts.push(d + "d"); }
+    if (h > 0) { parts.push(h + "h"); }
+    if (m > 0 && d === 0) { parts.push(m + "m"); }
+    return parts.length ? parts.join(" ") : "< 1m";
+  }
 
   /**
-   * Render the Afterlife: the Bury / Cremate prompt on the death screen and
-   * the buried-pets list + urn count on the setup screen.
-   * @param {{buried: Array, cremated: number, pending: boolean}|undefined} afterlife
+   * Render the Afterlife: the Cremate prompt on the death screen and the
+   * cremated-pets list on the Menu screen.
+   * @param {{name: string, cremated: Array, pending: boolean}|undefined} afterlife
    * @param {object|null} state
    */
   function renderAfterlife(afterlife, state) {
     if (!afterlife) { return; }
+    var entries = Array.isArray(afterlife.cremated) ? afterlife.cremated : [];
     afterlifeName = afterlife.name || "Afterlife";
     if (afterlifeTitle) { afterlifeTitle.textContent = afterlifeName; }
     if (btnViewAfterlife) { btnViewAfterlife.classList.remove("hidden"); }
-    syncAfterlifePanel();
     var dead = state && state.alive === false;
     if (afterlifeChoice) { afterlifeChoice.classList.toggle("hidden", !(dead && afterlife.pending)); }
     if (afterlifeChoiceDone) {
       var decided = dead && !afterlife.pending;
-      if (decided) {
-        var buried = afterlife.buried.some(function (e) { return e.spawnedAt === state.spawnedAt; });
-        afterlifeChoiceDone.textContent = buried
-          ? state.name + " rests in your " + afterlifeName + ". 🪦"
-          : state.name + " was cremated. ⚱";
-      }
+      if (decided) { afterlifeChoiceDone.textContent = state.name + " was cremated and rests in your " + afterlifeName + ". ⚱"; }
       afterlifeChoiceDone.classList.toggle("hidden", !decided);
     }
-    if (afterlifeSection) {
-      var hasAny = afterlife.buried.length > 0 || afterlife.cremated > 0;
-      if (afterlifeEmpty) { afterlifeEmpty.classList.toggle("hidden", hasAny); }
-      if (afterlifeUrns) {
-        afterlifeUrns.textContent = afterlife.cremated > 0
-          ? "⚱ Cremated: " + afterlife.cremated
-          : "";
-      }
-      if (afterlifeList) {
-        afterlifeList.innerHTML = "";
-        afterlife.buried.forEach(function (e) {
-          var li = document.createElement("li");
-          var when = new Date(e.diedAt).toLocaleDateString();
-          li.textContent = "🪦 " + e.name + (e.deathless ? " ♾" : "") + "  |  " + formatAge(e.ageDays) +
-            "  |  " + e.stage + "  |  " + (e.cause === "old_age" ? "old age" : "neglect") + "  |  " + when;
-          afterlifeList.appendChild(li);
-        });
-      }
+    if (afterlifeEmpty) { afterlifeEmpty.classList.toggle("hidden", entries.length > 0); }
+    if (afterlifeUrns) {
+      afterlifeUrns.textContent = entries.length > 0 ? "⚱ " + entries.length + " cremated" : "";
     }
+    if (btnAfterlifeEdit) { btnAfterlifeEdit.classList.toggle("hidden", entries.length === 0); }
+    if (entries.length === 0) { afterlifeEditing = false; }
+    if (afterlifeList) {
+      afterlifeList.innerHTML = "";
+      entries.forEach(function (e) {
+        var li = document.createElement("li");
+        var text = document.createElement("span");
+        var when = new Date(e.diedAt).toLocaleDateString();
+        text.textContent = "⚱ " + e.name + (e.deathless ? " ♾" : "") + "  |  " + formatAge(e.ageDays) +
+          "  |  lived " + formatLived(e.diedAt - e.spawnedAt) + "  |  " + when;
+        text.title = e.stage + ", " + (e.cause === "old_age" ? "old age" : "neglect");
+        li.appendChild(text);
+        var remove = document.createElement("button");
+        remove.className = "link-btn afterlife-remove hidden";
+        remove.textContent = "✕";
+        remove.title = "Remove " + e.name + " from your " + afterlifeName;
+        remove.addEventListener("click", function () {
+          vscode.postMessage({ command: "afterlife_remove", spawnedAt: e.spawnedAt });
+        });
+        li.appendChild(remove);
+        afterlifeList.appendChild(li);
+      });
+    }
+    syncAfterlifePanel();
   }
 
   // ── Screen management ────────────────────────────────────────────────────

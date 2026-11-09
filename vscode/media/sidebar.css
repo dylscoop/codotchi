@@ -634,6 +634,13 @@ body.font-large  { font-size: 16px; }
 }
 .afterlife-list li {
   padding: 2px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.afterlife-remove {
+  padding: 0 4px;
 }
 .action-btn.danger-btn {
   background: var(--vscode-inputValidation-errorBackground, #5a1d1d);

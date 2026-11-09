@@ -40,7 +40,7 @@ import {
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
 import { loadTrainer, loadAfterlife, saveAfterlife } from "./persistence";
-import { afterlifeView, decideAfterlife, settleBeforeNewPet } from "./afterlife";
+import { afterlifeView, clearAfterlife, cremate, removeAfterlifeEntry, settleBeforeNewPet } from "./afterlife";
 import { leaderboardBlockedReason, signSubmission } from "./integrity";
 import { cravingItemFor } from "./cravingItem";
 import { giftFor } from "./giftItem";
@@ -99,8 +99,8 @@ interface WebviewMessage {
   name?: string;
   petType?: string;
   color?: string;  // deprecated — ignored, kept for message back-compat only
-  /** afterlife_choice: what to do with the dead pet. */
-  choice?: string;
+  /** afterlife_remove: the entry's spawnedAt. */
+  spawnedAt?: number;
   /** new_game: hatch in deathless mode. */
   deathless?: boolean;
 }
@@ -486,10 +486,20 @@ export class SidebarProvider
       return;
     }
 
-    if (message.command === "afterlife_choice") {
-      if (state === null || (message.choice !== "bury" && message.choice !== "cremate")) { return; }
-      saveAfterlife(this.context, decideAfterlife(loadAfterlife(this.context), state, message.choice));
+    if (message.command === "afterlife_cremate") {
+      if (state === null) { return; }
+      saveAfterlife(this.context, cremate(loadAfterlife(this.context), state));
       this.onStateUpdate({ ...state, events: [] });
+      return;
+    }
+
+    if (message.command === "afterlife_remove" || message.command === "afterlife_clear") {
+      const current = loadAfterlife(this.context);
+      saveAfterlife(this.context, message.command === "afterlife_clear"
+        ? clearAfterlife(current)
+        : removeAfterlifeEntry(current, typeof message.spawnedAt === "number" ? message.spawnedAt : -1));
+      if (state !== null) { this.onStateUpdate({ ...state, events: [] }); }
+      else { this.postNoGame(this.getHighScore()); }
       return;
     }
 

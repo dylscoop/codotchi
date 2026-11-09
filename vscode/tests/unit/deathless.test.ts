@@ -21,7 +21,9 @@ import {
   EMPTY_AFTERLIFE,
   afterlifePending,
   afterlifeView,
-  decideAfterlife,
+  clearAfterlife,
+  cremate,
+  removeAfterlifeEntry,
   parseAfterlife,
   settleBeforeNewPet,
 } from "../../src/afterlife";
@@ -116,54 +118,55 @@ describe("afterlife", () => {
     assert.equal(afterlifePending(EMPTY_AFTERLIFE, makePet({ spawnedAt: 1000 })), false);
   });
 
-  it("a dead pet is pending until decided", () => {
+  it("a dead pet is pending until cremated", () => {
     assert.equal(afterlifePending(EMPTY_AFTERLIFE, dead()), true);
   });
 
-  it("bury adds an entry, newest first", () => {
-    const a1 = decideAfterlife(EMPTY_AFTERLIFE, dead({ name: "One" }), "bury");
-    const a2 = decideAfterlife(a1, dead({ name: "Two", spawnedAt: 2000 }), "bury");
-    assert.deepEqual(a2.buried.map((e) => e.name), ["Two", "One"]);
-    assert.equal(a2.cremated, 0);
-    assert.equal(a2.buried[0].cause, "neglect");
+  it("cremating records name, age and time alive, newest first", () => {
+    const a1 = cremate(EMPTY_AFTERLIFE, dead({ name: "One" }));
+    const a2 = cremate(a1, dead({ name: "Two", spawnedAt: 2000, diedAt: 9000 }));
+    assert.deepEqual(a2.cremated.map((e) => e.name), ["Two", "One"]);
+    assert.equal(a2.cremated[0].ageDays, 12);
+    assert.equal(a2.cremated[0].diedAt - a2.cremated[0].spawnedAt, 7000);
+    assert.equal(a2.cremated[0].cause, "neglect");
     assert.equal(afterlifePending(a2, dead({ spawnedAt: 2000 })), false);
   });
 
   it("records old-age deaths and the deathless marker", () => {
-    const a = decideAfterlife(EMPTY_AFTERLIFE,
-      markDeathless(dead({ recentEventLog: ["died_of_old_age"] })), "bury");
-    assert.equal(a.buried[0].cause, "old_age");
-    assert.equal(a.buried[0].deathless, true);
+    const a = cremate(EMPTY_AFTERLIFE, markDeathless(dead({ recentEventLog: ["died_of_old_age"] })));
+    assert.equal(a.cremated[0].cause, "old_age");
+    assert.equal(a.cremated[0].deathless, true);
   });
 
-  it("cremate only bumps the urn count", () => {
-    const a = decideAfterlife(EMPTY_AFTERLIFE, dead(), "cremate");
-    assert.equal(a.buried.length, 0);
-    assert.equal(a.cremated, 1);
+  it("a pet can't be cremated twice", () => {
+    const a = cremate(EMPTY_AFTERLIFE, dead());
+    assert.equal(cremate(a, dead()), a);
   });
 
-  it("a second choice for the same pet is ignored", () => {
-    const a = decideAfterlife(EMPTY_AFTERLIFE, dead(), "bury");
-    assert.equal(decideAfterlife(a, dead(), "cremate"), a);
-  });
-
-  it("an undecided pet is cremated when a new pet hatches", () => {
+  it("an uncremated pet is cremated when a new pet hatches", () => {
     const a = settleBeforeNewPet(EMPTY_AFTERLIFE, dead());
-    assert.equal(a.cremated, 1);
-    assert.equal(a.buried.length, 0);
-  });
-
-  it("settling a decided or living pet changes nothing", () => {
-    const a = decideAfterlife(EMPTY_AFTERLIFE, dead(), "bury");
+    assert.equal(a.cremated.length, 1);
     assert.equal(settleBeforeNewPet(a, dead()), a);
     assert.equal(settleBeforeNewPet(a, makePet({ spawnedAt: 9 })), a);
     assert.equal(settleBeforeNewPet(a, null), a);
   });
 
-  it("parseAfterlife tolerates missing or corrupt data", () => {
+  it("removes one entry by spawnedAt", () => {
+    const a = cremate(cremate(EMPTY_AFTERLIFE, dead({ name: "One" })), dead({ name: "Two", spawnedAt: 2000 }));
+    assert.deepEqual(removeAfterlifeEntry(a, 1000).cremated.map((e) => e.name), ["Two"]);
+    assert.equal(removeAfterlifeEntry(a, 42), a);
+  });
+
+  it("clearing empties the list but the last pet still can't be cremated again", () => {
+    const a = clearAfterlife(cremate(EMPTY_AFTERLIFE, dead()));
+    assert.equal(a.cremated.length, 0);
+    assert.equal(cremate(a, dead()), a);
+  });
+
+  it("parseAfterlife tolerates missing, corrupt or old (2.35.0) data", () => {
     assert.deepEqual(parseAfterlife(undefined), EMPTY_AFTERLIFE);
-    assert.deepEqual(parseAfterlife({ buried: "x", cremated: -3 }), EMPTY_AFTERLIFE);
-    const ok = decideAfterlife(EMPTY_AFTERLIFE, dead(), "bury");
+    assert.deepEqual(parseAfterlife({ buried: [], cremated: 3 }), EMPTY_AFTERLIFE);
+    const ok = cremate(EMPTY_AFTERLIFE, dead());
     assert.deepEqual(parseAfterlife(JSON.parse(JSON.stringify(ok))), ok);
   });
 

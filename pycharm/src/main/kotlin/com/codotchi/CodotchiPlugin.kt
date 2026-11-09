@@ -656,11 +656,21 @@ class CodotchiPlugin : Disposable {
                     return@withLock
                 }
 
-                "afterlife_choice" -> {
-                    val choice = message["choice"] as? String
-                    if (state != null && (choice == "bury" || choice == "cremate")) {
-                        Afterlife.save(Afterlife.decide(Afterlife.load(), state, choice))
-                    }
+                "afterlife_cremate" -> {
+                    if (state != null) Afterlife.save(Afterlife.cremate(Afterlife.load(), state))
+                    shouldBroadcast = true
+                    return@withLock
+                }
+
+                "afterlife_remove" -> {
+                    val spawnedAt = (message["spawnedAt"] as? Number)?.toLong() ?: -1L
+                    Afterlife.save(Afterlife.remove(Afterlife.load(), spawnedAt))
+                    shouldBroadcast = true
+                    return@withLock
+                }
+
+                "afterlife_clear" -> {
+                    Afterlife.save(Afterlife.clear(Afterlife.load()))
                     shouldBroadcast = true
                     return@withLock
                 }

@@ -1,15 +1,15 @@
 /**
- * afterlife.ts — the user's local Afterlife: pets they chose to bury, plus a
- * count of cremated pets (an urn count). Stored in globalState, so it is local
- * to this IDE. Every pet that dies gets a Bury / Cremate choice on the death
- * screen; a pet left undecided when a new one hatches is cremated.
+ * afterlife.ts — the user's local Afterlife: every pet they cremated, with its
+ * name, age and real time alive. Stored in globalState, so it is local to this
+ * IDE. The death screen offers a Cremate button; a pet left uncremated when a
+ * new one hatches is cremated then. The user can remove entries or clear it.
  *
  * The pure functions here are mirrored in pycharm's Afterlife.kt.
  */
 
 import { isDeathlessPet, type PetState } from "./gameEngine";
 
-/** One buried pet. */
+/** One cremated pet. */
 export interface AfterlifeEntry {
   readonly name: string;
   readonly petType: string;
@@ -24,35 +24,31 @@ export interface AfterlifeEntry {
 }
 
 export interface Afterlife {
-  /** Buried pets, newest first. */
-  readonly buried: readonly AfterlifeEntry[];
-  /** Number of cremated pets. */
-  readonly cremated: number;
-  /** spawnedAt of the last pet whose fate was decided (0 = none). */
+  /** Cremated pets, newest first. */
+  readonly cremated: readonly AfterlifeEntry[];
+  /** spawnedAt of the last pet cremated (0 = none); stops a pet being cremated twice. */
   readonly lastDecidedSpawnedAt: number;
 }
 
-export type AfterlifeChoice = "bury" | "cremate";
+export const EMPTY_AFTERLIFE: Afterlife = { cremated: [], lastDecidedSpawnedAt: 0 };
 
-export const EMPTY_AFTERLIFE: Afterlife = { buried: [], cremated: 0, lastDecidedSpawnedAt: 0 };
-
-/** Oldest buried pets are dropped past this many. */
+/** Oldest entries are dropped past this many. */
 export const AFTERLIFE_MAX_ENTRIES = 100;
+
+function isEntry(e: unknown): e is AfterlifeEntry {
+  return e !== null && typeof e === "object" && typeof (e as AfterlifeEntry).name === "string";
+}
 
 /** Normalise a stored value (missing / partial / corrupt) into an Afterlife. */
 export function parseAfterlife(raw: unknown): Afterlife {
   if (raw === null || typeof raw !== "object") { return EMPTY_AFTERLIFE; }
   const r = raw as Record<string, unknown>;
-  const buried = Array.isArray(r["buried"])
-    ? (r["buried"] as unknown[]).filter((e): e is AfterlifeEntry =>
-        e !== null && typeof e === "object" && typeof (e as AfterlifeEntry).name === "string")
-    : [];
-  const cremated = typeof r["cremated"] === "number" && r["cremated"] >= 0 ? Math.floor(r["cremated"]) : 0;
+  const cremated = Array.isArray(r["cremated"]) ? (r["cremated"] as unknown[]).filter(isEntry) : [];
   const last = typeof r["lastDecidedSpawnedAt"] === "number" ? r["lastDecidedSpawnedAt"] : 0;
-  return { buried, cremated, lastDecidedSpawnedAt: last };
+  return { cremated, lastDecidedSpawnedAt: last };
 }
 
-/** True when this dead pet still needs a Bury / Cremate choice. */
+/** True when this dead pet is still waiting to be cremated. */
 export function afterlifePending(afterlife: Afterlife, state: PetState | null): boolean {
   return state !== null && !state.alive && state.spawnedAt > 0
     && state.spawnedAt !== afterlife.lastDecidedSpawnedAt;
@@ -74,24 +70,31 @@ export function afterlifeEntryFor(state: PetState): AfterlifeEntry {
 }
 
 /**
- * Apply the user's choice for a dead pet. No-op (same object) when the pet
- * isn't awaiting a choice, so a double click can't bury it twice.
+ * Cremate a dead pet into the Afterlife. No-op (same object) when the pet
+ * isn't waiting, so a double click can't cremate it twice.
  */
-export function decideAfterlife(afterlife: Afterlife, state: PetState, choice: AfterlifeChoice): Afterlife {
+export function cremate(afterlife: Afterlife, state: PetState): Afterlife {
   if (!afterlifePending(afterlife, state)) { return afterlife; }
-  if (choice === "bury") {
-    return {
-      buried: [afterlifeEntryFor(state), ...afterlife.buried].slice(0, AFTERLIFE_MAX_ENTRIES),
-      cremated: afterlife.cremated,
-      lastDecidedSpawnedAt: state.spawnedAt,
-    };
-  }
-  return { buried: afterlife.buried, cremated: afterlife.cremated + 1, lastDecidedSpawnedAt: state.spawnedAt };
+  return {
+    cremated: [afterlifeEntryFor(state), ...afterlife.cremated].slice(0, AFTERLIFE_MAX_ENTRIES),
+    lastDecidedSpawnedAt: state.spawnedAt,
+  };
 }
 
-/** A new pet is hatching: an undecided dead pet is cremated. */
+/** A new pet is hatching: an uncremated dead pet is cremated now. */
 export function settleBeforeNewPet(afterlife: Afterlife, previous: PetState | null): Afterlife {
-  return previous === null ? afterlife : decideAfterlife(afterlife, previous, "cremate");
+  return previous === null ? afterlife : cremate(afterlife, previous);
+}
+
+/** Remove one entry (matched by spawnedAt). */
+export function removeAfterlifeEntry(afterlife: Afterlife, spawnedAt: number): Afterlife {
+  const cremated = afterlife.cremated.filter((e) => e.spawnedAt !== spawnedAt);
+  return cremated.length === afterlife.cremated.length ? afterlife : { ...afterlife, cremated };
+}
+
+/** Empty the Afterlife. The cremated marker stays, so the current dead pet can't be cremated again. */
+export function clearAfterlife(afterlife: Afterlife): Afterlife {
+  return { cremated: [], lastDecidedSpawnedAt: afterlife.lastDecidedSpawnedAt };
 }
 
 /** The user's name for their Afterlife (setting), trimmed; blank falls back to "Afterlife". */
@@ -102,11 +105,10 @@ export function afterlifeDisplayName(raw: unknown): string {
 
 /** The slice sent to the webview with every stateUpdate. */
 export function afterlifeView(afterlife: Afterlife, state: PetState | null, name: unknown = "Afterlife"): {
-  name: string; buried: readonly AfterlifeEntry[]; cremated: number; pending: boolean;
+  name: string; cremated: readonly AfterlifeEntry[]; pending: boolean;
 } {
   return {
     name: afterlifeDisplayName(name),
-    buried: afterlife.buried,
     cremated: afterlife.cremated,
     pending: afterlifePending(afterlife, state),
   };
