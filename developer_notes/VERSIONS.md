@@ -1,6 +1,20 @@
 # Version History
 
-## v2.35.0 - current
+## v2.35.1 - current
+
+### Changes from v2.35.0 (cremation-only Afterlife, cat belly line - branch feat/deathless-mode)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sprites.js` | belly-sag rows repeat the bottom body row's own pixels in its filled columns only (both draw paths); was a solid primary-colour band from the row's leftmost to rightmost pixel, which bridged the gap between the adult/senior cat's legs as a pale line |
+| `vscode/tests/unit/webviewAnimations.test.ts` | sag never fills the adult cat's leg gap |
+| `vscode/src/afterlife.ts`, `pycharm/.../Afterlife.kt` | cremation only: `cremated` is now a list of entries (name, age, spawnedAt/diedAt for time alive, cause, stage, ♾); `cremate`, `removeAfterlifeEntry` / `remove`, `clearAfterlife` / `clear` (keeps the cremated marker); 2.35.0 bury data is dropped |
+| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt` | `afterlife_cremate`, `afterlife_remove` (by `spawnedAt`), `afterlife_clear`; `afterlife_choice` removed |
+| `vscode/media/sidebar.html`, `sidebar.js`, `sidebar.css` | single ⚱ Cremate button; Afterlife list shows name, age, time lived, date; Edit mode with ✕ per entry and Clear Afterlife with confirm |
+| `vscode/tests/unit/deathless.test.ts`, `pycharm/.../DeathlessTest.kt` | cremate / remove / clear tests |
+| README, FEATURES, CHANGELOG, all manifests | version 2.35.1 |
+
+## v2.35.0
 
 ### Changes from v2.34.4 (deathless mode and the Afterlife - branch feat/deathless-mode)
 

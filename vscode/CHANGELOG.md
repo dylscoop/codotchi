@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.35.1] - 2026-11-09
+
+### Changed
+
+- **The Afterlife keeps every pet you cremate.** The death screen now has a single **⚱ Cremate** button (Bury is gone). Each cremated pet is listed in your Afterlife with its name, age and how long it lived in real time. A pet you don't cremate is cremated when you hatch the next one. Click **Edit** in the Afterlife to remove a pet, or **Clear Afterlife** to empty it.
+
+### Fixed
+
+- **No more line under the adult and senior cat.** A well-fed pet's sagging belly no longer draws a pale line across the gap between the cat's legs.
+
 ## [2.35.0] - 2026-11-06
 
 ### Added

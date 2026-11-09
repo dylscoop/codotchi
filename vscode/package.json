@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.35.0",
+  "version": "2.35.1",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -123,7 +123,7 @@
             "type": "string",
             "default": "Afterlife",
             "maxLength": 32,
-            "markdownDescription": "Your name for the Afterlife — where pets you choose to **Bury** rest (cremated pets add to the urn count). View it from the Menu screen.",
+            "markdownDescription": "Your name for the Afterlife — where your cremated pets rest. View it from the Menu screen.",
             "order": 2
           },
           "codotchi.enableAttentionCalls": {

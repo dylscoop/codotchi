@@ -57,9 +57,10 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   `codotchi.deathless` at the top of the settings) and your pet can't die from neglect: health stays
   at 1 or above. It still gets sick and can still pass away of old age. A
   deathless pet can't go on the leaderboard and doesn't count towards your high score
-- **The Afterlife** — when a pet dies, **Bury** it in your Afterlife or
-  **Cremate** it (cremated pets add to an urn count). Open it with **View
-  Afterlife** on the Menu screen, and rename it with `codotchi.afterlifeName`
+- **The Afterlife** — when a pet dies, **Cremate** it and it rests in your
+  Afterlife with its name, age and time alive. Open it with **View
+  Afterlife** on the Menu screen, remove pets or clear it with **Edit**, and
+  rename it with `codotchi.afterlifeName`
 - **Safe while you are away** — when you step away from the IDE your pet gets
   hungry and bored more slowly and never loses health, so it is waiting for you
   when you come back
