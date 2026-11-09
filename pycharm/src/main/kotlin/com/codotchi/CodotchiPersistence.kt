@@ -452,7 +452,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             breakNapTicksRemaining     = r.breakNapTicksRemaining     ?: 0,
             cravingFood                = r.cravingFood?.takeIf { it == "meal" || it == "snack" },
             devModeEverUsed            = r.devModeEverUsed            ?: false,
-            leaderboardIneligible      = r.leaderboardIneligible?.takeIf { it == "tampered" || it == "unverified" } ?: "",
+            leaderboardIneligible      = r.leaderboardIneligible?.takeIf { it == "tampered" || it == "unverified" || it == "deathless" } ?: "",
             // Version 0 (no schemaVersion) → 1: progression fields start empty.
             schemaVersion              = SCHEMA_VERSION,
             petXp                      = maxOf(0, r.petXp ?: 0),

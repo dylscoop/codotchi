@@ -584,7 +584,64 @@ body.font-large  { font-size: 16px; }
   border-bottom: 1px solid rgba(255,255,255,0.15);
 }
 
-/* ── Danger (destructive) action button ── */
+/* ── Deathless badge ── */
+.deathless-banner {
+  background: #5b3f8c;
+  color: #fff;
+  font-size: 0.75em;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 3px;
+  padding: 3px 0;
+  width: 100%;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+/* ── Afterlife ── */
+.deathless-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+.deathless-hint {
+  margin: 2px 0 8px;
+  font-size: 0.8em;
+  opacity: 0.75;
+}
+.afterlife-choice {
+  margin: 8px 0;
+  text-align: center;
+}
+.afterlife-section {
+  margin-top: 12px;
+}
+.afterlife-section summary {
+  cursor: pointer;
+}
+.afterlife-urns {
+  margin: 4px 0;
+  font-size: 0.85em;
+}
+.afterlife-list {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0;
+  font-size: 0.8em;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.afterlife-list li {
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.afterlife-remove {
+  padding: 0 4px;
+}
 .action-btn.danger-btn {
   background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
   color: var(--vscode-inputValidation-errorForeground, #f48771);

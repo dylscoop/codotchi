@@ -301,6 +301,18 @@ fun createPet(name: String, petType: String, color: String, unlockedCharacter: S
 }
 
 // ---------------------------------------------------------------------------
+// Deathless mode
+// ---------------------------------------------------------------------------
+
+/** True once this pet has lived in deathless mode (it can't reach the leaderboard or high score). */
+fun isDeathlessPet(state: PetState): Boolean = state.leaderboardIneligible == "deathless"
+
+/** Mark a pet as having used deathless mode. Sticky; a "tampered" mark wins. */
+fun markDeathless(state: PetState): PetState =
+    if (state.leaderboardIneligible == "deathless" || state.leaderboardIneligible == "tampered") state
+    else state.copy(leaderboardIneligible = "deathless")
+
+// ---------------------------------------------------------------------------
 // Tick
 // ---------------------------------------------------------------------------
 
@@ -315,6 +327,9 @@ private fun tickCore(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, conf
     // Any tick in dev mode (faster aging, health floor) bars this pet from the leaderboard for life.
     if (config.devMode && !state.devModeEverUsed) {
         return tick(state.copy(devModeEverUsed = true), isIdle, isDeepIdle, config)
+    }
+    if (config.deathless && !isDeathlessPet(state) && state.leaderboardIneligible != "tampered") {
+        return tick(markDeathless(state), isIdle, isDeepIdle, config)
     }
 
     val modifiers = PET_TYPE_MODIFIERS[state.petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
@@ -712,6 +727,12 @@ private fun tickCore(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, conf
     // when devModeHealthFloor > 0 (default 1). Set floor to 0 to allow death in dev mode.
     if (config.devMode && health <= config.devModeHealthFloor) {
         health = config.devModeHealthFloor
+    }
+
+    // Deathless (setting on, or a pet that has ever been deathless — it stays
+    // deathless for life): health never drops below 1; the old-age roll still applies.
+    if ((config.deathless || isDeathlessPet(state)) && health < 1) {
+        health = 1
     }
 
     // Death check

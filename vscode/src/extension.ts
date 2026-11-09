@@ -20,6 +20,8 @@ import {
   HighScore,
   GameConfig,
   applyOfflineDecay,
+  isDeathlessPet,
+  markDeathless,
   progressionMessage,
   tick,
   TICK_INTERVAL_SECONDS,
@@ -36,6 +38,7 @@ import { giftFor } from "./giftItem";
 import { CriticalStatTracker, evaluateCriticalStats, sendOsNotification } from "./criticalStatNotifier";
 import { attentionCallTypeForEvent, shouldDismissAttention } from "./attentionNotification";
 import type { AttentionCallType } from "./gameEngine";
+import { settleBeforeNewPet } from "./afterlife";
 import {
   saveState,
   loadState,
@@ -44,6 +47,8 @@ import {
   loadHighScore,
   saveHighScore,
   clearHighScore,
+  loadAfterlife,
+  saveAfterlife,
   getActiveStatePath,
   copySharedToWorkspace,
   migrateStateFolder,
@@ -264,12 +269,12 @@ export function activate(context: vscode.ExtensionContext): void {
       criticalStatTracker = {};
     }
 
-    // Update high score when pet dies (suppressed in dev mode — scores don't count)
+    // Update high score when pet dies (suppressed in dev mode and for deathless pets — scores don't count)
     const cfg2 = vscode.workspace.getConfiguration("codotchi");
     const devModeActive =
       cfg2.get<boolean>("devModeEnabled", false) &&
       cfg2.get<string>("developerPasscode", "") === "1234";
-    if (!state.alive && !devModeActive) {
+    if (!state.alive && !devModeActive && !isDeathlessPet(state)) {
       // The engine records the death tick in state.diedAt and persists it, so
       // reloading the IDE doesn't move the death time forward.
       const diedAt = state.diedAt || Date.now();
@@ -481,6 +486,7 @@ export function activate(context: vscode.ExtensionContext): void {
       devMode:                  cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234",
       devModeAgingMultiplier:   Math.max(1, cfg.get<number>("devModeAgingMultiplier", 10)),
       devModeHealthFloor:       Math.max(0, Math.min(100, cfg.get<number>("devModeHealthFloor", 1))),
+      deathless:                cfg.get<boolean>("deathless", false),
     };
     const next = tick(currentState, idle, deepIdle, gameConfig);
     handleStateUpdate(next, idle);
@@ -635,6 +641,21 @@ export function activate(context: vscode.ExtensionContext): void {
       })
     );
 
+    // Deathless toggled in settings: mark the pet right away
+    // and refresh the sidebar so the badge and leaderboard state update.
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration("codotchi.afterlifeName")) {
+          if (currentState !== null) { handleStateUpdate({ ...currentState, events: [] }, false); }
+          else { sidebar?.postNoGame(currentHighScore); }
+        }
+        if (!e.affectsConfiguration("codotchi.deathless") || currentState === null) { return; }
+        const on = vscode.workspace.getConfiguration("codotchi").get<boolean>("deathless", false);
+        const next = on && currentState.alive ? markDeathless(currentState) : currentState;
+        handleStateUpdate({ ...next, events: [] }, false);
+      })
+    );
+
     // React to perWorkspacePet setting changes.
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
@@ -674,6 +695,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("codotchi.newGame", () => {
+      saveAfterlife(context, settleBeforeNewPet(loadAfterlife(context), currentState));
       clearState(context);
       currentState = null;
       // The webview new-game form handles the actual createPet call via the

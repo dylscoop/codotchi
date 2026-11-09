@@ -440,6 +440,14 @@ export interface GameConfig {
    * Optional so existing config literals don't need it; absent means false.
    */
   immortal?: boolean;
+  /**
+   * Deathless mode (user setting): health is floored at 1 so the pet can't die
+   * from neglect or sickness, but it still gets sick and can still die of old age.
+   * Any tick with it on marks the pet "deathless" — off the leaderboard and high
+   * score, and floored at 1 health, for life even if the setting is later
+   * turned off. Optional; absent means false.
+   */
+  deathless?: boolean;
 }
 
 /** Sensible defaults used when no explicit config is provided. */
@@ -451,6 +459,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   devModeAgingMultiplier:   10,
   devModeHealthFloor:       1,
   immortal:                 false,
+  deathless:                false,
 };
 
 /**
@@ -846,7 +855,23 @@ export interface DailyChallenges {
 }
 
 /** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
-export type LeaderboardIneligibleReason = "" | "tampered" | "unverified";
+export type LeaderboardIneligibleReason = "" | "tampered" | "unverified" | "deathless";
+
+/** True once this pet has lived in deathless mode (it can't reach the leaderboard or high score). */
+export function isDeathlessPet(state: PetState): boolean {
+  return state.leaderboardIneligible === "deathless";
+}
+
+/**
+ * Mark a pet as having used deathless mode. Sticky; a "tampered" mark wins since
+ * it is the stronger reason. Returns the same object when nothing changes.
+ */
+export function markDeathless(state: PetState): PetState {
+  if (state.leaderboardIneligible === "deathless" || state.leaderboardIneligible === "tampered") {
+    return state;
+  }
+  return { ...state, leaderboardIneligible: "deathless" };
+}
 
 // ---------------------------------------------------------------------------
 // HighScore — persisted record of the best run
@@ -1336,6 +1361,9 @@ function tickCore(state: PetState, isIdle: boolean, isDeepIdle: boolean, config:
   if (config.devMode && !state.devModeEverUsed) {
     state = { ...state, devModeEverUsed: true };
   }
+  if (config.deathless) {
+    state = markDeathless(state);
+  }
   const modifiers = PET_TYPE_MODIFIERS[state.petType] ?? PET_TYPE_MODIFIERS.codeling;
   if (state.breakNapTicksRemaining > 0) {
     return tickBreakNap(state, isIdle, isDeepIdle, config, modifiers);
@@ -1752,6 +1780,12 @@ function tickCore(state: PetState, isIdle: boolean, isDeepIdle: boolean, config:
 
   // Immortal pets never drop below 1 health, so the bar never reads "0" while alive.
   if (config.immortal && health < 1) {
+    health = 1;
+  }
+
+  // Deathless (setting on, or a pet that has ever been deathless — it stays
+  // deathless for life): same floor, but the old-age roll below still applies.
+  if ((config.deathless || isDeathlessPet(state)) && health < 1) {
     health = 1;
   }
 
@@ -3525,6 +3559,7 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     cravingFood: data["cravingFood"] === "meal" || data["cravingFood"] === "snack" ? data["cravingFood"] : null,
     devModeEverUsed: getBool("devModeEverUsed", false),
     leaderboardIneligible: data["leaderboardIneligible"] === "tampered" || data["leaderboardIneligible"] === "unverified"
+      || data["leaderboardIneligible"] === "deathless"
       ? data["leaderboardIneligible"] : "",
     // Version 0 (no schemaVersion) → 1: progression fields start empty.
     schemaVersion: SCHEMA_VERSION,

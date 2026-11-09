@@ -49,13 +49,37 @@
       <button class="opt-btn" data-value="shellscript">Shellscript</button>
     </div>
 
+    <label class="deathless-option" for="setup-deathless">
+      <input type="checkbox" id="setup-deathless" />
+      ♾ Deathless
+    </label>
+    <p class="deathless-hint">Can't die from neglect, only of old age. Not eligible for the leaderboard or high score.</p>
+
     <button id="start-btn" class="action-btn primary">Hatch!</button>
+
+    <button id="btn-view-afterlife" class="link-btn hidden" aria-expanded="false" aria-controls="afterlife-section">View Afterlife</button>
+    <div id="afterlife-section" class="afterlife-section hidden">
+      <p id="afterlife-title" class="high-score-title">Afterlife</p>
+      <p id="afterlife-urns" class="afterlife-urns"></p>
+      <ul id="afterlife-list" class="afterlife-list" aria-label="Cremated pets"></ul>
+      <p id="afterlife-empty" class="afterlife-urns hidden">No pets here yet.</p>
+      <button id="btn-afterlife-edit" class="link-btn">Edit</button>
+      <div id="afterlife-edit-controls" class="hidden">
+        <button id="btn-afterlife-clear" class="link-btn delete-link">Clear Afterlife</button>
+        <div id="afterlife-clear-confirm" class="reset-hs-confirm hidden">
+          <span class="reset-hs-question">Are you sure?</span>
+          <button id="btn-afterlife-clear-yes" class="action-btn danger-btn">Yes, clear</button>
+          <button id="btn-afterlife-clear-cancel" class="link-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ── Main game screen ── -->
   <section id="game-screen" class="screen hidden" aria-label="Pet status">
     <!-- Developer mode active banner -->
     <div id="dev-mode-banner" class="dev-mode-banner hidden" aria-label="Developer mode active">DEV MODE</div>
+    <div id="deathless-banner" class="deathless-banner hidden" title="Deathless mode: your pet can't die from neglect, only of old age. Not eligible for the leaderboard or high score.">♾ DEATHLESS</div>
 
     <!-- Pet display (always visible — sits above the mini-game overlay) -->
     <div class="pet-stage">
@@ -281,6 +305,11 @@
     <p id="dead-stats" class="dead-stats"></p>
     <p id="dead-time" class="dead-time"></p>
     <ul id="dead-event-log" class="dead-event-log" aria-label="Final event log"></ul>
+    <div id="afterlife-choice" class="afterlife-choice hidden" aria-label="Lay your pet to rest">
+      <p id="afterlife-choice-title" class="high-score-title">Lay your pet to rest</p>
+      <button id="btn-afterlife-cremate" class="action-btn" title="Cremate this pet into your Afterlife">⚱ Cremate</button>
+    </div>
+    <p id="afterlife-choice-done" class="leaderboard-status hidden"></p>
     <div id="high-score-section" class="high-score-section hidden">
       <p class="high-score-title">High Score</p>
       <p id="high-score-stats" class="high-score-stats"></p>

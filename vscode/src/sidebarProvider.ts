@@ -35,10 +35,12 @@ import {
   resume,
   resetFloorSnacks,
   dailiesView,
+  markDeathless,
 } from "./gameEngine";
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
-import { loadTrainer } from "./persistence";
+import { loadTrainer, loadAfterlife, saveAfterlife } from "./persistence";
+import { afterlifeView, clearAfterlife, cremate, removeAfterlifeEntry, settleBeforeNewPet } from "./afterlife";
 import { leaderboardBlockedReason, signSubmission } from "./integrity";
 import { cravingItemFor } from "./cravingItem";
 import { giftFor } from "./giftItem";
@@ -97,6 +99,10 @@ interface WebviewMessage {
   name?: string;
   petType?: string;
   color?: string;  // deprecated — ignored, kept for message back-compat only
+  /** afterlife_remove: the entry's spawnedAt. */
+  spawnedAt?: number;
+  /** new_game: hatch in deathless mode. */
+  deathless?: boolean;
 }
 
 export class SidebarProvider
@@ -297,6 +303,7 @@ export class SidebarProvider
         devMode: false,
         unlockedCharacter: bootstrapUnlockedChar,
         defaultPetName: bootstrapDefaultPetName,
+        afterlife: this.afterlifeFor(null),
       });
     } else {
       // No pet and no high score — still push defaultPetName so setup screen
@@ -309,6 +316,7 @@ export class SidebarProvider
         devMode: false,
         unlockedCharacter: bootstrapUnlockedChar,
         defaultPetName: bootstrapDefaultPetName,
+        afterlife: this.afterlifeFor(null),
       });
     }
 
@@ -478,6 +486,23 @@ export class SidebarProvider
       return;
     }
 
+    if (message.command === "afterlife_cremate") {
+      if (state === null) { return; }
+      saveAfterlife(this.context, cremate(loadAfterlife(this.context), state));
+      this.onStateUpdate({ ...state, events: [] });
+      return;
+    }
+
+    if (message.command === "afterlife_remove" || message.command === "afterlife_clear") {
+      const current = loadAfterlife(this.context);
+      saveAfterlife(this.context, message.command === "afterlife_clear"
+        ? clearAfterlife(current)
+        : removeAfterlifeEntry(current, typeof message.spawnedAt === "number" ? message.spawnedAt : -1));
+      if (state !== null) { this.onStateUpdate({ ...state, events: [] }); }
+      else { this.postNoGame(this.getHighScore()); }
+      return;
+    }
+
     if (state === null && message.command !== "new_game") {
       // No pet yet — nothing to do until a new game is started.
       return;
@@ -618,7 +643,14 @@ export class SidebarProvider
                             : (userTyped || defaultName);
         const petType = message.petType ?? "codeling";
         const unlockedCharacter = customChar?.spriteType ?? null;
-        nextState = createPet(petName, petType, unlockedCharacter, state?.trainer ?? loadTrainer(this.context));
+        saveAfterlife(this.context, settleBeforeNewPet(loadAfterlife(this.context), state));
+        // The Deathless box on the hatch screen sets the setting for this pet.
+        const deathless = typeof message.deathless === "boolean" ? message.deathless : cfg.get<boolean>("deathless", false);
+        if (deathless !== cfg.get<boolean>("deathless", false)) {
+          void cfg.update("deathless", deathless, vscode.ConfigurationTarget.Global);
+        }
+        const hatched = createPet(petName, petType, unlockedCharacter, state?.trainer ?? loadTrainer(this.context));
+        nextState = deathless ? markDeathless(hatched) : hatched;
         this.mealsGivenThisCycle = 0;
         break;
       }
@@ -675,6 +707,12 @@ export class SidebarProvider
     if (nextState !== null) {
       this.onStateUpdate(nextState);
     }
+  }
+
+  /** Afterlife slice for the webview, under the user's chosen name. */
+  private afterlifeFor(state: PetState | null): ReturnType<typeof afterlifeView> {
+    const name = vscode.workspace.getConfiguration("codotchi").get<string>("afterlifeName", "Afterlife");
+    return afterlifeView(loadAfterlife(this.context), state, name);
   }
 
   /**
@@ -803,6 +841,8 @@ export class SidebarProvider
       liveLastPushedAt,
       leaderboardGithubUsername: this.leaderboardGithubUsername,
       leaderboardAuthExpired: this.isLeaderboardAuthExpired(),
+      deathless: vscode.workspace.getConfiguration("codotchi").get<boolean>("deathless", false),
+      afterlife: this.afterlifeFor(state),
     });
   }
 
@@ -832,6 +872,7 @@ export class SidebarProvider
       mealsGivenThisCycle: 0,
       highScore,
       devMode: false,
+      afterlife: this.afterlifeFor(null),
     });
   }
 

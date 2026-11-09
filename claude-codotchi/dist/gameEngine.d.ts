@@ -232,6 +232,14 @@ export interface GameConfig {
      * Optional so existing config literals don't need it; absent means false.
      */
     immortal?: boolean;
+    /**
+     * Deathless mode (user setting): health is floored at 1 so the pet can't die
+     * from neglect or sickness, but it still gets sick and can still die of old age.
+     * Any tick with it on marks the pet "deathless" — off the leaderboard and high
+     * score, and floored at 1 health, for life even if the setting is later
+     * turned off. Optional; absent means false.
+     */
+    deathless?: boolean;
 }
 /** Sensible defaults used when no explicit config is provided. */
 export declare const DEFAULT_GAME_CONFIG: GameConfig;
@@ -422,7 +430,14 @@ export interface DailyChallenges {
     readonly streakDay: string;
 }
 /** Reasons (besides dev mode) a pet can't be submitted to the leaderboard. */
-export type LeaderboardIneligibleReason = "" | "tampered" | "unverified";
+export type LeaderboardIneligibleReason = "" | "tampered" | "unverified" | "deathless";
+/** True once this pet has lived in deathless mode (it can't reach the leaderboard or high score). */
+export declare function isDeathlessPet(state: PetState): boolean;
+/**
+ * Mark a pet as having used deathless mode. Sticky; a "tampered" mark wins since
+ * it is the stronger reason. Returns the same object when nothing changes.
+ */
+export declare function markDeathless(state: PetState): PetState;
 /**
  * Summary of the best run ever recorded for this installation.
  * Compared by ageDays; ties broken by real-world elapsed time (longer wins).

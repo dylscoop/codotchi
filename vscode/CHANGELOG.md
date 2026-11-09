@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.35.2] - 2026-11-09
+
+### Fixed
+
+- **A deathless pet stays deathless for life.** The health floor now follows the pet, not just the setting. A pet that has ever been deathless can no longer die from sickness or neglect after the setting is turned off. Only a senior can still pass away, randomly, of old age.
+
+## [2.35.1] - 2026-11-09
+
+### Changed
+
+- **The Afterlife keeps every pet you cremate.** The death screen now has a single **⚱ Cremate** button (Bury is gone). Each cremated pet is listed in your Afterlife with its name, age and how long it lived in real time. A pet you don't cremate is cremated when you hatch the next one. Click **Edit** in the Afterlife to remove a pet, or **Clear Afterlife** to empty it.
+
+### Fixed
+
+- **No more line under the adult and senior cat.** A well-fed pet's sagging belly no longer draws a pale line across the gap between the cat's legs.
+
+## [2.35.0] - 2026-11-06
+
+### Added
+
+- **Deathless mode.** Tick **♾ Deathless** when you hatch a new pet, or turn on **Deathless** at the top of the settings. Your pet's health never drops below 1, so it can't die from neglect or sickness. It still gets sick and can still pass away of old age. A pet that has ever been deathless can't go on the leaderboard and doesn't count towards your high score, even if you turn deathless off later.
+- **The Afterlife.** When a pet dies you can **Bury** it in your Afterlife or **Cremate** it. Buried pets are listed with their age, stage and cause of death; cremated pets add to an urn count. A pet you don't choose for is cremated when you hatch the next one. Open it with **View Afterlife** on the Menu screen, and give it your own name with the **Afterlife name** setting. It's kept locally in each IDE.
+
 ## [2.34.4] - 2026-11-06
 
 ### Fixed

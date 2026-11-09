@@ -1,6 +1,50 @@
 # Version History
 
-## v2.34.4 - current
+## v2.35.2 - current
+
+### Changes from v2.35.1 (deathless for life - branch feat/deathless-mode)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt` | health floor applies when `config.deathless` **or** `isDeathlessPet(state)`, so a marked pet can't die from sickness or neglect with the setting off; old-age roll unchanged |
+| `vscode/tests/unit/deathless.test.ts`, `pycharm/.../DeathlessTest.kt` | marked pet survives with the setting off; marked senior still dies of old age |
+| `vscode/package.json`, `pycharm/.../CodotchiConfigurable.kt` | setting text: deathless for life |
+| `claude-codotchi/dist` | rebuilt |
+| CHANGELOG, FEATURES, all manifests, `README.md` | version 2.35.2 |
+
+## v2.35.1
+
+### Changes from v2.35.0 (cremation-only Afterlife, cat belly line - branch feat/deathless-mode)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sprites.js` | belly-sag rows repeat the bottom body row's own pixels in its filled columns only (both draw paths); was a solid primary-colour band from the row's leftmost to rightmost pixel, which bridged the gap between the adult/senior cat's legs as a pale line |
+| `vscode/tests/unit/webviewAnimations.test.ts` | sag never fills the adult cat's leg gap |
+| `vscode/src/afterlife.ts`, `pycharm/.../Afterlife.kt` | cremation only: `cremated` is now a list of entries (name, age, spawnedAt/diedAt for time alive, cause, stage, ♾); `cremate`, `removeAfterlifeEntry` / `remove`, `clearAfterlife` / `clear` (keeps the cremated marker); 2.35.0 bury data is dropped |
+| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt` | `afterlife_cremate`, `afterlife_remove` (by `spawnedAt`), `afterlife_clear`; `afterlife_choice` removed |
+| `vscode/media/sidebar.html`, `sidebar.js`, `sidebar.css` | single ⚱ Cremate button; Afterlife list shows name, age, time lived, date; Edit mode with ✕ per entry and Clear Afterlife with confirm |
+| `vscode/tests/unit/deathless.test.ts`, `pycharm/.../DeathlessTest.kt` | cremate / remove / clear tests |
+| README, FEATURES, CHANGELOG, all manifests | version 2.35.1 |
+
+## v2.35.0
+
+### Changes from v2.34.4 (deathless mode and the Afterlife - branch feat/deathless-mode)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `Constants.kt` | `GameConfig.deathless`: health floored at 1, old-age roll still applies; any tick with it on calls `markDeathless` (`leaderboardIneligible = "deathless"`, sticky, a `"tampered"` mark wins); `isDeathlessPet`; `"deathless"` accepted on load |
+| `packages/core/src/integrity.ts` (+ synced copies), `pycharm/.../Integrity.kt` | `leaderboardBlockedReason` blocks deathless pets. Seal format unchanged (`leaderboardIneligible` was already sealed) |
+| `vscode/src/afterlife.ts` (new), `pycharm/.../Afterlife.kt` (new) | Bury / Cremate logic: `decideAfterlife`, `settleBeforeNewPet` (undecided pet cremated), `afterlifeView` with the user's name |
+| `vscode/src/persistence.ts` | `loadAfterlife` / `saveAfterlife` (`codotchi.afterlife.v1` in globalState) |
+| `vscode/src/extension.ts`, `pycharm/.../CodotchiPlugin.kt` | `deathless` passed to the engine; high score skipped for deathless pets; config change marks the pet; `codotchi.newGame` / `new_game` cremate an undecided pet |
+| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiBrowserPanel.kt` | `new_game` takes `deathless` (sets the setting, marks the new pet); `afterlife_choice` command; `deathless` + `afterlife` in every stateUpdate |
+| `vscode/package.json`, `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt` | `codotchi.deathless` and `codotchi.afterlifeName` first on the settings page |
+| `vscode/media/sidebar.html`, `sidebar.js`, `sidebar.css` | ♾ DEATHLESS badge; ♾ Deathless checkbox on the hatch screen; Bury / Cremate on the death screen; View Afterlife toggle + list + urn count on the Menu screen |
+| `vscode/tests/unit/deathless.test.ts`, `pycharm/.../DeathlessTest.kt` | new |
+| `claude-codotchi/dist` | rebuilt for the synced engine |
+| README, FEATURES, CHANGELOG, all manifests | version 2.35.0 |
+
+## v2.34.4
 
 ### Changes from v2.34.3 (speech bubble beside the pet - branch fix/bubble-cat-tree)
 

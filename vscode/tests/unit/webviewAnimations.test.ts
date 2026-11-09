@@ -474,6 +474,49 @@ describe("Play or Pat banner (sidebar.html)", () => {
   });
 });
 
+describe("belly sag (vscode/media/sprites.js)", () => {
+  /** Paint a stage's offscreen raster and return its [col,row] cells (wide rects expanded). */
+  function cells(spriteType: string, stage: string, weight: number): number[][] {
+    const out: number[][] = [];
+    const window: Record<string, unknown> = {};
+    const fakeCtx = new Proxy({} as Record<string, unknown>, {
+      get(target, key: string) {
+        if (key in target) { return target[key]; }
+        if (key === "fillRect") {
+          return (x: number, y: number, w: number) => { for (let i = 0; i < w; i++) { out.push([x + i, y]); } };
+        }
+        return () => undefined;
+      },
+      set(target, key: string, value) { target[key] = value; return true; },
+    });
+    const document = { createElement: () => ({ getContext: () => fakeCtx }) };
+    const context = vm.createContext({ window, document });
+    for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js"]) {
+      vm.runInContext(fs.readFileSync(path.join(media, file), "utf8").replace(/^﻿/, ""), context);
+    }
+    const w = window as Record<string, any>;
+    const ctx = new Proxy({}, { get: () => () => undefined, set: () => true });
+    w.renderSpriteGrid(ctx, { spriteType, stage, weight, mood: "neutral", alive: true }, 0, 0, true, -1, 0,
+      w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
+      w.spriteHeightRatio, w.spriteQuadBellySag);
+    return out;
+  }
+
+  it("never bridges the gap between the adult cat's legs (no line under the cat)", () => {
+    const w = loadSpriteWindow();
+    const legRowStart: number = w.SPRITE_GRID_META.cat.legRowStart;
+    const bottom: string = w.GENERATED_SPRITE_DEFS.cat.adult[legRowStart - 1];
+    const gap: number[] = [];
+    const first = bottom.search(/[^0]/);
+    const last = bottom.length - 1 - [...bottom].reverse().join("").search(/[^0]/);
+    for (let c = first; c <= last; c++) { if (bottom[c] === "0") { gap.push(c); } }
+    assert.ok(gap.length > 0, "the adult cat's bottom body row has a gap");
+    const sagRow = cells("cat", "adult", 60).filter(([, r]) => r === legRowStart);
+    assert.ok(sagRow.length > 0, "a heavy cat still gets a sag row");
+    assert.deepEqual(sagRow.filter(([c]) => gap.includes(c)), []);
+  });
+});
+
 describe("detected leg walk (vscode/media/sprites.js)", () => {
   /** Paint a dog stage's grid on legFrame; returns the offscreen [col,row] cells. */
   function dogCells(legFrame: number, stage = "adult"): number[][] {
