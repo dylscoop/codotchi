@@ -59,6 +59,14 @@ describe("deathless mode — engine", () => {
     assert.ok(s.health >= 1);
   });
 
+  it("a deathless pet stays deathless for life, even with the setting off", () => {
+    let s = markDeathless(dyingPet());
+    for (let i = 0; i < 500; i++) { s = tick(s, false, false, NO_CALLS); }
+    assert.equal(s.alive, true);
+    assert.ok(s.health >= 1);
+    assert.equal(s.sick, true);
+  });
+
   it("the pet can still get sick", () => {
     let s = dyingPet();
     for (let i = 0; i < 20; i++) { s = tick(s, false, false, DEATHLESS); }
@@ -69,8 +77,8 @@ describe("deathless mode — engine", () => {
     const realRandom = Math.random;
     Math.random = () => 0; // every old-age roll hits
     try {
-      let s = makePet({ stage: "senior", ageDays: 400, dayTimer: 400.99 });
-      for (let i = 0; i < 20000 && s.alive; i++) { s = tick(s, false, false, DEATHLESS); }
+      let s = markDeathless(makePet({ stage: "senior", ageDays: 400, dayTimer: 400.99 }));
+      for (let i = 0; i < 20000 && s.alive; i++) { s = tick(s, false, false, NO_CALLS); }
       assert.equal(s.alive, false);
       assert.ok(s.recentEventLog.includes("died_of_old_age"));
     } finally {

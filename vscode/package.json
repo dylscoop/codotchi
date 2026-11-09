@@ -2,7 +2,7 @@
   "name": "codotchi",
   "displayName": "Codotchi",
   "description": "Raise a virtual pet while you code",
-  "version": "2.35.1",
+  "version": "2.35.2",
   "publisher": "dylscoop",
   "license": "MIT",
   "repository": {
@@ -116,7 +116,7 @@
           "codotchi.deathless": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "**Deathless mode.** Health never drops below 1, so your pet can't die from neglect or sickness — it still gets sick and can still pass away of old age. A pet that has ever lived in deathless mode can't go on the leaderboard and doesn't count towards your high score. Also offered when you hatch a new pet.",
+            "markdownDescription": "**Deathless mode.** Health never drops below 1, so your pet can't die from neglect or sickness — it still gets sick and can still pass away of old age. A pet that has ever lived in deathless mode stays deathless for life, even if you turn this off later, and can't go on the leaderboard or count towards your high score. Also offered when you hatch a new pet.",
             "order": 1
           },
           "codotchi.afterlifeName": {

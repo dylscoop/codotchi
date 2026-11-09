@@ -442,7 +442,8 @@ export interface GameConfig {
    * Deathless mode (user setting): health is floored at 1 so the pet can't die
    * from neglect or sickness, but it still gets sick and can still die of old age.
    * Any tick with it on marks the pet "deathless" — off the leaderboard and high
-   * score for life. Optional; absent means false.
+   * score, and floored at 1 health, for life even if the setting is later
+   * turned off. Optional; absent means false.
    */
   deathless?: boolean;
 }
@@ -1780,8 +1781,9 @@ function tickCore(state: PetState, isIdle: boolean, isDeepIdle: boolean, config:
     health = 1;
   }
 
-  // Deathless: same floor, but the old-age roll below still applies.
-  if (config.deathless && health < 1) {
+  // Deathless (setting on, or a pet that has ever been deathless — it stays
+  // deathless for life): same floor, but the old-age roll below still applies.
+  if ((config.deathless || isDeathlessPet(state)) && health < 1) {
     health = 1;
   }
 

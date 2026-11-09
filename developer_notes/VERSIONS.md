@@ -1,6 +1,18 @@
 # Version History
 
-## v2.35.1 - current
+## v2.35.2 - current
+
+### Changes from v2.35.1 (deathless for life - branch feat/deathless-mode)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt` | health floor applies when `config.deathless` **or** `isDeathlessPet(state)`, so a marked pet can't die from sickness or neglect with the setting off; old-age roll unchanged |
+| `vscode/tests/unit/deathless.test.ts`, `pycharm/.../DeathlessTest.kt` | marked pet survives with the setting off; marked senior still dies of old age |
+| `vscode/package.json`, `pycharm/.../CodotchiConfigurable.kt` | setting text: deathless for life |
+| `claude-codotchi/dist` | rebuilt |
+| CHANGELOG, FEATURES, all manifests, `README.md` | version 2.35.2 |
+
+## v2.35.1
 
 ### Changes from v2.35.0 (cremation-only Afterlife, cat belly line - branch feat/deathless-mode)
 

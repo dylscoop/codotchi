@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.35.2] - 2026-11-09
+
+### Fixed
+
+- **A deathless pet stays deathless for life.** The health floor now follows the pet, not just the setting. A pet that has ever been deathless can no longer die from sickness or neglect after the setting is turned off. Only a senior can still pass away, randomly, of old age.
+
 ## [2.35.1] - 2026-11-09
 
 ### Changed

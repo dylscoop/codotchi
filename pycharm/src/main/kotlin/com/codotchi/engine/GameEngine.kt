@@ -729,8 +729,9 @@ private fun tickCore(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, conf
         health = config.devModeHealthFloor
     }
 
-    // Deathless: health never drops below 1, but the old-age roll still applies.
-    if (config.deathless && health < 1) {
+    // Deathless (setting on, or a pet that has ever been deathless — it stays
+    // deathless for life): health never drops below 1; the old-age roll still applies.
+    if ((config.deathless || isDeathlessPet(state)) && health < 1) {
         health = 1
     }
 

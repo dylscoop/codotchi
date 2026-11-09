@@ -39,6 +39,15 @@ class DeathlessTest {
     }
 
     @Test
+    fun `a deathless pet stays deathless for life, even with the setting off`() {
+        var s = markDeathless(dyingPet())
+        repeat(500) { s = tick(s, false, false, noCalls) }
+        assertTrue(s.alive)
+        assertTrue(s.health >= 1)
+        assertTrue(s.sick)
+    }
+
+    @Test
     fun `the pet can still get sick`() {
         var s = dyingPet()
         repeat(20) { s = tick(s, false, false, deathless) }

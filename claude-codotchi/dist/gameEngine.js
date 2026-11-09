@@ -1346,8 +1346,9 @@ function tickCore(state, isIdle, isDeepIdle, config) {
     if (config.immortal && health < 1) {
         health = 1;
     }
-    // Deathless: same floor, but the old-age roll below still applies.
-    if (config.deathless && health < 1) {
+    // Deathless (setting on, or a pet that has ever been deathless — it stays
+    // deathless for life): same floor, but the old-age roll below still applies.
+    if ((config.deathless || isDeathlessPet(state)) && health < 1) {
         health = 1;
     }
     // Death check

@@ -236,7 +236,8 @@ export interface GameConfig {
      * Deathless mode (user setting): health is floored at 1 so the pet can't die
      * from neglect or sickness, but it still gets sick and can still die of old age.
      * Any tick with it on marks the pet "deathless" — off the leaderboard and high
-     * score for life. Optional; absent means false.
+     * score, and floored at 1 health, for life even if the setting is later
+     * turned off. Optional; absent means false.
      */
     deathless?: boolean;
 }
