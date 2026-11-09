@@ -1726,9 +1726,9 @@
 
       // -- Belly-sag rows (quadruped overweight only) ---------------------------
       // Draw procedural rows between body bottom (row legRowStart-1) and the
-      // now-shifted legs.  Each sag row copies the silhouette of the last body row
-      // (row legRowStart-1 = row 24), inset by one extra column on each side per
-      // sag row, giving a tapered hanging-belly shape filled with the primary colour.
+      // now-shifted legs.  Each sag row repeats the last body row's own pixels,
+      // only in its filled columns, inset by one extra column on each side per
+      // sag row — a tapered hanging belly that never bridges a gap in that row.
       if (sagRows > 0 && grid[legRowStart - 1]) {
         var bodyBottomRow = grid[legRowStart - 1];
         // Determine the leftmost and rightmost non-zero column of the body bottom row.
@@ -1740,20 +1740,16 @@
             if (bc > silRight) { silRight = bc; }
           }
         }
-        ctx.fillStyle = primary;
         for (var s = 0; s < sagRows; s++) {
           // Inset by (s+1) columns on each side — sag narrows toward the bottom.
           var inset    = s + 1;
-          var sagLeft  = silLeft  + inset;
-          var sagRight = silRight - inset;
-          if (sagLeft >= sagRight) { continue; }  // inset has closed off — skip
           var sagY = bobY + gridBottomAlign + legRowStart * cellH + s * cellH;
-          ctx.fillRect(
-            gx + sagLeft  * cellW,
-            sagY,
-            (sagRight - sagLeft + 1) * cellW,
-            cellH
-          );
+          for (var sagCol = silLeft + inset; sagCol <= silRight - inset; sagCol++) {
+            var sagCell = bodyBottomRow[sagCol];
+            if (!sagCell || sagCell === "0") { continue; }
+            ctx.fillStyle = colorMap[sagCell] || primary;
+            ctx.fillRect(gx + sagCol * cellW, sagY, cellW, cellH);
+          }
         }
       }
 
@@ -1812,7 +1808,9 @@
           ofcCtx.fillRect(oCol, oDrawRow, 1, 1);
         }
 
-        // Belly-sag procedural rows (same logic as standard path).
+        // Belly-sag procedural rows: each sag row repeats the bottom body row's
+        // own pixels, only in its filled columns (inset one more per row), so a
+        // gap in that row — e.g. between the adult cat's legs — stays empty.
         if (sagRows > 0 && grid[legRowStart - 1]) {
           var oBodyBottomRow = grid[legRowStart - 1];
           var oSilLeft  = COLS;
@@ -1826,14 +1824,14 @@
               if (bc > oSilRight) { oSilRight = bc; }
             }
           }
-          if (oSilRight >= oSilLeft) {
-            ofcCtx.fillStyle = primary;
-            for (var os = 0; os < sagRows; os++) {
-              var oInset    = os + 1;
-              var oSagLeft  = oSilLeft  + oInset;
-              var oSagRight = oSilRight - oInset;
-              if (oSagLeft >= oSagRight) { continue; }
-              ofcCtx.fillRect(oSagLeft, legRowStart + os, oSagRight - oSagLeft + 1, 1);
+          for (var os = 0; os < sagRows; os++) {
+            var oInset    = os + 1;
+            for (var sc = 0, sclen = sagSparse.length; sc < sclen; sc += 3) {
+              if (sagSparse[sc] !== legRowStart - 1) { continue; }
+              var sCol = sagSparse[sc + 1];
+              if (sCol < oSilLeft + oInset || sCol > oSilRight - oInset) { continue; }
+              ofcCtx.fillStyle = colorMap[sagSparse[sc + 2]] || primary;
+              ofcCtx.fillRect(sCol, legRowStart + os, 1, 1);
             }
           }
         }
