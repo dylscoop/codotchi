@@ -514,9 +514,12 @@ function applyHeadOverride(baseHead, override) {
 /**
  * Return the visual (terminal column) width of a plain-text string.
  * Emoji and other wide Unicode codepoints count as 2 columns; everything
- * else counts as 1.  ANSI escape codes must be stripped before calling.
+ * else counts as 1.  ANSI colour codes are ignored (they take no columns).
  */
 function visualLength(s) {
+    // ANSI escape codes are invisible — strip them before measuring.
+    // eslint-disable-next-line no-control-regex
+    s = s.replace(/\x1b\[[0-9;]*m/g, "");
     // Iterate over Unicode codepoints (handles surrogate pairs correctly).
     let width = 0;
     for (const ch of s) {
