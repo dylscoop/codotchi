@@ -36,6 +36,11 @@ import {
   resetFloorSnacks,
   dailiesView,
   markDeathless,
+  playWithFriend,
+  giveFriendGift,
+  acceptProposal,
+  declineProposal,
+  hatchHeir,
 } from "./gameEngine";
 
 import { getCustomCharacterByPasscode, getCustomCharacterBySpriteType } from "./customCharacters";
@@ -103,6 +108,8 @@ interface WebviewMessage {
   spawnedAt?: number;
   /** new_game: hatch in deathless mode. */
   deathless?: boolean;
+  /** new_game: hatch the dead pet's heir egg (next generation) instead of a fresh egg. */
+  heir?: boolean;
 }
 
 export class SidebarProvider
@@ -509,13 +516,13 @@ export class SidebarProvider
     }
 
   // BUGFIX-002: block care actions while the pet is sleeping
-  const SLEEP_BLOCKED: readonly string[] = ["feed", "play", "pat", "clean", "medicine", "scold", "praise", "token_cost"];
+  const SLEEP_BLOCKED: readonly string[] = ["feed", "play", "pat", "clean", "medicine", "scold", "praise", "token_cost", "friend_play", "friend_gift"];
     if (state !== null && state.sleeping && SLEEP_BLOCKED.includes(message.command)) {
       return;
     }
 
     // Block all actions while paused, except the pause toggle itself and new_game
-    const PAUSE_BLOCKED: readonly string[] = ["feed", "snack_consumed", "play", "pat", "sleep", "wake", "clean", "medicine", "scold", "praise", "reset_high_score", "token_cost"];
+    const PAUSE_BLOCKED: readonly string[] = ["feed", "snack_consumed", "play", "pat", "sleep", "wake", "clean", "medicine", "scold", "praise", "reset_high_score", "token_cost", "friend_play", "friend_gift", "accept_proposal", "decline_proposal"];
     if (state !== null && state.paused && PAUSE_BLOCKED.includes(message.command)) {
       return;
     }
@@ -631,6 +638,26 @@ export class SidebarProvider
         nextState = state.paused ? resume(state) : pause(state);
         break;
 
+      case "friend_play":
+        if (state === null) { return; }
+        nextState = playWithFriend(state);
+        break;
+
+      case "friend_gift":
+        if (state === null) { return; }
+        nextState = giveFriendGift(state);
+        break;
+
+      case "accept_proposal":
+        if (state === null) { return; }
+        nextState = acceptProposal(state);
+        break;
+
+      case "decline_proposal":
+        if (state === null) { return; }
+        nextState = declineProposal(state);
+        break;
+
       case "new_game": {
         const cfg = vscode.workspace.getConfiguration("codotchi");
         const passcode = cfg.get<string>("characterPasscode", "");
@@ -649,7 +676,11 @@ export class SidebarProvider
         if (deathless !== cfg.get<boolean>("deathless", false)) {
           void cfg.update("deathless", deathless, vscode.ConfigurationTarget.Global);
         }
-        const hatched = createPet(petName, petType, unlockedCharacter, state?.trainer ?? loadTrainer(this.context));
+        const trainer = state?.trainer ?? loadTrainer(this.context);
+        // An heir egg is only offered once its parent has died; it is used up either way.
+        const heirName = userTyped || (state ? `${state.name} II` : defaultName);
+        const heir = message.heir === true && state !== null && !state.alive ? hatchHeir(state, heirName, trainer) : null;
+        const hatched = heir ?? createPet(petName, petType, unlockedCharacter, trainer);
         nextState = deathless ? markDeathless(hatched) : hatched;
         this.mealsGivenThisCycle = 0;
         break;

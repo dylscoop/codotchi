@@ -119,6 +119,12 @@
             "markdownDescription": "**Deathless mode.** Health never drops below 1, so your pet can't die from neglect or sickness — it still gets sick and can still pass away of old age. A pet that has ever lived in deathless mode stays deathless for life, even if you turn this off later, and can't go on the leaderboard or count towards your high score. Also offered when you hatch a new pet.",
             "order": 1
           },
+          "codotchi.social.visitorsEnabled": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "**Friend visits.** A CPU friend pet drops by now and then (child stage and up). Play together and swap gifts to build friendship; at Partner level an adult pet can marry and leave an heir egg for the next generation. Unmarried seniors get a visit from the matchmaker. Turn off to stop visits and proposals.",
+            "order": 2
+          },
           "codotchi.afterlifeName": {
             "type": "string",
             "default": "Afterlife",

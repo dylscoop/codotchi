@@ -263,3 +263,14 @@ describe("social: marriage, heir egg and generations", () => {
     assert.equal(createPet("A", "codeling").generation, 1);
   });
 });
+
+describe("social: afterlife memorial", () => {
+  it("records the generation and partner of a cremated pet", async () => {
+    const { afterlifeEntryFor } = await import("../../src/afterlife");
+    const dead = { ...makePet({ generation: 2, partner: { name: "Byte", spriteType: "cat", petType: "codeling" } }), alive: false, diedAt: 5 };
+    const e = afterlifeEntryFor(dead);
+    assert.equal(e.generation, 2);
+    assert.equal(e.partnerName, "Byte");
+    assert.equal(afterlifeEntryFor({ ...dead, partner: null }).partnerName, undefined);
+  });
+});

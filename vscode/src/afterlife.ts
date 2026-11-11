@@ -21,6 +21,10 @@ export interface AfterlifeEntry {
   readonly deathless: boolean;
   readonly spawnedAt: number;
   readonly diedAt: number;
+  /** Family line (v2.36.0); absent on older entries, meaning 1. */
+  readonly generation?: number;
+  /** Who the pet married, if anyone (v2.36.0). */
+  readonly partnerName?: string;
 }
 
 export interface Afterlife {
@@ -66,6 +70,8 @@ export function afterlifeEntryFor(state: PetState): AfterlifeEntry {
     deathless:  isDeathlessPet(state),
     spawnedAt:  state.spawnedAt,
     diedAt:     state.diedAt || Date.now(),
+    generation: state.generation,
+    ...(state.partner ? { partnerName: state.partner.name } : {}),
   };
 }
 

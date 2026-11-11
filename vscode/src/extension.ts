@@ -487,6 +487,7 @@ export function activate(context: vscode.ExtensionContext): void {
       devModeAgingMultiplier:   Math.max(1, cfg.get<number>("devModeAgingMultiplier", 10)),
       devModeHealthFloor:       Math.max(0, Math.min(100, cfg.get<number>("devModeHealthFloor", 1))),
       deathless:                cfg.get<boolean>("deathless", false),
+      socialEnabled:            cfg.get<boolean>("social.visitorsEnabled", true),
     };
     const next = tick(currentState, idle, deepIdle, gameConfig);
     handleStateUpdate(next, idle);
@@ -695,9 +696,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("codotchi.newGame", () => {
-      saveAfterlife(context, settleBeforeNewPet(loadAfterlife(context), currentState));
-      clearState(context);
-      currentState = null;
+      // A dead pet with an heir egg is kept until the new-game form decides
+      // between the heir and a fresh egg (the new_game message settles it).
+      if (!(currentState !== null && !currentState.alive && currentState.heirEgg !== null)) {
+        saveAfterlife(context, settleBeforeNewPet(loadAfterlife(context), currentState));
+        clearState(context);
+        currentState = null;
+      }
       // The webview new-game form handles the actual createPet call via the
       // "new_game" message routed through SidebarProvider.
       void vscode.commands.executeCommand("codotchiView.focus");
