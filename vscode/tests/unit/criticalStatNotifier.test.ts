@@ -108,7 +108,7 @@ describe("settings layout (package.json)", () => {
     assert.deepEqual(Object.keys(dev.properties), [
       "codotchi.devModeEnabled", "codotchi.developerPasscode",
       "codotchi.devModeAgingMultiplier", "codotchi.devModeHealthFloor",
-      "codotchi.devModeBossBattle", "codotchi.devModeBossBattleAlways",
+      "codotchi.devModeBossBattle", "codotchi.devModeBossBattleAlways", "codotchi.devModeSocial",
     ]);
     assert.ok(Object.keys(main.properties).every((k) => !k.startsWith("codotchi.devMode")));
   });

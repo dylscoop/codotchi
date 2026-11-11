@@ -8,7 +8,6 @@ import com.intellij.openapi.components.*
  * Stored in codotchi_settings.xml (separate from game state in codotchi.xml).
  * Fields:
  *  - [deathless]              : deathless mode — health floored at 1, old-age death only, off the leaderboard/high score (default false)
- *  - [socialVisitorsEnabled]  : friend visits, proposals and the matchmaker (v2.36.0; default true)
  *  - [afterlifeName]          : the user's name for their local Afterlife of buried pets (default "Afterlife")
  *  - [fontSize]               : "small" | "normal" | "large"  — maps to CSS body class
  *  - [textColor]              : CSS hex colour string           — injected as body colour override
@@ -30,6 +29,7 @@ import com.intellij.openapi.components.*
  *  - [devModeHealthFloor]     : minimum health enforced in dev mode; default 1 (pet cannot die); set to 0 to allow death
  *  - [devModeBossBattle]      : show the Boss Battle preview (dev mode only, default false)
  *  - [devModeBossBattleAlways]: Boss Battle always available, even with no boss unlocked (default false)
+ *  - [devModeSocial]          : friends, marriage and generations preview (dev mode only, default false)
  *  - [aiMode]                 : suppress document-change, cursor-movement, and tab-switch idle resets (default true)
  *  - [idleResetOnDocumentChange]  : reset idle timer on document changes (default true)
  *  - [idleResetOnCursorMovement]  : reset idle timer on cursor/selection changes (default true)
@@ -55,7 +55,6 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     /** Plain bean-style class required by IntelliJ's XmlSerializer. */
     class State {
         var deathless: Boolean = false
-        var socialVisitorsEnabled: Boolean = true
         var afterlifeName: String = "Afterlife"
         var fontSize:  String  = "normal"    // "small" | "normal" | "large"
         var textColor: String  = "#cccccc"   // any CSS hex colour
@@ -77,6 +76,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var devModeHealthFloor: Int = 1
         var devModeBossBattle: Boolean = false
         var devModeBossBattleAlways: Boolean = false
+        var devModeSocial: Boolean = false
         var aiMode: Boolean = true
         var idleResetOnDocumentChange: Boolean = true
         var idleResetOnCursorMovement: Boolean = true
@@ -104,10 +104,6 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var deathless: Boolean
         get() = _state.deathless
         set(v) { _state.deathless = v }
-
-    var socialVisitorsEnabled: Boolean
-        get() = _state.socialVisitorsEnabled
-        set(v) { _state.socialVisitorsEnabled = v }
 
     var afterlifeName: String
         get() = _state.afterlifeName
@@ -192,6 +188,10 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var devModeBossBattleAlways: Boolean
         get() = _state.devModeBossBattleAlways
         set(v) { _state.devModeBossBattleAlways = v }
+
+    var devModeSocial: Boolean
+        get() = _state.devModeSocial
+        set(v) { _state.devModeSocial = v }
 
     var aiMode: Boolean
         get() = _state.aiMode

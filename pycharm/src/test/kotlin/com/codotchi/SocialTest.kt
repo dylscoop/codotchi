@@ -15,7 +15,7 @@ import kotlin.math.floor
  */
 class SocialTest {
 
-    private val noCalls = DEFAULT_GAME_CONFIG.copy(attentionCallsEnabled = false)
+    private val noCalls = DEFAULT_GAME_CONFIG.copy(attentionCallsEnabled = false, socialEnabled = true)
 
     private fun makePet(): PetState =
         createPet("Mittens", "codeling", "neon").copy(stage = "adult", dayTimer = 100.5, ageDays = 100)
@@ -170,6 +170,12 @@ class SocialTest {
         assertNull(tickWith(ready, 0.0, isIdle = true).visit)
         assertNull(tickWith(ready.copy(stage = "baby", dayTimer = 3.5, ageDays = 3), 0.0).visit)
         assertNull(tickWith(ready, 0.0, noCalls.copy(socialEnabled = false)).visit)
+    }
+
+    @Test
+    fun `social is a dev-mode preview - the default config starts no visits`() {
+        val ready = makePet().copy(ticksSinceLastVisit = VISIT_MIN_GAP_TICKS)
+        assertNull(tickWith(ready, 0.0, DEFAULT_GAME_CONFIG.copy(attentionCallsEnabled = false)).visit)
     }
 
     @Test

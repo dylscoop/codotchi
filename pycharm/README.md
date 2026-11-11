@@ -49,12 +49,6 @@ Visit [github.com/dylscoop/codotchi](https://github.com/dylscoop/codotchi) to do
   and it dies. A sick pet won't eat, snack, play or take a break until it's
   had its medicine — the Medicine button counts the doses left. A cat doesn't
   die: it goes back to its original owners or off hunting, and moves on
-- **Friends, marriage & generations** — once your pet is a child, a friend
-  pet drops by now and then and stands beside it. While it visits, press **🤝 Play together**
-  and **🎁 Give gift** to build friendship, from Acquaintance up to Best Friend and Partner.
-  At Partner level an adult pet gets a proposal: accept, and an heir egg waits on the floor.
-  When your pet dies, hatch the heir as the next generation (the info line shows **Gen 2**,
-  **Gen 3**…). An unmarried senior gets a visit from the matchmaker. Turn visits off in Settings
 - **Safe while you are away** — when you step away from the IDE your pet gets
   hungry and bored more slowly and never loses health, so it is waiting for you
   when you come back

@@ -448,8 +448,9 @@ export interface GameConfig {
   deathless?: boolean;
   /**
    * Social features (v2.36.0): CPU friends visit, the matchmaker arrives for
-   * unmarried seniors. Optional; absent means true. When false, no visits or
-   * proposals start and an ongoing visit ends.
+   * unmarried seniors. A dev-mode preview until release: only `true` turns it
+   * on (absent means off). When off, no visits or proposals start and an
+   * ongoing visit ends.
    */
   socialEnabled?: boolean;
 }
@@ -3026,7 +3027,7 @@ function canMarry(state: PetState): boolean {
  */
 function tickSocial(prev: PetState, next: PetState, isIdle: boolean, isDeepIdle: boolean, config: GameConfig): PetState {
   if (!next.alive || next.paused) { return next; }
-  if (config.socialEnabled === false) {
+  if (config.socialEnabled !== true) {
     return next.visit ? withSocialPatch(next, { visit: null }, ["friend_visit_ended"]) : next;
   }
   const events: string[] = [];

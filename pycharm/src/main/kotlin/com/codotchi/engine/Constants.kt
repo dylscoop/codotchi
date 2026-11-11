@@ -383,7 +383,7 @@ data class GameConfig(
      * unmarried seniors. When false, no visits or proposals start and an
      * ongoing visit ends.
      */
-    val socialEnabled: Boolean = true,
+    val socialEnabled: Boolean = false, // dev-mode preview until release
 )
 
 /** Sensible defaults used when no explicit config is provided. */

@@ -857,6 +857,7 @@ export class SidebarProvider
       dailies: dailiesView(state),
       levelsEnabled: vscode.workspace.getConfiguration("codotchi").get<boolean>("enableLevels", false),
       bossAccess: this.bossAccess(),
+      socialEnabled: this.socialPreviewActive(),
       mealsGivenThisCycle: this.mealsGivenThisCycle,
       highScore,
       devMode,
@@ -911,6 +912,11 @@ export class SidebarProvider
   private isDevModeActive(): boolean {
     const cfg = vscode.workspace.getConfiguration("codotchi");
     return cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234";
+  }
+
+  /** Friends, marriage and generations: a dev-mode preview behind codotchi.devModeSocial. */
+  private socialPreviewActive(): boolean {
+    return this.isDevModeActive() && vscode.workspace.getConfiguration("codotchi").get<boolean>("devModeSocial", false);
   }
 
   /** Boss Battle access: a dev-mode preview behind codotchi.devModeBossBattle(Always). */

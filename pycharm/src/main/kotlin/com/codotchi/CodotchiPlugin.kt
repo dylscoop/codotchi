@@ -401,7 +401,7 @@ class CodotchiPlugin : Disposable {
                 devModeAgingMultiplier   = maxOf(1, settings.devModeAgingMultiplier).toDouble(),
                 devModeHealthFloor       = maxOf(0, minOf(100, settings.devModeHealthFloor)),
                 deathless                = settings.deathless,
-                socialEnabled            = settings.socialVisitorsEnabled,
+                socialEnabled            = isDevModeActive() && settings.devModeSocial, // dev-mode preview until release
             )
             lastDevMode = gameConfig.devMode
             // BUGFIX-097: compute deep idle with re-entry grace period so the pet

@@ -487,7 +487,9 @@ export function activate(context: vscode.ExtensionContext): void {
       devModeAgingMultiplier:   Math.max(1, cfg.get<number>("devModeAgingMultiplier", 10)),
       devModeHealthFloor:       Math.max(0, Math.min(100, cfg.get<number>("devModeHealthFloor", 1))),
       deathless:                cfg.get<boolean>("deathless", false),
-      socialEnabled:            cfg.get<boolean>("social.visitorsEnabled", true),
+      // Dev-mode preview until release (like codotchi.devModeBossBattle).
+      socialEnabled:            cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234"
+                                && cfg.get<boolean>("devModeSocial", false),
     };
     const next = tick(currentState, idle, deepIdle, gameConfig);
     handleStateUpdate(next, idle);

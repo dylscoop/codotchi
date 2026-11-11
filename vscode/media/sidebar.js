@@ -170,6 +170,18 @@
   /** Boss Battle is a dev-mode preview: "off", "queue" (needs an unlocked boss) or "always" (set by the host). */
   var bossAccess = "off";
 
+  /** Friends, marriage and generations are a dev-mode preview (codotchi.devModeSocial), off unless the host enables them. */
+  var socialEnabled = false;
+  var SOCIAL_ACHIEVEMENT_IDS = ["first_friend", "best_buds", "tied_the_knot", "dynasty"];
+
+  /** Events that belong to the social preview. */
+  function isSocialEvent(code) {
+    return code.indexOf("friend_") === 0 || code.indexOf("proposal_") === 0 ||
+      code === "matchmaker_arrived" || code === "married" || code === "best_friends" ||
+      SOCIAL_ACHIEVEMENT_IDS.indexOf(code.slice("achievement_unlocked_".length)) !== -1 &&
+        code.indexOf("achievement_unlocked_") === 0;
+  }
+
   /** Events that only make sense when levels are enabled. */
   function isProgressionEvent(code) {
     return code === "trainer_level_up" || code === "pet_level_up" ||
@@ -411,7 +423,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   /** True when the (dead) pet left an heir egg that the hatch screen can offer. */
   function heirAvailable(state) {
-    return !!(state && !state.alive && state.heirEgg);
+    return !!(socialEnabled && state && !state.alive && state.heirEgg);
   }
 
   /** Show the heir option on the hatch screen, prefilled with the next generation's name. */
@@ -434,6 +446,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   /** Friend / partner / egg line, visit buttons and the proposal bar under the info line. */
   function renderSocial(state) {
     if (!socialPanel) { return; }
+    if (!socialEnabled) { socialPanel.classList.add("hidden"); return; }
     var parts = [];
     if (state.partner) { parts.push("💍 " + state.partner.name); }
     if (state.friend && (!state.partner || state.partner.name !== state.friend.name)) {
@@ -733,8 +746,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         var text = document.createElement("span");
         var when = new Date(e.diedAt).toLocaleDateString();
         text.textContent = "⚱ " + e.name + (e.deathless ? " ♾" : "") +
-          ((e.generation || 1) > 1 ? " (Gen " + e.generation + ")" : "") +
-          (e.partnerName ? " 💍 " + e.partnerName : "") + "  |  " + formatAge(e.ageDays) +
+          (socialEnabled && (e.generation || 1) > 1 ? " (Gen " + e.generation + ")" : "") +
+          (socialEnabled && e.partnerName ? " 💍 " + e.partnerName : "") + "  |  " + formatAge(e.ageDays) +
           "  |  lived " + formatLived(e.diedAt - e.spawnedAt) + "  |  " + when;
         text.title = e.stage + ", " + (e.cause === "old_age" ? "old age" : "neglect");
         li.appendChild(text);
@@ -2852,7 +2865,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    */
   function drawGuest(state, petCx, nowMs) {
     var who = socialGuest(state);
-    if (!who || stageGame) { guestAnim.key = ""; return null; }
+    if (!who || stageGame || !socialEnabled) { guestAnim.key = ""; return null; }
     var gs = guestState(state, who);
     var scale = STAGE_SCALES[gs.stage] || 0.5;
     var size = Math.round(BASE_SIZE * petSizeMultiplier(gs.spriteType) * scale);
@@ -2907,7 +2920,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   var HEIR_EGG_COLOURS = { "#": "#5b4a3a", "o": "#f6efd9", "*": "#c99a6b" };
 
   function drawHeirEgg(state) {
-    if (!state || !state.alive || !state.heirEgg) { return; }
+    if (!socialEnabled || !state || !state.alive || !state.heirEgg) { return; }
     var px = 2;
     var x0 = 4;
     var y0 = spriteCanvas.height - 12 - HEIR_EGG_PIXELS.length * px + 2;
@@ -3018,7 +3031,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
       : "";
     infoLine.textContent =
-      ((state.generation || 1) > 1 ? "Gen " + state.generation + "  |  " : "") +
+      (socialEnabled && (state.generation || 1) > 1 ? "Gen " + state.generation + "  |  " : "") +
       "Age: " + formatAge(state.ageDays) + "  |  " +
       state.stage            + "  |  " +
       (spriteLabel ? spriteLabel + "  |  " : "") +
@@ -3223,8 +3236,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (events.indexOf("praised")       !== -1) { pushReaction("praised", nowMs); }
     if (events.indexOf("became_sick")   !== -1) { pushReaction("became_sick",   nowMs); }
     if (events.indexOf("cured")         !== -1) { pushReaction("healed",        nowMs); }
-    if (events.indexOf("married")       !== -1) { kissStartMs = nowMs; pushReaction("praised", nowMs); }
-    if (events.indexOf("friend_played") !== -1) { pushReaction("played", nowMs); }
+    if (socialEnabled && events.indexOf("married")       !== -1) { kissStartMs = nowMs; pushReaction("praised", nowMs); }
+    if (socialEnabled && events.indexOf("friend_played") !== -1) { pushReaction("played", nowMs); }
     if (events.indexOf("pooped")        !== -1) { pushReaction("poop_appeared", nowMs); }
     // evolved: any evolved_to_* event (egg → baby gets the hatch burst instead)
     for (var ei = 0; ei < events.length; ei++) {
@@ -3298,7 +3311,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         return;
       }
       // 1e. Social: visits, gifts, proposals and marriage (rare, so they outrank everyday bubbles)
-      for (var _si = 0; _si < SOCIAL_BUBBLE_EVENTS.length; _si++) {
+      for (var _si = 0; socialEnabled && _si < SOCIAL_BUBBLE_EVENTS.length; _si++) {
         if (events.indexOf(SOCIAL_BUBBLE_EVENTS[_si]) !== -1) {
           queueBubble(humaniseEvent(SOCIAL_BUBBLE_EVENTS[_si], _n, state));
           return;
@@ -3527,8 +3540,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var counters = trainer.counters || {};
     var tp = levelProgress(trainer.xp);
     var petLevel = state.petLevel || levelProgress(state.petXp).level;
-    var unlocked = trainer.achievements || [];
-    var ids = Object.keys(ACHIEVEMENT_INFO);
+    var ids = Object.keys(ACHIEVEMENT_INFO).filter(function (id) {
+      return socialEnabled || SOCIAL_ACHIEVEMENT_IDS.indexOf(id) === -1;
+    });
+    var unlocked = (trainer.achievements || []).filter(function (id) { return ids.indexOf(id) !== -1; });
     var unlockable = ids.filter(function (id) { return !ACHIEVEMENT_INFO[id][6]; }).length;
     var streak = dailies && dailies.streak ? dailies.streak : 0;
     levelLine.textContent = "Trainer Lv " + tp.level + "  ·  Pet Lv " + petLevel +
@@ -3597,6 +3612,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   /** Append new event strings to the scrollable event log. */
   function humaniseEvent(code, name, state) {
     if (!levelsEnabled && isProgressionEvent(code)) { return null; }
+    if (!socialEnabled && isSocialEvent(code)) { return null; }
     if (bossAccess === "off" && (code === "boss_unlocked" || code.indexOf("boss_battle") !== -1)) { return null; }
     var n = name || "Codotchi";
     // A cat doesn't die — it moves on
@@ -3915,10 +3931,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     deadStats.textContent =
       state.name + " lived " + formatAge(state.ageDays) + ".\n" +
       "Stage reached: " + state.stage + "." +
-      ((state.generation || 1) > 1 ? "\nGeneration " + state.generation + "." : "") +
-      (state.partner ? "\nMarried to " + state.partner.name + "." : "");
+      (socialEnabled && (state.generation || 1) > 1 ? "\nGeneration " + state.generation + "." : "") +
+      (socialEnabled && state.partner ? "\nMarried to " + state.partner.name + "." : "");
     if (deadHeir) {
-      deadHeir.classList.toggle("hidden", !state.heirEgg);
+      deadHeir.classList.toggle("hidden", !(socialEnabled && state.heirEgg));
       if (state.heirEgg) {
         deadHeir.textContent = "🥚 " + state.name + " left an heir egg. Press Restart to hatch Generation " +
           ((state.generation || 1) + 1) + ".";
@@ -5034,6 +5050,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     const state = message.state;
     lastDailies = message.dailies || null;
     levelsEnabled = message.levelsEnabled === true;
+    socialEnabled = message.socialEnabled === true;
     bossAccess = message.bossAccess === "queue" || message.bossAccess === "always" ? message.bossAccess : "off";
 
     currentCravingItem = message.cravingItem || null;

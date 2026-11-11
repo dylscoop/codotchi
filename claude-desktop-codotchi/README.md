@@ -24,9 +24,6 @@ rendered as an ASCII text block.
 |------|--------------|
 | `codotchi` | Show the pet |
 | `codotchi_feed` / `codotchi_snack` / `codotchi_pat` / `codotchi_play` / `codotchi_sleep` / `codotchi_clean` / `codotchi_medicine` | Care actions |
-| `codotchi_friend` | Show the pet's friend, partner, heir egg and any marriage proposal |
-| `codotchi_playfriend` / `codotchi_gift` | Play with, or give a gift to, a visiting friend pet (once each per visit) |
-| `codotchi_accept` / `codotchi_decline` | Answer a marriage proposal; a married pet leaves an heir egg |
 | `codotchi_activity` | Registers chat activity → a small reward. Claude is asked (via the server's instructions) to call this ~once per turn as it works |
 
 Ask Claude in chat (e.g. "feed my codotchi") to trigger these tools — there

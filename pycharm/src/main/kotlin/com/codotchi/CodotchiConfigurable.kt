@@ -31,7 +31,6 @@ import javax.swing.SpinnerNumberModel
 class CodotchiConfigurable : Configurable {
 
     private var deathlessCheck:            JCheckBox?          = null
-    private var socialVisitorsCheck:       JCheckBox?          = null
     private var afterlifeNameField:        JTextField?         = null
     private var fontSizeCombo:             JComboBox<String>? = null
     private var colorPanel:                ColorPanel?         = null
@@ -53,6 +52,7 @@ class CodotchiConfigurable : Configurable {
     private var devModeHealthFloorSpinner: JSpinner?           = null
     private var devBossCheck:                   JCheckBox?          = null
     private var devBossAlwaysCheck:             JCheckBox?          = null
+    private var devSocialCheck:                 JCheckBox?          = null
     private var aiModeCheck:                    JCheckBox?          = null
     private var idleResetOnDocumentChangeCheck: JCheckBox?          = null
     private var idleResetOnCursorMovementCheck: JCheckBox?          = null
@@ -78,9 +78,6 @@ class CodotchiConfigurable : Configurable {
         deathlessCheckbox.toolTipText = "Health never drops below 1. The pet still gets sick, and a senior can still die of old age. A deathless pet stays deathless for life, even if you turn this off, and stays off the leaderboard. Also offered when you hatch a new pet."
         val afterlifeNameTextField = JTextField(16)
         deathlessCheck     = deathlessCheckbox
-        val socialVisitorsCheckbox = JCheckBox("Friend visits (a friend pet visits; at Partner friendship an adult can marry and leave an heir egg; the matchmaker visits unmarried seniors)")
-        socialVisitorsCheckbox.toolTipText = "Turn off to stop friend visits, proposals and the matchmaker. Your pet's friend, partner and heir egg are kept."
-        socialVisitorsCheck = socialVisitorsCheckbox
         afterlifeNameField = afterlifeNameTextField
         val combo   = JComboBox(arrayOf("Small", "Normal", "Large"))
         val cp      = ColorPanel()
@@ -103,6 +100,8 @@ class CodotchiConfigurable : Configurable {
         val devHealthFloorSpinner = JSpinner(SpinnerNumberModel(1, 0, 100, 1))
         val devBossCheckbox = JCheckBox("Show Boss Battle (preview, dev mode only)")
         val devBossAlwaysCheckbox = JCheckBox("Boss Battle always available (for testing)")
+        val devSocialCheckbox = JCheckBox("Friends, marriage & generations (preview)")
+        devSocialCheckbox.toolTipText = "A CPU friend visits pets from the child stage; at Partner friendship an adult can marry and leave an heir egg; the matchmaker visits unmarried seniors. Needs developer mode."
         val aiModeCheckbox = JCheckBox("AI mode (suppress doc-change / cursor / tab-switch idle resets)")
         val idleResetDocChangeCheckbox = JCheckBox("Reset idle timer on document changes")
         val idleResetCursorCheckbox = JCheckBox("Reset idle timer on cursor movement")
@@ -161,6 +160,7 @@ class CodotchiConfigurable : Configurable {
         devModeHealthFloorSpinner = devHealthFloorSpinner
         devBossCheck              = devBossCheckbox
         devBossAlwaysCheck        = devBossAlwaysCheckbox
+        devSocialCheck            = devSocialCheckbox
         aiModeCheck                    = aiModeCheckbox
         idleResetOnDocumentChangeCheck = idleResetDocChangeCheckbox
         idleResetOnCursorMovementCheck = idleResetCursorCheckbox
@@ -204,7 +204,6 @@ class CodotchiConfigurable : Configurable {
 
         // Deathless + Afterlife (top of the page)
         addFull(panel, deathlessCheckbox)
-        addFull(panel, socialVisitorsCheckbox)
         addLabeled(panel, "Afterlife name:", afterlifeNameTextField)
 
         // General
@@ -264,6 +263,7 @@ class CodotchiConfigurable : Configurable {
         addLabeled(devContent, "Dev mode health floor:", devHealthFloorSpinner)
         addFull(devContent, devBossCheckbox)
         addFull(devContent, devBossAlwaysCheckbox)
+        addFull(devContent, devSocialCheckbox)
         val devSection = JPanel(BorderLayout())
         HideableDecorator(devSection, "Developer settings", false).apply {
             setContentComponent(devContent)
@@ -317,7 +317,6 @@ class CodotchiConfigurable : Configurable {
         val uiTokenCostOpenCode = tokenCostIncludeOpenCodeCheck?.isSelected ?: true
         val uiTokenCostCopilot = tokenCostIncludeCopilotCheck?.isSelected ?: false
         return (deathlessCheck?.isSelected ?: false) != settings.deathless
-            || (socialVisitorsCheck?.isSelected ?: true) != settings.socialVisitorsEnabled
             || (afterlifeNameField?.text ?: "Afterlife") != settings.afterlifeName
             || uiFont != settings.fontSize
             || uiColor != settings.textColor
@@ -339,6 +338,7 @@ class CodotchiConfigurable : Configurable {
             || uiDevHealthFloor != settings.devModeHealthFloor
             || (devBossCheck?.isSelected ?: false) != settings.devModeBossBattle
             || (devBossAlwaysCheck?.isSelected ?: false) != settings.devModeBossBattleAlways
+            || (devSocialCheck?.isSelected ?: false) != settings.devModeSocial
             || uiAiMode != settings.aiMode
             || uiIdleResetDocChange != settings.idleResetOnDocumentChange
             || uiIdleResetCursor != settings.idleResetOnCursorMovement
@@ -359,7 +359,6 @@ class CodotchiConfigurable : Configurable {
         val settings = service<CodotchiSettings>()
         val prevDeathless = settings.deathless
         settings.deathless              = deathlessCheck?.isSelected ?: false
-        settings.socialVisitorsEnabled  = socialVisitorsCheck?.isSelected ?: true
         settings.afterlifeName          = afterlifeNameField?.text ?: "Afterlife"
         settings.fontSize               = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
         settings.textColor              = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
@@ -381,6 +380,7 @@ class CodotchiConfigurable : Configurable {
         settings.devModeHealthFloor     = (devModeHealthFloorSpinner?.value as? Int) ?: 1
         settings.devModeBossBattle       = devBossCheck?.isSelected ?: false
         settings.devModeBossBattleAlways = devBossAlwaysCheck?.isSelected ?: false
+        settings.devModeSocial           = devSocialCheck?.isSelected ?: false
         settings.aiMode                    = aiModeCheck?.isSelected ?: false
         settings.idleResetOnDocumentChange = idleResetOnDocumentChangeCheck?.isSelected ?: true
         settings.idleResetOnCursorMovement = idleResetOnCursorMovementCheck?.isSelected ?: true
@@ -414,7 +414,6 @@ class CodotchiConfigurable : Configurable {
     override fun reset() {
         val settings = service<CodotchiSettings>()
         deathlessCheck?.isSelected         = settings.deathless
-        socialVisitorsCheck?.isSelected    = settings.socialVisitorsEnabled
         afterlifeNameField?.text           = settings.afterlifeName
         fontSizeCombo?.selectedItem        = settings.fontSize.replaceFirstChar { it.uppercaseChar() }
         colorPanel?.selectedColor          = hexToColor(settings.textColor)
@@ -436,6 +435,7 @@ class CodotchiConfigurable : Configurable {
         devModeHealthFloorSpinner?.value        = settings.devModeHealthFloor
         devBossCheck?.isSelected                = settings.devModeBossBattle
         devBossAlwaysCheck?.isSelected          = settings.devModeBossBattleAlways
+        devSocialCheck?.isSelected              = settings.devModeSocial
         aiModeCheck?.isSelected                    = settings.aiMode
         idleResetOnDocumentChangeCheck?.isSelected = settings.idleResetOnDocumentChange
         idleResetOnCursorMovementCheck?.isSelected = settings.idleResetOnCursorMovement

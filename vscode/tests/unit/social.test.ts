@@ -29,7 +29,7 @@ import {
   FriendPet,
 } from "../../src/gameEngine";
 
-const NO_CALLS: GameConfig = { ...DEFAULT_GAME_CONFIG, attentionCallsEnabled: false };
+const NO_CALLS: GameConfig = { ...DEFAULT_GAME_CONFIG, attentionCallsEnabled: false, socialEnabled: true };
 
 function makePet(overrides: Partial<PetState> = {}): PetState {
   return { ...createPet("Mittens", "codeling"), stage: "adult", dayTimer: 100.5, ageDays: 100, ...overrides };
@@ -132,6 +132,15 @@ describe("social: visits", () => {
       assert.equal(tick(ready, true, false, NO_CALLS).visit, null);
       assert.equal(tick({ ...ready, stage: "baby", dayTimer: 3.5, ageDays: 3 }, false, false, NO_CALLS).visit, null);
       assert.equal(tick(ready, false, false, { ...NO_CALLS, socialEnabled: false }).visit, null);
+    });
+  });
+
+  it("social is a dev-mode preview: the default config starts no visits", () => {
+    const ready = makePet({ ticksSinceLastVisit: VISIT_MIN_GAP_TICKS });
+    const { socialEnabled: _omit, ...withoutFlag } = NO_CALLS;
+    withRandom(0, () => {
+      assert.equal(tick(ready, false, false, { ...DEFAULT_GAME_CONFIG, attentionCallsEnabled: false }).visit, null);
+      assert.equal(tick(ready, false, false, withoutFlag).visit, null);
     });
   });
 

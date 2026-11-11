@@ -561,7 +561,8 @@ same engine mechanics later.
 | Heir egg & generation counter | `[x]` | The egg waits on the floor; when the pet dies the hatch screen offers it (`new_game { heir: true }` → `hatchHeir`, generation + 1, the egg's sprite / type). Used up either way. "Gen N" in the info line from generation 2; Afterlife entries keep `generation` / `partnerName` |
 | Achievements | `[x]` | First Friend, Best Buds, Tied the Knot, Dynasty (2 heirs) on the Keeper path |
 | Terminal plugins | `[x]` | `/codotchi friend | playfriend | gift | accept | decline`; Claude Desktop `codotchi_friend` etc. |
-| Setting | `[x]` | `codotchi.social.visitorsEnabled` (VS Code) / **Friend visits** (PyCharm), default on |
+| Setting | `[x]` | Dev-mode preview until release: `codotchi.devModeSocial` (VS Code) / **Friends, marriage & generations (preview)** (PyCharm Developer section), default off. Claude Desktop tools need `CODOTCHI_DEV_SOCIAL=1` |
+| Public release | `[ ]` | Swap the dev flag for a public setting, restore the README / plugin.xml / user-guide entries |
 | Generation on the leaderboard | `[ ]` | Needs a submission schema and validator change |
 | Retire a living pet early to hatch the heir | `[ ]` | Not in v2.36.0 |
 
