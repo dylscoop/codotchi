@@ -2542,3 +2542,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** The senior cat lay down whenever it stood still for a single frame, so a snack chomp, a reaction or landing from its 4-second hop flipped it to the lying art and back. Since it otherwise wandered nonstop, it was rarely lying. The lying art's legs and tail reach the bottom row, well below the body, and the bottom row was put on the floor, so the cat's body floated above the ground (and above the perch).
 
 **Fix:** `catPoseStep` only lies it down after 1.5 s still and never during a reaction, gets it up at once when it has to move, and eases between poses over 450 ms (crossfade plus squash). It lounges 20–40 s between 4–8 s strolls and doesn't hop. A new `restRow` sprite key (`senior_lying`: 78) puts the belly row on the floor / perch line; the legs and tail below it draw down through the stage or hang over the perch, uncut.
+
+## BUGFIX-216 - Deep-idle message says "10 min" although the threshold is a setting; idle default too short
+
+**Status:** Fixed (branch `feat/v2.36.0-social-offline`)
+**Files:** `vscode/media/sidebar.js`, `vscode/package.json`, `vscode/src/extension.ts`, `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `engine/Constants.kt`
+
+**Problem:** The `went_deep_idle` bubble read "IDE idle 10 min — stats protected, aging stopped." even though deep idle starts after `idleDeepThresholdSeconds`, which the user can change, so the text was wrong for any other value. The idle default of 60 s also tipped the pet into idle during short pauses while reading code.
+
+**Fix:** The bubble now reads "IDE deep idle — stats protected, aging stopped." with no duration. The defaults are reset to 120 s for idle (`codotchi.idleThresholdSeconds` / PyCharm **Idle threshold**, `IDLE_THRESHOLD_SECONDS`) and 600 s for deep idle (unchanged). Users who set their own values keep them.

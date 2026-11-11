@@ -281,9 +281,9 @@
           },
           "codotchi.idleThresholdSeconds": {
             "type": "integer",
-            "default": 60,
+            "default": 120,
             "minimum": 10,
-            "description": "Seconds of no IDE activity before the pet is considered idle (stats decay at 5% of the normal rate and the pet cannot lose health). Default: 60 seconds.",
+            "description": "Seconds of no IDE activity before the pet is considered idle (stats decay at 5% of the normal rate and the pet cannot lose health). Default: 120 seconds (2 minutes).",
             "order": 20
           },
           "codotchi.idleDeepThresholdSeconds": {

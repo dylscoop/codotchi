@@ -129,7 +129,7 @@ export const COMMIT_ACTIVITY_THROTTLE_SECONDS = 300;
  * Seconds of no IDE activity (no keystrokes, cursor movement, or window focus)
  * before the pet is considered "idle" and decay is reduced to IDLE_DECAY_FRACTION.
  */
-export const IDLE_THRESHOLD_SECONDS = 60; // 1 minute
+export const IDLE_THRESHOLD_SECONDS = 120; // 2 minutes
 /**
  * Seconds of sustained idle before entering "deep idle": stats are floored at
  * IDLE_STAT_FLOOR and aging stops completely.

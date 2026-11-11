@@ -449,7 +449,7 @@ export function activate(context: vscode.ExtensionContext): void {
       reloadAndRefreshUI(false);
       return;
     }
-    const idleThresholdMs = cfg.get<number>("idleThresholdSeconds", 60) * 1_000;
+    const idleThresholdMs = cfg.get<number>("idleThresholdSeconds", 120) * 1_000;
     const idleDeepThresholdMs = cfg.get<number>("idleDeepThresholdSeconds", 600) * 1_000;
     const idleMs = Date.now() - lastActivityMs;
     const idle = idleMs > idleThresholdMs;

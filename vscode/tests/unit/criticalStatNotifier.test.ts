@@ -113,6 +113,22 @@ describe("settings layout (package.json)", () => {
     assert.ok(Object.keys(main.properties).every((k) => !k.startsWith("codotchi.devMode")));
   });
 
+  it("idle defaults: 120 s idle, 600 s deep idle, in VS Code, PyCharm and the engine (BUGFIX-216)", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    assert.equal(main.properties["codotchi.idleThresholdSeconds"].default, 120);
+    assert.equal(main.properties["codotchi.idleDeepThresholdSeconds"].default, 600);
+    const { IDLE_THRESHOLD_SECONDS, IDLE_DEEP_THRESHOLD_SECONDS } = await import("../../src/gameEngine");
+    assert.equal(IDLE_THRESHOLD_SECONDS, 120);
+    assert.equal(IDLE_DEEP_THRESHOLD_SECONDS, 600);
+    const root = path.join(__dirname, "../../..");
+    const kt = fs.readFileSync(path.join(root, "../pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt"), "utf8");
+    assert.ok(kt.includes("var idleThresholdSeconds: Int = 120") && kt.includes("var idleDeepThresholdSeconds: Int = 600"));
+    const js = fs.readFileSync(path.join(root, "media/sidebar.js"), "utf8");
+    const line = js.split("\n").find((l) => l.includes("\"went_deep_idle\":"))!;
+    assert.ok(!/\d+\s*min/.test(line), "deep-idle text must not name a duration: " + line);
+  });
+
   it("orders AI mode, then display, then idle settings", () => {
     const order = (k: string) => main.properties[`codotchi.${k}`].order as number;
     const seq = ["aiMode", "stageHeight", "tokenCostSources", "background", "fontSize",

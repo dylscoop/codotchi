@@ -714,8 +714,8 @@ preserves `dayTimer`/`ageDays` exactly).
 
 | Threshold | Constant | Value |
 |-----------|----------|-------|
-| Idle after | `IDLE_THRESHOLD_SECONDS` | 60 s (1 min) |
-| Deep idle after | `IDLE_DEEP_THRESHOLD_SECONDS` | 600 s (10 min) |
+| Idle after | `IDLE_THRESHOLD_SECONDS` | 120 s (2 min) — default of `codotchi.idleThresholdSeconds` |
+| Deep idle after | `IDLE_DEEP_THRESHOLD_SECONDS` | 600 s (10 min) — default of `codotchi.idleDeepThresholdSeconds` |
 | Decay divisor | `IDLE_DECAY_TICK_DIVISOR` | 10 (1 pt/min vs 10 pt/min active) |
 | Stat floor (idle + sick/damage) | `IDLE_STAT_FLOOR` | 20 — hunger, happiness, energy (health never drops while idle) |
 

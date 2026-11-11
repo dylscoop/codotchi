@@ -3711,7 +3711,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "died_of_old_age":         n + " passed away of unforeseen natural causes due to old age.",
       "became_sick_old_age":     n + " came down with an age-related illness.",
       "went_idle":               "IDE idle — decay and aging slowed.",
-      "went_deep_idle":          "IDE idle 10 min — stats protected, aging stopped.",
+      "went_deep_idle":          "IDE deep idle — stats protected, aging stopped.",
       "weight_became_too_skinny":    n + " is getting too skinny!",
       "weight_became_slightly_fat":  n + " is looking a little chubby.",
       "weight_became_overweight":    n + " is overweight!",

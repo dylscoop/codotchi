@@ -133,7 +133,7 @@ const val COMMIT_ACTIVITY_THROTTLE_SECONDS: Int = 300
  * pet is considered "idle" and hunger/happiness decay drops to
  * 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
  */
-const val IDLE_THRESHOLD_MS: Long = 60 * 1000L // 1 minute
+const val IDLE_THRESHOLD_MS: Long = 2 * 60 * 1000L // 2 minutes
 
 /**
  * Milliseconds of sustained idle before entering "deep idle": stats are floored

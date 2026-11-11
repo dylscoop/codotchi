@@ -13,7 +13,7 @@ import com.intellij.openapi.components.*
  *  - [enableAttentionCalls]   : whether to show balloon notifications for attention calls
  *  - [osNotifications]        : desktop (OS) notification when hunger, happiness or energy hits 0, or health < 25 (default true)
  *  - [statusBarEnabled]       : show the pet in the status bar, with ⚠ during attention calls (default true)
- *  - [idleThresholdSeconds]   : seconds of no IDE activity before idle mode (default 60)
+ *  - [idleThresholdSeconds]   : seconds of no IDE activity before idle mode (default 120)
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
  *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift/play/pat/craving
  *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls (poop/misbehaviour/gift/play/pat/craving)
@@ -59,7 +59,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var enableAttentionCalls: Boolean = true
         var osNotifications: Boolean = true
         var statusBarEnabled: Boolean = true
-        var idleThresholdSeconds: Int = 60
+        var idleThresholdSeconds: Int = 120
         var idleDeepThresholdSeconds: Int = 600
         var attentionCallExpiry: String = "standard"  // "needy" | "standard" | "chilled"
         var attentionCallRate:   String = "fast"      // "fast" | "medium" | "slow"

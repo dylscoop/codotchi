@@ -80,7 +80,7 @@ class CodotchiConfigurable : Configurable {
         val attentionCheck  = JCheckBox("Enable attention calls")
         val osNotificationsCheckbox = JCheckBox("Desktop notification when hunger, happiness or energy hits 0, or health drops below 25")
         val statusBarEnabledCheckbox = JCheckBox("Show the pet in the status bar (⚠ while it has an attention call)")
-        val idleSpinner     = JSpinner(SpinnerNumberModel(60, 10, 3600, 10))
+        val idleSpinner     = JSpinner(SpinnerNumberModel(120, 10, 3600, 10))
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
         val expiryCombo     = JComboBox(arrayOf("Needy (4 min)", "Standard (10 min)", "Chilled (20 min)"))
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
@@ -284,7 +284,7 @@ class CodotchiConfigurable : Configurable {
         val uiAttention  = enableAttentionCallsCheck?.isSelected ?: true
         val uiOsNotifications = osNotificationsCheck?.isSelected ?: true
         val uiStatusBarEnabled = statusBarEnabledCheck?.isSelected ?: true
-        val uiIdle       = (idleThresholdSpinner?.value as? Int) ?: 60
+        val uiIdle       = (idleThresholdSpinner?.value as? Int) ?: 120
         val uiDeepIdle   = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         val uiExpiry     = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         val uiRate       = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
@@ -357,7 +357,7 @@ class CodotchiConfigurable : Configurable {
         settings.enableAttentionCalls   = enableAttentionCallsCheck?.isSelected ?: true
         settings.osNotifications        = osNotificationsCheck?.isSelected ?: true
         settings.statusBarEnabled       = statusBarEnabledCheck?.isSelected ?: true
-        settings.idleThresholdSeconds   = (idleThresholdSpinner?.value as? Int) ?: 60
+        settings.idleThresholdSeconds   = (idleThresholdSpinner?.value as? Int) ?: 120
         settings.idleDeepThresholdSeconds = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         settings.attentionCallExpiry    = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         settings.attentionCallRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
