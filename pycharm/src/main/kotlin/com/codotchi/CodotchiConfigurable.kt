@@ -97,7 +97,7 @@ class CodotchiConfigurable : Configurable {
         val devBossCheckbox = JCheckBox("Show Boss Battle (preview, dev mode only)")
         val devBossAlwaysCheckbox = JCheckBox("Boss Battle always available (for testing)")
         val devSocialCheckbox = JCheckBox("Friends, marriage & generations (preview)")
-        devSocialCheckbox.toolTipText = "A CPU friend visits pets from the child stage; at Partner friendship an adult can marry and leave an heir egg; the matchmaker visits unmarried seniors. Needs developer mode."
+        devSocialCheckbox.toolTipText = "A CPU friend visits pets from the child stage; at Partner friendship an adult can marry; the matchmaker visits unmarried seniors. Needs developer mode."
         val aiModeCheckbox = JCheckBox("AI mode (suppress doc-change / cursor / tab-switch idle resets)")
         val idleResetDocChangeCheckbox = JCheckBox("Reset idle timer on document changes")
         val idleResetCursorCheckbox = JCheckBox("Reset idle timer on cursor movement")

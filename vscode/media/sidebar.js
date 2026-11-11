@@ -173,6 +173,8 @@
   /** Friends, marriage and generations are a dev-mode preview (codotchi.devModeSocial), off unless the host enables them. */
   var socialEnabled = false;
   var SOCIAL_ACHIEVEMENT_IDS = ["first_friend", "best_buds", "tied_the_knot", "dynasty"];
+  /** Offspring (heir egg, generations) is on the backlog until it is redesigned: no heir UI, no Dynasty row. */
+  var HEIRS_ENABLED = false;
 
   /** Events that belong to the social preview. */
   function isSocialEvent(code) {
@@ -429,7 +431,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   /** True when the (dead) pet left an heir egg that the hatch screen can offer. */
   function heirAvailable(state) {
-    return !!(socialEnabled && state && !state.alive && state.heirEgg);
+    return !!(HEIRS_ENABLED && socialEnabled && state && !state.alive && state.heirEgg);
   }
 
   /** Show the heir option on the hatch screen, prefilled with the next generation's name. */
@@ -461,7 +463,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     } else if (state.friend) {
       parts[0] += " " + friendshipHearts(state.friend.friendship);
     }
-    if (state.heirEgg) { parts.push("🥚 heir egg waiting"); }
+    if (HEIRS_ENABLED && state.heirEgg) { parts.push("🥚 heir egg waiting"); }
     if (state.visit && state.friend) { parts.unshift("👋 " + state.friend.name + " is visiting!"); }
     var visiting = !!(state.alive && state.visit && state.friend && !state.sleeping);
     var proposing = !!(state.alive && state.proposal);
@@ -2948,7 +2950,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   var HEIR_EGG_COLOURS = { "#": "#5b4a3a", "o": "#f6efd9", "*": "#c99a6b" };
 
   function drawHeirEgg(state) {
-    if (!socialEnabled || !state || !state.alive || !state.heirEgg) { return; }
+    if (!HEIRS_ENABLED || !socialEnabled || !state || !state.alive || !state.heirEgg) { return; }
     var px = 2;
     var x0 = 4;
     var y0 = spriteCanvas.height - 12 - HEIR_EGG_PIXELS.length * px + 2;
@@ -3569,6 +3571,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var tp = levelProgress(trainer.xp);
     var petLevel = state.petLevel || levelProgress(state.petXp).level;
     var ids = Object.keys(ACHIEVEMENT_INFO).filter(function (id) {
+      if (id === "dynasty" && !HEIRS_ENABLED) { return false; }
       return socialEnabled || SOCIAL_ACHIEVEMENT_IDS.indexOf(id) === -1;
     });
     var unlocked = (trainer.achievements || []).filter(function (id) { return ids.indexOf(id) !== -1; });
@@ -3962,7 +3965,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       (socialEnabled && (state.generation || 1) > 1 ? "\nGeneration " + state.generation + "." : "") +
       (socialEnabled && state.partner ? "\nMarried to " + state.partner.name + "." : "");
     if (deadHeir) {
-      deadHeir.classList.toggle("hidden", !(socialEnabled && state.heirEgg));
+      deadHeir.classList.toggle("hidden", !(HEIRS_ENABLED && socialEnabled && state.heirEgg));
       if (state.heirEgg) {
         deadHeir.textContent = "🥚 " + state.name + " left an heir egg. Press Restart to hatch Generation " +
           ((state.generation || 1) + 1) + ".";

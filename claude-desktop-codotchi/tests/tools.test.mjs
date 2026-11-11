@@ -139,7 +139,7 @@ describe("claude-desktop tools", () => {
     writeState(["vscode", "state.json"], adultPet({ friend, proposal: { from: "friend", name: "Pixel", spriteType: "dog", petType: "bytebug" } }));
     const married = tools.socialAction(readConfig(), "accept");
     assert.equal(married.state.partner.name, "Pixel");
-    assert.ok(married.state.heirEgg);
+    assert.equal(married.state.heirEgg, null);
     assert.ok(tools.show(readConfig()).asciiArt.includes("Married to Pixel"));
   });
 

@@ -3155,26 +3155,21 @@ export function giveFriendGift(state: PetState): PetState {
 }
 
 /**
- * Accept the pending proposal: the pet marries, and an heir egg (the type of
- * either parent, 50/50) waits on the canvas until this pet dies. Emits
- * `married`. Refused (event `proposal_refused`) when there is no offer.
+ * Accept the pending proposal: the pet marries. Emits `married`. Refused
+ * (event `proposal_refused`) when there is no offer.
+ *
+ * Marriage does not lay an heir egg while offspring are being redesigned
+ * (backlog); `heirEgg` and `hatchHeir` stay for that redesign and old saves.
  */
-export function acceptProposal(state: PetState, rand: () => number = Math.random): PetState {
+export function acceptProposal(state: PetState, _rand: () => number = Math.random): PetState {
   const p = state.proposal;
   if (!state.alive || !p) {
     return withDerivedFields({ ...state, events: ["proposal_refused"] });
   }
   const partner: PetIdentity = { name: p.name, spriteType: p.spriteType, petType: p.petType };
-  // Custom characters (Tim, Stu, …) are one-offs unlocked by passcode, so their egg takes the partner's look.
-  const parentSprite = HEIR_EXCLUDED_SPRITES.includes(state.spriteType) ? p.spriteType : state.spriteType;
-  const heirEgg: HeirEgg = {
-    spriteType: rand() < 0.5 ? parentSprite : p.spriteType,
-    petType: rand() < 0.5 ? state.petType : p.petType,
-  };
   return awardXp(withDerivedFields({
     ...state,
     partner,
-    heirEgg,
     proposal: null,
     happiness: clampStat(state.happiness + MARRIAGE_HAPPINESS),
     events: ["married"],

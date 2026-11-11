@@ -83,14 +83,14 @@ describe("action.mjs social commands (integration)", () => {
     });
   });
 
-  it("/codotchi accept marries the pet and leaves an heir egg", async () => {
+  it("/codotchi accept marries the pet", async () => {
     await withFixture(async (tmp) => {
       await writePet(tmp, { friend: { ...FRIEND, friendship: 95 }, proposal: { from: "friend", name: "Pixel", spriteType: "dog", petType: "bytebug" } });
       const out = run(tmp, "accept");
       assert.ok(out.includes("married Pixel"), out);
       const saved = readPet(tmp);
       assert.equal(saved.partner.name, "Pixel");
-      assert.ok(saved.heirEgg);
+      assert.equal(saved.heirEgg, null);
       assert.equal(saved.proposal, null);
     });
   });

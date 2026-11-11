@@ -229,20 +229,15 @@ describe("social: marriage, heir egg and generations", () => {
     assert.equal(withRandom(0, () => tick(s, false, false, NO_CALLS)).proposal, null);
   });
 
-  it("accepting marries the pet and leaves an heir egg", () => {
+  it("accepting marries the pet without an heir egg (offspring on the backlog)", () => {
     const s = makePet({ friend: friend(95), proposal: { from: "friend", name: "Pixel", spriteType: "dog", petType: "bytebug" } });
     const m = acceptProposal(s, () => 0.9);
     assert.ok(m.events.includes("married"));
     assert.deepEqual(m.partner, { name: "Pixel", spriteType: "dog", petType: "bytebug" });
-    assert.deepEqual(m.heirEgg, { spriteType: "dog", petType: "bytebug" });
+    assert.equal(m.heirEgg, null);
     assert.equal(m.proposal, null);
     assert.ok(m.trainer.achievements.includes("tied_the_knot"));
     assert.deepEqual(acceptProposal(m).events, ["proposal_refused"]);
-  });
-
-  it("a custom character's egg never inherits its one-off sprite", () => {
-    const s = makePet({ spriteType: "tim", proposal: { from: "matchmaker", name: "Byte", spriteType: "cat", petType: "codeling" } });
-    assert.equal(acceptProposal(s, () => 0).heirEgg!.spriteType, "cat");
   });
 
   it("declining sets a cooldown that blocks the next offer", () => {
@@ -308,6 +303,16 @@ describe("social: webview parity", () => {
     const parsed = JSON.parse(line.slice(line.indexOf("=") + 1).trim().replace(/;$/, "")) as [number, string][];
     const fromWebview = parsed.map(([min, name]) => ({ name, min })).reverse();
     assert.deepEqual(fromWebview, FRIENDSHIP_LEVELS.map((l) => ({ name: l.name, min: l.min })));
+  });
+
+  it("offspring is off in the webview: no heir option, no egg, no Dynasty row", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const js = fs.readFileSync(path.join(__dirname, "../../../media/sidebar.js"), "utf8");
+    assert.ok(js.includes("var HEIRS_ENABLED = false;"));
+    assert.ok(js.includes("return !!(HEIRS_ENABLED && socialEnabled"), "heirAvailable is gated");
+    assert.ok(js.includes("if (!HEIRS_ENABLED || !socialEnabled"), "drawHeirEgg is gated");
+    assert.ok(js.includes("if (id === \"dynasty\" && !HEIRS_ENABLED) { return false; }"), "Dynasty is hidden");
   });
 
   it("every social event the webview bubbles has text in humaniseEvent", async () => {

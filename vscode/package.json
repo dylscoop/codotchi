@@ -383,7 +383,7 @@
           "codotchi.devModeSocial": {
             "type": "boolean",
             "default": false,
-            "description": "(Developer) Friends, marriage and generations (a preview). Only works while developer mode is active. A CPU friend visits pets from the child stage; at Partner friendship an adult can marry and leave an heir egg; the matchmaker visits unmarried seniors.",
+            "description": "(Developer) Friends, marriage and generations (a preview). Only works while developer mode is active. A CPU friend visits pets from the child stage; at Partner friendship an adult can marry; the matchmaker visits unmarried seniors.",
             "order": 7
           }
         }

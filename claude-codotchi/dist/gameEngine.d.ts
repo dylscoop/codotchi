@@ -991,11 +991,13 @@ export declare function playWithFriend(state: PetState): PetState;
  */
 export declare function giveFriendGift(state: PetState): PetState;
 /**
- * Accept the pending proposal: the pet marries, and an heir egg (the type of
- * either parent, 50/50) waits on the canvas until this pet dies. Emits
- * `married`. Refused (event `proposal_refused`) when there is no offer.
+ * Accept the pending proposal: the pet marries. Emits `married`. Refused
+ * (event `proposal_refused`) when there is no offer.
+ *
+ * Marriage does not lay an heir egg while offspring are being redesigned
+ * (backlog); `heirEgg` and `hatchHeir` stay for that redesign and old saves.
  */
-export declare function acceptProposal(state: PetState, rand?: () => number): PetState;
+export declare function acceptProposal(state: PetState, _rand?: () => number): PetState;
 /** Decline the pending proposal; no new offer for PROPOSAL_DECLINE_COOLDOWN_TICKS active ticks. */
 export declare function declineProposal(state: PetState): PetState;
 /**

@@ -275,21 +275,15 @@ class SocialTest {
     }
 
     @Test
-    fun `accepting marries the pet and leaves an heir egg`() {
+    fun `accepting marries the pet without an heir egg (offspring on the backlog)`() {
         val s = makePet().copy(friend = friend(95), proposal = Proposal("friend", "Pixel", "dog", "bytebug"))
         val m = acceptProposal(s, fixed(0.9))
         assertTrue("married" in m.events)
         assertEquals(PetIdentity("Pixel", "dog", "bytebug"), m.partner)
-        assertEquals(HeirEgg("dog", "bytebug"), m.heirEgg)
+        assertNull(m.heirEgg)
         assertNull(m.proposal)
         assertTrue("tied_the_knot" in m.trainer.achievements)
         assertEquals(listOf("proposal_refused"), acceptProposal(m).events)
-    }
-
-    @Test
-    fun `a custom character's egg never inherits its one-off sprite`() {
-        val s = makePet().copy(spriteType = "tim", proposal = Proposal("matchmaker", "Byte", "cat", "codeling"))
-        assertEquals("cat", acceptProposal(s, fixed(0.0)).heirEgg!!.spriteType)
     }
 
     @Test

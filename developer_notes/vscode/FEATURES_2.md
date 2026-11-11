@@ -169,8 +169,8 @@ than §1 — require design work before implementation.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Matchmaker arrives at senior age if unmarried | `[x]` | v2.36.0: after `MATCHMAKER_SENIOR_DAYS` (3) senior game-days without a marriage |
-| Auto-pairs pet with a CPU partner | `[x]` | v2.36.0: the proposal names a generated CPU match; accepting marries and leaves an heir egg |
-| Prevents family line from ending without offspring | `[x]` | v2.36.0: the matchmaker comes back (after a decline cooldown) until the senior marries |
+| Auto-pairs pet with a CPU partner | `[x]` | v2.36.0: the proposal names a generated CPU match; accepting marries (the heir egg is on the backlog until offspring is redesigned) |
+| Prevents family line from ending without offspring | `[~]` | v2.36.0: the matchmaker comes back (after a decline cooldown) until the senior marries |
 
 ---
 
@@ -183,7 +183,7 @@ than §1 — require design work before implementation.
 | Kiss animation on marriage | `[x]` | v2.36.0: hearts float between the pet and its partner |
 | Female produces two eggs; keeps one, leaves one with male | `[-]` | No sex field: the married pet gets one heir egg |
 | Parent departs after 24 h or offspring evolves to child | `[-]` | The heir egg waits until the parent dies, then hatches as the next pet |
-| Generation counter increments | `[x]` | v2.36.0: `PetState.generation`, +1 for each heir |
+| Generation counter increments | `[~]` | `PetState.generation` exists (+1 per heir via `hatchHeir`), but marriage lays no egg until offspring is redesigned |
 
 ---
 
@@ -250,7 +250,7 @@ Already tracked in `FEATURES.md §1` and `§14` — listed here for parity gap v
 | Feature | Status | Notes |
 |---------|--------|-------|
 | `generation` int in `PetState` | `[x]` | v2.36.0 (`SCHEMA_VERSION` 2) |
-| Displayed in the info line | `[x]` | v2.36.0: `Gen 3  |  Age: …` from generation 2 |
+| Displayed in the info line | `[~]` | Wired up (`Gen 3  |  Age: …` from generation 2), unreachable while offspring is on the backlog |
 
 ---
 
