@@ -110,6 +110,10 @@
     gamer:        ["🎮", "Gamer",         "Win 10 mini-games",                      "minigameWins",   10,   "keeper"],
     growing_up:   ["🌱", "Growing Up",    "See your pets evolve 3 times",           "evolutions",     3,    "keeper"],
     survivor:     ["🧓", "Survivor",      "Raise a pet to senior",                  "seniors",        1,    "keeper"],
+    first_friend: ["🤝", "First Friend",  "Make a friend when another pet visits",  "friendsMade",    1,    "keeper"],
+    best_buds:    ["💛", "Best Buds",     "Become Best Friends with a visitor",     "bestFriends",    1,    "keeper"],
+    tied_the_knot: ["💍", "Tied the Knot", "Get your pet married",                  "marriages",      1,    "keeper"],
+    dynasty:      ["👑", "Dynasty",       "Hatch two heirs (raise a third generation)", "heirs",      2,    "keeper"],
     champion:     ["🥊", "Champion",      "Win a Boss Battle",                      "bossBattleWins", 1,    "keeper"],
     level_5:      ["⭐", "Rising Star",   "Reach trainer level 5",                  "level",          5,    "trainer"],
     level_10:     ["🌟", "Veteran",       "Reach trainer level 10",                 "level",          10,   "trainer"],
@@ -135,6 +139,10 @@
     debugSessions:  "Unlocks with debug-session tracking (coming soon)",
     bossKills:      "Unlocks with Bug Bosses (coming soon)",
     bossBattleWins: "Press Play and beat the boss in a Boss Battle",
+    friendsMade:    "Keep coding with your pet awake; a friend pet drops by now and then (child stage and up)",
+    bestFriends:    "Play together and swap gifts when your friend visits",
+    marriages:      "Reach Partner friendship as an adult and accept the proposal, or say yes to the matchmaker",
+    heirs:          "Hatch the heir egg a married pet leaves behind",
   };
 
   /** How to complete each daily challenge. Keys must match DAILY_CHALLENGES ids (progression.test.ts checks this). */

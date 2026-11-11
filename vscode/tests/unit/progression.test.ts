@@ -87,7 +87,7 @@ describe("XP amounts and caps", () => {
 
   it("has the agreed hourly and daily caps", () => {
     assert.deepEqual(XP_HOURLY_CAPS, { code: 10, commit: 30, minigame: 20, boss_battle: 40 });
-    assert.deepEqual(XP_DAILY_CAPS, { code: 40, commit: 90, call: 100, minigame: 50, boss_battle: 80 });
+    assert.deepEqual(XP_DAILY_CAPS, { code: 40, commit: 90, call: 100, minigame: 50, boss_battle: 80, friend_play: 10, friend_gift: 10 });
   });
 });
 
