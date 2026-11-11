@@ -14,10 +14,11 @@ import kotlin.math.roundToInt
 // ---------------------------------------------------------------------------
 
 /** Current save-format version. Bump when a migration step is added to the loader. */
-const val SCHEMA_VERSION: Int = 1
+const val SCHEMA_VERSION: Int = 2
 
 /**
- * XP per source ("code", "commit", "call", "care", "snack", "clean", "cure", "minigame", "evolve", "debug", "boss_kill", "boss_battle").
+ * XP per source ("code", "commit", "call", "care", "snack", "clean", "cure", "minigame", "evolve", "debug", "boss_kill", "boss_battle",
+ * "befriend", "best_friend", "friend_play", "friend_gift", "marriage", "heir").
  * Care actions pay nothing on their own: they only earn "call" XP when they answer an attention call.
  */
 val XP_AMOUNTS: Map<String, Int> = mapOf(
@@ -33,6 +34,12 @@ val XP_AMOUNTS: Map<String, Int> = mapOf(
     "debug" to 10,
     "boss_kill" to 50,
     "boss_battle" to 40,
+    "befriend" to 10,
+    "best_friend" to 25,
+    "friend_play" to 5,
+    "friend_gift" to 5,
+    "marriage" to 50,
+    "heir" to 30,
 )
 
 /** Bonus XP for unlocking an achievement. */
@@ -77,7 +84,8 @@ fun pendingBossesFromRaw(raw: List<*>?, petLevel: Int): List<String> =
 val XP_HOURLY_CAPS: Map<String, Int> = mapOf("code" to 10, "commit" to 30, "minigame" to 20, "boss_battle" to 40)
 
 /** Daily XP caps per source (local day). Sources not listed are uncapped. */
-val XP_DAILY_CAPS: Map<String, Int> = mapOf("code" to 40, "commit" to 90, "call" to 100, "minigame" to 50, "boss_battle" to 80)
+val XP_DAILY_CAPS: Map<String, Int> = mapOf("code" to 40, "commit" to 90, "call" to 100, "minigame" to 50, "boss_battle" to 80,
+    "friend_play" to 10, "friend_gift" to 10)
 
 /** Commits made from midnight up to this hour (local time) count as late-night commits. */
 const val NIGHT_OWL_END_HOUR: Int = 5
@@ -95,6 +103,12 @@ private val XP_COUNTERS: Map<String, List<String>> = mapOf(
     "debug" to listOf("debugSessions"),
     "boss_kill" to listOf("bossKills"),
     "boss_battle" to listOf("bossBattleWins", "minigameWins"),
+    "befriend" to listOf("friendsMade"),
+    "best_friend" to listOf("bestFriends"),
+    "friend_play" to listOf("friendPlays"),
+    "friend_gift" to listOf("giftsGiven"),
+    "marriage" to listOf("marriages"),
+    "heir" to listOf("heirs"),
 )
 
 /**
@@ -130,7 +144,11 @@ val ACHIEVEMENTS: List<Achievement> = listOf(
     Achievement("gamer",        "Gamer",         "Win 10 mini-games",                      "🎮", "minigameWins",   10,   "keeper"),
     Achievement("growing_up",   "Growing Up",    "See your pets evolve 3 times",           "🌱", "evolutions",     3,    "keeper"),
     Achievement("survivor",     "Survivor",      "Raise a pet to senior",                  "🧓", "seniors",        1,    "keeper"),
-    Achievement("champion",     "Champion",      "Win a Boss Battle",                      "🥊", "bossBattleWins", 1,    "keeper"),
+    Achievement("first_friend", "First Friend",  "Make a friend when another pet visits",  "🤝", "friendsMade",    1,    "keeper"),
+    Achievement("best_buds",    "Best Buds",     "Become Best Friends with a visitor",     "💛", "bestFriends",    1,    "keeper"),
+    Achievement("tied_the_knot", "Tied the Knot", "Get your pet married",                  "💍", "marriages",      1,    "keeper"),
+    Achievement("dynasty",      "Dynasty",       "Hatch two heirs (raise a third generation)", "👑", "heirs",       2,    "keeper"),
+    Achievement("champion",    "Champion",      "Win a Boss Battle",                      "🥊", "bossBattleWins", 1,    "keeper"),
     Achievement("level_5",      "Rising Star",   "Reach trainer level 5",                  "⭐", "level",          5,    "trainer"),
     Achievement("level_10",     "Veteran",       "Reach trainer level 10",                 "🌟", "level",          10,   "trainer"),
     Achievement("level_25",     "Legend",        "Reach trainer level 25",                 "🏆", "level",          25,   "trainer"),

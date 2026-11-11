@@ -1,6 +1,7 @@
 package com.codotchi
 
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.codotchi.engine.PetState
 import com.codotchi.engine.bossAccessFor
 import com.codotchi.engine.dailiesView
@@ -112,7 +113,7 @@ class CodotchiBrowserPanel(
      * Must be called on the EDT (JBCefBrowser.executeJavaScript is EDT-safe).
      */
     fun postState(state: PetState, mealsGivenThisCycle: Int, highScore: HighScore?, devMode: Boolean, unlockedCharacter: String? = null, defaultPetName: String = "Codotchi", liveRank: Int? = null, liveTotalScores: Int? = null, liveSubscribed: Boolean = false, liveLastPushedAt: Long? = null, leaderboardGithubUsername: String? = null, leaderboardAuthExpired: Boolean = false, leaderboardBlockedReason: String? = null) {
-        val stateJson     = gson.toJson(state)
+        val stateJson     = petStateJson(state)
         val dailiesJson   = gson.toJson(dailiesView(state))
         val highScoreJson = if (highScore != null) gson.toJson(highScore) else "null"
         val unlockedCharJson = if (unlockedCharacter != null) "\"$unlockedCharacter\"" else "null"
@@ -281,6 +282,14 @@ class CodotchiBrowserPanel(
         browser.dispose()
     }
 }
+
+/**
+ * The pet state as the webview gets it. Nulls are kept (`"friend":null`, …) so the
+ * shape matches serialiseState() in gameEngine.ts, which VS Code posts as-is.
+ */
+internal fun petStateJson(state: PetState): String = STATE_GSON.toJson(state)
+
+private val STATE_GSON: Gson = GsonBuilder().serializeNulls().create()
 
 /** Webview message that pauses (false) or resumes (true) the pet animation loop. */
 internal fun panelVisibilityPayload(visible: Boolean): String =

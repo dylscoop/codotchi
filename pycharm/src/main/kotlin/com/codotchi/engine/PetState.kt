@@ -162,6 +162,64 @@ data class PetState(
     val dailies: DailyChallenges = DailyChallenges(),
     /** Boss Battles unlocked at level milestones and not yet beaten (boss ids, oldest first). */
     val pendingBosses: List<String> = emptyList(),
+
+    // ── Social (schemaVersion 2) ─────────────────────────────────────────────
+
+    /** Family line: 1 for a fresh egg, parent's generation + 1 for an heir. */
+    val generation: Int = 1,
+    /** The CPU friend that visits this pet; null until the first visit. */
+    val friend: FriendPet? = null,
+    /** The friend is on the canvas right now; null otherwise. */
+    val visit: FriendVisit? = null,
+    /** Active ticks since the last visit started (VISIT_MIN_GAP_TICKS). */
+    val ticksSinceLastVisit: Int = 0,
+    /** Who this pet married; null while single. */
+    val partner: PetIdentity? = null,
+    /** The egg left by a marriage; hatches as the next pet once this one dies. */
+    val heirEgg: HeirEgg? = null,
+    /** dayTimer when the pet became a senior; null before then. Drives the matchmaker. */
+    val seniorSinceDay: Double? = null,
+    /** A marriage offer waiting for acceptProposal() / declineProposal(); null when none. */
+    val proposal: Proposal? = null,
+    /** Active ticks before another proposal can be made after a decline. */
+    val proposalCooldownTicks: Int = 0,
+)
+
+/** Who another (CPU) pet is: enough to draw it. Mirrors PetIdentity in gameEngine.ts. */
+data class PetIdentity(
+    val name: String,
+    val spriteType: String,
+    val petType: String,
+)
+
+/** The CPU friend that visits; friendship 0–100 (see FRIENDSHIP_LEVELS). */
+data class FriendPet(
+    val name: String,
+    val spriteType: String,
+    val petType: String,
+    val friendship: Int,
+    val visits: Int,
+)
+
+/** An ongoing visit. Play and gift can each be done once per visit. */
+data class FriendVisit(
+    val ticksLeft: Int,
+    val played: Boolean,
+    val gifted: Boolean,
+)
+
+/** The egg a married pet leaves for the next generation. */
+data class HeirEgg(
+    val spriteType: String,
+    val petType: String,
+)
+
+/** A marriage offer: from the friend (at Partner level) or a matchmaker's CPU match. [from] is "friend" or "matchmaker". */
+data class Proposal(
+    val from: String,
+    val name: String,
+    val spriteType: String,
+    val petType: String,
 )
 
 /** A pet's daily challenges (see DAILY_CHALLENGES) and its streak. Mirrors DailyChallenges in gameEngine.ts. */
