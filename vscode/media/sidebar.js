@@ -732,7 +732,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         var li = document.createElement("li");
         var text = document.createElement("span");
         var when = new Date(e.diedAt).toLocaleDateString();
-        text.textContent = "⚱ " + e.name + (e.deathless ? " ♾" : "") + "  |  " + formatAge(e.ageDays) +
+        text.textContent = "⚱ " + e.name + (e.deathless ? " ♾" : "") +
+          ((e.generation || 1) > 1 ? " (Gen " + e.generation + ")" : "") +
+          (e.partnerName ? " 💍 " + e.partnerName : "") + "  |  " + formatAge(e.ageDays) +
           "  |  lived " + formatLived(e.diedAt - e.spawnedAt) + "  |  " + when;
         text.title = e.stage + ", " + (e.cause === "old_age" ? "old age" : "neglect");
         li.appendChild(text);

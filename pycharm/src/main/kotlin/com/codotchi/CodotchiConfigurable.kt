@@ -31,6 +31,7 @@ import javax.swing.SpinnerNumberModel
 class CodotchiConfigurable : Configurable {
 
     private var deathlessCheck:            JCheckBox?          = null
+    private var socialVisitorsCheck:       JCheckBox?          = null
     private var afterlifeNameField:        JTextField?         = null
     private var fontSizeCombo:             JComboBox<String>? = null
     private var colorPanel:                ColorPanel?         = null
@@ -77,6 +78,9 @@ class CodotchiConfigurable : Configurable {
         deathlessCheckbox.toolTipText = "Health never drops below 1. The pet still gets sick, and a senior can still die of old age. A deathless pet stays deathless for life, even if you turn this off, and stays off the leaderboard. Also offered when you hatch a new pet."
         val afterlifeNameTextField = JTextField(16)
         deathlessCheck     = deathlessCheckbox
+        val socialVisitorsCheckbox = JCheckBox("Friend visits (a friend pet visits; at Partner friendship an adult can marry and leave an heir egg; the matchmaker visits unmarried seniors)")
+        socialVisitorsCheckbox.toolTipText = "Turn off to stop friend visits, proposals and the matchmaker. Your pet's friend, partner and heir egg are kept."
+        socialVisitorsCheck = socialVisitorsCheckbox
         afterlifeNameField = afterlifeNameTextField
         val combo   = JComboBox(arrayOf("Small", "Normal", "Large"))
         val cp      = ColorPanel()
@@ -200,6 +204,7 @@ class CodotchiConfigurable : Configurable {
 
         // Deathless + Afterlife (top of the page)
         addFull(panel, deathlessCheckbox)
+        addFull(panel, socialVisitorsCheckbox)
         addLabeled(panel, "Afterlife name:", afterlifeNameTextField)
 
         // General
@@ -312,6 +317,7 @@ class CodotchiConfigurable : Configurable {
         val uiTokenCostOpenCode = tokenCostIncludeOpenCodeCheck?.isSelected ?: true
         val uiTokenCostCopilot = tokenCostIncludeCopilotCheck?.isSelected ?: false
         return (deathlessCheck?.isSelected ?: false) != settings.deathless
+            || (socialVisitorsCheck?.isSelected ?: true) != settings.socialVisitorsEnabled
             || (afterlifeNameField?.text ?: "Afterlife") != settings.afterlifeName
             || uiFont != settings.fontSize
             || uiColor != settings.textColor
@@ -353,6 +359,7 @@ class CodotchiConfigurable : Configurable {
         val settings = service<CodotchiSettings>()
         val prevDeathless = settings.deathless
         settings.deathless              = deathlessCheck?.isSelected ?: false
+        settings.socialVisitorsEnabled  = socialVisitorsCheck?.isSelected ?: true
         settings.afterlifeName          = afterlifeNameField?.text ?: "Afterlife"
         settings.fontSize               = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
         settings.textColor              = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
@@ -407,6 +414,7 @@ class CodotchiConfigurable : Configurable {
     override fun reset() {
         val settings = service<CodotchiSettings>()
         deathlessCheck?.isSelected         = settings.deathless
+        socialVisitorsCheck?.isSelected    = settings.socialVisitorsEnabled
         afterlifeNameField?.text           = settings.afterlifeName
         fontSizeCombo?.selectedItem        = settings.fontSize.replaceFirstChar { it.uppercaseChar() }
         colorPanel?.selectedColor          = hexToColor(settings.textColor)

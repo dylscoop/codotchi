@@ -401,6 +401,7 @@ class CodotchiPlugin : Disposable {
                 devModeAgingMultiplier   = maxOf(1, settings.devModeAgingMultiplier).toDouble(),
                 devModeHealthFloor       = maxOf(0, minOf(100, settings.devModeHealthFloor)),
                 deathless                = settings.deathless,
+                socialEnabled            = settings.socialVisitorsEnabled,
             )
             lastDevMode = gameConfig.devMode
             // BUGFIX-097: compute deep idle with re-entry grace period so the pet
@@ -487,12 +488,13 @@ class CodotchiPlugin : Disposable {
 
             // BUGFIX-002: block care actions server-side while pet is sleeping
             val isSleeping = state?.sleeping ?: false
-            val sleepBlocked = setOf("feed", "play", "pat", "token_cost", "clean", "medicine", "praise", "scold")
+            val sleepBlocked = setOf("feed", "play", "pat", "token_cost", "clean", "medicine", "praise", "scold", "friend_play", "friend_gift")
             if (isSleeping && command in sleepBlocked) return@withLock
 
             // Block all actions while paused, except the pause toggle itself and new_game
             val isPaused = state?.paused ?: false
-            val pauseBlocked = setOf("feed", "snack_consumed", "play", "pat", "token_cost", "sleep", "wake", "clean", "medicine", "scold", "praise", "reset_high_score")
+            val pauseBlocked = setOf("feed", "snack_consumed", "play", "pat", "token_cost", "sleep", "wake", "clean", "medicine", "scold", "praise", "reset_high_score",
+                                     "friend_play", "friend_gift", "accept_proposal", "decline_proposal")
             if (isPaused && command in pauseBlocked) return@withLock
 
             var nextState: PetState? = null
@@ -586,6 +588,27 @@ class CodotchiPlugin : Disposable {
                     nextState = if (state.paused) resume(state) else pause(state)
                 }
 
+                // Social (v2.36.0) — mirrors sidebarProvider.ts
+                "friend_play" -> {
+                    state ?: return@withLock
+                    nextState = playWithFriend(state)
+                }
+
+                "friend_gift" -> {
+                    state ?: return@withLock
+                    nextState = giveFriendGift(state)
+                }
+
+                "accept_proposal" -> {
+                    state ?: return@withLock
+                    nextState = acceptProposal(state)
+                }
+
+                "decline_proposal" -> {
+                    state ?: return@withLock
+                    nextState = declineProposal(state)
+                }
+
                 "new_game" -> {
                     val rawName = (message["name"]    as? String)?.trim() ?: ""
                     val petType = (message["petType"] as? String) ?: "codeling"
@@ -603,7 +626,10 @@ class CodotchiPlugin : Disposable {
                     Afterlife.save(Afterlife.settleBeforeNewPet(Afterlife.load(), state))
                     // The Deathless box on the hatch screen sets the setting for this pet.
                     (message["deathless"] as? Boolean)?.let { settings.deathless = it }
-                    val hatched = createPet(resolvedName, petType, color, unlockedCharacter, state?.trainer)
+                    // An heir egg is only offered once its parent has died; it is used up either way.
+                    val heirName = rawName.ifEmpty { state?.let { "${it.name} II" } ?: defaultName }
+                    val heir = if (message["heir"] == true && state != null && !state.alive) hatchHeir(state, heirName, state.trainer) else null
+                    val hatched = heir ?: createPet(resolvedName, petType, color, unlockedCharacter, state?.trainer)
                     nextState = if (settings.deathless) markDeathless(hatched) else hatched
                     mealsGivenThisCycle = 0
                 }

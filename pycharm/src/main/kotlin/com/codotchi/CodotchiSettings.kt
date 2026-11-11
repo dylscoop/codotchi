@@ -8,6 +8,7 @@ import com.intellij.openapi.components.*
  * Stored in codotchi_settings.xml (separate from game state in codotchi.xml).
  * Fields:
  *  - [deathless]              : deathless mode — health floored at 1, old-age death only, off the leaderboard/high score (default false)
+ *  - [socialVisitorsEnabled]  : friend visits, proposals and the matchmaker (v2.36.0; default true)
  *  - [afterlifeName]          : the user's name for their local Afterlife of buried pets (default "Afterlife")
  *  - [fontSize]               : "small" | "normal" | "large"  — maps to CSS body class
  *  - [textColor]              : CSS hex colour string           — injected as body colour override
@@ -54,6 +55,7 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     /** Plain bean-style class required by IntelliJ's XmlSerializer. */
     class State {
         var deathless: Boolean = false
+        var socialVisitorsEnabled: Boolean = true
         var afterlifeName: String = "Afterlife"
         var fontSize:  String  = "normal"    // "small" | "normal" | "large"
         var textColor: String  = "#cccccc"   // any CSS hex colour
@@ -102,6 +104,10 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
     var deathless: Boolean
         get() = _state.deathless
         set(v) { _state.deathless = v }
+
+    var socialVisitorsEnabled: Boolean
+        get() = _state.socialVisitorsEnabled
+        set(v) { _state.socialVisitorsEnabled = v }
 
     var afterlifeName: String
         get() = _state.afterlifeName
