@@ -274,3 +274,25 @@ describe("social: afterlife memorial", () => {
     assert.equal(afterlifeEntryFor({ ...dead, partner: null }).partnerName, undefined);
   });
 });
+
+describe("social: webview parity", () => {
+  it("FRIENDSHIP_LEVEL_NAMES in sidebar.js matches FRIENDSHIP_LEVELS", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const { FRIENDSHIP_LEVELS } = await import("../../src/gameEngine");
+    const js = fs.readFileSync(path.join(__dirname, "../../../media/sidebar.js"), "utf8");
+    const line = js.split("\n").find((l) => l.includes("var FRIENDSHIP_LEVEL_NAMES ="))!;
+    const parsed = JSON.parse(line.slice(line.indexOf("=") + 1).trim().replace(/;$/, "")) as [number, string][];
+    const fromWebview = parsed.map(([min, name]) => ({ name, min })).reverse();
+    assert.deepEqual(fromWebview, FRIENDSHIP_LEVELS.map((l) => ({ name: l.name, min: l.min })));
+  });
+
+  it("every social event the webview bubbles has text in humaniseEvent", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const js = fs.readFileSync(path.join(__dirname, "../../../media/sidebar.js"), "utf8");
+    const line = js.slice(js.indexOf("var SOCIAL_BUBBLE_EVENTS = "), js.indexOf("];", js.indexOf("var SOCIAL_BUBBLE_EVENTS = ")) + 1);
+    const events = JSON.parse(line.slice(line.indexOf("["))) as string[];
+    for (const e of events) { assert.ok(js.includes(`"${e}":`), `missing label for ${e}`); }
+  });
+});

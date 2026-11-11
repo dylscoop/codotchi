@@ -597,6 +597,32 @@ body.font-large  { font-size: 16px; }
   border-bottom: 1px solid rgba(255,255,255,0.15);
 }
 
+/* ── Social: friend visits, proposals, heir egg (v2.36.0) ── */
+.social-panel {
+  margin: 2px 0 4px;
+  text-align: center;
+}
+.social-line {
+  margin: 2px 0;
+  font-size: 0.83em;
+  opacity: 0.8;
+}
+.social-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 4px;
+}
+.proposal-bar {
+  margin-top: 4px;
+  padding: 4px;
+  border: 1px solid rgba(224, 69, 123, 0.5);
+  border-radius: 4px;
+}
+.heir-option {
+  margin-top: 6px;
+}
+
 /* ── Afterlife ── */
 .deathless-option {
   display: flex;
