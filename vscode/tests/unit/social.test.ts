@@ -20,6 +20,7 @@ import {
   SCHEMA_VERSION,
   VISIT_TICKS,
   VISIT_MIN_GAP_TICKS,
+  visitPacing,
   PARTNER_FRIENDSHIP,
   MATCHMAKER_SENIOR_DAYS,
   PROPOSAL_DECLINE_COOLDOWN_TICKS,
@@ -132,6 +133,19 @@ describe("social: visits", () => {
       assert.equal(tick(ready, true, false, NO_CALLS).visit, null);
       assert.equal(tick({ ...ready, stage: "baby", dayTimer: 3.5, ageDays: 3 }, false, false, NO_CALLS).visit, null);
       assert.equal(tick(ready, false, false, { ...NO_CALLS, socialEnabled: false }).visit, null);
+    });
+  });
+
+  it("dev mode brings the friend devModeAgingMultiplier times faster", () => {
+    assert.deepEqual(visitPacing(NO_CALLS), { minGapTicks: 1200, chancePerTick: 0.001 });
+    const dev = { ...NO_CALLS, devMode: true, devModeAgingMultiplier: 10 };
+    assert.deepEqual(visitPacing(dev), { minGapTicks: 120, chancePerTick: 0.01 });
+    assert.equal(visitPacing({ ...dev, devModeAgingMultiplier: 5000 }).chancePerTick, 1);
+    const at = (gap: number) => makePet({ ticksSinceLastVisit: gap });
+    withRandom(0.005, () => {
+      assert.ok(tick(at(120), false, false, dev).visit, "visits after the shortened gap");
+      assert.equal(tick(at(118), false, false, dev).visit, null);
+      assert.equal(tick(at(VISIT_MIN_GAP_TICKS), false, false, NO_CALLS).visit, null, "0.005 misses the normal chance");
     });
   });
 

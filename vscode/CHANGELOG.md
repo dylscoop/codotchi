@@ -1,11 +1,5 @@
 # Changelog
 
-## [2.36.0] - 2026-11-11
-
-### Added
-
-- **Developer preview: friends, marriage and generations.** Hidden behind developer mode while it's being tested: turn on `codotchi.devModeSocial` (VS Code) or **Friends, marriage & generations (preview)** (PyCharm, Developer section). A CPU friend pet visits; play together and swap gifts to build friendship, marry at Partner level, and hatch the heir egg as the next generation. Not visible to anyone without developer mode; it will be announced when it ships.
-
 ## [2.35.2] - 2026-11-09
 
 ### Fixed

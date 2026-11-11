@@ -2384,6 +2384,15 @@ export const VISIT_TICKS = 60;
 export const VISIT_MIN_GAP_TICKS = 1200;
 /** Chance per active tick, once the gap is over, that the friend visits (~50 min on average). */
 export const VISIT_CHANCE_PER_TICK = 0.001;
+/**
+ * Visit pacing. In dev mode the friend comes devModeAgingMultiplier times
+ * faster (shorter gap, higher chance) so visits can be tested; a visit itself
+ * still lasts VISIT_TICKS.
+ */
+export function visitPacing(config) {
+    const mult = config.devMode ? Math.max(1, config.devModeAgingMultiplier) : 1;
+    return { minGapTicks: Math.ceil(VISIT_MIN_GAP_TICKS / mult), chancePerTick: Math.min(1, VISIT_CHANCE_PER_TICK * mult) };
+}
 /** Friendship gained just by visiting. */
 export const FRIENDSHIP_PER_VISIT = 2;
 /** Chance a visit brings a gift for the pet. */
@@ -2494,7 +2503,7 @@ function tickSocial(prev, next, isIdle, isDeepIdle, config) {
     if (!next.alive || next.paused) {
         return next;
     }
-    if (config.socialEnabled === false) {
+    if (config.socialEnabled !== true) {
         return next.visit ? withSocialPatch(next, { visit: null }, ["friend_visit_ended"]) : next;
     }
     const events = [];
@@ -2529,7 +2538,7 @@ function tickSocial(prev, next, isIdle, isDeepIdle, config) {
     }
     else if (active && !napping && !next.sleeping && next.stage !== "egg" && next.stage !== "baby" &&
         next.activeAttentionCall === null && proposal === null &&
-        ticksSinceLastVisit >= VISIT_MIN_GAP_TICKS && Math.random() < VISIT_CHANCE_PER_TICK) {
+        ticksSinceLastVisit >= visitPacing(config).minGapTicks && Math.random() < visitPacing(config).chancePerTick) {
         if (!friend) {
             friend = { ...randomFriendIdentity([next.name]), friendship: 0, visits: 0 };
             events.push("friend_made");

@@ -173,6 +173,18 @@ class SocialTest {
     }
 
     @Test
+    fun `dev mode brings the friend devModeAgingMultiplier times faster`() {
+        assertEquals(Pair(1200, 0.001), visitPacing(noCalls))
+        val dev = noCalls.copy(devMode = true, devModeAgingMultiplier = 10.0)
+        assertEquals(120, visitPacing(dev).first)
+        assertEquals(0.01, visitPacing(dev).second, 1e-12)
+        assertEquals(1.0, visitPacing(dev.copy(devModeAgingMultiplier = 5000.0)).second)
+        assertNotNull(tickWith(makePet().copy(ticksSinceLastVisit = 120), 0.005, dev).visit)
+        assertNull(tickWith(makePet().copy(ticksSinceLastVisit = 118), 0.005, dev).visit)
+        assertNull(tickWith(makePet().copy(ticksSinceLastVisit = VISIT_MIN_GAP_TICKS), 0.005).visit)
+    }
+
+    @Test
     fun `social is a dev-mode preview - the default config starts no visits`() {
         val ready = makePet().copy(ticksSinceLastVisit = VISIT_MIN_GAP_TICKS)
         assertNull(tickWith(ready, 0.0, DEFAULT_GAME_CONFIG.copy(attentionCallsEnabled = false)).visit)

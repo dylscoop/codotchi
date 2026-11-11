@@ -1550,6 +1550,16 @@ private fun canMarry(state: PetState): Boolean =
  * @param prev - State entering the tick.
  * @param next - State after tickCore().
  */
+/**
+ * Visit pacing as (minGapTicks, chancePerTick). In dev mode the friend comes
+ * devModeAgingMultiplier times faster so visits can be tested; a visit itself
+ * still lasts VISIT_TICKS. Mirrors visitPacing() in gameEngine.ts.
+ */
+fun visitPacing(config: GameConfig): Pair<Int, Double> {
+    val mult = if (config.devMode) maxOf(1.0, config.devModeAgingMultiplier) else 1.0
+    return Pair(ceil(VISIT_MIN_GAP_TICKS / mult).toInt(), minOf(1.0, VISIT_CHANCE_PER_TICK * mult))
+}
+
 private fun tickSocial(
     prev: PetState, next: PetState, isIdle: Boolean, isDeepIdle: Boolean, config: GameConfig, rand: () -> Double,
 ): PetState {
@@ -1587,7 +1597,7 @@ private fun tickSocial(
         }
     } else if (active && !napping && !next.sleeping && next.stage != "egg" && next.stage != "baby" &&
                next.activeAttentionCall == null && proposal == null &&
-               ticksSinceLastVisit >= VISIT_MIN_GAP_TICKS && rand() < VISIT_CHANCE_PER_TICK) {
+               ticksSinceLastVisit >= visitPacing(config).first && rand() < visitPacing(config).second) {
         var f = friend
         if (f == null) {
             val id = randomFriendIdentity(listOf(next.name), rand)

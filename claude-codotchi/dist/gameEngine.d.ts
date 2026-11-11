@@ -242,8 +242,9 @@ export interface GameConfig {
     deathless?: boolean;
     /**
      * Social features (v2.36.0): CPU friends visit, the matchmaker arrives for
-     * unmarried seniors. Optional; absent means true. When false, no visits or
-     * proposals start and an ongoing visit ends.
+     * unmarried seniors. A dev-mode preview until release: only `true` turns it
+     * on (absent means off). When off, no visits or proposals start and an
+     * ongoing visit ends.
      */
     socialEnabled?: boolean;
 }
@@ -925,6 +926,15 @@ export declare const VISIT_TICKS: number;
 export declare const VISIT_MIN_GAP_TICKS: number;
 /** Chance per active tick, once the gap is over, that the friend visits (~50 min on average). */
 export declare const VISIT_CHANCE_PER_TICK: number;
+/**
+ * Visit pacing. In dev mode the friend comes devModeAgingMultiplier times
+ * faster (shorter gap, higher chance) so visits can be tested; a visit itself
+ * still lasts VISIT_TICKS.
+ */
+export declare function visitPacing(config: GameConfig): {
+    minGapTicks: number;
+    chancePerTick: number;
+};
 /** Friendship gained just by visiting. */
 export declare const FRIENDSHIP_PER_VISIT: number;
 /** Chance a visit brings a gift for the pet. */
