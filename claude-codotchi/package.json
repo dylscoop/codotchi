@@ -1,6 +1,6 @@
 {
   "name": "claude-codotchi",
-  "version": "2.35.2",
+  "version": "2.36.0",
   "description": "Claude Code plugin — Tamagotchi-style virtual pet in the statusline, interactable via /codotchi",
   "type": "module",
   "scripts": {

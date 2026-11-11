@@ -168,9 +168,9 @@ than §1 — require design work before implementation.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Matchmaker arrives at senior age if unmarried | `[ ]` | After a configurable number of senior days without a marriage event, a Matchmaker character appears |
-| Auto-pairs pet with a CPU partner | `[ ]` | No second player required; produces an egg after the standard marriage animation |
-| Prevents family line from ending without offspring | `[ ]` | Guards the generation counter against permanent termination |
+| Matchmaker arrives at senior age if unmarried | `[x]` | v2.36.0: after `MATCHMAKER_SENIOR_DAYS` (3) senior game-days without a marriage |
+| Auto-pairs pet with a CPU partner | `[x]` | v2.36.0: the proposal names a generated CPU match; accepting marries and leaves an heir egg |
+| Prevents family line from ending without offspring | `[x]` | v2.36.0: the matchmaker comes back (after a decline cooldown) until the senior marries |
 
 ---
 
@@ -178,12 +178,12 @@ than §1 — require design work before implementation.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Shared session code (VS Code Live Share or similar) | `[ ]` | Two users generate a code to pair their pets |
-| Friendship meter (0–100) gates marriage eligibility | `[ ]` | See §2.3 |
-| Kiss animation on marriage | `[ ]` | Short canvas animation |
-| Female produces two eggs; keeps one, leaves one with male | `[ ]` | |
-| Parent departs after 24 h or offspring evolves to child | `[ ]` | |
-| Generation counter increments | `[ ]` | Requires `generation` stat from `FEATURES.md §1` |
+| Shared session code (VS Code Live Share or similar) | `[ ]` | v2.36.0 marries a CPU friend instead; real-user pairing is FEATURES_SEPTEMBER_2026 §2.4 Phase B |
+| Friendship meter (0–100) gates marriage eligibility | `[x]` | v2.36.0: Partner level (90) |
+| Kiss animation on marriage | `[x]` | v2.36.0: hearts float between the pet and its partner |
+| Female produces two eggs; keeps one, leaves one with male | `[-]` | No sex field: the married pet gets one heir egg |
+| Parent departs after 24 h or offspring evolves to child | `[-]` | The heir egg waits until the parent dies, then hatches as the next pet |
+| Generation counter increments | `[x]` | v2.36.0: `PetState.generation`, +1 for each heir |
 
 ---
 
@@ -191,10 +191,10 @@ than §1 — require design work before implementation.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| `friendship` stat (0–100) in `PetState` | `[ ]` | Tracks closeness to a connected pet |
-| Six friendship levels | `[ ]` | Acquaintance → Buddy → Friend → Good Friend → Best Friend → Partner |
-| Partner level gates marriage | `[ ]` | See §2.2 |
-| Friendship increases via connected play / gift exchange | `[ ]` | |
+| `friendship` stat (0–100) in `PetState` | `[x]` | v2.36.0: `PetState.friend.friendship` (CPU friend) |
+| Six friendship levels | `[x]` | Acquaintance → Buddy → Friend → Good Friend → Best Friend → Partner |
+| Partner level gates marriage | `[x]` | See §2.2 |
+| Friendship increases via connected play / gift exchange | `[x]` | Play together +10, Give gift +15, received gift +5, each visit +2 |
 
 ---
 
@@ -202,9 +202,9 @@ than §1 — require design work before implementation.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Connected pets can send item gifts | `[ ]` | Complement to the friendship and marriage system |
-| Gift item types (food, toy, accessory) | `[ ]` | |
-| Receiving a gift fires a `gift_received` attention call | `[ ]` | |
+| Connected pets can send item gifts | `[x]` | v2.36.0: with the visiting CPU friend, both ways |
+| Gift item types (food, toy, accessory) | `[ ]` | One generic gift for now |
+| Receiving a gift fires a `gift_received` attention call | `[~]` | v2.36.0: an event (`friend_gift_received`) with a bubble, not a new attention call |
 
 ---
 
@@ -249,8 +249,8 @@ Already tracked in `FEATURES.md §1` and `§14` — listed here for parity gap v
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| `generation` int in `PetState` | `[ ]` | Increments when offspring hatches |
-| Displayed in the info line | `[ ]` | e.g. `Gen 3 · Adult · codeling` |
+| `generation` int in `PetState` | `[x]` | v2.36.0 (`SCHEMA_VERSION` 2) |
+| Displayed in the info line | `[x]` | v2.36.0: `Gen 3  |  Age: …` from generation 2 |
 
 ---
 

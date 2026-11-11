@@ -77,6 +77,10 @@ activates the statusline script, registers the event hooks, and makes the
 | `/codotchi wake` | Wake the pet up |
 | `/codotchi clean` | Remove droppings — improves mood and cleanliness |
 | `/codotchi medicine` | Give medicine — takes 3 doses to cure sickness |
+| `/codotchi friend` | Show your pet's friend, partner, heir egg and any marriage proposal |
+| `/codotchi playfriend` | Play with a visiting friend pet (once per visit) |
+| `/codotchi gift` | Give a visiting friend pet a gift (once per visit) |
+| `/codotchi accept` / `/codotchi decline` | Answer a marriage proposal from the friend or the matchmaker |
 | `/codotchi on` | Enable ASCII art in the statusline (default: on) |
 | `/codotchi off` | Disable ASCII art — shows plain text stats instead |
 | `/codotchi rename <name>` | Rename your Claude Code pet |

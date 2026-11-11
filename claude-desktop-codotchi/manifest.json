@@ -34,6 +34,11 @@
     { "name": "codotchi_sleep", "description": "Put your codotchi to sleep (or wake it)" },
     { "name": "codotchi_clean", "description": "Clean up after your codotchi" },
     { "name": "codotchi_medicine", "description": "Give your codotchi medicine when it is sick" },
+    { "name": "codotchi_friend", "description": "Show your codotchi's friend, partner, heir egg and any marriage proposal" },
+    { "name": "codotchi_playfriend", "description": "Play with the friend pet visiting your codotchi" },
+    { "name": "codotchi_gift", "description": "Give the visiting friend pet a gift" },
+    { "name": "codotchi_accept", "description": "Accept a marriage proposal" },
+    { "name": "codotchi_decline", "description": "Turn down a marriage proposal for now" },
     { "name": "codotchi_activity", "description": "Register coding/chat activity so the pet stays happy" }
   ],
   "user_config": {

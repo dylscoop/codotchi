@@ -1,6 +1,21 @@
 # Version History
 
-## v2.35.2 - current
+## v2.36.0 - current
+
+### Changes from v2.35.2 (social features, offline - branch feat/v2.36.0-social-offline)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/*.kt`, `CodotchiPersistence.kt` | `SCHEMA_VERSION` 2: `generation`, `friend`, `visit`, `ticksSinceLastVisit`, `partner`, `heirEgg`, `seniorSinceDay`, `proposal`, `proposalCooldownTicks` (defaults on load); `tickSocial` after `tickCore` (visits, friendship decay, friend proposal at Partner 90+, matchmaker after 3 senior game-days); `playWithFriend`, `giveFriendGift`, `acceptProposal`, `declineProposal`, `hatchHeir`, `createPet(..., lineage)`; XP sources befriend / best_friend / friend_play / friend_gift / marriage / heir; achievements first_friend, best_buds, tied_the_knot, dynasty; `GameConfig.socialEnabled`; terminal helpers `socialSummaryLines` / `socialActionMessage` |
+| `packages/core/src/asciiArt.ts` | status block lists generation, friend, visit, partner, heir egg and proposal |
+| `vscode/src/sidebarProvider.ts`, `extension.ts`, `afterlife.ts`, `package.json` | `friend_play` / `friend_gift` / `accept_proposal` / `decline_proposal` commands; `new_game { heir }` hatches the heir; `codotchi.newGame` keeps a dead pet with an heir egg; `codotchi.social.visitorsEnabled`; afterlife entries carry `generation` / `partnerName` |
+| `pycharm/.../CodotchiPlugin.kt`, `CodotchiConfigurable.kt`, `CodotchiSettings.kt`, `Afterlife.kt`, `CodotchiBrowserPanel.kt` | same commands, heir hatching, Friend visits setting, afterlife fields, social fields in the webview state JSON |
+| `vscode/media/sidebar.js`, `sidebar.html`, `sidebar.css` | visiting friend / partner drawn beside the pet (slides in), hearts on marriage, heir egg on the floor, social panel with Play together / Give gift and the proposal bar, heir option on the hatch screen, "Gen N" in the info line, social bubbles, new achievement rows and hints |
+| `claude-codotchi/scripts/action.mjs`, `commands/codotchi.md`, `opencode-codotchi/src/index.ts`, `commands/codotchi.md`, `claude-desktop-codotchi/src/tools.ts`, `server.ts`, `manifest.json` | social commands / tools |
+| tests | `vscode/tests/unit/social.test.ts`, Kotlin `SocialTest.kt`, `claude-codotchi/tests/integration/socialActions.test.mjs`, desktop and OpenCode status-block tests |
+| README, FEATURES, CHANGELOG, user guides, all manifests | version 2.36.0 |
+
+## v2.35.2
 
 ### Changes from v2.35.1 (deathless for life - branch feat/deathless-mode)
 

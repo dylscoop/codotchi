@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.36.0] - 2026-11-11
+
+### Added
+
+- **Friends visit your pet.** Once your pet is a child, a friend pet drops by now and then and stands beside it for a few minutes. While it's there, press **🤝 Play together** and **🎁 Give gift** (once each per visit) to build friendship: Acquaintance → Buddy → Friend → Good Friend → Best Friend → Partner. Sometimes the friend brings your pet a present. Friendship fades slowly between visits.
+- **Marriage and the heir egg.** When the friend reaches Partner and your pet is an adult or senior, it proposes. Accept (or say **Not yet**), and a married pet's partner stays by its side and an heir egg waits on the floor. An unmarried senior gets a visit from the matchmaker with a match of its own.
+- **Generations.** When a married pet dies, the hatch screen offers its heir: tick **Hatch the heir** and the egg hatches as the next generation, with the family's look. The info line shows **Gen 2**, **Gen 3** and so on, and the Afterlife remembers each pet's generation and partner.
+- **New achievements:** 🤝 First Friend, 💛 Best Buds, 💍 Tied the Knot and 👑 Dynasty.
+- **Terminal and Claude Desktop:** `/codotchi friend`, `playfriend`, `gift`, `accept` and `decline` (Claude Code, OpenCode), and `codotchi_friend`, `codotchi_playfriend`, `codotchi_gift`, `codotchi_accept` and `codotchi_decline` (Claude Desktop). `/codotchi status` lists the friend, partner, heir egg and generation.
+- **Setting:** `codotchi.social.visitorsEnabled` (on by default) turns visits and proposals off.
+
 ## [2.35.2] - 2026-11-09
 
 ### Fixed

@@ -544,8 +544,26 @@ FEATURES_2.md §2.
 | Block / mute a user | `[ ]` | Stored locally |
 
 **Phase C — Connection-era mechanics:** friendship meter, gift exchange,
-matchmaker, marriage and offspring, and the generation counter. The designs are
-already in FEATURES_2.md §2.1-2.4 and §3.3; they build on the Phase B link.
+matchmaker, marriage and offspring, and the generation counter.
+
+**Done offline in v2.36.0** (branch `feat/v2.36.0-social-offline`): the
+friend is a CPU pet, so Phase C shipped before Phase B. One friend slot per
+pet; the same friend keeps visiting. Real-user visits (Phase B) can reuse the
+same engine mechanics later.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| CPU friend visits | `[x]` | Child stage and up, awake, active ticks only: at least `VISIT_MIN_GAP_TICKS` (1200, ~1 h) apart, then 0.1%/tick; a visit lasts `VISIT_TICKS` (60, 3 min) and ends if the pet falls asleep. 30% bring the pet a gift (+10 happiness). Drawn beside the pet, sliding in from the far edge |
+| Friendship meter | `[x]` | 0–100 on `PetState.friend`; six levels (Acquaintance 0, Buddy 15, Friend 35, Good Friend 55, Best Friend 75, Partner 90). +2 per visit, +10 Play together, +15 Give gift (once each per visit), +5 for a received gift; −1 per game-day boundary without a visit |
+| Gift exchange | `[x]` | Pet → friend: **🎁 Give gift** (costs 5 hunger). Friend → pet: event `friend_gift_received`, not an attention call (no new call type) |
+| Marriage | `[x]` | At Partner level an adult / senior gets a `proposal` on the next visit; **💍 Accept** or **Not yet** (300-tick cooldown). Accepting sets `partner` (drawn beside the pet while awake) and `heirEgg`; hearts float. No sex field: any married pet gets the egg |
+| Matchmaker | `[x]` | Unmarried senior, `MATCHMAKER_SENIOR_DAYS` (3) game-days after `seniorSinceDay`: a generated CPU match proposes |
+| Heir egg & generation counter | `[x]` | The egg waits on the floor; when the pet dies the hatch screen offers it (`new_game { heir: true }` → `hatchHeir`, generation + 1, the egg's sprite / type). Used up either way. "Gen N" in the info line from generation 2; Afterlife entries keep `generation` / `partnerName` |
+| Achievements | `[x]` | First Friend, Best Buds, Tied the Knot, Dynasty (2 heirs) on the Keeper path |
+| Terminal plugins | `[x]` | `/codotchi friend | playfriend | gift | accept | decline`; Claude Desktop `codotchi_friend` etc. |
+| Setting | `[x]` | `codotchi.social.visitorsEnabled` (VS Code) / **Friend visits** (PyCharm), default on |
+| Generation on the leaderboard | `[ ]` | Needs a submission schema and validator change |
+| Retire a living pet early to hatch the heir | `[ ]` | Not in v2.36.0 |
 
 ---
 
@@ -854,7 +872,7 @@ Implementation Order" lists.
 - `schemaVersion` on `PetState` (FEATURES.md §11) — **done in v2.29.0** (`SCHEMA_VERSION = 1`)
 - Multiple pets, Phase A (§2.4)
 - Visiting and emotes, Phase B (§2.4)
-- Friendship meter, gift exchange, marriage and offspring with the generation counter, matchmaker NPC (FEATURES_2.md §2.1–2.4, §3.3)
+- Friendship meter, gift exchange, marriage and offspring with the generation counter, matchmaker NPC (FEATURES_2.md §2.1–2.4, §3.3) — **done in v2.36.0** (offline, with a CPU friend; real-user links wait for Phase B)
 - New species: dinosaurs and mythical creatures (§2.5)
 - Crow / magpie thief (§2.5)
 - Seasonal and holiday characters (FEATURES.md §14)
