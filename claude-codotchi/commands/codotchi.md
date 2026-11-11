@@ -3,7 +3,7 @@ description: Interact with your codotchi virtual pet
 ---
 Run the codotchi action specified by $ARGUMENTS and display the result.
 
-Valid actions: `status` `feed` `snack` `pat` `play` `sleep` `wake` `clean` `medicine` `on` `off` `emoji <emoji|auto|off>` `rename <name>` `warnthreshold <amount>` `shoutthreshold <amount>` `orangethreshold <amount>` `redthreshold <amount>` `levels` `speechinterval <seconds|off>` `help`
+Valid actions: `status` `feed` `snack` `pat` `play` `sleep` `wake` `clean` `medicine` `friend` `playfriend` `gift` `accept` `decline` `on` `off` `emoji <emoji|auto|off>` `rename <name>` `warnthreshold <amount>` `shoutthreshold <amount>` `orangethreshold <amount>` `redthreshold <amount>` `levels` `speechinterval <seconds|off>` `help`
 
 If $ARGUMENTS is blank, run `!node "${CLAUDE_PLUGIN_ROOT}/scripts/action.mjs"` to get the pet's current art and stats, wrap that output verbatim in a fenced code block (\`\`\`), then output the following action list below it:
 
@@ -18,6 +18,11 @@ Actions:
 - /codotchi wake         — Wake the pet up
 - /codotchi clean        — Remove droppings
 - /codotchi medicine     — Give medicine (3 doses to cure sickness)
+- /codotchi friend       — Show your pet's friend, partner, heir egg and any proposal
+- /codotchi playfriend   — Play with a visiting friend (once per visit)
+- /codotchi gift         — Give a visiting friend a gift (once per visit)
+- /codotchi accept       — Accept a marriage proposal (from the friend or the matchmaker)
+- /codotchi decline      — Turn down a marriage proposal for now
 - /codotchi on           — Enable ASCII art in the statusline
 - /codotchi off          — Show plain text stats in the statusline
 - /codotchi emoji <emoji> — Switch statusline to a moving emoji, pinned to <emoji>

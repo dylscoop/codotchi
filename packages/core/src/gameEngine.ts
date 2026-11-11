@@ -3198,6 +3198,67 @@ export function hatchHeir(parent: PetState, name: string, trainer: TrainerProgre
   return awardXp(pet, "heir");
 }
 
+/** The social slice of a pet that the terminal text helpers read. */
+export type SocialView = Pick<PetState, "name" | "generation" | "friend" | "visit" | "partner" | "heirEgg" | "proposal">;
+
+/**
+ * Plain-text lines for the terminal plugins' status output: generation,
+ * friend and friendship, an ongoing visit, partner, heir egg and any offer
+ * (with the command that answers it). Empty for a pet with no social life yet.
+ *
+ * @param state - The pet (any object with the social fields).
+ * @param cmd - How the plugin's commands are written, e.g. "/codotchi " or "codotchi_".
+ */
+export function socialSummaryLines(state: SocialView, cmd: string = "/codotchi "): string[] {
+  const lines: string[] = [];
+  if ((state.generation ?? 1) > 1) { lines.push(`👑 Generation ${state.generation}`); }
+  const f = state.friend;
+  if (state.visit && f) {
+    lines.push(`👋 ${f.name} is visiting! Try ${cmd}playfriend or ${cmd}gift`);
+  }
+  if (f && !(state.partner && state.partner.name === f.name)) {
+    lines.push(`🤝 Friend: ${f.name} — ${friendshipLevel(f.friendship)} (${Math.round(f.friendship)}/100)`);
+  }
+  if (state.partner) {
+    lines.push(`💍 Married to ${state.partner.name}` + (f && state.partner.name === f.name ? ` (${Math.round(f.friendship)}/100)` : ""));
+  }
+  if (state.heirEgg) { lines.push("🥚 An heir egg is waiting for the next generation"); }
+  const p = state.proposal;
+  if (p) {
+    lines.push((p.from === "matchmaker"
+      ? `💌 The matchmaker brought ${p.name} to meet ${state.name}.`
+      : `💍 ${p.name} wants to marry ${state.name}!`) + ` ${cmd}accept or ${cmd}decline`);
+  }
+  return lines;
+}
+
+/**
+ * One-line result for a social action (playWithFriend, giveFriendGift,
+ * acceptProposal, declineProposal), read from the events it emitted.
+ */
+export function socialActionMessage(state: SocialView & Pick<PetState, "events">): string {
+  const e = state.events;
+  const f = state.friend ? state.friend.name : "your friend";
+  const level = state.friend ? ` Friendship: ${friendshipLevel(state.friend.friendship)} (${Math.round(state.friend.friendship)}/100).` : "";
+  const best = e.includes("best_friends") ? ` ${state.name} and ${f} are best friends now! 💛` : "";
+  if (e.includes("friend_play_refused")) {
+    return !state.visit ? "No friend is visiting right now."
+      : state.visit.played ? `${state.name} already played with ${f} this visit.`
+      : `${state.name} is too tired to play right now.`;
+  }
+  if (e.includes("friend_gift_refused")) {
+    return !state.visit ? "No friend is visiting right now." : `${state.name} already gave ${f} a gift this visit.`;
+  }
+  if (e.includes("proposal_refused")) { return "There's no proposal to answer."; }
+  if (e.includes("married")) {
+    return `💍 ${state.name} married ${state.partner ? state.partner.name : f}! An heir egg is waiting for the next generation.`;
+  }
+  if (e.includes("proposal_declined")) { return `${state.name} said "not yet".`; }
+  if (e.includes("friend_played")) { return `${state.name} and ${f} played together!${level}${best}`; }
+  if (e.includes("friend_gift_given")) { return `${state.name} shared a treat with ${f}.${level}${best}`; }
+  return "";
+}
+
 /** Parse a PetIdentity from saved JSON; null when it is missing or malformed. */
 function deserialiseIdentity(raw: unknown): PetIdentity | null {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) { return null; }

@@ -3,7 +3,7 @@
  *
  * Usage: node action.mjs <action> [value|name]
  *
- * Actions: status feed snack pat play sleep wake clean medicine on off rename warnthreshold shoutthreshold orangethreshold redthreshold levels speechinterval emoji
+ * Actions: status feed snack pat play sleep wake clean medicine friend playfriend gift accept decline on off rename warnthreshold shoutthreshold orangethreshold redthreshold levels speechinterval emoji
  *
  * Prints ANSI art + status block or plain confirmation text to stdout.
  * Claude Code surfaces this output as the slash command result.
@@ -317,6 +317,28 @@ async function main() {
           showArt = false;
         }
       }
+      break;
+    }
+
+    case "friend": {
+      // Friend, visit, partner, heir egg and any offer (v2.36.0)
+      const lines = ge.socialSummaryLines(state);
+      message = lines.length > 0
+        ? `${state.name}'s friends and family:\n${lines.join("\n")}`
+        : `${state.name} hasn't made a friend yet — a friend pet drops by now and then once your pet is a child.`;
+      break;
+    }
+
+    case "playfriend":
+    case "gift":
+    case "accept":
+    case "decline": {
+      const next = action === "playfriend" ? ge.playWithFriend(state)
+        : action === "gift" ? ge.giveFriendGift(state)
+        : action === "accept" ? ge.acceptProposal(state)
+        : ge.declineProposal(state);
+      if (!next.events.some((e) => e.endsWith("_refused"))) { state = next; }
+      message = ge.socialActionMessage(next);
       break;
     }
 

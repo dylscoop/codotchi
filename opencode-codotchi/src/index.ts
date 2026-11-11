@@ -68,6 +68,12 @@ import {
   DEFAULT_GAME_CONFIG,
   TICK_INTERVAL_SECONDS,
   CODE_ACTIVITY_THROTTLE_SECONDS,
+  playWithFriend,
+  giveFriendGift,
+  acceptProposal,
+  declineProposal,
+  socialSummaryLines,
+  socialActionMessage,
 } from "./gameEngine.js";
 import { sealSerialisedState, verifySeal } from "./integrity.js";
 import { translateV2Event, summariseNotification } from "./v2Events.js";
@@ -1425,7 +1431,7 @@ const plugin: Plugin = async (ctx) => {
       "This tool reads state from VS Code, PyCharm, and the local OpenCode pet — do NOT use any other codotchi tool.",
     args: {
       action: tool.schema
-        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
+        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
         .describe("The action to perform"),
       value: tool.schema
         .number()
@@ -1569,6 +1575,8 @@ const plugin: Plugin = async (ctx) => {
                   sleeping: s.sleeping, poops: s.poops, spriteType: s.spriteType,
                   petLevel: s.petLevel, trainer: s.trainer,
                   spawnedAt: s.spawnedAt, dailies: s.dailies, levels: levelsEnabled,
+                  generation: s.generation, friend: s.friend, visit: s.visit, partner: s.partner,
+                  heirEgg: s.heirEgg, proposal: s.proposal,
                 })
               : "";
             // Each pet prints once: the stat block, or a one-line summary when art is off.
@@ -1718,6 +1726,39 @@ const plugin: Plugin = async (ctx) => {
                : `[${pLabel}] Played with ${next.name}. Happiness: ${next.happiness}, Energy: ${next.energy}.`));
            }
            return ret(notification + playLines.join("\n\n"));
+         }
+
+         case "friend":
+         case "playfriend":
+         case "gift":
+         case "accept":
+         case "decline": {
+           // Social (v2.36.0): friend visits, gifts and proposals live on the IDE pets.
+           const socialLines: string[] = [];
+           for (const p of alivePets) {
+             if (p.ide === "opencode") {
+               if (action === "friend") { socialLines.push(`[OpenCode] I'm just a companion — no visitors here.`); }
+               continue;
+             }
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             if (action === "friend") {
+               const lines = socialSummaryLines(p.state);
+               socialLines.push(`[${pLabel}] ` + (lines.length > 0
+                 ? `${p.state.name}'s friends and family:\n${lines.join("\n")}`
+                 : `${p.state.name} hasn't made a friend yet — a friend pet drops by now and then once your pet is a child.`));
+               continue;
+             }
+             const next = action === "playfriend" ? playWithFriend(p.state)
+               : action === "gift" ? giveFriendGift(p.state)
+               : action === "accept" ? acceptProposal(p.state)
+               : declineProposal(p.state);
+             if (!next.events.some((e) => e.endsWith("_refused"))) {
+               setPetState(p.ide, next);
+               saveIDEState(p.ide);
+             }
+             socialLines.push(`[${pLabel}] ${socialActionMessage(next)}`);
+           }
+           return ret(notification + (socialLines.length > 0 ? socialLines.join("\n\n") : "No active IDE pet."));
          }
 
          case "sleep": {
@@ -2068,7 +2109,7 @@ const CODOTCHI_TOOL_INPUT = {
   properties: {
     action: {
       type: "string",
-      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
+      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
       description: "The action to perform",
     },
     value: { type: "number", description: "Numeric USD value for warnthreshold or shoutthreshold actions" },

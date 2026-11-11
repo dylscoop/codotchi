@@ -12,7 +12,7 @@
  *   - buildStatusBlock() — compact stat bar for the /codotchi status command, returned as string
  *   - buildToast()       — one-line notification string
  */
-import { DailyChallenges } from "./gameEngine.js";
+import { DailyChallenges, type SocialView } from "./gameEngine.js";
 /** Wrap text in an ANSI colour code and reset. */
 export declare function colour(text: string, ansiCode: string): string;
 /**
@@ -78,6 +78,15 @@ export declare function buildStatusBlock(state: {
     dailies?: DailyChallenges;
     /** Levels, achievements and daily challenges are a beta feature: shown only when true. */
     levels?: boolean;
+    /** Social fields (v2.36.0): friend, visit, partner, heir egg, offer and generation lines. */
+    generation?: number;
+    friend?: SocialView["friend"];
+    visit?: SocialView["visit"];
+    partner?: SocialView["partner"];
+    heirEgg?: SocialView["heirEgg"];
+    proposal?: SocialView["proposal"];
+    /** How commands are written in the social lines (default "/codotchi "). */
+    socialCmd?: string;
 }): string;
 /**
  * Format a token count as a human-readable string.

@@ -14,7 +14,7 @@
  *   - buildStatusBlock() — compact stat bar for the /codotchi status command, returned as string
  *   - buildToast()       — one-line notification string
  */
-import { ACHIEVEMENTS, dailiesView, levelProgress } from "./gameEngine.js";
+import { ACHIEVEMENTS, dailiesView, levelProgress, socialSummaryLines } from "./gameEngine.js";
 // ---------------------------------------------------------------------------
 // ANSI helpers
 // ---------------------------------------------------------------------------
@@ -698,6 +698,13 @@ export function buildStatusBlock(state) {
     lines.push(statBar("Discipline", state.discipline));
     lines.push("");
     lines.push(`  ${FG_CYAN}Weight${RESET}        ${state.weight} / 99`);
+    const social = socialSummaryLines({
+        name: state.name, generation: state.generation ?? 1, friend: state.friend ?? null, visit: state.visit ?? null,
+        partner: state.partner ?? null, heirEgg: state.heirEgg ?? null, proposal: state.proposal ?? null,
+    }, state.socialCmd);
+    for (const s of social) {
+        lines.push(`  ${s}`);
+    }
     if (state.trainer && trainerLevel) {
         const xpPct = (100 * trainerLevel.intoLevel) / trainerLevel.needed;
         const filled = Math.round(xpPct / 10);

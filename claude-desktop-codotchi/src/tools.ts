@@ -22,6 +22,12 @@ import {
   progressionMessage,
   ACHIEVEMENTS,
   dailiesView,
+  playWithFriend,
+  giveFriendGift,
+  acceptProposal,
+  declineProposal,
+  socialSummaryLines,
+  socialActionMessage,
 } from "./gameEngine.js";
 import { buildSpeechBubble, stripAnsi } from "./asciiArt.js";
 import {
@@ -70,8 +76,10 @@ function renderText(state: PetState, _session: { interactionsToday: number; trea
     return `${state.name} is no longer with us. Start a new chat to hatch a fresh pet.`;
   }
   const refusal = state.events.find((e) => REFUSAL_MESSAGES[e]);
-  const message = refusal ? REFUSAL_MESSAGES[refusal] : (MOOD_MESSAGES[state.mood] ?? "Hello!");
-  const bubble = stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop"));
+  const socialMsg = socialActionMessage(state);
+  const message = refusal ? REFUSAL_MESSAGES[refusal] : socialMsg || (MOOD_MESSAGES[state.mood] ?? "Hello!");
+  const bubble = [stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop")),
+    ...socialSummaryLines(state, "codotchi_")].join("\n");
   if (!readConfig().levels) { return bubble; }
   const unlocks = state.events.map((e) => progressionMessage(e, state)).filter((m): m is string => m !== null);
   const unlockable = ACHIEVEMENTS.filter((a) => !a.comingSoon).length;
@@ -169,6 +177,21 @@ export function clean(cfg: DesktopConfig): ToolPayload {
   const { state, mealsGivenThisCycle } = loadPet(cfg);
   const next = applyDevMode(engineClean(state), cfg);
   savePet(next, mealsGivenThisCycle);
+  return payload(next, loadSession());
+}
+
+/**
+ * Social actions (v2.36.0): play with / give a gift to a visiting friend, or
+ * answer a marriage proposal. A refused action is not saved.
+ */
+export function socialAction(cfg: DesktopConfig, kind: "playfriend" | "gift" | "accept" | "decline"): ToolPayload {
+  const { state, mealsGivenThisCycle } = loadPet(cfg);
+  const acted = kind === "playfriend" ? playWithFriend(state)
+    : kind === "gift" ? giveFriendGift(state)
+    : kind === "accept" ? acceptProposal(state)
+    : declineProposal(state);
+  const next = applyDevMode(acted, cfg);
+  if (!acted.events.some((e) => e.endsWith("_refused"))) { savePet(next, mealsGivenThisCycle); }
   return payload(next, loadSession());
 }
 
