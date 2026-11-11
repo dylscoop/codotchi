@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import com.codotchi.engine.PetState
 import com.codotchi.engine.bossAccessFor
 import com.codotchi.engine.dailiesView
+import com.codotchi.engine.isDeathlessPet
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
@@ -121,7 +122,7 @@ class CodotchiBrowserPanel(
         val liveTotalJson = if (liveTotalScores != null) liveTotalScores.toString() else "null"
         val liveLastPushedJson = if (liveLastPushedAt != null) liveLastPushedAt.toString() else "null"
         val lbUsernameJson = if (leaderboardGithubUsername != null) "\"${leaderboardGithubUsername.replace("\"", "\\\"")}\"" else "null"
-        val payload = """{"type":"stateUpdate","state":$stateJson,"dailies":$dailiesJson,"levelsEnabled":${service<CodotchiSettings>().enableLevels},"bossAccess":"${bossAccessFor(devMode, service<CodotchiSettings>().devModeBossBattle, service<CodotchiSettings>().devModeBossBattleAlways)}","socialEnabled":${devMode && service<CodotchiSettings>().devModeSocial},"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","cravingItem":${jsonStringOrNull(cravingItemFor(state))},"gift":${giftJson(giftFor(state))},"leaderboardAvailable":true,"leaderboardBlockedReason":${jsonStringOrNull(leaderboardBlockedReason)},"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson,"leaderboardGithubUsername":$lbUsernameJson,"leaderboardAuthExpired":$leaderboardAuthExpired,"deathless":${service<CodotchiSettings>().deathless},"afterlife":${gson.toJson(Afterlife.view(Afterlife.load(), state, service<CodotchiSettings>().afterlifeName))}}"""
+        val payload = """{"type":"stateUpdate","state":$stateJson,"dailies":$dailiesJson,"levelsEnabled":${service<CodotchiSettings>().enableLevels},"bossAccess":"${bossAccessFor(devMode, service<CodotchiSettings>().devModeBossBattle, service<CodotchiSettings>().devModeBossBattleAlways)}","socialEnabled":${devMode && service<CodotchiSettings>().devModeSocial},"mealsGivenThisCycle":$mealsGivenThisCycle,"highScore":$highScoreJson,"devMode":$devMode,"unlockedCharacter":$unlockedCharJson,"defaultPetName":"$defaultPetName","cravingItem":${jsonStringOrNull(cravingItemFor(state))},"gift":${giftJson(giftFor(state))},"leaderboardAvailable":true,"leaderboardBlockedReason":${jsonStringOrNull(leaderboardBlockedReason)},"liveRank":$liveRankJson,"liveTotalScores":$liveTotalJson,"liveSubscribed":$liveSubscribed,"liveLastPushedAt":$liveLastPushedJson,"leaderboardGithubUsername":$lbUsernameJson,"leaderboardAuthExpired":$leaderboardAuthExpired,"deathless":${isDeathlessPet(state)},"afterlife":${gson.toJson(Afterlife.view(Afterlife.load(), state, service<CodotchiSettings>().afterlifeName))}}"""
         val js = "window.dispatchEvent(new MessageEvent('message', {data: $payload}));"
         browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
     }

@@ -400,7 +400,6 @@ class CodotchiPlugin : Disposable {
                 devMode                  = settings.devModeEnabled && settings.developerPasscode == "1234",
                 devModeAgingMultiplier   = maxOf(1, settings.devModeAgingMultiplier).toDouble(),
                 devModeHealthFloor       = maxOf(0, minOf(100, settings.devModeHealthFloor)),
-                deathless                = settings.deathless,
                 socialEnabled            = isDevModeActive() && settings.devModeSocial, // dev-mode preview until release
             )
             lastDevMode = gameConfig.devMode
@@ -588,6 +587,12 @@ class CodotchiPlugin : Disposable {
                     nextState = if (state.paused) resume(state) else pause(state)
                 }
 
+                // Continue with the menu's Deathless box ticked, after the user confirmed.
+                "make_deathless" -> {
+                    if (state == null || !state.alive) return@withLock
+                    nextState = markDeathless(state)
+                }
+
                 // Social (v2.36.0) — mirrors sidebarProvider.ts
                 "friend_play" -> {
                     state ?: return@withLock
@@ -624,13 +629,13 @@ class CodotchiPlugin : Disposable {
                     }
                     val unlockedCharacter = customChar?.spriteType
                     Afterlife.save(Afterlife.settleBeforeNewPet(Afterlife.load(), state))
-                    // The Deathless box on the hatch screen sets the setting for this pet.
-                    (message["deathless"] as? Boolean)?.let { settings.deathless = it }
+                    // Deathless is chosen on the hatch screen, per pet (there is no setting).
+                    val deathless = message["deathless"] == true
                     // An heir egg is only offered once its parent has died; it is used up either way.
                     val heirName = rawName.ifEmpty { state?.let { "${it.name} II" } ?: defaultName }
                     val heir = if (message["heir"] == true && state != null && !state.alive) hatchHeir(state, heirName, state.trainer) else null
                     val hatched = heir ?: createPet(resolvedName, petType, color, unlockedCharacter, state?.trainer)
-                    nextState = if (settings.deathless) markDeathless(hatched) else hatched
+                    nextState = if (deathless) markDeathless(hatched) else hatched
                     mealsGivenThisCycle = 0
                 }
 
@@ -1239,13 +1244,6 @@ class CodotchiPlugin : Disposable {
             resetFloorSnacks()
             browserPanels.forEach { it.reload() }
             broadcastState()
-        }
-    }
-
-    /** Deathless was switched on in Settings: mark the living pet right away. */
-    fun onDeathlessEnabled() {
-        stateLock.withLock {
-            currentState = currentState?.takeIf { it.alive }?.let { markDeathless(it) } ?: currentState
         }
     }
 

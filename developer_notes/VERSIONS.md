@@ -16,6 +16,7 @@
 | `claude-codotchi/scripts/action.mjs`, `commands/codotchi.md`, `opencode-codotchi/src/index.ts`, `commands/codotchi.md`, `claude-desktop-codotchi/src/tools.ts`, `server.ts`, `manifest.json` | social commands / tools |
 | tests | `vscode/tests/unit/social.test.ts`, Kotlin `SocialTest.kt`, `claude-codotchi/tests/integration/socialActions.test.mjs`, desktop and OpenCode status-block tests |
 | README, FEATURES, CHANGELOG, user guides, all manifests | version 2.36.0 |
+| `vscode/package.json`, `extension.ts`, `sidebarProvider.ts`, `media/sidebar.*`, `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `CodotchiPlugin.kt`, `CodotchiBrowserPanel.kt` | Deathless is no longer a setting (`codotchi.deathless` / the PyCharm checkbox are gone): it is chosen on the menu. Ticked at hatch → deathless pet; ticked + **Continue** on a living pet → confirm, then `make_deathless` marks it. The `deathless` flag sent to the webview is now `isDeathlessPet(state)` |
 
 ## v2.35.2
 

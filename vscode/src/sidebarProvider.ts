@@ -36,6 +36,7 @@ import {
   resetFloorSnacks,
   dailiesView,
   markDeathless,
+  isDeathlessPet,
   playWithFriend,
   giveFriendGift,
   acceptProposal,
@@ -638,6 +639,12 @@ export class SidebarProvider
         nextState = state.paused ? resume(state) : pause(state);
         break;
 
+      case "make_deathless":
+        // Continue with the menu's Deathless box ticked, after the user confirmed.
+        if (state === null || !state.alive) { return; }
+        nextState = markDeathless(state);
+        break;
+
       case "friend_play":
         if (state === null) { return; }
         nextState = playWithFriend(state);
@@ -671,11 +678,8 @@ export class SidebarProvider
         const petType = message.petType ?? "codeling";
         const unlockedCharacter = customChar?.spriteType ?? null;
         saveAfterlife(this.context, settleBeforeNewPet(loadAfterlife(this.context), state));
-        // The Deathless box on the hatch screen sets the setting for this pet.
-        const deathless = typeof message.deathless === "boolean" ? message.deathless : cfg.get<boolean>("deathless", false);
-        if (deathless !== cfg.get<boolean>("deathless", false)) {
-          void cfg.update("deathless", deathless, vscode.ConfigurationTarget.Global);
-        }
+        // Deathless is chosen on the hatch screen, per pet (there is no setting).
+        const deathless = message.deathless === true;
         const trainer = state?.trainer ?? loadTrainer(this.context);
         // An heir egg is only offered once its parent has died; it is used up either way.
         const heirName = userTyped || (state ? `${state.name} II` : defaultName);
@@ -873,7 +877,7 @@ export class SidebarProvider
       liveLastPushedAt,
       leaderboardGithubUsername: this.leaderboardGithubUsername,
       leaderboardAuthExpired: this.isLeaderboardAuthExpired(),
-      deathless: vscode.workspace.getConfiguration("codotchi").get<boolean>("deathless", false),
+      deathless: isDeathlessPet(state),
       afterlife: this.afterlifeFor(state),
     });
   }

@@ -53,7 +53,12 @@
       <input type="checkbox" id="setup-deathless" />
       ♾ Deathless
     </label>
-    <p class="deathless-hint">Can't die from neglect, only of old age. Not eligible for the leaderboard or high score.</p>
+    <p class="deathless-hint">Can't die from neglect, only of old age. Not eligible for the leaderboard or high score. Applies when the pet hatches; tick it and press Continue to make your current pet deathless.</p>
+    <div id="deathless-confirm" class="reset-hs-confirm hidden">
+      <span id="deathless-confirm-text" class="reset-hs-question"></span>
+      <button id="btn-deathless-yes" class="action-btn danger-btn">Make deathless</button>
+      <button id="btn-deathless-cancel" class="link-btn">Cancel</button>
+    </div>
 
     <div id="heir-option" class="heir-option hidden">
       <label class="deathless-option" for="setup-heir">

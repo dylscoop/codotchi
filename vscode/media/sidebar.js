@@ -255,6 +255,12 @@
   const devModeBanner    = document.getElementById("dev-mode-banner");
   const deathlessBanner     = document.getElementById("deathless-banner");
   const setupDeathless      = document.getElementById("setup-deathless");
+  const deathlessConfirm    = document.getElementById("deathless-confirm");
+  const deathlessConfirmText = document.getElementById("deathless-confirm-text");
+  const btnDeathlessYes     = document.getElementById("btn-deathless-yes");
+  const btnDeathlessCancel  = document.getElementById("btn-deathless-cancel");
+  /** Whether the current pet is deathless (from the host). */
+  var petIsDeathless = false;
   const afterlifeChoice     = document.getElementById("afterlife-choice");
   const afterlifeChoiceDone = document.getElementById("afterlife-choice-done");
   const btnAfterlifeEdit        = document.getElementById("btn-afterlife-edit");
@@ -564,9 +570,31 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   if (btnContinue) {
     btnContinue.addEventListener("click", function () {
+      // Deathless ticked on a living pet that isn't deathless yet: confirm first.
+      if (setupDeathless && setupDeathless.checked && lastState && lastState.alive && !petIsDeathless && deathlessConfirm) {
+        if (deathlessConfirmText) {
+          deathlessConfirmText.textContent = "Make " + lastState.name + " deathless? It can't die from neglect, " +
+            "but it leaves the leaderboard and high score for good.";
+        }
+        deathlessConfirm.classList.remove("hidden");
+        return;
+      }
       // After death, Continue returns to the dead-screen summary; otherwise
       // it returns to the live game screen.
       showScreen(lastState && !lastState.alive ? "dead" : "game");
+    });
+  }
+  if (btnDeathlessYes) {
+    btnDeathlessYes.addEventListener("click", function () {
+      if (deathlessConfirm) { deathlessConfirm.classList.add("hidden"); }
+      vscode.postMessage({ command: "make_deathless" });
+      petIsDeathless = true;
+      showScreen("game");
+    });
+  }
+  if (btnDeathlessCancel) {
+    btnDeathlessCancel.addEventListener("click", function () {
+      if (deathlessConfirm) { deathlessConfirm.classList.add("hidden"); }
     });
   }
 
@@ -5080,10 +5108,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (deathlessBanner) {
       deathlessBanner.classList.toggle("hidden", !(message.deathless && state && state.alive));
     }
-    // The setup screen's Deathless box follows the setting, except while the
-    // user is on the setup screen (so a tick doesn't undo their click).
+    // The menu's Deathless box starts ticked for a deathless pet, except while
+    // the user is on the menu (so a tick doesn't undo their click).
+    petIsDeathless = !!message.deathless;
     if (setupDeathless && currentScreen !== "setup") {
-      setupDeathless.checked = !!message.deathless;
+      setupDeathless.checked = petIsDeathless;
+      if (deathlessConfirm) { deathlessConfirm.classList.add("hidden"); }
     }
 
     renderAfterlife(message.afterlife, state);

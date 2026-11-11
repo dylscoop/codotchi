@@ -5,6 +5,8 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
   createPet,
   tick,
@@ -188,5 +190,37 @@ describe("afterlife", () => {
     assert.equal(afterlifeView(EMPTY_AFTERLIFE, null, "   ").name, "Afterlife");
     assert.equal(afterlifeView(EMPTY_AFTERLIFE, null, undefined).name, "Afterlife");
     assert.equal(afterlifeView(EMPTY_AFTERLIFE, null, "x".repeat(50)).name.length, 32);
+  });
+});
+
+describe("deathless is a menu choice, not a setting", () => {
+  const root = path.join(__dirname, "../../..");
+  const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
+
+  it("has no codotchi.deathless setting in VS Code or PyCharm", () => {
+    const pkg = JSON.parse(read("package.json"));
+    for (const section of pkg.contributes.configuration) {
+      assert.ok(!("codotchi.deathless" in section.properties));
+    }
+    assert.ok(!/var deathless:/.test(read("../pycharm/src/main/kotlin/com/codotchi/CodotchiSettings.kt")));
+    assert.ok(!/deathlessCheck/.test(read("../pycharm/src/main/kotlin/com/codotchi/CodotchiConfigurable.kt")));
+  });
+
+  it("Continue with Deathless ticked asks first, then sends make_deathless", () => {
+    const html = read("media/sidebar.html");
+    assert.ok(html.includes("id=\"deathless-confirm\"") && html.includes("id=\"btn-deathless-yes\""));
+    const js = read("media/sidebar.js");
+    const onContinue = js.slice(js.indexOf("btnContinue.addEventListener"), js.indexOf("if (btnDeathlessYes)"));
+    assert.ok(onContinue.includes("setupDeathless.checked") && onContinue.includes("deathlessConfirm.classList.remove(\"hidden\")"));
+    assert.ok(/btnDeathlessYes[\s\S]{0,300}command: "make_deathless"/.test(js));
+  });
+
+  it("both hosts mark the living pet on make_deathless and report the pet's own mark", () => {
+    const ts = read("src/sidebarProvider.ts");
+    assert.ok(/case "make_deathless":[\s\S]{0,200}markDeathless\(state\)/.test(ts));
+    assert.ok(ts.includes("deathless: isDeathlessPet(state)"));
+    const kt = read("../pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt");
+    assert.ok(/"make_deathless" -> \{[\s\S]{0,200}markDeathless\(state\)/.test(kt));
+    assert.ok(read("../pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt").includes("\"deathless\":${isDeathlessPet(state)}"));
   });
 });

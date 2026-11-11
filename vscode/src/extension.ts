@@ -21,7 +21,6 @@ import {
   GameConfig,
   applyOfflineDecay,
   isDeathlessPet,
-  markDeathless,
   progressionMessage,
   tick,
   TICK_INTERVAL_SECONDS,
@@ -486,7 +485,6 @@ export function activate(context: vscode.ExtensionContext): void {
       devMode:                  cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234",
       devModeAgingMultiplier:   Math.max(1, cfg.get<number>("devModeAgingMultiplier", 10)),
       devModeHealthFloor:       Math.max(0, Math.min(100, cfg.get<number>("devModeHealthFloor", 1))),
-      deathless:                cfg.get<boolean>("deathless", false),
       // Dev-mode preview until release (like codotchi.devModeBossBattle).
       socialEnabled:            cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234"
                                 && cfg.get<boolean>("devModeSocial", false),
@@ -644,18 +642,13 @@ export function activate(context: vscode.ExtensionContext): void {
       })
     );
 
-    // Deathless toggled in settings: mark the pet right away
-    // and refresh the sidebar so the badge and leaderboard state update.
+    // Afterlife renamed: refresh the sidebar.
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration("codotchi.afterlifeName")) {
           if (currentState !== null) { handleStateUpdate({ ...currentState, events: [] }, false); }
           else { sidebar?.postNoGame(currentHighScore); }
         }
-        if (!e.affectsConfiguration("codotchi.deathless") || currentState === null) { return; }
-        const on = vscode.workspace.getConfiguration("codotchi").get<boolean>("deathless", false);
-        const next = on && currentState.alive ? markDeathless(currentState) : currentState;
-        handleStateUpdate({ ...next, events: [] }, false);
       })
     );
 
