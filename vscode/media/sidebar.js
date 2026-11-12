@@ -3655,6 +3655,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _pr = state && state.proposal ? state.proposal.name : "someone";
     var _pa = state && state.partner ? state.partner.name : "their sweetheart";
     var labels = {
+      "aged_overnight":          n + " aged a day whilst you were gone",
       "friend_made":             "",   // silent: the visit bubble says it
       "friend_visit_started":    _fr + " dropped by to visit " + n + "!",
       "friend_visit_ended":      _fr + " waved goodbye.",

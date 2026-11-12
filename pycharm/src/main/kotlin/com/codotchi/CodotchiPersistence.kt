@@ -375,6 +375,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val breakNapTicksRemaining: Int? = null,
         val cravingFood: String? = null,
         val devModeEverUsed: Boolean? = null,        // absent in saves before leaderboard integrity
+        val lastAgeBumpDate: String? = null,         // absent in saves before the daily age bump
         val leaderboardIneligible: String? = null,   // absent in saves before leaderboard integrity
         val schemaVersion: Int? = null,              // absent in saves before v2.29.0
         val petXp: Int? = null,
@@ -463,6 +464,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             breakNapTicksRemaining     = r.breakNapTicksRemaining     ?: 0,
             cravingFood                = r.cravingFood?.takeIf { it == "meal" || it == "snack" },
             devModeEverUsed            = r.devModeEverUsed            ?: false,
+            lastAgeBumpDate            = r.lastAgeBumpDate,
             leaderboardIneligible      = r.leaderboardIneligible?.takeIf { it == "tampered" || it == "unverified" || it == "deathless" } ?: "",
             // Version 0 (no schemaVersion) → 1: progression fields start empty.
             schemaVersion              = SCHEMA_VERSION,
@@ -544,6 +546,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         breakNapTicksRemaining     = s.breakNapTicksRemaining,
         cravingFood                = s.cravingFood,
         devModeEverUsed            = s.devModeEverUsed,
+        lastAgeBumpDate            = s.lastAgeBumpDate,
         leaderboardIneligible      = s.leaderboardIneligible,
         schemaVersion              = s.schemaVersion,
         petXp                      = s.petXp,
