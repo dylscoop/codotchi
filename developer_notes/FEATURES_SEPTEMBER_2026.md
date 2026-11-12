@@ -835,6 +835,13 @@ Most valuable first.
 | 11 | Name mismatch | `[x]` | Done in v2.21.3. `asciiArt.ts` `SPRITE_HEAD` uses `goat` but the engine calls it `sheep`; no heads for kangaroo, roo, tim, stu |
 | 12 | Tests and CI | `[x]` | Done in v2.21.3. `usageBackfill.test.ts` isn't in opencode's `test` script; claude-desktop has no tests; no sprite-data test; add a GitHub Actions workflow that runs every suite |
 | 13 | Doc drift | `[x]` | Done in v2.21.3. See the list below |
+| 14 | README quick-start guide | `[ ]` | **Blocks 3.0.0.** Short install → open panel → hatch → care guide at the top of `vscode/README.md` and `pycharm/README.md` (mirror into `plugin.xml`); point to it from the root `README.md` |
+| 15 | Shorten the READMEs | `[ ]` | **Blocks 3.0.0.** Cut them down a lot: one line per feature in Features, and trim the Actions, Mini-games and Today's Token Cost prose |
+| 16 | Remove Boss Battle from the READMEs | `[ ]` | **Blocks 3.0.0.** Still a dev-mode preview. Drop it from the Play row in the Actions table and from the Mini-games table in both READMEs and `plugin.xml` |
+| 17 | Deathless mode section | `[ ]` | **Blocks 3.0.0.** A short section of its own: no death from neglect (health ≥ 1), still gets sick and dies of old age, off the leaderboard and high score, convert the current pet from the menu |
+| 18 | Update README header sprites | `[ ]` | **Blocks 3.0.0.** `dog_adult_1x.png`, `dragon_adult_1x.png`, `kangaroo_adult_1x.png` at repo root; the dog art changed in v2.37.0 |
+| 19 | Update the Preview image | `[ ]` | **Blocks 3.0.0.** Replace `Cat_example.png`; waiting on the user's screenshot |
+| 20 | Demo videos (10–15 s each) | `[ ]` | **Blocks 3.0.0.** User screen-records them, e.g. hatching, answering a whim, Today's Token Cost bubble, seasons, Deathless / Afterlife; embed in the READMEs as GIF/MP4 |
 
 **Doc drift to fix (item 13):**
 
