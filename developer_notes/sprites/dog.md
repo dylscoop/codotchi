@@ -32,7 +32,7 @@ sprite type and defaults the pet name to Shibagotchi.
 | Stage | Art | Notes |
 |-------|-----|-------|
 | teen | Borzoi (`borzoi.png`) | Source faces right, so `"flip": ["teen"]` mirrors this stage only. `flip: true` would mirror every stage. Cropped to its alpha ≥ 128 bbox so the feet sit on the floor. |
-| adult | Golden mixed-breed (`Scout.png`) | Faces left as drawn. |
+| adult | Kelpie (`Scout.png`) | Faces left as drawn. |
 | senior | German shepherd (`agnes1.png`) | Cropped to its alpha ≥ 128 bbox so the feet sit on the floor. The source is about half the adult's resolution, so `stageScale.senior: 2.16` gives it the adult's pixel budget and makes it about 5% taller than the adult. |
 
 The teen and senior legs are set by hand in `sprite.json` (`legs`) as diagonal
