@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.37.0] - 2026-11-12
+
+### Added
+
+- **Pets age a little every day.** The first time Codotchi runs on a new day, your pet gains a day of age, rounded down to a whole day (8.5 days becomes 9). This happens even if the pet was idle, asleep or the IDE was closed. It only counts once, however many days you were away. The pet then says "*Name* aged a day whilst you were gone".
+
 ## [2.35.2] - 2026-11-09
 
 ### Fixed
