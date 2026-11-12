@@ -2718,10 +2718,14 @@ function tickSocial(prev, next, isIdle, isDeepIdle, config) {
         }
     }
     if (visit) {
-        const ticksLeft = visit.ticksLeft - 1;
+        const pausedForGame = (visit.gameTicks ?? 0) > 0;
+        const ticksLeft = pausedForGame ? visit.ticksLeft : visit.ticksLeft - 1;
         if (ticksLeft <= 0 || next.sleeping) {
             visit = null;
             events.push("friend_visit_ended");
+        }
+        else if (pausedForGame) {
+            visit = { ...visit, gameTicks: (visit.gameTicks ?? 0) - 1 };
         }
         else {
             visit = { ...visit, ticksLeft };
@@ -2796,23 +2800,46 @@ export function pickVisitor(roster, r) {
     }
     return roster[roster.length - 1];
 }
+/** Friendship from playing a minigame with the visiting friend, by result. A plain play counts as a draw. */
+export const FRIENDSHIP_PER_PLAY_RESULT = {
+    win: 12, draw: FRIENDSHIP_PER_PLAY, lose: 6,
+};
+/** Most ticks a minigame with the friend holds the visit open (the visit timer is paused meanwhile). */
+export const FRIEND_GAME_PAUSE_TICKS = 20;
+/**
+ * The pet starts a minigame with the visiting friend: the visit timer pauses
+ * for up to FRIEND_GAME_PAUSE_TICKS so the friend doesn't leave mid-game.
+ * No events; unchanged when there is no visit, it already played, or the pet sleeps.
+ */
+export function startFriendGame(state) {
+    if (!state.alive || !state.visit || state.visit.played || state.sleeping) {
+        return state;
+    }
+    return { ...state, visit: { ...state.visit, gameTicks: FRIEND_GAME_PAUSE_TICKS } };
+}
 /**
  * Play with the visiting friend: friendship and happiness up, a little energy
- * spent. Once per visit. Refused (event `friend_play_refused`) with no visit,
- * when already played this visit, while asleep, or with too little energy.
+ * spent. Once per visit. With a minigame `result` ("win", "lose", or "draw" /
+ * "push") the friendship gain follows FRIENDSHIP_PER_PLAY_RESULT and a loss
+ * gives half the happiness; it also emits `friend_game_<win|draw|lose>`.
+ * Refused (event `friend_play_refused`) with no visit, when already played
+ * this visit, while asleep, or with too little energy.
  */
-export function playWithFriend(state) {
+export function playWithFriend(state, result) {
     if (!state.alive || !state.visit || !state.friend || state.visit.played || state.sleeping ||
         state.energy < FRIEND_PLAY_ENERGY_COST) {
         return withDerivedFields({ ...state, events: ["friend_play_refused"] });
     }
-    const events = ["friend_played"];
-    const friend = withFriendship(state.friend, FRIENDSHIP_PER_PLAY, events);
+    const outcome = result === "win" ? "win" : result === "lose" ? "lose"
+        : result === "draw" || result === "push" ? "draw" : null;
+    const events = ["friend_played", ...(outcome ? [`friend_game_${outcome}`] : [])];
+    const friend = withFriendship(state.friend, FRIENDSHIP_PER_PLAY_RESULT[outcome ?? "draw"], events);
+    const { gameTicks: _paused, ...visit } = state.visit;
     const next = withDerivedFields({
         ...state,
         friend,
-        visit: { ...state.visit, played: true },
-        happiness: clampStat(state.happiness + FRIEND_PLAY_HAPPINESS),
+        visit: { ...visit, played: true },
+        happiness: clampStat(state.happiness + (outcome === "lose" ? Math.round(FRIEND_PLAY_HAPPINESS / 2) : FRIEND_PLAY_HAPPINESS)),
         energy: clampStat(state.energy - FRIEND_PLAY_ENERGY_COST),
         events,
     });
@@ -2980,7 +3007,10 @@ export function socialActionMessage(state) {
         return `${state.name} said "not yet".`;
     }
     if (e.includes("friend_played")) {
-        return `${state.name} and ${f} played together!${level}${best}`;
+        const how = e.includes("friend_game_win") ? ` ${state.name} won the game!`
+            : e.includes("friend_game_lose") ? ` ${f} won this time.`
+                : e.includes("friend_game_draw") ? " It was a draw." : "";
+        return `${state.name} and ${f} played together!${how}${level}${best}`;
     }
     if (e.includes("friend_gift_given")) {
         const giftId = e.find((x) => x.startsWith("friend_gift_item_"))?.slice("friend_gift_item_".length);
@@ -3034,6 +3064,7 @@ export function deserialiseSocial(data) {
         ? {
             ticksLeft: Math.min(VISIT_TICKS, num(visitRaw.ticksLeft, 0)), played: visitRaw.played === true, gifted: visitRaw.gifted === true,
             ...(typeof visitRaw.broughtItem === "string" && itemById(visitRaw.broughtItem) ? { broughtItem: visitRaw.broughtItem } : {}),
+            ...(num(visitRaw.gameTicks, 0) > 0 ? { gameTicks: Math.min(FRIEND_GAME_PAUSE_TICKS, Math.floor(num(visitRaw.gameTicks, 0))) } : {}),
         }
         : null;
     const itemIds = (key, max) => Array.isArray(data[key])

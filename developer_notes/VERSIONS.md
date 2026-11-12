@@ -1,6 +1,6 @@
 # Version History
 
-## v2.38.0 - in progress
+## v2.37.1 - current
 
 ### Changes from v2.37.0 (social follow-ups - branch feat/social-followups)
 
@@ -22,6 +22,7 @@
 | `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `PetState.kt` | Play together is a real game: `playWithFriend(state, result?)` — friendship by result (`FRIENDSHIP_PER_PLAY_RESULT` win 12 / draw 10 / lose 6; no result = draw, as the terminal `playfriend` does), a loss gives half the happiness, event `friend_game_<win\|draw\|lose>`. `startFriendGame()` sets `FriendVisit.gameTicks` (`FRIEND_GAME_PAUSE_TICKS` 20): the visit timer pauses while it counts down, so the friend doesn't leave mid-game, and an abandoned game can't hold the visit open |
 | `vscode/media/sidebar.js`, `sidebar.html`, `sidebar.css`, `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt` | **🤝 Play together** opens the minigame picker in friend mode (hint line; Boss Battle, Pat and Token Cost hidden) and posts `friend_play_start`; the game's result goes to `friend_play { game, result }` instead of `play`. Result texts in the event log |
 | `vscode/tests/unit/social.test.ts`, `webviewAnimations.test.ts`, `pycharm/.../SocialTest.kt` | friend-game tests |
+| CHANGELOG, `plugin.xml` change notes, README, all manifests | version 2.37.1 |
 
 ## v2.37.0
 

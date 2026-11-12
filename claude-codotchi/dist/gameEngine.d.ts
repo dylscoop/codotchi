@@ -450,6 +450,8 @@ export interface FriendVisit {
     readonly gifted: boolean;
     /** Item id the friend brought this visit, if any (drawn being dropped on arrival). */
     readonly broughtItem?: string;
+    /** Ticks left of the visit-timer pause while a minigame with the friend runs (startFriendGame). */
+    readonly gameTicks?: number;
 }
 /** The egg a married pet leaves for the next generation. */
 export interface HeirEgg {
@@ -1058,12 +1060,25 @@ export declare function randomFriendIdentity(avoid?: readonly string[], rand?: (
  * @param r - A random number in [0, 1).
  */
 export declare function pickVisitor(roster: readonly FriendPet[], r: number): FriendPet | null;
+/** Friendship from playing a minigame with the visiting friend, by result. A plain play counts as a draw. */
+export declare const FRIENDSHIP_PER_PLAY_RESULT: Readonly<Record<"win" | "draw" | "lose", number>>;
+/** Most ticks a minigame with the friend holds the visit open (the visit timer is paused meanwhile). */
+export declare const FRIEND_GAME_PAUSE_TICKS: number;
+/**
+ * The pet starts a minigame with the visiting friend: the visit timer pauses
+ * for up to FRIEND_GAME_PAUSE_TICKS so the friend doesn't leave mid-game.
+ * No events; unchanged when there is no visit, it already played, or the pet sleeps.
+ */
+export declare function startFriendGame(state: PetState): PetState;
 /**
  * Play with the visiting friend: friendship and happiness up, a little energy
- * spent. Once per visit. Refused (event `friend_play_refused`) with no visit,
- * when already played this visit, while asleep, or with too little energy.
+ * spent. Once per visit. With a minigame `result` ("win", "lose", or "draw" /
+ * "push") the friendship gain follows FRIENDSHIP_PER_PLAY_RESULT and a loss
+ * gives half the happiness; it also emits `friend_game_<win|draw|lose>`.
+ * Refused (event `friend_play_refused`) with no visit, when already played
+ * this visit, while asleep, or with too little energy.
  */
-export declare function playWithFriend(state: PetState): PetState;
+export declare function playWithFriend(state: PetState, result?: string): PetState;
 /**
  * Give the visiting friend an item the pet owns: friendship up by
  * FRIENDSHIP_PER_GIFT_KIND for its kind, and the item is gone. Without
