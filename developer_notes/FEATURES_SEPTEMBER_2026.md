@@ -577,7 +577,7 @@ merges:
 | Different friends visit | `[ ]` | Several friend slots, each with its own name, species, sprite and friendship meter, so the same pet doesn't always come. Friends you haven't seen in a while can drift away |
 | Say goodbye | `[x]` | v2.38.0: **👋 Goodbye** (`sayGoodbyeToFriend`, `/codotchi goodbye`, `codotchi_goodbye`) ends the visit early; the visitor waves (hops) and slides back out. Any visit ending now slides out the same way |
 | Offspring redesign | `[ ]` | The heir egg / generations mechanic, taken out of v2.36.0 for a redesign. Code and save fields are kept (see the Heir egg row above) |
-| Visitor wanders on its own | `[ ]` | The visitor walks around in its own idle pattern (§5.3 idle wandering, with its own speed and direction flips) rather than standing fixed beside the pet. The two pets sometimes meet in the middle and face each other |
+| Visitor wanders on its own | `[x]` | v2.38.0: after sliding in, the visitor paces at its own speed with its own direction flips and pauses; every 12–25 s it walks over and the two pets stop and face each other for 2 s (`wanderGuest` in `sidebar.js`) |
 
 **Suggested further interactions, based on Tamagotchi Connection:**
 

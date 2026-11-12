@@ -10,6 +10,8 @@
 | `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt`, `vscode/media/sidebar.html`, `sidebar.js` | **👋 Goodbye** button (`friend_goodbye` message); when any visit ends the visitor hops (waves) for 0.7 s and slides back out the edge it came in from |
 | `opencode-codotchi/src/index.ts`, `commands/codotchi.md`, `claude-codotchi/scripts/action.mjs`, `commands/codotchi.md`, `claude-desktop-codotchi/src/server.ts`, `tools.ts` | `/codotchi goodbye`; Claude Desktop `codotchi_goodbye` |
 | `vscode/tests/unit/social.test.ts`, `pycharm/.../SocialTest.kt`, `claude-codotchi/tests/integration/socialActions.test.mjs` | goodbye tests |
+| `vscode/media/sidebar.js` | Visitor wanders on its own: after sliding in, the visiting friend paces at its own speed (10–20 px/s), flips direction every 1.5–4.5 s and sometimes pauses (`wanderGuest`, state in `guestAnim.wander`). Every 12–25 s it walks up beside the pet; both stop and face each other for `GUEST_MEET_MS` (2 s). The guest's side is now fixed when it arrives (it no longer slides in again when the pet crosses the middle) |
+| `vscode/tests/unit/webviewAnimations.test.ts` | wander stays on the stage; the meeting faces the pet |
 
 ## v2.37.0
 

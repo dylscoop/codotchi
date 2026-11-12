@@ -2746,6 +2746,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       petX = Math.max(minX, Math.min(maxX, petX));
     }
 
+    // Meeting the visiting friend: the pet stops and turns to face it
+    var meeting = guestAnim.wander && guestAnim.wander.meetUntilMs > nowMs && !stageGame && !lastState.sleeping;
+    if (meeting && petY >= floorY - 0.5) {
+      idleTimer = Math.max(idleTimer, (guestAnim.wander.meetUntilMs - nowMs) / 1000);
+      petVx = 0;
+      petFacingLeft = guestAnim.wander.x < petX;
+    }
+
     // ── Leg frame ────────────────────────────────────────────────────────
     // Dragon floats — it has no legs, so always pass legFrame -1 (upright/neutral).
     var walking  = !isDragon && (!lastState.sleeping || napTrip) && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
@@ -2896,33 +2904,115 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   /**
-   * Draw the guest on the side of the stage away from the pet, facing it,
-   * sliding in from that edge when it first appears. Hidden during stage games.
+   * Draw the guest beside the pet, sliding in from the edge away from the pet
+   * when it first appears. A visiting friend then wanders on its own (its own
+   * speed and direction flips) and now and then walks over to meet the pet,
+   * face to face, for GUEST_MEET_MS. A partner stands at its spot, facing the
+   * pet. Hidden during stage games.
    * @returns {{x:number,y:number,w:number,h:number}|null} its box, or null when none
    */
   function drawGuest(state, petCx, nowMs) {
     var who = socialGuest(state);
-    if (!who || stageGame || !socialEnabled) { guestAnim.key = ""; return null; }
+    if (!who || stageGame || !socialEnabled) { guestAnim = { key: "", startMs: 0 }; return null; }
     var gs = guestState(state, who);
     var scale = STAGE_SCALES[gs.stage] || 0.5;
     var size = Math.round(BASE_SIZE * petSizeMultiplier(gs.spriteType) * scale);
     var w = effectiveBWidth(gs, size);
     var h = petBoxHeight(gs, w);
     var W = spriteCanvas.width;
-    var onRight = petCx < W / 2;
+    var key = who.name + "|" + who.spriteType;
+    if (guestAnim.key !== key) {
+      guestAnim = { key: key, startMs: nowMs, onRight: petCx < W / 2, wander: null };
+    }
+    var onRight = guestAnim.onRight;
     var homeX = onRight ? W - w - 6 : 6;
-    var key = who.name + "|" + who.spriteType + "|" + (onRight ? "r" : "l");
-    if (guestAnim.key !== key) { guestAnim = { key: key, startMs: nowMs }; }
-    var t = REDUCED_MOTION ? 1 : Math.min(1, (nowMs - guestAnim.startMs) / GUEST_SLIDE_MS);
-    var ease = 1 - Math.pow(1 - t, 3);
-    var startX = onRight ? W + 4 : -w - 4;
-    var x = Math.round(startX + (homeX - startX) * ease);
     var y = spriteCanvas.height - h - 12;
-    drawBody(gs, x, y, onRight, t < 1 ? Math.floor(nowMs / 150) % 2 : 0);
+    var t = REDUCED_MOTION ? 1 : Math.min(1, (nowMs - guestAnim.startMs) / GUEST_SLIDE_MS);
+    var x;
+    var facingLeft = onRight;
+    var frame = 0;
+    if (t < 1) {
+      var ease = 1 - Math.pow(1 - t, 3);
+      var startX = onRight ? W + 4 : -w - 4;
+      x = Math.round(startX + (homeX - startX) * ease);
+      frame = Math.floor(nowMs / 150) % 2;
+    } else if (state.visit && who === state.friend && !REDUCED_MOTION) {
+      var step = wanderGuest(homeX, w, W, petCx, nowMs);
+      x = step.x; facingLeft = step.facingLeft; frame = step.frame;
+    } else {
+      x = homeX;
+    }
+    drawBody(gs, x, y, facingLeft, frame);
     if (state.visit && who === state.friend) {
-      lastVisitorDraw = { gs: gs, x: x, y: y, w: w, onRight: onRight };
+      lastVisitorDraw = { gs: gs, x: x, y: y, w: w, onRight: x + w / 2 >= W / 2 };
     }
     return { x: x, y: y, w: w, h: h };
+  }
+
+  var GUEST_MEET_MS = 2000;
+  var GUEST_MEET_GAP_MIN_MS = 12000;
+  var GUEST_MEET_GAP_MAX_MS = 25000;
+
+  /**
+   * One frame of the visitor's own idle wander, kept in guestAnim.wander:
+   * it paces at its own speed and flips direction every few seconds, staying
+   * clear of the edges. Every GUEST_MEET_GAP_* it walks up beside the pet
+   * and both face each other for GUEST_MEET_MS.
+   */
+  function wanderGuest(homeX, w, W, petCx, nowMs) {
+    var g = guestAnim.wander;
+    if (!g) {
+      g = guestAnim.wander = {
+        x: homeX, lastMs: nowMs,
+        dir: guestAnim.onRight ? -1 : 1,
+        speed: 10 + Math.random() * 10,           // px per second; the pet has its own pace
+        nextFlipMs: nowMs + 1500 + Math.random() * 2500,
+        pauseUntilMs: 0,
+        nextMeetMs: nowMs + GUEST_MEET_GAP_MIN_MS * 0.5,
+        meetUntilMs: 0,
+      };
+    }
+    var dt = Math.min(0.1, Math.max(0, (nowMs - g.lastMs) / 1000));
+    g.lastMs = nowMs;
+    var minX = 4;
+    var maxX = W - w - 4;
+    var visitorLeftOfPet = g.x + w / 2 < petCx;
+
+    // Meeting: walk to just beside the pet, then stand face to face.
+    if (g.meetUntilMs > 0) {
+      if (nowMs < g.meetUntilMs) { return { x: Math.round(g.x), facingLeft: !visitorLeftOfPet, frame: 0 }; }
+      g.meetUntilMs = 0;
+      g.dir = visitorLeftOfPet ? -1 : 1;    // turn away and wander off
+      g.nextMeetMs = nowMs + GUEST_MEET_GAP_MIN_MS + Math.random() * (GUEST_MEET_GAP_MAX_MS - GUEST_MEET_GAP_MIN_MS);
+      g.nextFlipMs = nowMs + 2000 + Math.random() * 2000;
+    }
+    if (nowMs >= g.nextMeetMs) {
+      var gap = Math.round(w * 0.55) + 6;
+      var targetX = Math.max(minX, Math.min(maxX, visitorLeftOfPet ? petCx - gap - w : petCx + gap));
+      var dx = targetX - g.x;
+      if (Math.abs(dx) <= 1.5) {
+        g.x = targetX;
+        g.meetUntilMs = nowMs + GUEST_MEET_MS;
+        return { x: Math.round(g.x), facingLeft: !visitorLeftOfPet, frame: 0 };
+      }
+      g.dir = dx < 0 ? -1 : 1;
+      g.x += g.dir * Math.min(Math.abs(dx), g.speed * 1.6 * dt);
+      return { x: Math.round(g.x), facingLeft: g.dir < 0, frame: Math.floor(nowMs / 150) % 2 };
+    }
+
+    // Idle wander: pace, sometimes stop for a moment, flip at random or at an edge.
+    if (nowMs < g.pauseUntilMs) {
+      return { x: Math.round(g.x), facingLeft: g.dir < 0, frame: 0 };
+    }
+    if (nowMs >= g.nextFlipMs) {
+      if (Math.random() < 0.35) { g.pauseUntilMs = nowMs + 600 + Math.random() * 1200; }
+      g.dir = -g.dir;
+      g.nextFlipMs = nowMs + 1500 + Math.random() * 3000;
+    }
+    g.x += g.dir * g.speed * dt;
+    if (g.x <= minX) { g.x = minX; g.dir = 1; }
+    if (g.x >= maxX) { g.x = maxX; g.dir = -1; }
+    return { x: Math.round(g.x), facingLeft: g.dir < 0, frame: Math.floor(nowMs / 200) % 2 };
   }
 
   /**

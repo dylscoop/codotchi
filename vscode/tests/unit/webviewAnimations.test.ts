@@ -932,3 +932,51 @@ describe("senior cat lying on the floor (restRow)", () => {
     assert.ok(translates.includes(Math.round(49 * bodyHeight / 128)), "shifted down by the 49 rows below the belly");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Visiting friend wanders on its own (sidebar.js wanderGuest)
+// ---------------------------------------------------------------------------
+describe("visitor wanders on its own (sidebar.js)", () => {
+  function loadWander(): { step: (homeX: number, w: number, W: number, petCx: number, now: number) => { x: number; facingLeft: boolean }; anim: any; meetMs: number } {
+    const pick = (re: RegExp): string => {
+      const m = re.exec(sidebarSource);
+      assert.ok(m, `missing ${re}`);
+      return m![0];
+    };
+    const src = [
+      pick(/var GUEST_MEET_MS\s*=[^;]+;/),
+      pick(/var GUEST_MEET_GAP_MIN_MS\s*=[^;]+;/),
+      pick(/var GUEST_MEET_GAP_MAX_MS\s*=[^;]+;/),
+      "var guestAnim = { key: 'Pixel|dog', startMs: 0, onRight: true, wander: null };",
+      pick(/function wanderGuest\([\s\S]*?\n  \}/),
+      "result = { step: wanderGuest, get anim() { return guestAnim; }, meetMs: GUEST_MEET_MS };",
+    ].join("\n");
+    const ctx: Record<string, any> = { Math };
+    vm.runInNewContext(src, ctx);
+    return ctx.result;
+  }
+
+  it("moves around the stage and stays inside it", () => {
+    const h = loadWander();
+    const xs = new Set<number>();
+    for (let t = 0; t < 5000; t += 50) {
+      const s = h.step(150, 40, 200, 30, t);
+      assert.ok(s.x >= 4 && s.x <= 200 - 40 - 4, `x ${s.x} on the stage`);
+      xs.add(s.x);
+    }
+    assert.ok(xs.size > 5, "it walks rather than standing still");
+  });
+
+  it("walks up to the pet and the two face each other", () => {
+    const h = loadWander();
+    const petCx = 60;
+    let met: { x: number; facingLeft: boolean } | null = null;
+    for (let t = 0; t < 40000 && !met; t += 50) {
+      const s = h.step(150, 40, 200, petCx, t);
+      if (h.anim.wander.meetUntilMs > 0) { met = s; }
+    }
+    assert.ok(met, "a meeting happens");
+    assert.ok(met!.x + 20 > petCx, "the visitor stands beside the pet, on its own side");
+    assert.equal(met!.facingLeft, true, "a visitor right of the pet faces left, towards it");
+  });
+});
