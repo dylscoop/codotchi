@@ -395,6 +395,8 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val seniorSinceDay: Any? = null,
         val proposal: Any? = null,
         val proposalCooldownTicks: Any? = null,
+        val items: Any? = null,
+        val decor: Any? = null,
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -488,6 +490,8 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             "seniorSinceDay" to r.seniorSinceDay,
             "proposal" to r.proposal,
             "proposalCooldownTicks" to r.proposalCooldownTicks,
+            "items" to r.items,
+            "decor" to r.decor,
         )))
     }
 
@@ -583,6 +587,8 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         seniorSinceDay             = social["seniorSinceDay"],
         proposal                   = social["proposal"],
         proposalCooldownTicks      = social["proposalCooldownTicks"],
+        items                      = social["items"],
+        decor                      = social["decor"],
     ) }
 }
 

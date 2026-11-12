@@ -74,6 +74,33 @@ describe("action.mjs social commands (integration)", () => {
     });
   });
 
+  it("/codotchi items lists the bag, and /codotchi use eats food", async () => {
+    await withFixture(async (tmp) => {
+      await writePet(tmp, { items: ["apple", "apple", "plant"], hunger: 40 });
+      const list = run(tmp, "items");
+      assert.ok(list.includes("apple ×2") && list.includes("potted plant"), list);
+      const out = execFileSync("node", [actionScript, "use", "apple"], {
+        env: { ...process.env, APPDATA: tmp, HOME: tmp, USERPROFILE: tmp, CLAUDE_PLUGIN_DATA: path.join(tmp, "claude-plugin-data"), CLAUDE_CODE_SESSION_ID: "", CODOTCHI_NO_RANK: "1" },
+        encoding: "utf8",
+      });
+      assert.ok(out.includes("ate the apple"), out);
+      const saved = readPet(tmp);
+      assert.deepEqual(saved.items, ["apple", "plant"]);
+      assert.equal(saved.hunger, 55);
+    });
+  });
+
+  it("/codotchi gift hands the visiting friend the oldest item", async () => {
+    await withFixture(async (tmp) => {
+      await writePet(tmp, { friend: FRIEND, visit: VISIT, items: ["kite", "cake"] });
+      const out = run(tmp, "gift");
+      assert.ok(out.includes("gave Pixel a kite"), out);
+      const saved = readPet(tmp);
+      assert.deepEqual(saved.items, ["cake"]);
+      assert.equal(saved.friend.friendship, 55);
+    });
+  });
+
   it("/codotchi goodbye ends the visit early", async () => {
     await withFixture(async (tmp) => {
       await writePet(tmp, { friend: FRIEND, visit: VISIT });

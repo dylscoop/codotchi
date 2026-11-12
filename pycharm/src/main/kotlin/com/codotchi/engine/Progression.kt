@@ -246,6 +246,7 @@ fun awardXp(state: PetState, source: String, now: Long = System.currentTimeMilli
     var xp = t.xp + amount
     var level = levelProgress(xp).level
     val achievements = t.achievements.toMutableList()
+    var items = state.items
     // Unlock bonuses can raise the level, which can unlock a level achievement.
     while (true) {
         val fresh = ACHIEVEMENTS.filter {
@@ -257,6 +258,12 @@ fun awardXp(state: PetState, source: String, now: Long = System.currentTimeMilli
             achievements.add(a.id)
             events.add("achievement_unlocked_${a.id}")
             xp += XP_ACHIEVEMENT_BONUS
+            // Each achievement finds an item: the same one every time for that achievement
+            val found = achievementItemFor(ACHIEVEMENTS.indexOf(a))
+            if (items.size < MAX_ITEMS) {
+                items = withItem(items, found)
+                events.add("item_found_$found")
+            }
         }
         level = levelProgress(xp).level
     }
@@ -269,6 +276,7 @@ fun awardXp(state: PetState, source: String, now: Long = System.currentTimeMilli
     if (unlocked.isNotEmpty()) events.add("boss_unlocked")
 
     return state.copy(
+        items = items,
         petXp = petXp,
         petLevel = petLevel,
         pendingBosses = if (unlocked.isNotEmpty()) (state.pendingBosses + unlocked).take(BOSS_QUEUE_MAX) else state.pendingBosses,

@@ -188,6 +188,10 @@ data class PetState(
     val proposal: Proposal? = null,
     /** Active ticks before another proposal can be made after a decline. */
     val proposalCooldownTicks: Int = 0,
+    /** Item ids the pet carries (ITEM_CATALOG), oldest first; at most MAX_ITEMS. */
+    val items: List<String> = emptyList(),
+    /** Decoration item ids placed on the floor, oldest first; at most MAX_DECOR. */
+    val decor: List<String> = emptyList(),
 )
 
 /** Who another (CPU) pet is: enough to draw it. Mirrors PetIdentity in gameEngine.ts. */
@@ -213,6 +217,8 @@ data class FriendVisit(
     val ticksLeft: Int,
     val played: Boolean,
     val gifted: Boolean,
+    /** Item id the friend brought this visit, if any (drawn being dropped on arrival). */
+    val broughtItem: String? = null,
 )
 
 /** The egg a married pet leaves for the next generation. */

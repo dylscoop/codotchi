@@ -81,6 +81,7 @@ export declare function buildStatusBlock(state: {
     /** Social fields (v2.36.0): friend, visit, partner, heir egg, offer and generation lines. */
     generation?: number;
     friend?: SocialView["friend"];
+    otherFriends?: SocialView["otherFriends"];
     visit?: SocialView["visit"];
     partner?: SocialView["partner"];
     heirEgg?: SocialView["heirEgg"];

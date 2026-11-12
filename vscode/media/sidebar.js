@@ -178,7 +178,7 @@
 
   /** Events that belong to the social preview. */
   function isSocialEvent(code) {
-    return code.indexOf("friend_") === 0 || code.indexOf("proposal_") === 0 ||
+    return code.indexOf("friend_") === 0 || code.indexOf("proposal_") === 0 || code.indexOf("item_") === 0 ||
       code === "matchmaker_arrived" || code === "married" || code === "best_friends" ||
       SOCIAL_ACHIEVEMENT_IDS.indexOf(code.slice("achievement_unlocked_".length)) !== -1 &&
         code.indexOf("achievement_unlocked_") === 0;
@@ -420,7 +420,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     vscode.postMessage({ command: "friend_play" });
   });
   document.getElementById("btn-friend-gift").addEventListener("click", function () {
-    vscode.postMessage({ command: "friend_gift" });
+    // Pick which item to give from the items bar
+    giftPicking = !giftPicking;
+    itemsKey = "";
+    if (lastState) { renderSocial(lastState); }
   });
   document.getElementById("btn-friend-goodbye").addEventListener("click", function () {
     vscode.postMessage({ command: "friend_goodbye" });
@@ -480,7 +483,6 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     visitActions.classList.toggle("hidden", !visiting);
     if (visiting) {
       document.getElementById("btn-friend-play").disabled = !!state.visit.played;
-      document.getElementById("btn-friend-gift").disabled = !!state.visit.gifted;
     }
     proposalBar.classList.toggle("hidden", !proposing);
     if (proposing) {
@@ -488,6 +490,69 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         ? "💌 The matchmaker brought " + state.proposal.name + " to meet " + state.name + ". Marry?"
         : "💍 " + state.proposal.name + " wants to marry " + state.name + "!";
     }
+    var hasItems = renderItems(state, visiting);
+    if (visiting) {
+      document.getElementById("btn-friend-gift").disabled = !!state.visit.gifted || (state.items || []).length === 0;
+    }
+    socialPanel.classList.toggle("hidden", parts.length === 0 && !proposing && !hasItems);
+  }
+
+  /** Item catalogue for the webview; must match ITEM_CATALOG in packages/core/src/gameEngine.ts. */
+  var ITEM_INFO = {
+    apple: ["🍎", "apple", "food"], cookie: ["🍪", "cookie", "food"], cake: ["🍰", "slice of cake", "food"], fish: ["🐟", "fish", "food"],
+    ball: ["⚽", "ball", "toy"], yarn: ["🧶", "ball of yarn", "toy"], kite: ["🪁", "kite", "toy"], teddy: ["🧸", "teddy bear", "toy"],
+    plant: ["🪴", "potted plant", "decor"], flower: ["🌻", "sunflower", "decor"], lantern: ["🏮", "lantern", "decor"], star: ["⭐", "star lamp", "decor"],
+  };
+  /** Give gift was clicked: the next item clicked goes to the visiting friend. */
+  var giftPicking = false;
+  var itemsBar = document.getElementById("items-bar");
+  var itemsHint = document.getElementById("items-hint");
+  var itemsList = document.getElementById("items-list");
+  var itemsKey = "";
+
+  /**
+   * The pet's items as buttons, one per kind with a count: click to use it,
+   * or, after Give gift, to hand it to the visiting friend.
+   * @returns {boolean} true when the bar is showing
+   */
+  function renderItems(state, visiting) {
+    if (!itemsBar) { return false; }
+    var items = state.alive ? (state.items || []) : [];
+    if (!visiting) { giftPicking = false; }
+    itemsBar.classList.toggle("hidden", items.length === 0);
+    if (items.length === 0) { itemsKey = ""; return false; }
+    itemsHint.textContent = giftPicking
+      ? "🎁 Pick a gift for " + state.friend.name + ":"
+      : "🎒 Items (" + items.length + "): click one to use it";
+    var key = items.join(",") + "|" + giftPicking + "|" + !!state.sleeping;
+    if (key === itemsKey) { return true; }
+    itemsKey = key;
+    var counts = {};
+    var order = [];
+    items.forEach(function (id) {
+      if (!ITEM_INFO[id]) { return; }
+      if (!counts[id]) { counts[id] = 0; order.push(id); }
+      counts[id]++;
+    });
+    itemsList.textContent = "";
+    order.forEach(function (id) {
+      var info = ITEM_INFO[id];
+      var btn = document.createElement("button");
+      btn.className = "action-btn item-btn";
+      btn.textContent = info[0] + (counts[id] > 1 ? " ×" + counts[id] : "");
+      btn.title = (giftPicking ? "Give the " : info[2] === "food" ? "Eat the " : info[2] === "toy" ? "Play with the " : "Put on the floor: ") + info[1];
+      btn.disabled = !!state.sleeping;
+      btn.addEventListener("click", function () {
+        if (giftPicking) {
+          giftPicking = false;
+          vscode.postMessage({ command: "friend_gift", itemId: id });
+        } else {
+          vscode.postMessage({ command: "use_item", itemId: id });
+        }
+      });
+      itemsList.appendChild(btn);
+    });
+    return true;
   }
 
   /** Friendship level names; must match FRIENDSHIP_LEVELS in packages/core/src/gameEngine.ts. */
@@ -2819,6 +2884,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // ── Draw ──────────────────────────────────────────────────────────────
     drawEnvironment(lastState);
     drawHeirEgg(lastState);
+    drawDecor(lastState);
     if (moodProps) {
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
@@ -2871,6 +2937,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _petCx    = Math.round(petX) + Math.round(_bW / 2);
     var _petTopY  = Math.round(petY) + walkBob - headGap(lastState);
     drawKiss(_petCx, _petTopY, guestBox, nowMs);
+    drawGiftDrop(guestBox, nowMs);
     drawSpeechBubble(_petCx, _petTopY, nowMs,
                      emojiClearance(drawState.sleeping || patting, moodPxSize), Math.round(_bW / 2));
   }
@@ -3056,6 +3123,53 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       spriteCtx.globalAlpha = 1 - p;
       spriteCtx.fillText("♥", Math.round(midX + Math.sin((p + i) * 6) * 8), Math.round(baseY - p * 24));
     }
+    spriteCtx.restore();
+  }
+
+  /** Decorations the pet placed, as emoji spaced along the back of the floor. */
+  function drawDecor(state) {
+    var decor = socialEnabled && state && state.alive ? (state.decor || []) : [];
+    if (decor.length === 0 || stageGame) { return; }
+    var W = spriteCanvas.width;
+    spriteCtx.save();
+    spriteCtx.font = "14px sans-serif";
+    spriteCtx.textAlign = "center";
+    spriteCtx.textBaseline = "bottom";
+    for (var i = 0; i < decor.length; i++) {
+      var info = ITEM_INFO[decor[i]];
+      if (!info) { continue; }
+      spriteCtx.fillText(info[0], Math.round(W * (i + 1) / (decor.length + 1)), spriteCanvas.height - 10);
+    }
+    spriteCtx.restore();
+  }
+
+  var GIFT_HOLD_MS = 900;
+  var GIFT_DROP_MS = 500;
+  var GIFT_REST_MS = 1600;
+  /** A friend's gift: held over the visitor's head, dropped to the floor, then picked up (faded). */
+  var giftDrop = null;
+
+  function drawGiftDrop(guestBox, nowMs) {
+    if (!giftDrop) { return; }
+    var t = nowMs - giftDrop.startMs;
+    if (t > GIFT_HOLD_MS + GIFT_DROP_MS + GIFT_REST_MS || REDUCED_MOTION) { giftDrop = null; return; }
+    if (guestBox) { giftDrop.x = guestBox.x + guestBox.w / 2; giftDrop.topY = guestBox.y; }
+    if (giftDrop.x === undefined) { return; }
+    var floorY = spriteCanvas.height - 12;
+    var y;
+    if (t < GIFT_HOLD_MS) {
+      y = giftDrop.topY - 2;
+    } else {
+      var d = Math.min(1, (t - GIFT_HOLD_MS) / GIFT_DROP_MS);
+      y = giftDrop.topY - 2 + (floorY - (giftDrop.topY - 2)) * d * d;
+    }
+    spriteCtx.save();
+    spriteCtx.font = "14px sans-serif";
+    spriteCtx.textAlign = "center";
+    spriteCtx.textBaseline = "bottom";
+    var restT = t - GIFT_HOLD_MS - GIFT_DROP_MS;
+    if (restT > 0) { spriteCtx.globalAlpha = Math.max(0, 1 - restT / GIFT_REST_MS); }
+    spriteCtx.fillText(giftDrop.emoji, Math.round(giftDrop.x), Math.round(y));
     spriteCtx.restore();
   }
 
@@ -3393,6 +3507,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (events.indexOf("cured")         !== -1) { pushReaction("healed",        nowMs); }
     if (socialEnabled && events.indexOf("married")       !== -1) { kissStartMs = nowMs; pushReaction("praised", nowMs); }
     if (socialEnabled && events.indexOf("friend_played") !== -1) { pushReaction("played", nowMs); }
+    if (socialEnabled && events.indexOf("friend_gift_received") !== -1) {
+      var brought = giftItemIn(events);
+      if (brought) { giftDrop = { startMs: nowMs, emoji: brought[0] }; }
+    }
     if (socialEnabled && events.indexOf("friend_visit_ended") !== -1 && lastVisitorDraw) {
       guestLeaving = { startMs: nowMs, from: lastVisitorDraw };
       lastVisitorDraw = null;
@@ -3783,6 +3901,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _fr = state && state.friend ? state.friend.name : "A friend";
     var _pr = state && state.proposal ? state.proposal.name : "someone";
     var _pa = state && state.partner ? state.partner.name : "their sweetheart";
+    var _gift = giftItemIn(state && state.events);
     var labels = {
       "aged_overnight":          n + " aged a day whilst you were gone",
       "friend_made":             "",   // silent: the visit bubble says it
@@ -3791,9 +3910,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "friend_waved_goodbye":    n + " waved goodbye to " + _fr + ". 👋",
       "friend_drifted_away":     "A friend " + n + " hadn't seen in a while drifted away.",
       "friend_goodbye_refused":  "",
-      "friend_gift_received":    _fr + " brought " + n + " a present! 🎁",
+      "friend_gift_received":    _fr + " brought " + n + " " + (_gift ? withArticleJs(_gift[1]) + "! " + _gift[0] : "a present! 🎁"),
       "friend_played":           n + " and " + _fr + " played together!",
-      "friend_gift_given":       n + " shared a treat with " + _fr + ".",
+      "friend_gift_given":       n + " gave " + _fr + " " + (_gift ? withArticleJs(_gift[1]) + ". " + _gift[0] : "a present."),
+      "item_refused":            n + " can't use that right now.",
       "best_friends":            n + " and " + _fr + " are best friends now! 💛",
       "proposal_received":       _fr + " wants to marry " + n + "! 💍",
       "matchmaker_arrived":      "The matchmaker brought " + _pr + " to meet " + n + ". 💌",
@@ -3970,7 +4090,32 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (code.indexOf("minigame_") === 0) {
       return n + " played a mini-game.";
     }
+    if (code.indexOf("item_found_") === 0) {
+      var found = ITEM_INFO[code.slice("item_found_".length)];
+      return found ? n + " found " + withArticleJs(found[1]) + "! " + found[0] : "";
+    }
+    if (code.indexOf("item_used_") === 0) {
+      var used = ITEM_INFO[code.slice("item_used_".length)];
+      if (!used) { return ""; }
+      return used[2] === "food" ? n + " ate the " + used[1] + ". " + used[0]
+        : used[2] === "toy" ? n + " played with the " + used[1] + "! " + used[0]
+        : n + " put the " + used[1] + " on the floor. " + used[0];
+    }
+    if (code.indexOf("friend_gift_item_") === 0) { return ""; }   // the gift line says it
     return code;
+  }
+
+  /** "an apple", "a kite"; matches withArticle() in gameEngine.ts. */
+  function withArticleJs(name) {
+    return (/^[aeiou]/i.test(name) ? "an " : "a ") + name;
+  }
+
+  /** The item a gift event refers to, from the event list: [emoji, name, kind] or null. */
+  function giftItemIn(events) {
+    for (var i = 0; events && i < events.length; i++) {
+      if (events[i].indexOf("friend_gift_item_") === 0) { return ITEM_INFO[events[i].slice("friend_gift_item_".length)] || null; }
+    }
+    return null;
   }
 
   // Consecutive repeats of the same event (damage ticks, pats, snacks,
@@ -5002,6 +5147,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     }
 
     drawHeirEgg(state);
+    drawDecor(state);
     drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false, 0);
     drawGuest(state, staticX + bWidth / 2, performance.now());
     if (isChewingBone(state)) {

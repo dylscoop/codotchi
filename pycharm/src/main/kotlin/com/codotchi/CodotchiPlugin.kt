@@ -601,7 +601,13 @@ class CodotchiPlugin : Disposable {
 
                 "friend_gift" -> {
                     state ?: return@withLock
-                    nextState = giveFriendGift(state)
+                    nextState = giveFriendGift(state, message["itemId"] as? String)
+                }
+
+                "use_item" -> {
+                    state ?: return@withLock
+                    val itemId = message["itemId"] as? String ?: return@withLock
+                    nextState = useItem(state, itemId)
                 }
 
                 "friend_goodbye" -> {

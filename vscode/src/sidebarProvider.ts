@@ -40,6 +40,7 @@ import {
   playWithFriend,
   giveFriendGift,
   sayGoodbyeToFriend,
+  useItem,
   acceptProposal,
   declineProposal,
   hatchHeir,
@@ -103,6 +104,8 @@ interface WebviewMessage {
   floorSnacks?: number;
   game?: string;
   result?: string;
+  /** use_item / friend_gift: which item (ITEM_CATALOG id). */
+  itemId?: string;
   name?: string;
   petType?: string;
   color?: string;  // deprecated — ignored, kept for message back-compat only
@@ -653,7 +656,12 @@ export class SidebarProvider
 
       case "friend_gift":
         if (state === null) { return; }
-        nextState = giveFriendGift(state);
+        nextState = giveFriendGift(state, typeof message.itemId === "string" ? message.itemId : undefined);
+        break;
+
+      case "use_item":
+        if (state === null || typeof message.itemId !== "string") { return; }
+        nextState = useItem(state, message.itemId);
         break;
 
       case "friend_goodbye":

@@ -488,18 +488,14 @@ const val FRIENDSHIP_PER_VISIT: Int = 2
 const val FRIEND_GIFT_CHANCE: Double = 0.3
 /** Friendship gained when the friend brings a gift. */
 const val FRIENDSHIP_PER_RECEIVED_GIFT: Int = 5
-/** Happiness the pet gains from the friend's gift. */
-const val FRIEND_GIFT_HAPPINESS: Int = 10
 /** Friendship gained by playing together (once per visit). */
 const val FRIENDSHIP_PER_PLAY: Int = 10
 /** Happiness gained by playing together. */
 const val FRIEND_PLAY_HAPPINESS: Int = 10
 /** Energy spent playing together. */
 const val FRIEND_PLAY_ENERGY_COST: Int = 5
-/** Friendship gained by giving the friend a gift (once per visit). */
+/** Friendship gained by giving the friend a toy (once per visit); food is a little less, decor more (FRIENDSHIP_PER_GIFT_KIND). */
 const val FRIENDSHIP_PER_GIVEN_GIFT: Int = 15
-/** Hunger the pet gives up when it shares a treat as a gift. */
-const val FRIEND_GIFT_HUNGER_COST: Int = 5
 /** Friendship lost per game-day boundary without a visit. */
 const val FRIENDSHIP_DECAY_PER_DAY: Int = 1
 /** Senior game-days without a marriage before the matchmaker arrives. */

@@ -8,6 +8,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 
 import { readConfig } from "./state.js";
 import * as tools from "./tools.js";
@@ -23,7 +24,7 @@ const INSTRUCTIONS = [
   "Call the `codotchi` tool whenever the user asks to see, check on, or interact with their pet — it shows an ASCII-art view of your pet.",
   "To keep the pet happy while you work, call `codotchi_activity` roughly once per turn as you help the user (it is cheap and grants the pet a small reward).",
   "Use `codotchi_feed`, `codotchi_pat`, `codotchi_sleep`, `codotchi_clean`, and `codotchi_medicine` when the user asks to care for the pet.",
-  ...(SOCIAL_PREVIEW ? ["When a friend pet is visiting, `codotchi_playfriend` and `codotchi_gift` build friendship; `codotchi_accept` / `codotchi_decline` answer a marriage proposal. `codotchi_friend` shows the pet's friend, partner and heir egg."] : []),
+  ...(SOCIAL_PREVIEW ? ["When a friend pet is visiting, `codotchi_playfriend` and `codotchi_gift` / `codotchi_gift_item` build friendship and `codotchi_goodbye` ends the visit; `codotchi_accept` / `codotchi_decline` answer a marriage proposal. `codotchi_friend` shows the pet's friends and partner. `codotchi_items` lists the pet's items and `codotchi_use` uses one."] : []),
 ].join(" ");
 
 const server = new McpServer(
@@ -59,7 +60,18 @@ registerPetTool("codotchi_medicine", "Give medicine", "Give your codotchi medici
 if (SOCIAL_PREVIEW) {
 registerPetTool("codotchi_friend", "Friends and family", "Show your codotchi's friend, partner, heir egg and any marriage proposal.", () => tools.show(cfg));
 registerPetTool("codotchi_playfriend", "Play with the visiting friend", "Play with the friend pet visiting your codotchi (once per visit).", () => tools.socialAction(cfg, "playfriend"));
-registerPetTool("codotchi_gift", "Give the friend a gift", "Give the visiting friend pet a gift (once per visit).", () => tools.socialAction(cfg, "gift"));
+registerPetTool("codotchi_gift", "Give the friend a gift", "Give the visiting friend pet the pet's oldest item (once per visit). Use codotchi_gift_item to choose which.", () => tools.socialAction(cfg, "gift"));
+server.registerTool("codotchi_gift_item", {
+  title: "Give the friend an item",
+  description: "Give the visiting friend pet one of your codotchi's items (once per visit). codotchi_items lists them.",
+  inputSchema: { item: z.string().describe("Item id, e.g. apple, ball, plant") },
+}, async ({ item }) => toResult(tools.socialAction(cfg, "gift", item)));
+registerPetTool("codotchi_items", "Show items", "List your codotchi's items (from friends, minigame wins and achievements) and its floor decorations.", () => tools.items(cfg));
+server.registerTool("codotchi_use", {
+  title: "Use an item",
+  description: "Use one of your codotchi's items: eat food, play with a toy, or put a decoration on the floor.",
+  inputSchema: { item: z.string().describe("Item id, e.g. apple, ball, plant") },
+}, async ({ item }) => toResult(tools.useItemAction(cfg, item)));
 registerPetTool("codotchi_goodbye", "Say goodbye to the friend", "Wave goodbye to the visiting friend pet, ending the visit early.", () => tools.socialAction(cfg, "goodbye"));
 registerPetTool("codotchi_accept", "Accept proposal", "Accept a marriage proposal; the married pet leaves an heir egg.", () => tools.socialAction(cfg, "accept"));
 registerPetTool("codotchi_decline", "Decline proposal", "Turn down a marriage proposal for now.", () => tools.socialAction(cfg, "decline"));

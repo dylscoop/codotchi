@@ -849,6 +849,10 @@ export interface PetState {
   readonly proposal: Proposal | null;
   /** Active ticks before another proposal can be made after a decline. */
   readonly proposalCooldownTicks: number;
+  /** Item ids the pet carries (ITEM_CATALOG), oldest first; at most MAX_ITEMS. */
+  readonly items: readonly string[];
+  /** Decoration item ids placed on the floor, oldest first; at most MAX_DECOR. */
+  readonly decor: readonly string[];
 }
 
 /** Who another (CPU) pet is: enough to draw it. */
@@ -871,6 +875,8 @@ export interface FriendVisit {
   readonly ticksLeft: number;
   readonly played: boolean;
   readonly gifted: boolean;
+  /** Item id the friend brought this visit, if any (drawn being dropped on arrival). */
+  readonly broughtItem?: string;
 }
 
 /** The egg a married pet leaves for the next generation. */
@@ -1345,6 +1351,8 @@ export function createPet(
     seniorSinceDay: null,
     proposal: null,
     proposalCooldownTicks: 0,
+    items: [],
+    decor: [],
   };
 
   return withDerivedFields(partial);
@@ -2495,7 +2503,17 @@ export function applyMinigameResult(
     pendingBosses: game === "boss_battle" && won ? queued.slice(1) : queued,
   });
   if (!won) { return next; }
-  return awardXp(next, game === "boss_battle" ? "boss_battle" : "minigame");
+  const awarded = awardXp(next, game === "boss_battle" ? "boss_battle" : "minigame");
+  // Every MINIGAME_WINS_PER_ITEM wins finds an item, cycling through the catalogue
+  const wins = awarded.trainer.counters["minigameWins"] ?? 0;
+  if (wins === 0 || wins % MINIGAME_WINS_PER_ITEM !== 0 || awarded.items.length >= MAX_ITEMS) { return awarded; }
+  const found = ITEM_CATALOG[(wins / MINIGAME_WINS_PER_ITEM - 1) % ITEM_CATALOG.length].id;
+  return {
+    ...awarded,
+    items: withItem(awarded.items, found),
+    events: [...awarded.events, `item_found_${found}`],
+    recentEventLog: [...awarded.recentEventLog, `item_found_${found}`].slice(-RECENT_EVENT_LOG_MAX),
+  };
 }
 
 /**
@@ -2979,18 +2997,14 @@ export const FRIENDSHIP_PER_VISIT: number = 2;
 export const FRIEND_GIFT_CHANCE: number = 0.3;
 /** Friendship gained when the friend brings a gift. */
 export const FRIENDSHIP_PER_RECEIVED_GIFT: number = 5;
-/** Happiness the pet gains from the friend's gift. */
-export const FRIEND_GIFT_HAPPINESS: number = 10;
 /** Friendship gained by playing together (once per visit). */
 export const FRIENDSHIP_PER_PLAY: number = 10;
 /** Happiness gained by playing together. */
 export const FRIEND_PLAY_HAPPINESS: number = 10;
 /** Energy spent playing together. */
 export const FRIEND_PLAY_ENERGY_COST: number = 5;
-/** Friendship gained by giving the friend a gift (once per visit). */
+/** Friendship gained by giving the friend a toy (once per visit); food is a little less, decor more (FRIENDSHIP_PER_GIFT_KIND). */
 export const FRIENDSHIP_PER_GIVEN_GIFT: number = 15;
-/** Hunger the pet gives up when it shares a treat as a gift. */
-export const FRIEND_GIFT_HUNGER_COST: number = 5;
 /** Friendship lost per game-day boundary without a visit. */
 export const FRIENDSHIP_DECAY_PER_DAY: number = 1;
 /** Senior game-days without a marriage before the matchmaker arrives. */
@@ -3031,6 +3045,138 @@ export const FRIEND_NAMES: readonly string[] = [
 
 /** Pet types a CPU friend can have. */
 const FRIEND_PET_TYPES: readonly string[] = ["codeling", "bytebug", "pixelpup", "shellscript"];
+
+// ── Items (v2.38.0): a small inventory filled by friends' gifts, minigame
+// wins and achievements, used on the pet or given to a visiting friend ──
+
+/** What an item does when used: food feeds, a toy cheers up, decor goes on the floor. */
+export type ItemKind = "food" | "toy" | "decor";
+
+/** One kind of item the pet can own. */
+export interface ItemDef {
+  readonly id: string;
+  readonly kind: ItemKind;
+  readonly emoji: string;
+  readonly name: string;
+}
+
+/** Every item there is. Ids are saved, so never rename one. */
+export const ITEM_CATALOG: readonly ItemDef[] = [
+  { id: "apple",   kind: "food",  emoji: "🍎", name: "apple" },
+  { id: "cookie",  kind: "food",  emoji: "🍪", name: "cookie" },
+  { id: "cake",    kind: "food",  emoji: "🍰", name: "slice of cake" },
+  { id: "fish",    kind: "food",  emoji: "🐟", name: "fish" },
+  { id: "ball",    kind: "toy",   emoji: "⚽", name: "ball" },
+  { id: "yarn",    kind: "toy",   emoji: "🧶", name: "ball of yarn" },
+  { id: "kite",    kind: "toy",   emoji: "🪁", name: "kite" },
+  { id: "teddy",   kind: "toy",   emoji: "🧸", name: "teddy bear" },
+  { id: "plant",   kind: "decor", emoji: "🪴", name: "potted plant" },
+  { id: "flower",  kind: "decor", emoji: "🌻", name: "sunflower" },
+  { id: "lantern", kind: "decor", emoji: "🏮", name: "lantern" },
+  { id: "star",    kind: "decor", emoji: "⭐", name: "star lamp" },
+];
+/** Most items the pet can carry; a new one is lost when the bag is full. */
+export const MAX_ITEMS: number = 12;
+/** Most decorations on the floor at once; placing another replaces the oldest. */
+export const MAX_DECOR: number = 3;
+/** Hunger from eating a food item. */
+export const ITEM_FOOD_HUNGER: number = 15;
+/** Happiness from playing with a toy item. */
+export const ITEM_TOY_HAPPINESS: number = 10;
+/** Happiness from placing a decoration. */
+export const ITEM_DECOR_HAPPINESS: number = 5;
+/** Friendship from giving the visiting friend an item, by kind. */
+export const FRIENDSHIP_PER_GIFT_KIND: Readonly<Record<ItemKind, number>> = { food: 12, toy: FRIENDSHIP_PER_GIVEN_GIFT, decor: 20 };
+/** Every this-many minigame wins finds an item. */
+export const MINIGAME_WINS_PER_ITEM: number = 4;
+
+/** The item with this id, or undefined. */
+export function itemById(id: string): ItemDef | undefined {
+  return ITEM_CATALOG.find((i) => i.id === id);
+}
+
+/** A random item id. */
+export function randomItemId(rand: () => number = Math.random): string {
+  return ITEM_CATALOG[Math.min(ITEM_CATALOG.length - 1, Math.floor(rand() * ITEM_CATALOG.length))].id;
+}
+
+/** `items` with `id` added, unless the bag is full. */
+function withItem(items: readonly string[], id: string): readonly string[] {
+  return items.length < MAX_ITEMS ? [...items, id] : items;
+}
+
+/** `items` with one `id` taken out. */
+function withoutItem(items: readonly string[], id: string): readonly string[] {
+  const i = items.indexOf(id);
+  return i < 0 ? items : [...items.slice(0, i), ...items.slice(i + 1)];
+}
+
+/**
+ * Use an item the pet owns: food raises hunger, a toy raises happiness and a
+ * decoration goes on the floor (the oldest goes back when MAX_DECOR are out)
+ * for a little happiness. Emits `item_used_<id>`. Refused (event
+ * `item_refused`) when the pet doesn't own it, is asleep or has died.
+ */
+export function useItem(state: PetState, itemId: string): PetState {
+  const item = itemById(itemId);
+  if (!state.alive || state.sleeping || !item || !state.items.includes(itemId)) {
+    return withDerivedFields({ ...state, events: ["item_refused"] });
+  }
+  const items = withoutItem(state.items, itemId);
+  const events = [`item_used_${itemId}`];
+  if (item.kind === "food") {
+    return withDerivedFields({ ...state, items, hunger: clampStat(state.hunger + ITEM_FOOD_HUNGER), events });
+  }
+  if (item.kind === "toy") {
+    return withDerivedFields({ ...state, items, happiness: clampStat(state.happiness + ITEM_TOY_HAPPINESS), events });
+  }
+  return withDerivedFields({
+    ...state, items,
+    decor: [...state.decor, itemId].slice(-MAX_DECOR),
+    happiness: clampStat(state.happiness + ITEM_DECOR_HAPPINESS),
+    events,
+  });
+}
+
+/**
+ * Plain-text list of the pet's items for the terminal plugins.
+ *
+ * @param cmd - How the plugin's commands are written, e.g. "/codotchi ".
+ */
+export function itemListLines(state: Pick<PetState, "name" | "items" | "decor">, cmd: string = "/codotchi "): string[] {
+  const lines: string[] = [];
+  if (state.items.length === 0) {
+    lines.push(`${state.name} has no items yet. Friends bring them, and minigame wins and achievements find them.`);
+  } else {
+    const counts = new Map<string, number>();
+    for (const id of state.items) { counts.set(id, (counts.get(id) ?? 0) + 1); }
+    lines.push(`🎒 ${state.name}'s items (${state.items.length}/${MAX_ITEMS}):`);
+    for (const [id, n] of counts) {
+      const it = itemById(id);
+      if (it) { lines.push(`  ${it.emoji} ${it.name}${n > 1 ? ` ×${n}` : ""} (${it.kind}) — ${cmd}use ${id}`); }
+    }
+  }
+  if (state.decor.length > 0) {
+    lines.push(`🏠 On the floor: ${state.decor.map((id) => itemById(id)?.emoji ?? "").join(" ")}`);
+  }
+  return lines;
+}
+
+/** "an apple", "a kite". */
+export function withArticle(name: string): string {
+  return (/^[aeiou]/i.test(name) ? "an " : "a ") + name;
+}
+
+/** One-line result for useItem(), read from its events. */
+export function itemActionMessage(state: Pick<PetState, "name" | "events">, itemId: string): string {
+  const it = itemById(itemId);
+  if (state.events.includes("item_refused") || !it) {
+    return it ? `${state.name} can't use ${withArticle(it.name)} right now (or doesn't have one).` : `There's no item called "${itemId}".`;
+  }
+  return it.kind === "food" ? `${state.name} ate the ${it.name}. ${it.emoji}`
+    : it.kind === "toy" ? `${state.name} played with the ${it.name}! ${it.emoji}`
+    : `${state.name} put the ${it.name} on the floor. ${it.emoji}`;
+}
 
 /** The friendship level name for a friendship score. */
 export function friendshipLevel(friendship: number): string {
@@ -3105,7 +3251,7 @@ function tickSocial(prev: PetState, next: PetState, isIdle: boolean, isDeepIdle:
   let otherFriends = next.otherFriends;
   let visit = next.visit;
   let proposal = next.proposal;
-  let happiness = next.happiness;
+  let items = next.items;
   let ticksSinceLastVisit = next.ticksSinceLastVisit;
   let proposalCooldownTicks = next.proposalCooldownTicks;
   let seniorSinceDay = next.seniorSinceDay;
@@ -3158,9 +3304,11 @@ function tickSocial(prev: PetState, next: PetState, isIdle: boolean, isDeepIdle:
     ticksSinceLastVisit = 0;
     events.push("friend_visit_started");
     if (Math.random() < FRIEND_GIFT_CHANCE) {
+      const broughtItem = randomItemId();
       friend = withFriendship(friend, FRIENDSHIP_PER_RECEIVED_GIFT, events);
-      happiness = clampStat(happiness + FRIEND_GIFT_HAPPINESS);
-      events.push("friend_gift_received");
+      visit = { ...visit, broughtItem };
+      items = withItem(items, broughtItem);
+      events.push("friend_gift_received", `friend_gift_item_${broughtItem}`);
     }
     if (friend.friendship >= PARTNER_FRIENDSHIP && proposalCooldownTicks === 0 && canMarry(next)) {
       proposal = { from: "friend", name: friend.name, spriteType: friend.spriteType, petType: friend.petType };
@@ -3182,7 +3330,7 @@ function tickSocial(prev: PetState, next: PetState, isIdle: boolean, isDeepIdle:
     return next;
   }
   return withSocialPatch(next, {
-    friend, otherFriends, visit, proposal, happiness, ticksSinceLastVisit, proposalCooldownTicks, seniorSinceDay,
+    friend, otherFriends, visit, proposal, items, ticksSinceLastVisit, proposalCooldownTicks, seniorSinceDay,
   }, events);
 }
 
@@ -3231,21 +3379,27 @@ export function playWithFriend(state: PetState): PetState {
 }
 
 /**
- * Give the visiting friend a gift (the pet shares a treat): friendship up,
- * a little hunger spent. Once per visit. Refused (event `friend_gift_refused`)
- * with no visit, when already gifted this visit, or while asleep.
+ * Give the visiting friend an item the pet owns: friendship up by
+ * FRIENDSHIP_PER_GIFT_KIND for its kind, and the item is gone. Without
+ * `itemId` the pet gives its oldest item. Once per visit. Emits
+ * `friend_gift_given` and `friend_gift_item_<id>`. Refused (event
+ * `friend_gift_refused`) with no visit, when already gifted this visit,
+ * while asleep, or when the pet has no such item.
  */
-export function giveFriendGift(state: PetState): PetState {
-  if (!state.alive || !state.visit || !state.friend || state.visit.gifted || state.sleeping) {
+export function giveFriendGift(state: PetState, itemId?: string): PetState {
+  const id = itemId ?? state.items[0];
+  const item = id !== undefined ? itemById(id) : undefined;
+  if (!state.alive || !state.visit || !state.friend || state.visit.gifted || state.sleeping ||
+      !item || !state.items.includes(item.id)) {
     return withDerivedFields({ ...state, events: ["friend_gift_refused"] });
   }
-  const events: string[] = ["friend_gift_given"];
-  const friend = withFriendship(state.friend, FRIENDSHIP_PER_GIVEN_GIFT, events);
+  const events: string[] = ["friend_gift_given", `friend_gift_item_${item.id}`];
+  const friend = withFriendship(state.friend, FRIENDSHIP_PER_GIFT_KIND[item.kind], events);
   const next = withDerivedFields({
     ...state,
     friend,
     visit: { ...state.visit, gifted: true },
-    hunger: clampStat(state.hunger - FRIEND_GIFT_HUNGER_COST),
+    items: withoutItem(state.items, item.id),
     events,
   });
   const xp = awardXp(next, "friend_gift");
@@ -3358,7 +3512,7 @@ export function socialSummaryLines(state: SocialView, cmd: string = "/codotchi "
  * One-line result for a social action (playWithFriend, giveFriendGift,
  * acceptProposal, declineProposal), read from the events it emitted.
  */
-export function socialActionMessage(state: SocialView & Pick<PetState, "events">): string {
+export function socialActionMessage(state: SocialView & Pick<PetState, "events"> & Partial<Pick<PetState, "items">>): string {
   const e = state.events;
   const f = state.friend ? state.friend.name : "your friend";
   const level = state.friend ? ` Friendship: ${friendshipLevel(state.friend.friendship)} (${Math.round(state.friend.friendship)}/100).` : "";
@@ -3369,7 +3523,10 @@ export function socialActionMessage(state: SocialView & Pick<PetState, "events">
       : `${state.name} is too tired to play right now.`;
   }
   if (e.includes("friend_gift_refused")) {
-    return !state.visit ? "No friend is visiting right now." : `${state.name} already gave ${f} a gift this visit.`;
+    return !state.visit ? "No friend is visiting right now."
+      : state.visit.gifted ? `${state.name} already gave ${f} a gift this visit.`
+      : (state.items ?? []).length === 0 ? `${state.name} has no items to give. Friends bring them, and minigame wins and achievements find them.`
+      : `${state.name} doesn't have that item.`;
   }
   if (e.includes("friend_goodbye_refused")) { return "No friend is visiting right now."; }
   if (e.includes("friend_waved_goodbye")) { return `👋 ${state.name} waved goodbye to ${f}.`; }
@@ -3379,7 +3536,11 @@ export function socialActionMessage(state: SocialView & Pick<PetState, "events">
   }
   if (e.includes("proposal_declined")) { return `${state.name} said "not yet".`; }
   if (e.includes("friend_played")) { return `${state.name} and ${f} played together!${level}${best}`; }
-  if (e.includes("friend_gift_given")) { return `${state.name} shared a treat with ${f}.${level}${best}`; }
+  if (e.includes("friend_gift_given")) {
+    const giftId = e.find((x) => x.startsWith("friend_gift_item_"))?.slice("friend_gift_item_".length);
+    const gift = giftId ? itemById(giftId) : undefined;
+    return `${state.name} gave ${f} ${gift ? `${withArticle(gift.name)} ${gift.emoji}` : "a present"}.${level}${best}`;
+  }
   return "";
 }
 
@@ -3394,7 +3555,7 @@ function deserialiseIdentity(raw: unknown): PetIdentity | null {
 /** Parse the social fields from saved JSON, filling in defaults (saves before schemaVersion 2 have none). */
 export function deserialiseSocial(data: Record<string, unknown>): Pick<PetState,
   "generation" | "friend" | "otherFriends" | "visit" | "ticksSinceLastVisit" | "partner" | "heirEgg" |
-  "seniorSinceDay" | "proposal" | "proposalCooldownTicks"> {
+  "seniorSinceDay" | "proposal" | "proposalCooldownTicks" | "items" | "decor"> {
   const num = (v: unknown, fallback: number): number => typeof v === "number" && Number.isFinite(v) ? v : fallback;
   const obj = (v: unknown): Record<string, unknown> | null =>
     v !== null && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : null;
@@ -3426,8 +3587,14 @@ export function deserialiseSocial(data: Record<string, unknown>): Pick<PetState,
   }
   const visitRaw = obj(data["visit"]);
   const visit: FriendVisit | null = visitRaw && friend && num(visitRaw.ticksLeft, 0) > 0
-    ? { ticksLeft: Math.min(VISIT_TICKS, num(visitRaw.ticksLeft, 0)), played: visitRaw.played === true, gifted: visitRaw.gifted === true }
+    ? {
+        ticksLeft: Math.min(VISIT_TICKS, num(visitRaw.ticksLeft, 0)), played: visitRaw.played === true, gifted: visitRaw.gifted === true,
+        ...(typeof visitRaw.broughtItem === "string" && itemById(visitRaw.broughtItem) ? { broughtItem: visitRaw.broughtItem } : {}),
+      }
     : null;
+  const itemIds = (key: string, max: number): readonly string[] => Array.isArray(data[key])
+    ? (data[key] as unknown[]).filter((v): v is string => typeof v === "string" && itemById(v) !== undefined).slice(0, max)
+    : [];
   const eggRaw = obj(data["heirEgg"]);
   const heirEgg: HeirEgg | null = eggRaw && typeof eggRaw.spriteType === "string" && typeof eggRaw.petType === "string"
     ? { spriteType: eggRaw.spriteType === "goat" ? "sheep" : eggRaw.spriteType, petType: eggRaw.petType }
@@ -3448,6 +3615,8 @@ export function deserialiseSocial(data: Record<string, unknown>): Pick<PetState,
     seniorSinceDay: typeof data["seniorSinceDay"] === "number" ? data["seniorSinceDay"] as number : null,
     proposal,
     proposalCooldownTicks: Math.max(0, num(data["proposalCooldownTicks"], 0)),
+    items: itemIds("items", MAX_ITEMS),
+    decor: itemIds("decor", MAX_DECOR).filter((id) => itemById(id)!.kind === "decor"),
   };
 }
 
@@ -3718,6 +3887,7 @@ export function awardXp(state: PetState, source: XpSource, now: number = Date.no
   let xp = t.xp + amount;
   let level = levelProgress(xp).level;
   const achievements = [...t.achievements];
+  let items = state.items;
   // Unlock bonuses can raise the level, which can unlock a level achievement.
   for (;;) {
     const fresh = ACHIEVEMENTS.filter((a) =>
@@ -3729,6 +3899,12 @@ export function awardXp(state: PetState, source: XpSource, now: number = Date.no
       achievements.push(a.id);
       events.push(`achievement_unlocked_${a.id}`);
       xp += XP_ACHIEVEMENT_BONUS;
+      // Each achievement finds an item: the same one every time for that achievement
+      const found = ITEM_CATALOG[ACHIEVEMENTS.indexOf(a) % ITEM_CATALOG.length].id;
+      if (items.length < MAX_ITEMS) {
+        items = withItem(items, found);
+        events.push(`item_found_${found}`);
+      }
     }
     level = levelProgress(xp).level;
   }
@@ -3743,6 +3919,7 @@ export function awardXp(state: PetState, source: XpSource, now: number = Date.no
 
   return {
     ...state,
+    items,
     petXp,
     petLevel,
     pendingBosses: unlocked.length > 0 ? [...pending, ...unlocked].slice(0, BOSS_QUEUE_MAX) : pending,
@@ -4113,6 +4290,8 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     seniorSinceDay: state.seniorSinceDay,
     proposal: state.proposal,
     proposalCooldownTicks: state.proposalCooldownTicks,
+    items: state.items,
+    decor: state.decor,
   };
 }
 

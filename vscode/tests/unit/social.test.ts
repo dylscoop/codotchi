@@ -17,6 +17,16 @@ import {
   socialActionMessage,
   socialSummaryLines,
   pickVisitor,
+  useItem,
+  itemActionMessage,
+  itemListLines,
+  applyMinigameResult,
+  ITEM_CATALOG,
+  ITEM_FOOD_HUNGER,
+  ITEM_TOY_HAPPINESS,
+  MAX_ITEMS,
+  MINIGAME_WINS_PER_ITEM,
+  FRIENDSHIP_PER_GIFT_KIND,
   MAX_FRIENDS,
   NEW_FRIEND_CHANCE,
   FRIEND_DRIFT_DAYS,
@@ -277,7 +287,7 @@ describe("social: visits", () => {
 
 describe("social: playing and gifts", () => {
   const visiting = (friendship: number) =>
-    makePet({ friend: friend(friendship), visit: { ticksLeft: 30, played: false, gifted: false } });
+    makePet({ friend: friend(friendship), visit: { ticksLeft: 30, played: false, gifted: false }, items: ["ball"] });
 
   it("play together raises friendship once per visit", () => {
     const s = playWithFriend(visiting(20));
@@ -303,6 +313,102 @@ describe("social: playing and gifts", () => {
     assert.equal(s.trainer.counters.giftsGiven, 1);
     assert.deepEqual(giveFriendGift(s).events, ["friend_gift_refused"]);
   });
+});
+
+describe("items", () => {
+  const visiting = (items: string[]) =>
+    makePet({ friend: friend(20), visit: { ticksLeft: 30, played: false, gifted: false }, items });
+
+  it("giving an item removes it, and friendship depends on its kind", () => {
+    const food = giveFriendGift(visiting(["apple", "plant"]), "apple");
+    assert.equal(food.friend!.friendship, 20 + FRIENDSHIP_PER_GIFT_KIND.food);
+    assert.deepEqual(food.items, ["plant"]);
+    assert.ok(food.events.includes("friend_gift_item_apple"));
+    assert.match(socialActionMessage(food), /gave Pixel an apple 🍎/);
+    const decor = giveFriendGift(visiting(["apple", "plant"]), "plant");
+    assert.equal(decor.friend!.friendship, 20 + FRIENDSHIP_PER_GIFT_KIND.decor);
+    assert.equal(decor.hunger, visiting([]).hunger, "giving no longer costs hunger");
+  });
+
+  it("with no item named, the oldest item is given", () => {
+    assert.deepEqual(giveFriendGift(visiting(["kite", "cake"])).items, ["cake"]);
+  });
+
+  it("a gift is refused with no items, or an item the pet doesn't own", () => {
+    const none = giveFriendGift(visiting([]));
+    assert.deepEqual(none.events, ["friend_gift_refused"]);
+    assert.match(socialActionMessage(none), /no items to give/);
+    const notOwned = giveFriendGift(visiting(["apple"]), "kite");
+    assert.deepEqual(notOwned.events, ["friend_gift_refused"]);
+    assert.match(socialActionMessage(notOwned), /doesn't have that item/);
+  });
+
+  it("a visiting friend can bring an item, added to the bag", () => {
+    const s = makePet({ friend: friend(20), ticksSinceLastVisit: VISIT_MIN_GAP_TICKS });
+    const next = withRandom(0, () => tick(s, false, false, NO_CALLS));
+    assert.ok(next.events.includes("friend_gift_received"));
+    assert.deepEqual(next.items, [ITEM_CATALOG[0].id]);
+    assert.equal(next.visit!.broughtItem, ITEM_CATALOG[0].id);
+    assert.ok(next.events.includes(`friend_gift_item_${ITEM_CATALOG[0].id}`));
+  });
+
+  it("useItem: food feeds, a toy cheers up, decor goes on the floor", () => {
+    const base = makePet({ hunger: 50, happiness: 50, items: ["fish", "yarn", "plant", "flower", "lantern", "star"] });
+    const ate = useItem(base, "fish");
+    assert.equal(ate.hunger, 50 + ITEM_FOOD_HUNGER);
+    assert.ok(!ate.items.includes("fish"));
+    assert.ok(ate.events.includes("item_used_fish"));
+    assert.equal(useItem(base, "yarn").happiness, 50 + ITEM_TOY_HAPPINESS);
+    let s = base;
+    for (const d of ["plant", "flower", "lantern", "star"]) { s = useItem(s, d); }
+    assert.deepEqual(s.decor, ["flower", "lantern", "star"], "only MAX_DECOR stay; the oldest goes");
+    assert.deepEqual(useItem(base, "apple").events, ["item_refused"]);
+    assert.deepEqual(useItem({ ...base, sleeping: true }, "fish").events, ["item_refused"]);
+    assert.match(itemActionMessage(ate, "fish"), /ate the fish/);
+  });
+
+  it("every MINIGAME_WINS_PER_ITEM minigame wins finds an item", () => {
+    let s = makePet();
+    const found: string[] = [];
+    for (let i = 0; i < MINIGAME_WINS_PER_ITEM * 2; i++) {
+      s = applyMinigameResult(s, "left_right", "win");
+      found.push(...s.events.filter((e) => e.startsWith("item_found_")));
+    }
+    assert.ok(found.length >= 2, found.join());
+    assert.ok(s.items.length >= 2);
+  });
+
+  it("the bag holds MAX_ITEMS; extra finds are lost", () => {
+    const full = Array.from({ length: MAX_ITEMS }, () => "apple");
+    const s = makePet({ friend: friend(20), ticksSinceLastVisit: VISIT_MIN_GAP_TICKS, items: full });
+    assert.equal(withRandom(0, () => tick(s, false, false, NO_CALLS)).items.length, MAX_ITEMS);
+  });
+
+  it("items and decor survive a save; unknown ids are dropped", () => {
+    const s = makePet({ items: ["apple", "teddy"], decor: ["plant"] });
+    const r = roundTrip(s);
+    assert.deepEqual(r.items, ["apple", "teddy"]);
+    assert.deepEqual(r.decor, ["plant"]);
+    const raw = serialiseState(s) as Record<string, unknown>;
+    raw.items = ["apple", "laser-sword", 7];
+    raw.decor = ["apple", "plant"];
+    const loaded = deserialiseState(raw);
+    assert.deepEqual(loaded.items, ["apple"]);
+    assert.deepEqual(loaded.decor, ["plant"], "only decorations go on the floor");
+  });
+
+  it("itemListLines lists the bag with counts and the floor", () => {
+    const lines = itemListLines({ name: "Mittens", items: ["apple", "apple", "ball"], decor: ["plant"] });
+    assert.ok(lines[0].includes("(3/12)"));
+    assert.ok(lines.some((l) => l.includes("🍎 apple ×2") && l.includes("/codotchi use apple")));
+    assert.ok(lines.some((l) => l.includes("On the floor: 🪴")));
+    assert.match(itemListLines({ name: "Mittens", items: [], decor: [] })[0], /no items yet/);
+  });
+});
+
+describe("social: goodbye", () => {
+  const visiting = (friendship: number) =>
+    makePet({ friend: friend(friendship), visit: { ticksLeft: 30, played: false, gifted: false } });
 
   it("goodbye ends the visit early, and is refused with no visit", () => {
     const s = sayGoodbyeToFriend(visiting(20));

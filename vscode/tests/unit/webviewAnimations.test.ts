@@ -980,3 +980,16 @@ describe("visitor wanders on its own (sidebar.js)", () => {
     assert.equal(met!.facingLeft, true, "a visitor right of the pet faces left, towards it");
   });
 });
+
+describe("item catalogue in the webview (sidebar.js ITEM_INFO)", () => {
+  it("matches ITEM_CATALOG in gameEngine.ts and Items.kt", () => {
+    const ts = fs.readFileSync(path.join(repoRoot, "packages/core/src/gameEngine.ts"), "utf8");
+    const kt = fs.readFileSync(path.join(repoRoot, "pycharm/src/main/kotlin/com/codotchi/engine/Items.kt"), "utf8");
+    const tsItems = [...ts.matchAll(/\{ id: "(\w+)",\s*kind: "(\w+)",\s*emoji: "([^"]+)", name: "([^"]+)" \}/g)];
+    assert.equal(tsItems.length, 12);
+    for (const [, id, kind, emoji, name] of tsItems) {
+      assert.ok(sidebarSource.includes(`${id}: ["${emoji}", "${name}", "${kind}"]`), `sidebar.js ${id}`);
+      assert.ok(kt.includes(`ItemDef("${id}",`) && kt.includes(`"${kind}",`) && kt.includes(`"${emoji}", "${name}")`), `Items.kt ${id}`);
+    }
+  });
+});
