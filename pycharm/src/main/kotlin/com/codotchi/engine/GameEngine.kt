@@ -1604,6 +1604,7 @@ private fun tickSocial(
     val active = !isIdle && !isDeepIdle
     val napping = next.breakNapTicksRemaining > 0
     var friend = next.friend
+    var otherFriends = next.otherFriends
     var visit = next.visit
     var proposal = next.proposal
     var happiness = next.happiness
@@ -1616,8 +1617,23 @@ private fun tickSocial(
         ticksSinceLastVisit += 1
         proposalCooldownTicks = max(0, proposalCooldownTicks - 1)
     }
-    if (friend != null && visit == null && floor(next.dayTimer) > floor(prev.dayTimer)) {
-        friend = withFriendship(friend, -FRIENDSHIP_DECAY_PER_DAY, events)
+    if (floor(next.dayTimer) > floor(prev.dayTimer)) {
+        if (friend != null && visit == null) friend = withFriendship(friend, -FRIENDSHIP_DECAY_PER_DAY, events)
+        otherFriends = otherFriends.map { withFriendship(it, -FRIENDSHIP_DECAY_PER_DAY, events) }
+        // Friends at 0 friendship who haven't visited for FRIEND_DRIFT_DAYS drift away (never the partner)
+        val drifting = { f: FriendPet ->
+            f.friendship <= 0 && next.dayTimer - (f.lastVisitDay ?: next.dayTimer) >= FRIEND_DRIFT_DAYS &&
+                next.partner?.name != f.name
+        }
+        if (otherFriends.any(drifting)) {
+            otherFriends = otherFriends.filterNot(drifting)
+            events.add("friend_drifted_away")
+        }
+        if (friend != null && visit == null && drifting(friend)) {
+            friend = otherFriends.firstOrNull()
+            otherFriends = otherFriends.drop(1)
+            events.add("friend_drifted_away")
+        }
     }
 
     if (visit != null) {
@@ -1631,13 +1647,17 @@ private fun tickSocial(
     } else if (active && !napping && !next.sleeping && next.stage != "egg" && next.stage != "baby" &&
                next.activeAttentionCall == null && proposal == null &&
                ticksSinceLastVisit >= visitPacing(config).first && rand() < visitPacing(config).second) {
-        var f = friend
+        val roster = if (friend != null) listOf(friend) + otherFriends else emptyList()
+        var f = pickVisitor(roster, rand())
         if (f == null) {
-            val id = randomFriendIdentity(listOf(next.name), rand)
+            val avoid = listOf(next.name) + roster.map { it.name } + listOfNotNull(next.partner?.name)
+            val id = randomFriendIdentity(avoid, rand)
             f = FriendPet(id.name, id.spriteType, id.petType, friendship = 0, visits = 0)
             events.add("friend_made")
         }
-        f = withFriendship(f.copy(visits = f.visits + 1), FRIENDSHIP_PER_VISIT, events)
+        val visitorName = f.name
+        otherFriends = roster.filter { it.name != visitorName }.take(MAX_FRIENDS - 1)
+        f = withFriendship(f.copy(visits = f.visits + 1, lastVisitDay = next.dayTimer), FRIENDSHIP_PER_VISIT, events)
         visit = FriendVisit(ticksLeft = VISIT_TICKS, played = false, gifted = false)
         ticksSinceLastVisit = 0
         events.add("friend_visit_started")
@@ -1656,24 +1676,42 @@ private fun tickSocial(
     if (active && !napping && !next.sleeping && proposal == null && proposalCooldownTicks == 0 &&
         next.stage == "senior" && seniorSinceDay != null &&
         next.dayTimer - seniorSinceDay >= MATCHMAKER_SENIOR_DAYS && canMarry(next)) {
-        val match = randomFriendIdentity(listOf(next.name) + listOfNotNull(friend?.name), rand)
+        val match = randomFriendIdentity(listOf(next.name) + listOfNotNull(friend?.name) + otherFriends.map { it.name }, rand)
         proposal = Proposal(from = "matchmaker", name = match.name, spriteType = match.spriteType, petType = match.petType)
         events.add("matchmaker_arrived")
     }
 
-    if (events.isEmpty() && friend == next.friend && visit == next.visit && proposal == next.proposal &&
+    if (events.isEmpty() && friend == next.friend && otherFriends == next.otherFriends && visit == next.visit && proposal == next.proposal &&
         ticksSinceLastVisit == next.ticksSinceLastVisit && proposalCooldownTicks == next.proposalCooldownTicks &&
         seniorSinceDay == next.seniorSinceDay) {
         return next
     }
     return withSocialPatch(
         next.copy(
-            friend = friend, visit = visit, proposal = proposal, happiness = happiness,
+            friend = friend, otherFriends = otherFriends, visit = visit, proposal = proposal, happiness = happiness,
             ticksSinceLastVisit = ticksSinceLastVisit, proposalCooldownTicks = proposalCooldownTicks,
             seniorSinceDay = seniorSinceDay,
         ),
         next, events,
     )
+}
+
+/**
+ * Who visits, from the pet's friends (the last visitor first): with a slot
+ * free, a NEW_FRIEND_CHANCE share of [r] means someone new (null); the rest
+ * picks a friend weighted by friendship + 10. Mirrors pickVisitor() in gameEngine.ts.
+ */
+fun pickVisitor(roster: List<FriendPet>, r: Double): FriendPet? {
+    if (roster.isEmpty()) return null
+    val oldShare = if (roster.size < MAX_FRIENDS) 1.0 - NEW_FRIEND_CHANCE else 1.0
+    if (r >= oldShare) return null
+    val weights = roster.map { it.friendship + 10 }
+    var target = (r / oldShare) * weights.sum()
+    for (i in roster.indices) {
+        target -= weights[i]
+        if (target < 0) return roster[i]
+    }
+    return roster.last()
 }
 
 /**
@@ -1790,6 +1828,7 @@ fun hatchHeir(parent: PetState, name: String, trainer: TrainerProgress? = null):
 data class SocialFields(
     val generation: Int = 1,
     val friend: FriendPet? = null,
+    val otherFriends: List<FriendPet> = emptyList(),
     val visit: FriendVisit? = null,
     val ticksSinceLastVisit: Int = 0,
     val partner: PetIdentity? = null,
@@ -1803,6 +1842,7 @@ data class SocialFields(
 fun withSocialFields(state: PetState, fields: SocialFields): PetState = state.copy(
     generation = fields.generation,
     friend = fields.friend,
+    otherFriends = fields.otherFriends,
     visit = fields.visit,
     ticksSinceLastVisit = fields.ticksSinceLastVisit,
     partner = fields.partner,
@@ -1830,13 +1870,28 @@ fun socialFromRaw(data: Map<String, Any?>): SocialFields {
     fun num(v: Any?, fallback: Double): Double =
         if (v is Number && v.toDouble().isFinite()) v.toDouble() else fallback
 
-    val friendId = identityFromRaw(data["friend"])
-    val friendRaw = data["friend"] as? Map<*, *>
-    val friend = if (friendId != null && friendRaw != null) FriendPet(
-        friendId.name, friendId.spriteType, friendId.petType,
-        friendship = max(0.0, min(100.0, num(friendRaw["friendship"], 0.0))).toInt(),
-        visits = max(0.0, num(friendRaw["visits"], 0.0)).toInt(),
-    ) else null
+    // Saves from before several friends have no lastVisitDay: count from today.
+    val today = num(data["dayTimer"], 0.0)
+    fun friendFromRaw(raw: Any?): FriendPet? {
+        val id = identityFromRaw(raw) ?: return null
+        val r = raw as Map<*, *>
+        return FriendPet(
+            id.name, id.spriteType, id.petType,
+            friendship = max(0.0, min(100.0, num(r["friendship"], 0.0))).toInt(),
+            visits = max(0.0, num(r["visits"], 0.0)).toInt(),
+            lastVisitDay = num(r["lastVisitDay"], today),
+        )
+    }
+    val friend = friendFromRaw(data["friend"])
+    val otherFriends = mutableListOf<FriendPet>()
+    if (friend != null) {
+        for (raw in (data["otherFriends"] as? List<*>).orEmpty()) {
+            val f = friendFromRaw(raw) ?: continue
+            if (f.name != friend.name && otherFriends.none { it.name == f.name } && otherFriends.size < MAX_FRIENDS - 1) {
+                otherFriends.add(f)
+            }
+        }
+    }
     val visitRaw = data["visit"] as? Map<*, *>
     val visit = if (visitRaw != null && friend != null && num(visitRaw["ticksLeft"], 0.0) > 0) FriendVisit(
         ticksLeft = min(VISIT_TICKS.toDouble(), num(visitRaw["ticksLeft"], 0.0)).toInt(),
@@ -1855,6 +1910,7 @@ fun socialFromRaw(data: Map<String, Any?>): SocialFields {
     return SocialFields(
         generation = max(1.0, floor(num(data["generation"], 1.0))).toInt(),
         friend = friend,
+        otherFriends = otherFriends,
         visit = visit,
         ticksSinceLastVisit = max(0.0, num(data["ticksSinceLastVisit"], 0.0)).toInt(),
         partner = identityFromRaw(data["partner"]),
@@ -1865,13 +1921,17 @@ fun socialFromRaw(data: Map<String, Any?>): SocialFields {
     )
 }
 
+/** A friend as a JSON-ready map (lastVisitDay left out while unknown). */
+private fun friendToRaw(f: FriendPet): Map<String, Any?> =
+    mapOf("name" to f.name, "spriteType" to f.spriteType, "petType" to f.petType,
+          "friendship" to f.friendship, "visits" to f.visits) +
+        (if (f.lastVisitDay != null) mapOf("lastVisitDay" to f.lastVisitDay) else emptyMap())
+
 /** The social fields as JSON-ready values, with the keys and shapes serialiseState() in gameEngine.ts uses. */
 fun socialToRaw(s: PetState): Map<String, Any?> = mapOf(
     "generation" to s.generation,
-    "friend" to s.friend?.let {
-        mapOf("name" to it.name, "spriteType" to it.spriteType, "petType" to it.petType,
-              "friendship" to it.friendship, "visits" to it.visits)
-    },
+    "friend" to s.friend?.let(::friendToRaw),
+    "otherFriends" to s.otherFriends.map(::friendToRaw),
     "visit" to s.visit?.let { mapOf("ticksLeft" to it.ticksLeft, "played" to it.played, "gifted" to it.gifted) },
     "ticksSinceLastVisit" to s.ticksSinceLastVisit,
     "partner" to s.partner?.let { mapOf("name" to it.name, "spriteType" to it.spriteType, "petType" to it.petType) },

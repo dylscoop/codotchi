@@ -1579,7 +1579,7 @@ const plugin: Plugin = async (ctx) => {
                   sleeping: s.sleeping, poops: s.poops, spriteType: s.spriteType,
                   petLevel: s.petLevel, trainer: s.trainer,
                   spawnedAt: s.spawnedAt, dailies: s.dailies, levels: levelsEnabled,
-                  generation: s.generation, friend: s.friend, visit: s.visit, partner: s.partner,
+                  generation: s.generation, friend: s.friend, otherFriends: s.otherFriends, visit: s.visit, partner: s.partner,
                   heirEgg: s.heirEgg, proposal: s.proposal,
                 })
               : "";

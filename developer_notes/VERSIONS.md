@@ -12,6 +12,9 @@
 | `vscode/tests/unit/social.test.ts`, `pycharm/.../SocialTest.kt`, `claude-codotchi/tests/integration/socialActions.test.mjs` | goodbye tests |
 | `vscode/media/sidebar.js` | Visitor wanders on its own: after sliding in, the visiting friend paces at its own speed (10–20 px/s), flips direction every 1.5–4.5 s and sometimes pauses (`wanderGuest`, state in `guestAnim.wander`). Every 12–25 s it walks up beside the pet; both stop and face each other for `GUEST_MEET_MS` (2 s). The guest's side is now fixed when it arrives (it no longer slides in again when the pet crosses the middle) |
 | `vscode/tests/unit/webviewAnimations.test.ts` | wander stays on the stage; the meeting faces the pet |
+| `packages/core/src/gameEngine.ts` (+ synced copies), `asciiArt.ts`, `pycharm/.../engine/GameEngine.kt`, `PetState.kt`, `Constants.kt`, `CodotchiPersistence.kt` | Different friends visit: `PetState.otherFriends` (up to `MAX_FRIENDS` 3 counting `friend`, which is now the friend visiting or last to visit); `FriendPet.lastVisitDay`. On a visit `pickVisitor` picks someone new (`NEW_FRIEND_CHANCE` 0.25 while a slot is free) or an old friend weighted by friendship + 10; the visitor becomes `friend` and the rest move to `otherFriends`. Every friend not visiting loses 1 friendship per game day; at 0 friendship and `FRIEND_DRIFT_DAYS` (5) game days since its last visit, a friend drifts away (event `friend_drifted_away`; never the partner). Saves without the fields load with no other friends and `lastVisitDay` = today. `socialSummaryLines` lists "Other friends"; the matchmaker avoids every friend's name |
+| `vscode/media/sidebar.js`, `opencode-codotchi/src/index.ts` | social line shows the other friends (👥 name ♥♥); `friend_drifted_away` bubble text; OpenCode passes `otherFriends` to the status block |
+| `vscode/tests/unit/social.test.ts`, `pycharm/.../SocialTest.kt` | several-friends tests |
 
 ## v2.37.0
 

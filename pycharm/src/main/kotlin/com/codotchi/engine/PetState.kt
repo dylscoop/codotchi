@@ -170,8 +170,10 @@ data class PetState(
 
     /** Family line: 1 for a fresh egg, parent's generation + 1 for an heir. */
     val generation: Int = 1,
-    /** The CPU friend that visits this pet; null until the first visit. */
+    /** The friend visiting now, or the one that visited last; null until the first visit. */
     val friend: FriendPet? = null,
+    /** The pet's other friends (MAX_FRIENDS in all, counting [friend]), most recent first. */
+    val otherFriends: List<FriendPet> = emptyList(),
     /** The friend is on the canvas right now; null otherwise. */
     val visit: FriendVisit? = null,
     /** Active ticks since the last visit started (VISIT_MIN_GAP_TICKS). */
@@ -202,6 +204,8 @@ data class FriendPet(
     val petType: String,
     val friendship: Int,
     val visits: Int,
+    /** dayTimer when this friend last visited; drives drifting away (FRIEND_DRIFT_DAYS). */
+    val lastVisitDay: Double? = null,
 )
 
 /** An ongoing visit. Play and gift can each be done once per visit. */

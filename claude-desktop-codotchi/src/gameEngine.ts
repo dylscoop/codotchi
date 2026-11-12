@@ -833,8 +833,10 @@ export interface PetState {
 
   /** Family line: 1 for a fresh egg, parent's generation + 1 for an heir. */
   readonly generation: number;
-  /** The CPU friend that visits this pet; null until the first visit. */
+  /** The friend visiting now, or the one that visited last; null until the first visit. */
   readonly friend: FriendPet | null;
+  /** The pet's other friends (MAX_FRIENDS in all, counting `friend`), most recent first. */
+  readonly otherFriends: readonly FriendPet[];
   /** The friend is on the canvas right now; null otherwise. */
   readonly visit: FriendVisit | null;
   /** Active ticks since the last visit started (VISIT_MIN_GAP_TICKS). */
@@ -862,6 +864,8 @@ export interface PetIdentity {
 export interface FriendPet extends PetIdentity {
   readonly friendship: number;
   readonly visits: number;
+  /** dayTimer when this friend last visited; drives drifting away (FRIEND_DRIFT_DAYS). */
+  readonly lastVisitDay?: number;
 }
 
 /** An ongoing visit. Play and gift can each be done once per visit. */
@@ -1335,6 +1339,7 @@ export function createPet(
     pendingBosses: [],
     generation: Math.max(1, Math.floor(lineage?.generation ?? 1)),
     friend: null,
+    otherFriends: [],
     visit: null,
     ticksSinceLastVisit: 0,
     partner: null,
@@ -2992,6 +2997,12 @@ export const FRIEND_GIFT_HUNGER_COST: number = 5;
 export const FRIENDSHIP_DECAY_PER_DAY: number = 1;
 /** Senior game-days without a marriage before the matchmaker arrives. */
 export const MATCHMAKER_SENIOR_DAYS: number = 3;
+/** Most friends a pet can have at once (the visiting / last friend plus otherFriends). */
+export const MAX_FRIENDS: number = 3;
+/** Chance a visit, with a friend slot free, is from someone new rather than an old friend. */
+export const NEW_FRIEND_CHANCE: number = 0.25;
+/** Game-days without a visit, at 0 friendship, before a friend drifts away. */
+export const FRIEND_DRIFT_DAYS: number = 5;
 /** Active ticks after a declined proposal before another can be made (~1 game day). */
 export const PROPOSAL_DECLINE_COOLDOWN_TICKS: number = 300;
 /** Happiness gained on marriage. */
@@ -3093,6 +3104,7 @@ function tickSocial(prev: PetState, next: PetState, isIdle: boolean, isDeepIdle:
   const active = !isIdle && !isDeepIdle;
   const napping = next.breakNapTicksRemaining > 0;
   let friend = next.friend;
+  let otherFriends = next.otherFriends;
   let visit = next.visit;
   let proposal = next.proposal;
   let happiness = next.happiness;
@@ -3105,8 +3117,22 @@ function tickSocial(prev: PetState, next: PetState, isIdle: boolean, isDeepIdle:
     ticksSinceLastVisit += 1;
     proposalCooldownTicks = Math.max(0, proposalCooldownTicks - 1);
   }
-  if (friend && !visit && Math.floor(next.dayTimer) > Math.floor(prev.dayTimer)) {
-    friend = withFriendship(friend, -FRIENDSHIP_DECAY_PER_DAY, events);
+  if (Math.floor(next.dayTimer) > Math.floor(prev.dayTimer)) {
+    if (friend && !visit) { friend = withFriendship(friend, -FRIENDSHIP_DECAY_PER_DAY, events); }
+    otherFriends = otherFriends.map((f) => withFriendship(f, -FRIENDSHIP_DECAY_PER_DAY, events));
+    // Friends at 0 friendship who haven't visited for FRIEND_DRIFT_DAYS drift away (never the partner)
+    const drifting = (f: FriendPet): boolean => f.friendship <= 0 &&
+      next.dayTimer - (f.lastVisitDay ?? next.dayTimer) >= FRIEND_DRIFT_DAYS &&
+      !(next.partner && next.partner.name === f.name);
+    if (otherFriends.some(drifting)) {
+      otherFriends = otherFriends.filter((f) => !drifting(f));
+      events.push("friend_drifted_away");
+    }
+    if (friend && !visit && drifting(friend)) {
+      friend = otherFriends[0] ?? null;
+      otherFriends = otherFriends.slice(1);
+      events.push("friend_drifted_away");
+    }
   }
 
   if (visit) {
@@ -3120,11 +3146,16 @@ function tickSocial(prev: PetState, next: PetState, isIdle: boolean, isDeepIdle:
   } else if (active && !napping && !next.sleeping && next.stage !== "egg" && next.stage !== "baby" &&
              next.activeAttentionCall === null && proposal === null &&
              ticksSinceLastVisit >= visitPacing(config).minGapTicks && Math.random() < visitPacing(config).chancePerTick) {
-    if (!friend) {
-      friend = { ...randomFriendIdentity([next.name]), friendship: 0, visits: 0 };
+    const roster = friend ? [friend, ...otherFriends] : [];
+    let visitor = pickVisitor(roster, Math.random());
+    if (!visitor) {
+      const avoid = [next.name, ...roster.map((f) => f.name), ...(next.partner ? [next.partner.name] : [])];
+      visitor = { ...randomFriendIdentity(avoid), friendship: 0, visits: 0 };
       events.push("friend_made");
     }
-    friend = withFriendship({ ...friend, visits: friend.visits + 1 }, FRIENDSHIP_PER_VISIT, events);
+    const visitorName = visitor.name;
+    otherFriends = roster.filter((f) => f.name !== visitorName).slice(0, MAX_FRIENDS - 1);
+    friend = withFriendship({ ...visitor, visits: visitor.visits + 1, lastVisitDay: next.dayTimer }, FRIENDSHIP_PER_VISIT, events);
     visit = { ticksLeft: VISIT_TICKS, played: false, gifted: false };
     ticksSinceLastVisit = 0;
     events.push("friend_visit_started");
@@ -3142,19 +3173,39 @@ function tickSocial(prev: PetState, next: PetState, isIdle: boolean, isDeepIdle:
   if (active && !napping && !next.sleeping && proposal === null && proposalCooldownTicks === 0 &&
       next.stage === "senior" && seniorSinceDay !== null &&
       next.dayTimer - seniorSinceDay >= MATCHMAKER_SENIOR_DAYS && canMarry(next)) {
-    const match = randomFriendIdentity([next.name, ...(friend ? [friend.name] : [])]);
+    const match = randomFriendIdentity([next.name, ...(friend ? [friend.name] : []), ...otherFriends.map((f) => f.name)]);
     proposal = { from: "matchmaker", ...match };
     events.push("matchmaker_arrived");
   }
 
-  if (events.length === 0 && friend === next.friend && visit === next.visit && proposal === next.proposal &&
+  if (events.length === 0 && friend === next.friend && otherFriends === next.otherFriends && visit === next.visit && proposal === next.proposal &&
       ticksSinceLastVisit === next.ticksSinceLastVisit && proposalCooldownTicks === next.proposalCooldownTicks &&
       seniorSinceDay === next.seniorSinceDay) {
     return next;
   }
   return withSocialPatch(next, {
-    friend, visit, proposal, happiness, ticksSinceLastVisit, proposalCooldownTicks, seniorSinceDay,
+    friend, otherFriends, visit, proposal, happiness, ticksSinceLastVisit, proposalCooldownTicks, seniorSinceDay,
   }, events);
+}
+
+/**
+ * Who visits, from the pet's friends (the last visitor first): with a slot
+ * free, a NEW_FRIEND_CHANCE share of `r` means someone new (null); the rest
+ * picks a friend weighted by friendship + 10, so close friends come more often.
+ *
+ * @param r - A random number in [0, 1).
+ */
+export function pickVisitor(roster: readonly FriendPet[], r: number): FriendPet | null {
+  if (roster.length === 0) { return null; }
+  const oldShare = roster.length < MAX_FRIENDS ? 1 - NEW_FRIEND_CHANCE : 1;
+  if (r >= oldShare) { return null; }
+  const weights = roster.map((f) => f.friendship + 10);
+  let target = (r / oldShare) * weights.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < roster.length; i++) {
+    target -= weights[i];
+    if (target < 0) { return roster[i]; }
+  }
+  return roster[roster.length - 1];
 }
 
 /**
@@ -3266,7 +3317,8 @@ export function hatchHeir(parent: PetState, name: string, trainer: TrainerProgre
 }
 
 /** The social slice of a pet that the terminal text helpers read. */
-export type SocialView = Pick<PetState, "name" | "generation" | "friend" | "visit" | "partner" | "heirEgg" | "proposal">;
+export type SocialView = Pick<PetState, "name" | "generation" | "friend" | "visit" | "partner" | "heirEgg" | "proposal"> &
+  Partial<Pick<PetState, "otherFriends">>;
 
 /**
  * Plain-text lines for the terminal plugins' status output: generation,
@@ -3287,7 +3339,12 @@ export function socialSummaryLines(state: SocialView, cmd: string = "/codotchi "
     lines.push(`🤝 Friend: ${f.name} — ${friendshipLevel(f.friendship)} (${Math.round(f.friendship)}/100)`);
   }
   if (state.partner) {
-    lines.push(`💍 Married to ${state.partner.name}` + (f && state.partner.name === f.name ? ` (${Math.round(f.friendship)}/100)` : ""));
+    const pf = [...(f ? [f] : []), ...(state.otherFriends ?? [])].find((x) => x.name === state.partner!.name);
+    lines.push(`💍 Married to ${state.partner.name}` + (pf ? ` (${Math.round(pf.friendship)}/100)` : ""));
+  }
+  const others = (state.otherFriends ?? []).filter((o) => !(state.partner && state.partner.name === o.name));
+  if (others.length > 0) {
+    lines.push(`👥 Other friends: ${others.map((o) => `${o.name} — ${friendshipLevel(o.friendship)}`).join(", ")}`);
   }
   if (state.heirEgg) { lines.push("🥚 An heir egg is waiting for the next generation"); }
   const p = state.proposal;
@@ -3338,17 +3395,37 @@ function deserialiseIdentity(raw: unknown): PetIdentity | null {
 
 /** Parse the social fields from saved JSON, filling in defaults (saves before schemaVersion 2 have none). */
 export function deserialiseSocial(data: Record<string, unknown>): Pick<PetState,
-  "generation" | "friend" | "visit" | "ticksSinceLastVisit" | "partner" | "heirEgg" |
+  "generation" | "friend" | "otherFriends" | "visit" | "ticksSinceLastVisit" | "partner" | "heirEgg" |
   "seniorSinceDay" | "proposal" | "proposalCooldownTicks"> {
   const num = (v: unknown, fallback: number): number => typeof v === "number" && Number.isFinite(v) ? v : fallback;
   const obj = (v: unknown): Record<string, unknown> | null =>
     v !== null && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : null;
 
-  const friendId = deserialiseIdentity(data["friend"]);
-  const friendRaw = obj(data["friend"]);
-  const friend: FriendPet | null = friendId && friendRaw
-    ? { ...friendId, friendship: Math.max(0, Math.min(100, num(friendRaw.friendship, 0))), visits: Math.max(0, num(friendRaw.visits, 0)) }
-    : null;
+  // Saves from before several friends have no lastVisitDay: count from today.
+  const today = num(data["dayTimer"], num(data["ageDays"], 0));
+  const parseFriend = (raw: unknown): FriendPet | null => {
+    const id = deserialiseIdentity(raw);
+    const r = obj(raw);
+    return id && r
+      ? {
+          ...id,
+          friendship: Math.max(0, Math.min(100, num(r.friendship, 0))),
+          visits: Math.max(0, num(r.visits, 0)),
+          lastVisitDay: num(r.lastVisitDay, today),
+        }
+      : null;
+  };
+  const friend = parseFriend(data["friend"]);
+  const otherFriends: FriendPet[] = [];
+  if (friend && Array.isArray(data["otherFriends"])) {
+    for (const raw of data["otherFriends"] as unknown[]) {
+      const f = parseFriend(raw);
+      if (f && f.name !== friend.name && !otherFriends.some((o) => o.name === f.name) &&
+          otherFriends.length < MAX_FRIENDS - 1) {
+        otherFriends.push(f);
+      }
+    }
+  }
   const visitRaw = obj(data["visit"]);
   const visit: FriendVisit | null = visitRaw && friend && num(visitRaw.ticksLeft, 0) > 0
     ? { ticksLeft: Math.min(VISIT_TICKS, num(visitRaw.ticksLeft, 0)), played: visitRaw.played === true, gifted: visitRaw.gifted === true }
@@ -3365,6 +3442,7 @@ export function deserialiseSocial(data: Record<string, unknown>): Pick<PetState,
   return {
     generation: Math.max(1, Math.floor(num(data["generation"], 1))),
     friend,
+    otherFriends,
     visit,
     ticksSinceLastVisit: Math.max(0, num(data["ticksSinceLastVisit"], 0)),
     partner: deserialiseIdentity(data["partner"]),
@@ -4029,6 +4107,7 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     pendingBosses: state.pendingBosses,
     generation: state.generation,
     friend: state.friend,
+    otherFriends: state.otherFriends,
     visit: state.visit,
     ticksSinceLastVisit: state.ticksSinceLastVisit,
     partner: state.partner,

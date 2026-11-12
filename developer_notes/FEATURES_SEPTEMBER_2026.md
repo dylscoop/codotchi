@@ -574,7 +574,7 @@ merges:
 |-----------|--------|-------|
 | Play together is a real game | `[ ]` | **Play together** starts one of the existing minigames (§4 of `vscode/FEATURES.md`) with the friend as the opponent or partner, rather than an instant +10. Friendship gain scales with the result |
 | Gifts are actual items | `[ ]` | A friend's gift is a concrete item it brings (food, toy, floor decoration), drawn in its paws and dropped on the floor, rather than flat +10 happiness. **Give gift** has the pet pick something it owns to hand over, rather than costing 5 hunger |
-| Different friends visit | `[ ]` | Several friend slots, each with its own name, species, sprite and friendship meter, so the same pet doesn't always come. Friends you haven't seen in a while can drift away |
+| Different friends visit | `[x]` | v2.38.0: up to 3 friends (`friend` + `otherFriends`). A visit is from someone new 25% of the time while a slot is free, otherwise an old friend weighted by friendship. Friends not visiting lose 1 friendship per game day; at 0 friendship and 5 game days without a visit they drift away (never the partner) |
 | Say goodbye | `[x]` | v2.38.0: **👋 Goodbye** (`sayGoodbyeToFriend`, `/codotchi goodbye`, `codotchi_goodbye`) ends the visit early; the visitor waves (hops) and slides back out. Any visit ending now slides out the same way |
 | Offspring redesign | `[ ]` | The heir egg / generations mechanic, taken out of v2.36.0 for a redesign. Code and save fields are kept (see the Heir egg row above) |
 | Visitor wanders on its own | `[x]` | v2.38.0: after sliding in, the visitor paces at its own speed with its own direction flips and pauses; every 12–25 s it walks over and the two pets stop and face each other for 2 s (`wanderGuest` in `sidebar.js`) |

@@ -726,6 +726,7 @@ export function buildStatusBlock(state: {
   /** Social fields (v2.36.0): friend, visit, partner, heir egg, offer and generation lines. */
   generation?: number;
   friend?: SocialView["friend"];
+  otherFriends?: SocialView["otherFriends"];
   visit?: SocialView["visit"];
   partner?: SocialView["partner"];
   heirEgg?: SocialView["heirEgg"];
@@ -772,7 +773,7 @@ export function buildStatusBlock(state: {
   lines.push("");
   lines.push(`  ${FG_CYAN}Weight${RESET}        ${state.weight} / 99`);
   const social = socialSummaryLines({
-    name: state.name, generation: state.generation ?? 1, friend: state.friend ?? null, visit: state.visit ?? null,
+    name: state.name, generation: state.generation ?? 1, friend: state.friend ?? null, otherFriends: state.otherFriends ?? [], visit: state.visit ?? null,
     partner: state.partner ?? null, heirEgg: state.heirEgg ?? null, proposal: state.proposal ?? null,
   }, state.socialCmd);
   for (const s of social) { lines.push(`  ${s}`); }

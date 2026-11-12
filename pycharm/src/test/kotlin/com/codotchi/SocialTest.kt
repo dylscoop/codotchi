@@ -20,8 +20,8 @@ class SocialTest {
     private fun makePet(): PetState =
         createPet("Mittens", "codeling", "neon").copy(stage = "adult", dayTimer = 100.5, ageDays = 100)
 
-    private fun friend(friendship: Int) =
-        FriendPet(name = "Pixel", spriteType = "dog", petType = "bytebug", friendship = friendship, visits = 3)
+    private fun friend(friendship: Int, name: String = "Pixel") =
+        FriendPet(name = name, spriteType = "dog", petType = "bytebug", friendship = friendship, visits = 3, lastVisitDay = 100.0)
 
     private fun fixed(value: Double): () -> Double = { value }
 
@@ -130,7 +130,7 @@ class SocialTest {
             proposal = Proposal("friend", "Pixel", "dog", "bytebug"),
         )
         val json = JsonParser.parseString(petStateJson(s)).asJsonObject
-        assertEquals(JsonParser.parseString("""{"name":"Pixel","spriteType":"dog","petType":"bytebug","friendship":42,"visits":3}"""), json.get("friend"))
+        assertEquals(JsonParser.parseString("""{"name":"Pixel","spriteType":"dog","petType":"bytebug","friendship":42,"visits":3,"lastVisitDay":100.0}"""), json.get("friend"))
         assertEquals(JsonParser.parseString("""{"ticksLeft":10,"played":true,"gifted":false}"""), json.get("visit"))
         assertEquals(JsonParser.parseString("""{"from":"friend","name":"Pixel","spriteType":"dog","petType":"bytebug"}"""), json.get("proposal"))
     }
@@ -219,6 +219,87 @@ class SocialTest {
         val next = tickWith(s, 0.5)
         assertTrue(floor(next.dayTimer) > 100, "crossed a day")
         assertEquals(30 - FRIENDSHIP_DECAY_PER_DAY, next.friend!!.friendship)
+    }
+
+    // ── Several friends ──────────────────────────────────────────────────────
+
+    private val alwaysVisit = noCalls.copy(devMode = true, devModeAgingMultiplier = 1000.0)
+
+    @Test
+    fun `pickVisitor leaves room for someone new, otherwise weighted by friendship`() {
+        assertNull(pickVisitor(emptyList(), 0.0))
+        val two = listOf(friend(0, "A"), friend(90, "B"))
+        assertNull(pickVisitor(two, 1 - NEW_FRIEND_CHANCE))
+        assertEquals("A", pickVisitor(two, 0.0)!!.name)
+        assertEquals("B", pickVisitor(two, 0.5)!!.name)
+        val full = listOf(friend(0, "A"), friend(0, "B"), friend(0, "C"))
+        assertEquals(MAX_FRIENDS, full.size)
+        assertEquals("C", pickVisitor(full, 0.99)!!.name)
+    }
+
+    @Test
+    fun `a new friend visits and the old friend moves to otherFriends`() {
+        val s = makePet().copy(friend = friend(40), ticksSinceLastVisit = VISIT_MIN_GAP_TICKS)
+        val next = tickWith(s, 0.99, alwaysVisit)
+        assertNotNull(next.visit)
+        assertTrue("friend_made" in next.events)
+        assertNotEquals("Pixel", next.friend!!.name)
+        assertEquals(next.dayTimer, next.friend!!.lastVisitDay)
+        assertEquals(listOf("Pixel"), next.otherFriends.map { it.name })
+    }
+
+    @Test
+    fun `an old friend visits again and becomes the current friend`() {
+        val s = makePet().copy(friend = friend(10), otherFriends = listOf(friend(60, "Mochi")),
+            ticksSinceLastVisit = VISIT_MIN_GAP_TICKS)
+        val next = tickWith(s, 0.5, alwaysVisit)
+        assertEquals("Mochi", next.friend!!.name)
+        assertEquals(4, next.friend!!.visits)
+        assertEquals(listOf("Pixel"), next.otherFriends.map { it.name })
+        assertFalse("friend_made" in next.events)
+    }
+
+    @Test
+    fun `other friends decay and drift away at 0 after FRIEND_DRIFT_DAYS`() {
+        val gone = friend(1, "Byte").copy(lastVisitDay = 100.5 - FRIEND_DRIFT_DAYS)
+        val s = makePet().copy(friend = friend(30), otherFriends = listOf(friend(5, "Mochi"), gone),
+            dayTimer = 100.99999, ageDays = 100, ticksAlive = 2)
+        val next = tickWith(s, 0.5)
+        assertEquals(listOf("Mochi" to 4), next.otherFriends.map { it.name to it.friendship })
+        assertTrue("friend_drifted_away" in next.events)
+    }
+
+    @Test
+    fun `the current friend drifts away and the next friend takes its place`() {
+        val s = makePet().copy(friend = friend(1).copy(lastVisitDay = 90.0), otherFriends = listOf(friend(20, "Mochi")),
+            dayTimer = 100.99999, ageDays = 100, ticksAlive = 2)
+        val next = tickWith(s, 0.5)
+        assertEquals("Mochi", next.friend!!.name)
+        assertTrue(next.otherFriends.isEmpty())
+    }
+
+    @Test
+    fun `a partner never drifts away`() {
+        val s = makePet().copy(friend = friend(30), otherFriends = listOf(friend(0, "Byte").copy(lastVisitDay = 0.0)),
+            partner = PetIdentity("Byte", "dog", "bytebug"), dayTimer = 100.99999, ageDays = 100, ticksAlive = 2)
+        assertEquals(listOf("Byte"), tickWith(s, 0.5).otherFriends.map { it.name })
+    }
+
+    @Test
+    fun `other friends survive a save, capped and without duplicates`() {
+        val s = makePet().copy(friend = friend(42), otherFriends = listOf(friend(10, "Mochi"), friend(0, "Byte")))
+        assertEquals(s.otherFriends, roundTrip(s).otherFriends)
+        val loaded = loadEdited(makePet().copy(friend = friend(5))) { json ->
+            val arr = com.google.gson.JsonArray()
+            listOf("Pixel", "Mochi", "Mochi", "Byte", "Waffle").forEach { n ->
+                arr.add(JsonObject().apply {
+                    addProperty("name", n); addProperty("spriteType", "dog"); addProperty("petType", "bytebug")
+                    addProperty("friendship", 1); addProperty("visits", 1)
+                })
+            }
+            json.add("otherFriends", arr)
+        }
+        assertEquals(listOf("Mochi", "Byte"), loaded.otherFriends.map { it.name })
     }
 
     // ── Playing and gifts ────────────────────────────────────────────────────

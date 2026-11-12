@@ -387,6 +387,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         // default (see socialFromRaw) instead of failing the whole Gson parse.
         val generation: Any? = null,
         val friend: Any? = null,
+        val otherFriends: Any? = null,
         val visit: Any? = null,
         val ticksSinceLastVisit: Any? = null,
         val partner: Any? = null,
@@ -478,6 +479,8 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         return withSocialFields(partial, socialFromRaw(mapOf(
             "generation" to r.generation,
             "friend" to r.friend,
+            "otherFriends" to r.otherFriends,
+            "dayTimer" to (r.dayTimer ?: (r.ageDays ?: 0).toDouble()),
             "visit" to r.visit,
             "ticksSinceLastVisit" to r.ticksSinceLastVisit,
             "partner" to r.partner,
@@ -572,6 +575,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         pendingBosses              = s.pendingBosses,
         generation                 = social["generation"],
         friend                     = social["friend"],
+        otherFriends               = social["otherFriends"],
         visit                      = social["visit"],
         ticksSinceLastVisit        = social["ticksSinceLastVisit"],
         partner                    = social["partner"],

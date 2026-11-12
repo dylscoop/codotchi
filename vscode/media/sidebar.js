@@ -467,6 +467,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       parts[0] += " " + friendshipHearts(state.friend.friendship);
     }
     if (HEIRS_ENABLED && state.heirEgg) { parts.push("🥚 heir egg waiting"); }
+    var others = (state.otherFriends || []).filter(function (o) { return !state.partner || state.partner.name !== o.name; });
+    if (others.length > 0) {
+      parts.push("👥 " + others.map(function (o) { return o.name + " " + friendshipHearts(o.friendship); }).join(", "));
+    }
     if (state.visit && state.friend) { parts.unshift("👋 " + state.friend.name + " is visiting!"); }
     var visiting = !!(state.alive && state.visit && state.friend && !state.sleeping);
     var proposing = !!(state.alive && state.proposal);
@@ -3785,6 +3789,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "friend_visit_started":    _fr + " dropped by to visit " + n + "!",
       "friend_visit_ended":      _fr + " waved goodbye.",
       "friend_waved_goodbye":    n + " waved goodbye to " + _fr + ". 👋",
+      "friend_drifted_away":     "A friend " + n + " hadn't seen in a while drifted away.",
       "friend_goodbye_refused":  "",
       "friend_gift_received":    _fr + " brought " + n + " a present! 🎁",
       "friend_played":           n + " and " + _fr + " played together!",

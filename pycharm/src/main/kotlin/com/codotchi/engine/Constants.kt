@@ -504,6 +504,12 @@ const val FRIEND_GIFT_HUNGER_COST: Int = 5
 const val FRIENDSHIP_DECAY_PER_DAY: Int = 1
 /** Senior game-days without a marriage before the matchmaker arrives. */
 const val MATCHMAKER_SENIOR_DAYS: Int = 3
+/** Most friends a pet can have at once (the visiting / last friend plus otherFriends). */
+const val MAX_FRIENDS: Int = 3
+/** Chance a visit, with a friend slot free, is from someone new rather than an old friend. */
+const val NEW_FRIEND_CHANCE: Double = 0.25
+/** Game-days without a visit, at 0 friendship, before a friend drifts away. */
+const val FRIEND_DRIFT_DAYS: Int = 5
 /** Active ticks after a declined proposal before another can be made (~1 game day). */
 const val PROPOSAL_DECLINE_COOLDOWN_TICKS: Int = 300
 /** Happiness gained on marriage. */
