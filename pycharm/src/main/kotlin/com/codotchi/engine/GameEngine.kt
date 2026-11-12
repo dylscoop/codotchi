@@ -265,6 +265,7 @@ fun createPet(
             health             = modifiers.baseHealth,
             weight             = 40,
             ageDays            = 0,
+            lastAgeBumpDate    = localDateKey(System.currentTimeMillis()),
             stage              = "egg",
             character          = "",
             alive              = true,
@@ -323,6 +324,33 @@ fun markDeathless(state: PetState): PetState =
 // Tick
 // ---------------------------------------------------------------------------
 
+/** Local calendar date of a timestamp as YYYY-MM-DD. Mirrors localDateKey() in gameEngine.ts. */
+fun localDateKey(ms: Long): String =
+    java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()
+
+/**
+ * Daily age bump: the first tick on a new local calendar day adds one day to dayTimer and
+ * drops the fraction (8.5 → 9.0). One bump however many days were missed; older saves
+ * (lastAgeBumpDate null) just record today. Emits "aged_overnight". Mirrors gameEngine.ts.
+ */
+fun applyDailyAgeBump(state: PetState, nowMs: Long = System.currentTimeMillis()): PetState {
+    if (!state.alive || state.paused) return state
+    val today = localDateKey(nowMs)
+    if (state.lastAgeBumpDate == today) return state
+    if (state.lastAgeBumpDate == null) return state.copy(lastAgeBumpDate = today)
+    val dayTimer = floor(state.dayTimer + 1)
+    val careMistakes = if (floor(dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS) >
+                           floor(state.dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS))
+        max(0.0, state.careMistakes - 1) else state.careMistakes
+    return state.copy(
+        dayTimer        = dayTimer,
+        ageDays         = dayTimer.toInt(),
+        careMistakes    = careMistakes,
+        lastAgeBumpDate = today,
+        events          = state.events + "aged_overnight",
+    )
+}
+
 /**
  * Advance the pet by one tick: tickCore(), then the social step, then XP for
  * evolving, making a friend and becoming best friends. Mirrors tick() in gameEngine.ts.
@@ -333,8 +361,13 @@ fun markDeathless(state: PetState): PetState =
 fun tick(
     state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG,
     rand: () -> Double = { Random.nextDouble() },
+    nowMs: Long = System.currentTimeMillis(),
 ): PetState {
-    var next = tickSocial(state, tickCore(state, isIdle, isDeepIdle, config), isIdle, isDeepIdle, config, rand)
+    val bumped = applyDailyAgeBump(state, nowMs)
+    var next = tickSocial(bumped, tickCore(bumped, isIdle, isDeepIdle, config), isIdle, isDeepIdle, config, rand)
+    if (bumped.dayTimer != state.dayTimer && "aged_overnight" !in next.events) {
+        next = next.copy(events = next.events + "aged_overnight")
+    }
     if (next.events.any { it.startsWith("evolved_to_") }) next = awardXp(next, "evolve")
     if ("friend_made" in next.events) next = awardXp(next, "befriend")
     if ("best_friends" in next.events) next = awardXp(next, "best_friend")

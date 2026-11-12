@@ -14,7 +14,13 @@ const media = path.join(__dirname, "../../../media");
 type Grid = number[][];
 interface Meta { cols: number; rows: number; legRowStart: number }
 
-function loadSprites(): { sprites: Record<string, Record<string, Grid>>; meta: Record<string, Meta> } {
+interface Palette { byStage?: Record<string, { extra?: string[] }> }
+
+function loadSprites(): {
+  sprites: Record<string, Record<string, Grid>>;
+  meta: Record<string, Meta>;
+  palettes: Record<string, Palette>;
+} {
   const window: Record<string, unknown> = {};
   const context = vm.createContext({ window });
   for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js"]) {
@@ -24,10 +30,11 @@ function loadSprites(): { sprites: Record<string, Record<string, Grid>>; meta: R
   return {
     sprites: window["SPRITES"] as Record<string, Record<string, Grid>>,
     meta: window["SPRITE_GRID_META"] as Record<string, Meta>,
+    palettes: window["SPRITE_ANIMAL_PALETTES"] as Record<string, Palette>,
   };
 }
 
-const { sprites, meta } = loadSprites();
+const { sprites, meta, palettes } = loadSprites();
 const STAGES = ["baby", "child", "teen", "adult", "senior"];
 
 describe("sprite data (vscode/media/sprites.generated.js + sprites.js)", () => {
@@ -35,11 +42,13 @@ describe("sprite data (vscode/media/sprites.generated.js + sprites.js)", () => {
     assert.ok(Object.keys(sprites).length > 0);
   });
 
-  it("uses only colour indices 0-5", () => {
+  it("uses only colour indices 0-5, plus 6+ for a stage's extra colours", () => {
     for (const [type, stages] of Object.entries(sprites)) {
       for (const [stage, grid] of Object.entries(stages)) {
+        const extra = palettes[type]?.byStage?.[stage.split("_")[0]]?.extra ?? [];
+        const max = 5 + extra.length;
         grid.forEach((row, r) => {
-          const bad = row.find((v) => !(Number.isInteger(v) && v >= 0 && v <= 5));
+          const bad = row.find((v) => !(Number.isInteger(v) && v >= 0 && v <= max));
           assert.equal(bad, undefined, `${type}/${stage} row ${r} has an invalid digit`);
         });
       }

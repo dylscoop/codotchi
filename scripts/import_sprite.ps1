@@ -169,6 +169,18 @@ $primary   = Prompt-Hex -Label "--primary   (body fill):"
 $secondary = Prompt-Hex -Label "--secondary (eyes / markings):"
 $accent    = Prompt-Hex -Label "--accent    (stripes / accent):"
 
+# Detailed colours (only when no palette colours were given)
+$colors = $null
+if ($null -eq $primary -and $null -eq $secondary -and $null -eq $accent) {
+    Write-Host ""
+    Write-Host "  Detailed colours: up to 33 colours instead of 3, for painted / high-detail art." -ForegroundColor DarkGray
+    $colors = Prompt-Int -Label "--colors (4-33):" -Hint "blank = 3 colours"
+    if ($null -ne $colors -and ($colors -lt 4 -or $colors -gt 33)) {
+        Write-Host "  Out of range - using 3 colours." -ForegroundColor Yellow
+        $colors = $null
+    }
+}
+
 # ---------------------------------------------------------------------------
 # Grid options (optional)
 # ---------------------------------------------------------------------------
@@ -235,6 +247,7 @@ try {
         if ($null -ne $primary)          { $nodeArgs += "--primary";              $nodeArgs += $primary }
         if ($null -ne $secondary)        { $nodeArgs += "--secondary";            $nodeArgs += $secondary }
         if ($null -ne $accent)           { $nodeArgs += "--accent";               $nodeArgs += $accent }
+        if ($null -ne $colors)           { $nodeArgs += "--colors";               $nodeArgs += "$colors" }
         if ($null -ne $legRow)           { $nodeArgs += "--leg-row";              $nodeArgs += "$legRow" }
         if ($null -ne $transparent)      { $nodeArgs += "--transparent";          $nodeArgs += $transparent }
         if ($null -ne $transparentDist)  { $nodeArgs += "--transparent-distance"; $nodeArgs += "$transparentDist" }

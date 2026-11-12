@@ -27,6 +27,23 @@ edges, preserving the Shiba's white chest/front fur before running
 `scripts/import_sprite.js`. The `shiba` character code maps to this `dog`
 sprite type and defaults the pet name to Shibagotchi.
 
+### Stage art (bulk pipeline, `sprites/dog/`)
+
+| Stage | Art | Notes |
+|-------|-----|-------|
+| teen | Borzoi (`borzoi.png`) | Source faces right, so `"flip": ["teen"]` mirrors this stage only. `flip: true` would mirror every stage. Cropped to its alpha ≥ 128 bbox so the feet sit on the floor. |
+| adult | Kelpie (`Scout.png`) | Faces left as drawn. |
+| senior | German shepherd (`agnes1.png`) | Cropped to its alpha ≥ 128 bbox so the feet sit on the floor. The source is about half the adult's resolution, so `stageScale.senior: 2.16` gives it the adult's pixel budget and makes it about 5% taller than the adult. |
+
+The teen and senior legs are set by hand in `sprite.json` (`legs`) as diagonal
+pairs. Auto-detection merges the borzoi's back legs and can't find the
+German shepherd's mid-stride legs.
+
+The teen, adult and senior are painted art, so `"colors": 24` draws each of
+them with 24 colours (indices 1–3, then 6+ from `byStage.<stage>.extra`)
+instead of the usual 3, keeping the fur shading. The baby and child are still
+3-colour pixel art.
+
 ---
 
 ## Iconic Cues

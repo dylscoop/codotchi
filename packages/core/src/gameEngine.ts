@@ -800,6 +800,12 @@ export interface PetState {
   readonly devModeEverUsed: boolean;
 
   /**
+   * Local calendar date (YYYY-MM-DD) of the last daily age bump; null in saves
+   * from before the feature. See applyDailyAgeBump().
+   */
+  readonly lastAgeBumpDate: string | null;
+
+  /**
    * Why this pet can't go on the leaderboard, apart from dev mode: "tampered" (the saved
    * state failed its integrity seal) or "unverified" (loaded from a save written before
    * seals existed). "" when eligible.
@@ -1317,6 +1323,7 @@ export function createPet(
     breakNapTicksRemaining: 0,
     cravingFood: null,
     devModeEverUsed: false,
+    lastAgeBumpDate: localDateKey(Date.now()),
     leaderboardIneligible: "",
     schemaVersion: SCHEMA_VERSION,
     petXp: 0,
@@ -1398,6 +1405,40 @@ function checkWeightTierEvents(prev: number, next: number, events: string[]): vo
 // Tick — advance game state by one step
 // ---------------------------------------------------------------------------
 
+/** Local calendar date of a timestamp as YYYY-MM-DD. */
+export function localDateKey(ms: number): string {
+  const d = new Date(ms);
+  const pad = (n: number): string => (n < 10 ? "0" : "") + n;
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
+
+/**
+ * Daily age bump: the first tick on a new local calendar day adds one day to
+ * dayTimer and drops the fraction (8.5 → 9.0), so idle pets still age. Only one
+ * bump however many days were missed. Saves from before the feature
+ * (lastAgeBumpDate null) just record today. Emits "aged_overnight".
+ */
+export function applyDailyAgeBump(state: PetState, nowMs: number = Date.now()): PetState {
+  if (!state.alive || state.paused) { return state; }
+  const today = localDateKey(nowMs);
+  if (state.lastAgeBumpDate === today) { return state; }
+  if (state.lastAgeBumpDate === null || state.lastAgeBumpDate === undefined) {
+    return { ...state, lastAgeBumpDate: today };
+  }
+  const dayTimer = Math.floor(state.dayTimer + 1);
+  const careMistakes = Math.floor(dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS) >
+                       Math.floor(state.dayTimer / CARE_MISTAKE_FORGIVENESS_DAYS)
+    ? Math.max(0, state.careMistakes - 1) : state.careMistakes;
+  return {
+    ...state,
+    dayTimer,
+    ageDays: dayTimer,
+    careMistakes,
+    lastAgeBumpDate: today,
+    events: [...state.events, "aged_overnight"],
+  };
+}
+
 /**
  * Advance the pet's game state by one tick (TICK_INTERVAL_SECONDS real seconds).
  *
@@ -1415,8 +1456,14 @@ function checkWeightTierEvents(prev: number, next: number, events: string[]): vo
  * @param state - The current pet state.
  * @returns A new PetState after one tick.
  */
-export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG): PetState {
+export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG, nowMs: number = Date.now()): PetState {
+  const bumped = applyDailyAgeBump(state, nowMs);
+  const agedOvernight = bumped.dayTimer !== state.dayTimer;
+  state = bumped;
   let next = tickSocial(state, tickCore(state, isIdle, isDeepIdle, config), isIdle, isDeepIdle, config);
+  if (agedOvernight && !next.events.includes("aged_overnight")) {
+    next = { ...next, events: [...next.events, "aged_overnight"] };
+  }
   if (next.events.some((e) => e.startsWith("evolved_to_"))) { next = awardXp(next, "evolve"); }
   if (next.events.includes("friend_made")) { next = awardXp(next, "befriend"); }
   if (next.events.includes("best_friends")) { next = awardXp(next, "best_friend"); }
@@ -3956,6 +4003,7 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     breakNapTicksRemaining: state.breakNapTicksRemaining,
     cravingFood: state.cravingFood,
     devModeEverUsed: state.devModeEverUsed,
+    lastAgeBumpDate: state.lastAgeBumpDate,
     leaderboardIneligible: state.leaderboardIneligible,
     schemaVersion: state.schemaVersion,
     petXp: state.petXp,
@@ -4070,6 +4118,7 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
     breakNapTicksRemaining: getNumber("breakNapTicksRemaining", 0),
     cravingFood: data["cravingFood"] === "meal" || data["cravingFood"] === "snack" ? data["cravingFood"] : null,
     devModeEverUsed: getBool("devModeEverUsed", false),
+    lastAgeBumpDate: typeof data["lastAgeBumpDate"] === "string" ? (data["lastAgeBumpDate"] as string) : null,
     leaderboardIneligible: data["leaderboardIneligible"] === "tampered" || data["leaderboardIneligible"] === "unverified"
       || data["leaderboardIneligible"] === "deathless"
       ? data["leaderboardIneligible"] : "",

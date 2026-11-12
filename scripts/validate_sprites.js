@@ -10,7 +10,7 @@
  * species with grids:
  *   - a SPRITE_GRID_META entry within the 192×128 cap, legRowStart inside the grid
  *   - every grid is exactly cols × rows
- *   - only colour indices 0-5
+ *   - only colour indices 0-5, plus 6+ where the stage's palette has extra colours
  *   - all five stages (baby, child, teen, adult, senior)
  *   - a palette with primary, secondary and accent colours
  *
@@ -80,8 +80,10 @@ function validate(window) {
       if (m && grid.length !== m.rows) { problems.push(type + "/" + key + ": " + grid.length + " rows, meta says " + m.rows); }
       grid.forEach(function (row, r) {
         if (m && row.length !== m.cols) { problems.push(type + "/" + key + " row " + r + ": " + row.length + " cols, meta says " + m.cols); }
-        if (row.some(function (v) { return !(Number.isInteger(v) && v >= 0 && v <= 5); })) {
-          problems.push(type + "/" + key + " row " + r + ": colour index outside 0-5");
+        var stagePal = p && p.byStage && p.byStage[key.split("_")[0]];
+        var maxIdx = 5 + ((stagePal && stagePal.extra) ? stagePal.extra.length : 0);
+        if (row.some(function (v) { return !(Number.isInteger(v) && v >= 0 && v <= maxIdx); })) {
+          problems.push(type + "/" + key + " row " + r + ": colour index outside 0-" + maxIdx);
         }
       });
     });

@@ -161,14 +161,70 @@ Write-Host "  Per-stage colours: each stage gets its own colours, detected from 
 Write-Host "  Off: every stage shares one palette detected from all images." -ForegroundColor DarkGray
 $perStage = Prompt-YN -Label "Per-stage colours?" -Default ([bool](Get-JsonField $config 'perStagePalette' $false))
 
+# Detailed colours: stages drawn with up to N colours instead of 3 (sprite.json "colors")
+Write-Host ""
+Write-Host "  Detailed colours: draw a stage with up to 33 colours instead of 3, for painted /" -ForegroundColor DarkGray
+Write-Host "  high-detail art (the stage is shrunk by averaging, keeping its shading)." -ForegroundColor DarkGray
+$curColors = Get-JsonField $config 'colors' $null
+$curColorStages = @()
+if ($curColors -is [int] -or $curColors -is [long]) { $curColorStages = @($Stages) }
+elseif ($null -ne $curColors) { $curColorStages = @($curColors.PSObject.Properties | ForEach-Object { $_.Name }) }
+$curColorText = if ($curColorStages.Count) { $curColorStages -join ',' } else { 'none' }
+$colorStages = $null
+while ($null -eq $colorStages) {
+    $raw = (Prompt-Text -Label "Detailed-colour stages (all, none, or e.g. teen,adult):" -Hint "blank = $curColorText").ToLower() -replace '\s', ''
+    if ($raw -eq '')         { $colorStages = $curColorStages }
+    elseif ($raw -eq 'all')  { $colorStages = @($Stages) }
+    elseif ($raw -eq 'none') { $colorStages = @() }
+    else {
+        $list = @($raw -split ',' | Where-Object { $_ -ne '' })
+        $bad  = @($list | Where-Object { $Stages -notcontains $_ })
+        if ($bad.Count) { Write-Host "  Unknown stage(s): $($bad -join ', ')" -ForegroundColor Yellow }
+        else { $colorStages = $list }
+    }
+}
+$colorCount = 24
+if ($colorStages.Count) {
+    $curN = if ($curColors -is [int] -or $curColors -is [long]) { [int]$curColors }
+            elseif ($null -ne $curColors -and $curColorStages.Count) { [int]$curColors.($curColorStages[0]) }
+            else { 24 }
+    while ($true) {
+        $raw = Prompt-Text -Label "Colours for those stages (4-33):" -Hint "blank = $curN"
+        if ($raw -eq '') { $colorCount = $curN; break }
+        if ($raw -match '^\d+$' -and [int]$raw -ge 4 -and [int]$raw -le 33) { $colorCount = [int]$raw; break }
+        Write-Host "  Enter a number from 4 to 33." -ForegroundColor Yellow
+    }
+}
+
 Write-Section "Shape"
-Write-Host "  Sprites face LEFT. Mirror if the source images face RIGHT." -ForegroundColor DarkGray
-$flip    = Prompt-YN -Label "Flip (source faces right)?" -Default ([bool](Get-JsonField $config 'flip' $false))
+Write-Host "  Sprites face LEFT. Mirror only the stages whose source image faces RIGHT." -ForegroundColor DarkGray
+$curFlip = Get-JsonField $config 'flip' $null
+$curFlipText = if ($curFlip -eq $true) { 'all' } elseif ($curFlip -is [array] -and $curFlip.Count) { $curFlip -join ',' } else { 'none' }
+$flipStages = $null
+while ($null -eq $flipStages) {
+    $raw = (Prompt-Text -Label "Stages to flip (all, none, or e.g. teen,adult):" -Hint "blank = $curFlipText").ToLower() -replace '\s', ''
+    if ($raw -eq '') { $raw = $curFlipText }
+    if ($raw -eq 'all')      { $flipStages = 'all' }
+    elseif ($raw -eq 'none') { $flipStages = @() }
+    else {
+        $list = @($raw -split ',' | Where-Object { $_ -ne '' })
+        $bad  = @($list | Where-Object { $_ -notmatch '^(baby|child|teen|adult|senior)(_[a-z]+)?$' })
+        if ($bad.Count) { Write-Host "  Unknown stage(s): $($bad -join ', ')" -ForegroundColor Yellow }
+        else { $flipStages = $list }
+    }
+}
 $upright = Prompt-YN -Label "Upright (portrait pet, e.g. a standing animal)?" -Default ([bool](Get-JsonField $config 'upright' $false))
 
 if ($perStage) { Set-JsonField $config 'perStagePalette' $true }
 elseif ($config.PSObject.Properties['perStagePalette']) { $config.PSObject.Properties.Remove('perStagePalette') }
-if ($flip) { Set-JsonField $config 'flip' $true }
+if ($colorStages.Count) {
+    $colorsObj = New-Object PSObject
+    foreach ($s in $colorStages) { $colorsObj | Add-Member -NotePropertyName $s -NotePropertyValue $colorCount }
+    Set-JsonField $config 'colors' $colorsObj
+}
+elseif ($config.PSObject.Properties['colors']) { $config.PSObject.Properties.Remove('colors') }
+if ($flipStages -eq 'all') { Set-JsonField $config 'flip' $true }
+elseif ($flipStages.Count) { Set-JsonField $config 'flip' @($flipStages) }
 elseif ($config.PSObject.Properties['flip']) { $config.PSObject.Properties.Remove('flip') }
 if ($upright) { Set-JsonField $config 'upright' $true }
 elseif ($config.PSObject.Properties['upright']) { $config.PSObject.Properties.Remove('upright') }

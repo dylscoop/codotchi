@@ -1,6 +1,23 @@
 # Version History
 
-## v2.36.0 - current
+## v2.37.0 - current
+
+### Changes from v2.36.0 (daily age bump - branch feat/daily-age-bump)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `PetState.kt`, `CodotchiPersistence.kt` | `PetState.lastAgeBumpDate` (local `YYYY-MM-DD`, null in older saves); `localDateKey()`, `applyDailyAgeBump()`; `tick()` runs the bump first (new optional `nowMs` param) and emits `aged_overnight`. Bump = `floor(dayTimer + 1)`, once per calendar day, also while idle / deep idle / asleep; skipped for dead or paused pets; care-mistake forgiveness applies across the bump. New pets start with today; older saves record today without bumping |
+| `vscode/media/sidebar.js` | event log text "*Name* aged a day whilst you were gone" |
+| `opencode-codotchi/src/index.ts` | notification for the OpenCode-local pet (IDE pets are announced by their IDE) |
+| `claude-codotchi/scripts/hook-session-start.mjs`, `dist/` | session start applies the bump to a non-anchored pet and greets with the aged-a-day text |
+| `vscode/tests/unit/dailyAgeBump.test.ts`, `vscode/package.json`, `pycharm/.../DailyAgeBumpTest.kt` | tests |
+| CHANGELOG, FEATURES, README, all manifests | version 2.37.0 |
+| `sprites/dog/` (teen borzoi, adult kelpie `Scout.png`, senior German shepherd), `sprite.json` | new dog art; `flip: ["teen"]` (was `true`, which mirrored every stage); teen/senior cropped to their bodies; senior `stageScale` 2.16; hand-set teen/senior legs; `colors: 24` for teen/adult/senior |
+| `scripts/lib/spriteImport.js`, `import_sprites_bulk.js`, `import_sprite.js` (`--colors`), both `.ps1` wizards, `validate_sprites.js`, `export_sprite_pngs.js` | detailed colours: `resampleArea` + `buildMultiColourMapper` (median cut + k-means, up to 33 colours); indices 1-3 then 6+ as base-36 grid chars, extra colours in `byStage.<stage>.extra`; bulk wizard asks which stages to flip |
+| `vscode/media/sprites.js`, `spriteConstants.js` | grids parsed as base-36; `palette.extra` mapped to indices 6+; `getPalette` passes `extra` |
+| `vscode/tests/unit/spriteImportBulk.test.ts`, `spriteData.test.ts` | detailed-colour tests; index check allows a stage's extra colours |
+
+## v2.36.0
 
 ### Changes from v2.35.2 (social features, offline - branch feat/v2.36.0-social-offline)
 

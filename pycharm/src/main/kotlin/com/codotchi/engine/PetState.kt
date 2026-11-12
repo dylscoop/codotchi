@@ -141,6 +141,9 @@ data class PetState(
     /** True once any tick has run with dev mode on — the pet can never go on the leaderboard. */
     val devModeEverUsed: Boolean = false,
 
+    /** Local calendar date (YYYY-MM-DD) of the last daily age bump; null in older saves. See applyDailyAgeBump(). */
+    val lastAgeBumpDate: String? = null,
+
     /**
      * Why this pet can't go on the leaderboard, apart from dev mode: "tampered" (the saved
      * state failed its integrity seal) or "unverified" (loaded from a save written before

@@ -53,11 +53,13 @@ function exportSpecies(window, species, outDir, rotation) {
   }
 
   function coloursFor(p) {
-    return {
+    var c = {
       1: lib.hexToRgb(p.primary),
       2: lib.hexToRgb(p.secondary),
       3: lib.hexToRgb(p.accent || p.primary),
     };
+    (p.extra || []).forEach(function (hex, i) { c[6 + i] = lib.hexToRgb(hex); });
+    return c;
   }
   var byStage = palette.byStage || {};
   var dir = path.join(outDir, species);
@@ -92,6 +94,12 @@ function exportSpecies(window, species, outDir, rotation) {
     config.palettes = {};
     Object.keys(byStage).forEach(function (s) {
       var c = byStage[s];
+      if (c.extra) {
+        // A multi-colour stage re-imports by colour count, not exact colours.
+        config.colors = config.colors || {};
+        config.colors[s] = 3 + c.extra.length;
+        return;
+      }
       config.palettes[s] = {
         primary:   lib.normaliseHex(c.primary),
         secondary: lib.normaliseHex(c.secondary),

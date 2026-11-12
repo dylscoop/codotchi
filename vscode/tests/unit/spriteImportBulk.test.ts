@@ -368,4 +368,74 @@ describe("bulk sprite import", () => {
     assert.equal(baby.background, "#101010");
     assert.equal(window.spriteGetPalette("nope", "baby"), window.spriteGetPalette("classic"));
   });
+
+  describe("detailed colours (sprite.json colors)", () => {
+    /** One row of n clearly different opaque colours (a grey ramp). */
+    function rampPng(file: string, n: number): void {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, lib.encodePng(n, 1, (x: number) => {
+        const v = Math.round(10 + x * (235 / (n - 1)));
+        return { r: v, g: v, b: v, a: 255 };
+      }));
+    }
+
+    it("quantises a stage to n colours: indices 1-3, then 6+ as base-36 extra colours", () => {
+      const src = freshDir("colors");
+      rampPng(path.join(src, "pup", "adult.png"), 13);
+      writePng(path.join(src, "pup", "baby.png"), ["WR"]);
+      fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ crop: false, colors: { adult: 13 } }));
+      const { species, text } = bulk.generate(src);
+      const pup = species[0];
+      const cells = pup.grids.adult[0];
+      assert.equal(new Set(cells).size, 13);
+      assert.ok(cells.every((v: number) => (v >= 1 && v <= 3) || (v >= 6 && v <= 15)), cells.join(","));
+      assert.ok(!cells.includes(4) && !cells.includes(5), "4/5 stay reserved for gold");
+      assert.equal(pup.byStage.adult.extra.length, 10);
+      assert.equal(pup.byStage.baby, undefined, "a 3-colour stage is unchanged");
+      assert.ok(/"[0-9a-f]*[a-f][0-9a-f]*" \/\/0/.test(text), "indices 10+ are written as letters");
+
+      // The webview parses the letters back and getPalette hands over the extra colours.
+      const window: Record<string, any> = {};
+      const context = vm.createContext({ window });
+      vm.runInContext(fs.readFileSync(path.join(media, "spriteConstants.js"), "utf8").replace(/^﻿/, ""), context);
+      vm.runInContext(text, context);
+      vm.runInContext(fs.readFileSync(path.join(media, "sprites.js"), "utf8").replace(/^﻿/, ""), context);
+      assert.deepEqual([...window.SPRITES.pup.adult[0]], cells);
+      assert.deepEqual([...window.spriteGetPalette("pup", "adult").extra], pup.byStage.adult.extra);
+      assert.equal(window.spriteGetPalette("pup", "baby").extra, undefined);
+    });
+
+    it("keeps the three most common colours as primary/secondary/accent", () => {
+      const src = freshDir("colorsrank");
+      // white ×4, red ×3, navy ×2, then one pixel each of two greys
+      fs.mkdirSync(path.join(src, "pup"), { recursive: true });
+      const px: Rgba[] = [WHITE, WHITE, WHITE, WHITE, RED, RED, RED, NAVY, NAVY,
+        { r: 120, g: 120, b: 120, a: 255 }, { r: 60, g: 200, b: 60, a: 255 }];
+      fs.writeFileSync(path.join(src, "pup", "adult.png"), lib.encodePng(px.length, 1, (x: number) => px[x]));
+      fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ crop: false, colors: 5 }));
+      const pal = bulk.generate(src).species[0].byStage.adult;
+      assert.deepEqual([pal.primary, pal.secondary, pal.accent], ["#fafafa", "#c81414", "#0a0a3c"]);
+      assert.equal(pal.extra.length, 2);
+    });
+
+    it("averages source pixels when shrinking a multi-colour stage", () => {
+      const img = { width: 2, height: 1, pixels: [[RED, { r: 0, g: 0, b: 0, a: 0 }]] };
+      // transparent pixels don't darken the colour, only lower the alpha
+      assert.deepEqual(lib.resampleArea(img, 1, 1).pixels[0][0], { r: 200, g: 20, b: 20, a: 128 });
+      const two = { width: 2, height: 1, pixels: [[WHITE, NAVY]] };
+      assert.deepEqual(lib.resampleArea(two, 1, 1).pixels[0][0], { r: 130, g: 130, b: 155, a: 255 });
+    });
+
+    it("rejects a bad colors setting", () => {
+      const src = freshDir("badcolors");
+      writePng(path.join(src, "pup", "adult.png"), ["WR"]);
+      fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ colors: { adult: 40 } }));
+      assert.throws(() => bulk.generate(src), /colors\.adult must be a whole number from 3 to 33/);
+      fs.writeFileSync(path.join(src, "pup", "sprite.json"), JSON.stringify({ colors: { elder: 8 } }));
+      assert.throws(() => bulk.generate(src), /colors has unknown stage "elder"/);
+      fs.writeFileSync(path.join(src, "pup", "sprite.json"),
+        JSON.stringify({ colors: { adult: 8 }, palettes: { adult: { primary: "#ffffff" } } }));
+      assert.throws(() => bulk.generate(src), /both colors and palettes/);
+    });
+  });
 });

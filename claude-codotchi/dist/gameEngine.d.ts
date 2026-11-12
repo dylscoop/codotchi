@@ -383,6 +383,11 @@ export interface PetState {
     /** True once any tick has run with dev mode on — the pet can never go on the leaderboard. */
     readonly devModeEverUsed: boolean;
     /**
+     * Local calendar date (YYYY-MM-DD) of the last daily age bump; null in saves
+     * from before the feature. See applyDailyAgeBump().
+     */
+    readonly lastAgeBumpDate: string | null;
+    /**
      * Why this pet can't go on the leaderboard, apart from dev mode: "tampered" (the saved
      * state failed its integrity seal) or "unverified" (loaded from a save written before
      * seals existed). "" when eligible.
@@ -617,6 +622,15 @@ export declare function randomSpriteType(): string;
 export declare function createPet(name: string, petType: string, unlockedCharacter?: string | null, trainer?: TrainerProgress | null, lineage?: {
     generation: number;
 } | null): PetState;
+/** Local calendar date of a timestamp as YYYY-MM-DD. */
+export declare function localDateKey(ms: number): string;
+/**
+ * Daily age bump: the first tick on a new local calendar day adds one day to
+ * dayTimer and drops the fraction (8.5 → 9.0), so idle pets still age. Only one
+ * bump however many days were missed. Saves from before the feature
+ * (lastAgeBumpDate null) just record today. Emits "aged_overnight".
+ */
+export declare function applyDailyAgeBump(state: PetState, nowMs?: number): PetState;
 /**
  * Advance the pet's game state by one tick (TICK_INTERVAL_SECONDS real seconds).
  *
@@ -634,7 +648,7 @@ export declare function createPet(name: string, petType: string, unlockedCharact
  * @param state - The current pet state.
  * @returns A new PetState after one tick.
  */
-export declare function tick(state: PetState, isIdle?: boolean, isDeepIdle?: boolean, config?: GameConfig): PetState;
+export declare function tick(state: PetState, isIdle?: boolean, isDeepIdle?: boolean, config?: GameConfig, nowMs?: number): PetState;
 /**
  * Give the pet a meal.
  *

@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.36.0</version>
+    <version>2.37.0</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -189,6 +189,11 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+<h3>2.37.0</h3>
+<ul>
+<li><b>Pets age a little every day</b> — the first time Codotchi runs on a new day, your pet gains a day of age, rounded down to a whole day (8.5 days becomes 9), even if it was idle. It only counts once, however long you were away.</li>
+<li><b>New dog art</b> — the teen is a borzoi, the adult a kelpie and the senior a German shepherd, drawn with up to 24 colours instead of 3 so their fur keeps its shading.</li>
+</ul>
 <h3>2.27.4</h3>
 <ul>
 <li><b>Break reminder</b> — the 30-minute timer no longer restarts when you go idle or ignore the reminder. It only restarts once you actually take the break (praise the call). An ignored reminder comes back every few minutes.</li>

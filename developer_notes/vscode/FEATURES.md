@@ -48,6 +48,10 @@ bytebug reaches adult in ~2.8 hr real time vs ~4.2 hr for codeling and ~5.6 hr
 for shellscript.
 See `DEV_NOTES.md` for the full per-type breakdown.
 
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Daily age bump | `[x]` | v2.37.0: the first tick on a new local calendar day adds one day and drops the fraction (8.5 → 9.0), even while idle, deep idle or asleep. One bump however many days were missed; saves from before 2.37.0 start counting from the first day they load. Shows "*Name* aged a day whilst you were gone" (`aged_overnight` event). `applyDailyAgeBump()`, `PetState.lastAgeBumpDate` |
+
 ### 2.2 Evolution
 
 | Feature | Status | Notes |

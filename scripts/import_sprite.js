@@ -29,6 +29,11 @@
  *   --primary    <hex>    Colour in source image → index 1 (body fill)
  *   --secondary  <hex>    Colour in source image → index 2 (eyes/markings)
  *   --accent     <hex>    Colour in source image → index 3 (stripes/accent)
+ *   --colors     <N>      Draw with up to N colours (4-33) instead of 3, for
+ *                         detailed paintings: shrinks by averaging and quantises;
+ *                         the extra colours print as the palette's "extra" list
+ *                         (grid indices 6+, base-36 characters). Can't be combined
+ *                         with --primary / --secondary / --accent.
  *   --threshold  <0-255>  Alpha value below which a pixel is treated as transparent (default: 128)
  *   --transparent <hex>   Source colour to treat as transparent (for JPEG/flat backgrounds)
  *   --transparent-distance <N>  RGB distance tolerance for --transparent (default: 2500)
@@ -88,7 +93,7 @@ if (hasFlag("--inject")) {
 if (!inputFile || !spriteType || !stage) {
   console.error("Usage: node scripts/import_sprite.js <file> <spriteType> <stage> [options]");
   console.error("Supported formats: .png, .jpg/.jpeg, .webp (via external converter), .pixil");
-  console.error("Options: --frame N  --leg-row N  --primary #hex  --secondary #hex  --accent #hex  --threshold N  --transparent #hex  --transparent-distance N  --crop-transparent  --flip  --preview");
+  console.error("Options: --frame N  --leg-row N  --primary #hex  --secondary #hex  --accent #hex  --colors N  --threshold N  --transparent #hex  --transparent-distance N  --crop-transparent  --flip  --preview");
   process.exit(1);
 }
 
@@ -100,6 +105,13 @@ var transparentDist = parseInt(getFlag("--transparent-distance", "2500"), 10);
 var cropTransparent = hasFlag("--crop-transparent");
 var doFlip      = hasFlag("--flip");
 var doPreview   = hasFlag("--preview");
+var colorsArg   = getFlag("--colors", null);
+var nColours    = colorsArg !== null ? Number(colorsArg) : null;
+if (nColours !== null && !(Number.isInteger(nColours) && nColours >= 3 && nColours <= lib.MAX_COLOURS)) {
+  console.error("--colors must be a whole number from 3 to " + lib.MAX_COLOURS);
+  process.exit(1);
+}
+if (nColours === 3) { nColours = null; }
 var palette     = {
   primary:   getFlag("--primary",   null),
   secondary: getFlag("--secondary", null),
@@ -138,7 +150,8 @@ var palette     = {
                   " — downsampling to " + targetW + "×" + targetH +
                   " (aspect-ratio preserved). Runtime grid will differ from source resolution.");
   }
-  var resampled = lib.resample(imgData, targetW, targetH);
+  // Multi-colour: average each cell's source pixels so shading survives.
+  var resampled = (nColours ? lib.resampleArea : lib.resample)(imgData, targetW, targetH);
   var cols = resampled.width;
   var rows = resampled.height;
 
@@ -147,7 +160,12 @@ var palette     = {
   console.error("Grid: " + cols + " cols × " + rows + " rows, legRowStart=" + legRowStart);
 
   // 4. Quantise, then optionally mirror
-  var mapper = lib.buildColourMapper([resampled], alphaThresh, palette);
+  if (nColours && (palette.primary || palette.secondary || palette.accent)) {
+    console.error("--colors can't be combined with --primary / --secondary / --accent");
+    process.exit(1);
+  }
+  var mapper = nColours ? lib.buildMultiColourMapper([resampled], alphaThresh, nColours)
+                        : lib.buildColourMapper([resampled], alphaThresh, palette);
   var grid   = lib.mapGrid(resampled, mapper);
   if (doFlip) {
     grid = lib.flipGrid(grid);

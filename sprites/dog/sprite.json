@@ -12,6 +12,9 @@
     "passcode":  "shiba",
     "defaultName":  "Codotchi",
     "perStagePalette":  true,
-    "stageScale":  { "baby":  3 },
-    "legs":  { "teen":  [[22,40,0],[41,57,1],[84,101,1],[102,116,0]] }
+    "stageScale":  { "baby":  3, "senior":  2.16 },
+    "colors":  { "teen":  24, "adult":  24, "senior":  24 },
+    "flip":  ["teen"],
+    "legs":  { "teen":  [[21,35,0],[36,48,1],[100,110,1],[111,121,0]],
+               "senior":  [[8,29,0],[39,62,1],[81,112,1],[129,154,0]] }
 }

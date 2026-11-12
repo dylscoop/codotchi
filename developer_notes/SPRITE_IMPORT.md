@@ -33,8 +33,11 @@ See [`SPRITES.md`](SPRITES.md) for the grid format and colour legend.
    letters, digits or `_`.
 2. Add one image per stage: `baby.png`, `child.png`, `teen.png`, `adult.png`,
    `senior.png`. You can use `.jpg`, `.webp` or `.pixil` instead of `.png`.
-   - Quadrupeds must face **left**. Set `"flip": true` if the art faces right
-     (or list just the stages that do, e.g. `"flip": ["baby", "adult"]`).
+   - Quadrupeds must face **left**. List the stages whose art faces right, e.g.
+     `"flip": ["teen"]`. `"flip": true` mirrors **every** stage, so use it only
+     when all of them face right.
+   - Painted / high-detail art: set `"colors"` (see below) so the stage isn't
+     flattened to 3 colours.
    - Optional mood art uses the name `<stage>_<mood>`, e.g. `adult_sleeping.png`.
    - Optional lying-down pose: `<stage>_lying.png`. The pet is drawn lying down
      whenever it rests (standing still, on the cat tree's perch or asleep). With
@@ -51,8 +54,9 @@ See [`SPRITES.md`](SPRITES.md) for the grid format and colour legend.
    On Windows you can double-click `scripts\import_sprites_bulk.bat`
    instead. It opens the same file picker as the single-image importer
    (select several images with Ctrl/Shift-click), asks for a pet name, lets
-   you match files to stages, asks for per-stage colours / flip / upright
-   (saved in `sprite.json`, other fields kept), copies the images into
+   you match files to stages, asks for per-stage colours, detailed-colour
+   stages and their colour count, which stages to flip (all, none or a list
+   such as `teen,adult`) and upright (saved in `sprite.json`, other fields kept), copies the images into
    `sprites\<pet>\`, then runs both commands.
 
    The import prints each species' grid size and palette, and warns about any
@@ -82,6 +86,7 @@ Every field is optional.
 | `palette` | auto | `{ primary, secondary, accent }`: exact source colours for indices 1 / 2 / 3. Each pixel maps to the nearest one. |
 | `perStagePalette` | `false` | `true`: each stage gets its own auto-detected palette from its own images (mood art like `adult_sleeping` counts towards `adult`). Stages whose colours differ from the species palette are written as `byStage`. Turn it on one species at a time; species without it are unchanged. |
 | `palettes` | — | `{ <stage>: { primary, secondary, accent } }`: exact colours for one stage. Overrides `palette` and `perStagePalette` for that stage. Unknown stage names are an error. |
+| `colors` | 3 | `{ <stage>: n }`, or `n` for every stage: draw that stage with up to `n` colours (3–33) instead of 3, for painted or high-detail art. The stage is shrunk by averaging source pixels (keeping shading) rather than nearest-neighbour sampling, then quantised to `n` colours. The 3 most common colours stay indices 1 / 2 / 3 (so sick / sleep tinting of index 2 still works); the rest are written as `byStage.<stage>.extra` and drawn as grid indices 6+ (one base-36 character per cell: `0`–`9`, then `a`–`z`). Can't be combined with `palettes` for the same stage. The dog's teen, adult and senior use `24`. |
 | `background` | `#1a1a1a` | Canvas background behind the pet. |
 | `transparent` | auto | Source colour to treat as transparent. When this is unset, a fully-opaque image with four matching corners has that corner colour removed. |
 | `transparentDistance` | `2500` | Squared-RGB tolerance for `transparent`. |
@@ -203,6 +208,7 @@ been removed (BUGFIX-179).
 | `--frame <N>` | `0` | `.pixil` only: which frame to decode. |
 | `--leg-row <N>` | `floor(rows × 0.78)` | Leg-zone start row. |
 | `--primary` / `--secondary` / `--accent <#hex>` | auto | Exact source colours for indices 1 / 2 / 3. |
+| `--colors <N>` | 3 | Up to N colours (4–33) for painted / high-detail art, like `colors` in `sprite.json`. The extra colours print as the palette's `extra` list. Not with `--primary` / `--secondary` / `--accent`. |
 | `--threshold <0–255>` | `128` | Alpha below which a pixel is transparent. |
 | `--transparent <#hex>` | auto | Source colour to treat as transparent. |
 | `--transparent-distance <N>` | `2500` | Squared-RGB tolerance for `--transparent`. |
@@ -219,9 +225,9 @@ each option and runs the CLI once per stage.
 
 | Limitation | Detail |
 |------------|--------|
-| Maximum grid size | 192 columns × 128 rows (`MAX_COLS` / `MAX_ROWS` in `scripts/lib/spriteImport.js`). Larger stages are scaled down with nearest-neighbour sampling. |
+| Maximum grid size | 192 columns × 128 rows (`MAX_COLS` / `MAX_ROWS` in `scripts/lib/spriteImport.js`). Larger stages are scaled down with nearest-neighbour sampling, or by averaging for `colors` stages. |
 | Single-colour images | A fully-opaque image with matching corners loses that colour as "background". Give the art a transparent background, or set `transparent` to a colour that isn't used. |
 | Interlaced PNGs unsupported | Re-export as non-interlaced PNG. |
-| Gold cells | Indices 4 / 5 (gold) can't come from an image, because the palette has 3 colours. |
+| Gold cells | Indices 4 / 5 (gold) can't come from an image; `colors` stages skip them and use 6+. |
 | High-density grids | When a grid is denser than its on-screen box (`cellWExact < 1`), the renderer draws through an offscreen canvas. This is expected for large imported grids. |
-| Colour quantisation | Works well for flat pixel art with 3–4 colours. Photos and gradients give poor results. |
+| Colour quantisation | The default 3 colours suit flat pixel art. For painted art and gradients, set `colors` (e.g. 24). |

@@ -50,9 +50,21 @@ async function main() {
     saveStateFile(file);
   } else {
     state = ge.deserialiseState(file.state);
+    // Daily age bump on the first session of a new day (IDE-anchored pets are bumped by their IDE).
+    if (!file._anchor && ge.applyDailyAgeBump) {
+      const bumped = ge.applyDailyAgeBump(state, now);
+      if (bumped !== state) {
+        state = bumped;
+        file.state = ge.serialiseState(state);
+        saveStateFile(file);
+      }
+    }
   }
 
-  const speech = aa.buildContextualSpeech
+  const agedOvernight = (state.events ?? []).includes("aged_overnight");
+  const speech = agedOvernight
+    ? { message: `${state.name} aged a day whilst you were gone` }
+    : aa.buildContextualSpeech
     ? aa.buildContextualSpeech(state, 0, 0, 0, 0, false, dailyCostUsd, dailyTokens, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, hourlyCostUsd, 0, messageCount, { costStyle: "hourlyRate" })
     : { message: `${state.name ?? "Codotchi"} is ready!` };
 

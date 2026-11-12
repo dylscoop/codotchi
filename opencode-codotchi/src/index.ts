@@ -1247,6 +1247,9 @@ function applyTickForLocal(): void {
           : `${ideLabel} ${localPetState.name}: ${pickRandom([`I evolved into a ${stageName}!`, `I'm a ${stageName} now!`, `Growing up — now a ${stageName}.`])}`);
         break;
       }
+      case "aged_overnight":
+        queueNotification(`${ideLabel} ${localPetState.name} aged a day whilst you were gone`);
+        break;
       // All other events (hunger, happiness, energy, sickness, poop, gift,
       // misbehaviour, etc.) are intentionally ignored for the OpenCode-local pet —
       // its stats are pinned to healthy values and do not require user attention.
