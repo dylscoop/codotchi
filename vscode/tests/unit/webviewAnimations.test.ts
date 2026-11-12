@@ -993,3 +993,17 @@ describe("item catalogue in the webview (sidebar.js ITEM_INFO)", () => {
     }
   });
 });
+
+describe("Play together runs a minigame against the friend (sidebar.js)", () => {
+  it("routes the minigame result to friend_play while friendGame is set, and pauses the visit first", () => {
+    const fn = /function sendPlayResult\([\s\S]*?\n  \}/.exec(sidebarSource)![0];
+    const posted: unknown[] = [];
+    const ctx: Record<string, any> = { vscode: { postMessage: (m: unknown) => posted.push(m) }, friendGame: true };
+    vm.runInNewContext(fn + "\nsendPlayResult('left_right', 'win'); sendPlayResult('coin_flip', 'lose');", ctx);
+    assert.deepEqual(JSON.parse(JSON.stringify(posted)), [
+      { command: "friend_play", game: "left_right", result: "win" },
+      { command: "play", game: "coin_flip", result: "lose" },
+    ]);
+    assert.ok(sidebarSource.includes('vscode.postMessage({ command: "friend_play_start" })'));
+  });
+});

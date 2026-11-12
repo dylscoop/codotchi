@@ -219,6 +219,8 @@ data class FriendVisit(
     val gifted: Boolean,
     /** Item id the friend brought this visit, if any (drawn being dropped on arrival). */
     val broughtItem: String? = null,
+    /** Ticks left of the visit-timer pause while a minigame with the friend runs (startFriendGame). */
+    val gameTicks: Int? = null,
 )
 
 /** The egg a married pet leaves for the next generation. */

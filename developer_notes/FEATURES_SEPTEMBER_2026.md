@@ -572,7 +572,7 @@ merges:
 
 | Follow-up | Status | Notes |
 |-----------|--------|-------|
-| Play together is a real game | `[ ]` | **Play together** starts one of the existing minigames (§4 of `vscode/FEATURES.md`) with the friend as the opponent or partner, rather than an instant +10. Friendship gain scales with the result |
+| Play together is a real game | `[x]` | v2.38.0: **🤝 Play together** opens the minigame picker against the friend (Left/Right, Higher/Lower, Coin Flip and the species variants). Friendship +12 for a win, +10 a draw, +6 a loss; a loss gives half the happiness. The visit timer pauses for up to 20 ticks while the game runs. Terminal `playfriend` stays an instant play (counts as a draw) |
 | Gifts are actual items | `[x]` | v2.38.0: 12 items (food / toy / decor) in a 12-slot bag. A friend's gift is a random item, drawn over its head and dropped. **🎁 Give gift** picks an owned item (friendship 12 / 15 / 20 by kind). Items are used from the items bar or `/codotchi use <item>`: food feeds, toys cheer up, decorations go on the floor (up to 3). Also found every 4 minigame wins and with each achievement. Not yet: passive decor bonuses, items outside the social preview |
 | Different friends visit | `[x]` | v2.38.0: up to 3 friends (`friend` + `otherFriends`). A visit is from someone new 25% of the time while a slot is free, otherwise an old friend weighted by friendship. Friends not visiting lose 1 friendship per game day; at 0 friendship and 5 game days without a visit they drift away (never the partner) |
 | Say goodbye | `[x]` | v2.38.0: **👋 Goodbye** (`sayGoodbyeToFriend`, `/codotchi goodbye`, `codotchi_goodbye`) ends the visit early; the visitor waves (hops) and slides back out. Any visit ending now slides out the same way |

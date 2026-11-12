@@ -1646,10 +1646,13 @@ private fun tickSocial(
     }
 
     if (visit != null) {
-        val ticksLeft = visit.ticksLeft - 1
+        val pausedForGame = (visit.gameTicks ?: 0) > 0
+        val ticksLeft = if (pausedForGame) visit.ticksLeft else visit.ticksLeft - 1
         if (ticksLeft <= 0 || next.sleeping) {
             visit = null
             events.add("friend_visit_ended")
+        } else if (pausedForGame) {
+            visit = visit.copy(gameTicks = (visit.gameTicks ?: 0) - 1)
         } else {
             visit = visit.copy(ticksLeft = ticksLeft)
         }
@@ -1726,24 +1729,51 @@ fun pickVisitor(roster: List<FriendPet>, r: Double): FriendPet? {
     return roster.last()
 }
 
+/** Friendship from playing a minigame with the visiting friend, by result. A plain play counts as a draw. */
+val FRIENDSHIP_PER_PLAY_RESULT: Map<String, Int> = mapOf("win" to 12, "draw" to FRIENDSHIP_PER_PLAY, "lose" to 6)
+/** Most ticks a minigame with the friend holds the visit open (the visit timer is paused meanwhile). */
+const val FRIEND_GAME_PAUSE_TICKS: Int = 20
+
+/**
+ * The pet starts a minigame with the visiting friend: the visit timer pauses
+ * for up to FRIEND_GAME_PAUSE_TICKS. No events; unchanged when there is no
+ * visit, it already played, or the pet sleeps. Mirrors startFriendGame() in gameEngine.ts.
+ */
+fun startFriendGame(state: PetState): PetState {
+    val visit = state.visit
+    if (!state.alive || visit == null || visit.played || state.sleeping) return state
+    return state.copy(visit = visit.copy(gameTicks = FRIEND_GAME_PAUSE_TICKS))
+}
+
 /**
  * Play with the visiting friend: friendship and happiness up, a little energy
- * spent. Once per visit. Refused (event `friend_play_refused`) with no visit,
- * when already played this visit, while asleep, or with too little energy.
+ * spent. Once per visit. With a minigame [result] ("win", "lose", or "draw" /
+ * "push") the friendship gain follows FRIENDSHIP_PER_PLAY_RESULT and a loss
+ * gives half the happiness; it also emits `friend_game_<win|draw|lose>`.
+ * Refused (event `friend_play_refused`) with no visit, when already played
+ * this visit, while asleep, or with too little energy.
  */
-fun playWithFriend(state: PetState): PetState {
+fun playWithFriend(state: PetState, result: String? = null): PetState {
     val visit = state.visit
     val friend = state.friend
     if (!state.alive || visit == null || friend == null || visit.played || state.sleeping ||
         state.energy < FRIEND_PLAY_ENERGY_COST) {
         return withDerivedFields(state.copy(events = listOf("friend_play_refused")))
     }
+    val outcome = when (result) {
+        "win" -> "win"
+        "lose" -> "lose"
+        "draw", "push" -> "draw"
+        else -> null
+    }
     val events = mutableListOf("friend_played")
-    val newFriend = withFriendship(friend, FRIENDSHIP_PER_PLAY, events)
+    if (outcome != null) events.add("friend_game_$outcome")
+    val newFriend = withFriendship(friend, FRIENDSHIP_PER_PLAY_RESULT.getValue(outcome ?: "draw"), events)
+    val joy = if (outcome == "lose") Math.round(FRIEND_PLAY_HAPPINESS / 2.0).toInt() else FRIEND_PLAY_HAPPINESS
     val next = withDerivedFields(state.copy(
         friend = newFriend,
-        visit = visit.copy(played = true),
-        happiness = clampStat(state.happiness + FRIEND_PLAY_HAPPINESS),
+        visit = visit.copy(played = true, gameTicks = null),
+        happiness = clampStat(state.happiness + joy),
         energy = clampStat(state.energy - FRIEND_PLAY_ENERGY_COST),
         events = events.toList(),
     ))
@@ -1945,6 +1975,7 @@ fun socialFromRaw(data: Map<String, Any?>): SocialFields {
         played = visitRaw["played"] == true,
         gifted = visitRaw["gifted"] == true,
         broughtItem = (visitRaw["broughtItem"] as? String)?.takeIf { itemById(it) != null },
+        gameTicks = num(visitRaw["gameTicks"], 0.0).takeIf { it > 0 }?.let { min(FRIEND_GAME_PAUSE_TICKS.toDouble(), floor(it)).toInt() },
     ) else null
     fun itemIds(key: String, max: Int): List<String> =
         (data[key] as? List<*>).orEmpty().filterIsInstance<String>().filter { itemById(it) != null }.take(max)
@@ -1986,7 +2017,8 @@ fun socialToRaw(s: PetState): Map<String, Any?> = mapOf(
     "otherFriends" to s.otherFriends.map(::friendToRaw),
     "visit" to s.visit?.let {
         mapOf("ticksLeft" to it.ticksLeft, "played" to it.played, "gifted" to it.gifted) +
-            (if (it.broughtItem != null) mapOf("broughtItem" to it.broughtItem) else emptyMap())
+            (if (it.broughtItem != null) mapOf("broughtItem" to it.broughtItem) else emptyMap()) +
+            (if (it.gameTicks != null) mapOf("gameTicks" to it.gameTicks) else emptyMap())
     },
     "ticksSinceLastVisit" to s.ticksSinceLastVisit,
     "partner" to s.partner?.let { mapOf("name" to it.name, "spriteType" to it.spriteType, "petType" to it.petType) },

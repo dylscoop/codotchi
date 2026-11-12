@@ -17,6 +17,9 @@ import {
   socialActionMessage,
   socialSummaryLines,
   pickVisitor,
+  startFriendGame,
+  FRIENDSHIP_PER_PLAY_RESULT,
+  FRIEND_GAME_PAUSE_TICKS,
   useItem,
   itemActionMessage,
   itemListLines,
@@ -403,6 +406,53 @@ describe("items", () => {
     assert.ok(lines.some((l) => l.includes("🍎 apple ×2") && l.includes("/codotchi use apple")));
     assert.ok(lines.some((l) => l.includes("On the floor: 🪴")));
     assert.match(itemListLines({ name: "Mittens", items: [], decor: [] })[0], /no items yet/);
+  });
+});
+
+describe("social: play together is a minigame", () => {
+  const visiting = () =>
+    makePet({ friend: friend(20), visit: { ticksLeft: 30, played: false, gifted: false }, happiness: 50 });
+
+  it("friendship follows the result; a loss gives half the happiness", () => {
+    const win = playWithFriend(visiting(), "win");
+    assert.equal(win.friend!.friendship, 20 + FRIENDSHIP_PER_PLAY_RESULT.win);
+    assert.ok(win.events.includes("friend_game_win"));
+    assert.match(socialActionMessage(win), /Mittens won the game/);
+    const lose = playWithFriend(visiting(), "lose");
+    assert.equal(lose.friend!.friendship, 20 + FRIENDSHIP_PER_PLAY_RESULT.lose);
+    assert.equal(lose.happiness, 55);
+    assert.match(socialActionMessage(lose), /Pixel won this time/);
+    const push = playWithFriend(visiting(), "push");
+    assert.equal(push.friend!.friendship, 20 + FRIENDSHIP_PER_PLAY_RESULT.draw);
+    assert.ok(push.events.includes("friend_game_draw"));
+    assert.equal(playWithFriend(visiting()).friend!.friendship, 20 + FRIENDSHIP_PER_PLAY_RESULT.draw, "no game = a draw");
+  });
+
+  it("a game pauses the visit timer for up to FRIEND_GAME_PAUSE_TICKS; playing clears it", () => {
+    let s = startFriendGame(visiting());
+    assert.equal(s.visit!.gameTicks, FRIEND_GAME_PAUSE_TICKS);
+    s = withRandom(0.5, () => tick(s, false, false, NO_CALLS));
+    assert.equal(s.visit!.ticksLeft, 30, "the timer is paused");
+    assert.equal(s.visit!.gameTicks, FRIEND_GAME_PAUSE_TICKS - 1);
+    const roundTripped = roundTrip(s);
+    assert.equal(roundTripped.visit!.gameTicks, FRIEND_GAME_PAUSE_TICKS - 1);
+    const played = playWithFriend(s, "win");
+    assert.equal(played.visit!.gameTicks, undefined);
+    const after = withRandom(0.5, () => tick(played, false, false, NO_CALLS));
+    assert.equal(after.visit!.ticksLeft, 29, "the timer runs again");
+  });
+
+  it("an abandoned game stops pausing after FRIEND_GAME_PAUSE_TICKS", () => {
+    let s = startFriendGame(visiting());
+    for (let i = 0; i < FRIEND_GAME_PAUSE_TICKS + 1; i++) { s = withRandom(0.5, () => tick(s, false, false, NO_CALLS)); }
+    assert.equal(s.visit!.ticksLeft, 29);
+  });
+
+  it("startFriendGame does nothing without a visit or after playing", () => {
+    const none = makePet();
+    assert.equal(startFriendGame(none), none);
+    const played = { ...visiting(), visit: { ticksLeft: 30, played: true, gifted: false } };
+    assert.equal(startFriendGame(played), played);
   });
 });
 

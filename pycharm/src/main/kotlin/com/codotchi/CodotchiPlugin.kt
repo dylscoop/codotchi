@@ -596,7 +596,12 @@ class CodotchiPlugin : Disposable {
                 // Social (v2.36.0) — mirrors sidebarProvider.ts
                 "friend_play" -> {
                     state ?: return@withLock
-                    nextState = playWithFriend(state)
+                    nextState = playWithFriend(state, message["result"] as? String)
+                }
+
+                "friend_play_start" -> {
+                    state ?: return@withLock
+                    nextState = startFriendGame(state)
                 }
 
                 "friend_gift" -> {

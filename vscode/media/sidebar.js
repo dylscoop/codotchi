@@ -417,7 +417,19 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   // ── Social buttons (v2.36.0) ─────────────────────────────────────────────
 
   document.getElementById("btn-friend-play").addEventListener("click", function () {
-    vscode.postMessage({ command: "friend_play" });
+    // Play together = a minigame with the friend: pick one, the result goes to friend_play
+    if (!lastState || lastState.sick || lastState.energy < PAT_ENERGY_COST || !lastState.friend) {
+      vscode.postMessage({ command: "friend_play" });   // let the host refuse it
+      return;
+    }
+    friendGame = true;
+    vscode.postMessage({ command: "friend_play_start" });
+    var sel = document.getElementById("mg-select");
+    sel.classList.add("friend-mode");
+    var hint = document.getElementById("mg-friend-hint");
+    if (hint) { hint.textContent = "🤝 Pick a game to play against " + lastState.friend.name + "!"; hint.classList.remove("hidden"); }
+    showMgOverlay();
+    showMgPanel("mg-select");
   });
   document.getElementById("btn-friend-gift").addEventListener("click", function () {
     // Pick which item to give from the items bar
@@ -938,6 +950,18 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     mgPanels.classList.add("hidden");
     btnGrid.classList.remove("hidden");
     mgClear();
+    endFriendGameMode();
+  }
+
+  /** Play together is a minigame against the visiting friend while this is true. */
+  var friendGame = false;
+
+  function endFriendGameMode() {
+    friendGame = false;
+    var sel = document.getElementById("mg-select");
+    if (sel) { sel.classList.remove("friend-mode"); }
+    var hint = document.getElementById("mg-friend-hint");
+    if (hint) { hint.classList.add("hidden"); }
   }
 
   function showMgPanel(id) {
@@ -947,6 +971,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   function sendPlayResult(game, result) {
+    if (friendGame) {
+      // A game with the visiting friend: its result is the friendship play, not a normal play
+      vscode.postMessage({ command: "friend_play", game: game, result: result });
+      friendGame = false;
+      return;
+    }
     vscode.postMessage({ command: "play", game: game, result: result });
     // Do NOT call hideMgOverlay() here — the result panel stays open until the player taps OK.
   }
@@ -3912,6 +3942,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "friend_goodbye_refused":  "",
       "friend_gift_received":    _fr + " brought " + n + " " + (_gift ? withArticleJs(_gift[1]) + "! " + _gift[0] : "a present! 🎁"),
       "friend_played":           n + " and " + _fr + " played together!",
+      "friend_game_win":         n + " beat " + _fr + " at the game! 🏆",
+      "friend_game_lose":        _fr + " won the game this time.",
+      "friend_game_draw":        n + " and " + _fr + " drew the game.",
       "friend_gift_given":       n + " gave " + _fr + " " + (_gift ? withArticleJs(_gift[1]) + ". " + _gift[0] : "a present."),
       "item_refused":            n + " can't use that right now.",
       "best_friends":            n + " and " + _fr + " are best friends now! 💛",

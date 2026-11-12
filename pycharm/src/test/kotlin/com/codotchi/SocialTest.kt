@@ -131,7 +131,7 @@ class SocialTest {
         )
         val json = JsonParser.parseString(petStateJson(s)).asJsonObject
         assertEquals(JsonParser.parseString("""{"name":"Pixel","spriteType":"dog","petType":"bytebug","friendship":42,"visits":3,"lastVisitDay":100.0}"""), json.get("friend"))
-        assertEquals(JsonParser.parseString("""{"ticksLeft":10,"played":true,"gifted":false,"broughtItem":null}"""), json.get("visit"))
+        assertEquals(JsonParser.parseString("""{"ticksLeft":10,"played":true,"gifted":false,"broughtItem":null,"gameTicks":null}"""), json.get("visit"))
         assertEquals(JsonParser.parseString("""{"from":"friend","name":"Pixel","spriteType":"dog","petType":"bytebug"}"""), json.get("proposal"))
     }
 
@@ -306,6 +306,36 @@ class SocialTest {
 
     private fun visiting(friendship: Int, items: List<String> = listOf("ball")) =
         makePet().copy(friend = friend(friendship), visit = FriendVisit(30, played = false, gifted = false), items = items)
+
+    // ── Play together is a minigame ─────────────────────────────────────────
+
+    @Test
+    fun `friendship follows the minigame result, a loss gives half the happiness`() {
+        val base = visiting(20).copy(happiness = 50)
+        val win = playWithFriend(base, "win")
+        assertEquals(20 + FRIENDSHIP_PER_PLAY_RESULT.getValue("win"), win.friend!!.friendship)
+        assertTrue("friend_game_win" in win.events)
+        val lose = playWithFriend(base, "lose")
+        assertEquals(20 + FRIENDSHIP_PER_PLAY_RESULT.getValue("lose"), lose.friend!!.friendship)
+        assertEquals(55, lose.happiness)
+        assertTrue("friend_game_draw" in playWithFriend(base, "push").events)
+        assertEquals(20 + FRIENDSHIP_PER_PLAY_RESULT.getValue("draw"), playWithFriend(base).friend!!.friendship)
+    }
+
+    @Test
+    fun `a friend game pauses the visit timer, and playing clears it`() {
+        var s = startFriendGame(visiting(20))
+        assertEquals(FRIEND_GAME_PAUSE_TICKS, s.visit!!.gameTicks)
+        s = tickWith(s, 0.5)
+        assertEquals(30, s.visit!!.ticksLeft)
+        assertEquals(FRIEND_GAME_PAUSE_TICKS - 1, roundTrip(s).visit!!.gameTicks)
+        val played = playWithFriend(s, "win")
+        assertNull(played.visit!!.gameTicks)
+        assertEquals(29, tickWith(played, 0.5).visit!!.ticksLeft)
+        var abandoned = startFriendGame(visiting(20))
+        repeat(FRIEND_GAME_PAUSE_TICKS + 1) { abandoned = tickWith(abandoned, 0.5) }
+        assertEquals(29, abandoned.visit!!.ticksLeft)
+    }
 
     // ── Items ────────────────────────────────────────────────────────────────
 
