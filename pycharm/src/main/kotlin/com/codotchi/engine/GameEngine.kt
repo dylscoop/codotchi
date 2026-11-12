@@ -243,7 +243,13 @@ private fun answerCraving(state: PetState, food: String): AnsweredCall? =
 // Factory
 // ---------------------------------------------------------------------------
 
-fun createPet(name: String, petType: String, color: String, unlockedCharacter: String? = null, trainer: TrainerProgress? = null): PetState {
+/**
+ * @param lineage - Family line for an heir (see hatchHeir): the generation number; null starts generation 1.
+ */
+fun createPet(
+    name: String, petType: String, color: String, unlockedCharacter: String? = null,
+    trainer: TrainerProgress? = null, lineage: Int? = null,
+): PetState {
     val modifiers = PET_TYPE_MODIFIERS[petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
     val resolvedSprite = unlockedCharacter ?: randomSpriteType()
     return withDerivedFields(
@@ -296,6 +302,7 @@ fun createPet(name: String, petType: String, color: String, unlockedCharacter: S
             ticksSinceLastMisbehaviour = 0,
             ticksSinceLastGift        = 0,
             trainer                   = trainer ?: TrainerProgress(),
+            generation                = max(1, lineage ?: 1),
         )
     )
 }
@@ -316,9 +323,22 @@ fun markDeathless(state: PetState): PetState =
 // Tick
 // ---------------------------------------------------------------------------
 
-fun tick(state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG): PetState {
-    val next = tickCore(state, isIdle, isDeepIdle, config)
-    return if (next.events.any { it.startsWith("evolved_to_") }) awardXp(next, "evolve") else next
+/**
+ * Advance the pet by one tick: tickCore(), then the social step, then XP for
+ * evolving, making a friend and becoming best friends. Mirrors tick() in gameEngine.ts.
+ *
+ * @param rand - Random source for the social step (visits, gifts, CPU identities);
+ *   tests stub it the way the TS tests stub Math.random.
+ */
+fun tick(
+    state: PetState, isIdle: Boolean = false, isDeepIdle: Boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG,
+    rand: () -> Double = { Random.nextDouble() },
+): PetState {
+    var next = tickSocial(state, tickCore(state, isIdle, isDeepIdle, config), isIdle, isDeepIdle, config, rand)
+    if (next.events.any { it.startsWith("evolved_to_") }) next = awardXp(next, "evolve")
+    if ("friend_made" in next.events) next = awardXp(next, "befriend")
+    if ("best_friends" in next.events) next = awardXp(next, "best_friend")
+    return next
 }
 
 private fun tickCore(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, config: GameConfig): PetState {
@@ -326,10 +346,10 @@ private fun tickCore(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, conf
     if (state.paused) return if (state.events.isNotEmpty()) state.copy(events = emptyList()) else state
     // Any tick in dev mode (faster aging, health floor) bars this pet from the leaderboard for life.
     if (config.devMode && !state.devModeEverUsed) {
-        return tick(state.copy(devModeEverUsed = true), isIdle, isDeepIdle, config)
+        return tickCore(state.copy(devModeEverUsed = true), isIdle, isDeepIdle, config)
     }
     if (config.deathless && !isDeathlessPet(state) && state.leaderboardIneligible != "tampered") {
-        return tick(markDeathless(state), isIdle, isDeepIdle, config)
+        return tickCore(markDeathless(state), isIdle, isDeepIdle, config)
     }
 
     val modifiers = PET_TYPE_MODIFIERS[state.petType] ?: PET_TYPE_MODIFIERS["codeling"]!!
@@ -1466,3 +1486,354 @@ fun applyOfflineDecay(state: PetState, elapsedSeconds: Int): PetState {
         )
     )
 }
+
+// ---------------------------------------------------------------------------
+// Social — CPU friends, gifts, marriage, heir egg, matchmaker (v2.36.0)
+// Mirrors the Social section of packages/core/src/gameEngine.ts.
+// ---------------------------------------------------------------------------
+
+/** The friendship level name for a friendship score. */
+fun friendshipLevel(friendship: Int): String {
+    var name = FRIENDSHIP_LEVELS[0].name
+    for (lvl in FRIENDSHIP_LEVELS) {
+        if (friendship >= lvl.min) name = lvl.name
+    }
+    return name
+}
+
+/** A random CPU pet, never sharing a name with the ones in [avoid]. */
+fun randomFriendIdentity(avoid: List<String> = emptyList(), rand: () -> Double = { Random.nextDouble() }): PetIdentity {
+    val pool = FRIEND_NAMES.filter { it !in avoid }
+    val names = if (pool.isNotEmpty()) pool else FRIEND_NAMES
+    return PetIdentity(
+        name = names[floor(rand() * names.size).toInt()],
+        spriteType = ROTATION_ANIMALS[floor(rand() * ROTATION_ANIMALS.size).toInt()],
+        petType = FRIEND_PET_TYPES[floor(rand() * FRIEND_PET_TYPES.size).toInt()],
+    )
+}
+
+/** Add friendship (clamped to 0–100), adding "best_friends" when it first crosses BEST_FRIEND_FRIENDSHIP. */
+private fun withFriendship(friend: FriendPet, delta: Int, events: MutableList<String>): FriendPet {
+    val friendship = max(0, min(100, friend.friendship + delta))
+    if (friend.friendship < BEST_FRIEND_FRIENDSHIP && friendship >= BEST_FRIEND_FRIENDSHIP) {
+        events.add("best_friends")
+    }
+    return friend.copy(friendship = friendship)
+}
+
+/**
+ * Finish a social change on a state that already has its derived fields:
+ * recompute mood and sprite, and append the new events to [original]'s
+ * `events` and event log (like awardXp). [merged] is [original] with the changes.
+ */
+private fun withSocialPatch(merged: PetState, original: PetState, events: List<String>): PetState {
+    val mood = moodFromStats(merged.hunger, merged.happiness, merged.health, merged.sleeping)
+    return merged.copy(
+        mood = mood,
+        sprite = "${merged.stage}_$mood",
+        events = original.events + events,
+        recentEventLog = if (events.isNotEmpty()) (original.recentEventLog + events).takeLast(RECENT_EVENT_LOG_MAX)
+                         else original.recentEventLog,
+    )
+}
+
+/** True when the pet could marry: adult or senior, single, no egg waiting and no offer pending. */
+private fun canMarry(state: PetState): Boolean =
+    (state.stage == "adult" || state.stage == "senior") &&
+        state.partner == null && state.heirEgg == null && state.proposal == null
+
+/**
+ * The social step of a tick, run after tickCore(): visits start and end,
+ * friendship decays, the friend proposes and the matchmaker arrives.
+ * Visits and proposals only start on active, awake ticks.
+ *
+ * @param prev - State entering the tick.
+ * @param next - State after tickCore().
+ */
+/**
+ * Visit pacing as (minGapTicks, chancePerTick). In dev mode the friend comes
+ * devModeAgingMultiplier times faster so visits can be tested; a visit itself
+ * still lasts VISIT_TICKS. Mirrors visitPacing() in gameEngine.ts.
+ */
+fun visitPacing(config: GameConfig): Pair<Int, Double> {
+    val mult = if (config.devMode) maxOf(1.0, config.devModeAgingMultiplier) else 1.0
+    return Pair(ceil(VISIT_MIN_GAP_TICKS / mult).toInt(), minOf(1.0, VISIT_CHANCE_PER_TICK * mult))
+}
+
+private fun tickSocial(
+    prev: PetState, next: PetState, isIdle: Boolean, isDeepIdle: Boolean, config: GameConfig, rand: () -> Double,
+): PetState {
+    if (!next.alive || next.paused) return next
+    if (!config.socialEnabled) {
+        return if (next.visit != null) withSocialPatch(next.copy(visit = null), next, listOf("friend_visit_ended")) else next
+    }
+    val events = mutableListOf<String>()
+    val active = !isIdle && !isDeepIdle
+    val napping = next.breakNapTicksRemaining > 0
+    var friend = next.friend
+    var visit = next.visit
+    var proposal = next.proposal
+    var happiness = next.happiness
+    var ticksSinceLastVisit = next.ticksSinceLastVisit
+    var proposalCooldownTicks = next.proposalCooldownTicks
+    var seniorSinceDay = next.seniorSinceDay
+
+    if (next.stage == "senior" && seniorSinceDay == null) seniorSinceDay = next.dayTimer
+    if (active && !napping) {
+        ticksSinceLastVisit += 1
+        proposalCooldownTicks = max(0, proposalCooldownTicks - 1)
+    }
+    if (friend != null && visit == null && floor(next.dayTimer) > floor(prev.dayTimer)) {
+        friend = withFriendship(friend, -FRIENDSHIP_DECAY_PER_DAY, events)
+    }
+
+    if (visit != null) {
+        val ticksLeft = visit.ticksLeft - 1
+        if (ticksLeft <= 0 || next.sleeping) {
+            visit = null
+            events.add("friend_visit_ended")
+        } else {
+            visit = visit.copy(ticksLeft = ticksLeft)
+        }
+    } else if (active && !napping && !next.sleeping && next.stage != "egg" && next.stage != "baby" &&
+               next.activeAttentionCall == null && proposal == null &&
+               ticksSinceLastVisit >= visitPacing(config).first && rand() < visitPacing(config).second) {
+        var f = friend
+        if (f == null) {
+            val id = randomFriendIdentity(listOf(next.name), rand)
+            f = FriendPet(id.name, id.spriteType, id.petType, friendship = 0, visits = 0)
+            events.add("friend_made")
+        }
+        f = withFriendship(f.copy(visits = f.visits + 1), FRIENDSHIP_PER_VISIT, events)
+        visit = FriendVisit(ticksLeft = VISIT_TICKS, played = false, gifted = false)
+        ticksSinceLastVisit = 0
+        events.add("friend_visit_started")
+        if (rand() < FRIEND_GIFT_CHANCE) {
+            f = withFriendship(f, FRIENDSHIP_PER_RECEIVED_GIFT, events)
+            happiness = clampStat(happiness + FRIEND_GIFT_HAPPINESS)
+            events.add("friend_gift_received")
+        }
+        if (f.friendship >= PARTNER_FRIENDSHIP && proposalCooldownTicks == 0 && canMarry(next)) {
+            proposal = Proposal(from = "friend", name = f.name, spriteType = f.spriteType, petType = f.petType)
+            events.add("proposal_received")
+        }
+        friend = f
+    }
+
+    if (active && !napping && !next.sleeping && proposal == null && proposalCooldownTicks == 0 &&
+        next.stage == "senior" && seniorSinceDay != null &&
+        next.dayTimer - seniorSinceDay >= MATCHMAKER_SENIOR_DAYS && canMarry(next)) {
+        val match = randomFriendIdentity(listOf(next.name) + listOfNotNull(friend?.name), rand)
+        proposal = Proposal(from = "matchmaker", name = match.name, spriteType = match.spriteType, petType = match.petType)
+        events.add("matchmaker_arrived")
+    }
+
+    if (events.isEmpty() && friend == next.friend && visit == next.visit && proposal == next.proposal &&
+        ticksSinceLastVisit == next.ticksSinceLastVisit && proposalCooldownTicks == next.proposalCooldownTicks &&
+        seniorSinceDay == next.seniorSinceDay) {
+        return next
+    }
+    return withSocialPatch(
+        next.copy(
+            friend = friend, visit = visit, proposal = proposal, happiness = happiness,
+            ticksSinceLastVisit = ticksSinceLastVisit, proposalCooldownTicks = proposalCooldownTicks,
+            seniorSinceDay = seniorSinceDay,
+        ),
+        next, events,
+    )
+}
+
+/**
+ * Play with the visiting friend: friendship and happiness up, a little energy
+ * spent. Once per visit. Refused (event `friend_play_refused`) with no visit,
+ * when already played this visit, while asleep, or with too little energy.
+ */
+fun playWithFriend(state: PetState): PetState {
+    val visit = state.visit
+    val friend = state.friend
+    if (!state.alive || visit == null || friend == null || visit.played || state.sleeping ||
+        state.energy < FRIEND_PLAY_ENERGY_COST) {
+        return withDerivedFields(state.copy(events = listOf("friend_play_refused")))
+    }
+    val events = mutableListOf("friend_played")
+    val newFriend = withFriendship(friend, FRIENDSHIP_PER_PLAY, events)
+    val next = withDerivedFields(state.copy(
+        friend = newFriend,
+        visit = visit.copy(played = true),
+        happiness = clampStat(state.happiness + FRIEND_PLAY_HAPPINESS),
+        energy = clampStat(state.energy - FRIEND_PLAY_ENERGY_COST),
+        events = events.toList(),
+    ))
+    val xp = awardXp(next, "friend_play")
+    return if ("best_friends" in events) awardXp(xp, "best_friend") else xp
+}
+
+/**
+ * Give the visiting friend a gift (the pet shares a treat): friendship up,
+ * a little hunger spent. Once per visit. Refused (event `friend_gift_refused`)
+ * with no visit, when already gifted this visit, or while asleep.
+ */
+fun giveFriendGift(state: PetState): PetState {
+    val visit = state.visit
+    val friend = state.friend
+    if (!state.alive || visit == null || friend == null || visit.gifted || state.sleeping) {
+        return withDerivedFields(state.copy(events = listOf("friend_gift_refused")))
+    }
+    val events = mutableListOf("friend_gift_given")
+    val newFriend = withFriendship(friend, FRIENDSHIP_PER_GIVEN_GIFT, events)
+    val next = withDerivedFields(state.copy(
+        friend = newFriend,
+        visit = visit.copy(gifted = true),
+        hunger = clampStat(state.hunger - FRIEND_GIFT_HUNGER_COST),
+        events = events.toList(),
+    ))
+    val xp = awardXp(next, "friend_gift")
+    return if ("best_friends" in events) awardXp(xp, "best_friend") else xp
+}
+
+/**
+ * Accept the pending proposal: the pet marries. Emits `married`. Refused
+ * (event `proposal_refused`) when there is no offer.
+ *
+ * Marriage does not lay an heir egg while offspring are being redesigned
+ * (backlog); `heirEgg` and `hatchHeir` stay for that redesign and old saves.
+ */
+@Suppress("UNUSED_PARAMETER")
+fun acceptProposal(state: PetState, rand: () -> Double = { Random.nextDouble() }): PetState {
+    val p = state.proposal
+    if (!state.alive || p == null) {
+        return withDerivedFields(state.copy(events = listOf("proposal_refused")))
+    }
+    val partner = PetIdentity(name = p.name, spriteType = p.spriteType, petType = p.petType)
+    return awardXp(withDerivedFields(state.copy(
+        partner = partner,
+        proposal = null,
+        happiness = clampStat(state.happiness + MARRIAGE_HAPPINESS),
+        events = listOf("married"),
+    )), "marriage")
+}
+
+/** Decline the pending proposal; no new offer for PROPOSAL_DECLINE_COOLDOWN_TICKS active ticks. */
+fun declineProposal(state: PetState): PetState {
+    if (state.proposal == null) {
+        return withDerivedFields(state.copy(events = listOf("proposal_refused")))
+    }
+    return withDerivedFields(state.copy(
+        proposal = null,
+        proposalCooldownTicks = PROPOSAL_DECLINE_COOLDOWN_TICKS,
+        events = listOf("proposal_declined"),
+    ))
+}
+
+/**
+ * Hatch the heir egg a married parent left behind, as a new egg one
+ * generation on. Returns null when the parent has no heir egg.
+ * The heir keeps the parent's colour (the Kotlin createPet takes a colour; the TS one has none).
+ *
+ * @param parent - The previous pet (normally dead), carrying `heirEgg`.
+ * @param name - The new pet's name.
+ * @param trainer - Trainer progress to carry over (defaults to the parent's).
+ */
+fun hatchHeir(parent: PetState, name: String, trainer: TrainerProgress? = null): PetState? {
+    val egg = parent.heirEgg ?: return null
+    val pet = createPet(name, egg.petType, parent.color, egg.spriteType, trainer ?: parent.trainer,
+        lineage = parent.generation + 1)
+    return awardXp(pet, "heir")
+}
+
+/** The social fields of a PetState, as loaded from a save. */
+data class SocialFields(
+    val generation: Int = 1,
+    val friend: FriendPet? = null,
+    val visit: FriendVisit? = null,
+    val ticksSinceLastVisit: Int = 0,
+    val partner: PetIdentity? = null,
+    val heirEgg: HeirEgg? = null,
+    val seniorSinceDay: Double? = null,
+    val proposal: Proposal? = null,
+    val proposalCooldownTicks: Int = 0,
+)
+
+/** Copy [fields] onto [state]. */
+fun withSocialFields(state: PetState, fields: SocialFields): PetState = state.copy(
+    generation = fields.generation,
+    friend = fields.friend,
+    visit = fields.visit,
+    ticksSinceLastVisit = fields.ticksSinceLastVisit,
+    partner = fields.partner,
+    heirEgg = fields.heirEgg,
+    seniorSinceDay = fields.seniorSinceDay,
+    proposal = fields.proposal,
+    proposalCooldownTicks = fields.proposalCooldownTicks,
+)
+
+/** Parse a PetIdentity from a Gson-decoded value; null when it is missing or malformed. */
+private fun identityFromRaw(raw: Any?): PetIdentity? {
+    val r = raw as? Map<*, *> ?: return null
+    val name = r["name"] as? String ?: return null
+    val spriteType = r["spriteType"] as? String ?: return null
+    val petType = r["petType"] as? String ?: return null
+    return PetIdentity(name, if (spriteType == "goat") "sheep" else spriteType, petType)
+}
+
+/**
+ * Parse the social fields from a Gson-decoded save (keys as in serialiseState),
+ * filling in defaults: saves before schemaVersion 2 have none. Malformed values
+ * load as null, and a visit without a friend is dropped. Mirrors deserialiseSocial in gameEngine.ts.
+ */
+fun socialFromRaw(data: Map<String, Any?>): SocialFields {
+    fun num(v: Any?, fallback: Double): Double =
+        if (v is Number && v.toDouble().isFinite()) v.toDouble() else fallback
+
+    val friendId = identityFromRaw(data["friend"])
+    val friendRaw = data["friend"] as? Map<*, *>
+    val friend = if (friendId != null && friendRaw != null) FriendPet(
+        friendId.name, friendId.spriteType, friendId.petType,
+        friendship = max(0.0, min(100.0, num(friendRaw["friendship"], 0.0))).toInt(),
+        visits = max(0.0, num(friendRaw["visits"], 0.0)).toInt(),
+    ) else null
+    val visitRaw = data["visit"] as? Map<*, *>
+    val visit = if (visitRaw != null && friend != null && num(visitRaw["ticksLeft"], 0.0) > 0) FriendVisit(
+        ticksLeft = min(VISIT_TICKS.toDouble(), num(visitRaw["ticksLeft"], 0.0)).toInt(),
+        played = visitRaw["played"] == true,
+        gifted = visitRaw["gifted"] == true,
+    ) else null
+    val eggRaw = data["heirEgg"] as? Map<*, *>
+    val eggSprite = eggRaw?.get("spriteType") as? String
+    val eggType = eggRaw?.get("petType") as? String
+    val heirEgg = if (eggSprite != null && eggType != null)
+        HeirEgg(if (eggSprite == "goat") "sheep" else eggSprite, eggType) else null
+    val propId = identityFromRaw(data["proposal"])
+    val from = (data["proposal"] as? Map<*, *>)?.get("from")
+    val proposal = if (propId != null && (from == "friend" || from == "matchmaker"))
+        Proposal(from as String, propId.name, propId.spriteType, propId.petType) else null
+    return SocialFields(
+        generation = max(1.0, floor(num(data["generation"], 1.0))).toInt(),
+        friend = friend,
+        visit = visit,
+        ticksSinceLastVisit = max(0.0, num(data["ticksSinceLastVisit"], 0.0)).toInt(),
+        partner = identityFromRaw(data["partner"]),
+        heirEgg = heirEgg,
+        seniorSinceDay = (data["seniorSinceDay"] as? Number)?.toDouble(),
+        proposal = proposal,
+        proposalCooldownTicks = max(0.0, num(data["proposalCooldownTicks"], 0.0)).toInt(),
+    )
+}
+
+/** The social fields as JSON-ready values, with the keys and shapes serialiseState() in gameEngine.ts uses. */
+fun socialToRaw(s: PetState): Map<String, Any?> = mapOf(
+    "generation" to s.generation,
+    "friend" to s.friend?.let {
+        mapOf("name" to it.name, "spriteType" to it.spriteType, "petType" to it.petType,
+              "friendship" to it.friendship, "visits" to it.visits)
+    },
+    "visit" to s.visit?.let { mapOf("ticksLeft" to it.ticksLeft, "played" to it.played, "gifted" to it.gifted) },
+    "ticksSinceLastVisit" to s.ticksSinceLastVisit,
+    "partner" to s.partner?.let { mapOf("name" to it.name, "spriteType" to it.spriteType, "petType" to it.petType) },
+    "heirEgg" to s.heirEgg?.let { mapOf("spriteType" to it.spriteType, "petType" to it.petType) },
+    "seniorSinceDay" to s.seniorSinceDay,
+    "proposal" to s.proposal?.let {
+        mapOf("from" to it.from, "name" to it.name, "spriteType" to it.spriteType, "petType" to it.petType)
+    },
+    "proposalCooldownTicks" to s.proposalCooldownTicks,
+)

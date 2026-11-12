@@ -133,7 +133,7 @@ const val COMMIT_ACTIVITY_THROTTLE_SECONDS: Int = 300
  * pet is considered "idle" and hunger/happiness decay drops to
  * 1/IDLE_DECAY_TICK_DIVISOR of the normal rate.
  */
-const val IDLE_THRESHOLD_MS: Long = 60 * 1000L // 1 minute
+const val IDLE_THRESHOLD_MS: Long = 2 * 60 * 1000L // 2 minutes
 
 /**
  * Milliseconds of sustained idle before entering "deep idle": stats are floored
@@ -378,6 +378,12 @@ data class GameConfig(
      * score for life.
      */
     val deathless: Boolean = false,
+    /**
+     * Social features (v2.36.0): CPU friends visit, the matchmaker arrives for
+     * unmarried seniors. When false, no visits or proposals start and an
+     * ongoing visit ends.
+     */
+    val socialEnabled: Boolean = false, // dev-mode preview until release
 )
 
 /** Sensible defaults used when no explicit config is provided. */
@@ -464,3 +470,70 @@ const val CRAVING_CALL_BASE_CHANCE: Double = 0.003
 const val CRAVING_CALL_MAX_CHANCE: Double = 0.04
 /** A craving never asks for a meal when hunger is already at or above this. */
 const val CRAVING_MEAL_MAX_HUNGER: Int = 90
+
+// ---------------------------------------------------------------------------
+// Social — CPU friends, gifts, marriage, heir egg, matchmaker (v2.36.0)
+// Keep identical to the Social section of packages/core/src/gameEngine.ts.
+// ---------------------------------------------------------------------------
+
+/** How long a friend's visit lasts, in ticks (3 min). Counts down even while idle. */
+const val VISIT_TICKS: Int = 60
+/** Active ticks after a visit starts before another can start (~1 h). */
+const val VISIT_MIN_GAP_TICKS: Int = 1200
+/** Chance per active tick, once the gap is over, that the friend visits (~50 min on average). */
+const val VISIT_CHANCE_PER_TICK: Double = 0.001
+/** Friendship gained just by visiting. */
+const val FRIENDSHIP_PER_VISIT: Int = 2
+/** Chance a visit brings a gift for the pet. */
+const val FRIEND_GIFT_CHANCE: Double = 0.3
+/** Friendship gained when the friend brings a gift. */
+const val FRIENDSHIP_PER_RECEIVED_GIFT: Int = 5
+/** Happiness the pet gains from the friend's gift. */
+const val FRIEND_GIFT_HAPPINESS: Int = 10
+/** Friendship gained by playing together (once per visit). */
+const val FRIENDSHIP_PER_PLAY: Int = 10
+/** Happiness gained by playing together. */
+const val FRIEND_PLAY_HAPPINESS: Int = 10
+/** Energy spent playing together. */
+const val FRIEND_PLAY_ENERGY_COST: Int = 5
+/** Friendship gained by giving the friend a gift (once per visit). */
+const val FRIENDSHIP_PER_GIVEN_GIFT: Int = 15
+/** Hunger the pet gives up when it shares a treat as a gift. */
+const val FRIEND_GIFT_HUNGER_COST: Int = 5
+/** Friendship lost per game-day boundary without a visit. */
+const val FRIENDSHIP_DECAY_PER_DAY: Int = 1
+/** Senior game-days without a marriage before the matchmaker arrives. */
+const val MATCHMAKER_SENIOR_DAYS: Int = 3
+/** Active ticks after a declined proposal before another can be made (~1 game day). */
+const val PROPOSAL_DECLINE_COOLDOWN_TICKS: Int = 300
+/** Happiness gained on marriage. */
+const val MARRIAGE_HAPPINESS: Int = 20
+/** Custom-character sprites an heir egg never inherits from its parent. */
+val HEIR_EXCLUDED_SPRITES: List<String> = listOf("tim", "stu", "testsprite")
+
+/** A friendship level: reached once friendship is at least [min]. */
+data class FriendshipLevel(val name: String, val min: Int)
+
+/** Friendship levels, lowest first: the level is the last one whose `min` is reached. */
+val FRIENDSHIP_LEVELS: List<FriendshipLevel> = listOf(
+    FriendshipLevel("Acquaintance", 0),
+    FriendshipLevel("Buddy",        15),
+    FriendshipLevel("Friend",       35),
+    FriendshipLevel("Good Friend",  55),
+    FriendshipLevel("Best Friend",  75),
+    FriendshipLevel("Partner",      90),
+)
+
+/** Friendship needed for the "best_friends" event and achievement. */
+const val BEST_FRIEND_FRIENDSHIP: Int = 75
+/** Friendship needed before the friend proposes. */
+const val PARTNER_FRIENDSHIP: Int = 90
+
+/** Names CPU friends and matchmaker matches are drawn from. */
+val FRIEND_NAMES: List<String> = listOf(
+    "Pixel", "Biscuit", "Noodle", "Widget", "Sprocket", "Mochi",
+    "Gizmo", "Pebble", "Rusty", "Clover", "Byte", "Waffle",
+)
+
+/** Pet types a CPU friend can have. */
+val FRIEND_PET_TYPES: List<String> = listOf("codeling", "bytebug", "pixelpup", "shellscript")

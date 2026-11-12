@@ -52,7 +52,7 @@ class ProgressionTest {
         assertEquals(15, XP_AMOUNTS["commit"])
         listOf("care", "snack", "clean", "cure").forEach { assertEquals(0, XP_AMOUNTS[it]) }
         assertEquals(mapOf("code" to 10, "commit" to 30, "minigame" to 20, "boss_battle" to 40), XP_HOURLY_CAPS)
-        assertEquals(mapOf("code" to 40, "commit" to 90, "call" to 100, "minigame" to 50, "boss_battle" to 80), XP_DAILY_CAPS)
+        assertEquals(mapOf("code" to 40, "commit" to 90, "call" to 100, "minigame" to 50, "boss_battle" to 80, "friend_play" to 10, "friend_gift" to 10), XP_DAILY_CAPS)
     }
 
     @Test

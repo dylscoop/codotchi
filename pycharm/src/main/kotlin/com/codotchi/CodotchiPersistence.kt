@@ -382,6 +382,17 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val trainer: Map<String, Any?>? = null,
         val dailies: Map<String, Any?>? = null,    // absent in saves before daily challenges
         val pendingBosses: List<*>? = null,        // absent in saves before boss unlocks (v2.30.0)
+        // Social (schemaVersion 2, v2.36.0). Typed Any? so a malformed value loads as a
+        // default (see socialFromRaw) instead of failing the whole Gson parse.
+        val generation: Any? = null,
+        val friend: Any? = null,
+        val visit: Any? = null,
+        val ticksSinceLastVisit: Any? = null,
+        val partner: Any? = null,
+        val heirEgg: Any? = null,
+        val seniorSinceDay: Any? = null,
+        val proposal: Any? = null,
+        val proposalCooldownTicks: Any? = null,
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -461,10 +472,21 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             dailies                    = dailiesFromRaw(r.dailies),
             pendingBosses              = pendingBossesFromRaw(r.pendingBosses, levelProgress(r.petXp ?: 0).level),
         )
-        return partial
+        // Version 1 → 2: social fields start empty.
+        return withSocialFields(partial, socialFromRaw(mapOf(
+            "generation" to r.generation,
+            "friend" to r.friend,
+            "visit" to r.visit,
+            "ticksSinceLastVisit" to r.ticksSinceLastVisit,
+            "partner" to r.partner,
+            "heirEgg" to r.heirEgg,
+            "seniorSinceDay" to r.seniorSinceDay,
+            "proposal" to r.proposal,
+            "proposalCooldownTicks" to r.proposalCooldownTicks,
+        )))
     }
 
-    private fun toRaw(s: PetState) = RawPetState(
+    private fun toRaw(s: PetState): RawPetState = socialToRaw(s).let { social -> RawPetState(
         name                  = s.name,
         petType               = s.petType,
         color                 = s.color,
@@ -545,7 +567,16 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             "streakDay" to s.dailies.streakDay,
         ),
         pendingBosses              = s.pendingBosses,
-    )
+        generation                 = social["generation"],
+        friend                     = social["friend"],
+        visit                      = social["visit"],
+        ticksSinceLastVisit        = social["ticksSinceLastVisit"],
+        partner                    = social["partner"],
+        heirEgg                    = social["heirEgg"],
+        seniorSinceDay             = social["seniorSinceDay"],
+        proposal                   = social["proposal"],
+        proposalCooldownTicks      = social["proposalCooldownTicks"],
+    ) }
 }
 
 // ---------------------------------------------------------------------------

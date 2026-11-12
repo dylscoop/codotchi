@@ -240,6 +240,13 @@ export interface GameConfig {
      * turned off. Optional; absent means false.
      */
     deathless?: boolean;
+    /**
+     * Social features (v2.36.0): CPU friends visit, the matchmaker arrives for
+     * unmarried seniors. A dev-mode preview until release: only `true` turns it
+     * on (absent means off). When off, no visits or proposals start and an
+     * ongoing visit ends.
+     */
+    socialEnabled?: boolean;
 }
 /** Sensible defaults used when no explicit config is provided. */
 export declare const DEFAULT_GAME_CONFIG: GameConfig;
@@ -393,6 +400,50 @@ export interface PetState {
     readonly dailies: DailyChallenges;
     /** Boss Battles unlocked at level milestones and not yet beaten (boss ids, oldest first). */
     readonly pendingBosses: readonly string[];
+    /** Family line: 1 for a fresh egg, parent's generation + 1 for an heir. */
+    readonly generation: number;
+    /** The CPU friend that visits this pet; null until the first visit. */
+    readonly friend: FriendPet | null;
+    /** The friend is on the canvas right now; null otherwise. */
+    readonly visit: FriendVisit | null;
+    /** Active ticks since the last visit started (VISIT_MIN_GAP_TICKS). */
+    readonly ticksSinceLastVisit: number;
+    /** Who this pet married; null while single. */
+    readonly partner: PetIdentity | null;
+    /** The egg left by a marriage; hatches as the next pet once this one dies. */
+    readonly heirEgg: HeirEgg | null;
+    /** dayTimer when the pet became a senior; null before then. Drives the matchmaker. */
+    readonly seniorSinceDay: number | null;
+    /** A marriage offer waiting for acceptProposal() / declineProposal(); null when none. */
+    readonly proposal: Proposal | null;
+    /** Active ticks before another proposal can be made after a decline. */
+    readonly proposalCooldownTicks: number;
+}
+/** Who another (CPU) pet is: enough to draw it. */
+export interface PetIdentity {
+    readonly name: string;
+    readonly spriteType: string;
+    readonly petType: string;
+}
+/** The CPU friend that visits; friendship 0–100 (see FRIENDSHIP_LEVELS). */
+export interface FriendPet extends PetIdentity {
+    readonly friendship: number;
+    readonly visits: number;
+}
+/** An ongoing visit. Play and gift can each be done once per visit. */
+export interface FriendVisit {
+    readonly ticksLeft: number;
+    readonly played: boolean;
+    readonly gifted: boolean;
+}
+/** The egg a married pet leaves for the next generation. */
+export interface HeirEgg {
+    readonly spriteType: string;
+    readonly petType: string;
+}
+/** A marriage offer: from the friend (at Partner level) or a matchmaker's CPU match. */
+export interface Proposal extends PetIdentity {
+    readonly from: "friend" | "matchmaker";
 }
 /**
  * The player's lifetime progression. Survives pet death: hosts pass the old
@@ -560,9 +611,12 @@ export declare function randomSpriteType(): string;
  * @param unlockedCharacter - spriteType of a custom character to force (e.g. "tim"), or null for random.
  *   When provided, the forced name must be resolved by the caller or registry before passing `name`.
  * @param trainer - The previous pet's trainer progress, so XP and achievements carry over; null starts fresh.
+ * @param lineage - Family line for an heir (see hatchHeir); null starts generation 1.
  * @returns A freshly initialised PetState.
  */
-export declare function createPet(name: string, petType: string, unlockedCharacter?: string | null, trainer?: TrainerProgress | null): PetState;
+export declare function createPet(name: string, petType: string, unlockedCharacter?: string | null, trainer?: TrainerProgress | null, lineage?: {
+    generation: number;
+} | null): PetState;
 /**
  * Advance the pet's game state by one tick (TICK_INTERVAL_SECONDS real seconds).
  *
@@ -866,10 +920,117 @@ export declare function resume(state: PetState): PetState;
  * @returns A new PetState after offline decay is applied.
  */
 export declare function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetState;
+/** How long a friend's visit lasts, in ticks (3 min). Counts down even while idle. */
+export declare const VISIT_TICKS: number;
+/** Active ticks after a visit starts before another can start (~1 h). */
+export declare const VISIT_MIN_GAP_TICKS: number;
+/** Chance per active tick, once the gap is over, that the friend visits (~50 min on average). */
+export declare const VISIT_CHANCE_PER_TICK: number;
+/**
+ * Visit pacing. In dev mode the friend comes devModeAgingMultiplier times
+ * faster (shorter gap, higher chance) so visits can be tested; a visit itself
+ * still lasts VISIT_TICKS.
+ */
+export declare function visitPacing(config: GameConfig): {
+    minGapTicks: number;
+    chancePerTick: number;
+};
+/** Friendship gained just by visiting. */
+export declare const FRIENDSHIP_PER_VISIT: number;
+/** Chance a visit brings a gift for the pet. */
+export declare const FRIEND_GIFT_CHANCE: number;
+/** Friendship gained when the friend brings a gift. */
+export declare const FRIENDSHIP_PER_RECEIVED_GIFT: number;
+/** Happiness the pet gains from the friend's gift. */
+export declare const FRIEND_GIFT_HAPPINESS: number;
+/** Friendship gained by playing together (once per visit). */
+export declare const FRIENDSHIP_PER_PLAY: number;
+/** Happiness gained by playing together. */
+export declare const FRIEND_PLAY_HAPPINESS: number;
+/** Energy spent playing together. */
+export declare const FRIEND_PLAY_ENERGY_COST: number;
+/** Friendship gained by giving the friend a gift (once per visit). */
+export declare const FRIENDSHIP_PER_GIVEN_GIFT: number;
+/** Hunger the pet gives up when it shares a treat as a gift. */
+export declare const FRIEND_GIFT_HUNGER_COST: number;
+/** Friendship lost per game-day boundary without a visit. */
+export declare const FRIENDSHIP_DECAY_PER_DAY: number;
+/** Senior game-days without a marriage before the matchmaker arrives. */
+export declare const MATCHMAKER_SENIOR_DAYS: number;
+/** Active ticks after a declined proposal before another can be made (~1 game day). */
+export declare const PROPOSAL_DECLINE_COOLDOWN_TICKS: number;
+/** Happiness gained on marriage. */
+export declare const MARRIAGE_HAPPINESS: number;
+/** Custom-character sprites an heir egg never inherits from its parent. */
+export declare const HEIR_EXCLUDED_SPRITES: readonly string[];
+/** Friendship levels, lowest first: the level is the last one whose `min` is reached. */
+export declare const FRIENDSHIP_LEVELS: readonly {
+    readonly name: string;
+    readonly min: number;
+}[];
+/** Friendship needed for the "best_friends" event and achievement. */
+export declare const BEST_FRIEND_FRIENDSHIP: number;
+/** Friendship needed before the friend proposes. */
+export declare const PARTNER_FRIENDSHIP: number;
+/** Names CPU friends and matchmaker matches are drawn from. */
+export declare const FRIEND_NAMES: readonly string[];
+/** The friendship level name for a friendship score. */
+export declare function friendshipLevel(friendship: number): string;
+/** A random CPU pet, never sharing a name with the ones in `avoid`. */
+export declare function randomFriendIdentity(avoid?: readonly string[], rand?: () => number): PetIdentity;
+/**
+ * Play with the visiting friend: friendship and happiness up, a little energy
+ * spent. Once per visit. Refused (event `friend_play_refused`) with no visit,
+ * when already played this visit, while asleep, or with too little energy.
+ */
+export declare function playWithFriend(state: PetState): PetState;
+/**
+ * Give the visiting friend a gift (the pet shares a treat): friendship up,
+ * a little hunger spent. Once per visit. Refused (event `friend_gift_refused`)
+ * with no visit, when already gifted this visit, or while asleep.
+ */
+export declare function giveFriendGift(state: PetState): PetState;
+/**
+ * Accept the pending proposal: the pet marries. Emits `married`. Refused
+ * (event `proposal_refused`) when there is no offer.
+ *
+ * Marriage does not lay an heir egg while offspring are being redesigned
+ * (backlog); `heirEgg` and `hatchHeir` stay for that redesign and old saves.
+ */
+export declare function acceptProposal(state: PetState, _rand?: () => number): PetState;
+/** Decline the pending proposal; no new offer for PROPOSAL_DECLINE_COOLDOWN_TICKS active ticks. */
+export declare function declineProposal(state: PetState): PetState;
+/**
+ * Hatch the heir egg a married parent left behind, as a new egg one
+ * generation on. Returns null when the parent has no heir egg.
+ *
+ * @param parent - The previous pet (normally dead), carrying `heirEgg`.
+ * @param name - The new pet's name.
+ * @param trainer - Trainer progress to carry over (defaults to the parent's).
+ */
+export declare function hatchHeir(parent: PetState, name: string, trainer?: TrainerProgress | null): PetState | null;
+/** The social slice of a pet that the terminal text helpers read. */
+export type SocialView = Pick<PetState, "name" | "generation" | "friend" | "visit" | "partner" | "heirEgg" | "proposal">;
+/**
+ * Plain-text lines for the terminal plugins' status output: generation,
+ * friend and friendship, an ongoing visit, partner, heir egg and any offer
+ * (with the command that answers it). Empty for a pet with no social life yet.
+ *
+ * @param state - The pet (any object with the social fields).
+ * @param cmd - How the plugin's commands are written, e.g. "/codotchi " or "codotchi_".
+ */
+export declare function socialSummaryLines(state: SocialView, cmd?: string): string[];
+/**
+ * One-line result for a social action (playWithFriend, giveFriendGift,
+ * acceptProposal, declineProposal), read from the events it emitted.
+ */
+export declare function socialActionMessage(state: SocialView & Pick<PetState, "events">): string;
+/** Parse the social fields from saved JSON, filling in defaults (saves before schemaVersion 2 have none). */
+export declare function deserialiseSocial(data: Record<string, unknown>): Pick<PetState, "generation" | "friend" | "visit" | "ticksSinceLastVisit" | "partner" | "heirEgg" | "seniorSinceDay" | "proposal" | "proposalCooldownTicks">;
 /** Current save-format version. Bump when a migration step is added to deserialiseState(). */
 export declare const SCHEMA_VERSION: number;
 /** What earned the XP. Each source maps to an amount, optional hourly / daily caps and counters. */
-export type XpSource = "code" | "commit" | "call" | "care" | "snack" | "clean" | "cure" | "minigame" | "evolve" | "debug" | "boss_kill" | "boss_battle";
+export type XpSource = "code" | "commit" | "call" | "care" | "snack" | "clean" | "cure" | "minigame" | "evolve" | "debug" | "boss_kill" | "boss_battle" | "befriend" | "best_friend" | "friend_play" | "friend_gift" | "marriage" | "heir";
 /**
  * XP per source. Care actions (care / snack / clean / cure) pay nothing on
  * their own: they only earn the "call" XP when they answer an attention call.

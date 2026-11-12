@@ -360,11 +360,12 @@ active to idle, showing "IDE idle — decay and aging slowed." in the event log.
 | Energy    | 1 pt / 6 min     | ~600 min (~10 hr) |
 | Aging     | 1/20 normal rate | 20× longer        |
 
-### Deep idle (no IDE activity for ≥ 10 minutes)
+### Deep idle (no IDE activity for the deep-idle threshold, default 10 minutes)
 
-When the IDE has been idle for ≥ **10 minutes** (`IDLE_DEEP_THRESHOLD_SECONDS = 600`),
+When the IDE has been idle for the deep-idle threshold (setting `idleDeepThresholdSeconds`,
+default **600 s**; `IDLE_DEEP_THRESHOLD_SECONDS = 600`),
 the engine enters deep-idle mode. A `"went_deep_idle"` event fires once on
-transition, showing "IDE idle 10 min — stats protected, aging stopped." in the
+transition, showing "IDE deep idle — stats protected, aging stopped." in the
 event log.
 
 In deep-idle mode:

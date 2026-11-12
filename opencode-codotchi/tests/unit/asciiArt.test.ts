@@ -25,6 +25,7 @@ import {
   SITUATION_LINES,
   SPEND_REMARKS,
 } from "../../src/asciiArt";
+import { ACHIEVEMENTS } from "../../src/gameEngine";
 
 describe("buildStatusBlock display", () => {
   const base = {
@@ -259,6 +260,21 @@ describe("buildStatusBlock", () => {
     assert.ok(result.includes("adult"));
   });
 
+  it("lists the friend, partner, heir egg and generation", () => {
+    const result = stripAnsi(buildStatusBlock({
+      ...baseState, generation: 2,
+      friend: { name: "Pixel", spriteType: "dog", petType: "bytebug", friendship: 60, visits: 4 },
+      visit: { ticksLeft: 30, played: false, gifted: false },
+      partner: { name: "Byte", spriteType: "cat", petType: "codeling" },
+      heirEgg: { spriteType: "cat", petType: "codeling" },
+    }));
+    assert.ok(result.includes("Generation 2"));
+    assert.ok(result.includes("Pixel is visiting!"));
+    assert.ok(result.includes("Friend: Pixel — Good Friend (60/100)"));
+    assert.ok(result.includes("Married to Byte"));
+    assert.ok(result.includes("heir egg"));
+  });
+
   it("shows SICK when sick=true", () => {
     const result = stripAnsi(buildStatusBlock({ ...baseState, sick: true }));
     assert.ok(result.includes("SICK"));
@@ -270,7 +286,7 @@ describe("buildStatusBlock", () => {
     }));
     assert.ok(result.includes("Level   : Pet 3 · Trainer 2"));
     assert.ok(result.includes("100/141"));
-    assert.ok(result.includes("Achievements  2/17"));
+    assert.ok(result.includes(`Achievements  2/${ACHIEVEMENTS.filter((a) => !a.comingSoon).length}`));
     assert.ok(result.includes("📌 First Commit, 👋 Hello World"));
   });
 

@@ -159,7 +159,7 @@ export const COMMIT_ACTIVITY_THROTTLE_SECONDS: number = 300;
  * Seconds of no IDE activity (no keystrokes, cursor movement, or window focus)
  * before the pet is considered "idle" and decay is reduced to IDLE_DECAY_FRACTION.
  */
-export const IDLE_THRESHOLD_SECONDS: number = 60; // 1 minute
+export const IDLE_THRESHOLD_SECONDS: number = 120; // 2 minutes
 
 /**
  * Seconds of sustained idle before entering "deep idle": stats are floored at
@@ -448,6 +448,13 @@ export interface GameConfig {
    * turned off. Optional; absent means false.
    */
   deathless?: boolean;
+  /**
+   * Social features (v2.36.0): CPU friends visit, the matchmaker arrives for
+   * unmarried seniors. A dev-mode preview until release: only `true` turns it
+   * on (absent means off). When off, no visits or proposals start and an
+   * ongoing visit ends.
+   */
+  socialEnabled?: boolean;
 }
 
 /** Sensible defaults used when no explicit config is provided. */
@@ -815,6 +822,58 @@ export interface PetState {
   readonly dailies: DailyChallenges;
   /** Boss Battles unlocked at level milestones and not yet beaten (boss ids, oldest first). */
   readonly pendingBosses: readonly string[];
+
+  // ── Social (schemaVersion 2) ─────────────────────────────────────────────
+
+  /** Family line: 1 for a fresh egg, parent's generation + 1 for an heir. */
+  readonly generation: number;
+  /** The CPU friend that visits this pet; null until the first visit. */
+  readonly friend: FriendPet | null;
+  /** The friend is on the canvas right now; null otherwise. */
+  readonly visit: FriendVisit | null;
+  /** Active ticks since the last visit started (VISIT_MIN_GAP_TICKS). */
+  readonly ticksSinceLastVisit: number;
+  /** Who this pet married; null while single. */
+  readonly partner: PetIdentity | null;
+  /** The egg left by a marriage; hatches as the next pet once this one dies. */
+  readonly heirEgg: HeirEgg | null;
+  /** dayTimer when the pet became a senior; null before then. Drives the matchmaker. */
+  readonly seniorSinceDay: number | null;
+  /** A marriage offer waiting for acceptProposal() / declineProposal(); null when none. */
+  readonly proposal: Proposal | null;
+  /** Active ticks before another proposal can be made after a decline. */
+  readonly proposalCooldownTicks: number;
+}
+
+/** Who another (CPU) pet is: enough to draw it. */
+export interface PetIdentity {
+  readonly name: string;
+  readonly spriteType: string;
+  readonly petType: string;
+}
+
+/** The CPU friend that visits; friendship 0–100 (see FRIENDSHIP_LEVELS). */
+export interface FriendPet extends PetIdentity {
+  readonly friendship: number;
+  readonly visits: number;
+}
+
+/** An ongoing visit. Play and gift can each be done once per visit. */
+export interface FriendVisit {
+  readonly ticksLeft: number;
+  readonly played: boolean;
+  readonly gifted: boolean;
+}
+
+/** The egg a married pet leaves for the next generation. */
+export interface HeirEgg {
+  readonly spriteType: string;
+  readonly petType: string;
+}
+
+/** A marriage offer: from the friend (at Partner level) or a matchmaker's CPU match. */
+export interface Proposal extends PetIdentity {
+  readonly from: "friend" | "matchmaker";
 }
 
 /**
@@ -1195,9 +1254,13 @@ export function randomSpriteType(): string {
  * @param unlockedCharacter - spriteType of a custom character to force (e.g. "tim"), or null for random.
  *   When provided, the forced name must be resolved by the caller or registry before passing `name`.
  * @param trainer - The previous pet's trainer progress, so XP and achievements carry over; null starts fresh.
+ * @param lineage - Family line for an heir (see hatchHeir); null starts generation 1.
  * @returns A freshly initialised PetState.
  */
-export function createPet(name: string, petType: string, unlockedCharacter: string | null = null, trainer: TrainerProgress | null = null): PetState {
+export function createPet(
+  name: string, petType: string, unlockedCharacter: string | null = null,
+  trainer: TrainerProgress | null = null, lineage: { generation: number } | null = null,
+): PetState {
   const modifiers = PET_TYPE_MODIFIERS[petType] ?? PET_TYPE_MODIFIERS.codeling;
   const baseHealth = modifiers.baseHealth;
   const resolvedName   = name;
@@ -1263,6 +1326,15 @@ export function createPet(name: string, petType: string, unlockedCharacter: stri
     trainer: trainer ?? createTrainer(),
     dailies: createDailies(),
     pendingBosses: [],
+    generation: Math.max(1, Math.floor(lineage?.generation ?? 1)),
+    friend: null,
+    visit: null,
+    ticksSinceLastVisit: 0,
+    partner: null,
+    heirEgg: null,
+    seniorSinceDay: null,
+    proposal: null,
+    proposalCooldownTicks: 0,
   };
 
   return withDerivedFields(partial);
@@ -1346,8 +1418,11 @@ function checkWeightTierEvents(prev: number, next: number, events: string[]): vo
  * @returns A new PetState after one tick.
  */
 export function tick(state: PetState, isIdle: boolean = false, isDeepIdle: boolean = false, config: GameConfig = DEFAULT_GAME_CONFIG): PetState {
-  const next = tickCore(state, isIdle, isDeepIdle, config);
-  return next.events.some((e) => e.startsWith("evolved_to_")) ? awardXp(next, "evolve") : next;
+  let next = tickSocial(state, tickCore(state, isIdle, isDeepIdle, config), isIdle, isDeepIdle, config);
+  if (next.events.some((e) => e.startsWith("evolved_to_"))) { next = awardXp(next, "evolve"); }
+  if (next.events.includes("friend_made")) { next = awardXp(next, "befriend"); }
+  if (next.events.includes("best_friends")) { next = awardXp(next, "best_friend"); }
+  return next;
 }
 
 function tickCore(state: PetState, isIdle: boolean, isDeepIdle: boolean, config: GameConfig): PetState {
@@ -2829,16 +2904,428 @@ export function applyOfflineDecay(state: PetState, elapsedSeconds: number): PetS
 }
 
 // ---------------------------------------------------------------------------
+// Social — CPU friends, gifts, marriage, heir egg, matchmaker (v2.36.0)
+// ---------------------------------------------------------------------------
+
+/** How long a friend's visit lasts, in ticks (3 min). Counts down even while idle. */
+export const VISIT_TICKS: number = 60;
+/** Active ticks after a visit starts before another can start (~1 h). */
+export const VISIT_MIN_GAP_TICKS: number = 1200;
+/** Chance per active tick, once the gap is over, that the friend visits (~50 min on average). */
+export const VISIT_CHANCE_PER_TICK: number = 0.001;
+
+/**
+ * Visit pacing. In dev mode the friend comes devModeAgingMultiplier times
+ * faster (shorter gap, higher chance) so visits can be tested; a visit itself
+ * still lasts VISIT_TICKS.
+ */
+export function visitPacing(config: GameConfig): { minGapTicks: number; chancePerTick: number } {
+  const mult = config.devMode ? Math.max(1, config.devModeAgingMultiplier) : 1;
+  return { minGapTicks: Math.ceil(VISIT_MIN_GAP_TICKS / mult), chancePerTick: Math.min(1, VISIT_CHANCE_PER_TICK * mult) };
+}
+/** Friendship gained just by visiting. */
+export const FRIENDSHIP_PER_VISIT: number = 2;
+/** Chance a visit brings a gift for the pet. */
+export const FRIEND_GIFT_CHANCE: number = 0.3;
+/** Friendship gained when the friend brings a gift. */
+export const FRIENDSHIP_PER_RECEIVED_GIFT: number = 5;
+/** Happiness the pet gains from the friend's gift. */
+export const FRIEND_GIFT_HAPPINESS: number = 10;
+/** Friendship gained by playing together (once per visit). */
+export const FRIENDSHIP_PER_PLAY: number = 10;
+/** Happiness gained by playing together. */
+export const FRIEND_PLAY_HAPPINESS: number = 10;
+/** Energy spent playing together. */
+export const FRIEND_PLAY_ENERGY_COST: number = 5;
+/** Friendship gained by giving the friend a gift (once per visit). */
+export const FRIENDSHIP_PER_GIVEN_GIFT: number = 15;
+/** Hunger the pet gives up when it shares a treat as a gift. */
+export const FRIEND_GIFT_HUNGER_COST: number = 5;
+/** Friendship lost per game-day boundary without a visit. */
+export const FRIENDSHIP_DECAY_PER_DAY: number = 1;
+/** Senior game-days without a marriage before the matchmaker arrives. */
+export const MATCHMAKER_SENIOR_DAYS: number = 3;
+/** Active ticks after a declined proposal before another can be made (~1 game day). */
+export const PROPOSAL_DECLINE_COOLDOWN_TICKS: number = 300;
+/** Happiness gained on marriage. */
+export const MARRIAGE_HAPPINESS: number = 20;
+/** Custom-character sprites an heir egg never inherits from its parent. */
+export const HEIR_EXCLUDED_SPRITES: readonly string[] = ["tim", "stu", "testsprite"];
+
+/** Friendship levels, lowest first: the level is the last one whose `min` is reached. */
+export const FRIENDSHIP_LEVELS: readonly { readonly name: string; readonly min: number }[] = [
+  { name: "Acquaintance", min: 0 },
+  { name: "Buddy",        min: 15 },
+  { name: "Friend",       min: 35 },
+  { name: "Good Friend",  min: 55 },
+  { name: "Best Friend",  min: 75 },
+  { name: "Partner",      min: 90 },
+];
+
+/** Friendship needed for the "best_friends" event and achievement. */
+export const BEST_FRIEND_FRIENDSHIP: number = 75;
+/** Friendship needed before the friend proposes. */
+export const PARTNER_FRIENDSHIP: number = 90;
+
+/** Names CPU friends and matchmaker matches are drawn from. */
+export const FRIEND_NAMES: readonly string[] = [
+  "Pixel", "Biscuit", "Noodle", "Widget", "Sprocket", "Mochi",
+  "Gizmo", "Pebble", "Rusty", "Clover", "Byte", "Waffle",
+];
+
+/** Pet types a CPU friend can have. */
+const FRIEND_PET_TYPES: readonly string[] = ["codeling", "bytebug", "pixelpup", "shellscript"];
+
+/** The friendship level name for a friendship score. */
+export function friendshipLevel(friendship: number): string {
+  let name = FRIENDSHIP_LEVELS[0].name;
+  for (const lvl of FRIENDSHIP_LEVELS) {
+    if (friendship >= lvl.min) { name = lvl.name; }
+  }
+  return name;
+}
+
+/** A random CPU pet, never sharing a name with the ones in `avoid`. */
+export function randomFriendIdentity(avoid: readonly string[] = [], rand: () => number = Math.random): PetIdentity {
+  const pool = FRIEND_NAMES.filter((n) => !avoid.includes(n));
+  const names = pool.length > 0 ? pool : FRIEND_NAMES;
+  return {
+    name: names[Math.floor(rand() * names.length)],
+    spriteType: ROTATION_ANIMALS[Math.floor(rand() * ROTATION_ANIMALS.length)],
+    petType: FRIEND_PET_TYPES[Math.floor(rand() * FRIEND_PET_TYPES.length)],
+  };
+}
+
+/** Add friendship (clamped to 0–100), pushing "best_friends" when it first crosses BEST_FRIEND_FRIENDSHIP. */
+function withFriendship(friend: FriendPet, delta: number, events: string[]): FriendPet {
+  const friendship = Math.max(0, Math.min(100, friend.friendship + delta));
+  if (friend.friendship < BEST_FRIEND_FRIENDSHIP && friendship >= BEST_FRIEND_FRIENDSHIP) {
+    events.push("best_friends");
+  }
+  return { ...friend, friendship };
+}
+
+/**
+ * Merge social changes into a state that already has its derived fields,
+ * appending the new events to `events` and the event log (like awardXp).
+ */
+function withSocialPatch(state: PetState, patch: Partial<PetState>, events: readonly string[]): PetState {
+  const merged = { ...state, ...patch };
+  const mood = moodFromStats(merged.hunger, merged.happiness, merged.health, merged.sleeping);
+  return {
+    ...merged,
+    mood,
+    sprite: `${merged.stage}_${mood}`,
+    events: [...state.events, ...events],
+    recentEventLog: events.length > 0
+      ? [...state.recentEventLog, ...events].slice(-RECENT_EVENT_LOG_MAX)
+      : state.recentEventLog,
+  };
+}
+
+/** True when the pet could marry: adult or senior, single, no egg waiting and no offer pending. */
+function canMarry(state: PetState): boolean {
+  return (state.stage === "adult" || state.stage === "senior") &&
+    state.partner === null && state.heirEgg === null && state.proposal === null;
+}
+
+/**
+ * The social step of a tick, run after tickCore(): visits start and end,
+ * friendship decays, the friend proposes and the matchmaker arrives.
+ * Visits and proposals only start on active, awake ticks.
+ *
+ * @param prev - State entering the tick.
+ * @param next - State after tickCore().
+ */
+function tickSocial(prev: PetState, next: PetState, isIdle: boolean, isDeepIdle: boolean, config: GameConfig): PetState {
+  if (!next.alive || next.paused) { return next; }
+  if (config.socialEnabled !== true) {
+    return next.visit ? withSocialPatch(next, { visit: null }, ["friend_visit_ended"]) : next;
+  }
+  const events: string[] = [];
+  const active = !isIdle && !isDeepIdle;
+  const napping = next.breakNapTicksRemaining > 0;
+  let friend = next.friend;
+  let visit = next.visit;
+  let proposal = next.proposal;
+  let happiness = next.happiness;
+  let ticksSinceLastVisit = next.ticksSinceLastVisit;
+  let proposalCooldownTicks = next.proposalCooldownTicks;
+  let seniorSinceDay = next.seniorSinceDay;
+
+  if (next.stage === "senior" && seniorSinceDay === null) { seniorSinceDay = next.dayTimer; }
+  if (active && !napping) {
+    ticksSinceLastVisit += 1;
+    proposalCooldownTicks = Math.max(0, proposalCooldownTicks - 1);
+  }
+  if (friend && !visit && Math.floor(next.dayTimer) > Math.floor(prev.dayTimer)) {
+    friend = withFriendship(friend, -FRIENDSHIP_DECAY_PER_DAY, events);
+  }
+
+  if (visit) {
+    const ticksLeft = visit.ticksLeft - 1;
+    if (ticksLeft <= 0 || next.sleeping) {
+      visit = null;
+      events.push("friend_visit_ended");
+    } else {
+      visit = { ...visit, ticksLeft };
+    }
+  } else if (active && !napping && !next.sleeping && next.stage !== "egg" && next.stage !== "baby" &&
+             next.activeAttentionCall === null && proposal === null &&
+             ticksSinceLastVisit >= visitPacing(config).minGapTicks && Math.random() < visitPacing(config).chancePerTick) {
+    if (!friend) {
+      friend = { ...randomFriendIdentity([next.name]), friendship: 0, visits: 0 };
+      events.push("friend_made");
+    }
+    friend = withFriendship({ ...friend, visits: friend.visits + 1 }, FRIENDSHIP_PER_VISIT, events);
+    visit = { ticksLeft: VISIT_TICKS, played: false, gifted: false };
+    ticksSinceLastVisit = 0;
+    events.push("friend_visit_started");
+    if (Math.random() < FRIEND_GIFT_CHANCE) {
+      friend = withFriendship(friend, FRIENDSHIP_PER_RECEIVED_GIFT, events);
+      happiness = clampStat(happiness + FRIEND_GIFT_HAPPINESS);
+      events.push("friend_gift_received");
+    }
+    if (friend.friendship >= PARTNER_FRIENDSHIP && proposalCooldownTicks === 0 && canMarry(next)) {
+      proposal = { from: "friend", name: friend.name, spriteType: friend.spriteType, petType: friend.petType };
+      events.push("proposal_received");
+    }
+  }
+
+  if (active && !napping && !next.sleeping && proposal === null && proposalCooldownTicks === 0 &&
+      next.stage === "senior" && seniorSinceDay !== null &&
+      next.dayTimer - seniorSinceDay >= MATCHMAKER_SENIOR_DAYS && canMarry(next)) {
+    const match = randomFriendIdentity([next.name, ...(friend ? [friend.name] : [])]);
+    proposal = { from: "matchmaker", ...match };
+    events.push("matchmaker_arrived");
+  }
+
+  if (events.length === 0 && friend === next.friend && visit === next.visit && proposal === next.proposal &&
+      ticksSinceLastVisit === next.ticksSinceLastVisit && proposalCooldownTicks === next.proposalCooldownTicks &&
+      seniorSinceDay === next.seniorSinceDay) {
+    return next;
+  }
+  return withSocialPatch(next, {
+    friend, visit, proposal, happiness, ticksSinceLastVisit, proposalCooldownTicks, seniorSinceDay,
+  }, events);
+}
+
+/**
+ * Play with the visiting friend: friendship and happiness up, a little energy
+ * spent. Once per visit. Refused (event `friend_play_refused`) with no visit,
+ * when already played this visit, while asleep, or with too little energy.
+ */
+export function playWithFriend(state: PetState): PetState {
+  if (!state.alive || !state.visit || !state.friend || state.visit.played || state.sleeping ||
+      state.energy < FRIEND_PLAY_ENERGY_COST) {
+    return withDerivedFields({ ...state, events: ["friend_play_refused"] });
+  }
+  const events: string[] = ["friend_played"];
+  const friend = withFriendship(state.friend, FRIENDSHIP_PER_PLAY, events);
+  const next = withDerivedFields({
+    ...state,
+    friend,
+    visit: { ...state.visit, played: true },
+    happiness: clampStat(state.happiness + FRIEND_PLAY_HAPPINESS),
+    energy: clampStat(state.energy - FRIEND_PLAY_ENERGY_COST),
+    events,
+  });
+  const xp = awardXp(next, "friend_play");
+  return events.includes("best_friends") ? awardXp(xp, "best_friend") : xp;
+}
+
+/**
+ * Give the visiting friend a gift (the pet shares a treat): friendship up,
+ * a little hunger spent. Once per visit. Refused (event `friend_gift_refused`)
+ * with no visit, when already gifted this visit, or while asleep.
+ */
+export function giveFriendGift(state: PetState): PetState {
+  if (!state.alive || !state.visit || !state.friend || state.visit.gifted || state.sleeping) {
+    return withDerivedFields({ ...state, events: ["friend_gift_refused"] });
+  }
+  const events: string[] = ["friend_gift_given"];
+  const friend = withFriendship(state.friend, FRIENDSHIP_PER_GIVEN_GIFT, events);
+  const next = withDerivedFields({
+    ...state,
+    friend,
+    visit: { ...state.visit, gifted: true },
+    hunger: clampStat(state.hunger - FRIEND_GIFT_HUNGER_COST),
+    events,
+  });
+  const xp = awardXp(next, "friend_gift");
+  return events.includes("best_friends") ? awardXp(xp, "best_friend") : xp;
+}
+
+/**
+ * Accept the pending proposal: the pet marries. Emits `married`. Refused
+ * (event `proposal_refused`) when there is no offer.
+ *
+ * Marriage does not lay an heir egg while offspring are being redesigned
+ * (backlog); `heirEgg` and `hatchHeir` stay for that redesign and old saves.
+ */
+export function acceptProposal(state: PetState, _rand: () => number = Math.random): PetState {
+  const p = state.proposal;
+  if (!state.alive || !p) {
+    return withDerivedFields({ ...state, events: ["proposal_refused"] });
+  }
+  const partner: PetIdentity = { name: p.name, spriteType: p.spriteType, petType: p.petType };
+  return awardXp(withDerivedFields({
+    ...state,
+    partner,
+    proposal: null,
+    happiness: clampStat(state.happiness + MARRIAGE_HAPPINESS),
+    events: ["married"],
+  }), "marriage");
+}
+
+/** Decline the pending proposal; no new offer for PROPOSAL_DECLINE_COOLDOWN_TICKS active ticks. */
+export function declineProposal(state: PetState): PetState {
+  if (!state.proposal) {
+    return withDerivedFields({ ...state, events: ["proposal_refused"] });
+  }
+  return withDerivedFields({
+    ...state,
+    proposal: null,
+    proposalCooldownTicks: PROPOSAL_DECLINE_COOLDOWN_TICKS,
+    events: ["proposal_declined"],
+  });
+}
+
+/**
+ * Hatch the heir egg a married parent left behind, as a new egg one
+ * generation on. Returns null when the parent has no heir egg.
+ *
+ * @param parent - The previous pet (normally dead), carrying `heirEgg`.
+ * @param name - The new pet's name.
+ * @param trainer - Trainer progress to carry over (defaults to the parent's).
+ */
+export function hatchHeir(parent: PetState, name: string, trainer: TrainerProgress | null = null): PetState | null {
+  if (!parent.heirEgg) { return null; }
+  const pet = createPet(name, parent.heirEgg.petType, parent.heirEgg.spriteType, trainer ?? parent.trainer,
+    { generation: parent.generation + 1 });
+  return awardXp(pet, "heir");
+}
+
+/** The social slice of a pet that the terminal text helpers read. */
+export type SocialView = Pick<PetState, "name" | "generation" | "friend" | "visit" | "partner" | "heirEgg" | "proposal">;
+
+/**
+ * Plain-text lines for the terminal plugins' status output: generation,
+ * friend and friendship, an ongoing visit, partner, heir egg and any offer
+ * (with the command that answers it). Empty for a pet with no social life yet.
+ *
+ * @param state - The pet (any object with the social fields).
+ * @param cmd - How the plugin's commands are written, e.g. "/codotchi " or "codotchi_".
+ */
+export function socialSummaryLines(state: SocialView, cmd: string = "/codotchi "): string[] {
+  const lines: string[] = [];
+  if ((state.generation ?? 1) > 1) { lines.push(`👑 Generation ${state.generation}`); }
+  const f = state.friend;
+  if (state.visit && f) {
+    lines.push(`👋 ${f.name} is visiting! Try ${cmd}playfriend or ${cmd}gift`);
+  }
+  if (f && !(state.partner && state.partner.name === f.name)) {
+    lines.push(`🤝 Friend: ${f.name} — ${friendshipLevel(f.friendship)} (${Math.round(f.friendship)}/100)`);
+  }
+  if (state.partner) {
+    lines.push(`💍 Married to ${state.partner.name}` + (f && state.partner.name === f.name ? ` (${Math.round(f.friendship)}/100)` : ""));
+  }
+  if (state.heirEgg) { lines.push("🥚 An heir egg is waiting for the next generation"); }
+  const p = state.proposal;
+  if (p) {
+    lines.push((p.from === "matchmaker"
+      ? `💌 The matchmaker brought ${p.name} to meet ${state.name}.`
+      : `💍 ${p.name} wants to marry ${state.name}!`) + ` ${cmd}accept or ${cmd}decline`);
+  }
+  return lines;
+}
+
+/**
+ * One-line result for a social action (playWithFriend, giveFriendGift,
+ * acceptProposal, declineProposal), read from the events it emitted.
+ */
+export function socialActionMessage(state: SocialView & Pick<PetState, "events">): string {
+  const e = state.events;
+  const f = state.friend ? state.friend.name : "your friend";
+  const level = state.friend ? ` Friendship: ${friendshipLevel(state.friend.friendship)} (${Math.round(state.friend.friendship)}/100).` : "";
+  const best = e.includes("best_friends") ? ` ${state.name} and ${f} are best friends now! 💛` : "";
+  if (e.includes("friend_play_refused")) {
+    return !state.visit ? "No friend is visiting right now."
+      : state.visit.played ? `${state.name} already played with ${f} this visit.`
+      : `${state.name} is too tired to play right now.`;
+  }
+  if (e.includes("friend_gift_refused")) {
+    return !state.visit ? "No friend is visiting right now." : `${state.name} already gave ${f} a gift this visit.`;
+  }
+  if (e.includes("proposal_refused")) { return "There's no proposal to answer."; }
+  if (e.includes("married")) {
+    return `💍 ${state.name} married ${state.partner ? state.partner.name : f}! An heir egg is waiting for the next generation.`;
+  }
+  if (e.includes("proposal_declined")) { return `${state.name} said "not yet".`; }
+  if (e.includes("friend_played")) { return `${state.name} and ${f} played together!${level}${best}`; }
+  if (e.includes("friend_gift_given")) { return `${state.name} shared a treat with ${f}.${level}${best}`; }
+  return "";
+}
+
+/** Parse a PetIdentity from saved JSON; null when it is missing or malformed. */
+function deserialiseIdentity(raw: unknown): PetIdentity | null {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) { return null; }
+  const r = raw as Record<string, unknown>;
+  if (typeof r.name !== "string" || typeof r.spriteType !== "string" || typeof r.petType !== "string") { return null; }
+  return { name: r.name, spriteType: r.spriteType === "goat" ? "sheep" : r.spriteType, petType: r.petType };
+}
+
+/** Parse the social fields from saved JSON, filling in defaults (saves before schemaVersion 2 have none). */
+export function deserialiseSocial(data: Record<string, unknown>): Pick<PetState,
+  "generation" | "friend" | "visit" | "ticksSinceLastVisit" | "partner" | "heirEgg" |
+  "seniorSinceDay" | "proposal" | "proposalCooldownTicks"> {
+  const num = (v: unknown, fallback: number): number => typeof v === "number" && Number.isFinite(v) ? v : fallback;
+  const obj = (v: unknown): Record<string, unknown> | null =>
+    v !== null && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : null;
+
+  const friendId = deserialiseIdentity(data["friend"]);
+  const friendRaw = obj(data["friend"]);
+  const friend: FriendPet | null = friendId && friendRaw
+    ? { ...friendId, friendship: Math.max(0, Math.min(100, num(friendRaw.friendship, 0))), visits: Math.max(0, num(friendRaw.visits, 0)) }
+    : null;
+  const visitRaw = obj(data["visit"]);
+  const visit: FriendVisit | null = visitRaw && friend && num(visitRaw.ticksLeft, 0) > 0
+    ? { ticksLeft: Math.min(VISIT_TICKS, num(visitRaw.ticksLeft, 0)), played: visitRaw.played === true, gifted: visitRaw.gifted === true }
+    : null;
+  const eggRaw = obj(data["heirEgg"]);
+  const heirEgg: HeirEgg | null = eggRaw && typeof eggRaw.spriteType === "string" && typeof eggRaw.petType === "string"
+    ? { spriteType: eggRaw.spriteType === "goat" ? "sheep" : eggRaw.spriteType, petType: eggRaw.petType }
+    : null;
+  const propId = deserialiseIdentity(data["proposal"]);
+  const propRaw = obj(data["proposal"]);
+  const proposal: Proposal | null = propId && propRaw && (propRaw.from === "friend" || propRaw.from === "matchmaker")
+    ? { ...propId, from: propRaw.from }
+    : null;
+  return {
+    generation: Math.max(1, Math.floor(num(data["generation"], 1))),
+    friend,
+    visit,
+    ticksSinceLastVisit: Math.max(0, num(data["ticksSinceLastVisit"], 0)),
+    partner: deserialiseIdentity(data["partner"]),
+    heirEgg,
+    seniorSinceDay: typeof data["seniorSinceDay"] === "number" ? data["seniorSinceDay"] as number : null,
+    proposal,
+    proposalCooldownTicks: Math.max(0, num(data["proposalCooldownTicks"], 0)),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Progression — XP, levels and achievements
 // ---------------------------------------------------------------------------
 
 /** Current save-format version. Bump when a migration step is added to deserialiseState(). */
-export const SCHEMA_VERSION: number = 1;
+export const SCHEMA_VERSION: number = 2;
 
 /** What earned the XP. Each source maps to an amount, optional hourly / daily caps and counters. */
 export type XpSource =
   | "code" | "commit" | "call" | "care" | "snack" | "clean" | "cure" | "minigame" | "evolve"
-  | "debug" | "boss_kill" | "boss_battle";
+  | "debug" | "boss_kill" | "boss_battle"
+  | "befriend" | "best_friend" | "friend_play" | "friend_gift" | "marriage" | "heir";
 
 /**
  * XP per source. Care actions (care / snack / clean / cure) pay nothing on
@@ -2857,6 +3344,12 @@ export const XP_AMOUNTS: Readonly<Record<XpSource, number>> = {
   debug: 10,
   boss_kill: 50,
   boss_battle: 40,
+  befriend: 10,
+  best_friend: 25,
+  friend_play: 5,
+  friend_gift: 5,
+  marriage: 50,
+  heir: 30,
 };
 
 /** Bonus XP for unlocking an achievement. */
@@ -2925,6 +3418,8 @@ export const XP_DAILY_CAPS: Readonly<Partial<Record<XpSource, number>>> = {
   call: 100,
   minigame: 50,
   boss_battle: 80,
+  friend_play: 10,
+  friend_gift: 10,
 };
 
 /** Commits made from midnight up to this hour (local time) count as late-night commits. */
@@ -2943,6 +3438,12 @@ const XP_COUNTERS: Readonly<Record<XpSource, readonly string[]>> = {
   debug: ["debugSessions"],
   boss_kill: ["bossKills"],
   boss_battle: ["bossBattleWins", "minigameWins"],
+  befriend: ["friendsMade"],
+  best_friend: ["bestFriends"],
+  friend_play: ["friendPlays"],
+  friend_gift: ["giftsGiven"],
+  marriage: ["marriages"],
+  heir: ["heirs"],
 };
 
 /** Which tab an achievement sits under: the two paths, or shared trainer milestones. */
@@ -2979,6 +3480,10 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: "gamer",        name: "Gamer",         description: "Win 10 mini-games",                        emoji: "🎮", counter: "minigameWins",   threshold: 10,   path: "keeper" },
   { id: "growing_up",   name: "Growing Up",    description: "See your pets evolve 3 times",             emoji: "🌱", counter: "evolutions",     threshold: 3,    path: "keeper" },
   { id: "survivor",     name: "Survivor",      description: "Raise a pet to senior",                    emoji: "🧓", counter: "seniors",        threshold: 1,    path: "keeper" },
+  { id: "first_friend", name: "First Friend",  description: "Make a friend when another pet visits",    emoji: "🤝", counter: "friendsMade",    threshold: 1,    path: "keeper" },
+  { id: "best_buds",    name: "Best Buds",     description: "Become Best Friends with a visitor",       emoji: "💛", counter: "bestFriends",    threshold: 1,    path: "keeper" },
+  { id: "tied_the_knot", name: "Tied the Knot", description: "Get your pet married",                    emoji: "💍", counter: "marriages",      threshold: 1,    path: "keeper" },
+  { id: "dynasty",      name: "Dynasty",       description: "Hatch two heirs (raise a third generation)", emoji: "👑", counter: "heirs",        threshold: 2,    path: "keeper" },
   { id: "champion",     name: "Champion",      description: "Win a Boss Battle",                        emoji: "🥊", counter: "bossBattleWins", threshold: 1,    path: "keeper" },
   { id: "level_5",      name: "Rising Star",   description: "Reach trainer level 5",                    emoji: "⭐", counter: "level",          threshold: 5,    path: "trainer" },
   { id: "level_10",     name: "Veteran",       description: "Reach trainer level 10",                   emoji: "🌟", counter: "level",          threshold: 10,   path: "trainer" },
@@ -3460,6 +3965,15 @@ export function serialiseState(state: PetState): Record<string, unknown> {
     trainer: state.trainer,
     dailies: state.dailies,
     pendingBosses: state.pendingBosses,
+    generation: state.generation,
+    friend: state.friend,
+    visit: state.visit,
+    ticksSinceLastVisit: state.ticksSinceLastVisit,
+    partner: state.partner,
+    heirEgg: state.heirEgg,
+    seniorSinceDay: state.seniorSinceDay,
+    proposal: state.proposal,
+    proposalCooldownTicks: state.proposalCooldownTicks,
   };
 }
 
@@ -3562,12 +4076,14 @@ export function deserialiseState(data: Record<string, unknown>): PetState {
       || data["leaderboardIneligible"] === "deathless"
       ? data["leaderboardIneligible"] : "",
     // Version 0 (no schemaVersion) → 1: progression fields start empty.
+    // Version 1 → 2: social fields start empty (deserialiseSocial).
     schemaVersion: SCHEMA_VERSION,
     petXp: Math.max(0, getNumber("petXp", 0)),
     petLevel: levelProgress(getNumber("petXp", 0)).level,
     trainer: deserialiseTrainer(data["trainer"]),
     dailies: deserialiseDailies(data["dailies"]),
     pendingBosses: deserialisePendingBosses(data["pendingBosses"], levelProgress(getNumber("petXp", 0)).level),
+    ...deserialiseSocial(data),
   };
 
   return withDerivedFields(partial);

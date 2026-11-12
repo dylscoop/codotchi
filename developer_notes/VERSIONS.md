@@ -1,6 +1,24 @@
 # Version History
 
-## v2.35.2 - current
+## v2.36.0 - current
+
+### Changes from v2.35.2 (social features, offline - branch feat/v2.36.0-social-offline)
+
+**Dev-mode preview:** the engine only runs visits with `GameConfig.socialEnabled === true`, which the hosts set from dev mode + `codotchi.devModeSocial` (VS Code) / `devModeSocial` (PyCharm). The webview hides the social panel, guests, egg, Gen line, social bubbles and achievements unless the host sends `socialEnabled: true`. Claude Desktop registers the social tools only with `CODOTCHI_DEV_SOCIAL=1`; the Claude Code / OpenCode actions still run but are left out of the help lists.
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/*.kt`, `CodotchiPersistence.kt` | `SCHEMA_VERSION` 2: `generation`, `friend`, `visit`, `ticksSinceLastVisit`, `partner`, `heirEgg`, `seniorSinceDay`, `proposal`, `proposalCooldownTicks` (defaults on load); `tickSocial` after `tickCore` (visits, friendship decay, friend proposal at Partner 90+, matchmaker after 3 senior game-days); `playWithFriend`, `giveFriendGift`, `acceptProposal`, `declineProposal`, `hatchHeir`, `createPet(..., lineage)`; XP sources befriend / best_friend / friend_play / friend_gift / marriage / heir; achievements first_friend, best_buds, tied_the_knot, dynasty; `GameConfig.socialEnabled`; terminal helpers `socialSummaryLines` / `socialActionMessage` |
+| `packages/core/src/asciiArt.ts` | status block lists generation, friend, visit, partner, heir egg and proposal |
+| `vscode/src/sidebarProvider.ts`, `extension.ts`, `afterlife.ts`, `package.json` | `friend_play` / `friend_gift` / `accept_proposal` / `decline_proposal` commands; `new_game { heir }` hatches the heir; `codotchi.newGame` keeps a dead pet with an heir egg; `codotchi.devModeSocial` (dev-mode preview); afterlife entries carry `generation` / `partnerName` |
+| `pycharm/.../CodotchiPlugin.kt`, `CodotchiConfigurable.kt`, `CodotchiSettings.kt`, `Afterlife.kt`, `CodotchiBrowserPanel.kt` | same commands, heir hatching, `devModeSocial` dev setting, afterlife fields, social fields in the webview state JSON |
+| `vscode/media/sidebar.js`, `sidebar.html`, `sidebar.css` | visiting friend / partner drawn beside the pet (slides in), hearts on marriage, heir egg on the floor, social panel with Play together / Give gift and the proposal bar, heir option on the hatch screen, "Gen N" in the info line, social bubbles, new achievement rows and hints |
+| `claude-codotchi/scripts/action.mjs`, `commands/codotchi.md`, `opencode-codotchi/src/index.ts`, `commands/codotchi.md`, `claude-desktop-codotchi/src/tools.ts`, `server.ts`, `manifest.json` | social commands / tools |
+| tests | `vscode/tests/unit/social.test.ts`, Kotlin `SocialTest.kt`, `claude-codotchi/tests/integration/socialActions.test.mjs`, desktop and OpenCode status-block tests |
+| README, FEATURES, CHANGELOG, user guides, all manifests | version 2.36.0 |
+| `vscode/package.json`, `extension.ts`, `sidebarProvider.ts`, `media/sidebar.*`, `pycharm/.../CodotchiSettings.kt`, `CodotchiConfigurable.kt`, `CodotchiPlugin.kt`, `CodotchiBrowserPanel.kt` | Deathless is no longer a setting (`codotchi.deathless` / the PyCharm checkbox are gone): it is chosen on the menu. Ticked at hatch → deathless pet; ticked + **Continue** on a living pet → confirm, then `make_deathless` marks it. The `deathless` flag sent to the webview is now `isDeathlessPet(state)` |
+
+## v2.35.2
 
 ### Changes from v2.35.1 (deathless for life - branch feat/deathless-mode)
 

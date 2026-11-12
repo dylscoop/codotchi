@@ -15,7 +15,7 @@
  *   - buildToast()       — one-line notification string
  */
 
-import { ACHIEVEMENTS, DailyChallenges, dailiesView, levelProgress } from "./gameEngine.js";
+import { ACHIEVEMENTS, DailyChallenges, dailiesView, levelProgress, socialSummaryLines, type SocialView } from "./gameEngine.js";
 
 // ---------------------------------------------------------------------------
 // ANSI helpers
@@ -723,6 +723,15 @@ export function buildStatusBlock(state: {
   dailies?: DailyChallenges;
   /** Levels, achievements and daily challenges are a beta feature: shown only when true. */
   levels?: boolean;
+  /** Social fields (v2.36.0): friend, visit, partner, heir egg, offer and generation lines. */
+  generation?: number;
+  friend?: SocialView["friend"];
+  visit?: SocialView["visit"];
+  partner?: SocialView["partner"];
+  heirEgg?: SocialView["heirEgg"];
+  proposal?: SocialView["proposal"];
+  /** How commands are written in the social lines (default "/codotchi "). */
+  socialCmd?: string;
 }): string {
   const stageColour = STAGE_COLOURS[state.stage] ?? FG_WHITE;
   const art = getArt(state.stage, state.mood, state.spriteType ?? "classic");
@@ -762,6 +771,11 @@ export function buildStatusBlock(state: {
   lines.push(statBar("Discipline", state.discipline));
   lines.push("");
   lines.push(`  ${FG_CYAN}Weight${RESET}        ${state.weight} / 99`);
+  const social = socialSummaryLines({
+    name: state.name, generation: state.generation ?? 1, friend: state.friend ?? null, visit: state.visit ?? null,
+    partner: state.partner ?? null, heirEgg: state.heirEgg ?? null, proposal: state.proposal ?? null,
+  }, state.socialCmd);
+  for (const s of social) { lines.push(`  ${s}`); }
   if (state.trainer && trainerLevel) {
     const xpPct = (100 * trainerLevel.intoLevel) / trainerLevel.needed;
     const filled = Math.round(xpPct / 10);

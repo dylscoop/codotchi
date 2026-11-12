@@ -544,8 +544,56 @@ FEATURES_2.md §2.
 | Block / mute a user | `[ ]` | Stored locally |
 
 **Phase C — Connection-era mechanics:** friendship meter, gift exchange,
-matchmaker, marriage and offspring, and the generation counter. The designs are
-already in FEATURES_2.md §2.1-2.4 and §3.3; they build on the Phase B link.
+matchmaker, marriage and offspring, and the generation counter.
+
+**Done offline in v2.36.0** (branch `feat/v2.36.0-social-offline`): the
+friend is a CPU pet, so Phase C shipped before Phase B. One friend slot per
+pet; the same friend keeps visiting. Real-user visits (Phase B) can reuse the
+same engine mechanics later.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| CPU friend visits | `[x]` | Child stage and up, awake, active ticks only: at least `VISIT_MIN_GAP_TICKS` (1200, ~1 h) apart, then 0.1%/tick; a visit lasts `VISIT_TICKS` (60, 3 min) and ends if the pet falls asleep. 30% bring the pet a gift (+10 happiness). Drawn beside the pet, sliding in from the far edge |
+| Friendship meter | `[x]` | 0–100 on `PetState.friend`; six levels (Acquaintance 0, Buddy 15, Friend 35, Good Friend 55, Best Friend 75, Partner 90). +2 per visit, +10 Play together, +15 Give gift (once each per visit), +5 for a received gift; −1 per game-day boundary without a visit |
+| Gift exchange | `[x]` | Pet → friend: **🎁 Give gift** (costs 5 hunger). Friend → pet: event `friend_gift_received`, not an attention call (no new call type) |
+| Marriage | `[x]` | At Partner level an adult / senior gets a `proposal` on the next visit; **💍 Accept** or **Not yet** (300-tick cooldown). Accepting sets `partner` (drawn beside the pet while awake); hearts float. No heir egg for now (see the next row) |
+| Matchmaker | `[x]` | Unmarried senior, `MATCHMAKER_SENIOR_DAYS` (3) game-days after `seniorSinceDay`: a generated CPU match proposes |
+| Heir egg & generation counter | `[~]` | **Disabled 2026-11-11, backlog until redesigned:** marriage no longer lays an egg (`acceptProposal` leaves `heirEgg` null). `hatchHeir` and the `heirEgg` / `generation` save fields stay in code for the redesign; the webview hides the heir option, the egg on the floor and the Dynasty achievement (`HEIRS_ENABLED = false` in `sidebar.js`). Original design: the egg waits on the floor; when the pet dies the hatch screen offers it (`new_game { heir: true }` → `hatchHeir`, generation + 1, the egg's sprite / type). Used up either way. "Gen N" in the info line from generation 2; Afterlife entries keep `generation` / `partnerName` |
+| Achievements | `[x]` | First Friend, Best Buds, Tied the Knot on the Keeper path. Dynasty (2 heirs) is hidden until offspring returns |
+| Terminal plugins | `[x]` | `/codotchi friend | playfriend | gift | accept | decline`; Claude Desktop `codotchi_friend` etc. |
+| Setting | `[x]` | Dev-mode preview until release: `codotchi.devModeSocial` (VS Code) / **Friends, marriage & generations (preview)** (PyCharm Developer section), default off. Claude Desktop tools need `CODOTCHI_DEV_SOCIAL=1` |
+| Public release | `[ ]` | Swap the dev flag for a public setting, restore the README / plugin.xml / user-guide entries |
+| Generation on the leaderboard | `[ ]` | Needs a submission schema and validator change |
+| Retire a living pet early to hatch the heir | `[ ]` | Not in v2.36.0 |
+
+**Review of v2.36.0 (2026-11-11): a good start, but needs work.** The
+mechanics work, but the visits feel thin. These follow-ups are for later
+merges:
+
+| Follow-up | Status | Notes |
+|-----------|--------|-------|
+| Play together is a real game | `[ ]` | **Play together** starts one of the existing minigames (§4 of `vscode/FEATURES.md`) with the friend as the opponent or partner, rather than an instant +10. Friendship gain scales with the result |
+| Gifts are actual items | `[ ]` | A friend's gift is a concrete item it brings (food, toy, floor decoration), drawn in its paws and dropped on the floor, rather than flat +10 happiness. **Give gift** has the pet pick something it owns to hand over, rather than costing 5 hunger |
+| Different friends visit | `[ ]` | Several friend slots, each with its own name, species, sprite and friendship meter, so the same pet doesn't always come. Friends you haven't seen in a while can drift away |
+| Say goodbye | `[ ]` | A **👋 Goodbye** action ends the visit early with a wave animation, rather than waiting for `VISIT_TICKS` |
+| Offspring redesign | `[ ]` | The heir egg / generations mechanic, taken out of v2.36.0 for a redesign. Code and save fields are kept (see the Heir egg row above) |
+| Visitor wanders on its own | `[ ]` | The visitor walks around in its own idle pattern (§5.3 idle wandering, with its own speed and direction flips) rather than standing fixed beside the pet. The two pets sometimes meet in the middle and face each other |
+
+**Suggested further interactions, based on Tamagotchi Connection:**
+
+| Idea | Status | Notes |
+|------|--------|-------|
+| Visit the friend's home | `[ ]` | Your pet goes to the friend's house instead, with a different background. Mirrors the V3 / V4 "visit" vs "play" choice |
+| Fighting or competing | `[ ]` | A friendly race or tug-of-war between the two pets. The loser can sulk (a small happiness hit). Connection pets could quarrel as well as play |
+| Shared meal | `[ ]` | Feed both pets at once: + hunger for yours, + friendship. Can't be used while sick (consistent with BUG-S04) |
+| Friend greeting reactions | `[ ]` | Mood-based arrival: bow, wave, heart, or a frown if friendship has decayed. Based on Connection's greeting animations |
+| Friend's caretaker messages | `[ ]` | The visitor carries a short canned message ("Keep coding!") in a speech bubble (§7.3) |
+| Friendship-level unlocks | `[ ]` | Higher levels unlock new joint actions (Buddy: play; Friend: gifts; Good Friend: sleepover). Makes the meter mean something before Partner |
+| Sleepover | `[ ]` | At Good Friend and above, the friend can stay when your pet sleeps and leaves in the morning |
+| Friend gets sick or sad | `[ ]` | Sometimes the friend arrives unhappy and your pet can cheer it up (pat or give a gift) for bonus friendship |
+| Friend list / album | `[ ]` | A screen listing every friend met: species, highest level reached, last visit. Like Connection's friend list |
+| Souvenir from a visit | `[ ]` | A rare keepsake item from a long friendship, shown in a collection; feeds into achievements (§2.10.1) |
+| Rivalry / jealousy with a partner | `[ ]` | A married pet shows jealousy if a friend visits too often. Optional flavour |
 
 ---
 
@@ -854,7 +902,7 @@ Implementation Order" lists.
 - `schemaVersion` on `PetState` (FEATURES.md §11) — **done in v2.29.0** (`SCHEMA_VERSION = 1`)
 - Multiple pets, Phase A (§2.4)
 - Visiting and emotes, Phase B (§2.4)
-- Friendship meter, gift exchange, marriage and offspring with the generation counter, matchmaker NPC (FEATURES_2.md §2.1–2.4, §3.3)
+- Friendship meter, gift exchange, marriage and offspring with the generation counter, matchmaker NPC (FEATURES_2.md §2.1–2.4, §3.3) — **first pass in v2.36.0** as a dev-mode preview (offline, with a CPU friend). A good start but needs work: offspring is back on the backlog for a redesign, and the follow-ups are listed under §2.4 Phase C. Real-user links wait for Phase B
 - New species: dinosaurs and mythical creatures (§2.5)
 - Crow / magpie thief (§2.5)
 - Seasonal and holiday characters (FEATURES.md §14)

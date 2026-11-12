@@ -21,7 +21,6 @@ import {
   GameConfig,
   applyOfflineDecay,
   isDeathlessPet,
-  markDeathless,
   progressionMessage,
   tick,
   TICK_INTERVAL_SECONDS,
@@ -450,7 +449,7 @@ export function activate(context: vscode.ExtensionContext): void {
       reloadAndRefreshUI(false);
       return;
     }
-    const idleThresholdMs = cfg.get<number>("idleThresholdSeconds", 60) * 1_000;
+    const idleThresholdMs = cfg.get<number>("idleThresholdSeconds", 120) * 1_000;
     const idleDeepThresholdMs = cfg.get<number>("idleDeepThresholdSeconds", 600) * 1_000;
     const idleMs = Date.now() - lastActivityMs;
     const idle = idleMs > idleThresholdMs;
@@ -486,7 +485,9 @@ export function activate(context: vscode.ExtensionContext): void {
       devMode:                  cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234",
       devModeAgingMultiplier:   Math.max(1, cfg.get<number>("devModeAgingMultiplier", 10)),
       devModeHealthFloor:       Math.max(0, Math.min(100, cfg.get<number>("devModeHealthFloor", 1))),
-      deathless:                cfg.get<boolean>("deathless", false),
+      // Dev-mode preview until release (like codotchi.devModeBossBattle).
+      socialEnabled:            cfg.get<boolean>("devModeEnabled", false) && cfg.get<string>("developerPasscode", "") === "1234"
+                                && cfg.get<boolean>("devModeSocial", false),
     };
     const next = tick(currentState, idle, deepIdle, gameConfig);
     handleStateUpdate(next, idle);
@@ -641,18 +642,13 @@ export function activate(context: vscode.ExtensionContext): void {
       })
     );
 
-    // Deathless toggled in settings: mark the pet right away
-    // and refresh the sidebar so the badge and leaderboard state update.
+    // Afterlife renamed: refresh the sidebar.
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration("codotchi.afterlifeName")) {
           if (currentState !== null) { handleStateUpdate({ ...currentState, events: [] }, false); }
           else { sidebar?.postNoGame(currentHighScore); }
         }
-        if (!e.affectsConfiguration("codotchi.deathless") || currentState === null) { return; }
-        const on = vscode.workspace.getConfiguration("codotchi").get<boolean>("deathless", false);
-        const next = on && currentState.alive ? markDeathless(currentState) : currentState;
-        handleStateUpdate({ ...next, events: [] }, false);
       })
     );
 
@@ -695,9 +691,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("codotchi.newGame", () => {
-      saveAfterlife(context, settleBeforeNewPet(loadAfterlife(context), currentState));
-      clearState(context);
-      currentState = null;
+      // A dead pet with an heir egg is kept until the new-game form decides
+      // between the heir and a fresh egg (the new_game message settles it).
+      if (!(currentState !== null && !currentState.alive && currentState.heirEgg !== null)) {
+        saveAfterlife(context, settleBeforeNewPet(loadAfterlife(context), currentState));
+        clearState(context);
+        currentState = null;
+      }
       // The webview new-game form handles the actual createPet call via the
       // "new_game" message routed through SidebarProvider.
       void vscode.commands.executeCommand("codotchiView.focus");

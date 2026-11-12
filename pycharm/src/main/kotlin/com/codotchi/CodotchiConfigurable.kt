@@ -30,7 +30,6 @@ import javax.swing.SpinnerNumberModel
  */
 class CodotchiConfigurable : Configurable {
 
-    private var deathlessCheck:            JCheckBox?          = null
     private var afterlifeNameField:        JTextField?         = null
     private var fontSizeCombo:             JComboBox<String>? = null
     private var colorPanel:                ColorPanel?         = null
@@ -52,6 +51,7 @@ class CodotchiConfigurable : Configurable {
     private var devModeHealthFloorSpinner: JSpinner?           = null
     private var devBossCheck:                   JCheckBox?          = null
     private var devBossAlwaysCheck:             JCheckBox?          = null
+    private var devSocialCheck:                 JCheckBox?          = null
     private var aiModeCheck:                    JCheckBox?          = null
     private var idleResetOnDocumentChangeCheck: JCheckBox?          = null
     private var idleResetOnCursorMovementCheck: JCheckBox?          = null
@@ -73,17 +73,14 @@ class CodotchiConfigurable : Configurable {
     override fun getDisplayName(): String = "Codotchi"
 
     override fun createComponent(): JComponent {
-        val deathlessCheckbox = JCheckBox("Deathless mode (pet can't die from neglect, only of old age; not eligible for the leaderboard or high score)")
-        deathlessCheckbox.toolTipText = "Health never drops below 1. The pet still gets sick, and a senior can still die of old age. A deathless pet stays deathless for life, even if you turn this off, and stays off the leaderboard. Also offered when you hatch a new pet."
         val afterlifeNameTextField = JTextField(16)
-        deathlessCheck     = deathlessCheckbox
         afterlifeNameField = afterlifeNameTextField
         val combo   = JComboBox(arrayOf("Small", "Normal", "Large"))
         val cp      = ColorPanel()
         val attentionCheck  = JCheckBox("Enable attention calls")
         val osNotificationsCheckbox = JCheckBox("Desktop notification when hunger, happiness or energy hits 0, or health drops below 25")
         val statusBarEnabledCheckbox = JCheckBox("Show the pet in the status bar (⚠ while it has an attention call)")
-        val idleSpinner     = JSpinner(SpinnerNumberModel(60, 10, 3600, 10))
+        val idleSpinner     = JSpinner(SpinnerNumberModel(120, 10, 3600, 10))
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
         val expiryCombo     = JComboBox(arrayOf("Needy (4 min)", "Standard (10 min)", "Chilled (20 min)"))
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
@@ -99,6 +96,8 @@ class CodotchiConfigurable : Configurable {
         val devHealthFloorSpinner = JSpinner(SpinnerNumberModel(1, 0, 100, 1))
         val devBossCheckbox = JCheckBox("Show Boss Battle (preview, dev mode only)")
         val devBossAlwaysCheckbox = JCheckBox("Boss Battle always available (for testing)")
+        val devSocialCheckbox = JCheckBox("Friends, marriage & generations (preview)")
+        devSocialCheckbox.toolTipText = "A CPU friend visits pets from the child stage; at Partner friendship an adult can marry; the matchmaker visits unmarried seniors. Needs developer mode."
         val aiModeCheckbox = JCheckBox("AI mode (suppress doc-change / cursor / tab-switch idle resets)")
         val idleResetDocChangeCheckbox = JCheckBox("Reset idle timer on document changes")
         val idleResetCursorCheckbox = JCheckBox("Reset idle timer on cursor movement")
@@ -157,6 +156,7 @@ class CodotchiConfigurable : Configurable {
         devModeHealthFloorSpinner = devHealthFloorSpinner
         devBossCheck              = devBossCheckbox
         devBossAlwaysCheck        = devBossAlwaysCheckbox
+        devSocialCheck            = devSocialCheckbox
         aiModeCheck                    = aiModeCheckbox
         idleResetOnDocumentChangeCheck = idleResetDocChangeCheckbox
         idleResetOnCursorMovementCheck = idleResetCursorCheckbox
@@ -198,8 +198,7 @@ class CodotchiConfigurable : Configurable {
             row++
         }
 
-        // Deathless + Afterlife (top of the page)
-        addFull(panel, deathlessCheckbox)
+        // Afterlife (top of the page)
         addLabeled(panel, "Afterlife name:", afterlifeNameTextField)
 
         // General
@@ -259,6 +258,7 @@ class CodotchiConfigurable : Configurable {
         addLabeled(devContent, "Dev mode health floor:", devHealthFloorSpinner)
         addFull(devContent, devBossCheckbox)
         addFull(devContent, devBossAlwaysCheckbox)
+        addFull(devContent, devSocialCheckbox)
         val devSection = JPanel(BorderLayout())
         HideableDecorator(devSection, "Developer settings", false).apply {
             setContentComponent(devContent)
@@ -284,7 +284,7 @@ class CodotchiConfigurable : Configurable {
         val uiAttention  = enableAttentionCallsCheck?.isSelected ?: true
         val uiOsNotifications = osNotificationsCheck?.isSelected ?: true
         val uiStatusBarEnabled = statusBarEnabledCheck?.isSelected ?: true
-        val uiIdle       = (idleThresholdSpinner?.value as? Int) ?: 60
+        val uiIdle       = (idleThresholdSpinner?.value as? Int) ?: 120
         val uiDeepIdle   = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         val uiExpiry     = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         val uiRate       = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
@@ -311,8 +311,7 @@ class CodotchiConfigurable : Configurable {
         val uiTokenCostClaudeCode = tokenCostIncludeClaudeCodeCheck?.isSelected ?: true
         val uiTokenCostOpenCode = tokenCostIncludeOpenCodeCheck?.isSelected ?: true
         val uiTokenCostCopilot = tokenCostIncludeCopilotCheck?.isSelected ?: false
-        return (deathlessCheck?.isSelected ?: false) != settings.deathless
-            || (afterlifeNameField?.text ?: "Afterlife") != settings.afterlifeName
+        return (afterlifeNameField?.text ?: "Afterlife") != settings.afterlifeName
             || uiFont != settings.fontSize
             || uiColor != settings.textColor
             || uiAttention != settings.enableAttentionCalls
@@ -333,6 +332,7 @@ class CodotchiConfigurable : Configurable {
             || uiDevHealthFloor != settings.devModeHealthFloor
             || (devBossCheck?.isSelected ?: false) != settings.devModeBossBattle
             || (devBossAlwaysCheck?.isSelected ?: false) != settings.devModeBossBattleAlways
+            || (devSocialCheck?.isSelected ?: false) != settings.devModeSocial
             || uiAiMode != settings.aiMode
             || uiIdleResetDocChange != settings.idleResetOnDocumentChange
             || uiIdleResetCursor != settings.idleResetOnCursorMovement
@@ -351,15 +351,13 @@ class CodotchiConfigurable : Configurable {
 
     override fun apply() {
         val settings = service<CodotchiSettings>()
-        val prevDeathless = settings.deathless
-        settings.deathless              = deathlessCheck?.isSelected ?: false
         settings.afterlifeName          = afterlifeNameField?.text ?: "Afterlife"
         settings.fontSize               = fontSizeCombo?.selectedItem?.toString()?.lowercase() ?: "normal"
         settings.textColor              = colorPanel?.selectedColor?.let { colorToHex(it) } ?: "#cccccc"
         settings.enableAttentionCalls   = enableAttentionCallsCheck?.isSelected ?: true
         settings.osNotifications        = osNotificationsCheck?.isSelected ?: true
         settings.statusBarEnabled       = statusBarEnabledCheck?.isSelected ?: true
-        settings.idleThresholdSeconds   = (idleThresholdSpinner?.value as? Int) ?: 60
+        settings.idleThresholdSeconds   = (idleThresholdSpinner?.value as? Int) ?: 120
         settings.idleDeepThresholdSeconds = (idleDeepThresholdSpinner?.value as? Int) ?: 600
         settings.attentionCallExpiry    = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         settings.attentionCallRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
@@ -374,6 +372,7 @@ class CodotchiConfigurable : Configurable {
         settings.devModeHealthFloor     = (devModeHealthFloorSpinner?.value as? Int) ?: 1
         settings.devModeBossBattle       = devBossCheck?.isSelected ?: false
         settings.devModeBossBattleAlways = devBossAlwaysCheck?.isSelected ?: false
+        settings.devModeSocial           = devSocialCheck?.isSelected ?: false
         settings.aiMode                    = aiModeCheck?.isSelected ?: false
         settings.idleResetOnDocumentChange = idleResetOnDocumentChangeCheck?.isSelected ?: true
         settings.idleResetOnCursorMovement = idleResetOnCursorMovementCheck?.isSelected ?: true
@@ -392,7 +391,6 @@ class CodotchiConfigurable : Configurable {
         settings.perWorkspacePet           = newPerWorkspace
         // Reload the webview immediately so the change is visible without a restart
         val plugin = ApplicationManager.getApplication().service<CodotchiPlugin>()
-        if (settings.deathless && !prevDeathless) plugin.onDeathlessEnabled()
         if (newPerWorkspace && !prevPerWorkspace) {
             // First enable: copy shared state to project file then restart watcher
             plugin.onPerWorkspacePetEnabled()
@@ -406,7 +404,6 @@ class CodotchiConfigurable : Configurable {
 
     override fun reset() {
         val settings = service<CodotchiSettings>()
-        deathlessCheck?.isSelected         = settings.deathless
         afterlifeNameField?.text           = settings.afterlifeName
         fontSizeCombo?.selectedItem        = settings.fontSize.replaceFirstChar { it.uppercaseChar() }
         colorPanel?.selectedColor          = hexToColor(settings.textColor)
@@ -428,6 +425,7 @@ class CodotchiConfigurable : Configurable {
         devModeHealthFloorSpinner?.value        = settings.devModeHealthFloor
         devBossCheck?.isSelected                = settings.devModeBossBattle
         devBossAlwaysCheck?.isSelected          = settings.devModeBossBattleAlways
+        devSocialCheck?.isSelected              = settings.devModeSocial
         aiModeCheck?.isSelected                    = settings.aiMode
         idleResetOnDocumentChangeCheck?.isSelected = settings.idleResetOnDocumentChange
         idleResetOnCursorMovementCheck?.isSelected = settings.idleResetOnCursorMovement

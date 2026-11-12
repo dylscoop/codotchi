@@ -110,6 +110,10 @@
     gamer:        ["🎮", "Gamer",         "Win 10 mini-games",                      "minigameWins",   10,   "keeper"],
     growing_up:   ["🌱", "Growing Up",    "See your pets evolve 3 times",           "evolutions",     3,    "keeper"],
     survivor:     ["🧓", "Survivor",      "Raise a pet to senior",                  "seniors",        1,    "keeper"],
+    first_friend: ["🤝", "First Friend",  "Make a friend when another pet visits",  "friendsMade",    1,    "keeper"],
+    best_buds:    ["💛", "Best Buds",     "Become Best Friends with a visitor",     "bestFriends",    1,    "keeper"],
+    tied_the_knot: ["💍", "Tied the Knot", "Get your pet married",                  "marriages",      1,    "keeper"],
+    dynasty:      ["👑", "Dynasty",       "Hatch two heirs (raise a third generation)", "heirs",      2,    "keeper"],
     champion:     ["🥊", "Champion",      "Win a Boss Battle",                      "bossBattleWins", 1,    "keeper"],
     level_5:      ["⭐", "Rising Star",   "Reach trainer level 5",                  "level",          5,    "trainer"],
     level_10:     ["🌟", "Veteran",       "Reach trainer level 10",                 "level",          10,   "trainer"],
@@ -135,6 +139,10 @@
     debugSessions:  "Unlocks with debug-session tracking (coming soon)",
     bossKills:      "Unlocks with Bug Bosses (coming soon)",
     bossBattleWins: "Press Play and beat the boss in a Boss Battle",
+    friendsMade:    "Keep coding with your pet awake; a friend pet drops by now and then (child stage and up)",
+    bestFriends:    "Play together and swap gifts when your friend visits",
+    marriages:      "Reach Partner friendship as an adult and accept the proposal, or say yes to the matchmaker",
+    heirs:          "Hatch the heir egg a married pet leaves behind",
   };
 
   /** How to complete each daily challenge. Keys must match DAILY_CHALLENGES ids (progression.test.ts checks this). */
@@ -161,6 +169,20 @@
 
   /** Boss Battle is a dev-mode preview: "off", "queue" (needs an unlocked boss) or "always" (set by the host). */
   var bossAccess = "off";
+
+  /** Friends, marriage and generations are a dev-mode preview (codotchi.devModeSocial), off unless the host enables them. */
+  var socialEnabled = false;
+  var SOCIAL_ACHIEVEMENT_IDS = ["first_friend", "best_buds", "tied_the_knot", "dynasty"];
+  /** Offspring (heir egg, generations) is on the backlog until it is redesigned: no heir UI, no Dynasty row. */
+  var HEIRS_ENABLED = false;
+
+  /** Events that belong to the social preview. */
+  function isSocialEvent(code) {
+    return code.indexOf("friend_") === 0 || code.indexOf("proposal_") === 0 ||
+      code === "matchmaker_arrived" || code === "married" || code === "best_friends" ||
+      SOCIAL_ACHIEVEMENT_IDS.indexOf(code.slice("achievement_unlocked_".length)) !== -1 &&
+        code.indexOf("achievement_unlocked_") === 0;
+  }
 
   /** Events that only make sense when levels are enabled. */
   function isProgressionEvent(code) {
@@ -199,6 +221,16 @@
   const petNameDisplay = document.getElementById("pet-name-display");
   const moodLabel      = document.getElementById("mood-label");
   const infoLine       = document.getElementById("info-line");
+  const socialPanel    = document.getElementById("social-panel");
+  const socialLine     = document.getElementById("social-line");
+  const visitActions   = document.getElementById("visit-actions");
+  const proposalBar    = document.getElementById("proposal-bar");
+  const proposalText   = document.getElementById("proposal-text");
+  const heirOption     = document.getElementById("heir-option");
+  const setupHeir      = document.getElementById("setup-heir");
+  const heirLabel      = document.getElementById("heir-label");
+  const heirHint       = document.getElementById("heir-hint");
+  const deadHeir       = document.getElementById("dead-heir");
   const eventLog       = document.getElementById("event-log");
   const deadStats      = document.getElementById("dead-stats");
   const deadTime       = document.getElementById("dead-time");
@@ -225,6 +257,12 @@
   const devModeBanner    = document.getElementById("dev-mode-banner");
   const deathlessBanner     = document.getElementById("deathless-banner");
   const setupDeathless      = document.getElementById("setup-deathless");
+  const deathlessConfirm    = document.getElementById("deathless-confirm");
+  const deathlessConfirmText = document.getElementById("deathless-confirm-text");
+  const btnDeathlessYes     = document.getElementById("btn-deathless-yes");
+  const btnDeathlessCancel  = document.getElementById("btn-deathless-cancel");
+  /** Whether the current pet is deathless (from the host). */
+  var petIsDeathless = false;
   const afterlifeChoice     = document.getElementById("afterlife-choice");
   const afterlifeChoiceDone = document.getElementById("afterlife-choice-done");
   const btnAfterlifeEdit        = document.getElementById("btn-afterlife-edit");
@@ -372,8 +410,94 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       name: name,
       petType: selectedPetType,
       deathless: !!(setupDeathless && setupDeathless.checked),
+      heir: heirAvailable(lastState) && !!(setupHeir && setupHeir.checked),
     });
   });
+
+  // ── Social buttons (v2.36.0) ─────────────────────────────────────────────
+
+  document.getElementById("btn-friend-play").addEventListener("click", function () {
+    vscode.postMessage({ command: "friend_play" });
+  });
+  document.getElementById("btn-friend-gift").addEventListener("click", function () {
+    vscode.postMessage({ command: "friend_gift" });
+  });
+  document.getElementById("btn-proposal-accept").addEventListener("click", function () {
+    vscode.postMessage({ command: "accept_proposal" });
+  });
+  document.getElementById("btn-proposal-decline").addEventListener("click", function () {
+    vscode.postMessage({ command: "decline_proposal" });
+  });
+
+  /** True when the (dead) pet left an heir egg that the hatch screen can offer. */
+  function heirAvailable(state) {
+    return !!(HEIRS_ENABLED && socialEnabled && state && !state.alive && state.heirEgg);
+  }
+
+  /** Show the heir option on the hatch screen, prefilled with the next generation's name. */
+  function renderHeirOption(state) {
+    if (!heirOption) { return; }
+    var show = heirAvailable(state);
+    heirOption.classList.toggle("hidden", !show);
+    if (!show) { return; }
+    var gen = (state.generation || 1) + 1;
+    var partner = state.partner ? " & " + state.partner.name : "";
+    heirLabel.textContent = "🥚 Hatch " + state.name + partner + "'s heir (Gen " + gen + ")";
+    heirHint.textContent = "Ticked: the heir hatches with the family's look; the type buttons are ignored. " +
+      "Unticked: a fresh egg starts a new family line, and the heir egg is lost.";
+    if (petNameInput && (petNameInput.value === "" || petNameInput.value.toLowerCase() === "codotchi" ||
+                         petNameInput.value === setupDefaultName)) {
+      petNameInput.value = state.name + " II";
+    }
+  }
+
+  /** Friend / partner / egg line, visit buttons and the proposal bar under the info line. */
+  function renderSocial(state) {
+    if (!socialPanel) { return; }
+    if (!socialEnabled) { socialPanel.classList.add("hidden"); return; }
+    var parts = [];
+    if (state.partner) { parts.push("💍 " + state.partner.name); }
+    if (state.friend && (!state.partner || state.partner.name !== state.friend.name)) {
+      parts.push("🤝 " + state.friend.name + " · " + friendshipLevelName(state.friend.friendship) +
+                 " " + friendshipHearts(state.friend.friendship));
+    } else if (state.friend) {
+      parts[0] += " " + friendshipHearts(state.friend.friendship);
+    }
+    if (HEIRS_ENABLED && state.heirEgg) { parts.push("🥚 heir egg waiting"); }
+    if (state.visit && state.friend) { parts.unshift("👋 " + state.friend.name + " is visiting!"); }
+    var visiting = !!(state.alive && state.visit && state.friend && !state.sleeping);
+    var proposing = !!(state.alive && state.proposal);
+    socialPanel.classList.toggle("hidden", parts.length === 0 && !proposing);
+    socialLine.textContent = parts.join("  |  ");
+    socialLine.classList.toggle("hidden", parts.length === 0);
+    visitActions.classList.toggle("hidden", !visiting);
+    if (visiting) {
+      document.getElementById("btn-friend-play").disabled = !!state.visit.played;
+      document.getElementById("btn-friend-gift").disabled = !!state.visit.gifted;
+    }
+    proposalBar.classList.toggle("hidden", !proposing);
+    if (proposing) {
+      proposalText.textContent = state.proposal.from === "matchmaker"
+        ? "💌 The matchmaker brought " + state.proposal.name + " to meet " + state.name + ". Marry?"
+        : "💍 " + state.proposal.name + " wants to marry " + state.name + "!";
+    }
+  }
+
+  /** Friendship level names; must match FRIENDSHIP_LEVELS in packages/core/src/gameEngine.ts. */
+  var FRIENDSHIP_LEVEL_NAMES = [[90, "Partner"], [75, "Best Friend"], [55, "Good Friend"], [35, "Friend"], [15, "Buddy"], [0, "Acquaintance"]];
+
+  function friendshipLevelName(f) {
+    for (var i = 0; i < FRIENDSHIP_LEVEL_NAMES.length; i++) {
+      if (f >= FRIENDSHIP_LEVEL_NAMES[i][0]) { return FRIENDSHIP_LEVEL_NAMES[i][1]; }
+    }
+    return "Acquaintance";
+  }
+
+  /** Five hearts filled in 20-point steps. */
+  function friendshipHearts(f) {
+    var full = Math.max(0, Math.min(5, Math.round(f / 20)));
+    return "♥".repeat(full) + "♡".repeat(5 - full);
+  }
 
   // ── Action buttons ───────────────────────────────────────────────────────
 
@@ -448,9 +572,31 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   if (btnContinue) {
     btnContinue.addEventListener("click", function () {
+      // Deathless ticked on a living pet that isn't deathless yet: confirm first.
+      if (setupDeathless && setupDeathless.checked && lastState && lastState.alive && !petIsDeathless && deathlessConfirm) {
+        if (deathlessConfirmText) {
+          deathlessConfirmText.textContent = "Make " + lastState.name + " deathless? It can't die from neglect, " +
+            "but it leaves the leaderboard and high score for good.";
+        }
+        deathlessConfirm.classList.remove("hidden");
+        return;
+      }
       // After death, Continue returns to the dead-screen summary; otherwise
       // it returns to the live game screen.
       showScreen(lastState && !lastState.alive ? "dead" : "game");
+    });
+  }
+  if (btnDeathlessYes) {
+    btnDeathlessYes.addEventListener("click", function () {
+      if (deathlessConfirm) { deathlessConfirm.classList.add("hidden"); }
+      vscode.postMessage({ command: "make_deathless" });
+      petIsDeathless = true;
+      showScreen("game");
+    });
+  }
+  if (btnDeathlessCancel) {
+    btnDeathlessCancel.addEventListener("click", function () {
+      if (deathlessConfirm) { deathlessConfirm.classList.add("hidden"); }
     });
   }
 
@@ -629,7 +775,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         var li = document.createElement("li");
         var text = document.createElement("span");
         var when = new Date(e.diedAt).toLocaleDateString();
-        text.textContent = "⚱ " + e.name + (e.deathless ? " ♾" : "") + "  |  " + formatAge(e.ageDays) +
+        text.textContent = "⚱ " + e.name + (e.deathless ? " ♾" : "") +
+          (socialEnabled && (e.generation || 1) > 1 ? " (Gen " + e.generation + ")" : "") +
+          (socialEnabled && e.partnerName ? " 💍 " + e.partnerName : "") + "  |  " + formatAge(e.ageDays) +
           "  |  lived " + formatLived(e.diedAt - e.spawnedAt) + "  |  " + when;
         text.title = e.stage + ", " + (e.cause === "old_age" ? "old age" : "neglect");
         li.appendChild(text);
@@ -661,6 +809,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (name === "game")  { resizeCanvas(); ensureAnimLoop(); }
     if (name === "setup") {
       renderSetupHighScore(latestHighScore);
+      renderHeirOption(lastState);
       if (btnContinue) {
         btnContinue.classList.toggle("hidden", !hasActiveGame);
       }
@@ -2654,6 +2803,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     // ── Draw ──────────────────────────────────────────────────────────────
     drawEnvironment(lastState);
+    drawHeirEgg(lastState);
     if (moodProps) {
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
@@ -2674,6 +2824,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                            lying ? 1 : window.spriteMood.scaleY(mood, moodFrame), walking);
     }
+    var guestBox = drawGuest(lastState, petX + bWidth / 2, nowMs);
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
     // The cat's mouse or bird, in its mouth on the way back
     if (catErrand && catErrand.kind === "gift" && !catErrand.cancelled && catErrand.phase !== "out") {
@@ -2703,8 +2854,114 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _bW       = effectiveBWidth(lastState, _bSz);
     var _petCx    = Math.round(petX) + Math.round(_bW / 2);
     var _petTopY  = Math.round(petY) + walkBob - headGap(lastState);
+    drawKiss(_petCx, _petTopY, guestBox, nowMs);
     drawSpeechBubble(_petCx, _petTopY, nowMs,
                      emojiClearance(drawState.sleeping || patting, moodPxSize), Math.round(_bW / 2));
+  }
+
+  // ── Social on the canvas: visiting friend / partner, heir egg, kiss (v2.36.0) ──
+
+  /** Events whose bubble is worth showing, most important first. */
+  var SOCIAL_BUBBLE_EVENTS = ["married", "proposal_received", "matchmaker_arrived", "best_friends",
+    "friend_gift_received", "friend_visit_started", "friend_played", "friend_gift_given",
+    "friend_play_refused", "friend_gift_refused", "proposal_declined", "friend_visit_ended"];
+
+  var GUEST_SLIDE_MS = 900;
+  var KISS_MS = 2600;
+  var guestAnim = { key: "", startMs: 0 };
+  var kissStartMs = 0;
+
+  /** Who stands beside the pet: the visiting friend, else the partner (pet awake), else null. */
+  function socialGuest(state) {
+    if (!state || !state.alive || state.stage === "egg") { return null; }
+    if (state.visit && state.friend && !state.sleeping) { return state.friend; }
+    if (state.partner && !state.sleeping) { return state.partner; }
+    return null;
+  }
+
+  /** A drawable state for a guest: the pet's own stage (a child at least), standing, in the guest's look. */
+  function guestState(state, who) {
+    return Object.assign({}, state, {
+      name: who.name, spriteType: who.spriteType, petType: who.petType,
+      stage: state.stage === "baby" ? "child" : state.stage,
+      sleeping: false, sick: false, resting: false, displayMood: null, weight: 40, poops: 0,
+    });
+  }
+
+  /**
+   * Draw the guest on the side of the stage away from the pet, facing it,
+   * sliding in from that edge when it first appears. Hidden during stage games.
+   * @returns {{x:number,y:number,w:number,h:number}|null} its box, or null when none
+   */
+  function drawGuest(state, petCx, nowMs) {
+    var who = socialGuest(state);
+    if (!who || stageGame || !socialEnabled) { guestAnim.key = ""; return null; }
+    var gs = guestState(state, who);
+    var scale = STAGE_SCALES[gs.stage] || 0.5;
+    var size = Math.round(BASE_SIZE * petSizeMultiplier(gs.spriteType) * scale);
+    var w = effectiveBWidth(gs, size);
+    var h = petBoxHeight(gs, w);
+    var W = spriteCanvas.width;
+    var onRight = petCx < W / 2;
+    var homeX = onRight ? W - w - 6 : 6;
+    var key = who.name + "|" + who.spriteType + "|" + (onRight ? "r" : "l");
+    if (guestAnim.key !== key) { guestAnim = { key: key, startMs: nowMs }; }
+    var t = REDUCED_MOTION ? 1 : Math.min(1, (nowMs - guestAnim.startMs) / GUEST_SLIDE_MS);
+    var ease = 1 - Math.pow(1 - t, 3);
+    var startX = onRight ? W + 4 : -w - 4;
+    var x = Math.round(startX + (homeX - startX) * ease);
+    var y = spriteCanvas.height - h - 12;
+    drawBody(gs, x, y, onRight, t < 1 ? Math.floor(nowMs / 150) % 2 : 0);
+    return { x: x, y: y, w: w, h: h };
+  }
+
+  /** Hearts floating between the pet and its new partner for KISS_MS after a marriage. */
+  function drawKiss(petCx, petTopY, guestBox, nowMs) {
+    if (!kissStartMs || !guestBox) { return; }
+    var t = (nowMs - kissStartMs) / KISS_MS;
+    if (t >= 1 || t < 0) { kissStartMs = 0; return; }
+    var midX = (petCx + guestBox.x + guestBox.w / 2) / 2;
+    var baseY = Math.min(petTopY, guestBox.y) - 2;
+    spriteCtx.save();
+    spriteCtx.font = "12px sans-serif";
+    spriteCtx.textAlign = "center";
+    spriteCtx.fillStyle = "#e0457b";
+    for (var i = 0; i < 3; i++) {
+      var p = (t * 2 + i / 3) % 1;
+      spriteCtx.globalAlpha = 1 - p;
+      spriteCtx.fillText("♥", Math.round(midX + Math.sin((p + i) * 6) * 8), Math.round(baseY - p * 24));
+    }
+    spriteCtx.restore();
+  }
+
+  /** The heir egg, 8×10 pixel art sitting on the floor at the left edge. */
+  var HEIR_EGG_PIXELS = [
+    "...##...",
+    "..#oo#..",
+    ".#oooo#.",
+    ".#o*oo#.",
+    "#oooooo#",
+    "#ooo*oo#",
+    "#o*oooo#",
+    "#oooooo#",
+    ".#oooo#.",
+    "..####..",
+  ];
+  var HEIR_EGG_COLOURS = { "#": "#5b4a3a", "o": "#f6efd9", "*": "#c99a6b" };
+
+  function drawHeirEgg(state) {
+    if (!HEIRS_ENABLED || !socialEnabled || !state || !state.alive || !state.heirEgg) { return; }
+    var px = 2;
+    var x0 = 4;
+    var y0 = spriteCanvas.height - 12 - HEIR_EGG_PIXELS.length * px + 2;
+    for (var r = 0; r < HEIR_EGG_PIXELS.length; r++) {
+      for (var c = 0; c < HEIR_EGG_PIXELS[r].length; c++) {
+        var col = HEIR_EGG_COLOURS[HEIR_EGG_PIXELS[r][c]];
+        if (!col) { continue; }
+        spriteCtx.fillStyle = col;
+        spriteCtx.fillRect(x0 + c * px, y0 + r * px, px, px);
+      }
+    }
   }
 
   /**
@@ -2804,11 +3061,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
       : "";
     infoLine.textContent =
+      (socialEnabled && (state.generation || 1) > 1 ? "Gen " + state.generation + "  |  " : "") +
       "Age: " + formatAge(state.ageDays) + "  |  " +
       state.stage            + "  |  " +
       (spriteLabel ? spriteLabel + "  |  " : "") +
       typeLabelCap;
 
+    renderSocial(state);
     renderProgression(state);
 
     // Update sleep/wake button label to match current state
@@ -3007,6 +3266,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (events.indexOf("praised")       !== -1) { pushReaction("praised", nowMs); }
     if (events.indexOf("became_sick")   !== -1) { pushReaction("became_sick",   nowMs); }
     if (events.indexOf("cured")         !== -1) { pushReaction("healed",        nowMs); }
+    if (socialEnabled && events.indexOf("married")       !== -1) { kissStartMs = nowMs; pushReaction("praised", nowMs); }
+    if (socialEnabled && events.indexOf("friend_played") !== -1) { pushReaction("played", nowMs); }
     if (events.indexOf("pooped")        !== -1) { pushReaction("poop_appeared", nowMs); }
     // evolved: any evolved_to_* event (egg → baby gets the hatch burst instead)
     for (var ei = 0; ei < events.length; ei++) {
@@ -3078,6 +3339,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       if (bossAccess !== "off" && events.indexOf("boss_unlocked") !== -1) {
         queueBubble(humaniseEvent("boss_unlocked", _n, state));
         return;
+      }
+      // 1e. Social: visits, gifts, proposals and marriage (rare, so they outrank everyday bubbles)
+      for (var _si = 0; socialEnabled && _si < SOCIAL_BUBBLE_EVENTS.length; _si++) {
+        if (events.indexOf(SOCIAL_BUBBLE_EVENTS[_si]) !== -1) {
+          queueBubble(humaniseEvent(SOCIAL_BUBBLE_EVENTS[_si], _n, state));
+          return;
+        }
       }
       // 2. Minigame results (play, not pat)
       for (var _mi = 0; _mi < events.length; _mi++) {
@@ -3302,8 +3570,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var counters = trainer.counters || {};
     var tp = levelProgress(trainer.xp);
     var petLevel = state.petLevel || levelProgress(state.petXp).level;
-    var unlocked = trainer.achievements || [];
-    var ids = Object.keys(ACHIEVEMENT_INFO);
+    var ids = Object.keys(ACHIEVEMENT_INFO).filter(function (id) {
+      if (id === "dynasty" && !HEIRS_ENABLED) { return false; }
+      return socialEnabled || SOCIAL_ACHIEVEMENT_IDS.indexOf(id) === -1;
+    });
+    var unlocked = (trainer.achievements || []).filter(function (id) { return ids.indexOf(id) !== -1; });
     var unlockable = ids.filter(function (id) { return !ACHIEVEMENT_INFO[id][6]; }).length;
     var streak = dailies && dailies.streak ? dailies.streak : 0;
     levelLine.textContent = "Trainer Lv " + tp.level + "  ·  Pet Lv " + petLevel +
@@ -3372,6 +3643,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   /** Append new event strings to the scrollable event log. */
   function humaniseEvent(code, name, state) {
     if (!levelsEnabled && isProgressionEvent(code)) { return null; }
+    if (!socialEnabled && isSocialEvent(code)) { return null; }
     if (bossAccess === "off" && (code === "boss_unlocked" || code.indexOf("boss_battle") !== -1)) { return null; }
     var n = name || "Codotchi";
     // A cat doesn't die — it moves on
@@ -3379,7 +3651,24 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       return window.catFarewell(n, state.spawnedAt);
     }
     var _cc = (state && customCharBySpriteType) ? customCharBySpriteType(state.spriteType) : null;
+    var _fr = state && state.friend ? state.friend.name : "A friend";
+    var _pr = state && state.proposal ? state.proposal.name : "someone";
+    var _pa = state && state.partner ? state.partner.name : "their sweetheart";
     var labels = {
+      "friend_made":             "",   // silent: the visit bubble says it
+      "friend_visit_started":    _fr + " dropped by to visit " + n + "!",
+      "friend_visit_ended":      _fr + " waved goodbye.",
+      "friend_gift_received":    _fr + " brought " + n + " a present! 🎁",
+      "friend_played":           n + " and " + _fr + " played together!",
+      "friend_gift_given":       n + " shared a treat with " + _fr + ".",
+      "best_friends":            n + " and " + _fr + " are best friends now! 💛",
+      "proposal_received":       _fr + " wants to marry " + n + "! 💍",
+      "matchmaker_arrived":      "The matchmaker brought " + _pr + " to meet " + n + ". 💌",
+      "married":                 n + " married " + _pa + "! An heir egg is waiting. 🥚",
+      "proposal_declined":       n + " said \"not yet\".",
+      "friend_play_refused":     n + " can't play with a friend right now.",
+      "friend_gift_refused":     n + " has already given a gift this visit.",
+      "proposal_refused":        "",
       "auto_woke_up":           n + " woke up after a full nap.",
       "break_nap_over":         "Break's over! " + n + " woke up from their nap.",
       "pooped":                  n + " pooped!",
@@ -3422,7 +3711,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "died_of_old_age":         n + " passed away of unforeseen natural causes due to old age.",
       "became_sick_old_age":     n + " came down with an age-related illness.",
       "went_idle":               "IDE idle — decay and aging slowed.",
-      "went_deep_idle":          "IDE idle 10 min — stats protected, aging stopped.",
+      "went_deep_idle":          "IDE deep idle — stats protected, aging stopped.",
       "weight_became_too_skinny":    n + " is getting too skinny!",
       "weight_became_slightly_fat":  n + " is looking a little chubby.",
       "weight_became_overweight":    n + " is overweight!",
@@ -3672,7 +3961,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     }
     deadStats.textContent =
       state.name + " lived " + formatAge(state.ageDays) + ".\n" +
-      "Stage reached: " + state.stage + ".";
+      "Stage reached: " + state.stage + "." +
+      (socialEnabled && (state.generation || 1) > 1 ? "\nGeneration " + state.generation + "." : "") +
+      (socialEnabled && state.partner ? "\nMarried to " + state.partner.name + "." : "");
+    if (deadHeir) {
+      deadHeir.classList.toggle("hidden", !(HEIRS_ENABLED && socialEnabled && state.heirEgg));
+      if (state.heirEgg) {
+        deadHeir.textContent = "🥚 " + state.name + " left an heir egg. Press Restart to hatch Generation " +
+          ((state.generation || 1) + 1) + ".";
+      }
+    }
 
     if (deadTime) {
       var spawnedAt = state.spawnedAt || 0;
@@ -4570,7 +4868,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       return;
     }
 
+    drawHeirEgg(state);
     drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false, 0);
+    drawGuest(state, staticX + bWidth / 2, performance.now());
     if (isChewingBone(state)) {
       drawBreakBone(state, { x: staticX, y: staticY, w: bWidth, h: bHeight }, false);
     } else {
@@ -4781,6 +5081,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     const state = message.state;
     lastDailies = message.dailies || null;
     levelsEnabled = message.levelsEnabled === true;
+    socialEnabled = message.socialEnabled === true;
     bossAccess = message.bossAccess === "queue" || message.bossAccess === "always" ? message.bossAccess : "off";
 
     currentCravingItem = message.cravingItem || null;
@@ -4810,10 +5111,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (deathlessBanner) {
       deathlessBanner.classList.toggle("hidden", !(message.deathless && state && state.alive));
     }
-    // The setup screen's Deathless box follows the setting, except while the
-    // user is on the setup screen (so a tick doesn't undo their click).
+    // The menu's Deathless box starts ticked for a deathless pet, except while
+    // the user is on the menu (so a tick doesn't undo their click).
+    petIsDeathless = !!message.deathless;
     if (setupDeathless && currentScreen !== "setup") {
-      setupDeathless.checked = !!message.deathless;
+      setupDeathless.checked = petIsDeathless;
+      if (deathlessConfirm) { deathlessConfirm.classList.add("hidden"); }
     }
 
     renderAfterlife(message.afterlife, state);

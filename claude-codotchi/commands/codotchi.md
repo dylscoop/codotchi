@@ -3,7 +3,7 @@ description: Interact with your codotchi virtual pet
 ---
 Run the codotchi action specified by $ARGUMENTS and display the result.
 
-Valid actions: `status` `feed` `snack` `pat` `play` `sleep` `wake` `clean` `medicine` `on` `off` `emoji <emoji|auto|off>` `rename <name>` `warnthreshold <amount>` `shoutthreshold <amount>` `orangethreshold <amount>` `redthreshold <amount>` `levels` `speechinterval <seconds|off>` `help`
+Valid actions: `status` `feed` `snack` `pat` `play` `sleep` `wake` `clean` `medicine` `friend` `playfriend` `gift` `accept` `decline` `on` `off` `emoji <emoji|auto|off>` `rename <name>` `warnthreshold <amount>` `shoutthreshold <amount>` `orangethreshold <amount>` `redthreshold <amount>` `levels` `speechinterval <seconds|off>` `help`
 
 If $ARGUMENTS is blank, run `!node "${CLAUDE_PLUGIN_ROOT}/scripts/action.mjs"` to get the pet's current art and stats, wrap that output verbatim in a fenced code block (\`\`\`), then output the following action list below it:
 

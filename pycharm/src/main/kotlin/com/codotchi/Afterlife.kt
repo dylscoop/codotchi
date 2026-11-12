@@ -26,6 +26,10 @@ object Afterlife {
         val deathless: Boolean,
         val spawnedAt: Long,
         val diedAt: Long,
+        /** Family line (v2.36.0); null on older entries, meaning 1. */
+        val generation: Int? = null,
+        /** Who the pet married, if anyone (v2.36.0). */
+        val partnerName: String? = null,
     )
 
     data class Data(
@@ -75,6 +79,8 @@ object Afterlife {
         deathless  = isDeathlessPet(state),
         spawnedAt  = state.spawnedAt,
         diedAt     = state.diedAt.takeIf { it > 0L } ?: System.currentTimeMillis(),
+        generation = state.generation,
+        partnerName = state.partner?.name,
     )
 
     /** Cremate a dead pet. No-op (same object) when the pet isn't waiting. */

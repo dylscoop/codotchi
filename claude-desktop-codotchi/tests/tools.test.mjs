@@ -111,7 +111,8 @@ describe("claude-desktop tools", () => {
     writeState(["vscode", "state.json"], adultPet());
     const out = tools.activity(readConfig());
     assert.equal(out.state.petXp, ge.XP_AMOUNTS.code);
-    assert.ok(out.asciiArt.includes("Pet Lv 1 · Trainer Lv 2 · 🏆 1/17"), out.asciiArt);
+    const unlockable = ge.ACHIEVEMENTS.filter((a) => !a.comingSoon).length;
+    assert.ok(out.asciiArt.includes(`Pet Lv 1 · Trainer Lv 2 · 🏆 1/${unlockable}`), out.asciiArt);
     assert.equal(out.asciiArt.split("\n").filter((l) => /^(⬜|✅) /.test(l)).length, 3, out.asciiArt);
     assert.ok(out.asciiArt.includes("Achievement unlocked: 👋 Hello World"), out.asciiArt);
     const stored = JSON.parse(fs.readFileSync(resolveIDEStatePath(), "utf8"));
@@ -126,5 +127,25 @@ describe("claude-desktop tools", () => {
     fs.utimesSync(newer, t, t);
     assert.equal(resolveIDEStatePath(), newer);
     assert.equal(tools.show(readConfig()).state.name, "New");
+  });
+  it("plays with a visiting friend and accepts a proposal (social, v2.36.0)", () => {
+    const friend = { name: "Pixel", spriteType: "dog", petType: "bytebug", friendship: 40, visits: 2 };
+    writeState(["vscode", "state.json"], adultPet({ friend, visit: { ticksLeft: 30, played: false, gifted: false } }));
+    const played = tools.socialAction(readConfig(), "playfriend");
+    assert.equal(played.state.friend.friendship, 50);
+    assert.ok(played.asciiArt.includes("played together"), played.asciiArt);
+    assert.ok(played.asciiArt.includes("Friend: Pixel"), played.asciiArt);
+
+    writeState(["vscode", "state.json"], adultPet({ friend, proposal: { from: "friend", name: "Pixel", spriteType: "dog", petType: "bytebug" } }));
+    const married = tools.socialAction(readConfig(), "accept");
+    assert.equal(married.state.partner.name, "Pixel");
+    assert.equal(married.state.heirEgg, null);
+    assert.ok(tools.show(readConfig()).asciiArt.includes("Married to Pixel"));
+  });
+
+  it("does not save a refused social action", () => {
+    writeState(["vscode", "state.json"], adultPet());
+    const out = tools.socialAction(readConfig(), "gift");
+    assert.ok(out.asciiArt.includes("No friend is visiting"), out.asciiArt);
   });
 });
