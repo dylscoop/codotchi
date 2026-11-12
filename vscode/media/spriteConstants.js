@@ -44,18 +44,21 @@
    * the given stage has an entry, its colours override the species palette.
    * @param {string} spriteType
    * @param {string} [stage]
-   * @returns {{ primary: string, secondary: string, accent: string, background: string }}
+   * @returns {{ primary: string, secondary: string, accent: string, background: string, extra?: string[] }}
    */
   function getPalette(spriteType, stage) {
     var base = ANIMAL_PALETTES[spriteType] || FALLBACK_PALETTE;
     var over = stage && base.byStage && base.byStage[stage];
     if (!over) { return base; }
-    return {
+    var out = {
       primary:    over.primary   || base.primary,
       secondary:  over.secondary || base.secondary,
       accent:     over.accent    || base.accent,
       background: base.background,
     };
+    // Multi-colour stages (sprite.json "colors"): colours for grid indices 6, 7, ...
+    if (over.extra) { out.extra = over.extra; }
+    return out;
   }
 
   // ── Stage scales ──────────────────────────────────────────────────────────

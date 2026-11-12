@@ -493,6 +493,38 @@ function resample(src, targetW, targetH) {
   return { width: targetW, height: targetH, pixels: pixels };
 }
 
+/**
+ * Resample by averaging every source pixel each target cell covers (a box
+ * filter), weighting colour by alpha so transparent pixels don't darken edges.
+ * Shrinking a large painting this way keeps its shading, where resample()
+ * keeps only one source pixel per cell. Used for multi-colour stages.
+ */
+function resampleArea(src, targetW, targetH) {
+  if (src.width === targetW && src.height === targetH) { return src; }
+  var pixels = [];
+  for (var row = 0; row < targetH; row++) {
+    var y0 = Math.floor(row * src.height / targetH);
+    var y1 = Math.max(y0 + 1, Math.floor((row + 1) * src.height / targetH));
+    var pixelRow = [];
+    for (var col = 0; col < targetW; col++) {
+      var x0 = Math.floor(col * src.width / targetW);
+      var x1 = Math.max(x0 + 1, Math.floor((col + 1) * src.width / targetW));
+      var r = 0, g = 0, b = 0, a = 0, n = 0;
+      for (var sy = y0; sy < y1 && sy < src.height; sy++) {
+        for (var sx = x0; sx < x1 && sx < src.width; sx++) {
+          var p = src.pixels[sy][sx];
+          r += p.r * p.a; g += p.g * p.a; b += p.b * p.a; a += p.a; n++;
+        }
+      }
+      pixelRow.push(a === 0
+        ? { r: 0, g: 0, b: 0, a: 0 }
+        : { r: Math.round(r / a), g: Math.round(g / a), b: Math.round(b / a), a: Math.round(a / n) });
+    }
+    pixels.push(pixelRow);
+  }
+  return { width: targetW, height: targetH, pixels: pixels };
+}
+
 // ── File loading ──────────────────────────────────────────────────────────────
 
 var EXT_FORMATS = { ".png": "png", ".jpg": "jpeg", ".jpeg": "jpeg", ".webp": "webp", ".pixil": "pixil" };
@@ -763,6 +795,123 @@ function buildColourMapper(images, alphaThresh, explicit) {
   };
 }
 
+/** Highest colour count buildMultiColourMapper accepts: indices 1-3, then 6-35. */
+var MAX_COLOURS = 33;
+
+/** Grid index of the i-th colour (0-based) of a multi-colour palette: 1-3, then 6+ (4/5 are gold). */
+function multiColourIndex(i) { return i < 3 ? i + 1 : i + 3; }
+
+/**
+ * Quantise images to up to n colours (median cut, refined by a few k-means
+ * passes; deterministic). The three most common colours become indices 1-3
+ * (lightest first, like buildColourMapper), so sick/sleep tinting of index 2
+ * still works; the rest become indices 6, 7, ... (palette.extra), most common
+ * first. Indices 4 and 5 stay reserved for gold.
+ * @returns {{ fn: function({r,g,b,a}): number, palette: {primary, secondary, accent, extra: string[]} }}
+ */
+function buildMultiColourMapper(images, alphaThresh, n) {
+  if (!(Number.isInteger(n) && n >= 3 && n <= MAX_COLOURS)) {
+    throw new Error("colors must be a whole number from 3 to " + MAX_COLOURS);
+  }
+  var freq = {};
+  images.forEach(function (img) {
+    for (var row = 0; row < img.height; row++) {
+      for (var col = 0; col < img.width; col++) {
+        var px = img.pixels[row][col];
+        if (px.a < alphaThresh) { continue; }
+        var key = px.r + "," + px.g + "," + px.b;
+        freq[key] = (freq[key] || 0) + 1;
+      }
+    }
+  });
+  var colours = Object.keys(freq).sort().map(function (k) {
+    var p = k.split(",");
+    return { r: +p[0], g: +p[1], b: +p[2], n: freq[k] };
+  });
+  if (colours.length === 0) {
+    log("Warning: no non-transparent pixels found in source image");
+    return { fn: function () { return 0; }, palette: { primary: "#888888", secondary: "#444444", accent: "#222222", extra: [] } };
+  }
+
+  // Median cut: split the box with the widest channel range at its weighted median.
+  function range(box, ch) {
+    var lo = 255, hi = 0;
+    box.forEach(function (c) { lo = Math.min(lo, c[ch]); hi = Math.max(hi, c[ch]); });
+    return hi - lo;
+  }
+  var boxes = [colours];
+  while (boxes.length < n) {
+    var best = -1, bestCh = "r", bestRange = 0;
+    boxes.forEach(function (box, bi) {
+      if (box.length < 2) { return; }
+      ["r", "g", "b"].forEach(function (ch) {
+        var rg = range(box, ch);
+        if (rg > bestRange) { bestRange = rg; best = bi; bestCh = ch; }
+      });
+    });
+    if (best === -1) { break; }
+    var box = boxes[best].slice().sort(function (a, b) { return (a[bestCh] - b[bestCh]) || (a.r - b.r) || (a.g - b.g) || (a.b - b.b); });
+    var total = box.reduce(function (s, c) { return s + c.n; }, 0), acc = 0, cut = 1;
+    for (var i = 0; i < box.length - 1; i++) {
+      acc += box[i].n;
+      if (acc >= total / 2) { cut = i + 1; break; }
+    }
+    boxes.splice(best, 1, box.slice(0, cut), box.slice(cut));
+  }
+  function mean(box) {
+    var r = 0, g = 0, b = 0, t = 0;
+    box.forEach(function (c) { r += c.r * c.n; g += c.g * c.n; b += c.b * c.n; t += c.n; });
+    return { r: Math.round(r / t), g: Math.round(g / t), b: Math.round(b / t), n: t };
+  }
+  var centres = boxes.map(mean);
+
+  // k-means refinement
+  function nearest(px, cs) {
+    var bi = 0, bd = Infinity;
+    for (var ci = 0; ci < cs.length; ci++) {
+      var d = rgbDist(px, cs[ci]);
+      if (d < bd) { bd = d; bi = ci; }
+    }
+    return bi;
+  }
+  for (var pass = 0; pass < 6; pass++) {
+    var sums = centres.map(function () { return { r: 0, g: 0, b: 0, n: 0 }; });
+    colours.forEach(function (c) {
+      var s = sums[nearest(c, centres)];
+      s.r += c.r * c.n; s.g += c.g * c.n; s.b += c.b * c.n; s.n += c.n;
+    });
+    centres = sums.map(function (s, ci) {
+      return s.n === 0 ? centres[ci]
+        : { r: Math.round(s.r / s.n), g: Math.round(s.g / s.n), b: Math.round(s.b / s.n), n: s.n };
+    });
+  }
+  centres = centres.filter(function (c) { return c.n > 0; });
+
+  // Order: the three most common (lightest first) are indices 1-3, the rest by count.
+  var byCount = centres.slice().sort(function (a, b) { return (b.n - a.n) || (luminance(b) - luminance(a)); });
+  var top = byCount.slice(0, 3).sort(function (a, b) { return luminance(b) - luminance(a); });
+  var ordered = top.concat(byCount.slice(3));
+  log("Quantised to " + ordered.length + " colours: " + ordered.map(rgbToHex).join(" "));
+
+  return {
+    fn: function (px) {
+      if (px.a < alphaThresh) { return 0; }
+      return multiColourIndex(nearest(px, ordered));
+    },
+    palette: {
+      primary:   rgbToHex(ordered[0]),
+      secondary: ordered[1] ? rgbToHex(ordered[1]) : "#444444",
+      accent:    ordered[2] ? rgbToHex(ordered[2]) : "#222222",
+      extra:     ordered.slice(3).map(rgbToHex),
+    },
+  };
+}
+
+/** One grid row as DEFS text: each index as one base-36 character (0-9, then a-z). */
+function gridRowText(row) {
+  return row.map(function (v) { return v.toString(36); }).join("");
+}
+
 // ── Grid helpers ──────────────────────────────────────────────────────────────
 
 /** Map an image to a grid (array of rows of colour indices). */
@@ -817,7 +966,7 @@ function printPreview(grid) {
   var border = "+" + "-".repeat(cols) + "+";
   console.log(border);
   grid.forEach(function (row) {
-    console.log("|" + row.map(function (v) { return PREVIEW_CHARS[v] || "?"; }).join("") + "|");
+    console.log("|" + row.map(function (v) { return PREVIEW_CHARS[v] || (v >= 6 ? "▒" : "?"); }).join("") + "|");
   });
   console.log(border);
 }
@@ -830,7 +979,7 @@ function buildDefsEntry(spriteType, stage, grid) {
   lines.push('  DEFS["' + spriteType + '"]["' + stage + '"] = [');
   for (var row = 0; row < grid.length; row++) {
     var comma = (row < grid.length - 1) ? "," : "";
-    lines.push('    "' + grid[row].join("") + '"' + comma + ' //' + row);
+    lines.push('    "' + gridRowText(grid[row]) + '"' + comma + ' //' + row);
   }
   lines.push("  ];");
   return lines.join("\n");
@@ -911,6 +1060,11 @@ module.exports = {
   removeAutoBackground: removeAutoBackground,
   capScale: capScale,
   resample: resample,
+  resampleArea: resampleArea,
+  MAX_COLOURS: MAX_COLOURS,
+  multiColourIndex: multiColourIndex,
+  buildMultiColourMapper: buildMultiColourMapper,
+  gridRowText: gridRowText,
   buildColourMapper: buildColourMapper,
   mapGrid: mapGrid,
   flipGrid: flipGrid,

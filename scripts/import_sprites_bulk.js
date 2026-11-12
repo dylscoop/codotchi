@@ -40,6 +40,12 @@
  *     flip           true: mirror every stage; or a list of stages / grid keys
  *                    to mirror, e.g. ["baby", "adult"] (for art that faces
  *                    right; quadrupeds must face left)
+ *     colors         { <stage>: n } or n for every stage: draw that stage
+ *                    with up to n colours (3-33) instead of 3, for detailed
+ *                    paintings. The stage is shrunk by averaging (keeping its
+ *                    shading) and quantised to n colours: the 3 most common
+ *                    stay indices 1-3, the rest are emitted as byStage.<stage>.extra
+ *                    and drawn as grid indices 6+ (base-36 characters)
  *     legRowStart    first leg-zone row of the output grid (default floor(rows * 0.78))
  *     legs           { <gridKey>: [[startCol, endCol, group], ...] } hand-set
  *                    leg columns (group 0 or 1 steps together) for one grid,
@@ -155,13 +161,31 @@ function importSpecies(species, dir) {
   function flips(k) {
     return flip === true || (Array.isArray(flip) && (flip.indexOf(k) !== -1 || flip.indexOf(k.split("_")[0]) !== -1));
   }
+  // colors: a number applies to every stage; a map sets it per stage.
+  var colorsCfg = config.colors;
+  if (colorsCfg != null && typeof colorsCfg === "object") {
+    Object.keys(colorsCfg).forEach(function (s) {
+      if (STAGES.indexOf(s) === -1) { throw new Error(dir + ": colors has unknown stage \"" + s + "\""); }
+    });
+  }
+  function coloursFor(stage) {
+    var n = typeof colorsCfg === "number" ? colorsCfg : (colorsCfg && colorsCfg[stage]);
+    if (n == null || n === 3) { return null; }
+    if (!(Number.isInteger(n) && n > 3 && n <= lib.MAX_COLOURS)) {
+      throw new Error(dir + ": colors" + (typeof colorsCfg === "number" ? "" : "." + stage) +
+                      " must be a whole number from 3 to " + lib.MAX_COLOURS);
+    }
+    return n;
+  }
+
   var maxW  = Math.max.apply(null, images.map(function (i, n) { return i.width  * mults[n]; }));
   var maxH  = Math.max.apply(null, images.map(function (i, n) { return i.height * mults[n]; }));
   var scale = lib.capScale(maxW, maxH);
   var cols  = Math.max(1, Math.round(maxW * scale));
   var rows  = Math.max(1, Math.round(maxH * scale));
   var resampled = images.map(function (img, n) {
-    return lib.resample(img,
+    var rs = coloursFor(keys[n].split("_")[0]) ? lib.resampleArea : lib.resample;
+    return rs(img,
       Math.min(cols, Math.max(1, Math.round(img.width  * mults[n] * scale))),
       Math.min(rows, Math.max(1, Math.round(img.height * mults[n] * scale))));
   });
@@ -179,14 +203,18 @@ function importSpecies(species, dir) {
   var byStage  = {};
   STAGES.forEach(function (stage) {
     var own = palettes[stage];
-    if (!own && !config.perStagePalette) { return; }
+    var nColours = coloursFor(stage);
+    if (!own && !config.perStagePalette && !nColours) { return; }
     var imgs = resampled.filter(function (img, i) { return keys[i].split("_")[0] === stage; });
     if (imgs.length === 0) { return; }
-    var m = lib.buildColourMapper(imgs, alphaThresh, own);
+    if (nColours && own) { throw new Error(dir + ": " + stage + " can't have both colors and palettes"); }
+    var m = nColours ? lib.buildMultiColourMapper(imgs, alphaThresh, nColours)
+                     : lib.buildColourMapper(imgs, alphaThresh, own);
     stageMappers[stage] = m;
     var p = m.palette, sp = mapper.palette;
-    if (p.primary !== sp.primary || p.secondary !== sp.secondary || p.accent !== sp.accent) {
+    if (p.primary !== sp.primary || p.secondary !== sp.secondary || p.accent !== sp.accent || (p.extra && p.extra.length)) {
       byStage[stage] = { primary: p.primary, secondary: p.secondary, accent: p.accent };
+      if (p.extra && p.extra.length) { byStage[stage].extra = p.extra; }
     }
   });
   var grids  = {};
@@ -321,7 +349,7 @@ function renderOutput(all) {
       var grid = sp.grids[key];
       L.push("  DEFS[" + q(sp.species) + "][" + q(key) + "] = [");
       grid.forEach(function (row, r) {
-        L.push("    \"" + row.join("") + "\"" + (r < grid.length - 1 ? "," : "") + " //" + r);
+        L.push("    \"" + lib.gridRowText(row) + "\"" + (r < grid.length - 1 ? "," : "") + " //" + r);
       });
       L.push("  ];");
     });
@@ -349,7 +377,8 @@ function renderOutput(all) {
     var stageKeys = Object.keys(sp.byStage || {}).sort(compareGridKeys);
     var bs = stageKeys.length === 0 ? "" : ", byStage: { " + stageKeys.map(function (s) {
       var c = sp.byStage[s];
-      return s + ": { primary: " + q(c.primary) + ", secondary: " + q(c.secondary) + ", accent: " + q(c.accent) + " }";
+      return s + ": { primary: " + q(c.primary) + ", secondary: " + q(c.secondary) + ", accent: " + q(c.accent) +
+             (c.extra ? ", extra: " + JSON.stringify(c.extra) : "") + " }";
     }).join(", ") + " }";
     L.push("    " + q(sp.species) + ": { primary: " + q(p.primary) + ", secondary: " + q(p.secondary) +
            ", accent: " + q(p.accent) + ", background: " + q(p.background) + bs + " },");

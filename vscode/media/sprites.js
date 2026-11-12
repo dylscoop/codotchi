@@ -19,7 +19,9 @@
   // -- Compact grid builder -------------------------------------------------
   function parseGrid(rows) {
     return rows.map(function(r) {
-      return r.split("").map(Number);
+      // One base-36 character per cell: 0-9, then a-z for multi-colour
+      // stages (indices 6+ map to palette.extra; see colorMap below).
+      return r.split("").map(function (ch) { return parseInt(ch, 36); });
     });
   }
 
@@ -1646,6 +1648,9 @@
       4: "#FFD700",
       5: "#FFD700"
     };
+    // Multi-colour stages (sprite.json "colors") add palette.extra as indices 6+.
+    var extraColours = palette.extra || [];
+    for (var xi = 0; xi < extraColours.length; xi++) { colorMap[6 + xi] = extraColours[xi]; }
 
     // Monkey is an upright type but faces sideways (like a quadruped) —
     // flip it when NOT facing left, same as quadrupeds.
