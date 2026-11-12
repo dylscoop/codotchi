@@ -74,6 +74,16 @@ describe("action.mjs social commands (integration)", () => {
     });
   });
 
+  it("/codotchi goodbye ends the visit early", async () => {
+    await withFixture(async (tmp) => {
+      await writePet(tmp, { friend: FRIEND, visit: VISIT });
+      const out = run(tmp, "goodbye");
+      assert.ok(out.includes("waved goodbye to Pixel"), out);
+      assert.equal(readPet(tmp).visit, null);
+      assert.ok(run(tmp, "goodbye").includes("No friend is visiting"));
+    });
+  });
+
   it("/codotchi gift is refused with no visitor and saves nothing", async () => {
     await withFixture(async (tmp) => {
       await writePet(tmp, { friend: FRIEND });

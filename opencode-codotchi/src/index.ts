@@ -70,6 +70,7 @@ import {
   CODE_ACTIVITY_THROTTLE_SECONDS,
   playWithFriend,
   giveFriendGift,
+  sayGoodbyeToFriend,
   acceptProposal,
   declineProposal,
   socialSummaryLines,
@@ -1434,7 +1435,7 @@ const plugin: Plugin = async (ctx) => {
       "This tool reads state from VS Code, PyCharm, and the local OpenCode pet — do NOT use any other codotchi tool.",
     args: {
       action: tool.schema
-        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
+        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
         .describe("The action to perform"),
       value: tool.schema
         .number()
@@ -1734,6 +1735,7 @@ const plugin: Plugin = async (ctx) => {
          case "friend":
          case "playfriend":
          case "gift":
+         case "goodbye":
          case "accept":
          case "decline": {
            // Social (v2.36.0): friend visits, gifts and proposals live on the IDE pets.
@@ -1753,6 +1755,7 @@ const plugin: Plugin = async (ctx) => {
              }
              const next = action === "playfriend" ? playWithFriend(p.state)
                : action === "gift" ? giveFriendGift(p.state)
+               : action === "goodbye" ? sayGoodbyeToFriend(p.state)
                : action === "accept" ? acceptProposal(p.state)
                : declineProposal(p.state);
              if (!next.events.some((e) => e.endsWith("_refused"))) {
@@ -2112,7 +2115,7 @@ const CODOTCHI_TOOL_INPUT = {
   properties: {
     action: {
       type: "string",
-      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
+      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
       description: "The action to perform",
     },
     value: { type: "number", description: "Numeric USD value for warnthreshold or shoutthreshold actions" },

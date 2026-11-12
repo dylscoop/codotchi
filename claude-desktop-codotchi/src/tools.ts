@@ -24,6 +24,7 @@ import {
   dailiesView,
   playWithFriend,
   giveFriendGift,
+  sayGoodbyeToFriend,
   acceptProposal,
   declineProposal,
   socialSummaryLines,
@@ -184,10 +185,11 @@ export function clean(cfg: DesktopConfig): ToolPayload {
  * Social actions (v2.36.0): play with / give a gift to a visiting friend, or
  * answer a marriage proposal. A refused action is not saved.
  */
-export function socialAction(cfg: DesktopConfig, kind: "playfriend" | "gift" | "accept" | "decline"): ToolPayload {
+export function socialAction(cfg: DesktopConfig, kind: "playfriend" | "gift" | "goodbye" | "accept" | "decline"): ToolPayload {
   const { state, mealsGivenThisCycle } = loadPet(cfg);
   const acted = kind === "playfriend" ? playWithFriend(state)
     : kind === "gift" ? giveFriendGift(state)
+    : kind === "goodbye" ? sayGoodbyeToFriend(state)
     : kind === "accept" ? acceptProposal(state)
     : declineProposal(state);
   const next = applyDevMode(acted, cfg);

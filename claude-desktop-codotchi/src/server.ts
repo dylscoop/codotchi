@@ -60,6 +60,7 @@ if (SOCIAL_PREVIEW) {
 registerPetTool("codotchi_friend", "Friends and family", "Show your codotchi's friend, partner, heir egg and any marriage proposal.", () => tools.show(cfg));
 registerPetTool("codotchi_playfriend", "Play with the visiting friend", "Play with the friend pet visiting your codotchi (once per visit).", () => tools.socialAction(cfg, "playfriend"));
 registerPetTool("codotchi_gift", "Give the friend a gift", "Give the visiting friend pet a gift (once per visit).", () => tools.socialAction(cfg, "gift"));
+registerPetTool("codotchi_goodbye", "Say goodbye to the friend", "Wave goodbye to the visiting friend pet, ending the visit early.", () => tools.socialAction(cfg, "goodbye"));
 registerPetTool("codotchi_accept", "Accept proposal", "Accept a marriage proposal; the married pet leaves an heir egg.", () => tools.socialAction(cfg, "accept"));
 registerPetTool("codotchi_decline", "Decline proposal", "Turn down a marriage proposal for now.", () => tools.socialAction(cfg, "decline"));
 }

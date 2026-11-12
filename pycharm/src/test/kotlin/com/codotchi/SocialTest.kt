@@ -245,6 +245,15 @@ class SocialTest {
     }
 
     @Test
+    fun `goodbye ends the visit early, and is refused with no visit`() {
+        val s = sayGoodbyeToFriend(visiting(20))
+        assertEquals(null, s.visit)
+        assertEquals(listOf("friend_waved_goodbye", "friend_visit_ended"), s.events)
+        assertEquals(20, s.friend!!.friendship)
+        assertEquals(listOf("friend_goodbye_refused"), sayGoodbyeToFriend(makePet()).events)
+    }
+
+    @Test
     fun `a gift that reaches Best Friend unlocks Best Buds`() {
         val s = giveFriendGift(visiting(70))
         assertEquals(85, s.friend!!.friendship)

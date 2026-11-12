@@ -39,6 +39,7 @@ import {
   isDeathlessPet,
   playWithFriend,
   giveFriendGift,
+  sayGoodbyeToFriend,
   acceptProposal,
   declineProposal,
   hatchHeir,
@@ -653,6 +654,11 @@ export class SidebarProvider
       case "friend_gift":
         if (state === null) { return; }
         nextState = giveFriendGift(state);
+        break;
+
+      case "friend_goodbye":
+        if (state === null) { return; }
+        nextState = sayGoodbyeToFriend(state);
         break;
 
       case "accept_proposal":

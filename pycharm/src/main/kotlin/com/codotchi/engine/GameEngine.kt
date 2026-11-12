@@ -1725,6 +1725,18 @@ fun giveFriendGift(state: PetState): PetState {
 }
 
 /**
+ * Say goodbye to the visiting friend: the visit ends early. Emits
+ * `friend_waved_goodbye` then `friend_visit_ended`. Refused (event
+ * `friend_goodbye_refused`) when no friend is visiting.
+ */
+fun sayGoodbyeToFriend(state: PetState): PetState {
+    if (!state.alive || state.visit == null) {
+        return withDerivedFields(state.copy(events = listOf("friend_goodbye_refused")))
+    }
+    return withDerivedFields(state.copy(visit = null, events = listOf("friend_waved_goodbye", "friend_visit_ended")))
+}
+
+/**
  * Accept the pending proposal: the pet marries. Emits `married`. Refused
  * (event `proposal_refused`) when there is no offer.
  *

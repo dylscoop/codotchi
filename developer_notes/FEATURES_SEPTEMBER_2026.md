@@ -575,7 +575,7 @@ merges:
 | Play together is a real game | `[ ]` | **Play together** starts one of the existing minigames (§4 of `vscode/FEATURES.md`) with the friend as the opponent or partner, rather than an instant +10. Friendship gain scales with the result |
 | Gifts are actual items | `[ ]` | A friend's gift is a concrete item it brings (food, toy, floor decoration), drawn in its paws and dropped on the floor, rather than flat +10 happiness. **Give gift** has the pet pick something it owns to hand over, rather than costing 5 hunger |
 | Different friends visit | `[ ]` | Several friend slots, each with its own name, species, sprite and friendship meter, so the same pet doesn't always come. Friends you haven't seen in a while can drift away |
-| Say goodbye | `[ ]` | A **👋 Goodbye** action ends the visit early with a wave animation, rather than waiting for `VISIT_TICKS` |
+| Say goodbye | `[x]` | v2.38.0: **👋 Goodbye** (`sayGoodbyeToFriend`, `/codotchi goodbye`, `codotchi_goodbye`) ends the visit early; the visitor waves (hops) and slides back out. Any visit ending now slides out the same way |
 | Offspring redesign | `[ ]` | The heir egg / generations mechanic, taken out of v2.36.0 for a redesign. Code and save fields are kept (see the Heir egg row above) |
 | Visitor wanders on its own | `[ ]` | The visitor walks around in its own idle pattern (§5.3 idle wandering, with its own speed and direction flips) rather than standing fixed beside the pet. The two pets sometimes meet in the middle and face each other |
 

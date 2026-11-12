@@ -13,6 +13,8 @@ import {
   friendshipLevel,
   playWithFriend,
   giveFriendGift,
+  sayGoodbyeToFriend,
+  socialActionMessage,
   acceptProposal,
   declineProposal,
   hatchHeir,
@@ -212,6 +214,17 @@ describe("social: playing and gifts", () => {
     assert.ok(s.trainer.achievements.includes("best_buds"));
     assert.equal(s.trainer.counters.giftsGiven, 1);
     assert.deepEqual(giveFriendGift(s).events, ["friend_gift_refused"]);
+  });
+
+  it("goodbye ends the visit early, and is refused with no visit", () => {
+    const s = sayGoodbyeToFriend(visiting(20));
+    assert.equal(s.visit, null);
+    assert.deepEqual(s.events, ["friend_waved_goodbye", "friend_visit_ended"]);
+    assert.equal(s.friend!.friendship, 20);
+    assert.match(socialActionMessage(s), /waved goodbye/);
+    const refused = sayGoodbyeToFriend(makePet());
+    assert.deepEqual(refused.events, ["friend_goodbye_refused"]);
+    assert.equal(socialActionMessage(refused), "No friend is visiting right now.");
   });
 });
 

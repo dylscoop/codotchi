@@ -2661,6 +2661,17 @@ export function giveFriendGift(state) {
     return events.includes("best_friends") ? awardXp(xp, "best_friend") : xp;
 }
 /**
+ * Say goodbye to the visiting friend: the visit ends early. Emits
+ * `friend_waved_goodbye` then `friend_visit_ended`. Refused (event
+ * `friend_goodbye_refused`) when no friend is visiting.
+ */
+export function sayGoodbyeToFriend(state) {
+    if (!state.alive || !state.visit) {
+        return withDerivedFields({ ...state, events: ["friend_goodbye_refused"] });
+    }
+    return withDerivedFields({ ...state, visit: null, events: ["friend_waved_goodbye", "friend_visit_ended"] });
+}
+/**
  * Accept the pending proposal: the pet marries. Emits `married`. Refused
  * (event `proposal_refused`) when there is no offer.
  *
@@ -2723,7 +2734,7 @@ export function socialSummaryLines(state, cmd = "/codotchi ") {
     }
     const f = state.friend;
     if (state.visit && f) {
-        lines.push(`👋 ${f.name} is visiting! Try ${cmd}playfriend or ${cmd}gift`);
+        lines.push(`👋 ${f.name} is visiting! Try ${cmd}playfriend, ${cmd}gift or ${cmd}goodbye`);
     }
     if (f && !(state.partner && state.partner.name === f.name)) {
         lines.push(`🤝 Friend: ${f.name} — ${friendshipLevel(f.friendship)} (${Math.round(f.friendship)}/100)`);
@@ -2758,6 +2769,12 @@ export function socialActionMessage(state) {
     }
     if (e.includes("friend_gift_refused")) {
         return !state.visit ? "No friend is visiting right now." : `${state.name} already gave ${f} a gift this visit.`;
+    }
+    if (e.includes("friend_goodbye_refused")) {
+        return "No friend is visiting right now.";
+    }
+    if (e.includes("friend_waved_goodbye")) {
+        return `👋 ${state.name} waved goodbye to ${f}.`;
     }
     if (e.includes("proposal_refused")) {
         return "There's no proposal to answer.";

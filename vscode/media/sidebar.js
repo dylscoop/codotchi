@@ -422,6 +422,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   document.getElementById("btn-friend-gift").addEventListener("click", function () {
     vscode.postMessage({ command: "friend_gift" });
   });
+  document.getElementById("btn-friend-goodbye").addEventListener("click", function () {
+    vscode.postMessage({ command: "friend_goodbye" });
+  });
   document.getElementById("btn-proposal-accept").addEventListener("click", function () {
     vscode.postMessage({ command: "accept_proposal" });
   });
@@ -2825,6 +2828,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                            lying ? 1 : window.spriteMood.scaleY(mood, moodFrame), walking);
     }
     var guestBox = drawGuest(lastState, petX + bWidth / 2, nowMs);
+    drawLeavingGuest(nowMs);
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
     // The cat's mouse or bird, in its mouth on the way back
     if (catErrand && catErrand.kind === "gift" && !catErrand.cancelled && catErrand.phase !== "out") {
@@ -2864,11 +2868,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   /** Events whose bubble is worth showing, most important first. */
   var SOCIAL_BUBBLE_EVENTS = ["married", "proposal_received", "matchmaker_arrived", "best_friends",
     "friend_gift_received", "friend_visit_started", "friend_played", "friend_gift_given",
-    "friend_play_refused", "friend_gift_refused", "proposal_declined", "friend_visit_ended"];
+    "friend_play_refused", "friend_gift_refused", "proposal_declined", "friend_waved_goodbye", "friend_visit_ended"];
 
   var GUEST_SLIDE_MS = 900;
+  var GUEST_WAVE_MS = 700;
   var KISS_MS = 2600;
   var guestAnim = { key: "", startMs: 0 };
+  var lastVisitorDraw = null;
+  var guestLeaving = null;
   var kissStartMs = 0;
 
   /** Who stands beside the pet: the visiting friend, else the partner (pet awake), else null. */
@@ -2912,7 +2919,31 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var x = Math.round(startX + (homeX - startX) * ease);
     var y = spriteCanvas.height - h - 12;
     drawBody(gs, x, y, onRight, t < 1 ? Math.floor(nowMs / 150) % 2 : 0);
+    if (state.visit && who === state.friend) {
+      lastVisitorDraw = { gs: gs, x: x, y: y, w: w, onRight: onRight };
+    }
     return { x: x, y: y, w: w, h: h };
+  }
+
+  /**
+   * The friend whose visit just ended: it waves (hops) for GUEST_WAVE_MS, then
+   * slides back out past the edge it came in from.
+   */
+  function drawLeavingGuest(nowMs) {
+    if (!guestLeaving || stageGame || !socialEnabled) { guestLeaving = null; return; }
+    var g = guestLeaving.from;
+    var elapsed = nowMs - guestLeaving.startMs;
+    var W = spriteCanvas.width;
+    var endX = g.onRight ? W + 4 : -g.w - 4;
+    if (REDUCED_MOTION || elapsed >= GUEST_WAVE_MS + GUEST_SLIDE_MS) { guestLeaving = null; return; }
+    if (elapsed < GUEST_WAVE_MS) {
+      var hop = Math.floor(elapsed / 150) % 2 === 0 ? 0 : -3;
+      drawBody(g.gs, g.x, g.y + hop, g.onRight, 0);
+      return;
+    }
+    var t = (elapsed - GUEST_WAVE_MS) / GUEST_SLIDE_MS;
+    var x = Math.round(g.x + (endX - g.x) * t * t);
+    drawBody(g.gs, x, g.y, !g.onRight, Math.floor(nowMs / 150) % 2);
   }
 
   /** Hearts floating between the pet and its new partner for KISS_MS after a marriage. */
@@ -3268,6 +3299,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (events.indexOf("cured")         !== -1) { pushReaction("healed",        nowMs); }
     if (socialEnabled && events.indexOf("married")       !== -1) { kissStartMs = nowMs; pushReaction("praised", nowMs); }
     if (socialEnabled && events.indexOf("friend_played") !== -1) { pushReaction("played", nowMs); }
+    if (socialEnabled && events.indexOf("friend_visit_ended") !== -1 && lastVisitorDraw) {
+      guestLeaving = { startMs: nowMs, from: lastVisitorDraw };
+      lastVisitorDraw = null;
+    }
     if (events.indexOf("pooped")        !== -1) { pushReaction("poop_appeared", nowMs); }
     // evolved: any evolved_to_* event (egg → baby gets the hatch burst instead)
     for (var ei = 0; ei < events.length; ei++) {
@@ -3659,6 +3694,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "friend_made":             "",   // silent: the visit bubble says it
       "friend_visit_started":    _fr + " dropped by to visit " + n + "!",
       "friend_visit_ended":      _fr + " waved goodbye.",
+      "friend_waved_goodbye":    n + " waved goodbye to " + _fr + ". 👋",
+      "friend_goodbye_refused":  "",
       "friend_gift_received":    _fr + " brought " + n + " a present! 🎁",
       "friend_played":           n + " and " + _fr + " played together!",
       "friend_gift_given":       n + " shared a treat with " + _fr + ".",

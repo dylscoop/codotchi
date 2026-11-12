@@ -1,6 +1,17 @@
 # Version History
 
-## v2.37.0 - current
+## v2.38.0 - in progress
+
+### Changes from v2.37.0 (social follow-ups - branch feat/social-followups)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt` | Say goodbye: `sayGoodbyeToFriend()` ends a visit early (events `friend_waved_goodbye`, `friend_visit_ended`; `friend_goodbye_refused` with no visit); `socialActionMessage` / `socialSummaryLines` mention it |
+| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt`, `vscode/media/sidebar.html`, `sidebar.js` | **👋 Goodbye** button (`friend_goodbye` message); when any visit ends the visitor hops (waves) for 0.7 s and slides back out the edge it came in from |
+| `opencode-codotchi/src/index.ts`, `commands/codotchi.md`, `claude-codotchi/scripts/action.mjs`, `commands/codotchi.md`, `claude-desktop-codotchi/src/server.ts`, `tools.ts` | `/codotchi goodbye`; Claude Desktop `codotchi_goodbye` |
+| `vscode/tests/unit/social.test.ts`, `pycharm/.../SocialTest.kt`, `claude-codotchi/tests/integration/socialActions.test.mjs` | goodbye tests |
+
+## v2.37.0
 
 ### Changes from v2.36.0 (daily age bump - branch feat/daily-age-bump)
 
