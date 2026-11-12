@@ -5,6 +5,7 @@
 ### Added
 
 - **Pets age a little every day.** The first time Codotchi runs on a new day, your pet gains a day of age, rounded down to a whole day (8.5 days becomes 9). This happens even if the pet was idle, asleep or the IDE was closed. It only counts once, however many days you were away. The pet then says "*Name* aged a day whilst you were gone".
+- **New dog art for the teen, adult and senior stages.** The teen is a borzoi, the adult a golden mixed-breed and the senior a German shepherd. They are drawn with up to 24 colours instead of 3, so their fur keeps its shading. Every stage faces the right way.
 
 ## [2.35.2] - 2026-11-09
 

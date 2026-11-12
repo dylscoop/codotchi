@@ -192,6 +192,7 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
 <h3>2.37.0</h3>
 <ul>
 <li><b>Pets age a little every day</b> — the first time Codotchi runs on a new day, your pet gains a day of age, rounded down to a whole day (8.5 days becomes 9), even if it was idle. It only counts once, however long you were away.</li>
+<li><b>New dog art</b> — the teen is a borzoi, the adult a golden mixed-breed and the senior a German shepherd, drawn with up to 24 colours instead of 3 so their fur keeps its shading.</li>
 </ul>
 <h3>2.27.4</h3>
 <ul>

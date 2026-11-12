@@ -12,6 +12,10 @@
 | `claude-codotchi/scripts/hook-session-start.mjs`, `dist/` | session start applies the bump to a non-anchored pet and greets with the aged-a-day text |
 | `vscode/tests/unit/dailyAgeBump.test.ts`, `vscode/package.json`, `pycharm/.../DailyAgeBumpTest.kt` | tests |
 | CHANGELOG, FEATURES, README, all manifests | version 2.37.0 |
+| `sprites/dog/` (teen borzoi, adult Scout, senior German shepherd), `sprite.json` | new dog art; `flip: ["teen"]` (was `true`, which mirrored every stage); teen/senior cropped to their bodies; senior `stageScale` 2.16; hand-set teen/senior legs; `colors: 24` for teen/adult/senior |
+| `scripts/lib/spriteImport.js`, `import_sprites_bulk.js`, `import_sprite.js` (`--colors`), both `.ps1` wizards, `validate_sprites.js`, `export_sprite_pngs.js` | detailed colours: `resampleArea` + `buildMultiColourMapper` (median cut + k-means, up to 33 colours); indices 1-3 then 6+ as base-36 grid chars, extra colours in `byStage.<stage>.extra`; bulk wizard asks which stages to flip |
+| `vscode/media/sprites.js`, `spriteConstants.js` | grids parsed as base-36; `palette.extra` mapped to indices 6+; `getPalette` passes `extra` |
+| `vscode/tests/unit/spriteImportBulk.test.ts`, `spriteData.test.ts` | detailed-colour tests; index check allows a stage's extra colours |
 
 ## v2.36.0
 
