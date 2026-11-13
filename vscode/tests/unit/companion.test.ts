@@ -152,3 +152,43 @@ describe("companion: webview", () => {
     assert.doesNotMatch(js, /the pet stays put so its companion/);
   });
 });
+
+describe("companion: following the pet in a game", () => {
+  const src = fs.readFileSync(path.join(__dirname, "../../../media/sidebar.js"), "utf8");
+  const body = src.match(/function followPet\([\s\S]*?\r?\n  \}\r?\n/)![0];
+  const consts = src.match(/var FOLLOW_START_PX[\s\S]*?var FOLLOW_TURN_MS = \d+;/)![0];
+  // eslint-disable-next-line no-new-func
+  const followPet = new Function(consts + "\n" + body + "\nreturn followPet;")() as
+    (g: Record<string, unknown>, w: number, W: number, petCx: number, half: number, side: number, now: number) =>
+      { x: number; facingLeft: boolean; frame: number };
+
+  it("does not flip facing every frame while tagging along on the side the pet walks towards", () => {
+    const g: Record<string, unknown> = { x: 150 };
+    let flips = 0;
+    let last: boolean | null = null;
+    for (let i = 0; i < 300; i++) {
+      const now = 1000 + i * 16;
+      const petCx = 100 + i * 0.6;   // the pet walks right, slower than the follower
+      const r = followPet(g, 20, 400, petCx, 15, 1, now);
+      if (last !== null && r.facingLeft !== last) { flips++; }
+      last = r.facingLeft;
+    }
+    assert.ok(flips <= 3, `facing flipped ${flips} times`);
+  });
+
+  it("never turns twice within 300ms", () => {
+    const g: Record<string, unknown> = { x: 50 };
+    let lastTurn = -Infinity;
+    let last: boolean | null = null;
+    for (let i = 0; i < 400; i++) {
+      const now = i * 16;
+      const petCx = 100 + Math.sin(i / 5) * 12;   // the pet dithers back and forth
+      const r = followPet(g, 20, 400, petCx, 15, -1, now);
+      if (last !== null && r.facingLeft !== last) {
+        assert.ok(now - lastTurn >= 300, "turned again too soon");
+        lastTurn = now;
+      }
+      last = r.facingLeft;
+    }
+  });
+});

@@ -3092,14 +3092,36 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     g.followLastMs = nowMs;
     g.lastMs = nowMs;
     var dx = tx - g.x;
-    var stepPx = 90 * dt;
-    var moving = Math.abs(dx) > 1.5;
-    if (moving) { g.x += Math.sign(dx) * Math.min(Math.abs(dx), stepPx); g.dir = dx < 0 ? -1 : 1; }
+    // Hysteresis: set off once well away from the spot, keep going until right there
+    if (!g.followMoving && Math.abs(dx) > FOLLOW_START_PX) { g.followMoving = true; }
+    else if (g.followMoving && Math.abs(dx) <= 1.5) { g.followMoving = false; g.followStillSinceMs = nowMs; }
+    if (g.followMoving) {
+      g.x += Math.sign(dx) * Math.min(Math.abs(dx), 90 * dt);
+      g.dir = dx < 0 ? -1 : 1;
+    }
     g.pauseUntilMs = Math.max(g.pauseUntilMs || 0, nowMs + 300);
     g.meetUntilMs = 0;
     g.nextMeetMs = Math.max(g.nextMeetMs || 0, nowMs + 3000);
-    return { x: Math.round(g.x), facingLeft: moving ? dx < 0 : petCx < g.x + w / 2,
-             frame: moving ? Math.floor(nowMs / 150) % 2 : 0 };
+    // Face the way it walks; once settled a moment, turn to the pet. Never flip faster than FOLLOW_TURN_MS.
+    var want = g.followMoving ? dx < 0
+      : (nowMs - (g.followStillSinceMs || 0) >= FOLLOW_FACE_PET_MS ? petCx < g.x + w / 2 : g.followFacingLeft);
+    if (g.followFacingLeft === undefined) { g.followFacingLeft = want; g.followTurnMs = nowMs; }
+    if (want !== g.followFacingLeft && nowMs - (g.followTurnMs || 0) >= FOLLOW_TURN_MS) {
+      g.followFacingLeft = want;
+      g.followTurnMs = nowMs;
+    }
+    return { x: Math.round(g.x), facingLeft: !!g.followFacingLeft,
+             frame: g.followMoving ? Math.floor(nowMs / 150) % 2 : 0 };
+  }
+  var FOLLOW_START_PX = 6;
+  var FOLLOW_FACE_PET_MS = 500;
+  var FOLLOW_TURN_MS = 300;
+
+  /** Forget the follow state so the next game starts fresh. */
+  function resetFollow(g) {
+    if (!g) { return; }
+    g.followSide = 0; g.followLastMs = 0; g.followMoving = false;
+    g.followFacingLeft = undefined; g.followTurnMs = 0; g.followStillSinceMs = 0;
   }
 
   /** The last game result, for everyone on stage to react to: {won, startMs}, or null. */
@@ -3145,7 +3167,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         if (!gw.followSide) { gw.followSide = gw.x + w / 2 < petCx ? -1 : 1; }
         step = followPet(gw, w, W, petCx, (petW || w) / 2, gw.followSide, nowMs);
       } else {
-        if (gw) { gw.followSide = 0; gw.followLastMs = 0; }
+        if (gw) { resetFollow(gw); }
         step = wanderGuest(homeX, w, W, petCx, nowMs);
       }
       x = step.x; facingLeft = step.facingLeft; frame = step.frame;
@@ -3315,13 +3337,18 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         x = cw.x; frame = 0;
         facingLeft = petCx < x + w / 2;
       } else if (inMinigame()) {
-        // Playing together: tag along beside the pet (away from a visiting friend)
-        if (guestBox) { cw.followSide = guestBox.x + guestBox.w / 2 < petCx ? 1 : -1; }
-        else if (!cw.followSide) { cw.followSide = cw.x + w / 2 < petCx ? -1 : 1; }
+        // Playing together: tag along beside the pet; the side is fixed for the whole game
+        // (opposite a visiting friend's side, else whichever is nearer at the start)
+        if (!cw.followSide) {
+          var gwSide = guestAnim.wander && guestAnim.wander.followSide;
+          cw.followSide = gwSide ? -gwSide
+            : guestBox ? (guestBox.x + guestBox.w / 2 < petCx ? 1 : -1)
+            : (cw.x + w / 2 < petCx ? -1 : 1);
+        }
         var fs = followPet(cw, w, W, petCx, halfPet, cw.followSide, nowMs);
         x = fs.x; facingLeft = fs.facingLeft; frame = fs.frame;
       } else {
-        cw.followSide = 0; cw.followLastMs = 0;
+        resetFollow(cw);
       }
       if (eating) {
         // Stop where it is while it eats (the wander resumes afterwards)
