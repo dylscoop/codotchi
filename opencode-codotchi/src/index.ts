@@ -70,6 +70,10 @@ import {
   CODE_ACTIVITY_THROTTLE_SECONDS,
   playWithFriend,
   giveFriendGift,
+  sayGoodbyeToFriend,
+  useItem,
+  itemListLines,
+  itemActionMessage,
   acceptProposal,
   declineProposal,
   socialSummaryLines,
@@ -1434,7 +1438,7 @@ const plugin: Plugin = async (ctx) => {
       "This tool reads state from VS Code, PyCharm, and the local OpenCode pet — do NOT use any other codotchi tool.",
     args: {
       action: tool.schema
-        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
+        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "items", "use", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
         .describe("The action to perform"),
       value: tool.schema
         .number()
@@ -1443,7 +1447,7 @@ const plugin: Plugin = async (ctx) => {
       name: tool.schema
         .string()
         .optional()
-        .describe("New name for the OpenCode pet — used with the rename action only"),
+        .describe("New name for the OpenCode pet (rename), or the item id for use / gift (e.g. apple, ball, plant)"),
     },
     async execute({ action, value, name }, context) {
       // Drain any queued tick notifications to prepend to this result
@@ -1578,7 +1582,7 @@ const plugin: Plugin = async (ctx) => {
                   sleeping: s.sleeping, poops: s.poops, spriteType: s.spriteType,
                   petLevel: s.petLevel, trainer: s.trainer,
                   spawnedAt: s.spawnedAt, dailies: s.dailies, levels: levelsEnabled,
-                  generation: s.generation, friend: s.friend, visit: s.visit, partner: s.partner,
+                  generation: s.generation, friend: s.friend, otherFriends: s.otherFriends, visit: s.visit, partner: s.partner,
                   heirEgg: s.heirEgg, proposal: s.proposal,
                 })
               : "";
@@ -1734,9 +1738,13 @@ const plugin: Plugin = async (ctx) => {
          case "friend":
          case "playfriend":
          case "gift":
+         case "goodbye":
+         case "items":
+         case "use":
          case "accept":
          case "decline": {
-           // Social (v2.36.0): friend visits, gifts and proposals live on the IDE pets.
+           // Social (v2.36.0): friend visits, gifts, items and proposals live on the IDE pets.
+           const itemId = name ? name.trim().toLowerCase() : undefined;
            const socialLines: string[] = [];
            for (const p of alivePets) {
              if (p.ide === "opencode") {
@@ -1751,8 +1759,22 @@ const plugin: Plugin = async (ctx) => {
                  : `${p.state.name} hasn't made a friend yet — a friend pet drops by now and then once your pet is a child.`));
                continue;
              }
+             if (action === "items") {
+               socialLines.push(`[${pLabel}] ${itemListLines(p.state, "/codotchi ").join("\n")}`);
+               continue;
+             }
+             if (action === "use") {
+               const used = useItem(p.state, itemId ?? "");
+               if (!used.events.includes("item_refused")) {
+                 setPetState(p.ide, used);
+                 saveIDEState(p.ide);
+               }
+               socialLines.push(`[${pLabel}] ${itemActionMessage(used, itemId ?? "")}`);
+               continue;
+             }
              const next = action === "playfriend" ? playWithFriend(p.state)
-               : action === "gift" ? giveFriendGift(p.state)
+               : action === "gift" ? giveFriendGift(p.state, itemId)
+               : action === "goodbye" ? sayGoodbyeToFriend(p.state)
                : action === "accept" ? acceptProposal(p.state)
                : declineProposal(p.state);
              if (!next.events.some((e) => e.endsWith("_refused"))) {
@@ -2112,11 +2134,11 @@ const CODOTCHI_TOOL_INPUT = {
   properties: {
     action: {
       type: "string",
-      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
+      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "items", "use", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
       description: "The action to perform",
     },
     value: { type: "number", description: "Numeric USD value for warnthreshold or shoutthreshold actions" },
-    name: { type: "string", description: "New name for the OpenCode pet — used with the rename action only" },
+    name: { type: "string", description: "New name for the OpenCode pet (rename), or the item id for use / gift (e.g. apple, ball, plant)" },
   },
   required: ["action"],
   additionalProperties: false,

@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.37.1] - 2026-11-12
+
+### Added (friends preview, dev mode only)
+
+- **Say goodbye.** A 👋 Goodbye button ends a friend's visit early; the friend waves and slides away.
+- **Visitors wander.** A visiting friend walks around on its own and now and then meets your pet face to face.
+- **Different friends visit.** Up to 3 friends; friends you haven't seen in a while can drift away.
+- **Gifts are real items.** Friends bring food, toys and decorations; you can use them or give one back. Items are also found every 4 minigame wins and with each achievement.
+- **Play together is a minigame** against the visiting friend; winning builds more friendship.
+
 ## [2.37.0] - 2026-11-12
 
 ### Added

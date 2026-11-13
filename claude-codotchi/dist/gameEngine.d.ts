@@ -407,8 +407,10 @@ export interface PetState {
     readonly pendingBosses: readonly string[];
     /** Family line: 1 for a fresh egg, parent's generation + 1 for an heir. */
     readonly generation: number;
-    /** The CPU friend that visits this pet; null until the first visit. */
+    /** The friend visiting now, or the one that visited last; null until the first visit. */
     readonly friend: FriendPet | null;
+    /** The pet's other friends (MAX_FRIENDS in all, counting `friend`), most recent first. */
+    readonly otherFriends: readonly FriendPet[];
     /** The friend is on the canvas right now; null otherwise. */
     readonly visit: FriendVisit | null;
     /** Active ticks since the last visit started (VISIT_MIN_GAP_TICKS). */
@@ -423,6 +425,10 @@ export interface PetState {
     readonly proposal: Proposal | null;
     /** Active ticks before another proposal can be made after a decline. */
     readonly proposalCooldownTicks: number;
+    /** Item ids the pet carries (ITEM_CATALOG), oldest first; at most MAX_ITEMS. */
+    readonly items: readonly string[];
+    /** Decoration item ids placed on the floor, oldest first; at most MAX_DECOR. */
+    readonly decor: readonly string[];
 }
 /** Who another (CPU) pet is: enough to draw it. */
 export interface PetIdentity {
@@ -434,12 +440,18 @@ export interface PetIdentity {
 export interface FriendPet extends PetIdentity {
     readonly friendship: number;
     readonly visits: number;
+    /** dayTimer when this friend last visited; drives drifting away (FRIEND_DRIFT_DAYS). */
+    readonly lastVisitDay?: number;
 }
 /** An ongoing visit. Play and gift can each be done once per visit. */
 export interface FriendVisit {
     readonly ticksLeft: number;
     readonly played: boolean;
     readonly gifted: boolean;
+    /** Item id the friend brought this visit, if any (drawn being dropped on arrival). */
+    readonly broughtItem?: string;
+    /** Ticks left of the visit-timer pause while a minigame with the friend runs (startFriendGame). */
+    readonly gameTicks?: number;
 }
 /** The egg a married pet leaves for the next generation. */
 export interface HeirEgg {
@@ -955,22 +967,24 @@ export declare const FRIENDSHIP_PER_VISIT: number;
 export declare const FRIEND_GIFT_CHANCE: number;
 /** Friendship gained when the friend brings a gift. */
 export declare const FRIENDSHIP_PER_RECEIVED_GIFT: number;
-/** Happiness the pet gains from the friend's gift. */
-export declare const FRIEND_GIFT_HAPPINESS: number;
 /** Friendship gained by playing together (once per visit). */
 export declare const FRIENDSHIP_PER_PLAY: number;
 /** Happiness gained by playing together. */
 export declare const FRIEND_PLAY_HAPPINESS: number;
 /** Energy spent playing together. */
 export declare const FRIEND_PLAY_ENERGY_COST: number;
-/** Friendship gained by giving the friend a gift (once per visit). */
+/** Friendship gained by giving the friend a toy (once per visit); food is a little less, decor more (FRIENDSHIP_PER_GIFT_KIND). */
 export declare const FRIENDSHIP_PER_GIVEN_GIFT: number;
-/** Hunger the pet gives up when it shares a treat as a gift. */
-export declare const FRIEND_GIFT_HUNGER_COST: number;
 /** Friendship lost per game-day boundary without a visit. */
 export declare const FRIENDSHIP_DECAY_PER_DAY: number;
 /** Senior game-days without a marriage before the matchmaker arrives. */
 export declare const MATCHMAKER_SENIOR_DAYS: number;
+/** Most friends a pet can have at once (the visiting / last friend plus otherFriends). */
+export declare const MAX_FRIENDS: number;
+/** Chance a visit, with a friend slot free, is from someone new rather than an old friend. */
+export declare const NEW_FRIEND_CHANCE: number;
+/** Game-days without a visit, at 0 friendship, before a friend drifts away. */
+export declare const FRIEND_DRIFT_DAYS: number;
 /** Active ticks after a declined proposal before another can be made (~1 game day). */
 export declare const PROPOSAL_DECLINE_COOLDOWN_TICKS: number;
 /** Happiness gained on marriage. */
@@ -988,22 +1002,98 @@ export declare const BEST_FRIEND_FRIENDSHIP: number;
 export declare const PARTNER_FRIENDSHIP: number;
 /** Names CPU friends and matchmaker matches are drawn from. */
 export declare const FRIEND_NAMES: readonly string[];
+/** What an item does when used: food feeds, a toy cheers up, decor goes on the floor. */
+export type ItemKind = "food" | "toy" | "decor";
+/** One kind of item the pet can own. */
+export interface ItemDef {
+    readonly id: string;
+    readonly kind: ItemKind;
+    readonly emoji: string;
+    readonly name: string;
+}
+/** Every item there is. Ids are saved, so never rename one. */
+export declare const ITEM_CATALOG: readonly ItemDef[];
+/** Most items the pet can carry; a new one is lost when the bag is full. */
+export declare const MAX_ITEMS: number;
+/** Most decorations on the floor at once; placing another replaces the oldest. */
+export declare const MAX_DECOR: number;
+/** Hunger from eating a food item. */
+export declare const ITEM_FOOD_HUNGER: number;
+/** Happiness from playing with a toy item. */
+export declare const ITEM_TOY_HAPPINESS: number;
+/** Happiness from placing a decoration. */
+export declare const ITEM_DECOR_HAPPINESS: number;
+/** Friendship from giving the visiting friend an item, by kind. */
+export declare const FRIENDSHIP_PER_GIFT_KIND: Readonly<Record<ItemKind, number>>;
+/** Every this-many minigame wins finds an item. */
+export declare const MINIGAME_WINS_PER_ITEM: number;
+/** The item with this id, or undefined. */
+export declare function itemById(id: string): ItemDef | undefined;
+/** A random item id. */
+export declare function randomItemId(rand?: () => number): string;
+/**
+ * Use an item the pet owns: food raises hunger, a toy raises happiness and a
+ * decoration goes on the floor (the oldest goes back when MAX_DECOR are out)
+ * for a little happiness. Emits `item_used_<id>`. Refused (event
+ * `item_refused`) when the pet doesn't own it, is asleep or has died.
+ */
+export declare function useItem(state: PetState, itemId: string): PetState;
+/**
+ * Plain-text list of the pet's items for the terminal plugins.
+ *
+ * @param cmd - How the plugin's commands are written, e.g. "/codotchi ".
+ */
+export declare function itemListLines(state: Pick<PetState, "name" | "items" | "decor">, cmd?: string): string[];
+/** "an apple", "a kite". */
+export declare function withArticle(name: string): string;
+/** One-line result for useItem(), read from its events. */
+export declare function itemActionMessage(state: Pick<PetState, "name" | "events">, itemId: string): string;
 /** The friendship level name for a friendship score. */
 export declare function friendshipLevel(friendship: number): string;
 /** A random CPU pet, never sharing a name with the ones in `avoid`. */
 export declare function randomFriendIdentity(avoid?: readonly string[], rand?: () => number): PetIdentity;
 /**
- * Play with the visiting friend: friendship and happiness up, a little energy
- * spent. Once per visit. Refused (event `friend_play_refused`) with no visit,
- * when already played this visit, while asleep, or with too little energy.
+ * Who visits, from the pet's friends (the last visitor first): with a slot
+ * free, a NEW_FRIEND_CHANCE share of `r` means someone new (null); the rest
+ * picks a friend weighted by friendship + 10, so close friends come more often.
+ *
+ * @param r - A random number in [0, 1).
  */
-export declare function playWithFriend(state: PetState): PetState;
+export declare function pickVisitor(roster: readonly FriendPet[], r: number): FriendPet | null;
+/** Friendship from playing a minigame with the visiting friend, by result. A plain play counts as a draw. */
+export declare const FRIENDSHIP_PER_PLAY_RESULT: Readonly<Record<"win" | "draw" | "lose", number>>;
+/** Most ticks a minigame with the friend holds the visit open (the visit timer is paused meanwhile). */
+export declare const FRIEND_GAME_PAUSE_TICKS: number;
 /**
- * Give the visiting friend a gift (the pet shares a treat): friendship up,
- * a little hunger spent. Once per visit. Refused (event `friend_gift_refused`)
- * with no visit, when already gifted this visit, or while asleep.
+ * The pet starts a minigame with the visiting friend: the visit timer pauses
+ * for up to FRIEND_GAME_PAUSE_TICKS so the friend doesn't leave mid-game.
+ * No events; unchanged when there is no visit, it already played, or the pet sleeps.
  */
-export declare function giveFriendGift(state: PetState): PetState;
+export declare function startFriendGame(state: PetState): PetState;
+/**
+ * Play with the visiting friend: friendship and happiness up, a little energy
+ * spent. Once per visit. With a minigame `result` ("win", "lose", or "draw" /
+ * "push") the friendship gain follows FRIENDSHIP_PER_PLAY_RESULT and a loss
+ * gives half the happiness; it also emits `friend_game_<win|draw|lose>`.
+ * Refused (event `friend_play_refused`) with no visit, when already played
+ * this visit, while asleep, or with too little energy.
+ */
+export declare function playWithFriend(state: PetState, result?: string): PetState;
+/**
+ * Give the visiting friend an item the pet owns: friendship up by
+ * FRIENDSHIP_PER_GIFT_KIND for its kind, and the item is gone. Without
+ * `itemId` the pet gives its oldest item. Once per visit. Emits
+ * `friend_gift_given` and `friend_gift_item_<id>`. Refused (event
+ * `friend_gift_refused`) with no visit, when already gifted this visit,
+ * while asleep, or when the pet has no such item.
+ */
+export declare function giveFriendGift(state: PetState, itemId?: string): PetState;
+/**
+ * Say goodbye to the visiting friend: the visit ends early. Emits
+ * `friend_waved_goodbye` then `friend_visit_ended`. Refused (event
+ * `friend_goodbye_refused`) when no friend is visiting.
+ */
+export declare function sayGoodbyeToFriend(state: PetState): PetState;
 /**
  * Accept the pending proposal: the pet marries. Emits `married`. Refused
  * (event `proposal_refused`) when there is no offer.
@@ -1024,7 +1114,7 @@ export declare function declineProposal(state: PetState): PetState;
  */
 export declare function hatchHeir(parent: PetState, name: string, trainer?: TrainerProgress | null): PetState | null;
 /** The social slice of a pet that the terminal text helpers read. */
-export type SocialView = Pick<PetState, "name" | "generation" | "friend" | "visit" | "partner" | "heirEgg" | "proposal">;
+export type SocialView = Pick<PetState, "name" | "generation" | "friend" | "visit" | "partner" | "heirEgg" | "proposal"> & Partial<Pick<PetState, "otherFriends">>;
 /**
  * Plain-text lines for the terminal plugins' status output: generation,
  * friend and friendship, an ongoing visit, partner, heir egg and any offer
@@ -1038,9 +1128,9 @@ export declare function socialSummaryLines(state: SocialView, cmd?: string): str
  * One-line result for a social action (playWithFriend, giveFriendGift,
  * acceptProposal, declineProposal), read from the events it emitted.
  */
-export declare function socialActionMessage(state: SocialView & Pick<PetState, "events">): string;
+export declare function socialActionMessage(state: SocialView & Pick<PetState, "events"> & Partial<Pick<PetState, "items">>): string;
 /** Parse the social fields from saved JSON, filling in defaults (saves before schemaVersion 2 have none). */
-export declare function deserialiseSocial(data: Record<string, unknown>): Pick<PetState, "generation" | "friend" | "visit" | "ticksSinceLastVisit" | "partner" | "heirEgg" | "seniorSinceDay" | "proposal" | "proposalCooldownTicks">;
+export declare function deserialiseSocial(data: Record<string, unknown>): Pick<PetState, "generation" | "friend" | "otherFriends" | "visit" | "ticksSinceLastVisit" | "partner" | "heirEgg" | "seniorSinceDay" | "proposal" | "proposalCooldownTicks" | "items" | "decor">;
 /** Current save-format version. Bump when a migration step is added to deserialiseState(). */
 export declare const SCHEMA_VERSION: number;
 /** What earned the XP. Each source maps to an amount, optional hourly / daily caps and counters. */

@@ -39,6 +39,9 @@ import {
   isDeathlessPet,
   playWithFriend,
   giveFriendGift,
+  sayGoodbyeToFriend,
+  startFriendGame,
+  useItem,
   acceptProposal,
   declineProposal,
   hatchHeir,
@@ -102,6 +105,8 @@ interface WebviewMessage {
   floorSnacks?: number;
   game?: string;
   result?: string;
+  /** use_item / friend_gift: which item (ITEM_CATALOG id). */
+  itemId?: string;
   name?: string;
   petType?: string;
   color?: string;  // deprecated — ignored, kept for message back-compat only
@@ -647,12 +652,27 @@ export class SidebarProvider
 
       case "friend_play":
         if (state === null) { return; }
-        nextState = playWithFriend(state);
+        nextState = playWithFriend(state, typeof message.result === "string" ? message.result : undefined);
+        break;
+
+      case "friend_play_start":
+        if (state === null) { return; }
+        nextState = startFriendGame(state);
         break;
 
       case "friend_gift":
         if (state === null) { return; }
-        nextState = giveFriendGift(state);
+        nextState = giveFriendGift(state, typeof message.itemId === "string" ? message.itemId : undefined);
+        break;
+
+      case "use_item":
+        if (state === null || typeof message.itemId !== "string") { return; }
+        nextState = useItem(state, message.itemId);
+        break;
+
+      case "friend_goodbye":
+        if (state === null) { return; }
+        nextState = sayGoodbyeToFriend(state);
         break;
 
       case "accept_proposal":

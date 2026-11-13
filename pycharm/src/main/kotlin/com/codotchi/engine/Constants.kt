@@ -488,22 +488,24 @@ const val FRIENDSHIP_PER_VISIT: Int = 2
 const val FRIEND_GIFT_CHANCE: Double = 0.3
 /** Friendship gained when the friend brings a gift. */
 const val FRIENDSHIP_PER_RECEIVED_GIFT: Int = 5
-/** Happiness the pet gains from the friend's gift. */
-const val FRIEND_GIFT_HAPPINESS: Int = 10
 /** Friendship gained by playing together (once per visit). */
 const val FRIENDSHIP_PER_PLAY: Int = 10
 /** Happiness gained by playing together. */
 const val FRIEND_PLAY_HAPPINESS: Int = 10
 /** Energy spent playing together. */
 const val FRIEND_PLAY_ENERGY_COST: Int = 5
-/** Friendship gained by giving the friend a gift (once per visit). */
+/** Friendship gained by giving the friend a toy (once per visit); food is a little less, decor more (FRIENDSHIP_PER_GIFT_KIND). */
 const val FRIENDSHIP_PER_GIVEN_GIFT: Int = 15
-/** Hunger the pet gives up when it shares a treat as a gift. */
-const val FRIEND_GIFT_HUNGER_COST: Int = 5
 /** Friendship lost per game-day boundary without a visit. */
 const val FRIENDSHIP_DECAY_PER_DAY: Int = 1
 /** Senior game-days without a marriage before the matchmaker arrives. */
 const val MATCHMAKER_SENIOR_DAYS: Int = 3
+/** Most friends a pet can have at once (the visiting / last friend plus otherFriends). */
+const val MAX_FRIENDS: Int = 3
+/** Chance a visit, with a friend slot free, is from someone new rather than an old friend. */
+const val NEW_FRIEND_CHANCE: Double = 0.25
+/** Game-days without a visit, at 0 friendship, before a friend drifts away. */
+const val FRIEND_DRIFT_DAYS: Int = 5
 /** Active ticks after a declined proposal before another can be made (~1 game day). */
 const val PROPOSAL_DECLINE_COOLDOWN_TICKS: Int = 300
 /** Happiness gained on marriage. */

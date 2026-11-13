@@ -142,6 +142,11 @@
       <div id="visit-actions" class="social-actions hidden">
         <button class="action-btn" id="btn-friend-play">🤝 Play together</button>
         <button class="action-btn" id="btn-friend-gift">🎁 Give gift</button>
+        <button class="action-btn" id="btn-friend-goodbye">👋 Goodbye</button>
+      </div>
+      <div id="items-bar" class="items-bar hidden">
+        <p id="items-hint" class="social-line"></p>
+        <div id="items-list" class="social-actions"></div>
       </div>
       <div id="proposal-bar" class="proposal-bar hidden">
         <p id="proposal-text" class="social-line"></p>
@@ -189,6 +194,7 @@
 
         <!-- Panel 0: game select -->
         <div id="mg-select" class="mg-panel">
+          <p id="mg-friend-hint" class="social-line hidden"></p>
           <button class="action-btn mg-game-btn" id="btn-mg-lr">Left / Right</button>
           <button class="action-btn mg-game-btn" id="btn-mg-hl">Higher or Lower</button>
           <button class="action-btn mg-game-btn" id="btn-mg-cf">Coin Flip</button>

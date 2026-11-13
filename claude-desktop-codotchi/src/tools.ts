@@ -24,6 +24,10 @@ import {
   dailiesView,
   playWithFriend,
   giveFriendGift,
+  sayGoodbyeToFriend,
+  useItem,
+  itemListLines,
+  itemActionMessage,
   acceptProposal,
   declineProposal,
   socialSummaryLines,
@@ -77,7 +81,10 @@ function renderText(state: PetState, _session: { interactionsToday: number; trea
   }
   const refusal = state.events.find((e) => REFUSAL_MESSAGES[e]);
   const socialMsg = socialActionMessage(state);
-  const message = refusal ? REFUSAL_MESSAGES[refusal] : socialMsg || (MOOD_MESSAGES[state.mood] ?? "Hello!");
+  const usedItem = state.events.find((e) => e.startsWith("item_used_"));
+  const itemMsg = usedItem ? itemActionMessage(state, usedItem.slice("item_used_".length))
+    : state.events.includes("item_refused") ? `${state.name} can't use that right now (or doesn't have one). codotchi_items lists what it has.` : "";
+  const message = refusal ? REFUSAL_MESSAGES[refusal] : socialMsg || itemMsg || (MOOD_MESSAGES[state.mood] ?? "Hello!");
   const bubble = [stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop")),
     ...socialSummaryLines(state, "codotchi_")].join("\n");
   if (!readConfig().levels) { return bubble; }
@@ -184,14 +191,30 @@ export function clean(cfg: DesktopConfig): ToolPayload {
  * Social actions (v2.36.0): play with / give a gift to a visiting friend, or
  * answer a marriage proposal. A refused action is not saved.
  */
-export function socialAction(cfg: DesktopConfig, kind: "playfriend" | "gift" | "accept" | "decline"): ToolPayload {
+export function socialAction(cfg: DesktopConfig, kind: "playfriend" | "gift" | "goodbye" | "accept" | "decline", itemId?: string): ToolPayload {
   const { state, mealsGivenThisCycle } = loadPet(cfg);
   const acted = kind === "playfriend" ? playWithFriend(state)
-    : kind === "gift" ? giveFriendGift(state)
+    : kind === "gift" ? giveFriendGift(state, itemId)
+    : kind === "goodbye" ? sayGoodbyeToFriend(state)
     : kind === "accept" ? acceptProposal(state)
     : declineProposal(state);
   const next = applyDevMode(acted, cfg);
   if (!acted.events.some((e) => e.endsWith("_refused"))) { savePet(next, mealsGivenThisCycle); }
+  return payload(next, loadSession());
+}
+
+/** List the pet's items and the decorations on its floor. */
+export function items(cfg: DesktopConfig): ToolPayload {
+  const shown = show(cfg);
+  return { ...shown, asciiArt: [shown.asciiArt, "", ...itemListLines(shown.state, "codotchi_use ")].join("\n") };
+}
+
+/** Use one of the pet's items: eat food, play with a toy or put a decoration on the floor. A refusal is not saved. */
+export function useItemAction(cfg: DesktopConfig, itemId: string): ToolPayload {
+  const { state, mealsGivenThisCycle } = loadPet(cfg);
+  const acted = useItem(state, itemId.trim().toLowerCase());
+  const next = applyDevMode(acted, cfg);
+  if (!acted.events.includes("item_refused")) { savePet(next, mealsGivenThisCycle); }
   return payload(next, loadSession());
 }
 

@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.37.0</version>
+    <version>2.37.1</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -189,6 +189,10 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+<h3>2.37.1</h3>
+<ul>
+<li><b>Friends preview (dev mode)</b> - visiting friends wander around and meet your pet, several different friends can visit, Play together is a minigame against the friend, gifts are real items you can use or give, and you can say goodbye.</li>
+</ul>
 <h3>2.37.0</h3>
 <ul>
 <li><b>Pets age a little every day</b> — the first time Codotchi runs on a new day, your pet gains a day of age, rounded down to a whole day (8.5 days becomes 9), even if it was idle. It only counts once, however long you were away.</li>

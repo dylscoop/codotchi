@@ -1,6 +1,30 @@
 # Version History
 
-## v2.37.0 - current
+## v2.37.1 - current
+
+### Changes from v2.37.0 (social follow-ups - branch feat/social-followups)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt` | Say goodbye: `sayGoodbyeToFriend()` ends a visit early (events `friend_waved_goodbye`, `friend_visit_ended`; `friend_goodbye_refused` with no visit); `socialActionMessage` / `socialSummaryLines` mention it |
+| `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt`, `vscode/media/sidebar.html`, `sidebar.js` | **👋 Goodbye** button (`friend_goodbye` message); when any visit ends the visitor hops (waves) for 0.7 s and slides back out the edge it came in from |
+| `opencode-codotchi/src/index.ts`, `commands/codotchi.md`, `claude-codotchi/scripts/action.mjs`, `commands/codotchi.md`, `claude-desktop-codotchi/src/server.ts`, `tools.ts` | `/codotchi goodbye`; Claude Desktop `codotchi_goodbye` |
+| `vscode/tests/unit/social.test.ts`, `pycharm/.../SocialTest.kt`, `claude-codotchi/tests/integration/socialActions.test.mjs` | goodbye tests |
+| `vscode/media/sidebar.js` | Visitor wanders on its own: after sliding in, the visiting friend paces at its own speed (10–20 px/s), flips direction every 1.5–4.5 s and sometimes pauses (`wanderGuest`, state in `guestAnim.wander`). Every 12–25 s it walks up beside the pet; both stop and face each other for `GUEST_MEET_MS` (2 s). The guest's side is now fixed when it arrives (it no longer slides in again when the pet crosses the middle) |
+| `vscode/tests/unit/webviewAnimations.test.ts` | wander stays on the stage; the meeting faces the pet |
+| `packages/core/src/gameEngine.ts` (+ synced copies), `asciiArt.ts`, `pycharm/.../engine/GameEngine.kt`, `PetState.kt`, `Constants.kt`, `CodotchiPersistence.kt` | Different friends visit: `PetState.otherFriends` (up to `MAX_FRIENDS` 3 counting `friend`, which is now the friend visiting or last to visit); `FriendPet.lastVisitDay`. On a visit `pickVisitor` picks someone new (`NEW_FRIEND_CHANCE` 0.25 while a slot is free) or an old friend weighted by friendship + 10; the visitor becomes `friend` and the rest move to `otherFriends`. Every friend not visiting loses 1 friendship per game day; at 0 friendship and `FRIEND_DRIFT_DAYS` (5) game days since its last visit, a friend drifts away (event `friend_drifted_away`; never the partner). Saves without the fields load with no other friends and `lastVisitDay` = today. `socialSummaryLines` lists "Other friends"; the matchmaker avoids every friend's name |
+| `vscode/media/sidebar.js`, `opencode-codotchi/src/index.ts` | social line shows the other friends (👥 name ♥♥); `friend_drifted_away` bubble text; OpenCode passes `otherFriends` to the status block |
+| `vscode/tests/unit/social.test.ts`, `pycharm/.../SocialTest.kt` | several-friends tests |
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/Items.kt` (new), `GameEngine.kt`, `Progression.kt`, `PetState.kt`, `Constants.kt`, `CodotchiPersistence.kt` | Gifts are actual items: `ITEM_CATALOG` (12 items: food / toy / decor), `PetState.items` (≤ `MAX_ITEMS` 12) and `decor` (≤ `MAX_DECOR` 3), `FriendVisit.broughtItem`. A friend's gift is a random item added to the bag (events `friend_gift_received` + `friend_gift_item_<id>`), no longer +10 happiness. `giveFriendGift(state, itemId?)` hands over an owned item (oldest when none named) for friendship by kind (`FRIENDSHIP_PER_GIFT_KIND` food 12 / toy 15 / decor 20), no longer −5 hunger; `FRIEND_GIFT_HAPPINESS` and `FRIEND_GIFT_HUNGER_COST` removed. `useItem()`: food +15 hunger, toy +10 happiness, decor goes on the floor (+5 happiness; oldest replaced). Items are also found: every `MINIGAME_WINS_PER_ITEM` (4) minigame wins and one per achievement unlocked (`item_found_<id>`). `itemListLines`, `itemActionMessage`, `withArticle` |
+| `vscode/media/sidebar.html`, `sidebar.js`, `sidebar.css`, `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt` | items bar in the social panel (click to use; after **🎁 Give gift**, click to give); `use_item` message, `friend_gift` carries `itemId`; decorations drawn on the floor; a friend's gift is held over its head, dropped and fades; item event texts |
+| `claude-codotchi/scripts/action.mjs`, `commands/codotchi.md`, `opencode-codotchi/src/index.ts`, `commands/codotchi.md`, `claude-desktop-codotchi/src/server.ts`, `tools.ts`, `package.json` | `/codotchi items`, `/codotchi use <item>`, `/codotchi gift [item]`; Claude Desktop `codotchi_items`, `codotchi_use`, `codotchi_gift_item` (adds `zod` as a direct dependency for the tool input schema) |
+| `vscode/tests/unit/social.test.ts`, `webviewAnimations.test.ts`, `pycharm/.../SocialTest.kt`, `claude-codotchi/tests/integration/socialActions.test.mjs` | item tests; the webview / Kotlin catalogues match the core one |
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt`, `PetState.kt` | Play together is a real game: `playWithFriend(state, result?)` — friendship by result (`FRIENDSHIP_PER_PLAY_RESULT` win 12 / draw 10 / lose 6; no result = draw, as the terminal `playfriend` does), a loss gives half the happiness, event `friend_game_<win\|draw\|lose>`. `startFriendGame()` sets `FriendVisit.gameTicks` (`FRIEND_GAME_PAUSE_TICKS` 20): the visit timer pauses while it counts down, so the friend doesn't leave mid-game, and an abandoned game can't hold the visit open |
+| `vscode/media/sidebar.js`, `sidebar.html`, `sidebar.css`, `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt` | **🤝 Play together** opens the minigame picker in friend mode (hint line; Boss Battle, Pat and Token Cost hidden) and posts `friend_play_start`; the game's result goes to `friend_play { game, result }` instead of `play`. Result texts in the event log |
+| `vscode/tests/unit/social.test.ts`, `webviewAnimations.test.ts`, `pycharm/.../SocialTest.kt` | friend-game tests |
+| CHANGELOG, `plugin.xml` change notes, README, all manifests | version 2.37.1 |
+
+## v2.37.0
 
 ### Changes from v2.36.0 (daily age bump - branch feat/daily-age-bump)
 

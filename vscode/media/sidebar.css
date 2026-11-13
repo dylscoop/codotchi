@@ -613,6 +613,21 @@ body.font-large  { font-size: 16px; }
   gap: 4px;
   margin-top: 4px;
 }
+.items-bar {
+  margin-top: 4px;
+}
+#items-list {
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+}
+.item-btn {
+  padding: 2px 4px;
+}
+/* Play together: only the head-to-head games against the friend */
+#mg-select.friend-mode #btn-mg-boss,
+#mg-select.friend-mode #btn-mg-pat,
+#mg-select.friend-mode #btn-mg-cost {
+  display: none !important;
+}
 .proposal-bar {
   margin-top: 4px;
   padding: 4px;

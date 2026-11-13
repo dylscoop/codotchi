@@ -555,7 +555,7 @@ same engine mechanics later.
 |---------|--------|-------|
 | CPU friend visits | `[x]` | Child stage and up, awake, active ticks only: at least `VISIT_MIN_GAP_TICKS` (1200, ~1 h) apart, then 0.1%/tick; a visit lasts `VISIT_TICKS` (60, 3 min) and ends if the pet falls asleep. 30% bring the pet a gift (+10 happiness). Drawn beside the pet, sliding in from the far edge |
 | Friendship meter | `[x]` | 0–100 on `PetState.friend`; six levels (Acquaintance 0, Buddy 15, Friend 35, Good Friend 55, Best Friend 75, Partner 90). +2 per visit, +10 Play together, +15 Give gift (once each per visit), +5 for a received gift; −1 per game-day boundary without a visit |
-| Gift exchange | `[x]` | Pet → friend: **🎁 Give gift** (costs 5 hunger). Friend → pet: event `friend_gift_received`, not an attention call (no new call type) |
+| Gift exchange | `[x]` | Pet → friend: **🎁 Give gift** (an item from the bag since v2.37.1; was 5 hunger). Friend → pet: event `friend_gift_received`, not an attention call (no new call type) |
 | Marriage | `[x]` | At Partner level an adult / senior gets a `proposal` on the next visit; **💍 Accept** or **Not yet** (300-tick cooldown). Accepting sets `partner` (drawn beside the pet while awake); hearts float. No heir egg for now (see the next row) |
 | Matchmaker | `[x]` | Unmarried senior, `MATCHMAKER_SENIOR_DAYS` (3) game-days after `seniorSinceDay`: a generated CPU match proposes |
 | Heir egg & generation counter | `[~]` | **Disabled 2026-11-11, backlog until redesigned:** marriage no longer lays an egg (`acceptProposal` leaves `heirEgg` null). `hatchHeir` and the `heirEgg` / `generation` save fields stay in code for the redesign; the webview hides the heir option, the egg on the floor and the Dynasty achievement (`HEIRS_ENABLED = false` in `sidebar.js`). Original design: the egg waits on the floor; when the pet dies the hatch screen offers it (`new_game { heir: true }` → `hatchHeir`, generation + 1, the egg's sprite / type). Used up either way. "Gen N" in the info line from generation 2; Afterlife entries keep `generation` / `partnerName` |
@@ -572,12 +572,12 @@ merges:
 
 | Follow-up | Status | Notes |
 |-----------|--------|-------|
-| Play together is a real game | `[ ]` | **Play together** starts one of the existing minigames (§4 of `vscode/FEATURES.md`) with the friend as the opponent or partner, rather than an instant +10. Friendship gain scales with the result |
-| Gifts are actual items | `[ ]` | A friend's gift is a concrete item it brings (food, toy, floor decoration), drawn in its paws and dropped on the floor, rather than flat +10 happiness. **Give gift** has the pet pick something it owns to hand over, rather than costing 5 hunger |
-| Different friends visit | `[ ]` | Several friend slots, each with its own name, species, sprite and friendship meter, so the same pet doesn't always come. Friends you haven't seen in a while can drift away |
-| Say goodbye | `[ ]` | A **👋 Goodbye** action ends the visit early with a wave animation, rather than waiting for `VISIT_TICKS` |
+| Play together is a real game | `[x]` | v2.37.1: **🤝 Play together** opens the minigame picker against the friend (Left/Right, Higher/Lower, Coin Flip and the species variants). Friendship +12 for a win, +10 a draw, +6 a loss; a loss gives half the happiness. The visit timer pauses for up to 20 ticks while the game runs. Terminal `playfriend` stays an instant play (counts as a draw) |
+| Gifts are actual items | `[x]` | v2.37.1: 12 items (food / toy / decor) in a 12-slot bag. A friend's gift is a random item, drawn over its head and dropped. **🎁 Give gift** picks an owned item (friendship 12 / 15 / 20 by kind). Items are used from the items bar or `/codotchi use <item>`: food feeds, toys cheer up, decorations go on the floor (up to 3). Also found every 4 minigame wins and with each achievement. Not yet: passive decor bonuses, items outside the social preview |
+| Different friends visit | `[x]` | v2.37.1: up to 3 friends (`friend` + `otherFriends`). A visit is from someone new 25% of the time while a slot is free, otherwise an old friend weighted by friendship. Friends not visiting lose 1 friendship per game day; at 0 friendship and 5 game days without a visit they drift away (never the partner) |
+| Say goodbye | `[x]` | v2.37.1: **👋 Goodbye** (`sayGoodbyeToFriend`, `/codotchi goodbye`, `codotchi_goodbye`) ends the visit early; the visitor waves (hops) and slides back out. Any visit ending now slides out the same way |
 | Offspring redesign | `[ ]` | The heir egg / generations mechanic, taken out of v2.36.0 for a redesign. Code and save fields are kept (see the Heir egg row above) |
-| Visitor wanders on its own | `[ ]` | The visitor walks around in its own idle pattern (§5.3 idle wandering, with its own speed and direction flips) rather than standing fixed beside the pet. The two pets sometimes meet in the middle and face each other |
+| Visitor wanders on its own | `[x]` | v2.37.1: after sliding in, the visitor paces at its own speed with its own direction flips and pauses; every 12–25 s it walks over and the two pets stop and face each other for 2 s (`wanderGuest` in `sidebar.js`) |
 
 **Suggested further interactions, based on Tamagotchi Connection:**
 
@@ -835,6 +835,13 @@ Most valuable first.
 | 11 | Name mismatch | `[x]` | Done in v2.21.3. `asciiArt.ts` `SPRITE_HEAD` uses `goat` but the engine calls it `sheep`; no heads for kangaroo, roo, tim, stu |
 | 12 | Tests and CI | `[x]` | Done in v2.21.3. `usageBackfill.test.ts` isn't in opencode's `test` script; claude-desktop has no tests; no sprite-data test; add a GitHub Actions workflow that runs every suite |
 | 13 | Doc drift | `[x]` | Done in v2.21.3. See the list below |
+| 14 | README quick-start guide | `[ ]` | **Blocks 3.0.0.** Short install → open panel → hatch → care guide at the top of `vscode/README.md` and `pycharm/README.md` (mirror into `plugin.xml`); point to it from the root `README.md` |
+| 15 | Shorten the READMEs | `[ ]` | **Blocks 3.0.0.** Cut them down a lot: one line per feature in Features, and trim the Actions, Mini-games and Today's Token Cost prose |
+| 16 | Remove Boss Battle from the READMEs | `[ ]` | **Blocks 3.0.0.** Still a dev-mode preview. Drop it from the Play row in the Actions table and from the Mini-games table in both READMEs and `plugin.xml` |
+| 17 | Deathless mode section | `[ ]` | **Blocks 3.0.0.** A short section of its own: no death from neglect (health ≥ 1), still gets sick and dies of old age, off the leaderboard and high score, convert the current pet from the menu |
+| 18 | Update README header sprites | `[ ]` | **Blocks 3.0.0.** `dog_adult_1x.png`, `dragon_adult_1x.png`, `kangaroo_adult_1x.png` at repo root; the dog art changed in v2.37.0 |
+| 19 | Update the Preview image | `[ ]` | **Blocks 3.0.0.** Replace `Cat_example.png`; waiting on the user's screenshot |
+| 20 | Demo videos (10–15 s each) | `[ ]` | **Blocks 3.0.0.** User screen-records them, e.g. hatching, answering a whim, Today's Token Cost bubble, seasons, Deathless / Afterlife; embed in the READMEs as GIF/MP4 |
 
 **Doc drift to fix (item 13):**
 

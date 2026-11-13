@@ -170,8 +170,10 @@ data class PetState(
 
     /** Family line: 1 for a fresh egg, parent's generation + 1 for an heir. */
     val generation: Int = 1,
-    /** The CPU friend that visits this pet; null until the first visit. */
+    /** The friend visiting now, or the one that visited last; null until the first visit. */
     val friend: FriendPet? = null,
+    /** The pet's other friends (MAX_FRIENDS in all, counting [friend]), most recent first. */
+    val otherFriends: List<FriendPet> = emptyList(),
     /** The friend is on the canvas right now; null otherwise. */
     val visit: FriendVisit? = null,
     /** Active ticks since the last visit started (VISIT_MIN_GAP_TICKS). */
@@ -186,6 +188,10 @@ data class PetState(
     val proposal: Proposal? = null,
     /** Active ticks before another proposal can be made after a decline. */
     val proposalCooldownTicks: Int = 0,
+    /** Item ids the pet carries (ITEM_CATALOG), oldest first; at most MAX_ITEMS. */
+    val items: List<String> = emptyList(),
+    /** Decoration item ids placed on the floor, oldest first; at most MAX_DECOR. */
+    val decor: List<String> = emptyList(),
 )
 
 /** Who another (CPU) pet is: enough to draw it. Mirrors PetIdentity in gameEngine.ts. */
@@ -202,6 +208,8 @@ data class FriendPet(
     val petType: String,
     val friendship: Int,
     val visits: Int,
+    /** dayTimer when this friend last visited; drives drifting away (FRIEND_DRIFT_DAYS). */
+    val lastVisitDay: Double? = null,
 )
 
 /** An ongoing visit. Play and gift can each be done once per visit. */
@@ -209,6 +217,10 @@ data class FriendVisit(
     val ticksLeft: Int,
     val played: Boolean,
     val gifted: Boolean,
+    /** Item id the friend brought this visit, if any (drawn being dropped on arrival). */
+    val broughtItem: String? = null,
+    /** Ticks left of the visit-timer pause while a minigame with the friend runs (startFriendGame). */
+    val gameTicks: Int? = null,
 )
 
 /** The egg a married pet leaves for the next generation. */

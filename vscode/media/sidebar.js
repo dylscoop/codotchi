@@ -178,7 +178,7 @@
 
   /** Events that belong to the social preview. */
   function isSocialEvent(code) {
-    return code.indexOf("friend_") === 0 || code.indexOf("proposal_") === 0 ||
+    return code.indexOf("friend_") === 0 || code.indexOf("proposal_") === 0 || code.indexOf("item_") === 0 ||
       code === "matchmaker_arrived" || code === "married" || code === "best_friends" ||
       SOCIAL_ACHIEVEMENT_IDS.indexOf(code.slice("achievement_unlocked_".length)) !== -1 &&
         code.indexOf("achievement_unlocked_") === 0;
@@ -417,10 +417,28 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   // ── Social buttons (v2.36.0) ─────────────────────────────────────────────
 
   document.getElementById("btn-friend-play").addEventListener("click", function () {
-    vscode.postMessage({ command: "friend_play" });
+    // Play together = a minigame with the friend: pick one, the result goes to friend_play
+    if (!lastState || lastState.sick || lastState.energy < PAT_ENERGY_COST || !lastState.friend) {
+      vscode.postMessage({ command: "friend_play" });   // let the host refuse it
+      return;
+    }
+    friendGame = true;
+    vscode.postMessage({ command: "friend_play_start" });
+    var sel = document.getElementById("mg-select");
+    sel.classList.add("friend-mode");
+    var hint = document.getElementById("mg-friend-hint");
+    if (hint) { hint.textContent = "🤝 Pick a game to play against " + lastState.friend.name + "!"; hint.classList.remove("hidden"); }
+    showMgOverlay();
+    showMgPanel("mg-select");
   });
   document.getElementById("btn-friend-gift").addEventListener("click", function () {
-    vscode.postMessage({ command: "friend_gift" });
+    // Pick which item to give from the items bar
+    giftPicking = !giftPicking;
+    itemsKey = "";
+    if (lastState) { renderSocial(lastState); }
+  });
+  document.getElementById("btn-friend-goodbye").addEventListener("click", function () {
+    vscode.postMessage({ command: "friend_goodbye" });
   });
   document.getElementById("btn-proposal-accept").addEventListener("click", function () {
     vscode.postMessage({ command: "accept_proposal" });
@@ -464,6 +482,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       parts[0] += " " + friendshipHearts(state.friend.friendship);
     }
     if (HEIRS_ENABLED && state.heirEgg) { parts.push("🥚 heir egg waiting"); }
+    var others = (state.otherFriends || []).filter(function (o) { return !state.partner || state.partner.name !== o.name; });
+    if (others.length > 0) {
+      parts.push("👥 " + others.map(function (o) { return o.name + " " + friendshipHearts(o.friendship); }).join(", "));
+    }
     if (state.visit && state.friend) { parts.unshift("👋 " + state.friend.name + " is visiting!"); }
     var visiting = !!(state.alive && state.visit && state.friend && !state.sleeping);
     var proposing = !!(state.alive && state.proposal);
@@ -473,7 +495,6 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     visitActions.classList.toggle("hidden", !visiting);
     if (visiting) {
       document.getElementById("btn-friend-play").disabled = !!state.visit.played;
-      document.getElementById("btn-friend-gift").disabled = !!state.visit.gifted;
     }
     proposalBar.classList.toggle("hidden", !proposing);
     if (proposing) {
@@ -481,6 +502,69 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         ? "💌 The matchmaker brought " + state.proposal.name + " to meet " + state.name + ". Marry?"
         : "💍 " + state.proposal.name + " wants to marry " + state.name + "!";
     }
+    var hasItems = renderItems(state, visiting);
+    if (visiting) {
+      document.getElementById("btn-friend-gift").disabled = !!state.visit.gifted || (state.items || []).length === 0;
+    }
+    socialPanel.classList.toggle("hidden", parts.length === 0 && !proposing && !hasItems);
+  }
+
+  /** Item catalogue for the webview; must match ITEM_CATALOG in packages/core/src/gameEngine.ts. */
+  var ITEM_INFO = {
+    apple: ["🍎", "apple", "food"], cookie: ["🍪", "cookie", "food"], cake: ["🍰", "slice of cake", "food"], fish: ["🐟", "fish", "food"],
+    ball: ["⚽", "ball", "toy"], yarn: ["🧶", "ball of yarn", "toy"], kite: ["🪁", "kite", "toy"], teddy: ["🧸", "teddy bear", "toy"],
+    plant: ["🪴", "potted plant", "decor"], flower: ["🌻", "sunflower", "decor"], lantern: ["🏮", "lantern", "decor"], star: ["⭐", "star lamp", "decor"],
+  };
+  /** Give gift was clicked: the next item clicked goes to the visiting friend. */
+  var giftPicking = false;
+  var itemsBar = document.getElementById("items-bar");
+  var itemsHint = document.getElementById("items-hint");
+  var itemsList = document.getElementById("items-list");
+  var itemsKey = "";
+
+  /**
+   * The pet's items as buttons, one per kind with a count: click to use it,
+   * or, after Give gift, to hand it to the visiting friend.
+   * @returns {boolean} true when the bar is showing
+   */
+  function renderItems(state, visiting) {
+    if (!itemsBar) { return false; }
+    var items = state.alive ? (state.items || []) : [];
+    if (!visiting) { giftPicking = false; }
+    itemsBar.classList.toggle("hidden", items.length === 0);
+    if (items.length === 0) { itemsKey = ""; return false; }
+    itemsHint.textContent = giftPicking
+      ? "🎁 Pick a gift for " + state.friend.name + ":"
+      : "🎒 Items (" + items.length + "): click one to use it";
+    var key = items.join(",") + "|" + giftPicking + "|" + !!state.sleeping;
+    if (key === itemsKey) { return true; }
+    itemsKey = key;
+    var counts = {};
+    var order = [];
+    items.forEach(function (id) {
+      if (!ITEM_INFO[id]) { return; }
+      if (!counts[id]) { counts[id] = 0; order.push(id); }
+      counts[id]++;
+    });
+    itemsList.textContent = "";
+    order.forEach(function (id) {
+      var info = ITEM_INFO[id];
+      var btn = document.createElement("button");
+      btn.className = "action-btn item-btn";
+      btn.textContent = info[0] + (counts[id] > 1 ? " ×" + counts[id] : "");
+      btn.title = (giftPicking ? "Give the " : info[2] === "food" ? "Eat the " : info[2] === "toy" ? "Play with the " : "Put on the floor: ") + info[1];
+      btn.disabled = !!state.sleeping;
+      btn.addEventListener("click", function () {
+        if (giftPicking) {
+          giftPicking = false;
+          vscode.postMessage({ command: "friend_gift", itemId: id });
+        } else {
+          vscode.postMessage({ command: "use_item", itemId: id });
+        }
+      });
+      itemsList.appendChild(btn);
+    });
+    return true;
   }
 
   /** Friendship level names; must match FRIENDSHIP_LEVELS in packages/core/src/gameEngine.ts. */
@@ -866,6 +950,18 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     mgPanels.classList.add("hidden");
     btnGrid.classList.remove("hidden");
     mgClear();
+    endFriendGameMode();
+  }
+
+  /** Play together is a minigame against the visiting friend while this is true. */
+  var friendGame = false;
+
+  function endFriendGameMode() {
+    friendGame = false;
+    var sel = document.getElementById("mg-select");
+    if (sel) { sel.classList.remove("friend-mode"); }
+    var hint = document.getElementById("mg-friend-hint");
+    if (hint) { hint.classList.add("hidden"); }
   }
 
   function showMgPanel(id) {
@@ -875,6 +971,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   function sendPlayResult(game, result) {
+    if (friendGame) {
+      // A game with the visiting friend: its result is the friendship play, not a normal play
+      vscode.postMessage({ command: "friend_play", game: game, result: result });
+      friendGame = false;
+      return;
+    }
     vscode.postMessage({ command: "play", game: game, result: result });
     // Do NOT call hideMgOverlay() here — the result panel stays open until the player taps OK.
   }
@@ -2743,6 +2845,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       petX = Math.max(minX, Math.min(maxX, petX));
     }
 
+    // Meeting the visiting friend: the pet stops and turns to face it
+    var meeting = guestAnim.wander && guestAnim.wander.meetUntilMs > nowMs && !stageGame && !lastState.sleeping;
+    if (meeting && petY >= floorY - 0.5) {
+      idleTimer = Math.max(idleTimer, (guestAnim.wander.meetUntilMs - nowMs) / 1000);
+      petVx = 0;
+      petFacingLeft = guestAnim.wander.x < petX;
+    }
+
     // ── Leg frame ────────────────────────────────────────────────────────
     // Dragon floats — it has no legs, so always pass legFrame -1 (upright/neutral).
     var walking  = !isDragon && (!lastState.sleeping || napTrip) && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
@@ -2804,6 +2914,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // ── Draw ──────────────────────────────────────────────────────────────
     drawEnvironment(lastState);
     drawHeirEgg(lastState);
+    drawDecor(lastState);
     if (moodProps) {
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
@@ -2825,6 +2936,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                            lying ? 1 : window.spriteMood.scaleY(mood, moodFrame), walking);
     }
     var guestBox = drawGuest(lastState, petX + bWidth / 2, nowMs);
+    drawLeavingGuest(nowMs);
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
     // The cat's mouse or bird, in its mouth on the way back
     if (catErrand && catErrand.kind === "gift" && !catErrand.cancelled && catErrand.phase !== "out") {
@@ -2855,6 +2967,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _petCx    = Math.round(petX) + Math.round(_bW / 2);
     var _petTopY  = Math.round(petY) + walkBob - headGap(lastState);
     drawKiss(_petCx, _petTopY, guestBox, nowMs);
+    drawGiftDrop(guestBox, nowMs);
     drawSpeechBubble(_petCx, _petTopY, nowMs,
                      emojiClearance(drawState.sleeping || patting, moodPxSize), Math.round(_bW / 2));
   }
@@ -2864,11 +2977,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   /** Events whose bubble is worth showing, most important first. */
   var SOCIAL_BUBBLE_EVENTS = ["married", "proposal_received", "matchmaker_arrived", "best_friends",
     "friend_gift_received", "friend_visit_started", "friend_played", "friend_gift_given",
-    "friend_play_refused", "friend_gift_refused", "proposal_declined", "friend_visit_ended"];
+    "friend_play_refused", "friend_gift_refused", "proposal_declined", "friend_waved_goodbye", "friend_visit_ended"];
 
   var GUEST_SLIDE_MS = 900;
+  var GUEST_WAVE_MS = 700;
   var KISS_MS = 2600;
   var guestAnim = { key: "", startMs: 0 };
+  var lastVisitorDraw = null;
+  var guestLeaving = null;
   var kissStartMs = 0;
 
   /** Who stands beside the pet: the visiting friend, else the partner (pet awake), else null. */
@@ -2889,30 +3005,136 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   /**
-   * Draw the guest on the side of the stage away from the pet, facing it,
-   * sliding in from that edge when it first appears. Hidden during stage games.
+   * Draw the guest beside the pet, sliding in from the edge away from the pet
+   * when it first appears. A visiting friend then wanders on its own (its own
+   * speed and direction flips) and now and then walks over to meet the pet,
+   * face to face, for GUEST_MEET_MS. A partner stands at its spot, facing the
+   * pet. Hidden during stage games.
    * @returns {{x:number,y:number,w:number,h:number}|null} its box, or null when none
    */
   function drawGuest(state, petCx, nowMs) {
     var who = socialGuest(state);
-    if (!who || stageGame || !socialEnabled) { guestAnim.key = ""; return null; }
+    if (!who || stageGame || !socialEnabled) { guestAnim = { key: "", startMs: 0 }; return null; }
     var gs = guestState(state, who);
     var scale = STAGE_SCALES[gs.stage] || 0.5;
     var size = Math.round(BASE_SIZE * petSizeMultiplier(gs.spriteType) * scale);
     var w = effectiveBWidth(gs, size);
     var h = petBoxHeight(gs, w);
     var W = spriteCanvas.width;
-    var onRight = petCx < W / 2;
+    var key = who.name + "|" + who.spriteType;
+    if (guestAnim.key !== key) {
+      guestAnim = { key: key, startMs: nowMs, onRight: petCx < W / 2, wander: null };
+    }
+    var onRight = guestAnim.onRight;
     var homeX = onRight ? W - w - 6 : 6;
-    var key = who.name + "|" + who.spriteType + "|" + (onRight ? "r" : "l");
-    if (guestAnim.key !== key) { guestAnim = { key: key, startMs: nowMs }; }
-    var t = REDUCED_MOTION ? 1 : Math.min(1, (nowMs - guestAnim.startMs) / GUEST_SLIDE_MS);
-    var ease = 1 - Math.pow(1 - t, 3);
-    var startX = onRight ? W + 4 : -w - 4;
-    var x = Math.round(startX + (homeX - startX) * ease);
     var y = spriteCanvas.height - h - 12;
-    drawBody(gs, x, y, onRight, t < 1 ? Math.floor(nowMs / 150) % 2 : 0);
+    var t = REDUCED_MOTION ? 1 : Math.min(1, (nowMs - guestAnim.startMs) / GUEST_SLIDE_MS);
+    var x;
+    var facingLeft = onRight;
+    var frame = 0;
+    if (t < 1) {
+      var ease = 1 - Math.pow(1 - t, 3);
+      var startX = onRight ? W + 4 : -w - 4;
+      x = Math.round(startX + (homeX - startX) * ease);
+      frame = Math.floor(nowMs / 150) % 2;
+    } else if (state.visit && who === state.friend && !REDUCED_MOTION) {
+      var step = wanderGuest(homeX, w, W, petCx, nowMs);
+      x = step.x; facingLeft = step.facingLeft; frame = step.frame;
+    } else {
+      x = homeX;
+    }
+    drawBody(gs, x, y, facingLeft, frame);
+    if (state.visit && who === state.friend) {
+      lastVisitorDraw = { gs: gs, x: x, y: y, w: w, onRight: x + w / 2 >= W / 2 };
+    }
     return { x: x, y: y, w: w, h: h };
+  }
+
+  var GUEST_MEET_MS = 2000;
+  var GUEST_MEET_GAP_MIN_MS = 12000;
+  var GUEST_MEET_GAP_MAX_MS = 25000;
+
+  /**
+   * One frame of the visitor's own idle wander, kept in guestAnim.wander:
+   * it paces at its own speed and flips direction every few seconds, staying
+   * clear of the edges. Every GUEST_MEET_GAP_* it walks up beside the pet
+   * and both face each other for GUEST_MEET_MS.
+   */
+  function wanderGuest(homeX, w, W, petCx, nowMs) {
+    var g = guestAnim.wander;
+    if (!g) {
+      g = guestAnim.wander = {
+        x: homeX, lastMs: nowMs,
+        dir: guestAnim.onRight ? -1 : 1,
+        speed: 10 + Math.random() * 10,           // px per second; the pet has its own pace
+        nextFlipMs: nowMs + 1500 + Math.random() * 2500,
+        pauseUntilMs: 0,
+        nextMeetMs: nowMs + GUEST_MEET_GAP_MIN_MS * 0.5,
+        meetUntilMs: 0,
+      };
+    }
+    var dt = Math.min(0.1, Math.max(0, (nowMs - g.lastMs) / 1000));
+    g.lastMs = nowMs;
+    var minX = 4;
+    var maxX = W - w - 4;
+    var visitorLeftOfPet = g.x + w / 2 < petCx;
+
+    // Meeting: walk to just beside the pet, then stand face to face.
+    if (g.meetUntilMs > 0) {
+      if (nowMs < g.meetUntilMs) { return { x: Math.round(g.x), facingLeft: !visitorLeftOfPet, frame: 0 }; }
+      g.meetUntilMs = 0;
+      g.dir = visitorLeftOfPet ? -1 : 1;    // turn away and wander off
+      g.nextMeetMs = nowMs + GUEST_MEET_GAP_MIN_MS + Math.random() * (GUEST_MEET_GAP_MAX_MS - GUEST_MEET_GAP_MIN_MS);
+      g.nextFlipMs = nowMs + 2000 + Math.random() * 2000;
+    }
+    if (nowMs >= g.nextMeetMs) {
+      var gap = Math.round(w * 0.55) + 6;
+      var targetX = Math.max(minX, Math.min(maxX, visitorLeftOfPet ? petCx - gap - w : petCx + gap));
+      var dx = targetX - g.x;
+      if (Math.abs(dx) <= 1.5) {
+        g.x = targetX;
+        g.meetUntilMs = nowMs + GUEST_MEET_MS;
+        return { x: Math.round(g.x), facingLeft: !visitorLeftOfPet, frame: 0 };
+      }
+      g.dir = dx < 0 ? -1 : 1;
+      g.x += g.dir * Math.min(Math.abs(dx), g.speed * 1.6 * dt);
+      return { x: Math.round(g.x), facingLeft: g.dir < 0, frame: Math.floor(nowMs / 150) % 2 };
+    }
+
+    // Idle wander: pace, sometimes stop for a moment, flip at random or at an edge.
+    if (nowMs < g.pauseUntilMs) {
+      return { x: Math.round(g.x), facingLeft: g.dir < 0, frame: 0 };
+    }
+    if (nowMs >= g.nextFlipMs) {
+      if (Math.random() < 0.35) { g.pauseUntilMs = nowMs + 600 + Math.random() * 1200; }
+      g.dir = -g.dir;
+      g.nextFlipMs = nowMs + 1500 + Math.random() * 3000;
+    }
+    g.x += g.dir * g.speed * dt;
+    if (g.x <= minX) { g.x = minX; g.dir = 1; }
+    if (g.x >= maxX) { g.x = maxX; g.dir = -1; }
+    return { x: Math.round(g.x), facingLeft: g.dir < 0, frame: Math.floor(nowMs / 200) % 2 };
+  }
+
+  /**
+   * The friend whose visit just ended: it waves (hops) for GUEST_WAVE_MS, then
+   * slides back out past the edge it came in from.
+   */
+  function drawLeavingGuest(nowMs) {
+    if (!guestLeaving || stageGame || !socialEnabled) { guestLeaving = null; return; }
+    var g = guestLeaving.from;
+    var elapsed = nowMs - guestLeaving.startMs;
+    var W = spriteCanvas.width;
+    var endX = g.onRight ? W + 4 : -g.w - 4;
+    if (REDUCED_MOTION || elapsed >= GUEST_WAVE_MS + GUEST_SLIDE_MS) { guestLeaving = null; return; }
+    if (elapsed < GUEST_WAVE_MS) {
+      var hop = Math.floor(elapsed / 150) % 2 === 0 ? 0 : -3;
+      drawBody(g.gs, g.x, g.y + hop, g.onRight, 0);
+      return;
+    }
+    var t = (elapsed - GUEST_WAVE_MS) / GUEST_SLIDE_MS;
+    var x = Math.round(g.x + (endX - g.x) * t * t);
+    drawBody(g.gs, x, g.y, !g.onRight, Math.floor(nowMs / 150) % 2);
   }
 
   /** Hearts floating between the pet and its new partner for KISS_MS after a marriage. */
@@ -2931,6 +3153,53 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       spriteCtx.globalAlpha = 1 - p;
       spriteCtx.fillText("♥", Math.round(midX + Math.sin((p + i) * 6) * 8), Math.round(baseY - p * 24));
     }
+    spriteCtx.restore();
+  }
+
+  /** Decorations the pet placed, as emoji spaced along the back of the floor. */
+  function drawDecor(state) {
+    var decor = socialEnabled && state && state.alive ? (state.decor || []) : [];
+    if (decor.length === 0 || stageGame) { return; }
+    var W = spriteCanvas.width;
+    spriteCtx.save();
+    spriteCtx.font = "14px sans-serif";
+    spriteCtx.textAlign = "center";
+    spriteCtx.textBaseline = "bottom";
+    for (var i = 0; i < decor.length; i++) {
+      var info = ITEM_INFO[decor[i]];
+      if (!info) { continue; }
+      spriteCtx.fillText(info[0], Math.round(W * (i + 1) / (decor.length + 1)), spriteCanvas.height - 10);
+    }
+    spriteCtx.restore();
+  }
+
+  var GIFT_HOLD_MS = 900;
+  var GIFT_DROP_MS = 500;
+  var GIFT_REST_MS = 1600;
+  /** A friend's gift: held over the visitor's head, dropped to the floor, then picked up (faded). */
+  var giftDrop = null;
+
+  function drawGiftDrop(guestBox, nowMs) {
+    if (!giftDrop) { return; }
+    var t = nowMs - giftDrop.startMs;
+    if (t > GIFT_HOLD_MS + GIFT_DROP_MS + GIFT_REST_MS || REDUCED_MOTION) { giftDrop = null; return; }
+    if (guestBox) { giftDrop.x = guestBox.x + guestBox.w / 2; giftDrop.topY = guestBox.y; }
+    if (giftDrop.x === undefined) { return; }
+    var floorY = spriteCanvas.height - 12;
+    var y;
+    if (t < GIFT_HOLD_MS) {
+      y = giftDrop.topY - 2;
+    } else {
+      var d = Math.min(1, (t - GIFT_HOLD_MS) / GIFT_DROP_MS);
+      y = giftDrop.topY - 2 + (floorY - (giftDrop.topY - 2)) * d * d;
+    }
+    spriteCtx.save();
+    spriteCtx.font = "14px sans-serif";
+    spriteCtx.textAlign = "center";
+    spriteCtx.textBaseline = "bottom";
+    var restT = t - GIFT_HOLD_MS - GIFT_DROP_MS;
+    if (restT > 0) { spriteCtx.globalAlpha = Math.max(0, 1 - restT / GIFT_REST_MS); }
+    spriteCtx.fillText(giftDrop.emoji, Math.round(giftDrop.x), Math.round(y));
     spriteCtx.restore();
   }
 
@@ -3268,6 +3537,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (events.indexOf("cured")         !== -1) { pushReaction("healed",        nowMs); }
     if (socialEnabled && events.indexOf("married")       !== -1) { kissStartMs = nowMs; pushReaction("praised", nowMs); }
     if (socialEnabled && events.indexOf("friend_played") !== -1) { pushReaction("played", nowMs); }
+    if (socialEnabled && events.indexOf("friend_gift_received") !== -1) {
+      var brought = giftItemIn(events);
+      if (brought) { giftDrop = { startMs: nowMs, emoji: brought[0] }; }
+    }
+    if (socialEnabled && events.indexOf("friend_visit_ended") !== -1 && lastVisitorDraw) {
+      guestLeaving = { startMs: nowMs, from: lastVisitorDraw };
+      lastVisitorDraw = null;
+    }
     if (events.indexOf("pooped")        !== -1) { pushReaction("poop_appeared", nowMs); }
     // evolved: any evolved_to_* event (egg → baby gets the hatch burst instead)
     for (var ei = 0; ei < events.length; ei++) {
@@ -3654,14 +3931,22 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _fr = state && state.friend ? state.friend.name : "A friend";
     var _pr = state && state.proposal ? state.proposal.name : "someone";
     var _pa = state && state.partner ? state.partner.name : "their sweetheart";
+    var _gift = giftItemIn(state && state.events);
     var labels = {
       "aged_overnight":          n + " aged a day whilst you were gone",
       "friend_made":             "",   // silent: the visit bubble says it
       "friend_visit_started":    _fr + " dropped by to visit " + n + "!",
       "friend_visit_ended":      _fr + " waved goodbye.",
-      "friend_gift_received":    _fr + " brought " + n + " a present! 🎁",
+      "friend_waved_goodbye":    n + " waved goodbye to " + _fr + ". 👋",
+      "friend_drifted_away":     "A friend " + n + " hadn't seen in a while drifted away.",
+      "friend_goodbye_refused":  "",
+      "friend_gift_received":    _fr + " brought " + n + " " + (_gift ? withArticleJs(_gift[1]) + "! " + _gift[0] : "a present! 🎁"),
       "friend_played":           n + " and " + _fr + " played together!",
-      "friend_gift_given":       n + " shared a treat with " + _fr + ".",
+      "friend_game_win":         n + " beat " + _fr + " at the game! 🏆",
+      "friend_game_lose":        _fr + " won the game this time.",
+      "friend_game_draw":        n + " and " + _fr + " drew the game.",
+      "friend_gift_given":       n + " gave " + _fr + " " + (_gift ? withArticleJs(_gift[1]) + ". " + _gift[0] : "a present."),
+      "item_refused":            n + " can't use that right now.",
       "best_friends":            n + " and " + _fr + " are best friends now! 💛",
       "proposal_received":       _fr + " wants to marry " + n + "! 💍",
       "matchmaker_arrived":      "The matchmaker brought " + _pr + " to meet " + n + ". 💌",
@@ -3838,7 +4123,32 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (code.indexOf("minigame_") === 0) {
       return n + " played a mini-game.";
     }
+    if (code.indexOf("item_found_") === 0) {
+      var found = ITEM_INFO[code.slice("item_found_".length)];
+      return found ? n + " found " + withArticleJs(found[1]) + "! " + found[0] : "";
+    }
+    if (code.indexOf("item_used_") === 0) {
+      var used = ITEM_INFO[code.slice("item_used_".length)];
+      if (!used) { return ""; }
+      return used[2] === "food" ? n + " ate the " + used[1] + ". " + used[0]
+        : used[2] === "toy" ? n + " played with the " + used[1] + "! " + used[0]
+        : n + " put the " + used[1] + " on the floor. " + used[0];
+    }
+    if (code.indexOf("friend_gift_item_") === 0) { return ""; }   // the gift line says it
     return code;
+  }
+
+  /** "an apple", "a kite"; matches withArticle() in gameEngine.ts. */
+  function withArticleJs(name) {
+    return (/^[aeiou]/i.test(name) ? "an " : "a ") + name;
+  }
+
+  /** The item a gift event refers to, from the event list: [emoji, name, kind] or null. */
+  function giftItemIn(events) {
+    for (var i = 0; events && i < events.length; i++) {
+      if (events[i].indexOf("friend_gift_item_") === 0) { return ITEM_INFO[events[i].slice("friend_gift_item_".length)] || null; }
+    }
+    return null;
   }
 
   // Consecutive repeats of the same event (damage ticks, pats, snacks,
@@ -4870,6 +5180,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     }
 
     drawHeirEgg(state);
+    drawDecor(state);
     drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false, 0);
     drawGuest(state, staticX + bWidth / 2, performance.now());
     if (isChewingBone(state)) {

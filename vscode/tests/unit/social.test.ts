@@ -13,6 +13,26 @@ import {
   friendshipLevel,
   playWithFriend,
   giveFriendGift,
+  sayGoodbyeToFriend,
+  socialActionMessage,
+  socialSummaryLines,
+  pickVisitor,
+  startFriendGame,
+  FRIENDSHIP_PER_PLAY_RESULT,
+  FRIEND_GAME_PAUSE_TICKS,
+  useItem,
+  itemActionMessage,
+  itemListLines,
+  applyMinigameResult,
+  ITEM_CATALOG,
+  ITEM_FOOD_HUNGER,
+  ITEM_TOY_HAPPINESS,
+  MAX_ITEMS,
+  MINIGAME_WINS_PER_ITEM,
+  FRIENDSHIP_PER_GIFT_KIND,
+  MAX_FRIENDS,
+  NEW_FRIEND_CHANCE,
+  FRIEND_DRIFT_DAYS,
   acceptProposal,
   declineProposal,
   hatchHeir,
@@ -31,13 +51,15 @@ import {
 } from "../../src/gameEngine";
 
 const NO_CALLS: GameConfig = { ...DEFAULT_GAME_CONFIG, attentionCallsEnabled: false, socialEnabled: true };
+/** Dev-mode pacing at x1000: once the gap is over, a visit starts on any random number below 1. */
+const ALWAYS_VISIT: GameConfig = { ...NO_CALLS, devMode: true, devModeAgingMultiplier: 1000 };
 
 function makePet(overrides: Partial<PetState> = {}): PetState {
   return { ...createPet("Mittens", "codeling"), stage: "adult", dayTimer: 100.5, ageDays: 100, ...overrides };
 }
 
-function friend(friendship: number): FriendPet {
-  return { name: "Pixel", spriteType: "dog", petType: "bytebug", friendship, visits: 3 };
+function friend(friendship: number, name: string = "Pixel"): FriendPet {
+  return { name, spriteType: "dog", petType: "bytebug", friendship, visits: 3, lastVisitDay: 100 };
 }
 
 function withRandom<T>(value: number, fn: () => T): T {
@@ -72,6 +94,7 @@ describe("social: save format", () => {
     const s = makePet({
       generation: 3,
       friend: friend(42),
+      otherFriends: [friend(10, "Mochi"), friend(0, "Byte")],
       visit: { ticksLeft: 10, played: true, gifted: false },
       ticksSinceLastVisit: 7,
       partner: { name: "Byte", spriteType: "cat", petType: "pixelpup" },
@@ -81,7 +104,7 @@ describe("social: save format", () => {
       proposalCooldownTicks: 12,
     });
     const r = roundTrip(s);
-    for (const k of ["generation", "friend", "visit", "ticksSinceLastVisit", "partner", "heirEgg",
+    for (const k of ["generation", "friend", "otherFriends", "visit", "ticksSinceLastVisit", "partner", "heirEgg",
                      "seniorSinceDay", "proposal", "proposalCooldownTicks"] as const) {
       assert.deepEqual(r[k], s[k], k);
     }
@@ -98,6 +121,86 @@ describe("social: save format", () => {
     assert.equal(r.visit, null, "a visit without a friend is dropped");
     assert.equal(r.proposal, null);
     assert.equal(r.generation, 1);
+  });
+
+  it("loads a single-friend save: no other friends, lastVisitDay counts from today", () => {
+    const raw = serialiseState(makePet({ friend: { name: "Pixel", spriteType: "dog", petType: "bytebug", friendship: 5, visits: 1 } })) as Record<string, unknown>;
+    delete raw.otherFriends;
+    const r = deserialiseState(raw);
+    assert.deepEqual(r.otherFriends, []);
+    assert.equal(r.friend!.lastVisitDay, r.dayTimer);
+  });
+
+  it("keeps at most MAX_FRIENDS - 1 other friends, with no duplicates", () => {
+    const raw = serialiseState(makePet({ friend: friend(5) })) as Record<string, unknown>;
+    raw.otherFriends = [friend(1, "Pixel"), friend(2, "Mochi"), friend(3, "Mochi"), friend(4, "Byte"), friend(5, "Waffle")];
+    assert.deepEqual(deserialiseState(raw).otherFriends.map((f) => f.name), ["Mochi", "Byte"]);
+  });
+});
+
+describe("social: several friends", () => {
+  it("pickVisitor: a free slot leaves room for someone new; otherwise weighted by friendship", () => {
+    assert.equal(pickVisitor([], 0), null);
+    const two = [friend(0, "A"), friend(90, "B")];
+    assert.equal(pickVisitor(two, 1 - NEW_FRIEND_CHANCE), null, "top of the range is someone new");
+    assert.equal(pickVisitor(two, 0)!.name, "A");
+    assert.equal(pickVisitor(two, 0.5)!.name, "B", "the closer friend has the bigger share");
+    const full = [friend(0, "A"), friend(0, "B"), friend(0, "C")];
+    assert.equal(full.length, MAX_FRIENDS);
+    assert.equal(pickVisitor(full, 0.99)!.name, "C", "with every slot full, no one new comes");
+  });
+
+  it("a new friend visits: the old friend moves to otherFriends", () => {
+    const s = makePet({ friend: friend(40), ticksSinceLastVisit: VISIT_MIN_GAP_TICKS });
+    const next = withRandom(0.99, () => tick(s, false, false, ALWAYS_VISIT));
+    assert.ok(next.visit);
+    assert.ok(next.events.includes("friend_made"));
+    assert.notEqual(next.friend!.name, "Pixel");
+    assert.equal(next.friend!.lastVisitDay, next.dayTimer);
+    assert.deepEqual(next.otherFriends.map((f) => f.name), ["Pixel"]);
+  });
+
+  it("an old friend visits again and becomes the current friend", () => {
+    const s = makePet({ friend: friend(10), otherFriends: [friend(60, "Mochi")], ticksSinceLastVisit: VISIT_MIN_GAP_TICKS });
+    // r = 0.5 of 0.75 → past Pixel's share (20 of 90), into Mochi's
+    const next = withRandom(0.5, () => tick(s, false, false, ALWAYS_VISIT));
+    assert.equal(next.friend!.name, "Mochi");
+    assert.equal(next.friend!.visits, 4);
+    assert.deepEqual(next.otherFriends.map((f) => f.name), ["Pixel"]);
+    assert.ok(!next.events.includes("friend_made"));
+  });
+
+  it("other friends lose friendship each game day, and drift away at 0 after FRIEND_DRIFT_DAYS", () => {
+    const keep = friend(5, "Mochi");
+    const gone = { ...friend(1, "Byte"), lastVisitDay: 100.5 - FRIEND_DRIFT_DAYS };
+    const s = makePet({ friend: friend(30), otherFriends: [keep, gone], dayTimer: 100.99999, ageDays: 100, ticksAlive: 2 });
+    const next = withRandom(0.5, () => tick(s, false, false, NO_CALLS));
+    assert.ok(Math.floor(next.dayTimer) > Math.floor(s.dayTimer), "crossed a game day");
+    assert.deepEqual(next.otherFriends.map((f) => [f.name, f.friendship]), [["Mochi", 4]]);
+    assert.ok(next.events.includes("friend_drifted_away"));
+  });
+
+  it("the current friend drifts away too, and the next friend takes its place", () => {
+    const s = makePet({
+      friend: { ...friend(1), lastVisitDay: 90 }, otherFriends: [friend(20, "Mochi")], dayTimer: 100.99999, ageDays: 100, ticksAlive: 2,
+    });
+    const next = withRandom(0.5, () => tick(s, false, false, NO_CALLS));
+    assert.equal(next.friend!.name, "Mochi");
+    assert.deepEqual(next.otherFriends, []);
+  });
+
+  it("a partner never drifts away", () => {
+    const s = makePet({
+      friend: friend(30), otherFriends: [{ ...friend(0, "Byte"), lastVisitDay: 0 }], dayTimer: 100.99999, ageDays: 100, ticksAlive: 2,
+      partner: { name: "Byte", spriteType: "dog", petType: "bytebug" },
+    });
+    const next = withRandom(0.5, () => tick(s, false, false, NO_CALLS));
+    assert.deepEqual(next.otherFriends.map((f) => f.name), ["Byte"]);
+  });
+
+  it("the status lines list the other friends", () => {
+    const lines = socialSummaryLines(makePet({ friend: friend(30), otherFriends: [friend(20, "Mochi")] }));
+    assert.ok(lines.some((l) => l.includes("Other friends: Mochi — Buddy")), lines.join("\n"));
   });
 });
 
@@ -187,7 +290,7 @@ describe("social: visits", () => {
 
 describe("social: playing and gifts", () => {
   const visiting = (friendship: number) =>
-    makePet({ friend: friend(friendship), visit: { ticksLeft: 30, played: false, gifted: false } });
+    makePet({ friend: friend(friendship), visit: { ticksLeft: 30, played: false, gifted: false }, items: ["ball"] });
 
   it("play together raises friendship once per visit", () => {
     const s = playWithFriend(visiting(20));
@@ -212,6 +315,160 @@ describe("social: playing and gifts", () => {
     assert.ok(s.trainer.achievements.includes("best_buds"));
     assert.equal(s.trainer.counters.giftsGiven, 1);
     assert.deepEqual(giveFriendGift(s).events, ["friend_gift_refused"]);
+  });
+});
+
+describe("items", () => {
+  const visiting = (items: string[]) =>
+    makePet({ friend: friend(20), visit: { ticksLeft: 30, played: false, gifted: false }, items });
+
+  it("giving an item removes it, and friendship depends on its kind", () => {
+    const food = giveFriendGift(visiting(["apple", "plant"]), "apple");
+    assert.equal(food.friend!.friendship, 20 + FRIENDSHIP_PER_GIFT_KIND.food);
+    assert.deepEqual(food.items, ["plant"]);
+    assert.ok(food.events.includes("friend_gift_item_apple"));
+    assert.match(socialActionMessage(food), /gave Pixel an apple 🍎/);
+    const decor = giveFriendGift(visiting(["apple", "plant"]), "plant");
+    assert.equal(decor.friend!.friendship, 20 + FRIENDSHIP_PER_GIFT_KIND.decor);
+    assert.equal(decor.hunger, visiting([]).hunger, "giving no longer costs hunger");
+  });
+
+  it("with no item named, the oldest item is given", () => {
+    assert.deepEqual(giveFriendGift(visiting(["kite", "cake"])).items, ["cake"]);
+  });
+
+  it("a gift is refused with no items, or an item the pet doesn't own", () => {
+    const none = giveFriendGift(visiting([]));
+    assert.deepEqual(none.events, ["friend_gift_refused"]);
+    assert.match(socialActionMessage(none), /no items to give/);
+    const notOwned = giveFriendGift(visiting(["apple"]), "kite");
+    assert.deepEqual(notOwned.events, ["friend_gift_refused"]);
+    assert.match(socialActionMessage(notOwned), /doesn't have that item/);
+  });
+
+  it("a visiting friend can bring an item, added to the bag", () => {
+    const s = makePet({ friend: friend(20), ticksSinceLastVisit: VISIT_MIN_GAP_TICKS });
+    const next = withRandom(0, () => tick(s, false, false, NO_CALLS));
+    assert.ok(next.events.includes("friend_gift_received"));
+    assert.deepEqual(next.items, [ITEM_CATALOG[0].id]);
+    assert.equal(next.visit!.broughtItem, ITEM_CATALOG[0].id);
+    assert.ok(next.events.includes(`friend_gift_item_${ITEM_CATALOG[0].id}`));
+  });
+
+  it("useItem: food feeds, a toy cheers up, decor goes on the floor", () => {
+    const base = makePet({ hunger: 50, happiness: 50, items: ["fish", "yarn", "plant", "flower", "lantern", "star"] });
+    const ate = useItem(base, "fish");
+    assert.equal(ate.hunger, 50 + ITEM_FOOD_HUNGER);
+    assert.ok(!ate.items.includes("fish"));
+    assert.ok(ate.events.includes("item_used_fish"));
+    assert.equal(useItem(base, "yarn").happiness, 50 + ITEM_TOY_HAPPINESS);
+    let s = base;
+    for (const d of ["plant", "flower", "lantern", "star"]) { s = useItem(s, d); }
+    assert.deepEqual(s.decor, ["flower", "lantern", "star"], "only MAX_DECOR stay; the oldest goes");
+    assert.deepEqual(useItem(base, "apple").events, ["item_refused"]);
+    assert.deepEqual(useItem({ ...base, sleeping: true }, "fish").events, ["item_refused"]);
+    assert.match(itemActionMessage(ate, "fish"), /ate the fish/);
+  });
+
+  it("every MINIGAME_WINS_PER_ITEM minigame wins finds an item", () => {
+    let s = makePet();
+    const found: string[] = [];
+    for (let i = 0; i < MINIGAME_WINS_PER_ITEM * 2; i++) {
+      s = applyMinigameResult(s, "left_right", "win");
+      found.push(...s.events.filter((e) => e.startsWith("item_found_")));
+    }
+    assert.ok(found.length >= 2, found.join());
+    assert.ok(s.items.length >= 2);
+  });
+
+  it("the bag holds MAX_ITEMS; extra finds are lost", () => {
+    const full = Array.from({ length: MAX_ITEMS }, () => "apple");
+    const s = makePet({ friend: friend(20), ticksSinceLastVisit: VISIT_MIN_GAP_TICKS, items: full });
+    assert.equal(withRandom(0, () => tick(s, false, false, NO_CALLS)).items.length, MAX_ITEMS);
+  });
+
+  it("items and decor survive a save; unknown ids are dropped", () => {
+    const s = makePet({ items: ["apple", "teddy"], decor: ["plant"] });
+    const r = roundTrip(s);
+    assert.deepEqual(r.items, ["apple", "teddy"]);
+    assert.deepEqual(r.decor, ["plant"]);
+    const raw = serialiseState(s) as Record<string, unknown>;
+    raw.items = ["apple", "laser-sword", 7];
+    raw.decor = ["apple", "plant"];
+    const loaded = deserialiseState(raw);
+    assert.deepEqual(loaded.items, ["apple"]);
+    assert.deepEqual(loaded.decor, ["plant"], "only decorations go on the floor");
+  });
+
+  it("itemListLines lists the bag with counts and the floor", () => {
+    const lines = itemListLines({ name: "Mittens", items: ["apple", "apple", "ball"], decor: ["plant"] });
+    assert.ok(lines[0].includes("(3/12)"));
+    assert.ok(lines.some((l) => l.includes("🍎 apple ×2") && l.includes("/codotchi use apple")));
+    assert.ok(lines.some((l) => l.includes("On the floor: 🪴")));
+    assert.match(itemListLines({ name: "Mittens", items: [], decor: [] })[0], /no items yet/);
+  });
+});
+
+describe("social: play together is a minigame", () => {
+  const visiting = () =>
+    makePet({ friend: friend(20), visit: { ticksLeft: 30, played: false, gifted: false }, happiness: 50 });
+
+  it("friendship follows the result; a loss gives half the happiness", () => {
+    const win = playWithFriend(visiting(), "win");
+    assert.equal(win.friend!.friendship, 20 + FRIENDSHIP_PER_PLAY_RESULT.win);
+    assert.ok(win.events.includes("friend_game_win"));
+    assert.match(socialActionMessage(win), /Mittens won the game/);
+    const lose = playWithFriend(visiting(), "lose");
+    assert.equal(lose.friend!.friendship, 20 + FRIENDSHIP_PER_PLAY_RESULT.lose);
+    assert.equal(lose.happiness, 55);
+    assert.match(socialActionMessage(lose), /Pixel won this time/);
+    const push = playWithFriend(visiting(), "push");
+    assert.equal(push.friend!.friendship, 20 + FRIENDSHIP_PER_PLAY_RESULT.draw);
+    assert.ok(push.events.includes("friend_game_draw"));
+    assert.equal(playWithFriend(visiting()).friend!.friendship, 20 + FRIENDSHIP_PER_PLAY_RESULT.draw, "no game = a draw");
+  });
+
+  it("a game pauses the visit timer for up to FRIEND_GAME_PAUSE_TICKS; playing clears it", () => {
+    let s = startFriendGame(visiting());
+    assert.equal(s.visit!.gameTicks, FRIEND_GAME_PAUSE_TICKS);
+    s = withRandom(0.5, () => tick(s, false, false, NO_CALLS));
+    assert.equal(s.visit!.ticksLeft, 30, "the timer is paused");
+    assert.equal(s.visit!.gameTicks, FRIEND_GAME_PAUSE_TICKS - 1);
+    const roundTripped = roundTrip(s);
+    assert.equal(roundTripped.visit!.gameTicks, FRIEND_GAME_PAUSE_TICKS - 1);
+    const played = playWithFriend(s, "win");
+    assert.equal(played.visit!.gameTicks, undefined);
+    const after = withRandom(0.5, () => tick(played, false, false, NO_CALLS));
+    assert.equal(after.visit!.ticksLeft, 29, "the timer runs again");
+  });
+
+  it("an abandoned game stops pausing after FRIEND_GAME_PAUSE_TICKS", () => {
+    let s = startFriendGame(visiting());
+    for (let i = 0; i < FRIEND_GAME_PAUSE_TICKS + 1; i++) { s = withRandom(0.5, () => tick(s, false, false, NO_CALLS)); }
+    assert.equal(s.visit!.ticksLeft, 29);
+  });
+
+  it("startFriendGame does nothing without a visit or after playing", () => {
+    const none = makePet();
+    assert.equal(startFriendGame(none), none);
+    const played = { ...visiting(), visit: { ticksLeft: 30, played: true, gifted: false } };
+    assert.equal(startFriendGame(played), played);
+  });
+});
+
+describe("social: goodbye", () => {
+  const visiting = (friendship: number) =>
+    makePet({ friend: friend(friendship), visit: { ticksLeft: 30, played: false, gifted: false } });
+
+  it("goodbye ends the visit early, and is refused with no visit", () => {
+    const s = sayGoodbyeToFriend(visiting(20));
+    assert.equal(s.visit, null);
+    assert.deepEqual(s.events, ["friend_waved_goodbye", "friend_visit_ended"]);
+    assert.equal(s.friend!.friendship, 20);
+    assert.match(socialActionMessage(s), /waved goodbye/);
+    const refused = sayGoodbyeToFriend(makePet());
+    assert.deepEqual(refused.events, ["friend_goodbye_refused"]);
+    assert.equal(socialActionMessage(refused), "No friend is visiting right now.");
   });
 });
 
