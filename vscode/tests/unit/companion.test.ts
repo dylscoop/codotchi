@@ -128,6 +128,12 @@ describe("companion: webview", () => {
     assert.match(js, /command: "pet_companion"/);
   });
 
+  it("a senior companion lounges and lies down like the cat character", () => {
+    assert.match(js, /var canLie = !!\(window\.spriteHasLyingPose && window\.spriteHasLyingPose\(cs\)\)/);
+    assert.match(js, /mgArt\.catLoungeStep\(!!companionAnim\.lounging/);
+    assert.match(js, /companionAnim\.lie = REDUCED_MOTION/);
+  });
+
   it("the cat climbs its cat tree now and then, and sleeps up there if it was perched", () => {
     assert.match(js, /function companionClimbStep\(/);
     assert.match(js, /var cl = companionClimbStep\(cw, tree, w, h, y, nowMs, climbBusy\)/);

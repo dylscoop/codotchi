@@ -3306,6 +3306,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var facingLeft = companionAnim.onRight;
     var frame = 0;
     var tree = companionTreeBox(w, h);
+    var canLie = !!(window.spriteHasLyingPose && window.spriteHasLyingPose(cs));
+    var loungeOk = false;
     var eating = companionMeal && nowMs - companionMeal.startMs < companionMeal.durationMs ? companionMeal : null;
     if (!eating) { companionMeal = null; }
     if (state.sleeping) {
@@ -3363,6 +3365,18 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                          (visitorKey && companionAnim.metVisitor !== visitorKey));
       var cl = companionClimbStep(cw, tree, w, h, y, nowMs, climbBusy);
       if (cl) { x = cl.x; y = cl.y; facingLeft = cl.facingLeft; frame = cl.frame; }
+      // A senior lounges most of the time between short strolls, like the cat character
+      if (canLie) {
+        var ln = mgArt.catLoungeStep(!!companionAnim.lounging, companionAnim.loungeUntilMs || 0, nowMs, Math.random);
+        companionAnim.lounging = ln.lounging;
+        companionAnim.loungeUntilMs = ln.untilMs;
+        var clPhase = companionAnim.climb && companionAnim.climb.phase;
+        loungeOk = companionAnim.lounging && !climbBusy && (!clPhase || clPhase === "perch");
+        if (loungeOk && !cl) {
+          cw.pauseUntilMs = Math.max(cw.pauseUntilMs, nowMs + 300);
+          x = Math.round(cw.x); frame = 0;
+        }
+      }
       if (eating) {
         // Stop where it is while it eats (the wander resumes afterwards)
         cw.pauseUntilMs = Math.max(cw.pauseUntilMs, companionMeal.startMs + companionMeal.durationMs);
@@ -3386,10 +3400,37 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       companionCheer = null;
     }
     if (cheerSad) { cs = Object.assign({}, cs, { displayMood: "sad" }); }
+    // Lying pose (senior): asleep, settled on the perch, or lounging; eases over like the cat character
+    var lie = 0;
+    if (canLie) {
+      var pc = companionAnim.climb;
+      var hopping = !!(pc && (pc.phase === "up" || pc.phase === "down" || pc.phase === "walk"));
+      var moved = companionAnim.lastX !== undefined && Math.abs(x - companionAnim.lastX) > 0.5;
+      if (moved || frame !== 0 || hopping) { companionAnim.stillSinceMs = -1; }
+      else if (!(companionAnim.stillSinceMs >= 0)) { companionAnim.stillSinceMs = nowMs; }
+      var wantsLie = !!state.sleeping || !!(pc && pc.phase === "perch") || loungeOk;
+      var poseDt = companionAnim.poseLastMs ? Math.min(100, nowMs - companionAnim.poseLastMs) : 0;
+      companionAnim.poseLastMs = nowMs;
+      companionAnim.lie = REDUCED_MOTION ? (wantsLie ? 1 : 0) : mgArt.catPoseStep(companionAnim.lie || 0, {
+        wantsLie: wantsLie,
+        mustStand: hopping || frame !== 0 || (inMinigame() && !state.sleeping),
+        reacting: !!(petPhase || eating || companionCheer),
+        stillMs: state.sleeping ? mgArt.CAT_LIE_DELAY_MS : (companionAnim.stillSinceMs < 0 ? 0 : nowMs - companionAnim.stillSinceMs),
+      }, poseDt);
+      lie = companionAnim.lie;
+    }
+    companionAnim.lastX = x;
     spriteCtx.save();
     spriteCtx.translate(x, y + h + bob);
     spriteCtx.scale(f, f);
-    drawBody(cs, 0, -fullH, facingLeft, frame);
+    if (lie > 0 && lie < 1) {
+      spriteCtx.globalAlpha = 1 - lie;
+      drawBody(Object.assign({}, cs, { resting: false }), 0, -fullH, facingLeft, frame);
+      spriteCtx.globalAlpha = lie;
+      drawBody(Object.assign({}, cs, { resting: true }), 0, -fullH, facingLeft, frame);
+    } else {
+      drawBody(lie >= 1 ? Object.assign({}, cs, { resting: true }) : cs, 0, -fullH, facingLeft, frame);
+    }
     spriteCtx.restore();
     if (petPhase) {
       spriteCtx.save();
