@@ -8,7 +8,7 @@
 - Feeding Stu (meals and snacks) feeds the cat too: it eats its own tin of tuna or saucer of milk beside him. Playing cheers it up. A sad cat makes Stu a bit sadder, and the other way round.
 - The cat has a small cat tree just left of the right-hand tree, and curls up to sleep wherever it is when Stu sleeps.
 - **🐾 Pet cat** (under Play; also `/codotchi petcat`, Claude Desktop `codotchi_petcat`) makes both happier. In the sidebar Stu walks over and strokes the cat, with hearts, and the cat says its own line. Greyed out while Stu sleeps.
-- In every game (including Play together with a visitor) the cat comes to stand beside Stu, cheering a win and drooping at a loss.
+- In every game (including Play together with a visitor) Stu keeps moving about and the cat (and visitor) tag along beside him, all hopping together at a win; the cat droops at a loss.
 - When a friend visits, the cat cheers up and walks over to them: it hisses at dogs and sniffs other animals curiously.
 - The status bar shows 🐱 after Stu (with a `!` when the cat is hungry or sad); the tooltip lists the cat's stats. The terminal art draws the cat beside Stu with its own bars.
 

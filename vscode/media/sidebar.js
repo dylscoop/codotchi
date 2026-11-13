@@ -2909,11 +2909,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       idleTimer = Math.max(idleTimer, 0.5);
     }
 
-    // A pop-up minigame: the pet stays put so its companion (and a visiting friend) can join it
-    if (inMinigame() && onFloor && !lastState.sleeping) {
-      petVx = 0;
-      idleTimer = Math.max(idleTimer, 0.5);
-    }
+    // A pop-up minigame: the pet keeps wandering, with its companion (and a visiting friend) tagging along
 
     // ── Leg frame ────────────────────────────────────────────────────────
     // Dragon floats — it has no legs, so always pass legFrame -1 (upright/neutral).
@@ -2998,7 +2994,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                            lying ? 1 : window.spriteMood.scaleY(mood, moodFrame), walking);
     }
-    var guestBox = drawGuest(lastState, petX + bWidth / 2, nowMs);
+    var guestBox = drawGuest(lastState, petX + bWidth / 2, nowMs, bWidth);
     drawCompanion(lastState, petX + bWidth / 2, guestBox, nowMs, bWidth);
     drawLeavingGuest(nowMs);
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
@@ -3084,7 +3080,38 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    * pet. Hidden during stage games.
    * @returns {{x:number,y:number,w:number,h:number}|null} its box, or null when none
    */
-  function drawGuest(state, petCx, nowMs) {
+  /**
+   * Playing together: tag along beside the pet on `side` (-1 left, 1 right), walking
+   * after it as it moves. Keeps the wander state `g` in step. {x, facingLeft, frame}.
+   */
+  function followPet(g, w, W, petCx, halfPet, side, nowMs) {
+    var tx = side < 0 ? petCx - halfPet - w + 2 : petCx + halfPet - 2;
+    tx = Math.max(2, Math.min(W - w - 2, tx));
+    var dt = Math.min(0.1, Math.max(0, (nowMs - (g.followLastMs || nowMs)) / 1000));
+    g.followLastMs = nowMs;
+    g.lastMs = nowMs;
+    var dx = tx - g.x;
+    var stepPx = 90 * dt;
+    var moving = Math.abs(dx) > 1.5;
+    if (moving) { g.x += Math.sign(dx) * Math.min(Math.abs(dx), stepPx); g.dir = dx < 0 ? -1 : 1; }
+    g.pauseUntilMs = Math.max(g.pauseUntilMs || 0, nowMs + 300);
+    g.meetUntilMs = 0;
+    g.nextMeetMs = Math.max(g.nextMeetMs || 0, nowMs + 3000);
+    return { x: Math.round(g.x), facingLeft: moving ? dx < 0 : petCx < g.x + w / 2,
+             frame: moving ? Math.floor(nowMs / 150) % 2 : 0 };
+  }
+
+  /** The last game result, for everyone on stage to react to: {won, startMs}, or null. */
+  var gameCheer = null;
+
+  /** Hop on a win: the y offset for a game reaction right now (0 when none or a loss). */
+  function gameCheerBob(nowMs) {
+    if (!gameCheer || nowMs - gameCheer.startMs >= COMPANION_CHEER_MS || !gameCheer.won) { return 0; }
+    var ct = (nowMs - gameCheer.startMs) / COMPANION_CHEER_MS;
+    return -Math.abs(Math.sin(ct * Math.PI * 3)) * 10;
+  }
+
+  function drawGuest(state, petCx, nowMs, petW) {
     var who = socialGuest(state);
     if (!who || stageGame || !socialEnabled) { guestAnim = { key: "", startMs: 0 }; return null; }
     var gs = guestState(state, who);
@@ -3111,13 +3138,17 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       frame = Math.floor(nowMs / 150) % 2;
     } else if (state.visit && who === state.friend && !REDUCED_MOTION) {
       var gw = guestAnim.wander;
+      var step;
       if (gw && friendGame && inMinigame()) {
-        // A friend game: the visitor joins in, heading over and staying by the pet
-        if (gw.meetUntilMs > 0) { gw.meetUntilMs = Math.max(gw.meetUntilMs, nowMs + 500); }
-        else { gw.nextMeetMs = Math.min(gw.nextMeetMs, nowMs); }
+        // A friend game: the visitor tags along beside the pet on its nearer side
+        if (!gw.followSide) { gw.followSide = gw.x + w / 2 < petCx ? -1 : 1; }
+        step = followPet(gw, w, W, petCx, (petW || w) / 2, gw.followSide, nowMs);
+      } else {
+        if (gw) { gw.followSide = 0; gw.followLastMs = 0; }
+        step = wanderGuest(homeX, w, W, petCx, nowMs);
       }
-      var step = wanderGuest(homeX, w, W, petCx, nowMs);
       x = step.x; facingLeft = step.facingLeft; frame = step.frame;
+      if (friendGame) { y += gameCheerBob(nowMs); }
     } else {
       x = homeX;
     }
@@ -3283,20 +3314,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         x = cw.x; frame = 0;
         facingLeft = petCx < x + w / 2;
       } else if (inMinigame()) {
-        // Playing together: stand beside the pet on the nearer side (away from a visiting friend)
-        var gSide = guestBox ? (guestBox.x + guestBox.w / 2 < petCx ? -1 : 1) : 0;
-        var side = gSide ? -gSide : (cw.x + w / 2 < petCx ? -1 : 1);
-        var gx = side < 0 ? petCx - halfPet - w + 2 : petCx + halfPet - 2;
-        gx = Math.max(2, Math.min(W - w - 2, gx));
-        var gStep = 60 * Math.min(0.1, Math.max(0, (nowMs - (cw.gameLastMs || nowMs)) / 1000));
-        cw.gameLastMs = nowMs;
-        if (Math.abs(gx - cw.x) <= gStep) { cw.x = gx; frame = 0; }
-        else { cw.x += gx > cw.x ? gStep : -gStep; frame = Math.floor(nowMs / 150) % 2; }
-        cw.pauseUntilMs = Math.max(cw.pauseUntilMs, nowMs + 300);
-        x = cw.x;
-        facingLeft = petCx < x + w / 2;
+        // Playing together: tag along beside the pet (away from a visiting friend)
+        if (guestBox) { cw.followSide = guestBox.x + guestBox.w / 2 < petCx ? 1 : -1; }
+        else if (!cw.followSide) { cw.followSide = cw.x + w / 2 < petCx ? -1 : 1; }
+        var fs = followPet(cw, w, W, petCx, halfPet, cw.followSide, nowMs);
+        x = fs.x; facingLeft = fs.facingLeft; frame = fs.frame;
       } else {
-        cw.gameLastMs = 0;
+        cw.followSide = 0; cw.followLastMs = 0;
       }
       if (eating) {
         // Stop where it is while it eats (the wander resumes afterwards)
@@ -3797,14 +3821,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (state.companion && events.indexOf("companion_petted") !== -1 && !REDUCED_MOTION) {
       companionPetting = { phase: "walk", startMs: nowMs, untilMs: 0 };
     }
-    // The companion plays too: it cheers a win and droops at a loss
-    if (state.companion) {
-      for (var _gi = 0; _gi < events.length; _gi++) {
-        var _ge = events[_gi];
-        if (_ge.indexOf("minigame_") === 0 || _ge.indexOf("friend_game_") === 0) {
-          if (/_(win|won)$/.test(_ge)) { companionCheer = { won: true, startMs: nowMs }; }
-          else if (/_(lose|lost)$/.test(_ge)) { companionCheer = { won: false, startMs: nowMs }; }
-        }
+    // Everyone on stage reacts to a game result; the companion cheers a win and droops at a loss
+    for (var _gi = 0; _gi < events.length; _gi++) {
+      var _ge = events[_gi];
+      if (_ge.indexOf("minigame_") === 0 || _ge.indexOf("friend_game_") === 0) {
+        var _won = /_(win|won)$/.test(_ge) ? true : /_(lose|lost)$/.test(_ge) ? false : null;
+        if (_won === null) { continue; }
+        gameCheer = { won: _won, startMs: nowMs };
+        if (state.companion) { companionCheer = { won: _won, startMs: nowMs }; }
       }
     }
     if (events.indexOf("fed_snack")     !== -1) { pushReaction("fed_snack",     nowMs); }

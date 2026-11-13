@@ -145,7 +145,9 @@ describe("companion: webview", () => {
     assert.match(js, /activeBubble\.kind === "companion" && companionBox/);
     assert.match(js, /\/\/ Sleeps right where it is/);
     assert.doesNotMatch(js, /Naps on the perch of its cat tree/);
-    assert.match(js, /friendGame && inMinigame\(\)/);
-    assert.match(js, /companionCheer = \{ won: true/);
+    assert.match(js, /if \(gw && friendGame && inMinigame\(\)\)/);
+    assert.match(js, /companionCheer = \{ won: _won/);
+    assert.match(js, /function followPet\(/);
+    assert.doesNotMatch(js, /the pet stays put so its companion/);
   });
 });
