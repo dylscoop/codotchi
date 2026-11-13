@@ -3778,6 +3778,17 @@ export function petCompanion(state: PetState): PetState {
   });
 }
 
+/** One line for the result of petCompanion(), read from its events. */
+export function companionActionMessage(state: Pick<PetState, "name" | "events" | "companion" | "sleeping">): string {
+  const c = state.companion;
+  if (!c) { return `${state.name} doesn't have a companion.`; }
+  const label = c.spriteType.charAt(0).toUpperCase() + c.spriteType.slice(1);
+  if (state.events.includes("companion_petted")) {
+    return `🐾 ${label} purrs, and ${state.name} looks happy too. ${label}: hunger ${Math.round(c.hunger)}, happiness ${Math.round(c.happiness)}.`;
+  }
+  return state.sleeping ? `Shh, ${state.name} and ${label} are sleeping.` : `${label} wants a little space right now. Try again soon.`;
+}
+
 // ---------------------------------------------------------------------------
 // Progression — XP, levels and achievements
 // ---------------------------------------------------------------------------

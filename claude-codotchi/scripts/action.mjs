@@ -3,7 +3,7 @@
  *
  * Usage: node action.mjs <action> [value|name]
  *
- * Actions: status feed snack pat play sleep wake clean medicine friend playfriend gift goodbye items use accept decline on off rename warnthreshold shoutthreshold orangethreshold redthreshold levels speechinterval emoji
+ * Actions: status feed snack pat play sleep wake clean medicine friend playfriend gift goodbye petcat items use accept decline on off rename warnthreshold shoutthreshold orangethreshold redthreshold levels speechinterval emoji
  *
  * Prints ANSI art + status block or plain confirmation text to stdout.
  * Claude Code surfaces this output as the slash command result.
@@ -326,6 +326,13 @@ async function main() {
       message = lines.length > 0
         ? `${state.name}'s friends and family:\n${lines.join("\n")}`
         : `${state.name} hasn't made a friend yet — a friend pet drops by now and then once your pet is a child.`;
+      break;
+    }
+
+    case "petcat": {
+      const next = ge.petCompanion(state);
+      if (next.events.includes("companion_petted")) { state = next; }
+      message = ge.companionActionMessage(next);
       break;
     }
 

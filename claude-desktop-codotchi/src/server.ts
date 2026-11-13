@@ -76,6 +76,8 @@ registerPetTool("codotchi_goodbye", "Say goodbye to the friend", "Wave goodbye t
 registerPetTool("codotchi_accept", "Accept proposal", "Accept a marriage proposal; the married pet leaves an heir egg.", () => tools.socialAction(cfg, "accept"));
 registerPetTool("codotchi_decline", "Decline proposal", "Turn down a marriage proposal for now.", () => tools.socialAction(cfg, "decline"));
 }
+// The companion (Stugotchi's cat) is always on, not part of the social preview
+registerPetTool("codotchi_petcat", "Pet the cat", "Pet the companion cat that lives with Stugotchi: both of them get happier.", () => tools.petCompanionAction(cfg));
 registerPetTool("codotchi_activity", "Register activity", "Register chat/coding activity so the pet stays happy. Call this ~once per turn while working.", () => tools.activity(cfg));
 
 // ── Connect ─────────────────────────────────────────────────────────────────

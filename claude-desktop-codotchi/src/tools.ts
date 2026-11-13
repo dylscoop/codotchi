@@ -25,6 +25,8 @@ import {
   playWithFriend,
   giveFriendGift,
   sayGoodbyeToFriend,
+  petCompanion,
+  companionActionMessage,
   useItem,
   itemListLines,
   itemActionMessage,
@@ -85,7 +87,8 @@ function renderText(state: PetState, _session: { interactionsToday: number; trea
   const itemMsg = usedItem ? itemActionMessage(state, usedItem.slice("item_used_".length))
     : state.events.includes("item_refused") ? `${state.name} can't use that right now (or doesn't have one). codotchi_items lists what it has.` : "";
   const message = refusal ? REFUSAL_MESSAGES[refusal] : socialMsg || itemMsg || (MOOD_MESSAGES[state.mood] ?? "Hello!");
-  const bubble = [stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop")),
+  const bubble = [stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop",
+    undefined, undefined, state.companion)),
     ...socialSummaryLines(state, "codotchi_")].join("\n");
   if (!readConfig().levels) { return bubble; }
   const unlocks = state.events.map((e) => progressionMessage(e, state)).filter((m): m is string => m !== null);
@@ -201,6 +204,16 @@ export function socialAction(cfg: DesktopConfig, kind: "playfriend" | "gift" | "
   const next = applyDevMode(acted, cfg);
   if (!acted.events.some((e) => e.endsWith("_refused"))) { savePet(next, mealsGivenThisCycle); }
   return payload(next, loadSession());
+}
+
+/** Pet the companion animal (Stugotchi's cat): both get happier. A refusal is not saved. */
+export function petCompanionAction(cfg: DesktopConfig): ToolPayload {
+  const { state, mealsGivenThisCycle } = loadPet(cfg);
+  const acted = petCompanion(state);
+  const next = applyDevMode(acted, cfg);
+  if (acted.events.includes("companion_petted")) { savePet(next, mealsGivenThisCycle); }
+  const shown = payload(next, loadSession());
+  return { ...shown, asciiArt: [shown.asciiArt, "", companionActionMessage(acted)].join("\n") };
 }
 
 /** List the pet's items and the decorations on its floor. */

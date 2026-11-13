@@ -632,9 +632,13 @@ export function buildSpeechBubble(
   spriteType = "classic",
   ideLabel?: string,
   bubbleColor?: string,
-  tierEmoji?: string
+  tierEmoji?: string,
+  companion?: { spriteType: string; hunger: number; happiness: number } | null,
 ): string {
-  const art    = getArt(stage, mood, spriteType);
+  const petArt = getArt(stage, mood, spriteType);
+  const art    = companion && stage !== "egg"
+    ? sideBySideArt(petArt, getArt(stage, companionMood(companion, mood === "sleeping"), companion.spriteType))
+    : petArt;
   const bubble = buildBubble(message, 40, bubbleColor);
   const stageColour = STAGE_COLOURS[stage] ?? FG_WHITE;
 
@@ -686,6 +690,25 @@ export function spriteLabel(spriteType: string): string {
   return SPRITE_LABELS[spriteType] ?? spriteType.charAt(0).toUpperCase() + spriteType.slice(1);
 }
 
+/** The companion's art mood: sleeping with the pet, sad when hungry or unhappy, else happy. */
+export function companionMood(c: { hunger: number; happiness: number }, sleeping: boolean): string {
+  if (sleeping) { return "sleeping"; }
+  return c.hunger < 25 || c.happiness < 25 ? "sad" : "happy";
+}
+
+/**
+ * Put two pieces of art next to each other, feet on the same line: the
+ * shorter one is padded at the top. Used for the pet and its companion.
+ */
+export function sideBySideArt(left: readonly string[], right: readonly string[], gap = 2): string[] {
+  const h = Math.max(left.length, right.length);
+  const lw = Math.max(0, ...left.map((l) => l.length));
+  const padTop = (a: readonly string[]): string[] => [...Array(h - a.length).fill(""), ...a];
+  const l = padTop(left);
+  const r = padTop(right);
+  return l.map((line, i) => (line.padEnd(lw) + " ".repeat(gap) + r[i]).trimEnd());
+}
+
 function statBar(label: string, value: number, barWidth = 10): string {
   const filled = Math.round((value / 100) * barWidth);
   const empty  = barWidth - filled;
@@ -733,9 +756,15 @@ export function buildStatusBlock(state: {
   proposal?: SocialView["proposal"];
   /** How commands are written in the social lines (default "/codotchi "). */
   socialCmd?: string;
+  /** The animal living with the pet (Stugotchi's cat): drawn beside the pet with its own bars. */
+  companion?: { spriteType: string; hunger: number; happiness: number } | null;
 }): string {
   const stageColour = STAGE_COLOURS[state.stage] ?? FG_WHITE;
-  const art = getArt(state.stage, state.mood, state.spriteType ?? "classic");
+  const petArt = getArt(state.stage, state.mood, state.spriteType ?? "classic");
+  const companion = state.alive && state.stage !== "egg" ? state.companion ?? null : null;
+  const art = companion
+    ? sideBySideArt(petArt, getArt(state.stage, companionMood(companion, state.sleeping), companion.spriteType))
+    : petArt;
   const trainerLevel = state.levels === true && state.trainer ? levelProgress(state.trainer.xp) : null;
 
   // Art + header side by side
@@ -772,6 +801,12 @@ export function buildStatusBlock(state: {
   lines.push(statBar("Discipline", state.discipline));
   lines.push("");
   lines.push(`  ${FG_CYAN}Weight${RESET}        ${state.weight} / 99`);
+  if (companion) {
+    const label = spriteLabel(companion.spriteType);
+    lines.push("");
+    lines.push(statBar(`${label} food`, companion.hunger));
+    lines.push(statBar(`${label} joy`,  companion.happiness));
+  }
   const social = socialSummaryLines({
     name: state.name, generation: state.generation ?? 1, friend: state.friend ?? null, otherFriends: state.otherFriends ?? [], visit: state.visit ?? null,
     partner: state.partner ?? null, heirEgg: state.heirEgg ?? null, proposal: state.proposal ?? null,
