@@ -620,6 +620,11 @@ class CodotchiPlugin : Disposable {
                     nextState = sayGoodbyeToFriend(state)
                 }
 
+                "pet_companion" -> {
+                    state ?: return@withLock
+                    nextState = petCompanion(state)
+                }
+
                 "accept_proposal" -> {
                     state ?: return@withLock
                     nextState = acceptProposal(state)

@@ -192,6 +192,17 @@ data class PetState(
     val items: List<String> = emptyList(),
     /** Decoration item ids placed on the floor, oldest first; at most MAX_DECOR. */
     val decor: List<String> = emptyList(),
+    /** The animal that lives with this pet (COMPANION_BY_SPRITE); null when the character has none. */
+    val companion: CompanionPet? = null,
+)
+
+/** An animal living with the pet. It ages with the pet, never dies and has no buttons except "pet". */
+data class CompanionPet(
+    val spriteType: String,
+    val hunger: Int,
+    val happiness: Int,
+    /** Active ticks before petCompanion() works again. */
+    val petCooldownTicks: Int = 0,
 )
 
 /** Who another (CPU) pet is: enough to draw it. Mirrors PetIdentity in gameEngine.ts. */

@@ -101,6 +101,16 @@ describe("action.mjs social commands (integration)", () => {
     });
   });
 
+  it("/codotchi petcat pets Stugotchi's cat, then it wants space", async () => {
+    await withFixture(async (tmp) => {
+      await writePet(tmp, { spriteType: "stu", companion: { spriteType: "cat", hunger: 50, happiness: 40, petCooldownTicks: 0 } });
+      const out = run(tmp, "petcat");
+      assert.ok(out.includes("Cat purrs"), out);
+      assert.equal(readPet(tmp).companion.happiness, 55);
+      assert.ok(run(tmp, "petcat").includes("wants a little space"));
+    });
+  });
+
   it("/codotchi goodbye ends the visit early", async () => {
     await withFixture(async (tmp) => {
       await writePet(tmp, { friend: FRIEND, visit: VISIT });

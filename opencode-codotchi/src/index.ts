@@ -71,6 +71,8 @@ import {
   playWithFriend,
   giveFriendGift,
   sayGoodbyeToFriend,
+  petCompanion,
+  companionActionMessage,
   useItem,
   itemListLines,
   itemActionMessage,
@@ -1438,7 +1440,7 @@ const plugin: Plugin = async (ctx) => {
       "This tool reads state from VS Code, PyCharm, and the local OpenCode pet — do NOT use any other codotchi tool.",
     args: {
       action: tool.schema
-        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "items", "use", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
+        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "petcat", "items", "use", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
         .describe("The action to perform"),
       value: tool.schema
         .number()
@@ -1583,7 +1585,7 @@ const plugin: Plugin = async (ctx) => {
                   petLevel: s.petLevel, trainer: s.trainer,
                   spawnedAt: s.spawnedAt, dailies: s.dailies, levels: levelsEnabled,
                   generation: s.generation, friend: s.friend, otherFriends: s.otherFriends, visit: s.visit, partner: s.partner,
-                  heirEgg: s.heirEgg, proposal: s.proposal,
+                  heirEgg: s.heirEgg, proposal: s.proposal, companion: s.companion,
                 })
               : "";
             // Each pet prints once: the stat block, or a one-line summary when art is off.
@@ -1733,6 +1735,22 @@ const plugin: Plugin = async (ctx) => {
                : `[${pLabel}] Played with ${next.name}. Happiness: ${next.happiness}, Energy: ${next.energy}.`));
            }
            return ret(notification + playLines.join("\n\n"));
+         }
+
+         case "petcat": {
+           // Pet the companion animal (Stugotchi's cat) on the IDE pets that have one.
+           const catLines: string[] = [];
+           for (const p of alivePets) {
+             if (p.ide === "opencode" || !p.state.companion) { continue; }
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             const next = petCompanion(p.state);
+             if (next.events.includes("companion_petted")) {
+               setPetState(p.ide, next);
+               saveIDEState(p.ide);
+             }
+             catLines.push(`[${pLabel}] ${companionActionMessage(next)}`);
+           }
+           return ret(notification + (catLines.length > 0 ? catLines.join("\n\n") : "No IDE pet has a companion to pet."));
          }
 
          case "friend":
@@ -2134,7 +2152,7 @@ const CODOTCHI_TOOL_INPUT = {
   properties: {
     action: {
       type: "string",
-      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "items", "use", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
+      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "petcat", "items", "use", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
       description: "The action to perform",
     },
     value: { type: "number", description: "Numeric USD value for warnthreshold or shoutthreshold actions" },
