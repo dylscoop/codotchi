@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.38.0] - 2026-11-13
+
+### Added
+
+- **Stugotchi's cat.** Stugotchi now lives with a cat. It grows up alongside him (drawn at 50–66% of his size), has its own hunger and happiness, and wanders the sidebar, taking turns with any visitor to come and see Stu.
+- Feeding Stu (meals and snacks) feeds the cat too, and playing cheers it up. A sad cat makes Stu a bit sadder, and the other way round.
+- A **🐾 Pet cat** button (and `/codotchi petcat`, Claude Desktop `codotchi_petcat`) makes both happier.
+- When a friend visits, the cat cheers up and walks over to them: it hisses at dogs and sniffs other animals curiously.
+- The status bar shows 🐱 after Stu (with a `!` when the cat is hungry or sad); the tooltip lists the cat's stats. The terminal art draws the cat beside Stu with its own bars.
+
 ## [2.37.1] - 2026-11-12
 
 ### Added (friends preview, dev mode only)

@@ -1,6 +1,27 @@
 # Version History
 
-## v2.37.1 - current
+## v2.38.0 - current
+
+### Changes from v2.37.1 (Stugotchi's companion cat - branch feature/stu-companion-cat)
+
+| File | What changed |
+|------|-------------|
+| `packages/core/src/gameEngine.ts` (+ synced copies) | Companion animals: `PetState.companion` (`CompanionPet` spriteType / hunger / happiness / petCooldownTicks). `COMPANION_BY_SPRITE` (`stu` → `cat`) decides who has one; `createPet` and `deserialiseCompanion` give Stu a cat (old saves too; no schema bump). `tickCompanion` runs after `tickSocial`: decay every `COMPANION_DECAY_TICK_INTERVAL`, linked moods every `COMPANION_LINK_TICK_INTERVAL`, and on `friend_visit_started` +`COMPANION_VISIT_HAPPINESS` with `companion_hiss` (at `COMPANION_HISSES_AT`) or `companion_curious`. Always on (ignores `socialEnabled`). `feedMeal` / `consumeSnack` / `play` care for the cat; new `petCompanion()` (`companion_petted` / `companion_pet_refused`) and `companionActionMessage()` |
+| `pycharm/.../engine/Companion.kt` (new), `PetState.kt`, `GameEngine.kt`, `CodotchiPersistence.kt` | Kotlin port; companion saved via `socialToRaw` / `socialFromRaw` |
+| `vscode/media/sidebar.js`, `sidebar.html`, `vscode/src/sidebarProvider.ts`, `pycharm/.../CodotchiPlugin.kt` | `drawCompanion`: the cat at Stu's stage, scaled by `COMPANION_SCALE` (0.5 young → 0.66 adult), wanders with `wanderGuest` (now takes its own anim slot), waits its turn while the visitor meets Stu, meets each new visitor once, sleeps with Stu. Companion panel with stats line and **🐾 Pet cat** (`pet_companion` message). Bubbles for `COMPANION_BUBBLE_EVENTS` |
+| `packages/core/src/asciiArt.ts` (+ synced copies) | `sideBySideArt`, `companionMood`; `buildStatusBlock` and `buildSpeechBubble` draw the companion beside the pet, plus "Cat food" / "Cat joy" bars |
+| `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/action.mjs`, `commands/codotchi.md`, `claude-desktop-codotchi/src/server.ts`, `tools.ts` | `/codotchi petcat`; Claude Desktop `codotchi_petcat` (always registered) |
+| `vscode/src/statusBarText.ts`, `pycharm/.../StatusBarText.kt` | 🐱 after the name (`!` when the cat is hungry or sad); cat stats and warning in the tooltip |
+| `vscode/tests/unit/companion.test.ts` (new), `pycharm/.../CompanionTest.kt` (new), `opencode-codotchi/tests/unit/asciiArt.test.ts`, `claude-codotchi/tests/integration/socialActions.test.mjs` | companion tests |
+| CHANGELOG, `plugin.xml` change notes, README, all manifests | version 2.38.0 |
+
+```
+COMPANION_DECAY_TICK_INTERVAL = 10, COMPANION_LOW_STAT = 25, COMPANION_LINK_TICK_INTERVAL = 20
+COMPANION_MEAL_HUNGER = 20, COMPANION_SNACK_HUNGER = 10, COMPANION_SNACK_HAPPINESS = 5, COMPANION_PLAY_HAPPINESS = 15
+COMPANION_PET_HAPPINESS = 15, COMPANION_PET_OWNER_HAPPINESS = 5, COMPANION_PET_COOLDOWN_TICKS = 20, COMPANION_VISIT_HAPPINESS = 10
+```
+
+## v2.37.1
 
 ### Changes from v2.37.0 (social follow-ups - branch feat/social-followups)
 

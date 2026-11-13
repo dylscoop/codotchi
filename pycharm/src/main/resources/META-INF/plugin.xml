@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.37.1</version>
+    <version>2.38.0</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -189,6 +189,10 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+<h3>2.38.0</h3>
+<ul>
+<li><b>Stugotchi's cat</b> - Stugotchi now lives with a cat. It grows up with him, has its own hunger and happiness, gets fed and cheered up when you feed and play with Stu, has a Pet cat button that makes both happier, and hisses at (or sniffs) visiting friends.</li>
+</ul>
 <h3>2.37.1</h3>
 <ul>
 <li><b>Friends preview (dev mode)</b> - visiting friends wander around and meet your pet, several different friends can visit, Play together is a minigame against the friend, gifts are real items you can use or give, and you can say goodbye.</li>
