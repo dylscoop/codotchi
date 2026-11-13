@@ -3309,8 +3309,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var eating = companionMeal && nowMs - companionMeal.startMs < companionMeal.durationMs ? companionMeal : null;
     if (!eating) { companionMeal = null; }
     if (state.sleeping) {
-      // Sleeps right where it is
-      if (companionAnim.wander) { x = Math.round(companionAnim.wander.x); facingLeft = companionAnim.wander.dir < 0; }
+      // Sleeps right where it is: up on the perch if it was there, else on the floor
+      var slClimb = companionAnim.climb;
+      if (slClimb && (slClimb.phase === "perch" || slClimb.phase === "up")) {
+        slClimb.phase = "perch";
+        slClimb.untilMs = Math.max(slClimb.untilMs, nowMs + 4000);   // stay up a moment after waking
+        x = companionPerchX(tree, w); y = companionPerchY(tree, h); facingLeft = false;
+      } else {
+        companionAnim.climb = null;
+        if (companionAnim.wander) { x = Math.round(companionAnim.wander.x); facingLeft = companionAnim.wander.dir < 0; }
+      }
     } else if (!REDUCED_MOTION) {
       if (!companionAnim.wander) {
         wanderGuest(homeX, w, W, petCx, nowMs, companionAnim);
@@ -3350,6 +3358,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       } else {
         resetFollow(cw);
       }
+      // Now and then it climbs its cat tree and sits on the perch for a while
+      var climbBusy = !!(companionPetting || inMinigame() || eating ||
+                         (visitorKey && companionAnim.metVisitor !== visitorKey));
+      var cl = companionClimbStep(cw, tree, w, h, y, nowMs, climbBusy);
+      if (cl) { x = cl.x; y = cl.y; facingLeft = cl.facingLeft; frame = cl.frame; }
       if (eating) {
         // Stop where it is while it eats (the wander resumes afterwards)
         cw.pauseUntilMs = Math.max(cw.pauseUntilMs, companionMeal.startMs + companionMeal.durationMs);
@@ -3388,6 +3401,77 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     }
     companionBox = { x: x, y: y + bob, w: w, h: h };
     return companionBox;
+  }
+
+  /** Climbs: walk over, hop up, sit a while on the perch, hop down. */
+  var COMPANION_CLIMB_GAP_MIN_MS = 25000;
+  var COMPANION_CLIMB_GAP_MAX_MS = 45000;
+  var COMPANION_PERCH_MIN_MS = 10000;
+  var COMPANION_PERCH_MAX_MS = 18000;
+  var COMPANION_HOP_MS = 450;
+  var COMPANION_CLIMB_WALK_PPS = 35;
+
+  function companionPerchX(tree, w) { return tree.x + Math.round((tree.w - w) / 2); }
+  function companionPerchY(tree, h) { return tree.y - h + Math.round(h * 0.08); }
+
+  /**
+   * One frame of the companion's cat-tree climb (companionAnim.climb). Starts one
+   * every COMPANION_CLIMB_GAP_* when not busy; `busy` (petting, a game, eating,
+   * meeting a visitor) calls it down. {x, y, facingLeft, frame} while climbing, else null.
+   */
+  function companionClimbStep(cw, tree, w, h, floorY, nowMs, busy) {
+    var a = companionAnim;
+    if (!a.climbNextMs) { a.climbNextMs = nowMs + COMPANION_CLIMB_GAP_MIN_MS * 0.6; }
+    var c = a.climb;
+    if (!c) {
+      if (busy || nowMs < a.climbNextMs || cw.meetUntilMs > 0) { return null; }
+      c = a.climb = { phase: "walk", startMs: nowMs, untilMs: 0, lastMs: nowMs };
+    }
+    var px = companionPerchX(tree, w);
+    var py = companionPerchY(tree, h);
+    var out = null;
+    if (c.phase === "walk") {
+      if (busy) { a.climb = null; return null; }
+      var dt = Math.min(0.1, Math.max(0, (nowMs - c.lastMs) / 1000));
+      c.lastMs = nowMs;
+      var dx = px - cw.x;
+      if (Math.abs(dx) <= 1) {
+        cw.x = px;
+        c.phase = "up"; c.startMs = nowMs;
+      } else {
+        cw.x += Math.sign(dx) * Math.min(Math.abs(dx), COMPANION_CLIMB_WALK_PPS * dt);
+        out = { x: Math.round(cw.x), y: floorY, facingLeft: dx < 0, frame: Math.floor(nowMs / 150) % 2 };
+      }
+    }
+    if (c.phase === "up" || c.phase === "down") {
+      var t = Math.min(1, (nowMs - c.startMs) / COMPANION_HOP_MS);
+      var from = c.phase === "up" ? floorY : py;
+      var to = c.phase === "up" ? py : floorY;
+      var arc = Math.sin(t * Math.PI) * Math.max(6, h * 0.3);
+      out = { x: px, y: Math.round(from + (to - from) * t - arc), facingLeft: false, frame: 0 };
+      if (t >= 1) {
+        if (c.phase === "up") {
+          c.phase = "perch";
+          c.untilMs = nowMs + COMPANION_PERCH_MIN_MS + Math.random() * (COMPANION_PERCH_MAX_MS - COMPANION_PERCH_MIN_MS);
+        } else {
+          a.climb = null;
+          a.climbNextMs = nowMs + COMPANION_CLIMB_GAP_MIN_MS + Math.random() * (COMPANION_CLIMB_GAP_MAX_MS - COMPANION_CLIMB_GAP_MIN_MS);
+          cw.x = px;
+          return null;
+        }
+      }
+    }
+    if (c.phase === "perch") {
+      if (busy || nowMs >= c.untilMs) { c.phase = "down"; c.startMs = nowMs; }
+      out = { x: px, y: py, facingLeft: false, frame: 0 };
+    }
+    // Hold the floor wander in place while it is away on the tree
+    cw.x = out ? (c.phase === "walk" ? cw.x : px) : cw.x;
+    cw.lastMs = nowMs;
+    cw.pauseUntilMs = Math.max(cw.pauseUntilMs || 0, nowMs + 300);
+    cw.meetUntilMs = 0;
+    cw.nextMeetMs = Math.max(cw.nextMeetMs || 0, nowMs + 3000);
+    return out;
   }
   var GUEST_MEET_MS = 2000;
   var GUEST_MEET_GAP_MIN_MS = 12000;

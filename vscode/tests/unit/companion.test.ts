@@ -128,6 +128,12 @@ describe("companion: webview", () => {
     assert.match(js, /command: "pet_companion"/);
   });
 
+  it("the cat climbs its cat tree now and then, and sleeps up there if it was perched", () => {
+    assert.match(js, /function companionClimbStep\(/);
+    assert.match(js, /var cl = companionClimbStep\(cw, tree, w, h, y, nowMs, climbBusy\)/);
+    assert.match(js, /slClimb\.phase === "perch" \|\| slClimb\.phase === "up"/);
+  });
+
   it("Pet cat is one of the game options in the Play menu, after Pat", () => {
     assert.match(html, /id="btn-mg-pat"[^\n]*\n[^\n]*mg-game-btn hidden" id="btn-pet-companion"/);
     assert.doesNotMatch(html, /id="btn-sleep-wake"[^\n]*\n[^\n]*id="btn-pet-companion"/);
