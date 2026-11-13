@@ -138,4 +138,14 @@ describe("companion: webview", () => {
     const bg = fs.readFileSync(path.join(__dirname, "../../../media/backgroundArt.js"), "utf8");
     assert.match(bg, /drawCatTree:\s+drawCatTree/);
   });
+
+  it("Pet cat walks the pet over, the cat speaks its own lines, sleeps in place and joins games", () => {
+    assert.match(js, /companionPetting = \{ phase: "walk"/);
+    assert.match(js, /showBubble\(_cText, "companion"\)/);
+    assert.match(js, /activeBubble\.kind === "companion" && companionBox/);
+    assert.match(js, /\/\/ Sleeps right where it is/);
+    assert.doesNotMatch(js, /Naps on the perch of its cat tree/);
+    assert.match(js, /friendGame && inMinigame\(\)/);
+    assert.match(js, /companionCheer = \{ won: true/);
+  });
 });
