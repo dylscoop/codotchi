@@ -3190,14 +3190,25 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   /**
-   * The companion's small cat tree: on the left edge of the stage, a perch wide
-   * enough for the companion and about twice its height. {x, y, w, h, p}, y = top of the perch.
+   * The companion's small cat tree: just left of the rightmost background tree
+   * (the left edge when the scene has none), a perch wide enough for the
+   * companion and about twice its height. {x, y, w, h, p}, y = top of the perch.
    */
   function companionTreeBox(catW, catH) {
     var p = 3;
     var w = Math.max(8 * p, Math.ceil((catW * 0.8) / p) * p);
     var h = Math.max(14 * p, Math.ceil((catH * 1.1) / p) * p);
-    return { x: 4, y: spriteCanvas.height - 12 - h, w: w, h: h, p: p };
+    var x = 4;
+    var bg = window.backgroundArt;
+    if (bg && bg.layout && bg.getActiveSeason && BG_STYLE !== "legacy") {
+      var season = bg.getActiveSeason(BG_MODE, new Date());
+      if (season !== "plain") {
+        var trees = bg.layout(season, spriteCanvas.width, spriteCanvas.height).trees || [];
+        var edge = trees[trees.length - 1];
+        if (edge) { x = Math.max(4, Math.round(edge.x - w - 2 * p)); }
+      }
+    }
+    return { x: x, y: spriteCanvas.height - 12 - h, w: w, h: h, p: p };
   }
 
   /** A drawable state for the companion: the pet's stage, its own look, sad when its happiness is low. */
