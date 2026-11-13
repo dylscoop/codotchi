@@ -446,6 +446,30 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   document.getElementById("btn-proposal-decline").addEventListener("click", function () {
     vscode.postMessage({ command: "decline_proposal" });
   });
+  document.getElementById("btn-pet-companion").addEventListener("click", function () {
+    vscode.postMessage({ command: "pet_companion" });
+  });
+
+  /** "cat" -> "Cat": what the companion is called on screen. */
+  function companionLabel(c) {
+    return c.spriteType.charAt(0).toUpperCase() + c.spriteType.slice(1);
+  }
+
+  /** The companion's line (hunger / happiness) and the Pet button; hidden when the pet has no companion. */
+  function renderCompanion(state) {
+    var panel = document.getElementById("companion-panel");
+    if (!panel) { return; }
+    var c = state && state.alive && state.stage !== "egg" ? state.companion : null;
+    panel.classList.toggle("hidden", !c);
+    if (!c) { return; }
+    var label = companionLabel(c);
+    var mood = c.hunger < 25 ? " · hungry!" : c.happiness < 25 ? " · sad" : "";
+    document.getElementById("companion-line").textContent =
+      "🐱 " + label + "  🍖 " + Math.round(c.hunger) + "  😊 " + Math.round(c.happiness) + mood;
+    var btn = document.getElementById("btn-pet-companion");
+    btn.textContent = "🐾 Pet " + label.toLowerCase();
+    btn.disabled = !!state.sleeping || (c.petCooldownTicks || 0) > 0;
+  }
 
   /** True when the (dead) pet left an heir egg that the hatch screen can offer. */
   function heirAvailable(state) {
@@ -2936,6 +2960,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
                            lying ? 1 : window.spriteMood.scaleY(mood, moodFrame), walking);
     }
     var guestBox = drawGuest(lastState, petX + bWidth / 2, nowMs);
+    drawCompanion(lastState, petX + bWidth / 2, guestBox, nowMs);
     drawLeavingGuest(nowMs);
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
     // The cat's mouse or bird, in its mouth on the way back
@@ -2978,6 +3003,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   var SOCIAL_BUBBLE_EVENTS = ["married", "proposal_received", "matchmaker_arrived", "best_friends",
     "friend_gift_received", "friend_visit_started", "friend_played", "friend_gift_given",
     "friend_play_refused", "friend_gift_refused", "proposal_declined", "friend_waved_goodbye", "friend_visit_ended"];
+  /** Companion events that get a bubble; always on (not gated by social features). */
+  var COMPANION_BUBBLE_EVENTS = ["companion_hiss", "companion_curious", "companion_petted", "companion_pet_refused"];
 
   var GUEST_SLIDE_MS = 900;
   var GUEST_WAVE_MS = 700;
@@ -3050,6 +3077,85 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     return { x: x, y: y, w: w, h: h };
   }
 
+  // ── Companion animal (Stugotchi's cat) ──────────────────────────────────
+
+  /** Size of the companion relative to a pet of the same stage: young ones 50%, adults 66%. */
+  var COMPANION_SCALE = { egg: 0.5, baby: 0.5, child: 0.5, teen: 0.58, adult: 0.66, senior: 0.66 };
+  var COMPANION_SAD = 25;
+  var companionAnim = { key: "", onRight: true, wander: null, metVisitor: "" };
+
+  /** A drawable state for the companion: the pet's stage, its own look, sad when its happiness is low. */
+  function companionState(state) {
+    var c = state.companion;
+    return Object.assign({}, state, {
+      name: "", spriteType: c.spriteType,
+      sick: false, resting: !!state.sleeping, weight: 40, poops: 0,
+      happiness: c.happiness, hunger: c.hunger,
+      displayMood: c.happiness < COMPANION_SAD || c.hunger < COMPANION_SAD ? "sad" : null,
+    });
+  }
+
+  /**
+   * Draw the companion, shrunk by COMPANION_SCALE, on the side away from the
+   * visitor (or the pet). It wanders like a visitor and now and then walks
+   * over to the pet, waiting its turn if the visitor is meeting the pet; when
+   * a friend arrives it goes to meet the friend once. Sleeps when the pet sleeps.
+   * Always on: does not depend on social features.
+   * @returns {{x:number,y:number,w:number,h:number}|null} its box, or null when none
+   */
+  function drawCompanion(state, petCx, guestBox, nowMs) {
+    if (!state || !state.companion || !state.alive || state.stage === "egg" || stageGame) { return null; }
+    var cs = companionState(state);
+    var f = COMPANION_SCALE[cs.stage] || 0.5;
+    var size = Math.round(BASE_SIZE * petSizeMultiplier(cs.spriteType) * (STAGE_SCALES[cs.stage] || 0.5));
+    var fullW = effectiveBWidth(cs, size);
+    var fullH = petBoxHeight(cs, fullW);
+    var w = Math.round(fullW * f);
+    var h = Math.round(fullH * f);
+    var W = spriteCanvas.width;
+    var key = cs.spriteType + "|" + (guestBox ? "guest" : "solo");
+    if (companionAnim.key !== key) {
+      var guestCx = guestBox ? guestBox.x + guestBox.w / 2 : null;
+      var onRight = guestCx !== null ? guestCx < W / 2 : petCx < W / 2;
+      var keepX = companionAnim.wander ? companionAnim.wander.x : null;
+      companionAnim = { key: key, onRight: onRight, wander: null, metVisitor: companionAnim.metVisitor };
+      if (keepX !== null) {
+        wanderGuest(keepX, w, W, petCx, nowMs, companionAnim);
+        companionAnim.wander.nextMeetMs = nowMs + GUEST_MEET_GAP_MIN_MS;
+      }
+    }
+    var homeX = companionAnim.onRight ? W - w - 6 : 6;
+    var y = spriteCanvas.height - h - 12;
+    var x = homeX;
+    var facingLeft = companionAnim.onRight;
+    var frame = 0;
+    if (!state.sleeping && !REDUCED_MOTION) {
+      if (!companionAnim.wander) {
+        wanderGuest(homeX, w, W, petCx, nowMs, companionAnim);
+        companionAnim.wander.nextMeetMs = nowMs + GUEST_MEET_GAP_MIN_MS;   // after the visitor's first meet
+      }
+      var cw = companionAnim.wander;
+      var visitorKey = guestBox && state.visit && state.friend ? state.friend.name : "";
+      var target = petCx;
+      if (visitorKey && companionAnim.metVisitor !== visitorKey) {
+        // A friend just arrived: go and meet them once
+        target = guestBox.x + guestBox.w / 2;
+        if (cw.meetUntilMs === 0 && cw.nextMeetMs > nowMs) { cw.nextMeetMs = nowMs; }
+        if (cw.meetUntilMs > 0) { companionAnim.metVisitor = visitorKey; }
+      } else if (cw.meetUntilMs === 0 && nowMs >= cw.nextMeetMs &&
+                 guestAnim.wander && guestAnim.wander.meetUntilMs > nowMs - 1500) {
+        cw.nextMeetMs = nowMs + 4000;   // the visitor is with the pet: wait a turn
+      }
+      var step = wanderGuest(homeX, w, W, target, nowMs, companionAnim);
+      x = step.x; facingLeft = step.facingLeft; frame = step.frame;
+    }
+    spriteCtx.save();
+    spriteCtx.translate(x, y + h);
+    spriteCtx.scale(f, f);
+    drawBody(cs, 0, -fullH, facingLeft, frame);
+    spriteCtx.restore();
+    return { x: x, y: y, w: w, h: h };
+  }
   var GUEST_MEET_MS = 2000;
   var GUEST_MEET_GAP_MIN_MS = 12000;
   var GUEST_MEET_GAP_MAX_MS = 25000;
@@ -3060,12 +3166,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    * clear of the edges. Every GUEST_MEET_GAP_* it walks up beside the pet
    * and both face each other for GUEST_MEET_MS.
    */
-  function wanderGuest(homeX, w, W, petCx, nowMs) {
-    var g = guestAnim.wander;
+  function wanderGuest(homeX, w, W, petCx, nowMs, anim) {
+    anim = anim || guestAnim;
+    var g = anim.wander;
     if (!g) {
-      g = guestAnim.wander = {
+      g = anim.wander = {
         x: homeX, lastMs: nowMs,
-        dir: guestAnim.onRight ? -1 : 1,
+        dir: anim.onRight ? -1 : 1,
         speed: 10 + Math.random() * 10,           // px per second; the pet has its own pace
         nextFlipMs: nowMs + 1500 + Math.random() * 2500,
         pauseUntilMs: 0,
@@ -3337,6 +3444,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       typeLabelCap;
 
     renderSocial(state);
+    renderCompanion(state);
     renderProgression(state);
 
     // Update sleep/wake button label to match current state
@@ -3616,6 +3724,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       if (bossAccess !== "off" && events.indexOf("boss_unlocked") !== -1) {
         queueBubble(humaniseEvent("boss_unlocked", _n, state));
         return;
+      }
+      // 1e0. Companion: petted, or its reaction to a friend arriving (after the visit bubble)
+      for (var _ci = 0; _ci < COMPANION_BUBBLE_EVENTS.length; _ci++) {
+        if (events.indexOf(COMPANION_BUBBLE_EVENTS[_ci]) !== -1) {
+          if (socialEnabled && events.indexOf("friend_visit_started") !== -1) {
+            queueBubble(humaniseEvent("friend_visit_started", _n, state));
+          }
+          queueBubble(humaniseEvent(COMPANION_BUBBLE_EVENTS[_ci], _n, state));
+          return;
+        }
       }
       // 1e. Social: visits, gifts, proposals and marriage (rare, so they outrank everyday bubbles)
       for (var _si = 0; socialEnabled && _si < SOCIAL_BUBBLE_EVENTS.length; _si++) {
@@ -3932,7 +4050,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _pr = state && state.proposal ? state.proposal.name : "someone";
     var _pa = state && state.partner ? state.partner.name : "their sweetheart";
     var _gift = giftItemIn(state && state.events);
+    var _cat = state && state.companion ? companionLabel(state.companion) : "The cat";
     var labels = {
+      "companion_hiss":          _cat + " hisses at " + _fr + "! Hsss! 🙀",
+      "companion_curious":       _cat + " sniffs " + _fr + " curiously. 🐱",
+      "companion_petted":        _cat + " purrs, and " + n + " looks happy too. 💕",
+      "companion_pet_refused":   _cat + " wants a little space right now.",
       "aged_overnight":          n + " aged a day whilst you were gone",
       "friend_made":             "",   // silent: the visit bubble says it
       "friend_visit_started":    _fr + " dropped by to visit " + n + "!",
@@ -5182,7 +5305,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     drawHeirEgg(state);
     drawDecor(state);
     drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false, 0);
-    drawGuest(state, staticX + bWidth / 2, performance.now());
+    var staticGuestBox = drawGuest(state, staticX + bWidth / 2, performance.now());
+    drawCompanion(state, staticX + bWidth / 2, staticGuestBox, performance.now());
     if (isChewingBone(state)) {
       drawBreakBone(state, { x: staticX, y: staticY, w: bWidth, h: bHeight }, false);
     } else {

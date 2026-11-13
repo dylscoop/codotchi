@@ -5,6 +5,8 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import * as fs from "fs";
+import * as path from "path";
 import {
   createPet,
   tick,
@@ -88,5 +90,30 @@ describe("companion", () => {
     } finally {
       Math.random = orig;
     }
+  });
+});
+
+describe("companion: webview", () => {
+  const js = fs.readFileSync(path.join(__dirname, "../../../media/sidebar.js"), "utf8");
+  const html = fs.readFileSync(path.join(__dirname, "../../../media/sidebar.html"), "utf8");
+
+  it("draws the companion at 50–66% of a pet's size, growing with the stage", () => {
+    const m = js.match(/var COMPANION_SCALE = (\{[^}]+\})/);
+    assert.ok(m, "COMPANION_SCALE found");
+    const scale = Function(`return ${m![1]}`)() as Record<string, number>;
+    for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
+      assert.ok(scale[stage] >= 0.5 && scale[stage] <= 0.66, `${stage} in range`);
+    }
+    assert.ok(scale.adult > scale.child);
+  });
+
+  it("every companion bubble event has text, and the Pet button exists", () => {
+    const m = js.match(/var COMPANION_BUBBLE_EVENTS = \[([^\]]+)\]/);
+    assert.ok(m);
+    for (const ev of m![1].match(/"[a-z_]+"/g)!) {
+      assert.match(js, new RegExp(`${ev}:\\s+_cat`), `${ev} has a label`);
+    }
+    assert.match(html, /id="btn-pet-companion"/);
+    assert.match(js, /command: "pet_companion"/);
   });
 });
