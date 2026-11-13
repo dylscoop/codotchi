@@ -24,6 +24,7 @@ import {
   COMPANION_LINK_TICK_INTERVAL,
   DEFAULT_GAME_CONFIG as DEFAULT_CONFIG,
 } from "../../src/gameEngine";
+import { formatStatusBar } from "../../src/statusBarText";
 
 function stuAdult(overrides: Partial<PetState> = {}): PetState {
   return { ...createPet("Stu", "codeling", "stu"), stage: "adult", energy: 100, ...overrides };
@@ -90,6 +91,16 @@ describe("companion", () => {
     } finally {
       Math.random = orig;
     }
+  });
+
+  it("status bar shows 🐱 and the cat's stats, and warns when it is hungry", () => {
+    const ok = formatStatusBar(stuAdult({ companion: { spriteType: "cat", hunger: 60, happiness: 70, petCooldownTicks: 0 } }));
+    assert.match(ok.text, /🐱$/);
+    assert.match(ok.tooltip, /🐱 Cat: hunger 60, happiness 70/);
+    const hungry = formatStatusBar(stuAdult({ companion: { spriteType: "cat", hunger: 10, happiness: 70, petCooldownTicks: 0 } }));
+    assert.match(hungry.text, /🐱!$/);
+    assert.match(hungry.tooltip, /Cat is hungry/);
+    assert.doesNotMatch(formatStatusBar(createPet("Rex", "codeling", "dog")).text, /🐱/);
   });
 });
 

@@ -61,4 +61,14 @@ class CompanionTest {
         assertTrue("companion_hiss" in next.events)
         assertTrue((next.companion?.happiness ?: 0) >= 40 + COMPANION_VISIT_HAPPINESS - 1)
     }
+
+    @Test
+    fun `status bar shows the cat and warns when it is hungry`() {
+        val (okText, okTip) = formatStatusWidget(stu(cat = CompanionPet("cat", 60, 70, 0)), true)
+        assertTrue(okText.endsWith("🐱"))
+        assertTrue("🐱 Cat: hunger 60, happiness 70" in okTip)
+        val (hungryText, hungryTip) = formatStatusWidget(stu(cat = CompanionPet("cat", 10, 70, 0)), true)
+        assertTrue(hungryText.endsWith("🐱!"))
+        assertTrue("Cat is hungry" in hungryTip)
+    }
 }

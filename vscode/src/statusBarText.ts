@@ -86,7 +86,10 @@ export function formatStatusBar(state: PetState): { text: string; tooltip: strin
       ? state.spriteType.charAt(0).toUpperCase() + state.spriteType.slice(1)
       : "");
   const callLine = attentionCallLine(state);
-  const text = `${callLine ? "⚠ " : ""}${emoji} ${state.name} (${stageLabel})`;
+  const cat = state.stage !== "egg" ? state.companion : null;
+  const catLabel = cat ? cat.spriteType.charAt(0).toUpperCase() + cat.spriteType.slice(1) : "";
+  const catNeeds = cat ? (cat.hunger < 25 ? "hungry" : cat.happiness < 25 ? "sad" : "") : "";
+  const text = `${callLine ? "⚠ " : ""}${emoji} ${state.name} (${stageLabel})${cat ? " 🐱" : ""}${catNeeds ? "!" : ""}`;
   const tooltip = [
     callLine,
     `Hunger: ${Math.round(state.hunger)}`,
@@ -97,6 +100,8 @@ export function formatStatusBar(state: PetState): { text: string; tooltip: strin
     `Stage: ${stageLabel}`,
     spriteLabel ? `Sprite: ${spriteLabel}` : "",
     state.sick ? "⚠ Sick!" : "",
+    cat ? `🐱 ${catLabel}: hunger ${Math.round(cat.hunger)}, happiness ${Math.round(cat.happiness)}` : "",
+    catNeeds ? `⚠ ${catLabel} is ${catNeeds}!` : "",
   ]
     .filter(Boolean)
     .join(" | ");
