@@ -128,8 +128,9 @@ describe("companion: webview", () => {
     assert.match(js, /command: "pet_companion"/);
   });
 
-  it("Pet cat sits in the action grid right under Play (after Sleep in the 2-column grid)", () => {
-    assert.match(html, /id="btn-play"[^\n]*\n[^\n]*id="btn-sleep-wake"[^\n]*\n[^\n]*id="btn-pet-companion"/);
+  it("Pet cat is one of the game options in the Play menu, after Pat", () => {
+    assert.match(html, /id="btn-mg-pat"[^\n]*\n[^\n]*mg-game-btn hidden" id="btn-pet-companion"/);
+    assert.doesNotMatch(html, /id="btn-sleep-wake"[^\n]*\n[^\n]*id="btn-pet-companion"/);
   });
 
   it("the cat eats its own food when the pet is fed, and has a small cat tree", () => {

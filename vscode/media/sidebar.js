@@ -447,6 +447,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     vscode.postMessage({ command: "decline_proposal" });
   });
   document.getElementById("btn-pet-companion").addEventListener("click", function () {
+    hideMgOverlay();
     vscode.postMessage({ command: "pet_companion" });
   });
 
