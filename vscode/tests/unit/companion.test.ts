@@ -127,4 +127,15 @@ describe("companion: webview", () => {
     assert.match(html, /id="btn-pet-companion"/);
     assert.match(js, /command: "pet_companion"/);
   });
+
+  it("Pet cat sits in the action grid right under Play (after Sleep in the 2-column grid)", () => {
+    assert.match(html, /id="btn-play"[^\n]*\n[^\n]*id="btn-sleep-wake"[^\n]*\n[^\n]*id="btn-pet-companion"/);
+  });
+
+  it("the cat eats its own food when the pet is fed, and has a small cat tree", () => {
+    assert.match(js, /companionMeal = \{ kind: _meal \? "tuna" : "milk"/);
+    assert.match(js, /drawCompanionTree\(lastState\)/);
+    const bg = fs.readFileSync(path.join(__dirname, "../../../media/backgroundArt.js"), "utf8");
+    assert.match(bg, /drawCatTree:\s+drawCatTree/);
+  });
 });

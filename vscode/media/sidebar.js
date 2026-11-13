@@ -461,12 +461,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (!panel) { return; }
     var c = state && state.alive && state.stage !== "egg" ? state.companion : null;
     panel.classList.toggle("hidden", !c);
+    var btn = document.getElementById("btn-pet-companion");
+    btn.classList.toggle("hidden", !c);
     if (!c) { return; }
     var label = companionLabel(c);
     var mood = c.hunger < 25 ? " · hungry!" : c.happiness < 25 ? " · sad" : "";
     document.getElementById("companion-line").textContent =
       "🐱 " + label + "  🍖 " + Math.round(c.hunger) + "  😊 " + Math.round(c.happiness) + mood;
-    var btn = document.getElementById("btn-pet-companion");
     btn.textContent = "🐾 Pet " + label.toLowerCase();
     btn.disabled = !!state.sleeping || (c.petCooldownTicks || 0) > 0;
   }
@@ -2939,6 +2940,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     drawEnvironment(lastState);
     drawHeirEgg(lastState);
     drawDecor(lastState);
+    drawCompanionTree(lastState);
     if (moodProps) {
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
@@ -3083,6 +3085,57 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   var COMPANION_SCALE = { egg: 0.5, baby: 0.5, child: 0.5, teen: 0.58, adult: 0.66, senior: 0.66 };
   var COMPANION_SAD = 25;
   var companionAnim = { key: "", onRight: true, wander: null, metVisitor: "" };
+  /** The companion's own food while the pet eats: {kind:"tuna"|"milk", startMs, durationMs}, or null. */
+  var companionMeal = null;
+  var COMPANION_FOOD = {
+    tuna: { px: [[0,3,3,3,3,0],[1,1,1,1,1,1],[1,2,2,2,2,1],[1,1,1,1,1,1]], colours: { 1: "#A8B0B8", 2: "#2F6FB5", 3: "#E8A0A0" } },
+    milk: { px: [[0,2,2,2,2,2,0],[1,1,1,1,1,1,1],[0,1,1,1,1,1,0]], colours: { 1: "#7FA7C9", 2: "#FFFFFF" } },
+  };
+
+  /** Draw the companion's food on the floor, feet line `feetY`, centred on `cx`. */
+  function drawCompanionFood(kind, cx, feetY) {
+    var food = COMPANION_FOOD[kind];
+    var s = 2;
+    var fx = Math.round(cx - food.px[0].length * s / 2);
+    var fy = feetY - food.px.length * s;
+    drawGridOutline(food.px, fx, fy, s, "rgba(0,0,0,0.55)");
+    food.px.forEach(function (row, ry) {
+      row.forEach(function (cell, rx) {
+        if (!cell) { return; }
+        spriteCtx.fillStyle = food.colours[cell];
+        spriteCtx.fillRect(fx + rx * s, fy + ry * s, s, s);
+      });
+    });
+  }
+
+  /** The companion's size on the stage: {w, h, fullW, fullH, f, cs}. */
+  function companionSize(state) {
+    var cs = companionState(state);
+    var f = COMPANION_SCALE[cs.stage] || 0.5;
+    var size = Math.round(BASE_SIZE * petSizeMultiplier(cs.spriteType) * (STAGE_SCALES[cs.stage] || 0.5));
+    var fullW = effectiveBWidth(cs, size);
+    var fullH = petBoxHeight(cs, fullW);
+    return { cs: cs, f: f, fullW: fullW, fullH: fullH, w: Math.round(fullW * f), h: Math.round(fullH * f) };
+  }
+
+  /** Draw the companion's small cat tree; call before the pet so it stands behind everyone. */
+  function drawCompanionTree(state) {
+    if (!state || !state.companion || !state.alive || state.stage === "egg" || stageGame) { return; }
+    if (!window.backgroundArt || !window.backgroundArt.drawCatTree) { return; }
+    var sz = companionSize(state);
+    window.backgroundArt.drawCatTree(spriteCtx, companionTreeBox(sz.w, sz.h), window.backgroundArt.darkness(new Date()));
+  }
+
+  /**
+   * The companion's small cat tree: on the left edge of the stage, a perch wide
+   * enough for the companion and about twice its height. {x, y, w, h, p}, y = top of the perch.
+   */
+  function companionTreeBox(catW, catH) {
+    var p = 3;
+    var w = Math.max(8 * p, Math.ceil((catW * 0.8) / p) * p);
+    var h = Math.max(14 * p, Math.ceil((catH * 1.1) / p) * p);
+    return { x: 4, y: spriteCanvas.height - 12 - h, w: w, h: h, p: p };
+  }
 
   /** A drawable state for the companion: the pet's stage, its own look, sad when its happiness is low. */
   function companionState(state) {
@@ -3105,13 +3158,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    */
   function drawCompanion(state, petCx, guestBox, nowMs) {
     if (!state || !state.companion || !state.alive || state.stage === "egg" || stageGame) { return null; }
-    var cs = companionState(state);
-    var f = COMPANION_SCALE[cs.stage] || 0.5;
-    var size = Math.round(BASE_SIZE * petSizeMultiplier(cs.spriteType) * (STAGE_SCALES[cs.stage] || 0.5));
-    var fullW = effectiveBWidth(cs, size);
-    var fullH = petBoxHeight(cs, fullW);
-    var w = Math.round(fullW * f);
-    var h = Math.round(fullH * f);
+    var sz = companionSize(state);
+    var cs = sz.cs, f = sz.f, fullH = sz.fullH, w = sz.w, h = sz.h;
     var W = spriteCanvas.width;
     var key = cs.spriteType + "|" + (guestBox ? "guest" : "solo");
     if (companionAnim.key !== key) {
@@ -3129,7 +3177,16 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var x = homeX;
     var facingLeft = companionAnim.onRight;
     var frame = 0;
-    if (!state.sleeping && !REDUCED_MOTION) {
+    var tree = companionTreeBox(w, h);
+    var eating = companionMeal && nowMs - companionMeal.startMs < companionMeal.durationMs ? companionMeal : null;
+    if (!eating) { companionMeal = null; }
+    if (state.sleeping) {
+      // Naps on the perch of its cat tree while the pet sleeps
+      x = tree.x + Math.round((tree.w - w) / 2);
+      y = tree.y - h + Math.round(h * 0.08);
+      facingLeft = false;
+      if (companionAnim.wander) { companionAnim.wander.x = x; }
+    } else if (!REDUCED_MOTION) {
       if (!companionAnim.wander) {
         wanderGuest(homeX, w, W, petCx, nowMs, companionAnim);
         companionAnim.wander.nextMeetMs = nowMs + GUEST_MEET_GAP_MIN_MS;   // after the visitor's first meet
@@ -3148,9 +3205,20 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       }
       var step = wanderGuest(homeX, w, W, target, nowMs, companionAnim);
       x = step.x; facingLeft = step.facingLeft; frame = step.frame;
+      if (eating) {
+        // Stop where it is while it eats (the wander resumes afterwards)
+        cw.pauseUntilMs = Math.max(cw.pauseUntilMs, companionMeal.startMs + companionMeal.durationMs);
+        frame = 0;
+      }
+    }
+    var bob = 0;
+    if (eating && !state.sleeping) {
+      var et = (nowMs - eating.startMs) / eating.durationMs;
+      bob = -Math.abs(Math.sin(et * Math.PI * (eating.kind === "tuna" ? 2 : 1))) * 6;
+      drawCompanionFood(eating.kind, facingLeft ? x - 4 : x + w + 4, spriteCanvas.height - 12);
     }
     spriteCtx.save();
-    spriteCtx.translate(x, y + h);
+    spriteCtx.translate(x, y + h + bob);
     spriteCtx.scale(f, f);
     drawBody(cs, 0, -fullH, facingLeft, frame);
     spriteCtx.restore();
@@ -3607,6 +3675,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     }
 
     if (events.indexOf("fed_meal")      !== -1) { pushReaction("fed_meal",      nowMs); }
+    // The companion eats its own food alongside the pet: tuna for a meal, milk for a snack
+    if (state.companion && (events.indexOf("fed_meal") !== -1 || events.indexOf("fed_snack") !== -1)) {
+      var _meal = events.indexOf("fed_meal") !== -1;
+      companionMeal = { kind: _meal ? "tuna" : "milk", startMs: nowMs, durationMs: _meal ? 2400 : 1200 };
+    }
     if (events.indexOf("fed_snack")     !== -1) { pushReaction("fed_snack",     nowMs); }
     if (events.indexOf("played")        !== -1) { pushReaction("played",        nowMs); }
     if (events.indexOf("patted")        !== -1) {
@@ -5304,6 +5377,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     drawHeirEgg(state);
     drawDecor(state);
+    drawCompanionTree(state);
     drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false, 0);
     var staticGuestBox = drawGuest(state, staticX + bWidth / 2, performance.now());
     drawCompanion(state, staticX + bWidth / 2, staticGuestBox, performance.now());
