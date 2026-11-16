@@ -446,6 +446,33 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   document.getElementById("btn-proposal-decline").addEventListener("click", function () {
     vscode.postMessage({ command: "decline_proposal" });
   });
+  document.getElementById("btn-pet-companion").addEventListener("click", function () {
+    hideMgOverlay();
+    vscode.postMessage({ command: "pet_companion" });
+  });
+
+  /** "cat" -> "Cat": what the companion is called on screen. */
+  function companionLabel(c) {
+    return c.spriteType.charAt(0).toUpperCase() + c.spriteType.slice(1);
+  }
+
+  /** The companion's line (hunger / happiness) and the Pet button; hidden when the pet has no companion. */
+  function renderCompanion(state) {
+    var panel = document.getElementById("companion-panel");
+    if (!panel) { return; }
+    var c = state && state.alive && state.stage !== "egg" ? state.companion : null;
+    panel.classList.toggle("hidden", !c);
+    var btn = document.getElementById("btn-pet-companion");
+    btn.classList.toggle("hidden", !c);
+    if (!c) { return; }
+    var label = companionLabel(c);
+    var mood = c.hunger < 25 ? " · hungry!" : c.happiness < 25 ? " · sad" : "";
+    document.getElementById("companion-line").textContent =
+      "🐱 " + label + "  🍖 " + Math.round(c.hunger) + "  😊 " + Math.round(c.happiness) + mood;
+    btn.textContent = "🐾 Pet " + label.toLowerCase();
+    btn.disabled = !!state.sleeping;
+    btn.disabled = !!state.sleeping || (c.petCooldownTicks || 0) > 0;
+  }
 
   /** True when the (dead) pet left an heir egg that the hatch screen can offer. */
   function heirAvailable(state) {
@@ -2222,7 +2249,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (alpha <= 0) {
       // Fully faded — clear and show any queued attention-call bubble
       activeBubble = null;
-      if (bubbleQueue.length > 0) { showBubble(bubbleQueue.shift()); }
+      if (bubbleQueue.length > 0) {
+        var _q = bubbleQueue.shift();
+        if (typeof _q === "string") { showBubble(_q); } else { showBubble(_q.text, _q.kind); }
+      }
       return;
     }
 
@@ -2853,6 +2883,35 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       petFacingLeft = guestAnim.wander.x < petX;
     }
 
+    // Pet cat: walk to the companion (the nearer side), then stand facing it while stroking it
+    var onFloor = petY >= floorY - 0.5;
+    if (companionPetting && (lastState.sleeping || stageGame || !lastState.companion)) { companionPetting = null; }
+    if (companionPetting && companionBox && onFloor) {
+      var cbCx = companionBox.x + companionBox.w / 2;
+      var petCxNow = petX + bWidth / 2;
+      var standX = cbCx >= petCxNow ? companionBox.x - bWidth + Math.round(bWidth * 0.15)
+                                    : companionBox.x + companionBox.w - Math.round(bWidth * 0.15);
+      standX = Math.max(minX, Math.min(maxX, standX));
+      if (companionPetting.phase === "walk") {
+        var cpStep = 70 * dt;
+        if (Math.abs(standX - petX) <= cpStep || nowMs - companionPetting.startMs > COMPANION_PET_WALK_MAX_MS) {
+          companionPetting.phase = "pet";
+          companionPetting.untilMs = nowMs + COMPANION_PET_MS;
+        } else {
+          petVx = standX > petX ? 70 : -70;
+          petX += petVx * dt;
+        }
+      }
+      if (companionPetting.phase === "pet") {
+        petVx = 0;
+        if (nowMs >= companionPetting.untilMs) { companionPetting = null; }
+      }
+      petFacingLeft = cbCx < petX + bWidth / 2;
+      idleTimer = Math.max(idleTimer, 0.5);
+    }
+
+    // A pop-up minigame: the pet keeps wandering, with its companion (and a visiting friend) tagging along
+
     // ── Leg frame ────────────────────────────────────────────────────────
     // Dragon floats — it has no legs, so always pass legFrame -1 (upright/neutral).
     var walking  = !isDragon && (!lastState.sleeping || napTrip) && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
@@ -2915,6 +2974,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     drawEnvironment(lastState);
     drawHeirEgg(lastState);
     drawDecor(lastState);
+    drawCompanionTree(lastState);
     if (moodProps) {
       window.spriteMood.drawProps(spriteCtx, mood, moodFrame, moodBox, petFacingLeft, snackChomp);
     }
@@ -2935,7 +2995,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       drawBodyWithReaction(drawState, Math.round(petX), Math.round(petY) + walkBob, petFacingLeft, legFrame, activeReaction, nowMs,
                            lying ? 1 : window.spriteMood.scaleY(mood, moodFrame), walking);
     }
-    var guestBox = drawGuest(lastState, petX + bWidth / 2, nowMs);
+    var guestBox = drawGuest(lastState, petX + bWidth / 2, nowMs, bWidth);
+    drawCompanion(lastState, petX + bWidth / 2, guestBox, nowMs, bWidth);
     drawLeavingGuest(nowMs);
     if (chewing) { drawBreakBone(lastState, moodBox, petFacingLeft); }
     // The cat's mouse or bird, in its mouth on the way back
@@ -2968,8 +3029,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _petTopY  = Math.round(petY) + walkBob - headGap(lastState);
     drawKiss(_petCx, _petTopY, guestBox, nowMs);
     drawGiftDrop(guestBox, nowMs);
-    drawSpeechBubble(_petCx, _petTopY, nowMs,
-                     emojiClearance(drawState.sleeping || patting, moodPxSize), Math.round(_bW / 2));
+    if (activeBubble && activeBubble.kind === "companion" && companionBox) {
+      // The companion's own lines (petted, hiss...) come from the companion
+      drawSpeechBubble(Math.round(companionBox.x + companionBox.w / 2), companionBox.y, nowMs, 0,
+                       Math.round(companionBox.w / 2));
+    } else {
+      drawSpeechBubble(_petCx, _petTopY, nowMs,
+                       emojiClearance(drawState.sleeping || patting, moodPxSize), Math.round(_bW / 2));
+    }
   }
 
   // ── Social on the canvas: visiting friend / partner, heir egg, kiss (v2.36.0) ──
@@ -2978,6 +3045,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   var SOCIAL_BUBBLE_EVENTS = ["married", "proposal_received", "matchmaker_arrived", "best_friends",
     "friend_gift_received", "friend_visit_started", "friend_played", "friend_gift_given",
     "friend_play_refused", "friend_gift_refused", "proposal_declined", "friend_waved_goodbye", "friend_visit_ended"];
+  /** Companion events that get a bubble; always on (not gated by social features). */
+  var COMPANION_BUBBLE_EVENTS = ["companion_hiss", "companion_curious", "companion_petted", "companion_pet_refused"];
 
   var GUEST_SLIDE_MS = 900;
   var GUEST_WAVE_MS = 700;
@@ -3012,7 +3081,60 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    * pet. Hidden during stage games.
    * @returns {{x:number,y:number,w:number,h:number}|null} its box, or null when none
    */
-  function drawGuest(state, petCx, nowMs) {
+  /**
+   * Playing together: tag along beside the pet on `side` (-1 left, 1 right), walking
+   * after it as it moves. Keeps the wander state `g` in step. {x, facingLeft, frame}.
+   */
+  function followPet(g, w, W, petCx, halfPet, side, nowMs) {
+    var tx = side < 0 ? petCx - halfPet - w + 2 : petCx + halfPet - 2;
+    tx = Math.max(2, Math.min(W - w - 2, tx));
+    var dt = Math.min(0.1, Math.max(0, (nowMs - (g.followLastMs || nowMs)) / 1000));
+    g.followLastMs = nowMs;
+    g.lastMs = nowMs;
+    var dx = tx - g.x;
+    // Hysteresis: set off once well away from the spot, keep going until right there
+    if (!g.followMoving && Math.abs(dx) > FOLLOW_START_PX) { g.followMoving = true; }
+    else if (g.followMoving && Math.abs(dx) <= 1.5) { g.followMoving = false; g.followStillSinceMs = nowMs; }
+    if (g.followMoving) {
+      g.x += Math.sign(dx) * Math.min(Math.abs(dx), 90 * dt);
+      g.dir = dx < 0 ? -1 : 1;
+    }
+    g.pauseUntilMs = Math.max(g.pauseUntilMs || 0, nowMs + 300);
+    g.meetUntilMs = 0;
+    g.nextMeetMs = Math.max(g.nextMeetMs || 0, nowMs + 3000);
+    // Face the way it walks; once settled a moment, turn to the pet. Never flip faster than FOLLOW_TURN_MS.
+    var want = g.followMoving ? dx < 0
+      : (nowMs - (g.followStillSinceMs || 0) >= FOLLOW_FACE_PET_MS ? petCx < g.x + w / 2 : g.followFacingLeft);
+    if (g.followFacingLeft === undefined) { g.followFacingLeft = want; g.followTurnMs = nowMs; }
+    if (want !== g.followFacingLeft && nowMs - (g.followTurnMs || 0) >= FOLLOW_TURN_MS) {
+      g.followFacingLeft = want;
+      g.followTurnMs = nowMs;
+    }
+    return { x: Math.round(g.x), facingLeft: !!g.followFacingLeft,
+             frame: g.followMoving ? Math.floor(nowMs / 150) % 2 : 0 };
+  }
+  var FOLLOW_START_PX = 6;
+  var FOLLOW_FACE_PET_MS = 500;
+  var FOLLOW_TURN_MS = 300;
+
+  /** Forget the follow state so the next game starts fresh. */
+  function resetFollow(g) {
+    if (!g) { return; }
+    g.followSide = 0; g.followLastMs = 0; g.followMoving = false;
+    g.followFacingLeft = undefined; g.followTurnMs = 0; g.followStillSinceMs = 0;
+  }
+
+  /** The last game result, for everyone on stage to react to: {won, startMs}, or null. */
+  var gameCheer = null;
+
+  /** Hop on a win: the y offset for a game reaction right now (0 when none or a loss). */
+  function gameCheerBob(nowMs) {
+    if (!gameCheer || nowMs - gameCheer.startMs >= COMPANION_CHEER_MS || !gameCheer.won) { return 0; }
+    var ct = (nowMs - gameCheer.startMs) / COMPANION_CHEER_MS;
+    return -Math.abs(Math.sin(ct * Math.PI * 3)) * 10;
+  }
+
+  function drawGuest(state, petCx, nowMs, petW) {
     var who = socialGuest(state);
     if (!who || stageGame || !socialEnabled) { guestAnim = { key: "", startMs: 0 }; return null; }
     var gs = guestState(state, who);
@@ -3038,8 +3160,18 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       x = Math.round(startX + (homeX - startX) * ease);
       frame = Math.floor(nowMs / 150) % 2;
     } else if (state.visit && who === state.friend && !REDUCED_MOTION) {
-      var step = wanderGuest(homeX, w, W, petCx, nowMs);
+      var gw = guestAnim.wander;
+      var step;
+      if (gw && friendGame && inMinigame()) {
+        // A friend game: the visitor tags along beside the pet on its nearer side
+        if (!gw.followSide) { gw.followSide = gw.x + w / 2 < petCx ? -1 : 1; }
+        step = followPet(gw, w, W, petCx, (petW || w) / 2, gw.followSide, nowMs);
+      } else {
+        if (gw) { resetFollow(gw); }
+        step = wanderGuest(homeX, w, W, petCx, nowMs);
+      }
       x = step.x; facingLeft = step.facingLeft; frame = step.frame;
+      if (friendGame) { y += gameCheerBob(nowMs); }
     } else {
       x = homeX;
     }
@@ -3050,6 +3182,338 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     return { x: x, y: y, w: w, h: h };
   }
 
+  // ── Companion animal (Stugotchi's cat) ──────────────────────────────────
+
+  /** Size of the companion relative to a pet of the same stage: young ones 50%, adults 66%. */
+  var COMPANION_SCALE = { egg: 0.5, baby: 0.5, child: 0.5, teen: 0.58, adult: 0.66, senior: 0.66 };
+  var COMPANION_SAD = 25;
+  var companionAnim = { key: "", onRight: true, wander: null, metVisitor: "" };
+  /** The companion's own food while the pet eats: {kind:"tuna"|"milk", startMs, durationMs}, or null. */
+  var companionMeal = null;
+  /** Pet cat: the pet walks over, then strokes it. {phase:"walk"|"pet", startMs, untilMs}, or null. */
+  var companionPetting = null;
+  var COMPANION_PET_MS = 2200;
+  var COMPANION_PET_WALK_MAX_MS = 5000;
+  /** The companion's reaction to a game result: {won:boolean, startMs}, or null. */
+  var companionCheer = null;
+  var COMPANION_CHEER_MS = 1400;
+  /** Where the companion was drawn last frame ({x, y, w, h}), so the pet can walk to it. */
+  var companionBox = null;
+
+  /** True while a pop-up minigame (or the game picker) is open: the pet and its companion play side by side. */
+  function inMinigame() {
+    return !!(mgPanels && !mgPanels.classList.contains("hidden") && !stageGame);
+  }
+  var COMPANION_FOOD = {
+    tuna: { px: [[0,3,3,3,3,0],[1,1,1,1,1,1],[1,2,2,2,2,1],[1,1,1,1,1,1]], colours: { 1: "#A8B0B8", 2: "#2F6FB5", 3: "#E8A0A0" } },
+    milk: { px: [[0,2,2,2,2,2,0],[1,1,1,1,1,1,1],[0,1,1,1,1,1,0]], colours: { 1: "#7FA7C9", 2: "#FFFFFF" } },
+  };
+
+  /** Draw the companion's food on the floor, feet line `feetY`, centred on `cx`. */
+  function drawCompanionFood(kind, cx, feetY) {
+    var food = COMPANION_FOOD[kind];
+    var s = 2;
+    var fx = Math.round(cx - food.px[0].length * s / 2);
+    var fy = feetY - food.px.length * s;
+    drawGridOutline(food.px, fx, fy, s, "rgba(0,0,0,0.55)");
+    food.px.forEach(function (row, ry) {
+      row.forEach(function (cell, rx) {
+        if (!cell) { return; }
+        spriteCtx.fillStyle = food.colours[cell];
+        spriteCtx.fillRect(fx + rx * s, fy + ry * s, s, s);
+      });
+    });
+  }
+
+  /** The companion's size on the stage: {w, h, fullW, fullH, f, cs}. */
+  function companionSize(state) {
+    var cs = companionState(state);
+    var f = COMPANION_SCALE[cs.stage] || 0.5;
+    var size = Math.round(BASE_SIZE * petSizeMultiplier(cs.spriteType) * (STAGE_SCALES[cs.stage] || 0.5));
+    var fullW = effectiveBWidth(cs, size);
+    var fullH = petBoxHeight(cs, fullW);
+    return { cs: cs, f: f, fullW: fullW, fullH: fullH, w: Math.round(fullW * f), h: Math.round(fullH * f) };
+  }
+
+  /** Draw the companion's small cat tree; call before the pet so it stands behind everyone. */
+  function drawCompanionTree(state) {
+    if (!state || !state.companion || !state.alive || state.stage === "egg" || stageGame) { return; }
+    if (!window.backgroundArt || !window.backgroundArt.drawCatTree) { return; }
+    var sz = companionSize(state);
+    window.backgroundArt.drawCatTree(spriteCtx, companionTreeBox(sz.w, sz.h), window.backgroundArt.darkness(new Date()));
+  }
+
+  /**
+   * The companion's small cat tree: just left of the rightmost background tree
+   * (the left edge when the scene has none), a perch wide enough for the
+   * companion and about twice its height. {x, y, w, h, p}, y = top of the perch.
+   */
+  function companionTreeBox(catW, catH) {
+    var p = 3;
+    var w = Math.max(8 * p, Math.ceil((catW * 0.8) / p) * p);
+    var h = Math.max(14 * p, Math.ceil((catH * 1.1) / p) * p);
+    var x = 4;
+    var bg = window.backgroundArt;
+    if (bg && bg.layout && bg.getActiveSeason && BG_STYLE !== "legacy") {
+      var season = bg.getActiveSeason(BG_MODE, new Date());
+      if (season !== "plain") {
+        var trees = bg.layout(season, spriteCanvas.width, spriteCanvas.height).trees || [];
+        var edge = trees[trees.length - 1];
+        if (edge) { x = Math.max(4, Math.round(edge.x - w - 2 * p)); }
+      }
+    }
+    return { x: x, y: spriteCanvas.height - 12 - h, w: w, h: h, p: p };
+  }
+
+  /** A drawable state for the companion: the pet's stage, its own look, sad when its happiness is low. */
+  function companionState(state) {
+    var c = state.companion;
+    return Object.assign({}, state, {
+      name: "", spriteType: c.spriteType,
+      sick: false, resting: !!state.sleeping, weight: 40, poops: 0,
+      happiness: c.happiness, hunger: c.hunger,
+      displayMood: c.happiness < COMPANION_SAD || c.hunger < COMPANION_SAD ? "sad" : null,
+    });
+  }
+
+  /**
+   * Draw the companion, shrunk by COMPANION_SCALE, on the side away from the
+   * visitor (or the pet). It wanders like a visitor and now and then walks
+   * over to the pet, waiting its turn if the visitor is meeting the pet; when
+   * a friend arrives it goes to meet the friend once. Sleeps when the pet sleeps.
+   * Always on: does not depend on social features.
+   * @returns {{x:number,y:number,w:number,h:number}|null} its box, or null when none
+   */
+  function drawCompanion(state, petCx, guestBox, nowMs, petW) {
+    if (!state || !state.companion || !state.alive || state.stage === "egg" || stageGame) { companionBox = null; return null; }
+    var sz = companionSize(state);
+    var cs = sz.cs, f = sz.f, fullH = sz.fullH, w = sz.w, h = sz.h;
+    var W = spriteCanvas.width;
+    var key = cs.spriteType + "|" + (guestBox ? "guest" : "solo");
+    if (companionAnim.key !== key) {
+      var guestCx = guestBox ? guestBox.x + guestBox.w / 2 : null;
+      var onRight = guestCx !== null ? guestCx < W / 2 : petCx < W / 2;
+      var keepX = companionAnim.wander ? companionAnim.wander.x : null;
+      companionAnim = { key: key, onRight: onRight, wander: null, metVisitor: companionAnim.metVisitor };
+      if (keepX !== null) {
+        wanderGuest(keepX, w, W, petCx, nowMs, companionAnim);
+        companionAnim.wander.nextMeetMs = nowMs + GUEST_MEET_GAP_MIN_MS;
+      }
+    }
+    var homeX = companionAnim.onRight ? W - w - 6 : 6;
+    var y = spriteCanvas.height - h - 12;
+    var x = homeX;
+    var facingLeft = companionAnim.onRight;
+    var frame = 0;
+    var tree = companionTreeBox(w, h);
+    var canLie = !!(window.spriteHasLyingPose && window.spriteHasLyingPose(cs));
+    var loungeOk = false;
+    var eating = companionMeal && nowMs - companionMeal.startMs < companionMeal.durationMs ? companionMeal : null;
+    if (!eating) { companionMeal = null; }
+    if (state.sleeping) {
+      // Sleeps right where it is: up on the perch if it was there, else on the floor
+      var slClimb = companionAnim.climb;
+      if (slClimb && (slClimb.phase === "perch" || slClimb.phase === "up")) {
+        slClimb.phase = "perch";
+        slClimb.untilMs = Math.max(slClimb.untilMs, nowMs + 4000);   // stay up a moment after waking
+        x = companionPerchX(tree, w); y = companionPerchY(tree, h); facingLeft = false;
+      } else {
+        companionAnim.climb = null;
+        if (companionAnim.wander) { x = Math.round(companionAnim.wander.x); facingLeft = companionAnim.wander.dir < 0; }
+      }
+    } else if (!REDUCED_MOTION) {
+      if (!companionAnim.wander) {
+        wanderGuest(homeX, w, W, petCx, nowMs, companionAnim);
+        companionAnim.wander.nextMeetMs = nowMs + GUEST_MEET_GAP_MIN_MS;   // after the visitor's first meet
+      }
+      var cw = companionAnim.wander;
+      var visitorKey = guestBox && state.visit && state.friend ? state.friend.name : "";
+      var target = petCx;
+      if (visitorKey && companionAnim.metVisitor !== visitorKey) {
+        // A friend just arrived: go and meet them once
+        target = guestBox.x + guestBox.w / 2;
+        if (cw.meetUntilMs === 0 && cw.nextMeetMs > nowMs) { cw.nextMeetMs = nowMs; }
+        if (cw.meetUntilMs > 0) { companionAnim.metVisitor = visitorKey; }
+      } else if (cw.meetUntilMs === 0 && nowMs >= cw.nextMeetMs &&
+                 guestAnim.wander && guestAnim.wander.meetUntilMs > nowMs - 1500) {
+        cw.nextMeetMs = nowMs + 4000;   // the visitor is with the pet: wait a turn
+      }
+      var step = wanderGuest(homeX, w, W, target, nowMs, companionAnim);
+      x = step.x; facingLeft = step.facingLeft; frame = step.frame;
+      var halfPet = (petW || w * 2) / 2;
+      if (companionPetting) {
+        // Pet cat: hold still and face the pet as it comes over
+        cw.pauseUntilMs = Math.max(cw.pauseUntilMs, nowMs + 300);
+        x = cw.x; frame = 0;
+        facingLeft = petCx < x + w / 2;
+      } else if (inMinigame()) {
+        // Playing together: tag along beside the pet; the side is fixed for the whole game
+        // (opposite a visiting friend's side, else whichever is nearer at the start)
+        if (!cw.followSide) {
+          var gwSide = guestAnim.wander && guestAnim.wander.followSide;
+          cw.followSide = gwSide ? -gwSide
+            : guestBox ? (guestBox.x + guestBox.w / 2 < petCx ? 1 : -1)
+            : (cw.x + w / 2 < petCx ? -1 : 1);
+        }
+        var fs = followPet(cw, w, W, petCx, halfPet, cw.followSide, nowMs);
+        x = fs.x; facingLeft = fs.facingLeft; frame = fs.frame;
+      } else {
+        resetFollow(cw);
+      }
+      // Now and then it climbs its cat tree and sits on the perch for a while
+      var climbBusy = !!(companionPetting || inMinigame() || eating ||
+                         (visitorKey && companionAnim.metVisitor !== visitorKey));
+      var cl = companionClimbStep(cw, tree, w, h, y, nowMs, climbBusy);
+      if (cl) { x = cl.x; y = cl.y; facingLeft = cl.facingLeft; frame = cl.frame; }
+      // A senior lounges most of the time between short strolls, like the cat character
+      if (canLie) {
+        var ln = mgArt.catLoungeStep(!!companionAnim.lounging, companionAnim.loungeUntilMs || 0, nowMs, Math.random);
+        companionAnim.lounging = ln.lounging;
+        companionAnim.loungeUntilMs = ln.untilMs;
+        var clPhase = companionAnim.climb && companionAnim.climb.phase;
+        loungeOk = companionAnim.lounging && !climbBusy && (!clPhase || clPhase === "perch");
+        if (loungeOk && !cl) {
+          cw.pauseUntilMs = Math.max(cw.pauseUntilMs, nowMs + 300);
+          x = Math.round(cw.x); frame = 0;
+        }
+      }
+      if (eating) {
+        // Stop where it is while it eats (the wander resumes afterwards)
+        cw.pauseUntilMs = Math.max(cw.pauseUntilMs, companionMeal.startMs + companionMeal.durationMs);
+        frame = 0;
+      }
+    }
+    var bob = 0;
+    if (eating && !state.sleeping) {
+      var et = (nowMs - eating.startMs) / eating.durationMs;
+      bob = -Math.abs(Math.sin(et * Math.PI * (eating.kind === "tuna" ? 2 : 1))) * 6;
+      drawCompanionFood(eating.kind, facingLeft ? x - 4 : x + w + 4, spriteCanvas.height - 12);
+    }
+    var petPhase = companionPetting && companionPetting.phase === "pet" && !state.sleeping;
+    if (petPhase) { bob = -Math.abs(Math.sin(nowMs / 250)) * 3; }
+    var cheerSad = false;
+    if (companionCheer && nowMs - companionCheer.startMs < COMPANION_CHEER_MS && !state.sleeping) {
+      var ct = (nowMs - companionCheer.startMs) / COMPANION_CHEER_MS;
+      if (companionCheer.won) { bob = -Math.abs(Math.sin(ct * Math.PI * 3)) * 10; }
+      else { cheerSad = true; }
+    } else if (companionCheer) {
+      companionCheer = null;
+    }
+    if (cheerSad) { cs = Object.assign({}, cs, { displayMood: "sad" }); }
+    // Lying pose (senior): asleep, settled on the perch, or lounging; eases over like the cat character
+    var lie = 0;
+    if (canLie) {
+      var pc = companionAnim.climb;
+      var hopping = !!(pc && (pc.phase === "up" || pc.phase === "down" || pc.phase === "walk"));
+      var moved = companionAnim.lastX !== undefined && Math.abs(x - companionAnim.lastX) > 0.5;
+      if (moved || frame !== 0 || hopping) { companionAnim.stillSinceMs = -1; }
+      else if (!(companionAnim.stillSinceMs >= 0)) { companionAnim.stillSinceMs = nowMs; }
+      var wantsLie = !!state.sleeping || !!(pc && pc.phase === "perch") || loungeOk;
+      var poseDt = companionAnim.poseLastMs ? Math.min(100, nowMs - companionAnim.poseLastMs) : 0;
+      companionAnim.poseLastMs = nowMs;
+      companionAnim.lie = REDUCED_MOTION ? (wantsLie ? 1 : 0) : mgArt.catPoseStep(companionAnim.lie || 0, {
+        wantsLie: wantsLie,
+        mustStand: hopping || frame !== 0 || (inMinigame() && !state.sleeping),
+        reacting: !!(petPhase || eating || companionCheer),
+        stillMs: state.sleeping ? mgArt.CAT_LIE_DELAY_MS : (companionAnim.stillSinceMs < 0 ? 0 : nowMs - companionAnim.stillSinceMs),
+      }, poseDt);
+      lie = companionAnim.lie;
+    }
+    companionAnim.lastX = x;
+    spriteCtx.save();
+    spriteCtx.translate(x, y + h + bob);
+    spriteCtx.scale(f, f);
+    if (lie > 0 && lie < 1) {
+      spriteCtx.globalAlpha = 1 - lie;
+      drawBody(Object.assign({}, cs, { resting: false }), 0, -fullH, facingLeft, frame);
+      spriteCtx.globalAlpha = lie;
+      drawBody(Object.assign({}, cs, { resting: true }), 0, -fullH, facingLeft, frame);
+    } else {
+      drawBody(lie >= 1 ? Object.assign({}, cs, { resting: true }) : cs, 0, -fullH, facingLeft, frame);
+    }
+    spriteCtx.restore();
+    if (petPhase) {
+      spriteCtx.save();
+      spriteCtx.font = "12px sans-serif";
+      spriteCtx.textAlign = "center";
+      spriteCtx.globalAlpha = 0.6 + 0.4 * Math.abs(Math.sin(nowMs / 300));
+      spriteCtx.fillText("💕", x + w / 2, y - 4 + bob - (nowMs / 60) % 8);
+      spriteCtx.restore();
+    }
+    companionBox = { x: x, y: y + bob, w: w, h: h };
+    return companionBox;
+  }
+
+  /** Climbs: walk over, hop up, sit a while on the perch, hop down. */
+  var COMPANION_CLIMB_GAP_MIN_MS = 25000;
+  var COMPANION_CLIMB_GAP_MAX_MS = 45000;
+  var COMPANION_PERCH_MIN_MS = 10000;
+  var COMPANION_PERCH_MAX_MS = 18000;
+  var COMPANION_HOP_MS = 450;
+  var COMPANION_CLIMB_WALK_PPS = 35;
+
+  function companionPerchX(tree, w) { return tree.x + Math.round((tree.w - w) / 2); }
+  function companionPerchY(tree, h) { return tree.y - h + Math.round(h * 0.08); }
+
+  /**
+   * One frame of the companion's cat-tree climb (companionAnim.climb). Starts one
+   * every COMPANION_CLIMB_GAP_* when not busy; `busy` (petting, a game, eating,
+   * meeting a visitor) calls it down. {x, y, facingLeft, frame} while climbing, else null.
+   */
+  function companionClimbStep(cw, tree, w, h, floorY, nowMs, busy) {
+    var a = companionAnim;
+    if (!a.climbNextMs) { a.climbNextMs = nowMs + COMPANION_CLIMB_GAP_MIN_MS * 0.6; }
+    var c = a.climb;
+    if (!c) {
+      if (busy || nowMs < a.climbNextMs || cw.meetUntilMs > 0) { return null; }
+      c = a.climb = { phase: "walk", startMs: nowMs, untilMs: 0, lastMs: nowMs };
+    }
+    var px = companionPerchX(tree, w);
+    var py = companionPerchY(tree, h);
+    var out = null;
+    if (c.phase === "walk") {
+      if (busy) { a.climb = null; return null; }
+      var dt = Math.min(0.1, Math.max(0, (nowMs - c.lastMs) / 1000));
+      c.lastMs = nowMs;
+      var dx = px - cw.x;
+      if (Math.abs(dx) <= 1) {
+        cw.x = px;
+        c.phase = "up"; c.startMs = nowMs;
+      } else {
+        cw.x += Math.sign(dx) * Math.min(Math.abs(dx), COMPANION_CLIMB_WALK_PPS * dt);
+        out = { x: Math.round(cw.x), y: floorY, facingLeft: dx < 0, frame: Math.floor(nowMs / 150) % 2 };
+      }
+    }
+    if (c.phase === "up" || c.phase === "down") {
+      var t = Math.min(1, (nowMs - c.startMs) / COMPANION_HOP_MS);
+      var from = c.phase === "up" ? floorY : py;
+      var to = c.phase === "up" ? py : floorY;
+      var arc = Math.sin(t * Math.PI) * Math.max(6, h * 0.3);
+      out = { x: px, y: Math.round(from + (to - from) * t - arc), facingLeft: false, frame: 0 };
+      if (t >= 1) {
+        if (c.phase === "up") {
+          c.phase = "perch";
+          c.untilMs = nowMs + COMPANION_PERCH_MIN_MS + Math.random() * (COMPANION_PERCH_MAX_MS - COMPANION_PERCH_MIN_MS);
+        } else {
+          a.climb = null;
+          a.climbNextMs = nowMs + COMPANION_CLIMB_GAP_MIN_MS + Math.random() * (COMPANION_CLIMB_GAP_MAX_MS - COMPANION_CLIMB_GAP_MIN_MS);
+          cw.x = px;
+          return null;
+        }
+      }
+    }
+    if (c.phase === "perch") {
+      if (busy || nowMs >= c.untilMs) { c.phase = "down"; c.startMs = nowMs; }
+      out = { x: px, y: py, facingLeft: false, frame: 0 };
+    }
+    // Hold the floor wander in place while it is away on the tree
+    cw.x = out ? (c.phase === "walk" ? cw.x : px) : cw.x;
+    cw.lastMs = nowMs;
+    cw.pauseUntilMs = Math.max(cw.pauseUntilMs || 0, nowMs + 300);
+    cw.meetUntilMs = 0;
+    cw.nextMeetMs = Math.max(cw.nextMeetMs || 0, nowMs + 3000);
+    return out;
+  }
   var GUEST_MEET_MS = 2000;
   var GUEST_MEET_GAP_MIN_MS = 12000;
   var GUEST_MEET_GAP_MAX_MS = 25000;
@@ -3060,12 +3524,13 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    * clear of the edges. Every GUEST_MEET_GAP_* it walks up beside the pet
    * and both face each other for GUEST_MEET_MS.
    */
-  function wanderGuest(homeX, w, W, petCx, nowMs) {
-    var g = guestAnim.wander;
+  function wanderGuest(homeX, w, W, petCx, nowMs, anim) {
+    anim = anim || guestAnim;
+    var g = anim.wander;
     if (!g) {
-      g = guestAnim.wander = {
+      g = anim.wander = {
         x: homeX, lastMs: nowMs,
-        dir: guestAnim.onRight ? -1 : 1,
+        dir: anim.onRight ? -1 : 1,
         speed: 10 + Math.random() * 10,           // px per second; the pet has its own pace
         nextFlipMs: nowMs + 1500 + Math.random() * 2500,
         pauseUntilMs: 0,
@@ -3337,6 +3802,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       typeLabelCap;
 
     renderSocial(state);
+    renderCompanion(state);
     renderProgression(state);
 
     // Update sleep/wake button label to match current state
@@ -3499,6 +3965,25 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     }
 
     if (events.indexOf("fed_meal")      !== -1) { pushReaction("fed_meal",      nowMs); }
+    // The companion eats its own food alongside the pet: tuna for a meal, milk for a snack
+    if (state.companion && (events.indexOf("fed_meal") !== -1 || events.indexOf("fed_snack") !== -1)) {
+      var _meal = events.indexOf("fed_meal") !== -1;
+      companionMeal = { kind: _meal ? "tuna" : "milk", startMs: nowMs, durationMs: _meal ? 2400 : 1200 };
+    }
+    // Pet cat: the pet walks over to the companion and strokes it
+    if (state.companion && events.indexOf("companion_petted") !== -1 && !REDUCED_MOTION) {
+      companionPetting = { phase: "walk", startMs: nowMs, untilMs: 0 };
+    }
+    // Everyone on stage reacts to a game result; the companion cheers a win and droops at a loss
+    for (var _gi = 0; _gi < events.length; _gi++) {
+      var _ge = events[_gi];
+      if (_ge.indexOf("minigame_") === 0 || _ge.indexOf("friend_game_") === 0) {
+        var _won = /_(win|won)$/.test(_ge) ? true : /_(lose|lost)$/.test(_ge) ? false : null;
+        if (_won === null) { continue; }
+        gameCheer = { won: _won, startMs: nowMs };
+        if (state.companion) { companionCheer = { won: _won, startMs: nowMs }; }
+      }
+    }
     if (events.indexOf("fed_snack")     !== -1) { pushReaction("fed_snack",     nowMs); }
     if (events.indexOf("played")        !== -1) { pushReaction("played",        nowMs); }
     if (events.indexOf("patted")        !== -1) {
@@ -3616,6 +4101,18 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       if (bossAccess !== "off" && events.indexOf("boss_unlocked") !== -1) {
         queueBubble(humaniseEvent("boss_unlocked", _n, state));
         return;
+      }
+      // 1e0. Companion: petted, or its reaction to a friend arriving (after the visit bubble)
+      for (var _ci = 0; _ci < COMPANION_BUBBLE_EVENTS.length; _ci++) {
+        if (events.indexOf(COMPANION_BUBBLE_EVENTS[_ci]) !== -1) {
+          if (socialEnabled && events.indexOf("friend_visit_started") !== -1) {
+            queueBubble(humaniseEvent("friend_visit_started", _n, state));
+          }
+          var _cText = humaniseEvent(COMPANION_BUBBLE_EVENTS[_ci], _n, state);
+          if (activeBubble) { bubbleQueue[0] = { text: _cText, kind: "companion" }; }
+          else { showBubble(_cText, "companion"); }
+          return;
+        }
       }
       // 1e. Social: visits, gifts, proposals and marriage (rare, so they outrank everyday bubbles)
       for (var _si = 0; socialEnabled && _si < SOCIAL_BUBBLE_EVENTS.length; _si++) {
@@ -3932,7 +4429,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var _pr = state && state.proposal ? state.proposal.name : "someone";
     var _pa = state && state.partner ? state.partner.name : "their sweetheart";
     var _gift = giftItemIn(state && state.events);
+    var _cat = state && state.companion ? companionLabel(state.companion) : "The cat";
     var labels = {
+      "companion_hiss":          _cat + " hisses at " + _fr + "! Hsss! 🙀",
+      "companion_curious":       _cat + " sniffs " + _fr + " curiously. 🐱",
+      "companion_petted":        _cat + " purrs, and " + n + " looks happy too. 💕",
+      "companion_pet_refused":   _cat + " wants a little space right now.",
       "aged_overnight":          n + " aged a day whilst you were gone",
       "friend_made":             "",   // silent: the visit bubble says it
       "friend_visit_started":    _fr + " dropped by to visit " + n + "!",
@@ -5181,8 +5683,10 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     drawHeirEgg(state);
     drawDecor(state);
+    drawCompanionTree(state);
     drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false, 0);
-    drawGuest(state, staticX + bWidth / 2, performance.now());
+    var staticGuestBox = drawGuest(state, staticX + bWidth / 2, performance.now());
+    drawCompanion(state, staticX + bWidth / 2, staticGuestBox, performance.now());
     if (isChewingBone(state)) {
       drawBreakBone(state, { x: staticX, y: staticY, w: bWidth, h: bHeight }, false);
     } else {

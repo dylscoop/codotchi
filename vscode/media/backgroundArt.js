@@ -1389,6 +1389,7 @@
     critter:         critter,
     layout:          layout,
     catTreeBox:      catTreeBox,
+    drawCatTree:     drawCatTree,
     drawBackground:  drawBackground,
     legacyTimeOfDay: legacyTimeOfDay,
     drawLegacyBackground: drawLegacyBackground,

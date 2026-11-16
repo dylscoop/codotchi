@@ -40,6 +40,7 @@ import {
   playWithFriend,
   giveFriendGift,
   sayGoodbyeToFriend,
+  petCompanion,
   startFriendGame,
   useItem,
   acceptProposal,
@@ -673,6 +674,11 @@ export class SidebarProvider
       case "friend_goodbye":
         if (state === null) { return; }
         nextState = sayGoodbyeToFriend(state);
+        break;
+
+      case "pet_companion":
+        if (state === null) { return; }
+        nextState = petCompanion(state);
         break;
 
       case "accept_proposal":

@@ -21,6 +21,7 @@ import {
   stripAnsi,
   formatTokens,
   spriteLabel,
+  sideBySideArt,
   situationalLines,
   SITUATION_LINES,
   SPEND_REMARKS,
@@ -45,6 +46,24 @@ describe("buildStatusBlock display", () => {
   it("shows the character name for the stu sprite", () => {
     const out = stripAnsi(buildStatusBlock({ ...base, spriteType: "stu" }));
     assert.match(out, /Sprite\s+: Stugotchi/);
+  });
+
+  it("draws Stu's cat beside him with its own bars", () => {
+    const cat = { spriteType: "cat", hunger: 30.4, happiness: 90 };
+    const alone = stripAnsi(buildStatusBlock({ ...base, spriteType: "stu" }));
+    const out = stripAnsi(buildStatusBlock({ ...base, spriteType: "stu", companion: cat }));
+    assert.match(out, /Cat food\s+\[[█░]+\] 30\b/);
+    assert.match(out, /Cat joy\s+\[[█░]+\] 90\b/);
+    const widest = (s: string): number => Math.max(...s.split("\n").slice(0, 8).map((l) => l.length));
+    assert.ok(widest(out) > widest(alone), "art is wider with the cat beside Stu");
+  });
+
+  it("speech bubble draws the companion too, and sideBySideArt keeps feet aligned", () => {
+    const withCat = stripAnsi(buildSpeechBubble("adult", "happy", "hi", "Stu", "stu", undefined, undefined, undefined,
+      { spriteType: "cat", hunger: 50, happiness: 50 }));
+    const alone = stripAnsi(buildSpeechBubble("adult", "happy", "hi", "Stu", "stu"));
+    assert.ok(withCat.length > alone.length);
+    assert.deepEqual(sideBySideArt(["a", "bb"], ["c"]), ["a", "bb  c"]);
   });
 });
 

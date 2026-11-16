@@ -43,9 +43,23 @@ export declare function buildBubble(message: string, maxWidth?: number, bubbleCo
  * @param message - The speech bubble text.
  * @param name    - Pet's name (used as a label above the art).
  */
-export declare function buildSpeechBubble(stage: string, mood: string, message: string, name: string, spriteType?: string, ideLabel?: string, bubbleColor?: string, tierEmoji?: string): string;
+export declare function buildSpeechBubble(stage: string, mood: string, message: string, name: string, spriteType?: string, ideLabel?: string, bubbleColor?: string, tierEmoji?: string, companion?: {
+    spriteType: string;
+    hunger: number;
+    happiness: number;
+} | null): string;
 /** Human-readable sprite name, e.g. "stu" → "Stugotchi", "cat" → "Cat". */
 export declare function spriteLabel(spriteType: string): string;
+/** The companion's art mood: sleeping with the pet, sad when hungry or unhappy, else happy. */
+export declare function companionMood(c: {
+    hunger: number;
+    happiness: number;
+}, sleeping: boolean): string;
+/**
+ * Put two pieces of art next to each other, feet on the same line: the
+ * shorter one is padded at the top. Used for the pet and its companion.
+ */
+export declare function sideBySideArt(left: readonly string[], right: readonly string[], gap?: number): string[];
 /**
  * Build a full status readout for the pet and return as a string.
  *
@@ -88,6 +102,12 @@ export declare function buildStatusBlock(state: {
     proposal?: SocialView["proposal"];
     /** How commands are written in the social lines (default "/codotchi "). */
     socialCmd?: string;
+    /** The animal living with the pet (Stugotchi's cat): drawn beside the pet with its own bars. */
+    companion?: {
+        spriteType: string;
+        hunger: number;
+        happiness: number;
+    } | null;
 }): string;
 /**
  * Format a token count as a human-readable string.

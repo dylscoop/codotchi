@@ -814,6 +814,7 @@ export function createPet(name, petType, unlockedCharacter = null, trainer = nul
         proposalCooldownTicks: 0,
         items: [],
         decor: [],
+        companion: newCompanionFor(resolvedSprite),
     };
     return withDerivedFields(partial);
 }
@@ -944,7 +945,7 @@ export function tick(state, isIdle = false, isDeepIdle = false, config = DEFAULT
     const bumped = applyDailyAgeBump(state, nowMs);
     const agedOvernight = bumped.dayTimer !== state.dayTimer;
     state = bumped;
-    let next = tickSocial(state, tickCore(state, isIdle, isDeepIdle, config), isIdle, isDeepIdle, config);
+    let next = tickCompanion(tickSocial(state, tickCore(state, isIdle, isDeepIdle, config), isIdle, isDeepIdle, config), isIdle, isDeepIdle);
     if (agedOvernight && !next.events.includes("aged_overnight")) {
         next = { ...next, events: [...next.events, "aged_overnight"] };
     }
@@ -1666,6 +1667,7 @@ export function feedMeal(state, mealsGivenThisCycle, opts) {
         hunger: clampStat(state.hunger + hungerBoost),
         weight: newWeight,
         consecutiveSnacks: 0,
+        companion: careForCompanion(state.companion, COMPANION_MEAL_HUNGER, 0),
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
     }), "care", Date.now(), answered !== null);
@@ -1754,6 +1756,7 @@ export function consumeSnack(state, opts) {
         weight: newWeight,
         consecutiveSnacks,
         snacksOnFloor: Math.max(0, state.snacksOnFloor - 1),
+        companion: careForCompanion(state.companion, COMPANION_SNACK_HUNGER, COMPANION_SNACK_HAPPINESS),
         sick,
         events,
     }), "snack");
@@ -1799,6 +1802,7 @@ export function play(state, opts) {
         energy: clampStat(state.energy - PLAY_ENERGY_COST),
         weight: newWeight,
         consecutiveSnacks: 0,
+        companion: careForCompanion(state.companion, 0, COMPANION_PLAY_HAPPINESS),
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
         events,
     }), "care", Date.now(), answered !== null);
@@ -3095,6 +3099,132 @@ export function deserialiseSocial(data) {
     };
 }
 // ---------------------------------------------------------------------------
+// Companion — an animal that lives with the pet (Stugotchi's cat)
+// ---------------------------------------------------------------------------
+/** Characters that come with a companion: pet spriteType -> companion spriteType. */
+export const COMPANION_BY_SPRITE = { stu: "cat" };
+/** Ticks between each 1-point drop in the companion's hunger / happiness (gentler than the pet). */
+export const COMPANION_DECAY_TICK_INTERVAL = 10;
+/** Below this, a stat counts as low for the linked-mood rules. */
+export const COMPANION_LOW_STAT = 25;
+/** Ticks between each extra 1-point happiness drop caused by the other animal being sad. */
+export const COMPANION_LINK_TICK_INTERVAL = 20;
+export const COMPANION_MEAL_HUNGER = 20;
+export const COMPANION_SNACK_HUNGER = 10;
+export const COMPANION_SNACK_HAPPINESS = 5;
+export const COMPANION_PLAY_HAPPINESS = 15;
+/** petCompanion(): happiness for the companion and for the pet. */
+export const COMPANION_PET_HAPPINESS = 15;
+export const COMPANION_PET_OWNER_HAPPINESS = 5;
+export const COMPANION_PET_COOLDOWN_TICKS = 20;
+/** Happiness the companion gets when a friend arrives. */
+export const COMPANION_VISIT_HAPPINESS = 10;
+/** Visitor spriteTypes each companion hisses at (others get a curious look). */
+export const COMPANION_HISSES_AT = { cat: ["dog"] };
+/** A fresh companion for a pet of this spriteType, or null when it has none. */
+export function newCompanionFor(spriteType) {
+    const companionSprite = COMPANION_BY_SPRITE[spriteType];
+    return companionSprite ? { spriteType: companionSprite, hunger: 50, happiness: 50, petCooldownTicks: 0 } : null;
+}
+/** Parse a saved companion; saves without one get a fresh companion if the character has one. */
+export function deserialiseCompanion(raw, petSpriteType) {
+    const fresh = newCompanionFor(petSpriteType);
+    if (!fresh) {
+        return null;
+    }
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+        return fresh;
+    }
+    const r = raw;
+    const num = (v, fallback) => typeof v === "number" && Number.isFinite(v) ? v : fallback;
+    return {
+        spriteType: fresh.spriteType,
+        hunger: clampStat(num(r.hunger, 50)),
+        happiness: clampStat(num(r.happiness, 50)),
+        petCooldownTicks: Math.max(0, Math.floor(num(r.petCooldownTicks, 0))),
+    };
+}
+/** The companion after a care action; null stays null. */
+function careForCompanion(c, hunger, happiness) {
+    return c ? { ...c, hunger: clampStat(c.hunger + hunger), happiness: clampStat(c.happiness + happiness) } : null;
+}
+/**
+ * The companion's part of a tick: its stats decay, and the two animals' moods
+ * are linked (a sad companion makes the pet sadder and vice versa). When a
+ * friend arrives it cheers up and emits companion_hiss (at animals in
+ * COMPANION_HISSES_AT) or companion_curious. Always on: ignores socialEnabled.
+ */
+function tickCompanion(state, isIdle, isDeepIdle) {
+    const c = state.companion;
+    if (!c || !state.alive || state.paused || state.stage === "egg") {
+        return state;
+    }
+    const t = state.ticksAlive;
+    const awake = !state.sleeping && !isDeepIdle;
+    const interval = COMPANION_DECAY_TICK_INTERVAL * (isIdle ? IDLE_DECAY_TICK_DIVISOR : 1);
+    let hunger = c.hunger;
+    let happiness = c.happiness;
+    let ownerHappiness = state.happiness;
+    const events = [];
+    if (awake && t % interval === 0) {
+        hunger = clampStat(hunger - 1);
+        happiness = clampStat(happiness - (hunger < COMPANION_LOW_STAT ? 2 : 1));
+    }
+    if (awake && t % COMPANION_LINK_TICK_INTERVAL === 0) {
+        if (c.happiness < COMPANION_LOW_STAT) {
+            ownerHappiness = clampStat(ownerHappiness - 1);
+        }
+        if (state.happiness < COMPANION_LOW_STAT) {
+            happiness = clampStat(happiness - 1);
+        }
+    }
+    if (state.events.includes("friend_visit_started") && state.friend) {
+        happiness = clampStat(happiness + COMPANION_VISIT_HAPPINESS);
+        events.push((COMPANION_HISSES_AT[c.spriteType] ?? []).includes(state.friend.spriteType)
+            ? "companion_hiss" : "companion_curious");
+    }
+    const petCooldownTicks = Math.max(0, c.petCooldownTicks - (isIdle || isDeepIdle ? 0 : 1));
+    if (hunger === c.hunger && happiness === c.happiness && petCooldownTicks === c.petCooldownTicks &&
+        ownerHappiness === state.happiness && events.length === 0) {
+        return state;
+    }
+    return withSocialPatch(state, {
+        companion: { ...c, hunger, happiness, petCooldownTicks },
+        happiness: ownerHappiness,
+    }, events);
+}
+/**
+ * The player pets the companion: both animals get happier. Refused
+ * (companion_pet_refused) while on cooldown, asleep, or with no companion.
+ */
+export function petCompanion(state) {
+    const c = state.companion;
+    if (!c || !state.alive || state.stage === "egg") {
+        return withDerivedFields({ ...state, events: [] });
+    }
+    if (state.sleeping || c.petCooldownTicks > 0) {
+        return withDerivedFields({ ...state, events: ["companion_pet_refused"] });
+    }
+    return withDerivedFields({
+        ...state,
+        happiness: clampStat(state.happiness + COMPANION_PET_OWNER_HAPPINESS),
+        companion: { ...c, happiness: clampStat(c.happiness + COMPANION_PET_HAPPINESS), petCooldownTicks: COMPANION_PET_COOLDOWN_TICKS },
+        events: ["companion_petted"],
+    });
+}
+/** One line for the result of petCompanion(), read from its events. */
+export function companionActionMessage(state) {
+    const c = state.companion;
+    if (!c) {
+        return `${state.name} doesn't have a companion.`;
+    }
+    const label = c.spriteType.charAt(0).toUpperCase() + c.spriteType.slice(1);
+    if (state.events.includes("companion_petted")) {
+        return `🐾 ${label} purrs, and ${state.name} looks happy too. ${label}: hunger ${Math.round(c.hunger)}, happiness ${Math.round(c.happiness)}.`;
+    }
+    return state.sleeping ? `Shh, ${state.name} and ${label} are sleeping.` : `${label} wants a little space right now. Try again soon.`;
+}
+// ---------------------------------------------------------------------------
 // Progression — XP, levels and achievements
 // ---------------------------------------------------------------------------
 /** Current save-format version. Bump when a migration step is added to deserialiseState(). */
@@ -3703,6 +3833,7 @@ export function serialiseState(state) {
         proposalCooldownTicks: state.proposalCooldownTicks,
         items: state.items,
         decor: state.decor,
+        companion: state.companion,
     };
 }
 /**
@@ -3804,6 +3935,7 @@ export function deserialiseState(data) {
         dailies: deserialiseDailies(data["dailies"]),
         pendingBosses: deserialisePendingBosses(data["pendingBosses"], levelProgress(getNumber("petXp", 0)).level),
         ...deserialiseSocial(data),
+        companion: deserialiseCompanion(data["companion"], getString("spriteType", "classic")),
     };
     return withDerivedFields(partial);
 }

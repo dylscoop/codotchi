@@ -71,6 +71,8 @@ import {
   playWithFriend,
   giveFriendGift,
   sayGoodbyeToFriend,
+  petCompanion,
+  companionActionMessage,
   useItem,
   itemListLines,
   itemActionMessage,
@@ -80,6 +82,7 @@ import {
   socialActionMessage,
 } from "./gameEngine.js";
 import { sealSerialisedState, verifySeal } from "./integrity.js";
+import { isStaleAgainst, writeAtomically } from "./safeStateFile.js";
 import { translateV2Event, summariseNotification } from "./v2Events.js";
 import { shouldPersistTick, PulseGate } from "./ioThrottle.js";
 
@@ -202,12 +205,16 @@ function saveToIDEFile(filePath: string, state: PetState): void {
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
     const serialised = serialiseState(state) as Record<string, unknown>;
+    // Never roll the IDE's pet back to an older copy of itself.
+    let disk: Record<string, unknown> | undefined;
+    try { disk = (JSON.parse(fs.readFileSync(filePath, "utf8")) as IDEStateFile).state as Record<string, unknown>; } catch { /* missing/corrupt */ }
+    if (isStaleAgainst(serialised, disk)) { return; }
     const payload: IDEStateFile = {
       state: serialised,
       savedAt: Date.now(),
       seal: sealSerialisedState(serialised),
     };
-    fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
+    writeAtomically(filePath, JSON.stringify(payload));
   } catch {
     // Best-effort — never crash the plugin if the state file is unavailable.
   }
@@ -224,7 +231,7 @@ function saveTerminalEnabled(): void {
       try { existing = JSON.parse(fs.readFileSync(filePath, "utf8")) as IDEStateFile; } catch { /* ignore */ }
     }
     existing.terminalEnabled = terminalEnabled;
-    fs.writeFileSync(filePath, JSON.stringify(existing), "utf8");
+    writeAtomically(filePath, JSON.stringify(existing));
   } catch {
     // Best-effort.
   }
@@ -1438,7 +1445,7 @@ const plugin: Plugin = async (ctx) => {
       "This tool reads state from VS Code, PyCharm, and the local OpenCode pet — do NOT use any other codotchi tool.",
     args: {
       action: tool.schema
-        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "items", "use", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
+        .enum(["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "petcat", "items", "use", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"])
         .describe("The action to perform"),
       value: tool.schema
         .number()
@@ -1583,7 +1590,7 @@ const plugin: Plugin = async (ctx) => {
                   petLevel: s.petLevel, trainer: s.trainer,
                   spawnedAt: s.spawnedAt, dailies: s.dailies, levels: levelsEnabled,
                   generation: s.generation, friend: s.friend, otherFriends: s.otherFriends, visit: s.visit, partner: s.partner,
-                  heirEgg: s.heirEgg, proposal: s.proposal,
+                  heirEgg: s.heirEgg, proposal: s.proposal, companion: s.companion,
                 })
               : "";
             // Each pet prints once: the stat block, or a one-line summary when art is off.
@@ -1733,6 +1740,22 @@ const plugin: Plugin = async (ctx) => {
                : `[${pLabel}] Played with ${next.name}. Happiness: ${next.happiness}, Energy: ${next.energy}.`));
            }
            return ret(notification + playLines.join("\n\n"));
+         }
+
+         case "petcat": {
+           // Pet the companion animal (Stugotchi's cat) on the IDE pets that have one.
+           const catLines: string[] = [];
+           for (const p of alivePets) {
+             if (p.ide === "opencode" || !p.state.companion) { continue; }
+             const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
+             const next = petCompanion(p.state);
+             if (next.events.includes("companion_petted")) {
+               setPetState(p.ide, next);
+               saveIDEState(p.ide);
+             }
+             catLines.push(`[${pLabel}] ${companionActionMessage(next)}`);
+           }
+           return ret(notification + (catLines.length > 0 ? catLines.join("\n\n") : "No IDE pet has a companion to pet."));
          }
 
          case "friend":
@@ -2134,7 +2157,7 @@ const CODOTCHI_TOOL_INPUT = {
   properties: {
     action: {
       type: "string",
-      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "items", "use", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
+      enum: ["status", "feed", "snack", "pat", "play", "sleep", "clean", "medicine", "friend", "playfriend", "gift", "goodbye", "petcat", "items", "use", "accept", "decline", "on", "off", "warnthreshold", "shoutthreshold", "rename"],
       description: "The action to perform",
     },
     value: { type: "number", description: "Numeric USD value for warnthreshold or shoutthreshold actions" },

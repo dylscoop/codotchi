@@ -625,6 +625,7 @@ body.font-large  { font-size: 16px; }
 /* Play together: only the head-to-head games against the friend */
 #mg-select.friend-mode #btn-mg-boss,
 #mg-select.friend-mode #btn-mg-pat,
+#mg-select.friend-mode #btn-pet-companion,
 #mg-select.friend-mode #btn-mg-cost {
   display: none !important;
 }

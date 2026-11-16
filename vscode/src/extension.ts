@@ -325,9 +325,13 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }
 
+    if (!saveState(context, state)) {
+      // Another window/instance has a newer save of this pet — adopt it instead of rolling back.
+      reloadAndRefreshUI(false);
+      return;
+    }
     sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter(), getDefaultPetName());
     statusBar?.update(state);
-    saveState(context, state);
     void vscode.commands.executeCommand("setContext", "codotchi:paused", state.paused);
   }
 

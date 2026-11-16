@@ -66,6 +66,9 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
      */
     var currentProjectBasePath: String? = null
 
+    /** Test hook: when set, used instead of the real state file path. */
+    internal var stateFileOverride: File? = null
+
     // ── PersistentStateComponent ───────────────────────────────────────────
 
     override fun getState(): Element {
@@ -90,13 +93,21 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    /** Serialise [state] into [petStateJson] and write to the cross-IDE shared file. */
-    fun savePetState(state: PetState) {
+    /**
+     * Serialise [state] into [petStateJson] and write to the cross-IDE shared file.
+     *
+     * Returns false (and writes nothing) when the state file on disk holds a
+     * clearly newer copy of the same pet — e.g. a second PyCharm install that
+     * started with an older save. The caller should reload from disk instead.
+     */
+    fun savePetState(state: PetState): Boolean {
+        if (isStaleAgainstDisk(state)) return false
         val raw = toRaw(state)
         petStateJson = gson.toJson(raw)
         petStateSeal = sealRaw(raw)
         lastSaveTimestamp = System.currentTimeMillis()
         saveToSharedFile(state)
+        return true
     }
 
     /**
@@ -123,7 +134,10 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         // an IDE restart), promote it so elapsed-time calculations stay accurate.
         // PyCharm only reads its own file — no cross-IDE promotion.
         val shared = loadFromSharedFile()
-        if (shared != null && shared.second > lastSaveTimestamp && shared.first.alive) {
+        val sharedIsFurtherAlong = shared != null && localState != null &&
+            shared.first.spawnedAt == localState.spawnedAt &&
+            shared.first.dayTimer > localState.dayTimer + STALE_AGE_MARGIN_DAYS
+        if (shared != null && (shared.second > lastSaveTimestamp || sharedIsFurtherAlong) && shared.first.alive) {
             val raw = toRaw(shared.first)
             petStateJson      = gson.toJson(raw)
             petStateSeal      = sealRaw(raw)
@@ -213,6 +227,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
      * Falls back to the shared path if no project is open.
      */
     fun getActiveStatePath(projectBasePath: String?): File {
+        stateFileOverride?.let { return it }
         val settings = service<CodotchiSettings>()
         if (settings.perWorkspacePet) {
             return getProjectStatePath(projectBasePath) ?: getSharedStatePath()
@@ -272,19 +287,63 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             file.parentFile?.mkdirs()
             val raw = toRaw(state)
             val payload = SharedStateFile(state = raw, savedAt = System.currentTimeMillis(), seal = sealRaw(raw))
-            file.writeText(gson.toJson(payload))
+            rotateBackups(file)
+            writeAtomically(file, gson.toJson(payload))
         } catch (_: Exception) {
             // Best-effort — never crash the plugin if the shared file is unavailable.
         }
     }
 
     /**
-     * Read the active state file.
-     * Returns a (PetState, savedAt) pair, or null if the file is absent / unparseable.
+     * True when the active state file holds the same pet (same spawnedAt, alive)
+     * at least [STALE_AGE_MARGIN_DAYS] older than [state] — i.e. writing [state]
+     * would roll the pet back.
      */
-    private fun loadFromSharedFile(): Pair<PetState, Long>? {
+    fun isStaleAgainstDisk(state: PetState): Boolean {
+        if (!state.alive) return false
+        val disk = loadFromSharedFile()?.first ?: return false
+        return disk.alive && disk.spawnedAt == state.spawnedAt &&
+            disk.dayTimer > state.dayTimer + STALE_AGE_MARGIN_DAYS
+    }
+
+    /** Write via a temp file + rename so a crash mid-write never leaves a truncated file. */
+    private fun writeAtomically(file: File, text: String) {
+        val tmp = File(file.parentFile, "${file.name}.tmp")
+        tmp.writeText(text)
+        try {
+            java.nio.file.Files.move(tmp.toPath(), file.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+        } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+            java.nio.file.Files.move(tmp.toPath(), file.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
+    }
+
+    private fun backupFile(file: File, n: Int) = File(file.parentFile, "${file.name}.bak$n")
+
+    /**
+     * Keep the last [BACKUP_COUNT] good saves as state.json.bak1..N, refreshed
+     * at most every [BACKUP_INTERVAL_MS]. Only copies the current file if it parses.
+     */
+    private fun rotateBackups(file: File) {
+        try {
+            if (!file.exists() || readStateFile(file) == null) return
+            val newest = backupFile(file, 1)
+            if (newest.exists() && System.currentTimeMillis() - newest.lastModified() < BACKUP_INTERVAL_MS) return
+            for (n in BACKUP_COUNT downTo 2) {
+                val prev = backupFile(file, n - 1)
+                if (prev.exists()) prev.copyTo(backupFile(file, n), overwrite = true)
+            }
+            file.copyTo(newest, overwrite = true)
+            newest.setLastModified(System.currentTimeMillis())
+        } catch (_: Exception) {
+            // Best-effort.
+        }
+    }
+
+    private fun readStateFile(file: File): Pair<PetState, Long>? {
         return try {
-            val file = getActiveStatePath(currentProjectBasePath)
             if (!file.exists()) return null
             val raw = gson.fromJson(file.readText(), SharedStateFile::class.java) ?: return null
             val rawState = raw.state ?: return null
@@ -293,6 +352,27 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         } catch (_: Exception) {
             null
         }
+    }
+
+    /**
+     * Read the active state file, falling back to the newest readable backup
+     * when the file is missing or corrupt.
+     * Returns a (PetState, savedAt) pair, or null if nothing is readable.
+     */
+    private fun loadFromSharedFile(): Pair<PetState, Long>? {
+        return try {
+            val file = getActiveStatePath(currentProjectBasePath)
+            readStateFile(file)
+                ?: (1..BACKUP_COUNT).firstNotNullOfOrNull { readStateFile(backupFile(file, it)) }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    companion object {
+        const val STALE_AGE_MARGIN_DAYS = 1.0
+        const val BACKUP_COUNT = 3
+        const val BACKUP_INTERVAL_MS = 10 * 60 * 1000L
     }
 
     /**
@@ -397,6 +477,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val proposalCooldownTicks: Any? = null,
         val items: Any? = null,
         val decor: Any? = null,
+        val companion: Any? = null,
     )
 
     private fun sanitise(r: RawPetState): PetState {
@@ -492,6 +573,8 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             "proposalCooldownTicks" to r.proposalCooldownTicks,
             "items" to r.items,
             "decor" to r.decor,
+            "companion" to r.companion,
+            "spriteType" to partial.spriteType,
         )))
     }
 
@@ -589,6 +672,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         proposalCooldownTicks      = social["proposalCooldownTicks"],
         items                      = social["items"],
         decor                      = social["decor"],
+        companion                  = social["companion"],
     ) }
 }
 

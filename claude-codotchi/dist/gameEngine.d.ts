@@ -429,6 +429,16 @@ export interface PetState {
     readonly items: readonly string[];
     /** Decoration item ids placed on the floor, oldest first; at most MAX_DECOR. */
     readonly decor: readonly string[];
+    /** The animal that lives with this pet (COMPANION_BY_SPRITE); null when the character has none. */
+    readonly companion: CompanionPet | null;
+}
+/** An animal living with the pet. It ages with the pet, never dies and has no buttons except "pet". */
+export interface CompanionPet {
+    readonly spriteType: string;
+    readonly hunger: number;
+    readonly happiness: number;
+    /** Active ticks before petCompanion() works again. */
+    readonly petCooldownTicks: number;
 }
 /** Who another (CPU) pet is: enough to draw it. */
 export interface PetIdentity {
@@ -1131,6 +1141,37 @@ export declare function socialSummaryLines(state: SocialView, cmd?: string): str
 export declare function socialActionMessage(state: SocialView & Pick<PetState, "events"> & Partial<Pick<PetState, "items">>): string;
 /** Parse the social fields from saved JSON, filling in defaults (saves before schemaVersion 2 have none). */
 export declare function deserialiseSocial(data: Record<string, unknown>): Pick<PetState, "generation" | "friend" | "otherFriends" | "visit" | "ticksSinceLastVisit" | "partner" | "heirEgg" | "seniorSinceDay" | "proposal" | "proposalCooldownTicks" | "items" | "decor">;
+/** Characters that come with a companion: pet spriteType -> companion spriteType. */
+export declare const COMPANION_BY_SPRITE: Readonly<Record<string, string>>;
+/** Ticks between each 1-point drop in the companion's hunger / happiness (gentler than the pet). */
+export declare const COMPANION_DECAY_TICK_INTERVAL: number;
+/** Below this, a stat counts as low for the linked-mood rules. */
+export declare const COMPANION_LOW_STAT: number;
+/** Ticks between each extra 1-point happiness drop caused by the other animal being sad. */
+export declare const COMPANION_LINK_TICK_INTERVAL: number;
+export declare const COMPANION_MEAL_HUNGER: number;
+export declare const COMPANION_SNACK_HUNGER: number;
+export declare const COMPANION_SNACK_HAPPINESS: number;
+export declare const COMPANION_PLAY_HAPPINESS: number;
+/** petCompanion(): happiness for the companion and for the pet. */
+export declare const COMPANION_PET_HAPPINESS: number;
+export declare const COMPANION_PET_OWNER_HAPPINESS: number;
+export declare const COMPANION_PET_COOLDOWN_TICKS: number;
+/** Happiness the companion gets when a friend arrives. */
+export declare const COMPANION_VISIT_HAPPINESS: number;
+/** Visitor spriteTypes each companion hisses at (others get a curious look). */
+export declare const COMPANION_HISSES_AT: Readonly<Record<string, readonly string[]>>;
+/** A fresh companion for a pet of this spriteType, or null when it has none. */
+export declare function newCompanionFor(spriteType: string): CompanionPet | null;
+/** Parse a saved companion; saves without one get a fresh companion if the character has one. */
+export declare function deserialiseCompanion(raw: unknown, petSpriteType: string): CompanionPet | null;
+/**
+ * The player pets the companion: both animals get happier. Refused
+ * (companion_pet_refused) while on cooldown, asleep, or with no companion.
+ */
+export declare function petCompanion(state: PetState): PetState;
+/** One line for the result of petCompanion(), read from its events. */
+export declare function companionActionMessage(state: Pick<PetState, "name" | "events" | "companion" | "sleeping">): string;
 /** Current save-format version. Bump when a migration step is added to deserialiseState(). */
 export declare const SCHEMA_VERSION: number;
 /** What earned the XP. Each source maps to an amount, optional hourly / daily caps and counters. */

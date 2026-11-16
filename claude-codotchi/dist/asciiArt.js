@@ -606,8 +606,11 @@ export function buildBubble(message, maxWidth = 40, bubbleColor) {
  * @param message - The speech bubble text.
  * @param name    - Pet's name (used as a label above the art).
  */
-export function buildSpeechBubble(stage, mood, message, name, spriteType = "classic", ideLabel, bubbleColor, tierEmoji) {
-    const art = getArt(stage, mood, spriteType);
+export function buildSpeechBubble(stage, mood, message, name, spriteType = "classic", ideLabel, bubbleColor, tierEmoji, companion) {
+    const petArt = getArt(stage, mood, spriteType);
+    const art = companion && stage !== "egg"
+        ? sideBySideArt(petArt, getArt(stage, companionMood(companion, mood === "sleeping"), companion.spriteType))
+        : petArt;
     const bubble = buildBubble(message, 40, bubbleColor);
     const stageColour = STAGE_COLOURS[stage] ?? FG_WHITE;
     // Normalise all art lines to the same visual width before any padding or colouring.
@@ -650,6 +653,25 @@ const SPRITE_LABELS = { stu: "Stugotchi" };
 export function spriteLabel(spriteType) {
     return SPRITE_LABELS[spriteType] ?? spriteType.charAt(0).toUpperCase() + spriteType.slice(1);
 }
+/** The companion's art mood: sleeping with the pet, sad when hungry or unhappy, else happy. */
+export function companionMood(c, sleeping) {
+    if (sleeping) {
+        return "sleeping";
+    }
+    return c.hunger < 25 || c.happiness < 25 ? "sad" : "happy";
+}
+/**
+ * Put two pieces of art next to each other, feet on the same line: the
+ * shorter one is padded at the top. Used for the pet and its companion.
+ */
+export function sideBySideArt(left, right, gap = 2) {
+    const h = Math.max(left.length, right.length);
+    const lw = Math.max(0, ...left.map((l) => l.length));
+    const padTop = (a) => [...Array(h - a.length).fill(""), ...a];
+    const l = padTop(left);
+    const r = padTop(right);
+    return l.map((line, i) => (line.padEnd(lw) + " ".repeat(gap) + r[i]).trimEnd());
+}
 function statBar(label, value, barWidth = 10) {
     const filled = Math.round((value / 100) * barWidth);
     const empty = barWidth - filled;
@@ -665,7 +687,11 @@ function statBar(label, value, barWidth = 10) {
  */
 export function buildStatusBlock(state) {
     const stageColour = STAGE_COLOURS[state.stage] ?? FG_WHITE;
-    const art = getArt(state.stage, state.mood, state.spriteType ?? "classic");
+    const petArt = getArt(state.stage, state.mood, state.spriteType ?? "classic");
+    const companion = state.alive && state.stage !== "egg" ? state.companion ?? null : null;
+    const art = companion
+        ? sideBySideArt(petArt, getArt(state.stage, companionMood(companion, state.sleeping), companion.spriteType))
+        : petArt;
     const trainerLevel = state.levels === true && state.trainer ? levelProgress(state.trainer.xp) : null;
     // Art + header side by side
     const headerLines = [
@@ -698,6 +724,12 @@ export function buildStatusBlock(state) {
     lines.push(statBar("Discipline", state.discipline));
     lines.push("");
     lines.push(`  ${FG_CYAN}Weight${RESET}        ${state.weight} / 99`);
+    if (companion) {
+        const label = spriteLabel(companion.spriteType);
+        lines.push("");
+        lines.push(statBar(`${label} food`, companion.hunger));
+        lines.push(statBar(`${label} joy`, companion.happiness));
+    }
     const social = socialSummaryLines({
         name: state.name, generation: state.generation ?? 1, friend: state.friend ?? null, otherFriends: state.otherFriends ?? [], visit: state.visit ?? null,
         partner: state.partner ?? null, heirEgg: state.heirEgg ?? null, proposal: state.proposal ?? null,

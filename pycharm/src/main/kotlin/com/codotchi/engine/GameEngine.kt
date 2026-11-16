@@ -182,7 +182,7 @@ fun computeCareScore(state: PetState): Double {
            CARE_SCORE_HEALTH_WEIGHT     * (avgHealth    / STAT_MAX)
 }
 
-private fun withDerivedFields(s: PetState): PetState {
+internal fun withDerivedFields(s: PetState): PetState {
     val careScore = computeCareScore(s)
     val mood      = moodFromStats(s.hunger, s.happiness, s.health, s.sleeping)
     val sprite    = "${s.stage}_${mood}"
@@ -258,6 +258,7 @@ fun createPet(
             petType            = petType,
             color              = color,
             spriteType         = resolvedSprite,
+            companion          = newCompanionFor(resolvedSprite),
             hunger             = 50,
             happiness          = 50,
             discipline         = 50,
@@ -364,7 +365,7 @@ fun tick(
     nowMs: Long = System.currentTimeMillis(),
 ): PetState {
     val bumped = applyDailyAgeBump(state, nowMs)
-    var next = tickSocial(bumped, tickCore(bumped, isIdle, isDeepIdle, config), isIdle, isDeepIdle, config, rand)
+    var next = tickCompanion(tickSocial(bumped, tickCore(bumped, isIdle, isDeepIdle, config), isIdle, isDeepIdle, config, rand), isIdle, isDeepIdle)
     if (bumped.dayTimer != state.dayTimer && "aged_overnight" !in next.events) {
         next = next.copy(events = next.events + "aged_overnight")
     }
@@ -932,6 +933,7 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int
             hunger            = clampStat(state.hunger + hungerBoost),
             weight            = newWeight,
             consecutiveSnacks = 0,
+            companion         = careForCompanion(state.companion, COMPANION_MEAL_HUNGER, 0),
             careMistakes      = max(0.0, state.careMistakes - if (pick != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events            = events,
             activeAttentionCall      = if (pick != null) pick.activeAttentionCall else state.activeAttentionCall,
@@ -1019,6 +1021,7 @@ fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThres
             weight            = newWeight,
             consecutiveSnacks = consecutiveSnacks,
             snacksOnFloor     = max(0, state.snacksOnFloor - 1),
+            companion         = careForCompanion(state.companion, COMPANION_SNACK_HUNGER, COMPANION_SNACK_HAPPINESS),
             sick              = sick,
             events            = events,
         )
@@ -1043,6 +1046,7 @@ fun play(state: PetState, playWeightLoss: Int? = null): PetState {
             energy            = clampStat(state.energy    - PLAY_ENERGY_COST),
             weight            = newWeight,
             consecutiveSnacks = 0,
+            companion         = careForCompanion(state.companion, 0, COMPANION_PLAY_HAPPINESS),
             careMistakes      = max(0.0, state.careMistakes - if (answered != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events            = events,
             activeAttentionCall      = if (answered != null) answered.activeAttentionCall else state.activeAttentionCall,
@@ -1911,10 +1915,12 @@ data class SocialFields(
     val proposalCooldownTicks: Int = 0,
     val items: List<String> = emptyList(),
     val decor: List<String> = emptyList(),
+    val companion: CompanionPet? = null,
 )
 
 /** Copy [fields] onto [state]. */
 fun withSocialFields(state: PetState, fields: SocialFields): PetState = state.copy(
+    companion = fields.companion,
     generation = fields.generation,
     friend = fields.friend,
     otherFriends = fields.otherFriends,
@@ -2001,6 +2007,7 @@ fun socialFromRaw(data: Map<String, Any?>): SocialFields {
         proposalCooldownTicks = max(0.0, num(data["proposalCooldownTicks"], 0.0)).toInt(),
         items = itemIds("items", MAX_ITEMS),
         decor = itemIds("decor", MAX_DECOR).filter { itemById(it)!!.kind == "decor" },
+        companion = companionFromRaw(data["companion"], (data["spriteType"] as? String) ?: "classic"),
     )
 }
 
@@ -2030,4 +2037,8 @@ fun socialToRaw(s: PetState): Map<String, Any?> = mapOf(
     "proposalCooldownTicks" to s.proposalCooldownTicks,
     "items" to s.items,
     "decor" to s.decor,
+    "companion" to s.companion?.let {
+        mapOf("spriteType" to it.spriteType, "hunger" to it.hunger, "happiness" to it.happiness,
+              "petCooldownTicks" to it.petCooldownTicks)
+    },
 )

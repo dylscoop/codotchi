@@ -2551,3 +2551,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** The `went_deep_idle` bubble read "IDE idle 10 min — stats protected, aging stopped." even though deep idle starts after `idleDeepThresholdSeconds`, which the user can change, so the text was wrong for any other value. The idle default of 60 s also tipped the pet into idle during short pauses while reading code.
 
 **Fix:** The bubble now reads "IDE deep idle — stats protected, aging stopped." with no duration. The defaults are reset to 120 s for idle (`codotchi.idleThresholdSeconds` / PyCharm **Idle threshold**, `IDLE_THRESHOLD_SECONDS`) and 600 s for deep idle (unchanged). Users who set their own values keep them.
+
+## BUGFIX-217 - A second IDE instance or a crash mid-save could roll the pet back
+
+**Status:** Fixed (branch `feature/stu-companion-cat`)
+**Files:** `packages/core/src/safeStateFile.ts` (+ synced copies), `vscode/src/persistence.ts`, `vscode/src/extension.ts`, `pycharm/.../CodotchiPersistence.kt`, `CodotchiPlugin.kt`, `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/state.mjs`
+
+**Problem:** After a forced Windows restart, a PyCharm pet lost about 20 days. Two PyCharm installs were open and both wrote the same `state.json`; nothing stopped one holding an older copy of the pet from overwriting the newer save. `state.json` was also overwritten in place, so a crash mid-write could leave it truncated, and the plugin would then fall back to the IDE's own (possibly older) copy.
+
+**Fix:** Saves go to `state.json.tmp` and are renamed over `state.json`. A save is refused when the file on disk is the same pet (same `spawnedAt`) more than `STALE_AGE_MARGIN_DAYS` (1) further along; the IDE then reloads the newer pet from disk. The last 3 good saves are kept as `state.json.bak1`-`bak3` (refreshed at most every 10 minutes) and loaded if `state.json` is missing or unreadable. OpenCode and Claude Code write-backs are atomic and skip stale writes too.

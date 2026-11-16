@@ -66,11 +66,21 @@ fun formatStatusWidget(state: PetState, enabled: Boolean): Pair<String, String> 
     if (!state.alive) return "✝ ${state.name}" to "${state.name} has passed away. Start a new game."
     val emoji = STAGE_EMOJI[state.stage] ?: "🥚"
     val callLine = attentionCallLine(state)
-    val text = "${if (callLine.isNotEmpty()) "⚠ " else ""}$emoji ${state.name}"
+    val cat = if (state.stage != "egg") state.companion else null
+    val catLabel = cat?.spriteType?.replaceFirstChar { it.uppercase() } ?: ""
+    val catNeeds = when {
+        cat == null -> ""
+        cat.hunger < 25 -> "hungry"
+        cat.happiness < 25 -> "sad"
+        else -> ""
+    }
+    val text = "${if (callLine.isNotEmpty()) "⚠ " else ""}$emoji ${state.name}${if (cat != null) " 🐱" else ""}${if (catNeeds.isNotEmpty()) "!" else ""}"
     val tooltip = listOf(
         callLine,
         "${state.name} | ${state.stage} | mood: ${state.mood} | health: ${state.health} | weight: ${state.weight}",
         if (state.sick) "⚠ Sick!" else "",
+        if (cat != null) "🐱 $catLabel: hunger ${cat.hunger}, happiness ${cat.happiness}" else "",
+        if (catNeeds.isNotEmpty()) "⚠ $catLabel is $catNeeds!" else "",
     ).filter { it.isNotEmpty() }.joinToString(" | ")
     return text to tooltip
 }

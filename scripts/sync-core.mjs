@@ -25,6 +25,7 @@ const TARGETS = {
   "gameEngine.ts": ["vscode", "opencode-codotchi", "claude-codotchi", "claude-desktop-codotchi"],
   "asciiArt.ts":   ["opencode-codotchi", "claude-codotchi", "claude-desktop-codotchi"],
   "integrity.ts":  ["vscode", "opencode-codotchi", "claude-desktop-codotchi"],
+  "safeStateFile.ts": ["vscode", "opencode-codotchi"],
 };
 
 /** Plugins that seal the shared state file and so need the leaderboard key. */
