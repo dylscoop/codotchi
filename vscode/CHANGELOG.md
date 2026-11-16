@@ -12,6 +12,11 @@
 - When a friend visits, the cat cheers up and walks over to them: it hisses at dogs and sniffs other animals curiously.
 - The status bar shows 🐱 after Stu (with a `!` when the cat is hungry or sad); the tooltip lists the cat's stats. The terminal art draws the cat beside Stu with its own bars.
 
+### Fixed
+
+- **Your pet's save can't go backwards any more.** If two copies of the IDE are open (for example two PyCharm installs), the one with an older copy of your pet can no longer overwrite the newer save. It picks up the newer pet instead.
+- **Saves survive a crash or forced restart.** The save file is written to a temporary file and swapped in, so a crash mid-save can't leave it broken. The last 3 saves are kept as backups (`state.json.bak1`-`bak3`, refreshed at most every 10 minutes) and used if the save file is ever missing or damaged.
+
 ## [2.37.1] - 2026-11-12
 
 ### Added (friends preview, dev mode only)

@@ -82,6 +82,7 @@ import {
   socialActionMessage,
 } from "./gameEngine.js";
 import { sealSerialisedState, verifySeal } from "./integrity.js";
+import { isStaleAgainst, writeAtomically } from "./safeStateFile.js";
 import { translateV2Event, summariseNotification } from "./v2Events.js";
 import { shouldPersistTick, PulseGate } from "./ioThrottle.js";
 
@@ -204,12 +205,16 @@ function saveToIDEFile(filePath: string, state: PetState): void {
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
     const serialised = serialiseState(state) as Record<string, unknown>;
+    // Never roll the IDE's pet back to an older copy of itself.
+    let disk: Record<string, unknown> | undefined;
+    try { disk = (JSON.parse(fs.readFileSync(filePath, "utf8")) as IDEStateFile).state as Record<string, unknown>; } catch { /* missing/corrupt */ }
+    if (isStaleAgainst(serialised, disk)) { return; }
     const payload: IDEStateFile = {
       state: serialised,
       savedAt: Date.now(),
       seal: sealSerialisedState(serialised),
     };
-    fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
+    writeAtomically(filePath, JSON.stringify(payload));
   } catch {
     // Best-effort — never crash the plugin if the state file is unavailable.
   }
@@ -226,7 +231,7 @@ function saveTerminalEnabled(): void {
       try { existing = JSON.parse(fs.readFileSync(filePath, "utf8")) as IDEStateFile; } catch { /* ignore */ }
     }
     existing.terminalEnabled = terminalEnabled;
-    fs.writeFileSync(filePath, JSON.stringify(existing), "utf8");
+    writeAtomically(filePath, JSON.stringify(existing));
   } catch {
     // Best-effort.
   }

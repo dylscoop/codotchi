@@ -121,7 +121,7 @@ export function idleFlagsForFile(file) {
 export function saveStateFile(obj) {
   const dir = dataDir();
   ensureDir(dir);
-  fs.writeFileSync(statePath(), JSON.stringify(obj, null, 2), "utf8");
+  writeAtomically(statePath(), JSON.stringify(obj, null, 2));
 
   if (!obj.state || obj.state.alive === false) return;
 
@@ -138,16 +138,31 @@ export function saveStateFile(obj) {
       currentState = JSON.parse(fs.readFileSync(anchor.filePath, "utf8")).state;
     } catch { /* missing/corrupt — treat as changed, write fresh below */ }
     if (currentState && JSON.stringify(currentState) === JSON.stringify(obj.state)) return;
+    // Never roll the IDE's pet back to an older copy (e.g. a stale anchor read).
+    if (isStaleAgainst(obj.state, currentState)) return;
 
     ensureDir(path.dirname(anchor.filePath));
-    fs.writeFileSync(
-      anchor.filePath,
-      JSON.stringify({ state: obj.state, savedAt: Date.now() }, null, 2),
-      "utf8"
-    );
+    writeAtomically(anchor.filePath, JSON.stringify({ state: obj.state, savedAt: Date.now() }, null, 2));
   } catch {
     // Best-effort write-back — swallow errors, matching persistence.ts / CodotchiPersistence.kt.
   }
+}
+
+const STALE_AGE_MARGIN_DAYS = 1;
+
+/** Write via temp file + rename so a crash mid-write never leaves a truncated file. */
+export function writeAtomically(filePath, text) {
+  const tmp = `${filePath}.tmp`;
+  fs.writeFileSync(tmp, text, "utf8");
+  fs.renameSync(tmp, filePath);
+}
+
+/** True when `disk` is the same living pet at least a day further along than `next`. */
+export function isStaleAgainst(next, disk) {
+  if (!next || !disk || next.alive === false || disk.alive === false) return false;
+  if (typeof disk.spawnedAt !== "number" || disk.spawnedAt !== next.spawnedAt) return false;
+  return typeof disk.dayTimer === "number" && typeof next.dayTimer === "number" &&
+    disk.dayTimer > next.dayTimer + STALE_AGE_MARGIN_DAYS;
 }
 
 // Pricing per million tokens (USD) by model prefix. Ordered most-specific

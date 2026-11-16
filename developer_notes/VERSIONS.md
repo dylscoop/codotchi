@@ -14,11 +14,16 @@
 | `vscode/src/statusBarText.ts`, `pycharm/.../StatusBarText.kt` | 🐱 after the name (`!` when the cat is hungry or sad); cat stats and warning in the tooltip |
 | `vscode/tests/unit/companion.test.ts` (new), `pycharm/.../CompanionTest.kt` (new), `opencode-codotchi/tests/unit/asciiArt.test.ts`, `claude-codotchi/tests/integration/socialActions.test.mjs` | companion tests |
 | CHANGELOG, `plugin.xml` change notes, README, all manifests | version 2.38.0 |
+| `packages/core/src/safeStateFile.ts` (new, synced to `vscode`, `opencode-codotchi` via `scripts/sync-core.mjs`), `vscode/src/persistence.ts`, `extension.ts` | BUGFIX-217: `safeWriteStateFile` writes state.json atomically (temp + rename), refuses when `isStaleAgainst` (same `spawnedAt`, disk `dayTimer` > ours + `STALE_AGE_MARGIN_DAYS`), keeps `BACKUP_COUNT` backups (`state.json.bak1..3`, every `BACKUP_INTERVAL_MS`); `readWithBackups` falls back to them. `saveState` returns false on refusal and the caller reloads from disk; `loadState` also prefers a further-along shared file |
+| `pycharm/.../CodotchiPersistence.kt`, `CodotchiPlugin.kt` | Kotlin port of the same: `savePetState` returns Boolean, `isStaleAgainstDisk`, `writeAtomically`, `rotateBackups`, backup fallback in `loadFromSharedFile`; `broadcastState` calls `reloadFromDisk()` on refusal; `stateFileOverride` test hook |
+| `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/state.mjs` | IDE write-back is atomic and skips stale writes |
+| `vscode/tests/unit/safeStateFile.test.ts`, `pycharm/.../SaveProtectionTest.kt`, `claude-codotchi/tests/unit/saveProtection.test.mjs` (new) | save-protection tests |
 
 ```
 COMPANION_DECAY_TICK_INTERVAL = 10, COMPANION_LOW_STAT = 25, COMPANION_LINK_TICK_INTERVAL = 20
 COMPANION_MEAL_HUNGER = 20, COMPANION_SNACK_HUNGER = 10, COMPANION_SNACK_HAPPINESS = 5, COMPANION_PLAY_HAPPINESS = 15
 COMPANION_PET_HAPPINESS = 15, COMPANION_PET_OWNER_HAPPINESS = 5, COMPANION_PET_COOLDOWN_TICKS = 20, COMPANION_VISIT_HAPPINESS = 10
+STALE_AGE_MARGIN_DAYS = 1, BACKUP_COUNT = 3, BACKUP_INTERVAL_MS = 600000
 ```
 
 ## v2.37.1

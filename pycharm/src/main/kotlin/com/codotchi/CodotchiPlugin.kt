@@ -296,8 +296,9 @@ class CodotchiPlugin : Disposable {
                 override fun applicationDeactivated(ideFrame: IdeFrame) {
                     // Save immediately on focus loss so no progress is lost
                     stateLock.withLock { currentState }?.let { state ->
-                        service<CodotchiPersistence>().savePetState(state)
-                        service<CodotchiPersistence>().lastSaveTimestamp = System.currentTimeMillis()
+                        if (service<CodotchiPersistence>().savePetState(state)) {
+                            service<CodotchiPersistence>().lastSaveTimestamp = System.currentTimeMillis()
+                        }
                     }
                     // BUGFIX-097: persist the deep-idle timestamp so the grace period
                     // survives a crash/force-quit and applies on the next startup.
@@ -1500,7 +1501,11 @@ class CodotchiPlugin : Disposable {
         val persistence = service<CodotchiPersistence>()
         var highScore = prevHighScore
         if (state != null) {
-            persistence.savePetState(state)
+            if (!persistence.savePetState(state)) {
+                // Another instance has a newer save of this pet — adopt it instead of rolling back.
+                reloadFromDisk()
+                return
+            }
             persistence.mealsGivenThisCycle = meals
 
             // Update high score when pet dies (suppressed in dev mode and for deathless pets — scores don't count)

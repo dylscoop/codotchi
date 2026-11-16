@@ -28,6 +28,7 @@ import { PetState, HighScore, TrainerProgress, deserialiseState, deserialiseTrai
 import { sealSerialisedState, verifySeal } from "./integrity";
 import { Afterlife, parseAfterlife } from "./afterlife";
 import { StateFileStamp } from "./tickLease";
+import { readWithBackups, safeWriteStateFile, isStaleAgainst } from "./safeStateFile";
 
 const STATE_KEY = "codotchi.petState";
 const TIMESTAMP_KEY = "codotchi.lastSaveTimestamp";
@@ -163,14 +164,10 @@ export function readStateFileStamp(): StateFileStamp | null {
  * Write the current pet state to the VS Code-specific state file.
  * Failures are silently swallowed — the file is best-effort only.
  */
-function saveSharedState(state: PetState): void {
-  if (!state.alive) { return; }
+function saveSharedState(state: PetState): boolean {
+  if (!state.alive) { return true; }
   try {
     const filePath = getActiveStatePath();
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
     const serialised = serialiseState(state) as Record<string, unknown>;
     const payload: SharedStateFile = {
       state: serialised,
@@ -178,9 +175,10 @@ function saveSharedState(state: PetState): void {
       writerId: WRITER_ID,
       seal: sealSerialisedState(serialised),
     };
-    fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
+    return safeWriteStateFile(filePath, payload as unknown as { state: Record<string, unknown> });
   } catch {
     // Best-effort — never crash the extension if the shared file is unavailable.
+    return true;
   }
 }
 
@@ -196,10 +194,10 @@ interface LoadedSharedState {
 function loadSharedState(): LoadedSharedState | null {
   try {
     const filePath = getActiveStatePath();
-    if (!fs.existsSync(filePath)) {
+    const raw = readWithBackups(filePath) as SharedStateFile | null;
+    if (raw === null) {
       return null;
     }
-    const raw = JSON.parse(fs.readFileSync(filePath, "utf8")) as SharedStateFile;
     if (!raw.state || typeof raw.savedAt !== "number") {
       return null;
     }
@@ -217,17 +215,21 @@ function loadSharedState(): LoadedSharedState | null {
  * Persist the pet state and record the current wall-clock timestamp (ms).
  * Also writes to the VS Code-specific state file so OpenCode can read it.
  *
+ * Returns false (and saves nothing) when the state file on disk holds a newer
+ * copy of the same pet — the caller should reload from disk instead.
+ *
  * @param context - The VS Code extension context.
  * @param state - The pet state to persist.
  */
-export function saveState(context: vscode.ExtensionContext, state: PetState): void {
+export function saveState(context: vscode.ExtensionContext, state: PetState): boolean {
+  if (!saveSharedState(state)) { return false; }
   const serialised = serialiseState(state) as Record<string, unknown>;
   void context.globalState.update(STATE_KEY, serialised);
   void context.globalState.update(STATE_SEAL_KEY, sealSerialisedState(serialised));
   void context.globalState.update(TIMESTAMP_KEY, Date.now());
   // Kept outside the pet state too, so "New Game" (which clears it) doesn't lose trainer progress.
   void context.globalState.update(TRAINER_KEY, state.trainer);
-  saveSharedState(state);
+  return true;
 }
 
 /** The last saved trainer progress, or null if none has been saved. */
@@ -254,7 +256,9 @@ export function loadState(context: vscode.ExtensionContext): PetState | null {
   // an extension host restart), promote it so elapsedSecondsSinceLastSave
   // uses the correct reference timestamp.
   const shared = loadSharedState();
-  if (shared !== null && shared.savedAt > localTimestamp && shared.state.alive) {
+  const sharedIsFurtherAlong = shared !== null && raw !== undefined && raw !== null &&
+    isStaleAgainst(raw, serialiseState(shared.state) as Record<string, unknown>);
+  if (shared !== null && (shared.savedAt > localTimestamp || sharedIsFurtherAlong) && shared.state.alive) {
     const serialised = serialiseState(shared.state) as Record<string, unknown>;
     void context.globalState.update(STATE_KEY, serialised);
     void context.globalState.update(STATE_SEAL_KEY, sealSerialisedState(serialised));
