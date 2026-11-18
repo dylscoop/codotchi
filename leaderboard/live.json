@@ -58,5 +58,17 @@
     "updatedAt": 1794951841188,
     "clientVersion": "2.38.0",
     "verified": true
+  },
+  {
+    "username": "PurryFury",
+    "petName": "Codotchi",
+    "petRunId": "0",
+    "spawnedAt": 1794925518769,
+    "ageDays": 6,
+    "stage": "child",
+    "petType": "codeling",
+    "updatedAt": 1794986501240,
+    "clientVersion": "2.37.0",
+    "verified": true
   }
 ]
