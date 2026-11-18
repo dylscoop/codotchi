@@ -64,10 +64,10 @@
     "petName": "Shelly",
     "petRunId": "0",
     "spawnedAt": 1794986549637,
-    "ageDays": 2,
+    "ageDays": 3,
     "stage": "baby",
     "petType": "shellscript",
-    "updatedAt": 1794991796069,
+    "updatedAt": 1794992700022,
     "clientVersion": "2.37.0",
     "verified": true
   }
