@@ -61,13 +61,13 @@
   },
   {
     "username": "PurryFury",
-    "petName": "Codotchi",
+    "petName": "Shelly",
     "petRunId": "0",
-    "spawnedAt": 1794925518769,
-    "ageDays": 6,
-    "stage": "child",
-    "petType": "codeling",
-    "updatedAt": 1794987277807,
+    "spawnedAt": 1794986549637,
+    "ageDays": 0,
+    "stage": "baby",
+    "petType": "shellscript",
+    "updatedAt": 1794988181698,
     "clientVersion": "2.37.0",
     "verified": true
   }
