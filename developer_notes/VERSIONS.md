@@ -11,6 +11,11 @@
 | `vscode/tests/unit/gameEngine.test.ts`, `pycharm/.../GameEngineTest.kt` | Boundary and idle integration coverage for all 12 call types. |
 | `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `claude-desktop-codotchi/package.json` | Patch version 2.38.2. |
 | `README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md` | Updated release references and fixed response-time documentation. |
+| `packages/core/src/gameEngine.ts` (+ synced copies), `pycharm/.../engine/GameEngine.kt` | `oldAgeCareScore` reuses the existing score, rounded 0–100, only for persisted old-age deaths; Kotlin death roll accepts injected randomness for deterministic tests. Deathless probabilities unchanged. |
+| `vscode/src/sidebarProvider.ts`, `vscode/media/sidebar.js`, `pycharm/.../CodotchiBrowserPanel.kt` | Send nullable score in the webview snapshot and add only `Care score: N` after an old-age death, including after reload. |
+| `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/action.mjs`, `claude-desktop-codotchi/src/tools.ts` | Same plain score line in terminal/Desktop death messages. |
+| `vscode/tests/unit/deathless.test.ts`, `gameEngine.test.ts`, `webviewAnimations.test.ts`, `pycharm/.../DeathlessTest.kt`, `claude-codotchi/tests/integration/socialActions.test.mjs`, `claude-desktop-codotchi/tests/tools.test.mjs` | Normal/deathless probability parity, age and stage guards, score save/load and output regression tests. |
+| `developer_notes/DEV_NOTES.md` | New senior old-age reference section: daily probability table, risk formula, sickness, deathless semantics, post-mortem care score and fixed call windows. |
 
 New constant: `ATTENTION_CALL_EXPIRY_TICKS = 200` (10 active minutes).
 Removed config field: `GameConfig.attentionCallExpiryTicks`.

@@ -168,6 +168,12 @@ fun characterForStage(
     return EVOLUTION_CHARACTERS[petType]?.get(stage)?.get(tier) ?: ""
 }
 
+/** Plain post-mortem care score, only for an old-age death (including reloaded saves). */
+fun oldAgeCareScore(state: PetState): Int? {
+    if (state.alive || "died_of_old_age" !in state.recentEventLog) return null
+    return kotlin.math.floor(computeCareScore(state) * 100 + 0.5).toInt()
+}
+
 fun computeCareScore(state: PetState): Double {
     if (state.careScoreTicks == 0L) return 0.5
     val avgHunger    = state.careScoreHungerSum.toDouble() / state.careScoreTicks
@@ -1476,11 +1482,11 @@ fun computeOldAgeDeathChance(state: PetState): Double {
  * Roll for natural old-age death once per game-day boundary for a senior pet.
  * Returns state with alive=false and event "died_of_old_age" if the roll hits.
  */
-fun rollOldAgeDeath(state: PetState): PetState {
+fun rollOldAgeDeath(state: PetState, random: Double = Math.random()): PetState {
     if (state.stage != "senior") return state
     if (state.ageDays < SENIOR_NATURAL_DEATH_AGE_DAYS) return state
     val chance = computeOldAgeDeathChance(state)
-    if (Math.random() >= chance) return state
+    if (random >= chance) return state
     return withDerivedFields(state.copy(alive = false, diedAt = System.currentTimeMillis(), events = listOf("died_of_old_age")))
 }
 

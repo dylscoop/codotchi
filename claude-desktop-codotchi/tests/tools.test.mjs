@@ -57,6 +57,16 @@ function adultPet(overrides = {}) {
 }
 
 describe("claude-desktop tools", () => {
+  it("old-age death adds only the care score line, including on reload", () => {
+    const senior = adultPet({ stage: "senior", ageDays: 365 });
+    const dead = ge.rollOldAgeDeath(senior, 0);
+    writeState(["vscode", "state.json"], dead);
+    const out = tools.show(readConfig());
+    assert.equal(out.asciiArt, "Desky is no longer with us. Start a new chat to hatch a fresh pet.\nCare score: 50");
+    writeState(["vscode", "state.json"], { ...dead, recentEventLog: ["died"] });
+    assert.ok(!tools.show(readConfig()).asciiArt.includes("Care score"));
+  });
+
   it("show() hatches a fresh pet on first run and writes it to the VS Code path", () => {
     const out = tools.show(readConfig());
     assert.equal(out.source, SOURCE);

@@ -1232,6 +1232,12 @@ export function careTierLabel(careScore: number): string {
   return labels[tier];
 }
 
+/** Plain post-mortem care score, only for an old-age death (including reloaded saves). */
+export function oldAgeCareScore(state: PetState): number | null {
+  if (state.alive || !state.recentEventLog.includes("died_of_old_age")) { return null; }
+  return Math.round(computeCareScore(state) * 100);
+}
+
 // ---------------------------------------------------------------------------
 // Sprite type — randomly assigned at hatch
 // ---------------------------------------------------------------------------

@@ -40,6 +40,7 @@ import {
   tierFromCareScore,
   characterForStage,
   computeCareScore,
+  oldAgeCareScore,
   careTierLabel,
   happinessDeltaForMinigame,
   serialiseState,
@@ -2899,6 +2900,27 @@ describe("integration — fixed attention response windows", () => {
       assert.ok(pet.events.includes(`attention_call_expired_${type}`));
     });
   }
+});
+
+describe("integration — old-age care score", () => {
+  it("shows the existing rounded care score after death and save/load, not a risk score", () => {
+    const senior = makePet({ stage: "senior", ageDays: 365, careScoreTicks: 10,
+      careScoreHungerSum: 730, careScoreHappinessSum: 810, careScoreHealthSum: 920,
+      discipline: 67, poops: 1 });
+    assert.equal(oldAgeCareScore(senior), null);
+    const dead = rollOldAgeDeath(senior, 0);
+    assert.equal(oldAgeCareScore(dead), Math.round(computeCareScore(dead) * 100));
+    const restored = deserialiseState(serialiseState(dead));
+    assert.deepEqual(restored.events, []);
+    assert.equal(oldAgeCareScore(restored), oldAgeCareScore(dead));
+  });
+
+  it("has no score for other deaths or living pets, and uses the neutral fallback", () => {
+    assert.equal(oldAgeCareScore(makePet({ alive: false, recentEventLog: ["died"] })), null);
+    assert.equal(oldAgeCareScore(makePet({ recentEventLog: ["died_of_old_age"] })), null);
+    const dead = rollOldAgeDeath(makePet({ stage: "senior", ageDays: 365, careScoreTicks: 0 }), 0);
+    assert.equal(oldAgeCareScore(dead), 50);
+  });
 });
 
 describe("developer mode — health floor", () => {

@@ -62,6 +62,19 @@ const FRIEND = { name: "Pixel", spriteType: "dog", petType: "bytebug", friendshi
 const VISIT = { ticksLeft: 40, played: false, gifted: false };
 
 describe("action.mjs social commands (integration)", () => {
+  it("old-age deaths show the existing care score without explanatory context", async () => {
+    await withFixture(async (tmp) => {
+      for (const oldAge of [true, false]) {
+        await writePet(tmp, { alive: false, stage: "senior", ageDays: 365,
+          recentEventLog: [oldAge ? "died_of_old_age" : "died"] });
+        const out = run(tmp, "status");
+        assert.ok(out.includes("Socialite has passed away."), out);
+        assert.equal(out.includes("Care score: 50"), oldAge, out);
+        assert.ok(!/riskScore|Excellent|Poor|death chance/.test(out), out);
+      }
+    });
+  });
+
   it("/codotchi playfriend plays with the visiting friend once", async () => {
     await withFixture(async (tmp) => {
       await writePet(tmp, { friend: FRIEND, visit: VISIT });

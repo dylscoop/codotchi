@@ -3,6 +3,7 @@
 ## [2.38.2] - 2026-11-19
 
 - Attention-based calls now always allow 10 active minutes to answer; need-based calls still allow 1 active minute. Removed the response-time setting.
+- Old-age deaths now show `Care score: N`, with no tier or explanation. Deathless pets retain normal senior old-age chances; the chances and rules are documented in Developer Notes.
 
 ## [2.38.1] - 2026-11-19
 

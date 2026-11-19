@@ -57,8 +57,7 @@ class DeathlessTest {
     @Test
     fun `old-age death still applies to a deathless pet`() {
         val senior = markDeathless(pet().copy(stage = "senior", ageDays = 400))
-        var next = senior
-        for (i in 0 until 1_000_000) { next = rollOldAgeDeath(senior); if (!next.alive) break }
+        val next = rollOldAgeDeath(senior, 0.0)
         assertFalse(next.alive)
         assertTrue("died_of_old_age" in next.events)
     }
@@ -72,12 +71,47 @@ class DeathlessTest {
     }
 
     @Test
+    fun `old-age guards and care-based chances are identical for deathless pets`() {
+        for (stage in listOf("adult", "senior")) {
+            for (age in listOf(364, 365, 730, 1825, 2000)) {
+                for (neglected in listOf(false, true)) {
+                    val normal = pet().copy(stage = stage, ageDays = age,
+                        happiness = if (neglected) 0 else 100, discipline = if (neglected) 0 else 100,
+                        weight = if (neglected) 99 else 40, lifetimeCareMistakes = if (neglected) 20 else 0)
+                    val marked = markDeathless(normal)
+                    assertEquals(computeOldAgeDeathChance(normal), computeOldAgeDeathChance(marked))
+                    for (random in listOf(0.0, 0.0009, 0.001, 0.005, 0.01, 0.025, 0.05, 0.075, 0.10, 0.999)) {
+                        val result = rollOldAgeDeath(marked, random)
+                        assertEquals(rollOldAgeDeath(normal, random).alive, result.alive)
+                        if (stage != "senior" || age < 365) assertTrue(result.alive)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `markDeathless keeps a tampered mark`() {
         val tampered = pet().copy(leaderboardIneligible = "tampered")
         assertSame(tampered, markDeathless(tampered))
     }
 
     // ── Leaderboard ───────────────────────────────────────────────────────
+
+    @Test
+    fun `old-age care score uses existing score and survives transient event clearing`() {
+        val senior = pet().copy(stage = "senior", ageDays = 365)
+        assertNull(oldAgeCareScore(senior))
+        val dead = rollOldAgeDeath(senior, 0.0)
+        assertEquals(50, oldAgeCareScore(dead))
+        assertTrue(petStateJson(dead).contains("\"oldAgeCareScore\":50"))
+        assertEquals(oldAgeCareScore(dead), oldAgeCareScore(dead.copy(events = emptyList())))
+        assertNull(oldAgeCareScore(dead.copy(recentEventLog = listOf("died"))))
+        assertNull(oldAgeCareScore(dead.copy(alive = true)))
+        val cared = dead.copy(careScoreTicks = 10, careScoreHungerSum = 730,
+            careScoreHappinessSum = 810, careScoreHealthSum = 920, discipline = 67, poops = 1)
+        assertEquals(kotlin.math.floor(computeCareScore(cared) * 100 + 0.5).toInt(), oldAgeCareScore(cared))
+    }
 
     @Test
     fun `blocks a deathless pet`() {

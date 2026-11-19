@@ -2578,3 +2578,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** Attention-based calls allowed configurable 4-, 10- or 20-minute response windows rather than a fixed 10 minutes.
 
 **Fix:** Use `ATTENTION_CALL_EXPIRY_TICKS = 200` for all attention-based calls and remove the expiry setting and runtime config field. Need-based calls retain 20 ticks (1 minute). Idle time remains excluded; existing saved expiry settings are ignored.
+
+## BUGFIX-220 — Old-age death did not show the care score
+
+**Status:** Fixed (branch `fix/old-age-care-score-and-call-timers`)
+**File:** `packages/core/src/gameEngine.ts`, `vscode/media/sidebar.js`, `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt`, terminal/Desktop death renderers
+
+**Problem:** A pet dying of old age had no plain post-mortem care score, and the transient death event was unavailable after reloading the save.
+
+**Fix:** Detect the cause using the persisted event log and show only `Care score: N`, where N is the existing current-stage care score rounded to 0–100. No tier, explanation or risk information accompanies the score. Other deaths and living pets do not show it. Deathless senior probabilities are unchanged and covered by deterministic parity tests.

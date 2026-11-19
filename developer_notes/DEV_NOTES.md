@@ -285,7 +285,20 @@ Example — codeling child stage (1 game day = 15 min awake):
 `lifetimeCareMistakes ≥ 10` → always evolves to `secret_worst` regardless of
 careScore or per-stage mistakes.
 
-#### Care factor and senior old-age death risk
+## Senior Old-age Chances and Deathless Mode
+
+### Eligibility and timing
+
+Only seniors aged at least **365 game days** can die of old age. The engine
+rolls once when an eligible tick crosses a game-day boundary, not on every
+tick and not per real day. Idle/deep-idle ticks skip death and sickness rolls;
+missed boundaries are not replayed. Break naps return before these rolls.
+`immortal` skips both rolls. Deathless mode does **not** skip them.
+
+The baseline is 5 active, awake minutes per game day, modified by pet type,
+sleep and developer aging settings; see [aging rates](#aging-rates).
+
+### Care-based daily death chance
 
 For senior pets (≥ day 365), a per-day death probability is computed from four
 longevity risk factors (each 0 = safest, 1 = riskiest):
@@ -297,30 +310,93 @@ longevity risk factors (each 0 = safest, 1 = riskiest):
 | `disciplineFactor` | `(100 − discipline) / 100` |
 | `mistakesFactor` | `min(1, lifetimeCareMistakes / 20)` — saturates at 20 mistakes |
 
-```
+```text
 riskScore = (happinessFactor + weightFactor + disciplineFactor + mistakesFactor) / 4
 ```
 
 Death chance ramps linearly from onset (day 365) to peak (day 1825 = 5 in-game
 years), then stays at peak:
 
-```
+```text
 ageFactor = clamp((ageDays − 365) / (1825 − 365), 0, 1)
 minChance = lerp(0.001, 0.05, ageFactor)   ← best care  (riskScore = 0)
 maxChance = lerp(0.010, 0.10, ageFactor)   ← worst care (riskScore = 1)
 chance    = lerp(minChance, maxChance, riskScore)
 ```
 
-| Age | Best care (riskScore = 0) | Worst care (riskScore = 1) |
-|-----|--------------------------|---------------------------|
-| Day 365 (onset) | 0.1% / game day | 1.0% / game day |
-| Day 1825 (peak, capped) | 5.0% / game day | 10.0% / game day |
+`avgHappiness` is the current stage's accumulated average, falling back to
+current happiness when there are no samples. Weight and discipline are current
+values; care mistakes are lifetime. The displayed care score is a different
+calculation, not `1 − riskScore`.
 
-Sickness chance for seniors = `3 × death chance` per game day.
+| Age (game days) | Best care (risk = 0) | Midpoint risk (0.5) | Worst care (risk = 1) |
+|----------------|---------------------|---------------------|----------------------|
+| Under 365, or not senior | 0% | 0% | 0% |
+| 365 (onset) | 0.1% | 0.55% | 1% |
+| 730 | 1.325% | 2.2875% | 3.25% |
+| 1095 | 2.55% | 4.025% | 5.5% |
+| 1460 | 3.775% | 5.7625% | 7.75% |
+| 1825 and older (peak, capped) | 5% | 7.5% | 10% |
+
+All percentages are **per eligible game-day roll**, not guaranteed lifespan.
+Midpoint risk is an example, not a population average. Survival across multiple
+rolls is `product(1 − p_day)`; below peak, probabilities change as the pet ages.
+At peak with unchanged best/worst care, survival over 30 rolls is approximately
+21.46% / 4.24%; over 100 rolls it is 0.592% / 0.00266%.
+
+### Old-age sickness
+
+After surviving the death roll, an eligible senior that is not already sick
+rolls for sickness at `3 × death chance`. At onset this is 0.3–3%; at peak it is
+15–30%. These are conditional sickness probabilities, not an additional death
+chance; unconditional new sickness probability is `(1 − p_death) × 3 × p_death`.
 
 **Practical note:** A perfectly cared-for senior at peak age has a 5% daily
 death chance. A neglected one has 10%. Care matters but cannot make a senior
 immortal — longevity is ultimately a function of age.
+
+### Deathless and the post-mortem care score
+
+- Deathless pets keep at least 1 health: neglect and sickness cannot kill them.
+- They still get sick. Only seniors at day 365 or later can die, using exactly
+  the normal care-based old-age probabilities above.
+- The deathless mark is permanent for the pet and excludes leaderboard/high
+  scores; disabling the setting does not remove its health protection.
+- After an old-age death, the death screen/message adds only `Care score: N`.
+  There is no tier, explanation, risk breakdown or probability beside it.
+- `N = round(computeCareScore(state) × 100)`, using the existing current-stage
+  care score (hunger, happiness, discipline, cleanliness, health), not lifetime
+  care or the old-age risk score. With no samples, the score is 50. Other deaths
+  do not show it. The saved event log preserves the old-age cause across reloads.
+
+### Attention-call response windows
+
+Both windows are fixed; the former `attentionCallExpiry` setting is ignored.
+Only active ticks count (3 seconds each).
+
+| Calls | Window | On expiry |
+|-------|--------|-----------|
+| Hunger / unhappiness / sick / low energy / critical health | 20 ticks = 1 minute | Hunger −10 / happiness −10 / health −10 / happiness −10 / health and happiness −10 respectively; +1 care mistake |
+| Poop | 200 ticks = 10 minutes | +1 care mistake; sickness only if at least 5 poops |
+| Misbehaviour | 200 ticks = 10 minutes | Health −10; +1 care mistake |
+| Gift | 200 ticks = 10 minutes | Happiness −5; +1 care mistake |
+| Play / pat / craving | 200 ticks = 10 minutes | Health −10; +1 care mistake |
+| Break | 200 ticks = 10 minutes | No penalty or care mistake |
+
+### Source references
+
+- `packages/core/src/gameEngine.ts`: `computeOldAgeDeathChance`,
+  `rollOldAgeDeath`, `rollOldAgeSickness`, `oldAgeCareScore`, `computeCareScore`.
+- Constants: `SENIOR_NATURAL_DEATH_AGE_DAYS = 365`,
+  `OLD_AGE_DEATH_BASE_CHANCE_PER_DAY = 0.001`,
+  `OLD_AGE_DEATH_RISK_MULTIPLIER = 9`, `OLD_AGE_DEATH_PEAK_AGE_DAYS = 1825`,
+  `OLD_AGE_DEATH_PEAK_BEST_CARE_CHANCE = 0.05`,
+  `OLD_AGE_DEATH_PEAK_WORST_CARE_CHANCE = 0.10`,
+  `CARE_MISTAKE_OLD_AGE_SATURATE = 20`, `OLD_AGE_SICK_CHANCE_MULTIPLIER = 3`,
+  `ATTENTION_CALL_RESPONSE_TICKS = 20`, `ATTENTION_CALL_EXPIRY_TICKS = 200`.
+- Kotlin equivalents: `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
+  and `Constants.kt`. TypeScript client copies are generated with
+  `node scripts/sync-core.mjs`.
 
 ---
 
