@@ -76,10 +76,10 @@
     "petName": "Cody",
     "petRunId": "0",
     "spawnedAt": 1795003459773,
-    "ageDays": 16,
+    "ageDays": 17,
     "stage": "child",
     "petType": "pixelpup",
-    "updatedAt": 1795073104374,
+    "updatedAt": 1795074008311,
     "clientVersion": "2.37.0",
     "verified": true
   }
