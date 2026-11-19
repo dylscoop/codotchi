@@ -541,10 +541,10 @@ class GameEngineTest {
     }
 
     @Test
-    fun `expiry settings map to 4, 10 and 20 minutes of ticks`() {
+    fun `attention expiry is fixed at 10 minutes with no host setting`() {
         val source = javaClass.getResourceAsStream("/source/CodotchiPlugin.kt")!!.bufferedReader().readText()
-        assertTrue(source.contains("""mapOf("needy" to 80, "standard" to 200, "chilled" to 400)"""))
-        assertEquals(200, DEFAULT_GAME_CONFIG.attentionCallExpiryTicks)
+        assertFalse(source.contains("attentionCallExpiry"))
+        assertEquals(200, ATTENTION_CALL_EXPIRY_TICKS)
         assertEquals(3, TICK_INTERVAL_SECONDS)
     }
 
@@ -714,21 +714,40 @@ class GameEngineTest {
     }
 
     @Test
-    fun `an ignored whim call costs 10 health and a care mistake, using the configurable expiry`() {
-        val cfg = DEFAULT_GAME_CONFIG.copy(attentionCallExpiryTicks = 50)
+    fun `an ignored whim call costs 10 health and a care mistake after 10 minutes`() {
+        val cfg = DEFAULT_GAME_CONFIG
         for (type in listOf("play", "pat", "craving")) {
             val pet = makePet().copy(
                 activeAttentionCall = type, cravingFood = if (type == "craving") "meal" else null,
-                attentionCallActiveTicks = 48, health = 100, careMistakes = 0.0, nextPoopIntervalTicks = 99999,
+                attentionCallActiveTicks = 198, health = 100, careMistakes = 0.0, nextPoopIntervalTicks = 99999,
             )
             val stillOpen = tick(pet, config = cfg)
-            assertEquals(type, stillOpen.activeAttentionCall, "$type: tick 49 of 50 — still open")
+            assertEquals(type, stillOpen.activeAttentionCall, "$type: tick 199 of 200 — still open")
             val expired = tick(stillOpen, config = cfg)
             assertTrue(expired.events.contains("attention_call_expired_$type"))
             assertEquals(90, expired.health, type)
             assertEquals(1.0, expired.careMistakes, type)
             assertNull(expired.cravingFood)
             assertEquals(99, expired.attentionCallCooldowns[type], "$type: expiry cooldown set, then counted down once")
+        }
+    }
+
+    @Test
+    fun `fixed response windows expire at boundary excluding idle time`() {
+        val needs = listOf("hunger", "unhappiness", "sick", "low_energy", "critical_health")
+        val attention = listOf("poop", "misbehaviour", "gift", "play", "pat", "craving", "break")
+        for (type in needs + attention) {
+            val limit = if (type in needs) 20 else 200
+            assertEquals(limit, if (type in needs) ATTENTION_CALL_RESPONSE_TICKS else ATTENTION_CALL_EXPIRY_TICKS)
+            var pet = makePet().copy(stage = "adult", activeAttentionCall = type,
+                attentionCallActiveTicks = limit - 2, nextPoopIntervalTicks = 99999)
+            pet = tick(pet, isIdle = true)
+            assertEquals(limit - 2, pet.attentionCallActiveTicks, type)
+            pet = tick(pet)
+            assertEquals(type, pet.activeAttentionCall)
+            assertEquals(limit - 1, pet.attentionCallActiveTicks, type)
+            pet = tick(pet)
+            assertTrue(pet.events.contains("attention_call_expired_$type"), type)
         }
     }
 

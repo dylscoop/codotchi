@@ -617,8 +617,7 @@ private fun tickCore(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, conf
     if (config.attentionCallsEnabled) {
     if (activeAttentionCall != null && !isIdle) {
         attentionCallActiveTicks += 1
-        // poop / misbehaviour / gift and the whim calls (play / pat / craving) use the
-        // configurable expiry window; all other call types use the fixed 1-minute (20-tick) window.
+        // Attention-based calls get 10 active minutes; need-based calls get 1 active minute.
         val expiryTicks = if (activeAttentionCall == "poop" ||
                               activeAttentionCall == "misbehaviour" ||
                               activeAttentionCall == "gift" ||
@@ -626,7 +625,7 @@ private fun tickCore(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, conf
                               activeAttentionCall == "pat" ||
                               activeAttentionCall == "craving" ||
                               activeAttentionCall == "break")
-            config.attentionCallExpiryTicks
+            ATTENTION_CALL_EXPIRY_TICKS
         else
             ATTENTION_CALL_RESPONSE_TICKS
         if (attentionCallActiveTicks >= expiryTicks) {

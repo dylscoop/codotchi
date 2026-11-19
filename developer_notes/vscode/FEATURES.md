@@ -95,7 +95,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 
 The pet fires IDE notifications demanding care, with a **1-minute active
 (non-idle) response window** (the random calls use the configurable
-`codotchi.attentionCallExpiry` window instead). Idle time does NOT count toward the timer.
+fixed 10-minute window instead). Idle time does NOT count toward the timer.
 
 The notification closes itself once the call is answered, expires or is replaced
 (`shouldDismissAttention`, since v2.32.2). VS Code shows it with `withProgress`
@@ -119,7 +119,8 @@ call stays active; PyCharm's `BALLOON` group already auto-hides.
 | Every 30 active, awake minutes (`BREAK_CALL_INTERVAL_TICKS = 600`; only praising the call restarts the timer — idle/deep idle pause it, an ignored call re-fires after its 5-min expiry cooldown; after need calls, before whims) | `break` | Praise (+happiness +15, pet takes a 5-minute break nap — `BREAK_NAP_TICKS = 100`; can't be woken early, every stat but energy frozen, still ages) | None — no stat penalty, no care mistake | `[x]`  |
 
 Notes:
-- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (1 min) for need-based calls; poop, misbehaviour, gift, play, pat, craving and break use `config.attentionCallExpiryTicks` (Needy 80 / Standard 200 / Chilled 400 ticks = 4 / 10 / 20 min; v2.21.1). The chance counters for random calls only advance on active ticks, and misbehaviour / gift never fire while idle (BUGFIX-169)
+
+- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (1 min) for need-based calls; poop, misbehaviour, gift, play, pat, craving and break use fixed `ATTENTION_CALL_EXPIRY_TICKS = 200` (10 active min). Neither window is configurable; legacy expiry settings are ignored. The chance counters for random calls only advance on active ticks, and misbehaviour / gift never fire while idle (BUGFIX-169).
 - Post-answer cooldown: `ATTENTION_ANSWER_COOLDOWN_TICKS = 100` ticks (5 min)
 - Post-expiry cooldown: `ATTENTION_EXPIRY_COOLDOWN_TICKS = 100` ticks (5 min)
 - Cooldowns only count down on active (non-idle) ticks. TS and Kotlin share the same values (BUG-S06 / BUGFIX-166)

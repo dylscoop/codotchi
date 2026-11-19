@@ -385,18 +385,12 @@ class CodotchiPlugin : Disposable {
             val state = currentState ?: return@withLock false
             val settings = service<CodotchiSettings>()
 
-            // Map attentionCallExpiry setting to tick count.
-            // 3 s/tick: needy 4 min, standard 10 min, chilled 20 min.
-            val expiryMap = mapOf("needy" to 80, "standard" to 200, "chilled" to 400)
-            val attentionCallExpiryTicks = expiryMap[settings.attentionCallExpiry] ?: 200
-
             // Map attentionCallRate setting to rate divisor.
             val rateMap = mapOf("fast" to 3.0, "medium" to 4.5, "slow" to 6.0)
             val attentionCallRateDivisor = rateMap[settings.attentionCallRate] ?: 3.0
 
             val gameConfig = com.codotchi.engine.GameConfig(
                 attentionCallsEnabled    = settings.enableAttentionCalls,
-                attentionCallExpiryTicks = attentionCallExpiryTicks,
                 attentionCallRateDivisor = attentionCallRateDivisor,
                 devMode                  = settings.devModeEnabled && settings.developerPasscode == "1234",
                 devModeAgingMultiplier   = maxOf(1, settings.devModeAgingMultiplier).toDouble(),

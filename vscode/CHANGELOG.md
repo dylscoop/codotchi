@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.38.2] - 2026-11-19
+
+- Attention-based calls now always allow 10 active minutes to answer; need-based calls still allow 1 active minute. Removed the response-time setting.
+
 ## [2.38.1] - 2026-11-19
 
 ### Fixed

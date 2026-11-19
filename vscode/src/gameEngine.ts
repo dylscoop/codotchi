@@ -233,6 +233,8 @@ const OFFLINE_DECAY_MAX_FRACTION: number = 0.60;
 
 /** Active (non-idle) ticks the player has to respond before a call expires (20 × 3 s = 1 min). */
 export const ATTENTION_CALL_RESPONSE_TICKS: number = 20;
+/** Fixed response window for attention-based calls: 10 active minutes at 3 s/tick. */
+export const ATTENTION_CALL_EXPIRY_TICKS: number = 200;
 
 /** Hunger stat at or below which a hunger attention call fires. */
 export const ATTENTION_HUNGER_THRESHOLD: number = 25;
@@ -404,11 +406,6 @@ export interface GameConfig {
   /** Whether the attention-call mechanic is active at all. */
   attentionCallsEnabled: boolean;
   /**
-   * Response-window in ticks for poop, misbehaviour, and gift calls.
-   * needy=80 (4 min), standard=200 (10 min), chilled=400 (20 min).
-   */
-  attentionCallExpiryTicks: number;
-  /**
    * Divisor applied to the base and max logChance probabilities for all
    * probabilistic call spawns (poop, misbehaviour, gift).
    * fast=3.0, medium=4.5, slow=6.0 (doubled in v2.24.3 to halve call frequency).
@@ -460,7 +457,6 @@ export interface GameConfig {
 /** Sensible defaults used when no explicit config is provided. */
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   attentionCallsEnabled:    true,
-  attentionCallExpiryTicks: 200,  // "standard" = 10 min
   attentionCallRateDivisor: 3.0,  // "fast"
   devMode:                  false,
   devModeAgingMultiplier:   10,
@@ -1758,8 +1754,7 @@ function tickCore(state: PetState, isIdle: boolean, isDeepIdle: boolean, config:
   if (config.attentionCallsEnabled) {
   if (activeAttentionCall !== null && !isIdle) {
     attentionCallActiveTicks += 1;
-    // poop / misbehaviour / gift and the whim calls (play / pat / craving) use the
-    // configurable expiry window; all other call types use the fixed 1-minute (20-tick) window.
+    // Attention-based calls get 10 active minutes; need-based calls get 1 active minute.
     const expiryTicks = (activeAttentionCall === "poop" ||
                          activeAttentionCall === "misbehaviour" ||
                          activeAttentionCall === "gift" ||
@@ -1767,7 +1762,7 @@ function tickCore(state: PetState, isIdle: boolean, isDeepIdle: boolean, config:
                          activeAttentionCall === "pat" ||
                          activeAttentionCall === "craving" ||
                          activeAttentionCall === "break")
-      ? config.attentionCallExpiryTicks
+      ? ATTENTION_CALL_EXPIRY_TICKS
       : ATTENTION_CALL_RESPONSE_TICKS;
     if (attentionCallActiveTicks >= expiryTicks) {
       // Call expired — apply stat penalty
