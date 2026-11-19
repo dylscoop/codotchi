@@ -981,6 +981,217 @@ describe("visitor wanders on its own (sidebar.js)", () => {
   });
 });
 
+describe("integration — partner visits and exclusive guest handoffs (sidebar.js)", () => {
+  const partner = { name: "Pixel", spriteType: "cat", petType: "codeling" };
+  const friend = { name: "Rex", spriteType: "dog", petType: "codeling" };
+  const married = { name: "Owner", alive: true, stage: "adult", sleeping: false, partner, visit: null, friend };
+
+  function loadGuests(random = 0.5) {
+    const pick = (re: RegExp): string => {
+      const m = re.exec(sidebarSource);
+      assert.ok(m, `missing ${re}`);
+      return m![0];
+    };
+    const constants = ["GUEST_SLIDE_MS", "GUEST_WAVE_MS", "KISS_MS", "GUEST_MEET_MS",
+      "GUEST_MEET_GAP_MIN_MS", "GUEST_MEET_GAP_MAX_MS", "PARTNER_STAY_MIN_MS", "PARTNER_STAY_MAX_MS",
+      "PARTNER_AWAY_MIN_MS", "PARTNER_AWAY_MAX_MS", "FOLLOW_START_PX", "FOLLOW_FACE_PET_MS", "FOLLOW_TURN_MS"];
+    const functions = ["socialGuestKey", "socialGuest", "guestState", "drawGuest", "wanderGuest",
+      "followPet", "resetFollow", "gameCheerBob", "drawLeavingGuest", "drawKiss"];
+    const drawn: { name: string; x: number; frame: number; facingLeft: boolean }[] = [];
+    const hearts: string[] = [];
+    const math = Object.create(Math);
+    math.random = () => random;
+    const ctx: Record<string, any> = {
+      Math: math, REDUCED_MOTION: false, socialEnabled: true, stageGame: null,
+      friendGame: false, minigame: false, gameCheer: null, COMPANION_CHEER_MS: 1400,
+      guestAnim: { key: "", startMs: 0 }, lastGuestDraw: null, guestLeaving: null,
+      kissStartMs: 0, partnerPresence: null, lastState: married,
+      spriteCanvas: { width: 200, height: 120 }, BASE_SIZE: 40, STAGE_SCALES: { adult: 1 },
+      petSizeMultiplier: () => 1, effectiveBWidth: (_s: unknown, size: number) => size,
+      petBoxHeight: () => 40, inMinigame: () => ctx.minigame, pushReaction: () => {},
+      drawBody: (gs: { name: string }, x: number, _y: number, facingLeft: boolean, frame: number) => {
+        drawn.push({ name: gs.name, x, facingLeft, frame });
+      },
+      spriteCtx: { save() {}, restore() {}, fillText(text: string) { hearts.push(text); } },
+    };
+    vm.runInNewContext([
+      ...constants.map(name => pick(new RegExp(`var ${name}\\s*=[^;]+;`))),
+      ...functions.map(name => pick(new RegExp(`function ${name}\\([\\s\\S]*?\\n  \\}`))),
+    ].join("\n"), ctx);
+    return {
+      ctx, hearts,
+      step(state: Record<string, unknown>, now: number) {
+        drawn.length = 0;
+        ctx.lastState = state;
+        const box = ctx.drawGuest(state, 60, now, 40);
+        ctx.drawLeavingGuest(now);
+        assert.ok(drawn.length <= 1, "at most one guest is drawn, including a departing guest");
+        return { box, drawn: [...drawn] };
+      },
+      marry(now: number) {
+        ctx.nowMs = now;
+        ctx.events = ["married"];
+        vm.runInNewContext(pick(/if \(socialEnabled && events\.indexOf\("married"\)[\s\S]*?\n    \}/), ctx);
+      },
+    };
+  }
+
+  it("a partner slides in, then wanders and meets the pet rather than standing still", () => {
+    const h = loadGuests();
+    const xs = new Set<number>();
+    let met = false;
+    for (let t = 1000; t < 30000; t += 50) {
+      const frame = h.step(married, t);
+      if (t >= 2000) { xs.add(frame.box.x); }
+      if (h.ctx.guestAnim.wander?.meetUntilMs > t) {
+        met = true;
+        assert.equal(frame.drawn[0].facingLeft, true, "partner to the right faces the pet");
+      }
+    }
+    assert.ok(xs.size > 10, "partner walks around after entering");
+    assert.ok(met, "partner uses the visitor's face-to-face meeting behaviour");
+  });
+
+  it("a partner waves, leaves, stays away, and returns with a fresh entrance", () => {
+    const h = loadGuests();
+    const before = JSON.stringify(married);
+    h.step(married, 1000);
+    h.step(married, 2000);
+    const leaving = h.step(married, 61000);
+    assert.equal(leaving.box, null);
+    assert.equal(leaving.drawn[0].name, partner.name);
+    assert.equal(h.step(married, 62600).drawn.length, 0);
+    assert.equal(h.step(married, 100999).box, null);
+    const back = h.step(married, 101000);
+    assert.ok(back.box.x > 200, "new entrance starts offscreen");
+    assert.ok(h.step(married, 101900).box.x < 200);
+    assert.equal(JSON.stringify(married), before, "the presence schedule never changes saved pet state");
+  });
+
+  it("a friend waits for the partner to exit before entering the single guest slot", () => {
+    const h = loadGuests();
+    const visiting = { ...married, visit: {} };
+    h.step(married, 1000);
+    h.step(married, 2000);
+    const leaving = h.step(visiting, 3000);
+    assert.equal(leaving.box, null);
+    assert.equal(leaving.drawn[0].name, partner.name);
+    assert.equal(h.step(visiting, 4600).drawn.length, 0);
+    const arriving = h.step(visiting, 4650);
+    assert.ok(arriving.box);
+    assert.equal(arriving.drawn[0].name, friend.name);
+  });
+
+  it("after a visit the friend exits alone, then the partner returns after a short absence", () => {
+    const h = loadGuests();
+    const visiting = { ...married, visit: {} };
+    h.step(visiting, 1000);
+    h.step(visiting, 2000);
+    const leaving = h.step(married, 3000);
+    assert.equal(leaving.box, null);
+    assert.equal(leaving.drawn[0].name, friend.name);
+    assert.equal(h.step(married, 4600).drawn.length, 0);
+    assert.equal(h.step(married, 42999).box, null);
+    assert.equal(h.step(married, 43000).drawn[0].name, partner.name);
+  });
+
+  it("does not show a queued visitor that has left before the outgoing guest finishes", () => {
+    const h = loadGuests();
+    h.step(married, 1000);
+    h.step({ ...married, visit: {} }, 3000);
+    assert.equal(h.step(married, 3100).box, null);
+    assert.equal(h.step(married, 4600).drawn.length, 0);
+    assert.equal(h.step(married, 4700).drawn.length, 0);
+  });
+
+  it("an unmarried visitor still gets a goodbye even without a visit-ended event", () => {
+    const h = loadGuests();
+    h.step({ ...married, partner: null, visit: {} }, 1000);
+    assert.equal(h.step({ ...married, partner: null }, 2000).drawn[0].name, friend.name);
+    assert.equal(h.step({ ...married, partner: null }, 3600).drawn.length, 0);
+  });
+
+  it("reduced motion keeps the partner static and switches guests without exit animation", () => {
+    const h = loadGuests();
+    h.ctx.REDUCED_MOTION = true;
+    const first = h.step(married, 1000).drawn[0];
+    for (const t of [61000, 101000, 900000]) {
+      assert.deepEqual(h.step(married, t).drawn[0], first);
+    }
+    assert.equal(h.step({ ...married, visit: {} }, 900100).drawn[0].name, friend.name);
+    assert.equal(h.step(married, 900200).drawn[0].name, partner.name);
+    assert.equal(h.ctx.guestLeaving, null);
+  });
+
+  it("sleep, death, egg, stage games and disabled social clear guests including pending exits", () => {
+    for (const guard of ["sleep", "death", "egg", "game", "disabled"]) {
+      const h = loadGuests();
+      h.step(married, 1000);
+      h.step({ ...married, visit: {} }, 2000);
+      const state = { ...married };
+      if (guard === "sleep") { state.sleeping = true; }
+      if (guard === "death") { state.alive = false; }
+      if (guard === "egg") { state.stage = "egg"; }
+      if (guard === "game") { h.ctx.stageGame = {}; }
+      if (guard === "disabled") { h.ctx.socialEnabled = false; }
+      assert.equal(h.step(state, 2100).drawn.length, 0, guard);
+      assert.equal(h.ctx.guestLeaving, null, guard);
+      assert.equal(h.ctx.partnerPresence, null, guard);
+      h.ctx.stageGame = null;
+      h.ctx.socialEnabled = true;
+      assert.equal(h.step(married, 2200).drawn[0].name, partner.name, "fresh entrance after hiding");
+    }
+  });
+
+  it("a game keeps the partner around past its departure time and uses followPet", () => {
+    const h = loadGuests();
+    h.step(married, 1000);
+    h.step(married, 2000);
+    h.ctx.friendGame = true;
+    h.ctx.minigame = true;
+    assert.ok(h.step(married, 61000).box);
+    assert.ok(h.ctx.guestAnim.wander.followSide, "guest follows the pet during a game together");
+    h.ctx.friendGame = false;
+    assert.equal(h.step(married, 61100).box, null, "can leave once the game ends");
+  });
+
+  it("marriage resets an old absence and keeps the new partner for the wedding hearts", () => {
+    const h = loadGuests();
+    const spouseVisiting = { ...married, friend: partner, visit: {} };
+    h.step(spouseVisiting, 1000);
+    h.marry(1500);
+    h.step(spouseVisiting, 1500);
+    assert.ok(h.step(married, 2000).box, "ending the wedding visit does not send the spouse away");
+    h.ctx.drawKiss(60, 50, { x: 150, y: 68, w: 40 }, 2000);
+    assert.equal(h.hearts.length, 3);
+    h.step(married, 70000);
+    assert.ok(h.ctx.partnerPresence.away);
+    h.marry(70100);
+    h.step(married, 70100);
+    assert.equal(h.ctx.partnerPresence.away, false, "new marriage starts a full stay");
+  });
+
+  it("never draws wedding hearts towards an unrelated visiting friend", () => {
+    const h = loadGuests();
+    const frame = h.step({ ...married, visit: {} }, 1000);
+    h.marry(1100);
+    h.ctx.drawKiss(60, 50, frame.box, 1200);
+    assert.equal(h.hearts.length, 0);
+  });
+
+  it("randomised stays and absences use the agreed ranges", () => {
+    for (const random of [0, 0.99999]) {
+      const h = loadGuests(random);
+      h.step(married, 1000);
+      const stay = h.ctx.partnerPresence.untilMs - 1000;
+      assert.ok(stay >= 30000 && stay <= 90000);
+      h.step(married, 1000 + stay);
+      const away = h.ctx.partnerPresence.untilMs - 1000 - stay;
+      assert.ok(away >= 20000 && away <= 60000);
+    }
+  });
+});
+
 describe("item catalogue in the webview (sidebar.js ITEM_INFO)", () => {
   it("matches ITEM_CATALOG in gameEngine.ts and Items.kt", () => {
     const ts = fs.readFileSync(path.join(repoRoot, "packages/core/src/gameEngine.ts"), "utf8");

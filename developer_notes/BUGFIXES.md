@@ -2560,3 +2560,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** After a forced Windows restart, a PyCharm pet lost about 20 days. Two PyCharm installs were open and both wrote the same `state.json`; nothing stopped one holding an older copy of the pet from overwriting the newer save. `state.json` was also overwritten in place, so a crash mid-write could leave it truncated, and the plugin would then fall back to the IDE's own (possibly older) copy.
 
 **Fix:** Saves go to `state.json.tmp` and are renamed over `state.json`. A save is refused when the file on disk is the same pet (same `spawnedAt`) more than `STALE_AGE_MARGIN_DAYS` (1) further along; the IDE then reloads the newer pet from disk. The last 3 good saves are kept as `state.json.bak1`-`bak3` (refreshed at most every 10 minutes) and loaded if `state.json` is missing or unreadable. OpenCode and Claude Code write-backs are atomic and skip stale writes too.
+
+## BUGFIX-218 — Married partners stand still and guest handoffs can overlap
+
+**Status:** Fixed (branch `fix/partner-guest-movement`)
+**File:** `vscode/media/sidebar.js` (shared with PyCharm)
+
+**Problem:** Only active visitors entered the wandering branch; married partners fell through to a fixed position forever. When a friend's visit ended, the partner could reappear while the friend was still waving goodbye, showing two social guests at once.
+
+**Fix:** Partners now share the visitor's wander, meetings and game-follow behaviour. A webview-only schedule alternates 30–90 s stays with 20–60 s absences; friends take priority, with a short absence after a visit ends. Track the last drawn guest regardless of role and finish its exit before drawing another. Wedding hearts require the actual partner and marriage resets the stay. Sleep, stage games, disabled social, eggs and death clear pending guests; reduced motion keeps a static partner without scheduled absences. Executable webview integration tests cover the full lifecycle and exclusive handoffs.

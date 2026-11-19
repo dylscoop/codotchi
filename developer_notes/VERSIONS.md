@@ -1,6 +1,32 @@
 # Version History
 
-## v2.38.0 - current
+## v2.38.1 - current
+
+### Changes from v2.38.0 (partner guest movement - branch fix/partner-guest-movement)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | BUGFIX-218: partners use `wanderGuest` / `followPet` instead of a fixed home position. `socialGuest` schedules in-memory stays and absences. `drawGuest` tracks any guest and finishes its goodbye before admitting another; no reliance on a visit-ended event. Friends take priority; reset on sleep, death, egg, stage games and disabled social. Marriage resets the stay; hearts require the actual partner. Reduced motion keeps a static partner without absences. Shared webview also supplies PyCharm. |
+| `vscode/tests/unit/webviewAnimations.test.ts` | Executable integration tests for partner wandering/meetings, leave/return cycles, exclusive handoffs, cancelled visitors, event-free goodbyes, reduced motion, hidden states, games, wedding hearts and timing ranges. |
+| `vscode/package.json` | Version 2.38.1. |
+| `pycharm/build.gradle.kts` | Version 2.38.1. |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | Version 2.38.1 and partner movement change notes. |
+| `opencode-codotchi/package.json` | Version 2.38.1; terminal renderers have no animation changes. |
+| `claude-desktop-codotchi/package.json` | Version 2.38.1. |
+| `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json` | Version 2.38.1. |
+| `README.md` | Current version and install/build filenames. |
+| `vscode/CHANGELOG.md` | Partner movement and single-guest handoff notes. |
+| `developer_notes/vscode/FEATURES.md` | Partner presence, timing, priority and reduced-motion behaviour. |
+| `developer_notes/BUGFIXES.md` | BUGFIX-218: static married partners and overlapping guest handoffs. |
+
+New webview timing constants (milliseconds):
+
+```text
+PARTNER_STAY_MIN_MS = 30000, PARTNER_STAY_MAX_MS = 90000
+PARTNER_AWAY_MIN_MS = 20000, PARTNER_AWAY_MAX_MS = 60000
+```
+
+## v2.38.0
 
 ### Changes from v2.37.1 (Stugotchi's companion cat - branch feature/stu-companion-cat)
 

@@ -3051,17 +3051,51 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   var GUEST_SLIDE_MS = 900;
   var GUEST_WAVE_MS = 700;
   var KISS_MS = 2600;
+  var PARTNER_STAY_MIN_MS = 30000;
+  var PARTNER_STAY_MAX_MS = 90000;
+  var PARTNER_AWAY_MIN_MS = 20000;
+  var PARTNER_AWAY_MAX_MS = 60000;
   var guestAnim = { key: "", startMs: 0 };
-  var lastVisitorDraw = null;
+  var lastGuestDraw = null;
   var guestLeaving = null;
   var kissStartMs = 0;
+  var partnerPresence = null;
 
-  /** Who stands beside the pet: the visiting friend, else the partner (pet awake), else null. */
-  function socialGuest(state) {
-    if (!state || !state.alive || state.stage === "egg") { return null; }
-    if (state.visit && state.friend && !state.sleeping) { return state.friend; }
-    if (state.partner && !state.sleeping) { return state.partner; }
-    return null;
+  function socialGuestKey(who) {
+    return who ? who.name + "|" + who.spriteType + "|" + who.petType : "";
+  }
+
+  /** One guest slot: friends take priority; a partner comes and goes between visits. */
+  function socialGuest(state, nowMs) {
+    if (!state || !state.alive || state.stage === "egg" || state.sleeping) {
+      partnerPresence = null;
+      return null;
+    }
+    var friend = state.visit && state.friend ? state.friend : null;
+    if (!state.partner) { partnerPresence = null; return friend; }
+    if (REDUCED_MOTION) { partnerPresence = null; return friend || state.partner; }
+    var key = socialGuestKey(state.partner);
+    if (!partnerPresence || partnerPresence.key !== key) {
+      partnerPresence = { key: key, away: false, visiting: false,
+        untilMs: nowMs + PARTNER_STAY_MIN_MS + Math.random() * (PARTNER_STAY_MAX_MS - PARTNER_STAY_MIN_MS) };
+    }
+    if (friend) { partnerPresence.visiting = true; return friend; }
+    if (partnerPresence.visiting) {
+      // Give a departing visitor the stage, then a short spell without a guest.
+      partnerPresence.visiting = false;
+      if (!kissStartMs || nowMs - kissStartMs >= KISS_MS) {
+        partnerPresence.away = true;
+        partnerPresence.untilMs = nowMs + PARTNER_AWAY_MIN_MS + Math.random() * (PARTNER_AWAY_MAX_MS - PARTNER_AWAY_MIN_MS);
+      }
+    }
+    var busy = (kissStartMs && nowMs - kissStartMs < KISS_MS) || (friendGame && inMinigame());
+    if (nowMs >= partnerPresence.untilMs && !busy) {
+      partnerPresence.away = !partnerPresence.away;
+      var minMs = partnerPresence.away ? PARTNER_AWAY_MIN_MS : PARTNER_STAY_MIN_MS;
+      var maxMs = partnerPresence.away ? PARTNER_AWAY_MAX_MS : PARTNER_STAY_MAX_MS;
+      partnerPresence.untilMs = nowMs + minMs + Math.random() * (maxMs - minMs);
+    }
+    return partnerPresence.away ? null : state.partner;
   }
 
   /** A drawable state for a guest: the pet's own stage (a child at least), standing, in the guest's look. */
@@ -3073,14 +3107,6 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     });
   }
 
-  /**
-   * Draw the guest beside the pet, sliding in from the edge away from the pet
-   * when it first appears. A visiting friend then wanders on its own (its own
-   * speed and direction flips) and now and then walks over to meet the pet,
-   * face to face, for GUEST_MEET_MS. A partner stands at its spot, facing the
-   * pet. Hidden during stage games.
-   * @returns {{x:number,y:number,w:number,h:number}|null} its box, or null when none
-   */
   /**
    * Playing together: tag along beside the pet on `side` (-1 left, 1 right), walking
    * after it as it moves. Keeps the wander state `g` in step. {x, facingLeft, frame}.
@@ -3134,16 +3160,36 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     return -Math.abs(Math.sin(ct * Math.PI * 3)) * 10;
   }
 
+  /**
+   * Slide in from the edge away from the pet, then wander independently and
+   * sometimes walk over to meet the pet face to face for GUEST_MEET_MS.
+   * Finish the previous guest's goodbye before letting the next one enter.
+   * Hidden during stage games.
+   * @returns {{x:number,y:number,w:number,h:number}|null} its box, or null when none
+   */
   function drawGuest(state, petCx, nowMs, petW) {
-    var who = socialGuest(state);
-    if (!who || stageGame || !socialEnabled) { guestAnim = { key: "", startMs: 0 }; return null; }
+    if (!state || !state.alive || state.stage === "egg" || state.sleeping || stageGame || !socialEnabled) {
+      guestAnim = { key: "", startMs: 0 };
+      lastGuestDraw = null;
+      guestLeaving = null;
+      partnerPresence = null;
+      return null;
+    }
+    var who = socialGuest(state, nowMs);
+    var key = socialGuestKey(who);
+    if (REDUCED_MOTION) { guestLeaving = null; }
+    if (guestAnim.key !== key) {
+      if (lastGuestDraw && !REDUCED_MOTION) { guestLeaving = { startMs: nowMs, from: lastGuestDraw }; }
+      lastGuestDraw = null;
+      guestAnim = { key: "", startMs: 0 };
+    }
+    if (!who || guestLeaving) { return null; }
     var gs = guestState(state, who);
     var scale = STAGE_SCALES[gs.stage] || 0.5;
     var size = Math.round(BASE_SIZE * petSizeMultiplier(gs.spriteType) * scale);
     var w = effectiveBWidth(gs, size);
     var h = petBoxHeight(gs, w);
     var W = spriteCanvas.width;
-    var key = who.name + "|" + who.spriteType;
     if (guestAnim.key !== key) {
       guestAnim = { key: key, startMs: nowMs, onRight: petCx < W / 2, wander: null };
     }
@@ -3159,11 +3205,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       var startX = onRight ? W + 4 : -w - 4;
       x = Math.round(startX + (homeX - startX) * ease);
       frame = Math.floor(nowMs / 150) % 2;
-    } else if (state.visit && who === state.friend && !REDUCED_MOTION) {
+    } else if (!REDUCED_MOTION) {
       var gw = guestAnim.wander;
       var step;
       if (gw && friendGame && inMinigame()) {
-        // A friend game: the visitor tags along beside the pet on its nearer side
+        // A game together: the guest tags along beside the pet on its nearer side
         if (!gw.followSide) { gw.followSide = gw.x + w / 2 < petCx ? -1 : 1; }
         step = followPet(gw, w, W, petCx, (petW || w) / 2, gw.followSide, nowMs);
       } else {
@@ -3176,9 +3222,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       x = homeX;
     }
     drawBody(gs, x, y, facingLeft, frame);
-    if (state.visit && who === state.friend) {
-      lastVisitorDraw = { gs: gs, x: x, y: y, w: w, onRight: x + w / 2 >= W / 2 };
-    }
+    lastGuestDraw = { gs: gs, x: x, y: y, w: w, onRight: x + w / 2 >= W / 2 };
     return { x: x, y: y, w: w, h: h };
   }
 
@@ -3582,8 +3626,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   }
 
   /**
-   * The friend whose visit just ended: it waves (hops) for GUEST_WAVE_MS, then
-   * slides back out past the edge it came in from.
+   * The departing friend or partner waves (hops) for GUEST_WAVE_MS, then
+   * slides out past the nearer edge. No other guest enters until it is gone.
    */
   function drawLeavingGuest(nowMs) {
     if (!guestLeaving || stageGame || !socialEnabled) { guestLeaving = null; return; }
@@ -3604,7 +3648,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   /** Hearts floating between the pet and its new partner for KISS_MS after a marriage. */
   function drawKiss(petCx, petTopY, guestBox, nowMs) {
-    if (!kissStartMs || !guestBox) { return; }
+    if (!kissStartMs || !guestBox || !lastState || !lastState.partner ||
+        guestAnim.key !== socialGuestKey(lastState.partner)) { return; }
     var t = (nowMs - kissStartMs) / KISS_MS;
     if (t >= 1 || t < 0) { kissStartMs = 0; return; }
     var midX = (petCx + guestBox.x + guestBox.w / 2) / 2;
@@ -4020,15 +4065,15 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (events.indexOf("praised")       !== -1) { pushReaction("praised", nowMs); }
     if (events.indexOf("became_sick")   !== -1) { pushReaction("became_sick",   nowMs); }
     if (events.indexOf("cured")         !== -1) { pushReaction("healed",        nowMs); }
-    if (socialEnabled && events.indexOf("married")       !== -1) { kissStartMs = nowMs; pushReaction("praised", nowMs); }
+    if (socialEnabled && events.indexOf("married")       !== -1) {
+      kissStartMs = nowMs;
+      partnerPresence = null; // Start married life with a full stay, not an old absence.
+      pushReaction("praised", nowMs);
+    }
     if (socialEnabled && events.indexOf("friend_played") !== -1) { pushReaction("played", nowMs); }
     if (socialEnabled && events.indexOf("friend_gift_received") !== -1) {
       var brought = giftItemIn(events);
       if (brought) { giftDrop = { startMs: nowMs, emoji: brought[0] }; }
-    }
-    if (socialEnabled && events.indexOf("friend_visit_ended") !== -1 && lastVisitorDraw) {
-      guestLeaving = { startMs: nowMs, from: lastVisitorDraw };
-      lastVisitorDraw = null;
     }
     if (events.indexOf("pooped")        !== -1) { pushReaction("poop_appeared", nowMs); }
     // evolved: any evolved_to_* event (egg → baby gets the hatch burst instead)

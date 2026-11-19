@@ -901,6 +901,7 @@ These are lower-priority ideas that require design work before implementation. A
 | Feature | Status | Notes |
 |---------|--------|-------|
 | **— Tamagotchi parity gaps —** | | |
+| CPU partner movement (friends preview) | `[x]` | Dev-mode social only. In the shared VS Code/PyCharm webview, partners use the visitor's independent wander and face-to-face meetings. In-memory presence: stay 30–90 s, away 20–60 s; after a friend's visit, wait 20–60 s before returning. One social guest slot: friends take priority and a new guest waits for the outgoing guest's 700 ms wave + 900 ms exit. Wedding resets the stay; games together defer departure. Hidden while sleeping, an egg, dead, in stage games or social disabled. Reduced motion: static partner, no scheduled absences or animated handoffs. |
 | Potty training | `[-]` | If player presses Clean during the pre-poop warning animation, pet uses a toilet instead of making a mess. Repeating this trains the pet to go automatically. Original Tamagotchi P1/P2 feature. |
 | Care mistakes counter | `[x]` | `careMistakes` (per-stage, resets on evolution) + `lifetimeCareMistakes` (never resets). Incremented on every expired attention call. Caps the achievable evolution tier; delays evolution threshold; feeds old-age risk factor. |
 | Secret / rare characters | `[x]` | `secret_best` (careMistakes=0 + careScore ≥ 0.95) and `secret_worst` (lifetimeCareMistakes ≥ 10) evolution tiers implemented; sprite assets alias existing `_a`/`_c` sprites as placeholders until dedicated art is drawn. |

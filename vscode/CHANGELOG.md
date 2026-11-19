@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.38.1] - 2026-11-19
+
+### Fixed
+
+- **Partners keep moving after marriage** (friends preview, dev mode only). Your partner now wanders around and comes over to meet your pet, instead of standing still at the edge. They leave and return now and then.
+- **One guest at a time.** Visiting friends take priority over the partner, and the next guest waits for the outgoing guest's goodbye to finish. Your partner stays away briefly after a visit ends. Wedding hearts only appear with your partner; reduced motion keeps the partner still and on screen.
+
 ## [2.38.0] - 2026-11-13
 
 ### Added
