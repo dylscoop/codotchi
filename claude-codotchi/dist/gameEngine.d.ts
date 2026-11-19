@@ -56,6 +56,8 @@ export declare const IDLE_DEEP_THRESHOLD_SECONDS: number;
 export declare const IDLE_STAT_FLOOR: number;
 /** Active (non-idle) ticks the player has to respond before a call expires (20 × 3 s = 1 min). */
 export declare const ATTENTION_CALL_RESPONSE_TICKS: number;
+/** Fixed response window for attention-based calls: 10 active minutes at 3 s/tick. */
+export declare const ATTENTION_CALL_EXPIRY_TICKS: number;
 /** Hunger stat at or below which a hunger attention call fires. */
 export declare const ATTENTION_HUNGER_THRESHOLD: number;
 /** Happiness stat at or below which an unhappiness attention call fires. */
@@ -195,11 +197,6 @@ export declare const TICKS_PER_GAME_DAY_SLEEPING: number;
 export interface GameConfig {
     /** Whether the attention-call mechanic is active at all. */
     attentionCallsEnabled: boolean;
-    /**
-     * Response-window in ticks for poop, misbehaviour, and gift calls.
-     * needy=80 (4 min), standard=200 (10 min), chilled=400 (20 min).
-     */
-    attentionCallExpiryTicks: number;
     /**
      * Divisor applied to the base and max logChance probabilities for all
      * probabilistic call spawns (poop, misbehaviour, gift).
@@ -613,6 +610,8 @@ export declare function computeCareScore(state: PetState): number;
  * @returns One of: "Excellent" | "Good" | "Poor".
  */
 export declare function careTierLabel(careScore: number): string;
+/** Plain post-mortem care score, only for an old-age death (including reloaded saves). */
+export declare function oldAgeCareScore(state: PetState): number | null;
 /**
  * Animals in the random rotation pool at pet creation.
  * All entries have equal probability (1 / ROTATION_ANIMALS.length each).

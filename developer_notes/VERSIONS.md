@@ -21,6 +21,11 @@ New constant: `ATTENTION_CALL_EXPIRY_TICKS = 200` (10 active minutes).
 Removed config field: `GameConfig.attentionCallExpiryTicks`.
 Unchanged: `ATTENTION_CALL_RESPONSE_TICKS = 20` (1 active minute).
 
+Build outputs: rebuilt VS Code, PyCharm, OpenCode, Claude Code and Desktop for
+v2.38.2. `claude-codotchi/dist/gameEngine.{js,d.ts}` and source maps updated;
+`claude-desktop-codotchi/manifest.json` and `src/server.ts` now report 2.38.2.
+Distributable archives remain local/ignored, not committed.
+
 ## v2.38.1
 
 ### Changes from v2.38.0 (partner guest movement - branch fix/partner-guest-movement)
