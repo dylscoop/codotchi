@@ -36,18 +36,6 @@
     "verified": true
   },
   {
-    "username": "dylscoop",
-    "petName": "Scout",
-    "petRunId": "0",
-    "spawnedAt": 1793879580943,
-    "ageDays": 138,
-    "stage": "adult",
-    "petType": "pixelpup",
-    "updatedAt": 1795109122925,
-    "clientVersion": "2.38.2",
-    "verified": true
-  },
-  {
     "username": "PurryFury",
     "petName": "Cody",
     "petRunId": "0",
@@ -81,6 +69,18 @@
     "petType": "codeling",
     "updatedAt": 1795109953447,
     "clientVersion": "2.37.0",
+    "verified": true
+  },
+  {
+    "username": "dylscoop",
+    "petName": "Scout",
+    "petRunId": "0",
+    "spawnedAt": 1793879580943,
+    "ageDays": 138,
+    "stage": "adult",
+    "petType": "pixelpup",
+    "updatedAt": 1795110024346,
+    "clientVersion": "2.38.2",
     "verified": true
   }
 ]
