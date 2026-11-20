@@ -24,8 +24,9 @@ Companion turn timing and all existing sleep amendments remain unchanged.
 
 Validation: all 1012 VS Code tests and 327 Kotlin tests passed; VS Code
 type-check passed and markdown lint has no new errors against the baseline.
-All five local v2.38.4 packages are rebuilt with the consolidated final sizing;
-both IDEs contain byte-identical current shared renderer files.
+All five local v2.38.4 packages were rebuilt with the consolidated final sizing
+and their embedded versions verified. Both IDEs contain byte-identical current
+shared renderer files and only the consolidated v2.38.4 change notes.
 No install, push, PR or release action performed.
 
 ## v2.38.3
