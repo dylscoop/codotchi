@@ -103,6 +103,8 @@ const PLAY_WEIGHT_LOSS: number = 3;
 
 const PAT_HAPPINESS_BOOST: number = 10;
 const PAT_ENERGY_COST: number = 20;
+/** Manual sleep is allowed only below this energy (currently two pats). */
+export const SLEEP_ENERGY_THRESHOLD: number = 40;
 /** Weight lost when the pet is patted (BUGFIX-034). */
 const PAT_WEIGHT_LOSS: number = 3;
 /** Additional weight lost for left_right and higher_lower mini-games (BUGFIX-034).
@@ -2539,7 +2541,7 @@ export function applyMinigameResult(
 /**
  * Put the pet to sleep.
  *
- * If the pet is already sleeping the call is a no-op.
+ * Only allowed below SLEEP_ENERGY_THRESHOLD. Already sleeping is a no-op.
  *
  * @param state - The current pet state.
  * @returns A new PetState after the action.
@@ -2547,6 +2549,9 @@ export function applyMinigameResult(
 export function sleep(state: PetState): PetState {
   if (state.sleeping) {
     return withDerivedFields({ ...state, events: ["already_sleeping"] });
+  }
+  if (state.energy >= SLEEP_ENERGY_THRESHOLD) {
+    return withDerivedFields({ ...state, events: ["sleep_refused_high_energy"] });
   }
   const answered = answerAttentionCall(state, "low_energy");
   const events: string[] = ["fell_asleep"];

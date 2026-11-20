@@ -73,7 +73,7 @@ activates the statusline script, registers the event hooks, and makes the
 | `/codotchi` or `/codotchi status` | Show the pet's current ASCII art and full stats |
 | `/codotchi feed` | Give a meal — restores hunger (max 3 meals per wake cycle) |
 | `/codotchi pat` | Pat the pet — gentle happiness boost |
-| `/codotchi sleep` | Put the pet to sleep — energy regenerates 3× faster while sleeping |
+| `/codotchi sleep` | Put the pet to sleep only below 40 energy — energy regenerates 3× faster while sleeping |
 | `/codotchi wake` | Wake the pet up |
 | `/codotchi clean` | Remove droppings — improves mood and cleanliness |
 | `/codotchi medicine` | Give medicine — takes 3 doses to cure sickness |

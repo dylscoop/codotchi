@@ -10,6 +10,7 @@ import {
   type PetState,
   oldAgeCareScore,
   CODE_ACTIVITY_THROTTLE_SECONDS,
+  SLEEP_ENERGY_THRESHOLD,
   feedMeal,
   startSnack,
   consumeSnack,
@@ -71,6 +72,7 @@ const MOOD_MESSAGES: Record<string, string> = {
 
 /** Speech for a refused action, shown instead of the mood message. */
 const REFUSAL_MESSAGES: Record<string, string> = {
+  sleep_refused_high_energy: `Can only sleep below ${SLEEP_ENERGY_THRESHOLD} energy.`,
   meal_refused_sick:  "Too sick to eat — give me medicine first.",
   snack_refused_sick: "Too sick for a snack — give me medicine first.",
   play_refused_sick:  "Too sick to play — give me medicine first.",

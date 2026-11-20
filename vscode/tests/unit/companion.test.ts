@@ -7,6 +7,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "fs";
 import * as path from "path";
+import * as vm from "node:vm";
 import {
   createPet,
   tick,
@@ -108,7 +109,7 @@ describe("companion: webview", () => {
   const js = fs.readFileSync(path.join(__dirname, "../../../media/sidebar.js"), "utf8");
   const html = fs.readFileSync(path.join(__dirname, "../../../media/sidebar.html"), "utf8");
 
-  it("draws the companion at 50–66% of a pet's size, growing with the stage", () => {
+  it("scales the standalone cat sprite by 50–66%, growing with the stage", () => {
     const m = js.match(/var COMPANION_SCALE = (\{[^}]+\})/);
     assert.ok(m, "COMPANION_SCALE found");
     const scale = Function(`return ${m![1]}`)() as Record<string, number>;
@@ -162,6 +163,128 @@ describe("companion: webview", () => {
     assert.match(js, /companionCheer = \{ won: _won/);
     assert.match(js, /function followPet\(/);
     assert.doesNotMatch(js, /the pet stays put so its companion/);
+  });
+});
+
+describe("companion: rendered size and calm direction changes", () => {
+  const media = path.join(__dirname, "../../../media");
+  const src = fs.readFileSync(path.join(media, "sidebar.js"), "utf8");
+
+  function loadScene(petSize = "medium", random = 0.5): any {
+    const ctx: any = {
+      window: {}, document: { body: { dataset: { petSize } } },
+      Math: Object.assign(Object.create(Math), { random: () => random }),
+      BASE_SIZE: 96, REDUCED_MOTION: false, stageGame: null,
+      spriteCanvas: { width: 600, height: 180 },
+      spriteCtx: { save() {}, restore() {}, translate() {}, scale() {}, fillText() {} },
+      guestAnim: { wander: null }, gameOpen: false, facing: false,
+      companionTreeBox: () => ({ x: 4, y: 60, w: 40, h: 60, p: 3 }),
+      companionClimbStep: () => null,
+    };
+    vm.createContext(ctx);
+    for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js", "minigameArt.js"]) {
+      vm.runInContext(fs.readFileSync(path.join(media, file), "utf8"), ctx);
+    }
+    ctx.STAGE_SCALES = ctx.window.SPRITE_STAGE_SCALES;
+    ctx.mgArt = ctx.window.minigameArt;
+    ctx.spriteHeightRatio = ctx.window.spriteHeightRatio;
+    ctx.inMinigame = () => ctx.gameOpen;
+    ctx.drawBody = (_state: any, _x: number, _y: number, facing: boolean) => { ctx.facing = facing; };
+    const constants = ["COMPANION_SCALE", "COMPANION_SAD", "COMPANION_FLIP_MIN_MS", "COMPANION_FLIP_MAX_MS",
+      "COMPANION_TURN_MS", "COMPANION_FACE_SETTLE_MS", "COMPANION_CHEER_MS", "GUEST_MEET_MS",
+      "GUEST_MEET_GAP_MIN_MS", "GUEST_MEET_GAP_MAX_MS", "FOLLOW_START_PX", "FOLLOW_FACE_PET_MS", "FOLLOW_TURN_MS"];
+    const functions = ["petSizeMultiplier", "effectiveBWidth", "petBoxHeight", "companionState", "companionSize",
+      "drawCompanion", "wanderGuest", "followPet", "resetFollow", "companionFacingStep"];
+    vm.runInContext([
+      ...constants.map(name => src.match(new RegExp(`var ${name} = [^;]+;`))![0]),
+      src.match(/var companionAnim = [\s\S]*?;/)![0],
+      "var companionMeal = null, companionPetting = null, companionCheer = null, companionBox = null;",
+      ...functions.map(name => src.match(new RegExp(`function ${name}\\([\\s\\S]*?\\r?\\n {2,3}\\}`))![0]),
+    ].join("\n"), ctx);
+    return ctx;
+  }
+
+  it("enlarges Stu by one-third at every size while preserving the cat and other species", () => {
+    const oldStu = { small: 0.375, medium: 0.5625, large: 0.75 };
+    for (const size of ["small", "medium", "large"] as const) {
+      const h = loadScene(size);
+      assert.equal(h.petSizeMultiplier("stu"), oldStu[size] * 4 / 3);
+      assert.equal(h.petSizeMultiplier("tim"), oldStu[size]);
+      assert.equal(h.petSizeMultiplier("cat"), { small: 0.5, medium: 0.75, large: 1 }[size]);
+      for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
+        const state = { ...stuAdult(), stage };
+        const sz = h.companionSize(state);
+        const stuW = h.effectiveBWidth(state, Math.round(96 * h.petSizeMultiplier("stu") * h.STAGE_SCALES[stage]));
+        assert.equal(sz.w, Math.round(sz.fullW * sz.f));
+        assert.equal(sz.h, Math.round(sz.fullH * sz.f));
+        assert.ok(sz.w < stuW, `${size}/${stage}: cat narrower than Stu`);
+        const box = h.drawCompanion(state, 300, null, 0, stuW);
+        assert.equal(box.w, sz.w);
+        assert.equal(box.y + box.h, 168, "cat stays on the floor");
+      }
+    }
+  });
+
+  it("schedules 4–8 second companion turns, including after meetings and edge bounces", () => {
+    for (const random of [0, 0.5, 0.999]) {
+      const h = loadScene("medium", random);
+      const a = h.companionAnim;
+      h.wanderGuest(300, 40, 600, 100, 0, a);
+      const check = (now: number) => assert.ok(a.wander.nextFlipMs - now >= 4000 && a.wander.nextFlipMs - now <= 8000);
+      check(0);
+      a.wander.nextMeetMs = Infinity;
+      const now = a.wander.nextFlipMs;
+      h.wanderGuest(300, 40, 600, 100, now, a);
+      check(now);
+      a.wander.x = 4; a.wander.dir = -1; a.wander.pauseUntilMs = 0;
+      h.wanderGuest(300, 40, 600, 100, now + 50, a);
+      assert.equal(a.wander.dir, 1);
+      check(now + 50);
+      a.wander.meetUntilMs = now + 100;
+      h.wanderGuest(300, 40, 600, 100, now + 100, a);
+      check(now + 100);
+      const guest: any = { onRight: true, wander: null };
+      h.wanderGuest(300, 40, 600, 100, 0, guest);
+      assert.ok(guest.wander.nextFlipMs >= 1500 && guest.wander.nextFlipMs <= 4000, "guest timing unchanged");
+    }
+  });
+
+  it("draws stable facing under target jitter, preserves it during sleep and guest handoffs, and eventually turns", () => {
+    const h = loadScene();
+    const state = stuAdult();
+    h.companionPetting = { phase: "walk" };
+    h.drawCompanion(state, 300, null, 0, 72);
+    const startFacing = h.facing;
+    for (let t = 16; t < 2000; t += 16) {
+      const cx = h.companionAnim.wander.x + h.companionSize(state).w / 2;
+      h.drawCompanion(state, cx + (t % 32 ? 1 : -1), null, t, 72);
+      assert.equal(h.facing, startFacing, "sub-frame target jitter never turns the drawn cat");
+    }
+    h.drawCompanion(state, 0, null, 2200, 72);
+    h.drawCompanion(state, 0, null, 2600, 72);
+    assert.equal(h.facing, true, "sustained target makes the cat face left");
+    h.drawCompanion({ ...state, sleeping: true }, 600, { x: 0, w: 40 }, 2616, 72);
+    assert.equal(h.facing, true, "handoff and sleep preserve the facing");
+    h.drawCompanion(state, 600, { x: 0, w: 40 }, 2700, 72);
+    h.drawCompanion(state, 600, { x: 0, w: 40 }, 3700, 72);
+    assert.equal(h.facing, false, "turns to face right after settling");
+  });
+
+  it("never renders turns less than one second apart even across game transitions", () => {
+    const h = loadScene();
+    let last: boolean | undefined;
+    let lastTurn = -Infinity;
+    let turns = 0;
+    for (let t = 0; t < 12000; t += 16) {
+      h.gameOpen = t % 2400 >= 1200;
+      h.drawCompanion(stuAdult(), t % 1600 < 800 ? 100 : 500, null, t, 72);
+      if (last !== undefined && last !== h.facing) {
+        assert.ok(t - lastTurn >= 1000);
+        turns++; lastTurn = t;
+      }
+      last = h.facing;
+    }
+    assert.ok(turns > 0, "cat still turns rather than getting stuck");
   });
 });
 

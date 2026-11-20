@@ -143,7 +143,9 @@ async function main() {
       } else {
         const result = ge.sleep(state, gameConfig);
         state = result.state ?? result;
-        message = "Goodnight! Zzzz...";
+        message = state.events.includes("sleep_refused_high_energy")
+          ? `Can only sleep below ${ge.SLEEP_ENERGY_THRESHOLD} energy.`
+          : "Goodnight! Zzzz...";
       }
       break;
     }

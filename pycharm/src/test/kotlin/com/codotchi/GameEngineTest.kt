@@ -33,6 +33,52 @@ class GameEngineTest {
         )
     }
 
+    // ── manual sleep ─────────────────────────────────────────────────────────
+
+    @Test
+    fun `manual sleep allows energy below 40 and resets the snack streak`() {
+        for (energy in listOf(0, 39)) {
+            val next = sleep(makePet(energy = energy).copy(consecutiveSnacks = 2))
+            assertTrue(next.sleeping)
+            assertEquals(energy, next.energy)
+            assertEquals(0, next.consecutiveSnacks)
+            assertTrue("fell_asleep" in next.events)
+        }
+    }
+
+    @Test
+    fun `manual sleep refuses 40 or more without answering calls or granting care credit`() {
+        for (energy in listOf(40, 41, 100)) {
+            val pet = makePet(energy = energy).copy(consecutiveSnacks = 2, careMistakes = 3.0,
+                activeAttentionCall = "low_energy", attentionCallActiveTicks = 7)
+            val next = sleep(pet)
+            assertFalse(next.sleeping)
+            assertEquals(listOf("sleep_refused_high_energy"), next.events)
+            assertEquals(energy, next.energy)
+            assertEquals(2, next.consecutiveSnacks)
+            assertEquals(3.0, next.careMistakes)
+            assertEquals("low_energy", next.activeAttentionCall)
+            assertEquals(7, next.attentionCallActiveTicks)
+            assertEquals(pet.petXp, next.petXp)
+            assertEquals(pet.trainer, next.trainer)
+        }
+    }
+
+    @Test
+    fun `two pats reach sleep boundary then play permits sleep and regeneration beyond 40`() {
+        var pet = pat(pat(makePet(energy = 80)))
+        assertEquals(40, pet.energy)
+        assertFalse(sleep(pet).sleeping)
+        pet = sleep(play(pet))
+        assertEquals(15, pet.energy)
+        assertTrue(pet.sleeping)
+        repeat(10) { pet = tick(pet) }
+        assertTrue(pet.energy >= 40)
+        assertTrue(pet.sleeping)
+        assertEquals(listOf("already_sleeping"), sleep(pet).events)
+        assertFalse(wake(pet).sleeping)
+    }
+
     // ── startSnack ───────────────────────────────────────────────────────────
 
     @Test

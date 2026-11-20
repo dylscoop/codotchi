@@ -28,6 +28,8 @@
 
   /** Energy cost of the pat action — must match PAT_ENERGY_COST in gameEngine.ts. */
   var PAT_ENERGY_COST = 20;
+  /** Must match SLEEP_ENERGY_THRESHOLD in the shared engine and Kotlin constants. */
+  var SLEEP_ENERGY_THRESHOLD = 40;
   /** Pixel size of floor snacks (each grid cell is SNACK_SCALE × SNACK_SCALE px). */
   var SNACK_SCALE = 3;
   /** Half the width of a typical 5–6-column snack at SNACK_SCALE — the pet aims at item.x + this. */
@@ -3228,10 +3230,15 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   // ── Companion animal (Stugotchi's cat) ──────────────────────────────────
 
-  /** Size of the companion relative to a pet of the same stage: young ones 50%, adults 66%. */
+  /** Scale of the standalone cat sprite at the same stage: young ones 50%, adults 66%. */
   var COMPANION_SCALE = { egg: 0.5, baby: 0.5, child: 0.5, teen: 0.58, adult: 0.66, senior: 0.66 };
   var COMPANION_SAD = 25;
-  var companionAnim = { key: "", onRight: true, wander: null, metVisitor: "" };
+  var COMPANION_FLIP_MIN_MS = 4000;
+  var COMPANION_FLIP_MAX_MS = 8000;
+  var COMPANION_TURN_MS = 1000;
+  var COMPANION_FACE_SETTLE_MS = 350;
+  var companionAnim = { key: "", onRight: true, wander: null, metVisitor: "",
+    flipMinMs: COMPANION_FLIP_MIN_MS, flipMaxMs: COMPANION_FLIP_MAX_MS };
   /** The companion's own food while the pet eats: {kind:"tuna"|"milk", startMs, durationMs}, or null. */
   var companionMeal = null;
   /** Pet cat: the pet walks over, then strokes it. {phase:"walk"|"pet", startMs, untilMs}, or null. */
@@ -3338,7 +3345,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       var guestCx = guestBox ? guestBox.x + guestBox.w / 2 : null;
       var onRight = guestCx !== null ? guestCx < W / 2 : petCx < W / 2;
       var keepX = companionAnim.wander ? companionAnim.wander.x : null;
-      companionAnim = { key: key, onRight: onRight, wander: null, metVisitor: companionAnim.metVisitor };
+      companionAnim = { key: key, onRight: onRight, wander: null, metVisitor: companionAnim.metVisitor,
+        flipMinMs: COMPANION_FLIP_MIN_MS, flipMaxMs: COMPANION_FLIP_MAX_MS,
+        facingLeft: companionAnim.facingLeft, turnMs: companionAnim.turnMs };
       if (keepX !== null) {
         wanderGuest(keepX, w, W, petCx, nowMs, companionAnim);
         companionAnim.wander.nextMeetMs = nowMs + GUEST_MEET_GAP_MIN_MS;
@@ -3427,6 +3436,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         frame = 0;
       }
     }
+    facingLeft = companionFacingStep(companionAnim, facingLeft, nowMs, !!state.sleeping);
     var bob = 0;
     if (eating && !state.sleeping) {
       var et = (nowMs - eating.startMs) / eating.durationMs;
@@ -3486,6 +3496,29 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     }
     companionBox = { x: x, y: y + bob, w: w, h: h };
     return companionBox;
+  }
+
+  /** Keep one facing across wander, meetings, games and climbing; ignore brief target jitter. */
+  function companionFacingStep(anim, wanted, nowMs, sleeping) {
+    if (anim.facingLeft === undefined) {
+      anim.facingLeft = wanted;
+      anim.turnMs = nowMs;
+    }
+    if (sleeping || wanted === anim.facingLeft) {
+      anim.pendingFacing = undefined;
+      return anim.facingLeft;
+    }
+    if (anim.pendingFacing !== wanted) {
+      anim.pendingFacing = wanted;
+      anim.pendingSinceMs = nowMs;
+    }
+    if (nowMs - anim.turnMs >= COMPANION_TURN_MS &&
+        nowMs - anim.pendingSinceMs >= COMPANION_FACE_SETTLE_MS) {
+      anim.facingLeft = wanted;
+      anim.turnMs = nowMs;
+      anim.pendingFacing = undefined;
+    }
+    return anim.facingLeft;
   }
 
   /** Climbs: walk over, hop up, sit a while on the perch, hop down. */
@@ -3576,7 +3609,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         x: homeX, lastMs: nowMs,
         dir: anim.onRight ? -1 : 1,
         speed: 10 + Math.random() * 10,           // px per second; the pet has its own pace
-        nextFlipMs: nowMs + 1500 + Math.random() * 2500,
+        nextFlipMs: nowMs + (anim.flipMinMs || 1500) + Math.random() * ((anim.flipMaxMs || 4000) - (anim.flipMinMs || 1500)),
         pauseUntilMs: 0,
         nextMeetMs: nowMs + GUEST_MEET_GAP_MIN_MS * 0.5,
         meetUntilMs: 0,
@@ -3594,7 +3627,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       g.meetUntilMs = 0;
       g.dir = visitorLeftOfPet ? -1 : 1;    // turn away and wander off
       g.nextMeetMs = nowMs + GUEST_MEET_GAP_MIN_MS + Math.random() * (GUEST_MEET_GAP_MAX_MS - GUEST_MEET_GAP_MIN_MS);
-      g.nextFlipMs = nowMs + 2000 + Math.random() * 2000;
+      g.nextFlipMs = nowMs + (anim.flipMinMs || 2000) + Math.random() * ((anim.flipMaxMs || 4000) - (anim.flipMinMs || 2000));
     }
     if (nowMs >= g.nextMeetMs) {
       var gap = Math.round(w * 0.55) + 6;
@@ -3617,11 +3650,17 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (nowMs >= g.nextFlipMs) {
       if (Math.random() < 0.35) { g.pauseUntilMs = nowMs + 600 + Math.random() * 1200; }
       g.dir = -g.dir;
-      g.nextFlipMs = nowMs + 1500 + Math.random() * 3000;
+      g.nextFlipMs = nowMs + (anim.flipMinMs || 1500) + Math.random() * ((anim.flipMaxMs || 4500) - (anim.flipMinMs || 1500));
     }
     g.x += g.dir * g.speed * dt;
-    if (g.x <= minX) { g.x = minX; g.dir = 1; }
-    if (g.x >= maxX) { g.x = maxX; g.dir = -1; }
+    if (g.x <= minX) {
+      g.x = minX; g.dir = 1;
+      if (anim.flipMinMs) { g.nextFlipMs = nowMs + anim.flipMinMs + Math.random() * (anim.flipMaxMs - anim.flipMinMs); }
+    }
+    if (g.x >= maxX) {
+      g.x = maxX; g.dir = -1;
+      if (anim.flipMinMs) { g.nextFlipMs = nowMs + anim.flipMinMs + Math.random() * (anim.flipMaxMs - anim.flipMinMs); }
+    }
     return { x: Math.round(g.x), facingLeft: g.dir < 0, frame: Math.floor(nowMs / 200) % 2 };
   }
 
@@ -3863,7 +3902,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       ? (state.spriteType === "dog" ? "Chewing a bone on your break — it stops on its own"
          : (_napChar && _napChar.breakNap) ? "On " + _napLabel.toLowerCase() + " — it ends on its own"
          : "Taking a break nap — it wakes up on its own")
-      : "";
+      : (!state.sleeping && state.energy >= SLEEP_ENERGY_THRESHOLD
+         ? "Sleep is available below " + SLEEP_ENERGY_THRESHOLD + " energy" : "");
     sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
 
     // BUGFIX-002: disable care buttons while pet is sleeping; also disable while paused
@@ -3883,9 +3923,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         if (btn) { btn.disabled = true; }
       });
     }
-    // Sleep/Wake button: disabled while paused or during a break nap
-    // (otherwise it must remain clickable to Wake while sleeping)
-    if (sleepWakeBtn) { sleepWakeBtn.disabled = isPaused || napTicks > 0; }
+    // Only manual Sleep is energy-gated; Wake stays available during normal sleep.
+    if (sleepWakeBtn) {
+      sleepWakeBtn.disabled = isPaused || napTicks > 0 ||
+        (!isSleeping && state.energy >= SLEEP_ENERGY_THRESHOLD);
+    }
 
     // Medicine doses-left badge, shown only while sick
     var MEDICINE_DOSES = 3;
@@ -4525,6 +4567,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "fed_meal":                n + " ate a meal.",
       "snack_refused":           n + " threw the snack away.",
       "play_refused_no_energy":  n + " doesn't have enough energy to play!",
+      "sleep_refused_high_energy": n + " can only sleep below " + SLEEP_ENERGY_THRESHOLD + " energy.",
       "played":                  n + " played!",
       "pat_refused_no_energy":   (_cc && _cc.patToasts) ? _cc.patToasts.pat_refused.replace("__Name__", n) : n + " doesn't have enough energy to be patted!",
       "patted":                  (_cc && _cc.patToasts) ? _cc.patToasts.patted.replace("__Name__", n)       : n + " was patted!",

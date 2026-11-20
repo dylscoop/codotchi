@@ -14,7 +14,7 @@ Actions:
 - /codotchi snack        — Give a snack (too many in a row makes the pet sick)
 - /codotchi pat          — Pat the pet for a happiness boost
 - /codotchi play         — Play with the pet (answers "play with me" calls)
-- /codotchi sleep        — Put the pet to sleep (3× faster energy regen)
+- /codotchi sleep        — Put the pet to sleep only below 40 energy (3× faster energy regen)
 - /codotchi wake         — Wake the pet up
 - /codotchi clean        — Remove droppings
 - /codotchi medicine     — Give medicine (3 doses to cure sickness)

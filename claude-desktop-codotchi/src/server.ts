@@ -28,7 +28,7 @@ const INSTRUCTIONS = [
 ].join(" ");
 
 const server = new McpServer(
-  { name: "codotchi-desktop", version: "2.38.2" },
+  { name: "codotchi-desktop", version: "2.38.3" },
   { instructions: INSTRUCTIONS },
 );
 

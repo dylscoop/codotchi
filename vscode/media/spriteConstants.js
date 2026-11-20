@@ -162,7 +162,7 @@
   var PET_SIZE_QUADRUPED = { small: 0.75,   medium: 1.0,  large: 1.5 };
   var PET_SIZE_MULTS = {
     tim: { small: 0.375, medium: 0.5625, large: 0.75 },
-    stu: { small: 0.375, medium: 0.5625, large: 0.75 },
+    stu: { small: 0.5,   medium: 0.75,   large: 1.0 },
     cat: { small: 0.5,   medium: 0.75,   large: 1.0 },
     dog: { small: 0.5,   medium: 0.75,   large: 1.0 },
   };

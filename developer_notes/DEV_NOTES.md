@@ -485,6 +485,14 @@ happiness are subject to offline decay; energy and health are left as saved.
 
 ### Sleep decay
 
+Manual `sleep()` requires `energy < SLEEP_ENERGY_THRESHOLD` (fixed at **40**,
+currently twice the 20-energy pat cost). At 40 or above it emits
+`sleep_refused_high_energy` without resetting the snack streak, answering a call
+or granting care/XP credit. Both IDEs disable Sleep at that boundary and show
+the threshold in its tooltip; terminal/Desktop actions report the refusal.
+Already sleeping pets keep regenerating past 40 to full energy; normal Wake
+and automatic break naps are unchanged.
+
 While sleeping, hunger and happiness each lose **1 point every 5th sleeping
 tick** (`ticksAlive % SLEEP_DECAY_TICK_INTERVAL === 0`). At 3 s/tick that is
 every 15 s — approximately **4 pts/min**. This prevents the pet from entering
