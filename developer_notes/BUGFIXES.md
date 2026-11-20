@@ -2605,3 +2605,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** The previous all-stage enlargement made adult Stu too large. Changing the global stage scale or the whole species size table would also change other characters or Stu's younger and senior stages.
 
 **Fix:** Add an adult-only 0.6 stage multiplier for Stu and use it in both drawing and every layout calculation. Adult Stu is now 60% of his previous dimensions at each pet-size preset, with integer-pixel rounding. Other stages, species and companion size are unchanged. Regression tests cover all stages/presets and the actual adult raster width.
+
+## BUGFIX-223 — Adult and senior companion cats are still too large
+
+**Status:** Fixed (branch `fix/stu-size-and-cat-turning`)
+**File:** `vscode/media/sidebar.js` (shared with PyCharm)
+
+**Problem:** Stu's companion remained too large in both adult and senior form after the Stu size correction.
+
+**Fix:** Multiply only the adult/senior companion scale by 0.75, changing 0.66 to 0.495. Drawing, layout and cat-tree sizing use the same smaller dimensions. Stu, younger companions, standalone cats and movement timing remain unchanged. Executable render tests cover every preset, proportions and floor alignment.

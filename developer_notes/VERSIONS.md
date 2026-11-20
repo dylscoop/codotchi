@@ -1,6 +1,23 @@
 # Version History
 
-## v2.38.4 - current
+## v2.38.5 - current
+
+### Changes from v2.38.4 (adult/senior companion sizing - branch fix/stu-size-and-cat-turning)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/sidebar.js` | Adult/senior companion scale is 0.495 (75% of the former 0.66); younger stages, Stu and standalone cats unchanged. Shared media supplies PyCharm. |
+| `vscode/tests/unit/companion.test.ts` | Exact stage scales, actual draw scale, size/layout agreement and floor alignment at every preset, with guards for unchanged Stu and standalone cats. |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `claude-desktop-codotchi/package.json`, `manifest.json`, `src/server.ts` | Patch version 2.38.5; public change notes remain spoiler-free. |
+| `README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/SPRITES.md`, `developer_notes/BUGFIXES.md` | Release references, mature-companion sizing and BUGFIX-223. |
+
+Updated constant: `COMPANION_SCALE.adult = COMPANION_SCALE.senior = 0.495`.
+Both mature stages are 75% of their previous rendered dimensions, with pixel
+rounding. Baby/child remain 0.5 and teen remains 0.58. Cat-tree layout uses the
+same smaller companion dimensions. Movement/turn timing is unchanged.
+Stu's adult-only 0.6 multiplier and all existing sleep amendments are preserved.
+
+## v2.38.4
 
 ### Changes from v2.38.3 (adult Stu size correction - branch fix/stu-size-and-cat-turning)
 

@@ -3230,8 +3230,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   // ── Companion animal (Stugotchi's cat) ──────────────────────────────────
 
-  /** Scale of the standalone cat sprite at the same stage: young ones 50%, adults 66%. */
-  var COMPANION_SCALE = { egg: 0.5, baby: 0.5, child: 0.5, teen: 0.58, adult: 0.66, senior: 0.66 };
+  /** Scale of the standalone cat sprite: adult/senior are 75% of their former 0.66 scale. */
+  var COMPANION_SCALE = { egg: 0.5, baby: 0.5, child: 0.5, teen: 0.58, adult: 0.495, senior: 0.495 };
   var COMPANION_SAD = 25;
   var COMPANION_FLIP_MIN_MS = 4000;
   var COMPANION_FLIP_MAX_MS = 8000;
