@@ -17,6 +17,12 @@ rounding. Baby/child remain 0.5 and teen remains 0.58. Cat-tree layout uses the
 same smaller companion dimensions. Movement/turn timing is unchanged.
 Stu's adult-only 0.6 multiplier and all existing sleep amendments are preserved.
 
+Validation: all 1011 VS Code tests and 327 Kotlin tests passed, along with the
+VS Code type-check. Markdown lint has no new errors against the baseline.
+All five local v2.38.5 packages were rebuilt and embedded versions verified;
+both IDEs contain byte-identical current shared renderer files.
+No install, push, PR or release action performed.
+
 ## v2.38.4
 
 ### Changes from v2.38.3 (adult Stu size correction - branch fix/stu-size-and-cat-turning)
