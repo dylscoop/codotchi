@@ -18,6 +18,12 @@ Base Stu multipliers remain 0.5 / 0.75 / 1.0; effective adult multipliers are
 Teen and senior sizing, companion size and slower-turn behaviour are unchanged.
 Existing sleep amendments on this branch are preserved.
 
+Validation: all 1010 VS Code tests and 327 Kotlin tests passed; VS Code
+type-check passed and markdown lint has no new errors against the baseline.
+All five local v2.38.4 packages were rebuilt and their embedded versions verified.
+VS Code and PyCharm contain byte-identical current `sidebar.js`, `sprites.js`
+and `spriteConstants.js`. No install, push, PR or release action performed.
+
 ## v2.38.3
 
 ### Changes from v2.38.2 (bigger Stu and calmer cat - branch fix/stu-size-and-cat-turning)
