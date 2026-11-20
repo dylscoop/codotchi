@@ -3,7 +3,7 @@ import * as assert from "node:assert/strict";
 import * as fs from "fs";
 import * as path from "path";
 import * as vm from "vm";
-import { createPet, rollOldAgeDeath, oldAgeCareScore, serialiseState, deserialiseState, SLEEP_ENERGY_THRESHOLD } from "../../src/gameEngine";
+import { createPet, rollOldAgeDeath, oldAgeCareScore, serialiseState, deserialiseState, SLEEP_ENERGY_THRESHOLD, sleep } from "../../src/gameEngine";
 
 // Checks for the webview reaction animations (sidebar.js) and the hatching
 // egg (sprites.js). PyCharm copies the same vscode/media files at build time.
@@ -20,7 +20,7 @@ describe("manual sleep button energy gate", () => {
     assert.equal(Number(/const val SLEEP_ENERGY_THRESHOLD: Int = (\d+)/.exec(kotlin)?.[1]), SLEEP_ENERGY_THRESHOLD);
   });
 
-  it("disables Sleep at 40+, keeps normal Wake enabled, and retains pause/nap guards", () => {
+  it("keeps Sleep clickable at every energy, keeps normal Wake enabled, and retains pause/nap guards", () => {
     const start = sidebarSource.indexOf("    // Update sleep/wake button label");
     const end = sidebarSource.indexOf("    // Medicine doses-left badge", start);
     assert.ok(start >= 0 && end > start);
@@ -28,18 +28,40 @@ describe("manual sleep button energy gate", () => {
     const context = vm.createContext({ sleepWakeBtn, SLEEP_ENERGY_THRESHOLD,
       document: { getElementById: () => sleepWakeBtn }, customCharBySpriteType: null });
     for (const [energy, sleeping, paused, nap, disabled] of [
-      [39, false, false, 0, false], [40, false, false, 0, true],
-      [100, false, false, 0, true], [100, true, false, 0, false],
+      [39, false, false, 0, false], [40, false, false, 0, false],
+      [100, false, false, 0, false], [100, true, false, 0, false],
       [39, false, true, 0, true], [100, true, true, 0, true],
       [39, true, false, 60, true],
     ]) {
       context.state = { energy, sleeping, paused, breakNapTicksRemaining: nap };
       vm.runInContext(`{ ${sidebarSource.slice(start, end)} }`, context);
       assert.equal(sleepWakeBtn.disabled, disabled, JSON.stringify(context.state));
-      if (!sleeping && Number(energy) >= 40) {
-        assert.equal(sleepWakeBtn.title, "Sleep is available below 40 energy");
-      }
+      if (!nap) { assert.equal(sleepWakeBtn.title, ""); }
       if (sleeping && !nap) { assert.equal(sleepWakeBtn.textContent, "Wake"); }
+    }
+  });
+
+  it("clicking Sleep routes to the engine and gives the named not-tired refusal", () => {
+    const start = sidebarSource.indexOf('  document.getElementById("btn-sleep-wake").addEventListener');
+    const end = sidebarSource.indexOf('  document.getElementById("btn-clean")', start);
+    assert.ok(start >= 0 && end > start);
+    let click: (() => void) | undefined;
+    let command = "";
+    const button = { dataset: { sleeping: "false" }, addEventListener: (_: string, fn: () => void) => { click = fn; } };
+    const context = vm.createContext({ document: { getElementById: () => button },
+      vscode: { postMessage: (message: { command: string }) => { command = message.command; } } });
+    vm.runInContext(sidebarSource.slice(start, end), context);
+    assert.ok(click);
+    click();
+    assert.equal(command, "sleep");
+    for (const energy of [40, 100]) {
+      const next = sleep({ ...createPet("Pixel", "codeling"), energy });
+      assert.equal(next.sleeping, false);
+      const event = next.events[0];
+      const expression = /"sleep_refused_high_energy": ([^\n]+),/.exec(sidebarSource)?.[1];
+      assert.ok(expression);
+      assert.equal(event, "sleep_refused_high_energy");
+      assert.equal(vm.runInNewContext(expression, { n: next.name }), "Pixel is not tired enough to sleep yet");
     }
   });
 });

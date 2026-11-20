@@ -106,8 +106,13 @@ describe("action.mjs — break nap (integration)", () => {
         const saved = readVSCodeState(tmpBase);
         assert.equal(saved.sleeping, energy < 40);
         assert.equal(saved.consecutiveSnacks, energy < 40 ? 0 : 2);
-        assert.ok(output.includes(energy < 40 ? "Goodnight" : "Can only sleep below 40 energy"), output);
-        if (energy >= 40) { assert.ok(!output.includes("Goodnight"), output); }
+        if (energy < 40) {
+          assert.ok(output.includes("Goodnight"), output);
+        } else {
+          // The bubble wraps after "sleep"; pet art can occur between its lines.
+          assert.match(output, /SickBuddy is not tired enough to sleep\b.*\byet\b/);
+          assert.ok(!output.includes("Goodnight"), output);
+        }
       });
     });
   }

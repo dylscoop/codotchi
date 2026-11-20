@@ -3902,8 +3902,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       ? (state.spriteType === "dog" ? "Chewing a bone on your break — it stops on its own"
          : (_napChar && _napChar.breakNap) ? "On " + _napLabel.toLowerCase() + " — it ends on its own"
          : "Taking a break nap — it wakes up on its own")
-      : (!state.sleeping && state.energy >= SLEEP_ENERGY_THRESHOLD
-         ? "Sleep is available below " + SLEEP_ENERGY_THRESHOLD + " energy" : "");
+      : "";
     sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
 
     // BUGFIX-002: disable care buttons while pet is sleeping; also disable while paused
@@ -3923,11 +3922,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         if (btn) { btn.disabled = true; }
       });
     }
-    // Only manual Sleep is energy-gated; Wake stays available during normal sleep.
-    if (sleepWakeBtn) {
-      sleepWakeBtn.disabled = isPaused || napTicks > 0 ||
-        (!isSleeping && state.energy >= SLEEP_ENERGY_THRESHOLD);
-    }
+    // Keep Sleep clickable at any energy so the engine can explain a refusal.
+    // Pause and uninterruptible break naps still disable Sleep/Wake.
+    if (sleepWakeBtn) { sleepWakeBtn.disabled = isPaused || napTicks > 0; }
 
     // Medicine doses-left badge, shown only while sick
     var MEDICINE_DOSES = 3;
@@ -4567,7 +4564,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "fed_meal":                n + " ate a meal.",
       "snack_refused":           n + " threw the snack away.",
       "play_refused_no_energy":  n + " doesn't have enough energy to play!",
-      "sleep_refused_high_energy": n + " can only sleep below " + SLEEP_ENERGY_THRESHOLD + " energy.",
+      "sleep_refused_high_energy": n + " is not tired enough to sleep yet",
       "played":                  n + " played!",
       "pat_refused_no_energy":   (_cc && _cc.patToasts) ? _cc.patToasts.pat_refused.replace("__Name__", n) : n + " doesn't have enough energy to be patted!",
       "patted":                  (_cc && _cc.patToasts) ? _cc.patToasts.patted.replace("__Name__", n)       : n + " was patted!",

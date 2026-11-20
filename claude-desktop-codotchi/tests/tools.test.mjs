@@ -104,7 +104,7 @@ describe("claude-desktop tools", () => {
       const stored = JSON.parse(fs.readFileSync(resolveIDEStatePath(), "utf8"));
       assert.equal(stored.state.sleeping, energy < 40);
       if (energy >= 40) {
-        assert.ok(out.asciiArt.replace(/[\s\\/|]+/g, " ").includes("Can only sleep below 40 energy"), out.asciiArt);
+        assert.ok(out.asciiArt.replace(/[\s\\/|]+/g, " ").includes("Desky is not tired enough to sleep yet"), out.asciiArt);
       }
     }
     writeState(["vscode", "state.json"], adultPet({ sleeping: true, energy: 80 }));

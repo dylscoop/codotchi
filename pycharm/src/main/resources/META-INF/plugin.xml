@@ -192,7 +192,7 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
 <h3>2.38.3</h3>
 <ul>
 <li>Stugotchi had a rework.</li>
-<li>Manual sleep is available only below 40 energy. Waking and automatic break naps are unchanged.</li>
+<li>Manual sleep is available only below 40 energy. The button stays clickable and says your pet is not tired enough to sleep yet when refused. Waking and automatic break naps are unchanged.</li>
 </ul>
 <h3>2.38.2</h3>
 <ul><li>Attention-based calls have a fixed 10-minute response window; need-based calls still allow 1 minute.</li><li>Old-age deaths show the care score without extra explanation.</li></ul>

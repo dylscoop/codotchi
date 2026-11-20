@@ -4,7 +4,7 @@
 
 - **Stugotchi had a rework.**
 
-- **Sleep only when tired.** Manual sleep is available below 40 energy; at 40 or above it is blocked. Waking and automatic break naps are unchanged.
+- **Sleep only when tired.** Manual sleep is available below 40 energy. The button stays clickable at 40 or above and shows "Name is not tired enough to sleep yet" instead of greying out. Waking and automatic break naps are unchanged.
 
 ## [2.38.2] - 2026-11-19
 

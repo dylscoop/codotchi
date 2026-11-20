@@ -61,7 +61,6 @@ import {
   pat,
   play,
   sleep,
-  SLEEP_ENERGY_THRESHOLD,
   clean,
   giveMedicine,
   serialiseState,
@@ -1828,7 +1827,7 @@ const plugin: Plugin = async (ctx) => {
               if (next.events.includes("sleep_refused_high_energy")) {
                 setPetState(p.ide, next);
                 saveIDEState(p.ide);
-                sleepLines.push(`[${pLabel}] ${next.name} can only sleep below ${SLEEP_ENERGY_THRESHOLD} energy.`);
+                sleepLines.push(`[${pLabel}] ${next.name} is not tired enough to sleep yet`);
                 continue;
               }
               const already = next.events.includes("already_sleeping");

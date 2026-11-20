@@ -488,8 +488,10 @@ happiness are subject to offline decay; energy and health are left as saved.
 Manual `sleep()` requires `energy < SLEEP_ENERGY_THRESHOLD` (fixed at **40**,
 currently twice the 20-energy pat cost). At 40 or above it emits
 `sleep_refused_high_energy` without resetting the snack streak, answering a call
-or granting care/XP credit. Both IDEs disable Sleep at that boundary and show
-the threshold in its tooltip; terminal/Desktop actions report the refusal.
+or granting care/XP credit. Both IDEs keep Sleep clickable at that boundary and
+show "Name is not tired enough to sleep yet", substituting the pet's name;
+terminal/Desktop actions use the same refusal text. Pause and uninterruptible
+break naps still disable the button.
 Already sleeping pets keep regenerating past 40 to full energy; normal Wake
 and automatic break naps are unchanged.
 
