@@ -1,6 +1,6 @@
 # Version History
 
-## v2.38.4 - current
+## v2.38.4
 
 ### Changes from v2.38.3 (Stu/Tim growth and companion sizing - branch fix/stu-size-and-cat-turning)
 
@@ -27,7 +27,12 @@ type-check passed and markdown lint has no new errors against the baseline.
 All five local v2.38.4 packages were rebuilt with the consolidated final sizing
 and their embedded versions verified. Both IDEs contain byte-identical current
 shared renderer files and only the consolidated v2.38.4 change notes.
-No install, push, PR or release action performed.
+Release preparation: PR #6868 includes the final v2.38.4 changes and merges
+the published v2.38.3 baseline without losing the clickable-Sleep follow-up.
+Post-conflict validation passed: VS Code 1012, Kotlin 327, Claude Code 137,
+Desktop 12, OpenCode Node 149 and plugin-contract 60 tests.
+The user approved merging the PR, creating/pushing the v2.38.4 tag and publishing
+all five packages as the new latest release. Existing v2.38.3 assets stay untouched.
 
 ## v2.38.3
 
