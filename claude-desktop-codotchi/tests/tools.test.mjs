@@ -95,6 +95,22 @@ describe("claude-desktop tools", () => {
     }
   });
 
+  it("sleepToggle() requires energy below 40 and still wakes a recharged pet", () => {
+    for (const energy of [39, 40, 100]) {
+      writeState(["vscode", "state.json"], adultPet({ energy, consecutiveSnacks: 2 }));
+      const out = tools.sleepToggle(readConfig());
+      assert.equal(out.state.sleeping, energy < 40);
+      assert.equal(out.state.consecutiveSnacks, energy < 40 ? 0 : 2);
+      const stored = JSON.parse(fs.readFileSync(resolveIDEStatePath(), "utf8"));
+      assert.equal(stored.state.sleeping, energy < 40);
+      if (energy >= 40) {
+        assert.ok(out.asciiArt.replace(/[\s\\/|]+/g, " ").includes("Can only sleep below 40 energy"), out.asciiArt);
+      }
+    }
+    writeState(["vscode", "state.json"], adultPet({ sleeping: true, energy: 80 }));
+    assert.equal(tools.sleepToggle(readConfig()).state.sleeping, false);
+  });
+
   it("sleepToggle() can't wake the pet during a break nap", () => {
     writeState(["vscode", "state.json"], adultPet({ sleeping: true, breakNapTicksRemaining: 50 }));
     const out = tools.sleepToggle(readConfig());

@@ -1191,6 +1191,8 @@ fun applyMinigameResult(state: PetState, game: String, result: String, bossAcces
 
 fun sleep(state: PetState): PetState {
     if (state.sleeping) return withDerivedFields(state.copy(events = listOf("already_sleeping")))
+    if (state.energy >= SLEEP_ENERGY_THRESHOLD)
+        return withDerivedFields(state.copy(events = listOf("sleep_refused_high_energy")))
     val answered = answerAttentionCall(state, "low_energy")
     val events = mutableListOf("fell_asleep")
     if (answered != null) events.add("attention_call_answered_low_energy")

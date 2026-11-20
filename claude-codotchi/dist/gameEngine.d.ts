@@ -29,6 +29,8 @@ export declare const ADULT_DURATION_TICKS: number;
 export declare const SNACK_MAX_PER_CYCLE: number;
 /** Maximum snacks allowed on the stage floor simultaneously before further snacks are refused. */
 export declare const MAX_FLOOR_SNACKS: number;
+/** Manual sleep is allowed only below this energy (currently two pats). */
+export declare const SLEEP_ENERGY_THRESHOLD: number;
 /** Weight above which the sprite is drawn 1.25× wider. */
 export declare const WEIGHT_SLIGHTLY_FAT_THRESHOLD: number;
 /** Weight above which the sprite is drawn 1.5× wider. */
@@ -807,7 +809,7 @@ export declare function applyMinigameResult(state: PetState, game: string, resul
 /**
  * Put the pet to sleep.
  *
- * If the pet is already sleeping the call is a no-op.
+ * Only allowed below SLEEP_ENERGY_THRESHOLD. Already sleeping is a no-op.
  *
  * @param state - The current pet state.
  * @returns A new PetState after the action.

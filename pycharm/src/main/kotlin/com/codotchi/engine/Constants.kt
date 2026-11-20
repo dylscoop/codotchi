@@ -76,6 +76,8 @@ const val PLAY_WEIGHT_LOSS: Int = 3
 
 const val PAT_HAPPINESS_BOOST: Int = 10
 const val PAT_ENERGY_COST: Int = 20
+/** Manual sleep is allowed only below this energy (currently two pats). */
+const val SLEEP_ENERGY_THRESHOLD: Int = 40
 /** Weight lost when pat() is called (BUGFIX-034). */
 const val PAT_WEIGHT_LOSS: Int = 3
 const val POOP_WEIGHT_LOSS: Int = 5

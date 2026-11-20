@@ -28,6 +28,8 @@
 
   /** Energy cost of the pat action — must match PAT_ENERGY_COST in gameEngine.ts. */
   var PAT_ENERGY_COST = 20;
+  /** Must match SLEEP_ENERGY_THRESHOLD in the shared engine and Kotlin constants. */
+  var SLEEP_ENERGY_THRESHOLD = 40;
   /** Pixel size of floor snacks (each grid cell is SNACK_SCALE × SNACK_SCALE px). */
   var SNACK_SCALE = 3;
   /** Half the width of a typical 5–6-column snack at SNACK_SCALE — the pet aims at item.x + this. */
@@ -3900,7 +3902,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       ? (state.spriteType === "dog" ? "Chewing a bone on your break — it stops on its own"
          : (_napChar && _napChar.breakNap) ? "On " + _napLabel.toLowerCase() + " — it ends on its own"
          : "Taking a break nap — it wakes up on its own")
-      : "";
+      : (!state.sleeping && state.energy >= SLEEP_ENERGY_THRESHOLD
+         ? "Sleep is available below " + SLEEP_ENERGY_THRESHOLD + " energy" : "");
     sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
 
     // BUGFIX-002: disable care buttons while pet is sleeping; also disable while paused
@@ -3920,9 +3923,11 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         if (btn) { btn.disabled = true; }
       });
     }
-    // Sleep/Wake button: disabled while paused or during a break nap
-    // (otherwise it must remain clickable to Wake while sleeping)
-    if (sleepWakeBtn) { sleepWakeBtn.disabled = isPaused || napTicks > 0; }
+    // Only manual Sleep is energy-gated; Wake stays available during normal sleep.
+    if (sleepWakeBtn) {
+      sleepWakeBtn.disabled = isPaused || napTicks > 0 ||
+        (!isSleeping && state.energy >= SLEEP_ENERGY_THRESHOLD);
+    }
 
     // Medicine doses-left badge, shown only while sick
     var MEDICINE_DOSES = 3;
@@ -4562,6 +4567,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "fed_meal":                n + " ate a meal.",
       "snack_refused":           n + " threw the snack away.",
       "play_refused_no_energy":  n + " doesn't have enough energy to play!",
+      "sleep_refused_high_energy": n + " can only sleep below " + SLEEP_ENERGY_THRESHOLD + " energy.",
       "played":                  n + " played!",
       "pat_refused_no_energy":   (_cc && _cc.patToasts) ? _cc.patToasts.pat_refused.replace("__Name__", n) : n + " doesn't have enough energy to be patted!",
       "patted":                  (_cc && _cc.patToasts) ? _cc.patToasts.patted.replace("__Name__", n)       : n + " was patted!",

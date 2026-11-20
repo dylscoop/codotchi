@@ -11,6 +11,13 @@
 | `vscode/tests/unit/companion.test.ts`, `vscode/tests/unit/webviewAnimations.test.ts` | Executable render integration tests for every size/stage, shared renderer/layout size multipliers, floor alignment, turn timing, edge/meeting resets, target jitter, games, sleep and guest handoffs. |
 | `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `claude-desktop-codotchi/package.json`, `manifest.json`, `src/server.ts` | Patch version 2.38.3 and PyCharm change notes. |
 | `README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/SPRITES.md`, `developer_notes/BUGFIXES.md` | Release references, size semantics and companion turn tuning. Public VS Code/PyCharm change notes (2.38.0 and 2.38.3) say only "Stugotchi had a rework" to preserve the surprise. |
+| `packages/core/src/gameEngine.ts` (+ four synced engine copies), `pycharm/.../engine/Constants.kt`, `GameEngine.kt` | Same-merge amendment: manual sleep requires energy strictly below 40; refusal preserves snack/call/XP state. Existing sleep regeneration, Wake and automatic break naps unchanged. |
+| `vscode/media/sidebar.js`, `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/action.mjs`, `claude-desktop-codotchi/src/tools.ts` | Disable manual Sleep at 40+, add a threshold tooltip and truthful refusal messages; shared webview supplies PyCharm. |
+| `vscode/tests/unit/gameEngine.test.ts`, `progression.test.ts`, `webviewAnimations.test.ts`, `pycharm/.../GameEngineTest.kt`, `ProgressionTest.kt`, `claude-codotchi/tests/integration/sickAndNap.test.mjs`, `claude-desktop-codotchi/tests/tools.test.mjs` | Sleep boundary, no-credit refusal, two-pat/play/sleep/tick/Wake integration, UI guards and persisted action-output regression coverage. |
+| `README.md`, `vscode/README.md`, `pycharm/README.md`, `opencode-codotchi/README.md`, `claude-codotchi/USER_GUIDE.md`, `commands/codotchi.md`, `claude_user_guide.md`, `claude-desktop-codotchi/README.md`, `developer_notes/DEV_NOTES.md`, `vscode/CHANGELOG.md`, `pycharm/.../META-INF/plugin.xml` | Document the below-40 manual sleep rule in the current v2.38.3 release. |
+| `claude-codotchi/dist/gameEngine.{js,d.ts}` (+ maps) | Recompiled shared sleep rule for hook runtime. |
+
+New engine constant: `SLEEP_ENERGY_THRESHOLD = 40` (fixed, not derived from game costs).
 
 Updated webview constants:
 
@@ -23,7 +30,8 @@ COMPANION_TURN_MS = 1000, COMPANION_FACE_SETTLE_MS = 350
 The companion retains its stage-dependent 50–66% scale of the standalone cat
 sprite, not a percentage of Stu's rendered dimensions. Visitor timing is unchanged.
 
-Validation: all 1002 VS Code tests and 324 Kotlin tests passed, along with the
+Validation: all 1007 VS Code tests, 327 Kotlin tests, 137 Claude Code tests and
+12 Desktop tests passed, along with the
 VS Code type-check. Markdown lint has no new errors relative to the baseline.
 All five v2.38.3 packages were rebuilt and their embedded versions verified;
 VS Code and PyCharm contain byte-identical current shared renderer files.

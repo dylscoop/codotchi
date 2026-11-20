@@ -73,7 +73,7 @@ Open any project in OpenCode and run `/codotchi` — your pet's stats appear.
 /codotchi snack        — give a snack
 /codotchi play         — play with your pet
 /codotchi pat          — gently pat your pet
-/codotchi sleep        — put your pet to sleep
+/codotchi sleep        — put your pet to sleep (only below 40 energy)
 /codotchi wake         — wake your pet up
 /codotchi clean        — clean up droppings
 /codotchi medicine     — give medicine to cure sickness

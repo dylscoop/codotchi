@@ -4,6 +4,8 @@
 
 - **Stugotchi had a rework.**
 
+- **Sleep only when tired.** Manual sleep is available below 40 energy; at 40 or above it is blocked. Waking and automatic break naps are unchanged.
+
 ## [2.38.2] - 2026-11-19
 
 - Attention-based calls now always allow 10 active minutes to answer; need-based calls still allow 1 active minute. Removed the response-time setting.

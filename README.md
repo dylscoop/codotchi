@@ -235,7 +235,7 @@ way for OpenCode and your IDE.
 
 - `/codotchi` — show status
 - `/codotchi feed` / `snack` / `play` / `pat` — care actions
-- `/codotchi sleep` / `wake` — sleep cycle
+- `/codotchi sleep` / `wake` — sleep cycle (manual sleep requires energy below 40)
 - `/codotchi clean` / `medicine` — hygiene and health
 - `/codotchi show` / `hide` — toggle ASCII art display
 - `/codotchi warnthreshold <usd>` / `shoutthreshold <usd>` — daily cost alerts

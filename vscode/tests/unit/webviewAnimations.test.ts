@@ -3,13 +3,46 @@ import * as assert from "node:assert/strict";
 import * as fs from "fs";
 import * as path from "path";
 import * as vm from "vm";
-import { createPet, rollOldAgeDeath, oldAgeCareScore, serialiseState, deserialiseState } from "../../src/gameEngine";
+import { createPet, rollOldAgeDeath, oldAgeCareScore, serialiseState, deserialiseState, SLEEP_ENERGY_THRESHOLD } from "../../src/gameEngine";
 
 // Checks for the webview reaction animations (sidebar.js) and the hatching
 // egg (sprites.js). PyCharm copies the same vscode/media files at build time.
 const media = path.join(__dirname, "../../../media");
 const repoRoot = path.join(__dirname, "../../../..");
 const sidebarSource = fs.readFileSync(path.join(media, "sidebar.js"), "utf8");
+
+describe("manual sleep button energy gate", () => {
+  it("matches both engine thresholds", () => {
+    const kotlin = fs.readFileSync(path.join(repoRoot,
+      "pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt"), "utf8");
+    assert.equal(SLEEP_ENERGY_THRESHOLD, 40);
+    assert.equal(Number(/var SLEEP_ENERGY_THRESHOLD = (\d+)/.exec(sidebarSource)?.[1]), SLEEP_ENERGY_THRESHOLD);
+    assert.equal(Number(/const val SLEEP_ENERGY_THRESHOLD: Int = (\d+)/.exec(kotlin)?.[1]), SLEEP_ENERGY_THRESHOLD);
+  });
+
+  it("disables Sleep at 40+, keeps normal Wake enabled, and retains pause/nap guards", () => {
+    const start = sidebarSource.indexOf("    // Update sleep/wake button label");
+    const end = sidebarSource.indexOf("    // Medicine doses-left badge", start);
+    assert.ok(start >= 0 && end > start);
+    const sleepWakeBtn = { disabled: false, title: "", textContent: "", dataset: {} };
+    const context = vm.createContext({ sleepWakeBtn, SLEEP_ENERGY_THRESHOLD,
+      document: { getElementById: () => sleepWakeBtn }, customCharBySpriteType: null });
+    for (const [energy, sleeping, paused, nap, disabled] of [
+      [39, false, false, 0, false], [40, false, false, 0, true],
+      [100, false, false, 0, true], [100, true, false, 0, false],
+      [39, false, true, 0, true], [100, true, true, 0, true],
+      [39, true, false, 60, true],
+    ]) {
+      context.state = { energy, sleeping, paused, breakNapTicksRemaining: nap };
+      vm.runInContext(`{ ${sidebarSource.slice(start, end)} }`, context);
+      assert.equal(sleepWakeBtn.disabled, disabled, JSON.stringify(context.state));
+      if (!sleeping && Number(energy) >= 40) {
+        assert.equal(sleepWakeBtn.title, "Sleep is available below 40 energy");
+      }
+      if (sleeping && !nap) { assert.equal(sleepWakeBtn.textContent, "Wake"); }
+    }
+  });
+});
 
 describe("old-age care score display", () => {
   it("adds only the score line after old-age death, including after reload", () => {

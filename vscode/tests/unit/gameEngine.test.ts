@@ -1984,13 +1984,13 @@ describe("happinessDeltaForMinigame", () => {
 
 describe("sleep", () => {
   it("sets sleeping to true", () => {
-    const pet = makePet({ sleeping: false });
+    const pet = makePet({ sleeping: false, energy: 39 });
     const next = sleep(pet);
     assert.equal(next.sleeping, true);
   });
 
   it("emits fell_asleep event", () => {
-    const pet = makePet({ sleeping: false });
+    const pet = makePet({ sleeping: false, energy: 39 });
     const next = sleep(pet);
     assert.ok(next.events.includes("fell_asleep"));
   });
@@ -2000,6 +2000,32 @@ describe("sleep", () => {
     const next = sleep(pet);
     assert.equal(next.sleeping, true);
     assert.ok(next.events.includes("already_sleeping"));
+  });
+
+  it("allows sleep at zero and just below 40 energy", () => {
+    for (const energy of [0, 39, 39.9]) {
+      const next = sleep(makePet({ energy, consecutiveSnacks: 2 }));
+      assert.equal(next.sleeping, true);
+      assert.equal(next.energy, energy);
+      assert.equal(next.consecutiveSnacks, 0);
+    }
+  });
+
+  it("refuses sleep at 40 or above without resetting care or granting XP", () => {
+    for (const energy of [40, 41, 100]) {
+      const pet = makePet({ energy, consecutiveSnacks: 2, careMistakes: 3,
+        activeAttentionCall: "low_energy", attentionCallActiveTicks: 7 });
+      const next = sleep(pet);
+      assert.equal(next.sleeping, false);
+      assert.deepEqual(next.events, ["sleep_refused_high_energy"]);
+      assert.equal(next.energy, energy);
+      assert.equal(next.consecutiveSnacks, 2);
+      assert.equal(next.careMistakes, 3);
+      assert.equal(next.activeAttentionCall, "low_energy");
+      assert.equal(next.attentionCallActiveTicks, 7);
+      assert.equal(next.petXp, pet.petXp);
+      assert.deepEqual(next.trainer, pet.trainer);
+    }
   });
 });
 
@@ -2651,7 +2677,7 @@ describe("serialiseState / deserialiseState", () => {
 // ---------------------------------------------------------------------------
 
 describe("integration — action sequence", () => {
-  it("new pet can be fed, played with, and put to sleep", () => {
+  it("new pet can be fed, played with until tired, and put to sleep", () => {
     let pet = createPet("Gotchi", "codeling");
     pet = feedMeal(pet, 0);
     assert.ok(pet.events.includes("fed_meal"));
@@ -2659,11 +2685,28 @@ describe("integration — action sequence", () => {
     pet = play(pet);
     assert.ok(pet.events.includes("played"));
 
+    assert.equal(sleep(pet).sleeping, false, "one game leaves too much energy for sleep");
+    pet = play(play(pet));
+    assert.equal(pet.energy, 25);
+
     pet = sleep(pet);
     assert.ok(pet.sleeping);
 
     pet = wake(pet);
     assert.equal(pet.sleeping, false);
+  });
+
+  it("two pats from 80 reach the blocked boundary; a game then permits sleep and regeneration", () => {
+    let pet = pat(pat(makePet({ energy: 80 })));
+    assert.equal(pet.energy, 40);
+    assert.ok(sleep(pet).events.includes("sleep_refused_high_energy"));
+    pet = sleep(play(pet));
+    assert.equal(pet.energy, 15);
+    assert.equal(pet.sleeping, true);
+    for (let i = 0; i < 10; i++) { pet = tick(pet); }
+    assert.ok(pet.energy >= 40, "already sleeping may recharge above the entry threshold");
+    assert.equal(pet.sleeping, true);
+    assert.equal(wake(pet).sleeping, false);
   });
 
   it("consecutive snacks → sick → medicine → cured", () => {

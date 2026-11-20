@@ -98,6 +98,20 @@ describe("action.mjs — sick pets refuse feed / snack / play (integration)", ()
 });
 
 describe("action.mjs — break nap (integration)", () => {
+  for (const energy of [39, 40, 100]) {
+    it(`/codotchi sleep at ${energy} energy reports and saves the correct result`, async () => {
+      await withRunFixture(async (tmpBase) => {
+        writeVSCodeState(tmpBase, await pet({ energy, consecutiveSnacks: 2 }));
+        const output = runAction(tmpBase, "sleep");
+        const saved = readVSCodeState(tmpBase);
+        assert.equal(saved.sleeping, energy < 40);
+        assert.equal(saved.consecutiveSnacks, energy < 40 ? 0 : 2);
+        assert.ok(output.includes(energy < 40 ? "Goodnight" : "Can only sleep below 40 energy"), output);
+        if (energy >= 40) { assert.ok(!output.includes("Goodnight"), output); }
+      });
+    });
+  }
+
   it("/codotchi wake is refused during a break nap", async () => {
     await withRunFixture(async (tmpBase) => {
       writeVSCodeState(tmpBase, await pet({ sleeping: true, breakNapTicksRemaining: 60 }));

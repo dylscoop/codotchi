@@ -61,6 +61,7 @@ import {
   pat,
   play,
   sleep,
+  SLEEP_ENERGY_THRESHOLD,
   clean,
   giveMedicine,
   serialiseState,
@@ -1823,8 +1824,14 @@ const plugin: Plugin = async (ctx) => {
                continue;
              }
              const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
-             const next = sleep(p.state);
-             const already = next.events.includes("already_sleeping");
+              const next = sleep(p.state);
+              if (next.events.includes("sleep_refused_high_energy")) {
+                setPetState(p.ide, next);
+                saveIDEState(p.ide);
+                sleepLines.push(`[${pLabel}] ${next.name} can only sleep below ${SLEEP_ENERGY_THRESHOLD} energy.`);
+                continue;
+              }
+              const already = next.events.includes("already_sleeping");
              setPetState(p.ide, next);
              saveIDEState(p.ide);
              sleepLines.push((terminalEnabled

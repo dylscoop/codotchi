@@ -155,8 +155,8 @@ class ProgressionTest {
         assertEquals(XP_AMOUNTS["call"], clean(pet().copy(poops = 1, activeAttentionCall = "poop")).petXp)
         assertEquals(0, startSnack(pet()).petXp)
         assertEquals(XP_AMOUNTS["call"], startSnack(pet().copy(activeAttentionCall = "hunger")).petXp)
-        assertEquals(0, sleep(pet()).petXp)
-        assertEquals(XP_AMOUNTS["call"], sleep(pet().copy(activeAttentionCall = "low_energy")).petXp)
+        assertEquals(0, sleep(pet().copy(energy = 19)).petXp)
+        assertEquals(XP_AMOUNTS["call"], sleep(pet().copy(energy = 19, activeAttentionCall = "low_energy")).petXp)
     }
 
     @Test

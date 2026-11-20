@@ -192,8 +192,8 @@ describe("XP from actions", () => {
     assert.equal(clean(makePet({ poops: 1, activeAttentionCall: "poop" })).petXp, XP_AMOUNTS.call);
     assert.equal(startSnack(makePet()).petXp, 0);
     assert.equal(startSnack(makePet({ activeAttentionCall: "hunger" })).petXp, XP_AMOUNTS.call);
-    assert.equal(sleep(makePet()).petXp, 0);
-    assert.equal(sleep(makePet({ activeAttentionCall: "low_energy" })).petXp, XP_AMOUNTS.call);
+    assert.equal(sleep(makePet({ energy: 19 })).petXp, 0);
+    assert.equal(sleep(makePet({ energy: 19, activeAttentionCall: "low_energy" })).petXp, XP_AMOUNTS.call);
   });
 
   it("break calls pay the same as any other call", () => {

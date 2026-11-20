@@ -83,7 +83,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 | Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle (configurable per custom character); max 3 snacks on floor simultaneously — 4th refused with toast; streak resets on meal, play, pat, or sleep | `[x]`  |
 | Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; resets snack streak | `[x]`  |
 | Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; resets snack streak | `[x]`  |
-| Sleep       | Energy regenerates; 3% per-tick chance to recover from sickness | Resets snack streak | `[x]`  |
+| Sleep       | Energy regenerates; 3% per-tick chance to recover from sickness | Manual sleep requires energy < 40 (fixed threshold, currently 2 × pat cost); refusal preserves snack streak/call/XP; normal Wake and automatic break naps unchanged | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
 | Medicine    | Cures sickness after 3 doses (no health boost)   | —                                        | `[x]`  |
