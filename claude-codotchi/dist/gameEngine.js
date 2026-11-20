@@ -193,6 +193,8 @@ const OFFLINE_DECAY_MAX_FRACTION = 0.60;
 // ---------------------------------------------------------------------------
 /** Active (non-idle) ticks the player has to respond before a call expires (20 × 3 s = 1 min). */
 export const ATTENTION_CALL_RESPONSE_TICKS = 20;
+/** Fixed response window for attention-based calls: 10 active minutes at 3 s/tick. */
+export const ATTENTION_CALL_EXPIRY_TICKS = 200;
 /** Hunger stat at or below which a hunger attention call fires. */
 export const ATTENTION_HUNGER_THRESHOLD = 25;
 /** Happiness stat at or below which an unhappiness attention call fires. */
@@ -335,7 +337,6 @@ export const TICKS_PER_GAME_DAY_SLEEPING = Math.round(5 * TICKS_PER_MINUTE * 0.8
 /** Sensible defaults used when no explicit config is provided. */
 export const DEFAULT_GAME_CONFIG = {
     attentionCallsEnabled: true,
-    attentionCallExpiryTicks: 200, // "standard" = 10 min
     attentionCallRateDivisor: 3.0, // "fast"
     devMode: false,
     devModeAgingMultiplier: 10,
@@ -701,6 +702,13 @@ export function careTierLabel(careScore) {
     const tier = tierFromCareScore(careScore);
     const labels = { best: "Excellent", mid: "Good", low: "Poor" };
     return labels[tier];
+}
+/** Plain post-mortem care score, only for an old-age death (including reloaded saves). */
+export function oldAgeCareScore(state) {
+    if (state.alive || !state.recentEventLog.includes("died_of_old_age")) {
+        return null;
+    }
+    return Math.round(computeCareScore(state) * 100);
 }
 // ---------------------------------------------------------------------------
 // Sprite type — randomly assigned at hatch
@@ -1205,8 +1213,7 @@ function tickCore(state, isIdle, isDeepIdle, config) {
     if (config.attentionCallsEnabled) {
         if (activeAttentionCall !== null && !isIdle) {
             attentionCallActiveTicks += 1;
-            // poop / misbehaviour / gift and the whim calls (play / pat / craving) use the
-            // configurable expiry window; all other call types use the fixed 1-minute (20-tick) window.
+            // Attention-based calls get 10 active minutes; need-based calls get 1 active minute.
             const expiryTicks = (activeAttentionCall === "poop" ||
                 activeAttentionCall === "misbehaviour" ||
                 activeAttentionCall === "gift" ||
@@ -1214,7 +1221,7 @@ function tickCore(state, isIdle, isDeepIdle, config) {
                 activeAttentionCall === "pat" ||
                 activeAttentionCall === "craving" ||
                 activeAttentionCall === "break")
-                ? config.attentionCallExpiryTicks
+                ? ATTENTION_CALL_EXPIRY_TICKS
                 : ATTENTION_CALL_RESPONSE_TICKS;
             if (attentionCallActiveTicks >= expiryTicks) {
                 // Call expired — apply stat penalty

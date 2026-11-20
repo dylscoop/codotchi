@@ -50,6 +50,7 @@ import { DEFAULT_PRICING, PricingTable, buildPricingTable, messageCost } from ".
 
 import {
   PetState,
+  oldAgeCareScore,
   GameConfig,
   tick,
   applyOfflineDecay,
@@ -1537,7 +1538,11 @@ const plugin: Plugin = async (ctx) => {
       const allDead = active.every(p => !p.state.alive);
       if (allDead) {
         const names = active.map(p => p.state.name).join(" and ");
-        return ret(notification + `${names} has passed away. Start a new game in VS Code or PyCharm to continue, or wait — the OpenCode pet will respawn automatically.`);
+        const scores = active.flatMap(p => {
+          const score = oldAgeCareScore(p.state);
+          return score === null ? [] : [`${active.length > 1 ? p.state.name + "\n" : ""}Care score: ${score}`];
+        });
+        return ret(notification + [`${names} has passed away. Start a new game in VS Code or PyCharm to continue, or wait — the OpenCode pet will respawn automatically.`, ...scores].join("\n"));
       }
 
       // Only operate on alive pets

@@ -14,6 +14,7 @@ import {
   serialiseState,
   isDeathlessPet,
   markDeathless,
+  rollOldAgeDeath,
   DEFAULT_GAME_CONFIG,
   GameConfig,
   PetState,
@@ -196,6 +197,35 @@ describe("afterlife", () => {
 describe("deathless is a menu choice, not a setting", () => {
   const root = path.join(__dirname, "../../..");
   const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
+
+  it("response-time settings are absent in both IDEs", () => {
+    const pkg = JSON.parse(read("package.json"));
+    for (const section of pkg.contributes.configuration) {
+      assert.ok(!("codotchi.attentionCallExpiry" in section.properties));
+    }
+    for (const file of ["CodotchiSettings.kt", "CodotchiConfigurable.kt", "CodotchiPlugin.kt"]) {
+      assert.ok(!read(`../pycharm/src/main/kotlin/com/codotchi/${file}`).includes("attentionCallExpiry"));
+    }
+  });
+
+  it("old-age guards and care-based chances are identical for deathless pets", () => {
+    for (const stage of ["adult", "senior"]) {
+      for (const ageDays of [364, 365, 730, 1825, 2000]) {
+        for (const neglected of [false, true]) {
+          const pet = makePet({ stage, ageDays, happiness: neglected ? 0 : 100,
+            discipline: neglected ? 0 : 100, weight: neglected ? 99 : 40,
+            lifetimeCareMistakes: neglected ? 20 : 0 });
+          const deathless = markDeathless(pet);
+          for (const random of [0, 0.0009, 0.001, 0.005, 0.01, 0.025, 0.05, 0.075, 0.10, 0.999]) {
+            const normalResult = rollOldAgeDeath(pet, random);
+            const deathlessResult = rollOldAgeDeath(deathless, random);
+            assert.equal(deathlessResult.alive, normalResult.alive);
+            if (stage !== "senior" || ageDays < 365) { assert.equal(deathlessResult.alive, true); }
+          }
+        }
+      }
+    }
+  });
 
   it("has no codotchi.deathless setting in VS Code or PyCharm", () => {
     const pkg = JSON.parse(read("package.json"));

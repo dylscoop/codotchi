@@ -95,7 +95,7 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 
 The pet fires IDE notifications demanding care, with a **1-minute active
 (non-idle) response window** (the random calls use the configurable
-`codotchi.attentionCallExpiry` window instead). Idle time does NOT count toward the timer.
+fixed 10-minute window instead). Idle time does NOT count toward the timer.
 
 The notification closes itself once the call is answered, expires or is replaced
 (`shouldDismissAttention`, since v2.32.2). VS Code shows it with `withProgress`
@@ -119,7 +119,8 @@ call stays active; PyCharm's `BALLOON` group already auto-hides.
 | Every 30 active, awake minutes (`BREAK_CALL_INTERVAL_TICKS = 600`; only praising the call restarts the timer — idle/deep idle pause it, an ignored call re-fires after its 5-min expiry cooldown; after need calls, before whims) | `break` | Praise (+happiness +15, pet takes a 5-minute break nap — `BREAK_NAP_TICKS = 100`; can't be woken early, every stat but energy frozen, still ages) | None — no stat penalty, no care mistake | `[x]`  |
 
 Notes:
-- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (1 min) for need-based calls; poop, misbehaviour, gift, play, pat, craving and break use `config.attentionCallExpiryTicks` (Needy 80 / Standard 200 / Chilled 400 ticks = 4 / 10 / 20 min; v2.21.1). The chance counters for random calls only advance on active ticks, and misbehaviour / gift never fire while idle (BUGFIX-169)
+
+- Response window: `ATTENTION_CALL_RESPONSE_TICKS = 20` active ticks (1 min) for need-based calls; poop, misbehaviour, gift, play, pat, craving and break use fixed `ATTENTION_CALL_EXPIRY_TICKS = 200` (10 active min). Neither window is configurable; legacy expiry settings are ignored. The chance counters for random calls only advance on active ticks, and misbehaviour / gift never fire while idle (BUGFIX-169).
 - Post-answer cooldown: `ATTENTION_ANSWER_COOLDOWN_TICKS = 100` ticks (5 min)
 - Post-expiry cooldown: `ATTENTION_EXPIRY_COOLDOWN_TICKS = 100` ticks (5 min)
 - Cooldowns only count down on active (non-idle) ticks. TS and Kotlin share the same values (BUG-S06 / BUGFIX-166)
@@ -772,13 +773,13 @@ Status: `[x]`
 | Energy stays 0 while awake → health damage (2/tick) | `[x]` | `exhaustion_damage` event; slower than starvation/unhappiness (2 vs 5/tick) |
 | Sleep decay: hunger/happiness lose 1 every 5th sleeping tick | `[x]` | Prevents infinite stat preservation during extended sleep |
 | Sickness health drain message | `[x]` | `sickness_damage` event; humanised in event log |
-| Death screen with age/stage stats | `[x]` | |
+| Death screen with age/stage stats | `[x]` | Old-age deaths also show only `Care score: N` (existing current-stage score, rounded 0–100), including after reload; other deaths do not show it. |
 | Cat moves on instead of dying | `[x]` | v2.34.1: a cat's `died` / `died_of_old_age` reads "has gone back to its original owners" or "has gone off hunting" and moved on (picked from `spawnedAt`); trots off instead of the halo; game over title "<name> has moved on."; toast in both IDEs |
-| Senior natural death (age-scaled chance after age ≥ 365d) | `[x]` | Roll fires once per day boundary; chance ramps from 0.1%–1.0%/day at day 365 (best/worst care) to 5%–10%/day at day 1825 (5 in-game years), capped at peak; `ageFactor = clamp((ageDays−365)/(1825−365),0,1)`; `minChance = lerp(0.001, 0.05, ageFactor)`; `maxChance = lerp(0.010, 0.10, ageFactor)`; `chance = lerp(minChance, maxChance, riskScore)`; riskScore = avg of happiness, weight, and discipline factors; fires `died_of_old_age` event with message "passed away of unforeseen natural causes due to old age." and IDE popup notification |
+| Senior natural death (age-scaled chance after age ≥ 365d) | `[x]` | Roll fires once per eligible active day boundary; chance ramps from 0.1%–1.0%/day at day 365 (best/worst care) to 5%–10%/day at day 1825, capped there. Risk averages happiness, weight, discipline and lifetime care-mistake factors. Same probabilities for deathless pets. See [Developer Notes](../DEV_NOTES.md#senior-old-age-chances-and-deathless-mode) for the full table and formulas. |
 | Senior age-related random sickness (after age ≥ 365d) | `[x]` | Fires `became_sick_old_age` event once per day boundary; chance = `3 × computeOldAgeDeathChance(state)` (`OLD_AGE_SICK_CHANCE_MULTIPLIER = 3`); skipped if already sick; message: "came down with an age-related illness." |
 | Peaceful death animation | `[x]` | Covered by `died` reaction in section 5.6 (v2.22.0) |
 | `[S]` `gotchi.offlineDecayMaxFraction` (default 0.60) | `[ ]` | Cap offline stat loss; value hardcoded, expose as setting |
-| `[S]` Deathless mode (`codotchi.deathless`, default off) | `[x]` | v2.35.0: `GameConfig.deathless` floors health at 1 (no death from neglect or sickness); since v2.35.2 the floor also applies whenever the pet is marked deathless, so a deathless pet stays deathless for life even with the setting off; sickness, care mistakes and the old-age roll (seniors only) still apply. First setting on the settings page in both IDEs, and a "♾ Deathless" checkbox on the hatch (Menu / setup) screen that is sent with `new_game` and sets the setting for the new pet; "♾ DEATHLESS" badge on the game screen while on. Any tick with it on sets `leaderboardIneligible = "deathless"` (sealed, sticky — reuses the existing sealed field, so `SEAL_VERSION` is unchanged); `leaderboardBlockedReason` blocks submit and live push; the death never updates the high score |
+| Deathless mode (Menu choice, default off) | `[x]` | Health is floored at 1 for life: no death from neglect or sickness, but sickness and care mistakes still apply. Seniors at day 365+ retain exactly the normal care-based old-age death chances. Selected with confirmation on the Menu/setup screen, not an IDE setting; shown by the "♾ DEATHLESS" badge. The sticky sealed `leaderboardIneligible = "deathless"` mark blocks submit, live push and high scores. |
 | Afterlife: cremation record | `[x]` | v2.35.0, reworked in v2.35.1: the death screen has a single **⚱ Cremate** button; a pet left uncremated when a new one hatches is cremated then. Each cremation adds an entry (name, age, real time alive, date, ♾ marker; stage and cause in the tooltip), newest first, capped at 100. Stored per IDE (`codotchi.afterlife.v1` in VS Code globalState / PyCharm PropertiesComponent). "View Afterlife" toggle on the Menu (setup) screen with **Edit** (✕ per entry, `afterlife_remove`) and **Clear Afterlife** with confirm (`afterlife_clear`); `codotchi.afterlifeName` renames it. Logic in `vscode/src/afterlife.ts` / `pycharm/.../Afterlife.kt` |
 
 ---

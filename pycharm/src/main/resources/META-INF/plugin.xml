@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.38.1</version>
+    <version>2.38.2</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -189,6 +189,8 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+<h3>2.38.2</h3>
+<ul><li>Attention-based calls have a fixed 10-minute response window; need-based calls still allow 1 minute.</li><li>Old-age deaths show the care score without extra explanation.</li></ul>
 <h3>2.38.1</h3>
 <ul>
 <li><b>Partners keep moving</b> - in the friends preview, married partners wander, come over to meet your pet, and leave and return now and then instead of standing still. Only one friend or partner appears at a time; the next guest waits for the goodbye to finish. Reduced motion keeps the partner still.</li>

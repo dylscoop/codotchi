@@ -2569,3 +2569,21 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** Only active visitors entered the wandering branch; married partners fell through to a fixed position forever. When a friend's visit ended, the partner could reappear while the friend was still waving goodbye, showing two social guests at once.
 
 **Fix:** Partners now share the visitor's wander, meetings and game-follow behaviour. A webview-only schedule alternates 30–90 s stays with 20–60 s absences; friends take priority, with a short absence after a visit ends. Track the last drawn guest regardless of role and finish its exit before drawing another. Wedding hearts require the actual partner and marriage resets the stay. Sleep, stage games, disabled social, eggs and death clear pending guests; reduced motion keeps a static partner without scheduled absences. Executable webview integration tests cover the full lifecycle and exclusive handoffs.
+
+## BUGFIX-219 — Attention response time could be changed
+
+**Status:** Fixed (branch `fix/old-age-care-score-and-call-timers`)
+**File:** `packages/core/src/gameEngine.ts`, `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
+
+**Problem:** Attention-based calls allowed configurable 4-, 10- or 20-minute response windows rather than a fixed 10 minutes.
+
+**Fix:** Use `ATTENTION_CALL_EXPIRY_TICKS = 200` for all attention-based calls and remove the expiry setting and runtime config field. Need-based calls retain 20 ticks (1 minute). Idle time remains excluded; existing saved expiry settings are ignored.
+
+## BUGFIX-220 — Old-age death did not show the care score
+
+**Status:** Fixed (branch `fix/old-age-care-score-and-call-timers`)
+**File:** `packages/core/src/gameEngine.ts`, `vscode/media/sidebar.js`, `pycharm/src/main/kotlin/com/codotchi/CodotchiBrowserPanel.kt`, terminal/Desktop death renderers
+
+**Problem:** A pet dying of old age had no plain post-mortem care score, and the transient death event was unavailable after reloading the save.
+
+**Fix:** Detect the cause using the persisted event log and show only `Care score: N`, where N is the existing current-stage care score rounded to 0–100. No tier, explanation or risk information accompanies the score. Other deaths and living pets do not show it. Deathless senior probabilities are unchanged and covered by deterministic parity tests.

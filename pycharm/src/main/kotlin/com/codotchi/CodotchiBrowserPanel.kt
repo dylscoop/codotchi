@@ -288,7 +288,9 @@ class CodotchiBrowserPanel(
  * The pet state as the webview gets it. Nulls are kept (`"friend":null`, …) so the
  * shape matches serialiseState() in gameEngine.ts, which VS Code posts as-is.
  */
-internal fun petStateJson(state: PetState): String = STATE_GSON.toJson(state)
+internal fun petStateJson(state: PetState): String = STATE_GSON.toJsonTree(state).asJsonObject.apply {
+    addProperty("oldAgeCareScore", com.codotchi.engine.oldAgeCareScore(state))
+}.toString()
 
 private val STATE_GSON: Gson = GsonBuilder().serializeNulls().create()
 

@@ -40,6 +40,7 @@ import {
   tierFromCareScore,
   characterForStage,
   computeCareScore,
+  oldAgeCareScore,
   careTierLabel,
   happinessDeltaForMinigame,
   serialiseState,
@@ -66,6 +67,8 @@ import {
   DEFAULT_GAME_CONFIG,
   ATTENTION_ANSWER_COOLDOWN_TICKS,
   ATTENTION_EXPIRY_COOLDOWN_TICKS,
+  ATTENTION_CALL_EXPIRY_TICKS,
+  ATTENTION_CALL_RESPONSE_TICKS,
   BREAK_CALL_INTERVAL_TICKS,
   BREAK_NAP_TICKS,
   GIFT_PRAISE_HAPPINESS_BOOST,
@@ -604,7 +607,7 @@ describe("tick — whim attention calls (play / pat / craving)", () => {
   });
 
   it("defaults to the standard 10-minute expiry and the fast (3.0) rate divisor", () => {
-    assert.equal(DEFAULT_GAME_CONFIG.attentionCallExpiryTicks, 200);
+    assert.equal(ATTENTION_CALL_EXPIRY_TICKS, 200);
     assert.equal(DEFAULT_GAME_CONFIG.attentionCallRateDivisor, 3.0);
   });
 
@@ -765,14 +768,14 @@ describe("tick — whim attention calls (play / pat / craving)", () => {
   });
 
   for (const type of ["play", "pat", "craving"] as const) {
-    it(`an ignored ${type} call costs 10 health and a care mistake, using the configurable expiry`, () => {
-      const cfg: GameConfig = { ...DEFAULT_GAME_CONFIG, attentionCallExpiryTicks: 50 };
+    it(`an ignored ${type} call costs 10 health and a care mistake after 10 minutes`, () => {
+      const cfg: GameConfig = { ...DEFAULT_GAME_CONFIG };
       const pet = makePet({
         activeAttentionCall: type, cravingFood: type === "craving" ? "meal" : null,
-        attentionCallActiveTicks: 48, health: 100, careMistakes: 0, nextPoopIntervalTicks: 99999,
+        attentionCallActiveTicks: 198, health: 100, careMistakes: 0, nextPoopIntervalTicks: 99999,
       });
       const stillOpen = tick(pet, false, false, cfg);
-      assert.equal(stillOpen.activeAttentionCall, type, "tick 49 of 50 — still open");
+      assert.equal(stillOpen.activeAttentionCall, type, "tick 199 of 200 — still open");
       const expired = tick(stillOpen, false, false, cfg);
       assert.ok(expired.events.includes(`attention_call_expired_${type}`));
       assert.equal(expired.health, 90);
@@ -2879,10 +2882,50 @@ describe("integration — play + boss_battle minigame", () => {
 // Developer mode
 // ---------------------------------------------------------------------------
 
+describe("integration — fixed attention response windows", () => {
+  for (const type of ["poop", "misbehaviour", "gift", "play", "pat", "craving", "break",
+    "hunger", "unhappiness", "sick", "low_energy", "critical_health"] as AttentionCallType[]) {
+    it(`${type} expires at its fixed boundary, with idle time excluded`, () => {
+      const needs = ["hunger", "unhappiness", "sick", "low_energy", "critical_health"];
+      const limit = needs.includes(type) ? 20 : 200;
+      assert.equal(needs.includes(type) ? ATTENTION_CALL_RESPONSE_TICKS : ATTENTION_CALL_EXPIRY_TICKS, limit);
+      let pet = makePet({ stage: "adult", activeAttentionCall: type,
+        attentionCallActiveTicks: limit - 2, nextPoopIntervalTicks: 99999 });
+      pet = tick(pet, true);
+      assert.equal(pet.attentionCallActiveTicks, limit - 2);
+      pet = tick(pet);
+      assert.equal(pet.activeAttentionCall, type);
+      assert.equal(pet.attentionCallActiveTicks, limit - 1);
+      pet = tick(pet);
+      assert.ok(pet.events.includes(`attention_call_expired_${type}`));
+    });
+  }
+});
+
+describe("integration — old-age care score", () => {
+  it("shows the existing rounded care score after death and save/load, not a risk score", () => {
+    const senior = makePet({ stage: "senior", ageDays: 365, careScoreTicks: 10,
+      careScoreHungerSum: 730, careScoreHappinessSum: 810, careScoreHealthSum: 920,
+      discipline: 67, poops: 1 });
+    assert.equal(oldAgeCareScore(senior), null);
+    const dead = rollOldAgeDeath(senior, 0);
+    assert.equal(oldAgeCareScore(dead), Math.round(computeCareScore(dead) * 100));
+    const restored = deserialiseState(serialiseState(dead));
+    assert.deepEqual(restored.events, []);
+    assert.equal(oldAgeCareScore(restored), oldAgeCareScore(dead));
+  });
+
+  it("has no score for other deaths or living pets, and uses the neutral fallback", () => {
+    assert.equal(oldAgeCareScore(makePet({ alive: false, recentEventLog: ["died"] })), null);
+    assert.equal(oldAgeCareScore(makePet({ recentEventLog: ["died_of_old_age"] })), null);
+    const dead = rollOldAgeDeath(makePet({ stage: "senior", ageDays: 365, careScoreTicks: 0 }), 0);
+    assert.equal(oldAgeCareScore(dead), 50);
+  });
+});
+
 describe("developer mode — health floor", () => {
   const devConfig: GameConfig = {
     attentionCallsEnabled: false,
-    attentionCallExpiryTicks: 50,
     attentionCallRateDivisor: 1.0,
     devMode: true,
     devModeAgingMultiplier: 1,
@@ -2911,7 +2954,6 @@ describe("developer mode — health floor", () => {
   it("pet still dies normally when devMode is false", () => {
     const normalConfig: GameConfig = {
       attentionCallsEnabled: false,
-      attentionCallExpiryTicks: 50,
       attentionCallRateDivisor: 1.0,
       devMode: false,
       devModeAgingMultiplier: 1,
@@ -2929,7 +2971,6 @@ describe("developer mode — health floor", () => {
   it("devModeHealthFloor=0 allows pet to die in dev mode", () => {
     const floorZeroConfig: GameConfig = {
       attentionCallsEnabled: false,
-      attentionCallExpiryTicks: 50,
       attentionCallRateDivisor: 1.0,
       devMode: true,
       devModeAgingMultiplier: 1,
@@ -2947,7 +2988,6 @@ describe("developer mode — health floor", () => {
   it("devModeHealthFloor=25 keeps health at 25 when damage would push it below", () => {
     const floor25Config: GameConfig = {
       attentionCallsEnabled: false,
-      attentionCallExpiryTicks: 50,
       attentionCallRateDivisor: 1.0,
       devMode: true,
       devModeAgingMultiplier: 1,
@@ -2966,7 +3006,6 @@ describe("developer mode — aging multiplier", () => {
   it("devModeAgingMultiplier=10 advances dayTimer 10x faster than normal", () => {
     const normal: GameConfig = {
       attentionCallsEnabled: false,
-      attentionCallExpiryTicks: 50,
       attentionCallRateDivisor: 1.0,
       devMode: false,
       devModeAgingMultiplier: 1,
@@ -2974,7 +3013,6 @@ describe("developer mode — aging multiplier", () => {
     };
     const fast: GameConfig = {
       attentionCallsEnabled: false,
-      attentionCallExpiryTicks: 50,
       attentionCallRateDivisor: 1.0,
       devMode: true,
       devModeAgingMultiplier: 10,
@@ -3001,7 +3039,6 @@ describe("developer mode — aging multiplier", () => {
   it("devModeAgingMultiplier=1 produces the same dayTimer delta as devMode=false", () => {
     const nodev: GameConfig = {
       attentionCallsEnabled: false,
-      attentionCallExpiryTicks: 50,
       attentionCallRateDivisor: 1.0,
       devMode: false,
       devModeAgingMultiplier: 1,
@@ -3009,7 +3046,6 @@ describe("developer mode — aging multiplier", () => {
     };
     const dev1: GameConfig = {
       attentionCallsEnabled: false,
-      attentionCallExpiryTicks: 50,
       attentionCallRateDivisor: 1.0,
       devMode: true,
       devModeAgingMultiplier: 1,

@@ -8,6 +8,7 @@
 
 import {
   type PetState,
+  oldAgeCareScore,
   CODE_ACTIVITY_THROTTLE_SECONDS,
   feedMeal,
   startSnack,
@@ -79,7 +80,9 @@ const REFUSAL_MESSAGES: Record<string, string> = {
 /** Build the plain-text pet display returned by every tool. */
 function renderText(state: PetState, _session: { interactionsToday: number; treatsToday: number }): string {
   if (!state.alive) {
-    return `${state.name} is no longer with us. Start a new chat to hatch a fresh pet.`;
+    const score = oldAgeCareScore(state);
+    return `${state.name} is no longer with us. Start a new chat to hatch a fresh pet.` +
+      (score === null ? "" : `\nCare score: ${score}`);
   }
   const refusal = state.events.find((e) => REFUSAL_MESSAGES[e]);
   const socialMsg = socialActionMessage(state);

@@ -345,7 +345,6 @@ data class GameConfig(
      * Response-window in ticks for poop, misbehaviour, and gift calls.
      * needy=80 (4 min), standard=200 (10 min), chilled=400 (20 min).
      */
-    val attentionCallExpiryTicks: Int = 200,
     /**
      * Divisor applied to the base and max logChance probabilities for all
      * probabilistic call spawns (poop, misbehaviour, gift).
@@ -391,6 +390,8 @@ val DEFAULT_GAME_CONFIG = GameConfig()
 
 /** Active (non-idle) ticks the player has to respond before a call expires (20 × 3 s = 1 min). */
 const val ATTENTION_CALL_RESPONSE_TICKS: Int = 20
+/** Fixed response window for attention-based calls: 10 active minutes at 3 s/tick. */
+const val ATTENTION_CALL_EXPIRY_TICKS: Int = 200
 
 /** Hunger stat at or below which a hunger attention call fires. */
 const val ATTENTION_HUNGER_THRESHOLD: Int = 25

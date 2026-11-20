@@ -387,7 +387,10 @@ async function main() {
   // by the model into a markdown chat response (see BUGFIX-136), not printed
   // to a raw terminal, so escape codes would appear as garbage and stray
   // underscores in the art would be parsed as markdown emphasis.
-  if (showArt && cfg.terminalEnabled !== false) {
+  if (!state.alive && livePets.length === 0) {
+    const score = ge.oldAgeCareScore(state);
+    process.stdout.write(`${state.name} has passed away.` + (score === null ? "" : `\nCare score: ${score}`) + "\n");
+  } else if (showArt && cfg.terminalEnabled !== false) {
     // Only show the local Claude Code pet when no IDE pet is live — it is a
     // fallback placeholder and should be suppressed while an IDE extension is active.
     if (livePets.length === 0) {
@@ -401,6 +404,11 @@ async function main() {
 
     // Also render any live IDE pets (VS Code / PyCharm) that are active.
     for (const { ide, state: ideState } of livePets) {
+      if (!ideState.alive) {
+        const score = ge.oldAgeCareScore(ideState);
+        process.stdout.write(`${ideState.name} has passed away.` + (score === null ? "" : `\nCare score: ${score}`) + "\n");
+        continue;
+      }
       const ideContext = aa.buildContextualSpeech(
         ideState, 0, 0, 0, 0, false,
         0, 0, cfg.warnThresholdUsd ?? 30, cfg.shoutThresholdUsd ?? 50, 0, 0, 0, { costStyle: "hourlyRate" }

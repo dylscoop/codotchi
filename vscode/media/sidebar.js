@@ -4822,6 +4822,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "Stage reached: " + state.stage + "." +
       (socialEnabled && (state.generation || 1) > 1 ? "\nGeneration " + state.generation + "." : "") +
       (socialEnabled && state.partner ? "\nMarried to " + state.partner.name + "." : "");
+    if (!state.alive && typeof state.oldAgeCareScore === "number") {
+      deadStats.textContent += "\nCare score: " + state.oldAgeCareScore;
+    }
     if (deadHeir) {
       deadHeir.classList.toggle("hidden", !(HEIRS_ENABLED && socialEnabled && state.heirEgg));
       if (state.heirEgg) {

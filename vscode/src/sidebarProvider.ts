@@ -14,6 +14,7 @@ import * as os from "os";
 
 import {
   PetState,
+  oldAgeCareScore,
   HighScore,
   createPet,
   feedMeal,
@@ -883,7 +884,7 @@ export class SidebarProvider
 
     this.hosts.broadcast({
       type: "stateUpdate",
-      state,
+      state: { ...state, oldAgeCareScore: oldAgeCareScore(state) },
       dailies: dailiesView(state),
       levelsEnabled: vscode.workspace.getConfiguration("codotchi").get<boolean>("enableLevels", false),
       bossAccess: this.bossAccess(),

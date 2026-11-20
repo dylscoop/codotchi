@@ -15,7 +15,6 @@ import com.intellij.openapi.components.*
  *  - [statusBarEnabled]       : show the pet in the status bar, with ⚠ during attention calls (default true)
  *  - [idleThresholdSeconds]   : seconds of no IDE activity before idle mode (default 120)
  *  - [idleDeepThresholdSeconds]: seconds of sustained idle before deep-idle mode (default 600)
- *  - [attentionCallExpiry]    : "needy" | "standard" | "chilled" — response window for poop/misbehaviour/gift/play/pat/craving
  *  - [attentionCallRate]      : "fast" | "medium" | "slow" — spawn rate for probabilistic calls (poop/misbehaviour/gift/play/pat/craving)
  *  - [stageHeight]            : "compact" | "normal" | "tall" | "extraTall" — pet stage height preset (default "normal")
  *  - [reducedMotion]          : disable rAF animation loop (default false)
@@ -61,7 +60,6 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         var statusBarEnabled: Boolean = true
         var idleThresholdSeconds: Int = 120
         var idleDeepThresholdSeconds: Int = 600
-        var attentionCallExpiry: String = "standard"  // "needy" | "standard" | "chilled"
         var attentionCallRate:   String = "fast"      // "fast" | "medium" | "slow"
         var stageHeight: String = "normal"  // "compact" | "normal" | "tall" | "extraTall"
         var reducedMotion: Boolean = false
@@ -131,9 +129,6 @@ class CodotchiSettings : PersistentStateComponent<CodotchiSettings.State> {
         get() = _state.idleDeepThresholdSeconds
         set(v) { _state.idleDeepThresholdSeconds = v }
 
-    var attentionCallExpiry: String
-        get() = _state.attentionCallExpiry
-        set(v) { _state.attentionCallExpiry = v }
 
     var attentionCallRate: String
         get() = _state.attentionCallRate

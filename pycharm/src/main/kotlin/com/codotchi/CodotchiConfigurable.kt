@@ -38,7 +38,6 @@ class CodotchiConfigurable : Configurable {
     private var statusBarEnabledCheck:     JCheckBox?          = null
     private var idleThresholdSpinner:      JSpinner?           = null
     private var idleDeepThresholdSpinner:  JSpinner?           = null
-    private var attentionCallExpiryCombo:  JComboBox<String>?  = null
     private var attentionCallRateCombo:    JComboBox<String>?  = null
     private var stageHeightCombo:          JComboBox<String>?  = null
     private var reducedMotionCheck:        JCheckBox?          = null
@@ -82,7 +81,6 @@ class CodotchiConfigurable : Configurable {
         val statusBarEnabledCheckbox = JCheckBox("Show the pet in the status bar (⚠ while it has an attention call)")
         val idleSpinner     = JSpinner(SpinnerNumberModel(120, 10, 3600, 10))
         val deepIdleSpinner = JSpinner(SpinnerNumberModel(600, 30, 7200, 30))
-        val expiryCombo     = JComboBox(arrayOf("Needy (4 min)", "Standard (10 min)", "Chilled (20 min)"))
         val rateCombo       = JComboBox(arrayOf("Fast", "Medium", "Slow"))
         val stageHeightDropdown = JComboBox(arrayOf("Compact (150 px)", "Normal (180 px)", "Tall (210 px)", "Extra tall (240 px)"))
         val reducedMotionCheckbox = JCheckBox("Reduced motion (disable animation)")
@@ -143,7 +141,6 @@ class CodotchiConfigurable : Configurable {
         statusBarEnabledCheck    = statusBarEnabledCheckbox
         idleThresholdSpinner     = idleSpinner
         idleDeepThresholdSpinner = deepIdleSpinner
-        attentionCallExpiryCombo = expiryCombo
         attentionCallRateCombo   = rateCombo
         stageHeightCombo         = stageHeightDropdown
         reducedMotionCheck       = reducedMotionCheckbox
@@ -203,7 +200,6 @@ class CodotchiConfigurable : Configurable {
 
         // General
         addFull(panel, attentionCheck)
-        addLabeled(panel, "Attention call expiry:", expiryCombo)
         addLabeled(panel, "Attention call rate:", rateCombo)
         addFull(panel, osNotificationsCheckbox)
         addFull(panel, statusBarEnabledCheckbox)
@@ -286,7 +282,6 @@ class CodotchiConfigurable : Configurable {
         val uiStatusBarEnabled = statusBarEnabledCheck?.isSelected ?: true
         val uiIdle       = (idleThresholdSpinner?.value as? Int) ?: 120
         val uiDeepIdle   = (idleDeepThresholdSpinner?.value as? Int) ?: 600
-        val uiExpiry     = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         val uiRate       = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         val uiStageHeight = stageHeightIndexToKey(stageHeightCombo?.selectedIndex ?: 1)
         val uiReducedMotion = reducedMotionCheck?.isSelected ?: false
@@ -319,7 +314,6 @@ class CodotchiConfigurable : Configurable {
             || uiStatusBarEnabled != settings.statusBarEnabled
             || uiIdle != settings.idleThresholdSeconds
             || uiDeepIdle != settings.idleDeepThresholdSeconds
-            || uiExpiry != settings.attentionCallExpiry
             || uiRate != settings.attentionCallRate
             || uiStageHeight != settings.stageHeight
             || uiReducedMotion != settings.reducedMotion
@@ -359,7 +353,6 @@ class CodotchiConfigurable : Configurable {
         settings.statusBarEnabled       = statusBarEnabledCheck?.isSelected ?: true
         settings.idleThresholdSeconds   = (idleThresholdSpinner?.value as? Int) ?: 120
         settings.idleDeepThresholdSeconds = (idleDeepThresholdSpinner?.value as? Int) ?: 600
-        settings.attentionCallExpiry    = expiryIndexToKey(attentionCallExpiryCombo?.selectedIndex ?: 1)
         settings.attentionCallRate      = rateIndexToKey(attentionCallRateCombo?.selectedIndex ?: 0)
         settings.stageHeight            = stageHeightIndexToKey(stageHeightCombo?.selectedIndex ?: 1)
         settings.reducedMotion          = reducedMotionCheck?.isSelected ?: false
@@ -412,7 +405,6 @@ class CodotchiConfigurable : Configurable {
         statusBarEnabledCheck?.isSelected     = settings.statusBarEnabled
         idleThresholdSpinner?.value        = settings.idleThresholdSeconds
         idleDeepThresholdSpinner?.value    = settings.idleDeepThresholdSeconds
-        attentionCallExpiryCombo?.selectedIndex = expiryKeyToIndex(settings.attentionCallExpiry)
         attentionCallRateCombo?.selectedIndex   = rateKeyToIndex(settings.attentionCallRate)
         stageHeightCombo?.selectedIndex         = stageHeightKeyToIndex(settings.stageHeight)
         reducedMotionCheck?.isSelected          = settings.reducedMotion
@@ -444,8 +436,6 @@ class CodotchiConfigurable : Configurable {
 
     // ── Enum helpers ───────────────────────────────────────────────────────
 
-    private fun expiryIndexToKey(index: Int) = when (index) { 0 -> "needy"; 2 -> "chilled"; else -> "standard" }
-    private fun expiryKeyToIndex(key: String) = when (key) { "needy" -> 0; "chilled" -> 2; else -> 1 }
     private fun rateIndexToKey(index: Int)  = when (index) { 1 -> "medium"; 2 -> "slow"; else -> "fast" }
     private fun rateKeyToIndex(key: String) = when (key) { "medium" -> 1; "slow" -> 2; else -> 0 }
     private fun petSizeIndexToKey(index: Int) = when (index) { 0 -> "small"; 2 -> "large"; else -> "medium" }

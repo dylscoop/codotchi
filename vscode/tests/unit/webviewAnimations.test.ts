@@ -3,12 +3,38 @@ import * as assert from "node:assert/strict";
 import * as fs from "fs";
 import * as path from "path";
 import * as vm from "vm";
+import { createPet, rollOldAgeDeath, oldAgeCareScore, serialiseState, deserialiseState } from "../../src/gameEngine";
 
 // Checks for the webview reaction animations (sidebar.js) and the hatching
 // egg (sprites.js). PyCharm copies the same vscode/media files at build time.
 const media = path.join(__dirname, "../../../media");
 const repoRoot = path.join(__dirname, "../../../..");
 const sidebarSource = fs.readFileSync(path.join(media, "sidebar.js"), "utf8");
+
+describe("old-age care score display", () => {
+  it("adds only the score line after old-age death, including after reload", () => {
+    const start = sidebarSource.indexOf("  function renderDeadScreen(");
+    const end = sidebarSource.indexOf("  function drawGridOutline(", start);
+    const deadStats = { textContent: "" };
+    const context = vm.createContext({ deadStats, deadScreen: null, deadHeir: null,
+      deadTime: null, deadEventLog: null, highScoreSection: null,
+      leaderboardSection: null, lbDeleteSection: null, btnViewLB: null,
+      socialEnabled: false, formatAge: (age: number) => `${age} days` });
+    vm.runInContext(sidebarSource.slice(start, end), context);
+    const senior = { ...createPet("Pixel", "codeling"), stage: "senior", ageDays: 365 };
+    const dead = rollOldAgeDeath(senior, 0);
+    for (const pet of [dead, deserialiseState(serialiseState(dead))]) {
+      context.pet = { ...pet, oldAgeCareScore: oldAgeCareScore(pet) };
+      vm.runInContext("renderDeadScreen(pet, null)", context);
+      assert.equal(deadStats.textContent, "Pixel lived 365 days.\nStage reached: senior.\nCare score: 50");
+    }
+    for (const pet of [senior, { ...dead, recentEventLog: ["died"] }]) {
+      context.pet = { ...pet, oldAgeCareScore: oldAgeCareScore(pet) };
+      vm.runInContext("renderDeadScreen(pet, null)", context);
+      assert.ok(!deadStats.textContent.includes("Care score"));
+    }
+  });
+});
 
 function loadSpriteWindow(): Record<string, any> {
   const window: Record<string, unknown> = {};
