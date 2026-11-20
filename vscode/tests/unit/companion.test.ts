@@ -204,7 +204,7 @@ describe("companion: rendered size and calm direction changes", () => {
     return ctx;
   }
 
-  it("enlarges Stu by one-third at every size while preserving the cat and other species", () => {
+  it("keeps Stu's base sizes but scales only adults to 60%, preserving the companion", () => {
     const oldStu = { small: 0.375, medium: 0.5625, large: 0.75 };
     for (const size of ["small", "medium", "large"] as const) {
       const h = loadScene(size);
@@ -214,10 +214,13 @@ describe("companion: rendered size and calm direction changes", () => {
       for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
         const state = { ...stuAdult(), stage };
         const sz = h.companionSize(state);
-        const stuW = h.effectiveBWidth(state, Math.round(96 * h.petSizeMultiplier("stu") * h.STAGE_SCALES[stage]));
+        const expectedMult = oldStu[size] * 4 / 3 * (stage === "adult" ? 0.6 : 1);
+        assert.equal(h.petSizeMultiplier("stu", stage), expectedMult);
+        assert.equal(h.petSizeMultiplier("cat", stage), h.petSizeMultiplier("cat"));
+        const stuW = h.effectiveBWidth(state, Math.round(96 * h.petSizeMultiplier("stu", stage) * h.STAGE_SCALES[stage]));
+        assert.equal(stuW, Math.round(96 * expectedMult * h.STAGE_SCALES[stage]));
         assert.equal(sz.w, Math.round(sz.fullW * sz.f));
         assert.equal(sz.h, Math.round(sz.fullH * sz.f));
-        assert.ok(sz.w < stuW, `${size}/${stage}: cat narrower than Stu`);
         const box = h.drawCompanion(state, 300, null, 0, stuW);
         assert.equal(box.w, sz.w);
         assert.equal(box.y + box.h, 168, "cat stays on the floor");

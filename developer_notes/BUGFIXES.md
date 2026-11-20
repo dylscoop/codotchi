@@ -2596,3 +2596,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** Stu's reduced size multipliers made the adult companion appear too large beside him. The companion inherited a visitor's short random-turn intervals, and independent interaction branches could change its facing every frame as targets jittered.
 
 **Fix:** Enlarge only Stu by one-third at all pet-size settings; preserve both sprite proportions and the cat's existing size. Companion-only idle turns are scheduled 4–8 seconds apart, including after meetings and edge bounces. Final rendered facing requires a 350 ms settled direction and at least 1 second between turns, survives guest handoffs and stays fixed during sleep. Executable render integration tests cover sizing and direction stability without changing visitor timing.
+
+## BUGFIX-222 — Adult Stu is too large after the size rework
+
+**Status:** Fixed (branch `fix/stu-size-and-cat-turning`)
+**File:** `vscode/media/spriteConstants.js`, `vscode/media/sprites.js`, `vscode/media/sidebar.js` (shared with PyCharm)
+
+**Problem:** The previous all-stage enlargement made adult Stu too large. Changing the global stage scale or the whole species size table would also change other characters or Stu's younger and senior stages.
+
+**Fix:** Add an adult-only 0.6 stage multiplier for Stu and use it in both drawing and every layout calculation. Adult Stu is now 60% of his previous dimensions at each pet-size preset, with integer-pixel rounding. Other stages, species and companion size are unchanged. Regression tests cover all stages/presets and the actual adult raster width.

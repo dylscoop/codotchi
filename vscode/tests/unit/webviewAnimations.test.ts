@@ -912,11 +912,25 @@ describe("pet size multipliers (vscode/media/spriteConstants.js)", () => {
   });
 
   it("the sidebar layout box uses the same table as the renderer", () => {
-    assert.ok(sidebarSource.includes("return window.spritePetSizeMult(spriteType, ps);"));
+    assert.ok(sidebarSource.includes("return window.spritePetSizeMult(spriteType, ps, stage);"));
     assert.ok(!sidebarSource.includes("1.28 : 0.85"), "no separate cat/dog multiplier left in sidebar.js");
   });
 
-  for (const spriteType of ["cat", "dog"]) {
+  it("applies Stu's 60% tuning only to adults at every size setting", () => {
+    const w = loadSpriteWindow();
+    for (const size of ["small", "medium", "large"]) {
+      const base = w.spritePetSizeMult("stu", size);
+      for (const stage of ["egg", "baby", "child", "teen", "adult", "senior"]) {
+        assert.equal(w.spritePetSizeMult("stu", size, stage), base * (stage === "adult" ? 0.6 : 1));
+        for (const other of ["tim", "cat", "dog", "classic"]) {
+          assert.equal(w.spritePetSizeMult(other, size, stage), w.spritePetSizeMult(other, size));
+        }
+      }
+    }
+    assert.equal(w.spritePetSizeMult("stu", "bogus", "adult"), 0.75 * 0.6);
+  });
+
+  for (const spriteType of ["cat", "dog", "stu"]) {
     it(`a medium adult ${spriteType} is drawn exactly the sidebar's box width`, () => {
       const window: Record<string, unknown> = {};
       const offscreen = new Proxy({} as Record<string, unknown>, {
@@ -943,7 +957,7 @@ describe("pet size multipliers (vscode/media/spriteConstants.js)", () => {
         w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
         w.spriteHeightRatio, w.spriteQuadBellySag);
       // sidebar.js: Math.round(BASE_SIZE (96) * petSizeMultiplier * stageScale)
-      assert.equal(drawnW, Math.round(96 * w.spritePetSizeMult(spriteType, "medium") * w.SPRITE_STAGE_SCALES.adult));
+      assert.equal(drawnW, Math.round(96 * w.spritePetSizeMult(spriteType, "medium", "adult") * w.SPRITE_STAGE_SCALES.adult));
     });
   }
 });

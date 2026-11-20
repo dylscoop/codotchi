@@ -1,6 +1,24 @@
 # Version History
 
-## v2.38.3 - current
+## v2.38.4 - current
+
+### Changes from v2.38.3 (adult Stu size correction - branch fix/stu-size-and-cat-turning)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/spriteConstants.js` | Stage-specific size multiplier: only adult Stu is 60% of his previous size at each preset. Other stages and species keep their existing sizes. |
+| `vscode/media/sprites.js`, `vscode/media/sidebar.js` | Pass the actual stage into shared sizing for rendering, layout, visitors, companions, reactions, snacks, games and static redraws; preserve proportions and floor alignment. Shared media supplies PyCharm. |
+| `vscode/tests/unit/companion.test.ts`, `vscode/tests/unit/webviewAnimations.test.ts` | Stage/preset coverage, unchanged companion sizes and actual adult Stu raster width versus the layout box. |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `claude-desktop-codotchi/package.json`, `manifest.json`, `src/server.ts` | Patch version 2.38.4; public change notes remain spoiler-free. |
+| `README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/SPRITES.md`, `developer_notes/BUGFIXES.md` | Version references, adult-only sizing semantics and BUGFIX-222. |
+
+New constant: `PET_STAGE_SIZE_MULTS = { stu: { adult: 0.6 } }`.
+Base Stu multipliers remain 0.5 / 0.75 / 1.0; effective adult multipliers are
+0.3 / 0.45 / 0.6, giving widths 29 / 43 / 58 canvas pixels (rounded).
+Teen and senior sizing, companion size and slower-turn behaviour are unchanged.
+Existing sleep amendments on this branch are preserved.
+
+## v2.38.3
 
 ### Changes from v2.38.2 (bigger Stu and calmer cat - branch fix/stu-size-and-cat-turning)
 

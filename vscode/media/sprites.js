@@ -1576,7 +1576,7 @@
     var isUpright = !!(window.UPRIGHT_TYPES && window.UPRIGHT_TYPES[spriteType]);
 
     // Per-species table in spriteConstants.js (shared with sidebar.js's layout box).
-    sizeMultiplier = window.spritePetSizeMult(spriteType, petSizeVal);
+    sizeMultiplier = window.spritePetSizeMult(spriteType, petSizeVal, stage);
 
     // Bug fix #1: correct COLS/ROWS and legRowStart per grid type
     // v2: read from SPRITE_GRID_META for variable-grid support; fall back to

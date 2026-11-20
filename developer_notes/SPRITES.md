@@ -85,7 +85,7 @@ Custom characters are unlocked by entering a passcode in **Settings → Characte
 | `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message |
 | `kangaroo` | `straya` | Skippy | Bounce | Also in random rotation pool |
 | `testsprite` | `pixel` | Pixel | Pat | Dev/test sprite; 700-column grid |
-| `stu` | `rubylovessalmon` | Stugotchi | Collect Stickers | Modified feed/weight stats: 10 meals/snacks per cycle, hunger mult 0.25×, weight gain 1/2, weight loss 5; render-size multipliers 0.5 / 0.75 / 1.0 (small/medium/large, v2.38.3); companion cat drawn at 50–66% of the standalone `cat` sprite size, with 4–8 s random turns and stable facing (`drawCompanion` in `sidebar.js`) |
+| `stu` | `rubylovessalmon` | Stugotchi | Collect Stickers | Modified feed/weight stats: 10 meals/snacks per cycle, hunger mult 0.25×, weight gain 1/2, weight loss 5; base size multipliers 0.5 / 0.75 / 1.0 (small/medium/large); adult only uses 60% of these (effective 0.3 / 0.45 / 0.6, v2.38.4), other stages unchanged; companion cat drawn at 50–66% of the standalone `cat` sprite size, with 4–8 s random turns and stable facing (`drawCompanion` in `sidebar.js`) |
 
 Custom characters are defined in `vscode/src/customCharacters.ts` (mirrored to PyCharm's `CustomCharacters.kt` and the webview `customCharacters.js` files).
 

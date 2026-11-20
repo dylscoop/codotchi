@@ -166,17 +166,22 @@
     cat: { small: 0.5,   medium: 0.75,   large: 1.0 },
     dog: { small: 0.5,   medium: 0.75,   large: 1.0 },
   };
+  /** Stage-specific tuning, shared by drawing and every layout calculation. */
+  var PET_STAGE_SIZE_MULTS = { stu: { adult: 0.6 } };
 
   /**
    * Shared by sprites.js (drawing) and sidebar.js (layout box) so the two agree.
    * @param {string} spriteType
-   * @param {string} petSize  "small" | "medium" | "large" (anything else = medium)
+    * @param {string} petSize  "small" | "medium" | "large" (anything else = medium)
+    * @param {string} [stage]  optional life stage; unlisted stages keep their base size
    * @returns {number}
    */
-  function petSizeMultiplier(spriteType, petSize) {
+   function petSizeMultiplier(spriteType, petSize, stage) {
     var table = PET_SIZE_MULTS[spriteType]
              || (window.UPRIGHT_TYPES[spriteType] ? PET_SIZE_UPRIGHT : PET_SIZE_QUADRUPED);
-    return table[petSize] || table.medium;
+     var stageTable = PET_STAGE_SIZE_MULTS[spriteType];
+     var stageMult = (stageTable && stageTable[stage]) || 1;
+     return (table[petSize] || table.medium) * stageMult;
   }
 
   // ── Cat farewell ──────────────────────────────────────────────────────────

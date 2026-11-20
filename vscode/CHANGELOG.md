@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.38.4] - 2026-11-20
+
+- **Stugotchi had a rework.**
+
 ## [2.38.3] - 2026-11-20
 
 - **Stugotchi had a rework.**
