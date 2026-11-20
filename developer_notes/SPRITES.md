@@ -82,10 +82,10 @@ Custom characters are unlocked by entering a passcode in **Settings → Characte
 
 | spriteType | Passcode | Default name | Pat action | Notes |
 |------------|----------|--------------|------------|-------|
-| `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message; base size multipliers 0.375 / 0.5625 / 0.75; adult/senior use 0.9 stage tuning (v2.38.6): same size, larger than teen; exact-size raster scaling preserves proportions |
+| `tim` | `teawtim` | Timagotchi | Go for a Run | Tea-themed snacks; custom gift message; base size multipliers 0.375 / 0.5625 / 0.75; adult/senior use 0.9 stage tuning (v2.38.4): same size, larger than teen; exact-size raster scaling preserves proportions |
 | `kangaroo` | `straya` | Skippy | Bounce | Also in random rotation pool |
 | `testsprite` | `pixel` | Pixel | Pat | Dev/test sprite; 700-column grid |
-| `stu` | `rubylovessalmon` | Stugotchi | Collect Stickers | Modified feed/weight stats: 10 meals/snacks per cycle, hunger mult 0.25×, weight gain 1/2, weight loss 5; base size multipliers 0.5 / 0.75 / 1.0 (small/medium/large); adult/senior use 0.9 stage tuning (v2.38.6): same size, larger than teen; exact-size raster scaling preserves proportions; companion scale of the standalone `cat` sprite: baby/child 0.5, teen 0.58, adult/senior 0.495 (75% of their former size, v2.38.5), with 4–8 s random turns and stable facing (`drawCompanion` in `sidebar.js`) |
+| `stu` | `rubylovessalmon` | Stugotchi | Collect Stickers | Modified feed/weight stats: 10 meals/snacks per cycle, hunger mult 0.25×, weight gain 1/2, weight loss 5; base size multipliers 0.5 / 0.75 / 1.0 (small/medium/large); adult/senior use 0.9 stage tuning (v2.38.4): same size, larger than teen; exact-size raster scaling preserves proportions; companion scale of the standalone `cat` sprite: baby/child 0.5, teen 0.58, adult/senior 0.495 (75% of their former size, v2.38.4), with 4–8 s random turns and stable facing (`drawCompanion` in `sidebar.js`) |
 
 Custom characters are defined in `vscode/src/customCharacters.ts` (mirrored to PyCharm's `CustomCharacters.kt` and the webview `customCharacters.js` files).
 

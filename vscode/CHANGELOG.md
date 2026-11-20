@@ -1,16 +1,8 @@
 # Changelog
 
-## [2.38.6] - 2026-11-20
-
-- **Stugotchi and Timagotchi had a rework.**
-
-## [2.38.5] - 2026-11-20
-
-- **Stugotchi had a rework.**
-
 ## [2.38.4] - 2026-11-20
 
-- **Stugotchi had a rework.**
+- **Stugotchi and Timagotchi had a rework.**
 
 ## [2.38.3] - 2026-11-20
 
