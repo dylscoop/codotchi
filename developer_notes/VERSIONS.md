@@ -35,6 +35,10 @@ unchanged and rebuild local packages only. No replacement assets, tag or push.
 Clickable-button validation: 1008 VS Code, 327 Kotlin, 137 Claude Code,
 12 Desktop, 149 OpenCode Node and 60 plugin-contract tests passed; VS Code
 type-check passed and no new markdown lint errors relative to HEAD.
+All five local v2.38.3 packages were then rebuilt again and verified to contain
+"Name is not tired enough to sleep yet" with name substitution. VS Code and
+PyCharm embed the identical current clickable-Sleep renderer. Published assets
+and the copies in `releases/` retain the original published build.
 
 Validation before the clickable-button follow-up: all 1007 VS Code tests, 327 Kotlin tests, 137 Claude Code tests and
 12 Desktop tests passed; OpenCode passed 149 Node and 60 plugin-contract tests, along with the
