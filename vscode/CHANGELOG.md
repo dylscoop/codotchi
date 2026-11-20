@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.38.3] - 2026-11-20
+
+- **Bigger Stugotchi.** Stu renders one-third larger at every pet-size setting; his companion cat is unchanged in size.
+- **Calmer companion turns.** The cat's random turns are 4–8 seconds apart. Brief target jitter no longer flips its facing; turns settle for 350 ms and stay at least 1 second apart, including games, meetings and climbing. Sleep preserves its facing.
+
 ## [2.38.2] - 2026-11-19
 
 - Attention-based calls now always allow 10 active minutes to answer; need-based calls still allow 1 active minute. Removed the response-time setting.

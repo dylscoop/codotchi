@@ -1,6 +1,29 @@
 # Version History
 
-## v2.38.2 - current
+## v2.38.3 - current
+
+### Changes from v2.38.2 (bigger Stu and calmer cat - branch fix/stu-size-and-cat-turning)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/spriteConstants.js` | Stu size multipliers are 0.5 / 0.75 / 1.0 (one-third larger); cat, Tim and other species unchanged. |
+| `vscode/media/sidebar.js` | Companion-only 4–8 s idle turns, reset after edge bounces and meetings; stable facing across interactions and guest handoffs, held while sleeping. Shared renderer also supplies PyCharm. |
+| `vscode/tests/unit/companion.test.ts`, `vscode/tests/unit/webviewAnimations.test.ts` | Executable render integration tests for every size/stage, shared renderer/layout size multipliers, floor alignment, turn timing, edge/meeting resets, target jitter, games, sleep and guest handoffs. |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `claude-desktop-codotchi/package.json`, `manifest.json`, `src/server.ts` | Patch version 2.38.3 and PyCharm change notes. |
+| `README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/SPRITES.md`, `developer_notes/BUGFIXES.md` | Release references, size semantics and companion turn tuning. |
+
+Updated webview constants:
+
+```text
+PET_SIZE_MULTS.stu = { small: 0.5, medium: 0.75, large: 1.0 }
+COMPANION_FLIP_MIN_MS = 4000, COMPANION_FLIP_MAX_MS = 8000
+COMPANION_TURN_MS = 1000, COMPANION_FACE_SETTLE_MS = 350
+```
+
+The companion retains its stage-dependent 50–66% scale of the standalone cat
+sprite, not a percentage of Stu's rendered dimensions. Visitor timing is unchanged.
+
+## v2.38.2
 
 ### Changes from v2.38.1 (old-age care score and fixed call timers)
 

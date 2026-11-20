@@ -2587,3 +2587,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** A pet dying of old age had no plain post-mortem care score, and the transient death event was unavailable after reloading the save.
 
 **Fix:** Detect the cause using the persisted event log and show only `Care score: N`, where N is the existing current-stage care score rounded to 0–100. No tier, explanation or risk information accompanies the score. Other deaths and living pets do not show it. Deathless senior probabilities are unchanged and covered by deterministic parity tests.
+
+## BUGFIX-221 — Adult Stu is too small beside his cat and the cat turns too quickly
+
+**Status:** Fixed (branch `fix/stu-size-and-cat-turning`)
+**File:** `vscode/media/spriteConstants.js`, `vscode/media/sidebar.js` (shared with PyCharm)
+
+**Problem:** Stu's reduced size multipliers made the adult companion appear too large beside him. The companion inherited a visitor's short random-turn intervals, and independent interaction branches could change its facing every frame as targets jittered.
+
+**Fix:** Enlarge only Stu by one-third at all pet-size settings; preserve both sprite proportions and the cat's existing size. Companion-only idle turns are scheduled 4–8 seconds apart, including after meetings and edge bounces. Final rendered facing requires a 350 ms settled direction and at least 1 second between turns, survives guest handoffs and stays fixed during sleep. Executable render integration tests cover sizing and direction stability without changing visitor timing.

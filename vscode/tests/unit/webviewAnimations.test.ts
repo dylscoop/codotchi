@@ -843,11 +843,11 @@ describe("integration — animation frame budget", () => {
 });
 
 describe("pet size multipliers (vscode/media/spriteConstants.js)", () => {
-  it("shrinks Tim, Stu, Cat and Dog one step and leaves the rest alone", () => {
+  it("enlarges Stu while keeping Tim, Cat, Dog and other species unchanged", () => {
     const w = loadSpriteWindow();
     const table = (t: string) => ["small", "medium", "large"].map((s) => w.spritePetSizeMult(t, s));
     assert.deepEqual(table("tim"), [0.375, 0.5625, 0.75]);
-    assert.deepEqual(table("stu"), [0.375, 0.5625, 0.75]);
+    assert.deepEqual(table("stu"), [0.5, 0.75, 1.0]);
     assert.deepEqual(table("cat"), [0.5, 0.75, 1.0]);
     assert.deepEqual(table("dog"), [0.5, 0.75, 1.0]);
     assert.deepEqual(table("classic"), [0.5625, 0.75, 1.0]);
