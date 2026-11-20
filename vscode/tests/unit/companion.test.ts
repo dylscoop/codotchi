@@ -109,14 +109,11 @@ describe("companion: webview", () => {
   const js = fs.readFileSync(path.join(__dirname, "../../../media/sidebar.js"), "utf8");
   const html = fs.readFileSync(path.join(__dirname, "../../../media/sidebar.html"), "utf8");
 
-  it("scales the standalone cat sprite by 50–66%, growing with the stage", () => {
+  it("shrinks adult and senior companions to 75% while keeping younger stage scales", () => {
     const m = js.match(/var COMPANION_SCALE = (\{[^}]+\})/);
     assert.ok(m, "COMPANION_SCALE found");
     const scale = Function(`return ${m![1]}`)() as Record<string, number>;
-    for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
-      assert.ok(scale[stage] >= 0.5 && scale[stage] <= 0.66, `${stage} in range`);
-    }
-    assert.ok(scale.adult > scale.child);
+    assert.deepEqual(scale, { egg: 0.5, baby: 0.5, child: 0.5, teen: 0.58, adult: 0.66 * 0.75, senior: 0.66 * 0.75 });
   });
 
   it("every companion bubble event has text, and the Pet button exists", () => {
@@ -189,6 +186,7 @@ describe("companion: rendered size and calm direction changes", () => {
     ctx.mgArt = ctx.window.minigameArt;
     ctx.spriteHeightRatio = ctx.window.spriteHeightRatio;
     ctx.inMinigame = () => ctx.gameOpen;
+    ctx.spriteCtx.scale = (x: number, y: number) => { ctx.drawScale = { x, y }; };
     ctx.drawBody = (_state: any, _x: number, _y: number, facing: boolean) => { ctx.facing = facing; };
     const constants = ["COMPANION_SCALE", "COMPANION_SAD", "COMPANION_FLIP_MIN_MS", "COMPANION_FLIP_MAX_MS",
       "COMPANION_TURN_MS", "COMPANION_FACE_SETTLE_MS", "COMPANION_CHEER_MS", "GUEST_MEET_MS",
@@ -204,7 +202,7 @@ describe("companion: rendered size and calm direction changes", () => {
     return ctx;
   }
 
-  it("enlarges Stu by one-third at every size while preserving the cat and other species", () => {
+  it("keeps Stu's base sizes and makes adults larger than teens, preserving the companion", () => {
     const oldStu = { small: 0.375, medium: 0.5625, large: 0.75 };
     for (const size of ["small", "medium", "large"] as const) {
       const h = loadScene(size);
@@ -214,13 +212,43 @@ describe("companion: rendered size and calm direction changes", () => {
       for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
         const state = { ...stuAdult(), stage };
         const sz = h.companionSize(state);
-        const stuW = h.effectiveBWidth(state, Math.round(96 * h.petSizeMultiplier("stu") * h.STAGE_SCALES[stage]));
+        const expectedMult = oldStu[size] * 4 / 3 * (stage === "adult" || stage === "senior" ? 0.9 : 1);
+        assert.equal(h.petSizeMultiplier("stu", stage), expectedMult);
+        assert.equal(h.petSizeMultiplier("cat", stage), h.petSizeMultiplier("cat"));
+        const stuW = h.effectiveBWidth(state, Math.round(96 * h.petSizeMultiplier("stu", stage) * h.STAGE_SCALES[stage]));
+        assert.equal(stuW, Math.round(96 * expectedMult * h.STAGE_SCALES[stage]));
+        if (stage === "adult" || stage === "senior") {
+          const teenW = Math.round(96 * h.petSizeMultiplier("stu", "teen") * h.STAGE_SCALES.teen);
+          assert.ok(stuW > teenW, `${size}: adult larger than teen`);
+        }
         assert.equal(sz.w, Math.round(sz.fullW * sz.f));
         assert.equal(sz.h, Math.round(sz.fullH * sz.f));
-        assert.ok(sz.w < stuW, `${size}/${stage}: cat narrower than Stu`);
         const box = h.drawCompanion(state, 300, null, 0, stuW);
         assert.equal(box.w, sz.w);
         assert.equal(box.y + box.h, 168, "cat stays on the floor");
+      }
+    }
+  });
+
+  it("renders adult and senior companions at 75% of their former size at every preset", () => {
+    for (const size of ["small", "medium", "large"]) {
+      const h = loadScene(size);
+      for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
+        const state = { ...stuAdult(), stage };
+        const oldScale = stage === "teen" ? 0.58 : stage === "adult" || stage === "senior" ? 0.66 : 0.5;
+        const expected = oldScale * (stage === "adult" || stage === "senior" ? 0.75 : 1);
+        const sz = h.companionSize(state);
+        assert.equal(sz.f, expected, `${size}/${stage} scale`);
+        assert.equal(sz.w, Math.round(sz.fullW * expected));
+        assert.equal(sz.h, Math.round(sz.fullH * expected));
+        const box = h.drawCompanion(state, 300, null, 0, 43);
+        assert.equal(h.drawScale.x, expected);
+        assert.equal(h.drawScale.y, expected, "uniform scale preserves proportions");
+        assert.equal(box.w, sz.w);
+        assert.equal(box.h, sz.h);
+        assert.equal(box.y + box.h, 168, "feet remain on the floor");
+        assert.equal(h.petSizeMultiplier("cat", stage), h.petSizeMultiplier("cat"), "standalone cat unchanged");
+        assert.equal(h.petSizeMultiplier("stu", stage), h.petSizeMultiplier("stu") * (stage === "adult" || stage === "senior" ? 0.9 : 1), "companion sizing does not affect Stu");
       }
     }
   });

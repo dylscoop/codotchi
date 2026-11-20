@@ -1,6 +1,40 @@
 # Version History
 
-## v2.38.3 - current
+## v2.38.4
+
+### Changes from v2.38.3 (Stu/Tim growth and companion sizing - branch fix/stu-size-and-cat-turning)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/spriteConstants.js` | Stu and Tim both use 0.9 stage-specific multipliers for adult and senior: mature stages match and exceed teen's 0.85 stage scale. Other stages/species unchanged. |
+| `vscode/media/sprites.js` | Exact-size nearest-neighbour raster scaling for adult/senior Stu and Tim, avoiding whole-cell rounding that can mask growth or cause large size jumps. Art and proportions unchanged. Shared media supplies PyCharm. |
+| `vscode/media/sidebar.js` | Stage-aware sizing throughout layout, snacks, reactions, visitors, games and static redraws; adult/senior companion scale is 0.495 (75% of the former 0.66), younger companion scales unchanged. |
+| `vscode/tests/unit/companion.test.ts`, `vscode/tests/unit/webviewAnimations.test.ts` | Every preset verifies mature size exceeds teen, adult/senior raster dimensions match, drawing agrees with layout, and smaller companion scale is preserved. |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `claude-desktop-codotchi/package.json`, `manifest.json`, `src/server.ts` | All branch follow-ups consolidated into patch version 2.38.4, as requested; public change notes remain spoiler-free. |
+| `README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/SPRITES.md`, `developer_notes/BUGFIXES.md` | Release references, final mature/companion sizing rules and BUGFIX-222 through BUGFIX-224. |
+
+Updated constant: `PET_STAGE_SIZE_MULTS = { stu: { adult: 0.9, senior: 0.9 }, tim: { adult: 0.9, senior: 0.9 } }`.
+Mature layout dimensions are about 6% larger than teen (0.9 / 0.85), with rounding.
+Medium Stu: teen 61×46, adult/senior 65×49 canvas pixels.
+Medium Tim: teen 46×69, adult/senior 49×74 canvas pixels.
+Updated constant: `COMPANION_SCALE.adult = COMPANION_SCALE.senior = 0.495`.
+Both mature companions are 75% of their former dimensions, with pixel rounding.
+Baby/child remain 0.5 and teen remains 0.58. The tree uses the same dimensions.
+Companion turn timing and all existing sleep amendments remain unchanged.
+
+Validation: all 1012 VS Code tests and 327 Kotlin tests passed; VS Code
+type-check passed and markdown lint has no new errors against the baseline.
+All five local v2.38.4 packages were rebuilt with the consolidated final sizing
+and their embedded versions verified. Both IDEs contain byte-identical current
+shared renderer files and only the consolidated v2.38.4 change notes.
+Release preparation: PR #6868 includes the final v2.38.4 changes and merges
+the published v2.38.3 baseline without losing the clickable-Sleep follow-up.
+Post-conflict validation passed: VS Code 1012, Kotlin 327, Claude Code 137,
+Desktop 12, OpenCode Node 149 and plugin-contract 60 tests.
+The user approved merging the PR, creating/pushing the v2.38.4 tag and publishing
+all five packages as the new latest release. Existing v2.38.3 assets stay untouched.
+
+## v2.38.3
 
 ### Changes from v2.38.2 (bigger Stu and calmer cat - branch fix/stu-size-and-cat-turning)
 
@@ -12,7 +46,7 @@
 | `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `claude-desktop-codotchi/package.json`, `manifest.json`, `src/server.ts` | Patch version 2.38.3 and PyCharm change notes. |
 | `README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/SPRITES.md`, `developer_notes/BUGFIXES.md` | Release references, size semantics and companion turn tuning. Public VS Code/PyCharm change notes (2.38.0 and 2.38.3) say only "Stugotchi had a rework" to preserve the surprise. |
 | `packages/core/src/gameEngine.ts` (+ four synced engine copies), `pycharm/.../engine/Constants.kt`, `GameEngine.kt` | Same-merge amendment: manual sleep requires energy strictly below 40; refusal preserves snack/call/XP state. Existing sleep regeneration, Wake and automatic break naps unchanged. |
-| `vscode/media/sidebar.js`, `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/action.mjs`, `claude-desktop-codotchi/src/tools.ts` | Disable manual Sleep at 40+, add a threshold tooltip and truthful refusal messages; shared webview supplies PyCharm. |
+| `vscode/media/sidebar.js`, `opencode-codotchi/src/index.ts`, `claude-codotchi/scripts/action.mjs`, `claude-desktop-codotchi/src/tools.ts` | Manual Sleep stays clickable at 40+ and reports "Name is not tired enough to sleep yet" with the pet's name; shared webview supplies PyCharm. Pause and break-nap disabling unchanged. |
 | `vscode/tests/unit/gameEngine.test.ts`, `progression.test.ts`, `webviewAnimations.test.ts`, `pycharm/.../GameEngineTest.kt`, `ProgressionTest.kt`, `claude-codotchi/tests/integration/sickAndNap.test.mjs`, `claude-desktop-codotchi/tests/tools.test.mjs` | Sleep boundary, no-credit refusal, two-pat/play/sleep/tick/Wake integration, UI guards and persisted action-output regression coverage. |
 | `README.md`, `vscode/README.md`, `pycharm/README.md`, `opencode-codotchi/README.md`, `claude-codotchi/USER_GUIDE.md`, `commands/codotchi.md`, `claude_user_guide.md`, `claude-desktop-codotchi/README.md`, `developer_notes/DEV_NOTES.md`, `vscode/CHANGELOG.md`, `pycharm/.../META-INF/plugin.xml` | Document the below-40 manual sleep rule in the current v2.38.3 release. |
 | `claude-codotchi/dist/gameEngine.{js,d.ts}` (+ maps) | Recompiled shared sleep rule for hook runtime. |
@@ -30,7 +64,17 @@ COMPANION_TURN_MS = 1000, COMPANION_FACE_SETTLE_MS = 350
 The companion retains its stage-dependent 50–66% scale of the standalone cat
 sprite, not a percentage of Stu's rendered dimensions. Visitor timing is unchanged.
 
-Validation: all 1007 VS Code tests, 327 Kotlin tests, 137 Claude Code tests and
+Follow-up amendment rebuild requested at v2.38.3: retain the published release
+unchanged and rebuild local packages only. No replacement assets, tag or push.
+Clickable-button validation: 1008 VS Code, 327 Kotlin, 137 Claude Code,
+12 Desktop, 149 OpenCode Node and 60 plugin-contract tests passed; VS Code
+type-check passed and no new markdown lint errors relative to HEAD.
+All five local v2.38.3 packages were then rebuilt again and verified to contain
+"Name is not tired enough to sleep yet" with name substitution. VS Code and
+PyCharm embed the identical current clickable-Sleep renderer. Published assets
+and the copies in `releases/` retain the original published build.
+
+Validation before the clickable-button follow-up: all 1007 VS Code tests, 327 Kotlin tests, 137 Claude Code tests and
 12 Desktop tests passed; OpenCode passed 149 Node and 60 plugin-contract tests, along with the
 VS Code type-check. Markdown lint has no new errors relative to the baseline.
 All five v2.38.3 packages were rebuilt after the sleep amendment; embedded versions

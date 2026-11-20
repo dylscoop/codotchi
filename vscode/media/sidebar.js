@@ -2125,7 +2125,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   function getFloorY() {
     if (!lastState) { return spriteCanvas.height - 12; }
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
-    var bSize      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType) * scale);
+    var bSize      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType, lastState.stage) * scale);
     var bWidth     = effectiveBWidth(lastState, bSize);
     var bHeight    = petBoxHeight(lastState, bWidth);
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
@@ -2445,7 +2445,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     // Dimension helpers
     var scale      = STAGE_SCALES[lastState.stage] || 0.5;
-    var bSize      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType) * scale);
+    var bSize      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType, lastState.stage) * scale);
     var bWidth     = effectiveBWidth(lastState, bSize);
     var bHeight    = petBoxHeight(lastState, bWidth);
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
@@ -3025,7 +3025,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
     // ── Speech bubble ──────────────────────────────────────────────────────
     var _bScale   = STAGE_SCALES[lastState.stage] || 0.5;
-    var _bSz      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType) * _bScale);
+    var _bSz      = Math.round(BASE_SIZE * petSizeMultiplier(lastState.spriteType, lastState.stage) * _bScale);
     var _bW       = effectiveBWidth(lastState, _bSz);
     var _petCx    = Math.round(petX) + Math.round(_bW / 2);
     var _petTopY  = Math.round(petY) + walkBob - headGap(lastState);
@@ -3188,7 +3188,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (!who || guestLeaving) { return null; }
     var gs = guestState(state, who);
     var scale = STAGE_SCALES[gs.stage] || 0.5;
-    var size = Math.round(BASE_SIZE * petSizeMultiplier(gs.spriteType) * scale);
+    var size = Math.round(BASE_SIZE * petSizeMultiplier(gs.spriteType, gs.stage) * scale);
     var w = effectiveBWidth(gs, size);
     var h = petBoxHeight(gs, w);
     var W = spriteCanvas.width;
@@ -3230,8 +3230,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
 
   // ── Companion animal (Stugotchi's cat) ──────────────────────────────────
 
-  /** Scale of the standalone cat sprite at the same stage: young ones 50%, adults 66%. */
-  var COMPANION_SCALE = { egg: 0.5, baby: 0.5, child: 0.5, teen: 0.58, adult: 0.66, senior: 0.66 };
+  /** Scale of the standalone cat sprite: adult/senior are 75% of their former 0.66 scale. */
+  var COMPANION_SCALE = { egg: 0.5, baby: 0.5, child: 0.5, teen: 0.58, adult: 0.495, senior: 0.495 };
   var COMPANION_SAD = 25;
   var COMPANION_FLIP_MIN_MS = 4000;
   var COMPANION_FLIP_MAX_MS = 8000;
@@ -3280,7 +3280,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   function companionSize(state) {
     var cs = companionState(state);
     var f = COMPANION_SCALE[cs.stage] || 0.5;
-    var size = Math.round(BASE_SIZE * petSizeMultiplier(cs.spriteType) * (STAGE_SCALES[cs.stage] || 0.5));
+    var size = Math.round(BASE_SIZE * petSizeMultiplier(cs.spriteType, cs.stage) * (STAGE_SCALES[cs.stage] || 0.5));
     var fullW = effectiveBWidth(cs, size);
     var fullH = petBoxHeight(cs, fullW);
     return { cs: cs, f: f, fullW: fullW, fullH: fullH, w: Math.round(fullW * f), h: Math.round(fullH * f) };
@@ -3902,8 +3902,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       ? (state.spriteType === "dog" ? "Chewing a bone on your break — it stops on its own"
          : (_napChar && _napChar.breakNap) ? "On " + _napLabel.toLowerCase() + " — it ends on its own"
          : "Taking a break nap — it wakes up on its own")
-      : (!state.sleeping && state.energy >= SLEEP_ENERGY_THRESHOLD
-         ? "Sleep is available below " + SLEEP_ENERGY_THRESHOLD + " energy" : "");
+      : "";
     sleepWakeBtn.dataset["sleeping"] = state.sleeping ? "true" : "false";
 
     // BUGFIX-002: disable care buttons while pet is sleeping; also disable while paused
@@ -3923,11 +3922,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         if (btn) { btn.disabled = true; }
       });
     }
-    // Only manual Sleep is energy-gated; Wake stays available during normal sleep.
-    if (sleepWakeBtn) {
-      sleepWakeBtn.disabled = isPaused || napTicks > 0 ||
-        (!isSleeping && state.energy >= SLEEP_ENERGY_THRESHOLD);
-    }
+    // Keep Sleep clickable at any energy so the engine can explain a refusal.
+    // Pause and uninterruptible break naps still disable Sleep/Wake.
+    if (sleepWakeBtn) { sleepWakeBtn.disabled = isPaused || napTicks > 0; }
 
     // Medicine doses-left badge, shown only while sick
     var MEDICINE_DOSES = 3;
@@ -3970,7 +3967,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // Reset position when a brand-new or just-loaded pet first appears
     if (!lastState || !lastState.alive) {
       var scale2   = STAGE_SCALES[state.stage] || 0.5;
-      var bSize2   = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * scale2);
+      var bSize2   = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType, state.stage) * scale2);
       var bWidth2  = effectiveBWidth(state, bSize2);
       var centreX  = Math.max(4, Math.floor(spriteCanvas.width / 2 - bWidth2 / 2));
       if (state.sleeping) {
@@ -4300,7 +4297,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       var siW = spriteCanvas.width;
       // Compute the pet's reachable X range so the snack is always within reach.
       var siScale  = STAGE_SCALES[(state.stage || lastState && lastState.stage) || "baby"] || 0.5;
-      var siBSize  = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType || (lastState && lastState.spriteType)) * siScale);
+      var siBSize  = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType || (lastState && lastState.spriteType), state.stage || (lastState && lastState.stage) || "baby") * siScale);
       var siBWidth = effectiveBWidth(state.alive ? state : lastState, siBSize);
       var siMinX   = 4;
       var siMaxX   = siW - siBWidth - 4;
@@ -4567,7 +4564,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
       "fed_meal":                n + " ate a meal.",
       "snack_refused":           n + " threw the snack away.",
       "play_refused_no_energy":  n + " doesn't have enough energy to play!",
-      "sleep_refused_high_energy": n + " can only sleep below " + SLEEP_ENERGY_THRESHOLD + " energy.",
+      "sleep_refused_high_energy": n + " is not tired enough to sleep yet",
       "played":                  n + " played!",
       "pat_refused_no_energy":   (_cc && _cc.patToasts) ? _cc.patToasts.pat_refused.replace("__Name__", n) : n + " doesn't have enough energy to be patted!",
       "patted":                  (_cc && _cc.patToasts) ? _cc.patToasts.patted.replace("__Name__", n)       : n + " was patted!",
@@ -5453,7 +5450,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
         // Squash/stretch anchored at the feet, widened slightly to keep the volume;
         // a happy dog also wiggles from the tail
         var mScale = STAGE_SCALES[state.stage] || 0.5;
-        var mW     = effectiveBWidth(state, Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * mScale));
+        var mW     = effectiveBWidth(state, Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType, state.stage) * mScale));
         var mH     = petBoxHeight(state, mW);
         var mCx    = x + mW / 2;
         var mFeet  = bodyY + mH;
@@ -5474,7 +5471,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var t = Math.min(1, (nowMs - reaction.startMs) / reaction.durationMs);
     var palette   = getPalette(state.spriteType, state.stage);
     var stageScale = STAGE_SCALES[state.stage] || 0.5;
-    var bSize     = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * stageScale);
+    var bSize     = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType, state.stage) * stageScale);
     var bWidth    = effectiveBWidth(state, bSize);
     var bHeight   = petBoxHeight(state, bWidth);
     var feetY     = bodyY + bHeight;              // canvas Y of the bottom of the feet
@@ -5725,7 +5722,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    */
   function drawStatusIndicators(state, x, bodyY) {
     var scale    = STAGE_SCALES[state.stage] || 0.5;
-    var bSize    = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * scale);
+    var bSize    = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType, state.stage) * scale);
     var bWidth   = effectiveBWidth(state, bSize);
     var palette  = getPalette(state.spriteType, state.stage);
     var secondary = palette.secondary;
@@ -5752,7 +5749,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     drawEnvironment(state);
 
     var scale    = STAGE_SCALES[state.stage] || 0.5;
-    var bSize    = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * scale);
+    var bSize    = Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType, state.stage) * scale);
     var bWidth   = effectiveBWidth(state, bSize);
     var bHeight  = petBoxHeight(state, bWidth);
     // For overweight quadrupeds (not upright, not snake), belly-sag rows add to the effective height.
@@ -5816,9 +5813,9 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     * The per-species table lives in spriteConstants.js and is the same one
     * sprites.js draws with, so the layout box matches the drawn pet.
     */
-   function petSizeMultiplier(spriteType) {
+   function petSizeMultiplier(spriteType, stage) {
      var ps = (document.body && document.body.dataset && document.body.dataset.petSize) || "medium";
-     return window.spritePetSizeMult(spriteType, ps);
+     return window.spritePetSizeMult(spriteType, ps, stage);
    }
 
   /**
@@ -5886,7 +5883,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
    * would have, so the narrow classic creature keeps normal-sized hearts and hand.
    */
   function petPropWidth(state) {
-    return Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType) * (STAGE_SCALES[state.stage] || 0.5));
+    return Math.round(BASE_SIZE * petSizeMultiplier(state.spriteType, state.stage) * (STAGE_SCALES[state.stage] || 0.5));
   }
 
   /**

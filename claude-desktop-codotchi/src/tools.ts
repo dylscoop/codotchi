@@ -10,7 +10,6 @@ import {
   type PetState,
   oldAgeCareScore,
   CODE_ACTIVITY_THROTTLE_SECONDS,
-  SLEEP_ENERGY_THRESHOLD,
   feedMeal,
   startSnack,
   consumeSnack,
@@ -72,7 +71,7 @@ const MOOD_MESSAGES: Record<string, string> = {
 
 /** Speech for a refused action, shown instead of the mood message. */
 const REFUSAL_MESSAGES: Record<string, string> = {
-  sleep_refused_high_energy: `Can only sleep below ${SLEEP_ENERGY_THRESHOLD} energy.`,
+  sleep_refused_high_energy: "__Name__ is not tired enough to sleep yet",
   meal_refused_sick:  "Too sick to eat — give me medicine first.",
   snack_refused_sick: "Too sick for a snack — give me medicine first.",
   play_refused_sick:  "Too sick to play — give me medicine first.",
@@ -91,7 +90,8 @@ function renderText(state: PetState, _session: { interactionsToday: number; trea
   const usedItem = state.events.find((e) => e.startsWith("item_used_"));
   const itemMsg = usedItem ? itemActionMessage(state, usedItem.slice("item_used_".length))
     : state.events.includes("item_refused") ? `${state.name} can't use that right now (or doesn't have one). codotchi_items lists what it has.` : "";
-  const message = refusal ? REFUSAL_MESSAGES[refusal] : socialMsg || itemMsg || (MOOD_MESSAGES[state.mood] ?? "Hello!");
+  const message = refusal ? REFUSAL_MESSAGES[refusal].replace("__Name__", state.name)
+    : socialMsg || itemMsg || (MOOD_MESSAGES[state.mood] ?? "Hello!");
   const bubble = [stripAnsi(buildSpeechBubble(state.stage, state.mood, message, state.name, state.spriteType, "Claude Desktop",
     undefined, undefined, state.companion)),
     ...socialSummaryLines(state, "codotchi_")].join("\n");

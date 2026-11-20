@@ -3,7 +3,7 @@ import * as assert from "node:assert/strict";
 import * as fs from "fs";
 import * as path from "path";
 import * as vm from "vm";
-import { createPet, rollOldAgeDeath, oldAgeCareScore, serialiseState, deserialiseState, SLEEP_ENERGY_THRESHOLD } from "../../src/gameEngine";
+import { createPet, rollOldAgeDeath, oldAgeCareScore, serialiseState, deserialiseState, SLEEP_ENERGY_THRESHOLD, sleep } from "../../src/gameEngine";
 
 // Checks for the webview reaction animations (sidebar.js) and the hatching
 // egg (sprites.js). PyCharm copies the same vscode/media files at build time.
@@ -20,7 +20,7 @@ describe("manual sleep button energy gate", () => {
     assert.equal(Number(/const val SLEEP_ENERGY_THRESHOLD: Int = (\d+)/.exec(kotlin)?.[1]), SLEEP_ENERGY_THRESHOLD);
   });
 
-  it("disables Sleep at 40+, keeps normal Wake enabled, and retains pause/nap guards", () => {
+  it("keeps Sleep clickable at every energy, keeps normal Wake enabled, and retains pause/nap guards", () => {
     const start = sidebarSource.indexOf("    // Update sleep/wake button label");
     const end = sidebarSource.indexOf("    // Medicine doses-left badge", start);
     assert.ok(start >= 0 && end > start);
@@ -28,18 +28,40 @@ describe("manual sleep button energy gate", () => {
     const context = vm.createContext({ sleepWakeBtn, SLEEP_ENERGY_THRESHOLD,
       document: { getElementById: () => sleepWakeBtn }, customCharBySpriteType: null });
     for (const [energy, sleeping, paused, nap, disabled] of [
-      [39, false, false, 0, false], [40, false, false, 0, true],
-      [100, false, false, 0, true], [100, true, false, 0, false],
+      [39, false, false, 0, false], [40, false, false, 0, false],
+      [100, false, false, 0, false], [100, true, false, 0, false],
       [39, false, true, 0, true], [100, true, true, 0, true],
       [39, true, false, 60, true],
     ]) {
       context.state = { energy, sleeping, paused, breakNapTicksRemaining: nap };
       vm.runInContext(`{ ${sidebarSource.slice(start, end)} }`, context);
       assert.equal(sleepWakeBtn.disabled, disabled, JSON.stringify(context.state));
-      if (!sleeping && Number(energy) >= 40) {
-        assert.equal(sleepWakeBtn.title, "Sleep is available below 40 energy");
-      }
+      if (!nap) { assert.equal(sleepWakeBtn.title, ""); }
       if (sleeping && !nap) { assert.equal(sleepWakeBtn.textContent, "Wake"); }
+    }
+  });
+
+  it("clicking Sleep routes to the engine and gives the named not-tired refusal", () => {
+    const start = sidebarSource.indexOf('  document.getElementById("btn-sleep-wake").addEventListener');
+    const end = sidebarSource.indexOf('  document.getElementById("btn-clean")', start);
+    assert.ok(start >= 0 && end > start);
+    let click: (() => void) | undefined;
+    let command = "";
+    const button = { dataset: { sleeping: "false" }, addEventListener: (_: string, fn: () => void) => { click = fn; } };
+    const context = vm.createContext({ document: { getElementById: () => button },
+      vscode: { postMessage: (message: { command: string }) => { command = message.command; } } });
+    vm.runInContext(sidebarSource.slice(start, end), context);
+    assert.ok(click);
+    click();
+    assert.equal(command, "sleep");
+    for (const energy of [40, 100]) {
+      const next = sleep({ ...createPet("Pixel", "codeling"), energy });
+      assert.equal(next.sleeping, false);
+      const event = next.events[0];
+      const expression = /"sleep_refused_high_energy": ([^\n]+),/.exec(sidebarSource)?.[1];
+      assert.ok(expression);
+      assert.equal(event, "sleep_refused_high_energy");
+      assert.equal(vm.runInNewContext(expression, { n: next.name }), "Pixel is not tired enough to sleep yet");
     }
   });
 });
@@ -890,11 +912,79 @@ describe("pet size multipliers (vscode/media/spriteConstants.js)", () => {
   });
 
   it("the sidebar layout box uses the same table as the renderer", () => {
-    assert.ok(sidebarSource.includes("return window.spritePetSizeMult(spriteType, ps);"));
+    assert.ok(sidebarSource.includes("return window.spritePetSizeMult(spriteType, ps, stage);"));
     assert.ok(!sidebarSource.includes("1.28 : 0.85"), "no separate cat/dog multiplier left in sidebar.js");
   });
 
-  for (const spriteType of ["cat", "dog"]) {
+  it("makes adult/senior Stu and Tim the same size and larger than teen at every preset", () => {
+    const w = loadSpriteWindow();
+    for (const size of ["small", "medium", "large"]) {
+      for (const species of ["stu", "tim"]) {
+        const base = w.spritePetSizeMult(species, size);
+        for (const stage of ["egg", "baby", "child", "teen", "adult", "senior"]) {
+          assert.equal(w.spritePetSizeMult(species, size, stage), base * (stage === "adult" || stage === "senior" ? 0.9 : 1));
+          for (const other of ["cat", "dog", "classic"]) {
+            assert.equal(w.spritePetSizeMult(other, size, stage), w.spritePetSizeMult(other, size));
+          }
+        }
+        const adult = w.spritePetSizeMult(species, size, "adult") * w.SPRITE_STAGE_SCALES.adult;
+        const teen = w.spritePetSizeMult(species, size, "teen") * w.SPRITE_STAGE_SCALES.teen;
+        assert.ok(adult > teen);
+        assert.equal(adult, w.spritePetSizeMult(species, size, "senior") * w.SPRITE_STAGE_SCALES.senior);
+      }
+    }
+    assert.equal(w.spritePetSizeMult("stu", "bogus", "adult"), 0.75 * 0.9);
+  });
+
+  it("draws mature Stu/Tim larger than teen with equal adult/senior sizes and no cell-rounding jumps", () => {
+    const cases = ["small", "medium", "large"].flatMap(size => ["stu", "tim"].map(species => ({ size, species })));
+    for (const { size, species } of cases) {
+      const window: Record<string, any> = {};
+      const noop = new Proxy({} as Record<string, unknown>, {
+        get: (target, key: string) => key in target ? target[key] : () => undefined,
+        set(target, key: string, value) { target[key] = value; return true; },
+      });
+      const document = { body: { dataset: { petSize: size } }, createElement: () => ({ getContext: () => noop }) };
+      const context = vm.createContext({ window, document });
+      for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js"]) {
+        vm.runInContext(fs.readFileSync(path.join(media, file), "utf8"), context);
+      }
+      function draw(stage: string) {
+        const rects: number[][] = [];
+        let raster: number[] | null = null;
+        const ctx = new Proxy({} as Record<string, unknown>, {
+          get(target, key: string) {
+            if (key in target) { return target[key]; }
+            if (key === "fillRect") { return (x: number, y: number, w: number, h: number) => rects.push([x, y, w, h]); }
+            if (key === "drawImage") {
+              return (_img: unknown, x: number, y: number, w: number, h: number) => { raster = [w, h]; rects.push([x, y, w, h]); };
+            }
+            return () => undefined;
+          },
+          set(target, key: string, value) { target[key] = value; return true; },
+        });
+        window.renderSpriteGrid(ctx, { spriteType: species, stage, weight: 50, mood: "neutral", alive: true },
+          0, 0, false, -1, 0, window.SPRITE_STAGE_SCALES, window.spriteWeightWidthMult,
+          window.spriteGetPalette, window.spriteHeightRatio, window.spriteQuadBellySag);
+        assert.ok(rects.length > 0, "sprite was drawn");
+        return {
+          width: Math.max(...rects.map(r => r[0] + r[2])) - Math.min(...rects.map(r => r[0])),
+          height: Math.max(...rects.map(r => r[1] + r[3])) - Math.min(...rects.map(r => r[1])),
+          raster,
+        };
+      }
+      const teen = draw("teen");
+      const adult = draw("adult");
+      const senior = draw("senior");
+      const adultW = Math.round(96 * window.spritePetSizeMult(species, size, "adult"));
+      assert.ok(adult.width > teen.width, `${species}/${size}: drawn adult wider than teen`);
+      assert.ok(adult.height > teen.height, `${species}/${size}: drawn adult taller than teen`);
+      assert.deepEqual(adult.raster, [adultW, Math.round(adultW * window.spriteHeightRatio(species))], "exact layout size, no whole-cell inflation");
+      assert.deepEqual(senior.raster, adult.raster, "adult and senior drawn at the same dimensions");
+    }
+  });
+
+  for (const spriteType of ["cat", "dog", "stu"]) {
     it(`a medium adult ${spriteType} is drawn exactly the sidebar's box width`, () => {
       const window: Record<string, unknown> = {};
       const offscreen = new Proxy({} as Record<string, unknown>, {
@@ -921,7 +1011,7 @@ describe("pet size multipliers (vscode/media/spriteConstants.js)", () => {
         w.SPRITE_STAGE_SCALES, w.spriteWeightWidthMult, w.spriteGetPalette,
         w.spriteHeightRatio, w.spriteQuadBellySag);
       // sidebar.js: Math.round(BASE_SIZE (96) * petSizeMultiplier * stageScale)
-      assert.equal(drawnW, Math.round(96 * w.spritePetSizeMult(spriteType, "medium") * w.SPRITE_STAGE_SCALES.adult));
+      assert.equal(drawnW, Math.round(96 * w.spritePetSizeMult(spriteType, "medium", "adult") * w.SPRITE_STAGE_SCALES.adult));
     });
   }
 });
