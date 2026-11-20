@@ -202,7 +202,7 @@ describe("companion: rendered size and calm direction changes", () => {
     return ctx;
   }
 
-  it("keeps Stu's base sizes but scales only adults to 60%, preserving the companion", () => {
+  it("keeps Stu's base sizes and makes adults larger than teens, preserving the companion", () => {
     const oldStu = { small: 0.375, medium: 0.5625, large: 0.75 };
     for (const size of ["small", "medium", "large"] as const) {
       const h = loadScene(size);
@@ -212,11 +212,15 @@ describe("companion: rendered size and calm direction changes", () => {
       for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
         const state = { ...stuAdult(), stage };
         const sz = h.companionSize(state);
-        const expectedMult = oldStu[size] * 4 / 3 * (stage === "adult" ? 0.6 : 1);
+        const expectedMult = oldStu[size] * 4 / 3 * (stage === "adult" || stage === "senior" ? 0.9 : 1);
         assert.equal(h.petSizeMultiplier("stu", stage), expectedMult);
         assert.equal(h.petSizeMultiplier("cat", stage), h.petSizeMultiplier("cat"));
         const stuW = h.effectiveBWidth(state, Math.round(96 * h.petSizeMultiplier("stu", stage) * h.STAGE_SCALES[stage]));
         assert.equal(stuW, Math.round(96 * expectedMult * h.STAGE_SCALES[stage]));
+        if (stage === "adult" || stage === "senior") {
+          const teenW = Math.round(96 * h.petSizeMultiplier("stu", "teen") * h.STAGE_SCALES.teen);
+          assert.ok(stuW > teenW, `${size}: adult larger than teen`);
+        }
         assert.equal(sz.w, Math.round(sz.fullW * sz.f));
         assert.equal(sz.h, Math.round(sz.fullH * sz.f));
         const box = h.drawCompanion(state, 300, null, 0, stuW);
@@ -244,7 +248,7 @@ describe("companion: rendered size and calm direction changes", () => {
         assert.equal(box.h, sz.h);
         assert.equal(box.y + box.h, 168, "feet remain on the floor");
         assert.equal(h.petSizeMultiplier("cat", stage), h.petSizeMultiplier("cat"), "standalone cat unchanged");
-        assert.equal(h.petSizeMultiplier("stu", stage), h.petSizeMultiplier("stu") * (stage === "adult" ? 0.6 : 1), "Stu unchanged");
+        assert.equal(h.petSizeMultiplier("stu", stage), h.petSizeMultiplier("stu") * (stage === "adult" || stage === "senior" ? 0.9 : 1), "companion sizing does not affect Stu");
       }
     }
   });

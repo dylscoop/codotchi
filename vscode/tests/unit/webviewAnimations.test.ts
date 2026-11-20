@@ -916,18 +916,72 @@ describe("pet size multipliers (vscode/media/spriteConstants.js)", () => {
     assert.ok(!sidebarSource.includes("1.28 : 0.85"), "no separate cat/dog multiplier left in sidebar.js");
   });
 
-  it("applies Stu's 60% tuning only to adults at every size setting", () => {
+  it("makes adult/senior Stu and Tim the same size and larger than teen at every preset", () => {
     const w = loadSpriteWindow();
     for (const size of ["small", "medium", "large"]) {
-      const base = w.spritePetSizeMult("stu", size);
-      for (const stage of ["egg", "baby", "child", "teen", "adult", "senior"]) {
-        assert.equal(w.spritePetSizeMult("stu", size, stage), base * (stage === "adult" ? 0.6 : 1));
-        for (const other of ["tim", "cat", "dog", "classic"]) {
-          assert.equal(w.spritePetSizeMult(other, size, stage), w.spritePetSizeMult(other, size));
+      for (const species of ["stu", "tim"]) {
+        const base = w.spritePetSizeMult(species, size);
+        for (const stage of ["egg", "baby", "child", "teen", "adult", "senior"]) {
+          assert.equal(w.spritePetSizeMult(species, size, stage), base * (stage === "adult" || stage === "senior" ? 0.9 : 1));
+          for (const other of ["cat", "dog", "classic"]) {
+            assert.equal(w.spritePetSizeMult(other, size, stage), w.spritePetSizeMult(other, size));
+          }
         }
+        const adult = w.spritePetSizeMult(species, size, "adult") * w.SPRITE_STAGE_SCALES.adult;
+        const teen = w.spritePetSizeMult(species, size, "teen") * w.SPRITE_STAGE_SCALES.teen;
+        assert.ok(adult > teen);
+        assert.equal(adult, w.spritePetSizeMult(species, size, "senior") * w.SPRITE_STAGE_SCALES.senior);
       }
     }
-    assert.equal(w.spritePetSizeMult("stu", "bogus", "adult"), 0.75 * 0.6);
+    assert.equal(w.spritePetSizeMult("stu", "bogus", "adult"), 0.75 * 0.9);
+  });
+
+  it("draws mature Stu/Tim larger than teen with equal adult/senior sizes and no cell-rounding jumps", () => {
+    const cases = ["small", "medium", "large"].flatMap(size => ["stu", "tim"].map(species => ({ size, species })));
+    for (const { size, species } of cases) {
+      const window: Record<string, any> = {};
+      const noop = new Proxy({} as Record<string, unknown>, {
+        get: (target, key: string) => key in target ? target[key] : () => undefined,
+        set(target, key: string, value) { target[key] = value; return true; },
+      });
+      const document = { body: { dataset: { petSize: size } }, createElement: () => ({ getContext: () => noop }) };
+      const context = vm.createContext({ window, document });
+      for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js"]) {
+        vm.runInContext(fs.readFileSync(path.join(media, file), "utf8"), context);
+      }
+      function draw(stage: string) {
+        const rects: number[][] = [];
+        let raster: number[] | null = null;
+        const ctx = new Proxy({} as Record<string, unknown>, {
+          get(target, key: string) {
+            if (key in target) { return target[key]; }
+            if (key === "fillRect") { return (x: number, y: number, w: number, h: number) => rects.push([x, y, w, h]); }
+            if (key === "drawImage") {
+              return (_img: unknown, x: number, y: number, w: number, h: number) => { raster = [w, h]; rects.push([x, y, w, h]); };
+            }
+            return () => undefined;
+          },
+          set(target, key: string, value) { target[key] = value; return true; },
+        });
+        window.renderSpriteGrid(ctx, { spriteType: species, stage, weight: 50, mood: "neutral", alive: true },
+          0, 0, false, -1, 0, window.SPRITE_STAGE_SCALES, window.spriteWeightWidthMult,
+          window.spriteGetPalette, window.spriteHeightRatio, window.spriteQuadBellySag);
+        assert.ok(rects.length > 0, "sprite was drawn");
+        return {
+          width: Math.max(...rects.map(r => r[0] + r[2])) - Math.min(...rects.map(r => r[0])),
+          height: Math.max(...rects.map(r => r[1] + r[3])) - Math.min(...rects.map(r => r[1])),
+          raster,
+        };
+      }
+      const teen = draw("teen");
+      const adult = draw("adult");
+      const senior = draw("senior");
+      const adultW = Math.round(96 * window.spritePetSizeMult(species, size, "adult"));
+      assert.ok(adult.width > teen.width, `${species}/${size}: drawn adult wider than teen`);
+      assert.ok(adult.height > teen.height, `${species}/${size}: drawn adult taller than teen`);
+      assert.deepEqual(adult.raster, [adultW, Math.round(adultW * window.spriteHeightRatio(species))], "exact layout size, no whole-cell inflation");
+      assert.deepEqual(senior.raster, adult.raster, "adult and senior drawn at the same dimensions");
+    }
   });
 
   for (const spriteType of ["cat", "dog", "stu"]) {

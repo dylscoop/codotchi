@@ -167,7 +167,7 @@
     dog: { small: 0.5,   medium: 0.75,   large: 1.0 },
   };
   /** Stage-specific tuning, shared by drawing and every layout calculation. */
-  var PET_STAGE_SIZE_MULTS = { stu: { adult: 0.6 } };
+  var PET_STAGE_SIZE_MULTS = { stu: { adult: 0.9, senior: 0.9 }, tim: { adult: 0.9, senior: 0.9 } };
 
   /**
    * Shared by sprites.js (drawing) and sidebar.js (layout box) so the two agree.

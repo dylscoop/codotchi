@@ -1,6 +1,24 @@
 # Version History
 
-## v2.38.5 - current
+## v2.38.6 - current
+
+### Changes from v2.38.5 (consistent Stu/Tim growth - branch fix/stu-size-and-cat-turning)
+
+| File | What changed |
+|------|-------------|
+| `vscode/media/spriteConstants.js` | Stu and Tim both use 0.9 stage-specific multipliers for adult and senior: mature stages match and exceed teen's 0.85 stage scale. Other stages/species unchanged. |
+| `vscode/media/sprites.js` | Exact-size nearest-neighbour raster scaling for adult/senior Stu and Tim, avoiding whole-cell rounding that can mask growth or cause large size jumps. Art and proportions unchanged. Shared media supplies PyCharm. |
+| `vscode/tests/unit/companion.test.ts`, `vscode/tests/unit/webviewAnimations.test.ts` | Every preset verifies mature size exceeds teen, adult/senior raster dimensions match, drawing agrees with layout, and smaller companion scale is preserved. |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `claude-desktop-codotchi/package.json`, `manifest.json`, `src/server.ts` | Patch version 2.38.6; public change notes remain spoiler-free. |
+| `README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/SPRITES.md`, `developer_notes/BUGFIXES.md` | Release references, mature sizing rules and BUGFIX-224. |
+
+Updated constant: `PET_STAGE_SIZE_MULTS = { stu: { adult: 0.9, senior: 0.9 }, tim: { adult: 0.9, senior: 0.9 } }`.
+Mature layout dimensions are about 6% larger than teen (0.9 / 0.85), with rounding.
+Medium Stu: teen 61×46, adult/senior 65×49 canvas pixels.
+Medium Tim: teen 46×69, adult/senior 49×74 canvas pixels.
+The 0.495 adult/senior companion scale and all sleep amendments remain unchanged.
+
+## v2.38.5
 
 ### Changes from v2.38.4 (adult/senior companion sizing - branch fix/stu-size-and-cat-turning)
 

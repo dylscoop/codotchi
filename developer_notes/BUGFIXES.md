@@ -2614,3 +2614,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** Stu's companion remained too large in both adult and senior form after the Stu size correction.
 
 **Fix:** Multiply only the adult/senior companion scale by 0.75, changing 0.66 to 0.495. Drawing, layout and cat-tree sizing use the same smaller dimensions. Stu, younger companions, standalone cats and movement timing remain unchanged. Executable render tests cover every preset, proportions and floor alignment.
+
+## BUGFIX-224 — Stu shrinks from teen to adult and mature sizes are inconsistent
+
+**Status:** Fixed (branch `fix/stu-size-and-cat-turning`)
+**File:** `vscode/media/spriteConstants.js`, `vscode/media/sprites.js` (shared with PyCharm)
+
+**Problem:** Adult Stu's 0.6 tuning made him smaller than teen. Adult and senior used different tuning, and whole-cell raster rounding could hide growth or produce large jumps. The same mature growth and adult/senior equality were requested for Tim.
+
+**Fix:** Both Stu and Tim use 0.9 stage tuning for adult and senior, above teen's 0.85 scale. Mature stages use exact-size nearest-neighbour raster scaling with matching layout dimensions, without modifying sprite art. Regression tests cover actual teen/adult/senior drawing at all presets. Smaller companion sizing and other characters are unchanged.

@@ -1674,7 +1674,10 @@
     var cellWExact = bodyWidth  / COLS;
     var cellHExact = bodyHeight / ROWS;
 
-    if (cellWExact >= 1) {
+    // Mature Stu/Tim use exact-size raster scaling so rounded grid cells cannot
+    // hide growth from teen or make adult and senior different sizes.
+    var exactMatureSize = (spriteType === "stu" || spriteType === "tim") && (stage === "adult" || stage === "senior");
+    if (cellWExact >= 1 && !exactMatureSize) {
       // ── STANDARD PATH (all existing sprites) ────────────────────────────────
       // Each grid cell maps to at least 1 screen pixel.  Render with fillRect.
       var cellW = Math.max(1, Math.round(cellWExact));
@@ -1759,8 +1762,8 @@
       }
 
     } else {
-      // ── V2 OFFSCREEN PATH (high-res imported sprites) — CACHED ───────────────
-      // cellWExact < 1: grid is larger than the on-screen bounding box.
+      // ── OFFSCREEN PATH (high-res imports and exact-size mature Stu/Tim) — CACHED ──
+      // Scale the grid exactly, either below 1 px/cell or for mature Stu/Tim.
       // Render full grid at 1 px/cell on an offscreen canvas, then scale-blit.
       // The offscreen canvas is cached by visual state so it is painted at most
       // once per unique combination of (spriteType, stage, legFrame, sagRows,
