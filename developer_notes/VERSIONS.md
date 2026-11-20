@@ -23,6 +23,12 @@ COMPANION_TURN_MS = 1000, COMPANION_FACE_SETTLE_MS = 350
 The companion retains its stage-dependent 50–66% scale of the standalone cat
 sprite, not a percentage of Stu's rendered dimensions. Visitor timing is unchanged.
 
+Validation: all 1002 VS Code tests and 324 Kotlin tests passed, along with the
+VS Code type-check. Markdown lint has no new errors relative to the baseline.
+All five v2.38.3 packages were rebuilt and their embedded versions verified;
+VS Code and PyCharm contain byte-identical current shared renderer files.
+Distributable archives remain local/ignored. No install, push or release performed.
+
 ## v2.38.2
 
 ### Changes from v2.38.1 (old-age care score and fixed call timers)
