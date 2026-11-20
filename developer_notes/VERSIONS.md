@@ -10,7 +10,7 @@
 | `vscode/media/sidebar.js` | Companion-only 4–8 s idle turns, reset after edge bounces and meetings; stable facing across interactions and guest handoffs, held while sleeping. Shared renderer also supplies PyCharm. |
 | `vscode/tests/unit/companion.test.ts`, `vscode/tests/unit/webviewAnimations.test.ts` | Executable render integration tests for every size/stage, shared renderer/layout size multipliers, floor alignment, turn timing, edge/meeting resets, target jitter, games, sleep and guest handoffs. |
 | `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `claude-desktop-codotchi/package.json`, `manifest.json`, `src/server.ts` | Patch version 2.38.3 and PyCharm change notes. |
-| `README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/SPRITES.md`, `developer_notes/BUGFIXES.md` | Release references, size semantics and companion turn tuning. |
+| `README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/SPRITES.md`, `developer_notes/BUGFIXES.md` | Release references, size semantics and companion turn tuning. Public VS Code/PyCharm change notes (2.38.0 and 2.38.3) say only "Stugotchi had a rework" to preserve the surprise. |
 
 Updated webview constants:
 
@@ -27,7 +27,7 @@ Validation: all 1002 VS Code tests and 324 Kotlin tests passed, along with the
 VS Code type-check. Markdown lint has no new errors relative to the baseline.
 All five v2.38.3 packages were rebuilt and their embedded versions verified;
 VS Code and PyCharm contain byte-identical current shared renderer files.
-Distributable archives remain local/ignored. No install, push or release performed.
+Distributable archives remain local/ignored. No install or release performed.
 
 ## v2.38.2
 

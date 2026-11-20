@@ -2,8 +2,7 @@
 
 ## [2.38.3] - 2026-11-20
 
-- **Bigger Stugotchi.** Stu renders one-third larger at every pet-size setting; his companion cat is unchanged in size.
-- **Calmer companion turns.** The cat's random turns are 4–8 seconds apart. Brief target jitter no longer flips its facing; turns settle for 350 ms and stay at least 1 second apart, including games, meetings and climbing. Sleep preserves its facing.
+- **Stugotchi had a rework.**
 
 ## [2.38.2] - 2026-11-19
 
@@ -21,13 +20,7 @@
 
 ### Added
 
-- **Stugotchi's cat.** Stugotchi now lives with a cat. It grows up alongside him (drawn at 50–66% of his size), has its own hunger and happiness, and wanders the sidebar, taking turns with any visitor to come and see Stu.
-- Feeding Stu (meals and snacks) feeds the cat too: it eats its own tin of tuna or saucer of milk beside him. Playing cheers it up. A sad cat makes Stu a bit sadder, and the other way round.
-- The cat has a small cat tree just left of the right-hand tree. Now and then it walks over, hops up and sits on the perch for a while. When Stu sleeps it sleeps where it is (up on the perch if it was there). As a senior it lounges most of the time, lying down between short strolls like the cat character.
-- **🐾 Pet cat** (a choice in the Play menu, after Pat; also `/codotchi petcat`, Claude Desktop `codotchi_petcat`) makes both happier. In the sidebar Stu walks over and strokes the cat, with hearts, and the cat says its own line. Greyed out while Stu sleeps.
-- In every game (including Play together with a visitor) Stu keeps moving about and the cat (and visitor) tag along beside him, all hopping together at a win; the cat droops at a loss.
-- When a friend visits, the cat cheers up and walks over to them: it hisses at dogs and sniffs other animals curiously.
-- The status bar shows 🐱 after Stu (with a `!` when the cat is hungry or sad); the tooltip lists the cat's stats. The terminal art draws the cat beside Stu with its own bars.
+- **Stugotchi had a rework.**
 
 ### Fixed
 
