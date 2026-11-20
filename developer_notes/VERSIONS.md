@@ -31,11 +31,18 @@ The companion retains its stage-dependent 50–66% scale of the standalone cat
 sprite, not a percentage of Stu's rendered dimensions. Visitor timing is unchanged.
 
 Validation: all 1007 VS Code tests, 327 Kotlin tests, 137 Claude Code tests and
-12 Desktop tests passed, along with the
+12 Desktop tests passed; OpenCode passed 149 Node and 60 plugin-contract tests, along with the
 VS Code type-check. Markdown lint has no new errors relative to the baseline.
-All five v2.38.3 packages were rebuilt and their embedded versions verified;
+All five v2.38.3 packages were rebuilt after the sleep amendment; embedded versions
+and compiled `sleep_refused_high_energy` gates were verified in each archive;
 VS Code and PyCharm contain byte-identical current shared renderer files.
 Distributable archives remain local/ignored. No install or release performed.
+
+Rebuilt amendment outputs: `vscode/codotchi-2.38.3.vsix`,
+`pycharm/build/distributions/pycharm-codotchi-2.38.3.zip`,
+`opencode-codotchi/opencode-codotchi-2.38.3.zip`,
+`claude-codotchi/claude-codotchi-2.38.3.zip`,
+`claude-desktop-codotchi/codotchi-desktop.mcpb`.
 
 ## v2.38.2
 
