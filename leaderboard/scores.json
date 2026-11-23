@@ -80,6 +80,19 @@
       "submittedAt": 1788434003636
     },
     {
+      "schemaVersion": 2,
+      "githubUsername": "jobytennant",
+      "petName": "Justin Case",
+      "ageDays": 18,
+      "stage": "child",
+      "petType": "bytebug",
+      "spawnedAt": 1795010124824,
+      "diedAt": 1795452284955,
+      "clientVersion": "2.38.4",
+      "verified": true,
+      "submittedAt": 1795452308158
+    },
+    {
       "schemaVersion": 1,
       "githubUsername": "jobytennant",
       "petName": "Scrambled Shmegg",
