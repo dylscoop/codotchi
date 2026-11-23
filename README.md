@@ -6,6 +6,17 @@ Desktop.
 
 ## What is it?
 
+**v2.39.0 development build:** the rotation animals have sourced full-body ASCII
+art in OpenCode and Claude Code (also shared with Desktop). Classic and people
+art is unchanged. Artwork credits and the outstanding redistribution-permission
+review are in [ASCII artwork credits](packages/core/ASCII_ART_CREDITS.md).
+Do not publish the ASCII-containing packages until that review is resolved.
+
+Dogs, cats and sheep in VS Code and PyCharm now articulate their visible paws
+forward/backward, with distance-driven steps and anchored leg roots. Faster
+movement uses diagonal trot pairs; kangaroo hopping and dragon/snake movement
+stay unchanged. Hidden legs are not invented from a flat sprite.
+
 codotchi is a pixel-art virtual pet inspired by the original
 [Tamagotchi](https://en.wikipedia.org/wiki/Tamagotchi). Your pet hatches from
 an egg, grows through several life stages, and eventually reaches its final
@@ -77,7 +88,7 @@ code --install-extension dylscoop.codotchi
 
 #### Manual install (VSIX)
 
-1. Download `codotchi-2.38.4.vsix` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download a published VSIX from the [Releases page](https://github.com/dylscoop/codotchi/releases), or use the local development build `codotchi-2.39.0.vsix`.
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
@@ -101,7 +112,7 @@ or in your IDE go to **Settings → Plugins → Marketplace**, search for
 
 #### Manual install (ZIP)
 
-1. Download `pycharm-codotchi-2.38.4.zip` from the [Releases page](https://github.com/dylscoop/codotchi/releases).
+1. Download a published plugin from the [Releases page](https://github.com/dylscoop/codotchi/releases), or use the local development build `pycharm-codotchi-2.39.0.zip`.
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -127,7 +138,7 @@ On OpenCode 1.x the key is `"plugin"` (singular) instead of `"plugins"`.
 
 Restart OpenCode. It downloads the package on startup, and the plugin
 registers both the `codotchi` tool and the `/codotchi` slash command, so
-there's nothing else to copy. To pin a version use `"opencode-codotchi@2.38.4"`.
+there's nothing else to copy. Pin a published version with `"opencode-codotchi@2.38.4"`; v2.39.0 is a local development build, not yet published.
 
 > If you prefer files on disk, `npx opencode-codotchi --install` runs the same
 > installer as Option 2 straight from npm.
@@ -294,7 +305,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.38.4.vsix
+# produces codotchi-2.39.0.vsix
 ```
 
 ### JetBrains plugin
@@ -310,7 +321,7 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.38.4.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.39.0.zip
 ```
 
 ## Version history

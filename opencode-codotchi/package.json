@@ -1,6 +1,6 @@
 {
   "name": "opencode-codotchi",
-  "version": "2.38.4",
+  "version": "2.39.0",
   "description": "A virtual Tamagotchi-style pet that lives inside OpenCode and reacts to your daily AI spend",
   "main": "dist-plugin/codotchi.js",
   "exports": {
@@ -50,6 +50,7 @@
     "bin/",
     "config/",
     "scripts/bundle-plugin.js",
-    "README.md"
+    "README.md",
+    "ASCII_ART_CREDITS.md"
   ]
 }

@@ -17,6 +17,11 @@ to survive and evolve into its final form. Any support and feedback is much appr
 Your pet is drawn from one of **7 sprite sets**, with more to be added in the future,
 assigned to you at random when you start a new game.
 
+v2.39.0: dogs, cats and sheep use an eight-pose, distance-driven walk with
+forward/backward paw movement and anchored leg roots. Faster movement uses
+diagonal trot pairs. Base images, Classic/people movement and other species'
+locomotion are unchanged; reduced motion shows a neutral standing pose.
+
 ## Preview
 
 <img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/Cat_example.png" width="400" alt="A cat Codotchi in a winter scene — Codotchi in action" />

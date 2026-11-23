@@ -611,7 +611,7 @@ describe("situationalLines � remarksOnly extra lines", () => {
 });
 
 describe("getArt species head alignment", () => {
-  const species = ["dog", "monkey", "rooster", "cat", "rabbit", "rat", "horse"];
+  const species = ["monkey", "rooster", "rabbit", "rat", "horse", "tim", "stu"];
   const stages = ["baby", "child", "teen", "adult", "senior"];
   const moods = ["happy", "neutral", "sad", "sleeping", "sick"];
   for (const sp of species) {
@@ -628,7 +628,7 @@ describe("getArt species head alignment", () => {
     });
   }
 
-  it("dog teen sleeping shows the sleeping face", () => {
-    assert.equal(getArt("teen", "sleeping", "dog")[0], "  U(-.-)U z  ");
+  it("dog sleeping preserves the approved sourced silhouette", () => {
+    assert.deepEqual(getArt("teen", "sleeping", "dog"), getArt("adult", "happy", "dog"));
   });
 });

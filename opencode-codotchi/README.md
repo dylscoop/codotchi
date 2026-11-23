@@ -8,10 +8,14 @@ Raises your codotchi in the terminal alongside your coding session.
 - **Tick loop** — pet advances every 6 s via a background timer
 - **Event hooks** — reacts to `file.edited` (coding reward), `session.idle` (idle), `server.connected` (greeting)
 - **`/codotchi` slash command** — 10 actions: `status`, `feed`, `snack`, `play`, `pat`, `sleep`, `wake`, `clean`, `medicine`, `new_game`
-- **ASCII art renderer** — 30 frames (6 stages × 5 moods), ANSI-coloured speech bubbles, status bars, toasts
+- **ASCII art renderer** — sourced full-body cat, dog, kangaroo, sheep, snake and winged-dragon silhouettes; ANSI-coloured speech bubbles, status bars and toasts. Eggs, Classic and people keep their existing art. Species silhouettes/signatures are preserved across moods/stages; stage labels and status convey the pet's condition.
 - **Cross-IDE shared state** — auto-detects and links to the correct VS Code state file, including per-workspace state (`codotchi.perWorkspacePet`). Picks whichever `state.json` under `…/codotchi/vscode/` was written most recently at startup.
 
 ## Install
+
+**v2.39.0 development notice:** the selected ASCII art's software-redistribution
+permissions are not yet established. See [sources, credits and release blocker](ASCII_ART_CREDITS.md).
+Do not publish this development package until permissions are resolved.
 
 Pick **one** option. Full guide (update, uninstall, troubleshooting, IDE cost
 sync): [main README](https://github.com/dylscoop/codotchi#opencode).

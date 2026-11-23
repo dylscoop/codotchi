@@ -1,5 +1,42 @@
 # Version History
 
+## v2.39.0 — current (unreleased)
+
+### Changes from v2.38.4 — Feature 17: pet ASCII and natural gaits
+
+Branch: `feat/pet-ascii-and-natural-gaits`.
+
+| File | What changed |
+|------|--------------|
+| `packages/core/src/asciiArt.ts` | Approved, sourced full-body rotation artwork; intact signatures and silhouettes, common art across stages/moods, old egg/fallback and Classic/people paths preserved. |
+| `packages/core/ASCII_ART_CREDITS.md` | Provenance, artist credits and explicit pending-redistribution-permission release blocker. |
+| `scripts/sync-core.mjs`, `opencode-codotchi/src/asciiArt.ts`, `claude-codotchi/src/asciiArt.ts`, `claude-desktop-codotchi/src/asciiArt.ts` | Sync shared art and credits into every consumer; Desktop follows the existing shared-core architecture. |
+| `opencode-codotchi/ASCII_ART_CREDITS.md`, `claude-codotchi/ASCII_ART_CREDITS.md`, `claude-desktop-codotchi/ASCII_ART_CREDITS.md` | Generated identical attribution notices for shipped packages. |
+| `vscode/media/sprites.js` | Eight-pose visible-leg articulation, staggered walk/diagonal trot, anchored roots, two draw paths and bounded existing raster cache. No base pixels edited. |
+| `vscode/media/sidebar.js` | Main-pet phase follows actual displacement; speed selects trot; neutral standing frame on idle/static draws. PyCharm copies shared media. |
+| `packages/core/tests/rotationArt.test.mjs`, `opencode-codotchi/tests/unit/asciiArt.test.ts`, `claude-codotchi/tests/unit/asciiArt.test.mjs`, `claude-codotchi/tests/integration/socialActions.test.mjs`, `package.json` | Both compiled CLI renderers tested against approved art and baseline Classic/people hashes; status/speech/companion integration and real Claude action output; deterministic prose fixture; root `test:rotation` command. |
+| `vscode/tests/unit/webviewAnimations.test.ts`, `vscode/tests/unit/spriteData.test.ts` | Executable phase, footfall, rendered-cell, stationary/sleep guards and draw-path regression tests. |
+| `opencode-codotchi/scripts/package.js`, `claude-codotchi/scripts/package.js`, `claude-desktop-codotchi/scripts/bundle-mcpb.mjs` | Package the artwork attribution/release warning. |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `claude-desktop-codotchi/package.json`, `claude-desktop-codotchi/manifest.json`, `claude-desktop-codotchi/src/server.ts` | User-requested version 2.39.0; PyCharm change notes and npm attribution inclusion. |
+| `claude-codotchi/dist/asciiArt.js`, `claude-codotchi/dist/asciiArt.js.map`, `claude-codotchi/dist/asciiArt.d.ts.map` | Compiled hook-runtime renderer and maps. |
+| `README.md`, `vscode/README.md`, `pycharm/README.md`, `opencode-codotchi/README.md`, `claude-codotchi/USER_GUIDE.md`, `claude-desktop-codotchi/README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md` | Feature 17 scope, limitations, attribution and unreleased status. |
+
+Gait tuning: 8 poses/cycle; stride distance `max(8, width × 0.5)` (walk),
+`max(8, width × 0.7)` (trot); trot above 1.25× stage base speed. Walking
+swing occupies 25% of a cycle, trot swing 50%; source-grid amplitude is
+`max(1, round(rows × 0.025))`, lift `max(1, round(rows × 0.03))`.
+No persisted state or engine/Kotlin gameplay changes. No architecture HTML exists
+in this repository; the applicable system documentation is Feature 17 above.
+
+Release status: **not published**. Sourced-art software redistribution permission
+is outstanding. Base sprite images and Classic/people art remain unchanged.
+
+Validation: VS Code 1031, Kotlin 327, Claude Code 138, OpenCode Node 149,
+OpenCode plugin 60, Desktop 12, cross-CLI rotation-art 6 tests passed.
+VS Code type-check and shared-core sync check passed. Repository markdown lint
+still reports historical/dependency errors; the 13 changed/new markdown files
+introduce zero errors against their baseline (81 pre-existing errors).
+
 ## v2.38.4
 
 ### Changes from v2.38.3 (Stu/Tim growth and companion sizing - branch fix/stu-size-and-cat-turning)

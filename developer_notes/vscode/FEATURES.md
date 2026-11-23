@@ -919,7 +919,7 @@ These are lower-priority ideas that require design work before implementation. A
 | **— Cosmetics & economy —** | | |
 | Gotchi Points currency | `[ ]` | Earned from minigame wins; spent in an in-game shop. Persisted in `PetState`. |
 | In-game shop | `[ ]` | Buy accessories, background skins, or extra colour palettes using Gotchi Points. |
-| Sprite animation frames | `[x]` | 2-frame leg walk cycle with bob. v2.22.1: happy, sad, sleeping and eating get a 2–3 frame flip-book mood layer (props, squash/stretch, particles) drawn around the unchanged sprite; see FEATURES_2.md §3.1 |
+| Sprite animation frames | `[x]` | v2.39.0: dog/cat/sheep have an eight-pose distance-driven gait (see §17); other callers/species retain the legacy two-frame walk. Happy, sad, sleeping and eating retain their 2–3 frame flip-book mood layer; see FEATURES_2.md §3.1 |
 | Redesign minigame art | `[x]` | v2.22.2: `vscode/media/minigameArt.js` draws the Left / Right doors, the Higher or Lower number card, a spinning Coin Flip coin and a 3×5 bitmap font on the `#mg-canvas` overlay (was `#lr-canvas`), whole-pixel `fillRect` like the mood layer. See §4.1, §4.4, §4.6 |
 | Egg-hatch animation | `[x]` | Wiggle → crack → burst sequence before baby stage (v2.22.0; see §2.2). |
 | Seasonal / holiday characters | `[ ]` | Special evolution paths unlocked on calendar dates (e.g. Christmas, Halloween). |
@@ -970,3 +970,26 @@ while exact-size mature raster scaling avoids whole-cell size jumps.
 | Skippy | `straya` | `kangaroo` | default | Applies to every kangaroo: Boxing instead of Left / Right; Bounce (three big hops, no hand or hearts) as its pat; Aussie voice: a beer or some Tim Tams as its gift (`gifts`, picked per call by `giftFor`; praising the Tim Tams gets "These are better than Penguins!"), "keen as for a bounce" pat call, "Yeah, nah… fair enough." when ignored, and smoko for its break (`breakNap` with a custom `call`, a Bunnings snag and a "Smoko" button). v2.33.2: it hops off the stage for the break and back in after, leaving a "Gone for smoko 🚬" / "Off to Bunnings for a snag 🌭" bubble (`breakNap.bubbles`, `isOnSmoko`) |
 | Any cat | `blackcat` | `cat` | default | Applies to every cat (v2.33.5): Laser Pointer instead of Left / Right; a mouse or a bird as its gift (`gifts` with `kind`, a smug or proud-hunter line each), fetched on stage: it trots off, comes back with the gift in its mouth and drops it (`catErrand`); a cat tree in place of the edge tree on the scenic background (v2.34.0: the senior climbs it too and lies on the perch; v2.34.1: the senior lounges 20–40 s between 4–8 s strolls with no hops, lies down only after 1.5 s still and never mid-reaction, eases between poses over 450 ms (in Laser Pointer it stands watching the dot and through the leap, and lies down as it lands), lies with its belly on the floor via `restRow` (legs and tail through the stage, hanging over the perch), and climbs the cat tree every ~40 s at energy ≥ 30 to nap there for 45 s (z's once settled)), which an awake teen or adult cat at energy ≥ 60 climbs about every 90 s, perching for 6 s (only if it fits under the top of the stage); v2.34.1: any cat on its 5-minute break nap walks over, climbs up and naps on the perch until the break ends, then hops down (already up there when opened during the break); normal sleep stays on the floor, and a pet falling asleep off the floor settles down instead of teleporting; "demands chin scratches" pat call, "Hmph. Fine." when ignored, tuna / saucer-of-milk cravings and snacks, catnap break |
 | Shibagotchi / any dog | `shiba` | `dog` | default | Applies to every dog: Fetch and Tug-of-War instead of Coin Flip and Left / Right; biscuit-bone snacks and a meaty-bone meal; a ball as its gift (opens Fetch); pat bubbles; whimpers when ignored (`ignoredBubble`); wags when happy and standing still, and chases its tail at energy ≥ 70; chews a shrinking big bone through the break nap (`breakNap`) |
+
+## 17. Recognisable ASCII Pets and Natural Quadruped Gaits
+
+Version: **2.39.0**. Branch: `feat/pet-ascii-and-natural-gaits`.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Sourced rotation-pet ASCII | `[~]` | Implemented for cat, dog, kangaroo, sheep, snake and dragon in the shared core, consumed by OpenCode, Claude Code and Desktop. Selected silhouettes and signatures are unchanged across non-egg stages/moods. **Software redistribution permission remains a release blocker**; see `packages/core/ASCII_ART_CREDITS.md`. |
+| Classic and people ASCII preservation | `[x]` | Every original stage/mood is protected by baseline SHA-256 snapshots. Eggs and unknown-stage fallbacks remain unchanged. Other zodiac pets keep their existing head overrides. |
+| Natural main-pet walking | `[x]` | Dog/cat/sheep: eight cached poses, phase driven by actual horizontal displacement, front/hind footfalls staggered when four legs are visible. At speed >1.25× the stage's base px/s, switch to diagonal trot groups. Same `vscode/media/` supplies PyCharm at build time. |
+| Anchored roots and source-image preservation | `[x]` | Lower legs shear forward/back and compress upward in swing. Roots stay attached, planted paws do not drop below the source floor, and the torso stays unchanged. Sheep leg spans are detected from the bottom two rows. No image/grid pixel data is edited. |
+| Stationary/reduced-motion behaviour | `[x]` | Neutral standing frame when idle or statically redrawn; no gait while sleeping, lying, dead or showing a different mood grid. Existing climb animation is retained. |
+
+Limitations: a flat side-profile sprite with two visible legs still shows two
+legs, not a reconstructed four-legged model. Companions, visitors and minigame
+previews retain their existing numeric-frame animation. Kangaroo hopping,
+dragon floating, snake movement, Classic and people movement are unchanged.
+The gait is procedural pixel articulation, not a hand-drawn skeletal animation
+or perfect world-space foot locking. No browser/IDE visual review is claimed.
+
+Tests: `npm test` in `vscode/` exercises rendered cells, gait phase/footfalls,
+cache reuse and both draw paths; `npm run test:rotation` at the root exercises
+both compiled CLI renderers, source fidelity, preservation and layout.

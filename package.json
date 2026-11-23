@@ -2,6 +2,7 @@
   "name": "codotchi-workspace",
   "private": true,
   "scripts": {
+    "test:rotation": "npm --prefix claude-codotchi run build && npm --prefix opencode-codotchi run test:node && node --test packages/core/tests/rotationArt.test.mjs",
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#vscode/node_modules\" \"#.venv\"",
     "format:md": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#vscode/node_modules\" \"#.venv\""
   },

@@ -320,6 +320,58 @@ const STAGE_ART = {
 // Maps spriteType -> stage -> replacement for line 0 of the stage art.
 // The override string is injected by getArt() when spriteType is provided.
 // Strings are 13 chars (matching the width of the widest stage art line).
+// Approved, sourced full-body artwork for the random rotation. Keep the drawings
+// and signatures intact: moods/stages are conveyed by the surrounding UI, not
+// unapproved changes to the artists' work. See ASCII_ART_CREDITS.md for sources
+// and the outstanding redistribution-permission review (not covered by MIT).
+const ROTATION_ART = {
+    dog: [
+        "           __",
+        "      (___()'`;",
+        "      /,    /`",
+        "jgs   \\\\\"--\\\\",
+    ],
+    cat: [
+        " _._     _,-'\"\"`-._",
+        "(,-.`._,'(       |\\`-/|",
+        "    `-.-' \\ )-`( , o o)",
+        "          `-    \\`_`\"'-",
+    ],
+    kangaroo: [
+        "  /  /)_",
+        " //  /.'-'",
+        " \\\\ /_(=",
+        "  \\(__)__,   ldb",
+    ],
+    sheep: [
+        "         ,ww",
+        "   wWWWWWWW_)",
+        "   `WWWWWW'",
+        "    II  II",
+        "pb",
+    ],
+    snake: [
+        "       __",
+        "      {0O}",
+        "      \\__/",
+        "      /^/",
+        "     ( (              -Peter Bier-",
+        "     \\_\\_____",
+        "     (_______)",
+        "    (_________()Oo",
+    ],
+    dragon: [
+        " .-.        .-",
+        "  \\_//|    /_(",
+        " _/(o)/  .'_(",
+        "/o_.-. \\/__(  .",
+        "     \\-\\--'   |\\",
+        "    3\\-3\\ \\   .|",
+        "     /--\\  '.'/",
+        "  __//_//__.-'",
+        " '-'-'-'-'   AoS",
+    ],
+};
 const SPRITE_HEAD = {
     classic: {},
     cat: {
@@ -455,6 +507,11 @@ const STAGE_COLOURS = {
  * Falls back to egg/default art if the stage is unknown.
  */
 export function getArt(stage, mood, spriteType = "classic") {
+    const speciesKey = spriteType === "roo" ? "kangaroo" : spriteType;
+    const speciesArt = Object.prototype.hasOwnProperty.call(ROTATION_ART, speciesKey) ? ROTATION_ART[speciesKey] : undefined;
+    if (stage !== "egg" && Object.prototype.hasOwnProperty.call(STAGE_ART, stage) && speciesArt) {
+        return [...speciesArt];
+    }
     const stageMap = STAGE_ART[stage] ?? STAGE_ART.egg;
     // mood keys: happy / neutral / sad / sleeping / sick
     const moodKey = mood === "sleeping" ? "sleeping"

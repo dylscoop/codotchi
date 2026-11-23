@@ -20,7 +20,7 @@ import AdmZip from "adm-zip";
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const out = path.join(root, "codotchi-desktop.mcpb");
 
-const required = ["manifest.json", path.join("dist", "server.mjs")];
+const required = ["manifest.json", "ASCII_ART_CREDITS.md", path.join("dist", "server.mjs")];
 for (const rel of required) {
   if (!fs.existsSync(path.join(root, rel))) {
     console.error(`✗ missing ${rel} — run 'npm run build' first.`);
@@ -32,6 +32,7 @@ if (fs.existsSync(out)) { fs.rmSync(out); }
 
 const zip = new AdmZip();
 zip.addLocalFile(path.join(root, "manifest.json"));
+zip.addLocalFile(path.join(root, "ASCII_ART_CREDITS.md"));
 if (fs.existsSync(path.join(root, "icon.png"))) {
   zip.addLocalFile(path.join(root, "icon.png"));
 }

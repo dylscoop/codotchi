@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.39.0] - Unreleased
+
+- Dogs, cats and sheep walk with forward/backward paw movement, staggered steps
+  and diagonal trot pairs at faster speeds. The gait follows distance travelled
+  and keeps leg roots anchored, without changing the base sprite images.
+- The shared CLI renderer uses the selected sourced rotation-pet silhouettes.
+  Classic and people art stay unchanged. Software-redistribution permissions for
+  the sourced art must be resolved before publishing the CLI/Desktop packages.
+
 ## [2.38.4] - 2026-11-20
 
 - **Stugotchi and Timagotchi had a rework.**

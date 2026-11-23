@@ -326,6 +326,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   let petVy         = 0;      // vertical velocity px/s
   let petFacingLeft = false;
   let animTick      = 0;      // raw frame counter (drives leg animation period)
+  let walkPhase     = 0;      // quadruped stride progress, driven by distance travelled
   let lastFrameMs   = 0;      // performance.now() of previous rAF frame
   let animRunning   = false;  // a frame is scheduled (rAF or the 30 fps timeout)
   let animBoostUntilMs = 0;   // performance.now() until which frames run at 60 fps
@@ -2469,6 +2470,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // Init X and Y on first frame — centre horizontally
     if (petY === null) { petY = floorY; }
     if (petX === null) { petX = Math.max(minX, Math.min(maxX, Math.floor(spriteCanvas.width / 2 - bWidth / 2))); }
+    var gaitStartX = petX;
 
     // ── Reaction queue processing ─────────────────────────────────────────
     // Expire finished reactions; handle fell_asleep special case.
@@ -2923,6 +2925,19 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var climbing = (catErrand && catErrand.kind === "climb" && catErrand.phase === "up") || settling;
     var legFrame = isDragon ? -1 : ((walking || climbing) ? Math.floor(animTick / (running ? 4 : climbing ? 6 : 10)) % 2 : 0);
     var walkBob  = (walking && legFrame === 1) ? -1 : 0;
+    if (window.spriteWalk.supports(lastState.spriteType)) {
+      // Real movement, not frame count: blocked/idle paws stop, faster travel
+      // advances faster. Climbing keeps its existing two-frame animation.
+      if (walking && !climbing) {
+        var trotting = running || Math.abs(petVx) > (STAGE_BASE_SPEED_PPS[lastState.stage] || 28) * 1.25;
+        walkPhase = window.spriteWalk.advance(walkPhase, petX - gaitStartX, bWidth, trotting);
+        legFrame = window.spriteWalk.frame(lastState.spriteType, walkPhase, trotting, true);
+      } else if (!climbing) {
+        walkPhase = 0;
+        legFrame = -1;
+      }
+      walkBob = 0; // don't lift the planted paws with a whole-sprite bob
+    }
     // At rest (standing still on the floor, sitting on the cat tree's perch, or
     // asleep) a pet with a lying pose (the senior cat) lies down — once it has
     // been still for a moment and no reaction is playing, easing over CAT_POSE_MS
@@ -5772,7 +5787,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     drawHeirEgg(state);
     drawDecor(state);
     drawCompanionTree(state);
-    drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false, 0);
+    drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false,
+      window.spriteWalk.supports(state.spriteType) ? -1 : 0);
     var staticGuestBox = drawGuest(state, staticX + bWidth / 2, performance.now());
     drawCompanion(state, staticX + bWidth / 2, staticGuestBox, performance.now());
     if (isChewingBone(state)) {

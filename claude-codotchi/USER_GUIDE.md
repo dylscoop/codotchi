@@ -4,6 +4,13 @@ A Tamagotchi-style virtual pet that lives inside **Claude Code**. Your pet
 appears in the statusline, reacts to your coding activity, and can be cared
 for via the `/codotchi` slash command.
 
+v2.39.0 uses sourced full-body artwork for the six rotation animals, including
+the coiled snake and upright winged dragon. Classic and people are unchanged.
+The sourced silhouette and artist signature stay the same across stages/moods;
+the stage label, speech and status describe the pet's state instead.
+See [artwork credits and outstanding redistribution permissions](ASCII_ART_CREDITS.md).
+These development packages must not be published until that review is resolved.
+
 ---
 
 ## Prerequisites

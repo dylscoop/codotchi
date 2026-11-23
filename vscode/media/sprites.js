@@ -1519,6 +1519,75 @@
     return (legFrame === 0 ? group === 1 : group === 0) ? Math.max(1, Math.round(ROWS * 0.03)) : 0;
   }
 
+  // Feature 17: distance-driven, eight-pose quadruped gait. Source grids stay
+  // untouched. Only visible leg pixels are articulated; hidden legs are not
+  // invented. Numeric frames retain the legacy path for other species/callers.
+  function hasNaturalWalk(type) {
+    return type === "dog" || type === "cat" || type === "sheep";
+  }
+
+  function advanceWalkPhase(phase, distance, width, running) {
+    var stride = Math.max(8, width * (running ? 0.7 : 0.5));
+    return (phase + Math.abs(distance) / stride) % 1;
+  }
+
+  function naturalWalkFrame(type, phase, running, moving) {
+    if (!hasNaturalWalk(type)) { return null; }
+    return moving ? { walk: Math.floor((phase % 1 + 1) % 1 * 8), trot: !!running } : -1;
+  }
+
+  var _walkLegCache = {};
+  function walkLegSpans(meta, type, key, grid) {
+    var cacheKey = type + "|" + key;
+    if (_walkLegCache[cacheKey]) { return _walkLegCache[cacheKey]; }
+    var spans = meta.legs && meta.legs[key];
+    if (!spans) {
+      // Hand-drawn sheep: detect separated leg silhouettes below the belly.
+      // This excludes disconnected tail/detail columns with no leg-zone pixels.
+      spans = [];
+      var start = -1;
+      for (var c = 0; c <= meta.cols; c++) {
+        var occupied = false;
+        if (c < meta.cols) {
+          for (var r = meta.rows - 2; r < meta.rows; r++) {
+            if (grid[r] && grid[r][c]) { occupied = true; break; }
+          }
+        }
+        if (occupied && start < 0) { start = c; }
+        if (!occupied && start >= 0) { spans.push([start, c - 1, spans.length % 2]); start = -1; }
+      }
+    }
+    if (type === "sheep" && spans.length === 4) {
+      spans.forEach(function (span, index) { span[2] = index === 0 || index === 3 ? 0 : 1; });
+    }
+    return (_walkLegCache[cacheKey] = spans);
+  }
+
+  function walkLegPose(frame, index, spans, rows) {
+    // Four visible paws: staggered four-beat walk, diagonal pairs for a trot.
+    // Two/three visible legs keep distinct phases without synthesising new art.
+    var offsets = spans.length === 4 ? [0, 0.5, 0.75, 0.25] : null;
+    var offset = frame.trot ? spans[index][2] * 0.5
+      : offsets ? offsets[index] : index / spans.length;
+    var phase = (frame.walk / 8 + offset) % 1;
+    var swing = frame.trot ? 0.5 : 0.25;
+    var p = phase < swing ? phase / swing : (phase - swing) / (1 - swing);
+    return {
+      x: (phase < swing ? -1 + 2 * p : 1 - 2 * p) * Math.max(1, Math.round(rows * 0.025)),
+      lift: phase < swing ? Math.sin(Math.PI * p) * Math.max(1, Math.round(rows * 0.03)) : 0,
+    };
+  }
+
+  function walkPixelOffset(pose, row, start, rows) {
+    // Root remains attached to the torso. Compress/shift toward the paw rather
+    // than translating the entire leg and leaving a gap at the shoulder/hip.
+    var blend = Math.max(0, Math.min(1, (row - start) / Math.max(1, rows - 1 - start)));
+    return { x: Math.round(pose.x * blend) || 0, y: -Math.round(pose.lift * blend) || 0 };
+  }
+
+  window.spriteWalk = { supports: hasNaturalWalk, advance: advanceWalkPhase, frame: naturalWalkFrame,
+    pose: walkLegPose, pixelOffset: walkPixelOffset };
+
   function renderSpriteGrid(ctx, state, x, bodyY, facingLeft, legFrame, breathPhase,
                             STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio,
                             quadrupedBellySagRows) {
@@ -1638,6 +1707,22 @@
     if (!grid) { return; }
 
     var legCols = legColumnGroups(_gridMeta, spriteType, gridKey, COLS);
+    var gait = hasNaturalWalk(spriteType) && legFrame && typeof legFrame === "object" &&
+      typeof legFrame.walk === "number" && isFinite(legFrame.walk) &&
+      !state.sleeping && !state.resting && state.alive !== false && gridKey === stage ? legFrame : null;
+    var gaitCols = null;
+    var gaitLegStart = spriteType === "sheep" && (stage === "baby" || stage === "child") ? 28 : legRowStart;
+    if (gait) {
+      var spans = walkLegSpans(_gridMeta, spriteType, gridKey, grid);
+      gaitCols = [];
+      for (var gi = 0; gi < spans.length; gi++) {
+        var pose = walkLegPose(gait, gi, spans, ROWS);
+        for (var gc = spans[gi][0]; gc <= spans[gi][1]; gc++) { gaitCols[gc] = pose; }
+      }
+    }
+    // Idle/sleep/lying natural walkers keep every paw in the source pose.
+    if (hasNaturalWalk(spriteType) && !gait &&
+        (typeof legFrame === "object" || state.sleeping || state.resting || state.alive === false)) { legFrame = -1; }
     // Map colour index to actual colour
     // Index 4 = gold pearl (used by dragon sprite for the flaming pearl)
     // Index 5 = gold (used by monkey sprite for banana) — same colour
@@ -1703,10 +1788,17 @@
           if (!cell) { continue; }
 
           var colOffsetY = 0;
+          var colOffsetX = 0;
           if (isLegRow) {
             // Leg rows shift down by sagPixels so the belly sag fills the gap above.
             colOffsetY = sagPixels;
-            if (legCols) {
+            if (gaitCols) {
+              if (gaitCols[col]) {
+                var motion = walkPixelOffset(gaitCols[col], row, gaitLegStart, ROWS);
+                colOffsetX = motion.x * cellW;
+                colOffsetY += motion.y * cellH;
+              }
+            } else if (legCols) {
               // Detected legs: the raised leg loses its top rows and moves up.
               var lift = legLiftRows(legCols[col], legFrame, ROWS);
               if (lift && row - lift < legRowStart) { continue; }
@@ -1724,7 +1816,7 @@
 
           ctx.fillStyle = colorMap[cell] || primary;
           ctx.fillRect(
-            gx + col * cellW,
+            gx + col * cellW + colOffsetX,
             bobY + gridBottomAlign + row * cellH + colOffsetY,
             cellW,
             cellH
@@ -1771,7 +1863,8 @@
       // only — no loops, no allocations.
 
       var ofcH = ROWS + sagRows;
-      var rasterKey = spriteType + "|" + gridKey + "|" + legFrame + "|" + sagRows +
+      var frameKey = gait ? "walk" + gait.walk + (gait.trot ? "t" : "w") : legFrame;
+      var rasterKey = spriteType + "|" + gridKey + "|" + frameKey + "|" + sagRows +
                       "|" + primary + "|" + secondary + "|" + accent;
       var ofc = null;
       var cachedCanvas = _getRaster(rasterKey, COLS, ofcH);
@@ -1794,10 +1887,17 @@
           var oCell = sparse[si + 2];
 
           var oDrawRow = oRow;
+          var oDrawCol = oCol;
           var oIsLegRow = (oRow >= legRowStart);
           if (oIsLegRow) {
             oDrawRow += sagRows;
-            if (legCols) {
+            if (gaitCols) {
+              if (gaitCols[oCol]) {
+                var oMotion = walkPixelOffset(gaitCols[oCol], oRow, gaitLegStart, ROWS);
+                oDrawCol += oMotion.x;
+                oDrawRow += oMotion.y;
+              }
+            } else if (legCols) {
               var oLift = legLiftRows(legCols[oCol], legFrame, ROWS);
               if (oLift && oRow - oLift < legRowStart) { continue; }
               oDrawRow -= oLift;
@@ -1813,7 +1913,7 @@
           }
 
           ofcCtx.fillStyle = colorMap[oCell] || primary;
-          ofcCtx.fillRect(oCol, oDrawRow, 1, 1);
+          ofcCtx.fillRect(oDrawCol, oDrawRow, 1, 1);
         }
 
         // Belly-sag procedural rows: each sag row repeats the bottom body row's
