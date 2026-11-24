@@ -2641,3 +2641,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** The four-beat walk lifted front and hind paws at different times. The visibility correction's large travel/lift made the movement look exaggerated, despite automated pixel-change checks passing.
 
 **Fix:** Use the user-approved alternating diagonal pairs at both speeds: front-far with hind-near, then the opposite pair. Two visible legs move together; three retain their anatomical pair assignments without adding a hidden limb. Reduce reach to `max(1, min(round(rows * 0.025), round(legLength * 0.18)))` and lift to `max(1, min(round(rows * 0.015), round(legLength * 0.12)))`, with 50% swing, anchored roots and unchanged source pixels. Test rounded foot timing and travel across every species/stage and both speeds, alongside final-pixel/browser-loop checks and a continuous normal-size motion gallery. Smallest sprites can quantise to two displayed positions; tests no longer demand artificially large movement. Kept in the requested 2.39.0; live IDE visual acceptance remains pending.
+
+## BUGFIX-227 — Rigid body glides through the walking cycle
+
+**Status:** Fixed (branch `feat/pet-ascii-and-natural-gaits`)
+**File:** `vscode/media/sprites.js`, `vscode/media/sidebar.js` (shared with PyCharm)
+
+**Problem:** Coordinated small steps still moved beneath a rigid torso, and ordinary wandering started/reversed instantly. Simply bobbing the whole sprite would also lift its supporting paws off the floor.
+
+**Fix:** Add two subtle contact dips per cycle, capped at one displayed pixel and suppressed when legs are too short. Translate the torso rigidly and taper that offset from each leg root to zero at its paw; keep unmapped lower-edge pixels above their source floor. Both draw paths and size-sensitive raster cache entries include the compensation. Ordinary floor wandering integrates a nominal 0.18 s acceleration / 0.12 s braking ramp; actual distance drives the gait and facing follows actual eased velocity. Safety, sleep/lying, bounds and scripted/target-driven movement keep immediate handling. No independent head/tail animation, source-art edits or horizontal foot-lock solver. Tests cover start/stop integration, grounded paws, tiny body translation, all display sizes and the real browser loop. Kept at 2.39.0; live IDE acceptance remains pending.

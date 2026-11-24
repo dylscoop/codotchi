@@ -22,6 +22,9 @@ anchored roots. Front/hind legs move together in alternating diagonal pairs at
 both speeds; two-leg drawings move their visible front/hind together. Visible
 legs are mapped per stage, including raised paws; no hidden legs are added.
 Sprite Preview uses the same gait.
+An up-to-one-pixel body dip is compensated down the legs so supporting paws
+stay grounded. Ordinary floor wandering accelerates/brakes gently; sleep,
+lying and scripted movement retain their existing immediate handling.
 This is the same shared renderer as VS Code. Other species
 keep their existing locomotion; reduced motion shows a neutral standing pose.
 

@@ -981,7 +981,8 @@ Version: **2.39.0** (consolidated development build). Branch: `feat/pet-ascii-an
 | Classic and people ASCII preservation | `[x]` | Every original stage/mood is protected by baseline SHA-256 snapshots. Eggs and unknown-stage fallbacks remain unchanged. Other zodiac pets keep their existing head overrides. |
 | Natural main-pet walking | `[x]` | Dog/cat/sheep: eight cached poses, phase driven by actual horizontal displacement. Small forward swing/lift and backward stance; front-far + hind-near alternate with front-near + hind-far at both speeds, with 50% swing. Above 1.25× stage base speed, the longer trot stride is retained, not different leg timing. Source reach ≤3/lift ≤2 cells for imported dog/cat; sheep use one cell. Same `vscode/media/` supplies PyCharm at build time. |
 | Explicit visible-leg rigs | `[x]` | Per-stage roots, foot heights, front/hind labels and phase slots; no bottom-row guessing. Baby/child/teen/adult/senior counts: dog 4/2/4/3/4, cat 3/4/2/3/3, sheep 3/3/4/4/4. Two visible legs move together; three keep their mapped diagonal pairing without inventing a fourth leg. |
-| Anchored roots and source-image preservation | `[x]` | Lower legs shear forward/back and compress upward in swing. Roots stay attached, planted paws do not drop below the source floor, and the torso stays unchanged. Adjacent source pixels are bridged through shear to keep thin legs connected. No image/grid pixel data is edited. |
+| Attached roots and source-image preservation | `[x]` | Lower legs shear forward/back and compress upward in swing. A contact dip moves the rigid torso by at most one displayed pixel; roots follow it while body-motion compensation tapers to zero at each paw. Very short legs suppress the dip. Supporting paws retain their own floor height; fringe pixels cannot sink below the source floor. Adjacent source pixels are bridged through shear. No image/grid pixel data is edited, and no separate head/tail motion is added. |
+| Gentle ordinary wandering | `[x]` | Dog/cat/sheep floor wandering uses a 0.18 s acceleration / 0.12 s braking ramp at nominal speed. Integrated distance drives gait phase; direction follows eased velocity. Bounds, sleep/lying, scripted reactions, snack targets and social/game movement keep immediate safety/target handling, without residual eased drift. |
 | Stationary/reduced-motion behaviour | `[x]` | Neutral standing frame when idle or statically redrawn; no gait while sleeping, lying, dead or showing a different mood grid. Existing climb animation is retained. |
 | Sprite Preview | `[x]` | Animate uses the real distance-driven gait and stage-specific box sizing, rather than the old numeric-frame path. Other species keep their legacy animation. |
 
@@ -990,7 +991,8 @@ legs, not a reconstructed four-legged model. Companions, visitors and minigame
 previews retain their existing numeric-frame animation. Kangaroo hopping,
 dragon floating, snake movement, Classic and people movement are unchanged.
 The gait is procedural pixel articulation, not a hand-drawn skeletal animation
-or perfect world-space foot locking. Chromium browser coverage and pose contact
+or perfect world-space foot locking (support compensation is vertical, not a
+horizontal inverse-kinematics solver). Chromium browser coverage and pose contact
 sheets exercise the shared media; live IDE visual acceptance is still pending.
 At the smallest preset, short paired legs may resolve to only two distinct
 displayed positions; offsets are not inflated just to make more unique images.
@@ -1002,5 +1004,6 @@ both compiled CLI renderers, source fidelity, preservation and layout.
 pixels for all 15 species/stage combinations at all three sizes, walk/trot and
 both directions, plus Sprite Preview. Use `--output <directory>` (and optional
 `--chromium <executable>`) with `uv run --with playwright --with pillow python`.
-The harness also checks rounded pair timing/amplitude and saves a continuous
-normal-size, both-direction motion gallery as `paired-walk-motion.gif`.
+The harness also checks rounded pair timing/amplitude, final-display body-dip
+bounds and floor height. It saves a continuous normal-size, both-direction
+start/walk/stop/restart gallery as `paired-walk-motion.gif`.

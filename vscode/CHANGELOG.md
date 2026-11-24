@@ -2,6 +2,9 @@
 
 ## [2.39.0] - Unreleased
 
+- Add a tiny, step-synchronised contact dip to the body, with leg compensation
+  that keeps supporting paws grounded. Ease ordinary floor wandering starts,
+  braking and turns; keep safety/scripted stops immediate. No head/tail wobble.
 - Reduce exaggerated paw travel/lift and move front/hind legs together in
   alternating diagonal pairs at both speeds. Two visible legs move together.
   Map visible legs per species/stage, including raised paws, rather than guessing

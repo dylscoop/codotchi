@@ -21,6 +21,9 @@ and restart the application; a version check alone cannot distinguish the builds
 Dogs, cats and sheep in VS Code and PyCharm use small, distance-driven steps
 with anchored leg roots. Front/hind legs move together in alternating diagonal
 pairs at both speeds; two-leg drawings move their visible front/hind together.
+An up-to-one-pixel contact dip adds body weight without lifting supporting paws.
+Ordinary floor wandering eases into motion and braking; safety/scripted states
+still stop immediately. There is no independent head/tail wobble.
 Kangaroo hopping and dragon/snake movement stay unchanged. Hidden legs are not
 invented from a flat sprite.
 

@@ -1536,6 +1536,30 @@
     return moving ? { walk: Math.floor((phase % 1 + 1) % 1 * 8), trot: !!running } : -1;
   }
 
+  // A small contact dip, measured in DISPLAY pixels, not imported source cells.
+  // Short legs suppress the dip rather than being compressed into the torso.
+  function walkBodyOffset(frame, rig, pixelsPerRow) {
+    var shortest = Infinity;
+    for (var i = 0; rig && i < rig.length; i++) {
+      shortest = Math.min(shortest, rig[i][3] - rig[i][2]);
+    }
+    if (!rig || !rig.length) { return 0; }
+    var amplitude = Math.min(1, shortest * pixelsPerRow * 0.2);
+    var contact = (1 + Math.cos(frame.walk / 8 * Math.PI * 4)) / 2;
+    return Math.round(amplitude * contact * 0.8);
+  }
+
+  // Exact integration of a short acceleration/braking ramp. Intent stays in
+  // sidebar petVx; this velocity belongs only to ordinary floor wandering.
+  function easeWalkVelocity(velocity, target, dt, speed) {
+    dt = Math.max(0, Math.min(0.1, dt));
+    var rate = Math.max(1, speed, Math.abs(target)) / (target === 0 ? 0.12 : 0.18);
+    var ramp = Math.min(dt, Math.abs(target - velocity) / rate);
+    var next = velocity + Math.sign(target - velocity) * rate * ramp;
+    if (ramp < dt) { next = target; }
+    return { velocity: next, distance: (velocity + next) * 0.5 * ramp + target * (dt - ramp) };
+  }
+
   // Explicitly mapped against the rendered grids, not the last image row:
   // lifted paws end ABOVE it, and some imports have unrelated pixels below them.
   // [left, right, rootRow, footRow, walkPhase, trotPhase, anatomical label].
@@ -1623,11 +1647,12 @@
     var blend = Math.max(0, Math.min(1, (row - start) / Math.max(1, foot - start)));
     var previous = Math.max(0, Math.min(1, (row - 1 - start) / Math.max(1, foot - start)));
     return { x: Math.round(pose.x * blend) || 0, y: -Math.round(pose.lift * blend) || 0,
-      joinX: Math.round(pose.x * previous) || 0 };
+      joinX: Math.round(pose.x * previous) || 0, bodyWeight: 1 - blend };
   }
 
   window.spriteWalk = { supports: hasNaturalWalk, advance: advanceWalkPhase, frame: naturalWalkFrame,
-    rig: walkLegRig, legAt: walkLegAt, pose: walkLegPose, pixelOffset: walkPixelOffset };
+    rig: walkLegRig, legAt: walkLegAt, pose: walkLegPose, pixelOffset: walkPixelOffset,
+    bodyOffset: walkBodyOffset, ease: easeWalkVelocity };
 
   function renderSpriteGrid(ctx, state, x, bodyY, facingLeft, legFrame, breathPhase,
                             STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio,
@@ -1807,6 +1832,7 @@
       // Each grid cell maps to at least 1 screen pixel.  Render with fillRect.
       var cellW = Math.max(1, Math.round(cellWExact));
       var cellH = Math.max(1, Math.round(cellHExact));
+      var gaitBody = gaitPoses ? walkBodyOffset(gait, rig, cellH) : 0;
 
       // Bottom-align: shift the grid down so its last row lands at bodyY+bodyHeight.
       // Without this, rounding means ROWS*cellH < bodyHeight for small stages, making
@@ -1827,18 +1853,20 @@
           var cell = grid[row][col];
           if (!cell) { continue; }
 
-          var colOffsetY = 0;
+          var colOffsetY = gaitBody;
           var colOffsetX = 0;
           var drawCellWidth = cellW;
           if (isLegRow) {
             // Leg rows shift down by sagPixels so the belly sag fills the gap above.
-            colOffsetY = sagPixels;
+            // Unmapped lower pixels (including imported toe fringes) also
+            // taper to zero body motion at the source floor; never sink them.
+            colOffsetY = sagPixels + Math.round(gaitBody * (ROWS - 1 - row) / Math.max(1, ROWS - 1 - legRowStart));
             if (gaitPoses) {
               var legIndex = walkLegAt(rig, row, col);
               if (legIndex >= 0) {
                 var motion = walkPixelOffset(gaitPoses[legIndex], row, legRowStart, ROWS);
                 colOffsetX = motion.x * cellW;
-                colOffsetY += motion.y * cellH;
+                colOffsetY = sagPixels + motion.y * cellH + Math.round(gaitBody * motion.bodyWeight);
                 // Bridge a sheared one-cell-wide leg to its existing pixel above:
                 // no detached diagonal paw pixels, and no new limb silhouettes.
                 if (grid[row - 1] && grid[row - 1][col]) {
@@ -1891,7 +1919,7 @@
         for (var s = 0; s < sagRows; s++) {
           // Inset by (s+1) columns on each side — sag narrows toward the bottom.
           var inset    = s + 1;
-          var sagY = bobY + gridBottomAlign + legRowStart * cellH + s * cellH;
+          var sagY = bobY + gridBottomAlign + legRowStart * cellH + s * cellH + gaitBody;
           for (var sagCol = silLeft + inset; sagCol <= silRight - inset; sagCol++) {
             var sagCell = bodyBottomRow[sagCol];
             if (!sagCell || sagCell === "0") { continue; }
@@ -1911,7 +1939,10 @@
       // only — no loops, no allocations.
 
       var ofcH = ROWS + sagRows;
-      var frameKey = gait ? "walk" + gait.walk + (gait.trot ? "t" : "w") : legFrame;
+      // Raster shifts use whole source cells to stay crisp. Size-dependent
+      // compensation is part of the cache key; display travel never exceeds 1px.
+      var rasterBody = gaitPoses ? Math.floor(walkBodyOffset(gait, rig, cellHExact) / cellHExact) : 0;
+      var frameKey = gait ? "walk" + gait.walk + (gait.trot ? "t" : "w") + "b" + rasterBody : legFrame;
       var rasterKey = spriteType + "|" + gridKey + "|" + frameKey + "|" + sagRows +
                       "|" + primary + "|" + secondary + "|" + accent;
       var ofc = null;
@@ -1934,18 +1965,18 @@
           var oCol  = sparse[si + 1];
           var oCell = sparse[si + 2];
 
-          var oDrawRow = oRow;
+          var oDrawRow = oRow + rasterBody;
           var oDrawCol = oCol;
           var oDrawWidth = 1;
           var oIsLegRow = (oRow >= legRowStart);
           if (oIsLegRow) {
-            oDrawRow += sagRows;
+            oDrawRow = oRow + sagRows + Math.round(rasterBody * (ROWS - 1 - oRow) / Math.max(1, ROWS - 1 - legRowStart));
             if (gaitPoses) {
               var oLegIndex = walkLegAt(rig, oRow, oCol);
               if (oLegIndex >= 0) {
                 var oMotion = walkPixelOffset(gaitPoses[oLegIndex], oRow, legRowStart, ROWS);
                 oDrawCol += oMotion.x;
-                oDrawRow += oMotion.y;
+                oDrawRow = oRow + sagRows + oMotion.y + Math.round(rasterBody * oMotion.bodyWeight);
                 if (grid[oRow - 1] && grid[oRow - 1][oCol]) {
                   oDrawCol = oCol + Math.min(oMotion.x, oMotion.joinX);
                   oDrawWidth += Math.abs(oMotion.x - oMotion.joinX);
@@ -1993,7 +2024,7 @@
               var sCol = sagSparse[sc + 1];
               if (sCol < oSilLeft + oInset || sCol > oSilRight - oInset) { continue; }
               ofcCtx.fillStyle = colorMap[sagSparse[sc + 2]] || primary;
-              ofcCtx.fillRect(sCol, legRowStart + os, 1, 1);
+              ofcCtx.fillRect(sCol, legRowStart + os + rasterBody, 1, 1);
             }
           }
         }

@@ -10,14 +10,14 @@ manifests, IDE change notes and all five rebuilt packages use 2.39.0.
 
 | File | What changed |
 |------|--------------|
-| `vscode/media/sprites.js` | Explicit species/stage rigs (including raised feet and senior-cat fallback); user-approved alternating diagonal front/hind pairs at both speeds, with much smaller leg-length-bounded travel/lift. Two visible legs move together. Correct left-facing stance and bridge adjacent leg pixels during shear; no source artwork edits. |
-| `vscode/media/sidebar.js` | Stop the natural gait when actual horizontal displacement is zero, even if a blocked movement branch retains a velocity. |
+| `vscode/media/sprites.js` | Explicit visible-leg rigs and small alternating diagonal steps; rigid torso contact dip capped at one displayed pixel, root-to-paw compensation in both draw paths and size-sensitive raster cache. Exact short velocity-ramp integration helper. No source artwork edits. |
+| `vscode/media/sidebar.js` | Ordinary natural-walker floor wandering eases starts/braking/turns; distance and facing follow actual eased motion. Clear residual velocity outside free wandering; sleep/lying, scripted/target motion and bounds keep immediate handling. No gait when blocked. |
 | `vscode/media/sprite_preview.html` | Drive the real distance-based gait instead of legacy numeric frames; honour stage-specific sizing and allocate space for full sprites. |
-| `vscode/tests/unit/webviewAnimations.test.ts` | Explicit 2/3/4-limb maps, rounded diagonal timing and restrained travel across all stages at both speeds, raised-foot/stray-pixel regression, backward stance and root anchoring. |
-| `scripts/check_walk_browser.py` | Chromium integration: real sidebar loop, final canvas pixels at every preset/direction/speed, rounded pair/amplitude checks, Sprite Preview and continuous normal-size GIF gallery. Synthetic state only; caller-supplied output directory. |
-| `pycharm/src/main/resources/META-INF/plugin.xml` | 2.39.0 change notes describe restrained paired steps. |
+| `vscode/tests/unit/webviewAnimations.test.ts` | Explicit 2/3/4-limb maps, rounded pair timing, bounded body translation and planted-paw compensation; start/stop/reversal ramp integration, rendered torso preservation and source-floor guard. |
+| `scripts/check_walk_browser.py` | Chromium integration: real sidebar loop, every preset/direction/speed, final-display body-dip/floor bounds, rounded pairs and Preview. Continuous normal-size start/walk/stop/restart gallery; synthetic state only. |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | 2.39.0 change notes describe restrained paired steps and tiny body weight shift. |
 | All plugin version manifests and Desktop `src/server.ts` | Single user-requested 2.39.0 across all five plugins; walking corrections included. CLI artwork/functionality unchanged. |
-| `README.md`, IDE/CLI/Desktop READMEs, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md` | Current development filenames, paired visible-limb semantics, browser/Pillow instructions and BUGFIX-225/226. |
+| `README.md`, IDE/CLI/Desktop READMEs, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md` | Current development filenames, body/paw compensation, easing scope, browser/Pillow instructions and BUGFIX-225/226/227. |
 
 Rig visible-leg counts (baby/child/teen/adult/senior): dog **4/2/4/3/4**,
 cat **3/4/2/3/3**, sheep **3/3/4/4/4**. Two-limb profiles move front/hind together;
@@ -32,6 +32,18 @@ threshold are unchanged. Imported dog/cat travel is at most 3 cells, lift 2;
 sheep use one cell. This replaces the rejected exaggerated four-beat walk.
 This is not perfect world-space foot locking or a skeletal reconstruction.
 
+Body contact dip: two dips/cycle, `round(min(1, shortestLeg * pixelsPerRow * 0.2) * contact * 0.8)` display pixels, where `contact = (1 + cos(4π * phase)) / 2`.
+Short legs suppress it; raster shifts use whole source cells without exceeding
+one displayed pixel. Leg roots follow the body; dip compensation tapers to zero
+at the feet. This keeps vertical support height, not world-space horizontal
+foot locking. Torso shape/colours and source images remain unchanged.
+
+Ordinary floor wandering accelerates at `max(1, speed, abs(target)) / 0.18`
+px/s², or brakes at the same numerator divided by `0.12`. Integration handles
+the within-frame arrival at target velocity; phase uses the resulting distance.
+Bounds and safety/scripted/target-driven states clear residual easing rather
+than coasting. No extra head/tail motion or per-stride speed wobble is added.
+
 Browser check (requires the compiled VS Code test engine and Playwright Chromium):
 
 ```text
@@ -44,26 +56,25 @@ Live PyCharm/VSCodium confirmation remains a separate user acceptance step.
 The sourced-ASCII redistribution-permission blocker is unchanged; nothing is
 published by this correction.
 
-Validation: **1,725 tests passed** (VS Code 1033, Kotlin 327, Claude Code 138,
+Validation: **1,727 tests passed** (VS Code 1035, Kotlin 327, Claude Code 138,
 OpenCode Node 149, OpenCode plugin 60, Desktop 12, cross-CLI art 6). VS Code
 type-check and core sync checks passed. Chromium passed **180** displayed-pixel
 combinations (15 species/stages × 3 sizes × walk/trot × 2 directions), all eight
 poses in each of five real-sidebar movement cases, sleep guards and Sprite
 Preview activation, with zero browser errors. Contact sheets were inspected;
-this is not a claim of live IDE acceptance. Whole-repo Markdown lint still fails
-on existing/dependency issues. For the version-consolidation rebuild, all 1,725
-tests were rerun successfully, with type-check and core sync checks passing.
-Latest paired-gait revision: all **1,725 tests** passed again, plus type-check,
-core sync and **180** browser display combinations, five sidebar movement/sleep
-cases and Sprite Preview, with zero browser errors. Rounded pair timing and
-small travel/lift bounds are covered across all stages at both speeds.
+this is not a claim of live IDE acceptance. The simple body-weight revision
+adds exact start/stop integration, rigid torso dip, compensated foot heights,
+final-display body/floor bounds and a no-sleep-drift check. Rounded pair timing
+and small travel/lift bounds are covered across all stages at both speeds.
+Whole-repo Markdown lint still fails on existing/dependency issues.
+The seven changed Markdown files add zero errors against baseline 117.
 Short paired legs may produce just two final displayed poses
 at the smallest preset; static motion still fails, but tests do not inflate
 offsets to force four unique images. The browser harness saves a normal-size
 both-direction continuous gallery at `paired-walk-motion.gif` for human review.
 Screenshots were inspected at normal size; this still does not establish live
-IDE visual acceptance. Seven changed Markdown files add zero errors against
-their existing 117-error baseline.
+IDE visual acceptance. The gallery now includes eased start/walk/stop/restart
+with the rigid ≤1-display-pixel contact dip and grounded supporting paws.
 
 All five local packages use the consolidated 2.39.0 version:
 `vscode/codotchi-2.39.0.vsix`,
@@ -86,11 +97,11 @@ not an automatic installer or a published release. Each embedded installer must
 be installed separately. Existing 2.39.0 installs require explicit replacement
 and application restart; matching version strings do not prove the gait is new.
 
-Verified combined archive: **3,235,786 bytes**, eight entries. All five embedded
+Verified combined archive: **3,238,437 bytes**, eight entries. All five embedded
 versions are 2.39.0; each enclosed installer matches its source artifact byte for
 byte, as do the renderer/sidebar/Preview assets in both IDE installers. The
 checksums file was checked against every enclosed installer. Bundle SHA-256:
-`cc3f2b06133549a6ffd1897933f76b3b2dc6200f048ec5b1733b6e2d0f77be73`.
+`ab4f1e7a7ea1d17b08fa0351ca0e8a26c1dd4be472f71b38d98b69fe7e0e112a`.
 All artifacts remain local and gitignored; none was installed or published.
 
 ### Shared ASCII implementation

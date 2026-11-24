@@ -695,6 +695,56 @@ describe("Feature 17 — natural quadruped gait integration", () => {
     }
   });
 
+  it("eases ordinary walking starts, reversals and stops without frame-rate-dependent drift", () => {
+    const walk = loadSpriteWindow().spriteWalk;
+    const simulate = (target: number, count: number, initial = 0) => {
+      let velocity = initial, distance = 0;
+      for (let i = 0; i < count; i++) {
+        const step = walk.ease(velocity, target, 0.3 / count, 30);
+        velocity = step.velocity; distance += step.distance;
+      }
+      return { velocity, distance };
+    };
+    const first = walk.ease(0, 30, 0.03, 30);
+    assert.ok(first.velocity > 0 && first.velocity < 30);
+    assert.ok(first.distance > 0 && first.distance < 30 * 0.03);
+    const coarse = simulate(30, 3), fine = simulate(30, 30);
+    assert.equal(coarse.velocity, 30);
+    assert.ok(Math.abs(coarse.distance - fine.distance) < 1e-10);
+    const stop = simulate(0, 30, coarse.velocity);
+    assert.equal(stop.velocity, 0, "finite stop, not endless exponentially shrinking drift");
+    assert.ok(stop.distance > 0 && stop.distance <= 30 * 0.12);
+    const reverse = walk.ease(30, -30, 0.03, 30);
+    assert.ok(reverse.velocity > 0, "decelerate before changing direction");
+    assert.equal(walk.ease(0, 30, 0, 30).distance, 0);
+    assert.ok(sidebarSource.includes("petX += walkStep.distance"));
+    assert.ok(sidebarSource.includes("var gaitSpeed = walkEaseUsed ? walkVelocity : petVx"));
+    assert.ok(sidebarSource.includes("if (!walkEaseUsed || Math.abs(petX - gaitStartX) <= 0.001) { walkVelocity = 0; }"));
+  });
+
+  it("caps the contact dip at one displayed pixel and compensates from root to planted paw", () => {
+    const walk = loadSpriteWindow().spriteWalk;
+    for (const type of ["dog", "cat", "sheep"]) for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
+      const rig = walk.rig(type, stage);
+      for (const scale of [0.2, 0.5, 1, 2, 4]) for (let frame = 0; frame < 8; frame++) {
+        const body = walk.bodyOffset({ walk: frame }, rig, scale);
+        assert.ok(body >= 0 && body <= 1);
+        for (let i = 0; i < rig.length; i++) {
+          const pose = walk.pose({ walk: frame }, i, rig, 128);
+          const root = walk.pixelOffset(pose, pose.root, pose.root, 128);
+          const foot = walk.pixelOffset(pose, pose.foot, pose.root, 128);
+          assert.equal(Math.round(body * root.bodyWeight), body, "root follows the body");
+          assert.equal(Math.round(body * foot.bodyWeight), 0, "body dip never moves the paw");
+          if (pose.lift === 0) assert.equal(foot.y, 0, "support paw stays on its own source floor");
+        }
+      }
+    }
+    const rig = walk.rig("dog", "adult");
+    assert.equal(walk.bodyOffset({ walk: 0 }, rig, 1), 1);
+    assert.equal(walk.bodyOffset({ walk: 2 }, rig, 1), 0);
+    assert.equal(walk.bodyOffset({ walk: 4 }, rig, 1), 1, "dip twice per paired cycle");
+  });
+
   it("moves front/hind diagonal pairs together at both speeds across every stage", () => {
     const w = loadSpriteWindow();
     for (const type of ["dog", "cat", "sheep"]) for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
@@ -769,7 +819,7 @@ describe("Feature 17 — natural quadruped gait integration", () => {
   });
 
   for (const type of ["dog", "cat", "sheep"]) for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
-    it(`articulates ${type}/${stage} without moving the torso or dropping feet below the source floor`, () => {
+    it(`articulates ${type}/${stage} with a rigid tiny torso dip and no feet below the source floor`, () => {
       const r = renderer();
       const neutral: number[][] = r.draw(type, stage, -1);
       const meta = r.window.SPRITE_GRID_META[type];
@@ -781,7 +831,12 @@ describe("Feature 17 — natural quadruped gait integration", () => {
       let changed = false;
       for (let frame = 0; frame < 8; frame++) {
         const cells: number[][] = r.draw(type, stage, { walk: frame, trot: false });
-        assert.deepEqual(cells.filter(([, y]) => y < boundary), torso);
+        const frameData = { walk: frame };
+        const scale = height / meta.rows;
+        const body = r.window.spriteWalk.bodyOffset(frameData, r.window.spriteWalk.rig(type, stage), raster ? scale : cellH);
+        const shift = raster ? Math.floor(body / scale) : body;
+        assert.deepEqual(cells.slice(0, torso.length), torso.map(([x, y, w, h]) => [x, y + shift, w, h]),
+          "torso shape/colours are preserved, only translated by the compensated dip");
         assert.ok(Math.max(...cells.map(([, y, , h]) => y + h)) <= Math.max(...neutral.map(([, y, , h]) => y + h)));
         changed ||= JSON.stringify(cells) !== JSON.stringify(neutral);
       }

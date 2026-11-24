@@ -111,6 +111,8 @@ def run(output, chromium=None):
                 page.evaluate("state=>{window.__walkCalls=[];window.dispatchEvent(new MessageEvent('message',{data:{type:'stateUpdate',state}}))}", state)
                 page.clock.run_for(3000)
                 assert not page.evaluate("window.__walkCalls.some(c=>c.frame&&typeof c.frame==='object')"), "sleep must stop gait"
+                sleeping = page.evaluate("window.__walkCalls.map(c=>c.x)")
+                assert sleeping and max(sleeping) - min(sleeping) < 0.001, "eased velocity must not drift into sleep"
                 results.append({"type": kind, "stage": stage, "sidebarPoses": len(poses)})
                 page.clock.resume()
 
@@ -127,6 +129,19 @@ def run(output, chromium=None):
                   const row=document.createElement('div');row.style.display='flex';
                   const label=document.createElement('div');label.textContent=`${size} ${type}/${stage}`;row.append(label);
                   const images=[];
+                  const neutral=document.createElement('canvas');neutral.width=230;neutral.height=200;
+                  const neutralCtx=neutral.getContext('2d');
+                  const state={spriteType:type,stage,weight:50,alive:true,mood:'neutral'};
+                  const paint=(ctx,frame)=>window.renderSpriteGrid(ctx,state,20,20,facing,frame,0,
+                    window.SPRITE_STAGE_SCALES,window.spriteWeightWidthMult,window.spriteGetPalette,window.spriteHeightRatio,window.spriteQuadBellySag);
+                  const bounds=data=>{
+                    let top=200,bottom=0;
+                    for(let y=0;y<200;y++)for(let x=0;x<230;x++)if(data[(y*230+x)*4+3]){top=Math.min(top,y);bottom=Math.max(bottom,y);}
+                    return {top,bottom};
+                  };
+                  paint(neutralCtx,-1);
+                  const standing=bounds(neutralCtx.getImageData(0,0,230,200).data);
+                  const bodyOffsets=[];
                   for(let frame=0;frame<8;frame++) {
                     // Integrate mapped timing with rounded source-pixel offsets,
                     // not just a source-code assertion about diagonal phases.
@@ -138,18 +153,22 @@ def run(output, chromium=None):
                       const phase=(frame/8+group)%1;
                       if((foot.y<0)!==(phase>0&&phase<0.5))throw Error(`Unpaired foot ${type}/${stage}/${leg[6]}`);
                       if(Math.abs(foot.x)>(rows===32?1:3)||-foot.y>(rows===32?1:2))throw Error('Exaggerated step');
+                      if(foot.bodyWeight!==0)throw Error('Body dip moves planted paw');
                     }
                     const canvas=document.createElement('canvas');canvas.width=230;canvas.height=200;
                     const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
-                    window.renderSpriteGrid(ctx,{spriteType:type,stage,weight:50,alive:true,mood:'neutral'},20,20,facing,{walk:frame,trot},0,
-                      window.SPRITE_STAGE_SCALES,window.spriteWeightWidthMult,window.spriteGetPalette,window.spriteHeightRatio,window.spriteQuadBellySag);
-                    images.push(ctx.getImageData(0,0,canvas.width,canvas.height).data);
+                    paint(ctx,{walk:frame,trot});
+                    const image=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+                    const box=bounds(image),bodyOffset=box.top-standing.top;
+                    if(bodyOffset<0||bodyOffset>1)throw Error(`Exaggerated body dip ${type}/${stage}/${size}: ${bodyOffset}`);
+                    if(box.bottom>standing.bottom)throw Error(`Paw below source floor ${type}/${stage}/${size}`);
+                    bodyOffsets.push(bodyOffset);images.push(image);
                     canvas.style.flexShrink='0';row.append(canvas);
                   }
                   const unique=new Set(images.map(a=>Array.from(a).join(','))).size;
                   let changed=0;
                   for(let p=0;p<images[0].length;p+=4) if(images.some(a=>a[p]!==images[0][p]||a[p+1]!==images[0][p+1]||a[p+2]!==images[0][p+2]||a[p+3]!==images[0][p+3]))changed++;
-                  results.push({size,type,stage,trot,facing,unique,changed});
+                  results.push({size,type,stage,trot,facing,unique,changed,bodyOffsets});
                   // Contact sheet at the actual medium preset, no enlargement.
                   if(size==='medium' && !trot && facing)document.body.append(row);
                 }
@@ -162,6 +181,7 @@ def run(output, chromium=None):
                 # unique images: that recreates the rejected exaggerated gait.
                 assert row["unique"] >= 2, ("static displayed paws", row)
                 assert row["changed"] >= 1, ("no screen-pixel movement", row)
+            assert any(max(row["bodyOffsets"]) == 1 for row in pixels), "body weight shift never reaches display"
             rig.screenshot(path=str(output / "walk-contact-sheet.png"), full_page=True)
             # Continuous normal-size motion for visual review (all stages, both
             # directions). Browser clock advances real requestAnimationFrame;
@@ -180,17 +200,20 @@ def run(output, chromium=None):
                 cell.textContent=`${type}/${stage} ${facing?'left':'right'}`;
                 const canvas=document.createElement('canvas');canvas.width=230;canvas.height=180;
                 cell.append(canvas);document.body.append(cell);
-                pets.push({type,stage,facing,ctx:canvas.getContext('2d'),phase:0});
+                pets.push({type,stage,facing,ctx:canvas.getContext('2d'),phase:0,velocity:0});
               }
+              window.__motionTarget=20;
               let previous=performance.now();
               function draw(now) {
-                const distance=Math.min(100,now-previous)*0.02;previous=now;
+                const dt=Math.min(100,now-previous)/1000;previous=now;
                 for(const p of pets) {
                   const width=96*window.spritePetSizeMult(p.type,'medium',p.stage)*window.SPRITE_STAGE_SCALES[p.stage];
-                  p.phase=window.spriteWalk.advance(p.phase,distance,width,false);
+                  const step=window.spriteWalk.ease(p.velocity,window.__motionTarget,dt,20);
+                  p.velocity=step.velocity;
+                  p.phase=window.spriteWalk.advance(p.phase,step.distance,width,false);
                   p.ctx.clearRect(0,0,230,180);
                   window.renderSpriteGrid(p.ctx,{spriteType:p.type,stage:p.stage,weight:50,alive:true,mood:'neutral'},
-                    50,10,p.facing,window.spriteWalk.frame(p.type,p.phase,false,true),0,
+                    50,10,p.facing,window.spriteWalk.frame(p.type,p.phase,false,p.velocity>0.5),0,
                     window.SPRITE_STAGE_SCALES,window.spriteWeightWidthMult,window.spriteGetPalette,window.spriteHeightRatio,window.spriteQuadBellySag);
                 }
                 requestAnimationFrame(draw);
@@ -199,6 +222,10 @@ def run(output, chromium=None):
             }""")
             frames = []
             for index in range(32):
+                if index == 20:
+                    motion.evaluate("window.__motionTarget=0")
+                elif index == 26:
+                    motion.evaluate("window.__motionTarget=20")
                 motion.clock.run_for(80)
                 filename = output / f"motion-{index:02}.png"
                 motion.screenshot(path=str(filename))
