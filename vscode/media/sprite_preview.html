@@ -265,6 +265,7 @@
   var lastFrameMs = 0;
   var legAccumMs  = 0;       // accumulated time since last leg toggle
   var LEG_PERIOD_MS = 250;   // ms per leg-step
+  var walkDistance = 0;     // simulated screen-pixel travel for the real gait
 
   // ── Per-cell canvas registry ──────────────────────────────────────────────
   // Maps "<animal>_<stage>" → { canvas, ctx }
@@ -289,19 +290,23 @@
   // (quadruped multiplier 1.0, adult stage scale 1.0), plus a little padding.
   function canvasSize() {
     var maxBodySize = Math.round(BASE_SIZE * 1.0 * 1.0);
-    var w = (maxBodySize + 8) * pixelScale;
     var maxH = BASE_SIZE * 0.75 * 1.5;
     Object.keys(window.SPRITE_GRID_META || {}).forEach(function (t) {
-      maxH = Math.max(maxH, BASE_SIZE * sizeMultiplierFor(t) * window.spriteHeightRatio(t));
+      ["baby", "child", "teen", "adult", "senior"].forEach(function (stage) {
+        var width = Math.round(BASE_SIZE * sizeMultiplierFor(t, stage) * window.SPRITE_STAGE_SCALES[stage]);
+        maxBodySize = Math.max(maxBodySize, width);
+        maxH = Math.max(maxH, width * window.spriteHeightRatio(t));
+      });
     });
+    var w = (maxBodySize + 16) * pixelScale;
     var h = (Math.ceil(maxH) + 12) * pixelScale;
     return { w: w, h: h };
   }
 
   // Must mirror renderSpriteGrid's medium-size multiplier so the box we centre
   // is the box it actually draws.
-  function sizeMultiplierFor(animal) {
-    return (window.UPRIGHT_TYPES && window.UPRIGHT_TYPES[animal]) ? 0.75 : 1.0;
+  function sizeMultiplierFor(animal, stage) {
+    return window.spritePetSizeMult(animal, "medium", stage);
   }
 
   // ── Draw one cell ─────────────────────────────────────────────────────────
@@ -339,7 +344,7 @@
     // Determine body dimensions matching renderSpriteGrid exactly
     var stageScale = window.SPRITE_STAGE_SCALES[stage] || 0.65;
     // Mirror renderSpriteGrid's box (medium pet size, no width stretch)
-    var sizeMultiplier = sizeMultiplierFor(animal);
+    var sizeMultiplier = sizeMultiplierFor(animal, stage);
     var bodySize   = Math.round(BASE_SIZE * sizeMultiplier * stageScale);
     var bodyWidth  = bodySize;
     var bodyHeight = Math.round(bodyWidth * window.spriteHeightRatio(animal));
@@ -358,8 +363,13 @@
     // Breath bob phase for sleeping
     var bPhase = (state.sleeping && animEnabled) ? breathPhase : 0;
 
+    var frame = animEnabled ? legFrame : -1;
+    if (window.spriteWalk.supports(animal)) {
+      var phase = window.spriteWalk.advance(0, walkDistance, bodyWidth, false);
+      frame = window.spriteWalk.frame(animal, phase, false, animEnabled && !state.sleeping);
+    }
     window.renderSpriteGrid(
-      ctx, state, x, bodyY, facingLeft, animEnabled ? legFrame : -1, bPhase,
+      ctx, state, x, bodyY, facingLeft, frame, bPhase,
       window.SPRITE_STAGE_SCALES, window.spriteWeightWidthMult,
       window.spriteGetPalette, window.spriteHeightRatio,
       window.spriteQuadBellySag
@@ -464,6 +474,13 @@
     lastFrameMs = nowMs;
 
     var stateChanged = false;
+    // Exercise the same distance-driven rig as the sidebar, not legacy numeric
+    // frames. Cap catch-up after a hidden preview so it cannot jump a whole lap.
+    if (globalMood !== "sleeping") {
+      var previousDistance = walkDistance;
+      walkDistance += Math.min(dt, 100) * 0.028;
+      stateChanged = Math.floor(previousDistance) !== Math.floor(walkDistance);
+    }
 
     // Leg toggle
     legAccumMs += dt;

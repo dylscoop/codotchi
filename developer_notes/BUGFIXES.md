@@ -2623,3 +2623,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** Adult Stu's 0.6 tuning made him smaller than teen. Adult and senior used different tuning, and whole-cell raster rounding could hide growth or produce large jumps. The same mature growth and adult/senior equality were requested for Tim.
 
 **Fix:** Both Stu and Tim use 0.9 stage tuning for adult and senior, above teen's 0.85 scale. Mature stages use exact-size nearest-neighbour raster scaling with matching layout dimensions, without modifying sprite art. Regression tests cover actual teen/adult/senior drawing at all presets. Smaller companion sizing and other characters are unchanged.
+
+## BUGFIX-225 — Walking paws appear static or use the wrong visible-leg regions
+
+**Status:** Fixed (branch `feat/pet-ascii-and-natural-gaits`)
+**File:** `vscode/media/sprites.js`, `vscode/media/sidebar.js`, `vscode/media/sprite_preview.html` (shared with PyCharm)
+
+**Problem:** The initial 2.39.0 gait used small source-grid offsets and could infer leg columns from the last two rows. Raised paws ended above those rows; the child cat had an unrelated pixel below its feet, and the senior cat used an adult fallback without matching stage metadata. Sprite Preview still supplied legacy numeric frames, so it did not display the new gait at all. Source-rectangle tests did not establish visible motion after display scaling.
+
+**Fix:** Explicit per-stage visible-leg maps define roots, foot rows and anatomical phases, preserving 2/3/4 visible limbs without drawing hidden legs. Increase reach/lift within each leg's length, correct the left-facing stance direction and bridge adjacent leg pixels through shear. Require real displacement, and make Preview use the same gait with correct stage sizing. Regression coverage includes the real sidebar loop and final Chromium canvas pixels at all presets in both directions and walk/trot modes. Base sprite files are unchanged; live IDE acceptance remains pending.

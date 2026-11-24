@@ -2928,7 +2928,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (window.spriteWalk.supports(lastState.spriteType)) {
       // Real movement, not frame count: blocked/idle paws stop, faster travel
       // advances faster. Climbing keeps its existing two-frame animation.
-      if (walking && !climbing) {
+      if (walking && !climbing && Math.abs(petX - gaitStartX) > 0.001) {
         var trotting = running || Math.abs(petVx) > (STAGE_BASE_SPEED_PPS[lastState.stage] || 28) * 1.25;
         walkPhase = window.spriteWalk.advance(walkPhase, petX - gaitStartX, bWidth, trotting);
         legFrame = window.spriteWalk.frame(lastState.spriteType, walkPhase, trotting, true);

@@ -1,6 +1,65 @@
 # Version History
 
-## v2.39.0 — current (unreleased)
+## v2.39.1 — current (unreleased)
+
+### Walking visibility correction (same feature branch)
+
+| File | What changed |
+|------|--------------|
+| `vscode/media/sprites.js` | Replace bottom-row leg guessing with explicit species/stage rigs (including raised feet and senior-cat adult-grid fallback); larger, leg-length-bounded horizontal reach and lift; left-facing stance direction corrected; bridge existing adjacent leg pixels during shear. No source artwork changes. |
+| `vscode/media/sidebar.js` | Stop the natural gait when actual horizontal displacement is zero, even if a blocked movement branch retains a velocity. |
+| `vscode/media/sprite_preview.html` | Drive the real distance-based gait instead of legacy numeric frames; honour stage-specific sizing and allocate space for full sprites. |
+| `vscode/tests/unit/webviewAnimations.test.ts` | Explicit 2/3/4-limb maps, raised-foot/stray-pixel regression, anatomical phase slots, forward swing/backward stance and root anchoring. |
+| `scripts/check_walk_browser.py` | Reproducible Chromium integration: real sidebar message/animation loop, final canvas pixels at every preset in both directions and walk/trot modes, Sprite Preview activation; synthetic state only. Screenshots/results saved to a caller-supplied directory. |
+| All plugin version manifests and Desktop `src/server.ts` | 2.39.1 distinguishes this correction from locally installed 2.39.0. CLI artwork/functionality unchanged. |
+| `README.md`, IDE/CLI/Desktop READMEs, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md` | Current development filenames, visible-limb semantics, test instructions and BUGFIX-225. |
+
+Rig visible-leg counts (baby/child/teen/adult/senior): dog **4/2/4/3/4**,
+cat **3/4/2/3/3**, sheep **3/3/4/4/4**. Two-limb profiles alternate; partial
+three-limb profiles retain their mapped four-beat slots, not evenly spaced
+three-legged timing. Missing limbs are never drawn. Each leg has its own root
+and foot row, so already-raised feet are not treated as full-height legs.
+
+Reach: `max(1, min(round(rows * 0.08), round(legLength * 0.45)))` source cells;
+lift: `max(1, min(round(rows * 0.065), round(legLength * 0.4)))`.
+Stride distances, eight poses, swing duty and trot speed threshold are unchanged.
+This is not perfect world-space foot locking or a skeletal reconstruction.
+
+Browser check (requires the compiled VS Code test engine and Playwright Chromium):
+
+```text
+uv run --with playwright python scripts/check_walk_browser.py --output <directory>
+```
+
+Pass `--chromium <executable>` to use an existing local Chromium installation.
+Browser screenshots exercise the shared IDE media, not live IDE application UIs.
+Live PyCharm/VSCodium confirmation remains a separate user acceptance step.
+The sourced-ASCII redistribution-permission blocker is unchanged; nothing is
+published by this correction.
+
+Validation: **1,725 tests passed** (VS Code 1033, Kotlin 327, Claude Code 138,
+OpenCode Node 149, OpenCode plugin 60, Desktop 12, cross-CLI art 6). VS Code
+type-check and core sync checks passed. Chromium passed **180** displayed-pixel
+combinations (15 species/stages × 3 sizes × walk/trot × 2 directions), all eight
+poses in each of five real-sidebar movement cases, sleep guards and Sprite
+Preview activation, with zero browser errors. Contact sheets were inspected;
+this is not a claim of live IDE acceptance. Whole-repo Markdown lint still fails
+on existing/dependency issues; the nine changed Markdown files introduce zero
+new errors against their baseline of 117.
+
+All five local packages were rebuilt and their embedded 2.39.1 versions checked:
+`vscode/codotchi-2.39.1.vsix`,
+`pycharm/build/distributions/pycharm-codotchi-2.39.1.zip`,
+`opencode-codotchi/opencode-codotchi-2.39.1.zip`,
+`claude-codotchi/claude-codotchi-2.39.1.zip`, and
+`claude-desktop-codotchi/codotchi-desktop.mcpb`.
+Both IDE archives contain byte-identical current renderer, sidebar and Preview
+files. All three ASCII-containing packages retain their identical credit notice.
+Prior 2.39.0 artifacts were archived; artifacts remain gitignored and local.
+No plugin was reinstalled during this correction; no push, PR, merge, tag or
+release was performed. (The CLI plugins were previously reinstalled at 2.39.0.)
+
+## v2.39.0 — previous local development build (unreleased)
 
 ### Changes from v2.38.4 — Feature 17: pet ASCII and natural gaits
 

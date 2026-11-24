@@ -697,7 +697,7 @@ describe("Feature 17 — natural quadruped gait integration", () => {
 
   it("walks with four staggered footfalls and trots in diagonal pairs", () => {
     const w = loadSpriteWindow();
-    const spans = w.SPRITE_GRID_META.dog.legs.teen;
+    const spans = w.spriteWalk.rig("dog", "teen");
     const raisedAt: number[] = [];
     for (let frame = 0; frame < 8; frame++) {
       const raised = spans.map((_: unknown, i: number) => w.spriteWalk.pose({ walk: frame, trot: false }, i, spans, 128).lift > 0.1);
@@ -710,10 +710,56 @@ describe("Feature 17 — natural quadruped gait integration", () => {
     assert.equal(new Set(raisedAt).size, 4, "each visible paw swings once");
     for (let i = 0; i < spans.length; i++) {
       const pose = w.spriteWalk.pose({ walk: 1, trot: false }, i, spans, 128);
-      const root = w.spriteWalk.pixelOffset(pose, 99, 99, 128);
+      const root = w.spriteWalk.pixelOffset(pose, pose.root, pose.root, 128);
       assert.equal(root.x, 0);
       assert.equal(root.y, 0, "shoulder/hip stays attached");
     }
+  });
+
+  it("maps only visible limbs, raised feet and fallback grids explicitly", () => {
+    const w = loadSpriteWindow();
+    const counts: Record<string, number[]> = {
+      dog: [4, 2, 4, 3, 4], cat: [3, 4, 2, 3, 3], sheep: [3, 3, 4, 4, 4],
+    };
+    for (const [type, expected] of Object.entries(counts)) {
+      for (const [index, stage] of ["baby", "child", "teen", "adult", "senior"].entries()) {
+        const rig = w.spriteWalk.rig(type, stage);
+        assert.equal(rig.length, expected[index], `${type}/${stage}`);
+        const grid = w.SPRITES[type][stage] || w.SPRITES[type].adult;
+        for (const leg of rig) {
+          assert.ok(leg[2] < leg[3]);
+          assert.ok(grid.slice(leg[2], leg[3] + 1).some((row: number[]) => row.slice(leg[0], leg[1] + 1).some(Boolean)),
+            `${type}/${stage}/${leg[6]} maps existing pixels, never a synthetic limb`);
+        }
+      }
+    }
+    assert.deepEqual(w.spriteWalk.rig("cat", "senior"), w.spriteWalk.rig("cat", "adult"));
+    const childCat = w.spriteWalk.rig("cat", "child");
+    assert.ok(childCat.every((leg: number[]) => leg[0] > 35 && leg[3] < 127),
+      "exclude the child cat's stray bottom-row pixel; its actual feet are above it");
+    assert.equal(w.spriteWalk.rig("dog", "egg"), null);
+    assert.equal(w.spriteWalk.rig("classic", "adult"), null);
+    const adultDog = w.spriteWalk.rig("dog", "adult");
+    assert.equal(w.spriteWalk.legAt(adultDog, 127, 42), 1,
+      "the near front paw angles left below the far leg; its toes keep the near-leg phase");
+    assert.equal(w.spriteWalk.legAt(adultDog, 113, 140), -1, "tail pixels are not legs");
+    assert.equal(w.spriteWalk.legAt(childCat, 127, 35), -1, "stray pixels are not legs");
+  });
+
+  it("sweeps planted paws backward, lifts them forward and preserves missing footfall slots", () => {
+    const walk = loadSpriteWindow().spriteWalk;
+    const rig = walk.rig("dog", "child"); // two visible legs alternate, not four invented paws
+    const stance = [2, 4, 6].map(frame => walk.pose({ walk: frame }, 0, rig, 128));
+    assert.ok(stance[0].x < stance[1].x && stance[1].x < stance[2].x,
+      "left-facing pet: planted paw travels right relative to the body");
+    assert.ok(stance.every(pose => pose.lift === 0));
+    const swing = walk.pose({ walk: 1 }, 0, rig, 128);
+    assert.ok(swing.lift >= 4, "a visible lift in the high-resolution source");
+    assert.equal(walk.pose({ walk: 1 }, 1, rig, 128).lift, 0);
+    const three = walk.rig("cat", "adult");
+    assert.equal(new Set(three.map((leg: any[]) => leg[4])).size, 3);
+    assert.ok(three.every((leg: any[]) => [0, 0.25, 0.5, 0.75].includes(leg[4])),
+      "three visible legs keep anatomical four-beat phases, not index/3 timing");
   });
 
   for (const type of ["dog", "cat", "sheep"]) for (const stage of ["baby", "child", "teen", "adult", "senior"]) {

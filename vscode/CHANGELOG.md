@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.39.1] - Unreleased
+
+- Make walking paws easier to see, with clearer forward/backward travel and lift.
+  Map visible legs per species/stage, including raised paws, rather than guessing
+  from the bottom image row. No hidden limbs or source-sprite edits.
+- Sprite Preview now uses the same eight-pose walking gait as the main pet.
+
 ## [2.39.0] - Unreleased
 
 - Dogs, cats and sheep walk with forward/backward paw movement, staggered steps

@@ -13,7 +13,7 @@ Raises your codotchi in the terminal alongside your coding session.
 
 ## Install
 
-**v2.39.0 development notice:** the selected ASCII art's software-redistribution
+**v2.39.1 development notice:** the selected ASCII art's software-redistribution
 permissions are not yet established. See [sources, credits and release blocker](ASCII_ART_CREDITS.md).
 Do not publish this development package until permissions are resolved.
 
