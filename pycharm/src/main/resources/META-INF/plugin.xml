@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.39.1</version>
+    <version>2.39.0</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -189,9 +189,8 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
     ]]></description>
 
     <change-notes><![CDATA[
-<h3>2.39.1</h3>
-<ul><li>Clearer paw travel and lift, mapped to each stage's visible legs. Sprite Preview uses the same walking animation.</li></ul>
 <h3>2.39.0</h3>
+<ul><li>Clearer paw travel and lift, mapped to each stage's visible legs. Sprite Preview uses the same walking animation.</li></ul>
 <ul><li>Dogs, cats and sheep use distance-driven walking with forward/backward paw movement and anchored leg roots. Other pet movement stays unchanged.</li></ul>
 <h3>2.38.4</h3>
 <ul><li>Stugotchi and Timagotchi had a rework.</li></ul>

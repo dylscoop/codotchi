@@ -17,7 +17,7 @@ to survive and evolve into its final form. Any support and feedback is much appr
 Your pet is drawn from one of **7 sprite sets**, with more to be added in the future,
 assigned to you at random when you start a new game.
 
-v2.39.1: dogs, cats and sheep use an eight-pose, distance-driven walk with
+v2.39.0: dogs, cats and sheep use an eight-pose, distance-driven walk with
 forward/backward paw movement and anchored leg roots. Faster movement uses
 mapped diagonal trot pairs. Visible legs are mapped per stage, including raised
 paws; no hidden legs are added. Sprite Preview uses the same gait.

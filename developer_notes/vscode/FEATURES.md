@@ -973,7 +973,7 @@ while exact-size mature raster scaling avoids whole-cell size jumps.
 
 ## 17. Recognisable ASCII Pets and Natural Quadruped Gaits
 
-Version: **2.39.1**. Branch: `feat/pet-ascii-and-natural-gaits`.
+Version: **2.39.0** (consolidated development build). Branch: `feat/pet-ascii-and-natural-gaits`.
 
 | Feature | Status | Notes |
 |---------|--------|-------|

@@ -1,8 +1,12 @@
 # Version History
 
-## v2.39.1 — current (unreleased)
+## v2.39.0 — current (unreleased, consolidated)
 
-### Walking visibility correction (same feature branch)
+### Walking visibility correction (included in the single 2.39.0 build)
+
+The user explicitly requested consolidating the initial implementation and all
+walking corrections into **2.39.0**, not a separate patch release. Current
+manifests, IDE change notes and all five rebuilt packages use 2.39.0.
 
 | File | What changed |
 |------|--------------|
@@ -11,7 +15,7 @@
 | `vscode/media/sprite_preview.html` | Drive the real distance-based gait instead of legacy numeric frames; honour stage-specific sizing and allocate space for full sprites. |
 | `vscode/tests/unit/webviewAnimations.test.ts` | Explicit 2/3/4-limb maps, raised-foot/stray-pixel regression, anatomical phase slots, forward swing/backward stance and root anchoring. |
 | `scripts/check_walk_browser.py` | Reproducible Chromium integration: real sidebar message/animation loop, final canvas pixels at every preset in both directions and walk/trot modes, Sprite Preview activation; synthetic state only. Screenshots/results saved to a caller-supplied directory. |
-| All plugin version manifests and Desktop `src/server.ts` | 2.39.1 distinguishes this correction from locally installed 2.39.0. CLI artwork/functionality unchanged. |
+| All plugin version manifests and Desktop `src/server.ts` | Single user-requested 2.39.0 across all five plugins; walking corrections included. CLI artwork/functionality unchanged. |
 | `README.md`, IDE/CLI/Desktop READMEs, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md` | Current development filenames, visible-limb semantics, test instructions and BUGFIX-225. |
 
 Rig visible-leg counts (baby/child/teen/adult/senior): dog **4/2/4/3/4**,
@@ -44,22 +48,40 @@ combinations (15 species/stages × 3 sizes × walk/trot × 2 directions), all ei
 poses in each of five real-sidebar movement cases, sleep guards and Sprite
 Preview activation, with zero browser errors. Contact sheets were inspected;
 this is not a claim of live IDE acceptance. Whole-repo Markdown lint still fails
-on existing/dependency issues; the nine changed Markdown files introduce zero
-new errors against their baseline of 117.
+on existing/dependency issues. For the version-consolidation rebuild, all 1,725
+tests were rerun successfully, with type-check and core sync checks passing.
+The renderer/sidebar/Preview code is unchanged from the browser-verified
+correction; the eight changed Markdown files add zero errors vs baseline 70.
 
-All five local packages were rebuilt and their embedded 2.39.1 versions checked:
-`vscode/codotchi-2.39.1.vsix`,
-`pycharm/build/distributions/pycharm-codotchi-2.39.1.zip`,
-`opencode-codotchi/opencode-codotchi-2.39.1.zip`,
-`claude-codotchi/claude-codotchi-2.39.1.zip`, and
+All five local packages use the consolidated 2.39.0 version:
+`vscode/codotchi-2.39.0.vsix`,
+`pycharm/build/distributions/pycharm-codotchi-2.39.0.zip`,
+`opencode-codotchi/opencode-codotchi-2.39.0.zip`,
+`claude-codotchi/claude-codotchi-2.39.0.zip`, and
 `claude-desktop-codotchi/codotchi-desktop.mcpb`.
 Both IDE archives contain byte-identical current renderer, sidebar and Preview
 files. All three ASCII-containing packages retain their identical credit notice.
-Prior 2.39.0 artifacts were archived; artifacts remain gitignored and local.
+Earlier local builds were archived; artifacts remain gitignored and local.
 No plugin was reinstalled during this correction; no push, PR, merge, tag or
 release was performed. (The CLI plugins were previously reinstalled at 2.39.0.)
 
-## v2.39.0 — previous local development build (unreleased)
+### Single all-platform bundle
+
+`codotchi-2.39.0-all-platforms.zip` collects the VSIX, PyCharm ZIP, OpenCode ZIP,
+Claude Code ZIP and version-named Desktop MCPB, plus `README.md`,
+`ASCII_ART_CREDITS.md` and `SHA256SUMS.txt`. It is a local convenience bundle,
+not an automatic installer or a published release. Each embedded installer must
+be installed separately. Existing 2.39.0 installs require explicit replacement
+and application restart; matching version strings do not prove the gait is new.
+
+Verified combined archive: **3,235,368 bytes**, eight entries. All five embedded
+versions are 2.39.0; each enclosed installer matches its source artifact byte for
+byte, as do the renderer/sidebar/Preview assets in both IDE installers. The
+checksums file was checked against every enclosed installer. Bundle SHA-256:
+`705261cc49547abe90dfc466971d565d8a1a9960b11f467a4bc40c9b164104aa`.
+All artifacts remain local and gitignored; none was installed or published.
+
+### Shared ASCII implementation
 
 ### Changes from v2.38.4 — Feature 17: pet ASCII and natural gaits
 
@@ -82,33 +104,13 @@ Branch: `feat/pet-ascii-and-natural-gaits`.
 
 Gait tuning: 8 poses/cycle; stride distance `max(8, width × 0.5)` (walk),
 `max(8, width × 0.7)` (trot); trot above 1.25× stage base speed. Walking
-swing occupies 25% of a cycle, trot swing 50%; source-grid amplitude is
-`max(1, round(rows × 0.025))`, lift `max(1, round(rows × 0.03))`.
+swing occupies 25% of a cycle, trot swing 50%. Reach/lift use the corrected,
+leg-length-bounded formulas above, not the initial subtle source-grid offsets.
 No persisted state or engine/Kotlin gameplay changes. No architecture HTML exists
 in this repository; the applicable system documentation is Feature 17 above.
 
 Release status: **not published**. Sourced-art software redistribution permission
 is outstanding. Base sprite images and Classic/people art remain unchanged.
-
-Validation: VS Code 1031, Kotlin 327, Claude Code 138, OpenCode Node 149,
-OpenCode plugin 60, Desktop 12, cross-CLI rotation-art 6 tests passed.
-VS Code type-check and shared-core sync check passed. Repository markdown lint
-still reports historical/dependency errors; the 13 changed/new markdown files
-introduce zero errors against their baseline (81 pre-existing errors).
-
-Local package verification completed (artifacts remain gitignored, not published):
-
-- `vscode/codotchi-2.39.0.vsix`
-- `pycharm/build/distributions/pycharm-codotchi-2.39.0.zip`
-- `opencode-codotchi/opencode-codotchi-2.39.0.zip`
-- `claude-codotchi/claude-codotchi-2.39.0.zip`
-- `claude-desktop-codotchi/codotchi-desktop.mcpb`
-
-All five embedded versions are 2.39.0. Both IDE archives contain byte-identical
-current shared renderer/animation files. All three ASCII-containing packages
-include the identical source/credit/permission-review notice and current art.
-Previous local packages were archived without overwriting existing archives.
-No plugin was reinstalled, and no branch/tag/package was pushed or published.
 
 ## v2.38.4
 
