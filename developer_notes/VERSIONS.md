@@ -37,6 +37,20 @@ VS Code type-check and shared-core sync check passed. Repository markdown lint
 still reports historical/dependency errors; the 13 changed/new markdown files
 introduce zero errors against their baseline (81 pre-existing errors).
 
+Local package verification completed (artifacts remain gitignored, not published):
+
+- `vscode/codotchi-2.39.0.vsix`
+- `pycharm/build/distributions/pycharm-codotchi-2.39.0.zip`
+- `opencode-codotchi/opencode-codotchi-2.39.0.zip`
+- `claude-codotchi/claude-codotchi-2.39.0.zip`
+- `claude-desktop-codotchi/codotchi-desktop.mcpb`
+
+All five embedded versions are 2.39.0. Both IDE archives contain byte-identical
+current shared renderer/animation files. All three ASCII-containing packages
+include the identical source/credit/permission-review notice and current art.
+Previous local packages were archived without overwriting existing archives.
+No plugin was reinstalled, and no branch/tag/package was pushed or published.
+
 ## v2.38.4
 
 ### Changes from v2.38.3 (Stu/Tim growth and companion sizing - branch fix/stu-size-and-cat-turning)
