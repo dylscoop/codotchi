@@ -2623,3 +2623,30 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** Adult Stu's 0.6 tuning made him smaller than teen. Adult and senior used different tuning, and whole-cell raster rounding could hide growth or produce large jumps. The same mature growth and adult/senior equality were requested for Tim.
 
 **Fix:** Both Stu and Tim use 0.9 stage tuning for adult and senior, above teen's 0.85 scale. Mature stages use exact-size nearest-neighbour raster scaling with matching layout dimensions, without modifying sprite art. Regression tests cover actual teen/adult/senior drawing at all presets. Smaller companion sizing and other characters are unchanged.
+
+## BUGFIX-225 — Walking paws appear static or use the wrong visible-leg regions
+
+**Status:** Fixed (branch `feat/pet-ascii-and-natural-gaits`)
+**File:** `vscode/media/sprites.js`, `vscode/media/sidebar.js`, `vscode/media/sprite_preview.html` (shared with PyCharm)
+
+**Problem:** The initial 2.39.0 gait used small source-grid offsets and could infer leg columns from the last two rows. Raised paws ended above those rows; the child cat had an unrelated pixel below its feet, and the senior cat used an adult fallback without matching stage metadata. Sprite Preview still supplied legacy numeric frames, so it did not display the new gait at all. Source-rectangle tests did not establish visible motion after display scaling.
+
+**Fix:** Explicit per-stage visible-leg maps define roots, foot rows and anatomical phases, preserving 2/3/4 visible limbs without drawing hidden legs. Increase reach/lift within each leg's length, correct the left-facing stance direction and bridge adjacent leg pixels through shear. Require real displacement, and make Preview use the same gait with correct stage sizing. Regression coverage includes the real sidebar loop and final Chromium canvas pixels at all presets in both directions and walk/trot modes. Base sprite files are unchanged; live IDE acceptance remains pending.
+
+## BUGFIX-226 — Uncoordinated and exaggerated front/hind walking
+
+**Status:** Fixed (branch `feat/pet-ascii-and-natural-gaits`)
+**File:** `vscode/media/sprites.js` (shared with PyCharm)
+
+**Problem:** The four-beat walk lifted front and hind paws at different times. The visibility correction's large travel/lift made the movement look exaggerated, despite automated pixel-change checks passing.
+
+**Fix:** Use the user-approved alternating diagonal pairs at both speeds: front-far with hind-near, then the opposite pair. Two visible legs move together; three retain their anatomical pair assignments without adding a hidden limb. Reduce reach to `max(1, min(round(rows * 0.025), round(legLength * 0.18)))` and lift to `max(1, min(round(rows * 0.015), round(legLength * 0.12)))`, with 50% swing, anchored roots and unchanged source pixels. Test rounded foot timing and travel across every species/stage and both speeds, alongside final-pixel/browser-loop checks and a continuous normal-size motion gallery. Smallest sprites can quantise to two displayed positions; tests no longer demand artificially large movement. Kept in the requested 2.39.0; live IDE visual acceptance remains pending.
+
+## BUGFIX-227 — Rigid body glides through the walking cycle
+
+**Status:** Fixed (branch `feat/pet-ascii-and-natural-gaits`)
+**File:** `vscode/media/sprites.js`, `vscode/media/sidebar.js` (shared with PyCharm)
+
+**Problem:** Coordinated small steps still moved beneath a rigid torso, and ordinary wandering started/reversed instantly. Simply bobbing the whole sprite would also lift its supporting paws off the floor.
+
+**Fix:** Add two subtle contact dips per cycle, capped at one displayed pixel and suppressed when legs are too short. Translate the torso rigidly and taper that offset from each leg root to zero at its paw; keep unmapped lower-edge pixels above their source floor. Both draw paths and size-sensitive raster cache entries include the compensation. Ordinary floor wandering integrates a nominal 0.18 s acceleration / 0.12 s braking ramp; actual distance drives the gait and facing follows actual eased velocity. Safety, sleep/lying, bounds and scripted/target-driven movement keep immediate handling. No independent head/tail animation, source-art edits or horizontal foot-lock solver. Tests cover start/stop integration, grounded paws, tiny body translation, all display sizes and the real browser loop. Kept at 2.39.0; live IDE acceptance remains pending.

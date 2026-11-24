@@ -653,6 +653,231 @@ describe("detected leg walk (vscode/media/sprites.js)", () => {
   });
 });
 
+describe("Feature 17 — natural quadruped gait integration", () => {
+  function renderer(size = "small") {
+    const surfaces: number[][][] = [];
+    const main: number[][] = [];
+    const window: Record<string, any> = {};
+    const makeContext = (cells: number[][]) => new Proxy({} as Record<string, any>, {
+      get: (target, key: string) => key in target ? target[key]
+        : key === "fillRect" ? (...args: number[]) => cells.push(args) : () => undefined,
+      set: (target, key: string, value) => { target[key] = value; return true; },
+    });
+    const document = { body: { dataset: { petSize: size } }, createElement: () => {
+      const cells: number[][] = [];
+      surfaces.push(cells);
+      return { getContext: () => makeContext(cells) };
+    } };
+    const context = vm.createContext({ window, document });
+    for (const file of ["spriteConstants.js", "sprites.generated.js", "sprites.js"]) {
+      vm.runInContext(fs.readFileSync(path.join(media, file), "utf8").replace(/^﻿/, ""), context);
+    }
+    return { window, surfaces, main, draw(type: string, stage: string, frame: any, extra = {}) {
+      main.length = 0;
+      window.renderSpriteGrid(makeContext(main), { spriteType: type, stage, weight: 50, alive: true,
+        mood: "neutral", ...extra }, 0, 0, true, frame, 0, window.SPRITE_STAGE_SCALES,
+      window.spriteWeightWidthMult, window.spriteGetPalette, window.spriteHeightRatio, window.spriteQuadBellySag);
+      return JSON.parse(JSON.stringify(main.length ? main : surfaces.at(-1)));
+    } };
+  }
+
+  it("advances by actual distance, independent of frame rate and direction", () => {
+    const walk = loadSpriteWindow().spriteWalk;
+    const one = walk.advance(0, 30, 100, false);
+    let many = 0;
+    for (let i = 0; i < 30; i++) many = walk.advance(many, 1, 100, false);
+    assert.ok(Math.abs(one - many) < 1e-10);
+    assert.equal(walk.advance(one, 0, 100, false), one);
+    assert.equal(walk.advance(0, -30, 100, false), one);
+    assert.equal(walk.frame("dog", one, false, false), -1);
+    for (const type of ["classic", "tim", "stu", "snake", "kangaroo", "dragon", "rabbit"]) {
+      assert.equal(walk.frame(type, one, false, true), null, type);
+    }
+  });
+
+  it("eases ordinary walking starts, reversals and stops without frame-rate-dependent drift", () => {
+    const walk = loadSpriteWindow().spriteWalk;
+    const simulate = (target: number, count: number, initial = 0) => {
+      let velocity = initial, distance = 0;
+      for (let i = 0; i < count; i++) {
+        const step = walk.ease(velocity, target, 0.3 / count, 30);
+        velocity = step.velocity; distance += step.distance;
+      }
+      return { velocity, distance };
+    };
+    const first = walk.ease(0, 30, 0.03, 30);
+    assert.ok(first.velocity > 0 && first.velocity < 30);
+    assert.ok(first.distance > 0 && first.distance < 30 * 0.03);
+    const coarse = simulate(30, 3), fine = simulate(30, 30);
+    assert.equal(coarse.velocity, 30);
+    assert.ok(Math.abs(coarse.distance - fine.distance) < 1e-10);
+    const stop = simulate(0, 30, coarse.velocity);
+    assert.equal(stop.velocity, 0, "finite stop, not endless exponentially shrinking drift");
+    assert.ok(stop.distance > 0 && stop.distance <= 30 * 0.12);
+    const reverse = walk.ease(30, -30, 0.03, 30);
+    assert.ok(reverse.velocity > 0, "decelerate before changing direction");
+    assert.equal(walk.ease(0, 30, 0, 30).distance, 0);
+    assert.ok(sidebarSource.includes("petX += walkStep.distance"));
+    assert.ok(sidebarSource.includes("var gaitSpeed = walkEaseUsed ? walkVelocity : petVx"));
+    assert.ok(sidebarSource.includes("if (!walkEaseUsed || Math.abs(petX - gaitStartX) <= 0.001) { walkVelocity = 0; }"));
+  });
+
+  it("caps the contact dip at one displayed pixel and compensates from root to planted paw", () => {
+    const walk = loadSpriteWindow().spriteWalk;
+    for (const type of ["dog", "cat", "sheep"]) for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
+      const rig = walk.rig(type, stage);
+      for (const scale of [0.2, 0.5, 1, 2, 4]) for (let frame = 0; frame < 8; frame++) {
+        const body = walk.bodyOffset({ walk: frame }, rig, scale);
+        assert.ok(body >= 0 && body <= 1);
+        for (let i = 0; i < rig.length; i++) {
+          const pose = walk.pose({ walk: frame }, i, rig, 128);
+          const root = walk.pixelOffset(pose, pose.root, pose.root, 128);
+          const foot = walk.pixelOffset(pose, pose.foot, pose.root, 128);
+          assert.equal(Math.round(body * root.bodyWeight), body, "root follows the body");
+          assert.equal(Math.round(body * foot.bodyWeight), 0, "body dip never moves the paw");
+          if (pose.lift === 0) assert.equal(foot.y, 0, "support paw stays on its own source floor");
+        }
+      }
+    }
+    const rig = walk.rig("dog", "adult");
+    assert.equal(walk.bodyOffset({ walk: 0 }, rig, 1), 1);
+    assert.equal(walk.bodyOffset({ walk: 2 }, rig, 1), 0);
+    assert.equal(walk.bodyOffset({ walk: 4 }, rig, 1), 1, "dip twice per paired cycle");
+  });
+
+  it("moves front/hind diagonal pairs together at both speeds across every stage", () => {
+    const w = loadSpriteWindow();
+    for (const type of ["dog", "cat", "sheep"]) for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
+      const rig = w.spriteWalk.rig(type, stage);
+      const rows = w.SPRITE_GRID_META[type].rows;
+      const group = (leg: any[]) => rig.length === 2 || ["front-far", "hind-near"].includes(leg[6]) ? 0 : 0.5;
+      for (const trot of [false, true]) for (let frame = 0; frame < 8; frame++) {
+        const raised = rig.map((leg: any[], i: number) => {
+          const pose = w.spriteWalk.pose({ walk: frame, trot }, i, rig, rows);
+          const root = w.spriteWalk.pixelOffset(pose, pose.root, pose.root, rows);
+          const foot = w.spriteWalk.pixelOffset(pose, pose.foot, pose.root, rows);
+          assert.equal(root.x, 0);
+          assert.equal(root.y, 0, "shoulder/hip stays attached");
+          assert.ok(Math.abs(foot.x) <= (rows === 32 ? 1 : 3), "restrained paw travel");
+          assert.ok(-foot.y <= (rows === 32 ? 1 : 2), "restrained lift");
+          const phase = (frame / 8 + group(leg)) % 1;
+          assert.equal(foot.y < 0, phase > 0 && phase < 0.5, `${type}/${stage}/${leg[6]} coordinated foot timing`);
+          return pose.lift > 0.1;
+        });
+        for (let a = 0; a < rig.length; a++) for (let b = a + 1; b < rig.length; b++) {
+          if (group(rig[a]) === group(rig[b])) assert.equal(raised[a], raised[b], "paired front/hind move together");
+          else if (frame % 4 !== 0) assert.notEqual(raised[a], raised[b], "opposite diagonal alternates");
+        }
+      }
+    }
+  });
+
+  it("maps only visible limbs, raised feet and fallback grids explicitly", () => {
+    const w = loadSpriteWindow();
+    const counts: Record<string, number[]> = {
+      dog: [4, 2, 4, 3, 4], cat: [3, 4, 2, 3, 3], sheep: [3, 3, 4, 4, 4],
+    };
+    for (const [type, expected] of Object.entries(counts)) {
+      for (const [index, stage] of ["baby", "child", "teen", "adult", "senior"].entries()) {
+        const rig = w.spriteWalk.rig(type, stage);
+        assert.equal(rig.length, expected[index], `${type}/${stage}`);
+        const grid = w.SPRITES[type][stage] || w.SPRITES[type].adult;
+        for (const leg of rig) {
+          assert.ok(leg[2] < leg[3]);
+          assert.ok(grid.slice(leg[2], leg[3] + 1).some((row: number[]) => row.slice(leg[0], leg[1] + 1).some(Boolean)),
+            `${type}/${stage}/${leg[6]} maps existing pixels, never a synthetic limb`);
+        }
+      }
+    }
+    assert.deepEqual(w.spriteWalk.rig("cat", "senior"), w.spriteWalk.rig("cat", "adult"));
+    const childCat = w.spriteWalk.rig("cat", "child");
+    assert.ok(childCat.every((leg: number[]) => leg[0] > 35 && leg[3] < 127),
+      "exclude the child cat's stray bottom-row pixel; its actual feet are above it");
+    assert.equal(w.spriteWalk.rig("dog", "egg"), null);
+    assert.equal(w.spriteWalk.rig("classic", "adult"), null);
+    const adultDog = w.spriteWalk.rig("dog", "adult");
+    assert.equal(w.spriteWalk.legAt(adultDog, 127, 42), 1,
+      "the near front paw angles left below the far leg; its toes keep the near-leg phase");
+    assert.equal(w.spriteWalk.legAt(adultDog, 113, 140), -1, "tail pixels are not legs");
+    assert.equal(w.spriteWalk.legAt(childCat, 127, 35), -1, "stray pixels are not legs");
+  });
+
+  it("sweeps planted paws backward with a small forward lift and no invented limbs", () => {
+    const walk = loadSpriteWindow().spriteWalk;
+    const rig = walk.rig("dog", "child"); // visible front/hind move together
+    const stance = [4, 5, 6].map(frame => walk.pose({ walk: frame }, 0, rig, 128));
+    assert.ok(stance[0].x < stance[1].x && stance[1].x < stance[2].x,
+      "left-facing pet: planted paw travels right relative to the body");
+    assert.ok(stance.every(pose => pose.lift === 0));
+    const swing = walk.pose({ walk: 1 }, 0, rig, 128);
+    assert.ok(swing.lift > 0 && swing.lift <= 2, "small lift, not an exaggerated high step");
+    assert.equal(walk.pose({ walk: 1 }, 1, rig, 128).lift, swing.lift);
+    const three = walk.rig("cat", "adult");
+    assert.equal(new Set(three.map((leg: any[]) => leg[4])).size, 2);
+    assert.equal(three[0][4], three[1][4], "front-near and hind-far stay paired");
+    assert.notEqual(three[1][4], three[2][4], "remaining hind leg keeps the other diagonal phase");
+  });
+
+  for (const type of ["dog", "cat", "sheep"]) for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
+    it(`articulates ${type}/${stage} with a rigid tiny torso dip and no feet below the source floor`, () => {
+      const r = renderer();
+      const neutral: number[][] = r.draw(type, stage, -1);
+      const meta = r.window.SPRITE_GRID_META[type];
+      const raster = r.surfaces.length > 0;
+      const height = Math.round(Math.round(96 * r.window.spritePetSizeMult(type, "small", stage) * r.window.SPRITE_STAGE_SCALES[stage]) * r.window.spriteHeightRatio(type));
+      const cellH = Math.max(1, Math.round(height / meta.rows));
+      const boundary = raster ? meta.legRowStart : height - meta.rows * cellH + meta.legRowStart * cellH;
+      const torso = neutral.filter(([, y]) => y < boundary);
+      let changed = false;
+      for (let frame = 0; frame < 8; frame++) {
+        const cells: number[][] = r.draw(type, stage, { walk: frame, trot: false });
+        const frameData = { walk: frame };
+        const scale = height / meta.rows;
+        const body = r.window.spriteWalk.bodyOffset(frameData, r.window.spriteWalk.rig(type, stage), raster ? scale : cellH);
+        const shift = raster ? Math.floor(body / scale) : body;
+        assert.deepEqual(cells.slice(0, torso.length), torso.map(([x, y, w, h]) => [x, y + shift, w, h]),
+          "torso shape/colours are preserved, only translated by the compensated dip");
+        assert.ok(Math.max(...cells.map(([, y, , h]) => y + h)) <= Math.max(...neutral.map(([, y, , h]) => y + h)));
+        changed ||= JSON.stringify(cells) !== JSON.stringify(neutral);
+      }
+      assert.ok(changed, "visible paw positions change across the stride");
+    });
+  }
+
+  it("uses distinct bounded raster cache entries and keeps sleep/rest source poses", () => {
+    const r = renderer();
+    const a = r.draw("dog", "adult", { walk: 0, trot: false });
+    const count = r.surfaces.length;
+    r.draw("dog", "adult", { walk: 0, trot: false });
+    assert.equal(r.surfaces.length, count);
+    const b = r.draw("dog", "adult", { walk: 1, trot: false });
+    assert.notDeepEqual(a, b);
+    assert.equal(r.surfaces.length, count + 1);
+    for (const flags of [{ sleeping: true }, { resting: true }, { alive: false }]) {
+      const idle = renderer().draw("dog", "adult", -1, flags);
+      const moving = renderer().draw("dog", "adult", { walk: 1, trot: true }, flags);
+      assert.deepEqual(moving, idle);
+    }
+  });
+
+  it("applies the same articulation in the large direct-pixel path and shared IDE assets", () => {
+    const a = renderer("large");
+    a.window.spritePetSizeMult = () => 2; // deliberately exercise the >=1 px/cell branch
+    const neutral = a.draw("dog", "adult", -1);
+    const moving = a.draw("dog", "adult", { walk: 1, trot: false });
+    assert.equal(a.surfaces.length, 0, "large dog uses the direct-pixel path");
+    assert.notDeepEqual(moving, neutral);
+    assert.ok(sidebarSource.includes("petX - gaitStartX"));
+    assert.ok(sidebarSource.includes("legFrame = -1;"));
+    const gradle = fs.readFileSync(path.join(repoRoot, "pycharm/build.gradle.kts"), "utf8");
+    assert.ok(gradle.includes("vscode/media"), "PyCharm consumes the same renderer");
+    // Saving/loading a pet never persists ephemeral animation phases.
+    const pet = deserialiseState(serialiseState({ ...createPet("Pixel", "codeling"), spriteType: "dog" }));
+    assert.equal(pet.spriteType, "dog");
+    assert.ok(!("walkPhase" in pet));
+  });
+});
+
 describe("classic creature box (vscode/media/sprites.js)", () => {
   /** Draw classic at (x, y) and return every fillRect as [x, y, w, h]. */
   function classicRects(w: Record<string, any>, state: Record<string, unknown>, x: number, y: number, legFrame: number) {

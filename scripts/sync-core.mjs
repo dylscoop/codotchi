@@ -34,6 +34,16 @@ const KEY_TARGETS = TARGETS["integrity.ts"];
 const check = process.argv.includes("--check");
 const stale = [];
 
+// Ship attribution and the permission-review warning beside every ASCII consumer.
+for (const plugin of TARGETS["asciiArt.ts"]) {
+  const expected = fs.readFileSync(path.join(coreDir, "..", "ASCII_ART_CREDITS.md"), "utf8");
+  const dest = path.join(root, plugin, "ASCII_ART_CREDITS.md");
+  if (!fs.existsSync(dest) || fs.readFileSync(dest, "utf8") !== expected) {
+    if (check) stale.push(path.relative(root, dest));
+    else fs.writeFileSync(dest, expected, "utf8");
+  }
+}
+
 for (const [file, plugins] of Object.entries(TARGETS)) {
   const source = fs.readFileSync(path.join(coreDir, file), "utf8").replace(/\r\n/g, "\n");
   const header =

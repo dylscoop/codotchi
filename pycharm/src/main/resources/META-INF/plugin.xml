@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.38.4</version>
+    <version>2.39.0</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -189,6 +189,10 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+<h3>2.39.0</h3>
+<ul><li>Tiny step-synchronised body dip with grounded supporting paws; ordinary wandering starts, braking and turns ease gently. Safety/scripted stops stay immediate.</li></ul>
+<ul><li>Small paw travel/lift with alternating front/hind diagonal pairs at both speeds; two visible legs move together.</li></ul>
+<ul><li>Dogs, cats and sheep use distance-driven walking with forward/backward paw movement and anchored leg roots. Other pet movement stays unchanged.</li></ul>
 <h3>2.38.4</h3>
 <ul><li>Stugotchi and Timagotchi had a rework.</li></ul>
 <h3>2.38.3</h3>
@@ -198,18 +202,10 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
 </ul>
 <h3>2.38.2</h3>
 <ul><li>Attention-based calls have a fixed 10-minute response window; need-based calls still allow 1 minute.</li><li>Old-age deaths show the care score without extra explanation.</li></ul>
-<h3>2.38.1</h3>
-<ul>
-<li><b>Partners keep moving</b> - in the friends preview, married partners wander, come over to meet your pet, and leave and return now and then instead of standing still. Only one friend or partner appears at a time; the next guest waits for the goodbye to finish. Reduced motion keeps the partner still.</li>
-</ul>
 <h3>2.38.0</h3>
 <ul>
 <li><b>Stugotchi had a rework.</b></li>
 <li><b>Safer saves</b> - a second open copy of the IDE can no longer roll your pet back to an older save, a crash mid-save can't break the save file, and the last 3 saves are kept as backups.</li>
-</ul>
-<h3>2.37.1</h3>
-<ul>
-<li><b>Friends preview (dev mode)</b> - visiting friends wander around and meet your pet, several different friends can visit, Play together is a minigame against the friend, gifts are real items you can use or give, and you can say goodbye.</li>
 </ul>
 <h3>2.37.0</h3>
 <ul>
@@ -226,7 +222,7 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
 </ul>
 <h3>2.27.2</h3>
 <ul>
-  <li><b>Push live progress</b> — pets hatched before 2.27 can push live progress and go on the leaderboard again. When a pet can't (dev mode, an edited save), the button now says why instead of doing nothing.</li>
+  <li><b>Push live progress</b> — pets hatched before 2.27 can push live progress and go on the leaderboard again. When a pet can't be submitted, the button now says why instead of doing nothing.</li>
   <li><b>Notifications</b> — a pet's call (a craving, a pat, a poop) no longer pops up two or three times when you toggle or push live progress.</li>
   <li><b>Tim and Stu</b> — toasts, gift messages and the info line under the pet now call them Timagotchi and Stugotchi.</li>
 </ul>
@@ -238,7 +234,7 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
 </ul>
 <h3>2.27.0</h3>
 <ul>
-  <li><b>Fair leaderboard</b> — only scores sent by the Codotchi plugin are accepted now; hand-written GitHub issues are turned away. A pet that ever ran in dev mode, or whose save file was edited outside Codotchi, can't be submitted or pushed live, even after dev mode is turned off. The panel greys out the buttons and says why. Pets hatched before this version can't be submitted either, but your next one can. Older scores stay on the board marked <i>legacy</i>.</li>
+  <li><b>Fair leaderboard</b> — only scores sent by the Codotchi plugin are accepted now; hand-written GitHub issues are turned away. A pet whose save file was edited outside Codotchi can't be submitted or pushed live. The panel greys out the buttons and says why. Pets hatched before this version can't be submitted either, but your next one can. Older scores stay on the board marked <i>legacy</i>.</li>
 </ul>
 <h3>2.26.3</h3>
 <ul>
@@ -299,7 +295,6 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
 <h3>2.24.1</h3>
 <ul>
   <li><b>Lighter download</b> — the pet art is stored more compactly, so the plugin is smaller and the roo is quicker to draw.</li>
-  <li><b>New sprite pipeline (for contributors)</b> — sprites are now built from images in <code>sprites/&lt;species&gt;/</code> with one command, which opens the door to the remaining zodiac animals and new species.</li>
 </ul>
 <h3>2.24.0</h3>
 <ul>
@@ -310,7 +305,7 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
 <h3>2.23.0</h3>
 <ul>
   <li><b>Desktop alerts</b> — when hunger, happiness or energy hits 0, or health drops below 25, you get a desktop notification, even with the IDE minimised. It repeats every 15 minutes while the stat stays low.</li>
-  <li><b>Tidier settings</b> — settings are grouped, with the developer-mode settings in their own collapsed section.</li>
+  <li><b>Tidier settings</b> — settings are grouped so related options are easier to find.</li>
   <li><b>Fixes</b> — no more blue box over a sleeping pet; your pet stops to eat its meal; notification buttons read "Open Codotchi".</li>
 </ul>
 <p>Full history: <a href="https://github.com/dylscoop/codotchi/blob/main/vscode/CHANGELOG.md">CHANGELOG</a></p>

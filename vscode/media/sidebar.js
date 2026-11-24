@@ -326,6 +326,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   let petVy         = 0;      // vertical velocity px/s
   let petFacingLeft = false;
   let animTick      = 0;      // raw frame counter (drives leg animation period)
+  let walkPhase     = 0;      // quadruped stride progress, driven by distance travelled
+  let walkVelocity  = 0;      // eased ordinary wandering; never applied to scripted motion
   let lastFrameMs   = 0;      // performance.now() of previous rAF frame
   let animRunning   = false;  // a frame is scheduled (rAF or the 30 fps timeout)
   let animBoostUntilMs = 0;   // performance.now() until which frames run at 60 fps
@@ -2469,6 +2471,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // Init X and Y on first frame — centre horizontally
     if (petY === null) { petY = floorY; }
     if (petX === null) { petX = Math.max(minX, Math.min(maxX, Math.floor(spriteCanvas.width / 2 - bWidth / 2))); }
+    var gaitStartX = petX;
+    var walkEaseUsed = false;
 
     // ── Reaction queue processing ─────────────────────────────────────────
     // Expire finished reactions; handle fell_asleep special case.
@@ -2836,16 +2840,25 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
           petVx         = Math.random() < 0.5 ? speed : -speed;
           petFacingLeft = petVx < 0;
         }
-        petX += petVx * dt;
+        if (window.spriteWalk.supports(lastState.spriteType) && onFloor) {
+          var walkStep = window.spriteWalk.ease(walkVelocity, petVx, dt, speed);
+          walkVelocity = walkStep.velocity;
+          walkEaseUsed = true;
+          petX += walkStep.distance;
+        } else {
+          petX += petVx * dt;
+        }
 
         if (petX >= maxX) {
           petX          = maxX;
           petVx         = -speed;
           petFacingLeft = true;
+          walkVelocity = 0;
         } else if (petX <= minX) {
           petX          = minX;
           petVx         = speed;
           petFacingLeft = false;
+          walkVelocity = 0;
         }
 
         // Occasional mid-walk direction flip (no pause)
@@ -2864,6 +2877,12 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
           }
         }
         petVx = 0;  // zero velocity during pause (gravity still applies)
+        if (window.spriteWalk.supports(lastState.spriteType) && onFloor) {
+          var stopStep = window.spriteWalk.ease(walkVelocity, 0, dt, speed);
+          walkVelocity = stopStep.velocity;
+          walkEaseUsed = true;
+          petX += stopStep.distance;
+        }
       } else {
         // speed === 0 (sick near-zero drift already applied above via petVx)
         if (lastState.sick) {
@@ -2882,6 +2901,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     if (meeting && petY >= floorY - 0.5) {
       idleTimer = Math.max(idleTimer, (guestAnim.wander.meetUntilMs - nowMs) / 1000);
       petVx = 0;
+      walkEaseUsed = false;
       petFacingLeft = guestAnim.wander.x < petX;
     }
 
@@ -2889,6 +2909,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     var onFloor = petY >= floorY - 0.5;
     if (companionPetting && (lastState.sleeping || stageGame || !lastState.companion)) { companionPetting = null; }
     if (companionPetting && companionBox && onFloor) {
+      walkEaseUsed = false;
       var cbCx = companionBox.x + companionBox.w / 2;
       var petCxNow = petX + bWidth / 2;
       var standX = cbCx >= petCxNow ? companionBox.x - bWidth + Math.round(bWidth * 0.15)
@@ -2915,14 +2936,32 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     // A pop-up minigame: the pet keeps wandering, with its companion (and a visiting friend) tagging along
 
     // ── Leg frame ────────────────────────────────────────────────────────
+    // Safety/target-driven states stop immediately; no eased drift into sleep,
+    // a lying pose, a snack target, a game or a scripted reaction.
+    if (!walkEaseUsed || Math.abs(petX - gaitStartX) <= 0.001) { walkVelocity = 0; }
+    var gaitSpeed = walkEaseUsed ? walkVelocity : petVx;
+    if (walkEaseUsed && Math.abs(gaitSpeed) > 0.5) { petFacingLeft = gaitSpeed < 0; }
     // Dragon floats — it has no legs, so always pass legFrame -1 (upright/neutral).
-    var walking  = !isDragon && (!lastState.sleeping || napTrip) && Math.abs(petVx) > 0.5 && petY >= floorY - 0.5;
+    var walking  = !isDragon && (!lastState.sleeping || napTrip) && Math.abs(gaitSpeed) > 0.5 && petY >= floorY - 0.5;
     var running  = activeReaction && activeReaction.type === "patted" && window.spritePat.runLap(lastState.spriteType, 0) !== null;
     // Fell asleep up off the floor: still awake (no z's) while it settles down
     var settling = !!lastState.sleeping && !catErrand && !isDragon && petY < floorY - 0.5;
     var climbing = (catErrand && catErrand.kind === "climb" && catErrand.phase === "up") || settling;
     var legFrame = isDragon ? -1 : ((walking || climbing) ? Math.floor(animTick / (running ? 4 : climbing ? 6 : 10)) % 2 : 0);
     var walkBob  = (walking && legFrame === 1) ? -1 : 0;
+    if (window.spriteWalk.supports(lastState.spriteType)) {
+      // Real movement, not frame count: blocked/idle paws stop, faster travel
+      // advances faster. Climbing keeps its existing two-frame animation.
+      if (walking && !climbing && Math.abs(petX - gaitStartX) > 0.001) {
+        var trotting = running || Math.abs(gaitSpeed) > (STAGE_BASE_SPEED_PPS[lastState.stage] || 28) * 1.25;
+        walkPhase = window.spriteWalk.advance(walkPhase, petX - gaitStartX, bWidth, trotting);
+        legFrame = window.spriteWalk.frame(lastState.spriteType, walkPhase, trotting, true);
+      } else if (!climbing) {
+        walkPhase = 0;
+        legFrame = -1;
+      }
+      walkBob = 0; // renderer shifts the torso with planted-paw compensation
+    }
     // At rest (standing still on the floor, sitting on the cat tree's perch, or
     // asleep) a pet with a lying pose (the senior cat) lies down — once it has
     // been still for a moment and no reaction is playing, easing over CAT_POSE_MS
@@ -5772,7 +5811,8 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     drawHeirEgg(state);
     drawDecor(state);
     drawCompanionTree(state);
-    drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false, 0);
+    drawBody(isChewingBone(state) ? Object.assign({}, state, { sleeping: false }) : state, staticX, staticY, false,
+      window.spriteWalk.supports(state.spriteType) ? -1 : 0);
     var staticGuestBox = drawGuest(state, staticX + bWidth / 2, performance.now());
     drawCompanion(state, staticX + bWidth / 2, staticGuestBox, performance.now());
     if (isChewingBone(state)) {

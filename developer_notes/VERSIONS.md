@@ -1,5 +1,148 @@
 # Version History
 
+## v2.39.0 — current (unreleased, consolidated)
+
+### Walking visibility correction (included in the single 2.39.0 build)
+
+The user explicitly requested consolidating the initial implementation and all
+walking corrections into **2.39.0**, not a separate patch release. Current
+manifests, IDE change notes and all five rebuilt packages use 2.39.0.
+
+| File | What changed |
+|------|--------------|
+| `vscode/media/sprites.js` | Explicit visible-leg rigs and small alternating diagonal steps; rigid torso contact dip capped at one displayed pixel, root-to-paw compensation in both draw paths and size-sensitive raster cache. Exact short velocity-ramp integration helper. No source artwork edits. |
+| `vscode/media/sidebar.js` | Ordinary natural-walker floor wandering eases starts/braking/turns; distance and facing follow actual eased motion. Clear residual velocity outside free wandering; sleep/lying, scripted/target motion and bounds keep immediate handling. No gait when blocked. |
+| `vscode/media/sprite_preview.html` | Drive the real distance-based gait instead of legacy numeric frames; honour stage-specific sizing and allocate space for full sprites. |
+| `vscode/tests/unit/webviewAnimations.test.ts` | Explicit 2/3/4-limb maps, rounded pair timing, bounded body translation and planted-paw compensation; start/stop/reversal ramp integration, rendered torso preservation and source-floor guard. |
+| `scripts/check_walk_browser.py` | Chromium integration: real sidebar loop, every preset/direction/speed, final-display body-dip/floor bounds, rounded pairs and Preview. Continuous normal-size start/walk/stop/restart gallery; synthetic state only. |
+| `pycharm/src/main/resources/META-INF/plugin.xml` | 2.39.0 change notes describe restrained paired steps and tiny body weight shift. |
+| `vscode/CHANGELOG.md`, PyCharm `<change-notes>` | Public changelogs omit unreleased friends/partner and boss previews, Sprite Preview/import tooling, and developer-mode settings/references. Released user-facing fixes remain; internal docs and feature gating are unchanged. |
+| All plugin version manifests and Desktop `src/server.ts` | Single user-requested 2.39.0 across all five plugins; walking corrections included. CLI artwork/functionality unchanged. |
+| `README.md`, IDE/CLI/Desktop READMEs, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md` | Current development filenames, body/paw compensation, easing scope, browser/Pillow instructions and BUGFIX-225/226/227. |
+
+Rig visible-leg counts (baby/child/teen/adult/senior): dog **4/2/4/3/4**,
+cat **3/4/2/3/3**, sheep **3/3/4/4/4**. Two-limb profiles move front/hind together;
+three-/four-limb profiles alternate anatomical diagonal pairs at both speeds.
+Missing limbs are never drawn. Each leg has its own root
+and foot row, so already-raised feet are not treated as full-height legs.
+
+Reach: `max(1, min(round(rows * 0.025), round(legLength * 0.18)))` source cells;
+lift: `max(1, min(round(rows * 0.015), round(legLength * 0.12)))`.
+Walk/trot swing is 50% of a cycle; stride distances, eight poses and speed
+threshold are unchanged. Imported dog/cat travel is at most 3 cells, lift 2;
+sheep use one cell. This replaces the rejected exaggerated four-beat walk.
+This is not perfect world-space foot locking or a skeletal reconstruction.
+
+Body contact dip: two dips/cycle, `round(min(1, shortestLeg * pixelsPerRow * 0.2) * contact * 0.8)` display pixels, where `contact = (1 + cos(4π * phase)) / 2`.
+Short legs suppress it; raster shifts use whole source cells without exceeding
+one displayed pixel. Leg roots follow the body; dip compensation tapers to zero
+at the feet. This keeps vertical support height, not world-space horizontal
+foot locking. Torso shape/colours and source images remain unchanged.
+
+Ordinary floor wandering accelerates at `max(1, speed, abs(target)) / 0.18`
+px/s², or brakes at the same numerator divided by `0.12`. Integration handles
+the within-frame arrival at target velocity; phase uses the resulting distance.
+Bounds and safety/scripted/target-driven states clear residual easing rather
+than coasting. No extra head/tail motion or per-stride speed wobble is added.
+
+Browser check (requires the compiled VS Code test engine and Playwright Chromium):
+
+```text
+uv run --with playwright --with pillow python scripts/check_walk_browser.py --output <directory>
+```
+
+Pass `--chromium <executable>` to use an existing local Chromium installation.
+Browser screenshots exercise the shared IDE media, not live IDE application UIs.
+Live PyCharm/VSCodium confirmation remains a separate user acceptance step.
+The sourced-ASCII redistribution-permission blocker is unchanged; nothing is
+published by this correction.
+
+Validation: **1,727 tests passed** (VS Code 1035, Kotlin 327, Claude Code 138,
+OpenCode Node 149, OpenCode plugin 60, Desktop 12, cross-CLI art 6). VS Code
+type-check and core sync checks passed. Chromium passed **180** displayed-pixel
+combinations (15 species/stages × 3 sizes × walk/trot × 2 directions), all eight
+poses in each of five real-sidebar movement cases, sleep guards and Sprite
+Preview activation, with zero browser errors. Contact sheets were inspected;
+this is not a claim of live IDE acceptance. The simple body-weight revision
+adds exact start/stop integration, rigid torso dip, compensated foot heights,
+final-display body/floor bounds and a no-sleep-drift check. Rounded pair timing
+and small travel/lift bounds are covered across all stages at both speeds.
+Whole-repo Markdown lint still fails on existing/dependency issues.
+The seven changed Markdown files add zero errors against baseline 117.
+Follow-up public-changelog cleanup: removed developer-only release entries and
+references from VS Code history and PyCharm change notes, leaving runtime
+configuration and feature gating unchanged. Static scope/content checks pass;
+both IDE installers were refreshed and their enclosed change notes checked.
+The two changed Markdown files add zero errors against baseline 57. Gameplay
+tests were not rerun for this notes-only follow-up; the 1,727-test result above
+is from the unchanged feature code.
+Short paired legs may produce just two final displayed poses
+at the smallest preset; static motion still fails, but tests do not inflate
+offsets to force four unique images. The browser harness saves a normal-size
+both-direction continuous gallery at `paired-walk-motion.gif` for human review.
+Screenshots were inspected at normal size; this still does not establish live
+IDE visual acceptance. The gallery now includes eased start/walk/stop/restart
+with the rigid ≤1-display-pixel contact dip and grounded supporting paws.
+
+All five local packages use the consolidated 2.39.0 version:
+`vscode/codotchi-2.39.0.vsix`,
+`pycharm/build/distributions/pycharm-codotchi-2.39.0.zip`,
+`opencode-codotchi/opencode-codotchi-2.39.0.zip`,
+`claude-codotchi/claude-codotchi-2.39.0.zip`, and
+`claude-desktop-codotchi/codotchi-desktop.mcpb`.
+Both IDE archives contain byte-identical current renderer, sidebar and Preview
+files. All three ASCII-containing packages retain their identical credit notice.
+Earlier local builds were archived; artifacts remain gitignored and local.
+No plugin was reinstalled during this correction; no push, PR, merge, tag or
+release was performed. (The CLI plugins were previously reinstalled at 2.39.0.)
+
+### Single all-platform bundle
+
+`codotchi-2.39.0-all-platforms.zip` collects the VSIX, PyCharm ZIP, OpenCode ZIP,
+Claude Code ZIP and version-named Desktop MCPB, plus `README.md`,
+`ASCII_ART_CREDITS.md` and `SHA256SUMS.txt`. It is a local convenience bundle,
+not an automatic installer or a published release. Each embedded installer must
+be installed separately. Existing 2.39.0 installs require explicit replacement
+and application restart; matching version strings do not prove the gait is new.
+
+Verified combined archive: **3,236,738 bytes**, eight entries. All five embedded
+versions are 2.39.0; each enclosed installer matches its source artifact byte for
+byte, as do the renderer/sidebar/Preview assets in both IDE installers. The
+checksums file was checked against every enclosed installer. Bundle SHA-256:
+`0faf9437ae2192e178649557acbd8c5d1dcf5d96aa5735621b8eabebb371b287`.
+All artifacts remain local and gitignored; none was installed or published.
+
+### Shared ASCII implementation
+
+### Changes from v2.38.4 — Feature 17: pet ASCII and natural gaits
+
+Branch: `feat/pet-ascii-and-natural-gaits`.
+
+| File | What changed |
+|------|--------------|
+| `packages/core/src/asciiArt.ts` | Approved, sourced full-body rotation artwork; intact signatures and silhouettes, common art across stages/moods, old egg/fallback and Classic/people paths preserved. |
+| `packages/core/ASCII_ART_CREDITS.md` | Provenance, artist credits and explicit pending-redistribution-permission release blocker. |
+| `scripts/sync-core.mjs`, `opencode-codotchi/src/asciiArt.ts`, `claude-codotchi/src/asciiArt.ts`, `claude-desktop-codotchi/src/asciiArt.ts` | Sync shared art and credits into every consumer; Desktop follows the existing shared-core architecture. |
+| `opencode-codotchi/ASCII_ART_CREDITS.md`, `claude-codotchi/ASCII_ART_CREDITS.md`, `claude-desktop-codotchi/ASCII_ART_CREDITS.md` | Generated identical attribution notices for shipped packages. |
+| `vscode/media/sprites.js` | Eight-pose visible-leg articulation, alternating diagonal pairs at both speeds, anchored roots, two draw paths and bounded existing raster cache. No base pixels edited. |
+| `vscode/media/sidebar.js` | Main-pet phase follows actual displacement; speed selects trot; neutral standing frame on idle/static draws. PyCharm copies shared media. |
+| `packages/core/tests/rotationArt.test.mjs`, `opencode-codotchi/tests/unit/asciiArt.test.ts`, `claude-codotchi/tests/unit/asciiArt.test.mjs`, `claude-codotchi/tests/integration/socialActions.test.mjs`, `package.json` | Both compiled CLI renderers tested against approved art and baseline Classic/people hashes; status/speech/companion integration and real Claude action output; deterministic prose fixture; root `test:rotation` command. |
+| `vscode/tests/unit/webviewAnimations.test.ts`, `vscode/tests/unit/spriteData.test.ts` | Executable phase, footfall, rendered-cell, stationary/sleep guards and draw-path regression tests. |
+| `opencode-codotchi/scripts/package.js`, `claude-codotchi/scripts/package.js`, `claude-desktop-codotchi/scripts/bundle-mcpb.mjs` | Package the artwork attribution/release warning. |
+| `vscode/package.json`, `pycharm/build.gradle.kts`, `pycharm/src/main/resources/META-INF/plugin.xml`, `opencode-codotchi/package.json`, `claude-codotchi/package.json`, `claude-codotchi/.claude-plugin/plugin.json`, `claude-desktop-codotchi/package.json`, `claude-desktop-codotchi/manifest.json`, `claude-desktop-codotchi/src/server.ts` | User-requested version 2.39.0; PyCharm change notes and npm attribution inclusion. |
+| `claude-codotchi/dist/asciiArt.js`, `claude-codotchi/dist/asciiArt.js.map`, `claude-codotchi/dist/asciiArt.d.ts.map` | Compiled hook-runtime renderer and maps. |
+| `README.md`, `vscode/README.md`, `pycharm/README.md`, `opencode-codotchi/README.md`, `claude-codotchi/USER_GUIDE.md`, `claude-desktop-codotchi/README.md`, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md` | Feature 17 scope, limitations, attribution and unreleased status. |
+
+Gait tuning: 8 poses/cycle; stride distance `max(8, width × 0.5)` (walk),
+`max(8, width × 0.7)` (trot); trot above 1.25× stage base speed. Walking
+swing and trot swing each occupy 50% of a cycle. Reach/lift use the restrained,
+leg-length-bounded formulas above, not the earlier exaggerated offsets.
+No persisted state or engine/Kotlin gameplay changes. No architecture HTML exists
+in this repository; the applicable system documentation is Feature 17 above.
+
+Release status: **not published**. Sourced-art software redistribution permission
+is outstanding. Base sprite images and Classic/people art remain unchanged.
+
 ## v2.38.4
 
 ### Changes from v2.38.3 (Stu/Tim growth and companion sizing - branch fix/stu-size-and-cat-turning)

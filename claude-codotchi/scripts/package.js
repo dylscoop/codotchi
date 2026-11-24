@@ -60,6 +60,7 @@ const includes = [
   "install.ps1",
   "install.sh",
   "INSTALL.md",
+  "ASCII_ART_CREDITS.md",
 ];
 
 // ── Recursive directory copy ──────────────────────────────────────────────────

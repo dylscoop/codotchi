@@ -1519,6 +1519,141 @@
     return (legFrame === 0 ? group === 1 : group === 0) ? Math.max(1, Math.round(ROWS * 0.03)) : 0;
   }
 
+  // Feature 17: distance-driven, eight-pose quadruped gait. Source grids stay
+  // untouched. Only visible leg pixels are articulated; hidden legs are not
+  // invented. Numeric frames retain the legacy path for other species/callers.
+  function hasNaturalWalk(type) {
+    return type === "dog" || type === "cat" || type === "sheep";
+  }
+
+  function advanceWalkPhase(phase, distance, width, running) {
+    var stride = Math.max(8, width * (running ? 0.7 : 0.5));
+    return (phase + Math.abs(distance) / stride) % 1;
+  }
+
+  function naturalWalkFrame(type, phase, running, moving) {
+    if (!hasNaturalWalk(type)) { return null; }
+    return moving ? { walk: Math.floor((phase % 1 + 1) % 1 * 8), trot: !!running } : -1;
+  }
+
+  // A small contact dip, measured in DISPLAY pixels, not imported source cells.
+  // Short legs suppress the dip rather than being compressed into the torso.
+  function walkBodyOffset(frame, rig, pixelsPerRow) {
+    var shortest = Infinity;
+    for (var i = 0; rig && i < rig.length; i++) {
+      shortest = Math.min(shortest, rig[i][3] - rig[i][2]);
+    }
+    if (!rig || !rig.length) { return 0; }
+    var amplitude = Math.min(1, shortest * pixelsPerRow * 0.2);
+    var contact = (1 + Math.cos(frame.walk / 8 * Math.PI * 4)) / 2;
+    return Math.round(amplitude * contact * 0.8);
+  }
+
+  // Exact integration of a short acceleration/braking ramp. Intent stays in
+  // sidebar petVx; this velocity belongs only to ordinary floor wandering.
+  function easeWalkVelocity(velocity, target, dt, speed) {
+    dt = Math.max(0, Math.min(0.1, dt));
+    var rate = Math.max(1, speed, Math.abs(target)) / (target === 0 ? 0.12 : 0.18);
+    var ramp = Math.min(dt, Math.abs(target - velocity) / rate);
+    var next = velocity + Math.sign(target - velocity) * rate * ramp;
+    if (ramp < dt) { next = target; }
+    return { velocity: next, distance: (velocity + next) * 0.5 * ramp + target * (dt - ramp) };
+  }
+
+  // Explicitly mapped against the rendered grids, not the last image row:
+  // lifted paws end ABOVE it, and some imports have unrelated pixels below them.
+  // [left, right, rootRow, footRow, walkPhase, trotPhase, anatomical label].
+  // Optional eighth item [fromRow, left, right] follows an angled paw beyond
+  // its upper-leg column band, rather than assigning its toes to another limb.
+  // Near/far identify visible artwork only; missing limbs are never synthesised.
+  // Walk and trot share diagonal timing: front-far + hind-near, then the
+  // opposite pair. Two-leg drawings move their visible front/hind together.
+  var WALK_RIGS = {
+    dog: {
+      baby: [[24,36,113,125,0,0,"front-far"], [37,62,113,127,0.5,0.5,"front-near",[126,35,62]],
+             [80,102,113,127,0,0,"hind-near"], [103,108,113,125,0.5,0.5,"hind-far"]],
+      child: [[16,43,105,127,0,0,"front"], [55,79,105,127,0,0,"hind"]],
+      teen: [[20,35,99,125,0,0,"front-far"], [36,55,99,127,0.5,0.5,"front-near",[126,34,55]],
+             [95,110,99,125,0.5,0.5,"hind-far"], [111,122,99,127,0,0,"hind-near",[126,110,122]]],
+      adult: [[30,44,99,121,0,0,"front-far"], [45,55,99,127,0.5,0.5,"front-near",[122,30,55]],
+              [103,127,99,127,0,0,"hind-near"]],
+      senior: [[8,29,99,114,0,0,"front-far"], [38,62,99,127,0.5,0.5,"front-near"],
+               [81,112,99,117,0,0,"hind-near"], [129,154,99,116,0.5,0.5,"hind-far"]]
+    },
+    cat: {
+      baby: [[59,83,110,127,0.5,0.5,"front-near"], [94,108,110,125,0.5,0.5,"hind-far"],
+             [109,123,110,127,0,0,"hind-near"]],
+      child: [[56,74,108,114,0,0,"front-far"], [75,92,108,114,0.5,0.5,"front-near"],
+              [93,109,108,114,0.5,0.5,"hind-far"], [110,127,108,114,0,0,"hind-near"]],
+      teen: [[23,60,111,127,0,0,"front"], [93,123,111,127,0,0,"hind"]],
+      adult: [[26,58,99,127,0.5,0.5,"front-near"], [78,108,99,117,0.5,0.5,"hind-far"],
+              [109,131,99,127,0,0,"hind-near",[118,107,131]]]
+    },
+    sheep: {
+      // These small drawings have THREE visible legs despite the old art comment.
+      baby: [[16,16,28,31,0.5,0.5,"front-near"], [18,18,28,31,0,0,"front-far"], [21,21,28,31,0,0,"hind-near"]],
+      child: [[17,17,28,31,0.5,0.5,"front-near"], [20,20,28,31,0,0,"front-far"], [24,24,28,31,0,0,"hind-near"]],
+      teen: [[16,17,25,31,0,0,"front-far"], [19,20,25,31,0.5,0.5,"front-near"],
+             [25,26,25,31,0.5,0.5,"hind-far"], [28,29,25,31,0,0,"hind-near"]],
+      adult: [[15,16,25,31,0,0,"front-far"], [18,19,25,31,0.5,0.5,"front-near"],
+              [27,28,25,31,0.5,0.5,"hind-far"], [30,31,25,31,0,0,"hind-near"]]
+    }
+  };
+  WALK_RIGS.cat.senior = WALK_RIGS.cat.adult; // senior uses the adult standing grid
+  WALK_RIGS.sheep.senior = WALK_RIGS.sheep.adult;
+
+  function walkLegRig(type, stage) {
+    return WALK_RIGS[type] && WALK_RIGS[type][stage] || null;
+  }
+
+  function walkLegAt(rig, row, col) {
+    var match = -1;
+    for (var i = 0; rig && i < rig.length; i++) {
+      var leg = rig[i];
+      if (row < leg[2] || row > leg[3]) { continue; }
+      var band = leg[7] && row >= leg[7][0] ? leg[7] : null;
+      var left = band ? band[1] : leg[0];
+      var right = band ? band[2] : leg[1];
+      if (col >= left && col <= right) { match = i; }
+    }
+    return match;
+  }
+
+  function walkLegPose(frame, index, rig, rows) {
+    var leg = rig[index];
+    var offset = frame.trot ? leg[5] : leg[4];
+    var phase = (frame.walk / 8 + offset) % 1;
+    var swing = 0.5;
+    var p = phase < swing ? phase / swing : (phase - swing) / (1 - swing);
+    var length = leg[3] - leg[2];
+    // Restrained steps, not the previous exaggerated leg sweep. One source cell
+    // is the minimum for low-resolution sheep; imported legs use ~3px/2px max.
+    var reach = Math.max(1, Math.min(Math.round(rows * 0.025), Math.round(length * 0.18)));
+    var lift = Math.max(1, Math.min(Math.round(rows * 0.015), Math.round(length * 0.12)));
+    return {
+      // All source grids face LEFT: planted paws sweep RIGHT relative to the
+      // body, then lift and return LEFT. The canvas mirrors the whole rig.
+      x: (phase < swing ? 1 - 2 * p : -1 + 2 * p) * reach,
+      lift: phase < swing ? Math.sin(Math.PI * p) * lift : 0,
+      root: leg[2], foot: leg[3],
+    };
+  }
+
+  function walkPixelOffset(pose, row, start, rows) {
+    // Root remains attached to the torso. Compress/shift toward the paw rather
+    // than translating the entire leg and leaving a gap at the shoulder/hip.
+    start = pose.root === undefined ? start : pose.root;
+    var foot = pose.foot === undefined ? rows - 1 : pose.foot;
+    var blend = Math.max(0, Math.min(1, (row - start) / Math.max(1, foot - start)));
+    var previous = Math.max(0, Math.min(1, (row - 1 - start) / Math.max(1, foot - start)));
+    return { x: Math.round(pose.x * blend) || 0, y: -Math.round(pose.lift * blend) || 0,
+      joinX: Math.round(pose.x * previous) || 0, bodyWeight: 1 - blend };
+  }
+
+  window.spriteWalk = { supports: hasNaturalWalk, advance: advanceWalkPhase, frame: naturalWalkFrame,
+    rig: walkLegRig, legAt: walkLegAt, pose: walkLegPose, pixelOffset: walkPixelOffset,
+    bodyOffset: walkBodyOffset, ease: easeWalkVelocity };
+
   function renderSpriteGrid(ctx, state, x, bodyY, facingLeft, legFrame, breathPhase,
                             STAGE_SCALES, weightWidthMultiplier, getPalette, spriteHeightRatio,
                             quadrupedBellySagRows) {
@@ -1638,6 +1773,21 @@
     if (!grid) { return; }
 
     var legCols = legColumnGroups(_gridMeta, spriteType, gridKey, COLS);
+    var gait = hasNaturalWalk(spriteType) && legFrame && typeof legFrame === "object" &&
+      typeof legFrame.walk === "number" && isFinite(legFrame.walk) &&
+      !state.sleeping && !state.resting && state.alive !== false && gridKey === stage ? legFrame : null;
+    var gaitPoses = null;
+    if (gait) {
+      var rig = walkLegRig(spriteType, stage);
+      gaitPoses = [];
+      for (var gi = 0; rig && gi < rig.length; gi++) {
+        var pose = walkLegPose(gait, gi, rig, ROWS);
+        gaitPoses.push(pose);
+      }
+    }
+    // Idle/sleep/lying natural walkers keep every paw in the source pose.
+    if (hasNaturalWalk(spriteType) && !gait &&
+        (typeof legFrame === "object" || state.sleeping || state.resting || state.alive === false)) { legFrame = -1; }
     // Map colour index to actual colour
     // Index 4 = gold pearl (used by dragon sprite for the flaming pearl)
     // Index 5 = gold (used by monkey sprite for banana) — same colour
@@ -1682,6 +1832,7 @@
       // Each grid cell maps to at least 1 screen pixel.  Render with fillRect.
       var cellW = Math.max(1, Math.round(cellWExact));
       var cellH = Math.max(1, Math.round(cellHExact));
+      var gaitBody = gaitPoses ? walkBodyOffset(gait, rig, cellH) : 0;
 
       // Bottom-align: shift the grid down so its last row lands at bodyY+bodyHeight.
       // Without this, rounding means ROWS*cellH < bodyHeight for small stages, making
@@ -1702,11 +1853,28 @@
           var cell = grid[row][col];
           if (!cell) { continue; }
 
-          var colOffsetY = 0;
+          var colOffsetY = gaitBody;
+          var colOffsetX = 0;
+          var drawCellWidth = cellW;
           if (isLegRow) {
             // Leg rows shift down by sagPixels so the belly sag fills the gap above.
-            colOffsetY = sagPixels;
-            if (legCols) {
+            // Unmapped lower pixels (including imported toe fringes) also
+            // taper to zero body motion at the source floor; never sink them.
+            colOffsetY = sagPixels + Math.round(gaitBody * (ROWS - 1 - row) / Math.max(1, ROWS - 1 - legRowStart));
+            if (gaitPoses) {
+              var legIndex = walkLegAt(rig, row, col);
+              if (legIndex >= 0) {
+                var motion = walkPixelOffset(gaitPoses[legIndex], row, legRowStart, ROWS);
+                colOffsetX = motion.x * cellW;
+                colOffsetY = sagPixels + motion.y * cellH + Math.round(gaitBody * motion.bodyWeight);
+                // Bridge a sheared one-cell-wide leg to its existing pixel above:
+                // no detached diagonal paw pixels, and no new limb silhouettes.
+                if (grid[row - 1] && grid[row - 1][col]) {
+                  colOffsetX = Math.min(motion.x, motion.joinX) * cellW;
+                  drawCellWidth += Math.abs(motion.x - motion.joinX) * cellW;
+                }
+              }
+            } else if (legCols) {
               // Detected legs: the raised leg loses its top rows and moves up.
               var lift = legLiftRows(legCols[col], legFrame, ROWS);
               if (lift && row - lift < legRowStart) { continue; }
@@ -1724,9 +1892,9 @@
 
           ctx.fillStyle = colorMap[cell] || primary;
           ctx.fillRect(
-            gx + col * cellW,
+            gx + col * cellW + colOffsetX,
             bobY + gridBottomAlign + row * cellH + colOffsetY,
-            cellW,
+            drawCellWidth,
             cellH
           );
         }
@@ -1751,7 +1919,7 @@
         for (var s = 0; s < sagRows; s++) {
           // Inset by (s+1) columns on each side — sag narrows toward the bottom.
           var inset    = s + 1;
-          var sagY = bobY + gridBottomAlign + legRowStart * cellH + s * cellH;
+          var sagY = bobY + gridBottomAlign + legRowStart * cellH + s * cellH + gaitBody;
           for (var sagCol = silLeft + inset; sagCol <= silRight - inset; sagCol++) {
             var sagCell = bodyBottomRow[sagCol];
             if (!sagCell || sagCell === "0") { continue; }
@@ -1771,7 +1939,11 @@
       // only — no loops, no allocations.
 
       var ofcH = ROWS + sagRows;
-      var rasterKey = spriteType + "|" + gridKey + "|" + legFrame + "|" + sagRows +
+      // Raster shifts use whole source cells to stay crisp. Size-dependent
+      // compensation is part of the cache key; display travel never exceeds 1px.
+      var rasterBody = gaitPoses ? Math.floor(walkBodyOffset(gait, rig, cellHExact) / cellHExact) : 0;
+      var frameKey = gait ? "walk" + gait.walk + (gait.trot ? "t" : "w") + "b" + rasterBody : legFrame;
+      var rasterKey = spriteType + "|" + gridKey + "|" + frameKey + "|" + sagRows +
                       "|" + primary + "|" + secondary + "|" + accent;
       var ofc = null;
       var cachedCanvas = _getRaster(rasterKey, COLS, ofcH);
@@ -1793,11 +1965,24 @@
           var oCol  = sparse[si + 1];
           var oCell = sparse[si + 2];
 
-          var oDrawRow = oRow;
+          var oDrawRow = oRow + rasterBody;
+          var oDrawCol = oCol;
+          var oDrawWidth = 1;
           var oIsLegRow = (oRow >= legRowStart);
           if (oIsLegRow) {
-            oDrawRow += sagRows;
-            if (legCols) {
+            oDrawRow = oRow + sagRows + Math.round(rasterBody * (ROWS - 1 - oRow) / Math.max(1, ROWS - 1 - legRowStart));
+            if (gaitPoses) {
+              var oLegIndex = walkLegAt(rig, oRow, oCol);
+              if (oLegIndex >= 0) {
+                var oMotion = walkPixelOffset(gaitPoses[oLegIndex], oRow, legRowStart, ROWS);
+                oDrawCol += oMotion.x;
+                oDrawRow = oRow + sagRows + oMotion.y + Math.round(rasterBody * oMotion.bodyWeight);
+                if (grid[oRow - 1] && grid[oRow - 1][oCol]) {
+                  oDrawCol = oCol + Math.min(oMotion.x, oMotion.joinX);
+                  oDrawWidth += Math.abs(oMotion.x - oMotion.joinX);
+                }
+              }
+            } else if (legCols) {
               var oLift = legLiftRows(legCols[oCol], legFrame, ROWS);
               if (oLift && oRow - oLift < legRowStart) { continue; }
               oDrawRow -= oLift;
@@ -1813,7 +1998,7 @@
           }
 
           ofcCtx.fillStyle = colorMap[oCell] || primary;
-          ofcCtx.fillRect(oCol, oDrawRow, 1, 1);
+          ofcCtx.fillRect(oDrawCol, oDrawRow, oDrawWidth, 1);
         }
 
         // Belly-sag procedural rows: each sag row repeats the bottom body row's
@@ -1839,7 +2024,7 @@
               var sCol = sagSparse[sc + 1];
               if (sCol < oSilLeft + oInset || sCol > oSilRight - oInset) { continue; }
               ofcCtx.fillStyle = colorMap[sagSparse[sc + 2]] || primary;
-              ofcCtx.fillRect(sCol, legRowStart + os, 1, 1);
+              ofcCtx.fillRect(sCol, legRowStart + os + rasterBody, 1, 1);
             }
           }
         }

@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.39.0] - Unreleased
+
+- Add a tiny, step-synchronised contact dip to the body, with leg compensation
+  that keeps supporting paws grounded. Ease ordinary floor wandering starts,
+  braking and turns; keep safety/scripted stops immediate. No head/tail wobble.
+- Reduce exaggerated paw travel/lift and move front/hind legs together in
+  alternating diagonal pairs at both speeds. Two visible legs move together.
+  Map visible legs per species/stage, including raised paws, rather than guessing
+  from the bottom image row. No hidden limbs or source-sprite edits.
+- Dogs, cats and sheep walk with small forward/backward paw movement and
+  coordinated diagonal pairs. The gait follows distance travelled
+  and keeps leg roots anchored, without changing the base sprite images.
+- The shared CLI renderer uses the selected sourced rotation-pet silhouettes.
+  Classic and people art stay unchanged. Software-redistribution permissions for
+  the sourced art must be resolved before publishing the CLI/Desktop packages.
+
 ## [2.38.4] - 2026-11-20
 
 - **Stugotchi and Timagotchi had a rework.**
@@ -13,14 +29,7 @@
 ## [2.38.2] - 2026-11-19
 
 - Attention-based calls now always allow 10 active minutes to answer; need-based calls still allow 1 active minute. Removed the response-time setting.
-- Old-age deaths now show `Care score: N`, with no tier or explanation. Deathless pets retain normal senior old-age chances; the chances and rules are documented in Developer Notes.
-
-## [2.38.1] - 2026-11-19
-
-### Fixed
-
-- **Partners keep moving after marriage** (friends preview, dev mode only). Your partner now wanders around and comes over to meet your pet, instead of standing still at the edge. They leave and return now and then.
-- **One guest at a time.** Visiting friends take priority over the partner, and the next guest waits for the outgoing guest's goodbye to finish. Your partner stays away briefly after a visit ends. Wedding hearts only appear with your partner; reduced motion keeps the partner still and on screen.
+- Old-age deaths now show `Care score: N`, with no tier or explanation. Deathless pets retain normal senior old-age chances.
 
 ## [2.38.0] - 2026-11-13
 
@@ -32,16 +41,6 @@
 
 - **Your pet's save can't go backwards any more.** If two copies of the IDE are open (for example two PyCharm installs), the one with an older copy of your pet can no longer overwrite the newer save. It picks up the newer pet instead.
 - **Saves survive a crash or forced restart.** The save file is written to a temporary file and swapped in, so a crash mid-save can't leave it broken. The last 3 saves are kept as backups (`state.json.bak1`-`bak3`, refreshed at most every 10 minutes) and used if the save file is ever missing or damaged.
-
-## [2.37.1] - 2026-11-12
-
-### Added (friends preview, dev mode only)
-
-- **Say goodbye.** A 👋 Goodbye button ends a friend's visit early; the friend waves and slides away.
-- **Visitors wander.** A visiting friend walks around on its own and now and then meets your pet face to face.
-- **Different friends visit.** Up to 3 friends; friends you haven't seen in a while can drift away.
-- **Gifts are real items.** Friends bring food, toys and decorations; you can use them or give one back. Items are also found every 4 minigame wins and with each achievement.
-- **Play together is a minigame** against the visiting friend; winning builds more friendship.
 
 ## [2.37.0] - 2026-11-12
 
@@ -216,14 +215,6 @@
 - **Lighter on your laptop** - the pet animation now runs at 30 fps (60 fps for a few seconds whenever you interact or the pet reacts) and stops completely while the Codotchi panel is hidden, on the menu screens or after the pet dies. Previously it redrew at your screen's refresh rate all the time.
 - **OpenCode** - idle windows write the companion pet's save file every 30 s instead of every 3 s, and only refresh the sidebar when something on it changes.
 
-## [2.30.0] — 2026-10-15
-
-### Added
-
-- **Boss Battle mini-game (dev-mode preview)** - a new choice under Play, shown only with developer mode and the new **Dev Mode Boss Battle** setting on (**Dev Mode Boss Battle Always** makes it playable without an unlocked boss, for testing). Bosses are earned by levelling: one appears when your pet reaches level 3 (Syntax Wraith), 5 (NullPointer Demon), 10 (StackOverflow Behemoth) and every 5 levels after that. The button only shows while a boss is waiting; a loss keeps the boss for a retry. Pets already past level 3 start with one boss.
-- **Outguess the boss** - each round you and the boss secretly pick Attack, Guard or Patch, then both are revealed: Attack beats Patch, Patch beats Guard, Guard beats Attack. Each boss has its own habits (and new ones when enraged), shown only through its last 5 stances, and it punishes spamming one stance. Win streaks power up, Patches tire, and overtime from round 12 makes every fight end. Your pet's level and care (health, energy, discipline, happiness) shape the numbers.
-- A Boss Battle win gives 40 XP (capped at 40 an hour and 80 a day), counts as a mini-game win and unlocks the **Champion** achievement, which is no longer *Coming soon*.
-
 ## [2.29.0] — 2026-10-14
 
 ### Added
@@ -262,7 +253,7 @@
 
 ### Fixed
 
-- **Push live progress** — pets hatched before 2.27 can push live progress and go on the leaderboard again. When a pet can't (dev mode, an edited save), the button now says why instead of doing nothing.
+- **Push live progress** — pets hatched before 2.27 can push live progress and go on the leaderboard again. When a pet can't be submitted, the button now says why instead of doing nothing.
 - **Notifications** — a pet's call (a craving, a pat, a poop) no longer pops up two or three times when you toggle or push live progress.
 
 ## [2.27.1] — 2026-10-07
@@ -281,7 +272,7 @@
 
 ### Changed
 
-- **Fair leaderboard** — only scores sent by the Codotchi plugin are accepted now; hand-written GitHub issues are turned away. A pet that ever ran in dev mode, or whose save file was edited outside Codotchi, can't be submitted or pushed live, even after dev mode is turned off. The sidebar greys out the buttons and says why. Pets hatched before this version can't be submitted either, but your next one can. Older scores stay on the board marked *legacy*.
+- **Fair leaderboard** — only scores sent by the Codotchi plugin are accepted now; hand-written GitHub issues are turned away. A pet whose save file was edited outside Codotchi can't be submitted or pushed live. The sidebar greys out the buttons and says why. Pets hatched before this version can't be submitted either, but your next one can. Older scores stay on the board marked *legacy*.
 
 ## [2.26.3] — 2026-10-05
 
@@ -327,7 +318,7 @@
 - **Break naps** — when you praise your pet to answer a break reminder, it naps for 3 minutes. During the nap its stats are frozen (no hunger, happiness or energy changes) but it keeps aging, and it wakes up on its own when the time is up. Waking it yourself ends the nap early.
 - **Meals** — a meal now fills 15 hunger instead of 20.
 - **Legacy background** — `codotchi.backgroundStyle`: set it to Legacy to bring back the original look from before 2.25 (a flat time-of-day tint, a ground strip and a few seasonal props). Scenic stays the default, and both follow your Background season choice.
-- **Settings** — the main settings are now under **Codotchi › General**, and the developer-mode settings are in their own **Codotchi › Developer** group instead of the main list.
+- **Settings** — the main settings are now under **Codotchi › General**.
 - **Preview screenshot** — the README and marketplace listing now show a cat Codotchi in the winter scene.
 
 ## [2.25.1] — 2026-10-01
@@ -338,7 +329,6 @@
 - **Weather and visitors** — now and then a spring shower passes (followed by a rainbow), snow falls in winter, and birds, butterflies, bees or fireflies drift by.
 - **Background opacity** — `codotchi.backgroundOpacity`: Subtle, Medium (default, lightly softened) or Vivid, so your pet stands out against the scene. Vivid is full strength.
 - **Background animations** — `codotchi.backgroundAnimations`: turn off the moving clouds, lights, weather and critters for a still scene (reduced motion does this too).
-- **Background preview (developer mode)** — the Sprite Preview panel can show any season at any hour and canvas size.
 
 ### Changed
 
@@ -373,7 +363,6 @@
 ### Changed
 
 - **Lighter download** — the pet art is stored more compactly, so the extension is smaller and the roo is quicker to draw. The roo is drawn from a smaller grid, so its outline may look very slightly different.
-- **New sprite pipeline (for contributors)** — sprites are now built from images in `sprites/<species>/` with one command (`node scripts/import_sprites_bulk.js`), which opens the door to the remaining zodiac animals and new species.
 
 ## [2.24.0] — 2026-10-01
 
@@ -394,7 +383,7 @@
 
 ### Changed
 
-- **Tidier settings** — settings are grouped: general options first, then AI mode, display (stage height, token cost sources, background, font size), idle timers and the leaderboard. Developer-mode settings moved to their own **Developer** section.
+- **Tidier settings** — settings are grouped: general options first, then AI mode, display (stage height, token cost sources, background, font size), idle timers and the leaderboard.
 
 ### Fixed
 

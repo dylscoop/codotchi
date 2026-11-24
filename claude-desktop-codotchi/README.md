@@ -4,6 +4,11 @@ A Tamagotchi-style virtual pet that lives inside your **Claude Desktop** chats. 
 renders as ASCII art right in the conversation, and you keep it happy by
 talking to Claude and caring for it.
 
+v2.39.0 shares the sourced rotation-animal ASCII artwork with OpenCode and Claude
+Code. Classic and people are unchanged; animal silhouettes/signatures are kept
+intact across stages and moods. See [sources and permission-review release blocker](ASCII_ART_CREDITS.md)
+before distributing this development build.
+
 ## Install
 
 1. Download `codotchi-desktop.mcpb`.

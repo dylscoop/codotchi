@@ -40,7 +40,9 @@ async function withFixture(fn) {
 
 async function writePet(tmpBase, overrides) {
   const ge = await import(pathToFileURL(path.join(distDir, "gameEngine.js")).href);
-  const pet = { ...ge.createPet("Socialite", "codeling"), stage: "adult", energy: 80, hunger: 60, happiness: 60, ...overrides };
+  // Keep prose assertions deterministic: random rotation art can insert literal
+  // characters between wrapped bubble lines after run() flattens the output.
+  const pet = { ...ge.createPet("Socialite", "codeling"), spriteType: "classic", stage: "adult", energy: 80, hunger: 60, happiness: 60, ...overrides };
   fs.mkdirSync(path.dirname(vsStatePath(tmpBase)), { recursive: true });
   fs.writeFileSync(vsStatePath(tmpBase), JSON.stringify({ state: ge.serialiseState(pet), savedAt: Date.now() }), "utf8");
 }
@@ -62,6 +64,24 @@ const FRIEND = { name: "Pixel", spriteType: "dog", petType: "bytebug", friendshi
 const VISIT = { ticksLeft: 40, played: false, gifted: false };
 
 describe("action.mjs social commands (integration)", () => {
+  it("status renders each selected rotation silhouette through the real action script", async () => {
+    const art = await import(pathToFileURL(path.join(distDir, "asciiArt.js")).href);
+    await withFixture(async tmp => {
+      for (const spriteType of ["dog", "cat", "sheep", "kangaroo", "snake", "dragon"]) {
+        await writePet(tmp, { spriteType, mood: "neutral" });
+        const out = execFileSync("node", [actionScript, "status"], {
+          env: { ...process.env, APPDATA: tmp, HOME: tmp, USERPROFILE: tmp,
+            CLAUDE_PLUGIN_DATA: path.join(tmp, "claude-plugin-data"), CLAUDE_CODE_SESSION_ID: "", CODOTCHI_NO_RANK: "1" },
+          encoding: "utf8",
+        });
+        for (const line of art.getArt("adult", "neutral", spriteType)) {
+          assert.ok(art.stripAnsi(out).includes(line), `${spriteType}: ${line}`);
+        }
+        assert.equal(readPet(tmp).spriteType, spriteType);
+      }
+    });
+  });
+
   it("old-age deaths show the existing care score without explanatory context", async () => {
     await withFixture(async (tmp) => {
       for (const oldAge of [true, false]) {

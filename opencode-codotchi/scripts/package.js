@@ -62,6 +62,7 @@ const includes = [
   "src",
   "package.json",
   "README.md",
+  "ASCII_ART_CREDITS.md",
 ];
 
 // ── Recursive directory copy ──────────────────────────────────────────────────

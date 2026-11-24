@@ -130,6 +130,6 @@ describe("hand-drawn human sprites (tim, stu) are centred", () => {
   it("renderSpriteGrid centres the drawn grid inside the pet box", () => {
     const src = fs.readFileSync(path.join(media, "sprites.js"), "utf8");
     assert.match(src, /var gx = x \+ Math\.round\(\(bodyWidth - COLS \* cellW\) \/ 2\);/);
-    assert.match(src, /gx \+ col \* cellW,/);
+    assert.match(src, /gx \+ col \* cellW \+ colOffsetX,/);
   });
 });
