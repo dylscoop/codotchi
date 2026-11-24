@@ -16,6 +16,7 @@ manifests, IDE change notes and all five rebuilt packages use 2.39.0.
 | `vscode/tests/unit/webviewAnimations.test.ts` | Explicit 2/3/4-limb maps, rounded pair timing, bounded body translation and planted-paw compensation; start/stop/reversal ramp integration, rendered torso preservation and source-floor guard. |
 | `scripts/check_walk_browser.py` | Chromium integration: real sidebar loop, every preset/direction/speed, final-display body-dip/floor bounds, rounded pairs and Preview. Continuous normal-size start/walk/stop/restart gallery; synthetic state only. |
 | `pycharm/src/main/resources/META-INF/plugin.xml` | 2.39.0 change notes describe restrained paired steps and tiny body weight shift. |
+| `vscode/CHANGELOG.md`, PyCharm `<change-notes>` | Public changelogs omit unreleased friends/partner and boss previews, Sprite Preview/import tooling, and developer-mode settings/references. Released user-facing fixes remain; internal docs and feature gating are unchanged. |
 | All plugin version manifests and Desktop `src/server.ts` | Single user-requested 2.39.0 across all five plugins; walking corrections included. CLI artwork/functionality unchanged. |
 | `README.md`, IDE/CLI/Desktop READMEs, `vscode/CHANGELOG.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md` | Current development filenames, body/paw compensation, easing scope, browser/Pillow instructions and BUGFIX-225/226/227. |
 
@@ -68,6 +69,13 @@ final-display body/floor bounds and a no-sleep-drift check. Rounded pair timing
 and small travel/lift bounds are covered across all stages at both speeds.
 Whole-repo Markdown lint still fails on existing/dependency issues.
 The seven changed Markdown files add zero errors against baseline 117.
+Follow-up public-changelog cleanup: removed developer-only release entries and
+references from VS Code history and PyCharm change notes, leaving runtime
+configuration and feature gating unchanged. Static scope/content checks pass;
+both IDE installers were refreshed and their enclosed change notes checked.
+The two changed Markdown files add zero errors against baseline 57. Gameplay
+tests were not rerun for this notes-only follow-up; the 1,727-test result above
+is from the unchanged feature code.
 Short paired legs may produce just two final displayed poses
 at the smallest preset; static motion still fails, but tests do not inflate
 offsets to force four unique images. The browser harness saves a normal-size
@@ -97,11 +105,11 @@ not an automatic installer or a published release. Each embedded installer must
 be installed separately. Existing 2.39.0 installs require explicit replacement
 and application restart; matching version strings do not prove the gait is new.
 
-Verified combined archive: **3,238,437 bytes**, eight entries. All five embedded
+Verified combined archive: **3,236,738 bytes**, eight entries. All five embedded
 versions are 2.39.0; each enclosed installer matches its source artifact byte for
 byte, as do the renderer/sidebar/Preview assets in both IDE installers. The
 checksums file was checked against every enclosed installer. Bundle SHA-256:
-`ab4f1e7a7ea1d17b08fa0351ca0e8a26c1dd4be472f71b38d98b69fe7e0e112a`.
+`0faf9437ae2192e178649557acbd8c5d1dcf5d96aa5735621b8eabebb371b287`.
 All artifacts remain local and gitignored; none was installed or published.
 
 ### Shared ASCII implementation
