@@ -695,24 +695,30 @@ describe("Feature 17 — natural quadruped gait integration", () => {
     }
   });
 
-  it("walks with four staggered footfalls and trots in diagonal pairs", () => {
+  it("moves front/hind diagonal pairs together at both speeds across every stage", () => {
     const w = loadSpriteWindow();
-    const spans = w.spriteWalk.rig("dog", "teen");
-    const raisedAt: number[] = [];
-    for (let frame = 0; frame < 8; frame++) {
-      const raised = spans.map((_: unknown, i: number) => w.spriteWalk.pose({ walk: frame, trot: false }, i, spans, 128).lift > 0.1);
-      assert.ok(raised.filter(Boolean).length <= 1, "three or four paws stay planted during a walk");
-      if (raised.some(Boolean)) raisedAt.push(raised.indexOf(true));
-      const trot = spans.map((_: unknown, i: number) => w.spriteWalk.pose({ walk: frame, trot: true }, i, spans, 128));
-      assert.equal(trot[0].lift, trot[3].lift);
-      assert.equal(trot[1].lift, trot[2].lift);
-    }
-    assert.equal(new Set(raisedAt).size, 4, "each visible paw swings once");
-    for (let i = 0; i < spans.length; i++) {
-      const pose = w.spriteWalk.pose({ walk: 1, trot: false }, i, spans, 128);
-      const root = w.spriteWalk.pixelOffset(pose, pose.root, pose.root, 128);
-      assert.equal(root.x, 0);
-      assert.equal(root.y, 0, "shoulder/hip stays attached");
+    for (const type of ["dog", "cat", "sheep"]) for (const stage of ["baby", "child", "teen", "adult", "senior"]) {
+      const rig = w.spriteWalk.rig(type, stage);
+      const rows = w.SPRITE_GRID_META[type].rows;
+      const group = (leg: any[]) => rig.length === 2 || ["front-far", "hind-near"].includes(leg[6]) ? 0 : 0.5;
+      for (const trot of [false, true]) for (let frame = 0; frame < 8; frame++) {
+        const raised = rig.map((leg: any[], i: number) => {
+          const pose = w.spriteWalk.pose({ walk: frame, trot }, i, rig, rows);
+          const root = w.spriteWalk.pixelOffset(pose, pose.root, pose.root, rows);
+          const foot = w.spriteWalk.pixelOffset(pose, pose.foot, pose.root, rows);
+          assert.equal(root.x, 0);
+          assert.equal(root.y, 0, "shoulder/hip stays attached");
+          assert.ok(Math.abs(foot.x) <= (rows === 32 ? 1 : 3), "restrained paw travel");
+          assert.ok(-foot.y <= (rows === 32 ? 1 : 2), "restrained lift");
+          const phase = (frame / 8 + group(leg)) % 1;
+          assert.equal(foot.y < 0, phase > 0 && phase < 0.5, `${type}/${stage}/${leg[6]} coordinated foot timing`);
+          return pose.lift > 0.1;
+        });
+        for (let a = 0; a < rig.length; a++) for (let b = a + 1; b < rig.length; b++) {
+          if (group(rig[a]) === group(rig[b])) assert.equal(raised[a], raised[b], "paired front/hind move together");
+          else if (frame % 4 !== 0) assert.notEqual(raised[a], raised[b], "opposite diagonal alternates");
+        }
+      }
     }
   });
 
@@ -746,20 +752,20 @@ describe("Feature 17 — natural quadruped gait integration", () => {
     assert.equal(w.spriteWalk.legAt(childCat, 127, 35), -1, "stray pixels are not legs");
   });
 
-  it("sweeps planted paws backward, lifts them forward and preserves missing footfall slots", () => {
+  it("sweeps planted paws backward with a small forward lift and no invented limbs", () => {
     const walk = loadSpriteWindow().spriteWalk;
-    const rig = walk.rig("dog", "child"); // two visible legs alternate, not four invented paws
-    const stance = [2, 4, 6].map(frame => walk.pose({ walk: frame }, 0, rig, 128));
+    const rig = walk.rig("dog", "child"); // visible front/hind move together
+    const stance = [4, 5, 6].map(frame => walk.pose({ walk: frame }, 0, rig, 128));
     assert.ok(stance[0].x < stance[1].x && stance[1].x < stance[2].x,
       "left-facing pet: planted paw travels right relative to the body");
     assert.ok(stance.every(pose => pose.lift === 0));
     const swing = walk.pose({ walk: 1 }, 0, rig, 128);
-    assert.ok(swing.lift >= 4, "a visible lift in the high-resolution source");
-    assert.equal(walk.pose({ walk: 1 }, 1, rig, 128).lift, 0);
+    assert.ok(swing.lift > 0 && swing.lift <= 2, "small lift, not an exaggerated high step");
+    assert.equal(walk.pose({ walk: 1 }, 1, rig, 128).lift, swing.lift);
     const three = walk.rig("cat", "adult");
-    assert.equal(new Set(three.map((leg: any[]) => leg[4])).size, 3);
-    assert.ok(three.every((leg: any[]) => [0, 0.25, 0.5, 0.75].includes(leg[4])),
-      "three visible legs keep anatomical four-beat phases, not index/3 timing");
+    assert.equal(new Set(three.map((leg: any[]) => leg[4])).size, 2);
+    assert.equal(three[0][4], three[1][4], "front-near and hind-far stay paired");
+    assert.notEqual(three[1][4], three[2][4], "remaining hind leg keeps the other diagonal phase");
   });
 
   for (const type of ["dog", "cat", "sheep"]) for (const stage of ["baby", "child", "teen", "adult", "senior"]) {

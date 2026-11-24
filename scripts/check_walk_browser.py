@@ -1,7 +1,7 @@
 """Real-Chromium walking regression, using the same media packaged by both IDEs.
 
 Run after `npm test` in vscode/:
-  uv run --with playwright python scripts/check_walk_browser.py --output <directory>
+  uv run --with playwright --with pillow python scripts/check_walk_browser.py --output <directory>
 Uses an existing Playwright Chromium installation; never reads/writes real pets.
 """
 
@@ -14,6 +14,7 @@ import re
 import subprocess
 import threading
 
+from PIL import Image
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -127,6 +128,17 @@ def run(output, chromium=None):
                   const label=document.createElement('div');label.textContent=`${size} ${type}/${stage}`;row.append(label);
                   const images=[];
                   for(let frame=0;frame<8;frame++) {
+                    // Integrate mapped timing with rounded source-pixel offsets,
+                    // not just a source-code assertion about diagonal phases.
+                    const legs=window.spriteWalk.rig(type,stage), rows=window.SPRITE_GRID_META[type].rows;
+                    for(let i=0;i<legs.length;i++) {
+                      const leg=legs[i], pose=window.spriteWalk.pose({walk:frame,trot},i,legs,rows);
+                      const foot=window.spriteWalk.pixelOffset(pose,pose.foot,pose.root,rows);
+                      const group=legs.length===2||['front-far','hind-near'].includes(leg[6])?0:0.5;
+                      const phase=(frame/8+group)%1;
+                      if((foot.y<0)!==(phase>0&&phase<0.5))throw Error(`Unpaired foot ${type}/${stage}/${leg[6]}`);
+                      if(Math.abs(foot.x)>(rows===32?1:3)||-foot.y>(rows===32?1:2))throw Error('Exaggerated step');
+                    }
                     const canvas=document.createElement('canvas');canvas.width=230;canvas.height=200;
                     const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
                     window.renderSpriteGrid(ctx,{spriteType:type,stage,weight:50,alive:true,mood:'neutral'},20,20,facing,{walk:frame,trot},0,
@@ -145,9 +157,54 @@ def run(output, chromium=None):
               return results;
             }""")
             for row in pixels:
-                assert row["unique"] >= 4, ("indistinguishable displayed poses", row)
-                assert row["changed"] >= 5, ("too little screen-pixel movement", row)
+                # Short paired legs can quantise to two displayed positions at
+                # the smallest preset. Do not inflate travel to force four
+                # unique images: that recreates the rejected exaggerated gait.
+                assert row["unique"] >= 2, ("static displayed paws", row)
+                assert row["changed"] >= 1, ("no screen-pixel movement", row)
             rig.screenshot(path=str(output / "walk-contact-sheet.png"), full_page=True)
+            # Continuous normal-size motion for visual review (all stages, both
+            # directions). Browser clock advances real requestAnimationFrame;
+            # sprite phase comes from travelled distance, as in the main sidebar.
+            motion = browser.new_page(viewport={"width": 1380, "height": 1000}, device_scale_factor=1)
+            motion.on("pageerror", lambda e: errors.append(str(e)))
+            motion.clock.install()
+            motion.goto(base + "/rig")
+            motion.evaluate("""() => {
+              document.body.style.margin='0';document.body.style.display='grid';
+              document.body.style.gridTemplateColumns='repeat(6,230px)';
+              const pets=[];
+              for(const stage of ['baby','child','teen','adult','senior'])
+              for(const type of ['dog','cat','sheep'])for(const facing of [true,false]) {
+                const cell=document.createElement('div');cell.style.height='200px';
+                cell.textContent=`${type}/${stage} ${facing?'left':'right'}`;
+                const canvas=document.createElement('canvas');canvas.width=230;canvas.height=180;
+                cell.append(canvas);document.body.append(cell);
+                pets.push({type,stage,facing,ctx:canvas.getContext('2d'),phase:0});
+              }
+              let previous=performance.now();
+              function draw(now) {
+                const distance=Math.min(100,now-previous)*0.02;previous=now;
+                for(const p of pets) {
+                  const width=96*window.spritePetSizeMult(p.type,'medium',p.stage)*window.SPRITE_STAGE_SCALES[p.stage];
+                  p.phase=window.spriteWalk.advance(p.phase,distance,width,false);
+                  p.ctx.clearRect(0,0,230,180);
+                  window.renderSpriteGrid(p.ctx,{spriteType:p.type,stage:p.stage,weight:50,alive:true,mood:'neutral'},
+                    50,10,p.facing,window.spriteWalk.frame(p.type,p.phase,false,true),0,
+                    window.SPRITE_STAGE_SCALES,window.spriteWeightWidthMult,window.spriteGetPalette,window.spriteHeightRatio,window.spriteQuadBellySag);
+                }
+                requestAnimationFrame(draw);
+              }
+              requestAnimationFrame(draw);
+            }""")
+            frames = []
+            for index in range(32):
+                motion.clock.run_for(80)
+                filename = output / f"motion-{index:02}.png"
+                motion.screenshot(path=str(filename))
+                with Image.open(filename) as image:
+                    frames.append(image.convert("RGB"))
+            frames[0].save(output / "paired-walk-motion.gif", save_all=True, append_images=frames[1:], duration=80, loop=0)
             # Sprite Preview must drive the new gait as well, not numeric legacy frames.
             preview = browser.new_page()
             preview.on("pageerror", lambda e: errors.append(str(e)))
@@ -167,7 +224,8 @@ def run(output, chromium=None):
             assert len(preview_poses) >= 6, ("preview did not use the walking rig", preview_poses, errors)
             assert not errors, errors
             report = {"sidebar": results, "screenPixels": pixels, "errors": errors,
-                      "scope": "Chromium harness of shared IDE media, not a live IDE UI test"}
+                       "motionPreview": "paired-walk-motion.gif",
+                       "scope": "Chromium harness of shared IDE media, not a live IDE UI test"}
             (output / "results.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
             print(json.dumps({"sidebarCases": len(results), "displayCases": len(pixels), "consoleErrors": len(errors), "output": str(output)}))
             browser.close()

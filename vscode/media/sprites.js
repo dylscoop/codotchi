@@ -1542,34 +1542,36 @@
   // Optional eighth item [fromRow, left, right] follows an angled paw beyond
   // its upper-leg column band, rather than assigning its toes to another limb.
   // Near/far identify visible artwork only; missing limbs are never synthesised.
+  // Walk and trot share diagonal timing: front-far + hind-near, then the
+  // opposite pair. Two-leg drawings move their visible front/hind together.
   var WALK_RIGS = {
     dog: {
-      baby: [[24,36,113,125,0.75,0,"front-far"], [37,62,113,127,0.25,0.5,"front-near",[126,35,62]],
+      baby: [[24,36,113,125,0,0,"front-far"], [37,62,113,127,0.5,0.5,"front-near",[126,35,62]],
              [80,102,113,127,0,0,"hind-near"], [103,108,113,125,0.5,0.5,"hind-far"]],
-      child: [[16,43,105,127,0,0,"front"], [55,79,105,127,0.5,0.5,"hind"]],
-      teen: [[20,35,99,125,0.75,0,"front-far"], [36,55,99,127,0.25,0.5,"front-near",[126,34,55]],
+      child: [[16,43,105,127,0,0,"front"], [55,79,105,127,0,0,"hind"]],
+      teen: [[20,35,99,125,0,0,"front-far"], [36,55,99,127,0.5,0.5,"front-near",[126,34,55]],
              [95,110,99,125,0.5,0.5,"hind-far"], [111,122,99,127,0,0,"hind-near",[126,110,122]]],
-      adult: [[30,44,99,121,0.75,0,"front-far"], [45,55,99,127,0.25,0.5,"front-near",[122,30,55]],
+      adult: [[30,44,99,121,0,0,"front-far"], [45,55,99,127,0.5,0.5,"front-near",[122,30,55]],
               [103,127,99,127,0,0,"hind-near"]],
-      senior: [[8,29,99,114,0.75,0,"front-far"], [38,62,99,127,0.25,0.5,"front-near"],
+      senior: [[8,29,99,114,0,0,"front-far"], [38,62,99,127,0.5,0.5,"front-near"],
                [81,112,99,117,0,0,"hind-near"], [129,154,99,116,0.5,0.5,"hind-far"]]
     },
     cat: {
-      baby: [[59,83,110,127,0.25,0.5,"front-near"], [94,108,110,125,0.5,0.5,"hind-far"],
+      baby: [[59,83,110,127,0.5,0.5,"front-near"], [94,108,110,125,0.5,0.5,"hind-far"],
              [109,123,110,127,0,0,"hind-near"]],
-      child: [[56,74,108,114,0.75,0,"front-far"], [75,92,108,114,0.25,0.5,"front-near"],
+      child: [[56,74,108,114,0,0,"front-far"], [75,92,108,114,0.5,0.5,"front-near"],
               [93,109,108,114,0.5,0.5,"hind-far"], [110,127,108,114,0,0,"hind-near"]],
-      teen: [[23,60,111,127,0,0,"front"], [93,123,111,127,0.5,0.5,"hind"]],
-      adult: [[26,58,99,127,0.25,0.5,"front-near"], [78,108,99,117,0.5,0.5,"hind-far"],
+      teen: [[23,60,111,127,0,0,"front"], [93,123,111,127,0,0,"hind"]],
+      adult: [[26,58,99,127,0.5,0.5,"front-near"], [78,108,99,117,0.5,0.5,"hind-far"],
               [109,131,99,127,0,0,"hind-near",[118,107,131]]]
     },
     sheep: {
       // These small drawings have THREE visible legs despite the old art comment.
-      baby: [[16,16,28,31,0.25,0.5,"front-near"], [18,18,28,31,0.75,0,"front-far"], [21,21,28,31,0,0,"hind-near"]],
-      child: [[17,17,28,31,0.25,0.5,"front-near"], [20,20,28,31,0.75,0,"front-far"], [24,24,28,31,0,0,"hind-near"]],
-      teen: [[16,17,25,31,0.75,0,"front-far"], [19,20,25,31,0.25,0.5,"front-near"],
+      baby: [[16,16,28,31,0.5,0.5,"front-near"], [18,18,28,31,0,0,"front-far"], [21,21,28,31,0,0,"hind-near"]],
+      child: [[17,17,28,31,0.5,0.5,"front-near"], [20,20,28,31,0,0,"front-far"], [24,24,28,31,0,0,"hind-near"]],
+      teen: [[16,17,25,31,0,0,"front-far"], [19,20,25,31,0.5,0.5,"front-near"],
              [25,26,25,31,0.5,0.5,"hind-far"], [28,29,25,31,0,0,"hind-near"]],
-      adult: [[15,16,25,31,0.75,0,"front-far"], [18,19,25,31,0.25,0.5,"front-near"],
+      adult: [[15,16,25,31,0,0,"front-far"], [18,19,25,31,0.5,0.5,"front-near"],
               [27,28,25,31,0.5,0.5,"hind-far"], [30,31,25,31,0,0,"hind-near"]]
     }
   };
@@ -1597,13 +1599,13 @@
     var leg = rig[index];
     var offset = frame.trot ? leg[5] : leg[4];
     var phase = (frame.walk / 8 + offset) % 1;
-    var swing = frame.trot ? 0.5 : 0.25;
+    var swing = 0.5;
     var p = phase < swing ? phase / swing : (phase - swing) / (1 - swing);
     var length = leg[3] - leg[2];
-    // Visible at sidebar scale, but bounded by each ACTUAL leg's length. Short
-    // sheep legs get a one-cell reach, not a displacement based on body height.
-    var reach = Math.max(1, Math.min(Math.round(rows * 0.08), Math.round(length * 0.45)));
-    var lift = Math.max(1, Math.min(Math.round(rows * 0.065), Math.round(length * 0.4)));
+    // Restrained steps, not the previous exaggerated leg sweep. One source cell
+    // is the minimum for low-resolution sheep; imported legs use ~3px/2px max.
+    var reach = Math.max(1, Math.min(Math.round(rows * 0.025), Math.round(length * 0.18)));
+    var lift = Math.max(1, Math.min(Math.round(rows * 0.015), Math.round(length * 0.12)));
     return {
       // All source grids face LEFT: planted paws sweep RIGHT relative to the
       // body, then lift and return LEFT. The canvas mirrors the whole rig.

@@ -18,10 +18,11 @@ the corrected walking/Preview code under the single requested version **2.39.0**
 If an earlier 2.39.0 build is installed, explicitly reinstall the local package
 and restart the application; a version check alone cannot distinguish the builds.
 
-Dogs, cats and sheep in VS Code and PyCharm now articulate their visible paws
-forward/backward, with distance-driven steps and anchored leg roots. Faster
-movement uses diagonal trot pairs; kangaroo hopping and dragon/snake movement
-stay unchanged. Hidden legs are not invented from a flat sprite.
+Dogs, cats and sheep in VS Code and PyCharm use small, distance-driven steps
+with anchored leg roots. Front/hind legs move together in alternating diagonal
+pairs at both speeds; two-leg drawings move their visible front/hind together.
+Kangaroo hopping and dragon/snake movement stay unchanged. Hidden legs are not
+invented from a flat sprite.
 
 codotchi is a pixel-art virtual pet inspired by the original
 [Tamagotchi](https://en.wikipedia.org/wiki/Tamagotchi). Your pet hatches from

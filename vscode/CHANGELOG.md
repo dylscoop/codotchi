@@ -2,13 +2,14 @@
 
 ## [2.39.0] - Unreleased
 
-- Make walking paws easier to see, with clearer forward/backward travel and lift.
+- Reduce exaggerated paw travel/lift and move front/hind legs together in
+  alternating diagonal pairs at both speeds. Two visible legs move together.
   Map visible legs per species/stage, including raised paws, rather than guessing
   from the bottom image row. No hidden limbs or source-sprite edits.
 - Sprite Preview now uses the same eight-pose walking gait as the main pet.
 
-- Dogs, cats and sheep walk with forward/backward paw movement, staggered steps
-  and diagonal trot pairs at faster speeds. The gait follows distance travelled
+- Dogs, cats and sheep walk with small forward/backward paw movement and
+  coordinated diagonal pairs. The gait follows distance travelled
   and keeps leg roots anchored, without changing the base sprite images.
 - The shared CLI renderer uses the selected sourced rotation-pet silhouettes.
   Classic and people art stay unchanged. Software-redistribution permissions for

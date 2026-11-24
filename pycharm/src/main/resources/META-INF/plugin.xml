@@ -190,7 +190,7 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
 
     <change-notes><![CDATA[
 <h3>2.39.0</h3>
-<ul><li>Clearer paw travel and lift, mapped to each stage's visible legs. Sprite Preview uses the same walking animation.</li></ul>
+<ul><li>Small paw travel/lift with alternating front/hind diagonal pairs at both speeds; two visible legs move together. Sprite Preview uses the same walking animation.</li></ul>
 <ul><li>Dogs, cats and sheep use distance-driven walking with forward/backward paw movement and anchored leg roots. Other pet movement stays unchanged.</li></ul>
 <h3>2.38.4</h3>
 <ul><li>Stugotchi and Timagotchi had a rework.</li></ul>

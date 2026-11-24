@@ -2632,3 +2632,12 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** The initial 2.39.0 gait used small source-grid offsets and could infer leg columns from the last two rows. Raised paws ended above those rows; the child cat had an unrelated pixel below its feet, and the senior cat used an adult fallback without matching stage metadata. Sprite Preview still supplied legacy numeric frames, so it did not display the new gait at all. Source-rectangle tests did not establish visible motion after display scaling.
 
 **Fix:** Explicit per-stage visible-leg maps define roots, foot rows and anatomical phases, preserving 2/3/4 visible limbs without drawing hidden legs. Increase reach/lift within each leg's length, correct the left-facing stance direction and bridge adjacent leg pixels through shear. Require real displacement, and make Preview use the same gait with correct stage sizing. Regression coverage includes the real sidebar loop and final Chromium canvas pixels at all presets in both directions and walk/trot modes. Base sprite files are unchanged; live IDE acceptance remains pending.
+
+## BUGFIX-226 — Uncoordinated and exaggerated front/hind walking
+
+**Status:** Fixed (branch `feat/pet-ascii-and-natural-gaits`)
+**File:** `vscode/media/sprites.js` (shared with PyCharm)
+
+**Problem:** The four-beat walk lifted front and hind paws at different times. The visibility correction's large travel/lift made the movement look exaggerated, despite automated pixel-change checks passing.
+
+**Fix:** Use the user-approved alternating diagonal pairs at both speeds: front-far with hind-near, then the opposite pair. Two visible legs move together; three retain their anatomical pair assignments without adding a hidden limb. Reduce reach to `max(1, min(round(rows * 0.025), round(legLength * 0.18)))` and lift to `max(1, min(round(rows * 0.015), round(legLength * 0.12)))`, with 50% swing, anchored roots and unchanged source pixels. Test rounded foot timing and travel across every species/stage and both speeds, alongside final-pixel/browser-loop checks and a continuous normal-size motion gallery. Smallest sprites can quantise to two displayed positions; tests no longer demand artificially large movement. Kept in the requested 2.39.0; live IDE visual acceptance remains pending.

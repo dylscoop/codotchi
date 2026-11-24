@@ -979,8 +979,8 @@ Version: **2.39.0** (consolidated development build). Branch: `feat/pet-ascii-an
 |---------|--------|-------|
 | Sourced rotation-pet ASCII | `[~]` | Implemented for cat, dog, kangaroo, sheep, snake and dragon in the shared core, consumed by OpenCode, Claude Code and Desktop. Selected silhouettes and signatures are unchanged across non-egg stages/moods. **Software redistribution permission remains a release blocker**; see `packages/core/ASCII_ART_CREDITS.md`. |
 | Classic and people ASCII preservation | `[x]` | Every original stage/mood is protected by baseline SHA-256 snapshots. Eggs and unknown-stage fallbacks remain unchanged. Other zodiac pets keep their existing head overrides. |
-| Natural main-pet walking | `[x]` | Dog/cat/sheep: eight cached poses, phase driven by actual horizontal displacement, with visible forward swing/lift and backward stance. At speed >1.25× the stage's base px/s, switch to mapped diagonal trot groups. Same `vscode/media/` supplies PyCharm at build time. |
-| Explicit visible-leg rigs | `[x]` | Per-stage roots, foot heights, front/hind labels and phase slots; no bottom-row guessing. Baby/child/teen/adult/senior counts: dog 4/2/4/3/4, cat 3/4/2/3/3, sheep 3/3/4/4/4. Two visible legs alternate; three keep their anatomical four-beat slots, not equally spaced three-legged timing. No hidden limbs are invented. |
+| Natural main-pet walking | `[x]` | Dog/cat/sheep: eight cached poses, phase driven by actual horizontal displacement. Small forward swing/lift and backward stance; front-far + hind-near alternate with front-near + hind-far at both speeds, with 50% swing. Above 1.25× stage base speed, the longer trot stride is retained, not different leg timing. Source reach ≤3/lift ≤2 cells for imported dog/cat; sheep use one cell. Same `vscode/media/` supplies PyCharm at build time. |
+| Explicit visible-leg rigs | `[x]` | Per-stage roots, foot heights, front/hind labels and phase slots; no bottom-row guessing. Baby/child/teen/adult/senior counts: dog 4/2/4/3/4, cat 3/4/2/3/3, sheep 3/3/4/4/4. Two visible legs move together; three keep their mapped diagonal pairing without inventing a fourth leg. |
 | Anchored roots and source-image preservation | `[x]` | Lower legs shear forward/back and compress upward in swing. Roots stay attached, planted paws do not drop below the source floor, and the torso stays unchanged. Adjacent source pixels are bridged through shear to keep thin legs connected. No image/grid pixel data is edited. |
 | Stationary/reduced-motion behaviour | `[x]` | Neutral standing frame when idle or statically redrawn; no gait while sleeping, lying, dead or showing a different mood grid. Existing climb animation is retained. |
 | Sprite Preview | `[x]` | Animate uses the real distance-driven gait and stage-specific box sizing, rather than the old numeric-frame path. Other species keep their legacy animation. |
@@ -992,6 +992,8 @@ dragon floating, snake movement, Classic and people movement are unchanged.
 The gait is procedural pixel articulation, not a hand-drawn skeletal animation
 or perfect world-space foot locking. Chromium browser coverage and pose contact
 sheets exercise the shared media; live IDE visual acceptance is still pending.
+At the smallest preset, short paired legs may resolve to only two distinct
+displayed positions; offsets are not inflated just to make more unique images.
 
 Tests: `npm test` in `vscode/` exercises rendered cells, gait phase/footfalls,
 cache reuse and both draw paths; `npm run test:rotation` at the root exercises
@@ -999,4 +1001,6 @@ both compiled CLI renderers, source fidelity, preservation and layout.
 `scripts/check_walk_browser.py` exercises the real sidebar loop and final display
 pixels for all 15 species/stage combinations at all three sizes, walk/trot and
 both directions, plus Sprite Preview. Use `--output <directory>` (and optional
-`--chromium <executable>`) with `uv run --with playwright python`.
+`--chromium <executable>`) with `uv run --with playwright --with pillow python`.
+The harness also checks rounded pair timing/amplitude and saves a continuous
+normal-size, both-direction motion gallery as `paired-walk-motion.gif`.
