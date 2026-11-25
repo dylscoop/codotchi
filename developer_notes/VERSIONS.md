@@ -49,6 +49,20 @@ shared-core sync checks passed. Full Markdown lint retains pre-existing errors;
 the 10 changed Markdown files have **126 baseline / 126 current, zero new**.
 No live IDE visual testing or publication claimed.
 
+Local packages rebuilt and embedded versions/runtime bytes verified:
+
+- `vscode/codotchi-2.39.1.vsix`
+- `pycharm/build/distributions/pycharm-codotchi-2.39.1.zip`
+- `opencode-codotchi/opencode-codotchi-2.39.1.zip`
+- `claude-codotchi/claude-codotchi-2.39.1.zip`
+- `claude-desktop-codotchi/codotchi-desktop.mcpb` (manifest 2.39.1)
+- `codotchi-2.39.1-all-platforms.zip` (3,238,753 bytes; 8 verified entries)
+
+Combined bundle SHA-256:
+`526b82bc2195e2391f7efb4d14678381ebd47ba1c0f8360fa8ae484830b7a734`.
+Previous installers archived without overwriting existing archives. Installer
+files remain gitignored/local only. No plugin reinstall, push, tag or release.
+
 ## v2.39.0 — previous (unreleased, consolidated)
 
 ### Walking visibility correction (included in the single 2.39.0 build)
