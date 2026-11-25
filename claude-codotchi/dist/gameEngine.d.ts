@@ -336,7 +336,9 @@ export interface PetState {
      * reports the real death time, not the time the IDE was reopened.
      */
     readonly diedAt: number;
-    /** Snacks given in the current wake cycle (resets on wake/createPet). */
+    /** Meals given since the last completed normal sleep; persisted across hosts. */
+    readonly mealsGivenThisCycle: number;
+    /** Snacks placed since the last completed normal sleep. */
     readonly snacksGivenThisCycle: number;
     /** Snacks currently placed on the floor but not yet consumed. Resets to 0 when the webview reloads. */
     readonly snacksOnFloor: number;
@@ -686,7 +688,7 @@ export declare function tick(state: PetState, isIdle?: boolean, isDeepIdle?: boo
  * @param opts.weightGain  - Weight gained per meal (overrides FEED_MEAL_WEIGHT_GAIN).
  * @returns A new PetState after the action.
  */
-export declare function feedMeal(state: PetState, mealsGivenThisCycle: number, opts?: {
+export declare function feedMeal(state: PetState, mealsGivenThisCycle?: number, opts?: {
     maxPerCycle?: number;
     hungerMult?: number;
     weightGain?: number;
@@ -792,9 +794,8 @@ export declare function minigameStatsKey(game: string): string;
 /**
  * Apply a mini-game result happiness delta to the pet state.
  *
- * Also applies an additional weight loss for vigorous mini-games (BUGFIX-034):
- *   - left_right, tug_of_war, boxing, laser and higher_lower: −3 extra weight (total −6 with play() baseline)
- *   - coin_flip, fetch and blackjack: no extra weight loss (total −3 from play() only)
+ * Normal pets lose 5 weight for every game via play(). Stu retains a further
+ * 3 weight loss for left_right, tug_of_war, boxing, laser and higher_lower.
  *
  * @param state - The current pet state.
  * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "fetch", "tug_of_war", "boxing", "laser", "boss_battle", "guess", or "memory".

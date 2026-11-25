@@ -327,7 +327,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
     if (!saveState(context, state)) {
       // Another window/instance has a newer save of this pet — adopt it instead of rolling back.
-      reloadAndRefreshUI(false);
+      reloadAndRefreshUI();
       return;
     }
     sidebar?.postState(state, currentHighScore, devModeActive, getUnlockedCharacter(), getDefaultPetName());
@@ -450,7 +450,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // within the lease, follow its file instead of ticking a stale copy.
     if (cfg.get<boolean>("aiMode", false) &&
         anotherWindowOwnsTick(readStateFileStamp(), WRITER_ID, Date.now())) {
-      reloadAndRefreshUI(false);
+      reloadAndRefreshUI();
       return;
     }
     const idleThresholdMs = cfg.get<number>("idleThresholdSeconds", 120) * 1_000;
@@ -521,7 +521,7 @@ export function activate(context: vscode.ExtensionContext): void {
    * writer. In AI mode this function is never called (guarded in the
    * onDidChangeWindowState handler), so AI mode is unaffected.
    */
-  function reloadAndRefreshUI(resetMeals: boolean = true): void {
+  function reloadAndRefreshUI(): void {
     const fresh = loadState(context);
     if (fresh === null) { return; }
     const elapsed = elapsedSecondsSinceLastSave(context);
@@ -529,10 +529,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // Clear stale events — they were already displayed in the other window.
     const state: PetState = { ...decayed, events: [] };
     currentState = state;
-    // Reset the meal cycle counter — we cannot know how many meals were given
-    // by the other window, so reset to 0 (conservative; allows full quota here).
-    // Skipped when following another window's ticks, which happens every tick.
-    if (resetMeals) { sidebar?.resetMealCycle(); }
+    // Food counters are part of the shared state; refreshing never refills them.
     const cfg = vscode.workspace.getConfiguration("codotchi");
     const devModeActive =
       cfg.get<boolean>("devModeEnabled", false) &&

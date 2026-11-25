@@ -52,7 +52,7 @@ describe("tick lease wiring", () => {
 
   it("an AI-mode tick follows the file while another window owns the tick", () => {
     const tickFn = extension.slice(extension.indexOf("function runOneTick"), extension.indexOf("function startTicker"));
-    assert.match(tickFn, /aiMode[\s\S]*anotherWindowOwnsTick\(readStateFileStamp\(\), WRITER_ID, Date\.now\(\)\)[\s\S]*reloadAndRefreshUI\(false\)/);
+    assert.match(tickFn, /aiMode[\s\S]*anotherWindowOwnsTick\(readStateFileStamp\(\), WRITER_ID, Date\.now\(\)\)[\s\S]*reloadAndRefreshUI\(\)/);
     assert.ok(tickFn.indexOf("anotherWindowOwnsTick") < tickFn.indexOf("tick(currentState"), "checked before ticking");
   });
 });

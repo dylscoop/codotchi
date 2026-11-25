@@ -621,6 +621,7 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
   });
 
   document.getElementById("btn-feed-snack").addEventListener("click", function () {
+    if (snackItems.length >= 3) { return; }
     // Report the snacks really on the floor so the host refuses a 4th ("threw the snack away")
     vscode.postMessage({ command: "feed", feedType: "snack", floorSnacks: snackItems.length });
   });
@@ -3982,14 +3983,14 @@ let lastDailies   = null;   // today's challenges + streak (dailiesView() from t
     }
 
     // Snacks-left badge on Snack button + disable when at limit
-    var SNACK_MAX = (_feedCC && _feedCC.feedSnackMaxPerCycle) ? _feedCC.feedSnackMaxPerCycle : 3;
+    var SNACK_MAX = (_feedCC && _feedCC.feedSnackMaxPerCycle) ? _feedCC.feedSnackMaxPerCycle : 7;
     var snacksLeft = Math.max(0, SNACK_MAX - (state.snacksGivenThisCycle || 0));
     if (snacksLeftEl) {
       snacksLeftEl.textContent = snacksLeft > 0 ? snacksLeft + "" : "";
     }
     var snackBtn = document.getElementById("btn-feed-snack");
     if (snackBtn && !isSleeping && !isPaused && !isSick) {
-      snackBtn.disabled = snacksLeft <= 0;
+      snackBtn.disabled = snacksLeft <= 0 || Math.max(state.snacksOnFloor || 0, snackItems.length) >= 3;
     }
 
     // Custom character Pat button label

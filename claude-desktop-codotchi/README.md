@@ -4,7 +4,7 @@ A Tamagotchi-style virtual pet that lives inside your **Claude Desktop** chats. 
 renders as ASCII art right in the conversation, and you keep it happy by
 talking to Claude and caring for it.
 
-v2.39.0 shares the sourced rotation-animal ASCII artwork with OpenCode and Claude
+v2.39.1 shares the sourced rotation-animal ASCII artwork with OpenCode and Claude
 Code. Classic and people are unchanged; animal silhouettes/signatures are kept
 intact across stages and moods. See [sources and permission-review release blocker](ASCII_ART_CREDITS.md)
 before distributing this development build.
@@ -33,6 +33,16 @@ rendered as an ASCII text block.
 
 Ask Claude in chat (e.g. "feed my codotchi") to trigger these tools — there
 are no on-screen buttons.
+
+### Food allowance (v2.39.1)
+
+Normal pets have **3 meals (+5 weight)** and **7 snacks (+3 weight)** per
+completed normal sleep; Stu has **10 meals (+4)** and **15 snacks (+2)**. Usage
+survives separate tool calls and restarts. Food refills only when normal sleep
+reaches **100 energy**, including elapsed normal sleep between tool calls.
+Early waking, break naps and restarting alone never refill either allowance.
+Snacks are eaten immediately in Desktop; the shared engine still refuses
+placement when three snacks are already on the floor.
 
 ### Rewards & the speech bubble
 

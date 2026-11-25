@@ -133,12 +133,6 @@ export class SidebarProvider
   private readonly disposables: vscode.Disposable[] = [];
 
   /**
-   * Tracks meals given in the current wake cycle (resets on sleep).
-   * This must be held here because PetState is immutable.
-   */
-  private mealsGivenThisCycle: number = 0;
-
-  /**
    * Whether the "no GitHub session" hint has already been shown once this
    * session. Reset on extension reload — matches the in-memory,
    * process-lifetime nature of the quota cache in copilotQuota.ts.
@@ -544,20 +538,16 @@ export class SidebarProvider
         }
         if (message.feedType === "snack") {
           const _cc = getCustomCharacterBySpriteType(state.spriteType);
-          // The webview reports the snacks really on its floor, so a stale counter
-          // can't let a 4th snack through (Stu's cycle cap is 10, so only the floor cap stops him).
-          const floor = typeof message.floorSnacks === "number" ? message.floorSnacks : state.snacksOnFloor;
+          // Neither a stale host count nor a stale webview count may allow a fourth snack.
+          const floor = Math.max(state.snacksOnFloor, typeof message.floorSnacks === "number" && Number.isFinite(message.floorSnacks) ? message.floorSnacks : 0);
           nextState = startSnack({ ...state, snacksOnFloor: floor }, { maxPerCycle: _cc?.feedSnackMaxPerCycle });
         } else {
           const _cc = getCustomCharacterBySpriteType(state.spriteType);
-          nextState = feedMeal(state, this.mealsGivenThisCycle, {
+          nextState = feedMeal(state, state.mealsGivenThisCycle, {
             maxPerCycle: _cc?.feedMealMaxPerCycle,
             hungerMult:  _cc?.feedHungerMult,
             weightGain:  _cc?.feedMealWeightGain,
           });
-          if (nextState.events.includes("fed_meal")) {
-            this.mealsGivenThisCycle += 1;
-          }
         }
         break;
 
@@ -592,9 +582,6 @@ export class SidebarProvider
           return;
         }
         nextState = sleep(state);
-        if (nextState.events.includes("fell_asleep")) {
-          this.mealsGivenThisCycle = 0;
-        }
         break;
 
       case "wake":
@@ -713,7 +700,6 @@ export class SidebarProvider
         const heir = message.heir === true && state !== null && !state.alive ? hatchHeir(state, heirName, trainer) : null;
         const hatched = heir ?? createPet(petName, petType, unlockedCharacter, trainer);
         nextState = deathless ? markDeathless(hatched) : hatched;
-        this.mealsGivenThisCycle = 0;
         break;
       }
 
@@ -889,7 +875,7 @@ export class SidebarProvider
       levelsEnabled: vscode.workspace.getConfiguration("codotchi").get<boolean>("enableLevels", false),
       bossAccess: this.bossAccess(),
       socialEnabled: this.socialPreviewActive(),
-      mealsGivenThisCycle: this.mealsGivenThisCycle,
+      mealsGivenThisCycle: state.mealsGivenThisCycle,
       highScore,
       devMode,
       unlockedCharacter,
@@ -907,19 +893,6 @@ export class SidebarProvider
       deathless: isDeathlessPet(state),
       afterlife: this.afterlifeFor(state),
     });
-  }
-
-  /**
-   * Reset the per-cycle meal counter.
-   *
-   * Called whenever state is reloaded from the shared file (cross-window or
-   * cross-IDE sync) so that the meal cap is not carried over from a stale
-   * in-memory snapshot.  Resetting to 0 is conservative: the reloaded state
-   * may already reflect meals given by another window, so we cannot know the
-   * correct counter value — 0 allows the full cycle quota from this window.
-   */
-  resetMealCycle(): void {
-    this.mealsGivenThisCycle = 0;
   }
 
   /**

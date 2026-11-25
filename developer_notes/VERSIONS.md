@@ -1,6 +1,55 @@
 # Version History
 
-## v2.39.0 — current (unreleased, consolidated)
+## v2.39.1 — current (unreleased)
+
+### Food allowance and weight balance
+
+| File | What changed |
+|------|--------------|
+| `packages/core/src/gameEngine.ts` | Persist meal usage beside snack usage; enforce meal caps even for legacy callers. Refill both only on full normal sleep at 100 energy, never break naps or early waking. Elapsed normal sleep can finish in tool-driven hosts. Normal games cost 5 weight; Stu alone retains the vigorous bonus. Respect exhausted food allowances when selecting cravings. |
+| `vscode/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts` | Generated shared-core mirrors via `scripts/sync-core.mjs`. |
+| `vscode/src/sidebarProvider.ts`, `vscode/src/extension.ts` | Use saved meal counts rather than refreshable host-local counters; reconcile floor counts conservatively. |
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js` | Stu meal weight 4 and snack cap 15; keep 10 meals, 2 snack weight and 5 base game loss. |
+| `vscode/media/sidebar.js` | Seven-snack default badge; disable placement at three floor snacks and guard the click handler. |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt`, `GameEngine.kt`, `PetState.kt` | Kotlin parity for tuning, persisted meal usage, full-sleep-only reset, normal elapsed-sleep recovery and Stu-only vigorous loss. |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt`, `CodotchiPlugin.kt`, `CustomCharacters.kt` | Serialize meal usage with the shared pet, stop resetting on refresh/sleep entry, enforce floor count and update Stu overrides. |
+| `opencode-codotchi/src/index.ts` | Remove plugin-local meal counters and nap/reload resets without re-enabling IDE care actions. |
+| `claude-codotchi/scripts/action.mjs` | Use persisted meal count instead of hard-coded zero; explain full-sleep refill on refusal. |
+| `claude-desktop-codotchi/src/state.ts`, `src/tools.ts` | Read saved allowance on each tool call; meal/snack refusal messages; legacy counter is only a compatibility view. |
+| `vscode/tests/unit/gameEngine.test.ts`, `customCharacterText.test.ts`, `tickLease.test.ts` | Integration coverage for limits, persistence, full/partial/nap/offline sleep, all games and food-versus-energy totals; update affected wiring assertions. |
+| `pycharm/src/test/kotlin/com/codotchi/FoodBalanceTest.kt`, `GameEngineTest.kt` | Equivalent Kotlin integration and normal-game cost coverage. |
+| `claude-codotchi/tests/integration/sickAndNap.test.mjs`, `claude-desktop-codotchi/tests/tools.test.mjs` | Exercise actual separate CLI invocations and repeated Desktop loads; verify no early-wake refill and elapsed normal-sleep completion. |
+| All five package manifests and four plugin lockfiles, Claude plugin/ Desktop manifests, Desktop `src/server.ts`, PyCharm `build.gradle.kts` and `plugin.xml` | Patch bump to 2.39.1; align package-lock root metadata without dependency changes. |
+| `claude-codotchi/dist/gameEngine.*` | Rebuilt tracked runtime/declarations/maps from canonical core. |
+| `README.md`, `vscode/README.md`, `pycharm/README.md`, `opencode-codotchi/README.md`, `claude-desktop-codotchi/README.md`, `claude_user_guide.md` | Document new allowance, weight totals and full-sleep semantics; current local package references. |
+| `vscode/CHANGELOG.md`, PyCharm `plugin.xml` change notes, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md`, this file | Public 2.39.1 notes and BUGFIX-228; no developer-only preview features added to public notes. |
+
+Updated constants (TypeScript and Kotlin):
+
+```text
+FEED_MEAL_WEIGHT_GAIN = 5       // default; Stu 4
+FEED_MEAL_MAX_PER_CYCLE = 3     // unchanged; Stu 10
+FEED_SNACK_WEIGHT_GAIN = 3      // default; Stu 2 unchanged
+SNACK_MAX_PER_CYCLE = 7         // Stu 15
+MAX_FLOOR_SNACKS = 3           // unchanged, enforced independently of quota
+PLAY_WEIGHT_LOSS = 5           // every normal game, win or lose
+PLAY_WEIGHT_LOSS_BONUS = 3     // unchanged value, applies only to Stu's vigorous games
+PLAY_ENERGY_COST = 25          // unchanged
+```
+
+Full food adds **36 weight** normally and **70 for Stu**; 100 energy burns
+**20 / 32** through games (before passive loss, pooping and weight clamping).
+Food allowances are not a sickness-rule exemption; consecutive snacks can still
+make a pet sick. Existing ASCII redistribution permission blocker is unchanged.
+No `architecture.html` exists in this repository; no unrelated HTML created.
+
+Validation: **1,773 tests passed** (VS Code 1069, Kotlin 335, Claude Code 140,
+OpenCode Node 149 + plugin 60, Desktop 14, cross-CLI 6). VS Code type-check and
+shared-core sync checks passed. Full Markdown lint retains pre-existing errors;
+the 10 changed Markdown files have **126 baseline / 126 current, zero new**.
+No live IDE visual testing or publication claimed.
+
+## v2.39.0 — previous (unreleased, consolidated)
 
 ### Walking visibility correction (included in the single 2.39.0 build)
 

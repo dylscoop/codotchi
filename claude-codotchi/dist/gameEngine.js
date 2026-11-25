@@ -68,7 +68,7 @@ const MAX_UNCLEANED_POOPS_BEFORE_SICK = 5;
  */
 const POOP_SICK_GRACE_TICKS = 20;
 /** Maximum snacks allowed per wake cycle before further snacks are refused. */
-export const SNACK_MAX_PER_CYCLE = 3;
+export const SNACK_MAX_PER_CYCLE = 7;
 /** Maximum snacks allowed on the stage floor simultaneously before further snacks are refused. */
 export const MAX_FLOOR_SNACKS = 3;
 /** Maximum number of events kept in recentEventLog. */
@@ -76,22 +76,21 @@ const RECENT_EVENT_LOG_MAX = 20;
 /** Ticks between droppings (≈ 20 real minutes). */
 const POOP_TICKS_INTERVAL = 20 * TICKS_PER_MINUTE;
 const FEED_MEAL_HUNGER_BOOST = 15;
-const FEED_MEAL_WEIGHT_GAIN = 2;
+const FEED_MEAL_WEIGHT_GAIN = 5;
 const FEED_MEAL_MAX_PER_CYCLE = 3;
 const FEED_SNACK_HAPPINESS_BOOST = 5;
 const FEED_SNACK_HUNGER_BOOST = 5;
-const FEED_SNACK_WEIGHT_GAIN = 5;
+const FEED_SNACK_WEIGHT_GAIN = 3;
 const PLAY_HAPPINESS_BOOST = 15;
 const PLAY_ENERGY_COST = 25;
-const PLAY_WEIGHT_LOSS = 3;
+const PLAY_WEIGHT_LOSS = 5;
 const PAT_HAPPINESS_BOOST = 10;
 const PAT_ENERGY_COST = 20;
 /** Manual sleep is allowed only below this energy (currently two pats). */
 export const SLEEP_ENERGY_THRESHOLD = 40;
 /** Weight lost when the pet is patted (BUGFIX-034). */
 const PAT_WEIGHT_LOSS = 3;
-/** Additional weight lost for left_right and higher_lower mini-games (BUGFIX-034).
- *  These games are more vigorous than coin_flip; total loss = PLAY_WEIGHT_LOSS + PLAY_WEIGHT_LOSS_BONUS = 6. */
+/** Stu alone retains the extra loss for vigorous games: 5 + 3 = 8. */
 const PLAY_WEIGHT_LOSS_BONUS = 3;
 const POOP_WEIGHT_LOSS = 5;
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */
@@ -542,9 +541,10 @@ function pickCravingFood(state, hunger, sick) {
     if (sick || hunger >= STAT_MAX)
         return null;
     const snackBlocked = state.consecutiveSnacks >= 2 ||
-        state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE ||
+        state.snacksGivenThisCycle >= (state.spriteType === "stu" ? 15 : SNACK_MAX_PER_CYCLE) ||
         state.snacksOnFloor >= MAX_FLOOR_SNACKS;
-    const mealPointless = hunger >= CRAVING_MEAL_MAX_HUNGER;
+    const mealPointless = hunger >= CRAVING_MEAL_MAX_HUNGER ||
+        state.mealsGivenThisCycle >= (state.spriteType === "stu" ? 10 : FEED_MEAL_MAX_PER_CYCLE);
     if (snackBlocked)
         return mealPointless ? null : "meal";
     if (mealPointless)
@@ -784,6 +784,7 @@ export function createPet(name, petType, unlockedCharacter = null, trainer = nul
         wasDeepIdle: false,
         spawnedAt: Date.now(),
         diedAt: 0,
+        mealsGivenThisCycle: 0,
         snacksGivenThisCycle: 0,
         snacksOnFloor: 0,
         paused: false,
@@ -1453,7 +1454,8 @@ function tickCore(state, isIdle, isDeepIdle, config) {
         hungerZeroTicks, sick, alive, ticksAlive, sleeping, ageDays, dayTimer,
         careScoreHungerSum, careScoreHappinessSum, careScoreHealthSum, careScoreTicks,
         events,
-        // Reset snack counter on auto-wake (mirrors the reset in wake())
+        // Only completed normal sleep refills food allowances (never a break nap).
+        mealsGivenThisCycle: events.includes("auto_woke_up") ? 0 : state.mealsGivenThisCycle,
         snacksGivenThisCycle: events.includes("auto_woke_up") ? 0 : state.snacksGivenThisCycle,
         wasIdle: isIdle,
         wasDeepIdle: isDeepIdle,
@@ -1512,7 +1514,7 @@ function tickBreakNap(state, isIdle, isDeepIdle, config, modifiers) {
         ...state,
         ticksAlive, dayTimer, ageDays: Math.floor(dayTimer), careMistakes,
         energy, breakNapTicksRemaining,
-        ...(napOver ? { sleeping: false, snacksGivenThisCycle: 0 } : {}),
+        ...(napOver ? { sleeping: false } : {}),
         wasIdle: isIdle,
         wasDeepIdle: isDeepIdle,
         events,
@@ -1651,16 +1653,18 @@ function answerCraving(state, food) {
  * @param opts.weightGain  - Weight gained per meal (overrides FEED_MEAL_WEIGHT_GAIN).
  * @returns A new PetState after the action.
  */
-export function feedMeal(state, mealsGivenThisCycle, opts) {
-    const cap = opts?.maxPerCycle ?? FEED_MEAL_MAX_PER_CYCLE;
+export function feedMeal(state, mealsGivenThisCycle = state.mealsGivenThisCycle, opts) {
+    const cap = opts?.maxPerCycle ?? (state.spriteType === "stu" ? 10 : FEED_MEAL_MAX_PER_CYCLE);
+    // Legacy hosts may pass their own counter; they cannot lower the saved count.
+    const mealsUsed = Math.max(state.mealsGivenThisCycle, mealsGivenThisCycle);
     const hungerBoost = Math.round(FEED_MEAL_HUNGER_BOOST * (opts?.hungerMult ?? 1));
     if (state.sick) {
         return withDerivedFields({ ...state, events: ["meal_refused_sick"] });
     }
-    if (mealsGivenThisCycle >= cap) {
+    if (mealsUsed >= cap) {
         return withDerivedFields({ ...state, events: ["meal_refused"] });
     }
-    const newWeight = clampWeight(state.weight + (opts?.weightGain ?? FEED_MEAL_WEIGHT_GAIN));
+    const newWeight = clampWeight(state.weight + (opts?.weightGain ?? (state.spriteType === "stu" ? 4 : FEED_MEAL_WEIGHT_GAIN)));
     const events = ["fed_meal"];
     checkWeightTierEvents(state.weight, newWeight, events);
     // Answers hunger, a meal craving, or critical_health — whichever is active.
@@ -1675,6 +1679,7 @@ export function feedMeal(state, mealsGivenThisCycle, opts) {
         ...(answered ?? {}),
         hunger: clampStat(state.hunger + hungerBoost),
         weight: newWeight,
+        mealsGivenThisCycle: mealsUsed + 1,
         consecutiveSnacks: 0,
         companion: careForCompanion(state.companion, COMPANION_MEAL_HUNGER, 0),
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
@@ -1704,7 +1709,7 @@ export function startSnack(state, opts) {
     if (state.snacksOnFloor >= MAX_FLOOR_SNACKS) {
         return withDerivedFields({ ...state, events: ["snack_refused"] });
     }
-    const cap = opts?.maxPerCycle ?? SNACK_MAX_PER_CYCLE;
+    const cap = opts?.maxPerCycle ?? (state.spriteType === "stu" ? 15 : SNACK_MAX_PER_CYCLE);
     if (state.snacksGivenThisCycle >= cap) {
         return withDerivedFields({ ...state, events: ["snack_refused"] });
     }
@@ -1756,7 +1761,7 @@ export function consumeSnack(state, opts) {
         events.push("became_sick");
     }
     events.push("fed_snack");
-    const newWeight = clampWeight(state.weight + (opts?.weightGain ?? FEED_SNACK_WEIGHT_GAIN));
+    const newWeight = clampWeight(state.weight + (opts?.weightGain ?? (state.spriteType === "stu" ? 2 : FEED_SNACK_WEIGHT_GAIN)));
     checkWeightTierEvents(state.weight, newWeight, events);
     return awardXp(withDerivedFields({
         ...state,
@@ -1934,9 +1939,8 @@ export function minigameStatsKey(game) {
 /**
  * Apply a mini-game result happiness delta to the pet state.
  *
- * Also applies an additional weight loss for vigorous mini-games (BUGFIX-034):
- *   - left_right, tug_of_war, boxing, laser and higher_lower: −3 extra weight (total −6 with play() baseline)
- *   - coin_flip, fetch and blackjack: no extra weight loss (total −3 from play() only)
+ * Normal pets lose 5 weight for every game via play(). Stu retains a further
+ * 3 weight loss for left_right, tug_of_war, boxing, laser and higher_lower.
  *
  * @param state - The current pet state.
  * @param game - "left_right", "higher_lower", "coin_flip", "blackjack", "fetch", "tug_of_war", "boxing", "laser", "boss_battle", "guess", or "memory".
@@ -1950,7 +1954,7 @@ export function minigameStatsKey(game) {
 export function applyMinigameResult(state, game, result, bossAccess = "queue") {
     const delta = happinessDeltaForMinigame(game, result);
     const statsGame = minigameStatsKey(game);
-    const isVigorousGame = statsGame === "left_right" || statsGame === "higher_lower";
+    const isVigorousGame = state.spriteType === "stu" && (statsGame === "left_right" || statsGame === "higher_lower");
     // Hosts call this straight after play(): carry over any attention call that
     // play() answered, otherwise its answered event (and toast / log line) is lost.
     const answered = state.events.filter((e) => e.startsWith("attention_call_answered_"));
@@ -2422,6 +2426,14 @@ export function applyOfflineDecay(state, elapsedSeconds) {
     const breakNapTicksRemaining = state.breakNapTicksRemaining - napTicksUsed;
     const napEnded = state.breakNapTicksRemaining > 0 && breakNapTicksRemaining === 0;
     const elapsedTicks = Math.max(0, elapsedSeconds / TICK_INTERVAL_SECONDS - napTicksUsed);
+    // Tool-driven hosts have no continuous ticker. Normal sleep must still be
+    // able to finish there; reopening alone never refills an unfinished sleep.
+    const normalSleep = state.sleeping && state.breakNapTicksRemaining === 0;
+    const energy = normalSleep
+        ? clampStat(state.energy + Math.floor(elapsedSeconds / TICK_INTERVAL_SECONDS) *
+            ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier)
+        : state.energy;
+    const fullSleep = normalSleep && energy >= STAT_MAX;
     const hungerDecayTotal = elapsedTicks * HUNGER_DECAY_PER_TICK * modifiers.hungerDecayMultiplier;
     const happinessDecayTotal = elapsedTicks * HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier;
     const maxHungerLoss = Math.floor(state.hunger * OFFLINE_DECAY_MAX_FRACTION);
@@ -2445,8 +2457,11 @@ export function applyOfflineDecay(state, elapsedSeconds) {
         dayTimer: state.dayTimer,
         ageDays: state.ageDays,
         breakNapTicksRemaining,
-        ...(napEnded ? { sleeping: false } : {}),
-        events: [],
+        energy,
+        ...(napEnded || fullSleep ? { sleeping: false } : {}),
+        mealsGivenThisCycle: fullSleep ? 0 : state.mealsGivenThisCycle,
+        snacksGivenThisCycle: fullSleep ? 0 : state.snacksGivenThisCycle,
+        events: fullSleep ? ["auto_woke_up"] : [],
     });
 }
 // ---------------------------------------------------------------------------
@@ -3805,6 +3820,7 @@ export function serialiseState(state) {
         wasDeepIdle: state.wasDeepIdle,
         spawnedAt: state.spawnedAt,
         diedAt: state.diedAt,
+        mealsGivenThisCycle: state.mealsGivenThisCycle,
         snacksGivenThisCycle: state.snacksGivenThisCycle,
         snacksOnFloor: state.snacksOnFloor,
         paused: state.paused,
@@ -3912,6 +3928,7 @@ export function deserialiseState(data) {
         // Back-compat: a pet saved dead before diedAt existed gets "now". Its real
         // death time is lost, but from here on it stays fixed.
         diedAt: getNumber("diedAt", getBool("alive", true) ? 0 : Date.now()),
+        mealsGivenThisCycle: Math.max(0, Math.floor(getNumber("mealsGivenThisCycle", 0))),
         snacksGivenThisCycle: getNumber("snacksGivenThisCycle", 0),
         snacksOnFloor: getNumber("snacksOnFloor", 0),
         paused: getBool("paused", false),

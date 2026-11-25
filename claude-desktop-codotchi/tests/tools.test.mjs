@@ -85,6 +85,35 @@ describe("claude-desktop tools", () => {
     assert.equal(stored.state.hunger, out.state.hunger);
   });
 
+  it("meal allowance survives repeated tool loads, show, sleep and early wake", () => {
+    writeState(["vscode", "state.json"], adultPet({ weight: 10, energy: 20, snacksGivenThisCycle: 7 }));
+    const cfg = readConfig();
+    for (let i = 1; i <= 3; i++) {
+      assert.equal(tools.feed(cfg).state.mealsGivenThisCycle, i);
+      assert.equal(tools.show(cfg).state.mealsGivenThisCycle, i);
+    }
+    for (const fn of ["sleepToggle", "sleepToggle", "show"]) {
+      const out = tools[fn](cfg);
+      assert.equal(out.state.mealsGivenThisCycle, 3);
+      assert.equal(out.state.snacksGivenThisCycle, 7);
+    }
+    const out = tools.feed(cfg);
+    assert.ok(out.state.events.includes("meal_refused"));
+    assert.equal(out.state.weight, 25);
+    assert.ok(out.asciiArt.replace(/[\s\\/|]+/g, " ").includes("Meal allowance used up"));
+  });
+
+  it("a full elapsed normal sleep replenishes both allowances for a tool-driven pet", () => {
+    writeState(["vscode", "state.json"], adultPet({ sleeping: true, energy: 20,
+      mealsGivenThisCycle: 3, snacksGivenThisCycle: 7 }), Date.now() - 90_000);
+    const out = tools.show(readConfig());
+    assert.equal(out.state.energy, 100);
+    assert.equal(out.state.sleeping, false);
+    assert.equal(out.state.mealsGivenThisCycle, 0);
+    assert.equal(out.state.snacksGivenThisCycle, 0);
+    assert.ok(tools.feed(readConfig()).state.events.includes("fed_meal"));
+  });
+
   it("feed(), snack() and play() are refused while sick (BUG-S04)", () => {
     for (const [fn, phrase] of [["feed", "Too sick to eat"], ["snack", "Too sick for a snack"], ["playAction", "Too sick to play"]]) {
       writeState(["vscode", "state.json"], adultPet({ sick: true, hunger: 20, happiness: 40 }));

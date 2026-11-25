@@ -81,7 +81,10 @@ data class PetState(
      */
     val diedAt: Long = 0L,
 
-    /** Snacks given in the current wake cycle (resets on wake/createPet). */
+    /** Meals given since the last completed normal sleep; persisted across hosts. */
+    val mealsGivenThisCycle: Int = 0,
+
+    /** Snacks placed since the last completed normal sleep. */
     val snacksGivenThisCycle: Int,
 
     /** Snacks currently placed on the floor but not yet consumed. Resets to 0 when the webview reloads. */

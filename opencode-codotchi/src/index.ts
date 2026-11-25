@@ -690,7 +690,6 @@ function loadLocalState(): void {
     const elapsed = (Date.now() - raw.savedAt) / 1_000;
     localPetState    = pinnedCompanionStats(applyOfflineDecay(deserialiseState(raw.state), elapsed));
     localLastSavedAt = raw.savedAt;
-    localMeals = 0;
     // If the pet is dead (old age), immediately respawn
     if (!localPetState.alive) {
       createLocalPet();
@@ -723,7 +722,6 @@ function createLocalPet(): void {
   localPetState = pinnedCompanionStats(createPet(name, "codeling"));
   // Set the stage based on current message count
   (localPetState as any).stage = stageForMessages(localPetTotalMessages);
-  localMeals = 0;
   saveLocalState();
   queueNotification(terminalEnabled && localPetState
     ? buildSpeechBubble(localPetState.stage, localPetState.mood,
@@ -731,14 +729,6 @@ function createLocalPet(): void {
         name, localPetState.spriteType, "[OpenCode]")
     : `[OpenCode] ${name}: Hi! I'm ${name}. I live in OpenCode — no IDE needed.`);
 }
-
-// ---------------------------------------------------------------------------
-// Meals-per-cycle counters (plugin-local, reset on wake, one per source)
-// ---------------------------------------------------------------------------
-
-let vscodeMeals  = 0;
-let pycharmMeals = 0;
-let localMeals   = 0;
 
 // ---------------------------------------------------------------------------
 // Plugin state — dual-pet (VS Code + PyCharm, independent)
@@ -1071,16 +1061,6 @@ function getActivePets(): ActivePet[] {
   return [];
 }
 
-function getMeals(ide: "vscode" | "pycharm" | "opencode"): number {
-  if (ide === "vscode") { return vscodeMeals; }
-  if (ide === "pycharm") { return pycharmMeals; }
-  return localMeals;
-}
-function setMeals(ide: "vscode" | "pycharm" | "opencode", n: number): void {
-  if (ide === "vscode") { vscodeMeals = n; }
-  else if (ide === "pycharm") { pycharmMeals = n; }
-  else { localMeals = n; }
-}
 function getSavedAt(ide: "vscode" | "pycharm" | "opencode"): number {
   if (ide === "vscode") { return vscodeLastSavedAt; }
   if (ide === "pycharm") { return pycharmLastSavedAt; }
@@ -1111,7 +1091,6 @@ function loadAllStates(): void {
     const elapsed = (Date.now() - vscodeFile.savedAt) / 1_000;
     vscodePetState    = decayIDEState(vscodeFile.state, elapsed);
     vscodeLastSavedAt = vscodeFile.savedAt;
-    vscodeMeals = 0;
     // Restore terminalEnabled from the VS Code state file (respects explicit off)
     terminalEnabled = vscodeFile.terminalEnabled;
   }
@@ -1120,7 +1099,6 @@ function loadAllStates(): void {
     const elapsed = (Date.now() - pycharmFile.savedAt) / 1_000;
     pycharmPetState    = decayIDEState(pycharmFile.state, elapsed);
     pycharmLastSavedAt = pycharmFile.savedAt;
-    pycharmMeals = 0;
   }
   // Always load (or create) the OpenCode-local pet
   loadLocalState();
@@ -1164,13 +1142,11 @@ function applyTickForPet(ide: "vscode" | "pycharm"): void {
   for (const event of next.events) {
     switch (event) {
       case "auto_woke_up":
-        setMeals(ide, 0);
         queueNotification(terminalEnabled
           ? buildSpeechBubble(next.stage, next.mood, pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."]), next.name, next.spriteType, ideLabel)
           : `${ideLabel} ${next.name}: ${pickRandom(["I feel rested! Time to code!", "Recharged. Ready to go.", "Back and ready."])}`);
         break;
       case "break_nap_over": {
-        setMeals(ide, 0);
         // The dog chews a bone through its break instead of napping
         const overText = next.spriteType === "dog" ? "Finished the bone. Back to work!" : "Break's over! Ready to code.";
         queueNotification(terminalEnabled
@@ -1340,7 +1316,6 @@ const plugin: Plugin = async (ctx) => {
       if (ide === "vscode") { vscodeAnnouncedStage = newStage; } else { pycharmAnnouncedStage = newStage; }
       setPetState(ide, decayIDEState(loaded.state, elapsed));
       setSavedAt(ide, loaded.savedAt);
-      setMeals(ide, 0);
     };
 
     const onChange = (): void => {
@@ -1615,7 +1590,6 @@ const plugin: Plugin = async (ctx) => {
                continue;
              }
              const s = p.state;
-             const meals = getMeals(p.ide);
              const pLabel = p.ide === "vscode" ? "VS Code" : "PyCharm";
              if (s.sleeping) {
                feedLines.push(`[${pLabel}] ${s.name} is sleeping and can't eat right now.`);
@@ -1626,9 +1600,8 @@ const plugin: Plugin = async (ctx) => {
                feedLines.push(`[${pLabel}] ${s.name} is too sick to eat — give medicine first (/codotchi medicine).`);
                continue;
              }
-             const next = feedMeal(s, meals);
+              const next = feedMeal(s);
              const refused = next.events.includes("meal_refused");
-             if (!refused) { setMeals(p.ide, meals + 1); }
              setPetState(p.ide, next);
              saveIDEState(p.ide);
              const toast = buildToast(next.stage, refused
@@ -1637,7 +1610,7 @@ const plugin: Plugin = async (ctx) => {
              feedLines.push((terminalEnabled
                ? buildSpeechBubble(next.stage, next.mood, refused ? "I'm too full!" : next.events.includes("attention_call_answered_craving") ? whimSpeech("craving") : "Yum!", next.name, next.spriteType) + "\n"
                : "") + toast + "\n" + (refused
-               ? `[${pLabel}] Meal refused — ${next.name} has already had ${getMeals(p.ide)} meals this wake cycle.`
+                ? `[${pLabel}] Meal refused — ${next.name} has had ${next.mealsGivenThisCycle} meals since its last full sleep.`
                : `[${pLabel}] Fed ${next.name}. Hunger: ${next.hunger}/100, Weight: ${next.weight}.`));
            }
            return ret(notification + feedLines.join("\n\n"));

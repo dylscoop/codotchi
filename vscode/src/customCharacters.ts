@@ -52,19 +52,19 @@ export interface CustomCharacter {
   patCall?: CustomCharacterPatCall;
   /** What a snack craving asks for, e.g. "a tea"; one is picked at random per craving. */
   snackCravings?: string[];
-  /** Maximum meals allowed per wake cycle (default: FEED_MEAL_MAX_PER_CYCLE = 3). */
+  /** Maximum meals between completed normal sleeps (default: 3). */
   feedMealMaxPerCycle?: number;
-  /** Maximum snacks allowed per wake cycle (default: SNACK_MAX_PER_CYCLE = 3). */
+  /** Maximum snacks between completed normal sleeps (default: 7). */
   feedSnackMaxPerCycle?: number;
   /** Multiplier applied to the hunger boost from each meal and snack (default: 1.0). */
   feedHungerMult?: number;
   /** Consecutive snacks before the pet gets sick (default: MAX_CONSECUTIVE_SNACKS_BEFORE_SICK = 3). */
   snackSickThreshold?: number;
-  /** Weight gained per meal (default: FEED_MEAL_WEIGHT_GAIN = 2). */
+  /** Weight gained per meal (default: FEED_MEAL_WEIGHT_GAIN = 5). */
   feedMealWeightGain?: number;
-  /** Weight gained per snack consumed (default: FEED_SNACK_WEIGHT_GAIN = 5). */
+  /** Weight gained per snack consumed (default: FEED_SNACK_WEIGHT_GAIN = 3). */
   feedSnackWeightGain?: number;
-  /** Weight lost per play session (default: PLAY_WEIGHT_LOSS = 3). */
+  /** Weight lost per play session (default: PLAY_WEIGHT_LOSS = 5). */
   playWeightLoss?: number;
   /** Speech bubble when an attention call expires unanswered (optional). */
   ignoredBubble?: string;
@@ -248,10 +248,10 @@ export const CUSTOM_CHARACTERS: CustomCharacter[] = [
     },
     snackCravings: ["a pint", "some salmon"],
     feedMealMaxPerCycle:  10,
-    feedSnackMaxPerCycle: 10,
+    feedSnackMaxPerCycle: 15,
     feedHungerMult:       0.25,
     snackSickThreshold:   5,
-    feedMealWeightGain:   1,
+    feedMealWeightGain:   4,
     feedSnackWeightGain:  2,
     playWeightLoss:       5,
   },

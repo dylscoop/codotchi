@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.codotchi.pycharm-codotchi</id>
     <name>Codotchi</name>
-    <version>2.39.0</version>
+    <version>2.39.1</version>
     <vendor>codotchi</vendor>
 
     <description><![CDATA[
@@ -189,6 +189,13 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+<h3>2.39.1</h3>
+<ul>
+<li>Meals add 5 weight and snacks add 3; all normal mini-games cost 5 weight and 25 energy. Allowance: 3 meals and 7 snacks.</li>
+<li>Stu gains 4 weight per meal and 2 per snack, with 10 meals and 15 snacks; his standard/vigorous game losses remain 5/8.</li>
+<li>Food allowances refill only when normal sleep finishes at 100 energy, including elapsed sleep while closed. Early waking, break naps and restarting alone never refill them.</li>
+<li>At most three snacks may be on the floor, including for Stu.</li>
+</ul>
 <h3>2.39.0</h3>
 <ul><li>Tiny step-synchronised body dip with grounded supporting paws; ordinary wandering starts, braking and turns ease gently. Safety/scripted stops stay immediate.</li></ul>
 <ul><li>Small paw travel/lift with alternating front/hind diagonal pairs at both speeds; two visible legs move together.</li></ul>

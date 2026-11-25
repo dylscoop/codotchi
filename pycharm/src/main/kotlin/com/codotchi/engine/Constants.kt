@@ -55,7 +55,7 @@ const val MAX_UNCLEANED_POOPS_BEFORE_SICK: Int = 5
  */
 const val POOP_SICK_GRACE_TICKS: Int = 20
 /** Maximum snacks allowed per wake cycle before further snacks are refused. */
-const val SNACK_MAX_PER_CYCLE: Int = 3
+const val SNACK_MAX_PER_CYCLE: Int = 7
 /** Maximum snacks allowed on the stage floor simultaneously before further snacks are refused. */
 const val MAX_FLOOR_SNACKS: Int = 3
 /** Maximum number of events kept in recentEventLog. */
@@ -63,16 +63,16 @@ const val RECENT_EVENT_LOG_MAX: Int = 20
 const val POOP_TICKS_INTERVAL: Int = 20 * TICKS_PER_MINUTE
 
 const val FEED_MEAL_HUNGER_BOOST: Int = 15
-const val FEED_MEAL_WEIGHT_GAIN: Int = 2
+const val FEED_MEAL_WEIGHT_GAIN: Int = 5
 const val FEED_MEAL_MAX_PER_CYCLE: Int = 3
 
 const val FEED_SNACK_HAPPINESS_BOOST: Int = 5
 const val FEED_SNACK_HUNGER_BOOST: Int = 5
-const val FEED_SNACK_WEIGHT_GAIN: Int = 5
+const val FEED_SNACK_WEIGHT_GAIN: Int = 3
 
 const val PLAY_HAPPINESS_BOOST: Int = 15
 const val PLAY_ENERGY_COST: Int = 25
-const val PLAY_WEIGHT_LOSS: Int = 3
+const val PLAY_WEIGHT_LOSS: Int = 5
 
 const val PAT_HAPPINESS_BOOST: Int = 10
 const val PAT_ENERGY_COST: Int = 20
@@ -82,8 +82,7 @@ const val SLEEP_ENERGY_THRESHOLD: Int = 40
 const val PAT_WEIGHT_LOSS: Int = 3
 const val POOP_WEIGHT_LOSS: Int = 5
 
-/** Extra weight lost in applyMinigameResult() for left_right and higher_lower (BUGFIX-034).
- *  coin_flip only loses the PLAY_WEIGHT_LOSS (3) from play(); no bonus here. */
+/** Stu alone retains the extra loss for vigorous games: 5 + 3 = 8. */
 const val PLAY_WEIGHT_LOSS_BONUS: Int = 3
 
 /** Ticks between passive weight decay pulses (1 weight per interval = 1 per minute). */

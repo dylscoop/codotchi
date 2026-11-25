@@ -230,17 +230,42 @@ describe("giftFor", () => {
   });
 });
 
-describe("floor snack cap (Stu's cycle cap is 10, so only the floor cap stops him)", () => {
-  it("the engine refuses a 4th floor snack even under a 10-snack cycle cap", async () => {
+describe("floor snack cap (Stu's cycle cap is 15, so only the floor cap stops him)", () => {
+  it("the engine refuses a 4th floor snack even under a 15-snack cycle cap", async () => {
     const { startSnack } = await import("../../src/gameEngine");
     const pet = { ...makePet("stu"), snacksOnFloor: 3, snacksGivenThisCycle: 3 };
-    assert.deepEqual(startSnack(pet, { maxPerCycle: 10 }).events, ["snack_refused"]);
+    assert.deepEqual(startSnack(pet, { maxPerCycle: 15 }).events, ["snack_refused"]);
   });
 
   it("every host takes the floor count from the webview, so a stale counter can't let one through", () => {
     assert.match(read("vscode/media/sidebar.js"), /feedType: "snack", floorSnacks: snackItems\.length/);
     assert.match(read("vscode/src/sidebarProvider.ts"), /startSnack\(\{ \.\.\.state, snacksOnFloor: floor \}/);
     assert.match(read("pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt"), /startSnack\(state\.copy\(snacksOnFloor = floor\)/);
+    assert.match(read("vscode/src/sidebarProvider.ts"), /Math\.max\(state\.snacksOnFloor,/);
+    assert.match(read("pycharm/src/main/kotlin/com/codotchi/CodotchiPlugin.kt"), /maxOf\(state\.snacksOnFloor,/);
+  });
+
+  it("the real Snack click handler sends no placement request when three snacks are already there", () => {
+    const source = read("vscode/media/sidebar.js");
+    const body = source.match(/getElementById\("btn-feed-snack"\)\.addEventListener\("click", function \(\) \{([\s\S]*?)\n  \}\);/)![1];
+    const click = new Function("snackItems", "vscode", body);
+    for (const count of [2, 3, 4]) {
+      const sent: unknown[] = [];
+      click(Array(count).fill({}), { postMessage: (msg: unknown) => sent.push(msg) });
+      assert.equal(sent.length, count < 3 ? 1 : 0, `${count} snacks`);
+    }
+    assert.match(source, /snackBtn\.disabled = snacksLeft <= 0 \|\| Math\.max\(state\.snacksOnFloor \|\| 0, snackItems\.length\) >= 3/);
+  });
+
+  it("Stu's host and webview tuning matches the agreed food balance", () => {
+    const stu = CUSTOM_CHARACTERS.find((c) => c.spriteType === "stu")!;
+    assert.equal(stu.feedMealMaxPerCycle, 10);
+    assert.equal(stu.feedSnackMaxPerCycle, 15);
+    assert.equal(stu.feedMealWeightGain, 4);
+    assert.equal(stu.feedSnackWeightGain, 2);
+    const source = read("vscode/media/customCharacters.js");
+    assert.match(source, /feedSnackMaxPerCycle:\s+15/);
+    assert.match(source, /feedMealWeightGain:\s+4/);
   });
 });
 

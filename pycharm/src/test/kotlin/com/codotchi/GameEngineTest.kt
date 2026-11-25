@@ -716,7 +716,7 @@ class GameEngineTest {
         assertTrue(fetched.events.contains("minigame_fetch_lose"))
         val tugged = applyMinigameResult(pet, "tug_of_war", "lose")
         assertEquals(45, tugged.happiness)
-        assertEquals(37, tugged.weight)
+        assertEquals(40, tugged.weight)
         assertTrue(tugged.events.contains("minigame_tug_of_war_lose"))
     }
 
@@ -727,7 +727,7 @@ class GameEngineTest {
         val pet = makePet().copy(happiness = 50, weight = 40)
         val boxed = applyMinigameResult(pet, "boxing", "lose")
         assertEquals(45, boxed.happiness)
-        assertEquals(37, boxed.weight)
+        assertEquals(40, boxed.weight)
         assertTrue(boxed.events.contains("minigame_boxing_lose"))
     }
 
@@ -738,7 +738,7 @@ class GameEngineTest {
         val pet = makePet().copy(happiness = 50, weight = 40)
         val chased = applyMinigameResult(pet, "laser", "lose")
         assertEquals(45, chased.happiness)
-        assertEquals(37, chased.weight)
+        assertEquals(40, chased.weight)
         assertTrue(chased.events.contains("minigame_laser_lose"))
     }
 
