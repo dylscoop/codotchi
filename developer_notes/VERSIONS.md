@@ -51,19 +51,22 @@ engine and pass with unconditional deep-idle protection. Full Markdown lint
 retains historical errors; the 11 changed Markdown files have **145 baseline / 145
 current, zero new**. No live IDE install, saved-state repair or publication.
 
-Earlier deep-idle-only 2.39.2 packages (rebuilt again for the follow-up):
+All five local packages rebuilt with deep-idle protection and the Stu/Praise
+follow-up; embedded versions, runtime bytes and shared IDE media verified:
 
 - `vscode/codotchi-2.39.2.vsix`
 - `pycharm/build/distributions/pycharm-codotchi-2.39.2.zip`
 - `opencode-codotchi/opencode-codotchi-2.39.2.zip`
 - `claude-codotchi/claude-codotchi-2.39.2.zip`
 - `claude-desktop-codotchi/codotchi-desktop.mcpb` (manifest 2.39.2)
-- `codotchi-2.39.2-all-platforms.zip` (3,239,028 bytes; 8 verified entries)
+- `codotchi-2.39.2-all-platforms.zip` (3,239,533 bytes; 8 verified entries)
 
 Combined bundle SHA-256:
-`9f00121aa347d40980cdf35c89d8cbc2f3d65971c54512d0064c6ffeb5415b93`.
+`522000f766709c27fb360ca010e1be32b7ed4769d80d75c6d29da37aa7faf16d`.
 Previous packages archived without overwriting existing archives. Installer
 files remain gitignored/local only. No reinstall, push, merge, tag or release.
+The user kept version 2.39.2: explicitly reinstall these packages to replace an
+earlier 2.39.2 build; a version check alone cannot distinguish the follow-up.
 
 ## v2.39.1 — unreleased
 
