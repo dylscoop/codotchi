@@ -2650,3 +2650,56 @@ After the blanket was removed, the light pillow rect under the pet read as a whi
 **Problem:** Coordinated small steps still moved beneath a rigid torso, and ordinary wandering started/reversed instantly. Simply bobbing the whole sprite would also lift its supporting paws off the floor.
 
 **Fix:** Add two subtle contact dips per cycle, capped at one displayed pixel and suppressed when legs are too short. Translate the torso rigidly and taper that offset from each leg root to zero at its paw; keep unmapped lower-edge pixels above their source floor. Both draw paths and size-sensitive raster cache entries include the compensation. Ordinary floor wandering integrates a nominal 0.18 s acceleration / 0.12 s braking ramp; actual distance drives the gait and facing follows actual eased velocity. Safety, sleep/lying, bounds and scripted/target-driven movement keep immediate handling. No independent head/tail animation, source-art edits or horizontal foot-lock solver. Tests cover start/stop integration, grounded paws, tiny body translation, all display sizes and the real browser loop. Kept at 2.39.0; live IDE acceptance remains pending.
+
+## BUGFIX-228 — Food allowances refill without a full sleep
+
+**Status:** Fixed (branch `fix/food-sleep-balance`)
+**File:** `packages/core/src/gameEngine.ts`, `vscode/src/sidebarProvider.ts`, `vscode/src/extension.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`, `CodotchiPersistence.kt`, `CodotchiPlugin.kt`, CLI/Desktop adapters and shared webview
+
+**Problem:** Host-local meal counters refilled on reload or entering sleep;
+Claude Code and Desktop could bypass the cap entirely. Break naps also reset
+snacks. Meals added less weight than snacks, normal game costs differed, and a
+larger Stu quota required enforcing the separate three-snack floor limit.
+
+**Fix:** Save meal usage inside the shared pet alongside snacks. Reset both
+only when normal sleep reaches 100 energy, including elapsed normal sleep for
+tool-driven hosts; starting sleep, early waking, naps and restarting alone never
+refill food. Normal meals/snacks add 5/3 weight, with 3/7 allowances; Stu adds
+4/2 with 10/15 allowances. Games cost 25 energy and 5 weight normally, with
+Stu's 5/8 standard/vigorous losses preserved. Guard floor placement in the
+engine, both hosts and shared UI at three snacks. Integration tests cover saved
+usage, actual CLI/Desktop calls, sleep boundaries, floor cap and weight totals.
+
+## BUGFIX-229 — Healthy pets lose stats below the floor during deep idle
+
+**Status:** Fixed (branch `fix/food-sleep-balance`)
+**File:** `packages/core/src/gameEngine.ts`, generated shared-core mirrors, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
+
+**Problem:** The idle stat floor only activated for sickness or a damage state,
+so healthy pets could decay below 20 during deep idle. Scout's morning backup
+held hunger, happiness and energy at 1 despite deep idle being active.
+
+**Fix:** Apply the hunger/happiness/energy floor on every deep-idle tick,
+independent of sickness or damage. Each floor is `min(previousStat, 20)`,
+preventing further decay of an already-low stat without healing it. Regular
+idle, offline decay and existing health protection are unchanged. Both engines
+have regression coverage for healthy overnight decay, save/reload, individual
+below-floor values, existing zeros and active re-entry.
+
+## BUGFIX-230 — Ordinary Praise does not reset the snack streak
+
+**Status:** Fixed (branch `fix/food-sleep-balance`, consolidated in 2.39.2)
+**File:** `packages/core/src/gameEngine.ts`, generated TypeScript mirrors, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
+
+**Problem:** Praise reset consecutive snacks only when it started a break nap.
+Ordinary Praise could not interrupt snack overfeeding, unlike a meal, game,
+pat or sleep. Stu's old quarter hunger multiplier also restored only 4/1 hunger
+per meal/snack despite his limited per-sleep allowances.
+
+**Fix:** Every successful Praise sets the streak to zero without refilling food
+or curing existing sickness. Sick refusal remains unchanged. Stu now receives
+exact base hunger gains of 10 per meal and 2 per snack; remove the old quarter
+multiplier from IDE/webview character overrides. Normal hunger and all weight
+values, food limits, sickness thresholds and deep-idle protection stay unchanged.
+Integration tests cover snack/Praise sequences without medicine, allowance
+preservation, call/no-call/nap behavior, sick refusal and actual CLI/Desktop gains.

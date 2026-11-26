@@ -1,6 +1,137 @@
 # Version History
 
-## v2.39.0 — current (unreleased, consolidated)
+## v2.39.2 — current (unreleased)
+
+### Stu hunger and Praise follow-up (BUGFIX-230)
+
+The user explicitly requested keeping the existing branch and **2.39.2**.
+This follow-up includes the deep-idle fix below; it does not replace or revert it.
+
+| File | What changed |
+|------|--------------|
+| `packages/core/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt`, `GameEngine.kt` | Stu base hunger +10 per meal / +2 per snack; every successful Praise resets consecutive snacks without refilling food. Normal hunger and all weight gains/limits unchanged. |
+| Four generated `src/gameEngine.ts` copies and tracked `claude-codotchi/dist/gameEngine.*` | Shared-core parity and rebuilt runtime. |
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | Remove Stu's obsolete quarter hunger multiplier so exact engine gains apply in both IDEs. Other overrides untouched. |
+| `vscode/tests/unit/gameEngine.test.ts`, `customCharacterText.test.ts`, `pycharm/src/test/kotlin/com/codotchi/FoodBalanceTest.kt`, CLI/Desktop integration tests | Exact hunger/clamps, successful Praise with no call/gift/unhappiness/break, snack sequences without medicine, no allowance refill, and unchanged sick refusal. |
+| `README.md`, IDE/Desktop READMEs, both Claude guides, `vscode/CHANGELOG.md`, PyCharm `plugin.xml` change notes, `developer_notes/DEV_NOTES.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md`, this file | Current tuning and reset behavior; BUGFIX-230. Keep version 2.39.2. |
+
+```text
+STU_MEAL_HUNGER_BOOST = 10
+STU_SNACK_HUNGER_BOOST = 2
+FEED_MEAL_HUNGER_BOOST = 15  // unchanged normal default
+FEED_SNACK_HUNGER_BOOST = 5  // unchanged normal default
+```
+
+Stu's full allowance restores **130 hunger** before clamping (10 meals +15
+snacks). Sickness prevention requires interrupting the streak before the next
+snack reaches the threshold. Praise never cures sickness, refills food or
+adds a new care XP reward when no call is answered. Sleep starvation behavior
+is unchanged; no hunger-zero safety change was requested.
+
+### Deep-idle protection (BUGFIX-229)
+
+| File | What changed |
+|------|--------------|
+| `packages/core/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | Unconditional deep-idle hunger/happiness/energy floor at min(previous stat, 20), including healthy pets. Regular idle, offline decay and health protection unchanged. |
+| All four generated `src/gameEngine.ts` mirrors; `claude-codotchi/dist/gameEngine.*` | Synchronize canonical core and rebuild the tracked Claude runtime. |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | Healthy overnight save/reload, independent low values, sickness, existing zero, regular-idle and active re-entry regressions. |
+| All five package manifests, four lockfiles, Claude/Desktop manifests, Desktop `src/server.ts`, PyCharm `build.gradle.kts` and `plugin.xml` | Patch bump to 2.39.2, without dependency changes. |
+| `developer_notes/DEV_NOTES.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md`, `vscode/CHANGELOG.md`, this file | Document deep-idle-only unconditional protection and BUGFIX-229. |
+| `README.md`, `opencode-codotchi/README.md`, `claude-desktop-codotchi/README.md`, `pycharm/README.md` | Update current build references and describe idle safety without changing food balance. |
+
+`IDLE_STAT_FLOOR = 20` is unchanged. A value below 20 remains at its own value
+in deep idle; no automatic stat restoration. No saved pet state is modified.
+The existing ASCII redistribution-permission blocker still applies.
+
+Validation including the Stu/Praise follow-up: **1,797 tests passed** (VS Code
+1084, Kotlin 342, Claude Code 141, OpenCode Node 149 + plugin 60, Desktop 15,
+cross-CLI 6). VS Code type-check
+and shared-core sync passed. Regression tests failed on the previous shared
+engine and pass with unconditional deep-idle protection. Full Markdown lint
+retains historical errors; the 11 changed Markdown files have **145 baseline / 145
+current, zero new**. No live IDE install, saved-state repair or publication.
+
+All five local packages rebuilt with deep-idle protection and the Stu/Praise
+follow-up; embedded versions, runtime bytes and shared IDE media verified:
+
+- `vscode/codotchi-2.39.2.vsix`
+- `pycharm/build/distributions/pycharm-codotchi-2.39.2.zip`
+- `opencode-codotchi/opencode-codotchi-2.39.2.zip`
+- `claude-codotchi/claude-codotchi-2.39.2.zip`
+- `claude-desktop-codotchi/codotchi-desktop.mcpb` (manifest 2.39.2)
+- `codotchi-2.39.2-all-platforms.zip` (3,239,533 bytes; 8 verified entries)
+
+Combined bundle SHA-256:
+`522000f766709c27fb360ca010e1be32b7ed4769d80d75c6d29da37aa7faf16d`.
+Previous packages archived without overwriting existing archives. Installer
+files remain gitignored/local only. No reinstall, push, merge, tag or release.
+The user kept version 2.39.2: explicitly reinstall these packages to replace an
+earlier 2.39.2 build; a version check alone cannot distinguish the follow-up.
+
+## v2.39.1 — unreleased
+
+### Food allowance and weight balance
+
+| File | What changed |
+|------|--------------|
+| `packages/core/src/gameEngine.ts` | Persist meal usage beside snack usage; enforce meal caps even for legacy callers. Refill both only on full normal sleep at 100 energy, never break naps or early waking. Elapsed normal sleep can finish in tool-driven hosts. Normal games cost 5 weight; Stu alone retains the vigorous bonus. Respect exhausted food allowances when selecting cravings. |
+| `vscode/src/gameEngine.ts`, `opencode-codotchi/src/gameEngine.ts`, `claude-codotchi/src/gameEngine.ts`, `claude-desktop-codotchi/src/gameEngine.ts` | Generated shared-core mirrors via `scripts/sync-core.mjs`. |
+| `vscode/src/sidebarProvider.ts`, `vscode/src/extension.ts` | Use saved meal counts rather than refreshable host-local counters; reconcile floor counts conservatively. |
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js` | Stu meal weight 4 and snack cap 15; keep 10 meals, 2 snack weight and 5 base game loss. |
+| `vscode/media/sidebar.js` | Seven-snack default badge; disable placement at three floor snacks and guard the click handler. |
+| `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt`, `GameEngine.kt`, `PetState.kt` | Kotlin parity for tuning, persisted meal usage, full-sleep-only reset, normal elapsed-sleep recovery and Stu-only vigorous loss. |
+| `pycharm/src/main/kotlin/com/codotchi/CodotchiPersistence.kt`, `CodotchiPlugin.kt`, `CustomCharacters.kt` | Serialize meal usage with the shared pet, stop resetting on refresh/sleep entry, enforce floor count and update Stu overrides. |
+| `opencode-codotchi/src/index.ts` | Remove plugin-local meal counters and nap/reload resets without re-enabling IDE care actions. |
+| `claude-codotchi/scripts/action.mjs` | Use persisted meal count instead of hard-coded zero; explain full-sleep refill on refusal. |
+| `claude-desktop-codotchi/src/state.ts`, `src/tools.ts` | Read saved allowance on each tool call; meal/snack refusal messages; legacy counter is only a compatibility view. |
+| `vscode/tests/unit/gameEngine.test.ts`, `customCharacterText.test.ts`, `tickLease.test.ts` | Integration coverage for limits, persistence, full/partial/nap/offline sleep, all games and food-versus-energy totals; update affected wiring assertions. |
+| `pycharm/src/test/kotlin/com/codotchi/FoodBalanceTest.kt`, `GameEngineTest.kt` | Equivalent Kotlin integration and normal-game cost coverage. |
+| `claude-codotchi/tests/integration/sickAndNap.test.mjs`, `claude-desktop-codotchi/tests/tools.test.mjs` | Exercise actual separate CLI invocations and repeated Desktop loads; verify no early-wake refill and elapsed normal-sleep completion. |
+| All five package manifests and four plugin lockfiles, Claude plugin/ Desktop manifests, Desktop `src/server.ts`, PyCharm `build.gradle.kts` and `plugin.xml` | Patch bump to 2.39.1; align package-lock root metadata without dependency changes. |
+| `claude-codotchi/dist/gameEngine.*` | Rebuilt tracked runtime/declarations/maps from canonical core. |
+| `README.md`, `vscode/README.md`, `pycharm/README.md`, `opencode-codotchi/README.md`, `claude-desktop-codotchi/README.md`, `claude_user_guide.md` | Document new allowance, weight totals and full-sleep semantics; current local package references. |
+| `vscode/CHANGELOG.md`, PyCharm `plugin.xml` change notes, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md`, this file | Public 2.39.1 notes and BUGFIX-228; no developer-only preview features added to public notes. |
+
+Updated constants (TypeScript and Kotlin):
+
+```text
+FEED_MEAL_WEIGHT_GAIN = 5       // default; Stu 4
+FEED_MEAL_MAX_PER_CYCLE = 3     // unchanged; Stu 10
+FEED_SNACK_WEIGHT_GAIN = 3      // default; Stu 2 unchanged
+SNACK_MAX_PER_CYCLE = 7         // Stu 15
+MAX_FLOOR_SNACKS = 3           // unchanged, enforced independently of quota
+PLAY_WEIGHT_LOSS = 5           // every normal game, win or lose
+PLAY_WEIGHT_LOSS_BONUS = 3     // unchanged value, applies only to Stu's vigorous games
+PLAY_ENERGY_COST = 25          // unchanged
+```
+
+Full food adds **36 weight** normally and **70 for Stu**; 100 energy burns
+**20 / 32** through games (before passive loss, pooping and weight clamping).
+Food allowances are not a sickness-rule exemption; consecutive snacks can still
+make a pet sick. Existing ASCII redistribution permission blocker is unchanged.
+No `architecture.html` exists in this repository; no unrelated HTML created.
+
+Validation: **1,773 tests passed** (VS Code 1069, Kotlin 335, Claude Code 140,
+OpenCode Node 149 + plugin 60, Desktop 14, cross-CLI 6). VS Code type-check and
+shared-core sync checks passed. Full Markdown lint retains pre-existing errors;
+the 10 changed Markdown files have **126 baseline / 126 current, zero new**.
+No live IDE visual testing or publication claimed.
+
+Local packages rebuilt and embedded versions/runtime bytes verified:
+
+- `vscode/codotchi-2.39.1.vsix`
+- `pycharm/build/distributions/pycharm-codotchi-2.39.1.zip`
+- `opencode-codotchi/opencode-codotchi-2.39.1.zip`
+- `claude-codotchi/claude-codotchi-2.39.1.zip`
+- `claude-desktop-codotchi/codotchi-desktop.mcpb` (manifest 2.39.1)
+- `codotchi-2.39.1-all-platforms.zip` (3,238,753 bytes; 8 verified entries)
+
+Combined bundle SHA-256:
+`526b82bc2195e2391f7efb4d14678381ebd47ba1c0f8360fa8ae484830b7a734`.
+Previous installers archived without overwriting existing archives. Installer
+files remain gitignored/local only. No plugin reinstall, push, tag or release.
+
+## v2.39.0 — previous (unreleased, consolidated)
 
 ### Walking visibility correction (included in the single 2.39.0 build)
 

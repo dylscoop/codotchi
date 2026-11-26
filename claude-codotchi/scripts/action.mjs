@@ -86,10 +86,9 @@ async function main() {
       break;
 
     case "feed": {
-      // The terminal doesn't track a per-cycle meal count, so the cap never applies here.
-      state = ge.feedMeal(state, 0);
+      state = ge.feedMeal(state);
       message = state.events.includes("meal_refused_sick") ? "Too sick to eat — give medicine first."
-        : state.events.includes("meal_refused") ? "Not hungry right now."
+        : state.events.includes("meal_refused") ? "Meal allowance used up — finish a full sleep to replenish it."
         : state.events?.includes("attention_call_answered_craving") ? whimSpeech("craving")
         : "Nom nom! Hunger restored.";
       break;

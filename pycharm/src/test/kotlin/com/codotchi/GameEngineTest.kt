@@ -3,6 +3,8 @@ package com.codotchi
 import com.codotchi.engine.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
 
 /**
  * Unit tests for the game engine.
@@ -12,6 +14,9 @@ import org.junit.jupiter.api.Test
  * - Pause / resume behaviour
  */
 class GameEngineTest {
+
+    @TempDir
+    lateinit var tempDir: Path
 
     /** Minimal pet state for testing — all defaults via createPet. */
     private fun makePet(
@@ -307,6 +312,60 @@ class GameEngineTest {
         var pet = makePet().copy(hunger = 0, hungerZeroTicks = 99, health = 100)
         repeat(10) { pet = tick(pet) }
         assertFalse(pet.sick)
+    }
+
+    // ── Deep-idle floor (BUGFIX-229) ──────────────────────────────────────────
+
+    @Test
+    fun `deep idle protects a healthy pet overnight including after save reload`() {
+        val config = DEFAULT_GAME_CONFIG.copy(attentionCallsEnabled = false)
+        for (idle in listOf(true, false)) {
+            val persistence = CodotchiPersistence().apply {
+                stateFileOverride = tempDir.resolve("deep-idle-$idle.json").toFile()
+            }
+            var pet = makePet().copy(hunger = 24, happiness = 26, energy = 28, health = 100)
+            repeat(10000) { i ->
+                if (i == 5000) {
+                    assertTrue(persistence.savePetState(pet))
+                    pet = persistence.loadPetState()!!
+                }
+                pet = tick(pet, isIdle = idle, isDeepIdle = true, config = config)
+                assertTrue(pet.hunger >= 20 && pet.happiness >= 20 && pet.energy >= 20,
+                    "stats fell below 20 on tick $i (idle=$idle)")
+            }
+            assertEquals(listOf(20, 20, 20, 100), listOf(pet.hunger, pet.happiness, pet.energy, pet.health))
+            assertTrue(pet.alive)
+            assertFalse(pet.sick)
+        }
+    }
+
+    @Test
+    fun `deep idle holds each already low stat at its own value without healing`() {
+        val config = DEFAULT_GAME_CONFIG.copy(attentionCallsEnabled = false)
+        for (sick in listOf(false, true)) {
+            var pet = makePet().copy(hunger = 5, happiness = 12, energy = 19, health = 100, sick = sick)
+            repeat(1000) { pet = tick(pet, isIdle = true, isDeepIdle = true, config = config) }
+            assertEquals(listOf(5, 12, 19, 100), listOf(pet.hunger, pet.happiness, pet.energy, pet.health))
+        }
+    }
+
+    @Test
+    fun `deep idle preserves an existing zero without letting other stats decay`() {
+        val config = DEFAULT_GAME_CONFIG.copy(attentionCallsEnabled = false)
+        var pet = makePet().copy(hunger = 0, happiness = 12, energy = 19, health = 100)
+        repeat(1000) { pet = tick(pet, isIdle = true, isDeepIdle = true, config = config) }
+        assertEquals(listOf(0, 12, 19, 100), listOf(pet.hunger, pet.happiness, pet.energy, pet.health))
+    }
+
+    @Test
+    fun `healthy regular idle stays unchanged and activity resumes decay`() {
+        val config = DEFAULT_GAME_CONFIG.copy(attentionCallsEnabled = false)
+        val pet = makePet().copy(hunger = 20, happiness = 20, energy = 20, health = 100, ticksAlive = 119)
+        val idle = tick(pet, isIdle = true, isDeepIdle = false, config = config)
+        assertEquals(listOf(19, 19, 19), listOf(idle.hunger, idle.happiness, idle.energy))
+        val protectedPet = tick(pet, isIdle = true, isDeepIdle = true, config = config)
+        val active = tick(protectedPet.copy(ticksAlive = 125), config = config)
+        assertEquals(listOf(19, 19, 19), listOf(active.hunger, active.happiness, active.energy))
     }
 
     // ── Idle safety floor: sick or losing health while idle ───────────────────
@@ -716,7 +775,7 @@ class GameEngineTest {
         assertTrue(fetched.events.contains("minigame_fetch_lose"))
         val tugged = applyMinigameResult(pet, "tug_of_war", "lose")
         assertEquals(45, tugged.happiness)
-        assertEquals(37, tugged.weight)
+        assertEquals(40, tugged.weight)
         assertTrue(tugged.events.contains("minigame_tug_of_war_lose"))
     }
 
@@ -727,7 +786,7 @@ class GameEngineTest {
         val pet = makePet().copy(happiness = 50, weight = 40)
         val boxed = applyMinigameResult(pet, "boxing", "lose")
         assertEquals(45, boxed.happiness)
-        assertEquals(37, boxed.weight)
+        assertEquals(40, boxed.weight)
         assertTrue(boxed.events.contains("minigame_boxing_lose"))
     }
 
@@ -738,7 +797,7 @@ class GameEngineTest {
         val pet = makePet().copy(happiness = 50, weight = 40)
         val chased = applyMinigameResult(pet, "laser", "lose")
         assertEquals(45, chased.happiness)
-        assertEquals(37, chased.weight)
+        assertEquals(40, chased.weight)
         assertTrue(chased.events.contains("minigame_laser_lose"))
     }
 

@@ -135,6 +135,7 @@ interface IDEStateFile {
 
 export interface LoadedPet {
   state: PetState;
+  /** Compatibility view of the counter persisted inside state. */
   mealsGivenThisCycle: number;
 }
 
@@ -163,10 +164,10 @@ export function loadPet(cfg: DesktopConfig): LoadedPet {
   if (elapsedSeconds > 0) {
     state = applyOfflineDecay(state, elapsedSeconds);
   }
-  return { state, mealsGivenThisCycle: 0 };
+  return { state, mealsGivenThisCycle: state.mealsGivenThisCycle };
 }
 
-/** Persist the pet back to the same IDE state file it was loaded from. */
+/** Persist the pet, including food counters, to its IDE file. Legacy counter argument is ignored. */
 export function savePet(state: PetState, _mealsGivenThisCycle: number): void {
   const statePath = resolveIDEStatePath();
   const dir = path.dirname(statePath);

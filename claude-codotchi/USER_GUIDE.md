@@ -80,8 +80,8 @@ activates the statusline script, registers the event hooks, and makes the
 | Action | Description |
 |--------|-------------|
 | `/codotchi` or `/codotchi status` | Show the pet's ASCII art and speech bubble |
-| `/codotchi feed` | Give a meal — restores hunger (max 3 meals per wake cycle) |
-| `/codotchi snack` | Give a snack — too many in a row makes the pet sick |
+| `/codotchi feed` | Hunger +15, weight +5; 3 meals until full normal sleep. Stu: +10 hunger, +4 weight, 10 meals. |
+| `/codotchi snack` | Hunger +5, weight +3; 7 snacks until full normal sleep. Stu: +2 hunger, +2 weight, 15 snacks. Too many in a row makes the pet sick. |
 | `/codotchi pat` | Pat the pet — gentle happiness boost |
 | `/codotchi play` | Play with the pet — answers its "play with me" calls |
 | `/codotchi sleep` | Put the pet to sleep only below 40 energy — energy regenerates 3× faster while sleeping |

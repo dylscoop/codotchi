@@ -432,6 +432,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         val recentEventLog: List<String>?,  // absent in saves before v0.0.5
         val spawnedAt: Long?,               // absent in saves before v0.0.5
         val diedAt: Long?,                  // absent in saves before v2.27.3
+        val mealsGivenThisCycle: Int?,      // absent in saves before v2.39.1
         val snacksGivenThisCycle: Int?,     // absent in saves before v0.0.5
         val snacksOnFloor: Int?,            // absent in saves before v2.6.0
         val paused: Boolean?,               // absent in saves before v2.5.3
@@ -526,6 +527,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
             // A pet saved dead before diedAt existed gets "now". Its real death
             // time is lost, but from here on it stays fixed.
             diedAt                = r.diedAt ?: if (r.alive ?: true) 0L else System.currentTimeMillis(),
+            mealsGivenThisCycle   = (r.mealsGivenThisCycle ?: 0).coerceAtLeast(0),
             snacksGivenThisCycle  = r.snacksGivenThisCycle ?: 0,
             snacksOnFloor         = r.snacksOnFloor         ?: 0,
             paused                = r.paused                ?: false,
@@ -616,6 +618,7 @@ class CodotchiPersistence : PersistentStateComponent<Element> {
         wasDeepIdle           = s.wasDeepIdle,
         spawnedAt             = s.spawnedAt,
         diedAt                = s.diedAt,
+        mealsGivenThisCycle   = s.mealsGivenThisCycle,
         snacksGivenThisCycle  = s.snacksGivenThisCycle,
         snacksOnFloor         = s.snacksOnFloor,
         paused                = s.paused,

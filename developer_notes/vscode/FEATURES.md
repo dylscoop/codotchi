@@ -79,15 +79,15 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 
 | Action      | Effect                                           | Constraint                               | Status |
 |-------------|--------------------------------------------------|------------------------------------------|--------|
-| Feed Meal   | Hunger +20, Weight +2                            | Max 3 meals per wake cycle (configurable per custom character) | `[x]`  |
-| Feed Snack  | Happiness +10, Hunger +5, Weight +5              | Max 3 snacks per cycle (configurable per custom character); max 3 snacks on floor simultaneously — 4th refused with toast; streak resets on meal, play, pat, or sleep | `[x]`  |
-| Play        | Happiness +15, Energy −25, Weight −3             | Requires Energy ≥ 25; resets snack streak | `[x]`  |
+| Feed Meal   | Hunger +15 (Stu +10), Weight +5 (Stu +4) | Max 3 meals, Stu 10; persisted allowance refills only after full normal sleep at 100 energy | `[x]` |
+| Feed Snack  | Happiness +5, Hunger +5 (Stu +2), Weight +3 (Stu +2) | Max 7 snacks, Stu 15; same full-sleep-only reset. Max 3 on floor; 4th refused, button disabled while full. Streak resets on meal, play, pat, successful Praise or sleep | `[x]` |
+| Play        | Happiness +15, Energy −25, Weight −5 | Flat weight cost for every normal game, win or lose; Stu retains −5 standard / −8 vigorous. Requires Energy ≥ 25; resets snack streak | `[x]` |
 | Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; resets snack streak | `[x]`  |
 | Sleep       | Energy regenerates; 3% per-tick chance to recover from sickness | Manual sleep requires energy < 40 (fixed threshold, currently 2 × pat cost); Sleep stays clickable and refused clicks show "Name is not tired enough to sleep yet"; refusal preserves snack streak/call/XP; normal Wake and automatic break naps unchanged | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
 | Medicine    | Cures sickness after 3 doses (no health boost)   | —                                        | `[x]`  |
-| Praise      | Discipline +10                                   | —                                        | `[x]`  |
+| Praise      | Discipline +10; always resets consecutive snacks | Any successful Praise, with or without a call/nap. Refused while sick; never refills food or cures sickness | `[x]` |
 | Scold       | Discipline +10                                   | —                                        | `[x]`  |
 | Light off   | Force sleep early (manual bedtime)               | —                                        | `[x]`  |
 
@@ -282,7 +282,7 @@ Status: `[ ]`
   it back one step. 3 rounds. Scored from the dog's side: if the dog takes 2+
   rounds the result is win (the pet gets the winner's reward); if you take 2+
   it is lose. Game id `tug_of_war`, with Left /
-  Right's rewards and extra weight loss. Rope drawn by `minigameArt.drawTugRope`.
+  Right's rewards and the normal flat 5-weight game cost. Rope drawn by `minigameArt.drawTugRope`.
 - **The kangaroo boxes instead of Left / Right** (v2.33.1): a second kangaroo
   hops onto the pet's stage ("Righto, gloves up!") and the two square up nose to
   nose ("You wouldn't, would ya?"). Each round you pick **Jab** or **Dodge** and
@@ -290,7 +290,7 @@ Status: `[ ]`
   other roo does; a dodge wins only if the other roo jabs
   (`minigameArt.boxingRoundWon`). Best of 3: first to 2 round wins takes the
   bout, then the opponent hops off. Game id `boxing`, with Left / Right's
-  rewards and extra weight loss. The boxers' positions come from where the
+  rewards and the normal flat 5-weight game cost. The boxers' positions come from where the
   kangaroo is actually drawn in its sprite box (`boxerBounds`, measured once
   per stage), so gloves sit on the paws and moves scale with the sprite
   (`boxingPx`, `boxingHomes`, `boxingPaw`, `boxingPose`). Reduced motion
@@ -306,7 +306,7 @@ Status: `[ ]`
   it zipping off. Three tries, first to 2 catches; each try is quicker with a
   narrower window (`laserRound`), and an untouched dot wanders off after
   `LASER_ROUND_MS` (10 s). Game id `laser`, with Left / Right's rewards and
-  extra weight loss. Reduced motion keeps the plain Left / Right.
+  the normal flat 5-weight game cost. Reduced motion keeps the plain Left / Right.
 - v2.22.2: a pixel-art coin (crown for heads, "T" for tails) tosses and spins
   for about 0.8 s before landing on the result; reduced motion shows the result
   straight away.
@@ -592,7 +592,7 @@ Features that deepen the existing care actions.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Manual "Lights Off" button to put pet to sleep early | `[x]` | Covered by the Sleep button: `sleep()` has no energy or time gate. A separate Lights Off control with canvas darkening is not built |
-| Auto-wake after energy reaches 100 | `[x]` | Implemented in BUGFIX-003; snack count resets on auto-wake |
+| Auto-wake after energy reaches 100 | `[x]` | Both persisted food counters reset only on completed normal sleep, including elapsed normal sleep offline. Starting sleep, early wake, break naps, restart and cross-window refresh never refill them. |
 | `[S]` `gotchi.autoWake` (default true) — auto-wake when energy full | `[ ]` | |
 | Sleep schedule: pet refuses to sleep if recently slept | `[ ]` | |
 | Visual night-mode on canvas when sleeping | `[ ]` | Darken canvas background |
@@ -603,7 +603,7 @@ Features that deepen the existing care actions.
 |---------|--------|-------|
 | Show remaining meals allowed this cycle in the UI | `[x]` | Badge on Feed button; counts down from 3 |
 | Disable Feed Meal button when at max meals | `[x]` | Badge disappears and button becomes unavailable |
-| Show snack count remaining in the UI | `[x]` | Badge on Snack button; counts down from 3; button disabled at 0 |
+| Show snack count remaining in the UI | `[x]` | Badge on Snack button; counts down from 7 (Stu 15); button disabled at 0 or when 3 snacks are on the floor |
 
 ### 6.4 Sickness UX
 
@@ -708,10 +708,12 @@ pet stays sick but takes no damage.
 
 **Idle safety floor:** applied after every other stat-decay/damage block in
 `tick()`. On every idle tick, health is clamped to its value entering the
-tick. When the pet is also sick or took damage, hunger, happiness and energy
-are held at `IDLE_STAT_FLOOR = 20`. That floor is capped at the stat's value
+tick. In deep idle, hunger, happiness and energy are always held at
+`IDLE_STAT_FLOOR = 20`, even for healthy pets (BUGFIX-229). Regular idle keeps
+the floor conditional on sickness/a damage state. It is capped at the stat's value
 entering the tick (`min(previousStat, 20)`), so a stat already below 20 is
-never raised back up (BUGFIX-149). `_damage` events are stripped from idle
+never raised back up and cannot decay further in deep idle (BUGFIX-149/229).
+`_damage` events are stripped from idle
 ticks (BUGFIX-150).
 
 Aging does **not** advance while the IDE is closed (`applyOfflineDecay`
@@ -722,7 +724,7 @@ preserves `dayTimer`/`ageDays` exactly).
 | Idle after | `IDLE_THRESHOLD_SECONDS` | 120 s (2 min) — default of `codotchi.idleThresholdSeconds` |
 | Deep idle after | `IDLE_DEEP_THRESHOLD_SECONDS` | 600 s (10 min) — default of `codotchi.idleDeepThresholdSeconds` |
 | Decay divisor | `IDLE_DECAY_TICK_DIVISOR` | 10 (1 pt/min vs 10 pt/min active) |
-| Stat floor (idle + sick/damage) | `IDLE_STAT_FLOOR` | 20 — hunger, happiness, energy (health never drops while idle) |
+| Stat floor (all deep idle; regular idle + sick/damage) | `IDLE_STAT_FLOOR` | min(previous stat, 20) — hunger, happiness, energy (health never drops while idle) |
 
 Activity is tracked via `onDidChangeTextEditorSelection`, `onDidChangeTextDocument`,
 `onDidChangeWindowState`, and `onDidChangeActiveTextEditor`. Any of these events
@@ -954,8 +956,8 @@ Unlockable via passcode. Stored in `CUSTOM_CHARACTERS` registry in `customCharac
 | `patCall` | `{call, answered, expired, status}?` | — | Replaces "wants a pat!" in the bubble, log, toast and status bar (Tim: a run; Stu: stickers) |
 | `snackCravings` | `string[]?` | — | What a snack craving asks for, picked at random per craving (webview entries are `{label, item}` so the floor snack matches) |
 | `snackType` | `string?` | `"candy"` | Controls snack pixel art drawn in sidebar |
-| `feedMealMaxPerCycle` | `number?` | `3` | Absolute meal cap per wake cycle |
-| `feedSnackMaxPerCycle` | `number?` | `3` | Absolute snack cap per wake cycle |
+| `feedMealMaxPerCycle` | `number?` | `3` | Meal cap between completed normal sleeps (Stu 10) |
+| `feedSnackMaxPerCycle` | `number?` | `7` | Snack cap between completed normal sleeps (Stu 15), separate from 3-floor cap |
 | `feedHungerMult` | `number?` | `1.0` | Hunger gain multiplier per feed event |
 
 ### 16.1 Registered custom characters
@@ -966,7 +968,7 @@ while exact-size mature raster scaling avoids whole-cell size jumps.
 
 | Name | Passcode | spriteType | Feed cap | Notes |
 |------|----------|------------|----------|-------|
-| Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 10 snacks | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" (sticker binder or pack) instead of a pat; craves a pint or salmon; Blackjack instead of Coin Flip; lives with a companion cat (own hunger/happiness, grows with him, fed and cheered by his meals/snacks/play (eats its own tuna/milk beside him), 🐾 Pet cat in the Play menu (Stu walks over and strokes it), small cat tree, sleeps in place while he sleeps, joins every game beside him, hisses at visiting dogs). Adult/senior match and exceed teen with 0.9 mature tuning (v2.38.4). Adult/senior companion remains 75% of its former size (scale 0.495 of standalone cat); younger stages unchanged. Cat random turns 4–8 s, facing settles for 350 ms with at least 1 s between turns, held during sleep. |
+| Stugotchi | `rubylovessalmon` | `stu` | 10 meals / 15 snacks per full normal sleep | Scottish, 64×48 sprite; Guinness/salmon snacks; kilt palette; "Collect Stickers" (sticker binder or pack) instead of a pat; craves a pint or salmon; Blackjack instead of Coin Flip; lives with a companion cat (own hunger/happiness, grows with him, fed and cheered by his meals/snacks/play (eats its own tuna/milk beside him), 🐾 Pet cat in the Play menu (Stu walks over and strokes it), small cat tree, sleeps in place while he sleeps, joins every game beside him, hisses at visiting dogs). Adult/senior match and exceed teen with 0.9 mature tuning (v2.38.4). Adult/senior companion remains 75% of its former size (scale 0.495 of standalone cat); younger stages unchanged. Cat random turns 4–8 s, facing settles for 350 ms with at least 1 s between turns, held during sleep. |
 | Skippy | `straya` | `kangaroo` | default | Applies to every kangaroo: Boxing instead of Left / Right; Bounce (three big hops, no hand or hearts) as its pat; Aussie voice: a beer or some Tim Tams as its gift (`gifts`, picked per call by `giftFor`; praising the Tim Tams gets "These are better than Penguins!"), "keen as for a bounce" pat call, "Yeah, nah… fair enough." when ignored, and smoko for its break (`breakNap` with a custom `call`, a Bunnings snag and a "Smoko" button). v2.33.2: it hops off the stage for the break and back in after, leaving a "Gone for smoko 🚬" / "Off to Bunnings for a snag 🌭" bubble (`breakNap.bubbles`, `isOnSmoko`) |
 | Any cat | `blackcat` | `cat` | default | Applies to every cat (v2.33.5): Laser Pointer instead of Left / Right; a mouse or a bird as its gift (`gifts` with `kind`, a smug or proud-hunter line each), fetched on stage: it trots off, comes back with the gift in its mouth and drops it (`catErrand`); a cat tree in place of the edge tree on the scenic background (v2.34.0: the senior climbs it too and lies on the perch; v2.34.1: the senior lounges 20–40 s between 4–8 s strolls with no hops, lies down only after 1.5 s still and never mid-reaction, eases between poses over 450 ms (in Laser Pointer it stands watching the dot and through the leap, and lies down as it lands), lies with its belly on the floor via `restRow` (legs and tail through the stage, hanging over the perch), and climbs the cat tree every ~40 s at energy ≥ 30 to nap there for 45 s (z's once settled)), which an awake teen or adult cat at energy ≥ 60 climbs about every 90 s, perching for 6 s (only if it fits under the top of the stage); v2.34.1: any cat on its 5-minute break nap walks over, climbs up and naps on the perch until the break ends, then hops down (already up there when opened during the break); normal sleep stays on the floor, and a pet falling asleep off the floor settles down instead of teleporting; "demands chin scratches" pat call, "Hmph. Fine." when ignored, tuna / saucer-of-milk cravings and snacks, catnap break |
 | Shibagotchi / any dog | `shiba` | `dog` | default | Applies to every dog: Fetch and Tug-of-War instead of Coin Flip and Left / Right; biscuit-bone snacks and a meaty-bone meal; a ball as its gift (opens Fetch); pat bubbles; whimpers when ignored (`ignoredBubble`); wags when happy and standing still, and chases its tail at energy ≥ 70; chews a shrinking big bone through the break nap (`breakNap`) |

@@ -62,6 +62,7 @@ import {
   OLD_AGE_SICK_CHANCE_MULTIPLIER,
   CARE_MISTAKE_OLD_AGE_SATURATE,
   MAX_FLOOR_SNACKS,
+  SNACK_MAX_PER_CYCLE,
   VALID_PET_TYPES,
   STAGE_ORDER,
   DEFAULT_GAME_CONFIG,
@@ -676,7 +677,7 @@ describe("tick — whim attention calls (play / pat / craving)", () => {
     const afterSnacks = withRandom(0, () => tick(contentPet([], { consecutiveSnacks: 2 })));
     assert.equal(afterSnacks.cravingFood, "meal");
     assert.ok(afterSnacks.events.includes("attention_call_craving_meal"));
-    const capped = withRandom(0, () => tick(contentPet([], { snacksGivenThisCycle: 3 })));
+    const capped = withRandom(0, () => tick(contentPet([], { snacksGivenThisCycle: SNACK_MAX_PER_CYCLE })));
     assert.equal(capped.cravingFood, "meal");
   });
 
@@ -1003,6 +1004,44 @@ describe("tick — sickness health drain and death", () => {
 // tick — idle safety floor (sick or losing health while idle)
 // ---------------------------------------------------------------------------
 
+describe("tick — deep-idle floor (BUGFIX-229)", () => {
+  for (const isIdle of [true, false]) {
+    it(`protects a healthy pet overnight, including after a save/reload (isIdle=${isIdle})`, () => {
+      let pet = makePet({ hunger: 24, happiness: 26, energy: 28, health: 100 });
+      for (let i = 0; i < 10000; i++) {
+        if (i === 5000) pet = deserialiseState(serialiseState(pet))!;
+        pet = tick(pet, isIdle, true, NO_CALLS);
+        assert.ok(pet.hunger >= 20 && pet.happiness >= 20 && pet.energy >= 20, `stats fell below 20 on tick ${i}`);
+      }
+      assert.deepEqual([pet.hunger, pet.happiness, pet.energy, pet.health], [20, 20, 20, 100]);
+      assert.ok(pet.alive && !pet.sick);
+    });
+  }
+
+  for (const sick of [false, true]) {
+    it(`holds each already-low stat at its own value without healing (sick=${sick})`, () => {
+      let pet = makePet({ hunger: 5, happiness: 12, energy: 19, health: 100, sick });
+      for (let i = 0; i < 1000; i++) pet = tick(pet, true, true, NO_CALLS);
+      assert.deepEqual([pet.hunger, pet.happiness, pet.energy, pet.health], [5, 12, 19, 100]);
+    });
+  }
+
+  it("preserves an existing zero without letting the other stats decay", () => {
+    let pet = makePet({ hunger: 0, happiness: 12, energy: 19, health: 100 });
+    for (let i = 0; i < 1000; i++) pet = tick(pet, true, true, NO_CALLS);
+    assert.deepEqual([pet.hunger, pet.happiness, pet.energy, pet.health], [0, 12, 19, 100]);
+  });
+
+  it("leaves healthy regular-idle decay unchanged and resumes decay on activity", () => {
+    const pet = makePet({ hunger: 20, happiness: 20, energy: 20, health: 100, ticksAlive: 119 });
+    const idle = tick(pet, true, false, NO_CALLS);
+    assert.deepEqual([idle.hunger, idle.happiness, idle.energy], [19, 19, 19]);
+    const protectedPet = tick(pet, true, true, NO_CALLS);
+    const active = tick({ ...protectedPet, ticksAlive: 125 }, false, false, NO_CALLS);
+    assert.deepEqual([active.hunger, active.happiness, active.energy], [19, 19, 19]);
+  });
+});
+
 describe("tick — idle safety floor for sick/losing-health pets", () => {
   it("does not raise health already below IDLE_STAT_FLOOR when starving pet takes damage while idle", () => {
     const pet = makePet({ hunger: 0, hungerZeroTicks: 99, health: 5 });
@@ -1216,10 +1255,10 @@ describe("feedMeal", () => {
     assert.equal(next.hunger, 45);
   });
 
-  it("increases weight by 2 (FEED_MEAL_WEIGHT_GAIN)", () => {
+  it("increases weight by 5 (FEED_MEAL_WEIGHT_GAIN)", () => {
     const pet = makePet({ weight: 10 });
     const next = feedMeal(pet, 0);
-    assert.equal(next.weight, 12);
+    assert.equal(next.weight, 15);
   });
 
   it("resets consecutiveSnacks to 0", () => {
@@ -1306,7 +1345,7 @@ describe("startSnack", () => {
   });
 
   it("emits snack_refused when cap reached", () => {
-    const pet = makePet({ snacksGivenThisCycle: 3 });
+    const pet = makePet({ snacksGivenThisCycle: SNACK_MAX_PER_CYCLE });
     const next = startSnack(pet);
     assert.ok(next.events.includes("snack_refused"));
   });
@@ -1337,10 +1376,10 @@ describe("consumeSnack", () => {
     assert.equal(next.happiness, 45);
   });
 
-  it("increases weight by 5 (FEED_SNACK_WEIGHT_GAIN)", () => {
+  it("increases weight by 3 (FEED_SNACK_WEIGHT_GAIN)", () => {
     const pet = makePet({ weight: 10, snacksOnFloor: 1 });
     const next = consumeSnack(pet);
-    assert.equal(next.weight, 15);
+    assert.equal(next.weight, 13);
   });
 
   it("triggers sickness on 3rd consecutive snack consumed", () => {
@@ -1554,10 +1593,10 @@ describe("play", () => {
     assert.equal(next.energy, 25);
   });
 
-  it("decreases weight by 3 (PLAY_WEIGHT_LOSS)", () => {
+  it("decreases weight by 5 (PLAY_WEIGHT_LOSS)", () => {
     const pet = makePet({ weight: 10, energy: 50 });
     const next = play(pet);
-    assert.equal(next.weight, 7);
+    assert.equal(next.weight, 5);
   });
 
   it("resets consecutiveSnacks to 0", () => {
@@ -1782,28 +1821,28 @@ describe("applyMinigameResult", () => {
     assert.equal(next.happiness, 100);
   });
 
-  // ── BUGFIX-034: vigorous mini-games apply extra weight loss ───────────────
+  // Stu retains the vigorous-game bonus; normal games now have a flat cost.
 
-  it("left_right win reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
-    const pet = makePet({ happiness: 50, weight: 40 });
+  it("Stu left_right win reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
+    const pet = makePet({ spriteType: "stu", happiness: 50, weight: 40 });
     const next = applyMinigameResult(pet, "left_right", "win");
     assert.equal(next.weight, 37);
   });
 
-  it("left_right lose reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
-    const pet = makePet({ happiness: 50, weight: 40 });
+  it("Stu left_right lose reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
+    const pet = makePet({ spriteType: "stu", happiness: 50, weight: 40 });
     const next = applyMinigameResult(pet, "left_right", "lose");
     assert.equal(next.weight, 37);
   });
 
-  it("higher_lower win reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
-    const pet = makePet({ happiness: 50, weight: 40 });
+  it("Stu higher_lower win reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
+    const pet = makePet({ spriteType: "stu", happiness: 50, weight: 40 });
     const next = applyMinigameResult(pet, "higher_lower", "win");
     assert.equal(next.weight, 37);
   });
 
-  it("higher_lower lose reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
-    const pet = makePet({ happiness: 50, weight: 40 });
+  it("Stu higher_lower lose reduces weight by 3 (PLAY_WEIGHT_LOSS_BONUS)", () => {
+    const pet = makePet({ spriteType: "stu", happiness: 50, weight: 40 });
     const next = applyMinigameResult(pet, "higher_lower", "lose");
     assert.equal(next.weight, 37);
   });
@@ -1842,40 +1881,40 @@ describe("applyMinigameResult", () => {
     assert.ok(lost.events.includes("minigame_fetch_lose"));
   });
 
-  it("tug_of_war (the dog's Left / Right) uses Left / Right's rewards and weight loss", () => {
+  it("tug_of_war uses Left / Right's rewards without an extra weight charge", () => {
     const pet = makePet({ happiness: 50, weight: 40 });
     const won = applyMinigameResult(pet, "tug_of_war", "win");
     const lost = applyMinigameResult(pet, "tug_of_war", "lose");
     assert.ok(won.happiness >= 55 && won.happiness <= 65, `got ${won.happiness}`);
     assert.equal(lost.happiness, 45);
-    assert.equal(won.weight, 37);
-    assert.equal(lost.weight, 37);
+    assert.equal(won.weight, 40);
+    assert.equal(lost.weight, 40);
     assert.ok(won.events.includes("minigame_tug_of_war_win"));
     assert.ok(lost.events.includes("minigame_tug_of_war_lose"));
   });
 
-  it("boxing (the kangaroos' Left / Right) uses Left / Right's rewards and weight loss", () => {
+  it("boxing uses Left / Right's rewards without an extra weight charge", () => {
     assert.equal(minigameStatsKey("boxing"), "left_right");
     const pet = makePet({ happiness: 50, weight: 40 });
     const won = applyMinigameResult(pet, "boxing", "win");
     const lost = applyMinigameResult(pet, "boxing", "lose");
     assert.ok(won.happiness >= 55 && won.happiness <= 65, `got ${won.happiness}`);
     assert.equal(lost.happiness, 45);
-    assert.equal(won.weight, 37);
-    assert.equal(lost.weight, 37);
+    assert.equal(won.weight, 40);
+    assert.equal(lost.weight, 40);
     assert.ok(won.events.includes("minigame_boxing_win"));
     assert.ok(lost.events.includes("minigame_boxing_lose"));
     assert.ok(won.petXp > 0);
   });
 
-  it("laser (the cat's Left / Right) uses Left / Right's rewards and weight loss", () => {
+  it("laser uses Left / Right's rewards without an extra weight charge", () => {
     assert.equal(minigameStatsKey("laser"), "left_right");
     const pet = makePet({ happiness: 50, weight: 40 });
     const won = applyMinigameResult(pet, "laser", "win");
     const lost = applyMinigameResult(pet, "laser", "lose");
     assert.ok(won.happiness >= 55 && won.happiness <= 65, `got ${won.happiness}`);
     assert.equal(lost.happiness, 45);
-    assert.equal(won.weight, 37);
+    assert.equal(won.weight, 40);
     assert.ok(won.events.includes("minigame_laser_win"));
     assert.ok(lost.events.includes("minigame_laser_lose"));
     assert.ok(won.petXp > 0);
@@ -2670,6 +2709,188 @@ describe("serialiseState / deserialiseState", () => {
     assert.ok("sprite" in serialised);
     assert.ok("careScore" in serialised);
   });
+});
+
+// ---------------------------------------------------------------------------
+// Integration: sleep-scoped food allowances and weight balance
+// ---------------------------------------------------------------------------
+
+describe("integration — food and sleep balance", () => {
+  for (const [spriteType, mealHunger, snackHunger] of [["cat", 15, 5], ["stu", 10, 2]] as const) {
+    it(`${spriteType}: meal and snack hunger gains persist, with unchanged weights and allowances`, () => {
+      const original = makePet({ spriteType, hunger: 20, weight: 10 });
+      const meal = deserialiseState(serialiseState(feedMeal(original)));
+      assert.equal(meal.hunger, 20 + mealHunger);
+      assert.equal(meal.weight, spriteType === "stu" ? 14 : 15);
+      assert.equal(meal.mealsGivenThisCycle, 1);
+      const snack = deserialiseState(serialiseState(consumeSnack(startSnack(meal))));
+      assert.equal(snack.hunger, 20 + mealHunger + snackHunger);
+      assert.equal(snack.weight, spriteType === "stu" ? 16 : 18);
+      assert.equal(snack.snacksGivenThisCycle, 1);
+      assert.equal(feedMeal({ ...original, hunger: 99 }).hunger, 100);
+      assert.equal(consumeSnack(startSnack({ ...original, hunger: 99 })).hunger, 100);
+    });
+
+    it(`${spriteType}: two snacks then ordinary Praise avoids sickness without replenishing snacks`, () => {
+      let pet = makePet({ spriteType, mealsGivenThisCycle: 1 });
+      const snackCap = spriteType === "stu" ? 15 : 7;
+      for (let i = 1; i <= snackCap; i++) {
+        pet = consumeSnack(startSnack(pet));
+        assert.equal(pet.sick, false, `snack ${i}`);
+        assert.equal(pet.snacksGivenThisCycle, i);
+        if (i % 2 === 0) {
+          const energy = pet.energy;
+          const weight = pet.weight;
+          pet = deserialiseState(serialiseState(praise(pet)));
+          assert.equal(pet.consecutiveSnacks, 0);
+          assert.equal(pet.snacksGivenThisCycle, i);
+          assert.equal(pet.mealsGivenThisCycle, 1);
+          assert.equal(pet.energy, energy);
+          assert.equal(pet.weight, weight);
+        }
+      }
+      assert.ok(startSnack(pet).events.includes("snack_refused"));
+    });
+  }
+
+  for (const activeAttentionCall of [null, "gift", "unhappiness", "break"] as const) {
+    it(`Praise resets the streak with ${activeAttentionCall ?? "no"} call and does not refill food`, () => {
+      const next = praise(makePet({ activeAttentionCall, consecutiveSnacks: 2,
+        mealsGivenThisCycle: 3, snacksGivenThisCycle: 7 }));
+      assert.ok(next.events.includes("praised"));
+      assert.equal(next.consecutiveSnacks, 0);
+      assert.equal(next.mealsGivenThisCycle, 3);
+      assert.equal(next.snacksGivenThisCycle, 7);
+      assert.equal(next.sleeping, activeAttentionCall === "break");
+    });
+  }
+
+  it("Praise refused while sick preserves the streak and does not cure sickness", () => {
+    const next = praise(makePet({ sick: true, consecutiveSnacks: 3 }));
+    assert.deepEqual(next.events, ["praise_refused_sick"]);
+    assert.equal(next.consecutiveSnacks, 3);
+    assert.equal(next.sick, true);
+  });
+
+  for (const [spriteType, mealCap, snackCap, mealGain, snackGain] of [
+    ["cat", 3, 7, 5, 3], ["stu", 10, 15, 4, 2],
+  ] as const) {
+    it(`${spriteType}: persists meal usage and refuses the next meal, including legacy zero`, () => {
+      let pet = makePet({ spriteType, weight: 10 });
+      for (let i = 1; i <= mealCap; i++) {
+        pet = feedMeal(pet);
+        assert.ok(pet.events.includes("fed_meal"));
+        pet = deserialiseState(serialiseState(pet));
+        assert.equal(pet.mealsGivenThisCycle, i);
+      }
+      const refused = feedMeal(pet, 0);
+      assert.deepEqual(refused.events, ["meal_refused"]);
+      assert.equal(refused.mealsGivenThisCycle, mealCap);
+      assert.equal(refused.weight, 10 + mealCap * mealGain);
+    });
+
+    it(`${spriteType}: full food allowance exceeds 100 energy of vigorous games by a wide margin`, () => {
+      let fed = makePet({ spriteType, weight: 10 });
+      for (let i = 0; i < mealCap; i++) { fed = feedMeal(fed); }
+      for (let i = 0; i < snackCap; i++) {
+        fed = consumeSnack(startSnack(fed));
+        assert.ok(fed.events.includes("fed_snack"));
+        // Existing sickness rules remain: medicine allows the rest of the ration.
+        while (fed.sick) { fed = giveMedicine(fed); }
+      }
+      const refused = startSnack(fed);
+      assert.deepEqual(refused.events, ["snack_refused"]);
+      assert.equal(refused.snacksGivenThisCycle, snackCap);
+      const foodWeight = mealCap * mealGain + snackCap * snackGain;
+      assert.equal(fed.weight - 10, foodWeight);
+      let played = makePet({ spriteType, energy: 100, weight: 90 });
+      for (let i = 0; i < 4; i++) { played = applyMinigameResult(play(played), "higher_lower", "lose"); }
+      assert.equal(played.energy, 0);
+      const burned = 90 - played.weight;
+      assert.equal(burned, spriteType === "stu" ? 32 : 20);
+      assert.ok(foodWeight >= burned * 1.75, `${foodWeight} food vs ${burned} games`);
+    });
+
+    it(`${spriteType}: no fourth floor snack, but eating one frees a slot without refilling quota`, () => {
+      let pet = makePet({ spriteType });
+      for (let i = 0; i < 3; i++) { pet = startSnack(pet); }
+      assert.equal(pet.snacksOnFloor, 3);
+      pet = startSnack(pet);
+      assert.deepEqual(pet.events, ["snack_refused"]);
+      assert.equal(pet.snacksGivenThisCycle, 3);
+      pet = startSnack(consumeSnack(pet));
+      assert.ok(pet.events.includes("snack_placed"));
+      assert.equal(pet.snacksOnFloor, 3);
+      assert.equal(pet.snacksGivenThisCycle, 4);
+    });
+  }
+
+  it("only completed normal sleep refills both allowances, and allows food again", () => {
+    let pet = sleep(makePet({ stage: "child", energy: 20, mealsGivenThisCycle: 3, snacksGivenThisCycle: 7 }));
+    assert.equal(pet.mealsGivenThisCycle, 3, "sleep entry does not refill meals");
+    assert.equal(pet.snacksGivenThisCycle, 7);
+    pet = tick(pet, false, false, NO_CALLS);
+    assert.equal(pet.sleeping, true);
+    assert.equal(pet.mealsGivenThisCycle, 3, "partial sleep does not refill meals");
+    const early = deserialiseState(serialiseState(wake(pet)));
+    assert.equal(early.mealsGivenThisCycle, 3);
+    assert.equal(early.snacksGivenThisCycle, 7);
+    assert.ok(feedMeal(early).events.includes("meal_refused"));
+    assert.ok(startSnack(early).events.includes("snack_refused"));
+    for (let i = 0; i < 100 && pet.sleeping; i++) { pet = tick(pet, false, false, NO_CALLS); }
+    assert.ok(pet.events.includes("auto_woke_up"));
+    assert.equal(pet.energy, 100);
+    assert.equal(pet.mealsGivenThisCycle, 0);
+    assert.equal(pet.snacksGivenThisCycle, 0);
+    assert.ok(feedMeal(pet).events.includes("fed_meal"));
+    assert.ok(startSnack(pet).events.includes("snack_placed"));
+  });
+
+  it("break naps preserve both allowances even at full energy and after offline expiry", () => {
+    const pet = makePet({ stage: "child", sleeping: true, energy: 100, breakNapTicksRemaining: 1,
+      mealsGivenThisCycle: 3, snacksGivenThisCycle: 7 });
+    for (const next of [tick(pet, false, false, NO_CALLS), applyOfflineDecay(pet, 600)]) {
+      assert.equal(next.sleeping, false);
+      assert.equal(next.mealsGivenThisCycle, 3);
+      assert.equal(next.snacksGivenThisCycle, 7);
+    }
+  });
+
+  it("elapsed normal sleep refills only once fully recovered, including tool-driven hosts", () => {
+    const sleeping = sleep(makePet({ energy: 20, mealsGivenThisCycle: 3, snacksGivenThisCycle: 7 }));
+    const partial = applyOfflineDecay(sleeping, 3);
+    assert.equal(partial.sleeping, true);
+    assert.equal(partial.mealsGivenThisCycle, 3);
+    assert.equal(partial.snacksGivenThisCycle, 7);
+    const full = applyOfflineDecay(sleeping, 90);
+    assert.equal(full.energy, 100);
+    assert.equal(full.sleeping, false);
+    assert.equal(full.mealsGivenThisCycle, 0);
+    assert.equal(full.snacksGivenThisCycle, 0);
+    const awake = applyOfflineDecay(wake(sleeping), 90);
+    assert.equal(awake.mealsGivenThisCycle, 3, "awake offline time doesn't refill");
+    assert.equal(applyOfflineDecay({ ...sleeping, paused: true }, 90).mealsGivenThisCycle, 3);
+  });
+
+  it("old saves default to zero meals, and sick refusals don't use an allowance", () => {
+    const raw = serialiseState(makePet());
+    delete raw.mealsGivenThisCycle;
+    assert.equal(deserialiseState(raw).mealsGivenThisCycle, 0);
+    const pet = makePet({ sick: true, mealsGivenThisCycle: 1 });
+    assert.equal(feedMeal(pet).mealsGivenThisCycle, 1);
+    assert.equal(feedMeal(makePet({ weight: 98 })).weight, 99);
+    assert.equal(consumeSnack(makePet({ weight: 98, snacksOnFloor: 1 })).weight, 99);
+  });
+
+  for (const game of ["left_right", "higher_lower", "coin_flip", "blackjack", "fetch", "tug_of_war", "boxing", "laser", "guess", "memory", "boss_battle"]) {
+    for (const result of ["win", "lose"]) {
+      it(`${game} ${result}: normal pet loses exactly 5 weight and 25 energy`, () => {
+        const next = applyMinigameResult(play(makePet({ weight: 40, energy: 100 })), game, result, "always");
+        assert.equal(next.weight, 35);
+        assert.equal(next.energy, 75);
+      });
+    }
+  }
 });
 
 // ---------------------------------------------------------------------------

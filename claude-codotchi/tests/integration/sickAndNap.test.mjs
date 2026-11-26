@@ -97,6 +97,50 @@ describe("action.mjs — sick pets refuse feed / snack / play (integration)", ()
   });
 });
 
+describe("action.mjs — persisted food allowance (integration)", () => {
+  it("Stu receives +10 hunger from a meal and +2 from a snack across CLI invocations", async () => {
+    await withRunFixture(async (tmpBase) => {
+      writeVSCodeState(tmpBase, await pet({ spriteType: "stu", hunger: 20, weight: 10 }));
+      runAction(tmpBase, "feed");
+      assert.equal(readVSCodeState(tmpBase).hunger, 30);
+      runAction(tmpBase, "snack");
+      const saved = readVSCodeState(tmpBase);
+      assert.equal(saved.hunger, 32);
+      assert.equal(saved.weight, 16);
+      assert.equal(saved.mealsGivenThisCycle, 1);
+      assert.equal(saved.snacksGivenThisCycle, 1);
+    });
+  });
+
+  it("separate feed invocations and status reload cannot bypass the meal allowance", async () => {
+    await withRunFixture(async (tmpBase) => {
+      writeVSCodeState(tmpBase, await pet({ weight: 10 }));
+      for (let i = 1; i <= 3; i++) {
+        runAction(tmpBase, "feed");
+        assert.equal(readVSCodeState(tmpBase).mealsGivenThisCycle, i);
+        runAction(tmpBase, "status");
+      }
+      const output = runAction(tmpBase, "feed");
+      assert.match(output, /Meal allowance used up/);
+      const saved = readVSCodeState(tmpBase);
+      assert.equal(saved.mealsGivenThisCycle, 3);
+      assert.equal(saved.weight, 25);
+    });
+  });
+
+  it("sleep entry and early waking preserve both food counters", async () => {
+    await withRunFixture(async (tmpBase) => {
+      writeVSCodeState(tmpBase, await pet({ energy: 20, mealsGivenThisCycle: 3, snacksGivenThisCycle: 7 }));
+      for (const action of ["sleep", "wake", "status"]) {
+        runAction(tmpBase, action);
+        const saved = readVSCodeState(tmpBase);
+        assert.equal(saved.mealsGivenThisCycle, 3, action);
+        assert.equal(saved.snacksGivenThisCycle, 7, action);
+      }
+    });
+  });
+});
+
 describe("action.mjs — break nap (integration)", () => {
   for (const energy of [39, 40, 100]) {
     it(`/codotchi sleep at ${energy} energy reports and saves the correct result`, async () => {

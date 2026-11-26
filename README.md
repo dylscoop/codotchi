@@ -6,17 +6,34 @@ Desktop.
 
 ## What is it?
 
-**v2.39.0 development build:** the rotation animals have sourced full-body ASCII
+**v2.39.2 development build:** the rotation animals have sourced full-body ASCII
 art in OpenCode and Claude Code (also shared with Desktop). Classic and people
 art is unchanged. Artwork credits and the outstanding redistribution-permission
 review are in [ASCII artwork credits](packages/core/ASCII_ART_CREDITS.md).
 Do not publish the ASCII-containing packages until that review is resolved.
 
-Local all-platform bundle: `codotchi-2.39.0-all-platforms.zip` contains all five
-plugin packages, install notes, artwork credits and SHA-256 checksums. It includes
-the corrected walking/Preview code under the single requested version **2.39.0**.
-If an earlier 2.39.0 build is installed, explicitly reinstall the local package
-and restart the application; a version check alone cannot distinguish the builds.
+Local all-platform bundle: `codotchi-2.39.2-all-platforms.zip` contains all five
+plugin packages, install notes, artwork credits and SHA-256 checksums. Reinstall
+the updated package and restart the application to use the new balance and
+deep-idle protection. Deep idle prevents further decay of already-low stats
+without automatically restoring them; healthy pets are protected too.
+
+Food allowances refill only after normal sleep reaches **100 energy**: normal
+pets get **3 meals (+5 weight each)** and **7 snacks (+3 each)**; Stu gets
+**10 meals (+4 each)** and **15 snacks (+2 each)**. Every normal mini-game costs
+**25 energy / 5 weight**; Stu keeps **5 weight**, or **8 for vigorous games**.
+All food therefore adds **36 / 70 weight**, versus **20 / 32** burned through
+100 energy of games (normal / Stu), before passive loss, pooping and clamping.
+Early waking, break naps, refreshes and restarting alone never refill food.
+Elapsed normal sleep can complete while closed. At most **three snacks** may be
+on the floor at once, independently of the per-sleep allowance.
+
+Hunger restoration: **+15 meal / +5 snack** normally; **+10 / +2 for Stu**
+(130 hunger across his full allowance, before clamping). Successful meals,
+games, pats, Praise and starting sleep reset the consecutive-snack streak;
+Praise does so even without a call. Interrupt it before a normal pet eats its
+third consecutive snack (Stu's IDE threshold is five). A streak reset neither
+refills food nor cures sickness; Praise remains refused while sick.
 
 Dogs, cats and sheep in VS Code and PyCharm use small, distance-driven steps
 with anchored leg roots. Front/hind legs move together in alternating diagonal
@@ -98,7 +115,7 @@ code --install-extension dylscoop.codotchi
 
 #### Manual install (VSIX)
 
-1. Download a published VSIX from the [Releases page](https://github.com/dylscoop/codotchi/releases), or use the local development build `codotchi-2.39.0.vsix`.
+1. Download a published VSIX from the [Releases page](https://github.com/dylscoop/codotchi/releases), or use the local development build `codotchi-2.39.2.vsix`.
 2. In VS Code: **Extensions** (`Ctrl+Shift+X`) → **⋯** → **Install from VSIX…**
 3. Select the file and reload.
 
@@ -122,7 +139,7 @@ or in your IDE go to **Settings → Plugins → Marketplace**, search for
 
 #### Manual install (ZIP)
 
-1. Download a published plugin from the [Releases page](https://github.com/dylscoop/codotchi/releases), or use the local development build `pycharm-codotchi-2.39.0.zip`.
+1. Download a published plugin from the [Releases page](https://github.com/dylscoop/codotchi/releases), or use the local development build `pycharm-codotchi-2.39.2.zip`.
    Do **not** unzip it.
 2. In your IDE: **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 3. Select the `.zip` file and restart the IDE.
@@ -148,7 +165,7 @@ On OpenCode 1.x the key is `"plugin"` (singular) instead of `"plugins"`.
 
 Restart OpenCode. It downloads the package on startup, and the plugin
 registers both the `codotchi` tool and the `/codotchi` slash command, so
-there's nothing else to copy. Pin a published version with `"opencode-codotchi@2.38.4"`; v2.39.0 is a local development build, not yet published.
+there's nothing else to copy. Pin a published version with `"opencode-codotchi@2.38.4"`; v2.39.2 is a local development build, not yet published.
 
 > If you prefer files on disk, `npx opencode-codotchi --install` runs the same
 > installer as Option 2 straight from npm.
@@ -315,7 +332,7 @@ Requires Node.js ≥ 18.
 cd vscode
 npm install
 npx vsce package
-# produces codotchi-2.39.0.vsix
+# produces codotchi-2.39.2.vsix
 ```
 
 ### JetBrains plugin
@@ -331,7 +348,7 @@ cd pycharm
 # Windows
 gradlew.bat buildPlugin
 
-# produces pycharm/build/distributions/pycharm-codotchi-2.39.0.zip
+# produces pycharm/build/distributions/pycharm-codotchi-2.39.2.zip
 ```
 
 ## Version history

@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.39.2] - Unreleased
+
+- Stu gains 10 hunger per meal and 2 per snack. Normal food hunger, all weight
+  gains and food allowances stay unchanged.
+- Every successful Praise resets consecutive snacks, even without an attention
+  call or break nap. It does not refill food or cure existing sickness.
+- Deep idle protects hunger, happiness and energy even for healthy pets.
+  Already-low stats stop decaying without being automatically restored.
+  Regular idle and offline decay are unchanged.
+
+## [2.39.1] - Unreleased
+
+- Meals add 5 weight and snacks add 3; every mini-game costs 5 weight and
+  25 energy. A full normal allowance is 3 meals and 7 snacks.
+- Stu keeps 5/8 weight loss for standard/vigorous games, gains 4 weight per
+  meal and 2 per snack, and has allowances of 10 meals and 15 snacks.
+- Both allowances refill only when normal sleep finishes at 100 energy.
+  Starting sleep, waking early, break naps and refreshing/restarting do not
+  refill them. Elapsed normal sleep can finish while the application is closed.
+- Enforce at most three snacks on the floor, including for Stu.
+
 ## [2.39.0] - Unreleased
 
 - Add a tiny, step-synchronised contact dip to the body, with leg compensation

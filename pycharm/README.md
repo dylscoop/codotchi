@@ -28,6 +28,32 @@ lying and scripted movement retain their existing immediate handling.
 This is the same shared renderer as VS Code. Other species
 keep their existing locomotion; reduced motion shows a neutral standing pose.
 
+### Food and game balance (v2.39.2)
+
+Normal pets get **3 meals (+5 weight each)** and **7 snacks (+3 each)** per
+completed normal sleep. Stu gets **10 meals (+4 each)** and **15 snacks (+2
+each)**. All normal games cost **25 energy and 5 weight**; Stu keeps **5 weight
+for standard games / 8 for vigorous games**. The full food allowance adds
+**36 / 70 weight**, versus **20 / 32** burned using 100 energy (normal / Stu),
+before passive loss, pooping and clamping.
+
+Meals/snacks restore **15/5 hunger** normally and **10/2 for Stu**. Every
+successful Praise resets the snack streak, including ordinary Praise without a
+call or nap. Meals, games, pats and sleep also reset it. Interrupt the streak
+before the third snack is eaten (fifth for Stu); resetting does not cure an
+already-sick pet or refill either allowance. Praise remains refused while sick.
+
+Both allowances refill only when normal sleep reaches **100 energy**, including
+elapsed normal sleep while closed. Starting sleep, waking early, break naps,
+refreshing and restarting alone never refill them. Usage is stored in the pet's
+shared save. No more than **three snacks on the floor**, including for Stu.
+
+### Deep-idle safety (v2.39.2)
+
+Deep idle protects hunger, happiness and energy even when your pet is healthy.
+Already-low stats stop decaying without being automatically restored. Regular
+idle and offline decay are unchanged.
+
 ## Preview
 
 <img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/Cat_example.png" width="400" alt="A cat Codotchi in a winter scene — Codotchi in action" />

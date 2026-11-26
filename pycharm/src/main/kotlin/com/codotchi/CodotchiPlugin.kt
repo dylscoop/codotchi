@@ -85,7 +85,7 @@ class CodotchiPlugin : Disposable {
 
     private var currentState: PetState? = null
     private var currentHighScore: HighScore? = null
-    private var mealsGivenThisCycle: Int = 0
+    private val mealsGivenThisCycle: Int get() = currentState?.mealsGivenThisCycle ?: 0
     @Volatile private var lastCodeActivityTime: Long = 0L
     @Volatile private var lastCommitActivityTime: Long = 0L
     /** True when the last tick ran with dev mode active; used to suppress high score updates. */
@@ -351,8 +351,6 @@ class CodotchiPlugin : Disposable {
         // Restore saved state
         val savedState = persistence.loadPetState()
         if (savedState != null) {
-            mealsGivenThisCycle = persistence.mealsGivenThisCycle
-
             // Apply offline decay
             val elapsedSeconds = if (persistence.lastSaveTimestamp > 0L) {
                 ((System.currentTimeMillis() - persistence.lastSaveTimestamp) / 1000L).toInt()
@@ -499,16 +497,14 @@ class CodotchiPlugin : Disposable {
                     val feedType = message["feedType"] as? String
                     val _cc = getCustomCharacterBySpriteType(state.spriteType)
                     nextState = if (feedType == "snack") {
-                        // The webview reports the snacks really on its floor, so a stale
-                        // counter can't let a 4th snack through (Stu's cycle cap is 10).
-                        val floor = (message["floorSnacks"] as? Number)?.toInt() ?: state.snacksOnFloor
+                        // Neither a stale host nor a stale webview count may allow a fourth snack.
+                        val floor = maxOf(state.snacksOnFloor, (message["floorSnacks"] as? Number)?.toInt() ?: 0)
                         startSnack(state.copy(snacksOnFloor = floor), feedSnackMaxPerCycle = _cc?.feedSnackMaxPerCycle)
                     } else {
                         val ns = feedMeal(state, mealsGivenThisCycle,
                             feedMealMaxPerCycle = _cc?.feedMealMaxPerCycle,
                             feedHungerMult      = _cc?.feedHungerMult,
                             feedMealWeightGain  = _cc?.feedMealWeightGain)
-                        if ("fed_meal" in ns.events) mealsGivenThisCycle++
                         ns
                     }
                 }
@@ -537,7 +533,6 @@ class CodotchiPlugin : Disposable {
                 "sleep" -> {
                     state ?: return@withLock
                     val ns = sleep(state)
-                    if ("fell_asleep" in ns.events) mealsGivenThisCycle = 0
                     nextState = ns
                 }
 
@@ -652,7 +647,6 @@ class CodotchiPlugin : Disposable {
                     val heir = if (message["heir"] == true && state != null && !state.alive) hatchHeir(state, heirName, state.trainer) else null
                     val hatched = heir ?: createPet(resolvedName, petType, color, unlockedCharacter, state?.trainer)
                     nextState = if (deathless) markDeathless(hatched) else hatched
-                    mealsGivenThisCycle = 0
                 }
 
                 // Idle timer already reset above; no state change needed (BUGFIX-015).
@@ -1303,8 +1297,7 @@ class CodotchiPlugin : Disposable {
 
         stateLock.withLock {
             currentState = decayed
-            // Reset meal cycle — we can't know what the other window gave
-            mealsGivenThisCycle = 0
+            // The shared state carries food allowances; refresh must not refill them.
         }
 
         // Push to UI without saving (the other window is the authoritative writer)

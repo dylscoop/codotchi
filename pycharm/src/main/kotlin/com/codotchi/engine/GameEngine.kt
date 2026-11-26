@@ -64,9 +64,10 @@ private fun logChance(ticksSinceLast: Int, base: Double, max: Double): Double =
 private fun pickCravingFood(state: PetState, hunger: Int, sick: Boolean): String? {
     if (sick || hunger >= STAT_MAX) return null
     val snackBlocked = state.consecutiveSnacks >= 2 ||
-        state.snacksGivenThisCycle >= SNACK_MAX_PER_CYCLE ||
+        state.snacksGivenThisCycle >= (if (state.spriteType == "stu") 15 else SNACK_MAX_PER_CYCLE) ||
         state.snacksOnFloor >= MAX_FLOOR_SNACKS
-    val mealPointless = hunger >= CRAVING_MEAL_MAX_HUNGER
+    val mealPointless = hunger >= CRAVING_MEAL_MAX_HUNGER ||
+        state.mealsGivenThisCycle >= (if (state.spriteType == "stu") 10 else FEED_MEAL_MAX_PER_CYCLE)
     if (snackBlocked) return if (mealPointless) null else "meal"
     if (mealPointless) return "snack"
     return if (Random.nextDouble() < 0.5) "snack" else "meal"
@@ -763,7 +764,7 @@ private fun tickCore(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, conf
     // above, so a same-tick damage source can never slip through.
     //  • Health never falls below its value entering this tick while idle
     //    (BUG-S02) — the damage blocks above are already gated, this is the net.
-    //  • When sick or in any other damage state (starving, miserable, exhausted),
+    //  • Always in deep idle, or when sick/in any damage state during regular idle,
     //    hunger/happiness/energy stop decaying at IDLE_STAT_FLOOR. The damage
     //    blocks are skipped while idle, so this keys off inDamageState rather
     //    than damage actually taken. The floor is capped at each stat's value
@@ -771,7 +772,7 @@ private fun tickCore(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, conf
     //    raised back up.
     if (isIdle || isDeepIdle) {
         health = maxOf(health, state.health)
-        if (inDamageState || tookDamageThisTick) {
+        if (isDeepIdle || inDamageState || tookDamageThisTick) {
             hunger    = maxOf(hunger,    minOf(state.hunger,    IDLE_STAT_FLOOR))
             happiness = maxOf(happiness, minOf(state.happiness, IDLE_STAT_FLOOR))
             energy    = maxOf(energy,    minOf(state.energy,    IDLE_STAT_FLOOR))
@@ -845,6 +846,7 @@ private fun tickCore(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, conf
         careScoreHealthSum = careScoreHealthSum,
         careScoreTicks = careScoreTicks,
         events = events,
+        mealsGivenThisCycle = if (events.contains("auto_woke_up")) 0 else state.mealsGivenThisCycle,
         snacksGivenThisCycle = if (events.contains("auto_woke_up")) 0 else state.snacksGivenThisCycle,
         wasIdle = isIdle,
         wasDeepIdle = isDeepIdle,
@@ -916,14 +918,16 @@ private fun evolveTo(state: PetState, nextStage: String): PetState {
 // Actions
 // ---------------------------------------------------------------------------
 
-fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int? = null, feedHungerMult: Double? = null, feedMealWeightGain: Int? = null): PetState {
-    val cap = feedMealMaxPerCycle ?: FEED_MEAL_MAX_PER_CYCLE
-    val hungerBoost = (FEED_MEAL_HUNGER_BOOST * (feedHungerMult ?: 1.0)).roundToInt()
+fun feedMeal(state: PetState, mealsGivenThisCycle: Int = state.mealsGivenThisCycle, feedMealMaxPerCycle: Int? = null, feedHungerMult: Double? = null, feedMealWeightGain: Int? = null): PetState {
+    val cap = feedMealMaxPerCycle ?: if (state.spriteType == "stu") 10 else FEED_MEAL_MAX_PER_CYCLE
+    val mealsUsed = max(state.mealsGivenThisCycle, mealsGivenThisCycle)
+    val baseHungerBoost = if (state.spriteType == "stu") STU_MEAL_HUNGER_BOOST else FEED_MEAL_HUNGER_BOOST
+    val hungerBoost = (baseHungerBoost * (feedHungerMult ?: 1.0)).roundToInt()
     if (state.sick)
         return withDerivedFields(state.copy(events = listOf("meal_refused_sick")))
-    if (mealsGivenThisCycle >= cap)
+    if (mealsUsed >= cap)
         return withDerivedFields(state.copy(events = listOf("meal_refused")))
-    val newWeight = clampWeight(state.weight + (feedMealWeightGain ?: FEED_MEAL_WEIGHT_GAIN))
+    val newWeight = clampWeight(state.weight + (feedMealWeightGain ?: if (state.spriteType == "stu") 4 else FEED_MEAL_WEIGHT_GAIN))
     val events = mutableListOf("fed_meal")
     checkWeightTierEvents(state.weight, newWeight, events)
 
@@ -938,6 +942,7 @@ fun feedMeal(state: PetState, mealsGivenThisCycle: Int, feedMealMaxPerCycle: Int
             hunger            = clampStat(state.hunger + hungerBoost),
             weight            = newWeight,
             consecutiveSnacks = 0,
+            mealsGivenThisCycle = mealsUsed + 1,
             companion         = careForCompanion(state.companion, COMPANION_MEAL_HUNGER, 0),
             careMistakes      = max(0.0, state.careMistakes - if (pick != null) CARE_MISTAKE_ANSWER_CREDIT else 0.0),
             events            = events,
@@ -965,7 +970,7 @@ fun startSnack(state: PetState, feedSnackMaxPerCycle: Int? = null): PetState {
         return withDerivedFields(state.copy(events = listOf("snack_refused_sick")))
     if (state.snacksOnFloor >= MAX_FLOOR_SNACKS)
         return withDerivedFields(state.copy(events = listOf("snack_refused")))
-    val cap = feedSnackMaxPerCycle ?: SNACK_MAX_PER_CYCLE
+    val cap = feedSnackMaxPerCycle ?: if (state.spriteType == "stu") 15 else SNACK_MAX_PER_CYCLE
     if (state.snacksGivenThisCycle >= cap)
         return withDerivedFields(state.copy(events = listOf("snack_refused")))
 
@@ -1006,7 +1011,8 @@ fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThres
     if (state.snacksOnFloor <= 0) {
         return withDerivedFields(state.copy(events = emptyList()))
     }
-    val hungerBoost = (FEED_SNACK_HUNGER_BOOST * (feedHungerMult ?: 1.0)).roundToInt()
+    val baseHungerBoost = if (state.spriteType == "stu") STU_SNACK_HUNGER_BOOST else FEED_SNACK_HUNGER_BOOST
+    val hungerBoost = (baseHungerBoost * (feedHungerMult ?: 1.0)).roundToInt()
     val sickAt = snackSickThreshold ?: MAX_CONSECUTIVE_SNACKS_BEFORE_SICK
     val events = mutableListOf<String>()
     var sick = state.sick
@@ -1016,7 +1022,7 @@ fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThres
         events.add("became_sick")
     }
     events.add("fed_snack")
-    val newWeight = clampWeight(state.weight + (feedSnackWeightGain ?: FEED_SNACK_WEIGHT_GAIN))
+    val newWeight = clampWeight(state.weight + (feedSnackWeightGain ?: if (state.spriteType == "stu") 2 else FEED_SNACK_WEIGHT_GAIN))
     checkWeightTierEvents(state.weight, newWeight, events)
 
     return withDerivedFields(
@@ -1160,11 +1166,9 @@ fun applyMinigameResult(state: PetState, game: String, result: String, bossAcces
         return withDerivedFields(state.copy(events = answered + "boss_battle_no_boss"))
     }
     val delta = happinessDeltaForMinigame(game, result)
-    // BUGFIX-034: left_right and higher_lower lose an extra 3 weight on top of the
-    // 3 already lost in play(). coin_flip and blackjack keep total weight loss at 3 (no bonus here).
-    // The dog's tug_of_war, the kangaroos' boxing and the cat's laser count as left_right, the dog's fetch as coin_flip.
+    // All normal games lose 5 in play(); only Stu keeps the vigorous-game bonus.
     val statsGame = minigameStatsKey(game)
-    val weightBonus = if (statsGame == "left_right" || statsGame == "higher_lower") PLAY_WEIGHT_LOSS_BONUS else 0
+    val weightBonus = if (state.spriteType == "stu" && (statsGame == "left_right" || statsGame == "higher_lower")) PLAY_WEIGHT_LOSS_BONUS else 0
     val newWeight = clampWeight(state.weight - weightBonus)
     val events = answered.toMutableList()
     events.add("minigame_${game}_${result}")
@@ -1240,7 +1244,6 @@ private fun tickBreakNap(state: PetState, isIdle: Boolean, isDeepIdle: Boolean, 
             energy                 = energy,
             breakNapTicksRemaining = breakNapTicksRemaining,
             sleeping               = if (napOver) false else state.sleeping,
-            snacksGivenThisCycle   = if (napOver) 0 else state.snacksGivenThisCycle,
             wasIdle                = isIdle,
             wasDeepIdle            = isDeepIdle,
             events                 = events,
@@ -1339,6 +1342,7 @@ fun scold(state: PetState): PetState {
  * call is answered (the dog's big bone). Refused while sick ("praise_refused_sick").
  */
 fun praise(state: PetState, breakWeightGain: Int = 0): PetState {
+    // Successful praise always resets the snack streak, never food allowances.
     if (state.sick) {
         return withDerivedFields(state.copy(events = listOf("praise_refused_sick")))
     }
@@ -1364,7 +1368,7 @@ fun praise(state: PetState, breakWeightGain: Int = 0): PetState {
             sleeping    = state.sleeping || goesToSleep,
             breakNapTicksRemaining = if (answeredBreak != null) BREAK_NAP_TICKS else state.breakNapTicksRemaining,
             ticksSinceLastBreakCall = if (answeredBreak != null) 0 else state.ticksSinceLastBreakCall,
-            consecutiveSnacks = if (goesToSleep) 0 else state.consecutiveSnacks,
+            consecutiveSnacks = 0,
             weight      = if (answeredBreak != null) clampWeight(state.weight + breakWeightGain) else state.weight,
             discipline  = clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
             happiness   = clampStat(state.happiness  + happinessBonus),
@@ -1520,6 +1524,11 @@ fun applyOfflineDecay(state: PetState, elapsedSeconds: Int): PetState {
     val breakNapTicksRemaining = state.breakNapTicksRemaining - napTicksUsed
     val napEnded = state.breakNapTicksRemaining > 0 && breakNapTicksRemaining == 0
     val elapsedTicks = max(0.0, elapsedSeconds.toDouble() / TICK_INTERVAL_SECONDS - napTicksUsed)
+    // Tool-driven hosts have no continuous ticker; elapsed normal sleep can finish.
+    val normalSleep = state.sleeping && state.breakNapTicksRemaining == 0
+    val energy = if (normalSleep) clampStat(state.energy + (elapsedSeconds / TICK_INTERVAL_SECONDS) *
+        ceil(ENERGY_REGEN_PER_TICK_SLEEPING * modifiers.energyRegenMultiplier).toInt()) else state.energy
+    val fullSleep = normalSleep && energy >= STAT_MAX
 
     val hungerDecayTotal    = ceil(elapsedTicks * HUNGER_DECAY_PER_TICK    * modifiers.hungerDecayMultiplier).toInt()
     val happinessDecayTotal = ceil(elapsedTicks * HAPPINESS_DECAY_PER_TICK * modifiers.happinessDecayMultiplier).toInt()
@@ -1534,8 +1543,11 @@ fun applyOfflineDecay(state: PetState, elapsedSeconds: Int): PetState {
             dayTimer  = state.dayTimer,
             ageDays   = state.ageDays,
             breakNapTicksRemaining = breakNapTicksRemaining,
-            sleeping  = if (napEnded) false else state.sleeping,
-            events    = emptyList(),
+            energy    = energy,
+            sleeping  = if (napEnded || fullSleep) false else state.sleeping,
+            mealsGivenThisCycle = if (fullSleep) 0 else state.mealsGivenThisCycle,
+            snacksGivenThisCycle = if (fullSleep) 0 else state.snacksGivenThisCycle,
+            events    = if (fullSleep) listOf("auto_woke_up") else emptyList(),
         )
     )
 }

@@ -146,19 +146,26 @@ Once installed and VS Code has reloaded:
 
 | Action | What it does |
 | ------ | ----------- |
-| **Feed** | Gives your pet a full meal. Restores a large chunk of hunger. Overfeeding has no effect. Not available while your pet is sick. |
-| **Snack** | Gives a small treat. Boosts happiness instead of hunger, but adds more weight. Eating too many snacks in a row will make your pet sick. Not available while your pet is sick. |
-| **Play** | Opens the mini-game picker. Choose Left / Right, Higher or Lower, Coin Flip or Boss Battle. Winning boosts happiness; losing applies a small penalty. Costs energy — your pet can't play if exhausted or sick. Also contains **Today's Token Cost** — see below. |
+| **Feed** | Hunger +15, weight +5; 3 meals per completed normal sleep. Stu: hunger +10, weight +4, 10 meals. Not available while sick. |
+| **Snack** | Hunger +5, happiness +5, weight +3; 7 snacks per completed normal sleep. Stu: hunger +2, weight +2, 15 snacks. At most 3 on the floor. Too many consecutive snacks cause sickness; not available while sick. |
+| **Play** | Opens the mini-game picker. Each game costs 25 energy and 5 weight, win or lose. Stu keeps 8 weight loss for vigorous games and 5 otherwise. Your pet can't play if exhausted or sick. Also contains **Today's Token Cost** — see below. |
 | **Pat** | Gives your pet a gentle pat. A hand pats its head, hearts float up and each pet reacts in its own way. Boosts happiness. Costs energy. Accessed via the Play menu (same overlay as the mini-games). Cannot be used while your pet is sleeping or exhausted. |
 | **Sleep** | Puts your pet to sleep only below 40 energy. At 40 or above the button stays clickable and shows "Name is not tired enough to sleep yet" (using your pet's name). Energy slowly regenerates while it sleeps and your pet cannot take any other actions. Wake it manually or wait for full energy. Automatic break naps are unchanged; the button shows the minutes left and your pet wakes on its own. |
 | **Clean** | Clears all droppings from the screen. Leaving too many uncleaned for too long will make your pet sick. |
 | **Medicine** | Treats sickness. Three doses cure it (the button shows how many are left); medicine does not restore health. Use it as soon as your pet falls ill, because sickness drains health until it is cured. |
-| **Praise** | Rewards good behaviour. Raises the discipline stat, which contributes to a better care score and a higher-tier evolution. |
+| **Praise** | Raises discipline and always resets the consecutive-snack streak on success, with or without a call. Does not refill food or cure sickness; refused while sick. |
 | **Scold** | Corrects bad behaviour. Also raises discipline. Use it when your pet misbehaves rather than at random, as it has no direct stat benefit beyond discipline. |
 
 > **Tip:** keep all four stat bars (Hunger, Happy, Energy, Health) out of the
 > red to maximise your care score, which determines which character your pet
 > evolves into at each life stage.
+
+Food allowances refill only when normal sleep reaches **100 energy**, including
+elapsed normal sleep while closed. Starting sleep, waking early, break naps and
+refreshing/restarting alone do not replenish meals or snacks. Usage is saved
+with the pet and shared between windows. Full food adds **36 weight** normally
+or **70 for Stu**, versus **20 / 32** burned through 100 energy of games, before
+passive loss, pooping and the weight cap.
 
 ## Today's Token Cost
 

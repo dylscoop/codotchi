@@ -73,6 +73,8 @@ const MOOD_MESSAGES: Record<string, string> = {
 const REFUSAL_MESSAGES: Record<string, string> = {
   sleep_refused_high_energy: "__Name__ is not tired enough to sleep yet",
   meal_refused_sick:  "Too sick to eat — give me medicine first.",
+  meal_refused: "Meal allowance used up — finish a full sleep to replenish it.",
+  snack_refused: "Snack allowance used up or three snacks are already on the floor.",
   snack_refused_sick: "Too sick for a snack — give me medicine first.",
   play_refused_sick:  "Too sick to play — give me medicine first.",
   break_nap_no_wake:  "Shh... break nap. I'll wake up on my own soon.",
@@ -149,10 +151,9 @@ export function activity(cfg: DesktopConfig): ToolPayload {
 }
 
 export function feed(cfg: DesktopConfig): ToolPayload {
-  const { state, mealsGivenThisCycle } = loadPet(cfg);
-  const next = applyDevMode(feedMeal(state, mealsGivenThisCycle), cfg);
-  const refused = !next.events.includes("fed_meal");
-  savePet(next, refused ? mealsGivenThisCycle : mealsGivenThisCycle + 1);
+  const { state } = loadPet(cfg);
+  const next = applyDevMode(feedMeal(state), cfg);
+  savePet(next, next.mealsGivenThisCycle);
   return payload(next, loadSession());
 }
 
