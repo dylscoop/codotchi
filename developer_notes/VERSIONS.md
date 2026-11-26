@@ -24,6 +24,20 @@ engine and pass with unconditional deep-idle protection. Full Markdown lint
 retains historical errors; changed Markdown files have **125 baseline / 125
 current, zero new**. No live IDE install, saved-state repair or publication.
 
+Local packages rebuilt; embedded versions and runtime bytes verified:
+
+- `vscode/codotchi-2.39.2.vsix`
+- `pycharm/build/distributions/pycharm-codotchi-2.39.2.zip`
+- `opencode-codotchi/opencode-codotchi-2.39.2.zip`
+- `claude-codotchi/claude-codotchi-2.39.2.zip`
+- `claude-desktop-codotchi/codotchi-desktop.mcpb` (manifest 2.39.2)
+- `codotchi-2.39.2-all-platforms.zip` (3,239,028 bytes; 8 verified entries)
+
+Combined bundle SHA-256:
+`9f00121aa347d40980cdf35c89d8cbc2f3d65971c54512d0064c6ffeb5415b93`.
+Previous packages archived without overwriting existing archives. Installer
+files remain gitignored/local only. No reinstall, push, merge, tag or release.
+
 ## v2.39.1 — unreleased
 
 ### Food allowance and weight balance
