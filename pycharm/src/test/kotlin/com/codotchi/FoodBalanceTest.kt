@@ -25,6 +25,65 @@ class FoodBalanceTest {
     }
 
     @Test
+    fun `Stu gets exact hunger boosts without changing normal food weights or allowances`() {
+        val stu = getCustomCharacterBySpriteType("stu")!!
+        assertNull(stu.feedHungerMult)
+        for ((sprite, mealHunger, snackHunger) in listOf(Triple("cat", 15, 5), Triple("stu", 10, 2))) {
+            val original = pet(sprite).copy(hunger = 20, weight = 10)
+            val meal = feedMeal(original, feedHungerMult = if (sprite == "stu") stu.feedHungerMult else null)
+            assertEquals(20 + mealHunger, meal.hunger)
+            assertEquals(if (sprite == "stu") 14 else 15, meal.weight)
+            assertEquals(1, meal.mealsGivenThisCycle)
+            val snack = consumeSnack(startSnack(meal))
+            assertEquals(20 + mealHunger + snackHunger, snack.hunger)
+            assertEquals(if (sprite == "stu") 16 else 18, snack.weight)
+            assertEquals(1, snack.snacksGivenThisCycle)
+            assertEquals(100, feedMeal(original.copy(hunger = 99)).hunger)
+            assertEquals(100, consumeSnack(startSnack(original.copy(hunger = 99))).hunger)
+        }
+        assertEquals(130, 10 * STU_MEAL_HUNGER_BOOST + 15 * STU_SNACK_HUNGER_BOOST)
+    }
+
+    @Test
+    fun `ordinary Praise lets both characters finish snacks without medicine and without refill`() {
+        for (sprite in listOf("cat", "stu")) {
+            var state = pet(sprite).copy(mealsGivenThisCycle = 1)
+            val snackCap = if (sprite == "stu") 15 else 7
+            repeat(snackCap) { i ->
+                state = consumeSnack(startSnack(state))
+                assertFalse(state.sick, "snack ${i + 1}")
+                if ((i + 1) % 2 == 0) {
+                    val previous = state
+                    state = praise(state)
+                    assertEquals(0, state.consecutiveSnacks)
+                    assertEquals(i + 1, state.snacksGivenThisCycle)
+                    assertEquals(1, state.mealsGivenThisCycle)
+                    assertEquals(previous.energy, state.energy)
+                    assertEquals(previous.weight, state.weight)
+                }
+            }
+            assertEquals(listOf("snack_refused"), startSnack(state).events)
+        }
+    }
+
+    @Test
+    fun `Praise always clears the streak on success but sick refusal does not cure or reset`() {
+        for (call in listOf(null, "gift", "unhappiness", "break")) {
+            val next = praise(pet().copy(activeAttentionCall = call, consecutiveSnacks = 2,
+                mealsGivenThisCycle = 3, snacksGivenThisCycle = 7))
+            assertTrue("praised" in next.events)
+            assertEquals(0, next.consecutiveSnacks)
+            assertEquals(3, next.mealsGivenThisCycle)
+            assertEquals(7, next.snacksGivenThisCycle)
+            assertEquals(call == "break", next.sleeping)
+        }
+        val refused = praise(pet().copy(sick = true, consecutiveSnacks = 3))
+        assertEquals(listOf("praise_refused_sick"), refused.events)
+        assertEquals(3, refused.consecutiveSnacks)
+        assertTrue(refused.sick)
+    }
+
+    @Test
     fun `food weight comfortably exceeds full energy game loss for both characters`() {
         for ((sprite, mealCap, snackCap) in listOf(Triple("cat", 3, 7), Triple("stu", 10, 15))) {
             var fed = pet(sprite).copy(weight = 10)

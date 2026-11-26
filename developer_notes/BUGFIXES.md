@@ -2685,3 +2685,21 @@ preventing further decay of an already-low stat without healing it. Regular
 idle, offline decay and existing health protection are unchanged. Both engines
 have regression coverage for healthy overnight decay, save/reload, individual
 below-floor values, existing zeros and active re-entry.
+
+## BUGFIX-230 — Ordinary Praise does not reset the snack streak
+
+**Status:** Fixed (branch `fix/food-sleep-balance`, consolidated in 2.39.2)
+**File:** `packages/core/src/gameEngine.ts`, generated TypeScript mirrors, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
+
+**Problem:** Praise reset consecutive snacks only when it started a break nap.
+Ordinary Praise could not interrupt snack overfeeding, unlike a meal, game,
+pat or sleep. Stu's old quarter hunger multiplier also restored only 4/1 hunger
+per meal/snack despite his limited per-sleep allowances.
+
+**Fix:** Every successful Praise sets the streak to zero without refilling food
+or curing existing sickness. Sick refusal remains unchanged. Stu now receives
+exact base hunger gains of 10 per meal and 2 per snack; remove the old quarter
+multiplier from IDE/webview character overrides. Normal hunger and all weight
+values, food limits, sickness thresholds and deep-idle protection stay unchanged.
+Integration tests cover snack/Praise sequences without medicine, allowance
+preservation, call/no-call/nap behavior, sick refusal and actual CLI/Desktop gains.

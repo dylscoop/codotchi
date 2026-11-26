@@ -79,15 +79,15 @@ See `DEV_NOTES.md` for the full per-type breakdown.
 
 | Action      | Effect                                           | Constraint                               | Status |
 |-------------|--------------------------------------------------|------------------------------------------|--------|
-| Feed Meal   | Hunger +15, Weight +5 (Stu +4) | Max 3 meals, Stu 10; persisted allowance refills only after full normal sleep at 100 energy | `[x]` |
-| Feed Snack  | Happiness +5, Hunger +5, Weight +3 (Stu +2) | Max 7 snacks, Stu 15; same full-sleep-only reset. Max 3 on floor; 4th refused, button disabled while full. Streak resets on meal, play, pat, or sleep | `[x]` |
+| Feed Meal   | Hunger +15 (Stu +10), Weight +5 (Stu +4) | Max 3 meals, Stu 10; persisted allowance refills only after full normal sleep at 100 energy | `[x]` |
+| Feed Snack  | Happiness +5, Hunger +5 (Stu +2), Weight +3 (Stu +2) | Max 7 snacks, Stu 15; same full-sleep-only reset. Max 3 on floor; 4th refused, button disabled while full. Streak resets on meal, play, pat, successful Praise or sleep | `[x]` |
 | Play        | Happiness +15, Energy −25, Weight −5 | Flat weight cost for every normal game, win or lose; Stu retains −5 standard / −8 vigorous. Requires Energy ≥ 25; resets snack streak | `[x]` |
 | Pat         | Happiness +10, Energy −20                        | Requires Energy ≥ 20; resets snack streak | `[x]`  |
 | Sleep       | Energy regenerates; 3% per-tick chance to recover from sickness | Manual sleep requires energy < 40 (fixed threshold, currently 2 × pat cost); Sleep stays clickable and refused clicks show "Name is not tired enough to sleep yet"; refusal preserves snack streak/call/XP; normal Wake and automatic break naps unchanged | `[x]`  |
 | Wake        | Manually end sleep                               | —                                        | `[x]`  |
 | Clean       | Removes all droppings; prevents sickness         | —                                        | `[x]`  |
 | Medicine    | Cures sickness after 3 doses (no health boost)   | —                                        | `[x]`  |
-| Praise      | Discipline +10                                   | —                                        | `[x]`  |
+| Praise      | Discipline +10; always resets consecutive snacks | Any successful Praise, with or without a call/nap. Refused while sick; never refills food or cures sickness | `[x]` |
 | Scold       | Discipline +10                                   | —                                        | `[x]`  |
 | Light off   | Force sleep early (manual bedtime)               | —                                        | `[x]`  |
 

@@ -2,6 +2,32 @@
 
 ## v2.39.2 — current (unreleased)
 
+### Stu hunger and Praise follow-up (BUGFIX-230)
+
+The user explicitly requested keeping the existing branch and **2.39.2**.
+This follow-up includes the deep-idle fix below; it does not replace or revert it.
+
+| File | What changed |
+|------|--------------|
+| `packages/core/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/Constants.kt`, `GameEngine.kt` | Stu base hunger +10 per meal / +2 per snack; every successful Praise resets consecutive snacks without refilling food. Normal hunger and all weight gains/limits unchanged. |
+| Four generated `src/gameEngine.ts` copies and tracked `claude-codotchi/dist/gameEngine.*` | Shared-core parity and rebuilt runtime. |
+| `vscode/src/customCharacters.ts`, `vscode/media/customCharacters.js`, `pycharm/src/main/kotlin/com/codotchi/CustomCharacters.kt` | Remove Stu's obsolete quarter hunger multiplier so exact engine gains apply in both IDEs. Other overrides untouched. |
+| `vscode/tests/unit/gameEngine.test.ts`, `customCharacterText.test.ts`, `pycharm/src/test/kotlin/com/codotchi/FoodBalanceTest.kt`, CLI/Desktop integration tests | Exact hunger/clamps, successful Praise with no call/gift/unhappiness/break, snack sequences without medicine, no allowance refill, and unchanged sick refusal. |
+| `README.md`, IDE/Desktop READMEs, both Claude guides, `vscode/CHANGELOG.md`, PyCharm `plugin.xml` change notes, `developer_notes/DEV_NOTES.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md`, this file | Current tuning and reset behavior; BUGFIX-230. Keep version 2.39.2. |
+
+```text
+STU_MEAL_HUNGER_BOOST = 10
+STU_SNACK_HUNGER_BOOST = 2
+FEED_MEAL_HUNGER_BOOST = 15  // unchanged normal default
+FEED_SNACK_HUNGER_BOOST = 5  // unchanged normal default
+```
+
+Stu's full allowance restores **130 hunger** before clamping (10 meals +15
+snacks). Sickness prevention requires interrupting the streak before the next
+snack reaches the threshold. Praise never cures sickness, refills food or
+adds a new care XP reward when no call is answered. Sleep starvation behavior
+is unchanged; no hunger-zero safety change was requested.
+
 ### Deep-idle protection (BUGFIX-229)
 
 | File | What changed |
@@ -17,14 +43,15 @@
 in deep idle; no automatic stat restoration. No saved pet state is modified.
 The existing ASCII redistribution-permission blocker still applies.
 
-Validation: **1,783 tests passed** (VS Code 1075, Kotlin 339, Claude Code 140,
-OpenCode Node 149 + plugin 60, Desktop 14, cross-CLI 6). VS Code type-check
+Validation including the Stu/Praise follow-up: **1,797 tests passed** (VS Code
+1084, Kotlin 342, Claude Code 141, OpenCode Node 149 + plugin 60, Desktop 15,
+cross-CLI 6). VS Code type-check
 and shared-core sync passed. Regression tests failed on the previous shared
 engine and pass with unconditional deep-idle protection. Full Markdown lint
-retains historical errors; changed Markdown files have **125 baseline / 125
+retains historical errors; the 11 changed Markdown files have **145 baseline / 145
 current, zero new**. No live IDE install, saved-state repair or publication.
 
-Local packages rebuilt; embedded versions and runtime bytes verified:
+Earlier deep-idle-only 2.39.2 packages (rebuilt again for the follow-up):
 
 - `vscode/codotchi-2.39.2.vsix`
 - `pycharm/build/distributions/pycharm-codotchi-2.39.2.zip`

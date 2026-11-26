@@ -34,7 +34,7 @@ rendered as an ASCII text block.
 Ask Claude in chat (e.g. "feed my codotchi") to trigger these tools — there
 are no on-screen buttons.
 
-### Food allowance (v2.39.1)
+### Food allowance (v2.39.2)
 
 Normal pets have **3 meals (+5 weight)** and **7 snacks (+3 weight)** per
 completed normal sleep; Stu has **10 meals (+4)** and **15 snacks (+2)**. Usage
@@ -43,6 +43,9 @@ reaches **100 energy**, including elapsed normal sleep between tool calls.
 Early waking, break naps and restarting alone never refill either allowance.
 Snacks are eaten immediately in Desktop; the shared engine still refuses
 placement when three snacks are already on the floor.
+
+Meal/snack hunger gains are **15/5 normally**, **10/2 for Stu**. Normal hunger
+and all weight values/allowances remain unchanged in this version.
 
 ### Rewards & the speech bubble
 

@@ -63,11 +63,13 @@ const val RECENT_EVENT_LOG_MAX: Int = 20
 const val POOP_TICKS_INTERVAL: Int = 20 * TICKS_PER_MINUTE
 
 const val FEED_MEAL_HUNGER_BOOST: Int = 15
+const val STU_MEAL_HUNGER_BOOST: Int = 10
 const val FEED_MEAL_WEIGHT_GAIN: Int = 5
 const val FEED_MEAL_MAX_PER_CYCLE: Int = 3
 
 const val FEED_SNACK_HAPPINESS_BOOST: Int = 5
 const val FEED_SNACK_HUNGER_BOOST: Int = 5
+const val STU_SNACK_HUNGER_BOOST: Int = 2
 const val FEED_SNACK_WEIGHT_GAIN: Int = 3
 
 const val PLAY_HAPPINESS_BOOST: Int = 15

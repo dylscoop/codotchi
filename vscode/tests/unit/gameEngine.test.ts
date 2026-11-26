@@ -2716,6 +2716,62 @@ describe("serialiseState / deserialiseState", () => {
 // ---------------------------------------------------------------------------
 
 describe("integration — food and sleep balance", () => {
+  for (const [spriteType, mealHunger, snackHunger] of [["cat", 15, 5], ["stu", 10, 2]] as const) {
+    it(`${spriteType}: meal and snack hunger gains persist, with unchanged weights and allowances`, () => {
+      const original = makePet({ spriteType, hunger: 20, weight: 10 });
+      const meal = deserialiseState(serialiseState(feedMeal(original)));
+      assert.equal(meal.hunger, 20 + mealHunger);
+      assert.equal(meal.weight, spriteType === "stu" ? 14 : 15);
+      assert.equal(meal.mealsGivenThisCycle, 1);
+      const snack = deserialiseState(serialiseState(consumeSnack(startSnack(meal))));
+      assert.equal(snack.hunger, 20 + mealHunger + snackHunger);
+      assert.equal(snack.weight, spriteType === "stu" ? 16 : 18);
+      assert.equal(snack.snacksGivenThisCycle, 1);
+      assert.equal(feedMeal({ ...original, hunger: 99 }).hunger, 100);
+      assert.equal(consumeSnack(startSnack({ ...original, hunger: 99 })).hunger, 100);
+    });
+
+    it(`${spriteType}: two snacks then ordinary Praise avoids sickness without replenishing snacks`, () => {
+      let pet = makePet({ spriteType, mealsGivenThisCycle: 1 });
+      const snackCap = spriteType === "stu" ? 15 : 7;
+      for (let i = 1; i <= snackCap; i++) {
+        pet = consumeSnack(startSnack(pet));
+        assert.equal(pet.sick, false, `snack ${i}`);
+        assert.equal(pet.snacksGivenThisCycle, i);
+        if (i % 2 === 0) {
+          const energy = pet.energy;
+          const weight = pet.weight;
+          pet = deserialiseState(serialiseState(praise(pet)));
+          assert.equal(pet.consecutiveSnacks, 0);
+          assert.equal(pet.snacksGivenThisCycle, i);
+          assert.equal(pet.mealsGivenThisCycle, 1);
+          assert.equal(pet.energy, energy);
+          assert.equal(pet.weight, weight);
+        }
+      }
+      assert.ok(startSnack(pet).events.includes("snack_refused"));
+    });
+  }
+
+  for (const activeAttentionCall of [null, "gift", "unhappiness", "break"] as const) {
+    it(`Praise resets the streak with ${activeAttentionCall ?? "no"} call and does not refill food`, () => {
+      const next = praise(makePet({ activeAttentionCall, consecutiveSnacks: 2,
+        mealsGivenThisCycle: 3, snacksGivenThisCycle: 7 }));
+      assert.ok(next.events.includes("praised"));
+      assert.equal(next.consecutiveSnacks, 0);
+      assert.equal(next.mealsGivenThisCycle, 3);
+      assert.equal(next.snacksGivenThisCycle, 7);
+      assert.equal(next.sleeping, activeAttentionCall === "break");
+    });
+  }
+
+  it("Praise refused while sick preserves the streak and does not cure sickness", () => {
+    const next = praise(makePet({ sick: true, consecutiveSnacks: 3 }));
+    assert.deepEqual(next.events, ["praise_refused_sick"]);
+    assert.equal(next.consecutiveSnacks, 3);
+    assert.equal(next.sick, true);
+  });
+
   for (const [spriteType, mealCap, snackCap, mealGain, snackGain] of [
     ["cat", 3, 7, 5, 3], ["stu", 10, 15, 4, 2],
   ] as const) {

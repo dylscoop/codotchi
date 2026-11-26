@@ -190,6 +190,7 @@ all three). Finishing all three on consecutive weekdays builds a streak.</p>
 
     <change-notes><![CDATA[
 <h3>2.39.2</h3>
+<ul><li>Stu gains 10 hunger per meal and 2 per snack; normal food hunger, weight gains and allowances are unchanged.</li><li>Every successful Praise resets the snack streak, without refilling food or curing existing sickness.</li></ul>
 <ul><li>Deep idle now protects hunger, happiness and energy even when your pet is healthy. Stats already low do not decay further, without being automatically restored. Regular idle is unchanged.</li></ul>
 <h3>2.39.1</h3>
 <ul>

@@ -252,7 +252,6 @@ val CUSTOM_CHARACTERS: List<CustomCharacter> = listOf(
         snackCravings = listOf("a pint", "some salmon"),
         feedMealMaxPerCycle  = 10,
         feedSnackMaxPerCycle = 15,
-        feedHungerMult       = 0.25,
         snackSickThreshold   = 5,
         feedMealWeightGain   = 4,
         feedSnackWeightGain  = 2,

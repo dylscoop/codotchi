@@ -921,7 +921,8 @@ private fun evolveTo(state: PetState, nextStage: String): PetState {
 fun feedMeal(state: PetState, mealsGivenThisCycle: Int = state.mealsGivenThisCycle, feedMealMaxPerCycle: Int? = null, feedHungerMult: Double? = null, feedMealWeightGain: Int? = null): PetState {
     val cap = feedMealMaxPerCycle ?: if (state.spriteType == "stu") 10 else FEED_MEAL_MAX_PER_CYCLE
     val mealsUsed = max(state.mealsGivenThisCycle, mealsGivenThisCycle)
-    val hungerBoost = (FEED_MEAL_HUNGER_BOOST * (feedHungerMult ?: 1.0)).roundToInt()
+    val baseHungerBoost = if (state.spriteType == "stu") STU_MEAL_HUNGER_BOOST else FEED_MEAL_HUNGER_BOOST
+    val hungerBoost = (baseHungerBoost * (feedHungerMult ?: 1.0)).roundToInt()
     if (state.sick)
         return withDerivedFields(state.copy(events = listOf("meal_refused_sick")))
     if (mealsUsed >= cap)
@@ -1010,7 +1011,8 @@ fun consumeSnack(state: PetState, feedHungerMult: Double? = null, snackSickThres
     if (state.snacksOnFloor <= 0) {
         return withDerivedFields(state.copy(events = emptyList()))
     }
-    val hungerBoost = (FEED_SNACK_HUNGER_BOOST * (feedHungerMult ?: 1.0)).roundToInt()
+    val baseHungerBoost = if (state.spriteType == "stu") STU_SNACK_HUNGER_BOOST else FEED_SNACK_HUNGER_BOOST
+    val hungerBoost = (baseHungerBoost * (feedHungerMult ?: 1.0)).roundToInt()
     val sickAt = snackSickThreshold ?: MAX_CONSECUTIVE_SNACKS_BEFORE_SICK
     val events = mutableListOf<String>()
     var sick = state.sick
@@ -1340,6 +1342,7 @@ fun scold(state: PetState): PetState {
  * call is answered (the dog's big bone). Refused while sick ("praise_refused_sick").
  */
 fun praise(state: PetState, breakWeightGain: Int = 0): PetState {
+    // Successful praise always resets the snack streak, never food allowances.
     if (state.sick) {
         return withDerivedFields(state.copy(events = listOf("praise_refused_sick")))
     }
@@ -1365,7 +1368,7 @@ fun praise(state: PetState, breakWeightGain: Int = 0): PetState {
             sleeping    = state.sleeping || goesToSleep,
             breakNapTicksRemaining = if (answeredBreak != null) BREAK_NAP_TICKS else state.breakNapTicksRemaining,
             ticksSinceLastBreakCall = if (answeredBreak != null) 0 else state.ticksSinceLastBreakCall,
-            consecutiveSnacks = if (goesToSleep) 0 else state.consecutiveSnacks,
+            consecutiveSnacks = 0,
             weight      = if (answeredBreak != null) clampWeight(state.weight + breakWeightGain) else state.weight,
             discipline  = clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
             happiness   = clampStat(state.happiness  + happinessBonus),

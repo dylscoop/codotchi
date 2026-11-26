@@ -853,6 +853,7 @@ export declare function giveMedicine(state: PetState): PetState;
 export declare function scold(state: PetState): PetState;
 /**
  * Praise the pet to raise discipline.
+ * Every successful praise resets the snack streak, but not food allowances.
  * If a "gift" attention call is active, it is answered and a happiness bonus
  * (GIFT_PRAISE_HAPPINESS_BOOST) is applied on top of the discipline boost.
  * If a "break" call is active, it is answered with the same happiness bonus

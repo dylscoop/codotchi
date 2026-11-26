@@ -98,6 +98,20 @@ describe("action.mjs — sick pets refuse feed / snack / play (integration)", ()
 });
 
 describe("action.mjs — persisted food allowance (integration)", () => {
+  it("Stu receives +10 hunger from a meal and +2 from a snack across CLI invocations", async () => {
+    await withRunFixture(async (tmpBase) => {
+      writeVSCodeState(tmpBase, await pet({ spriteType: "stu", hunger: 20, weight: 10 }));
+      runAction(tmpBase, "feed");
+      assert.equal(readVSCodeState(tmpBase).hunger, 30);
+      runAction(tmpBase, "snack");
+      const saved = readVSCodeState(tmpBase);
+      assert.equal(saved.hunger, 32);
+      assert.equal(saved.weight, 16);
+      assert.equal(saved.mealsGivenThisCycle, 1);
+      assert.equal(saved.snacksGivenThisCycle, 1);
+    });
+  });
+
   it("separate feed invocations and status reload cannot bypass the meal allowance", async () => {
     await withRunFixture(async (tmpBase) => {
       writeVSCodeState(tmpBase, await pet({ weight: 10 }));

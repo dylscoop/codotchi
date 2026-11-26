@@ -263,9 +263,11 @@ describe("floor snack cap (Stu's cycle cap is 15, so only the floor cap stops hi
     assert.equal(stu.feedSnackMaxPerCycle, 15);
     assert.equal(stu.feedMealWeightGain, 4);
     assert.equal(stu.feedSnackWeightGain, 2);
+    assert.equal(stu.feedHungerMult, undefined, "Stu uses the exact engine hunger gains, not the old quarter multiplier");
     const source = read("vscode/media/customCharacters.js");
     assert.match(source, /feedSnackMaxPerCycle:\s+15/);
     assert.match(source, /feedMealWeightGain:\s+4/);
+    assert.doesNotMatch(source, /feedHungerMult:\s+0\.25/);
   });
 });
 

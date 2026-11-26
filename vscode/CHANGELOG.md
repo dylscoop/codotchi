@@ -2,6 +2,10 @@
 
 ## [2.39.2] - Unreleased
 
+- Stu gains 10 hunger per meal and 2 per snack. Normal food hunger, all weight
+  gains and food allowances stay unchanged.
+- Every successful Praise resets consecutive snacks, even without an attention
+  call or break nap. It does not refill food or cure existing sickness.
 - Deep idle protects hunger, happiness and energy even for healthy pets.
   Already-low stats stop decaying without being automatically restored.
   Regular idle and offline decay are unchanged.

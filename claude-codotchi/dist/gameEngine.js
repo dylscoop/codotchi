@@ -76,10 +76,12 @@ const RECENT_EVENT_LOG_MAX = 20;
 /** Ticks between droppings (≈ 20 real minutes). */
 const POOP_TICKS_INTERVAL = 20 * TICKS_PER_MINUTE;
 const FEED_MEAL_HUNGER_BOOST = 15;
+const STU_MEAL_HUNGER_BOOST = 10;
 const FEED_MEAL_WEIGHT_GAIN = 5;
 const FEED_MEAL_MAX_PER_CYCLE = 3;
 const FEED_SNACK_HAPPINESS_BOOST = 5;
 const FEED_SNACK_HUNGER_BOOST = 5;
+const STU_SNACK_HUNGER_BOOST = 2;
 const FEED_SNACK_WEIGHT_GAIN = 3;
 const PLAY_HAPPINESS_BOOST = 15;
 const PLAY_ENERGY_COST = 25;
@@ -1657,7 +1659,8 @@ export function feedMeal(state, mealsGivenThisCycle = state.mealsGivenThisCycle,
     const cap = opts?.maxPerCycle ?? (state.spriteType === "stu" ? 10 : FEED_MEAL_MAX_PER_CYCLE);
     // Legacy hosts may pass their own counter; they cannot lower the saved count.
     const mealsUsed = Math.max(state.mealsGivenThisCycle, mealsGivenThisCycle);
-    const hungerBoost = Math.round(FEED_MEAL_HUNGER_BOOST * (opts?.hungerMult ?? 1));
+    const baseHungerBoost = state.spriteType === "stu" ? STU_MEAL_HUNGER_BOOST : FEED_MEAL_HUNGER_BOOST;
+    const hungerBoost = Math.round(baseHungerBoost * (opts?.hungerMult ?? 1));
     if (state.sick) {
         return withDerivedFields({ ...state, events: ["meal_refused_sick"] });
     }
@@ -1751,7 +1754,8 @@ export function consumeSnack(state, opts) {
     if (state.snacksOnFloor <= 0) {
         return withDerivedFields({ ...state, events: [] });
     }
-    const hungerBoost = Math.round(FEED_SNACK_HUNGER_BOOST * (opts?.hungerMult ?? 1));
+    const baseHungerBoost = state.spriteType === "stu" ? STU_SNACK_HUNGER_BOOST : FEED_SNACK_HUNGER_BOOST;
+    const hungerBoost = Math.round(baseHungerBoost * (opts?.hungerMult ?? 1));
     const sickAt = opts?.sickThreshold ?? MAX_CONSECUTIVE_SNACKS_BEFORE_SICK;
     const events = [];
     let sick = state.sick;
@@ -2138,6 +2142,7 @@ export function scold(state) {
 }
 /**
  * Praise the pet to raise discipline.
+ * Every successful praise resets the snack streak, but not food allowances.
  * If a "gift" attention call is active, it is answered and a happiness bonus
  * (GIFT_PRAISE_HAPPINESS_BOOST) is applied on top of the discipline boost.
  * If a "break" call is active, it is answered with the same happiness bonus
@@ -2185,8 +2190,9 @@ export function praise(state, opts = {}) {
         ...(answered ?? {}),
         discipline: clampStat(state.discipline + DISCIPLINE_BOOST_PER_ACTION),
         happiness: clampStat(state.happiness + happinessBonus),
+        consecutiveSnacks: 0,
         careMistakes: Math.max(0, state.careMistakes - (answered ? CARE_MISTAKE_ANSWER_CREDIT : 0)),
-        ...(goesToSleep ? { sleeping: true, consecutiveSnacks: 0 } : {}),
+        ...(goesToSleep ? { sleeping: true } : {}),
         ...(answeredBreak ? { sleeping: true, breakNapTicksRemaining: BREAK_NAP_TICKS, ticksSinceLastBreakCall: 0,
             weight: clampWeight(state.weight + (opts.breakWeightGain ?? 0)) } : {}),
         events,

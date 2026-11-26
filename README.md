@@ -28,6 +28,13 @@ Early waking, break naps, refreshes and restarting alone never refill food.
 Elapsed normal sleep can complete while closed. At most **three snacks** may be
 on the floor at once, independently of the per-sleep allowance.
 
+Hunger restoration: **+15 meal / +5 snack** normally; **+10 / +2 for Stu**
+(130 hunger across his full allowance, before clamping). Successful meals,
+games, pats, Praise and starting sleep reset the consecutive-snack streak;
+Praise does so even without a call. Interrupt it before a normal pet eats its
+third consecutive snack (Stu's IDE threshold is five). A streak reset neither
+refills food nor cures sickness; Praise remains refused while sick.
+
 Dogs, cats and sheep in VS Code and PyCharm use small, distance-driven steps
 with anchored leg roots. Front/hind legs move together in alternating diagonal
 pairs at both speeds; two-leg drawings move their visible front/hind together.

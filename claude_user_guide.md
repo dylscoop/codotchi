@@ -71,8 +71,8 @@ activates the statusline script, registers the event hooks, and makes the
 | Action | Description |
 |--------|-------------|
 | `/codotchi` or `/codotchi status` | Show the pet's current ASCII art and full stats |
-| `/codotchi feed` | Give a meal — hunger +15, weight +5; max 3 until normal sleep finishes at 100 energy. Stu: +4 weight, 10 meals. |
-| `/codotchi snack` | Give a snack — +3 weight, max 7 until full normal sleep. Stu: +2 weight, 15 snacks. Consecutive snacks can cause sickness. |
+| `/codotchi feed` | Give a meal — hunger +15, weight +5; max 3 until normal sleep finishes at 100 energy. Stu: +10 hunger, +4 weight, 10 meals. |
+| `/codotchi snack` | Give a snack — hunger +5, weight +3; max 7 until full normal sleep. Stu: +2 hunger, +2 weight, 15 snacks. Consecutive snacks can cause sickness. |
 | `/codotchi pat` | Pat the pet — gentle happiness boost |
 | `/codotchi sleep` | Put the pet to sleep only below 40 energy — energy regenerates 3× faster while sleeping |
 | `/codotchi wake` | Wake the pet up; early waking never refills food allowances. Break naps do not refill them either. |

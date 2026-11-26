@@ -85,6 +85,17 @@ describe("claude-desktop tools", () => {
     assert.equal(stored.state.hunger, out.state.hunger);
   });
 
+  it("Stu receives +10 meal and +2 snack hunger across tool loads, with unchanged weights", () => {
+    writeState(["vscode", "state.json"], adultPet({ spriteType: "stu", hunger: 20, weight: 10 }));
+    const cfg = readConfig();
+    assert.equal(Math.round(tools.feed(cfg).state.hunger), 30);
+    const out = tools.snack(cfg);
+    assert.equal(Math.round(out.state.hunger), 32);
+    assert.equal(out.state.weight, 16);
+    assert.equal(out.state.mealsGivenThisCycle, 1);
+    assert.equal(out.state.snacksGivenThisCycle, 1);
+  });
+
   it("meal allowance survives repeated tool loads, show, sleep and early wake", () => {
     writeState(["vscode", "state.json"], adultPet({ weight: 10, energy: 20, snacksGivenThisCycle: 7 }));
     const cfg = readConfig();
