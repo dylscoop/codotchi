@@ -460,11 +460,13 @@ but takes no damage. The following are also suspended while idle:
 - attention-call expiry timers (they only advance on active ticks)
 
 **Idle safety floor:** applied last in `tick()`, after every stat-decay and
-damage block. Health is clamped to `max(health, previousHealth)`. When the pet
-is also sick or took damage that tick, hunger, happiness and energy are each
-prevented from decaying below `IDLE_STAT_FLOOR = 20`. That floor is capped at
+damage block. Health is clamped to `max(health, previousHealth)`. In deep idle,
+hunger, happiness and energy are always prevented from decaying below
+`IDLE_STAT_FLOOR = 20`, even for healthy pets (BUGFIX-229). During regular idle,
+the stat floor still applies only when sick or in a damage state. It is capped at
 `min(previousStat, 20)`, so a stat already below 20 from earlier neglect is
-never raised back up (BUGFIX-149). Any `_damage` events are stripped from idle
+never raised back up and cannot decay further in deep idle (BUGFIX-149/229).
+Any `_damage` events are stripped from idle
 ticks so logging/notifications never report the pet as losing health while
 the user is away (BUGFIX-150).
 

@@ -4,7 +4,7 @@ A Tamagotchi-style virtual pet that lives inside your **Claude Desktop** chats. 
 renders as ASCII art right in the conversation, and you keep it happy by
 talking to Claude and caring for it.
 
-v2.39.1 shares the sourced rotation-animal ASCII artwork with OpenCode and Claude
+v2.39.2 shares the sourced rotation-animal ASCII artwork with OpenCode and Claude
 Code. Classic and people are unchanged; animal silhouettes/signatures are kept
 intact across stages and moods. See [sources and permission-review release blocker](ASCII_ART_CREDITS.md)
 before distributing this development build.

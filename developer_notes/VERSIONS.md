@@ -1,6 +1,30 @@
 # Version History
 
-## v2.39.1 — current (unreleased)
+## v2.39.2 — current (unreleased)
+
+### Deep-idle protection (BUGFIX-229)
+
+| File | What changed |
+|------|--------------|
+| `packages/core/src/gameEngine.ts`, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt` | Unconditional deep-idle hunger/happiness/energy floor at min(previous stat, 20), including healthy pets. Regular idle, offline decay and health protection unchanged. |
+| All four generated `src/gameEngine.ts` mirrors; `claude-codotchi/dist/gameEngine.*` | Synchronize canonical core and rebuild the tracked Claude runtime. |
+| `vscode/tests/unit/gameEngine.test.ts`, `pycharm/src/test/kotlin/com/codotchi/GameEngineTest.kt` | Healthy overnight save/reload, independent low values, sickness, existing zero, regular-idle and active re-entry regressions. |
+| All five package manifests, four lockfiles, Claude/Desktop manifests, Desktop `src/server.ts`, PyCharm `build.gradle.kts` and `plugin.xml` | Patch bump to 2.39.2, without dependency changes. |
+| `developer_notes/DEV_NOTES.md`, `developer_notes/vscode/FEATURES.md`, `developer_notes/BUGFIXES.md`, `vscode/CHANGELOG.md`, this file | Document deep-idle-only unconditional protection and BUGFIX-229. |
+| `README.md`, `opencode-codotchi/README.md`, `claude-desktop-codotchi/README.md`, `pycharm/README.md` | Update current build references and describe idle safety without changing food balance. |
+
+`IDLE_STAT_FLOOR = 20` is unchanged. A value below 20 remains at its own value
+in deep idle; no automatic stat restoration. No saved pet state is modified.
+The existing ASCII redistribution-permission blocker still applies.
+
+Validation: **1,783 tests passed** (VS Code 1075, Kotlin 339, Claude Code 140,
+OpenCode Node 149 + plugin 60, Desktop 14, cross-CLI 6). VS Code type-check
+and shared-core sync passed. Regression tests failed on the previous shared
+engine and pass with unconditional deep-idle protection. Full Markdown lint
+retains historical errors; changed Markdown files have **125 baseline / 125
+current, zero new**. No live IDE install, saved-state repair or publication.
+
+## v2.39.1 — unreleased
 
 ### Food allowance and weight balance
 

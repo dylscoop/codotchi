@@ -708,10 +708,12 @@ pet stays sick but takes no damage.
 
 **Idle safety floor:** applied after every other stat-decay/damage block in
 `tick()`. On every idle tick, health is clamped to its value entering the
-tick. When the pet is also sick or took damage, hunger, happiness and energy
-are held at `IDLE_STAT_FLOOR = 20`. That floor is capped at the stat's value
+tick. In deep idle, hunger, happiness and energy are always held at
+`IDLE_STAT_FLOOR = 20`, even for healthy pets (BUGFIX-229). Regular idle keeps
+the floor conditional on sickness/a damage state. It is capped at the stat's value
 entering the tick (`min(previousStat, 20)`), so a stat already below 20 is
-never raised back up (BUGFIX-149). `_damage` events are stripped from idle
+never raised back up and cannot decay further in deep idle (BUGFIX-149/229).
+`_damage` events are stripped from idle
 ticks (BUGFIX-150).
 
 Aging does **not** advance while the IDE is closed (`applyOfflineDecay`
@@ -722,7 +724,7 @@ preserves `dayTimer`/`ageDays` exactly).
 | Idle after | `IDLE_THRESHOLD_SECONDS` | 120 s (2 min) — default of `codotchi.idleThresholdSeconds` |
 | Deep idle after | `IDLE_DEEP_THRESHOLD_SECONDS` | 600 s (10 min) — default of `codotchi.idleDeepThresholdSeconds` |
 | Decay divisor | `IDLE_DECAY_TICK_DIVISOR` | 10 (1 pt/min vs 10 pt/min active) |
-| Stat floor (idle + sick/damage) | `IDLE_STAT_FLOOR` | 20 — hunger, happiness, energy (health never drops while idle) |
+| Stat floor (all deep idle; regular idle + sick/damage) | `IDLE_STAT_FLOOR` | min(previous stat, 20) — hunger, happiness, energy (health never drops while idle) |
 
 Activity is tracked via `onDidChangeTextEditorSelection`, `onDidChangeTextDocument`,
 `onDidChangeWindowState`, and `onDidChangeActiveTextEditor`. Any of these events

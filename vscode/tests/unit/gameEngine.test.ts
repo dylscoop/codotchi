@@ -1004,6 +1004,44 @@ describe("tick — sickness health drain and death", () => {
 // tick — idle safety floor (sick or losing health while idle)
 // ---------------------------------------------------------------------------
 
+describe("tick — deep-idle floor (BUGFIX-229)", () => {
+  for (const isIdle of [true, false]) {
+    it(`protects a healthy pet overnight, including after a save/reload (isIdle=${isIdle})`, () => {
+      let pet = makePet({ hunger: 24, happiness: 26, energy: 28, health: 100 });
+      for (let i = 0; i < 10000; i++) {
+        if (i === 5000) pet = deserialiseState(serialiseState(pet))!;
+        pet = tick(pet, isIdle, true, NO_CALLS);
+        assert.ok(pet.hunger >= 20 && pet.happiness >= 20 && pet.energy >= 20, `stats fell below 20 on tick ${i}`);
+      }
+      assert.deepEqual([pet.hunger, pet.happiness, pet.energy, pet.health], [20, 20, 20, 100]);
+      assert.ok(pet.alive && !pet.sick);
+    });
+  }
+
+  for (const sick of [false, true]) {
+    it(`holds each already-low stat at its own value without healing (sick=${sick})`, () => {
+      let pet = makePet({ hunger: 5, happiness: 12, energy: 19, health: 100, sick });
+      for (let i = 0; i < 1000; i++) pet = tick(pet, true, true, NO_CALLS);
+      assert.deepEqual([pet.hunger, pet.happiness, pet.energy, pet.health], [5, 12, 19, 100]);
+    });
+  }
+
+  it("preserves an existing zero without letting the other stats decay", () => {
+    let pet = makePet({ hunger: 0, happiness: 12, energy: 19, health: 100 });
+    for (let i = 0; i < 1000; i++) pet = tick(pet, true, true, NO_CALLS);
+    assert.deepEqual([pet.hunger, pet.happiness, pet.energy, pet.health], [0, 12, 19, 100]);
+  });
+
+  it("leaves healthy regular-idle decay unchanged and resumes decay on activity", () => {
+    const pet = makePet({ hunger: 20, happiness: 20, energy: 20, health: 100, ticksAlive: 119 });
+    const idle = tick(pet, true, false, NO_CALLS);
+    assert.deepEqual([idle.hunger, idle.happiness, idle.energy], [19, 19, 19]);
+    const protectedPet = tick(pet, true, true, NO_CALLS);
+    const active = tick({ ...protectedPet, ticksAlive: 125 }, false, false, NO_CALLS);
+    assert.deepEqual([active.hunger, active.happiness, active.energy], [19, 19, 19]);
+  });
+});
+
 describe("tick — idle safety floor for sick/losing-health pets", () => {
   it("does not raise health already below IDLE_STAT_FLOOR when starving pet takes damage while idle", () => {
     const pet = makePet({ hunger: 0, hungerZeroTicks: 99, health: 5 });

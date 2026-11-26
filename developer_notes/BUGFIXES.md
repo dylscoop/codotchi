@@ -2669,3 +2669,19 @@ refill food. Normal meals/snacks add 5/3 weight, with 3/7 allowances; Stu adds
 Stu's 5/8 standard/vigorous losses preserved. Guard floor placement in the
 engine, both hosts and shared UI at three snacks. Integration tests cover saved
 usage, actual CLI/Desktop calls, sleep boundaries, floor cap and weight totals.
+
+## BUGFIX-229 — Healthy pets lose stats below the floor during deep idle
+
+**Status:** Fixed (branch `fix/food-sleep-balance`)
+**File:** `packages/core/src/gameEngine.ts`, generated shared-core mirrors, `pycharm/src/main/kotlin/com/codotchi/engine/GameEngine.kt`
+
+**Problem:** The idle stat floor only activated for sickness or a damage state,
+so healthy pets could decay below 20 during deep idle. Scout's morning backup
+held hunger, happiness and energy at 1 despite deep idle being active.
+
+**Fix:** Apply the hunger/happiness/energy floor on every deep-idle tick,
+independent of sickness or damage. Each floor is `min(previousStat, 20)`,
+preventing further decay of an already-low stat without healing it. Regular
+idle, offline decay and existing health protection are unchanged. Both engines
+have regression coverage for healthy overnight decay, save/reload, individual
+below-floor values, existing zeros and active re-entry.

@@ -42,6 +42,12 @@ elapsed normal sleep while closed. Starting sleep, waking early, break naps,
 refreshing and restarting alone never refill them. Usage is stored in the pet's
 shared save. No more than **three snacks on the floor**, including for Stu.
 
+### Deep-idle safety (v2.39.2)
+
+Deep idle protects hunger, happiness and energy even when your pet is healthy.
+Already-low stats stop decaying without being automatically restored. Regular
+idle and offline decay are unchanged.
+
 ## Preview
 
 <img src="https://raw.githubusercontent.com/dylscoop/codotchi/main/Cat_example.png" width="400" alt="A cat Codotchi in a winter scene — Codotchi in action" />

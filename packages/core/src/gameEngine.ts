@@ -1905,7 +1905,7 @@ function tickCore(state: PetState, isIdle: boolean, isDeepIdle: boolean, config:
   // above, so a same-tick damage source can never slip through.
   //  • Health never falls below its value entering this tick while idle
   //    (BUG-S02) — the damage blocks above are already gated, this is the net.
-  //  • When sick or in any other damage state (starving, miserable, exhausted),
+  //  • Always in deep idle, or when sick/in any damage state during regular idle,
   //    hunger/happiness/energy stop decaying at IDLE_STAT_FLOOR. The damage
   //    blocks are skipped while idle, so this keys off inDamageState rather
   //    than damage actually taken. The floor is capped at each stat's value
@@ -1913,7 +1913,7 @@ function tickCore(state: PetState, isIdle: boolean, isDeepIdle: boolean, config:
   //    raised back up.
   if (isIdle || isDeepIdle) {
     health = Math.max(health, state.health);
-    if (inDamageState || tookDamageThisTick) {
+    if (isDeepIdle || inDamageState || tookDamageThisTick) {
       hunger    = Math.max(hunger,    Math.min(state.hunger,    IDLE_STAT_FLOOR));
       happiness = Math.max(happiness, Math.min(state.happiness, IDLE_STAT_FLOOR));
       energy    = Math.max(energy,    Math.min(state.energy,    IDLE_STAT_FLOOR));

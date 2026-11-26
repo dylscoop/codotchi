@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.39.2] - Unreleased
+
+- Deep idle protects hunger, happiness and energy even for healthy pets.
+  Already-low stats stop decaying without being automatically restored.
+  Regular idle and offline decay are unchanged.
+
 ## [2.39.1] - Unreleased
 
 - Meals add 5 weight and snacks add 3; every mini-game costs 5 weight and
