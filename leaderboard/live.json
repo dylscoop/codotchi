@@ -36,18 +36,6 @@
     "verified": true
   },
   {
-    "username": "dsiowlee",
-    "petName": "Wee Stu",
-    "petRunId": "b68ca4c6f25d5c541f9eb73d12e36859b0333c31516adffe676bd4e6e703fd1f",
-    "spawnedAt": 1788440785354,
-    "ageDays": 61,
-    "stage": "teen",
-    "petType": "codeling",
-    "updatedAt": 1795770048192,
-    "clientVersion": "2.38.4",
-    "verified": true
-  },
-  {
     "username": "dylscoop",
     "petName": "Scout",
     "petRunId": "0",
@@ -68,6 +56,18 @@
     "stage": "baby",
     "petType": "shellscript",
     "updatedAt": 1795770337596,
+    "clientVersion": "2.38.4",
+    "verified": true
+  },
+  {
+    "username": "dsiowlee",
+    "petName": "Wee Stu",
+    "petRunId": "b68ca4c6f25d5c541f9eb73d12e36859b0333c31516adffe676bd4e6e703fd1f",
+    "spawnedAt": 1788440785354,
+    "ageDays": 61,
+    "stage": "teen",
+    "petType": "codeling",
+    "updatedAt": 1795770948210,
     "clientVersion": "2.38.4",
     "verified": true
   }
